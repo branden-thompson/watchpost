@@ -8,6 +8,7 @@ package app
 
 import (
 	"context"
+	"math"
 	"strconv"
 	"sync"
 	"time"
@@ -76,25 +77,60 @@ func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo
 	return t
 }
 
-// withAir adds the model's US AQI for the mode (D-139), asked only while Air
-// quality is on: a request a field box, to the air-quality API.
-func withAir(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, ask tty.MapAsk, now time.Time) tty.MapTemperature {
-	if !ask.Air {
+// withAir adds air quality's tint, asked only while its row is on: AirNow's
+// current-AQI contours (D-193), keyless - each field box a grid in the AQI
+// scale, each cell its contour's category, none where no contour reaches;
+// through Radar mode's loop, and on Forecast mode's Now alone. AirNow's
+// monitors are drawn over it (D-139); Open-Meteo's air-quality API is not
+// asked (D-185).
+func withAir(ctx context.Context, t tty.MapTemperature, airnow *airquality.Provider, ask tty.MapAsk, now time.Time) tty.MapTemperature {
+	if !ask.Air || airnow == nil {
 		return t
 	}
+	contours, err := airnow.Contours(ctx, now)
+	if err != nil {
+		t.Problems = append(t.Problems, "Air quality: AirNow's contours did not answer - "+err.Error()) // D-124
+		return t
+	}
+	nowStep, _ := forecastDays(askAnchor(ask, now))
 	for _, b := range fieldBoxes(ask.Region, ask.View) {
-		lat := temperature.LatticeFor(b.Name, b.Box)
-		m, err := om.AirQuality(ctx, lat, now)
-		if err != nil {
-			t.Problems = append(t.Problems, "Air quality: Open-Meteo did not answer for "+b.Name) // D-124
+		g, ok := contourGrid(b.Box, contours)
+		if !ok {
 			continue
 		}
-		hours, days := measureGrids(m, tty.AirLayer, b.Name, ask, now, func(id string, vals []float64, valid, anchor time.Time) (tuimaps.Overlay, bool) {
-			return fieldGrid(id, lat, vals, valid, anchor, tuimaps.AirQualityGrid)
-		})
-		t.Air, t.AirDays = append(t.Air, hours...), append(t.AirDays, days...)
+		o := tuimaps.AirQualityGrid(tty.AirLayer+"/"+b.Name+"/airnow", g, contours.Hour)
+		o.Keeps, o.Credit = 3*time.Hour, airquality.Attribution // AirNow redraws them about hourly
+		if ask.Forecast {
+			o.During = nowStep.Span // the current hour's: Now's alone
+		}
+		t.Air = append(t.Air, o)
 	}
 	return t
+}
+
+// contourCells is the most cells a side of a box's contour grid has: fine
+// enough for a state, the work an hour's file once a box.
+const contourCells = 160
+
+// contourGrid is a box's cells, each its contour's category as an AQI in it
+// (airquality.CategoryAQI), missing where no contour holds the cell's
+// middle; false where none holds any.
+func contourGrid(box geo.Box, c airquality.Contours) (tuimaps.Grid, bool) {
+	w, h := box.E-box.W, box.N-box.S
+	if w <= 0 || h <= 0 {
+		return tuimaps.Grid{}, false
+	}
+	cols := contourCells
+	rows := min(max(int(float64(cols)*h/w), 2), contourCells)
+	g := tuimaps.Grid{West: box.W, South: box.S, East: box.E, North: box.N, Cols: cols, Rows: rows, Values: make([]float64, cols*rows)}
+	any := false
+	for i, cat := range c.Raster(box.W, box.S, box.E, box.N, cols, rows) { // a scanline, not a point test a cell (P10-02)
+		g.Values[i] = math.NaN()
+		if cat >= 0 {
+			g.Values[i], any = airquality.CategoryAQI(cat), true
+		}
+	}
+	return g, any
 }
 
 // measureGrids are one measure's grids for the mode, as temperature's: Radar
@@ -215,21 +251,19 @@ func readingWord(r airquality.Reading) string {
 	return r.Category
 }
 
-// airBytes are a field box's air-quality request on the wire: about 25 KB
-// for six points, five days hourly (2026-09-29).
-const airBytes = 330_000
+// contoursBytes is AirNow's contours file: about 2 MB (2026-10-01).
+const contoursBytes = 2_000_000
 
 // airnowBytes is AirNow's national file: 1.9 MB (2026-09-29).
 const airnowBytes = 1_950_000
 
-// airLayerCost is a request a field box to the air-quality API, and AirNow's
-// one file.
+// airLayerCost is AirNow's two national files, the reporting areas and the
+// contours (D-193), whatever the view.
 func airLayerCost(in mapInputs) (int64, int) {
 	if in.region == "" {
 		return 0, 0
 	}
-	boxes := len(fieldBoxes(in.region, in.view))
-	return int64(boxes)*airBytes + airnowBytes, boxes + 1
+	return airnowBytes + contoursBytes, 2
 }
 
 // airHosts are air quality's entries for the Status window's MAP block, with

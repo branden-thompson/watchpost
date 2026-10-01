@@ -2741,3 +2741,39 @@ history drawing NDFD's days, NDFD's refusal drawing something (survived once - n
 refusing while Open-Meteo answers; now tested), `LatticeOf` ignoring its points, the toggle, the
 note, the ask - all caught.
 
+## Batch 88 — air quality from AirNow's contours (W19.4; D-193; 2026-10-01)
+
+**Now.** Air quality's tint is **AirNow's current-AQI contours** (`airnow/today/cur_aqi_combined.kml`,
+keyless, about hourly, ~2 MB): each field box a grid in the AQI scale, each cell its contour's category
+(`airquality.CategoryAQI`: the category's middle), none where no contour reaches - under AirNow's
+monitors, through Radar mode's loop and on Forecast mode's Now; Today and Tomorrow keep AirNow's
+reporting-area forecasts as markers. **Open-Meteo's air-quality API is not asked** (nothing else asks
+it, so it is never "already asked"), and its path is gone: `temperature.AirQuality`, its host, credit
+and fixture. The badge says AIRNOW; About credits AirNow for the monitors and contours; the layer's
+cost estimate is AirNow's two files, whatever the view.
+
+**The file.** The contours tile the country with holes - one national Good polygon of ~26,000
+vertices, every other contour a hole in it, and contours nesting (Unhealthy inside
+Unhealthy-for-Sensitive-Groups). A point is the highest category whose polygon holds it, holes and
+all. A point test a cell took **100 ms** for the lower 48's box; `Contours.Raster`, a scanline that
+fills between each row's crossings by the even-odd rule, takes **1.2 ms** - and agrees with the point
+test at every cell of the fixture (`TestARasterIsItsCellsCategories`). The fixture is California's
+twelve contours, the national polygon left out.
+
+**The weight a refresh, every row on:**
+
+| View | Batch 87 | Now |
+|---|---|---|
+| Lower 48, Radar mode | 156.0 | **78.0** (the waves' fill alone) |
+| California, Radar mode | 320.0 | **160.0** |
+| Alaska, Radar mode | 474.0 | **316.0** |
+| Lower 48, Forecast mode | 283.2 | **205.2** |
+| California, Forecast mode | 584.0 | **424.0** |
+| California, Forecast mode, the history warm | 360.0 | **200.0** |
+
+**Mutation verdicts** (12): holes, the highest category (survived once - the fixture's contours never
+overlap; now an overlap test), the raster's highest (survived once, the same test), the scanline's
+edge, an hour ahead (survived once; now tested), an unknown style, Now's step alone, a cell no
+contour holds, the row off - all caught. P10's live 31 are the same 31 (checked against HEAD in a
+worktree): the temperature package's density finding moved from the deleted `air.go` to `cost.go`.
+

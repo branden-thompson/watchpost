@@ -19,14 +19,13 @@ import (
 const (
 	ndfdBase      = "https://graphical.weather.gov"
 	openMeteoBase = "https://api.open-meteo.com"
-	marineBase    = "https://marine-api.open-meteo.com"      // Open-Meteo's waves (D-125)
-	airBase       = "https://air-quality-api.open-meteo.com" // Open-Meteo's US AQI (D-138)
+	marineBase    = "https://marine-api.open-meteo.com" // Open-Meteo's waves (D-125)
 )
 
 // Hosts are the sources' addresses, FR-3.8's closed list: the app names them
 // in the Status window and a test holds them to the table.
 func Hosts() map[string]string {
-	return map[string]string{"NWS NDFD": ndfdBase, "Open-Meteo": openMeteoBase, "Open-Meteo Marine": marineBase, "Open-Meteo Air Quality": airBase}
+	return map[string]string{"NWS NDFD": ndfdBase, "Open-Meteo": openMeteoBase, "Open-Meteo Marine": marineBase}
 }
 
 // OpenMeteoCredit is Open-Meteo's credit line: its data is CC BY 4.0, which
@@ -359,23 +358,24 @@ func windPeaks(out *Series, dayOf map[time.Time]int) {
 }
 
 // OpenMeteo is Open-Meteo's forecast API: everywhere, over water too, with
-// the past hours NDFD lacks - Radar mode's source always (D-96).
+// the past hours NDFD lacks - metered, a call a point, so supplemental where a
+// keyless source covers (D-185). Its air-quality API is no longer asked:
+// AirNow's contours are the map's (D-193).
 type OpenMeteo struct {
 	get    Getter
 	base   string
 	marine string // the marine API's host, for the waves (D-125)
-	air    string // the air-quality API's, for the US AQI (D-138)
 }
 
 // NewOpenMeteo builds the source; base "" is the production host.
 func NewOpenMeteo(get Getter, base string) *OpenMeteo {
-	marine, air := marineBase, airBase
+	marine := marineBase
 	if base == "" {
 		base = openMeteoBase
 	} else {
-		marine, air = base, base // a test's one server answers all three
+		marine = base // a test's one server answers both
 	}
-	return &OpenMeteo{get: get, base: base, marine: marine, air: air}
+	return &OpenMeteo{get: get, base: base, marine: marine}
 }
 
 func (s *OpenMeteo) Name() string { return "Open-Meteo" }

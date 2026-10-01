@@ -10,6 +10,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/uv"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/history"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -45,9 +46,6 @@ func (g *omGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]
 	}
 	fill := func(v string, count int) string { return strings.TrimSuffix(strings.Repeat(v+",", count), ",") }
 	point := `{"utc_offset_seconds":0,"hourly":{"time":[` + strings.Join(hours, ",") + `],"uv_index":[` + fill("5", len(hours)) + `]},"daily":{"time":[` + strings.Join(days, ",") + `],"uv_index_max":[` + fill("8", len(days)) + `]}}`
-	if strings.Contains(rawURL, "/v1/air-quality") {
-		point = `{"utc_offset_seconds":0,"hourly":{"time":[` + strings.Join(hours, ",") + `],"us_aqi":[` + fill("60", len(hours)) + `]}}`
-	}
 	return []byte("[" + fill(point, n) + "]"), nil
 }
 
@@ -83,22 +81,65 @@ func TestUVIsItsGridsInEachMode(t *testing.T) {
 }
 
 // TestTheAirIsTheModelsGridsAskedWhileOn is D-139: the model's US AQI from
-// the air-quality API, asked only while Air quality is on.
-func TestTheAirIsTheModelsGridsAskedWhileOn(t *testing.T) {
-	get := &omGet{}
-	om := temperature.NewOpenMeteo(get, "")
-	ask := tempAsk(true)
-	if got := withAir(context.Background(), tty.MapTemperature{}, om, ask, tempNow); len(got.Air) != 0 || len(get.asked) != 0 {
-		t.Fatalf("with the row off: %d grids, %d requests; want none", len(got.Air), len(get.asked))
+// contoursFile answers AirNow's contours from their fixture, counting asks.
+type contoursFile struct{ asked []string }
+
+func (g *contoursFile) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]byte, error) {
+	g.asked = append(g.asked, rawURL)
+	return os.ReadFile("../domains/airquality/testdata/cur_aqi_combined.kml")
+}
+
+// AIR QUALITY'S TINT IS AIRNOW'S CONTOURS (W19.4, D-193): with its row on,
+// each field box is a grid in the AQI scale, each cell its contour's
+// category - Fresno's Unhealthy, Los Angeles' Moderate - none where no
+// contour reaches; in Forecast mode on Now alone. With the row off nothing
+// is asked, and Open-Meteo never is.
+func TestTheAirIsAirNowsContours(t *testing.T) {
+	get := &contoursFile{}
+	airnow := airquality.New(get, "")
+	ask := tempAsk(false)
+	ask.View = tty.MapView{W: -124.5, S: 32.5, E: -114, N: 42}
+	now := time.Date(2026, 10, 1, 4, 30, 0, 0, time.UTC)
+	if got := withAir(context.Background(), tty.MapTemperature{}, airnow, ask, now); len(got.Air) != 0 || len(get.asked) != 0 {
+		t.Fatalf("with the row off: %d grids, %d asks; want none", len(got.Air), len(get.asked))
 	}
 	ask.Air = true
-	got := withAir(context.Background(), tty.MapTemperature{}, om, ask, tempNow)
-	if len(got.Air) == 0 || got.Air[0].Grid.Type.Preset != "aqi" || got.Air[0].Grid.Values[0] != 60 || len(got.AirDays) == 0 {
-		t.Errorf("the air is %d Now grids, %d days", len(got.Air), len(got.AirDays))
+	got := withAir(context.Background(), tty.MapTemperature{}, airnow, ask, now)
+	if len(got.Air) != len(fieldBoxes(ask.Region, geo.Box(ask.View))) || len(got.AirDays) != 0 {
+		t.Fatalf("the air is %d grids, %d days; want a grid a box, no days", len(got.Air), len(got.AirDays))
+	}
+	at := func(lat, lon float64) float64 {
+		for _, o := range got.Air {
+			g := o.Grid
+			if g.Type.Preset != "aqi" || lon < g.West || lon > g.East || lat < g.South || lat > g.North {
+				continue
+			}
+			col := min(int((lon-g.West)/(g.East-g.West)*float64(g.Cols)), g.Cols-1)
+			row := min(int((g.North-lat)/(g.North-g.South)*float64(g.Rows)), g.Rows-1)
+			return g.Values[row*g.Cols+col]
+		}
+		return -1
+	}
+	if v := at(36.35, -119.25); v != airquality.CategoryAQI(airquality.Unhealthy) {
+		t.Errorf("Fresno's south-east is %v; want Unhealthy's %v", v, airquality.CategoryAQI(airquality.Unhealthy))
+	}
+	if v := at(34.05, -118.25); v != airquality.CategoryAQI(airquality.Moderate) {
+		t.Errorf("Los Angeles is %v; want Moderate's", v)
+	}
+	if v := at(39, -117); !math.IsNaN(v) {
+		t.Errorf("Nevada, outside every contour, is %v; want nothing", v)
 	}
 	for _, u := range get.asked {
-		if !strings.HasPrefix(u, "https://air-quality-api.open-meteo.com/v1/air-quality?") {
-			t.Errorf("asked %s; want the air-quality API", u)
+		if strings.Contains(u, "open-meteo") {
+			t.Errorf("asked %s: Open-Meteo's air is not asked (D-193)", u)
+		}
+	}
+	fc := ask
+	fc.Forecast = true
+	steps := tty.ForecastSteps(askAnchor(fc, now))
+	for _, o := range withAir(context.Background(), tty.MapTemperature{}, airnow, fc, now).Air {
+		if o.During != steps[0].Span {
+			t.Errorf("Forecast mode's contours are drawn during %v; want Now's step alone", o.During)
 		}
 	}
 }
@@ -151,13 +192,13 @@ func TestAirNowsMonitorsAreMarkersInTheirCategory(t *testing.T) {
 	}
 }
 
-// TestAirQualityCostsItsRequests is D-139 with FR-9.2: a request a field box
-// and AirNow's file.
+// TestAirQualityCostsItsRequests is D-139 with FR-9.2 and D-193: AirNow's two
+// files, its reporting areas and its contours, whatever the view.
 func TestAirQualityCostsItsRequests(t *testing.T) {
 	in := mapInputs{region: tempAsk(false).Region, view: tty.MapView{W: -125, S: 24, E: -66, N: 50}}
 	b, r := airLayerCost(in)
-	if boxes := len(fieldBoxes(in.region, in.view)); r != boxes+1 || b < airnowBytes {
-		t.Errorf("air quality costs %d bytes in %d requests; want a request a box (%d) and AirNow's file", b, r, boxes)
+	if r != 2 || b < airnowBytes+contoursBytes {
+		t.Errorf("air quality costs %d bytes in %d requests; want AirNow's two files", b, r)
 	}
 }
 

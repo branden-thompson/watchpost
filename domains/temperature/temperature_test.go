@@ -66,7 +66,7 @@ func TestEveryRecordedTemperatureFixtureIsPresent(t *testing.T) {
 		Captured string   `json:"captured"`
 		Files    []string `json:"files"`
 	}
-	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 18 { // D-136 recorded three more, D-137 and D-138 two, D-168 one
+	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 17 { // D-136 recorded three more, D-137 and D-138 two, D-168 one; D-193 retired the air
 		t.Fatalf("the manifest is %+v (%v)", m, err)
 	}
 	for _, f := range m.Files {
@@ -254,7 +254,7 @@ func TestTheClientIsHardened(t *testing.T) {
 }
 
 func TestTheSourcesAreTheClosedList(t *testing.T) {
-	want := map[string]string{"NWS NDFD": "https://graphical.weather.gov", "Open-Meteo": "https://api.open-meteo.com", "Open-Meteo Marine": "https://marine-api.open-meteo.com", "Open-Meteo Air Quality": "https://air-quality-api.open-meteo.com"} // D-125
+	want := map[string]string{"NWS NDFD": "https://graphical.weather.gov", "Open-Meteo": "https://api.open-meteo.com", "Open-Meteo Marine": "https://marine-api.open-meteo.com"} // D-125
 	got := Hosts()
 	if len(got) != len(want) {
 		t.Fatalf("the hosts are %v; want %v (FR-3.8, D-93)", got, want)
@@ -445,24 +445,6 @@ func TestOpenMeteoReadsTheUV(t *testing.T) {
 
 // TestOpenMeteoReadsTheAirQuality is D-138: the model's US AQI of each hour,
 // from the air-quality API's host, and each day's worst hour on the point's
-// own date - the API gives no daily value.
-func TestOpenMeteoReadsTheAirQuality(t *testing.T) {
-	var asked []string
-	a, err := NewOpenMeteo(fixedGet{t, "openmeteo-air.json", &asked}, "").AirQuality(context.Background(), fixtureLattice, uvCaptured)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(asked) != 1 || !strings.HasPrefix(asked[0], "https://air-quality-api.open-meteo.com/v1/air-quality?") || !strings.Contains(asked[0], "us_aqi") {
-		t.Errorf("asked %v; want the air-quality API's US AQI", asked)
-	}
-	if v, ok := a.At(uvCaptured); !ok || !near(v[escondido], 45) {
-		t.Errorf("the AQI now is %v (%v); want 45 at 17:00 local", v, ok)
-	}
-	if !near(a.Max[0][escondido], 47) || !near(a.Max[1][escondido], 81) {
-		t.Errorf("the days' worst are %v, %v; want 47 today, then 81", a.Max[0][escondido], a.Max[1][escondido])
-	}
-}
-
 // THE CURRENT HOUR ALONE, FOR THE HISTORY (W18.3b, D-166): one ask - the very
 // address Fetch's second ask is, so the two share the HTTP cache and an hour
 // the map already fetched costs the recorder nothing - read as Fetch reads it.

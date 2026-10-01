@@ -1,7 +1,6 @@
 const SafetyNext
 const SafetyNote
 const UserAgent
-const airBytes
 const airLabelMost
 const airnowBytes
 const alertLayerKey
@@ -17,6 +16,8 @@ const burstHeadGap
 const burstKey
 const burstTailGap
 const coarseRain
+const contourCells
+const contoursBytes
 const coopsRatePerSec
 const debugAddrDefault
 const defaultBurstMax
@@ -536,6 +537,7 @@ func composeFor
 func composeTakeover
 func configLocations
 func contentsFromSegments
+func contourGrid
 func credits
 func dayStart
 func debugAddr

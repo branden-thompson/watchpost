@@ -172,18 +172,18 @@ func TestTheMapsOpenMeteoWeightIsWithinItsBudget(t *testing.T) {
 		warm   bool
 		budget float64
 	}{
-		{"lower 48, Radar mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), false), false, 156},
-		{"lower 48, Forecast mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true), false, 283.2},
-		{"California, Radar mode", costAsk(geo.RegionContiguous, california, false), false, 320},
-		{"California, Forecast mode", costAsk(geo.RegionContiguous, california, true), false, 584},
-		{"Alaska, Radar mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), false), false, 474},
-		{"Alaska, Forecast mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), true), false, 575.2},
+		{"lower 48, Radar mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), false), false, 78},
+		{"lower 48, Forecast mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true), false, 205.2},
+		{"California, Radar mode", costAsk(geo.RegionContiguous, california, false), false, 160},
+		{"California, Forecast mode", costAsk(geo.RegionContiguous, california, true), false, 424},
+		{"Alaska, Radar mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), false), false, 316},
+		{"Alaska, Forecast mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), true), false, 417.2},
 		{"lower 48, Radar, no UV/air", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), false)), false, 78},
 		{"lower 48, Forecast, no UV/air", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true)), false, 205.2},
 		{"California, Forecast, no UV/air", quiet(costAsk(geo.RegionContiguous, california, true)), false, 424},
 		{"lower 48, Forecast, no UV/air, warm", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true)), true, 96},
 		{"California, Forecast, no UV/air, warm", quiet(costAsk(geo.RegionContiguous, california, true)), true, 200},
-		{"California, Forecast, warm", costAsk(geo.RegionContiguous, california, true), true, 360},
+		{"California, Forecast, warm", costAsk(geo.RegionContiguous, california, true), true, 200},
 	} {
 		total, by := openMeteoRefresh(t, c.ask, c.warm)
 		was := c.ask

@@ -37,8 +37,8 @@ func init() {
 	registerMapLayer(mapLayer{key: tty.WindLayer, label: "Wind", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }})
 	// UV and Air quality ride temperature's source (D-137, D-139): off by
 	// default, after wind in the Overlays menu.
-	registerMapLayer(mapLayer{key: tty.UVLayer, label: "UV", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }}) // its chip is the answer's, while it draws (D-183)
-	registerMapLayer(mapLayer{key: tty.AirLayer, label: "Air quality", on: false, cost: airLayerCost, chips: []string{"O-METEO", "AIRNOW"}})
+	registerMapLayer(mapLayer{key: tty.UVLayer, label: "UV", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }})      // its chip is the answer's, while it draws (D-183)
+	registerMapLayer(mapLayer{key: tty.AirLayer, label: "Air quality", on: false, cost: airLayerCost, chips: []string{"AIRNOW"}}) // AirNow's contours and monitors (D-193)
 }
 
 // tempSources is the temperature the app holds: both sources over one
@@ -173,7 +173,7 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	}
 	if lp.temp.rain != nil { // Open-Meteo: the UV and the model's US AQI (D-137, D-139)
 		t = withUV(ctx, t, lp.temp.rain, uvAsked(src == lp.temp.om, filled), ask, now, lp.historyStore(), lp.temp.uvCities) // EPA's cities first (D-186); valid UV kept, and replayed when refused (D-167)
-		t = withAir(ctx, t, lp.temp.rain, ask, now)
+		t = withAir(ctx, t, lp.airnow, ask, now)                                                                            // AirNow's contours (D-193)
 	}
 	t.Quota = lp.temp.quotaSpent() // the map says it (D-165)
 	return t
@@ -732,6 +732,6 @@ func tempLayerCost(in mapInputs) (int64, int) {
 // tempHosts are the temperature's entries for the Status window's MAP block.
 func tempHosts() []tty.MapSource {
 	return hostsFor(temperature.Hosts(), map[string]string{"NWS NDFD": "temperature, waves", "Open-Meteo": "temperature, UV, rain",
-		"Open-Meteo Marine": "waves", "Open-Meteo Air Quality": "air"},
+		"Open-Meteo Marine": "waves"},
 		map[string][]string{"Open-Meteo": {tempFrameNote}}) // what never changes about its data (D-132); its credit is About's (D-148)
 }

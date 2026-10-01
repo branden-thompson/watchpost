@@ -35,9 +35,6 @@ type Measure struct {
 // Waves is the wave height, in metres (D-125).
 type Waves = Measure
 
-// Air is the US AQI (D-138): a model's, Open-Meteo's.
-type Air = Measure
-
 // newWaves is an answer with every value missing.
 func newWaves(l Lattice) Measure {
 	w := Measure{Lattice: l}

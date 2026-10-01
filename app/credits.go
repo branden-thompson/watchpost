@@ -58,8 +58,7 @@ func mapCredits() []string {
 		temperature.OpenMeteoCredit,
 		temperature.OpenMeteoRainCredit,
 		temperature.OpenMeteoWavesCredit,
-		temperature.OpenMeteoAirCredit,
-		airquality.Attribution,
+		"Air quality: " + airquality.Attribution + " - its monitors and contours", // D-193
 		uv.Attribution, // UV's cold start (D-167)
 		"Fire: NIFC WFIGS perimeters and incidents; NOAA HMS satellite hotspots",
 		usgs.Attribution,
