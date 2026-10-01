@@ -520,6 +520,8 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.toggleTempSource()
 	case rowMapRainDetail:
 		return d.toggleRainDetail()
+	case rowMapUVCities:
+		return d.cycleUVCities(true)
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(true)
 	case rowMapQuakes:

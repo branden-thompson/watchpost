@@ -280,6 +280,9 @@ type Config struct {
 	// NDFD's reach (D-192): "full", or a quarter of a box's points, the
 	// default - it bills every point (D-185).
 	MapRainDetail string `toml:"map_rain_detail,omitempty"`
+	// MapUVCities is how many cities UV asks EPA for (D-202): 8, 24 or 48;
+	// empty is 24, the default. Each city is one keyless ask an hour.
+	MapUVCities int `toml:"map_uv_cities,omitempty"`
 
 	// HistoryHours and HistoryTrends are the local history's retention, the
 	// Data tab's presets (W18, D-175): "72h", "7d", "30d", "1y" and "30d",

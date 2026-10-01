@@ -427,6 +427,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MapRadarSource:  cfg.MapRadarSource,            // D-83: the lower 48's radar
 		MapTempSource:   cfg.MapTemperatureSource,      // D-93, D-190: the map's temperature
 		MapRainDetail:   cfg.MapRainDetail,             // D-192: the rain's density past NDFD's reach
+		MapUVCities:     cfg.MapUVCities,               // D-202: how many cities UV asks EPA for
 		MapRadarAhead:   cfg.MapRadarAheadHours,        // D-114: the radar loop's hours ahead
 		MapQuakeFeed:    cfg.MapQuakeFeed,              // D-122: the quakes the map draws
 		MapProblem:      lp.problems.note,              // D-124: the diagnostics', never the listener's

@@ -47,7 +47,6 @@ const maxAlertRecords
 const maxDumpsPerRun
 const maxLaneRows
 const maxSeenIDs
-const maxUVCities
 const maxUnattendedInstalls
 const metroCapKm
 const modelRainNote
@@ -109,6 +108,8 @@ const traceRainMM
 const traceSnowCM
 const traceSnowIn
 const usageFresh
+const uvAskers
+const uvCitySpacingKm
 const uvRanked
 const viewSamples
 const waveBytes
@@ -474,6 +475,7 @@ func (*timingLog).last
 func (*timingLog).note
 func (*timingLog).stage
 func (*uvCities).markers
+func (*uvCities).read
 func (CastReport).ToneSummary
 func (airScope).hasOrigin
 func (bedReach).Line
@@ -617,7 +619,6 @@ func laneForKey
 func laneItems
 func laneRowsPerTab
 func laneScenarios
-func largestInView
 func lastLineIndex
 func libraryTransport
 func linedGrid
@@ -779,6 +780,7 @@ func snapshotBytes
 func spokenName
 func spokenWhen
 func spokenWindow
+func spreadInView
 func stageNames
 func staleWarnings
 func stampOf

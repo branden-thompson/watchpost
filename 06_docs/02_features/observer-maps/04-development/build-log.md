@@ -2935,3 +2935,33 @@ forms built every frame). Not raised: the tab is tinted in one piece and the nar
 when the wide does not fit - now 4881 and 3459, under the pin (4934, 3485) with room. **P10** went to 32 with a one-line `epaName`
 (`epa.go`'s density); the alias moved inside `Hourly`, back to 31.
 
+## Batch 96 — UV's cities spread over the view, the count a Setting (U2-51; D-202; 2026-10-01)
+
+**The spread.** `spreadInView` replaces `largestInView`: the view is cut into about n cells by its shape
+on the ground (kilometres, not degrees), each cell's largest ranked city taken, then each cell's next,
+round by round, until the count - cells over sea or beyond the border hold none, so the land's take a
+second. No two closer than 100 km, or than half a cell's side where cells are smaller (a state's view
+keeps its count: Southern California's 24 about 23 km apart). The ranking's order kept, so markers draw largest
+first. The lower 48 at 24: New York, Los Angeles, Chicago, Houston, Phoenix, Philadelphia, San Antonio,
+Dallas, Jacksonville, San Jose, Columbus, Indianapolis, Seattle, Denver, Oklahoma City, El Paso, Boston,
+Portland, Detroit, Omaha, Cleveland, New Orleans, Tri-Cities and Billings. (GeoNames' "New South
+Memphis" appears at 48; EPA may not know the name, and a city EPA refuses is left out silently, D-124.)
+
+**Asked four at a time** (`uvAskers`): 24 asks one by one would hold the map's UV for seconds; the
+answers are kept in the cities' order whatever order they land in.
+
+**The Setting.** Settings -> Maps -> UV cities, 8 / 24 / 48 (default 24), file word `map_uv_cities`;
+`MapAsk.UVCities`; `tty.UVCitiesByCount` the one rule for a count not offered, read by the app too. Its
+cost - "about N keyless EPA asks an hour for a view; more cities show UV a little later" - is said under
+the row while it is focused (D-23): said always, it cost Settings two lines and its alloc pin.
+
+**U2-48's pin re-pinned, 80x24-miss 3_319 -> 3_491 (+5%)**: the window is measured on every tab for its
+width, so a row on the Maps tab costs every Settings frame - after the tab row was built once a frame
+(batch 95) and the note kept to its focus. 133x44 stays under its pin. The Maps golden gains the row.
+
+**Mutation verdicts** (15): the spacing, a city a cell a round, the spacing's shrink (survived once -
+California's cells were near 100 km; Southern California added), a zone needed, four at a time, the
+order kept, the count forwarded, the ranking's order out (survived once - a second round's larger city
+before a first round's smaller; a case added), the picker's direction, the ask, the default, the save,
+the note on focus - all caught.
+

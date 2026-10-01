@@ -136,7 +136,7 @@ func (d Dashboard) uiTouched() Dashboard {
 // uiForSave is what the window writes when it closes.
 func (d Dashboard) uiForSave() UIPrefs {
 	return UIPrefs{Theme: d.themeName(), Units: d.setup.units.Key(), Clock: d.setup.clock.Key(), Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key(),
-		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempNDFD), MapRainDetail: rainDetailKey(d.mapRainFull), MapRadarAhead: d.mapRadarAhead, MapQuakeFeed: d.mapQuakeFeed, MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
+		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempNDFD), MapRainDetail: rainDetailKey(d.mapRainFull), MapUVCities: d.mapUVCities, MapRadarAhead: d.mapRadarAhead, MapQuakeFeed: d.mapQuakeFeed, MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
 }
 
 // uiApplyCmd writes the display preferences — and nothing else, for the same
@@ -167,7 +167,7 @@ func (d Dashboard) applyUISaved(v uiSavedMsg) Dashboard {
 	d.cfg.Maps, d.cfg.MapDescription = v.prefs.Maps, v.prefs.MapDescription
 	d.cfg.MapScale, d.cfg.MapNearbyKm, d.cfg.MapLayerChoice = v.prefs.MapScale, v.prefs.MapNearbyKm, v.prefs.MapLayers
 	d.cfg.MapRadarSource, d.cfg.MapTempSource, d.cfg.MapRadarAhead = v.prefs.MapRadarSource, v.prefs.MapTempSource, v.prefs.MapRadarAhead
-	d.cfg.MapQuakeFeed, d.cfg.MapRainDetail = v.prefs.MapQuakeFeed, v.prefs.MapRainDetail
+	d.cfg.MapQuakeFeed, d.cfg.MapRainDetail, d.cfg.MapUVCities = v.prefs.MapQuakeFeed, v.prefs.MapRainDetail, v.prefs.MapUVCities
 	d.cfg.MapDetailChoice, d.cfg.MapDetailLevel = v.prefs.MapDetail, v.prefs.MapDetailLevel
 	return d
 }

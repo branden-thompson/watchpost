@@ -60,9 +60,9 @@ func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo
 	}
 	var chips []string // what drew, the history last (D-173, D-183)
 	if ask.UV && cities != nil {
-		if marks := cities.markers(ctx, ask.View, askAnchor(ask, now), ask.Forecast); len(marks) > 0 {
+		if marks := cities.markers(ctx, ask.View, tty.UVCitiesByCount(ask.UVCities), askAnchor(ask, now), ask.Forecast); len(marks) > 0 {
 			t.UV, chips = append(t.UV, marks...), append(chips, "EPA")
-			t = withNote(t, tty.UVLayer, "UV: EPA's forecast for the largest cities in view.")
+			t = withNote(t, tty.UVLayer, "UV: EPA's forecast for cities across the view.")
 		}
 	}
 	if live > 0 {
@@ -299,33 +299,27 @@ func airHosts() []tty.MapSource {
 // drawn as markers.
 type uvCities struct {
 	epa    *uv.EPA
-	cities func(view geo.Box) []geodata.City // the largest in view, at most maxUVCities
+	cities func(view geo.Box, n int) []geodata.City // spread over the view, at most n (D-202)
 }
 
-// maxUVCities bounds the cold start's asks: one a city, EPA's shape.
-const maxUVCities = 8
+// uvCitySpacingKm is how near two cities may be: no closer than about 100 km
+// (D-202), so New York's boroughs are one marker, not three.
+const uvCitySpacingKm = 100
+
+// uvAskers is how many cities are asked at once: never one by one - 24 asks
+// in a row held the map's UV for seconds - and never all at once.
+const uvAskers = 4
 
 // markers are the cities' UV as points in their bands' colours, each
 // labelled with its city and value. Radar mode: the current hour and the
 // pastHours before it, each during its own hour, as the history's replay is.
 // Forecast mode: Now's hour during Now, and the day's peak during Today -
 // EPA forecasts today alone. None where no city answered.
-func (c *uvCities) markers(ctx context.Context, view geo.Box, anchor time.Time, forecast bool) []tuimaps.Overlay {
+func (c *uvCities) markers(ctx context.Context, view geo.Box, n int, anchor time.Time, forecast bool) []tuimaps.Overlay {
 	if c == nil || c.epa == nil || c.cities == nil {
 		return nil
 	}
-	var got []cityReadings
-	for _, city := range c.cities(view) { // at most maxUVCities (P10-02)
-		loc, err := tz.Location(city.TZ)
-		if err != nil {
-			continue
-		}
-		readings, err := c.epa.Hourly(ctx, city.Name, city.State, loc)
-		if err != nil {
-			continue // D-124: counted as nothing, never said
-		}
-		got = append(got, cityReadings{city, readings})
-	}
+	got := c.read(ctx, c.cities(view, n))
 	var out []tuimaps.Overlay
 	add := func(id string, valid time.Time, during tuimaps.Span, pick func([]uv.Reading) (float64, bool)) {
 		if feats := uvPoints(got, pick); len(feats) > 0 {
@@ -347,6 +341,37 @@ func (c *uvCities) markers(ctx context.Context, view geo.Box, anchor time.Time, 
 	return out
 }
 
+// read asks EPA for each city's hours, uvAskers at a time, and keeps the
+// cities' order whatever order they answer in. A city with no zone, or that
+// EPA does not answer for, is left out - counted as nothing, never said (D-124).
+func (c *uvCities) read(ctx context.Context, cities []geodata.City) []cityReadings {
+	answers := make([]*cityReadings, len(cities))
+	slots := make(chan struct{}, uvAskers)
+	var wg sync.WaitGroup
+	for i, city := range cities { // at most the largest count, 48 (P10-02)
+		loc, err := tz.Location(city.TZ)
+		if err != nil {
+			continue
+		}
+		wg.Add(1)
+		slots <- struct{}{}
+		go func() {
+			defer func() { <-slots; wg.Done() }()
+			if readings, err := c.epa.Hourly(ctx, city.Name, city.State, loc); err == nil {
+				answers[i] = &cityReadings{city, readings}
+			}
+		}()
+	}
+	wg.Wait()
+	var got []cityReadings
+	for _, a := range answers { // as many as asked (P10-02)
+		if a != nil {
+			got = append(got, *a)
+		}
+	}
+	return got
+}
+
 // cityReadings is a city and EPA's hours for it.
 type cityReadings struct {
 	city     geodata.City
@@ -357,7 +382,7 @@ type cityReadings struct {
 // from its hours, labelled "City 7"; a city without one is left out.
 func uvPoints(got []cityReadings, pick func([]uv.Reading) (float64, bool)) []tuimaps.Feature {
 	var feats []tuimaps.Feature
-	for _, a := range got { // at most maxUVCities (P10-02)
+	for _, a := range got { // at most the largest count, 48 (P10-02)
 		if v, ok := pick(a.readings); ok {
 			feats = append(feats, tuimaps.Feature{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: a.city.Lon, Lat: a.city.Lat}}},
 				Role: tuimaps.UVRole(v), Label: a.city.Name + " " + strconv.FormatFloat(v, 'f', -1, 64)})
@@ -382,15 +407,59 @@ func uvPeak(readings []uv.Reading) (float64, bool) {
 // every one past some 50,000 people, so a state's view holds a few.
 const uvRanked = 1000
 
-// largestInView is a view's cities from a ranked list, the ranking's order
-// kept, at most maxUVCities: EPA's forecast is by city.
-func largestInView(ranked []geodata.City, view geo.Box) []geodata.City {
-	var out []geodata.City
-	for _, c := range ranked { // at most uvRanked (P10-02)
-		if len(out) == maxUVCities {
-			break
+// spreadInView is a view's cities for UV's markers, at most n, spread over
+// it (D-202): the view cut into about n cells by its shape on the ground,
+// each cell's largest ranked city first, then each cell's next, round by
+// round, to make up the count - cells over the sea hold none, so the land's
+// take a second - none nearer another than uvCitySpacingKm, or than half a cell's
+// side where cells are smaller (a state's view keeps its count). Only cities
+// EPA can be read for: in the view, with a zone. The ranking's order kept.
+func spreadInView(ranked []geodata.City, view geo.Box, n int) []geodata.City {
+	if n <= 0 || len(ranked) == 0 {
+		return nil
+	}
+	mid := (view.S + view.N) / 2
+	wide := geo.HaversineKM(mid, view.W, mid, view.E)
+	tall := geo.HaversineKM(view.S, view.W, view.N, view.W)
+	if wide <= 0 || tall <= 0 {
+		return nil
+	}
+	cols := max(1, int(math.Round(math.Sqrt(float64(n)*wide/tall))))
+	rows := max(1, int(math.Round(float64(n)/float64(cols))))
+	spacing := min(uvCitySpacingKm, min(wide/float64(cols), tall/float64(rows))/2)
+	taken := make([]bool, len(ranked))
+	var chosen []geodata.City
+	near := func(c geodata.City) bool {
+		for _, o := range chosen { // at most n (P10-02)
+			if geo.HaversineKM(c.Lat, c.Lon, o.Lat, o.Lon) < spacing {
+				return true
+			}
 		}
-		if view.Contains(c.Lat, c.Lon) && c.TZ != "" {
+		return false
+	}
+	usable := func(c geodata.City) bool { return c.TZ != "" && view.Contains(c.Lat, c.Lon) }
+	held := make([]int, cols*rows)
+	for round := 1; round <= n && len(chosen) < n; round++ { // a city a cell a round, at most n rounds (P10-02)
+		before := len(chosen)
+		for i, c := range ranked { // at most uvRanked (P10-02)
+			if len(chosen) == n || taken[i] || !usable(c) || near(c) {
+				continue
+			}
+			col := min(cols-1, int((c.Lon-view.W)/(view.E-view.W)*float64(cols)))
+			row := min(rows-1, int((view.N-c.Lat)/(view.N-view.S)*float64(rows)))
+			if cell := row*cols + col; held[cell] < round {
+				held[cell]++
+				taken[i] = true
+				chosen = append(chosen, c)
+			}
+		}
+		if len(chosen) == before {
+			break // nothing more the spacing allows
+		}
+	}
+	var out []geodata.City
+	for i, c := range ranked { // the ranking's order (P10-02)
+		if taken[i] {
 			out = append(out, c)
 		}
 	}
@@ -399,15 +468,15 @@ func largestInView(ranked []geodata.City, view geo.Box) []geodata.City {
 
 // citiesFrom is the cold start's cities over the index: its largest ranked
 // once, on the first ask - off the UI goroutine, where the fetch runs.
-func citiesFrom(idx func() *geodata.Index) func(geo.Box) []geodata.City {
+func citiesFrom(idx func() *geodata.Index) func(geo.Box, int) []geodata.City {
 	var once sync.Once
 	var ranked []geodata.City
-	return func(view geo.Box) []geodata.City {
+	return func(view geo.Box, n int) []geodata.City {
 		once.Do(func() {
 			if i := idx(); i != nil {
 				ranked = i.TopUS(uvRanked)
 			}
 		})
-		return largestInView(ranked, view)
+		return spreadInView(ranked, view, n)
 	}
 }

@@ -874,3 +874,36 @@ func TestTheRainDensityIsASetting(t *testing.T) {
 		t.Error("the file's word does not open the window as chosen")
 	}
 }
+
+// HOW MANY CITIES UV ASKS EPA FOR IS A SETTING (D-202): 8, 24 or 48, 24 by
+// default; ←→ step through them, the ask carries the count, the row says what
+// it costs, and closing the window writes it - the next open shows it.
+func TestUVsCityCountIsASetting(t *testing.T) {
+	d, got := uiDash(t, rowMapUVCities)
+	body, _, _ := d.focusBody(d.opts())
+	text := strings.Join(strings.Fields(stripANSITest(strings.Join(body, "\n"))), " ")
+	if !strings.Contains(text, "UV cities -") || !strings.Contains(text, "24") || d.mapAsk().UVCities != 24 {
+		t.Fatalf("the Maps tab has no UV cities row at 24, the default (D-202):\n%s", text)
+	}
+	if !strings.Contains(text, "EPA") || !strings.Contains(text, "an hour") {
+		t.Errorf("nothing says what the count costs (D-23):\n%s", text)
+	}
+	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	d = m.(Dashboard)
+	if d.mapAsk().UVCities != 48 {
+		t.Errorf("→ from 24 asks for %d cities; want 48", d.mapAsk().UVCities)
+	}
+	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	d = m.(Dashboard)
+	if d.mapAsk().UVCities != 8 {
+		t.Errorf("→ from 48 asks for %d cities; want 8, round again", d.mapAsk().UVCities)
+	}
+	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
+	drain(t, m, cmd)
+	if got.MapUVCities != 8 {
+		t.Errorf("esc wrote %d, want 8", got.MapUVCities)
+	}
+	if mapDash(t, Config{MapUVCities: 48}).mapAsk().UVCities != 48 || mapDash(t, Config{MapUVCities: 7}).mapAsk().UVCities != 24 {
+		t.Error("the file's number does not open the window as chosen, or a number not offered is not the default")
+	}
+}

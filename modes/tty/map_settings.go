@@ -161,6 +161,12 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 			lines = append(lines, "    "+settingSupport(l))
 		}
 	}
+	lines, at = d.mapRow(o, lines, at, rowMapUVCities, "UV cities -", d.mapPicker(o, rowMapUVCities, strconv.Itoa(d.mapUVCities))) // D-202
+	if d.setup.focus == rowMapUVCities {                                                                                           // its cost said while it is being chosen (D-23)
+		for _, l := range render.WrapText(uvCitiesNote(d.mapUVCities), mapNoteW) {
+			lines = append(lines, "    "+settingSupport(l))
+		}
+	}
 	return lines, at
 }
 

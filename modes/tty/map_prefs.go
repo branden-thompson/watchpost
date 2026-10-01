@@ -343,6 +343,32 @@ func (d Dashboard) cycleQuakeFeed(forward bool) Dashboard {
 	return d.uiTouched()
 }
 
+// uvCityChoices are the counts of cities UV asks EPA for (D-202).
+var uvCityChoices = []int{8, 24, 48}
+
+// uvCitiesDefault is 24 (D-202).
+const uvCitiesDefault = 24
+
+// UVCitiesByCount reads a count of UV's cities - the file's, or an ask's:
+// anything not offered is the default (D-202).
+func UVCitiesByCount(n int) int {
+	if slices.Contains(uvCityChoices, n) {
+		return n
+	}
+	return uvCitiesDefault
+}
+
+// uvCitiesNote is said under the row (D-23): what the count costs.
+func uvCitiesNote(n int) string {
+	return "About " + strconv.Itoa(n) + " keyless EPA asks an hour for a view; more cities show UV a little later."
+}
+
+// cycleUVCities moves the UV cities picker, and round again (D-202).
+func (d Dashboard) cycleUVCities(forward bool) Dashboard {
+	d.mapUVCities = nextChoice(uvCityChoices, d.mapUVCities, forward)
+	return d.uiTouched()
+}
+
 // cycleRadarAhead moves the hours-ahead picker, and round again.
 func (d Dashboard) cycleRadarAhead(forward bool) Dashboard {
 	d.mapRadarAhead = nextChoice(radarAheadChoices, d.mapRadarAhead, forward)
@@ -533,7 +559,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -549,6 +575,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.toggleTempSource(), true
 	case rowMapRainDetail:
 		return d.toggleRainDetail(), true
+	case rowMapUVCities:
+		return d.cycleUVCities(forward), true
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(forward), true
 	case rowMapQuakes:
@@ -580,6 +608,9 @@ type MapAsk struct {
 	// RainFull is Open-Meteo's full density for the rain past NDFD's reach
 	// (D-192); a quarter of a box's points otherwise.
 	RainFull bool
+	// UVCities is how many cities UV asks EPA for (D-202): 8, 24 or 48; any
+	// other number is the default, 24.
+	UVCities int
 	// RadarAhead is the loop's hours ahead (D-114).
 	RadarAhead int
 	// QuakeFeed is the quakes the map draws, USGS's feed by its name
@@ -624,7 +655,7 @@ func (d Dashboard) mapAsk() MapAsk {
 		snap = &joined
 	}
 	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
-		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RainFull: d.mapRainFull, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fire: d.layerOn(FireLayer), Quakes: d.layerOn(QuakeLayer), AlertsOff: !d.layerOn(AlertLayer), AlertCategoriesOff: d.alertCategoriesOff(), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
+		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RainFull: d.mapRainFull, UVCities: d.mapUVCities, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fire: d.layerOn(FireLayer), Quakes: d.layerOn(QuakeLayer), AlertsOff: !d.layerOn(AlertLayer), AlertCategoriesOff: d.alertCategoriesOff(), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

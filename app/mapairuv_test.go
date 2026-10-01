@@ -15,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -286,9 +285,11 @@ func TestUVIsEPAsForTheCitiesInViewFirst(t *testing.T) {
 	}
 	now := time.Date(2026, 9, 30, 12, 20, 0, 0, la) // the fixture's day: UV 7 at noon
 	ask := tempAsk(false)
-	ask.UV, ask.Anchor = true, now.Truncate(time.Hour)
+	ask.UV, ask.Anchor, ask.UVCities = true, now.Truncate(time.Hour), 48
 	get := &epaFixture{}
-	cities := &uvCities{epa: uv.NewEPA(get, ""), cities: func(geo.Box) []geodata.City {
+	var counts []int // the count each choice of cities was asked for (D-202)
+	cities := &uvCities{epa: uv.NewEPA(get, ""), cities: func(_ geo.Box, n int) []geodata.City {
+		counts = append(counts, n)
 		return []geodata.City{{Name: "Vista", State: "CA", Country: "US", Lat: 33.2, Lon: -117.24, Population: 100000, TZ: "America/Los_Angeles"}}
 	}}
 	labels := func(got tty.MapTemperature) map[string]tuimaps.Span {
@@ -310,6 +311,9 @@ func TestUVIsEPAsForTheCitiesInViewFirst(t *testing.T) {
 		if sp := during[label]; !sp.From.Equal(from) || !sp.Until.Before(from.Add(time.Hour)) || sp.Until.Before(from.Add(time.Hour-time.Second)) {
 			t.Errorf("%s is drawn during %v; want its own hour from %v, as the replay is", label, sp, from)
 		}
+	}
+	if len(counts) == 0 || counts[0] != 48 {
+		t.Errorf("the cities were chosen for counts %v; want the listener's 48 (D-202)", counts)
 	}
 	if chips := got.Chips[tty.UVLayer]; !slices.Equal(chips, []string{"EPA"}) || len(om.asked) != 0 {
 		t.Errorf("the UV badge says %v, Open-Meteo asked %d times; want EPA alone, Open-Meteo not asked (D-191)", chips, len(om.asked))
@@ -338,29 +342,6 @@ func TestUVIsEPAsForTheCitiesInViewFirst(t *testing.T) {
 	off.UV = false
 	if withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(&omGet{}, ""), noBox, off, now, nil, cities); get.asked != asked {
 		t.Error("with UV off, EPA was asked")
-	}
-}
-
-// THE COLD START ASKS FOR THE LARGEST CITIES IN VIEW, AT MOST maxUVCities
-// (D-167): from the ranking, its order kept; a city outside the view, or with
-// no zone to read EPA's hours in, is passed over.
-func TestTheColdStartAsksTheLargestCitiesInView(t *testing.T) {
-	view := geo.Box{W: -120, S: 30, E: -110, N: 40}
-	ranked := []geodata.City{{Name: "Out", Lat: 45, Lon: -100, TZ: "America/Chicago"}, {Name: "NoZone", Lat: 35, Lon: -115}}
-	for i := range maxUVCities + 2 {
-		ranked = append(ranked, geodata.City{Name: "C" + strconv.Itoa(i), Lat: 35, Lon: -115, TZ: "America/Los_Angeles"})
-	}
-	got := largestInView(ranked, view)
-	if len(got) != maxUVCities {
-		t.Fatalf("%d cities asked for; want %d", len(got), maxUVCities)
-	}
-	for i, c := range got {
-		if c.Name != "C"+strconv.Itoa(i) {
-			t.Errorf("city %d is %s; want the ranking's C%d (none outside the view, none without a zone)", i, c.Name, i)
-		}
-	}
-	if largestInView(nil, view) != nil {
-		t.Error("no ranking asked for cities")
 	}
 }
 
