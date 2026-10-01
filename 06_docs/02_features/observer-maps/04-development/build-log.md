@@ -2716,3 +2716,28 @@ coming from above (survived once), ←→ switching, the layers' label width, Hi
 hidden (survived once), → with one layer (survived once) - the survivors now held in
 `TestALayersRowIsAPickerAndTheArrowsWalkThem`, and all caught.
 
+## Batch 87 — rain from NDFD's totals first, Open-Meteo's coarser (W19.3; D-187, D-192; 2026-10-01)
+
+**Now.** Forecast mode's rain and snow draw **NDFD's daily totals for today and three days on**, in
+their own scale (D-184), whether or not Open-Meteo answers. Now - the hour's rate - and the days past
+NDFD's reach are Open-Meteo's heaviest hour in radar's scale, each day's total marked, **asked on a
+quarter of a box's points** by default (`temperature.LatticeOf`, ~18 to 20 a box against ~78);
+Settings -> Maps -> **Rain Day 4+** offers the full density, and says beneath it that it asks about
+four times the calls (D-23). Where Open-Meteo refuses, its days draw as recorded; where NDFD refuses,
+Open-Meteo draws all seven. The badge names what drew; the note says the totals are NDFD's.
+
+**The weight a refresh** (NDFD the default):
+
+| View | Batch 85 | Now |
+|---|---|---|
+| Lower 48, Forecast mode | 343.2 | **283.2** |
+| California, Forecast mode | 704.0 | **584.0** |
+| Alaska, Forecast mode | 695.2 | **575.2** |
+| Lower 48, Forecast mode, UV and air off, the history warm | 156.0 | **96.0** |
+| California, Forecast mode, the history warm | 480.0 | **360.0** |
+
+**Mutation verdicts** (10): Open-Meteo drawing NDFD's days, the full density, the coarse lattice, the
+history drawing NDFD's days, NDFD's refusal drawing something (survived once - nothing tested NDFD
+refusing while Open-Meteo answers; now tested), `LatticeOf` ignoring its points, the toggle, the
+note, the ask - all caught.
+

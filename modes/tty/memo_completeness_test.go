@@ -109,7 +109,7 @@ func perturbations(t *testing.T, base Dashboard) []perturbed {
 // Settings row's and settles - bumps gen - and its metered note changes the
 // window's size on every tab, so it reaches the frame there.
 func dashboardWriter(name string, d *Dashboard) {
-	if name == "setup" || name == "mapTempNDFD" {
+	if name == "setup" || name == "mapTempNDFD" || name == "mapRainFull" {
 		d.setup = d.setup.touch()
 	}
 }

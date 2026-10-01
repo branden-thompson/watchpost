@@ -533,7 +533,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -547,6 +547,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.toggleRadarSource(), true
 	case rowMapTempSource:
 		return d.toggleTempSource(), true
+	case rowMapRainDetail:
+		return d.toggleRainDetail(), true
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(forward), true
 	case rowMapQuakes:
@@ -575,6 +577,9 @@ type MapAsk struct {
 	// (D-93, D-101: Open-Meteo is the default); the listener's unit; and the start of the listener's hour, which
 	// Forecast mode's steps are counted from.
 	Forecast, TempNDFD, Fahrenheit bool
+	// RainFull is Open-Meteo's full density for the rain past NDFD's reach
+	// (D-192); a quarter of a box's points otherwise.
+	RainFull bool
 	// RadarAhead is the loop's hours ahead (D-114).
 	RadarAhead int
 	// QuakeFeed is the quakes the map draws, USGS's feed by its name
@@ -619,7 +624,7 @@ func (d Dashboard) mapAsk() MapAsk {
 		snap = &joined
 	}
 	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
-		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fire: d.layerOn(FireLayer), Quakes: d.layerOn(QuakeLayer), AlertsOff: !d.layerOn(AlertLayer), AlertCategoriesOff: d.alertCategoriesOff(), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
+		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RainFull: d.mapRainFull, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fire: d.layerOn(FireLayer), Quakes: d.layerOn(QuakeLayer), AlertsOff: !d.layerOn(AlertLayer), AlertCategoriesOff: d.alertCategoriesOff(), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

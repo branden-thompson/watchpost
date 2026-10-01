@@ -276,6 +276,10 @@ type Config struct {
 	// D-93, D-190): "open-meteo", or NDFD, the default, otherwise - keyless
 	// and unmetered (D-185).
 	MapTemperatureSource string `toml:"map_temperature_source,omitempty"`
+	// MapRainDetail is Open-Meteo's density for Forecast mode's rain past
+	// NDFD's reach (D-192): "full", or a quarter of a box's points, the
+	// default - it bills every point (D-185).
+	MapRainDetail string `toml:"map_rain_detail,omitempty"`
 
 	// HistoryHours and HistoryTrends are the local history's retention, the
 	// Data tab's presets (W18, D-175): "72h", "7d", "30d", "1y" and "30d",

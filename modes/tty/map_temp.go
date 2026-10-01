@@ -192,6 +192,35 @@ func tempSourceKey(ndfd bool) string {
 // (D-190): its quota is billed a point at a time (D-185).
 const meteredNote = "Open-Meteo is metered: every point of the map is a call, and 10,000 a day are shared by this machine's address. NDFD has no quota."
 
+// rainDetailFull is the file's word for the rain's full density (D-192).
+const rainDetailFull = "full"
+
+// rainDetailKey is the file's word: "full", or empty for coarse.
+func rainDetailKey(full bool) string {
+	if full {
+		return rainDetailFull
+	}
+	return ""
+}
+
+// rainDetailLabel is the row's words.
+func rainDetailLabel(full bool) string {
+	if full {
+		return "Full"
+	}
+	return "Coarse"
+}
+
+// rainFullNote is said under the row while the full density is chosen
+// (D-192, D-23): what it costs.
+const rainFullNote = "Full density asks Open-Meteo about four times the calls for the rain from Day 4 on: it bills every point of the map."
+
+// toggleRainDetail switches the rain's density past NDFD's reach (D-192).
+func (d Dashboard) toggleRainDetail() Dashboard {
+	d.mapRainFull = !d.mapRainFull
+	return d.uiTouched() // the next ask is at the density chosen
+}
+
 // tempSourceLabel is the row's words: the source of both modes (D-190).
 func (d Dashboard) tempSourceLabel() string {
 	if d.mapTempNDFD {

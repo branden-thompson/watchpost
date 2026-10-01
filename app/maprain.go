@@ -130,26 +130,30 @@ func ratePNG(f temperature.Field) []byte {
 	return buf.Bytes()
 }
 
-// withRainDays adds Forecast mode's rain and snow (W12.3, D-116 to D-118):
-// for each field box, Now's hour and each day's heaviest in radar's scale,
-// each during its step, each day's total marked on it.
+// withRainDays adds Forecast mode's rain and snow (W12.3, D-116 to D-118),
+// each grid during its step:
 //
-// WHEN OPEN-METEO DOES NOT ANSWER (W18.5, D-168): each day it answered is
-// recorded, and a box it refuses draws the days recorded, then NDFD's daily
-// totals in their own scale (D-184) for the days not; the badge names what
-// drew, and a note says the totals are NDFD's.
+// KEYLESS FIRST (D-185, D-187, D-192): today and three days on are NDFD's
+// daily totals in their own scale (D-184); Now - the hour's rate - and the
+// days past NDFD's reach are Open-Meteo's heaviest hour in radar's scale,
+// each day's total marked, asked on a quarter of a box's points unless the
+// listener chose the full density - it bills every point. Each day Open-Meteo
+// answered is recorded; where it does not answer, its days draw as recorded
+// (D-168). The badge names what drew, a note says whose the totals are.
 func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, ask tty.MapAsk, now time.Time, rescue *rainRescue) tty.MapTemperature {
 	anchor := askAnchor(ask, now)
 	nowStep, days := forecastDays(anchor)
 	failed := false
 	live, replayed, totals := 0, 0, 0
 	for _, b := range fieldBoxes(ask.Region, ask.View) {
-		lat := temperature.LatticeFor(b.Name, b.Box)
+		drawn, got := rescue.ndfdDays(ctx, b.Name, temperature.LatticeFor(b.Name, b.Box), days, anchor, now, ask.Fahrenheit)
+		t.Rain, totals = append(t.Rain, got...), totals+len(got)
+		lat := rainLattice(b, ask.RainFull)
 		r, err := om.Rain(ctx, lat, now, 0)
 		if err != nil {
 			failed = true
-			got, fromHistory, fromNDFD := rescue.days(ctx, b.Name, lat, days, anchor, now, ask.Fahrenheit)
-			t.Rain, replayed, totals = append(t.Rain, got...), replayed+fromHistory, totals+fromNDFD
+			past, n := rescue.recordedDays(b.Name, lat, days, drawn, anchor, ask.Fahrenheit)
+			t.Rain, replayed = append(t.Rain, past...), replayed+n
 			continue
 		}
 		live++
@@ -163,6 +167,9 @@ func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.Ope
 			}
 		}
 		for k, step := range days {
+			if drawn[k] {
+				continue // NDFD's (D-185)
+			}
 			if o, ok := rainGrid(tty.RainLayer+"/"+b.Name+"/d"+strconv.Itoa(k), lat, r.Peak[k], r.RainSum[k], r.SnowSum[k], ask.Fahrenheit, anchor); ok {
 				o.During = step.Span
 				t.Rain = append(t.Rain, o)
@@ -175,7 +182,7 @@ func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.Ope
 	}
 	if totals > 0 {
 		chips = append(chips, "NDFD")
-		t.Notes = append(t.Notes, "Rain and snow: NDFD's totals for each day while Open-Meteo does not answer - amounts, not the heaviest hour, today and three days on.")
+		t.Notes = append(t.Notes, "Rain and snow: NDFD's totals for today and three days on - amounts, not the heaviest hour.")
 	}
 	if replayed > 0 {
 		chips = append(chips, recordedChip)
@@ -189,8 +196,22 @@ func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.Ope
 	return t
 }
 
-// rainRescue is Forecast mode's rain and snow where Open-Meteo does not
-// answer (D-168): the days recorded while it did, then NDFD's totals.
+// coarseRain is how much of a box's lattice Open-Meteo's rain is asked on by
+// default (D-192): a quarter of its points.
+const coarseRain = 4
+
+// rainLattice is the lattice Open-Meteo's rain is asked on: a quarter of the
+// box's points, or all of them where the listener chose the full density.
+func rainLattice(b fieldBox, full bool) temperature.Lattice {
+	if full {
+		return temperature.LatticeFor(b.Name, b.Box)
+	}
+	return temperature.LatticeOf(b.Name, b.Box, temperature.MaxPoints/coarseRain)
+}
+
+// rainRescue is Forecast mode's rain and snow beside Open-Meteo's: NDFD's
+// totals first (D-185), and the days recorded while Open-Meteo answered,
+// drawn where it does not (D-168).
 type rainRescue struct {
 	ndfd  *temperature.NDFD
 	store *history.Store
@@ -218,43 +239,49 @@ func (rr *rainRescue) record(box string, lat temperature.Lattice, r temperature.
 	}
 }
 
-// days are a refused box's days: each recorded one as it was drawn, then for
-// the rest NDFD's totals - asked once, and only when a day is not recorded;
-// and how many came from each.
-func (rr *rainRescue) days(ctx context.Context, box string, lat temperature.Lattice, days []tty.ForecastStep, anchor, now time.Time, imperial bool) (out []tuimaps.Overlay, recorded, ndfd int) {
-	if rr == nil {
-		return nil, 0, 0
+// ndfdDays are NDFD's totals for a box's days it reaches - today and three
+// days on - and which they are; none without NDFD (D-185).
+func (rr *rainRescue) ndfdDays(ctx context.Context, box string, lat temperature.Lattice, days []tty.ForecastStep, anchor, now time.Time, imperial bool) (map[int]bool, []tuimaps.Overlay) {
+	drawn := map[int]bool{}
+	if rr == nil || rr.ndfd == nil {
+		return drawn, nil
 	}
-	shape := history.Shape{Box: lat.Box, Cols: lat.Cols, Rows: lat.Rows}
-	var totals *temperature.Totals
-	asked := false
+	totals, err := rr.ndfd.Totals(ctx, lat, now)
+	if err != nil {
+		return drawn, nil // Open-Meteo's, then the history's, draw them
+	}
+	var out []tuimaps.Overlay
 	for k, step := range days { // a week (P10-02)
-		id := tty.RainLayer + "/" + box + "/d" + strconv.Itoa(k)
-		if rec, ok := rr.recorded(box, dayStart(anchor, k)); ok && rec.Shape == shape {
-			if o, ok := rainGrid(id, lat, rec.Values["peak"], rec.Values["rain"], rec.Values["snow"], imperial, anchor); ok {
-				o.During = step.Span
-				out, recorded = append(out, o), recorded+1
-				continue
-			}
-		}
-		if rr.ndfd == nil {
-			continue
-		}
-		if !asked {
-			asked = true
-			if got, err := rr.ndfd.Totals(ctx, lat, now); err == nil {
-				totals = &got
-			}
-		}
-		if totals == nil {
-			continue
-		}
 		if o, ok := totalsGrid(tty.RainLayer+"/"+box+"/totals/d"+strconv.Itoa(k), lat, totals.QPF[k], totals.Snow[k], imperial, anchor); ok {
 			o.During = step.Span
-			out, ndfd = append(out, o), ndfd+1
+			out, drawn[k] = append(out, o), true
 		}
 	}
-	return out, recorded, ndfd
+	return drawn, out
+}
+
+// recordedDays are a refused box's days NDFD did not draw, as the history
+// holds them - drawn as they were - and how many.
+func (rr *rainRescue) recordedDays(box string, lat temperature.Lattice, days []tty.ForecastStep, drawn map[int]bool, anchor time.Time, imperial bool) ([]tuimaps.Overlay, int) {
+	if rr == nil || rr.store == nil {
+		return nil, 0
+	}
+	shape := shapeOf(lat)
+	var out []tuimaps.Overlay
+	for k, step := range days { // a week (P10-02)
+		if drawn[k] {
+			continue
+		}
+		rec, ok := rr.recorded(box, dayStart(anchor, k))
+		if !ok || rec.Shape != shape {
+			continue
+		}
+		if o, ok := rainGrid(tty.RainLayer+"/"+box+"/d"+strconv.Itoa(k), lat, rec.Values["peak"], rec.Values["rain"], rec.Values["snow"], imperial, anchor); ok {
+			o.During = step.Span
+			out = append(out, o)
+		}
+	}
+	return out, len(out)
 }
 
 // recorded is a box's day as the history holds it.

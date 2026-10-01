@@ -16,6 +16,7 @@ const buoyBytes
 const burstHeadGap
 const burstKey
 const burstTailGap
+const coarseRain
 const coopsRatePerSec
 const debugAddrDefault
 const defaultBurstMax
@@ -393,9 +394,10 @@ func (*radioDeck).voice
 func (*radioDeck).voiceNote
 func (*radioDeck).watchlistDwell
 func (*radioDeck).watchlistLang
-func (*rainRescue).days
+func (*rainRescue).ndfdDays
 func (*rainRescue).record
 func (*rainRescue).recorded
+func (*rainRescue).recordedDays
 func (*readSession).begin
 func (*readSession).begun
 func (*readSession).finish
@@ -689,6 +691,7 @@ func radioDebugName
 func radioDebugOn
 func radioDebugPath
 func rainGrid
+func rainLattice
 func rainLayerCost
 func rateColour
 func ratePNG

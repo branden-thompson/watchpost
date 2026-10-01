@@ -155,6 +155,12 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 			lines = append(lines, "    "+settingSupport(l))
 		}
 	}
+	lines, at = d.mapRow(o, lines, at, rowMapRainDetail, "Rain Day 4+ -", d.mapPicker(o, rowMapRainDetail, rainDetailLabel(d.mapRainFull))) // D-192
+	if d.mapRainFull {
+		for _, l := range render.WrapText(rainFullNote, mapNoteW) {
+			lines = append(lines, "    "+settingSupport(l))
+		}
+	}
 	return lines, at
 }
 

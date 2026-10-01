@@ -322,23 +322,22 @@ func TestNDFDsTotalsDrawTheRainWhenOpenMeteoRefuses(t *testing.T) {
 	}
 }
 
-// OPEN-METEO'S RAIN DAYS ARE RECORDED, AND REPLAYED FIRST (W18.5, D-168):
-// each day it answered goes into the history; refused, the days recorded draw
-// as they did - radar's scale, their totals marked - the badge RECORDED, and
-// NDFD is not asked while every day it would fill is recorded.
+// OPEN-METEO'S RAIN DAYS ARE RECORDED, AND REPLAYED (W18.5, D-168, D-192):
+// each day it answered goes into the history; refused, NDFD's totals draw
+// today and three days on, and the days past them draw as they were recorded
+// - radar's scale, their totals marked - the badge NDFD then RECORDED.
+// Without NDFD, every recorded day is drawn.
 func TestOpenMeteosRainDaysAreRecordedAndReplayed(t *testing.T) {
 	ask := tempAsk(true)
 	store := history.Open(t.TempDir(), func() time.Time { return tempNow }, omRainDays)
 	withRainDays(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(rainDaysGet(), ""), ask, tempNow, &rainRescue{store: store})
-	nd := &ndfdTotalsGet{}
-	out := withRainDays(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), ask, tempNow,
-		&rainRescue{ndfd: temperature.NewNDFD(nd, ""), store: store})
 	boxes := len(fieldBoxes(ask.Region, ask.View))
-	if len(out.Rain) != boxes*temperature.Days || nd.asks != 0 {
-		t.Fatalf("%d grids, NDFD asked %d times, for %d boxes; want the seven recorded days each, NDFD not asked", len(out.Rain), nd.asks, boxes)
+	alone := withRainDays(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), ask, tempNow, &rainRescue{store: store})
+	if len(alone.Rain) != boxes*temperature.Days || strings.Join(alone.Chips[tty.RainLayer], "/") != "RECORDED" {
+		t.Fatalf("without NDFD, %d grids, chips %v; want the seven recorded days each, RECORDED", len(alone.Rain), alone.Chips[tty.RainLayer])
 	}
 	marks := map[string]bool{}
-	for _, o := range out.Rain {
+	for _, o := range alone.Rain {
 		if o.Grid.Type.Preset != "radar" {
 			t.Fatalf("%s is typed %+v; a recorded day draws as it did", o.ID, o.Grid.Type)
 		}
@@ -351,11 +350,69 @@ func TestOpenMeteosRainDaysAreRecordedAndReplayed(t *testing.T) {
 	if !marks["d0 1.0in"] || !marks["d1 *2.0in"] {
 		t.Errorf("the recorded totals marked are %v; want day 1's inch of rain and day 2's two of snow", marks)
 	}
-	if got := strings.Join(out.Chips[tty.RainLayer], "/"); got != "RECORDED" {
-		t.Errorf("the rain's badge names %q; want RECORDED alone", got)
+	nd := &ndfdTotalsGet{}
+	both := withRainDays(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), ask, tempNow,
+		&rainRescue{ndfd: temperature.NewNDFD(nd, ""), store: store})
+	qpf, radar := 0, 0
+	for _, o := range both.Rain {
+		switch o.Grid.Type.Preset {
+		case "qpf":
+			qpf++
+		case "radar":
+			radar++
+		}
+	}
+	if qpf != boxes*4 || radar != boxes*(temperature.Days-4) || strings.Join(both.Chips[tty.RainLayer], "/") != "NDFD/RECORDED" {
+		t.Errorf("with NDFD: %d of its days, %d recorded, chips %v; want four and three a box, NDFD then RECORDED", qpf, radar, both.Chips[tty.RainLayer])
 	}
 	cold := withRainDays(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), ask, tempNow, nil)
 	if len(cold.Rain) != 0 || len(cold.Problems) == 0 {
 		t.Error("with nothing to fall back on, a refused rain drew something, or said nothing")
+	}
+}
+
+// NDFD'S TOTALS ARE THE RAIN'S FIRST DAYS, OPEN-METEO THE REST ON A COARSER
+// GRID (D-185, D-187, D-192): Open-Meteo answering, today and three days on
+// are NDFD's totals in their scale; Now and the days past are Open-Meteo's,
+// asked on a quarter of a box's points - all of them where the listener chose
+// the full density. The badge names both.
+func TestNDFDsTotalsAreTheRainsFirstDays(t *testing.T) {
+	ask := tempAsk(true)
+	boxes := len(fieldBoxes(ask.Region, ask.View))
+	for _, full := range []bool{false, true} {
+		ask.RainFull = full
+		om := rainDaysGet()
+		got := withRainDays(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(om, ""), ask, tempNow, &rainRescue{ndfd: temperature.NewNDFD(&ndfdTotalsGet{}, "")})
+		qpf, radar := 0, 0
+		for _, o := range got.Rain {
+			switch o.Grid.Type.Preset {
+			case "qpf":
+				qpf++
+			case "radar":
+				radar++
+			}
+		}
+		if qpf != boxes*4 || radar != boxes*(1+temperature.Days-4) {
+			t.Errorf("full %v: %d of NDFD's days and %d of Open-Meteo's grids; want four, and Now with three days, a box", full, qpf, radar)
+		}
+		if chips := strings.Join(got.Chips[tty.RainLayer], "/"); chips != "O-METEO/NDFD" {
+			t.Errorf("full %v: the badge names %q; want both", full, chips)
+		}
+		most := 0
+		for _, a := range om.asks {
+			q, _ := url.ParseQuery(a[strings.Index(a, "?")+1:])
+			most = max(most, len(strings.Split(q.Get("latitude"), ",")))
+		}
+		if want := temperature.MaxPoints / 4; !full && (most > want || most < 4) {
+			t.Errorf("coarse, Open-Meteo was asked for %d points a box; want at most %d (D-192)", most, want)
+		}
+		if full && most <= temperature.MaxPoints/4 {
+			t.Errorf("full, Open-Meteo was asked for %d points a box; want the box's full lattice", most)
+		}
+	}
+	ask.RainFull = false
+	down := withRainDays(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(rainDaysGet(), ""), ask, tempNow, &rainRescue{ndfd: temperature.NewNDFD(refusingGet{}, "")})
+	if len(down.Rain) != boxes*(1+temperature.Days) || strings.Join(down.Chips[tty.RainLayer], "/") != "O-METEO" {
+		t.Errorf("NDFD refusing: %d grids, chips %v; want Open-Meteo's Now and seven days a box, O-METEO alone", len(down.Rain), down.Chips[tty.RainLayer])
 	}
 }

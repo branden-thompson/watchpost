@@ -846,3 +846,31 @@ func TestTheQuotaNoticeSitsLowerRightAndGivesWay(t *testing.T) {
 		t.Errorf("the notice (row %d) meets the south edge chip (rows %d-%d) and did not give way", row, edgeRow, edgeRow+len(chip)-1)
 	}
 }
+
+// RAIN'S DAYS PAST NDFD'S REACH ARE COARSE BY DEFAULT (D-192): Settings ->
+// Maps offers Open-Meteo's full density for them, said to cost more where it
+// is chosen; the file keeps "full"; the ask carries it.
+func TestTheRainDensityIsASetting(t *testing.T) {
+	d, got := uiDash(t, rowMapRainDetail)
+	body, _, _ := d.focusBody(d.opts())
+	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Rain Day 4+ -") || !strings.Contains(text, "Coarse") {
+		t.Fatalf("the Maps tab has no rain density row at Coarse, the default (D-192):\n%s", text)
+	}
+	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	d = m.(Dashboard)
+	if !d.mapRainFull || !d.mapAsk().RainFull {
+		t.Error("→ did not choose the full density, in the ask")
+	}
+	body, _, _ = d.focusBody(d.opts())
+	if text := strings.Join(strings.Fields(stripANSITest(strings.Join(body, "\n"))), " "); !strings.Contains(text, "Full density asks Open-Meteo") {
+		t.Errorf("the full density chosen, nothing says what it costs (D-23):\n%s", text)
+	}
+	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
+	drain(t, m, cmd)
+	if got.MapRainDetail != "full" {
+		t.Errorf("esc wrote %q, want full", got.MapRainDetail)
+	}
+	if !mapDash(t, Config{MapRainDetail: "full"}).mapRainFull || mapDash(t, Config{}).mapRainFull {
+		t.Error("the file's word does not open the window as chosen")
+	}
+}

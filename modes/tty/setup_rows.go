@@ -143,6 +143,7 @@ const (
 	rowMapRadarAhead  // the radar loop's hours ahead (D-114)
 	rowMapQuakes      // the quakes drawn: M2.5+ or M1.0+, the past week or day (D-122)
 	rowMapTempSource  // the map's temperature, both modes: NDFD or Open-Meteo (D-93, D-190)
+	rowMapRainDetail  // the rain's density past NDFD's reach: coarse or full (D-192)
 	rowMapDetailLevel
 	// THE MAP'S DETAIL, A ROW EACH (UAT-1 U1-35): the "← Enabled →" pattern
 	// every other on/off row has, in mapDetailLayers' order.
@@ -263,6 +264,7 @@ func setupTable() [setupRowCount]setupRow {
 		rowMapNearby:      {rowMapNearby, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapRadarSource: {rowMapRadarSource, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapTempSource:  {rowMapTempSource, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapRainDetail:  {rowMapRainDetail, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapRadarAhead:  {rowMapRadarAhead, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapQuakes:      {rowMapQuakes, groupMap, scopeObserver, rowPicker, true, "", ""},
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one

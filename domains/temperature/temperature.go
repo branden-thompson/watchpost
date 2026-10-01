@@ -52,9 +52,17 @@ type Lattice struct {
 
 // LatticeFor is a box's lattice: as square as the box, within MaxPoints.
 func LatticeFor(name string, b geo.Box) Lattice {
+	return LatticeOf(name, b, MaxPoints)
+}
+
+// LatticeOf is a box's lattice of at most points points, as square as the
+// box allows and never under two a side: a coarser one costs a metered source
+// less, which bills every point (D-185, D-192).
+func LatticeOf(name string, b geo.Box, points int) Lattice {
+	points = max(points, 4)
 	w, h := b.E-b.W, b.N-b.S
-	cols := min(max(int(math.Sqrt(MaxPoints*w/h)), 2), MaxPoints/2)
-	rows := max(MaxPoints/cols, 2) // cols x (MaxPoints / cols) is never over MaxPoints
+	cols := min(max(int(math.Sqrt(float64(points)*w/h)), 2), points/2)
+	rows := max(points/cols, 2) // cols x (points / cols) is never over points
 	return Lattice{Name: name, Box: b, Cols: cols, Rows: rows}
 }
 
