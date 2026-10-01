@@ -263,19 +263,6 @@ func fireHot(hs []snapshot.Hotspot, boldMW float64) bool {
 	return false
 }
 
-// ellipsize cuts a name to n cells with a visible ellipsis (U5: a silent
-// cut hid that "Cottonwood Creek Complex" was cut at all).
-func ellipsize(s string, n int, ascii bool) string {
-	r := []rune(s)
-	if len(r) <= n {
-		return s
-	}
-	if ascii {
-		return string(r[:max(0, n-3)]) + "..."
-	}
-	return string(r[:n-1]) + "…"
-}
-
 // fireGlyph is the fire mark for the current glyph set (◆ like the row
 // mark — UAT 110/121 — or * under --ascii).
 func fireGlyph(o render.Opts) string {

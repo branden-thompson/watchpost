@@ -2829,3 +2829,18 @@ the cold start's stretch, the empty day, its note, the recorder, the next hour, 
 **Mutation verdicts** (4): the station list's forget, the buoy file's, USGS's (the test fails without
 it), the nil assembler listed - all caught.
 
+## Batch 91 — code no production path reaches (W14 S-8; D-163, D-197; 2026-10-01)
+
+**Now.** S-8's unreached code, each checked unreached first:
+
+- **`castProblems`** - a stand-in for the cast's validation, called by tests alone; production
+  validates in `setCast` and `softChanged`. Its two deadlock guards (validating under the deck's lock
+  re-enters it and hangs) now drive **`setCast` itself**, the production path - proven by a mutant
+  that validates under the lock and is caught.
+- **`withForecast`** - a wrapper; production calls `fetchForecast` and `joinForecast` itself. Its two
+  tests call them as production does.
+- **`term.colorEnabled`** and **`ellipsize`** - nothing calls them; the fire row's test compared a
+  name against `ellipsize`'s identity on names that never reach its width.
+- **`bedfence.go` stays** (D-197): the bed fence's reach, measured wording and all, is owed to the
+  Broadcaster's next release as **F-185**.
+

@@ -90,7 +90,7 @@ hold is listed at the end.
 | S-5 | **Fixed: app half batch 69, tty half batch 70** (`mapWorkers.cmd`, `reconcile`; `setFeed` differs and stays). **App half fixed, batch 69** (`hourGrids`, `forecastDays`, `linedGrid`, `askAnchor`). The map's Forecast-mode step loop written 6×, its hourly loop 4×, grid building 3×, the radar loop fetch 2×; the tty's overlay reconcile 3×, its worker-command wrapper 4× | Auditor | Reported |
 | S-6 | Unit conversions (°C/°F, km/mi, m/s) in ~20 places across three layers; the km/mile constant 6×; two spoken wordings already disagree ("kilometres" / "kilometers") | Auditor | Reported |
 | S-7 | Control components hand-built where the app's exist (the Request window's checkbox — D-147); `cycleIn` bypassed 4× | Auditor | Reported |
-| S-8 | Code no production path reaches: F-24's on-air masthead, `castProblems`, `ellipsize`, `colorEnabled`, `bedReachFor`, `withForecast` | Auditor | Reported — F-24 is a HUM LEAD question (wire or delete) |
+| S-8 | Code no production path reaches: F-24's on-air masthead, `castProblems`, `ellipsize`, `colorEnabled`, `bedReachFor`, `withForecast` | Auditor | **Fixed, batch 91 (D-197)**: F-24's masthead went in batch 68 (D-158); `castProblems` (its deadlock guards moved to `setCast`), `withForecast`, `term.colorEnabled` and `ellipsize` removed by D-163's rule; `bedReachFor` kept, unwired, owed to the Broadcaster as F-185 |
 | S-9 | Functions past ~60 lines: `handleMapKey` 102, `overlaysBox` 96, `mapFeedWith` 86, `geojson.walk` 77, `ttyConfig` 74, `parseDWML` 72 | Auditor | Reported |
 
 ### Found by re-measuring

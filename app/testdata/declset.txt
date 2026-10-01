@@ -334,7 +334,6 @@ func (*radioDeck).Voices
 func (*radioDeck).buildVoice
 func (*radioDeck).canInstall
 func (*radioDeck).castChanged
-func (*radioDeck).castProblems
 func (*radioDeck).clock
 func (*radioDeck).cycleEnded
 func (*radioDeck).debugLog
@@ -842,7 +841,6 @@ func windHourGrids
 func windowLayers
 func withAir
 func withChips
-func withForecast
 func withModelRain
 func withPool
 func withRainDays

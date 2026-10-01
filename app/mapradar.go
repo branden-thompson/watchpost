@@ -137,13 +137,6 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 	return out
 }
 
-// withForecast adds the loop's hours ahead (D-113): a forecast loop a box of
-// HRRR's quarter-hours after the newest observed frame and up to the horizon,
-// every frame marked forecast, joined beside the observed (joinAhead).
-func withForecast(ctx context.Context, out tty.MapRadar, h *radar.HRRR, boxes []radar.Box, newest, until time.Time) tty.MapRadar {
-	return joinForecast(out, fetchForecast(ctx, h, boxes, newest, until), newest)
-}
-
 // hoursAhead is HRRR's loops as fetched, or why there are none, and whose.
 type hoursAhead struct {
 	loops   []tuimaps.Overlay

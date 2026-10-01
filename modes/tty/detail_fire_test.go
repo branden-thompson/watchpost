@@ -128,7 +128,7 @@ func TestTheFireDetailListsEveryNamedIncident(t *testing.T) {
 
 	got := stripANSITest(strings.Join(fireRows(render.Opts{Width: 100}, loc, time.Now(), 50, 25, 50, 65), "\n"))
 	for _, n := range names {
-		if !strings.Contains(got, ellipsizeName(n)) {
+		if !strings.Contains(got, n) {
 			t.Errorf("%q is one of the %d fires the row counts and the detail does not list it:\n%s",
 				n, len(names), got)
 		}
@@ -139,10 +139,6 @@ func TestTheFireDetailListsEveryNamedIncident(t *testing.T) {
 		t.Errorf("the row wears %d◆ for %d incidents", got, want)
 	}
 }
-
-// ellipsizeName is how the row draws a name, so the assertion compares what is
-// actually on screen rather than the name the fixture used.
-func ellipsizeName(n string) string { return ellipsize(n, 11, false) }
 
 // A LONG NAME COSTS THE AGE COLUMN, NOT THE CONTAINMENT (HUM LEAD, 2026-09-07).
 //

@@ -118,16 +118,6 @@ func BreakpointFor(w int) Breakpoint {
 	}
 }
 
-// --- color ---
-
-// colorEnabled is the pure rule: NO_COLOR (any value) wins, then TTY-ness.
-func colorEnabled(stdoutIsTTY bool, noColorEnv string) bool {
-	if noColorEnv != "" {
-		return false
-	}
-	return stdoutIsTTY
-}
-
 // --- keybindings (D-15) ---
 
 // Action names something a view or the app can do ("help", "quit", "dive-in").

@@ -292,7 +292,7 @@ func TestTheLoopRunsOnPastNow(t *testing.T) {
 	newest := time.Date(2026, 9, 27, 19, 40, 0, 0, time.UTC)
 	observed := tuimaps.RadarImage(tty.RadarLayer+"/us", tuimaps.Image{Frames: []tuimaps.LoopFrame{{Valid: newest, Gap: true}}, Provider: tuimaps.ProviderIEM,
 		West: box.W, South: box.S, East: box.E, North: box.N, Projection: tuimaps.PlateCarree}, newest)
-	out := withForecast(context.Background(), tty.MapRadar{Overlays: []tuimaps.Overlay{observed}, Source: "MRMS"}, h, []radar.Box{box}, newest, newest.Add(3*time.Hour))
+	out := joinForecast(tty.MapRadar{Overlays: []tuimaps.Overlay{observed}, Source: "MRMS"}, fetchForecast(context.Background(), h, []radar.Box{box}, newest, newest.Add(3*time.Hour)), newest)
 	if out.Ahead != "HRRR" || len(out.Overlays) != 2 {
 		t.Fatalf("ahead %q, %d loops; want HRRR and a forecast loop beside the observed", out.Ahead, len(out.Overlays))
 	}

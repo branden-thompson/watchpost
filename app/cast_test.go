@@ -189,7 +189,13 @@ func TestValidatingTheCastDoesNotDeadlockAgainstTheDecksLock(t *testing.T) {
 	cfg.Radio.Voices.Alerts = config.RoleVoice{MacOS: "Nobody At All"} // forces the fallback path
 
 	done := make(chan []cast.Problem, 1)
-	go func() { done <- d.castProblems(cfg) }()
+	go func() { // setCast: the production path that validates (S-8 retired castProblems, its stand-in)
+		d.setCast(castLoaded(cfg))
+		d.mu.Lock()
+		problems := d.cast.problems
+		d.mu.Unlock()
+		done <- problems
+	}()
 
 	select {
 	case problems := <-done:
@@ -200,7 +206,7 @@ func TestValidatingTheCastDoesNotDeadlockAgainstTheDecksLock(t *testing.T) {
 			t.Errorf("problem key = %q", problems[0].Key)
 		}
 	case <-time.After(10 * time.Second):
-		t.Fatal("castProblems deadlocked: cast.Validate re-entered the deck's lock. " +
+		t.Fatal("setCast deadlocked: cast.Validate re-entered the deck's lock. " +
 			"Snapshot under the lock, resolve OUTSIDE it, store under the lock.")
 	}
 }
@@ -215,7 +221,7 @@ func TestTheDeckLockIsFreeWhileTheCastResolves(t *testing.T) {
 	cfg.Radio.Cast = "cast"
 	cfg.Radio.Voices.Fire = config.RoleVoice{MacOS: "Nobody"}
 
-	_ = d.castProblems(cfg)
+	d.setCast(castLoaded(cfg))
 
 	// Another goroutine must be able to take the lock and do real work with it
 	// — which is what "resolve outside the lock" buys.
@@ -229,7 +235,7 @@ func TestTheDeckLockIsFreeWhileTheCastResolves(t *testing.T) {
 	select {
 	case <-taken:
 	case <-time.After(5 * time.Second):
-		t.Fatal("the deck's lock was still held after castProblems returned")
+		t.Fatal("the deck's lock was still held after setCast returned")
 	}
 }
 

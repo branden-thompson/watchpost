@@ -305,16 +305,6 @@ func (d *radioDeck) castChanged() {
 	})
 }
 
-// castProblems validates the current cast against this host.
-//
-// It exists to make the lock discipline unmissable at the one call site P1 has:
-// the snapshot is taken under the lock, and cast.Validate — which calls back
-// into Discovered and Installed — runs with the lock released.
-func (d *radioDeck) castProblems(cfg config.Config) []cast.Problem {
-	snapshot := castLoaded(cfg) // a value; nothing of the deck is read here
-	return cast.Validate(snapshot, d)
-}
-
 // spokenName is the name the identity lines use for a resolved voice: the
 // sentinel has no name a listener would recognise, so it introduces itself as
 // "your correspondent" (UAT 88).
