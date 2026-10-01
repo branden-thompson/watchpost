@@ -725,6 +725,7 @@ type livePipelines struct {
 	radar      *radarSources  // 0.18.0 W8: the map's radar sources, over their own hardened client
 	temp       *tempSources   // 0.18.0 W10: the map's temperature sources, over theirs
 	history    *history.Store // W18.3b: what the sources said, recorded (D-166)
+	usage      usageCache     // its size as the Data tab says it, kept a while (U2-48)
 	// lastMapRegion is the region the map last asked temperature for: the
 	// history records it beside the station's (D-172).
 	lastMapRegion atomic.Value

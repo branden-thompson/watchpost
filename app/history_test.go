@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"math"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -423,5 +425,30 @@ func TestTheDataTabsChoicesReachTheStore(t *testing.T) {
 	}
 	if err := (&livePipelines{}).clearHistory(); err != nil {
 		t.Errorf("with no store, Clear history failed: %v", err)
+	}
+}
+
+// THE HISTORY'S SIZE IS READ ONCE, NOT ON EVERY FRAME (U2-48): the Data tab
+// says what the history holds, and Settings draws every tab for the window's
+// size - a walk of the store each frame, two or three a key press, growing by
+// the hour. The size is kept a while; Clear history reads it again.
+func TestTheHistorysSizeIsNotReadEveryFrame(t *testing.T) {
+	root := t.TempDir()
+	lp := &livePipelines{history: history.Open(root, time.Now, historyDatasets...)}
+	if err := os.WriteFile(filepath.Join(root, "big.bin"), make([]byte, 3<<20), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	first := lp.historyUsage()
+	if err := os.WriteFile(filepath.Join(root, "bigger.bin"), make([]byte, 6<<20), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if again := lp.historyUsage(); again != first || !strings.Contains(first, "MB") {
+		t.Errorf("the size was read again a frame later: %q, then %q", first, again)
+	}
+	if err := lp.clearHistory(); err != nil {
+		t.Fatal(err)
+	}
+	if cleared := lp.historyUsage(); strings.Contains(cleared, "MB") {
+		t.Errorf("after Clear history the size is %q; want it read again, the store emptied", cleared)
 	}
 }

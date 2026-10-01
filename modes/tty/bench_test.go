@@ -502,3 +502,39 @@ func BenchmarkConsoleFrame_Miss(b *testing.B) {
 		i++
 	}
 }
+
+// settingsTabPressAllocBudget is a Tab press in Settings - the key moving to
+// the next tab and the frame drawn - into its costliest tab, with the app's
+// layers registered (MAP - LAYERS, batch 86). Measured 2026-10-01 (U2-48).
+const settingsTabPressAllocBudget = 3_700
+
+// A SETTINGS TAB PRESS STAYS CRISP (U2-48, HUM LEAD: "key responses should be
+// very crisp and feel almost instant"): every tab, the layers registered as
+// the app registers them, a Tab press's work held to a pinned allocation
+// count - counted, not timed, so a busy machine cannot fail it nor hide it.
+func TestASettingsTabPressIsWithinItsAllocBudget(t *testing.T) {
+	if raceEnabled {
+		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
+	}
+	d := setupBench(t, 133, 44)
+	d.cfg.MapLayers = settingsLayers
+	d.cfg.HistoryUsage = func() string { return "Holds 728 KB, in ~/.local/share/watchpost/weather/history" }
+	_ = d.View().Content
+	worst, at := 0.0, ""
+	var m tea.Model = d
+	for range len(setupTabs()) {
+		from := m
+		allocs := testing.AllocsPerRun(10, func() {
+			next, _ := from.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+			_ = next.View().Content
+		})
+		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		if allocs > worst {
+			worst, at = allocs, m.(Dashboard).setupTab().Label()
+		}
+	}
+	t.Logf("a Tab press into %s, the costliest: %.0f allocs (budget %d)", at, worst, settingsTabPressAllocBudget)
+	if worst > settingsTabPressAllocBudget {
+		t.Errorf("a Tab press into %s allocates %.0f, budget %d", at, worst, settingsTabPressAllocBudget)
+	}
+}

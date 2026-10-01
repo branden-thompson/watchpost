@@ -24,6 +24,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -400,11 +401,43 @@ func (lp *livePipelines) clearHistory() error {
 	if store == nil {
 		return nil
 	}
+	defer lp.forgetUsage() // the size, read again (U2-48)
 	return store.Clear()
 }
 
-// historyUsage is what the store holds and where, as the Data tab says it.
+// usageFresh is how long the history's size is kept before the store is
+// walked again (U2-48): Settings draws every tab each frame - two or three
+// reads a key press - and the walk grows with every hour recorded.
+const usageFresh = 30 * time.Second
+
+// usageCache is the history's size as last read, and when.
+type usageCache struct {
+	mu   sync.Mutex
+	text string
+	at   time.Time
+}
+
+// historyUsage is what the store holds and where, as the Data tab says it:
+// read at most once in usageFresh, and again after Clear history.
 func (lp *livePipelines) historyUsage() string {
+	lp.usage.mu.Lock()
+	defer lp.usage.mu.Unlock()
+	if lp.usage.text != "" && time.Since(lp.usage.at) < usageFresh {
+		return lp.usage.text
+	}
+	lp.usage.text, lp.usage.at = lp.readHistoryUsage(), time.Now()
+	return lp.usage.text
+}
+
+// forgetUsage has the next read walk the store: it changed.
+func (lp *livePipelines) forgetUsage() {
+	lp.usage.mu.Lock()
+	lp.usage.text = ""
+	lp.usage.mu.Unlock()
+}
+
+// readHistoryUsage walks the store for its size.
+func (lp *livePipelines) readHistoryUsage() string {
 	store := lp.historyStore()
 	root := history.DefaultRoot()
 	if store == nil || root == "" {

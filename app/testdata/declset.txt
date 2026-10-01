@@ -108,6 +108,7 @@ const traceRainIn
 const traceRainMM
 const traceSnowCM
 const traceSnowIn
+const usageFresh
 const uvRanked
 const viewSamples
 const waveBytes
@@ -200,6 +201,7 @@ func (*livePipelines).fetchInputs
 func (*livePipelines).fireFor
 func (*livePipelines).fireIn
 func (*livePipelines).fireRules
+func (*livePipelines).forgetUsage
 func (*livePipelines).giveItAStation
 func (*livePipelines).historyRegions
 func (*livePipelines).historyStore
@@ -231,6 +233,7 @@ func (*livePipelines).poolFor
 func (*livePipelines).producer
 func (*livePipelines).providers
 func (*livePipelines).reStation
+func (*livePipelines).readHistoryUsage
 func (*livePipelines).readReport
 func (*livePipelines).rebed
 func (*livePipelines).refreshBedRelays
@@ -925,6 +928,7 @@ type tideMark
 type tileCounter
 type timingLog
 type timingRecord
+type usageCache
 type uvCities
 type waveKeep
 type waveSource

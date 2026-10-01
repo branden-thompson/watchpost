@@ -2844,3 +2844,19 @@ it), the nil assembler listed - all caught.
 - **`bedfence.go` stays** (D-197): the bed fence's reach, measured wording and all, is owed to the
   Broadcaster's next release as **F-185**.
 
+## Batch 92 — a Settings key press kept crisp (U2-48; 2026-10-01)
+
+**Now.** The HUM LEAD found Tab in Settings laggy (U2-48), during a gate's run - "a good proxy for
+older hardware". Measured: the harness's Tab press is ~2 ms, but each Settings frame read the
+history's size **two or three times** (every tab is drawn to size the window), and each read walks
+the store - a directory that grows every hour the recorder runs. **The size is now kept 30 seconds**,
+and read again after Clear history. Two guards, counted not timed so a busy machine can neither fail
+nor hide them: the size not read every frame, and **a Tab press into every tab** - the app's layers
+registered, MAP - LAYERS among them - held to 3,700 allocations (3,631 measured, Maps the costliest).
+
+**U2-47 investigated, not reproduced in the harness**: the loop at rest and stepped, with HRRR's hours
+ahead joined and the clock past the newest frame, draws radar every time. A live run is next.
+
+**Mutation verdicts** (2): the cache, Clear's re-read (survived once - the test's cached value was
+small too; now a large store first) - both caught.
+
