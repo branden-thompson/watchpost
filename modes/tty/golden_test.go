@@ -117,7 +117,17 @@ func setupGolden(t *testing.T, w, h int, ascii bool, at setupRowID) Dashboard {
 		{Key: "statement", Label: "Special Statements"},
 		{Key: "storm", Label: "Maritime"},
 	}
+	d.cfg.MapLayers = settingsLayers // the app always registers its layers: MAP - LAYERS is drawn
 	return d.openSetupAt(at)
+}
+
+// settingsLayers are the app's layers as Settings lists them, the default
+// ones on (app/maplayers.go).
+var settingsLayers = []MapLayer{
+	{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}, {Key: RainLayer, Label: "Rain & snow", On: true},
+	{Key: TemperatureLayer, Label: "Temperature"}, {Key: FeelsLayer, Label: "Feels like"}, {Key: WindLayer, Label: "Wind"},
+	{Key: UVLayer, Label: "UV"}, {Key: AirLayer, Label: "Air quality"}, {Key: FireLayer, Label: "Fire"}, {Key: QuakeLayer, Label: "Quakes", On: true},
+	{Key: BuoyLayer, Label: "Buoys"}, {Key: TideLayer, Label: "Tides"}, {Key: WaveLayer, Label: "Waves"},
 }
 
 // The two-column layout, with a correspondent picker focused: the state a

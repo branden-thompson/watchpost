@@ -211,6 +211,10 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 		ml, mAt := d.mapSettingLines(o, nil, 0)
 		b.lines = append(b.lines, ml...)
 		b.at, b.end = at+mAt, len(b.lines)
+	case groupLayers:
+		ll, lAt := d.layerLines(o)
+		b.lines = append(b.lines, ll...)
+		b.at, b.end = at+lAt, at+lAt+1
 	case groupMapLayers:
 		ml, mAt := d.mapLayerLines(o, nil, 0)
 		b.lines = append(b.lines, ml...)
@@ -544,7 +548,7 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 	// there; the typed DATA rows still need enter, and esc still discards them.
 	// A chip that said Cancel over an auto-saving group would be lying.
 	closeLabel := "Cancel"
-	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI || g == groupMap || g == groupMapLayers {
+	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI || g == groupMap || g == groupLayers || g == groupMapLayers {
 		closeLabel = "Close"
 	}
 	segs = append(segs, o.KeyCap("esc")+" "+closeLabel)

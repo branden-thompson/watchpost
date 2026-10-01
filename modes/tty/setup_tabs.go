@@ -49,7 +49,7 @@ func tabOfGroup(g setupGroupID) setupTab {
 		return tabRadio
 	case groupStation:
 		return tabBroadcaster
-	case groupMap, groupMapLayers:
+	case groupMap, groupLayers, groupMapLayers:
 		return tabMaps
 	case groupUI:
 		return tabUI
@@ -118,7 +118,7 @@ func (d Dashboard) stepTab(step int) setupRowID {
 func (d Dashboard) rowTakesLeftRight() bool {
 	row := setupTable()[d.setup.focus]
 	if d.setup.focus == rowMapLayers {
-		return len(d.cfg.MapLayers) > 1 // one layer has nothing to walk to: the arrows switch tabs
+		return len(d.cfg.MapLayers) > 0 // ←→ switch the layer under the cursor, as every picker does
 	}
 	return row.picker || row.kind == rowToggle || row.kind == rowPicker
 }

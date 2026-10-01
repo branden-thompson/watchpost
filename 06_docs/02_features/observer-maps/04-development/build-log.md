@@ -2692,3 +2692,27 @@ cannot see a grid that rides a cached answer), now held by `TestUVsGridRidesWher
 through `uvAsked`, and caught. P10 read the filler's `Fetch` calling the wrapped `Fetch` as recursion,
 as it read the quota gate's `GetText` (batch 78): the same fix, a method value.
 
+## Batch 86 — Settings: a picker a layer, the pickers lined up (HUM LEAD's Settings nits, 2026-09-30)
+
+**Now.** The HUM LEAD's Settings notes, taken together:
+
+- **MAP - LAYERS is its own group**, a row a layer, each the "← Enabled / Disabled →" picker the
+  detail rows already were: ↑↓ walk the layers and leave the group past either end (from above onto
+  the first, from below onto the last); ←→ and space switch the layer under the cursor, through the
+  same switch as before - one tint at a time (D-119, D-137, D-139). What the layers would cost is said
+  under them. The old group is MAP - DETAIL. A build that registers no layer draws no group.
+- **Smart columns.** MAP - LAYERS is drawn after MAP - DETAIL, so the planner balances the tab: MAP
+  and MAP - DETAIL in the first column, MAP - LAYERS in the second, stacked where they do not fit -
+  as every other tab is laid. The rows are declared in that order, so ↓ follows it.
+- **A group's pickers line up.** A group's labels pad to its own longest: Data → History's Hourly
+  detail and Trends were two cells apart. `TestAGroupsPickersLineUp` holds every group of every tab.
+
+The Settings fixtures now register the app's layers, as the app always does: the Maps golden shows
+MAP - LAYERS; the Data golden's History pickers line up. (The focus-order fix the same notes asked for
+shipped in batch 84.)
+
+**Mutation verdicts** (9): the last layer's edge, the first's (survived once), coming from below,
+coming from above (survived once), ←→ switching, the layers' label width, History's, the empty group
+hidden (survived once), → with one layer (survived once) - the survivors now held in
+`TestALayersRowIsAPickerAndTheArrowsWalkThem`, and all caught.
+

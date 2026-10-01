@@ -99,7 +99,7 @@ func TestEverySurfaceOffersEverySetting(t *testing.T) {
 	_, console := setupOn(t, SurfaceBroadcaster)
 	_, observer := setupOn(t, SurfaceObserver)
 	for _, want := range []string{"DATA", "ALERTS - EVENTS", "WATCHPOST UI", "ALERTS - TONE",
-		"WATCHPOST RADIO - CORRESPONDENTS", "WATCHPOST RADIO - RELAY REPLAY", "STATION", "MAP", "MAP - LAYERS AND DETAIL", "HISTORY",
+		"WATCHPOST RADIO - CORRESPONDENTS", "WATCHPOST RADIO - RELAY REPLAY", "STATION", "MAP", "MAP - LAYERS", "MAP - DETAIL", "HISTORY",
 		"Default location:", "NASA FIRMS key"} {
 		if !strings.Contains(console, want) {
 			t.Errorf("the console's Settings window does not offer %q", want)

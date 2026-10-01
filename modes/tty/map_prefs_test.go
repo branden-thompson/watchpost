@@ -140,14 +140,15 @@ func TestALayerSwitchedOffIsNotDrawn(t *testing.T) {
 	}
 }
 
-// TestTheLayersRowTogglesAndSaves: space ticks the layer under the cursor,
-// and the group writes the choice on close.
+// TestTheLayersRowTogglesAndSaves: MAP - LAYERS is a picker a layer (HUM
+// LEAD, 2026-09-30); space switches the layer under the cursor, and the
+// group writes the choice on close.
 func TestTheLayersRowTogglesAndSaves(t *testing.T) {
 	d, got := uiDash(t, rowMapLayers)
 	d.cfg.MapLayers = alertLayers
 	body, _, _ := d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Layers -") || !strings.Contains(text, "Alert areas") {
-		t.Errorf("the layers row does not name the layer:\n%s", text)
+	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "MAP - LAYERS") || !strings.Contains(text, "Alert areas -") || !strings.Contains(text, "Enabled") {
+		t.Errorf("the layers group does not name the layer with its picker:\n%s", text)
 	}
 	d = d.setupSpace()
 	if d.layerOn("alert") {
@@ -160,24 +161,55 @@ func TestTheLayersRowTogglesAndSaves(t *testing.T) {
 	}
 }
 
-// TestTheLayersRowKeepsTheArrowsOnlyWithAChoice is D-62 on a row of many:
-// with more than one layer ←→ walk the layers; with one they switch tabs.
-func TestTheLayersRowKeepsTheArrowsOnlyWithAChoice(t *testing.T) {
+// A LAYER'S ROW IS A PICKER, AND ↑↓ WALK THE LAYERS (HUM LEAD, 2026-09-30):
+// ←→ switch the layer under the cursor, as every Enabled / Disabled picker
+// does, one layer or many; ↓ walks the layers and past the last leaves the
+// group; ↑ from the row below comes back to the last layer.
+func TestALayersRowIsAPickerAndTheArrowsWalkThem(t *testing.T) {
 	d, _ := uiDash(t, rowMapLayers)
-	d.cfg.MapLayers = alertLayers
+	d.cfg.MapLayers = append(append([]MapLayer(nil), alertLayers...), MapLayer{Key: "quake", Label: "Quakes"})
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	if got := m.(Dashboard).setupTab(); got == tabMaps {
-		t.Error("with one layer → stayed on the Maps tab")
+	one := m.(Dashboard)
+	if one.setupTab() != tabMaps || one.layerOn("alert") {
+		t.Fatalf("→ on Alert areas: tab %s, alert on %v; want it switched off, here", one.setupTab().Label(), one.layerOn("alert"))
 	}
-	d.cfg.MapLayers = append(append([]MapLayer(nil), alertLayers...), MapLayer{Key: "quake", Label: "Quakes", On: false})
-	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	m, _ = one.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
 	two := m.(Dashboard)
-	if two.setupTab() != tabMaps || two.setup.layerAt != 1 {
-		t.Fatalf("with two layers → went to tab %s, layer %d", two.setupTab().Label(), two.setup.layerAt)
+	if two.setup.focus != rowMapLayers || two.setup.layerAt != 1 {
+		t.Fatalf("↓ went to row %d, layer %d; want the next layer", two.setup.focus, two.setup.layerAt)
 	}
-	two = two.setupSpace()
-	if !two.layerOn("quake") || !two.layerOn("alert") {
-		t.Error("space did not switch on the layer under the cursor alone")
+	m, _, _ = two.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if !m.(Dashboard).layerOn("quake") || m.(Dashboard).layerOn("alert") {
+		t.Error("← did not switch on the layer under the cursor alone")
+	}
+	m, _ = two.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
+	below := m.(Dashboard)
+	if below.setup.focus == rowMapLayers {
+		t.Fatal("↓ past the last layer stayed in the group")
+	}
+	m, _ = below.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyUp})
+	if back := m.(Dashboard); back.setup.focus != rowMapLayers || back.setup.layerAt != 1 {
+		t.Errorf("↑ from below came to row %d, layer %d; want the last layer", back.setup.focus, back.setup.layerAt)
+	}
+	m, _ = one.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyUp})
+	if m.(Dashboard).setup.focus == rowMapLayers {
+		t.Error("↑ from the first layer stayed in the group")
+	}
+	above := m.(Dashboard)
+	above.setup.layerAt = 1
+	m, _ = above.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
+	if into := m.(Dashboard); into.setup.focus != rowMapLayers || into.setup.layerAt != 0 {
+		t.Errorf("↓ from above came to row %d, layer %d; want the first layer", into.setup.focus, into.setup.layerAt)
+	}
+	single, _ := uiDash(t, rowMapLayers)
+	single.cfg.MapLayers = alertLayers
+	m, _, _ = single.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	if got := m.(Dashboard); got.setupTab() != tabMaps || got.layerOn("alert") {
+		t.Error("with one layer → did not switch it, here")
+	}
+	single.cfg.MapLayers = nil
+	if single.rowVisible(rowMapLayers) {
+		t.Error("with no layer registered, the layers row is still focusable")
 	}
 }
 
@@ -242,8 +274,8 @@ func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 	}
 }
 
-// TestThePickersGoBackToo: ← walks the scale, the distance and the layers the
-// other way, and wraps.
+// TestThePickersGoBackToo: ← walks the scale and the distance the other way,
+// and wraps.
 func TestThePickersGoBackToo(t *testing.T) {
 	d, _ := uiDash(t, rowMapScale)
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
@@ -254,12 +286,6 @@ func TestThePickersGoBackToo(t *testing.T) {
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
 	if got := m.(Dashboard).mapNearbyKm; got != 10 {
 		t.Errorf("← from 15 km went to %d, want 10", got)
-	}
-	d.setup.focus = rowMapLayers
-	d.cfg.MapLayers = append(append([]MapLayer(nil), alertLayers...), MapLayer{Key: "quake", Label: "Quakes"}, MapLayer{Key: "fire", Label: "Fire"})
-	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.(Dashboard).setup.layerAt; got != 2 {
-		t.Errorf("← from the first layer went to %d, want the last", got)
 	}
 }
 

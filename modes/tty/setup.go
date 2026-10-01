@@ -332,14 +332,21 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 		return m, cmd, true
 	}
 	switch key.String() {
-	case "up":
-		if !d.rowTakesArrows() {
-			d.setup.focus = prevRow(d.setup.focus, d.rowVisible)
-			return d.settled(), nil, true
+	case "up", "down":
+		down := key.String() == "down"
+		if d.setup.focus == rowMapLayers { // ↑↓ walk the layers, then leave (HUM LEAD, 2026-09-30)
+			if nd, moved := d.stepLayer(down); moved {
+				return nd, nil, true
+			}
 		}
-	case "down":
 		if !d.rowTakesArrows() {
-			d.setup.focus = nextRow(d.setup.focus, d.rowVisible)
+			if down {
+				d.setup.focus = nextRow(d.setup.focus, d.rowVisible)
+				d.setup.layerAt = 0 // entering the layers from above: the first
+			} else {
+				d.setup.focus = prevRow(d.setup.focus, d.rowVisible)
+				d.setup.layerAt = max(len(d.cfg.MapLayers)-1, 0) // from below: the last
+			}
 			return d.settled(), nil, true
 		}
 	case "space":
@@ -475,6 +482,9 @@ func (d Dashboard) rowVisible(id setupRowID) bool {
 	// D-18's RULING, ASKED HERE (D-92). `stepRow` already walks only visible
 	// rows and `setupBlock` already draws only visible rows — this seam was built
 	// for exactly this and returned `true` for everything until now.
+	if id == rowMapLayers && len(d.cfg.MapLayers) == 0 {
+		return false // no layer registered: nothing to pick, and no group drawn (D-92)
+	}
 	return d.onFocusedTab(id) // D-62: a tab draws and walks its own rows; D-70: on every surface
 }
 

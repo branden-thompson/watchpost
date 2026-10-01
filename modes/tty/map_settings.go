@@ -104,11 +104,17 @@ const mapNoteW = 44
 
 // mapRow is one row of the Maps tab, its label padded to the tab's width.
 func (d Dashboard) mapRow(o render.Opts, lines []string, at int, id setupRowID, label, cell string) ([]string, int) {
+	return d.mapRowW(o, lines, at, id, label, cell, mapLabelW)
+}
+
+// mapRowW is mapRow with its group's label width: a group's labels pad to its
+// widest, so its pickers line up (HUM LEAD, 2026-09-30).
+func (d Dashboard) mapRowW(o render.Opts, lines []string, at int, id setupRowID, label, cell string, labelW int) ([]string, int) {
 	focus := d.setup.focus
 	if focus == id {
 		at = len(lines)
 	}
-	return append(lines, "  "+setupMark(o, focus == id)+settingLabel(render.PadTo(label, mapLabelW), focus == id)+"  "+cell), at
+	return append(lines, "  "+setupMark(o, focus == id)+settingLabel(render.PadTo(label, labelW), focus == id)+"  "+cell), at
 }
 
 // mapPicker is a picker's cell at the tab's value width.
@@ -152,17 +158,48 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	return lines, at
 }
 
-// mapLayerLines are the MAP - LAYERS AND DETAIL group's rows (the second
-// column): the weather layers and what they would cost, the map's own detail
-// as a list, and the action that empties the map's data.
-func (d Dashboard) mapLayerLines(o render.Opts, lines []string, at int) ([]string, int) {
+// layerLines are the MAP - LAYERS group's rows: a picker each, Enabled or
+// Disabled, its label padded to the group's longest so the pickers line up -
+// ↑↓ walk them, ←→ and space switch the one the cursor is on (HUM LEAD,
+// 2026-09-30) - and what they would cost under them. The focused line is the
+// layer under the cursor.
+func (d Dashboard) layerLines(o render.Opts) ([]string, int) {
 	if !d.rowVisible(rowMapLayers) {
-		return lines, at
+		return nil, 0
 	}
-	focus := d.setup.focus
-	lines, at = d.mapRow(o, lines, at, rowMapLayers, "Layers -", d.layersCell(o, focus == rowMapLayers))
+	focused := d.setup.focus == rowMapLayers
+	labelW := 0
+	for _, l := range d.cfg.MapLayers { // the registry's (P10-02)
+		labelW = max(labelW, render.Width(l.Label+" -"))
+	}
+	var lines []string
+	at := 0
+	for i, l := range d.cfg.MapLayers {
+		here := focused && i == min(d.setup.layerAt, len(d.cfg.MapLayers)-1)
+		if here {
+			at = len(lines)
+		}
+		state := "Disabled"
+		if d.layerOn(l.Key) {
+			state = "Enabled"
+		}
+		var flash pickerFlash
+		if here {
+			flash = d.pickerFlashFor(rowMapLayers)
+		}
+		lines = append(lines, "  "+setupMark(o, here)+settingLabel(render.PadTo(l.Label+" -", labelW), here)+"  "+pickerCellW(state, newArrowChips(o), flash, mapDetailValueW))
+	}
 	for _, l := range costWarningLines(d.mapCost, mapNoteW) {
 		lines = append(lines, "    "+settingSupport(l))
+	}
+	return lines, at
+}
+
+// mapLayerLines are the MAP - DETAIL group's rows: the map's own detail as a
+// list, and the action that empties the map's data.
+func (d Dashboard) mapLayerLines(o render.Opts, lines []string, at int) ([]string, int) {
+	if !d.rowVisible(rowMapDetailLevel) {
+		return lines, at
 	}
 	lines, at = d.mapRow(o, lines, at, rowMapDetailLevel, "Detail -", d.mapPickerW(o, rowMapDetailLevel, d.detailLevelShown(), mapDetailValueW))
 	for i, l := range mapDetailLayers() { // A ROW EACH, "← Enabled →" (U1-35)

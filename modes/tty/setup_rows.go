@@ -30,7 +30,8 @@ const (
 	groupRelay
 	groupStation
 	groupMap
-	groupMapLayers // UAT-1 U1-25: the map's second column
+	groupLayers    // the map's weather layers, a picker each (HUM LEAD, 2026-09-30)
+	groupMapLayers // UAT-1 U1-25: the map's own detail
 	groupHistory   // W18: the local history (D-171, D-175, D-177)
 )
 
@@ -142,7 +143,6 @@ const (
 	rowMapRadarAhead  // the radar loop's hours ahead (D-114)
 	rowMapQuakes      // the quakes drawn: M2.5+ or M1.0+, the past week or day (D-122)
 	rowMapTempSource  // the map's temperature, both modes: NDFD or Open-Meteo (D-93, D-190)
-	rowMapLayers
 	rowMapDetailLevel
 	// THE MAP'S DETAIL, A ROW EACH (UAT-1 U1-35): the "← Enabled →" pattern
 	// every other on/off row has, in mapDetailLayers' order.
@@ -154,6 +154,7 @@ const (
 	rowMapDetailRail
 	rowMapDetailParks
 	rowMapClear
+	rowMapLayers // MAP - LAYERS, drawn after MAP - DETAIL: the two columns balance so
 
 	setupRowCount
 )
@@ -266,7 +267,7 @@ func setupTable() [setupRowCount]setupRow {
 		rowMapQuakes:      {rowMapQuakes, groupMap, scopeObserver, rowPicker, true, "", ""},
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one
 		// under the cursor; ←→ move it when there is more than one.
-		rowMapLayers: {rowMapLayers, groupMapLayers, scopeObserver, rowCheck, false, "", ""},
+		rowMapLayers: {rowMapLayers, groupLayers, scopeObserver, rowCheck, false, "", ""},
 		// THE MAP'S OWN DETAIL (D-65): the library's basemap layers, weather-first.
 		rowMapDetailLevel:   {rowMapDetailLevel, groupMapLayers, scopeObserver, rowPicker, true, "", ""}, // go-tuiMaps D-82, D-67
 		rowMapDetailBorders: {rowMapDetailBorders, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
@@ -358,8 +359,10 @@ func setupGroupTitle(g setupGroupID) string {
 		return "WATCHPOST RADIO - RELAY REPLAY"
 	case groupMap:
 		return "MAP"
+	case groupLayers:
+		return "MAP - LAYERS"
 	case groupMapLayers:
-		return "MAP - LAYERS AND DETAIL"
+		return "MAP - DETAIL"
 	case groupStation:
 		return "STATION"
 	case groupHistory:
@@ -399,7 +402,7 @@ func visibleRowOfGroup(g setupGroupID, visible func(setupRowID) bool) (setupRowI
 
 // setupGroups is every group, in draw order.
 func setupGroups() []setupGroupID {
-	return []setupGroupID{groupData, groupUI, groupEvents, groupHistory, groupTone, groupCast, groupRelay, groupStation, groupMap, groupMapLayers}
+	return []setupGroupID{groupData, groupUI, groupEvents, groupHistory, groupTone, groupCast, groupRelay, groupStation, groupMap, groupMapLayers, groupLayers}
 }
 
 // nextRow is ↓ and prevRow is ↑. Both WRAP: ↓ on the last row returns to the

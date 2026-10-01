@@ -35,6 +35,10 @@ var (
 // historyValueW is the history pickers' value width: their longest, "72 hours".
 const historyValueW = 8
 
+// historyLabelW is the group's label width: its longest label, so its
+// pickers line up.
+const historyLabelW = len("Hourly detail -")
+
 // historyAt is a key's place among choices; the default's where it is not one.
 func historyAt(choices []historyChoice, key string) int {
 	if key == "" {
@@ -70,12 +74,12 @@ func (d Dashboard) historyLines(o render.Opts) ([]string, int) {
 	// AS NARROW AS THEIR VALUES: a picker as wide as the map's would not let the
 	// Data tab's two columns fit beside each other in ASCII, and the whole
 	// window would narrow to one column (every tab's width is the widest's).
-	lines, at = d.mapRow(o, lines, at, rowHistoryHours, "Hourly detail -", d.mapPickerW(o, rowHistoryHours, historyHourChoices[historyAt(historyHourChoices, d.setup.history.Hours)].label, historyValueW))
-	lines, at = d.mapRow(o, lines, at, rowHistoryTrends, "Trends -", d.mapPickerW(o, rowHistoryTrends, historyTrendChoices[historyAt(historyTrendChoices, d.setup.history.Trends)].label, historyValueW))
+	lines, at = d.mapRowW(o, lines, at, rowHistoryHours, "Hourly detail -", d.mapPickerW(o, rowHistoryHours, historyHourChoices[historyAt(historyHourChoices, d.setup.history.Hours)].label, historyValueW), historyLabelW)
+	lines, at = d.mapRowW(o, lines, at, rowHistoryTrends, "Trends -", d.mapPickerW(o, rowHistoryTrends, historyTrendChoices[historyAt(historyTrendChoices, d.setup.history.Trends)].label, historyValueW), historyLabelW)
 	if focus == rowHistoryClear {
 		at = len(lines)
 	}
-	lines = append(lines, "  "+setupMark(o, focus == rowHistoryClear)+settingLabel(render.PadTo("History -", mapLabelW), focus == rowHistoryClear)+"  "+o.KeyCap("space")+" clear history")
+	lines = append(lines, "  "+setupMark(o, focus == rowHistoryClear)+settingLabel(render.PadTo("History -", historyLabelW), focus == rowHistoryClear)+"  "+o.KeyCap("space")+" clear history")
 	if d.cfg.HistoryUsage != nil {
 		for _, l := range render.WrapText(d.cfg.HistoryUsage(), mapNoteW) {
 			lines = append(lines, "    "+settingSupport(l))

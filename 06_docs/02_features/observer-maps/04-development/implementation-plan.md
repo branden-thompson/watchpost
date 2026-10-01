@@ -348,6 +348,7 @@ the feeds with no alternative. Measured before and after by W18.6's instrument.
 | W19.3 | **Rain and snow from NDFD's totals for today and three days** (D-185, D-187); Open-Meteo for days 4 to 7 and the heaviest hour, its asks streamlined | `app/maprain.go` | | the weight falls; days 4-7 still drawn |
 | W19.4 | **Air quality from AirNow first**; Open-Meteo's model tint supplemental (AirNow's gridded products researched first) | `app/mapairuv.go`, `domains/airquality/` | | AirNow drawn first |
 | W19.5 | **One Open-Meteo ask a box** where it is still asked: its variables merged into one request (D-185 point 2) | `domains/temperature/` | | one request a box |
+| W19.S | **Settings, the HUM LEAD's nits** (batch 84, batch 86): the Maps rows declared as drawn; MAP - LAYERS a picker a layer, after MAP - DETAIL so the columns balance; a group's pickers lined up | `modes/tty/setup_rows.go`, `modes/tty/map_settings.go`, `modes/tty/setup_history.go` | `layerLines`, `mapRowW`, `stepLayer` | `TestDownWalksAGroupAsItIsDrawn`, `TestAGroupsPickersLineUp`, `TestALayersRowIsAPickerAndTheArrowsWalkThem` |
 
 ## W14 — Before SHIP: performance, structure and quality (U2-35) · SHIP precondition
 

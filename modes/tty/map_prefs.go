@@ -494,32 +494,20 @@ func (d Dashboard) toggleLayer() Dashboard {
 	return d.refreshMapCost().uiTouched()
 }
 
-// stepLayer moves the layers row's cursor, and round again.
-func (d Dashboard) stepLayer(forward bool) Dashboard {
+// stepLayer moves the layers row's cursor a layer up or down: false at
+// either end, where ↑↓ leave the group.
+func (d Dashboard) stepLayer(down bool) (Dashboard, bool) {
 	n := len(d.cfg.MapLayers)
-	if n == 0 {
-		return d
+	at := min(d.setup.layerAt, max(n-1, 0))
+	switch {
+	case down && at < n-1:
+		d.setup.layerAt = at + 1
+	case !down && at > 0:
+		d.setup.layerAt = at - 1
+	default:
+		return d, false
 	}
-	step := 1
-	if !forward {
-		step = n - 1
-	}
-	d.setup.layerAt = (d.setup.layerAt + step) % n
-	return d.settled()
-}
-
-// layersCell is the layers row's value: a box per layer, the one under the
-// cursor marked while the row has the focus.
-func (d Dashboard) layersCell(o render.Opts, focused bool) string {
-	var cells []string
-	for i, l := range d.cfg.MapLayers {
-		cell := checkMark(o, d.layerOn(l.Key)) + " " + l.Label
-		if focused && len(d.cfg.MapLayers) > 1 && i == d.setup.layerAt {
-			cell = render.ListLabel(cell, true)
-		}
-		cells = append(cells, cell)
-	}
-	return strings.Join(cells, "   ")
+	return d.settled(), true
 }
 
 // feedForLayers is the feed with the layers switched off taken out: their
@@ -566,7 +554,7 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 	case rowMapDetailLevel:
 		return d.cycleDetailLevel(forward).uiTouched(), true
 	case rowMapLayers:
-		return d.stepLayer(forward), true
+		return d.toggleLayer(), true // ←→ switch it, as every Enabled / Disabled picker does
 	}
 	return d.toggleDetailRow(d.setup.focus)
 }
