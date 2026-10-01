@@ -3004,3 +3004,55 @@ resampled, the temperature's and wind's grids wide, the cost, the recorder's two
 Not caught by a test of the wiring: the peak direction's nearest resample in `fillDays` (the fakes'
 directions are uniform); `ResampleNearest` itself is held by its own test.
 
+## Batch 98 — every frame of the loop drawn, the temperature sooner (U2-54 to U2-58; 2026-10-01)
+
+**The report.** UAT of batch 97: temperature, feels like and wind missing on the loop's observed frames,
+the wind on some frames and not others, the temperature slow - "sometimes work, sometimes draw" - and
+suspected of the performance batches.
+
+**How it was traced.** The frame recorder (D-198) learned to count each layer's cells, to tell what the
+feed delivered by layer, and - with `WATCHPOST_DEBUG_MAPFRAMES_TEXT` - to keep each frame's text and the
+feed's spans, chips and notes. Live runs under a scratch home with a copy of the HUM LEAD's history
+(read-only), the loop playing: every frame before the current hour drew no contour and no wind; every
+frame from it drew both; the temperature arrived 47 s after the map opened. Then offline, on the real
+pipeline over the measure's stand-ins, the spans.
+
+**The causes - none in the drawing, none in the performance batches.**
+1. Radar mode's temperature has been NDFD's since W19 (D-190), and NDFD has no hour before the current
+   one: the loop's past is the history's (D-166). With little recorded, the current hour was stretched
+   **one** hour back under a loop two hours long; and a recorded hour with the next missing left frames
+   of nothing between them.
+2. Batch 97 made NDFD's lattice denser, and every replay passed over the hours recorded before it as
+   another shape - so on the day of the upgrade nothing past was drawn.
+3. NDFD's current hour can come back with no wind: a gap at the hour itself.
+4. Batch 97's eight NDFD asks a box went one after another.
+
+**The fixes.** `onLattice`: a record of the box's old lattice is put on the new one's points (bilinear;
+the wind's direction by its nearest point), in every NDFD replay - the past hours, Now's feels-like
+(D-188), Today from the hours (D-189), the recorder's own merge. `fillPast` replaces `stretchNow`: any
+hour with no grid of its own - before the current one, or the current one itself - draws the next newer
+grid, back to `pastHours` before the hour; for temperature, feels like, wind and the waves. NDFD's asks
+go four at a time (`ndfdAskers`), read in the order asked; a lattice of one ask pair as before.
+**Verified live**: the past hours replayed from the old-lattice history, every one of 36 frames drawn,
+the temperature in 10 s cold (2.5 s warm), the wind's current hour drawn from the next.
+
+**Tests reworded, not weakened**: four asserted the one-hour stretch or the refusal of another shape;
+they now assert what was meant - every observed frame drawn, each recorded hour drawn as itself,
+another *box* refused.
+
+**Mutation verdicts** (13): the old lattice resampled, another box refused, the direction nearest, Now's
+feels-like and Today from the old lattice, how far back, the gap filled, feels and wind filled, the
+waves filled (survived once - the fake gave past hours; a cold-start case added), NDFD in parallel -
+caught. Equivalent: ignoring an ask's error (the empty answer then fails to parse, the refusal still
+returned). The recorder's text kept only when asked: tested.
+
+**Comments describe the code now (AP-HIST-01, HUM LEAD 2026-10-01).** Every comment written in batches
+93-98 and go-tuiMaps L11.32-L11.33 read against the rule: nineteen here and four in the library narrated
+a defect or a batch ("was blank", "took half a minute", "were never seen", "batch 97 made ...") and are
+rewritten in the present tense. `tools/authoring`'s AP-HIST-01 table now catches those shapes, its
+self-test holding a specimen of each and a present-tense sentence of the same facts that must pass (the
+self-test fails with a phrase removed - tried). Older narrative comments the table cannot decide are F-186.
+
+**Still open**: U2-53 (radar slow) and the HRRR frames arriving late (U2-57's scrubber, "after 2
+loops") - R-2, bisected next against `checkpoint/pre-w14`.
+

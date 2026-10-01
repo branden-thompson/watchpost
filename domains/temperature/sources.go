@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
@@ -56,8 +57,7 @@ func (s *NDFD) Covers(region string) bool { return region != geo.RegionSamoa }
 // one. THE HOUR IS SENT WITH ITS ZONE: without it the service reads it as each
 // point's own local time, and answered seven hours ahead (2026-09-26).
 func (s *NDFD) Fetch(ctx context.Context, l Lattice, now time.Time) (Series, error) {
-	ttl := httpx.TTL(untilNextHour(now))
-	out := newSeries(l)
+	var addrs, kinds []string
 	for _, q := range pointAsks(l) { // a hundred points an ask (D-201, P10-02)
 		days := cloneValues(q)
 		days.Set("maxt", "maxt")
@@ -66,15 +66,42 @@ func (s *NDFD) Fetch(ctx context.Context, l Lattice, now time.Time) (Series, err
 		days.Set("wdir", "wdir")
 		days.Set("wgust", "wgust") // the gusts (D-136): hourly as the wind is, each day's strongest worked out here
 		days.Set("appt", "appt")   // feels-like (D-119): hourly, then every few hours; its days worked out here
-		body, err := s.get.GetText(ctx, s.base+"/xml/sample_products/browser_interface/ndfdXMLclient.php?"+days.Encode(), ttl)
-		if err != nil {
-			return Series{}, fmt.Errorf("NDFD days: %w", err)
+		addrs, kinds = append(addrs, s.base+"/xml/sample_products/browser_interface/ndfdXMLclient.php?"+days.Encode(), s.hourAddr(q, now)), append(kinds, "days", "hours")
+	}
+	return s.read(ctx, l, now, addrs, kinds)
+}
+
+// ndfdAskers is how many of NDFD's asks are in flight at once (U2-54): a
+// box's eight asks one after another take tens of seconds.
+const ndfdAskers = 4
+
+// read asks for every address and reads the answers into one series in the
+// order asked - the first refusal is the series'. A lattice of more than one
+// ask goes ndfdAskers at a time; one of a single ask, the days then the hour.
+func (s *NDFD) read(ctx context.Context, l Lattice, now time.Time, addrs, kinds []string) (Series, error) {
+	bodies, errs := make([][]byte, len(addrs)), make([]error, len(addrs))
+	askers := ndfdAskers
+	if len(addrs) <= 2 {
+		askers = 1
+	}
+	slots := make(chan struct{}, askers)
+	var wg sync.WaitGroup
+	for i, a := range addrs { // a lattice's asks (P10-02)
+		wg.Add(1)
+		slots <- struct{}{}
+		go func() {
+			defer func() { <-slots; wg.Done() }()
+			bodies[i], errs[i] = s.get.GetText(ctx, a, httpx.TTL(untilNextHour(now)))
+		}()
+	}
+	wg.Wait()
+	out := newSeries(l)
+	for i := range addrs { // in the order asked (P10-02)
+		if errs[i] != nil {
+			return Series{}, fmt.Errorf("NDFD %s: %w", kinds[i], errs[i])
 		}
-		if err := parseDWML(body, now, &out); err != nil {
-			return Series{}, fmt.Errorf("NDFD days: %w", err)
-		}
-		if err := s.readHour(ctx, q, now, &out); err != nil {
-			return Series{}, err
+		if err := parseDWML(bodies[i], now, &out); err != nil {
+			return Series{}, fmt.Errorf("NDFD %s: %w", kinds[i], err)
 		}
 	}
 	return out, nil
@@ -104,17 +131,15 @@ func pointAsks(l Lattice) []url.Values {
 // for the history's recorder (W18.3b, D-166): Fetch's second ask, the very
 // address, so the two share the HTTP cache.
 func (s *NDFD) Hour(ctx context.Context, l Lattice, now time.Time) (Series, error) {
-	out := newSeries(l)
+	var addrs, kinds []string
 	for _, q := range pointAsks(l) { // a hundred points an ask (D-201, P10-02)
-		if err := s.readHour(ctx, q, now, &out); err != nil {
-			return Series{}, err
-		}
+		addrs, kinds = append(addrs, s.hourAddr(q, now)), append(kinds, "hours")
 	}
-	return out, nil
+	return s.read(ctx, l, now, addrs, kinds)
 }
 
-// readHour asks for the current hour, with its zone, and reads it into out.
-func (s *NDFD) readHour(ctx context.Context, q url.Values, now time.Time, out *Series) error {
+// hourAddr is the ask for the current hour, with its zone.
+func (s *NDFD) hourAddr(q url.Values, now time.Time) string {
 	hour := now.UTC().Truncate(time.Hour)
 	hours := cloneValues(q)
 	hours.Set("temp", "temp")
@@ -124,14 +149,7 @@ func (s *NDFD) readHour(ctx context.Context, q url.Values, now time.Time, out *S
 	hours.Set("appt", "appt")
 	hours.Set("begin", hour.Format("2006-01-02T15:04:05Z"))
 	hours.Set("end", hour.Add(time.Hour).Format("2006-01-02T15:04:05Z"))
-	body, err := s.get.GetText(ctx, s.base+"/xml/sample_products/browser_interface/ndfdXMLclient.php?"+hours.Encode(), httpx.TTL(untilNextHour(now)))
-	if err != nil {
-		return fmt.Errorf("NDFD hours: %w", err)
-	}
-	if err := parseDWML(body, now, out); err != nil {
-		return fmt.Errorf("NDFD hours: %w", err)
-	}
-	return nil
+	return s.base + "/xml/sample_products/browser_interface/ndfdXMLclient.php?" + hours.Encode()
 }
 
 func cloneValues(v url.Values) url.Values {

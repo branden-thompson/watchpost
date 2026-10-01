@@ -104,6 +104,8 @@ type Config struct {
 	// MapRainDetail is the file's word for the rain's density past NDFD's
 	// reach: "full", or coarse, the default (D-192).
 	MapRainDetail string
+	// MapFrameText asks the frame recorder for each frame's text as well (D-198).
+	MapFrameText bool
 	// MapUVCities is the file's count of cities UV asks EPA for: 8, 24 or
 	// 48; anything else is 24, the default (D-202).
 	MapUVCities int

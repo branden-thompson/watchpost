@@ -30,15 +30,14 @@ func (l Lattice) Interpolate(values []float64) Field { return l.interpolate(valu
 // InterpolateWide is Interpolate for NDFD's temperature, feels like and wind
 // (D-201, UAT-2 U2-50): a cell is missing only where all four of its points
 // are. Land beside a point over the sea, Mexico or Canada - where NDFD
-// answers nothing - was blank under the nearest rule (the Florida panhandle,
-// Big Bend, Boston); weighed from the points that answered, it is drawn, and
-// past the border it runs at most one lattice cell - half of what it did
-// before NDFD's lattice was made twice as dense.
+// answers nothing, and the nearest rule would leave the Florida panhandle,
+// Big Bend and Boston blank - is weighed from the points that answered; past
+// the border it runs at most one cell of NDFD's dense lattice.
 func (l Lattice) InterpolateWide(values []float64) Field { return l.interpolate(values, true) }
 
 // fine is how many cells a lattice cell is split into each way: Fine, or half
-// as many for a lattice past twice MaxPoints (NDFD's, D-201) - the drawn field
-// about as fine as before, not four times the cells.
+// as many for a lattice past twice MaxPoints (NDFD's, D-201) - so a dense
+// lattice's field has about as many cells as a coarse one's.
 func (l Lattice) fine() int {
 	if l.Cols*l.Rows > 2*MaxPoints {
 		return Fine / 2

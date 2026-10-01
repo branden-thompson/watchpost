@@ -160,32 +160,37 @@ func TestAPastHourIsReplayedFromTheHistory(t *testing.T) {
 	}
 	fb := &fallback{src: &nowOnly{}, past: recordedHour(store)}
 	got := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: now, failed: true}, nil, tempAsk(false), now, fb)
-	spans := map[time.Time]float64{}
-	for _, o := range got.Overlays {
-		if strings.Contains(o.ID, "/"+box.Name+"/") {
-			spans[o.During.From] = o.Grid.Values[0]
+	// EACH RECORDED HOUR IS DRAWN AS ITSELF: a grid of its own covers it and
+	// ends with it - the current hour is never stretched over a recorded one
+	// (the earliest may reach back under the loop's start, U2-55).
+	own := func(hour time.Time) bool {
+		for _, o := range got.Overlays {
+			if strings.Contains(o.ID, "/"+box.Name+"/") && !o.During.From.After(hour) && o.During.Until.Before(hour.Add(time.Hour)) && !o.During.Until.Before(hour.Add(time.Hour-time.Second)) {
+				return true
+			}
 		}
+		return false
 	}
 	for _, back := range []time.Duration{2 * time.Hour, time.Hour} {
-		if _, ok := spans[anchor.Add(-back)]; !ok {
-			t.Errorf("the hour %v before was not replayed: drawn from %v", back, spans)
+		if !own(anchor.Add(-back)) {
+			t.Errorf("the hour %v before was not replayed as itself", back)
 		}
-	}
-	if _, stretched := spans[anchor.Add(-time.Hour)]; stretched && len(spans) < 3 {
-		t.Error("the current hour was stretched over a recorded hour")
 	}
 	if chips := got.Chips[tty.TemperatureLayer]; !slices.Equal(chips, []string{"NDFD", "RECORDED"}) {
 		t.Errorf("the temperature's chips are %v; want NDFD then RECORDED (D-173)", chips)
 	}
-	// A RECORD OF ANOTHER SHAPE IS NOT DRAWN: the box's geometry changed since.
+	// A RECORD OF ANOTHER BOX IS NOT DRAWN: its points are another place's.
+	// (A record on another lattice of this box is put on its points: onLattice.)
 	odd := history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly)
-	other := temperature.Lattice{Name: box.Name, Box: lat.Box, Cols: lat.Cols + 1, Rows: lat.Rows}
+	moved := lat.Box
+	moved.W -= 1
+	other := temperature.Lattice{Name: box.Name, Box: moved, Cols: lat.Cols, Rows: lat.Rows}
 	oddSeries, _ := f.hour(context.Background(), other, anchor.Add(-time.Hour))
 	if rec, ok := ndfdRecord(oddSeries, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-time.Hour)); !ok || !odd.Put(ndfdHourly.Name, rec) {
 		t.Fatal("could not seed the odd record")
 	}
 	if _, n := withRecorded(temperature.Series{Lattice: lat}, recordedHour(odd), box.Name, anchor); n != 0 {
-		t.Errorf("a record of another shape was replayed (%d)", n)
+		t.Errorf("a record of another box was replayed (%d)", n)
 	}
 	cold := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: now, failed: true}, nil, tempAsk(false), now, &fallback{src: &nowOnly{}, past: recordedHour(history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly))})
 	if slices.Contains(cold.Chips[tty.TemperatureLayer], "RECORDED") {
@@ -193,10 +198,10 @@ func TestAPastHourIsReplayedFromTheHistory(t *testing.T) {
 	}
 	stretched := false
 	for _, o := range cold.Overlays {
-		stretched = stretched || o.During.From.Equal(anchor.Add(-time.Hour)) && o.During.Until.After(anchor)
+		stretched = stretched || !o.During.From.After(anchor.Add(-pastHours*time.Hour)) && o.During.Until.After(anchor)
 	}
 	if !stretched {
-		t.Error("with nothing recorded the current hour is not stretched (the cold start)")
+		t.Error("with nothing recorded the current hour is not drawn under all of the loop's past (the cold start, U2-55)")
 	}
 }
 
@@ -221,15 +226,15 @@ func TestRadarModeOnNDFDDrawsItsPastHoursFromTheHistory(t *testing.T) {
 	}
 	om := &fakeTemp{name: "Open-Meteo", now: now}
 	got := buildTemperature(context.Background(), &nowOnly{}, om, tempAsk(false), now, &fallback{past: recordedHour(store)})
-	from := map[time.Time]bool{}
+	until := map[time.Time]bool{} // each recorded hour a grid of its own, ending with it
 	for _, o := range got.Overlays {
 		if strings.Contains(o.ID, "/"+box.Name+"/") {
-			from[o.During.From] = true
+			until[o.During.Until.Truncate(time.Hour)] = true
 		}
 	}
 	for _, back := range []time.Duration{2 * time.Hour, time.Hour} {
-		if !from[anchor.Add(-back)] {
-			t.Errorf("the hour %v before was not drawn from the history: %v", back, from)
+		if !until[anchor.Add(-back)] {
+			t.Errorf("the hour %v before was not drawn from the history: %v", back, until)
 		}
 	}
 	if chips := got.Chips[tty.TemperatureLayer]; !slices.Equal(chips, []string{"NDFD", "RECORDED"}) {
@@ -334,59 +339,64 @@ func TestForecastModeOnNDFDDrawsTodayFromTheHistory(t *testing.T) {
 	ask.TempNDFD = true
 	anchor := ask.Anchor
 	box := fieldBoxes(ask.Region, ask.View)[0]
-	lat := temperature.NDFDLatticeFor(box.Name, box.Box) // the map draws NDFD on its own (D-201)
-	n := lat.Cols * lat.Rows
-	all := func(v float64) []float64 {
-		out := make([]float64, n)
-		for i := range out {
-			out[i] = v
-		}
-		return out
-	}
-	store := history.Open(t.TempDir(), func() time.Time { return tempNow }, ndfdHourly)
-	day := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 0, 0, 0, 0, anchor.Location())
-	for h := day; !h.After(anchor); h = h.Add(time.Hour) {
-		temp := 10 + float64(h.Hour())/2 // 10 °C at midnight, 20 at 20:00
-		rec := history.Record{Key: history.Key{Source: "ndfd", Place: box.Name}, At: h, IssuedAt: h,
-			Shape:  history.Shape{Box: lat.Box, Cols: lat.Cols, Rows: lat.Rows},
-			Values: map[string][]float64{"temp": all(temp), "feels": all(temp - 5), "wind": all(10), "wind_from": all(180), "gust": all(20)}}
-		if !store.Put(ndfdHourly.Name, rec) {
-			t.Fatal("could not seed the history")
-		}
-	}
-	ndfd := temperature.NewNDFD(&costGet{asked: map[string]bool{}, now: tempNow}, "")
-	om := &fakeTemp{name: "Open-Meteo", now: tempNow}
-	got := buildTemperature(context.Background(), ndfd, om, ask, tempNow, &fallback{past: recordedHour(store)})
-	if om.asked != 0 {
-		t.Errorf("Open-Meteo was asked %d times; the history held Now and Today", om.asked)
-	}
-	value := func(os []tuimaps.Overlay, id string) (float64, bool) {
-		for _, o := range os {
-			if o.ID == id {
-				return o.Grid.Values[0], true
+	// ON EITHER OF THE BOX'S LATTICES (U2-55): hours recorded on NDFD's and on
+	// the box's coarser one fill Today alike.
+	for name, lat := range map[string]temperature.Lattice{"NDFD's": temperature.NDFDLatticeFor(box.Name, box.Box), "the old": temperature.LatticeFor(box.Name, box.Box)} {
+		t.Run(name, func(t *testing.T) {
+			n := lat.Cols * lat.Rows
+			all := func(v float64) []float64 {
+				out := make([]float64, n)
+				for i := range out {
+					out[i] = v
+				}
+				return out
 			}
-		}
-		return 0, false
-	}
-	f := func(c float64) float64 { return c*9/5 + 32 }
-	if v, ok := value(got.Feels, tty.FeelsLayer+"/"+box.Name+"/now"); !ok || math.Abs(v-f(15)) > 0.01 {
-		t.Errorf("Now's feels-like is %v (%v); want the recorded hour's %v (D-188)", v, ok, f(15))
-	}
-	if v, ok := value(got.High, tty.TemperatureLayer+"/"+box.Name+"/d0/high"); !ok || math.Abs(v-f(20)) > 0.01 {
-		t.Errorf("Today's high is %v (%v); want the recorded hours' highest %v (D-189)", v, ok, f(20))
-	}
-	if v, ok := value(got.Low, tty.TemperatureLayer+"/"+box.Name+"/d0/low"); !ok || math.Abs(v-f(10)) > 0.01 {
-		t.Errorf("Today's low is %v (%v); want the recorded hours' lowest %v (D-189)", v, ok, f(10))
-	}
-	if v, ok := value(got.FeelsHigh, tty.FeelsLayer+"/"+box.Name+"/d0/high"); !ok || math.Abs(v-61) > 0.01 {
-		t.Errorf("Today's feels-like high is %v (%v); want NDFD's own 61 - the history fills only what NDFD left empty", v, ok)
-	}
-	cold := buildTemperature(context.Background(), ndfd, om, ask, tempNow, &fallback{past: recordedHour(history.Open(t.TempDir(), func() time.Time { return tempNow }, ndfdHourly))})
-	if v, ok := value(cold.Feels, tty.FeelsLayer+"/"+box.Name+"/now"); !ok || math.Abs(v-61) > 0.01 {
-		t.Errorf("nothing recorded, Now's feels-like is %v (%v); want NDFD's next hour, 61 (D-188)", v, ok)
-	}
-	if v, ok := value(cold.Low, tty.TemperatureLayer+"/"+box.Name+"/d0/low"); !ok || om.asked == 0 || math.Abs(v-41) > 0.01 {
-		t.Error("nothing recorded, the empty Today was not Open-Meteo's (D-189)")
+			store := history.Open(t.TempDir(), func() time.Time { return tempNow }, ndfdHourly)
+			day := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 0, 0, 0, 0, anchor.Location())
+			for h := day; !h.After(anchor); h = h.Add(time.Hour) {
+				temp := 10 + float64(h.Hour())/2 // 10 °C at midnight, 20 at 20:00
+				rec := history.Record{Key: history.Key{Source: "ndfd", Place: box.Name}, At: h, IssuedAt: h,
+					Shape:  history.Shape{Box: lat.Box, Cols: lat.Cols, Rows: lat.Rows},
+					Values: map[string][]float64{"temp": all(temp), "feels": all(temp - 5), "wind": all(10), "wind_from": all(180), "gust": all(20)}}
+				if !store.Put(ndfdHourly.Name, rec) {
+					t.Fatal("could not seed the history")
+				}
+			}
+			ndfd := temperature.NewNDFD(&costGet{asked: map[string]bool{}, now: tempNow}, "")
+			om := &fakeTemp{name: "Open-Meteo", now: tempNow}
+			got := buildTemperature(context.Background(), ndfd, om, ask, tempNow, &fallback{past: recordedHour(store)})
+			if om.asked != 0 {
+				t.Errorf("Open-Meteo was asked %d times; the history held Now and Today", om.asked)
+			}
+			value := func(os []tuimaps.Overlay, id string) (float64, bool) {
+				for _, o := range os {
+					if o.ID == id {
+						return o.Grid.Values[0], true
+					}
+				}
+				return 0, false
+			}
+			f := func(c float64) float64 { return c*9/5 + 32 }
+			if v, ok := value(got.Feels, tty.FeelsLayer+"/"+box.Name+"/now"); !ok || math.Abs(v-f(15)) > 0.01 {
+				t.Errorf("Now's feels-like is %v (%v); want the recorded hour's %v (D-188)", v, ok, f(15))
+			}
+			if v, ok := value(got.High, tty.TemperatureLayer+"/"+box.Name+"/d0/high"); !ok || math.Abs(v-f(20)) > 0.01 {
+				t.Errorf("Today's high is %v (%v); want the recorded hours' highest %v (D-189)", v, ok, f(20))
+			}
+			if v, ok := value(got.Low, tty.TemperatureLayer+"/"+box.Name+"/d0/low"); !ok || math.Abs(v-f(10)) > 0.01 {
+				t.Errorf("Today's low is %v (%v); want the recorded hours' lowest %v (D-189)", v, ok, f(10))
+			}
+			if v, ok := value(got.FeelsHigh, tty.FeelsLayer+"/"+box.Name+"/d0/high"); !ok || math.Abs(v-61) > 0.01 {
+				t.Errorf("Today's feels-like high is %v (%v); want NDFD's own 61 - the history fills only what NDFD left empty", v, ok)
+			}
+			cold := buildTemperature(context.Background(), ndfd, om, ask, tempNow, &fallback{past: recordedHour(history.Open(t.TempDir(), func() time.Time { return tempNow }, ndfdHourly))})
+			if v, ok := value(cold.Feels, tty.FeelsLayer+"/"+box.Name+"/now"); !ok || math.Abs(v-61) > 0.01 {
+				t.Errorf("nothing recorded, Now's feels-like is %v (%v); want NDFD's next hour, 61 (D-188)", v, ok)
+			}
+			if v, ok := value(cold.Low, tty.TemperatureLayer+"/"+box.Name+"/d0/low"); !ok || om.asked == 0 || math.Abs(v-41) > 0.01 {
+				t.Error("nothing recorded, the empty Today was not Open-Meteo's (D-189)")
+			}
+		})
 	}
 }
 

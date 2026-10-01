@@ -306,8 +306,8 @@ type uvCities struct {
 // (D-202), so New York's boroughs are one marker, not three.
 const uvCitySpacingKm = 100
 
-// uvAskers is how many cities are asked at once: never one by one - 24 asks
-// in a row held the map's UV for seconds - and never all at once.
+// uvAskers is how many cities are asked at once: never one by one, which
+// holds the map's UV for seconds at 24 cities, and never all at once.
 const uvAskers = 4
 
 // markers are the cities' UV as points in their bands' colours, each

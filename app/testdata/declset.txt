@@ -577,6 +577,7 @@ func fetchForecast
 func fieldBoxes
 func fieldGrid
 func fillDays
+func fillPast
 func fireChosen
 func fireHosts
 func fireLayerCost
@@ -670,6 +671,7 @@ func newTimingLog
 func nextFeels
 func notNew
 func noteRead
+func onLattice
 func onTheRail
 func overClient
 func overlayStamp
@@ -794,7 +796,6 @@ func startTicker
 func stateNear
 func stationFrom
 func stationsIn
-func stretchNow
 func subjectOf
 func suggestHook
 func tapeHead

@@ -318,9 +318,9 @@ var setupAllocBudget = map[string]float64{
 	// the widest, so a frame measures five tabs where it measured three.
 	// 80x24-miss 3_127 -> 3_319 (+6%) at U1-35: the map's detail is eight
 	// picker rows, each with its two arrow chips, where it was one list.
-	// 80x24-miss 3_319 -> 3_491 (+5%) at D-202: the UV cities row on the Maps
-	// tab, measured on every tab for the window's width - after the tab row
-	// was built once a frame (U2-49) and the row's cost note kept to its focus.
+	// 80x24-miss measured 3_491 with the Maps tab's UV cities row (D-202):
+	// every tab is laid out for the window's width, so a row on one tab costs
+	// every Settings frame.
 	"80x24-hit": 1_604 * 1.05, "80x24-miss": 3_491 * 1.05, // and 2_971 -> 3_127 with the detail level row (D-67)
 }
 

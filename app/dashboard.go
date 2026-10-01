@@ -420,31 +420,32 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		SetUI:           setUI,
 		Units:           cfg.Units,
 		Clock:           cfg.Clock,
-		Maps:            cfg.Maps,                      // 0.18.0 W1.10
-		MapDescription:  cfg.MapDescription,            // 0.18.0 W1.10
-		MapScale:        cfg.MapScale,                  // 0.18.0 W1.11, W4.3
-		MapNearbyKm:     cfg.MapNearbyKm,               // 0.18.0 W1.11, W9.2
-		MapRadarSource:  cfg.MapRadarSource,            // D-83: the lower 48's radar
-		MapTempSource:   cfg.MapTemperatureSource,      // D-93, D-190: the map's temperature
-		MapRainDetail:   cfg.MapRainDetail,             // D-192: the rain's density past NDFD's reach
-		MapUVCities:     cfg.MapUVCities,               // D-202: how many cities UV asks EPA for
-		MapRadarAhead:   cfg.MapRadarAheadHours,        // D-114: the radar loop's hours ahead
-		MapQuakeFeed:    cfg.MapQuakeFeed,              // D-122: the quakes the map draws
-		MapProblem:      lp.problems.note,              // D-124: the diagnostics', never the listener's
-		Timed:           lp.timings.hook(),             // W14's instrument: nil unless WATCHPOST_DEBUG_TIMING=1
-		MapFrame:        newFrameLog().hook(),          // D-198's recorder: nil unless WATCHPOST_DEBUG_MAPFRAMES names a file
-		MapClosed:       lp.mapClosed,                  // D-162: the zone store's memory goes when the map closes
-		MapLayerChoice:  cfg.MapLayers,                 // 0.18.0 W1.11
-		MapLayers:       windowLayers(),                // 0.18.0 W1.13: the registry's layers
-		MapCost:         lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate
-		MapDetailChoice: cfg.MapDetail,                 // UAT-1 D-65: the map's detail
-		MapDetailLevel:  cfg.MapDetailLevel,            // UAT-1 D-67: its level
-		MapAreaName:     mapAreaNamer(lp.idx),          // UAT-1 D-64: the title names what is in view
-		Hydrate:         lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
-		Credits:         credits(),                     // data-source credits, licence obligations included (UAT 75)
-		MapCredits:      mapCredits(),                  // 0.18.0 D-148: the map's, in About with the rest
-		AboutNotes:      aboutNotes(),                  // the relays' condition of use and the safety framing, after every credit
-		FireBoldMW:      fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules
+		Maps:            cfg.Maps,                                          // 0.18.0 W1.10
+		MapDescription:  cfg.MapDescription,                                // 0.18.0 W1.10
+		MapScale:        cfg.MapScale,                                      // 0.18.0 W1.11, W4.3
+		MapNearbyKm:     cfg.MapNearbyKm,                                   // 0.18.0 W1.11, W9.2
+		MapRadarSource:  cfg.MapRadarSource,                                // D-83: the lower 48's radar
+		MapTempSource:   cfg.MapTemperatureSource,                          // D-93, D-190: the map's temperature
+		MapRainDetail:   cfg.MapRainDetail,                                 // D-192: the rain's density past NDFD's reach
+		MapUVCities:     cfg.MapUVCities,                                   // D-202: how many cities UV asks EPA for
+		MapRadarAhead:   cfg.MapRadarAheadHours,                            // D-114: the radar loop's hours ahead
+		MapQuakeFeed:    cfg.MapQuakeFeed,                                  // D-122: the quakes the map draws
+		MapProblem:      lp.problems.note,                                  // D-124: the diagnostics', never the listener's
+		Timed:           lp.timings.hook(),                                 // W14's instrument: nil unless WATCHPOST_DEBUG_TIMING=1
+		MapFrame:        newFrameLog().hook(),                              // D-198's recorder: nil unless WATCHPOST_DEBUG_MAPFRAMES names a file
+		MapFrameText:    os.Getenv("WATCHPOST_DEBUG_MAPFRAMES_TEXT") != "", // the recorder keeps each frame's text too
+		MapClosed:       lp.mapClosed,                                      // D-162: the zone store's memory goes when the map closes
+		MapLayerChoice:  cfg.MapLayers,                                     // 0.18.0 W1.11
+		MapLayers:       windowLayers(),                                    // 0.18.0 W1.13: the registry's layers
+		MapCost:         lp.mapCost,                                        // 0.18.0 W1.14: the registry's estimate
+		MapDetailChoice: cfg.MapDetail,                                     // UAT-1 D-65: the map's detail
+		MapDetailLevel:  cfg.MapDetailLevel,                                // UAT-1 D-67: its level
+		MapAreaName:     mapAreaNamer(lp.idx),                              // UAT-1 D-64: the title names what is in view
+		Hydrate:         lp.hydrate,                                        // hourly forecast on demand for RECENT rows (UAT 72)
+		Credits:         credits(),                                         // data-source credits, licence obligations included (UAT 75)
+		MapCredits:      mapCredits(),                                      // 0.18.0 D-148: the map's, in About with the rest
+		AboutNotes:      aboutNotes(),                                      // the relays' condition of use and the safety framing, after every credit
+		FireBoldMW:      fireRules(cfg.Fire).BoldFRPMW,                     // B5: one owner for the emphasis threshold — the [fire] rules
 		// THE SAME OWNER FOR THE TWO RINGS. The detail states each ring beside
 		// the list it admits, so the window and the spoken report cannot
 		// disagree about how far either looked.

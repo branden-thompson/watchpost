@@ -750,3 +750,26 @@ func TestTheFrameRecorderTellsEachFrame(t *testing.T) {
 		t.Errorf("the last frame told is %+v; want the loop's newest frame, its radar counted", last)
 	}
 }
+
+// THE RECORDER'S TEXT, SPANS, CHIPS AND NOTES ARE KEPT ONLY WHEN ASKED
+// (U2-55 to U2-58's live runs): a frame's text is kilobytes a frame; the
+// counts by layer are always told.
+func TestTheFrameRecordersTextIsKeptOnlyWhenAsked(t *testing.T) {
+	for _, asked := range []bool{false, true} {
+		var frames []MapFrame
+		var asks []string
+		d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asks), MapFrameText: asked,
+			MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}},
+			MapFrame:  func(f MapFrame) { frames = append(frames, f) }})
+		d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
+		m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+		settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
+		last := frames[len(frames)-1]
+		if got := last.Text != "" && last.Spans != nil; got != asked {
+			t.Errorf("asked %v: the text and spans kept %v", asked, got)
+		}
+		if last.Given == nil || last.Cells["radar"] != last.RadarCells {
+			t.Errorf("asked %v: the counts by layer are not told: %+v %+v", asked, last.Given, last.Cells)
+		}
+	}
+}

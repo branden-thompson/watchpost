@@ -73,6 +73,16 @@ func g() {}`, []string{"AP-HIST-01"}},
 // Found by red team round 3, on the row that ratifies the import.
 func h() {}`, []string{"AP-HIST-01"}},
 
+		{"a fix narrating the defect it fixed", `package p
+// Land beside an empty point was blank under the nearest rule.
+func w() {}`, []string{"AP-HIST-01"}},
+		{"a fix narrating what was never seen", `package p
+// Each of these turns temperature off, so under Notes they were never seen.
+func x() {}`, []string{"AP-HIST-01"}},
+		{"a fix narrating a batch", `package p
+// Batch 97 made NDFD's lattice denser; its asks took half a minute.
+func y() {}`, []string{"AP-HIST-01"}},
+
 		// THE CORRECTED FORMS MUST PASS. If these are flagged the tool is telling
 		// authors to delete the reasoning, which is worse than the defect.
 		{"corrected form: states current intent", `package p
@@ -90,6 +100,10 @@ func m() {}`, nil},
 func OldThing() {}`, nil},
 		{"the phrase inside a string literal is not a comment", `package p
 func f() string { return "this used to be the old API" }`, nil},
+		{"the present tense of the same facts passes", `package p
+// A cell is blank only where all four of its points are; NDFD's lattice is
+// denser than Open-Meteo's, and its asks go four at a time.
+func z() {}`, nil},
 		{"a word ENDING in used is not the phrase", `package p
 // A director that refused to be built is not a schedule.
 func n() {}`, nil},

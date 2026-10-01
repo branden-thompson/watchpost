@@ -97,14 +97,13 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd waveSource, om ma
 	for _, b := range fieldBoxes(ask.Region, ask.View) {
 		lat := temperature.LatticeFor(b.Name, b.Box)
 		w, nerr := ndfd.Waves(ctx, lat, now)
-		cold := false
 		if nerr == nil {
 			fromNDFD = true
 			past := recordedWaves(&w, keep.store, b.Name, anchor)
 			replayed += past
 			if _, ok := w.At(anchor); !ok {
-				if next, ok := w.At(anchor.Add(time.Hour)); ok && w.SetHour(anchor, next) {
-					cold = true // nothing recorded: NDFD's next hour, stretched (D-194)
+				if next, ok := w.At(anchor.Add(time.Hour)); ok {
+					w.SetHour(anchor, next) // nothing recorded: NDFD's next hour, drawn back under the loop (D-194)
 				}
 			}
 		} else {
@@ -130,9 +129,7 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd waveSource, om ma
 			hours := hourGrids(tty.WaveLayer, b.Name, w.Hours, len(w.Hourly), anchor, radarHorizon(ask, anchor), func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
 				return waveGrid(id, lat, w.Hourly[i], unit, valid, anchor)
 			})
-			if cold {
-				stretchNow(hours, anchor)
-			}
+			fillPast(hours, anchor) // every observed frame drawn (U2-55 to U2-57)
 			t.Waves = append(t.Waves, hours...)
 			continue
 		}

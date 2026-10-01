@@ -106,7 +106,7 @@ type MapTemperature struct {
 	Notes    []string // temperature's, feels like's and wind's
 	// LayerNotes are another layer's notes, by its key: shown while that
 	// layer is on (U2-52, D-203). Each of these turns temperature off, so
-	// under Notes they were never seen.
+	// their notes cannot ride on Notes.
 	LayerNotes map[string][]string
 	// Quota is a source's spent quota, while one is (W18.1, D-165): the map
 	// says it in its notice. Nil when nothing is refused.

@@ -1,18 +1,22 @@
 package temperature
 
-// reach_test.go — D-201 (UAT-2 U2-50): NDFD's temperature was blank over the
-// Florida panhandle, northeast New England and southwest Texas - land whose
-// nearest lattice point lay over the sea, Mexico or Canada, where NDFD answers
-// nothing. A cell is blank now only where all four of its corners are, and
-// NDFD's lattice is about twice as dense, asked a hundred points at a time.
+// reach_test.go — D-201 (UAT-2 U2-50): NDFD's temperature reaches the coasts
+// and borders - the Florida panhandle, northeast New England, southwest Texas:
+// land whose nearest lattice point lies over the sea, Mexico or Canada, where
+// NDFD answers nothing. A cell is blank only where all four of its corners
+// are, and NDFD's lattice is about twice as dense, asked a hundred points at
+// a time.
 
 import (
 	"context"
 	"fmt"
 	"math"
 	"net/url"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -65,8 +69,8 @@ func TestNDFDsLatticeIsTwiceAsDense(t *testing.T) {
 	if n := ndfd.Cols * ndfd.Rows; n > NDFDMaxPoints || ndfd.Cols < 2*om.Cols-1 || ndfd.Rows < 2*om.Rows-1 {
 		t.Errorf("NDFD's lattice is %dx%d (%d points) against Open-Meteo's %dx%d; want about twice each way, at most %d", ndfd.Cols, ndfd.Rows, n, om.Cols, om.Rows, NDFDMaxPoints)
 	}
-	// THE DRAWN FIELD IS AS FINE AS BEFORE, NOT FOUR TIMES THE CELLS: a lattice
-	// twice as dense is split half as fine.
+	// THE DRAWN FIELD IS AS FINE AS A COARSE LATTICE'S, NOT FOUR TIMES THE
+	// CELLS: a lattice twice as dense is split half as fine.
 	vals := make([]float64, ndfd.Cols*ndfd.Rows)
 	f, g := ndfd.InterpolateWide(vals), om.Interpolate(make([]float64, om.Cols*om.Rows))
 	if f.Cols > 2*g.Cols+Fine || f.Rows > 2*g.Rows+Fine {
@@ -77,10 +81,15 @@ func TestNDFDsLatticeIsTwiceAsDense(t *testing.T) {
 // pointsGet is NDFD answering for whatever points it is asked: each point's
 // hour at its latitude in Fahrenheit, so an answer's every value says which
 // point it is.
-type pointsGet struct{ asks []string }
+type pointsGet struct {
+	mu   sync.Mutex
+	asks []string
+}
 
 func (g *pointsGet) GetText(_ context.Context, raw string, _ ...httpx.Option) ([]byte, error) {
+	g.mu.Lock()
 	g.asks = append(g.asks, raw)
+	g.mu.Unlock()
 	u, err := url.Parse(raw)
 	if err != nil {
 		return nil, err
@@ -150,6 +159,8 @@ func TestNDFDIsAskedAHundredPointsAtATime(t *testing.T) {
 	if _, err := NewNDFD(rec, "").Hour(context.Background(), l, captured); err != nil {
 		t.Fatal(err)
 	}
+	slices.Sort(rec.asks)
+	slices.Sort(hourAsks)
 	if strings.Join(rec.asks, "\n") != strings.Join(hourAsks, "\n") {
 		t.Errorf("the recorder's hour asked other addresses than Fetch's: the cache is not shared\n%v\n%v", rec.asks, hourAsks)
 	}
@@ -157,8 +168,7 @@ func TestNDFDIsAskedAHundredPointsAtATime(t *testing.T) {
 
 // ANOTHER LATTICE'S VALUES ARE RESAMPLED ONTO THIS ONE'S POINTS (D-201): a
 // day NDFD left empty is filled from Open-Meteo's coarser lattice (D-189),
-// whose values are put on NDFD's points - copied whole, the lengths
-// disagreed and the day drew blank.
+// whose values are put on NDFD's points, as the lattices' lengths differ.
 func TestValuesAreResampledOntoAnotherLattice(t *testing.T) {
 	box := geo.Box{W: -120, S: 30, E: -100, N: 45}
 	coarse, dense := LatticeFor("b", box), NDFDLatticeFor("b", box)
@@ -215,5 +225,52 @@ func TestADirectionIsResampledByItsNearestPoint(t *testing.T) {
 	}
 	if got[0] != 350 || got[2] != 10 {
 		t.Errorf("the corners are %v and %v; want their own points', 350 and 10", got[0], got[2])
+	}
+}
+
+// slowPoints is pointsGet answering after a pause, counting asks in flight.
+type slowPoints struct {
+	mu            sync.Mutex
+	inner         pointsGet
+	inFlight, max int
+}
+
+func (g *slowPoints) GetText(ctx context.Context, raw string, opts ...httpx.Option) ([]byte, error) {
+	g.mu.Lock()
+	g.inFlight++
+	g.max = max(g.max, g.inFlight)
+	g.mu.Unlock()
+	time.Sleep(30 * time.Millisecond)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.inFlight--
+	return g.inner.GetText(ctx, raw, opts...)
+}
+
+// NDFD'S ASKS GO A FEW AT A TIME (UAT-2 U2-54): a hundred points an ask is
+// eight asks a box, which one after another hold the temperature for tens of
+// seconds. They go four at a time, and every answer is read in order.
+func TestNDFDsAsksGoAFewAtATime(t *testing.T) {
+	l := NDFDLatticeFor("us", geo.Box{W: -130, S: 23, E: -64, N: 51})
+	get := &slowPoints{}
+	s, err := NewNDFD(get, "").Fetch(context.Background(), l, captured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if get.max < 2 || get.max > ndfdAskers {
+		t.Errorf("%d asks were in flight at most; want between 2 and %d", get.max, ndfdAskers)
+	}
+	hour, _, ok := s.HourAt(captured)
+	if !ok {
+		t.Fatal("no current hour")
+	}
+	for i, p := range l.Points() {
+		if !near(hour[i], fahrenheitToC(p.Lat)) {
+			t.Fatalf("point %d reads %v; want its own answer", i, hour[i])
+		}
+	}
+	rec := &slowPoints{}
+	if _, err := NewNDFD(rec, "").Hour(context.Background(), l, captured); err != nil || rec.max < 2 {
+		t.Errorf("the recorder's hour asked one at a time (%d at most, %v)", rec.max, err)
 	}
 }

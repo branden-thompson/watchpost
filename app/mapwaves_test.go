@@ -290,12 +290,9 @@ func TestTheWavesAreNDFDsFirstAndOpenMeteoOnlyPastItsReach(t *testing.T) {
 		t.Errorf("the second refresh asked %v; want the sea point alone - the land learned", asks[1:])
 	}
 	cold := withWaves(context.Background(), tty.MapTemperature{}, ndfd, om, ask, tempNow, waveKeep{land: &landPoints{}})
-	stretched := false
-	for _, o := range cold.Waves {
-		stretched = stretched || o.During.From.Before(anchor) && !o.During.Until.Before(anchor)
-	}
-	if !stretched || slices.Contains(cold.Chips[tty.WaveLayer], "RECORDED") {
-		t.Error("nothing recorded, NDFD's next hour is not stretched under the loop, or RECORDED was said")
+	covered(t, "the waves, nothing recorded", cold.Waves, anchor, tempNow) // every observed frame drawn (U2-55)
+	if slices.Contains(cold.Chips[tty.WaveLayer], "RECORDED") {
+		t.Error("nothing recorded, yet RECORDED was said")
 	}
 }
 

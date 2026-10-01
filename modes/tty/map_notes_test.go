@@ -5,10 +5,9 @@ import (
 	"testing"
 )
 
-// A LAYER'S NOTES SHOW WHILE THAT LAYER IS ON (UAT-2 U2-52, D-203): the map's
-// notes were shown only while Temperature or Feels like was, and Air quality,
-// UV, Rain and Waves each turn those off - so what they said was never seen.
-// Each layer's notes now go with it; temperature's go with temperature.
+// A LAYER'S NOTES SHOW WHILE THAT LAYER IS ON (UAT-2 U2-52, D-203): Air
+// quality, UV, Rain and Waves each turn Temperature and Feels like off, so
+// each layer's notes go with it, and temperature's with temperature.
 func TestALayersNotesShowWhileItIsOn(t *testing.T) {
 	d := mapDash(t, Config{MapLayers: []MapLayer{
 		{Key: AirLayer, Label: "Air quality", On: true}, {Key: UVLayer, Label: "UV", On: false},

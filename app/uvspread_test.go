@@ -1,9 +1,9 @@
 package app
 
 // uvspread_test.go — D-202 (UAT-2 U2-51): UV's EPA cities spread over the
-// view, the count the listener's. The eight most populous cities in the lower
-// 48 were New York and its boroughs, Los Angeles, Chicago, Houston, Phoenix
-// and Philadelphia - about six markers, none between the coasts.
+// view, the count the listener's - not the most populous alone, which in the
+// lower 48 are New York and its boroughs, Los Angeles, Chicago, Houston,
+// Phoenix and Philadelphia: none between the coasts.
 
 import (
 	"context"

@@ -202,8 +202,10 @@ func (h *historian) record(ctx context.Context, lat temperature.Lattice, now tim
 	if !ok {
 		return
 	}
-	if had, ok := h.store.Get(ndfdHourly.Name, key, rec.At); ok && allMissing(rec.Values["feels"]) && had.Shape == rec.Shape && !allMissing(had.Values["feels"]) {
-		rec.Values["feels"] = had.Values["feels"] // kept for this hour an hour ago (D-188)
+	if had, ok := h.store.Get(ndfdHourly.Name, key, rec.At); ok && allMissing(rec.Values["feels"]) {
+		if v, ok := onLattice(had, lat); ok && len(v["feels"]) == len(rec.Values["temp"]) && !allMissing(v["feels"]) {
+			rec.Values["feels"] = v["feels"] // kept for this hour an hour ago (D-188)
+		}
 	}
 	h.store.Put(ndfdHourly.Name, rec)
 	if next, ok := nextFeels(s, rec); ok {
@@ -295,14 +297,13 @@ func recordedHour(store *history.Store) func(string, time.Time) (history.Record,
 
 // withRecorded is a series with the recorded hours before anchor - as many
 // as were recorded of pastHours - set before its own, each field in its
-// place, a field not recorded missing; and how many were. A record of
-// another shape than the series' lattice is not drawn.
+// place, a field not recorded missing; and how many were. A record on
+// another lattice of the box is put on the series' (onLattice).
 func withRecorded(s temperature.Series, past func(string, time.Time) (history.Record, bool), box string, anchor time.Time) (temperature.Series, int) {
 	if past == nil {
 		return s, 0
 	}
-	shape := history.Shape{Box: s.Lattice.Box, Cols: s.Lattice.Cols, Rows: s.Lattice.Rows}
-	n := shape.Cols * shape.Rows
+	n := s.Lattice.Cols * s.Lattice.Rows
 	if n <= 0 {
 		return s, 0
 	}
@@ -312,11 +313,15 @@ func withRecorded(s temperature.Series, past func(string, time.Time) (history.Re
 	for back := pastHours; back >= 1; back-- { // three (P10-02)
 		hour := anchor.Add(-time.Duration(back) * time.Hour)
 		rec, ok := past(box, hour)
-		if !ok || rec.Shape != shape || len(rec.Values["temp"]) != n {
+		if !ok {
+			continue
+		}
+		values, ok := onLattice(rec, s.Lattice)
+		if !ok || len(values["temp"]) != n {
 			continue
 		}
 		field := func(name string) []float64 {
-			if v := rec.Values[name]; len(v) == n {
+			if v := values[name]; len(v) == n {
 				return v
 			}
 			return missingRow(n)
@@ -333,6 +338,31 @@ func withRecorded(s temperature.Series, past func(string, time.Time) (history.Re
 	s.Hourly, s.Feels = append(out.Hourly, s.Hourly...), append(out.Feels, s.Feels...)
 	s.WindSpeed, s.WindFrom, s.WindGust = append(out.WindSpeed, s.WindSpeed...), append(out.WindFrom, s.WindFrom...), append(out.WindGust, s.WindGust...)
 	return s, count
+}
+
+// onLattice is a record's values on a lattice's points: as they are on the
+// lattice they were recorded on, else put on its points - the history holds
+// records of a box on more than one lattice (D-201), and each is drawn. A
+// direction is the nearest point's, never blended. False for another box.
+func onLattice(rec history.Record, l temperature.Lattice) (map[string][]float64, bool) {
+	if rec.Shape == shapeOf(l) {
+		return rec.Values, true
+	}
+	if rec.Shape.Box != l.Box || rec.Shape.Cols < 2 || rec.Shape.Rows < 2 {
+		return nil, false
+	}
+	from := temperature.Lattice{Name: l.Name, Box: rec.Shape.Box, Cols: rec.Shape.Cols, Rows: rec.Shape.Rows}
+	out := make(map[string][]float64, len(rec.Values))
+	for k, v := range rec.Values { // a record's few fields (P10-02)
+		switch {
+		case len(v) != from.Cols*from.Rows:
+		case k == "wind_from":
+			out[k] = from.ResampleNearest(v, l)
+		default:
+			out[k] = from.Resample(v, l)
+		}
+	}
+	return out, true
 }
 
 // missingRow is n values, each missing.

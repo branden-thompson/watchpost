@@ -563,8 +563,8 @@ func TestOpenMeteosSpentQuotaReachesTheMap(t *testing.T) {
 
 // OPEN-METEO REFUSED, NDFD DRAWS (W18.2, D-165, D-166): every box Open-Meteo
 // does not answer is asked of NDFD; the chips say NDFD; and in Radar mode
-// NDFD's current hour lies under the loop's earlier frames too - it has no
-// hour before it (D-166's cold start). With Open-Meteo answering, nothing is
+// every one of the loop's earlier frames draws something (D-166's cold start,
+// U2-55). With Open-Meteo answering, nothing is
 // stretched and NDFD is not asked.
 func TestNDFDDrawsWhereOpenMeteoRefused(t *testing.T) {
 	anchor := tempNow.Truncate(time.Hour)
@@ -580,17 +580,9 @@ func TestNDFDDrawsWhereOpenMeteoRefused(t *testing.T) {
 		if forecast {
 			continue
 		}
-		stretched := 0
-		for _, list := range [][]tuimaps.Overlay{got.Overlays, got.Feels, got.Wind} {
-			for _, o := range list {
-				if o.During.From.Equal(anchor.Add(-time.Hour)) && o.During.Until.Equal(anchor.Add(time.Hour-time.Nanosecond)) {
-					stretched++
-				}
-			}
-		}
-		if stretched != 3 {
-			t.Errorf("%d current-hour grids reach under the loop's earlier frames; want temperature's, feels-like's and wind's", stretched)
-		}
+		covered(t, "temperature", got.Overlays, anchor, tempNow) // every observed frame drawn (U2-55 to U2-57)
+		covered(t, "feels like", got.Feels, anchor, tempNow)
+		covered(t, "wind", got.Wind, anchor, tempNow)
 	}
 	answered := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: tempNow}, nil, tempAsk(false), tempNow, &fallback{src: &fakeTemp{name: "NDFD", now: tempNow, failed: true}})
 	for _, o := range answered.Overlays {
@@ -605,8 +597,7 @@ func TestNDFDDrawsWhereOpenMeteoRefused(t *testing.T) {
 
 // NDFD IS ASKED ON ITS OWN DENSER LATTICE, OPEN-METEO ON ITS OWN (D-201), and
 // a day NDFD left empty, filled from Open-Meteo's (D-189), is drawn - its
-// values resampled onto NDFD's points; copied whole, the lengths disagreed
-// and the day was blank.
+// values resampled onto NDFD's points, as the lattices' lengths differ.
 func TestNDFDsDenserLatticeAndOpenMeteosFill(t *testing.T) {
 	ndfd, om := &fakeTemp{name: "NDFD", now: tempNow}, &fakeTemp{name: "Open-Meteo", now: tempNow}
 	ask := tempAsk(true)
@@ -645,8 +636,7 @@ func TestNDFDsDenserLatticeAndOpenMeteosFill(t *testing.T) {
 }
 
 // THE TEMPERATURE IS COSTED AT NDFD'S ASKS (D-201): the default source's
-// denser lattice, a hundred points an ask, the days and the hour each - not a
-// request a box, which said a quarter of what a refresh fetches.
+// denser lattice, a hundred points an ask, the days and the hour each.
 func TestTheTemperatureIsCostedAtNDFDsAsks(t *testing.T) {
 	in := mapInputs{region: geo.RegionContiguous, view: tty.MapView(regionBox(geo.RegionContiguous))}
 	bytes, asks := tempLayerCost(in)

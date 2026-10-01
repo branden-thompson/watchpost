@@ -10,6 +10,7 @@ package app
 import (
 	"context"
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -252,11 +253,9 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 			}
 			hours, feels, wind := hourGrids(tty.TemperatureLayer, b.Name, s.Hours, len(s.Hourly), anchor, horizon, temp(s.Hourly)),
 				hourGrids(tty.FeelsLayer, b.Name, s.Hours, len(s.Feels), anchor, horizon, temp(s.Feels)), windHourGrids(s, b.Name, anchor, horizon, ask.Fahrenheit)
-			if keyless && past == 0 { // nothing recorded: the cold start
-				stretchNow(hours, anchor)
-				stretchNow(feels, anchor)
-				stretchNow(wind, anchor)
-			}
+			fillPast(hours, anchor) // every observed frame drawn, whatever was recorded (U2-55 to U2-57)
+			fillPast(feels, anchor)
+			fillPast(wind, anchor)
 			out.Overlays, out.Feels, out.Wind = append(out.Overlays, hours...), append(out.Feels, feels...), append(out.Wind, wind...)
 			continue
 		}
@@ -357,9 +356,11 @@ func recordedFeelsNow(s *temperature.Series, past func(string, time.Time) (histo
 	}
 	n := s.Lattice.Cols * s.Lattice.Rows
 	if past != nil {
-		if rec, ok := past(box, anchor); ok && rec.Shape == shapeOf(s.Lattice) && len(rec.Values["feels"]) == n && !allMissing(rec.Values["feels"]) {
-			s.Feels[i] = rec.Values["feels"]
-			return true
+		if rec, ok := past(box, anchor); ok {
+			if v, ok := onLattice(rec, s.Lattice); ok && len(v["feels"]) == n && !allMissing(v["feels"]) {
+				s.Feels[i] = v["feels"]
+				return true
+			}
 		}
 	}
 	if next, ok := s.FeelsAt(anchor.Add(time.Hour)); ok && len(next) == n {
@@ -377,17 +378,20 @@ func recordedToday(s *temperature.Series, past func(string, time.Time) (history.
 		return false
 	}
 	n := s.Lattice.Cols * s.Lattice.Rows
-	shape := shapeOf(s.Lattice)
 	high, low, feelsHigh, feelsLow, wind := missingValues(n), missingValues(n), missingValues(n), missingValues(n), missingValues(n)
 	day := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 0, 0, 0, 0, anchor.Location())
 	for h := day; !h.After(anchor); h = h.Add(time.Hour) { // a day's hours (P10-02)
 		rec, ok := past(box, h)
-		if !ok || rec.Shape != shape {
+		if !ok {
 			continue
 		}
-		extremes(high, low, rec.Values["temp"])
-		extremes(feelsHigh, feelsLow, rec.Values["feels"])
-		extremes(wind, nil, rec.Values["wind"])
+		v, ok := onLattice(rec, s.Lattice)
+		if !ok {
+			continue
+		}
+		extremes(high, low, v["temp"])
+		extremes(feelsHigh, feelsLow, v["feels"])
+		extremes(wind, nil, v["wind"])
 	}
 	filled := false
 	for _, side := range []struct {
@@ -529,13 +533,25 @@ func hourGrids(layer, box string, hours []time.Time, n int, anchor, horizon time
 	return out
 }
 
-// stretchNow draws a current hour's grids under the hour before it too:
-// the loop's earlier frames, where a source with no past hour has nothing
-// else (D-166's cold start, until the local history holds that hour).
-func stretchNow(grids []tuimaps.Overlay, anchor time.Time) {
+// fillPast draws something on every frame of the loop (UAT-2 U2-55 to
+// U2-57): an hour with no grid of its own - before the current one NDFD has
+// none and the history only what it recorded (D-166); NDFD's current hour
+// can come back with no wind - is drawn from the next newer grid, back to
+// pastHours before the hour - so no frame of the loop, observed or ahead, is
+// drawn with nothing.
+func fillPast(grids []tuimaps.Overlay, anchor time.Time) {
+	order := make([]int, 0, len(grids))
 	for i := range grids { // bounded by the grids (P10-02)
-		if grids[i].During.From.Equal(anchor) {
-			grids[i].During.From = anchor.Add(-time.Hour)
+		order = append(order, i)
+	}
+	slices.SortFunc(order, func(a, b int) int { return grids[a].During.From.Compare(grids[b].During.From) })
+	reach := anchor.Add(-pastHours * time.Hour) // the earliest moment nothing has yet been drawn for
+	for _, i := range order {                   // the past and the current hour (P10-02)
+		if grids[i].During.From.After(reach) {
+			grids[i].During.From = reach
+		}
+		if !grids[i].During.Until.IsZero() {
+			reach = grids[i].During.Until.Add(time.Nanosecond)
 		}
 	}
 }

@@ -87,7 +87,7 @@ func (b *bodyGet) GetText(context.Context, string, ...httpx.Option) ([]byte, err
 
 // NEW YORK CITY IS ASKED AS EPA NAMES IT (UAT-2 U2-51): GeoNames calls it
 // "New York City", and EPA answers that name with an error, so the largest
-// city in the lower 48 drew no UV. EPA's name for it is "New York".
+// city in the lower 48 would draw no UV. EPA's name for it is "New York".
 func TestNewYorkCityIsAskedAsEPANamesIt(t *testing.T) {
 	ny, err := time.LoadLocation("America/New_York")
 	if err != nil {
