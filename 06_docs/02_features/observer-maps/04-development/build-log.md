@@ -2888,3 +2888,22 @@ refreshes (survived once), dropped with the loop (survived once), dropped once t
 once) - the survivors now held - and the public test fails without the fix; the recorder's cells, its
 hook, its call - all caught.
 
+## Batch 94 — the names stand still as the loop plays (U2-46; D-200; go-tuiMaps rc.32; 2026-10-01)
+
+**The cause.** The HUM LEAD saw the flicker with the loop playing (D-200). Read in the library: an alert
+drawn by its time (D-98, L-15.1) was skipped on the frames outside its span, and its word - placed before
+any place name - gave its room back on those frames, so the names around it came and went. Two more
+movers found in the same read: an outline's severity digits (placed before names, D-65), and the name
+budget - a radar frame on a gap, or a field outside the moment, counted the map bare and placed more names.
+
+**The fix, in go-tuiMaps rc.32 (L11.33, L-28).** An overlay outside the moment is reserved: never drawn,
+but an alert's word and digits hold their room from the names, after every drawn alert's, and a field or
+image - or a loop on a gap - keeps the budget the one under it. Held by the public
+`TestNamesHoldStillAsALoopPlays` (Kansas and South Dakota came and went without it) and
+`TestAFieldOutsideTheMomentHoldsTheNames`, and five renderer tests. Accepted and written into L-28: two
+alerts' words that collide may still trade places frame to frame.
+
+**Mutation verdicts** (17, library): 16 caught; the survivor a redundant check (a reserved label is
+always an alert's, already skipped there) - removed. Here: the bump alone; the wiring of an alert's span
+(D-98) is unchanged.
+
