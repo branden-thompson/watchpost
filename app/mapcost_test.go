@@ -172,18 +172,18 @@ func TestTheMapsOpenMeteoWeightIsWithinItsBudget(t *testing.T) {
 		warm   bool
 		budget float64
 	}{
-		{"lower 48, Radar mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), false), false, 265.2},
+		{"lower 48, Radar mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), false), false, 156},
 		{"lower 48, Forecast mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true), false, 343.2},
-		{"California, Radar mode", costAsk(geo.RegionContiguous, california, false), false, 544},
+		{"California, Radar mode", costAsk(geo.RegionContiguous, california, false), false, 320},
 		{"California, Forecast mode", costAsk(geo.RegionContiguous, california, true), false, 704},
-		{"Alaska, Radar mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), false), false, 695.2},
+		{"Alaska, Radar mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), false), false, 474},
 		{"Alaska, Forecast mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), true), false, 695.2},
 		{"lower 48, Radar, no UV/air", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), false)), false, 78},
 		{"lower 48, Forecast, no UV/air", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true)), false, 265.2},
 		{"California, Forecast, no UV/air", quiet(costAsk(geo.RegionContiguous, california, true)), false, 544},
 		{"lower 48, Forecast, no UV/air, warm", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true)), true, 156},
 		{"California, Forecast, no UV/air, warm", quiet(costAsk(geo.RegionContiguous, california, true)), true, 320},
-		{"California, Forecast, warm", costAsk(geo.RegionContiguous, california, true), true, 704},
+		{"California, Forecast, warm", costAsk(geo.RegionContiguous, california, true), true, 480},
 	} {
 		total, by := openMeteoRefresh(t, c.ask, c.warm)
 		was := c.ask

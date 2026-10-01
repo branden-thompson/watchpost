@@ -24,19 +24,21 @@ import (
 	"github.com/branden-thompson/watchpost/platform/tz"
 )
 
-// withUV adds the UV index for the mode (D-137), from Open-Meteo's answer:
-// the one temperature asked for where it is the source - the client's cache
-// answers it again - or its own, asked only while UV is on.
+// withUV adds the UV index for the mode: EPA's forecast for the largest
+// cities in view first, as markers (D-186) - and Open-Meteo's grid beside them
+// only over the boxes whose Open-Meteo forecast was asked anyway, which the
+// client's cache answers again (D-191): no call is made for UV alone.
 //
 // VALID UV IS RECORDED AND REPLAYED (W18.4, D-167): each hour Open-Meteo
-// answered, up to the current one, goes into the history; where it does not
-// answer, Radar mode draws the hours recorded, and the chip says RECORDED.
-func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, free bool, ask tty.MapAsk, now time.Time, store *history.Store, cold *uvCold) tty.MapTemperature {
-	if !free && !ask.UV {
-		return t
-	}
+// answered, up to the current one, goes into the history; where it was asked
+// and did not answer, Radar mode draws the hours recorded, and the chip says
+// RECORDED.
+func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, asked func(box string) bool, ask tty.MapAsk, now time.Time, store *history.Store, cities *uvCities) tty.MapTemperature {
 	live, replayed := 0, 0
 	for _, b := range fieldBoxes(ask.Region, ask.View) {
+		if asked == nil || !asked(b.Name) {
+			continue // not asked for anything else: UV alone asks nothing of Open-Meteo (D-191)
+		}
 		lat := temperature.LatticeFor(b.Name, b.Box)
 		s, err := om.Fetch(ctx, lat, now)
 		if err != nil {
@@ -55,21 +57,21 @@ func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo
 		})
 		t.UV, t.UVDays = append(t.UV, hours...), append(t.UVDays, days...)
 	}
-	if live == 0 && replayed == 0 && cold != nil { // nothing answered, nothing recorded: the cold start (D-167)
-		if marks := cold.markers(ctx, ask.View, askAnchor(ask, now)); len(marks) > 0 {
-			t.UV = append(t.UV, marks...)
-			t.Chips = withChips(t.Chips, tty.UVLayer, "EPA")
-			t.Notes = append(t.Notes, "UV: EPA's forecast for the largest cities in view, while Open-Meteo does not answer.")
-			return t
+	var chips []string // what drew, the history last (D-173, D-183)
+	if ask.UV && cities != nil {
+		if marks := cities.markers(ctx, ask.View, askAnchor(ask, now), ask.Forecast); len(marks) > 0 {
+			t.UV, chips = append(t.UV, marks...), append(chips, "EPA")
+			t.Notes = append(t.Notes, "UV: EPA's forecast for the largest cities in view.")
 		}
 	}
-	switch { // named while it draws (D-183), and from what (D-173)
-	case live > 0 && replayed > 0:
-		t.Chips = withChips(t.Chips, tty.UVLayer, "O-METEO", recordedChip)
-	case replayed > 0:
-		t.Chips = withChips(t.Chips, tty.UVLayer, recordedChip)
-	case len(t.UV)+len(t.UVDays) > 0:
-		t.Chips = withChips(t.Chips, tty.UVLayer, "O-METEO")
+	if live > 0 {
+		chips = append(chips, "O-METEO")
+	}
+	if replayed > 0 {
+		chips = append(chips, recordedChip)
+	}
+	if len(chips) > 0 {
+		t.Chips = withChips(t.Chips, tty.UVLayer, chips...)
 	}
 	return t
 }
@@ -237,10 +239,10 @@ func airHosts() []tty.MapSource {
 		{Name: "EPA Envirofacts", Host: uv.Host, Layers: "UV, cold start"}} // D-167
 }
 
-// uvCold is UV's cold start (D-167): EPA's UV index, hour by hour for today,
-// for the largest cities in view - the one UV source that is not a lattice,
-// drawn as markers while Open-Meteo does not answer and nothing is recorded.
-type uvCold struct {
+// uvCities is UV's first source (D-167, D-186): EPA's UV index, hour by hour
+// for today, for the largest cities in view - keyless, and not a lattice:
+// drawn as markers.
+type uvCities struct {
 	epa    *uv.EPA
 	cities func(view geo.Box) []geodata.City // the largest in view, at most maxUVCities
 }
@@ -249,18 +251,15 @@ type uvCold struct {
 const maxUVCities = 8
 
 // markers are the cities' UV as points in their bands' colours, each
-// labelled with its city and value: the current hour and the pastHours
-// before it, each drawn during its own hour, as the history's replay is.
-// None where no city answered.
-func (c *uvCold) markers(ctx context.Context, view geo.Box, anchor time.Time) []tuimaps.Overlay {
+// labelled with its city and value. Radar mode: the current hour and the
+// pastHours before it, each during its own hour, as the history's replay is.
+// Forecast mode: Now's hour during Now, and the day's peak during Today -
+// EPA forecasts today alone. None where no city answered.
+func (c *uvCities) markers(ctx context.Context, view geo.Box, anchor time.Time, forecast bool) []tuimaps.Overlay {
 	if c == nil || c.epa == nil || c.cities == nil {
 		return nil
 	}
-	type answered struct {
-		city     geodata.City
-		readings []uv.Reading
-	}
-	var got []answered
+	var got []cityReadings
 	for _, city := range c.cities(view) { // at most maxUVCities (P10-02)
 		loc, err := tz.Location(city.TZ)
 		if err != nil {
@@ -270,27 +269,61 @@ func (c *uvCold) markers(ctx context.Context, view geo.Box, anchor time.Time) []
 		if err != nil {
 			continue // D-124: counted as nothing, never said
 		}
-		got = append(got, answered{city, readings})
+		got = append(got, cityReadings{city, readings})
 	}
 	var out []tuimaps.Overlay
+	add := func(id string, valid time.Time, during tuimaps.Span, pick func([]uv.Reading) (float64, bool)) {
+		if feats := uvPoints(got, pick); len(feats) > 0 {
+			out = append(out, tuimaps.Overlay{ID: tty.UVLayer + "/epa/" + id, Valid: valid, Keeps: time.Hour, Credit: uv.Attribution, Features: feats, During: during})
+		}
+	}
+	if forecast {
+		nowStep, days := forecastDays(anchor)
+		add("now", anchor, nowStep.Span, func(r []uv.Reading) (float64, bool) { return uv.At(r, anchor) })
+		if len(days) > 0 {
+			add("today", anchor, days[0].Span, uvPeak)
+		}
+		return out
+	}
 	for back := pastHours; back >= 0; back-- { // four (P10-02)
 		h := anchor.Add(-time.Duration(back) * time.Hour)
-		var feats []tuimaps.Feature
-		for _, a := range got {
-			if v, ok := uv.At(a.readings, h); ok {
-				feats = append(feats, tuimaps.Feature{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: a.city.Lon, Lat: a.city.Lat}}},
-					Role: tuimaps.UVRole(v), Label: a.city.Name + " " + strconv.FormatFloat(v, 'f', -1, 64)})
-			}
-		}
-		if len(feats) > 0 {
-			out = append(out, tuimaps.Overlay{ID: tty.UVLayer + "/epa/" + h.UTC().Format("2006-01-02T15"), Valid: h, Keeps: time.Hour, Credit: uv.Attribution,
-				Features: feats, During: tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}})
-		}
+		add(h.UTC().Format("2006-01-02T15"), h, tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}, func(r []uv.Reading) (float64, bool) { return uv.At(r, h) })
 	}
 	return out
 }
 
-// uvRanked is how many of the largest US cities the cold start looks among:
+// cityReadings is a city and EPA's hours for it.
+type cityReadings struct {
+	city     geodata.City
+	readings []uv.Reading
+}
+
+// uvPoints are the cities as points, each in the band of the value picked
+// from its hours, labelled "City 7"; a city without one is left out.
+func uvPoints(got []cityReadings, pick func([]uv.Reading) (float64, bool)) []tuimaps.Feature {
+	var feats []tuimaps.Feature
+	for _, a := range got { // at most maxUVCities (P10-02)
+		if v, ok := pick(a.readings); ok {
+			feats = append(feats, tuimaps.Feature{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: a.city.Lon, Lat: a.city.Lat}}},
+				Role: tuimaps.UVRole(v), Label: a.city.Name + " " + strconv.FormatFloat(v, 'f', -1, 64)})
+		}
+	}
+	return feats
+}
+
+// uvPeak is the day's highest reading: Today's UV, as Open-Meteo's daily
+// highest is the day's (D-137).
+func uvPeak(readings []uv.Reading) (float64, bool) {
+	peak, ok := 0.0, false
+	for _, r := range readings { // a day's hours (P10-02)
+		if !ok || r.Index > peak {
+			peak, ok = r.Index, true
+		}
+	}
+	return peak, ok
+}
+
+// uvRanked is how many of the largest US cities UV's markers look among:
 // every one past some 50,000 people, so a state's view holds a few.
 const uvRanked = 1000
 

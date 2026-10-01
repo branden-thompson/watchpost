@@ -115,6 +115,8 @@ func (*airOwner).set
 func (*alertStore).capOldest
 func (*alertStore).get
 func (*alertStore).note
+func (*answeredFor).Fetch
+func (*answeredFor).answered
 func (*bandRecord).has
 func (*bandRecord).note
 func (*bandRecord).recent
@@ -460,7 +462,7 @@ func (*timingLog).hook
 func (*timingLog).last
 func (*timingLog).note
 func (*timingLog).stage
-func (*uvCold).markers
+func (*uvCities).markers
 func (CastReport).ToneSummary
 func (airScope).hasOrigin
 func (bedReach).Line
@@ -812,6 +814,9 @@ func tuneTo
 func uiHook
 func unread
 func userCacheSubdir
+func uvAsked
+func uvPeak
+func uvPoints
 func viewAreas
 func vizFor
 func voiceDir
@@ -842,11 +847,13 @@ type SourceHealth
 type airOwner
 type airScope
 type alertStore
+type answeredFor
 type areaMemo
 type bandRecord
 type bedReach
 type bedSeams
 type castState
+type cityReadings
 type clip
 type countedBody
 type countingTransport
@@ -904,7 +911,7 @@ type tideMark
 type tileCounter
 type timingLog
 type timingRecord
-type uvCold
+type uvCities
 type waveSource
 var _
 var _

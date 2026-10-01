@@ -2662,3 +2662,33 @@ next hour, the lowest and the highest, the history overwriting what NDFD gave (s
 nothing held Today's feels-like high to NDFD's; now held), the recorder's merge, the next-hour record,
 `Claim`'s issued rule, the default, the metered note - all caught.
 
+## Batch 85 — UV from EPA's cities first (W19.2; D-186, D-191; 2026-09-30)
+
+**Now.** With UV on, the UV layer is EPA's forecast for the largest cities in view, as markers in
+their bands' colours, labelled "City 7": in Radar mode the current hour and the three before, each in
+its own hour; in Forecast mode Now's hour on Now and **the day's peak on Today** (EPA forecasts today
+alone). The badge says EPA, a note says whose it is. Open-Meteo's UV grid is drawn beside them **only
+over the boxes whose Open-Meteo forecast was asked for something else** - Open-Meteo chosen as the
+temperature's source, or filling for NDFD (D-191) - so UV alone asks Open-Meteo nothing; the badge
+then reads EPA, O-METEO. Recording and replay are as they were where Open-Meteo is asked and refuses.
+`uvCold` is `uvCities`: no longer a cold start.
+
+**The weight a refresh, every row on** (NDFD the default):
+
+| View | Batch 83 | Now |
+|---|---|---|
+| Lower 48, Radar mode | 265.2 | **156.0** |
+| California, Radar mode | 544.0 | **320.0** |
+| Alaska, Radar mode | 695.2 | **474.0** |
+| California, Forecast mode, the history warm | 704.0 | **480.0** |
+
+What remains in Radar mode is air quality's model tint and the waves' fill (W19.4, W19.5); Forecast
+mode on a cold history still asks Open-Meteo for Today (D-189's second tier), and UV's grid rides it.
+
+**Mutation verdicts** (targeted, 9): Open-Meteo's grid where its forecast was not asked, EPA asked
+with UV off, Today's peak, Now's hour, the peak's maximum, the EPA chip - caught; the boxes the filler
+answered, the source's every box, and a refused box counted - survived the first run (the cost measure
+cannot see a grid that rides a cached answer), now held by `TestUVsGridRidesWhereOpenMeteoAnswered`
+through `uvAsked`, and caught. P10 read the filler's `Fetch` calling the wrapped `Fetch` as recursion,
+as it read the quota gate's `GetText` (batch 78): the same fix, a method value.
+

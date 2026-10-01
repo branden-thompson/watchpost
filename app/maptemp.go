@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
@@ -45,7 +46,7 @@ func init() {
 type tempSources struct {
 	ndfd, om temperature.Source
 	gate     *temperature.QuotaGate // Open-Meteo's asks, held while a quota is spent (W18.1, D-165)
-	uvCold   *uvCold                // UV's cold start: EPA's index for the cities in view (W18.4, D-167)
+	uvCities *uvCities              // UV's first source: EPA's index for the cities in view (D-167, D-186)
 	rain     *temperature.OpenMeteo // the rain and snow, Open-Meteo's always (D-118); the waves beyond NDFD (D-125)
 	waves    *temperature.NDFD      // the waves where NDFD reaches (D-125)
 }
@@ -62,7 +63,7 @@ func tempSourcesOver(c *httpx.Client) *tempSources {
 func tempSourcesAt(c temperature.Getter, omBase, ndfdBase, state string) *tempSources {
 	gate := temperature.NewSharedQuotaGate(c, time.Now, state)
 	om, ndfd := temperature.NewOpenMeteo(gate, omBase), temperature.NewNDFD(c, ndfdBase)
-	return &tempSources{ndfd: ndfd, om: om, gate: gate, rain: om, waves: ndfd, uvCold: &uvCold{epa: uv.NewEPA(c, "")}}
+	return &tempSources{ndfd: ndfd, om: om, gate: gate, rain: om, waves: ndfd, uvCities: &uvCities{epa: uv.NewEPA(c, "")}}
 }
 
 // quotaSpent is Open-Meteo's spent quota as the map says it, or nil.
@@ -85,6 +86,42 @@ func (ts *tempSources) sourceFor(ask tty.MapAsk) temperature.Source {
 		return ts.ndfd
 	}
 	return ts.om
+}
+
+// answeredFor is a source that keeps the boxes it answered for: Open-Meteo
+// as NDFD's filler, whose forecast UV's grid may ride (D-191).
+type answeredFor struct {
+	temperature.Source
+	mu    sync.Mutex
+	boxes map[string]bool
+}
+
+// Fetch asks the source, and keeps the box when it answers.
+func (a *answeredFor) Fetch(ctx context.Context, l temperature.Lattice, now time.Time) (temperature.Series, error) {
+	ask := a.Source.Fetch // the wrapped source's, not this one
+	s, err := ask(ctx, l, now)
+	if err == nil {
+		a.mu.Lock()
+		a.boxes[l.Name] = true
+		a.mu.Unlock()
+	}
+	return s, err
+}
+
+// uvAsked is where Open-Meteo's forecast was asked anyway, which UV's grid
+// may ride (D-191): every box where it is the source, else those it filled.
+func uvAsked(isSource bool, filled *answeredFor) func(box string) bool {
+	if isSource {
+		return func(string) bool { return true }
+	}
+	return filled.answered
+}
+
+// answered reports whether the source answered for a box.
+func (a *answeredFor) answered(box string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.boxes[box]
 }
 
 // tempChips are the chips temperature, feels-like and wind - one request -
@@ -114,8 +151,9 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	lp.lastMapRegion.Store(ask.Region) // the history records the map's region too (D-172)
 	src := lp.temp.sourceFor(ask)
 	var fill temperature.Source
+	filled := &answeredFor{Source: lp.temp.om, boxes: map[string]bool{}}
 	if src != lp.temp.om {
-		fill = lp.temp.om
+		fill = filled // the boxes it answered for, UV's grid rides along there (D-191)
 	}
 	rescue := &fallback{past: recordedHour(lp.historyStore())} // NDFD has no hour before the current one: the history's are the loop's past (W19.1)
 	if src == lp.temp.om && lp.temp.ndfd != nil && lp.temp.ndfd.Covers(ask.Region) {
@@ -134,7 +172,7 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 		t = withWaves(ctx, t, lp.temp.waves, lp.temp.rain, ask, now)
 	}
 	if lp.temp.rain != nil { // Open-Meteo: the UV and the model's US AQI (D-137, D-139)
-		t = withUV(ctx, t, lp.temp.rain, src.Name() == "Open-Meteo", ask, now, lp.historyStore(), lp.temp.uvCold) // valid UV kept, and replayed when refused; EPA's on a cold start (D-167)
+		t = withUV(ctx, t, lp.temp.rain, uvAsked(src == lp.temp.om, filled), ask, now, lp.historyStore(), lp.temp.uvCities) // EPA's cities first (D-186); valid UV kept, and replayed when refused (D-167)
 		t = withAir(ctx, t, lp.temp.rain, ask, now)
 	}
 	t.Quota = lp.temp.quotaSpent() // the map says it (D-165)
