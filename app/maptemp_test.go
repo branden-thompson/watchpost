@@ -38,12 +38,14 @@ type fakeTemp struct {
 	noFeelsHour bool
 	noWindDay   bool // day 1 without its wind or gust, for Open-Meteo to fill (D-100, D-136)
 	asked       int
+	lattices    []temperature.Lattice // each lattice asked (D-201)
 }
 
 func (f *fakeTemp) Name() string       { return f.name }
 func (f *fakeTemp) Covers(string) bool { return f.name != "NDFD" }
 func (f *fakeTemp) Fetch(_ context.Context, l temperature.Lattice, _ time.Time) (temperature.Series, error) {
 	f.asked++
+	f.lattices = append(f.lattices, l)
 	if f.failed {
 		return temperature.Series{}, errors.New("no answer")
 	}
@@ -299,9 +301,15 @@ func TestTemperatureIsOffByDefault(t *testing.T) {
 func TestABoxNDFDRefusesFallsBackToOpenMeteo(t *testing.T) {
 	ask := tempAsk(true)
 	ask.Region, ask.View = geo.RegionHawaii, geo.Box{W: -160, S: 19, E: -155, N: 22}
-	got := buildTemperature(context.Background(), &fakeTemp{name: "NDFD", failed: true}, &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, ask, tempNow, nil)
+	om := &fakeTemp{name: "Open-Meteo", now: tempNow}
+	got := buildTemperature(context.Background(), &fakeTemp{name: "NDFD", failed: true}, &noGap{om}, ask, tempNow, nil)
 	if len(got.High) == 0 || got.Source != "Open-Meteo" {
 		t.Fatalf("%d highs from %q; want Hawaii from Open-Meteo, named", len(got.High), got.Source)
+	}
+	for _, l := range om.lattices { // Open-Meteo bills each point: its own 80, never NDFD's denser lattice (D-201)
+		if l != temperature.LatticeFor(l.Name, l.Box) {
+			t.Errorf("Open-Meteo was asked %+v; want its own lattice", l)
+		}
 	}
 	notes := strings.Join(got.Notes, " ")
 	if !strings.Contains(notes, "NDFD did not answer") || !strings.Contains(notes, "Open-Meteo") || !slices.Contains(got.Chips[tty.TemperatureLayer], "O-METEO") {
@@ -592,5 +600,88 @@ func TestNDFDDrawsWhereOpenMeteoRefused(t *testing.T) {
 	}
 	if answered.Source != "Open-Meteo" {
 		t.Errorf("with Open-Meteo answering, drawn as %q", answered.Source)
+	}
+}
+
+// NDFD IS ASKED ON ITS OWN DENSER LATTICE, OPEN-METEO ON ITS OWN (D-201), and
+// a day NDFD left empty, filled from Open-Meteo's (D-189), is drawn - its
+// values resampled onto NDFD's points; copied whole, the lengths disagreed
+// and the day was blank.
+func TestNDFDsDenserLatticeAndOpenMeteosFill(t *testing.T) {
+	ndfd, om := &fakeTemp{name: "NDFD", now: tempNow}, &fakeTemp{name: "Open-Meteo", now: tempNow}
+	ask := tempAsk(true)
+	got := buildTemperature(context.Background(), ndfd, &noGap{om}, ask, tempNow, nil)
+	boxes := fieldBoxes(ask.Region, geo.Box(ask.View))
+	if len(ndfd.lattices) != len(boxes) || len(om.lattices) == 0 {
+		t.Fatalf("NDFD asked %d lattices, Open-Meteo %d; want a box each, and Open-Meteo for the empty day", len(ndfd.lattices), len(om.lattices))
+	}
+	for i, b := range boxes {
+		if want := temperature.NDFDLatticeFor(b.Name, b.Box); ndfd.lattices[i] != want {
+			t.Errorf("NDFD was asked %+v for %s; want its denser %+v", ndfd.lattices[i], b.Name, want)
+		}
+	}
+	for _, l := range om.lattices {
+		if l != temperature.LatticeFor(l.Name, l.Box) {
+			t.Errorf("Open-Meteo was asked %+v; want its own 80-point lattice, which it bills", l)
+		}
+	}
+	if !got.Filled["0/high"] {
+		t.Fatal("today's high was not filled")
+	}
+	drawn := 0
+	for _, o := range got.High {
+		if o.During.From.After(tempNow) {
+			continue
+		}
+		for _, v := range o.Grid.Values {
+			if !math.IsNaN(v) {
+				drawn++
+			}
+		}
+	}
+	if drawn == 0 {
+		t.Error("Today's high, filled from Open-Meteo, draws nothing: the fill's values were not put on NDFD's points")
+	}
+}
+
+// THE TEMPERATURE IS COSTED AT NDFD'S ASKS (D-201): the default source's
+// denser lattice, a hundred points an ask, the days and the hour each - not a
+// request a box, which said a quarter of what a refresh fetches.
+func TestTheTemperatureIsCostedAtNDFDsAsks(t *testing.T) {
+	in := mapInputs{region: geo.RegionContiguous, view: tty.MapView(regionBox(geo.RegionContiguous))}
+	bytes, asks := tempLayerCost(in)
+	boxes := len(fieldBoxes(in.region, in.view))
+	l := temperature.NDFDLatticeFor("us", regionBox(geo.RegionContiguous))
+	want := boxes * 2 * ((l.Cols*l.Rows + 99) / 100)
+	if asks != want || bytes <= int64(want)*100_000/2 {
+		t.Errorf("the temperature costs %d asks, %d bytes; want %d asks - %d boxes, NDFD's lattice a hundred points at a time, the days and the hour", asks, bytes, want, boxes)
+	}
+	if b, n := tempLayerCost(mapInputs{}); b != 0 || n != 0 {
+		t.Error("no region costs something")
+	}
+}
+
+// A POINT NDFD LEAVES EMPTY DOES NOT BLANK THE LAND BESIDE IT (U2-50,
+// D-201): the temperature and the wind are drawn wherever any of a cell's
+// four points answered - the Florida panhandle beside a point over the Gulf.
+func TestTheTemperatureAndWindAreDrawnBesideAnEmptyPoint(t *testing.T) {
+	l := temperature.Lattice{Name: "b", Box: geo.Box{W: -88, S: 29, E: -84, N: 31}, Cols: 2, Rows: 2}
+	nan := math.NaN()
+	blank := func(vals []float64) int {
+		n := 0
+		for _, v := range vals {
+			if math.IsNaN(v) {
+				n++
+			}
+		}
+		return n
+	}
+	o, ok := tempGrid("t", l, []float64{20, 21, nan, 22}, tuimaps.Celsius, tempNow, tempNow) // the south-west point over the Gulf
+	if !ok || blank(o.Grid.Values) != 0 {
+		t.Errorf("the temperature leaves %d of %d cells blank beside the empty point", blank(o.Grid.Values), len(o.Grid.Values))
+	}
+	w, ok := windGrid("w", l, []float64{10, 10, nan, 10}, []float64{270, 270, nan, 270}, []float64{20, 20, nan, 20}, false, tempNow, tempNow)
+	if !ok || blank(w.Grid.Values) != 0 {
+		t.Errorf("the wind leaves %d of %d cells blank beside the empty point", blank(w.Grid.Values), len(w.Grid.Values))
 	}
 }

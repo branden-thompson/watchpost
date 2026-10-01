@@ -55,6 +55,18 @@ func LatticeFor(name string, b geo.Box) Lattice {
 	return LatticeOf(name, b, MaxPoints)
 }
 
+// NDFDMaxPoints is the most points NDFD's lattice has (D-201): four times
+// MaxPoints, about twice as dense each way - NDFD is keyless and unmetered, so
+// its temperature, feels like and wind reach nearer the coasts and borders.
+const NDFDMaxPoints = 4 * MaxPoints
+
+// NDFDLatticeFor is a box's lattice for NDFD's temperature, feels like and
+// wind (D-201); asked a hundred points at a time. Open-Meteo, the history's
+// waves and NDFD's rain totals keep LatticeFor's.
+func NDFDLatticeFor(name string, b geo.Box) Lattice {
+	return LatticeOf(name, b, NDFDMaxPoints)
+}
+
 // LatticeOf is a box's lattice of at most points points, as square as the
 // box allows and never under two a side: a coarser one costs a metered source
 // less, which bills every point (D-185, D-192).

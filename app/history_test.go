@@ -69,6 +69,9 @@ func TestTheHistoryRecordsEachBoxOnceAnHour(t *testing.T) {
 	}
 	for _, b := range boxes {
 		rec, ok := h.store.Get(ndfdHourly.Name, history.Key{Source: "ndfd", Place: b.Name}, now)
+		if ok && rec.Shape != shapeOf(temperature.NDFDLatticeFor(b.Name, b.Box)) {
+			t.Errorf("%s was recorded %v; want NDFD's lattice, the one the map draws (D-201)", b.Name, rec.Shape)
+		}
 		if !ok {
 			t.Errorf("%s's hour was not recorded", b.Name)
 			continue
@@ -145,7 +148,7 @@ func TestAPastHourIsReplayedFromTheHistory(t *testing.T) {
 	anchor := now.Truncate(time.Hour)
 	store := history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly)
 	box := fieldBoxes(tempAsk(false).Region, tempAsk(false).View)[0]
-	lat := temperature.LatticeFor(box.Name, box.Box)
+	lat := temperature.NDFDLatticeFor(box.Name, box.Box) // the map draws NDFD on its own (D-201)
 	f := &fakeHour{}
 	for _, back := range []time.Duration{2 * time.Hour, time.Hour} {
 		s, _ := f.hour(context.Background(), lat, anchor.Add(-back))
@@ -207,7 +210,7 @@ func TestRadarModeOnNDFDDrawsItsPastHoursFromTheHistory(t *testing.T) {
 	anchor := now.Truncate(time.Hour)
 	store := history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly)
 	box := fieldBoxes(tempAsk(false).Region, tempAsk(false).View)[0]
-	lat := temperature.LatticeFor(box.Name, box.Box)
+	lat := temperature.NDFDLatticeFor(box.Name, box.Box) // the map draws NDFD on its own (D-201)
 	f := &fakeHour{}
 	for _, back := range []time.Duration{2 * time.Hour, time.Hour} {
 		s, _ := f.hour(context.Background(), lat, anchor.Add(-back))
@@ -255,7 +258,7 @@ func TestRadarModeOnNDFDDrawsItsPastHoursFromTheHistory(t *testing.T) {
 func TestTheNextHoursFeelsLikeIsKeptAsItsOwn(t *testing.T) {
 	now := tempNow
 	box := fieldBoxes(tempAsk(false).Region, tempAsk(false).View)[0]
-	lat := temperature.LatticeFor(box.Name, box.Box)
+	lat := temperature.NDFDLatticeFor(box.Name, box.Box) // the map draws NDFD on its own (D-201)
 	n := lat.Cols * lat.Rows
 	all := func(v float64) []float64 {
 		out := make([]float64, n)
@@ -293,7 +296,7 @@ func TestTheNextHoursFeelsLikeIsKeptAsItsOwn(t *testing.T) {
 func TestNDFDsNextHourWavesAreKeptAsThatHours(t *testing.T) {
 	now := tempNow
 	box := fieldBoxes(tempAsk(false).Region, tempAsk(false).View)[0]
-	lat := temperature.LatticeFor(box.Name, box.Box)
+	lat := temperature.NDFDLatticeFor(box.Name, box.Box) // the map draws NDFD on its own (D-201)
 	f := &fakeHour{}
 	h := &historian{store: history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly, ndfdWaves), hour: f.hour,
 		waves: fakeWaves{metres: 1.5, max: 2, fromNext: true}.Waves}
@@ -302,6 +305,15 @@ func TestNDFDsNextHourWavesAreKeptAsThatHours(t *testing.T) {
 	next := now.Truncate(time.Hour).Add(time.Hour)
 	if rec, ok := h.store.Get(ndfdWaves.Name, key, next); !ok || rec.Values["waves"][0] != 1.5 {
 		t.Fatalf("the next hour's waves were not kept as its own: %v %v", ok, rec.Values)
+	}
+	// THE HOURS ON NDFD'S LATTICE, THE WAVES ON THE BOX'S OWN (D-201): the map
+	// draws NDFD's temperature on its denser lattice, and merges the waves
+	// point by point with Open-Meteo Marine's on the box's.
+	if rec, ok := h.store.Get(ndfdHourly.Name, key, now.Truncate(time.Hour)); !ok || rec.Shape != shapeOf(lat) {
+		t.Errorf("the hour was recorded %v (%v); want NDFD's lattice %v", rec.Shape, ok, shapeOf(lat))
+	}
+	if rec, _ := h.store.Get(ndfdWaves.Name, key, next); rec.Shape != shapeOf(temperature.LatticeFor(box.Name, box.Box)) {
+		t.Errorf("the waves were recorded %v; want the box's own lattice", rec.Shape)
 	}
 	dry := &historian{store: history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly, ndfdWaves), hour: f.hour,
 		waves: fakeWaves{metres: math.NaN(), max: math.NaN(), fromNext: true}.Waves}
@@ -322,7 +334,7 @@ func TestForecastModeOnNDFDDrawsTodayFromTheHistory(t *testing.T) {
 	ask.TempNDFD = true
 	anchor := ask.Anchor
 	box := fieldBoxes(ask.Region, ask.View)[0]
-	lat := temperature.LatticeFor(box.Name, box.Box)
+	lat := temperature.NDFDLatticeFor(box.Name, box.Box) // the map draws NDFD on its own (D-201)
 	n := lat.Cols * lat.Rows
 	all := func(v float64) []float64 {
 		out := make([]float64, n)

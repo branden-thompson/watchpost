@@ -205,13 +205,19 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 	credit := src.Name() == "Open-Meteo"
 	fellBack, rescued, replayed := 0, 0, 0
 	for _, b := range boxes {
-		lat := temperature.LatticeFor(b.Name, b.Box)
+		// EACH SOURCE ON ITS OWN LATTICE (D-201): NDFD's twice as dense,
+		// keyless; Open-Meteo's 80 points, each billed (D-185).
+		omLat, ndfdLat := temperature.LatticeFor(b.Name, b.Box), temperature.NDFDLatticeFor(b.Name, b.Box)
+		lat := omLat
+		if src.Name() == "NDFD" {
+			lat = ndfdLat
+		}
 		s, err := src.Fetch(ctx, lat, now)
 		fromFill := false
 		if err != nil && fill != nil {
 			// A BOX THE SOURCE REFUSES IS OPEN-METEO'S (D-101): NDFD refuses
 			// Hawaii's whole lattice, which straddles its grid's edge.
-			if s, err = fill.Fetch(ctx, lat, now); err == nil {
+			if s, err = fill.Fetch(ctx, omLat, now); err == nil {
 				fellBack, fromFill = fellBack+1, true
 				credit = true
 				missing[src.Name()+" did not answer for part of the map; Open-Meteo is drawn there."] = true
@@ -219,7 +225,7 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 		}
 		byRescue := false
 		if err != nil && rescue != nil && rescue.src != nil {
-			if s, err = rescue.src.Fetch(ctx, lat, now); err == nil {
+			if s, err = rescue.src.Fetch(ctx, ndfdLat, now); err == nil {
 				rescued, byRescue = rescued+1, true
 			}
 		}
@@ -257,7 +263,7 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 		if rescue != nil && recordedToday(&s, rescue.past, b.Name, anchor) { // an empty Today from the hours recorded (D-189)
 			replayed++
 		}
-		if fill != nil && fillDays(ctx, &s, fill, lat, now, &out) { // else Open-Meteo for that day (D-189)
+		if fill != nil && fillDays(ctx, &s, fill, omLat, now, &out) { // else Open-Meteo for that day (D-189)
 			credit = true
 		}
 		if rescue != nil && recordedFeelsNow(&s, rescue.past, b.Name, anchor) { // NDFD's feels-like starts at the next hour (D-188)
@@ -295,7 +301,8 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 
 // fillDays puts Open-Meteo's values in every day the series has nothing for
 // (D-100), asking it only when one is empty, and marks each day filled;
-// true when anything was.
+// true when anything was. Open-Meteo is asked on its own lattice and its
+// values put on the series' points (D-201): NDFD's lattice is denser.
 func fillDays(ctx context.Context, s *temperature.Series, fill temperature.Source, lat temperature.Lattice, now time.Time, out *tty.MapTemperature) bool {
 	var got *temperature.Series
 	filled := false
@@ -322,9 +329,10 @@ func fillDays(ctx context.Context, s *temperature.Series, fill temperature.Sourc
 			if allMissing(side.from(got)) {
 				continue
 			}
-			*side.vals = side.from(got)
+			onto := func(v []float64) []float64 { return got.Lattice.Resample(v, s.Lattice) }
+			*side.vals = onto(side.from(got))
 			if side.name == "wind" {
-				s.PeakFrom[k], s.PeakGust[k] = got.PeakFrom[k], got.PeakGust[k] // the direction and the gust with the speed they came with (D-136)
+				s.PeakFrom[k], s.PeakGust[k] = got.Lattice.ResampleNearest(got.PeakFrom[k], s.Lattice), onto(got.PeakGust[k]) // the direction - never blended - and the gust with the speed they came with (D-136)
 			}
 			if out.Filled == nil {
 				out.Filled = map[string]bool{}
@@ -649,13 +657,13 @@ const gustMargin = 16.09344
 // km/h as the listener's units are, its gusts said where they beat the
 // sustained wind by gustMargin (D-136); false when no point has any.
 func windGrid(id string, l temperature.Lattice, speed, from, gust []float64, mph bool, valid, anchor time.Time) (tuimaps.Overlay, bool) {
-	f, dirs := l.InterpolateWind(speed, from)
+	f, dirs := l.InterpolateWindWide(speed, from) // blank only where all four points are (D-201)
 	if allMissing(f.Values) {
 		return tuimaps.Overlay{}, false
 	}
 	var gusts []float64
 	if len(gust) == len(speed) && !allMissing(gust) {
-		gusts = l.Interpolate(gust).Values
+		gusts = l.InterpolateWide(gust).Values
 		if len(gusts) != len(f.Values) {
 			gusts = nil // never a grid the library would refuse
 		}
@@ -689,7 +697,7 @@ func tempGrid(id string, l temperature.Lattice, values []float64, unit tuimaps.U
 	if unit == tuimaps.Fahrenheit {
 		toF = func(c float64) float64 { return c*9/5 + 32 }
 	}
-	return linedGrid(id, l.Interpolate(values), toF, valid, anchor, func(id string, g tuimaps.Grid, valid time.Time) tuimaps.Overlay {
+	return linedGrid(id, l.InterpolateWide(values), toF, valid, anchor, func(id string, g tuimaps.Grid, valid time.Time) tuimaps.Overlay {
 		return tuimaps.TemperatureGrid(id, g, unit, valid) // one look in both modes (D-102, go-tuiMaps L-15.4)
 	})
 }
@@ -714,20 +722,24 @@ func linedGrid(id string, f temperature.Field, convert func(float64) float64, va
 	return o, true
 }
 
-// tempRequestBytes is one lattice's answer on the wire, measured: 139 KB for
-// 80 points from Open-Meteo, asked for feels-like and the loop's thirteen
-// hours ahead (2026-09-28; 106 KB at two hours); 110 KB for 100 from NDFD
-// (2026-09-26).
-const tempRequestBytes = 140_000
+// ndfdAskBytes is an NDFD answer for a hundred points: 110 KB (2026-09-26),
+// the days'; the hour's is smaller, and counted as the days' - an estimate
+// over, never under.
+const ndfdAskBytes = 110_000
 
 // tempLayerCost is what the temperature would fetch in a refresh as if
-// nothing were held: a request a box.
+// nothing were held, from NDFD, the default source (D-190): each box's
+// denser lattice a hundred points an ask, the days and the hour each (D-201).
 func tempLayerCost(in mapInputs) (int64, int) {
 	if in.region == "" {
 		return 0, 0
 	}
-	boxes := len(fieldBoxes(in.region, in.view))
-	return int64(boxes) * tempRequestBytes, boxes
+	asks := 0
+	for _, b := range fieldBoxes(in.region, in.view) { // a region's boxes (P10-02)
+		l := temperature.NDFDLatticeFor(b.Name, b.Box)
+		asks += 2 * ((l.Cols*l.Rows + 99) / 100)
+	}
+	return int64(asks) * ndfdAskBytes, asks
 }
 
 // tempHosts are the temperature's entries for the Status window's MAP block.

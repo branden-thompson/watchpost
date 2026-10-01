@@ -2965,3 +2965,42 @@ order kept, the count forwarded, the ranking's order out (survived once - a seco
 before a first round's smaller; a case added), the picker's direction, the ask, the default, the save,
 the note on focus - all caught.
 
+## Batch 97 — NDFD's temperature to the coasts and borders (U2-50; D-201; 2026-10-01)
+
+**The cause** (traced read-only, then built): one ~5.5-degree lattice of 78 points for the lower 48;
+NDFD answers xsi:nil for points over the sea, Mexico or Canada, and a cell whose *nearest* point was nil
+was blank (D-101's rule, against U2-17's square patches) - so land beside a nil point went blank: the
+Florida panhandle beside a Gulf point, Big Bend beside Coahuila, Boston, Cape Cod and Vermont beside the
+Atlantic and Ontario.
+
+**The weighting.** `Lattice.InterpolateWide` / `InterpolateWindWide`: a cell is blank only where all
+four of its points are; otherwise weighed from those that answered. Temperature, feels like, wind and
+the gusts only (`tempGrid`, `windGrid`); rain, UV and the waves keep the nearest rule, as ruled.
+
+**NDFD's own lattice.** `NDFDLatticeFor` = `LatticeOf(.., 4 x MaxPoints)`, about twice as dense each way
+(the lower 48 27x11, 297 points, was 13x6, 78); the drawn field split half as fine (`Lattice.fine`), so it is about as
+many cells as before, not four times. NDFD answers only the first hundred points of a request, so
+`pointAsks` cuts a lattice into asks of a hundred - the same for `Fetch` and `Hour`, so the recorder's
+hour asks the very addresses the map's did and shares the cache; each answer is read into the one
+series by its points' coordinates. A box: 8 asks a refresh (4 x the days and the hour), keyless, cached
+to the hour; `tempLayerCost` now counts them (it said a request a box - a quarter of what NDFD fetched).
+Open-Meteo keeps its 80 points (D-185): asked on its own lattice as source, fallback and filler; the
+Open-Meteo budget measure is unchanged in every case.
+
+**Where the two meet.** `fillDays` (D-189's "else Open-Meteo for that day") copied Open-Meteo's day
+arrays whole into NDFD's series: on two lattices the lengths disagreed and the day would have drawn blank
+- now `Lattice.Resample` puts them on NDFD's points (bilinear, the wide rule), the peak wind's direction
+by `ResampleNearest` (350 and 10 degrees never blended to 180). The recorder records NDFD's hours on
+its lattice - the shape the map's replay matches - and the waves on the box's own, where the map merges
+them point by point with Open-Meteo Marine's. **On upgrade**: records of the old shape are passed over
+by every replay (checked by shape, never misread), so the first hours after are a cold start, and the
+current hour's old claim holds until the next hour; the history refills within its hourly retention.
+
+**Mutation verdicts** (17): the wide rule, the half-fine split, the wind's, the resample's weighting
+(survived once - a case with an empty point added), its copy, the nearest index, a hundred an ask
+(survived once - the test read the constant it checked; now the literal), the hour every ask, the denser
+lattice, NDFD on its lattice, Open-Meteo's fallback on its own (survived once - asserted now), the fill
+resampled, the temperature's and wind's grids wide, the cost, the recorder's two lattices - all caught.
+Not caught by a test of the wiring: the peak direction's nearest resample in `fillDays` (the fakes'
+directions are uniform); `ResampleNearest` itself is held by its own test.
+

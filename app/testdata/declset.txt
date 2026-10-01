@@ -53,6 +53,7 @@ const modelRainNote
 const mrmsNote
 const narrateBreaking
 const narrateRead
+const ndfdAskBytes
 const noRadarNote
 const numMainTrackStages
 const numNarrationClasses
@@ -91,7 +92,6 @@ const scheduleTick
 const statedCacheBytes
 const systemVoice
 const tempFrameNote
-const tempRequestBytes
 const testEventLife
 const tickerEvery
 const tickerRotate

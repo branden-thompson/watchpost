@@ -36,7 +36,7 @@ func openMeteoRefresh(t *testing.T, ask tty.MapAsk, warm bool) (total float64, b
 		lp.history = history.Open(t.TempDir(), time.Now, historyDatasets...)
 		day := time.Date(ask.Anchor.Year(), ask.Anchor.Month(), ask.Anchor.Day(), 0, 0, 0, 0, ask.Anchor.Location())
 		for _, b := range fieldBoxes(ask.Region, geo.Box(ask.View)) {
-			lat := temperature.LatticeFor(b.Name, b.Box)
+			lat := temperature.NDFDLatticeFor(b.Name, b.Box) // as the recorder keeps it (D-201)
 			vals := make([]float64, lat.Cols*lat.Rows)
 			for h := day; !h.After(ask.Anchor); h = h.Add(time.Hour) {
 				rec := history.Record{Key: history.Key{Source: "ndfd", Place: b.Name}, At: h, IssuedAt: h, Shape: shapeOf(lat),

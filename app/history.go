@@ -162,7 +162,7 @@ func (h *historian) pass(ctx context.Context, now time.Time) {
 	}
 	for _, region := range h.regions() { // one or two (P10-02)
 		for _, b := range recordedBoxes(region) { // a region's boxes (P10-02)
-			h.record(ctx, temperature.LatticeFor(b.Name, b.Box), now)
+			h.record(ctx, temperature.NDFDLatticeFor(b.Name, b.Box), now) // the lattice the map draws NDFD on (D-201)
 		}
 	}
 	hour := now.Truncate(time.Hour).Unix()
@@ -186,8 +186,9 @@ func recordedBoxes(region string) []fieldBox {
 	return out
 }
 
-// record fetches and records one box's current hour, when this instance
-// claims it.
+// record fetches and records one box's current hour on NDFD's lattice, when
+// this instance claims it; its waves on the box's own, as the map merges them
+// point by point with Open-Meteo Marine's (D-201, D-194).
 func (h *historian) record(ctx context.Context, lat temperature.Lattice, now time.Time) {
 	key := history.Key{Source: "ndfd", Place: lat.Name}
 	if !h.store.Claim(ndfdHourly.Name, key, now) {
@@ -208,7 +209,7 @@ func (h *historian) record(ctx context.Context, lat temperature.Lattice, now tim
 	if next, ok := nextFeels(s, rec); ok {
 		h.store.Put(ndfdHourly.Name, next)
 	}
-	h.recordWaves(ctx, lat, now)
+	h.recordWaves(ctx, temperature.LatticeFor(lat.Name, lat.Box), now)
 }
 
 // recordWaves keeps NDFD's waves for a box, the next hour's as that hour's

@@ -25,23 +25,45 @@ type Field struct {
 // is missing - extrapolating from a farther one left square patches past
 // NDFD's grid (UAT-2 U2-17) - and otherwise a point with no value is left out
 // and the others weighed up to one.
-func (l Lattice) Interpolate(values []float64) Field {
+func (l Lattice) Interpolate(values []float64) Field { return l.interpolate(values, false) }
+
+// InterpolateWide is Interpolate for NDFD's temperature, feels like and wind
+// (D-201, UAT-2 U2-50): a cell is missing only where all four of its points
+// are. Land beside a point over the sea, Mexico or Canada - where NDFD
+// answers nothing - was blank under the nearest rule (the Florida panhandle,
+// Big Bend, Boston); weighed from the points that answered, it is drawn, and
+// past the border it runs at most one lattice cell - half of what it did
+// before NDFD's lattice was made twice as dense.
+func (l Lattice) InterpolateWide(values []float64) Field { return l.interpolate(values, true) }
+
+// fine is how many cells a lattice cell is split into each way: Fine, or half
+// as many for a lattice past twice MaxPoints (NDFD's, D-201) - the drawn field
+// about as fine as before, not four times the cells.
+func (l Lattice) fine() int {
+	if l.Cols*l.Rows > 2*MaxPoints {
+		return Fine / 2
+	}
+	return Fine
+}
+
+func (l Lattice) interpolate(values []float64, wide bool) Field {
 	if l.Cols < 2 || l.Rows < 2 || len(values) != l.Cols*l.Rows {
 		return Field{}
 	}
-	cols, rows := (l.Cols-1)*Fine, (l.Rows-1)*Fine
+	fine := l.fine()
+	cols, rows := (l.Cols-1)*fine, (l.Rows-1)*fine
 	out := Field{Box: l.Box, Cols: cols, Rows: rows, Values: make([]float64, cols*rows)}
 	for r := range rows {
-		y := (float64(r) + 0.5) / Fine // in lattice rows from the north
+		y := (float64(r) + 0.5) / float64(fine) // in lattice rows from the north
 		r0 := min(int(y), l.Rows-2)
 		fy := y - float64(r0)
 		for c := range cols {
-			x := (float64(c) + 0.5) / Fine
+			x := (float64(c) + 0.5) / float64(fine)
 			c0 := min(int(x), l.Cols-2)
 			fx := x - float64(c0)
 			out.Values[r*cols+c] = math.NaN()
 			nr, nc := r0+int(math.Round(fy)), c0+int(math.Round(fx))
-			if math.IsNaN(values[nr*l.Cols+nc]) {
+			if !wide && math.IsNaN(values[nr*l.Cols+nc]) {
 				continue // its nearest point has nothing: past the source's reach
 			}
 			sum, weight := 0.0, 0.0
@@ -59,6 +81,59 @@ func (l Lattice) Interpolate(values []float64) Field {
 				out.Values[r*cols+c] = sum / weight
 			}
 		}
+	}
+	return out
+}
+
+// Resample is values on this lattice put on another's points, each weighed
+// from the four around it under InterpolateWide's rule (D-201): Open-Meteo's
+// day put on NDFD's denser lattice, where a day NDFD left empty is filled
+// (D-189). A point outside this lattice's box is missing; the same lattice is
+// a copy.
+func (l Lattice) Resample(values []float64, to Lattice) []float64 {
+	out := make([]float64, to.Cols*to.Rows)
+	if l == to && len(values) == len(out) {
+		copy(out, values)
+		return out
+	}
+	for i, p := range to.Points() { // the other lattice's points (P10-02)
+		out[i] = math.NaN()
+		if l.Cols < 2 || l.Rows < 2 || len(values) != l.Cols*l.Rows || !l.Box.Contains(p.Lat, p.Lon) {
+			continue
+		}
+		x := (p.Lon - l.Box.W) / (l.Box.E - l.Box.W) * float64(l.Cols-1)
+		y := (l.Box.N - p.Lat) / (l.Box.N - l.Box.S) * float64(l.Rows-1)
+		c0, r0 := min(int(x), l.Cols-2), min(int(y), l.Rows-2)
+		fx, fy := x-float64(c0), y-float64(r0)
+		sum, weight := 0.0, 0.0
+		for _, k := range [4]struct {
+			dr, dc int
+			w      float64
+		}{{0, 0, (1 - fx) * (1 - fy)}, {0, 1, fx * (1 - fy)}, {1, 0, (1 - fx) * fy}, {1, 1, fx * fy}} {
+			if v := values[(r0+k.dr)*l.Cols+c0+k.dc]; !math.IsNaN(v) && k.w > 0 {
+				sum, weight = sum+v*k.w, weight+k.w
+			}
+		}
+		if weight > 0 {
+			out[i] = sum / weight
+		}
+	}
+	return out
+}
+
+// ResampleNearest is Resample for what cannot be blended - a direction, whose
+// 350 and 10 degrees would average to 180: each point takes its nearest
+// point's value (D-201).
+func (l Lattice) ResampleNearest(values []float64, to Lattice) []float64 {
+	out := make([]float64, to.Cols*to.Rows)
+	for i, p := range to.Points() { // the other lattice's points (P10-02)
+		out[i] = math.NaN()
+		if l.Cols < 2 || l.Rows < 2 || len(values) != l.Cols*l.Rows || !l.Box.Contains(p.Lat, p.Lon) {
+			continue
+		}
+		c := int(math.Round((p.Lon - l.Box.W) / (l.Box.E - l.Box.W) * float64(l.Cols-1)))
+		r := int(math.Round((l.Box.N - p.Lat) / (l.Box.N - l.Box.S) * float64(l.Rows-1)))
+		out[i] = values[min(max(r, 0), l.Rows-1)*l.Cols+min(max(c, 0), l.Cols-1)]
 	}
 	return out
 }
@@ -104,6 +179,16 @@ func (l Lattice) InterpolateOut(values []float64) Field {
 // DIRECTION IS INTERPOLATED AS A VECTOR, by its east and north parts - as a
 // number, 359 degrees and 1 would meet at 180, the wind turned round.
 func (l Lattice) InterpolateWind(speed, from []float64) (Field, []float64) {
+	return l.interpolateWind(speed, from, false)
+}
+
+// InterpolateWindWide is InterpolateWind under InterpolateWide's rule (D-201):
+// NDFD's wind, blank only where all four points are.
+func (l Lattice) InterpolateWindWide(speed, from []float64) (Field, []float64) {
+	return l.interpolateWind(speed, from, true)
+}
+
+func (l Lattice) interpolateWind(speed, from []float64, wide bool) (Field, []float64) {
 	n := len(speed)
 	if len(from) != n {
 		return Field{}, nil
@@ -117,8 +202,8 @@ func (l Lattice) InterpolateWind(speed, from []float64) (Field, []float64) {
 		rad := from[i] * math.Pi / 180
 		east[i], north[i] = speed[i]*math.Sin(rad), speed[i]*math.Cos(rad) // the from-vector: its angle is the direction's
 	}
-	e, no := l.Interpolate(east), l.Interpolate(north)
-	sp := l.Interpolate(speed) // the speed interpolated itself: averaging vectors would slow a wind that turns
+	e, no := l.interpolate(east, wide), l.interpolate(north, wide)
+	sp := l.interpolate(speed, wide) // the speed interpolated itself: averaging vectors would slow a wind that turns
 	dirs := make([]float64, len(sp.Values))
 	for i := range dirs {
 		if math.IsNaN(e.Values[i]) || math.IsNaN(no.Values[i]) || math.IsNaN(sp.Values[i]) {

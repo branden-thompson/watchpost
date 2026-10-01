@@ -56,45 +56,59 @@ func (s *NDFD) Covers(region string) bool { return region != geo.RegionSamoa }
 // one. THE HOUR IS SENT WITH ITS ZONE: without it the service reads it as each
 // point's own local time, and answered seven hours ahead (2026-09-26).
 func (s *NDFD) Fetch(ctx context.Context, l Lattice, now time.Time) (Series, error) {
-	pts := l.Points()
-	var list []string
-	for _, p := range pts {
-		list = append(list, ftoa(p.Lat)+","+ftoa(p.Lon))
-	}
-	q := url.Values{"listLatLon": {strings.Join(list, " ")}, "product": {"time-series"}}
 	ttl := httpx.TTL(untilNextHour(now))
-	days := cloneValues(q)
-	days.Set("maxt", "maxt")
-	days.Set("mint", "mint")
-	days.Set("wspd", "wspd") // the wind (W11): hourly for about two and a half days, whose peaks are worked out here
-	days.Set("wdir", "wdir")
-	days.Set("wgust", "wgust") // the gusts (D-136): hourly as the wind is, each day's strongest worked out here
-	days.Set("appt", "appt")   // feels-like (D-119): hourly, then every few hours; its days worked out here
 	out := newSeries(l)
-	body, err := s.get.GetText(ctx, s.base+"/xml/sample_products/browser_interface/ndfdXMLclient.php?"+days.Encode(), ttl)
-	if err != nil {
-		return Series{}, fmt.Errorf("NDFD days: %w", err)
-	}
-	if err := parseDWML(body, now, &out); err != nil {
-		return Series{}, fmt.Errorf("NDFD days: %w", err)
-	}
-	if err := s.readHour(ctx, q, now, &out); err != nil {
-		return Series{}, err
+	for _, q := range pointAsks(l) { // a hundred points an ask (D-201, P10-02)
+		days := cloneValues(q)
+		days.Set("maxt", "maxt")
+		days.Set("mint", "mint")
+		days.Set("wspd", "wspd") // the wind (W11): hourly for about two and a half days, whose peaks are worked out here
+		days.Set("wdir", "wdir")
+		days.Set("wgust", "wgust") // the gusts (D-136): hourly as the wind is, each day's strongest worked out here
+		days.Set("appt", "appt")   // feels-like (D-119): hourly, then every few hours; its days worked out here
+		body, err := s.get.GetText(ctx, s.base+"/xml/sample_products/browser_interface/ndfdXMLclient.php?"+days.Encode(), ttl)
+		if err != nil {
+			return Series{}, fmt.Errorf("NDFD days: %w", err)
+		}
+		if err := parseDWML(body, now, &out); err != nil {
+			return Series{}, fmt.Errorf("NDFD days: %w", err)
+		}
+		if err := s.readHour(ctx, q, now, &out); err != nil {
+			return Series{}, err
+		}
 	}
 	return out, nil
+}
+
+// ndfdPerAsk is the most points an NDFD ask carries: it answers only the
+// first hundred, silently (measured 2026-09-26).
+const ndfdPerAsk = 100
+
+// pointAsks are a lattice's points as NDFD's asks, a hundred at most each, in
+// the lattice's order - the same for Fetch and Hour, so the recorder's hour
+// asks the very addresses the map's did and shares the cache.
+func pointAsks(l Lattice) []url.Values {
+	pts := l.Points()
+	var out []url.Values
+	for from := 0; from < len(pts); from += ndfdPerAsk { // the lattice's points, a hundred a step (P10-02)
+		var list []string
+		for _, p := range pts[from:min(from+ndfdPerAsk, len(pts))] {
+			list = append(list, ftoa(p.Lat)+","+ftoa(p.Lon))
+		}
+		out = append(out, url.Values{"listLatLon": {strings.Join(list, " ")}, "product": {"time-series"}})
+	}
+	return out
 }
 
 // Hour is NDFD's current hour alone - temperature, feels-like and the wind -
 // for the history's recorder (W18.3b, D-166): Fetch's second ask, the very
 // address, so the two share the HTTP cache.
 func (s *NDFD) Hour(ctx context.Context, l Lattice, now time.Time) (Series, error) {
-	var list []string
-	for _, p := range l.Points() { // the lattice's points (P10-02)
-		list = append(list, ftoa(p.Lat)+","+ftoa(p.Lon))
-	}
 	out := newSeries(l)
-	if err := s.readHour(ctx, url.Values{"listLatLon": {strings.Join(list, " ")}, "product": {"time-series"}}, now, &out); err != nil {
-		return Series{}, err
+	for _, q := range pointAsks(l) { // a hundred points an ask (D-201, P10-02)
+		if err := s.readHour(ctx, q, now, &out); err != nil {
+			return Series{}, err
+		}
 	}
 	return out, nil
 }
