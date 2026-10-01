@@ -2587,3 +2587,33 @@ totals in radar's scale, snow unmarked, the NDFD chip, the RECORDED chip, a day'
 row's head - all caught. **Equivalent:** NDFD's days capped at four (its answer reaches no further).
 The library's: `FloorsFirst` radar's alone, the class ink, the unit, the label's second decimal, the
 legend's trace, the floors - all caught.
+
+## Batch 83 — what the map costs Open-Meteo, measured and held to a budget (W18.6; D-185; 2026-09-30)
+
+**Now.** `temperature.CallWeight` weighs an ask as Open-Meteo bills it - every location a call, its
+variables over ten and its fortnights past one raising each (its maintainer, open-meteo issues #438
+and #1295; the pricing page's examples). `TestTheMapsOpenMeteoWeightIsWithinItsBudget` runs the
+map's own temperature pipeline - and Radar mode's model rain where HRRR is not - against a stand-in
+that answers nothing and keeps every address, each distinct address weighed once, as the hour's cache
+asks it. Every Open-Meteo row on:
+
+| View | Radar mode | Forecast mode | Of which |
+|---|---|---|---|
+| The lower 48, whole | 265.2 | 343.2 | one box: forecast 109.2 (+78 rain days), marine 78, air 78 |
+| California | 544.0 | 704.0 | two boxes |
+| Alaska | 695.2 | 695.2 | two boxes; Radar mode's model rain ahead 158 |
+
+A refresh is each hour the map is open and each view into boxes not yet asked. Eight hours on one
+state is 4,400 to 5,600 of the 10,000 a day; a second instance on the IP doubles it. **The budgets are
+these figures**: a change that spends more fails, and W19 lowers them as each layer moves to its
+keyless source (D-185 to D-187).
+
+**A correction.** D-185 was put with "~3,000 calls a refresh" - nine lower-48 boxes. A whole view of
+the lower 48 is one field box; the figure was too high by about ten times there, about four for a
+state. The ruling's ground stands (above), and its row now carries the measured figures.
+
+**Mutation verdicts** (5): the per-location multiplier, the days factor, more points a box, more
+variables an ask - caught. Equivalent: 81 points a box (the lattices are the same as 80's). One slip:
+a mutant of `rain.go` was undone with `git checkout`, not by copy - it held no uncommitted change, and
+nothing was lost.
+
