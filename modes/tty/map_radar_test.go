@@ -729,3 +729,24 @@ func TestARegionLeftCancelsItsLoop(t *testing.T) {
 		t.Error("Alaska's loop was not asked when the left region's answer landed")
 	}
 }
+
+// THE FRAME RECORDER TELLS EACH FRAME DRAWN (D-198): with its hook, every map
+// frame is told - the loop's place, the radar's cells, the place names - so a
+// live run can show U2-47's radar missing at rest; without it, nothing.
+func TestTheFrameRecorderTellsEachFrame(t *testing.T) {
+	var asked []string
+	var frames []MapFrame
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked),
+		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}},
+		MapFrame:  func(f MapFrame) { frames = append(frames, f) }})
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
+	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
+	if len(frames) == 0 {
+		t.Fatal("no frame was told")
+	}
+	last := frames[len(frames)-1]
+	if last.LoopCount != 12 || last.RadarCells == 0 || last.LoopIndex != 11 {
+		t.Errorf("the last frame told is %+v; want the loop's newest frame, its radar counted", last)
+	}
+}

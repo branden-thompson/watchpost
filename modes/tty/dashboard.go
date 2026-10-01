@@ -74,6 +74,9 @@ type Config struct {
 	// Timed is the timing instrument's ear (W14, D-154): nil, and nothing is
 	// measured; the app sets it only under WATCHPOST_DEBUG_TIMING=1.
 	Timed func(Timing)
+	// MapFrame is the map's frame recorder (D-198): nil unless
+	// WATCHPOST_DEBUG_MAPFRAMES names a file.
+	MapFrame func(MapFrame)
 	// MapClosed is told when the map window closes - really closes, not a
 	// window opened over it (D-106): the app lets the zone store's memory go,
 	// the disk tier serving it back on reopen (D-162).

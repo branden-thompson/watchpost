@@ -171,6 +171,8 @@ func (*executors).runCue
 func (*executors).runRelease
 func (*executors).runTune
 func (*executors).speak
+func (*frameLog).hook
+func (*frameLog).note
 func (*historian).pass
 func (*historian).record
 func (*historian).recordWaves
@@ -652,6 +654,7 @@ func newDirector
 func newDumper
 func newEventReader
 func newExecutors
+func newFrameLog
 func newHostFacts
 func newMapBuilder
 func newMapQuakes
@@ -881,6 +884,7 @@ type executors
 type fallback
 type fieldBox
 type fireInView
+type frameLog
 type historian
 type hostFacts
 type hoursAhead

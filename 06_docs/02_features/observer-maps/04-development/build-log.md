@@ -2860,3 +2860,31 @@ ahead joined and the clock past the newest frame, draws radar every time. A live
 **Mutation verdicts** (2): the cache, Clear's re-read (survived once - the test's cached value was
 small too; now a large store first) - both caught.
 
+## Batch 93 — the radar's refresh blink, and a frame recorder (U2-47, C-10; D-198, D-199; go-tuiMaps rc.31; 2026-10-01)
+
+**The live runs (D-198).** Four launches of today's build under a scratch home, a frame recorder on -
+under the cap the HUM LEAD set, no 429. **U2-47 did not reproduce**: the radar was drawn at rest within
+~2 s every time. Found instead, read from the recorded frames:
+
+- **A one-frame radar blink** whenever a refreshed loop lands or the view zooms - 0 radar cells, then
+  all of them 60 ms later. Traced into go-tuiMaps: a loop handed in again dropped its old pictures at
+  once, and nothing of it drew until its job decoded the new version. **Fixed in rc.31 (L11.32)**: the
+  old loop's frame at the moment stands in until the new pictures land - the picture form of L11.5's
+  shape stand-in - held by `TestARefreshedLoopKeepsDrawing` through the public Map. This is C-10's
+  symptom; D-85's guard no longer needs to fire.
+- **Place names changing in a still view** while the loop plays (the label budget under an overlay
+  re-placing names frame to frame) - a candidate for U2-46, next.
+- **A slow terminal stalls the app**: bubbletea writes each frame holding its renderer lock, so a
+  terminal slow to read blocks the event loop; keys queue and replay in a burst. Seen when the driver
+  stopped reading; a candidate for U2-46's lag-then-jump under load, after the labels.
+
+**The frame recorder.** `WATCHPOST_DEBUG_MAPFRAMES=<file>` appends every drawn map frame as a JSON
+line - the loop's place, the view, the cells in the radar's colours, the place names, the library's
+status. Without the switch the dashboard gets no hook and a frame pays one nil check; its seam is
+classified for the air (none).
+
+**Mutation verdicts** (9 library, 3 here): the stand-in taken, its lookups (two), kept across two
+refreshes (survived once), dropped with the loop (survived once), dropped once the new land (survived
+once) - the survivors now held - and the public test fails without the fix; the recorder's cells, its
+hook, its call - all caught.
+

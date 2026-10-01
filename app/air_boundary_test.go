@@ -188,6 +188,7 @@ var airBoundary = map[string]airMember{
 	"MapProblem":       {airNone, "0.18.0 D-124: keeps the map's problems for the diagnostic dump; it reaches no audio"},
 	"MapClosed":        {airNone, "0.18.0 D-162: lets the zone store's memory go when the map closes; it reaches no audio"},
 	"Timed":            {airNone, "0.18.0 W14 (D-154): the timing instrument's intervals, kept for /debug/counters and nil unless WATCHPOST_DEBUG_TIMING=1; it reaches no audio"},
+	"MapFrame":         {airNone, "0.18.0 D-198: the map's frame recorder, appending drawn frames to a debug file; nil unless WATCHPOST_DEBUG_MAPFRAMES names one; it reaches no audio"},
 	"ClearMapData":     {airNone, "0.18.0: empties the map's tile files and zone outlines; it reaches no audio"},
 	"SetHistory":       {airNone, "W18: writes the local history's retention and applies it to the store; it reaches no audio"},
 	"ClearHistory":     {airNone, "W18: empties the local history's store; it reaches no audio"},

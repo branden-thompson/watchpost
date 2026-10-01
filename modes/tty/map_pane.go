@@ -348,6 +348,7 @@ func (d Dashboard) renderMap() Dashboard {
 	d.mapPane.radarTimeline = d.radarTimeline(d.scrubW()) // beside the controls (D-103)
 	d.mapPane.fcTimeline = d.forecastTimeline(d.scrubW())
 	d.mapPane.radarBadgeTime = d.radarBadgeTimeNow()
+	d.recordFrame(frame.Status) // D-198: nothing unless the recorder is on
 	d.mapPane.gen++
 	d.mapPane.changed, d.mapPane.ticks = frame.Changed, frame.FrameTicks
 	d = d.timeDraw()
