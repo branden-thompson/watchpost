@@ -1,3 +1,9 @@
+//go:build !race
+
+// THE RACE DETECTOR ADDS NOTHING HERE, AND COST THE GATE THREE MINUTES: the
+// measure is one goroutine weighing addresses over stand-in answers - built
+// and parsed sixty times over - so it runs in the gate's legs without -race.
+
 package app
 
 // mapcost_test.go — W18.6 (D-185): what the map costs Open-Meteo's quota,
@@ -8,12 +14,9 @@ package app
 
 import (
 	"context"
-	"errors"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -21,90 +24,7 @@ import (
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/history"
-	"github.com/branden-thompson/watchpost/platform/httpx"
 )
-
-// costGet keeps every address asked; it answers NDFD as NDFD answers - see
-// ndfdAsItIs - and nothing else, so Open-Meteo is asked exactly where the
-// map would ask it.
-type costGet struct {
-	mu    sync.Mutex
-	asked map[string]bool
-	now   time.Time
-}
-
-func (c *costGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]byte, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.asked[rawURL] = true
-	if strings.Contains(rawURL, "graphical.weather.gov") {
-		return ndfdAsItIs(rawURL, c.now), nil
-	}
-	return nil, errors.New("the measure answers nothing")
-}
-
-// ndfdAsItIs is an NDFD answer for every point asked, with NDFD's own gaps:
-// the hours from the current one for a week, but feels-like from the next
-// hour (D-119); the evening's answer, whatever the hour the measure runs -
-// each day's maximum from tomorrow's 08:00 and minimum from tonight's 20:00:
-// no Today high or low (D-189's case, the worst); wind, gusts and waves
-// hourly; six-hour rain and snow.
-func ndfdAsItIs(rawURL string, now time.Time) []byte {
-	q, _ := url.ParseQuery(rawURL[strings.Index(rawURL, "?")+1:])
-	pts := strings.Fields(q.Get("listLatLon"))
-	hour := now.UTC().Truncate(time.Hour)
-	day := time.Date(hour.Year(), hour.Month(), hour.Day(), 0, 0, 0, 0, time.UTC)
-	var b strings.Builder
-	layout := func(key string, starts []time.Time, span time.Duration) {
-		b.WriteString(`<time-layout><layout-key>` + key + `</layout-key>`)
-		for _, s := range starts {
-			b.WriteString(`<start-valid-time>` + s.Format(time.RFC3339) + `</start-valid-time><end-valid-time>` + s.Add(span).Format(time.RFC3339) + `</end-valid-time>`)
-		}
-		b.WriteString(`</time-layout>`)
-	}
-	every := func(from time.Time, step time.Duration, n int) []time.Time {
-		var out []time.Time
-		for k := range n {
-			out = append(out, from.Add(time.Duration(k)*step))
-		}
-		return out
-	}
-	daily := func(from int, at time.Duration) []time.Time {
-		var out []time.Time
-		for k := from; k < from+7; k++ {
-			out = append(out, day.AddDate(0, 0, k).Add(at))
-		}
-		return out
-	}
-	hours, feels, maxs, mins, sixes := every(hour, time.Hour, 168), every(hour.Add(time.Hour), time.Hour, 167), daily(1, 8*time.Hour), daily(0, 20*time.Hour), every(hour, 6*time.Hour, 13)
-	values := func(n int, v string) string { return strings.Repeat(`<value>`+v+`</value>`, n) }
-	b.WriteString(`<dwml><data>`)
-	for i, p := range pts {
-		ll := strings.Split(p, ",")
-		b.WriteString(`<location><location-key>point` + strconv.Itoa(i+1) + `</location-key><point latitude="` + ll[0] + `" longitude="` + ll[1] + `"/></location>`)
-	}
-	layout("k-p1h", hours, time.Hour)
-	layout("k-p1h-appt", feels, time.Hour)
-	layout("k-p24h-max", maxs, 12*time.Hour)
-	layout("k-p24h-min", mins, 12*time.Hour)
-	layout("k-p6h", sixes, 6*time.Hour)
-	for i := range pts {
-		b.WriteString(`<parameters applicable-location="point` + strconv.Itoa(i+1) + `">` +
-			`<temperature type="hourly" units="Fahrenheit" time-layout="k-p1h">` + values(len(hours), "60") + `</temperature>` +
-			`<temperature type="apparent" units="Fahrenheit" time-layout="k-p1h-appt">` + values(len(feels), "61") + `</temperature>` +
-			`<temperature type="maximum" units="Fahrenheit" time-layout="k-p24h-max">` + values(len(maxs), "70") + `</temperature>` +
-			`<temperature type="minimum" units="Fahrenheit" time-layout="k-p24h-min">` + values(len(mins), "50") + `</temperature>` +
-			`<wind-speed type="sustained" units="knots" time-layout="k-p1h">` + values(len(hours), "10") + `</wind-speed>` +
-			`<wind-speed type="gust" units="knots" time-layout="k-p1h">` + values(len(hours), "15") + `</wind-speed>` +
-			`<direction type="wind" units="degrees true" time-layout="k-p1h">` + values(len(hours), "180") + `</direction>` +
-			`<water-state time-layout="k-p1h"><waves type="significant" units="feet">` + values(len(hours), "3") + `</waves></water-state>` +
-			`<precipitation type="liquid" units="inches" time-layout="k-p6h">` + values(len(sixes), "0.10") + `</precipitation>` +
-			`<precipitation type="snow" units="inches" time-layout="k-p6h">` + values(len(sixes), "0.00") + `</precipitation>` +
-			`</parameters>`)
-	}
-	b.WriteString(`</data></dwml>`)
-	return []byte(b.String())
-}
 
 // openMeteoRefresh is one refresh of the map's temperature pipeline for an ask:
 // its weight against Open-Meteo's quota, by service.
@@ -127,6 +47,13 @@ func openMeteoRefresh(t *testing.T, ask tty.MapAsk, warm bool) (total float64, b
 			}
 		}
 	}
+	lp.mapTemperature(context.Background(), ask) // the first refresh learns the land (D-194)
+	first := 0.0
+	for u := range get.asked {
+		first += temperature.CallWeight(u)
+	}
+	t.Logf("    the first refresh, learning the land: %.1f", first)
+	get.asked = map[string]bool{}
 	lp.mapTemperature(context.Background(), ask)
 	if !ask.Forecast && ask.Region != geo.RegionContiguous { // where HRRR is not, Radar mode's hours ahead are a model's rain (D-115)
 		view := geo.Box(ask.View)
@@ -163,7 +90,9 @@ func quiet(ask tty.MapAsk) tty.MapAsk {
 // more fails here, and W19 lowers them as each layer moves to its keyless
 // source. NDFD is the listener's default (D-190); each row logs beside it
 // what Open-Meteo chosen costs. "warm" is the history holding today's hours,
-// as the recorder leaves it (D-188, D-189). 10,000 a day is the free tier.
+// as the recorder leaves it (D-188, D-189). Each is a refresh's second: the
+// first learns the land Open-Meteo Marine answers nothing for, once a run
+// (D-194) - logged. 10,000 a day is the free tier.
 func TestTheMapsOpenMeteoWeightIsWithinItsBudget(t *testing.T) {
 	california := geo.Box{W: -124.5, S: 32.5, E: -114, N: 42}
 	for _, c := range []struct {
@@ -172,18 +101,18 @@ func TestTheMapsOpenMeteoWeightIsWithinItsBudget(t *testing.T) {
 		warm   bool
 		budget float64
 	}{
-		{"lower 48, Radar mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), false), false, 78},
-		{"lower 48, Forecast mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true), false, 205.2},
-		{"California, Radar mode", costAsk(geo.RegionContiguous, california, false), false, 160},
-		{"California, Forecast mode", costAsk(geo.RegionContiguous, california, true), false, 424},
-		{"Alaska, Radar mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), false), false, 316},
-		{"Alaska, Forecast mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), true), false, 417.2},
-		{"lower 48, Radar, no UV/air", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), false)), false, 78},
-		{"lower 48, Forecast, no UV/air", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true)), false, 205.2},
-		{"California, Forecast, no UV/air", quiet(costAsk(geo.RegionContiguous, california, true)), false, 424},
-		{"lower 48, Forecast, no UV/air, warm", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true)), true, 96},
-		{"California, Forecast, no UV/air, warm", quiet(costAsk(geo.RegionContiguous, california, true)), true, 200},
-		{"California, Forecast, warm", costAsk(geo.RegionContiguous, california, true), true, 200},
+		{"lower 48, Radar mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), false), false, 6},
+		{"lower 48, Forecast mode", costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true), false, 133.2},
+		{"California, Radar mode", costAsk(geo.RegionContiguous, california, false), false, 32},
+		{"California, Forecast mode", costAsk(geo.RegionContiguous, california, true), false, 296},
+		{"Alaska, Radar mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), false), false, 236},
+		{"Alaska, Forecast mode", costAsk(geo.RegionAlaska, regionBox(geo.RegionAlaska), true), false, 337.2},
+		{"lower 48, Radar, no UV/air", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), false)), false, 6},
+		{"lower 48, Forecast, no UV/air", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true)), false, 133.2},
+		{"California, Forecast, no UV/air", quiet(costAsk(geo.RegionContiguous, california, true)), false, 296},
+		{"lower 48, Forecast, no UV/air, warm", quiet(costAsk(geo.RegionContiguous, regionBox(geo.RegionContiguous), true)), true, 24},
+		{"California, Forecast, no UV/air, warm", quiet(costAsk(geo.RegionContiguous, california, true)), true, 72},
+		{"California, Forecast, warm", costAsk(geo.RegionContiguous, california, true), true, 72},
 	} {
 		total, by := openMeteoRefresh(t, c.ask, c.warm)
 		was := c.ask

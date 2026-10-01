@@ -80,9 +80,21 @@ var omRainDays = history.Dataset{
 	Days:  30 * 24 * time.Hour,
 }
 
+// ndfdWaves is NDFD's significant wave height over each field box, an hour a
+// record: its next hour kept as that hour's - NDFD's waves start there - so
+// the current hour and the loop's past ones are drawn from it (D-194).
+var ndfdWaves = history.Dataset{
+	Name: "ndfd-waves", Version: 1, Step: time.Hour,
+	Title:       "NDFD, wave height",
+	Description: "The National Weather Service's significant wave height over each field box's sea, an hour a record.",
+	Fields:      []history.Field{{Name: "waves", Label: "Wave height", Unit: "m", Decimals: 1}},
+	Hours:       72 * time.Hour,
+	Days:        30 * 24 * time.Hour,
+}
+
 // historyDatasets are every dataset the history holds: the Data tab's
 // retention is theirs alike (D-175).
-var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays}
+var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays, ndfdWaves}
 
 // historyEvery is how often the recorder looks for an hour to record.
 const historyEvery = 5 * time.Minute
@@ -92,6 +104,7 @@ const historyEvery = 5 * time.Minute
 type historian struct {
 	store   *history.Store
 	hour    func(context.Context, temperature.Lattice, time.Time) (temperature.Series, error)
+	waves   func(context.Context, temperature.Lattice, time.Time) (temperature.Waves, error) // NDFD's (D-194)
 	regions func() []string
 	pruned  atomic.Int64 // the hour last pruned, Unix
 }
@@ -106,7 +119,7 @@ func (lp *livePipelines) startHistory(ctx context.Context, keep tty.HistoryReten
 	if !ok || ndfd == nil {
 		return
 	}
-	h := &historian{store: history.Open(history.DefaultRoot(), time.Now, historyDatasets...), hour: ndfd.Hour, regions: lp.historyRegions}
+	h := &historian{store: history.Open(history.DefaultRoot(), time.Now, historyDatasets...), hour: ndfd.Hour, waves: ndfd.Waves, regions: lp.historyRegions}
 	lp.mu.Lock()
 	lp.history = h.store
 	lp.mu.Unlock()
@@ -194,6 +207,26 @@ func (h *historian) record(ctx context.Context, lat temperature.Lattice, now tim
 	if next, ok := nextFeels(s, rec); ok {
 		h.store.Put(ndfdHourly.Name, next)
 	}
+	h.recordWaves(ctx, lat, now)
+}
+
+// recordWaves keeps NDFD's waves for a box, the next hour's as that hour's
+// (D-194): NDFD's waves start at the next hour, and the hour it becomes is
+// drawn from this. Nothing for a box NDFD gives no sea.
+func (h *historian) recordWaves(ctx context.Context, lat temperature.Lattice, now time.Time) {
+	if h.waves == nil {
+		return
+	}
+	w, err := h.waves(ctx, lat, now)
+	if err != nil {
+		return // counted as nothing (D-124)
+	}
+	next := now.UTC().Truncate(time.Hour).Add(time.Hour)
+	vals, ok := w.At(next)
+	if !ok || allMissing(vals) {
+		return
+	}
+	h.store.Put(ndfdWaves.Name, history.Record{Key: history.Key{Source: "ndfd", Place: lat.Name}, At: next, IssuedAt: now, Shape: shapeOf(lat), Values: map[string][]float64{"waves": vals}})
 }
 
 // nextFeels is NDFD's feels-like for the hour after a record's, as that

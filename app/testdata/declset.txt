@@ -172,9 +172,12 @@ func (*executors).runTune
 func (*executors).speak
 func (*historian).pass
 func (*historian).record
+func (*historian).recordWaves
 func (*injectQueue).readyLocked
 func (*injectQueue).take
 func (*injectQueue).wake
+func (*landPoints).is
+func (*landPoints).learn
 func (*livePipelines).airnowIn
 func (*livePipelines).applyHistory
 func (*livePipelines).attachDeck
@@ -499,6 +502,8 @@ func alertTonePCM
 func allFabricated
 func allMissing
 func allScenarioKeys
+func anEmptyDay
+func answeredNothing
 func applySetup
 func applyThemes
 func areaMeets
@@ -510,6 +515,7 @@ func attachRadio
 func bedAdvice
 func bedLabelOf
 func bedReachFor
+func beyondNDFD
 func breakingItem
 func breakingLine
 func buildTemperature
@@ -698,6 +704,7 @@ func rainLayerCost
 func rateColour
 func ratePNG
 func reachMiOf
+func reached
 func readScript
 func readerFor
 func readingWord
@@ -708,6 +715,7 @@ func recordedBoxes
 func recordedFeelsNow
 func recordedHour
 func recordedToday
+func recordedWaves
 func refFor
 func refreshCost
 func refsFromConfig
@@ -875,6 +883,7 @@ type historian
 type hostFacts
 type hoursAhead
 type injectQueue
+type landPoints
 type livePipelines
 type liveSource
 type mainTrackStage
@@ -884,6 +893,7 @@ type mapLayer
 type mapProblems
 type mapQuakes
 type mapSource
+type marineSource
 type mastercontrol
 type memRecord
 type narrationClass
@@ -917,6 +927,7 @@ type tileCounter
 type timingLog
 type timingRecord
 type uvCities
+type waveKeep
 type waveSource
 var _
 var _
@@ -929,6 +940,7 @@ var historyKeeps
 var mapLayers
 var mapSources
 var ndfdHourly
+var ndfdWaves
 var omRainDays
 var omUVHourly
 var quakeFeedBytes

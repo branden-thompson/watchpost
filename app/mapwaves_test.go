@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/history"
 )
 
 // fakeWaves answers every lattice with one height every hour from three
@@ -26,6 +28,40 @@ type fakeWaves struct {
 	gapDays     bool // no day at all, as NDFD past its reach
 	ahead       int  // hours answered after the current one; one when zero
 	ashore      bool // the lattice's first point has none, as a point on land
+	fromNext    bool // hours from the next one, as NDFD's (D-194)
+	beyond      int  // the points from this index on have nothing: past NDFD's reach
+	land        int  // Open-Meteo answers nothing for the points from this index on
+	asked       *[][]int
+}
+
+// WavesAt is Waves for the points named, the rest missing: Open-Meteo
+// Marine's (D-194); the points asked are kept.
+func (f fakeWaves) WavesAt(ctx context.Context, l temperature.Lattice, only []int, now time.Time) (temperature.Waves, error) {
+	if f.asked != nil {
+		*f.asked = append(*f.asked, append([]int(nil), only...))
+	}
+	w, err := f.Waves(ctx, l, now)
+	if err != nil {
+		return w, err
+	}
+	named := map[int]bool{}
+	for _, i := range only {
+		named[i] = f.land == 0 || i < f.land
+	}
+	blank := func(row []float64) {
+		for i := range row {
+			if !named[i] {
+				row[i] = math.NaN()
+			}
+		}
+	}
+	for _, row := range w.Hourly {
+		blank(row)
+	}
+	for k := range w.Max {
+		blank(w.Max[k])
+	}
+	return w, nil
 }
 
 func (f fakeWaves) Waves(_ context.Context, l temperature.Lattice, now time.Time) (temperature.Waves, error) {
@@ -41,7 +77,11 @@ func (f fakeWaves) Waves(_ context.Context, l temperature.Lattice, now time.Time
 		return out
 	}
 	w := temperature.Waves{Lattice: l}
-	for h := -3; h <= max(f.ahead, 1); h++ {
+	first := -3
+	if f.fromNext {
+		first = 1
+	}
+	for h := first; h <= max(f.ahead, 1); h++ {
 		w.Hours = append(w.Hours, now.Truncate(time.Hour).Add(time.Duration(h)*time.Hour))
 		row := fill(f.metres)
 		if f.ashore {
@@ -55,6 +95,13 @@ func (f fakeWaves) Waves(_ context.Context, l temperature.Lattice, now time.Time
 			w.Max[k] = fill(math.NaN())
 		}
 	}
+	if f.beyond > 0 {
+		for _, row := range append(append([][]float64(nil), w.Hourly...), w.Max[:]...) {
+			for i := f.beyond; i < len(row); i++ {
+				row[i] = math.NaN()
+			}
+		}
+	}
 	return w, nil
 }
 
@@ -64,7 +111,7 @@ func (f fakeWaves) Waves(_ context.Context, l temperature.Lattice, now time.Time
 // labelled contours; NDFD's where it has them, Open-Meteo's where not.
 func TestWavesFollowTheModes(t *testing.T) {
 	ndfd, om := fakeWaves{metres: 2 * 0.3048, max: 3 * 0.3048, gapDays: true}, fakeWaves{metres: 1, max: 2}
-	radarMode := withWaves(context.Background(), tty.MapTemperature{}, ndfd, om, tempAsk(false), tempNow)
+	radarMode := withWaves(context.Background(), tty.MapTemperature{}, ndfd, om, tempAsk(false), tempNow, waveKeep{})
 	if len(radarMode.Waves) != 4 {
 		t.Fatalf("Radar mode's waves are %d hours; want the four up to now", len(radarMode.Waves))
 	}
@@ -76,7 +123,7 @@ func TestWavesFollowTheModes(t *testing.T) {
 	}
 	ask := tempAsk(true)
 	ask.Fahrenheit = false
-	fc := withWaves(context.Background(), tty.MapTemperature{}, ndfd, om, ask, tempNow)
+	fc := withWaves(context.Background(), tty.MapTemperature{}, ndfd, om, ask, tempNow, waveKeep{})
 	steps := tty.ForecastSteps(ask.Anchor)
 	if len(fc.Waves) != 1 || fc.Waves[0].During != steps[0].Span || len(fc.WaveDays) != temperature.Days {
 		t.Fatalf("Forecast mode's waves: %d Now, %d days", len(fc.Waves), len(fc.WaveDays))
@@ -92,7 +139,7 @@ func TestWavesFollowTheModes(t *testing.T) {
 // TestWavesThatDidNotAnswerGoToTheDiagnostics is D-124 for the waves: no
 // Setting offers another source, so a failure is the diagnostics' alone.
 func TestWavesThatDidNotAnswerGoToTheDiagnostics(t *testing.T) {
-	got := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{failed: true}, fakeWaves{failed: true}, tempAsk(false), tempNow)
+	got := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{failed: true}, fakeWaves{failed: true}, tempAsk(false), tempNow, waveKeep{})
 	if len(got.Waves) != 0 || len(got.Chips[tty.WaveLayer]) != 0 || len(got.Problems) == 0 {
 		t.Errorf("failed waves: %d grids, chips %v, problems %v; want the diagnostics told alone", len(got.Waves), got.Chips, got.Problems)
 	}
@@ -119,7 +166,7 @@ func TestWavesAreOffByDefaultAndCosted(t *testing.T) {
 func TestTheFieldsRunOnIntoTheHoursAhead(t *testing.T) {
 	ask := tempAsk(false)
 	ask.RadarAhead = 1
-	waves := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{metres: 1, max: 2, gapDays: true}, fakeWaves{metres: 1, max: 2}, ask, tempNow)
+	waves := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{metres: 1, max: 2, gapDays: true}, fakeWaves{metres: 1, max: 2}, ask, tempNow, waveKeep{})
 	temp := buildTemperature(context.Background(), &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, nil, ask, tempNow, nil)
 	next := ask.Anchor.Add(time.Hour)
 	for name, grids := range map[string][]tuimaps.Overlay{"waves": waves.Waves, "temperature": temp.Overlays, "wind": temp.Wind, "feels": temp.Feels} {
@@ -146,7 +193,7 @@ func TestEveryHourAheadIsAcceptedByTheLibrary(t *testing.T) {
 	defer func() { _ = m.Close() }()
 	ask := tempAsk(false)
 	ask.RadarAhead = 12
-	got := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{failed: true}, fakeWaves{metres: 1, max: 2, ahead: 12, ashore: true}, ask, tempNow)
+	got := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{failed: true}, fakeWaves{metres: 1, max: 2, ahead: 12, ashore: true}, ask, tempNow, waveKeep{})
 	if len(got.Waves) != 16*len(fieldBoxes(ask.Region, ask.View)) {
 		t.Fatalf("%d wave grids; want the three past, the current and twelve ahead, a box", len(got.Waves))
 	}
@@ -171,15 +218,16 @@ func TestAnOverlaysChipsNameWhatItIsDrawnFrom(t *testing.T) {
 	refused := fakeWaves{failed: true}
 	for _, tc := range []struct {
 		name      string
-		near, far waveSource
+		near, far fakeWaves
 		want      string
 	}{
-		{"both answer", ndfd, om, "NDFD/O-METEO"},
+		{"both answer, Open-Meteo past NDFD's reach", fakeWaves{metres: 2 * 0.3048, max: 3 * 0.3048, beyond: 1}, om, "NDFD/O-METEO"},
+		{"NDFD reaches everywhere: Open-Meteo not asked (D-194)", ndfd, om, "NDFD"},
 		{"Open-Meteo refuses", ndfd, refused, "NDFD"},
 		{"NDFD refuses", refused, om, "O-METEO"},
 		{"neither", refused, refused, ""},
 	} {
-		got := withWaves(context.Background(), tty.MapTemperature{}, tc.near, tc.far, tempAsk(true), tempNow)
+		got := withWaves(context.Background(), tty.MapTemperature{}, tc.near, tc.far, tempAsk(true), tempNow, waveKeep{})
 		if chips := strings.Join(got.Chips[tty.WaveLayer], "/"); chips != tc.want {
 			t.Errorf("%s: the waves' chips are %q; want %q", tc.name, chips, tc.want)
 		}
@@ -189,5 +237,86 @@ func TestAnOverlaysChipsNameWhatItIsDrawnFrom(t *testing.T) {
 		if chips := nothing.Chips[key]; len(chips) != 0 {
 			t.Errorf("%s drew nothing and names %v", key, chips)
 		}
+	}
+}
+
+// THE WAVES ARE NDFD'S FIRST, OPEN-METEO ONLY PAST ITS REACH (W19.5, D-194):
+// NDFD's waves start at the next hour, so the current hour and the loop's
+// past ones are the history's - NDFD's next hour as each hour recorded it -
+// and Open-Meteo Marine is asked only for the points NDFD does not reach; a
+// point it answers nothing for (land) is never asked again. The badge names
+// NDFD, Open-Meteo and RECORDED. Nothing recorded, NDFD's next hour is
+// stretched under the loop (the cold start).
+func TestTheWavesAreNDFDsFirstAndOpenMeteoOnlyPastItsReach(t *testing.T) {
+	ask := tempAsk(false)
+	box := fieldBoxes(ask.Region, ask.View)[0]
+	lat := temperature.LatticeFor(box.Name, box.Box)
+	n := lat.Cols * lat.Rows
+	anchor := ask.Anchor
+	store := history.Open(t.TempDir(), func() time.Time { return tempNow }, ndfdWaves)
+	all := make([]float64, n)
+	for i := range all {
+		all[i] = 1.5
+	}
+	all[n-2], all[n-1] = math.NaN(), math.NaN() // the history is NDFD's: nothing past its reach
+	for back := pastHours; back >= 0; back-- {
+		h := anchor.Add(-time.Duration(back) * time.Hour)
+		if !store.Put(ndfdWaves.Name, history.Record{Key: history.Key{Source: "ndfd", Place: box.Name}, At: h, IssuedAt: h.Add(-time.Hour), Shape: shapeOf(lat), Values: map[string][]float64{"waves": all}}) {
+			t.Fatal("could not seed the history")
+		}
+	}
+	var asks [][]int
+	ndfd := fakeWaves{metres: 1, max: 2, fromNext: true, beyond: n - 2}
+	om := fakeWaves{metres: 3, max: 4, land: n - 1, asked: &asks}
+	keep := waveKeep{store: store, land: &landPoints{}}
+	got := withWaves(context.Background(), tty.MapTemperature{}, ndfd, om, ask, tempNow, keep)
+	if len(asks) != 1 || len(asks[0]) != 2 || asks[0][0] != n-2 || asks[0][1] != n-1 {
+		t.Fatalf("Open-Meteo was asked for %v; want the two points past NDFD's reach alone", asks)
+	}
+	if chips := strings.Join(got.Chips[tty.WaveLayer], "/"); chips != "NDFD/O-METEO/RECORDED" {
+		t.Errorf("the badge names %q; want NDFD, Open-Meteo and RECORDED", chips)
+	}
+	from := map[time.Time]bool{}
+	for _, o := range got.Waves {
+		from[o.During.From] = true
+	}
+	for back := pastHours; back >= 0; back-- {
+		if !from[anchor.Add(-time.Duration(back)*time.Hour)] {
+			t.Errorf("the hour %d before was not drawn from the history: %v", back, from)
+		}
+	}
+	withWaves(context.Background(), tty.MapTemperature{}, ndfd, om, ask, tempNow, keep)
+	if len(asks) != 2 || len(asks[1]) != 1 || asks[1][0] != n-2 {
+		t.Errorf("the second refresh asked %v; want the sea point alone - the land learned", asks[1:])
+	}
+	cold := withWaves(context.Background(), tty.MapTemperature{}, ndfd, om, ask, tempNow, waveKeep{land: &landPoints{}})
+	stretched := false
+	for _, o := range cold.Waves {
+		stretched = stretched || o.During.From.Before(anchor) && !o.During.Until.Before(anchor)
+	}
+	if !stretched || slices.Contains(cold.Chips[tty.WaveLayer], "RECORDED") {
+		t.Error("nothing recorded, NDFD's next hour is not stretched under the loop, or RECORDED was said")
+	}
+}
+
+// A WAVE DAY PAST NDFD'S REACH IS OPEN-METEO'S (D-195): in Forecast mode a
+// day NDFD gives no waves anywhere is filled from Open-Meteo at the sea's
+// points - every point but the land it has learned - and where Open-Meteo
+// gives nothing either, a note says so.
+func TestAWaveDayPastNDFDsReachIsOpenMeteos(t *testing.T) {
+	ask := tempAsk(true)
+	var asks [][]int
+	keep := waveKeep{land: &landPoints{}}
+	keep.land.learn(fieldBoxes(ask.Region, ask.View)[0].Name, []int{0})
+	got := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{metres: 1, max: 2, gapDays: true}, fakeWaves{metres: 3, max: 4, asked: &asks}, ask, tempNow, keep)
+	if len(asks) == 0 || slices.Contains(asks[0], 0) || len(asks[0]) < 2 {
+		t.Fatalf("Open-Meteo was asked for %v; want every sea point, the land's left out", asks)
+	}
+	if len(got.WaveDays) != temperature.Days {
+		t.Errorf("%d wave days drawn; want each day, Open-Meteo's where NDFD has none", len(got.WaveDays))
+	}
+	none := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{metres: 1, max: 2, gapDays: true}, fakeWaves{failed: true}, ask, tempNow, waveKeep{land: &landPoints{}})
+	if !slices.ContainsFunc(none.Notes, func(n string) bool { return strings.Contains(n, "past NDFD's reach") }) {
+		t.Errorf("Open-Meteo refusing too, no note says why the days are empty: %v", none.Notes)
 	}
 }

@@ -47,6 +47,7 @@ type tempSources struct {
 	ndfd, om temperature.Source
 	gate     *temperature.QuotaGate // Open-Meteo's asks, held while a quota is spent (W18.1, D-165)
 	uvCities *uvCities              // UV's first source: EPA's index for the cities in view (D-167, D-186)
+	land     *landPoints            // the points Open-Meteo Marine answered nothing for (D-194)
 	rain     *temperature.OpenMeteo // the rain and snow, Open-Meteo's always (D-118); the waves beyond NDFD (D-125)
 	waves    *temperature.NDFD      // the waves where NDFD reaches (D-125)
 }
@@ -63,7 +64,7 @@ func tempSourcesOver(c *httpx.Client) *tempSources {
 func tempSourcesAt(c temperature.Getter, omBase, ndfdBase, state string) *tempSources {
 	gate := temperature.NewSharedQuotaGate(c, time.Now, state)
 	om, ndfd := temperature.NewOpenMeteo(gate, omBase), temperature.NewNDFD(c, ndfdBase)
-	return &tempSources{ndfd: ndfd, om: om, gate: gate, rain: om, waves: ndfd, uvCities: &uvCities{epa: uv.NewEPA(c, "")}}
+	return &tempSources{ndfd: ndfd, om: om, gate: gate, rain: om, waves: ndfd, uvCities: &uvCities{epa: uv.NewEPA(c, "")}, land: &landPoints{}}
 }
 
 // quotaSpent is Open-Meteo's spent quota as the map says it, or nil.
@@ -169,7 +170,7 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 		t = withRainDays(ctx, t, lp.temp.rain, ask, now, rescue)
 	}
 	if lp.temp.waves != nil && lp.temp.rain != nil && ask.Region != geo.RegionSamoa { // the waves (D-125): held as the rest is (D-99); NDFD has no Samoa
-		t = withWaves(ctx, t, lp.temp.waves, lp.temp.rain, ask, now)
+		t = withWaves(ctx, t, lp.temp.waves, lp.temp.rain, ask, now, waveKeep{store: lp.historyStore(), land: lp.temp.land}) // NDFD first, the history its hours, Open-Meteo past its reach (D-194)
 	}
 	if lp.temp.rain != nil { // Open-Meteo: the UV and the model's US AQI (D-137, D-139)
 		t = withUV(ctx, t, lp.temp.rain, uvAsked(src == lp.temp.om, filled), ask, now, lp.historyStore(), lp.temp.uvCities) // EPA's cities first (D-186); valid UV kept, and replayed when refused (D-167)

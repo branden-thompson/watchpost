@@ -284,6 +284,31 @@ func TestTheNextHoursFeelsLikeIsKeptAsItsOwn(t *testing.T) {
 	}
 }
 
+// NDFD'S NEXT-HOUR WAVES ARE KEPT AS THAT HOUR'S (W19.5, D-194): NDFD's
+// waves start at the next hour, so the recorder keeps it as that hour's
+// record - drawn when the hour comes - and a box NDFD gives no sea records
+// nothing.
+func TestNDFDsNextHourWavesAreKeptAsThatHours(t *testing.T) {
+	now := tempNow
+	box := fieldBoxes(tempAsk(false).Region, tempAsk(false).View)[0]
+	lat := temperature.LatticeFor(box.Name, box.Box)
+	f := &fakeHour{}
+	h := &historian{store: history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly, ndfdWaves), hour: f.hour,
+		waves: fakeWaves{metres: 1.5, max: 2, fromNext: true}.Waves}
+	h.record(context.Background(), lat, now)
+	key := history.Key{Source: "ndfd", Place: box.Name}
+	next := now.Truncate(time.Hour).Add(time.Hour)
+	if rec, ok := h.store.Get(ndfdWaves.Name, key, next); !ok || rec.Values["waves"][0] != 1.5 {
+		t.Fatalf("the next hour's waves were not kept as its own: %v %v", ok, rec.Values)
+	}
+	dry := &historian{store: history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly, ndfdWaves), hour: f.hour,
+		waves: fakeWaves{metres: math.NaN(), max: math.NaN(), fromNext: true}.Waves}
+	dry.record(context.Background(), lat, now)
+	if _, ok := dry.store.Get(ndfdWaves.Name, key, next); ok {
+		t.Error("a box with no sea recorded waves")
+	}
+}
+
 // FORECAST MODE ON NDFD ASKS OPEN-METEO FOR NOTHING THE HISTORY HOLDS
 // (W19.1, D-188, D-189): in the evening NDFD has no Today high or low - the
 // day's maximum has passed - and its feels-like starts at the next hour. Now's

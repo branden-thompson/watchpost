@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -47,6 +48,24 @@ func newWaves(l Lattice) Measure {
 // hourIndex is the index of an hour, adding it in order.
 func (w *Measure) hourIndex(t time.Time) int {
 	return hourRow(&w.Hours, &w.Hourly, w.Lattice.Cols*w.Lattice.Rows, t)
+}
+
+// SetHour puts an hour's values in, where the source gave none for it -
+// the history's (D-194); false where the source has the hour or the values
+// do not cover the lattice.
+func (w *Measure) SetHour(t time.Time, vals []float64) bool {
+	n := w.Lattice.Cols * w.Lattice.Rows
+	if len(vals) != n {
+		return false
+	}
+	row := w.Hourly[w.hourIndex(t.UTC().Truncate(time.Hour))]
+	for _, v := range row { // a lattice's points (P10-02)
+		if !math.IsNaN(v) {
+			return false
+		}
+	}
+	copy(row, vals)
+	return true
 }
 
 // At is the values of the newest hour at or before t, within an hour of it:
@@ -135,12 +154,33 @@ func (s *NDFD) Waves(ctx context.Context, l Lattice, now time.Time) (Waves, erro
 	return out, nil
 }
 
-// Waves asks Open-Meteo Marine, on its own host: three hours back and two
-// on, and seven days' highest, each point's dates its own local ones.
+// Waves asks Open-Meteo Marine, on its own host, for every point of a
+// lattice: three hours back and two on, and seven days' highest, each
+// point's dates its own local ones.
 func (s *OpenMeteo) Waves(ctx context.Context, l Lattice, now time.Time) (Waves, error) {
+	return s.WavesAt(ctx, l, nil, now)
+}
+
+// WavesAt is Waves for the lattice's points named alone - nil is every one -
+// the rest missing: Open-Meteo bills every point asked, so a box's points
+// NDFD reaches, and the land, are not (D-194).
+func (s *OpenMeteo) WavesAt(ctx context.Context, l Lattice, only []int, now time.Time) (Waves, error) {
+	all := l.Points()
+	if only == nil {
+		only = make([]int, len(all))
+		for i := range only {
+			only[i] = i
+		}
+	}
+	if len(only) == 0 {
+		return Waves{}, errors.New("Open-Meteo waves: no point asked for")
+	}
 	var lats, lons []string
-	for _, p := range l.Points() {
-		lats, lons = append(lats, ftoa(p.Lat)), append(lons, ftoa(p.Lon))
+	for _, i := range only { // the points named (P10-02)
+		if i < 0 || i >= len(all) {
+			return Waves{}, fmt.Errorf("Open-Meteo waves: point %d of %d", i, len(all))
+		}
+		lats, lons = append(lats, ftoa(all[i].Lat)), append(lons, ftoa(all[i].Lon))
 	}
 	q := url.Values{"latitude": {strings.Join(lats, ",")}, "longitude": {strings.Join(lons, ",")},
 		"hourly": {"wave_height"}, "past_hours": {"3"}, "forecast_hours": {strconv.Itoa(hoursAhead)},
@@ -168,11 +208,12 @@ func (s *OpenMeteo) Waves(ctx context.Context, l Lattice, now time.Time) (Waves,
 		}
 		pts = []point{one}
 	}
-	if n := l.Cols * l.Rows; len(pts) != n {
-		return Waves{}, fmt.Errorf("Open-Meteo waves: %d points answered for %d asked", len(pts), n)
+	if len(pts) != len(only) {
+		return Waves{}, fmt.Errorf("Open-Meteo waves: %d points answered for %d asked", len(pts), len(only))
 	}
 	out := newWaves(l)
-	for at, p := range pts {
+	for k, p := range pts {
+		at := only[k] // the lattice point it answers for
 		zone := time.FixedZone("", p.Offset)
 		for i, ts := range p.Hourly.Time {
 			t, err := time.ParseInLocation("2006-01-02T15:04", ts, zone)

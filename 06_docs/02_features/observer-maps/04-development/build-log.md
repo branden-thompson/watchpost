@@ -2777,3 +2777,37 @@ edge, an hour ahead (survived once; now tested), an unknown style, Now's step al
 contour holds, the row off - all caught. P10's live 31 are the same 31 (checked against HEAD in a
 worktree): the temperature package's density finding moved from the deleted `air.go` to `cost.go`.
 
+## Batch 89 — the waves from NDFD first, Open-Meteo past its reach (W19.5; D-194, D-195; 2026-10-01)
+
+**Now.** The waves follow temperature (D-194). The recorder keeps **NDFD's waves an hour a record**
+(`ndfd-waves`): NDFD's start at the next hour, so its next hour is kept as that hour's, and when the
+hour comes it is the current hour's. The map draws NDFD's waves, the **current hour and the loop's
+three before it from the history**, and on a cold start NDFD's next hour stretched under the loop.
+**Open-Meteo Marine is asked only for the points NDFD does not reach** (`OpenMeteo.WavesAt`, the
+points named alone), and a point it answers nothing for - land - is remembered (`landPoints`, a box's
+points, for the run) and never asked again. In Forecast mode a day NDFD gives nothing for anywhere -
+past its six - is Open-Meteo's at every point but the learned land (D-195), and a note says so where
+it gives nothing either. The badge names NDFD, O-METEO and RECORDED as they drew.
+
+**The weight a refresh, its second** (the first learns the land, once a run - logged beside it):
+
+| View, every row on | Batch 88 | Now |
+|---|---|---|
+| Lower 48, Radar mode | 78.0 | **6.0** |
+| California, Radar mode | 160.0 | **32.0** |
+| Lower 48, Forecast mode, the history warm, UV and air off | 96.0 | **24.0** |
+| California, Forecast mode, the history warm | 200.0 | **72.0** |
+
+The measure's stand-ins now answer as the sources do: NDFD's waves in a coastal band, nothing ashore
+or past 127W; Open-Meteo Marine's past 127W, nothing ashore. Alaska's figures stay high in the measure
+only because its stand-in puts all of Alaska's longitudes at sea.
+
+**The measure, out of the race leg.** It ran 184 s under -race - sixty refreshes over stand-in answers
+built and parsed each time - and it is one goroutine: `//go:build !race`, as the idle bench is, its
+stand-ins apart in `mapcost_standin_test.go` for the history's tests, and NDFD's answers built once an
+address. The app package's race run went from ~222 s to 126 s.
+
+**Mutation verdicts** (12): the land skipped, NDFD's reach, the land learned, the history's hours,
+the cold start's stretch, the empty day, its note, the recorder, the next hour, `WavesAt`'s scatter,
+`SetHour` over the source's own (survived once - untested; now tested) - all caught.
+
