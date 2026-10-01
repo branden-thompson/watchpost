@@ -2617,3 +2617,48 @@ variables an ask - caught. Equivalent: 81 points a box (the lattices are the sam
 a mutant of `rain.go` was undone with `git checkout`, not by copy - it held no uncommitted change, and
 nothing was lost.
 
+## Batch 84 — temperature from NDFD first, both modes (W19.1; D-185, D-188 to D-190; 2026-09-30)
+
+**Now.** Settings → Maps → Temperature governs both modes, **NDFD (NWS) its default** (D-190); the
+file's word is "open-meteo" for Open-Meteo, anything else NDFD, so a file that held the old empty
+default opens on NDFD. Choosing Open-Meteo says beneath the row that it is metered. D-96 and D-101
+are overturned in this.
+
+- **Radar mode on NDFD:** NDFD's current hour and hours ahead; the loop's past hours from the
+  history - the recorder's NDFD hours - chips NDFD then RECORDED; nothing recorded, the current hour
+  stretched under the loop (the cold start). Open-Meteo is not asked for temperature, feels-like or
+  wind.
+- **Now's feels-like (D-188):** NDFD answers it from the next hour, so the recorder now keeps NDFD's
+  next-hour feels-like as that hour's record, merged in when the hour comes. Now draws the recorded
+  hour's; on a cold start NDFD's next hour. The history's `Claim` now counts an hour recorded only by a
+  record issued in its own time - a record kept ahead of it is not.
+- **An empty Today (D-189):** in the evening NDFD has no Today high or low. The hours recorded since
+  midnight fill it - their highest and lowest, feels-like and peak wind likewise - only where NDFD
+  left it empty; else Open-Meteo for that day; else blank with the note it always had.
+
+**The measure, rebased.** W18.6's stand-in now answers NDFD as NDFD answers - feels-like from the next
+hour, an evening's days - on the clock the pipeline reads (it had answered on the test's date, and
+every NDFD day fell outside the week). NDFD chosen, Open-Meteo's weight a refresh:
+
+| View | Open-Meteo chosen | NDFD (default) |
+|---|---|---|
+| Lower 48, Radar mode, UV and air off | 187.2 | **78.0** (the waves' fill alone) |
+| Lower 48, Forecast mode, UV and air off, the history warm | 265.2 | **156.0** (rain days, waves' fill) |
+| California, Forecast mode, UV and air off, warm | 544.0 | **320.0** |
+| Every row on | unchanged | unchanged - UV still asks the full forecast (W19.2) |
+
+**The Settings focus order (HUM LEAD nit).** ↓ in the Maps tab went from Radar to Temperature, past
+Radar ahead and Quakes: the rows were declared in another order than they are drawn. They are now
+declared as drawn, and `TestDownWalksAGroupAsItIsDrawn` holds every group to it. The Maps golden
+moves by one line: Temperature opens at NDFD (NWS).
+
+**The memo guard** caught the metered note: it grows the Maps tab, and every tab takes the widest's
+size, so `mapTempNDFD` reaches the Settings frame. Its one writer settles the window (bumps its
+generation); the guard now models that writer for a top-level field as it did for `setup`.
+
+**Mutation verdicts** (targeted, 15): the picker Forecast mode's alone, the history for NDFD's boxes,
+a box Open-Meteo filled replayed, Today from the history, Now's recorded feels-like, the cold start's
+next hour, the lowest and the highest, the history overwriting what NDFD gave (survived once -
+nothing held Today's feels-like high to NDFD's; now held), the recorder's merge, the next-hour record,
+`Claim`'s issued rule, the default, the metered note - all caught.
+

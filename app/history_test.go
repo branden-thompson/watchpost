@@ -3,11 +3,14 @@ package app
 import (
 	"context"
 	"errors"
+	"math"
 	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -189,6 +192,162 @@ func TestAPastHourIsReplayedFromTheHistory(t *testing.T) {
 	}
 	if !stretched {
 		t.Error("with nothing recorded the current hour is not stretched (the cold start)")
+	}
+}
+
+// RADAR MODE ON NDFD DRAWS ITS PAST HOURS FROM THE HISTORY (W19.1, D-185,
+// D-190): NDFD has the current hour and the hours ahead, none before; the
+// hours recorded are the loop's past hours, each in its own, the chips NDFD
+// then RECORDED - and Open-Meteo is not asked. Nothing recorded, the current
+// hour is stretched under the loop (the cold start), the chip NDFD alone.
+func TestRadarModeOnNDFDDrawsItsPastHoursFromTheHistory(t *testing.T) {
+	now := tempNow
+	anchor := now.Truncate(time.Hour)
+	store := history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly)
+	box := fieldBoxes(tempAsk(false).Region, tempAsk(false).View)[0]
+	lat := temperature.LatticeFor(box.Name, box.Box)
+	f := &fakeHour{}
+	for _, back := range []time.Duration{2 * time.Hour, time.Hour} {
+		s, _ := f.hour(context.Background(), lat, anchor.Add(-back))
+		rec, ok := ndfdRecord(s, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-back))
+		if !ok || !store.Put(ndfdHourly.Name, rec) {
+			t.Fatal("could not seed the history")
+		}
+	}
+	om := &fakeTemp{name: "Open-Meteo", now: now}
+	got := buildTemperature(context.Background(), &nowOnly{}, om, tempAsk(false), now, &fallback{past: recordedHour(store)})
+	from := map[time.Time]bool{}
+	for _, o := range got.Overlays {
+		if strings.Contains(o.ID, "/"+box.Name+"/") {
+			from[o.During.From] = true
+		}
+	}
+	for _, back := range []time.Duration{2 * time.Hour, time.Hour} {
+		if !from[anchor.Add(-back)] {
+			t.Errorf("the hour %v before was not drawn from the history: %v", back, from)
+		}
+	}
+	if chips := got.Chips[tty.TemperatureLayer]; !slices.Equal(chips, []string{"NDFD", "RECORDED"}) {
+		t.Errorf("the chips are %v; want NDFD then RECORDED", chips)
+	}
+	if om.asked != 0 {
+		t.Errorf("Open-Meteo was asked %d times; NDFD answered", om.asked)
+	}
+	cold := buildTemperature(context.Background(), &nowOnly{}, om, tempAsk(false), now, &fallback{past: recordedHour(history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly))})
+	if chips := cold.Chips[tty.TemperatureLayer]; !slices.Equal(chips, []string{"NDFD"}) {
+		t.Errorf("nothing recorded, the chips are %v; want NDFD alone", chips)
+	}
+	stretched := false
+	for _, o := range cold.Overlays {
+		stretched = stretched || o.During.From.Before(anchor) && !o.During.Until.Before(anchor)
+	}
+	if !stretched {
+		t.Error("nothing recorded, the current hour is not stretched under the loop (the cold start)")
+	}
+}
+
+// NDFD'S NEXT-HOUR FEELS-LIKE IS KEPT AS THAT HOUR'S (W19.1, D-188): NDFD
+// answers feels-like from the next hour, so an hour's own record would never
+// hold one. The recorder keeps the next hour's as that hour's, and when the
+// hour comes its record keeps it beside the hour's own fields.
+func TestTheNextHoursFeelsLikeIsKeptAsItsOwn(t *testing.T) {
+	now := tempNow
+	box := fieldBoxes(tempAsk(false).Region, tempAsk(false).View)[0]
+	lat := temperature.LatticeFor(box.Name, box.Box)
+	n := lat.Cols * lat.Rows
+	all := func(v float64) []float64 {
+		out := make([]float64, n)
+		for i := range out {
+			out[i] = v
+		}
+		return out
+	}
+	hour := func(_ context.Context, l temperature.Lattice, at time.Time) (temperature.Series, error) {
+		h := at.UTC().Truncate(time.Hour)
+		return temperature.Series{Lattice: l, Hours: []time.Time{h, h.Add(time.Hour)},
+			Hourly: [][]float64{all(20), all(math.NaN())}, Feels: [][]float64{all(math.NaN()), all(float64(h.Hour()))},
+			WindSpeed: [][]float64{all(10), all(math.NaN())}, WindFrom: [][]float64{all(270), all(math.NaN())}, WindGust: [][]float64{all(30), all(math.NaN())}}, nil
+	}
+	h := &historian{store: history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly), hour: hour}
+	key := history.Key{Source: "ndfd", Place: box.Name}
+	h.record(context.Background(), lat, now)
+	anchor := now.Truncate(time.Hour)
+	next, ok := h.store.Get(ndfdHourly.Name, key, anchor.Add(time.Hour))
+	if !ok || next.Values["feels"][0] != float64(anchor.Hour()) {
+		t.Fatalf("the next hour's feels-like was not kept as its own: %v %v", ok, next.Values)
+	}
+	now = now.Add(time.Hour)
+	h.record(context.Background(), lat, now)
+	got, ok := h.store.Get(ndfdHourly.Name, key, anchor.Add(time.Hour))
+	if !ok || got.Values["temp"][0] != 20 || got.Values["feels"][0] != float64(anchor.Hour()) {
+		t.Errorf("the hour's record is %v (%v); want its own temperature and the feels-like kept for it", got.Values, ok)
+	}
+}
+
+// FORECAST MODE ON NDFD ASKS OPEN-METEO FOR NOTHING THE HISTORY HOLDS
+// (W19.1, D-188, D-189): in the evening NDFD has no Today high or low - the
+// day's maximum has passed - and its feels-like starts at the next hour. Now's
+// feels-like is the recorded hour's; Today's high and low are the recorded
+// hours' highest and lowest; Open-Meteo is not asked. With nothing recorded,
+// Now's feels-like is NDFD's next hour, and the empty day is Open-Meteo's.
+func TestForecastModeOnNDFDDrawsTodayFromTheHistory(t *testing.T) {
+	ask := tempAsk(true)
+	ask.TempNDFD = true
+	anchor := ask.Anchor
+	box := fieldBoxes(ask.Region, ask.View)[0]
+	lat := temperature.LatticeFor(box.Name, box.Box)
+	n := lat.Cols * lat.Rows
+	all := func(v float64) []float64 {
+		out := make([]float64, n)
+		for i := range out {
+			out[i] = v
+		}
+		return out
+	}
+	store := history.Open(t.TempDir(), func() time.Time { return tempNow }, ndfdHourly)
+	day := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 0, 0, 0, 0, anchor.Location())
+	for h := day; !h.After(anchor); h = h.Add(time.Hour) {
+		temp := 10 + float64(h.Hour())/2 // 10 °C at midnight, 20 at 20:00
+		rec := history.Record{Key: history.Key{Source: "ndfd", Place: box.Name}, At: h, IssuedAt: h,
+			Shape:  history.Shape{Box: lat.Box, Cols: lat.Cols, Rows: lat.Rows},
+			Values: map[string][]float64{"temp": all(temp), "feels": all(temp - 5), "wind": all(10), "wind_from": all(180), "gust": all(20)}}
+		if !store.Put(ndfdHourly.Name, rec) {
+			t.Fatal("could not seed the history")
+		}
+	}
+	ndfd := temperature.NewNDFD(&costGet{asked: map[string]bool{}, now: tempNow}, "")
+	om := &fakeTemp{name: "Open-Meteo", now: tempNow}
+	got := buildTemperature(context.Background(), ndfd, om, ask, tempNow, &fallback{past: recordedHour(store)})
+	if om.asked != 0 {
+		t.Errorf("Open-Meteo was asked %d times; the history held Now and Today", om.asked)
+	}
+	value := func(os []tuimaps.Overlay, id string) (float64, bool) {
+		for _, o := range os {
+			if o.ID == id {
+				return o.Grid.Values[0], true
+			}
+		}
+		return 0, false
+	}
+	f := func(c float64) float64 { return c*9/5 + 32 }
+	if v, ok := value(got.Feels, tty.FeelsLayer+"/"+box.Name+"/now"); !ok || math.Abs(v-f(15)) > 0.01 {
+		t.Errorf("Now's feels-like is %v (%v); want the recorded hour's %v (D-188)", v, ok, f(15))
+	}
+	if v, ok := value(got.High, tty.TemperatureLayer+"/"+box.Name+"/d0/high"); !ok || math.Abs(v-f(20)) > 0.01 {
+		t.Errorf("Today's high is %v (%v); want the recorded hours' highest %v (D-189)", v, ok, f(20))
+	}
+	if v, ok := value(got.Low, tty.TemperatureLayer+"/"+box.Name+"/d0/low"); !ok || math.Abs(v-f(10)) > 0.01 {
+		t.Errorf("Today's low is %v (%v); want the recorded hours' lowest %v (D-189)", v, ok, f(10))
+	}
+	if v, ok := value(got.FeelsHigh, tty.FeelsLayer+"/"+box.Name+"/d0/high"); !ok || math.Abs(v-61) > 0.01 {
+		t.Errorf("Today's feels-like high is %v (%v); want NDFD's own 61 - the history fills only what NDFD left empty", v, ok)
+	}
+	cold := buildTemperature(context.Background(), ndfd, om, ask, tempNow, &fallback{past: recordedHour(history.Open(t.TempDir(), func() time.Time { return tempNow }, ndfdHourly))})
+	if v, ok := value(cold.Feels, tty.FeelsLayer+"/"+box.Name+"/now"); !ok || math.Abs(v-61) > 0.01 {
+		t.Errorf("nothing recorded, Now's feels-like is %v (%v); want NDFD's next hour, 61 (D-188)", v, ok)
+	}
+	if v, ok := value(cold.Low, tty.TemperatureLayer+"/"+box.Name+"/d0/low"); !ok || om.asked == 0 || math.Abs(v-41) > 0.01 {
+		t.Error("nothing recorded, the empty Today was not Open-Meteo's (D-189)")
 	}
 }
 

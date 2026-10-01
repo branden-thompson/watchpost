@@ -552,12 +552,12 @@ func envWatchlistDwell
 func eventNarration
 func eventScript
 func everyTick
+func extremes
 func feelsForecastGrids
 func fetchForecast
 func fieldBoxes
 func fieldGrid
 func fillDays
-func fillFeelsNow
 func fireChosen
 func fireHosts
 func fireLayerCost
@@ -624,6 +624,7 @@ func marineReportOf
 func matchesQuery
 func measureGrids
 func missingRow
+func missingValues
 func narrateDebug
 func ndfdRecord
 func nearestMetro
@@ -647,6 +648,7 @@ func newReleaseWatch
 func newResolver
 func newSevereDeck
 func newTimingLog
+func nextFeels
 func notNew
 func noteRead
 func onTheRail
@@ -696,7 +698,9 @@ func recentTiers
 func reconcile
 func recordUV
 func recordedBoxes
+func recordedFeelsNow
 func recordedHour
+func recordedToday
 func refFor
 func refreshCost
 func refsFromConfig
@@ -746,6 +750,7 @@ func setUnder
 func settingsRoles
 func severityOf
 func shapeMeets
+func shapeOf
 func sharesAnOutput
 func sizeWords
 func sleepCtx

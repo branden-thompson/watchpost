@@ -415,23 +415,31 @@ func TestARefusedLoopKeepsTheOneDrawn(t *testing.T) {
 	}
 }
 
+// THE TEMPERATURE SOURCE IS ONE SETTING FOR BOTH MODES, NDFD ITS DEFAULT
+// (D-185, D-190): the Maps tab opens at NDFD; → chooses Open-Meteo, said
+// beside the row to be metered, and in the ask whichever mode the map is in;
+// the file keeps "open-meteo", and an empty or "ndfd" word opens at NDFD.
 func TestTheTemperatureSourceIsASetting(t *testing.T) {
 	d, got := uiDash(t, rowMapTempSource)
 	body, _, _ := d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Temperature -") || !strings.Contains(text, "Open-Meteo") {
-		t.Fatalf("the Maps tab has no temperature row at Open-Meteo, the default (D-101):\n%s", text)
+	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Temperature -") || !strings.Contains(text, "NDFD (NWS)") || strings.Contains(text, "metered") {
+		t.Fatalf("the Maps tab has no temperature row at NDFD, the default (D-190):\n%s", text)
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m.(Dashboard)
-	if !d.mapTempNDFD || d.tempSourceLabel() != "NDFD (NWS)" || !d.mapAsk().TempNDFD {
-		t.Errorf("→ gave %q; want NDFD, in the ask", d.tempSourceLabel())
+	if d.mapTempNDFD || d.tempSourceLabel() != "Open-Meteo" || d.mapAsk().TempNDFD {
+		t.Errorf("→ gave %q; want Open-Meteo, in the ask", d.tempSourceLabel())
+	}
+	body, _, _ = d.focusBody(d.opts())
+	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "metered") {
+		t.Errorf("Open-Meteo chosen, nothing says it is metered (D-190):\n%s", text)
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	drain(t, m, cmd)
-	if got.MapTempSource != "ndfd" {
-		t.Errorf("esc wrote %q, want ndfd", got.MapTempSource)
+	if got.MapTempSource != "open-meteo" {
+		t.Errorf("esc wrote %q, want open-meteo", got.MapTempSource)
 	}
-	if !mapDash(t, Config{MapTempSource: "ndfd"}).mapTempNDFD || mapDash(t, Config{}).mapTempNDFD || mapDash(t, Config{MapTempSource: "open-meteo"}).mapTempNDFD {
+	if !mapDash(t, Config{MapTempSource: "ndfd"}).mapTempNDFD || !mapDash(t, Config{}).mapTempNDFD || mapDash(t, Config{MapTempSource: "open-meteo"}).mapTempNDFD {
 		t.Error("the file's word does not open the window as chosen")
 	}
 }

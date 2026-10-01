@@ -104,8 +104,12 @@ func perturbations(t *testing.T, base Dashboard) []perturbed {
 // WRITER bumps gen instead (setupState.touch, via settled/castTouched). Writing
 // a field without bumping is not something the app does, so this models the real
 // writer rather than reporting the design as a defect.
+//
+// mapTempNDFD IS SETTINGS' TOO (D-190): its one writer, toggleTempSource, is a
+// Settings row's and settles - bumps gen - and its metered note changes the
+// window's size on every tab, so it reaches the frame there.
 func dashboardWriter(name string, d *Dashboard) {
-	if name == "setup" {
+	if name == "setup" || name == "mapTempNDFD" {
 		d.setup = d.setup.touch()
 	}
 }
@@ -153,7 +157,12 @@ func walk[T any](t *testing.T, typ reflect.Type, prefix string, excuse map[strin
 		switch f.Type.Kind() {
 		case reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64, reflect.String, reflect.Pointer:
 			idx := i
-			emit(path, func(d *T) { bump(fieldAt(d, idx)) })
+			emit(path, func(d *T) {
+				bump(fieldAt(d, idx))
+				if writer != nil {
+					writer(path, d) // a field with a paired writer (dashboardWriter)
+				}
+			})
 		case reflect.Struct:
 			// ONE LEVEL DOWN, INTO EVERY STRUCT THIS FILE HAS NOT EXCUSED
 			// (FR-3.3). It named three — relayFault, debug and setup — so a

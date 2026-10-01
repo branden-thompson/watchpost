@@ -22,6 +22,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/uv"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -80,7 +81,7 @@ func (ts *tempSources) quotaSpent() *tty.MapQuota {
 // past hours (D-96); in Forecast mode the listener's choice where it covers,
 // Open-Meteo otherwise.
 func (ts *tempSources) sourceFor(ask tty.MapAsk) temperature.Source {
-	if ask.Forecast && ask.TempNDFD && ts.ndfd.Covers(ask.Region) {
+	if ask.TempNDFD && ts.ndfd.Covers(ask.Region) { // both modes, the listener's (D-190); keyless first (D-185)
 		return ts.ndfd
 	}
 	return ts.om
@@ -116,12 +117,9 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	if src != lp.temp.om {
 		fill = lp.temp.om
 	}
-	var rescue *fallback
+	rescue := &fallback{past: recordedHour(lp.historyStore())} // NDFD has no hour before the current one: the history's are the loop's past (W19.1)
 	if src == lp.temp.om && lp.temp.ndfd != nil && lp.temp.ndfd.Covers(ask.Region) {
-		lp.mu.Lock()
-		store := lp.history
-		lp.mu.Unlock()
-		rescue = &fallback{src: lp.temp.ndfd, past: recordedHour(store)} // Open-Meteo refused: NDFD draws what it can, the history the hours before (W18.2, W18.3b)
+		rescue.src = lp.temp.ndfd // Open-Meteo refused: NDFD draws what it can, the history the hours before (W18.2, W18.3b)
 	}
 	now := time.Now()
 	t := buildTemperature(ctx, src, fill, ask, now, rescue)
@@ -170,11 +168,12 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 	for _, b := range boxes {
 		lat := temperature.LatticeFor(b.Name, b.Box)
 		s, err := src.Fetch(ctx, lat, now)
+		fromFill := false
 		if err != nil && fill != nil {
 			// A BOX THE SOURCE REFUSES IS OPEN-METEO'S (D-101): NDFD refuses
 			// Hawaii's whole lattice, which straddles its grid's edge.
 			if s, err = fill.Fetch(ctx, lat, now); err == nil {
-				fellBack++
+				fellBack, fromFill = fellBack+1, true
 				credit = true
 				missing[src.Name()+" did not answer for part of the map; Open-Meteo is drawn there."] = true
 			}
@@ -201,13 +200,14 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 				}
 			}
 			past := 0
-			if byRescue {
-				s, past = withRecorded(s, rescue.past, b.Name, anchor) // the hours before, from the history (D-166)
+			keyless := byRescue || (src.Name() == "NDFD" && !fromFill) // NDFD drew this box: it has no hour before the current one
+			if keyless && rescue != nil {
+				s, past = withRecorded(s, rescue.past, b.Name, anchor) // the hours before, from the history (D-166, W19.1)
 				replayed += past
 			}
 			hours, feels, wind := hourGrids(tty.TemperatureLayer, b.Name, s.Hours, len(s.Hourly), anchor, horizon, temp(s.Hourly)),
 				hourGrids(tty.FeelsLayer, b.Name, s.Hours, len(s.Feels), anchor, horizon, temp(s.Feels)), windHourGrids(s, b.Name, anchor, horizon, ask.Fahrenheit)
-			if byRescue && past == 0 { // nothing recorded: the cold start
+			if keyless && past == 0 { // nothing recorded: the cold start
 				stretchNow(hours, anchor)
 				stretchNow(feels, anchor)
 				stretchNow(wind, anchor)
@@ -215,11 +215,14 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 			out.Overlays, out.Feels, out.Wind = append(out.Overlays, hours...), append(out.Feels, feels...), append(out.Wind, wind...)
 			continue
 		}
-		if fill != nil && fillDays(ctx, &s, fill, lat, now, &out) {
+		if rescue != nil && recordedToday(&s, rescue.past, b.Name, anchor) { // an empty Today from the hours recorded (D-189)
+			replayed++
+		}
+		if fill != nil && fillDays(ctx, &s, fill, lat, now, &out) { // else Open-Meteo for that day (D-189)
 			credit = true
 		}
-		if fill != nil && fillFeelsNow(ctx, &s, fill, lat, anchor, now, &out) {
-			credit = true
+		if rescue != nil && recordedFeelsNow(&s, rescue.past, b.Name, anchor) { // NDFD's feels-like starts at the next hour (D-188)
+			replayed++
 		}
 		forecastGrids(&out, s, b.Name, anchor, unit, missing)
 		feelsForecastGrids(&out, s, b.Name, anchor, unit)
@@ -293,27 +296,91 @@ func fillDays(ctx context.Context, s *temperature.Series, fill temperature.Sourc
 	return filled
 }
 
-// fillFeelsNow puts Open-Meteo's feels-like in the current hour where the
-// source has none (D-119): NDFD answers it from the next hour. True when it
-// did.
-func fillFeelsNow(ctx context.Context, s *temperature.Series, fill temperature.Source, lat temperature.Lattice, anchor, now time.Time, out *tty.MapTemperature) bool {
+// recordedFeelsNow puts the history's recorded hour in the current hour's
+// feels-like where the source has none - NDFD answers it from the next hour,
+// and the recorder keeps that next hour as the hour's own (D-188) - and on a
+// cold start NDFD's next hour; true when the history's was drawn.
+func recordedFeelsNow(s *temperature.Series, past func(string, time.Time) (history.Record, bool), box string, anchor time.Time) bool {
 	if vals, ok := s.FeelsAt(anchor); ok && !allMissing(vals) {
 		return false
 	}
-	f, err := fill.Fetch(ctx, lat, now)
-	if err != nil {
+	i := s.HourIndex(anchor)
+	if i < 0 || i >= len(s.Feels) {
 		return false
 	}
-	vals, ok := f.FeelsAt(anchor)
-	if !ok || allMissing(vals) {
+	n := s.Lattice.Cols * s.Lattice.Rows
+	if past != nil {
+		if rec, ok := past(box, anchor); ok && rec.Shape == shapeOf(s.Lattice) && len(rec.Values["feels"]) == n && !allMissing(rec.Values["feels"]) {
+			s.Feels[i] = rec.Values["feels"]
+			return true
+		}
+	}
+	if next, ok := s.FeelsAt(anchor.Add(time.Hour)); ok && len(next) == n {
+		s.Feels[i] = next // the cold start: NDFD's next hour
+	}
+	return false
+}
+
+// recordedToday fills Today's empty high, low, feels-like and peak wind from
+// the hours the history recorded since the day began - their highest and
+// lowest (D-189): NDFD drops a day's maximum once it has passed. True when
+// anything was.
+func recordedToday(s *temperature.Series, past func(string, time.Time) (history.Record, bool), box string, anchor time.Time) bool {
+	if past == nil {
 		return false
 	}
-	s.Feels[s.HourIndex(anchor)] = vals
-	if out.Filled == nil {
-		out.Filled = map[string]bool{}
+	n := s.Lattice.Cols * s.Lattice.Rows
+	shape := shapeOf(s.Lattice)
+	high, low, feelsHigh, feelsLow, wind := missingValues(n), missingValues(n), missingValues(n), missingValues(n), missingValues(n)
+	day := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 0, 0, 0, 0, anchor.Location())
+	for h := day; !h.After(anchor); h = h.Add(time.Hour) { // a day's hours (P10-02)
+		rec, ok := past(box, h)
+		if !ok || rec.Shape != shape {
+			continue
+		}
+		extremes(high, low, rec.Values["temp"])
+		extremes(feelsHigh, feelsLow, rec.Values["feels"])
+		extremes(wind, nil, rec.Values["wind"])
 	}
-	out.Filled["now/feels"] = true
-	return true
+	filled := false
+	for _, side := range []struct {
+		into *[]float64
+		from []float64
+	}{{&s.High[0], high}, {&s.Low[0], low}, {&s.FeelsHigh[0], feelsHigh}, {&s.FeelsLow[0], feelsLow}, {&s.PeakSpeed[0], wind}} { // five (P10-02)
+		if allMissing(*side.into) && !allMissing(side.from) {
+			*side.into, filled = side.from, true
+		}
+	}
+	return filled
+}
+
+// extremes widens hi and lo, point by point, to an hour's values.
+func extremes(hi, lo, vals []float64) {
+	for p, v := range vals { // a lattice's points (P10-02)
+		if math.IsNaN(v) || p >= len(hi) {
+			continue
+		}
+		if math.IsNaN(hi[p]) || v > hi[p] {
+			hi[p] = v
+		}
+		if lo != nil && (math.IsNaN(lo[p]) || v < lo[p]) {
+			lo[p] = v
+		}
+	}
+}
+
+// missingValues is n values, every one missing.
+func missingValues(n int) []float64 {
+	out := make([]float64, n)
+	for i := range out {
+		out[i] = math.NaN()
+	}
+	return out
+}
+
+// shapeOf is a lattice's shape as the history keeps it.
+func shapeOf(l temperature.Lattice) history.Shape {
+	return history.Shape{Box: l.Box, Cols: l.Cols, Rows: l.Rows}
 }
 
 // allMissing reports whether a source had nothing at any point.

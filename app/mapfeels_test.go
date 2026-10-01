@@ -6,7 +6,6 @@ package app
 import (
 	"context"
 	"math"
-	"slices"
 	"strings"
 	"testing"
 
@@ -38,19 +37,6 @@ func TestFeelsLikeFollowsTheModes(t *testing.T) {
 	if len(fc.FeelsHigh) != temperature.Days || len(fc.FeelsLow) != temperature.Days || fc.FeelsHigh[2].During != steps[3].Span ||
 		math.Abs(fc.FeelsHigh[2].Grid.Values[0]-71.6) > 1e-6 || math.Abs(fc.FeelsLow[2].Grid.Values[0]-37.4) > 1e-6 {
 		t.Errorf("the days' feels-like: %d highs, %d lows; want every day's, 71.6 F and 37.4 F, during its step", len(fc.FeelsHigh), len(fc.FeelsLow))
-	}
-}
-
-// TestFeelsLikeNowIsFilledFromOpenMeteo: NDFD answers feels-like from the
-// next hour, so Forecast mode's Now is Open-Meteo's, credited (D-100's fill).
-func TestFeelsLikeNowIsFilledFromOpenMeteo(t *testing.T) {
-	ndfd := &noGap{&fakeTemp{name: "NDFD", now: tempNow, noFeelsHour: true}}
-	got := buildTemperature(context.Background(), ndfd, &fakeTemp{name: "Open-Meteo", now: tempNow}, tempAsk(true), tempNow, nil)
-	if len(got.Feels) == 0 || !got.Filled["now/feels"] {
-		t.Fatalf("Now's feels-like is %d grids, filled %v; want Open-Meteo's", len(got.Feels), got.Filled)
-	}
-	if !slices.Contains(got.Chips[tty.FeelsLayer], "O-METEO") {
-		t.Errorf("the badge names %v; want Open-Meteo credited (D-133)", got.Chips[tty.FeelsLayer])
 	}
 }
 

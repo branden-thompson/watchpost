@@ -151,24 +151,26 @@ func TestForecastModeDrawsEachDayDuringItsStep(t *testing.T) {
 	}
 }
 
+// THE LISTENER'S SOURCE, BOTH MODES, NDFD WHERE IT REACHES (D-185, D-190):
+// NDFD chosen - the default - both modes ask it; Open-Meteo chosen, both ask
+// Open-Meteo; NDFD has no American Samoa, which is Open-Meteo's whatever is
+// chosen.
 func TestTheModeChoosesTheSource(t *testing.T) {
-	ts := &tempSources{ndfd: &fakeTemp{name: "NDFD"}, om: &fakeTemp{name: "Open-Meteo"}}
-	ask := tempAsk(false)
-	if got := ts.sourceFor(ask).Name(); got != "Open-Meteo" {
-		t.Errorf("Radar mode asks %s; want Open-Meteo, the one with past hours (D-96)", got)
-	}
-	ask.Forecast, ask.TempNDFD = true, false
-	ts.ndfd = temperature.NewNDFD(nil, "")
-	if got := ts.sourceFor(ask).Name(); got != "Open-Meteo" {
-		t.Errorf("Forecast mode asks %s; want Open-Meteo by default (D-101)", got)
-	}
-	ask.TempNDFD = true
-	if got := ts.sourceFor(ask).Name(); got != "NDFD" {
-		t.Errorf("Forecast mode with NDFD chosen asks %s", got)
-	}
-	ask.Region = geo.RegionSamoa
-	if got := ts.sourceFor(ask).Name(); got != "Open-Meteo" {
-		t.Errorf("NDFD has no American Samoa, and %s was asked", got)
+	ts := &tempSources{ndfd: temperature.NewNDFD(nil, ""), om: &fakeTemp{name: "Open-Meteo"}}
+	for _, forecast := range []bool{false, true} {
+		ask := tempAsk(forecast)
+		ask.TempNDFD = true
+		if got := ts.sourceFor(ask).Name(); got != "NDFD" {
+			t.Errorf("forecast %v, NDFD chosen, asks %s", forecast, got)
+		}
+		ask.TempNDFD = false
+		if got := ts.sourceFor(ask).Name(); got != "Open-Meteo" {
+			t.Errorf("forecast %v, Open-Meteo chosen, asks %s", forecast, got)
+		}
+		ask.TempNDFD, ask.Region = true, geo.RegionSamoa
+		if got := ts.sourceFor(ask).Name(); got != "Open-Meteo" {
+			t.Errorf("forecast %v: NDFD has no American Samoa, and %s was asked", forecast, got)
+		}
 	}
 }
 

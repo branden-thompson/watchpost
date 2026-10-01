@@ -68,9 +68,9 @@ const FeelsLayer = "feels"
 // drawn in Forecast mode alone - Radar mode's rain is the radar.
 const RainLayer = "rain"
 
-// tempSourceNDFD is the file's word for NDFD; anything else is Open-Meteo,
-// the default (D-101).
-const tempSourceNDFD = "ndfd"
+// tempSourceOpenMeteo is the file's word for Open-Meteo; anything else is
+// NDFD, the default since D-185 and D-190 (D-101 had it the other way).
+const tempSourceOpenMeteo = "open-meteo"
 
 // MapTemperature is the temperature the map draws (W10): Radar mode's every
 // hour, or Forecast mode's Now, each grid with its span; Forecast mode's
@@ -172,23 +172,27 @@ func (d Dashboard) tempAnchor() time.Time {
 // forecastSteps are the steps as the window stands.
 func (d Dashboard) forecastSteps() []ForecastStep { return ForecastSteps(d.tempAnchor()) }
 
-// toggleTempSource switches Forecast mode's temperature between Open-Meteo
-// and NDFD (D-93, D-101).
+// toggleTempSource switches the map's temperature, both modes, between NDFD
+// and Open-Meteo (D-93, D-190).
 func (d Dashboard) toggleTempSource() Dashboard {
 	d.mapTempNDFD = !d.mapTempNDFD
 	return d.uiTouched() // the next ask is for the source chosen
 }
 
-// tempSourceKey is the file's word: "ndfd", or empty for Open-Meteo.
+// tempSourceKey is the file's word: empty for NDFD, the default, or
+// "open-meteo".
 func tempSourceKey(ndfd bool) string {
 	if ndfd {
-		return tempSourceNDFD
+		return ""
 	}
-	return ""
+	return tempSourceOpenMeteo
 }
 
-// tempSourceLabel is the row's words, which say Radar mode's is Open-Meteo
-// whatever is chosen here (D-96).
+// meteredNote is said under the Temperature row while Open-Meteo is chosen
+// (D-190): its quota is billed a point at a time (D-185).
+const meteredNote = "Open-Meteo is metered: every point of the map is a call, and 10,000 a day are shared by this machine's address. NDFD has no quota."
+
+// tempSourceLabel is the row's words: the source of both modes (D-190).
 func (d Dashboard) tempSourceLabel() string {
 	if d.mapTempNDFD {
 		return "NDFD (NWS)"

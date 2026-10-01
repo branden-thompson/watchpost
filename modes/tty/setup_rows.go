@@ -136,10 +136,12 @@ const (
 	rowMapDesc
 	rowMapScale
 	rowMapNearby
+	// IN THE ORDER THEY ARE DRAWN: focus walks this order (HUM LEAD, 2026-09-30 -
+	// ↓ skipped Radar ahead and Quakes while Temperature was declared second).
 	rowMapRadarSource // the lower 48's radar: MRMS or IEM (D-83)
-	rowMapTempSource  // Forecast mode's temperature: NDFD or Open-Meteo (D-93)
 	rowMapRadarAhead  // the radar loop's hours ahead (D-114)
 	rowMapQuakes      // the quakes drawn: M2.5+ or M1.0+, the past week or day (D-122)
+	rowMapTempSource  // the map's temperature, both modes: NDFD or Open-Meteo (D-93, D-190)
 	rowMapLayers
 	rowMapDetailLevel
 	// THE MAP'S DETAIL, A ROW EACH (UAT-1 U1-35): the "← Enabled →" pattern

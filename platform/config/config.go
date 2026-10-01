@@ -272,9 +272,9 @@ type Config struct {
 	// MapRadarSource is the lower 48's radar (0.18.0 D-83): "iem", or MRMS,
 	// the default, when empty. Outside the lower 48 MRMS is the only source.
 	MapRadarSource string `toml:"map_radar_source,omitempty"`
-	// MapTemperatureSource is Forecast mode's temperature (0.18.0 D-93):
-	// "ndfd", or Open-Meteo, the default, otherwise (D-101). Radar mode's is
-	// always Open-Meteo, the one source with past hours (D-96).
+	// MapTemperatureSource is the map's temperature, both modes (0.18.0
+	// D-93, D-190): "open-meteo", or NDFD, the default, otherwise - keyless
+	// and unmetered (D-185).
 	MapTemperatureSource string `toml:"map_temperature_source,omitempty"`
 
 	// HistoryHours and HistoryTrends are the local history's retention, the

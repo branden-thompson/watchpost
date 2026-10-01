@@ -597,7 +597,7 @@ type Dashboard struct {
 	mapDetailChoice string         // the map's detail choices as one comparable word (D-65)
 	mapDetailLevel  tuimaps.Detail // how much of the basemap is drawn (D-67, go-tuiMaps D-82)
 	mapRadarIEM     bool           // IEM for the lower 48's radar, else MRMS (D-83)
-	mapTempNDFD     bool           // NDFD for Forecast mode's temperature, else Open-Meteo (D-93, D-101)
+	mapTempNDFD     bool           // NDFD for the map's temperature, both modes, else Open-Meteo (D-93, D-190)
 	mapRadarAhead   int            // the radar loop's hours ahead: 1, 3, 6 or 12 (D-114)
 	mapQuakeFeed    string         // the quakes drawn: USGS's feed by its name (D-122)
 	mapKeys         term.KeyMap
@@ -871,7 +871,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource == tempSourceNDFD, mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}

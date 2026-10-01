@@ -811,16 +811,16 @@ const claimStale = 10 * time.Minute
 
 // Claim takes a series' bucket for this instance to fetch and record: true
 // when it is this instance's to do - no other holds it and it is not already
-// recorded. Of several instances, one wins (claim).
+// recorded, a record issued before its bucket began not counting. Of several
+// instances, one wins (claim).
 func (s *Store) Claim(dataset string, k Key, at time.Time) bool {
 	dir, d, ok := s.seriesDir(dataset, k)
 	if !ok {
 		return false
 	}
 	at = at.UTC().Truncate(d.step())
-	_, done := s.Get(dataset, k, at)
-	if done {
-		return false
+	if had, done := s.Get(dataset, k, at); done && !had.IssuedAt.Before(at) {
+		return false // recorded in its own time; a record kept ahead of it is not (D-188)
 	}
 	return s.claim(filepath.Join(filepath.Dir(filesAt(dir, at).buckets), ".claim-"+at.Format("02T1504")))
 }

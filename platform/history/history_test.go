@@ -151,6 +151,13 @@ func TestAnHourIsClaimedOnce(t *testing.T) {
 	if a.Claim(grid.Name, ndfd, t0.Add(time.Hour)) {
 		t.Error("a recorded hour was claimed")
 	}
+	// A RECORD KEPT AHEAD OF ITS HOUR IS NOT THE HOUR RECORDED (W19.1, D-188):
+	// issued before the hour began - NDFD's next-hour feels-like - the hour is
+	// still to fetch.
+	a.Put(grid.Name, rec(t0.Add(2*time.Hour), -time.Hour, 1, 1, 1, 1))
+	if !a.Claim(grid.Name, ndfd, t0.Add(2*time.Hour)) {
+		t.Error("an hour holding only a record kept ahead of it was not claimed")
+	}
 }
 
 // PAST ITS HOURS, A DAY IS ROLLED UP AND ITS HOURS GO; PAST ITS DAYS, ITS

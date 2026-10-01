@@ -187,7 +187,25 @@ func (h *historian) record(ctx context.Context, lat temperature.Lattice, now tim
 	if !ok {
 		return
 	}
+	if had, ok := h.store.Get(ndfdHourly.Name, key, rec.At); ok && allMissing(rec.Values["feels"]) && had.Shape == rec.Shape && !allMissing(had.Values["feels"]) {
+		rec.Values["feels"] = had.Values["feels"] // kept for this hour an hour ago (D-188)
+	}
 	h.store.Put(ndfdHourly.Name, rec)
+	if next, ok := nextFeels(s, rec); ok {
+		h.store.Put(ndfdHourly.Name, next)
+	}
+}
+
+// nextFeels is NDFD's feels-like for the hour after a record's, as that
+// hour's own record (D-188): NDFD answers feels-like from the next hour, so
+// an hour's record would never hold its own. False where NDFD gave none.
+func nextFeels(s temperature.Series, rec history.Record) (history.Record, bool) {
+	at := rec.At.Add(time.Hour)
+	vals, ok := s.FeelsAt(at)
+	if !ok || len(vals) != rec.Shape.Cols*rec.Shape.Rows || allMissing(vals) {
+		return history.Record{}, false
+	}
+	return history.Record{Key: rec.Key, At: at, IssuedAt: rec.IssuedAt, Shape: rec.Shape, Values: map[string][]float64{"feels": vals}}, true
 }
 
 // ndfdRecord is a series' current hour as a record: false when NDFD had no
