@@ -99,11 +99,11 @@ func TestTheAirIsAirNowsContours(t *testing.T) {
 	ask := tempAsk(false)
 	ask.View = tty.MapView{W: -124.5, S: 32.5, E: -114, N: 42}
 	now := time.Date(2026, 10, 1, 4, 30, 0, 0, time.UTC)
-	if got := withAir(context.Background(), tty.MapTemperature{}, airnow, ask, now); len(got.Air) != 0 || len(get.asked) != 0 {
+	if got := withAir(context.Background(), tty.MapTemperature{}, airnow, nil, ask, now); len(got.Air) != 0 || len(get.asked) != 0 {
 		t.Fatalf("with the row off: %d grids, %d asks; want none", len(got.Air), len(get.asked))
 	}
 	ask.Air = true
-	got := withAir(context.Background(), tty.MapTemperature{}, airnow, ask, now)
+	got := withAir(context.Background(), tty.MapTemperature{}, airnow, nil, ask, now)
 	if len(got.Air) != len(fieldBoxes(ask.Region, geo.Box(ask.View))) || len(got.AirDays) != 0 {
 		t.Fatalf("the air is %d grids, %d days; want a grid a box, no days", len(got.Air), len(got.AirDays))
 	}
@@ -139,7 +139,7 @@ func TestTheAirIsAirNowsContours(t *testing.T) {
 	fc := ask
 	fc.Forecast = true
 	steps := tty.ForecastSteps(askAnchor(fc, now))
-	fcGot := withAir(context.Background(), tty.MapTemperature{}, airnow, fc, now)
+	fcGot := withAir(context.Background(), tty.MapTemperature{}, airnow, nil, fc, now)
 	for _, o := range fcGot.Air {
 		if o.During != steps[0].Span {
 			t.Errorf("Forecast mode's contours are drawn during %v; want Now's step alone", o.During)

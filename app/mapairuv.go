@@ -20,6 +20,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/domains/uv"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/agememo"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/tz"
@@ -83,7 +84,7 @@ func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo
 // through Radar mode's loop, and on Forecast mode's Now alone. AirNow's
 // monitors are drawn over it (D-139); Open-Meteo's air-quality API is not
 // asked (D-185).
-func withAir(ctx context.Context, t tty.MapTemperature, airnow *airquality.Provider, ask tty.MapAsk, now time.Time) tty.MapTemperature {
+func withAir(ctx context.Context, t tty.MapTemperature, airnow *airquality.Provider, grids *airGrids, ask tty.MapAsk, now time.Time) tty.MapTemperature {
 	if !ask.Air || airnow == nil {
 		return t
 	}
@@ -94,7 +95,7 @@ func withAir(ctx context.Context, t tty.MapTemperature, airnow *airquality.Provi
 	}
 	nowStep, _ := forecastDays(askAnchor(ask, now))
 	for _, b := range fieldBoxes(ask.Region, ask.View) {
-		g, ok := contourGrid(b.Box, contours)
+		g, ok := grids.grid(ctx, b.Name, b.Box, contours)
 		if !ok {
 			continue
 		}
@@ -127,6 +128,47 @@ func withNote(t tty.MapTemperature, layer string, notes ...string) tty.MapTemper
 	by[layer] = append(append([]string(nil), by[layer]...), notes...)
 	t.LayerNotes = by
 	return t
+}
+
+// airGrids keeps each box's contour grid by the box and the file's hour (W14
+// P-19): the same hour's contours over the same box are the same cells, so an
+// ask again, or a pan within the boxes, rasterises nothing. A nil airGrids
+// rasterises every ask.
+type airGrids struct {
+	m     lazyMemo[airGridKey, airGrid]
+	mu    sync.Mutex
+	built int // grids rasterised, for the tests
+}
+
+// airGridKey is a box and the contours' hour.
+type airGridKey struct {
+	box  string
+	hour time.Time
+}
+
+// airGrid is a box's grid, and whether any contour holds it.
+type airGrid struct {
+	g  tuimaps.Grid
+	ok bool
+}
+
+// airGridRules keep a box's grid for its file's hour and the next, for the
+// boxes a view holds.
+var airGridRules = agememo.Options{Fresh: 2 * time.Hour, Max: 32}
+
+// grid is box's grid from c, kept by the box and c's hour.
+func (a *airGrids) grid(ctx context.Context, name string, box geo.Box, c airquality.Contours) (tuimaps.Grid, bool) {
+	if a == nil {
+		return contourGrid(box, c)
+	}
+	got, _ := a.m.memo(airGridRules).Do(ctx, airGridKey{box: name, hour: c.Hour}, func() (airGrid, error) {
+		a.mu.Lock()
+		a.built++
+		a.mu.Unlock()
+		g, ok := contourGrid(box, c)
+		return airGrid{g: g, ok: ok}, nil
+	})
+	return got.g, got.ok
 }
 
 // contourCells is the most cells a side of a box's contour grid has: fine

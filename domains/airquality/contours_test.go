@@ -131,3 +131,25 @@ func TestTheContoursHourIsNeverAhead(t *testing.T) {
 		}
 	}
 }
+
+// THE CONTOURS ARE PARSED ONCE AN HOUR A FILE (W14 P-19, D-212): the file is
+// served from the cache on every map ask while Air is on, and its ~2 MB of
+// KML is parsed once for the hour it was read in, whoever asks.
+func TestTheContoursAreParsedOnceAnHourAFile(t *testing.T) {
+	p := New(&kmlGet{t: t}, "")
+	at := time.Date(2026, 10, 1, 4, 30, 0, 0, time.UTC)
+	for range 3 {
+		if _, err := p.Contours(context.Background(), at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := p.ContourParses(); n != 1 {
+		t.Errorf("three asks in the hour parsed the file %d times; want once", n)
+	}
+	if _, err := p.Contours(context.Background(), at.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if n := p.ContourParses(); n != 2 {
+		t.Errorf("the next hour parsed %d times in all; want the file parsed again for its hour", n)
+	}
+}

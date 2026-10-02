@@ -124,6 +124,7 @@ func (**ast.IndexListExpr).memo
 func (*aheadFetch).clock
 func (*aheadFetch).standIn
 func (*aheadFetch).take
+func (*airGrids).grid
 func (*airOwner).get
 func (*airOwner).set
 func (*alertStore).capOldest
@@ -902,6 +903,9 @@ type Gauge
 type Options
 type SourceHealth
 type aheadFetch
+type airGrid
+type airGridKey
+type airGrids
 type airOwner
 type airScope
 type alertStore
@@ -986,6 +990,7 @@ type waveSource
 var _
 var _
 var _
+var airGridRules
 var areaMemoRules
 var errDumpTooSoon
 var errReadStopped

@@ -3412,3 +3412,13 @@ count is read under the lock (`asksOfRun`).
 the bucket's and the document's hour-of-day checks, the step's bound - all caught; the document's check
 survived the first tests and is held by `TestADaysDocumentIsReadForItsOwnHoursOnly`.
 
+## Batch 113 — AirNow's contours parsed and rasterised once (W14 P-19, D-212 step 3; 2026-10-02)
+
+**Two costs a pan while Air is on.** The contours file - about 2 MB of KML, served from the cache - was
+parsed on every ask, and each box's grid rasterised from it (160 cells a side) on every ask. The parse
+is now kept for the hour it was read in, by the body's hash (`bodymemo`, two entries, as the reporting
+areas' parse already was); each box's grid by the box and the file's hour, in a `platform/agememo`
+(`airGrids`) - the same file over the same box is the same cells.
+
+**Mutation verdicts** (3): the parse kept, the grid kept, the file's hour in the grid's key - all caught.
+

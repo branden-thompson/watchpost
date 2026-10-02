@@ -176,7 +176,7 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	t := keptCopy(core.t)
 	if lp.temp.rain != nil { // Open-Meteo: the UV and the model's US AQI (D-137, D-139)
 		t = withUV(ctx, t, lp.temp.rain, uvAsked(src == lp.temp.om, &answeredFor{boxes: core.omBoxes}), ask, now, lp.historyStore(), lp.temp.uvCities) // EPA's cities first (D-186); valid UV kept, and replayed when refused (D-167)
-		t = withAir(ctx, t, lp.airnow, ask, now)                                                                                                       // AirNow's contours (D-193)
+		t = withAir(ctx, t, lp.airnow, &lp.airGrids, ask, now)                                                                                         // AirNow's contours (D-193)
 	}
 	t.Quota = lp.temp.quotaSpent() // the map says it (D-165)
 	return t

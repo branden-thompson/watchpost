@@ -84,7 +84,11 @@ func (p *Provider) Contours(ctx context.Context, now time.Time) (Contours, error
 	if err != nil {
 		return Contours{}, fmt.Errorf("AirNow contours: %w", err)
 	}
-	return parseContours(body, now)
+	parseAt := func(b []byte) (Contours, error) { return parseContours(b, now) }
+	if p.contours == nil {
+		return parseAt(body)
+	}
+	return p.contours.Parsed(now.UTC().Truncate(time.Hour).Unix(), body, parseAt) // read-only to its callers: shared by the hour's asks
 }
 
 // kml is the parts of the file read.

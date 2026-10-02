@@ -42,6 +42,23 @@ type Provider struct {
 	// hour - each area's today, a whole-hour offset - so an hour's parse is its
 	// own. Two entries: the hour, and the one before it at the turn.
 	memo *bodymemo.Memo[int64, []Area]
+	// contours is the contours file's parse by the UTC hour it was read in
+	// (W14 P-19): ~2 MB of KML served from the cache on every map ask while
+	// Air is on, parsed once for its hour. Two entries, as memo's.
+	contours *bodymemo.Memo[int64, Contours]
+}
+
+// newContoursMemo is the contours memo's constructor as a value, as
+// newAreaMemo is.
+var newContoursMemo = bodymemo.New[int64, Contours]
+
+// ContourParses is how many times the contours file has been parsed.
+func (p *Provider) ContourParses() int {
+	if p.contours == nil {
+		return 0
+	}
+	_, n := p.contours.Stats()
+	return n
 }
 
 // newAreaMemo is the memo's constructor as a value: P10's call graph matches a
@@ -63,7 +80,7 @@ func New(get Getter, base string) *Provider {
 	if base == "" {
 		base = defaultBase
 	}
-	return &Provider{get: get, base: base, memo: newAreaMemo(2)}
+	return &Provider{get: get, base: base, memo: newAreaMemo(2), contours: newContoursMemo(2)}
 }
 
 // Reading is an area's AQI: the number where AirNow gives one, NaN where it
