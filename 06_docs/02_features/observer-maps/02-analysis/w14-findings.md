@@ -85,7 +85,7 @@ hold is listed at the end.
 | P-18 | The history store reads and decompresses a day's files on every Get and Put, with no memory layer: about 2,000 file reads a pan in Forecast mode (D-212) | Audit | Reported - D-212 step 3 |
 | P-19 | AirNow's contours (2 MB of KML) parsed and rasterised on every ask while Air is on (D-212) | Audit | Reported - D-212 step 3 |
 | P-20 | Open-Meteo Marine's URL shifts as land is learned, so the second ask in an hour misses the cache and is billed again; the quota gate refuses before the cache is read; the map clients' 8 MB memory tier is smaller than a lower-48 hour's bodies (D-212) | Audit | Reported - D-212 step 3 |
-| S-12 | Six hand-written keyed, time-bounded memos (`areaMemo`, `aheadFetch`, the zone store's, NWS points', CO-OPS stations', HMS's) and two body-hash memos beside `platform/bodymemo` (`fire.Memo`, `globalfeed.sourceMemo`) (D-212) | Audit | Reported - D-212 step 2 |
+| S-12 | Six hand-written keyed, time-bounded memos (`areaMemo`, `aheadFetch`, the zone store's, NWS points', CO-OPS stations', HMS's) and two body-hash memos beside `platform/bodymemo` (`fire.Memo`, `globalfeed.sourceMemo`) (D-212) | Audit | **Body-hash half fixed, batch 108**: `fire.Memo` and `globalfeed.sourceMemo` are `platform/bodymemo` - its keep-errors form for the fire archives, `Last` for a body known unchanged; the time-bounded half next |
 
 ### Structure — P10, DRY, simplification
 

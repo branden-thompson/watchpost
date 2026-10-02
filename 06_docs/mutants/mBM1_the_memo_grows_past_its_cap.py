@@ -24,7 +24,7 @@ import pathlib
 # An INVALID mutation measures nothing; the `true` keeps the call and takes away
 # what it decides.
 p = pathlib.Path("platform/bodymemo/bodymemo.go"); s = p.read_text()
-old = """	if err := invariant.Check(len(m.items) <= m.max, "the memo holds at most max entries"); err != nil {"""
-new = """	if err := invariant.Check(true, "the memo holds at most max entries"); err != nil {"""
+old = """	if bound := invariant.Check(len(m.items) <= m.max, "the memo holds at most max entries"); bound != nil {"""
+new = """	if bound := invariant.Check(true, "the memo holds at most max entries"); bound != nil {"""
 assert old in s, "mBM1"
 p.write_text(s.replace(old, new, 1))

@@ -31,7 +31,7 @@ this paragraph is now true. The per-file headers say what a file holds; this pag
 | The animation tick runs | only while `modes/tty/dashboard.go:tickNeeded` holds (a loading row, a volume blink, the marquee, `[S]`, Details); armed after every Update by `modes/tty/dashboard.go:armTick`, advanced by `modes/tty/dashboard.go:applyTick` |
 | A snapshot arrives | `app/pipelines.go:Trigger` (coalesced: 50 ms for the favourites, 5 s for RECENT) → `modes/tty/dashboard.go:applySnapshot` / `modes/tty/dashboard.go:applyRecent` |
 | A provider fetches | `platform/sched/sched.go:runTier` (a fixed grid from start: start, +Every, +2·Every …) → `Provider.Fetch` (e.g. `domains/weather/nws/provider.go:Fetch`) → `platform/snapshot/assembler.go:Apply` |
-| A fire archive is parsed | once per body change through `domains/fire/memo.go:Get` (HMS: `domains/fire/hms/hms.go:parseKMLReader`, a streaming walk; WFIGS: `domains/fire/wfigs/wfigs.go:decodeLayer`) |
+| A fire archive is parsed | once per body change through `platform/bodymemo/bodymemo.go:Parsed`, its errors kept (`NewKeepingErrors`) (HMS: `domains/fire/hms/hms.go:parseKMLReader`, a streaming walk; WFIGS: `domains/fire/wfigs/wfigs.go:decodeLayer`) |
 | A request is retried | `platform/httpx/httpx.go:attemptOnce` (one client retry, `Config.MaxRetries`) and `platform/sched/sched.go:fetchWithRetries` (10/20/40 s) — two layers, by design |
 | A host is avoided after failures | `platform/httpx/memo.go:noteFailure` arms; `platform/httpx/httpx.go:memoRefusal` consults (normal lane only) |
 | A cache miss is revalidated | `platform/httpx/httpx.go:getOrRevalidate` — the stored validators go out as `If-Modified-Since` / `If-None-Match`; a 304 renews through `platform/httpx/cache.go:revalidated` |
@@ -93,7 +93,7 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | sweep | the disk tier's allow-list deleter (launch and daily) | `platform/httpx/cache.go:sweep` |
 | gauge | one bounded structure's size, reported in `counters.json` | `app/stats.go` |
 | box memo | the parsed features of the seismic query boxes most recently fetched, LRU-bounded and revalidated by body hash (a shared regional box parses once for the whole cell) | `domains/seismic/usgs/boxmemo.go` |
-| parse memo | a feed's whole-country body parsed once per content change (HMS, WFIGS) | `domains/fire/memo.go` |
+| parse memo | a feed's whole-country body parsed once per content change (HMS, WFIGS, the global feed's sources) | `platform/bodymemo/bodymemo.go` |
 | tile | the fixed 5° cell a FIRMS request covers — the cache and singleflight key | `domains/fire/firms/tiles.go` |
 | revalidation | a conditional GET on stored validators; a 304 renews the entry without a body | `platform/httpx/httpx.go:getOrRevalidate` |
 | dump | a profile set + `counters.json` under the cache dir's `profiles/` | `app/dump.go` |

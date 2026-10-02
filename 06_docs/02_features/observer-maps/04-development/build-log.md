@@ -3293,3 +3293,21 @@ five minutes can still be labelled with the last; that is left as it is.
 
 **Mutation verdicts** (2): the run left out of the key, the minute in its place - both caught.
 
+## Batch 108 — one parse memo (W14 S-12, D-212 step 2, the body-hash half; 2026-10-02)
+
+**Three implementations of one operation, now one.** `platform/bodymemo` was written to end exactly
+this duplication (F-53), and two copies stood beside it: `fire.Memo` (one entry, a failed parse kept
+with its value - the same bad archive is not parsed again, and HMS's truncated archive keeps its points
+with its soft error) and `globalfeed.sourceMemo` (one entry, no error kept, httpx's "unchanged"
+answering without hashing, a copy for each caller). `bodymemo` gains the two things they had that it did
+not: `NewKeepingErrors`, a memo whose hit answers the value and the error the parse gave, and `Last`,
+the last parse kept for a key. HMS and WFIGS use the first; the feed's memo is a one-entry `bodymemo`
+read through `Last` on a 304, its copy for each caller its own. `fire.Memo` is gone.
+
+**Mutation verdicts** (6): errors kept only when asked, a hit answering its error, `Last`, HMS's soft
+errors kept, WFIGS's errors kept, each feed caller its own slice - all caught; WFIGS's survived once
+(nothing tested a bad layer), held by `TestABadLayerIsDecodedOnce`. mBM1 re-pointed at the bound
+check's new form; it still survives by design, as its header records.
+`docs/where-things-happen.md` names `platform/bodymemo` where it named the removed file - its test
+(`TestWhereThingsHappenNamesRealSymbols`) failed the first gate run, which had not run `cmd/watchpost`.
+

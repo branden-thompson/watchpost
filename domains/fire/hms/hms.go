@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/fire"
+	"github.com/branden-thompson/watchpost/platform/bodymemo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -59,7 +60,7 @@ type Provider struct {
 	client *httpx.Client
 	url    string
 	rules  fire.Rules
-	memo   fire.Memo[[]Point] // the last archive's parse (Q3: the shared fire.Memo)
+	memo   *bodymemo.Memo[struct{}, []Point] // the last archive's parse, errors kept (Q3)
 
 	// The archive is larger than the client cache's in-memory ceiling, so httpx
 	// serves it from disk — and the fire tier rehydrates across every pipeline,
@@ -87,14 +88,17 @@ const maxLastGood = 30 * time.Minute
 // MemoPoints reports how many parsed points the archive memo holds (the
 // diagnostic dump's view of the memo; one archive at a time by design).
 func (p *Provider) MemoPoints() int {
-	pts, _ := p.memo.Peek()
+	pts, _ := p.memo.Last(struct{}{})
 	return len(pts)
 }
 
 // MemoStats is the memo's size and its parse count since launch — the
 // diagnostic dump's parse-spike counter (plan §1: parse spikes reported
 // per event).
-func (p *Provider) MemoStats() (points, parses int) { return p.MemoPoints(), p.memo.Parses() }
+func (p *Provider) MemoStats() (points, parses int) {
+	_, parses = p.memo.Stats()
+	return p.MemoPoints(), parses
+}
 
 // DefaultURL is the production archive.
 const DefaultURL = "https://www.ospo.noaa.gov/data/spl/kmlfiles/fire/fireAllSats.kmz"
@@ -104,7 +108,7 @@ func New(client *httpx.Client, url string, rules fire.Rules) *Provider {
 	if url == "" {
 		url = DefaultURL
 	}
-	return &Provider{client: client, url: url, rules: rules, now: time.Now}
+	return &Provider{client: client, url: url, rules: rules, now: time.Now, memo: bodymemo.NewKeepingErrors[struct{}, []Point](1)}
 }
 
 // ID implements snapshot.Provider.
@@ -181,7 +185,7 @@ func (p *Provider) points(ctx context.Context) ([]Point, error) {
 	if err != nil {
 		return serveLast(err)
 	}
-	pts, perr := p.memo.Get(raw, Parse)
+	pts, perr := p.memo.Parsed(struct{}{}, raw, Parse)
 	if perr != nil && !errors.Is(perr, ErrTruncated) {
 		p.client.Forget(p.url) // a cached body that does not parse must not be served for the rest of its TTL (P6)
 		return serveLast(perr)
@@ -212,7 +216,7 @@ func truncErr(err error) error {
 }
 
 // parsed returns the archive's points, parsing only when the bytes changed.
-func (p *Provider) parsed(raw []byte) ([]Point, error) { return p.memo.Get(raw, Parse) }
+func (p *Provider) parsed(raw []byte) ([]Point, error) { return p.memo.Parsed(struct{}{}, raw, Parse) }
 
 // Point is one HMS detection.
 type Point struct {

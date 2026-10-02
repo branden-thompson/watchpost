@@ -32,16 +32,18 @@ import (
 // Memo is a bounded, hash-revalidated parse cache. The zero value is not
 // usable; call New.
 type Memo[K comparable, V any] struct {
-	mu     sync.Mutex
-	tick   uint64
-	max    int
-	items  map[K]*entry[V]
-	parses int
+	mu        sync.Mutex
+	tick      uint64
+	max       int
+	items     map[K]*entry[V]
+	parses    int
+	keepsErrs bool // a failed parse is kept with its value, and answered again for the same body
 }
 
 type entry[V any] struct {
 	sum  [sha256.Size]byte
 	val  V
+	err  error
 	used uint64
 }
 
@@ -71,6 +73,30 @@ func New[K comparable, V any](max int) *Memo[K, V] {
 	return &Memo[K, V]{max: max, items: make(map[K]*entry[V], 64)}
 }
 
+// NewKeepingErrors builds a memo that keeps a failed parse too: the value and
+// the error the parse gave are answered again for the same body, so a bad body
+// is not parsed again for the rest of its cache life - the caller forgets it
+// at the cache - and a soft error's value comes back with it.
+func NewKeepingErrors[K comparable, V any](max int) *Memo[K, V] {
+	m := New[K, V](max)
+	m.keepsErrs = true
+	return m
+}
+
+// Last is the last parse kept for k, whatever body comes next: for a caller
+// that knows the body unchanged without hashing it, or that reads what it
+// holds without fetching. ok is false before a parse was kept.
+func (m *Memo[K, V]) Last(k K) (V, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e, ok := m.items[k]
+	if !ok {
+		var zero V
+		return zero, false
+	}
+	return e.val, true
+}
+
 // Parsed is the value for this key and body, parsing only when the body has
 // changed since it was last seen.
 //
@@ -84,10 +110,10 @@ func (m *Memo[K, V]) Parsed(k K, raw []byte, parse func([]byte) (V, error)) (V, 
 	m.tick++
 	if e, ok := m.items[k]; ok && e.sum == sum {
 		e.used = m.tick
-		return e.val, nil
+		return e.val, e.err
 	}
 	val, err := parse(raw)
-	if err != nil {
+	if err != nil && !m.keepsErrs {
 		var zero V
 		return zero, err
 	}
@@ -95,7 +121,7 @@ func (m *Memo[K, V]) Parsed(k K, raw []byte, parse func([]byte) (V, error)) (V, 
 	if _, ok := m.items[k]; !ok && len(m.items) >= m.max {
 		m.evictLocked()
 	}
-	m.items[k] = &entry[V]{sum: sum, val: val, used: m.tick}
+	m.items[k] = &entry[V]{sum: sum, val: val, err: err, used: m.tick}
 	// THE BOUND IS THIS PACKAGE'S THIRD RULE, CHECKED WHERE IT CAN BREAK (P10-05).
 	// OQ-9 states it in the package doc — "It is bounded. At most max entries,
 	// least-recently-used out" — and this asserts it: the eviction is
@@ -108,10 +134,10 @@ func (m *Memo[K, V]) Parsed(k K, raw []byte, parse func([]byte) (V, error)) (V, 
 	// hit path would be measured by those pins rather than by this package.
 	// A miss has already parsed and allocated; this costs nothing it did not
 	// already spend.
-	if err := invariant.Check(len(m.items) <= m.max, "the memo holds at most max entries"); err != nil {
-		return val, err
+	if bound := invariant.Check(len(m.items) <= m.max, "the memo holds at most max entries"); bound != nil {
+		return val, bound
 	}
-	return val, nil
+	return val, err
 }
 
 // evictLocked drops the least-recently-used entry (caller holds mu).

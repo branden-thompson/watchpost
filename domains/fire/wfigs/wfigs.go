@@ -42,7 +42,7 @@ type Provider struct {
 	base       string
 	perimeters string // the interagency perimeters' layer, on the same host (0.18.0 D-121)
 	rules      fire.Rules
-	memo       fire.Memo[[]incident]
+	memo       *bodymemo.Memo[struct{}, []incident] // the layer's parse, errors kept (Q3)
 	// perimeterMemo is each box's perimeters by its URL (W14, P-7): a box's
 	// body (up to ~378 KB) is served from the cache on every map ask and decoded
 	// once, not each time. A few boxes a view; eight kept.
@@ -66,12 +66,15 @@ func (p *Provider) PerimeterParses() int {
 // MemoIncidents reports how many decoded incidents the layer memo holds
 // (the diagnostic dump's view of the memo).
 func (p *Provider) MemoIncidents() int {
-	ins, _ := p.memo.Peek()
+	ins, _ := p.memo.Last(struct{}{})
 	return len(ins)
 }
 
 // MemoStats is the memo's size and its decode count since launch.
-func (p *Provider) MemoStats() (incidents, parses int) { return p.MemoIncidents(), p.memo.Parses() }
+func (p *Provider) MemoStats() (incidents, parses int) {
+	_, parses = p.memo.Stats()
+	return p.MemoIncidents(), parses
+}
 
 // incident is the layer's record in the shape Fetch needs: decoded once,
 // answered for every location by distance.
@@ -89,7 +92,7 @@ func New(client *httpx.Client, base string, rules fire.Rules) *Provider {
 	if base == "" {
 		base = "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Incident_Locations_Current/FeatureServer/0/query"
 	}
-	return &Provider{client: client, base: base, rules: rules, perimeterMemo: newPerimeterMemo(8),
+	return &Provider{client: client, base: base, rules: rules, perimeterMemo: newPerimeterMemo(8), memo: bodymemo.NewKeepingErrors[struct{}, []incident](1),
 		perimeters: strings.Replace(base, "WFIGS_Incident_Locations_Current", "WFIGS_Interagency_Perimeters_Current", 1)}
 }
 
@@ -166,7 +169,7 @@ func (p *Provider) layer(ctx context.Context) ([]incident, error) {
 	if err != nil {
 		return nil, fmt.Errorf("wfigs: %w", err)
 	}
-	layer, err := p.memo.Get(raw, decodeLayer)
+	layer, err := p.memo.Parsed(struct{}{}, raw, decodeLayer)
 	if err != nil {
 		p.client.Forget(u) // a body that does not decode must not be served for the rest of its TTL
 		return nil, fmt.Errorf("wfigs: %w", err)
