@@ -54,7 +54,13 @@ func openMeteoRefresh(t *testing.T, ask tty.MapAsk, warm bool) (total float64, b
 	}
 	t.Logf("    the first refresh, learning the land: %.1f", first)
 	get.asked = map[string]bool{}
+	// A REFRESH IS THE NEXT HOUR, OR NEW BOXES: never the answer kept for this
+	// one (P-16), which would measure nothing and pass every budget.
+	lp.tempAnswers = lazyMemo[tempKey, tempCore]{}
 	lp.mapTemperature(context.Background(), ask)
+	if len(get.asked) == 0 {
+		t.Fatal("the refresh asked nothing; it measures nothing")
+	}
 	if !ask.Forecast && ask.Region != geo.RegionContiguous { // where HRRR is not, Radar mode's hours ahead are a model's rain (D-115)
 		view := geo.Box(ask.View)
 		withModelRain(context.Background(), tty.MapRadar{}, lp.temp.rain, ask.Region, view, ask.Anchor, ask.Anchor.Add(12*time.Hour))

@@ -23,6 +23,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/domains/uv"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/agememo"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -163,23 +164,88 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 		rescue.src = lp.temp.ndfd // Open-Meteo refused: NDFD draws what it can, the history the hours before (W18.2, W18.3b)
 	}
 	now := time.Now()
-	t := buildTemperature(ctx, src, fill, ask, now, rescue)
-	if ask.Forecast && lp.temp.rain != nil { // Forecast mode's rain and snow (W12.3): held, whether or not its row is on (D-99)
+	key := lp.tempKeyFor(ask, src, now)
+	kept := lp.tempAnswers.memo(tempAnswerRules)
+	core, ok := kept.Get(key)
+	if !ok {
+		core = lp.tempCoreFor(ctx, ask, src, fill, rescue, now)
+		if core.whole {
+			kept.Put(key, core)
+		}
+	}
+	t := keptCopy(core.t)
+	if lp.temp.rain != nil { // Open-Meteo: the UV and the model's US AQI (D-137, D-139)
+		t = withUV(ctx, t, lp.temp.rain, uvAsked(src == lp.temp.om, &answeredFor{boxes: core.omBoxes}), ask, now, lp.historyStore(), lp.temp.uvCities) // EPA's cities first (D-186); valid UV kept, and replayed when refused (D-167)
+		t = withAir(ctx, t, lp.airnow, ask, now)                                                                                                       // AirNow's contours (D-193)
+	}
+	t.Quota = lp.temp.quotaSpent() // the map says it (D-165)
+	return t
+}
+
+// tempAnswerRules keep a whole temperature answer for its hour: the key
+// carries the hour, so an answer is never drawn for the next; a few kept, a
+// pan back over the boxes of the last views asking nothing.
+var tempAnswerRules = agememo.Options{Fresh: time.Hour, Max: 8}
+
+// tempKey is everything a temperature answer's grids are built from: the
+// region and its boxes in view, the source and whether Open-Meteo is held,
+// the mode, the units, the rain's density, the hours ahead and the hour.
+type tempKey struct {
+	region, boxes, source string
+	held                  bool
+	forecast, fahrenheit  bool
+	rainFull              bool
+	radarAhead            int
+	anchor                time.Time
+}
+
+// tempCore is a temperature answer's grids before UV and air quality - which
+// read the exact view - with the boxes Open-Meteo answered for, and whether
+// every source answered every box.
+type tempCore struct {
+	t       tty.MapTemperature
+	omBoxes map[string]bool
+	whole   bool
+}
+
+// tempKeyFor is an ask's key.
+func (lp *livePipelines) tempKeyFor(ask tty.MapAsk, src temperature.Source, now time.Time) tempKey {
+	var boxes []string
+	for _, b := range fieldBoxes(ask.Region, geo.Box(ask.View)) { // a region's boxes (P10-02)
+		boxes = append(boxes, b.Name)
+	}
+	return tempKey{region: ask.Region, boxes: strings.Join(boxes, ","), source: src.Name(), held: lp.temp.quotaSpent() != nil,
+		forecast: ask.Forecast, fahrenheit: ask.Fahrenheit, rainFull: ask.RainFull, radarAhead: ask.RadarAhead, anchor: askAnchor(ask, now)}
+}
+
+// tempCoreFor builds the grids: temperature, feels-like and wind; Forecast
+// mode's rain and snow; the waves - each held whether or not its row is on
+// (D-99).
+func (lp *livePipelines) tempCoreFor(ctx context.Context, ask tty.MapAsk, src temperature.Source, fill temperature.Source, rescue *fallback, now time.Time) tempCore {
+	t, whole := buildTemperatureWhole(ctx, src, fill, ask, now, rescue)
+	if ask.Forecast && lp.temp.rain != nil { // Forecast mode's rain and snow (W12.3)
 		rescue := &rainRescue{store: lp.historyStore()} // recorded days, then NDFD's totals where it reaches (D-168)
 		if lp.temp.waves != nil && lp.temp.waves.Covers(ask.Region) {
 			rescue.ndfd = lp.temp.waves // NDFD's client
 		}
-		t = withRainDays(ctx, t, lp.temp.rain, ask, now, rescue)
+		var rainWhole bool
+		t, rainWhole = withRainDaysWhole(ctx, t, lp.temp.rain, ask, now, rescue)
+		whole = whole && rainWhole
 	}
-	if lp.temp.waves != nil && lp.temp.rain != nil && ask.Region != geo.RegionSamoa { // the waves (D-125): held as the rest is (D-99); NDFD has no Samoa
-		t = withWaves(ctx, t, lp.temp.waves, lp.temp.rain, ask, now, waveKeep{store: lp.historyStore(), land: lp.temp.land}) // NDFD first, the history its hours, Open-Meteo past its reach (D-194)
+	if lp.temp.waves != nil && lp.temp.rain != nil && ask.Region != geo.RegionSamoa { // the waves (D-125); NDFD has no Samoa
+		var wavesWhole bool
+		t, wavesWhole = withWavesWhole(ctx, t, lp.temp.waves, lp.temp.rain, ask, now, waveKeep{store: lp.historyStore(), land: lp.temp.land}) // NDFD first, the history its hours, Open-Meteo past its reach (D-194)
+		whole = whole && wavesWhole
 	}
-	if lp.temp.rain != nil { // Open-Meteo: the UV and the model's US AQI (D-137, D-139)
-		t = withUV(ctx, t, lp.temp.rain, uvAsked(src == lp.temp.om, filled), ask, now, lp.historyStore(), lp.temp.uvCities) // EPA's cities first (D-186); valid UV kept, and replayed when refused (D-167)
-		t = withAir(ctx, t, lp.airnow, ask, now)                                                                            // AirNow's contours (D-193)
+	omBoxes := map[string]bool{}
+	if a, ok := fill.(*answeredFor); ok && a != nil {
+		a.mu.Lock()
+		for box := range a.boxes { // the boxes it answered for (P10-02)
+			omBoxes[box] = true
+		}
+		a.mu.Unlock()
 	}
-	t.Quota = lp.temp.quotaSpent() // the map says it (D-165)
-	return t
+	return tempCore{t: t, omBoxes: omBoxes, whole: whole}
 }
 
 // buildTemperature fetches each box's lattice and makes its grids. EVERY
@@ -192,12 +258,19 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 // current one, so in Radar mode its current hour is drawn under the loop's
 // earlier frames too (D-166's cold start) - the chips say NDFD.
 func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty.MapAsk, now time.Time, rescue *fallback) tty.MapTemperature {
+	t, _ := buildTemperatureWhole(ctx, src, fill, ask, now, rescue)
+	return t
+}
+
+// buildTemperatureWhole is buildTemperature, and whether every box was drawn
+// by the source asked: false where one was refused or filled by another.
+func buildTemperatureWhole(ctx context.Context, src, fill temperature.Source, ask tty.MapAsk, now time.Time, rescue *fallback) (tty.MapTemperature, bool) {
 	t := tempBuild{ctx: ctx, src: src, fill: fill, rescue: rescue, ask: ask, now: now,
 		out: tty.MapTemperature{Source: src.Name()}, missing: map[string]bool{}, credit: src.Name() == "Open-Meteo"}
 	boxes := fieldBoxes(ask.Region, ask.View)
 	if len(boxes) == 0 {
 		t.out.Notes = []string{"No temperature is drawn for " + ask.Region + "."}
-		return t.out
+		return t.out, true
 	}
 	t.anchor = askAnchor(ask, now)
 	t.unit = tuimaps.Celsius
@@ -217,7 +290,7 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 		}
 		t.forecast(s, b)
 	}
-	return t.finish(len(boxes))
+	return t.finish(len(boxes)), t.refusals == 0 && t.fellBack == 0
 }
 
 // tempBuild is buildTemperature's work: its sources and ask, what it has
@@ -234,6 +307,7 @@ type tempBuild struct {
 	credit      bool            // Open-Meteo drew some of it
 	fellBack    int             // boxes the fill drew
 	rescued     int             // boxes the rescue drew
+	refusals    int             // boxes no source drew
 	replayed    int             // hours from the history
 }
 
@@ -280,6 +354,7 @@ func (t *tempBuild) fetch(b fieldBox) (temperature.Series, boxFrom, error) {
 // refused says a box no source drew: NDFD's in a note naming the Setting that
 // draws another (D-124), any other source's to the diagnostics.
 func (t *tempBuild) refused(box string, err error) {
+	t.refusals++
 	if t.src.Name() == "NDFD" {
 		t.missing["Temperature is unavailable: NDFD did not answer. Settings → Maps → Temperature: Open-Meteo draws it instead."] = true
 		return

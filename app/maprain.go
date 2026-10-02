@@ -142,6 +142,13 @@ func ratePNG(f temperature.Field) []byte {
 // answered is recorded; where it does not answer, its days draw as recorded
 // (D-168). The badge names what drew, a note says whose the totals are.
 func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, ask tty.MapAsk, now time.Time, rescue *rainRescue) tty.MapTemperature {
+	t, _ = withRainDaysWhole(ctx, t, om, ask, now, rescue)
+	return t
+}
+
+// withRainDaysWhole is withRainDays, and whether Open-Meteo answered for
+// every box.
+func withRainDaysWhole(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, ask tty.MapAsk, now time.Time, rescue *rainRescue) (tty.MapTemperature, bool) {
 	anchor := askAnchor(ask, now)
 	nowStep, days := forecastDays(anchor)
 	failed := false
@@ -194,7 +201,7 @@ func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.Ope
 	case failed:
 		t.Problems = append(t.Problems, "Rain and snow: Open-Meteo did not answer") // D-124
 	}
-	return t
+	return t, !failed
 }
 
 // coarseRain is how much of a box's lattice Open-Meteo's rain is asked on by

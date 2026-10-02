@@ -3337,3 +3337,37 @@ area sets, HMS's stand-in and coalescing - all caught; two survived once (the es
 and are held by new tests. Evicting at Max survives by design: off by one, the bound's check evicts in
 its place, as mBM1 records for `bodymemo`.
 
+## Batch 110 — the temperature answer kept for its hour (W14 P-16, D-212 step 3; 2026-10-02)
+
+**The largest of the audit's savings.** Every pan, refresh or mode switch rebuilt the temperature
+answer - NDFD's DWML parsed again (about 32 documents for the lower 48), Open-Meteo's up to three times
+a box, every hour's grid interpolated, the waves and rain built - though within the hour the same boxes
+give the same answer ("EVERY ANSWER WITHIN AN HOUR IS THE SAME", buildTemperature's own doc). The answer's
+grids are now kept, in a `platform/agememo` of eight, by what they are built from: the region and the
+field boxes in view, the source, whether Open-Meteo's quota is held, the mode, the units, the rain's
+density, the hours ahead and the hour. A second ask, or a pan that keeps the boxes, asks no source and
+draws what was built; the next hour, or new boxes, asks again.
+
+**What is not kept.** A partial answer - a box no source drew, a box Open-Meteo filled for a refusing
+NDFD, rain days Open-Meteo did not answer, waves NDFD refused - is asked again at the next ask, so a
+source that recovers within the hour draws within it: each part now says whether it is whole
+(`buildTemperatureWhole`, `withRainDaysWhole`, `withWavesWhole`; the old names wrap them). UV and air
+quality read the exact view (EPA's cities, the contours' raster), so they are added after, to a copy -
+`keptCopy` clips the kept answer's slices and copies its maps, derived from the type, so what is added
+to one ask's answer never reaches the next's. UV's decision reads the boxes Open-Meteo answered from the
+kept answer itself.
+
+**The cost test measures a real refresh.** `TestTheMapsOpenMeteoWeightIsWithinItsBudget` called the
+pipeline twice and measured the second; with the answer kept, the second would have asked nothing and
+passed every budget. It drops the kept answer between the two - a refresh is the next hour or new boxes
+- and fails if its refresh asks nothing.
+
+**One lazily built memo.** The area alerts' wrapper and the temperature's are one generic `lazyMemo`,
+built on first use so a pipeline made as a literal has one.
+
+**Mutation verdicts** (14): only a whole answer kept, the hour and the boxes in the key, the copy, a
+refused and a filled box partial, waves and rain partial, the slices clipped and the maps copied, and
+the cost test's guard - all caught; the clip survived the pipeline's fixture (no spare room) and is held
+by `TestAKeptCopyIsItsOwn`; the fill's boxes, carried by a loop, survived and the loop is gone - UV reads
+the kept boxes directly.
+

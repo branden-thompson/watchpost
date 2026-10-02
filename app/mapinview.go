@@ -14,7 +14,6 @@ import (
 	"context"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
@@ -31,21 +30,9 @@ const areaMemoAge = 2 * time.Minute
 // the last few views asks nothing again.
 const areaMemoKeys = 8
 
-// areaMemo is the alerts of the last few sets of areas the view asked for,
-// built on first use on now's clock (the wall clock when nil).
-type areaMemo struct {
-	once sync.Once
-	now  func() time.Time
-	m    *agememo.Memo[string, []snapshot.Alert]
-}
-
-// memo is the memo itself.
-func (a *areaMemo) memo() *agememo.Memo[string, []snapshot.Alert] {
-	a.once.Do(func() {
-		a.m = agememo.New[string, []snapshot.Alert](agememo.Options{Fresh: areaMemoAge, Max: areaMemoKeys, Now: a.now})
-	})
-	return a.m
-}
+// areaMemoRules are the area alerts' memo's: the last few sets of areas,
+// each for areaMemoAge.
+var areaMemoRules = agememo.Options{Fresh: areaMemoAge, Max: areaMemoKeys}
 
 // viewAlerts is the alerts of the areas the view touches: remembered within
 // areaMemoAge, else asked of the service - unless fetch is off, when only
@@ -54,13 +41,13 @@ func (lp *livePipelines) viewAlerts(ctx context.Context, v tty.MapView, fetch bo
 	areas := viewAreas(lp.idx, v)
 	key := strings.Join(areas, ",")
 	if !fetch {
-		alerts, _, _ := lp.areaMemo.memo().Last(key)
+		alerts, _, _ := lp.areaMemo.memo(areaMemoRules).Last(key)
 		return alerts
 	}
 	if lp.areaAlerts == nil || len(areas) == 0 {
 		return nil
 	}
-	alerts, err := lp.areaMemo.memo().Do(ctx, key, func() ([]snapshot.Alert, error) { return lp.areaAlerts(ctx, areas) })
+	alerts, err := lp.areaMemo.memo(areaMemoRules).Do(ctx, key, func() ([]snapshot.Alert, error) { return lp.areaAlerts(ctx, areas) })
 	if err != nil {
 		return nil // the service's failure draws no view alerts; the station's own still draw
 	}

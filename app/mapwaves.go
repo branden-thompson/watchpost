@@ -87,6 +87,13 @@ func (lp *landPoints) learn(box string, points []int) {
 // mode's every hour up to now, Forecast mode's Now and each day's highest,
 // each during its step. What no source answered is the diagnostics' (D-124).
 func withWaves(ctx context.Context, t tty.MapTemperature, ndfd waveSource, om marineSource, ask tty.MapAsk, now time.Time, keep waveKeep) tty.MapTemperature {
+	t, _ = withWavesWhole(ctx, t, ndfd, om, ask, now, keep)
+	return t
+}
+
+// withWavesWhole is withWaves, and whether NDFD answered every box and no
+// day went unanswered.
+func withWavesWhole(ctx context.Context, t tty.MapTemperature, ndfd waveSource, om marineSource, ask tty.MapAsk, now time.Time, keep waveKeep) (tty.MapTemperature, bool) {
 	wb := waveBuild{ctx: ctx, ndfd: ndfd, om: om, ask: ask, now: now, keep: keep, anchor: askAnchor(ask, now), missing: map[string]bool{}}
 	wb.unit = tuimaps.Metres
 	if ask.Fahrenheit {
@@ -106,7 +113,7 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd waveSource, om ma
 		}
 		t = wb.forecast(t, w, lat, b.Name, emptyDay)
 	}
-	return wb.finish(t)
+	return wb.finish(t), !wb.partial && len(wb.missing) == 0
 }
 
 // waveBuild is withWaves' work: its sources and ask, and what drew, which
@@ -126,6 +133,7 @@ type waveBuild struct {
 	fromOM   bool
 	replayed int
 	missing  map[string]bool
+	partial  bool // NDFD refused a box
 }
 
 // fetch is a box's waves: NDFD's, the current hour and the hours before it
@@ -144,6 +152,7 @@ func (wb *waveBuild) fetch(box string, lat temperature.Lattice) (w temperature.W
 			}
 		}
 	} else {
+		wb.partial = true
 		w = temperature.Waves{Lattice: lat}
 	}
 	emptyDay = wb.ask.Forecast && ndfdErr == nil && anEmptyDay(w, len(wb.days))

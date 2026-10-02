@@ -708,11 +708,13 @@ type livePipelines struct {
 	// this is only the reporting half, for [S].
 	unknownKeys []string
 
-	zoneShapes *zones.Store   // the outlines an alert's zones name (0.17.0)
-	radar      *radarSources  // 0.18.0 W8: the map's radar sources, over their own hardened client
-	temp       *tempSources   // 0.18.0 W10: the map's temperature sources, over theirs
-	history    *history.Store // W18.3b: what the sources said, recorded (D-166)
-	usage      usageCache     // its size as the Data tab says it, kept a while (U2-48)
+	zoneShapes *zones.Store  // the outlines an alert's zones name (0.17.0)
+	radar      *radarSources // 0.18.0 W8: the map's radar sources, over their own hardened client
+	temp       *tempSources  // 0.18.0 W10: the map's temperature sources, over theirs
+	// tempAnswers keeps a whole temperature answer for its hour (W14 P-16).
+	tempAnswers lazyMemo[tempKey, tempCore]
+	history     *history.Store // W18.3b: what the sources said, recorded (D-166)
+	usage       usageCache     // its size as the Data tab says it, kept a while (U2-48)
 	// lastMapRegion is the region the map last asked temperature for: the
 	// history records it beside the station's (D-172).
 	lastMapRegion atomic.Value
@@ -799,7 +801,7 @@ type livePipelines struct {
 	// areaAlerts asks the service for the alerts of areas by code, and
 	// areaMemo remembers its last answer (0.18.0 D-66, "Alerts in view").
 	areaAlerts func(ctx context.Context, areas []string) ([]snapshot.Alert, error)
-	areaMemo   areaMemo
+	areaMemo   lazyMemo[string, []snapshot.Alert]
 	tides      *coops.Provider
 	deck       *radioDeck
 	dump       *dumper

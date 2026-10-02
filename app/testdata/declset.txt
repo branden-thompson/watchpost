@@ -120,6 +120,7 @@ const uvRanked
 const viewSamples
 const waveBytes
 const zoneShapeBytes
+func (**ast.IndexListExpr).memo
 func (*aheadFetch).clock
 func (*aheadFetch).standIn
 func (*aheadFetch).take
@@ -130,7 +131,6 @@ func (*alertStore).get
 func (*alertStore).note
 func (*answeredFor).Fetch
 func (*answeredFor).answered
-func (*areaMemo).memo
 func (*bandRecord).has
 func (*bandRecord).note
 func (*bandRecord).recent
@@ -278,6 +278,8 @@ func (*livePipelines).stationConfig
 func (*livePipelines).stepBedRelay
 func (*livePipelines).stopAll
 func (*livePipelines).takeTheAir
+func (*livePipelines).tempCoreFor
+func (*livePipelines).tempKeyFor
 func (*livePipelines).testLocation
 func (*livePipelines).tidesHeld
 func (*livePipelines).tidesIn
@@ -551,6 +553,7 @@ func beyondNDFD
 func breakingItem
 func breakingLine
 func buildTemperature
+func buildTemperatureWhole
 func buoyLabel
 func buoyLayerCost
 func buoyOverlay
@@ -644,6 +647,7 @@ func itemsOf
 func itoaN
 func joinAhead
 func joinForecast
+func keptCopy
 func laneForKey
 func laneItems
 func laneRowsPerTab
@@ -882,9 +886,11 @@ func withModelRain
 func withNote
 func withPool
 func withRainDays
+func withRainDaysWhole
 func withRecorded
 func withUV
 func withWaves
+func withWavesWhole
 func withinBedFence
 func worstOf
 func writeProfile
@@ -899,7 +905,6 @@ type airOwner
 type airScope
 type alertStore
 type answeredFor
-type areaMemo
 type bandRecord
 type bedReach
 type bedSeams
@@ -924,6 +929,7 @@ type hostFacts
 type hoursAhead
 type injectQueue
 type landPoints
+type lazyMemo
 type livePipelines
 type liveSource
 type mainTrackStage
@@ -960,6 +966,8 @@ type slot
 type speaker
 type stationArea
 type tempBuild
+type tempCore
+type tempKey
 type tempSources
 type tickerDeck
 type tickerPrefs
@@ -975,6 +983,7 @@ type waveSource
 var _
 var _
 var _
+var areaMemoRules
 var errDumpTooSoon
 var errReadStopped
 var goosSeam
@@ -988,3 +997,4 @@ var omRainDays
 var omUVHourly
 var quakeFeedBytes
 var rateTable
+var tempAnswerRules
