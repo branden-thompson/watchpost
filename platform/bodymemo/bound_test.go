@@ -7,12 +7,12 @@ import (
 
 func parseCopy(b []byte) (string, error) { return string(b), nil }
 
-// THE MEMO IS BOUNDED, AND THE BOUND IS NOW DRIVEN (OQ-9 rule 3).
+// THE MEMO IS BOUNDED, AND THE BOUND IS DRIVEN (OQ-9 rule 3).
 //
 // THE PACKAGE DOC STATES IT — "It is bounded. At most max entries,
-// least-recently-used out" — and nothing exercised it. An invariant was added to
-// `Parsed` to assert it, and a mutant proved the invariant could be DELETED with
-// every test still green: the bound was written down twice and checked nowhere.
+// least-recently-used out" — and an invariant in `Parsed` asserts it. Neither
+// is a test: without this one, a mutant deletes the invariant with every test
+// still green, the bound written down twice and checked nowhere.
 //
 // WHY IT MATTERS THAT NOTHING ELSE CATCHES IT. Every observable this package has
 // stays correct while the memo grows without limit: a hit still returns what a

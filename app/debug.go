@@ -1,6 +1,6 @@
 package app
 
-// debug.go — the opt-in loopback debug server (pprof, /debug/counters, /debug/dump) and the launch-timing report. Split from dashboard.go by the quality pass (Q2, pure move).
+// debug.go — the opt-in loopback debug server (pprof, /debug/counters, /debug/dump) and the launch-timing report.
 
 import (
 	"encoding/json"
@@ -19,8 +19,8 @@ import (
 // startDebugProfiles serves Go's runtime profiles on 127.0.0.1:6060 when
 // WATCHPOST_DEBUG_PPROF=1 (UAT 73/74): threadcreate, goroutine, heap —
 // the way to read a live process rather than guess. Loopback only; off by
-// default; never in release notes as a feature. Quality pass Q0 adds two
-// routes the soak harness reads: /debug/counters (counters.json, live) and
+// default; never in release notes as a feature. Two more routes serve the
+// soak harness: /debug/counters (counters.json, live) and
 // /debug/dump (write a dump set — the trigger on platforms without SIGUSR1).
 func startDebugProfiles(d *dumper) {
 	if os.Getenv("WATCHPOST_DEBUG_PPROF") != "1" {
@@ -43,9 +43,8 @@ func debugMux(d *dumper) *http.ServeMux {
 		// POST, BECAUSE IT WRITES (F-9). A GET is what any page a developer has
 		// open can issue at 127.0.0.1:6060 without reading the answer — the
 		// browser needs no permission to make the request, only to see the
-		// reply — and this route writes a profile set to disk. The route is
-		// opt-in and loopback-only, which is why this was hardening rather than
-		// an incident; FR-4 is what changes that, by documenting the debug
+		// reply — and this route writes a profile set to disk. Opt-in and
+		// loopback-only is not enough on its own once FR-4 documents the debug
 		// surface for users.
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
@@ -68,12 +67,11 @@ const debugAddrDefault = "127.0.0.1:6060"
 // debugAddr is the loopback address of the debug server: 127.0.0.1:6060,
 // or WATCHPOST_DEBUG_PPROF_ADDR so a second instrumented instance on one
 // machine (a soak beside a soak) can pick its own port.
-// A PORT, NOT AN ADDRESS (red team 2026-09-05, S-2). This returned whatever the
-// environment said, verbatim, so WATCHPOST_DEBUG_PPROF_ADDR=0.0.0.0:6060 bound
-// every interface and published three unauthenticated routes — one of which
-// writes profile sets to disk on a GET — while the comment three lines up said
-// "Loopback only". The variable exists so a second instrumented instance can
-// pick its own PORT; that is all it may now do.
+// A PORT, NOT AN ADDRESS (red team 2026-09-05, S-2). Taking the environment
+// verbatim would let WATCHPOST_DEBUG_PPROF_ADDR=0.0.0.0:6060 bind every
+// interface and publish three unauthenticated routes, one of which writes
+// profile sets to disk. The variable exists so a second instrumented instance
+// can pick its own PORT; that is all it may do.
 func debugAddr() string {
 	v := os.Getenv("WATCHPOST_DEBUG_PPROF_ADDR")
 	if v == "" {
@@ -97,7 +95,7 @@ func debugAddr() string {
 }
 
 // reportTiming prints the M1 launch->full-view measurement when
-// WATCHPOST_DEBUG_TIMING=1 (split from RunDashboard, P10-04).
+// WATCHPOST_DEBUG_TIMING=1 (P10-04).
 func reportTiming(firstFull time.Duration) {
 	if os.Getenv("WATCHPOST_DEBUG_TIMING") != "1" {
 		return

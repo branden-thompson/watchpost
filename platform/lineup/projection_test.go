@@ -11,12 +11,10 @@ import (
 //	"The operator's view is a PROJECTION of the one Lineup, not a second
 //	schedule."
 //
-// It was the identity function until now: one card per burst, nothing invisible,
-// so `Cards` was already what the operator saw. The Director's structural cards
-// are the first thing that makes it a real function — and one of them is ALREADY
-// IN PRODUCTION. director.go queues the staleness notice onto the main track, so
-// a card the operator never asked for is sitting in their numbered running order
-// today.
+// With one card per burst and nothing invisible, `Cards` would already be what
+// the operator sees. The Director's structural cards make it a real function:
+// director.go queues the staleness notice onto the main track, a card the
+// operator never asked for, and it must not sit in their numbered running order.
 
 // withNotice is a schedule holding a report, then the Director's own transition,
 // then a second report — the shape the staleness drop actually produces.
@@ -58,9 +56,8 @@ func TestTheProjectionHidesTheDirectorsStructuralCards(t *testing.T) {
 }
 
 func TestTheProjectionIsTheIdentityWhenNothingIsStructural(t *testing.T) {
-	// The rule that made this invisible for two releases, stated so it stays
-	// true: with nothing structural in the schedule the two are the same list,
-	// which is why no code was needed until now.
+	// The rule, stated so it stays true: with nothing structural in the schedule
+	// the two are the same list.
 	d := New(Settings{Max: 5}, time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
 	d, _ = d.Step(Aired{To: AirProgramme})

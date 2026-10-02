@@ -67,11 +67,10 @@ func radioDebugTo(t *testing.T, name string) string {
 
 // THE ENVIRONMENT PICKS A NAME, NOT A PATH (FR-9.2).
 //
-// The variable took a path and the writer appended to it, so an unvalidated
-// append-anywhere file write was one environment variable away on a process
-// that runs all day — and the plan's first revision had it ON BY DEFAULT. What
-// it may choose now is WHICH log under the cache root, which is the only part
-// of the decision a caller has any business making.
+// A variable that takes a path, with a writer appending to it, puts an
+// unvalidated append-anywhere file write one environment variable away on a
+// process that runs all day. What it may choose is WHICH log under the cache
+// root, which is the only part of the decision a caller has any business making.
 func TestTheRadioDiagnosticTakesANameAndNotAPath(t *testing.T) {
 	for _, tc := range []struct{ env, want string }{
 		{"1", "radio"},                 // on, default name

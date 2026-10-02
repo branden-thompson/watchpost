@@ -8,7 +8,7 @@
 // It lives under platform/ because BOTH surfaces need it. Observer schedules a
 // watchlist rotation and an alert rail; a Broadcaster station will schedule a
 // whole day. scripts/lint-imports.sh forbids anything under modes/ from
-// importing domains/*, and it now forbids the same from platform/ — so a card
+// importing domains/*, and it forbids the same from platform/ — so a card
 // is DOMAIN-FREE by construction. A card names a SLOT; the radio domain maps
 // that slot to a cast.Role and thence to a voice, from the cast settings it
 // already owns (cast.Resolve, app/cast.go:radioDeck.resolveVoice). ReadBy is the plain display
@@ -67,9 +67,8 @@ func states() [numStates]stateRow {
 		Standby:  {name: "STANDBY", next: []State{OnAir, Discarded}},
 		// BOTH EXITS FROM THE AIR ARE REAL (DR-24). Read in full is DONE;
 		// discarded, superseded, cancelled and context-ended are all the same
-		// transition. The architecture's first state diagram drew only DONE,
-		// which would have left a superseded takeover unexpressible and the
-		// paired release effect with nothing to hang on.
+		// transition. DONE alone would leave a superseded takeover
+		// unexpressible and the paired release effect with nothing to hang on.
 		OnAir:     {name: "ON AIR", next: []State{Done, Discarded}},
 		Done:      {name: "DONE"},
 		Discarded: {name: "DISCARDED"},
@@ -129,9 +128,8 @@ type slotRow struct {
 	// structural marks one of THE DIRECTOR'S OWN CARDS — a card the schedule
 	// reads but the operator never asked for and never sees (D-44).
 	//
-	// STATED, NOT INFERRED. This row's own comment already said "a slot that
-	// neither spends the Max nor composes at standby is one of the Director's
-	// own structural cards" — a rule carried by the CONJUNCTION OF TWO ZERO
+	// STATED, NOT INFERRED. Inferred from "neither spends the Max nor composes
+	// at standby", it would be a rule carried by the CONJUNCTION OF TWO ZERO
 	// VALUES, which is a rule nobody can find and any new slot can break by
 	// accident. It is the filter the operator's whole running order is derived
 	// from, so it gets a field.
@@ -165,10 +163,9 @@ type slotRow struct {
 
 // slots is the registry, indexed by Slot.
 //
-// THESE ARE THE SLOTS 0.14.0 ACTUALLY PRODUCES, and no others. A Marine Report
-// as its own card, an operator-requested read, a station identification — all
-// arrive with the Broadcaster surface that proposes them. A slot nobody proposes
-// is dead code (AP-DEAD-01).
+// THESE ARE THE SLOTS THE APP ACTUALLY PRODUCES, and no others. A kind of read
+// arrives with the surface that proposes it; a slot nobody proposes is dead
+// code (AP-DEAD-01).
 func slots() [numSlots]slotRow {
 	return [numSlots]slotRow{
 		LocationReport: {label: "Location Report", textAtStandby: true},
@@ -180,10 +177,9 @@ func slots() [numSlots]slotRow {
 
 // row is the one safe read of the slot registry (metric D, 2026-09-08).
 //
-// THREE ACCESSORS CARRIED THIS, not two: String, CountsAgainstMax and
-// textAtStandby each repeated the range guard and the same invariant, and a
-// fourth would have repeated it again. The duplicate detector found two of
-// them; the third differed only in the field it returned.
+// ONE OWNER FOR THE RANGE GUARD: String, CountsAgainstMax, textAtStandby and the
+// rest read through it rather than each repeating the guard and the same
+// invariant.
 //
 // A HOLE IN THE TABLE IS CAUGHT WHERE IT IS USED: a slot added to the enum
 // without a row beside it would otherwise be an unnamed card in the log and a
@@ -305,8 +301,7 @@ type Card struct {
 	// order on the effect and asks the producer for the events.
 	//
 	// EMPTY FOR A CARD THAT IS ABOUT ITSELF — a location report, a transition.
-	// Only a card assembled FROM producer records carries them. (It said "a
-	// burst head" too; BurstHead was retired when a burst became one card.)
+	// Only a card assembled FROM producer records carries them.
 	Refs []string
 
 	// Reports is which sources this card's report carries (R4).
@@ -352,10 +347,7 @@ type Card struct {
 	Divert int
 
 	// Max bounds this one card's read. ZERO MEANS FULL LENGTH, which is the
-	// default and, in 0.14.0, the only value: the per-card control arrives with
-	// the Broadcaster UI, and the field is carried now because the card model is
-	// the part of that surface this release builds (recorded in the build plan's
-	// "not built" table, ratified).
+	// default.
 	Max time.Duration
 
 	// ReadBy is the display name of the voice that will read this card, resolved
@@ -396,7 +388,7 @@ type Card struct {
 	// window's injection (FR-4.4, D-55).
 	//
 	// IT TRAVELS AS DATA AND IS RENDERED PER SURFACE, which is the call the
-	// severe window already made and stated: the mark is added "HERE rather than
+	// severe window makes and states: the mark is added "HERE rather than
 	// to the row's Product: the [w] read speaks that field, and a product with
 	// three asterisks in it would be read aloud as asterisks." Baking it into
 	// Headline would put asterisks in the operator's own words and in anything
@@ -430,7 +422,7 @@ func Propose(c Card) (Card, error) {
 	// DR-7's first half: a report carries no words yet. The second half — a
 	// card whose words are fixed at proposal must arrive carrying them — lives
 	// in check, which every write goes through, so it is NOT repeated here.
-	// Its mutant survived while it was: deleting a guard that another guard
+	// Repeated, its mutant would survive: deleting a guard that another guard
 	// already enforces changes nothing, which is the rule written twice rather
 	// than an invariant.
 	//
@@ -441,12 +433,10 @@ func Propose(c Card) (Card, error) {
 	// so the two drifting apart fails a test rather than passing silently.
 	// prepareNext, which has no such constraint, asks the registry directly.
 	//
-	// ONE STRUCTURAL SLOT NOW, not three. BurstHead and DivertNotice were
-	// retired at the T3.10 red team: nothing proposed either, and the registry
-	// says in as many words that a slot nobody proposes is dead code
-	// (AP-DEAD-01). A burst's head and its divert tail are INTRA-CARD content
-	// under MVS-D-77 — parts of the takeover's script — which is what T3.7 said
-	// they would become and what the Composer now builds.
+	// ONE STRUCTURAL SLOT. A burst's head and its divert tail are INTRA-CARD
+	// content under MVS-D-77 — parts of the takeover's script, which the
+	// Composer builds — not slots of their own; a slot nobody proposes is dead
+	// code (AP-DEAD-01).
 	if err := invariant.Check(c.Words() == "" || c.Slot == Transition,
 		"a report's words materialise at standby, never at proposal"); err != nil {
 		return Card{}, err
@@ -483,7 +473,7 @@ func (c Card) check() error {
 		return err
 	}
 	// DR-7's structural half, HERE RATHER THAN ONLY AT Propose. Queue and Set
-	// are doors too: a wordless burst head queued directly reaches standby,
+	// are doors too: a wordless structural card queued directly reaches standby,
 	// describes no build, and stands there for ever with the rail stopped
 	// behind it. check runs on every write, so this closes all of them.
 	if err := invariant.Check(c.Words() != "" || c.Slot != Transition,
@@ -496,12 +486,11 @@ func (c Card) check() error {
 	// error: the human asks for a report, and the hand-off around it is the
 	// Director's consequence of that choice, never the request itself.
 	//
-	// IT HELD BY ACCIDENT BEFORE THIS LINE. The guard above refuses a wordless
+	// STATED, NOT LEFT TO ANOTHER RULE. The guard above refuses a wordless
 	// transition, and the undo deliberately drops the words, so the one path
-	// that could have built such a card failed for an unrelated reason — a rule
-	// held by a DIFFERENT rule, which is the shape this package keeps having to
-	// un-split. Stated here, it survives the day a transition carries its words
-	// through.
+	// that could build such a card fails for an unrelated reason — a rule held
+	// by a DIFFERENT rule. Stated here, it survives the day a transition
+	// carries its words through.
 	if err := invariant.Check(c.Slot != Transition || c.Origin != FromOperator,
 		"a transition is the Director's own structural card; the operator never originates one"); err != nil {
 		return err
@@ -513,8 +502,8 @@ func (c Card) check() error {
 //
 // DERIVED FROM THE STATE, NEVER STORED BESIDE IT. A card is locked exactly while
 // it is on the air, and a stored flag would be a second carrier of one rule —
-// which is how the duck came to be lifted by one spelling of tune and not the
-// other. An unknown state locks: the safe direction is to refuse the edit.
+// two carriers that one path updates and another does not. An unknown state
+// locks: the safe direction is to refuse the edit.
 func (c Card) Locked() bool {
 	if err := invariant.Check(c.State >= 0 && c.State < numStates, "a card is in a declared state"); err != nil {
 		return true

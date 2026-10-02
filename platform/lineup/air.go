@@ -2,21 +2,21 @@ package lineup
 
 // air.go — which programme reaches the engine (D-74).
 //
-// TWO PROGRAMMES SHARE ONE ENGINE, and until now they shared one GATE with it:
-// `advances(MainTrack)` decided both whether the station's line-up advanced and
-// whether the operator's own listening rotated, so with the station running both
-// could produce audio at once. That is what the HUM LEAD heard — "audio in
-// Broadcaster is still pulling audio from Observer."
+// TWO PROGRAMMES SHARE ONE ENGINE, and they must not share one GATE with it:
+// were `advances(MainTrack)` to decide both whether the station's line-up
+// advances and whether the operator's own listening rotates, both would produce
+// audio at once while the station runs — "audio in Broadcaster is still pulling
+// audio from Observer."
 //
-// THE WORDS ARE THE STATION'S OWN, and they were chosen because "listener" had
-// come to mean two different people. In a dashboard the listener is whoever is
+// THE WORDS ARE THE STATION'S OWN, and they are chosen because "listener" can
+// mean two different people. In a dashboard the listener is whoever is
 // at the keyboard; in a BROADCAST product the listener is the audience in the
 // service area. So:
 //
 //	MONITOR    what the operator listens to OFF AIR — Observer's own rotation
 //	PROGRAMME  what the station puts OUT — the console's line-up
 //
-// and "listener" goes back to meaning the audience, where it belongs.
+// and "listener" means the audience, where it belongs.
 //
 // THE AIR IS NOT THE POWER. A station can be STOPPED with the console in front
 // of the operator: the programme owns the air and is not running, which is
@@ -31,9 +31,8 @@ type Air int
 
 const (
 	// AirMonitor is the operator's own listening — the ZERO VALUE, because a
-	// Director that has been told nothing is not a station on the air. Every
-	// build before this one behaved exactly this way, and a default that
-	// silently claimed the air would be the more dangerous of the two.
+	// Director that has been told nothing is not a station on the air. A default
+	// that silently claimed the air would be the more dangerous of the two.
 	AirMonitor Air = iota
 
 	// AirProgramme is the station's line-up.
@@ -61,8 +60,8 @@ func (a Air) String() string {
 // ONE DECLARER, AND IT IS MASTERCONTROL (FR-5.4's shape, one concept along).
 // The power already works this way — "they are the ONLY producers of a power
 // change from the console" — and the air is the same kind of fact: something the
-// operator DID, not something a tune happened to imply. Three declarers of the
-// power is exactly how listening on one surface came to put the other ON AIR.
+// operator DID, not something a tune happened to imply. Several declarers of one
+// such fact is how listening on one surface would put the other ON AIR.
 type Aired struct {
 	isEvent
 	To Air
@@ -73,23 +72,19 @@ type Aired struct {
 	//
 	// THE RAIL IS RE-TESTED AGAINST IT. Without this the Director would learn
 	// the new fence only on the next ARRIVAL, and everything already on the rail
-	// would go on being read under the fence that admitted it — which is exactly
-	// what the HUM LEAD asked about: "does the alert rail correctly filter /
-	// expand itself based on which mode is active?" Measured before this: it did
-	// not, and a 100-mile hazard survived a narrowing to 25.
+	// would go on being read under the fence that admitted it — a 100-mile hazard
+	// surviving a narrowing to 25. It answers the HUM LEAD's question: "does the
+	// alert rail correctly filter / expand itself based on which mode is active?"
 	Fence Fence
 }
 
 // Refenced re-scopes the rail without moving the air (D-154).
 //
-// THE SECOND TRIGGER, AND THE ONE D-75 MISSED. `Aired` carries a fence because
-// the fence travels with the air — true, and it left the OTHER way a fence
-// changes with no path to the Director at all: the operator narrowing the
-// STATION'S SERVICE AREA while the air stays exactly where it is. Measured:
-// `d.settings.Fence` had one assignment in the package, behind the air-moved
-// guard, so a narrowing from 100 to 25 never reached the rail — the same
-// sentence `Aired.Fence` claims to have fixed, reachable by a route nobody
-// wired.
+// THE SECOND TRIGGER. `Aired` carries a fence because the fence travels with
+// the air, and that leaves the OTHER way a fence changes: the operator
+// narrowing the STATION'S SERVICE AREA while the air stays exactly where it is.
+// `d.settings.Fence` assigned only behind the air-moved guard would never see
+// a narrowing from 100 to 25 reach the rail.
 //
 // ITS EMITTER IS `restationTo`, which is already the single owner of "the
 // station's region moved" and re-resolves the bed for this very reason (D-117).
@@ -117,17 +112,16 @@ func (d Director) onRefenced(ev Refenced) (Director, []Effect) {
 // onAired moves the air, and moves nothing else.
 //
 // A REPEATED COMMAND DOES NOT MOVE THE AIR — the rule `onPowered` and
-// `onCutOver` state for themselves. IT IS NO LONGER SETTLE-FREE, and the
-// difference matters to anyone writing a rule downstream of it: the repeat now
-// delegates to `onRefenced`, which installs the fence, re-tests the rail and
-// ENDS IN `settle()`. So a repeated swap emits a `Publish` where it previously
-// emitted nothing.
+// `onCutOver` state for themselves. IT IS NOT SETTLE-FREE, and that matters
+// to anyone writing a rule downstream of it: the repeat delegates to
+// `onRefenced`, which installs the fence, re-tests the rail and ENDS IN
+// `settle()`. So a repeated swap emits a `Publish`.
 //
 // THAT IS DELIBERATE AND IT IS BENIGN: `takeTheAir` and `prepareNext` are each
-// guarded, so settling twice decides nothing twice — and the alternative is the
-// defect below, where the fence is dropped because the air did not move.
+// guarded, so settling twice decides nothing twice — and the alternative drops
+// the fence because the air did not move.
 //
-// BUT A REPEAT STILL CARRIES A FENCE, and returning `d, nil` dropped it whole.
+// A REPEAT STILL CARRIES A FENCE, and returning `d, nil` would drop it whole.
 // The guard is written for the AIR; the fence is a different fact riding the
 // same event, and the operator who narrows the service area and then keys the
 // surface they are already on is not sending a no-op.
@@ -154,8 +148,8 @@ func (d Director) onAired(ev Aired) (Director, []Effect) {
 //
 // IT ASKS THE MONITOR'S OWN POWER, NOT THE STATION'S, and that is the split. The
 // station's power says whether the STATION broadcasts; `d.monitor` says whether
-// the OPERATOR is listening. They were one field, which is what made Observer's
-// tune declare the station ON AIR (D-69's root).
+// the OPERATOR is listening. As one field, Observer's tune would declare the
+// station ON AIR (D-69's root).
 //
 // IT DOES ASK `carries`, because that flag means the operator PARKED the
 // station on the bed — and a rotation that moved on afterwards would take away
@@ -171,9 +165,8 @@ func (d Director) advancesMonitor() bool {
 //
 // THE SECOND POWER, RULED BY THE HUM LEAD (2026-09-10: "two powers"). They are
 // genuinely two facts — is the STATION broadcasting, is the OPERATOR listening —
-// and the only reason they were one field is that there was one programme. One
-// field meant Observer's tune declared the station ON AIR, which is D-69's root
-// and the reason `ctrl+o` was refused after a round trip.
+// and as one field Observer's tune would declare the station ON AIR, which is
+// D-69's root and refuses `ctrl+o` after a round trip.
 //
 // A BOOL, NOT A `Power`. A monitor has two states; `Power` has three, and the
 // third — dead air — is a thing a STATION does. A monitor typed as a Power would
@@ -188,8 +181,8 @@ type Monitored struct {
 //
 // IT TOUCHES NOTHING ELSE. Stopping the monitor is not a station event: the
 // line-up does not pause, the rail does not hold, and nothing leaves the air —
-// the operator simply stopped listening. Every one of those WOULD have happened
-// before D-74, because this arrived as `Powered{Stopped}`.
+// the operator simply stopped listening. Arriving as `Powered{Stopped}`, it
+// would do every one of those (D-74).
 func (d Director) onMonitored(ev Monitored) (Director, []Effect) {
 	if d.monitor == ev.Running {
 		return d, nil // a repeated command is not a second event

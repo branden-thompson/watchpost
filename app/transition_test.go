@@ -8,14 +8,14 @@ import (
 )
 
 // TestTheProgrammeReturnsWordsAreKept is D-163's seam, as D-158's: F-27's
-// spoken transition back to the programme was never wired - the line-up's
-// ProgrammeReturn is set nowhere in production - and its composer is removed;
-// its words stay in the script library, held here, for the day it is wired
+// spoken transition back to the programme is not wired - the line-up's
+// ProgrammeReturn is set nowhere in production - and has no composer; its
+// words stay in the script library, held here, for the day it is wired
 // (app/schedule.go says where).
 //
-// The HUM LEAD's ruling: ONE script for both modes. A live relay kept playing
+// The HUM LEAD's ruling: ONE script for both modes. A live relay keeps playing
 // underneath the read, so the listener is rejoined to something already under
-// way; a synth programme did not. Everything else about the sentence is the
+// way; a synth programme does not. Everything else about the sentence is the
 // same, which is why it is one file and not two.
 func TestTheProgrammeReturnsWordsAreKept(t *testing.T) {
 	say := func(live bool) string {
@@ -50,7 +50,7 @@ func TestTheProgrammeReturnsWordsAreKept(t *testing.T) {
 }
 
 // TestTheStationIDsWordsAreKept is D-158's seam: the station identification
-// on going ON AIR (F-24) was never wired and is removed, and its words stay in
+// on going ON AIR (F-24) is not wired and has no composer, and its words stay in
 // the script library for the day a use case needs it - where the station
 // broadcasts from, what it covers, whose data it is, and the limitation a
 // weather service is obliged to state. A seam whose words had rotted would

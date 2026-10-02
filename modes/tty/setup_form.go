@@ -3,15 +3,12 @@ package tty
 // setup_form.go — the three questions that have no group file of their own:
 // the DEFAULT LOCATION, the NASA FIRMS key, and the ALERTS - EVENTS radius.
 //
-// They are the first-run form, which is where this window began before it grew
-// the other groups — so they are named for the form rather than for a group
-// heading, and the other four groups keep their own files
+// They are the first-run form, so they are named for the form rather than for
+// a group heading, and the other four groups keep their own files
 // (setup_cast/ui/relay/tones.go).
 //
 // This is CONTENT: the lines each question draws. Its geometry is
 // setup_layout.go and its key handling is setup.go.
-//
-// SPLIT FROM setup.go (2026-09-06), a pure move.
 
 import (
 	"strconv"
@@ -25,7 +22,7 @@ import (
 // type-ahead suggestions, its reveal chip and its error, all under the question
 // they belong to rather than back at the window's margin.
 //
-// It is one constant because it was four copies of the same literal, and a
+// It is one constant rather than a literal at each caller, because a
 // support line that drifted from its neighbours would read as a rendering bug
 // (modularity standard: extract at the second caller). The width lines the
 // support text up past the two-cell focus mark and the two-cell group indent
@@ -67,16 +64,13 @@ func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 	lines := []string{head, supportIndent + hint}
 	if st.ref == nil || st.focus == rowLocation {
 		lines = append(lines, "       Search: "+st.query+o.Glyphs().Cursor)
-		// THROUGH THE LIST'S ONE OWNER (D-1). This drew a bare "›" and tinted
-		// nothing — the SAME three defects the relay-fault and ctrl+d windows
-		// were fixed for, in the most-opened window in the app, and both of
-		// those files carry a comment calling theirs "the last hardcoded
-		// pointer in the tree" (red team 2026-09-06). It was not: --ascii could
-		// not turn this one into ">", and the suggestion under the cursor
-		// changed no colour, so focus was carried by a glyph alone.
+		// THROUGH THE LIST'S ONE OWNER (D-1), as the relay-fault and ctrl+d
+		// windows draw theirs (red team 2026-09-06): a bare "›" cannot become
+		// ">" under --ascii, and a suggestion under the cursor that changes no
+		// colour carries focus by a glyph alone.
 		//
-		// ListMark is two cells whether or not a row is focused, exactly as the
-		// literals it replaces were, so the column does not move.
+		// ListMark is two cells whether or not a row is focused, so the column
+		// does not move.
 		for i, h := range st.hints { // bounded by the suggestion list (P10-02)
 			focused := i == st.idx
 			lines = append(lines, supportIndent+o.ListMark(focused)+
@@ -92,9 +86,9 @@ func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 // setupKeyLines is question 2 of the form: the FIRMS key, with a stored
 // key's tail and health when there is one (UAT 111).
 // setupKeyLines takes Opts because its marks come from the SET, not from
-// literals (red team, 2026-09-08: the ellipsis, the dash, the bullet and the
-// warning here all survived --ascii, in a window the scan renders only in a
-// state that reaches none of them).
+// literals (red team, 2026-09-08): the ellipsis, the dash, the bullet and the
+// warning here must all honour --ascii, in a window the scan renders only in a
+// state that reaches none of them.
 func (d Dashboard) setupKeyLines(o render.Opts, mark string) []string {
 	st := d.setup
 	hint := ""
@@ -103,9 +97,8 @@ func (d Dashboard) setupKeyLines(o render.Opts, mark string) []string {
 	}
 	// NO LEADING BLANK: the separator between the two DATA rows belongs to the
 	// block that lays them out, not to this row. With it here the row's recorded
-	// first line was the blank ABOVE the question, so the scroll aimed one line
-	// high and a test that asked "is the focus mark on the line you said?" found
-	// it was not.
+	// first line would be the blank ABOVE the question, so the scroll would aim
+	// one line high and the focus mark would not be on the line recorded.
 	var lines []string
 	if hint != "" { // UAT 111: a stored key is shown to be there, with how it is doing, and can be replaced
 		lines = append(lines, "  "+mark+settingLabel("NASA FIRMS key: stored ("+o.Glyphs().Ellipsis+hint+") "+o.Glyphs().Dash+" ", st.focus == rowFIRMSKey)+d.firmsHealth(o),
@@ -217,16 +210,16 @@ func (d Dashboard) setupTransmitterLines(o render.Opts, mark string) []string {
 	st := d.setup
 	head := "  " + mark + settingLabel("Transmitter (epicenter): ", st.focus == rowTransmitter)
 	// THE BORROWING IS SAID ON THE VALUE, NOT IN THE HINT (HUM LEAD, 2026-09-13).
-	// The hint is now one sentence for both states — "Broadcasting location -
+	// The hint is one sentence for both states — "Broadcasting location -
 	// Enter City, ST or Zip" — and the ruling that came with it was "borrowing
 	// Observer's location when user hasn't set the Broadcaster Location is fine -
-	// as long as we inform the user in some way". So the fact moves to where the
+	// as long as we inform the user in some way". So the fact sits where the
 	// VALUE is, which is the thing it is about: this place is not a choice the
 	// operator made, and it WILL move when they change their watchlist.
 	//
 	// ON A LINE OF ITS OWN, under the value (UAT-1 U1-36): a window held to 80%
-	// of the terminal wrapped it off the end of the value line, and the wrap
-	// began at the margin, under nothing.
+	// of the terminal would wrap it off the end of the value line, and the wrap
+	// would begin at the margin, under nothing.
 	var borrowed []string
 	switch cur := d.currentTransmitter(); {
 	case st.txRef != nil:
@@ -240,9 +233,8 @@ func (d Dashboard) setupTransmitterLines(o render.Opts, mark string) []string {
 		head += "(not set)"
 	}
 	// ITS OWN WORDING, NOT THE LISTENER ROW'S. The two questions take the same
-	// kind of answer, and a shared hint made the only difference between them a
-	// capital L in the label above — which a test was already relying on and
-	// warning about ("the case is the only thing telling the two apart").
+	// kind of answer, and a shared hint would leave a capital L in the label
+	// above as the only difference between them.
 	// THE STORAGE BOUNDARY, STATED WHERE THE TOWER IS SET (FR-9.4). A transmitter
 	// is a real person's antenna at metre precision; the operator is told once,
 	// here, what the application does with it — and a test holds the dump to it.

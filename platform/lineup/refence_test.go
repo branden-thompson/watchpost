@@ -15,10 +15,9 @@ func hazard(id string, lat, lon float64, at time.Time) Arrival {
 
 // THE RAIL FILTERS AND EXPANDS WITH THE SURFACE (D-75).
 //
-// THE HUM LEAD ASKED WHETHER IT DID, and the honest answer was half: new
-// arrivals were scoped correctly and everything ALREADY ON THE RAIL went on
-// being read under the fence that admitted it. Measured before the fix — a
-// hundred-mile hazard survived a narrowing to twenty-five.
+// New arrivals are scoped by the fence in force, and so is everything ALREADY
+// ON THE RAIL: otherwise it goes on being read under the fence that admitted
+// it, and a hundred-mile hazard survives a narrowing to twenty-five.
 //
 // HELD, NOT DROPPED. DR-3 says nothing admitted is dropped unread; the ruling
 // says nothing outside the service area is heard on the console. The card waits
@@ -56,7 +55,7 @@ func TestTheRailHoldsWhatTheNewFenceDoesNotAdmit(t *testing.T) {
 
 // AND A CARD INSIDE THE NEW FENCE IS NEVER HELD — which is the half that would
 // be dangerous to get wrong. Holding a hazard in the operator's own town because
-// they changed surfaces would be worse than the defect this fixes.
+// they changed surfaces would be worse than reading one from outside the fence.
 func TestTheRailKeepsWhatTheNewFenceStillAdmits(t *testing.T) {
 	now := time.Now()
 	d := New(Settings{Max: 10}, now)
@@ -114,10 +113,9 @@ func TestAHeldCardDoesNotBlockTheRail(t *testing.T) {
 
 // THE BED'S STATE TRAVELS ON THE PUBLISH (F-79, closed at D-78).
 //
-// A PLANT SAID THIS WAS MISSING. The console's own tests feed it a `BedMsg` and
-// prove it DRAWS one; nothing proved the schedule ever SENDS one, so deleting
-// the bed from the effect left every test green and the row a constant again —
-// which is the defect F-79 was filed for in the first place.
+// THE SCHEDULE MUST SEND IT. The console's own tests feed it a `BedMsg` and
+// prove it DRAWS one; without this test, deleting the bed from the effect leaves
+// every test green and the row a constant — the defect F-79 names.
 //
 // ALL THREE FACTS TRAVEL TOGETHER, which is why they are on one effect: D-62
 // consolidated the line-up, the power and the bed into ONE region so the
@@ -130,8 +128,8 @@ func TestThePublishCarriesTheBedsState(t *testing.T) {
 	d, _ = d.Step(Programme{Watchlist: []string{"a", "b"}, Dwell: time.Minute})
 	d, _ = d.Step(Tuned{Ref: "a", Live: true})
 
-	// THE CUT-OVER IS WHAT SETTLES — `lineup.CutOver`'s first production caller
-	// is the console's `[b]` (D-78) — and the publish it produces carries all
+	// THE CUT-OVER IS WHAT SETTLES — `lineup.CutOver`'s production caller is
+	// the console's `[b]` (D-78) — and the publish it produces carries all
 	// three facts the station section draws.
 	_, fx := d.Step(CutOver{ToBed: true})
 	pub, ok := lastPublish(fx)
@@ -171,12 +169,12 @@ func lastPublish(fx []Effect) (Publish, bool) {
 // watched location, which is a fact about the SCOPE, and the scope is exactly
 // what changed.
 //
-// MEASURED BEFORE THE FIX: the arrival carried `Tracked: true`, frozen by
-// whichever scope planned it, and `Admits` returned it unread. So a zone-only
-// alert tied to a watched location in Observer was read out over a console
-// whose transmitter is four hundred miles away — through a fence, past a radius
-// the HUM LEAD set, with nothing ever measured. It is the one bypass a narrower
-// fence could not close, because the narrowing is not what it consults.
+// A VERDICT FROZEN ON THE ARRIVAL by whichever scope planned it would let
+// `Admits` wave the card through: a zone-only alert tied to a watched location
+// in Observer would be read out over a console whose transmitter is four
+// hundred miles away — through a fence, past a radius the HUM LEAD set, with
+// nothing ever measured. No narrower fence could close that bypass, because
+// the narrowing is not what it consults.
 func TestAZoneOnlyCardIsHeldWhenTheNewScopeDoesNotFollowIt(t *testing.T) {
 	now := time.Now()
 	zoneOnly := Arrival{ID: "NWS.zone.1", TrackedAs: "zone1", Headline: "FLOOD WARNING · zone",
@@ -216,13 +214,12 @@ func TestAZoneOnlyCardIsHeldWhenTheNewScopeDoesNotFollowIt(t *testing.T) {
 // THE GAP THE TWO TESTS ABOVE LEAVE, and they leave it in the same shape: both
 // move the air on every step, so both only ever exercise the trigger `Aired`
 // already serves. The operator who narrows the STATION'S SERVICE AREA in
-// Settings moves no air at all — and `d.settings.Fence` had exactly one
-// assignment in this package, behind the air-moved guard, so the narrowing
-// reached nothing.
+// Settings moves no air at all, and a fence assigned only behind the air-moved
+// guard never sees that narrowing.
 //
-// IT IS THE SAME SENTENCE, THROUGH A DIFFERENT DOOR: a hundred-mile hazard
-// survived a narrowing to twenty-five. `Aired.Fence`'s own comment claims that
-// defect fixed. It was fixed for one of the two ways a fence changes.
+// THE SAME RULE, THROUGH THE OTHER DOOR: a hundred-mile hazard must not
+// survive a narrowing to twenty-five, whichever of the two ways the fence
+// changes.
 func TestTheRailIsReScopedWhenTheServiceAreaNarrowsUnderAStandingAir(t *testing.T) {
 	now := time.Now()
 	wide := Fence{RadiusMi: 150, Lat: refLat, Lon: refLon, HasOrigin: true}
@@ -258,10 +255,10 @@ func TestTheRailIsReScopedWhenTheServiceAreaNarrowsUnderAStandingAir(t *testing.
 
 // AND A REPEATED `Aired` CARRIES ITS FENCE THROUGH THE REPEAT GUARD.
 //
-// THE SECOND HALF OF THE SAME DEFECT. `onAired` returned `d, nil` the moment the
-// air matched, which is right for the AIR and wrong for the FENCE riding the
-// same event: the operator who changes a setting and then keys the surface they
-// are already on is not sending a no-op, and the whole event was dropped.
+// THE OTHER HALF OF THE SAME RULE. Returning `d, nil` the moment the air
+// matches is right for the AIR and wrong for the FENCE riding the same event:
+// the operator who changes a setting and then keys the surface they are
+// already on is not sending a no-op.
 func TestARepeatedAirStillCarriesANarrowedFence(t *testing.T) {
 	now := time.Now()
 	wide := Fence{RadiusMi: 150, Lat: refLat, Lon: refLon, HasOrigin: true}

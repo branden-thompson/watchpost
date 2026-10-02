@@ -30,16 +30,14 @@ import (
 // of itself on the developer's box.
 //
 // IT IS ATOMIC BECAUSE A TEST WRITES IT WHILE PRODUCTION GOROUTINES READ IT.
-// The previous comment here said it was "read on paths that already hold no
-// lock", which is only safe if every read happens on the writing test's own
-// goroutine — and it does not. The synth Source's render loop calls
-// resolveVoice, which reads this, and nothing waits for that goroutine when a
-// test ends. asPlatform's t.Cleanup restore then raced it, and -race said so on
-// CI (issue #7's PR, ubuntu leg).
+// Not every read happens on the writing test's own goroutine: the synth
+// Source's render loop calls resolveVoice, which reads this, and nothing waits
+// for that goroutine when a test ends — so asPlatform's t.Cleanup restore runs
+// concurrently with it.
 //
-// A load per call, on a path that already resolves a voice. The alternative was
-// to default the whole app test binary to darwin, which would have stopped
-// Linux CI exercising Linux paths — the exact hole #7 came through.
+// A load per call, on a path that already resolves a voice. Defaulting the
+// whole app test binary to darwin instead would stop Linux CI exercising Linux
+// paths (issue #7).
 var goosSeam atomic.Value // string
 
 func init() { goosSeam.Store(runtime.GOOS) }
@@ -50,9 +48,9 @@ func runtimeGOOS() string { return goosSeam.Load().(string) }
 // setRuntimeGOOS points the seam at a platform. Tests only.
 func setRuntimeGOOS(goos string) { goosSeam.Store(goos) }
 
-// discoverTimeout bounds `say -v ?`. It has been seen to take seconds on a
-// loaded machine; past this the curated list stands and discovery is simply
-// not finished (UAT 85). A ceiling, not an expectation.
+// discoverTimeout bounds `say -v ?`. It can take seconds on a loaded machine;
+// past this the curated list stands and discovery is simply not finished
+// (UAT 85). A ceiling, not an expectation.
 const discoverTimeout = 30 * time.Second
 
 // castConfig is the ONE mapper from the persisted config to the role registry's
@@ -102,15 +100,15 @@ func settingsRoles() []cast.Role {
 
 // reconcile folds a stored cast into the shape the Settings window can SHOW.
 //
-// A file can name roles the window has no row for. `standard` is the one that
-// bit: it is the parent of the four report roles and of the station, so
-// `[radio.voices.standard] macos = "Daniel"` made the maritime, fire and seismic
-// reports — and the station's own lead and sign-off — speak in Daniel, while
-// every one of those rows read "System Voice", because an unassigned row shows
-// the ROOT and resolution walks the TREE. The window could not show it and could
-// not clear it; a save carried it forward untouched (HUM LEAD, UAT 2026-08-30:
-// "the app needs to know how to deal with that if the stored configs aren't
-// matching the presented UI").
+// A file can name roles the window has no row for. `standard` is the parent of
+// the four report roles and of the station, so `[radio.voices.standard] macos =
+// "Daniel"` makes the maritime, fire and seismic reports — and the station's own
+// lead and sign-off — speak in Daniel, while every one of those rows reads
+// "System Voice", because an unassigned row shows the ROOT and resolution walks
+// the TREE. Unreconciled, the window cannot show it or clear it, and a save
+// carries it forward untouched (HUM LEAD, UAT 2026-08-30: "the app needs to know
+// how to deal with that if the stored configs aren't matching the presented
+// UI").
 //
 // Two steps, and the order matters:
 //
@@ -120,14 +118,14 @@ func settingsRoles() []cast.Role {
 //     root is left alone: "inherit" then means "follow the root", which is what
 //     the row already shows.
 //  2. DROP the rest. Any assignable role the window does not draw is removed,
-//     so it cannot override a drawn row invisibly again. The station goes with
+//     so it cannot override a drawn row invisibly. The station goes with
 //     them and follows the root, which is what its row would have said if it had
 //     one.
 //
 // Done HERE, in the one mapper from the file to the registry, so the DECK and
 // the window reconcile identically. Reconciling only the view would leave the
 // broadcast reading the file's version — the screen and the ear disagreeing,
-// which is the bug itself.
+// which is the failure this step exists to prevent.
 func reconcile(c cast.Config) cast.Config {
 	drawn := map[cast.Role]bool{}
 	for _, r := range settingsRoles() {
@@ -157,11 +155,10 @@ func reconcile(c cast.Config) cast.Config {
 	//
 	// The same disagreement in a second form. Under Single Voice the resolver
 	// ignores every pair and reads the root, so a file carrying assignments with
-	// no `cast = "cast"` — which a 0.13.0 config, a hand edit, or a save from
-	// before the mode radio was retired can all produce — showed a listener five
-	// rows of names that nothing would ever use. The window has no mode control
-	// any more; nothing should be able to leave the key disagreeing with the
-	// rows it governs.
+	// no `cast = "cast"` — which a 0.13.0 config or a hand edit can produce —
+	// would show a listener five rows of names that nothing would ever use. The
+	// window has no mode control; nothing should be able to leave the key
+	// disagreeing with the rows it governs.
 	c.Mode = cast.ModeSingle
 	for _, r := range settingsRoles() {
 		if !c.Pairs[r].Empty() {
@@ -207,8 +204,7 @@ func roleVoiceOf(p cast.Pair) config.RoleVoice {
 // that mutex is held: the call re-enters the deck and deadlocks.
 //
 // The shape every caller uses is: SNAPSHOT UNDER THE LOCK, RESOLVE OUTSIDE IT,
-// STORE UNDER THE LOCK. This was a real defect found by four independent
-// red-team lenses at PLAN, not a hypothetical.
+// STORE UNDER THE LOCK.
 
 // Platform implements cast.Host.
 func (d *radioDeck) Platform() string { return runtimeGOOS() }
@@ -233,13 +229,10 @@ func (d *radioDeck) Discovered(name string) bool {
 // FindPiperVoice locates the model by KEY — `<dir>/voices/<Key>.onnx` — so a
 // name has to go through the catalogue first. A `synth.VoiceSpec{Name: name}`
 // has an EMPTY Key, so it looks for `voices/.onnx` and answers no for every
-// voice however plainly installed. Four call sites did exactly that, one of them
-// copying another with the comment "find-only, exactly as the deck's is". On
-// Linux it made every alert silent: the tone sounded, the ticker took over, and
-// nothing was ever read (issue #7, an Arch box on 0.14.0).
+// voice however plainly installed. On Linux that makes every alert silent: the
+// tone sounds, the ticker takes over, and nothing is ever read (issue #7).
 //
-// The correct form already existed in the voice-preview path and nothing else
-// used it. This is that, with one owner.
+// This is the correct form, with one owner.
 func piperInstallFor(dir, name string) (synth.Install, bool) {
 	spec, ok := synth.VoiceByName(name)
 	if !ok {
@@ -269,7 +262,7 @@ func (d *radioDeck) Default() string {
 // discoverMacVoices reads `say -v ?` and returns the curated voices that are
 // installed, in curated order.
 //
-// A package-level function rather than a deck method because P4's `report
+// A package-level function rather than a deck method because `report
 // --verbose` needs the same answer without a deck, and two implementations of
 // "which voices does this Mac have" is how the screen and the ear start
 // disagreeing. The context ceiling is the caller's to set; discoverTimeout is
@@ -355,7 +348,7 @@ func (d *radioDeck) resolveVoice(role cast.Role) (synth.Voice, cast.Resolution, 
 	d.mu.Unlock()
 
 	// Resolve OUTSIDE the lock: cast.Resolve calls back into Discovered and
-	// Installed, which take it (P1's lock discipline).
+	// Installed, which take it (the lock discipline above).
 	res := cast.Resolve(role, cfg, d)
 	if want := cast.WantsInstall(role, cfg, d); want != "" {
 		d.startBackgroundInstall(want)
@@ -394,12 +387,9 @@ func (d *radioDeck) buildVoice(name string) (synth.Voice, error) {
 // canInstall reports whether this deck can carry out a background install: it
 // needs something to PLAY the voice on and something to REPORT progress to.
 //
-// Both halves were learned from CI, one per round. The engine came first: a test
-// deck reached resolveVoice on Linux and the download's progress callback
-// dereferenced a nil engine. With that guarded, the next Linux run panicked one
-// line further on — a deck WITH an engine and no program, in Program.Send. The
-// predicate was half a predicate, and only the platform it was never run on
-// could say so.
+// Both halves are needed: a deck with no engine dereferences a nil engine in the
+// download's progress callback, and a deck WITH an engine and no program panics
+// one line further on, in Program.Send.
 //
 // Production always has both by the time this can be reached: newRadioDeck
 // returns nil unless the engine was built, and an install can only start through
@@ -423,8 +413,7 @@ func (d *radioDeck) startBackgroundInstall(key string) {
 
 	// THE ACCOUNTING ABOVE STILL HAPPENS; the WORK below does not. The cap is
 	// about intent and is asserted by TestUnattendedInstallsAreCappedPerSession,
-	// so skipping earlier would stop the cap binding — it did, and that test
-	// caught it before this reached CI a third time.
+	// so skipping earlier would stop the cap binding.
 	if !d.canInstall() {
 		return
 	}
@@ -455,7 +444,7 @@ func (d *radioDeck) startBackgroundInstall(key string) {
 }
 
 // InstallsRemaining reports how many unattended installs this session may still
-// start. [S] reads it in P4; the tests read it here.
+// start. [S] reads it, and so do the tests.
 func (d *radioDeck) InstallsRemaining() int {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -498,11 +487,10 @@ func (d *radioDeck) tones() cast.Tones {
 
 // setCast installs a new cast — the listener saved in Setup.
 //
-// It follows P1's lock discipline exactly, and the shape is load-bearing:
+// It follows the lock discipline above exactly, and the shape is load-bearing:
 // SNAPSHOT under the lock, VALIDATE AND RESOLVE outside it, STORE under the
 // lock. cast.Validate calls back into Discovered and Installed, which take
-// d.mu; validating while holding it deadlocks. Four independent red-team lenses
-// found that at PLAN, which is why it is written out here rather than assumed.
+// d.mu; validating while holding it deadlocks.
 func (d *radioDeck) setCast(cfg cast.Config) {
 	// Outside the lock, on a value nobody else can see.
 	problems := cast.Validate(cfg, d)

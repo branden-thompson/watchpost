@@ -10,8 +10,8 @@ func atNoon() time.Time { return time.Date(2026, 9, 3, 12, 0, 0, 0, time.UTC) }
 // tunesIn is the Tune effects among a step's output.
 //
 // SETTLE PUBLISHES ON EVERY TICK, so a step is never empty and "len(fx) == 0"
-// would assert the wrong thing — it did, in the first version of these tests,
-// and failed on the Publish rather than on anything about the bed.
+// would assert the wrong thing, failing on the Publish rather than on anything
+// about the bed.
 func tunesIn(fx []Effect) []Tune {
 	var out []Tune
 	for _, f := range fx {
@@ -27,9 +27,8 @@ func tunesIn(fx []Effect) []Tune {
 func bedDirector(t *testing.T, dwell time.Duration) Director {
 	t.Helper()
 	// POWERED ON FIRST, because Stopped is the zero value on purpose: a station
-	// starts silent and nothing plays until the listener asks. Four of these
-	// tests were written without it and passed only because the bed did not yet
-	// consult the power at all.
+	// starts silent and nothing plays until the listener asks. Without it
+	// these tests would pass only for a bed that ignores the power.
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b", "c"}, Dwell: dwell}, atNoon())
 	d, _ = d.Step(Monitored{Running: true})
 	d, fx := d.Step(Tuned{Ref: "a", Live: true})
@@ -40,7 +39,7 @@ func bedDirector(t *testing.T, dwell time.Duration) Director {
 }
 
 // A LIVE RELAY HOLDS THE BED FOR ITS DWELL AND THEN THE NEXT ONE TAKES IT
-// (T3.2b, UAT 93's rule, moved off a timer).
+// (T3.2b, UAT 93's rule, on the schedule rather than a timer).
 //
 // Stated as a schedule rather than observed with a clock. As a time.AfterFunc
 // inside the radio deck the dwell can only be seen by waiting five real minutes;
@@ -103,7 +102,7 @@ func TestTheBedHoldsWhenItShould(t *testing.T) {
 }
 
 // A BED ON SOMETHING OUTSIDE THE QUEUE REJOINS AT THE TOP — the deck's
-// nextInQueue rule, moved rather than rewritten. A listener who removed the
+// nextInQueue rule. A listener who removed the
 // location they are listening to keeps rotating instead of stopping.
 func TestABedOutsideTheWatchlistRejoinsAtTheTop(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b"}, Dwell: time.Minute}, atNoon())
@@ -143,8 +142,7 @@ func TestTheDwellRunsFromTheMomentTheBedTookIt(t *testing.T) {
 // The wrap makes the next entry the current one, so an unguarded advance would
 // cut the audio and re-tune the same relay every five minutes — the listener
 // with a single station hears it restart on a timer, for no reason they could
-// name. Found by the P10 density gate sending me back through nextInWatchlist,
-// which is the second time a gate has produced a defect rather than a chore.
+// name.
 func TestAWatchlistOfOneNeverRetunesItself(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a"}, Dwell: time.Minute}, atNoon())
 	d, _ = d.Step(Monitored{Running: true})
@@ -188,8 +186,7 @@ func TestARotationWithABlankEntryIsRefused(t *testing.T) {
 //
 // The listener pressed stop. The bed moving on afterwards would be the station
 // starting itself again five minutes later — and the deck's own rule says
-// nothing follows a stop (`d.mode = ""`). Found by writing out where the bed can
-// be and what moves it, BEFORE the wiring, rather than by a fifth review round.
+// nothing follows a stop (`d.mode = ""`).
 func TestAStoppedProgrammeDoesNotAdvanceTheBed(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b"}, Dwell: time.Minute}, atNoon())
 	d, _ = d.Step(Tuned{Ref: "a", Live: true})
@@ -211,7 +208,7 @@ func TestAStoppedProgrammeDoesNotAdvanceTheBed(t *testing.T) {
 
 // THE SYNTHESISED BROADCAST MOVES ON WHEN ITS CYCLE ENDS, NOT ON A DWELL.
 //
-// `advanceQueue` had two callers, and the absorb needs both: the five-minute
+// The queue moves two ways, and the bed needs both: the five-minute
 // dwell that moves a live relay, and the cycle end that moves the synthesised
 // broadcast. A relay never ends, which is why it has a dwell at all; the synth
 // broadcast ends on its own and moves on then — a cycle that ran two minutes
@@ -249,9 +246,8 @@ func TestACycleEndOutsideWatchlistHoldsTheBed(t *testing.T) {
 //
 // A live relay sends a status every time its title changes, and every one says
 // Playing — so a dwell restarted on each report would never elapse, and the
-// rotation would stop dead on whichever station talks most. The deck's armDwell
-// was idempotent for exactly this reason; the rule had to survive the move, and
-// it did not until the corpus guard noticed m53 had nothing left to anchor to.
+// rotation would stop dead on whichever station talks most. A report of the
+// relay already playing leaves the turn where it is (mutant m53).
 func TestARepeatedTunedReportDoesNotRestartTheTurn(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b"}, Dwell: time.Minute}, atNoon())
 	d, _ = d.Step(Monitored{Running: true})
@@ -307,8 +303,8 @@ func TestATuneThatNeverLandsIsReported(t *testing.T) {
 	}
 	// A SECOND TICK, ONE SECOND LATER — not at 2 x the bound, which is where
 	// the one-minute dwell elapses and issues a NEW tune, resetting the clock
-	// and making this assertion pass for the wrong reason. It did, until the
-	// planted defect it exists to catch went unnoticed.
+	// and making this assertion pass for the wrong reason, with the planted
+	// defect it exists to catch unnoticed.
 	_, fx = d.Step(Tick{Now: planNow.Add(tuneLands + 2*time.Second)})
 	if hasEscalate(fx) {
 		t.Errorf("the stall was reported twice; a tick every second would raise a window every "+
@@ -348,9 +344,9 @@ func TestAStopWhileATuneIsInFlightIsNotAFault(t *testing.T) {
 	d, _ = d.Step(Tuned{Ref: "a", Live: true})
 	d, _ = d.Step(Ended{})
 	// THE OPERATOR STOPPED LISTENING, which is what this test is about (D-74).
-	// It said `Powered{Stopped}` when the STATION's power and the MONITOR's were
-	// one field — and under the split, stopping the station has nothing to do
-	// with a tune the operator's own rotation asked for.
+	// The STATION's power and the MONITOR's are separate fields, so stopping
+	// the station has nothing to do with a tune the operator's own rotation
+	// asked for.
 	d, _ = d.Step(Monitored{Running: false})
 
 	_, fx := d.Step(Tick{Now: planNow.Add(tuneLands + time.Second)})

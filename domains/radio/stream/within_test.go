@@ -14,7 +14,7 @@ const bonsallLat, bonsallLon = 33.2881, -117.2256
 //
 // AND THE NUMBERS ARE WHY THE FENCE IS 100 MILES. Measured from Bonsall: 25
 // holds ONE transmitter, 50 holds three, 100 holds eight. A selector with one
-// choice in it is not a selector, which is what made the bed's fence a setting
+// choice in it is not a selector, which is why the bed's fence is a setting
 // of its own rather than the service radius.
 func TestWithinHoldsTheFencesTransmittersNearestFirst(t *testing.T) {
 	table, err := LoadTable()
@@ -64,11 +64,10 @@ func TestABedFenceWithNoRadiusHoldsNothing(t *testing.T) {
 // AN OUT-OF-SERVICE TRANSMITTER IS NOT OFFERED, and this asserts it at a place
 // where one actually exists.
 //
-// THE FIRST VERSION WAS VACUOUS AND A PLANT SAID SO: it swept the fence around
-// Bonsall for a status it would never find, so deleting the filter changed
-// nothing it could see. The fixture is asserted valid first — the table really
-// does hold a dead transmitter here — so the exclusion is what the test measures
-// rather than the absence of one.
+// A sweep around Bonsall would never find that status, so deleting the filter
+// would change nothing it could see. The fixture is asserted valid first — the
+// table really does hold a dead transmitter here — so the exclusion is what the
+// test measures rather than the absence of one.
 func TestWithinNeverOffersATransmitterTheTunerWouldRefuse(t *testing.T) {
 	table, err := LoadTable()
 	if err != nil {

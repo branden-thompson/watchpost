@@ -23,9 +23,9 @@ const (
 	// panelSide is the frame's chrome on ONE side — what the panel has already
 	// inset a body line by before the window adds anything of its own.
 	//
-	// DERIVED, and the ONE owner of it: relayfault.go and debug.go each carried
-	// their own `= 2` for this, which is the panel's number and not theirs to
-	// restate (D-1, red team 2026-09-05).
+	// DERIVED, and the ONE owner of it: no window restates its own `= 2` for
+	// this, which is the panel's number and not theirs to restate (D-1, red team
+	// 2026-09-05).
 	panelSide = panelFrame / 2
 )
 
@@ -52,10 +52,10 @@ func widest(blocks ...[]string) int {
 // modalInset is the air between a floating window's border and its content, on
 // BOTH sides (HUM LEAD: UAT 2026-08-28 for the left, 2026-09-05 for the right).
 //
-// ONE OWNER (D-1). It was a bare 3 here, ad-hoc "   " literals in the windows
-// that remembered, and nothing at all on the right — so a window whose content
-// happened to be short looked correct, and the same window with a real station
-// name in it ran into the border.
+// ONE OWNER (D-1). Without it each window keeps its own margin or none, and
+// nothing holds the right — so a window whose content happens to be short looks
+// correct, and the same window with a real station name in it runs into the
+// border.
 const modalInset = 3
 
 // insetModalLines puts a window's body inside its margins: modalInset cells of
@@ -63,16 +63,16 @@ const modalInset = 3
 // modalInset of the right.
 //
 // THE SINGLE OWNER IS A HELPER, NOT A CONSTANT (red team 2026-09-05). modalInset
-// alone could not be one: the windows that remembered the ruling each did their
-// own arithmetic against it, in the panel's coordinates rather than the body's,
-// and each got a different answer — 2, 3 and 4 cells across the app, with the
-// right-hand margin unenforced. The number is not the rule; APPLYING it is.
+// alone cannot be one: windows that each do their own arithmetic against it, in
+// the panel's coordinates rather than the body's, each get a different answer —
+// 2, 3 or 4 cells — with the right-hand margin unenforced. The number is not the
+// rule; APPLYING it is.
 //
 // content is the room between the two margins; the panel's own chrome
 // (panelSide) is already there, so this makes up only the difference. It is NOT
-// a parameter: both callers passed the same 2, which is the panel's number
-// rather than either window's, and a knob nothing turns is one more thing that
-// can be turned wrongly (P10-07).
+// a parameter: every caller would pass the same 2, which is the panel's number
+// rather than any window's, and a knob nothing turns is one more thing that can
+// be turned wrongly (P10-07).
 //
 // A blank line stays blank: there is nothing to inset, and padding it would
 // make the window's air visible to anything measuring trailing space.
@@ -93,8 +93,7 @@ func insetModalLines(lines []string, content int) []string {
 
 // columnMargin is the air between the right column and the panel's edge. The
 // SAME rule as the left inset, which is why it is that constant rather than its
-// own 3: they were written to match and a second literal is a second thing to
-// forget.
+// own 3: the two match, and a second literal is a second thing to forget.
 const columnMargin = modalInset
 
 // twoColumnsWidth is the window width two columns need with this chrome.

@@ -5,13 +5,13 @@ import (
 	"testing"
 )
 
-// RUN THE WHOLE PACKAGE AS ANOTHER PLATFORM, because the first time 0.14.0 ran
-// on Linux was its release PR, and it panicked.
+// RUN THE WHOLE PACKAGE AS ANOTHER PLATFORM, so a platform defect shows here
+// rather than the first time the code runs on Linux.
 //
 // asPlatform steers one test at a time, which only helps for a test that already
-// knew it was platform-dependent. The defects that reached CI were the ones that
-// did NOT know: app/voices.go read runtime.GOOS behind the seam's back, and a
-// test branched on the real OS while the code under test used the seam. Neither
+// knows it is platform-dependent. The defects that slip through are the ones that
+// do NOT know: code that reads runtime.GOOS behind the seam's back, or a test
+// that branches on the real OS while the code under test uses the seam. Neither
 // is visible on the machine it was written on, because there the two agree.
 //
 //	WATCHPOST_TEST_GOOS=linux go test ./app     (or `make test-linux`)

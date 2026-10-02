@@ -44,11 +44,10 @@ func ReadID(ref string) string {
 
 // onNeedsRead proposes the location's read as a main-track card.
 //
-// ADMISSION IS A PROMISE TO READ, NOT A PROMISE TO READ RIGHT NOW (D-84). This
-// asked `advances` too, for the reason onOffered did, and with the same
-// consequence: a station on standby accepted no cards at all. The predicate now
-// has ONE asker — `airOnce` — and the schedule is planned whether or not it is
-// being read.
+// ADMISSION IS A PROMISE TO READ, NOT A PROMISE TO READ RIGHT NOW (D-84). It
+// does not ask `advances`, which would leave a station on standby accepting no
+// cards at all. The predicate has ONE asker — `airOnce` — and the schedule is
+// planned whether or not it is being read.
 func (d Director) onNeedsRead(ev NeedsRead) (Director, []Effect) {
 	card, err := Propose(Card{ID: ReadID(ev.Ref), Slot: LocationReport, Origin: FromDirector,
 		Subject: ev.Ref, Headline: ev.Headline})

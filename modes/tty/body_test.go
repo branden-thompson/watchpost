@@ -21,7 +21,7 @@ func TestDashboardRendersMockAnatomy(t *testing.T) {
 		"API: ✔1",                // UAT 102: the masthead counts APIs (the per-provider strip lives in [S])
 		"Oceanside, CA", "92057", // location row with zip
 		"73°F",                               // F default (D-19)
-		"EXTREME HEAT WATCH - Oceanside, CA", // the one-row alert module (the body lives behind [A] since the 2026-08-28 facelift)
+		"EXTREME HEAT WATCH - Oceanside, CA", // the one-row alert module (the body lives behind [A]: the 2026-08-28 facelift)
 		"[severe]",                           // the class in text with colour off (R-12a; round 4 B-04)
 		"WATCHPOST WEATHER RADIO",            // radio panel frame (UAT-3.3, static until B4)
 		"R E C E N T   /   S E A R C H E D",  // section band (UAT 43)
@@ -93,7 +93,7 @@ func TestModuleBlocksAlignWithTables(t *testing.T) {
 	if !strings.Contains(v, strings.TrimSuffix(render.Tint("WATCHPOST WEATHER RADIO", render.Tok(render.RadioAccent)), "\x1b[0m")) { // the theme token, not a literal (L3-F24)
 		t.Fatal("radio title must be green")
 	}
-	if strings.Contains(v, "00:00 / 00:00") { // UAT 89: the timeline placeholder is gone
+	if strings.Contains(v, "00:00 / 00:00") { // UAT 89: no timeline placeholder
 		t.Fatal("timestamp must be white")
 	}
 	if !strings.Contains(v, strings.TrimSuffix(render.Tint("■ STOPPED", render.Tok(render.StateStopped)), "\x1b[0m")) {
@@ -162,7 +162,7 @@ func TestRecentTableDropsItsGroupRow(t *testing.T) {
 		t.Fatalf("exactly one group-label row (the watchlist's), got %d", n)
 	}
 	for _, l := range strings.Split(v, "\n") {
-		if strings.Contains(l, "▲") && !strings.HasPrefix(strings.TrimSpace(l), "[") { // a band row: the band's bottom row since the three-row bands (UAT 45, nit 2026-08-27)
+		if strings.Contains(l, "▲") && !strings.HasPrefix(strings.TrimSpace(l), "[") { // a band row: the band's bottom row, the bands being three rows (UAT 45, nit 2026-08-27)
 			t.Fatalf("▲ must ride the section band (UAT 45): %q", l)
 		}
 	}
@@ -224,8 +224,8 @@ func TestHeaderIsATitledBox(t *testing.T) {
 		t.Fatalf("the top rule carries the title and the stamp: %q", lines)
 	}
 	row := strings.TrimSpace(strings.Trim(lines[1], "┃"))
-	// [t] and [M] left the row at 0.14.0 — both are settings now, and both live
-	// in [s]. The bindings stay live and deep-link into Settings.
+	// [t] and [M] are not on the row — both are settings, and both live in
+	// [s]. The bindings stay live and deep-link into Settings.
 	if !strings.HasPrefix(row, "[s] Settings  [a] About  [S] Status  [?] Help  [q] Quit") || !strings.HasSuffix(row, "API: ✔1 ⚠1 ✘1 /  3") {
 		t.Fatalf("the row: controls left, api summary right (off excluded, total two columns): %q", row)
 	}
@@ -255,10 +255,9 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
 	v := stripANSITest(model.(Dashboard).View().Content)
 	for _, want := range []string{
-		// The GESTURE, not a span that straddles the wrap: "Setup" became
-		// "Settings" and three more cells moved the
-		// line break. What this test is for is that the empty state stands where
-		// the table will and names the way out of it.
+		// The GESTURE, not a span that straddles the wrap: a word's length
+		// moves the line break. What this test is for is that the empty state
+		// stands where the table will and names the way out of it.
 		"'ctrl+a' Favorite",
 		"NO RECENT LOCATION SEARCHED or DATA-SEEDING FAILED",
 	} {
@@ -280,11 +279,10 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 		t.Fatalf("narrow: the message wraps, never truncates:\n%s", nv)
 	}
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
-	// THE TABLE IS THERE, ASKED THE WAY THE EMPTY STATE IS ASKED. `"[##.]["` was
-	// the bracket form of the stencil band, and D-103 flushed that stencil to its
-	// own column so the numbers hang from it — so the proxy went stale while the
-	// thing it stood for was fine. `CONDITIONS` is the header the assertion above
-	// already uses to mean "no table yet", which makes the pair say one thing.
+	// THE TABLE IS THERE, ASKED THE WAY THE EMPTY STATE IS ASKED.
+	// `CONDITIONS` is the header the assertion above already uses to mean "no
+	// table yet", which makes the pair say one thing; the stencil band is no
+	// proxy, being its own column with the numbers hanging from it (D-103).
 	if v := stripANSITest(model.(Dashboard).View().Content); strings.Contains(v, "to your Watchlist") || !strings.Contains(v, "CONDITIONS") {
 		t.Fatalf("data replaces the watchlist empty state:\n%s", v)
 	}

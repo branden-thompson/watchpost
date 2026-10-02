@@ -169,7 +169,7 @@ func TestNoMapRequestBeforeTheListenerAsks(t *testing.T) {
 	if seeded != 1 {
 		t.Errorf("the zones were seeded %d times; want once, on the first map", seeded)
 	}
-	// And the station's start no longer seeds them: seedZoneShapes is called
+	// And the station's start does not seed them: seedZoneShapes is called
 	// from the map builder alone.
 	fset := token.NewFileSet()
 	names, _ := filepath.Glob("*.go")

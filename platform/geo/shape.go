@@ -107,9 +107,8 @@ func (s Shape) Empty() bool {
 //
 // Whether to draw a partly-known area is a question for whatever has a view to
 // answer it with, and nothing here has one (MG-10). That decision is deferred;
-// **the information it needs is not**, which is what was wrong before: the
-// missing ids were fetched, reported by the store, and then dropped by its
-// only caller.
+// **the information it needs is not**: the missing ids the store reports travel
+// with the area rather than being dropped by its caller.
 type Area struct {
 	Shape Shape
 	// Missing names the parts that could not be got, the way the source names

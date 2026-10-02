@@ -146,16 +146,16 @@ func pickCity(hits []geodata.City, q string) (geodata.City, bool) {
 // The typeahead and the commit differ only in how the zip is found: the
 // per-keystroke path is best-effort (place-name lookup, no O(41k) centroid
 // scan — B2 red-team #3) and Resolve computes the definitive one. That
-// difference is deliberate; the four-field literal around it was not, and
-// where-things-happen.md already states the rule this protects — "the ONE
-// resolver serves both halves so the suggestions and the commit cannot
-// disagree". Two constructors is one field away from making them disagree.
+// difference is deliberate; the four-field literal around it is shared, and
+// where-things-happen.md states the rule this protects — "the ONE resolver
+// serves both halves so the suggestions and the commit cannot disagree". Two
+// constructors is one field away from making them disagree.
 func cityToRefWith(zip func(geodata.City) string, c geodata.City) snapshot.LocationRef {
 	return snapshot.LocationRef{
 		Label: c.Label(),
 		Zip:   zip(c),
 		Lat:   c.Lat, Lon: c.Lon, TZ: c.TZ,
-		// THE FIGURE THE INDEX ALREADY HELD (D-98). The pool's table draws it;
+		// THE INDEX'S OWN FIGURE (D-98). The pool's table draws it;
 		// nothing else reads it, and nothing else has to.
 		Population: c.Population,
 	}
@@ -189,8 +189,8 @@ func Seeds(idx *geodata.Index, n int) []snapshot.LocationRef {
 }
 
 // zipToRef builds a ref from a zip row, backfilling the timezone from the
-// city index (zip rows carry none — caught by the B2 PTY verification, which
-// saved a default location with tz=”).
+// city index (zip rows carry none; without the backfill a saved default
+// location carries an empty tz).
 func (r *Resolver) zipToRef(z geodata.ZipRow, zip string) snapshot.LocationRef {
 	label := z.Place
 	if z.State != "" {

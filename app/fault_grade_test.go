@@ -16,13 +16,13 @@ import (
 //
 // The RELAY FAULT window is for the fault after which nothing is on the air and
 // nothing is coming. It is raised through DR-21's one escalation channel, and
-// the grade was decided by asking whether the schedule had emptied — which in
-// 0.14.0 it ALWAYS has once a rail card leaves, because a burst is one card
-// (MVS-D-77) and nothing queues the main track. So every deliberate,
-// self-healing decline raised a modal saying the relay was dead.
+// the grade cannot be "has the schedule emptied" — it ALWAYS has once a rail
+// card leaves, because a burst is one card (MVS-D-77) and nothing queues the
+// main track, so every deliberate, self-healing decline would raise a modal
+// saying the relay was dead.
 //
-// The composition was never tested end to end: the pieces existed in three
-// files and the station harness stubbed the escalation with an empty body.
+// The composition is tested end to end here: the pieces live in three files,
+// and a harness that stubs the escalation with an empty body never joins them.
 func TestADeliberateDeclineDoesNotRaiseTheFaultWindow(t *testing.T) {
 	nar := testDirector(&scriptVoice{}, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
@@ -49,9 +49,9 @@ func TestADeliberateDeclineDoesNotRaiseTheFaultWindow(t *testing.T) {
 }
 
 // THE CHANNEL IS LIVE, which is the other half of R-11: the three pieces of
-// "a rail card fails, a person is told" existed and were never joined, and the
-// harness's own empty stub is what kept them apart. An Escalate run through the
-// REAL executors must reach a person, carrying the reason the producer gave.
+// "a rail card fails, a person is told" are joined here, with no empty stub to
+// keep them apart. An Escalate run through the REAL executors must reach a
+// person, carrying the reason the producer gave.
 func TestAnEscalationReachesAPersonWithItsReason(t *testing.T) {
 	nar := testDirector(&scriptVoice{}, nil)
 	deck := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: nar, seen: loadSeen(t.TempDir(), time.Hour)}

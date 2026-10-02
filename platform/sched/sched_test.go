@@ -52,10 +52,10 @@ func newFakeClock(start time.Time) *fakeClock {
 // wedgeBound is how long Advance and awaitArmed will wait for the scheduler to
 // come back round before giving up.
 //
-// IT IS A FAILURE BOUND, NOT A SUCCESS BOUND, and that is the whole difference
-// from the sleep it replaces. The old 5 ms was a guess that the work was DONE;
-// this is a limit on how long a genuinely wedged scheduler may hang the suite.
-// Reaching it means something is actually broken, so it can be generous.
+// IT IS A FAILURE BOUND, NOT A SUCCESS BOUND. A sleep would be a guess that
+// the work was DONE; this is a limit on how long a genuinely wedged scheduler
+// may hang the suite. Reaching it means something is actually broken, so it
+// can be generous.
 const wedgeBound = 10 * time.Second
 
 // awaitWaiters blocks until at least n waiters are pending on the clock — n
@@ -168,7 +168,7 @@ func newTestSched(clk Clock, p snapshot.Provider) (*Scheduler, *snapshot.Assembl
 }
 
 func TestForecastTierFires(t *testing.T) {
-	// B1 red-team B-1: tier 3 (forecast) was never exercised.
+	// B1 red-team B-1: tier 3 (forecast) is exercised too.
 	clk := newFakeClock(time.Date(2026, 8, 23, 12, 0, 0, 0, time.UTC))
 	p := &countingProvider{id: "nws"}
 	asm := snapshot.NewAssembler(refs, []string{"nws"})
@@ -401,8 +401,8 @@ func (p *slowProvider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapsh
 }
 
 func TestPublishesPerProviderNotPerTier(t *testing.T) {
-	// UAT 64: the priority marine tier sat blank while CO-OPS waited on the
-	// shared pacing bucket — NDBC's data must reach the screen as soon as
+	// UAT 64: the priority marine tier must not sit blank while CO-OPS waits on
+	// the shared pacing bucket — NDBC's data must reach the screen as soon as
 	// its fragment applies, not when the slowest provider finishes.
 	clk := newFakeClock(time.Now())
 	fast := &countingProvider{id: "nws"}
@@ -513,25 +513,25 @@ func TestTierCadenceIsAFixedGrid(t *testing.T) {
 	defer cancel()
 	s.Start(ctx)
 	defer s.Stop()
-	// NOT waitFor (F-29). Both bounds in this test were 2 s of REAL time against
-	// work of unbounded cost, so under `-race` on a busy machine the assertion
-	// could fire before the scheduler had acted — and the test then failed for a
-	// reason unrelated to the grid arithmetic it is named for. Both tiers arm the
-	// clock only after their first cycle, so two pending waiters IS "the initial
-	// fetches are done"; the clock waits on that, and the counters are then
-	// asserted directly rather than polled towards.
+	// NOT waitFor (F-29). A bound of REAL time against work of unbounded cost
+	// lets the assertion fire, under `-race` on a busy machine, before the
+	// scheduler has acted — failing the test for a reason unrelated to the grid
+	// arithmetic it is named for. Both tiers arm the clock only after their first
+	// cycle, so two pending waiters IS "the initial fetches are done"; the clock
+	// waits on that, and the counters are then asserted directly rather than
+	// polled towards.
 	clk.awaitWaiters(2)
 	if p.alerts.Load() != 1 || p.obs.Load() != 1 {
 		t.Fatalf("initial fetches: alerts=%d obs=%d, want 1 and 1", p.alerts.Load(), p.obs.Load())
 	}
 	// The initial alerts fetch cost 3 s of clock; the tier's next slot is
-	// still start+20 s — 17 s away, not 20 (the pre-Q3 loop fired at +23).
+	// still start+20 s — 17 s away, not 20 (a drifting loop would fire at +23).
 	clk.Advance(16 * time.Second)
 	if p.alerts.Load() != 1 {
 		t.Fatalf("alerts must not fire before its grid point, got %d", p.alerts.Load())
 	}
 	clk.Advance(2 * time.Second) // +21 s: past the grid point, short of the drifted one
-	// DIRECT, because Advance now returns only once every tier it woke is
+	// DIRECT, because Advance returns only once every tier it woke is
 	// quiescent again. If this ever needs a wait, the clock has stopped
 	// synchronising and that is the bug to fix — not the bound to raise.
 	if got := p.alerts.Load(); got != 2 {
@@ -545,8 +545,8 @@ func TestTierCadenceIsAFixedGrid(t *testing.T) {
 // losing it fails HERE, with a message about the clock, rather than surfacing as
 // an occasional unexplained timeout in a test about grid arithmetic.
 //
-// The old Advance fired the due waiters and slept 5 ms. That is a guess, and no
-// number of passing runs makes it not one; this asserts with no wait at all.
+// Firing the due waiters and then sleeping would be a guess, and no number
+// of passing runs makes it not one; this asserts with no wait at all.
 func TestAdvanceReturnsOnlyOnceTheTierHasActed(t *testing.T) {
 	clk := newFakeClock(time.Date(2026, 8, 23, 12, 0, 0, 0, time.UTC))
 	p := &clockProvider{countingProvider: countingProvider{id: "nws"}, clk: clk, fetchTime: 3 * time.Second}
@@ -567,14 +567,14 @@ func TestAdvanceReturnsOnlyOnceTheTierHasActed(t *testing.T) {
 
 // THE SCHEDULER RECORDS WHICH LOCATIONS IT ASKED ABOUT (#13, red team 2026-09-08).
 //
-// This is the dashboard's ONLY refresh path, and it was the one call site that
-// did not pass the asked set — so no location ever recorded an attempt, and a
-// row the feed cannot serve shimmered for ever. The fix ran only in
-// `watchpost report`, which is not a surface a listener can see.
+// This is the dashboard's ONLY refresh path: if it does not pass the asked
+// set, no location ever records an attempt, and a row the feed cannot serve
+// shimmers for ever. `watchpost report` passing it is not a surface a listener
+// can see.
 //
 // IT IS TESTED HERE, THROUGH THE REAL SCHEDULER, and that is the point. The
-// assembler's own test hand-built the fragment and set the asked set itself, so
-// it proved the assembler works and could say nothing about whether anybody
+// assembler's own test hand-builds the fragment and sets the asked set itself,
+// so it proves the assembler works and can say nothing about whether anybody
 // calls it that way. A test that supplies the producer's output cannot detect a
 // missing producer.
 func TestTheSchedulerRecordsTheLocationsItAskedAbout(t *testing.T) {

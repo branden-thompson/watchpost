@@ -51,11 +51,10 @@ func TestTheTimingsReachTheCounters(t *testing.T) {
 	}
 }
 
-// TestTheFeedTimesItsStages is W14's next measure: the alerts' answer still
-// takes ~5.3 s cold after the inputs were asked together, and which stage
-// holds it was being guessed. With the instrument on, a feed ask says how
-// long each stage took - each input, the zones, the overlays - so the next
-// change is aimed at a measured stage.
+// TestTheFeedTimesItsStages is W14's stage measure: with the instrument on, a
+// feed ask says how long each stage took - each input, the zones, the
+// overlays - so a change to the alerts' cold answer (~5.3 s) is aimed at a
+// measured stage rather than a guessed one.
 func TestTheFeedTimesItsStages(t *testing.T) {
 	t.Setenv("WATCHPOST_DEBUG_TIMING", "1")
 	loc, srv := m1Fixture(t, "01-covers-oak-ridge")

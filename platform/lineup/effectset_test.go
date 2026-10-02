@@ -13,16 +13,16 @@ import (
 
 // I-6 — THE CLOSED SET IS DERIVED, NOT REMEMBERED.
 //
-// TestTheEffectSetIsClosed enumerated eight effects and omitted Escalate, which
-// is live and declared in fault.go. The one test whose whole job is to notice
-// the set growing a member had already failed to notice one — the same shape as
-// F-18's colour register and F-30's memo key, both of which were answered by
-// deriving the set instead of listing it (red team 2026-09-05).
+// A hand-enumerated set can omit a live member — Escalate, declared in
+// fault.go, is the kind — and then the one test whose whole job is to notice
+// the set growing fails to notice one: the same shape as F-18's colour register
+// and F-30's memo key, both answered by deriving the set instead of listing it
+// (red team 2026-09-05).
 //
 // The marker is the derivation: every effect embeds isEffect, so the package's
 // own source is the authority on what the set contains. The runtime list below
-// still exists — an AST cannot construct a value — but it can no longer be
-// INCOMPLETE, which is the failure that mattered.
+// exists because an AST cannot construct a value, but it cannot be INCOMPLETE,
+// which is the failure that matters.
 func effectNamesFromSource(t *testing.T) []string {
 	t.Helper()
 	fset := token.NewFileSet()
@@ -88,7 +88,7 @@ func TestTheEffectSetIsDerivedFromTheSource(t *testing.T) {
 // order (the cue before the words, DR-18) and which card a panic fails (DR-22),
 // and Holds deciding what may run alongside what. Missing from CardOf, an
 // effect loses its ordering and fails no card on a panic; missing from Holds it
-// races the band or the bed. Neither had any test at all.
+// races the band or the bed.
 func TestEveryEffectIsDescribedAndPlaced(t *testing.T) {
 	for _, e := range everyEffect() {
 		name := reflect.TypeOf(e).Name()

@@ -129,12 +129,12 @@ func TestThePublishedLineupCarriesThePile(t *testing.T) {
 	t.Fatal("no Publish came out of the step")
 }
 
-// THE PILE HAS A PRODUCTION WRITER TODAY, and it is the staleness drop.
+// THE PILE HAS A PRODUCTION WRITER, and it is the staleness drop.
 //
 // PD-3 drops a card whose data has aged past the window, and the reason is
 // sharper than "the observation is old": the window exists to stop the station
 // asserting something UNTRUE. That is a deliberate removal, so it belongs on the
-// operator's pile — before this, a dropped card simply vanished and nothing
+// operator's pile — off it, a dropped card would simply vanish and nothing
 // could say what had been taken away or why.
 func TestAStaleDropLandsOnThePile(t *testing.T) {
 	// THE REAL PATH, driven rather than shortcut. Staleness is "a question about

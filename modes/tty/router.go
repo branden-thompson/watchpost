@@ -2,16 +2,11 @@ package tty
 
 // router.go — the model the program holds (FR-1.1, D-2).
 //
-// ONE MODEL, TWO SURFACES. `Dashboard` was handed to tea.NewProgram directly,
-// so there was no seam a second surface could arrive at. The Router is that
-// seam and nothing more: it owns which surface is active and the fan-out of
+// ONE MODEL, TWO SURFACES. The Router is the seam the second surface arrives
+// at, and nothing more: it owns which surface is active and the fan-out of
 // the messages that belong to the PROGRAM rather than to either surface.
 //
-// P0'S CLAIM IS THAT NOTHING CHANGES. Observer renders and behaves exactly as
-// it did; the Router is a delegation. The second surface arrives in P1, and
-// the swap gate it needs arrives in P2 — until then `canSwap` fails closed,
-// because a gate whose state source is a stub must refuse rather than permit
-// (the P1->P2 window, PLAN red team).
+// OBSERVER RENDERS AND BEHAVES AS IT WOULD ALONE; the Router is a delegation.
 
 import (
 	tea "charm.land/bubbletea/v2"
@@ -49,8 +44,8 @@ const (
 
 	// THE BED'S OWN CONTROLS (D-78). `[B]` cuts the programme between the
 	// station's line-up and its bed; the arrows move through the relays the
-	// station's fence reaches. The reference mock has drawn all three since the
-	// first wave and none of them was bound to anything.
+	// station's fence reaches. The reference mock draws all three, so all three
+	// are bound.
 	actBedCut    term.Action = "bed-cut"
 	actBedPrev   term.Action = "bed-prev"
 	actBedNext   term.Action = "bed-next"
@@ -62,8 +57,8 @@ const (
 	// we pressed [0-9] - this is more important now for positions [10-14]".
 	//
 	// TEN DIGITS CANNOT ADDRESS FIFTEEN SLOTS. The chips on the cards address the
-	// first ten and the running order now runs to fifteen, so the last five had no
-	// key at all — the console drew rows the operator could point at and not open.
+	// first ten and the running order runs to fifteen, so without the pointer the
+	// last five have no key at all — rows the operator can point at and not open.
 	// The POINTER is the address that has no ceiling.
 	actQueueOpen term.Action = "queue-open"
 
@@ -75,9 +70,9 @@ const (
 	actGainUp   term.Action = "gain-up"
 	actGainDown term.Action = "gain-down"
 
-	// THE MASTHEAD ADVERTISES THESE, so they must reach something (D-65). They
-	// were printed as TEXT and bound to nothing: the console named five controls
-	// and answered to none of them, which is a UI lying about what it can do.
+	// THE MASTHEAD ADVERTISES THESE, so they must reach something (D-65): a
+	// console that names five controls and answers to none of them is a UI lying
+	// about what it can do.
 	//
 	// FORWARDED, NOT REBUILT. Settings, About, Status and Help are Observer's
 	// own windows; the Router composites whichever one opens over the console,
@@ -96,14 +91,14 @@ const (
 	// thing on both surfaces.
 	actLookup term.Action = "lookup"
 
-	// actRequest is `[r] Line-Up Request`, and it is a BINDING now (D-135).
+	// actRequest is `[r] Line-Up Request`, and it is a BINDING (D-135).
 	//
-	// IT WAS A BARE `case "r":` IN A KEY SWITCH, which broke D-15 — keys are
-	// data — in both directions that rule exists for: the key could not be
-	// rebound, and, because the Help window is built from the keymap, a control
-	// the console DRAWS could not be documented. HUM LEAD, UAT 2026-09-15:
-	// "Once the user in the Broadcaster UI, they key bindings share/rempapped
-	// for that mode do not update their help (like 'r')."
+	// A BARE `case "r":` IN A KEY SWITCH WOULD BREAK D-15 — keys are data — in
+	// both directions that rule exists for: the key could not be rebound, and,
+	// because the Help window is built from the keymap, a control the console
+	// DRAWS could not be documented. HUM LEAD, UAT 2026-09-15: "Once the user in
+	// the Broadcaster UI, they key bindings share/rempapped for that mode do not
+	// update their help (like 'r')."
 	//
 	// LOWER CASE, AND GATED ON THE CONSOLE OWNING THE KEYS: `r` is Observer's
 	// repeat, which is D-56 — one key, one meaning PER SURFACE. The lookup runs
@@ -141,8 +136,7 @@ type Station interface {
 	GoToStandby()
 
 	// CutBed moves the programme between the station's line-up and its bed
-	// (D-78) — `[B]`, and the first production caller `lineup.CutOver` has ever
-	// had. The Director has modelled this since 0.14.0 and nothing emitted it.
+	// (D-78) — `[B]`, the production caller of `lineup.CutOver`.
 	//
 	// TO THE BED IS THE ARGUMENT, not a toggle, for the reason the power's two
 	// controls are two methods: a toggle asks the caller to know the current
@@ -173,8 +167,8 @@ func broadcasterKeyMap() term.KeyMap {
 		actGainDown: {Keys: []string{"-"}, Help: "Gain Down"},
 		actSettings: {Keys: []string{"s"}, Help: "Settings"},
 		actAbout:    {Keys: []string{"a"}, Help: "About"},
-		// THE CONSOLE'S CONTROL ROW HAS DRAWN `[l]` SINCE D-102, and it is
-		// Observer's search box that belongs behind it.
+		// THE CONSOLE'S CONTROL ROW DRAWS `[l]` (D-102), and it is Observer's
+		// search box that belongs behind it.
 		actLookup:        {Keys: []string{"l"}, Help: "Lookup Location"},
 		actRequest:       {Keys: []string{"r"}, Help: "Line-Up Request"},
 		actStatus:        {Keys: []string{"S"}, Help: "Status"},
@@ -228,13 +222,12 @@ func broadcasterKeyMap() term.KeyMap {
 // check that enforces it — so a console control handled here reaches past an
 // open window and acts on input meant for it.
 //
-// THE BED'S ARROWS HAD THIS BUG SINCE D-78 and nothing saw it: with the
-// diagnostics or status window up, `←`/`→` stepped the relay instead of moving
-// through the window. Adding the queue's `↑`/`↓` is what surfaced it, because
-// those are the keys the modal-reachability gate drives — "a line the keyboard
-// cannot bring on screen is not in the window". The fix is one predicate for
-// both, which is what the bug was for: two controls asking the same question in
-// two places, and only one of them asking it at all.
+// THE BED'S ARROWS AND THE QUEUE'S ASK THE SAME QUESTION. With the diagnostics
+// or status window up, `←`/`→` must move through the window rather than step
+// the relay, and `↑`/`↓` are the keys the modal-reachability gate drives — "a
+// line the keyboard cannot bring on screen is not in the window". One predicate
+// for both, because two controls asking the same question in two places is how
+// one of them stops asking it at all.
 func (r Router) consoleOwnsTheKeys() bool {
 	return r.active == SurfaceBroadcaster && !r.observer.ModalOpen()
 }
@@ -255,18 +248,16 @@ type Router struct {
 
 	// keys are the console's own bindings, merged once and shared by value.
 	//
-	// ASSIGNED AT CONSTRUCTION, and it was not for a release (F-72). With it
-	// nil the swap branch in Update is skipped entirely, so `ctrl+o` and
-	// `ctrl+b` reached nothing and the console could not be arrived at — which
-	// is the only reason the one-way door below was latent rather than live.
+	// ASSIGNED AT CONSTRUCTION (F-72). With it nil the swap branch in Update is
+	// skipped entirely, so `ctrl+o` and `ctrl+b` reach nothing and the console
+	// cannot be arrived at.
 	keys term.KeyMap
 
 	// station is how the console asks for ON AIR or STANDBY (FR-5.4).
 	//
-	// IT LANDS IN THE SAME CHANGE AS THE KEYMAP, deliberately. `canSwap`
-	// refuses to leave a running station — the ratified rule — and until
-	// something could produce `OffAir` there was no way to satisfy it. Install
-	// the keymap without this and the console becomes a surface with no
+	// IT IS AS ESSENTIAL AS THE KEYMAP. `canSwap` refuses to leave a running
+	// station — the ratified rule — and only this can produce the `OffAir` that
+	// satisfies it. A keymap without it makes the console a surface with no
 	// controls and no exit but killing the process.
 	station Station
 
@@ -286,12 +277,11 @@ type Router struct {
 	keyTime *keyClock
 }
 
-// NewRouter wraps Observer. The second surface arrives in P1.
+// NewRouter wraps Observer, with the console beside it.
 func NewRouter(o Dashboard) Router {
 	// The console inherits the SAME --ascii decision Observer was built with.
 	// Two surfaces disagreeing about whether the terminal can draw a glyph
-	// would be one setting with two carriers, which is the shape this codebase
-	// has removed twice.
+	// would be one setting with two carriers.
 	b := NewBroadcaster()
 	b.ascii = o.cfg.ASCII
 	// AND THE SAME BUILD. The masthead names the version on both surfaces, and
@@ -299,8 +289,8 @@ func NewRouter(o Dashboard) Router {
 	// two-carriers defect one field along.
 	b.version = o.cfg.Version
 	// AND THE SAME FIRE THRESHOLD. RESOLVED, not raw: Observer owns the "unset
-	// means 50" rule, and a console that re-derived it would be the two-carriers
-	// defect the constant this replaces already was.
+	// means 50" rule, and a console that re-derived it would be a second carrier
+	// of that rule.
 	b.fireBoldMW = o.fireBoldMW()
 	// AND THE STATION IT IS A CONSOLE FOR (D-72). The area MOVES, so changes
 	// arrive as a message; this is the value it opens with.
@@ -323,11 +313,10 @@ func (r Router) Init() tea.Cmd { return r.surface().Init() }
 // not of our code, and there is no type here to walk. It is written down the
 // way a threshold is, and the guard beside it states what it cannot see.
 //
-// THE LAST FIVE ARE F-67 (0.16.0 P1). They had no production handler anywhere
-// before this: focus, blur, suspend, resume, colour-profile. Fanning them
-// costs nothing while nobody handles them, and it means the surface that
-// eventually does will RECEIVE them rather than discover they were dropped at
-// a seam. That is the structural half of F-67; handling them is still open.
+// THE LAST FIVE ARE F-67: focus, blur, suspend, resume, colour-profile, which
+// no surface handles yet. Fanning them costs nothing while nobody handles
+// them, and the surface that eventually does will RECEIVE them rather than
+// discover they were dropped at a seam.
 func programScoped(msg tea.Msg) bool {
 	switch msg.(type) {
 	case tea.WindowSizeMsg, tea.BackgroundColorMsg,
@@ -371,17 +360,16 @@ func consoleScoped(msg tea.Msg) bool {
 // reason the other two exist: a message delivered to the wrong surface is a
 // message nobody reads.
 //
-// D-58 SAYS THE WINDOW ON TOP OWNS THE KEYBOARD, AND THAT WAS ONLY HALF OF IT.
-// The Router forwarded KEY PRESSES to a window composited over the console and
-// stopped there, so the search window received `enter`, issued its resolve, and
-// the `resolvedMsg` that came back went to the CONSOLE — which has no idea what
-// one is. The operator typed a location, pressed enter, and the window sat
-// there: no result, no error, nothing — HUM LEAD, UAT 2026-09-14: "location
-// search doesn't work at all … pressing <enter> does nothing."
+// D-58 SAYS THE WINDOW ON TOP OWNS THE KEYBOARD, AND THAT IS ONLY HALF OF IT.
+// A window composited over the console receives KEY PRESSES, and the replies
+// to the commands those keys issue must reach it too. Delivered to the
+// CONSOLE — which has no idea what a `resolvedMsg` is — they leave the search
+// window sitting there after `enter`: no result, no error, nothing — HUM LEAD,
+// UAT 2026-09-14: "location search doesn't work at all … pressing <enter>
+// does nothing."
 //
 // A KEY IS ONE HALF OF A CONVERSATION. Forwarding the question without the
-// answer is what made every one of these windows look broken from the console
-// rather than just the one that was reported.
+// answer makes every one of these windows look broken from the console.
 //
 // THESE FOUR AND NOT A CATEGORY. They are unexported replies to unexported
 // commands, so a Dashboard is the only thing that can have issued them and the
@@ -412,20 +400,18 @@ func observerScoped(msg tea.Msg) bool {
 // exactly the moment they asked for it.
 func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// HOW FAR THE CONSOLE'S LINE-UP SITS BELOW ITS LIVE SLOT, CARRIED BEFORE THE
-	// MESSAGE IS DISPATCHED (D-156).
+	// MESSAGE IS DISPATCHED (D-156) — on every path, not only `throughToObserver`
+	// (the path the console uses to reach a window it does not own) but also the
+	// one taken when Observer is the ACTIVE surface, where `update` calls
+	// `r.observer.Update` directly.
 	//
-	// IT WAS SET IN `throughToObserver` ALONE — the path the console uses to
-	// reach a window it does not own — and NOT on the path taken when Observer
-	// is the ACTIVE surface, where `update` calls `r.observer.Update` directly.
-	//
-	// THE WINDOW OUTLIVES THE SURFACE THAT OPENED IT, which is what made that a
-	// live defect rather than a tidiness one. `ctrl+o` deliberately still swaps
-	// out of an open window — the escape hatch an operator needs — so a Line-Up
-	// Request opened with `r` on the console can be filled in and submitted with
-	// Observer active. There the offset read ZERO, which is the RUNNING station's
-	// answer, and on STANDBY it is wrong by one: the card lands a row below the
-	// slot the operator typed, with the window's own confirmation naming the slot
-	// they asked for. D-119 verbatim, surviving inside its own fix.
+	// THE WINDOW OUTLIVES THE SURFACE THAT OPENED IT. `ctrl+o` deliberately still
+	// swaps out of an open window — the escape hatch an operator needs — so a
+	// Line-Up Request opened with `r` on the console can be filled in and
+	// submitted with Observer active. Read as ZERO there, the RUNNING station's
+	// answer, the offset is wrong by one on STANDBY: the card lands a row below
+	// the slot the operator typed, with the window's own confirmation naming the
+	// slot they asked for (D-119).
 	//
 	// BEFORE THE DISPATCH, NOT AFTER. The gain and the surface below are mirrored
 	// on the way OUT because they are DRAWN; this is READ by a handler while the
@@ -452,11 +438,9 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// only. A window that could not tell them apart would show the listener's
 		// settings to the operator of a station.
 		out.observer.surface = out.active
-		// AND THE REFUSAL IS CARRIED TO THE SURFACE THAT WAS REFUSED. It was
-		// recorded here and drawn nowhere — under a comment saying a refusal
-		// the operator cannot read is indistinguishable from a broken control,
-		// which is exactly how it was reported: "ctrl+o will soft lock
-		// randomly" (HUM LEAD, UAT 2026-09-10).
+		// AND THE REFUSAL IS CARRIED TO THE SURFACE THAT WAS REFUSED. A refusal
+		// recorded and drawn nowhere is indistinguishable from a broken control —
+		// it reads as "ctrl+o will soft lock randomly" (HUM LEAD, UAT 2026-09-10).
 		//
 		// IT DIES WITH ITS REASON. The only refusal there is says the station
 		// is ON AIR; once it is not, the sentence is false and must go, or the
@@ -468,7 +452,7 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// AND THE OPEN CARD WINDOW IS RE-HANDED, for the same reason and on the
 		// same cadence (D-88). A card the operator is reading can re-hydrate
 		// under them — RefreshAfter is half of StaleAfter — and a window still
-		// showing its first frame while the report changed is the F-30 freeze
+		// showing its first frame while the report changes is the F-30 freeze
 		// with a stale READ in it. showCard bumps its generation only when the
 		// content actually differs, so this costs a comparison and not a redraw.
 		out = out.refreshCardWindow()
@@ -535,11 +519,11 @@ func (r Router) typingInAWindow(k tea.KeyPressMsg) bool {
 
 // scopedMessage routes a message by WHAT IT IS, before any key is looked up.
 //
-// THE OTHER HALF OF `update`'s JOB, SEPARATED (P10-04, D-159). The function
-// asked two unrelated questions in one body: which SURFACES does this message
-// type concern, and who owns this KEY. They share nothing — the first never
-// reads a keystroke and the second never reads a scope — and keeping them apart
-// is what lets a reader answer either one without holding the other.
+// THE OTHER HALF OF `update`'s JOB, KEPT APART (P10-04, D-159). `update`
+// answers two unrelated questions: which SURFACES does this message type
+// concern, and who owns this KEY. They share nothing — the first never reads
+// a keystroke and the second never reads a scope — and keeping them apart is
+// what lets a reader answer either one without holding the other.
 //
 // THE `bool` IS THE SAME FALL-THROUGH CONTRACT `keyAction` carries: `false`
 // means this message is not scoped to anybody in particular and the key paths
@@ -587,12 +571,11 @@ func (r Router) scopedMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 // routeKey decides WHO OWNS THIS KEY, in the one order that order matters in.
 //
 // THE THIRD STEP OF `update`, AND THE ONE WITH A SEQUENCE (P10-04, D-159).
-// Every guard here is a rule about precedence, and each was written because the
-// previous arrangement got it wrong on a real operator: the card window's
-// controls sit ABOVE the keymap because below it `enter` closed the window and
-// the move was never sent (D-118); the slot digits sit BELOW the keymap so a
-// digit a binding claims stays that binding's; and "the window on top owns the
-// keys" sits last because it must not take a key the console answered first.
+// Every guard here is a rule about precedence: the card window's controls sit
+// ABOVE the keymap because below it `enter` closes the window and the move is
+// never sent (D-118); the slot digits sit BELOW the keymap so a digit a
+// binding claims stays that binding's; and "the window on top owns the keys"
+// sits last because it must not take a key the console answered first.
 //
 // KEEPING THEM IN ONE FUNCTION IS DELIBERATE. They are not four independent
 // checks, they are one ordered rule, and splitting them further would hide the
@@ -603,12 +586,11 @@ func (r Router) routeKey(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 	// nothing to drop from one.
 	//
 	// AND AN OPEN QUESTION OWNS THE KEYBOARD, which is the rule D-118 states and
-	// which this position is what actually enforces. Below the keymap it did not:
-	// `enter` is bound to `actQueueOpen`, that case closed the card window, and
-	// the move was never sent. The operator typed a position, pressed enter, both
-	// windows closed and the running order did not move — HUM LEAD, 2026-09-13:
-	// "Table does not update / redraw … my entry is remembered, but it doesnt seem
-	// to propogate."
+	// which this position enforces. Below the keymap it cannot: `enter` is bound
+	// to `actQueueOpen`, that case closes the card window, and the move is never
+	// sent — the operator types a position, presses enter, both windows close and
+	// the running order does not move (HUM LEAD, 2026-09-13: "Table does not
+	// update / redraw … my entry is remembered, but it doesnt seem to propogate.").
 	//
 	// WITH NO QUESTION OPEN this takes only `P` and `k` and falls through for
 	// everything else, so `enter` still closes the card window (D-109) and every
@@ -666,17 +648,17 @@ func (r Router) routeKey(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 
 // keyAction answers ONE bound key, and says whether it answered at all.
 //
-// EXTRACTED FROM `update` AT CYCLOMATIC 43, THREE TIMES THE CEILING (P10-04,
-// D-159). This is the program's single key-routing funnel and the surface a
-// human contributor meets first, and its own comments already record two
-// operator-visible defects caused by getting the guard ORDER wrong in it:
-// `"Oceanside"` typed into a location field arriving as `"ceanside"` with the
-// surface swapped mid-word (D-148), and `enter` opening the details of a row on
-// the surface the operator was not looking at (D-113). A function whose
-// branching nobody can hold in their head is where that class of defect lives.
+// IT STANDS APART FROM `update` FOR THE CYCLOMATIC CEILING (P10-04, D-159).
+// This is the program's single key-routing funnel and the surface a human
+// contributor meets first, and getting the guard ORDER wrong in it has
+// operator-visible costs: `"Oceanside"` typed into a location field arriving
+// as `"ceanside"` with the surface swapped mid-word (D-148), and `enter`
+// opening the details of a row on the surface the operator is not looking at
+// (D-113). A function whose branching nobody can hold in their head is where
+// that class of defect lives.
 //
-// THE `bool` IS THE FALL-THROUGH CONTRACT, AND IT IS THE WHOLE RISK OF THIS
-// CHANGE. Several cases here deliberately do NOT return: the two swaps `break`
+// THE `bool` IS THE FALL-THROUGH CONTRACT, AND IT IS THE WHOLE RISK IN THIS
+// FUNCTION. Several cases here deliberately do NOT return: the two swaps `break`
 // when the operator is typing into a window, and the bed's controls, the
 // queue's arrows and the request window fall out of their `if` on Observer.
 // Falling past the switch is what lets the key reach the active surface — it is
@@ -684,10 +666,10 @@ func (r Router) routeKey(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 // keys are the listener's `r`, arrows and letters.
 //
 // SO `false` MEANS "NOT ANSWERED, CARRY ON", and every non-returning path must
-// reach it. An extraction that turned one of those into a `return` would take
-// the listener's navigation away and swallow letters from the location fields
-// again — the D-148 defect, reintroduced by a refactor done for tidiness. Both
-// halves are pinned: `TestTheConsolesKeysFallThroughOnObserver` and
+// reach it. A refactor that turns one of those into a `return` takes the
+// listener's navigation away and swallows letters from the location fields —
+// the D-148 defect. Both halves are pinned:
+// `TestTheConsolesKeysFallThroughOnObserver` and
 // `TestALetterTypedIntoAWindowIsNotASwap`.
 //
 // NOTHING MUTATES `r` ON A FALL-THROUGH PATH. Every assignment in this switch
@@ -697,24 +679,23 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 	switch a {
 	// THE SWAP IS BOUND TO A LETTER, AND A LETTER IS TEXT (D-148).
 	//
-	// `O` and `B` swap surfaces, and this switch returned on them
-	// UNCONDITIONALLY — above the "a window on top owns the keys" check
-	// below, which is the rule D-58 already states and which every
-	// GUARDED case in this switch observes. So typing a place name into
-	// either location field lost those letters, and `O` swapped the
-	// surface MID-WORD:
+	// `O` and `B` swap surfaces. A case that returned on them UNCONDITIONALLY
+	// — above the "a window on top owns the keys" check below, which is the
+	// rule D-58 states and which every GUARDED case in this switch
+	// observes — would lose those letters from a place name typed into
+	// either location field, and `O` would swap the surface MID-WORD:
 	//
 	//	"Oceanside" -> "ceanside", and the operator is on Observer
 	//	"Bonsall"   -> "onsall"
 	//
 	// Those are the HUM LEAD's own station and the hyper-local case
-	// D-130 was ruled for. The UAT missed it because "Lone Pine",
-	// "Rainbow" and "Vista" carry no capital B or O.
+	// D-130 was ruled for; "Lone Pine", "Rainbow" and "Vista" carry no
+	// capital B or O, so they cannot show it.
 	//
 	// ONLY THE PRINTABLE FORM IS WITHHELD. `ctrl+o` and `ctrl+b` carry
 	// no text, so no field can want them — they still swap out of an
 	// open window, which is the escape hatch an operator needs. With
-	// nothing open, the letters swap exactly as before.
+	// nothing open, the letters swap.
 	case actSwapObserver:
 		if r.typingInAWindow(k) {
 			break
@@ -735,7 +716,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 	// swallow the ARROWS on Observer — where they walk the table — and
 	// the listener's navigation would simply stop working.
 	//
-	// THEY ARE SHIFTED SINCE D-111, which does not change that rule: an
+	// THEY ARE SHIFTED (D-111), which does not change that rule: an
 	// unbound shift+arrow on Observer must still reach Observer.
 	//
 	// NOT RETURNING IS THE FALL-THROUGH: execution continues past this
@@ -767,20 +748,19 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 		// controls)."
 		//
 		// THE CARD WINDOW IS THE CONSOLE'S; OBSERVER ONLY DRAWS IT. With one
-		// open, `consoleOwnsTheKeys` is false and the key fell through to
-		// Observer — where `enter` means "open the details for the row I
-		// have selected", and the row Observer has selected is its own. So
-		// the operator pressed enter on Rancho Penasquitos and was shown
-		// Oceanside: a surface they were not looking at, acting on state
-		// they could not see.
+		// open, `consoleOwnsTheKeys` is false, so a key let through falls to
+		// Observer — where `enter` means "open the details for the row I have
+		// selected", and the row Observer has selected is its own. The
+		// operator presses enter on Rancho Penasquitos and is shown
+		// Oceanside: a surface they are not looking at, acting on state they
+		// cannot see.
 		//
 		// CLOSING IS THE HONEST ANSWER UNTIL THE MANAGEMENT CONTROLS EXIST.
 		// The window has nothing for a second press to do, and a key that
 		// does nothing is better than a key that does something elsewhere.
-		// WHICHEVER WINDOW IT OPENED (D-113). It was the card window alone,
-		// and `enter` on a POOL row now opens Details — so a second press
-		// there fell through to Observer again, one window along from the
-		// defect this rule was written for.
+		// WHICHEVER WINDOW IT OPENED (D-113). `enter` on a POOL row opens
+		// Details, so a second press there closes Details rather than
+		// falling through to Observer.
 		//
 		// NAMED, NOT "ANY OPEN MODAL". The diagnostics window uses `enter`
 		// to pick a scenario (D-58) and closing it on that key would take
@@ -799,7 +779,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 				return out, nil, true
 			}
 		}
-	// THE REQUEST WINDOW (R4), through the keymap since D-135.
+	// THE REQUEST WINDOW (R4), through the keymap (D-135).
 	//
 	// IT FALLS THROUGH ON OBSERVER rather than returning, for the same
 	// reason the bed's and the queue's controls do: `r` is the
@@ -828,12 +808,10 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 // throughToObserver hands a message to the surface that owns the diagnostics
 // window, WITHOUT changing which surface is drawn.
 //
-// THE LIVE OFFSET IS NOT CARRIED HERE, AND THAT IS THE CORRECTION (D-160). It
-// was — and this being the ONLY place that carried it is exactly what left the
-// Observer-active path unwired, because `update` reaches that surface directly
-// and never comes through this funnel. `Update` now mirrors it before every
-// dispatch, so this line would be a SECOND CARRIER of one rule: the shape this
-// release has spent three red-team rounds removing.
+// THE LIVE OFFSET IS NOT CARRIED HERE (D-160). `update` reaches Observer
+// directly when it is the active surface and never comes through this funnel,
+// so `Update` mirrors the offset before every dispatch; carrying it here too
+// would be a SECOND CARRIER of one rule.
 func (r Router) throughToObserver(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m, cmd := r.observer.Update(msg)
 	if d, ok := m.(Dashboard); ok {
@@ -848,8 +826,8 @@ func (r Router) throughToObserver(msg tea.Msg) (tea.Model, tea.Cmd) {
 // DELIBERATELY NARROWER THAN tea.Model. Update is routed explicitly, with
 // concrete types, so Broadcaster can return a Broadcaster rather than a
 // tea.Model and the Router needs no type assertion to put it back. Observer
-// keeps its tea.Model signature untouched — P0's claim was that nothing
-// changes, and a signature change is a change.
+// keeps its tea.Model signature: the Router is a delegation, and a signature
+// change would make it more than one.
 type surfaceView interface {
 	Init() tea.Cmd
 	View() tea.View
@@ -882,7 +860,7 @@ func (r Router) swapTo(to Surface) (Router, tea.Cmd) {
 	// WHAT COMES BACK IS A COMMAND, NOT A DONE DEED (D-79). Taking the air stops
 	// the monitor's audio, and that reaches the player — which calls back into
 	// the program. Run inline it would `Send` to a loop sitting inside this very
-	// Update, and the app froze hard on `ctrl+b` until it was a command.
+	// Update, and the app would freeze hard on `ctrl+b`.
 	if r.onSurface != nil {
 		return r, r.onSurface(to)
 	}
@@ -893,11 +871,10 @@ func (r Router) swapTo(to Surface) (Router, tea.Cmd) {
 // why not when the answer is no.
 //
 // THE ONE PLACE THE D-1 PRECONDITION IS CHECKED (FR-1.4). It lives here and
-// not in the console's key handler for a reason this codebase has already
-// paid for once: if the surface decided, every future path that could request
-// a swap — a menu, a programmatic message, a second binding — would have to
-// re-implement the same guard, and "two carriers of one rule" is the shape
-// that produced the duck-lift bug.
+// not in the console's key handler: if the surface decided, every future path
+// that could request a swap — a menu, a programmatic message, a second
+// binding — would have to re-implement the same guard, and two carriers of
+// one rule drift apart.
 //
 // FAILS CLOSED on anything it does not understand. A corrupt surface value is
 // refused rather than permitted, because the cost of a wrong refusal is an
@@ -929,15 +906,15 @@ func (r Router) canSwap(to Surface) (bool, string) {
 // drawn, and the operator would have no way to see what they had done.
 //
 // IT READS THE DIRECTOR'S POWER, NEVER A UI FLAG (FR-5.1). The console's own
-// `power` came from `Publish`, so the toggle's direction is decided from what
+// `power` comes from `Publish`, so the toggle's direction is decided from what
 // the schedule says is true rather than from what this surface last drew.
 func (r Router) toggleStation() Router {
 	if r.active != SurfaceBroadcaster || r.station == nil {
 		return r
 	}
-	// NOT BEHIND A WINDOW. shift+enter over an open Request, Help or About put
-	// the station ON AIR while the operator was looking at something else; the
-	// swap keys already hold back behind a window (D-130), and so does this
+	// NOT BEHIND A WINDOW. shift+enter over an open Request, Help or About would
+	// put the station ON AIR while the operator is looking at something else; the
+	// swap keys hold back behind a window (D-130), and so does this
 	// (REVIEW 2026-09-17, ruling 7-ii).
 	if r.observer.ModalOpen() {
 		return r
@@ -1000,14 +977,12 @@ func (r Router) stepBed(by int) (Router, tea.Cmd) {
 	return r, r.relays(by)
 }
 
-// stationIsLive is the ONE reader of the console's power, and it stayed one
-// because a gate insisted.
+// stationIsLive is the ONE reader of the console's power.
 //
 // The swap precondition and the operator's toggle both need to know whether the
-// station is on the air, and the second reader tripped the D-1 guard the moment
-// it was written — "two carriers of one rule is the shape that produced the
-// duck-lift bug". The guard was right and was not narrowed: the question got a
-// name instead, and both askers go through it.
+// station is on the air, and a second reader trips the D-1 guard — "two
+// carriers of one rule". So the question has a name, and both askers go
+// through it.
 //
 // IT READS THE DIRECTOR'S POWER, NEVER A UI FLAG (FR-5.1). And `Stopped` is not
 // live, so from a stopped station the operator's control puts it ON the air —
@@ -1034,8 +1009,8 @@ func (r Router) openCardWindow(key string) (Router, bool) {
 	// operator reads the key off the thing it opens.
 	//
 	// THE CONSOLE'S OWN MEANING FOR IT (D-56). Observer binds `A` to its alert
-	// modal and `a` to About; on the console `A` was unbound and fell through to
-	// nothing at all, which is what the HUM LEAD saw. Only `A` — `a` is About on
+	// modal and `a` to About; on the console `A` is the takeover box's, and
+	// unbound it would fall through to nothing at all. Only `A` — `a` is About on
 	// BOTH surfaces and taking it here would break a key that already works.
 	case key == "A":
 		id, rows, ok = r.broadcaster.alertDetail()
@@ -1116,7 +1091,7 @@ func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
 			// `slotCard` ALREADY OWNS THAT TRANSLATION for reading a slot; this is
 			// the same arithmetic going the other way, and asking the console for
 			// it is what keeps the two from drifting. Sending the typed number
-			// straight through moved the card one place further down than the
+			// straight through would move the card one place further down than the
 			// operator asked, silently, on the surface's normal state.
 			move(r.observer.cardID, r.broadcaster.indexForSlot(to))
 		}
@@ -1132,8 +1107,8 @@ func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
 		r.observer.cardErr = ""
 	default:
 		// THE KEY'S OWN NAME, NOT ITS `Text`. A terminal fills `Text` for a
-		// printable key and the harness does not always — so a field that read
-		// only `Text` took digits from a person and none from a test, which is a
+		// printable key and the harness does not always — so a field that reads
+		// only `Text` takes digits from a person and none from a test, which is a
 		// control tested through a path nobody uses.
 		if t := k.String(); t >= "0" && t <= "9" && len([]rune(r.observer.cardMoveTo)) < 2 {
 			r.observer.cardMoveTo += t
@@ -1229,8 +1204,7 @@ func (r Router) refreshCardWindow() Router {
 			return r
 		}
 	}
-	// AND THE TAKEOVER BOX'S CARD, WHICH THIS WALK COULD NOT REACH. It searched
-	// the MAIN TRACK only, which was complete while a digit was the only way in;
+	// AND THE TAKEOVER BOX'S CARD, which the main-track walk above cannot reach:
 	// `[A]` opens a card on the ALERT RAIL (D-126), and a window that never
 	// refreshes goes stale exactly where staleness matters most — a burst gains
 	// hazards while the operator is reading it.

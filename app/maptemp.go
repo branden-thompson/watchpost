@@ -514,13 +514,13 @@ type fieldBox struct {
 // fieldBoxes are the fixed boxes a view's temperature and wind are asked for
 // (D-111) - never the view itself (D-47). In the lower 48 the radar's boxes;
 // outside it the whole map region, so no part of a region the map shows goes
-// without (Hawaii's wind stopped at MRMS's box, inside the map), split at the
+// without (MRMS's box ends inside Hawaii's map), split at the
 // antimeridian, which a grid cannot cross (Alaska).
 func fieldBoxes(region string, view geo.Box) []fieldBox {
 	if region == geo.RegionContiguous {
 		// THE RADAR'S BOXES, THE OUTER ONES GROWN TO THE REGION'S EDGES (UAT-2
 		// U2-30): the radar stops at 126W and 65W and the region reaches 130W
-		// and 64W - the waves stopped at a line in the Pacific.
+		// and 64W - on the radar's boxes alone the waves stop at a line in the Pacific.
 		reach, whole := geo.Box{W: 180, S: 90, E: -180, N: -90}, regionBox(region)
 		for _, b := range radar.BoxesFor(region, geo.Box{W: -180, S: -90, E: 180, N: 90}) {
 			reach = geo.Box{W: min(reach.W, b.W), S: min(reach.S, b.S), E: max(reach.E, b.E), N: max(reach.N, b.N)}
@@ -626,7 +626,7 @@ func forecastDays(anchor time.Time) (now tty.ForecastStep, days []tty.ForecastSt
 
 // radarHorizon is the last hour Radar mode's hourly fields draw: the loop's
 // hours ahead past the current one (D-113). Stopping at the current hour,
-// the fields came and went as the loop played into the forecast (UAT-2
+// the fields would come and go as the loop plays into the forecast (UAT-2
 // U2-32).
 func radarHorizon(ask tty.MapAsk, anchor time.Time) time.Time {
 	return anchor.Add(time.Duration(ask.RadarAhead) * time.Hour)

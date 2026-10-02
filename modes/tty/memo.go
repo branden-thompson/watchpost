@@ -28,13 +28,11 @@ import (
 // bodyKey is every input the two tables read. Adding an input to row(),
 // recentSection() or the layout means adding a field here.
 //
-// THE COMPLETENESS GUARD IS memo_completeness_test.go, NOT A TABLE. This said
-// the invalidation table in memo_test.go "has one row per field"; it had 15
-// rows for 22 fields, and had never had one per field (red team 2026-09-05,
-// R-14). A hand-kept register that tells the next author it is complete is
-// worse than no register: they add the field, skip the row, and believe the
-// table caught it. The enumerated table is still useful for the cases it
-// names; it is not the guarantee.
+// THE COMPLETENESS GUARD IS memo_completeness_test.go, NOT A TABLE (R-14). A
+// hand-kept register that tells the next author it is complete is worse than
+// no register: they add the field, skip the row, and believe the table caught
+// it. The enumerated table in memo_test.go is useful for the cases it names;
+// it is not the guarantee.
 type bodyKey struct {
 	width, height  int
 	compact        bool
@@ -62,16 +60,16 @@ type bodyKey struct {
 // bodyMemo is the single slot. hits/misses are read by the tests and the
 // diagnostic dump; they are not policy.
 // memoStats is the counter half every memo slot carries. ONE OWNER (metric D,
-// 2026-09-08): bodyMemo and modalMemo each had their own nil-check-lock-return
-// accessor, and a third memo would have written a third. Embedding it means the
-// next one inherits `counts()` instead of copying it.
+// 2026-09-08): bodyMemo and modalMemo embed it rather than each carrying its own
+// nil-check-lock-return accessor, so the next memo inherits `counts()` instead
+// of copying it.
 type memoStats struct {
 	mu           sync.Mutex
 	hits, misses int
 }
 
 // counts reports the slot's hit/miss counters; the zero value of a nil slot is
-// (0, 0), which is what both callers already returned.
+// (0, 0), which is what both callers expect.
 func (m *memoStats) counts() (hits, misses int) {
 	if m == nil {
 		return 0, 0
@@ -170,7 +168,7 @@ func (d Dashboard) anyLoading() bool {
 // stamps it when a fetch COVERING this location completes. Once it is set, a
 // missing value is a fact rather than a wait, and the row falls through to the
 // honest "n/a" the post-load path already draws (UAT 18.2). Nothing new is
-// rendered — the whole defect was a flag that could never go false.
+// rendered — without the second clause the flag could never go false.
 func rowLoading(loc *snapshot.Location) bool {
 	if !loc.WeatherAsOf.IsZero() {
 		return false
@@ -187,10 +185,9 @@ func rowLoading(loc *snapshot.Location) bool {
 //
 // THE COMPLETENESS GUARD IS memo_completeness_test.go (F-30, mechanised): it
 // derives the fields by reflection and asserts that two dashboards which RENDER
-// differently cannot share a key. This said severe_test.go's table "has one row
-// per field" — 27 rows for 34 fields, and the nine missing included faultFocus,
-// faultLeft, debugFocus and severeReadPause, the exact four whose absence froze
-// three windows in UAT this release (R-14).
+// differently cannot share a key. A hand-kept table is not enough: missing any
+// of faultFocus, faultLeft, debugFocus or severeReadPause freezes a window on
+// screen (R-14).
 type modalKey struct {
 	modal         modal
 	opts          render.Opts // width, units, ascii, bands — Frame zeroed (the shimmer keys separately)
@@ -204,9 +201,7 @@ type modalKey struct {
 	// produce an IDENTICAL key while the location differs, and the memo replays
 	// the previous location's Details until its data lands and something else
 	// moves the key. That is issue #11: "Lake Henshaw shows up, then Miami
-	// magically swaps in". bodyKey has carried this since the fix; modalKey
-	// never did (red-team round 3: modalKey's invalidation table had 27 rows
-	// for 34 fields).
+	// magically swaps in". bodyKey carries it too.
 	lookup                    snapshot.LocationKey
 	snap, recent              *snapshot.Snapshot
 	severeGen                 uint64
@@ -264,33 +259,29 @@ type modalKey struct {
 	second             int64 // [S] ages, while it is open
 	shimmer            int   // Details' LoadingDots while a row loads
 	// faultFocus and faultLeft are the relay-fault window's cursor and clock,
-	// BOTH OF WHICH THE FRAME SHOWS. Absent from this key the window rendered
-	// once and the memo replayed that frame for the life of the window: the
-	// arrows moved the cursor in the model and nothing on screen followed, and
-	// the countdown counted down to a fall-through that fired while the display
-	// still read <10>. See the case below.
+	// BOTH OF WHICH THE FRAME SHOWS. Absent from this key the window would render
+	// once and the memo replay that frame for the life of the window: the arrows
+	// would move the cursor in the model with nothing on screen following, and
+	// the countdown would reach a fall-through that fires while the display
+	// still reads <10>. See the case below.
 	faultFocus, faultLeft int
 
 	// faultHeld is the clock's hold (FR-6.4). The footer reads "Auto Close
 	// held" instead of a number, so it is a third thing the frame shows that
-	// moves — and F-30's guard caught its absence the moment it was added,
-	// which is what that guard is for.
+	// moves — and F-30's guard fails without it.
 	faultHeld bool
-	// debugFocus is the ctrl+d window's cursor — the same rule, and it had the
-	// same hole: its arrows moved the model and the memo replayed the frame.
+	// debugFocus is the ctrl+d window's cursor — the same rule: absent, its
+	// arrows would move the model while the memo replays the frame.
 	debugFocus int
-	// severeReadPause is the severe window's Pause/Play state, and the THIRD
-	// instance of the same omission (red team 2026-09-05). The frame reads it
-	// twice — the chip flips Pause<->Play, and every row's glyph — while pausing
-	// leaves readingKey unchanged, so the key was identical and the memo
-	// replayed the pre-pause frame. modalSevere is not in tickNeeded either, so
-	// nothing else invalidated it.
+	// severeReadPause is the severe window's Pause/Play state, the same rule
+	// again. The frame reads it twice — the chip flips Pause<->Play, and every
+	// row's glyph — while pausing leaves readingKey unchanged, so without it the
+	// key is identical and the memo replays the pre-pause frame. modalSevere is
+	// not in tickNeeded either, so nothing else invalidates it.
 	severeReadPause bool
 
 	// THE REQUEST WINDOW'S OWN STATE (R4). Every field of it that the window
-	// DRAWS, because F-30's guard caught all four the moment the window existed
-	// — which is the guard doing exactly what it is for, on a window that was
-	// minutes old.
+	// DRAWS, as F-30's guard requires.
 	reqField          requestField
 	reqQuery, reqSlot string
 	reqRef            string
@@ -355,11 +346,9 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.mapTitle = d.mapPane.title
 		k.mapTemp = d.tempMemoKey()
 	case modalRequest:
-		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was
-		// missing the moment the window existed — `field`, `query`, `outside`
-		// and `prioritize` — which is the guard doing exactly what it is for on
-		// a window minutes old. The ref is keyed by its LABEL because a pointer
-		// moves without the frame changing.
+		// EVERY FIELD THE WINDOW DRAWS — `field`, `query`, `outside` and
+		// `prioritize`, as F-30's guard requires. The ref is keyed by its LABEL
+		// because a pointer moves without the frame changing.
 		st := d.request
 		k.reqField, k.reqQuery, k.reqSlot = st.field, st.query, st.slot
 		k.reqState, k.reqPriority = st.locate.keyState(), st.prioritize
@@ -367,10 +356,9 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.reqRef = st.locate.keyLabel()
 	case modalSetup:
 		// The GENERATION, not the state. Formatting the whole struct — which
-		// carries two maps — ran on every frame and grew with them; it was the
-		// largest single thing this window cost. Every writer of the Setup
-		// state bumps gen (setupState.touch, via settled/castTouched), which
-		// is what the counter was added for.
+		// carries two maps — would run on every frame and grow with them, the
+		// largest single thing this window could cost. Every writer of the Setup
+		// state bumps gen (setupState.touch, via settled/castTouched).
 		k.setupGen = d.setup.gen
 	case modalStatus:
 		k.second = d.now().Truncate(time.Second).Unix()
@@ -395,11 +383,10 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		// underneath it is unchanged.
 		k.debugFocus = d.debug.focus*1000 + d.debugPick()
 	case modalRelayFault:
-		// EVERYTHING THE FRAME SHOWS THAT MOVES. This window has two such things
-		// and neither was here, so the memo replayed one frame while the model
-		// underneath it worked perfectly — the arrows moved the cursor, the
-		// clock ran down, the fall-through fired on time, and the DISPLAY never
-		// changed once (UAT 2026-09-05, three rounds).
+		// EVERYTHING THE FRAME SHOWS THAT MOVES. This window has two such things;
+		// without them the memo replays one frame while the model underneath it
+		// works perfectly — the arrows move the cursor, the clock runs down, the
+		// fall-through fires on time, and the DISPLAY never changes (UAT 2026-09-05).
 		k.faultFocus, k.faultLeft, k.faultHeld = d.relayFault.focus, d.relayFault.left, d.relayFault.held
 	}
 	return k

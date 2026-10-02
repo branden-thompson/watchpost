@@ -7,12 +7,10 @@ package app
 // that's fine — 'it just works' — and when I switch back to Observer, that
 // alert track has to re-adapt to whatever my filter settings dictate."
 //
-// SO THE FENCE FOLLOWS THE SURFACE, NOT THE SETTING. Both `fence()` and
-// `scopeToRadius` read the LISTENER's alert radius around the LISTENER's default
-// location, and nothing else could be true while one surface existed. With two,
-// the same rail has to answer two different questions — and the honest way to
-// hold that is one rail asking ONE function what it is scoped to, rather than
-// two rails each sure of its own answer.
+// SO THE FENCE FOLLOWS THE SURFACE, NOT THE SETTING. With two surfaces, the
+// same rail has to answer two different questions — and the honest way to hold
+// that is one rail asking ONE function what it is scoped to, rather than two
+// rails each sure of its own answer.
 //
 // ONE RAIL, NOT TWO. Giving each surface a schedule of its own would give each a
 // hazard rail of its own, and a burst fed to both would be read TWICE. The rail
@@ -75,7 +73,7 @@ func scopeFor(owner *airOwner, listener func() airScope, st func() stationArea) 
 }
 
 // listenerScope is the alert radius the listener set, around the location they
-// set it from — the answer Observer has always given.
+// set it from — the answer Observer gives.
 func listenerScope(radius *atomic.Int64, watch func() []snapshot.LocationRef) airScope {
 	if radius == nil || watch == nil {
 		return airScope{} // a deck built for one narrow question: unfenced
@@ -108,9 +106,9 @@ func (s airScope) hasOrigin() bool { return s.lat != 0 || s.lon != 0 }
 // directions.
 // IT RETURNS A COMMAND (D-79). Silencing the monitor HALTS THE PLAYER, and the
 // player calls back into the program — so run inline, from inside `Router.Update`,
-// it sends to a loop that cannot receive and the app freezes hard. Observer has
-// always stopped the radio this way: `withCmd(func() tea.Msg { radio.Stop();
-// return nil })`. This is the same canonical way, reached from the swap.
+// it sends to a loop that cannot receive and the app freezes hard. Observer
+// stops the radio this way: `withCmd(func() tea.Msg { radio.Stop(); return nil
+// })`. This is the same canonical way, reached from the swap.
 //
 // EVERYTHING ELSE STAYS INLINE, deliberately. Recording the owner, declaring the
 // air and nudging the rail are all non-blocking and must be TRUE by the time the
@@ -171,8 +169,8 @@ func (lp *livePipelines) silenceMonitor() {
 	}
 	// `stopMonitor`, NOT `Stop` (D-91). This runs AFTER `owner` has moved to the
 	// console, so the guarded `Stop` would refuse the very silencing the swap
-	// exists to perform — which is what `air_test.go` reported the moment the
-	// guard went on. The swap is not the operator asking to stop listening; it
-	// is the air being handed over, and the monitor goes quiet either way.
+	// exists to perform, and `air_test.go` fails if it does. The swap is not the
+	// operator asking to stop listening; it is the air being handed over, and
+	// the monitor goes quiet either way.
 	lp.deck.stopMonitor()
 }

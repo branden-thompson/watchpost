@@ -19,9 +19,9 @@ import (
 // of the audio behind it: the fake voice stamps the tone() call and ends the
 // sequence there.
 //
-// It runs on BOTH trees. At P0 the same file is copied into a worktree of the
-// tag v0.13.0 to record the "before" number; in 0.14.0 it is the regression pin
-// for the path the cast resolution is added to. The pass rule is a comparison
+// It runs on BOTH trees: copied into a worktree of the tag v0.13.0 it records
+// the "before" number, and here it is the regression pin for the path the cast
+// resolution sits on. The pass rule is a comparison
 // of medians, so the two runs must measure the same thing: keep this file's
 // shape identical on both trees and change only what the compiler forces.
 
@@ -59,10 +59,9 @@ func (v *toneStampVoice) restore()  {}
 // warning, so the single-event path runs (a burst adds a sort and a second
 // marquee send that are not part of the tone path).
 func breakingFixture() []globalfeed.Event {
-	// LIVE, NOT A FIXED PAST DATE (red team 2026-09-05, I-8). This carried
-	// 2026-08-27, so every alert it posed had expired — and once eventsFor
-	// started re-asking whether an alert was still active before composing it,
-	// the fixture was asking the station to read a warning nine days dead.
+	// LIVE, NOT A FIXED PAST DATE (red team 2026-09-05, I-8). eventsFor asks
+	// whether an alert is still active before composing it, so a fixed past
+	// date would ask the station to read a warning long expired.
 	// Nothing here asserts a spoken time, so `now` costs no determinism.
 	declared := time.Now()
 	return []globalfeed.Event{{

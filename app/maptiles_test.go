@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -74,5 +75,31 @@ func TestTheMapsClientsReachTheStatusWindow(t *testing.T) {
 	}
 	if !hosts["127.0.0.1"] || !hosts["tiles.openfreemap.org"] {
 		t.Errorf("MapRequests holds %v; want the radar client's host and the tiles'", hosts)
+	}
+}
+
+// closeSpy is a body that says whether it was closed.
+type closeSpy struct {
+	io.Reader
+	closed bool
+}
+
+func (c *closeSpy) Close() error { c.closed = true; return nil }
+
+// TestACountedBodyClosesTheBodyItCounts is the counting body's Close: the
+// response body underneath is closed with it, so its connection goes back to
+// the pool, and the bytes read through it are counted.
+func TestACountedBodyClosesTheBodyItCounts(t *testing.T) {
+	spy := &closeSpy{Reader: strings.NewReader("twelve bytes")}
+	got := 0
+	body := countedBody(spy, func(n int) { got += n })
+	if _, err := io.ReadAll(body); err != nil {
+		t.Fatal(err)
+	}
+	if err := body.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !spy.closed || got != 12 {
+		t.Errorf("closed %v, counted %d; want the body closed and 12 bytes counted", spy.closed, got)
 	}
 }

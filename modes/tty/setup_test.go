@@ -102,7 +102,7 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	first, _ := NewDashboard(h.config())
 	var fm tea.Model = first
 	fm, _ = fm.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
-	// tab moves between GROUPS now (five stops), so the key row is reached
+	// tab moves between GROUPS (five stops), so the key row is reached
 	// with ↓ within DATA; tab from DATA lands on the events group.
 	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	if !strings.Contains(stripANSITest(fm.(Dashboard).View().Content), "› NASA FIRMS key") {
@@ -202,7 +202,7 @@ func TestSetupFormKeyMasksAndStoresIt(t *testing.T) {
 		t.Fatalf("ctrl+r reveals it:\n%s", view)
 	}
 	// Enter on a text field commits it and moves on; enter on the next row —
-	// which is not a field — saves. That is 0.13.0's flow, one step shorter.
+	// which is not a field — saves.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // key field → the events group
 	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})  // → Save
 	model = drain(t, model, cmd)
@@ -254,7 +254,7 @@ func TestSetupFormShowsAStoredFIRMSKeyAndItsHealth(t *testing.T) {
 		t.Fatalf("bare enter keeps the default:\n%s", view)
 	}
 	// Enter on a text field commits it and moves on; enter on the next row —
-	// which is not a field — saves. That is 0.13.0's flow, one step shorter.
+	// which is not a field — saves.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // key field → the events group
 	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})  // → Save
 	model = drain(t, model, cmd)
@@ -272,12 +272,12 @@ func TestSetupFormShowsAStoredFIRMSKeyAndItsHealth(t *testing.T) {
 	}
 }
 
-// UAT 2026-08-30 (bug #2): saving a cast, closing Setup and re-opening it
-// showed the LAUNCH-TIME cast again.
+// UAT 2026-08-30 (#2): saving a cast, closing Setup and re-opening it shows the
+// cast just saved, not the LAUNCH-TIME one.
 //
-// The file was always right — the window is seeded from cfg, and cfg is
-// captured once when the app is built. So the save's outcome now carries what
-// it wrote, and the model seeds the next open from that.
+// The window is seeded from cfg, and cfg is captured once when the app is
+// built — so the save's outcome carries what it wrote, and the model seeds the
+// next open from that.
 func TestReopeningSetupShowsTheCastThatWasSaved(t *testing.T) {
 	h := &setupHarness{}
 	cfg := h.config()
@@ -294,7 +294,7 @@ func TestReopeningSetupShowsTheCastThatWasSaved(t *testing.T) {
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
 
 	// V opens at the first correspondent row; → picks a voice for it. There is
-	// no mode radio and no enabling checkbox any more.
+	// no mode radio and no enabling checkbox.
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'V', Text: "V"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	picked := model.(Dashboard).setup.cast.Names[roleAlerts]
@@ -322,8 +322,8 @@ func TestReopeningSetupShowsTheCastThatWasSaved(t *testing.T) {
 	}
 }
 
-// UAT 2026-08-30 (bug #3): ctrl+r did nothing unless the key row happened to
-// have the focus — but the chip that names it is read from anywhere.
+// UAT 2026-08-30 (#3): ctrl+r works wherever the focus is, because the chip
+// that names it is read from anywhere.
 func TestCtrlRRevealsFromAnyRow(t *testing.T) {
 	h := &setupHarness{}
 	m, _ := NewDashboard(h.config())
@@ -349,9 +349,9 @@ func TestCtrlRRevealsFromAnyRow(t *testing.T) {
 	}
 }
 
-// UAT 2026-08-30 (bug #4): the picker's press blink stayed lit "for an extended
-// period" — it had a tick to START it and none to END it, so it survived until
-// something else happened to redraw the window.
+// UAT 2026-08-30 (#4): the picker's press blink must not stay lit "for an
+// extended period" — it needs a tick to END it as well as one to START it, or
+// it survives until something else happens to redraw the window.
 func TestThePickerBlinkIsClearedByATick(t *testing.T) {
 	h := &setupHarness{}
 	cfg := h.config()
@@ -556,8 +556,8 @@ func TestTheRelayGroupIsReachableFromTheWindow(t *testing.T) {
 // Drawing the picker, cycling it and reaching the group all pass while the
 // value goes nowhere — the window saves the cast, the tones and the radius
 // through separate hooks, and a setting simply left out of setupFinishCmd
-// looks perfect on screen and changes nothing. That is the shape of the
-// Watchlist regression: every part correct except the wire.
+// looks perfect on screen and changes nothing: every part correct except the
+// wire.
 func TestTheChosenRotationIsSavedToTheRadio(t *testing.T) {
 	h := &setupHarness{}
 	m, err := NewDashboard(h.config())
@@ -602,11 +602,9 @@ func TestTheChosenRotationIsSavedToTheRadio(t *testing.T) {
 
 // BOTH EXITS SAVE THE SAME SETTINGS.
 //
-// The window's esc case has always claimed this — "no group can be saved by one
-// route and dropped by the other" — and it was untrue for two settings at once.
-// The rotation was saved by enter and dropped by esc (HUM LEAD, UAT 2026-09-04);
-// the alert radius had been the same since 0.12.0 and nobody had pressed esc
-// after changing it. A comment is not a guard.
+// The window's esc case claims this — "no group can be saved by one route and
+// dropped by the other" (HUM LEAD, UAT 2026-09-04) — and a comment is not a
+// guard.
 //
 // This drives the WINDOW, changing settings by keypress and leaving by each
 // door in turn, so a setting whose write is spelled out inside one exit fails
@@ -663,9 +661,9 @@ func TestBothExitsSaveTheSameSettings(t *testing.T) {
 
 // THE LANGUAGE CHOICE REACHES THE RADIO, by both doors.
 //
-// The rotation row was drawn perfectly and inert because nothing pressed a key
-// at it; this is the same row shape, so it gets the same test — pressed from
-// the window, saved by each exit, checked at the hook.
+// A row can draw perfectly and be inert when nothing presses a key at it; this
+// is the rotation row's shape, so it gets the same test — pressed from the
+// window, saved by each exit, checked at the hook.
 func TestTheLanguageChoiceIsSavedToTheRadio(t *testing.T) {
 	for _, door := range []struct {
 		name string

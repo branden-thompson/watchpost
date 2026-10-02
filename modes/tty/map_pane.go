@@ -68,7 +68,7 @@ type mapPane struct {
 	where     *[]callSite    // tests only: each call and the goroutine it ran on (W2.2)
 	workers   *mapWorkers    // the commands running for this map, joined on close (W2.6)
 	tickAt    time.Time      // the tick outstanding, at the library's NextCall (W2.2)
-	alertsOn  bool           // the Area Alerts box is open; every open opens it (D-63)
+	alertsOn  bool           // the Area Alerts box is open; it waits for A (D-87)
 	menuOn    bool           // the Overlays menu is open (D-65)
 	menuAt    int            // the menu's cursor
 	flash     term.Action    // the map key last pressed, blinking in the controls (U1-11)
@@ -172,8 +172,8 @@ type mapFeedMsg struct {
 //
 // THE VIEW IS THE LISTENER'S - a move or a resize, viewGen - NOT ITS BOX. The
 // box follows the map's size, which shrinks as notes and the description fill
-// in with no move at all; keyed on it, answers were dropped with nothing left
-// to ask again, and 2 of 5 cold opens drew no alerts (W14's re-measure).
+// in with no move at all; keyed on it, answers would be dropped with nothing
+// left to ask again, and a cold open could draw no alerts (W14).
 type feedKey struct {
 	place snapshot.LocationKey
 	view  uint64
@@ -219,7 +219,7 @@ func (d Dashboard) toggleMap() Dashboard {
 		}
 		d.mapPane.m, d.mapPane.failed, d.mapPane.workers = m, "", newMapWorkers()
 	}
-	d.mapPane.alertsOn, d.mapPane.menuOn = false, false // D-87: the Area Alerts box waits for A (D-63 had it open on every open)
+	d.mapPane.alertsOn, d.mapPane.menuOn = false, false // D-87: the Area Alerts box waits for A
 	m, scale, km := d.mapPane.m, d.mapScale.zoom(), float64(d.mapNearbyKm)
 	d.mapPane.call("Zoom", func() { _ = m.Zoom(scale) })        // every open is at the chosen scale (W4.3); the bound holds it
 	d.mapPane.call("SetNearby", func() { _ = m.SetNearby(km) }) // the description's "near" as chosen (W9.2)
@@ -236,8 +236,8 @@ func (d Dashboard) toggleMap() Dashboard {
 	return d.withCmd(tea.Batch(d.mapWorkCmd(), feed, radar, temp))
 }
 
-// boundMap holds the map inside its region (W4, W9.1: the library's bound
-// replaces a host clamp). The least zoom is the one at which the window's
+// boundMap holds the map inside its region (W4, W9.1: the library's bound,
+// not a host clamp). The least zoom is the one at which the window's
 // view fits inside the region on both axes, so no frame is wider than the
 // region either way; it depends on the window's size, so every resize sets
 // it again. It is worked out in the library's published scale - 256-dot
@@ -554,14 +554,14 @@ func (d Dashboard) mapStatusLine() string {
 	chips := d.mapChips()
 	width := d.mapTextW()
 	// TWO LINES, ALWAYS: the status, then the chips (UAT-1 U1-2 - three chips
-	// beside the status cut it even at 133 columns). Both are reserved whether
+	// beside the status would cut it even at 133 columns). Both are reserved whether
 	// or not the status says anything, so the map's size never depends on the
 	// last frame's status.
 	return render.TruncateCells(status, width) + "\n" + render.TruncateCells(strings.Join(chips, "  "), width)
 }
 
 // mapChips are the window's keys as chips, each naming its key as bound:
-// Area Alerts, the mode, Overlays (D-63, D-65, D-94; the legend retired,
+// Area Alerts, the mode, Overlays (D-63, D-65, D-94; no legend chip,
 // D-103).
 func (d Dashboard) mapChips() []string {
 	var chips []string
@@ -862,9 +862,9 @@ func (d Dashboard) feedKey() feedKey {
 // askFeed asks the app for the map's alerts - ONE ASK IN FLIGHT (D-157).
 // While one runs for this place and view, new data marks the feed wanted
 // again, and one fresh ask follows its answer. One made stale - the place or
-// the view has changed - is cancelled, and the new one asked at once. Before,
-// every snapshot asked anew and dropped the answer it had been waiting for, so
-// a feed slower than the snapshots was never drawn (W14's C-1).
+// the view has changed - is cancelled, and the new one asked at once. Asking
+// anew on every snapshot would drop the answer being waited for, so a feed
+// slower than the snapshots would never be drawn (W14's C-1).
 func (d Dashboard) askFeed() (Dashboard, tea.Cmd) {
 	if d.cfg.MapFeed == nil || d.mapPane.m == nil || d.modal != modalMap || d.selectedLocation() == nil {
 		return d, nil
@@ -951,8 +951,8 @@ func (d Dashboard) setFeed(feed MapFeed) Dashboard {
 		}
 		// AN UNCHANGED OVERLAY IS NOT HANDED IN AGAIN (UAT-1 U1-28). A Set
 		// replaces what the library prepared, and until a Work prepares it
-		// again the area is not drawn: every new snapshot re-sent the same
-		// alerts, and the area blinked out between frames.
+		// again the area is not drawn: re-sending the same alerts with every
+		// new snapshot would blink the area out between frames.
 		if prev, ok := d.mapPane.given[o.ID]; ok && SameOverlay(prev, o) {
 			shown[o.ID], given[o.ID] = true, o
 			continue
@@ -1045,7 +1045,7 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 		{join(actMapRadar, actMapHighLow), "Radar Mode / Forecast Hi-Lo"}, // D-94, D-97
 	}
 	// D-77: the region keys in two rows of three, each number's region named
-	// in order - six rows pushed Help past its window.
+	// in order - six rows push Help past its window.
 	for _, half := range [][]int{{0, 1, 2}, {3, 4, 5}} {
 		var keys, names []string
 		for _, i := range half {
@@ -1101,8 +1101,8 @@ func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
 // SameOverlay reports whether an overlay is the one already handed in, so it
 // is not handed in again (UAT-1 U1-28, UAT-2 U2-13). A MISSING VALUE IS NaN,
 // AND NaN IS NEVER EQUAL TO ITSELF: compared as it is, a grid with any value
-// missing - a wind grid's gusts said nowhere (D-136) - was new at every
-// answer, and blinked. Two missing values here are the same.
+// missing - a wind grid's gusts said nowhere (D-136) - would be new at every
+// answer, and blink. Two missing values here are the same.
 func SameOverlay(a, b tuimaps.Overlay) bool {
 	if (a.Grid == nil) != (b.Grid == nil) {
 		return false

@@ -101,10 +101,10 @@ type MapCost struct {
 }
 
 // The cost warning's thresholds (FR-9.2, D-43): more than either is said.
-// RAISED BY D-149 AND COUNTED OVER THE OVERLAYS CHOSEN ALONE: at D-43's
-// 2 MB and 40 over everything, radar - the mode, 37 requests - and the
-// alerts' zones, whatever their categories, warned with no overlay on, and
-// a warning that always speaks is one that is ignored.
+// COUNTED OVER THE OVERLAYS CHOSEN ALONE, at D-149's thresholds: counted over
+// everything, radar - the mode, 37 requests - and the alerts' zones, whatever
+// their categories, would warn with no overlay on, and a warning that always
+// speaks is one that is ignored.
 const (
 	mapCostBytes    = 3_000_000
 	mapCostRequests = 25
@@ -614,7 +614,7 @@ type MapAsk struct {
 
 // mapAsk is the ask as the window stands: the watchlist's places, and the
 // selected place when it is not one of them - a RECENT or SEARCHED place
-// holds its alerts in the recent snapshot, and without it they were never
+// holds its alerts in the recent snapshot, and without it they are not
 // drawn (UAT-1 U1-14). The watchlist's snapshot is shared, so the selected
 // place joins a copy.
 func (d Dashboard) mapAsk() MapAsk {

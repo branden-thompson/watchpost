@@ -9,8 +9,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
-// The WATCHPOST UI group: the theme picker that
-// replaced a modal, and the two display preferences that had no home.
+// The WATCHPOST UI group: the theme picker and the two display preferences.
 
 // uiDash opens Settings on a row of the UI group, with a SetUI hook that
 // records what the window writes.
@@ -56,7 +55,7 @@ func TestThemeRowOffersNoPreviewChip(t *testing.T) {
 }
 
 // The units and the clock are radio sets: space selects the focused option, and
-// the effect is immediate — the units always were live, and the clock now is.
+// the effect is immediate for both.
 func TestUnitsAndClockSelectLive(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -192,7 +191,7 @@ func TestSettingsColumnsBalanceThemselves(t *testing.T) {
 // The balance has to pay for itself: a window that fits its budget needs no
 // scroll rail, and that is what taking a dozen wasted rows out of it buys.
 func TestSettingsFitsWithoutScrollingAtTheMockWidth(t *testing.T) {
-	// EVERY TAB, on both surfaces (D-62: the one-page rule became one per tab).
+	// EVERY TAB, on both surfaces (D-62: the one-page rule is one per tab).
 	for _, surface := range []Surface{SurfaceObserver, SurfaceBroadcaster} {
 		base := setupGolden(t, 133, 44, false, rowCastAlerts)
 		base.surface = surface
@@ -218,11 +217,11 @@ func TestSettingsFocusLineFollowsTheBalancedLayout(t *testing.T) {
 	}{{"two columns", 133, 44}, {"stacked", 80, 24}} {
 		for id := setupRowID(0); id < setupRowCount; id++ {
 			d := setupGolden(t, size.w, size.h, false, id)
-			// THE ROWS THIS SURFACE DRAWS (D-92, and D-115 made it bite). A focus
-			// line for a row the surface does not draw is meaningless — and since
-			// the station's transmitter and service radius are Broadcaster-only,
-			// walking every id on Observer asked where a mark was for two rows
-			// that are not there.
+			// THE ROWS THIS SURFACE DRAWS (D-92, D-115). A focus line for a row
+			// the surface does not draw is meaningless — and since the station's
+			// transmitter and service radius are Broadcaster-only, walking every
+			// id on Observer would ask where a mark is for two rows that are not
+			// there.
 			if !d.rowVisible(id) {
 				continue
 			}
@@ -239,9 +238,9 @@ func TestSettingsFocusLineFollowsTheBalancedLayout(t *testing.T) {
 
 // A note NEVER RESIZES THE WINDOW.
 //
-// The correspondent notes were wrapped to a constant that happened to be wider
-// than the rows they sit under, so focusing a row with a reason nudged the whole
-// window out. A window that changes size when you move the cursor is the layout
+// A note wrapped to a constant wider than the rows it sits under would nudge the
+// whole window out whenever a row with a reason is focused. A window that
+// changes size when you move the cursor is the layout
 // telling you it does not know its own mind.
 func TestACorrespondentNoteNeverWidensTheWindow(t *testing.T) {
 	base := setupGolden(t, 133, 44, false, rowLocation).setupWidth()
@@ -257,7 +256,7 @@ func TestACorrespondentNoteNeverWidensTheWindow(t *testing.T) {
 }
 
 // The note sits FLUSH with the label of the row that raised it, not inset under
-// it: every other group's support line does, and this was the one that did not.
+// it, as every other group's support line does.
 func TestACorrespondentNoteIsFlushWithItsRow(t *testing.T) {
 	d := setupGolden(t, 133, 44, false, rowCastAlerts)
 	note := d.castNote(rowCastAlerts)

@@ -66,11 +66,10 @@ func QuakeReachMi(mag float64) float64 {
 		mag = quakeReachTo
 	}
 	reach := quakeReachBase * math.Pow(2, mag-QuakeReachFrom)
-	// NOT `reach >= quakeReachBase`, which was the first form and was WRONG:
-	// that is the threshold guard above said a second time, so deleting the
-	// guard left this to return 0 in its place and the deletion changed nothing
-	// observable. m83 survived on exactly that, and a check that can stand in
-	// for the rule it is checking is not an invariant.
+	// NOT `reach >= quakeReachBase`: that is the threshold guard above said a
+	// second time, so deleting the guard would leave this to return 0 in its
+	// place and the deletion would change nothing observable (mutant m83). A
+	// check that can stand in for the rule it is checking is not an invariant.
 	if err := invariant.Check(!math.IsInf(reach, 0) && !math.IsNaN(reach), "a magnitude never buys unbounded reach"); err != nil {
 		return 0
 	}
@@ -95,7 +94,7 @@ type Fence struct {
 	// HasOrigin is whether one is set at all. A fence with nowhere to measure
 	// from admits NOTHING rather than falling back to the global stack the UI
 	// says is scoped away — today's rule (app/ticker.go:tickerDeck.scopeToRadius,
-	// which returns nil with no watchlist), unchanged.
+	// which returns nil with no watchlist).
 	Lat, Lon  float64
 	HasOrigin bool
 
@@ -202,7 +201,7 @@ func (f Fence) AdmitsAny(from []Arrival) bool {
 //
 // IT LIVES IN platform/ BECAUSE EVERY `ForTest` EXPORT DOES (D-124), and it
 // exists because the console's held-hazard band has to be tested against a rail
-// the fence EXCLUDES: that is the case where the band was telling the operator
+// the fence EXCLUDES: that is the case where the band could tell the operator
 // to go on air and read something going on air would not read.
 func RefencedForTest(l Lineup, f Fence) Lineup {
 	d := Director{lineup: l, settings: Settings{Fence: f}}

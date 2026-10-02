@@ -5,12 +5,11 @@ package tty
 // THE PROPERTY: at 80x24, the app's documented floor, every line a window draws
 // can be brought on screen with the keys that window offers.
 //
-// WHY IT IS A SET GATE. The same defect has now been found three times in three
-// windows, each time by someone opening that one window: the relay-fault
-// window's ways out (2026-09-05), the ctrl+d window's scenario list, and the
-// ctrl+d window's whole message in a release build (both 2026-09-07). Each fix
-// was correct and none of them generalised, because nothing measured the other
-// windows. A window is not a place to look; it is a member of a set.
+// WHY IT IS A SET GATE. A window is not a place to look; it is a member of a
+// set. A fix found by opening one window — the relay-fault window's ways out,
+// the ctrl+d window's scenario list, its whole message in a release build —
+// does not generalise, because nothing in it measures the other windows. This
+// measures all of them.
 //
 // IT IS A BASELINE AND A RATCHET, not a clean bill of health. Four windows carry
 // a non-zero count that has NOT been diagnosed, and they are written down here
@@ -21,10 +20,10 @@ package tty
 //
 // WHAT "REACHABLE" MEANS HERE. The body is asked of the renderer's OWN owners
 // (focusBody + wrapModal for the pinned-footer windows, modalLines for the
-// scrolling ones), so the reference and the frame cannot wrap differently — the
-// first attempt at this measurement compared an 80x24 render against an 80x200
-// one and reported every line unreachable, because a window that overflows
-// wraps three columns narrower than one that does not.
+// scrolling ones), so the reference and the frame cannot wrap differently —
+// comparing an 80x24 render against an 80x200 one reports every line
+// unreachable, because a window that overflows wraps three columns narrower
+// than one that does not.
 
 import (
 	"strings"
@@ -38,8 +37,8 @@ import (
 // unreachableAtTheFloor is what a listener at 80x24 cannot bring on screen.
 //
 // It drives the REAL key path — Update, the keys the window advertises — and
-// exhausts it: a probe that pressed Down eight times against a 39-line body
-// reported 23 unreachable lines that were simply not scrolled to yet.
+// exhausts it: a probe that presses Down eight times against a 39-line body
+// reports 23 unreachable lines that are simply not scrolled to yet.
 func unreachableAtTheFloor(d Dashboard) []string {
 	want, seen := map[string]bool{}, map[string]bool{}
 	var model tea.Model = d
@@ -110,8 +109,8 @@ var reachabilityNote = map[modal]string{
 
 func TestEveryLineOfEveryWindowIsReachableAtTheFloor(t *testing.T) {
 	// EVERY WINDOW IN THE ENUM, derived. A hand-written list of windows would
-	// miss the next one added in exactly the way the three fixed defects were
-	// missed.
+	// miss the next one added, and a missed window is one this gate never
+	// measures.
 	var modals []modal
 	for m := modalHelp; m < numModals; m++ {
 		modals = append(modals, m)

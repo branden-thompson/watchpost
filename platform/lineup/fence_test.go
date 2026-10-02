@@ -201,7 +201,7 @@ func TestNoFenceAdmitsEverything(t *testing.T) {
 	}
 }
 
-// TestAFenceWithNoOriginAdmitsNothing. Today's rule, unchanged: filtered with no
+// TestAFenceWithNoOriginAdmitsNothing. Today's rule: filtered with no
 // default location set shows NOTHING, rather than silently falling back to the
 // global stack the UI says is scoped away.
 func TestAFenceWithNoOriginAdmitsNothing(t *testing.T) {
@@ -283,8 +283,8 @@ func TestAnAlertExactlyOnTheRadiusIsInside(t *testing.T) {
 // The threshold below which a quake carries no reach is invisible against a
 // 50 mi fence — an M5.0's reach would be 23 mi, which is inside the radius
 // anyway, so removing the rule changes nothing there. It is visible against a
-// SMALL service area, which is the case a Broadcaster station actually has. m83
-// survived until this existed.
+// SMALL service area, which is the case a Broadcaster station actually has.
+// Without this test, mutant m83 survives.
 func TestAnOrdinaryQuakeBuysNoExceptionEvenAgainstATightFence(t *testing.T) {
 	const degPerKm = 1 / 111.19492664455873
 	tight := Fence{RadiusMi: 10, Lat: bonsall.Lat, Lon: bonsall.Lon, HasOrigin: true}
@@ -331,8 +331,8 @@ func TestTheFenceFiltersWhatReachesTheLineupAtAll(t *testing.T) {
 
 // TestTheFenceIsTheOnlyCarrierOfWhetherOneIsInForce. The ordering rule (DR-12)
 // asks whether a radius is set; so does admission. One question, one answer —
-// a separate boolean beside the radius could disagree with it, which is the
-// shape of every rule this release has had to un-split.
+// a separate boolean beside the radius could disagree with it, so there is
+// none.
 func TestTheFenceIsTheOnlyCarrierOfWhetherOneIsInForce(t *testing.T) {
 	stale := quake("d1", 4.0, [2]float64{bonsall.Lat, bonsall.Lon}) // no reach, at home
 	stale.At = planNow.Add(-96 * time.Hour)
@@ -369,7 +369,7 @@ func TestAnArrivalWithNoRealPointIsRefusedRatherThanSilentlyFencingEverythingOut
 
 // TestATrackedTieBelongsToTheScopeNotToTheArrival.
 //
-// THE DEFECT THIS PINS: a zone-only alert has no point, so the only thing that
+// THE RISK THIS PINS: a zone-only alert has no point, so the only thing that
 // can admit it is the app already following it at a watched location. That is a
 // fact about the SCOPE NOW IN FORCE. Carried on the arrival it is a fact about
 // WHICHEVER SCOPE ADMITTED IT FIRST — frozen at planning time and true for ever
@@ -413,7 +413,7 @@ func TestATrackedTieBelongsToTheScopeNotToTheArrival(t *testing.T) {
 // point and reaches the schedule by the tracked tie alone, which is what makes
 // a hyper-local station (FR-8.3) viable at all. Asserted at the radius the HUM
 // LEAD named, against a point alert five miles out that the same fence refuses
-// (REVIEW 2026-09-17: the row cited an Observer test at 100 miles).
+// (REVIEW 2026-09-17).
 func TestAThreeMileStationStillReceivesItsCountyWarning(t *testing.T) {
 	three := bonsall
 	three.RadiusMi = 3

@@ -19,11 +19,10 @@ import (
 //	handle   right-most and fixed — it is the ADDRESS the operator types, so it
 //	         is the one thing that never truncates and never moves
 //
-// A HAND-ROLLED VERSION OF THIS HAD A REAL BUG, found while generating the mock:
-// it tested whether the title FIT BY LENGTH, but a centred title can be short
-// enough to fit and still run through the badge. The go-studs row reserves the
-// badge's width when it sizes the fill column, so the collision is structurally
-// impossible rather than policed.
+// FITTING BY LENGTH IS NOT ENOUGH: a centred title can be short enough to fit
+// and still run through the badge. The go-studs row reserves the badge's width
+// when it sizes the fill column, so the collision is structurally impossible
+// rather than policed.
 
 func aCard(t *testing.T, headline string) lineup.Card {
 	t.Helper()
@@ -64,8 +63,8 @@ func TestTheHandleIsRightMostAndNeverMoves(t *testing.T) {
 
 func TestALongHeadlineNeverReachesTheBadge(t *testing.T) {
 	// THE BUG THIS EXISTS FOR. A centred title that fits by LENGTH can still
-	// overrun the badge by POSITION — the hand-rolled draft produced
-	// "…(COASTAL)D•", eating the badge from the left.
+	// overrun the badge by POSITION — "…(COASTAL)D•", eating the badge from the
+	// left.
 	long := "LOCATION REPORT • RANCHO SANTA MARGARITA, CA 92688 (COASTAL AND VALLEY AREAS AND BEYOND)"
 	for _, lane := range []int{98, 108, 128, 148} {
 		got := newCardLane(lane, render.Opts{ASCII: true}.Glyphs()).render(aCard(t, long), "6", "STANDARD")
@@ -122,8 +121,8 @@ func TestTheHeadlineSitsOnTheCardsInset(t *testing.T) {
 
 // FR-7.3: SILENT OVERFLOW IS A DEFECT, NOT A DEGRADATION. The row comes from a
 // third-party component whose contract this package does not own, so its output
-// is clamped to the lane rather than trusted to fit — F-55 measured the other
-// surface rendering 57 cells into a 20-cell terminal.
+// is clamped to the lane rather than trusted to fit — an unclamped surface can
+// render 57 cells into a 20-cell terminal (F-55).
 func TestAnAbsurdlyNarrowLaneStillNeverOverflows(t *testing.T) {
 	for _, lane := range []int{1, 4, 12, 20, 30} {
 		got := newCardLane(lane, render.Opts{ASCII: true}.Glyphs()).
@@ -147,10 +146,9 @@ func TestTheBadgeSitsBetweenTheHeadlineAndTheHandle(t *testing.T) {
 
 // D-55: A FABRICATED TAKEOVER SAYS SO IN THE LINE-UP TOO.
 //
-// Every surface that existed when the injector's safeguards were written marks
-// one — the band at both ends, the severe window leading its EVENT column, the
-// audio four times over. The console did not, because it did not exist yet, and
-// `Card` did not carry the fact at all.
+// Every surface marks one — the band at both ends, the severe window leading
+// its EVENT column, the audio four times over — and the console's line-up does
+// too, from the fact `Card` carries.
 //
 // THE MARK IS A PREFIX, NOT PART OF THE HEADLINE, so the row reserves its width
 // and the title's truncation can never eat it. A HALF-EATEN MARK IS WORSE THAN
@@ -246,7 +244,7 @@ func TestANarrowLaneStillDrawsTheMarkedCardRatherThanDroppingIt(t *testing.T) {
 }
 
 // chipFor is how a handle actually renders — the CHIP, not the brackets a mock
-// draws around it. Asserting the literal "[ 6 ]" encoded the costume: KeyCap
-// paints " 6 " with the chip background in colour and falls back to "[6]"
-// without it, so the literal was only ever right in one mode.
+// draws around it. Asserting the literal "[ 6 ]" would encode the costume:
+// KeyCap paints " 6 " with the chip background in colour and falls back to "[6]"
+// without it, so the literal is right in one mode only.
 func chipFor(handle string) string { return render.Opts{ASCII: true}.KeyCap(handle) }

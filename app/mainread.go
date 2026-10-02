@@ -13,9 +13,8 @@ package app
 // `StartSource` calls `setLive(false)`, and `giveWayLocked` reads the source
 // kind every 50 ms — so a report on the air HOLDS under a breaking alert
 // instead of dipping, which is D-24 exactly ("the read PAUSES and resumes
-// mid-sentence"). A reader built on the clip path would have had to reimplement
-// that rule, and reimplementing it is how the wrong duck decision was made the
-// first time.
+// mid-sentence"). A reader built on the clip path would have to reimplement
+// that rule, and a reimplementation is where a wrong duck decision gets made.
 //
 // AND THE BED NEEDS NO HAND-BACK. Main and bed are mutually exclusive (D-11,
 // FR-4.2) and the engine has one source, so while the main track is the
@@ -82,11 +81,11 @@ type readSession struct {
 	// `StartSource` HALTS WHATEVER IT IS REPLACING FIRST, and `halt` ends with
 	// `set(Status{State: Stopped})`. The session is armed before that call — it
 	// has to be, or a status could land with nothing listening — so without this
-	// the displaced source's Stopped came home as THIS read's ending, one
-	// millisecond after it was asked for and before a word was spoken. Every
-	// card failed, was discarded, and benched its location for five minutes; at
-	// twenty-five pool entries the console read "waiting for the line-up" in
-	// every slot. That is the churn the HUM LEAD reported twice.
+	// the displaced source's Stopped comes home as THIS read's ending, one
+	// millisecond after it is asked for and before a word is spoken. Every card
+	// then fails, is discarded, and benches its location for five minutes; at
+	// twenty-five pool entries the console reads "waiting for the line-up" in
+	// every slot.
 	started bool
 
 	once sync.Once
@@ -231,13 +230,12 @@ func (d *radioDeck) readCard(ctx context.Context, label string, segs []synth.Seg
 // readCast is WHO READS THIS READ: the root voice the Source is built over, and
 // the resolver that answers for each segment's role.
 //
-// ONE ANSWER, NOT TWO. A first version installed the seam on the root voice
-// alone and left the resolver reaching into the cast — so the injected voice was
-// overridden the moment the Source asked who reads a role, and the end-to-end
-// test failed with "limited voice is not wired". A seam that covers half the
-// question is not a seam; `NewSource`'s own contract says the root voice reads
-// every role UNTIL a resolver is installed, and installing one unconditionally
-// is what made the first half moot.
+// ONE ANSWER, NOT TWO. A seam on the root voice alone, with the resolver still
+// reaching into the cast, has the injected voice overridden the moment the
+// Source asks who reads a role. A seam that covers half the question is not a
+// seam; `NewSource`'s own contract says the root voice reads every role UNTIL a
+// resolver is installed, and a resolver is always installed, so the seam
+// answers both.
 func (d *radioDeck) readCast() (synth.Voice, func(cast.Role) (synth.Voice, error), error) {
 	d.mu.Lock()
 	pick := d.voiceFor
@@ -245,7 +243,7 @@ func (d *radioDeck) readCast() (synth.Voice, func(cast.Role) (synth.Voice, error
 	if pick != nil {
 		v, err := pick()
 		// ONE VOICE READS EVERY ROLE, which is `NewSource`'s documented default
-		// and what a caller with no cast has always got.
+		// and what a caller with no cast gets.
 		return v, func(cast.Role) (synth.Voice, error) { return pick() }, err
 	}
 	v, err := d.voice()

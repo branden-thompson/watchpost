@@ -13,20 +13,18 @@ import (
 
 // memo_completeness_test.go — F-30, mechanised.
 //
-// THE BUG THIS RETIRES. The modal frame is memoised on a key built by
+// THE FAILURE IT GUARDS. The modal frame is memoised on a key built by
 // modalKeyFor, a hand-maintained switch where each window adds what IT shows
 // that moves. A window whose moving state is absent renders ONCE and the memo
 // replays that frame for as long as it is open — while the model underneath
-// works perfectly. THREE windows shipped that way in one release: the
-// relay-fault window's cursor and clock, the ctrl+d window's cursor, and the
-// severe window's Pause/Play. The first took three UAT rounds to find, because
-// the arrows moved the cursor, the countdown counted, the fall-through fired on
-// time, and the display never changed.
+// works perfectly: the arrows move the cursor, the countdown counts, the
+// fall-through fires on time, and the display never changes. A cursor, a clock
+// or a Pause/Play left out of the key is enough.
 //
-// EVERY EARLIER GUARD WAS A HAND-MAINTAINED LIST TOO — a table of "windows with
-// a cursor", which cannot catch a window whose moving state is not a cursor, and
-// still has to be remembered. The one below cannot be forgotten: it DERIVES the
-// fields from the struct.
+// A HAND-MAINTAINED LIST CANNOT GUARD IT — a table of "windows with a cursor"
+// cannot catch a window whose moving state is not a cursor, and still has to
+// be remembered. The one below cannot be forgotten: it DERIVES the fields from
+// the struct.
 //
 // THE PROPERTY, stated as an implication:
 //
@@ -46,12 +44,12 @@ func TestTheMemoKeyCoversEverythingTheFrameShows(t *testing.T) {
 			o := base.opts()
 			// A WINDOW WITH NO FIXTURE IS A FAILURE, not a skip (FR-3.3).
 			//
-			// It skipped, loudly, and 11 of 11 windows have a fixture — so the
-			// branch fired zero times and the guard's green number described
-			// today's windows rather than the guard. The next window added with
-			// a cursor and no fixture would have been silently uncovered, which
-			// is the defect F-30 was filed for. Adding a window means adding a
-			// fixture, and this is where that is enforced.
+			// A skip, however loud, fires zero times while every window has a
+			// fixture — so a green number would describe today's windows rather
+			// than the guard, and the next window added with a cursor and no
+			// fixture would be silently uncovered, which is the defect F-30 was
+			// filed for. Adding a window means adding a fixture, and this is
+			// where that is enforced.
 			if base.renderModal(o) == "" {
 				t.Fatalf("%s draws nothing at fixtureFor: give it a fixture, or this window is "+
 					"NOT covered by the memo guard and the next thing that freezes it will be found "+
@@ -100,10 +98,10 @@ func perturbations(t *testing.T, base Dashboard) []perturbed {
 // dashboardWriter models the real writer for a field the app never writes bare.
 //
 // SETUP IS KEYED BY GENERATION, not by its fields: the window carries two maps
-// and fingerprinting it every frame was the largest thing it cost, so every
-// WRITER bumps gen instead (setupState.touch, via settled/castTouched). Writing
-// a field without bumping is not something the app does, so this models the real
-// writer rather than reporting the design as a defect.
+// and fingerprinting it every frame would be the largest thing it costs, so
+// every WRITER bumps gen instead (setupState.touch, via settled/castTouched).
+// Writing a field without bumping is not something the app does, so this
+// models the real writer rather than reporting the design as a defect.
 //
 // mapTempNDFD IS SETTINGS' TOO (D-190): its one writer, toggleTempSource, is a
 // Settings row's and settles - bumps gen - and its metered note changes the
@@ -114,7 +112,7 @@ func dashboardWriter(name string, d *Dashboard) {
 	}
 }
 
-// perturbEach is the engine, GENERIC OVER THE MODEL. Two surfaces memoise now,
+// perturbEach is the engine, GENERIC OVER THE MODEL. Two surfaces memoise,
 // and the guard is the thing that makes a memo safe to have — so a second copy
 // of this walk for the console would be the one duplication that matters: the
 // copy would drift, and the surface whose walk stopped descending would report
@@ -165,11 +163,11 @@ func walk[T any](t *testing.T, typ reflect.Type, prefix string, excuse map[strin
 			})
 		case reflect.Struct:
 			// ONE LEVEL DOWN, INTO EVERY STRUCT THIS FILE HAS NOT EXCUSED
-			// (FR-3.3). It named three — relayFault, debug and setup — so a
-			// FOURTH window's state was never perturbed and the guard reported
-			// coverage it did not have. A hand-written list of the windows with
-			// state is the same shape as the hand-written memo key it checks,
-			// and would miss a new window in exactly the same way.
+			// (FR-3.3). A named set — relayFault, debug and setup — would leave a
+			// FOURTH window's state unperturbed while the guard reports coverage
+			// it does not have. A hand-written list of the windows with state is
+			// the same shape as the hand-written memo key it checks, and would
+			// miss a new window in exactly the same way.
 			if prefix == "" && excuse[path] == "" {
 				walkNested(t, f, i, excuse, writer, emit)
 			}
@@ -238,24 +236,23 @@ func bump(v reflect.Value) {
 			return
 		}
 		v.SetInt(v.Int() + 1)
-	// FLOATS WERE NEVER PERTURBED, and the walk did not say so — it listed the
-	// kinds it handled and fell through the rest in silence, which is the same
-	// shape as the hand-written key it exists to check. A float input to a
-	// memoised frame (the fire threshold, a radius) was outside the guard.
+	// FLOATS ARE PERTURBED. A walk that lists the kinds it handles and falls
+	// through the rest in silence is the same shape as the hand-written key it
+	// exists to check, and leaves a float input to a memoised frame (the fire
+	// threshold, a radius) outside the guard.
 	case reflect.Float64:
 		v.SetFloat(v.Float() + 1)
-	// AND POINTERS WERE THE SAME HOLE AGAIN, a third time (D-129). A *ref the
-	// frame READS THROUGH — the search window's pooled match — was not an
-	// emitted kind at all, so the guard reported the window covered while the
-	// field behind half its sentences was never perturbed.
+	// AND SO ARE POINTERS (D-129). A *ref the frame READS THROUGH — the search
+	// window's pooled match — is otherwise no emitted kind at all, and the
+	// guard reports the window covered while the field behind half its
+	// sentences is never perturbed.
 	//
 	// A COPY, NEVER THE SHARED POINTEE. perturbEach copies the MODEL, and a
 	// copy of a struct shares every pointer in it — so bumping through one
 	// would move the BASE as well, `before` and `after` would agree, and the
-	// guard would pass by changing nothing. That hazard is why pointers were
-	// excluded rather than missed, and cloning is what makes including them
-	// safe: a fresh pointee leaves the baseline untouched, and the new POINTER
-	// is itself a difference any key holding it will see.
+	// guard would pass by changing nothing. Cloning is what makes including
+	// pointers safe: a fresh pointee leaves the baseline untouched, and the new
+	// POINTER is itself a difference any key holding it will see.
 	//
 	// NIL IS LEFT ALONE. Production gives these windows nil; minting a value
 	// there would perturb into a state the app never has.
@@ -322,8 +319,8 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 	// off d.now at minute resolution; on the real clock a run that straddles a
 	// minute boundary between building the lines and rendering them holds a
 	// text no frame ever draws, and the reachability guard reports it as a
-	// line the keyboard cannot reach (CI, 2026-09-18, once in a Linux leg and
-	// never locally in forty runs). An hour after the fixture's observation.
+	// line the keyboard cannot reach — a rare flake, seen in CI rather than
+	// locally. An hour after the fixture's observation.
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 2, 0, 0, 0, time.UTC) }
 	switch m {
 	case modalMap:
@@ -347,10 +344,8 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 	case modalSevere:
 		// A ROW, AND A READ IN PROGRESS. Both are needed for the window to draw
 		// everything it draws: without a read, severeReadPause reaches no part
-		// of the frame and the guard cannot see it — which it could not, at the
-		// first attempt, on the very window whose omission the red team found.
-		// A fixture that does not exercise the state is a hole shaped exactly
-		// like coverage.
+		// of the frame and the guard cannot see it. A fixture that does not
+		// exercise the state is a hole shaped exactly like coverage.
 		d = d.applySevere(SevereMsg{Gen: 1, Totals: [severeNumTabs]int{SevereWarnings: 1},
 			Rows: []SevereRow{{Key: "k", Tab: SevereWarnings, Product: "Tornado Warning",
 				Location: "Olathe, KS", Declared: "08/28 08:45 CDT",
@@ -358,12 +353,11 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 		d.severeReading = "k"
 	case modalAdd:
 		// THE SEARCH WINDOW AS THE CONSOLE SEES IT (D-129), because that is the
-		// only mode in which it draws the location verdict at all. Opened the
-		// way it was before — Observer's surface, no hook wired — the window is
-		// unscoped, the note never reaches the frame, and the verdict fields
-		// were invisible to this guard: a hole shaped exactly like coverage,
-		// which is what the modalRequest arm below already says in as many
-		// words.
+		// only mode in which it draws the location verdict at all. Opened on
+		// Observer's surface with no hook wired, the window is unscoped, the
+		// note never reaches the frame, and the verdict fields are invisible to
+		// this guard: a hole shaped exactly like coverage, which is what the
+		// modalRequest arm below says in as many words.
 		//
 		// A SETTLED MATCH, NOT A MISS, and driven through the REAL path. On a
 		// miss the ref is nil and `within` cannot reach the frame at all — the
@@ -380,11 +374,9 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 		// empty draws the same frame however the model moves — and the guard
 		// below would then report a key covering a window that says nothing.
 		//
-		// AND IT SETS THE STATE THE WINDOW ACTUALLY READS. Until 2026-09-15
-		// this assigned `d.request.ref` — the field D-130 orphaned, which
-		// nothing in production writes and only the dead half of `blocker()`
-		// read. The fixture was carrying a value the frame could not see, so
-		// this arm exercised less than it appeared to.
+		// AND IT SETS THE STATE THE WINDOW ACTUALLY READS, never a field nothing
+		// in production writes (D-130): a fixture carrying a value the frame
+		// cannot see exercises less than it appears to.
 		d.request = requestOpen()
 		d.request.query = "Oceanside, CA"
 		d.request.locate = settledLocate(locateRequest, "Oceanside, CA",
@@ -405,23 +397,18 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 }
 
 // TestEveryWindowClearsItsMargins — the three-cell inset, on BOTH sides, for
-// EVERY window rather than the one that was reported.
+// EVERY window.
 //
-// HOW THIS CAME ABOUT (2026-09-05). The HUM LEAD reported content running into
-// the right border of the relay-fault window; it was fixed there. A red team
-// then reported the same mismatch in the [S] window — and MEASURING IT SHOWED
-// [S] WAS ALREADY CORRECT: the claim had read `" "+o.Controls(...)` as one cell
-// without counting the panel's own two, which is the same arithmetic that trips
-// everyone in these files. Measuring every window instead settled that AND
-// found four real ones nobody had reported.
-//
-// So the survey is the test. A margin claim about any window is now answered by
-// running this rather than by reading a source line.
+// THE SURVEY IS THE TEST. A margin is easy to misjudge by reading:
+// `" "+o.Controls(...)` looks like one cell until the panel's own two are
+// counted, which is the arithmetic that trips everyone in these files. A margin
+// claim about any window is answered by running this rather than by reading a
+// source line.
 func TestEveryWindowClearsItsMargins(t *testing.T) {
-	// KNOWN-UNDER, LISTED RATHER THAN SKIPPED. Each is a window untouched by the
-	// work that found them, with its own mock or golden; fixing one is a HUM
-	// LEAD appearance call, and deleting its row here is how that lands. A
-	// window absent from this map must clear both margins.
+	// KNOWN-UNDER, LISTED RATHER THAN SKIPPED. Each is a window with its own
+	// mock or golden; fixing one is a HUM LEAD appearance call, and deleting
+	// its row here is how that lands. A window absent from this map must clear
+	// both margins.
 	known := map[modal]string{
 		modalHelp:    "trails at 2 — hand-wrapped prose, its own two-column layout",
 		modalDetails: "leads at 2 — the forecast table sets its own left edge",

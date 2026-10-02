@@ -3,9 +3,9 @@ package tty
 // relayfault.go — the window that says the relay is dead.
 //
 // A relay that is UP AND BROADCASTING NOTHING answers every check correctly and
-// gives the listener silence (UAT 2026-09-04, weatherusa.net). The station used
-// to report PLAYING throughout, which for a weather radio is the worst available
-// answer: confident and wrong.
+// gives the listener silence (UAT 2026-09-04, weatherusa.net). Reporting PLAYING
+// throughout would be, for a weather radio, the worst available answer:
+// confident and wrong.
 //
 // MVS-D-76, HUM LEAD: tell the listener, offer the alternatives, and if nobody
 // is at the keyboard fall through to a Synth read rather than sit in silence.
@@ -56,13 +56,13 @@ const (
 // THE WINDOW DOES NOT STRETCH, BUT IT DOES SHRINK (red team 2026-09-05).
 // floatModalFooter clamps the panel to the terminal, so below about 94 columns
 // every measurement taken against the mock's 84 is wrong: the footer's right
-// margin came out at two cells while the body's was three — the very defect
-// this file had just fixed at 84 — the body was wrapped twice, and the second
-// wrap went through WrapLines, which cannot preserve a hanging indent.
+// margin comes out at two cells while the body's is three, the body is wrapped
+// twice, and the second wrap goes through WrapLines, which cannot preserve a
+// hanging indent.
 //
 // THE RIGHT MARGIN IS A BOUND, NOT A HOPE (HUM LEAD, UAT 2026-09-05). The prose
-// is fixed and happened to clear the edge; the ROWS carry a station's real
-// label and run straight into the border.
+// is fixed and clears the edge by chance; the ROWS carry a station's real
+// label and would run straight into the border.
 func relayFaultContentFor(o render.Opts) int {
 	return max(min(o.Width, relayFaultWidth)-2-2*modalInset, 8)
 }
@@ -80,8 +80,7 @@ type relayFaultState struct {
 	// to read them and decide, so the person the auto-close takes the choice
 	// away from is the one who was in the middle of making it. MVS-D-76 is
 	// narrowed, not removed: doing nothing still falls through, through the
-	// same one door enter uses — what changes is that pressing a key is no
-	// longer doing nothing.
+	// same one door enter uses — but pressing a key is not doing nothing.
 	held bool
 }
 
@@ -106,8 +105,8 @@ func (d Dashboard) relayFaultRows() []struct{ label, text, key string } {
 // of air on the left, and WRAPPED — never cut — so it never reaches within
 // modalInset of the right.
 //
-// WRAPPED, NOT TRUNCATED (HUM LEAD, UAT 2026-09-05). An earlier pass cut these
-// to fit, which is the class UAT 25 ruled out in as many words on WrapLines:
+// WRAPPED, NOT TRUNCATED (HUM LEAD, UAT 2026-09-05). Cutting these to fit is
+// the class UAT 25 rules out in as many words on WrapLines:
 // "floating windows wrap, never truncate". In THIS window it is worse than
 // untidy — what gets cut is the address of the station the listener is being
 // told to tune to, in the one window that exists because something is already
@@ -125,7 +124,7 @@ func (d Dashboard) relayFaultLines(o render.Opts) (out []string, focusAt, focusE
 	// and the string is the part that goes wrong silently.
 	content := relayFaultContentFor(o)
 	// CENTRED FROM THE WIDTH IT IS DRAWN AT, not from a hand-computed column:
-	// the mock's 33 was right at exactly 84 and visibly off at every other.
+	// the mock's 33 is right at exactly 84 and visibly off at every other.
 	title := "*** ERROR ***"
 	lines := []string{
 		strings.Repeat(" ", max((content-render.Width(title))/2+relayFaultPad, 0)) + title,
@@ -147,14 +146,10 @@ func (d Dashboard) relayFaultLines(o render.Opts) (out []string, focusAt, focusE
 	}
 	lines = body
 	// THROUGH THE LIST'S ONE OWNER (D-1). render/list.go exists so that every
-	// list-shaped surface marks focus the same way — and two more surfaces were
-	// found still marking it by hand after this one was fixed (ctrl+d, then the
-	// Settings suggestions), so the rule needs the owner, not the intention.
-	// This window was marking
-	// it with a bare "›" and NO TINT AT ALL — the pointer moved and nothing on
-	// the line changed colour, on a window that (until the tick was armed) never
-	// redrew itself either. From a listener's chair that reads as arrows that do
-	// not work, which is exactly how it was reported.
+	// list-shaped surface marks focus the same way; the rule needs the owner,
+	// not the intention. A hand-marked bare "›" with NO TINT AT ALL moves the
+	// pointer while nothing on the line changes colour, which from a listener's
+	// chair reads as arrows that do not work.
 	//
 	// A ROW WRAPS UNDER ITS OWN VALUE, and the rows are separated by a blank
 	// line (HUM LEAD, UAT 2026-09-05). A station's full address — callsign,
@@ -162,7 +157,7 @@ func (d Dashboard) relayFaultLines(o render.Opts) (out []string, focusAt, focusE
 	// continuation belongs under the VALUE rather than back at the margin,
 	// where it would read as another way out.
 	//
-	// The mock's geometry is unchanged: ListMark is two cells, so one space
+	// The mock's geometry holds: ListMark is two cells, so one space
 	// either side puts the pointer and the label in exactly the columns the HUM
 	// LEAD drew them in.
 	for i, r := range d.relayFaultRows() { // bounded by the rows (P10-02)
@@ -188,9 +183,9 @@ func (d Dashboard) relayFaultLines(o render.Opts) (out []string, focusAt, focusE
 // right. The countdown is SHOWN because it acts on its own — a default that
 // fires silently is one the listener cannot choose against.
 func (d Dashboard) relayFaultChips(o render.Opts) []string {
-	// THE SAME MARGINS AS THE BODY. The footer sat at two cells either side
-	// while every line above it sat at three, which is the one place in the
-	// window a listener could see the inset was not a rule.
+	// THE SAME MARGINS AS THE BODY. A footer at two cells either side under
+	// lines at three would be the one place in the window a listener could see
+	// the inset is not a rule.
 	//
 	// THE PAD IS ADDED AFTER THE MEASUREMENT, NOT BEFORE IT. PlainLine TRIMS,
 	// so measuring a string that starts with its own padding under-counts by
@@ -235,8 +230,8 @@ func (d Dashboard) stepRelayFault(now time.Time) (Dashboard, bool) {
 // stopping dead at an end reads as a stuck key).
 func (d Dashboard) handleRelayFaultNav(act term.Action) Dashboard {
 	// NO EMPTY GUARD. relayFaultRows always appends the fall-through, so n is
-	// never zero and the branch that checked it could not be falsified (D-2,
-	// red team 2026-09-05). The rule is stated where it is true instead.
+	// never zero and a branch checking it could not be falsified (D-2). The
+	// rule is stated where it is true instead.
 	n := len(d.relayFaultRows())
 	switch act {
 	case "nav-up":
@@ -289,7 +284,7 @@ func (d Dashboard) fallThroughRelayFault() (Dashboard, tea.Cmd) { return d.takeR
 // openRelayFault raises the window for a mount that has gone quiet.
 //
 // A SECOND REPORT WHILE IT IS OPEN IS NOT A SECOND EVENT (UAT 2026-09-05), and
-// this is the defect that made the window unusable rather than merely untidy.
+// treating it as one makes the window unusable rather than merely untidy.
 //
 // The silence detector fires ONCE PER STREAM. The engine falls through to the
 // next mount on the tune list, and a station broadcasting silence on every mount

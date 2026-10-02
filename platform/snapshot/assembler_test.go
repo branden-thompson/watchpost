@@ -172,9 +172,6 @@ func TestTheReferenceFetchRecordsWhichLocationsItCovered(t *testing.T) {
 	// location the API cannot serve marks the whole fragment failed — and "the
 	// API does not answer for this location" IS issue #13. Skipping the stamp on
 	// any error therefore skips it in the one case the field exists for.
-	// Reaching Apply means the provider
-	// responded; a transport failure returns an error from Fetch and never
-	// arrives here.
 	// SERVED IS THE PROOF THE PROVIDER WAS REACHABLE. A fragment that carries an
 	// error but served somebody says this location has nothing; one that served
 	// NOBODY says only that the provider could not be reached, and stamps
@@ -208,17 +205,15 @@ func (e errString) Error() string { return string(e) }
 
 // AN UNREACHABLE PROVIDER IS NOT AN ANSWER (red team, 2026-09-08).
 //
-// The stamp's first version fired on any fragment reaching Apply, justified by a
-// comment claiming "reaching Apply means the provider responded". That is false:
-// FetchEach joins per-location errors into Fragment.Err and returns a NIL error,
-// so a connection refused arrives as a fragment carrying an error and serving
-// nothing — measured against 127.0.0.1:1, Fetch returns err=nil, frag.Err set,
-// PerLocation=0.
+// Reaching Apply does not mean the provider responded: FetchEach joins
+// per-location errors into Fragment.Err and returns a NIL error, so a connection
+// refused arrives as a fragment carrying an error and serving nothing — against
+// 127.0.0.1:1, Fetch returns err=nil, frag.Err set, PerLocation=0.
 //
-// The consequence was a regression a listener would see: cold-start with no
-// network and every row stopped shimmering and read "n/a" — the product saying
-// "we asked and there is nothing for your area" when the truth was "we cannot
-// reach the weather service". Before the change those rows kept shimmering.
+// Stamping on it would be a regression a listener sees: cold-start with no
+// network and every row stops shimmering and reads "n/a" — the product saying
+// "we asked and there is nothing for your area" when the truth is "we cannot
+// reach the weather service". Those rows must keep shimmering.
 func TestAnUnreachableProviderDoesNotAnswerForAnyLocation(t *testing.T) {
 	a := LocationRef{Label: "A", Lat: 33.2, Lon: -117.38}
 	b := LocationRef{Label: "B", Lat: 32.7, Lon: -117.16}
@@ -260,9 +255,9 @@ func TestAnUnreachableProviderDoesNotAnswerForAnyLocation(t *testing.T) {
 
 	// THE PARTIAL: an error, but A was served — so the provider IS reachable and
 	// B is a place it has nothing for. That is issue #13 and it must still work.
-	// THE PARTIAL OUTAGE, and this is the case the fragment-level rule got wrong:
-	// A is served, B is REFUSED. B was stamped and its row read "n/a" — an
-	// absence asserted for a location the request never reached.
+	// THE PARTIAL OUTAGE, the case a fragment-level rule gets wrong: A is
+	// served, B is REFUSED. Stamping B would read its row "n/a" — an absence
+	// asserted for a location the request never reached.
 	part := build()
 	for _, k := range []FetchKind{KindObs, KindForecast} {
 		part.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at, Err: errFetch,
@@ -321,13 +316,13 @@ func TestOnlyTheAnsweringFetchesEndTheShimmer(t *testing.T) {
 // A LOCATION THAT LEAVES TAKES ITS ATTEMPT RECORD WITH IT (REVIEW red team,
 // 2026-09-08).
 //
-// SetLocations cleared sections, alerts, fire and seismic — and not `asked`. So
-// a location removed and re-added in the same session inherited the stamp of its
-// previous life and read "n/a" immediately, asserting "we asked and there is
-// nothing here" before a single fetch had been issued for it. The shimmer that
-// should cover the gap never appeared.
+// SetLocations clears `asked` along with sections, alerts, fire and seismic.
+// Otherwise a location removed and re-added in the same session would inherit
+// the stamp of its previous life and read "n/a" immediately, asserting "we asked
+// and there is nothing here" before a single fetch had been issued for it, with
+// no shimmer to cover the gap.
 //
-// It also leaked: the map grew by one entry per removal, for the life of the
+// And the map would leak, growing by one entry per removal for the life of the
 // process.
 func TestARemovedLocationDoesNotKeepItsAttemptRecord(t *testing.T) {
 	a := LocationRef{Label: "A", Lat: 33.2, Lon: -117.38}
@@ -364,11 +359,11 @@ func TestARemovedLocationDoesNotKeepItsAttemptRecord(t *testing.T) {
 // A DEFINITIVE ANSWER IS AN ANSWER, EVEN WHEN IT IS AN ERROR (REVIEW red team,
 // 2026-09-08).
 //
-// This is issue #13's original case and the last hole in it: a point outside the
-// forecast area answers 404 — "we do not cover you" — and a row reading "n/a" is
-// then TRUE. A refused connection is not an answer and the row must keep
-// waiting. The previous rule could not tell them apart, so a single-location
-// watchlist the feed does not cover shimmered for ever.
+// This is issue #13's original case: a point outside the forecast area answers
+// 404 — "we do not cover you" — and a row reading "n/a" is then TRUE. A refused
+// connection is not an answer and the row must keep waiting. A rule that cannot
+// tell them apart leaves a single-location watchlist the feed does not cover
+// shimmering for ever.
 func TestADefinitiveRefusalIsAnAnswerAndAnUnreachableOneIsNot(t *testing.T) {
 	only := LocationRef{Label: "Nowhere, XX", Lat: 1, Lon: 1}
 	at := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
@@ -384,7 +379,7 @@ func TestADefinitiveRefusalIsAnAnswerAndAnUnreachableOneIsNot(t *testing.T) {
 		return asm.Snapshot().Locations[0].WeatherAsOf
 	}
 
-	// 404: the service answered. The row may say n/a, and issue #13 is closed
+	// 404: the service answered. The row may say n/a, and issue #13 holds
 	// even for a watchlist of one.
 	if got := run(statusErr(404)); got.IsZero() {
 		t.Error("a 404 is the service saying it does not cover this point; that IS an answer")

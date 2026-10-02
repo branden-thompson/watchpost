@@ -8,12 +8,10 @@ package app
 // this station do that".
 //
 // THE SET IS CLOSED (PL-6) AND WALKED IN FULL: every effect is either performed
-// or DECLINED BY NAME. The duck, the restore and the tune are PERFORMED — this
-// paragraph declined them by name until the BUILD-exit red team (R-3), having
-// been written before T2.3 and T3.2 landed. What is still refused is a slot no
-// producer proposes: the location report and the severe read. A refusal is
-// loud, and a card-effect among them fails its card so the schedule re-plans
-// rather than waiting for words that will never come (DR-21).
+// or DECLINED BY NAME. The duck, the restore and the tune are PERFORMED. What is
+// refused is a slot no producer proposes: the location report and the severe
+// read. A refusal is loud, and a card-effect among them fails its card so the
+// schedule re-plans rather than waiting for words that will never come (DR-21).
 
 import (
 	"context"
@@ -39,17 +37,16 @@ import (
 // set once by whoever wires it; the executors hold no state of their own but
 // the band record.
 type executors struct {
-	// voice is today's narration arbiter. Speak runs THROUGH it rather than
-	// over render and play directly, so the duck keeps its one owner across
-	// Phase 2 (RD-2): the arbiter ducks when a sequence takes the air and
-	// restores when it leaves, exactly as the takeover does now.
+	// voice is the narration arbiter. Speak runs THROUGH it rather than over
+	// render and play directly, so the duck keeps its one owner (RD-2): the
+	// arbiter ducks when a sequence takes the air and restores when it leaves.
 	voice   *director
 	scripts *script.Library // the spoken lines; nil = the built-in tree
 	clock   func() render.Clock
 	now     func() time.Time // injected (DR-20): a line composes "at Four Fifty PM" against it
-	// mc is the one owner of both outputs — the band and the duck. The band was
-	// written from here AND from app/ticker.go, two files constructing the same
-	// takeover message, which is two carriers of one rule (D-1).
+	// mc is the one owner of both outputs — the band and the duck — so no second
+	// file constructs the takeover message: two carriers of one rule is what D-1
+	// forbids.
 	mc *mastercontrol
 	// compose builds a location report's segments for the card path (0.16.0
 	// P3). It is the deck's own composition, reached as a SEAM rather than a
@@ -92,8 +89,7 @@ type executors struct {
 	propose func() []lineup.Proposal
 
 	// publish hands the settled schedule to the console. Nil when no surface
-	// is listening, which is every build before 0.16.0 and every test that
-	// does not care.
+	// is listening, as in every test that does not care.
 	publish func(tea.Msg)
 
 	// audible is false when there is nothing to hear — no device, no voice. The
@@ -104,7 +100,7 @@ type executors struct {
 	// muted is the LISTENER saying "do not speak to me" (`[M]`), which is a
 	// different question from whether the machine can make a sound.
 	//
-	// CONFLATING THE TWO WAS THE TRAP. A read is declined when muted, so the
+	// CONFLATING THE TWO IS THE TRAP. A read is declined when muted, so the
 	// alerts stay new and are offered again; a read on a voiceless machine goes
 	// ahead, so the band still shows the hazard. One predicate for both would
 	// either swallow a hazard on mute or blank the marquee on a laptop with no
@@ -127,11 +123,10 @@ type executors struct {
 	// next cycle and is read a second time.
 	//
 	// IT TAKES THE ID, NOT THE EVENT (red team 2026-09-05). The seen-store reads
-	// only the id, and taking an event meant looking one up to obtain the id
-	// already in hand — a round trip that can MISS: if the record was evicted
-	// between the burst arriving and its read, the alert went unmarked and was
-	// read a second time. The eviction bound was reasoned about for the build
-	// path and not for this one.
+	// only the id, and taking an event would mean looking one up to obtain the id
+	// already in hand — a round trip that can MISS: a record evicted between the
+	// burst arriving and its read would leave the alert unmarked, and it would be
+	// read a second time.
 	mark func(id string)
 
 	// readAloud is whether one alert has ALREADY been read — the same store
@@ -162,17 +157,15 @@ type executors struct {
 	// P10 resolves by NAME, so a field called `tune` collides with
 	// radioDeck.tune — which genuinely sits in a call cycle and carries its own
 	// exemption — and the collision reports this seam as recursion it has no
-	// part in. Fourth rename in this release for the same false positive.
+	// part in.
 	//
 	// IT MUST NOT LIFT THE DUCK, and that is the whole reason this seam is a
 	// function rather than the deck itself. Every tune the Director asks for is
 	// AUTOMATIC — the dwell elapsed, a cycle ended — and nobody pressed
 	// anything. Lifting the dip here would bring the next location's report in
-	// at full volume over a breaking alert still reading — a distinction that
-	// rested on the case of an identifier (radioDeck.Tune vs tune) until T2.3 gave
-	// the duck one owner. The wiring calls the deck's
-	// unexported tune, and this comment is here so a future caller does not
-	// reach for the exported one.
+	// at full volume over a breaking alert still reading. The duck has one owner
+	// (T2.3); the wiring calls the deck's unexported tune, and a future caller
+	// must not reach for the exported one.
 	cutTo func(ref string)
 
 	// bedLabel turns the bed's ref into the words the console shows for it
@@ -182,14 +175,14 @@ type executors struct {
 	// selected is the relay the OPERATOR chose on the console's bed row, and ""
 	// until they choose one (F-98, D-90).
 	//
-	// IT EXISTS BECAUSE THE ROW HAD TWO PUBLISHERS AND THE FREQUENT ONE WAS
-	// BLIND. The selector published the relay it tuned; this executor published
+	// IT EXISTS BECAUSE THE ROW HAS TWO PUBLISHERS AND THE FREQUENT ONE IS
+	// BLIND. The selector publishes the relay it tuned; this executor publishes
 	// `describeBed` — the DIRECTOR's bed ref, a watchlist LOCATION key the
 	// station's relay selector never touches — on every settle, which is every
-	// tick. The operator's choice reverted to "(no relay tuned)" about a second
-	// after every keypress, whatever they picked (HUM LEAD, UAT 2026-09-11).
+	// tick. Without this, the operator's choice would revert to "(no relay tuned)"
+	// about a second after every keypress (HUM LEAD, UAT 2026-09-11).
 	//
-	// The same shape `noteBed` already fixed for `Carrying`, one field along.
+	// The same shape as `noteBed` for `Carrying`, one field along.
 	selected func() string
 
 	// noteBed records whether the bed is carrying, so the relay SELECTOR can
@@ -268,10 +261,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 	case lineup.ReleaseTicker:
 		return x.runRelease(v)
 	case lineup.Publish:
-		// THE CONSOLE READS THE LINEUP NOW (0.16.0 P2). This executor was
-		// deliberately empty through 0.15.0 and said so — the seam existed and
-		// had no consumer, which is a very different thing from a no-op that
-		// pretends to be wired.
+		// THE CONSOLE READS THE LINEUP (0.16.0 P2).
 		//
 		// BOTH FACTS TRAVEL TOGETHER because the effect carries both. A console
 		// told the schedule and the station's state separately can hold a torn
@@ -301,25 +291,19 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		// left to admit → `onOffered` returns NO EFFECTS, so there is no publish
 		// and the chain has nowhere to go.
 		return x.offer()
-	// DUCK AND RESTORE ARE WIRED AND **REACHED** (corrected 2026-09-15, D-139).
+	// DUCK AND RESTORE ARE WIRED AND **REACHED** (D-139).
 	//
-	// BOTH EFFECTS ARE CONSTRUCTED IN PRODUCTION. P5's track-model batch wired
-	// them —
+	// BOTH EFFECTS ARE CONSTRUCTED IN PRODUCTION:
 	// `Director.givingWay` decides from state the Director already holds and
-	// `settle` emits the change (`bed.go:392`, reached from `director.go:842`)
-	// — and `06_docs/wires-ratified.md:51-52` records exactly that. The comment
-	// was not revisited, so a paragraph asserting a path is never taken sat on
-	// the path while it ran.
+	// `settle` emits the change (`bed.go:392`, reached from `director.go:842`),
+	// as `06_docs/wires-ratified.md:51-52` records. The functions below carry
+	// some of the heaviest reasoning in the release — the F-D5 critical section
+	// and the lock-order warning.
 	//
-	// WHY IT MATTERS MORE THAN AN OUT-OF-DATE SENTENCE: the functions below
-	// carry some of the heaviest reasoning in the release — the F-D5 critical
-	// section and the lock-order warning — and a note calling them dead would send
-	// every reader past all of it.
-	//
-	// MVS-D-67 IS STILL SATISFIED, and by a different mechanism than `held`.
+	// MVS-D-67 IS SATISFIED, and by a different mechanism than `held`.
 	// The ruling — one dip per drain, the rail owning the bed until its tail
-	// has played — was about a rail of MANY cards bouncing the bed between
-	// them. MVS-D-77 made a burst ONE card, and `giveOrTakeBack` is
+	// has played — is about a rail of MANY cards bouncing the bed between
+	// them. MVS-D-77 makes a burst ONE card, and `giveOrTakeBack` is
 	// EDGE-TRIGGERED: it emits only the change, so a drain of several cards
 	// dips once whether or not `held` is ever set.
 	case lineup.Duck:
@@ -330,7 +314,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 	case lineup.Restore:
 		// THE ASYMMETRY IS DELIBERATE AND LOAD-BEARING — do not "tidy" this to
 		// x.mc.unhold(). Acquiring is one critical section inside mastercontrol
-		// (hold dips and claims together, which is the F-D5 fix). RELEASING is
+		// (hold dips and claims together: F-D5). RELEASING is
 		// not mastercontrol's decision to make: the arbiter takes d.mu and then
 		// mc.mu, so a release that took mc.mu and then asked the arbiter would
 		// invert the lock order and deadlock. director.releaseBed unholds and
@@ -381,17 +365,13 @@ func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Even
 		// because only the effect knows how many alerts this card reads.
 		sc := composeTakeover(x.scripts, evs, len(evs) > 1, v.Divert, x.clock(), x.now())
 		// A Built with no words trips the Director's own invariant and the
-		// card would sit at standby for ever. Today an empty line is a silent
-		// hold; under the lineup it is a card that cannot be delivered.
+		// card would sit at standby for ever: a card that cannot be delivered.
 		if sc.Empty() {
 			return x.fault(v, v.ID, "the script rendered nothing to say")
 		}
 		return []lineup.Event{lineup.Built{ID: v.ID, Script: sc}}
 	case lineup.LocationReport:
-		// THE MAIN TRACK ARRIVED (0.16.0 P3). This decline read "read by the
-		// main track, which arrives with T3.2" from 0.14.0 until now.
-		//
-		// THE EXECUTOR KNOWS NOTHING ABOUT HOW A REPORT IS ASSEMBLED. It asks
+		// THE EXECUTOR KNOWS NOTHING ABOUT HOW A REPORT IS ASSEMBLED (0.16.0 P3). It asks
 		// the composer for segments and turns them into a script; the deck
 		// owns what a report IS, exactly as the producer owns what an alert is
 		// on the rail path.
@@ -432,10 +412,9 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	}
 	// ONLY THE RAIL READS THROUGH THE ARBITER (D-33, HUM LEAD 2026-09-09).
 	//
-	// The main track was admitted here for one release and it was wrong: a
-	// chosen read REPLACES the bed rather than speaking over it, so it is not a
-	// narration and it has no business on the narration path. What it IS is the
-	// engine Source adapter (BD-9), and that is what `broadcast` performs.
+	// A chosen read REPLACES the bed rather than speaking over it, so it is not
+	// a narration and it has no business on the narration path. What it IS is
+	// the engine Source adapter (BD-9), and that is what `broadcast` performs.
 	//
 	// THE FORK IS THE TRACK, NOT THE SLOT, and the reason is on the effect: a
 	// transition belongs to whichever lane the card it bookends is on.
@@ -468,9 +447,8 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	// pauses, the overlap that keeps a render out of every gap — and the live
 	// takeover reads through the same function. Two implementations of a ruling
 	// the HUM LEAD found BY EAR would be two places for it to drift.
-	// ONE CLASS REACHES HERE, because one lane does (D-33). The rotation had a
-	// class of its own for one release; it was retired with the design that
-	// put the programme on the narration path at all.
+	// ONE CLASS REACHES HERE, because one lane does (D-33): the programme is not
+	// on the narration path.
 	class, role := narrateBreaking, cast.Breaking
 	x.voice.Run(ctx, class, role, x.audible(), func(ctx context.Context, s *speaker) {
 		read = readScript(s, v.Script, readHooks{
@@ -478,7 +456,7 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 				// THE READ'S OWN CUES ARE RECORDED TOO (red team 2026-09-05).
 				// The band record's stated job is "was this card cued, and
 				// released?", and every cue a live station makes comes from
-				// here — so it read as a list of releases with no cues.
+				// here — unrecorded, it would read as a list of releases with no cues.
 				if x.cueFor(ref) {
 					x.band.note("cue(" + ref + ")")
 				}
@@ -496,7 +474,7 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 		// Finished would tell the schedule a read happened that did not. And
 		// rather than NOTHING, because a card that says nothing stays ON AIR for
 		// ever with the band holding a callout for a read that has stopped —
-		// DR-24's original defect, exactly.
+		// the defect DR-24 exists to prevent.
 		//
 		// UNCONDITIONAL, including when the pump is stopping. Deciding here
 		// whether the schedule is still worth telling is the kind of judgement
@@ -579,11 +557,10 @@ func (x *executors) runTune(v lineup.Tune) []lineup.Event {
 // narrator. Named here, in the executor that needs the distinction, rather than
 // as a registry column nobody else asks for.
 //
-// IT NO LONGER DECIDES WHO READS (F-91). It answered "is there a reader for
-// this at all" for one release, and everything it excluded was declined; both
-// lanes perform now, and which one a card is on is the TRACK, carried on the
-// effect. What is left here is the question only the SLOT can answer: does this
-// kind of card put its own callout up as it reads.
+// IT DOES NOT DECIDE WHO READS (F-91). Both lanes perform, and which one a
+// card is on is the TRACK, carried on the effect. What it answers is the
+// question only the SLOT can answer: does this kind of card put its own
+// callout up as it reads.
 func onTheRail(s lineup.Slot) bool { return s == lineup.BreakingAlert }
 
 // cue asks the band to show the callout for the card taking the air (DR-18).
@@ -606,21 +583,19 @@ func (x *executors) runCue(v lineup.CueTicker) []lineup.Event {
 	// takeover would bury the one that means something.
 	// THE BAND IS THE RAIL'S (D-82). It shows HAZARDS — `cueFor` asks the
 	// producer for the alert behind the id — and a main-track card has none, so
-	// this lookup has always found nothing and reported a decline for every
-	// rotation turn. Harmless while the programme could not speak; now that it
-	// can, a report reads UNDER a hazard and the two would be competing for one
-	// callout.
+	// this lookup would find nothing and report a decline for every rotation
+	// turn; and a report reads UNDER a hazard, so the two would be competing for
+	// one callout.
 	if v.Track != lineup.AlertRail {
 		return nil
 	}
 	if onTheRail(v.Slot) {
 		return nil
 	}
-	// THROUGH THE ONE CARRIER (D-1, red team 2026-09-05). This repeated cueFor's
-	// three steps — look the record up, give up quietly on a miss, cue through
-	// the band's one owner — differing only in the report and the record. Two
-	// copies of "put the callout up for an alert id" is two places for it to
-	// drift, and the modularity standard says extract at the second caller.
+	// THROUGH THE ONE CARRIER (D-1, red team 2026-09-05): cueFor's three steps —
+	// look the record up, give up quietly on a miss, cue through the band's one
+	// owner. Two copies of "put the callout up for an alert id" is two places for
+	// it to drift, and the modularity standard says extract at the second caller.
 	if !x.cueFor(v.ID) {
 		x.report(v, "the producer holds no alert for this card; the band keeps what it shows")
 		return nil
@@ -631,17 +606,15 @@ func (x *executors) runCue(v lineup.CueTicker) []lineup.Event {
 
 // release gives the band its rotation back — the cue's other half (DR-24).
 //
-// AND ONLY THE RAIL'S (F-71, closed at D-82). `clearBand`'s own comment named
-// the defect and its trigger: a LocationReport is routinely on the air without a
-// cue, "so every rotation turn issues a release for a cue that never happened",
-// benign only because one card held the air at a time. D-82 put a report and a
-// hazard on the air together, which is that trigger — the report's exit would
-// wipe the callout for a tornado warning still being read.
+// AND ONLY THE RAIL'S (F-71, D-82). A LocationReport is routinely on the air
+// without a cue, and D-82 puts a report and a hazard on the air together — so
+// a release on the report's exit would wipe the callout for a tornado warning
+// still being read.
 //
-// DECIDED HERE, FROM THE EFFECT, which is where `clearBand` said it had to be:
-// making it conditional inside mastercontrol "would put the rule in two places,
-// and the copy here could not see the schedule that decides it." The lane rides
-// on the effect, so the executor can see it without asking anybody.
+// DECIDED HERE, FROM THE EFFECT: making it conditional inside mastercontrol
+// "would put the rule in two places, and the copy here could not see the
+// schedule that decides it." The lane rides on the effect, so the executor can
+// see it without asking anybody.
 func (x *executors) runRelease(v lineup.ReleaseTicker) []lineup.Event {
 	if v.Track != lineup.AlertRail {
 		return nil // it never held the band; giving back what it did not take would take it from the rail
@@ -744,19 +717,20 @@ func (x *executors) cueFor(ref string) bool {
 // alerts need to be read, expired alerts must never be." An expired hazard is
 // not a line that went missing, it is a line that must not be spoken — so it is
 // SKIPPED and its live siblings are read. Declining the whole card instead
-// silenced a live tornado warning because a flood advisory beside it had
+// would silence a live tornado warning because a flood advisory beside it had
 // expired.
 
 // AND IT RE-ASKS WHETHER THE ALERT IS STILL LIVE (red team 2026-09-05, I-8).
 // The record is snapshotted when the burst ARRIVES and the card is composed
-// later, so an alert that expired in between was read aloud as current, with
-// its original "until" time in the sentence. lineup.StaleAfter does not cover
-// this: it bounds BuiltAt — how old the composed WORDS are — and firstStale
-// skips any card whose BuiltAt is zero, which is every card still at Admitted.
-// It bounded the sentence and not the fact. Seconds of exposure in Observer;
-// unbounded behind an emergency overrun, a [space] read, or Broadcaster's
-// OffAir. stale.go's own header is the argument: "a station that says something
-// false with confidence is the failure this whole release is about."
+// later, so an alert that expires in between would be read aloud as current,
+// with its original "until" time in the sentence. lineup.StaleAfter does not
+// cover this: it bounds BuiltAt — how old the composed WORDS are — and
+// firstStale skips any card whose BuiltAt is zero, which is every card still at
+// Admitted. That bounds the sentence and not the fact: seconds of exposure in
+// Observer; unbounded behind an emergency overrun, a [space] read, or
+// Broadcaster's OffAir. stale.go's own header is the argument: "a station that
+// says something false with confidence is the failure this whole release is
+// about."
 //
 // DECLINING IS SELF-HEALING, which is why it is the same all-or-nothing exit:
 // nothing was marked, so the producer offers the burst again next cycle and
@@ -785,11 +759,11 @@ func (x *executors) eventsFor(refs []string) ([]globalfeed.Event, bool) {
 		// many hazards (MVS-D-77), so the per-hazard half has to be decided
 		// where the words are made.
 		//
-		// DECLINING THE WHOLE CARD IS WHAT IT DID, and that failed both ways at
-		// once: a tornado warning went unread because a flood advisory beside it
-		// had lapsed, and the card was re-offered and re-declined every cycle
-		// with `heldNotice` counting it the whole time — held by the Director,
-		// refused here, forever.
+		// DECLINING THE WHOLE CARD WOULD FAIL BOTH WAYS AT ONCE: a tornado
+		// warning would go unread because a flood advisory beside it had lapsed,
+		// and the card would be re-offered and re-declined every cycle with
+		// `heldNotice` counting it the whole time — held by the Director, refused
+		// here, forever.
 		//
 		// THE BOUNDARY IS globalfeed.Active's, said the same way: an alert with
 		// no Until (a quake's instant) never expires, and one expiring exactly

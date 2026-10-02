@@ -12,9 +12,9 @@ import (
 )
 
 func TestLKeyOpensLookupModal(t *testing.T) {
-	// UAT 26.4 (reworded 2026-08-27): [l] Lookup Location floats the search
-	// modal; typing builds the query (global bindings must not fire); esc
-	// cancels. (ctrl+a is now Favorite — see TestFavoriteChipEnabledOnRecentRowsOnly.)
+	// UAT 26.4: [l] Lookup Location floats the search modal; typing builds the
+	// query (global bindings must not fire); esc cancels. (ctrl+a is Favorite —
+	// see TestFavoriteChipEnabledOnRecentRowsOnly.)
 	m := dash(t)
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
 	if v := m.View().Content; !strings.Contains(v, "Lookup Location") || !strings.Contains(v, "Search:") {
@@ -128,7 +128,7 @@ func TestFavoriteMutesAtTheWatchlistCap(t *testing.T) {
 
 // A lookup opens Details on the looked-up location from the FIRST frame —
 // blank until its data lands — never on the row that held the index before
-// (HUM LEAD UAT 2026-08-28: the modal opened on the old top RECENT row).
+// (HUM LEAD UAT 2026-08-28).
 func TestLookupOpensDetailsOnTheLookedUpLocationFromTheFirstFrame(t *testing.T) {
 	m := dash(t)
 	rs := snap()
@@ -165,9 +165,9 @@ func TestLookupOpensDetailsOnTheLookedUpLocationFromTheFirstFrame(t *testing.T) 
 }
 
 // A lookup with an EMPTY RECENT list (the first run) keeps its focus through
-// a priority publish and lands by identity when the rebuilt list arrives
-// (REVIEW R5-C-02: the focus fell to the first favourite and the wait never
-// cleared).
+// a priority publish and lands by identity when the rebuilt list arrives,
+// rather than falling to the first favourite with a wait that never clears
+// (REVIEW R5-C-02).
 func TestLookupWithEmptyRecentSurvivesAPriorityPublish(t *testing.T) {
 	m := dash(t)
 	m, _ = m.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{SchemaVersion: snapshot.SchemaVersion}})
@@ -195,10 +195,10 @@ func TestLookupWithEmptyRecentSurvivesAPriorityPublish(t *testing.T) {
 
 // THE ROW APPEARS WITH THE MODAL, SHIMMERING.
 //
-// A lookup put nothing in the RECENT table until the rebuilt snapshot arrived,
-// so the row simply turned up some seconds later — which reads as the app having
-// missed the keystroke. It stands there from the first frame with the same
-// loading dots a location gets on launch, and fills in where it is.
+// A row that turns up only when the rebuilt snapshot arrives, some seconds
+// later, reads as the app having missed the keystroke. So it stands there from
+// the first frame with the same loading dots a location gets on launch, and
+// fills in where it is.
 func TestALookupDrawsAShimmeringRowBeforeItsDataLands(t *testing.T) {
 	m := dash(t)
 	rs := snap()

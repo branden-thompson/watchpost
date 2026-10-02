@@ -224,11 +224,10 @@ func indexOf(xs []string, x string) int {
 //
 // A TIMER IS NOT WAITED OUT, AND NOTHING ELSE IS ABANDONED. A tea.Tick's
 // command sleeps its interval, and these tests do not look for it past a
-// moment. Every other command runs to its end: the old form gave EVERY command
-// 200 ms and dropped the late ones silently - and under -race the radar's
-// decode takes ~600 ms, so its answer was dropped while its goroutine kept
-// writing the map the test then read. CI's macOS race failed on exactly that
-// (TestTheLoopSaysWhenItIsAhead, 2026-09-29). A command that does not end
+// moment. Every other command runs to its end: a short fixed budget per
+// command would drop the late ones silently - and under -race the radar's
+// decode takes ~600 ms, so its answer would be dropped while its goroutine
+// kept writing the map the test then reads. A command that does not end
 // within cmdLimit fails the test, loudly.
 func msgsOf(t *testing.T, cmd tea.Cmd) []tea.Msg {
 	t.Helper()

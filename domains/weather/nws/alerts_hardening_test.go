@@ -13,12 +13,12 @@ import (
 // TestTwoUnidentifiedAlertsDoNotBecomeOne.
 //
 // A CAP alert should always carry an id. One that does not is still shown - it
-// is never dropped silently (RS-10) - but the stand-in was the headline, and
-// **two warnings of the same kind carry the same headline all the time**:
+// is never dropped silently (RS-10) - but its stand-in cannot be the headline:
+// **two warnings of the same kind carry the same headline all the time**.
 // "Tornado Warning issued" is what the service writes for every one of them.
-// Two hazards then share an identity, and anything keyed by it - the area
-// resolved for drawing, the read-once mark, the dedupe - keeps one and
-// silently discards the other.
+// With the headline as stand-in two hazards share an identity, and anything
+// keyed by it - the area resolved for drawing, the read-once mark, the dedupe -
+// keeps one and silently discards the other.
 func TestTwoUnidentifiedAlertsDoNotBecomeOne(t *testing.T) {
 	body := []byte(`{"features":[
 	  {"properties":{"event":"Tornado Warning","headline":"Tornado Warning issued","areaDesc":"Johnson, KS",
@@ -44,10 +44,11 @@ func TestTwoUnidentifiedAlertsDoNotBecomeOne(t *testing.T) {
 }
 
 // TestOneUnreachableLocationDoesNotLoseTheRest. Alerts are fetched for every
-// watched place in one pass, and a place whose own lookup failed aborted the
-// whole pass - so **one unreachable location left every other location with no
-// alerts**, including places that answered perfectly. A station watching five
-// cities went silent because of the one it could not resolve.
+// watched place in one pass, and a place whose own lookup fails must not abort
+// the whole pass - otherwise **one unreachable location leaves every other
+// location with no alerts**, including places that answer perfectly, and a
+// station watching five cities goes silent because of the one it cannot
+// resolve.
 func TestOneUnreachableLocationDoesNotLoseTheRest(t *testing.T) {
 	good := snapshot.LocationRef{Label: "Good", Lat: 41.08, Lon: -85.14, TZ: "America/New_York"}
 	bad := snapshot.LocationRef{Label: "Bad", Lat: 1.0, Lon: 1.0, TZ: "UTC"}
@@ -92,12 +93,12 @@ func TestOneUnreachableLocationDoesNotLoseTheRest(t *testing.T) {
 func baseOf(r *http.Request) string { return "http://" + r.Host }
 
 // TestAnAlertOverEightyZonesKeepsThemAll. The zone ids are what an alert's
-// ground is resolved from, and they were bounded by the general list cap of
-// fifty - a bound meant for provider prose. A Winter Storm Warning naming
-// eighty zones kept fifty, so thirty pieces of its area went missing with
-// nothing recording it, while the MATCHING ran over the full list. A listener
-// in the sixtieth zone was correctly told the alert affected them and would
-// have been shown an area that excluded them.
+// ground is resolved from, and they are not bounded by the general list cap of
+// fifty - a bound meant for provider prose. Under that cap a Winter Storm
+// Warning naming eighty zones would keep fifty, losing thirty pieces of its
+// area with nothing recording it, while the MATCHING runs over the full list: a
+// listener in the sixtieth zone would be told the alert affects them and shown
+// an area that excludes them.
 func TestAnAlertOverEightyZonesKeepsThemAll(t *testing.T) {
 	var b []byte
 	b = append(b, `{"features":[{"properties":{"id":"urn:oid:1.2.3","event":"Winter Storm Warning","affectedZones":[`...)

@@ -94,8 +94,8 @@ func TestWhereThingsHappenNamesRealSymbols(t *testing.T) {
 		}
 	}
 	// THE WIDENING IS ITSELF PINNED. If the package-scoped form stops being
-	// matched, this test goes quietly back to checking only the file-scoped
-	// refs — which is the state it was in, and nothing said so.
+	// matched, this test quietly checks only the file-scoped refs, and
+	// nothing says so.
 	if pkgRefs == 0 {
 		t.Error("no package-scoped `pkg:Symbol` ref was matched; the regex has narrowed back " +
 			"and part of the flow map is unchecked again")
@@ -149,9 +149,7 @@ var testRef = regexp.MustCompile("`(Test[A-Za-z0-9_]+)`")
 //
 // THE ROW IS THE CLAIM AND THE TEST IS THE EVIDENCE. A row reading CLOSED and
 // citing a test that no longer exists is worse than an open row: it says the
-// property is pinned, so nobody looks, and the pin is gone. F-114 sat that way
-// — CLOSED against `TestAnOverrideLegalOnObserverCanRefuseTheConsole` after the
-// refusal it named had been replaced by scoping.
+// property is pinned, so nobody looks, and the pin is gone.
 //
 // IT CHECKS EXISTENCE, NOT RELEVANCE. Whether the test still asserts what the
 // row claims is a reader's judgement and stays one; a name that resolves to
@@ -214,9 +212,9 @@ func testNames(t *testing.T, root string) map[string]bool {
 	return out
 }
 
-// THE ROSTER NAMES TESTS THAT EXIST (F-142, the third recurrence of one drift).
-// BUILD exit is judged on gates.md, and three times a row kept naming a test
-// that had been renamed or deleted, so the row read as pinned and was not. A
+// THE ROSTER NAMES TESTS THAT EXIST (F-142). BUILD exit is judged on gates.md,
+// and a row naming a test that has been renamed or deleted reads as pinned and
+// is not. A
 // gone test may be named in exactly two places: struck through (`~~Test…~~`),
 // or in the "Roster reconciliation" section, which is the ledger of what
 // replaced what. Everywhere else, a name must resolve to a `func Test…(`.

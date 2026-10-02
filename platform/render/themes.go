@@ -67,13 +67,12 @@ func builtinOverrides() map[string]map[Token]string {
 			SpectrumLow: "245", SpectrumMid: "250", SpectrumHigh: "255", FireMark: "255", SeismicMark: "252", // greyscale on a monochrome theme — the glyph, not colour, distinguishes it (0.11.0)
 			// The lane ramp, EVENLY SPACED IN L* across the six lanes (HUM LEAD, UAT
 			// 2026-08-30). Shade is the only thing telling lanes apart on this
-			// theme, and the ramp was cut for four: adding two put Watches and
-			// Advisories four bytes apart, which is 1.06:1 — the same band twice.
+			// theme, so the ramp is cut for all six: lanes four bytes apart are
+			// 1.06:1 — the same band twice.
 			//
 			// Spaced in CIE L*, not in bytes, because even byte steps are not even
-			// STEPS to the eye. Six lanes over the range the four already used
-			// (95..30) is 5.8 L* apart each: 95 81 68 55 42 30, in rotation order,
-			// brightest first. Three of the four original values land unchanged.
+			// STEPS to the eye. Six lanes over 95..30 is 5.8 L* apart each:
+			// 95 81 68 55 42 30, in rotation order, brightest first.
 			TickerEmergencyBG: "48;2;110;110;110", TickerDisasterBG: "48;2;95;95;95", TickerMarineBG: "48;2;81;81;81", TickerWarningBG: "48;2;68;68;68", TickerWatchBG: "48;2;55;55;55",
 			TickerAdvisoryBG: "48;2;42;42;42", TickerStatementBG: "48;2;30;30;30", EventCatEmergencyBG: "48;2;70;70;70",
 			MapRadarMRMSBG: "48;2;90;90;90", MapRadarIEMBG: "48;2;50;50;50", MapRadarModelBG: "48;2;70;70;70", // D-83's chips without colour: greys, the name says which
@@ -101,18 +100,17 @@ func builtinOverrides() map[string]map[Token]string {
 			AlertLabel:  "250", AlertDanger: "255",
 			AlertModalWarnFG: "38;2;235;235;235", AlertModalAdvFG: "38;2;200;200;200",
 			AlertModalWarnBG: "48;2;40;40;40", AlertModalAdvBG: "48;2;30;30;30",
-			// The modal TILE and the destructive-confirm tile, which every other
-			// theme paints and this one was inheriting: the default's blue slate
-			// and its dark red showed through on a greyscale theme, in every
-			// window.
+			// The modal TILE and the destructive-confirm tile, which every theme
+			// paints: inherited, the default's blue slate and its dark red would
+			// show through on a greyscale theme, in every window.
 			//
 			// #272727 is the blue slate's own LUMINANCE as a grey, so a modal sits
 			// at the same visual depth here as everywhere else — raised off the
-			// #131313 window by the same amount the colour was raising it.
+			// #131313 window by the same amount the colour raises it.
 			//
 			// The confirm tile goes LIGHTER rather than matching, because its job
-			// is to say "this one is different" and it was saying it in red. Shade
-			// is the only voice this theme has for that.
+			// is to say "this one is different", which other themes say in red.
+			// Shade is the only voice this theme has for that.
 			ModalBGDark: "48;2;39;39;39", ModalBGLight: "48;2;39;39;39", ConfirmBG: "48;2;58;58;58",
 			GradStart: "#FFFFFF", GradMid: "#C0C0C0", GradEnd: "#808080",
 			// No blue to be had: BOLD WHITE says "edition" the only way this
@@ -128,7 +126,7 @@ func builtinOverrides() map[string]map[Token]string {
 			// yellow and leaves the label unbolded, because the colour is doing the
 			// work; here there is no colour, so BOLD does it — the same
 			// distinction said the only way this theme can say it. Without these
-			// the Settings window kept its yellow pointer on a greyscale theme.
+			// the Settings window would keep its yellow pointer on a greyscale theme.
 			ListPointer: "1;255", ListFocus: "1;255",
 			TableMuted: "250", TableName: "255", ModalTitle: "1;255", // Q4a-004: a monochrome theme
 		},
@@ -337,7 +335,7 @@ func lightOverrides() map[Token]string {
 		// The [w] tints mirror the lanes here too — same hue, stepped TOWARD white
 		// rather than away from it, because this theme's bands are pale and its
 		// text is dark. The step is 45 % of the way, further on the two lanes
-		// whose ruled colour is saturated enough that 45 % left the row text
+		// whose ruled colour is saturated enough that 45 % leaves the row text
 		// under AA.
 		EventCatDisasterBG: "48;2;252;225;225", EventCatWarningBG: "48;2;236;225;218", EventCatWatchBG: "48;2;252;247;214",
 		EventCatAdvisoryBG: "48;2;252;236;214", EventCatStmtBG: "48;2;215;232;219", EventCatForecastBG: "48;2;228;230;233", EventCatEmergencyBG: "48;2;246;218;238", EventCatMarineBG: "48;2;225;236;252",

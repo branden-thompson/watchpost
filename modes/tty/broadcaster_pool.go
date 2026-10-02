@@ -23,19 +23,18 @@ import (
 
 // poolRows is the published pool, as table rows.
 //
-// THE WEATHER IS WHATEVER THE SNAPSHOT HAS, and for now that is nothing: the pool
-// is not fetched yet (its cadence is ruled at StaleAfter and the wiring follows).
-// A row with no observation draws its temperatures as LOADING rather than as
-// "n/a", which is the same answer Observer gives while its own data is in flight
-// (UAT 18.2) — and the honest one, because the data is coming.
+// THE WEATHER IS WHATEVER THE SNAPSHOT HAS. A row with no observation draws its
+// temperatures as LOADING rather than as "n/a", which is the same answer
+// Observer gives while its own data is in flight (UAT 18.2) — and the honest
+// one, because the data is coming.
 func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 	pool := b.area.Pool
 	out := make([]render.LocationRow, 0, len(pool))
 	for i, ref := range pool { // bounded by locations.PoolCap (P10-02)
-		// THE ONE CONVERTER (D-112). `fillPoolWeather` was a second, hand-written
-		// one, and it copied six of sixteen fields — HI, LOW, all of TOMORROW, the
-		// trend arrow and the fire and seismic marks simply never reached the
-		// table. `weatherRow` is what Observer's own rows go through.
+		// THE ONE CONVERTER (D-112). `weatherRow` is what Observer's own rows go
+		// through, so every field — HI, LOW, all of TOMORROW, the trend arrow and the
+		// fire and seismic marks — reaches this table too; a second, hand-written
+		// converter would carry only the fields someone remembered.
 		row := render.LocationRow{Name: ref.Label, Zip: ref.Zip, Loading: true}
 		if loc := idx.at(ref); loc != nil {
 			row = weatherRow(loc, b.fireBold(), 0)
@@ -60,18 +59,16 @@ func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 
 // locIndex is the published weather BY KEY, built once per frame (D-120).
 //
-// IT WAS A LINEAR SCAN, ASKED ONCE PER ROW. `snapshotFor` walked the whole
-// snapshot for every pool row and — since D-116 — for every line-up row too:
-// forty lookups over the snapshot, on every frame, including ticks that changed
-// nothing.
+// A MAP, NOT A LINEAR SCAN PER ROW. Every pool row and — per D-116 — every
+// line-up row looks its weather up: forty lookups over the snapshot, on every
+// frame, including ticks that change nothing.
 //
-// AND THE SAVING IS SMALLER THAN IT LOOKS, which is worth writing down next to
-// the change rather than leaving for the next person to re-derive. At the pool's
-// cap of twenty-five the scan is a few hundred short string compares against
-// half a millisecond of rendering; the map costs an allocation and twenty-five
-// hashes to build. MEASURED, both ways, on the loaded fixture below — see the
-// budget's own note. It is kept because it is O(1) per row where the scan is
-// O(n), and the pool's cap is the only thing keeping n small.
+// AND THE SAVING IS SMALLER THAN IT LOOKS. At the pool's cap of twenty-five the
+// scan is a few hundred short string compares against half a millisecond of
+// rendering; the map costs an allocation and twenty-five hashes to build.
+// MEASURED, both ways, on the loaded fixture — see the budget's own note. It is
+// kept because it is O(1) per row where the scan is O(n), and the pool's cap is
+// the only thing keeping n small.
 //
 // BY KEY, NOT BY NAME: `snapshot.Key` is the identity the whole app matches on,
 // and two centroids of one place are two locations.
@@ -106,23 +103,17 @@ func (x locIndex) at(ref snapshot.LocationRef) *snapshot.Location {
 	return x[snapshot.Key(ref)]
 }
 
-// `fillPoolWeather` RETIRED AT D-112. It was the second converter from a
-// snapshot to a table row, and it had drifted from the first the day it was
-// written: `weatherRow` is now the only one, and both surfaces go through it.
-
 // fireBold is the console's threshold for a hotspot that reads emphasized.
 //
-// IT WAS A CONSTANT (`bcFireBoldMW = 50`) — Observer's default, stated here
-// because the console had no Config to read the operator's override from. That
-// made it a SECOND CARRIER of one fact, and it disagreed: an operator who set
-// `bold_frp_mw` in [fire] saw it honoured on the watchlist and ignored here, so
-// one location could read bold on one surface and plain on the other.
+// ONE CARRIER OF THE OPERATOR'S `bold_frp_mw` ([fire]). A constant here would be
+// a SECOND CARRIER of one fact, honoured on the watchlist and ignored on the
+// console, so one location could read bold on one surface and plain on the other.
 //
 // RESOLVED BY THE DASHBOARD AND COPIED IN (NewRouter), the way `ascii` and
 // `version` are. `cfg` is written once at construction and never reassigned, so
 // there is nothing later to follow. The zero fallback is for a console built
-// without a Router — the older tests — and it reads THE SAME CONSTANT Observer
-// falls back to, so the two cannot drift apart again.
+// without a Router — tests that build none — and it reads THE SAME CONSTANT
+// Observer falls back to, so the two cannot drift apart.
 func (b Broadcaster) fireBold() float64 {
 	if b.fireBoldMW > 0 {
 		return b.fireBoldMW
@@ -133,10 +124,10 @@ func (b Broadcaster) fireBold() float64 {
 // poolRoom is how many rows the pool takes off the frame before the running
 // order is windowed.
 //
-// THE POOL IS NOT WHAT IS LEFT OVER (D-104). Left over, the arithmetic shows:
-// the running order takes every row it can and the pool draws twelve of
-// twenty-five locations with nothing on the frame to say so — which is how the
-// HUM LEAD read it ("I can only see 12 locations of the 24 location pool").
+// THE POOL IS NOT WHAT IS LEFT OVER (D-104). Left over, the running order takes
+// every row it can and the pool draws twelve of twenty-five locations with
+// nothing on the frame to say so ("I can only see 12 locations of the 24
+// location pool" — HUM LEAD).
 //
 // TEN ROWS OF LOCATIONS, plus the band, the column header, the air above and the
 // footer. It is a FLOOR, not a share: on a short terminal the running order gives
@@ -172,15 +163,15 @@ const (
 func (b Broadcaster) poolSpan(used int, idx locIndex) scrollSpan {
 	w := b.tableWidth()
 	// THE CLOSING INSET ONLY (D-107). `used` is the rows already drawn, and those
-	// INCLUDE the opening inset — subtracting both left the pool two rows short of
-	// the frame and the operator two locations short of what fitted.
+	// INCLUDE the opening inset — subtracting both leaves the pool two rows short of
+	// the frame and the operator two locations short of what fits.
 	room := b.height - used - bcInsetRows
 	if w <= 0 || room < 6 {
 		return scrollSpan{} // no room to say anything useful (FR-7.3)
 	}
 	rows := b.poolRows(idx)
 	// NO CAPTION OF ITS OWN: the table's GROUP BAND already reads "L O C A T I O N
-	// P O O L", and a centred heading above it said the same thing twice. The
+	// P O O L", and a centred heading above it would say the same thing twice. The
 	// scheduled table needs one because its groups name the three QUESTIONS a row
 	// answers rather than the list itself.
 	table := strings.Split(b.opts().PoolTable(rows, w), "\n")
@@ -214,7 +205,7 @@ func (b Broadcaster) poolSpan(used int, idx locIndex) scrollSpan {
 func (b Broadcaster) poolFooter(lo, hi, total, w int) string {
 	// HOW MANY PLACES ARE IN REACH, AND AT WHAT RADIUS (REVIEW 2026-09-17,
 	// ruling 8): a three-mile station has a pool of ONE, and a console that only
-	// listed it read like a fifty-mile station that was slow. An empty pool says
+	// lists it reads like a fifty-mile station that is slow. An empty pool says
 	// so rather than going quiet (F-83).
 	reach := ""
 	if b.area.RadiusMi > 0 {

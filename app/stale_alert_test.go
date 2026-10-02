@@ -15,9 +15,9 @@ import (
 // I-8 — AN ALERT THAT EXPIRED BETWEEN ARRIVING AND AIRING IS NOT READ AS LIVE.
 //
 // The producer's record is snapshotted at arrival; the card is composed later.
-// Nothing re-asked whether the alert was still active, so a warning that lapsed
-// in between was spoken as current — with its own "until" time in the sentence,
-// which is a station saying something false with confidence.
+// Unless the compose asks again whether the alert is still active, a warning
+// that lapses in between is spoken as current — with its own "until" time in
+// the sentence, which is a station saying something false with confidence.
 func TestAnAlertThatExpiredBeforeItAiredIsNotSpoken(t *testing.T) {
 	nar := testDirector(&scriptVoice{}, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }

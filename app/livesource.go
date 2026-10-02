@@ -9,26 +9,20 @@ package app
 // domain — the domain does not learn that this package exists, let alone that it
 // has tests.
 //
-// WHY IT EXISTS AT ALL. The field was `*synth.Source`, a concrete pointer, so no
-// test in this package could observe whether the air guard actually stopped a
-// `Loop` or a `Recast` — only that the PREDICATE said it should. That is exactly
-// how D-74's plant `y4` survived: "my tests asserted `monitorHasTheAir()` — the
-// PREDICATE — and never that `needsRead` actually skips the audio." P-1 states
-// the rule: a seam a test cannot drive is not a covered seam.
+// WHY IT EXISTS AT ALL. With a concrete `*synth.Source` field, no test in this
+// package could observe whether the air guard actually stops a `Loop` or a
+// `Recast` — only that the PREDICATE says it should, which is the gap D-74's
+// plant `y4` names: a test asserting `monitorHasTheAir()` — the PREDICATE —
+// never shows that `needsRead` actually skips the audio. P-1 states the rule: a
+// seam a test cannot drive is not a covered seam.
 //
-// THE FIRST DRAFT REACHED INTO THE DOMAIN INSTEAD, adding `RepeatingForTest` to
-// `synth.Source` and citing `lineup.MonitorAdvancesForTest` as precedent. The
-// HUM LEAD caught it. THERE IS NO `ForTest` EXPORT IN `domains/`, and the rule is
-// that a domain owns its own business and shared things live in `platform`. The
-// precedent did not say what I claimed it said.
+// IT IS NOT A `ForTest` EXPORT ON `synth.Source`. THERE IS NO `ForTest` EXPORT
+// IN `domains/`, and the rule is that a domain owns its own business and shared
+// things live in `platform`.
 //
-// AND THERE IS NO COUNT HERE ANY MORE, DELIBERATELY. This said "all four … are
-// in `platform/`"; that went stale when D-115 added two in `modes/tty`. The
-// correction said "five, two outside `platform/`" — and D-124 moved those two
-// out again the same day, making the CORRECTION stale within the hour.
-//
-// A HAND-KEPT CENSUS IN A COMMENT IS A FACT WITH TWO CARRIERS: the code and the
-// sentence about the code. It has now been wrong twice, in both directions. The
+// AND THERE IS NO COUNT OF THE `ForTest` EXPORTS HERE, DELIBERATELY. A HAND-KEPT
+// CENSUS IN A COMMENT IS A FACT WITH TWO CARRIERS: the code and the sentence
+// about the code, and the second goes stale the moment the first moves. The
 // RULE is what this comment is for, and the rule does not need a number.
 //
 // THE SHAPE IS ALREADY IN THIS PACKAGE. `synthSource()` returns

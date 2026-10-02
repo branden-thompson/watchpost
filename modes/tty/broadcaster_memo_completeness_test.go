@@ -20,15 +20,15 @@ import (
 //
 // DERIVED, NOT LISTED. The fields come from the struct by reflection, so a field
 // added to the console next release is perturbed without anyone remembering to
-// add it here. Every hand-kept version of this guard in this codebase has been
-// found incomplete — a table with 15 rows for 22 fields, a list of "windows with
-// a cursor" that could not describe a window whose moving state was not one.
+// add it here. A hand-kept version of this guard drifts incomplete — a table
+// with 15 rows for 22 fields, a list of "windows with a cursor" that cannot
+// describe a window whose moving state is not one.
 func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 	// WITH COLOUR ON, AND THAT IS NOT A DETAIL. Perturbing `selected` moves the
-	// FOCUS TINT and nothing else — so with colour off the tables came back
-	// byte-identical, the guard reported "this field does not reach the tables",
-	// and it would have gone on reporting that while a stale highlight replayed
-	// on the operator's screen. A guard run in a mode the app does not ship in
+	// FOCUS TINT and nothing else — so with colour off the tables come back
+	// byte-identical, the guard reports "this field does not reach the tables",
+	// and it goes on reporting that while a stale highlight replays on the
+	// operator's screen. A guard run in a mode the app does not ship in
 	// measures a frame the app does not draw.
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
@@ -38,8 +38,8 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 	const used = 20
 
 	// WITH A FIRE BURNING, because the threshold is an input and a fixture with
-	// no hotspots cannot tell 50 from 200. Dropping `fireBoldMW` from the key
-	// passed this guard until this line existed: the field reached nothing,
+	// no hotspots cannot tell 50 from 200. Without a fire in the fixture, dropping
+	// `fireBoldMW` from the key passes this guard: the field reaches nothing,
 	// truthfully, in a world with nothing to reach. Set here rather than in
 	// `loadedConsole` so the benchmark and the alloc budget keep measuring the
 	// fixture they were pinned against.
@@ -53,9 +53,9 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 
 	// AND WITH ONE LOCATION STILL WAITING ON ITS WEATHER, so the shimmer
 	// animates and the FRAME is a live input. Without a loading row `anyLoading`
-	// is false, the key's whole shimmer arm is dead, and deleting it passed this
-	// guard — the one field of twelve that a perturbation of the MODEL could not
-	// reach on its own, because the state that makes it matter is in the data.
+	// is false, the key's whole shimmer arm is dead, and deleting it passes this
+	// guard — the one field that a perturbation of the MODEL cannot reach on its
+	// own, because the state that makes it matter is in the data.
 	base.pool.Locations[1].WeatherAsOf = time.Time{}
 	base.pool.Locations[1].Harmonized.Source.Provider = ""
 	base.pool.Locations[1].Daily = nil
@@ -101,8 +101,8 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 	// PARAMETER, not a field, so no perturbation of the model varies it. It sets
 	// the pool's room and the running order's window, so a frame that grew a row
 	// above the tables draws different ones — and the key that forgot it would
-	// replay the old height for ever. Dropping it from the key passed this guard
-	// until this was added, which is why it is here rather than assumed.
+	// replay the old height for ever. Without this, dropping it from the key
+	// passes this guard, which is why it is here rather than assumed.
 	for _, u := range []int{used - 4, used + 4} {
 		a, b := base.buildSpans(used)
 		c, d := base.buildSpans(u)
@@ -117,8 +117,9 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 	// AND THE TWO INPUTS THE WALK CANNOT PERTURB EITHER. A `lineup.Lineup` holds
 	// an array of slices and a `StationAreaMsg` holds one, so neither is a kind
 	// the walk changes — which means their GENERATIONS are never exercised by it,
-	// and dropping `lineupGen` from the key passed the whole guard. They are the
-	// two most important inputs there are: the running order and the pool.
+	// and without this, dropping `lineupGen` from the key passes the whole guard.
+	// They are the two most important inputs there are: the running order and the
+	// pool.
 	for _, tc := range []struct {
 		name string
 		with func(Broadcaster) Broadcaster
@@ -134,7 +135,7 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 		{"the weather behind the pool is republished", func(b Broadcaster) Broadcaster {
 			// A WHOLE NEW SNAPSHOT, which is how a publish arrives — the pointer
 			// moving IS the data changing. The walk never perturbs a pointer, so
-			// without this case the tables' own weather was outside the guard.
+			// without this case the tables' own weather is outside the guard.
 			next := *b.pool
 			next.Locations = append([]snapshot.Location(nil), b.pool.Locations...)
 			hotter := 44.4

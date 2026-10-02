@@ -8,15 +8,14 @@ import (
 
 // THE INJECTOR IS IN EVERY BUILD (0.18.0 D-152, overturning F-21b).
 //
-// It was build-tagged out of release binaries because a screenshot of a
-// fabricated tornado warning was indistinguishable from a real one. Since then
-// every surface a test event reaches says it is a test, it lives two minutes,
-// and ctrl+d asks ARE YOU SURE first. A station operator tests their alerts as
+// Every surface a test event reaches says it is a test, it lives two minutes,
+// and ctrl+d asks ARE YOU SURE first, so a screenshot of a fabricated tornado
+// warning cannot pass for a real one. A station operator tests their alerts as
 // a radio station does (HUM LEAD, #9), so the capability ships, and the rule is
 // that it can fabricate nothing UNMARKED (TestEveryFabricatedEventIsMarkedAsOne,
 // TestATestEventIsMarkedOnEverySurface).
 //
-// This is the guard against the tag coming back: it runs in the plain build, so
+// This guards against a build tag taking it out: it runs in the plain build, so
 // a release path that loses the injector fails here, not in a listener's hands.
 func TestTheInjectorIsInEveryBuild(t *testing.T) {
 	if (&livePipelines{}).injectHook() == nil {

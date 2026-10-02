@@ -34,7 +34,7 @@ func card(t *testing.T, id, subject string) lineup.Card {
 	if err != nil {
 		t.Fatalf("proposing %s: %v", id, err)
 	}
-	// The lineup holds ADMITTED cards only — its own invariant, and it refused
+	// The lineup holds ADMITTED cards only — its own invariant, and it refuses
 	// a proposed one. The fixture follows the real lifecycle rather than
 	// side-stepping it.
 	c, err = c.To(lineup.Admitted)
@@ -67,11 +67,11 @@ func TestTheConsoleNumbersTheMainTrackSlots(t *testing.T) {
 
 	// THE READ CARDS KEEP THEIR CHIP, AND THE TABLE KEEPS ITS NUMBER (D-94).
 	//
-	// Slots 0 and 1 are the two the operator READS from and they are still cards,
-	// so `[1]` is still a chip on one. Everything below is a table row now, and
-	// the reference addresses those by the `##.` column exactly as Observer's
-	// table does — the number IS the handle, so a chip beside it would be the
-	// address written twice.
+	// Slots 0 and 1 are the two the operator READS from and they are cards, so
+	// `[1]` is a chip on one. Everything below is a table row, and the reference
+	// addresses those by the `##.` column exactly as Observer's table does — the
+	// number IS the handle, so a chip beside it would be the address written
+	// twice.
 	if !strings.Contains(got, chipFor("1")) {
 		t.Error("the UP NEXT card lost its handle (FR-2.4)")
 	}
@@ -92,7 +92,7 @@ func TestTheConsoleShowsAtMostFifteenMainTrackSlots(t *testing.T) {
 	}
 	got := stripANSITest(bcWith(t, cs...).View().Content)
 
-	// POSITIONS 2..15, RULED 2026-09-13 (was 2..14, and ten before that). LIVE is
+	// POSITIONS 2..15, RULED 2026-09-13. LIVE is
 	// 0, UP NEXT is 1, and the table runs to POSITION fifteen — which is what
 	// `mock-broadcaster-v3.txt` draws and what the HUM LEAD confirmed: "I did mean
 	// 15 all slots in the scheduled line should be changeable." So a `16.` row is
@@ -121,7 +121,7 @@ func TestAHostileHeadlineIsClampedInTheNewLanes(t *testing.T) {
 }
 
 // notice is the Director's own structural card — the staleness replacement read,
-// which director.go has queued straight onto the main track since 0.14.0.
+// which director.go queues straight onto the main track.
 func notice(t *testing.T, id string) lineup.Card {
 	t.Helper()
 	c, err := lineup.Propose(lineup.Card{ID: id, Slot: lineup.Transition, Origin: lineup.FromDirector,

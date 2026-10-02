@@ -1,7 +1,7 @@
 package hms
 
 // Quality pass Q3 (PF-7, CQ-11, CQ-12): the streaming hand-decoded parser
-// must read exactly what the struct-decoding one read — the reference
+// must read exactly what the struct-decoding one reads — the reference
 // implementation lives here, in the test — and every refusal path must
 // still refuse; the satellite/method strings are shared; and Parse never
 // writes into the body it was handed (httpx.GetText's read-only contract).
@@ -21,8 +21,8 @@ import (
 	"time"
 )
 
-// legacyParseKML is the pre-Q3 parser (DecodeElement per placemark, a map
-// per description), kept verbatim as the equivalence reference.
+// legacyParseKML is the struct-decoding parser (DecodeElement per placemark,
+// a map per description), the equivalence reference.
 func legacyParseKML(b []byte) ([]Point, error) {
 	type placemark struct {
 		Description string `xml:"description"`

@@ -218,10 +218,10 @@ func (a *Assembler) SetLocations(refs []LocationRef) (added, removed []LocationR
 			delete(a.fire, k)
 			delete(a.seismic, k)
 			// AND THE ATTEMPT RECORD. Without this a location removed and
-			// re-added in the same session inherited the stamp of its previous
-			// life and read "n/a" — asserting "we asked and there is nothing
-			// here" before a single fetch had been issued for it (REVIEW red
-			// team, 2026-09-08). It also stopped the map growing for ever
+			// re-added in the same session would inherit the stamp of its
+			// previous life and read "n/a" — asserting "we asked and there is
+			// nothing here" before a single fetch had been issued for it (REVIEW
+			// red team, 2026-09-08). It also keeps the map from growing for ever
 			// across removals.
 			delete(a.asked, k)
 		}
@@ -292,11 +292,10 @@ func (a *Assembler) mergeLocationLocked(k LocationKey, pd PartialData, provider 
 // locations it could not serve keep their prior data (§10.1; obs_stale
 // never degrades status — see Warn).
 // asked is which locations the fetch COVERED. It is a PARAMETER, not a field on
-// Fragment, because a field can be forgotten and a parameter cannot: the first
-// version carried it on the Fragment, three of the four call sites set it, and
-// the one that did not — platform/sched, the ONLY path the dashboard refreshes
-// through — silently recorded no attempt for any location, ever. The fix ran in
-// `watchpost report` and nowhere a listener could see it (red team, 2026-09-08).
+// Fragment, because a field can be forgotten and a parameter cannot: a call
+// site that left a field unset — platform/sched, say, the ONLY path the
+// dashboard refreshes through — would silently record no attempt for any
+// location, ever (red team, 2026-09-08).
 //
 // PerLocation cannot answer this: a provider that returned nothing for a
 // location looks exactly like one nobody asked about, and telling those apart is
@@ -320,25 +319,23 @@ func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 	}
 	// THE ATTEMPT IS RECORDED, NOT THE RESULT (#13) — but only when the fetch
 	// can actually answer the question the row is asking, and only when the
-	// provider was REACHABLE. Both qualifications were missing and both were
-	// wrong in a way a listener would see (red team, 2026-09-08).
+	// provider was REACHABLE. Without either qualification a listener sees the
+	// wrong thing (red team, 2026-09-08).
 	//
 	// WHY THE KIND MATTERS. A row reads as loading until it has conditions AND a
 	// daily forecast, so only those two fetches answer it. The alerts tier is a
 	// single GET and starts at the same instant as obs (three chained GETs), so
-	// it lands first — and stamping on it ended the shimmer across the whole
-	// board a second into every cold start, flashing "n/a" for temperatures that
-	// were on their way. app/pipelines.go already refuses to stamp on the
-	// supplementary hourly fetch for exactly this reason; the same hazard was
-	// left standing on the path that matters.
+	// it lands first — and stamping on it would end the shimmer across the whole
+	// board a second into every cold start, flashing "n/a" for temperatures on
+	// their way. app/pipelines.go refuses to stamp on the supplementary hourly
+	// fetch for exactly this reason.
 	//
 	// answersTheRow HERE IS A STORAGE FILTER, NOT THE GUARD, and saying so is the
 	// point: weatherAsOf requires BOTH answering kinds, so an alerts fragment
 	// could be recorded and still end nothing. Removing this line changes no
-	// behaviour — a plant proved it — it only stops the map growing an entry per
-	// kind that nobody reads. The protection lives in weatherAsOf; a comment
-	// claiming it lives here would be the same false attribution this round has
-	// been removing.
+	// behaviour; it only stops the map growing an entry per kind that nobody
+	// reads. The protection lives in weatherAsOf, and a comment claiming it
+	// lives here would be a false attribution.
 	//
 	// WHY REACHABILITY MATTERS, PER LOCATION. Stamping every asked location
 	// whenever the fragment served ANYBODY reasons that a served location proves
@@ -346,15 +343,14 @@ func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 	// PARTIAL ONE: with A served and B refused, B is stamped and its row reads
 	// "n/a" — asserting an absence for a location the request never reached.
 	//
-	// Fragment.Failed now says which locations failed and why, so the question is
+	// Fragment.Failed says which locations failed and why, so the question is
 	// asked per location rather than per fragment. A 404 for a point outside the
 	// forecast area IS an answer — "we do not cover you" — and the row should say
 	// n/a. A refused connection is not, and the row should keep waiting.
 	//
-	// This also closes issue #13's last hole: a single-location watchlist whose
-	// only location the feed genuinely does not cover now gets a truthful n/a
-	// instead of shimmering for ever, which the previous rule could not tell from
-	// an outage.
+	// So a single-location watchlist whose only location the feed genuinely
+	// does not cover gets a truthful n/a instead of shimmering for ever, told
+	// apart from an outage (#13).
 	if st.Role == "reference" && answersTheRow(f.Kind) {
 		at := f.FetchedAt
 		if at.IsZero() {

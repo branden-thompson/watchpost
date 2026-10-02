@@ -188,11 +188,10 @@ func TestHelpLaysOutOneOrTwoColumns(t *testing.T) {
 		}
 		text := stripANSITest(strings.Join(lines, "\n"))
 		// TWO COLUMNS IS "SOME LINE CARRIES TWO GROUP HEADERS", not "NAVIGATE
-		// sits beside WATCHLIST". That named pairing was a proxy for the
-		// layout, and it broke the day a group was ADDED (D-135's SURFACES)
-		// and the balance point moved — reporting one column on a window that
-		// was plainly drawing two. The proxy was measuring the split, not the
-		// thing the test is named for.
+		// sits beside WATCHLIST". A named pairing is a proxy for the layout:
+		// adding a group (D-135's SURFACES) moves the balance point, and the
+		// proxy then reports one column on a window plainly drawing two. It
+		// measures the split, not the thing the test is named for.
 		var names []string
 		for _, g := range helpGroups(d.surface) {
 			names = append(names, g.name)

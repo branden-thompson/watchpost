@@ -82,17 +82,17 @@ type Failed struct {
 	// had gone. The card did not happen; nothing is wrong with the station.
 	//
 	// WITHOUT IT THE GRADE COLLAPSES (red team 2026-09-05, I-2). stopped() asks
-	// only whether the schedule is empty, and in 0.14.0 it always is once a rail
-	// card leaves: MVS-D-77 puts one card per burst on the rail and nothing
-	// queues MainTrack. So every deliberate decline reached escalation() with an
-	// empty schedule and raised the RELAY FAULT window — a modal telling the
-	// listener the relay is dead because they had muted the tones, or pressed
-	// esc. fault.go's own header names that hazard: "raising a modal for one
+	// only whether the schedule is empty, and it is whenever a rail card leaves
+	// with nothing else queued: MVS-D-77 puts one card per burst on the rail. So
+	// every deliberate decline would reach escalation() with an empty schedule
+	// and raise the RELAY FAULT window — a modal telling the listener the relay
+	// is dead because they had muted the tones, or pressed esc. fault.go's own
+	// header names that hazard: "raising a modal for one
 	// would train a listener to dismiss the window that matters — a noise
 	// regression, which on a safety surface is a safety regression."
 	//
 	// THE DEFAULT IS FALSE, so a fault nobody classified is still surfaced. A
-	// contained executor panic is the case that leaves it false today.
+	// contained executor panic is a case that leaves it false.
 	Routed bool
 }
 
@@ -196,10 +196,10 @@ type CueTicker struct {
 	//
 	// THE BAND IS THE RAIL'S OUTPUT. It shows HAZARDS — `cueFor` asks the
 	// producer for the alert behind the part being spoken — and a main-track
-	// card has none, so its cue has always been a lookup that finds nothing.
-	// Harmless while one lane could speak; now that both can, a cue and a
-	// release belonging to a REPORT would claim an output the hazard beside it
-	// is using, and the report's exit would clear the hazard's callout (F-71).
+	// card has none, so its cue is a lookup that finds nothing. With both lanes
+	// able to speak, a cue and a release belonging to a REPORT would claim an
+	// output the hazard beside it is using, and the report's exit would clear
+	// the hazard's callout (F-71).
 	Track Track
 }
 
@@ -215,18 +215,16 @@ type ReleaseTicker struct {
 
 // Duck and Restore give way over the live bed and take it back. NOT EMITTED BY
 // ANYTHING IN PRODUCTION — see app/executors.go's Duck case for why that is
-// currently harmless and why they are kept (I-5). Originally:
-// the bed is a selectable resource rather than a queue, and the Director gains
-// it with the main-track absorb (T3.2).
+// currently harmless and why they are kept (I-5). The bed is a selectable
+// resource rather than a queue, which the Director holds through the
+// main-track absorb (T3.2).
 type Duck struct{ isEffect }
 
 // Restore is Duck's other half; see Duck.
 type Restore struct{ isEffect }
 
-// Tune cuts the bed over to a relay. EMITTED, at bed.go's dwell and rejoin —
-// the "not emitted yet" this carried was written before T1.6 and stayed through
-// the release (R-3). Originally: it arrives with the
-// running state (T1.6) and the absorb (T3.2).
+// Tune cuts the bed over to a relay. EMITTED at bed.go's dwell and rejoin,
+// with the running state (T1.6) and the absorb (T3.2).
 type Tune struct {
 	isEffect
 	Ref string
@@ -254,7 +252,7 @@ type Publish struct {
 	//
 	// IT TRAVELS WITH THE LINEUP AND THE POWER for the reason they travel with
 	// each other: a console told these separately can hold a torn set — a new
-	// line-up beside a stale bed — and D-62 consolidated all three into ONE
+	// line-up beside a stale bed — and D-62 puts all three in ONE
 	// region precisely so the operator reads the air state in one glance. Three
 	// facts drawn together and published apart would undo that at the seam.
 	Bed BedState
@@ -370,17 +368,16 @@ func Holds(e Effect) []Resource {
 	if id, ofCard := CardOf(e); ofCard {
 		out = append(out, Resource("card:"+id))
 	}
-	// THE BAND AND THE BED ARE THE RAIL'S OUTPUTS (D-82), and until the main
-	// track could speak that qualifier cost nothing: only the rail ever reached
-	// here with a card. It is load-bearing now.
+	// THE BAND AND THE BED ARE THE RAIL'S OUTPUTS (D-82), and with the main
+	// track able to speak that qualifier is load-bearing.
 	//
-	// A PROGRAMME READ CLAIMING THE BED PUT THE HAZARD BEHIND IT. Every effect
-	// naming a shared output rides the pump's ONE lane, in order — exactly right
-	// for the rail, whose cards are read one after another and whose duck must
-	// not be overtaken. A report's read BLOCKS for as long as the words take, so
-	// a Speak that claimed the bed held the lane for minutes, and the hazard the
-	// Director had just let onto the air could not be asked for until the
-	// weather finished. MEASURED: TestAHazardsWordsDoNotQueueBehindAReport…
+	// A PROGRAMME READ CLAIMING THE BED WOULD PUT THE HAZARD BEHIND IT. Every
+	// effect naming a shared output rides the pump's ONE lane, in order — exactly
+	// right for the rail, whose cards are read one after another and whose duck
+	// must not be overtaken. A report's read BLOCKS for as long as the words take,
+	// so a Speak that claimed the bed would hold the lane for minutes, and the
+	// hazard the Director had just let onto the air could not be asked for until
+	// the weather finished. PINNED: TestAHazardsWordsDoNotQueueBehindAReport…
 	//
 	// AND IT IS NOT AN EXEMPTION — it is the truth about what a report touches.
 	// The programme is what the rail speaks OVER; it is not competing for the
@@ -448,7 +445,7 @@ type Director struct {
 	// air is WHICH PROGRAMME may reach the engine (D-74, air.go) — the
 	// operator's own listening, or the station's line-up. It is not the power:
 	// power says whether the station broadcasts, the air says which of the two
-	// programmes may. Zero is AirMonitor, which is every build before this one.
+	// programmes may. Zero is AirMonitor.
 	air Air
 
 	// lastRead is when each KIND of card was last read in full (D-48, F-76).
@@ -521,10 +518,9 @@ func (d Director) Now() time.Time {
 // arrangement and reads back what would be spoken, with nothing to synchronise
 // with (NFR-D-1).
 //
-// The dispatch stays small and the work lives in one handler per event, from the
-// first commit rather than after P10-04 complains: a step function's natural
-// shape is one enormous switch, and that is the shape that stops being readable
-// exactly when the schedule gets interesting.
+// The dispatch stays small and the work lives in one handler per event: a step
+// function's natural shape is one enormous switch, and that is the shape that
+// stops being readable exactly when the schedule gets interesting.
 func (d Director) Step(ev Event) (Director, []Effect) {
 	if err := invariant.Check(!d.now.IsZero(), "the director's clock was set before it was stepped"); err != nil {
 		return d, nil
@@ -585,15 +581,13 @@ func (d Director) stepProducer(ev Event) (Director, []Effect) {
 
 // stepBed routes what happens to the broadcast the programme rides on.
 //
-// GROUPED BY CONCERN, not to move a number. `Step` crossed P10-04's branch
-// bound when the operator's three acts arrived, and splitting a dispatch into
-// two dispatches merely relocates the count — as this project measured once
-// already, when seamsPresent came out of newExecutors at the same size. What
-// makes this a real split is that the two groups are two subjects, and they are
-// the two files these handlers already live in.
+// GROUPED BY CONCERN, not to move a number: splitting a dispatch into two
+// dispatches merely relocates P10-04's branch count. What makes this a real
+// split is that the two groups are two subjects, and they are the two files
+// these handlers live in.
 //
 // EACH GROUP KEEPS THE SAFE DEFAULT. An event added to neither falls through to
-// `Step`'s own, which changes nothing — the same direction as before.
+// `Step`'s own, which changes nothing.
 func (d Director) stepBed(ev Event) (Director, []Effect) {
 	switch e := ev.(type) {
 	case Tuned:
@@ -677,9 +671,8 @@ func (d Director) onTick(ev Tick) (Director, []Effect) {
 	// the tick is where it is noticed — before `settle`, so the schedule that
 	// settles is the one with nothing dead left on it.
 	d = d.dropExpired()
-	// THE BED'S DWELL IS A TICK'S BUSINESS TOO (T3.2b). It was a time.AfterFunc
-	// inside the radio deck, which made "when does the bed move" observable only
-	// by waiting five minutes with a real clock.
+	// THE BED'S DWELL IS A TICK'S BUSINESS TOO (T3.2b), so "when does the bed
+	// move" is observable without waiting five minutes on a real clock.
 	d, moved := d.advanceBed()
 	// FR-9.3: a tune the station never made. Asked before settle, so a stall
 	// reported this tick is not hidden by whatever the schedule does next.
@@ -729,7 +722,7 @@ func (d Director) onFinished(ev Finished) (Director, []Effect) {
 //
 // THE GRADE IS DECIDED AFTER THE SETTLE, not before. A burst whose second alert
 // cannot be rendered still has its third to read, and the schedule carries on —
-// that is a fault ROUTED AROUND, and it gets today's quiet treatment. The same
+// that is a fault ROUTED AROUND, and it gets the quiet treatment. The same
 // failure on the last card leaves the station silent, which is the one case a
 // person has to be told about.
 func (d Director) onFailed(ev Failed) (Director, []Effect) {
@@ -740,8 +733,7 @@ func (d Director) onFailed(ev Failed) (Director, []Effect) {
 	// describe, and the station spins.
 	// THE COOL-OFF IS ABOUT THE LOOP, NOT THE GRADE. A location that could not
 	// be composed re-enters at pump speed exactly as a declined one does; both
-	// sit out (F-150, REVIEW 2026-09-17 — the loop UAT 2026-09-10 found, back
-	// for the class the fault/decline split created).
+	// sit out (F-150, REVIEW 2026-09-17).
 	if card, ok := d.find(ev.ID); ok {
 		d = d.noteFailed(card.Subject)
 	}
@@ -753,9 +745,8 @@ func (d Director) onFailed(ev Failed) (Director, []Effect) {
 }
 
 // leave is EVERY EXIT A CARD HAS, and the only one — which is what makes DR-24's
-// pairing a property rather than a discipline. Today the band's release is sent
-// on one path with five early returns above it that send nothing; here there is
-// one path, and it releases whatever it cued.
+// pairing a property rather than a discipline. There is one path, with no early
+// return ahead of the release, and it releases whatever it cued.
 func (d Director) leave(id string, to State) (Director, []Effect) {
 	d, fx, left := d.takeOffTheAir(id, to)
 	if !left {
@@ -820,11 +811,9 @@ func (d Director) takeOffTheAir(id string, to State) (Director, []Effect, bool) 
 		// PAIRED WITH THE CUE, not with the card: releasing a band that was never
 		// cued would clear whatever callout it is legitimately showing.
 		//
-		// AND THE LANE TRAVELS WITH IT (D-82). The sentence above was the rule
-		// and `wasOnAir` was the whole of the enforcement — the same thing only
-		// while the rail was the only lane that could cue. F-71 recorded the gap
-		// and named its trigger exactly: "the moment P4 gives the band a second
-		// writer". A report reading UNDER a hazard is that moment, and its exit
+		// AND THE LANE TRAVELS WITH IT (D-82, F-71). `wasOnAir` alone enforces
+		// the sentence above only while one lane can cue; the band has a second
+		// writer, and a report reading UNDER a hazard is on air too — its exit
 		// would clear the hazard's callout.
 		fx = append(fx, ReleaseTicker{ID: id, Track: track})
 	}
@@ -884,7 +873,7 @@ func (d Director) settle() (Director, []Effect) {
 // takeTheAir puts the next card on, if the air is free and its words are ready.
 //
 // THE CUE PRECEDES THE WORDS (DR-18). It is the order of this list, so no call
-// site can get it wrong — which is what Phase 0 had to pin by hand (T0.3, m49).
+// site can get it wrong (T0.3, m49).
 func (d Director) takeTheAir() (Director, []Effect) {
 	// TWO PASSES AT MOST, AND THE BOUND IS THE RULE (PD-3, P10-01).
 	//
@@ -893,12 +882,12 @@ func (d Director) takeTheAir() (Director, []Effect) {
 	// because the notice's words were fixed at proposal so it was never built,
 	// so it can never itself be stale.
 	//
-	// This was mutual recursion — takeTheAir calling readInstead calling
-	// takeTheAir — and it terminated for exactly that reason. But the reason
-	// lived two files away from the call, which is the shape P10-01 exists to
-	// refuse: a loop whose termination depends on a fact nothing local states.
-	// As a bound it is checkable, and a change that broke it would spin here
-	// rather than blow the stack.
+	// NOT MUTUAL RECURSION. takeTheAir calling readInstead calling takeTheAir
+	// would terminate for exactly that reason, but the reason would live two
+	// files away from the call, which is the shape P10-01 exists to refuse: a
+	// loop whose termination depends on a fact nothing local states. As a bound
+	// it is checkable, and a change that broke it would spin here rather than
+	// blow the stack.
 	for range 2 {
 		next, fx, again := d.airOnce()
 		d = next
@@ -918,11 +907,10 @@ func (d Director) airOnce() (Director, []Effect, bool) {
 		return d, nil, false
 	}
 	// THE LANE'S OWN AIR, AND THE ORDER OF THESE TWO LINES IS D-82. Asked before
-	// `Next`, this was "is anything reading anywhere" — so a rail card could not
-	// take the air while a report held it, and a hazard waited out the weather.
-	// Asked after, it is "is THIS lane reading", which is the rule that was
-	// always meant: one voice per lane, and the rail speaks over the programme
-	// (D-24).
+	// `Next`, this would be "is anything reading anywhere" — so a rail card could
+	// not take the air while a report held it, and a hazard would wait out the
+	// weather. Asked after, it is "is THIS lane reading", which is the rule: one
+	// voice per lane, and the rail speaks over the programme (D-24).
 	//
 	// THE MAIN TRACK STILL WAITS FOR THE RAIL, and nothing here says so because
 	// `Next` does: it walks AlertRail first, and reports nothing at all while a
@@ -1040,13 +1028,11 @@ func (d Director) prepareNext() (Director, []Effect) {
 		// that goes ON AIR when the human operator hits SHIFT+ENTER — but when
 		// the operator does, the line should be ready to go at that point."
 		//
-		// THIS REFUSED TO BUILD unless the track could advance, on the reasoning
-		// that "a stopped programme has no cutover for it to be ready for — the
-		// report would only be stale when one came". The first half is what the
-		// ruling overturns: the cutover is the operator pressing a key, and the
-		// wait for 1.03 s of network is exactly what they must not hear. The
-		// second half was RIGHT and is answered by `refreshStandby` above, which
-		// re-fills the one built card rather than tossing it.
+		// IT BUILDS EVEN WHILE THE TRACK CANNOT ADVANCE: the cutover is the
+		// operator pressing a key, and the wait for 1.03 s of network is exactly
+		// what they must not hear. A report built early can be stale when the
+		// cutover comes, and `refreshStandby` above answers that by re-filling
+		// the one built card rather than tossing it.
 		//
 		// IT IS STILL ONE AHEAD AND ONLY ONE (toPrepare), so a station sitting on
 		// standby builds ONE report, not ten.

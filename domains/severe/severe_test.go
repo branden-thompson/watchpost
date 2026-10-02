@@ -38,7 +38,7 @@ func TestClassifySixTabs(t *testing.T) {
 			t.Errorf("%s → %v %v", product, got, ok)
 		}
 	}
-	// MVS-D-58 overturns v1's "not shown": an Air Quality Alert is an advisory
+	// MVS-D-58: an Air Quality Alert is an advisory
 	// in everything but the word, and a listener who is told to stay indoors
 	// should find it where the other advisories are.
 	if got, ok := Classify(globalfeed.ClassSevereWx, "Air Quality Alert"); !ok || got != TabAdvisories {
@@ -185,7 +185,7 @@ func TestFeedPathHonoursTheLocationGuard(t *testing.T) {
 
 // "Declared" is the ISSUE time; a hazard that begins later reads "Starts" in
 // the record (HUM LEAD UAT 2026-08-28: an advisory issued at 09:00 for
-// 20:00 showed a future "declared" and read as bad data).
+// 20:00 must not show a future "declared", which reads as bad data).
 func TestDeclaredIsTheIssueTimeAndTheOnsetIsStarts(t *testing.T) {
 	sent := time.Date(2026, 8, 28, 9, 0, 0, 0, time.UTC)
 	onset := sent.Add(11 * time.Hour)
@@ -202,8 +202,8 @@ func TestDeclaredIsTheIssueTimeAndTheOnsetIsStarts(t *testing.T) {
 }
 
 // An OID whose URL form is long still meets its bare form (REVIEW R5-B-05:
-// ids were clamped to 120 runes before normalising, so the two paths
-// disagreed above ~90-rune OIDs); and cap1 reads runes (R5-B-06).
+// clamping ids to 120 runes before normalising makes the two paths disagree
+// above ~90-rune OIDs); and cap1 reads runes (R5-B-06).
 func TestLongIDsMeetAcrossPathsAndCap1ReadsRunes(t *testing.T) {
 	bare := "urn:oid:2.49.0.1.840.0." + strings.Repeat("1", 100)
 	if key, ok := NormalizeID("https://api.weather.gov/alerts/" + bare); !ok || key != bare {
@@ -269,13 +269,11 @@ func TestClassifyPlacesEveryStatementAndMarineProduct(t *testing.T) {
 		t.Errorf("an Air Quality Alert is an advisory (MVS-D-58), got %v (shown=%v)", got, ok)
 	}
 	// Forecasts and Outlooks (MVS-D-59): what might develop, days out, over a
-	// whole forecast area — below a watch, and no longer nowhere.
+	// whole forecast area — below a watch.
 	//
-	// REAL PRODUCT NAMES, from the live api.weather.gov catalogue. An earlier
-	// fixture here used "Fire Weather Outlook", which the Weather Service does
-	// not issue — and because both examples then said "Outlook", deleting the
-	// "Forecast" arm left the suite green. A fixture that cannot occur pins
-	// nothing.
+	// REAL PRODUCT NAMES, from the live api.weather.gov catalogue, one per arm:
+	// with both examples saying "Outlook", deleting the "Forecast" arm leaves
+	// the suite green. A fixture that cannot occur pins nothing.
 	for _, product := range []string{"Hydrologic Outlook", "Hazardous Weather Outlook", "Short Term Forecast"} {
 		if got, ok := Classify(globalfeed.ClassSevereWx, product); !ok || got != TabForecasts {
 			t.Errorf("%q belongs in Forecasts and Outlooks, got %v (shown=%v)", product, got, ok)
@@ -299,8 +297,7 @@ func TestClassifyPlacesEveryStatementAndMarineProduct(t *testing.T) {
 		}
 	}
 	// THE CIVIL-EMERGENCY FAMILY (MVS-D-60). None of these names a warning,
-	// watch or advisory, so each needs its own answer or it reaches no tab —
-	// which is where they were.
+	// watch or advisory, so each needs its own answer or it reaches no tab.
 	for _, c := range []struct {
 		product string
 		want    Tab
@@ -365,9 +362,9 @@ func TestByTabDropsRowsThatIndexNoTab(t *testing.T) {
 // with a name the Weather Service does not issue. Two products contain "Alert"
 // today — Air Quality Alert, and Blue Alert, which the civil-emergency table
 // decides BEFORE these arms are reached. So a loose match changes nothing about
-// today's catalogue, and mutant m42 SURVIVED the 2026-09-13 corpus sweep for
-// exactly that reason: the rule is held by a DIFFERENT rule, and it vanishes
-// silently the day that one moves or a new "… Alert" product is issued.
+// today's catalogue, and mutant m42 survives a catalogue-only test for exactly
+// that reason: the rule is held by a DIFFERENT rule, and it vanishes silently
+// the day that one moves or a new "… Alert" product is issued.
 //
 // That is the D-42 shape, and the answer to it is a test that states the policy
 // rather than the catalogue.

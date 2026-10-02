@@ -42,10 +42,9 @@ func TestEveryWindowDeclaresItsKeys(t *testing.T) {
 	})
 }
 
-// TestNoWindowsArrowsReachTheTableUnderIt is the defect the hand-written list
-// once had: a window whose arrows walked nothing of its own let them reach
-// past it to the table underneath. Every window takes every key, binds the
-// arrows itself, or walks its own with nav.
+// TestNoWindowsArrowsReachTheTableUnderIt: a window whose arrows walk nothing
+// of its own lets them reach past it to the table underneath. Every window
+// takes every key, binds the arrows itself, or walks its own with nav.
 func TestNoWindowsArrowsReachTheTableUnderIt(t *testing.T) {
 	d := mapDash(t, Config{})
 	eachWindow(t, func(t *testing.T, m modal, w windowKeys) {

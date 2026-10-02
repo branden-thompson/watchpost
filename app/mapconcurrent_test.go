@@ -28,8 +28,8 @@ func (g slowGet) GetText(context.Context, string, ...httpx.Option) ([]byte, erro
 
 // TestTheFeedsInputsAreAskedTogether is W14's P-5: the view's alerts, the
 // fire, the quakes, the buoys, the tide stations and AirNow do not depend on
-// one another, and were asked one after another - each waiting out the ones
-// before. Asked together, the feed waits for the slowest, not the sum.
+// one another, so they are asked together and the feed waits for the slowest,
+// not the sum.
 func TestTheFeedsInputsAreAskedTogether(t *testing.T) {
 	const each = 300 * time.Millisecond
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

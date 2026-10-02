@@ -226,8 +226,8 @@ type helpGroup struct {
 func helpGroups(surface Surface) []helpGroup {
 	// SURFACES LEADS ON BOTH, because it is the one group whose absence leaves
 	// the operator stuck. The swap is live on EITHER surface — the Router looks
-	// it up before either one sees the key — and it was documented on NEITHER:
-	// "it doesnt show the user how to swap between Observer and Broadcaster."
+	// it up before either one sees the key — so both document it (HUM LEAD:
+	// "it doesnt show the user how to swap between Observer and Broadcaster.").
 	surfaces := helpGroup{"SURFACES", []term.Action{actSwapObserver, actSwapBroadcaster}, nil}
 	if surface == SurfaceBroadcaster {
 		return []helpGroup{
@@ -253,10 +253,9 @@ func helpGroups(surface Surface) []helpGroup {
 
 // helpKeys is the map the window documents: the ACTIVE surface's.
 //
-// THE CONSOLE'S LIVES ON THE ROUTER, and the Help window is Observer's — which
-// is how the two came apart. `d.surface` is already mirrored on every update
-// (D-92) for exactly this class of question, so the window can ask it rather
-// than being told.
+// THE CONSOLE'S LIVES ON THE ROUTER, and the Help window is Observer's.
+// `d.surface` is mirrored on every update (D-92) for exactly this class of
+// question, so the window can ask it rather than being told.
 //
 // AND THE SWAP IS ADDED TO OBSERVER'S, because it is real there and absent from
 // its map: the Router intercepts it before either surface sees the key, so
@@ -291,7 +290,7 @@ func orDefault(s, alt string) string {
 // the interior and handed to the panel minus the two cells its chrome
 // already draws. Providers come from the live provider registry so a new
 // data source lists itself. WIDENED TO 78 (0.18.0 D-148): every credit is
-// here now, the map's too, and a long one wraps under its own start.
+// here, the map's too, and a long one wraps under its own start.
 const aboutWidth = 78
 
 func (d Dashboard) aboutLines(o render.Opts) []string {

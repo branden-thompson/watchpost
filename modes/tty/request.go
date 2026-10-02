@@ -10,7 +10,7 @@ package tty
 // the ruling this window exists to honour: "we WILL have more report types in
 // the future, and ensuring Broadcaster is flexible enough for that list to grow
 // … WITHOUT having to completely re-architect the code and flow every time is
-// critical." A fifth kind appears in this window because `report.All()` grew,
+// critical." A fifth kind appears in this window when `report.All()` grows,
 // and no line below mentions a kind by name.
 
 import (
@@ -29,7 +29,7 @@ import (
 //
 // THE REPORT ROWS ARE ONE FIELD WITH AN INDEX, not one field per kind: a field
 // per kind is a second list to keep in step with the registry, which is the
-// coupling this whole batch is avoiding.
+// coupling the registry exists to avoid.
 type requestField int
 
 const (
@@ -44,15 +44,13 @@ type requestState struct {
 	field requestField
 
 	// query is what the operator typed. WHAT IT RESOLVED TO LIVES IN `locate`
-	// (D-130) — this held a `ref` of its own until 2026-09-15, and the field
-	// outlived the refactor that replaced it: nothing assigned it, and
-	// `blocker()` read it, so the chip named one condition for ever. A field
+	// (D-130), and nowhere else: a `ref` of this window's own that nothing
+	// assigns would leave `blocker()` naming one condition for ever. A field
 	// nobody writes is not dead weight, it is a wrong answer with a type.
 	query string
 
-	// locate is the DEBOUNCED answer about the Location field (D-130), and it
-	// replaces the ref/outside pair this window kept for itself. The console's
-	// `[l]` asks the same question of the same hook; two copies of the
+	// locate is the DEBOUNCED answer about the Location field (D-130). The
+	// console's `[l]` asks the same question of the same hook; two copies of the
 	// bookkeeping would be two ideas of what "valid" means.
 	locate locateState
 
@@ -112,13 +110,13 @@ func (st requestState) positionOK() bool {
 // never LIVE (ruling 3): the card on the air is not in the running order at
 // all, so there is no index that could name it.
 //
-// THE TYPED NUMBER IS A SLOT AND THIS RETURNS AN INDEX (D-119). It returned the
-// slot verbatim, and `Requested.To` is documented as "the same number `Moved.To`
-// carries" — the number the card window's move path has subtracted `liveOffset`
-// from since D-119. So the two operator paths into one field disagreed by one
-// on STANDBY, which is the console's normal state: the requested card landed a
-// place lower than the slot the operator typed, silently, with the window's own
-// confirmation naming the slot they asked for.
+// THE TYPED NUMBER IS A SLOT AND THIS RETURNS AN INDEX (D-119). `Requested.To`
+// is documented as "the same number `Moved.To` carries" — the number the card
+// window's move path subtracts `liveOffset` from. Returning the slot verbatim
+// would make the two operator paths into one field disagree by one on STANDBY,
+// the console's normal state: the requested card would land a place lower than
+// the slot the operator typed, silently, with the window's own confirmation
+// naming the slot they asked for.
 //
 // THE OFFSET IS PASSED, NOT ASKED, because the arithmetic's owner is
 // `Broadcaster.indexForSlot` and this surface cannot reach the console. The
@@ -162,8 +160,8 @@ const requestTitle = "Line-Up Request"
 // it: the panel's content, less this window's own inset and the helper's lead.
 //
 // COMPUTED, NOT GUESSED. A constant here would be right at one modal width and
-// wrong at every other, and the whole reason the helper lost its colour is that
-// something wrapped where nobody expected it to.
+// wrong at every other, and a wrap where nobody expects one is what strips the
+// helper's colour.
 func requestHelperWidth(o render.Opts) int {
 	return modalHelperWidth(o.Width)
 }
@@ -187,9 +185,9 @@ func (d Dashboard) requestChips(o render.Opts) []string {
 // requestBody draws the window, and says which lines the focus is on.
 //
 // A FORM, SO IT SCROLLS BY ITS FOCUS — the same family as Settings, the
-// diagnostics window and the relay fault (`focusBody`). The reachability gate is
-// what said so: at 80x24 seven of its lines could not be brought on screen, and
-// a line the keyboard cannot reach is not in the window.
+// diagnostics window and the relay fault (`focusBody`). The reachability gate
+// requires it: at 80x24 seven of its lines are otherwise out of reach, and a
+// line the keyboard cannot reach is not in the window.
 func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd int) {
 	st := d.request
 	// EVERY CONTENT LINE CLEARS THE INSET ON BOTH SIDES, which the margin gate
@@ -223,7 +221,7 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 		// THE LABEL FIRST, THEN THE NAME. Both are shown because the operator is
 		// CHOOSING here (ruling 1) — and this order is what fits: the longest
 		// full name is 32 cells and the window is 56, so a name-then-label row
-		// wrapped and the margin gate caught it.
+		// wraps and fails the margin gate.
 		out = append(out, " "+mark+box+" "+render.PadTo(spec.Label, 7)+spec.FullName)
 	}
 	out = append(out, "", "  Scheduled as: "+st.chosen.Describe(), "")
@@ -245,8 +243,7 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 
 	// EVERY CONTENT LINE CLEARS THE INSET ON BOTH SIDES (the margin gate). Done
 	// once, here, rather than at twenty string literals — a window indented by
-	// hand clears one side and not the other, which is exactly what the gate
-	// reported on the first draft of this one.
+	// hand clears one side and not the other.
 	for i, l := range out { // bounded by the window (P10-02)
 		if strings.TrimSpace(l) == "" {
 			continue // a blank spacer has no content to inset
@@ -262,10 +259,10 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 	case requestReports:
 		return out, 5, 5 + len(requestRows()) + 2
 	case requestPosition:
-		// FROM THE HEADING TO THE END, not a count backwards from it. The range
-		// was `len(out)-4` and adding one blank line between the two options
-		// moved it silently — an offset measured from the bottom is an offset
-		// that every later edit has to remember.
+		// FROM THE HEADING TO THE END, not a count backwards from it. One blank
+		// line added between the two options silently moves a count from the
+		// bottom — an offset measured from the bottom is an offset that every
+		// later edit has to remember.
 		return out, posAt, len(out) - 1
 	}
 	return out, 0, 0
@@ -280,11 +277,11 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 func (st requestState) blocker() string {
 	switch {
 	// THE QUESTION COULD NOT BE PUT, AND THAT IS NOT "CHOOSE ANOTHER" (D-157).
-	// It fell to the case below and the chip read "Choose a location" — about a
-	// location that may well be real and was never actually checked — while the
-	// helper line under the same field read "The lookup did not answer; press
-	// enter to try again". Two sentences in one window disagreeing about what
-	// the operator should do, and the one on the key was the wrong one.
+	// Falling to the case below, the chip would read "Choose a location" — about
+	// a location that may well be real and was never actually checked — while
+	// the helper line under the same field reads "The lookup did not answer;
+	// press enter to try again": two sentences in one window disagreeing about
+	// what the operator should do, with the wrong one on the key.
 	//
 	// IT OUTRANKS `!found` BECAUSE A TIMEOUT SETS IT. There is no verdict to
 	// report, so every test below this asks about an answer that does not exist.
@@ -312,8 +309,8 @@ func (st requestState) blocker() string {
 // ONE LIST, NOT THREE. The operator presses down and arrives at the next thing
 // they can change, whatever kind of thing it is — a field, a report row, a
 // position choice. The reachability gate is why it is one list: it presses down
-// and requires every line to come on screen, and a walk that skipped the report
-// rows left four of them unreachable at 80x24.
+// and requires every line to come on screen, and a walk that skips the report
+// rows leaves four of them unreachable at 80x24.
 func (d Dashboard) handleRequestNav(act term.Action) Dashboard {
 	switch act {
 	case "nav-down":
@@ -326,10 +323,10 @@ func (d Dashboard) handleRequestNav(act term.Action) Dashboard {
 
 // next is one step down the window.
 //
-// EACH TRANSITION NAMES ITS DESTINATION. `field++` produced every state and
-// CONSTRUCTED none of them — nothing in production ever said the words
-// `requestReports` or `requestPosition`, so `wires` reported both as having no
-// writer, and it was right: a state reachable only by arithmetic is one no
+// EACH TRANSITION NAMES ITS DESTINATION. `field++` would produce every state and
+// CONSTRUCT none of them — nothing in production would say the words
+// `requestReports` or `requestPosition`, so `wires` would report both as having
+// no writer, and be right: a state reachable only by arithmetic is one no
 // reader can grep for. It also reads better, which is the usual way round.
 func (st requestState) next() requestState {
 	switch st.field {
@@ -401,7 +398,7 @@ func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "backspace":
 		return d.requestErase()
 	}
-	// THE TEXT, NOT THE BYTE COUNT: "Peña" typed as one byte per key gave "Pea"
+	// THE TEXT, NOT THE BYTE COUNT: one byte per key turns "Peña" into "Pea"
 	// (REVIEW 2026-09-17). The Lookup window keeps a letter through key.Text;
 	// so does this one.
 	if key.Text != "" {
@@ -481,20 +478,18 @@ func (d Dashboard) requestSchedule() (tea.Model, tea.Cmd) {
 	if d.cfg.RequestCard == nil {
 		return d, nil
 	}
-	// WHAT [ENTER] MEANS IS `onSubmit`'S TO SAY, AND BOTH WINDOWS NOW ASK IT
-	// (D-157). This carried TWO of the four states and `modal_location.go`
-	// carried all four, which is the same defect twice over:
+	// WHAT [ENTER] MEANS IS `onSubmit`'S TO SAY, AND BOTH WINDOWS ASK IT
+	// (D-157), so this window and `modal_location.go` carry the same four states:
 	//
-	// D-151, red team round 2 — an enter pressed INSIDE the 300 ms pause plus a
-	// geocoder round trip returned `d, nil`, and the chip read "Choose a
-	// location" about a location the operator had already typed.
+	// D-151 — an enter pressed INSIDE the 300 ms pause plus a geocoder round
+	// trip must not return `d, nil`, or the chip reads "Choose a location"
+	// about a location the operator has already typed.
 	//
-	// D-157, red team round 3 — an enter pressed when the lookup COULD NOT BE
-	// ASKED did nothing at all, while `locateNote` — shared, and therefore
-	// right — printed "The lookup did not answer; press enter to try again".
-	// The window instructed an action the window refused. A timeout is not a
-	// verdict about a place, and treating it as one leaves the operator with a
-	// real location they cannot request and no way to retry.
+	// D-157 — an enter pressed when the lookup COULD NOT BE ASKED must retry,
+	// because `locateNote` prints "The lookup did not answer; press enter to
+	// try again", and a window must not instruct an action it refuses. A
+	// timeout is not a verdict about a place, and treating it as one leaves the
+	// operator with a real location they cannot request and no way to retry.
 	if strings.TrimSpace(d.request.query) != "" {
 		switch d.request.locate.onSubmit() {
 		case submitAsk, submitRetry:

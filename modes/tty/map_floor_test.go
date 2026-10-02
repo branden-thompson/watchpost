@@ -9,7 +9,7 @@ import (
 )
 
 // notedFeed is a feed with three notes, as the heavy workload's answers
-// carry: what pushed the map under its floor at 149x38.
+// carry: what pushes the map under its floor at 149x38.
 func notedFeed(n int) func(context.Context, MapAsk) MapFeed {
 	return func(context.Context, MapAsk) MapFeed {
 		var notes []string
@@ -34,8 +34,8 @@ func sizedMap(t *testing.T, w, h, notes int) Dashboard {
 // TestTheMapKeepsItsFloorWhenTheTerminalCanHoldIt is D-159: the window grows
 // - only as far as the floor needs, up to the terminal's height minus 8 - so
 // its own status, notes and radar timeline never push the map under 69x12
-// where the terminal can hold it. At 149x38 the map fell to 11 rows and the
-// window showed "The map needs…" in its place (W14, C-7).
+// where the terminal can hold it. Without growing, at 149x38 the map falls to
+// 11 rows and the window shows "The map needs…" in its place (W14, C-7).
 func TestTheMapKeepsItsFloorWhenTheTerminalCanHoldIt(t *testing.T) {
 	d := sizedMap(t, 149, 38, 3)
 	if len(d.mapPane.notes) != 3 || !d.radarTimelineOn() {
@@ -57,7 +57,7 @@ func TestTheMapKeepsItsFloorWhenTheTerminalCanHoldIt(t *testing.T) {
 }
 
 // TestTheWindowStaysItsSizeWhenTheMapFits is U1-13 kept: where the map
-// already fits, the window is the ~80 % it was - it grows only for the floor.
+// already fits, the window stays at its ~80 % - it grows only for the floor.
 func TestTheWindowStaysItsSizeWhenTheMapFits(t *testing.T) {
 	d := sizedMap(t, 200, 60, 3)
 	if want := max(5, min(60-8, max(60*80/100-5, mapMinBody.Rows+1))); d.modalMax() != want {

@@ -45,10 +45,10 @@ func (b Broadcaster) lineupRowOf(row render.LineupRow, c lineup.Card, idx locInd
 	row.Location = plaintext.Text(c.Headline)
 	row.Priority = priorityOf(c)
 	row.RequestedBy = requestedByOf(c)
-	// THE POINTER SURVIVES THE FILL. This assigned a fresh `Marks` and threw the
-	// caller's `Selected` away with it, so the pointer vanished on every row that
-	// actually had a card in it — visible only once a card existed, which is why
-	// the empty frame looked right.
+	// THE POINTER SURVIVES THE FILL. A fresh `Marks` would throw the caller's
+	// `Selected` away with it, and the pointer would vanish on every row that
+	// actually has a card in it — visible only once a card exists, which is why
+	// the empty frame cannot show it.
 	row.Marks = render.Marks{
 		Selected:  row.Marks.Selected,
 		Playing:   c.State == lineup.OnAir,
@@ -135,7 +135,7 @@ func reportTypeOf(c lineup.Card) string {
 		return ""
 	}
 	// EVERY WORD, not just the first: "LOCATION REPORT" is "Location Report", and
-	// capitalising only the leading letter gave "Location report".
+	// capitalising only the leading letter gives "Location report".
 	words := strings.Fields(strings.ToLower(name))
 	for i, w := range words { // bounded by the registry's own name (P10-02)
 		words[i] = strings.ToUpper(w[:1]) + w[1:]
@@ -199,7 +199,7 @@ const bcScheduledFrom = 2
 // single letters, a centred caption says in one row — and the row it saves is a
 // row of the running order.
 //
-// IT IS WINDOWED, NOT CLIPPED, for the reason D-87 gave when the cards outgrew
+// IT IS WINDOWED, NOT CLIPPED, for the reason D-87 gives for a frame taller than
 // the terminal: emitting every row and letting `clamp` cut the bottom loses the
 // frame's own closing inset and runs rows past the edge, which FR-7.3 calls a
 // defect rather than a degradation.
@@ -217,10 +217,10 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int, idx locIndex) 
 	// is Observer's own, so the two rows cannot drift apart.
 	lines := []string{""}
 	// SPLIT, NOT EMBEDDED. `consoleControls` wraps on a narrow terminal, and a
-	// multi-line string held as ONE element counted as one row in the height
-	// budget and escaped the per-row padding — so the frame ran a row past the
-	// terminal at 100x44 and a row measured 91 cells instead of 100. Two symptoms,
-	// one cause.
+	// multi-line string held as ONE element counts as one row in the height
+	// budget and escapes the per-row padding — so the frame runs a row past the
+	// terminal and a row measures short of the frame's width. Two symptoms, one
+	// cause.
 	lines = append(lines, strings.Split(b.consoleControls(w), "\n")...)
 	// THE HEADING IS A BAND, IN OBSERVER'S OWN TONE (D-102, HUM LEAD 2026-09-12):
 	// "let's make the 'SCHEDULE LINE UP' 3 rows have the same background color as
@@ -238,13 +238,14 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int, idx locIndex) 
 	}
 	lines = append(lines, strings.Split(b.opts().LineupTable(slots, w), "\n")...)
 
-	// THE TOTAL IS THE UNTRUNCATED COUNT, taken BEFORE the window is cut. Passing
-	// the window's own length told `railed` there was nothing below it, and the
-	// rail drew no caps at any height — the scroll worked and said it did not.
+	// THE TOTAL IS THE UNTRUNCATED COUNT, taken BEFORE the window is cut. The
+	// window's own length would tell `railed` there is nothing below it, and the
+	// rail would draw no caps at any height — a scroll that works and says it
+	// does not.
 	total := len(lines)
-	// THE POOL GETS ITS SHARE OF THE HEIGHT (D-104). The running order used to
-	// take everything left and the pool drew in whatever remained, which is why
-	// the operator could see twelve of twenty-five locations and no rail said so.
+	// THE POOL GETS ITS SHARE OF THE HEIGHT (D-104). A running order that took
+	// everything left would leave the pool whatever remained: twelve of
+	// twenty-five locations on screen and no rail to say so.
 	off, room := 0, b.height-used-bcInsetRows-b.poolRoom()
 	if room < 0 {
 		room = 0
@@ -252,8 +253,8 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int, idx locIndex) 
 	if room < len(lines) {
 		// THE WINDOW FOLLOWS THE POINTER, AND IT IS COMPUTED HERE (D-101) because
 		// only the frame knows how much room the table has — the same argument the
-		// offset was already clamped here for. A `queueOff` moved at the keystroke
-		// could not know the room, so it scrolled one way and never came back.
+		// offset is clamped here for. A `queueOff` moved at the keystroke cannot know
+		// the room, so it would scroll one way and never come back.
 		dataAt := len(lines) - len(slots)
 		if sel := b.lineupSelection(); sel >= 0 {
 			at := dataAt + sel
@@ -312,7 +313,7 @@ func (b Broadcaster) consoleControls(w int) string {
 	if render.Width(line)+render.Width(nav)+2 <= w {
 		return render.PadTo(render.PadBetween(line, nav, w), w)
 	}
-	// PADDED TO THE FRAME, like every other row. The wrap path returned ragged
+	// PADDED TO THE FRAME, like every other row. The wrap path returns ragged
 	// lines, and the colour gate measures every row against the frame's width.
 	wrapped := render.WrapSegments(append(segs, nav), w, "   ")
 	for i, l := range wrapped { // bounded by the segments (P10-02)

@@ -2,10 +2,10 @@ package lineup
 
 // The operator moves the programme between the lanes (D-11, FR-4.2, D-32).
 //
-// MAIN AND BED ARE MUTUALLY EXCLUSIVE, and until now that was true only by
-// accident of the engine having one source. The Director never asked whether
-// the bed held the programme before putting a card on the air, so the rule the
-// product model states was enforced nowhere the model could see.
+// MAIN AND BED ARE MUTUALLY EXCLUSIVE, and not by accident of the engine having
+// one source: the Director asks whether the bed holds the programme before
+// putting a card on the air, so the rule the product model states is enforced
+// where the model can see it.
 //
 // THE PAUSE IS NOT A SECOND FLAG. FR-4.2 makes it the CONSEQUENCE of the bed
 // holding the programme — "the operator can cut the main track over to the bed;
@@ -32,8 +32,8 @@ func running(t *testing.T) Director {
 	return d
 }
 
-// PARITY FIRST, and it is the claim the whole batch opens with (T3.2a): with
-// nothing emitting a cut-over, every existing path behaves exactly as it did.
+// PARITY FIRST (T3.2a): with nothing emitting a cut-over, every path behaves
+// exactly as it would with no cut-over rule at all.
 func TestNothingCarriesTheBedUntilSomethingSaysSo(t *testing.T) {
 	d := running(t)
 	if d.bed.carries {
@@ -129,16 +129,16 @@ func TestARepeatedCutOverChangesNothing(t *testing.T) {
 	if d.bed != first {
 		t.Error("asking for what is already true must not move the bed")
 	}
-	// AND IT MUST DO NO WORK, which is the half that has teeth. A plant
-	// deleting the guard left the bed identical and re-settled anyway, so the
-	// console was told the schedule had changed when it had not — the same
+	// AND IT MUST DO NO WORK, which is the half that has teeth. Without the
+	// guard the bed stays identical and the Director re-settles anyway, so the
+	// console is told the schedule has changed when it has not — the same
 	// defect setMode's own comment names: "a station that re-announced itself
 	// on every relay change would be telling it something that had not
 	// changed."
 	//
-	// FOURTH INSTANCE THIS SESSION of a gate watching the STATE and not the
-	// WORK, and the tell was the same every time: the step returns something
-	// and the test does not ask for it.
+	// A gate watching the STATE and not the WORK misses this, and the tell is
+	// always the same: the step returns something and the test does not ask
+	// for it.
 	if len(fx) != 0 {
 		t.Errorf("a repeated command is not a second event, and must publish nothing; got %d effect(s): %v",
 			len(fx), fx)

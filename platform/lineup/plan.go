@@ -34,9 +34,9 @@ const (
 // A REGISTRY, NOT A CONDITIONAL, and the reason is the house pattern rather
 // than taste: origins, states and slots are all named this way, so every member
 // appears once and adding one that nobody named fails to compile rather than
-// falling through to the other arm. The conditional this replaces handled
-// RemainingBand by name and let CloseBand fall through, which is idiomatic Go
-// and left the closer of the two bands mentioned nowhere.
+// falling through to the other arm. A conditional that names RemainingBand and
+// lets CloseBand fall through is idiomatic Go and leaves the closer of the two
+// bands mentioned nowhere.
 func bandNames() [numBands]string {
 	return [numBands]string{
 		CloseBand:     "CLOSE",
@@ -150,8 +150,8 @@ type Arrival struct {
 	// the one line that names the hazard, and what it is about.
 	Headline, Subject string
 
-	// Severity and At are the sort dimensions used inside one rung — today's
-	// ordering, unchanged (the severity-then-recency order T3.1 folded into sortCandidates). Making the
+	// Severity and At are the sort dimensions used inside one rung —
+	// severity, then recency (sortCandidates). Making the
 	// dimension chain configurable is T4.1's, with the settings surface that
 	// produces the configuration.
 	Severity int
@@ -201,8 +201,8 @@ type Arrival struct {
 // Settings is what the listener has set, as the planner needs it.
 //
 // ONE MAX FOR THE WHOLE BURST across all categories (R-1, G-5). Read order is
-// about sorting, not per-category budgets: the per-category Max row and TOTAL
-// READS are gone.
+// about sorting, not per-category budgets: there is no per-category Max and no
+// TOTAL READS.
 type Settings struct {
 	// Max is how many alert reads one burst may spend. Emergency Orders spend it
 	// first and may overrun it (DR-11).
@@ -240,9 +240,9 @@ type Settings struct {
 	// kind of read has gone quiet.
 	//
 	// FALSE IS OFF AND IS THE ZERO VALUE, so a station that never chose gets
-	// the behaviour that existed before the term did. Turning it off must never
-	// stop the Director choosing — see cadence.go: the term answers zero for
-	// everything, and zero for everything discriminates nothing.
+	// no cadence term at all. Turning it off must never stop the Director
+	// choosing — see cadence.go: the term answers zero for everything, and zero
+	// for everything discriminates nothing.
 	WeighLastRead bool
 
 	// ProgrammeReturn is what the listener is told when something that
@@ -268,12 +268,11 @@ type Burst struct {
 	// its Refs are the SELECTION: the alerts it reads, in read order.
 	//
 	// THERE IS ONE ORDERING, AND IT IS THIS ONE. A `Cards []Card` beside it,
-	// derived from the same selection by a second walk, is a second ordering for
-	// every rule about the order — the ladder, emergency orders leading, the
+	// derived from the same selection by a second walk, would be a second ordering
+	// for every rule about the order — the ladder, emergency orders leading, the
 	// fence, freshness, ties, the divert count — to be asserted against, while
-	// production reads only the takeover. With no production consumer,
-	// takeoverOf could drop, reorder or truncate its refs with all
-	// forty pins still green. The pins are on this now.
+	// production reads only the takeover: takeoverOf could drop, reorder or
+	// truncate its refs with every pin still green. The pins are on this.
 	Takeover Card
 
 	// Divert is what the listener is told they did not hear — arrivals the burst
@@ -393,8 +392,7 @@ func candidates(arrivals []Arrival, s Settings, now time.Time) []placed {
 }
 
 // sortCandidates puts the burst in read order: the rung first, then — inside one
-// rung — severity and recency, which is today's ordering unchanged, and finally
-// the identity.
+// rung — severity and recency, and finally the identity.
 //
 // THE IDENTITY IS WHAT MAKES THE ORDER TOTAL. Without it two alerts alike in
 // every dimension would keep whatever order they arrived in, and the arrival
@@ -516,9 +514,8 @@ func BurstID(lead string) string {
 // The selection above is the Producer's ORDERING — which alerts are read, in
 // what order, and how many were diverted — and every rule that governs it (the
 // ladder, emergency orders leading, the fence, freshness, ties) is asserted
-// against it. That observability is worth keeping: those are safety rules with
-// their own UAT history, and collapsing them into one card would leave forty
-// pins with nothing to look at.
+// against it. That observability is worth keeping: those are safety rules, and
+// collapsing them into one card would leave their pins with nothing to look at.
 //
 // What is ONE is what the SCHEDULE holds. The tone, the header, the alert lines
 // and the tail are this card's content, composed by the Composer; the operator
@@ -526,7 +523,7 @@ func BurstID(lead string) string {
 // separately. The Broadcaster mock draws it that way — one panel, one slot
 // number — and DROP / DELAY / PROMOTE only make sense against it.
 //
-// Its words are still empty: they materialise at standby (DR-7), which for a
+// Its words are empty here: they materialise at standby (DR-7), which for a
 // takeover means composed just before air rather than when the alerts arrived.
 func takeoverOf(p []placed) (Card, error) {
 	if len(p) == 0 {

@@ -40,8 +40,8 @@ func TestBlockPaintsFullWidthAndRearms(t *testing.T) {
 		t.Fatalf("block must paint the full width, got %d", w)
 	}
 	afg, abg := "38;5;220", "49"
-	// No tone of its own (round 4, B-01: the header box rode an invalid
-	// "\x1b[250;49m"): padded, and not one escape added.
+	// No tone of its own (round 4, B-01): padded, and not one escape added -
+	// never an invalid "\x1b[250;49m".
 	if none := o.Block("a \x1b[1mb\x1b[0m c", "", ""); displayWidth(none) != 40 || strings.Count(none, "\x1b[") != 2 || !strings.HasPrefix(none, "a \x1b[1mb\x1b[0m c ") {
 		t.Fatalf("an untoned block adds no SGR: %q", none)
 	}
@@ -54,7 +54,7 @@ func TestBlockPaintsFullWidthAndRearms(t *testing.T) {
 }
 
 func TestModalBlockKeepsTileBGAfterInnerSpans(t *testing.T) {
-	// Session-13 regression: a chip or tint inside a modal line must never
+	// A chip or tint inside a modal line must never
 	// drop the tile background for the rest of the line (the reset re-arm
 	// must carry BOTH the base fg and the tile bg).
 	rendering.SetColorEnabledForTest(true)
@@ -104,9 +104,8 @@ func TestPanelTitleIsBoldWhite(t *testing.T) {
 }
 
 // TestAScrollingPanelIsASCIIUnderASCII: the rail of a panel that scrolls is
-// drawn through the glyph set, so --ascii prints no ▲ █ │ ▼ (0.18.0: the second
-// copy of the rail had its glyphs written in, and no window scrolled at the
-// size the ASCII survey draws until Help grew a MAP group).
+// drawn through the glyph set, so --ascii prints no ▲ █ │ ▼ - asserted here
+// because a window may not scroll at the size the ASCII survey draws.
 func TestAScrollingPanelIsASCIIUnderASCII(t *testing.T) {
 	lines := make([]string, 30)
 	for i := range lines {

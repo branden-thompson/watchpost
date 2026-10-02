@@ -97,8 +97,8 @@ func quakeLayerCost(in mapInputs) (int64, int) {
 
 // quakeKeeps is how long a quake is drawn as current: the feeds are at most
 // a week's, and the feed dropping it is what takes it off the map. SEVEN
-// DAYS IS THE MOST THE LIBRARY KEEPS ANYTHING CURRENT: eight were refused,
-// every quake of the week's feed a note of its own (UAT-2 U2-29).
+// DAYS IS THE MOST THE LIBRARY KEEPS ANYTHING CURRENT: eight are refused,
+// every quake of the week's feed then a note of its own (UAT-2 U2-29).
 const quakeKeeps = 7 * 24 * time.Hour
 
 // quakesIn is the feed's earthquakes with a point inside the view.
@@ -116,8 +116,8 @@ func quakesIn(feed []globalfeed.Event, v tty.MapView) []globalfeed.Event {
 // its epicentre fixed on the screen by its magnitude, in its age's colour,
 // labelled with its magnitude and its local time. No severity: the library
 // never reports a quake as an alert over a place. ONE OVERLAY FOR THEM ALL
-// (D-129): an overlay each was hundreds at a national view, and the flood
-// starved the basemap (UAT-2 U2-34); so a quake no longer comes in on its
+// (D-129): an overlay each is hundreds at a national view, and the flood
+// starves the basemap (UAT-2 U2-34); so a quake does not come in on its
 // own frame of the loop, and one within the loop's hours is labelled NEW.
 func quakeOverlay(quakes []globalfeed.Event, now time.Time, clock render.Clock) (tuimaps.Overlay, bool) {
 	if len(quakes) == 0 {

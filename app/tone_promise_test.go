@@ -21,10 +21,9 @@ import (
 // and teaches them the tone can be ignored — which is the one thing it must
 // never mean.
 //
-// NOTHING PINNED THIS. app/tone_latency_test.go measures how FAST the tone
-// starts, not that words follow it, so the suite would have watched a burst
-// sound three tones in silence — which is what the HUM LEAD heard at UAT
-// 2026-09-06 — and reported nothing.
+// THIS IS THE PIN FOR IT. app/tone_latency_test.go measures how FAST the tone
+// starts, not that words follow it, so without this the suite could watch a
+// burst sound three tones in silence and report nothing.
 func TestASoundedToneIsFollowedByWords(t *testing.T) {
 	v := &classVoice{}
 	nar := testDirector(v, nil)
@@ -51,8 +50,7 @@ func TestASoundedToneIsFollowedByWords(t *testing.T) {
 //
 // The cut-short is Routed (I-2), so it raises no window — correctly, because
 // pressing esc must not claim the relay is dead. The cost is that this failure
-// is otherwise silent, and it took a reconstruction from a UAT report to place
-// it. The timeline now carries the line.
+// is otherwise silent, so the timeline carries the line.
 // tonedVoice sounds a tone with REAL duration, so the hold that follows it is a
 // hold and not an instant return. classVoice returns 0, which sends holdRest
 // down its awaitAir branch and never poses the window F-43 is about.
@@ -67,8 +65,7 @@ func (v *tonedVoice) tone(cast.Class) time.Duration { return v.dur }
 //
 // The cut-short is Routed (I-2), so it raises no window — correctly, because
 // pressing esc must not claim the relay is dead. The cost is that this failure
-// is otherwise SILENT, and placing it took a reconstruction from a UAT report.
-// The timeline carries the line now.
+// is otherwise SILENT, so the timeline carries the line.
 func TestGivingUpAfterTheToneIsTraced(t *testing.T) {
 	log := radioDebugTo(t, "1")
 
@@ -90,8 +87,7 @@ func TestGivingUpAfterTheToneIsTraced(t *testing.T) {
 	// THE READ MUST NOT COMPLETE, because giving up during the tone's hold IS the
 	// scenario. Pinning it here means a change that let the read finish fails on
 	// this line rather than on the missing trace below, where the cause would
-	// have to be reconstructed a second time — which is the cost this test exists
-	// to stop paying.
+	// have to be reconstructed — which is the cost this test exists to avoid.
 	if started {
 		t.Fatal("the read completed; this test needs one that gives up during the tone")
 	}
@@ -107,9 +103,8 @@ func TestGivingUpAfterTheToneIsTraced(t *testing.T) {
 // A TONE WITH NO WORDS IS REPORTED (FR-9.2).
 //
 // A TONE IS A PROMISE OF WORDS. The listener hears the attention tone, leans
-// in, and gets nothing — heard three times in one burst at UAT 2026-09-06 and
-// impossible to diagnose from the outside, because a read that ends early is
-// Routed and raises nothing (I-2).
+// in, and gets nothing — impossible to diagnose from the outside, because a
+// read that ends early is Routed and raises nothing (I-2).
 //
 // The report goes to the OPERATOR'S surface and is never spoken: an operational
 // message over the air is confusing and the audience can do nothing about it

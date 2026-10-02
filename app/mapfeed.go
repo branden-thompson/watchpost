@@ -275,8 +275,8 @@ func alertCategory(a snapshot.Alert) (string, bool) {
 }
 
 // overlayStep is the step a point overlay's Valid is stamped to (W14, P-6).
-// Stamped with the moment of each ask, the same data a minute later was a new
-// overlay - handed to the library, and prepared, again on every answer. To
+// Stamped with the moment of each ask, the same data a minute later would be a
+// new overlay - handed to the library, and prepared, again on every answer. To
 // the step, unchanged data compares the same across asks; its currency moves
 // at most a step early, well inside every Keeps (an hour at the least), and
 // the next ask stamps it anew. Ages - a buoy's reading, a quake's NEW - still

@@ -16,9 +16,9 @@ import (
 )
 
 // MaxStatHosts is the number of distinct hosts counted individually; every
-// further host folds into the OtherHost row. RAISED FROM 8 (0.18.0 D-150):
-// the station's client now talks to the map's hosts too - USGS's feeds,
-// AirNow, the zones - and the Status window's MAP STATUS reads them by name.
+// further host folds into the OtherHost row. It has room (0.18.0 D-150) for
+// the map's hosts too - USGS's feeds, AirNow, the zones - which the Status
+// window's MAP STATUS reads by name.
 const MaxStatHosts = 16
 
 // OtherHost is the overflow row's name.
@@ -32,7 +32,7 @@ type HostStats struct {
 	Cache         int64 // served from the memory or disk tier
 	Neg           int64 // served from the negative cache (a remembered 4xx)
 	FastFail      int64 // refused at once by the per-host failure memo (normal lane, Q1)
-	NotModified   int64 // 304 renewals (conditional GETs land in Q5; 0 until then)
+	NotModified   int64 // 304 renewals (conditional GETs, Q5)
 	BytesNet      int64 // body bytes received from the network
 	Bytes304      int64 // body bytes a 304 saved (Q5)
 	H2            int64 // responses that arrived over HTTP/2

@@ -20,7 +20,7 @@ import (
 // weatherUSA is plain HTTP by relay policy (quality pass Q1, DISCOVER
 // LR-1 / D1): its directory accepts only RSA-key-exchange TLS suites that
 // Go removed, and every mount it advertises is `http://…:80/NWR/*.mp3`
-// already — so https:// bought nothing and broke the directory for every
+// already — so https:// buys nothing and fails against the directory on every
 // Go build since 1.22. The app pins mounts to the directory's own host and
 // follows only same-origin redirects (httpx.SameOriginRedirect).
 const (

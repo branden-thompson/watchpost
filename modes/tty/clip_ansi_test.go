@@ -10,9 +10,9 @@ package tty
 //
 // IT IS D-138's DEFECT ONE FUNCTION LATER. `centerText` takes the clip branch
 // whenever the text measures at least the width — exactly what `WrapText`
-// produces on a full line — so the held-hazard band lost its tail at the widths
-// where it fits most tightly. The band's own test turns colour ON and is right
-// in shape; it sampled four widths and missed it.
+// produces on a full line — so a clip that charges escapes cuts the held-hazard
+// band's tail at the widths where it fits most tightly, which a sample of a few
+// widths can miss.
 
 import (
 	"strings"
@@ -60,9 +60,8 @@ func TestClippingNeverLeavesTheStylingOpen(t *testing.T) {
 	}
 }
 
-// AND THE BAND THAT REVEALED IT KEEPS ITS TAIL AT EVERY WIDTH, not at four
-// sampled ones — a sweep, because the failure was width-dependent and the spot
-// checks fell between the cracks.
+// AND THE HELD-HAZARD BAND KEEPS ITS TAIL AT EVERY WIDTH — a sweep, because the
+// failure is width-dependent and spot checks fall between the cracks.
 func TestTheHeldBandKeepsItsTailAcrossEveryWidth(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
@@ -73,8 +72,8 @@ func TestTheHeldBandKeepsItsTailAcrossEveryWidth(t *testing.T) {
 		// WHITESPACE COLLAPSED FIRST. The band CENTRES each wrapped line, so at
 		// widths where the wrap falls between "dropped" and "unread." the two
 		// words are separated by a run of padding — the message is intact and a
-		// contiguous-substring check is not. My first sweep reported width 152
-		// as truncated for exactly this reason, and the band was correct.
+		// contiguous-substring check is not: it would report width 152 as
+		// truncated while the band is correct.
 		got := strings.Join(strings.Fields(stripANSITest(strings.Join(b.heldNotice(), " "))), " ")
 		if !strings.Contains(got, "dropped unread") {
 			t.Fatalf("width %d: the severest rung is cut short:\n%q", w, got)

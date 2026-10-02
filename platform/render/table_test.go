@@ -32,8 +32,8 @@ func TestHeaderTokensAtResolvedOffsets(t *testing.T) {
 	// LABEL hidden (UAT 11.2) and NAME is the fill column (UAT 11.1): at the
 	// minimal full width (115) every downstream token sits at the computed
 	// offset; widening moves them right by exactly the fill growth.
-	// The labels are CENTRED in their column's segment since the 2026-08-28
-	// facelift (the segments meet at the gutter midpoints), so the pin is
+	// The labels are CENTRED in their column's segment (the 2026-08-28
+	// facelift: the segments meet at the gutter midpoints), so the pin is
 	// "centred over its column", not a fixed offset.
 	hdr := stripANSI(strings.Split((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable(nil, 0), "\n")[1])
 	for tok, col := range map[string]string{"##.": "num", "NAME": "name", "ZIP": "zip", "NOW": "now"} {
@@ -148,8 +148,8 @@ func TestExtendedColumnsBeyond125(t *testing.T) {
 		{Date: "08/29", Hi: f64(33.0), Lo: f64(23.0)},
 		{Date: "08/30", Hi: f64(34.0), Lo: f64(24.0)},
 	}
-	// 240 (was 220): WX STN + DIST take the first 16 cells beyond the minimal
-	// full layout (UAT 60); the five day columns claim the width beyond that.
+	// 240: WX STN + DIST take the first 16 cells beyond the minimal full
+	// layout (UAT 60); the five day columns claim the width beyond that.
 	out := stripANSI((Opts{ThinBands: true, Width: 240, Units: UnitF}).LocationTable([]LocationRow{r}, 5))
 	lines := strings.Split(out, "\n")
 	if !strings.Contains(lines[0], "E X T E N D E D   F O R E C A S T") {
@@ -198,8 +198,8 @@ func TestSessionFourStyling(t *testing.T) {
 	if !strings.Contains(rowLine, "1;38;5;220") {
 		t.Fatalf("focused name must be bold yellow:\n%q", rowLine)
 	}
-	// UAT 50 supersedes the focused-row case: n/a on the FOCUSED row reads
-	// the light-blue focus tone; unfocused rows keep the base grey.
+	// UAT 50, the focused-row case: n/a on the FOCUSED row reads the
+	// light-blue focus tone; unfocused rows keep the base grey.
 	if !strings.Contains(rowLine, "38;5;117") {
 		t.Fatalf("n/a HI on the focused row must read the focus tone:\n%q", rowLine)
 	}

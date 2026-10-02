@@ -16,16 +16,15 @@ import (
 
 // A TAKEOVER'S TONE NEVER SOUNDS OVER A LIVE READ.
 //
-// UAT 2026-09-05: the HUM LEAD heard a weather alert and a `[w]` read at once.
-// TestEventReadIsSuspendedByABreakingTakeover already pins the suspension and
-// passes — but it drives the takeover with `s.line()` directly, so no test had
-// ever put a REAL takeover opening against a read in progress, and the tone is
-// the first thing a listener hears.
+// TestEventReadIsSuspendedByABreakingTakeover pins the suspension, but it drives
+// the takeover with `s.line()` directly, so it never puts a REAL takeover
+// opening against a read in progress — and the tone is the first thing a
+// listener hears (UAT 2026-09-05: a weather alert and a `[w]` read at once).
 //
-// This closes that gap: the takeover runs through readScript, tone and all. The
-// arbiter is correct at this layer — the read is paused before the tone sounds —
-// which is worth pinning precisely because it narrows where the reported defect
-// can be: not in the ranking, and not in the ordering of pause against tone.
+// Here the takeover runs through readScript, tone and all. The arbiter is
+// correct at this layer — the read is paused before the tone sounds — and
+// pinning that rules the ranking and the ordering of pause against tone out as
+// causes of an overlap.
 func TestATakeoversToneNeverSoundsOverALiveRead(t *testing.T) {
 	v := &scriptVoice{}
 	nar := testDirector(v, nil)

@@ -64,8 +64,8 @@ func NewClient(userAgent string) (*httpx.Client, error) {
 }
 
 // Rate is the radar client's pace, requests a second: room for six frames at
-// once (0.18.0 D-130). At the default five, a frame came every 200 ms and
-// the lower 48's loop took 4.8 s cold, however many were asked at once.
+// once (0.18.0 D-130). At the default five, a frame comes every 200 ms and
+// the lower 48's loop takes 4.8 s cold, however many are asked at once.
 const Rate = 30
 
 // ClientConfig is the radar client's configuration, named so a test holds it.

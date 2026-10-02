@@ -36,14 +36,14 @@ type Provider struct {
 	Key string `toml:"key,omitempty"`
 }
 
-// Radio holds tuner settings. Only what 0.9 reads lives here (red-team
+// Radio holds tuner settings. Only what the app reads lives here (red-team
 // round 2 R2-21): the `--tts-cmd` argv template and a stream override are
 // 1.0 items and arrive with their code, not before it.
 //
-// 0.14.0 adds the correspondent cast and the alert tones. Everything here is
-// ADDITIVE and its zero value is 0.13.0's behaviour: an absent [radio.voices]
-// table means every role inherits the `voice` key, and an absent [radio.tones]
-// table means every class sounds (FR-2, data-shape §2).
+// The correspondent cast and the alert tones are ADDITIVE, and their zero
+// value is one voice and every tone: an absent [radio.voices] table means
+// every role inherits the `voice` key, and an absent [radio.tones] table means
+// every class sounds (FR-2, data-shape §2).
 type Radio struct {
 	Mode string `toml:"mode,omitempty"` // "synth" (default) | "relay" — the [m] source pick (UAT 97)
 
@@ -243,15 +243,14 @@ type Config struct {
 
 	// Broadcaster is the STATION's settings — where it transmits from and how
 	// far it reaches (D-72, broadcaster.go). Separate from Locations, which is
-	// the LISTENER's world: the two were one field doing two jobs.
+	// the LISTENER's world: one field would be doing two jobs.
 	Broadcaster Broadcaster `toml:"broadcaster,omitempty"`
 
 	Theme string `toml:"theme,omitempty"` // active color theme (UAT 53)
 	Voice string `toml:"voice,omitempty"` // radio correspondent voice (UAT 84)
 
-	// Display preferences — 0.14.0's WATCHPOST UI group. Both were live-only
-	// before: [f]/[c] swapped the units for the session and nothing remembered
-	// it, and the clock was whatever each site had hard-coded. Empty means the
+	// Display preferences — the WATCHPOST UI group, remembered across
+	// sessions. Empty means the
 	// default, and an unrecognised word reads as the default too (render's
 	// UnitsByKey / ClockByKey) — a display preference is not worth refusing to
 	// start over.
@@ -311,7 +310,7 @@ type Config struct {
 	MapDetailLevel string `toml:"map_detail_level,omitempty"`
 
 	// UpdateCheck asks the app, once at startup, whether a newer release is
-	// published (0.15.0 FR-7.1; it polled hourly before). OPT-IN: the app makes no unattended outbound request the
+	// published (0.15.0 FR-7.1). OPT-IN: the app makes no unattended outbound request the
 	// listener did not ask for, and the check is not needed to read weather.
 	UpdateCheck bool `toml:"update_check,omitempty"`
 
@@ -336,10 +335,10 @@ func Default() Config {
 // conventional ~/.config fallback.
 func Path() (string, error) {
 	base := os.Getenv("XDG_CONFIG_HOME")
-	// A RELATIVE XDG_CONFIG_HOME IS REFUSED — the same failure S-F5 already
-	// fixed for the Piper binary, on the tree that decides WHAT THE RADIO SAYS
-	// (red team 2026-09-05, S-4). With a relative value, launching watchpost
-	// from an untrusted directory loaded ./watchpost/config.toml — locations,
+	// A RELATIVE XDG_CONFIG_HOME IS REFUSED — the same rule S-F5 applies to the
+	// Piper binary, on the tree that decides WHAT THE RADIO SAYS (red team
+	// 2026-09-05, S-4). Honoured, a relative value would make launching watchpost
+	// from an untrusted directory load ./watchpost/config.toml — locations,
 	// the FIRMS key — and ./watchpost/scripts/. The spec says the variable is an
 	// absolute base directory; anything else falls back to the conventional
 	// path rather than resolving against the working directory.
@@ -454,10 +453,10 @@ func mergeUnknown(marshalled []byte, path string) ([]byte, bool) {
 // saves, with the whole sequence held under one lock.
 //
 // WHAT THE LOCK BUYS, precisely. Save is already atomic on disk — CreateTemp
-// plus Rename — so a reader can never see a torn file. What was unprotected was
-// the READ-MODIFY-WRITE: six owners each did Load, edited their own field, and
-// Saved, so two owners interleaving lost whichever edit landed first. This
-// closes that window and nothing else.
+// plus Rename — so a reader can never see a torn file. What it protects is the
+// READ-MODIFY-WRITE: owners that each Load, edit their own field, and Save
+// would, interleaving, lose whichever edit landed first. This closes that
+// window and nothing else.
 //
 // WHAT IT DOES NOT BUY: the lock is process-local. Two Watchpost instances on
 // one machine still race, and last writer still wins — app/debug.go already

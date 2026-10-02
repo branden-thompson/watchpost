@@ -29,8 +29,7 @@ func TestARailOfUnreadableCardsGivesTheBedBack(t *testing.T) {
 
 	// THE BED MUST BE CARRYING, or this passes for the wrong reason: with
 	// nothing underneath there is nothing to duck and `givingWay` is false
-	// whatever the rail holds. The first draft of this test omitted it and
-	// passed against the defect.
+	// whatever the rail holds.
 	d.bed.carries = true
 
 	if !d.lineup.cardByID(t, "far").OutOfFence {
@@ -72,12 +71,10 @@ func TestAReadableRailStillTakesTheBed(t *testing.T) {
 // AND THE EDGE IS WHAT IS EMITTED, which is the half MVS-D-67 rests on: a
 // drain of several cards dips ONCE.
 //
-// PINNED HERE BECAUSE THIS PATH WAS BELIEVED DEAD UNTIL 2026-09-15. A comment
-// in app/executors.go asserted that nothing in production constructs Duck or
-// Restore; P5 wired them through `givingWay` and the comment was not revisited,
-// so the effect pair ran for a release with a note on it saying it could not.
-// The executor half was covered (TestTheDuckAndItsRestoreReachTheEffector); the
-// DIRECTOR's emission was not.
+// PINNED HERE, AT THE DIRECTOR. Production constructs Duck and Restore through
+// `givingWay`; the executor half has its own pin
+// (TestTheDuckAndItsRestoreReachTheEffector), and this is the DIRECTOR's
+// emission.
 func TestTheBedGivesWayOnceAndTakesItBackOnce(t *testing.T) {
 	near := aBurst(t, "near", 33.31, -117.3)
 	l := Lineup{}
@@ -120,13 +117,14 @@ func TestTheBedGivesWayOnceAndTakesItBackOnce(t *testing.T) {
 // because it is the last raw-track "does the rail hold anything" question in the
 // package. Four of five is the same defect as none.
 //
-// THE INTERACTION IS WHAT MAKES IT WORSE THAN A MISSED SITE. After D-139 an
-// out-of-fence rail card is IMMORTAL and INVISIBLE: `Next` skips it, `toPrepare`
+// THE INTERACTION IS WHAT MAKES IT WORSE THAN A MISSED SITE. An out-of-fence
+// rail card is IMMORTAL and INVISIBLE (D-139): `Next` skips it, `toPrepare`
 // skips it so it never reaches Standby with a BuiltAt and can never be dropped
 // as stale, and `Projection` hides it so the operator cannot drop it either. So
-// this guard stayed permanently true and the main track's standing-by report was
-// never re-hydrated for the life of the fence — until it aged past StaleAfter
-// and the listener heard "That report is out of date and has been dropped."
+// a raw-track guard would stay permanently true and the main track's
+// standing-by report would never be re-hydrated for the life of the fence —
+// until it aged past StaleAfter and the listener heard "That report is out of
+// date and has been dropped."
 func TestAnUnreadableRailDoesNotFreezeTheMainTracksRefresh(t *testing.T) {
 	far := aBurst(t, "far", 37.2, -99.8) // Kansas, from an Oceanside station
 	rep, err := Propose(Card{ID: "rep", Slot: LocationReport, Subject: "rep",

@@ -4,14 +4,14 @@ package tty
 //
 // HUM LEAD, UAT 2026-09-11: "Pressing [1] doesn't open the details modal."
 //
-// IT IS THE OTHER HALF OF THE MANIFEST, and D-87 is what made it load-bearing.
-// The card stopped being a transcript on the HUM LEAD's own reasoning — "the full
+// IT IS THE OTHER HALF OF THE MANIFEST (D-87). The card is not a transcript, on
+// the HUM LEAD's own reasoning — "the full
 // script on the top level card doesn't make sense when I can 'drill down' to read
 // the whole thing" — so the drill-down is the thing the manifest defers TO. A
 // manifest with nowhere to go promises a place that does not exist, and the words
 // a station is about to say aloud would be reachable from nowhere at all.
 //
-// THE RULING IT SERVES IS OLDER THAN D-87 (HUM LEAD, 2026-09-11): "the operator
+// THE RULING IT SERVES (HUM LEAD, 2026-09-11): "the operator
 // should be able to inspect the full text of the report by keying the number
 // position of either the live card [0] or the UP Next [1] card."
 //
@@ -21,8 +21,7 @@ package tty
 // second confirmation, and two places for the wording to drift." Four gates hang
 // off the Dashboard's window set — reachability at the floor, the margin survey,
 // the memo-completeness walk and the single-value exclusivity of `Dashboard.modal`
-// — and a console-private window would have been outside every one of them on the
-// day it shipped.
+// — and a console-private window would be outside every one of them.
 
 import (
 	"slices"
@@ -38,9 +37,8 @@ import (
 // 77, DERIVED FROM THE WINDOW AND NOT CHOSEN: the card's window class is 85 wide
 // at its floor (modalWidth), two of those columns are its borders, and the margin
 // survey requires three clear columns inside each border — 85 - 2 - 3 - 3. The
-// first draft used the manifest's own 78 and the survey reported the window
-// running into its right border by exactly the one column this arithmetic
-// accounts for.
+// manifest's own 78 runs the window into its right border by exactly the one
+// column this arithmetic accounts for.
 //
 // THE TABLE DOES NOT STRETCH, and that is deliberate: a contents list whose
 // columns moved with the terminal is a list the operator re-learns on every
@@ -70,8 +68,8 @@ func (b Broadcaster) cardDetail(handle int) (string, func(render.Opts) (string, 
 //
 // HUM LEAD, UAT 2026-09-13: "[A] Details / Full Read / Manage in the alert window
 // doesn't currently work, it should function just like [1] in the Up Next card."
-// It did not work because nothing bound the key: `burstBody` drew the control and
-// no handler took an `A`, so the box advertised a way in that did not exist.
+// `burstBody` draws the control, so a handler must take the `A`, or the box
+// advertises a way in that does not exist.
 //
 // THE HEAD OF THE RAIL, AND ONLY IT, which is the same card the box draws — a
 // burst is ONE card (MVS-D-77), so there is never a second to choose between.
@@ -151,9 +149,9 @@ func (b Broadcaster) detailBody(o render.Opts, c lineup.Card) []string {
 	// the Broadcaster UI: [P] Change Position [k] Drop from Line-Up."
 	//
 	// THE LIVE CARD IS NOT ONE OF THEM. A card on the air cannot be moved or
-	// dropped — D-45 already rules it "Management Locked", and the card's own
-	// STATUS line has said so since D-87 — so the window that shows that line must
-	// not also offer the two keys it rules out (D-65).
+	// dropped — D-45 rules it "Management Locked", and the card's own STATUS line
+	// says so (D-87) — so the window that shows that line must not also offer the
+	// two keys it rules out (D-65).
 	ctls := []render.Control{render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll")}
 	if manageable(c) {
 		ctls = append(ctls, render.Ctl("P", "Change Position"), render.Ctl("k", "Drop from Line-Up"))
@@ -165,8 +163,8 @@ func (b Broadcaster) detailBody(o render.Opts, c lineup.Card) []string {
 // manageable is whether the operator may reorder or drop this card (D-118).
 //
 // A CARD ON THE AIR IS NOT. D-45 rules it "Management Locked; Can be Taken-Over",
-// which the card's own STATUS line has said since D-87 — so the window that shows
-// that line must not also offer the two keys it rules out.
+// which the card's own STATUS line says (D-87) — so the window that shows that
+// line must not also offer the two keys it rules out.
 //
 // A STRUCTURAL CARD NEEDS NO CLAUSE HERE. `Projection` already keeps the
 // schedule's own furniture off the surface, so nothing the console holds is one
@@ -229,7 +227,7 @@ func detailContents(c lineup.Card) []string {
 //
 // SHARED WITH NOTHING, DELIBERATELY: the card formats its number inline with
 // `fmt.Sprintf` and this is the only other place that needs the form, so the
-// second caller is what earns the helper (modularity standard) and both now go
+// second caller is what earns the helper (modularity standard) and both go
 // through it.
 func pad2(n int) string {
 	if n < 10 {
@@ -328,15 +326,14 @@ func (d Dashboard) cardTitleOf(o render.Opts) string {
 // indentBody gives every row the window's third column.
 //
 // THE PANEL SUPPLIES TWO AND THE SURVEY WANTS THREE — measured, not chosen:
-// TestEveryWindowClearsItsMargins reported this window leading at 2 the first
-// time it ran, which is the same finding it made against four windows in
-// 2026-09-05. Applied HERE, once, rather than written into each row: a margin
-// spelled at fifteen call sites is fifteen places for it to drift.
+// without this, TestEveryWindowClearsItsMargins finds the window leading at 2.
+// Applied HERE, once, rather than written into each row: a margin spelled at
+// fifteen call sites is fifteen places for it to drift.
 //
 // AND THE TRAILING PAD COMES OFF. `manifestRow` fills its row to `room` because
 // on a CARD the row is a cell of a box that has to be full; inside a window it is
-// invisible except to the margin survey, which measured it as content and
-// reported the window running into its right border. The same two facts with two
+// invisible except to the margin survey, which measures it as content and
+// reports the window running into its right border. The same two facts with two
 // different consumers, so the consumer that does not want the fill removes it.
 func indentBody(rows []string) []string {
 	out := make([]string, 0, len(rows))

@@ -92,9 +92,9 @@ func TestNDFDsWavesAreFilledFromOpenMeteo(t *testing.T) {
 	}
 }
 
-// TestWavesReachTheCoast is UAT-2 U2-31: a sea cell whose nearest lattice
-// point was ashore was left blank - the rule that keeps a source to its reach
-// (D-101) - so the bands stopped short of the coast, in blocks. Waves are
+// TestWavesReachTheCoast is UAT-2 U2-31: under the rule that keeps a source
+// to its reach (D-101), a sea cell whose nearest lattice point is ashore is
+// left blank, and the bands stop short of the coast, in blocks. Waves are
 // carried out to every cell from the sea's own points; the map draws them
 // over the sea alone.
 func TestWavesReachTheCoast(t *testing.T) {

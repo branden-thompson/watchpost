@@ -1,8 +1,7 @@
 package tty
 
-// detail.go — the Location Details modal: currently / today / forecast rows and their layout. Split from dashboard.go by the
-// quality pass (Q2, pure move); the map of where things happen is
-// docs/where-things-happen.md.
+// detail.go — the Location Details modal: currently / today / forecast rows and their layout. The
+// map of where things happen is docs/where-things-happen.md.
 
 import (
 	"fmt"
@@ -29,8 +28,8 @@ const detailPrefixW = detailLabelW + 3
 // column starts flush with the modal's header label; the freed cells are
 // spacing on the right.
 func detailRow(o render.Opts, label, content string) string {
-	// UAT 30: 1-col breathing room each side of the divider (was 3) - the
-	// reclaimed width goes to the right gutter beside the scroll rail.
+	// UAT 30: 1-col breathing room each side of the divider - the rest of
+	// the width goes to the right gutter beside the scroll rail.
 	return fmt.Sprintf("%*s %s %s", detailLabelW, label, o.Glyphs().Rail, content)
 }
 
@@ -100,14 +99,13 @@ func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location, cw int) 
 	if h.Source.Provider != "" && render.PlainLine(h.Source.ModelOrStation) == "" {
 		out = append(out, detailRow(o, "", render.Italic("Data from NWS hourly grid forecast for this location")))
 	}
-	// THE SECOND LABEL IS A COLUMN, not a string with spaces in it (0.15.0).
+	// THE SECOND LABEL IS A COLUMN, not a string with spaces in it.
 	//
 	// These rows carry two label/value pairs each — feels-like and humidity,
-	// station and distance — and the second pair was built as
-	// "Humidity  :  %.0f%%", a hand-laid column inside a cell. The two rows
-	// lined up only because "Humidity  :" and "Distance  :" happen to be the
-	// same length; a third pair of a different width would have gone unnoticed
-	// until someone read it.
+	// station and distance. A hand-laid column inside a cell
+	// ("Humidity  :  %.0f%%") lines up only while "Humidity  :" and
+	// "Distance  :" happen to be the same length; a third pair of a different
+	// width would break it unnoticed.
 	var grid []render.StatusRow
 	if h.Feels != nil && h.Temp != nil {
 		hum := []string{"", ""}
@@ -134,10 +132,10 @@ func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location, cw int) 
 	if st != "" {
 		// NOT YOUR LOCAL STATION (HUM LEAD, UAT 2026-09-05).
 		//
-		// Lone Pine read 86 °F at half past six because the observation came
-		// from Death Valley, 110 km away — real, current, and not this
-		// location's weather. Beyond twenty miles the provider now refuses the
-		// reading outright; between ten and twenty it is used, and the listener
+		// An observation from Death Valley, 110 km from Lone Pine, is real,
+		// current, and not Lone Pine's weather. Beyond twenty miles the
+		// provider refuses the reading outright; between ten and twenty it is
+		// used, and the listener
 		// is told, because a measurement from the far side of a ridge is a
 		// different microclimate and the number may simply not be theirs.
 		//
@@ -276,8 +274,8 @@ func nextHours(hrs []snapshot.Hourly, now time.Time, tz *time.Location, want int
 
 // whenTail is the three columns the hours and the days share, and the reason
 // they scan as one column instead of as two tables that happen to be adjacent
-// (HUM LEAD, 2026-09-07). The alternative was tuning one to the other by eye,
-// which holds until either changes.
+// (HUM LEAD, 2026-09-07). Tuning one to the other by eye holds only until
+// either changes.
 //
 // THE GAPS ARE IN THE WIDTHS, and these tables are drawn with no gutter of
 // their own, because the columns have to land where the report's OTHER sections
@@ -296,7 +294,7 @@ func whenTail() []render.StatusColumn {
 //
 // THE DAY IS ITS OWN COLUMN so that the hour does not move when it appears: a
 // rolling window crosses midnight, and a day name folded into the time cell
-// pushed every column right on that one row. Blank on every other row, four
+// would push every column right on that one row. Blank on every other row, four
 // cells wide against the kit's one of gutter, which is the two the mock draws
 // between "Tue" and the hour.
 //

@@ -146,13 +146,12 @@ func startPump(t *testing.T, r *recorder, faults chan<- string) (*pump, context.
 	return p, ctx
 }
 
-// TestALongRunningEffectDoesNotDelayTheNextEvent is PL-1, and it is the finding
-// this whole file exists to answer.
+// TestALongRunningEffectDoesNotDelayTheNextEvent is PL-1, and it is the rule
+// this whole file exists to hold.
 //
-// The first draft of the loop ran each effect inline, which would have paid the
-// 1.03 s card build ON THE PUMP and reintroduced the blocking class inside the
-// approach chosen to avoid it. Here one effect is held open indefinitely and the
-// schedule must carry on around it.
+// Running each effect inline would pay the 1.03 s card build ON THE PUMP and
+// reintroduce the blocking class inside the approach chosen to avoid it. Here
+// one effect is held open indefinitely and the schedule must carry on around it.
 func TestALongRunningEffectDoesNotDelayTheNextEvent(t *testing.T) {
 	r := newRecorder()
 	stuck := make(chan struct{})
@@ -316,11 +315,10 @@ func TestAPanicInAnEffectThatNamesNoCardFailsNothing(t *testing.T) {
 // TestAContainedPanicEmitsNothingForAnEffectThatNamesNoCard pins the pump's own
 // contract, directly.
 //
-// THE END-TO-END TEST ABOVE CANNOT SEE THIS, and mB5 is the proof: remove the
-// guard and the pump emits Failed{ID: ""}, which the Director then ignores
-// because find("") holds nothing — so the schedule is unharmed either way and
-// the mutant SURVIVED. The rule is enforced twice, in two layers, and only the
-// far one was observable.
+// THE END-TO-END TEST ABOVE CANNOT SEE THIS (mB5): remove the guard and the
+// pump emits Failed{ID: ""}, which the Director then ignores because find("")
+// holds nothing — so the schedule is unharmed either way. The rule is enforced
+// twice, in two layers, and end to end only the far one is observable.
 //
 // The guard is kept rather than deleted, and the reason is not symmetry: an
 // event naming no card is garbage on the wire. It would appear in the DR-23
@@ -380,8 +378,7 @@ func TestRunsOfGroupsOnlyWhatMustStayInOrder(t *testing.T) {
 		// CONNECTED, NOT ADJACENT. An effect naming no card must not split a
 		// card's cue from its words: they would land on separate workers and the
 		// band could promise a callout after the read had started (DR-18). Duck
-		// and Restore name no card and arrive with T2.3, so this is the shape
-		// that is about to become ordinary.
+		// and Restore name no card, so this is an ordinary shape.
 		{"an effect naming no card never splits a card's run", []lineup.Effect{
 			lineup.CueTicker{ID: "a1"}, lineup.Publish{}, lineup.Speak{ID: "a1"},
 		}, [][]string{{"cue(a1)", "speak(a1)"}, {"publish(rail=[] main=[])"}}},
@@ -426,7 +423,7 @@ func TestOnlySharedOutputWorkRidesTheLane(t *testing.T) {
 		in   []lineup.Effect
 		want bool
 	}{
-		// THE RAIL'S EFFECTS, AND THE LANE IS NOW PART OF THE QUESTION (D-82).
+		// THE RAIL'S EFFECTS, AND THE LANE IS PART OF THE QUESTION (D-82).
 		// The band and the bed are the rail's outputs; the programme is the thing
 		// they are ABOUT, not a competitor for them.
 		{"a hazard's cue", []lineup.Effect{lineup.CueTicker{ID: "a1", Track: lineup.AlertRail}}, true},
@@ -436,8 +433,8 @@ func TestOnlySharedOutputWorkRidesTheLane(t *testing.T) {
 			lineup.Speak{ID: "a1", Track: lineup.AlertRail},
 		}, true},
 		// AND THE PROGRAMME'S DO NOT RIDE IT. A report's read blocks for as long
-		// as the words take, so a run of its holding the lane put the hazard the
-		// Director had just admitted behind the weather — see
+		// as the words take, so a run of its holding the lane would put the hazard
+		// the Director has just admitted behind the weather — see
 		// TestAHazardsWordsDoNotQueueBehindAReportThatIsReading.
 		{"a report's cue", []lineup.Effect{lineup.CueTicker{ID: "r1", Track: lineup.MainTrack}}, false},
 		{"a report's release", []lineup.Effect{lineup.ReleaseTicker{ID: "r1", Track: lineup.MainTrack}}, false},
@@ -583,8 +580,8 @@ func TestTheBandIsReleasedBeforeTheNextCardIsCued(t *testing.T) {
 	}
 }
 
-// TestTheBandKeepsItsOrderAcrossSteps — the half F-D2's first fix did not close,
-// found by an adversarial review and reproduced here before it was believed.
+// TestTheBandKeepsItsOrderAcrossSteps — the half of F-D2 that grouping alone
+// cannot close.
 //
 // Grouping orders effects WITHIN one step. On the ordinary slow path the two
 // band effects fall in DIFFERENT steps: card a1 finishes while b1's 1.03 s
@@ -642,11 +639,10 @@ func TestStoppingTwiceIsSafe(t *testing.T) {
 // duck must reach it before the words are spoken over it, and the restore must
 // not overtake a correspondent still speaking.
 //
-// Neither names a card, so grouping cannot order them against the read — they
-// were dispatched to their own goroutines, concurrent with it, and a test in
-// this file ASSERTED that concurrency as correct. A duck landing after the read
-// has started is the duck-lift bug in a new costume (RD-2), and MVS-D-67 makes
-// these effects binding before the rail goes live.
+// Neither names a card, so grouping cannot order them against the read — on
+// goroutines of their own they would run concurrently with it. A duck landing
+// after the read has started is the duck-lift bug in a new costume (RD-2), and
+// MVS-D-67 makes these effects binding.
 //
 // Asserted by blocking, so the claim does not depend on the scheduler.
 func TestTheDuckIsNotOvertakenByTheReadItBrackets(t *testing.T) {
@@ -675,15 +671,13 @@ func TestTheDuckIsNotOvertakenByTheReadItBrackets(t *testing.T) {
 	}
 }
 
-// TestTheLaneRetiresWithTheLoop. Cancelling the context retired the pump and
-// left the lane goroutine running until someone called stop; before the lane
-// existed, cancelling retired every pump goroutine.
+// TestTheLaneRetiresWithTheLoop. Cancelling the context retires the pump AND
+// the lane goroutine, without waiting for someone to call stop.
 //
 // ASSERTED ON THE CHANNEL, NOT ON A STACK DUMP. A receive from a closed channel
 // is always ready and reports it closed, while a receive from an open empty one
 // blocks — so the default arm tells them apart with no timing in the assertion
-// at all. The leak was proved once with a throwaway probe and the probe was
-// then deleted, which left the rule with no pin: its mutant survived.
+// at all.
 func TestTheLaneRetiresWithTheLoop(t *testing.T) {
 	r := newRecorder()
 	p := newPump(lineup.New(lineup.Settings{Max: 10}, pumpNow), r.run, func(lineup.Effect, any) {})
@@ -709,15 +703,10 @@ func TestTheLaneRetiresWithTheLoop(t *testing.T) {
 // A HAZARD'S WORDS DO NOT QUEUE BEHIND A REPORT THAT IS READING (D-82).
 //
 // THE PUMP'S OTHER HALF OF PRE-EMPTION, and without it the schedule's half is
-// worthless. The Director will now let a rail card take the air over a report
-// (D-82) — but every `Speak` claimed `TheBed`, so every read rode the pump's ONE
-// lane, and the hazard's cue and words queued behind a report that blocks for as
-// long as the words take. The operator would see the takeover on the console and
-// hear it minutes later.
-//
-// It was harmless until F-91 built the main track's reader, because a report's
-// Speak was declined in microseconds. It is the shape of the whole batch: a
-// mechanism that was correct while one lane could speak.
+// worthless. The Director lets a rail card take the air over a report (D-82) —
+// but a report's read that rode the pump's ONE lane would queue the hazard's cue
+// and words behind a report that blocks for as long as the words take. The
+// operator would see the takeover on the console and hear it minutes later.
 func TestAHazardsWordsDoNotQueueBehindAReportThatIsReading(t *testing.T) {
 	r := newRecorder()
 	reading := make(chan struct{})

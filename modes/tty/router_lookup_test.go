@@ -2,10 +2,8 @@ package tty
 
 // router_lookup_test.go — the search window's ANSWER has to reach the window.
 //
-// HUM LEAD, UAT 2026-09-14: "now location search doesn't work at all - no
-// suggestion or error for invalid location; pressing <enter> does nothing …
-// tried multiple valid/invalid locations multiple times - same (lack) of
-// behavior."
+// HUM LEAD, UAT 2026-09-14: location search answers every query, valid or
+// invalid, with a suggestion or an error, and <enter> acts on it.
 
 import (
 	"errors"
@@ -124,7 +122,7 @@ func TestAValidLocationSearchedFromTheConsoleLands(t *testing.T) {
 // THE LIST IS DERIVED, NOT KEPT BY HAND. `observerScoped` names four reply
 // types, and a hand-kept list of types is the F-30 failure: the fifth one is
 // added to the Dashboard, nobody remembers this switch, and that window goes
-// quiet from the console exactly the way the search window did.
+// quiet from the console.
 //
 // SO THE GUARD READS THE PACKAGE. Every unexported `*Msg` the package declares
 // is either an ANSWER a window is owed — in which case the Router must carry it

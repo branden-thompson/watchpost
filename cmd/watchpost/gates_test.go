@@ -13,8 +13,7 @@ package main
 // THE HAZARD IS A GATE THAT EXISTS AND DOES NOT RUN. required-gates.txt makes a
 // gate need three edits to LEAVE; TestEveryGateShapedTargetIsListedOrExempt
 // catches one that never ARRIVES; the CI checks catch one that is present on
-// every list and silenced in the workflow. Each was a real finding before it was
-// a test.
+// every list and silenced in the workflow.
 
 import (
 	"go/ast"
@@ -235,9 +234,9 @@ func assertThreeListsAgree(t reporter, m *buildModel) {
 // EVERY GATE-SHAPED TARGET IS ON A LIST, OR SAYS WHY NOT.
 //
 // required-gates.txt makes a gate need three edits to LEAVE; it has no answer to
-// a gate that never ARRIVES. `make p10` was declared "must fail loud, never
-// skip", was RED on a clean tip, and was on zero lists — invisible to a
-// comparison of two lists it was on neither of. This asks the Makefile.
+// a gate that never ARRIVES. A target on zero lists is invisible to a
+// comparison of two lists it is on neither of, however loudly it is declared
+// to fail. This asks the Makefile.
 func TestEveryGateShapedTargetIsListedOrExempt(t *testing.T) {
 	m := loadBuildModel(t)
 	m.mustRun(t)
@@ -353,8 +352,8 @@ func assertNoCachedGate(t reporter, m *buildModel) {
 // which names the person who built it. Every line that produces a binary —
 // whatever names the package, and whether or not it names an output — must
 // carry the flag. A bare `go build ./cmd/x` with no `-o` drops an untrimmed
-// binary in the working directory, which is where a 4.7 MB one was committed
-// from.
+// binary in the working directory, where `git add -A` sweeps it into a
+// commit.
 func TestEveryBuildTargetTrimsThePath(t *testing.T) {
 	m := loadBuildModel(t)
 	m.mustRun(t)
@@ -514,7 +513,7 @@ func notUnderVerify() map[string]string {
 // THE IDENTITY GATE SELECTS ITS TEST (REVIEW 2026-09-17, Code Quality). The
 // recipe is `go test ./cmd/watchpost -run PublishedTreeNames`; rename the test
 // and zero tests run, exit 0 — the gate passes by asking nothing. The alloc
-// budget got this guard; this is the same guard for the same shape.
+// budget has the same guard for the same shape.
 func TestTheIdentityGateSelectsItsTest(t *testing.T) {
 	m := loadBuildModel(t)
 	m.mustRun(t)

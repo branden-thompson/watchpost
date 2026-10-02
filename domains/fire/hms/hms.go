@@ -52,7 +52,7 @@ var ErrTruncated = errors.New("hms: archive holds more than 200000 placemarks �
 
 // Provider is the HMS snapshot provider. The parsed archive is memoized by
 // content hash (red-team B5 P1): every RECENT location runs its own
-// scheduler, so without the memo one 15-minute tick parsed the same 1.4 MB
+// scheduler, so without the memo one 15-minute tick parses the same 1.4 MB
 // KMZ fifty times (measured 4.5 GB allocated, 616 MB heap peak); with it
 // the archive is parsed once per change, ~120 ms and ~90 MB, whoever asks.
 type Provider struct {
@@ -63,10 +63,10 @@ type Provider struct {
 
 	// The archive is larger than the client cache's in-memory ceiling, so httpx
 	// serves it from disk — and the fire tier rehydrates across every pipeline,
-	// so without this the same disk file was read (and hashed for the memo) tens
-	// of times a window even though it changes every 10 min. This coalesces the
-	// burst: one parsed archive is reused for coalesceFor, whoever asks. (0.12.0
-	// memory pass — the disk re-read was the app's single largest allocator.)
+	// so without this the same disk file is read (and hashed for the memo) tens
+	// of times a window even though it changes every 10 min, which makes it the
+	// app's single largest allocator. This coalesces the burst: one parsed
+	// archive is reused for coalesceFor, whoever asks.
 	mu        sync.Mutex
 	cached    []Point
 	cachedErr error // ErrTruncated (or nil) for the cached parse — reused with it
@@ -409,7 +409,7 @@ const maxFields = 32
 
 // parseDescription reads "Lon: -121.55<br>Lat: 49.89<br>YearDay: 2026237<br>Time: 0201UTC<br>Satellite: GOES-EAST<br>Method: NGFS<br>Ecosystem: 22<br>FRP: 10.980MW"
 // with strings.Cut, field by field, no map (Q3, PF-7); the last value of a
-// repeated key wins, as before.
+// repeated key wins.
 func parseDescription(desc, coords string, in *interner) (Point, bool) {
 	f := descFields(desc, in)
 	if f.lon == "" || f.lat == "" {

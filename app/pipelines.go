@@ -1,6 +1,6 @@
 package app
 
-// pipelines.go — the publisher (coalesced snapshots with counters) and the two pipelines: priority (one batched scheduler) and RECENT (one scheduler per location, batched alerts, staggered start). Split from dashboard.go by the quality pass (Q2, pure move).
+// pipelines.go — the publisher (coalesced snapshots with counters) and the two pipelines: priority (one batched scheduler) and RECENT (one scheduler per location, batched alerts, staggered start).
 
 import (
 	"context"
@@ -20,8 +20,8 @@ import (
 // a burst of provider completions — 200 at launch — becomes one snapshot
 // per publishCoalesce window instead of one per completion. Snapshot() is
 // the expensive step (deep copy + harmonize + sun times for 60 locations
-// under the assembler lock); computing it once per window removed both
-// the launch CPU spike and the 140-thread pile-up behind that lock.
+// under the assembler lock); computing it once per window keeps a launch
+// burst from spiking the CPU and piling threads up behind that lock.
 type publisher struct {
 	mu      sync.Mutex
 	pending bool
@@ -52,10 +52,10 @@ const publishCoalesce = 50 * time.Millisecond
 // recentPublishCoalesce is the RECENT pipeline's window (quality pass Q3,
 // plan §2.4 "one publish per tier tick", PF-9): the fifty schedulers'
 // tier ticks land as a wave — starts 10 ms apart, the list's fetches
-// paced at 30/s, so a wave spans a few seconds — and the 50 ms window
-// published ~47 times per wave (Q1 soak: 44 → 91 across one 10-minute
-// tick). Five seconds folds a wave into one or two snapshots; a seed row
-// still fills within five seconds of its fetch landing.
+// paced at 30/s, so a wave spans a few seconds — and a 50 ms window
+// publishes ~47 times per wave. Five seconds folds a wave into one or two
+// snapshots; a seed row still fills within five seconds of its fetch
+// landing.
 const recentPublishCoalesce = 5 * time.Second
 
 // The RECENT launch shape (follow-up F-1, HUM LEAD 2026-08-27): for the
@@ -209,14 +209,15 @@ type recentPipeline struct {
 	publish   func()
 	pub       *publisher // the coalescer behind publish (counters; nil when the list is empty)
 
-	mu      sync.Mutex // guards scheds and started (red-team 0.9.0 C-6: the staggered starter and a commit could touch the map together)
+	mu      sync.Mutex // guards scheds and started (the staggered starter and a commit can touch the map together)
 	scheds  map[snapshot.LocationKey]*sched.Scheduler
 	started bool // the staggered start has run: newcomers start themselves from now on
 }
 
 // recentAlertsEvery is the RECENT list's alert cadence: one batched
-// /alerts/active call covering every recent zone (was 50 per-location
-// calls every 2 minutes — 25 of the app's ~40 requests per minute, UAT 72).
+// /alerts/active call covering every recent zone, rather than 50
+// per-location calls every 2 minutes — 25 of the app's ~40 requests per
+// minute (UAT 72).
 const recentAlertsEvery = 2 * time.Minute
 
 // update reconciles the list in place (UAT 69): removed locations stop
@@ -263,10 +264,10 @@ func (rp *recentPipeline) hydrateHourly(ref snapshot.LocationRef) {
 		if frag, err := pr.Fetch(rp.ctx, snapshot.FetchReq{Kind: snapshot.KindForecastHourly, Locations: []snapshot.LocationRef{ref}}); err == nil {
 			// NO ASKED SET: this is the Details modal's supplementary HOURLY fetch, a
 			// different endpoint from the obs/forecast cycle that answers "is weather
-			// coming for this row". Stamping here let the hourly response arrive first
-			// and flip the row out of loading while Harmonized and Daily were still
-			// empty — a flash of "n/a" for data that was on its way (red team,
-			// 2026-09-08). The scheduler stamps it on the cycle that actually answers.
+			// coming for this row". Stamping here would let the hourly response arrive
+			// first and flip the row out of loading while Harmonized and Daily are still
+			// empty — a flash of "n/a" for data that is on its way. The scheduler
+			// stamps it on the cycle that actually answers.
 			rp.asm.Apply(frag, nil)
 		}
 	}
@@ -311,7 +312,7 @@ func startRecent(ctx context.Context, p *tea.Program, providers []snapshot.Provi
 		snap := rp.asm.Snapshot()
 		dropSuperseded(snap) // R5-A-08
 		if onPublish != nil {
-			onPublish(snap) // 0.13.0: the severe deck's Trigger rides every publish
+			onPublish(snap) // the severe deck's Trigger rides every publish
 		}
 		p.Send(tty.RecentSnapshotMsg{Snap: snap})
 		return snap
@@ -350,10 +351,10 @@ func startRecent(ctx context.Context, p *tea.Program, providers []snapshot.Provi
 
 // startStaggered publishes the seed snapshot once the program loop is up
 // (p.Send blocks until Run starts — never call it pre-Run on the main
-// goroutine, caught by the cmd test hang), waits recentStartDelay, then
-// starts the schedulers recentStartStagger apart (UAT 74: 50 schedulers
-// starting in the same instant made a 200-goroutine burst that cost ~90
-// OS threads; 10 ms apart spreads the launch over half a second).
+// goroutine), waits recentStartDelay, then starts the schedulers
+// recentStartStagger apart (UAT 74: 50 schedulers starting in the same
+// instant make a 200-goroutine burst that costs ~90 OS threads; 10 ms
+// apart spreads the launch over half a second).
 func (rp *recentPipeline) startStaggered(ctx context.Context) {
 	rp.publish()
 	select {

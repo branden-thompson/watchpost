@@ -33,8 +33,8 @@ func newRootCmdWith(reportOnce reportFunc) *cobra.Command {
 		},
 	}
 	// --ascii swaps the row marks, the box rules, the legend and the spread-word
-	// headers for ASCII forms (R-12a; the B6 promise, wired by the quality pass
-	// Q3 — A11-10). Persistent so `watchpost setup --ascii` reads the same way.
+	// headers for ASCII forms (R-12a; the B6 promise, A11-10). Persistent so
+	// `watchpost setup --ascii` reads the same way.
 	//
 	// IT DOES NOT ASCII-FOLD THE WEATHER TEXT. A forecast office's own words
 	// reach the terminal as they wrote them, and the separators the app builds
@@ -110,8 +110,8 @@ func newReportCmd(reportOnce reportFunc) *cobra.Command {
 			}
 			if code := report.ExitCode(snap); code != 0 {
 				// Partial data still prints; the exit code carries the caveat
-				// (typed error mapped by main — B1 red-team #8: defer os.Exit
-				// skipped cleanup and was untestable).
+				// (typed error mapped by main — B1 red-team #8: a deferred os.Exit
+				// would skip cleanup and be untestable).
 				return exitCodeError{code: code}
 			}
 			return nil

@@ -4,16 +4,16 @@ package tty
 // surface along.
 //
 // THE TWO TABLES ARE 95% OF THE FRAME'S ALLOCATIONS AND 60% OF ITS TIME —
-// measured on a loaded console before this was written (D-53): 320 µs and 8796
-// allocs out of 537 µs and 9298. They change only when one of their inputs does,
-// so they are built once per input change and reused on every tick, clock and
+// measured on a loaded console without the memo (D-53): 320 µs and 8796 allocs
+// out of 537 µs and 9298. They change only when one of their inputs does, so
+// they are built once per input change and reused on every tick, clock and
 // bed-step frame between.
 //
 // THE KEY IS COMPLETE BY CONSTRUCTION — one field per input the tables read —
 // and the guard that makes that true is `broadcaster_memo_completeness_test.go`,
 // which DERIVES the fields from the struct rather than listing them. F-30 is why:
-// a hand-kept key froze three of Observer's windows in one release while the
-// model underneath worked perfectly, and the first took three UAT rounds to find.
+// a hand-kept key freezes a window while the model underneath works perfectly,
+// and nothing on screen says which input the key forgot.
 //
 // A MEMO MAY MISS. IT MUST NEVER WRONGLY HIT. Every choice here takes the miss.
 
@@ -88,8 +88,8 @@ func (b Broadcaster) consoleKeyFor(used int) consoleKey {
 // IT OWNS THE INDEX TOO, and that is deliberate. `locIndex` builds a map over the
 // whole pool so the forty joins are not forty linear scans (D-120) — real work,
 // and pointless on a hit. Taking it inside means a hit costs the key comparison
-// and nothing else; leaving it outside would have paid for the index on every
-// frame to save the tables on most of them.
+// and nothing else; leaving it outside would pay for the index on every frame to
+// save the tables on most of them.
 func (b Broadcaster) spans(used int) (sched, pool scrollSpan) {
 	m := b.memo
 	if m == nil {
@@ -120,7 +120,7 @@ func (b Broadcaster) buildSpans(used int) (scrollSpan, scrollSpan) {
 //
 // IT CANNOT BE INHERITED FROM THE EMBEDDED TYPE, which is why there are three:
 // the guard is on the OUTER pointer, and a method promoted from `memoStats`
-// would have dereferenced the nil slot to reach itself. Same shape, different
+// would dereference the nil slot to reach itself. Same shape, different
 // receiver — the mutex-read accessor the HUM LEAD ratified on 2026-09-13, one
 // package along.
 func (m *consoleMemo) stats() *memoStats {
@@ -162,7 +162,7 @@ func (b Broadcaster) anyLoading() bool {
 // defect can have.
 //
 // IT IS A FUNCTION SO THAT THE RULE CAN BE TESTED. Written inline, the only way
-// to catch a regression was to hope the aliasing happened to become visible;
+// to catch a regression would be to hope the aliasing happened to become visible;
 // here the property — "the result does not share an array with the cache" — is a
 // thing a test can assert directly, whether or not today's capacities expose it.
 func joinSpans(sched, pool scrollSpan) []string {

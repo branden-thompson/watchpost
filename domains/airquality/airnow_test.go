@@ -93,10 +93,10 @@ func TestTheLatestIssueIsKept(t *testing.T) {
 }
 
 // TestTheFileIsParsedOncePerHour is W14's P-7: the national file (~1.9 MB)
-// is served from the cache on every map ask, and was parsed again each time.
-// Its parse reads the moment only to the UTC hour (each area's today, a
-// whole-hour offset), so within an hour the same body is parsed once; a new
-// hour parses again, and so does a new body.
+// is served from the cache on every map ask. Its parse reads the moment only
+// to the UTC hour (each area's today, a whole-hour offset), so within an hour
+// the same body is parsed once; a new hour parses again, and so does a new
+// body.
 func TestTheFileIsParsedOncePerHour(t *testing.T) {
 	var asked []string
 	p := New(fileGet{t, &asked}, "")

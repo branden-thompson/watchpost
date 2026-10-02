@@ -83,17 +83,17 @@ type Client struct {
 	next [lanes]time.Time // earliest start per lane (lazy token pacing): normal, priority, interactive
 }
 
-// Resource ceilings (B3 UAT 73 — the adversarial perf pass). The launch
-// burst once opened hundreds of connections at once; every one blocked an
-// OS thread in a cgo DNS lookup, and Go never retires threads (15 → 137).
-// A pure-Go resolver removes the cgo threads; the per-host connection cap
-// and the in-flight cap keep the burst to a handful of sockets.
+// Resource ceilings (B3 UAT 73 — the adversarial perf pass). An unbounded
+// launch burst opens hundreds of connections at once; through the cgo
+// resolver every one blocks an OS thread in a DNS lookup, and Go never
+// retires threads. A pure-Go resolver removes the cgo threads; the per-host
+// connection cap and the in-flight cap keep the burst to a handful of sockets.
 const (
 	maxInflight         = 16 // normal lane
 	maxInflightPriority = 8  // favourites' lane
 	maxInflightInteract = 8  // the listener's lane (D-156): a map ask's fetches, a lookup
 	maxConnsPerHost     = 8
-	idleConnTimeout     = 11 * time.Minute // keeps a warm connection across the 10-minute tiers (Q5, L4-F13): the counters showed a TLS handshake per tick per host at 90 s
+	idleConnTimeout     = 11 * time.Minute // keeps a warm connection across the 10-minute tiers (Q5, L4-F13): at 90 s the counters show a TLS handshake per tick per host
 )
 
 // NewTransport builds a transport with the app-wide policy — a pure-Go
@@ -245,8 +245,8 @@ func (e *ReachError) Endpoint() string { return hostOf(e.URL) }
 // two-location batch lands in seconds instead of minutes.
 //
 // Interactive lane (0.18.0 D-156): what the listener has just asked for — the
-// map's data, a lookup — queued behind that same burst, and a cold map waited
-// ~20 s for its alerts. It paces on a third lane (a momentary ceiling of 3x
+// map's data, a lookup — must not queue behind that same burst, where a cold
+// map waits ~20 s for its alerts. It paces on a third lane (a momentary ceiling of 3x
 // RatePerSec across all three) and, unlike the priority lane, keeps the
 // failure memo: a host that is down is not hammered by every pan.
 type laneKey struct{}
@@ -430,7 +430,7 @@ func (c *Client) Forget(rawURL string) { c.cache.forget(rawURL) }
 //
 // READ-ONLY CONTRACT (quality pass Q3, L1-F9, CQ-12): the slice is the
 // cache's own — a cache hit returns the stored body without copying (the
-// HMS archive is 1.4 MB and was copied on every Fetch). Callers parse it
+// HMS archive is 1.4 MB, too large to copy on every Fetch). Callers parse it
 // and must never write into it; every consumer package carries a
 // TestGetTextCallersMustNotMutate that runs its parser and checks the
 // bytes are unchanged.
@@ -478,10 +478,9 @@ func (c *Client) fetch(ctx context.Context, rawURL string, opts []Option) ([]byt
 			// whole TTL, so re-asking is waste; a degraded 5xx is the far end
 			// having a bad minute and must be asked again when the window is up.
 			//
-			// Degraded failures became StatusErrors at 0.14.0 so [S] could show
-			// their status in a column, which put them in this branch for the
-			// first time — a failing relay directory stopped being retried at
-			// all, and the test that pins the retry window caught it.
+			// Degraded failures are StatusErrors too, so [S] can show their
+			// status in a column, which puts them in this branch — without the
+			// Degraded check a failing relay directory would never be retried.
 			var se *StatusError
 			if !ro.noCache && errors.As(err, &se) && !se.Degraded && se.Status != http.StatusTooManyRequests {
 				c.cache.putNegative(rawURL, err)

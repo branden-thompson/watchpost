@@ -349,9 +349,9 @@ func TestTheHoursAheadFitWhatTheLoopLeaves(t *testing.T) {
 }
 
 // TestTheLoopsFramesAreFetchedSixAtATime is D-130 (UAT-2 U2-35): the frames
-// were fetched one after another, a frame every 200 ms at the client's pace,
-// the lower 48's loop 4.8 s cold. Six at a time, as the zones are (D-46), each
-// in its place in the loop.
+// are fetched six at a time, as the zones are (D-46), each in its place in the
+// loop. One after another, a frame every 200 ms at the client's pace, the
+// lower 48's loop takes 4.8 s cold.
 func TestTheLoopsFramesAreFetchedSixAtATime(t *testing.T) {
 	png, _ := os.ReadFile("../domains/radar/testdata/hrrr-frame.png")
 	times := grid5(24, time.Date(2026, 9, 28, 14, 0, 0, 0, time.UTC))
@@ -451,9 +451,9 @@ func TestAFailedHRRRIsAskedAgainSoon(t *testing.T) {
 }
 
 // TestTheHoursAheadAreFetchedAlongsideTheLoop is D-130: HRRR's hours ahead
-// were asked only once the observed loop was whole - 2.7 s after its 4.8.
-// They are asked alongside: here the observed frames wait for HRRR's first
-// ask, and a loop fetched first would give up waiting.
+// are asked alongside the observed loop, not once it is whole (2.7 s after its
+// 4.8). Here the observed frames wait for HRRR's first ask, and a loop fetched
+// first would give up waiting.
 func TestTheHoursAheadAreFetchedAlongsideTheLoop(t *testing.T) {
 	png, _ := os.ReadFile("../domains/radar/testdata/hrrr-frame.png")
 	now := time.Now().UTC()

@@ -1,6 +1,7 @@
 package render
 
-// sgr.go — colour: raw SGR wrapping, tints, key caps, alert and radio tones, the window and modal palette. Split from render.go by the quality pass (Q2, pure move).
+// sgr.go — colour: raw SGR wrapping, tints, key caps, alert and radio tones, the
+// window and modal palette.
 
 import (
 	"fmt"
@@ -43,15 +44,14 @@ func ColorOn() bool { return colorOn() }
 //
 // WATCHPOST names the app; the edition names WHICH EXPERIENCE this build is.
 // Observer is the dashboard — watching, listening, reading. Broadcaster is the
-// station-running dashboard a later version brings, and it will pass its own
-// word through here (HUM LEAD, 2026-08-30). Delineating it now means the second
-// one arrives as a word, not as a rename.
+// station-running dashboard, and passes its own word through here (HUM LEAD,
+// 2026-08-30), so an edition arrives as a word, not as a rename.
 const (
 	WordmarkName    = "WATCHPOST"
 	EditionObserver = "Observer"
 
-	// EditionBroadcaster is the station-running dashboard, arriving as the word
-	// this block was written to hold (0.16.0). It is the ONE place either
+	// EditionBroadcaster is the station-running dashboard, the word this block
+	// holds for it (0.16.0). It is the ONE place either
 	// edition is spelled, so the masthead and the About window cannot disagree
 	// about which experience the build is.
 	EditionBroadcaster = "Broadcaster"
@@ -131,11 +131,9 @@ func TintDefault(s string) string { return TintKeeping(s, "38;5;"+Tok(TextBase))
 // inside it, by making every inner reset fall back to these parameters rather
 // than to the terminal's default.
 //
-// EXTRACTED AT THE SECOND CALLER (D-86). `TintDefault` was the first and the
-// Broadcaster's card grounds are the second: a card's row carries chips with
-// SGR of their own, and a plain wrap would leave the ground behind every chip
-// as a hole in the card. The rule is one line and it was about to be written
-// twice.
+// ONE OWNER FOR TWO CALLERS (D-86): `TintDefault` and the Broadcaster's card
+// grounds. A card's row carries chips with SGR of their own, and a plain wrap
+// would leave the ground behind every chip as a hole in the card.
 func TintKeeping(s, params string) string {
 	if !colorOn() || params == "" {
 		return s
@@ -183,8 +181,8 @@ func Tint(text, code string) string {
 // ("250") becomes "38;5;250", a bare basic code (30–37, 90–97) stays, and a
 // full "38;2;…" / "38;5;…" value is returned as it is. The one place a
 // foreground token becomes an escape outside Tint (the frame's base tone:
-// a truecolor TextBase once produced "38;5;38;2;40;40;40" — index 38, faint,
-// black BACKGROUND — the Watchpost Light screenshot, 2026-08-29).
+// a truecolor TextBase prefixed blindly would produce "38;5;38;2;40;40;40" —
+// index 38, faint, black BACKGROUND).
 func FgSGR(code string) string {
 	if code == "" || strings.ContainsAny(code, ";#") {
 		return code
@@ -325,7 +323,7 @@ func CategoryTone(hue Token, dark bool) (fg, bg string) {
 }
 
 // categoryBlend is how much of the category tint shows over the modal
-// substrate. 1.0 since the HUM LEAD UAT pass (2026-08-28): the EventCat*
+// substrate. 1.0 (HUM LEAD UAT pass, 2026-08-28): the EventCat*
 // values ARE the on-screen backgrounds (#633500 orange, #550909 red were
 // chosen looking at the window), on either substrate; the mixer stays for a
 // future blend.

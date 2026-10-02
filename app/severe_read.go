@@ -45,10 +45,10 @@ type eventReader struct {
 	// bookkeeping of the one that replaced it — the radioDeck.epoch pattern, for
 	// the same reason (UAT 2026-09-03).
 	//
-	// Without it, fast input stacked reads: [space], [esc], reopen, [space] on
-	// another row. The first read's cleanup ran AFTER the second had started,
-	// set busy=false while it was playing and cleared its mark — so the next
-	// [space] launched a third read and the window no longer knew which one to
+	// Without it, fast input stacks reads: [space], [esc], reopen, [space] on
+	// another row. The first read's cleanup runs AFTER the second has started,
+	// sets busy=false while it is playing and clears its mark — so the next
+	// [space] launches a third read and the window no longer knows which one to
 	// pause.
 	gen     uint64
 	nar     *director                                                 // the voice arbiter (app/director.go)
@@ -78,15 +78,15 @@ func newEventReader(ctx context.Context, nar *director, scripts *script.Library,
 // pressing it on a DIFFERENT row while one reads is a request for that other
 // event, so the first is ended and the new one starts. Ignoring the second
 // press would leave a listener pressing a key that does nothing on a row that
-// looks ready — the complaint that produced this ruling, one level down.
+// looks ready.
 func (r *eventReader) Toggle(key string) {
 	// ONE PRESS AT A TIME. Bubbletea runs each Cmd on its own goroutine, so two
 	// fast presses are genuinely concurrent Toggles — not serialised by the
-	// update loop. Each read its state, released the lock, and then acted on a
-	// snapshot the other had already invalidated: the loser could pause the read
-	// the winner had just started, and marked the row with the OLD key, putting
-	// the ▶ on a row that was not reading. Measured at about 2 % of presses, and
-	// invisible to the race detector because it is a logic race, not a data one.
+	// update loop. Ungated, each reads its state, releases the lock, and then
+	// acts on a snapshot the other has already invalidated: the loser can pause
+	// the read the winner has just started, and mark the row with the OLD key,
+	// putting the ▶ on a row that is not reading. It is a logic race, not a data
+	// one, so the race detector cannot see it.
 	//
 	// r.mu cannot serve for this: the decision calls mark and Read, which take
 	// it again. A press gate is its own lock, held across the whole decision.
@@ -105,9 +105,8 @@ func (r *eventReader) Toggle(key string) {
 		return
 	case busy:
 		// A DIFFERENT ROW: free the reader AT ONCE rather than waiting for the
-		// old goroutine. Waiting here was up to two seconds of a key doing
-		// nothing, and the wait was never the point — the old read is stale the
-		// moment this one is asked for.
+		// old goroutine. Waiting here would be up to two seconds of a key doing
+		// nothing, and the old read is stale the moment this one is asked for.
 		r.Cancel()
 	}
 	r.Read(key)
@@ -135,17 +134,16 @@ func (r *eventReader) Read(key string) {
 	r.busy, r.cancel, r.done, r.key = true, cancel, done, key
 	r.mu.Unlock()
 	// THE MARK IS SENT BY WHOEVER STARTS THE READ, not by the read's goroutine.
-	// Sent there it raced: a read starting slightly later could have its mark
-	// land AFTER a newer read's, leaving the window pointing at a row that was
-	// no longer reading. Here it is ordered with the state it describes, and
+	// Sent there it races: a read starting slightly later can have its mark land
+	// AFTER a newer read's, leaving the window pointing at a row that is no
+	// longer reading. Here it is ordered with the state it describes, and
 	// Toggle holds the press gate across this call so two presses cannot
 	// interleave. Never on the update goroutine — every caller is a tea.Cmd.
 	//
-	// BEFORE THE GOROUTINE, NOT AFTER. Sent after, a read that finished quickly
-	// — a row that has gone from the feed returns almost at once — could clear
-	// the mark before this set was ever sent, and the row kept a play mark for a
-	// read that had already ended. It showed up as a pin that failed one run in
-	// three, which is the shape of an ordering bug rather than a slow machine.
+	// BEFORE THE GOROUTINE, NOT AFTER. Sent after, a read that finishes quickly
+	// — a row that has gone from the feed returns almost at once — can clear
+	// the mark before this set is ever sent, and the row keeps a play mark for a
+	// read that has already ended.
 	r.mark(key)
 	go r.run(ctx, key, done, gen)
 }
@@ -156,15 +154,14 @@ func (r *eventReader) Read(key string) {
 // resolves methods by NAME, so an eventReader.Stop collides with radioDeck.Stop
 // — which genuinely participates in a stopDwell cycle and carries its own
 // ratified exemption — and the collision reports this function as recursion it
-// has no part in. The same false positive cost two renames earlier in this
-// release (executors.cue/release, T2.3). A rename is cheaper and more honest
-// than an exemption for something that is not recursive.
+// has no part in. A distinct name is cheaper and more honest than an exemption
+// for something that is not recursive.
 //
 // IT IS THE ONE A KEYPRESS CALLS. `End` waits for the read's goroutine, which is
-// right at shutdown and wrong on the render path: closing the window ran that
-// wait on Bubbletea's update goroutine and cost about half a second before the
-// frame redrew. A TUI that hesitates on a key has given up the only thing it has
-// over a browser (HUM LEAD, UAT 2026-09-03).
+// right at shutdown and wrong on the render path: closing the window would run
+// that wait on Bubbletea's update goroutine, about half a second before the
+// frame redraws. A TUI that hesitates on a key has given up the only thing it
+// has over a browser (HUM LEAD, UAT 2026-09-03).
 //
 // Cancelling is instant and complete on its own — the read's own context ends,
 // its line stops, its hold ends and its mark clears. The WAIT only answers "has
@@ -187,15 +184,13 @@ func (r *eventReader) Cancel() {
 // — runs on Bubbletea's UPDATE goroutine. Sending into the program's message
 // channel from inside Update means the loop that drains it is the loop that is
 // blocked: nothing drains, no key works, and the only way out is killing the
-// terminal. Softlocked at UAT 2026-09-03 by [space], [space], [esc].
+// terminal. [space], [space], [esc] is enough to reach it.
 // DEFENCE IN DEPTH, AND ITS MUTANT IS EXPECTED TO SURVIVE (D-1's exception).
-// A review removed this guard and the whole package stayed green, then tried
-// twice to build a case that fails without it and could not: in every path that
-// can be constructed, a replacement cannot take the air until the old job
-// releases, and the old job's clear runs before that release. The ordering that
-// protects it lives in the arbiter, not here. It is kept because the ordering is
-// not this function's to rely on — and it is documented so nobody spends another
-// hour hunting a pin for it.
+// No constructible path fails without this guard: a replacement cannot take the
+// air until the old job releases, and the old job's clear runs before that
+// release. The ordering that protects it lives in the arbiter, not here. It is
+// kept because the ordering is not this function's to rely on, and no test can
+// pin it.
 func (r *eventReader) clearMarkUnlessReplaced(gen uint64) {
 	r.mu.Lock()
 	replaced := !r.current(gen) && r.busy // a newer read owns the mark now
@@ -246,11 +241,11 @@ func (r *eventReader) run(ctx context.Context, key string, done chan struct{}, g
 		}
 		r.mu.Unlock()
 		// THE CLEAR IS HERE, NOT INSIDE THE SEQUENCE, so EVERY exit takes the
-		// mark down. It lived in the seq closure, which `run` never reaches when
-		// the row has gone from the feed between the render and the press — and
-		// the set-mark now happens in `Read`, before that check. The window was
-		// left showing a play mark for a read that never started, with nothing
-		// able to clear it.
+		// mark down. `run` never reaches the seq closure when the row has gone
+		// from the feed between the render and the press — and the set-mark
+		// happens in `Read`, before that check — so a clear in there would leave
+		// the window showing a play mark for a read that never started, with
+		// nothing able to clear it.
 		r.clearMarkUnlessReplaced(gen)
 		close(done)
 	}()
@@ -259,17 +254,15 @@ func (r *eventReader) run(ctx context.Context, key string, done chan struct{}, g
 		return
 	}
 	script := eventScript(r.scripts, row)
-	// NO TONE ON A [space] READ (MVS-D-69). 0.14.0 opened this read with the
-	// row's class tone, the way a takeover does — but a tone is an ATTENTION
-	// SIGNAL, and the listener who pressed [space] on a row they are looking at
-	// has already given theirs. Every read began with a sound whose only job was
-	// to fetch someone who was already here.
+	// NO TONE ON A [space] READ (MVS-D-69). A tone is an ATTENTION SIGNAL, and
+	// the listener who pressed [space] on a row they are looking at has already
+	// given theirs; a tone here would only fetch someone who is already here.
 	//
-	// It also cost four seconds before the first word. Every tone carries a
-	// two-second trailing silence (synth.alertTailDur) so a takeover has a beat
-	// between the signal and "…has been declared", and the read held for the
-	// whole buffer: 2.8-4.0 s depending on class, of which only 0.8-1.4 s is
-	// audible. Measured at UAT: tone, then about four seconds, then words.
+	// It would also cost up to four seconds before the first word. Every tone
+	// carries a two-second trailing silence (synth.alertTailDur) so a takeover
+	// has a beat between the signal and "…has been declared", and a read holds
+	// for the whole buffer: 2.8-4.0 s depending on class, of which only
+	// 0.8-1.4 s is audible.
 	r.nar.Run(ctx, narrateRead, cast.SevereRead, true, func(ctx context.Context, s *speaker) {
 		dur := s.line(script)
 		if dur == 0 { // no voice: hold the overlay long enough to read the script

@@ -47,27 +47,22 @@ func setupOn(t *testing.T, s Surface) (Dashboard, string) {
 
 // setupOffers is everything the window OFFERS on this surface, scroll aside.
 //
-// THE VIEWPORT IS NOT THE QUESTION (D-115). This read `View().Content`, which is
-// the window SCROLLED to the focused row — so the day DATA gained the station's
-// two rows on the console, the group scrolled off the top and a scope test
-// reported that a SHARED group had been lost. It had not; it was two lines up.
+// THE VIEWPORT IS NOT THE QUESTION (D-115). `View().Content` is the window
+// SCROLLED to the focused row, so a SHARED group can scroll off the top and read
+// as lost when it is two lines up.
 //
 // Scope is what this file is about, and scope is answered by which blocks the
 // surface draws at all.
 func setupOffers(d Dashboard) string {
-	// THROUGH `setupBlocks`, WHICH IS THE WINDOW'S OWN ASSEMBLY — and it was not.
+	// THROUGH `setupBlocks`, WHICH IS THE WINDOW'S OWN ASSEMBLY.
 	//
-	// THIS HELPER USED TO RE-IMPLEMENT THE RULE IT IS USED TO TEST. It looped the
-	// groups itself and skipped the empty ones with the same `visibleRowOfGroup`
-	// call that production makes, so `TestNoSettingsGroupIsDrawnEmpty` filtered
-	// with the predicate it then asserted on: tautological, and unable to fail.
-	// Deleting the skip from `setupBlocks` changed nothing this helper produced —
-	// mutant mAA2 SURVIVED against the whole tree, and the console would have
-	// drawn "ALERTS - EVENTS" and "WATCHPOST RADIO - RELAY REPLAY" over no rows
-	// with every gate green.
-	//
-	// A HELPER THAT RE-DERIVES PRODUCTION'S ANSWER CANNOT CHECK IT. Asking the
-	// real assembly is the whole of the fix.
+	// A HELPER THAT RE-DERIVES PRODUCTION'S ANSWER CANNOT CHECK IT. Looping the
+	// groups here and skipping the empty ones with the same `visibleRowOfGroup`
+	// call that production makes would have `TestNoSettingsGroupIsDrawnEmpty`
+	// filter with the predicate it then asserts on: tautological, and unable to
+	// fail. Deleting the skip from `setupBlocks` would change nothing (mutant
+	// mAA2), and the console could draw "ALERTS - EVENTS" and "WATCHPOST RADIO -
+	// RELAY REPLAY" over no rows with every gate green.
 	//
 	// AND EVERY TAB (D-62), chosen from the full tab list and not from the tabs
 	// the surface shows: a tab wrongly hidden must show up as missing rows here,
@@ -91,10 +86,10 @@ func setupOffers(d Dashboard) string {
 }
 
 // TestEverySurfaceOffersEverySetting is D-70 (HUM LEAD, UAT-1, 2026-09-25):
-// "settings show now be the same across ALL UI modes". It replaces D-92's
-// test that the console drew only its own: the console and Observer now offer
-// the same groups and the same rows. Each row still writes what it wrote -
-// the scope in the table says whose values - so nothing leaks into a mode.
+// "settings show now be the same across ALL UI modes": the console and
+// Observer offer the same groups and the same rows. Each row writes its own
+// scope's values - the scope in the table says whose - so nothing leaks into a
+// mode.
 func TestEverySurfaceOffersEverySetting(t *testing.T) {
 	_, console := setupOn(t, SurfaceBroadcaster)
 	_, observer := setupOn(t, SurfaceObserver)
@@ -146,11 +141,11 @@ func TestTheWindowOpensOnARowThisSurfaceDraws(t *testing.T) {
 // THE KEYBOARD NEVER LANDS ON A ROW NOBODY CAN SEE — not on ↓, not on ↑, not on
 // tab. A focus on a hidden row is a window whose keys appear dead.
 //
-// EVERY KEY IS PRESSED, NOT CALLED. The first draft walked `stepGroup` directly
-// and a mutant that broke the CALL SITE survived it — the helper was right and the
-// wiring was not, which is a distinction only the real key can make. The draft
-// also called `openSetup` on an already-open window, which TOGGLES it shut: the
-// keys then reached no modal and the test passed by measuring nothing.
+// EVERY KEY IS PRESSED, NOT CALLED. Walking `stepGroup` directly lets a mutant
+// that breaks the CALL SITE survive — the helper can be right and the wiring not,
+// which is a distinction only the real key can make. And `openSetup` on an
+// already-open window TOGGLES it shut, after which the keys reach no modal and
+// the test passes by measuring nothing.
 func TestTheKeyboardNeverFocusesAHiddenRow(t *testing.T) {
 	d, _ := setupOn(t, SurfaceBroadcaster)
 	if d.modal != modalSetup {

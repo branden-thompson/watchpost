@@ -16,9 +16,8 @@ import (
 // strings (0.15.0 DISCOVER, brief handoff area 2: "that table IS the
 // requirement").
 //
-// FOUR CLASSIFIERS READ THE SAME STRINGS, and the first draft of the discovery
-// report named two. They answer different questions, which is why nobody
-// noticed they were the same shape:
+// FOUR CLASSIFIERS READ THE SAME STRINGS. They answer different questions,
+// which is why they do not look like the same shape:
 //
 //	severe.Classify       -> which TAB of the [w] window        (partial: (Tab, bool))
 //	globalfeed.LaneOf     -> which LANE of the marquee band     (total: defaults to Warnings)
@@ -36,7 +35,7 @@ func TestTheProductClassifierCrossTable(t *testing.T) {
 	// THE CURATED QUERY IS DERIVED, NOT COPIED (FR-2.2). A product added to
 	// severeEvents() arrives here on its own and moves the divergence count
 	// below, so the coupling between the feed's closed set and the four
-	// classifiers cannot drift. A hand-copied list is what let this table look
+	// classifiers cannot drift. A hand-copied list would let this table look
 	// complete while severeEvents() moved underneath it.
 	var products []row
 	for _, p := range globalfeed.CuratedProducts() {

@@ -278,9 +278,8 @@ func TestAnOrdinarySaveIsByteStable(t *testing.T) {
 	}
 }
 
-// The fixture that forced the dependency bump: on go-toml v2.2.4 the strict
-// decode panicked here, the recover masked it, and every unknown key was
-// dropped in silence.
+// A fixture the strict decode must survive: on go-toml v2.2.4 it panics here,
+// the recover masks it, and every unknown key is dropped in silence.
 func TestQuotedEscapeKeyNeitherPanicsNorAliasesAKnownKey(t *testing.T) {
 	p := withFixture(t, "quoted-escape-key.toml")
 	cfg := mustLoad(t)

@@ -1,6 +1,6 @@
 package app
 
-// mastercontrol.go — the effector half of the old director's split (PD-5, T2.3).
+// mastercontrol.go — the effector half of the station's control (PD-5, T2.3).
 //
 // The decision half — who gets the air, what suspends what, what is read next —
 // is the Director's, and it is a pure function in platform/lineup. What remains
@@ -9,13 +9,11 @@ package app
 // LEAD's condition asked for — "a system directly responsible for ensuring the
 // radio output and the news ticker are properly synced for takeover events".
 //
-// IT IS THE ONE OWNER OF EACH OUTPUT (D-1). The duck was owned by the narration
-// arbiter and the band was written from two places — app/ticker.go for the live
-// takeover and app/executors.go for the Director's — so the same message was
-// constructed twice, in two files, by two paths. Two carriers of one rule
-// disagree silently, and this codebase already paid for that once: the duck was
-// lifted by one spelling of `tune` and not the other, and a listener heard the
-// next location come up at full volume over a breaking alert still reading.
+// IT IS THE ONE OWNER OF EACH OUTPUT (D-1). The duck and the band are each
+// written from here alone, so no message is constructed twice, in two files, by
+// two paths. Two carriers of one rule disagree silently: a duck lifted by one
+// spelling of `tune` and not the other would bring the next location up at full
+// volume over a breaking alert still reading.
 //
 // IT ORDERS NOTHING, AND THAT IS DELIBERATE (D-5). Serialising the band against
 // the voice across time is the pump's lane, which is fed from one goroutine so
@@ -56,9 +54,7 @@ type mastercontrol struct {
 	// panic on the one path that has none.
 	//
 	// MASTERCONTROL DECLARES ON AIR / STANDBY, and everyone complies, the
-	// Director included (MVS-D-78). 0.14.0's role model recorded the gap in as
-	// many words — "Today: app/mastercontrol owns the band and the duck. It
-	// does NOT own ON AIR / STANDBY" — and this is that sentence closing.
+	// Director included (MVS-D-78).
 	//
 	// IT DECLARES; IT DOES NOT PERFORM. Two entities act on the declaration and
 	// neither alone suffices: the Director holds the schedule, because gating
@@ -72,16 +68,16 @@ type mastercontrol struct {
 	// MVS-D-67: "stays at its lowered volume until the rail is cleared and then
 	// either the 'press [w] in watchpost' or the 'for more information go to
 	// <website>' tail plays." The narration arbiter gives way per SEQUENCE and
-	// takes back the moment nothing is waiting, so a rail of two cards dipped,
-	// lifted, dipped and lifted again between them — measured, before this
-	// existed. While the bed is held, a per-sequence take-back is refused.
+	// takes back the moment nothing is waiting, so a rail of two cards would dip,
+	// lift, dip and lift again between them. While the bed is held, a per-sequence
+	// take-back is refused.
 	held bool
 
 	// silenceProgramme takes the main track's card off the air (F-91).
 	//
-	// MASTERCONTROL SILENCES, AND THIS IS THE SECOND THING IT SILENCES. The bed
-	// was the first, for the reason `carry` states: the Director holding every
-	// card still leaves audio playing, and that is not dead air. A main-track
+	// MASTERCONTROL SILENCES THIS AS IT SILENCES THE BED, for the reason `carry`
+	// states: the Director holding every card still leaves audio playing, and that
+	// is not dead air. A main-track
 	// card is the same sentence with a different subject — the card leaves the
 	// schedule the moment the power drops, and the WORDS play on regardless,
 	// because a read that has started is a worker blocking on an engine.
@@ -127,10 +123,10 @@ func newMastercontrol(v narrationVoice, send func(tea.Msg)) *mastercontrol {
 // no-ops when nothing changed, so the usual case costs one refused event.
 //
 // THE SEAM FOR A STATION ID (D-158). Going ON AIR from standby is where a
-// station identification would be read - F-24's, built and never wired, was
-// removed. Its words are `transition/masthead.txt` (the place, the coverage,
-// the providers, the limitation), rendered by scriptText; reading them here,
-// before the power is declared, is the one change that adds it back.
+// station identification would be read; none is read here. Its words are
+// `transition/masthead.txt` (the place, the coverage, the providers, the
+// limitation), rendered by scriptText; reading them here, before the power is
+// declared, is the one change that adds one.
 func (m *mastercontrol) GoOnAir() {
 	m.HandAir(lineup.AirProgramme)
 	m.declare(lineup.Running)
@@ -162,7 +158,7 @@ func (m *mastercontrol) silenceTheProgramme() {
 // MASTERCONTROL IS THE ONLY DECLARER, which is the rule the power already
 // follows one concept along: the air is something the OPERATOR DID — they moved
 // to a surface — not something a tune happened to imply. Three declarers of the
-// power is exactly how listening on one surface came to put the other ON AIR.
+// power would let listening on one surface put the other ON AIR.
 // THE FENCE TRAVELS WITH IT (D-75). The rail is re-tested against it, so a
 // hazard admitted under the other surface's fence is held rather than read —
 // and released again when the fence widens.
@@ -201,7 +197,7 @@ func (m *mastercontrol) Refence() {
 // asked at the moment it is needed.
 func (m *mastercontrol) railFence() lineup.Fence {
 	if m == nil || m.fence == nil {
-		return lineup.Fence{} // no rail to scope: All, which is what it has always been
+		return lineup.Fence{} // no rail to scope: All
 	}
 	return m.fence()
 }
@@ -212,8 +208,7 @@ func (m *mastercontrol) railFence() lineup.Fence {
 // never be shown as taken unless the schedule took it". The named trap is that
 // `Lineup.Set` refuses to reorder BY DESIGN, so a promote routed through it would
 // update a display and leave `Next()` answering the old order — with nothing to
-// see. The Director owns both, and has since 0.14.0; this is the first thing that
-// has ever emitted either.
+// see. The Director owns both, and these are what emit them.
 func (m *mastercontrol) MoveCard(id string, to int) { m.tell(lineup.Moved{ID: id, To: to}) }
 
 // DropCard takes a card out of the running order. It is the DESTRUCTIVE one
@@ -247,10 +242,9 @@ func (m *mastercontrol) RequestCard(ref snapshot.LocationRef, kinds report.Set, 
 
 // CutBed moves the programme between the station's line-up and its bed (D-78).
 //
-// THE FIRST PRODUCTION CALLER `lineup.CutOver` HAS EVER HAD. The Director has
-// modelled it since 0.14.0 — FR-4.2, D-11, D-32 — and nothing emitted it, which
-// is why `bed.carries` was false for the life of every process and the pause it
-// governs had never once happened.
+// THE PRODUCTION CALLER OF `lineup.CutOver` (FR-4.2, D-11, D-32). Without it
+// `bed.carries` is false for the life of every process and the pause it governs
+// never happens.
 func (m *mastercontrol) CutBed(toBed bool) { m.tell(lineup.CutOver{ToBed: toBed}) }
 
 // StopMonitor stops the operator's own listening.
@@ -262,7 +256,7 @@ func (m *mastercontrol) StopMonitor() { m.tell(lineup.Monitored{Running: false})
 
 // tell carries one event to the schedule, or gives up when there is none.
 //
-// EXTRACTED AT THE SECOND CALLER (`declare` was the first): three producers of
+// ONE HELPER FOR EVERY CALLER (`declare` included): three producers of
 // "carry this to the Director if there is one" would be three places for the
 // nil check to be forgotten.
 func (m *mastercontrol) tell(ev lineup.Event) {
@@ -296,10 +290,10 @@ func (m *mastercontrol) silent() bool { return m == nil || m.v == nil }
 //
 // IT IS IDEMPOTENT. The arbiter gives way when a sequence takes the air and
 // takes it back when nothing is left waiting or suspended, and the Director
-// will do the same around a whole rail drain (MVS-D-67) — so a second caller
-// asking while it is already down must be a no-op rather than a second dip. An
-// earlier version returned whether THIS call won; nothing asked, and a return
-// nobody reads is a promise to a caller that does not exist.
+// does the same around a whole rail drain (MVS-D-67) — so a second caller
+// asking while it is already down must be a no-op rather than a second dip. It
+// returns nothing: a return nobody reads is a promise to a caller that does not
+// exist.
 func (m *mastercontrol) giveWay() {
 	if m.silent() {
 		return
@@ -311,11 +305,12 @@ func (m *mastercontrol) giveWay() {
 
 // dip is THE ONE CARRIER of "put the broadcast down" (D-1). THE CALLER HOLDS
 // m.mu AND HAS ALREADY PASSED silent() — it dereferences the voice, so a third
-// caller that checks only `m != nil` would nil-deref here. It exists because `hold` must dip AND claim the bed without
-// letting go in between; before it did, `hold` called giveWay and then took the
-// lock a second time to set `held`, and a take-back landing in that window saw
-// held=false over a ducked bed and lifted it. The rail then believed it held a
-// bed that was already back up, with nothing left to dip it again.
+// caller that checks only `m != nil` would nil-deref here. It exists because
+// `hold` must dip AND claim the bed without letting go in between: a `hold` that
+// called giveWay and then took the lock a second time to set `held` would let a
+// take-back landing in that window see held=false over a ducked bed and lift
+// it, and the rail would believe it held a bed already back up, with nothing
+// left to dip it again.
 func (m *mastercontrol) dip() {
 	if m.ducked {
 		return
@@ -345,24 +340,19 @@ func (m *mastercontrol) takeBack() {
 
 // hold takes the bed for longer than one sequence and dips it.
 //
-// NOTHING REACHES IT TODAY (red team 2026-09-05, I-5). Its one caller is the
-// lineup.Duck executor, and no production path constructs that effect — so
-// `held` is never true, and unhold, takeBack's held branch and
-// director.releaseBed are inert with it. Everything below describes what the
-// mechanism DOES, correctly, on a path the running app does not take. See
-// app/executors.go's Duck case for why that is currently harmless and why the
-// mechanism is kept rather than deleted. Every
+// ITS ONE CALLER IS THE lineup.Duck EXECUTOR, which the Director's settle
+// reaches through `givingWay` (D-139; see app/executors.go's Duck case). Every
 // per-sequence take-back is refused until release, so a rail of many cards is
 // ONE dip and ONE lift however many times the arbiter runs inside it.
 //
 // THE DIP AND THE CLAIM ARE ONE CRITICAL SECTION, and that is the whole point.
-// The two halves ran under separate locks once — giveWay, unlock, lock, set
-// held — and `hold` is called from the executor's goroutine while `takeBack`
-// runs on the arbiter's, sharing only this mutex. A take-back arriving in that
-// window read held=false and ducked=true and restored the bed; `held` was then
-// set over a broadcast already back at full volume, which is a rail reading its
-// whole drain against an undipped bed. It is the same shape as the release-side
-// defect mE6 pinned, on the acquire side (F-D5).
+// `hold` is called from the executor's goroutine while `takeBack` runs on the
+// arbiter's, sharing only this mutex. Under separate locks — giveWay, unlock,
+// lock, set held — a take-back arriving in that window would read held=false
+// and ducked=true and restore the bed; `held` would then be set over a
+// broadcast already back at full volume, which is a rail reading its whole
+// drain against an undipped bed. It is the acquire-side twin of the
+// release-side hazard mE6 pins (F-D5).
 func (m *mastercontrol) hold() {
 	if m.silent() {
 		return
@@ -455,7 +445,7 @@ func (m *mastercontrol) cue(item tty.TickerItem) {
 
 // clearBand gives the band its rotation back.
 //
-// IT IS UNCONDITIONAL, deliberately and for now. DR-24 pairs a release with the
+// IT IS UNCONDITIONAL, deliberately. DR-24 pairs a release with the
 // CUE rather than with the card, and that pairing is a property of what the
 // Director emits. Making it conditional here would put the rule in two places,
 // and the copy here could not see the schedule that decides it.
@@ -466,7 +456,7 @@ func (m *mastercontrol) cue(item tty.TickerItem) {
 // the release with the cue HERE would therefore issue a release for a cue that
 // never happened on every rotation turn.
 //
-// F-71 IS CLOSED (D-82), in the caller. `runRelease` asks the LANE, which rides
+// F-71 IS HANDLED IN THE CALLER (D-82). `runRelease` asks the LANE, which rides
 // on the effect, so the rule stays where the schedule decides it and this
 // function stays the one unconditional carrier of "give the band back". The
 // condition that forces the question is a second card on the air — the rail

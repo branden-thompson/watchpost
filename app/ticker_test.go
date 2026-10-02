@@ -123,17 +123,17 @@ func TestBreakingBurstIsOneSequentialScriptNoOverlap(t *testing.T) {
 		voice: nar,
 		seen:  loadSeen(t.TempDir(), time.Hour),
 	}
-	// LIVE (I-8): a fixed past date meant both alerts had expired, and the
-	// station now declines to read an alert whose window has closed. This test
-	// asserts the script's SHAPE, never a spoken time.
+	// LIVE (I-8): the station declines to read an alert whose window has
+	// closed, so both alerts are live now. This test asserts the script's
+	// SHAPE, never a spoken time.
 	declared := time.Now()
 	fresh := []globalfeed.Event{
 		{ID: "a", Source: "NWS", Class: globalfeed.ClassSevereWx, Type: "Severe Thunderstorm Warning", Location: "Cherry, NE", Severity: globalfeed.SevOrange, At: declared, Until: declared.Add(time.Hour)},
 		{ID: "b", Source: "NWS", Class: globalfeed.ClassSevereWx, Type: "Tornado Warning", Location: "OKC", Severity: globalfeed.SevRed, At: declared, Until: declared.Add(time.Hour)},
 	}
 	// THROUGH THE RAIL: it sets the read order, and the read performs it. One
-	// call now — the producer offers, the Director schedules, the Composer
-	// writes and the Reader speaks (T3.10b).
+	// call — the producer offers, the Director schedules, the Composer writes
+	// and the Reader speaks (T3.10b).
 	newStation(t, d).takeover(context.Background(), fresh)
 
 	if audio.overlap {
@@ -348,11 +348,10 @@ func TestSeenStoreColdStartPruneAndPersist(t *testing.T) {
 	if len(s.set()) != 0 {
 		t.Fatal("a fresh cache is empty")
 	}
-	// RELATIVE TO THE REAL CLOCK, because loadSeen prunes against it. Anchored to
-	// a fixed date, this fixture aged out: the marks were written 2026-08-27 and
-	// the window is seven days, so on 2026-09-03 the reload pruned everything the
-	// test then asserted was still there. The test had been passing for a week
-	// while the thing it pins had nothing to do with the date it chose.
+	// RELATIVE TO THE REAL CLOCK, because loadSeen prunes against it. A fixture
+	// anchored to a fixed date ages out: the window is seven days, so a week
+	// later the reload prunes everything the test asserts is still there, and
+	// what it pins has nothing to do with the date chosen.
 	now := time.Now()
 	// Mark two events, one already 8 days old → pruned on the next mark.
 	s.ids["old"] = now.Add(-8 * 24 * time.Hour)
@@ -394,11 +393,12 @@ func TestTapeTextIsOneLine(t *testing.T) {
 // the run loop has finished its in-flight fetches and its seen-store write, so a
 // headless run's temp-directory cleanup cannot race them.
 //
-// THE TAKEOVER HALF OF THIS RULE MOVED AT T3.10b. The ticker no longer runs the
-// read on a goroutine of its own — the read is an effect, dispatched by the
-// pump, and the pump drains every dispatched effect before it stops. That half
-// is pinned against the real pump in TestStopDrainsEveryDispatchedEffect; what
-// is left here is the ticker's own loop, which still needs draining.
+// THE TAKEOVER HALF OF THIS RULE LIVES IN THE PUMP (T3.10b). The ticker does
+// not run the read on a goroutine of its own — the read is an effect,
+// dispatched by the pump, and the pump drains every dispatched effect before it
+// stops. That half is pinned against the real pump in
+// TestStopDrainsEveryDispatchedEffect; what is left here is the ticker's own
+// loop, which needs draining.
 func TestTickerStopWaitsForItsRunLoop(t *testing.T) {
 	d := &tickerDeck{done: make(chan struct{})}
 	ended := make(chan struct{})
@@ -415,8 +415,8 @@ func TestTickerStopWaitsForItsRunLoop(t *testing.T) {
 	}
 }
 
-// sameDay is the fixtures' own day, so the existing expectations keep reading a
-// bare clock time. The date only appears when an event is NOT from today, which
+// sameDay is the fixtures' own day, so the expectations read a bare clock
+// time. The date only appears when an event is NOT from today, which
 // TestTheTapeDatesAnythingNotFromToday covers.
 var sameDay = time.Date(2026, 8, 27, 18, 0, 0, 0, time.Local)
 
@@ -575,13 +575,14 @@ func TestTheCentredTakeoverLandsWithTheToneNotAfterTheWords(t *testing.T) {
 
 // THE BAND AND THE RADIO NAME THE SAME MOMENT.
 //
-// The feeds publish UTC. The spoken line localised and the tape did not, so the
-// band read "0026" for an event the radio called "Seventeen Twenty-Six Hours" —
-// the same instant, seven hours apart. The two paths format independently, which
-// is why they need a test that compares them rather than one that checks each.
+// The feeds publish UTC. The spoken line localises it, and so must the tape: a
+// UTC band reads "0026" for an event the radio calls "Seventeen Twenty-Six
+// Hours" — the same instant, seven hours apart. The two paths format
+// independently, which is why they need a test that compares them rather than
+// one that checks each.
 func TestTheTapeAndTheNarrationNameTheSameMoment(t *testing.T) {
-	// 00:26 UTC — the hour that exposed it, because it is a different DAY in
-	// most of the United States.
+	// 00:26 UTC — an hour that tells them apart, because it is a different DAY
+	// in most of the United States.
 	at := time.Date(2026, 8, 31, 0, 26, 0, 0, time.UTC)
 	e := globalfeed.Event{ID: "x", Source: "NWS", Class: globalfeed.ClassSevereWx,
 		Type: "Tornado Warning", Location: "OKC", At: at}
@@ -615,9 +616,8 @@ func breakingDeck(t *testing.T, evs []globalfeed.Event) (*tickerDeck, func() []s
 //
 // THE VOICE MUST BE CHOSEN BEFORE THE STATION IS BUILT (red team 2026-09-05).
 // newStation captures deck.voice into the executors at construction, so a
-// caller that swapped d.voice AFTERWARDS was swapping a field nothing read —
-// which is how TestNoAdmittedAlertIsDroppedUnread came to run the same fixture
-// twice and compare it with itself for fourteen seconds.
+// caller that swaps d.voice AFTERWARDS swaps a field nothing reads — and a test
+// comparing two voices runs the same fixture twice and compares it with itself.
 func breakingDeckWith(t *testing.T, evs []globalfeed.Event, audio narrationVoice) (*tickerDeck, func() []string) {
 	t.Helper()
 	var mu sync.Mutex
@@ -652,17 +652,12 @@ func breakingDeckWith(t *testing.T, evs []globalfeed.Event, audio narrationVoice
 	}
 }
 
-// TestEveryArrivalIsEitherReadOrCounted WAS HERE, and is deleted (red team
-// 2026-09-05). It called lineup.Plan directly, so it duplicated
-// platform/lineup's own TestTheDivertCountIsExactlyWhatWasNotRead — which pins
-// read+divert==arrived over a four-row table, against a Plan that ALSO enforces
-// it with an invariant. It paid for a temp dir, a fake source, an arbiter and a
-// whole station to use one thing from them: d.fence(), which returns the zero
-// Fence for a bare deck anyway.
-//
-// What was app-owned about it — that the rail's Max is defaultBurstMax — is
-// asserted by TestNoAdmittedAlertIsDroppedUnread, which reads the bound from
-// the planner rather than from a literal.
+// TestEveryLiveAlertIsEventuallyReadAloud: more live alerts than the tape holds
+// are all read aloud, cap or no cap, given cycles enough. read+divert==arrived
+// is platform/lineup's own TestTheDivertCountIsExactlyWhatWasNotRead; that the
+// rail's Max is defaultBurstMax is asserted by
+// TestNoAdmittedAlertIsDroppedUnread, which reads the bound from the planner
+// rather than from a literal.
 func TestEveryLiveAlertIsEventuallyReadAloud(t *testing.T) {
 	now := time.Now()
 	var evs []globalfeed.Event
@@ -735,20 +730,18 @@ func TestTheTickerCuesThroughTheOneOwnerNotItsOwnSend(t *testing.T) {
 
 // NO ADMITTED ALERT IS EVER DROPPED UNREAD (T3.1, DR-3).
 //
-// This is the defect's removal, stated as a property rather than a boundary.
-// Bounds apply at ADMISSION: once an alert is on the rail it is read. The old
-// arrangement bounded twice — by count when the burst was chosen, and again by
-// TIME while it was being read — so whichever hazards sorted last were the ones
-// a slow read silenced. Every previous fix moved that boundary (a per-lane
-// floor, then a derived time budget) and a reviewer's sweep still found the
-// break at about 8.1 s a read.
+// Stated as a property rather than a boundary. Bounds apply at ADMISSION: once
+// an alert is on the rail it is read. A second bound by TIME while the burst is
+// read would silence whichever hazards sort last whenever a read runs slow — a
+// time budget breaks at about 8.1 s a read — and moving that boundary (a
+// per-lane floor, a derived time budget) only moves the break.
 //
 // THE ASSERTION IS DELIBERATELY INDEPENDENT OF THE BOUND'S VALUE. It reads the
 // same burst twice, once with instant narration and once with narration well
 // past that break point, and requires the same alerts to be read both times. A
 // bound that lives at admission cannot care how long a read takes; a bound that
 // cuts mid-burst must. Pinning "5 are read" instead would go green the moment
-// somebody moved the budget again, which is exactly the history here.
+// somebody moved the budget.
 func TestNoAdmittedAlertIsDroppedUnread(t *testing.T) {
 	now := time.Now()
 	outbreak := func() []globalfeed.Event {
@@ -765,9 +758,9 @@ func TestNoAdmittedAlertIsDroppedUnread(t *testing.T) {
 	// as the broadcast would.
 	readWith := func(dur time.Duration) []string {
 		// THE VOICE GOES IN AT CONSTRUCTION. Assigning d.voice afterwards
-		// swapped a field the station had already captured, so both runs were
-		// the 1 ms one and the comparison below was a slice against itself —
-		// the whole named property measured nothing (red team 2026-09-05).
+		// swaps a field the station has already captured, so both runs would
+		// be the 1 ms one and the comparison below a slice against itself
+		// (red team 2026-09-05).
 		d, readAloud := breakingDeckWith(t, outbreak(), &fakeBreakingAudio{dur: dur, toneDur: time.Second})
 		d.voice.sleep = func(context.Context, time.Duration) bool { return true }
 		d.cycle(context.Background())
@@ -815,11 +808,10 @@ func TestNoAdmittedAlertIsDroppedUnread(t *testing.T) {
 // that assumption: adding a class above narrateBreaking makes the hazard real,
 // and this test is what says so before a listener finds out.
 func TestNothingOutranksATakeover(t *testing.T) {
-	// WALKS THE TYPE, NOT A LIST. The first version iterated
-	// []narrationClass{narrateRead, narrateBreaking}, so a class ADDED to the
-	// const block was simply not in it and the guard stayed green through the
-	// one change it exists to catch — found by review, which added a class and
-	// watched this pass.
+	// WALKS THE TYPE, NOT A LIST. A hand-written
+	// []narrationClass{narrateRead, narrateBreaking} leaves out a class ADDED
+	// to the const block, and the guard stays green through the one change it
+	// exists to catch.
 	for c := narrationClass(0); c < numNarrationClasses; c++ {
 		if c > narrateBreaking {
 			t.Fatalf("a narration class outranks a takeover (%d > %d), so a takeover can now be "+
@@ -832,11 +824,10 @@ func TestNothingOutranksATakeover(t *testing.T) {
 // A TIE IN SEVERITY IS BROKEN BY THE LOUDER TONE, NOT BY POSITION (MVS-D-73).
 //
 // `Severity` is a three-value colour tier, so hazards of different kinds share
-// one constantly. Ranking on it alone left the tone to whatever order the rail
-// happened to produce: a red hurricane (Marine, low sweep) and a red tornado
-// warning (Warnings, EAS dual-tone) in one burst sounded whichever came first.
-// That is the positional mechanism the tone fix set out to remove, surviving
-// inside the tie.
+// one constantly. Ranking on it alone leaves the tone to whatever order the
+// rail produces: a red hurricane (Marine, low sweep) and a red tornado warning
+// (Warnings, EAS dual-tone) in one burst sound whichever comes first — the
+// positional mechanism, surviving inside the tie.
 func TestASeverityTieIsBrokenByTheLouderTone(t *testing.T) {
 	now := time.Now()
 	hurricane := globalfeed.Event{ID: "h", Source: "NHC", Class: globalfeed.ClassTropical,
@@ -866,20 +857,20 @@ func TestASeverityTieIsBrokenByTheLouderTone(t *testing.T) {
 // MVS-D-26 — THE TONE MUTE SILENCES TONES. IT DOES NOT SILENCE THE STATION.
 //
 // This starts where the LISTENER starts (D-12): they tick a class in the ALERT
-// TONES group, which calls saveTones, and then they relaunch. Every earlier
-// mute test began at the atomic flag and so could not see the seam that set it.
+// TONES group, which calls saveTones, and then they relaunch. A mute test that
+// begins at the atomic flag cannot see the seam that sets it.
 //
-// The chain that broke it: Save derives ticker_muted from the tone mode, and
-// tickerState seeded the station's "do not speak to me" flag from that field.
+// THE CHAIN AT RISK: Save derives ticker_muted from the tone mode, and
 // ticker_muted is a BACK-COMPAT MIRROR, written so a 0.13.0 binary reading this
-// file still mutes its ticker; it is not this binary's state. Reading it back
-// as runtime state meant muting one tone class silenced every spoken alert from
-// the next launch on — and nothing could clear it, because MVS-D-48 took the
-// toggle away when [M] became a deep link into Settings.
+// file still mutes its ticker; it is not this binary's state. Seeding the
+// station's "do not speak to me" flag from it would mean muting one tone class
+// silences every spoken alert from the next launch on — and nothing could clear
+// it, because [M] is a deep link into Settings, not a toggle (MVS-D-48).
 //
-// BOTH HALVES ARE ASSERTED. The seam, so the defect cannot come back by a
-// different route, and the CONSEQUENCE — words in the air — so deleting the
-// seed alone cannot leave the listener silent for some other reason.
+// BOTH HALVES ARE ASSERTED. The seam, so the mirror is never read back as
+// runtime state by any route, and the CONSEQUENCE — words in the air — so
+// deleting the seed alone cannot leave the listener silent for some other
+// reason.
 func TestMutingAToneClassDoesNotSilenceTheStationAtTheNextLaunch(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	// A STATION THAT HAS BEEN SET UP. saveTones edits the file in place, and a
@@ -958,11 +949,11 @@ func TestMutingHoldsABurstRatherThanSpendingIt(t *testing.T) {
 	st := newStation(t, deck)
 	// THE PRODUCER'S OWN DECISION, ASSERTED BEFORE ANYTHING DRAINS.
 	//
-	// RED TEAM 2026-09-05: deleting the mute gate from startTakeover left the
-	// WHOLE REPOSITORY green. Asserting after the drain cannot see it — the
-	// burst reaches the Director, speak declines on the second mute gate, the
-	// Failed takes the card off the rail, and the rail reads empty either way.
-	// The gate's whole claim is that the burst never reaches the schedule.
+	// RED TEAM 2026-09-05: deleting the mute gate from startTakeover is
+	// invisible after the drain — the burst reaches the Director, speak
+	// declines on the second mute gate, the Failed takes the card off the
+	// rail, and the rail reads empty either way. The gate's whole claim is
+	// that the burst never reaches the schedule.
 	st.offer(fresh)
 	if n := st.pendingCount(); n != 0 {
 		t.Errorf("a muted burst told the Director %d time(s); standby holds it, it does not offer it", n)
@@ -1005,7 +996,7 @@ func TestMutingHoldsABurstRatherThanSpendingIt(t *testing.T) {
 
 // TestAnEvacuationOrderKeepsItsLaneOnTheMarquee pins the one product this
 // exists for. The Weather Service's highest-urgency product is laned Emergency
-// by the feed (globalfeed.LaneOf, via the civil-emergency table C-2 added), and
+// by the feed (globalfeed.LaneOf, via the civil-emergency table, C-2), and
 // the marquee must show it in that lane rather than beside a thunderstorm
 // warning. GitHub #15.
 func TestAnEvacuationOrderKeepsItsLaneOnTheMarquee(t *testing.T) {
@@ -1022,19 +1013,17 @@ func TestAnEvacuationOrderKeepsItsLaneOnTheMarquee(t *testing.T) {
 }
 
 // TestEveryFeedLaneSurvivesTheMarqueeMap is the guard, and it is the point.
-// #15 was not a wrong arm — it was a MISSING one, falling through a default
-// that reads as deliberate. A per-lane switch is a producer/consumer pair with
-// nothing checking that the consumer knows every value the producer emits, so
-// the next lane added would fail exactly the same way and just as quietly.
+// The failure it guards is not a wrong arm but a MISSING one, falling through a
+// default that reads as deliberate (#15). A per-lane switch is a
+// producer/consumer pair with nothing checking that the consumer knows every
+// value the producer emits, so the next lane added would fail exactly the same
+// way and just as quietly.
 //
-// THE FIRST VERSION OF THIS TEST HAD THAT DEFECT ITSELF (0.15.0 DISCOVER, red
-// team). It walked category.Lanes(), asked productLaningTo for a product, and
-// `continue`d when LaneOf disagreed — so a lane with no fixture was skipped in
-// silence. It asserted 4 of 7 lanes and reported green, which is F-30's
-// t.Skipf wearing a different keyword, inside the instrument written to catch
-// exactly this. Every lane is now accounted for EXPLICITLY: it is either
-// reachable and carried, or declared unreachable with a reason. A lane in
-// neither list fails the test.
+// EVERY LANE IS ACCOUNTED FOR EXPLICITLY: it is either reachable and carried,
+// or declared unreachable with a reason, and a lane in neither list fails the
+// test. Skipping a lane that has no fixture — a `continue` when LaneOf
+// disagrees — would be F-30's t.Skipf wearing a different keyword, inside the
+// instrument written to catch exactly this.
 func TestEveryFeedLaneSurvivesTheMarqueeMap(t *testing.T) {
 	// reachable maps a lane to an event the national feed can actually produce
 	// for it. The Class matters as much as the product: LaneOf reads Class
@@ -1089,11 +1078,10 @@ func TestEveryFeedLaneSurvivesTheMarqueeMap(t *testing.T) {
 // listener hears a tornado warning announced on every cycle for as long as it is
 // active.
 //
-// MUTANT m25 REMOVED THE GUARD AND SURVIVED THE WHOLE 2026-09-13 CORPUS SWEEP.
-// The path is covered end to end by the wiring test in schedule_test.go, which
-// drives ONE event through and asserts it IS read; nothing drove an event that
-// had ALREADY been read. A test that proves the door opens says nothing about
-// whether it closes.
+// MUTANT m25 REMOVES THE GUARD, AND THIS IS THE TEST THAT CATCHES IT. The
+// wiring test in schedule_test.go drives ONE event through and asserts it IS
+// read; this one drives an event that has ALREADY been read. A test that proves
+// the door opens says nothing about whether it closes.
 func TestAnAlreadyReadAlertIsNotOfferedAgain(t *testing.T) {
 	ev := globalfeed.Event{ID: "twice1", Source: "NWS", Class: globalfeed.ClassSevereWx,
 		Type: "Tornado Warning", Location: "Bonsall, CA", Severity: globalfeed.SevRed,

@@ -6,13 +6,14 @@ import (
 	"github.com/branden-thompson/watchpost/platform/category"
 )
 
-// emergency_tone_test.go — #18, and the mapping that stops it recurring.
+// emergency_tone_test.go — #18: an emergency order has a tone of its own, and
+// the mapping that keeps it so.
 //
-// An Evacuation Immediate sounded the WARNING tone: toneRank 5, byte-identical
-// to a Severe Thunderstorm Warning. C-2 taught the feed, the window and the
-// read ladder that an emergency order is its own thing; #15 taught the marquee
-// at 0.14.2; the tone was never told, because nothing connected the category
-// set to the tone set.
+// Without its own class an Evacuation Immediate sounds the WARNING tone:
+// toneRank 5, byte-identical to a Severe Thunderstorm Warning. The feed, the
+// window and the read ladder (C-2) and the marquee (#15) each treat an
+// emergency order as its own thing; the tone does only because the category
+// set is connected to the tone set.
 
 // TestAnEvacuationOrderSoundsThreeTimes pins the HUM LEAD ruling: a warning is
 // one dual tone, an evacuation order is three. The count carries the urgency
@@ -39,9 +40,9 @@ func TestAnEvacuationOrderSoundsThreeTimes(t *testing.T) {
 }
 
 // TestEveryCategoryThatReachesAReadHasATone is the anti-recurrence guard, and
-// it is the point. #18 happened because category.Emergency was added and
-// cast.Class was never told. Every member is carried or declared with a reason;
-// a member in neither FAILS. Never skipped.
+// it is the point: a category added without telling cast.Class is #18 again.
+// Every member is carried or declared with a reason; a member in neither FAILS.
+// Never skipped.
 func TestEveryCategoryThatReachesAReadHasATone(t *testing.T) {
 	// unreachable is a category no read can carry, with the reason written
 	// down. It is not a silencer: a member here that starts mapping is still a
@@ -73,14 +74,13 @@ func TestEveryCategoryThatReachesAReadHasATone(t *testing.T) {
 	}
 }
 
-// TestEveryClassIsListedOrDeclared is the guard that adding ClassEmergency
-// proved was missing.
+// TestEveryClassIsListedOrDeclared holds the hand-written class lists to the
+// enum.
 //
-// FOUND BY MAKING THE MISTAKE. Classes() and ClassKeys() are hand-written lists
-// that stood at six while numClasses moved to seven, and modes/tty's "parity
-// test" compares its own hand list against itself (setup_tone_layout_test.go
-// asserts len(lines) == len(classRowOrder())), so nothing anywhere noticed.
-// Three stale six-lists and a tautological guard, from one enum member.
+// Classes() and ClassKeys() are hand-written lists, and nothing else ties them
+// to numClasses: modes/tty's "parity test" compares its own hand list against
+// itself (setup_tone_layout_test.go asserts len(lines) == len(classRowOrder())).
+// Without this test a new enum member leaves every list one short, unnoticed.
 func TestEveryClassIsListedOrDeclared(t *testing.T) {
 	// notListed is a class deliberately absent from the listener-facing set,
 	// with the reason written down.

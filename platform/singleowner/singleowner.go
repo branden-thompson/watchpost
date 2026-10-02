@@ -2,17 +2,14 @@
 //
 // WHY A GATE AND NOT A TEST. A rule about WHICH CODE may do something is not
 // observable in the program's behaviour, so no test of output can hold it.
-// F-22 records what happens when one tries: mutant m50 claimed to guard the
-// band's single-writer rule, and when it was re-anchored to send the message
-// directly instead of through mastercontrol, it SURVIVED — both forms produce
-// the identical observable message. Its earlier CAUGHT verdicts came from an
-// unrelated early return. It was passing for a reason other than its stated
-// rule, and only moving it revealed that.
+// A mutant that sends the band's message directly instead of through
+// mastercontrol produces the identical observable message, so a behavioural
+// test can only appear to guard the single-writer rule — passing, when it
+// passes, for a reason other than its stated rule (F-22, mutant m50).
 //
 // AST, NOT GREP. A grep matches the name in a comment, in a string, and in the
 // gate itself; and it must be written twice, because a type or function is
-// bare inside its own package and qualified outside it. The config gate found
-// exactly that blindness in itself the afternoon it was written.
+// bare inside its own package and qualified outside it.
 package singleowner
 
 import (
@@ -32,8 +29,7 @@ import (
 // reason is the point: an owner without one is a bypass nobody argued for.
 //
 // THE CORPUS IS COUNTED OVER EVERY FILE, TESTS INCLUDED, and only non-test
-// files are policed. Both gates that led to this package hit the same failure
-// first — the matcher stopped matching and the run went green, which is
+// files are policed. A matcher that stops matching runs green, which is
 // indistinguishable from compliance. A gate that cannot demonstrate it is
 // looking at anything must not be allowed to pass.
 func Check(t *testing.T, what string, owners map[string]string, match func(ast.Node) bool) {
@@ -92,18 +88,18 @@ func CheckIn(t *testing.T, root, what string, owners map[string]string, match fu
 
 // Root is the module root, found by walking up for go.mod.
 //
-// FOUND RATHER THAN COUNTED: the first of these gates used a hand-written
-// "../.." and pointed one directory short of the root, so it matched nothing
-// and its own liveness guard caught it. A gate that has to know its own depth
-// is a gate that breaks when it moves.
+// FOUND RATHER THAN COUNTED: a hand-written "../.." points one directory
+// short of the root as soon as the gate sits at another depth, and matches
+// nothing. A gate that has to know its own depth is a gate that breaks when it
+// moves.
 func Root(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("cannot locate the module root: %v", err)
 	}
-	// THE WALK IS BOUNDED BY THE PATH IT WALKS (P10-02). `for {}` terminated in
-	// FACT — `filepath.Dir` reaches a fixed point at the root and the guard below
+	// THE WALK IS BOUNDED BY THE PATH IT WALKS (P10-02). A bare `for {}` terminates
+	// in FACT — `filepath.Dir` reaches a fixed point at the root and the guard below
 	// catches it — but not in SHAPE, and this is the one loop in the package a
 	// mistake in `filepath.Dir` would hang rather than fail. One separator is one
 	// possible step up, so the count of them is the ceiling.

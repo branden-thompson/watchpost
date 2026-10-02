@@ -81,7 +81,7 @@ func TestStartingASourceRecordsWhetherItIsLive(t *testing.T) {
 		t.Error("a relay is live radio")
 	}
 
-	// AND BACK AGAIN. The first check ran on a fresh engine, where `live` is
+	// AND BACK AGAIN. The first check runs on a fresh engine, where `live` is
 	// already false — it asserts the zero value, not the recording. Only a
 	// rendered source started AFTER a relay shows the line does its work, and
 	// that is the direction that matters: a fallback from relay to synth
@@ -107,13 +107,12 @@ func TestStartingASourceRecordsWhetherItIsLive(t *testing.T) {
 // silence is what the constant's own comment forbids, because a listener cannot
 // tell a dipped broadcast from a stopped one.
 func TestTheDipDepthIsPinned(t *testing.T) {
-	// 0.15 since MVS-D-70 (UAT 2026-09-03). It was 0.25, ratified 2026-08-27 as
-	// "duck, not interrupt"; heard on a live relay the listener called that
-	// "still loud enough to be distracting" and asked for another 5-15 % off.
-	// Read as PERCENTAGE POINTS of full scale — 5 % of 0.25 is 0.2375, which no
-	// ear would separate from 0.25 — putting the range at 0.10-0.20, and this is
-	// its midpoint. The direction was the ruling; the exact figure is a knob and
-	// this test is where it turns.
+	// 0.15 (MVS-D-70): "duck, not interrupt", 5-15 % below a 0.25 dip that is
+	// "still loud enough to be distracting" on a live relay. Read as PERCENTAGE
+	// POINTS of full scale — 5 % of 0.25 is 0.2375, which no ear would separate
+	// from 0.25 — putting the range at 0.10-0.20, and this is its midpoint. The
+	// direction is the ruling; the exact figure is a knob and this test is where
+	// it turns.
 	if alertDuck != 0.15 {
 		t.Errorf("the dip is 15 %% of the listener's volume, got %v — quiet enough that the alert is what you hear, loud enough that the broadcast is not mistaken for stopped", alertDuck)
 	}
@@ -121,11 +120,9 @@ func TestTheDipDepthIsPinned(t *testing.T) {
 
 // MVS-D-75 — STOPPING A LINE PAUSES IT BEFORE CLOSING IT.
 //
-// THE GAP THIS CLOSES IS WHY THE DEFECT SHIPPED TWICE. Two fixes passed their
-// tests and failed in the listener's ears, because every test reached only the
-// ARBITER'S DECISION — which was correct all along — and nothing reached the
-// audio layer beneath it. The trace eventually reported the truth and it read
-// like success: "a player was found and closed", while the report played on.
+// THIS REACHES THE AUDIO LAYER, NOT ONLY THE ARBITER'S DECISION. The decision
+// can be correct while the sound plays on, and a trace of it reads like
+// success: "a player was found and closed", while the report plays on.
 //
 // Close RELEASES a player. Pause is what stops the device emitting what is
 // already BUFFERED, and for a minutes-long event read the buffered remainder is

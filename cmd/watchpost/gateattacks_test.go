@@ -2,11 +2,11 @@ package main
 
 // gateattacks_test.go — 06_docs/gate-attack-list.md, executable.
 //
-// EVERY ROW OF THE LIST IS A SPECIMEN HERE, and the list was written and
-// committed BEFORE the model it holds to account. Three remediation rounds each
-// verified a fix against the spellings its author happened to think of; the
-// fourth wrote the attacks first. An attack thought of after the fact is added
-// to both files and re-run — never verified ad hoc and declared closed.
+// EVERY ROW OF THE LIST IS A SPECIMEN HERE, and the list leads the model it
+// holds to account: a fix verified only against the spellings its author
+// happens to think of proves little, so the attacks are written first. An
+// attack thought of after the fact is added to both files and re-run — never
+// verified ad hoc and declared closed.
 //
 // BOTH DIRECTIONS. A gate that flags everything passes every CAUGHT row and is
 // useless, so every attack has a PASSES twin: the base fixture itself, which
@@ -141,7 +141,7 @@ func TestTheGateAttackList(t *testing.T) {
 			assert: assertThreeListsAgree, caught: true},
 		{name: "A27 a required gate removed from all three lists",
 			mk: func(s string) string {
-				// EXPLICIT ANCHORS: `.PHONY` also names lint-a now, and a bare " lint-a "
+				// EXPLICIT ANCHORS: `.PHONY` also names lint-a, and a bare " lint-a "
 				// would hit it first and leave verify's list intact.
 				s = gateoracle.Sub("verify-gates: race test-tags lint-a lint-b", "verify-gates: race test-tags lint-b")(s)
 				s = gateoracle.Sub("gate-controls alloc-budget build-check mutant-anchors mutant-check release-matrix install-test\nverify:",
@@ -169,9 +169,8 @@ func TestTheGateAttackList(t *testing.T) {
 			mk: gateoracle.Same, ci: gateoracle.Same, req: func(string) string { return "# none\n" }, assert: all, caught: true},
 	}
 
-	// THE FLOOR IS THE COUNT. Nine rows moved to the executed table when the
-	// Makefile half stopped being parsed; a floor left at the old number would
-	// let three more vanish unnoticed.
+	// THE FLOOR IS THE COUNT. It is the table's own size: a floor below it
+	// would let rows vanish unnoticed.
 	if len(specimens) < 26 {
 		t.Fatalf("%d specimens; the parsed table holds 26 and this one has lost some", len(specimens))
 	}

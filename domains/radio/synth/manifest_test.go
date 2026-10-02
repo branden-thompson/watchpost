@@ -85,9 +85,8 @@ func TestEachSourceTagsItsFirstSegmentOnly(t *testing.T) {
 	c := Composer{}
 	loc := snapshot.Location{Label: "Oceanside, CA"}
 	// A PRODUCT LONG ENOUGH TO BE SEVERAL SEGMENTS, which is the whole premise:
-	// a one-segment forecast cannot tell "the first" from "every one", and the
-	// first draft of this test used one — a plant that tagged every segment
-	// SURVIVED it.
+	// a one-segment forecast cannot tell "the first" from "every one", and a plant
+	// that tagged every segment would survive it.
 	long := strings.Repeat("The forecast calls for clear skies and light winds through the period. ", 12)
 	segs := c.Compose(loc, []Product{{ID: "p1", Type: "AFD", Text: long}},
 		time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC), true, "Voice", Station{},

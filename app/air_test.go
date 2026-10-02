@@ -12,10 +12,10 @@ import (
 
 // LISTENING IS NOT BROADCASTING (D-74).
 //
-// THE DEFECT (HUM LEAD, UAT 2026-09-10): "audio in Broadcaster is still pulling
-// audio from Observer", and its sibling — `ctrl+o` refused after a round trip to
-// Observer and back (D-69). ONE `power` field served two programmes, so a tune
-// in Observer put the CONSOLE on the air.
+// THE PROPERTY: Broadcaster never plays audio pulled for Observer, and `ctrl+o`
+// still works after a round trip to Observer and back (D-69). One `power` field
+// serving both programmes would let a tune in Observer put the CONSOLE on the
+// air.
 func TestATuneStartsTheMonitorAndNotTheStation(t *testing.T) {
 	d, _ := offlineDeck(t)
 	dir := lineup.New(lineup.Settings{Max: 5}, time.Now())
@@ -34,9 +34,9 @@ func TestATuneStartsTheMonitorAndNotTheStation(t *testing.T) {
 
 // THE TWO PROGRAMMES ARE MUTUALLY EXCLUSIVE, WHICH IS THE WHOLE POINT.
 //
-// They advanced on ONE gate — `advances(MainTrack)` — so a running station could
+// ONE gate for both — `advances(MainTrack)` — would let a running station
 // produce both at once: the line-up the operator scheduled, and the watchlist
-// they had been listening to underneath it.
+// they listen to underneath it.
 func TestOnlyOneProgrammeCanEverAdvance(t *testing.T) {
 	for _, c := range []struct {
 		air              lineup.Air
@@ -135,11 +135,10 @@ func TestGoingBackToObserverDoesNotResumeTheMonitor(t *testing.T) {
 	}
 	// AND THE DIRECTOR IS TOLD, which is the half that keeps the ROTATION alive.
 	//
-	// THE PLANT THAT FOUND THIS (`y8`) deleted `HandAir(AirMonitor)` and
-	// SURVIVED: the deck reads the Router's own owner, so it would go on playing
-	// while the Director still believed the console held the air — and the
-	// watchlist would never advance again. Two carriers of one fact, and only
-	// one of them was asserted.
+	// THE DECK READS THE ROUTER'S OWN OWNER, so without `HandAir(AirMonitor)` it
+	// goes on playing while the Director still believes the console holds the
+	// air — and the watchlist never advances again. Two carriers of one fact,
+	// so both are asserted.
 	nar := testDirector(nil, func(tea.Msg) {})
 	var declared []lineup.Event
 	nar.mc.mu.Lock()
@@ -163,11 +162,9 @@ func TestGoingBackToObserverDoesNotResumeTheMonitor(t *testing.T) {
 
 // A TUNE WHILE THE CONSOLE HOLDS THE AIR REPORTS THE NEED AND STARTS NO AUDIO.
 //
-// THIS IS THE DEFECT ITSELF — "audio in Broadcaster is still pulling audio from
-// Observer" — and the first version of this file did not assert it. It checked
-// `monitorHasTheAir()`, the PREDICATE, and the plant that deleted the guard in
-// `needsRead` SURVIVED. Exactly the shape `x5` had one ruling earlier: the
-// assertion stopped at the question and never reached the answer.
+// THIS IS THE PROPERTY ITSELF — Broadcaster never pulls audio from Observer —
+// so it asserts the ANSWER, not the question: checking `monitorHasTheAir()`,
+// the PREDICATE, alone lets a deletion of the guard in `needsRead` pass.
 //
 // THE NEED IS STILL REPORTED, which is the other half. It is a FACT — nobody is
 // carrying this location — and the Director is entitled to it whoever is on the
@@ -205,9 +202,9 @@ func TestATuneWhileTheConsoleHasTheAirIsSilentButStillReports(t *testing.T) {
 
 // AND A STATION WITH NO AUDIO AT ALL STILL STOPS ITS ROTATION.
 //
-// THE PLANT THAT FOUND THIS (`y6`) deleted `mc.StopMonitor()` and SURVIVED,
-// because `deck.Stop()` reports `Monitored{false}` too — so with a deck present
-// the two are indistinguishable. They are not the same thing: with no deck there
+// WITH A DECK PRESENT, `deck.Stop()` reports `Monitored{false}` too, so it and
+// `mc.StopMonitor()` are indistinguishable there, and only a deckless station
+// tells them apart. They are not the same thing: with no deck there
 // is nothing to stop, and only the declaration keeps the Director from going on
 // rotating for a listener who is not there.
 //
@@ -238,10 +235,10 @@ func TestTakingTheAirStopsTheRotationEvenWithNoAudio(t *testing.T) {
 
 // THE FENCE TRAVELS WITH THE AIR, AND IT IS THE ONE THE DECK COMPUTES (D-75).
 //
-// THE HUM LEAD ASKED WHETHER THE RAIL FILTERS AND EXPANDS WITH THE MODE. New
-// arrivals did; everything already on the rail did not, because the Director
-// learned a fence only on the next ARRIVAL. It learns it on the air now — and
-// from `tickerDeck.fence()`, which is the same translation every arrival already
+// THE RAIL FILTERS AND EXPANDS WITH THE MODE — every card already on it, not
+// only new arrivals — because the Director learns the fence on the air, not on
+// the next ARRIVAL. It learns it from `tickerDeck.fence()`, which is the same
+// translation every arrival already
 // carries, so the fence that re-tests a card and the fence that admitted it
 // cannot be two different readings of one setting.
 func TestTheAirCarriesTheFenceTheRailIsScopedTo(t *testing.T) {
@@ -271,8 +268,8 @@ func TestTheAirCarriesTheFenceTheRailIsScopedTo(t *testing.T) {
 	if !handed.Fence.InForce() || handed.Fence.RadiusMi != 25 {
 		t.Errorf("the air carried %+v, want the station's own 25-mile fence", handed.Fence)
 	}
-	// AND A DECK WITH NO RAIL IS "ALL", never a panic — the older tests and the
-	// pathless build, the same rule `fence()` itself states.
+	// AND A DECK WITH NO RAIL IS "ALL", never a panic — tests that build no rail
+	// and the pathless build, the same rule `fence()` itself states.
 	bare := &mastercontrol{}
 	if bare.railFence().InForce() {
 		t.Error("an effector with no fence to ask is unfenced, not fenced at zero")

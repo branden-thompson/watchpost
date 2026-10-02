@@ -32,12 +32,10 @@ func recordingDeck() (*radioDeck, *[]lineup.Event) {
 
 var testRef = snapshot.LocationRef{Label: "OCEANSIDE, CA", Lat: 33.1959, Lon: -117.3795}
 
-// D-33 RETIRED "LEAVES THE AIR ALONE". There is no stage in which the deck
-// reports and does not also play: "live" meant the card was read through the
-// arbiter, and the programme is not a narration. What survives is the half that
-// still matters — WHAT the deck reports — and it is driven against a REAL deck,
-// because a bare struct only works while a stage exists that never touches the
-// audio.
+// THE DECK NEVER REPORTS WITHOUT ALSO PLAYING (D-33): the programme is not a
+// narration, so no card is read through the arbiter. What is asserted is WHAT
+// the deck reports, driven against a REAL deck, because a bare struct works only
+// for a stage that never touches the audio.
 func TestTheDeckReportsWhatTheCardNeedsToBeShown(t *testing.T) {
 	t.Setenv("WATCHPOST_MAINTRACK", "dark")
 	d, _ := offlineDeck(t)
@@ -94,7 +92,7 @@ func TestTheDefaultStageTellsTheDirectorNothing(t *testing.T) {
 	d, got := recordingDeck()
 	// A stale generation, so the audio half returns at startSynth's own guard:
 	// what is under test is that the REPORT does not happen by default, which
-	// is what makes every commit before the flip a no-op for a listener.
+	// keeps the stage a no-op for a listener until it is switched on.
 	d.needsRead(testRef, "no NWR relay in reach", 99)
 	if len(*got) != 0 {
 		t.Errorf("the merge is off until it is asked for; got %v", *got)
@@ -105,8 +103,8 @@ func TestTheDefaultStageTellsTheDirectorNothing(t *testing.T) {
 //
 // The dark stage exists so the producer's decisions can be compared against the
 // live path's, and that comparison is made from this log and nowhere else: the
-// live path already records its engine transitions and its segments, and until
-// now the NEED that produced them was recorded nowhere at all. A dark run with
+// live path records its engine transitions and its segments, and the NEED that
+// produced them is recorded here and nowhere else. A dark run with
 // this line missing is not a quiet run, it is a run that proves nothing —
 // which is why the line has a gate of its own (INST-2).
 func TestTheDarkRunRecordsTheNeedItWouldHaveActedOn(t *testing.T) {

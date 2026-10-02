@@ -361,8 +361,9 @@ func switchTemp(t *testing.T, d Dashboard) Dashboard {
 }
 
 // TestMovingThroughTheMenuAsksNothing is UAT-2 U2-13 and U2-14: an arrow in
-// the Overlays menu moves its cursor and nothing else - every press asked the
-// radar and the temperature again, and the grids handed in again blinked.
+// the Overlays menu moves its cursor and nothing else - only a switch touches
+// the map, so a cursor move asks for no radar or temperature and hands no grid
+// in again.
 func TestMovingThroughTheMenuAsksNothing(t *testing.T) {
 	var asks []MapAsk
 	var radarAsks []string
@@ -662,9 +663,9 @@ func TestWindIsForecastModesMainOverlayToo(t *testing.T) {
 }
 
 // A STEP IS DRAWN ONCE (W14, P-9). Forecast mode's step, its playback tick
-// and the mode's switch each timed the feed again - which draws - and then
-// drew again, the same frame twice. Each now draws once, with the feed in and
-// before any has landed.
+// and the mode's switch each draw once, with the feed in and before any has
+// landed - never timing the feed again (which draws) and then drawing again,
+// the same frame twice.
 func TestAForecastStepIsDrawnOnce(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, true, &asks)
@@ -705,7 +706,7 @@ func TestAForecastStepIsDrawnOnce(t *testing.T) {
 }
 
 // THE RADAR'S LOOPS AND THE TEMPERATURE'S GRIDS ARE RECONCILED AS THE FEED'S
-// ARE (W14, S-5 - one reconcile now): an unchanged loop or grid is not handed
+// ARE (W14, S-5 - one reconcile): an unchanged loop or grid is not handed
 // in again, which would drop what was prepared and blink (U1-28); and a
 // landing that takes a loop off draws at once, though the loop handed in
 // beside it is still preparing - the old one is not left on screen.

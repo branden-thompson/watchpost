@@ -1,6 +1,6 @@
 package render
 
-// units.go — units and value formatting: Units, Opts, temperatures, distances, tides, wind, the health and trend glyphs. Split from render.go by the quality pass (Q2, pure move).
+// units.go — units and value formatting: Units, Opts, temperatures, distances, tides, wind, the health and trend glyphs.
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 // Units selects display units (D-19: global, live-swappable).
 type Units int
 
-// Unit values. UnitF is the v0.1 default per the mocks.
+// Unit values. UnitF is the default, per the mocks.
 const (
 	UnitF Units = iota
 	UnitC
@@ -103,17 +103,10 @@ type Glyphs struct {
 	// Not a keycap: KeyCap draws a KEY, and this is the direction between two
 	// states. One owner, so --ascii needs no special case at the call site.
 	Arrow string
-	// The CARD's own corners (0.16.0). Rounded, which is what the reference
-	// mock draws for a card — the app's WINDOWS use the heavy box `BoxTitled`
-	// owns, and a card is not a window. Through the glyph set so --ascii needs
-	// no special case at the call site.
-	// THE ROUNDED CORNERS RETIRED AT D-85. Their one user was the Broadcaster
-	// card, which draws the masthead's square heavy box now (render.HeavyBox);
-	// a glyph nothing draws is a glyph that can only ever be wrong.
 	// Idle and Live are a thing's own state where it is NAMED — the bed's
-	// ACTIVE / INACTIVE chip (0.16.0, D-62). Not the seismic ramp, which an
-	// early draft borrowed: that ramp means FELT INTENSITY and reusing it here
-	// would give one glyph two meanings.
+	// ACTIVE / INACTIVE chip (0.16.0, D-62). Not the seismic ramp: that ramp
+	// means FELT INTENSITY, and reusing it here would give one glyph two
+	// meanings.
 	Idle, Live string
 	// 0.14.0: the Setup window's marks. Down is a picker's dropdown arrow;
 	// Rail and RailCar draw the scroll rail; Ellipsis and Bullet are used where

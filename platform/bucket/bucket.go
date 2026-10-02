@@ -1,7 +1,7 @@
 // Package bucket splits an ordered slice into per-bucket index lists.
 //
-// ONE OWNER FOR AN OPERATION THAT HAD TWO (metric D, 2026-09-08).
-// `severe.ByTab` and `tty.bucketSevere` were the same walk — same guard, same
+// ONE OWNER FOR ONE WALK (metric D, 2026-09-08).
+// `severe.ByTab` and `tty.bucketSevere` are the same walk — same guard, same
 // order-preserving append — over different payloads. They live in packages that
 // CANNOT share code directly: `modes/` may not import `domains/`
 // (architecture §1, gated by lint-imports), so the shared owner has to be here.
@@ -9,7 +9,7 @@ package bucket
 
 // ByIndex returns, for each bucket, the indices of the items that fall in it,
 // in the order they appear. Items whose bucket is out of range are dropped —
-// that is the guard both callers already had.
+// that is the guard both callers need.
 //
 // IT RETURNS INDICES, NOT ITEMS, and that is the tty caller's requirement
 // rather than a style choice: the severe table indexes into the published rows

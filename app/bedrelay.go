@@ -3,11 +3,10 @@ package app
 // bedrelay.go — the relays the station may carry on its bed, and the operator's
 // walk through them (D-78).
 //
-// THE SELECTOR THE REFERENCE HAS DRAWN SINCE THE FIRST WAVE and that was bound
-// to nothing: `[ ← ] KIG78 Coachella CA 162.400 MHz · 41mi from TOWER GPS
-// [ → ]`. What it walks is the STATION's fence (D-77), never the listener's
-// watchlist — which is the HUM LEAD's Lone Pine objection, and the reason the
-// bed became the station's business at all.
+// THE SELECTOR THE REFERENCE DRAWS: `[ ← ] KIG78 Coachella CA 162.400 MHz · 41mi
+// from TOWER GPS [ → ]`. What it walks is the STATION's fence (D-77), never the
+// listener's watchlist — which is the HUM LEAD's Lone Pine objection, and the
+// reason the bed is the station's business at all.
 //
 // A SELECTION, NOT A ROTATION. The bed does not advance on a dwell the way the
 // monitor's watchlist does: an operator CHOOSES what their station carries
@@ -27,17 +26,13 @@ import (
 
 // bedRelays is what the station can actually carry, nearest first.
 //
-// REMEMBERED, NOT DERIVED, AND D-117 IS WHY. Deriving it on every ask — a pure
-// function of the transmitter, the bed's fence and the embedded table — holds
-// only while the list comes from a static CSV of
-// every NOAA tower in the country, and false the moment the list became the
-// answer to "which of them does a directory actually stream". That is network
-// work; it is resolved when the AREA MOVES (`refreshBedRelays`) and read from
-// here.
+// REMEMBERED, NOT DERIVED, AND D-117 IS WHY. The list is not a pure function of
+// the transmitter, the bed's fence and the embedded table: it is the answer to
+// "which of them does a directory actually stream". That is network work; it is
+// resolved when the AREA MOVES (`refreshBedRelays`) and read from here.
 //
-// THE DRIFT THE OLD COMMENT FEARED IS REAL AND IS HANDLED WHERE IT ARISES: the
-// stored copy is replaced whole every time the station's region changes, which
-// is the only thing that can invalidate it.
+// THE STORED COPY CANNOT DRIFT: it is replaced whole every time the station's
+// region changes, which is the only thing that can invalidate it.
 func (lp *livePipelines) bedRelays() []stream.Station {
 	if lp == nil {
 		return nil
@@ -57,17 +52,16 @@ func (lp *livePipelines) bedRelays() []stream.Station {
 // relays for their area and disable the BED option so the Operator cannot choose
 // something that will broadcast dead air."
 //
-// THE EMBEDDED TABLE IS NOT THE ANSWER, and that is the whole defect. It lists
-// every NOAA transmitter in the country; being IN it says a tower exists, not
-// that anything relays it to the internet. The selector walked that table, so the
-// operator could choose a callsign nothing streams — and `tuneCallsign` then
-// searched the LISTENER's last tune list, failed to find it, and returned in
-// silence. Dead air, chosen from a list that promised otherwise.
+// THE EMBEDDED TABLE IS NOT THE ANSWER. It lists every NOAA transmitter in the
+// country; being IN it says a tower exists, not that anything relays it to the
+// internet. A selector walking that table would let the operator choose a
+// callsign nothing streams — dead air, chosen from a list that promised
+// otherwise.
 //
-// `Resolver.order` IS THE CROSS-CHECK, already written: it drops any transmitter
-// the directories carry no mount for, prefers the ones COVERING the station's
-// SAME area, and orders the rest by distance. Asked at the transmitter rather
-// than at the listener, it answers exactly the HUM LEAD's question.
+// `Resolver.order` IS THE CROSS-CHECK: it drops any transmitter the directories
+// carry no mount for, prefers the ones COVERING the station's SAME area, and
+// orders the rest by distance. Asked at the transmitter rather than at the
+// listener, it answers exactly the HUM LEAD's question.
 //
 // IT IS ASYNC AND CACHED, because it is network work and `bedRelays` is asked on
 // every frame. The area moving is what re-asks it.
@@ -150,8 +144,8 @@ func (lp *livePipelines) bedFenceMi() float64 {
 // is the honest answer to a fence that reaches one thing — and what the reach
 // advice warns about before they get here (D-77).
 // IT RETURNS A COMMAND (D-79). Tuning reaches the player and the row reaches the
-// program, and the swap's own stop already taught this lesson once: anything
-// that talks back to the program must not run on the Update loop.
+// program, and anything that talks back to the program must not run on the
+// Update loop.
 //
 // THE SELECTION MOVES INLINE, THOUGH. Which relay is chosen has to be TRUE by
 // the time the next frame draws, and only the two things that TALK are deferred.
@@ -164,24 +158,22 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 	next := ((lp.bedPick+by)%len(relays) + len(relays)) % len(relays)
 	lp.bedPick = next
 	chosen := relays[next]
-	// AND THE CHOICE IS REMEMBERED, not merely published (F-98, D-90). It was
-	// published and nothing else, so the SETTLE — which publishes the same row
-	// from the Director's bed, on every tick — overwrote it about a second later
-	// and the operator's selection reverted to "(no relay tuned)" no matter what
-	// they picked. One fact needs ONE owner, and this is it: the only thing that
-	// tunes the station's bed is the only thing that says what it is tuned to.
+	// AND THE CHOICE IS REMEMBERED, not merely published (F-98, D-90). Published
+	// alone, it would be overwritten by the SETTLE — which publishes the same row
+	// from the Director's bed, on every tick — about a second later, and the
+	// operator's selection would revert to "(no relay tuned)". One fact needs ONE
+	// owner, and this is it: the only thing that tunes the station's bed is the
+	// only thing that says what it is tuned to.
 	lp.bedRelay = relayLine(chosen)
 	line := lp.bedRelay
 	p := lp.p
 	lp.mu.Unlock()
 
 	return func() tea.Msg {
-		// THE STATION'S OWN RESOLUTION TUNES IT (D-117). This called
-		// `tuneCallsign`, which searches the mount list the LISTENER's last tune
-		// left behind and returns in SILENCE when the callsign is not in it — so
-		// the bed did nothing at all unless Observer happened to have tuned that
-		// same relay. The operator pressed the key, the row said it was tuned, and
-		// the station carried dead air.
+		// THE STATION'S OWN RESOLUTION TUNES IT (D-117), not `tuneCallsign`, which
+		// searches the mount list the LISTENER's last tune left behind and returns in
+		// SILENCE when the callsign is not in it — the row would say tuned while the
+		// station carried dead air.
 		//
 		// `chosen` IS A RESOLVED STATION and carries its own mounts, so the engine
 		// is pointed at them directly, with the rest of the station's reach behind
@@ -203,9 +195,9 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 // selectedRelay is the relay the operator chose, and "" until they choose one.
 //
 // IT IS THE ROW'S ONE ANSWER (F-98, D-90). The settle asks this rather than
-// carrying its own idea, which is the same fix `noteBedCarrying` already made for
-// whether the bed is CARRYING — two publishers of one row, and the frequent one
-// did not know what the operator had done.
+// carrying its own idea, as it asks `noteBedCarrying` whether the bed is
+// CARRYING — two publishers of one row, and the frequent one cannot know what
+// the operator has done.
 //
 // EMPTY IS A REAL ANSWER, not a missing one: until the operator touches the
 // selector, what the bed is on is the monitor's rotation, and the Director's label

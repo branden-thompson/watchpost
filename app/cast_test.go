@@ -176,7 +176,7 @@ func TestInstalledIsFindOnly(t *testing.T) {
 
 // THE DEADLOCK GUARD. cast.Validate calls back into Discovered and Installed,
 // which take d.mu. A caller that validates while holding d.mu re-enters and
-// hangs forever — a defect four independent red-team lenses found at PLAN.
+// hangs forever.
 //
 // This test must FAIL, not hang: the work runs on its own goroutine and the
 // test gives up on a timer.
@@ -189,7 +189,7 @@ func TestValidatingTheCastDoesNotDeadlockAgainstTheDecksLock(t *testing.T) {
 	cfg.Radio.Voices.Alerts = config.RoleVoice{MacOS: "Nobody At All"} // forces the fallback path
 
 	done := make(chan []cast.Problem, 1)
-	go func() { // setCast: the production path that validates (S-8 retired castProblems, its stand-in)
+	go func() { // setCast: the production path that validates
 		d.setCast(castLoaded(cfg))
 		d.mu.Lock()
 		problems := d.cast.problems
@@ -609,14 +609,6 @@ func TestABreakingStormSoundsTheStormClass(t *testing.T) {
 	}
 }
 
-// TestAMutedTickerStillReadsTheWords WAS HERE, and is deleted (red team
-// 2026-09-05). Its title claimed MVS-D-26 — the words always read — and its
-// assertion required that NOTHING render, which is the opposite. It also needed
-// BOTH mute gates removed before it would fail, so it pinned neither: the
-// producer's gate is now pinned by TestMutingHoldsABurstRatherThanSpendingIt
-// and the executor's by TestAMutedReadIsDeclinedAndNothingIsConsumed, each
-// alone. MVS-D-26 is about the per-CLASS tone mute (deck.tone), which is tested
-// where it lives.
 func TestTheScreenAndTheVoiceAgreeOnTheSeaState(t *testing.T) {
 	for _, height := range []float64{0.05, 0.3, 0.9, 2.0, 3.0, 5.0} {
 		want := render.SeaState(height)
@@ -732,12 +724,10 @@ func TestCastReportAnswersWithoutADeck(t *testing.T) {
 	}
 }
 
-// THE SEAM ONLY WORKS IF EVERY CALLER USES IT, and for the whole of 0.14.0 the
-// most important one did not. app/voices.go:rawVoice branched on runtime.GOOS
-// directly, so asPlatform(t, "darwin") set runtimeGOOS(), rawVoice ignored it, and
-// the test walked the Piper install path anyway. On a Mac the two agree and
-// everything passed; the first Linux CI run of this release panicked in a
-// background install the test never meant to start.
+// THE SEAM ONLY WORKS IF EVERY CALLER USES IT. A caller that branches on
+// runtime.GOOS directly ignores asPlatform(t, "darwin"), so the test walks the
+// other platform's path anyway: on a Mac the two agree and everything passes,
+// and on Linux CI the test starts a background install it never meant to.
 //
 // The ledger row that exempts this seam says what it is for in as many words:
 // it exists "so the M5 fallback matrix can walk BOTH platform namespaces on one
@@ -762,9 +752,8 @@ func TestNoProductionFileInAppReadsRuntimeGOOSDirectly(t *testing.T) {
 			if !strings.Contains(line, "runtime.GOOS") || strings.HasPrefix(strings.TrimSpace(line), "//") {
 				continue
 			}
-			// The one legitimate use: the seam's own initialiser. It became an
-			// atomic store when a test's restore was found racing the synth
-			// render loop, so the shape this allows changed with it.
+			// The one legitimate use: the seam's own initialiser, an atomic store
+			// because a test's restore races the synth render loop otherwise.
 			if n == "cast.go" && strings.Contains(line, "goosSeam.Store(runtime.GOOS)") {
 				continue
 			}
@@ -780,22 +769,20 @@ func TestNoProductionFileInAppReadsRuntimeGOOSDirectly(t *testing.T) {
 	}
 }
 
-// A deck with no engine cannot carry out a background install. The first Linux
-// CI run of this release panicked because one tried: a real download, started by
-// a unit test, whose progress callback dereferenced the nil engine.
+// A deck with no engine cannot carry out a background install. One that tried
+// would start a real download from a unit test, whose progress callback
+// dereferences the nil engine.
 //
 // This tests the PREDICATE. Where it is applied — after the cap accounting, so
 // the cap still binds, and before the goroutine, so no work starts — is fixed by
 // TestUnattendedInstallsAreCappedPerSession on one side and by reading on the
-// other; putting the guard a few lines earlier broke that cap test, which is how
-// the placement was settled.
+// other; putting the guard a few lines earlier breaks that cap test.
 func TestAnUnwiredDeckCannotInstall(t *testing.T) {
 	if (&radioDeck{}).canInstall() {
 		t.Error("a deck with no engine reports it can install")
 	}
-	// A deck with an engine but nothing to report to still cannot: this is the
-	// half CI found on the SECOND Linux round, in Program.Send rather than
-	// Engine.Status.
+	// A deck with an engine but nothing to report to still cannot: this half
+	// guards Program.Send, as the first guards Engine.Status.
 	if (&radioDeck{engine: &player.Engine{}}).canInstall() {
 		t.Error("a deck with no program reports it can install")
 	}
@@ -826,21 +813,20 @@ func installFakePiperVoice(t *testing.T, dir string, spec synth.VoiceSpec) {
 	must(filepath.Join(dir, "voices", spec.Key+".onnx.json"))
 }
 
-// AN INSTALLED PIPER VOICE MUST RESOLVE AND BUILD ON LINUX — issue #7, reported
-// from a real Arch box against the 0.14.0 release: the alert tone sounded and the
-// ticker took over, and nothing was ever read, while the very same voice read
-// user-initiated reports perfectly.
+// AN INSTALLED PIPER VOICE MUST RESOLVE AND BUILD ON LINUX (issue #7). Without
+// it the alert tone sounds and the ticker takes over, and nothing is read, while
+// the very same voice reads user-initiated reports perfectly.
 //
-// The split is the whole story. The report path goes through rawVoice, which
-// carries a FULL VoiceSpec from the catalogue; the takeover goes through
-// cast.Resolve, which passes NAMES, and both Installed and buildVoice rebuilt a
-// spec as VoiceSpec{Name: name} — leaving Key empty. FindPiperVoice locates the
-// model at `<dir>/voices/<Key>.onnx`, so it looked for `voices/.onnx` and said
-// no. Every Piper voice read as missing, on the one platform Piper is for.
+// The two paths carry different things. The report path goes through rawVoice,
+// which carries a FULL VoiceSpec from the catalogue; the takeover goes through
+// cast.Resolve, which passes NAMES. FindPiperVoice locates the model at
+// `<dir>/voices/<Key>.onnx`, so a spec rebuilt as VoiceSpec{Name: name} — Key
+// empty — looks for `voices/.onnx` and says no. Every Piper voice then reads as
+// missing, on the one platform Piper is for.
 //
-// It survived every gate because every cast test pins darwin, where buildVoice
-// returns a SayVoice and never reaches FindPiperVoice. This test is the Linux
-// branch, with a voice actually on disk.
+// Every other cast test pins darwin, where buildVoice returns a SayVoice and
+// never reaches FindPiperVoice. This test is the Linux branch, with a voice
+// actually on disk.
 func TestAnInstalledPiperVoiceResolvesAndBuildsOnLinux(t *testing.T) {
 	asPlatform(t, "linux")
 	dir := t.TempDir()
@@ -848,7 +834,7 @@ func TestAnInstalledPiperVoiceResolvesAndBuildsOnLinux(t *testing.T) {
 	installFakePiperVoice(t, dir, spec)
 	d := &radioDeck{voiceDir: dir, limiter: synth.NewLimiter(renderSlots(), synth.ReservedSlots)}
 
-	// cast.Resolve asks by NAME — the form that was broken — and by key.
+	// cast.Resolve asks by NAME — the form a name-only spec breaks — and by key.
 	if !d.Installed(spec.Name) {
 		t.Errorf("Installed(%q) is false for a voice that is on disk", spec.Name)
 	}
@@ -868,7 +854,7 @@ func TestAnInstalledPiperVoiceResolvesAndBuildsOnLinux(t *testing.T) {
 
 	// CONTROLS. A name that is not in the catalogue must still fail, and so must
 	// the macOS sentinel — otherwise this passes for a deck that says yes to
-	// everything, which is the failure mode being fixed, inverted.
+	// everything, which is the failure mode this guards, inverted.
 	if d.Installed("not-a-voice") {
 		t.Error("control: an unknown name reads as installed")
 	}
@@ -883,11 +869,9 @@ func TestAnInstalledPiperVoiceResolvesAndBuildsOnLinux(t *testing.T) {
 // A NAME-ONLY VoiceSpec IS THE BUG, so nothing in app may build one.
 //
 // FindPiperVoice locates the model by Key; a spec carrying only a Name looks for
-// `voices/.onnx` and answers no for every voice. Four call sites did it, and the
-// fourth was written by copying the third — the comment on it read "find-only,
-// exactly as the deck's is". piperInstallFor is the one owner now, and this is
-// what keeps it the only one, because the next person will otherwise reach for
-// the struct literal exactly as four people already did.
+// `voices/.onnx` and answers no for every voice. piperInstallFor is the one
+// owner, and this is what keeps it the only one: the struct literal is the shape
+// the next call site otherwise reaches for.
 func TestNoProductionFileInAppBuildsANameOnlyVoiceSpec(t *testing.T) {
 	entries, err := os.ReadDir(".")
 	if err != nil {

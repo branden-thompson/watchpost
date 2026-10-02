@@ -2,12 +2,10 @@ package tty
 
 // help_surface_test.go — the Help window answers for the surface you are ON.
 //
-// HUM LEAD, UAT 2026-09-15: "we also need to make the ? (help) modal display
-// the correct key bindings and hints depending on the mode that currently
-// active - rigth now the help window only shows Observer key bindings, and it
-// doesnt show the user how to swap between Observer and Broadcaster.  Once the
-// user in the Broadcaster UI, they key bindings share/rempapped for that mode
-// do not update their help (like 'r')."
+// HUM LEAD, UAT 2026-09-15: the ? (help) modal displays "the correct key
+// bindings and hints depending on the mode", shows how to swap between
+// Observer and Broadcaster, and reads a key remapped on the console (like 'r')
+// as the console's.
 
 import (
 	"strings"
@@ -22,7 +20,7 @@ func helpTextOn(t *testing.T, surface Surface) string {
 	return stripANSITest(d.renderModal(d.opts()))
 }
 
-// DEFECT 1: the console was handed the listener's manual.
+// CASE 1: the console is not handed the listener's manual.
 func TestTheConsolesHelpDocumentsTheConsole(t *testing.T) {
 	got := helpTextOn(t, SurfaceBroadcaster)
 	for _, want := range []string{"ON AIR / STANDBY", "Line-Up Request", "Details / Manage Slot", "Previous Relay"} {
@@ -37,12 +35,11 @@ func TestTheConsolesHelpDocumentsTheConsole(t *testing.T) {
 			t.Errorf("the console's help offers %q, which belongs to Observer:\n%s", never, got)
 		}
 	}
-	// THE SECTION HEADERS, NOT ONLY THE ROWS — and this is the half the first
-	// draft missed. `helpBlocks` sweeps anything the grouping does not claim
-	// into an OTHER block, so a window built from OBSERVER'S grouping and the
-	// CONSOLE'S keymap still contains every console row, just heaped under one
-	// heading. The rows passed; the organisation was unmeasured, and the mutant
-	// that swapped the grouping survived on exactly that gap.
+	// THE SECTION HEADERS, NOT ONLY THE ROWS. `helpBlocks` sweeps anything the
+	// grouping does not claim into an OTHER block, so a window built from
+	// OBSERVER'S grouping and the CONSOLE'S keymap still contains every console
+	// row, just heaped under one heading. Rows alone leave the organisation
+	// unmeasured, and a swapped grouping passes.
 	for _, want := range []string{"STATION", "LINE UP", "BED"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the console's help has no %s section; its controls are not organised for this surface:\n%s", want, got)
@@ -55,7 +52,7 @@ func TestTheConsolesHelpDocumentsTheConsole(t *testing.T) {
 	}
 }
 
-// DEFECT 2: neither surface said how to reach the other.
+// CASE 2: each surface says how to reach the other.
 func TestBothSurfacesDocumentTheSwap(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -73,9 +70,9 @@ func TestBothSurfacesDocumentTheSwap(t *testing.T) {
 	}
 }
 
-// DEFECT 3: a key that means two things must read as the RIGHT one on each
-// surface. This is D-56 — one key, one meaning per surface — being DOCUMENTED,
-// which is the half that was missing.
+// CASE 3: a key that means two things must read as the RIGHT one on each
+// surface. This is D-56 — one key, one meaning per surface — being DOCUMENTED
+// as well as obeyed.
 func TestARemappedKeyReadsAsItsSurfacesMeaning(t *testing.T) {
 	console, observer := helpTextOn(t, SurfaceBroadcaster), helpTextOn(t, SurfaceObserver)
 

@@ -17,11 +17,11 @@
 // answers each kind with its
 // OWN typed hook, so a fifth needs a branch there or the report is requested,
 // built, and silently missing what was asked for. The branches are not a defect
-// — they cannot be table-driven without erasing the types — but the absence of
-// anything NOTICING a fifth was, and `TestEveryReportKindReachesTheComposer`
-// (in `app`) is what notices now. A contributor who read only the paragraph
-// above would add the row, watch this package's tests go green, and ship a
-// silently empty report kind.
+// — they cannot be table-driven without erasing the types — and
+// `TestEveryReportKindReachesTheComposer` (in `app`) is what notices a fifth
+// without one. A contributor who read only the paragraph above would add the
+// row, watch this package's tests go green, and ship a silently empty report
+// kind.
 //
 // Modelled on `platform/category`, whose registry states the same rule: "A
 // function rather than a package variable (P10-06), and the ONLY place a
@@ -165,10 +165,9 @@ const FullLabel = "Location Report, Full"
 // everything reads "Location Report, Full"; anything else is the LABELS,
 // comma-delimited, in registry order.
 //
-// ONE RULE FOR ONE, TWO OR THREE. The first spec said a single choice shows its
-// NAME and several show labels — the ruling simplified that to labels
-// throughout, and a single kind is simply a one-element list. A special case for
-// one would be a second naming rule to keep in step with the first.
+// ONE RULE FOR ONE, TWO OR THREE: labels throughout, and a single kind is
+// simply a one-element list. A special case for one would be a second naming
+// rule to keep in step with the first.
 //
 // AN EMPTY SET DESCRIBES ITSELF AS NOTHING, and the caller decides what to draw:
 // there is no card in that state, and inventing a word for it here would put a

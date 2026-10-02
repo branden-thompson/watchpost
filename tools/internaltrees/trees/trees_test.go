@@ -111,7 +111,7 @@ func TestNoWorkspaceDerivesNothing(t *testing.T) {
 }
 
 // TestAnEmptyPathIsRefusedRatherThanGuessed is the positive control for the
-// guards added with them: an empty root would otherwise resolve to whatever
+// guards on them: an empty root would otherwise resolve to whatever
 // directory the process is in, and the rule would describe a workspace nobody
 // asked about. Each case must FAIL.
 func TestAnEmptyPathIsRefusedRatherThanGuessed(t *testing.T) {
@@ -141,8 +141,8 @@ func TestAnEmptyPathIsRefusedRatherThanGuessed(t *testing.T) {
 	}
 }
 
-// TestAnUnreadableHomeIsAnErrorNotAnEmptyRule is the positive control for the
-// fail-open fix: a home that cannot be resolved must stop the caller, because
+// TestAnUnreadableHomeIsAnErrorNotAnEmptyRule is the positive control for
+// failing closed: a home that cannot be resolved must stop the caller, because
 // a gate handed the static half alone prints a pass while a whole class of
 // name goes unchecked.
 func TestAnUnreadableHomeIsAnErrorNotAnEmptyRule(t *testing.T) {

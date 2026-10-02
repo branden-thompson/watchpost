@@ -155,22 +155,20 @@ func TestSetupGoldenASCII(t *testing.T) {
 	checkGolden(t, "setup-133x44-ascii.golden", got)
 }
 
-// THE SCAN THAT WOULD HAVE CAUGHT F-47, and the reason the per-window lists
-// above did not. Each of those names the marks ITS window draws, while the
-// golden it checks is the whole frame — so a glyph belonging to the dashboard
-// behind the modal is captured in the file and scanned by nobody. F-47 lived
-// there: the radio panel wrote "▶", "■", "█" and "░" directly instead of taking
-// them from the glyph set, in the same function whose Fail branch took its mark
-// from the set correctly.
+// THE SCAN NEEDS NO LIST (F-47). The per-window lists above each name the
+// marks ITS window draws, while the golden it checks is the whole frame — so a
+// glyph belonging to the dashboard behind the modal (the radio panel writing
+// "▶" or "█" directly instead of taking it from the glyph set) is captured in
+// the file and scanned by nobody.
 //
 // This asks the only question that needs no list: is anything in an --ascii
 // frame outside ASCII? A list of forbidden glyphs can only find what someone
 // already thought of.
 //
 // ° (U+00B0) is the one ruled exception. Temperatures carry the real DEGREE
-// SIGN deliberately — it replaced U+00BA MASCULINE ORDINAL INDICATOR, which a
-// screen reader announces as an ordinal marker where a temperature is meant —
-// and both measure one cell, so nothing moved.
+// SIGN deliberately — not U+00BA MASCULINE ORDINAL INDICATOR, which a screen
+// reader announces as an ordinal marker where a temperature is meant — and
+// both measure one cell.
 func TestASCIIFramesCarryNothingButASCII(t *testing.T) {
 	for name, frame := range asciiSurfaces(t) {
 		seen := map[rune]bool{}
@@ -184,29 +182,24 @@ func TestASCIIFramesCarryNothingButASCII(t *testing.T) {
 	}
 }
 
-// asciiSurfaces is EVERY SURFACE AN --ascii FRAME CAN SHOW, and it is the
-// half of this gate that kept going stale (FR-8).
+// asciiSurfaces is EVERY SURFACE AN --ascii FRAME CAN SHOW (FR-8).
 //
-// The scan above has always asked the only question that needs no list — is
-// anything here outside ASCII? — but it asked it of two surfaces: the
-// dashboard and Settings. There are eleven windows. The eight it never
-// reached are where the last three --ascii escapes were found, each by
-// someone opening that window, each after the previous one was called the
-// last.
-//
-// The producer is the modal enum, so a window added to the app is scanned the
-// day it lands rather than the day someone remembers to add it here.
+// The scan above asks the only question that needs no list — is anything here
+// outside ASCII? — and asked of the dashboard and Settings alone it leaves
+// every other window to be checked by someone opening it. The producer is the
+// modal enum, so a window added to the app is scanned the day it lands rather
+// than the day someone remembers to add it here.
 
 // populated gives the detail modal DATA, because fixtureFor gives it none and a
 // window scanned empty is a window scanned in the one state whose glyphs are
-// missing (red team, 2026-09-08).
+// missing.
 //
-// The scan reported thirteen surfaces and meant it, but the detail modal drew
-// "fire feed not yet available" and "seismic data unavailable" — so the fire and
-// hotspot TABLES this release built, the incidents list with its second radius,
-// the felt-band ramp and the truncation that spends an Ellipsis were all outside
-// it. fixtureFor's own severe case says why: "a fixture that does not exercise
-// the state is a hole shaped exactly like coverage."
+// Empty, the detail modal draws "fire feed not yet available" and "seismic data
+// unavailable" — so the fire and hotspot TABLES, the incidents list with its
+// second radius, the felt-band ramp and the truncation that spends an Ellipsis
+// would all be outside the scan. fixtureFor's own severe case says why: "a
+// fixture that does not exercise the state is a hole shaped exactly like
+// coverage."
 func populated(d Dashboard) Dashboard {
 	if d.snap == nil || len(d.snap.Locations) == 0 {
 		return d
@@ -242,7 +235,7 @@ func states() []struct {
 		apply func(Dashboard) Dashboard
 	}{
 		{"resting", func(d Dashboard) Dashboard { return d }},
-		// THE ERROR LINES. Both carried a raw warning mark.
+		// THE ERROR LINES, each with a warning mark.
 		{"erroring", func(d Dashboard) Dashboard {
 			d.addErr = "could not resolve that location"
 			d.setup.err = "that key was rejected"
@@ -270,10 +263,10 @@ func asciiSurfaces(t *testing.T) map[string]string {
 	}
 	for m := modalHelp; m < numModals; m++ {
 		// EVERY WINDOW IN EVERY STATE THE SCAN CAN REACH, not just its resting
-		// one. Six live --ascii defects sat behind an error line, a stored key
-		// and a healthy provider — states fixtureFor never sets — while three
-		// golden tests stayed green (red team, 2026-09-08). A window has more
-		// than one appearance and only one of them was ever scanned.
+		// one. An error line, a stored key and a healthy provider are states
+		// fixtureFor never sets, so an --ascii defect behind any of them passes
+		// every golden. A window has more than one appearance, and each is
+		// scanned.
 		for _, st := range states() {
 			d := st.apply(populated(fixtureFor(t, m)))
 			d.cfg.ASCII = true
@@ -293,7 +286,7 @@ func asciiSurfaces(t *testing.T) map[string]string {
 // TestSetupGoldenEveryTab pins the Settings tabs the other goldens do not open
 // on (D-62): General, where `t` lands at the theme row, and Maps.
 func TestSetupGoldenEveryTab(t *testing.T) {
-	ui := setupGolden(t, 133, 44, false, rowTheme) // D-71: the Watchpost UI tab, which General's rows became
+	ui := setupGolden(t, 133, 44, false, rowTheme) // D-71: the Watchpost UI tab
 	checkGolden(t, "setup-133x44-ui.golden", ui.View().Content)
 	data := setupGolden(t, 133, 44, false, rowFIRMSKey) // and the Data tab
 	checkGolden(t, "setup-133x44-data.golden", data.View().Content)

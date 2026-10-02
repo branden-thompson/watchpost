@@ -121,7 +121,7 @@ func TestTheMapAsksTheQuakesChosen(t *testing.T) {
 }
 
 // TestTheStatusWindowNamesTheQuakesHost is FR-9.4 for D-122: the map asks
-// USGS itself now, and the Status window says so.
+// USGS itself, and the Status window says so.
 func TestTheStatusWindowNamesTheQuakesHost(t *testing.T) {
 	for _, s := range mapSourceList() {
 		if s.Host == "earthquake.usgs.gov" && s.Layers == "quakes" { // a MAP STATUS row (D-150)
@@ -131,11 +131,11 @@ func TestTheStatusWindowNamesTheQuakesHost(t *testing.T) {
 	t.Error("the Status window's map list does not name earthquake.usgs.gov")
 }
 
-// TestEveryQuakeIsAcceptedByTheLibrary is UAT-2 U2-29: a quake of the past
-// week handed in as current for eight days was refused - the library keeps
-// a thing current for at most seven - and the week's feed flooded the map
-// with refusals. Every quake the feeds can hold, a minute old to a full
-// week, is handed to a real map and accepted.
+// TestEveryQuakeIsAcceptedByTheLibrary is UAT-2 U2-29: the library keeps a
+// thing current for at most seven days, so a quake of the past week handed in
+// as current for eight is refused, and the week's feed floods the map with
+// refusals. Every quake the feeds can hold, a minute old to a full week, is
+// handed to a real map and accepted.
 func TestEveryQuakeIsAcceptedByTheLibrary(t *testing.T) {
 	m, err := tuimaps.New(tuimaps.WithSize(69, 12))
 	if err != nil {
@@ -155,9 +155,8 @@ func TestEveryQuakeIsAcceptedByTheLibrary(t *testing.T) {
 }
 
 // TestFireAndQuakesAreAskedOnlyWhileOn is W14's P-3, D-149's rule for what
-// is off - "nothing of it is fetched": fire and quakes were fetched on every
-// feed ask whatever their switches, and dropped after. Off, neither is asked;
-// on, each is.
+// is off - "nothing of it is fetched", not fetched and dropped after. Off,
+// neither is asked; on, each is.
 func TestFireAndQuakesAreAskedOnlyWhileOn(t *testing.T) {
 	var asked []string
 	var mu sync.Mutex // fire and quakes are asked together: the handler runs on several goroutines at once

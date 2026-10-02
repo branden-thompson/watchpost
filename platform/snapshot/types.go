@@ -19,7 +19,7 @@ import (
 
 // SchemaVersion is the published JSON contract version. The -rc suffix says
 // it is not ratified (B5, architecture §10.3): a candidate may still change
-// shape, and 1.1.0-rc did when an alert's area gained its grouping level.
+// shape.
 const SchemaVersion = "1.1.0-rc"
 
 // Snapshot is the single source every renderer consumes. Immutable after
@@ -53,10 +53,10 @@ type Location struct {
 
 	// WeatherAsOf is when the REFERENCE provider last completed a fetch that
 	// covered this location — zero = none has yet. It is the weather half of a
-	// distinction FireState.AsOf and Seismic's nil-ness already make, and the
-	// only reason a never-resolving lookup could not be told from a loading one
-	// (issue #13): with no attempt recorded, an empty location shimmers for
-	// ever. It says the feed ANSWERED, never that it found anything.
+	// distinction FireState.AsOf and Seismic's nil-ness already make, and it is
+	// what tells a never-resolving lookup from a loading one (issue #13): with no
+	// attempt recorded, an empty location shimmers for ever. It says the feed
+	// ANSWERED, never that it found anything.
 	WeatherAsOf time.Time `json:"weather_as_of"`
 }
 
@@ -216,17 +216,17 @@ type FireState struct {
 	Hotspots  []Hotspot  `json:"hotspots"`
 	Incidents []Incident `json:"incidents"`
 
-	// HotspotsAsOf and IncidentsAsOf are per-FEED, and AsOf alone was not enough
-	// (REVIEW red team, 2026-09-08). AsOf is the freshest answer from ANY fire
-	// feed, so with HMS up and WFIGS down it is set — and the spoken report then
-	// stated "there are currently no named incidents within a 31 mile radius" as
-	// a FACT, one sentence after crediting the National Interagency Fire Center
-	// as a source. The mirror case says "no hotspots" while HMS and FIRMS are
-	// both down.
+	// HotspotsAsOf and IncidentsAsOf are per-FEED, because AsOf alone is not
+	// enough (REVIEW red team, 2026-09-08). AsOf is the freshest answer from ANY
+	// fire feed, so with HMS up and WFIGS down it is set — and a spoken report
+	// reading it would state "there are currently no named incidents within a 31
+	// mile radius" as a FACT, one sentence after crediting the National
+	// Interagency Fire Center as a source. The mirror case says "no hotspots"
+	// while HMS and FIRMS are both down.
 	//
-	// This is the on-screen distinction the UAT already forced — "fire feed not
-	// yet available" is not "none within this radius" — applied per FEED rather
-	// than per ring, and on the air rather than only on screen.
+	// This is the on-screen distinction — "fire feed not yet available" is not
+	// "none within this radius" — applied per FEED rather than per ring, and on
+	// the air rather than only on screen.
 	//
 	// Zero means that half was never answered for this location. A count of zero
 	// is only a fact when its own stamp is set.
@@ -433,8 +433,8 @@ type LocationRef struct {
 	// Population is how many people the place holds, 0 when unknown (D-98).
 	//
 	// IT RIDES THE REF BECAUSE THE POOL'S TABLE DRAWS IT and the pool is a list
-	// of refs. `geodata.City` has held the figure since the index was built; it
-	// simply had no reader until the console gained a column for it.
+	// of refs. `geodata.City` holds the figure, and the console's column is its
+	// reader.
 	//
 	// NOT PART OF THE KEY. `snapshot.Key` is lat,lon at four places, and a
 	// population that changed between census releases must not make a location
@@ -448,8 +448,8 @@ type LocationKey string
 // PlaceID is which place a ref names, for the lists that dedupe what the
 // listener chose - the watchlist and RECENT: its ZIP when it has one, else its
 // Key. An empty ZIP is no identity (#23): a park and a lake without one are two
-// places, and keyed by ZIP alone every such place was "already watched" once
-// one was. The one definition; the lists never compare ZIPs themselves.
+// places, and keyed by ZIP alone every such place would be "already watched"
+// once one was. The one definition; the lists never compare ZIPs themselves.
 func PlaceID(ref LocationRef) string {
 	if ref.Zip != "" {
 		return ref.Zip
@@ -522,15 +522,15 @@ type Provider interface {
 
 // The three optional fire numbers, read with the sentinel every ranking uses.
 //
-// EACH OF THESE WAS WRITTEN TWICE — once here beside the type and once in
-// domains/fire — with identical bodies and identical sentinels. They agree
-// today. The sentinels are POLICY (a missing FRP sorts last; a missing distance
-// is infinitely far), so the failure mode is that one is adjusted and the other
-// is not, and the merge and the ranking then disagree about the same fire while
-// both look right in isolation.
+// ONE COPY, ON THE TYPE. The sentinels are POLICY (a missing FRP sorts last; a
+// missing distance is infinitely far), so a second hand-written copy — beside
+// the ranking in domains/fire, say — fails by one being adjusted and the other
+// not: the merge and the ranking then disagree about the same fire while both
+// look right in isolation.
 //
-// They live on the type because the type is what they are about. Issue #7 was
-// the same shape — one operation, four hand-written copies, one of them wrong.
+// They live on the type because the type is what they are about. Issue #7 is
+// the same shape — one operation, several hand-written copies, one of them
+// wrong.
 
 // FRPOrMissing is the fire radiative power, or -1 when the feed omitted it.
 func (h Hotspot) FRPOrMissing() float64 {

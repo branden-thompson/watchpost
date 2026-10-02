@@ -45,9 +45,9 @@ func TestStatusModalAndControlPlacement(t *testing.T) {
 }
 
 func TestStatusModalWrapsNeverTruncates(t *testing.T) {
-	// UAT 25 (the recurring class, now fixed in the component): every modal
-	// body line wraps within the tile — no … anywhere in the modal. The
-	// longest line today is the dump trigger's path (quality pass Q0).
+	// UAT 25 (the component's rule): every modal body line wraps within the
+	// tile — no … anywhere in the modal. The longest line is the dump trigger's
+	// path (quality pass Q0).
 	long := "kill -USR1 4242 → /Users/someone/Library/Caches/watchpost/profiles/and-a-deeper-directory"
 	m, err := NewDashboard(Config{Version: "x", Stats: func() Stats { return Stats{DumpHint: long} }})
 	if err != nil {
@@ -123,10 +123,10 @@ func TestStatusModalShowsRequestAndDumpRows(t *testing.T) {
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
 	sv, _ := model.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
 	v := stripANSITest(sv.View().Content)
-	// The REQUESTS block is gone: its counters are columns of the API STATUS
-	// table now, keyed by the host they were counted against. The window they
+	// There is no REQUESTS block: its counters are columns of the API STATUS
+	// table, keyed by the host they were counted against. The window they
 	// cover is the UPTIME row at the top — printing it twice, three lines apart,
-	// invited a reader to look for the difference (0.14.0).
+	// would invite a reader to look for the difference (0.14.0).
 	for _, want := range []string{"providers over", "ENDPOINT", "api.weather.gov", "1234", "980", "4560", "12.3M",
 		"api.tidesandcurrents.noaa.gov", "PUBLISHES", "DUMPS", "last: 20260826T120000Z ok", "trigger: kill -USR1 4242"} {
 		if !strings.Contains(v, want) {
@@ -138,7 +138,7 @@ func TestStatusModalShowsRequestAndDumpRows(t *testing.T) {
 	var qm tea.Model = quiet
 	qm, _ = qm.Update(tea.WindowSizeMsg{Width: 133, Height: 60})
 	qs, _ := qm.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
-	// REQUESTS is folded into PROVIDERS now, so there is ONE placeholder here.
+	// REQUESTS is folded into PROVIDERS, so there is ONE placeholder here.
 	if qv := stripANSITest(qs.View().Content); !strings.Contains(qv, "none yet") || !strings.Contains(qv, "awaiting first snapshot") {
 		t.Fatalf("both blocks must say what they are waiting for:\n%s", stripANSITest(qs.View().Content))
 	}
@@ -212,10 +212,10 @@ func TestStatusIsOneColumnAndFitsItsTerminal(t *testing.T) {
 //
 // The ticker's feeds and the geocoder are counted by httpx and are NOT snapshot
 // providers, so they have no health to report. HealthGlyph reads anything that
-// is not "ok" as a failure, which put a red ✘ on www.nhc.noaa.gov in [S] while
-// the masthead — which counts snapshot providers only — said every provider was
-// fine. Two surfaces contradicting each other about the same host is worse than
-// either of them being silent.
+// is not "ok" as a failure, so such a host would wear a red ✘ in [S] (say
+// www.nhc.noaa.gov) while the masthead — which counts snapshot providers only —
+// says every provider is fine. Two surfaces contradicting each other about the
+// same host is worse than either of them being silent.
 func TestAnUnmeasuredHostReadsNeutralNotFailed(t *testing.T) {
 	m, err := NewDashboard(Config{Version: "t", Stats: func() Stats {
 		return Stats{
@@ -259,13 +259,13 @@ func TestAnUnmeasuredHostReadsNeutralNotFailed(t *testing.T) {
 // clipped to get there (HUM LEAD, UAT 2026-08-30 — "whenever we need a table, we
 // use a go-studs table, that's why we vendored it").
 //
-// Both halves are pinned because the first migration satisfied one by breaking
-// the other: the lines came back a cell over and were clamped, which squared the
-// block off by eating "1m 30s" down to "1m 30", "1.5M" to "1.5" and the S off
-// ROWS. A table that loses a character to stay tidy is worse than one that does
-// not line up.
+// Both halves are pinned because either can be satisfied by breaking the
+// other: lines that come back a cell over and are clamped square the block off
+// by eating "1m 30s" down to "1m 30", "1.5M" to "1.5" and the S off ROWS. A
+// table that loses a character to stay tidy is worse than one that does not
+// line up.
 func TestStatusTablesAreRectanglesWithNothingClipped(t *testing.T) {
-	for _, w := range []int{60, 68, 72, 80, 100, 133, 200} { // narrow widths included: 72 was where SEEN was clipped away
+	for _, w := range []int{60, 68, 72, 80, 100, 133, 200} { // narrow widths included: at 72 the fixed columns crowd SEEN
 		d := benchDash(t, w, 44).(Dashboard)
 		d.snap.Warnings = []snapshot.Warning{{
 			Code: snapshot.WarnProviderError, Provider: "nws", Endpoint: "api.weather.gov",
@@ -303,13 +303,13 @@ func TestStatusTablesAreRectanglesWithNothingClipped(t *testing.T) {
 	}
 }
 
-// A COLUMN IS SHOWN WHOLE OR NOT AT ALL (BUILD-exit red team, 2026-08-30).
+// A COLUMN IS SHOWN WHOLE OR NOT AT ALL (BUILD-exit red team).
 //
-// The ISSUES table had no width ladder, so at 72 columns the fixed columns
-// summed past the window and the rectangle clamp ate the SEEN cell — the fold
-// counts (×1, ×2 (2 loc)) simply vanished, with the heading gone too so nothing
-// on screen said they had. A table that drops a column deliberately is honest;
-// one that clips the last one is a table lying about how many columns it has.
+// Without a width ladder, at 72 columns the ISSUES table's fixed columns sum
+// past the window and the rectangle clamp eats the SEEN cell — the fold counts
+// (×1, ×2 (2 loc)) vanish, with the heading gone too so nothing on screen says
+// they have. A table that drops a column deliberately is honest; one that clips
+// the last one is a table lying about how many columns it has.
 func TestStatusIssueColumnsAreWholeOrAbsent(t *testing.T) {
 	for _, w := range []int{60, 68, 72, 80, 100, 133} {
 		d := benchDash(t, w, 40).(Dashboard)
@@ -364,9 +364,9 @@ func TestStatusWindowMemoHitsBetweenVisibleChanges(t *testing.T) {
 }
 
 // THE ISSUES TABLE IS A FUNCTION OF ITS DATA. Collecting folded classes out of
-// a map and sorting on a comparator that ties left the order to Go's random map
-// iteration, so identical input rendered a different table each time — and the
-// maxIssueRows cut then hid a different issue class on every render.
+// a map and sorting on a comparator that ties leaves the order to Go's random
+// map iteration, so identical input renders a different table each time — and
+// the maxIssueRows cut then hides a different issue class on every render.
 func TestIssueOrderIsStableAcrossRenders(t *testing.T) {
 	snap := &snapshot.Snapshot{}
 	for i := range 6 { // six classes, all the same count: every comparator ties
@@ -417,9 +417,9 @@ func TestAFoldedIssueReportsOneOccurrenceThroughout(t *testing.T) {
 
 // A CELL'S TONE TRAVELS WITH THE CELL. The providers table's column set varies
 // by form — PROVIDERS is dropped on a narrow window — so a tone assigned by
-// POSITION lands on a different column at different widths. Muting "the second
-// cell" for an unreported host muted PROVIDERS at the wide forms and STATUS at
-// the narrow one, and no test covered the width where it bit.
+// POSITION lands on a different column at different widths: muting "the second
+// cell" for an unreported host would mute PROVIDERS at the wide forms and STATUS
+// at the narrow one. Every width is checked.
 func TestUnreportedHostsReadMutedAtEveryWidth(t *testing.T) {
 	unreported := endpointRow{endpoint: "www.nhc.noaa.gov", providers: "—", state: "not reported"}
 	muted := render.Tok(render.TableMuted)
@@ -495,10 +495,9 @@ func TestTheEndpointTablesAreOneShape(t *testing.T) {
 	}
 }
 
-// TestTheMapsWordsNeverWidenTheWindow is D-151 as the HUM LEAD's screenshot
-// found it: the disclosure wrapped at the terminal's width and set the
-// window's; it wraps to the table, and the window is the width it is
-// without the map's hosts.
+// TestTheMapsWordsNeverWidenTheWindow is D-151: the disclosure wraps to the
+// table, not to the terminal's width, so it never sets the window's; the
+// window is the width it is without the map's hosts.
 func TestTheMapsWordsNeverWidenTheWindow(t *testing.T) {
 	with, without := statusWithMap(t, 200, mapSources), statusWithMap(t, 200, nil)
 	if w, wo := with.statusWidth(), without.statusWidth(); w > max(wo, 200*60/100) {

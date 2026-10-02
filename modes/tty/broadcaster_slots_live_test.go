@@ -2,15 +2,6 @@ package tty
 
 // broadcaster_slots_live_test.go — where the line-up starts, and what LIVE holds
 // (D-84).
-//
-// THIS FILE HELD THE LIVE CARD'S SCRIPT WINDOW (D-83) AND NO LONGER DOES. Seven
-// tests pinned a card that showed the words it was about to read; D-87 replaced
-// that card with a MANIFEST, on the HUM LEAD's own reasoning — "the full script
-// on the top level card doesn't make sense when I can drill down to read the
-// whole thing" — so the rules those tests held are gone rather than weakened,
-// and the tests went with them. One batch's work retired by the next is the
-// UAT loop doing its job; a test kept alive against a retired design asserts
-// the past.
 
 import (
 	"strings"
@@ -70,7 +61,7 @@ func TestOnStandbyTheLineUpStartsAtUpNextAndLiveIsEmpty(t *testing.T) {
 	if c, decided := b.slotCard(l.Projection(lineup.MainTrack), 1); !decided || c.ID != "first" {
 		t.Errorf("UP NEXT holds %+v; want the head of the line-up", c)
 	}
-	// AND THE OPERATOR CAN SEE WHAT IT IS. The card is a MANIFEST since D-87 —
+	// AND THE OPERATOR CAN SEE WHAT IT IS. The card is a MANIFEST (D-87) —
 	// its name, its status and what it contains — so what UP NEXT shows is the
 	// card, not its words.
 	got := stripANSITest(b.View().Content)

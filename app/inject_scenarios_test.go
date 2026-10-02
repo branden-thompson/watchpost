@@ -2,14 +2,12 @@ package app
 
 // inject_scenarios_test.go — FR-4.1, FR-4.2, FR-4.3.
 //
-// THE DEFECT THAT NAMES THIS FILE. The scenario labelled "An Emergency Order
-// (leads the rail, overruns Max)" injected a Tornado Warning, byte-identical to
-// the default arm beside it. A Tornado Warning is not in the civil-emergency
-// family, so it cannot lead the rail — leading the rail is what being an
-// emergency order MEANS. Had that scenario injected an actual Evacuation
-// Immediate, an operator pressing ctrl+d would have watched #15 happen: the
-// evacuation order reaching the marquee as an ordinary warning, five weeks
-// before a listener did.
+// EVERY SCENARIO IS WHAT IT IS NAMED. The scenario labelled "An Emergency Order
+// (leads the rail, overruns Max)" must inject an emergency order: a Tornado
+// Warning is not in the civil-emergency family, so it cannot lead the rail —
+// leading the rail is what being an emergency order MEANS. An actual Evacuation
+// Immediate lets an operator pressing ctrl+d see #15 for themselves: whether
+// the evacuation order reaches the marquee as an ordinary warning.
 //
 // So the property is not "the window offers three things". It is that every
 // lane the feed can produce has a scenario, and that each scenario's payload
@@ -73,10 +71,10 @@ func TestEveryFabricatedEventIsMarkedAsOne(t *testing.T) {
 	}
 }
 
-// AND IT EXPIRES WITHIN TWO MINUTES (FR-4.3). They carried an hour, which is
-// thirty times the stated bound: a test run at the top of the hour left a
-// fabricated tornado warning in the marquee and the severe window for the rest
-// of it, and in the seen store for seven days.
+// AND IT EXPIRES WITHIN TWO MINUTES (FR-4.3). An hour would be thirty times the
+// stated bound: a test run at the top of the hour would leave a fabricated
+// tornado warning in the marquee and the severe window for the rest of it, and
+// in the seen store for seven days.
 func TestFabricatedEventsExpireWithinTwoMinutes(t *testing.T) {
 	now := time.Now()
 	for _, key := range allScenarioKeys() {
@@ -93,10 +91,10 @@ func TestFabricatedEventsExpireWithinTwoMinutes(t *testing.T) {
 	}
 }
 
-// AND A KEY NOTHING OFFERS FABRICATES NOTHING. The default arm handed back a
-// Tornado Warning, so a typo or a stale window produced a red alert nobody
-// asked for — and produced it identically to the scenario named for the
-// emergency path, which is how FR-4.1 went unnoticed.
+// AND A KEY NOTHING OFFERS FABRICATES NOTHING. A default arm that hands back a
+// Tornado Warning turns a typo or a stale window into a red alert nobody asked
+// for — identical to the scenario named for the emergency path, which would
+// hide an FR-4.1 failure.
 func TestAnUnknownScenarioKeyFabricatesNothing(t *testing.T) {
 	if evs := injectedEvents("no-such-scenario", time.Now(), testHere); len(evs) != 0 {
 		t.Errorf("an unknown key fabricated %d events, first %q", len(evs), evs[0].Type)
@@ -105,13 +103,13 @@ func TestAnUnknownScenarioKeyFabricatesNothing(t *testing.T) {
 
 // A TEST ALERT HAPPENS WHERE THE LISTENER IS (HUM LEAD 2026-09-07).
 //
-// It carried Location: "Injected Test Location" and no point, which exercises
+// A fixed location such as "Injected Test Location" with no point exercises
 // neither the D5 location tie nor the radius fence — the two stages most likely
 // to be the reason a real alert never reached someone. The whole tool exists to
 // test the machinery, and a fabricated event that skips two stages of it tests
 // less of the machinery than it appears to.
 //
-// The mark is what keeps it identifiable, and there are now four of them: the
+// The mark is what keeps it identifiable, and there are four of them: the
 // event says so, the tape says so at both ends, the window's row says so, and
 // the read says so in words.
 func TestAFabricatedAlertHappensAtTheListenersOwnLocation(t *testing.T) {
@@ -162,8 +160,8 @@ func TestTheTestScriptPromisesTheExpiryTheEventCarries(t *testing.T) {
 // that returns before it queues anything, is invisible to it: the tool reports
 // that everything works and pressing the button does nothing at all.
 //
-// UAT 2026-09-07: the confirmation was accepted and no alert arrived — no
-// audio, no takeover, nothing in [w].
+// The symptom (UAT 2026-09-07): the confirmation is accepted and no alert
+// arrives — no audio, no takeover, nothing in [w].
 func TestTheHookInjectsWhatTheWindowSendsBack(t *testing.T) {
 	for _, sc := range debugScenarios() {
 		deck := &tickerDeck{}
@@ -185,10 +183,10 @@ func TestTheHookInjectsWhatTheWindowSendsBack(t *testing.T) {
 
 // AN INJECTION RUNS A CYCLE AT ONCE (UAT 2026-09-07).
 //
-// THE DIAGNOSTIC WAITED FOR THE WEATHER. Injected events are drained by the
-// ticker's fetch cycle, which runs every two minutes — so an operator who
-// confirmed an injection watched nothing happen for up to two minutes and
-// reasonably reported that it does not work.
+// IT DOES NOT WAIT FOR THE WEATHER. Injected events are drained by the
+// ticker's fetch cycle, which runs every two minutes — left to it, an operator
+// who confirms an injection would watch nothing happen for up to two minutes
+// and reasonably report that it does not work.
 //
 // AND IT IS WORSE THAN SLOW. A test event is effective for two minutes
 // (FR-4.3), the same two minutes, so in the worst case globalfeed.Active drops
@@ -236,12 +234,11 @@ func TestAQueuedEventIsFreshWhenTheCycleTakesIt(t *testing.T) {
 
 // EVERY SCENARIO THE WINDOW OFFERS REACHES THE [w] WINDOW (UAT 2026-09-07).
 //
-// "STILL NO ENTRIES IN [w]" is the report this covers, and the path it covers
-// is the one no test had: the window's own KEY, through the real hook, through
-// a real cycle, into the severe index. The pipeline test hands a hand-built
-// event to deck.Inject — so a scenario whose payload the index cannot classify,
-// or whose key the hook does not know, was invisible to every gate in the repo
-// while the tool reported that everything works.
+// It covers the path the pipeline test skips: the window's own KEY, through
+// the real hook, through a real cycle, into the severe index. The pipeline test
+// hands a hand-built event to deck.Inject — so a scenario whose payload the
+// index cannot classify, or whose key the hook does not know, is invisible to it
+// while the tool reports that everything works ("STILL NO ENTRIES IN [w]").
 func TestEveryScenarioReachesTheSevereIndex(t *testing.T) {
 	for _, sc := range debugScenarios() {
 		t.Run(sc.Key, func(t *testing.T) {

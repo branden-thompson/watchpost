@@ -23,9 +23,8 @@ import (
 type SevereTab = category.Category
 
 // The window's tab names are the registry's categories. NOT a second ordering:
-// these are aliases, so the two cannot drift — which they could when this was
-// an enum of its own that had to agree with the domain's position by position
-// (F-21).
+// these are aliases, so the two cannot drift, as an enum of its own that had
+// to agree with the domain's position by position could (F-21).
 const (
 	SevereEmergency  = category.Emergency
 	SevereWarnings   = category.Warnings
@@ -231,7 +230,7 @@ func (d Dashboard) handleSevereNav(act term.Action) Dashboard {
 // severeWindowName is the title; in the record it keeps the name and adds the
 // crumb (plan §5.6 M-6): "NOTABLE EVENTS AND FORECASTS ─── Warnings · 2 / 9".
 // severeWindowName covers weather, non-weather hazards (a landslide is not
-// weather) and now products that are not warnings at all — a forecast or an
+// weather) and products that are not warnings at all — a forecast or an
 // outlook is notable without being bad news (MVS-D-59).
 const severeWindowName = "NOTABLE EVENTS AND FORECASTS"
 
@@ -349,9 +348,9 @@ func (d Dashboard) severeChips(o render.Opts, hasRows bool, width int) string {
 	// naming both halves. A paused read reads "Play", because that is the press
 	// that resumes it.
 	//
-	// It also keeps the row inside the 80-column ASCII floor, which the earlier
-	// constant "Play/Pause" did not — six columns wider than the "Read" it
-	// replaced was enough to push the floor over the content width.
+	// It also keeps the row inside the 80-column ASCII floor: a constant
+	// "Play/Pause", six columns wider than "Read", pushes the floor over the
+	// content width.
 	read := "Play"
 	if d.severeReading != "" && !d.severeReadPause {
 		read = "Pause"
@@ -374,12 +373,12 @@ func (d Dashboard) severeBrowseLines(o render.Opts, w int) []string {
 	inner := w - 7 // the rail budget: chrome (4) + rail col + gap
 	tab := severeTabs()[d.severeTab]
 	n := d.severeCount()
-	// ONE STATEMENT OF THE COUNT, not two. "Advisories — 14 active" sat above
-	// "14 Total Category Events" and the two were the same number: the heading
-	// only differed when the tab was capped, which needs more than five hundred
-	// rows in one category (HUM LEAD, UAT 2026-09-01). So the total line carries
-	// everything the heading did — the cap when there is one, and any dead
-	// source — and the heading is gone.
+	// ONE STATEMENT OF THE COUNT, not two. A heading such as "Advisories — 14
+	// active" above "14 Total Category Events" says one number twice, differing
+	// only when the tab is capped, which needs more than five hundred rows in
+	// one category (HUM LEAD, UAT 2026-09-01). So the total line carries
+	// everything a heading would — the cap when there is one, and any dead
+	// source — and there is no heading.
 	total := d.severe.Totals[d.severeTab]
 	totalText := fmt.Sprintf("%d Total Category Events", total)
 	if n > 0 && total > n {
@@ -434,12 +433,12 @@ func (d Dashboard) severeBrowseLines(o render.Opts, w int) []string {
 // source, the stamp, the watchlist hint only when there is no watchlist to
 // track (FR-14), the total and the chips with [enter] muted.
 func (d Dashboard) severeEmptyLines(o render.Opts, w, inner int, tab category.Spec, totalLine string) []string {
-	// NO CATEGORY LINE WHEN THE TAB IS EMPTY. It read "Forecasts — no active
-	// events" directly above "No active forecasts events" and "0 Total Category
-	// Events" — three ways of saying nothing is here. The heading would earn its
-	// place if it introduced sub-groups, and it does not (HUM LEAD, UAT
-	// 2026-09-01). The dead-source note it carried moves to the stamp, which is
-	// the other line about how current the tab is.
+	// NO CATEGORY LINE WHEN THE TAB IS EMPTY. "Forecasts — no active events"
+	// above "No active forecasts events" and "0 Total Category Events" is three
+	// ways of saying nothing is here. The heading would earn its place if it
+	// introduced sub-groups, and it does not (HUM LEAD, UAT 2026-09-01). The
+	// dead-source note rides on the stamp, which is the other line about how
+	// current the tab is.
 	lines := []string{"", "  " + d.severeTabRow(o, inner), ""}
 	stamp := "no fetch yet"
 	if !d.severe.Updated.IsZero() {
@@ -448,13 +447,12 @@ func (d Dashboard) severeEmptyLines(o render.Opts, w, inner int, tab category.Sp
 	lines = append(lines, "  No active "+strings.ToLower(tab.TabLabel)+" events "+o.Glyphs().Dot+" "+stamp)
 	// A WATCHLIST TAB SAYS WHY IT IS EMPTY IN BOTH CASES.
 	//
-	// This only spoke when the watchlist was EMPTY, which is the case where a
-	// listener already knows why nothing is there. With locations set — the case
-	// where the tab looks like a national view that has missed something — it
-	// said nothing at all. Found at UAT 2026-09-06: a Special Weather Statement
-	// for Alabama, seen in another app, absent here, and no way to tell from
-	// this screen that the tab never looks past your own zones. The national
-	// feed carries nine products and no statements (SAM-D-10), so Warnings is
+	// An EMPTY watchlist is the case where a listener already knows why
+	// nothing is there. With locations set the tab looks like a national view
+	// that has missed something — a Special Weather Statement for Alabama, seen
+	// in another app and absent here (UAT 2026-09-06) — and only this line says
+	// the tab never looks past the listener's own zones. The national feed
+	// carries nine products and no statements (SAM-D-10), so Warnings is
 	// nationwide and this tab is not — an asymmetry only this line can explain.
 	if tab.Watchlist {
 		if d.numPriority() == 0 {

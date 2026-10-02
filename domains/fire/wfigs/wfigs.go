@@ -35,17 +35,17 @@ const maxIncidents = 5
 
 // Provider is the WFIGS snapshot provider. The decoded layer is memoised
 // by body hash (quality pass Q3, L4-F6): every RECENT location's scheduler
-// asks on its own tick, and the 208 KB layer decoded ~200 times an hour
-// (~57 MB/h of garbage) for the same bytes; now once per change.
+// asks on its own tick, and decoding the 208 KB layer ~200 times an hour
+// would be ~57 MB/h of garbage for the same bytes; it decodes once per change.
 type Provider struct {
 	client     *httpx.Client
 	base       string
 	perimeters string // the interagency perimeters' layer, on the same host (0.18.0 D-121)
 	rules      fire.Rules
 	memo       fire.Memo[[]incident]
-	// perimeterMemo is each box's perimeters by its URL (W14, P-7): served
-	// from the cache on every map ask, a box's body (up to ~378 KB) was
-	// decoded again each time. A few boxes a view; eight kept.
+	// perimeterMemo is each box's perimeters by its URL (W14, P-7): a box's
+	// body (up to ~378 KB) is served from the cache on every map ask and decoded
+	// once, not each time. A few boxes a view; eight kept.
 	perimeterMemo *bodymemo.Memo[string, []Perimeter]
 }
 

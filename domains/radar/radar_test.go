@@ -204,7 +204,7 @@ func TestTheRadarClientKeepsNothingOnDisk(t *testing.T) {
 
 // TestTheRadarClientPacesSixAtOnce is D-130: the client's pace leaves room
 // for six frames in flight at a round trip of 200 ms, where the default five
-// a second fetched a frame every 200 ms however many were asked at once.
+// a second fetches a frame every 200 ms however many are asked at once.
 func TestTheRadarClientPacesSixAtOnce(t *testing.T) {
 	if c := ClientConfig("watchpost/test"); c.RatePerSec < 6*5 {
 		t.Errorf("the radar client paces %d a second; six at once at 200 ms need 30", c.RatePerSec)
@@ -240,8 +240,7 @@ func TestARefreshFetchesOnlyTheNewFrames(t *testing.T) {
 
 // TestEachBoxIsItsProductsWholeExtent is UAT-2 U2-12: outside the lower 48 a
 // box is its MRMS product's whole extent, as the services' capabilities give
-// it - the radar reaches the sea south of the Big Island, where the old box
-// stopped at 17.5°N.
+// it - the radar reaches the sea south of the Big Island, below 17.5°N.
 func TestEachBoxIsItsProductsWholeExtent(t *testing.T) {
 	for region, want := range map[string]geo.Box{
 		geo.RegionHawaii: {W: -164, S: 15, E: -151, N: 26}, geo.RegionCaribbean: {W: -90, S: 10, E: -60, N: 25},

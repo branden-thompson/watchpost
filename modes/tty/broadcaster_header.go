@@ -9,9 +9,9 @@ package tty
 // place for the frame to drift, and the two would drift on the day one of them
 // learned a new breakpoint.
 //
-// THE EDITION ARRIVES AS A WORD, NOT A RENAME, which `sgr.go` has said since
-// 2026-08-30: "Broadcaster is the station-running dashboard a later version
-// brings, and it will pass its own word through here."
+// THE EDITION ARRIVES AS A WORD, NOT A RENAME, as `sgr.go` says: "Broadcaster
+// is the station-running dashboard a later version brings, and it will pass
+// its own word through here."
 
 import (
 	"strconv"
@@ -32,11 +32,11 @@ func (b Broadcaster) header(o render.Opts) string {
 // headerRows is what rides inside the masthead: the controls the operator has,
 // and nothing else.
 //
-// THE STATION'S IDENTITY LEFT AT D-71 (HUM LEAD, UAT 2026-09-10): "we're going
-// to take the station center out of the masthead — this should now make the
-// Observer/Broadcaster masthead nearly identical minus the Observer/Broadcaster
-// [word]." It is a fact about the STATION, and the station has a section of its
-// own; the masthead is what the two surfaces share.
+// THE STATION'S IDENTITY IS NOT HERE (D-71; HUM LEAD, UAT 2026-09-10): "we're
+// going to take the station center out of the masthead — this should now make
+// the Observer/Broadcaster masthead nearly identical minus the
+// Observer/Broadcaster [word]." It is a fact about the STATION, and the station
+// has a section of its own; the masthead is what the two surfaces share.
 func (b Broadcaster) headerRows(o render.Opts) []string {
 	return []string{b.controlRow(o)}
 }
@@ -48,16 +48,14 @@ func (b Broadcaster) headerRows(o render.Opts) []string {
 // at all would strand an operator who arrived by keyboard.
 func (b Broadcaster) controlRow(o render.Opts) string {
 	inner := o.BoxInnerWidth()
-	// THE API SUMMARY RIDES AT THE RIGHT, which the reference draws and I had
-	// left out. It is the Observer's own count, from the same snapshot, so the
-	// two surfaces cannot report different provider health.
+	// THE API SUMMARY RIDES AT THE RIGHT, as the reference draws it. It is the
+	// Observer's own count, from the same snapshot, so the two surfaces cannot
+	// report different provider health.
 	api := apiSummaryOf(o, b.snap)
 	// EVERY KEY IS A CHIP, THROUGH `o.Controls` — the Observer's own control-row
-	// builder, and the reason this row is not built from string literals any
-	// more. It was, and the HUM LEAD saw the result in UAT (2026-09-10): "chips
-	// don't render their bkg ... tells me something about coloring and tokens
-	// are broken in broadcaster ui". Nothing was broken. The console had simply
-	// TYPED the keys as text, so no chip existed to paint.
+	// builder — and never a string literal: a key TYPED as text has no chip to
+	// paint, and its missing background reads as broken colour tokens (HUM LEAD,
+	// UAT 2026-09-10).
 	//
 	// `[ X ]` IN THE MOCK IS A CHIP CONTROL, NOT BRACKETS (HUM LEAD): "the
 	// brackets indicate a chip control ... that's also true throughout the
@@ -83,10 +81,10 @@ func (b Broadcaster) controlRow(o render.Opts) string {
 
 // transmitterRow is where the station broadcasts FROM, and how far it reaches.
 //
-// IT READS THE PUBLISHED SETTINGS (D-72). Both facts were placeholder constants
-// until the station got settings of its own — `BROADCAST LOCATION : Bonsall, CA`
-// and `SERVICE RADIUS: 100 Miles` were the reference mock's values, hard-coded,
-// on a console whose whole job is to say what the station is actually doing.
+// IT READS THE PUBLISHED SETTINGS (D-72). Both facts come from the station's
+// own settings, never from the reference mock's values (`BROADCAST LOCATION :
+// Bonsall, CA`, `SERVICE RADIUS: 100 Miles`), on a console whose whole job is
+// to say what the station is actually doing.
 //
 // THE COORDINATES ARE REAL HERE AND A PLACEHOLDER IN THE DOCUMENTS (F-66). The
 // repository is public and the mock renders `<lat>, <lon>`; the operator's own
@@ -132,9 +130,8 @@ func nonEmpty(in []string) []string {
 
 const (
 	// bcNoTransmitter and bcNoCoordinates are what the row says before the
-	// station has an epicentre (D-72). They replaced `bcPlaceholderLocation` and
-	// `bcPlaceholderRadius`, which were the reference mock's values HARD-CODED —
-	// a console that reported a station it had not been told about.
+	// station has an epicentre (D-72): an honest absence, never a mock's values
+	// reporting a station the console has not been told about.
 	bcNoTransmitter = "(no transmitter set)"
 	bcNoCoordinates = "--.------, ---.------"
 )

@@ -117,7 +117,7 @@ func TestTheSourcesChipIsInTheUpperRight(t *testing.T) {
 func TestSwitchingRadarOffTakesItAway(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
-	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"}) // D-94: R is the mode; the Overlays menu no longer lists radar
+	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"}) // D-94: R is the mode; the Overlays menu does not list radar
 	d = settleRadar(t, m.(Dashboard), cmd)
 	if len(d.mapPane.radarGiven) != 0 || d.radarChipText() != "" {
 		t.Errorf("radar off left %v and the chip %q", d.mapPane.radarGiven, d.radarChipText())
@@ -597,11 +597,11 @@ func TestTheHoursAheadAreASetting(t *testing.T) {
 	}
 }
 
-// TestTheNewestIsTheNewestObservedFrame is W12.1's defect, found building
-// W12.2: with the hours ahead in the loop, its newest frame is the
-// forecast's far end, and the loop's row said "NEWEST -55 MIN AGO" - and
-// could never say STALE (FR-5.4). The newest is the newest observed frame,
-// in the row, the status line and the badge.
+// TestTheNewestIsTheNewestObservedFrame is W12.1: with the hours ahead in
+// the loop, its newest frame is the forecast's far end, so a row reading the
+// loop's last frame would say "NEWEST -55 MIN AGO" - and could never say STALE
+// (FR-5.4). The newest is the newest observed frame, in the row, the status
+// line and the badge.
 func TestTheNewestIsTheNewestObservedFrame(t *testing.T) {
 	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t),
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
@@ -646,13 +646,12 @@ func TestALongTitleGivesWayToTheTab(t *testing.T) {
 	}
 }
 
-// TestTheScrubbersNowIsWhereNowIs is UAT-2 U2-33: the cursor was placed by
-// frame number and NOW by time, and the loop's frames are five minutes apart
-// observed and fifteen ahead - so the newest observed frame drew two-thirds
-// along, in the FORECAST half, and the frame under the NOW mark was an hour
-// old. The scrubber is one axis, time: at now the cursor is on NOW, a
-// forecast frame lies past it, the oldest at the start and the newest at
-// the end.
+// TestTheScrubbersNowIsWhereNowIs is UAT-2 U2-33: the loop's frames are five
+// minutes apart observed and fifteen ahead, so a cursor placed by frame number
+// against NOW placed by time would draw the newest observed frame two-thirds
+// along, in the FORECAST half. The scrubber is one axis, time: at now the
+// cursor is on NOW, a forecast frame lies past it, the oldest at the start and
+// the newest at the end.
 func TestTheScrubbersNowIsWhereNowIs(t *testing.T) {
 	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t),
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
@@ -678,7 +677,7 @@ func TestTheScrubbersNowIsWhereNowIs(t *testing.T) {
 }
 
 // TestARegionLeftCancelsItsLoop is D-130 (UAT-2 U2-35): `1` pressed while
-// another region's loop was being fetched waited for it, then fetched again -
+// another region's loop is being fetched does not wait for it and fetch again -
 // two cold loops, about fifteen seconds. Leaving a region cancels its loop,
 // whose answer could not be drawn; the answer that lands is not handed to the
 // map, and the new region's loop is asked at once.

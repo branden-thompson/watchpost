@@ -4,8 +4,7 @@ package app
 //
 // A BURST IS ONE CARD, and this is what it says. The tone's class, the header,
 // one line per alert and the closing tail are that card's CONTENT — not a
-// schedule of separate cards, which is what the code modelled before the
-// Broadcaster mock settled it. The operator promotes or drops the burst; there
+// schedule of separate cards. The operator promotes or drops the burst; there
 // is nothing inside it to address separately.
 //
 // The composer's boundary, per S-7: it owns CONTENT and nothing else. It does
@@ -13,15 +12,14 @@ package app
 // does not decide when the card is read (the Director), and it does not pace it
 // (the Reader, per MVS-D-72). It turns a selection into finished words.
 //
-// IT COMPOSES ONCE, UP FRONT, and that is a deliberate change. Each line used to
-// be composed at the moment it was rendered. The Broadcaster displays a card's
-// script in UP NEXT before it airs, so text that materialises mid-read cannot be
-// shown — a card has to know what it says before it says it. The only
-// observable difference is a burst that spans MIDNIGHT while reading an event
-// declared the day before: `spokenWhen` compares the event's date against
-// `now`, so a line composed at 23:59 and read at 00:01 says "at 11:59 PM" rather
-// than "on September 4 at 11:59 PM". A burst lasts seconds; this needs both the
-// boundary and a stale event to appear at all.
+// IT COMPOSES ONCE, UP FRONT, not line by line as each is rendered. The
+// Broadcaster displays a card's script in UP NEXT before it airs, so text that
+// materialises mid-read cannot be shown — a card has to know what it says before
+// it says it. The one observable cost is a burst that spans MIDNIGHT while
+// reading an event declared the day before: `spokenWhen` compares the event's
+// date against `now`, so a line composed at 23:59 and read at 00:01 says "at
+// 11:59 PM" rather than "on September 4 at 11:59 PM". A burst lasts seconds;
+// this needs both the boundary and a stale event to appear at all.
 
 import (
 	"time"
@@ -77,7 +75,7 @@ func composeTakeover(lib *script.Library, fresh []globalfeed.Event, burst bool, 
 // the middle clause — "any of these alerts" against "these and N other alerts"
 // — so a second file would restate the opening and the destination and let the
 // pair drift. "these and 0 other alerts" stays unsayable because the count
-// guards its own clause, which is what made two files look necessary.
+// guards its own clause.
 //
 // SINGULAR IS AGREED HERE, not in the template. The script tree is WORDING; the
 // grammar rule is the same in every one of them, so it belongs once in code

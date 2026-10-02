@@ -2,7 +2,7 @@ package geo
 
 // box.go — a box in degrees: a state's extent over its cities (the map's
 // title, 0.18.0 D-64) and the map's view (Alerts in view, D-66). ONE OWNER:
-// the two were written apart and the dupes gate found them identical.
+// both uses share it rather than each writing its own.
 
 // Box is a box in degrees, west, south, east and north.
 type Box struct{ W, S, E, N float64 }

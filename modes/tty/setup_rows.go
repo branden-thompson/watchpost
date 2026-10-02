@@ -2,11 +2,11 @@ package tty
 
 // setup_rows.go — the Setup window's row table (0.14.0 P4 Task 4.4).
 //
-// Before this the window had three questions and a focus enum that was a small
-// state machine: each key handler knew which question it was in and what came
-// next. Twenty rows across four groups cannot be written that way — the
-// keyboard rule, the focus order, the › mark and the scroll would each end up
-// with their own idea of the order, and they would drift.
+// Twenty rows across four groups cannot be driven by a focus enum that is a
+// small state machine, each key handler knowing which question it is in and
+// what comes next — the keyboard rule, the focus order, the › mark and the
+// scroll would each end up with their own idea of the order, and they would
+// drift.
 //
 // So there is ONE TABLE. It says what every focusable row is, which group it
 // belongs to, how it is operated and what it edits; the focus becomes an INDEX
@@ -63,11 +63,9 @@ const (
 	rowLocation setupRowID = iota
 
 	// THE STATION'S OWN TWO (D-115, F-87). Where it transmits from and how far
-	// it serves — the settings the whole console is derived from, and until now
-	// the only way to change either was to edit the config file by hand.
+	// it serves — the settings the whole console is derived from.
 	//
-	// HUM LEAD, 2026-09-13: "Currently I cannot change these settings [without]
-	// direct code changes - we need [them] exposed so I can also UAT the
+	// HUM LEAD, 2026-09-13: "we need [them] exposed so I can also UAT the
 	// re-derivation logic."
 	//
 	// THEY SIT WITH THE LISTENER'S DEFAULT LOCATION, in DATA, because they answer
@@ -79,11 +77,8 @@ const (
 
 	rowFIRMSKey
 
-	// WATCHPOST UI — the display preferences. The
-	// theme chooser was a modal of its own; it is one picker row here, and the
-	// two questions under it had no home at all: the units were a live-only
-	// [f]/[c] toggle nothing remembered, and the clock was whatever each site
-	// had hard-coded.
+	// WATCHPOST UI — the display preferences: the theme as one picker row, and
+	// the units and the clock, each remembered and read by every site.
 	rowTheme
 	rowUnitsImperial
 	rowUnitsMetric
@@ -137,8 +132,8 @@ const (
 	rowMapDesc
 	rowMapScale
 	rowMapNearby
-	// IN THE ORDER THEY ARE DRAWN: focus walks this order (HUM LEAD, 2026-09-30 -
-	// ↓ skipped Radar ahead and Quakes while Temperature was declared second).
+	// IN THE ORDER THEY ARE DRAWN: focus walks this order, and a row declared out
+	// of drawn order is one ↓ skips (HUM LEAD, 2026-09-30).
 	rowMapRadarSource // the lower 48's radar: MRMS or IEM (D-83)
 	rowMapRadarAhead  // the radar loop's hours ahead (D-114)
 	rowMapQuakes      // the quakes drawn: M2.5+ or M1.0+, the past week or day (D-122)
@@ -201,8 +196,8 @@ const (
 //
 // The two closest analogues are in this very file — `setupRowKind` and
 // `setupGroupID`, both static classifications, both without a sentinel — so this
-// matches the convention rather than dodging the gate.  What the gate would have
-// bought is a range check on values that can only come from the table below;
+// matches the convention rather than dodging the gate.  What the gate would
+// buy is a range check on values that can only come from the table below;
 // what the completeness check actually needs is `scopeUnruled`, and
 // TestEverySettingsRowIsRuledForItsSurface asks for that directly.
 
@@ -353,9 +348,9 @@ func setupGroupTitle(g setupGroupID) string {
 	case groupTone:
 		// "ALERTS - TONE", not the sketch's bare "ALERTS": there is an
 		// "ALERTS - EVENTS" group directly above it, and two adjacent groups
-		// both called ALERTS would be ambiguous. The "( [M] toggles )" note is
-		// gone — the rows now say Enabled or MUTED outright, so there is
-		// nothing left for it to explain.
+		// both called ALERTS would be ambiguous. There is no "( [M] toggles )"
+		// note — the rows say Enabled or MUTED outright, so there is nothing
+		// for it to explain.
 		return "ALERTS - TONE"
 	case groupCast:
 		return "WATCHPOST RADIO - CORRESPONDENTS"
@@ -385,11 +380,9 @@ func firstOfGroup(g setupGroupID) setupRowID {
 // visibleRowOfGroup is the first row of a group that THIS SURFACE draws, and
 // whether the group draws one at all (D-92).
 //
-// ONE FUNCTION FOR BOTH FACTS, because they are one walk. The first draft had
-// `firstVisibleOfGroup` and `groupHasAVisibleRow` side by side and the `dupes`
-// gate reported them as twins at 34 nodes — correctly: the loop was identical and
-// only the return differed. A pair like that is two places for the visibility
-// rule to drift.
+// ONE FUNCTION FOR BOTH FACTS, because they are one walk. Two functions would
+// share an identical loop and differ only in the return — twins to the `dupes`
+// gate, and two places for the visibility rule to drift.
 //
 // THE BOOL IS NOT REDUNDANT WITH THE ID. `rowLocation` is a real row AND the
 // zero value, so "found rowLocation" and "found nothing" are indistinguishable
@@ -452,15 +445,14 @@ func stepRow(cur setupRowID, step int, visible func(setupRowID) bool) setupRowID
 // The rule is one sentence: ENTER ON A TEXT FIELD COMMITS IT AND MOVES ON;
 // ENTER ANYWHERE ELSE SAVES.
 //
-// The rule this replaces — "enter saves on the last row of its group" — was
-// wrong for exactly the rows a listener types into. The FIRMS key row is the
-// last row of DATA, so arriving there and pressing enter (the natural "let me
-// into this field" gesture) saved and closed the window, and there was no way
-// to reach the field at all. (UAT 2026-08-30 #12: "I can never change or enter
-// a FIRMS key".)
+// "Enter saves on the last row of its group" would be wrong for exactly the
+// rows a listener types into. The FIRMS key row is the last row of DATA, so
+// arriving there and pressing enter (the natural "let me into this field"
+// gesture) would save and close the window, and the field could never be
+// reached (UAT 2026-08-30 #12).
 //
-// With this rule the DATA flow is what it was before 0.14.0: type a location,
-// enter, type a key, enter, enter to save.
+// With this rule the DATA flow is: type a location, enter, type a key, enter,
+// enter to save.
 func enterSaves(cur setupRowID) bool { return setupTable()[cur].kind != rowInput }
 
 // setupMark and settingLabel are the shared list-focus pattern
@@ -498,7 +490,7 @@ func checkMark(o render.Opts, ticked bool) string {
 // toggleCell draws a two-state control as `[←] STATE [→]` — the same chips as a
 // voice picker, because it is the same gesture, and the STATE rather than a box.
 //
-// A checkbox made a listener combine two things to know an answer: the box's
+// A checkbox makes a listener combine two things to know an answer: the box's
 // tick and the group's mode. The state word answers it outright, which is what
 // the group is for.
 func toggleCell(state string, c arrowChips, flash pickerFlash) string {
@@ -511,9 +503,8 @@ func toggleCell(state string, c arrowChips, flash pickerFlash) string {
 //
 // Thirteen controls draw two chips each, and a chip is a styled span: building
 // twenty-six of them per frame — twenty-four of which are byte-identical —
-// was the single largest thing this window allocated (when the
-// tone toggles pushed the frame past its pin). The flashed pair is still built
-// per press, which is one chip on one row.
+// would be the single largest thing this window allocates. The flashed pair is
+// still built per press, which is one chip on one row.
 type arrowChips struct{ left, right, litLeft, litRight string }
 
 func newArrowChips(o render.Opts) arrowChips {
@@ -539,8 +530,8 @@ const toggleStateW = 7 // "Enabled"
 // pickerCell draws a voice picker as `[←] <name> [→]` — key chips, not the
 // mock's `│ <name> │ ▾ │` dropdown.
 //
-// The mock drew a dropdown because it assumed a sub-panel would open. It does
-// not: `←→` cycle the list in place. A control that LOOKS like a dropdown and
+// The mock draws a dropdown as though a sub-panel opens. None does: `←→`
+// cycle the list in place. A control that LOOKS like a dropdown and
 // is not is a promise the window cannot keep, and the chips say exactly which
 // keys move it — the same shape as the player's volume control, which is the
 // other place in the app where two keys step through a value in place.

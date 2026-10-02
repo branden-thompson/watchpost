@@ -136,11 +136,10 @@ func TestOnlyParsedVersionNumbersReachTheUpdateRow(t *testing.T) {
 
 // THE CHECK ASKS ONCE, AND THE OPT-OUT ASKS NEVER (FR-7.1, HUM LEAD 2026-09-08).
 //
-// This is the bound the ruling created, so it is the bound a test has to be
-// able to reach. Before the ruling `start` polled hourly and the only honest
-// pin available was "it eventually stops with the context" — a property every
-// poller has. Counting requests is possible now precisely because the number
-// is one.
+// This is the bound the ruling sets, so it is the bound a test has to be
+// able to reach. An hourly poller could only be pinned as "it eventually stops
+// with the context" — a property every poller has. Counting requests is
+// possible precisely because the number is one.
 //
 // It is also the ruling's evidence in the code: a provider is asked repeatedly
 // as the snapshot refreshes; this is asked once and is then done, which is what
@@ -169,11 +168,10 @@ func TestTheReleaseCheckAsksExactlyOnceAndOptingOutAsksNever(t *testing.T) {
 
 	// AND START — THE THING ACTUALLY BEING BOUNDED — ASKS ONCE.
 	//
-	// The first version of this block called checkAt and then made a claim
-	// about start. Two plants proved it worthless: restoring the poller, and
-	// deleting the opt-out guard, both passed. start is called here, and the
-	// wait is long enough that a restored interval would show up as a second
-	// request rather than as a slow one.
+	// Calling checkAt and then claiming something about start would pass
+	// against a restored poller and against a deleted opt-out guard. start is
+	// called here, and the wait is long enough that a restored interval would
+	// show up as a second request rather than as a slow one.
 	before := hits.Load()
 	w2 := newReleaseWatch("0.14.0", true)
 	w2.api = srv.URL

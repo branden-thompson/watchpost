@@ -99,7 +99,7 @@ func TestTideStationsAreLabelledWhenFewAreInView(t *testing.T) {
 // otherwise - the tides are a request a station.
 func TestTheSeasStationsAreAskedOnlyWhileOn(t *testing.T) {
 	var paths []string
-	var mu sync.Mutex // the feed asks its inputs together (batch 61): the handler runs on several goroutines at once
+	var mu sync.Mutex // the feed asks its inputs together: the handler runs on several goroutines at once
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		paths = append(paths, r.URL.Path+"?"+r.URL.Query().Get("type")+r.URL.Query().Get("product"))
@@ -170,9 +170,9 @@ func TestTheSeasStationsAreCostedAndNamed(t *testing.T) {
 	}
 }
 
-// freshObs is NDBC's file read ten minutes ago: the recorded file's readings
-// were hours old two hours after it was recorded, and a buoy past two hours
-// is not drawn (D-127) - the wiring test failed on the clock alone.
+// freshObs is NDBC's file read ten minutes ago: a buoy past two hours is not
+// drawn (D-127), so the recorded file's own times would age its readings out
+// and fail the wiring test on the clock alone.
 func freshObs(raw []byte, now time.Time) []byte {
 	at := strings.Fields(now.UTC().Add(-10 * time.Minute).Format("2006 01 02 15 04"))
 	lines := strings.Split(string(raw), "\n")
@@ -188,8 +188,8 @@ func freshObs(raw []byte, now time.Time) []byte {
 }
 
 // TestTheTidesEstimateCountsTheStationsInView is W14's C-2: the estimate is
-// built without fetching, and only fetching filled the tide stations, so Tides
-// always cost nothing in the warning. It counts the stations the provider
+// built without fetching, so counting only what fetching fills would cost Tides
+// nothing in the warning. It counts the stations the provider
 // already holds in view - a request each, as the feed makes - and asks for
 // nothing itself; before the list is held, there is nothing to count.
 func TestTheTidesEstimateCountsTheStationsInView(t *testing.T) {

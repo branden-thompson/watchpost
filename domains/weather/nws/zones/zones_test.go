@@ -237,14 +237,14 @@ func serveByKind(t *testing.T, asked *[]string) *httptest.Server {
 //
 // **A zone id says which kind it is in its third character** - Z for a
 // forecast zone, C for a county - and the two live at different paths.
-// Everything was asked for under /zones/forecast, so every county id answered
-// 404 and resolved to nothing at all.
+// Asked for under /zones/forecast, every county id answers 404 and resolves to
+// nothing at all.
 //
-// Measured against the live service on the day this was written: of 332 active
-// alerts, 47 named county zones and nothing else, and 45 of those 47 were
-// Flood Warnings. There is no mixed case to fall back on - not one alert named
-// both kinds - so a county-only alert had no area, permanently, and flood is
-// the hazard a map is most wanted for.
+// Measured against the live service: of 332 active alerts, 47 named county
+// zones and nothing else, and 45 of those 47 were Flood Warnings. There is no
+// mixed case to fall back on - not one alert named both kinds - so a
+// county-only alert asked for at the wrong path has no area, permanently, and
+// flood is the hazard a map is most wanted for.
 func TestACountyZoneIsFetchedWhereCountyZonesLive(t *testing.T) {
 	var asked []string
 	srv := serveByKind(t, &asked)
@@ -288,10 +288,10 @@ func TestAZoneIdOfNoKnownKindIsRefused(t *testing.T) {
 	}
 }
 
-// TestTheStoreForgetsThroughItsOwnFrontDoor is RT-4's call site, which the
-// first test of it never touched: it called forget by hand, so deleting the
-// line that calls forget left the suite green. This drives Zone, which is the
-// only way the cap ever fires in the running program.
+// TestTheStoreForgetsThroughItsOwnFrontDoor is RT-4's call site: a test that
+// calls forget by hand stays green when the line that calls forget is deleted.
+// This drives Zone, which is the only way the cap ever fires in the running
+// program.
 func TestTheStoreForgetsThroughItsOwnFrontDoor(t *testing.T) {
 	var asked []string
 	srv := serveByKind(t, &asked)
@@ -313,10 +313,10 @@ func TestTheStoreForgetsThroughItsOwnFrontDoor(t *testing.T) {
 	}
 }
 
-// TestAskingForMoreZonesThanExistIsBoundedAndSaysSo is the fan-out the
-// infosec review found: nothing capped how many zones one resolve could
-// demand, and the client paces everything the program does at five a second,
-// so a large enough alerts response is hours with no weather fetched.
+// TestAskingForMoreZonesThanExistIsBoundedAndSaysSo is the fan-out bound (an
+// infosec review finding): uncapped, one resolve could demand any number of
+// zones, and the client paces everything the program does at five a second,
+// so a large enough alerts response would be hours with no weather fetched.
 func TestAskingForMoreZonesThanExistIsBoundedAndSaysSo(t *testing.T) {
 	var asked []string
 	srv := serveByKind(t, &asked)
@@ -346,9 +346,9 @@ func TestAskingForMoreZonesThanExistIsBoundedAndSaysSo(t *testing.T) {
 }
 
 // TestAZonesNameIsBoundedLikeEveryOtherStringFromOutside. The name arrives in
-// the same answer as the shape and was the one field in this release that was
-// never clamped: the transport admits 32 MiB, and the store keeps two thousand
-// shapes, so an unbounded name is tens of gigabytes of a name.
+// the same answer as the shape and is clamped like it: the transport admits
+// 32 MiB, and the store keeps two thousand shapes, so an unbounded name is tens
+// of gigabytes of a name.
 func TestAZonesNameIsBoundedLikeEveryOtherStringFromOutside(t *testing.T) {
 	huge := strings.Repeat("a", 1<<20)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -371,12 +371,11 @@ func TestAZonesNameIsBoundedLikeEveryOtherStringFromOutside(t *testing.T) {
 
 // TestAPanicFetchingOneZoneDoesNotEndTheProgram.
 //
-// **A recover only catches panics in its own goroutine.** The guard for this
-// was written in the caller, while the fetches happen in children of it, so it
-// had never once fired - proved by handing the store a client that is not
-// there, which killed the test binary outright. The guard is inside the
-// goroutine that can panic now, and the zone it was fetching is reported
-// missing like any other it could not get.
+// **A recover only catches panics in its own goroutine.** The fetches happen
+// in children of the caller, so a guard in the caller never fires - handing the
+// store a client that is not there would kill the test binary outright. The
+// guard is inside the goroutine that can panic, and the zone it was fetching is
+// reported missing like any other it could not get.
 func TestAPanicFetchingOneZoneDoesNotEndTheProgram(t *testing.T) {
 	s := New(nil, "http://127.0.0.1:1") // no client at all
 	got, missing := s.Zones(context.Background(), []string{"INZ027", "INC003"})

@@ -498,7 +498,7 @@ func (*waveBuild).radar
 func (CastReport).ToneSummary
 func (airScope).hasOrigin
 func (bedReach).Line
-func (countedBody).Read
+func (byteCounter).Write
 func (countingTransport).RoundTrip
 func (diagSources).gauges
 func (hostFacts).Default
@@ -574,6 +574,7 @@ func configLocations
 func contentsFromSegments
 func contourGrid
 func convertIf
+func countedBody
 func credits
 func dayStart
 func debugAddr
@@ -900,10 +901,10 @@ type bandRecord
 type bedReach
 type bedSeams
 type boxFrom
+type byteCounter
 type castState
 type cityReadings
 type clip
-type countedBody
 type countingTransport
 type diagSources
 type director

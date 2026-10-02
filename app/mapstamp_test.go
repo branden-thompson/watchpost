@@ -17,10 +17,10 @@ import (
 )
 
 // TestAnUnchangedOverlayIsTheSameOverlay is W14's P-6: fire, buoys, tides,
-// quakes and AirNow were stamped Valid with the moment of each ask, so the
-// same data a minute later was a new overlay - handed to the library again,
-// and prepared again, on every answer. Stamped to the step they fall in,
-// unchanged data compares the same across asks; a changed reading does not.
+// quakes and AirNow are stamped Valid with the step they fall in, not the
+// moment of each ask, so unchanged data compares the same across asks and is
+// not handed to the library and prepared again on every answer; a changed
+// reading does not compare the same.
 func TestAnUnchangedOverlayIsTheSameOverlay(t *testing.T) {
 	t1 := time.Date(2026, 9, 29, 14, 0, 30, 0, time.UTC)
 	t2 := t1.Add(time.Minute)

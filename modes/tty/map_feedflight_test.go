@@ -24,9 +24,9 @@ func feedAsks(t *testing.T, cmd tea.Cmd) []mapFeedMsg {
 
 // TestAFeedAskIsOneAtATime is D-157: with an ask in flight, new data asks
 // nothing more - it marks the feed wanted again - and when the answer lands it
-// is drawn, and one fresh ask follows; then no more. Before, every snapshot
-// asked anew and dropped the answer it was waiting for, so under a feed slower
-// than the snapshots nothing was ever drawn (W14's C-1).
+// is drawn, and one fresh ask follows; then no more. A snapshot that asked anew
+// would drop the answer it was waiting for, so under a feed slower than the
+// snapshots nothing would ever be drawn (W14's C-1).
 func TestAFeedAskIsOneAtATime(t *testing.T) {
 	asked := 0
 	d := mapDash(t, Config{MapFeed: squareFeed(&asked, "Wind Warning")})
@@ -122,9 +122,8 @@ func runEach(cmd tea.Cmd, out chan<- tea.Msg) {
 }
 
 // TestAMoveAsksTheFeedOnceWhenItSettles is W14's P-2, D-66 as ruled: "never on
-// every key". A pan asks nothing; its settle tick asks once. Before, every
-// pan, zoom and region key asked the whole feed at once and the settle tick
-// asked it again.
+// every key". A pan, zoom or region key asks nothing; its settle tick asks
+// once.
 func TestAMoveAsksTheFeedOnceWhenItSettles(t *testing.T) {
 	asked := 0
 	d := mapDash(t, Config{MapFeed: squareFeed(&asked, "Wind Warning")})
@@ -176,12 +175,11 @@ func TestAnAnswerForAViewLeftIsNotDrawn(t *testing.T) {
 	}
 }
 
-// TestAnAnswerIsDrawnWhenOnlyTheMapsSizeChanged is the regression the first
-// re-measure found (W14, 2 of 5 cold opens drew no alerts in 45 s): the view
-// an answer is for was keyed on the view's box, and the box follows the map's
-// size, which shrinks as notes and the description fill in - no move at all.
-// The answer was dropped and nothing asked again. A view is the listener's:
-// a move or a resize, which is viewGen.
+// TestAnAnswerIsDrawnWhenOnlyTheMapsSizeChanged (W14): keyed on the view's
+// box, an answer would be dropped and nothing asked again, because the box
+// follows the map's size, which shrinks as notes and the description fill in
+// - no move at all. A view is the listener's: a move or a resize, which is
+// viewGen.
 func TestAnAnswerIsDrawnWhenOnlyTheMapsSizeChanged(t *testing.T) {
 	asked := 0
 	d := mapDash(t, Config{MapFeed: squareFeed(&asked, "Wind Warning")})

@@ -2,10 +2,10 @@ package lineup
 
 // cadence.go — what the Director remembers about what it has READ (D-48, F-76).
 //
-// THE PROBLEM: the Director had no memory at all. Its state is the current
-// schedule and the current clock; a card that finishes is REMOVED outright. So
-// "it's been six minutes since we've done a location report" — the HUM LEAD's
-// own tie-break in D-47 — was a question nothing could answer.
+// THE PROBLEM: the Director's state is the current schedule and the current
+// clock; a card that finishes is REMOVED outright. So without this, "it's been
+// six minutes since we've done a location report" — the HUM LEAD's own
+// tie-break in D-47 — is a question nothing can answer.
 //
 // THE SHAPE IS RULED, AND IT IS THE SMALL ONE:
 //
@@ -28,7 +28,7 @@ package lineup
 // comparison: `overdue` answers zero for every slot when the operator has turned
 // it off, when nothing has been read yet, and when the slot is outside the
 // registry. A term that answers the same for everything DISCRIMINATES NOTHING,
-// so the ranking falls straight through to what it used before this existed.
+// so the ranking falls straight through to the rest of the comparison.
 // Failing soft is a property of the arithmetic here, not of a branch someone has
 // to remember to write.
 
@@ -39,7 +39,7 @@ import (
 
 // neverRead is the overdue-ness of a kind the station has NEVER put out.
 //
-// THE LARGEST THERE IS, not zero, and a test caught it being zero. "We have
+// THE LARGEST THERE IS, not zero. "We have
 // never done one" is the strongest possible case that one is due — stronger
 // than any elapsed time — which is exactly the HUM LEAD's example read to its
 // conclusion: credits went out six minutes ago, a location report has not gone
@@ -85,8 +85,8 @@ func (d Director) lastReadOf(s Slot) (time.Time, bool) {
 // whole degradation design — zero when the operator has switched it off or the
 // slot is outside the registry, `neverRead` when nothing of that kind has gone
 // out yet. A term equal for every candidate DISCRIMINATES BETWEEN NONE OF THEM,
-// so the ranking falls through to the watchlist, which is exactly what it ranked
-// by before this term existed. Failing soft is a property of the arithmetic, not
+// so the ranking falls through to the watchlist, as if the term were absent.
+// Failing soft is a property of the arithmetic, not
 // of a branch anyone has to remember to write.
 func (d Director) overdue(s Slot) time.Duration {
 	if !d.settings.WeighLastRead {

@@ -14,12 +14,12 @@ import (
 // failure). Concurrency also lets a provider reserve all of a batch's
 // pacing slots at once, so a fast-cadence pipeline is never starved behind
 // a slow one sharing the same client.
-// IT RETURNS WHICH LOCATION EACH FAILURE BELONGS TO, and joining them was the
-// defect (REVIEW red team, 2026-09-08). A joined error says "something failed"
-// and nothing about WHERE, so the assembler could not tell a location the feed
-// does not cover — a definitive 404 — from one it simply could not reach. It
-// guessed from whether ANY location was served, which is right for a total
-// outage and wrong for a partial one.
+// IT RETURNS WHICH LOCATION EACH FAILURE BELONGS TO (REVIEW red team,
+// 2026-09-08). A joined error alone says "something failed" and nothing about
+// WHERE, so the assembler could not tell a location the feed does not cover —
+// a definitive 404 — from one it simply could not reach; guessing from whether
+// ANY location was served is right for a total outage and wrong for a partial
+// one.
 func FetchEach(ctx context.Context, refs []LocationRef, limit int,
 	fn func(context.Context, LocationRef) (PartialData, error)) (map[LocationKey]PartialData, map[LocationKey]error, error) {
 	var mu sync.Mutex

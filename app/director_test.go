@@ -18,12 +18,12 @@ type scriptVoice struct {
 	dur   time.Duration
 	// toneDur is the tone's own length, SEPARATE from a line's.
 	//
-	// It has to be separate for the takeover, which still opens with one and
+	// It has to be separate for the takeover, which opens with one and
 	// holds for it: a fake whose tone lasted as long as its lines would make a
 	// one-minute "long read" fixture hold a minute before speaking a word —
 	// the test would hang rather than fail, which is the worst way to learn
 	// this. Zero means "instant", which is what every sequence test wants.
-	// A [space] read no longer sounds one at all (MVS-D-69).
+	// A [space] read sounds none at all (MVS-D-69).
 	toneDur time.Duration
 }
 
@@ -366,7 +366,8 @@ func waitUntil(t *testing.T, what string, cond func() bool) {
 
 // A read cancelled while PARKED suspended (in the air wait, not in a sleep)
 // returns at once and is discarded — never resumed after the takeover
-// (REVIEW R5-B-02: the cancel did not wake the cond var; settle resumed it).
+// (REVIEW R5-B-02: a cancel that does not wake the cond var leaves settle to
+// resume it).
 func TestReadCancelledWhileParkedSuspendedReturnsAtOnce(t *testing.T) {
 	v := &scriptVoice{dur: 50 * time.Millisecond}
 	n := testDirector(v, nil)

@@ -1,8 +1,8 @@
 package tty
 
 // map_badges_test.go — 0.18.0 D-131 to D-133 (UAT-2 U2-36): with every layer
-// on, the notes under the map were six lines. One row of badges credits the
-// layers drawn; the full credits are the Status window's.
+// on, notes under the map would run to six lines. One row of badges credits
+// the layers drawn; the full credits are the Status window's.
 
 import (
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -44,7 +44,7 @@ func underTheMap(d Dashboard) []string {
 
 // TestTheBadgeRowCreditsEachLayerDrawn is D-131 and D-133: one row, a badge
 // a layer on and drawn in the Overlays menu's order, each naming its sources
-// as drawn - never a layer off, never the radar (its chip is where it was) -
+// as drawn - never a layer off, never the radar (its chip stays where it is) -
 // and no credit sentence under the map.
 func TestTheBadgeRowCreditsEachLayerDrawn(t *testing.T) {
 	d := badgeMap(t, MapCost{})

@@ -5,10 +5,8 @@ package app
 //
 // TWO PATHS COMPOSED INTO DIFFERENT SHAPES. The rotation builds
 // []synth.Segment and plays it on the engine; a card carries lineup.Script and
-// is read through the narrator arbiter. Everything else about the merge was
-// already in place — the arbiter serialises, suspends and resumes, pinned by
-// eight tests written before this release — so this translation is the join,
-// and it is deliberately the only new idea in P3(a).
+// is read through the narrator arbiter. The arbiter serialises, suspends and
+// resumes on its own, so this translation is the whole join.
 
 import (
 	"strconv"
@@ -21,9 +19,8 @@ import (
 // scriptFromSegments translates a composed location report into a card's
 // script.
 //
-// EVERY SEGMENT IS A LINE. PartLine's own comment already says it is "the
-// whole of a location report" — the model anticipated this card before
-// anything produced one — so there is no head and no tail to invent here.
+// EVERY SEGMENT IS A LINE. PartLine's own comment says it is "the whole of a
+// location report", so there is no head and no tail to invent here.
 //
 // AND NO TONE. A tone is a promise of a hazard, and the rotation is the
 // programme; sounding one before an ordinary report would teach a listener to

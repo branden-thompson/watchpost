@@ -217,7 +217,7 @@ func TestMaxPlayerLayoutPerMock(t *testing.T) {
 	if !strings.HasPrefix(r2, "│░") || !strings.HasSuffix(r2, "░│") || strings.Contains(r2, "00:00 / 00:00") { // the idle track (facelift 2026-08-28); UAT 89: no placeholder clock
 		t.Fatalf("row 2: %q", r2)
 	}
-	if !strings.Contains(r1, "♪ Oceanside") { // the station rides the head now
+	if !strings.Contains(r1, "♪ Oceanside") { // the station rides the head
 		t.Fatalf("row 1 carries the station: %q", r1)
 	}
 }
@@ -322,7 +322,7 @@ func TestRepeatCyclesOffOneWatchlistAndTheRowFollowsTheDeck(t *testing.T) {
 	if strings.Contains(stripANSITest(model.View().Content), "∞") {
 		t.Fatal("Off: no row wears ∞")
 	}
-	// Help lists no [p] any more.
+	// Help lists no [p].
 	model, _ = model.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	if v := stripANSITest(model.View().Content); strings.Contains(v, "Pin") {
 		t.Fatalf("help must not list the retired Pin control:\n%s", v)
@@ -469,9 +469,9 @@ func TestMaxPlayerMarqueeFillsTheRowAfterTheLocation(t *testing.T) {
 }
 
 // HUM LEAD 2026-08-27: play A, navigate to B, [space] plays B (does not
-// stop); [space] on the location already playing stops. This was the
-// "relay only works on the second press" bug — the first press was read as
-// a stop because the previous location was still marked playing.
+// stop); [space] on the location already playing stops. A first press read
+// as a stop, because the previous location is still marked playing, makes
+// the relay work only on the second press.
 func TestSpaceRetunesToTheFocusedLocationNotStop(t *testing.T) {
 	fr := &fakeRadio{}
 	m, err := NewDashboard(Config{Version: "t", Radio: fr})
@@ -612,7 +612,7 @@ func TestMarqueeTrackIsASectionBand(t *testing.T) {
 }
 
 // Task 4.3 (MVS-D-23/24): three fixed layouts chosen by terminal columns, each
-// with a standard vertical size — which is what retires [T].
+// with a standard vertical size — so there is no [T].
 func TestRadioPanelBreakpoints(t *testing.T) {
 	for _, tc := range []struct {
 		name    string

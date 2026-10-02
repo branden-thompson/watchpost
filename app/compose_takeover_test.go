@@ -72,8 +72,8 @@ func TestASingleEventComposesNoHeaderAndNoTail(t *testing.T) {
 //
 // The rail orders by rung, so the first card can be the milder hazard — a fresh
 // quake is rung 2 and a tornado warning rung 3. Taking the tone from the head of
-// the list gave the listener the wrong chime for the burst they were about to
-// hear, which is a rule that happened to hold rather than a rule.
+// the list gives the listener the wrong chime for the burst they are about to
+// hear.
 func TestTheToneComesFromTheWorstEventNotTheFirst(t *testing.T) {
 	mild := ev("a", "Flood Advisory", "Vista, CA")
 	worst := ev("b", "Tornado Warning", "Oceanside, CA")
@@ -92,9 +92,9 @@ func TestTheToneComesFromTheWorstEventNotTheFirst(t *testing.T) {
 	}
 }
 
-// THE CARD KNOWS ITS WORDS BEFORE IT IS READ, which is why composition moved
-// here at all: the Broadcaster shows a card's script in UP NEXT before it airs,
-// and text that materialises mid-read cannot be displayed.
+// THE CARD KNOWS ITS WORDS BEFORE IT IS READ, which is why composition lives
+// here: the Broadcaster shows a card's script in UP NEXT before it airs, and
+// text that materialises mid-read cannot be displayed.
 func TestTheCardIsFinishedBeforeItIsRead(t *testing.T) {
 	fresh := []globalfeed.Event{ev("a", "Tornado Warning", "Oceanside, CA"), ev("b", "Flood Advisory", "Vista, CA")}
 	sc := composeTakeover(nil, fresh, true, 0, render.Clock12, composeNow)

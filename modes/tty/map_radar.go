@@ -56,10 +56,10 @@ const radarRefresh = 2 * time.Minute
 
 // askRadar asks the app for the whole loop, off the UI goroutine - ONE
 // REQUEST AT A TIME (D-85). A later ask made while one runs is kept and asked
-// when the answer lands, never in its place: every later ask superseding the
-// last is how a six-second loop was never drawn at all. BUT A REGION LEFT IS
-// CANCELLED (D-130): its answer could not be drawn, and waiting for it made
-// `1` two cold loops, about fifteen seconds (UAT-2 U2-35).
+// when the answer lands, never in its place: were every later ask to supersede
+// the last, a six-second loop would never be drawn at all. BUT A REGION LEFT
+// IS CANCELLED (D-130): its answer could not be drawn, and waiting for it
+// would make `1` two cold loops, about fifteen seconds (UAT-2 U2-35).
 func (d Dashboard) askRadar() (Dashboard, tea.Cmd) {
 	radar := d.cfg.MapRadar
 	if radar == nil || d.mapPane.m == nil || d.modal != modalMap {
@@ -119,7 +119,7 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 	}
 	var refused error
 	given, set, removed := d.reconcile(d.mapPane.radarGiven, v.radar.Overlays, func(_ tuimaps.Overlay, err error) {
-		refused = err // SAID, never swallowed: a refused loop read as "loading" for ever (UAT-2 U2-5)
+		refused = err // SAID, never swallowed: unsaid, a refused loop reads as "loading" for ever (UAT-2 U2-5)
 	})
 	switch { // a refusal is ours, never the listener's to act on: the diagnostics' (D-124)
 	case refused != nil && len(given) == 0:
@@ -208,7 +208,7 @@ func (d Dashboard) aheadName() string {
 }
 
 // newestObserved is the loop's newest observed frame, "right now" - never
-// the far end of its hours ahead (W12.1's defect): the newest's age, and
+// the far end of its hours ahead (W12.1): the newest's age, and
 // STALE, read it (FR-5.4).
 func newestObserved(st tuimaps.LoopState) time.Time {
 	if st.Now.IsZero() {
@@ -432,9 +432,10 @@ func (d Dashboard) radarScrubber() (scrubber, bool) {
 		return scrubber{}, false
 	}
 	s := scrubber{above: d.clockAt(st.At)}
-	// ONE AXIS, TIME (UAT-2 U2-33): the cursor was placed by frame number
-	// and NOW by time, and the frames are five minutes apart observed and
-	// fifteen ahead - the newest observed frame drew in the FORECAST half.
+	// ONE AXIS, TIME (UAT-2 U2-33): the cursor and NOW are both placed by
+	// time. The frames are five minutes apart observed and fifteen ahead, so a
+	// cursor placed by frame number draws the newest observed frame in the
+	// FORECAST half.
 	if span := st.Newest.Sub(st.Oldest); span > 0 {
 		s.cursor = min(max(float64(st.At.Sub(st.Oldest))/float64(span), 0), 1)
 	}

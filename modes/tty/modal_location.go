@@ -1,7 +1,7 @@
 package tty
 
-// modal_location.go — the add / remove modals: search, type-ahead, remove-confirm, and the watchlist ref helpers. Split from dashboard.go by the
-// quality pass (Q2, pure move); the map of where things happen is
+// modal_location.go — the add / remove modals: search, type-ahead, remove-confirm,
+// and the watchlist ref helpers. The map of where things happen is
 // docs/where-things-happen.md.
 
 import (
@@ -30,9 +30,9 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if d.lookupIsScoped() {
 			// WHAT [ENTER] MEANS IS `onSubmit`'S TO SAY (D-157), and the
 			// Line-Up Request window asks the same question of the same
-			// answer. This was an ordered run of `if`s here and a shorter run
-			// there, which is how the request window came to refuse a state
-			// whose own helper text says "press enter to try again".
+			// answer. Separate runs of `if`s here and there drift apart, and a
+			// window then refuses a state whose own helper text says "press
+			// enter to try again".
 			switch d.addLocate.onSubmit() {
 			// A DEFINITE NO IS REFUSED, and refused HERE rather than by asking
 			// and discarding the answer. The chip is already drawn unavailable;
@@ -48,10 +48,9 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			// NOT YET KNOWN, OR THE QUESTION COULD NOT BE PUT: ASK THE SCOPED
 			// HOOK NOW (D-141, D-151).
 			//
-			// THIS FELL THROUGH TO `cfg.Resolve` — the UNSCOPED geocoder — so
-			// the console's own scope was escapable by pressing enter inside the
-			// 300 ms pause, which is the defect D-129 was filed for, still
-			// reachable. The press is held on the field and honoured when the
+			// NEVER `cfg.Resolve` — the UNSCOPED geocoder — or the console's own
+			// scope is escapable by pressing enter inside the 300 ms pause
+			// (D-129). The press is held on the field and honoured when the
 			// verdict lands, so the key is neither inert nor a way out.
 			default:
 				d.addLocate.submitted = true

@@ -159,10 +159,9 @@ func TestTheInstrumentChangesNothingItMeasures(t *testing.T) {
 	}
 }
 
-// TestAMoveIsNotSettledBeforeItsViewIsAsked is the baseline's first flaw in
-// the instrument (W14): a pan drew the map before marking the view moved, so
-// "settled" was said at once - before the pan's own alerts were asked, which
-// its settle tick does 600 ms later (D-66).
+// TestAMoveIsNotSettledBeforeItsViewIsAsked (W14): a pan that drew the map
+// before marking the view moved would say "settled" at once - before the pan's
+// own alerts are asked, which its settle tick does 600 ms later (D-66).
 func TestAMoveIsNotSettledBeforeItsViewIsAsked(t *testing.T) {
 	tm := &timings{}
 	d := openTimedMap(t, tm)
@@ -178,9 +177,9 @@ func TestAMoveIsNotSettledBeforeItsViewIsAsked(t *testing.T) {
 	}
 }
 
-// TestAnAskStopsListeningOnceSettled is the second flaw: a trigger that
-// outlived its ask (space, for the loop) timed every later refresh from the
-// key press - 300 s "answers". An answer is timed once a kind, and nothing
+// TestAnAskStopsListeningOnceSettled: a trigger that outlived its ask (space,
+// for the loop) would time every later refresh from the key press - 300 s
+// "answers". An answer is timed once a kind, and nothing
 // after the ask is settled.
 func TestAnAskStopsListeningOnceSettled(t *testing.T) {
 	tm := &timings{}
@@ -239,7 +238,7 @@ func TestM5IsReachedUnderAStreamOfData(t *testing.T) {
 
 // TestAWarmReopenReachesM5 is the sessions' warm opens (W14): a pan whose
 // settle tick lands while the map is closed is dropped, so the reopened map
-// was never "still" and M5 never said - though opening the map asks for its
+// would never be "still" and M5 never said - but opening the map asks for its
 // view afresh. The open is the view's ask.
 func TestAWarmReopenReachesM5(t *testing.T) {
 	tm := &timings{}

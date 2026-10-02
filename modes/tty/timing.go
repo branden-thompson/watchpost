@@ -57,8 +57,8 @@ func (d Dashboard) timeFrom(what string) Dashboard {
 
 // timed says an event against the running clock. AN ASK STOPS LISTENING
 // ONCE SETTLED, and an answer is timed once a kind: a trigger that outlives
-// its ask (space, for the loop) otherwise timed every later refresh from the
-// key press - the baseline's 300 s "answers" (W14).
+// its ask (space, for the loop) would otherwise time every later refresh
+// from the key press (W14).
 func (d Dashboard) timed(event string) Dashboard {
 	c := &d.mapPane.clock
 	if d.cfg.Timed == nil || c.from.IsZero() || c.seen&seenSettled != 0 {

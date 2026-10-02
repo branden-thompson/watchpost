@@ -218,8 +218,8 @@ func TestTheMapReleasesOnClose(t *testing.T) {
 	}
 }
 
-// TestMapTestsReachNoSocket is W0.2's owed check, landing with the first map
-// package: no map test opens a listener or dials. They draw from the embedded
+// TestMapTestsReachNoSocket is W0.2's check on the map packages: no map test
+// opens a listener or dials. They draw from the embedded
 // tiles and answer requests in memory; net/http is allowed for the
 // RoundTripper type alone, never its default client or transport.
 func TestMapTestsReachNoSocket(t *testing.T) {

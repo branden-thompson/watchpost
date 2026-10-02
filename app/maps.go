@@ -169,9 +169,9 @@ func mapSourceList() []tty.MapSource {
 }
 
 // radarImageBudget is the memory the library may hold the radar's pictures
-// in (W8.3b, go-tuiMaps D-68). RAISED TO 24 MiB BY D-88 (UAT-2 U2-5): 6 MiB
-// refused a single close box's two-hour loop; 24 holds the worst case, four
-// boxes of 24 frames. Tuning it back down is F-183, once radar works.
+// in (W8.3b, go-tuiMaps D-68): 24 MiB (D-88, UAT-2 U2-5) holds the worst case,
+// four boxes of 24 frames, where 6 MiB refuses a single close box's two-hour
+// loop. Tuning it down is F-183.
 const radarImageBudget = 24 << 20
 
 // mapRetention is how long the map's data is kept, and the one stated total

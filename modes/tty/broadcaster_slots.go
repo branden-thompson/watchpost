@@ -7,10 +7,10 @@ package tty
 // director is deciding … Right now this looks broken, so if I was a user who
 // came upon this, I would not expect this to be working as is."
 //
-// "(nothing scheduled)" WAS A DEAD END. It said the station had nothing and gave
-// the operator nowhere to look. Ten shimmering slots say the machine is working
-// and the data is coming — which is what Observer has said since UAT 18.2, so
-// this is the console ADOPTING that rather than inventing a second answer.
+// TEN SHIMMERING SLOTS, NEVER "(nothing scheduled)". That would say the station
+// has nothing and give the operator nowhere to look. Ten shimmering slots say the
+// machine is working and the data is coming — which is what Observer says
+// (UAT 18.2), so the console ADOPTS that rather than inventing a second answer.
 
 import (
 	tea "charm.land/bubbletea/v2"
@@ -35,13 +35,11 @@ func (b Broadcaster) slotCard(cards []lineup.Card, i int) (lineup.Card, bool) {
 // indexForSlot turns a SLOT NUMBER — what the operator sees and types — into a
 // RUNNING-ORDER INDEX, which is what the schedule takes (D-119).
 //
-// ONE OWNER, AT THE THIRD CALLER. `slotCard` did this arithmetic to READ a slot;
-// the card window's move did it again to WRITE one; and the Line-Up Request
-// window did not do it at all, which is D-119's own defect surviving in the one
-// path that never got the fix. Three copies of `i - liveOffset()` is three
-// places for the sign to be wrong, and the one that was wrong was silent: the
-// card landed one place further down than the operator asked, on STANDBY, which
-// is the surface's normal state.
+// ONE OWNER. Reading a slot, the card window's move and the Line-Up Request
+// window all need this arithmetic, and three copies of `i - liveOffset()` is
+// three places for the sign to be wrong. A wrong one is silent: the card lands
+// one place further down than the operator asked, on STANDBY, which is the
+// surface's normal state (D-119).
 //
 // IT CAN RETURN A NEGATIVE, and every caller must say what that means for it.
 // Reading, it is a slot above the line-up (LIVE itself); writing, it is the
@@ -99,12 +97,6 @@ func (b Broadcaster) armTick(cmd tea.Cmd) (Broadcaster, tea.Cmd) {
 	return b, cmd
 }
 
-// `slotRows` RETIRED WITH THE CARD COLUMN (D-110). It drew a REGION of the
-// running order as a column of boxes — the shape D-94 replaced with a table and
-// D-97 replaced above it with the UP NEXT / takeover pair. Nothing but its own
-// tests had called it since; two drawers of one running order is exactly what the
-// `dupes` gate exists for, and this one had already stopped being called.
-
 // bcReadLines is how many rows a read card gives its manifest.
 //
 // FOUR, FROM THE v2 REFERENCE, which lists a location report's four sources —
@@ -132,13 +124,9 @@ const (
 // its words arrived would move every card below it at the moment the operator is
 // reading one — so an empty read card is the same shape with nothing in it.
 //
-// THE SCRIPT REACHES IT (F-84, closed at D-83), AND THE ROW THAT FILED IT WAS
-// HALF WRONG. It read "the script is built into `Built{ID, Script}` inside the
-// executors and never reaches the card or the console; `Card` carries a Headline
-// and no words" — true when it was written, and overtaken at T3.8: `Card.Script`
-// has carried the words since, `Projection` returns whole cards, and `Publish`
-// hands the console the lineup. The words were already here. What was missing
-// was the drawing.
+// THE SCRIPT REACHES IT (F-84, D-83): `Card.Script` carries the words,
+// `Projection` returns whole cards, and `Publish` hands the console the lineup.
+// This draws them.
 func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handle string, decided bool) []string {
 	if !decided {
 		// AN EMPTY SLOT HAS NOTHING TO MANIFEST, and drawing the headings over
@@ -146,8 +134,7 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 		//
 		// IT STILL CARRIES ITS HANDLE, WHICH IS F-97 (D-110). The way in is in the
 		// FOOTER, and an undecided slot gets one: a footer drawn only for a decided
-		// card puts the slot back out of reach, one row along from where the chip
-		// riding the title row would have left it.
+		// card puts the slot out of reach.
 		rows := make([]string, bcReadCardRows-1)
 		for i := range rows { // bounded by the card's height (P10-02)
 			rows[i] = ""
@@ -167,11 +154,10 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 		bcCardInset + "DATA PULL: " + cardPulledShort(o, c, b.clock),
 		"",
 		// "READ MANIFEST", CENTRED, and it is a CAPTION over the table rather than
-		// a row of it — which is what the centring says and what "READ CONTENTS"
-		// hard against the left margin did not.
+		// a row of it — which is what the centring says.
 		// CENTRED OVER THE CELL THE ROW IS DRAWN IN, not over the lane's interior.
 		// The rows this returns are padded to the CELL's width by the box around
-		// them, so centring two cells short put the caption three cells left of
+		// them, so centring two cells short puts the caption three cells left of
 		// the middle — visible, and the kind of thing only a measurement catches.
 		centerText(bcManifestCaption, lane.lane),
 		bcCardInset + manifestHeading(room),
@@ -193,25 +179,19 @@ const bcManifestCaption = "READ MANIFEST"
 
 // cardControls is the row along the bottom of a read card: the way in.
 //
-// THE PRESENTER IS GONE WITH THE CONTROL IT BELONGED TO (D-131). The v3 plan's
-// item 6 was "the per-card PRESENTER control"; that was dropped, and the row
-// went on drawing `PRESENTER: N/A` — the label of a control that no longer
-// exists, reporting nothing, on every card — HUM LEAD, UAT 2026-09-14: "since
-// we removed per card presenters, we need to remove the PRESENTER - N/A from
-// the Up Next Card."
+// NO PRESENTER (D-131). The per-card PRESENTER control is not part of the
+// console, so neither is its label: `PRESENTER: N/A` would report nothing, on
+// every card — HUM LEAD, UAT 2026-09-14: "since we removed per card presenters,
+// we need to remove the PRESENTER - N/A from the Up Next Card."
 //
-// THE VOICE ITSELF IS NOT GONE, and this is the distinction worth keeping.
-// `Card.ReadBy` is still resolved from the role cast and is still SAID where it
-// is a fact rather than a control: the LIVE NOW row names who is presenting the
-// card on air, and the detail window carries READ BY. What was removed is the
-// per-card OVERRIDE and its label, not the answer to "who reads this".
+// THE VOICE ITSELF STAYS, and this is the distinction worth keeping.
+// `Card.ReadBy` is resolved from the role cast and is SAID where it is a fact
+// rather than a control: the LIVE NOW row names who is presenting the card on
+// air, and the detail window carries READ BY. What is absent is the per-card
+// OVERRIDE and its label, not the answer to "who reads this".
 func (b Broadcaster) cardControls(o render.Opts, handle string) string {
 	return bcCardInset + " " + o.KeyCap(handle) + "  Read / Manage"
 }
-
-// `flatBody` RETIRED WITH THE CARD COLUMN (D-110). It was the interior of a slot
-// the operator only ORDERS, and those are rows of `LineupTable` now (D-94) — a
-// table cell has no interior to draw.
 
 // bcCardInset is where a read card's own text begins, counted off the reference.
 const bcCardInset = "   "

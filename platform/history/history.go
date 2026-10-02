@@ -15,9 +15,9 @@
 // SEVERAL INSTANCES, ONE STORE (design section 4, 4b). Every write is a temp
 // file renamed over its target, so a reader sees a whole document or the one
 // before it. No record is ever read, merged and replaced by a writer - that
-// loses another's record under contention (it did, in this package's first
-// draft: 3 of 12 hours stood) - so each bucket is its own file. A day is
-// compacted under a claim, and a bucket file is removed only once the day's
+// loses another's record under contention - so each bucket is its own file. A
+// day is compacted under a claim, and a bucket file is removed only once the
+// day's
 // file holds it at an issue at least as new. A bucket is fetched by one
 // instance: Claim creates a claim file exclusively, holding its time; a claim
 // older than claimStale with nothing recorded may be taken over. Nothing here

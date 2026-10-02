@@ -3193,3 +3193,26 @@ partner survived (nothing counted the boxes): `TestEveryBoxIsDrawnOnce` holds it
 taken for NDFD's survived (nothing checked a fill box replays no history):
 `TestABoxTheFillDrawsReplaysNothingRecorded` holds it. mAS1 re-pointed at `stationConfig` and caught.
 
+## Batch 104 — every comment says what the code does now (F-186, AP-HIST-01, D-210; 2026-10-02)
+
+**The sweep.** Eight readers each took about 60 of the 489 Go files whose comments carry the past
+tense or a history phrase, read every comment in them, and proposed present-tense rewrites: 2,091,
+across 424 files, plus three by hand where one comment stood twice around identical code. A guard's
+reason stays as a present-tense counterfactual ("without a fire in the fixture, dropping `fireBoldMW`
+passes this guard"); the alloc pins' re-pin ledgers became the current pins and what they measure;
+the discovery stories (who found what, in which round) went. Comments that contradicted the code
+were corrected rather than reworded (the injector ships in every build, D-152; Duck is reached
+through `givingWay`; the Area Alerts box waits for A, D-87; among them). 64 lines still match a
+history phrase, every one of them a runtime "no longer" or a quoted ruling.
+
+**Proven comment-only.** A check parses each changed file at HEAD and in the tree with comments
+dropped and compares the code: 424 files, no code changed; its positive control (one pin moved by
+one) is caught.
+
+**One code change the sweep exposed.** P10's same-package cycle pass resolves methods by name, and
+reports the "Read" cycle - `countedBody.Read` delegating to the body's `Read` - at whichever `Read`
+is in the diff; a comment inside `eventReader.Read` put that one in scope. `countedBody` is now an
+`io.TeeReader` over a writer that only counts, with the body's own `Close`, so the package has no
+`Read` method to cycle through. `TestACountedBodyClosesTheBodyItCounts` holds the Close (its mutant
+survived the existing tests) and the count. P10 stays at 31 live.
+

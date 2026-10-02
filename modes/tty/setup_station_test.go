@@ -21,8 +21,8 @@ func stationSetup(t *testing.T, at setupRowID) Dashboard {
 	t.Helper()
 	d := setupGolden(t, 133, 44, false, at)
 	d.surface = SurfaceBroadcaster
-	// THE BOUNDS ARE HANDED IN, AS THE APP HANDS THEM IN (D-124). They were
-	// constants in this package and are now `platform/config`'s alone; a fixture
+	// THE BOUNDS ARE HANDED IN, AS THE APP HANDS THEM IN (D-124). They are
+	// `platform/config`'s alone; a fixture
 	// that omits them gets a window which refuses every radius, which is the
 	// deliberate fail-closed behaviour and not something to paper over.
 	d.cfg.ServiceRadiusMinMi, d.cfg.ServiceRadiusMaxMi = 2, 100
@@ -42,7 +42,7 @@ func TestAWindowWithNoBoundsRefusesEveryRadius(t *testing.T) {
 		t.Fatal("a window with no bounds must not report usable ones")
 	}
 	// ZERO IS IN THIS LIST BECAUSE IT IS THE ONLY VALUE THAT DISCRIMINATES, and
-	// leaving it out is what let mutant mAS3 survive. With the bounds unset, a
+	// leaving it out lets mutant mAS3 survive. With the bounds unset, a
 	// check that forgets to ask whether it was TOLD compares `v >= 0 && v <= 0` —
 	// which refuses 2, 25, 50 and 100 exactly as the correct code does, and
 	// ADMITS zero. Zero is what `serviceRadiusChoice` returns for "not a number",
@@ -59,9 +59,9 @@ func TestAWindowWithNoBoundsRefusesEveryRadius(t *testing.T) {
 
 // THEY ARE THE STATION'S, AND EVERY SURFACE SHOWS THEM (0.18.0 D-70, which
 // supersedes D-92's visibility: "settings show now be the same across ALL UI
-// modes"). D-72 and D-18's M4 counted a station row SHOWN in Observer as a
-// leak; since D-70 a leak is a row writing another mode's values, which the
-// scope in the table still rules. The rows sit on the Broadcaster tab.
+// modes"). A leak is a row writing another mode's values, which the scope in
+// the table rules — not a station row SHOWN in Observer. The rows sit on the
+// Broadcaster tab.
 func TestTheStationsSettingsAreOnEverySurface(t *testing.T) {
 	console := setupOffers(stationSetup(t, rowFIRMSKey))
 	observer := setupOffers(setupGolden(t, 133, 44, false, rowFIRMSKey))
@@ -74,8 +74,7 @@ func TestTheStationsSettingsAreOnEverySurface(t *testing.T) {
 			t.Errorf("Observer's Settings window does not offer %q (D-70)", want)
 		}
 	}
-	// AND THEY SIT ON THE BROADCASTER TAB (D-62, which moved them out of DATA,
-	// where the HUM LEAD had first put them): its one group, STATION.
+	// AND THEY SIT ON THE BROADCASTER TAB (D-62): its one group, STATION.
 	st := stationSetup(t, rowTransmitter)
 	if st.setupTab() != tabBroadcaster {
 		t.Fatalf("the transmitter is on the %s tab, want Broadcaster", st.setupTab().Label())
@@ -140,7 +139,7 @@ func TestTheServiceRadiusTakesDigitsAndReplacesTheStoredOne(t *testing.T) {
 		m, _ := d.setupRowText(tea.KeyPressMsg{Code: r, Text: string(r)})
 		d = m.(Dashboard)
 	}
-	// 50, NOT 2550 — the defect the alert radius was fixed for at UAT 2026-09-08.
+	// 50, NOT 2550 — the rule the alert radius keeps too (UAT 2026-09-08).
 	if d.setup.serviceMi != "50" {
 		t.Errorf("typing 50 over a stored 25 gave %q", d.setup.serviceMi)
 	}

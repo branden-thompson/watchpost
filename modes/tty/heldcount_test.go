@@ -5,13 +5,13 @@ package tty
 //
 // TWO WAYS TO GET ONE LINE WRONG, on the console's loudest safety surface:
 //
-//  1. It counted CARDS. A burst is ONE card carrying many arrivals (MVS-D-77),
-//     so five hazards held read "1 HAZARD(S) HELD" — and the escalation ladder
-//     keys off that number.
-//  2. It read `Cards()` where every other rail reader reads `Projection()`,
-//     which drops out-of-fence cards precisely because they are not READ. So an
-//     out-of-fence burst raised "1 HAZARD(S) HELD … Go ON AIR to read them"
-//     while the takeover box was empty and going on air would read nothing —
+//  1. Counting CARDS. A burst is ONE card carrying many arrivals (MVS-D-77),
+//     so five hazards held would read "1 HAZARD(S) HELD" — and the escalation
+//     ladder keys off that number.
+//  2. Reading `Cards()` where every other rail reader reads `Projection()`,
+//     which drops out-of-fence cards precisely because they are not READ. An
+//     out-of-fence burst would raise "1 HAZARD(S) HELD … Go ON AIR to read them"
+//     while the takeover box is empty and going on air would read nothing —
 //     a false instruction that escalates to "may be dropped unread".
 
 import (

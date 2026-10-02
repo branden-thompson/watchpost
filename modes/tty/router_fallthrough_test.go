@@ -10,14 +10,13 @@ import (
 
 // THE CONSOLE'S KEYS FALL THROUGH ON OBSERVER, AND THAT IS LOAD-BEARING (D-159).
 //
-// THIS IS THE CONTRACT THE `keyAction` EXTRACTION COULD HAVE BROKEN. `update`
-// was cyclomatic 43 and the switch inside it was lifted out wholesale; several
-// of its cases deliberately DO NOT return, and falling past the switch is how
-// the key reaches the active surface — which on Observer is the listener's own
-// navigation. `r` is their repeat, the arrows walk their table, `b` is theirs.
+// THIS IS THE CONTRACT `keyAction` CARRIES. Several of its cases deliberately
+// DO NOT return, and falling past the switch is how the key reaches the active
+// surface — which on Observer is the listener's own navigation. `r` is their
+// repeat, the arrows walk their table, `b` is theirs.
 //
-// AN EXTRACTION THAT TURNED ONE FALL-THROUGH INTO A RETURN would be invisible
-// to every existing test — the console still works, the key still "does
+// A CHANGE THAT TURNED ONE FALL-THROUGH INTO A RETURN would be invisible
+// to every other test — the console still works, the key still "does
 // something" — and would silently take the listener's navigation away. So the
 // `handled` bool is asserted here directly, per action, rather than trusted.
 //
@@ -49,17 +48,17 @@ func TestTheConsolesKeysFallThroughOnObserver(t *testing.T) {
 
 // AND A LETTER TYPED INTO AN OPEN WINDOW IS NOT A SURFACE SWAP (D-148).
 //
-// THE OTHER FALL-THROUGH, AND THE ONE WITH A MEASURED DEFECT BEHIND IT. `O` and
-// `B` swap surfaces, and the swap cases returned on them UNCONDITIONALLY — above
-// the rule that a window on top owns the keys. So typing a place name into a
-// location field lost those letters and swapped the surface mid-word:
+// THE OTHER FALL-THROUGH. `O` and `B` swap surfaces, and a window on top owns
+// the keys: a swap case that returned on them UNCONDITIONALLY would make typing
+// a place name into a location field lose those letters and swap the surface
+// mid-word:
 //
 //	"Oceanside" -> "ceanside", and the operator is on Observer
 //	"Bonsall"   -> "onsall"
 //
 // Those are the HUM LEAD's own station and the hyper-local case D-130 exists
-// for. The `break` that fixes it is exactly the kind of non-returning path an
-// extraction can quietly turn into a return.
+// for. The `break` that prevents it is exactly the kind of non-returning path a
+// refactor can quietly turn into a return.
 func TestALetterTypedIntoAWindowIsNotASwap(t *testing.T) {
 	d, err := NewDashboard(Config{})
 	if err != nil {

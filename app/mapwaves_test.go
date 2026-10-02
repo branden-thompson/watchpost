@@ -159,10 +159,10 @@ func TestWavesAreOffByDefaultAndCosted(t *testing.T) {
 	t.Fatal("waves are not registered")
 }
 
-// TestTheFieldsRunOnIntoTheHoursAhead is UAT-2 U2-32: Radar mode's hourly
-// fields stopped at the current hour, and the loop plays on into the hours
-// ahead (D-113) - the waves came and went as it played. Each hourly field is
-// drawn up to the loop's horizon.
+// TestTheFieldsRunOnIntoTheHoursAhead is UAT-2 U2-32: the loop plays on into
+// the hours ahead (D-113), so an hourly field that stops at the current hour
+// comes and goes as it plays. Each hourly field is drawn up to the loop's
+// horizon.
 func TestTheFieldsRunOnIntoTheHoursAhead(t *testing.T) {
 	ask := tempAsk(false)
 	ask.RadarAhead = 1

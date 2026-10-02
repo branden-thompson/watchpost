@@ -2,16 +2,14 @@ package lineup
 
 import "testing"
 
-// onAirAnywhere is the question every test written before D-82 was asking. One
-// lane could speak, so "the card on the air" was unambiguous and the type
-// answered it directly.
+// onAirAnywhere asks whether ANY lane is reading — the question the tests that
+// use it ask, where which lane does not matter to what they assert.
 //
-// KEPT AS A TEST HELPER, NOT RESTORED TO THE TYPE. In production the question is
-// always about a LANE — the rail speaks over the programme — and a caller that
-// did not say which one it meant is exactly the defect D-82 fixed: `airOnce`
-// asked "is anything reading anywhere", so a tornado warning could not take the
-// air while a weather report held it. These tests predate the split and are
-// about something else; rewriting thirty of them to name a lane would claim the
+// A TEST HELPER, NOT A METHOD ON THE TYPE. In production the question is always
+// about a LANE — the rail speaks over the programme — and a caller that does not
+// say which one it means is the hazard D-82 rules out: asking "is anything
+// reading anywhere" would keep a tornado warning off the air while a weather
+// report held it. Naming a lane in tests about something else would claim the
 // lane mattered to what they assert, and it does not.
 func onAirAnywhere(l Lineup) (Card, bool) {
 	for t := Track(0); t < numTracks; t++ { // bounded by the registry (P10-02)
@@ -38,10 +36,10 @@ func reading(t *testing.T, d Director, id string, slot Slot) Director {
 // THE RAIL INTERRUPTS THE PROGRAMME (D-82, HUM LEAD 2026-09-11: "breaking alerts
 // need to interrupt reports").
 //
-// `Lineup.OnAir` held "at most one card holds the air" ACROSS BOTH TRACKS, and
-// `airOnce` asked it BEFORE choosing a card — so a rail card could not take the
-// air while a report was reading, and a hazard waited out the weather. The wait
-// was as long as a location report.
+// With "at most one card holds the air" held ACROSS BOTH TRACKS and asked
+// BEFORE choosing a card, a rail card could not take the air while a report was
+// reading, and a hazard would wait out the weather — as long as a location
+// report.
 func TestAHazardTakesTheAirOverAReportThatIsReading(t *testing.T) {
 	d := New(Settings{Max: 5, Depth: 10}, cutoverBase())
 	d, _ = d.Step(Powered{To: Running})
@@ -61,16 +59,15 @@ func TestAHazardTakesTheAirOverAReportThatIsReading(t *testing.T) {
 	// pause-and-resume rather than drop-and-restart (D-24, and the HUM LEAD's
 	// ruling of 2026-09-11). Its Speak is still running on a worker; the engine
 	// HOLDS its player — a rendered report waits rather than dipping — and lets
-	// it go again when the rail is dry. Taking it off the air here would be the
-	// cheap design that was offered and not taken.
+	// go again when the rail is dry. Taking it off the air here would be the
+	// cheaper design D-24 declines.
 	if c, on := d.lineup.OnAir(MainTrack); !on || c.ID != "report" {
 		t.Errorf("the report left the air for the hazard; it must HOLD and resume mid-sentence, not restart")
 	}
 }
 
-// ONE VOICE PER LANE, STILL. The rule did not go away — it gained a qualifier.
-// Two cards on the SAME lane would be two voices, which is what the invariant
-// was always about.
+// ONE VOICE PER LANE. Two cards on the SAME lane would be two voices, which is
+// what the invariant is about.
 func TestASecondCardOnOneLaneStillCannotTakeTheAir(t *testing.T) {
 	d := New(Settings{Max: 5, Depth: 10}, cutoverBase())
 	d, _ = d.Step(Powered{To: Running})

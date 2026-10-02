@@ -125,7 +125,7 @@ const (
 	TickerWarningBG  Token = "ticker.warning.bg"
 	TickerWatchBG    Token = "ticker.watch.bg"
 	TickerMarineBG   Token = "ticker.marine.bg" // 0.12.0: the Tropical Cyclones lane (HUM LEAD colour pass)
-	// 0.14.0: the two lanes that joined when every severe category gained one.
+	// 0.14.0: the lanes that give every severe category one.
 	// They are LANE tokens, not category tints borrowed from the [w] window: a
 	// band is painted under bold white at full strength, a tint sits behind a
 	// row, and the AA register checks the two differently (HUM LEAD, UAT
@@ -176,8 +176,8 @@ const (
 	EventCatForecastBG  Token = "event.cat.forecast.bg"  // Forecasts and Outlooks — COLOUR IS THE HUM LEAD'S PASS
 	EventCatMarineBG    Token = "event.cat.marine.bg"
 
-	// The table's own palette (quality pass Q4a-004, L5-F4): before it the
-	// kit painted these from its $TERM-gated palette, outside the theme.
+	// The table's own palette (quality pass Q4a-004, L5-F4): the theme paints
+	// these, not the kit's $TERM-gated palette.
 	TableMuted Token = "table.muted" // row numbers and attribute cells (the kit's muted grey)
 	TableName  Token = "table.name"  // an unselected, un-alerted NAME cell (the kit's bright white)
 
@@ -203,17 +203,15 @@ const (
 	GradEnd   Token = "title.grad.end"
 
 	// TitleEdition is the EDITION word beside the wordmark — "Observer"
-	// today, "Broadcaster" when that dashboard arrives (0.14.0). Bold, in the
-	// theme's own light blue, so the edition reads as a companion to the
-	// gradient rather than a second wordmark competing with it.
+	// (0.14.0). Bold, in the theme's own light blue, so the edition reads as a
+	// companion to the gradient rather than a second wordmark competing with it.
 	//
 	// Its own token, not FocusCell borrowed: the two happen to share a colour
-	// in most themes and have nothing to do with each other, and the second
-	// edition will want to differ.
+	// in most themes and have nothing to do with each other.
 	TitleEdition Token = "title.edition"
 
-	// TitleEditionBroadcaster is the SECOND edition's word, and it is the "will
-	// want to differ" above arriving (HUM LEAD, 2026-09-14): "Let's make
+	// TitleEditionBroadcaster is the SECOND edition's word (HUM LEAD,
+	// 2026-09-14): "Let's make
 	// 'Broadcaster' text in the mastHead Orange vs. the Bold Light Blue - so:
 	// Observer - Bold Light Blue / Broadcaster - Bold Orange."
 	//
@@ -221,7 +219,7 @@ const (
 	// ARE ON. Both editions draw the same wordmark, the same ladders and the
 	// same stamp, and ctrl+o / ctrl+b swap between them in place — so the word
 	// beside the wordmark is the distinction, and two editions sharing one tone
-	// made it a distinction you had to READ rather than see.
+	// would make it a distinction you had to READ rather than see.
 	//
 	// EACH THEME'S OWN ORANGE, the way TitleEdition takes each theme's own
 	// light blue. Monochrome is the honest exception and says so at its entry.
@@ -281,8 +279,8 @@ func withAgeLadder(t map[Token]string, named map[Token]string) map[Token]string 
 		// "DID THIS THEME NAME IT", NOT "IS IT EMPTY". A registered theme starts
 		// from a COPY OF THE DEFAULT, so by the time this runs the slot is
 		// already full of the default's blue — and an emptiness test would leave
-		// every theme wearing Watchpost's ladder. Monochrome caught it at once:
-		// a theme whose whole purpose is to have no colour was handed four.
+		// every theme wearing Watchpost's ladder, Monochrome included: a theme
+		// whose whole purpose is to have no colour would be handed four.
 		if _, ok := named[f.dst]; !ok {
 			t[f.dst] = t[f.src]
 		}
@@ -383,8 +381,7 @@ func defaultTheme() map[Token]string {
 		MapChipEPABG:      "48;2;22;101;52",  // #166534, forest green (D-167)
 		MapNoticeQuotaBG:  "48;2;194;65;12",  // #C2410C, dark orange (D-165)
 		MapChipRecordedBG: "48;2;91;75;138",  // #5B4B8A, muted violet (D-178)
-		// PLACEHOLDER, pending the ruling: a new colour, or THE RED with every
-		// other lane shifted down. Magenta only so it is unmistakably not final.
+		// Emergency Orders take THE red (MVS-D-62).
 		TickerEmergencyBG: "48;2;150;20;20",     // #961414 — Emergency Orders: THE red
 		TickerFG:          "1;38;2;255;255;255", // bold white
 		TickerMutedFG:     "38;5;245",           // muted grey text
@@ -411,7 +408,7 @@ func defaultTheme() map[Token]string {
 		TableMuted: "245", // = tui.TableRowNumber / tui.TableAttribute
 		TableName:  "97",  // = tui.TableLabel
 
-		ConfirmBG: "48;2;79;12;12", // #4F0C0C — deep red under light text (UAT 109; was #AE7D7E, UAT 26.2)
+		ConfirmBG: "48;2;79;12;12", // #4F0C0C — deep red under light text (UAT 109)
 
 		AlertModalWarnFG: "38;2;190;84;84",   // #BE5454 (UAT 28.4)
 		AlertModalAdvFG:  "38;2;172;174;125", // #ACAE7D (UAT 28.3)

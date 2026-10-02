@@ -223,10 +223,10 @@ func escalated(fx []string) bool {
 	return false
 }
 
-// R2 REVIEW F2 (2026-09-17) — THE COOL-OFF HAS TWO DOORS AND BOTH ARE SHUT. Only
-// the top-off asked sittingOut; a NeedsRead for the same place queued it straight
-// back in, and the deck raises one on every relay failure — the UAT 2026-09-10
-// loop through the second door.
+// R2 REVIEW F2 (2026-09-17) — THE COOL-OFF HAS TWO DOORS AND BOTH ARE SHUT. The
+// top-off asks sittingOut, and so does a NeedsRead for the same place: the deck
+// raises one on every relay failure, and an unguarded one would queue the place
+// straight back in.
 func TestANeedsReadDoesNotWalkPastTheCoolOff(t *testing.T) {
 	d := New(Settings{Max: 10}, planNow)
 	d, _ = run(d, Powered{To: Running})

@@ -4,10 +4,10 @@ import "github.com/branden-thompson/watchpost/platform/invariant"
 
 // Power is whether the Director is putting programme to air of its own accord.
 //
-// ONE FIELD, ONE RULE (PD-1). Today the same rule is `d.mode != ""` plus a tune
-// epoch — one rule carried in two places, which is the shape that produced the
-// duck-lift bug (RD-2): a rule living in two carriers is a rule that can
-// disagree with itself, and the one nobody edited is the one that bites.
+// ONE FIELD, ONE RULE (PD-1). Carried as `d.mode != ""` plus a tune epoch it
+// would be one rule in two places (RD-2): a rule living in two carriers is a
+// rule that can disagree with itself, and the one nobody edited is the one that
+// bites.
 //
 // It is an ENUM RATHER THAN A BOOL, and that is the seam. ON AIR / STANDBY is a
 // second reason to be off, so a Broadcaster station adds a value here rather
@@ -17,7 +17,7 @@ type Power int
 
 const (
 	// Stopped is the ZERO VALUE because that is how a station starts: nothing
-	// plays until the listener asks for it, which is today's empty mode
+	// plays until the listener asks for it, which is the deck's empty mode
 	// (app/radio.go:radioDeck.setMode). A director that came up running would put a report to
 	// air that nobody asked for.
 	Stopped Power = iota
@@ -97,12 +97,11 @@ func (d Director) advances(t Track) bool {
 	if t < 0 || t >= numTracks {
 		return false // a track outside the registry advances nothing
 	}
-	// FAIL CLOSED FIRST, and it is checked BEFORE the rail's exemption. It used
-	// to sit after it, so a power outside the registry advanced the ALERT RAIL —
-	// the one track the comment was written to protect. Nothing reachable
-	// produces such a value (onPowered validates), so this was latent, and it
-	// was found by walking the registry rather than a hand-written list of
-	// powers (MVS-D-78).
+	// FAIL CLOSED FIRST, and it is checked BEFORE the rail's exemption: after it,
+	// a power outside the registry would advance the ALERT RAIL — the one track
+	// this is written to protect. Nothing reachable produces such a value
+	// (onPowered validates), and walking the registry rather than a hand-written
+	// list of powers is what covers it (MVS-D-78).
 	//
 	// Standby is unbypassable for the same reason: a corrupt power must not be
 	// a way around dead air.
@@ -115,11 +114,10 @@ func (d Director) advances(t Track) bool {
 	if t == AlertRail {
 		return true
 	}
-	// THE BED AND THE MAIN TRACK ARE MUTUALLY EXCLUSIVE (D-11, FR-4.2), and
-	// until now that was true only because the ENGINE has one source — a rule
-	// the product model states and the schedule could not see. A card taking
-	// the air while the operator has the programme on the bed would play over
-	// a relay.
+	// THE BED AND THE MAIN TRACK ARE MUTUALLY EXCLUSIVE (D-11, FR-4.2), and the
+	// schedule states it here rather than leaving it true only because the ENGINE
+	// has one source. A card taking the air while the operator has the programme
+	// on the bed would play over a relay.
 	//
 	// IT SITS BELOW THE RAIL'S EXEMPTION, deliberately: pausing the programme
 	// must never hold a hazard (FR-2.2, "the priority track always drains
@@ -128,10 +126,9 @@ func (d Director) advances(t Track) bool {
 		return false
 	}
 	// AND THE STATION'S LINE-UP ONLY ADVANCES WHILE THE STATION HAS THE AIR
-	// (D-74). Until now this gate answered for BOTH programmes — the line-up and
-	// the operator's own listening — so a running station could produce two at
-	// once, which is what the HUM LEAD heard. The monitor asks
-	// `advancesMonitor()` now; this is the station's half and it says so.
+	// (D-74). Answering for BOTH programmes — the line-up and the operator's own
+	// listening — this gate would let a running station produce two at once. The
+	// monitor asks `advancesMonitor()`; this is the station's half and it says so.
 	if d.air != AirProgramme {
 		return false
 	}

@@ -11,12 +11,11 @@ package tty
 //	typed "Bonsall"   -> box "onsall"
 //
 // "Oceanside, CA" is the HUM LEAD's own station and "Bonsall, CA" is the
-// hyper-local case D-130 was ruled for.  The UAT never caught it because
-// "Lone Pine", "Rainbow" and "Vista" contain no capital B or O.
+// hyper-local case D-130 was ruled for.  A UAT run with "Lone Pine",
+// "Rainbow" and "Vista" never shows it: they contain no capital B or O.
 //
-// D-58 ALREADY RULED THIS — "a window on top owns the keyboard" — and the
-// guarded cases below it say so in as many words.  The two swap cases were
-// simply written above the guard.
+// D-58 RULES THIS — "a window on top owns the keyboard" — and the swap keys
+// are no exception: they are checked below that guard, like every other case.
 
 import (
 	"strings"
@@ -48,7 +47,7 @@ func TestTheConsoleLookupTakesEveryLetterOfTheStationsName(t *testing.T) {
 	}
 }
 
-// AND THE REQUEST WINDOW'S LOCATION FIELD, which shares the defect.
+// AND THE REQUEST WINDOW'S LOCATION FIELD, which the same rule covers.
 func TestTheRequestWindowTakesEveryLetterOfTheStationsName(t *testing.T) {
 	for _, q := range []string{"Oceanside", "Bonsall"} {
 		r := consoleTypingInto(t, func(r Router) Router { return pressAction(t, r, actRequest) })
@@ -65,7 +64,7 @@ func TestTheRequestWindowTakesEveryLetterOfTheStationsName(t *testing.T) {
 	}
 }
 
-// AND THE SWAP STILL WORKS WITH NO WINDOW OPEN — the fix must not take the
+// AND THE SWAP STILL WORKS WITH NO WINDOW OPEN — the guard must not take the
 // binding away, only stop it reaching through an open field.
 func TestTheSwapStillWorksWithNoWindowOpen(t *testing.T) {
 	r := consoleWith(t, goldenDash(t, false))

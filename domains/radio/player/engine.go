@@ -188,7 +188,7 @@ func (e *Engine) arm() (context.Context, chan struct{}) {
 
 // Fail reports a failure that happened before any stream could start —
 // no voice, no source — under the caller's own words (red-team 0.9.0 F2:
-// routing it through Start(nil) replaced the reason with "no relay
+// routing it through Start(nil) would replace the reason with "no relay
 // carries this transmitter"). Any current playback halts first.
 func (e *Engine) Fail(reason string) {
 	e.startMu.Lock()
@@ -322,11 +322,11 @@ func (e *Engine) PreviewAside(rate int, pcm io.Reader) error {
 }
 
 // playClip is the one preview path: through the visualizer's tap like the
-// broadcast when tapped (the bars sat flat during an event read before —
-// the read plays here, not on the broadcast path), after the resampler so
-// the tap reads OutputRate. The clip becomes the line in flight; a HELD
-// line (PausePreview) is not displaced by it — a takeover's tone and lines
-// play while the read waits (red-team round 4, A-01).
+// broadcast when tapped (an event read plays here, not on the broadcast
+// path, so the bars follow it), after the resampler so the tap reads
+// OutputRate. The clip becomes the line in flight; a HELD line
+// (PausePreview) is not displaced by it — a takeover's tone and lines play
+// while the read waits (red-team round 4, A-01).
 func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error {
 	src := io.Reader(newResampler(pcm, rate))
 	if tapped {
@@ -352,10 +352,10 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 
 // watchClip follows one clip to its end and says how it ended.
 //
-// EXTRACTED FROM `playClip` AT THE STATEMENT CEILING (P10-04, D-159). It is the
-// whole of the goroutine `playClip` starts, and standing apart it makes FR-9's
-// bound something a test can drive directly rather than only through an audio
-// device.
+// IT STANDS APART FROM `playClip` FOR THE STATEMENT CEILING (P10-04, D-159).
+// It is the whole of the goroutine `playClip` starts, and standing apart it
+// makes FR-9's bound something a test can drive directly rather than only
+// through an audio device.
 //
 // THE LOOP IS BOUNDED IN AIR TIME, NOT WALL TIME, and that is the requirement
 // rather than an oversight: `i` advances only while the player is NOT held, so a
@@ -367,9 +367,9 @@ func (e *Engine) watchClip(p Player, n int) {
 	// speaks a whole record — minutes, not seconds); a held line does
 	// not spend its budget.
 	//
-	// THE BUDGET IS ALSO FR-9's BOUND, and it was already the right shape:
-	// held-excluded elapsed time, on the read's own player, never on the
-	// live stream. What was missing was anyone being told how it ended.
+	// THE BUDGET IS ALSO FR-9's BOUND: held-excluded elapsed time, on the
+	// read's own player, never on the live stream — and how it ended is
+	// reported.
 	spent := true
 	budget := e.clipBudget()
 	i := 0
@@ -493,10 +493,10 @@ func (e *Engine) DropHeld() {
 // (to 15 % — audibly under the alert, still present so the broadcast is not
 // mistaken for stopped). HUM LEAD 2026-08-27: duck, not interrupt.
 //
-// 0.25 until MVS-D-70 (UAT 2026-09-03): heard on a live relay, a quarter was
-// "still loud enough to be distracting". The floor of the range and the reason
-// it is not zero are both in TestTheDipDepthIsPinned, which is the one place
-// this number is allowed to be argued about.
+// A quarter is too loud (MVS-D-70, UAT 2026-09-03): heard on a live relay,
+// 0.25 is "still loud enough to be distracting". The floor of the range and
+// the reason it is not zero are both in TestTheDipDepthIsPinned, which is the
+// one place this number is allowed to be argued about.
 const alertDuck = 0.15
 
 // Suppress puts an alert on the air over the broadcast: the watch loop gives
@@ -689,12 +689,11 @@ func (p *prerollReader) Read(b []byte) (int, error) {
 
 // StopPreview ends the line currently in flight.
 //
-// THE ONE THING THE ENGINE COULD NOT DO. It could pause a line (PausePreview),
-// resume one (ResumePreview) and close the HELD ones (DropHeld) — but nothing
-// stopped the line that was actually sounding. So cancelling a read ended its
-// SEQUENCE while its audio played on: the arbiter released the air, resumed
-// whatever the read had suspended, and the listener heard both at once
-// (MVS-D-75, UAT 2026-09-05).
+// THE LINE THAT IS ACTUALLY SOUNDING. PausePreview pauses a line,
+// ResumePreview resumes one and DropHeld closes the HELD ones; this stops the
+// one in flight. Without it, cancelling a read ends its SEQUENCE while its
+// audio plays on: the arbiter releases the air, resumes whatever the read had
+// suspended, and the listener hears both at once (MVS-D-75, UAT 2026-09-05).
 //
 // Closing a player that has already drained is a no-op, so a sequence that
 // finished normally needs no special case — which is what lets one call sit on
@@ -708,7 +707,7 @@ func (e *Engine) StopPreview() {
 	if p != nil {
 		// PAUSE BEFORE CLOSE. Close releases the player; it is Pause that
 		// guarantees the device stops emitting what is already buffered. A
-		// close alone left a read audible after it had been stopped
+		// close alone leaves a read audible after it has been stopped
 		// (UAT 2026-09-05), and the buffered tail of a minutes-long read is not
 		// a tail — it is the rest of the report.
 		p.Pause()

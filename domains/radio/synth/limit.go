@@ -9,9 +9,9 @@ import (
 )
 
 // The one owner of "how many voice renders run at once" (FR-12, plan §1.3).
-// Nothing bounded this before 0.14.0: a broadcast reading ahead while a
-// takeover renders and a Setup preview plays could have six `say`/`piper`
-// processes alive at once, and on Linux each one is a ~63 MB model load.
+// Unbounded, a broadcast reading ahead while a takeover renders and a Setup
+// preview plays can have six `say`/`piper` processes alive at once, and on
+// Linux each one is a ~63 MB model load.
 //
 // Slots are N ordinary plus TWO reserved. The reserved pair belongs to the
 // Station Director, which sets WithPriority on every job it runs, so a line a

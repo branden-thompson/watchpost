@@ -7,16 +7,15 @@ package app
 // the Director as arrivals. It owns the alert store and the seen store's use;
 // it does NOT own words, and it does not own pacing.
 //
-// IT HAD NO HEADER AT ALL, and held five separable concerns across 978 lines
-// (red team 2026-09-05, Junior-Dev 10). Split on 2026-09-06, purely — nothing
-// changed but which file a declaration sits in, and TestDeclarationSetUnchanged
-// is the guard that says so:
+// ITS SIBLINGS HOLD THE CONCERNS THAT ARE NOT THE PRODUCER'S (red team,
+// Junior-Dev 10), and TestDeclarationSetUnchanged guards which file each
+// declaration sits in:
 //
 //	burst_words.go  the words a takeover says and the tape's sentences (the
 //	                Composer's helpers, which is why they are not here)
 //	seen_store.go   the ids already announced, persisted across restarts
 //	metro.go        the fuzzy "the <metro> area" tie
-//	read_script.go  MVS-D-72's four pause constants, which now sit with the
+//	read_script.go  MVS-D-72's four pause constants, which sit with the
 //	                Reader that reads them and the comment that claims them
 //
 // The TAPE stays here — itemsOf, laneItems, tapeItems, tickerCategory — because
@@ -46,28 +45,27 @@ import (
 
 // tickerMuteState is the shared "the listener said do not speak to me" flag.
 //
-// IT STARTS FALSE, AND THERE IS NO SEED (red team 2026-09-05, C-1). It used to
-// be seeded from cfg.TickerMuted, and that was the release's worst defect:
-// ticker_muted is a BACK-COMPAT MIRROR that config.Save derives from the tone
-// mode so a 0.13.0 binary reading the file still mutes its ticker. It is not
-// this binary's state. Reading it back as runtime state meant muting one tone
-// class in Settings silenced every spoken alert from the next launch on — and
-// nothing could clear it, because MVS-D-48 retired the [M] toggle when the key
-// became a deep link into Settings. A listener who found the EAS tone startling
-// at night lost the words too, permanently, and their own attempt to undo it
-// appeared to do nothing.
+// IT STARTS FALSE, AND THERE IS NO SEED (red team 2026-09-05, C-1). In
+// particular it is not seeded from cfg.TickerMuted: ticker_muted is a
+// BACK-COMPAT MIRROR that config.Save derives from the tone mode so a 0.13.0
+// binary reading the file still mutes its ticker. It is not this binary's
+// state. Reading it back as runtime state would mean muting one tone class in
+// Settings silences every spoken alert from the next launch on — with nothing
+// to clear it, because [M] is a deep link into Settings, not a toggle
+// (MVS-D-48). A listener who found the EAS tone startling at night would lose
+// the words too, permanently.
 //
-// THE PARAMETER IS GONE, NOT DEFAULTED (P10-07). A seed nothing may vary is one
-// more thing that can be set wrongly, and this one was.
+// THERE IS NO PARAMETER, NOT EVEN A DEFAULTED ONE (P10-07). A seed nothing may
+// vary is one more thing that can be set wrongly.
 //
 // NOTHING SETS IT TODAY, and that is stated rather than implied (AP-DEAD-01,
 // the way Power.OffAir is disclosed). MVS-D-26 gives the tone mute the tones
-// alone; MVS-D-48 took away the one-key panic mute. So the flag is constant
-// false in 0.14.0 and the two gates it drives — the producer's (startTakeover,
-// MVS-D-78) and the executor's (runCue) — are correct and pinned but not
-// currently reachable. They are the seam a Broadcaster "silence the station"
-// control sets; they are deliberately kept, because deriving them again later
-// is how this defect was born.
+// alone; MVS-D-48 leaves no one-key panic mute. So the flag is constant false
+// and the two gates it drives — the producer's (startTakeover, MVS-D-78) and
+// the executor's (runCue) — are correct and pinned but not currently
+// reachable. They are the seam a Broadcaster "silence the station" control
+// sets; they are deliberately kept, because deriving them from the mirror is
+// the hazard described above.
 func tickerMuteState() *atomic.Bool {
 	flag := &atomic.Bool{}
 	return flag
@@ -121,7 +119,7 @@ type tickerDeck struct {
 	inject    injectQueue     // F-21b: a real queue in a debug build, an empty struct in a release one
 	scripts   *script.Library // the spoken lines (domains/radio/script); nil = the built-in scripts
 	done      chan struct{}   // closed when run returns, so stopAll can drain the ticker before teardown
-	severe    *severeDeck     // 0.13.0: the severe-events index (nil = no window, as in the older tests)
+	severe    *severeDeck     // 0.13.0: the severe-events index (nil = no window, as in tests that build a bare deck)
 
 	// alerts is the producer's record of what each arrival IS, asked for by the
 	// executors when they compose, cue and mark (T3.10b). The card carries only
@@ -131,11 +129,10 @@ type tickerDeck struct {
 	// mu guards emit AND scope, both of which are wired after the deck is built:
 	// the schedule needs the deck to exist before it can be started.
 	//
-	// SCOPE JOINED IT AT D-144. It had exactly `emit`'s shape — a func field
+	// SCOPE IS GUARDED FOR THE SAME REASON AS EMIT (D-144): a func field
 	// assigned from the setup goroutine AFTER `go t.run(ctx)` has started, and
-	// read by the cycle — and it was the only one of the pair left unguarded.
-	// Bounded impact (a pointer-sized write, first cycle only) is not the same
-	// as no impact, and the fix is the pattern already sitting beside it.
+	// read by the cycle. Bounded impact (a pointer-sized write, first cycle
+	// only) is not the same as no impact.
 	mu    sync.Mutex
 	emit  func(lineup.Event) // nil until the schedule is wired
 	scope func() airScope    // nil until the surfaces are wired; see setScope
@@ -150,7 +147,7 @@ func (t *tickerDeck) setScope(f func() airScope) {
 }
 
 // clock is the listener's clock, or the 12-hour default when nothing set one
-// (the older tests, which build a deck by hand).
+// (tests that build a deck by hand).
 func (t *tickerDeck) clock() render.Clock {
 	return clockFrom(t.clockPref)
 }
@@ -166,10 +163,9 @@ func (t *tickerDeck) clock() render.Clock {
 // through the director, so a takeover pre-empts an event read and never
 // overlaps one (app/director.go).
 func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx *geodata.Index, watch func() []snapshot.LocationRef, prefs tickerPrefs, nar *director, scripts *script.Library, severe *severeDeck) *tickerDeck {
-	// ONE INSTANCE, AND NONE BUILT TO BE THROWN AWAY. An earlier shape
-	// constructed an effector unconditionally and discarded it whenever an
-	// arbiter was supplied — which is every production path. The arbiter's
-	// effector IS the band's owner; the fallback exists only so a nil arbiter
+	// ONE INSTANCE, AND NONE BUILT TO BE THROWN AWAY. The arbiter's effector
+	// IS the band's owner, so none is constructed when an arbiter is supplied —
+	// which is every production path. The fallback exists only so a nil arbiter
 	// cannot take the ticker down, and it builds the one instance too.
 	if nar == nil {
 		nar = newDirector(nil, newMastercontrol(nil, p.Send))
@@ -201,8 +197,8 @@ func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx 
 // shared context first (its deferred cancel), so this only drains: it blocks
 // until the in-flight cycle's feed fetches and the seen-store save have
 // finished, leaving the cache directory quiescent before teardown. Without it a
-// headless run's t.TempDir cleanup raced the ticker's still-in-flight disk
-// write ("directory not empty" under -race on Linux). It must be called with no
+// headless run's t.TempDir cleanup races the ticker's still-in-flight disk
+// write ("directory not empty"). It must be called with no
 // lock the ticker acquires — the cycle's watch tie takes livePipelines.mu — so
 // stopAll waits outside that lock.
 func (t *tickerDeck) stop() {
@@ -232,7 +228,7 @@ func (t *tickerDeck) run(ctx context.Context) {
 		case <-t.rescope:
 			// NEITHER DOES A SURFACE SWAP (D-73). The fence just moved between
 			// the listener's filter and the station's service area, and a tape
-			// that re-adapted up to two minutes later is not "it just works".
+			// that re-adapts up to two minutes later is not "it just works".
 			t.cycle(ctx)
 		case <-rotate.C:
 			t.send(tty.TickerAdvanceMsg{}) // the 90s lane rotation; the tty skips it when ≤1 lane is active
@@ -327,18 +323,16 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 // order, the Composer decides what is said, and the Reader decides how it
 // sounds. Any one of those decided here would be a second authority on it.
 //
-// WHAT WENT WITH THE SWAP, and why none of it is a loss:
+// WHAT IT DOES NOT HOLD, and why:
 //
-//   - The `running` slot. "Only one takeover at a time" is the schedule's
-//     invariant now — one card holds the air — and a burst arriving while
-//     another reads JOINS THE RAIL instead of being dropped (DR-3). The old
-//     behaviour left a hazard unread until the next cycle rediscovered it, and
-//     MVS-D-56 named that as the reason for the lineup in the first place.
-//   - The `breakers` wait set. The read runs on the pump's worker now, and the
-//     pump drains every dispatched effect before it stops (R5-B-07 still holds,
-//     one layer down).
-//   - `railBurst`. The Director plans from the arrivals, so the app no longer
-//     plans at all — one planner rather than two agreeing by luck.
+//   - No running slot. "Only one takeover at a time" is the schedule's
+//     invariant — one card holds the air — and a burst arriving while
+//     another reads JOINS THE RAIL instead of being dropped (DR-3), so no
+//     hazard waits unread for the next cycle to rediscover it (MVS-D-56).
+//   - No wait set. The read runs on the pump's worker, and the pump drains
+//     every dispatched effect before it stops (R5-B-07, one layer down).
+//   - No plan. The Director plans from the arrivals, so the app does not
+//     plan at all — one planner rather than two agreeing by luck.
 func (t *tickerDeck) startTakeover(fresh []globalfeed.Event) {
 	// STANDBY HOLDS THE BURST; IT DOES NOT SPEND IT (MVS-D-78).
 	//
@@ -376,7 +370,7 @@ func (t *tickerDeck) startTakeover(fresh []globalfeed.Event) {
 }
 
 // tell hands an event to the Director, or drops it when there is no schedule —
-// the older tests build a deck with no station around it.
+// tests build a deck with no station around it.
 func (t *tickerDeck) tell(ev lineup.Event) {
 	tellUnder(&t.mu, &t.emit, ev)
 }
@@ -417,18 +411,17 @@ func arrivalsOf(fresh []globalfeed.Event) []lineup.Arrival {
 			HasPoint: e.HasPoint,
 			Test:     e.Fabricated, // it takes no real hazard's place (FR-4.4)
 			// THE SIGNIFICANCE REACH TRAVELS WITH THE ARRIVAL (BD-6, C-3).
-			// Without it Fence.Admits measured every disaster against zero
+			// Without it Fence.Admits measures every disaster against zero
 			// miles of reach, so the ruling's own admit-case — an M7.5 in Los
-			// Angeles, ~120 mi, to a listener with a 50-mile radius — was
-			// refused by the fence even once the producer stopped dropping it.
+			// Angeles, ~120 mi, to a listener with a 50-mile radius — would be
+			// refused by the fence even though the producer keeps it.
 			ReachMi: reachMiOf(e),
-			// THE KEY, NOT THE VERDICT (D-122). This said `Tracked: true` on the
-			// grounds that "these events already passed the deck's own scoping",
-			// which was true of the scope that planned the card and became false
-			// the moment the operator crossed to the console: the fence moves to
-			// the transmitter, and a frozen `true` waved the alert through it
-			// without measuring anything. The fence now holds the tie and this
-			// holds the name to look it up by.
+			// THE KEY, NOT THE VERDICT (D-122). "These events already passed the
+			// deck's own scoping" is true of the scope that planned the card and
+			// false the moment the operator crosses to the console: the fence
+			// moves to the transmitter, and a frozen `Tracked: true` would wave
+			// the alert through it without measuring anything. The fence holds
+			// the tie and this holds the name to look it up by.
 			//
 			// AN ID THE NORMALIZER REFUSES YIELDS "", which no fence tracks —
 			// the same guard scopeEvents states, on the same reasoning.
@@ -480,10 +473,10 @@ func subjectOf(e globalfeed.Event) string {
 func (t *tickerDeck) fence() lineup.Fence {
 	// IT ASKS WHAT THE RAIL IS SCOPED TO, NOT WHAT THE LISTENER SET (D-73). On
 	// the console that is the station's service area; on Observer it is the
-	// listener's own filter, which is what this always was.
+	// listener's own filter.
 	//
-	// A DECK WITHOUT A SCOPE IS "ALL", not a panic — the older tests build one
-	// by hand, and the rail is the one path that would dereference it.
+	// A DECK WITHOUT A SCOPE IS "ALL", not a panic — tests build one by hand,
+	// and the rail is the one path that would dereference it.
 	s := t.currentScope()
 	if !s.set {
 		return lineup.Fence{} // All: no radius, and the ladder's unfenced order
@@ -506,7 +499,7 @@ func (t *tickerDeck) fence() lineup.Fence {
 // and the feed's filter, and the rule they are keeping is that those two must
 // answer the SAME way about one zone-only hazard. Two copies of this expression
 // is exactly how they would come to disagree — one of them widened, one of them
-// not — which is the failure D-122 already cost us once.
+// not — which is the failure D-122 guards against.
 //
 // A DECK WITH NO SEVERE INDEX FOLLOWS NOTHING, which is the safe direction: a
 // zone-only alert is refused rather than admitted unmeasured.
@@ -561,15 +554,12 @@ func notNew(events, fresh []globalfeed.Event) []globalfeed.Event {
 // defaultBurstMax is how many alert reads one burst spends with no listener
 // setting (read-order-design.md, "the default is 5 alerts").
 //
-// IT IS THE ONLY BOUND, AND IT APPLIES AT ADMISSION (DR-3). What it replaced
-// bounded twice — by count when the burst was chosen and again by TIME while it
-// was read — so whichever hazards sorted last were the ones a slow read
-// silenced, permanently under sustained arrivals. Two red-team rounds found the
-// same defect in that shape and each fix moved the boundary: a per-lane floor,
-// then a time budget derived from the count, and a sweep still broke it at
-// about 8.1 s a read. The HUM LEAD's ruling was that the ordering is not a
-// constant to be tuned but a preference the listener sets, and T4.1 is the
-// surface that sets it.
+// IT IS THE ONLY BOUND, AND IT APPLIES AT ADMISSION (DR-3). A second bound by
+// TIME while the burst is read would make whichever hazards sort last the ones
+// a slow read silences, permanently under sustained arrivals — and neither a
+// per-lane floor nor a time budget derived from the count closes that. The
+// ordering is not a constant to be tuned but a preference the listener sets
+// (the HUM LEAD's ruling), and T4.1 is the surface that sets it.
 //
 // Anything past the Max is DIVERTED, not dropped: the listener is told the
 // count, which is why `Plan` states it as a conservation law rather than a
@@ -648,11 +638,11 @@ func (t *tickerDeck) tapeItems(stack []globalfeed.Event) []tty.TickerItem {
 //
 // Filtered with no default location set shows NOTHING, rather than silently
 // falling back to the global stack the UI says is scoped away.
-// THE WATCHLIST IS NO LONGER A PARAMETER (D-73). It was the ORIGIN — the
-// listener's default location — and the origin now comes from the scope, which
-// is the station's on the console. Leaving it in the signature would leave the
-// next reader a spare answer to the question this function just stopped asking
-// it, which is how a fence comes to be measured from two places.
+// THE WATCHLIST IS NOT A PARAMETER (D-73). The ORIGIN comes from the scope,
+// which is the listener's default location on Observer and the station's on
+// the console. A watchlist in the signature would leave the next reader a
+// spare answer to a question this function does not ask, which is how a fence
+// comes to be measured from two places.
 //
 // A DECK WITHOUT A SCOPE IS "ALL", not a panic — the same rule `fence()` states,
 // and for the same reason: a deck built for one narrow question has neither a
@@ -681,9 +671,9 @@ func laneItems(rows []severe.Row) []tty.TickerItem {
 	out := make([]tty.TickerItem, 0, len(rows))
 	for _, r := range rows {
 		// EXPLICIT, with no default. A row whose tab has no lane must be
-		// dropped, not guessed at: the old form defaulted to Advisory, so a new
-		// lane-eligible tab would have been labelled "Advisory" on the band and
-		// nothing would have said otherwise.
+		// dropped, not guessed at: a default of Advisory would label a new
+		// lane-eligible tab "Advisory" on the band, and nothing would say
+		// otherwise.
 		var cat tty.TickerCategory
 		switch r.Tab {
 		case severe.TabEmergency:
@@ -715,14 +705,12 @@ func laneItems(rows []severe.Row) []tty.TickerItem {
 // unchanged. globalfeed.Lane and tty.TickerCategory are both aliases of
 // category.Category, so there is nothing here to translate.
 //
-// TRANSLATING HERE IS THE BUG (#15). A four-arm switch over the lanes, with a
-// default of Warnings, has no arm for LaneEmergency — so an Evacuation Immediate
-// laned Emergency by the feed is relabelled a Warning on its way to the band,
-// shown in warning colours beside a
-// thunderstorm warning. The window and the read ladder had it right; only the
-// screen was wrong. C-2 pinned the ruling where the lane is decided during
-// 0.14.0, and this layer, the one that delivers the lane to a listener, was
-// never taught it.
+// TRANSLATING HERE IS THE HAZARD (#15). A four-arm switch over the lanes, with
+// a default of Warnings, has no arm for LaneEmergency — so an Evacuation
+// Immediate laned Emergency by the feed would be relabelled a Warning on its
+// way to the band, shown in warning colours beside a thunderstorm warning,
+// while the window and the read ladder had it right. C-2 pins the ruling where
+// the lane is decided; this is the layer that delivers the lane to a listener.
 //
 // A per-lane switch is a producer/consumer pair with nothing checking that the
 // consumer knows every value the producer can emit, and a default arm makes

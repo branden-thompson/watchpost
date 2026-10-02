@@ -133,11 +133,11 @@ func TestAStructuralCardIsNeverTheOneThatFallsOff(t *testing.T) {
 	// AND EXACTLY ONE CARD WAS SHED, which is what the count being over the
 	// RUNNING ORDER rather than the whole track actually buys.
 	//
-	// THE STRUCTURAL CHECK ABOVE DID NOT CATCH THIS. Counting every card sheds
+	// THE STRUCTURAL CHECK ABOVE CANNOT CATCH THIS. Counting every card sheds
 	// one EXTRA — `lastVisible` never picks a structural card, so the transition
-	// survives either way and a second report falls off to make room for it.
-	// Mutant mAY3 survived on exactly that gap: I asserted the structural card
-	// was safe and never that the reports were.
+	// survives either way and a second report falls off to make room for it
+	// (mutant mAY3). Asserting the structural card is safe says nothing about
+	// the reports.
 	if got := len(runningOrder(out)); got != MainTrackCap {
 		t.Errorf("the running order holds %d reports after an insert, want %d — "+
 			"a structural card is costing a report its slot", got, MainTrackCap)

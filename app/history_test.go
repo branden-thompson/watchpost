@@ -142,7 +142,7 @@ func (n *nowOnly) Fetch(ctx context.Context, l temperature.Lattice, now time.Tim
 // D-166, D-173): the hours before the current one that were recorded are
 // drawn in their own hours - not the current hour stretched under them - and
 // the layers say so with a RECORDED chip after their source's. With nothing
-// recorded, the current hour is stretched as before (the cold start).
+// recorded, the current hour is stretched under the loop (the cold start).
 func TestAPastHourIsReplayedFromTheHistory(t *testing.T) {
 	now := tempNow
 	anchor := now.Truncate(time.Hour)

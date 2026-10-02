@@ -12,10 +12,9 @@ import (
 )
 
 // Red-team 0.9.0 C-1: two overlapping starts must never orphan an engine
-// goroutine — every stream is reachable from Halt. Before the fix this
-// failed 50 runs in 50.
+// goroutine — every stream is reachable from Halt.
 func TestConcurrentStartsNeverOrphanAStream(t *testing.T) {
-	for iter := 0; iter < 20; iter++ { // bounded: before the fix every round of the 50 tried leaked; 20 keeps the suite fast
+	for iter := 0; iter < 20; iter++ { // bounded: a leak shows in every round; 20 keeps the suite fast
 		e, _ := New(&fakeOutput{}, "watchpost/test (t@example.com)", func(Status) { time.Sleep(2 * time.Millisecond) })
 		var mu sync.Mutex
 		var ctxs []context.Context

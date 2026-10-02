@@ -349,10 +349,10 @@ func mapDetailLayers() []mapDetailLayer {
 
 // mapDetailLevels are the levels in the picker's order (D-67).
 func mapDetailLevels() []tuimaps.Detail {
-	return []tuimaps.Detail{tuimaps.DetailEssential, tuimaps.DetailWeather, tuimaps.DetailFull} // D-144: Standard and Full drew the same offered switches
+	return []tuimaps.Detail{tuimaps.DetailEssential, tuimaps.DetailWeather, tuimaps.DetailFull} // D-144: Standard and Full would draw the same offered switches
 }
 
-// detailLevelByKey reads the file's word; a saved "standard" is All now
+// detailLevelByKey reads the file's word; a saved "standard" reads as All
 // (D-144), and anything else Weather's, the default (D-67).
 func detailLevelByKey(key string) tuimaps.Detail {
 	if key == tuimaps.DetailStandard.String() {

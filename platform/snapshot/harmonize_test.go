@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// B1 red-team #2: harmonize/fillFrom shipped without direct tests. These pin
+// B1 red-team #2: direct tests of harmonize/fillFrom. These pin
 // the OQ-9 rule: NWS wins outright; secondaries fill nil fields only, with
 // fill_from provenance; no blending; nws-first order regardless of config
 // position (probe-verified order [a,nws,b] -> [nws,a,b]).
@@ -117,10 +117,10 @@ func TestRehydrateSparseObsFromForecast(t *testing.T) {
 // enough" is a stable fact rather than a failure, and a failure would leave the
 // row loading forever.
 //
-// This is the half that was ASSERTED and not tested when the bound landed: the
-// claim was that the forecast would fill the gap, and it does — but only for an
-// observation that EXISTS. An absent one returns early on Source.Provider == ""
-// and the row stays blank, which is exactly what shipped for an hour.
+// This is the half the bound depends on: the forecast fills the gap only for
+// an observation that EXISTS. An absent one returns early on
+// Source.Provider == "" and the row stays blank — so the provider returns
+// provenance, and this pins that the forecast then fills it.
 func TestAnObservationWithNoStationIsFilledFromTheForecast(t *testing.T) {
 	now := time.Date(2026, 9, 5, 13, 30, 0, 0, time.UTC)
 	l := &Location{

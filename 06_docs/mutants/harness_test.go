@@ -10,19 +10,15 @@ import (
 	"testing"
 )
 
-// The harness decides whether a rule is pinned, and nothing checked that IT
-// works. Three of its verdicts were wrong at least once on 0.14.0: a crash read
-// as SURVIVED, a traceback read as a verdict, and a scope too narrow to run the
-// tests that catch a mutant.
+// The harness decides whether a rule is pinned, and these tests check that IT
+// works: a crash must not read as SURVIVED, a traceback must not read as a
+// verdict, and a scope must be wide enough to run the tests that catch a mutant.
 //
-// THE SHELL CONTROLS THAT CAME BEFORE THESE CERTIFIED ALMOST NOTHING. An
-// independent review sabotaged run.sh ten realistic ways and NINE passed all
-// four of them green — including deleting the crash-is-CAUGHT rule that the
-// controls' own header cited as a wrong they prevent, deleting the green-baseline
-// gate, and re-arming the restore trap above the clean-tree check, which is the
-// regression that once ate a developer's uncommitted work. Four controls
-// exercising one scope, one clean tree and one code path do not pin an
-// instrument with that many branches.
+// SHELL CONTROLS ALONE CERTIFY ALMOST NOTHING. Four controls exercising one
+// scope, one clean tree and one code path do not pin an instrument with that
+// many branches: run.sh can lose the crash-is-CAUGHT rule, lose the
+// green-baseline gate, or arm the restore trap above the clean-tree check (which
+// eats a developer's uncommitted work) and still pass all four green.
 //
 // These run against a PURPOSE-BUILT MODULE rather than the real repository, so a
 // scenario can make the baseline red, or make a test panic, without any of that
@@ -84,8 +80,8 @@ func TestAllowedRefusesNegatives(t *testing.T) {
 // commitAll stages everything, including UNTRACKED files, and commits.
 //
 // `commit -a` does not stage an untracked file, so a scenario that adds a new
-// test left the probe dirty and the harness refused it before deciding anything
-// — every case reported SKIPPED.
+// test would leave the probe dirty and the harness would refuse it before
+// deciding anything — every case would report SKIPPED.
 func commitAll(t *testing.T, dir, msg string) {
 	t.Helper()
 	for _, args := range [][]string{
@@ -143,8 +139,8 @@ func quote(s string) string { return `"""` + s + `"""` }
 // TestTheHarnessReportsEachVerdictWithItsExitCode.
 //
 // BOTH THE TEXT AND THE CODE. A driver that branches on the exit status rather
-// than on stdout would have been misled by a harness whose text was right and
-// whose codes were all zero, and the shell controls checked only the text.
+// than on stdout is misled by a harness whose text is right and whose codes are
+// all zero, so checking the text alone is not enough.
 func TestTheHarnessReportsEachVerdictWithItsExitCode(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -167,21 +163,20 @@ func TestTheHarnessReportsEachVerdictWithItsExitCode(t *testing.T) {
 	}
 }
 
-// TestACrashIsCaughtRatherThanSurvived is the rule the shell controls did not
-// cover, and the one a sabotage removed while all four still passed.
+// TestACrashIsCaughtRatherThanSurvived pins a rule shell controls do not cover:
+// removing it leaves them all passing.
 //
 // A panic on a goroutine takes the test PROCESS down, so no test ever prints
 // "--- FAIL" and a harness that decides by grepping for that line reports
 // SURVIVED — understating coverage, which sends someone hunting for a test that
 // already exists. The exit code is the honest signal.
 //
-// **The probe must crash deterministically, and once it did not.** Signalling
-// completion from a `defer` runs that signal DURING the panic's unwinding, so
-// the waiting goroutine woke, the test returned and the binary could exit 0
-// before the panic landed — reporting SURVIVED. It failed on Linux roughly one
-// run in two while passing on macOS, which is the shape of a race rather than a
-// platform difference. So the probe closes its channel only on the path that
-// does not panic, and a mutated probe blocks until the crash.
+// **The probe must crash deterministically.** Signalling completion from a
+// `defer` runs that signal DURING the panic's unwinding, so the waiting goroutine
+// can wake, the test return and the binary exit 0 before the panic lands —
+// reporting SURVIVED on some runs and some platforms, which is the shape of a
+// race. So the probe closes its channel only on the path that does not panic,
+// and a mutated probe blocks until the crash.
 func TestACrashIsCaughtRatherThanSurvived(t *testing.T) {
 	t.Parallel()
 	dir := probeRepo(t)
@@ -215,7 +210,7 @@ func TestAllowedRefusesNegatives(t *testing.T) {
 //
 // A mutant is only evidence against a GREEN baseline: with a failing test in the
 // tree, every mutant looks caught and the whole sweep reports coverage that is
-// not there. Deleting that gate passed all four shell controls.
+// not there. Shell controls alone do not notice that gate deleted.
 func TestTheHarnessRefusesAnUnmutatedTreeThatIsAlreadyRed(t *testing.T) {
 	t.Parallel()
 	dir := probeRepo(t)
@@ -237,10 +232,10 @@ func TestAlreadyRed(t *testing.T) { t.Fatal("this tree is red before any mutatio
 
 // TestTheHarnessRefusesADirtyTreeAndLeavesItAlone.
 //
-// It refuses because a mutant needs a clean base. It must also LEAVE THE DIRT:
-// the restore trap was once armed above this check and fired on the refusal
-// path, reverting the uncommitted work of whoever ran it seconds after telling
-// them nothing would be done.
+// It refuses because a mutant needs a clean base. It must also LEAVE THE DIRT: a
+// restore trap armed above this check fires on the refusal path, reverting the
+// uncommitted work of whoever ran it seconds after telling them nothing would be
+// done.
 func TestTheHarnessRefusesADirtyTreeAndLeavesItAlone(t *testing.T) {
 	t.Parallel()
 	dir := probeRepo(t)
@@ -292,11 +287,10 @@ func TestTheHarnessRestoresWhatItMutates(t *testing.T) {
 //
 // THE GREEN-BASELINE GATE SAMPLES ONCE, AND THAT IS NOT ENOUGH. A test that
 // fails 1-in-N passes the baseline and then fails on the mutated run for its own
-// reasons; the harness read that as evidence about the RULE. It happened on
-// 0.14.0 — mH0 was reported CAUGHT by a panicking-executor test while the
-// machine was loaded, and mH0 mutates a remainder guard on a hold. The rule was
-// unpinned, and the false verdict is what hid it, for long enough that the
-// mutation was committed and the whole suite went green over it.
+// reasons; a harness that reads that as evidence about the RULE reports CAUGHT
+// for a rule nothing pins — a panicking-executor test flaking under load can
+// "catch" mH0, a remainder guard on a hold — and the false verdict hides the gap
+// long enough for a mutation to be committed under a green suite.
 //
 // The flake is modelled deterministically with a counter on disk: pass once (the
 // baseline), fail afterwards (the mutated run, and the attribution re-run). A

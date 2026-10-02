@@ -7,9 +7,9 @@ package tty
 // progressively shorter forms, each built only when the wider one did not fit.
 // A second box drawer here would be a second place for the frame to drift.
 //
-// AND THE EDITION ARRIVES AS A WORD, NOT A RENAME, which `sgr.go` has said since
-// 2026-08-30: "Broadcaster is the station-running dashboard a later version
-// brings, and it will pass its own word through here."
+// AND THE EDITION ARRIVES AS A WORD, NOT A RENAME, as `sgr.go` says:
+// "Broadcaster is the station-running dashboard a later version brings, and it
+// will pass its own word through here."
 
 import (
 	"strings"
@@ -42,9 +42,9 @@ func TestTheConsoleHasAMasthead(t *testing.T) {
 // and the masthead is the only thing that says which one you are looking at.
 func TestTheMastheadNamesTheRightEdition(t *testing.T) {
 	// THE TITLE ROW, NOT THE WHOLE BLOCK. "ctrl+o  Observer" is a CONTROL and
-	// belongs there — it is the swap back, and the reference draws it. The first
-	// version of this test searched the whole masthead and failed on the one
-	// mention that is supposed to be there.
+	// belongs there — it is the swap back, and the reference draws it. A search
+	// of the whole masthead fails on the one mention that is supposed to be
+	// there.
 	title := stripANSITest(headerOf(t, 150)[0])
 	if strings.Contains(title, render.EditionObserver) {
 		t.Errorf("the console's title row says %q:\n%s", render.EditionObserver, title)
@@ -101,14 +101,10 @@ func TestTheMastheadCarriesNoStationIdentity(t *testing.T) {
 
 // THE MASTHEAD IS THE OBSERVER'S, DIFFERING ONLY IN THE EDITION WORD.
 //
-// THE HUM LEAD ASKED WHY IT WAS DIFFERENT, AND THE ANSWER WAS THAT I HAD
-// DEVIATED FROM THE MOCK: the version was dropped from the title, the `Updated:`
-// stamp was replaced with an invented "ON AIR / STANDBY", and the API summary
-// was left out entirely. The reference draws all three.
-//
-// The stamp was the worst of the three — it was substituted on my own reasoning
-// that the STATION line already carries state, which is a UX ruling that was not
-// mine to make.
+// THE REFERENCE DRAWS ALL THREE: the version in the title, the `Updated:`
+// stamp, and the API summary. The stamp matters most — an invented "ON AIR /
+// STANDBY" in its place, on the reasoning that the STATION line already
+// carries state, is a UX ruling the mock does not make.
 func TestTheMastheadDrawsWhatTheReferenceDraws(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true

@@ -2,22 +2,21 @@ package main
 
 // identity_test.go — the published tree names no person and no machine.
 //
-// THIS REPOSITORY IS PUBLIC, and the class has now leaked twice. A 0.14.0 sweep
-// deleted 32 pprof profiles for embedding a home directory and did not gate the
-// class, so it returned in a text profile, nine benchmark overlays and an
-// archived spike script — 22 files across two pushed branches, found by four
-// independent reviewers on the same day.
+// THIS REPOSITORY IS PUBLIC, and the class rides in on anything a tool writes
+// out: pprof and text profiles embed a home directory, and so do benchmark
+// overlays and archived spike scripts. Deleting the files without gating the
+// class lets it straight back in.
 //
-// THE RULE EXISTED AND WAS SCOPED TO ONE FILE. `scripts/quality/lint-ledger.sh`
+// A RULE SCOPED TO ONE FILE IS NOT ENOUGH. `scripts/quality/lint-ledger.sh`
 // refuses exactly these patterns, and refuses them only in the P10 ledger mirror
 // — then prints "no machine paths, no harness paths". A rule applied to one file
-// while its class is live in twenty-one others is the shape this project calls a
+// while its class can live in any other is the shape this project calls a
 // verifier that cannot verify.
 //
 // SO THIS ASKS THE WHOLE INDEX. It is deliberately a different question from
 // `scripts/quality/exposure-scan.py`, which surveys and reports and whose own
-// header says it is "a survey, not a gate": a survey nobody runs is what let the
-// count sit published and unacted-on.
+// header says it is "a survey, not a gate": a survey nobody runs leaves what it
+// counts published and unacted-on.
 
 import (
 	"os"
@@ -35,8 +34,7 @@ import (
 //
 // EACH CARRIES WHAT IT COSTS A READER, because a gate that only says "refused"
 // teaches nobody why. These are the same expressions lint-ledger.sh applies to
-// the ledger mirror, plus the harness-scratchpad class it does not know about —
-// which was the larger of the two leaks.
+// the ledger mirror, plus the harness-scratchpad class it does not know about.
 type identityPattern struct {
 	name string
 	re   *regexp.Regexp
@@ -201,8 +199,8 @@ func identityRules(t *testing.T) []identityPattern {
 }
 
 // ONE DEFINITION, OR THE NEXT RENAME FINDS A COPY. Every gate that is not Go must
-// ask tools/internaltrees; a private copy of the old two-name pattern in any of
-// them is the defect package trees was written to remove.
+// ask tools/internaltrees; a private copy of the pattern in any of them is the
+// defect package trees exists to remove.
 //
 // IT ASSERTS AN EXECUTION, NOT A MENTION. Every consumer names the rule in a
 // comment directly above its call, so a check for the string alone stays green
@@ -258,8 +256,8 @@ var tripleQuoted = regexp.MustCompile(`(?s)""".*?"""|'''.*?'''`)
 
 // TestTheOneTreeRuleCheckSeesThroughAComment is the positive control for the test
 // above: the commented-out form must FAIL the check, and the live form must
-// pass it. Without this control, a `withoutComments` that stopped stripping
-// would leave the original hole open and nothing would say so.
+// pass it. Without this control, a `withoutComments` that stops stripping
+// would reopen the hole and nothing would say so.
 // identity-gate: the control for the check above.
 func TestTheOneTreeRuleCheckSeesThroughAComment(t *testing.T) {
 	commented := "# TREES=$(go run ./tools/internaltrees)\nexit 0\n"

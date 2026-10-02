@@ -165,8 +165,8 @@ func TestADroppedCardCanBeRestoredLongAfterwards(t *testing.T) {
 	}
 }
 
-// FR-3.4: "an operator-placed card reports FromOperator." This is the writer
-// `Origin.FromOperator` has never had.
+// FR-3.4: "an operator-placed card reports FromOperator." This pins the writer
+// of `Origin.FromOperator`.
 func TestARestoredCardIsAttributableToTheOperator(t *testing.T) {
 	d := threeQueued(t)
 	d, _ = d.Step(Dropped{ID: ReadID("two")})
@@ -244,8 +244,8 @@ func TestARestoredTakeoverGoesBackOnTheRail(t *testing.T) {
 //
 // Stopping a read in progress is a different act with a different sound, and it
 // pairs its own release (DR-24). Taking the card out here would leave the band
-// holding a callout for a read that had stopped — which is DR-24's original
-// defect, arriving through the operator's control instead of the schedule's.
+// holding a callout for a read that had stopped — which is the defect DR-24
+// rules out, arriving through the operator's control instead of the schedule's.
 //
 // THE OPERATOR IS NOT REFUSED SOMETHING THEY NEED: the control for "stop
 // talking" is the station's, not the running order's.
@@ -268,11 +268,11 @@ func TestTheCardOnTheAirCannotBeDropped(t *testing.T) {
 
 // AN UNDO THAT CANNOT BE PERFORMED MUST NOT CONSUME THE UNDO (F-74).
 //
-// `onRestored` took the card off the pile BEFORE the proposal and the queue
-// could fail, and every failure path returned the Director it had already
-// mutated. So a restore that could not be completed destroyed the pile entry
-// and put nothing back — the operator's one recovery, spent on nothing, with no
-// way to tell it had happened.
+// A card taken off the pile BEFORE the proposal and the queue can fail, with
+// every failure path returning the Director already mutated, would let a
+// restore that cannot be completed destroy the pile entry and put nothing back
+// — the operator's one recovery, spent on nothing, with no way to tell it had
+// happened.
 //
 // IT IS REACHED THE ORDINARY WAY. ReadID is a pure function of the ref, so a
 // location dropped and then re-queued by the rotation is holding the identity
@@ -301,13 +301,12 @@ func TestARestoreTheScheduleRefusesKeepsTheCardOnThePile(t *testing.T) {
 	}
 }
 
-// D-44 SUPERSEDED THE OTHER HALF OF THIS ROW. A test stood here that dropped a
-// TRANSITION and asserted the pile kept it, because a structural card can never
-// be re-proposed. `onDropped` now refuses a structural card outright — the
-// operator never saw it, so the drop cannot have meant it — which makes that
-// scenario unreachable rather than merely handled. The rule it was protecting is
-// pinned by TestARestoreTheScheduleRefusesKeepsTheCardOnThePile above, and the
-// refusal itself by TestTheOperatorCannotAddressAStructuralCard.
+// A DROPPED TRANSITION NEVER REACHES THE PILE (D-44). `onDropped` refuses a
+// structural card outright — the operator never saw it, so the drop cannot have
+// meant it — which makes that scenario unreachable rather than merely handled.
+// A refused restore keeping its card is pinned by
+// TestARestoreTheScheduleRefusesKeepsTheCardOnThePile above, and the refusal
+// itself by TestTheOperatorCannotAddressAStructuralCard.
 
 // D-42 (HUM LEAD, 2026-09-10): "transition cards are NEVER Origin.fromOperator."
 //

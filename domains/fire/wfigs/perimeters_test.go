@@ -87,8 +87,8 @@ func TestTheMapReadsEveryIncident(t *testing.T) {
 }
 
 // TestABoxsPerimetersAreDecodedOnce is W14's P-7: a box's perimeters (up to
-// ~378 KB) are served from the cache on every map ask, and were decoded
-// again each time. The same box's same body is decoded once.
+// ~378 KB) are served from the cache on every map ask, and the same box's
+// same body is decoded once, not again each time.
 func TestABoxsPerimetersAreDecodedOnce(t *testing.T) {
 	body, err := os.ReadFile("testdata/perimeters.json")
 	if err != nil {

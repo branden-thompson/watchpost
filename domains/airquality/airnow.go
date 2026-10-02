@@ -37,10 +37,10 @@ type Provider struct {
 	get  Getter
 	base string
 	// memo is the file's parse by the UTC hour it was read in (W14, P-7):
-	// served from the cache on every map ask, the ~1.9 MB file was parsed
-	// again each time. The parse reads the moment only to the hour - each
-	// area's today, a whole-hour offset - so an hour's parse is its own.
-	// Two entries: the hour, and the one before it at the turn.
+	// the file is served from the cache on every map ask, and without the memo
+	// each ask parses its ~1.9 MB again. The parse reads the moment only to the
+	// hour - each area's today, a whole-hour offset - so an hour's parse is its
+	// own. Two entries: the hour, and the one before it at the turn.
 	memo *bodymemo.Memo[int64, []Area]
 }
 

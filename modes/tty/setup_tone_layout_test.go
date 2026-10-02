@@ -9,10 +9,8 @@ import (
 
 // ONE CLASS PER LINE, at every width.
 //
-// The classes were laid two abreast — first padded to a common width, then with
-// each sub-column sized to its own labels. Both are gone: six rows of one thing
-// each is a list, and the eye runs down a single column of state words instead
-// of scanning across a gap and back.
+// Six rows of one thing each is a list, and the eye runs down a single column of
+// state words instead of scanning across a gap and back.
 
 func TestToneDrawsOneClassPerLineAtEveryWidth(t *testing.T) {
 	for _, size := range []struct {
@@ -25,7 +23,7 @@ func TestToneDrawsOneClassPerLineAtEveryWidth(t *testing.T) {
 			t.Errorf("%s: %d lines for %d classes — one class per line", size.name, len(lines), len(classRowOrder()))
 		}
 		// One toggle per line. Two would mean a class had been paired onto a
-		// neighbour's row, which is the arrangement this replaced.
+		// neighbour's row.
 		for i, l := range lines {
 			if got := strings.Count(render.Plain(l), "Enabled"); got != 1 {
 				t.Errorf("%s: line %d carries %d state words, want 1", size.name, i, got)

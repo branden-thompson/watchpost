@@ -161,8 +161,7 @@ type mapSource struct {
 var (
 	// mapLayers is every registered layer, in registration order.
 	mapLayers []mapLayer
-	// mapSources is every registered source; the first is the basemap until
-	// radar's sources join (W8).
+	// mapSources is every registered source; the first is the basemap.
 	mapSources []mapSource
 )
 

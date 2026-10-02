@@ -1,8 +1,7 @@
 package tty
 
-// view.go — frame assembly: View, modal sizing and overlay. Split from dashboard.go by the
-// quality pass (Q2, pure move); the map of where things happen is
-// docs/where-things-happen.md.
+// view.go — frame assembly: View, modal sizing and overlay. The map of where
+// things happen is docs/where-things-happen.md.
 
 import (
 	"strings"
@@ -22,9 +21,9 @@ func (d Dashboard) View() tea.View {
 	o := fl.o
 	var b strings.Builder
 	b.Grow(len(priority) + len(recent) + 8192) // one buffer for the frame, no growth copies (Q3)
-	b.WriteString("\n\n")                      // top padding: 2 blank lines (UAT 10.3, was 3 per UAT-3.1)
+	b.WriteString("\n\n")                      // top padding: 2 blank lines (UAT 10.3)
 	b.WriteString(d.header(o))
-	b.WriteString("\n")                                            // 0.12.0: the ticker band's top row is the header/ticker separator (absorbs the old blank)
+	b.WriteString("\n")                                            // 0.12.0: the ticker band's top row is the header/ticker separator
 	d.writeBody(&b, fl, priority, recent)                          // UAT 57: no footer - every control lives where it acts
 	content := frameText(b.String(), viewPadLeft, render.TextBase) // UAT 4.10: base grey; no stray trailing row (UAT 58)
 	if overlay := d.modalView(o); overlay != "" {
@@ -96,7 +95,7 @@ func (d Dashboard) renderModal(o render.Opts) string {
 	case modalAlerts:
 		return d.alertDetailsModal(o) // UAT 22
 	case modalStatus:
-		return d.floatModal(o, d.modalWidth(), "Watchpost Status", d.statusLines()) // UAT 24.2; the window covers more than the APIs now (0.14.0)
+		return d.floatModal(o, d.modalWidth(), "Watchpost Status", d.statusLines()) // UAT 24.2; the window covers more than the APIs (0.14.0)
 	case modalAbout:
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines(o)) // UAT 68
 	case modalMap:
@@ -127,8 +126,8 @@ func (d Dashboard) modalMax() int {
 	if d.modal == modalMap {
 		// U1-13: about 80% of the terminal, so the dashboard shows round it.
 		// D-159: never less than the map needs to keep its 69x12 floor under
-		// its own status, notes and radar timeline - the promise this line
-		// made and did not keep - up to the terminal's height minus 8.
+		// its own status, notes and radar timeline, up to the terminal's height
+		// minus 8.
 		base := max(d.height*80/100-5, mapMinBody.Rows+1)
 		need := mapMinBody.Rows + d.mapChromeRows(len(d.noteLines(d.mapTextW())))
 		return max(5, min(d.height-8, max(base, need)))
@@ -168,7 +167,7 @@ func (d Dashboard) modalWidth() int {
 		// than chosen twice.
 		return stretch(85)
 	case modalSevere:
-		return 130 // every column at 133 cols (the DETECTION column joined at UAT, 2026-08-28); the ladder below
+		return 130 // every column at 133 cols, DETECTION included; the ladder below
 	}
 	return 56 // help, add/lookup, remove, theme
 }
@@ -185,13 +184,12 @@ func (d Dashboard) mapWindowCols() int {
 // modalLines is the open modal's full body, wrapped exactly as the
 // component renders it — scroll bounds always match what is on screen.
 //
-// EVERY WINDOW HAS A CASE (FR-2.3). The default arm handed back HELP's lines,
-// so a window with no case of its own scrolled by help's line count — the
-// closed-set survey's one bucket-1 arm whose failure mode GROWS with every
-// window Broadcaster adds, since each new one would inherit it silently. What
-// remains is not a default: the two values that are not open windows are named,
-// and a window added later fails to compile here instead of quietly reading as
-// help.
+// EVERY WINDOW HAS A CASE (FR-2.3). A default arm that handed back HELP's
+// lines would scroll a window with no case of its own by help's line count —
+// a failure mode that GROWS with every window Broadcaster adds, since each new
+// one would inherit it silently. So there is no default: the two values that
+// are not open windows are named, and a window added later fails to compile
+// here instead of quietly reading as help.
 func (d Dashboard) modalLines() []string {
 	o := d.opts()
 	raw, w := []string(nil), d.modalWidth()
@@ -274,11 +272,11 @@ func (d Dashboard) footerModalScrollMax(o render.Opts) int {
 func (d Dashboard) footerModalChrome(o render.Opts) (width int, title string, footer []string) {
 	switch d.modal {
 	case modalSetup:
-		// SETTINGS, not "Setup / Configs". The window outgrew the mock's title:
-		// setup is what you do once, and this is where the cast, the tones and
-		// the alert scope are changed whenever. The CLI keeps `watchpost setup`
-		// — the run-it-once meaning is the right one there, and it is the
-		// pattern people expect of a tool's first run.
+		// SETTINGS, not the mock's "Setup / Configs": setup is what you do once,
+		// and this is where the cast, the tones and the alert scope are changed
+		// whenever. The CLI keeps `watchpost setup` — the run-it-once meaning is
+		// the right one there, and it is the pattern people expect of a tool's
+		// first run.
 		return d.modalWidth(), "Settings", d.setupChips(o)
 	case modalDebug:
 		// THE WARNING RIDES THE BORDER (HUM LEAD mock, 2026-09-07), so it cannot
@@ -307,11 +305,10 @@ func (d Dashboard) detailsModal(o render.Opts) string {
 		// THE REF THE LOOKUP OPENED THIS WITH, while RECENT catches up (F-42).
 		//
 		// lookupIndex is "-1 while it waits" for the rebuilt list to carry the
-		// row, and until then selectedLocation has nothing to return — so this
-		// window titled itself the literal "Location" for a frame or more after
-		// a lookup, about one run in three. The PTY journey caught it on a step
-		// named "Lookup opens Details on Vista FROM THE FIRST FRAME", which is
-		// the property that was quietly not holding.
+		// row, and until then selectedLocation has nothing to return — so without
+		// this the window would title itself the literal "Location" for a frame or
+		// more after a lookup, breaking the PTY journey's "Lookup opens Details on
+		// Vista FROM THE FIRST FRAME".
 		//
 		// The field exists for precisely this — "the location a lookup opened
 		// Details for, until its data lands" — and the title must consult it, or
@@ -328,9 +325,9 @@ func (d Dashboard) detailsModal(o render.Opts) string {
 	return d.floatModal(o, d.modalWidth(), title, d.detailLines())
 }
 
-// floatModal is THE floating-window renderer (help, forecast details, and
-// the coming About/setup modals): scrollable panel body, blue-grey tile
-// background per terminal mode (UAT 12.4), base-grey text.
+// floatModal is THE floating-window renderer (help, forecast details, About
+// and the rest): scrollable panel body, blue-grey tile background per
+// terminal mode (UAT 12.4), base-grey text.
 func (d Dashboard) floatModal(o render.Opts, width int, title string, lines []string) string {
 	fg, bg := render.ModalTone(d.darkBG)
 	return d.floatModalToned(o, width, title, lines, fg, bg)
@@ -363,12 +360,10 @@ func (d Dashboard) floatModalFooter(o render.Opts) string {
 	//
 	// IN THE COORDINATES THE PANEL SCROLLS IN (FR-5). The bodies arrive
 	// hand-inset to their own window's width and are RE-WRAPPED here, so every
-	// line below a paragraph that wrapped moves down. At 80x24 the ctrl+d
-	// window's focused scenario sat at unwrapped 11 and wrapped 14, the offset
-	// came out 1, and the panel drew lines 1..11: the cursor moved and the
-	// screen did not change — the dead keyboard the relay-fault window was
-	// fixed for on 2026-09-05, in the window next door, because that fix did
-	// its arithmetic on the unwrapped body.
+	// line below a paragraph that wrapped moves down. A focus counted on the
+	// unwrapped body lands short: at 80x24 a row at unwrapped 11 sits at wrapped
+	// 14, an offset of 1 draws lines 1..11, and the cursor moves while the screen
+	// does not change — a dead keyboard.
 	if at >= 0 {
 		at, end = wrappedIndex(lines, at, wrapAt), wrappedIndex(lines, end+1, wrapAt)-1
 	}
@@ -401,10 +396,9 @@ func (d Dashboard) floatModalToned(o render.Opts, width int, title string, lines
 	o.Width = min(o.Width, width)
 	lines = d.wrapModal(lines, o.Width)
 	// Block alone arms BOTH the base-grey text and the tile background and
-	// re-arms them after every inner reset. Running TintDefault first was
-	// the session-12 color bug: it consumed the resets Block re-arms on, so
-	// every styled span (chips, temp tints) dropped the tile background for
-	// the rest of its line.
+	// re-arms them after every inner reset. Running TintDefault first would
+	// consume the resets Block re-arms on, so every styled span (chips, temp
+	// tints) would drop the tile background for the rest of its line.
 	return o.Block(o.ScrollPanel(title, lines, d.modalScroll, d.modalMax()), fg, bg)
 }
 
@@ -421,8 +415,8 @@ func (d Dashboard) opts() render.Opts {
 // the full layout must keep before the modules minimize (UAT 49).
 const tableBreakpoint = 20
 
-// frameText finishes the frame in one pass (Q3: was three copies —
-// TrimRight, indent, TintDefault): trailing newlines dropped, every
+// frameText finishes the frame in one pass (Q3: TrimRight, indent and
+// TintDefault together): trailing newlines dropped, every
 // non-empty line indented by pad, and, with colour on, the base grey armed
 // at the start and re-armed after every SGR reset so explicitly-tinted
 // spans keep their colours and everything else reads grey (UAT 4.10).

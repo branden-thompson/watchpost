@@ -6,10 +6,10 @@ package tty
 // distinction the follow-up was written to preserve:
 //
 //   - DIAGNOSTICS are read-only checks a listener runs against reality, and are
-//     meant to SHIP. The weatherUSA outage is why: the program was correct and
-//     an upstream service was failing while APPEARING healthy — HTTP 200,
-//     audio/mpeg, correct ICY headers, well-formed MP3, and total silence. Every
-//     signal the app checks was green and the listener heard nothing.
+//     meant to SHIP. An upstream service can fail while APPEARING healthy —
+//     HTTP 200, audio/mpeg, correct ICY headers, well-formed MP3, and total
+//     silence (the weatherUSA outage) — with every signal the app checks green
+//     and the listener hearing nothing.
 //   - INJECTION fabricates an alert to exercise the takeover on demand, and
 //     ships too (0.18.0 D-152): a station operator tests their alerts as a
 //     radio station does. It is safe to ship because it cannot be mistaken -
@@ -63,11 +63,11 @@ func (d Dashboard) debugScenarios() []DebugScenario {
 // debugProseWidth is the width this window's prose wraps to: the panel's RAIL
 // budget, less the window's own inset.
 //
-// WRAPPED ONCE, AND WITH A MARGIN LEFT. Wrapping to the box width let the panel
-// wrap a second time three columns narrower, and at 80 columns the prose came
+// WRAPPED ONCE, AND WITH A MARGIN LEFT. Wrapping to the box width lets the panel
+// wrap a second time three columns narrower, and at 80 columns the prose comes
 // apart into orphan lines reading "a", "and", "correctly". Leaving the wrap to
-// the panel fixed that and cost the right margin — the panel wraps to its
-// border, and every other window in the app clears it by three. Wrapping to the
+// the panel costs the right margin — the panel wraps to its border, and every
+// other window in the app clears it by three. Wrapping to the
 // NARROWER of the two budgets does both: the panel's wrap is then a no-op, and
 // on a frame with no scroll rail the text is three cells short of what it could
 // be, which is invisible.
@@ -92,8 +92,8 @@ func (d Dashboard) debugTitle(o render.Opts, w int) string {
 
 // debugLines is the body.
 func (d Dashboard) debugLines(o render.Opts) (out []string, focusAt, focusEnd int) {
-	// ONE PARAGRAPH, WRAPPED BY ITS OWNER. Hand-wrapped literals were wrapped a
-	// second time by the panel at 80 columns and came apart into orphan lines
+	// ONE PARAGRAPH, WRAPPED BY ITS OWNER. Hand-wrapped literals are wrapped a
+	// second time by the panel at 80 columns and come apart into orphan lines
 	// ("a", "and", "correctly") — a paragraph the window wraps once cannot.
 	out = insetModalLines([]string{
 		"Tools to verify Watchpost machinery is working as intended. USE RESPONSIBLY. Audio " +
@@ -105,10 +105,10 @@ func (d Dashboard) debugLines(o render.Opts) (out []string, focusAt, focusEnd in
 
 	sc := d.debugScenarios()
 	if len(sc) == 0 {
-		// -1: NOTHING TO FOCUS, SO THE BODY SCROLLS (FR-5). It returned 0 —
-		// "hold the top" — and 0 is a focused row, so the scroll never moved: at
-		// 80x24 every line of what this window exists to say sat below the fold
-		// with no key that reached it.
+		// -1: NOTHING TO FOCUS, SO THE BODY SCROLLS (FR-5). 0 — "hold the top" —
+		// is a focused row, so the scroll would never move: at 80x24 every line of
+		// what this window exists to say would sit below the fold with no key
+		// that reached it.
 		return append(out, insetModalLines([]string{
 			"INJECTION IS NOT AVAILABLE.", "",
 			"No injector is connected to this window, so no test alert can be sent from here."},
@@ -247,10 +247,10 @@ func (d Dashboard) chooseDebug() (Dashboard, tea.Cmd) {
 
 // ModalOpen reports whether ANY of Observer's windows is showing (D-65).
 //
-// GENERALISED FROM DiagnosticsOpen. The console advertises Settings, About,
-// Status and Help in its masthead, and the Router composites whichever the
-// operator opened — one door for every window rather than a method per window,
-// which is what a second `OverlayAbout` would have become.
+// ONE DOOR FOR EVERY WINDOW. The console advertises Settings, About, Status and
+// Help in its masthead, and the Router composites whichever the operator
+// opened — one method rather than one per window, such as a second
+// `OverlayAbout`.
 func (d Dashboard) ModalOpen() bool { return d.modal != modalNone }
 
 // DiagnosticsOpen reports whether the ctrl+d window is showing (D-58).
@@ -262,7 +262,7 @@ func (d Dashboard) ModalOpen() bool { return d.modal != modalNone }
 func (d Dashboard) DiagnosticsOpen() bool { return d.modal == modalDebug }
 
 // OverlayWindow lays whichever of Observer's windows is open — and its
-// confirmation — over another surface's frame (D-58, generalised at D-65).
+// confirmation — over another surface's frame (D-58, D-65).
 //
 // IT TAKES THE BASE RATHER THAN RETURNING A PRE-COMPOSITED PAIR, and that is a
 // CORRECTNESS requirement, not a style choice. `render.Overlay` centres the
@@ -271,14 +271,14 @@ func (d Dashboard) DiagnosticsOpen() bool { return d.modal == modalDebug }
 //	x := max(0, (termWidth-Width(modal))/2)
 //	y := max(0, (Height(base)-Height(modal))/2)
 //
-// So compositing the confirmation onto the BARE WINDOW put it at x=70 in a
-// 200-column terminal — past the right edge of the 70-wide box it was meant to
-// cover — and the two rendered SIDE BY SIDE. Found in UAT, on screen, because
-// the test asserted only that the frame CHANGED.
+// So compositing the confirmation onto the BARE WINDOW would put it at x=70 in
+// a 200-column terminal — past the right edge of the 70-wide box it is meant to
+// cover — and the two would render SIDE BY SIDE. A test asserting only that the
+// frame CHANGED cannot see that.
 //
 // BOTH LAYERS GO ONTO THE SAME FULL-SIZE BASE, which is exactly what
-// `Dashboard.View` does with them and why it never had this bug. Keeping that
-// rule in one place is the point of the seam (D-56).
+// `Dashboard.View` does with them. Keeping that rule in one place is the point
+// of the seam (D-56).
 func (d Dashboard) OverlayWindow(base string, termWidth int) string {
 	if !d.ModalOpen() {
 		return base

@@ -1,8 +1,7 @@
 package tty
 
 // status.go — the [S] Watchpost Status window: uptime and version, the endpoint table, the pipelines,
-// the issues and the dumps. Split from dashboard.go by the
-// quality pass (Q2, pure move); the map of where things happen is
+// the issues and the dumps. The map of where things happen is
 // docs/where-things-happen.md.
 
 import (
@@ -23,7 +22,7 @@ import (
 //
 // ONE COLUMN. There is no REQUESTS section to sit beside PROVIDERS: its counters
 // are columns of the providers table, because httpx counts per HOST and that is
-// what the table is keyed by (HUM LEAD, UAT 2026-08-30). Every remaining block is
+// what the table is keyed by (HUM LEAD, UAT 2026-08-30). Every block is
 // a wide table with nothing to pair it with.
 func (d Dashboard) statusLines() []string {
 	o := d.opts()
@@ -85,8 +84,8 @@ func (d Dashboard) statusHeadline(o render.Opts) string {
 		note = render.Tint("· update check pending", render.Tok(render.TableMuted))
 	}
 	// The note is the first thing to go on a narrow window: the version names
-	// the build, the note only qualifies it. Without the ladder the row ran past
-	// the window's inner width and the panel re-flowed it.
+	// the build, the note only qualifies it. Without the ladder the row runs past
+	// the window's inner width and the panel re-flows it.
 	inner := d.statusInner()
 	room := max(1, inner-render.Width(left)-1)
 	right := render.FirstFit(room, ver+"   "+note, ver, "")
@@ -131,9 +130,9 @@ func statusHeader(name string) string { return " " + render.Tint(name, render.To
 // statusSections are the [S] body's blocks, each a header and its rows.
 //
 // [S] answers "is the DATA arriving?". Who is reading and which tones sound are
-// settings, and 0.14.0 briefly reported them here as well — two windows telling
-// the same story, one of which could not change it. They live in [s] Settings,
-// which is the window that owns them.
+// settings, and they live in [s] Settings, the window that owns them —
+// reporting them here too would be two windows telling the same story, one of
+// which cannot change it.
 type statusSections struct {
 	providers, maps, pipelines, issues, dumps []string
 }
@@ -252,10 +251,10 @@ func claimedRows(rows []endpointRow) int {
 //
 // The ticker's feeds and the geocoder are counted by httpx and are not snapshot
 // providers, so they have no status to show. HealthGlyph reads anything that is
-// not "ok" as a failure, which put a red ✘ on www.nhc.noaa.gov while the
-// masthead — which counts snapshot providers only — said everything was fine
-// . An unmeasured host is not a failing one, and the
-// two surfaces must not contradict each other about it.
+// not "ok" as a failure, which would put a red ✘ on www.nhc.noaa.gov while the
+// masthead — which counts snapshot providers only — says everything is fine.
+// An unmeasured host is not a failing one, and the two surfaces must not
+// contradict each other about it.
 func endpointMark(o render.Opts, r endpointRow) (glyph, tone string) {
 	// PLAIN TEXT and a separate tone, never a pre-tinted cell. The kit measures
 	// a cell by its BYTES, so an escape sequence inside one is counted as
@@ -298,11 +297,11 @@ func providerTable(o render.Opts, rows []endpointRow, who string, shape tableSha
 	// THE MARK RIDES IN THE ENDPOINT CELL rather than a column of its own.
 	//
 	// ✔ is an ambiguous-width rune: the kit's width table reads it as two cells
-	// where ours reads one, so a fixed column sized for it came out a cell adrift
-	// on every row. The fix is not to argue with the table about a rune, it is to
-	// leave the disagreement nowhere to land — inside the FILL column the kit can
-	// only ever under-pad, which PadTo corrects, and over-running is the failure
-	// that actually costs content.
+	// where ours reads one, so a fixed column sized for it comes out a cell adrift
+	// on every row. The answer is not to argue with the table about a rune, it is
+	// to leave the disagreement nowhere to land — inside the FILL column the kit
+	// can only ever under-pad, which PadTo corrects, and over-running is the
+	// failure that actually costs content.
 	//
 	// It reads better too: the endpoint carries its own health tone, so a failing
 	// host is a red NAME rather than a red mark beside a grey one.
@@ -330,7 +329,7 @@ func providerTable(o render.Opts, rows []endpointRow, who string, shape tableSha
 	// FIT IS TESTED AT THE NATURAL WIDTH, not the filled one. A filled table is
 	// exactly as wide as it was told to be, so testing that against the room
 	// always says "too wide" and the ladder falls straight to its narrowest
-	// form — which is what happened the first time.
+	// form.
 	head := render.Tok(render.ModalTitle)
 	// THE MEASURING PASS RETURNS THE NATURAL TABLE. Filling to the room
 	// available on that pass would tell statusWidth the content wants the whole
@@ -347,9 +346,9 @@ func providerTable(o render.Opts, rows []endpointRow, who string, shape tableSha
 //
 // The alternative — a slice of strings beside a map keyed by position — makes
 // the colour depend on where a column happens to sit, and this table's column
-// set VARIES BY FORM. Muting "the second cell" meant muting PROVIDERS at the
-// wide forms and STATUS at the narrow one, which is the width the app's own
-// supported floor sits at.
+// set VARIES BY FORM. Muting "the second cell" would mean muting PROVIDERS at
+// the wide forms and STATUS at the narrow one, which is the width the app's
+// own supported floor sits at.
 type tonedCell struct {
 	text string
 	tone string
@@ -402,12 +401,12 @@ const statusMarkW = 2
 // column zero and a table that starts where the header does reads as a
 // continuation of it.
 //
-// IT CANNOT DRIFT FROM modalInset, and it stays a CONST to do it. This comment
-// and columns.go's both cited the same HUM LEAD ruling while carrying their own
-// copy of the number (D-1, red team 2026-09-05) — but deriving it with
-// strings.Repeat would make it a package-level variable, which P10-06 refuses
-// and rightly: it would then be writable. The assertion below fails to COMPILE
-// if the two ever disagree, which is the stronger guarantee anyway.
+// IT CANNOT DRIFT FROM modalInset, and it stays a CONST to do it. A second
+// copy of one ruled number is a second carrier of one rule (D-1, red team
+// 2026-09-05) — but deriving it with strings.Repeat would make it a
+// package-level variable, which P10-06 refuses and rightly: it would then be
+// writable. The assertion below fails to COMPILE if the two ever disagree,
+// which is the stronger guarantee anyway.
 const statusInset = "   "
 
 // The compile-time tie. A negative or over-long index here is a build error, so
@@ -546,7 +545,7 @@ func statusRank(s string) int {
 func (d Dashboard) pipelineLines(o render.Opts, st Stats, fillTo int) []string {
 	text := render.Tok(render.TextBase)
 	// A LADDER, like the providers table: at 80 columns the full set is a cell
-	// wider than the window and the clamp ate the S off ROWS. The counters go in
+	// wider than the window and the clamp would eat the S off ROWS. The counters go in
 	// the order they are least missed — FOLDED, then PUBLISHES, then LOCATIONS —
 	// so what survives at the narrowest width is what a pipeline is judged by:
 	// its name, when it last ran, and how much it is holding.
@@ -712,7 +711,7 @@ func (d Dashboard) issueLines(o render.Opts, fillTo int, snaps ...*snapshot.Snap
 	//
 	// WRAPPED HERE, not left to the panel. The panel wraps to its own content
 	// width, which is wider than the tables by the scroll rail — so a message
-	// left to it overran the columns above it by exactly the rail. Wrapping at
+	// left to it would overrun the columns above it by exactly the rail. Wrapping at
 	// the table's width keeps the block a rectangle.
 	tailInset := "       "
 	tailW := max(20, widest(laid)-len(tailInset))
@@ -846,7 +845,7 @@ func foldWarnings(snaps []*snapshot.Snapshot) []*issue {
 			it.count++
 			// THE ROW DESCRIBES ONE OCCURRENCE — the latest. Keeping the first
 			// occurrence's endpoint, status and blame beside the last one's
-			// message produced a row that read "HTTP 502 · provider_error" over
+			// message would produce a row that reads "HTTP 502 · provider_error" over
 			// a sentence about a 404, and the blame column is the point of this
 			// table: a diagnostic that names the wrong side sends somebody to
 			// fix the wrong thing.
@@ -862,10 +861,10 @@ func foldWarnings(snaps []*snapshot.Snapshot) []*issue {
 		issues = append(issues, byKey[k])
 	}
 	// STABLE, AND TOTALLY ORDERED. Collecting from a map and sorting on a
-	// comparator that ties left the row order to Go's random map iteration:
-	// identical input produced a different table on every render, and the
-	// maxIssueRows cut then hid a different class each time. The final tiebreak
-	// makes the order a function of the data alone.
+	// comparator that ties would leave the row order to Go's random map
+	// iteration: identical input would produce a different table on every
+	// render, and the maxIssueRows cut would hide a different class each time.
+	// The final tiebreak makes the order a function of the data alone.
 	sort.SliceStable(issues, func(i, j int) bool {
 		a, b := issues[i], issues[j]
 		if fatal := a.code == snapshot.WarnProviderError; fatal != (b.code == snapshot.WarnProviderError) {
@@ -918,9 +917,9 @@ func (d Dashboard) mapSourceLines(o render.Opts, rows []endpointRow, shape table
 	}
 	table := providerTable(o, rows, "LAYERS", shape, fillTo)
 	out := append([]string{statusHeader(head)}, table...)
-	// THE WORDS UNDER IT WRAP TO THE TABLE, never widen the window: at the
-	// terminal's width the disclosure set the window's, past every modal's
-	// rule (the HUM LEAD's screenshot, 2026-09-29).
+	// THE WORDS UNDER IT WRAP TO THE TABLE, never widen the window: unwrapped,
+	// the disclosure would set the window to the terminal's width, past every
+	// modal's rule (the HUM LEAD's screenshot, 2026-09-29).
 	wrapAt := max(widest(table)-len(statusInset), 40)
 	muted := render.Tok(render.TableMuted)
 	var words []string

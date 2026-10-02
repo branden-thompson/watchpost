@@ -5,11 +5,11 @@ package app
 // HUM LEAD, UAT 2026-09-12: "fix this issues so seismic / fire / alerts show up
 // in the location pool as expected."
 //
-// TWO OF THE THREE WERE NEVER READ. `fillPoolWeather` copied the alert fields
-// and NOT `Fire` or `Seismic`, so those two marks could not appear whatever the
-// data said — D-112 fixed that by putting the pool through `weatherRow`. Alerts
-// were already being copied, which is why they are the one worth pinning at the
-// FETCH end: if they still do not show, the wiring is not where the fault is.
+// THE POOL GOES THROUGH `weatherRow` (D-112), so `Fire` and `Seismic` are copied
+// with the alert fields; a copy that skips them makes those two marks impossible
+// whatever the data says. Alerts are the one worth pinning at the FETCH end:
+// the copy carries them, so if they do not show, the wiring is not where the
+// fault is.
 
 import (
 	"slices"

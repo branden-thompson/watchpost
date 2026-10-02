@@ -6,11 +6,10 @@ package app
 // CLASSIFIED for what it can do to the air, and every seam classified as the
 // monitor's is actually REFUSED while the console holds it.
 //
-// TWO HALVES, BECAUSE MEMBERSHIP IS NOT BEHAVIOUR. D-74's own retro records why:
-// plant `y4` — "the deck plays while the console owns the air" — SURVIVED,
-// because the tests asserted `monitorHasTheAir()`, the PREDICATE, and never that
-// the audio was actually skipped. A completeness gate alone would repeat that
-// exactly.
+// TWO HALVES, BECAUSE MEMBERSHIP IS NOT BEHAVIOUR. A test that asserts
+// `monitorHasTheAir()`, the PREDICATE, and never that the audio is actually
+// skipped lets plant `y4` — "the deck plays while the console owns the air" —
+// survive (D-74). A completeness gate alone has exactly that gap.
 
 import (
 	"context"
@@ -28,11 +27,10 @@ import (
 // spySource is a liveSource that records the two things which reach a broadcast
 // IN FLIGHT — which is the whole of what the air guard is about.
 //
-// IT LIVES HERE, NOT IN THE DOMAIN. The first draft of this test added
-// `RepeatingForTest` to `synth.Source`; the HUM LEAD caught it, and he was right
-// — every `ForTest` export in the tree is in `platform/`, and a domain does not
-// learn that this package has tests. `app` declares what it needs from a source
-// (livesource.go), so `app` can also say what a fake one does.
+// IT LIVES HERE, NOT IN THE DOMAIN. Every `ForTest` export in the tree is in
+// `platform/`, and a domain does not learn that this package has tests. `app`
+// declares what it needs from a source (livesource.go), so `app` can also say
+// what a fake one does.
 type spySource struct {
 	loops   []bool
 	recasts int
@@ -94,15 +92,14 @@ type airMember struct {
 //
 // IT IS A CLOSED SET AND THE GATE PROVES IT (air_boundary_test.go): a seam added
 // to `tty.Config` with no row here FAILS, and a row naming a seam that no longer
-// exists fails too. That is the one list-shaped thing in this repo that has not
-// gone stale — `reachabilityBaseline`'s shape — and it is chosen because three
-// hand-written lists have rotted in this package's history.
+// exists fails too. It is `reachabilityBaseline`'s shape: derived from the code
+// rather than kept by hand, because a hand-written list rots.
 //
 // MEMBERSHIP IS NOT BEHAVIOUR. A row saying `airMonitor` is a claim that the seam
 // is REFUSED while the console holds the air, and the gate cannot see that by
-// reflection — so every `airMonitor` row has a behaviour test beside it. D-74's
-// own retro is why: plant `y4` survived because the tests asserted the PREDICATE
-// and never that the audio was actually skipped.
+// reflection — so every `airMonitor` row has a behaviour test beside it. A test
+// that asserts the PREDICATE and never that the audio is actually skipped lets
+// plant `y4` survive (D-74).
 var airBoundary = map[string]airMember{
 	// --- tty.Radio: the monitor's control surface -------------------------
 	"Radio.Tune":      {airMonitor, "the operator tunes their own listening; the Director's rotation uses the lower-case `tune`"},
@@ -202,11 +199,9 @@ var airBoundary = map[string]airMember{
 // ratchets BOTH ways: a seam with no row fails, and a row naming a seam that no
 // longer exists fails too.
 //
-// DERIVED, NEVER LISTED. Three hand-written lists have rotted in this package's
-// history — `handleNav`'s scrolling windows, `modalLines`' default arm, and the
-// air itself, where one entry of nineteen asked. A list of seams maintained by
-// hand would rot in exactly the same way, and this is the shape that has not:
-// `reachabilityBaseline`'s.
+// DERIVED, NEVER LISTED. A list of seams maintained by hand rots as seams are
+// added; reading them by reflection is `reachabilityBaseline`'s shape, and it
+// cannot fall behind the code.
 func TestEverySurfaceSeamIsClassifiedForTheAir(t *testing.T) {
 	seen := map[string]bool{}
 
@@ -267,9 +262,9 @@ func deckOnTheConsole(t *testing.T, console bool) (*radioDeck, *spySource) {
 	return d, src
 }
 
-// THE ONE THE HUM LEAD'S RULING WAS MEASURED ON. Observer's repeat mode reached
-// `src.Loop`, and `d.source` during a main-track read IS the Broadcaster's card
-// (BD-9) — so the card on the air looped and the line-up never advanced.
+// REPEAT ON THE CONSOLE'S AIR. Observer's repeat mode reaches `src.Loop`, and
+// `d.source` during a main-track read IS the Broadcaster's card (BD-9) — so,
+// unguarded, the card on the air loops and the line-up never advances.
 func TestObserversRepeatModeCannotLoopTheCardOnTheAir(t *testing.T) {
 	d, src := deckOnTheConsole(t, true)
 	d.SetRepeat(tty.RepeatOne, nil)
@@ -305,16 +300,16 @@ func TestObserversCastChangeCannotRecastTheCardOnTheAir(t *testing.T) {
 // THE SWAP'S SILENCING IS NOT RE-TESTED HERE, DELIBERATELY.
 //
 // `air_test.go`'s "taking the air to the console did not stop the monitor" already
-// owns that property, drives it through `takeTheAir`, and REPORTED IT the moment
-// the guard went on `Stop` — which is how the trap was found. A second assertion
-// here would be a weaker copy of a test that has already proved it can fail.
+// owns that property, drives it through `takeTheAir`, and fails if the guard on
+// `Stop` refuses the swap's own silencing. A second assertion here would be a
+// weaker copy of it.
 
 // AND THE MONITOR'S OWN TUNE STOPS AT THE CONSOLE (mZ4).
 //
 // `tune`'s FIRST act is to take the location and bump the generation, before any
 // audio is reached — so a deck whose `ref` and `gen` have not moved is a deck that
-// did not tune. Asserting the guard's PREDICATE instead would be D-74's `y4` all
-// over again, which is what a surviving mutant reported here.
+// did not tune. Asserting the guard's PREDICATE instead lets a mutant survive
+// here, as D-74's `y4` did.
 func TestTheMonitorsTuneStopsAtTheConsole(t *testing.T) {
 	d, _ := deckOnTheConsole(t, true)
 	before := d.gen

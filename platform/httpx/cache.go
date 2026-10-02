@@ -23,11 +23,11 @@ import (
 // has, and an optional disk tier (CacheDir) holding the same entries so a
 // relaunch is warm. Disk files are a one-line JSON header (redacted URL,
 // expiry, validators) followed by the raw body — inspectable, and read
-// back without decoding (UAT 73: the earlier base64 format cost a third
-// more bytes and a full copy per read). Only public weather data ever
+// back without decoding (UAT 73: a base64 body would cost a third more
+// bytes and a full copy per read). Only public weather data ever
 // lands here.
 //
-// Quality pass Q1 (plan §2.2) added the rules that keep the tiers bounded
+// Quality pass Q1's rules (plan §2.2) keep the tiers bounded
 // over weeks: a persistence floor (short-lived entries never touch disk),
 // one retention rule (an expired entry that carries validators is kept for
 // a grace so Q5 can revalidate it), an allow-list sweep of the directory,
@@ -36,7 +36,7 @@ type cache struct {
 	dir          string
 	maxDiskBytes int64         // directory cap enforced by the sweep
 	writes       chan entry    // disk writes happen on one goroutine, off the request path (UAT 73)
-	reads        chan struct{} // bounds concurrent disk reads (UAT 74): a 200-goroutine warm launch once spawned ~90 OS threads on short file syscalls
+	reads        chan struct{} // bounds concurrent disk reads (UAT 74): unbounded, a 200-goroutine warm launch spawns ~90 OS threads on short file syscalls
 	now          func() time.Time
 
 	mu         sync.Mutex
@@ -99,7 +99,7 @@ const (
 	maxLargeEntries = 6
 )
 
-// Bounds added by the quality pass (plan §2.2, §0.8).
+// Bounds from the quality pass (plan §2.2, §0.8).
 const (
 	diskFloor        = 5 * time.Minute // caller TTL must exceed this (or pass Persist) for a disk write: obs/alerts never serve a relaunch (L4-F2)
 	staleGrace       = 24 * time.Hour  // an expired entry with validators lives this long past Expires, in memory and on disk (CQ-3, PA-4)
@@ -115,7 +115,7 @@ const (
 )
 
 // Allow-list (IS-1): the sweep touches only names it wrote. `.json` is the
-// pre-UAT-73 format (593 orphans found in DISCOVER, L4-F1).
+// pre-UAT-73 format, left behind as orphans (L4-F1).
 var (
 	cacheNameRe = regexp.MustCompile(`^[0-9a-f]{64}\.(cache|json)$`)
 	tmpNameRe   = regexp.MustCompile(`^[0-9a-f]{64}\.cache\.[0-9]+\.tmp$`)
@@ -660,7 +660,7 @@ func (c *cache) stats() Stats {
 
 // flush waits until the writer has finished every item handed to it
 // (tests): queued == handled, not merely an empty queue — the item in the
-// writer's hands and the start sweep count too (loaded CI runners exposed
+// writer's hands and the start sweep count too (a loaded CI runner shows
 // both differences).
 func (c *cache) flush() {
 	if c.writes == nil {

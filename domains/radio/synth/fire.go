@@ -43,26 +43,24 @@ type FireReport struct {
 // WHOLE DAYS, and never "0 days": a fire discovered this morning reads "in the
 // last day", which is what a listener means by it.
 func oldestIncidentWords(in []snapshot.Incident, now time.Time) string {
-	// dated IS THE POINT, and its absence was a defect (red team, 2026-09-08).
-	// Without it a list where NO incident carries a discovery time fell through
-	// to oldest == 0 and spoke "reported in the last day" — a freshness claim
-	// about data that has no date at all, in a medium nobody can re-read. The
-	// comment above already promised this behaviour; the code did not have it.
+	// dated IS THE POINT. Without it a list where NO incident carries a discovery
+	// time falls through to oldest == 0 and speaks "reported in the last day" — a
+	// freshness claim about data that has no date at all, in a medium nobody can
+	// re-read.
 	// EVERY INCIDENT MUST BE DATED, not merely one of them. Handling only the
 	// all-undated case leaves a list of three where two carry no discovery date
 	// still speaking "reported in the last day" — a window computed from the dated
 	// subset and attached to the full count, when the other two could be months
-	// old. WFIGS's
-	// FireDiscoveryDateTime is nullable, so a mixed list is the ordinary case,
-	// and this is spoken output a listener cannot go back and check.
+	// old. WFIGS's FireDiscoveryDateTime is nullable, so a mixed list is the
+	// ordinary case, and this is spoken output a listener cannot go back and check.
 	oldest := 0
 	for _, i := range in {
 		if i.Discovered.IsZero() {
 			return "" // one undated incident makes the window unsayable for the whole list
 		}
 		// CEILING, NOT FLOOR (REVIEW red team, 2026-09-08). Integer division
-		// truncates, so a fire found 47 hours ago read "in the last day" and one
-		// at 95 hours read "3 days". A freshness claim that errs must err
+		// truncates, so it would read a fire found 47 hours ago as "in the last day"
+		// and one at 95 hours as "3 days". A freshness claim that errs must err
 		// OLD — telling a listener the fire information is fresher than it is
 		// runs the error in the one direction that matters on a hazard radio.
 		if h := now.Sub(i.Discovered).Hours(); h > 0 {
@@ -107,13 +105,13 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 	if h := strongest(fr.State.Hotspots); h != nil {
 		body = append(body, c.hotspotSentence(fr, *h, imperial, now))
 	}
-	// THE SUBJECT CHANGES HERE, and until now nothing said so. The hotspot lines
+	// THE SUBJECT CHANGES HERE, and this line says so. The hotspot lines
 	// above are satellite pixels inside the fire ring; everything below is a
 	// NAMED incident inside the wider incident radius. On screen the two lists
-	// carry their own headings and their own radius; on the air they ran
-	// together, so a listener heard "no hotspots within 16 miles" and then a
-	// list of fires with no way to tell which ring they belonged to
-	// (HUM LEAD, UAT 2026-09-08).
+	// carry their own headings and their own radius; on the air they run
+	// together unless something says so, and a listener hears "no hotspots
+	// within 16 miles" and then a list of fires with no way to tell which ring
+	// they belong to (HUM LEAD, UAT 2026-09-08).
 	// AN UNCONFIGURED RADIUS SAYS NOTHING rather than "within a 0 kilometer
 	// radius". The line's whole job is to name the second ring, so without one
 	// there is nothing for it to say.
@@ -136,13 +134,11 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 			outside = append(outside, in)
 		}
 	}
-	// NO HEADER BETWEEN THE TWO GROUPS ANY MORE (HUM LEAD, UAT 2026-09-08).
-	// "Nearby fires outside of your fire ring that may be worth noting are:"
-	// earned its place when the incidents arrived unannounced: it was the only
-	// thing telling a listener a second, wider ring existed. The incident-count
-	// line above now says that outright, with the radius in it, so the header
-	// restated it a sentence later and read as a second list rather than the
-	// continuation it is.
+	// NO HEADER BETWEEN THE TWO GROUPS (HUM LEAD, UAT 2026-09-08). The
+	// incident-count line above says outright that a second, wider ring exists,
+	// with the radius in it, so a header ("Nearby fires outside of your fire ring
+	// that may be worth noting are:") would restate it a sentence later and read
+	// as a second list rather than the continuation it is.
 	//
 	// The SPLIT stays. It is not about the header: it orders the fires inside
 	// the ring before the ones beyond it, and it chooses the phrasing — an

@@ -3,9 +3,9 @@
 // that records its invocation and answers with a painted status.
 //
 // WHY EXECUTION. "Can this gate fail?" is a question about what make and sh DO,
-// and a parser answers it only for the spellings its author imagined. Six blind
-// adversarial rounds each defeated a text-reading layer; none defeated the
-// executed one. So make and sh are the oracle and nothing here reads a recipe.
+// and a parser answers it only for the spellings its author imagined: a
+// text-reading layer falls to the next spelling, and an executed one does not.
+// So make and sh are the oracle and nothing here reads a recipe.
 //
 // WHY OBSERVATION. "What does this gate reach?" is the same kind of question. The
 // stubs RECORD every invocation, and the green run's record IS the reach —
@@ -25,10 +25,10 @@
 // name (FR-11.6) — then each recorded invocation (`go:test#2`) is painted red
 // alone and the gate must go red.
 //
-// WHY THE STUBS ARE A GO PROGRAM. Three rounds slipped shell into the stubs and
-// the next adversary's Criticals were bugs in that shell. The stub is
+// WHY THE STUBS ARE A GO PROGRAM. Shell in the stubs is where the bugs hide,
+// and nothing tests it. The stub is
 // tools/gateoracle/stub, built once per test process and uninstrumented (under
-// the race detector an instrumented stub cost ten times more per exec, and make
+// the race detector an instrumented stub costs ten times more per exec, and make
 // execs it thousands of times); bin/go, bin/sh and the rest are symlinks to it.
 // Every decision it makes is a Go function in this package with a unit test.
 //

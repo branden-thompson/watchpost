@@ -10,7 +10,7 @@ import (
 // Reconciling a stored cast against the Settings window (HUM LEAD, UAT
 // 2026-08-30).
 //
-// A file can name roles the window has no row for. The one that bit was
+// A file can name roles the window has no row for. The one that matters is
 // `standard`: the parent of the four report roles AND of the station.
 
 // anyHost resolves everything, so these tests measure the TREE rather than a
@@ -22,10 +22,10 @@ func (anyHost) Discovered(string) bool { return true }
 func (anyHost) Installed(string) bool  { return true }
 func (anyHost) Default() string        { return "System Voice" }
 
-// The reported bug, from the config that produced it: alerts and weather set to
-// System Voice, and a leftover `standard = Daniel` that no row could show or
-// clear. Maritime, fire, seismic AND the station's lead read in Daniel while
-// every one of those rows said System Voice.
+// A config with alerts and weather set to System Voice, and a leftover
+// `standard = Daniel` that no row can show or clear: maritime, fire, seismic AND
+// the station's lead would read in Daniel while every one of those rows says
+// System Voice.
 func TestAStoredGroupVoiceIsFoldedIntoTheRowsThatShowIt(t *testing.T) {
 	cfg := config.Default()
 	cfg.Voice = "System Voice"
@@ -52,10 +52,9 @@ func TestAStoredGroupVoiceIsFoldedIntoTheRowsThatShowIt(t *testing.T) {
 			t.Errorf("%s reads in %q, want %q", tc.role.Key(), got.Spoken, tc.want)
 		}
 	}
-	// And the group itself is GONE, so it can never override a row invisibly
-	// again. The station goes with it and follows the root — which is what its
-	// row would have said if it had one, and what the listener was already being
-	// shown.
+	// And the group itself is GONE, so it cannot override a row invisibly. The
+	// station goes with it and follows the root — which is what its row would say
+	// if it had one, and what the listener is shown.
 	for _, r := range []cast.Role{cast.Standard, cast.Breaking, cast.SevereRead, cast.Station} {
 		if !c.Pairs[r].Empty() {
 			t.Errorf("%s has no row in Settings; it must not survive reconciliation, got %+v", r.Key(), c.Pairs[r])
@@ -66,7 +65,7 @@ func TestAStoredGroupVoiceIsFoldedIntoTheRowsThatShowIt(t *testing.T) {
 	}
 }
 
-// THE INVARIANT, and the reason the bug was invisible: every row must SAY what
+// THE INVARIANT: every row must SAY what
 // it will sound. The row shows its own name when it has one and the root when it
 // does not (pickerName), while the broadcast walks the whole tree — so any role
 // between a row and the root is a chance for the two to disagree.
@@ -76,9 +75,8 @@ func TestEveryDrawnRowSaysWhatItWillSound(t *testing.T) {
 	// castView goes through halfFor, which reads the RUNNING platform's half.
 	// On a Mac the two agree and the test passes; on Linux halfFor reads the
 	// empty Piper half, the row shows the inherited root, and every row is
-	// reported as a mismatch. It asserted a platform-specific property without
-	// ever saying which platform — so it only held on the machine it was
-	// written on, and the first Linux run said so.
+	// reported as a mismatch. Unpinned, it asserts a platform-specific property
+	// without saying which platform, and holds only on a Mac.
 	asPlatform(t, "darwin")
 	for _, tc := range []struct {
 		name string

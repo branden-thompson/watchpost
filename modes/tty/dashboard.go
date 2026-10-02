@@ -54,8 +54,8 @@ type TickerBreakingMsg struct{ Item TickerItem }
 // TickerBreakingDoneMsg ends a breaking-news takeover.
 type TickerBreakingDoneMsg struct{}
 
-// Viewport padding (UAT 14.3: left back to 3 now the tables are fixed -
-// a deliberate reversion; right stays 2 with the rail gutter beyond it).
+// Viewport padding (UAT 14.3: left 3 with the tables fixed; right 2 with the
+// rail gutter beyond it).
 const (
 	viewPadLeft  = 3
 	viewPadRight = 2
@@ -166,25 +166,23 @@ type Config struct {
 	// IT RETURNS A COMMAND, AND THAT IS LOAD-BEARING (D-79). Taking the air
 	// STOPS THE MONITOR'S AUDIO, and halting the player calls back into the
 	// program — so doing it inline would `Send` to a loop that is inside Update
-	// and cannot receive. The app froze hard on `ctrl+b`, and Observer already
-	// had the answer: `withCmd(func() tea.Msg { radio.Stop(); return nil })`.
+	// and cannot receive, and the app would freeze. Observer does the same:
+	// `withCmd(func() tea.Msg { radio.Stop(); return nil })`.
 	OnSurface func(active Surface) tea.Cmd
 
 	// StepBedRelay moves the bed's selection through the relays the station's
-	// fence reaches (D-78) — the `←` / `→` controls, which the reference has
-	// drawn since the first wave and which were bound to nothing.
+	// fence reaches (D-78) — the `←` / `→` controls the reference draws.
 	// A COMMAND, FOR `OnSurface`'S REASON (D-79). Stepping the selection TUNES
 	// the relay it lands on and tells the console what it landed on — both of
-	// which reach the program, so doing it inline sends to a loop that is inside
-	// Update and cannot receive. This froze the app on the first arrow press
-	// after the first freeze was fixed: the same defect, one function along.
+	// which reach the program, so doing it inline would send to a loop that is
+	// inside Update and cannot receive, and freeze the app on an arrow press.
 	StepBedRelay func(by int) tea.Cmd
 
 	// StationArea is where the STATION transmits from and how far it reaches, at
 	// launch (D-72). Changes arrive as `StationAreaMsg`; this is the value the
 	// console opens with, because a message sent before the program's loop is
-	// running has nobody to receive it — which is exactly how the first version
-	// of this deadlocked the whole app at startup.
+	// running has nobody to receive it — sent then, it deadlocks the whole app
+	// at startup.
 	StationArea StationAreaMsg
 
 	Hydrate    func(ref snapshot.LocationRef) // on-demand hourly forecast for a RECENT row (UAT 72)
@@ -217,8 +215,8 @@ type Config struct {
 	SetAlertRadius func(int) // 0.12.0: persist the radius and tell the ticker pipeline to re-scope; nil in tests
 
 	// THE STATION'S OWN TWO (D-115, F-87). Where it transmits from and how far it
-	// serves — the settings the console's whole line-up is derived from, and
-	// until now writable only by editing the config file.
+	// serves — the settings the console's whole line-up is derived from, written
+	// from the window rather than only by editing the config file.
 	//
 	// `Transmitter` IS A POINTER because "not set" is a real and DIFFERENT state
 	// from "set to somewhere": a station with none borrows the listener's default
@@ -228,10 +226,10 @@ type Config struct {
 	// is a region the Producer must offer from on the very next cycle, which is
 	// the re-derivation the HUM LEAD asked to be able to UAT.
 	// THE OPERATOR'S TWO ACTS ON A SCHEDULED CARD (D-118). The schedule owns
-	// both — `lineup.Moved` and `lineup.Dropped` have modelled them since 0.14.0
-	// and nothing could emit either — and FR-3.3 is why they are events rather
-	// than setters: "an action must never be shown as taken unless the schedule
-	// took it". Nil in tests, and on a build with no schedule to tell.
+	// both — `lineup.Moved` and `lineup.Dropped` model them — and FR-3.3 is why
+	// they are events rather than setters: "an action must never be shown as
+	// taken unless the schedule took it". Nil in tests, and on a build with no
+	// schedule to tell.
 	MoveCard func(id string, to int)
 	DropCard func(id string)
 
@@ -274,9 +272,9 @@ type Config struct {
 	//
 	// ONE CARRIER, NOT TWO. Holding them here as well as
 	// `config.MinServiceRadiusMi`/`MaxServiceRadiusMi` would be two carriers of
-	// one fact, kept honest only by a test importing both.
-	// A test that prevents drift is not the same as a fact with one owner, and
-	// the HUM LEAD ruled 2026-09-13 to fix it properly.
+	// one fact, kept honest only by a test importing both — and a test that
+	// prevents drift is not the same as a fact with one owner (HUM LEAD,
+	// 2026-09-13).
 	//
 	// THROUGH `Config` RATHER THAN BY IMPORTING `platform/config`, which would
 	// compile and pass `lint-imports` and would still be wrong: nothing under
@@ -318,10 +316,10 @@ type Config struct {
 	ReadReport func()
 
 	// InjectAlert fires a fabricated alert into the pipeline, and
-	// DebugScenarios are what the ctrl+d window offers (F-21b). BOTH ARE NIL IN
-	// A RELEASE BUILD — the app compiles the injector out entirely, so the
-	// window has nothing to offer and says so. A fabricated tornado warning
-	// must not be producible from a shipped binary by any means.
+	// DebugScenarios are what the ctrl+d window offers (F-21b). NIL WHERE THE APP
+	// WIRES NO INJECTOR, and the window then has nothing to offer and says so.
+	// Every fabricated alert is marked as a TEST EVENT wherever it reaches: an
+	// UNMARKED hazard is never fabricated (D-152, NFR-2).
 	InjectAlert    func(key string)
 	DebugScenarios []DebugScenario
 }
@@ -497,10 +495,9 @@ func (m RepeatMode) next() RepeatMode { return (m + 1) % 3 }
 // row that asked — without a drawer they are sent and dropped on arrival, which
 // is a preview that is silent when it works and silent when it fails.
 //
-// THAT IS ALSO WHY IT STAYS ON THE NFR-8 GREP LIST AND WHY THE LIST CANNOT READ
-// ZERO. The list was written expecting this message to die with the chooser. It
-// did not die, it was repurposed — the name means "a note about a voice", which
-// is what it is, and nothing here is residue of the retired window.
+// THAT IS ALSO WHY IT IS ON THE NFR-8 GREP LIST AND WHY THE LIST CANNOT READ
+// ZERO. The name means "a note about a voice", which is what it is, and it
+// serves the Settings cast rows rather than any retired window.
 type VoiceNoteMsg struct{ Text string }
 
 type RadioStatusMsg struct {
@@ -593,8 +590,8 @@ type Dashboard struct {
 	//
 	// ZERO IS THE RUNNING STATION'S ANSWER, which is also what an unset field
 	// reads as — so `requestSchedule` is tested through the Router rather than
-	// by calling it directly, or the wiring would be exactly as absent as it
-	// was before D-156 and nothing would say so.
+	// by calling it directly, or the wiring could be absent and nothing would
+	// say so (D-156).
 	liveOffset int
 
 	mapPane mapPane
@@ -623,7 +620,7 @@ type Dashboard struct {
 	// D-130). On Observer it stays zero: the listener's lookup reaches anywhere
 	// and has nothing to check.
 	addLocate  locateState
-	lookupRef  *snapshot.LocationRef // the location a lookup opened Details for, until its data lands (HUM LEAD UAT 2026-08-28: the modal showed the old top RECENT row meanwhile)
+	lookupRef  *snapshot.LocationRef // the location a lookup opened Details for, until its data lands (HUM LEAD UAT 2026-08-28: else the modal shows the old top RECENT row meanwhile)
 	addErr     string                // resolve failure surfaced in the modal
 	setup      setupState
 	relayFault relayFaultState
@@ -657,14 +654,14 @@ type Dashboard struct {
 	// REACHED FOR: the Dashboard has no lineup and must not grow one — the same
 	// rule the console follows for the power and the bed.
 	//
-	// A RENDERER AND NOT A SNAPSHOT, and the ASCII parity gate is what settled
-	// that. Anything built once in the console's glyph vocabulary is drawn later
-	// by a window with a vocabulary of its own, and the two disagreed the first
-	// time the gate flipped `--ascii` after the hand-over: the window carried a
-	// bullet in its title and two arrows in its chips, neither with an ASCII form.
-	// Asking the console at DRAW time, with the window's own Opts, means there is
-	// no moment at which the two can differ — and it is why the TITLE comes back
-	// from the renderer too rather than being handed over as a finished string.
+	// A RENDERER AND NOT A SNAPSHOT, which the ASCII parity gate holds it to.
+	// Anything built once in the console's glyph vocabulary is drawn later by a
+	// window with a vocabulary of its own, and the two disagree as soon as
+	// `--ascii` flips after the hand-over — a bullet in the title and arrows in
+	// the chips, with no ASCII form. Asking the console at DRAW time, with the
+	// window's own Opts, means there is no moment at which the two can differ —
+	// and it is why the TITLE comes back from the renderer too rather than being
+	// handed over as a finished string.
 	//
 	// THE IDENTITY IS THE CARD'S ID AND NOT ITS TITLE, which is what `Card.ID` is
 	// for: "ID addresses the card for the life of the lineup." A rendered title
@@ -699,11 +696,11 @@ type Dashboard struct {
 	// reference across the model's copies, like the memos.
 	tickerScrolls map[TickerCategory]int
 	breaking      *TickerItem // 0.12.0: a breaking-news takeover — one event centred, overrides the tape until done
-	// tickerMuted is the visual half of a mute the app no longer has. NOT
+	// tickerMuted is the visual half of a mute the app does not have. NOT
 	// SEEDED FROM CONFIG (red team 2026-09-05, C-1): ticker_muted is a 0.13.0
-	// back-compat mirror, not this binary's state. It survives only because
+	// back-compat mirror, not this binary's state.
 	// TestMuteDeepLinksRatherThanFlippingAHeaderChip sets it both ways to prove
-	// the retired [M] Mute/Unmute label cannot come back (MVS-D-48).
+	// no [M] Mute/Unmute label is drawn (MVS-D-48).
 	tickerMuted  bool
 	darkBG       bool                 // terminal mode (bubbletea BackgroundColorMsg)
 	frame        int                  // animation phase (loading shimmer, UAT 18.2b)
@@ -799,8 +796,8 @@ func scopedOverrides(base, observer, over term.KeyMap) (term.KeyMap, []string) {
 //
 // IT READS THE EFFECTIVE MAP, not the base: an override that has already been
 // withheld leaves its action on the console's own key, and that key is then
-// taken by whoever holds it. Answering from the base instead is what let a
-// vacated key be granted twice.
+// taken by whoever holds it. Answering from the base instead grants a vacated
+// key twice.
 //
 // THE CLASH IT REPORTS IS THE OVERRIDDEN ACTION, because that is the one with
 // somewhere else to go. The incumbent keeps what it had.
@@ -856,21 +853,20 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	// SCOPED SO ONE SURFACE'S REBIND CANNOT BREAK THE OTHER (F-114, HUM LEAD
 	// 2026-09-16: collisions are reconciled, and a binding functions as expected).
 	//
-	// THE REQUIREMENT WAS UNMET AND ITS GATE DID NOT SAY SO. FR-1.5's exit is
-	// "an override in the user's key table changes the chord"; the test asserted
-	// that the swap ACTIONS ARE IN THE MAP, which a map no override can reach
-	// satisfies perfectly. `broadcasterKeyMap()` went to the Router raw, so no
-	// `[keys]` entry could change a single console binding — including `ctrl+b`,
-	// tmux's own prefix.
+	// FR-1.5's exit is "an override in the user's key table changes the chord" —
+	// for every console binding, `ctrl+b` (tmux's own prefix) among them. A test
+	// that finds only that the swap ACTIONS ARE IN THE MAP is satisfied
+	// perfectly by a map no override can reach.
 	//
-	// AND FIXING THAT CAN BREAK AN UPGRADE. FIVE actions live in both scopes —
-	// lookup, about, status, help and quit — so a key free on Observer may
-	// already be taken on the console. Settings, diagnostics and the gain pair
-	// LOOK shared and are not: each surface names its own, so an override for one
-	// does not reach the other. `lookup = "b"` was valid in 0.15.0 and `b` is the console's bed,
-	// so applying it to both scopes made a config the operator did not change
-	// refuse to launch. `term.Merge`'s own doc names that outcome: "losing a
-	// binding is a nuisance; refusing to launch over one is a broken upgrade".
+	// AND APPLYING OVERRIDES TO BOTH SCOPES CAN BREAK AN UPGRADE. FIVE actions
+	// live in both scopes — lookup, about, status, help and quit — so a key free
+	// on Observer may already be taken on the console. Settings, diagnostics and
+	// the gain pair LOOK shared and are not: each surface names its own, so an
+	// override for one does not reach the other. `lookup = "b"` is valid on
+	// Observer and `b` is the console's bed, so applying it to both scopes would
+	// make a config the operator did not change refuse to launch. `term.Merge`'s
+	// own doc names that outcome: "losing a binding is a nuisance; refusing to
+	// launch over one is a broken upgrade".
 	//
 	// SO AN OVERRIDE IS APPLIED WHERE IT FITS AND WITHHELD WHERE IT WOULD
 	// COLLIDE. The listener's `b` binds lookup on Observer; the console keeps `b`
@@ -895,10 +891,10 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 
 // consoleKeyMap is the console's bindings as the OPERATOR has them.
 //
-// ONE OWNER, READ BY BOTH THE ROUTER AND THE HELP VIEW. They each reached for
-// `broadcasterKeyMap()` directly, so a rebound chord would have been answered by
-// the Router and mis-printed by the help — the surface whose entire job is to
-// tell the operator which key to press.
+// ONE OWNER, READ BY BOTH THE ROUTER AND THE HELP VIEW. Reaching for
+// `broadcasterKeyMap()` directly, a rebound chord would be answered by the
+// Router and mis-printed by the help — the surface whose entire job is to tell
+// the operator which key to press.
 //
 // A HAND-BUILT DASHBOARD FALLS BACK TO THE DEFAULTS. Tests construct
 // `Dashboard{}` literals, and a nil map would leave the Router with no bindings
@@ -926,14 +922,13 @@ type committedMsg struct {
 	// What a Setup save actually WROTE. The window is seeded from cfg when it
 	// opens, and cfg is captured once when the app is built — so without this
 	// the next open would show the launch-time cast and silently discard what
-	// the listener had just saved. (UAT 2026-08-30: found by saving a cast,
-	// closing Setup and re-opening it.)
+	// the listener had just saved (UAT 2026-08-30).
 	cast  CastView
 	tones ToneState
 	saved bool
 }
 
-// tickMsg drives the loading shimmer (UAT 18.2b) and, since Q3, every
+// tickMsg drives the loading shimmer (UAT 18.2b) and (Q3) every
 // other wall-clock element of the frame: the marquee (when the visualizer
 // tick is not already redrawing), the volume blink's clearing, the [S]
 // ages and the Details labels. It runs only while one of them is showing
@@ -970,10 +965,10 @@ func (d Dashboard) tickNeeded() bool {
 	case d.modal == modalStatus || d.modal == modalDetails: // [S] ages; Details "N min ago" labels and LoadingDots
 		return true
 	// ITS CLOCK RUNS DOWN ON ITS OWN AND ACTS AT ZERO (MVS-D-76). Without this
-	// the window opened with no tick armed, so stepRelayFault was never called:
-	// the countdown sat at <10> for ever, the fall-through never fired, and the
-	// frame never redrew between key presses — which is what "reactions were
-	// slow" was. A window that acts by itself must keep the clock that acts.
+	// the window opens with no tick armed, so stepRelayFault is never called:
+	// the countdown sits at <10> for ever, the fall-through never fires, and the
+	// frame never redraws between key presses ("reactions were slow"). A window
+	// that acts by itself must keep the clock that acts.
 	case d.modal == modalRelayFault:
 		return true
 	case len(d.ticker) > 0: // 0.12.0: the marquee scrolls continuously while events are active
@@ -991,8 +986,6 @@ func (d Dashboard) tickNeeded() bool {
 // still waiting on the Director. Those are two questions with one answer about
 // what to do with the answer — so the question stays with each surface and this
 // is called with it.
-//
-// It was written out twice, once per surface, and the duplicate gate said so.
 func armShimmer(armed, needed bool, cmd tea.Cmd) (bool, tea.Cmd) {
 	if armed || !needed {
 		return armed, cmd
@@ -1158,9 +1151,8 @@ func (d Dashboard) handleSevere(msg tea.Msg) Dashboard {
 // handleKeyPress routes a key press, un-fusing a lone esc first: a lone esc
 // followed by a key reaches the model FUSED as alt+key — the terminal sends
 // ESC then the byte, and the input layer has no ESC timeout to tell them
-// apart (probed on a pty against 0.12.0 too: esc then `a` never opened
-// About). No binding uses alt, so the only reading is the user's: esc, then
-// the key (0.13.0 red-team, PTY).
+// apart (on a pty, esc then `a` does not open About). No binding uses alt, so
+// the only reading is the user's: esc, then the key (0.13.0 red-team, PTY).
 func (d Dashboard) handleKeyPress(v tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	esc, key, fused := splitEscFusion(v)
 	if !fused {
@@ -1185,10 +1177,10 @@ func splitEscFusion(k tea.KeyPressMsg) (esc, key tea.KeyPressMsg, fused bool) {
 		key.Code, key.Mod = k.Code+0x60, key.Mod|tea.ModCtrl
 	}
 	// Every other alt chord — an arrow, backspace, delete, a non-ASCII rune —
-	// is the same fusion (REVIEW R5-C-08: esc then ↓ lost both); no binding
-	// uses alt, so nothing is shadowed. An UPPERCASE key after the esc arrives
-	// as alt+shift+letter with no text: the letter is the key (VALIDATE
-	// 2026-08-29 — esc then S/V/T/M/A were lost on a real pty).
+	// is the same fusion (REVIEW R5-C-08: unsplit, esc then ↓ loses both); no
+	// binding uses alt, so nothing is shadowed. An UPPERCASE key after the esc
+	// arrives as alt+shift+letter with no text: the letter is the key (VALIDATE
+	// 2026-08-29: unsplit, esc then S/V/T/M/A are lost on a real pty).
 	if key.Text == "" && key.Mod&^tea.ModShift == 0 && k.Code >= 0x20 && k.Code <= 0x7e {
 		r := rune(k.Code)
 		if key.Mod&tea.ModShift != 0 {
@@ -1231,10 +1223,9 @@ func (d Dashboard) applyTick() Dashboard {
 		d.mapPane.gen++
 	}
 	if d.setup.flash != flashNone && !time.Now().Before(d.setup.flashEnd) {
-		// Without this the blink stayed lit until something ELSE happened to
-		// redraw the window — which is exactly what "it stays green for an
-		// extended period" was. A blink needs a tick to end
-		// it, not only one to start it.
+		// Without this the blink stays lit until something ELSE happens to
+		// redraw the window ("it stays green for an extended period"). A blink
+		// needs a tick to end it, not only one to start it.
 		d.setup.flash = flashNone
 		d.setup = d.setup.touch()
 	}
@@ -1281,10 +1272,10 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			d = d.renderMap() // 0.18.0 D-45's units row: the description's distances follow the units
 		}
 	case "ticker-mute":
-		// [M] now OPENS Settings at the tone rows rather than toggling them
-		//. The six classes are separately mutable, and
-		// one key cannot mean six things, so it takes a listener to the group that
-		// does — the same place the header chip points them.
+		// [M] OPENS Settings at the tone rows rather than toggling them. The six
+		// classes are separately mutable, and one key cannot mean six things, so
+		// it takes a listener to the group that does — the same place the header
+		// chip points them.
 		return d.openSetupAt(firstOfGroup(groupTone)), nil
 	default:
 		if act == "add-location" {
@@ -1353,11 +1344,10 @@ func (d Dashboard) hydrateCmd() tea.Cmd {
 }
 
 // modal names the one floating window that can be open (quality pass Q6,
-// L3-F15): before it, ten booleans kept exclusivity by hand at ten reset
-// sites and the red team found them inconsistent (help left Alerts open
-// underneath, a voice error reopened the chooser over Details). Now opening
-// a window closes whatever was open, by construction; the exclusivity test
-// asserts it on the rendered frame.
+// L3-F15): opening a window closes whatever was open, by construction, where
+// booleans kept exclusive by hand at reset sites drift apart (help left over
+// Alerts, a voice error over Details); the exclusivity test asserts it on the
+// rendered frame.
 type modal int
 
 const (
@@ -1527,13 +1517,12 @@ func (d Dashboard) handleRadio(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case VoiceNoteMsg:
 		// THE DECK'S WORDS REACH THE ROW THAT ASKED (F-41). Landing them in
 		// d.voiceNote would put them where nothing draws them, so a preview would
-		// be silent while it worked and silent when it
-		// failed. castNote already renders exactly this ("the deck's own words:
-		// progress, or why it failed"); the wire went to the wrong field.
+		// be silent while it worked and silent when it failed. castNote renders
+		// exactly this ("the deck's own words: progress, or why it failed").
 		//
 		// AND IT TOUCHES THE GENERATION. The modal memo keys Settings on
 		// setup.gen, so a note stored without a touch would be written and never
-		// drawn — the still-picture defect that cost three UAT rounds (F-30).
+		// drawn — the still-picture defect (F-30).
 		d.setup.note = v.Text
 		d.setup = d.setup.touch()
 	case RelaySilentMsg:
@@ -1547,14 +1536,13 @@ func (d Dashboard) handleRadio(msg tea.Msg) (tea.Model, tea.Cmd) {
 //
 // THE COUNTDOWN RIDES THIS TICK rather than starting a timer of its own — one
 // clock in the model, and a window that cannot outlive the loop that draws it.
-// Split out of dispatch, which the P10 complexity gate failed at 17 once the
-// two-branch countdown landed in it.
+// Split out of dispatch to keep it within the P10 complexity bound.
 func (d Dashboard) onTick() (tea.Model, tea.Cmd) {
 	// THE MODEL'S OWN CLOCK, not time.Now(). d.now is the clock every other
 	// wall-clock element of the frame reads and the one tests pin; calling
-	// time.Now() here made this the one moving part of the frame a test could
-	// not drive, which is why the countdown's WIRE went unpinned while its
-	// arithmetic had a test of its own.
+	// time.Now() here would make this the one moving part of the frame a test
+	// could not drive, leaving the countdown's WIRE unpinned while its
+	// arithmetic has a test of its own.
 	next, done := d.stepRelayFault(d.now())
 	if done {
 		return next.fallThroughRelayFault()
@@ -1591,15 +1579,14 @@ func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 	case actMap:
 		return d.toggleMap(), true // 0.18.0 FR-1.1
 	case "theme":
-		// The chooser it opened is retired: [t] now
-		// opens Settings at the theme picker, the same way [V] opens it at the
-		// correspondents. The key a listener already knows still goes where the
-		// thing lives.
+		// [t] opens Settings at the theme picker, the same way [V] opens it at
+		// the correspondents. The key a listener already knows still goes where
+		// the thing lives.
 		return d.openSetupAt(rowTheme), true
 	case "voice":
-		// V keeps its binding and its place in Help's RADIO group, but the
-		// chooser it opened is retired (MVS-D-3): it now opens Setup SCROLLED
-		// TO the correspondents, which is where a voice is chosen from 0.14.0.
+		// V keeps its binding and its place in Help's RADIO group, and opens
+		// Setup SCROLLED TO the correspondents, which is where a voice is chosen
+		// (MVS-D-3).
 		return d.openSetupAt(rowCastAlerts), true // UAT 84 / FR-14
 	case "setup":
 		return d.openSetup(), true // UAT 100
@@ -1622,12 +1609,11 @@ func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 // toggleSevere routes the WINDOW actions: opening one, and the keys that belong
 // to whichever one is open.
 //
-// SPLIT BY WINDOW AT THE COMPLEXITY CEILING (P10-04, D-159). The cases mixed
-// `act` with `d.modal` and with `d.debug.confirm`, so three windows' handling
-// sat in one body and the reader had to hold all three to follow any one. Every
-// case named its modal exactly, which is what makes the split ORDER-PRESERVING:
-// a case that could only match one window moves to that window's function, and
-// nothing that could match two is separated.
+// SPLIT BY WINDOW AT THE COMPLEXITY CEILING (P10-04, D-159). Each window's
+// keys have a function of their own, so a reader holds one window to follow
+// it. Every case names its modal exactly, which is what makes the split
+// ORDER-PRESERVING: a case that can only match one window lives in that
+// window's function, and nothing that could match two is separated.
 func (d Dashboard) toggleSevere(act term.Action) (Dashboard, bool) {
 	switch act {
 	case "severe":

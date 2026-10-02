@@ -2,19 +2,16 @@ package app
 
 // burst_words.go — the WORDS a takeover says, and the sentences the tape shows.
 //
-// SPLIT OUT OF ticker.go (2026-09-06), a pure move.
-//
-// THE ROLE MODEL SAID THIS ALREADY; THE FILES DID NOT. MVS-D-77 and S-7 give
-// the Composer (app/compose_takeover.go) the card's CONTENT and give the
-// Producer (app/ticker.go) what ARRIVED — "it turns a selection into finished
-// words" against "it does not own words or pacing". But composeTakeover was ~18
-// lines of structure over four helpers that lived in the Producer's file, so
-// the four roles were a DOC split and not a FILE split (red team 2026-09-05,
-// Junior-Dev 10). Now a reader who opens the Composer can follow it without
-// leaving the concern.
+// THE FILES FOLLOW THE ROLE MODEL. MVS-D-77 and S-7 give the Composer
+// (app/compose_takeover.go) the card's CONTENT and give the Producer
+// (app/ticker.go) what ARRIVED — "it turns a selection into finished words"
+// against "it does not own words or pacing". The Composer's helpers live here,
+// not in the Producer's file, so the four roles are a FILE split and not only a
+// DOC split (red team 2026-09-05, Junior-Dev 10): a reader who opens the
+// Composer can follow it without leaving the concern.
 //
 // The Producer keeps the TAPE (itemsOf, laneItems, tapeItems, tickerCategory):
-// it publishes the marquee, so those rows are its own output. What moved is the
+// it publishes the marquee, so those rows are its own output. This file holds the
 // language — who declared an alert, how a headline reads, how a time is spoken.
 
 import (
@@ -65,8 +62,7 @@ func burstHead(lib *script.Library, evs []globalfeed.Event) string {
 //
 // Not the full sentence the single-event path reads. The head has already said
 // these were declared, so repeating "has been declared for" once per alert turns
-// four alerts into four copies of the same sentence — which is what an outbreak
-// sounded like before the head existed.
+// four alerts into four copies of the same sentence.
 func burstTitle(e globalfeed.Event, c render.Clock, now time.Time) string {
 	s := e.Title() + " for " + e.Location + ", " + spokenWhen(c, e.At, now)
 	if !e.Until.IsZero() {
@@ -118,7 +114,7 @@ func breakingLine(lib *script.Library, e globalfeed.Event, burst bool, c render.
 //
 // SEVERITY FIRST, THEN THE LOUDER TONE (MVS-D-73). `Severity` is a three-value
 // colour tier, so two hazards of different KINDS share one constantly — and
-// ranking on it alone left the tone to whichever the rail happened to order
+// ranking on it alone leaves the tone to whichever the rail happens to order
 // first. A red hurricane and a red tornado warning would sound the low sweep or
 // the EAS dual-tone depending on nothing a listener could reason about. The
 // second key is cast.Class.ToneRank, the one carrier of "which sound says
@@ -160,8 +156,8 @@ func tapeHead(e globalfeed.Event) string {
 
 // eventNarration is one event's spoken line: the sentence, when it happened,
 // and (for an alert with a window) until when — no tail (HUM LEAD script).
-// Through render.Plain: a provider-supplied storm NAME now reaches the
-// synthesiser (0.13.0), and the tape already strips at tapeText — the speech
+// Through render.Plain: a provider-supplied storm NAME reaches the
+// synthesiser, and the tape already strips at tapeText — the speech
 // path must too (S-F6). ExpandStates in AlertNarration reads "VA" as "Virginia".
 func eventNarration(e globalfeed.Event, c render.Clock, now time.Time) string {
 	s := e.Sentence() + " " + spokenWhen(c, e.At, now)
@@ -196,7 +192,7 @@ func scriptText(lib *script.Library, report, part string, data any) string {
 // The whole phrase, preposition included, because the preposition changes with
 // the answer — a caller that wrote " at " itself would say "at on August 27".
 //
-// Composed AT NARRATION TIME, which is why this one still takes the clock: the
+// Composed AT NARRATION TIME, which is why this one takes the clock: the
 // line is spoken once, when the alert fires, so it reads the preference in
 // force at that moment. The TAPE is the opposite case — it is on screen for
 // minutes, so it carries the facts and is formatted every frame.

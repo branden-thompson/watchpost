@@ -2,14 +2,12 @@ package main
 
 // gatemodel_test.go — ONE model of the build system, parsed once.
 //
-// THE CLASS THIS REPLACES. Fourteen gates each re-parsed the Makefile and the
-// workflow with their own regex, and the regexes disagreed: one accepted
-// `scripts/x.sh`, its neighbour demanded `./scripts/x.sh`; one saw a step's `if:`
-// on the line after `- run:` and not as the step's first key; one stripped
-// column-0 comments and kept tab-indented ones. Six of thirteen open findings
-// against this layer were that one defect wearing six hats — two regexes for one
-// idea, free to disagree, in the file whose purpose is stopping two lists from
-// disagreeing.
+// THE CLASS THIS PREVENTS. Gates that each parse the Makefile and the workflow
+// with their own regex disagree: one accepts `scripts/x.sh`, its neighbour
+// demands `./scripts/x.sh`; one sees a step's `if:` on the line after `- run:`
+// and not as the step's first key; one strips column-0 comments and keeps
+// tab-indented ones — two regexes for one idea, free to disagree, in the file
+// whose purpose is stopping two lists from disagreeing.
 //
 // SO THE SEMANTICS ARE DECIDED HERE AND NOWHERE ELSE. What counts as a live
 // command, a gate-shaped target, a silenced step or a build line is answered by
@@ -18,8 +16,8 @@ package main
 //
 // IT PARSES STRINGS, NOT PATHS. Production gates hand it the real files; the
 // specimen table in gateattacks_test.go hands it synthetic ones. That is the
-// shape tools/authoring's self-test uses, and the reason that detector has never
-// been defeated: every attack is a row, and a row is re-run forever.
+// shape tools/authoring's self-test uses: every attack is a row, and a row is
+// re-run forever.
 //
 // AND SILENCE IS A VERDICT (FR-11.3). A source the model finds nothing in does
 // not yield an empty model that every assertion passes over; it yields
@@ -49,7 +47,7 @@ func verdictOf(fn func(reporter)) (fired bool, said []string) { return gateoracl
 // and the facts a gate asks about belong to a segment, not the line: `grep x ||
 // true` beside `test $rc -eq 0 || exit 1` does not make the whole recipe
 // unfailable, and `$(MAKE) promote-verdicts` beside `./scripts/x.sh` does not
-// make the script orchestration. A model that judged the joined line got both
+// make the script orchestration. A model that judges the joined line gets both
 // wrong in the real Makefile.
 type command struct {
 	text string
@@ -151,8 +149,8 @@ var makeTargetLine = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9._-]*)\s*:(?:[^=]|$
 // parseMakefile joins backslash continuations, then walks rules.
 //
 // A RECIPE LINE IS A COMMAND ONLY IF MAKE WOULD RUN IT. A line whose first
-// non-tab character is `#` is a comment to make and was a live command to the
-// parser this replaces (A5). A leading `@` is silence, not semantics, and is
+// non-tab character is `#` is a comment to make and must not read as a live
+// command (A5). A leading `@` is silence, not semantics, and is
 // stripped; a leading `-` is "ignore the exit status" and is kept as a fact.
 func parseMakefile(src string) map[string]*target {
 	out := map[string]*target{}
@@ -171,8 +169,8 @@ func parseMakefile(src string) map[string]*target {
 		}
 		// A COLUMN-0 COMMENT DOES NOT END A RECIPE. make ignores it and the next
 		// tab line still belongs to the same target — `mutant-check` carries four
-		// paragraphs between its `mkdir` and its `go test`, and a parser that reset
-		// on the comment saw a required gate whose recipe ran nothing (A37).
+		// paragraphs between its `mkdir` and its `go test`, and a parser that resets
+		// on the comment sees a required gate whose recipe runs nothing (A37).
 		if strings.HasPrefix(raw, "#") {
 			continue
 		}
@@ -260,7 +258,7 @@ func newCommand(body string) command {
 
 // checkerRef finds a project-written checker: ANY path under scripts/ — no
 // extension required, because `scripts/lint-x` and `scripts/lint-x.bash` are
-// checkers the extension list missed (K3) — with or without `./`, with or
+// checkers an extension list misses (K3) — with or without `./`, with or
 // without an interpreter in front (A2–A4), or a tool run with `go run ./tools/<x>`.
 var checkerRef = regexp.MustCompile(`(?:^|[\s@=])(?:(?:python3|bash|sh|expect)\s+)?(?:\./)?(scripts/[A-Za-z0-9_/.-]+|tools/[a-z][a-z0-9-]*)`)
 
@@ -341,7 +339,7 @@ func (c command) trimsPath() bool {
 func (c command) isGoTest() bool { return strings.Contains(c.text, "go test") }
 
 // countOne is `-count=1` or `-count 1` exactly — `-count 10` is a sample size,
-// not a cache defence, and a substring match called it one.
+// not a cache defence, and a substring match would call it one.
 var countOneFlag = regexp.MustCompile(`-count[= ]1\b`)
 
 func (c command) countOne() bool { return countOneFlag.MatchString(c.text) }

@@ -11,12 +11,12 @@ const bonsallLat, bonsallLon = 33.2881, -117.2256
 
 // THE FENCE HOLDS WHAT IS INSIDE IT, NEAREST FIRST.
 //
-// THE BROADCASTER'S CANDIDATES COME FROM HERE (F-81, ruled 2026-09-10). The
-// Producer had only the listener's watchlist to offer, so a three-location
-// watchlist capped the schedule at three cards and seven of the console's ten
-// slots shimmered for ever (F-82). The data to answer it was ALREADY IN THE
-// TREE — 34,106 US cities with population and 41,490 zip centroids — and no
-// provider call is needed to reach it.
+// THE BROADCASTER'S CANDIDATES COME FROM HERE (F-81, ruled 2026-09-10). With
+// only the listener's watchlist to offer, a three-location watchlist would cap
+// the schedule at three cards and leave seven of the console's ten slots
+// shimmering for ever (F-82). The data to answer it is IN THE TREE — 34,106 US
+// cities with population and 41,490 zip centroids — and no provider call is
+// needed to reach it.
 func TestNearReturnsTheFencesCitiesNearestFirst(t *testing.T) {
 	idx := loadForTest(t)
 	got := idx.Near(bonsallLat, bonsallLon, 20, 50)
@@ -124,9 +124,10 @@ func loadForTest(t *testing.T) *Index {
 
 // THE MAP ASKS THIS ON ITS UI GOROUTINE (W14): the estimate reads the state
 // under twenty-five points of the view, one scan each, on every open, feed
-// landing and switch. Parsing each row's coordinates on every scan cost 31 ms
-// and a million allocations a view (measured 2026-09-30); a scan now reads
-// coordinates parsed once. The allocations are gated; the time is not (D-53).
+// landing and switch. Parsing each row's coordinates on every scan would cost
+// 31 ms and a million allocations a view (measured 2026-09-30), so a scan
+// reads coordinates parsed once. The allocations are gated; the time is not
+// (D-53).
 const nearAllocs = 20 // measured 2026-09-30 (W14): pinned, lowered only
 
 func TestAScanDoesNotParseTheTable(t *testing.T) {
@@ -173,9 +174,8 @@ func parsedTable(idx *Index) []City {
 	return out
 }
 
-// referenceNear is the scan as it was first written, over the parsed table:
-// the US rows inside the fence kept, stably sorted by distance, cut to the
-// limit.
+// referenceNear is the plain scan over the parsed table: the US rows inside
+// the fence kept, stably sorted by distance, cut to the limit.
 func referenceNear(table []City, lat, lon, radiusMi float64, limit int) []City {
 	type hit struct {
 		c  City

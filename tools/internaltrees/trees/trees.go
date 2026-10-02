@@ -2,11 +2,11 @@
 // of the private workspace this repository is developed in, which a public tree
 // must never carry.
 //
-// IT WAS A LIST OF TWO DIRECTORY NAMES, and one reorganisation of the workspace
-// moved every internal repository out from under both: a path in the new layout
-// passed every gate while the gates still refused a tree that no longer existed.
-// A list of names protects the layout it was written on. So the class is
-// described two ways, and every consumer asks this package for both:
+// A LIST OF NAMES PROTECTS THE LAYOUT IT WAS WRITTEN ON. One reorganisation of
+// the workspace moves every internal repository out from under it, and a path
+// in the new layout then passes every gate while the gates still refuse a tree
+// that no longer exists. So the class is described two ways, and every consumer
+// asks this package for both:
 //
 //   - STATIC shapes that hold on any machine, CI included: the names retired by a
 //     reorganisation, and the numbered-bucket convention the workspace uses.

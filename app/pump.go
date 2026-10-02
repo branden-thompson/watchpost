@@ -21,10 +21,10 @@ type runEffect func(context.Context, lineup.Effect) []lineup.Event
 // pure; every action is in an executor, which runs elsewhere. That leaves the
 // pump with one job — keep the two apart — and one rule.
 //
-// THE RULE IS THAT IT NEVER WAITS FOR WORK (PL-1). An earlier draft of this
-// loop ran each effect inline, which would have paid the 1.03 s card build on
-// the pump and reintroduced the blocking class inside the approach chosen to
-// avoid it. Effects are handed to workers and the loop returns to the select.
+// THE RULE IS THAT IT NEVER WAITS FOR WORK (PL-1). Running each effect inline
+// would pay the 1.03 s card build on the pump and reintroduce the blocking
+// class inside the approach chosen to avoid it. Effects are handed to workers
+// and the loop returns to the select.
 //
 // It is not "never blocks", and the difference is worth stating precisely: the
 // loop parks if the shared-output lane's buffer fills. That the buffer cannot
@@ -92,8 +92,8 @@ const pumpBacklog = 64
 //
 // IT IS NEVER REACHED, and the reason lives in the Director rather than here:
 // takeTheAir refuses a busy air, so at most one card's cue-and-words and the
-// outgoing card's release are ever outstanding at once. Measured driving the
-// real Director with the lane wedged for 400 rounds, the high-water mark was
+// outgoing card's release are ever outstanding at once. Driving the real
+// Director with the lane wedged for 400 rounds leaves the high-water mark at
 // ZERO. The buffer is headroom for a shape the schedule does not produce, and
 // a producer that somehow filled it would WAIT — backpressure rather than
 // loss, which is the same trade pumpBacklog makes.
@@ -164,7 +164,7 @@ func (p *pump) dispatch(ctx context.Context, fx []lineup.Effect) {
 		default:
 			// Both arms below are usually ready at once, and select picks
 			// between ready arms at random — so without the attempt above, a
-			// run stop would have drained was discarded on a coin flip, and
+			// run stop would drain could be discarded on a coin flip, and
 			// the run in question is the RELEASE.
 			select {
 			case p.lane <- group:

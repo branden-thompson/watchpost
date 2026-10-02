@@ -3,18 +3,18 @@ package tty
 // broadcaster_upnext.go — the beat that is next, and the hazard that would
 // interrupt it, side by side (D-97).
 //
-// THE v3 MOCK PUTS THEM LEVEL. UP NEXT keeps the manifest it gained at D-87 and
-// gains a label cell of its own; the takeover sits beside it at the same height.
+// THE v3 MOCK PUTS THEM LEVEL. UP NEXT carries its manifest (D-87) and a label
+// cell of its own; the takeover sits beside it at the same height.
 //
 // BOTH ARE ALWAYS DRAWN (HUM LEAD, 2026-09-12: "Up Next and Alert are always
 // present — if there are no active alerts taking over, then the box is simply
 // empty").  A box that appeared when a hazard arrived would move the card the
-// operator is reading at the worst possible moment, which is the same argument
-// `priorityWidth` already made for reserving the column.
+// operator is reading at the worst possible moment — the same argument
+// `priorityWidth` makes for reserving the column.
 //
-// THE VERTICAL RAIL RETIRES WITH THIS.  What `railColumn` spelled in single
-// letters down the side, the label cell says once — and the cells it frees are
-// cells the manifest can use.
+// NO VERTICAL RAIL HERE. The label cell says once what `railColumn` would spell
+// in single letters down the side — and the cells it frees are cells the
+// manifest can use.
 
 import (
 	"strings"
@@ -47,14 +47,13 @@ func (b Broadcaster) readPair() []string {
 // occlusion arriving by accident rather than by design. HUM LEAD, 2026-09-11:
 // "no more card occlusion."
 //
-// IT IS A FUNCTION SO THE RULE CAN BE TESTED, and that is the whole reason it
-// moved out of `readPair`. Both boxes are built by `shell`, which already pads
-// every row to the box's own width — so with today's callers the pad here is a
-// no-op and mutant mS0 removed it without changing a single frame. The rule it
-// guards is a width DISAGREEMENT between the box and the join, which is the
-// defect `withControl` actually shipped (a second copy of the air box's width,
-// and the `b` chip fell off the row). A guard whose fault no caller can express
-// is still a guard; it just cannot be tested THROUGH those callers.
+// IT IS A FUNCTION SO THE RULE CAN BE TESTED. Both boxes are built by `shell`,
+// which already pads every row to the box's own width — so with today's callers
+// the pad here is a no-op and removing it (mutant mS0) changes no frame. The
+// rule it guards is a width DISAGREEMENT between the box and the join: a second
+// copy of a box's width, and a chip falls off the row. A guard whose fault no
+// caller can express is still a guard; it just cannot be tested THROUGH those
+// callers.
 func joinColumns(left, right []string, lw, rw int, gap string) []string {
 	n := max(len(left), len(right))
 	out := make([]string, 0, n)
@@ -87,10 +86,10 @@ func (b Broadcaster) upNextBox() []string {
 	}
 
 	c, decided := b.slotCard(b.mainTrack(), 1)
-	// THE LANE IS THE CELL'S OWN WIDTH. A first draft built it two cells wider —
-	// "the lane counts its own rails" — and the row was then truncated back into
-	// the cell, which cut exactly the two cells the handle's CHIP sits in. The
-	// rails belong to the box this draws INSIDE, not to the lane.
+	// THE LANE IS THE CELL'S OWN WIDTH. A lane two cells wider — "the lane counts
+	// its own rails" — is truncated back into the cell, which cuts exactly the two
+	// cells the handle's CHIP sits in. The rails belong to the box this draws
+	// INSIDE, not to the lane.
 	lane := newCardLane(body, o.Glyphs())
 	if !decided {
 		c = lineup.Card{Headline: b.waiting(o)}
@@ -100,33 +99,23 @@ func (b Broadcaster) upNextBox() []string {
 	// • ━━━┓`. A ROW inside the box costs the manifest a line to say what the frame
 	// around it says for free.
 	//
-	// AND THE HANDLE LEAVES THE TITLE WITH IT. The chip rode the title row; the
-	// reference puts the way in at the BOTTOM, beside the presenter — one row for
-	// what the operator DOES with this card, rather than a key in the caption.
+	// AND THE HANDLE IS NOT IN THE TITLE. The reference puts the way in at the
+	// BOTTOM — one row for what the operator DOES with this card, rather than a
+	// key in the caption.
 	rows := b.readBody(o, lane, c, "1", decided)
 
 	// THE LABEL SITS AGAINST THE CARD'S MIDDLE, which is where the reference puts
 	// it — a caption beside a tall cell, not a heading over it.
-	// THE BOX HAS A GROUND OF ITS OWN (D-114, HUM LEAD 2026-09-13: "the UP Next
-	// Box probably needs a bkg color other than none - I suggest the same Blue as
-	// the modal for now").
+	// THE BOX HAS TWO GROUNDS (D-114, D-136). HUM LEAD, UAT 2026-09-15, with a
+	// diagram: the LABEL CELL is TODAY BLUE; the report beside it is "STANDARD
+	// MODAL BLUE", and its "content ... should not be all bold and white, but the
+	// standard text color".
 	//
-	// "FOR NOW" ENDED ON 2026-09-15, exactly as that note anticipated: "let's
-	// make the cell background color of the UP NEXT box the same 'blue' token
-	// color used as the bkg for 'DIRECTION' and 'TODAY' column - this will help
-	// add a bit of visual distinction that will also be themeable."
-	//
-	// TWO GROUNDS, NOT ONE, AND THAT IS THE CORRECTION (D-136). The first pass
-	// read "the cell background color of the UP NEXT box" as the BOX and painted
-	// all of it — label and report together — in the bands' blue and the bands'
-	// bold white. HUM LEAD, UAT 2026-09-15, with a diagram: the LABEL CELL is
-	// TODAY BLUE; the report beside it is "STANDARD MODAL BLUE", and its
-	// "content ... should not be all bold and white, but the standard text
-	// color".
-	//
-	// THE WORD WAS "CELL" AND IT MEANT CELL. A label cell beside a report is
-	// exactly the shape `D I R E C T I O N` has beside its rows, which is why
-	// that band was the colour named — the point was the CELL, not the box.
+	// THE RULING SAYS "CELL" AND MEANS CELL: "let's make the cell background
+	// color of the UP NEXT box the same 'blue' token color used as the bkg for
+	// 'DIRECTION' and 'TODAY' column". A label cell beside a report is exactly
+	// the shape `D I R E C T I O N` has beside its rows, which is why that band
+	// is the colour named — the point is the CELL, not the box.
 	//
 	// `GroupTodayBG` IS THAT BLUE, AND IT IS THE SAME OBJECT — not a colour
 	// matched by eye. It is the ground under `D I R E C T I O N` in the console's
@@ -147,8 +136,8 @@ func (b Broadcaster) upNextBox() []string {
 		if i == at {
 			// BOLD WHITE, RULED (HUM LEAD, 2026-09-14): "Let's make 'UP NEXT' in
 			// the up next box BOLD WHITE so it contrasts a bit more." The box
-			// wears the modal's blue ground (D-114) and the caption was plain
-			// text on it, which at this size reads as part of the fill.
+			// wears the modal's blue ground (D-114), and plain text on it reads,
+			// at this size, as part of the fill.
 			//
 			// THE TOKEN, NOT "white". `TextBright` is what this app already
 			// calls emphasized plain text, so the caption moves with the theme
@@ -159,8 +148,7 @@ func (b Broadcaster) upNextBox() []string {
 			// `centerText` both measuring with `displayWidth` — escape codes
 			// are skipped, so styling cannot inflate the pad and shift the
 			// card's column. Checked rather than assumed: the mutation that
-			// pads AFTER tinting changes no frame at all, so it was written and
-			// then DISCARDED rather than committed as a rule nothing measures.
+			// pads AFTER tinting changes no frame at all, so no mutant pins it.
 			cell = render.Bold(render.Tint(
 				render.PadTo(centerText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW),
 				render.Tok(render.TextBright)))
@@ -202,8 +190,8 @@ func (b Broadcaster) alertBox(rows int) []string {
 		return b.emptyAlertBox(lane, rows)
 	}
 	// THE LIST FILLS THE HEIGHT THE CARD BESIDE IT SETS, so the two boxes close on
-	// the same row. Truncating afterwards cut the control row off the bottom —
-	// which is the one thing in the box the operator presses.
+	// the same row. Truncating afterwards would cut the control row off the bottom
+	// — the one thing in the box the operator presses.
 	out := lane.boxOf(rail[0], "PRIORITY", b.burstBody(rail[0], w, rows-bcAlertChrome))
 	if len(out) > rows {
 		out = out[:rows] // it never grows the frame (FR-7.3)

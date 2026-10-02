@@ -17,20 +17,17 @@ import (
 
 // EVERY ROW OPENS ON A COLOUR THE THEME CHOSE.
 //
-// NOTHING WAS PAINTING THEM WHITE — they were painted by NOBODY, and took the
-// TERMINAL's default foreground. On a dark terminal that is white, which looks
-// right under the dark themes and made the whole surface read the terminal's
-// palette while calling it the theme's. The UP NEXT box is where it showed,
-// because its border is the largest run of untinted glyphs on the frame.
+// UNARMED, UNTINTED TEXT IS PAINTED BY NOBODY and takes the TERMINAL's default
+// foreground. On a dark terminal that is white, which looks right under the dark
+// themes and hides the fault. The UP NEXT box shows it most, because its border
+// is the largest run of untinted glyphs on the frame.
 func TestTheConsoleArmsTheThemesForeground(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 
-	// UNDER THE LIGHT THEME, which is the theme the finding was reported against
-	// AND the one whose `TextBase` is TRUECOLOR. Asked of a palette-index theme
-	// this test cannot see the difference between arming the token properly and
-	// arming it through a hard-coded `38;5;` prefix — which is exactly what a
-	// mutant proved by making that substitution and surviving.
+	// UNDER THE LIGHT THEME, whose `TextBase` is TRUECOLOR. Asked of a
+	// palette-index theme this test cannot see the difference between arming the
+	// token properly and arming it through a hard-coded `38;5;` prefix.
 	was := render.ThemeName()
 	if !render.SetTheme(render.LightThemeName) {
 		t.Fatalf("the Light theme is not registered")
@@ -59,9 +56,9 @@ func TestTheConsoleArmsTheThemesForeground(t *testing.T) {
 	if !strings.HasSuffix(got, "\x1b[0m") {
 		t.Error("and the frame closes on a reset, so the tint does not leak past it")
 	}
-	// THE UP NEXT BOX IS THE CASE THAT WAS REPORTED: its border is the largest run
-	// of glyphs on the frame that nothing else tints, so before this it was drawn
-	// in the terminal's default and vanished on the Light theme.
+	// THE UP NEXT BOX IS THE SHARPEST CASE: its border is the largest run of
+	// glyphs on the frame that nothing else tints, so unarmed it is drawn in the
+	// terminal's default and vanishes on the Light theme.
 	if !strings.Contains(got, render.HeavyBox(false).T) {
 		t.Error("the frame draws no UP NEXT box, so this proves nothing")
 	}

@@ -11,10 +11,10 @@ import (
 )
 
 // broadcaster_uat_test.go — the HUM LEAD's UAT of 2026-09-10, one test per
-// symptom. They are kept together because they share ONE root cause and the
-// grouping is the record of that: `TruncateCells` counted an escape sequence's
-// bytes as display cells, the console clamps every row of its frame through it,
-// and the masthead's wordmark carries a truecolor escape per rune.
+// symptom. They are kept together because they share ONE risk: the console
+// clamps every row of its frame through `TruncateCells`, and the masthead's
+// wordmark carries a truecolor escape per rune, so a clamp that counts an
+// escape sequence's bytes as display cells cuts the frame.
 
 // THE FRAME IS NEVER CUT THROUGH AN ESCAPE, AND NEVER LOSES CONTENT THAT FITS.
 //
@@ -51,7 +51,7 @@ func TestTheFrameSurvivesColour(t *testing.T) {
 		if !strings.Contains(render.StripSGRForTest(rows[bcInsetRows+1]), "API:") {
 			t.Errorf("at %d cols the masthead lost its API summary: %q", w, rows[bcInsetRows+1])
 		}
-		// THE GAIN CONTROL KEEPS BOTH ENDS. It showed only its left arrow.
+		// THE GAIN CONTROL KEEPS BOTH ENDS, not only its left arrow.
 		station := strings.Join(rows[bcInsetRows+4:bcInsetRows+9], "\n")
 		if !strings.Contains(render.StripSGRForTest(station), "+") {
 			t.Errorf("at %d cols the gain control lost its right end:\n%s", w, render.StripSGRForTest(station))
@@ -64,9 +64,9 @@ func TestTheFrameSurvivesColour(t *testing.T) {
 //	"Chips dont render their bkg … tells me something about coloring and tokens
 //	 are broken in broadcaster ui"
 //
-// Nothing was broken. The console had TYPED its keys as text, so there was no
-// chip to paint — while the station section beside it, which uses `KeyCap`,
-// painted its chips correctly. That difference is what the report describes.
+// A key TYPED as text has no chip to paint, and beside the station section,
+// which uses `KeyCap` and paints its chips, that difference reads as broken
+// colouring. So every key the masthead names goes through `KeyCap` too.
 func TestTheMastheadsKeysAreChips(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
@@ -81,14 +81,9 @@ func TestTheMastheadsKeysAreChips(t *testing.T) {
 	}
 }
 
-// THE READ CARDS ARE TALL AND THE ORDERED ONES ARE FLAT (D-68) — RETIRED.
-//
-// This measured `slotRows`, which drew a REGION of the running order as a column
-// of boxes. D-94 replaced the ordered slots with a table and D-97 replaced what
-// was above them with the UP NEXT / takeover pair, so there is no longer a FLAT
-// card to be shorter than a READ one: there is one read card, and the rest are
-// rows. The rule is gone, not weakened, and the test went with it rather than
-// being bent into shape.
+// THERE IS ONE READ CARD (D-68, D-94, D-97). The ordered slots are rows of a
+// table and the UP NEXT / takeover pair sits above them, so there is no FLAT
+// card to be shorter than a READ one, and no test of that rule.
 
 // AND A READ SLOT ON A STATION AT REST IS EMPTY, NOT SHIMMERING.
 //
@@ -96,22 +91,22 @@ func TestTheMastheadsKeysAreChips(t *testing.T) {
 //	 we should have an empty state for that live slot"
 //
 // A shimmer promises a read that is coming. Nothing is coming while the station
-// is not on the air, so the promise would be false — which is the same fault as
-// the dead end D-64 removed, wearing the opposite costume.
+// is not on the air, so the promise would be false — the same fault as a dead
+// end (D-64), wearing the opposite costume.
 func TestAReadSlotIsEmptyWhileTheStationIsAtRest(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	// THE AIR BOX'S LIVE ROW, NOT A CARD REGION (D-95). LIVE stopped being a slot
-	// when it became one row of two; the rule is unchanged — a shimmer promises a
-	// read that is not coming — and the row it applies to moved.
+	// THE AIR BOX'S LIVE ROW, NOT A CARD REGION (D-95). LIVE is one row of two,
+	// and the rule applies to that row: a shimmer must not promise a read that is
+	// not coming.
 	rest := strings.Join(b.airBox(), "\n")
 	if strings.Contains(rest, "waiting for the line-up") {
 		t.Errorf("a stopped station shimmers in the LIVE row:\n%s", rest)
 	}
 	b.power = lineup.Running
 	live := strings.Join(b.airBox(), "\n")
-	// A RUNNING STATION WITH NOTHING DECIDED IS WAITING, and the LIVE row says so
-	// where the card used to: the shimmer is the Director's "still choosing".
+	// A RUNNING STATION WITH NOTHING DECIDED IS WAITING, and the LIVE row says so:
+	// the shimmer is the Director's "still choosing".
 	if !strings.Contains(live, "waiting for the line-up") && !strings.Contains(live, bcStandbyNotice) {
 		t.Errorf("a running station with nothing decided says nothing at all:\n%s", live)
 	}
@@ -180,19 +175,12 @@ func TestTheStationBandIsPaintedByItsState(t *testing.T) {
 	}
 }
 
-// THE SCROLL CONTROL'S CAPS RETIRED WITH THE RUNNING ORDER'S RAIL (D-106).
-//
-// This held two rules about where the caps sit: ▲ on a row of its own in the
-// CARD region, and never below the first scrolling card. Both were about a rail
-// that spanned the running order — and the HUM LEAD retired that: "Location Pool
-// Scrolls, Line-up doesnt … the scroll is anchored only to the location pool
-// table, and the top of the vertical scroll aligns with the headers of the table".
-//
-// SO THE RULES ARE GONE, NOT WEAKENED, and the test went with them rather than
-// being bent into shape. `TestTheScrollControlIsThePoolsAlone` holds what
-// replaces them, and holds it harder: the caps are pinned to the pool's own
-// heading row and footer BY NAME, not by a region boundary that has to be
-// inferred.
+// THE SCROLL CONTROL IS THE POOL'S ALONE (D-106): "Location Pool Scrolls,
+// Line-up doesnt … the scroll is anchored only to the location pool table, and
+// the top of the vertical scroll aligns with the headers of the table". The
+// running order has no rail, so it has no caps to place.
+// `TestTheScrollControlIsThePoolsAlone` pins the caps to the pool's own heading
+// row and footer BY NAME, not by a region boundary that has to be inferred.
 
 // AND THE STATION'S IDENTITY IS IN THE STATION'S SECTION (D-71).
 //
@@ -201,14 +189,14 @@ func TestTheStationBandIsPaintedByItsState(t *testing.T) {
 func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	// THE STATION IS TOLD WHERE IT IS (D-72). It was two hard-coded constants
-	// until the station had settings of its own.
+	// THE STATION IS TOLD WHERE IT IS (D-72), by its own settings rather than by
+	// hard-coded constants.
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.2881, Lon: -117.2256},
 		RadiusMi:    25,
 	})
 	got := stripANSITest(b.stationSection(b.opts(), "", ""))
-	// "BROADCASTING FROM:" SINCE D-107, which is the reference's own label — a
+	// "BROADCASTING FROM:" (D-107), which is the reference's own label — a
 	// station's word for where it transmits from, not the equipment's.
 	for _, want := range []string{"BROADCASTING FROM:", "Bonsall, CA", "TOWER GPS", "33.2881", "-117.2256", "SERVICE RADIUS: 25 Miles"} {
 		if !strings.Contains(got, want) {
@@ -222,18 +210,18 @@ func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
 		t.Errorf("a station with no epicentre says so:\n%s", bare)
 	}
 	// AND THE BED SAYS WHAT IT IS DOING, on its own row of the air box the
-	// section now carries (D-107) rather than on a labelled row beside it.
+	// section carries (D-107) rather than on a labelled row beside it.
 	if !strings.Contains(got, "RELAY BED") || !strings.Contains(got, "INACTIVE") {
 		t.Errorf("the bed's state is missing from the section:\n%s", got)
 	}
 }
 
-// THE BED SAYS WHAT IT IS ACTUALLY CARRYING (F-79, closed at D-78).
+// THE BED SAYS WHAT IT IS ACTUALLY CARRYING (F-79, D-78).
 //
-// IT SAID `(no relay tuned)` AND `○ INACTIVE` UNCONDITIONALLY, because the
-// schedule published the line-up and the power and nothing about the bed — so
-// the one region D-62 built to answer "what is on the air" answered two thirds
-// of it, and the third was a constant that happened to be true at launch.
+// The schedule publishes the bed beside the line-up and the power, so the one
+// region D-62 built to answer "what is on the air" answers all of it, rather
+// than showing `(no relay tuned)` and `○ INACTIVE` as constants that happen to
+// be true at launch.
 func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 	b := NewBroadcaster().withSize(150, 74)
 
@@ -243,7 +231,7 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 		t.Errorf("an untold bed says so:\n%s", bare)
 	}
 
-	// `Relays` SINCE D-117: how many actually stream within the station's reach.
+	// `Relays` (D-117): how many actually stream within the station's reach.
 	// A bed that is CARRYING one manifestly has one, and a fixture that said
 	// otherwise would be describing a state the Producer never publishes.
 	b, _ = b.Update(BedMsg{Relay: "Oceanside, CA", Carrying: true})
@@ -287,11 +275,11 @@ func TestTheStationBandIsEvenlyInset(t *testing.T) {
 	fg, bg := b.stationTone()
 	rows := strings.Split(b.stationSection(b.opts(), fg, bg), "\n")
 
-	// ONE BLANK ROW TOP AND BOTTOM — the vertical half, which was already right.
+	// ONE BLANK ROW TOP AND BOTTOM — the vertical half.
 	//
 	// TWO TEXT ROWS AND FIVE OF AIR BOX BETWEEN THEM (D-107): the state with its
 	// gain, where it broadcasts from with its transition, and the LIVE NOW /
-	// RELAY BED pair the section now carries.
+	// RELAY BED pair the section carries.
 	//
 	// PLUS FR-5.5'S OWN LINE WHILE RUNNING (F-109, ruled 2026-09-16), which this
 	// fixture is. Eight of content, not seven.
@@ -330,13 +318,13 @@ func TestTheStationBandIsEvenlyInset(t *testing.T) {
 }
 
 // A WINDOW ON TOP OWNS THE KEYBOARD, AND THE CONSOLE'S OWN CONTROLS STAND ASIDE
-// (D-58, enforced at D-87).
+// (D-58, D-87).
 //
-// THE BED'S ARROWS HAD THIS WRONG SINCE D-78. The Router looks a key up BEFORE
-// the check that hands an open window its input, so `←`/`→` stepped the relay
-// while the operator was moving through the status window — and nothing saw it,
-// because no gate drove those keys with a window up. Adding the queue's `↑`/`↓`
-// is what surfaced it: the modal-reachability gate drives exactly those.
+// The Router looks a key up BEFORE the check that hands an open window its
+// input, so a console control that does not stand aside — the bed's `←`/`→` —
+// steps the relay while the operator moves through the status window. Only a
+// gate that drives those keys with a window up sees it, as the
+// modal-reachability gate does for the queue's `↑`/`↓`.
 func TestTheConsolesControlsStandAsideForAnOpenWindow(t *testing.T) {
 	d, err := NewDashboard(Config{})
 	if err != nil {
@@ -383,15 +371,12 @@ func openAModal(t *testing.T, d Dashboard) Dashboard {
 
 // THE HEADING NAMES THE TABLE, NOT THE PAIR (D-97).
 //
-// TWO TESTS RETIRED HERE and the reason is one sentence: the running order stopped
-// being a column of cards with a caption over it. `TestTheLaneCaptionSitsOverThe
-// RunningOrder` measured a caption the v3 layout does not draw, and
-// `TestOneBlankRowSeparatesTheRegions` measured the air between card REGIONS that
-// no longer exist — LIVE went to the air box (D-95), the SCHEDULED slots to the
-// table (D-94), and UP NEXT is one of a pair (D-97).
+// The running order is not a column of cards with a caption over it: LIVE is
+// in the air box (D-95), the SCHEDULED slots are the table (D-94), and UP NEXT
+// is one of a pair (D-97), so there are no card REGIONS to caption or separate.
 //
-// WHAT REPLACES BOTH is the table's own centred heading, which is what the
-// reference draws and the only caption left in the frame.
+// The table's own centred heading is what the reference draws and the only
+// caption in the frame.
 func TestTheScheduledHeadingNamesTheTable(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true

@@ -69,7 +69,7 @@ const FeelsLayer = "feels"
 const RainLayer = "rain"
 
 // tempSourceOpenMeteo is the file's word for Open-Meteo; anything else is
-// NDFD, the default since D-185 and D-190 (D-101 had it the other way).
+// NDFD, the default (D-185, D-190).
 const tempSourceOpenMeteo = "open-meteo"
 
 // MapTemperature is the temperature the map draws (W10): Radar mode's every
@@ -613,8 +613,8 @@ func (d Dashboard) retime() Dashboard {
 }
 
 // retimeDrawn is retime, drawn once: the feed's overlays set again with the
-// mode's spans, which draws, or with no feed yet, the frame drawn alone - a
-// step, a tick and the mode's switch drew the same frame twice (W14, P-9).
+// mode's spans, which draws, or with no feed yet, the frame drawn alone - so a
+// step, a tick and the mode's switch draw the frame once, not twice (W14, P-9).
 func (d Dashboard) retimeDrawn() Dashboard {
 	if d.mapPane.feed == nil {
 		return d.renderMap()

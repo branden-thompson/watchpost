@@ -91,21 +91,25 @@ func (t countingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		t.count.add(host, func(h *httpx.HostStats) { h.NotModified++; h.LastOK = now })
 	default:
 		t.count.add(host, func(h *httpx.HostStats) { h.Net++; h.LastOK = now })
-		res.Body = countedBody{ReadCloser: res.Body, add: func(n int) { t.count.add(host, func(h *httpx.HostStats) { h.BytesNet += int64(n) }) }}
+		res.Body = countedBody(res.Body, func(n int) { t.count.add(host, func(h *httpx.HostStats) { h.BytesNet += int64(n) }) })
 	}
 	return res, err
 }
 
-// countedBody counts the bytes read through it.
-type countedBody struct {
-	io.ReadCloser
-	add func(n int)
+// countedBody is body with the bytes read through it counted: the reads go
+// through a TeeReader whose writer only counts, and Close is the body's own.
+func countedBody(body io.ReadCloser, add func(n int)) io.ReadCloser {
+	return struct {
+		io.Reader
+		io.Closer
+	}{io.TeeReader(body, byteCounter(add)), body}
 }
 
-func (b countedBody) Read(p []byte) (int, error) {
-	n, err := b.ReadCloser.Read(p)
-	if n > 0 {
-		b.add(n)
-	}
-	return n, err
+// byteCounter is a writer that counts what is written to it and keeps none
+// of it.
+type byteCounter func(n int)
+
+func (c byteCounter) Write(p []byte) (int, error) {
+	c(len(p))
+	return len(p), nil
 }

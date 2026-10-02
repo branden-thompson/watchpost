@@ -144,10 +144,9 @@ func closeOnExit(final tea.Model) {
 // runProgram runs the terminal program and turns its failure into one the
 // listener can act on.
 //
-// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), and this file already
-// names the remedy: `tickerState` carries the comment "one owner so RunDashboard
-// stays within its statement budget". The budget drifted back over, so the same
-// answer is applied again rather than the rule exempted.
+// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), the same remedy
+// `tickerState` applies: RunDashboard stays within its statement budget rather
+// than the rule being exempted.
 //
 // THE TRANSLATION IS THE POINT, not the call. A terminal library's "open
 // /dev/tty: device not configured" names a dependency the listener did not
@@ -158,8 +157,8 @@ func runProgram(p *tea.Program) error {
 	if err == nil {
 		return nil
 	}
-	// AN ACTIONABLE ERROR, NOT THE TERMINAL LIBRARY'S (VALIDATE red team,
-	// 2026-09-08). Piping or redirecting stdin surfaced "bubbletea: error
+	// AN ACTIONABLE ERROR, NOT THE TERMINAL LIBRARY'S (VALIDATE red team).
+	// Piping or redirecting stdin makes the library report "bubbletea: error
 	// opening TTY: … open /dev/tty: device not configured", which names a
 	// dependency the listener did not choose and no step they can take.
 	// Watchpost is a full-screen program: without a terminal it has nothing
@@ -198,7 +197,7 @@ func (lp *livePipelines) giveItAStation(cfg config.Config, idx *geodata.Index) {
 // loadGeodata loads the embedded location index ONCE and builds the resolver
 // that shares it.
 //
-// ONE CONCERN, AND IT ALREADY SAID SO (Q3, L1-F21/L4-F5): the resolver and the
+// ONE CONCERN (Q3, L1-F21/L4-F5): the resolver and the
 // seed list read the same index, and loading it twice would be two answers to
 // where a place is. Extracted at the statement ceiling (P10-04, D-159).
 //
@@ -225,8 +224,8 @@ func tickerState(cfg config.Config) (tickerPrefs, func(int)) {
 // preferences AND updates the clock the running ticker pipeline reads.
 //
 // Two places, like [M]'s hook. The ticker builds its tape in this package, so a
-// tape that kept the launch-time clock would be the one surface in the app still
-// writing times the way they were written before the setting existed.
+// tape that kept the launch-time clock would be the one surface in the app not
+// writing times the way the setting says.
 func uiHook(clock *atomic.Int32) func(tty.UIPrefs) error {
 	return func(u tty.UIPrefs) error {
 		clock.Store(int32(render.ClockByKey(u.Clock)))
@@ -239,35 +238,26 @@ func uiHook(clock *atomic.Int32) func(tty.UIPrefs) error {
 // clock.
 //
 // They travel together because they are one thing — a preference a running
-// pipeline must see change — and because threading a third atomic through two
-// signatures was one too many. The clock joined them at 0.14.0: the ticker
-// builds its tape in this package, so a tape holding the launch-time clock would
-// be the one surface not following the listener's choice.
+// pipeline must see change — and because threading each one through two
+// signatures on its own is too many. The ticker builds its tape in this
+// package, so a tape holding the launch-time clock would be the one surface not
+// following the listener's choice.
 type tickerPrefs struct {
 	muted  *atomic.Bool
 	radius *atomic.Int64
 	clock  *atomic.Int32
 	// updateCheck is the listener's opt-in to the startup release check. Read
 	// once at wiring: it decides whether the check runs at all. There is no
-	// poller — FR-7.1 retired it.
+	// poller (FR-7.1).
 	updateCheck bool
 }
 
-// [M]'s PERSIST HOOK WAS HERE, and is deleted (red team 2026-09-05, C-1).
-//
-// It flipped the tone mode, the deck's live tone state and the file, and it was
-// reached through tty.Config.MuteTicker — a field declared and never called.
-// MVS-D-48 retired the one-key toggle when [M] became a deep link into the
-// Settings tone rows, and the call site went with it; the hook has been dead
-// since before this release opened. Settings persists the tone rows through
-// saveTones, which is the same three places by the path that is actually taken.
-//
 // startPipelines launches the priority, recent, and ticker pipelines and marks
 // the FIRMS status, returning the CAS-guarded first-full-snapshot timer the
 // caller reports on exit (extracted so RunDashboard stays within the P10-04
-// statement budget after the 0.12.0 ticker wiring).
+// statement budget).
 func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, refs []snapshot.LocationRef, idx *geodata.Index, cfg config.Config, client *httpx.Client, prefs tickerPrefs, start time.Time) *atomic.Int64 {
-	firstFullNanos := &atomic.Int64{} // written by concurrent tier publishes (race-fixed)
+	firstFullNanos := &atomic.Int64{} // written by concurrent tier publishes, so atomic
 	// The favourites ride the client's priority lane (UAT 64): their
 	// requests never queue behind the seed pipeline's launch burst.
 	lp.severe = newSevereDeck(p.Send) // 0.13.0: the window's index — fed by the ticker cycle and by both publishers' hooks (the snapshot each is about to send)
@@ -329,13 +319,12 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 		return scopeFor(&lp.owner, func() airScope { return listenerScope(prefs.radius, lp.currentWatch) }, lp.currentStation)
 	}) // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
 	// The schedule runs from here, over the SAME arbiter and effector the ticker
-	// was just given. It drives the live alert rail since T3.10b — so a
-	// listener notices nothing; T3.2b is the first thing it owns.
+	// is given above, and it drives the live alert rail.
 	// TWO LISTS, BECAUSE THERE ARE TWO PROGRAMMES (D-72, D-76). The
 	// STATION's pool is what its Producer offers and what its Composer resolves
 	// against; the LISTENER's watchlist is what the monitor's rotation moves
-	// through. D-72 moved all three seams to the pool and that was two-thirds
-	// right — the cut-over belongs to the monitor.
+	// through: the station's seams read the pool, and the cut-over belongs to
+	// the monitor.
 	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.resolvable, lp.currentWatch, lp.ticker, p.Send,
 		bedSeams{note: lp.noteBedCarrying, selected: lp.selectedRelay})
 	lp.wireDeckWarnings()
@@ -552,9 +541,8 @@ func newCoops() (*coops.Provider, *httpx.Client, error) {
 // THE MODEL IS THE ROUTER (P0, FR-1.1). Every sender in this package keeps
 // `p` or `p.Send` UNCHANGED and that is correct, not an oversight: a send
 // goes to the PROGRAM, and the program delivers to whichever model it holds.
-// The plan and its red-team audit both said ~9 senders would need rewiring;
-// measuring it found ZERO. `p.Send` was never model-scoped. Returns the program,
-// the deck (nil when it could not be built) and a stop func.
+// `p.Send` is not model-scoped, so no sender needs rewiring. Returns the
+// program, the deck (nil when it could not be built) and a stop func.
 func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provider, cfg config.Config, mode tty.RadioMode, fire func(snapshot.LocationRef) synth.FireReport, seismic func(snapshot.LocationRef) synth.SeismicReport, marine func(snapshot.LocationRef) synth.MarineReport) (*tea.Program, *radioDeck, func()) {
 	deck := newRadioDeck(nil, client, provider, render.UnitF)
 	if deck == nil {
@@ -647,9 +635,8 @@ func saveRadioMode(mode tty.RadioMode) error {
 }
 
 // savePreference is the no-error convenience over config.Mutate, for the
-// preference writes that cannot fail. It is an ADAPTER now, not a second write
-// path: it once called itself "the one path" while five siblings bypassed it,
-// which is the defect FR-1.1 closes.
+// preference writes that cannot fail. It is an ADAPTER over config.Mutate, not
+// a second write path (FR-1.1).
 func savePreference(edit func(cfg *config.Config)) error {
 	return config.Mutate(func(cfg *config.Config) error {
 		edit(cfg)
@@ -704,7 +691,7 @@ func newAssembler(refs []snapshot.LocationRef, providers []snapshot.Provider) *s
 }
 
 // livePipelines reconciles the running pipelines when the watchlist
-// changes (UAT 26, incremental since UAT 69): persist, then add/remove
+// changes (UAT 26, incremental per UAT 69): persist, then add/remove
 // exactly the changed locations — a lookup is one location's requests,
 // never a rebuild. Serialized — commits arrive from tea cmd goroutines.
 type livePipelines struct {
@@ -750,15 +737,14 @@ type livePipelines struct {
 	director      *director            // 0.13.0: the voice arbiter (app/director.go)
 	scripts       *script.Library      // 0.13.0: the spoken lines (domains/radio/script)
 	reader        *eventReader         // 0.13.0: [space] in the window
-	schedule      *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump — running, driving nothing yet
+	schedule      *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump
 
-	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit (0.12.0 follow-up)
+	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit
 
 	// THE STATION'S OWN WORLD (D-72, pool.go). `watchRefs` is the LISTENER's;
 	// these are the Broadcaster's — where it transmits from, how far it reaches,
-	// and the locations its Producer may offer. The two were one list serving
-	// two surfaces, and the station could never schedule more than the listener
-	// happened to watch.
+	// and the locations its Producer may offer. Two lists for two surfaces, so
+	// the station can schedule more than the listener happens to watch.
 	idx      *geodata.Index
 	station  stationArea
 	poolRefs []snapshot.LocationRef
@@ -782,8 +768,8 @@ type livePipelines struct {
 	//
 	// THE TABLE ABOVE IS NOT THIS. It lists every NOAA transmitter in the
 	// country; being in it says a tower exists, not that anything relays it.
-	// The selector walked the table and the operator could pick a callsign
-	// nothing streams — which then tuned to silence.
+	// A selector walking the table would let the operator pick a callsign
+	// nothing streams — which tunes to silence.
 	bedStations []stream.Station
 
 	// bedRefresh is how the relays are re-resolved, and it exists so a test can
@@ -793,12 +779,12 @@ type livePipelines struct {
 	// bedRelay is the relay the operator CHOSE, in the words the row shows, and
 	// "" until they choose one (F-98, D-90).
 	//
-	// REMEMBERED AND NOT MERELY PUBLISHED, which is the whole defect: the
-	// selector sent its relay to the console and kept nothing, so the SETTLE —
-	// which publishes the same row from the DIRECTOR's bed on every tick —
-	// overwrote it a second later and the choice reverted to "(no relay tuned)"
-	// whatever the operator picked. `bedPick` is an INDEX and cannot stand in for
-	// this: its zero value is a real relay, so it cannot say "nothing chosen yet".
+	// REMEMBERED AND NOT MERELY PUBLISHED: the SETTLE publishes the same row
+	// from the DIRECTOR's bed on every tick, so a relay sent to the console and
+	// kept nowhere is overwritten a second later and the row reads "(no relay
+	// tuned)" whatever the operator picked. `bedPick` is an INDEX and cannot stand
+	// in for this: its zero value is a real relay, so it cannot say "nothing
+	// chosen yet".
 	bedRelay string
 
 	// owner is which surface the operator is looking at, and therefore what the
@@ -908,9 +894,8 @@ func (lp *livePipelines) stopAll() {
 		lp.reader.End() // a [space] read in progress ends with the app, its goroutine waited for (A-08)
 	}
 	// LAST, and waited for. The schedule's tick goroutine writes to the pump, so
-	// both have an owner here rather than being abandoned to the context — the
-	// 0.12.0 lesson, where a fire-and-forget goroutine outlived what it wrote to
-	// and turned a release tag red on the Linux race gate.
+	// both have an owner here rather than being abandoned to the context, where
+	// a fire-and-forget goroutine can outlive what it writes to and race it.
 	lp.schedule.stop()
 }
 
@@ -989,11 +974,11 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 // hydrate is the dashboard's Hydrate hook.
 func (lp *livePipelines) hydrate(ref snapshot.LocationRef) { lp.recent.hydrateHourly(ref) }
 
-// narrateEvent is the window's [space] hook — a play/PAUSE now (MVS-D-74). The deck is attached AFTER the
+// narrateEvent is the window's [space] hook — a play/PAUSE (MVS-D-74). The deck is attached AFTER the
 // dashboard is built (attachRadio needs the model), so the hook decides at
 // the press, not at wiring: with no deck to speak through the press is inert
-// — no ▶ mark, no busy reader for a silent record (R5-B-04; VALIDATE
-// 2026-08-29 found the wiring-time check had muted the chip for everyone).
+// — no ▶ mark, no busy reader for a silent record (R5-B-04). A wiring-time
+// check would mute the chip for everyone.
 
 // relayDwell is what the Settings window opens showing. Nil-safe: the deck is
 // not built in every mode, and a window that cannot show the setting is better

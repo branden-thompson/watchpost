@@ -122,7 +122,7 @@ func TestDetailSeismicTsunamiReadsWarning(t *testing.T) {
 		t.Fatalf("a tsunami quake's mark must read in the warning tone:\n%q", raw)
 	}
 	// Under --ascii the warn label uses an ASCII hyphen, never a unicode em-dash
-	// (REVIEW P5 finding: the em-dash leaked into the ascii path).
+	// (REVIEW P5).
 	m := dash(t)
 	s2 := snap()
 	s2.Locations[0].Seismic = ss
@@ -142,8 +142,8 @@ func TestDetailSeismicTsunamiReadsWarning(t *testing.T) {
 // A LABEL TOO LONG FOR THE SECTION IS TRUNCATED, NOT CUT (0.15.0).
 //
 // Fit sizes a column to its content, so a long value makes a wide column and
-// the kit — believing every column fits — truncates nothing. The row then ran
-// past the section and was CLAMPED, with no tail, in the middle of a word:
+// the kit — believing every column fits — truncates nothing. The row then runs
+// past the section and is CLAMPED, with no tail, in the middle of a word:
 // "PAGER — Almost certainly" for "PAGER — Almost certainly felt". A clamp is
 // what happens to a line; a truncation is what a column does to a value, and
 // only the second leaves a mark saying something was dropped.

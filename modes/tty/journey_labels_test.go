@@ -11,10 +11,10 @@ import (
 // THE PTY JOURNEY WAITS FOR WORDS. THIS CHECKS THE APP STILL SAYS THEM.
 //
 // scripts/quality/validate-journey.expect drives the real binary and asserts on
-// what appears. When 0.14.0 renamed the UI, its patterns went stale — it waited
-// for "Correspondent Cast", "Sig. Quakes", a "ºF" that is really "°F" — and
-// every one of those became a FAIL that looked like the app breaking. Nothing
-// ran the journey, so it stayed that way for the release (F-6, F-D3).
+// what appears. When the UI is renamed its patterns go stale — waiting for a
+// label the app no longer draws, or a "ºF" that is really "°F" — and every one
+// becomes a FAIL that looks like the app breaking, with nothing running the
+// journey to notice (F-6, F-D3).
 //
 // A three-minute run against live feeds is the wrong instrument for "does this
 // string still exist". The goldens are: they are real rendered frames, they run
@@ -60,8 +60,7 @@ func TestTheJourneyWaitsForWordsTheAppStillSays(t *testing.T) {
 	}
 	frames := goldenCorpus(t, root)
 
-	// CONTROLS. Without these a broken reader reports everything fine, which is
-	// exactly how the first version of this check behaved when written by hand.
+	// CONTROLS. Without these a broken reader reports everything fine.
 	if !strings.Contains(frames, "Lookup Location") {
 		t.Fatal("control: a string certainly on screen is absent from the goldens; the corpus is not being read")
 	}
@@ -69,20 +68,18 @@ func TestTheJourneyWaitsForWordsTheAppStillSays(t *testing.T) {
 		t.Fatal("control: an impossible string was found; the search is not discriminating")
 	}
 
-	// BOTH SHAPES THE SCRIPT USES. Most steps go through seeAfter now, and when
-	// they were converted this extractor silently fell to two patterns — caught
-	// only by the count check below, which is why that check is here.
-	// A FOURTH SHAPE, AND THE REASON IT IS HERE. tabTo was added on 2026-09-06 and
-	// the extractor could not see it, which would have dropped three patterns out
-	// of this guard silently — the same way the seeAfter conversion dropped
-	// sixteen. tabTo builds its own regex from the label, so the pattern this
-	// checks is the one expect actually receives, not the bare label.
+	// BOTH SHAPES THE SCRIPT USES. Most steps go through seeAfter, and an
+	// extractor blind to a shape silently falls to a handful of patterns —
+	// caught only by the count check below, which is why that check is here.
+	// A FOURTH SHAPE: tabTo. Unseen, it would drop its patterns out of this
+	// guard silently. tabTo builds its own regex from the label, so the pattern
+	// this checks is the one expect actually receives, not the bare label.
 	pat := regexp.MustCompile(`expect [^\n]*?-re "([^"]+)"|expect -timeout [0-9]+ "([^"]+)"|seeAfter "[^"]*" "([^"]+)"|tabTo "([^"]+)"`)
 	// EXTRACTED counts what the reader FOUND; checked counts what it went on to
-	// verify. They were one number, and that was wrong: every exemption lowered
-	// the count that exists to detect a blind extractor, so adding honest
-	// exemptions eventually forces the floor down and quietly disarms the
-	// tripwire. An exempted pattern still proves the reader is reading.
+	// verify. As one number, every exemption would lower the count that exists
+	// to detect a blind extractor, so adding honest exemptions would eventually
+	// force the floor down and quietly disarm the tripwire. An exempted pattern
+	// still proves the reader is reading.
 	extracted, checked := 0, 0
 	for _, m := range pat.FindAllStringSubmatch(string(src), -1) {
 		p := m[1]
@@ -146,11 +143,10 @@ func goldenCorpus(t *testing.T, root string) string {
 
 // wordBounded stops a bare word matching INSIDE a longer one.
 //
-// It was written after the guard passed "CAST" — which appears in the goldens
-// only as the tail of "NOTABLE EVENTS AND FORECASTS". The journey was waiting
-// for a CAST block the Status window does not draw, and the check that exists to
-// catch exactly that said it was fine. A guard with a false positive is worse
-// than none: it converts an unchecked thing into a checked-looking one.
+// Without it "CAST" passes — it appears in the goldens only as the tail of
+// "NOTABLE EVENTS AND FORECASTS" — though the Status window draws no CAST block.
+// A guard with a false positive is worse than none: it converts an unchecked
+// thing into a checked-looking one.
 //
 // Only whole-word patterns are wrapped. Anything carrying regex syntax is left
 // alone, because \b around a pattern that already anchors itself changes what it
@@ -170,9 +166,9 @@ func wordBounded(p string) string {
 		if a == "" {
 			continue
 		}
-		// THE BOUNDARY GOES ONLY WHERE A WORD ENDS. Wrapping unconditionally put
-		// \b after the hyphen in "Theme -", which asks for a word character that
-		// is a space in the frame — turning a correct pattern into a failure.
+		// THE BOUNDARY GOES ONLY WHERE A WORD ENDS. Wrapping unconditionally would
+		// put \b after the hyphen in "Theme -", which asks for a word character
+		// that is a space in the frame — turning a correct pattern into a failure.
 		pre, post := "", ""
 		if isWord(a[0]) {
 			pre = `\b`

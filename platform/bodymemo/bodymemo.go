@@ -1,14 +1,12 @@
 // Package bodymemo caches a PARSE, keyed by whatever the caller fetches by and
 // revalidated by the body's own hash.
 //
-// WHY IT EXISTS. Two providers had written this: domains/fire/firms keyed by
-// (source, tile) over parsed FIRMS points, and domains/seismic/usgs keyed by
-// URL over decoded GeoJSON features. F-53 records them as byte-identical in
-// their stats and the same shape around it — the same tick counter, the same
-// hash revalidation, the same least-recently-used eviction, written twice. Two
-// implementations of one operation is a defect that has not happened yet: the
-// day one is corrected and the other is not, they disagree and both look right
-// in isolation.
+// WHY IT EXISTS (F-53). domains/fire/firms keys it by (source, tile) over
+// parsed FIRMS points, and domains/seismic/usgs by URL over decoded GeoJSON
+// features — the same tick counter, the same hash revalidation, the same
+// least-recently-used eviction. Two implementations of one operation is a
+// defect that has not happened yet: the day one is corrected and the other is
+// not, they disagree and both look right in isolation.
 //
 // WHAT A MEMO OWES, ruled at OQ-9 (HUM LEAD, 2026-09-07):
 //
@@ -57,21 +55,17 @@ type entry[V any] struct {
 // governs eviction.
 func New[K comparable, V any](max int) *Memo[K, V] {
 	if max < 1 {
-		// THE CLAMP IS ALL THERE IS, AND SAYING SO IS THE POINT. An earlier
-		// version called `invariant.Check(false, …)` here and discarded the
-		// error under a comment claiming the violation "appears in the invariant
-		// record". There is no invariant record: `platform/invariant` is
-		// SIDE-EFFECT-FREE — `Check` builds an error and the CALLER'S return is
-		// the recovery — and this function returns no error, so nothing
-		// happened. A check that satisfies a density metric and produces no
-		// observable effect is the proxy-gate pattern this codebase treats as a
-		// defect, and it was added the same day as a fix for that pattern.
+		// THE CLAMP IS ALL THERE IS, AND SAYING SO IS THE POINT. `platform/invariant`
+		// is SIDE-EFFECT-FREE — `Check` builds an error and the CALLER'S return is the
+		// recovery — and this function returns no error, so an
+		// `invariant.Check(false, …)` here would have no observable effect. A check
+		// that satisfies a density metric and produces no observable effect is the
+		// proxy-gate pattern this codebase treats as a defect.
 		//
-		// RETURNING AN ERROR INSTEAD WAS CONSIDERED AND NOT TAKEN: a memo is
-		// built at start-up where nothing is watching, and turning a sizing
-		// mistake into a nil dereference at the first read is worse than
-		// clamping. The bound that MATTERS — that the memo never exceeds max —
-		// is checked in `Parsed`, where it can actually break.
+		// RETURNING AN ERROR INSTEAD IS NOT TAKEN: a memo is built at start-up where
+		// nothing is watching, and turning a sizing mistake into a nil dereference at
+		// the first read is worse than clamping. The bound that MATTERS — that the
+		// memo never exceeds max — is checked in `Parsed`, where it can actually break.
 		max = 1
 	}
 	return &Memo[K, V]{max: max, items: make(map[K]*entry[V], 64)}
@@ -104,7 +98,7 @@ func (m *Memo[K, V]) Parsed(k K, raw []byte, parse func([]byte) (V, error)) (V, 
 	m.items[k] = &entry[V]{sum: sum, val: val, used: m.tick}
 	// THE BOUND IS THIS PACKAGE'S THIRD RULE, CHECKED WHERE IT CAN BREAK (P10-05).
 	// OQ-9 states it in the package doc — "It is bounded. At most max entries,
-	// least-recently-used out" — and nothing asserted it: the eviction is
+	// least-recently-used out" — and this asserts it: the eviction is
 	// conditional on a miss, so the day that condition is wrong the memo grows
 	// without bound and every observable (a hit returns what a parse would,
 	// parses counts misses) goes on reading correct.

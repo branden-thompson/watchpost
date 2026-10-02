@@ -3,12 +3,12 @@ package app
 // inject.go — the injection seam (F-21b), IN EVERY BUILD (0.18.0 D-152).
 //
 // A station operator tests their alerts as a radio station does (HUM LEAD,
-// #9), so the capability ships. What makes that safe is not its absence - it
-// was build-tagged out while a screenshot of a fabricated tornado warning was
-// indistinguishable from a real one - but that a test event can no longer be
-// mistaken: ctrl+d asks ARE YOU SURE, every surface it reaches says TEST EVENT,
-// the read opens and closes with "This is a test", and it lives two minutes.
-// The rule is NFR-2 restated: nothing shipped fabricates an UNMARKED hazard.
+// #9), so the capability ships. What makes that safe is not its absence - a
+// screenshot of an unmarked fabricated tornado warning is indistinguishable
+// from a real one - but that a test event cannot be mistaken: ctrl+d asks ARE
+// YOU SURE, every surface it reaches says TEST EVENT, the read opens and closes
+// with "This is a test", and it lives two minutes. The rule is NFR-2 restated:
+// nothing shipped fabricates an UNMARKED hazard.
 //
 // IT ENTERS WHERE A REAL ALERT ENTERS. The events go in immediately after the
 // source fetch and before globalfeed.Active, so an injected alert crosses every
@@ -42,11 +42,11 @@ type injectQueue struct {
 // IT DOES NOT WAIT FOR THE WEATHER (UAT 2026-09-07). The queue is drained by the
 // fetch cycle, which runs every two minutes, so without the immediate ask an
 // operator who confirmed an injection watches nothing happen for up to two
-// minutes and reasonably
-// reported that it does not work. Worse than slow: a test event is effective
-// for two minutes — the same two minutes — so in the worst case Active drops it
-// in the very cycle that would have shown it, and the tool that exists to prove
-// the machinery works is the one thing in the app that cannot be trusted.
+// minutes and reasonably concludes that it does not work. Worse than slow: a
+// test event is effective for two minutes — the same two minutes — so in the
+// worst case Active drops it in the very cycle that would have shown it, and the
+// tool that exists to prove the machinery works is the one thing in the app that
+// cannot be trusted.
 func (t *tickerDeck) Inject(evs ...globalfeed.Event) {
 	if t == nil || len(evs) == 0 {
 		return
@@ -139,11 +139,11 @@ type scenario struct {
 
 // laneScenarios is one payload per lane the feed can produce.
 //
-// DERIVED FROM globalfeed.FeedLanes, NOT HAND-LISTED (FR-4.2). The window used
-// to offer three fixed rows, and the row named for the emergency path injected
-// a Tornado Warning — so the one path the operator most wants to exercise was
-// the one the window could not reach. A lane added to the feed now arrives here
-// as a missing key, loudly, in a test.
+// DERIVED FROM globalfeed.FeedLanes, NOT HAND-LISTED (FR-4.2). A hand-listed
+// set of rows can miss a lane or file a payload under the wrong one, and the
+// path the operator most wants to exercise becomes the one the window cannot
+// reach. A lane added to the feed arrives here as a missing key, loudly, in a
+// test.
 //
 // THE PAYLOADS ARE NOT CHECKED AGAINST A SECOND COPY OF THE MAPPING. The test
 // runs each one through globalfeed.LaneOf — the app's own classifier — and
@@ -195,10 +195,9 @@ func laneForKey(key string) (globalfeed.Lane, bool) {
 // debugScenarios are what the ctrl+d window offers: one per lane the feed can
 // produce, and a burst.
 //
-// EACH LABEL NAMES THE PRODUCT IT INJECTS. "An Emergency Order (leads the rail,
-// overruns Max)" was true of nothing the scenario did, and no test could have
-// caught that, because a label is prose. A label built from the payload cannot
-// drift from it.
+// EACH LABEL NAMES THE PRODUCT IT INJECTS. A hand-written label is prose: it
+// can promise what the scenario never does, and no test can catch that. A label
+// built from the payload cannot drift from it.
 func debugScenarios() []tty.DebugScenario {
 	out := make([]tty.DebugScenario, 0, len(globalfeed.FeedLanes())+1)
 	for _, l := range globalfeed.FeedLanes() { // bounded by the feed's lanes (P10-02)
@@ -235,19 +234,19 @@ func (lp *livePipelines) injectHook() func(string) {
 
 // testEventLife is how long a fabricated event stays active (FR-4.3).
 //
-// TWO MINUTES, NOT AN HOUR. They carried an hour, which is thirty times the
-// bound the requirement states: a test run at the top of the hour left a
-// fabricated tornado warning in the marquee and the severe window for the rest
-// of it, and in the seen store for seven days after that.
+// TWO MINUTES, NOT AN HOUR. An hour is thirty times the bound the requirement
+// states: a test run at the top of the hour would leave a fabricated tornado
+// warning in the marquee and the severe window for the rest of it, and in the
+// seen store for seven days after that.
 const testEventLife = 2 * time.Minute
 
 // testLocation is where a fabricated alert happens: the listener's own first
 // watched location (HUM LEAD 2026-09-07).
 //
-// NOT A PLACEHOLDER STRING. It carried "Injected Test Location" with no point,
-// which exercises neither the D5 location tie nor the radius fence — two of the
-// stages most likely to be the reason a real alert never reached someone, and
-// the two this tool exists to test.
+// NOT A PLACEHOLDER STRING. A placeholder name with no point exercises neither
+// the D5 location tie nor the radius fence — two of the stages most likely to be
+// the reason a real alert never reached someone, and the two this tool exists
+// to test.
 func (lp *livePipelines) testLocation() snapshot.LocationRef {
 	lp.mu.Lock()
 	defer lp.mu.Unlock()
@@ -262,8 +261,8 @@ func (lp *livePipelines) testLocation() snapshot.LocationRef {
 //
 // AN UNKNOWN KEY FABRICATES NOTHING. An arm catching one and producing a Tornado
 // Warning identical to the "emergency" scenario's makes the two impossible to
-// tell apart — which is precisely how the emergency scenario went five weeks
-// without exercising the emergency path.
+// tell apart — and lets the emergency scenario go unnoticed while it never
+// exercises the emergency path.
 func injectedEvents(key string, now time.Time, here snapshot.LocationRef) []globalfeed.Event {
 	// A LISTENER WITH NO LOCATIONS CAN STILL PRESS ctrl+d, and a blank location
 	// on the band reads as a rendering fault rather than as a test.

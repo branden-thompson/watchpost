@@ -3,7 +3,7 @@ package tty
 // map_scrub.go — the rows under the map, in either mode (0.18.0 D-103,
 // D-105): the colour row; the notes; the picture's own status; the loop's
 // row over its timeline, the controls beside them; the region keys; the
-// chips. The controls left the map for here, so the map is all map.
+// chips. The controls sit here rather than on the map, so the map is all map.
 
 import (
 	"strconv"
@@ -276,7 +276,7 @@ func (d Dashboard) regionsRow(width int) string {
 }
 
 // chipsRow is the window's keys as chips: Area Alerts, the mode, Overlays
-// (D-63, D-65, D-94; the legend retired, D-103).
+// (D-63, D-65, D-94; no legend chip, D-103).
 func (d Dashboard) chipsRow(width int) string {
 	return render.TruncateCells(strings.Join(d.mapChips(), "   "), width)
 }

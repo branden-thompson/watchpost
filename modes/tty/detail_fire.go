@@ -1,7 +1,7 @@
 package tty
 
-// detail_fire.go — the FIRE rows of Location Details (hotspots, incidents, marks). Split from dashboard.go by the
-// quality pass (Q2, pure move); the map of where things happen is
+// detail_fire.go — the FIRE rows of Location Details (hotspots, incidents,
+// marks; Q2). The map of where things happen is
 // docs/where-things-happen.md.
 
 import (
@@ -43,13 +43,12 @@ func fireRows(o render.Opts, loc *snapshot.Location, now time.Time, boldMW, ring
 // fireSectionHead is "Hotspots - Radius: 16 mi": the list's name and HOW FAR IT
 // LOOKED, beside the list itself.
 //
-// THE RADIUS IS ON THE HEAD BECAUSE THERE ARE TWO OF THEM (UAT 2026-09-07). The
-// section drew one label, "Hotspots", and listed satellite detections and named
-// incidents under it — two feeds, two rings, one heading. So "none within the
-// fire ring" read as a claim about the three named fires printed under it, one
-// of them eleven miles away: *"Radio says none within your 16 mile fire ring -
-// but there are 2 hotspots at 11 miles."* They were incidents, from the wider
-// ring, and nothing on screen said so.
+// THE RADIUS IS ON THE HEAD BECAUSE THERE ARE TWO OF THEM (UAT 2026-09-07).
+// Satellite detections and named incidents are two feeds and two rings; under
+// one heading, "none within the fire ring" reads as a claim about the named
+// fires printed under it, one of them eleven miles away: *"Radio says none
+// within your 16 mile fire ring - but there are 2 hotspots at 11 miles."* They
+// are incidents, from the wider ring, and only the head can say so.
 func fireSectionHead(o render.Opts, name string, km float64) string {
 	if km <= 0 {
 		return gridRow(name, "", "")
@@ -60,8 +59,8 @@ func fireSectionHead(o render.Opts, name string, km float64) string {
 }
 
 // detailRailGutter is the air the tables leave on the right for the modal's
-// vertical scroll control (HUM LEAD, 2026-09-07: the age column ran up against
-// it). The detail report scrolls whenever it is longer than the window, which
+// vertical scroll control (HUM LEAD, 2026-09-07: the age column must not run up
+// against it). The detail report scrolls whenever it is longer than the window, which
 // is nearly always, so the gutter is unconditional rather than a guess about
 // whether the rail is drawn this frame.
 const detailRailGutter = 3
@@ -107,9 +106,8 @@ func rows(o render.Opts, lines []string) []string {
 // fireNone is what a list says when its ring admitted nothing. It names the
 // RING, not "the fire ring", because there are two.
 //
-// IT TOOK AN `Opts` AND NEVER READ IT (P10-07). The muted tone comes from the
-// token, which needs no options to resolve; the parameter was the shape of the
-// functions around it rather than anything this one uses.
+// IT TAKES NO `Opts` (P10-07): the muted tone comes from the token, which needs
+// no options to resolve.
 func fireNone() []string {
 	return []string{render.Tint("none within this radius", render.Tok(render.TableMuted))}
 }
@@ -159,7 +157,7 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 		if h.FRPMW != nil {
 			strength = fmt.Sprintf("%.0f MW", *h.FRPMW)
 			if *h.FRPMW >= boldMW {
-				styles[3] = "1;" + render.Tok(render.FireMark) // the FRP cell, which moved when the bearing left it
+				styles[3] = "1;" + render.Tok(render.FireMark) // the FRP cell, after distance and bearing
 			}
 		}
 		age := "age n/a"
@@ -181,10 +179,10 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 
 // incidentRows lists EVERY named fire the row counts (UAT 2026-09-07).
 //
-// It broke at three and said nothing about the rest, so a location wearing 5◆
-// listed three in the one place the app sends people for more detail — while
-// the spoken report named all five. Three surfaces, three answers to "which
-// fires are near me", and the most complete was the one you cannot re-read.
+// NO CAP: a location wearing 5◆ lists all five in the one place the app sends
+// people for more detail, as the spoken report names all five. A cap here would
+// give three surfaces three answers to "which fires are near me", and make the
+// most complete the one that cannot be re-read.
 //
 // AN INCIDENT HAS NO RADIATIVE POWER. It is a reported fire: its name, where it
 // is, how big, how contained, and when it was found. The mock's MWRP column has
@@ -282,9 +280,8 @@ func plural(n int) string {
 // fireBoldDefaultMW is the emphasis threshold when the operator has set none.
 //
 // ONE OWNER, TWO READERS — this Dashboard and the console (Broadcaster.fireBold).
-// Written out twice it was written out WRONG once: the console had it as a
-// constant of its own and could not see the override at all, so one location
-// read bold on the watchlist and plain on the console.
+// A console constant of its own could not see the override, so one location
+// would read bold on the watchlist and plain on the console.
 const fireBoldDefaultMW = 50
 
 // fireBoldMW is the emphasis threshold for the FIRE rows (Config, default 50).

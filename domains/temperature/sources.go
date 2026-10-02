@@ -56,7 +56,7 @@ func (s *NDFD) Covers(region string) bool { return region != geo.RegionSamoa }
 
 // Fetch asks twice: the days' highs and lows, then the hours from the current
 // one. THE HOUR IS SENT WITH ITS ZONE: without it the service reads it as each
-// point's own local time, and answered seven hours ahead (2026-09-26).
+// point's own local time, and answers seven hours ahead.
 func (s *NDFD) Fetch(ctx context.Context, l Lattice, now time.Time) (Series, error) {
 	var addrs, kinds []string
 	for _, q := range pointAsks(l) { // a hundred points an ask (D-201, P10-02)
@@ -397,7 +397,7 @@ func windPeaks(out *Series, dayOf map[time.Time]int) {
 
 // OpenMeteo is Open-Meteo's forecast API: everywhere, over water too, with
 // the past hours NDFD lacks - metered, a call a point, so supplemental where a
-// keyless source covers (D-185). Its air-quality API is no longer asked:
+// keyless source covers (D-185). Its air-quality API is not asked:
 // AirNow's contours are the map's (D-193).
 type OpenMeteo struct {
 	get    Getter

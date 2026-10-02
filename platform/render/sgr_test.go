@@ -55,8 +55,7 @@ func TestColorPassStyling(t *testing.T) {
 //
 // "WATCHPOST Observer" (HUM LEAD, 2026-08-30): the wordmark keeps its gradient
 // and the edition names which experience this build is, so the Broadcaster
-// dashboard a later version brings arrives as a different word here rather than
-// as a rename.
+// dashboard is a different word here rather than a rename.
 func TestWordmarkTintsTheEditionWithItsOwnToken(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
@@ -67,7 +66,7 @@ func TestWordmarkTintsTheEditionWithItsOwnToken(t *testing.T) {
 	if want := Tint(EditionObserver, Tok(TitleEdition)); !strings.Contains(marked, want) {
 		t.Errorf("the edition must be tinted with TitleEdition (%q):\n%q", want, marked)
 	}
-	// The wordmark keeps the gradient it always had: per-rune, so no single SGR
+	// The wordmark keeps its gradient: per-rune, so no single SGR
 	// run covers the whole of it.
 	if !strings.Contains(marked, "\x1b[1;38;2;") {
 		t.Errorf("the wordmark keeps its gradient:\n%q", marked)
@@ -87,8 +86,8 @@ func TestWordmarkTintsTheEditionWithItsOwnToken(t *testing.T) {
 }
 
 // TestSwatchTextReadsOnEveryColour is UAT-2 U2-18: the temperature key's
-// words sat in white on its pale middle bands. Black or white, whichever
-// stands out more - never under 4.5:1 on any colour.
+// words read on every band, the pale middle ones too. Black or white,
+// whichever stands out more - never under 4.5:1 on any colour.
 func TestSwatchTextReadsOnEveryColour(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })

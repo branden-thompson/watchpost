@@ -2,15 +2,13 @@ package tty
 
 // masthead.go — the framed header BOTH surfaces draw (D-59, D-56).
 //
-// THE HUM LEAD ASKED WHY THE CONSOLE'S MASTHEAD WAS DIFFERENT FROM THE
-// OBSERVER'S. It should not have been: I had deviated from the reference —
-// dropping the version from the title, replacing the `Updated:` stamp with an
-// invented "ON AIR / STANDBY", and leaving out the API summary. The reference
-// draws all three, on both surfaces.
+// THE CONSOLE'S MASTHEAD IS THE OBSERVER'S, as the reference draws it: the
+// version in the title, the `Updated:` stamp, and the API summary, on both
+// surfaces.
 //
 // SO THE LADDERS LIVE HERE, ONCE. Everything about the masthead that is the same
 // on both surfaces is one function called twice, which is "one canonical way to
-// do a thing" applied to the thing that prompted the question. What genuinely
+// do a thing". What genuinely
 // differs is the EDITION WORD and, on the console, one extra row naming the
 // station — and those arrive as arguments rather than as a second header.
 

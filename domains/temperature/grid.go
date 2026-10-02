@@ -22,7 +22,7 @@ type Field struct {
 // Interpolate is the lattice's values spread over the box: each cell's value
 // bilinear from the four points around its centre. A SOURCE IS DRAWN ONLY AS
 // FAR AS ITS OWN POINTS REACH (D-101): a cell whose nearest point has no value
-// is missing - extrapolating from a farther one left square patches past
+// is missing - extrapolating from a farther one leaves square patches past
 // NDFD's grid (UAT-2 U2-17) - and otherwise a point with no value is left out
 // and the others weighed up to one.
 func (l Lattice) Interpolate(values []float64) Field { return l.interpolate(values, false) }

@@ -26,8 +26,8 @@ import (
 const MaxVertices = 50_000
 
 // MaxRings bounds how many rings one shape may hold, across all of its areas.
-// **Counting positions was not enough** (RT-1): a document of empty rings
-// counted none of them and was held without limit, which is the failure this
+// **Counting positions is not enough** (RT-1): a document of empty rings
+// counts none of them and would be held without limit, which is the failure this
 // reader exists to prevent arriving by another door. The most rings measured in
 // one zone is 122 (AKZ735, an island chain), so this is room for thirty such.
 const MaxRings = 4_000
@@ -46,8 +46,8 @@ var ErrGeometry = errors.New("geometry")
 // **It streams tokens rather than decoding into `any`.** The interface decode
 // path recurses once per array level with no cap of its own, so a hostile
 // deeply-nested `coordinates` would overflow the stack and take the process
-// down with it (red-team 0.12.0 P4 F2). `domains/globalfeed` has read points
-// this way since; this reads whole rings the same way.
+// down with it (red-team 0.12.0 P4 F2). `domains/globalfeed` reads points
+// this way; this reads whole rings the same way.
 //
 // An absent or null geometry is not an error. Four alerts in five carry none
 // and name zones instead, so it is the ordinary answer.

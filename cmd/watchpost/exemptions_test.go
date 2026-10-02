@@ -3,14 +3,12 @@ package main
 // exemptions_test.go — ONE registry for every exemption table, and one check
 // over all of them.
 //
-// AN EXEMPTION TABLE IS A COST, NOT A FEATURE. Nine of them had accumulated
-// across three files, each individually justified, together an attack surface:
-// eight near-identical "row outlived its subject" loops, two tables with no
-// staleness check at all, and a meta-test whose own list of tables was
-// hand-written — the enumerate-don't-discover shape this package condemns, inside
-// the test written to close the tables' last hole. A blind reviewer named the
-// consequence: "every table is a one-line escape, and the only thing standing
-// behind it is a reviewer noticing a plausible sentence."
+// AN EXEMPTION TABLE IS A COST, NOT A FEATURE. Each is individually justified,
+// and together they are an attack surface: near-identical "row outlived its
+// subject" loops, tables with no staleness check at all, and a meta-test whose
+// own list of tables is hand-written — the enumerate-don't-discover shape this
+// package condemns. "Every table is a one-line escape, and the only thing
+// standing behind it is a reviewer noticing a plausible sentence."
 //
 // SO EVERY TABLE REGISTERS ITSELF, and one test walks the registry. A table says
 // what its subjects are and how to tell whether one still exists and whether the
@@ -61,10 +59,10 @@ type exemptionTable struct {
 }
 
 // absentNonce is a subject that exists nowhere, FRESH ON EVERY CALL. A package
-// constant was a name a table could compare against, and a fixed prefix a shape
-// it could match (N3); random hex with no prefix is neither. A function still
-// sees its argument, so a table honest for "random-looking strings" remains the
-// declared ceiling — but it can no longer be honest for THE nonce by name.
+// constant would be a name a table could compare against, and a fixed prefix a
+// shape it could match (N3); random hex with no prefix is neither. A function
+// still sees its argument, so a table honest for "random-looking strings"
+// remains the declared ceiling — but it cannot be honest for THE nonce by name.
 func absentNonce() string {
 	var b [12]byte
 	if _, err := rand.Read(b[:]); err != nil {

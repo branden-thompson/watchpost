@@ -3,10 +3,9 @@ package app
 // mainread_live_test.go — the reader END TO END (F-95).
 //
 // EVERY OTHER TEST OF THE READER DRIVES A FAKE `read` SEAM. That is right for
-// what they assert — which lane performs a card, what comes home — and it is why
-// the REAL path shipped a defect that killed every card one millisecond after it
-// was asked for: arm the session, start the engine, come home Finished was
-// covered by nothing. P-1, for the third time in one session.
+// what they assert — which lane performs a card, what comes home — and it leaves
+// the REAL path to this file: arm the session, start the engine, come home
+// Finished is covered nowhere else.
 //
 // IT RUNS ON ANY HOST. The voice is a silent one installed through the deck's
 // own seam, and the audio output drains rather than plays, so this needs neither
@@ -91,22 +90,21 @@ func aReport(id string, lines ...string) lineup.Speak {
 		Track: lineup.MainTrack, Script: lineup.Script{Parts: parts}}
 }
 
-// THE DEFECT, AND IT IS THE ONE THE HUM LEAD REPORTED TWICE (F-95).
+// A READ ENDS ON ITS OWN AUDIO, NOT ON THE SOURCE IT REPLACED (F-95).
 //
 // `StartSource` HALTS WHATEVER IT IS REPLACING FIRST, and `halt` ends with
 // `set(Status{State: Stopped})`. The session is armed before that call — it has
 // to be, or a status could land with nothing listening — so the displaced
-// source's Stopped came home as THIS read's ending, one millisecond after it was
-// asked for and before a word was spoken.
+// source's Stopped can come home as THIS read's ending, one millisecond after it
+// is asked for and before a word is spoken.
 //
-// Every card was then Failed{Routed}, discarded, and its location benched for
-// five minutes (D-67). At twenty-five pool entries the console read "waiting for
-// the line-up" in every slot: "cards churn until it gets to 'waiting for
-// line-up'."
+// Every card would then be Failed{Routed}, discarded, and its location benched
+// for five minutes (D-67). At twenty-five pool entries the console would read
+// "waiting for the line-up" in every slot.
 //
-// MEASURED: the first run of this probe returned false in ONE MILLISECOND, with
-// the engine reporting a Stopped whose Name was empty — a status for a source
-// that was not this one.
+// THAT FAILURE IS FAST: the probe returns false in about ONE MILLISECOND, with
+// the engine reporting a Stopped whose Name is empty — a status for a source
+// that is not this one.
 func TestAReadComesHomeFinishedOverARealEngine(t *testing.T) {
 	d := liveDeck(t)
 
@@ -129,7 +127,7 @@ func TestAReadComesHomeFinishedOverARealEngine(t *testing.T) {
 		}
 		// AND IT TOOK TIME, which is the half that says the words were actually
 		// played rather than the session being closed by somebody else's status.
-		// The defect returned in about a millisecond.
+		// The displaced source's Stopped arrives in about a millisecond.
 		if el := time.Since(start); el < 50*time.Millisecond {
 			t.Errorf("the read came home in %s; nothing can have been spoken in that time", el)
 		}
@@ -178,7 +176,7 @@ func (v recordingVoice) Say(_ context.Context, text string) ([]byte, error) {
 
 // THE HALT OF THE SOURCE THIS READ REPLACED IS NOT THIS READ ENDING (F-95).
 //
-// The unit form of the defect above, pinned at the exact sequence the engine
+// The unit form of the test above, pinned at the exact sequence the engine
 // produces: `StartSource` halts first and `halt` ends with a Stopped, and only
 // then does this read's own audio report Connecting.
 func TestAReadIsNotEndedByTheHaltOfTheSourceItReplaced(t *testing.T) {

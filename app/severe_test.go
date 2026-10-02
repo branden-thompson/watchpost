@@ -247,7 +247,7 @@ func TestSevereEscapesNeverReachTheFrameEndToEnd(t *testing.T) {
 }
 
 // The deck sees the snapshot the publisher is ABOUT to send, not the previous
-// one (R3-A-02: reading pb.last back from inside the hook lagged the tables
+// one (R3-A-02: reading pb.last back from inside the hook lags the tables
 // by one publish — a 0-row first publish, then ≤ 20 s / ≤ 2 min behind).
 func TestDeckSeesTheSnapshotBeingPublished(t *testing.T) {
 	var sent []tea.Msg
@@ -363,11 +363,11 @@ func TestDropSupersededKeepsOnlyTheReplacement(t *testing.T) {
 // ALERTS - EVENTS scopes the WINDOW, not only the tape (HUM LEAD, UAT
 // 2026-08-30).
 //
-// The window listed the pre-radius set while the tape listed the filtered one,
-// so the two disagreed — and the STATEMENTS and ADVISORIES tabs, whose rows come
-// only from the tracked locations and never from the national feed, were bounded
-// by nothing but which locations happened to be on the watchlist. One preference
-// governs both now.
+// One preference governs both. A window listing the pre-radius set while the
+// tape lists the filtered one would disagree with it — and the STATEMENTS and
+// ADVISORIES tabs, whose rows come only from the tracked locations and never
+// from the national feed, would be bounded by nothing but which locations
+// happen to be on the watchlist.
 func TestTheAlertRadiusScopesTheSevereWindowsLocationRows(t *testing.T) {
 	near := snapshot.Location{Label: "Oceanside, CA", Lat: 33.24, Lon: -117.30,
 		Alerts: []snapshot.Alert{{ID: "sps-near", Event: "Special Weather Statement", Effective: time.Now()}}}
@@ -419,8 +419,8 @@ func TestAScopedWindowWithNoDefaultShowsNothing(t *testing.T) {
 //
 // Many NWS products are zone-only — watches, most flood warnings, heat
 // advisories — and carry no polygon, so there is nothing to measure a radius
-// against. Dropping them silenced the tape, the breaking takeover and the
-// spoken alert for a warning the app was already tracking.
+// against. Dropping them silences the tape, the breaking takeover and the
+// spoken alert for a warning the app is already tracking.
 //
 // THE INPUT IS BUILT BY THE PIPELINE, not by the test. globalfeed.Locate is
 // what fills Location on the real path, and it deliberately skips the watchlist
@@ -563,9 +563,9 @@ func TestCycleScopesTheZoneOnlyTieByTheRadiusToo(t *testing.T) {
 // EACH LOCATION-ONLY LANE KEEPS ITS OWN BUDGET, AND ITS WORST ROWS.
 //
 // Advisories and Special Weather Statements reach the marquee only through the
-// tracked locations, and they shared one budget — so a day of heat advisories
-// emptied the Statements lane while its statements were live, and the rotation
-// lost a whole lane. Driven through publish, which is what fills LaneRows.
+// tracked locations, and one shared budget would let a day of heat advisories
+// empty the Statements lane while its statements are live, and the rotation
+// lose a whole lane. Driven through publish, which is what fills LaneRows.
 func TestEachLocationOnlyLaneKeepsItsOwnBudget(t *testing.T) {
 	now := time.Now()
 	alert := func(id, event, severity string, at time.Time) snapshot.Alert {
@@ -761,9 +761,9 @@ func TestTheLaneCutDoesNotReorderTheWindow(t *testing.T) {
 //
 // toSevereRow converts with a numeric cast — tty.SevereTab(r.Tab) — so the
 // domain's Tab and the window's SevereTab must agree position by position. A
-// compile-time check already asserts they are the same LENGTH; nothing asserted
-// they are in the same ORDER, and reordering one without the other would file
-// every row under a neighbouring category with no error anywhere.
+// compile-time check asserts they are the same LENGTH; this asserts they are in
+// the same ORDER, because reordering one without the other would file every
+// row under a neighbouring category with no error anywhere.
 func TestTheDomainAndWindowTabsAgreePositionByPosition(t *testing.T) {
 	for _, c := range []struct {
 		domain severe.Tab

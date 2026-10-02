@@ -3,9 +3,8 @@ package tty
 // setup.go — the Settings window's STATE and its KEYS: what is being edited,
 // what each keypress does to it, and what is written when it closes.
 //
-// WHERE THE REST OF THE WINDOW LIVES. It was one 1,210-line file; it is now
-// four, along the grain it already read in and following the naming the package
-// already used (2026-09-06, a pure move):
+// WHERE THE REST OF THE WINDOW LIVES. It is four files, along the grain the
+// window reads in and following the package's naming:
 //
 //	setup.go         this — the window's state, its key handling, its saves
 //	setup_layout.go  geometry: groups become blocks, blocks become columns,
@@ -13,11 +12,10 @@ package tty
 //	setup_form.go    the three questions with no group file of their own —
 //	                 default location, the FIRMS key, the alert radius
 //
-// and one file per question GROUP, as before: setup_rows.go (the row table),
+// and one file per question GROUP: setup_rows.go (the row table),
 // setup_cast.go, setup_ui.go, setup_relay.go, setup_tones.go.
 //
-// Originally split from dashboard.go by the quality pass (Q2); the map of where
-// things happen is docs/where-things-happen.md.
+// The map of where things happen is docs/where-things-happen.md.
 
 import (
 	"fmt"
@@ -44,8 +42,8 @@ import (
 // a location is chosen, and [s] reopens the window.
 // setupFocus names the question the keys go to (UAT 111.3: every question
 // is on screen at once; tab / shift+tab move between them).
-// The focus is now an INDEX INTO setupTable (setup_rows.go), not a state
-// machine over three questions. Twenty rows across four groups cannot be
+// The focus is an INDEX INTO setupTable (setup_rows.go), not a state
+// machine over the questions. Twenty rows across four groups cannot be
 // enumerated by hand in four places without drifting.
 type setupState struct {
 	focus setupRowID
@@ -76,7 +74,7 @@ type setupState struct {
 
 	// serviceMi is the miles buffer for the service radius, and serviceSeeded
 	// says it still holds the STORED value — the same first-digit-replaces rule
-	// the alert radius learned at UAT 2026-09-08, for the same reason.
+	// the alert radius follows (UAT 2026-09-08), for the same reason.
 	serviceMi     string
 	serviceSeeded bool
 
@@ -99,9 +97,9 @@ type setupState struct {
 	// appending (HUM LEAD, UAT 2026-09-08).
 	//
 	// Without this, opening a window that reads "[50] mi" and typing 20 — the
-	// obvious way to change it — produced 5020, a five-thousand-mile radius,
-	// and the listener reasonably read the result as "my choice was not saved".
-	// It was saved; it was just not the number they entered.
+	// obvious way to change it — produces 5020, a five-thousand-mile radius,
+	// and the listener reasonably reads the result as "my choice was not saved".
+	// It is saved; it is just not the number they entered.
 	radiusSeeded bool
 
 	// ALERTS - TONE
@@ -156,9 +154,8 @@ type setupState struct {
 // writer goes through it.
 func (st setupState) touch() setupState { st.gen++; return st }
 
-// openSetupAt opens Setup with a row already focused — what V does now that
-// the voice chooser is retired (MVS-D-3): the listener presses the key they
-// always pressed and lands on the correspondents.
+// openSetupAt opens Setup with a row already focused — what V does
+// (MVS-D-3): the listener presses V and lands on the correspondents.
 func (d Dashboard) openSetupAt(at setupRowID) Dashboard {
 	d = d.openSetup()
 	if d.modal == modalSetup {
@@ -262,15 +259,14 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// a group's rows, space operates the focused control, ←→ cycle a picker,
 	// enter accepts and moves on — and saves on the last row.
 	//
-	// bubbletea v2 names the space key "space"; a `" "` case never fires. That
-	// is not a detail: today's setup.go has exactly such a dead case, and it is
-	// why the alert radio could not be operated with space before now.
+	// bubbletea v2 names the space key "space"; a `" "` case never fires, and a
+	// control behind one cannot be operated with space.
 	if key.String() == "ctrl+r" {
 		// A WINDOW-level key, not a row-level one. The chip that names it is
 		// drawn beside the key field, and a listener reads a chip and presses
 		// the key — they do not first check which row has the focus. Scoped to
-		// the key row it simply did nothing from anywhere else, which reads as
-		// broken. (UAT 2026-08-30.)
+		// the key row it would do nothing from anywhere else, which reads as
+		// broken (UAT 2026-08-30).
 		d.setup.reveal = !d.setup.reveal
 		return d.settled(), nil
 	}
@@ -283,8 +279,8 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// The body is memoised on that counter, so a writer that forgets to bump it
 	// renders one keystroke late — which is not a stale cache to the person
 	// typing, it is a keyboard that does not work. Trusting every writer to
-	// remember was the wrong shape: the typed rows did not, and the window
-	// stopped showing what was being typed into it. One place cannot forget.
+	// remember is the wrong shape: one that forgets leaves the window not
+	// showing what is typed into it. One place cannot forget.
 	m, cmd := d.setupRowText(key)
 	if next, ok := m.(Dashboard); ok {
 		return next.settled(), cmd
@@ -479,9 +475,8 @@ func (d Dashboard) rowVisible(id setupRowID) bool {
 	if id < 0 || id >= setupRowCount {
 		return false // outside the table: not a row, so not a visible one
 	}
-	// D-18's RULING, ASKED HERE (D-92). `stepRow` already walks only visible
-	// rows and `setupBlock` already draws only visible rows — this seam was built
-	// for exactly this and returned `true` for everything until now.
+	// D-18's RULING, ASKED HERE (D-92). `stepRow` walks only visible rows and
+	// `setupBlock` draws only visible rows, so this one seam decides both.
 	if id == rowMapLayers && len(d.cfg.MapLayers) == 0 {
 		return false // no layer registered: nothing to pick, and no group drawn (D-92)
 	}
@@ -566,8 +561,8 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 	}
 	// The display preferences write on this exit too. setupFinishCmd owns the
 	// location, radius, cast and tones; the WATCHPOST UI group is uiApplyCmd's,
-	// and leaving it out of this path meant enter saved four groups of five and
-	// then discarded the fifth with the window state.
+	// and left out of this path, enter would save four groups of five and then
+	// discard the fifth with the window state.
 	cmd := sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)),
 		d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd(),
 		d.transmitterApplyCmd(), d.serviceRadiusApplyCmd(), d.historyApplyCmd())
@@ -576,25 +571,23 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 
 // commitToModel makes the MODEL agree with what closing the window just wrote.
 //
-// THE WRITE WAS NEVER THE PROBLEM. These three settings persist through a setter
-// that returns nothing, so nothing wrote the new value back into d.cfg — and
-// openSetup seeds the form FROM d.cfg, so re-opening showed the old choice and
-// the listener reasonably concluded the save had failed. It had not: HUM LEAD,
-// UAT 2026-09-08, saw the [w] window correctly trim its events to the new radius
-// while Settings still displayed the previous one. The config file, the ticker
-// pipeline and the severe window all had the new value; only the form did not.
+// THE WRITE IS NOT THE PROBLEM. These three settings persist through a setter
+// that returns nothing, so nothing writes the new value back into d.cfg — and
+// openSetup seeds the form FROM d.cfg, so without this a re-open shows the old
+// choice and the listener reasonably concludes the save failed, while the config
+// file, the ticker pipeline and the severe window all have the new value.
 //
-// The display preferences never had this bug because uiApplyCmd returns a
-// uiSavedMsg and applyUISaved writes the values back (setup_ui.go) — this is
-// that same round trip, for the three settings whose setters cannot report an
-// outcome to return.
+// The display preferences get this from uiApplyCmd, which returns a
+// uiSavedMsg that applyUISaved writes back (setup_ui.go) — this is that same
+// round trip, for the three settings whose setters cannot report an outcome to
+// return.
 //
 // CALL IT AFTER THE CMDS ARE BUILT. applyIfChanged compares the new value with
 // d.cfg, so updating d.cfg first would make every write look like a no-op and
 // nothing would be saved at all.
 //
 // The guards match applyIfChanged's exactly. If they drift, the model and the
-// file disagree about what is in force, which is a worse bug than this one.
+// file disagree about what is in force, which is worse than a stale form.
 func (d Dashboard) commitToModel() Dashboard {
 	if d.cfg.SetAlertRadius != nil {
 		d.cfg.AlertRadiusMi = d.setup.alertRadiusChoice()
@@ -633,10 +626,9 @@ func (d Dashboard) commitToModel() Dashboard {
 // radiusApplyCmd and relayApplyCmd are the SINGLE owners of those two writes.
 //
 // The window has two exits and they must agree. The esc case says so in as many
-// words — "no group can be saved by one route and dropped by the other" — and
-// the rotation was saved by enter and dropped by esc anyway, because the write
-// was spelled out inside the enter path where esc could not reach it (HUM LEAD,
-// UAT 2026-09-04). The alert radius had the same defect and nobody had tried it.
+// words — "no group can be saved by one route and dropped by the other" — and a
+// write spelled out inside the enter path, where esc cannot reach it, breaks
+// that promise (HUM LEAD, UAT 2026-09-04).
 // One owner per setting, called from both exits, is what makes the promise
 // checkable; TestBothExitsSaveTheSameSettings is what keeps it true.
 //
@@ -807,7 +799,7 @@ func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // HUM LEAD, 2026-09-13: it functions "like the Service alerts radius filer
 // option in Settings just without the 'all alerts' option (so no radio button)".
 //
-// THE SAME FIRST-DIGIT-REPLACES RULE the alert radius learned at UAT 2026-09-08,
+// THE SAME FIRST-DIGIT-REPLACES RULE as the alert radius (UAT 2026-09-08),
 // and for the same reason: a field showing a number the operator did not type is
 // a field they are about to type OVER, not one they are appending to. Without it
 // a stored 25 and a typed 50 make 2550.
@@ -875,9 +867,9 @@ func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	default:
 		if r := key.Text; r >= "0" && r <= "9" {
 			// A KEY THAT CHANGES NOTHING SELECTS NOTHING (VALIDATE red team,
-			// 2026-09-08). Moving this out of the length guard let a digit typed
-			// into a full buffer flip the radio to "Within" while leaving the
-			// number alone — a press that appears to choose and does not.
+			// 2026-09-08). Outside the length guard, a digit typed into a full
+			// buffer would flip the radio to "Within" while leaving the number
+			// alone — a press that appears to choose and does not.
 			if d.setup.radiusSeeded || len([]rune(d.setup.radiusMi)) < 4 {
 				d.setup.filtered = true // typing a distance means Filtered
 			}
@@ -935,12 +927,10 @@ func (d Dashboard) currentTransmitter() *snapshot.LocationRef {
 // service radius does not — a station serves a region or it is not set up. Two
 // miles is the smallest region a transmitter can usefully be the centre of.
 //
-// THEY WERE CONSTANTS HERE, and the comment above them said `modes/tty` "may not
-// import `platform/config` (make lint-imports)". THAT WAS NOT TRUE — it compiles
-// and the gate passes. The real reason is a convention nothing had written down:
-// no package under `modes/` reads storage, because the UI is handed what it
-// needs. So the numbers now arrive through `Config`, `platform/config` owns them
-// alone, and the tie-test that stood between two copies is retired.
+// THEY ARRIVE THROUGH `Config`, NOT AS CONSTANTS HERE. No package under
+// `modes/` reads storage, because the UI is handed what it needs — so
+// `platform/config` owns the numbers alone, and there is no second copy to
+// keep in step.
 //
 // UNSET REFUSES EVERYTHING, and that is deliberate. `ok` is false until the app
 // supplies the bounds, and `inServiceRange` then admits no radius at all — a

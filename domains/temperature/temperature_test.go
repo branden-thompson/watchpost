@@ -66,7 +66,7 @@ func TestEveryRecordedTemperatureFixtureIsPresent(t *testing.T) {
 		Captured string   `json:"captured"`
 		Files    []string `json:"files"`
 	}
-	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 17 { // D-136 recorded three more, D-137 and D-138 two, D-168 one; D-193 retired the air
+	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 17 { // every recorded fixture, wind, gusts, UV and history included (D-136, D-137, D-168)
 		t.Fatalf("the manifest is %+v (%v)", m, err)
 	}
 	for _, f := range m.Files {

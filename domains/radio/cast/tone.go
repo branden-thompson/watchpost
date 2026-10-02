@@ -18,9 +18,9 @@ import (
 // under-announce, and Warning is this package's loud default — it carries the
 // loudest PRESET, which is what a listener actually hears.
 //
-// "the loudest class" is the older wording and it was wrong once ToneRank
-// existed: Warning does not hold the highest RANK, Disaster does, and the two
-// only sound alike because they share the dual-tone. One fallback, said one way.
+// Not "the loudest class": Warning does not hold the highest RANK, Disaster
+// does, and the two only sound alike because they share the dual-tone. One
+// fallback, said one way.
 type Class int
 
 const (
@@ -35,8 +35,8 @@ const (
 	// ClassEmergency is the Weather Service's highest-urgency product — leave,
 	// now. It reuses the dual tone and is told apart by COUNT: three, where a
 	// warning is one (#18, HUM LEAD 2026-09-07). Repetition is the one
-	// dimension this taxonomy did not use, so it costs nothing to design, tune,
-	// or teach a listener.
+	// dimension the rest of this taxonomy does not use, so it costs nothing to
+	// design, tune, or teach a listener.
 	ClassEmergency
 
 	numClasses
@@ -55,7 +55,7 @@ const (
 
 // class is one row of the class registry: the config word, the Setup label and
 // the preset it always sounds. A class's preset is not configurable — MVS-D-26
-// dropped the "share the Warnings tone" switch; a class is either muted or it
+// rules out a "share the Warnings tone" switch; a class is either muted or it
 // sounds its ratified preset.
 type class struct {
 	toneRank int // how much attention this class's tone demands; higher is more severe
@@ -78,13 +78,12 @@ var classes = [numClasses]class{
 }
 
 // toneClassOf is the ONE declared mapping from a hazard category to the tone it
-// sounds. #18 happened because category.Emergency was added at C-2 and this
-// relationship existed nowhere — the feed, the window and the read ladder were
-// all taught, and the tone was not.
+// sounds. Without one, a category the feed, the window and the read ladder all
+// know can reach the air with no tone of its own (#18).
 //
 // A function, not a global, per the codebase's table convention (P10-06).
 // A category absent here fails TestEveryCategoryThatReachesAReadHasATone rather
-// than falling through to ClassWarning, which is what made the omission silent.
+// than falling through to ClassWarning, which would make the omission silent.
 func toneClassOf() map[category.Category]Class {
 	return map[category.Category]Class{
 		category.Emergency:  ClassEmergency,
@@ -141,7 +140,7 @@ func ToneRepeats(c Class) int {
 // `ToneName` all return — an unknown alert is the one you least want to
 // under-announce, and Warning is this package's loud default.
 //
-// IT RETURNED DISASTER'S RANK ONCE, and the difference was inaudible only
+// IT DOES NOT RETURN DISASTER'S RANK: the difference would be inaudible only
 // because Warning and Disaster share the dual-tone — the accidental coupling
 // MVS-D-73 exists to remove, reintroduced in the fallback. Two answers for one
 // question, agreeing by accident, is the shape D-1 is about.
@@ -321,22 +320,22 @@ const (
 // who chose "Mute" and ticked nothing asked for silence, not for a no-op.
 func Muted(c Class, t Tones) bool {
 	// LEAVE-NOW IS NEVER SILENT (D-143, #18). Emergency is excluded from
-	// `Classes()` so no Setup row can mute it — and that was only half the
+	// `Classes()` so no Setup row can mute it — and that is only half the
 	// rule: "Mute:" with nothing ticked means EVERY class, and
 	// `Config.withToneCompat` migrates a pre-0.14.0 `ticker_muted = true`
-	// into exactly that state. An upgrading listener lost the attention tone
-	// silently, with no row to un-tick, because `toggleClass` materialises
-	// only the six LISTED keys.
+	// into exactly that state. Without this an upgrading listener loses the
+	// attention tone silently, with no row to un-tick, because `toggleClass`
+	// materialises only the six LISTED keys.
 	//
-	// THE WORDS WERE NEVER AT RISK; the tone is. What goes missing is the
+	// THE WORDS ARE NOT AT RISK; the tone is. What would go missing is the
 	// three-repeat signal that tells someone who is NOT LOOKING to leave
 	// before any word is spoken, which is the whole reason this class is not
 	// in the list the listener may edit.
 	//
-	// ASKED HERE, NOT AT THE CALL SITES. `Classes()` already keeps it off the
-	// screen; this keeps it out of every OTHER path to the same answer — which
-	// is the P-9 shape this defect had: a member of a closed set inheriting a
-	// rule ratified before it existed.
+	// ASKED HERE, NOT AT THE CALL SITES. `Classes()` keeps it off the
+	// screen; this keeps it out of every OTHER path to the same answer — the
+	// P-9 shape: a member of a closed set must not inherit a rule ratified
+	// without it.
 	if c == ClassEmergency {
 		return false
 	}

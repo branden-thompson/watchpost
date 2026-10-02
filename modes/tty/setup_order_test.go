@@ -9,11 +9,11 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
-// ↓ WALKS A GROUP AS IT IS DRAWN (HUM LEAD, 2026-09-30): in the Maps tab ↓
-// went from Radar to Temperature, past Radar ahead and Quakes drawn between
-// them - focus followed the rows' declared order, the page its drawn one.
-// Laid in one column, each ↓ within a group lands on a row drawn below the
-// last.
+// ↓ WALKS A GROUP AS IT IS DRAWN (HUM LEAD, 2026-09-30): focus follows the
+// order the page draws, not the rows' declared one, so in the Maps tab ↓ from
+// Radar lands on the row drawn next, never past Radar ahead and Quakes to
+// Temperature. Laid in one column, each ↓ within a group lands on a row drawn
+// below the last.
 func TestDownWalksAGroupAsItIsDrawn(t *testing.T) {
 	d := setupGolden(t, 80, 400, false, rowMapsOn)
 	table := setupTable()
@@ -40,8 +40,8 @@ func TestDownWalksAGroupAsItIsDrawn(t *testing.T) {
 }
 
 // A GROUP'S PICKERS LINE UP (HUM LEAD, 2026-09-30): where a group's rows have
-// ← → pickers, every ← sits in one column - Data → History's Hourly detail
-// and Trends were two cells apart, its longer label pushing its picker over.
+// ← → pickers, every ← sits in one column - a longer label must not push its
+// picker over (Data → History's Hourly detail and Trends).
 func TestAGroupsPickersLineUp(t *testing.T) {
 	d := setupGolden(t, 133, 400, false, rowMapsOn)
 	d.cfg.MapLayers = []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}, {Key: TemperatureLayer, Label: "Temperature"}}

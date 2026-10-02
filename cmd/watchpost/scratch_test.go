@@ -3,8 +3,8 @@ package main
 // scratch_test.go — no scratch test reaches the tree (0.18.0 batch 16).
 //
 // A throwaway test that prints what a window draws is how a layout gets looked
-// at while it is built; one - `zz_peek_test.go`, `TestZZPeek` - was committed
-// with batch 16 and taken out after. So the gate asks the files on disk, not
+// at while it is built, and one - a `zz_peek_test.go` with `TestZZPeek` - is
+// easy to commit along with the work. So the gate asks the files on disk, not
 // the index: a scratch file fails the run before it can be staged.
 
 import (

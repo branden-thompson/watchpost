@@ -25,28 +25,25 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// PHASE 0 OF THE STATION DIRECTOR BUILD — the regression net, written BEFORE
-// anything moves (03-architecture-design/director-build-plan.md).
+// THE STATION DIRECTOR'S REGRESSION NET (03-architecture-design/
+// director-build-plan.md).
 //
-// These pin rules that are about to be absorbed by the Director. The reason
-// they exist at all is on the record: the last time one of these rules moved,
-// the exported Tune lifted the alert duck and the unexported tune did not, the
-// watchlist advance called the wrong one, and a listener heard the next
-// location's report come up at full volume over a breaking alert still being
-// read. "A rule that lives in the case of an identifier is a rule waiting to be
+// These pin rules the Director owns. A rule that moves between carriers can be
+// dropped on the way: an advance that lifted the alert duck would bring the next
+// location's report up at full volume over a breaking alert still being read.
+// "A rule that lives in the case of an identifier is a rule waiting to be
 // missed" (app/radio.go).
 //
-// Each pin is mutation-validated in T0.4: deleting the rule it guards must make
+// Each pin is mutation-validated (T0.4): deleting the rule it guards must make
 // it fail. A pin that has never failed protects nothing.
 
 // offlineClient is an httpx client over a server of the test's own, and the
 // server's URL for the providers to point at. The handler is what the test
 // wants upstream to say — nothing at all for a deck that must run offline, the
 // NWS fixtures for a seam that needs a location to exist — and no unit test
-// reaches api.weather.gov, which the compose-seam tests did (REVIEW
-// 2026-09-17). The cache is memory-only on purpose: a disk tier starts a writer
-// goroutine that outlives the test and races the removal of t.TempDir(), which
-// is F-102's mechanism.
+// reaches api.weather.gov. The cache is memory-only on purpose: a disk tier
+// starts a writer goroutine that outlives the test and races the removal of
+// t.TempDir(), which is F-102's mechanism.
 func offlineClient(t *testing.T, upstream http.Handler) (*httpx.Client, string) {
 	t.Helper()
 	srv := httptest.NewServer(upstream)
@@ -62,19 +59,18 @@ func offlineClient(t *testing.T, upstream http.Handler) (*httpx.Client, string) 
 // httptest server that 404s everything, the NWS provider and BOTH relay
 // directories pointed at it, and a fake audio output.
 //
-// The alternative was to pin only advanceQueue's guards — the negative cases —
-// and that has the defect radio_stop_test.go names at its own positive half: a
-// guarded advance and a broken one look identical from outside. The rule being
-// pinned here is about to move into the Director, so the pin has to be able to
-// see the advance actually happen.
+// Pinning only advanceQueue's guards — the negative cases — has the defect
+// radio_stop_test.go names at its own positive half: a guarded advance and a
+// broken one look identical from outside. So the pin has to be able to see the
+// advance actually happen.
 func offlineDeck(t *testing.T) (*radioDeck, *heldOutput) {
 	t.Helper()
 	// A HELPER CALLED offlineDeck MUST BE OFFLINE. Without this the deck picks
 	// its voice on the RUNNING platform, and on Linux that means rawVoice finds
 	// no Piper voice and installs one — a real 63 MB download inside a unit test,
-	// whose progress callback then dereferences this deck's nil program. That is
-	// what failed the first four Linux CI runs of this release; on a Mac the same
-	// call returns a SayVoice immediately and nothing was ever visible.
+	// whose progress callback then dereferences this deck's nil program. On a Mac
+	// the same call returns a SayVoice immediately, so the hazard shows only on
+	// Linux.
 	//
 	// These five tests are about the Director's advance and the duck. The host's
 	// voice catalogue is not the subject, so it is pinned rather than inherited.
@@ -102,10 +98,9 @@ func pinRef(label string, lat, lon float64) snapshot.LocationRef {
 
 // T0.1 — THE DECK REPORTS THE FACTS THE DIRECTOR DECIDES ON (T3.2b).
 //
-// T0.1a and T0.1b pinned armDwell and advanceQueue: when the dwell armed, and
-// that an advance respected a stop. Both were DECISIONS and both moved into the
-// Director, where they are pure functions of the bed, the settings and the clock
-// — pinned there by TestTheBedHoldsWhenItShould, TestALiveRelayAdvancesWhenIts
+// The DECISIONS — when the dwell arms, and that an advance respects a stop —
+// are the Director's, where they are pure functions of the bed, the settings and
+// the clock — pinned there by TestTheBedHoldsWhenItShould, TestALiveRelayAdvancesWhenIts
 // DwellElapses and TestAStoppedProgrammeDoesNotAdvanceTheBed.
 //
 // What is left on this side is the half only the deck can do: OBSERVING. A stop
@@ -126,8 +121,8 @@ func TestT01TheDeckReportsTheFactsTheDirectorDecidesOn(t *testing.T) {
 		t.Fatalf("a stop told the Director %d things, want one: %v", len(got), got)
 	}
 	// THE MONITOR'S STOP, NOT THE STATION'S (D-74). The operator stopped
-	// LISTENING; their station's power is the console's to declare, and the two
-	// being one field is what made a tune put the console on the air.
+	// LISTENING; their station's power is the console's to declare, and were the
+	// two one field, a tune would put the console on the air.
 	if m, ok := got[0].(lineup.Monitored); !ok || m.Running {
 		t.Errorf("a stop reported %#v, want Monitored{Running: false}", got[0])
 	}
@@ -155,12 +150,10 @@ func TestT01TheDeckReportsTheFactsTheDirectorDecidesOn(t *testing.T) {
 
 // T0.2 — AN AUTOMATIC ADVANCE DOES NOT TAKE AN ALERT OFF THE AIR.
 //
-// This is the regression, expressed as a test rather than a comment. The
-// exported Tune once lifted the alert duck and the unexported tune did not, and
-// the Watchlist advance called the wrong one: the next location's report came up
-// at full volume over a breaking alert that was still reading. Both spellings
-// leave the duck alone today, and the duck has exactly one owner — the director.
-// That ownership is what moves into the Lineup.
+// An advance that lifted the alert duck would bring the next location's report
+// up at full volume over a breaking alert that is still reading. Both spellings
+// of tune leave the duck alone, and the duck has exactly one owner — the
+// director.
 func TestT02AnAutomaticAdvanceDoesNotTakeAnAlertOffTheAir(t *testing.T) {
 	d, out := offlineDeck(t)
 	a, b := pinRef("A", 33.19, -117.37), pinRef("B", 32.71, -117.16)
@@ -169,8 +162,7 @@ func TestT02AnAutomaticAdvanceDoesNotTakeAnAlertOffTheAir(t *testing.T) {
 	d.engine.Suppress() // a takeover is reading an alert
 	// THE PATH THE DIRECTOR TAKES (T3.2b). The advance is the Director's decision
 	// and reaches the deck through the executor's tune seam, which calls exactly
-	// this. The rule is
-	// unchanged and so is what it is asserted against.
+	// this.
 	d.tune(b)
 	if snapshot.Key(d.ref) != snapshot.Key(b) {
 		t.Fatalf("the advance did not happen (ref=%q) — this proves nothing about the duck", d.ref.Label)
@@ -264,13 +256,12 @@ func (l *cueLog) all() []string {
 // reports a short duration, so the sequence's holds do not wait out a real read.
 //
 // IT RECORDS `play`, NOT `render`, AND THE DIFFERENCE IS THE WHOLE CONTRACT.
-// DR-18 is that the band is told before the words are HEARD. It logged the
-// render instead, which was a faithful stand-in only while rendering and playing
-// were adjacent; the moment a line was rendered ahead of time — during the tone,
-// or during the line before it — the render moved in front of the cue while not
-// one word reached the listener any earlier. The pin failed on a silent
-// operation, which is a pin measuring the wrong event rather than a defect.
-// Renders are still logged, so a reader can see them, but they are not "say".
+// DR-18 is that the band is told before the words are HEARD. A render stands in
+// for that only while rendering and playing are adjacent; a line rendered ahead
+// of time — during the tone, or during the line before it — puts the render in
+// front of the cue while not one word reaches the listener any earlier, and a
+// pin on the render would fail on a silent operation. Renders are still logged,
+// so a reader can see them, but they are not "say".
 type cueVoice struct{ log *cueLog }
 
 func (v *cueVoice) duck()                         {}
@@ -283,10 +274,9 @@ func (v *cueVoice) render(_ context.Context, _ cast.Role, text string) (clip, bo
 // tag names WHICH event a log entry belongs to, so the ordering can be asserted
 // per event rather than by position.
 //
-// Position was not enough, and a mutant proved it: the first version exempted
-// the burst head with an index test, the head is only index 0, and so the first
-// event's words slipped through — moving the cue after the words was SURVIVED
-// by the pin (m49). Identity cannot drift the way an index can.
+// Position is not enough: the burst head is only index 0, so exempting it by
+// index lets the first event's words slip through, and moving the cue after the
+// words survives such a pin (m49). Identity cannot drift the way an index can.
 func tag(s string) string {
 	switch {
 	case strings.Contains(s, "Norfolk"):
@@ -335,8 +325,7 @@ func cueDeckWith(t *testing.T, log *cueLog, v narrationVoice) *tickerDeck {
 	// a line to after it is INVISIBLE. Both arrangements log the render in the
 	// same place relative to the words — the difference is whether the hold for
 	// those words has already been spent, and a log with no holds in it cannot
-	// see that. A pin for the pre-build was written without this and passed
-	// against the defect it was named for.
+	// see that.
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool {
 		log.add("wait")
 		return ctx.Err() == nil
@@ -359,15 +348,15 @@ func cueDeckWith(t *testing.T, log *cueLog, v narrationVoice) *tickerDeck {
 //
 // IT NAMES A SOURCE, and that is load-bearing rather than decoration. `burstHead`
 // returns "" for a burst whose events name no agency, so without it these pins
-// ran a burst with NO HEAD — and the head is a boundary of its own, where the
-// first alert's render sat in the head's pause while every pin stayed green. A
+// run a burst with NO HEAD — and the head is a boundary of its own, where the
+// first alert's render can sit in the head's pause while every pin stays green. A
 // fixture that skips a branch makes every pin over it vacuous on that branch.
 func twoBreaking() []globalfeed.Event {
-	// AND IT IS LIVE (red team 2026-09-05, I-8). A fixed past date meant both
-	// alerts had expired, and eventsFor now declines to compose a card whose
-	// alert is no longer active — so every pin over this fixture would have
-	// run against a burst that never reached the reader. The fixture-validity
-	// guards in these tests are what caught it, which is what they are for.
+	// AND IT IS LIVE (red team 2026-09-05, I-8). With a fixed past date both
+	// alerts expire, and eventsFor declines to compose a card whose alert is not
+	// active — so every pin over this fixture would run against a burst that never
+	// reaches the reader. The fixture-validity guards in these tests catch that,
+	// which is what they are for.
 	at := time.Now()
 	return []globalfeed.Event{
 		{ID: "pin-1", Source: "NWS", Class: globalfeed.ClassSevereWx, Type: "Tornado Warning", Location: "Norfolk, VA",
@@ -379,11 +368,9 @@ func twoBreaking() []globalfeed.Event {
 
 // T0.3 — THE BAND IS TOLD BEFORE THE WORDS ARE SPOKEN, FOR EVERY EVENT.
 //
-// This is today's "3 … 2 … 1" cue, which the charter describes as a deliberate
-// lead and which the code arrives at by accident: readBreaking sends the
-// marquee message, then calls s.line, which RENDERS before it plays. The lead
-// is real, nobody specified it, and DR-18 turns it into a contract — so its
-// current shape is recorded here first.
+// This is the "3 … 2 … 1" cue, which the charter describes as a deliberate
+// lead and DR-18 makes a contract: readBreaking sends the marquee message before
+// the event's words are spoken.
 func TestT03TheCuePrecedesTheWordsForEveryEvent(t *testing.T) {
 	log := &cueLog{}
 	d := cueDeck(t, log)
@@ -393,8 +380,7 @@ func TestT03TheCuePrecedesTheWordsForEveryEvent(t *testing.T) {
 	seq := log.all()
 	// THE FIXTURE IS ASSERTED VALID BEFORE THE BEHAVIOUR IS. A sequence that
 	// never cued and never spoke would satisfy every ordering claim below by
-	// vacuity — which is exactly how five fixtures passed while proving nothing
-	// this release.
+	// vacuity.
 	for _, ev := range []string{":norfolk", ":raleigh"} {
 		cue, say := indexOf(seq, "cue"+ev), indexOf(seq, "say"+ev)
 		if cue < 0 {
@@ -417,27 +403,22 @@ func TestT03TheCuePrecedesTheWordsForEveryEvent(t *testing.T) {
 // T0.3b / DR-24 — A TAKEOVER CUT SHORT STILL RELEASES THE BAND.
 //
 // THE BAND IS RELEASED ON EVERY PATH, WHICH IS WHAT THIS PINS (T3.5).
-// TickerBreakingDoneMsg sent on ONE path — the last line of the takeover closure
-// — leaves four early returns above it sending nothing, while
-// the audio side was released unconditionally by the arbiter. That asymmetry is
-// why it went unnoticed for so long: the sound came back, so the station seemed
-// fine, and only the band sat frozen on an alert nobody was reading.
+// A TickerBreakingDoneMsg sent on ONE path — the last line of the takeover
+// closure — leaves every early return above it sending nothing, while the
+// arbiter releases the audio side unconditionally. That asymmetry hides itself:
+// the sound comes back, so the station seems fine, and only the band sits frozen
+// on an alert nobody is reading.
 //
-// The release is a `defer` now rather than a fifth call site, because DR-24 is
-// explicit that this must be a PROPERTY and not a discipline — and "remember to
-// release before every return" is the discipline that had already failed four
-// times in this one function.
-//
-// It was written as a characterisation test that names its own replacement, and
-// that is what made the handover free: the day the behaviour changed, the test
-// failed with instructions rather than a puzzle.
+// The release is a `defer` rather than a call before each return, because DR-24
+// is explicit that this must be a PROPERTY and not a discipline — and "remember
+// to release before every return" is a discipline.
 func TestT03bATakeoverCutShortStillReleasesTheBand(t *testing.T) {
 	log := &cueLog{}
 	ctx, cancel := context.WithCancel(context.Background())
 	// CUT IT SHORT MID-SEQUENCE, not before it starts. A pre-cancelled context
 	// never enters the takeover at all, so "no release" would be true of a
 	// perfect implementation too — the assertion would pass while proving
-	// nothing, which is this release's most repeated mistake.
+	// nothing.
 	log.onCue = func() { cancel() }
 	d := cueDeck(t, log)
 
@@ -492,11 +473,11 @@ func (o *heldOutput) count() int {
 // A render costs about a second, so running it inside the pause before the line
 // it belongs to — cue the band, render, speak — puts it in every gap of a burst:
 // the listener hears tone → a second of nothing → header, and about two
-// and a half seconds between alerts where the ruling says one. Heard on a real
-// alert at UAT 2026-09-03: "the uniform 2-3s pause in between every sentence
-// feels like something is broken".
+// and a half seconds between alerts where the ruling says one. A listener hears
+// it as "the uniform 2-3s pause in between every sentence feels like something
+// is broken" (UAT 2026-09-03).
 //
-// THE FIX IS ORDER, NOT DURATION, SO THE PIN IS ABOUT ORDER. Each line is
+// ORDER, NOT DURATION, IS THE PROPERTY, SO THE PIN IS ABOUT ORDER. Each line is
 // rendered while the PREVIOUS sound is still playing, which puts its render
 // before its own cue. Pinning the elapsed time instead would make this a
 // stopwatch test that fails on a slow machine and passes on a fast one while
@@ -521,11 +502,10 @@ func TestNoRenderSitsBetweenACueAndItsWords(t *testing.T) {
 				"before it and the listener waits it out: %v", ev, render, cue, seq)
 		}
 	}
-	// THE HEAD IS A BOUNDARY TOO, and it is the one the first version missed:
-	// the head's own render overlapped the tone, but the FIRST ALERT was then
-	// rendered when the read loop started — after the head had been spoken and
-	// its pause already held. Every per-event check above passed while the
-	// listener waited a full render on that one boundary.
+	// THE HEAD IS A BOUNDARY TOO: the head's own render can overlap the tone
+	// while the FIRST ALERT is rendered only when the read loop starts — after the
+	// head has been spoken and its pause already held. Every per-event check above
+	// passes while the listener waits a full render on that one boundary.
 	head := indexOf(seq, "say:structural")
 	first := indexOf(seq, "render:norfolk")
 	if head < 0 {
@@ -580,9 +560,9 @@ func (v *endingVoice) restore() {}
 // and that remainder is routinely non-positive: a muted class sounds an instant
 // tone, so the very first hold of the burst has nothing left to wait. `s.hold(0)`
 // returns true WITHOUT reaching its own air check — so a takeover whose context
-// died during that render carried on and put a callout on the band for a read
-// that never happened. The band would then hold a breaking headline for an alert
-// nobody was ever going to speak.
+// dies during that render would carry on and put a callout on the band for a
+// read that never happens, holding a breaking headline for an alert nobody is
+// going to speak.
 //
 // It asks awaitAir explicitly when there is nothing left to wait. Nothing left
 // to wait is not the same as nothing left to check.
@@ -651,10 +631,10 @@ func (v *refuseThenEndVoice) restore()    {}
 // `holdRest` asks the air when a hold has nothing left to wait, which covers the
 // paths that reach a cue through a hold. The RETRY does not: when the first
 // render fails on its own, `readBreaking` renders a second time and goes
-// straight to the cue with no hold between them. A sequence that ended during
-// that second render still put a breaking headline on the band for a read that
-// never happened — the same defect as the one already pinned, through a door
-// the pin did not cover. Found by review, on the fixed code.
+// straight to the cue with no hold between them. A sequence that ends during
+// that second render must not put a breaking headline on the band for a read
+// that never happens — the same defect as the one pinned above, through a
+// different door.
 func TestTheRetryPathAlsoCuesNothingOnceTheSequenceEnded(t *testing.T) {
 	log := &cueLog{}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -676,23 +656,20 @@ func TestTheRetryPathAlsoCuesNothingOnceTheSequenceEnded(t *testing.T) {
 
 // THE DIRECTOR IS TOLD THE PROGRAMME IS RUNNING, NOT ONLY THAT IT STOPPED.
 //
-// It starts Stopped on purpose — a station comes up silent — and Stop was the
-// only power it ever heard, so `advances(MainTrack)` stayed false for the life
-// of the process and the bed never moved on. Watchlist looked like it simply did
+// It starts Stopped on purpose — a station comes up silent — so if Stop is the
+// only power it hears, `advances(MainTrack)` stays false for the life of the
+// process and the bed never moves on. Watchlist would look like it simply does
 // nothing, on both the relay path and the synth path.
 //
-// NO TEST CAUGHT IT BECAUSE EVERY FIXTURE SENT Powered{Running} ITSELF. The
-// tests supplied what production had forgotten, which is the one thing a fixture
-// must never do for a wiring seam.
+// NO FIXTURE SENDS Powered{Running} ITSELF. A test that supplies what production
+// forgets is the one thing a fixture must never do for a wiring seam.
 //
 // THE REPORT BELONGS TO tune, NOT TO setMode (0.16.0 P3). Riding setMode's
 // transition edge makes "the programme is running" a fact about the DECK's mode
-// string; the merged station does not change the deck's mode at
-// all, so it was never powered and never read anything. THIS TEST DROVE setMode
-// DIRECTLY, so it passed throughout — a pin on the carrier rather than on the
-// rule, which is why it could not see the carrier become the wrong one.
+// string, and the merged station does not change the deck's mode at all. A pin
+// driving setMode directly would pin the carrier rather than the rule.
 //
-// It drives `tune` now: the thing the LISTENER does. A pin that names the
+// So this drives `tune`: the thing the LISTENER does. A pin that names the
 // listener's act survives the next time the audio path is rearranged.
 func TestTheDeckReportsThatTheProgrammeIsRunning(t *testing.T) {
 	d, _ := offlineDeck(t)
@@ -706,7 +683,7 @@ func TestTheDeckReportsThatTheProgrammeIsRunning(t *testing.T) {
 	}
 	// THE MONITOR'S START, AND IT IS STILL FIRST (D-74). A need reported to a
 	// Director that believes nobody is listening is a rotation that never
-	// advances — the same hazard the old wording named, one power along.
+	// advances.
 	if m, ok := got[0].(lineup.Monitored); !ok || !m.Running {
 		t.Errorf("starting reported %#v, want Monitored{Running: true} FIRST — a need reported to a "+
 			"Director that believes nobody is listening is a rotation that never advances", got[0])
@@ -714,7 +691,7 @@ func TestTheDeckReportsThatTheProgrammeIsRunning(t *testing.T) {
 
 	// A MODE CHANGE IS NOT A POWER CHANGE. The deck moving from synth to a
 	// relay tells the Director nothing, because nothing about whether the
-	// operator is listening has changed — which is the coupling this fix broke.
+	// operator is listening has changed.
 	got = nil
 	d.setMode("live", "KEC62", "a relay")
 	if len(got) != 0 {
@@ -728,8 +705,8 @@ func TestTheDeckReportsThatTheProgrammeIsRunning(t *testing.T) {
 		t.Fatalf("a stop told the Director %d things, want one: %v", len(got), got)
 	}
 	// THE MONITOR'S STOP, NOT THE STATION'S (D-74). The operator stopped
-	// LISTENING; their station's power is the console's to declare, and the two
-	// being one field is what made a tune put the console on the air.
+	// LISTENING; their station's power is the console's to declare, and were the
+	// two one field, a tune would put the console on the air.
 	if m, ok := got[0].(lineup.Monitored); !ok || m.Running {
 		t.Errorf("a stop reported %#v, want Monitored{Running: false}", got[0])
 	}
@@ -738,11 +715,10 @@ func TestTheDeckReportsThatTheProgrammeIsRunning(t *testing.T) {
 // THE SETTINGS CHOICE REACHES THE DIRECTOR, AND REACHES IT NOW.
 //
 // Storing the override is only half of it. The Director HOLDS the dwell it was
-// last told, so a listener who shortens the rotation mid-programme keeps the
-// old one until something else happens to re-send it — which, on a station
+// last told, so a listener who shortens the rotation mid-programme would keep
+// the old one until something else happens to re-send it — which, on a station
 // that is already rotating, may be five minutes away. That is indistinguishable
-// from "the setting does not work", and it is the complaint that produced this
-// setting in the first place.
+// from "the setting does not work".
 func TestTheSettingsRotationReachesTheDirectorAtOnce(t *testing.T) {
 	d, _ := offlineDeck(t)
 	var got []lineup.Event

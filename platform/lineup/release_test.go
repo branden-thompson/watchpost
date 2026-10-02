@@ -10,18 +10,17 @@ import (
 // DR-24 — EVERY EXIT FROM ON AIR CARRIES ITS RELEASE.
 //
 // The cue and its release are paired, with the same guarantee the duck already
-// has. What made this a requirement rather than a tidy-up: the band was
-// released on ONE path, with five early returns above it that sent nothing,
-// while the audio side was released unconditionally. So the audio came back and
-// the ticker kept a callout for a card that had stopped existing — a station
-// showing an alert it is no longer reading.
+// has. Released on one path only — with early returns above it that send
+// nothing, while the audio side is released unconditionally — the audio comes
+// back and the ticker keeps a callout for a card that has stopped existing: a
+// station showing an alert it is no longer reading.
 //
 // IT IS A PROPERTY OF Step's OUTPUT, not a discipline about call sites. That
-// distinction is the requirement: "remember to send the release" is exactly what
-// failed before, five times in one function. So this asserts the property
-// directly — after any step, a card that WAS on air and now is not must have a
-// release in that step's effects — and every exit is driven through it rather
-// than each being spot-checked.
+// distinction is the requirement: "remember to send the release" is what fails
+// at every early return. So this asserts the property directly — after any
+// step, a card that WAS on air and now is not must have a release in that
+// step's effects — and every exit is driven through it rather than each being
+// spot-checked.
 //
 //	exit            | reached by
 //	----------------+----------------------------------------------------
@@ -160,13 +159,12 @@ func TestDR24EveryEventLeavesTheBandConsistent(t *testing.T) {
 //
 // The release is paired with the CUE, not with the card. A card discarded from
 // standby was never cued, so releasing on its way out clears the callout for
-// whatever IS reading — the same stale-band defect as DR-24's original, with
-// the band cleared too early instead of too late.
+// whatever IS reading — the stale-band defect DR-24 guards, with the band
+// cleared too early instead of too late.
 //
-// The code says this in as many words and nothing measured it: the mutant that
-// released on every exit, on air or not, SURVIVED the rest of this file. Every
-// case here had the leaving card ON the air, so the condition being deleted was
-// true in all of them.
+// The rest of this file cannot measure it: every case there has the leaving
+// card ON the air, so a mutant that releases on every exit, on air or not,
+// survives them all.
 func TestDR24ACardDiscardedBeforeTheAirReleasesNothing(t *testing.T) {
 	d, onAir := onAirDirector(t)
 

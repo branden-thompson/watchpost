@@ -8,10 +8,6 @@ package tty
 // it (setup_cast.go, setup_ui.go, setup_relay.go, setup_tones.go, and
 // setup_form.go for the three questions that have no group file of their own);
 // what a KEY does is in setup.go.
-//
-// SPLIT FROM setup.go (2026-09-06), a pure move. That file was 1,210 lines
-// holding three separable things — the window's state and keys, this, and the
-// form's rows — and the package already named its files after what they hold.
 
 import (
 	"strings"
@@ -76,8 +72,8 @@ func (d Dashboard) tabWidth() int {
 	return max(setupOneColWidth, min(d.setupMaxWidth(o), widestBlock(blocks)+panelFrame+panelRail+columnMargin))
 }
 
-// setupOneColWidth is the stacked layout's floor: today's window width, which
-// the DATA group's lines were written for.
+// setupOneColWidth is the stacked layout's floor: the one-column window width,
+// which the DATA group's lines were written for.
 const setupOneColWidth = 78
 
 // setupLines is the Setup window body: the groups, laid in two BALANCED columns
@@ -100,10 +96,10 @@ type setupBlock struct {
 	//
 	// The note appears only under the row the cursor is on, so a block's drawn
 	// height depends on where the cursor is. The split is balanced on heights,
-	// so that made the SPLIT depend on the cursor too, and the window changed
-	// width as you moved through it — 118 cells to 121 at 133x44. The note was
-	// already wrapped so it could not widen a block; nothing stopped it
-	// reshaping the layout by making one taller. The plan discounts it.
+	// so counting the note would make the SPLIT depend on the cursor too, and
+	// the window would change width as the cursor moves through it. The note is
+	// wrapped so it cannot widen a block, but it can make one taller. The plan
+	// discounts it.
 	noteH int
 }
 
@@ -130,10 +126,9 @@ func (d Dashboard) setupBlocks(o render.Opts) []setupBlock {
 // dataGroupLines draws the DATA group, which is the only one that cannot be a
 // single lines function.
 //
-// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), and it is the case that
-// broke the budget: the other five groups each delegate to one per-group lines
-// function, and this one inlined thirty-odd statements beside them. The fix is
-// the pattern its own neighbours already use.
+// ITS OWN FUNCTION UNDER THE STATEMENT CEILING (P10-04, D-159): the other five
+// groups each delegate to one per-group lines function, and this follows the
+// same pattern rather than inlining thirty-odd statements beside them.
 //
 // IT TAKES THE CURSOR AND DOES NOT RETURN IT. Each row appended shifts where the
 // NEXT row's focus span begins, so `at` moves all the way down this group — and
@@ -242,8 +237,8 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 	}
 	b.end = max(b.end, b.at)
 	// Measured HERE and carried, because the split search asks for it once per
-	// candidate: re-measuring made the 80x24 rebuild allocate half again as much
-	// as the hand-assigned columns it replaced. render.Width walks the escapes in
+	// candidate: re-measuring would make the 80x24 rebuild allocate half again as
+	// much. render.Width walks the escapes in
 	// a styled line, and a block is measured against every split that could put
 	// it in a column.
 	b.w = widest(b.lines)
@@ -259,12 +254,11 @@ type columns struct {
 
 // columnPlan picks the split, and reports whether two columns fit at all.
 //
-// THE SPLIT IS COMPUTED, not written down. The window had its groups assigned to
-// columns by hand, and every group added since made that assignment worse: by
-// 0.14.0 four groups stood against one, so the right column ended a dozen rows
-// short and the window was a dozen rows taller than it needed to be — which buys
-// a scroll rail nobody wanted and pays for those rows on every frame that draws
-// them.
+// THE SPLIT IS COMPUTED, not written down. A hand assignment of groups to
+// columns gets worse with every group added: four groups against one leaves the
+// right column a dozen rows short and the window a dozen rows taller than it
+// needs to be — which buys a scroll rail nobody wanted and pays for those rows
+// on every frame that draws them.
 //
 // The rule is the SPLIT POINT that leaves the two columns most nearly equal in
 // height, reading order preserved: groups fill the left column top to bottom,
@@ -300,9 +294,8 @@ func (d Dashboard) columnPlan(blocks []setupBlock, o render.Opts) (columns, bool
 // line among them, from the widths they measured when they were built.
 
 // appendCastNote adds the focused cast row's note, with the blank that belongs
-// to it. Extracted from setupBlock, which the P10-01 statement bound caught
-// growing past 40 as the relay group landed — the note is a self-contained
-// step and reads better with a name on it.
+// to it. Its own function keeps setupBlock under the P10-01 statement bound —
+// the note is a self-contained step and reads better with a name on it.
 func (d Dashboard) appendCastNote(b setupBlock, focus setupRowID, castW int) setupBlock {
 	note := d.castNote(focus)
 	if note == "" || !b.focused {
@@ -366,7 +359,7 @@ func (d Dashboard) setupBody(o render.Opts) (lines []string, focusAt, focusEnd i
 	// A BLANK LINE STANDS BETWEEN IT AND THE GROUPS (UAT-1 U1-30) wherever the
 	// tab still fits the window with it; on a window too short for that - 80x24,
 	// where every line is below a fold - the tab row takes the first group's
-	// opening blank, as it did before.
+	// opening blank.
 	head := []string{d.setupTabRow(o, o.Width-4)}
 	opens := len(lines) > 0 && strings.TrimSpace(lines[0]) == ""
 	if opens && len(lines)+len(head) > d.modalMax()-setupChipRows {
@@ -411,20 +404,18 @@ func anyFocused(blocks []setupBlock) bool {
 
 // focusBody is the OPEN WINDOW's lines and the span its focused row occupies.
 //
-// IT ASKS THE OPEN WINDOW, NOT SETUP (red team 2026-09-05). modalScroll called
-// setupBody unconditionally, so every other pinned-footer window scrolled by
-// SETUP's focus against SETUP's line count — a permanent zero for the
-// relay-fault and ctrl+d windows, because nothing else writes d.modalScroll.
-// At 80x24, the app's documented floor, that put every one of the relay-fault
-// window's ways out below the fold: the rail drew its arrows, the cursor moved,
-// and the screen did not change. The reported "arrows do not work", arrived at
-// by geometry instead of by the memo.
+// IT ASKS THE OPEN WINDOW, NOT SETUP (red team 2026-09-05). Scrolled by SETUP's
+// focus against SETUP's line count, every other pinned-footer window gets a
+// permanent zero — nothing else writes d.modalScroll for the relay-fault and
+// ctrl+d windows. At 80x24, the app's documented floor, that puts every one of
+// the relay-fault window's ways out below the fold: the rail draws its arrows,
+// the cursor moves, and the screen does not change.
 //
-// at IS -1 WHEN THERE IS NOTHING TO FOCUS (FR-5). A release build compiles the
-// injector out, so the shipped ctrl+d window is prose and no list — and a
-// focus-following scroll has nothing to follow there. -1 says "this body
-// scrolls on its own"; 0 would say "hold the top", which is what pinned the
-// whole of that window's message below the fold at 80x24.
+// at IS -1 WHEN THERE IS NOTHING TO FOCUS (FR-5). A ctrl+d window with no
+// injector is prose and no list — and a focus-following scroll has nothing to
+// follow there. -1 says "this body scrolls on its own"; 0 would say "hold the
+// top", which would pin the whole of that window's message below the fold at
+// 80x24.
 func (d Dashboard) focusBody(o render.Opts) (lines []string, at, end int) {
 	switch d.modal {
 	case modalSetup:

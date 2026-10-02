@@ -2,8 +2,8 @@ package tty
 
 // map_same_test.go — 0.18.0 D-136 (and UAT-2 U2-13): an overlay the window
 // already handed in is not handed in again. A missing value is NaN, and NaN
-// is never equal to itself, so a wind grid whose gusts say "none here" was
-// new at every answer, handed in again, and blinked.
+// is never equal to itself, so a wind grid whose gusts say "none here" would
+// be new at every answer, handed in again, and blink.
 
 import (
 	"math"

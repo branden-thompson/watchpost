@@ -1,9 +1,8 @@
 package app
 
-// Quality pass Q2 (L3-F22: app's pure logic was untested — 16 % at
-// DISCOVER). Tables for the config ↔ ref conversion, the RECENT restore,
-// the coordinate parser, the M1 predicate, the keymap layer, the stale
-// warning and the deck's labels.
+// Tables for app's pure logic (L3-F22): the config ↔ ref conversion, the
+// RECENT restore, the coordinate parser, the M1 predicate, the keymap layer,
+// the stale warning and the deck's labels.
 
 import (
 	"os"
@@ -154,8 +153,8 @@ func TestRestoreKeepsPlacesWithoutAZip(t *testing.T) {
 var zipIdentity = regexp.MustCompile(`\w\.Zip\s*==\s*\w+\.Zip\b|\[\w+\.Zip\]`)
 
 // TestNoListComparesZips is #23's guard. Three lists - ctrl+a's check, RECENT
-// and the restart's restore - each decided "same place" by ZIP alone, so one
-// watched park without a ZIP made every other such place "already watched".
+// and the restart's restore - decide "same place", and deciding it by ZIP alone
+// makes one watched park without a ZIP turn every other such place "already watched".
 // snapshot.PlaceID is the one definition; a ZIP comparison is allowed only on
 // a line that also proves the ZIP is not empty.
 func TestNoListComparesZips(t *testing.T) {

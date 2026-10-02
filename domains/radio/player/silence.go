@@ -2,12 +2,12 @@ package player
 
 // silence.go — a relay that is up and broadcasting nothing.
 //
-// AN OUTAGE DOES NOT LOOK LIKE AN OUTAGE. On 2026-09-04 weatherusa.net answered
-// every check correctly — HTTP 200, Content-Type audio/mpeg, correct ICY
-// headers, ~19 KB/s of well-formed MP3 that decoded without a single error — and
-// broadcast digital silence on every mount. Reachability, content type, byte
-// rate and decoder health were all green while the listener heard nothing, and
-// the station reported PLAYING throughout. For a weather radio that is the worst
+// AN OUTAGE DOES NOT LOOK LIKE AN OUTAGE. A relay can answer every check
+// correctly — HTTP 200, Content-Type audio/mpeg, correct ICY headers, ~19 KB/s
+// of well-formed MP3 that decodes without a single error — and broadcast digital
+// silence on every mount. Reachability, content type, byte rate and decoder
+// health are all green while the listener hears nothing, and without this the
+// station reports PLAYING throughout. For a weather radio that is the worst
 // available answer: confident and wrong.
 //
 // The only check that could tell the difference is one that looks at the SAMPLES.
