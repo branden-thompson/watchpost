@@ -30,6 +30,9 @@ const dumpKeep
 const dumpMinInterval
 const dumpTimeLayout
 const fireKeeps
+const fromFill
+const fromRescue
+const fromSource
 const gustMargin
 const historyEvery
 const hmsCredit
@@ -220,6 +223,7 @@ func (*livePipelines).locateInRadius
 func (*livePipelines).lookInPool
 func (*livePipelines).lookupCtx
 func (*livePipelines).mapClosed
+func (*livePipelines).mapConfig
 func (*livePipelines).mapCost
 func (*livePipelines).mapFeed
 func (*livePipelines).mapFeedWith
@@ -267,6 +271,7 @@ func (*livePipelines).silenceMonitor
 func (*livePipelines).sources
 func (*livePipelines).startHistory
 func (*livePipelines).startPipelines
+func (*livePipelines).stationConfig
 func (*livePipelines).stepBedRelay
 func (*livePipelines).stopAll
 func (*livePipelines).takeTheAir
@@ -454,6 +459,11 @@ func (*speaker).line
 func (*speaker).live
 func (*speaker).prepare
 func (*speaker).role
+func (*tempBuild).fetch
+func (*tempBuild).finish
+func (*tempBuild).forecast
+func (*tempBuild).radar
+func (*tempBuild).refused
 func (*tempSources).quotaSpent
 func (*tempSources).sourceFor
 func (*tickerDeck).Inject
@@ -480,6 +490,11 @@ func (*timingLog).note
 func (*timingLog).stage
 func (*uvCities).markers
 func (*uvCities).read
+func (*waveBuild).fetch
+func (*waveBuild).finish
+func (*waveBuild).forecast
+func (*waveBuild).grid
+func (*waveBuild).radar
 func (CastReport).ToneSummary
 func (airScope).hasOrigin
 func (bedReach).Line
@@ -500,6 +515,9 @@ func ReportOnceWithStats
 func RunDashboard
 func abbreviateHome
 func aboutNotes
+func addAlerts
+func addNow
+func addPartial
 func airHosts
 func airLayerCost
 func airnowOverlays
@@ -597,6 +615,7 @@ func forecastGrids
 func fullyPopulated
 func gapAfter
 func halfFor
+func heldAlerts
 func historyDurations
 func holdRest
 func hostOf
@@ -764,6 +783,7 @@ func scopeFor
 func scriptFromSegments
 func scriptText
 func scriptsDir
+func seaStations
 func seedRecent
 func segmentsFromScript
 func seismicProviders
@@ -879,6 +899,7 @@ type areaMemo
 type bandRecord
 type bedReach
 type bedSeams
+type boxFrom
 type castState
 type cityReadings
 type clip
@@ -934,6 +955,7 @@ type severeDeck
 type slot
 type speaker
 type stationArea
+type tempBuild
 type tempSources
 type tickerDeck
 type tickerPrefs
@@ -943,6 +965,7 @@ type timingLog
 type timingRecord
 type usageCache
 type uvCities
+type waveBuild
 type waveKeep
 type waveSource
 var _

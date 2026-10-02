@@ -107,15 +107,7 @@ func layoutFor(kind string) (layout, bool) {
 // point of reading it this way.
 func walk(raw json.RawMessage, l layout) (Shape, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
-	var (
-		out   Shape
-		area  Polygon
-		ring  Ring
-		nums  []float64
-		depth int
-		total int
-		rings int
-	)
+	w := walker{l: l}
 	for {
 		tok, err := dec.Token()
 		if err != nil {
@@ -124,77 +116,108 @@ func walk(raw json.RawMessage, l layout) (Shape, error) {
 			}
 			return nil, fmt.Errorf("%w: %v", ErrGeometry, err)
 		}
-		switch v := tok.(type) {
-		case json.Delim:
-			switch v {
-			case '[':
-				depth++
-				if depth > maxDepth {
-					return nil, fmt.Errorf("%w: nested more than %d deep", ErrGeometry, maxDepth)
-				}
-			case ']':
-				// The three levels are closed innermost first, and a type
-				// whose levels share a depth closes them all at one bracket.
-				//
-				// Leaving a position: the two numbers gathered are one point.
-				// The `[` that opened it already counted, so inside a position
-				// the depth IS l.position.
-				if depth == l.position {
-					if len(nums) < 2 {
-						return nil, fmt.Errorf("%w: a position of %d numbers", ErrGeometry, len(nums))
-					}
-					p := Point{Lon: nums[0], Lat: nums[1]}
-					if p.Lon < -180 || p.Lon > 180 || p.Lat < -90 || p.Lat > 90 {
-						return nil, fmt.Errorf("%w: %v is not a place on the world", ErrGeometry, p)
-					}
-					ring = append(ring, p)
-					total++
-					if total > MaxVertices {
-						return nil, fmt.Errorf("%w: more than %d positions", ErrGeometry, MaxVertices)
-					}
-					nums = nums[:0]
-				}
-				// Leaving a ring: keep it, in the order it was read. **A ring
-				// with no positions is not geometry** and is refused rather
-				// than kept, so that emptiness cannot be used to fill memory
-				// while every other count stays at zero (RT-1).
-				if depth == l.ring {
-					if len(ring) == 0 {
-						return nil, fmt.Errorf("%w: a ring with no positions", ErrGeometry)
-					}
-					rings++
-					if rings > MaxRings {
-						return nil, fmt.Errorf("%w: more than %d rings", ErrGeometry, MaxRings)
-					}
-					area = append(area, ring)
-					ring = nil
-				}
-				// Leaving an area: its outline and its holes, kept together.
-				// **An area with no rings is the same emptiness one level up**
-				// and is refused for the same reason - a door RT-1's fix would
-				// not have covered, because this level did not exist then.
-				if depth == l.area {
-					if len(area) == 0 {
-						return nil, fmt.Errorf("%w: an area with no rings", ErrGeometry)
-					}
-					out = append(out, area)
-					area = nil
-				}
-				depth--
-			default:
-				return nil, fmt.Errorf("%w: an object where coordinates were expected", ErrGeometry)
-			}
-		case float64:
-			nums = append(nums, v)
-			if len(nums) > 3 { // lon, lat, and an elevation some sources add
-				return nil, fmt.Errorf("%w: a position of more than three numbers", ErrGeometry)
-			}
-		default:
-			return nil, fmt.Errorf("%w: %T where a coordinate was expected", ErrGeometry, tok)
+		if err := w.token(tok); err != nil {
+			return nil, err
 		}
 	}
-	if depth != 0 {
+	if w.depth != 0 {
 		return nil, fmt.Errorf("%w: the coordinates end part-way through", ErrGeometry)
 	}
-	return out, nil
+	return w.out, nil
+}
+
+// walker is walk's state: the shape so far, the area, ring and position being
+// read, the depth, and the counts the limits are checked against.
+type walker struct {
+	l     layout
+	out   Shape
+	area  Polygon
+	ring  Ring
+	nums  []float64
+	depth int
+	total int
+	rings int
+}
+
+// token takes the next token of the coordinate array.
+func (w *walker) token(tok json.Token) error {
+	switch v := tok.(type) {
+	case json.Delim:
+		switch v {
+		case '[':
+			w.depth++
+			if w.depth > maxDepth {
+				return fmt.Errorf("%w: nested more than %d deep", ErrGeometry, maxDepth)
+			}
+			return nil
+		case ']':
+			return w.close()
+		}
+		return fmt.Errorf("%w: an object where coordinates were expected", ErrGeometry)
+	case float64:
+		w.nums = append(w.nums, v)
+		if len(w.nums) > 3 { // lon, lat, and an elevation some sources add
+			return fmt.Errorf("%w: a position of more than three numbers", ErrGeometry)
+		}
+		return nil
+	}
+	return fmt.Errorf("%w: %T where a coordinate was expected", ErrGeometry, tok)
+}
+
+// close takes a closing bracket. The three levels are closed innermost first,
+// and a type whose levels share a depth closes them all at one bracket.
+func (w *walker) close() error {
+	// Leaving a position: the two numbers gathered are one point. The `[`
+	// that opened it already counted, so inside a position the depth IS
+	// l.position.
+	if w.depth == w.l.position {
+		if err := w.endPosition(); err != nil {
+			return err
+		}
+	}
+	// Leaving a ring: keep it, in the order it was read. **A ring with no
+	// positions is not geometry** and is refused rather than kept, so that
+	// emptiness cannot be used to fill memory while every other count stays
+	// at zero (RT-1).
+	if w.depth == w.l.ring {
+		if len(w.ring) == 0 {
+			return fmt.Errorf("%w: a ring with no positions", ErrGeometry)
+		}
+		w.rings++
+		if w.rings > MaxRings {
+			return fmt.Errorf("%w: more than %d rings", ErrGeometry, MaxRings)
+		}
+		w.area = append(w.area, w.ring)
+		w.ring = nil
+	}
+	// Leaving an area: its outline and its holes, kept together. **An area
+	// with no rings is the same emptiness one level up** and is refused for
+	// the same reason (RT-1).
+	if w.depth == w.l.area {
+		if len(w.area) == 0 {
+			return fmt.Errorf("%w: an area with no rings", ErrGeometry)
+		}
+		w.out = append(w.out, w.area)
+		w.area = nil
+	}
+	w.depth--
+	return nil
+}
+
+// endPosition keeps the position just read as a point of the ring.
+func (w *walker) endPosition() error {
+	if len(w.nums) < 2 {
+		return fmt.Errorf("%w: a position of %d numbers", ErrGeometry, len(w.nums))
+	}
+	p := Point{Lon: w.nums[0], Lat: w.nums[1]}
+	if p.Lon < -180 || p.Lon > 180 || p.Lat < -90 || p.Lat > 90 {
+		return fmt.Errorf("%w: %v is not a place on the world", ErrGeometry, p)
+	}
+	w.ring = append(w.ring, p)
+	w.total++
+	if w.total > MaxVertices {
+		return fmt.Errorf("%w: more than %d positions", ErrGeometry, MaxVertices)
+	}
+	w.nums = w.nums[:0]
+	return nil
 }

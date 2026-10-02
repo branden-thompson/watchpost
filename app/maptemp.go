@@ -192,106 +192,166 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 // current one, so in Radar mode its current hour is drawn under the loop's
 // earlier frames too (D-166's cold start) - the chips say NDFD.
 func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty.MapAsk, now time.Time, rescue *fallback) tty.MapTemperature {
-	out := tty.MapTemperature{Source: src.Name()}
+	t := tempBuild{ctx: ctx, src: src, fill: fill, rescue: rescue, ask: ask, now: now,
+		out: tty.MapTemperature{Source: src.Name()}, missing: map[string]bool{}, credit: src.Name() == "Open-Meteo"}
 	boxes := fieldBoxes(ask.Region, ask.View)
 	if len(boxes) == 0 {
-		out.Notes = []string{"No temperature is drawn for " + ask.Region + "."}
-		return out
+		t.out.Notes = []string{"No temperature is drawn for " + ask.Region + "."}
+		return t.out
 	}
-	anchor := askAnchor(ask, now)
-	unit := tuimaps.Celsius
+	t.anchor = askAnchor(ask, now)
+	t.unit = tuimaps.Celsius
 	if ask.Fahrenheit {
-		unit = tuimaps.Fahrenheit
+		t.unit = tuimaps.Fahrenheit
 	}
-	missing := map[string]bool{}
-	credit := src.Name() == "Open-Meteo"
-	fellBack, rescued, replayed := 0, 0, 0
 	for _, b := range boxes {
-		// EACH SOURCE ON ITS OWN LATTICE (D-201): NDFD's twice as dense,
-		// keyless; Open-Meteo's 80 points, each billed (D-185).
-		omLat, ndfdLat := temperature.LatticeFor(b.Name, b.Box), temperature.NDFDLatticeFor(b.Name, b.Box)
-		lat := omLat
-		if src.Name() == "NDFD" {
-			lat = ndfdLat
-		}
-		s, err := src.Fetch(ctx, lat, now)
-		fromFill := false
-		if err != nil && fill != nil {
-			// A BOX THE SOURCE REFUSES IS OPEN-METEO'S (D-101): NDFD refuses
-			// Hawaii's whole lattice, which straddles its grid's edge.
-			if s, err = fill.Fetch(ctx, omLat, now); err == nil {
-				fellBack, fromFill = fellBack+1, true
-				credit = true
-				missing[src.Name()+" did not answer for part of the map; Open-Meteo is drawn there."] = true
-			}
-		}
-		byRescue := false
-		if err != nil && rescue != nil && rescue.src != nil {
-			if s, err = rescue.src.Fetch(ctx, ndfdLat, now); err == nil {
-				rescued, byRescue = rescued+1, true
-			}
-		}
+		s, from, err := t.fetch(b)
 		if err != nil {
-			if src.Name() == "NDFD" { // a Setting draws another (D-124)
-				missing["Temperature is unavailable: NDFD did not answer. Settings → Maps → Temperature: Open-Meteo draws it instead."] = true
-			} else {
-				out.Problems = append(out.Problems, "Temperature: "+src.Name()+" did not answer for "+b.Name+" - "+err.Error())
-			}
+			t.refused(b.Name, err)
 			continue
 		}
 		if !ask.Forecast {
-			horizon := radarHorizon(ask, anchor)
-			temp := func(values [][]float64) func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
-				return func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
-					return unitGrid(id, s.Lattice.InterpolateWide(values[i]), convertIf(unit == tuimaps.Fahrenheit, units.FahrenheitOf), unit, valid, anchor, tuimaps.TemperatureGrid)
-				}
-			}
-			past := 0
-			keyless := byRescue || (src.Name() == "NDFD" && !fromFill) // NDFD drew this box: it has no hour before the current one
-			if keyless && rescue != nil {
-				s, past = withRecorded(s, rescue.past, b.Name, anchor) // the hours before, from the history (D-166, W19.1)
-				replayed += past
-			}
-			hours, feels, wind := hourGrids(tty.TemperatureLayer, b.Name, s.Hours, len(s.Hourly), anchor, horizon, temp(s.Hourly)),
-				hourGrids(tty.FeelsLayer, b.Name, s.Hours, len(s.Feels), anchor, horizon, temp(s.Feels)), windHourGrids(s, b.Name, anchor, horizon, ask.Fahrenheit)
-			fillPast(hours, anchor) // every observed frame drawn, whatever was recorded (U2-55 to U2-57)
-			fillPast(feels, anchor)
-			fillPast(wind, anchor)
-			out.Overlays, out.Feels, out.Wind = append(out.Overlays, hours...), append(out.Feels, feels...), append(out.Wind, wind...)
+			keyless := from == fromRescue || (src.Name() == "NDFD" && from != fromFill) // NDFD drew this box: it has no hour before the current one
+			t.radar(s, b.Name, keyless)
 			continue
 		}
-		if rescue != nil && recordedToday(&s, rescue.past, b.Name, anchor) { // an empty Today from the hours recorded (D-189)
-			replayed++
-		}
-		if fill != nil && fillDays(ctx, &s, fill, omLat, now, &out) { // else Open-Meteo for that day (D-189)
-			credit = true
-		}
-		if rescue != nil && recordedFeelsNow(&s, rescue.past, b.Name, anchor) { // NDFD's feels-like starts at the next hour (D-188)
-			replayed++
-		}
-		forecastGrids(&out, s, b.Name, anchor, unit, missing)
-		feelsForecastGrids(&out, s, b.Name, anchor, unit)
-		windForecastGrids(&out, s, b.Name, anchor, ask.Fahrenheit)
+		t.forecast(s, b)
 	}
-	if fellBack == len(boxes) {
-		out.Source = fill.Name() // every box is Open-Meteo's: the chip names it
+	return t.finish(len(boxes))
+}
+
+// tempBuild is buildTemperature's work: its sources and ask, what it has
+// drawn, and the tallies its chips and notes are made from.
+type tempBuild struct {
+	ctx         context.Context
+	src, fill   temperature.Source
+	rescue      *fallback
+	ask         tty.MapAsk
+	now, anchor time.Time
+	unit        tuimaps.Unit
+	out         tty.MapTemperature
+	missing     map[string]bool // the notes, each said once
+	credit      bool            // Open-Meteo drew some of it
+	fellBack    int             // boxes the fill drew
+	rescued     int             // boxes the rescue drew
+	replayed    int             // hours from the history
+}
+
+// boxFrom is which source drew a box.
+type boxFrom int
+
+const (
+	fromSource boxFrom = iota
+	fromFill
+	fromRescue
+)
+
+// fetch is a box's series: the source's on its own lattice (D-201: NDFD's
+// twice as dense, keyless; Open-Meteo's 80 points, each billed, D-185); else
+// the fill's, Open-Meteo's (D-101: NDFD refuses Hawaii's whole lattice,
+// which straddles its grid's edge); else the rescue's, NDFD's.
+func (t *tempBuild) fetch(b fieldBox) (temperature.Series, boxFrom, error) {
+	omLat, ndfdLat := temperature.LatticeFor(b.Name, b.Box), temperature.NDFDLatticeFor(b.Name, b.Box)
+	lat := omLat
+	if t.src.Name() == "NDFD" {
+		lat = ndfdLat
 	}
-	switch { // NDFD drew where Open-Meteo did not (W18.2): the chips say so
-	case rescued > 0 && rescued == len(boxes):
-		out.Source, credit = rescue.src.Name(), false // every box NDFD's: its chip alone
-	case rescued > 0:
-		out.Source, credit = rescue.src.Name(), true // NDFD's boxes and Open-Meteo's: both chips
+	s, err := t.src.Fetch(t.ctx, lat, t.now)
+	if err == nil {
+		return s, fromSource, nil
+	}
+	if t.fill != nil {
+		if s, err = t.fill.Fetch(t.ctx, omLat, t.now); err == nil {
+			t.fellBack++
+			t.credit = true
+			t.missing[t.src.Name()+" did not answer for part of the map; Open-Meteo is drawn there."] = true
+			return s, fromFill, nil
+		}
+	}
+	if t.rescue != nil && t.rescue.src != nil {
+		if s, err = t.rescue.src.Fetch(t.ctx, ndfdLat, t.now); err == nil {
+			t.rescued++
+			return s, fromRescue, nil
+		}
+	}
+	return s, fromSource, err
+}
+
+// refused says a box no source drew: NDFD's in a note naming the Setting that
+// draws another (D-124), any other source's to the diagnostics.
+func (t *tempBuild) refused(box string, err error) {
+	if t.src.Name() == "NDFD" {
+		t.missing["Temperature is unavailable: NDFD did not answer. Settings → Maps → Temperature: Open-Meteo draws it instead."] = true
+		return
+	}
+	t.out.Problems = append(t.out.Problems, "Temperature: "+t.src.Name()+" did not answer for "+box+" - "+err.Error())
+}
+
+// radar is a box's hours for Radar mode: temperature, feels-like and wind,
+// with the hours before the current one from the history where NDFD drew it
+// (D-166, W19.1), and every observed frame drawn (U2-55 to U2-57).
+func (t *tempBuild) radar(s temperature.Series, box string, keyless bool) {
+	horizon := radarHorizon(t.ask, t.anchor)
+	temp := func(values [][]float64) func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
+		return func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
+			return unitGrid(id, s.Lattice.InterpolateWide(values[i]), convertIf(t.unit == tuimaps.Fahrenheit, units.FahrenheitOf), t.unit, valid, t.anchor, tuimaps.TemperatureGrid)
+		}
+	}
+	if keyless && t.rescue != nil {
+		var past int
+		s, past = withRecorded(s, t.rescue.past, box, t.anchor)
+		t.replayed += past
+	}
+	hours, feels, wind := hourGrids(tty.TemperatureLayer, box, s.Hours, len(s.Hourly), t.anchor, horizon, temp(s.Hourly)),
+		hourGrids(tty.FeelsLayer, box, s.Hours, len(s.Feels), t.anchor, horizon, temp(s.Feels)), windHourGrids(s, box, t.anchor, horizon, t.ask.Fahrenheit)
+	fillPast(hours, t.anchor)
+	fillPast(feels, t.anchor)
+	fillPast(wind, t.anchor)
+	t.out.Overlays, t.out.Feels, t.out.Wind = append(t.out.Overlays, hours...), append(t.out.Feels, feels...), append(t.out.Wind, wind...)
+}
+
+// forecast is a box's days for Forecast mode: an empty Today from the hours
+// recorded (D-189), else Open-Meteo for that day; the feels-like hour now
+// from the history, NDFD's starting at the next hour (D-188).
+func (t *tempBuild) forecast(s temperature.Series, b fieldBox) {
+	if t.rescue != nil && recordedToday(&s, t.rescue.past, b.Name, t.anchor) {
+		t.replayed++
+	}
+	if t.fill != nil && fillDays(t.ctx, &s, t.fill, temperature.LatticeFor(b.Name, b.Box), t.now, &t.out) {
+		t.credit = true
+	}
+	if t.rescue != nil && recordedFeelsNow(&s, t.rescue.past, b.Name, t.anchor) {
+		t.replayed++
+	}
+	forecastGrids(&t.out, s, b.Name, t.anchor, t.unit, t.missing)
+	feelsForecastGrids(&t.out, s, b.Name, t.anchor, t.unit)
+	windForecastGrids(&t.out, s, b.Name, t.anchor, t.ask.Fahrenheit)
+}
+
+// finish names the sources in the chips and says the notes: the fill's chip
+// where it drew every box; NDFD's where it drew where Open-Meteo did not
+// (W18.2), alone or beside Open-Meteo's.
+func (t *tempBuild) finish(boxes int) tty.MapTemperature {
+	out, credit := t.out, t.credit
+	if t.fellBack == boxes {
+		out.Source = t.fill.Name()
+	}
+	switch {
+	case t.rescued > 0 && t.rescued == boxes:
+		out.Source, credit = t.rescue.src.Name(), false
+	case t.rescued > 0:
+		out.Source, credit = t.rescue.src.Name(), true
 	}
 	out.Chips = tempChips(out.Source, credit)                                                                                                                                                                                                  // the credit is the badge's, in full the Status window's (D-131)
 	for key, drew := range map[string]int{tty.TemperatureLayer: len(out.Overlays) + len(out.High) + len(out.Low), tty.FeelsLayer: len(out.Feels) + len(out.FeelsHigh) + len(out.FeelsLow), tty.WindLayer: len(out.Wind) + len(out.WindDays)} { // three (P10-02)
 		if drew == 0 {
 			delete(out.Chips, key) // a layer drawing nothing names no source (D-183)
-		} else if replayed > 0 {
+		} else if t.replayed > 0 {
 			out.Chips[key] = append(append([]string(nil), out.Chips[key]...), recordedChip) // some of it from the history (D-173)
 		}
 	}
 	var said []string
-	for n := range missing {
+	for n := range t.missing {
 		said = append(said, n)
 	}
 	sort.Strings(said)

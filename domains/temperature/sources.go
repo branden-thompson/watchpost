@@ -186,15 +186,7 @@ type dwml struct {
 				Layout string       `xml:"time-layout,attr"`
 				Waves  []dwmlSeries `xml:"waves"`
 			} `xml:"water-state"` // significant wave height (D-125)
-			Temperatures []struct {
-				Type   string `xml:"type,attr"`
-				Units  string `xml:"units,attr"`
-				Layout string `xml:"time-layout,attr"`
-				Values []struct {
-					Nil  string `xml:"nil,attr"`
-					Text string `xml:",chardata"`
-				} `xml:"value"`
-			} `xml:"temperature"`
+			Temperatures []dwmlSeries `xml:"temperature"`
 		} `xml:"parameters"`
 	} `xml:"data"`
 }
@@ -228,64 +220,77 @@ func parseDWML(body []byte, now time.Time, out *Series) error {
 		if !ok {
 			continue
 		}
-		for _, w := range p.Winds {
-			if w.Type != "sustained" && w.Type != "gust" {
-				continue
-			}
-			eachValue(w, layouts[w.Layout].starts, func(t time.Time, v float64) {
-				if w.Units == "knots" {
-					v = units.KmhOfKnots(v)
-				}
-				if w.Type == "gust" {
-					out.WindGust[out.hourIndex(t)][at] = v // D-136
-					return
-				}
-				out.WindSpeed[out.hourIndex(t)][at] = v
-				dayOf[t.UTC().Truncate(time.Hour)] = dayOffset(t, now)
-			})
-		}
-		for _, w := range p.Dirs {
-			if w.Type != "wind" {
-				continue
-			}
-			eachValue(w, layouts[w.Layout].starts, func(t time.Time, v float64) { out.WindFrom[out.hourIndex(t)][at] = v })
-		}
+		addWinds(out, p.Winds, p.Dirs, at, layouts, now, dayOf)
 		for _, temp := range p.Temperatures {
-			lay := layouts[temp.Layout]
-			for i, v := range temp.Values {
-				if v.Nil == "true" || i >= len(lay.starts) || lay.starts[i].IsZero() {
-					continue
-				}
-				f, err := strconv.ParseFloat(strings.TrimSpace(v.Text), 64)
-				if err != nil {
-					continue
-				}
-				if temp.Units == "Fahrenheit" {
-					f = units.CelsiusOf(f)
-				}
-				switch temp.Type {
-				case "hourly":
-					out.Hourly[out.hourIndex(lay.starts[i])][at] = f
-				case "apparent":
-					out.Feels[out.hourIndex(lay.starts[i])][at] = f
-					dayOf[lay.starts[i].UTC().Truncate(time.Hour)] = dayOffset(lay.starts[i], now)
-				case "maximum":
-					if k := dayOffset(lay.starts[i], now); k >= 0 && k < Days {
-						out.High[k][at] = f
-					}
-				case "minimum":
-					if i < len(lay.ends) && !lay.ends[i].IsZero() {
-						if k := dayOffset(lay.ends[i], now); k >= 0 && k < Days {
-							out.Low[k][at] = f
-						}
-					}
-				}
-			}
+			addTemperatures(out, temp, layouts[temp.Layout], at, now, dayOf)
 		}
 	}
 	windPeaks(out, dayOf)
 	feelsDays(out, dayOf)
 	return nil
+}
+
+// addWinds adds a point's sustained wind and gusts, in km/h (D-136), and
+// the direction it blows from; each sustained hour's local day goes into
+// dayOf for the day's peak.
+func addWinds(out *Series, winds, dirs []dwmlSeries, at int, layouts map[string]layout, now time.Time, dayOf map[time.Time]int) {
+	for _, w := range winds {
+		if w.Type != "sustained" && w.Type != "gust" {
+			continue
+		}
+		eachValue(w, layouts[w.Layout].starts, func(t time.Time, v float64) {
+			if w.Units == "knots" {
+				v = units.KmhOfKnots(v)
+			}
+			if w.Type == "gust" {
+				out.WindGust[out.hourIndex(t)][at] = v // D-136
+				return
+			}
+			out.WindSpeed[out.hourIndex(t)][at] = v
+			dayOf[t.UTC().Truncate(time.Hour)] = dayOffset(t, now)
+		})
+	}
+	for _, w := range dirs {
+		if w.Type != "wind" {
+			continue
+		}
+		eachValue(w, layouts[w.Layout].starts, func(t time.Time, v float64) { out.WindFrom[out.hourIndex(t)][at] = v })
+	}
+}
+
+// addTemperatures adds one of a point's temperature series, in Celsius: the
+// hours, the feels-like hours (each one's local day into dayOf), a day's
+// high on its date and a low on the date its night ends.
+func addTemperatures(out *Series, temp dwmlSeries, lay layout, at int, now time.Time, dayOf map[time.Time]int) {
+	for i, v := range temp.Values {
+		if v.Nil == "true" || i >= len(lay.starts) || lay.starts[i].IsZero() {
+			continue
+		}
+		f, err := strconv.ParseFloat(strings.TrimSpace(v.Text), 64)
+		if err != nil {
+			continue
+		}
+		if temp.Units == "Fahrenheit" {
+			f = units.CelsiusOf(f)
+		}
+		switch temp.Type {
+		case "hourly":
+			out.Hourly[out.hourIndex(lay.starts[i])][at] = f
+		case "apparent":
+			out.Feels[out.hourIndex(lay.starts[i])][at] = f
+			dayOf[lay.starts[i].UTC().Truncate(time.Hour)] = dayOffset(lay.starts[i], now)
+		case "maximum":
+			if k := dayOffset(lay.starts[i], now); k >= 0 && k < Days {
+				out.High[k][at] = f
+			}
+		case "minimum":
+			if i < len(lay.ends) && !lay.ends[i].IsZero() {
+				if k := dayOffset(lay.ends[i], now); k >= 0 && k < Days {
+					out.Low[k][at] = f
+				}
+			}
+		}
+	}
 }
 
 // feelsDays works out each day's feels-like high and low from the hours

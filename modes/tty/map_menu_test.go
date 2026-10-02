@@ -4,6 +4,7 @@ package tty
 // consolidated MAP DETAILS / OVERLAYS menu.
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -202,5 +203,30 @@ func TestTheMenuBlinkKeepsATickUntilItEnds(t *testing.T) {
 	d.mapPane.menuFlash, d.mapPane.menuFlashEnd = flashRight, time.Now().Add(time.Second)
 	if !d.tickNeeded() {
 		t.Error("the menu's blink shows with no tick armed: nothing will clear it")
+	}
+}
+
+// TestEveryBoxIsDrawnOnce is the menu's boxes two to a line: a box drawn
+// beside the one before it is not drawn again on a line of its own.
+func TestEveryBoxIsDrawnOnce(t *testing.T) {
+	d := menuMap(t)
+	plain := stripANSITest(strings.Join(d.overlaysBox(), "\n"))
+	boxes := 0
+	for _, r := range d.overlayRows() {
+		if r.kind == menuRadio || r.kind == menuGroup || r.kind == menuFire || r.kind == menuPreset {
+			continue
+		}
+		boxes++
+		on := d.detailOn(r.key)
+		if r.weather {
+			on = d.ticked(r.key)
+		}
+		cell := regexp.MustCompile(regexp.QuoteMeta(stripANSITest(checkMark(d.opts(), on))+" "+r.label) + `( |$)`)
+		if n := len(cell.FindAllStringIndex(plain, -1)); n != 1 {
+			t.Errorf("the box %q is drawn %d times:\n%s", r.label, n, plain)
+		}
+	}
+	if boxes < 4 {
+		t.Fatalf("the fixture has %d boxes; this test measures nothing", boxes)
 	}
 }

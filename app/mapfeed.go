@@ -45,22 +45,59 @@ func (lp *livePipelines) mapFeed(ctx context.Context, ask tty.MapAsk) tty.MapFee
 // mapFeedWith is mapFeed with the place's zones given, for the tests.
 func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZones func(snapshot.Location) []string) tty.MapFeed {
 	var out tty.MapFeed
-	snap, place := in.drawable(), in.place
+	snap := in.drawable()
 	if snap == nil {
 		return out
-	}
-	held := map[string]bool{} // the station holds these; the window has the rest from the feed
-	if in.snap != nil {
-		for _, loc := range in.snap.Locations {
-			for _, a := range loc.Alerts {
-				held[a.ID] = true
-			}
-		}
 	}
 	zonesAt := time.Now()
 	areas := resolveAlertAreas(ctx, lp.zoneShapes, snap)
 	lp.timings.stage("zones", zonesAt)
 	defer lp.timings.stage("overlays", time.Now())
+	addAlerts(&out, snap, areas, heldAlerts(in.snap), in.place, placeZones)
+	now := time.Now()
+	for _, o := range fireChosen(fireOverlays(in.fire, in.view, lp.fireRules(), now), in.fireMode) { // D-121, D-145: the fire in view, as chosen
+		addNow(&out, o)
+	}
+	for _, o := range seaStations(in, now) {
+		addNow(&out, o)
+	}
+	airnow, airTimes := airnowOverlays(in.airnow, in.view, in.anchor, now) // D-139: AirNow's monitors
+	for _, o := range airnow {
+		out.Overlays = append(out.Overlays, o)
+		out.Times = timed(out.Times, o.ID, airTimes[o.ID])
+	}
+	if o, ok := quakeOverlay(in.quakes, now, in.clock); ok { // D-80, D-122, D-123, D-129: the quakes chosen, in view
+		addNow(&out, o)
+	}
+	return out
+}
+
+// addNow adds an overlay drawn as now: through the loop, and on Now alone in
+// Forecast mode.
+func addNow(out *tty.MapFeed, o tuimaps.Overlay) {
+	out.Overlays = append(out.Overlays, o)
+	out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true})
+}
+
+// heldAlerts is the IDs of the alerts the station holds; the window has the
+// rest from the feed.
+func heldAlerts(snap *snapshot.Snapshot) map[string]bool {
+	held := map[string]bool{}
+	if snap == nil {
+		return held
+	}
+	for _, loc := range snap.Locations {
+		for _, a := range loc.Alerts {
+			held[a.ID] = true
+		}
+	}
+	return held
+}
+
+// addAlerts adds each alert once, drawn over its area while the mode's moment
+// meets it (D-98), named in full where the station does not hold it; and,
+// where an area is incomplete, a note of whether it covers the place.
+func addAlerts(out *tty.MapFeed, snap *snapshot.Snapshot, areas map[string]geo.Area, held map[string]bool, place *snapshot.Location, placeZones func(snapshot.Location) []string) {
 	seen := map[string]bool{}
 	var zonesOfPlace map[string]bool
 	for _, loc := range snap.Locations {
@@ -72,7 +109,7 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 			area := areas[a.ID]
 			if o, ok := alertOverlay(a, area); ok {
 				out.Overlays = append(out.Overlays, o)
-				out.Times = timed(out.Times, o.ID, alertTimes(a)) // D-98: drawn while the mode's moment meets it
+				out.Times = timed(out.Times, o.ID, alertTimes(a))
 				if !held[a.ID] {
 					out.InView = append(out.InView, a) // the window names it in full
 				}
@@ -86,23 +123,29 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 					zonesOfPlace[z] = true
 				}
 			}
-			out.Notes = append(out.Notes, partialNote(a, area, place.Label, zonesOfPlace))
-			for _, id := range area.Missing {
-				if zonesOfPlace[id] {
-					if out.InMissing == nil {
-						out.InMissing = map[string]bool{}
-					}
-					out.InMissing[a.ID] = true // the description says it covers the place by that zone
-				}
-			}
+			addPartial(out, a, area, place.Label, zonesOfPlace)
 		}
 	}
-	now := time.Now()
-	for _, o := range fireChosen(fireOverlays(in.fire, in.view, lp.fireRules(), now), in.fireMode) { // D-121, D-145: the fire in view, as chosen
-		out.Overlays = append(out.Overlays, o)
-		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
+}
+
+// addPartial adds an incomplete area's note, and marks the alert as covering
+// the place by a missing zone where one of the place's zones is missing.
+func addPartial(out *tty.MapFeed, a snapshot.Alert, area geo.Area, label string, zonesOfPlace map[string]bool) {
+	out.Notes = append(out.Notes, partialNote(a, area, label, zonesOfPlace))
+	for _, id := range area.Missing {
+		if zonesOfPlace[id] {
+			if out.InMissing == nil {
+				out.InMissing = map[string]bool{}
+			}
+			out.InMissing[a.ID] = true // the description says it covers the place by that zone
+		}
 	}
-	var marine []tuimaps.Overlay // D-127, D-128: the sea's stations
+}
+
+// seaStations is the sea's stations in view (D-127, D-128): the buoys and
+// the tide stations, each with its next tide.
+func seaStations(in mapInputs, now time.Time) []tuimaps.Overlay {
+	var marine []tuimaps.Overlay
 	if o, ok := buoyOverlay(in.buoys, in.view, now, in.imperial); ok {
 		marine = append(marine, o)
 	}
@@ -117,20 +160,7 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 	}); ok {
 		marine = append(marine, o)
 	}
-	for _, o := range marine {
-		out.Overlays = append(out.Overlays, o)
-		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
-	}
-	airnow, airTimes := airnowOverlays(in.airnow, in.view, in.anchor, now) // D-139: AirNow's monitors
-	for _, o := range airnow {
-		out.Overlays = append(out.Overlays, o)
-		out.Times = timed(out.Times, o.ID, airTimes[o.ID])
-	}
-	if o, ok := quakeOverlay(in.quakes, now, in.clock); ok { // D-80, D-122, D-123, D-129: the quakes chosen, in view
-		out.Overlays = append(out.Overlays, o)
-		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
-	}
-	return out
+	return marine
 }
 
 // alertTimes is when an alert is (D-98): from its onset - or, with none

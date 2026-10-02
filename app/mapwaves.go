@@ -87,83 +87,138 @@ func (lp *landPoints) learn(box string, points []int) {
 // mode's every hour up to now, Forecast mode's Now and each day's highest,
 // each during its step. What no source answered is the diagnostics' (D-124).
 func withWaves(ctx context.Context, t tty.MapTemperature, ndfd waveSource, om marineSource, ask tty.MapAsk, now time.Time, keep waveKeep) tty.MapTemperature {
-	anchor := askAnchor(ask, now)
-	unit := tuimaps.Metres
+	wb := waveBuild{ctx: ctx, ndfd: ndfd, om: om, ask: ask, now: now, keep: keep, anchor: askAnchor(ask, now), missing: map[string]bool{}}
+	wb.unit = tuimaps.Metres
 	if ask.Fahrenheit {
-		unit = tuimaps.Feet
+		wb.unit = tuimaps.Feet
 	}
-	nowStep, days := forecastDays(anchor)
-	fromNDFD, fromOM, replayed := false, false, 0 // what drew: the chips name those (D-183)
-	missing := map[string]bool{}
+	wb.nowStep, wb.days = forecastDays(wb.anchor)
 	for _, b := range fieldBoxes(ask.Region, ask.View) {
 		lat := temperature.LatticeFor(b.Name, b.Box)
-		w, nerr := ndfd.Waves(ctx, lat, now)
-		if nerr == nil {
-			fromNDFD = true
-			past := recordedWaves(&w, keep.store, b.Name, anchor)
-			replayed += past
-			if _, ok := w.At(anchor); !ok {
-				if next, ok := w.At(anchor.Add(time.Hour)); ok {
-					w.SetHour(anchor, next) // nothing recorded: NDFD's next hour, drawn back under the loop (D-194)
-				}
-			}
-		} else {
-			w = temperature.Waves{Lattice: lat}
-		}
-		emptyDay := ask.Forecast && nerr == nil && anEmptyDay(w, len(days)) // a day past NDFD's reach: Open-Meteo's (D-195)
-		if need := beyondNDFD(w, nerr != nil || emptyDay, keep.land, b.Name); len(need) > 0 {
-			if far, err := om.WavesAt(ctx, lat, need, now); err == nil {
-				keep.land.learn(b.Name, answeredNothing(far, need))
-				if nerr != nil {
-					w = far
-				} else {
-					w = w.FilledFrom(far)
-				}
-				fromOM = true
-			}
-		}
-		if len(w.Hourly) == 0 && nerr != nil {
+		w, ndfdErr, emptyDay := wb.fetch(b.Name, lat)
+		if len(w.Hourly) == 0 && ndfdErr != nil {
 			t.Problems = append(t.Problems, "Waves: neither NDFD nor Open-Meteo answered for "+b.Name)
 			continue
 		}
 		if !ask.Forecast {
-			hours := hourGrids(tty.WaveLayer, b.Name, w.Hours, len(w.Hourly), anchor, radarHorizon(ask, anchor), func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
-				return unitGrid(id, lat.InterpolateOut(w.Hourly[i]), convertIf(unit == tuimaps.Feet, units.FeetOf), unit, valid, anchor, tuimaps.WaveGrid)
-			})
-			fillPast(hours, anchor) // every observed frame drawn (U2-55 to U2-57)
-			t.Waves = append(t.Waves, hours...)
+			t.Waves = append(t.Waves, wb.radar(w, lat, b.Name)...)
 			continue
 		}
-		if vals, ok := w.At(anchor); ok {
-			if o, ok := unitGrid(tty.WaveLayer+"/"+b.Name+"/now", lat.InterpolateOut(vals), convertIf(unit == tuimaps.Feet, units.FeetOf), unit, anchor, anchor, tuimaps.WaveGrid); ok {
-				o.During = nowStep.Span
-				t.Waves = append(t.Waves, o)
+		t = wb.forecast(t, w, lat, b.Name, emptyDay)
+	}
+	return wb.finish(t)
+}
+
+// waveBuild is withWaves' work: its sources and ask, and what drew, which
+// the chips name (D-183).
+type waveBuild struct {
+	ctx      context.Context
+	ndfd     waveSource
+	om       marineSource
+	ask      tty.MapAsk
+	now      time.Time
+	keep     waveKeep
+	anchor   time.Time
+	unit     tuimaps.WaveUnit
+	nowStep  tty.ForecastStep
+	days     []tty.ForecastStep
+	fromNDFD bool
+	fromOM   bool
+	replayed int
+	missing  map[string]bool
+}
+
+// fetch is a box's waves: NDFD's, the current hour and the hours before it
+// the history's, and on a cold start NDFD's next hour drawn back under the
+// loop (D-194); Open-Meteo Marine for the points NDFD does not reach, or for
+// a day past its reach in Forecast mode (D-195). ndfdErr is NDFD's refusal;
+// emptyDay, a shown day NDFD gave nothing for.
+func (wb *waveBuild) fetch(box string, lat temperature.Lattice) (w temperature.Waves, ndfdErr error, emptyDay bool) {
+	w, ndfdErr = wb.ndfd.Waves(wb.ctx, lat, wb.now)
+	if ndfdErr == nil {
+		wb.fromNDFD = true
+		wb.replayed += recordedWaves(&w, wb.keep.store, box, wb.anchor)
+		if _, ok := w.At(wb.anchor); !ok {
+			if next, ok := w.At(wb.anchor.Add(time.Hour)); ok {
+				w.SetHour(wb.anchor, next)
 			}
 		}
-		for k, step := range days {
-			if o, ok := unitGrid(tty.WaveLayer+"/"+b.Name+"/d"+strconv.Itoa(k), lat.InterpolateOut(w.Max[k]), convertIf(unit == tuimaps.Feet, units.FeetOf), unit, anchor, anchor, tuimaps.WaveGrid); ok {
-				o.During = step.Span
-				t.WaveDays = append(t.WaveDays, o)
-			} else if emptyDay && fromNDFD {
-				missing["Waves: none for "+step.Label+" - past NDFD's reach, and Open-Meteo did not answer."] = true // D-195
-			}
+	} else {
+		w = temperature.Waves{Lattice: lat}
+	}
+	emptyDay = wb.ask.Forecast && ndfdErr == nil && anEmptyDay(w, len(wb.days))
+	need := beyondNDFD(w, ndfdErr != nil || emptyDay, wb.keep.land, box)
+	if len(need) == 0 {
+		return w, ndfdErr, emptyDay
+	}
+	far, err := wb.om.WavesAt(wb.ctx, lat, need, wb.now)
+	if err != nil {
+		return w, ndfdErr, emptyDay
+	}
+	wb.keep.land.learn(box, answeredNothing(far, need))
+	if ndfdErr != nil {
+		w = far
+	} else {
+		w = w.FilledFrom(far)
+	}
+	wb.fromOM = true
+	return w, ndfdErr, emptyDay
+}
+
+// grid is one wave grid in the shown unit.
+func (wb *waveBuild) grid(id string, lat temperature.Lattice, vals []float64, valid time.Time) (tuimaps.Overlay, bool) {
+	return unitGrid(id, lat.InterpolateOut(vals), convertIf(wb.unit == tuimaps.Feet, units.FeetOf), wb.unit, valid, wb.anchor, tuimaps.WaveGrid)
+}
+
+// radar is a box's every hour up to now for Radar mode, each observed frame
+// drawn (U2-55 to U2-57).
+func (wb *waveBuild) radar(w temperature.Waves, lat temperature.Lattice, box string) []tuimaps.Overlay {
+	hours := hourGrids(tty.WaveLayer, box, w.Hours, len(w.Hourly), wb.anchor, radarHorizon(wb.ask, wb.anchor), func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
+		return wb.grid(id, lat, w.Hourly[i], valid)
+	})
+	fillPast(hours, wb.anchor)
+	return hours
+}
+
+// forecast is a box's Now and each day's highest for Forecast mode, each
+// during its step; a day past NDFD's reach that Open-Meteo did not answer
+// for is a note (D-195).
+func (wb *waveBuild) forecast(t tty.MapTemperature, w temperature.Waves, lat temperature.Lattice, box string, emptyDay bool) tty.MapTemperature {
+	if vals, ok := w.At(wb.anchor); ok {
+		if o, ok := wb.grid(tty.WaveLayer+"/"+box+"/now", lat, vals, wb.anchor); ok {
+			o.During = wb.nowStep.Span
+			t.Waves = append(t.Waves, o)
 		}
 	}
+	for k, step := range wb.days {
+		if o, ok := wb.grid(tty.WaveLayer+"/"+box+"/d"+strconv.Itoa(k), lat, w.Max[k], wb.anchor); ok {
+			o.During = step.Span
+			t.WaveDays = append(t.WaveDays, o)
+		} else if emptyDay && wb.fromNDFD {
+			wb.missing["Waves: none for "+step.Label+" - past NDFD's reach, and Open-Meteo did not answer."] = true // D-195
+		}
+	}
+	return t
+}
+
+// finish names what drew in the chips, never what might have (D-183; the
+// credit in full is the Status window's, D-133, D-173), and says the notes.
+func (wb *waveBuild) finish(t tty.MapTemperature) tty.MapTemperature {
 	if len(t.Waves)+len(t.WaveDays) > 0 {
-		var chips []string // D-133, D-173; the credit in full is the Status window's
-		if fromNDFD {
+		var chips []string
+		if wb.fromNDFD {
 			chips = append(chips, "NDFD")
 		}
-		if fromOM {
+		if wb.fromOM {
 			chips = append(chips, "O-METEO")
 		}
-		if replayed > 0 {
+		if wb.replayed > 0 {
 			chips = append(chips, recordedChip)
 		}
-		t.Chips = withChips(t.Chips, tty.WaveLayer, chips...) // what drew, never what might have (D-183)
+		t.Chips = withChips(t.Chips, tty.WaveLayer, chips...)
 	}
 	var said []string
-	for note := range missing {
+	for note := range wb.missing {
 		said = append(said, note)
 	}
 	sort.Strings(said)

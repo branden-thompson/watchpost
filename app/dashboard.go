@@ -343,116 +343,113 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 }
 
 // ttyConfig assembles the dashboard config from the wired pipelines and the
-// launch switches — the hook set the TTY reads (extracted so RunDashboard stays
-// within the P10-04 length budget after the 0.12.0 ticker wiring).
+// launch switches: the hook set the TTY reads.
 func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, cfg config.Config, keyOverrides term.KeyMap, resolver *locations.Resolver, resolverErr error, firmsProv *firms.Provider, setRadius func(int), setUI func(tty.UIPrefs) error) tty.Config {
-	return tty.Config{
+	c := tty.Config{
 		Version: version, KeyOverrides: keyOverrides, ASCII: opt.ASCII,
-		// THE AIR FOLLOWS THE SURFACE (D-73). One rail, one fence, and this is
-		// what moves it between the listener's filter and the station's service
-		// area.
-		OnSurface: lp.takeTheAir,
-		// THE BED'S SELECTOR (D-78), walking the STATION's fence.
-		StepBedRelay: lp.stepBedRelay,
-		// WHERE THE STATION TRANSMITS FROM, AT LAUNCH (D-72). Changes arrive as
-		// a message; this is what the console opens with, because the program's
-		// loop is not running when the pool is first derived.
-		// AND AT LAUNCH, THE SAME PAIR (D-93). `publishArea` covers every later
-		// change; the program's loop is not running when the pool is first
-		// derived, so this is how the console opens with both.
-		// AND THE TWO SETTINGS THAT DERIVE IT (D-115, F-87). The console draws
-		// them and writes them; the app persists and RE-DERIVES, which is the half
-		// the HUM LEAD asked to be able to UAT.
-		// THE OPERATOR'S TWO ACTS ON A CARD (D-118). Told to the schedule as
-		// EVENTS, which is FR-3.3: "an action must never be shown as taken unless
-		// the schedule took it".
-		MoveCard: lp.moveCard,
-		DropCard: lp.dropCard,
-		// THE OPERATOR'S REQUEST, AND THE LOOKUP THAT VALIDATES IT (R4).
-		LocateInRadius:  lp.locateInRadius(resolver),
-		RequestCard:     lp.requestCard,
-		Transmitter:     transmitterOf(cfg),
-		SetTransmitter:  lp.setTransmitter,
-		ServiceRadiusMi: int(cfg.Broadcaster.ServiceRadius()),
-		// THE BOUNDS TRAVEL WITH THE VALUE THEY BOUND (D-124). `platform/config`
-		// owns these two numbers alone. Restating them in the window would put a
-		// test in this package between two copies, and a fact with one owner needs
-		// no such tie.
-		ServiceRadiusMinMi: config.MinServiceRadiusMi,
-		ServiceRadiusMaxMi: config.MaxServiceRadiusMi,
-		SetServiceRadius:   lp.setServiceRadius,
-		StationArea: tty.StationAreaMsg{
-			Transmitter: lp.currentStation().transmitter,
-			RadiusMi:    lp.currentStation().radiusMi,
-			Pool:        lp.currentPool(),
-		},
-		Stats:           lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
-		NewMap:          lp.newMap(),        // 0.18.0: the map window builds it on the first g (FR-3.2)
-		MapFeed:         lp.mapFeed,         // 0.18.0: the alerts it draws (FR-4.1)
-		MapRadar:        lp.mapRadar,        // 0.18.0 W8: the radar it draws
-		MapTemperature:  lp.mapTemperature,  // 0.18.0 W10: the temperature it draws
-		ClearMapData:    lp.clearMapData,    // 0.18.0 W3.8: Settings' Clear map data
-		MapSources:      mapSourceList(),    // 0.18.0 W1.12, D-75: what the map contacts, for the Status window (FR-9.4)
-		MapRetention:    mapRetention(),     // 0.18.0 W3.8 (FR-3.9)
-		NarrateEvent:    lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
-		EndEventRead:    lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
-		AlertRadiusMi:   cfg.TickerRadiusMi, // 0.12.0: the Setup window's Alert Notification Preference
-		SetAlertRadius:  setRadius,
-		RelayDwell:      lp.relayDwell(),
-		SetRelayDwell:   lp.setRelayDwell(),
-		History:         tty.HistoryRetention{Hours: cfg.HistoryHours, Trends: cfg.HistoryTrends}, // W18: the Data tab's HISTORY (D-175, D-177)
-		SetHistory:      lp.setHistory,
-		ClearHistory:    lp.clearHistory,
-		HistoryUsage:    lp.historyUsage,
-		RelayLang:       lp.relayLang(),
-		TuneRelay:       lp.tuneRelay(),
-		ReadReport:      lp.readReport(),
-		InjectAlert:     lp.injectHook(),  // F-21b: nil in a release build
-		DebugScenarios:  debugScenarios(), // and empty with it
-		SetRelayLang:    lp.setRelayLang(),
-		Resolve:         resolveHook(resolver, resolverErr),
-		Suggest:         suggestHook(resolver),
-		Setup:           lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
-		OpenSetup:       openSetup,
-		FIRMSKey:        firmsProv.KeyHint, // the Setup window shows a stored key is there (UAT 111)
-		Commit:          lp.commit,         // persist watchlist + reconcile both pipelines (UAT 26/69)
-		SetTheme:        setThemeHook,
-		SetUI:           setUI,
-		Units:           cfg.Units,
-		Clock:           cfg.Clock,
-		Maps:            cfg.Maps,                                          // 0.18.0 W1.10
-		MapDescription:  cfg.MapDescription,                                // 0.18.0 W1.10
-		MapScale:        cfg.MapScale,                                      // 0.18.0 W1.11, W4.3
-		MapNearbyKm:     cfg.MapNearbyKm,                                   // 0.18.0 W1.11, W9.2
-		MapRadarSource:  cfg.MapRadarSource,                                // D-83: the lower 48's radar
-		MapTempSource:   cfg.MapTemperatureSource,                          // D-93, D-190: the map's temperature
-		MapRainDetail:   cfg.MapRainDetail,                                 // D-192: the rain's density past NDFD's reach
-		MapUVCities:     cfg.MapUVCities,                                   // D-202: how many cities UV asks EPA for
-		MapRadarAhead:   cfg.MapRadarAheadHours,                            // D-114: the radar loop's hours ahead
-		MapQuakeFeed:    cfg.MapQuakeFeed,                                  // D-122: the quakes the map draws
-		MapProblem:      lp.problems.note,                                  // D-124: the diagnostics', never the listener's
-		Timed:           lp.timings.hook(),                                 // W14's instrument: nil unless WATCHPOST_DEBUG_TIMING=1
-		MapFrame:        newFrameLog().hook(),                              // D-198's recorder: nil unless WATCHPOST_DEBUG_MAPFRAMES names a file
-		MapFrameText:    os.Getenv("WATCHPOST_DEBUG_MAPFRAMES_TEXT") != "", // the recorder keeps each frame's text too
-		MapClosed:       lp.mapClosed,                                      // D-162: the zone store's memory goes when the map closes
-		MapLayerChoice:  cfg.MapLayers,                                     // 0.18.0 W1.11
-		MapLayers:       windowLayers(),                                    // 0.18.0 W1.13: the registry's layers
-		MapCost:         lp.mapCost,                                        // 0.18.0 W1.14: the registry's estimate
-		MapDetailChoice: cfg.MapDetail,                                     // UAT-1 D-65: the map's detail
-		MapDetailLevel:  cfg.MapDetailLevel,                                // UAT-1 D-67: its level
-		MapAreaName:     mapAreaNamer(lp.idx),                              // UAT-1 D-64: the title names what is in view
-		Hydrate:         lp.hydrate,                                        // hourly forecast on demand for RECENT rows (UAT 72)
-		Credits:         credits(),                                         // data-source credits, licence obligations included (UAT 75)
-		MapCredits:      mapCredits(),                                      // 0.18.0 D-148: the map's, in About with the rest
-		AboutNotes:      aboutNotes(),                                      // the relays' condition of use and the safety framing, after every credit
-		FireBoldMW:      fireRules(cfg.Fire).BoldFRPMW,                     // B5: one owner for the emphasis threshold — the [fire] rules
-		// THE SAME OWNER FOR THE TWO RINGS. The detail states each ring beside
-		// the list it admits, so the window and the spoken report cannot
-		// disagree about how far either looked.
+		Stats:          lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
+		NarrateEvent:   lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
+		EndEventRead:   lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
+		AlertRadiusMi:  cfg.TickerRadiusMi, // 0.12.0: the Setup window's Alert Notification Preference
+		SetAlertRadius: setRadius,
+		RelayDwell:     lp.relayDwell(),
+		SetRelayDwell:  lp.setRelayDwell(),
+		History:        tty.HistoryRetention{Hours: cfg.HistoryHours, Trends: cfg.HistoryTrends}, // W18: the Data tab's HISTORY (D-175, D-177)
+		SetHistory:     lp.setHistory,
+		ClearHistory:   lp.clearHistory,
+		HistoryUsage:   lp.historyUsage,
+		RelayLang:      lp.relayLang(),
+		TuneRelay:      lp.tuneRelay(),
+		ReadReport:     lp.readReport(),
+		InjectAlert:    lp.injectHook(),  // F-21b: nil in a release build
+		DebugScenarios: debugScenarios(), // and empty with it
+		SetRelayLang:   lp.setRelayLang(),
+		Resolve:        resolveHook(resolver, resolverErr),
+		Suggest:        suggestHook(resolver),
+		Setup:          lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
+		OpenSetup:      openSetup,
+		FIRMSKey:       firmsProv.KeyHint, // the Setup window shows a stored key is there (UAT 111)
+		Commit:         lp.commit,         // persist watchlist + reconcile both pipelines (UAT 26/69)
+		SetTheme:       setThemeHook,
+		SetUI:          setUI,
+		Units:          cfg.Units,
+		Clock:          cfg.Clock,
+		Hydrate:        lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
+		Credits:        credits(),                     // data-source credits, licence obligations included (UAT 75)
+		AboutNotes:     aboutNotes(),                  // the relays' condition of use and the safety framing, after every credit
+		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules
+		// ONE OWNER FOR THE TWO RINGS: the detail states each ring beside the
+		// list it admits, so the window and the spoken report agree on how far
+		// either looked.
 		FireRadiusKm:         fireRules(cfg.Fire).RadiusKm,
 		FireIncidentRadiusKm: fireRules(cfg.Fire).IncidentRadiusKm,
 		SeismicDays:          seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
 	}
+	lp.stationConfig(&c, cfg, resolver)
+	lp.mapConfig(&c, cfg)
+	return c
+}
+
+// stationConfig is the Broadcaster's hooks: the air, the bed, the operator's
+// acts on a card and the station's place and reach.
+func (lp *livePipelines) stationConfig(c *tty.Config, cfg config.Config, resolver *locations.Resolver) {
+	// THE AIR FOLLOWS THE SURFACE (D-73): one rail, one fence, moved between
+	// the listener's filter and the station's service area.
+	c.OnSurface = lp.takeTheAir
+	c.StepBedRelay = lp.stepBedRelay // THE BED'S SELECTOR (D-78), walking the station's fence
+	// THE OPERATOR'S TWO ACTS ON A CARD (D-118), told to the schedule as
+	// events: an action is never shown as taken unless the schedule took it
+	// (FR-3.3).
+	c.MoveCard, c.DropCard = lp.moveCard, lp.dropCard
+	// THE OPERATOR'S REQUEST, AND THE LOOKUP THAT VALIDATES IT (R4).
+	c.LocateInRadius, c.RequestCard = lp.locateInRadius(resolver), lp.requestCard
+	// WHERE THE STATION TRANSMITS FROM AND HOW FAR (D-72, D-93), and the two
+	// Settings that derive it (D-115): the console draws and writes them, the
+	// app persists and re-derives. Later changes arrive as a message; this is
+	// what the console opens with.
+	c.Transmitter, c.SetTransmitter = transmitterOf(cfg), lp.setTransmitter
+	c.ServiceRadiusMi, c.SetServiceRadius = int(cfg.Broadcaster.ServiceRadius()), lp.setServiceRadius
+	// THE BOUNDS TRAVEL WITH THE VALUE THEY BOUND (D-124): `platform/config`
+	// owns both numbers alone.
+	c.ServiceRadiusMinMi, c.ServiceRadiusMaxMi = config.MinServiceRadiusMi, config.MaxServiceRadiusMi
+	c.StationArea = tty.StationAreaMsg{
+		Transmitter: lp.currentStation().transmitter,
+		RadiusMi:    lp.currentStation().radiusMi,
+		Pool:        lp.currentPool(),
+	}
+}
+
+// mapConfig is the map window's hooks and Settings (0.18.0).
+func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
+	c.NewMap = lp.newMap()                                             // 0.18.0: the map window builds it on the first g (FR-3.2)
+	c.MapFeed = lp.mapFeed                                             // 0.18.0: the alerts it draws (FR-4.1)
+	c.MapRadar = lp.mapRadar                                           // 0.18.0 W8: the radar it draws
+	c.MapTemperature = lp.mapTemperature                               // 0.18.0 W10: the temperature it draws
+	c.ClearMapData = lp.clearMapData                                   // 0.18.0 W3.8: Settings' Clear map data
+	c.MapSources = mapSourceList()                                     // 0.18.0 W1.12, D-75: what the map contacts, for the Status window (FR-9.4)
+	c.MapRetention = mapRetention()                                    // 0.18.0 W3.8 (FR-3.9)
+	c.Maps = cfg.Maps                                                  // 0.18.0 W1.10
+	c.MapDescription = cfg.MapDescription                              // 0.18.0 W1.10
+	c.MapScale = cfg.MapScale                                          // 0.18.0 W1.11, W4.3
+	c.MapNearbyKm = cfg.MapNearbyKm                                    // 0.18.0 W1.11, W9.2
+	c.MapRadarSource = cfg.MapRadarSource                              // D-83: the lower 48's radar
+	c.MapTempSource = cfg.MapTemperatureSource                         // D-93, D-190: the map's temperature
+	c.MapRainDetail = cfg.MapRainDetail                                // D-192: the rain's density past NDFD's reach
+	c.MapUVCities = cfg.MapUVCities                                    // D-202: how many cities UV asks EPA for
+	c.MapRadarAhead = cfg.MapRadarAheadHours                           // D-114: the radar loop's hours ahead
+	c.MapQuakeFeed = cfg.MapQuakeFeed                                  // D-122: the quakes the map draws
+	c.MapProblem = lp.problems.note                                    // D-124: the diagnostics', never the listener's
+	c.Timed = lp.timings.hook()                                        // W14's instrument: nil unless WATCHPOST_DEBUG_TIMING=1
+	c.MapFrame = newFrameLog().hook()                                  // D-198's recorder: nil unless WATCHPOST_DEBUG_MAPFRAMES names a file
+	c.MapFrameText = os.Getenv("WATCHPOST_DEBUG_MAPFRAMES_TEXT") != "" // the recorder keeps each frame's text too
+	c.MapClosed = lp.mapClosed                                         // D-162: the zone store's memory goes when the map closes
+	c.MapLayerChoice = cfg.MapLayers                                   // 0.18.0 W1.11
+	c.MapLayers = windowLayers()                                       // 0.18.0 W1.13: the registry's layers
+	c.MapCost = lp.mapCost                                             // 0.18.0 W1.14: the registry's estimate
+	c.MapDetailChoice = cfg.MapDetail                                  // UAT-1 D-65: the map's detail
+	c.MapDetailLevel = cfg.MapDetailLevel                              // UAT-1 D-67: its level
+	c.MapAreaName = mapAreaNamer(lp.idx)                               // UAT-1 D-64: the title names what is in view
+	c.MapCredits = mapCredits()                                        // 0.18.0 D-148: the map's, in About with the rest
 }
 
 // attachDeck takes ownership of the player and starts what rides with it: the

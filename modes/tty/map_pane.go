@@ -671,59 +671,26 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		d.mapPane.gen++
 	}
 	if d.mapPane.menuOn && act != actMapOverlays { // D-65: the open menu owns its keys
-		if nd, ok := d.handleOverlaysKey(key.String()); ok {
-			// AN ARROW MOVES THE CURSOR AND NOTHING ELSE (UAT-2 U2-13, U2-14):
-			// every press asked the radar and the temperature again, and the
-			// grids handed in again blinked. Only a switch touches the map.
-			if nd.mapLayerChoice == d.mapLayerChoice && nd.mapDetailChoice == d.mapDetailChoice && nd.mapDetailLevel == d.mapDetailLevel {
-				return nd, nil, true
-			}
-			nd = nd.timeFrom("overlay")
-			nd, _ = nd.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
-			var temp tea.Cmd
-			if (nd.layerOn(UVLayer) && !d.layerOn(UVLayer)) || (nd.layerOn(AirLayer) && !d.layerOn(AirLayer)) {
-				nd, temp = nd.askTemp() // UV and air quality are asked only while on (D-137, D-139)
-			}
-			nd = nd.renderMap()
-			save := nd.uiApplyCmd()
-			nd.setup.uiDirty = false
-			nd, feed := nd.askFeed()
-			return nd, tea.Batch(save, nd.mapWorkCmd(), feed, temp), true // radar is R's, not the menu's (D-94)
+		if nd, cmd, ok := d.overlaysMenuKey(key.String()); ok {
+			return nd, cmd, true
 		}
 	}
 	if !bound {
 		return d, nil, false
 	}
 	d = d.timeFrom(string(act))
-	switch act {
-	case actMapAlerts: // D-63
-		d.mapPane.alertsOn = !d.mapPane.alertsOn
-		d.mapPane.gen++
-		return d, nil, true
-	case actMapOverlays: // D-65
-		d.mapPane.menuOn, d.mapPane.menuAt = !d.mapPane.menuOn, 0
-		d.mapPane.gen++
-		return d, nil, true
-	case actMapRadar: // D-94: Radar mode on and off
-		if d.mapPane.m == nil {
-			return d, nil, false
-		}
-		nd, cmd := d.flashMapKey(act).switchMode()
-		return nd, cmd, true
-	case actMapHighLow: // D-97: the days' high or low
-		if d.mapPane.m == nil {
-			return d, nil, false
-		}
-		return d.flashMapKey(act).flipHighLow(), d.mapWorkCmd(), true
-	case actMapScrollUp: // D-61: PgUp and PgDn scroll the window's body, the description first
-		d.modalScroll = max(d.modalScroll-max(d.modalMax()-1, 1), 0)
-		return d, nil, true
-	case actMapScrollDown:
-		d.modalScroll = min(d.modalScroll+max(d.modalMax()-1, 1), max(len(d.modalLines())-d.modalMax(), 0))
-		return d, nil, true
+	if nd, ok := d.mapWindowKey(act); ok {
+		return nd, nil, true
 	}
 	if d.mapPane.m == nil {
 		return d, nil, false
+	}
+	switch act {
+	case actMapRadar: // D-94: Radar mode on and off
+		nd, cmd := d.flashMapKey(act).switchMode()
+		return nd, cmd, true
+	case actMapHighLow: // D-97: the days' high or low
+		return d.flashMapKey(act).flipHighLow(), d.mapWorkCmd(), true
 	}
 	d = d.flashMapKey(act) // U1-11: the controls' chip blinks
 	if !d.radarMode() {    // Forecast mode: the host steps (D-94)
@@ -733,6 +700,58 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	} else if nd, ok := d.handlePlayback(act); ok {
 		return nd, nd.mapWorkCmd(), true
 	}
+	return d.moveMapView(act)
+}
+
+// overlaysMenuKey is a key while the Overlays menu is open; false when the
+// menu does not take it.
+func (d Dashboard) overlaysMenuKey(key string) (Dashboard, tea.Cmd, bool) {
+	nd, ok := d.handleOverlaysKey(key)
+	if !ok {
+		return d, nil, false
+	}
+	// AN ARROW MOVES THE CURSOR AND NOTHING ELSE (UAT-2 U2-13, U2-14): only a
+	// switch touches the map, so a cursor move asks for no radar or
+	// temperature and hands no grid in again.
+	if nd.mapLayerChoice == d.mapLayerChoice && nd.mapDetailChoice == d.mapDetailChoice && nd.mapDetailLevel == d.mapDetailLevel {
+		return nd, nil, true
+	}
+	nd = nd.timeFrom("overlay")
+	nd, _ = nd.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
+	var temp tea.Cmd
+	if (nd.layerOn(UVLayer) && !d.layerOn(UVLayer)) || (nd.layerOn(AirLayer) && !d.layerOn(AirLayer)) {
+		nd, temp = nd.askTemp() // UV and air quality are asked only while on (D-137, D-139)
+	}
+	nd = nd.renderMap()
+	save := nd.uiApplyCmd()
+	nd.setup.uiDirty = false
+	nd, feed := nd.askFeed()
+	return nd, tea.Batch(save, nd.mapWorkCmd(), feed, temp), true // radar is R's, not the menu's (D-94)
+}
+
+// mapWindowKey is a key that works on the window itself, with a map or
+// without: the alerts, the Overlays menu and the body's scroll.
+func (d Dashboard) mapWindowKey(act term.Action) (Dashboard, bool) {
+	switch act {
+	case actMapAlerts: // D-63
+		d.mapPane.alertsOn = !d.mapPane.alertsOn
+		d.mapPane.gen++
+	case actMapOverlays: // D-65
+		d.mapPane.menuOn, d.mapPane.menuAt = !d.mapPane.menuOn, 0
+		d.mapPane.gen++
+	case actMapScrollUp: // D-61: PgUp and PgDn scroll the window's body, the description first
+		d.modalScroll = max(d.modalScroll-max(d.modalMax()-1, 1), 0)
+	case actMapScrollDown:
+		d.modalScroll = min(d.modalScroll+max(d.modalMax()-1, 1), max(len(d.modalLines())-d.modalMax(), 0))
+	default:
+		return d, false
+	}
+	return d, true
+}
+
+// moveMapView is a key that moves the view: a pan, a zoom, the next place or
+// a region.
+func (d Dashboard) moveMapView(act term.Action) (tea.Model, tea.Cmd, bool) {
 	size, m := d.mapBodySize(), d.mapPane.m
 	stepX, stepY := max(size.Cols/4, 1), max(size.Rows/4, 1) // a quarter of the view a press
 	// ANY KEY TAKES THE EDGE'S CHIP AWAY (D-81); a press the same way again

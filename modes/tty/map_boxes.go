@@ -586,28 +586,38 @@ const menuWarning = "You may experience performance issues with this many overla
 // keeping their ticks; MAP DETAIL - the preset over its switches.
 func (d Dashboard) overlaysBox() []string {
 	o := d.opts()
-	head := func(s string) string { return render.Tint(s, render.Tok(render.ModalTitle)) } // as Settings' groups (D-103)
-	var content []string
-	if h, _ := costWarningParts(d.mapCost); h != "" {
-		for i, l := range render.WrapText(menuWarning, overlayMenuW-6) {
-			lead := "   "
-			if i == 0 {
-				lead = " " + render.Tint("!", render.Tok(render.ListPointer)) + " "
-			}
-			content = append(content, " "+lead+l)
+	content := d.menuWarningLines()
+	content = append(content, d.menuRowLines()...)
+	content = append(content, detailShowsLines()...)
+	content = append(content, "", " "+o.KeyCap("↑↓")+" move "+o.KeyCap("←→")+" choose "+o.KeyCap("space")+" switch")
+	return boxed(render.Tint("MAP DETAILS / OVERLAYS", render.Tok(render.ModalTitle)), content, overlayMenuW)
+}
+
+// menuWarningLines is the menu's warning and a blank line under it, while
+// the layers on would cost past the thresholds; none otherwise.
+func (d Dashboard) menuWarningLines() []string {
+	h, _ := costWarningParts(d.mapCost)
+	if h == "" {
+		return nil
+	}
+	var out []string
+	for i, l := range render.WrapText(menuWarning, overlayMenuW-6) {
+		lead := "   "
+		if i == 0 {
+			lead = " " + render.Tint("!", render.Tok(render.ListPointer)) + " "
 		}
-		content = append(content, "")
+		out = append(out, " "+lead+l)
 	}
+	return append(out, "")
+}
+
+// menuRowLines is the menu's rows under their section headings: OVERLAYS
+// over MAP DETAIL.
+func (d Dashboard) menuRowLines() []string {
+	head := func(s string) string { return render.Tint(s, render.Tok(render.ModalTitle)) } // as Settings' groups (D-103)
 	rows := d.overlayRows()
-	cellW := (overlayMenuW - 4) / 2
-	chips := newArrowChips(o)
-	at := -1                          // the row whose picker is being drawn
-	choice := func(s string) string { // THE APP'S PICKER, [←] value [→], blinking as pressed (D-147)
-		return pickerCellW(s, chips, d.menuFlashFor(at), menuChoiceW)
-	}
-	line := func(left, right string) string {
-		return render.PadTo(left, overlayMenuW-2-render.Width(right)) + right
-	}
+	chips := newArrowChips(d.opts())
+	var content []string
 	heading := ""
 	for i := 0; i < len(rows); i++ {
 		r := rows[i]
@@ -621,64 +631,98 @@ func (d Dashboard) overlaysBox() []string {
 			}
 			content, heading = append(content, " "+head(section)), section
 		}
-		mark := o.ListMark(i == d.mapPane.menuAt)
-		at = i
-		switch r.kind {
-		case menuRadio:
-			face := r.label
-			if r.key == TemperatureLayer {
-				pick := "Actual"
-				if d.pickFeels() {
-					pick = "Feels like"
-				}
-				content = append(content, line(" "+mark+radioMark(d.tintChosen(r.key), o.ASCII)+" "+face, choice(pick)))
-				continue
-			}
-			content = append(content, " "+mark+radioMark(d.tintChosen(r.key), o.ASCII)+" "+face)
-		case menuGroup:
-			if i > 0 && rows[i-1].kind != menuGroup {
-				content = append(content, "")
-			}
-			state := "Enabled"
-			if !d.rowGroupOn(r.key) {
-				state = "Disabled"
-			}
-			content = append(content, line(" "+mark+r.label, choice(state)))
-		case menuFire:
-			mode := strings.ToUpper(d.fireMode()[:1]) + d.fireMode()[1:]
-			content = append(content, d.dimmed(r, line(" "+mark+checkMark(o, d.ticked(r.key))+" "+r.label, choice(mode))))
-		case menuPreset:
-			content = append(content, line(" "+mark+"Preset:", choice(d.detailLevelShown())))
-		default: // two to a line
-			cell := func(r overlayRow, at int) string {
-				on := d.detailOn(r.key)
-				if r.weather {
-					on = d.ticked(r.key)
-				}
-				return d.dimmed(r, render.PadTo(o.ListMark(at == d.mapPane.menuAt)+checkMark(o, on)+" "+r.label, cellW))
-			}
-			row := " " + cell(r, i)
-			if i+1 < len(rows) && rows[i+1].kind == r.kind && rows[i+1].group == r.group {
-				row += " " + cell(rows[i+1], i+1)
-				i++
-			}
-			content = append(content, row)
+		if r.kind == menuGroup && i > 0 && rows[i-1].kind != menuGroup {
+			content = append(content, "")
+		}
+		if l, ok := d.menuRowLine(r, i, chips); ok {
+			content = append(content, l)
+			continue
+		}
+		l, pair := d.menuCellPair(rows, i)
+		content = append(content, l)
+		if pair {
+			i++
 		}
 	}
-	var shows []string // what a switch says of when the style first draws it, so a switch on but not yet seen does not read as broken (U1-42)
+	return content
+}
+
+// menuLine is a menu line with its right part flush to the box's edge.
+func menuLine(left, right string) string {
+	return render.PadTo(left, overlayMenuW-2-render.Width(right)) + right
+}
+
+// menuRowLine is a row that takes a line of its own - a tint, a group's
+// switch, fire, the preset; false for a box drawn two to a line.
+func (d Dashboard) menuRowLine(r overlayRow, i int, chips arrowChips) (string, bool) {
+	o := d.opts()
+	mark := o.ListMark(i == d.mapPane.menuAt)
+	choice := func(s string) string { // THE APP'S PICKER, [←] value [→], blinking as pressed (D-147)
+		return pickerCellW(s, chips, d.menuFlashFor(i), menuChoiceW)
+	}
+	switch r.kind {
+	case menuRadio:
+		face := " " + mark + radioMark(d.tintChosen(r.key), o.ASCII) + " " + r.label
+		if r.key != TemperatureLayer {
+			return face, true
+		}
+		pick := "Actual"
+		if d.pickFeels() {
+			pick = "Feels like"
+		}
+		return menuLine(face, choice(pick)), true
+	case menuGroup:
+		state := "Enabled"
+		if !d.rowGroupOn(r.key) {
+			state = "Disabled"
+		}
+		return menuLine(" "+mark+r.label, choice(state)), true
+	case menuFire:
+		mode := strings.ToUpper(d.fireMode()[:1]) + d.fireMode()[1:]
+		return d.dimmed(r, menuLine(" "+mark+checkMark(o, d.ticked(r.key))+" "+r.label, choice(mode))), true
+	case menuPreset:
+		return menuLine(" "+mark+"Preset:", choice(d.detailLevelShown())), true
+	}
+	return "", false
+}
+
+// menuCellPair is a box row, two to a line: row i and, when it is the same
+// kind in the same group, row i+1 beside it (pair true).
+func (d Dashboard) menuCellPair(rows []overlayRow, i int) (string, bool) {
+	o := d.opts()
+	cellW := (overlayMenuW - 4) / 2
+	cell := func(r overlayRow, at int) string {
+		on := d.detailOn(r.key)
+		if r.weather {
+			on = d.ticked(r.key)
+		}
+		return d.dimmed(r, render.PadTo(o.ListMark(at == d.mapPane.menuAt)+checkMark(o, on)+" "+r.label, cellW))
+	}
+	row := " " + cell(rows[i], i)
+	if i+1 < len(rows) && rows[i+1].kind == rows[i].kind && rows[i+1].group == rows[i].group {
+		return row + " " + cell(rows[i+1], i+1), true
+	}
+	return row, false
+}
+
+// detailShowsLines is what each switch says of the zoom its style first
+// draws it at, so a switch on but not yet seen does not read as broken
+// (U1-42); none when no switch has one.
+func detailShowsLines() []string {
+	var shows []string
 	for _, l := range mapDetailLayers() {
 		if l.shows != "" {
 			shows = append(shows, l.label+" from "+strings.TrimSuffix(l.shows, " zoom")+" zoom")
 		}
 	}
-	if len(shows) > 0 {
-		content = append(content, "") // apart from the switches, for scanning (D-147)
-		for _, l := range render.WrapText(strings.Join(shows, ", ")+".", overlayMenuW-4) {
-			content = append(content, "   "+render.Tint(l, render.Tok(render.TableMuted)))
-		}
+	if len(shows) == 0 {
+		return nil
 	}
-	content = append(content, "", " "+o.KeyCap("↑↓")+" move "+o.KeyCap("←→")+" choose "+o.KeyCap("space")+" switch")
-	return boxed(render.Tint("MAP DETAILS / OVERLAYS", render.Tok(render.ModalTitle)), content, overlayMenuW)
+	out := []string{""} // apart from the switches, for scanning (D-147)
+	for _, l := range render.WrapText(strings.Join(shows, ", ")+".", overlayMenuW-4) {
+		out = append(out, "   "+render.Tint(l, render.Tok(render.TableMuted)))
+	}
+	return out
 }
 
 // dimmed is a box of a disabled group, dimmed: its tick kept (D-143).

@@ -3167,3 +3167,29 @@ keeping the pool (both arms), the shared decode, the rows reading the priority s
 all caught. The memo key without the priority snapshot survived the completeness guard (its walk does
 not perturb pointers); a case that republishes the priority snapshot now catches it. mAF2 and mAF3
 re-pointed at the new `withPool` call and caught.
+
+## Batch 103 — the long functions split at their seams (W14 S-9, D-209; 2026-10-02)
+
+Eight functions past 60 code lines, split where each already had a seam, with no behaviour changed:
+
+- `handleMapKey` - the open menu's keys (`overlaysMenuKey`), the window's own toggles and scroll
+  (`mapWindowKey`), and the keys that move the view (`moveMapView`).
+- `overlaysBox` - the warning (`menuWarningLines`), the rows under their headings (`menuRowLines`,
+  `menuRowLine`, `menuCellPair`) and the zoom note (`detailShowsLines`).
+- `mapFeedWith` - by source: the alerts (`heldAlerts`, `addAlerts`, `addPartial`), the sea's stations
+  (`seaStations`), and `addNow` for the overlays drawn as now.
+- `ttyConfig` - by owner: the core literal, `stationConfig` and `mapConfig`; all 83 fields kept,
+  checked field by field.
+- `geojson.walk` - a `walker` holding the state, a method for a token, a closing bracket and a position.
+- `parseDWML` - `addWinds` and `addTemperatures`; the temperature element is declared as `dwmlSeries`,
+  which it already was field for field.
+- `buildTemperature` and `withWaves` - a builder each (`tempBuild`, `waveBuild`) with fetch (its
+  fallbacks), Radar mode, Forecast mode and finish (chips and notes).
+
+The functions' comments moved with them in present tense (AP-HIST-01).
+
+**Mutation verdicts** (19, one a seam): 17 caught at once. A menu row pair that did not consume its
+partner survived (nothing counted the boxes): `TestEveryBoxIsDrawnOnce` holds it. A box the fill drew
+taken for NDFD's survived (nothing checked a fill box replays no history):
+`TestABoxTheFillDrawsReplaysNothingRecorded` holds it. mAS1 re-pointed at `stationConfig` and caught.
+
