@@ -36,7 +36,6 @@ const hmsCredit
 const holdStep
 const httpCacheBytes
 const installRetryAfter
-const kmPerMile
 const laneBacklog
 const liveDwell
 const mainTrackDark
@@ -556,6 +555,7 @@ func composeTakeover
 func configLocations
 func contentsFromSegments
 func contourGrid
+func convertIf
 func credits
 func dayStart
 func debugAddr
@@ -806,7 +806,6 @@ func suggestHook
 func tapeHead
 func tellUnder
 func tempChips
-func tempGrid
 func tempHosts
 func tempLayerCost
 func tempSourcesAt
@@ -839,6 +838,7 @@ func trimToBudget
 func tuneList
 func tuneTo
 func uiHook
+func unitGrid
 func unread
 func userCacheSubdir
 func uvAsked
@@ -847,7 +847,6 @@ func uvPoints
 func viewAreas
 func vizFor
 func voiceDir
-func waveGrid
 func waveLayerCost
 func windForecastGrids
 func windGrid

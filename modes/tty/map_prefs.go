@@ -16,6 +16,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // MapLayer is one layer the listener can switch, as the app's registry names
@@ -398,7 +399,7 @@ func (d Dashboard) nearbyLabel() string {
 	if d.units != render.UnitF {
 		return km
 	}
-	return strconv.Itoa(int(math.Round(float64(d.mapNearbyKm)*0.621371))) + " miles (" + km + ")"
+	return strconv.Itoa(int(math.Round(units.MilesOf(float64(d.mapNearbyKm))))) + " miles (" + km + ")"
 }
 
 // layerOn reports whether a layer is drawn: the listener's choice, or the

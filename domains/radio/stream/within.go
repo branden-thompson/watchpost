@@ -22,6 +22,7 @@ import (
 	"sort"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // Within lists the transmitters inside radiusMi of a point, nearest first.
@@ -39,7 +40,7 @@ func (t *Table) Within(lat, lon, radiusMi float64) []Near {
 			continue
 		}
 		km := geo.HaversineKM(lat, lon, tx.Lat, tx.Lon)
-		if km > radiusMi*kmPerMile {
+		if km > units.KmOf(radiusMi) {
 			continue
 		}
 		out = append(out, Near{tx, km})
@@ -61,7 +62,4 @@ const (
 	// statusOutOfService is the table's own word for a transmitter that is not
 	// carrying. Spelled once, so the count and the tuner cannot disagree.
 	statusOutOfService = "OUT OF SERVICE"
-
-	// kmPerMile converts the operator's miles to the table's kilometres.
-	kmPerMile = 1.609344
 )

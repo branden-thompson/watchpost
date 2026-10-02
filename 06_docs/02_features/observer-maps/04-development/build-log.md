@@ -3086,3 +3086,45 @@ carried back to Observer's map window by the router (`observerScoped`) - held by
 redraws only changed cells sends "36", not the label, when the count grows - so a count that grows
 after the first draw is read from the frame recorder, not the stream.
 
+## Batch 100 — every unit conversion in one place (W14 S-6; 2026-10-01)
+
+**The finding.** Temperature, distance and speed conversions written inline in about twenty places
+across three layers, the mile constant six times (1.609344 and 0.621371 both), and two spoken wordings
+("kilometres" in the conditions, "kilometers" everywhere else).
+
+**`platform/units`**, a leaf with no imports: `FahrenheitOf`, `CelsiusOf`, `FahrenheitDelta` (a
+difference, scaled with no offset), `MilesOf`/`KmOf`, `KmhOf`/`MpsOf`, `KmhOfKnots`, `KnotsOf`, `MphOf`,
+`MpsOfMph`, `FeetOf`/`MetresOfFeet`, `InchesOf`/`MmOfInches`, each by its exact definition (the
+international mile and foot, the knot, the inch). Tested against the definitions and as round trips.
+
+**Moved: about 45 sites** - the search turned up feet, inches, knots and mph factors the audit had not
+listed (3.28084, 0.3048, 25.4, 1.94384 and 1.943844, 0.514444, 2.23694, 0.44704) - in `domains`
+(seismic, the radio's synth and stream, geodata, NWS, the temperature sources, globalfeed), `app`,
+`modes/tty` and `platform` (render, lineup). Gone: `seismic.MileKm`, four private mile constants, and
+`temperature`'s `knotsToKmh` and `fahrenheitToC`. The bed fence and the hazard tape now read the same
+`units.KmOf` - the identity the fence's comment asked for, by construction. Tests that work out their
+own expected values keep their literal factors: an oracle independent of the code under test.
+
+**Output that changed, and only this.** The conditions' metric wind is spoken "kilometers per hour" -
+the spelling every other spoken distance uses. **Found on the way**: the detail view's Feels Like gave
+its difference from the air in °F whatever the listener's units - "24°C (+3°F)" to a metric listener;
+`render.Opts.TempDelta` says it in the listener's units. No golden moved: the exact divisors rounded as
+the six-place factors did.
+
+**Mutation verdicts** (17): every conversion's arithmetic (six), the spoken spelling, the spoken mph, the
+feels-like difference (survived once - nothing checked the detail view's figure; asserted now), the
+delta's two units, the fence's reach, render's miles, NWS's km/h, the map wind's mph, NDFD's wave feet
+- all caught. Three mutants re-anchored (m86, m87, mAK2): the lines they break now read
+`units.KmOf` / `units.MilesOf`.
+
+**What the conversions' move left (D-205 to D-207, the HUM LEAD's rulings).** With every factor a
+`units` call, the duplicate check found two skeletons it had not seen: render's `Temp`, `Distance` and
+`TideHeight` (the last two ratified on 2026-09-08 to stay apart), and app's `tempGrid` and `waveGrid`.
+D-205 collapsed the three into `Opts.measured` - each caller's formats, sentinel and conversion its
+column's contract - overturning that ratification; D-206 removed the two wrappers, each caller naming its
+interpolation, conversion and preset to `unitGrid`. A first attempt at a shared render helper was
+reverted on reading the 2026-09-08 ratification, and the choice put to the HUM LEAD. P10-05 flagged
+`platform/units` (fifteen one-line conversions with nothing to check); "add domain checks" was first
+offered priced too low, then asked again with Rule 5's real cost - every conversion returning an error
+to some 45 callers - and D-207 ratified a ledger exemption instead (mirror regenerated, lint clean).
+

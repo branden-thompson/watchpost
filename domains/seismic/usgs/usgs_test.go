@@ -18,6 +18,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // quake is a test event the fake USGS server filters and serves.
@@ -253,7 +254,7 @@ func TestConcentricFetchEqualsSingleWideQuery(t *testing.T) {
 		edgeMi := rules.RadiusMiFor(mag)
 		for _, dMi := range []float64{edgeMi * 0.8, edgeMi * 1.2} {
 			id++
-			cat = append(cat, quake{id: fmt.Sprintf("e%d", id), mag: mag, lat: oceanside.Lat + degNorth(dMi*seismic.MileKm), lon: oceanside.Lon, depth: 5, ago: time.Hour, typ: "earthquake"})
+			cat = append(cat, quake{id: fmt.Sprintf("e%d", id), mag: mag, lat: oceanside.Lat + degNorth(dMi*units.KmPerMile), lon: oceanside.Lon, depth: 5, ago: time.Hour, typ: "earthquake"})
 		}
 	}
 	// Brute-force reference: every event Keep would show from the location.

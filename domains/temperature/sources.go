@@ -14,6 +14,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // The sources' hosts, FR-3.8's closed list (D-93, D-125).
@@ -233,7 +234,7 @@ func parseDWML(body []byte, now time.Time, out *Series) error {
 			}
 			eachValue(w, layouts[w.Layout].starts, func(t time.Time, v float64) {
 				if w.Units == "knots" {
-					v = knotsToKmh(v)
+					v = units.KmhOfKnots(v)
 				}
 				if w.Type == "gust" {
 					out.WindGust[out.hourIndex(t)][at] = v // D-136
@@ -260,7 +261,7 @@ func parseDWML(body []byte, now time.Time, out *Series) error {
 					continue
 				}
 				if temp.Units == "Fahrenheit" {
-					f = fahrenheitToC(f)
+					f = units.CelsiusOf(f)
 				}
 				switch temp.Type {
 				case "hourly":

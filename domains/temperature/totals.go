@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // NDFDTotalsCredit is the totals' credit line where NDFD drew them.
@@ -70,7 +71,7 @@ func (s *NDFD) Totals(ctx context.Context, l Lattice, now time.Time) (Totals, er
 			continue
 		}
 		for _, series := range p.Precip { // rain and snow
-			day, scale := &out.QPF, 25.4 // inches to mm
+			day, scale := &out.QPF, units.MmPerInch // inches to mm
 			if series.Type == "snow" {
 				day, scale = &out.Snow, 2.54 // inches to cm
 			} else if series.Type != "liquid" {

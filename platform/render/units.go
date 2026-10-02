@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -208,38 +209,42 @@ func (o Opts) LoadingDots() string {
 
 // Temp renders a Celsius value in the display units; nil renders n/a.
 func (o Opts) Temp(c *float64) string {
-	if c == nil {
-		return "n/a"
+	return o.measured(c, "n/a", "%.0f°C", "%.0f°F", units.FahrenheitOf)
+}
+
+// measured renders a metric value in the display units - as it is in the
+// metric format, converted in the imperial - or missing when nil (D-205):
+// each caller's format is its column's contract.
+func (o Opts) measured(v *float64, missing, metric, imperial string, toImperial func(float64) float64) string {
+	if v == nil {
+		return missing
 	}
 	if o.Units == UnitC {
-		return fmt.Sprintf("%.0f°C", *c)
+		return fmt.Sprintf(metric, *v)
 	}
-	return fmt.Sprintf("%.0f°F", *c*9/5+32)
+	return fmt.Sprintf(imperial, toImperial(*v))
+}
+
+// TempDelta renders a Celsius DIFFERENCE in the display units, signed: in °C
+// as it is, in °F scaled with no offset (units.FahrenheitDelta).
+func (o Opts) TempDelta(dc float64) string {
+	if o.Units == UnitC {
+		return fmt.Sprintf("%+.0f°C", dc)
+	}
+	return fmt.Sprintf("%+.0f°F", units.FahrenheitDelta(dc))
 }
 
 // Distance renders a kilometres value in the DIST column's fixed "nnn km"
 // slot (miles under °F, following Height); blank when unknown.
 func (o Opts) Distance(km *float64) string {
-	if km == nil {
-		return ""
-	}
-	if o.Units == UnitC {
-		return fmt.Sprintf("%3.0f km", *km)
-	}
-	return fmt.Sprintf("%3.0f mi", *km*0.621371)
+	return o.measured(km, "", "%3.0f km", "%3.0f mi", units.MilesOf)
 }
 
 // TideHeight renders a metres value at tide precision (tenths of a foot
 // under °F, centimetres under °C — UAT 61) in a fixed 4-cell numeric slot,
 // so a negative low ("-0.1 ft") never shifts the column (UAT 62).
 func (o Opts) TideHeight(m *float64) string {
-	if m == nil {
-		return "n/a"
-	}
-	if o.Units == UnitC {
-		return fmt.Sprintf("%4.2f m", *m)
-	}
-	return fmt.Sprintf("%4.1f ft", *m*3.28084)
+	return o.measured(m, "n/a", "%4.2f m", "%4.1f ft", units.FeetOf)
 }
 
 // Knots renders a m/s current speed in knots — the convention under both
@@ -248,7 +253,7 @@ func (o Opts) Knots(mps *float64) string {
 	if mps == nil {
 		return "n/a"
 	}
-	return fmt.Sprintf("%4.1f kt", *mps/0.514444)
+	return fmt.Sprintf("%4.1f kt", units.KnotsOf(*mps))
 }
 
 // Wind renders a m/s value in the display units (mph under °F, km/h under °C).
@@ -257,9 +262,9 @@ func (o Opts) Wind(mps *float64) string {
 		return "n/a"
 	}
 	if o.Units == UnitC {
-		return fmt.Sprintf("%.0f km/h", *mps*3.6)
+		return fmt.Sprintf("%.0f km/h", units.KmhOf(*mps))
 	}
-	return fmt.Sprintf("%.0f mph", *mps*2.23694)
+	return fmt.Sprintf("%.0f mph", units.MphOf(*mps))
 }
 
 // HealthGlyph renders one provider's header status (mock M-V1: ✔/⚠/✘ + name;

@@ -12,6 +12,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // The scales, by how many kilometres the view is across (D-64): under the
@@ -21,7 +22,6 @@ const (
 	titlePlaceKm = 80
 	titlePartKm  = 700
 	titleStateKm = 1500
-	kmPerMile    = 1.609344
 )
 
 // mapAreaNamer is the window's namer over an index: nil names nothing, and
@@ -38,7 +38,7 @@ func mapAreaNamer(idx *geodata.Index) func(tuimaps.LonLat, float64) string {
 		if widthKm >= titleStateKm {
 			return region.Name
 		}
-		near := idx.Near(at.Lat, at.Lon, max(widthKm/2, 50)/kmPerMile, 20)
+		near := idx.Near(at.Lat, at.Lon, units.MilesOf(max(widthKm/2, 50)), 20)
 		if len(near) == 0 {
 			return region.Name // open water: the region is what is in view
 		}

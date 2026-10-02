@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // OpenMeteoWavesCredit is the waves' credit line where Open-Meteo drew them.
@@ -139,7 +140,7 @@ func (s *NDFD) Waves(ctx context.Context, l Lattice, now time.Time) (Waves, erro
 				}
 				eachValue(series, layouts[ws.Layout].starts, func(t time.Time, v float64) {
 					if series.Units == "feet" {
-						v *= 0.3048
+						v = units.MetresOfFeet(v)
 					}
 					out.Hourly[out.hourIndex(t)][at] = v
 					if k := dayOffset(t, now); k >= 0 && k < Days {

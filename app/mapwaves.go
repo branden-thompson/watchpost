@@ -19,6 +19,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/history"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // Waves, registered: off by default (D-126).
@@ -127,20 +128,20 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd waveSource, om ma
 		}
 		if !ask.Forecast {
 			hours := hourGrids(tty.WaveLayer, b.Name, w.Hours, len(w.Hourly), anchor, radarHorizon(ask, anchor), func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
-				return waveGrid(id, lat, w.Hourly[i], unit, valid, anchor)
+				return unitGrid(id, lat.InterpolateOut(w.Hourly[i]), convertIf(unit == tuimaps.Feet, units.FeetOf), unit, valid, anchor, tuimaps.WaveGrid)
 			})
 			fillPast(hours, anchor) // every observed frame drawn (U2-55 to U2-57)
 			t.Waves = append(t.Waves, hours...)
 			continue
 		}
 		if vals, ok := w.At(anchor); ok {
-			if o, ok := waveGrid(tty.WaveLayer+"/"+b.Name+"/now", lat, vals, unit, anchor, anchor); ok {
+			if o, ok := unitGrid(tty.WaveLayer+"/"+b.Name+"/now", lat.InterpolateOut(vals), convertIf(unit == tuimaps.Feet, units.FeetOf), unit, anchor, anchor, tuimaps.WaveGrid); ok {
 				o.During = nowStep.Span
 				t.Waves = append(t.Waves, o)
 			}
 		}
 		for k, step := range days {
-			if o, ok := waveGrid(tty.WaveLayer+"/"+b.Name+"/d"+strconv.Itoa(k), lat, w.Max[k], unit, anchor, anchor); ok {
+			if o, ok := unitGrid(tty.WaveLayer+"/"+b.Name+"/d"+strconv.Itoa(k), lat.InterpolateOut(w.Max[k]), convertIf(unit == tuimaps.Feet, units.FeetOf), unit, anchor, anchor, tuimaps.WaveGrid); ok {
 				o.During = step.Span
 				t.WaveDays = append(t.WaveDays, o)
 			} else if emptyDay && fromNDFD {
@@ -237,20 +238,6 @@ func answeredNothing(far temperature.Waves, asked []int) []int {
 		}
 	}
 	return out
-}
-
-// waveGrid is a lattice's wave height, metres, as the library's wave grid in
-// the listener's unit, lined - labelled contours over faint bands, as the
-// temperature's are (D-126); false when no point has any.
-func waveGrid(id string, l temperature.Lattice, metres []float64, unit tuimaps.WaveUnit, valid, anchor time.Time) (tuimaps.Overlay, bool) {
-	var toFeet func(float64) float64
-	if unit == tuimaps.Feet {
-		toFeet = func(m float64) float64 { return m / 0.3048 }
-	}
-	// To the coast: the library draws it over the sea alone (U2-31).
-	return linedGrid(id, l.InterpolateOut(metres), toFeet, valid, anchor, func(id string, g tuimaps.Grid, valid time.Time) tuimaps.Overlay {
-		return tuimaps.WaveGrid(id, g, unit, valid)
-	})
 }
 
 // waveBytes are a field box's two wave requests on the wire: NDFD's 18 KB

@@ -19,6 +19,7 @@ import (
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // The sea's stations, registered: off by default (D-127, D-128).
@@ -149,16 +150,16 @@ func buoyLabel(o ndbc.Obs, imperial bool) string {
 		if o.WindMS == nil {
 			return ""
 		}
-		return strconv.Itoa(int(math.Round(*o.WindMS*1.943844))) + "kt" // wind at sea is in knots
+		return strconv.Itoa(int(math.Round(units.KnotsOf(*o.WindMS)))) + "kt" // wind at sea is in knots
 	}
 	label := strconv.FormatFloat(*o.WaveM, 'f', 1, 64) + "m"
 	if imperial {
-		label = strconv.Itoa(int(math.Round(*o.WaveM/0.3048))) + "ft"
+		label = strconv.Itoa(int(math.Round(units.FeetOf(*o.WaveM)))) + "ft"
 	}
 	if o.WaterC != nil {
 		water := *o.WaterC
 		if imperial {
-			water = water*9/5 + 32
+			water = units.FahrenheitOf(water)
 		}
 		label += " " + strconv.Itoa(int(math.Round(water))) + "°"
 	}
@@ -195,7 +196,7 @@ func tideOverlay(stations []coops.Station, view tty.MapView, now time.Time, impe
 func tideLabel(e snapshot.TideEvent, imperial bool, clock render.Clock, zone *time.Location) string {
 	height := strconv.FormatFloat(e.Height, 'f', 1, 64) + "m"
 	if imperial {
-		height = strconv.FormatFloat(e.Height/0.3048, 'f', 1, 64) + "ft"
+		height = strconv.FormatFloat(units.FeetOf(e.Height), 'f', 1, 64) + "ft"
 	}
 	return e.Type + " " + height + " " + clock.Time(e.Time.In(zone))
 }

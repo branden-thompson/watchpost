@@ -11,15 +11,8 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
-
-// MileKm converts miles to kilometres (the rule is authored in miles — the
-// config's and the UI's unit — and compared against haversine kilometres).
-// Exported so the provider builds query radii in km from the same constant.
-const MileKm = 1.609344
-
-// mileKm is the internal alias (the rule reads in the local unit).
-const mileKm = MileKm
 
 // Band is one step of the graduated rule: a quake whose magnitude is below
 // UpperMag is shown within RadiusMi miles of the location.
@@ -99,7 +92,7 @@ func (r Rules) MaxRadiusMi() float64 {
 
 // MaxRadiusKm is the widest reach of any band, in kilometres — the radius
 // the USGS box request must cover so the rule can filter it locally.
-func (r Rules) MaxRadiusKm() float64 { return r.MaxRadiusMi() * mileKm }
+func (r Rules) MaxRadiusKm() float64 { return units.KmOf(r.MaxRadiusMi()) }
 
 // nearFieldCapMi bounds the near-field query's radius. Bands whose reach is
 // within it collapse into one low-magnitude near query ("did it shake right
@@ -159,7 +152,7 @@ func (r Rules) QueryPlan() []BandQuery {
 // Keep reports whether a quake at distanceKm from the location, of the given
 // magnitude, is within its band's radius — the graduated rule.
 func (r Rules) Keep(mag, distanceKm float64) bool {
-	return distanceKm <= r.RadiusMiFor(mag)*mileKm
+	return distanceKm <= units.KmOf(r.RadiusMiFor(mag))
 }
 
 // wants reports whether the event type is one the rules show (D4).

@@ -203,6 +203,7 @@ func (Opts).StationDistance
 func (Opts).StatusTable
 func (Opts).TableRowLen
 func (Opts).Temp
+func (Opts).TempDelta
 func (Opts).TideHeight
 func (Opts).TrendGlyph
 func (Opts).Wind
@@ -210,6 +211,7 @@ func (Opts).alertHeader
 func (Opts).columnHeader
 func (Opts).groupHeader
 func (Opts).lineupRowData
+func (Opts).measured
 func (Opts).rowData
 func (Opts).scrollBody
 func (Opts).scrollWindow

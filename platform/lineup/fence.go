@@ -6,20 +6,8 @@ import (
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
-
-// kmPerMi converts the fence's radius, and is written out here rather than
-// imported.
-//
-// THE ARITHMETIC IS DELIBERATELY IDENTICAL to globalfeed.WithinMiles
-// (domains/globalfeed/stack.go:22) — the same haversine, the same constant, the
-// same `<=`. platform/ cannot import domains/*, and extracting a shared helper
-// would mean editing the hazard path to route through it, where a rounding
-// difference at the boundary would put one hazard on the tape and not in the
-// burst. scopeEvents already warns that "the two surfaces cannot disagree about
-// one hazard"; matching the form is how this one keeps that promise, and this
-// comment is the reason it is not extracted at its second caller.
-const kmPerMi = 1.609344
 
 // QuakeReachFrom is the magnitude at which a quake starts carrying reach of its
 // own. It is the feed's own "strong quake" threshold (domains/globalfeed/
@@ -173,7 +161,7 @@ func (f Fence) Admits(a Arrival) bool {
 	if err := invariant.Check(!math.IsNaN(km), "the distance to an arrival is a number"); err != nil {
 		return false
 	}
-	if km <= f.RadiusMi*kmPerMi {
+	if km <= units.KmOf(f.RadiusMi) { // the hazard tape's measure (globalfeed.WithinMiles): the same haversine, mile and <=, so the two surfaces cannot disagree about one hazard
 		return true
 	}
 	// THE SIGNIFICANCE EXCEPTION, and it is for a DISASTER. Such a disaster has
@@ -182,7 +170,7 @@ func (f Fence) Admits(a Arrival) bool {
 	if a.Category != category.Disasters {
 		return false
 	}
-	return km <= a.ReachMi*kmPerMi
+	return km <= units.KmOf(a.ReachMi)
 }
 
 // AdmitsAny reports whether a fence admits ANY of the arrivals a card was

@@ -16,6 +16,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // lineupRows is every scheduled slot below the two the operator reads from.
@@ -183,7 +184,7 @@ func (b Broadcaster) milesFromTower(ref snapshot.LocationRef) *float64 {
 	if tx.Lat == 0 && tx.Lon == 0 {
 		return nil
 	}
-	mi := geo.HaversineKM(tx.Lat, tx.Lon, ref.Lat, ref.Lon) * 0.621371
+	mi := units.MilesOf(geo.HaversineKM(tx.Lat, tx.Lon, ref.Lat, ref.Lon))
 	return &mi
 }
 

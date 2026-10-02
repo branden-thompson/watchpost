@@ -14,6 +14,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // FireReport is what the broadcast's fire segment reads from (UAT 114,
@@ -230,7 +231,7 @@ func (c Composer) incidentSentence(fr FireReport, in snapshot.Incident, imperial
 // distanceWords: "15 miles" / "25 kilometers" (whole units; "1 mile").
 func distanceWords(km float64, imperial bool) string {
 	if imperial {
-		mi := int(math.Round(km * 0.621371))
+		mi := int(math.Round(units.MilesOf(km)))
 		if mi == 1 {
 			return "1 mile"
 		}
@@ -246,7 +247,7 @@ func distanceWords(km float64, imperial bool) string {
 // ringWords is the ring's size as an adjective ("16 mile", "25 kilometer").
 func ringWords(km float64, imperial bool) string {
 	if imperial {
-		return fmt.Sprintf("%d mile", int(math.Round(km*0.621371)))
+		return fmt.Sprintf("%d mile", int(math.Round(units.MilesOf(km))))
 	}
 	return fmt.Sprintf("%d kilometer", int(math.Round(km)))
 }

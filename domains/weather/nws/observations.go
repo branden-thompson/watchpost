@@ -10,6 +10,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // --- observations ---
@@ -157,9 +158,9 @@ func toSI(q quantity) *float64 {
 	case "wmoUnit:degC", "wmoUnit:percent", "wmoUnit:degree_(angle)", "wmoUnit:m":
 		// already target unit
 	case "wmoUnit:degF":
-		v = (v - 32) * 5 / 9
+		v = units.CelsiusOf(v)
 	case "wmoUnit:km_h-1":
-		v = v / 3.6
+		v = units.MpsOf(v)
 	case "wmoUnit:m_s-1":
 		// already m/s
 	case "wmoUnit:Pa":
@@ -187,7 +188,7 @@ func windFromText(s string) *float64 {
 	if !found {
 		return nil
 	}
-	v := roundTenth(mph * 0.44704)
+	v := roundTenth(units.MpsOfMph(mph))
 	return &v
 }
 

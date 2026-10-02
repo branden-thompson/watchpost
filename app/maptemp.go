@@ -26,6 +26,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // The temperature, registered: OFF BY DEFAULT (D-99), and loaded in the
@@ -242,7 +243,7 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 			horizon := radarHorizon(ask, anchor)
 			temp := func(values [][]float64) func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
 				return func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
-					return tempGrid(id, s.Lattice, values[i], unit, valid, anchor)
+					return unitGrid(id, s.Lattice.InterpolateWide(values[i]), convertIf(unit == tuimaps.Fahrenheit, units.FahrenheitOf), unit, valid, anchor, tuimaps.TemperatureGrid)
 				}
 			}
 			past := 0
@@ -587,7 +588,7 @@ func stampOf(h, anchor time.Time) time.Time {
 func forecastGrids(out *tty.MapTemperature, s temperature.Series, box string, anchor time.Time, unit tuimaps.Unit, missing map[string]bool) {
 	nowStep, days := forecastDays(anchor)
 	if vals, _, ok := s.HourAt(anchor); ok {
-		if o, ok := tempGrid(tty.TemperatureLayer+"/"+box+"/now", s.Lattice, vals, unit, anchor, anchor); ok {
+		if o, ok := unitGrid(tty.TemperatureLayer+"/"+box+"/now", s.Lattice.InterpolateWide(vals), convertIf(unit == tuimaps.Fahrenheit, units.FahrenheitOf), unit, anchor, anchor, tuimaps.TemperatureGrid); ok {
 			o.During = nowStep.Span
 			out.Overlays = append(out.Overlays, o)
 		}
@@ -598,7 +599,7 @@ func forecastGrids(out *tty.MapTemperature, s temperature.Series, box string, an
 			vals []float64
 			into *[]tuimaps.Overlay
 		}{{"high", s.High[k], &out.High}, {"low", s.Low[k], &out.Low}} {
-			o, ok := tempGrid(tty.TemperatureLayer+"/"+box+"/d"+strconv.Itoa(k)+"/"+side.name, s.Lattice, side.vals, unit, anchor, anchor)
+			o, ok := unitGrid(tty.TemperatureLayer+"/"+box+"/d"+strconv.Itoa(k)+"/"+side.name, s.Lattice.InterpolateWide(side.vals), convertIf(unit == tuimaps.Fahrenheit, units.FahrenheitOf), unit, anchor, anchor, tuimaps.TemperatureGrid)
 			if !ok {
 				missing["No "+side.name+" for "+step.Label+" from this source: it has passed, or is past the source's reach."] = true
 				continue
@@ -615,7 +616,7 @@ func forecastGrids(out *tty.MapTemperature, s temperature.Series, box string, an
 func feelsForecastGrids(out *tty.MapTemperature, s temperature.Series, box string, anchor time.Time, unit tuimaps.Unit) {
 	nowStep, days := forecastDays(anchor)
 	if vals, ok := s.FeelsAt(anchor); ok {
-		if o, ok := tempGrid(tty.FeelsLayer+"/"+box+"/now", s.Lattice, vals, unit, anchor, anchor); ok {
+		if o, ok := unitGrid(tty.FeelsLayer+"/"+box+"/now", s.Lattice.InterpolateWide(vals), convertIf(unit == tuimaps.Fahrenheit, units.FahrenheitOf), unit, anchor, anchor, tuimaps.TemperatureGrid); ok {
 			o.During = nowStep.Span
 			out.Feels = append(out.Feels, o)
 		}
@@ -626,7 +627,7 @@ func feelsForecastGrids(out *tty.MapTemperature, s temperature.Series, box strin
 			vals []float64
 			into *[]tuimaps.Overlay
 		}{{"high", s.FeelsHigh[k], &out.FeelsHigh}, {"low", s.FeelsLow[k], &out.FeelsLow}} {
-			if o, ok := tempGrid(tty.FeelsLayer+"/"+box+"/d"+strconv.Itoa(k)+"/"+side.name, s.Lattice, side.vals, unit, anchor, anchor); ok {
+			if o, ok := unitGrid(tty.FeelsLayer+"/"+box+"/d"+strconv.Itoa(k)+"/"+side.name, s.Lattice.InterpolateWide(side.vals), convertIf(unit == tuimaps.Fahrenheit, units.FahrenheitOf), unit, anchor, anchor, tuimaps.TemperatureGrid); ok {
 				o.During = step.Span
 				*side.into = append(*side.into, o)
 			}
@@ -693,10 +694,10 @@ func windGrid(id string, l temperature.Lattice, speed, from, gust []float64, mph
 	if mph {
 		unit = tuimaps.MilesPerHour
 		for i, v := range f.Values {
-			f.Values[i] = v / 1.609344 // a missing value stays missing
+			f.Values[i] = units.MilesOf(v) // a missing value stays missing
 		}
 		for i, g := range gusts {
-			gusts[i] = g / 1.609344
+			gusts[i] = units.MilesOf(g)
 		}
 	}
 	o := tuimaps.WindGrid(id, tuimaps.Grid{West: f.Box.W, South: f.Box.S, East: f.Box.E, North: f.Box.N,
@@ -705,17 +706,24 @@ func windGrid(id string, l temperature.Lattice, speed, from, gust []float64, mph
 	return o, true
 }
 
-// tempGrid is one lattice's values as a grid the library draws, in the
-// listener's unit; false when every value is missing. Its currency counts
-// from the hour's start (U2-13).
-func tempGrid(id string, l temperature.Lattice, values []float64, unit tuimaps.Unit, valid, anchor time.Time) (tuimaps.Overlay, bool) {
-	var toF func(float64) float64
-	if unit == tuimaps.Fahrenheit {
-		toF = func(c float64) float64 { return c*9/5 + 32 }
-	}
-	return linedGrid(id, l.InterpolateWide(values), toF, valid, anchor, func(id string, g tuimaps.Grid, valid time.Time) tuimaps.Overlay {
-		return tuimaps.TemperatureGrid(id, g, unit, valid) // one look in both modes (D-102, go-tuiMaps L-15.4)
+// unitGrid is linedGrid for a preset drawn in a unit: the library's grid for
+// it made by preset, with the unit the values were converted to. The
+// temperature and feels-like pass InterpolateWide (D-201) and TemperatureGrid,
+// one look in both modes (D-102, go-tuiMaps L-15.4); the waves InterpolateOut,
+// to the coast, the library drawing them over the sea alone (U2-31), and
+// WaveGrid.
+func unitGrid[U any](id string, f temperature.Field, convert func(float64) float64, unit U, valid, anchor time.Time, preset func(string, tuimaps.Grid, U, time.Time) tuimaps.Overlay) (tuimaps.Overlay, bool) {
+	return linedGrid(id, f, convert, valid, anchor, func(id string, g tuimaps.Grid, valid time.Time) tuimaps.Overlay {
+		return preset(id, g, unit, valid)
 	})
+}
+
+// convertIf is convert where on, else nil: no conversion, the values as they are.
+func convertIf(on bool, convert func(float64) float64) func(float64) float64 {
+	if on {
+		return convert
+	}
+	return nil
 }
 
 // linedGrid is an interpolated field as a preset's grid, lined - labelled

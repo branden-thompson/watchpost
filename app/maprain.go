@@ -23,6 +23,7 @@ import (
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/history"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // Forecast mode's rain and snow, registered: ON BY DEFAULT (D-117), so
@@ -359,7 +360,7 @@ func totalMark(rainMM, snowCM float64, imperial bool) string {
 		if in := snowCM / 2.54; in >= traceSnowIn {
 			return "*" + number(in, "in")
 		}
-		if in := rainMM / 25.4; in >= traceRainIn {
+		if in := units.InchesOf(rainMM); in >= traceRainIn {
 			return number(in, "in")
 		}
 		return ""

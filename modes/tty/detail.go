@@ -115,7 +115,7 @@ func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location, cw int) 
 			hum = []string{"Humidity  :", secondGap + fmt.Sprintf("%.0f%%", *h.HumidityPct)}
 		}
 		grid = append(grid, render.StatusRow{Cells: append([]string{"Feels Like",
-			fmt.Sprintf("%s   (%+.0f°F)", strings.TrimSpace(o.Temp(h.Feels)), (*h.Feels-*h.Temp)*9/5)}, hum...)})
+			fmt.Sprintf("%s   (%s)", strings.TrimSpace(o.Temp(h.Feels)), o.TempDelta(*h.Feels-*h.Temp))}, hum...)})
 	} else if h.HumidityPct != nil {
 		grid = append(grid, render.StatusRow{Cells: []string{"", "", "Humidity  :", secondGap + fmt.Sprintf("%.0f%%", *h.HumidityPct)}})
 	}

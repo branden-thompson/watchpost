@@ -1,6 +1,10 @@
 package stream
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/units"
+)
 
 // bonsall is the HUM LEAD's own station, and the epicentre the bed's fence was
 // ruled against (D-77).
@@ -27,8 +31,8 @@ func TestWithinHoldsTheFencesTransmittersNearestFirst(t *testing.T) {
 	}
 	last := -1.0
 	for _, n := range wide {
-		if n.KM/kmPerMile > 100.0001 {
-			t.Errorf("%s is %.1f mi out and the fence is 100", n.Callsign, n.KM/kmPerMile)
+		if n.KM/units.KmPerMile > 100.0001 {
+			t.Errorf("%s is %.1f mi out and the fence is 100", n.Callsign, n.KM/units.KmPerMile)
 		}
 		if n.KM < last {
 			t.Errorf("out of order: %s at %.1f km follows %.1f", n.Callsign, n.KM, last)

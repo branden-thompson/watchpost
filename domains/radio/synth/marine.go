@@ -9,6 +9,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // The maritime report (FR-6): the coastal-waters forecast, the nearest buoy,
@@ -144,7 +145,7 @@ func heightWords(m *float64, imperial bool) string {
 		return ""
 	}
 	if imperial {
-		return decimalWords(*m*3.28084, "foot", "feet")
+		return decimalWords(units.FeetOf(*m), "foot", "feet")
 	}
 	return decimalWords(*m, "metre", "metres")
 }
@@ -157,26 +158,26 @@ func tempWords(c *float64, imperial bool) string {
 	}
 	v := *c
 	if imperial {
-		v = v*9/5 + 32
+		v = units.FahrenheitOf(v)
 	}
 	return fmt.Sprintf("%.0f degrees", v)
 }
 
-// windWords is "13 miles per hour" / "21 kilometres per hour", spelled out
+// windWords is "13 miles per hour" / "21 kilometers per hour", spelled out
 // because "mph" reads as three letters.
 func windWords(mps *float64, imperial bool) string {
 	if mps == nil {
 		return ""
 	}
 	if imperial {
-		return fmt.Sprintf("%.0f miles per hour", *mps*2.23694)
+		return fmt.Sprintf("%.0f miles per hour", units.MphOf(*mps))
 	}
-	return fmt.Sprintf("%.0f kilometers per hour", *mps*3.6)
+	return fmt.Sprintf("%.0f kilometers per hour", units.KmhOf(*mps))
 }
 
 // knotWords is "1.4 knots". Currents are ALWAYS knots (MVS-D-21) — the
 // mariner's convention, whatever the listener's unit.
-func knotWords(mps float64) string { return decimalWords(mps*1.94384, "knot", "knots") }
+func knotWords(mps float64) string { return decimalWords(units.KnotsOf(mps), "knot", "knots") }
 
 // decimalWords reads a number with one decimal only when the fraction matters,
 // so "3.0 feet" is spoken as "3 feet" and "0.6 metres" keeps its decimal.

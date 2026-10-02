@@ -18,6 +18,7 @@ package render
 import (
 	"strings"
 
+	"github.com/branden-thompson/watchpost/platform/units"
 	studs "github.com/branden-thompson/watchpost/third_party/go-studs/components"
 )
 
@@ -255,6 +256,6 @@ func kmOf(mi *float64) *float64 {
 	if mi == nil {
 		return nil
 	}
-	km := *mi / 0.621371
+	km := units.KmOf(*mi)
 	return &km
 }

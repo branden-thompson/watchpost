@@ -18,6 +18,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // poolRows is the published pool, as table rows.
@@ -49,7 +50,7 @@ func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 		if mi := b.milesFromTower(ref); mi != nil {
 			// THE TABLE'S OWN FORMATTER TAKES KILOMETRES, and `StationDistance` is
 			// the one owner of how a distance reads in the operator's units.
-			km := *mi / 0.621371
+			km := units.KmOf(*mi)
 			row.StationKM = &km
 		}
 		out = append(out, row)

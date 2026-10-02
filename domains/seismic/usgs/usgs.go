@@ -24,6 +24,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // Attribution is the credit line (public domain). Kept ≤ 52 cells to fit the
@@ -117,7 +118,7 @@ func (p *Provider) queries(ref snapshot.LocationRef, now time.Time) []boxQuery {
 	plan := p.rules.QueryPlan()
 	out := make([]boxQuery, 0, len(plan))
 	for _, bq := range plan {
-		lat, lon, radiusKm := ref.Lat, ref.Lon, bq.RadiusMi*seismic.MileKm
+		lat, lon, radiusKm := ref.Lat, ref.Lon, units.KmOf(bq.RadiusMi)
 		if bq.RadiusMi >= regionalMinMi {
 			lat, lon = snapDeg(ref.Lat, regPitchDeg), snapDeg(ref.Lon, regPitchDeg)
 			radiusKm += halfDiagKm(regPitchDeg)

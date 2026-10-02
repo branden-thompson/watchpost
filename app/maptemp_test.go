@@ -25,6 +25,7 @@ import (
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // fakeTemp answers every lattice with fixed values: 10 C every hour from
@@ -666,7 +667,7 @@ func TestTheTemperatureAndWindAreDrawnBesideAnEmptyPoint(t *testing.T) {
 		}
 		return n
 	}
-	o, ok := tempGrid("t", l, []float64{20, 21, nan, 22}, tuimaps.Celsius, tempNow, tempNow) // the south-west point over the Gulf
+	o, ok := unitGrid("t", l.InterpolateWide([]float64{20, 21, nan, 22}), convertIf(tuimaps.Celsius == tuimaps.Fahrenheit, units.FahrenheitOf), tuimaps.Celsius, tempNow, tempNow, tuimaps.TemperatureGrid) // the south-west point over the Gulf
 	if !ok || blank(o.Grid.Values) != 0 {
 		t.Errorf("the temperature leaves %d of %d cells blank beside the empty point", blank(o.Grid.Values), len(o.Grid.Values))
 	}

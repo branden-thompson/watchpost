@@ -31,6 +31,7 @@ import (
 	"sync"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // MilesBetween is the distance between two coordinates in STATUTE MILES, which
@@ -40,11 +41,8 @@ import (
 // distance; this is the one owner of "…in the miles the operator typed", so a
 // fence and a card cannot disagree about how far away a place is.
 func MilesBetween(lat1, lon1, lat2, lon2 float64) float64 {
-	return geo.HaversineKM(lat1, lon1, lat2, lon2) * milesPerKM
+	return units.MilesOf(geo.HaversineKM(lat1, lon1, lat2, lon2))
 }
-
-// milesPerKM converts kilometres to statute miles.
-const milesPerKM = 0.621371
 
 // Near is the US cities inside a fence of radiusMi around (lat, lon), nearest
 // first, at most limit of them.

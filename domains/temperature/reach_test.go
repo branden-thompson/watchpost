@@ -20,6 +20,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // A CELL BESIDE AN EMPTY POINT IS WEIGHED FROM THE OTHERS (D-201): only
@@ -151,8 +152,8 @@ func TestNDFDIsAskedAHundredPointsAtATime(t *testing.T) {
 		t.Fatal("no current hour")
 	}
 	for i, p := range l.Points() {
-		if !near(hour[i], fahrenheitToC(p.Lat)) {
-			t.Fatalf("point %d (%v) reads %v; want its own answer %v - the asks' answers mixed up", i, p, hour[i], fahrenheitToC(p.Lat))
+		if !near(hour[i], units.CelsiusOf(p.Lat)) {
+			t.Fatalf("point %d (%v) reads %v; want its own answer %v - the asks' answers mixed up", i, p, hour[i], units.CelsiusOf(p.Lat))
 		}
 	}
 	rec := &pointsGet{}
@@ -265,7 +266,7 @@ func TestNDFDsAsksGoAFewAtATime(t *testing.T) {
 		t.Fatal("no current hour")
 	}
 	for i, p := range l.Points() {
-		if !near(hour[i], fahrenheitToC(p.Lat)) {
+		if !near(hour[i], units.CelsiusOf(p.Lat)) {
 			t.Fatalf("point %d reads %v; want its own answer", i, hour[i])
 		}
 	}

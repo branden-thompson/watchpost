@@ -13,6 +13,7 @@ import (
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 func bedPipelines(t *testing.T) *livePipelines {
@@ -56,7 +57,7 @@ func TestTheBedSelectorWalksTheStationsFence(t *testing.T) {
 	}
 	// NEAREST FIRST, and all of them inside the fence.
 	for _, n := range relays {
-		if mi := n.KM * 0.621371; mi > config.DefaultBedRadiusMi+0.001 {
+		if mi := units.MilesOf(n.KM); mi > config.DefaultBedRadiusMi+0.001 {
 			t.Errorf("%s is %.1f mi out and the fence is %v", n.Callsign, mi, config.DefaultBedRadiusMi)
 		}
 	}

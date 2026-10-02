@@ -734,3 +734,19 @@ func TestReportsAreSeparatedByAir(t *testing.T) {
 		t.Fatalf("no fire report: the forecast pauses 1 s then the tail: %+v", zfp[len(zfp)-1])
 	}
 }
+
+// THE CONDITIONS SAY THE LISTENER'S UNITS, IN ONE SPELLING (W14 S-6): metric
+// is degrees Celsius and kilometers per hour - "kilometers", as every other
+// spoken distance - and imperial Fahrenheit and miles per hour.
+func TestTheConditionsSayTheListenersUnits(t *testing.T) {
+	loc := snapshot.Location{Label: "Oceanside, CA", Harmonized: snapshot.Conditions{
+		Condition: "partly_cloudy", Temp: f64(22.8), Wind: f64(4), WindDirDeg: f64(250), Source: snapshot.SourceInfo{Provider: "nws"}}}
+	for imperial, want := range map[bool]string{
+		true:  "temperature 73 degrees, wind west at 9 miles per hour",
+		false: "wind west at 14 kilometers per hour",
+	} {
+		if got := std.conditions(loc, imperial); !strings.Contains(got, want) {
+			t.Errorf("imperial %v: %q; want it to say %q", imperial, got, want)
+		}
+	}
+}

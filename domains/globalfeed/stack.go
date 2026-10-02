@@ -8,11 +8,8 @@ import (
 	"github.com/branden-thompson/watchpost/platform/category"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
-
-// miPerKm converts the radius (miles, as the user sets it) to the kilometres
-// the haversine returns.
-const kmPerMi = 1.609344
 
 // WithinMiles reports whether (lat2, lon2) is inside radiusMi of (lat1, lon1).
 //
@@ -21,7 +18,7 @@ const kmPerMi = 1.609344
 // events — the statements and advisories tabs have no feed half at all, so
 // without it they were bounded by nothing but the watchlist.
 func WithinMiles(lat1, lon1, lat2, lon2, radiusMi float64) bool {
-	return geo.HaversineKM(lat1, lon1, lat2, lon2) <= radiusMi*kmPerMi
+	return geo.HaversineKM(lat1, lon1, lat2, lon2) <= units.KmOf(radiusMi)
 }
 
 // Active drops events whose active window has closed (now past Until), so a

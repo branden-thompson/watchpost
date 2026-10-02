@@ -12,6 +12,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/tz"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // --- forecast ---
@@ -184,7 +185,7 @@ func (s gridSeries) extremeOn(date string, tz *time.Location, wantMax bool) (flo
 		}
 		val := *v.Value
 		if s.UOM == "wmoUnit:degF" {
-			val = (val - 32) * 5 / 9
+			val = units.CelsiusOf(val)
 		}
 		if !found || (wantMax && val > best) || (!wantMax && val < best) {
 			best, found = val, true
@@ -231,7 +232,7 @@ func foldDaily(periods []period) []snapshot.Daily {
 
 func tempC(v float64, unit string) float64 {
 	if unit == "F" {
-		return roundTenth((v - 32) * 5 / 9)
+		return roundTenth(units.CelsiusOf(v))
 	}
 	return roundTenth(v)
 }

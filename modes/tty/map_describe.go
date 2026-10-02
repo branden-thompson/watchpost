@@ -23,6 +23,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	zones "github.com/branden-thompson/watchpost/platform/tz"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // Relation is M1's word for an alert against a place: it covers the place,
@@ -196,7 +197,7 @@ func (d Dashboard) placeFacts(loc snapshot.Location) string {
 	if h.Temp != nil {
 		temp, unit := *h.Temp, "°C"
 		if d.units == render.UnitF {
-			temp, unit = temp*9/5+32, "°F"
+			temp, unit = units.FahrenheitOf(temp), "°F"
 		}
 		now = append(now, strconv.Itoa(int(math.Round(temp)))+unit)
 	}

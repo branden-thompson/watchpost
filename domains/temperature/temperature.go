@@ -236,9 +236,6 @@ func (s Series) rowAt(rows [][]float64, t time.Time) ([]float64, bool) {
 	return nil, false
 }
 
-// knotsToKmh converts.
-func knotsToKmh(kt float64) float64 { return kt * 1.852 }
-
 // dayOffset is a local date's day from the local today, where both are read
 // in the same zone.
 func dayOffset(t, now time.Time) int {
@@ -247,9 +244,6 @@ func dayOffset(t, now time.Time) int {
 	today := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC)
 	return int(d.Sub(today).Hours() / 24)
 }
-
-// fahrenheitToC converts.
-func fahrenheitToC(f float64) float64 { return (f - 32) * 5 / 9 }
 
 // bodyCap is the most an answer may be: 2 MiB, against measured answers of
 // 110 KB for 100 points' seven days.

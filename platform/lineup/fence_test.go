@@ -7,6 +7,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // The listener, and the two places the HUM LEAD named in stating the rule.
@@ -20,7 +21,7 @@ var (
 // measures it. A test that asserted "~120 mi" without checking would be
 // asserting its own arithmetic.
 func milesFrom(f Fence, at [2]float64) float64 {
-	return geo.HaversineKM(f.Lat, f.Lon, at[0], at[1]) / kmPerMi
+	return geo.HaversineKM(f.Lat, f.Lon, at[0], at[1]) / units.KmPerMile
 }
 
 // quake is a disaster arrival at a point, carrying the reach its magnitude buys.
@@ -50,7 +51,7 @@ const ruledAdmitMi = 120
 // listener by the given miles, in the same arithmetic the fence uses.
 func northOf(f Fence, mi float64) [2]float64 {
 	const degPerKm = 1 / 111.19492664455873
-	return [2]float64{f.Lat + mi*kmPerMi*degPerKm, f.Lon}
+	return [2]float64{f.Lat + mi*units.KmPerMile*degPerKm, f.Lon}
 }
 
 // TestTheFixturesAreTheDistancesTheyClaim is the fixture-validity control
@@ -241,10 +242,10 @@ func TestAPointlessAlertIsAdmittedOnlyByTheTrackedTie(t *testing.T) {
 func TestTheFenceAgreesWithTheTapeAboutEveryDistance(t *testing.T) {
 	const degPerKm = 1 / 111.19492664455873
 	for _, mi := range []float64{0, 1, 25, 49, 49.999, 50, 50.001, 51, 75, 500} {
-		at := [2]float64{bonsall.Lat + mi*kmPerMi*degPerKm, bonsall.Lon}
+		at := [2]float64{bonsall.Lat + mi*units.KmPerMile*degPerKm, bonsall.Lon}
 		a := Arrival{ID: "edge", Category: category.Warnings, Headline: "h", Subject: "s",
 			Lat: at[0], Lon: at[1], HasPoint: true}
-		want := geo.HaversineKM(bonsall.Lat, bonsall.Lon, at[0], at[1]) <= bonsall.RadiusMi*kmPerMi
+		want := geo.HaversineKM(bonsall.Lat, bonsall.Lon, at[0], at[1]) <= bonsall.RadiusMi*units.KmPerMile
 		if got := bonsall.Admits(a); got != want {
 			t.Errorf("at ~%.3f mi (measured %.4f): admitted = %v, want %v",
 				mi, milesFrom(bonsall, at), got, want)
@@ -264,10 +265,10 @@ func TestTheFenceAgreesWithTheTapeAboutEveryDistance(t *testing.T) {
 func TestAnAlertExactlyOnTheRadiusIsInside(t *testing.T) {
 	at := [2]float64{bonsall.Lat + 0.5, bonsall.Lon}
 	km := geo.HaversineKM(bonsall.Lat, bonsall.Lon, at[0], at[1])
-	edge := Fence{RadiusMi: km / kmPerMi, Lat: bonsall.Lat, Lon: bonsall.Lon, HasOrigin: true}
-	if edge.RadiusMi*kmPerMi != km {
+	edge := Fence{RadiusMi: km / units.KmPerMile, Lat: bonsall.Lat, Lon: bonsall.Lon, HasOrigin: true}
+	if edge.RadiusMi*units.KmPerMile != km {
 		t.Fatalf("the fixture does not sit exactly on the radius in the fence's own arithmetic (%.17g vs %.17g); this test would pin nothing",
-			edge.RadiusMi*kmPerMi, km)
+			edge.RadiusMi*units.KmPerMile, km)
 	}
 	a := Arrival{ID: "edge", Category: category.Warnings, Headline: "h", Subject: "s",
 		Lat: at[0], Lon: at[1], HasPoint: true}
@@ -287,7 +288,7 @@ func TestAnAlertExactlyOnTheRadiusIsInside(t *testing.T) {
 func TestAnOrdinaryQuakeBuysNoExceptionEvenAgainstATightFence(t *testing.T) {
 	const degPerKm = 1 / 111.19492664455873
 	tight := Fence{RadiusMi: 10, Lat: bonsall.Lat, Lon: bonsall.Lon, HasOrigin: true}
-	at := [2]float64{tight.Lat + 20*kmPerMi*degPerKm, tight.Lon}
+	at := [2]float64{tight.Lat + 20*units.KmPerMile*degPerKm, tight.Lon}
 	if d := milesFrom(tight, at); d < 19.5 || d > 20.5 {
 		t.Fatalf("the fixture measures %.1f mi, not the 20 it is meant to", d)
 	}
@@ -424,7 +425,7 @@ func TestAThreeMileStationStillReceivesItsCountyWarning(t *testing.T) {
 	}
 	const degPerKm = 1 / 111.19492664455873
 	nearby := Arrival{ID: "point", Category: category.Warnings, Headline: "h", Subject: "s",
-		Lat: bonsall.Lat + 5*kmPerMi*degPerKm, Lon: bonsall.Lon, HasPoint: true}
+		Lat: bonsall.Lat + 5*units.KmPerMile*degPerKm, Lon: bonsall.Lon, HasPoint: true}
 	if three.Admits(nearby) {
 		t.Error("a three-mile fence admitted a point alert five miles out — the radius is not in force")
 	}

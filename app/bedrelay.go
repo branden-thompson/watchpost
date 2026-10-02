@@ -22,6 +22,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // bedRelays is what the station can actually carry, nearest first.
@@ -96,7 +97,7 @@ func (lp *livePipelines) refreshBedRelays(ctx context.Context) {
 func withinBedFence(stations []stream.Station, radiusMi float64) []stream.Station {
 	kept := make([]stream.Station, 0, len(stations))
 	for _, st := range stations { // bounded by the candidate cap (P10-02)
-		if st.KM*0.621371 <= radiusMi {
+		if units.MilesOf(st.KM) <= radiusMi {
 			kept = append(kept, st)
 		}
 	}
@@ -228,7 +229,7 @@ func (lp *livePipelines) bedCarrying() bool {
 // relayLine is how a relay reads on the bed's row, from the reference:
 // `KIG78 Coachella CA 162.400 MHz · 41mi from TOWER GPS`.
 func relayLine(n stream.Station) string {
-	mi := strconv.FormatFloat(n.KM*0.621371, 'f', 0, 64)
+	mi := strconv.FormatFloat(units.MilesOf(n.KM), 'f', 0, 64)
 	return n.Callsign + " " + n.Site + " " + n.State + " " + n.FreqMHz + " MHz · " + mi + "mi from TOWER GPS"
 }
 

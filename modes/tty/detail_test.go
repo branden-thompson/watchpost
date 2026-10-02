@@ -141,6 +141,10 @@ func TestDetailGridAlignsCurrentlyWithForecast(t *testing.T) {
 	}
 	if col(content(feels), "Humidity") != forecastHiLoCol || col(content(fc), "HIGH") != forecastHiLoCol {
 		t.Fatalf("humidity must share the HIGH/LOW column:\n%q\n%q", feels, fc)
+	} // FEELS LIKE SAYS HOW FAR FROM THE AIR, AS A DIFFERENCE (W14 S-6): 24.4 °C
+	// against 22.8 is 1.6 °C, scaled to +3 °F - never offset by 32.
+	if !strings.Contains(feels, "(+3°F)") {
+		t.Errorf("the feels-like row does not say +3°F from the air: %q", feels)
 	}
 }
 
