@@ -305,7 +305,7 @@ func TestTheLoopRunsOnPastNow(t *testing.T) {
 	newest := time.Date(2026, 9, 27, 19, 40, 0, 0, time.UTC)
 	observed := tuimaps.RadarImage(tty.RadarLayer+"/us", tuimaps.Image{Frames: []tuimaps.LoopFrame{{Valid: newest, Gap: true}}, Provider: tuimaps.ProviderIEM,
 		West: box.W, South: box.S, East: box.E, North: box.N, Projection: tuimaps.PlateCarree}, newest)
-	out := joinForecast(tty.MapRadar{Overlays: []tuimaps.Overlay{observed}, Source: "MRMS"}, fetchForecast(context.Background(), h, []radar.Box{box}, newest, newest.Add(3*time.Hour)), newest)
+	out := joinForecast(tty.MapRadar{Overlays: []tuimaps.Overlay{observed}, Source: "MRMS"}, fetchForecast(context.Background(), nil, h, []radar.Box{box}, newest, newest.Add(3*time.Hour)), newest)
 	if out.Ahead != "HRRR" || len(out.Overlays) != 2 {
 		t.Fatalf("ahead %q, %d loops; want HRRR and a forecast loop beside the observed", out.Ahead, len(out.Overlays))
 	}
@@ -356,7 +356,7 @@ func TestTheLoopsFramesAreFetchedSixAtATime(t *testing.T) {
 	png, _ := os.ReadFile("../domains/radar/testdata/hrrr-frame.png")
 	times := grid5(24, time.Date(2026, 9, 28, 14, 0, 0, 0, time.UTC))
 	src := &fakeRadar{name: "MRMS", times: times, png: png, delay: 20 * time.Millisecond}
-	o, _, ok := radarLoop(context.Background(), src, geo.RegionContiguous, times, loopSlots(times, radarStep, radar.Window), radar.Box{Name: "us", W: -126, S: 23, E: -65, N: 51})
+	o, _, ok := radarLoop(context.Background(), nil, src, geo.RegionContiguous, times, loopSlots(times, radarStep, radar.Window), radar.Box{Name: "us", W: -126, S: 23, E: -65, N: 51})
 	if !ok {
 		t.Fatal("no loop")
 	}

@@ -3371,3 +3371,18 @@ the cost test's guard - all caught; the clip survived the pipeline's fixture (no
 by `TestAKeptCopyIsItsOwn`; the fill's boxes, carried by a loop, survived and the loop is gone - UV reads
 the kept boxes directly.
 
+## Batch 111 — a radar frame checked once (W14 P-17, D-212 step 3; 2026-10-02)
+
+**The radar's share of a pan.** The loop's frames come from the response cache, but every ask ran
+`radar.Check` on each - a full PNG decode and a pixel scan to say whether the frame paints anything:
+24 to 96 decodes a pan, again on every refresh. A frame at its time never changes, so the check is now
+kept by the frame - its source, region, box and time, the run for HRRR's hours ahead, and its size - in
+a `platform/agememo` of 1,024 for the loop's two hours (`frameChecks`, on the radar sources). A pan
+decodes none of the frames it has seen; a refresh decodes the one new frame. The observed loop, HRRR's
+hours ahead and the empty loop's cross-check all read it; a refusal is not kept.
+
+**Mutation verdicts** (3): the checks bypassed, the frame's time and its size out of the key - all
+caught; the time survived the first fixture (every frame the same picture, and painted and clear
+pictures of different sizes) and is held by `TestEachFramesCheckIsItsOwn`, whose painted and clear
+pictures are padded past their end to one size, so only the time tells them apart.
+

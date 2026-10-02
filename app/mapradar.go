@@ -19,6 +19,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/agememo"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
@@ -46,6 +47,7 @@ type radarSources struct {
 	iem, mrms radar.Source
 	hrrr      *radar.HRRR // the hours ahead (D-113): the lower 48's
 	ahead     aheadFetch  // HRRR's hours ahead, fetched apart from any one ask (D-204)
+	checks    frameChecks // each frame's check, kept by the frame (P-17)
 }
 
 // The hours ahead's timings (D-204): asked again aheadSoon after an answer
@@ -206,11 +208,13 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 			names = append(names, b.Name)
 		}
 		key := strings.Join(names, ",") + "|" + newest.UTC().Format(time.RFC3339) + "|" + until.UTC().Format(time.RFC3339)
-		fc, again, _ = lp.radar.ahead.take(strings.Join(names, ","), key, func(ctx context.Context) hoursAhead { return fetchForecast(ctx, lp.radar.hrrr, boxes, newest, until) })
+		fc, again, _ = lp.radar.ahead.take(strings.Join(names, ","), key, func(ctx context.Context) hoursAhead {
+			return fetchForecast(ctx, &lp.radar.checks, lp.radar.hrrr, boxes, newest, until)
+		})
 	}
 	allEmpty := true
 	for _, b := range boxes {
-		o, painted, ok := radarLoop(ctx, src, ask.Region, times, slots, b)
+		o, painted, ok := radarLoop(ctx, &lp.radar.checks, src, ask.Region, times, slots, b)
 		if ok {
 			out.Overlays = append(out.Overlays, o)
 		}
@@ -227,7 +231,7 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 		}
 	}
 	if allEmpty && len(out.Overlays) > 0 {
-		if other := lp.radar.other(src, ask.Region); other != nil && echoes(ctx, other, ask.Region, boxes) {
+		if other := lp.radar.other(src, ask.Region); other != nil && echoes(ctx, &lp.radar.checks, other, ask.Region, boxes) {
 			out.Note = src.Name() + " shows no echo where " + other.Name() + " does: its data may be missing." // D-84's check
 		}
 	}
@@ -269,7 +273,7 @@ func joinForecast(out tty.MapRadar, fc hoursAhead, newest time.Time) tty.MapRada
 
 // fetchForecast is HRRR's loops a box, their frames fetched radarParallel
 // at a time (D-130).
-func fetchForecast(ctx context.Context, h *radar.HRRR, boxes []radar.Box, newest, until time.Time) hoursAhead {
+func fetchForecast(ctx context.Context, checks *frameChecks, h *radar.HRRR, boxes []radar.Box, newest, until time.Time) hoursAhead {
 	run, err := h.Run(ctx)
 	if err != nil {
 		return hoursAhead{problem: "Radar ahead: HRRR did not answer - " + err.Error()}
@@ -291,7 +295,7 @@ func fetchForecast(ctx context.Context, h *radar.HRRR, boxes []radar.Box, newest
 			if err != nil {
 				return
 			}
-			if _, err := radar.Check(png); err != nil {
+			if _, err := checks.check(ctx, frameKey{source: h.Name(), box: b.Name, at: at, run: run, size: len(png)}, png); err != nil {
 				return // refused undecoded (W8.5)
 			}
 			frames[i] = tuimaps.LoopFrame{Valid: at, PNG: png, Forecast: true}
@@ -362,7 +366,7 @@ func (rs *radarSources) other(src radar.Source, region string) radar.Source {
 
 // echoes reports whether a source's newest frame paints anything in any of
 // the boxes: one request a box, made only when a whole loop showed nothing.
-func echoes(ctx context.Context, src radar.Source, region string, boxes []radar.Box) bool {
+func echoes(ctx context.Context, checks *frameChecks, src radar.Source, region string, boxes []radar.Box) bool {
 	times, err := src.Times(ctx, region)
 	if err != nil || len(times) == 0 {
 		return false
@@ -372,11 +376,41 @@ func echoes(ctx context.Context, src radar.Source, region string, boxes []radar.
 		if err != nil {
 			continue
 		}
-		if empty, err := radar.Check(png); err == nil && !empty {
+		at := times[len(times)-1]
+		if empty, err := checks.check(ctx, frameKey{source: src.Name(), region: region, box: b.Name, at: at, size: len(png)}, png); err == nil && !empty {
 			return true
 		}
 	}
 	return false
+}
+
+// frameKey names a radar frame: its source, region, box and time - and for
+// HRRR's hours ahead, its run - with its size, a frame at its time never
+// changing.
+type frameKey struct {
+	source, region, box string
+	at, run             time.Time
+	size                int
+}
+
+// frameChecks keeps each frame's check - whether its picture paints anything
+// - by the frame (W14 P-17): a loop asked again, on a pan or a refresh,
+// decodes only the frames it has not seen. A refusal is not kept. A nil
+// frameChecks checks every frame.
+type frameChecks struct {
+	m lazyMemo[frameKey, bool]
+}
+
+// frameCheckRules keep a check for the loop's two hours, for the frames of
+// every box a lower-48 view can hold, observed and ahead.
+var frameCheckRules = agememo.Options{Fresh: radar.Window, Max: 1024}
+
+// check is whether png paints nothing, kept by its frame.
+func (c *frameChecks) check(ctx context.Context, k frameKey, png []byte) (bool, error) {
+	if c == nil {
+		return radar.Check(png)
+	}
+	return c.m.memo(frameCheckRules).Do(ctx, k, func() (bool, error) { return radar.Check(png) })
 }
 
 // radarBudgetShare is how much of the map's image budget the loops may take:
@@ -465,7 +499,7 @@ func loopSlots(times []time.Time, step, window time.Duration) []slot {
 // soonest, and builds its loop; a frame that fails or is refused is a gap.
 // painted counts the frames with echo: an empty frame is a real, clear one
 // (D-84).
-func radarLoop(ctx context.Context, src radar.Source, region string, advertised []time.Time, slots []slot, b radar.Box) (o tuimaps.Overlay, painted int, ok bool) {
+func radarLoop(ctx context.Context, checks *frameChecks, src radar.Source, region string, advertised []time.Time, slots []slot, b radar.Box) (o tuimaps.Overlay, painted int, ok bool) {
 	frames := make([]tuimaps.LoopFrame, len(slots))
 	blank := make([]bool, len(slots))
 	atOnce(len(slots), func(j int) {
@@ -479,7 +513,7 @@ func radarLoop(ctx context.Context, src radar.Source, region string, advertised 
 		if err != nil {
 			return
 		}
-		empty, err := radar.Check(png)
+		empty, err := checks.check(ctx, frameKey{source: src.Name(), region: region, box: b.Name, at: s.time, size: len(png)}, png)
 		if err != nil {
 			return // too large, or no picture at all: refused undecoded (W8.5)
 		}

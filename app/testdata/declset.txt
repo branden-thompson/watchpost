@@ -182,6 +182,7 @@ func (*executors).runCue
 func (*executors).runRelease
 func (*executors).runTune
 func (*executors).speak
+func (*frameChecks).check
 func (*frameLog).hook
 func (*frameLog).note
 func (*historian).pass
@@ -923,6 +924,8 @@ type executors
 type fallback
 type fieldBox
 type fireInView
+type frameChecks
+type frameKey
 type frameLog
 type historian
 type hostFacts
@@ -986,6 +989,7 @@ var _
 var areaMemoRules
 var errDumpTooSoon
 var errReadStopped
+var frameCheckRules
 var goosSeam
 var historyDatasets
 var historyKeeps
