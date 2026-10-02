@@ -217,32 +217,21 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 	// CHOOSING here (ruling 1) — the label alone is not enough to choose from.
 	out = append(out, settingLabel("Reports:", st.field == requestReports))
 	for i, k := range requestRows() { // bounded by the registry (P10-02)
-		mark := " "
-		if st.field == requestReports && i == st.at {
-			mark = o.Glyphs().Pointer
-		}
-		box := "[ ]"
-		if st.chosen.Has(k) {
-			box = "[" + o.Glyphs().OK + "]"
-		}
+		// THE APP'S OWN CONTROLS (D-147): the list's pointer, Settings' tick.
+		mark, box := o.ListMark(st.field == requestReports && i == st.at), checkMark(o, st.chosen.Has(k))
 		spec := report.Of(k)
 		// THE LABEL FIRST, THEN THE NAME. Both are shown because the operator is
 		// CHOOSING here (ruling 1) — and this order is what fits: the longest
 		// full name is 32 cells and the window is 56, so a name-then-label row
 		// wrapped and the margin gate caught it.
-		out = append(out, " "+mark+" "+box+" "+render.PadTo(spec.Label, 7)+spec.FullName)
+		out = append(out, " "+mark+box+" "+render.PadTo(spec.Label, 7)+spec.FullName)
 	}
 	out = append(out, "", "  Scheduled as: "+st.chosen.Describe(), "")
 
 	// THE POSITION.
 	posAt := len(out)
 	out = append(out, settingLabel("Position:", st.field == requestPosition))
-	pri, slot := "( )", "( )"
-	if st.prioritize {
-		pri = "(" + o.Glyphs().OK + ")"
-	} else {
-		slot = "(" + o.Glyphs().OK + ")"
-	}
+	pri, slot := radioMark(st.prioritize, o.ASCII), radioMark(!st.prioritize, o.ASCII) // Settings' radio (D-147)
 	// PRIORITIZE IS BOLD AND YELLOW (HUM LEAD, 2026-09-14). It is the one choice
 	// in this window that moves every other card, and the advisory tone is the
 	// app's own word for "this one is different" — the same family `NameWarning`

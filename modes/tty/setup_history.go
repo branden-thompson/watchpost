@@ -57,12 +57,7 @@ func cycleHistory(choices []historyChoice, key string, forward bool) string {
 	if len(choices) == 0 {
 		return key
 	}
-	n := len(choices)
-	step := 1
-	if !forward {
-		step = n - 1
-	}
-	return choices[(historyAt(choices, key)+step)%n].key
+	return cycleIn(choices, func(c historyChoice) string { return c.key }, key, forward).key
 }
 
 // historyLines are the HISTORY group's rows: the two presets, the store's

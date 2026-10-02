@@ -597,18 +597,20 @@ const pickerNameW = 17
 // pickerFlashFor's window, matching the volume chips' 350 ms (UAT 41).
 const pickerFlashDur = 350 * time.Millisecond
 
+// itself is cycleIn's key for a list of the choices themselves.
+func itself[T any](t T) T { return t }
+
 // cycleIn moves one entry through a picker's list, wrapping at both ends.
 //
-// ONE OWNER FOR THE WRAP ARITHMETIC (metric D, 2026-09-08). The relay language
-// and relay dwell pickers each carried their own copy of
-// `((at+step)%len+len)%len` — the expression that makes -1 wrap to the end
-// rather than panicking — and an off-by-one in one of them would be invisible
-// in the other. The saving is not the six lines; it is that the arithmetic
-// exists once.
+// ONE OWNER FOR THE WRAP ARITHMETIC (metric D, W14 S-7): every picker that
+// steps through a list of choices - the relay language and dwell, a role's
+// voice, the map's scale, detail level, fire, nearby distance, quakes, UV
+// cities and hours ahead, the Settings tabs - steps through this, so
+// `((at+step)%len+len)%len`, the expression that makes -1 wrap to the end,
+// exists once and an off-by-one cannot hide in one copy.
 //
-// A value not in the list starts at index 0, which is what both copies did:
-// a config written by hand can name a choice a later build removed, and the
-// picker has to land somewhere.
+// A value not in the list starts at index 0: a config written by hand can
+// name a choice a later build removed, and the picker has to land somewhere.
 func cycleIn[T any, K comparable](list []T, key func(T) K, cur K, forward bool) T {
 	at := 0
 	for i, it := range list { // bounded by the list (P10-02)

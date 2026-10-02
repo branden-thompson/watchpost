@@ -100,13 +100,7 @@ func (d Dashboard) stepTab(step int) setupRowID {
 	if len(tabs) == 0 {
 		return d.setup.focus
 	}
-	at := 0
-	for i, t := range tabs {
-		if t == d.setupTab() {
-			at = i
-		}
-	}
-	next := tabs[((at+step)%len(tabs)+len(tabs))%len(tabs)]
+	next := cycleIn(tabs, itself, d.setupTab(), step > 0)
 	if id, ok := d.firstRowOfTab(next); ok {
 		return id
 	}

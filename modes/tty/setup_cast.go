@@ -192,18 +192,7 @@ func (d Dashboard) cyclePicker(id setupRowID, forward bool) Dashboard {
 	if held == "" {
 		held = inheritEntry
 	}
-	at := 0
-	for i, e := range list {
-		if e == held {
-			at = i
-			break
-		}
-	}
-	step := 1
-	if !forward {
-		step = -1
-	}
-	next := list[((at+step)%len(list)+len(list))%len(list)]
+	next := cycleIn(list, itself, held, forward)
 	return d.assignRole(role, next)
 }
 

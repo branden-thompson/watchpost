@@ -229,18 +229,7 @@ func mapScaleByKey(key string) mapScaleMode {
 // cycleMapScale moves the scale's picker: region, state, county, in order of
 // closeness, and round again.
 func (d Dashboard) cycleMapScale(forward bool) Dashboard {
-	order := []mapScaleMode{mapScaleRegion, mapScaleState, mapScaleCounty}
-	at := 0
-	for i, s := range order {
-		if s == d.mapScale {
-			at = i
-		}
-	}
-	step := 1
-	if !forward {
-		step = len(order) - 1
-	}
-	d.mapScale = order[(at+step)%len(order)]
+	d.mapScale = cycleIn([]mapScaleMode{mapScaleRegion, mapScaleState, mapScaleCounty}, itself, d.mapScale, forward)
 	return d.uiTouched()
 }
 
@@ -263,24 +252,8 @@ func mapNearbyByKm(km int) int {
 
 // cycleNearby moves the nearby picker through the choices, and round again.
 func (d Dashboard) cycleNearby(forward bool) Dashboard {
-	d.mapNearbyKm = nextChoice(mapNearbyChoices, d.mapNearbyKm, forward)
+	d.mapNearbyKm = cycleIn(mapNearbyChoices, itself, d.mapNearbyKm, forward)
 	return d.uiTouched()
-}
-
-// nextChoice is the choice after, or before, the one held, and round again:
-// a picker's step through its numbers.
-func nextChoice[T comparable](choices []T, held T, forward bool) T {
-	at := 0
-	for i, c := range choices {
-		if c == held {
-			at = i
-		}
-	}
-	step := 1
-	if !forward {
-		step = len(choices) - 1
-	}
-	return choices[(at+step)%len(choices)]
 }
 
 // toggleRadarSource switches the lower 48's radar between MRMS and IEM (D-83).
@@ -340,7 +313,7 @@ func quakeFeedLabel(k string) string {
 
 // cycleQuakeFeed moves the quakes picker, and round again.
 func (d Dashboard) cycleQuakeFeed(forward bool) Dashboard {
-	d.mapQuakeFeed = nextChoice(quakeFeeds, d.mapQuakeFeed, forward)
+	d.mapQuakeFeed = cycleIn(quakeFeeds, itself, d.mapQuakeFeed, forward)
 	return d.uiTouched()
 }
 
@@ -366,13 +339,13 @@ func uvCitiesNote(n int) string {
 
 // cycleUVCities moves the UV cities picker, and round again (D-202).
 func (d Dashboard) cycleUVCities(forward bool) Dashboard {
-	d.mapUVCities = nextChoice(uvCityChoices, d.mapUVCities, forward)
+	d.mapUVCities = cycleIn(uvCityChoices, itself, d.mapUVCities, forward)
 	return d.uiTouched()
 }
 
 // cycleRadarAhead moves the hours-ahead picker, and round again.
 func (d Dashboard) cycleRadarAhead(forward bool) Dashboard {
-	d.mapRadarAhead = nextChoice(radarAheadChoices, d.mapRadarAhead, forward)
+	d.mapRadarAhead = cycleIn(radarAheadChoices, itself, d.mapRadarAhead, forward)
 	return d.uiTouched()
 }
 

@@ -3128,3 +3128,22 @@ reverted on reading the 2026-09-08 ratification, and the choice put to the HUM L
 offered priced too low, then asked again with Rule 5's real cost - every conversion returning an error
 to some 45 callers - and D-207 ratified a ledger exemption instead (mirror regenerated, lint clean).
 
+## Batch 101 — the app's own controls, one cycle helper (W14 S-7; 2026-10-01)
+
+**The Request window (D-147).** Its report box was hand-built - `"[ ]"` or `"[" + OK + "]"` - where
+Settings has `checkMark`; its pointer a bare glyph where every list has `ListMark` (tinted, the focus
+yellow); its position a hand-built `( )` / `(✓)` where Settings has `radioMark`. All three now the
+app's own; the position reads ● / ○ (* / o under --ascii) as Settings' radios do.
+
+**One owner for the wrap.** `cycleIn` already owned `((at+step)%len+len)%len` for the relay pickers;
+seven more pickers carried their own copy - the map's scale, detail level and fire, the voice picker,
+the Settings tabs, the history presets - and `nextChoice` was a second helper doing the same (nearby,
+quakes, UV cities, hours ahead). All go through `cycleIn` with `itself` as the key for a list of the
+choices themselves; `nextChoice` is gone. Index wraps - the Overlays menu's cursor, the ticker's
+category, the theme index, the bed's relay pick - step an index rather than a choice and stay as they
+are. `cycleIn`'s comment rewritten to the present (AP-HIST-01).
+
+**Mutation verdicts** (14): the tick following the set, the pointer, the radio, and each moved picker's
+direction - all caught; the voice picker's direction survived once (nothing tested it) and is held by a
+new test.
+

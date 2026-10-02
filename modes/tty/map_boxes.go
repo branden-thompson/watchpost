@@ -380,18 +380,7 @@ func detailLevelLabel(l tuimaps.Detail) string {
 // cycleDetailLevel moves the level round the four and sets every switch to
 // its preset (D-79).
 func (d Dashboard) cycleDetailLevel(forward bool) Dashboard {
-	levels := mapDetailLevels()
-	at := 0
-	for i, l := range levels {
-		if l == d.mapDetailLevel {
-			at = i
-		}
-	}
-	step := 1
-	if !forward {
-		step = len(levels) - 1
-	}
-	d.mapDetailLevel = levels[(at+step)%len(levels)]
+	d.mapDetailLevel = cycleIn(mapDetailLevels(), itself, d.mapDetailLevel, forward)
 	d.mapDetailChoice = "" // the preset: every switch as the level sets it
 	return d.applyDetail()
 }
@@ -853,12 +842,7 @@ func (d Dashboard) chooseOnRow(r overlayRow, forward bool) Dashboard {
 	case menuGroup:
 		return d.switchRow(r)
 	case menuFire:
-		at := slices.Index(fireModes, d.fireMode())
-		step := 1
-		if !forward {
-			step = len(fireModes) - 1
-		}
-		next := fireModes[(at+step)%len(fireModes)]
+		next := cycleIn(fireModes, itself, d.fireMode(), forward)
 		return d.withChoice(func(c map[string]bool) {
 			for _, m := range fireModes[1:] {
 				c["fire:"+m] = m == next

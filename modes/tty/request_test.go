@@ -303,3 +303,40 @@ func TestTheRequestWindowKeepsNonASCIILetters(t *testing.T) {
 		t.Errorf("the Request window holds %q after typing Peña; an operator in Peñasquitos cannot ask for it", got)
 	}
 }
+
+// THE REQUEST WINDOW IS BUILT FROM THE APP'S CONTROLS (W14 S-7, D-147): a
+// report's box is Settings' checkMark, the row under the pointer wears the
+// list's ListMark, and the position is chosen with radioMark - never
+// look-alikes, which drift from the originals one fix at a time.
+func TestTheRequestWindowUsesTheAppsControls(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+	var sent int
+	d := requestDash(t, &sent)
+	d.width, d.height = 120, 40
+	rows := requestRows()
+	d.request.field, d.request.at = requestReports, 0
+	d.request.chosen = d.request.chosen.Add(rows[0]) // every report starts ticked: the second is unticked here
+	if len(rows) > 1 {
+		d.request.chosen = d.request.chosen.Without(rows[1])
+	}
+	o := d.opts()
+	body, _, _ := d.requestBody(o)
+	text := strings.Join(body, "\n")
+	first := report.Of(rows[0]).Label
+	if want := o.ListMark(true) + checkMark(o, true) + " " + render.PadTo(first, 7); !strings.Contains(text, want) {
+		t.Errorf("the focused, chosen report row is not the list's pointer and Settings' tick: want %q in\n%s", want, stripANSITest(text))
+	}
+	if len(rows) > 1 {
+		if want := o.ListMark(false) + checkMark(o, false) + " " + render.PadTo(report.Of(rows[1]).Label, 7); !strings.Contains(text, want) {
+			t.Errorf("an unchosen row is not Settings' empty box: want %q", want)
+		}
+	}
+	plain := stripANSITest(text)
+	if !strings.Contains(plain, radioMark(true, o.ASCII)+"  Line-Up Slot") || !strings.Contains(plain, radioMark(false, o.ASCII)+"  ") {
+		t.Errorf("the position is not chosen with radioMark:\n%s", plain)
+	}
+	if strings.Contains(plain, "("+o.Glyphs().OK+")") || strings.Contains(plain, "( )") {
+		t.Errorf("a hand-built radio is still drawn:\n%s", plain)
+	}
+}
