@@ -3244,3 +3244,33 @@ over 60 to 200 ms as the new loops are prepared; a zoom within one box keeps its
 new box rolling back, the stand-in offered, only for its boxes, while a fetch runs, asked with the
 boxes, frames after the newest only, and the recorder's radar ids - all caught.
 
+## Batch 106 — the radar is prepared once, whatever else is drawing (UAT-2 U2-60; go-tuiMaps rc.33; 2026-10-02)
+
+**Reproduced with Temperature and Wind on.** The HUM LEAD's screenshot cut the radar along a straight
+line near 37°N - the edge between the lower 48's closer boxes - and the zoom fix of batch 105 had not
+reached it. With Temperature and Wind on as the HUM LEAD has them, a live run drew no radar for 48 s
+after the loop was handed in, while the map redrew some 400 times a second; with them off the loop drew
+at once.
+
+**Traced into the library.** A scratch build of watchpost against an instrumented copy of go-tuiMaps
+logged every job: the radar loop's preparation ran 92 times and the hours ahead' 90, every one
+cancelled after 2 to 7 ms. A render's plan withdraws the work its view no longer wants, and it asked
+the tile pipeline alone - so every overlay preparation in flight was withdrawn, and cancelled, at each
+render. A short preparation finished between two renders; the radar loop's (40 ms and more) did only
+when the renders paused. Which box finished first drew and the other did not: the half. The same took
+the hours ahead.
+
+**Fixed in go-tuiMaps v0.2.0-rc.33 (L11.34, L-28).** A render keeps the preparation, at the bucket in
+view, of every overlay the map holds; a removed overlay's, or another bucket's, is still withdrawn. The
+key is read back without allocating, inside the render budgets. The same run on rc.33: the radar drawn
+throughout - 380 frames over the run where there were 18,788, at most 24 a second - and nothing but a
+single frame of 0.04 to 0.12 s where a zoom swaps the boxes.
+
+**The recorder** keeps each problem said to the diagnostics as a record of its own, between the frames
+it fell between, and each radar loop's frames and gaps (`RadarFrames`), so a live run tells a refused
+loop from a cancelled one.
+
+**Mutation verdicts:** go-tuiMaps 8 (a held overlay kept, only at the bucket in view, kept at all, the
+bucket read back, an id with slashes whole, `Holds`, and the two first written) - all caught; watchpost
+3 (the problem recorded, the frame counts, their gaps) - all caught.
+

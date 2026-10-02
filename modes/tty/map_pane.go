@@ -999,6 +999,9 @@ func (d Dashboard) problem(p string) {
 	if d.cfg.MapProblem != nil {
 		d.cfg.MapProblem(p)
 	}
+	if d.cfg.MapFrame != nil { // the recorder keeps it between the frames it fell between
+		d.cfg.MapFrame(MapFrame{At: d.now(), Problem: p})
+	}
 }
 
 // layerLabel is a layer's name as the Overlays menu says it, or its key.

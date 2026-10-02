@@ -49,8 +49,13 @@ type MapFrame struct {
 	Status       string              // the library's: complete, sharpening, ...
 	PendingAfter bool                // work still pending once drawn
 	// Radar is the radar's loops as handed in, by id, sorted: which boxes
-	// the frame was drawn from (U2-59).
-	Radar []string
+	// the frame was drawn from (U2-59). RadarFrames is each loop's frames
+	// that carry a picture, and its gaps: "frames/gaps".
+	Radar       []string
+	RadarFrames map[string]string `json:",omitempty"`
+	// Problem, on a record of its own, is a problem said to the
+	// diagnostics: in the file between the frames it fell between.
+	Problem string `json:",omitempty"`
 }
 
 // placeWords are the words a frame's place names are made of.
@@ -74,7 +79,7 @@ func (d Dashboard) recordFrame(status tuimaps.Status) {
 	}
 	sort.Strings(places)
 	d.cfg.MapFrame(MapFrame{At: d.now(), LoopIndex: st.Index, LoopCount: st.Count, LoopAt: st.At, Playing: st.Playing,
-		Lon: c.Lon, Lat: c.Lat, Zoom: z, RadarCells: d.radarCells(), Cells: d.presetCells(), Given: d.tempGivenByLayer(), Text: d.frameText(plain), Spans: d.givenSpans(), Chips: d.frameChips(), Notes: d.frameNotes(), Places: places, Status: strconv.Itoa(int(status)), PendingAfter: d.mapPane.pending, Radar: d.radarGivenIDs()})
+		Lon: c.Lon, Lat: c.Lat, Zoom: z, RadarCells: d.radarCells(), Cells: d.presetCells(), Given: d.tempGivenByLayer(), Text: d.frameText(plain), Spans: d.givenSpans(), Chips: d.frameChips(), Notes: d.frameNotes(), Places: places, Status: strconv.Itoa(int(status)), PendingAfter: d.mapPane.pending, Radar: d.radarGivenIDs(), RadarFrames: d.radarFrameCounts()})
 }
 
 // radarGivenIDs is the radar's loops handed in, by id, sorted.
@@ -84,6 +89,25 @@ func (d Dashboard) radarGivenIDs() []string {
 		out = append(out, id)
 	}
 	sort.Strings(out)
+	return out
+}
+
+// radarFrameCounts is each radar loop's frames with a picture and its gaps,
+// by id.
+func (d Dashboard) radarFrameCounts() map[string]string {
+	out := map[string]string{}
+	for id, o := range d.mapPane.radarGiven {
+		if o.Image == nil {
+			continue
+		}
+		gaps := 0
+		for _, f := range o.Image.Frames {
+			if f.Gap {
+				gaps++
+			}
+		}
+		out[id] = strconv.Itoa(len(o.Image.Frames)-gaps) + "/" + strconv.Itoa(gaps)
+	}
 	return out
 }
 

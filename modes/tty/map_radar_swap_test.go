@@ -97,6 +97,8 @@ func TestARefusedSwapKeepsTheLoopsItHad(t *testing.T) {
 	var asked, problems []string
 	d := openRadarMap(t, "MRMS", &asked)
 	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
+	var frames []MapFrame
+	d.cfg.MapFrame = func(f MapFrame) { frames = append(frames, f) }
 	feed := radarFeed(t, "MRMS", &asked)(context.Background(), d.mapAsk())
 	budgetForOne(t, d, renamed(feed, "us-b", 1).Overlays[0])
 	big := renamed(feed, "us-b", 3) // three times the frames: over the budget alone
@@ -114,6 +116,22 @@ func TestARefusedSwapKeepsTheLoopsItHad(t *testing.T) {
 	}
 	if len(problems) != 1 || !strings.HasPrefix(problems[0], "Radar") {
 		t.Errorf("the diagnostics were told %q; want the one refusal", problems)
+	}
+	// AND THE RECORDER KEEPS THE REFUSAL between the frames it fell between,
+	// and each loop's frames and gaps, which is how a live run tells a
+	// refused loop from a cancelled one (U2-59, U2-60).
+	said, counts := false, map[string]string(nil)
+	for _, f := range frames {
+		said = said || strings.HasPrefix(f.Problem, "Radar")
+		if f.Problem == "" {
+			counts = f.RadarFrames
+		}
+	}
+	if !said {
+		t.Error("the recorder has no record of the refusal")
+	}
+	if counts[RadarLayer+"/us-a"] != "12/0" {
+		t.Errorf("the last frame records the loops' frames as %v; want the loop put back, 12 frames and no gaps", counts)
 	}
 }
 
