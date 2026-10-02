@@ -379,6 +379,17 @@ without it. Its scope is ruled when it opens.
 | W14.3 | **Quality**: a blind red team over the whole of both releases, from `06_docs/red-team-brief.md` | both repositories | — | Its findings ruled or fixed |
 | W14.4 | **Memo keys carry identity** (#12, HUM LEAD 2026-09-29: "probably can be part of our performance/quality pass"): the data-cache half #12 stays open for - six caches, their treatment resting on FR-3.2's ruling; the frame path's half is closed and guarded since 0.15.0 | watchpost | — | A guard that fails when a cache's key misses what it reads |
 
+## W20 — UV readings kept (D-211) · after W14
+
+**HUM LEAD, 2026-10-02:** the UV readings the map collects are kept rather than thrown away, so
+fidelity grows from using the map; built after W14, within its refined structure. W14's P-14 makes
+UV fast within a session first.
+
+| # | Task | Files | Shape | Test first (RED) |
+|---|---|---|---|---|
+| W20.1 | **The readings stored**: each city's EPA hours kept across sessions - the global store or a local one, ruled when W20 opens - for the day they forecast, and gone after it | `app/mapairuv.go`, the store | Ruled at W20's opening | A city read in one session is not asked in the next, the same day; a reading from yesterday is never drawn |
+| W20.2 | **Every known city drawn**: the cities in view whose readings are held, beside the ones asked - within D-202's spacing, or a spacing ruled for them | `app/mapairuv.go` | Ruled at W20's opening | A view drawn after panning over more cities shows more of them, none closer than the spacing |
+
 ## The trace
 
 | Requirement | Task | | Requirement | Task |

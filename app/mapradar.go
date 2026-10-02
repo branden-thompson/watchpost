@@ -287,7 +287,7 @@ func fetchForecast(ctx context.Context, h *radar.HRRR, boxes []radar.Box, newest
 			if ctx.Err() != nil {
 				return
 			}
-			png, err := h.Frame(ctx, minutes[i], b)
+			png, err := h.Frame(ctx, run, minutes[i], b)
 			if err != nil {
 				return
 			}

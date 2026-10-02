@@ -3274,3 +3274,22 @@ loop from a cancelled one.
 bucket read back, an id with slashes whole, `Holds`, and the two first written) - all caught; watchpost
 3 (the problem recorded, the frame counts, their gaps) - all caught.
 
+## Batch 107 — HRRR's frames kept per run (W14 P-15, D-212 step 1; 2026-10-02)
+
+**The overlays weighed together (D-212).** The HUM LEAD asked for every layer to be looked at for
+P-14's class - data the same within its hour or day, fetched or rebuilt again on every pan - and fixed
+together, with the helpers that fall out. An audit of every layer found it in the temperature answer,
+the radar loop, the history store's reads, the AirNow contours and UV (P-16 to P-20), and six
+hand-written time-bounded memos beside three body-hash ones (S-12). It found one correctness bug, fixed
+first.
+
+**HRRR's frames were cached by minute, not run.** A forecast frame's address names its minute of the
+run (`refd_0060`), and IEM answers it from its newest run; the response was kept two hours by that
+address. For up to two hours after a new run, its minutes were answered with the last run's pictures,
+under the new run's times. The run now rides in the address's fragment: the cache keys on the whole
+address, and a fragment is never sent, so the server sees the same request for every run while each
+run's minute is its own entry. The run itself is read with a five-minute cache, so a new run's first
+five minutes can still be labelled with the last; that is left as it is.
+
+**Mutation verdicts** (2): the run left out of the key, the minute in its place - both caught.
+

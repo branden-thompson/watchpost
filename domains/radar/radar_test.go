@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -282,10 +283,11 @@ func TestAnHRRRFrameIsAskedAtARunMinuteOnly(t *testing.T) {
 	get := &fakeGet{body: fixture(t, "hrrr-frame.png")}
 	s := NewHRRR(get, "")
 	b := Box{Name: "us", W: -126, S: 23, E: -65, N: 51, Cols: 600, Rows: 276}
-	if _, err := s.Frame(context.Background(), 20, b); err == nil {
+	run := time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)
+	if _, err := s.Frame(context.Background(), run, 20, b); err == nil {
 		t.Error("minute 20 is no quarter-hour, and was asked")
 	}
-	if _, err := s.Frame(context.Background(), 180, b); err != nil {
+	if _, err := s.Frame(context.Background(), run, 180, b); err != nil {
 		t.Fatal(err)
 	}
 	u, _ := url.Parse(get.asks[len(get.asks)-1])
@@ -310,5 +312,43 @@ func TestARateIsReadInRadarsScale(t *testing.T) {
 	}
 	if !math.IsNaN(DBZOfRate(math.NaN())) {
 		t.Error("a rate not known became a number")
+	}
+}
+
+// AN HRRR FRAME IS KEPT PER RUN (W14 P-15, D-212): the frame's address names
+// the forecast minute, and the server answers it from its newest run, so the
+// response cache keeps one entry a run and minute - a new run's minute is
+// fetched afresh, never answered with the last run's picture. The run never
+// reaches the server: the request is the same for every run.
+func TestAnHRRRFrameIsKeptPerRun(t *testing.T) {
+	var hits atomic.Int32
+	var mu sync.Mutex
+	var queries []string
+	png := fixture(t, "hrrr-frame.png")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		mu.Lock()
+		queries = append(queries, r.URL.RawQuery)
+		mu.Unlock()
+		_, _ = w.Write(png)
+	}))
+	defer srv.Close()
+	c, err := httpx.New(httpx.Config{UserAgent: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewHRRR(c, srv.URL)
+	box := wholeBoxes[geo.RegionContiguous]
+	first, second := time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC), time.Date(2026, 10, 2, 13, 0, 0, 0, time.UTC)
+	for _, run := range []time.Time{first, first, second, second} {
+		if _, err := s.Frame(context.Background(), run, 60, box); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if hits.Load() != 2 {
+		t.Errorf("two runs' minute 60, each asked twice, fetched %d times; want once a run", hits.Load())
+	}
+	if len(queries) == 2 && queries[0] != queries[1] {
+		t.Errorf("the server was asked %q then %q; want the same request for every run", queries[0], queries[1])
 	}
 }

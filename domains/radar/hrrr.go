@@ -75,14 +75,20 @@ func Minutes(run, after, until time.Time) []int {
 	return out
 }
 
-// Frame is one forecast frame of a box, at a minute of the run, at half the
+// Frame is one forecast frame of a box, at a minute of run, at half the
 // radar box's size - about 8 km, near HRRR's own 3 km at the scale a box is
 // drawn, and a quarter of a radar frame's memory (D-114).
-func (s *HRRR) Frame(ctx context.Context, minute int, b Box) ([]byte, error) {
+//
+// THE RESPONSE IS KEPT PER RUN (W14 P-15). The address names the minute
+// alone and the server answers it from its newest run, so the run rides in
+// the address's fragment: the response cache keys on the whole address, and
+// a fragment is never sent - the server sees the same request for every run,
+// and a new run's minute is never answered with the last run's picture.
+func (s *HRRR) Frame(ctx context.Context, run time.Time, minute int, b Box) ([]byte, error) {
 	if minute < 0 || minute > hrrrLastQuarter || minute%int(HRRRStep/time.Minute) != 0 {
 		return nil, fmt.Errorf("HRRR frame: minute %d is not one of the run's quarter-hours", minute)
 	}
 	half := Box{Name: b.Name, W: b.W, S: b.S, E: b.E, N: b.N, Cols: max(b.Cols/2, 1), Rows: max(b.Rows/2, 1)}
 	q := wmsQuery(half, "LAYERS", "refd_"+fmt.Sprintf("%04d", minute))
-	return s.get.GetText(ctx, s.base+"/cgi-bin/wms/hrrr/refd.cgi?"+q.Encode(), httpx.TTL(window))
+	return s.get.GetText(ctx, s.base+"/cgi-bin/wms/hrrr/refd.cgi?"+q.Encode()+"#run="+run.UTC().Format("2006010215"), httpx.TTL(window))
 }
