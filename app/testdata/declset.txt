@@ -120,6 +120,7 @@ const viewSamples
 const waveBytes
 const zoneShapeBytes
 func (*aheadFetch).clock
+func (*aheadFetch).standIn
 func (*aheadFetch).take
 func (*airOwner).get
 func (*airOwner).set

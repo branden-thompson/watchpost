@@ -3216,3 +3216,31 @@ is in the diff; a comment inside `eventReader.Read` put that one in scope. `coun
 `Read` method to cycle through. `TestACountedBodyClosesTheBodyItCounts` holds the Close (its mutant
 survived the existing tests) and the count. P10 stays at 31 live.
 
+## Batch 105 — a zoom keeps the radar (UAT-2 U2-59; 2026-10-02)
+
+**Reproduced.** The frame recorder now names the radar loops each frame is drawn from (`Radar`). A
+live run on the lower 48, zoomed in three times at the corner where four closer boxes meet and out
+again: in, the whole loop gave way to four boxes' loops; out, the four gave way to the whole one - and
+for three seconds the map held no radar at all (`radar []`, loop 0/0), until HRRR's follow-up ask
+handed the whole loop in again. Without a follow-up, it is the two-minute refresh.
+
+**Why.** The radar's answer was reconciled new-first: the new boxes' loops were handed in while the
+old ones were still held, over the image budget together, so the library refused them; none of their
+ids was held before, so the answer was "not drawn", and the old loops were then taken off.
+`replaceLoops` swaps all or none: the leaving loops go first, so the budget holds the new ones rather
+than both; a new box's loop still refused undoes the swap, the new loops off and the old ones back. A
+swap no longer draws the instant the old loops go: the work's answer draws the new ones whole.
+
+**And the hours ahead.** HRRR's hours ahead are fetched per boxes, newest frame and horizon; a new
+newest frame (every few minutes) started a fetch, and until it landed an ask got none - the loop
+shrank from 36 frames to 24 for a few seconds on a zoom or a pan. The last hours ahead that landed for
+the same boxes now stand in until the new ones land, with any of their frames at or before the newest
+observed frame left out.
+
+**Live after:** in to four boxes and out again, the radar on the map throughout - a swap fills in
+over 60 to 200 ms as the new loops are prepared; a zoom within one box keeps its 36 frames.
+
+**Mutation verdicts** (10): the leaving loops first, the roll-back, the rolled-back loops given, only a
+new box rolling back, the stand-in offered, only for its boxes, while a fetch runs, asked with the
+boxes, frames after the newest only, and the recorder's radar ids - all caught.
+

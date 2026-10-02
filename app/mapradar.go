@@ -68,8 +68,13 @@ type aheadFetch struct {
 	told     bool // its failure told to the diagnostics
 	result   hoursAhead
 	finished time.Time
-	cancel   context.CancelFunc
-	now      func() time.Time // the clock; time.Now when nil
+	// last is the newest hours ahead that landed whole, and lastGroup the
+	// boxes they are for: what a new fetch for the same boxes stands on until
+	// it lands (U2-59).
+	last      hoursAhead
+	lastGroup string
+	cancel    context.CancelFunc
+	now       func() time.Time // the clock; time.Now when nil
 }
 
 // clock is the fetch's clock.
@@ -80,12 +85,13 @@ func (a *aheadFetch) clock() time.Time {
 	return time.Now()
 }
 
-// take is what an ask gets of the hours ahead for key: the loops when they
-// have landed; otherwise nothing, and how long until it should ask again -
-// aheadSoon while they are on their way, what is left of aheadRetry after a
-// failure, whose problem is returned the first time. A new key, or a failure
-// past aheadRetry, starts a fetch.
-func (a *aheadFetch) take(key string, fetch func(context.Context) hoursAhead) (fc hoursAhead, again time.Duration, ok bool) {
+// take is what an ask gets of the hours ahead for key, whose boxes are
+// group: the loops when they have landed; otherwise how long until it should
+// ask again - aheadSoon while they are on their way, what is left of
+// aheadRetry after a failure, whose problem is returned the first time - and,
+// while they are on their way, the same boxes' last hours ahead to stand in
+// (U2-59). A new key, or a failure past aheadRetry, starts a fetch.
+func (a *aheadFetch) take(group, key string, fetch func(context.Context) hoursAhead) (fc hoursAhead, again time.Duration, ok bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.key == key && a.done && a.result.problem == "" {
@@ -101,7 +107,7 @@ func (a *aheadFetch) take(key string, fetch func(context.Context) hoursAhead) (f
 		}
 	}
 	if a.key == key && a.running {
-		return hoursAhead{}, aheadSoon, false
+		return a.standIn(group), aheadSoon, false
 	}
 	if a.cancel != nil {
 		a.cancel() // another region's or horizon's: not wanted any more
@@ -116,8 +122,19 @@ func (a *aheadFetch) take(key string, fetch func(context.Context) hoursAhead) (f
 			return // superseded while it ran
 		}
 		a.running, a.done, a.result, a.finished = false, true, got, a.clock()
+		if got.problem == "" && len(got.loops) > 0 {
+			a.last, a.lastGroup = got, group
+		}
 	}()
-	return hoursAhead{}, aheadSoon, false
+	return a.standIn(group), aheadSoon, false
+}
+
+// standIn is the last hours ahead that landed for group's boxes, or nothing.
+func (a *aheadFetch) standIn(group string) hoursAhead {
+	if a.lastGroup != group {
+		return hoursAhead{}
+	}
+	return a.last
 }
 
 // radarSourcesOver is both sources over one radar client (overClient).
@@ -189,7 +206,7 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 			names = append(names, b.Name)
 		}
 		key := strings.Join(names, ",") + "|" + newest.UTC().Format(time.RFC3339) + "|" + until.UTC().Format(time.RFC3339)
-		fc, again, _ = lp.radar.ahead.take(key, func(ctx context.Context) hoursAhead { return fetchForecast(ctx, lp.radar.hrrr, boxes, newest, until) })
+		fc, again, _ = lp.radar.ahead.take(strings.Join(names, ","), key, func(ctx context.Context) hoursAhead { return fetchForecast(ctx, lp.radar.hrrr, boxes, newest, until) })
 	}
 	allEmpty := true
 	for _, b := range boxes {
@@ -230,10 +247,24 @@ func joinForecast(out tty.MapRadar, fc hoursAhead, newest time.Time) tty.MapRada
 		out.Problems = append(out.Problems, fc.problem) // D-124
 		return out
 	}
-	if len(fc.loops) == 0 {
+	var loops []tuimaps.Overlay
+	for _, o := range fc.loops { // a frame at or before the newest is not ahead of it (U2-59)
+		img := *o.Image
+		img.Frames = nil
+		for _, f := range o.Image.Frames {
+			if f.Valid.After(newest) {
+				img.Frames = append(img.Frames, f)
+			}
+		}
+		if len(img.Frames) > 0 {
+			o.Image = &img
+			loops = append(loops, o)
+		}
+	}
+	if len(loops) == 0 {
 		return out
 	}
-	return joinAhead(out, fc.loops, newest, fc.name)
+	return joinAhead(out, loops, newest, fc.name)
 }
 
 // fetchForecast is HRRR's loops a box, their frames fetched radarParallel

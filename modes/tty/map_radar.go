@@ -10,6 +10,7 @@ package tty
 
 import (
 	"context"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -117,11 +118,8 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 	if !d.layerOn(RadarLayer) {
 		v.radar = MapRadar{}
 	}
-	var refused error
-	given, set, removed := d.reconcile(d.mapPane.radarGiven, v.radar.Overlays, func(_ tuimaps.Overlay, err error) {
-		refused = err // SAID, never swallowed: unsaid, a refused loop reads as "loading" for ever (UAT-2 U2-5)
-	})
-	switch { // a refusal is ours, never the listener's to act on: the diagnostics' (D-124)
+	given, set, refused := d.replaceLoops(d.mapPane.radarGiven, v.radar.Overlays) // a refusal SAID, never swallowed: unsaid, it reads as "loading" for ever (UAT-2 U2-5)
+	switch {                                                                      // a refusal is ours, never the listener's to act on: the diagnostics' (D-124)
 	case refused != nil && len(given) == 0:
 		v.radar.Source, v.radar.Note = "", ""
 		d.problem("Radar: not drawn - " + refused.Error())
@@ -133,8 +131,8 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 	}
 	d.mapPane.radarGiven, d.mapPane.radarSource, d.mapPane.radarNote, d.mapPane.radarAhead = given, v.radar.Source, v.radar.Note, v.radar.Ahead
 	d = d.showStep().retime() // the newest frame is Radar mode's now: the alerts' spans move with it (D-98)
-	if removed || !set || m.Pending() == 0 {
-		d = d.renderMap() // nothing left to prepare: draw now; else the work's answer draws it, whole
+	if !set || m.Pending() == 0 {
+		d = d.renderMap() // nothing left to prepare: draw now; else the work's answer draws it, whole, and the picture on screen stands until then
 	}
 	cmds := []tea.Cmd{d.mapWorkCmd()}
 	if d.mapPane.radarAgain {
@@ -147,6 +145,57 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, tea.Tick(wait, func(time.Time) tea.Msg { return mapRadarAgainMsg{region: region} }))
 	}
 	return d, tea.Batch(cmds...)
+}
+
+// replaceLoops hands in an answer's loops in place of the ones held, all or
+// none (U2-59). The loops leaving go first, so the image budget holds the new
+// ones rather than both - a zoom across the lower 48's wide line swaps one
+// loop for up to four. Where a new box's loop is still refused, the new
+// loops go and the held ones come back: a zoom never leaves the map without
+// the radar it had. refused is the first refusal.
+func (d Dashboard) replaceLoops(had map[string]tuimaps.Overlay, want []tuimaps.Overlay) (given map[string]tuimaps.Overlay, set bool, refused error) {
+	m := d.mapPane.m
+	wanted := map[string]bool{}
+	for _, o := range want {
+		wanted[o.ID] = true
+	}
+	kept, gone := map[string]tuimaps.Overlay{}, []string{}
+	for id, o := range had {
+		if wanted[id] {
+			kept[id] = o
+		} else {
+			gone = append(gone, id)
+		}
+	}
+	sort.Strings(gone)
+	for _, id := range gone {
+		d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
+	}
+	newRefused := false
+	given, set, _ = d.reconcile(kept, want, func(o tuimaps.Overlay, err error) {
+		if refused == nil {
+			refused = err
+		}
+		_, held := had[o.ID]
+		newRefused = newRefused || !held
+	})
+	if !newRefused {
+		return given, set, refused
+	}
+	for id := range given { // the swap is undone: the new boxes go, the old come back
+		if _, held := had[id]; !held {
+			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
+			delete(given, id)
+		}
+	}
+	for _, id := range gone {
+		var err error
+		d.mapPane.call("Set", func() { _, err = m.Set(had[id]) })
+		if err == nil {
+			given[id] = had[id]
+		}
+	}
+	return given, true, refused
 }
 
 // mapRadarAgainMsg is the time to ask the radar again for the hours ahead an

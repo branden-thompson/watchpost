@@ -48,6 +48,9 @@ type MapFrame struct {
 	Places       []string            // the place names on the frame, sorted
 	Status       string              // the library's: complete, sharpening, ...
 	PendingAfter bool                // work still pending once drawn
+	// Radar is the radar's loops as handed in, by id, sorted: which boxes
+	// the frame was drawn from (U2-59).
+	Radar []string
 }
 
 // placeWords are the words a frame's place names are made of.
@@ -71,7 +74,17 @@ func (d Dashboard) recordFrame(status tuimaps.Status) {
 	}
 	sort.Strings(places)
 	d.cfg.MapFrame(MapFrame{At: d.now(), LoopIndex: st.Index, LoopCount: st.Count, LoopAt: st.At, Playing: st.Playing,
-		Lon: c.Lon, Lat: c.Lat, Zoom: z, RadarCells: d.radarCells(), Cells: d.presetCells(), Given: d.tempGivenByLayer(), Text: d.frameText(plain), Spans: d.givenSpans(), Chips: d.frameChips(), Notes: d.frameNotes(), Places: places, Status: strconv.Itoa(int(status)), PendingAfter: d.mapPane.pending})
+		Lon: c.Lon, Lat: c.Lat, Zoom: z, RadarCells: d.radarCells(), Cells: d.presetCells(), Given: d.tempGivenByLayer(), Text: d.frameText(plain), Spans: d.givenSpans(), Chips: d.frameChips(), Notes: d.frameNotes(), Places: places, Status: strconv.Itoa(int(status)), PendingAfter: d.mapPane.pending, Radar: d.radarGivenIDs()})
+}
+
+// radarGivenIDs is the radar's loops handed in, by id, sorted.
+func (d Dashboard) radarGivenIDs() []string {
+	out := make([]string, 0, len(d.mapPane.radarGiven))
+	for id := range d.mapPane.radarGiven {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // tempGivenByLayer counts the temperature feed's overlays by layer.
