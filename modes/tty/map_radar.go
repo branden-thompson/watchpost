@@ -38,6 +38,10 @@ type MapRadar struct {
 	// Problems are what went wrong that the listener cannot act on: the
 	// diagnostics', never said to them (D-124).
 	Problems []string
+	// AheadIn is when to ask again for the hours ahead still owed: soon while
+	// HRRR's are on their way, later after it failed; zero when nothing is
+	// owed (D-204).
+	AheadIn time.Duration
 }
 
 // mapRadarMsg is a radar answer.
@@ -139,7 +143,23 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 		d, again = d.askRadar()
 		cmds = append(cmds, again)
 	}
+	if wait, region := v.radar.AheadIn, v.region; wait > 0 { // the hours ahead still owed (D-204)
+		cmds = append(cmds, tea.Tick(wait, func(time.Time) tea.Msg { return mapRadarAgainMsg{region: region} }))
+	}
 	return d, tea.Batch(cmds...)
+}
+
+// mapRadarAgainMsg is the time to ask the radar again for the hours ahead an
+// answer owed (D-204).
+type mapRadarAgainMsg struct{ region string }
+
+// applyRadarAgain asks the radar again for the hours ahead, while the map is
+// open on the region they were owed for and the radar is on.
+func (d Dashboard) applyRadarAgain(v mapRadarAgainMsg) (tea.Model, tea.Cmd) {
+	if d.modal != modalMap || d.mapPane.m == nil || v.region != d.mapPane.region.Name || !d.layerOn(RadarLayer) {
+		return d, nil
+	}
+	return d.askRadar()
 }
 
 // radarChipText is the chip's words: the source in use, or nothing.

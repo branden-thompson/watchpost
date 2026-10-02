@@ -1,6 +1,9 @@
 const SafetyNext
 const SafetyNote
 const UserAgent
+const aheadRetry
+const aheadSoon
+const aheadTimeout
 const airLabelMost
 const airnowBytes
 const alertLayerKey
@@ -114,6 +117,8 @@ const uvRanked
 const viewSamples
 const waveBytes
 const zoneShapeBytes
+func (*aheadFetch).clock
+func (*aheadFetch).take
 func (*airOwner).get
 func (*airOwner).set
 func (*alertStore).capOldest
@@ -866,6 +871,7 @@ type CastRow
 type Gauge
 type Options
 type SourceHealth
+type aheadFetch
 type airOwner
 type airScope
 type alertStore

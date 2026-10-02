@@ -191,8 +191,9 @@ func typeOfMsg(t *testing.T, name string) reflect.Type {
 		"mapViewSettledMsg": mapViewSettledMsg{}, // 0.18.0 D-66: the view's settling asks its window's alerts
 		"mapFeedMsg":        mapFeedMsg{},
 		"mapRadarMsg":       mapRadarMsg{},
-		"mapTempMsg":        mapTempMsg{},      // W10
-		"forecastTickMsg":   forecastTickMsg{}, // D-94: Forecast mode's playback is owed to the map window
+		"mapRadarAgainMsg":  mapRadarAgainMsg{}, // D-204: the hours ahead owed are asked again by the map window
+		"mapTempMsg":        mapTempMsg{},       // W10
+		"forecastTickMsg":   forecastTickMsg{},  // D-94: Forecast mode's playback is owed to the map window
 		"mapClearedMsg":     mapClearedMsg{},
 		"historyClearedMsg": historyClearedMsg{},
 	}

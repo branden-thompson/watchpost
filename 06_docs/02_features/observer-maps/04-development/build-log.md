@@ -3056,3 +3056,33 @@ self-test fails with a phrase removed - tried). Older narrative comments the tab
 **Still open**: U2-53 (radar slow) and the HRRR frames arriving late (U2-57's scrubber, "after 2
 loops") - R-2, bisected next against `checkpoint/pre-w14`.
 
+## Batch 99 — the observed loop first, HRRR's hours ahead joining (U2-53, U2-57; D-204; 2026-10-01)
+
+**Measured first (R-2, as D-196 waited for).** Five builds - `checkpoint/pre-w14`, batches 63, 70, 84 and
+98 - each launched live under a fresh home, radar only, the map opened on the lower 48. The loop's frames
+(hours ahead included) were known in 0.4-2.2 s on every build. Radar *pixels* - timed by replaying each
+run's terminal stream through a terminal emulator and counting map cells in the radar legend's own
+colours - came in 1.9-3.6 s idle (the checkpoint 3.2-3.3 s, today 1.9-3.6 s); with temperature and wind
+on, 1.1-2.6 s; under every core spun busy, five rounds each, a median 3.2 s at the checkpoint and 3.4 s
+today (one run of today's at 9.0 s). No regression.
+
+**Read in the code.** The observed loop was handed back only once every HRRR forecast frame had
+downloaded - a slow HRRR held the radar the listener could already have - and a failed HRRR was asked
+again only at the next 2-minute refresh: U2-57's scrubber with no hours ahead, the band "after 2 loops".
+
+**D-204, built.** HRRR's hours ahead are fetched by `aheadFetch`, apart from any one ask: an ask starts
+it and returns the observed loop at once, with `MapRadar.AheadIn` - when to ask again (3 s while HRRR is
+on its way; what is left of 30 s after a failure, the failure told to the diagnostics once; zero when
+joined). The map pane schedules that ask (`mapRadarAgainMsg`), for the region it was owed for and only
+while the radar is on. A region or horizon left cancels its fetch. Live: the radar at 1.9 s, the loop
+grown from 24 frames to 36 at 7.9 s.
+
+**Mutation verdicts** (7): joined when landed, the 30 s retry, the failure told once, one fetch at a
+time, the answer saying when, the tick scheduled, the region guard - all caught. The new message is
+carried back to Observer's map window by the router (`observerScoped`) - held by
+`TestEveryWindowReplyIsRoutedBackToTheWindow`, which refused it until it was.
+
+**A measuring note.** The terminal-text timing read "FRAME n / N" from the stream; a renderer that
+redraws only changed cells sends "36", not the label, when the count grows - so a count that grows
+after the first draw is read from the frame recorder, not the stream.
+

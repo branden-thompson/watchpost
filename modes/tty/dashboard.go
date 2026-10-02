@@ -1108,6 +1108,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyMapFeed(v) // 0.18.0: the alerts, set and drawn in Update (D-41)
 	case mapRadarMsg:
 		return d.applyMapRadar(v) // W8: the radar, set and drawn in Update (D-41)
+	case mapRadarAgainMsg:
+		return d.applyRadarAgain(v) // D-204: the hours ahead owed
 	case mapTempMsg:
 		return d.applyMapTemp(v) // W10: the temperature, set and drawn in Update (D-41)
 	case forecastTickMsg:

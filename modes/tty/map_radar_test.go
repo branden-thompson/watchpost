@@ -773,3 +773,51 @@ func TestTheFrameRecordersTextIsKeptOnlyWhenAsked(t *testing.T) {
 		}
 	}
 }
+
+// THE RADAR IS ASKED AGAIN WHEN THE HOURS AHEAD ARE OWED (D-204): an answer
+// with the observed loop alone says when to ask again for HRRR's, and the
+// map asks then - not at the next two-minute refresh.
+func TestTheRadarIsAskedAgainForTheHoursAhead(t *testing.T) {
+	var asked []string
+	feed := radarFeed(t, "MRMS", &asked)
+	owed := true
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}},
+		MapRadar: func(ctx context.Context, ask MapAsk) MapRadar {
+			r := feed(ctx, ask)
+			if owed {
+				r.AheadIn, owed = 50*time.Millisecond, false
+			}
+			return r
+		}})
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
+	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	d = feedAndSettle(t, m.(Dashboard))
+	var again tea.Msg
+	for range 8 { // the answers, the work, and the ask again they schedule
+		var next []tea.Cmd
+		for _, msg := range msgsOf(t, cmd) {
+			switch msg.(type) {
+			case mapRadarAgainMsg:
+				again = msg
+			case mapRadarMsg, mapWorkedMsg:
+				m, c := d.Update(msg)
+				d, next = m.(Dashboard), append(next, c)
+			}
+		}
+		if again != nil || len(next) == 0 {
+			break
+		}
+		cmd = tea.Batch(next...)
+	}
+	if again == nil {
+		t.Fatal("an answer owing the hours ahead scheduled no ask again")
+	}
+	if _, stale := d.Update(mapRadarAgainMsg{region: "elsewhere"}); stale != nil {
+		t.Error("the time to ask again for a region left asked the radar")
+	}
+	m, cmd = d.Update(again)
+	settleRadar(t, m.(Dashboard), cmd)
+	if len(asked) != 2 {
+		t.Errorf("the radar was asked %d times; want the first ask and the one for the hours ahead", len(asked))
+	}
+}

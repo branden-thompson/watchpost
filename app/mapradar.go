@@ -11,6 +11,7 @@ import (
 	"context"
 	pngpkg "image/png"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -44,6 +45,79 @@ const radarFrameBytes = 25_000
 type radarSources struct {
 	iem, mrms radar.Source
 	hrrr      *radar.HRRR // the hours ahead (D-113): the lower 48's
+	ahead     aheadFetch  // HRRR's hours ahead, fetched apart from any one ask (D-204)
+}
+
+// The hours ahead's timings (D-204): asked again aheadSoon after an answer
+// that owes them, aheadRetry after HRRR failed; a fetch given up after
+// aheadTimeout.
+const (
+	aheadSoon    = 3 * time.Second
+	aheadRetry   = 30 * time.Second
+	aheadTimeout = 2 * time.Minute
+)
+
+// aheadFetch is HRRR's hours ahead for one set of boxes and horizon, fetched
+// in the background so the observed loop is never held for them (D-204): an
+// ask starts it, and an ask once it has landed joins it.
+type aheadFetch struct {
+	mu       sync.Mutex
+	key      string
+	running  bool
+	done     bool
+	told     bool // its failure told to the diagnostics
+	result   hoursAhead
+	finished time.Time
+	cancel   context.CancelFunc
+	now      func() time.Time // the clock; time.Now when nil
+}
+
+// clock is the fetch's clock.
+func (a *aheadFetch) clock() time.Time {
+	if a.now != nil {
+		return a.now()
+	}
+	return time.Now()
+}
+
+// take is what an ask gets of the hours ahead for key: the loops when they
+// have landed; otherwise nothing, and how long until it should ask again -
+// aheadSoon while they are on their way, what is left of aheadRetry after a
+// failure, whose problem is returned the first time. A new key, or a failure
+// past aheadRetry, starts a fetch.
+func (a *aheadFetch) take(key string, fetch func(context.Context) hoursAhead) (fc hoursAhead, again time.Duration, ok bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.key == key && a.done && a.result.problem == "" {
+		return a.result, 0, true
+	}
+	if a.key == key && a.done {
+		if wait := aheadRetry - a.clock().Sub(a.finished); wait > 0 {
+			if a.told {
+				return hoursAhead{}, wait, false
+			}
+			a.told = true
+			return hoursAhead{problem: a.result.problem}, wait, false
+		}
+	}
+	if a.key == key && a.running {
+		return hoursAhead{}, aheadSoon, false
+	}
+	if a.cancel != nil {
+		a.cancel() // another region's or horizon's: not wanted any more
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), aheadTimeout)
+	a.key, a.running, a.done, a.told, a.cancel = key, true, false, false, cancel
+	go func() {
+		got := fetch(ctx)
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		if a.key != key {
+			return // superseded while it ran
+		}
+		a.running, a.done, a.result, a.finished = false, true, got, a.clock()
+	}()
+	return hoursAhead{}, aheadSoon, false
 }
 
 // radarSourcesOver is both sources over one radar client (overClient).
@@ -104,13 +178,18 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 	}
 	slots := loopSlots(times, radarStep, radar.Window)
 	boxes := radar.BoxesFor(ask.Region, ask.View)
-	var ahead chan hoursAhead // HRRR's hours ahead, fetched alongside the observed loop (D-130)
-	aheadCtx, stopAhead := context.WithCancel(ctx)
-	defer stopAhead()
-	newest, until := slots[len(slots)-1].at, time.Now().Add(time.Duration(ask.RadarAhead)*time.Hour)
-	if ask.RadarAhead > 0 && lp.radar.hrrr != nil && lp.radar.hrrr.Covers(ask.Region) {
-		ahead = make(chan hoursAhead, 1)
-		go func() { ahead <- fetchForecast(aheadCtx, lp.radar.hrrr, boxes, newest, until) }()
+	newest := slots[len(slots)-1].at
+	until := time.Now().Add(time.Duration(ask.RadarAhead) * time.Hour).Truncate(15 * time.Minute) // HRRR's quarter-hours: one horizon a quarter-hour
+	var fc hoursAhead
+	var again time.Duration
+	hrrr := ask.RadarAhead > 0 && lp.radar.hrrr != nil && lp.radar.hrrr.Covers(ask.Region)
+	if hrrr { // asked alongside the observed loop (D-130), never waited for (D-204)
+		var names []string
+		for _, b := range boxes { // a region's boxes (P10-02)
+			names = append(names, b.Name)
+		}
+		key := strings.Join(names, ",") + "|" + newest.UTC().Format(time.RFC3339) + "|" + until.UTC().Format(time.RFC3339)
+		fc, again, _ = lp.radar.ahead.take(key, func(ctx context.Context) hoursAhead { return fetchForecast(ctx, lp.radar.hrrr, boxes, newest, until) })
 	}
 	allEmpty := true
 	for _, b := range boxes {
@@ -123,8 +202,9 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 	out.Overlays = trimToBudget(out.Overlays)
 	if ask.RadarAhead > 0 && len(out.Overlays) > 0 {
 		switch {
-		case ahead != nil:
-			out = joinForecast(out, <-ahead, newest)
+		case hrrr:
+			out = joinForecast(out, fc, newest)
+			out.AheadIn = again
 		case lp.temp != nil && lp.temp.rain != nil: // where HRRR is not, a model's rain (D-115)
 			out = withModelRain(ctx, out, lp.temp.rain, ask.Region, ask.View, newest, until)
 		}

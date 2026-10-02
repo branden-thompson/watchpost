@@ -256,16 +256,26 @@ func TestTheRadarAsksForAndKeepsWhatFits(t *testing.T) {
 // hrrrGet answers HRRR's run and its frames from the fixtures, and counts
 // the frames.
 type hrrrGet struct {
-	t      *testing.T
-	mu     sync.Mutex
-	frames int
-	run    []byte        // the run's answer, when not the fixture's
-	asked  chan struct{} // closed at the first frame asked, when set
-	once   sync.Once
+	t       *testing.T
+	mu      sync.Mutex
+	frames  int
+	runs    int
+	run     []byte        // the run's answer, when not the fixture's
+	asked   chan struct{} // closed at the first frame asked, when set
+	once    sync.Once
+	release chan struct{} // the frames wait for it, when set
+	failRun bool          // the run is not answered
 }
 
 func (h *hrrrGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]byte, error) {
 	if strings.HasSuffix(rawURL, ".json") {
+		h.mu.Lock()
+		h.runs++
+		fail := h.failRun
+		h.mu.Unlock()
+		if fail {
+			return nil, errors.New("HRRR did not answer")
+		}
 		if h.run != nil {
 			return h.run, nil
 		}
@@ -273,6 +283,9 @@ func (h *hrrrGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) (
 	}
 	if h.asked != nil {
 		h.once.Do(func() { close(h.asked) })
+	}
+	if h.release != nil {
+		<-h.release
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -357,6 +370,86 @@ func TestTheLoopsFramesAreFetchedSixAtATime(t *testing.T) {
 	}
 }
 
+// THE OBSERVED LOOP IS NEVER HELD FOR HRRR (D-204, UAT-2 U2-53): HRRR's hours
+// ahead are fetched alongside it (D-130) and join it when they land - the
+// answer meanwhile carries the observed loop and asks to be asked again
+// soon; the next ask, once HRRR is in, joins them.
+func TestTheObservedLoopIsNeverHeldForHRRR(t *testing.T) {
+	png, _ := os.ReadFile("../domains/radar/testdata/hrrr-frame.png")
+	now := time.Now().UTC()
+	times := grid5(24, now.Truncate(5*time.Minute).Add(-115*time.Minute))
+	get := &hrrrGet{t: t, release: make(chan struct{}),
+		run: []byte(`{"model_init_utc": "` + now.Truncate(time.Hour).Add(-time.Hour).Format(time.RFC3339) + `"}`)}
+	src := &fakeRadar{name: "MRMS", regions: []string{geo.RegionContiguous}, times: times, png: png}
+	lp := &livePipelines{radar: &radarSources{iem: &fakeRadar{name: "IEM"}, mrms: src, hrrr: radar.NewHRRR(get, "")}}
+	ask := tty.MapAsk{Region: geo.RegionContiguous, View: tty.MapView{W: -125, S: 24, E: -66, N: 50}, RadarAhead: 3}
+	first := lp.mapRadar(context.Background(), ask) // HRRR's frames held back: the observed loop comes anyway
+	if len(first.Overlays) == 0 || first.Ahead != "" || first.AheadIn != aheadSoon {
+		t.Fatalf("the first answer: %d loops, ahead %q, again in %v; want the observed loop alone, asked again in %v", len(first.Overlays), first.Ahead, first.AheadIn, aheadSoon)
+	}
+	close(get.release)
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		out := lp.mapRadar(context.Background(), ask)
+		if out.Ahead == "HRRR" {
+			if out.AheadIn != 0 || len(out.Overlays) < 2 {
+				t.Errorf("joined: %d loops, again in %v; want the forecast beside the observed, nothing owed", len(out.Overlays), out.AheadIn)
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("HRRR's hours ahead never joined the loop")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if get.runs != 1 {
+		t.Errorf("HRRR's run was asked %d times over the asks; want once, the fetch carried across them", get.runs)
+	}
+}
+
+// A FAILED HRRR IS ASKED AGAIN AFTER 30 SECONDS (D-204, UAT-2 U2-57): not at
+// the next two-minute refresh - the loop with no hours ahead for loops on end.
+// The answer says when; the failure is told to the diagnostics once.
+func TestAFailedHRRRIsAskedAgainSoon(t *testing.T) {
+	png, _ := os.ReadFile("../domains/radar/testdata/hrrr-frame.png")
+	clock := time.Now().UTC()
+	times := grid5(24, clock.Truncate(5*time.Minute).Add(-115*time.Minute))
+	get := &hrrrGet{t: t, failRun: true}
+	src := &fakeRadar{name: "MRMS", regions: []string{geo.RegionContiguous}, times: times, png: png}
+	rs := &radarSources{iem: &fakeRadar{name: "IEM"}, mrms: src, hrrr: radar.NewHRRR(get, "")}
+	var mu sync.Mutex
+	rs.ahead.now = func() time.Time { mu.Lock(); defer mu.Unlock(); return clock }
+	lp := &livePipelines{radar: rs}
+	ask := tty.MapAsk{Region: geo.RegionContiguous, View: tty.MapView{W: -125, S: 24, E: -66, N: 50}, RadarAhead: 3}
+	lp.mapRadar(context.Background(), ask)
+	var out tty.MapRadar
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		if out = lp.mapRadar(context.Background(), ask); out.AheadIn > aheadSoon {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the failed HRRR was never answered as failed")
+		}
+	}
+	if out.AheadIn > aheadRetry || out.AheadIn < aheadRetry-time.Second || len(out.Problems) != 1 {
+		t.Errorf("after the failure: again in %v, problems %v; want about %v and the failure told once", out.AheadIn, out.Problems, aheadRetry)
+	}
+	if again := lp.mapRadar(context.Background(), ask); len(again.Problems) != 0 || get.runs != 1 {
+		t.Errorf("asked again within the 30 s: problems %v, HRRR asked %d times; want nothing new", again.Problems, get.runs)
+	}
+	mu.Lock()
+	clock = clock.Add(aheadRetry + time.Second)
+	mu.Unlock()
+	if again := lp.mapRadar(context.Background(), ask); again.AheadIn != aheadSoon {
+		t.Errorf("past the 30 s: again in %v; want HRRR asked again, the answer owed in %v", again.AheadIn, aheadSoon)
+	}
+	for deadline := time.Now().Add(5 * time.Second); get.runs < 2 && time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+	}
+	if get.runs != 2 {
+		t.Errorf("HRRR asked %d times; want a second ask past the 30 s", get.runs)
+	}
+}
+
 // TestTheHoursAheadAreFetchedAlongsideTheLoop is D-130: HRRR's hours ahead
 // were asked only once the observed loop was whole - 2.7 s after its 4.8.
 // They are asked alongside: here the observed frames wait for HRRR's first
@@ -369,7 +462,11 @@ func TestTheHoursAheadAreFetchedAlongsideTheLoop(t *testing.T) {
 		run: []byte(`{"model_init_utc": "` + now.Truncate(time.Hour).Add(-time.Hour).Format(time.RFC3339) + `"}`)}
 	src := &fakeRadar{name: "MRMS", regions: []string{geo.RegionContiguous}, times: times, png: png, gate: get.asked}
 	lp := &livePipelines{radar: &radarSources{iem: &fakeRadar{name: "IEM"}, mrms: src, hrrr: radar.NewHRRR(get, "")}}
-	out := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionContiguous, View: tty.MapView{W: -125, S: 24, E: -66, N: 50}, RadarAhead: 3})
+	ask := tty.MapAsk{Region: geo.RegionContiguous, View: tty.MapView{W: -125, S: 24, E: -66, N: 50}, RadarAhead: 3}
+	out := lp.mapRadar(context.Background(), ask) // the observed frames waited for HRRR's first ask: they were asked together
+	for deadline := time.Now().Add(10 * time.Second); out.Ahead != "HRRR" && time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		out = lp.mapRadar(context.Background(), ask) // D-204: the hours ahead join when they land
+	}
 	if out.Ahead != "HRRR" || len(out.Overlays) < 2 {
 		t.Errorf("ahead %q, %d loops (problems %v); want the observed loop and HRRR's beside it", out.Ahead, len(out.Overlays), out.Problems)
 	}
