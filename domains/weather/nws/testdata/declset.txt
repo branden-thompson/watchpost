@@ -31,7 +31,7 @@ func (*Provider).fetchForecast
 func (*Provider).fetchHourly
 func (*Provider).fetchObs
 func (*Provider).fillDailyFromGrid
-func (*Provider).gridExtremes
+func (*Provider).gridDocument
 func (*Provider).markPreferred
 func (*Provider).rebase
 func (*Provider).resolve

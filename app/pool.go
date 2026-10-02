@@ -307,7 +307,8 @@ func (lp *livePipelines) reStation(watch []snapshot.LocationRef) (stationArea, [
 }
 
 // withPool adds the station's pool to a location set, skipping what is already
-// there (D-99).
+// there and what is watched (D-99, D-208): the priority pipeline fetches every
+// watched place, and the pool's rows read it from that snapshot.
 //
 // THE POOL JOINS THE RECENT PIPELINE RATHER THAN GETTING ONE OF ITS OWN. That
 // pipeline already fetches a bounded set at the slow cadence, publishes into one
@@ -323,8 +324,11 @@ func (lp *livePipelines) reStation(watch []snapshot.LocationRef) (stationArea, [
 //
 // DEDUPED BY KEY, because a watched location inside the service area is one
 // location, and fetching it twice would double its cost for no new data.
-func withPool(recent, pool []snapshot.LocationRef) []snapshot.LocationRef {
-	seen := make(map[snapshot.LocationKey]bool, len(recent)+len(pool))
+func withPool(recent, pool, watch []snapshot.LocationRef) []snapshot.LocationRef {
+	seen := make(map[snapshot.LocationKey]bool, len(recent)+len(pool)+len(watch))
+	for _, w := range watch { // the watchlist, ten at most (P10-02)
+		seen[snapshot.Key(w)] = true
+	}
 	out := make([]snapshot.LocationRef, 0, len(recent)+len(pool))
 	for _, r := range append(append([]snapshot.LocationRef(nil), recent...), pool...) { // bounded (P10-02)
 		k := snapshot.Key(r)

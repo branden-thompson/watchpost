@@ -109,22 +109,11 @@ func (m *MarineProvider) fetchMarine(ctx context.Context, ref snapshot.LocationR
 	if err := invariant.Check(g.gridURL != "", "nws-marine: point resolved without a gridpoint URL for "+ref.Label); err != nil {
 		return nil, err
 	}
-	var grid struct {
-		Properties struct {
-			PrimarySwellHeight      gridSeries `json:"primarySwellHeight"`
-			PrimarySwellDirection   gridSeries `json:"primarySwellDirection"`
-			WaveHeight              gridSeries `json:"waveHeight"`
-			WavePeriod              gridSeries `json:"wavePeriod"`
-			WindWaveHeight          gridSeries `json:"windWaveHeight"`
-			SecondarySwellHeight    gridSeries `json:"secondarySwellHeight"`
-			SecondarySwellDirection gridSeries `json:"secondarySwellDirection"`
-			WavePeriod2             gridSeries `json:"wavePeriod2"`
-		} `json:"properties"`
-	}
 	if m.knownInland(g.gridURL) {
 		return nil, nil // remembered inland (UAT 72): no download
 	}
-	if _, err := m.base.client.GetJSON(ctx, g.gridURL, &grid); err != nil {
+	grid, err := m.base.gridDocument(ctx, g.gridURL) // the daily fill's decode of the same body (W14 P-13)
+	if err != nil {
 		return nil, fmt.Errorf("gridpoint for %s: %w", ref.Label, err)
 	}
 	pr := grid.Properties

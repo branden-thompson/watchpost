@@ -55,7 +55,7 @@ func TestThePoolIsInTheListBothSchedulersCover(t *testing.T) {
 	pool := []snapshot.LocationRef{{Label: "Fallbrook, CA", Zip: "92028", Lat: 33.37, Lon: -117.25}}
 	recent := []snapshot.LocationRef{{Label: "Boise, ID", Zip: "83702", Lat: 43.62, Lon: -116.2}}
 
-	list := withPool(recent, pool)
+	list := withPool(recent, pool, nil)
 	for _, want := range append(append([]snapshot.LocationRef(nil), recent...), pool...) {
 		if !slices.ContainsFunc(list, func(r snapshot.LocationRef) bool {
 			return snapshot.Key(r) == snapshot.Key(want)

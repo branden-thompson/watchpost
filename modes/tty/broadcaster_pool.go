@@ -77,15 +77,23 @@ func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 // and two centroids of one place are two locations.
 type locIndex map[snapshot.LocationKey]*snapshot.Location
 
-// locIndex builds it from the recent snapshot.
+// locIndex builds it from both snapshots: the priority one, the recent one over it.
 func (b Broadcaster) locIndex() locIndex {
-	if b.pool == nil {
+	if b.pool == nil && b.snap == nil {
 		return nil
 	}
-	out := make(locIndex, len(b.pool.Locations))
-	for i := range b.pool.Locations { // bounded by the snapshot (P10-02)
-		l := &b.pool.Locations[i]
-		out[snapshot.Key(snapshot.LocationRef{Lat: l.Lat, Lon: l.Lon})] = l
+	out := locIndex{}
+	// THE PRIORITY SNAPSHOT FIRST, THE RECENT ONE OVER IT (D-208): a watched
+	// place is fetched by the priority pipeline alone, so its row reads it
+	// there; the pool's own places are the recent snapshot's.
+	for _, s := range [2]*snapshot.Snapshot{b.snap, b.pool} { // two (P10-02)
+		if s == nil {
+			continue
+		}
+		for i := range s.Locations { // bounded by the snapshot (P10-02)
+			l := &s.Locations[i]
+			out[snapshot.Key(snapshot.LocationRef{Lat: l.Lat, Lon: l.Lon})] = l
+		}
 	}
 	return out
 }

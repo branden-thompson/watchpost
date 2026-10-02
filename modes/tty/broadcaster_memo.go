@@ -44,16 +44,13 @@ type consoleKey struct {
 	// selected drives BOTH the focused row and the pool's scroll window — the
 	// window is derived from the selection (poolSpan), not stored beside it.
 	selected int
-	// recent is the weather behind both tables (D-99). A POINTER, as Observer
-	// keys them: a publish hands over a whole new snapshot rather than editing
-	// one, so the pointer moving IS the data changing.
-	//
-	// `snap` IS NOT HERE, AND WAS. The PRIORITY snapshot feeds the masthead's
-	// stamp and its API summary — `b.snap` has exactly two readers and neither is
-	// a table. Keyed on it, every priority publish threw away a cached pair that
-	// was still correct. The guard is what said so: dropping it from the key
-	// changed no table, which for a key field means it was never an input.
+	// recent and priority are the weather behind both tables: the pool's places
+	// from the recent snapshot (D-99), a watched place's from the priority one
+	// (D-208). POINTERS, as Observer keys them: a publish hands over a whole new
+	// snapshot rather than editing one, so the pointer moving IS the data
+	// changing.
 	recent    *snapshot.Snapshot
+	priority  *snapshot.Snapshot
 	lineupGen uint64
 	areaGen   uint64
 	// theme is render.ThemeGeneration: every Tok() tint in every cell.
@@ -77,7 +74,7 @@ func (b Broadcaster) consoleKeyFor(used int) consoleKey {
 	k := consoleKey{
 		width: b.width, height: b.height, used: used, ascii: b.ascii,
 		power: b.power, fireBoldMW: b.fireBold(), selected: b.selected,
-		recent: b.pool, lineupGen: b.lineupGen, areaGen: b.areaGen,
+		recent: b.pool, priority: b.snap, lineupGen: b.lineupGen, areaGen: b.areaGen,
 		theme: render.ThemeGeneration(),
 	}
 	if b.anyLoading() {

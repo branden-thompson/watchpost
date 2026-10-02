@@ -3147,3 +3147,23 @@ are. `cycleIn`'s comment rewritten to the present (AP-HIST-01).
 direction - all caught; the voice picker's direction survived once (nothing tested it) and is held by a
 new test.
 
+## Batch 102 — each place fetched once (W14 P-13, D-208; 2026-10-02)
+
+**One fetch a place.** A place in both the watchlist and the Broadcaster's station pool was fetched by
+both pipelines every cycle. `withPool` now leaves the watched places out of the recent pipeline, so
+the priority pipeline alone fetches them. The pool's rows look up each place in the recent snapshot,
+else the priority one (`locIndex`), and the console memo's key carries both snapshots. The masthead
+stays the priority pipeline's alone (D-99).
+
+**`Retain` keeps the pool.** A commit retained the watchlist and the recent places only, so every
+watchlist edit dropped the pool's `/points` resolutions and the next cycle resolved them again. The
+station moves first (`reStation`), then `Retain` keeps watchlist, recent and pool together.
+
+**One decode of the gridpoint document.** The marine read and the forecast fill decoded the same
+document separately; `gridDocument` decodes it once with the marine series included, and both read it.
+
+**Mutation verdicts** (10): the watched-place exclusion, the watchlist passed at commit, `Retain`
+keeping the pool (both arms), the shared decode, the rows reading the priority snapshot and its order -
+all caught. The memo key without the priority snapshot survived the completeness guard (its walk does
+not perturb pointers); a case that republishes the priority snapshot now catches it. mAF2 and mAF3
+re-pointed at the new `withPool` call and caught.

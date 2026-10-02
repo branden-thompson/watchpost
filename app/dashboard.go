@@ -286,7 +286,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// already fetches a bounded set at a slow cadence — see withPool.
 	//
 	// `lp.poolRefs` DIRECTLY, not `currentPool()`: the lock is held here.
-	recentRefs := withPool(restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), lp.poolRefs)
+	recentRefs := withPool(restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), lp.poolRefs, refs)
 	lp.recent = startRecent(ctx, p, lp.providers(), recentRefs, func(snap *snapshot.Snapshot) { lp.severe.SetLocations(1, snap) }) // the tty owns the caps (Q6, L3-F11)
 	lp.mu.Unlock()
 	lp.markFIRMS()                         // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
@@ -918,13 +918,20 @@ func (lp *livePipelines) stopAll() {
 }
 
 func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
-	if lp.weather != nil {
-		lp.weather.Retain(append(append([]snapshot.LocationRef(nil), watch...), recent...)) // the grid cache follows the location set (Q5, L4-F7)
-	}
 	// THE STATION'S POOL IS DERIVED BEFORE THE LOCK, not inside it: the scan
 	// reads only the embedded tables and its argument, and `lp.mu` is held for
 	// the rest of this function (D-72, pool.go).
 	nextStation, nextPool, restation := lp.reStation(watch)
+	if lp.weather != nil {
+		// THE GRID CACHE FOLLOWS EVERY PLACE THE APP FETCHES (Q5, L4-F7, W14
+		// P-13): the watchlist, the recent list and the station's pool - the
+		// pool as it will stand after this commit.
+		pool := nextPool
+		if !restation {
+			pool = lp.currentPool()
+		}
+		lp.weather.Retain(append(append(append([]snapshot.LocationRef(nil), watch...), recent...), pool...))
+	}
 	// PUBLISHED AFTER THE LOCK IS RELEASED, which is what this defer buys:
 	// deferred first, it runs LAST, and `tea.Program.Send` must never be called
 	// while `lp.mu` is held — the program's own handlers reach back into these
@@ -971,20 +978,13 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 		// would leave it naming the region the station just left.
 		told = lp.p // read under the lock; sent above, after it
 	}
-	// THE POOL IS PART OF THE LIST, ON EVERY COMMIT AND NOT JUST AT THE SEED
-	// (D-112). This called `update(recent)` with the LISTENER's list alone, so the
-	// first time anything committed — a lookup, a favourite, a watchlist edit —
-	// `SetLocations` saw twenty-five locations that were no longer wanted, stopped
-	// every one of their schedulers and dropped their data. The pool table went
-	// back to shimmering and stayed there, which is what the HUM LEAD was looking
-	// at when rows four and down read `.·.` on a station that had been up for
-	// minutes.
-	//
-	// AND A MOVED STATION FETCHES ITS NEW CANDIDATES. Before this the new pool was
-	// PUBLISHED to the console and never fetched, so the console named a region
-	// whose weather nothing was asking for.
+	// THE POOL IS PART OF THE LIST ON EVERY COMMIT, NOT JUST AT THE SEED
+	// (D-112): reconciled against the listener's list alone, `SetLocations`
+	// would stop the pool's schedulers and drop its data. A moved station's
+	// new pool is what is fetched, as it is what is published. Watched places
+	// stay the priority pipeline's (D-208).
 	if lp.recent != nil {
-		lp.recent.update(withPool(recent, lp.poolRefs))
+		lp.recent.update(withPool(recent, lp.poolRefs, watch))
 	}
 	return nil
 }

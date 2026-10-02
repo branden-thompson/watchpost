@@ -101,6 +101,9 @@ func TestARestationedPoolIsWhatGetsFetched(t *testing.T) {
 		held[snapshot.Key(snapshot.LocationRef{Lat: l.Lat, Lon: l.Lon})] = true
 	}
 	for _, r := range lp.poolRefs {
+		if snapshot.Key(r) == snapshot.Key(watch[0]) {
+			continue // the transmitter is watched: the priority pipeline's (D-208)
+		}
 		if !held[snapshot.Key(r)] {
 			t.Fatalf("the new station's pool is published but not fetched: %s is missing", r.Label)
 		}

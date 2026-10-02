@@ -63,6 +63,16 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 		t.Fatal("the fixture must have something loading, or the shimmer is not measured")
 	}
 
+	// AND ONE POOL PLACE WATCHED, its weather the PRIORITY snapshot's (D-208):
+	// a watched place is fetched by the priority pipeline alone, so that
+	// snapshot reaches the tables - and a key without it replays a watched
+	// place's row after its weather moved.
+	pool := *base.pool
+	pool.Locations = append([]snapshot.Location(nil), base.pool.Locations...)
+	watched := pool.Locations[2]
+	pool.Locations = append(pool.Locations[:2], pool.Locations[3:]...)
+	base.pool, base.snap = &pool, &snapshot.Snapshot{Locations: []snapshot.Location{watched}}
+
 	// A GUARD THAT MEASURES NOTHING PASSES VACUOUSLY, so the premise is checked
 	// first: the fixture must actually draw both tables.
 	s0, p0 := base.buildSpans(used)
@@ -130,6 +140,16 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 			hotter := 44.4
 			next.Locations[0].Harmonized.Temp = &hotter
 			b, _ = b.Update(RecentSnapshotMsg{Snap: &next})
+			return b
+		}},
+		{"the weather behind a watched pool place is republished", func(b Broadcaster) Broadcaster {
+			// THE PRIORITY SNAPSHOT, the same way: a watched place's row reads
+			// it (D-208), so its pointer moving is that row's data changing.
+			next := *b.snap
+			next.Locations = append([]snapshot.Location(nil), b.snap.Locations...)
+			hotter := 44.4
+			next.Locations[0].Harmonized.Temp = &hotter
+			b, _ = b.Update(SnapshotMsg{Snap: &next})
 			return b
 		}},
 		{"the pool loses a location", func(b Broadcaster) Broadcaster {
