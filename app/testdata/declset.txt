@@ -8,6 +8,7 @@ const airLabelMost
 const airnowBytes
 const alertLayerKey
 const areaMemoAge
+const areaMemoKeys
 const bandRecordCap
 const basemapAttribution
 const bedFenceFarMi
@@ -129,6 +130,7 @@ func (*alertStore).get
 func (*alertStore).note
 func (*answeredFor).Fetch
 func (*answeredFor).answered
+func (*areaMemo).memo
 func (*bandRecord).has
 func (*bandRecord).note
 func (*bandRecord).recent

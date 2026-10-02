@@ -66,10 +66,12 @@ func TestAlertsInViewAreAskedOnceAndKeptToTheView(t *testing.T) {
 		t.Fatal(err)
 	}
 	asked := 0
+	now := time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)
 	lp := &livePipelines{idx: idx, areaAlerts: func(_ context.Context, areas []string) ([]snapshot.Alert, error) {
 		asked++
 		return viewTestAlerts(), nil
 	}}
+	lp.areaMemo.now = func() time.Time { return now }
 	here := snapshot.Location{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.38}
 	ask := tty.MapAsk{Place: &here, View: tty.MapView{W: -118.6, S: 32.5, E: -116.4, N: 34.1}}
 	if got := lp.mapInputs(ask); len(got.inView) != 0 || asked != 0 {
@@ -87,7 +89,10 @@ func TestAlertsInViewAreAskedOnceAndKeptToTheView(t *testing.T) {
 	if asked != 1 {
 		t.Errorf("the same areas were asked again within two minutes (%d)", asked)
 	}
-	lp.areaMemo.at = lp.areaMemo.at.Add(-3 * time.Minute)
+	now = now.Add(3 * time.Minute)
+	if got := lp.mapInputs(ask); len(got.inView) != 2 || asked != 1 {
+		t.Errorf("the estimate past two minutes fetched (%d) or lost the remembered answer (%d): it reads what is held, whatever its age", asked, len(got.inView))
+	}
 	_ = lp.mapInputsFetching(context.Background(), ask)
 	if asked != 2 {
 		t.Errorf("after two minutes the areas were not asked again (%d)", asked)
@@ -147,5 +152,29 @@ func TestTheMapAndTheLookupAskOnTheListenersLane(t *testing.T) {
 	}
 	if _, ok := ctx.Deadline(); !ok {
 		t.Error("a lookup keeps its time limit")
+	}
+}
+
+// A PAN BACK ASKS NOTHING AGAIN (W14 S-12): the alerts of the last few sets of
+// areas are remembered, so returning to a view seen within two minutes reads
+// its answer rather than asking the service again.
+func TestAPanBackAsksNothingAgain(t *testing.T) {
+	idx, err := geodata.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	asked := 0
+	lp := &livePipelines{idx: idx, areaAlerts: func(_ context.Context, areas []string) ([]snapshot.Alert, error) {
+		asked++
+		return viewTestAlerts(), nil
+	}}
+	here := snapshot.Location{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.38}
+	coast := tty.MapAsk{Place: &here, View: tty.MapView{W: -118.6, S: 32.5, E: -116.4, N: 34.1}}
+	inland := tty.MapAsk{Place: &here, View: tty.MapView{W: -112.5, S: 33.0, E: -111.5, N: 34.0}}
+	for _, ask := range []tty.MapAsk{coast, inland, coast, inland} {
+		_ = lp.mapInputsFetching(context.Background(), ask)
+	}
+	if asked != 2 {
+		t.Errorf("two views, each seen twice, asked %d times; want each once", asked)
 	}
 }

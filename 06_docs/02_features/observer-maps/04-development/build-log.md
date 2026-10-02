@@ -3311,3 +3311,29 @@ check's new form; it still survives by design, as its header records.
 `docs/where-things-happen.md` names `platform/bodymemo` where it named the removed file - its test
 (`TestWhereThingsHappenNamesRealSymbols`) failed the first gate run, which had not run `cmd/watchpost`.
 
+## Batch 109 — one time-bounded memo (W14 S-12, D-212 step 2, D-213; 2026-10-02)
+
+**`platform/agememo`.** A value per key, answered while Fresh; one fetch a key at a time, its answer
+shared by the callers that asked while it ran, and a waiter that gives up with its own context; a
+failed refresh answered by the last value while it is younger than StandIn; at most Max keys, the least
+recently used out. `Do` refuses a nil fetch and a StandIn shorter than Fresh, which could never stand
+in (D-213); the remainder of P10-05's density is a ratified ledger row on `platform/bodymemo`'s terms.
+
+**What it replaces.** The area alerts' one-key memo - now the last eight sets of areas, so a pan back
+over a view seen within two minutes asks the service nothing; the estimate still reads what is held
+whatever its age. HMS's coalescing of the fire archive (60 s fresh, the last good archive standing in
+for 30 minutes - F6, which no test exercised until this batch).
+
+**What stays, and why.** The CO-OPS station lists' once-a-day guard fills three provider fields the rest
+of the provider reads directly - converting it is a restructuring of those readers for nothing gained.
+The zone store keeps its own counters for the diagnostics and a forgetting rule tied to the map closing
+(D-162). NWS points carries the last resolution's preferred station into the next; `aheadFetch` fetches
+in the background with its own retry clock (D-204). Each is a memo, and each does something the shared
+one would have to grow an option for.
+
+**Mutation verdicts** (15): freshness, the stand-in's age and its use, a shared fetch, LRU, a waiter's
+context, a panicking fetch, Max's default, Do's two refusals, the estimate reading whatever age, eight
+area sets, HMS's stand-in and coalescing - all caught; two survived once (the estimate, HMS's stand-in)
+and are held by new tests. Evicting at Max survives by design: off by one, the bound's check evicts in
+its place, as mBM1 records for `bodymemo`.
+

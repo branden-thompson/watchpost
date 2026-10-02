@@ -9,7 +9,7 @@
 
 **It is generated.** Add a row by ratifying it with the HUM LEAD, writing it to the ledger, re-running `scripts/quality/p10-ledger-mirror.py`, and running `scripts/quality/lint-ledger.sh`. The generator refuses to write a row carrying an absolute path, a harness path, an A2DH skill path, an internal project tree, or an email address — and the lint refuses the file if one ever gets in another way.
 
-**153 rows.**
+**154 rows.**
 
 ## P10-01-CONTROL-FLOW (34)
 
@@ -82,7 +82,7 @@
 | `modes/tty/router.go` | `keyAction` | 2026-09-16 | THE SAME DISPATCHER SHAPE AS Dashboard.dispatch, and what is left after `update` was split from cyclomatic 43 to under the ceiling (D-159): a flat switch over a CLOSED ACTION SET, each case a guard and a delegate. Its complexity is the number of bindings the console has. Splitting further would put the key-lookup in two places, and the ONE-LOOKUP-SITE rule is D-1's: a binding that switched surfaces itself would be a second carrier of the rule the Router exists to hold. RATIFIED by the HUM LEAD 2026-09-16 ("recommendation approved" / "ratified"), after a blind second audit re-examined every candidate; recorded in 06_docs/02_features/0.16.0-broadcaster-ui/08-reports/red-team-build.md. |
 | `platform/render/themes.go` | `builtinOverrides` | 2026-09-16 | CYCLOMATIC 1: IT IS A DATA LITERAL, NOT LOGIC. The LENGTH ceiling is a proxy for control-flow load this function does not carry — it maps theme names to token overrides and branches nowhere. It was already 70 code lines at merge-base, so the breach is not 0.16.0's. REMOVABLE WHEN THE LENGTH METRIC STOPS COUNTING COMPOSITE-LITERAL ELEMENTS, which is the right remedy: the defect is in what the metric counts, and this row records a judgement about one function in the meantime. RATIFIED by the HUM LEAD 2026-09-16 ("recommendation approved" / "ratified"), after a blind second audit re-examined every candidate; recorded in 06_docs/02_features/0.16.0-broadcaster-ui/08-reports/red-team-build.md. |
 
-## P10-05-INVARIANT-DENSITY (61)
+## P10-05-INVARIANT-DENSITY (62)
 
 | File | Symbol | Ratified | Reason |
 |---|---|---|---|
@@ -147,6 +147,7 @@
 | `tools/gateoracle` | `package` | 2026-09-17 | Density 0.31 across 61 functions. DEVELOPMENT TOOLING, never linked into the product binary: the Makefile gate oracle. Its functions are decisions over argv and text (goKey, packageShaped, buildOutput, hasShellCommandFlag, scriptArg, encodeKey) and process plumbing (clone, paint, run, record), each near-total over its inputs — a malformed argument is not a package, a missing file is not a script, and both are reported, not asserted against. The checks it CAN carry it carries in a stronger form than a ratio measures: every decision has a known-case-first unit test (stub_test.go), the four assertions are proved in both directions by 100+ executed specimens on every invocation, and the instrument prints its own ceiling on every passing run (FR-11.5). Clearing this ratio would mean roughly forty guard clauses that assert what the unit tests already pin. RATIFIED by the HUM LEAD 2026-09-17 ("Ratified"). |
 | `tools/gateoracle/stub` | `package` | 2026-09-17 | Density 0.00 across 1 function: main is one line, os.Exit(gateoracle.StubMain(os.Args)). Every decision it delegates is in the package above; an invariant here would guard nothing. RATIFIED by the HUM LEAD 2026-09-17 ("Ratified"). |
 | `platform/units` | `package` | 2026-10-01 | Exact unit conversions (temperature, distance, speed, feet, inches, knots, mph), each one line by its definition, with no anomalous state to detect - NaN in gives NaN out. Pinned by tests against the definitions and as round trips. Rule 5 checks would make every conversion return an error to some 45 callers. The pure-arithmetic shape ratified for platform/geo, platform/astro and domains/radio/spectrum. W14 S-6, observer-maps D-207. RATIFIED by the HUM LEAD 2026-10-01 ("Ledger exemption (Recommended)"), asked with the cost of the alternative stated. |
+| `platform/agememo` | `package` | 2026-10-02 | Density 0.27 across 11 functions, against a threshold of 2.0. Stateful, like platform/bodymemo - a lock, a key cap, fetches in flight - and NOT granted on density alone, which the bodymemo row forbids: its one real bound (never more than Max keys) is checked where it can break, in the store path, and evicts if it ever does; Do, the one function that returns an error, refuses a nil fetch and a StandIn shorter than Fresh (a stand-in that could never stand in). What remains under quota is Get/Last/Put/Forget/land/freshLocked/evictLocked, small and total: Rule 5 checks there would make them return errors that cannot happen. Pinned by 8 tests (freshness, one shared fetch, the stand-in age, the LRU cap, a panicking fetch, a waiter's context, Last/Put/Forget, the refusals) and 9 caught mutants. W14 S-12, observer-maps D-212, D-213. RATIFIED by the HUM LEAD 2026-10-02 ("Checks in Do, then exempt"), asked with the cost of every alternative stated. |
 
 ## P10-06-MINIMAL-SCOPE (23)
 

@@ -18,10 +18,10 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/fire"
+	"github.com/branden-thompson/watchpost/platform/agememo"
 	"github.com/branden-thompson/watchpost/platform/bodymemo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
@@ -67,12 +67,22 @@ type Provider struct {
 	// so without this the same disk file is read (and hashed for the memo) tens
 	// of times a window even though it changes every 10 min, which makes it the
 	// app's single largest allocator. This coalesces the burst: one parsed
-	// archive is reused for coalesceFor, whoever asks.
-	mu        sync.Mutex
-	cached    []Point
-	cachedErr error // ErrTruncated (or nil) for the cached parse — reused with it
-	cachedAt  time.Time
-	now       func() time.Time // time.Now in production; a stub in tests
+	// archive is reused for coalesceFor, whoever asks, and stands in for up to
+	// maxLastGood when a read fails (F6).
+	coalesce *agememo.Memo[struct{}, archive]
+	now      func() time.Time // time.Now in production; a stub in tests
+}
+
+// newCoalesce is the coalescing memo's constructor as a value: P10's call
+// graph matches a call by its bare name, and agememo.New called inside this
+// package's New reads as New calling itself (as wfigs' perimeter memo).
+var newCoalesce = agememo.New[struct{}, archive]
+
+// archive is a parsed archive: its points, and ErrTruncated (or nil) for the
+// parse - reused with it.
+type archive struct {
+	pts  []Point
+	soft error
 }
 
 // coalesceFor is how long a parsed archive is reused before another read — well
@@ -108,7 +118,9 @@ func New(client *httpx.Client, url string, rules fire.Rules) *Provider {
 	if url == "" {
 		url = DefaultURL
 	}
-	return &Provider{client: client, url: url, rules: rules, now: time.Now, memo: bodymemo.NewKeepingErrors[struct{}, []Point](1)}
+	p := &Provider{client: client, url: url, rules: rules, now: time.Now, memo: bodymemo.NewKeepingErrors[struct{}, []Point](1)}
+	p.coalesce = newCoalesce(agememo.Options{Fresh: coalesceFor, StandIn: maxLastGood, Now: func() time.Time { return p.now() }})
+	return p
 }
 
 // ID implements snapshot.Provider.
@@ -159,41 +171,26 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 // (what parsed is served). A fetch/parse error while a recent good parse exists
 // returns the last good points, so a blip never blanks fire on the watchlist.
 func (p *Provider) points(ctx context.Context) ([]Point, error) {
-	// Within the coalesce window reuse the parsed archive (and its truncation
-	// state) — no re-read, no re-hash. The lock is NOT held across the fetch:
-	// httpx single-flights concurrent identical GETs and the large-entry cache
-	// serves the KMZ from memory, so releasing it avoids stalling every fire
-	// fetch (and shutdown) behind one slow network read (red-team 0.12.0 P4 F9).
-	p.mu.Lock()
-	if p.cached != nil && p.now().Sub(p.cachedAt) < coalesceFor {
-		pts, perr := p.cached, p.cachedErr
-		p.mu.Unlock()
-		return pts, perr
-	}
-	last, lastAt := p.cached, p.cachedAt
-	p.mu.Unlock()
-
-	// Serve a recent last-good archive over a transient error, but not forever:
-	// past maxLastGood the data is too stale to present as current (F6).
-	serveLast := func(err error) ([]Point, error) {
-		if last != nil && p.now().Sub(lastAt) < maxLastGood {
-			return last, nil
+	// No lock is held across the read: httpx single-flights identical GETs and
+	// the large-entry cache serves the KMZ from memory, and a caller waiting on
+	// another's read gives up with its own ctx - nothing stalls every fire fetch
+	// (and shutdown) behind one slow read (red-team 0.12.0 P4 F9).
+	a, err := p.coalesce.Do(ctx, struct{}{}, func() (archive, error) {
+		raw, err := p.client.GetText(ctx, p.url, httpx.TTL(archiveTTL))
+		if err != nil {
+			return archive{}, err
 		}
+		pts, perr := p.memo.Parsed(struct{}{}, raw, Parse)
+		if perr != nil && !errors.Is(perr, ErrTruncated) {
+			p.client.Forget(p.url) // a cached body that does not parse must not be served for the rest of its TTL (P6)
+			return archive{}, perr
+		}
+		return archive{pts: pts, soft: truncErr(perr)}, nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	raw, err := p.client.GetText(ctx, p.url, httpx.TTL(archiveTTL))
-	if err != nil {
-		return serveLast(err)
-	}
-	pts, perr := p.memo.Parsed(struct{}{}, raw, Parse)
-	if perr != nil && !errors.Is(perr, ErrTruncated) {
-		p.client.Forget(p.url) // a cached body that does not parse must not be served for the rest of its TTL (P6)
-		return serveLast(perr)
-	}
-	p.mu.Lock()
-	p.cached, p.cachedErr, p.cachedAt = pts, truncErr(perr), p.now()
-	p.mu.Unlock()
-	return pts, perr // nil, or ErrTruncated (soft)
+	return a.pts, a.soft // nil, or ErrTruncated (soft)
 }
 
 // Points are every detection in the archive, for the map (0.18.0 D-121):

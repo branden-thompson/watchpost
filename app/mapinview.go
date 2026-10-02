@@ -19,6 +19,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/agememo"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -26,37 +27,43 @@ import (
 // ticker's cadence, so the map is no staler than the marquee.
 const areaMemoAge = 2 * time.Minute
 
-// areaMemo is the last answer for a set of areas.
+// areaMemoKeys is how many sets of areas are remembered: a pan back over
+// the last few views asks nothing again.
+const areaMemoKeys = 8
+
+// areaMemo is the alerts of the last few sets of areas the view asked for,
+// built on first use on now's clock (the wall clock when nil).
 type areaMemo struct {
-	mu     sync.Mutex
-	key    string
-	at     time.Time
-	alerts []snapshot.Alert
+	once sync.Once
+	now  func() time.Time
+	m    *agememo.Memo[string, []snapshot.Alert]
+}
+
+// memo is the memo itself.
+func (a *areaMemo) memo() *agememo.Memo[string, []snapshot.Alert] {
+	a.once.Do(func() {
+		a.m = agememo.New[string, []snapshot.Alert](agememo.Options{Fresh: areaMemoAge, Max: areaMemoKeys, Now: a.now})
+	})
+	return a.m
 }
 
 // viewAlerts is the alerts of the areas the view touches: remembered within
 // areaMemoAge, else asked of the service - unless fetch is off, when only
-// what was remembered is read (the estimate).
+// what was remembered is read, whatever its age (the estimate).
 func (lp *livePipelines) viewAlerts(ctx context.Context, v tty.MapView, fetch bool) []snapshot.Alert {
 	areas := viewAreas(lp.idx, v)
 	key := strings.Join(areas, ",")
-	lp.areaMemo.mu.Lock()
-	if lp.areaMemo.key == key && (!fetch || time.Since(lp.areaMemo.at) < areaMemoAge) {
-		out := lp.areaMemo.alerts
-		lp.areaMemo.mu.Unlock()
-		return out
+	if !fetch {
+		alerts, _, _ := lp.areaMemo.memo().Last(key)
+		return alerts
 	}
-	lp.areaMemo.mu.Unlock()
-	if !fetch || lp.areaAlerts == nil || len(areas) == 0 {
+	if lp.areaAlerts == nil || len(areas) == 0 {
 		return nil
 	}
-	alerts, err := lp.areaAlerts(ctx, areas)
+	alerts, err := lp.areaMemo.memo().Do(ctx, key, func() ([]snapshot.Alert, error) { return lp.areaAlerts(ctx, areas) })
 	if err != nil {
 		return nil // the service's failure draws no view alerts; the station's own still draw
 	}
-	lp.areaMemo.mu.Lock()
-	lp.areaMemo.key, lp.areaMemo.at, lp.areaMemo.alerts = key, time.Now(), alerts
-	lp.areaMemo.mu.Unlock()
 	return alerts
 }
 
