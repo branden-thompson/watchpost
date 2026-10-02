@@ -31,6 +31,7 @@ package history
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -44,6 +45,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/agememo"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 )
@@ -138,6 +140,9 @@ type Day struct {
 type Stats struct {
 	Puts, PutFailures, Skipped                 int64
 	Corrupt, VersionMismatch, Pruned, RolledUp int64
+	// DayReads is how many times a day's hours were read from its files: a
+	// day read again only when its files changed (W14 P-18).
+	DayReads int64
 }
 
 // Store is a history on disk. The zero root is a store that does nothing.
@@ -147,7 +152,33 @@ type Store struct {
 	now   func() time.Time
 	mu    sync.Mutex
 	stats Stats
+	// days keeps each day's hours as read, by the day's file, with what its
+	// files were when read: read again only when they change (W14 P-18).
+	days *agememo.Memo[string, heldDay]
 }
+
+// heldDay is a day's hours as read, and its files when they were read.
+type heldDay struct {
+	files   dayFiles
+	entries []hourEntry
+}
+
+// dayFiles is what a day's files are: the day's own document's time and
+// size, its bucket directory's time and how many it holds, and its buckets'
+// newest time and their bytes. Any write - this instance's by a rename,
+// another's, or one in place - moves one of them.
+type dayFiles struct {
+	dayMod       time.Time
+	daySize      int64
+	bucketsMod   time.Time
+	buckets      int
+	newestBucket time.Time
+	bucketBytes  int64
+}
+
+// dayRules keep a day's hours for as long as its files stand - the files
+// decide, not the age - for the series and days a map replays.
+var dayRules = agememo.Options{Fresh: 24 * time.Hour, Max: 256}
 
 // DefaultRoot is $XDG_DATA_HOME/watchpost/weather/history, by default
 // ~/.local/share/...; "" where neither resolves (the store then does
@@ -177,6 +208,7 @@ func Open(root string, now func() time.Time, sets ...Dataset) *Store {
 	if now == nil {
 		s.now = time.Now
 	}
+	s.days = agememo.New[string, heldDay](agememo.Options{Fresh: dayRules.Fresh, Max: dayRules.Max, Now: s.now})
 	for _, d := range sets { // a handful (P10-02)
 		s.sets[d.Name] = d
 	}
@@ -540,19 +572,71 @@ func (s *Store) dayEntries(dir string, d Dataset, day time.Time) []hourEntry {
 	if f.day == "" {
 		return nil
 	}
+	entries, _ := os.ReadDir(f.buckets)
+	// WHAT THE DAY'S FILES ARE NOW: its document's time and size, its bucket
+	// directory's time and count, its buckets' newest time and bytes.
+	var now dayFiles
+	if fi, err := os.Stat(f.day); err == nil {
+		now.dayMod, now.daySize = fi.ModTime(), fi.Size()
+	}
+	if fi, err := os.Stat(f.buckets); err == nil {
+		now.bucketsMod = fi.ModTime()
+	}
+	now.buckets = len(entries)
+	for i, e := range entries { // bounded by maxDayBuckets (P10-02)
+		if fi, err := e.Info(); err == nil && i < maxDayBuckets {
+			now.bucketBytes += fi.Size()
+			if fi.ModTime().After(now.newestBucket) {
+				now.newestBucket = fi.ModTime()
+			}
+		}
+	}
+	if s.days == nil {
+		return s.readDay(f, d, day, entries)
+	}
+	// THE FILES DECIDE, NOT THE AGE: what was read stands while they do. (Last,
+	// Forget and Do, not Get and Put: P10's call graph matches a call by its
+	// bare name, and this store's own Get and Put reach here.)
+	if held, _, ok := s.days.Last(f.day); ok && held.files == now {
+		return held.entries
+	}
+	s.days.Forget(f.day)
+	held, _ := s.days.Do(context.Background(), f.day, func() (heldDay, error) {
+		return heldDay{files: now, entries: s.readDay(f, d, day, entries)}, nil
+	})
+	return held.entries
+}
+
+// readDay reads a day's hours from its files: the day's document, then its
+// buckets, the newest issue of each hour standing. An hour that is not the
+// day's is a misfiled or damaged document: not read, and counted.
+func (s *Store) readDay(f seriesFiles, d Dataset, day time.Time, entries []os.DirEntry) []hourEntry {
+	s.note(func(st *Stats) { st.DayReads++ }, true)
+	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, day.Location())
+	end := start.AddDate(0, 0, 1)
+	corrupt := func(st *Stats) { st.Corrupt++ }
 	byAt := map[time.Time]hourEntry{}
 	if doc, ok := readAs[dayDoc](s, f.day, d); ok {
 		for _, h := range doc.Hours { // a day's buckets (P10-02)
+			inDay := !h.Hour.Before(start) && h.Hour.Before(end)
+			if err := invariant.Check(inDay, "history: an hour filed under another day"); err != nil {
+				s.note(corrupt, false)
+				continue
+			}
 			byAt[h.Hour] = h
 		}
 	}
-	entries, _ := os.ReadDir(f.buckets)
 	for i, e := range entries { // bounded by maxDayBuckets (P10-02)
 		if i >= maxDayBuckets || e.Name()[0] == '.' {
 			continue
 		}
 		if doc, ok := readAs[dayDoc](s, filepath.Join(f.buckets, e.Name()), d); ok && len(doc.Hours) == 1 {
 			h := doc.Hours[0]
+			inDay := !h.Hour.Before(start) && h.Hour.Before(end)
+			if err := invariant.Check(inDay, "history: an hour filed under another day"); err != nil {
+				s.note(corrupt, false)
+				continue
+			}
 			if have, ok := byAt[h.Hour]; !ok || have.Issued.Before(h.Issued) {
 				byAt[h.Hour] = h
 			}
@@ -563,6 +647,13 @@ func (s *Store) dayEntries(dir string, d Dataset, day time.Time) []hourEntry {
 		out = append(out, h)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Hour.Before(out[j].Hour) })
+	// A DAY HOLDS NO MORE HOURS THAN ITS STEP ALLOWS: more is a document whose
+	// hours are off the step - damaged - and the day is read as absent.
+	most := int(24 * time.Hour / d.step())
+	if err := invariant.Check(len(out) <= most, "history: a day holds more hours than its step allows"); err != nil {
+		s.note(corrupt, false)
+		return nil
+	}
 	return out
 }
 

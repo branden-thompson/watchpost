@@ -267,6 +267,14 @@ type hrrrGet struct {
 	failRun bool          // the run is not answered
 }
 
+// asksOfRun is how many times the run was asked, read under the fake's lock:
+// the hours ahead are fetched in the background.
+func (h *hrrrGet) asksOfRun() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.runs
+}
+
 func (h *hrrrGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]byte, error) {
 	if strings.HasSuffix(rawURL, ".json") {
 		h.mu.Lock()
@@ -402,8 +410,8 @@ func TestTheObservedLoopIsNeverHeldForHRRR(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	if get.runs != 1 {
-		t.Errorf("HRRR's run was asked %d times over the asks; want once, the fetch carried across them", get.runs)
+	if get.asksOfRun() != 1 {
+		t.Errorf("HRRR's run was asked %d times over the asks; want once, the fetch carried across them", get.asksOfRun())
 	}
 }
 
@@ -434,8 +442,8 @@ func TestAFailedHRRRIsAskedAgainSoon(t *testing.T) {
 	if out.AheadIn > aheadRetry || out.AheadIn < aheadRetry-time.Second || len(out.Problems) != 1 {
 		t.Errorf("after the failure: again in %v, problems %v; want about %v and the failure told once", out.AheadIn, out.Problems, aheadRetry)
 	}
-	if again := lp.mapRadar(context.Background(), ask); len(again.Problems) != 0 || get.runs != 1 {
-		t.Errorf("asked again within the 30 s: problems %v, HRRR asked %d times; want nothing new", again.Problems, get.runs)
+	if again := lp.mapRadar(context.Background(), ask); len(again.Problems) != 0 || get.asksOfRun() != 1 {
+		t.Errorf("asked again within the 30 s: problems %v, HRRR asked %d times; want nothing new", again.Problems, get.asksOfRun())
 	}
 	mu.Lock()
 	clock = clock.Add(aheadRetry + time.Second)
@@ -443,10 +451,10 @@ func TestAFailedHRRRIsAskedAgainSoon(t *testing.T) {
 	if again := lp.mapRadar(context.Background(), ask); again.AheadIn != aheadSoon {
 		t.Errorf("past the 30 s: again in %v; want HRRR asked again, the answer owed in %v", again.AheadIn, aheadSoon)
 	}
-	for deadline := time.Now().Add(5 * time.Second); get.runs < 2 && time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+	for deadline := time.Now().Add(5 * time.Second); get.asksOfRun() < 2 && time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
 	}
-	if get.runs != 2 {
-		t.Errorf("HRRR asked %d times; want a second ask past the 30 s", get.runs)
+	if get.asksOfRun() != 2 {
+		t.Errorf("HRRR asked %d times; want a second ask past the 30 s", get.asksOfRun())
 	}
 }
 

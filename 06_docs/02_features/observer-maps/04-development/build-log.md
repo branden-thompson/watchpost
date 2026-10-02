@@ -3386,3 +3386,29 @@ caught; the time survived the first fixture (every frame the same picture, and p
 pictures of different sizes) and is held by `TestEachFramesCheckIsItsOwn`, whose painted and clear
 pictures are padded past their end to one size, so only the time tells them apart.
 
+## Batch 112 — the history's days kept while their files stand (W14 P-18, D-212 step 3; 2026-10-02)
+
+**The replay's reads.** Every `Get` and `Put` read a day's files from disk - its document and every
+bucket, each one gzipped JSON - and a Forecast-mode map replays up to a day of hours a box: on the order
+of 2,000 file reads a pan. The store now keeps each day's hours as read, in a `platform/agememo` of 256,
+and reads them again only when the day's files change. What the files are is taken each time - the day
+document's time and size, the bucket directory's time and count, its buckets' newest time and bytes -
+a few `stat`s against decompressing the day. Any write moves one of them: this instance's (a rename into
+the directory), another instance's in the same store (watchpost runs more than once), or one written in
+place. `DayReads` counts the days read from their files.
+
+**Two checks that earn their place.** `platform/history` stood at exactly P10-05's 2.0, so the new code
+carries its own: an hour in a day's document or bucket that is not the day's is a misfiled or damaged
+document - left out and counted Corrupt - and a day holding more hours than its step allows is read as
+absent. P10 counts a check only when its condition calls nothing, so each condition is taken into a value
+first (recorded in memory, with the bare-name recursion rule: the store's own Get and Put reach the day
+memo, so it is read through Last, Forget and Do).
+
+**And a test's race.** `TestAFailedHRRRIsAskedAgainSoon` read its fake's run count without the fake's
+lock while HRRR was fetched in the background; the race detector caught it in this batch's run. The
+count is read under the lock (`asksOfRun`).
+
+**Mutation verdicts** (7): the files' check, the bucket parts of it, the day reads counted, the day kept,
+the bucket's and the document's hour-of-day checks, the step's bound - all caught; the document's check
+survived the first tests and is held by `TestADaysDocumentIsReadForItsOwnHoursOnly`.
+
