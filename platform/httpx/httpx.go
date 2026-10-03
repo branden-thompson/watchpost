@@ -17,6 +17,7 @@
 package httpx
 
 import (
+	"cmp"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -61,6 +62,8 @@ type Config struct {
 	MaxRetries int           // retries beyond the first attempt; 0 = none (the zero value is the safe reading — PA-7); the dashboard uses 1, report 3
 	Timeout    time.Duration // per-request; default 30s
 	CacheDir   string        // on-disk cache tier; "" = memory only
+	MemBytes   int           // the memory tier's cap, a quarter of it the largest entry it keeps; 0 = the package's 8 MB
+	DiskBytes  int64         // the disk tier's cap; 0 = the package's 256 MB (DiskCacheBytes)
 
 	// The radar client's hardening (0.18.0 W8.5, FR-5.7, RK-11, D-55); the
 	// zero values are every other client's behaviour.
@@ -309,7 +312,7 @@ func New(cfg Config) (*Client, error) {
 	if cfg.RefusePrivate {
 		transport.DialContext = publicDialer().DialContext
 	}
-	return &Client{cfg: cfg, http: &http.Client{Timeout: cfg.Timeout, Transport: transport, CheckRedirect: SameOriginRedirect}, cache: newCache(cfg.CacheDir), stats: newReqStats(), memo: newFailureMemo(),
+	return &Client{cfg: cfg, http: &http.Client{Timeout: cfg.Timeout, Transport: transport, CheckRedirect: SameOriginRedirect}, cache: newCacheSized(cfg.CacheDir, cmp.Or(cfg.DiskBytes, maxDiskBytes), cmp.Or(cfg.MemBytes, maxMemBytes)), stats: newReqStats(), memo: newFailureMemo(),
 		inflight: [lanes]chan struct{}{make(chan struct{}, maxInflight), make(chan struct{}, maxInflightPriority), make(chan struct{}, maxInflightInteract)}}, nil
 }
 
@@ -423,6 +426,17 @@ func (c *Client) GetJSON(ctx context.Context, rawURL string, out any, opts ...Op
 // body must not be served it again for the rest of its TTL (the GetJSON
 // poison guard, made available to GetText callers — red-team B5 P6).
 func (c *Client) Forget(rawURL string) { c.cache.forget(rawURL) }
+
+// Cached is a URL's fresh body from the cache, memory or disk, or false - it
+// never asks the network, and an expired entry is not fresh (D-217). The
+// slice is the cache's own, read-only as GetText's is.
+func (c *Client) Cached(rawURL string) ([]byte, bool) {
+	body, ok := c.cache.get(rawURL)
+	if ok {
+		c.stats.add(statHost(rawURL), func(h *HostStats) { h.Cache++ })
+	}
+	return body, ok
+}
 
 // GetText fetches a URL and returns the raw body (text products such as
 // NDBC realtime files) through the same pacing, retry, cache and redaction

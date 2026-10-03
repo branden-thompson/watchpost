@@ -3521,3 +3521,29 @@ branch, matching by callsign, the kept write, the three MasterControl seams, the
 refusal and its clearing, the key bound, the wiring, and another relay playing counted as not this
 one (it survived first; a test of a different relay playing now catches it) - all caught. Three anchors
 moved with the code (mCE, mY2, mZ5) and were re-pointed.
+
+## Batch 118 — what is paid for is kept and served (W14 P-20 parts 2 and 3, D-217, D-219; 2026-10-02)
+
+**A spent quota no longer hides what was paid for (D-217).** While Open-Meteo's quota was spent, the
+quota gate refused every Open-Meteo ask before the response cache was read, so the hour's bodies
+already fetched - its temperature, the waves beyond NDFD, rain's days 4 to 7, the UV grid - vanished from
+the map the moment a hold began. httpx gains `Client.Cached` (a fresh body from memory or disk, or none;
+it never asks the network), and while a host is held the gate serves from it. A due probe that found
+its answer in the cache used to free the host without touching the network, so the next uncached asks
+were refused again; only a network answer frees a host now, and a cached answer leaves the probe for one
+that reaches the network.
+
+**The temperature client keeps what it fetched (D-219).** It had an 8 MB memory tier and no disk, so an
+evicted body was fetched again - billed, for Open-Meteo - and a relaunch within the hour asked for
+everything. httpx's config gains `MemBytes` and `DiskBytes`; the temperature client keeps 24 MiB in
+memory and a 64 MiB disk cache under the OS cache directory's `watchpost/map-http`, and the map's one
+stated total now counts it (576 MB). The "memory only" it had was the radar client's (go-tuiMaps PLAN red
+team B-2, D-55), copied when temperature was built; the radar client stays memory only. "Clear map data"
+now empties the map clients' caches as well, memory and disk.
+
+**Mutation verdicts** (14): the cached serve, the gate's cache wired, `Cached` itself, the sized entry
+limit, eviction and its trigger by the sized cap, both config fields, the temperature client's directory,
+the production directory, the clear and the stated total - caught. Two are not measured: dropping the
+`held` guard on the cached serve is equivalent (an unheld ask reads the cache first anyway), and the
+dashboard line that hands the map `newTempClient` has no test that builds the production pipelines.
+Every mutant anchored in a file this batch edited was applied and vetted before the gate.

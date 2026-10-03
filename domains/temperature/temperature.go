@@ -249,16 +249,27 @@ func dayOffset(t, now time.Time) int {
 // 110 KB for 100 points' seven days.
 const bodyCap = 2 << 20
 
-// NewClient is the temperature client: memory only, the body capped as it
-// reads, https only, and no dial to a private address - the radar client's
-// hardening (W8.5, RK-11).
-func NewClient(userAgent string) (*httpx.Client, error) {
-	return httpx.New(ClientConfig(userAgent))
+// CacheBytes is the temperature client's disk cap, which the map's one stated
+// cache total covers (FR-3.5, D-219): an hour of the lower 48's bodies is
+// about 1.5 MB.
+const CacheBytes = 64 << 20
+
+// memBytes is its memory tier (D-219): several regions' hours, panned
+// through in an hour, without an eviction - Open-Meteo bills a body fetched
+// again.
+const memBytes = 24 << 20
+
+// NewClient is the temperature client: the body capped as it reads, https
+// only, and no dial to a private address - the radar client's hardening
+// (W8.5, RK-11) - and what it paid for kept on disk at dir ("" memory only),
+// so an eviction or a relaunch within the hour is not asked again (D-219).
+func NewClient(userAgent, dir string) (*httpx.Client, error) {
+	return httpx.New(ClientConfig(userAgent, dir))
 }
 
 // ClientConfig is the client's configuration, named so a test holds it.
-func ClientConfig(userAgent string) httpx.Config {
-	return httpx.Config{UserAgent: userAgent, MaxRetries: 1, CacheDir: "",
+func ClientConfig(userAgent, dir string) httpx.Config {
+	return httpx.Config{UserAgent: userAgent, MaxRetries: 1, CacheDir: dir, MemBytes: memBytes, DiskBytes: CacheBytes,
 		MaxBodyBytes: bodyCap, RefusePrivate: true, HTTPSOnly: true}
 }
 

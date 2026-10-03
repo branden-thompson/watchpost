@@ -681,6 +681,7 @@ func macVoices
 func mainTrack
 func mapAreaNamer
 func mapCredits
+func mapHTTPDir
 func mapRetention
 func mapSourceList
 func marineArea
@@ -713,6 +714,7 @@ func newRadioDeck
 func newReleaseWatch
 func newResolver
 func newSevereDeck
+func newTempClient
 func newTimingLog
 func nextFeels
 func notNew

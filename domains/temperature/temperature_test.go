@@ -244,9 +244,14 @@ func TestAMissingPointIsLeftOutNotZero(t *testing.T) {
 }
 
 func TestTheClientIsHardened(t *testing.T) {
-	c := ClientConfig("watchpost/test")
-	if c.CacheDir != "" || !c.RefusePrivate || !c.HTTPSOnly || c.MaxBodyBytes != bodyCap {
-		t.Errorf("the client is %+v; want memory only, public addresses, https only, capped", c)
+	c := ClientConfig("watchpost/test", "/cache/map-http")
+	if !c.RefusePrivate || !c.HTTPSOnly || c.MaxBodyBytes != bodyCap {
+		t.Errorf("the client is %+v; want public addresses, https only, capped", c)
+	}
+	// AND IT KEEPS WHAT IT PAID FOR (D-219): on disk at the directory given,
+	// within the stated cap, and with room in memory for several regions' hours.
+	if c.CacheDir != "/cache/map-http" || c.DiskBytes != CacheBytes || c.MemBytes != memBytes || c.MemBytes/4 < bodyCap {
+		t.Errorf("the client keeps %q (%d on disk, %d in memory); want the directory given, %d, %d", c.CacheDir, c.DiskBytes, c.MemBytes, CacheBytes, memBytes)
 	}
 	if got := untilNextHour(time.Date(2026, 9, 27, 1, 50, 0, 0, time.UTC)); got != 11*time.Minute {
 		t.Errorf("an answer at 01:50 is kept %v; want to 02:01", got)

@@ -98,6 +98,7 @@ func hostOf(raw string) string {
 // probe is due: the sources' client for Open-Meteo.
 type QuotaGate struct {
 	ask   func(ctx context.Context, rawURL string, opts ...httpx.Option) ([]byte, error) // the getter's GetText, as a value: a call by that name would read to P10 as recursion
+	kept  func(rawURL string) ([]byte, bool)                                             // the getter's cache, read while the host is held; nil for a getter without one
 	now   func() time.Time
 	mu    sync.Mutex
 	spent map[string]heldHost
@@ -147,19 +148,38 @@ type heldHost struct {
 	probe time.Time
 }
 
-// NewQuotaGate wraps get; now is the clock the holds are judged by.
-func NewQuotaGate(get Getter, now func() time.Time) *QuotaGate {
-	return &QuotaGate{ask: get.GetText, now: now, spent: map[string]heldHost{}}
+// cachedReader is a getter whose response cache can be read without asking
+// the network - the httpx client's (D-217).
+type cachedReader interface {
+	Cached(rawURL string) ([]byte, bool)
 }
 
-// GetText asks through the gate: refused at once while the host is held and
-// its probe not due; otherwise asked, a spent quota holding the host and an
-// answer freeing it.
+// NewQuotaGate wraps get; now is the clock the holds are judged by.
+func NewQuotaGate(get Getter, now func() time.Time) *QuotaGate {
+	g := &QuotaGate{ask: get.GetText, now: now, spent: map[string]heldHost{}}
+	if c, ok := get.(cachedReader); ok {
+		g.kept = c.Cached
+	}
+	return g
+}
+
+// GetText asks through the gate. While the host is held, an answer already
+// in the cache is served - it is paid for (D-217) - and anything else is
+// refused until the probe is due; otherwise asked, a spent quota holding the
+// host and an answer from the network freeing it.
 func (g *QuotaGate) GetText(ctx context.Context, rawURL string, opts ...httpx.Option) ([]byte, error) {
 	host, now := hostOf(rawURL), g.now()
 	g.mu.Lock()
 	g.syncLocked(now)
 	h, held := g.spent[host]
+	g.mu.Unlock()
+	if held && g.kept != nil {
+		if body, ok := g.kept(rawURL); ok {
+			return body, nil // served, so the probe is left for an ask that reaches the network
+		}
+	}
+	g.mu.Lock()
+	h, held = g.spent[host] // as it stands now: another ask may have freed or held it meanwhile
 	probing := held && !now.Before(h.probe) && g.claimProbeLocked(host, now)
 	g.mu.Unlock()
 	if held && !probing {

@@ -20,6 +20,7 @@ import (
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 	"github.com/branden-thompson/go-tuimaps/assets"
 
+	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/domains/weather/nws/zones"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -43,10 +44,20 @@ const (
 	// httpCacheBytes is the existing HTTP cache's cap, which the stated total
 	// covers too.
 	httpCacheBytes = httpx.DiskCacheBytes
-	// statedCacheBytes is the one total the listener is told (FR-3.5). Radar
-	// adds its cap with W8.
-	statedCacheBytes = mapDiskBytes + httpCacheBytes
+	// statedCacheBytes is the one total the listener is told (FR-3.5): the
+	// tiles, the web cache and the temperature client's disk (D-219). Radar
+	// keeps nothing on disk.
+	statedCacheBytes = mapDiskBytes + httpCacheBytes + temperature.CacheBytes
 )
+
+// mapHTTPDir is where the temperature client keeps what it fetched (D-219):
+// the OS cache directory, beside the tiles.
+func mapHTTPDir() string { return userCacheSubdir("map-http") }
+
+// newTempClient is the temperature client, keeping its answers at mapHTTPDir.
+func newTempClient(userAgent string) (*httpx.Client, error) {
+	return temperature.NewClient(userAgent, mapHTTPDir())
+}
 
 // mapBuilder builds the window's maps. It holds what outlives one map: the
 // memory cache, and whether the zone outlines were seeded.
@@ -138,6 +149,13 @@ func (lp *livePipelines) clearMapData() tty.MapCleared {
 			m.Close()
 		}
 		out.Err = err
+	}
+	for _, c := range lp.mapClients { // the map's web caches, memory and disk (D-219, P10-02)
+		n, err := c.ForgetPrefix("")
+		out.Files += n
+		if out.Err == nil {
+			out.Err = err
+		}
 	}
 	if lp.zoneShapes != nil {
 		out.Zones = lp.zoneShapes.Forget()

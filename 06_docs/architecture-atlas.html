@@ -850,7 +850,7 @@ code{font-family:var(--mono);font-size:.92em}
   subgraph domains[&#34;domains/&#34;]
     ZS[&#34;nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days&#34;]
     RD[&#34;radar · IEM, MRMS (W8.3)\nfixed boxes, never the view (D-47); outside the lower 48 each MRMS product&#39;s whole extent; only advertised times, always sent (D-84)\nits own client: memory only, 1 MiB cap, public addresses, https&#34;]
-    TD[&#34;temperature · NDFD, Open-Meteo (W10.2)\na lattice of at most 80 points a box, never the view (D-47)\nNDFD: the hour sent with its zone; offshore missing, never zero\na cell drawn only where its nearest point has a value (D-101)\nwind: hourly speed and direction; each day&#39;s peak worked out from NDFD&#39;s hours\nits own client: memory only, 2 MiB cap, public addresses, https&#34;]
+    TD[&#34;temperature · NDFD, Open-Meteo (W10.2)\na lattice of at most 80 points a box, never the view (D-47)\nNDFD: the hour sent with its zone; offshore missing, never zero\na cell drawn only where its nearest point has a value (D-101)\nwind: hourly speed and direction; each day&#39;s peak worked out from NDFD&#39;s hours\nits own client: 2 MiB cap, public addresses, https; 24 MiB in memory and a 64 MiB disk cache at map-http, in the stated total (D-219)\nOpen-Meteo through the quota gate: while held, what is in the cache is served; only a network answer frees it (D-217)&#34;]
     WS[&#34;nws · Provider.ZonesFor\nthe place&#39;s own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)&#34;]
   end
   subgraph tty[&#34;modes/tty — the Observer&#34;]
@@ -865,7 +865,7 @@ code{font-family:var(--mono);font-size:.92em}
   end
   subgraph plat[&#34;platform/&#34;]
     RG[&#34;geo · RegionOf\nsix regions with their waters; Hawaii and the Caribbean wide enough to see their weather (D-91)\narrangement.go: Neighbour, RegionNumbered (D-77)&#34;]
-    HX[&#34;httpx · DiskCacheBytes\nin the one stated total&#34;]
+    HX[&#34;httpx · DiskCacheBytes, with temperature&#39;s CacheBytes and the tiles&#39; cap, the one stated total\nConfig.MemBytes / DiskBytes size a client&#39;s tiers; Cached reads the cache, never the network (D-217, D-219)\nClear map data empties the map clients&#39; caches, memory and disk&#34;]
   end
   L[&#34;go-tuiMaps v0.2.0-rc.N\nSetBound · Source · Set/Remove · Work · Render · Warnings&#34;]
   MB -- &#34;Config.NewMap(size)&#34; --&gt; MW

@@ -95,7 +95,8 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 - The gate keeps its hold in a small shared file, `$XDG_STATE_HOME/watchpost/quota.json` (by default `~/.local/state/watchpost/quota.json`): each spent host, its period, its reset and its next probe - written by temp file and rename, read before each ask (memoised for a few seconds).
 - Any instance that is refused writes it; every instance honours it, so one refusal holds them all.
 - **One probe for all:** the instance whose probe is due takes it by moving the next probe time forward in the file first (write, re-read, proceed only if its own write stands); an answered probe clears the host for everyone.
-- The file unreadable or absent: each instance falls back to its own memory - as batch 71 is now.
+- The file unreadable or absent: each instance falls back to its own memory.
+- **What is paid for is served while held (D-217):** a held host's answer already in the client's cache is served, never refused; only an answer from the network frees the host, so a probe is never spent on a cached body.
 
 **The recorder records each hour once.** At :05 every running instance would fetch the same hour.
 

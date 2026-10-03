@@ -21,6 +21,8 @@ import (
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 	"github.com/branden-thompson/go-tuimaps/assets"
+
+	"github.com/branden-thompson/watchpost/domains/temperature"
 )
 
 // recorded is a transport that answers OpenFreeMap's TileJSON from the
@@ -195,8 +197,11 @@ func TestNoMapRequestBeforeTheListenerAsks(t *testing.T) {
 // total, the memory cache holds the largest view, and a tile older than seven
 // days is fetched again.
 func TestTheMapCachesAreStated(t *testing.T) {
-	if want := mapDiskBytes + httpCacheBytes; statedCacheBytes != want {
+	if want := mapDiskBytes + httpCacheBytes + temperature.CacheBytes; statedCacheBytes != want {
 		t.Errorf("the stated total is %d; the configured caps sum to %d", statedCacheBytes, want)
+	}
+	if mapHTTPDir() != userCacheSubdir("map-http") {
+		t.Errorf("the map's web cache is at %q, want the OS cache directory's map-http folder", mapHTTPDir())
 	}
 	if prod := newProductionMapBuilder("t", &tileCounter{}, nil); prod.cacheDir != userCacheSubdir("map") || prod.transport == nil {
 		t.Errorf("the tile cache is at %q, want the OS cache directory's map folder", prod.cacheDir)

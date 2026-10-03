@@ -30,7 +30,6 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
-	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/domains/weather/nws/zones"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -94,7 +93,7 @@ func RunDashboard(version string, opt Options) error {
 	if rs, rc, err := overClient(radar.NewClient, UserAgent, radarSourcesOver); err == nil {
 		lp.radar, lp.mapClients = rs, append(lp.mapClients, rc) // W8: a radar client that cannot be built is no radar, and the map says none answered
 	}
-	if ts, tc, err := overClient(temperature.NewClient, UserAgent, tempSourcesOver); err == nil {
+	if ts, tc, err := overClient(newTempClient, UserAgent, tempSourcesOver); err == nil {
 		lp.temp, lp.mapClients = ts, append(lp.mapClients, tc) // W10: the same for the temperature
 	}
 	lp.attachDiagnostics(ctx, start)
