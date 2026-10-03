@@ -132,9 +132,12 @@ func (d Dashboard) uiTouched() Dashboard {
 	return d.settled()
 }
 
-// uiForSave is what the window writes when it closes.
+// uiForSave is the display preferences as they are in effect - the values the
+// dashboard draws by, never a window's copy of them - so whichever window
+// saves them (Settings on close, the map's Overlays menu) writes what the
+// listener chose (U2-61).
 func (d Dashboard) uiForSave() UIPrefs {
-	return UIPrefs{Theme: d.themeName(), Units: d.setup.units.Key(), Clock: d.setup.clock.Key(), Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key(),
+	return UIPrefs{Theme: render.ThemeName(), Units: d.units.Key(), Clock: d.clockFmt.Key(), Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key(),
 		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempNDFD), MapRainDetail: rainDetailKey(d.mapRainFull), MapUVCities: d.mapUVCities, MapRadarAhead: d.mapRadarAhead, MapQuakeFeed: d.mapQuakeFeed, MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
 }
 

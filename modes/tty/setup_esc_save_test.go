@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"strings"
 	"testing"
 	"time"
@@ -216,6 +217,21 @@ func TestTheModelAndTheFileAgreeAboutWhatWasWritten(t *testing.T) {
 		{"dwell zero is not a choice", func(s *setupState) { s.relayDwell = 0 },
 			func(c *Config) { c.RelayDwell = time.Minute }, false,
 			func(d Dashboard) any { return d.cfg.RelayDwell }, time.Minute},
+		// THE STATION'S TWO ON ESC (U2-61): the model took them on either exit,
+		// the file only on enter - gone at the next launch.
+		{"transmitter moves", func(s *setupState) { s.txRef = &snapshot.LocationRef{Label: "Reno, NV", Lat: 39.5, Lon: -119.8} },
+			func(c *Config) { c.SetTransmitter = func(snapshot.LocationRef) {} }, true,
+			func(d Dashboard) any {
+				if d.cfg.Transmitter == nil {
+					return ""
+				}
+				return d.cfg.Transmitter.Label
+			}, "Reno, NV"},
+		{"service radius changes", func(s *setupState) { s.serviceMi = "75" },
+			func(c *Config) {
+				c.SetServiceRadius, c.ServiceRadiusMi, c.ServiceRadiusMinMi, c.ServiceRadiusMaxMi = func(int) {}, 50, 10, 250
+			}, true,
+			func(d Dashboard) any { return d.cfg.ServiceRadiusMi }, 75},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := &setupHarness{}

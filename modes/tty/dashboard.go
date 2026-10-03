@@ -1271,6 +1271,10 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if d.modal == modalMap {
 			d = d.renderMap() // 0.18.0 D-45's units row: the description's distances follow the units
 		}
+		d.setup.uiDirty = true // kept, as Settings' units are (U2-61)
+		save := d.uiApplyCmd()
+		d.setup.uiDirty = false
+		return d, save
 	case "ticker-mute":
 		// [M] OPENS Settings at the tone rows rather than toggling them. The six
 		// classes are separately mutable, and one key cannot mean six things, so

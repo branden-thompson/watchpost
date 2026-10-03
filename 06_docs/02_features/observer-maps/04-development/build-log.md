@@ -3422,3 +3422,32 @@ areas' parse already was); each box's grid by the box and the file's hour, in a 
 
 **Mutation verdicts** (3): the parse kept, the grid kept, the file's hour in the grid's key - all caught.
 
+## Batch 114 — a setting is saved as it is, whatever saves it (UAT-2 U2-61, D-214; 2026-10-02)
+
+**The clock reverting to 12-hour.** The display preferences are one saved group, and two places save
+it: Settings when it closes, and the map's Overlays menu (and [R]) when a layer, the detail or the mode
+changes. The save read the clock and the units from the Settings window's own copy - filled only when
+the window opens, and zero before - so in a session where Settings had not been opened, a layer switched
+in the map wrote 12-hour and Fahrenheit over the listener's choice. The theme was read the same way, and
+reset to the first theme. The save now reads each preference as it is in effect: the clock and units the
+dashboard draws by, the theme in force.
+
+**The audit's other defects.** Units chosen by [f]/[c] were never saved on their own - they now save as
+Settings' do. The station's transmitter and service radius were written only when Settings closed with
+enter; esc moved the window to them and left the file behind, so the value was gone at the next launch.
+Both exits now write one list (`closeWrites`), the enter path adding only what it owns (the location,
+the FIRMS key, the cast and tones).
+
+**Guards derived from the type.** `TestASettingIsSavedAsItIsWhateverSavesIt` (tty) gives every UIPrefs
+field a value other than its default - the theme included - and saves through the map's path with
+Settings never opened: every field must come back as configured. `TestASavedSettingIsTheSettingAfterARestart`
+(app) writes the same through `setUIHook`, reloads the file and hands it back to the window. A field
+added to UIPrefs fails both until it is given a value and a name.
+
+**Mutation verdicts** (6): the clock, the units and the theme in effect, [f]/[c] saved, the transmitter
+and the service radius on both exits - all caught.
+
+D-214's other half - the relay dwell and language, the radio volume and console gain, the repeat and
+visualizer toggles, the console's bed relay pick, never kept anywhere - is batch 115, with round trips for
+the settings that are kept but untested (the alert radius, history, the tone mutes, the radio mode).
+

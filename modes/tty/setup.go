@@ -559,13 +559,11 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 			return d.settled(), nil
 		}
 	}
-	// The display preferences write on this exit too. setupFinishCmd owns the
-	// location, radius, cast and tones; the WATCHPOST UI group is uiApplyCmd's,
-	// and left out of this path, enter would save four groups of five and then
-	// discard the fifth with the window state.
-	cmd := sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)),
-		d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd(),
-		d.transmitterApplyCmd(), d.serviceRadiusApplyCmd(), d.historyApplyCmd())
+	// setupFinishCmd owns the location, the FIRMS key, the cast and the tones;
+	// everything else closing the window writes is closeWrites', the list esc
+	// writes too - one list, so no setting is saved by one exit and dropped by
+	// the other (U2-61).
+	cmd := sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)), d.closeWrites())
 	return d.commitToModel(), cmd
 }
 
@@ -706,10 +704,17 @@ func (d Dashboard) relayLangApplyCmd() tea.Cmd {
 		func(v string) bool { return v != "" })
 }
 
-// applyOnCloseCmds is THE list of what closing the window writes. Both exits
-// use it, so adding a setting to the window means adding it here once.
+// applyOnCloseCmds is what esc writes: the cast and tones, and closeWrites.
 func (d Dashboard) applyOnCloseCmds() tea.Cmd {
-	return sequenceWrites(d.castApplyCmd(), d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd(), d.historyApplyCmd())
+	return sequenceWrites(d.castApplyCmd(), d.closeWrites())
+}
+
+// closeWrites is THE list of what closing the window writes beside the cast,
+// the tones, the location and the FIRMS key. Both exits write it, so adding a
+// setting to the window means adding it here once.
+func (d Dashboard) closeWrites() tea.Cmd {
+	return sequenceWrites(d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd(),
+		d.transmitterApplyCmd(), d.serviceRadiusApplyCmd(), d.historyApplyCmd())
 }
 
 func sequenceWrites(cmds ...tea.Cmd) tea.Cmd {
