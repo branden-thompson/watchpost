@@ -41,6 +41,8 @@ const hmsCredit
 const holdStep
 const httpCacheBytes
 const installRetryAfter
+const knownUVCitiesMost
+const knownUVListEvery
 const landKeptFor
 const laneBacklog
 const liveDwell
@@ -194,6 +196,10 @@ func (*historian).recordWaves
 func (*injectQueue).readyLocked
 func (*injectQueue).take
 func (*injectQueue).wake
+func (*knownUVCities).candidates
+func (*knownUVCities).inView
+func (*knownUVCities).listLocked
+func (*knownUVCities).record
 func (*landPoints).clock
 func (*landPoints).forget
 func (*landPoints).is
@@ -600,6 +606,7 @@ func contourGrid
 func convertIf
 func countedBody
 func credits
+func dayReadings
 func dayStart
 func debugAddr
 func debugMux
@@ -899,6 +906,8 @@ func unitGrid
 func unread
 func userCacheSubdir
 func uvAsked
+func uvCells
+func uvCityKey
 func uvPeak
 func uvPoints
 func viewAreas
@@ -962,6 +971,8 @@ type historian
 type hostFacts
 type hoursAhead
 type injectQueue
+type knownCity
+type knownUVCities
 type landEntry
 type landPoints
 type lazyMemo
@@ -1012,6 +1023,7 @@ type timingLog
 type timingRecord
 type usageCache
 type uvCities
+type uvCityDoc
 type uvDayKey
 type waveBuild
 type waveKeep
@@ -1021,6 +1033,7 @@ var _
 var _
 var airGridRules
 var areaMemoRules
+var epaUVCities
 var errDumpTooSoon
 var errReadStopped
 var frameCheckRules

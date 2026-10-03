@@ -60,19 +60,19 @@ func TestACitysUVIsAskedOnceADay(t *testing.T) {
 	box := geo.Box{W: -118, S: 32, E: -116, N: 35}
 	noon := time.Date(2026, 9, 30, 12, 0, 0, 0, la)
 
-	first := c.markers(context.Background(), box, 24, noon, true)
+	first := c.markers(context.Background(), box, 24, noon, true, nil)
 	if n := get.asks(); n != 3 || len(first) == 0 {
 		t.Fatalf("the first view asked %d times and drew %d overlays; want the three cities asked and markers drawn", n, len(first))
 	}
 	view = append(view, city("Carlsbad")) // a pan: one city more
-	again := c.markers(context.Background(), box, 24, noon.Add(10*time.Minute), true)
+	again := c.markers(context.Background(), box, 24, noon.Add(10*time.Minute), true, nil)
 	if n := get.asks(); n != 2 {
 		t.Errorf("the next view asked %d times; want the new city and the one EPA refused, nothing it had read today", n)
 	}
 	if len(again) == 0 || len(again[0].Features) != len(first[0].Features)+1 {
 		t.Errorf("the next view draws %v; want every city read today and the new one", featuresOf(again))
 	}
-	c.markers(context.Background(), box, 24, noon.Add(24*time.Hour), true)
+	c.markers(context.Background(), box, 24, noon.Add(24*time.Hour), true, nil)
 	if n := get.asks(); n != 4 {
 		t.Errorf("the next day asked %d times; want every city again", n)
 	}

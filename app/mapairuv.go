@@ -61,7 +61,7 @@ func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo
 	}
 	var chips []string // what drew, the history last (D-173, D-183)
 	if ask.UV && cities != nil {
-		if marks := cities.markers(ctx, ask.View, tty.UVCitiesByCount(ask.UVCities), askAnchor(ask, now), ask.Forecast); len(marks) > 0 {
+		if marks := cities.markers(ctx, ask.View, tty.UVCitiesByCount(ask.UVCities), askAnchor(ask, now), ask.Forecast, store); len(marks) > 0 {
 			t.UV, chips = append(t.UV, marks...), append(chips, "EPA")
 			t = withNote(t, tty.UVLayer, "UV: EPA's forecast for cities across the view.")
 		}
@@ -346,6 +346,9 @@ type uvCities struct {
 	// forecasts a city once a day, so a pan, zoom or refresh asks only for the
 	// cities not yet read today. A city EPA did not answer is asked again.
 	days lazyMemo[uvDayKey, []uv.Reading]
+	// known are the cities the history holds readings for (D-225), so a city
+	// read in another view or session is drawn without asking EPA again.
+	known knownUVCities
 }
 
 // uvDayKey is a city and its local date.
@@ -370,11 +373,12 @@ const uvAskers = 4
 // pastHours before it, each during its own hour, as the history's replay is.
 // Forecast mode: Now's hour during Now, and the day's peak during Today -
 // EPA forecasts today alone. None where no city answered.
-func (c *uvCities) markers(ctx context.Context, view geo.Box, n int, anchor time.Time, forecast bool) []tuimaps.Overlay {
+func (c *uvCities) markers(ctx context.Context, view geo.Box, n int, anchor time.Time, forecast bool, store *history.Store) []tuimaps.Overlay {
 	if c == nil || c.epa == nil || c.cities == nil {
 		return nil
 	}
-	got := c.read(ctx, c.cities(view, n), anchor)
+	got := c.read(ctx, c.cities(view, n), anchor, store)
+	got = append(got, c.known.inView(store, view, n, anchor, got)...) // every city read today, beside the spread asked (D-225)
 	var out []tuimaps.Overlay
 	add := func(id string, valid time.Time, during tuimaps.Span, pick func([]uv.Reading) (float64, bool)) {
 		if feats := uvPoints(got, pick); len(feats) > 0 {
@@ -399,7 +403,7 @@ func (c *uvCities) markers(ctx context.Context, view geo.Box, n int, anchor time
 // read asks EPA for each city's hours, uvAskers at a time, and keeps the
 // cities' order whatever order they answer in. A city with no zone, or that
 // EPA does not answer for, is left out - counted as nothing, never said (D-124).
-func (c *uvCities) read(ctx context.Context, cities []geodata.City, at time.Time) []cityReadings {
+func (c *uvCities) read(ctx context.Context, cities []geodata.City, at time.Time, store *history.Store) []cityReadings {
 	answers := make([]*cityReadings, len(cities))
 	slots := make(chan struct{}, uvAskers)
 	var wg sync.WaitGroup
@@ -414,7 +418,11 @@ func (c *uvCities) read(ctx context.Context, cities []geodata.City, at time.Time
 			defer func() { <-slots; wg.Done() }()
 			key := uvDayKey{name: city.Name, state: city.State, date: at.In(loc).Format("2006-01-02")}
 			readings, err := c.days.memo(uvDayRules).Do(ctx, key, func() ([]uv.Reading, error) {
-				return c.epa.Hourly(ctx, city.Name, city.State, loc)
+				r, err := c.epa.Hourly(ctx, city.Name, city.State, loc)
+				if err == nil {
+					c.known.record(store, city, r) // kept, once a city a day (D-224)
+				}
+				return r, err
 			})
 			if err == nil {
 				answers[i] = &cityReadings{city, readings}
@@ -477,15 +485,10 @@ func spreadInView(ranked []geodata.City, view geo.Box, n int) []geodata.City {
 	if n <= 0 || len(ranked) == 0 {
 		return nil
 	}
-	mid := (view.S + view.N) / 2
-	wide := geo.HaversineKM(mid, view.W, mid, view.E)
-	tall := geo.HaversineKM(view.S, view.W, view.N, view.W)
-	if wide <= 0 || tall <= 0 {
+	cols, rows, spacing, ok := uvCells(view, n)
+	if !ok {
 		return nil
 	}
-	cols := max(1, int(math.Round(math.Sqrt(float64(n)*wide/tall))))
-	rows := max(1, int(math.Round(float64(n)/float64(cols))))
-	spacing := min(uvCitySpacingKm, min(wide/float64(cols), tall/float64(rows))/2)
 	taken := make([]bool, len(ranked))
 	var chosen []geodata.City
 	near := func(c geodata.City) bool {
@@ -523,6 +526,21 @@ func spreadInView(ranked []geodata.City, view geo.Box, n int) []geodata.City {
 		}
 	}
 	return out
+}
+
+// uvCells cuts a view into about n cells by its shape on the ground, and is
+// the spacing no two cities are drawn within: uvCitySpacingKm, or half a
+// cell's side where cells are smaller (D-202).
+func uvCells(view geo.Box, n int) (cols, rows int, spacing float64, ok bool) {
+	mid := (view.S + view.N) / 2
+	wide := geo.HaversineKM(mid, view.W, mid, view.E)
+	tall := geo.HaversineKM(view.S, view.W, view.N, view.W)
+	if wide <= 0 || tall <= 0 || n <= 0 {
+		return 0, 0, 0, false
+	}
+	cols = max(1, int(math.Round(math.Sqrt(float64(n)*wide/tall))))
+	rows = max(1, int(math.Round(float64(n)/float64(cols))))
+	return cols, rows, min(uvCitySpacingKm, min(wide/float64(cols), tall/float64(rows))/2), true
 }
 
 // citiesFrom is the cold start's cities over the index: its largest ranked

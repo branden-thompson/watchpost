@@ -387,8 +387,8 @@ UV fast within a session first.
 
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
-| W20.1 | **The readings stored** (D-224): EPA's UV city readings a history-store dataset, `epa-uv-cities` - each city a series, its hourly readings recorded and rolled up into days for trends, as the other datasets are | `app/mapairuv.go`, `app/history.go` | A dataset; a city a key, a point its shape | A city read in one session is not asked in the next, the same day; a reading from yesterday is never drawn |
-| W20.2 | **Every known city drawn** (D-225): each city in view with today's reading, beside the spread asked, no two within 100 km; EPA asked only for the spread | `app/mapairuv.go` | The store's series for the view, today's readings | A view drawn after panning over more cities shows more of them, none closer than the spacing |
+| W20.1 | **The readings stored** (D-224): EPA's UV city readings a history-store dataset, `epa-uv-cities` - each city a series, its hourly readings recorded and rolled up into days for trends, as the other datasets are | `app/mapairuv.go`, `app/history.go` | A dataset; a city a key, a point its shape | **Built, batch 123** | A city read in one session is not asked in the next, the same day; a reading from yesterday is never drawn |
+| W20.2 | **Every known city drawn** (D-225): each city in view with today's reading, beside the spread asked, no two within 100 km; EPA asked only for the spread | `app/mapairuv.go` | The store's series for the view, today's readings | **Built, batch 123** | A view drawn after panning over more cities shows more of them, none closer than the spacing |
 
 ## W21 — The About window's credits, one each (HUM LEAD, 2026-10-02) · after W20
 

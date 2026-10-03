@@ -93,9 +93,22 @@ var ndfdWaves = history.Dataset{
 	Days:        30 * 24 * time.Hour,
 }
 
+// epaUVCities is EPA's UV forecast for each city the map has read, an hour a
+// record: each city a series, a point at the city, its name, state and zone in
+// the record's document - kept for trends, and drawn when the city is in view
+// again the same day, in any session (D-224, D-225).
+var epaUVCities = history.Dataset{
+	Name: "epa-uv-cities", Version: 1, Step: time.Hour,
+	Title:       "EPA, the UV index by city",
+	Description: "The EPA's hourly UV index forecast for each city the map has read, an hour a record.",
+	Fields:      []history.Field{{Name: "uv", Label: "UV index", Unit: "index", Decimals: 0}},
+	Hours:       72 * time.Hour,
+	Days:        30 * 24 * time.Hour,
+}
+
 // historyDatasets are every dataset the history holds: the Data tab's
 // retention is theirs alike (D-175).
-var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays, ndfdWaves}
+var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays, ndfdWaves, epaUVCities}
 
 // historyEvery is how often the recorder looks for an hour to record.
 const historyEvery = 5 * time.Minute

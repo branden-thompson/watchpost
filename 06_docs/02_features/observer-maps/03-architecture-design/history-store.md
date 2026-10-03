@@ -162,6 +162,15 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 - It is written by `withUV` whenever Open-Meteo answers.
 - An hour with every value missing is not written.
 
+**`epa-uv-cities` v1** (W20, D-224)
+
+- Field: `uv`, the UV index. A series a city - `epa/<city>-<state>` - its shape the city's point, its
+  name, state and zone in each record's document, so a reader that did not write it knows the city.
+- It is written whenever EPA answers for a city, once a city a day: every hour of EPA's forecast for the
+  city's day.
+- It is read to draw every city in view with a reading for its own day, beside the cities asked
+  (D-225); the series are listed at first use and each hour, so another instance's cities are known.
+
 **`openmeteo-rain-days` v1**
 
 - Fields: `peak` in mm/h, `rain` in mm, `snow` in cm, one record per target date.

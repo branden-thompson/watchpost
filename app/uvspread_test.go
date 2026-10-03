@@ -170,7 +170,7 @@ func TestUVCitiesAreAskedAFewAtATime(t *testing.T) {
 	}
 	get := &slowEPA{}
 	c := &uvCities{epa: uv.NewEPA(get, ""), cities: func(geo.Box, int) []geodata.City { return ranked }}
-	marks := c.markers(context.Background(), geo.Box{W: -118, S: 32, E: -116, N: 35}, 24, now.Truncate(time.Hour), true)
+	marks := c.markers(context.Background(), geo.Box{W: -118, S: 32, E: -116, N: 35}, 24, now.Truncate(time.Hour), true, nil)
 	if len(get.asked) != len(ranked) {
 		t.Fatalf("%d asks for %d cities", len(get.asked), len(ranked))
 	}

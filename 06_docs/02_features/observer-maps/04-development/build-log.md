@@ -3672,3 +3672,23 @@ W14's last open item is closed. Sixteen live findings remain: seven recursion ar
 graph outside the ledger (a constructor and a method sharing a name, or a method reaching a same-named
 method), eight packages under the invariant density, and the Windows-only file - each for its own
 ruling when its code is next touched, as the rule scopes them.
+
+## Batch 123 — UV's cities kept, and every known one drawn (W20, D-224, D-225; 2026-10-03)
+
+**Kept (D-224).** EPA's hourly UV forecast for each city the map reads is a history-store dataset,
+`epa-uv-cities`: a series a city (`epa/<city>-<state>`, two Springfields two series), its point the
+shape, its name, state and zone in each record's document. Every hour of the city's day goes in when EPA
+answers - once a city a day, inside the day's memo (P-14) - kept 72 hours and rolled up into days for 30,
+as the other datasets are and as the Data tab extends.
+
+**Drawn (D-225).** A view draws the spread it asks EPA for, and beside it every city the history knows
+in view with readings for the city's own day - another view's, another session's, another instance's -
+without asking EPA again; none within the spacing of a city drawn or of each other (`uvCells`, the one
+rule `spreadInView` keeps too), and never a reading of another day. The known cities are listed from
+the history's series at first use and each hour after, and added to as this instance records.
+
+**Mutation verdicts** (10): the record kept, the known drawn, the spacing against the asked and among
+the known (the second survived first: `TestKnownCitiesKeepTheSpacingAndTheView`), the view (survived
+first, the same test), the day, the history listed, the hourly relisting, the state in the key, the
+dataset among the history's - all caught. A new test asked the EPA fixture for three cities at once and
+raced on its unlocked counter; it uses the fake that counts under a lock.
