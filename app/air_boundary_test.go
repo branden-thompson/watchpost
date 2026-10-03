@@ -177,6 +177,7 @@ var airBoundary = map[string]airMember{
 	"Voices":           {airNone, "lists what is installed"},
 	"VoiceInstalled":   {airNone, "a query"},
 	"Spectrum":         {airNone, "reads the visualiser tap"},
+	"SaveRadio":        {airNone, "D-214: writes the radio panel's kept volume, repeat and visualizer to the file; the player is told by its own seams"},
 	"FIRMSKey":         {airNone, "a key hint for the Settings window"},
 	"Stats":            {airNone, "the [S] counters"},
 	"MapFeed":          {airNone, "0.18.0: turns the snapshot's alerts into map overlays; it reaches the zone store and no audio"},

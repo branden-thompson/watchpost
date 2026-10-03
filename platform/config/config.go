@@ -60,6 +60,20 @@ type Radio struct {
 
 	// Tones is the per-class mute state.
 	Tones Tones `toml:"tones,omitempty"`
+
+	// The radio panel's kept choices (D-214): the volume - the console's gain
+	// is the same number - 0 to 100, unset the default (zero is muted, a
+	// choice); the repeat, "off" (default) | "one" | "watchlist"; the
+	// visualizer.
+	Volume     *int   `toml:"volume,omitempty"`
+	Repeat     string `toml:"repeat,omitempty"`
+	Visualizer bool   `toml:"visualizer,omitempty"`
+
+	// The watchlist rotation's pacing, a duration ("5m"), and the language
+	// that wins a co-located relay tie, kept as Settings' Radio rows chose
+	// them (D-214).
+	RelayDwell string `toml:"relay_dwell,omitempty"`
+	RelayLang  string `toml:"relay_lang,omitempty"`
 }
 
 // RoleVoice is one role's assignment: the macOS `say -v` name and the Piper

@@ -30,7 +30,7 @@ func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
 		return d.radioToggle()
 	case "radio-repeat":
 		d.radioRepeat = d.radioRepeat.next() // UAT 93: Off → One → Watchlist
-		return d.pushRepeat(), true
+		return d.pushRepeat().saveRadioCmd(), true
 	case "radio-mode":
 		d.radioMode = d.radioMode.next() // UAT 97: Synth ↔ Nearest Relay
 		if radio, mode := d.cfg.Radio, d.radioMode; radio != nil {
@@ -41,14 +41,17 @@ func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
 		if !d.radioViz {
 			d.vizBands = nil // off: nothing lingers for the next on
 		}
+		return d.saveRadioCmd(), true
 	case "radio-vol-up":
 		d.radioVolume = min(100, d.radioVolume+5)
 		d.volFlash, d.volFlashEnd = "+", time.Now().Add(350*time.Millisecond) // green blink (UAT 41)
-		return d.radioVolumeCmd()
+		d, _ = d.radioVolumeCmd()
+		return d.saveRadioCmd(), true
 	case "radio-vol-dn":
 		d.radioVolume = max(0, d.radioVolume-5)
 		d.volFlash, d.volFlashEnd = "-", time.Now().Add(350*time.Millisecond) // red blink
-		return d.radioVolumeCmd()
+		d, _ = d.radioVolumeCmd()
+		return d.saveRadioCmd(), true
 	default:
 		return d, false
 	}

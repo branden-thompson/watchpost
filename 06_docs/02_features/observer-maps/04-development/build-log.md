@@ -3451,3 +3451,30 @@ D-214's other half - the relay dwell and language, the radio volume and console 
 visualizer toggles, the console's bed relay pick, never kept anywhere - is batch 115, with round trips for
 the settings that are kept but untested (the alert radius, history, the tone mutes, the radio mode).
 
+## Batch 115 — the radio's choices kept (D-214; 2026-10-02)
+
+**Kept now, and never before.** The radio panel's volume - the console's gain is the same number,
+mirrored - its repeat and its visualizer, and Settings' relay dwell and relay language, all came back to
+their defaults at every launch: the volume at 55, the repeat Off, the dwell five minutes, the language
+English. Each is now in the file (`[radio]` volume, repeat, visualizer, relay_dwell, relay_lang), saved
+as it changes - a panel press saves the three beside what it asks of the player; the relay setters write
+the file as well as the deck - and given back at launch: `keptRadio` sets the deck's pacing, language
+and volume before anything plays and opens the panel on the kept choices, and a kept repeat is pushed to
+the player at launch (the chip would otherwise say One while the player stopped at the end). A muted
+volume, zero, is kept as zero: the field is unset, not zero, for the default.
+
+**Round trips for the settings already kept.** The alert radius, the history's retention and the radio's
+source are each written by their own setter and handed back to the window by the next launch's config -
+tested together for the first time.
+
+**No test writes the developer's config.** The relay setters now write the file, and one test called
+them with no file of its own: the app package's `TestMain` points the config at a directory of the run's
+own, and `TestNoTestWritesTheDevelopersConfig` holds that.
+
+**Mutation verdicts** (10): the repeat and the visualizer saved, the kept repeat pushed at launch, the
+save beside the player's command, a muted volume kept, the relay's dwell and language written and read
+back, the panel opened on the kept choices, and the tests' own config - all caught.
+
+D-214's last choice, the console's bed relay pick, is batch 116: it names a relay in range, so it is
+kept by the relay and restored only while that relay is still near the station.
+

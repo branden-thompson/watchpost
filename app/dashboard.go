@@ -549,6 +549,7 @@ func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provid
 		return tea.NewProgram(tty.NewRouter(model)), nil, func() {}
 	}
 	deck.voiceID, deck.pref, deck.fire, deck.seismic, deck.marine = cfg.Voice, mode, fire, seismic, marine
+	model = keptRadio(deck, model, cfg)
 	// The whole cast, from the config: setCast validates it against this host
 	// OUTSIDE the deck's lock and memoises the problems for [S] (P4).
 	deck.setCast(castLoaded(cfg))
@@ -632,6 +633,49 @@ func saveTones(deck *radioDeck, t cast.Tones) error {
 // saveRadioMode persists the [m] source pick (UAT 97).
 func saveRadioMode(mode tty.RadioMode) error {
 	return savePreference(func(cfg *config.Config) { cfg.Radio.Mode = mode.Key() })
+}
+
+// keptRadio gives the deck and the panel the radio's kept choices (D-214):
+// the relay's pacing and language, the volume before anything plays, and the
+// panel's repeat and visualizer with the hook that keeps them.
+func keptRadio(deck *radioDeck, model tty.Dashboard, cfg config.Config) tty.Dashboard {
+	deck.relayDwell, deck.relayLang = relayPrefsFrom(cfg)
+	prefs := radioPrefsFrom(cfg)
+	if deck.engine != nil {
+		deck.SetVolume(prefs.Volume)
+	}
+	return model.WithRadioPrefs(prefs, saveRadioPrefs)
+}
+
+// defaultVolume is the radio's volume with none kept.
+const defaultVolume = 55
+
+// saveRadioPrefs keeps the radio panel's choices (D-214).
+func saveRadioPrefs(p tty.RadioPrefs) error {
+	return savePreference(func(cfg *config.Config) {
+		vol := p.Volume
+		cfg.Radio.Volume, cfg.Radio.Repeat, cfg.Radio.Visualizer = &vol, p.Repeat.Key(), p.Viz
+	})
+}
+
+// radioPrefsFrom is the panel's kept choices: the default volume where none
+// is kept.
+func radioPrefsFrom(cfg config.Config) tty.RadioPrefs {
+	vol := defaultVolume
+	if cfg.Radio.Volume != nil {
+		vol = min(max(*cfg.Radio.Volume, 0), 100)
+	}
+	return tty.RadioPrefs{Volume: vol, Repeat: tty.ParseRepeatMode(cfg.Radio.Repeat), Viz: cfg.Radio.Visualizer}
+}
+
+// relayPrefsFrom is the relay's kept pacing and language: zero and "" where
+// none is kept, which the deck reads as unset.
+func relayPrefsFrom(cfg config.Config) (time.Duration, string) {
+	d, err := time.ParseDuration(cfg.Radio.RelayDwell)
+	if err != nil || d < 0 {
+		d = 0
+	}
+	return d, cfg.Radio.RelayLang
 }
 
 // savePreference is the no-error convenience over config.Mutate, for the
@@ -1032,6 +1076,7 @@ func (lp *livePipelines) relayLang() string {
 // setting a preference, not asking for an interruption.
 func (lp *livePipelines) setRelayLang() func(string) {
 	return func(lang string) {
+		_ = savePreference(func(cfg *config.Config) { cfg.Radio.RelayLang = lang }) // kept (D-214); a failed write keeps the session's choice
 		if lp.deck == nil {
 			return
 		}
@@ -1050,6 +1095,7 @@ func (lp *livePipelines) setRelayLang() func(string) {
 // this asks it to do that again with the new value.
 func (lp *livePipelines) setRelayDwell() func(time.Duration) {
 	return func(d time.Duration) {
+		_ = savePreference(func(cfg *config.Config) { cfg.Radio.RelayDwell = d.String() }) // kept (D-214); a failed write keeps the session's choice
 		if lp.deck == nil {
 			return
 		}

@@ -191,6 +191,7 @@ type Config struct {
 	AboutNotes []string                       // About's closing lines after every credit: conditions of use, the safety framing
 	Radio      Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
 	Spectrum   func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
+	SaveRadio  func(RadioPrefs) error         // keeps the radio panel's choices (D-214); nil keeps nothing
 	FireBoldMW float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
 
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
@@ -480,6 +481,28 @@ func (m RepeatMode) String() string {
 		return "Watchlist"
 	}
 	return "Off"
+}
+
+// Key is the persisted form (D-214).
+func (m RepeatMode) Key() string {
+	switch m {
+	case RepeatOne:
+		return "one"
+	case RepeatWatchlist:
+		return "watchlist"
+	}
+	return "off"
+}
+
+// ParseRepeatMode is the persisted form read back: Off for anything else.
+func ParseRepeatMode(s string) RepeatMode {
+	switch s {
+	case "one":
+		return RepeatOne
+	case "watchlist":
+		return RepeatWatchlist
+	}
+	return RepeatOff
 }
 
 // next is the [r] cycle: Off → One → Watchlist → Off.
@@ -1012,7 +1035,13 @@ func vizTick() tea.Cmd { return tickEvery(50*time.Millisecond, vizTickMsg{}) }
 // Init implements tea.Model — asks the terminal for its background color
 // so the window tint tracks light/dark mode (UAT 10.2). The animation tick
 // arms itself from the first message that needs it (Q3).
-func (d Dashboard) Init() tea.Cmd { return tea.RequestBackgroundColor }
+func (d Dashboard) Init() tea.Cmd {
+	if d.radioRepeat == RepeatOff || d.cfg.Radio == nil {
+		return tea.RequestBackgroundColor
+	}
+	radio, mode := d.cfg.Radio, d.radioRepeat // a kept repeat reaches the player at launch (D-214)
+	return tea.Batch(tea.RequestBackgroundColor, func() tea.Msg { radio.SetRepeat(mode, nil); return nil })
+}
 
 // Update implements tea.Model: dispatch the message, then arm the shimmer
 // tick if the resulting frame animates (Q3 tick predicate).
@@ -1759,6 +1788,38 @@ func (d Dashboard) WithRadio(r Radio) Dashboard {
 func (d Dashboard) WithRadioMode(mode RadioMode) Dashboard {
 	d.radioMode = mode
 	return d
+}
+
+// RadioPrefs are the radio panel's kept choices (D-214): the volume - the
+// console's gain is the same number - the repeat and the visualizer.
+type RadioPrefs struct {
+	Volume int
+	Repeat RepeatMode
+	Viz    bool
+}
+
+// WithRadioPrefs opens the panel on the kept choices, and save keeps each
+// change (nil keeps nothing).
+func (d Dashboard) WithRadioPrefs(p RadioPrefs, save func(RadioPrefs) error) Dashboard {
+	d.radioVolume, d.radioRepeat, d.radioViz = min(max(p.Volume, 0), 100), p.Repeat, p.Viz
+	d.cfg.SaveRadio = save
+	return d
+}
+
+// RadioPrefs is the panel's choices as they stand.
+func (d Dashboard) RadioPrefs() RadioPrefs {
+	return RadioPrefs{Volume: d.radioVolume, Repeat: d.radioRepeat, Viz: d.radioViz}
+}
+
+// saveRadioCmd keeps the panel's choices, beside whatever the press already
+// asked of the player.
+func (d Dashboard) saveRadioCmd() Dashboard {
+	save := d.cfg.SaveRadio
+	if save == nil {
+		return d
+	}
+	p := RadioPrefs{Volume: d.radioVolume, Repeat: d.radioRepeat, Viz: d.radioViz}
+	return d.withCmd(tea.Batch(d.pendingCmd, func() tea.Msg { _ = save(p); return nil })) // a failed save keeps the session's choice; the next press tries again
 }
 
 // WithSpectrum attaches the visualizer feed (UAT 92).

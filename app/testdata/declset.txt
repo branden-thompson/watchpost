@@ -26,6 +26,7 @@ const coopsRatePerSec
 const debugAddrDefault
 const defaultBurstMax
 const defaultMacVoice
+const defaultVolume
 const discoverTimeout
 const dumpKeep
 const dumpMinInterval
@@ -650,6 +651,7 @@ func itoaN
 func joinAhead
 func joinForecast
 func keptCopy
+func keptRadio
 func laneForKey
 func laneItems
 func laneRowsPerTab
@@ -741,6 +743,7 @@ func radioDebugLog
 func radioDebugName
 func radioDebugOn
 func radioDebugPath
+func radioPrefsFrom
 func rainGrid
 func rainLattice
 func rainLayerCost
@@ -766,6 +769,7 @@ func regionBox
 func registerMapLayer
 func registerMapSource
 func relayLine
+func relayPrefsFrom
 func releaseNumbers
 func reloadCast
 func renderSlots
@@ -786,6 +790,7 @@ func runtimeGOOS
 func saveCast
 func savePreference
 func saveRadioMode
+func saveRadioPrefs
 func saveTones
 func scenarioKeyFor
 func scopeEvents

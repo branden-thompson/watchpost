@@ -56,3 +56,31 @@ func TestASavedSettingIsTheSettingAfterARestart(t *testing.T) {
 		}
 	}
 }
+
+// THE OTHER KEPT SETTINGS SURVIVE A RESTART (D-214): each one's own setter
+// writes the file, and the next launch hands the window what was written - the
+// alert radius, the history's retention and the radio's source.
+func TestTheOtherKeptSettingsSurviveARestart(t *testing.T) {
+	withConfigFile(t)
+	_, setRadius := tickerRadiusState(0)
+	setRadius(40)
+	lp := &livePipelines{}
+	lp.setHistory(tty.HistoryRetention{Hours: "7d", Trends: "1y"})
+	if err := saveRadioMode(tty.ModeRelay); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := lp.ttyConfig("t", Options{}, false, cfg, nil, nil, nil, nil, nil, nil)
+	if got.AlertRadiusMi != 40 {
+		t.Errorf("the alert radius came back %d; it was saved 40", got.AlertRadiusMi)
+	}
+	if got.History != (tty.HistoryRetention{Hours: "7d", Trends: "1y"}) {
+		t.Errorf("the history's retention came back %+v; it was saved 7d, 1y", got.History)
+	}
+	if tty.ParseRadioMode(cfg.Radio.Mode) != tty.ModeRelay {
+		t.Errorf("the radio's source came back %q; it was saved relay", cfg.Radio.Mode)
+	}
+}
