@@ -1,5 +1,6 @@
 const AAContrast
 const AboutHost
+const AboutNote
 const AlertDanger
 const AlertLabel
 const AlertModalAdvBG
@@ -123,6 +124,7 @@ const VizOn
 const WindowBGDark
 const WindowBGLight
 const WordmarkName
+const aboutNoteShade
 const alertGap1
 const alertGap2
 const alertKindMin
@@ -379,6 +381,7 @@ func severeHeaderFG
 func severeHeaderLine
 func severeMarks
 func sgrRaw
+func shadeBack
 func shrinkToFit
 func spaceCategories
 func spectrumTier

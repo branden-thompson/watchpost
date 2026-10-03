@@ -138,6 +138,9 @@ As built, batch 124 (`app/credits.go`, `modes/tty/help_about.go`):
   ("Preliminary data, not fully verified", "Interpolated"). Every row's dash in one column, the set's
   widest chip setting it. NDFD's and IEM's phrases shortened ("Gridded Forecast Data", "Radar & Radar
   Ahead") so no endpoint drops to a line of its own.
+- **The note (D-236):** italic, in its own tone, `AboutNote` - the window's text a quarter of the way back
+  toward the modal ground, lifted to AA where it would not read; on Watchpost Light's light ground a shade
+  back is a lighter grey, the text's own dark grey standing out more.
 - **The colours (D-232, D-233):** the group titles bold white (`FocusPointer`), the hosts light blue - their
   own token, `AboutHost`, FocusCell's value lifted on the modal ground alone (Nord's reads #98B2CC; the
   focused rows keep theirs).

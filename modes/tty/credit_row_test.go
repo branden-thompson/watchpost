@@ -32,6 +32,9 @@ func TestACreditRowIsOneComponent(t *testing.T) {
 	if dash(row) != dash(noted[0]) || dash(row) < 0 {
 		t.Errorf("the dashes stand at %d and %d; want one column", dash(row), dash(noted[0]))
 	}
+	if !strings.Contains(noted[1], render.Tint("CC BY 4.0", "3;"+render.Tok(render.AboutNote))) {
+		t.Errorf("the note is %q; want it italic in the note's tone (D-236)", noted[1])
+	}
 	summaryAt := strings.Index(stripANSITest(noted[0]), "Cities")
 	if note := stripANSITest(noted[1]); strings.Index(note, "CC BY 4.0") != summaryAt || strings.TrimSpace(note) != "CC BY 4.0" {
 		t.Errorf("the note is %q; want it under the summary, at column %d", note, summaryAt)

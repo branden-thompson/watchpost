@@ -285,6 +285,8 @@ func aaPairs() []aaPair {
 		// About's hosts: their own token, so the lift on the modal ground moves
 		// nothing else (D-233).
 		{AboutHost, modal},
+		// A credit row's note, a shade back from the text, read on the same ground (D-236).
+		{AboutNote, modal},
 		{ListPointer, modal}, {ListFocus, modal}, {AlertDanger, append([]Token{ModalBGDark}, win...)}, {AlertModalText, append(append([]Token{}, tints...), AlertModalWarnBG, AlertModalAdvBG)},
 		{AlertModalWarnFG, []Token{AlertModalWarnBG}}, {AlertModalAdvFG, []Token{AlertModalAdvBG}},
 		// THE RAIL'S LETTERS, in the tone every band in the app carries its text.

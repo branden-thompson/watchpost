@@ -3826,3 +3826,17 @@ with an existing chip in a theme; each has its own now.
 
 **Mutation verdicts** (8): the note, the chip column, the endpoint's blue, the bold title, the shared
 chip width, a new chip known, one width for the whole set, every line chipped - all caught.
+
+## Batch 130 — a credit's note, italic and a shade back (D-236; 2026-10-03)
+
+**The HUM LEAD's note (D-236):** "make the <secondary note> italics and slightly darker (but within contrast
+guidelines)". The credit row draws its note italic, in its own token, `AboutNote`: the window's text moved a
+quarter of the way toward the modal ground (`shadeBack`, derived in every theme with `withDerived`), and
+registered on the modal ground so the AA pass lifts it where it would not read. The theme's muted text tone
+could not serve - it equals the window's text in eight themes and is brighter in High Contrast. Every token of
+every theme was diffed before and after: `about.note` is the only change. On Watchpost Light, whose ground is
+light, a shade back is a lighter grey.
+
+**Mutation verdicts** (5): the italic, the tone, the derivation, the modal pairing, and the shade's size
+(survived first - a heavy shade lifted back to the AA floor still passed; the default theme's note must keep
+six tenths of the text's contrast) - all caught.

@@ -6,6 +6,8 @@
 // params for the raw-SGR path; window/gradient entries are #RRGGBB hex).
 package render
 
+import "strings"
+
 // Token names a semantic color role.
 type Token string
 
@@ -24,6 +26,7 @@ const (
 	FocusCell    Token = "cell.focus"       // focused row: grey data cells read light blue (UAT 50.1)
 	FocusPointer Token = "pointer.focus"    // focused row pointer: bold white (UAT 50.2)
 	AboutHost    Token = "about.host"       // the About window's hosts: FocusCell's light blue, lifted on the modal ground alone (D-233)
+	AboutNote    Token = "about.note"       // a credit row's note: the window's text a shade back toward the modal ground, lifted to AA (D-236)
 	ListPointer  Token = "pointer.list"     // a LIST's focused row: bold yellow — see render/list.go for why this is not FocusPointer
 	ListFocus    Token = "label.list.focus" // and its label: the same yellow, NOT bold
 	NameAdvisory Token = "name.advisory"    // location under advisory/statement
@@ -459,7 +462,24 @@ func defaultTheme() map[Token]string {
 // focused rows (D-233).
 func withDerived(t map[Token]string) map[Token]string {
 	t[AboutHost] = t[FocusCell]
+	t[AboutNote] = shadeBack(t[ModalFG], bgOf(t, ModalBGDark))
 	return t
+}
+
+// aboutNoteShade is how far a credit row's note sits back from the window's
+// text toward its ground (D-236): a shade, the AA pass lifting it where it
+// would not read.
+const aboutNoteShade = 0.25
+
+// shadeBack is a text tone moved aboutNoteShade of the way toward a ground; the
+// tone as it is where either does not parse.
+func shadeBack(fg, ground string) string {
+	r, g, b, ok := fgRGB(fg)
+	gr, gg, gb, gok := fgRGB(strings.Replace(ground, "48;", "38;", 1))
+	if !ok || !gok {
+		return fg
+	}
+	return mixToward(r, g, b, [3]int{gr, gg, gb}, aboutNoteShade, false)
 }
 
 // Tok resolves a semantic token to its SGR params (or hex for window/

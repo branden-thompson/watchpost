@@ -50,7 +50,7 @@ func creditRows(c CreditLine, width, badgeW int) []string {
 		out = append(out, left, strings.Repeat(" ", max(0, width-render.Width(c.Host)))+host)
 	}
 	if c.Note != "" {
-		out = append(out, strings.Repeat(" ", render.Width(lead))+c.Note)
+		out = append(out, strings.Repeat(" ", render.Width(lead))+render.Tint(c.Note, "3;"+render.Tok(render.AboutNote))) // italic, a shade back (D-236)
 	}
 	return out
 }
