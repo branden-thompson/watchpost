@@ -387,8 +387,8 @@ UV fast within a session first.
 
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
-| W20.1 | **The readings stored**: each city's EPA hours kept across sessions - the global store or a local one, ruled when W20 opens - for the day they forecast, and gone after it | `app/mapairuv.go`, the store | Ruled at W20's opening | A city read in one session is not asked in the next, the same day; a reading from yesterday is never drawn |
-| W20.2 | **Every known city drawn**: the cities in view whose readings are held, beside the ones asked - within D-202's spacing, or a spacing ruled for them | `app/mapairuv.go` | Ruled at W20's opening | A view drawn after panning over more cities shows more of them, none closer than the spacing |
+| W20.1 | **The readings stored** (D-224): EPA's UV city readings a history-store dataset, `epa-uv-cities` - each city a series, its hourly readings recorded and rolled up into days for trends, as the other datasets are | `app/mapairuv.go`, `app/history.go` | A dataset; a city a key, a point its shape | A city read in one session is not asked in the next, the same day; a reading from yesterday is never drawn |
+| W20.2 | **Every known city drawn** (D-225): each city in view with today's reading, beside the spread asked, no two within 100 km; EPA asked only for the spread | `app/mapairuv.go` | The store's series for the view, today's readings | A view drawn after panning over more cities shows more of them, none closer than the spacing |
 
 ## W21 — The About window's credits, one each (HUM LEAD, 2026-10-02) · after W20
 
@@ -400,7 +400,19 @@ scroll control where it is short.
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
 | W21.1 | **The credits, one each**: every data set under its agency, each source named once with its host, the notices and "Built with" as the mock draws them; the spellings and each source's required wording settled at W21's opening | `modes/tty/help_about.go`, the credits' owners | The mock; open points in its "To settle" list | No source is credited twice; every source the app contacts is credited; each credit a source's terms require is present |
+| W21.3 | **The VOICES group** (D-228): the Piper voices as a group in the data sets, with the attribution each installed voice's licence requires; GitHub not credited | `modes/tty/help_about.go`, the voices' licences | A group, as the agencies' | Each installed voice's required attribution is in the window |
 | W21.2 | **The smart columns**: two columns on a wide window, the scroll control on a short one, from the app's own column and scroll parts (D-147) | `modes/tty/help_about.go` | As the Settings window's columns | A wide window draws two columns, a short one scrolls and every line is reachable |
+
+## W22 — Every reading recorded is stored (D-224, D-226, D-227) · after W21
+
+**HUM LEAD, 2026-10-03:** "if we record it, we should store it" (D-224), refined (D-226): never the
+weather radio relays or their audio; a source that serves its own history on demand is stored only when
+a ruling says so - that is a local copy, not data otherwise lost.
+
+| # | Task | Files | Shape | Test first (RED) |
+|---|---|---|---|---|
+| W22.1 | **The table**: every source the app fetches readings from - AirNow, Open-Meteo temperature and Marine, NDFD's totals, NWS observations, buoys, tides, quakes, fire, alerts - with whether it serves its history on demand, and the disk a dataset would take | the build log, a ruling a source with history | A table | - (research) |
+| W22.2 | **The datasets**: each source with no history on demand a history-store dataset, hourly and rolled up; each with history as its ruling says | `app/history.go`, each source's adapter | A dataset each | Each records what it fetched, and replays it |
 
 ## The trace
 

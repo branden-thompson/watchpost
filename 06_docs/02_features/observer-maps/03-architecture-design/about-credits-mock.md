@@ -96,8 +96,8 @@ line in its agency's group, with what it supplies:
 | **OpenFreeMap**, © OpenMapTiles, © OpenStreetMap contributors | the map's basemap tiles | `tiles.openfreemap.org` | **ODbL: the OpenStreetMap credit is required.** It is in `mapCredits` today |
 | **GeoNames** | the offline place and ZIP index: cities15000 and US postal codes, embedded | `domains/locations/geodata` | **CC BY 4.0: attribution required** |
 | **NOAA NHC**, National Hurricane Center | current storms, Atlantic and Eastern Pacific | `www.nhc.noaa.gov` | public domain; a line in the NOAA group |
-| **Piper voices** (rhasspy), via Hugging Face | the offline speech voices, fetched on demand | `huggingface.co` | each voice model carries its own licence; check them |
-| GitHub | the hourly "is there a newer Watchpost?" check | `api.github.com` | not a data set; perhaps a note, not a credit |
+| **Piper voices** (rhasspy), via Hugging Face | the offline speech voices, fetched on demand | `huggingface.co` | each voice model carries its own licence: **a VOICES group in the data sets, with each installed voice's required attribution (D-228)** |
+| GitHub | the hourly "is there a newer Watchpost?" check | `api.github.com` | not a data set: **not credited (D-228)** |
 
 Hosts behind sources the mock already names:
 
@@ -105,8 +105,8 @@ Hosts behind sources the mock already names:
 - CO-OPS comes from `api.tidesandcurrents.noaa.gov`.
 - NIFC WFIGS comes from `services3.arcgis.com`. The mock shows `nifc.gov`.
 - The NWR transmitter list is embedded, credited as "NOAA NWR transmitter list (weather.gov/nwr)".
-- Open-Meteo's air-quality host (`air-quality-api.open-meteo.com`) is named in the code. Confirm
-  whether it is still asked since D-193 put AirNow first.
+- Open-Meteo's air-quality host (`air-quality-api.open-meteo.com`) appears only in a test fixture: the
+  app does not contact it, so it is not credited (checked 2026-10-03).
 
 ## To settle when W21 opens
 
