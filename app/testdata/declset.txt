@@ -441,6 +441,7 @@ func (*radioDeck).watchlistDwell
 func (*radioDeck).watchlistLang
 func (*rainRescue).ndfdDays
 func (*rainRescue).record
+func (*rainRescue).recordNDFD
 func (*rainRescue).recorded
 func (*rainRescue).recordedDays
 func (*readSession).begin
@@ -780,6 +781,8 @@ func readerFor
 func readingWord
 func recentTiers
 func reconcile
+func recordOMHours
+func recordOMWaves
 func recordUV
 func recordedBoxes
 func recordedFeelsNow
@@ -1039,9 +1042,12 @@ var historyKeeps
 var mapLayers
 var mapSources
 var ndfdHourly
+var ndfdRainDays
 var ndfdWaves
+var omHourly
 var omRainDays
 var omUVHourly
+var omWaves
 var quakeFeedBytes
 var rateTable
 var tempAnswerRules

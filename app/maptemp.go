@@ -159,7 +159,7 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	if src != lp.temp.om {
 		fill = filled // the boxes it answered for, UV's grid rides along there (D-191)
 	}
-	rescue := &fallback{past: recordedHour(lp.historyStore())} // NDFD has no hour before the current one: the history's are the loop's past (W19.1)
+	rescue := &fallback{past: recordedHour(lp.historyStore()), store: lp.historyStore()} // NDFD has no hour before the current one: the history's are the loop's past (W19.1)
 	if src == lp.temp.om && lp.temp.ndfd != nil && lp.temp.ndfd.Covers(ask.Region) {
 		rescue.src = lp.temp.ndfd // Open-Meteo refused: NDFD draws what it can, the history the hours before (W18.2, W18.3b)
 	}
@@ -332,10 +332,16 @@ func (t *tempBuild) fetch(b fieldBox) (temperature.Series, boxFrom, error) {
 	}
 	s, err := t.src.Fetch(t.ctx, lat, t.now)
 	if err == nil {
+		if t.src.Name() == "Open-Meteo" && t.rescue != nil {
+			recordOMHours(t.rescue.store, b.Name, s, askAnchor(t.ask, t.now)) // kept (W22.2, D-231)
+		}
 		return s, fromSource, nil
 	}
 	if t.fill != nil {
 		if s, err = t.fill.Fetch(t.ctx, omLat, t.now); err == nil {
+			if t.rescue != nil {
+				recordOMHours(t.rescue.store, b.Name, s, askAnchor(t.ask, t.now)) // the fill is Open-Meteo's (D-101)
+			}
 			t.fellBack++
 			t.credit = true
 			t.missing[t.src.Name()+" did not answer for part of the map; Open-Meteo is drawn there."] = true

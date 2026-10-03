@@ -3722,3 +3722,19 @@ window says.
 warning, AirNow's note, the host at the margin, the note under its line, the two columns, the width from
 the plan, the warnings drawn, and the rail's room (survived first; the scrolled window's rule must be the
 column's 70 cells) - all caught.
+
+## Batch 125 — the map's sources kept (W22.2 part 1, D-226, D-231; 2026-10-03)
+
+**Three datasets, each written where its source answers.** `ndfd-rain-days`: each day NDFD gave a box its
+rain and snow - NDFD serves no history of its forecasts (D-226). `openmeteo-hourly`: Open-Meteo's
+temperature, feels-like and wind, each hour up to the current one, where it drew a box as the source or
+as the fill - its archive is a local copy, kept as D-231 rules, for the Analyst mode. `openmeteo-waves`:
+Open-Meteo Marine's wave height at the points past NDFD's reach, each hour up to the current one, the
+points it was not asked for missing. An hour ahead of the current one is never kept: a forecast is not
+the record. All are in `historyDatasets`, so the Data tab's retention is theirs.
+
+**Mutation verdicts** (9): each record call, the fill's, the "up to the current hour" bound on both hourly
+datasets, NDFD's answer not kept as Open-Meteo's, the production wiring, and the dataset registered - all
+caught.
+
+No change a listener can see; the Data tab's size grows with them.

@@ -171,6 +171,15 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 - It is read to draw every city in view with a reading for its own day, beside the cities asked
   (D-225); the series are listed at first use and each hour, so another instance's cities are known.
 
+**The map's other sources (W22.2, D-226, D-231)**, each written where its source answers:
+
+- **`ndfd-rain-days` v1**: NDFD's rain (liquid-equivalent, mm) and snow (cm), each day it gave a box;
+  NDFD serves no history of its forecasts.
+- **`openmeteo-hourly` v1**: Open-Meteo's temperature, feels-like and wind (`ndfd-hourly`'s fields), each
+  hour up to the current one, where it is the source or the fill.
+- **`openmeteo-waves` v1**: Open-Meteo Marine's wave height at a box's points past NDFD's reach, each hour
+  up to the current one; the points not asked missing.
+
 **`openmeteo-rain-days` v1**
 
 - Fields: `peak` in mm/h, `rain` in mm, `snow` in cm, one record per target date.

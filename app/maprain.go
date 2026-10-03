@@ -247,6 +247,21 @@ func (rr *rainRescue) record(box string, lat temperature.Lattice, r temperature.
 	}
 }
 
+// recordNDFD keeps each day NDFD gave a box its rain and snow, issued this
+// hour - asking again rewrites nothing.
+func (rr *rainRescue) recordNDFD(box string, lat temperature.Lattice, totals temperature.Totals, anchor, now time.Time) {
+	if rr.store == nil {
+		return
+	}
+	for k := range temperature.Days { // a week (P10-02)
+		if allMissing(totals.QPF[k]) && allMissing(totals.Snow[k]) {
+			continue
+		}
+		rr.store.Put(ndfdRainDays.Name, history.Record{Key: history.Key{Source: "ndfd", Place: box}, At: dayStart(anchor, k), IssuedAt: now.Truncate(time.Hour),
+			Shape: shapeOf(lat), Values: map[string][]float64{"rain": totals.QPF[k], "snow": totals.Snow[k]}})
+	}
+}
+
 // ndfdDays are NDFD's totals for a box's days it reaches - today and three
 // days on - and which they are; none without NDFD (D-185).
 func (rr *rainRescue) ndfdDays(ctx context.Context, box string, lat temperature.Lattice, days []tty.ForecastStep, anchor, now time.Time, imperial bool) (map[int]bool, []tuimaps.Overlay) {
@@ -258,6 +273,7 @@ func (rr *rainRescue) ndfdDays(ctx context.Context, box string, lat temperature.
 	if err != nil {
 		return drawn, nil // Open-Meteo's, then the history's, draw them
 	}
+	rr.recordNDFD(box, lat, totals, anchor, now) // kept: NDFD serves no history of its forecasts (W22.2, D-226)
 	var out []tuimaps.Overlay
 	for k, step := range days { // a week (P10-02)
 		if o, ok := totalsGrid(tty.RainLayer+"/"+box+"/totals/d"+strconv.Itoa(k), lat, totals.QPF[k], totals.Snow[k], imperial, anchor); ok {

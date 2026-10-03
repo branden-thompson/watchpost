@@ -106,9 +106,47 @@ var epaUVCities = history.Dataset{
 	Days:        30 * 24 * time.Hour,
 }
 
+// ndfdRainDays is NDFD's rain and snow over each field box, each day it gave:
+// NDFD serves no history of its forecasts, so they are kept (W22.2, D-226).
+var ndfdRainDays = history.Dataset{
+	Name: "ndfd-rain-days", Version: 1, Step: time.Hour,
+	Title:       "NDFD, rain and snow by day",
+	Description: "The National Weather Service's forecast rain (liquid-equivalent) and snowfall over each field box of a region, each day it gave.",
+	Fields: []history.Field{
+		{Name: "rain", Label: "Rain", Unit: "mm", Decimals: 1},
+		{Name: "snow", Label: "Snow", Unit: "cm", Decimals: 1},
+	},
+	Hours: 72 * time.Hour,
+	Days:  30 * 24 * time.Hour,
+}
+
+// omHourly is Open-Meteo's temperature, feels-like and wind over each field
+// box, each hour it gave up to the current one, as the source or the fill
+// (W22.2, D-231): its archive is a local copy, kept for the Analyst mode.
+var omHourly = history.Dataset{
+	Name: "openmeteo-hourly", Version: 1, Step: time.Hour,
+	Title:       "Open-Meteo, the hour",
+	Description: "Open-Meteo's temperature, feels-like and wind over each field box of a region, each hour it answered up to the current one.",
+	Fields:      ndfdHourly.Fields,
+	Hours:       72 * time.Hour,
+	Days:        30 * 24 * time.Hour,
+}
+
+// omWaves is Open-Meteo Marine's wave height over the points of each field
+// box past NDFD's reach, each hour it gave up to the current one (W22.2,
+// D-231); the points it was not asked for are missing.
+var omWaves = history.Dataset{
+	Name: "openmeteo-waves", Version: 1, Step: time.Hour,
+	Title:       "Open-Meteo Marine, wave height",
+	Description: "Open-Meteo Marine's significant wave height at each field box's points past NDFD's reach, each hour it answered up to the current one.",
+	Fields:      ndfdWaves.Fields,
+	Hours:       72 * time.Hour,
+	Days:        30 * 24 * time.Hour,
+}
+
 // historyDatasets are every dataset the history holds: the Data tab's
 // retention is theirs alike (D-175).
-var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays, ndfdWaves, epaUVCities}
+var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays, ndfdWaves, epaUVCities, ndfdRainDays, omHourly, omWaves}
 
 // historyEvery is how often the recorder looks for an hour to record.
 const historyEvery = 5 * time.Minute
@@ -294,8 +332,9 @@ const pastHours = 3
 // fallback is what draws a box Open-Meteo did not answer: NDFD's hours, and
 // the hours before the current one from the history (W18.2, W18.3b).
 type fallback struct {
-	src  temperature.Source
-	past func(box string, hour time.Time) (history.Record, bool)
+	src   temperature.Source
+	past  func(box string, hour time.Time) (history.Record, bool)
+	store *history.Store // Open-Meteo's hours kept, where it draws (W22.2, D-231)
 }
 
 // recordedHour reads a box's recorded NDFD hour from store; nil without one.
@@ -500,6 +539,29 @@ func sizeWords(b int64) string {
 		return strconv.FormatInt((b+1023)/1024, 10) + " KB"
 	}
 	return strconv.FormatFloat(float64(b)/(1<<20), 'f', 1, 64) + " MB"
+}
+
+// recordOMHours keeps each hour of an Open-Meteo series up to the current
+// one - temperature, feels-like and wind - issued at its own hour, so asking
+// again rewrites nothing (W22.2, D-231).
+func recordOMHours(store *history.Store, box string, s temperature.Series, anchor time.Time) {
+	if store == nil {
+		return
+	}
+	shape := history.Shape{Box: s.Lattice.Box, Cols: s.Lattice.Cols, Rows: s.Lattice.Rows}
+	row := func(rows [][]float64, i int) []float64 {
+		if i < len(rows) {
+			return rows[i]
+		}
+		return nil
+	}
+	for i, h := range s.Hours { // a series' hours (P10-02)
+		if h.After(anchor) || i >= len(s.Hourly) || allMissing(s.Hourly[i]) {
+			continue
+		}
+		store.Put(omHourly.Name, history.Record{Key: history.Key{Source: "openmeteo", Place: box}, At: h, IssuedAt: h, Shape: shape,
+			Values: map[string][]float64{"temp": s.Hourly[i], "feels": row(s.Feels, i), "wind": row(s.WindSpeed, i), "gust": row(s.WindGust, i), "wind_from": row(s.WindFrom, i)}})
+	}
 }
 
 // recordUV keeps each hour of a series' UV that Open-Meteo gave, up to the

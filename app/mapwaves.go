@@ -296,6 +296,7 @@ func (wb *waveBuild) fetch(box string, lat temperature.Lattice) (w temperature.W
 		return w, ndfdErr, emptyDay
 	}
 	wb.keep.land.learn(lat, answeredNothing(far, need))
+	recordOMWaves(wb.keep.store, box, far, wb.anchor) // kept (W22.2, D-231)
 	if ndfdErr != nil {
 		w = far
 	} else {
@@ -303,6 +304,20 @@ func (wb *waveBuild) fetch(box string, lat temperature.Lattice) (w temperature.W
 	}
 	wb.fromOM = true
 	return w, ndfdErr, emptyDay
+}
+
+// recordOMWaves keeps each hour Open-Meteo Marine gave a box, up to the
+// current one, issued at its own hour.
+func recordOMWaves(store *history.Store, box string, w temperature.Waves, anchor time.Time) {
+	if store == nil {
+		return
+	}
+	for i, h := range w.Hours { // a series' hours (P10-02)
+		if h.After(anchor) || i >= len(w.Hourly) || allMissing(w.Hourly[i]) {
+			continue
+		}
+		store.Put(omWaves.Name, history.Record{Key: history.Key{Source: "openmeteo", Place: box}, At: h, IssuedAt: h, Shape: shapeOf(w.Lattice), Values: map[string][]float64{"waves": w.Hourly[i]}})
+	}
 }
 
 // grid is one wave grid in the shown unit.
