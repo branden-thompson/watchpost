@@ -3478,3 +3478,18 @@ back, the panel opened on the kept choices, and the tests' own config - all caug
 D-214's last choice, the console's bed relay pick, is batch 116: it names a relay in range, so it is
 kept by the relay and restored only while that relay is still near the station.
 
+## Batch 116 — UV's cities read once a day (W14 P-14, D-211; 2026-10-02)
+
+**What the HUM LEAD saw.** "UV Index still takes a noticable time to draw for the 24 stations in frame."
+EPA forecasts each city hour by hour for today, once a day, but the map asked for every city in the
+view's spread on every ask - up to 48 requests, four at a time, after every pan into a new spread and
+every hour (the response cache held each for an hour). Each city's hours are now kept for its local
+day in a `platform/agememo` of 512 (`uvCities.days`), keyed by the city and its date: a pan, a zoom or
+a refresh asks EPA only for the cities it has not read today, and the rest draw at once. A city EPA
+refused is asked again at the next view - a failure is never kept. W20 keeps the readings across
+sessions and draws every known city (D-211).
+
+**Mutation verdicts** (2): the day kept, the date in the key - both caught. The test's fake refused a
+city by a name the address never carries (the address names it upper-cased); fixed before it measured
+anything.
+

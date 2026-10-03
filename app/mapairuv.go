@@ -342,7 +342,20 @@ func airHosts() []tty.MapSource {
 type uvCities struct {
 	epa    *uv.EPA
 	cities func(view geo.Box, n int) []geodata.City // spread over the view, at most n (D-202)
+	// days keeps each city's hours for its local day (W14 P-14, D-211): EPA
+	// forecasts a city once a day, so a pan, zoom or refresh asks only for the
+	// cities not yet read today. A city EPA did not answer is asked again.
+	days lazyMemo[uvDayKey, []uv.Reading]
 }
+
+// uvDayKey is a city and its local date.
+type uvDayKey struct {
+	name, state, date string
+}
+
+// uvDayRules keep a city's day for the day, for the cities a session's views
+// pass over.
+var uvDayRules = agememo.Options{Fresh: 24 * time.Hour, Max: 512}
 
 // uvCitySpacingKm is how near two cities may be: no closer than about 100 km
 // (D-202), so New York's boroughs are one marker, not three.
@@ -361,7 +374,7 @@ func (c *uvCities) markers(ctx context.Context, view geo.Box, n int, anchor time
 	if c == nil || c.epa == nil || c.cities == nil {
 		return nil
 	}
-	got := c.read(ctx, c.cities(view, n))
+	got := c.read(ctx, c.cities(view, n), anchor)
 	var out []tuimaps.Overlay
 	add := func(id string, valid time.Time, during tuimaps.Span, pick func([]uv.Reading) (float64, bool)) {
 		if feats := uvPoints(got, pick); len(feats) > 0 {
@@ -386,7 +399,7 @@ func (c *uvCities) markers(ctx context.Context, view geo.Box, n int, anchor time
 // read asks EPA for each city's hours, uvAskers at a time, and keeps the
 // cities' order whatever order they answer in. A city with no zone, or that
 // EPA does not answer for, is left out - counted as nothing, never said (D-124).
-func (c *uvCities) read(ctx context.Context, cities []geodata.City) []cityReadings {
+func (c *uvCities) read(ctx context.Context, cities []geodata.City, at time.Time) []cityReadings {
 	answers := make([]*cityReadings, len(cities))
 	slots := make(chan struct{}, uvAskers)
 	var wg sync.WaitGroup
@@ -399,7 +412,11 @@ func (c *uvCities) read(ctx context.Context, cities []geodata.City) []cityReadin
 		slots <- struct{}{}
 		go func() {
 			defer func() { <-slots; wg.Done() }()
-			if readings, err := c.epa.Hourly(ctx, city.Name, city.State, loc); err == nil {
+			key := uvDayKey{name: city.Name, state: city.State, date: at.In(loc).Format("2006-01-02")}
+			readings, err := c.days.memo(uvDayRules).Do(ctx, key, func() ([]uv.Reading, error) {
+				return c.epa.Hourly(ctx, city.Name, city.State, loc)
+			})
+			if err == nil {
 				answers[i] = &cityReadings{city, readings}
 			}
 		}()

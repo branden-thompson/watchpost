@@ -989,6 +989,7 @@ type timingLog
 type timingRecord
 type usageCache
 type uvCities
+type uvDayKey
 type waveBuild
 type waveKeep
 type waveSource
@@ -1012,3 +1013,4 @@ var omUVHourly
 var quakeFeedBytes
 var rateTable
 var tempAnswerRules
+var uvDayRules
