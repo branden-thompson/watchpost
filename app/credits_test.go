@@ -13,7 +13,7 @@ func creditText(groups []tty.CreditGroup) string {
 	for _, g := range groups {
 		b.WriteString(g.Name + "\n")
 		for _, c := range g.Lines {
-			b.WriteString(strings.Join([]string{c.Abbr, c.What, c.Host, c.Note}, " | ") + "\n")
+			b.WriteString(strings.Join([]string{c.Badge, c.What, c.Host, c.Note}, " | ") + "\n")
 		}
 	}
 	return b.String()
@@ -29,23 +29,26 @@ func creditText(groups []tty.CreditGroup) string {
 func TestEverySourceIsCreditedOnce(t *testing.T) {
 	text := creditText(creditGroups())
 	for _, want := range []string{"National Weather Service", "National Data Buoy Center", "Tides & Currents", "Wildfire Satellite Hotspots",
-		"Tropical Storms", "Transmitter List", "MRMS", "HRRR", "National Digital Forecast Database", "Fire Hotspots, API Key Required", "WFIGS", "wxradio.org & weatherUSA",
+		"Tropical Storms", "Transmitter List", "MRMS", "HRRR", "Gridded Forecast Data", "Fire Hotspots, API Key Required", "WFIGS", "wxradio.org & weatherUSA",
 		"AirNow", "Envirofacts", "Earthquake Hazards Program", "IEM", "Geocoding", "Basemap Tiles", "Cities & Postal Codes", "rhasspy/piper-voices"} {
 		if n := strings.Count(text, want); n != 1 {
 			t.Errorf("%q is credited %d times; want once:\n%s", want, n, text)
 		}
 	}
-	for _, want := range []string{"OPEN-METEO (CC BY 4.0)", "GEONAMES (CC BY 4.0)", "© OpenStreetMap contributors (ODbL)", "preliminary data, not fully verified", "LANCE FIRMS", "(MIT)"} {
+	for _, want := range []string{"OPEN-METEO (CC BY 4.0)", "GEONAMES (CC BY 4.0)", "© OpenStreetMap contributors (ODbL)", "Preliminary data, not fully verified", "LANCE FIRMS", "(MIT)"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the credits lack %q:\n%s", want, text)
 		}
 	}
 	for _, g := range creditGroups() {
-		if !strings.HasPrefix(g.Name, "OPEN-METEO") {
-			continue
-		}
 		for _, c := range g.Lines {
-			if c.What != "Geocoding" && !strings.HasSuffix(c.What, "Interpolated") {
+			if !tty.ChipKnown(c.Badge) || c.What == "" {
+				t.Errorf("%q under %s has no chip of its own (D-235): every credit is a chip and a phrase", c.What, g.Name)
+			}
+			if strings.HasPrefix(g.Name, "OPEN-METEO") && (c.Badge != "O-METEO" || c.Host == "") {
+				t.Errorf("Open-Meteo's %q is %q at %q; want its chip and its endpoint (D-235)", c.What, c.Badge, c.Host)
+			}
+			if strings.HasPrefix(g.Name, "OPEN-METEO") && c.What != "Geocoding" && c.Note != "Interpolated" {
 				t.Errorf("Open-Meteo's %q does not say it is interpolated (CC BY 4.0 asks a change be said)", c.What)
 			}
 		}

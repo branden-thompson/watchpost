@@ -154,6 +154,14 @@ const (
 	MapChipCOOPSBG  Token = "map.chip.coops.bg"
 	MapChipAirNowBG Token = "map.chip.airnow.bg" // D-138
 	MapChipEPABG    Token = "map.chip.epa.bg"    // D-167: UV's cold start
+	// The credits' sources without a map layer yet, each its own chip (D-235).
+	MapChipNHCBG      Token = "map.chip.nhc.bg"
+	MapChipNWRBG      Token = "map.chip.nwr.bg"
+	MapChipFIRMSBG    Token = "map.chip.firms.bg"
+	MapChipRelaysBG   Token = "map.chip.relays.bg"
+	MapChipGeoNamesBG Token = "map.chip.geonames.bg"
+	MapChipOFMBG      Token = "map.chip.ofm.bg"
+	MapChipPiperBG    Token = "map.chip.piper.bg"
 	// MapNoticeQuotaBG is the ground of the map's notice that a source's
 	// quota is spent (W18.1, D-165): dark orange, its words ChipTones'.
 	MapNoticeQuotaBG Token = "map.notice.quota.bg"
@@ -380,6 +388,13 @@ func defaultTheme() map[Token]string {
 		MapChipCOOPSBG:    "48;2;132;204;22", // #84CC16, lime
 		MapChipAirNowBG:   "48;2;146;64;14",  // #92400E, brown
 		MapChipEPABG:      "48;2;22;101;52",  // #166534, forest green (D-167)
+		MapChipNHCBG:      "48;2;3;105;161",  // #0369A1, deep sky blue (D-235)
+		MapChipNWRBG:      "48;2;30;58;138",  // #1E3A8A, navy
+		MapChipFIRMSBG:    "48;2;249;115;22", // #F97316, bright orange
+		MapChipRelaysBG:   "48;2;77;124;15",  // #4D7C0F, olive
+		MapChipGeoNamesBG: "48;2;161;98;7",   // #A16207, amber
+		MapChipOFMBG:      "48;2;126;34;206", // #7E22CE, purple
+		MapChipPiperBG:    "48;2;15;23;42",   // #0F172A, ink
 		MapNoticeQuotaBG:  "48;2;194;65;12",  // #C2410C, dark orange (D-165)
 		MapChipRecordedBG: "48;2;91;75;138",  // #5B4B8A, muted violet (D-178)
 		// Emergency Orders take THE red (MVS-D-62).

@@ -78,6 +78,8 @@ func builtinOverrides() map[string]map[Token]string {
 			MapRadarMRMSBG: "48;2;90;90;90", MapRadarIEMBG: "48;2;50;50;50", MapRadarModelBG: "48;2;70;70;70", // D-83's chips without colour: greys, the name says which
 			MapChipNWSBG: "48;2;30;30;30", MapChipUSGSBG: "48;2;40;40;40", MapChipNIFCBG: "48;2;60;60;60", MapChipHMSBG: "48;2;80;80;80", // D-134: a grey each
 			MapChipNDBCBG: "48;2;100;100;100", MapChipNDFDBG: "48;2;110;110;110", MapChipCOOPSBG: "48;2;120;120;120", MapChipOMeteoBG: "48;2;130;130;130", MapChipAirNowBG: "48;2;20;20;20",
+			MapChipNHCBG: "48;2;165;165;165", MapChipNWRBG: "48;2;175;175;175", MapChipFIRMSBG: "48;2;185;185;185", MapChipRelaysBG: "48;2;195;195;195", // D-235: a grey each
+			MapChipGeoNamesBG: "48;2;205;205;205", MapChipOFMBG: "48;2;215;215;215", MapChipPiperBG: "48;2;225;225;225",
 			MapNoticeQuotaBG:  "48;2;140;140;140", // D-165's notice: a grey of its own
 			MapChipRecordedBG: "48;2;150;150;150", // D-178's RECORDED chip: a grey of its own
 			MapChipEPABG:      "48;2;160;160;160", // D-167's EPA chip: a grey of its own
@@ -295,6 +297,8 @@ func lightOverrides() map[Token]string {
 		// D-134's on the light ground: pale, a hue a source, the name black.
 		MapChipNWSBG: "48;2;147;197;253", MapChipNDBCBG: "48;2;103;232;249", MapChipNDFDBG: "48;2;110;231;183", MapChipOMeteoBG: "48;2;253;224;71",
 		MapChipUSGSBG: "48;2;203;213;225", MapChipNIFCBG: "48;2;252;165;165", MapChipHMSBG: "48;2;249;168;212", MapChipCOOPSBG: "48;2;190;242;100", MapChipAirNowBG: "48;2;214;188;160",
+		MapChipNHCBG: "48;2;125;211;252", MapChipNWRBG: "48;2;165;180;252", MapChipFIRMSBG: "48;2;253;186;116", MapChipRelaysBG: "48;2;217;249;157", // D-235's, pale
+		MapChipGeoNamesBG: "48;2;252;211;77", MapChipOFMBG: "48;2;216;180;254", MapChipPiperBG: "48;2;226;232;240",
 		// D-165's notice, dark orange elsewhere: the lightest orange this theme's
 		// no-dark-ground rule allows, its words black.
 		MapNoticeQuotaBG:  "48;2;251;146;60",

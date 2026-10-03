@@ -48,12 +48,30 @@ func TestHelpFloatsOverDashboard(t *testing.T) {
 func aboutGroups() []CreditGroup {
 	return []CreditGroup{
 		{Name: "NATIONAL OCEANIC AND ATMOSPHERIC ADMINISTRATION (NOAA)", Lines: []CreditLine{
-			{Abbr: "NWS", What: "National Weather Service", Host: "api.weather.gov"},
-			{Abbr: "NDBC", What: "National Data Buoy Center", Host: "ndbc.noaa.gov"}}},
+			{Badge: "NWS", What: "National Weather Service", Host: "api.weather.gov"},
+			{Badge: "NDBC", What: "National Data Buoy Center", Host: "ndbc.noaa.gov"}}},
 		{Name: "UNITED STATES ENVIRONMENTAL PROTECTION AGENCY", Lines: []CreditLine{
-			{Abbr: "AQI", What: "U.S. EPA AirNow", Note: "preliminary data, not fully verified"}}},
-		{Name: "OPEN-METEO (CC BY 4.0)", Lines: []CreditLine{{What: "geocoding"}, {What: "Wind data, interpolated"}}},
+			{Badge: "AIRNOW", What: "U.S. EPA AirNow", Note: "preliminary data, not fully verified"}}},
+		{Name: "OPEN-METEO (CC BY 4.0)", Lines: []CreditLine{{Badge: "O-METEO", What: "Geocoding", Host: "geocoding-api.open-meteo.com"}, {Badge: "O-METEO", What: "Wind Data", Host: "api.open-meteo.com", Note: "Interpolated"}}},
 	}
+}
+
+// aboutRow is a fixture source's credit row as the window frames it - built
+// by the component itself, so the window's test and the row's cannot drift.
+func aboutRow(t *testing.T, badge string, line int) string {
+	t.Helper()
+	var all []CreditLine
+	for _, g := range aboutGroups() {
+		all = append(all, g.Lines...)
+	}
+	for _, c := range all {
+		if c.Badge == badge {
+			rows := creditRows(c, aboutColumn, badgeWidth(all))
+			return "│   " + stripANSITest(render.PadTo(rows[line], aboutColumn)) + "   │"
+		}
+	}
+	t.Fatalf("no fixture source has the badge %s", badge)
+	return ""
 }
 
 // aboutFrame is the About window's framed lines, as drawn at a terminal size.
@@ -94,12 +112,9 @@ func TestAboutWindowMatchesMock(t *testing.T) {
 		"│   All sources free to use with attribution.                                │",
 		"│   DATA SETS PROVIDED BY:                                                   │",
 		"│   NATIONAL OCEANIC AND ATMOSPHERIC ADMINISTRATION (NOAA)                   │",
-		"│     NWS     - National Weather Service                   api.weather.gov   │",
-		"│     NDBC    - National Data Buoy Center                    ndbc.noaa.gov   │",
-		"│     AQI     - U.S. EPA AirNow                                              │",
-		"│               preliminary data, not fully verified                         │",
+		aboutRow(t, "NWS", 0), aboutRow(t, "NDBC", 0), aboutRow(t, "AIRNOW", 0), aboutRow(t, "AIRNOW", 1),
 		"│   OPEN-METEO (CC BY 4.0)                                                   │",
-		"│     geocoding                                                              │",
+		aboutRow(t, "O-METEO", 0),
 		"│   Built with:                                                              │",
 		"│   GO " + strings.TrimPrefix(runtime.Version(), "go") + " | BubbleTea | LipGloss | go-tuimaps",
 		"│   Stylized Terminal UI Design System (STUDS)                               │",
@@ -330,6 +345,8 @@ func TestAboutWindowsMarks(t *testing.T) {
 		render.Tint("! LAST WARNING", render.Tok(render.ListFocus)),
 		render.Tint("NATIONAL OCEANIC AND ATMOSPHERIC ADMINISTRATION (NOAA)", render.Tok(render.FocusPointer)),
 		render.Tint("api.weather.gov", render.Tok(render.AboutHost)),
+		render.Tint("WATCHPOST", render.Tok(render.FocusPointer)),
+		chipFace("NWS"),
 	} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("the window lacks %q", want)

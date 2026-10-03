@@ -360,7 +360,8 @@ const (
 // ChipGrounds are the map's source chips' grounds (0.18.0 D-83, D-134).
 func ChipGrounds() []Token {
 	return []Token{MapRadarMRMSBG, MapRadarIEMBG, MapRadarModelBG, MapChipNWSBG, MapChipNDFDBG, MapChipOMeteoBG,
-		MapChipUSGSBG, MapChipNIFCBG, MapChipHMSBG, MapChipNDBCBG, MapChipCOOPSBG, MapChipAirNowBG, MapChipRecordedBG, MapChipEPABG}
+		MapChipUSGSBG, MapChipNIFCBG, MapChipHMSBG, MapChipNDBCBG, MapChipCOOPSBG, MapChipAirNowBG, MapChipRecordedBG, MapChipEPABG,
+		MapChipNHCBG, MapChipNWRBG, MapChipFIRMSBG, MapChipRelaysBG, MapChipGeoNamesBG, MapChipOFMBG, MapChipPiperBG} // the credits' (D-235)
 }
 
 // NoticeGrounds are the map's notices' grounds (W18.1, D-165): measured as

@@ -131,6 +131,13 @@ As built, batch 124 (`app/credits.go`, `modes/tty/help_about.go`):
   SOURCES, DEVICES, OR FOR LIFE SAFETY USE.", "FOR LIFE SAFETY, USE NOAA WEATHER RADIO AND COMPATIBLE
   DEVICES." (R-13's pointer, D-229's line folded in), "WEATHER RELAYS MAY BE INCOMPLETE OR DELAYED." - in the
   focus yellow, a blank row under them.
+- **The rows (D-235):** "WATCHPOST" bold white; every credit one reusable row (`creditRows`, `modes/tty/credit_row.go`)
+  - the source's chip (the map's own: AIRNOW for air quality, EPA for UV, NIFC for WFIGS, O-METEO for each
+  Open-Meteo source; seven new chips NHC, NWR, FIRMS, RELAYS, GEONAMES, OFM, PIPER), a dash, a one-phrase
+  summary, the endpoint at the right margin, and a note under the summary only where a source has one
+  ("Preliminary data, not fully verified", "Interpolated"). Every row's dash in one column, the set's
+  widest chip setting it. NDFD's and IEM's phrases shortened ("Gridded Forecast Data", "Radar & Radar
+  Ahead") so no endpoint drops to a line of its own.
 - **The colours (D-232, D-233):** the group titles bold white (`FocusPointer`), the hosts light blue - their
   own token, `AboutHost`, FocusCell's value lifted on the modal ground alone (Nord's reads #98B2CC; the
   focused rows keep theirs).

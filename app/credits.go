@@ -11,55 +11,57 @@ import "github.com/branden-thompson/watchpost/modes/tty"
 // whose credit is named; AirNow asks its readings be called preliminary, and
 // NASA that FIRMS data be credited to LANCE FIRMS. The
 // voices are credited under the licence they are published under (D-228).
+// Every line is a chip, a phrase, an endpoint and a note where there is one
+// (D-235): the credit-row component draws them all.
 // Add a source here when a provider or a layer reads a new one.
 func creditGroups() []tty.CreditGroup {
 	return []tty.CreditGroup{
 		{Name: "NATIONAL OCEANIC AND ATMOSPHERIC ADMINISTRATION (NOAA)", Lines: []tty.CreditLine{
-			{Abbr: "NWS", What: "National Weather Service", Host: "api.weather.gov"},
-			{Abbr: "NDBC", What: "National Data Buoy Center", Host: "ndbc.noaa.gov"},
-			{Abbr: "CO-OPS", What: "Tides & Currents", Host: "tidesandcurrents.noaa.gov"},
-			{Abbr: "HMS", What: "Wildfire Satellite Hotspots", Host: "ospo.noaa.gov"},
-			{Abbr: "NHC", What: "Tropical Storms", Host: "nhc.noaa.gov"},
-			{Abbr: "NWR", What: "Transmitter List", Host: "weather.gov/nwr"},
-			{Abbr: "MRMS", What: "Current Radar for Maps"},
-			{Abbr: "HRRR", What: "Radar Ahead (forecast) for Maps"},
-			{Abbr: "NDFD", What: "National Digital Forecast Database", Host: "graphical.weather.gov"},
+			{Badge: "NWS", What: "National Weather Service", Host: "api.weather.gov"},
+			{Badge: "NDBC", What: "National Data Buoy Center", Host: "ndbc.noaa.gov"},
+			{Badge: "CO-OPS", What: "Tides & Currents", Host: "tidesandcurrents.noaa.gov"},
+			{Badge: "HMS", What: "Wildfire Satellite Hotspots", Host: "ospo.noaa.gov"},
+			{Badge: "NHC", What: "Tropical Storms", Host: "nhc.noaa.gov"},
+			{Badge: "NWR", What: "Transmitter List", Host: "weather.gov/nwr"},
+			{Badge: "MRMS", What: "Current Radar for Maps"},
+			{Badge: "HRRR", What: "Radar Ahead (forecast) for Maps"},
+			{Badge: "NDFD", What: "Gridded Forecast Data", Host: "graphical.weather.gov"},
 		}},
 		{Name: "NATIONAL AERONAUTICS AND SPACE ADMINISTRATION (NASA)", Lines: []tty.CreditLine{
-			{Abbr: "FIRMS", What: "Fire Hotspots, API Key Required", Host: "earthdata.nasa.gov", Note: "LANCE FIRMS, operated by NASA ESDIS"},
+			{Badge: "FIRMS", What: "Fire Hotspots, API Key Required", Host: "earthdata.nasa.gov", Note: "LANCE FIRMS, operated by NASA ESDIS"},
 		}},
 		{Name: "NATIONAL INTERAGENCY FIRE CENTER", Lines: []tty.CreditLine{
-			{Abbr: "WFIGS", What: "Wildfire Incidents", Host: "nifc.gov"},
+			{Badge: "NIFC", What: "WFIGS Wildfire Incidents", Host: "nifc.gov"},
 		}},
 		{Name: "NATIONAL WEATHER RADIO", Lines: []tty.CreditLine{
-			{What: "wxradio.org & weatherUSA (community)"},
+			{Badge: "RELAYS", What: "Community Audio Relays", Host: "wxradio.org", Note: "wxradio.org & weatherUSA (community)"},
 		}},
 		{Name: "UNITED STATES ENVIRONMENTAL PROTECTION AGENCY", Lines: []tty.CreditLine{
-			{Abbr: "AQI", What: "U.S. EPA AirNow", Note: "preliminary data, not fully verified"},
-			{Abbr: "UVI", What: "U.S. EPA (Envirofacts)"},
+			{Badge: "AIRNOW", What: "AirNow Air Quality (AQI)", Host: "airnow.gov", Note: "Preliminary data, not fully verified"},
+			{Badge: "EPA", What: "UV Index (Envirofacts)", Host: "data.epa.gov"},
 		}},
 		{Name: "UNITED STATES GEOLOGICAL SURVEY", Lines: []tty.CreditLine{
-			{What: "Earthquake Hazards Program", Host: "earthquake.usgs.gov"},
+			{Badge: "USGS", What: "Earthquake Hazards Program", Host: "earthquake.usgs.gov"},
 		}},
 		{Name: "IOWA ENVIRONMENTAL MESONET", Lines: []tty.CreditLine{
-			{Abbr: "IEM", What: "Radar & Radar Ahead for Maps"},
+			{Badge: "IEM", What: "Radar & Radar Ahead", Host: "mesonet.agron.iastate.edu"},
 		}},
 		{Name: "OPEN-METEO (CC BY 4.0)", Lines: []tty.CreditLine{
-			{What: "Geocoding"},
-			{What: "Wind Data, Interpolated"},
-			{What: "Supplemental Temperature Data, Interpolated"},
-			{What: "Supplemental UV Index Data, Interpolated"},
-			{What: "Off-shore Wave Data, Interpolated"},
-			{What: "Rain and Snow Total Forecasts, Interpolated"},
+			{Badge: "O-METEO", What: "Geocoding", Host: "geocoding-api.open-meteo.com"},
+			{Badge: "O-METEO", What: "Wind Data", Host: "api.open-meteo.com", Note: "Interpolated"},
+			{Badge: "O-METEO", What: "Supplemental Temperature Data", Host: "api.open-meteo.com", Note: "Interpolated"},
+			{Badge: "O-METEO", What: "Supplemental UV Index Data", Host: "api.open-meteo.com", Note: "Interpolated"},
+			{Badge: "O-METEO", What: "Off-shore Wave Data", Host: "marine-api.open-meteo.com", Note: "Interpolated"},
+			{Badge: "O-METEO", What: "Rain and Snow Total Forecasts", Host: "api.open-meteo.com", Note: "Interpolated"},
 		}},
 		{Name: "OPENFREEMAP", Lines: []tty.CreditLine{
-			{What: "Basemap Tiles", Host: "openfreemap.org", Note: "© OpenMapTiles, © OpenStreetMap contributors (ODbL)"},
+			{Badge: "OFM", What: "Basemap Tiles", Host: "openfreemap.org", Note: "© OpenMapTiles, © OpenStreetMap contributors (ODbL)"},
 		}},
 		{Name: "GEONAMES (CC BY 4.0)", Lines: []tty.CreditLine{
-			{What: "Cities & Postal Codes, the offline index", Host: "geonames.org"},
+			{Badge: "GEONAMES", What: "Cities & Postal Codes", Host: "geonames.org", Note: "The offline place index"},
 		}},
 		{Name: "VOICES", Lines: []tty.CreditLine{
-			{What: "Piper voices, rhasspy/piper-voices (MIT)", Host: "huggingface.co"},
+			{Badge: "PIPER", What: "Piper Voices (MIT)", Host: "huggingface.co", Note: "rhasspy/piper-voices"},
 		}},
 	}
 }

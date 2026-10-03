@@ -3806,3 +3806,23 @@ datasets D-167 and D-168 ruled stay.
 rewrite, the map reading the record, a missing AQI kept missing (NaN would not marshal), the totals
 recorded, FIRMS kept apart from HMS, a missing containment kept missing, the production wiring, the
 datasets registered - all caught.
+
+## Batch 129 — every credit a chip, one reusable row (D-235; 2026-10-03)
+
+**The HUM LEAD's notes on batch 127 (D-235).** "WATCHPOST" is bold white. Every credit is one component,
+`creditRows`: the source's chip, " - ", a one-phrase summary, the endpoint light blue at the right margin,
+and a note under the summary only where the source has one - "not every credit requires the secondary
+note, it just provides a space for it". The rows of a set share one chip column, its widest chip setting
+it, so a source added later lines up; the About window builds every line from it, and so can any future
+surface. Open-Meteo's sources each have their row and endpoint (`api.`, `marine-api.`, `geocoding-api.`),
+"Interpolated" on the note line.
+
+**The chips.** The map's own where it has one: NWS, NDBC, CO-OPS, HMS, MRMS, HRRR, NDFD, IEM, USGS; AirNow's
+for air quality, EPA's for UV, NIFC's for WFIGS, O-METEO for each Open-Meteo source. Seven new, as the
+HUM LEAD approved: NHC #0369A1, NWR #1E3A8A, FIRMS #F97316, RELAYS #4D7C0F, GEONAMES #A16207, OFM #7E22CE,
+PIPER #0F172A - a grey each in Monochrome, a pale shade in Watchpost Light, measured with the chips. The
+chip guard (`TestEveryChipIsItsOwnAndReadsInEveryTheme`) caught three of my first values sharing a ground
+with an existing chip in a theme; each has its own now.
+
+**Mutation verdicts** (8): the note, the chip column, the endpoint's blue, the bold title, the shared
+chip width, a new chip known, one width for the whole set, every line chipped - all caught.

@@ -292,13 +292,6 @@ type CreditGroup struct {
 	Lines []CreditLine
 }
 
-// CreditLine is one data set: its short name (none for a source that has
-// none), what it is, its home at the right margin, and a note under it - a
-// condition of the source's own, such as AirNow's.
-type CreditLine struct {
-	Abbr, What, Host, Note string
-}
-
 // About window (W21, about-credits-mock.md): the title and the build on one
 // line; the warnings; the terms; the data sets, a group a provider, in two
 // columns where the terminal is wide enough (the Help window's rule, D-147);
@@ -309,9 +302,6 @@ const aboutWidth = 78
 // aboutColumn is one column of data sets: the single-column window's room
 // between its margins.
 const aboutColumn = aboutWidth - 2 - 2*modalInset
-
-// aboutAbbr is the short names' column, "NWS" to "CO-OPS".
-const aboutAbbr = 8
 
 // aboutPlan is the layout for a terminal content width: two columns of data
 // sets when the window fits, else one; its width, and whether it scrolls.
@@ -362,8 +352,8 @@ func (d Dashboard) aboutLines(o render.Opts) []string {
 		return strings.Repeat(" ", max(0, (interior-render.Width(text))/2)) + text
 	}
 	inset := func(text string) string { return strings.Repeat(" ", modalInset) + text }
-	lines := []string{centre("WATCHPOST    v. " + d.cfg.Version), ""}
-	for _, h := range d.aboutHead() { // the warnings and the terms (P10-02)
+	lines := []string{centre(render.Tint("WATCHPOST", render.Tok(render.FocusPointer)) + "    v. " + d.cfg.Version), ""} // the name bold white (D-235)
+	for _, h := range d.aboutHead() {                                                                                    // the warnings and the terms (P10-02)
 		if h == "" {
 			lines = append(lines, "")
 			continue
@@ -404,35 +394,23 @@ func (d Dashboard) aboutLines(o render.Opts) []string {
 	return out
 }
 
-// creditBlocks are the groups as blocks of aboutColumn: the group's name,
-// then each data set - its short name, what it is, its home at the right
-// margin (on a line of its own where it does not fit), its note under it.
+// creditBlocks are the groups as blocks of aboutColumn: the group's name bold
+// white, then each source's credit row (D-235), every row's chip in the one
+// column the whole set shares.
 func creditBlocks(groups []CreditGroup) []helpBlock {
+	var all []CreditLine
+	for _, g := range groups { // the providers (P10-02)
+		all = append(all, g.Lines...)
+	}
+	badgeW := badgeWidth(all)
 	var out []helpBlock
 	for _, g := range groups { // the providers (P10-02)
 		var b helpBlock
 		for _, l := range render.WrapText(g.Name, aboutColumn) { // its title, bold white (D-232; P10-02)
 			b.lines = append(b.lines, render.Tint(l, render.Tok(render.FocusPointer)))
 		}
-		for _, c := range g.Lines { // a provider's data sets (P10-02)
-			left, under := "  "+c.What, "  "
-			if c.Abbr != "" {
-				left = "  " + render.PadTo(c.Abbr, aboutAbbr) + "- " + c.What
-				under = strings.Repeat(" ", 2+aboutAbbr+2)
-			}
-			gap := aboutColumn - render.Width(left) - render.Width(c.Host)
-			host := render.Tint(c.Host, render.Tok(render.AboutHost)) // the host light blue (D-232, D-233), measured plain
-			switch {
-			case c.Host == "":
-				b.lines = append(b.lines, left)
-			case gap >= 2:
-				b.lines = append(b.lines, left+strings.Repeat(" ", gap)+host)
-			default:
-				b.lines = append(b.lines, left, strings.Repeat(" ", max(0, aboutColumn-render.Width(c.Host)))+host)
-			}
-			if c.Note != "" {
-				b.lines = append(b.lines, under+c.Note)
-			}
+		for _, c := range g.Lines { // a provider's sources (P10-02)
+			b.lines = append(b.lines, creditRows(c, aboutColumn, badgeW)...)
 		}
 		out = append(out, b)
 	}

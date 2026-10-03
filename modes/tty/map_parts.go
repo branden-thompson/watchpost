@@ -26,7 +26,14 @@ var chipGrounds = map[string]render.Token{
 	"NWS": render.MapChipNWSBG, "NDFD": render.MapChipNDFDBG, "O-METEO": render.MapChipOMeteoBG,
 	"USGS": render.MapChipUSGSBG, "NIFC": render.MapChipNIFCBG, "HMS": render.MapChipHMSBG,
 	"NDBC": render.MapChipNDBCBG, "CO-OPS": render.MapChipCOOPSBG, "AIRNOW": render.MapChipAirNowBG,
-	"EPA":      render.MapChipEPABG,      // UV's cold start (D-167)
+	"EPA":      render.MapChipEPABG, // UV's cold start (D-167)
+	"NHC":      render.MapChipNHCBG, // the credits' sources without a map layer yet (D-235)
+	"NWR":      render.MapChipNWRBG,
+	"FIRMS":    render.MapChipFIRMSBG,
+	"RELAYS":   render.MapChipRelaysBG,
+	"GEONAMES": render.MapChipGeoNamesBG,
+	"OFM":      render.MapChipOFMBG,
+	"PIPER":    render.MapChipPiperBG,
 	"RECORDED": render.MapChipRecordedBG, // not a source: the history, appended after one (D-173, D-178)
 }
 
