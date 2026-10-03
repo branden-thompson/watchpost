@@ -67,7 +67,7 @@ func tempSourcesOver(c *httpx.Client) *tempSources {
 func tempSourcesAt(c temperature.Getter, omBase, ndfdBase, state string) *tempSources {
 	gate := temperature.NewSharedQuotaGate(c, time.Now, state)
 	om, ndfd := temperature.NewOpenMeteo(gate, omBase), temperature.NewNDFD(c, ndfdBase)
-	return &tempSources{ndfd: ndfd, om: om, gate: gate, rain: om, waves: ndfd, uvCities: &uvCities{epa: uv.NewEPA(c, "")}, land: &landPoints{}}
+	return &tempSources{ndfd: ndfd, om: om, gate: gate, rain: om, waves: ndfd, uvCities: &uvCities{epa: uv.NewEPA(c, "")}, land: landPointsAt(landStatePath(state), time.Now)}
 }
 
 // quotaSpent is Open-Meteo's spent quota as the map says it, or nil.

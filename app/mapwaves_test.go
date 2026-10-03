@@ -304,7 +304,8 @@ func TestAWaveDayPastNDFDsReachIsOpenMeteos(t *testing.T) {
 	ask := tempAsk(true)
 	var asks [][]int
 	keep := waveKeep{land: &landPoints{}}
-	keep.land.learn(fieldBoxes(ask.Region, ask.View)[0].Name, []int{0})
+	b := fieldBoxes(ask.Region, ask.View)[0]
+	keep.land.learn(temperature.LatticeFor(b.Name, b.Box), []int{0})
 	got := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{metres: 1, max: 2, gapDays: true}, fakeWaves{metres: 3, max: 4, asked: &asks}, ask, tempNow, keep)
 	if len(asks) == 0 || slices.Contains(asks[0], 0) || len(asks[0]) < 2 {
 		t.Fatalf("Open-Meteo was asked for %v; want every sea point, the land's left out", asks)

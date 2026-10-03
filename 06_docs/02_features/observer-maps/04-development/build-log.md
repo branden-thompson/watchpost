@@ -3547,3 +3547,26 @@ the production directory, the clear and the stated total - caught. Two are not m
 `held` guard on the cached serve is equivalent (an unheld ask reads the cache first anyway), and the
 dashboard line that hands the map `newTempClient` has no test that builds the production pipelines.
 Every mutant anchored in a file this batch edited was applied and vetted before the gate.
+
+## Batch 119 — the sea's land kept across launches (W14 P-20 part 1, D-218; 2026-10-02)
+
+**The Marine URL no longer shifts in a later session.** Open-Meteo Marine is asked only for the points
+past NDFD's reach, minus the points it has answered nothing for - land. That land was known only to
+the process, so every launch's first ask for a box sent the land too, and the next ask in that hour -
+the land now left out, so a different URL - missed the cache and was billed again (about 78 calls for
+the lower 48, 160 for California) whenever the hour's answer memo missed. The land is now kept in
+`marine-land.json` beside the quota's shared state and read at start: a box's land is discovered once
+and every later session's first ask already leaves it out. Each kept lattice is named by its box and
+its shape, so a point's index never means another place after a lattice changes; each write is merged
+with what the file holds, so two instances' learning is never lost; land learned more than 90 days ago
+is asked again, as Open-Meteo's reach can grow; and "Clear map data" removes the file, which names the
+boxes the map was looked at in. Within a first session the URL still shifts once, by D-218.
+
+**No test writes the developer's state.** The app tests' `TestMain` now points `XDG_STATE_HOME` at the
+run's own directory as it does the config, and `TestNoTestWritesTheDevelopersConfig` holds both: the
+production pipelines would otherwise write the real quota and land files.
+
+**Mutation verdicts** (13): the lattice in the key, the merge with the file, the expiry, the write, the
+read at start, the clear (file and memory, and its wiring), the production path and its place beside
+the quota's, learning adding to a lattice's land (survived first; `TestLearningAddsToWhatIsKnown` now
+catches it), the merge's union, and the land left out of the ask - all caught.

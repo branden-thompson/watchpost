@@ -41,6 +41,7 @@ const hmsCredit
 const holdStep
 const httpCacheBytes
 const installRetryAfter
+const landKeptFor
 const laneBacklog
 const liveDwell
 const mainTrackDark
@@ -193,8 +194,12 @@ func (*historian).recordWaves
 func (*injectQueue).readyLocked
 func (*injectQueue).take
 func (*injectQueue).wake
+func (*landPoints).clock
+func (*landPoints).forget
 func (*landPoints).is
 func (*landPoints).learn
+func (*landPoints).readFresh
+func (*landPoints).write
 func (*livePipelines).airnowIn
 func (*livePipelines).applyHistory
 func (*livePipelines).assemblers
@@ -662,11 +667,15 @@ func joinAhead
 func joinForecast
 func keptCopy
 func keptRadio
+func landKey
+func landPointsAt
+func landStatePath
 func laneForKey
 func laneItems
 func laneRowsPerTab
 func laneScenarios
 func lastLineIndex
+func later
 func libraryTransport
 func linedGrid
 func listenerScope
@@ -885,6 +894,7 @@ func trimToBudget
 func tuneList
 func tuneTo
 func uiHook
+func unionPoints
 func unitGrid
 func unread
 func userCacheSubdir
@@ -952,6 +962,7 @@ type historian
 type hostFacts
 type hoursAhead
 type injectQueue
+type landEntry
 type landPoints
 type lazyMemo
 type livePipelines

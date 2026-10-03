@@ -96,6 +96,7 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 - Any instance that is refused writes it; every instance honours it, so one refusal holds them all.
 - **One probe for all:** the instance whose probe is due takes it by moving the next probe time forward in the file first (write, re-read, proceed only if its own write stands); an answered probe clears the host for everyone.
 - The file unreadable or absent: each instance falls back to its own memory.
+- **The land Open-Meteo Marine answers nothing for is the machine's too (D-218):** kept in `marine-land.json` beside `quota.json`, by lattice (its box and shape), each write merged with what the file holds so no instance's learning is lost; land learned more than 90 days ago is asked again; "Clear map data" removes it.
 - **What is paid for is served while held (D-217):** a held host's answer already in the client's cache is served, never refused; only an answer from the network frees the host, so a probe is never spent on a cached body.
 
 **The recorder records each hour once.** At :05 every running instance would fetch the same hour.

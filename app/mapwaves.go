@@ -8,7 +8,12 @@ package app
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"math"
+	"os"
+	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -45,38 +50,164 @@ type waveKeep struct {
 }
 
 // landPoints are the lattice points Open-Meteo Marine has answered nothing
-// for, by box: land, or past its reach - never asked again (D-194).
+// for, by lattice: land, or past its reach - never asked again (D-194). Kept
+// in a file across launches (D-218), so a box's first ask in a later session
+// already leaves them out; "" keeps them for the process alone.
 type landPoints struct {
+	path string
+	now  func() time.Time // nil: the wall clock
 	mu   sync.Mutex
-	land map[string]map[int]bool
+	land map[string]landEntry
 }
 
-// is reports whether a box's point is known land.
-func (lp *landPoints) is(box string, i int) bool {
+// landEntry is one lattice's land: its points, and when they were last
+// learned.
+type landEntry struct {
+	Learned time.Time
+	Points  []int
+}
+
+// landKeptFor is how long kept land is left out before it is asked again:
+// Open-Meteo's reach can grow.
+const landKeptFor = 90 * 24 * time.Hour
+
+// landStatePath is the land's file, beside the quota's shared state; "" where
+// there is none.
+func landStatePath(state string) string {
+	if state == "" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(state), "marine-land.json")
+}
+
+// landPointsAt is the land kept at path, what is older than landKeptFor left
+// behind; a file unreadable or absent is no land.
+func landPointsAt(path string, now func() time.Time) *landPoints {
+	lp := &landPoints{path: path, now: now}
+	lp.land = lp.readFresh()
+	return lp
+}
+
+// landKey names a lattice by its box and its shape: a point's index means a
+// place only on the lattice it was learned on.
+func landKey(l temperature.Lattice) string {
+	return fmt.Sprintf("%s %g,%g,%g,%g %dx%d", l.Name, l.Box.W, l.Box.S, l.Box.E, l.Box.N, l.Cols, l.Rows)
+}
+
+// is reports whether a lattice's point is known land.
+func (lp *landPoints) is(l temperature.Lattice, i int) bool {
 	if lp == nil {
 		return false
 	}
 	lp.mu.Lock()
 	defer lp.mu.Unlock()
-	return lp.land[box][i]
+	return slices.Contains(lp.land[landKey(l)].Points, i)
 }
 
-// learn keeps a box's points Open-Meteo answered nothing for.
-func (lp *landPoints) learn(box string, points []int) {
+// learn keeps a lattice's points Open-Meteo answered nothing for, and writes
+// them to the file merged with what other instances wrote there.
+func (lp *landPoints) learn(l temperature.Lattice, points []int) {
 	if lp == nil || len(points) == 0 {
 		return
 	}
 	lp.mu.Lock()
 	defer lp.mu.Unlock()
 	if lp.land == nil {
-		lp.land = map[string]map[int]bool{}
+		lp.land = map[string]landEntry{}
 	}
-	if lp.land[box] == nil {
-		lp.land[box] = map[int]bool{}
+	key := landKey(l)
+	lp.land[key] = landEntry{Learned: lp.clock(), Points: unionPoints(lp.land[key].Points, points)}
+	if lp.path == "" {
+		return
 	}
-	for _, i := range points { // the points asked (P10-02)
-		lp.land[box][i] = true
+	for k, e := range lp.readFresh() { // another instance's land, merged (P10-02)
+		mine := lp.land[k]
+		lp.land[k] = landEntry{Learned: later(mine.Learned, e.Learned), Points: unionPoints(mine.Points, e.Points)}
 	}
+	lp.write()
+}
+
+// forget drops the kept land, in memory and its file, and says whether a
+// file went (FR-3.10: Clear map data).
+func (lp *landPoints) forget() (int, error) {
+	if lp == nil {
+		return 0, nil
+	}
+	lp.mu.Lock()
+	defer lp.mu.Unlock()
+	lp.land = nil
+	if lp.path == "" {
+		return 0, nil
+	}
+	err := os.Remove(lp.path)
+	if os.IsNotExist(err) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return 1, nil
+}
+
+// clock is the land's time.
+func (lp *landPoints) clock() time.Time {
+	if lp.now == nil {
+		return time.Now()
+	}
+	return lp.now()
+}
+
+// readFresh is the file's land learned within landKeptFor.
+func (lp *landPoints) readFresh() map[string]landEntry {
+	out := map[string]landEntry{}
+	if lp.path == "" {
+		return out
+	}
+	body, err := os.ReadFile(lp.path)
+	if err != nil {
+		return out
+	}
+	var kept map[string]landEntry
+	if json.Unmarshal(body, &kept) != nil {
+		return out
+	}
+	for k, e := range kept { // the lattices kept (P10-02)
+		if lp.clock().Sub(e.Learned) < landKeptFor {
+			out[k] = e
+		}
+	}
+	return out
+}
+
+// write writes the land by temp file and rename, so a reader sees it whole;
+// a failed write keeps the process's land.
+func (lp *landPoints) write() {
+	body, err := json.Marshal(lp.land)
+	if err != nil || os.MkdirAll(filepath.Dir(lp.path), 0o700) != nil {
+		return
+	}
+	tmp := lp.path + "." + strconv.Itoa(os.Getpid()) + ".tmp"
+	if os.WriteFile(tmp, body, 0o600) != nil {
+		return
+	}
+	if os.Rename(tmp, lp.path) != nil {
+		_ = os.Remove(tmp)
+	}
+}
+
+// unionPoints is two point lists as one, each point once, in order.
+func unionPoints(a, b []int) []int {
+	out := slices.Concat(a, b)
+	slices.Sort(out)
+	return slices.Compact(out)
+}
+
+// later is the later of two times.
+func later(a, b time.Time) time.Time {
+	if b.After(a) {
+		return b
+	}
+	return a
 }
 
 // withWaves adds the waves for the mode (D-126), keyless first (D-194): each
@@ -156,7 +287,7 @@ func (wb *waveBuild) fetch(box string, lat temperature.Lattice) (w temperature.W
 		w = temperature.Waves{Lattice: lat}
 	}
 	emptyDay = wb.ask.Forecast && ndfdErr == nil && anEmptyDay(w, len(wb.days))
-	need := beyondNDFD(w, ndfdErr != nil || emptyDay, wb.keep.land, box)
+	need := beyondNDFD(w, ndfdErr != nil || emptyDay, wb.keep.land)
 	if len(need) == 0 {
 		return w, ndfdErr, emptyDay
 	}
@@ -164,7 +295,7 @@ func (wb *waveBuild) fetch(box string, lat temperature.Lattice) (w temperature.W
 	if err != nil {
 		return w, ndfdErr, emptyDay
 	}
-	wb.keep.land.learn(box, answeredNothing(far, need))
+	wb.keep.land.learn(lat, answeredNothing(far, need))
 	if ndfdErr != nil {
 		w = far
 	} else {
@@ -266,11 +397,11 @@ func recordedWaves(w *temperature.Waves, store *history.Store, box string, ancho
 // beyondNDFD are a box's points NDFD gave nothing for - every point, where it
 // did not answer or a day is past its reach (D-195) - that Open-Meteo has
 // not answered nothing for before: the ones worth its call (D-194).
-func beyondNDFD(w temperature.Waves, every bool, land *landPoints, box string) []int {
+func beyondNDFD(w temperature.Waves, every bool, land *landPoints) []int {
 	n := w.Lattice.Cols * w.Lattice.Rows
 	var out []int
 	for p := range n { // a lattice's points (P10-02)
-		if land.is(box, p) || (!every && reached(w, p)) {
+		if land.is(w.Lattice, p) || (!every && reached(w, p)) {
 			continue
 		}
 		out = append(out, p)

@@ -2,6 +2,7 @@ package app
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -26,14 +27,18 @@ func TestMain(m *testing.M) {
 	if goos := os.Getenv("WATCHPOST_TEST_GOOS"); goos != "" {
 		setRuntimeGOOS(goos)
 	}
-	// NO TEST WRITES THE DEVELOPER'S CONFIG: every preference a setter keeps
-	// (D-214) goes to a directory of this run's own unless a test points it at
-	// one of its own (withConfigFile).
+	// NO TEST WRITES THE DEVELOPER'S CONFIG OR STATE: every preference a setter
+	// keeps (D-214) goes to a directory of this run's own unless a test points
+	// it at one of its own (withConfigFile), and so do the quota's hold and the
+	// kept land (D-218).
 	dir, err := os.MkdirTemp("", "watchpost-app-test-config-")
 	if err != nil {
 		panic(err)
 	}
 	if err := os.Setenv("XDG_CONFIG_HOME", dir); err != nil {
+		panic(err)
+	}
+	if err := os.Setenv("XDG_STATE_HOME", filepath.Join(dir, "state")); err != nil {
 		panic(err)
 	}
 	code := m.Run()

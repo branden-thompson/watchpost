@@ -110,7 +110,11 @@ Hosts behind sources the mock already names:
 
 ## To settle when W21 opens
 
-Recorded, not acted on:
+**Settled, D-220 (HUM LEAD, 2026-10-02):** "yes - fix typos, ensure we meet the licence requirements
+while still respecting the intended format of the mock." The spellings below are corrected, and every
+required credit is present in the mock's own format.
+
+The points:
 
 - **Spellings.** The mock reads "INTEDED", "AERONAUTICAL", "UNITED STATED" and "MESSONET". The usual
   names are "INTENDED", "National Aeronautics and Space Administration", "United States" and "Iowa

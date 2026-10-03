@@ -157,6 +157,13 @@ func (lp *livePipelines) clearMapData() tty.MapCleared {
 			out.Err = err
 		}
 	}
+	if lp.temp != nil { // the land Open-Meteo Marine was found to answer nothing for (D-218)
+		n, err := lp.temp.land.forget()
+		out.Files += n
+		if out.Err == nil {
+			out.Err = err
+		}
+	}
 	if lp.zoneShapes != nil {
 		out.Zones = lp.zoneShapes.Forget()
 		n, err := lp.zoneShapes.ForgetCached()

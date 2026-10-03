@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
 )
@@ -61,6 +62,9 @@ func TestNoTestWritesTheDevelopersConfig(t *testing.T) {
 	home, _ := os.UserHomeDir()
 	if home != "" && strings.HasPrefix(path, home) {
 		t.Errorf("the config is %s, under the home directory: a test that keeps a preference writes the real file", path)
+	}
+	if state := temperature.DefaultQuotaState(); home != "" && strings.HasPrefix(state, home) {
+		t.Errorf("the state is %s, under the home directory: a test that holds a quota or learns land writes the real files", state)
 	}
 }
 
