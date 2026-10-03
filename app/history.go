@@ -146,7 +146,7 @@ var omWaves = history.Dataset{
 
 // historyDatasets are every dataset the history holds: the Data tab's
 // retention is theirs alike (D-175).
-var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays, ndfdWaves, epaUVCities, ndfdRainDays, omHourly, omWaves}
+var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays, ndfdWaves, epaUVCities, ndfdRainDays, omHourly, omWaves, nwsObservations, nwsAlerts, ndbcBuoys, coopsTides}
 
 // historyEvery is how often the recorder looks for an hour to record.
 const historyEvery = 5 * time.Minute

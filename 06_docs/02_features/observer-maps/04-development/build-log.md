@@ -3738,3 +3738,21 @@ datasets, NDFD's answer not kept as Open-Meteo's, the production wiring, and the
 caught.
 
 No change a listener can see; the Data tab's size grows with them.
+
+## Batch 126 — the station's feeds kept (W22.2 part 2, D-230, D-231; 2026-10-03)
+
+**Recorded as they land, never fetched for it.** The dashboard's scheduler tells an observer each fetch it
+applies, with the locations it was asked for (`sched.Config.OnFragment`), and `stationRecorder` keeps what
+it holds, each by the source the dataset is of: `nws-observations` (each location's latest NWS
+observation, an hour a record), `nws-alerts` (each alert its own series by its id's digest, its document
+as NWS sent it, at the hour it was sent - NWS keeps both about a week, D-230), `ndbc-buoys` (each buoy's
+readings) and `coops-tides` (each tide station's observed level, at the fetch's hour - the level has no
+time of its own). Another provider's answer is never kept as NWS's. One place-name rule
+(`historyPlace`) now names every series, the UV cities' included.
+
+**Mutation verdicts** (9): the scheduler's call, the production wiring, NWS's alone (survived first - the
+test's other provider fell in an hour already kept, which the store skips; it now has an hour of its own),
+the alerts, the buoys, the tides, a missing reading kept missing, the alert's digest, the datasets
+registered - all caught.
+
+No change a listener can see; the Data tab's size grows with them.

@@ -180,6 +180,19 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 - **`openmeteo-waves` v1**: Open-Meteo Marine's wave height at a box's points past NDFD's reach, each hour
   up to the current one; the points not asked missing.
 
+**The station's feeds (W22.2, D-230, D-231)**, written by `stationRecorder` from each fetch the dashboard's
+scheduler applies (`sched.Config.OnFragment`) - no fetch of their own, each kept by the source it is of:
+
+- **`nws-observations` v1**: each location's latest NWS observation (`nws/<location>`), an hour a record -
+  temperature, feels-like, dew point, humidity, pressure, wind, its direction, gusts, the hour's
+  precipitation, visibility; a reading NWS did not give is missing. NWS keeps about a week (D-230).
+- **`nws-alerts` v1**: each alert its own series (`nws/a<digest of its id>`), its document as sent, at the
+  hour it was sent; kept 30 days.
+- **`ndbc-buoys` v1**: each buoy's readings (`ndbc/<buoy>`) - waves, swell, wind-waves, wind, gusts,
+  water temperature - an hour a record.
+- **`coops-tides` v1**: each tide station's observed level above MLLW (`coops/<station>`), at the fetch's
+  hour, the level carrying no time of its own.
+
 **`openmeteo-rain-days` v1**
 
 - Fields: `peak` in mm/h, `rain` in mm, `snow` in cm, one record per target date.

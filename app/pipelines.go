@@ -167,7 +167,7 @@ func (pl *pipeline) stop() { pl.s.Stop() }
 
 // startPriority wires the priority pipeline (fast cadences). onPublish (may
 // be nil) observes each publish before it is sent — the M1 timer rides it.
-func startPriority(ctx context.Context, p *tea.Program, providers []snapshot.Provider, refs []snapshot.LocationRef, onPublish func(*snapshot.Snapshot)) *pipeline {
+func startPriority(ctx context.Context, p *tea.Program, providers []snapshot.Provider, refs []snapshot.LocationRef, onPublish func(*snapshot.Snapshot), onFragment func(snapshot.Fragment, []snapshot.LocationRef)) *pipeline {
 	asm := newAssembler(refs, providers)
 	pub := &publisher{run: func() *snapshot.Snapshot {
 		snap := asm.Snapshot()
@@ -180,9 +180,10 @@ func startPriority(ctx context.Context, p *tea.Program, providers []snapshot.Pro
 	}}
 	s, err := sched.New(sched.Config{
 		Clock: sched.RealClock{}, Assembler: asm, Locations: refs,
-		Providers: providers,
-		Tiers:     priorityTiers(),
-		OnPublish: pub.Trigger,
+		Providers:  providers,
+		Tiers:      priorityTiers(),
+		OnPublish:  pub.Trigger,
+		OnFragment: onFragment, // the station's feeds kept as they land (W22.2)
 	})
 	if err != nil {
 		_ = invariant.Check(false, "priority scheduler misconfigured: "+err.Error())

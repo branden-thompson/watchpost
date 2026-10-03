@@ -46,6 +46,10 @@ type Config struct {
 	Hints     map[string]map[string]string // provider id -> FetchReq.Hint
 	OnPublish func()                       // "new data applied" — MAY run concurrently from multiple tiers; the app snapshots (coalesced, UAT 74)
 	OnWarn    func(snapshot.Warning)       // optional observer (logs, M2 latency)
+	// OnFragment is told each fetch applied, with the locations it was asked
+	// for, after the assembler has it - the history's recorder (W22.2). MAY
+	// run concurrently from multiple tiers. Optional.
+	OnFragment func(snapshot.Fragment, []snapshot.LocationRef)
 }
 
 // Scheduler runs the tiers until Stop or context cancellation.
@@ -250,6 +254,9 @@ func (s *Scheduler) cycle(ctx context.Context, tier Tier, refs []snapshot.Locati
 		// refresh path, so without them no location records an attempt and a
 		// row the feed cannot serve shimmers for ever.
 		s.cfg.Assembler.Apply(frag, snapshot.Keys(refs))
+		if s.cfg.OnFragment != nil {
+			s.cfg.OnFragment(frag, refs)
+		}
 		s.publish() // per provider (UAT 64): a slow provider never holds the others' data off screen
 		if frag.Err != nil {
 			for _, r := range unserved(refs, frag) {

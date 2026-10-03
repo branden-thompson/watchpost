@@ -263,6 +263,7 @@ func (*livePipelines).reStation
 func (*livePipelines).readHistoryUsage
 func (*livePipelines).readReport
 func (*livePipelines).rebed
+func (*livePipelines).recordFragment
 func (*livePipelines).refreshBedRelays
 func (*livePipelines).relayDwell
 func (*livePipelines).relayLang
@@ -536,6 +537,11 @@ func (mainTrackStage).String
 func (mainTrackStage).reports
 func (mapInputs).drawable
 func (mapInputs).withInView
+func (stationRecorder).alerts
+func (stationRecorder).buoy
+func (stationRecorder).observation
+func (stationRecorder).record
+func (stationRecorder).tide
 func RenderCast
 func ReportOnce
 func ReportOnceWithStats
@@ -549,6 +555,7 @@ func airHosts
 func airLayerCost
 func airnowOverlays
 func alertCategory
+func alertKey
 func alertKeysOf
 func alertLayerCost
 func alertNarration
@@ -647,6 +654,7 @@ func gapAfter
 func halfFor
 func heldAlerts
 func historyDurations
+func historyPlace
 func holdRest
 func hostOf
 func hostsFor
@@ -747,6 +755,7 @@ func piperInstallFor
 func piperVoiceNames
 func pixelsOf
 func placeInView
+func pointShape
 func priorityTiers
 func profileNames
 func proposeFrom
@@ -778,6 +787,7 @@ func reachMiOf
 func reached
 func readScript
 func readerFor
+func reading
 func readingWord
 func recentTiers
 func reconcile
@@ -1010,6 +1020,7 @@ type severeDeck
 type slot
 type speaker
 type stationArea
+type stationRecorder
 type tempBuild
 type tempCore
 type tempKey
@@ -1032,6 +1043,7 @@ var _
 var _
 var airGridRules
 var areaMemoRules
+var coopsTides
 var epaUVCities
 var errDumpTooSoon
 var errReadStopped
@@ -1041,9 +1053,12 @@ var historyDatasets
 var historyKeeps
 var mapLayers
 var mapSources
+var ndbcBuoys
 var ndfdHourly
 var ndfdRainDays
 var ndfdWaves
+var nwsAlerts
+var nwsObservations
 var omHourly
 var omRainDays
 var omUVHourly

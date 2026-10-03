@@ -6,7 +6,6 @@ package app
 import (
 	"encoding/json"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -49,23 +48,7 @@ func uvCityKey(c geodata.City) history.Key {
 	if name == "" {
 		name = c.Name
 	}
-	var b strings.Builder
-	dash := false
-	for _, r := range strings.ToLower(name + " " + c.State) { // a city's name (P10-02)
-		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
-			b.WriteRune(r)
-			dash = false
-		case !dash && b.Len() > 0:
-			b.WriteByte('-')
-			dash = true
-		}
-	}
-	place := strings.TrimRight(b.String(), "-")
-	if len(place) > 64 {
-		place = place[:64]
-	}
-	return history.Key{Source: "epa", Place: place}
+	return history.Key{Source: "epa", Place: historyPlace(name + " " + c.State)}
 }
 
 // record keeps a city's hours in the history, an hour a record, and knows the
@@ -78,7 +61,7 @@ func (k *knownUVCities) record(store *history.Store, c geodata.City, readings []
 	if err != nil {
 		return
 	}
-	key, shape := uvCityKey(c), history.Shape{Box: geo.Box{W: c.Lon, S: c.Lat, E: c.Lon, N: c.Lat}, Cols: 1, Rows: 1}
+	key, shape := uvCityKey(c), pointShape(c.Lat, c.Lon)
 	for _, r := range readings { // a day's hours (P10-02)
 		store.Put(epaUVCities.Name, history.Record{Key: key, At: r.At, IssuedAt: r.At, Shape: shape, Values: map[string][]float64{"uv": {r.Index}}, Doc: doc})
 	}

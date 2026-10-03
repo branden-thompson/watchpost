@@ -269,7 +269,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 			firstFullNanos.CompareAndSwap(0, int64(time.Since(start)))
 		}
 		lp.severe.SetLocations(0, snap)
-	})
+	}, lp.recordFragment)
 	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
 	// THE STATION'S POOL RIDES THE RECENT PIPELINE (D-99). The console's pool table
 	// needs enough weather to decide on a location, and this is the machinery that
