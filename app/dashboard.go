@@ -348,6 +348,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		SetHistory:     lp.setHistory,
 		ClearHistory:   lp.clearHistory,
 		HistoryUsage:   lp.historyUsage,
+		HistoryCost:    lp.historyCost, // a longer retention says what it costs (D-231)
 		RelayLang:      lp.relayLang(),
 		TuneRelay:      lp.tuneRelay(),
 		ReadReport:     lp.readReport(),

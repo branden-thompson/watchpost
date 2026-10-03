@@ -18,10 +18,13 @@ func TestTheHistorysRetentionIsChosenOnTheDataTab(t *testing.T) {
 	if tabOfGroup(groupHistory) != tabData {
 		t.Error("the HISTORY group is not on the Data tab")
 	}
+	d.cfg.HistoryCost = func(bool, string, string) string { return "About 10 MB more." }
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	m, _ = m.(Dashboard).handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter}) // a longer window: kept (D-231)
 	d = m.(Dashboard)
 	d.setup.focus = rowHistoryTrends
-	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
+	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft}) // 30 days wraps to 5 years: longer too
+	m, _ = m.(Dashboard).handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	d = m.(Dashboard)
 	if body := settingsText(d); !strings.Contains(body, "7 days") || !strings.Contains(body, "5 years") {
 		t.Errorf("the pickers do not show 7 days and 5 years:\n%s", body)
@@ -86,4 +89,46 @@ func TestTheHistorySaysWhatItHolds(t *testing.T) {
 func settingsText(d Dashboard) string {
 	lines, _, _ := d.setupBody(d.opts())
 	return stripANSITest(strings.Join(lines, "\n"))
+}
+
+// RAISING A RETENTION SAYS WHAT IT COSTS FIRST (D-231): a longer window opens
+// a question before it is kept - what it will take on disk, and that what was
+// not recorded cannot be fetched back; enter keeps it, esc puts the shorter one
+// back. A shorter window asks nothing.
+func TestRaisingARetentionSaysWhatItCosts(t *testing.T) {
+	d := setupGolden(t, 133, 44, false, rowHistoryHours)
+	var asked []string
+	d.cfg.HistoryCost = func(trends bool, from, to string) string {
+		asked = append(asked, from+">"+to)
+		return "About 120 MB more on disk, an estimate."
+	}
+	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	d = m.(Dashboard)
+	body := stripANSITest(d.confirmOverlay(d.opts()))
+	if d.setup.raise == nil || !strings.Contains(body, "About 120 MB more") || !strings.Contains(body, "cannot be fetched back") || !strings.Contains(body, "7 days") {
+		t.Fatalf("raising 72 hours to 7 days did not ask, or the question lacks its cost or its warning:\n%s", body)
+	}
+	_ = d.confirmOverlay(d.opts()) // drawn again: the cost is not asked again
+	if len(asked) != 1 || asked[0] != "72h>7d" {
+		t.Errorf("the cost was asked for %v; want 72h>7d", asked)
+	}
+	m, _ = d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
+	if d2 := m.(Dashboard); d2.setup.raise == nil || d2.setup.focus != rowHistoryHours {
+		t.Error("a key the question does not take moved the focus under it")
+	}
+	m, _ = d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
+	d = m.(Dashboard)
+	if d.setup.raise != nil || historyLabel(historyHourChoices, d.setup.history.Hours) != "72 hours" {
+		t.Fatalf("esc left the window open, or kept %q; want 72 hours back", d.setup.history.Hours)
+	}
+	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	m, _ = m.(Dashboard).handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	d = m.(Dashboard)
+	if d.setup.raise != nil || d.setup.history.Hours != "7d" {
+		t.Fatalf("enter did not keep 7 days (%q)", d.setup.history.Hours)
+	}
+	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if d = m.(Dashboard); d.setup.raise != nil || historyLabel(historyHourChoices, d.setup.history.Hours) != "72 hours" {
+		t.Error("a shorter window asked, or was not taken")
+	}
 }

@@ -231,6 +231,7 @@ func (*livePipelines).fireIn
 func (*livePipelines).fireRules
 func (*livePipelines).forgetUsage
 func (*livePipelines).giveItAStation
+func (*livePipelines).historyCost
 func (*livePipelines).historyRegions
 func (*livePipelines).historyStore
 func (*livePipelines).historyUsage
@@ -663,7 +664,9 @@ func fullyPopulated
 func gapAfter
 func halfFor
 func heldAlerts
+func historyCostOf
 func historyDurations
+func historyExtra
 func historyPlace
 func holdRest
 func hostOf

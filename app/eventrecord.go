@@ -23,7 +23,7 @@ var hmsHotspots = history.Dataset{
 	Name: "hms-hotspots", Version: 1, Step: time.Hour,
 	Title:       "HMS, the hotspots",
 	Description: "NOAA HMS's satellite fire detections near each location, the list at the feed's time.",
-	Hours:       30 * 24 * time.Hour,
+	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
 }
 
 // firmsHotspots is FIRMS's detections near each location, the list at the
@@ -32,7 +32,7 @@ var firmsHotspots = history.Dataset{
 	Name: "firms-hotspots", Version: 1, Step: time.Hour,
 	Title:       "FIRMS, the hotspots",
 	Description: "NASA FIRMS's fire detections near each location, the list at the feed's time.",
-	Hours:       30 * 24 * time.Hour,
+	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
 }
 
 // wfigsIncidents is each WFIGS incident the station's locations are near,
@@ -45,8 +45,8 @@ var wfigsIncidents = history.Dataset{
 		{Name: "acres", Label: "Acres", Unit: "acres", Decimals: 0},
 		{Name: "contained", Label: "Contained", Unit: "%", Decimals: 0},
 	},
-	Hours: 30 * 24 * time.Hour,
-	Days:  365 * 24 * time.Hour,
+	Hours: 72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
+	Days:  30 * 24 * time.Hour,
 }
 
 // usgsQuakes is the USGS feed's earthquakes, an hour a record: each record the
@@ -56,7 +56,7 @@ var usgsQuakes = history.Dataset{
 	Name: "usgs-quakes", Version: 1, Step: time.Hour,
 	Title:       "USGS, the earthquakes",
 	Description: "The USGS feed's earthquakes of magnitude 1.0 and up, each hour's by their origin time.",
-	Hours:       365 * 24 * time.Hour,
+	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
 }
 
 // airnowHourly is AirNow's national file, an hour a record: every reporting
@@ -66,7 +66,7 @@ var airnowHourly = history.Dataset{
 	Name: "airnow-hourly", Version: 1, Step: time.Hour,
 	Title:       "AirNow, the national file",
 	Description: "U.S. EPA AirNow's reporting areas (preliminary data, not fully verified), the national file an hour: each area's AQI and its forecasts for today and tomorrow.",
-	Hours:       30 * 24 * time.Hour,
+	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
 }
 
 // quakeDoc is a quake as the history keeps it, whichever feed told of it.

@@ -569,6 +569,44 @@ func (lp *livePipelines) readHistoryUsage() string {
 	return "Holds " + sizeWords(store.Bytes()) + ", in " + root
 }
 
+// historyCost says what keeping a longer window would take, for the Data tab's
+// question (D-231).
+func (lp *livePipelines) historyCost(trends bool, from, to string) string {
+	return historyCostOf(lp.historyStore(), trends, from, to, time.Now())
+}
+
+// historyCostOf is the question's cost line: the bytes a longer window adds at
+// the rate the history has grown since it began - an estimate, and said so.
+func historyCostOf(store *history.Store, trends bool, from, to string, now time.Time) string {
+	since, ok := store.Since()
+	if !ok {
+		return "The history is too new to measure what this costs yet: it grows as watchpost runs."
+	}
+	return "About " + sizeWords(historyExtra(store, trends, from, to, now)) + " more on disk, at the rate the history has grown since " + since.Format("2 January") + " (an estimate)."
+}
+
+// historyExtra is the bytes a longer window adds: each dataset's daily growth
+// times the days added - for hourly detail each whole; for trends a value
+// dataset's day rolled up to a twenty-fourth of its hours, a document
+// dataset's whole, as the store keeps documents through the trends' window.
+func historyExtra(store *history.Store, trends bool, from, to string, now time.Time) int64 {
+	since, ok := store.Since()
+	if !ok {
+		return 0
+	}
+	days := max(1, now.Sub(since).Hours()/24)
+	added := (historyKeeps[to] - historyKeeps[from]).Hours() / 24
+	var extra float64
+	for _, d := range historyDatasets { // the datasets kept (P10-02)
+		rate := float64(store.BytesOf(d.Name)) / days
+		if trends && len(d.Fields) > 0 {
+			rate /= 24
+		}
+		extra += rate * max(0, added)
+	}
+	return int64(extra)
+}
+
 // sizeWords is a byte count as a person reads it: KB under a megabyte, MB with
 // one decimal above.
 func sizeWords(b int64) string {

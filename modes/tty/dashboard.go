@@ -307,6 +307,9 @@ type Config struct {
 	SetHistory   func(HistoryRetention)
 	ClearHistory func() error
 	HistoryUsage func() string
+	// HistoryCost says what keeping a longer window would take on disk (D-231):
+	// trends or the hourly detail, from one preset key to another.
+	HistoryCost func(trends bool, from, to string) string
 	// RelayLang is which language wins when two relays share a transmitter
 	// site, and SetRelayLang persists a change. "" means the default
 	// (English). The listener's call, not the table's (HUM LEAD, UAT

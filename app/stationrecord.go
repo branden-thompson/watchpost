@@ -44,7 +44,7 @@ var nwsAlerts = history.Dataset{
 	Name: "nws-alerts", Version: 1, Step: time.Hour,
 	Title:       "NWS, the alerts",
 	Description: "Each National Weather Service alert the station's locations were sent, its document as sent, at the hour it was sent.",
-	Hours:       30 * 24 * time.Hour,
+	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
 }
 
 // ndbcBuoys is each NDBC buoy's readings, an hour a record (D-231).

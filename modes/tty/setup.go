@@ -51,6 +51,9 @@ type setupState struct {
 	// HISTORY (D-175, D-177): the retention chosen, and the ARE YOU SURE open.
 	history      HistoryRetention
 	confirmClear bool
+	// raise is a longer retention waiting on its question (D-231): what it
+	// costs, and that what was not recorded cannot be fetched back.
+	raise *historyRaise
 
 	// DATA
 	query  string
@@ -229,6 +232,9 @@ func (d Dashboard) openSetup() Dashboard {
 // tab / shift+tab move between the questions; enter accepts the focused
 // one (and saves on the last); esc closes without saving.
 func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if d.setup.raise != nil {
+		return d.confirmRaise(key) // the question owns the keys (D-61)
+	}
 	if d.setup.confirmClear {
 		return d.confirmClearHistory(key) // the ARE YOU SURE owns the keys (D-61)
 	}

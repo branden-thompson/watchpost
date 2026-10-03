@@ -1391,18 +1391,75 @@ func (s *Store) Retain(name string, hours, days time.Duration) bool {
 	return true
 }
 
-// maxSizeVisits bounds Bytes' walk: far past any store the retention allows.
-const maxSizeVisits = 200_000
-
-// Bytes is what the store holds on disk: its files' sizes, walked at most
-// maxSizeVisits deep (D-175: the [ Data ] tab says it).
-func (s *Store) Bytes() int64 {
+// Since is the oldest day the store holds anything for, and whether it holds
+// anything: read from its month folders' names and theirs days', walked at most
+// maxSizeVisits deep - what a longer retention's cost is measured from
+// (D-231).
+func (s *Store) Since() (time.Time, bool) {
 	if s == nil || s.root == "" {
+		return time.Time{}, false
+	}
+	var oldest time.Time
+	visits := 0
+	_ = filepath.WalkDir(s.root, func(path string, e fs.DirEntry, err error) error {
+		visits++
+		if err != nil || visits > maxSizeVisits {
+			return fs.SkipAll
+		}
+		if !e.IsDir() {
+			return nil
+		}
+		month, perr := time.Parse("2006-01", e.Name())
+		if perr != nil {
+			return nil
+		}
+		if day, ok := firstDay(path, month); ok && (oldest.IsZero() || day.Before(oldest)) {
+			oldest = day
+		}
+		return fs.SkipDir // a month's days are read by firstDay
+	})
+	return oldest, !oldest.IsZero()
+}
+
+// firstDay is a month folder's earliest day: its day files and folders are
+// named by the day of the month.
+func firstDay(dir string, month time.Time) (time.Time, bool) {
+	if err := invariant.Check(dir != "", "a month folder has a path"); err != nil {
+		return time.Time{}, false
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return time.Time{}, false
+	}
+	first := 0
+	for _, e := range entries { // a month's days (P10-02)
+		dd, err := strconv.Atoi(strings.TrimSuffix(e.Name(), ".json.gz"))
+		if err == nil && dd >= 1 && dd <= 31 && (first == 0 || dd < first) {
+			first = dd
+		}
+	}
+	if first == 0 {
+		return time.Time{}, false
+	}
+	return month.AddDate(0, 0, first-1), true
+}
+
+// BytesOf is what one dataset holds on disk, every version of it (D-231).
+func (s *Store) BytesOf(dataset string) int64 {
+	if s == nil || s.root == "" || dataset == "" || strings.ContainsAny(dataset, `/\`) || dataset == "." || dataset == ".." {
+		return 0
+	}
+	return treeBytes(filepath.Join(s.root, dataset))
+}
+
+// treeBytes is a folder's files' sizes, walked at most maxSizeVisits deep.
+func treeBytes(root string) int64 {
+	if err := invariant.Check(root != "", "a tree to measure has a root"); err != nil {
 		return 0
 	}
 	var total int64
 	visits := 0
-	_ = filepath.WalkDir(s.root, func(_ string, e fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(root, func(_ string, e fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // gone under us, or unreadable: counted as nothing
 		}
@@ -1416,6 +1473,18 @@ func (s *Store) Bytes() int64 {
 		return nil
 	})
 	return total
+}
+
+// maxSizeVisits bounds Bytes' walk: far past any store the retention allows.
+const maxSizeVisits = 200_000
+
+// Bytes is what the store holds on disk: its files' sizes, walked at most
+// maxSizeVisits deep (D-175: the [ Data ] tab says it).
+func (s *Store) Bytes() int64 {
+	if s == nil || s.root == "" {
+		return 0
+	}
+	return treeBytes(s.root)
 }
 
 // Clear removes every record, roll-up, claim and manifest the store holds -

@@ -175,12 +175,14 @@ func (d Dashboard) cyclePicker(id setupRowID, forward bool) Dashboard {
 		return d
 	}
 	if id == rowHistoryHours { // D-175's presets
-		d.setup.history.Hours = cycleHistory(historyHourChoices, d.setup.history.Hours, forward)
-		return d
+		was := d.setup.history.Hours
+		d.setup.history.Hours = cycleHistory(historyHourChoices, was, forward)
+		return d.askIfLonger(false, historyHourChoices, was, d.setup.history.Hours)
 	}
 	if id == rowHistoryTrends {
-		d.setup.history.Trends = cycleHistory(historyTrendChoices, d.setup.history.Trends, forward)
-		return d
+		was := d.setup.history.Trends
+		d.setup.history.Trends = cycleHistory(historyTrendChoices, was, forward)
+		return d.askIfLonger(true, historyTrendChoices, was, d.setup.history.Trends)
 	}
 	list := d.pickerList(id)
 	if len(list) == 0 {

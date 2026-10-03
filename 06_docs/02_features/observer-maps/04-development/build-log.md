@@ -3840,3 +3840,31 @@ light, a shade back is a lighter grey.
 **Mutation verdicts** (5): the italic, the tone, the derivation, the modal pairing, and the shade's size
 (survived first - a heavy shade lifted back to the AA floor still passed; the default theme's note must keep
 six tenths of the text's contrast) - all caught.
+
+## Batch 131 — raising a retention says what it costs (W22.3, D-231; 2026-10-03)
+
+**The question.** Moving either Data tab preset to a longer window - hourly detail or trends, a wrap from
+the longest round to the shortest counting as shorter only by its place in the list - opens "KEEP MORE
+HISTORY?" before the window is kept: what changes ("Hourly detail: 72 hours → 30 days"), what it will take
+on disk, and "What was not recorded cannot be fetched back: the longer window fills from now on, while
+watchpost runs." Enter keeps it, esc puts the shorter one back exactly as it was (an unset preset stays
+unset), and while it is open it takes the keys. A shorter window asks nothing. It is the plain window, not
+the red confirm tile: the red is for answers that cannot be taken back, and a longer window can be shortened.
+
+**The cost, measured.** Each dataset's growth since the store's oldest day (the store's new `Since` and
+`BytesOf`, bounded walks as `Bytes` is) times the days added - for hourly detail every dataset whole; for
+trends a value dataset's day at a twenty-fourth of its hours and a document dataset whole, as the store
+keeps documents through both windows. Said as an estimate; a store too new to measure says so. The cost is
+worked out once, when the question opens - the walk does not run on every draw.
+
+**What the store keeps, said truly.** The Data tab's two presets apply to every dataset alike (D-175), so
+the event datasets' own longer defaults (batches 126 and 128) were never in effect; they now carry the shared
+default, and `history-store.md` says what holds: values for the hourly window then rolled up, documents
+through both windows.
+
+**Mutation verdicts** (10): the shorter window asking nothing, esc putting it back, the cost asked once, the
+question owning the keys, enter keeping it, the trends' twenty-fourth, the store's first day (survived first:
+both records sat in different months; two days of one month now), one dataset's bytes, the days added, the
+production wiring - all caught. Three window mutants were first "killed" by a test that was not running: its
+name escaped the `-run` filter, and it failed on its own until an unset preset was read as its default; it
+now runs by name and passes.

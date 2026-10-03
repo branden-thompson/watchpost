@@ -195,15 +195,23 @@ scheduler applies (`sched.Config.OnFragment`) - no fetch of their own, each kept
   temperature, feels-like, dew point, humidity, pressure, wind, its direction, gusts, the hour's
   precipitation, visibility; a reading NWS did not give is missing. NWS keeps about a week (D-230).
 - **`nws-alerts` v1**: each alert its own series (`nws/a<digest of its id>`), its document as sent, at the
-  hour it was sent; kept 30 days.
+  hour it was sent.
 - **`ndbc-buoys` v1**: each buoy's readings (`ndbc/<buoy>`) - waves, swell, wind-waves, wind, gusts,
   water temperature - an hour a record.
 - **`coops-tides` v1**: each tide station's observed level above MLLW (`coops/<station>`), at the fetch's
   hour, the level carrying no time of its own.
 - **`hms-hotspots` v1**, **`firms-hotspots` v1**: each feed's detections near a location
-  (`hms/<location>`, `firms/<location>`), the list at the feed's time; kept 30 days.
+  (`hms/<location>`, `firms/<location>`), the list at the feed's time.
 - **`wfigs-incidents` v1**: each incident its own series (`wfigs/i<digest of its name, state, discovery>`),
-  its acres and containment an hour a record, rolled up for a year.
+  its acres and containment an hour a record.
+
+**Every dataset keeps what the Data tab says (D-175, D-231).** The two presets apply to all alike: the
+values an hour a record for the hourly detail's window, then rolled up into days for the trends'; a
+document, which rolls up to nothing, is kept through both windows together. Raising either preset first
+asks (D-231): "KEEP MORE HISTORY?" with what it will take on disk - each dataset's growth since the store's
+oldest day (`Since`, `BytesOf`) times the days added, a value dataset's trends day at a twenty-fourth of
+its hours, a document dataset's whole - and that what was not recorded cannot be fetched back. Enter keeps
+the longer window, esc puts the shorter back; a shorter window asks nothing.
 
 **`openmeteo-rain-days` v1**
 

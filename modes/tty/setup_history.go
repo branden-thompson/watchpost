@@ -137,3 +137,66 @@ func (d Dashboard) historyConfirmLines(o render.Opts) []string {
 		""}, debugProseWidth(o, debugConfirmWidth))...)
 	return append(out, strings.Repeat(" ", modalInset)+o.KeyCap("esc")+"  Cancel   "+o.KeyCap("enter")+" CLEAR HISTORY", "")
 }
+
+// historyRaise is a longer retention asked about: which preset, from what,
+// to what (D-231).
+type historyRaise struct {
+	trends   bool
+	from, to string
+	cost     string // said once, when it is asked: the app walks the store to say it
+}
+
+// askIfLonger opens the question when a preset moved to a longer window - the
+// presets run shortest first - and there is a cost to say; a shorter one is
+// taken as it is.
+func (d Dashboard) askIfLonger(trends bool, choices []historyChoice, from, to string) Dashboard {
+	if d.cfg.HistoryCost == nil || historyAt(choices, to) <= historyAt(choices, from) {
+		return d
+	}
+	shown := choices[historyAt(choices, from)].key // an unset preset is its default (D-175)
+	d.setup.raise = &historyRaise{trends: trends, from: from, to: to, cost: d.cfg.HistoryCost(trends, shown, to)}
+	return d
+}
+
+// confirmRaise answers the question: enter keeps the longer window, esc puts
+// the shorter back; every other key waits.
+func (d Dashboard) confirmRaise(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch key.String() {
+	case "esc":
+		if d.setup.raise.trends {
+			d.setup.history.Trends = d.setup.raise.from
+		} else {
+			d.setup.history.Hours = d.setup.raise.from
+		}
+		d.setup.raise = nil
+		return d.settled(), nil
+	case "enter":
+		d.setup.raise = nil
+		return d.settled(), nil
+	}
+	return d, nil
+}
+
+// raiseLines are the question's words: what changes, what it costs, and that
+// what was not recorded cannot be fetched back (D-231).
+func (d Dashboard) raiseLines(o render.Opts) []string {
+	r := d.setup.raise
+	what, choices := "Hourly detail", historyHourChoices
+	if r.trends {
+		what, choices = "Trends", historyTrendChoices
+	}
+	from, to := historyLabel(choices, r.from), historyLabel(choices, r.to)
+	centre := func(s string) string { return confirmCentre(s, debugConfirmWidth) }
+	out := []string{"", centre("KEEP MORE HISTORY?"), ""}
+	out = append(out, insetModalLines([]string{
+		what + ": " + from + " → " + to + ".",
+		r.cost,
+		"What was not recorded cannot be fetched back: the longer window fills from now on, while watchpost runs.",
+		""}, debugProseWidth(o, debugConfirmWidth))...)
+	return append(out, strings.Repeat(" ", modalInset)+o.KeyCap("esc")+"  Keep "+from+"   "+o.KeyCap("enter")+" KEEP "+strings.ToUpper(to), "")
+}
+
+// historyLabel is a preset's words.
+func historyLabel(choices []historyChoice, key string) string {
+	return choices[historyAt(choices, key)].label
+}

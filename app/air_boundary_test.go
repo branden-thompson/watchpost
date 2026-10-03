@@ -139,6 +139,7 @@ var airBoundary = map[string]airMember{
 	"SetTones":       {airNone, "deliberately NOT a recast — the in-tree standard: \"[M] must be instant and must not disturb a broadcast in flight\""},
 	"SetRelayLang":   {airNone, "writes a field; takes effect on the NEXT tune, deliberately, so a language change does not cut a sentence"},
 	"SetAlertRadius": {airNone, "a filter bound; the rail re-scopes without touching the engine"},
+	"HistoryCost":    {airNone, "a measure of the history's disk, read for the Data tab's question (D-231); it writes nothing and reaches no output"},
 
 	// THE STATION'S OWN TWO (D-115). Both persist, re-derive the pool and publish
 	// the new area — and none of those three reaches the engine. What they change

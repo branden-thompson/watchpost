@@ -66,6 +66,9 @@ func (d Dashboard) confirmOverlay(o render.Opts) string {
 		}
 		return ""
 	}
+	if d.modal == modalSetup && d.setup.raise != nil { // a longer retention's question (D-231): kept or not, nothing is lost
+		return d.floatModal(o, debugConfirmWidth, "", d.raiseLines(o))
+	}
 	if d.modal == modalSetup && d.setup.confirmClear { // Clear history's (D-177)
 		return d.floatModalToned(o, debugConfirmWidth, "", d.historyConfirmLines(o), fg, render.Tok(render.ConfirmBG))
 	}
