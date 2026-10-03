@@ -3633,3 +3633,14 @@ fewest-that-fit, and the rain row's place, all caught. The walk's "never ended" 
 bound is never reached, as every token takes a byte.
 
 No change a listener can see.
+
+## W14 R-1 and CPU-1 measured on batch 121's build (2026-10-03)
+
+The standard session workload (`default`, ten-minute phases) on 446904bc. **R-1, the pan freeze: not
+reproduced.** Over 82 pans the key reached the pan's own frame in at most 42 ms. The pan's `complete` -
+the first frame with the basemap whole, after the new edge's tiles arrive from the network on a cold
+home - has the tail it always had (max 1245 ms in C, 1802 in E, against the baseline's 321 and 1399 and
+batch 59's 778 and 1218), with its median down to 15 and 1 ms. **CPU-1, the warm-reopen burst: not
+reproduced** - the five warm reopens ran at 3.4-4.0 % of a core. Both closed; the profile route stays.
+The session itself: idle 1.2 % of a core, the map open 4.6-4.8 %, heap 58 MB idle and 94 MB ten minutes
+after the map closed (its five-minute release, batch 120, came in that phase).
