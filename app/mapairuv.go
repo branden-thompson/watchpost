@@ -238,7 +238,11 @@ func (lp *livePipelines) airnowIn(ctx context.Context, ask tty.MapAsk) []airqual
 	if !ask.Air || lp.airnow == nil {
 		return nil
 	}
-	areas, err := lp.airnow.Areas(ctx, askAnchor(ask, time.Now())) // the forecast's days counted from the listener's hour, as every layer's
+	anchor := askAnchor(ask, time.Now())
+	if kept, ok := airAt(lp.historyStore(), anchor.Truncate(time.Hour)); ok {
+		return kept // the historian's record of the hour: the file is not asked again (D-234)
+	}
+	areas, err := lp.airnow.Areas(ctx, anchor) // the forecast's days counted from the listener's hour, as every layer's
 	if err != nil {
 		return nil // the map's own problem to say: the tint still draws (D-124)
 	}

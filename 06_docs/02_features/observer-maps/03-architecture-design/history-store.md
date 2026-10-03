@@ -171,14 +171,22 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 - It is read to draw every city in view with a reading for its own day, beside the cities asked
   (D-225); the series are listed at first use and each hour, so another instance's cities are known.
 
-**The map's other sources (W22.2, D-226, D-231)**, each written where its source answers:
+**One writer a kind of data (D-234).** The recorder above - the historian, running whenever any instance
+runs, the map used or not - is the one writer of the map's sources; the dashboard's scheduler is the one
+writer of the station's feeds (below). Radar is never stored. Open-Meteo is not kept beyond the replay
+datasets D-167 and D-168 ruled (`openmeteo-uv`, `openmeteo-rain-days`).
 
-- **`ndfd-rain-days` v1**: NDFD's rain (liquid-equivalent, mm) and snow (cm), each day it gave a box;
-  NDFD serves no history of its forecasts.
-- **`openmeteo-hourly` v1**: Open-Meteo's temperature, feels-like and wind (`ndfd-hourly`'s fields), each
-  hour up to the current one, where it is the source or the fill.
-- **`openmeteo-waves` v1**: Open-Meteo Marine's wave height at a box's points past NDFD's reach, each hour
-  up to the current one; the points not asked missing.
+**The historian's, once an hour, each claimed so one instance fetches it:**
+
+- **`ndfd-rain-days` v1**: NDFD's rain (liquid-equivalent, mm) and snow (cm), each day it gives a box of
+  the recorded regions, on the lattice the map asks totals on; NDFD serves no history of its forecasts.
+- **`airnow-hourly` v1**: AirNow's national file as the hour's one record - each reporting area's name,
+  state, point, AQI and forecasts for today and tomorrow, a missing reading absent (JSON says no NaN). The
+  map's air layer draws the hour's record where there is one, and fetches the file only where there is
+  not. One record, not a series an area: a series an area measured 11.6 s of disk an hour (D-234).
+- **`usgs-quakes` v1**: the USGS `1.0_day` feed's quakes, each record an hour's by origin time, rewritten
+  as the feed's list for that hour grows - a late report joins its hour. Each quake: its id, magnitude,
+  scale, place, depth, origin time, epicentre, tsunami flag.
 
 **The station's feeds (W22.2, D-230, D-231)**, written by `stationRecorder` from each fetch the dashboard's
 scheduler applies (`sched.Config.OnFragment`) - no fetch of their own, each kept by the source it is of:
@@ -192,6 +200,10 @@ scheduler applies (`sched.Config.OnFragment`) - no fetch of their own, each kept
   water temperature - an hour a record.
 - **`coops-tides` v1**: each tide station's observed level above MLLW (`coops/<station>`), at the fetch's
   hour, the level carrying no time of its own.
+- **`hms-hotspots` v1**, **`firms-hotspots` v1**: each feed's detections near a location
+  (`hms/<location>`, `firms/<location>`), the list at the feed's time; kept 30 days.
+- **`wfigs-incidents` v1**: each incident its own series (`wfigs/i<digest of its name, state, discovery>`),
+  its acres and containment an hour a record, rolled up for a year.
 
 **`openmeteo-rain-days` v1**
 

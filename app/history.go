@@ -28,6 +28,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/branden-thompson/watchpost/domains/airquality"
+	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -120,33 +122,10 @@ var ndfdRainDays = history.Dataset{
 	Days:  30 * 24 * time.Hour,
 }
 
-// omHourly is Open-Meteo's temperature, feels-like and wind over each field
-// box, each hour it gave up to the current one, as the source or the fill
-// (W22.2, D-231): its archive is a local copy, kept for the Analyst mode.
-var omHourly = history.Dataset{
-	Name: "openmeteo-hourly", Version: 1, Step: time.Hour,
-	Title:       "Open-Meteo, the hour",
-	Description: "Open-Meteo's temperature, feels-like and wind over each field box of a region, each hour it answered up to the current one.",
-	Fields:      ndfdHourly.Fields,
-	Hours:       72 * time.Hour,
-	Days:        30 * 24 * time.Hour,
-}
-
-// omWaves is Open-Meteo Marine's wave height over the points of each field
-// box past NDFD's reach, each hour it gave up to the current one (W22.2,
-// D-231); the points it was not asked for are missing.
-var omWaves = history.Dataset{
-	Name: "openmeteo-waves", Version: 1, Step: time.Hour,
-	Title:       "Open-Meteo Marine, wave height",
-	Description: "Open-Meteo Marine's significant wave height at each field box's points past NDFD's reach, each hour it answered up to the current one.",
-	Fields:      ndfdWaves.Fields,
-	Hours:       72 * time.Hour,
-	Days:        30 * 24 * time.Hour,
-}
-
 // historyDatasets are every dataset the history holds: the Data tab's
 // retention is theirs alike (D-175).
-var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays, ndfdWaves, epaUVCities, ndfdRainDays, omHourly, omWaves, nwsObservations, nwsAlerts, ndbcBuoys, coopsTides}
+var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays, ndfdWaves, epaUVCities, ndfdRainDays, nwsObservations, nwsAlerts, ndbcBuoys, coopsTides,
+	hmsHotspots, firmsHotspots, wfigsIncidents, usgsQuakes, airnowHourly}
 
 // historyEvery is how often the recorder looks for an hour to record.
 const historyEvery = 5 * time.Minute
@@ -156,7 +135,10 @@ const historyEvery = 5 * time.Minute
 type historian struct {
 	store   *history.Store
 	hour    func(context.Context, temperature.Lattice, time.Time) (temperature.Series, error)
-	waves   func(context.Context, temperature.Lattice, time.Time) (temperature.Waves, error) // NDFD's (D-194)
+	waves   func(context.Context, temperature.Lattice, time.Time) (temperature.Waves, error)  // NDFD's (D-194)
+	totals  func(context.Context, temperature.Lattice, time.Time) (temperature.Totals, error) // NDFD's rain and snow (W22.2)
+	air     func(context.Context, time.Time) ([]airquality.Area, error)                       // AirNow's national file (D-234)
+	quakes  func(context.Context) []globalfeed.Event                                          // the USGS feed (D-234)
 	regions func() []string
 	pruned  atomic.Int64 // the hour last pruned, Unix
 }
@@ -171,7 +153,11 @@ func (lp *livePipelines) startHistory(ctx context.Context, keep tty.HistoryReten
 	if !ok || ndfd == nil {
 		return
 	}
-	h := &historian{store: history.Open(history.DefaultRoot(), time.Now, historyDatasets...), hour: ndfd.Hour, waves: ndfd.Waves, regions: lp.historyRegions}
+	h := &historian{store: history.Open(history.DefaultRoot(), time.Now, historyDatasets...), hour: ndfd.Hour, waves: ndfd.Waves, totals: ndfd.Totals,
+		quakes: func(ctx context.Context) []globalfeed.Event { return lp.mapQuakes.fetch(ctx, historyQuakeFeed) }, regions: lp.historyRegions}
+	if lp.airnow != nil {
+		h.air = lp.airnow.Areas
+	}
 	lp.mu.Lock()
 	lp.history = h.store
 	lp.mu.Unlock()
@@ -213,9 +199,12 @@ func (h *historian) pass(ctx context.Context, now time.Time) {
 	}
 	for _, region := range h.regions() { // one or two (P10-02)
 		for _, b := range recordedBoxes(region) { // a region's boxes (P10-02)
-			h.record(ctx, temperature.NDFDLatticeFor(b.Name, b.Box), now) // the lattice the map draws NDFD on (D-201)
+			h.record(ctx, temperature.NDFDLatticeFor(b.Name, b.Box), now)   // the lattice the map draws NDFD on (D-201)
+			h.recordTotals(ctx, temperature.LatticeFor(b.Name, b.Box), now) // the lattice the map asks totals on
 		}
 	}
+	h.recordAir(ctx, now)
+	h.recordQuakes(ctx, now)
 	hour := now.Truncate(time.Hour).Unix()
 	if h.pruned.Swap(hour) != hour {
 		h.store.RollUpAndPrune()
@@ -284,6 +273,55 @@ func (h *historian) recordWaves(ctx context.Context, lat temperature.Lattice, no
 	h.store.Put(ndfdWaves.Name, history.Record{Key: history.Key{Source: "ndfd", Place: lat.Name}, At: next, IssuedAt: now, Shape: shapeOf(lat), Values: map[string][]float64{"waves": vals}})
 }
 
+// historyQuakeFeed is the USGS feed the historian keeps: every quake of
+// magnitude 1.0 and up over the past day, so each hour's is complete.
+const historyQuakeFeed = "1.0_day"
+
+// recordTotals keeps each day NDFD gives a box its rain and snow, once an
+// hour, when this instance claims it: NDFD serves no history of its
+// forecasts (W22.2, D-226).
+func (h *historian) recordTotals(ctx context.Context, lat temperature.Lattice, now time.Time) {
+	key := history.Key{Source: "ndfd", Place: lat.Name}
+	if h.totals == nil || !h.store.Claim(ndfdRainDays.Name, key, now) {
+		return
+	}
+	t, err := h.totals(ctx, lat, now)
+	if err != nil {
+		return // its claim goes stale, and it is tried again (D-124)
+	}
+	local := now.In(time.Local)
+	for k := range temperature.Days { // a week (P10-02)
+		if allMissing(t.QPF[k]) && allMissing(t.Snow[k]) {
+			continue
+		}
+		h.store.Put(ndfdRainDays.Name, history.Record{Key: key, At: dayStart(local, k), IssuedAt: now.Truncate(time.Hour), Shape: shapeOf(lat),
+			Values: map[string][]float64{"rain": t.QPF[k], "snow": t.Snow[k]}})
+	}
+}
+
+// recordAir keeps AirNow's national file as the hour's one record, once an
+// hour, when this instance claims it (D-234).
+func (h *historian) recordAir(ctx context.Context, now time.Time) {
+	hour := now.Truncate(time.Hour)
+	if h.air == nil || !h.store.Claim(airnowHourly.Name, airSeries, hour) {
+		return
+	}
+	areas, err := h.air(ctx, hour)
+	if err != nil || len(areas) == 0 {
+		return
+	}
+	airNational(h.store, areas, hour)
+}
+
+// recordQuakes keeps the USGS feed's quakes by their origin hour, once an
+// hour, when this instance claims it (D-234).
+func (h *historian) recordQuakes(ctx context.Context, now time.Time) {
+	if h.quakes == nil || !h.store.Claim(usgsQuakes.Name, quakeSeries, now) {
+		return
+	}
+	quakeHours(h.store, h.quakes(ctx), now)
+}
+
 // nextFeels is NDFD's feels-like for the hour after a record's, as that
 // hour's own record (D-188): NDFD answers feels-like from the next hour, so
 // an hour's record would never hold its own. False where NDFD gave none.
@@ -332,9 +370,8 @@ const pastHours = 3
 // fallback is what draws a box Open-Meteo did not answer: NDFD's hours, and
 // the hours before the current one from the history (W18.2, W18.3b).
 type fallback struct {
-	src   temperature.Source
-	past  func(box string, hour time.Time) (history.Record, bool)
-	store *history.Store // Open-Meteo's hours kept, where it draws (W22.2, D-231)
+	src  temperature.Source
+	past func(box string, hour time.Time) (history.Record, bool)
 }
 
 // recordedHour reads a box's recorded NDFD hour from store; nil without one.
@@ -539,29 +576,6 @@ func sizeWords(b int64) string {
 		return strconv.FormatInt((b+1023)/1024, 10) + " KB"
 	}
 	return strconv.FormatFloat(float64(b)/(1<<20), 'f', 1, 64) + " MB"
-}
-
-// recordOMHours keeps each hour of an Open-Meteo series up to the current
-// one - temperature, feels-like and wind - issued at its own hour, so asking
-// again rewrites nothing (W22.2, D-231).
-func recordOMHours(store *history.Store, box string, s temperature.Series, anchor time.Time) {
-	if store == nil {
-		return
-	}
-	shape := history.Shape{Box: s.Lattice.Box, Cols: s.Lattice.Cols, Rows: s.Lattice.Rows}
-	row := func(rows [][]float64, i int) []float64 {
-		if i < len(rows) {
-			return rows[i]
-		}
-		return nil
-	}
-	for i, h := range s.Hours { // a series' hours (P10-02)
-		if h.After(anchor) || i >= len(s.Hourly) || allMissing(s.Hourly[i]) {
-			continue
-		}
-		store.Put(omHourly.Name, history.Record{Key: history.Key{Source: "openmeteo", Place: box}, At: h, IssuedAt: h, Shape: shape,
-			Values: map[string][]float64{"temp": s.Hourly[i], "feels": row(s.Feels, i), "wind": row(s.WindSpeed, i), "gust": row(s.WindGust, i), "wind_from": row(s.WindFrom, i)}})
-	}
 }
 
 // recordUV keeps each hour of a series' UV that Open-Meteo gave, up to the

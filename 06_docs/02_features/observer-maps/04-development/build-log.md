@@ -3778,3 +3778,31 @@ mid-line commented out the `AlertDanger` and `AlertModalText` contrast pairs - t
 
 **Mutation verdicts** (7): the blank row, the warnings' yellow, the titles' white, the hosts' blue, the
 derivation, the modal pairing (`TestAboutHostReadsAndMovesNothingElse`), and the three warnings - all caught.
+
+## Batch 128 — one writer a kind of data (W22.2 part 3, D-234; 2026-10-03)
+
+**Measured first.** A series for each of AirNow's ~2,600 reporting areas cost 11.6 s of disk on the map's
+first ask of an hour and 2.6 s on every ask after - each "already kept?" check reads its area's file - and
+about 2,600 files a day. The HUM LEAD's direction (D-234): one record path a kind of data, pulled in the
+background whether or not the map is used, the hour's record leveraged by the map; radar never stored.
+
+**The historian, the map sources' one writer.** Once an hour, each claimed so one instance fetches it:
+`ndfd-rain-days` for each box of the recorded regions (moved from the map's path, batch 125);
+`airnow-hourly`, the national file as one record - every area, a missing reading absent since JSON says no
+NaN; and `usgs-quakes`, the `1.0_day` feed's quakes by origin hour, an hour's record rewritten as its list
+grows, so a late report joins its hour. The map's air layer draws the hour's AirNow record where the store
+has it and fetches the file only where it has not.
+
+**The scheduler, the station's one writer.** Batch 126's recorder adds the fires it is told of:
+`hms-hotspots` and `firms-hotspots` (each location's detections, the list at the feed's time) and
+`wfigs-incidents` (each incident's acres and containment, an hour a record). The station's quakes are not
+written there - the feed is the historian's.
+
+**Open-Meteo is not kept (D-234).** Batch 125's `openmeteo-hourly` and `openmeteo-waves` and their writes
+are removed: Open-Meteo bills per location on the shared quota, and its archive is its own. The replay
+datasets D-167 and D-168 ruled stay.
+
+**Mutation verdicts** (10): the AirNow claim (asked once an hour), the quakes recorded, a late report's
+rewrite, the map reading the record, a missing AQI kept missing (NaN would not marshal), the totals
+recorded, FIRMS kept apart from HMS, a missing containment kept missing, the production wiring, the
+datasets registered - all caught.

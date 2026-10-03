@@ -6,8 +6,6 @@ package app
 // a local copy for the Analyst mode.
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"math"
 	"strings"
@@ -110,6 +108,8 @@ func (r stationRecorder) record(f snapshot.Fragment, refs []snapshot.LocationRef
 			r.buoy(ref, part.Marine)
 		case "coops-obs":
 			r.tide(ref, part.Marine, f.FetchedAt)
+		case "hms", "firms", "wfigs":
+			r.fires(ref, part.Fire, f.Provider, f.FetchedAt)
 		}
 	}
 }
@@ -162,8 +162,7 @@ func (r stationRecorder) tide(ref snapshot.LocationRef, m *snapshot.Marine, at t
 // alertKey is an alert's series: its id, which outruns the history's
 // alphabet and length, by its digest.
 func alertKey(id string) history.Key {
-	sum := sha256.Sum256([]byte(id))
-	return history.Key{Source: "nws", Place: "a" + hex.EncodeToString(sum[:8])}
+	return history.Key{Source: "nws", Place: "a" + digest(id)}
 }
 
 // reading is an optional reading as one value, missing where there is none.

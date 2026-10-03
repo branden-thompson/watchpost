@@ -34,6 +34,7 @@ const fromRescue
 const fromSource
 const gustMargin
 const historyEvery
+const historyQuakeFeed
 const hmsCredit
 const holdStep
 const httpCacheBytes
@@ -189,6 +190,9 @@ func (*frameLog).hook
 func (*frameLog).note
 func (*historian).pass
 func (*historian).record
+func (*historian).recordAir
+func (*historian).recordQuakes
+func (*historian).recordTotals
 func (*historian).recordWaves
 func (*injectQueue).readyLocked
 func (*injectQueue).take
@@ -442,7 +446,6 @@ func (*radioDeck).watchlistDwell
 func (*radioDeck).watchlistLang
 func (*rainRescue).ndfdDays
 func (*rainRescue).record
-func (*rainRescue).recordNDFD
 func (*rainRescue).recorded
 func (*rainRescue).recordedDays
 func (*readSession).begin
@@ -539,6 +542,9 @@ func (mapInputs).drawable
 func (mapInputs).withInView
 func (stationRecorder).alerts
 func (stationRecorder).buoy
+func (stationRecorder).fires
+func (stationRecorder).hotspots
+func (stationRecorder).incident
 func (stationRecorder).observation
 func (stationRecorder).record
 func (stationRecorder).tide
@@ -551,8 +557,10 @@ func aboutWarnings
 func addAlerts
 func addNow
 func addPartial
+func airAt
 func airHosts
 func airLayerCost
+func airNational
 func airnowOverlays
 func alertCategory
 func alertKey
@@ -619,6 +627,7 @@ func debugScenarios
 func defaultLocation
 func defaultVoiceFor
 func deriveTag
+func digest
 func dirGauge
 func discoverMacVoices
 func discoveredIn
@@ -649,6 +658,7 @@ func fireSourceNames
 func firstLineIndex
 func forecastDays
 func forecastGrids
+func fromAir
 func fullyPopulated
 func gapAfter
 func halfFor
@@ -660,6 +670,7 @@ func hostOf
 func hostsFor
 func hourGrids
 func inViewOnly
+func incidentKey
 func incidentLabel
 func indexKey
 func init
@@ -763,6 +774,7 @@ func providerEndpoints
 func pruneDumps
 func publishArea
 func quakeAgeRole
+func quakeHours
 func quakeLabel
 func quakeLayerCost
 func quakeOverlay
@@ -791,8 +803,6 @@ func reading
 func readingWord
 func recentTiers
 func reconcile
-func recordOMHours
-func recordOMWaves
 func recordUV
 func recordedBoxes
 func recordedFeelsNow
@@ -894,6 +904,7 @@ func tideLayerCost
 func tideOverlay
 func timeRender
 func timed
+func toAir
 func toKeyMap
 func toSevereRow
 func toneClassOfEvent
@@ -948,10 +959,12 @@ type Gauge
 type Options
 type SourceHealth
 type aheadFetch
+type airArea
 type airGrid
 type airGridKey
 type airGrids
 type airOwner
+type airReading
 type airScope
 type alertStore
 type answeredFor
@@ -979,6 +992,7 @@ type frameLog
 type historian
 type hostFacts
 type hoursAhead
+type incidentDoc
 type injectQueue
 type knownCity
 type knownUVCities
@@ -1004,6 +1018,7 @@ type pipeline
 type publishView
 type publisher
 type pump
+type quakeDoc
 type radarSources
 type radioDeck
 type rainRescue
@@ -1042,15 +1057,19 @@ var _
 var _
 var _
 var airGridRules
+var airSeries
+var airnowHourly
 var areaMemoRules
 var coopsTides
 var epaUVCities
 var errDumpTooSoon
 var errReadStopped
+var firmsHotspots
 var frameCheckRules
 var goosSeam
 var historyDatasets
 var historyKeeps
+var hmsHotspots
 var mapLayers
 var mapSources
 var ndbcBuoys
@@ -1059,11 +1078,12 @@ var ndfdRainDays
 var ndfdWaves
 var nwsAlerts
 var nwsObservations
-var omHourly
 var omRainDays
 var omUVHourly
-var omWaves
 var quakeFeedBytes
+var quakeSeries
 var rateTable
 var tempAnswerRules
+var usgsQuakes
 var uvDayRules
+var wfigsIncidents
