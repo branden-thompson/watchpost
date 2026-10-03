@@ -173,13 +173,13 @@ func (g *airnowFile) GetText(context.Context, string, ...httpx.Option) ([]byte, 
 func TestAirNowsMonitorsAreMarkersInTheirCategory(t *testing.T) {
 	get := &airnowFile{}
 	lp := &livePipelines{airnow: airquality.New(get, "")}
-	ask := tty.MapAsk{Region: "", View: tty.MapView{W: -150.5, S: 60.9, E: -149.3, N: 61.5}} // Anchorage
+	anchor := time.Date(2026, 9, 28, 20, 0, 0, 0, time.UTC)
+	ask := tty.MapAsk{Region: "", View: tty.MapView{W: -150.5, S: 60.9, E: -149.3, N: 61.5}, Anchor: anchor} // Anchorage, at the fixture's hour
 	if areas := lp.airnowIn(context.Background(), ask); areas != nil || get.asked != 0 {
 		t.Fatalf("with the row off AirNow was asked %d times", get.asked)
 	}
 	ask.Air = true
 	areas := lp.airnowIn(context.Background(), ask)
-	anchor := time.Date(2026, 9, 28, 20, 0, 0, 0, time.UTC)
 	overlays, times := airnowOverlays(areas, ask.View, anchor, time.Now())
 	if len(overlays) == 0 || overlays[0].ID != tty.AirLayer+"/airnow" || !times[overlays[0].ID].Happened {
 		t.Fatalf("the monitors are %+v; want the measured, drawn now", overlays)

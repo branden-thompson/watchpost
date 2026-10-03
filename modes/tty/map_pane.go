@@ -579,6 +579,41 @@ func (d Dashboard) mapChips() []string {
 // mapStatusRows is how many rows the status and the chips take.
 const mapStatusRows = 2
 
+// mapReleaseAfter is how long the map stays closed before it is let go
+// (D-221): a reopen within it is instant, after it a cold open.
+const mapReleaseAfter = 5 * time.Minute
+
+// mapReleaseMsg is a close's release coming due, with the close it was
+// scheduled at.
+type mapReleaseMsg struct{ gen uint64 }
+
+// applyMapRelease lets the map go when it is still closed and no later close
+// has scheduled a release of its own (D-221).
+func (d Dashboard) applyMapRelease(v mapReleaseMsg) Dashboard {
+	if v.gen != d.mapCloses || d.mapShown() || d.mapPane.m == nil {
+		return d
+	}
+	return d.releaseMap()
+}
+
+// releaseMap closes the library's map and lets go of everything the window
+// held for it - the pictures it handed in and the answers they came from -
+// so the next open builds a new one. The generations go on from where they
+// were, so an answer to an ask made before the release is never taken for a
+// new one.
+func (d Dashboard) releaseMap() Dashboard {
+	d.closeMap()
+	p := d.mapPane
+	for _, stop := range []context.CancelFunc{p.feedStop, p.radarStop} { // the asks in flight (P10-02)
+		if stop != nil {
+			stop()
+		}
+	}
+	d.mapPane = mapPane{calls: p.calls, where: p.where, views: p.views, clock: p.clock, changed: p.changed, ticks: p.ticks,
+		gen: p.gen + 1, viewGen: p.viewGen, viewAsked: p.viewAsked, feedGen: p.feedGen, feedSeq: p.feedSeq, fcGen: p.fcGen}
+	return d
+}
+
 // closeMap lets the library's map go. The app calls it when the station
 // stops; a closed pane builds a new map on the next open.
 func (d Dashboard) closeMap() {

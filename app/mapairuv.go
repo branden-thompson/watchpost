@@ -238,7 +238,7 @@ func (lp *livePipelines) airnowIn(ctx context.Context, ask tty.MapAsk) []airqual
 	if !ask.Air || lp.airnow == nil {
 		return nil
 	}
-	areas, err := lp.airnow.Areas(ctx, time.Now())
+	areas, err := lp.airnow.Areas(ctx, askAnchor(ask, time.Now())) // the forecast's days counted from the listener's hour, as every layer's
 	if err != nil {
 		return nil // the map's own problem to say: the tint still draws (D-124)
 	}

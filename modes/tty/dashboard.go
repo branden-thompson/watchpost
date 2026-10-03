@@ -624,8 +624,13 @@ type Dashboard struct {
 	liveOffset int
 
 	mapPane mapPane
-	mapsOff bool        // 0.18.0: the Setting; g says so and builds nothing (W1.8)
-	mapDesc mapDescMode // 0.18.0: the description with the picture, instead of it, or off (W1.10)
+	// mapCloses counts the map's closings: a release carries the count it was
+	// scheduled at, so only the newest close's lets the map go (D-221).
+	mapCloses uint64
+	// mapReleaseAfter is how long the map stays closed before it is let go.
+	mapReleaseAfter time.Duration
+	mapsOff         bool        // 0.18.0: the Setting; g says so and builds nothing (W1.8)
+	mapDesc         mapDescMode // 0.18.0: the description with the picture, instead of it, or off (W1.10)
 	// The Maps tab's others (0.18.0 batch 9): the scale the map opens at, the
 	// nearby distance, the layer choices as one comparable word, and the last
 	// estimate of a refresh's cost, asked in Update and read by the frame.
@@ -911,7 +916,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -1146,6 +1151,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
 	case mapTickMsg:
 		return d.applyMapTick(v), nil // 0.18.0 W2.2: the library asked to be drawn now
+	case mapReleaseMsg:
+		return d.applyMapRelease(v), nil // D-221: the map closed a while is let go
 	case mapViewSettledMsg:
 		return d.applyViewSettled(v) // 0.18.0 D-66: the view stood still - its alerts are asked
 	case tea.KeyPressMsg:
@@ -1443,8 +1450,7 @@ const (
 func (d Dashboard) open(m modal) Dashboard {
 	was := d.mapShown()
 	d = d.openWindow(m)
-	d.tellMapClosed(was)
-	return d
+	return d.tellMapClosed(was)
 }
 
 // openWindow is open's work: the window shown, and the stack under it.
@@ -1496,8 +1502,7 @@ func transient(m modal) bool { return m == modalAdd || m == modalRemove }
 func (d Dashboard) close() Dashboard {
 	was := d.mapShown()
 	d = d.closeWindow()
-	d.tellMapClosed(was)
-	return d
+	return d.tellMapClosed(was)
 }
 
 // mapShown reports whether the map window is open: shown, or in the stack
@@ -1505,11 +1510,17 @@ func (d Dashboard) close() Dashboard {
 func (d Dashboard) mapShown() bool { return d.modal == modalMap || d.stackIndex(modalMap) >= 0 }
 
 // tellMapClosed tells the app the map has closed, when it was shown and now
-// is not anywhere (D-162).
-func (d Dashboard) tellMapClosed(was bool) {
-	if was && !d.mapShown() && d.cfg.MapClosed != nil {
+// is not anywhere (D-162), and schedules the map's release (D-221).
+func (d Dashboard) tellMapClosed(was bool) Dashboard {
+	if !was || d.mapShown() {
+		return d
+	}
+	if d.cfg.MapClosed != nil {
 		d.cfg.MapClosed()
 	}
+	d.mapCloses++
+	gen := d.mapCloses
+	return d.withCmd(tea.Batch(d.pendingCmd, tea.Tick(d.mapReleaseAfter, func(time.Time) tea.Msg { return mapReleaseMsg{gen: gen} })))
 }
 
 // closeWindow is close's work: back to the window under it, or to none.

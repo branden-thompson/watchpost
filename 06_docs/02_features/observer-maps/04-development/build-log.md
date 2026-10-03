@@ -3570,3 +3570,46 @@ production pipelines would otherwise write the real quota and land files.
 read at start, the clear (file and memory, and its wiring), the production path and its place beside
 the quota's, learning adding to a lattice's land (survived first; `TestLearningAddsToWhatIsKnown` now
 catches it), the merge's union, and the land left out of the ask - all caught.
+
+## Batch 120 — the map let go when closed a while, and no repaint for a blink (W14 C-4, P-10, P-11, D-221; 2026-10-02)
+
+**C-4, measured again and ruled (D-221).** Batch 63's heap probe on batch 119's build: 53 MB idle, 98 MB
+a minute after the map closed, 101 MB ten minutes after - +48 MB held, bounded. By owner: 18 MB the
+library's prepared pictures, 7 MB radar frames the window had handed in (the app's frame-check memo
+holds only its answers - the ruling's question named these radar memos; they are the window's), about
+8 MB zones, geography and other library data, and 12 MB more in the temperature client's memory tier,
+which since D-219 holds 24 MiB and is partly filled at idle by the history recorder. A map closed five
+minutes is now let go: closing schedules a release carrying the close's count, and when it comes with
+the map still closed and no later close, the window closes the library's map and starts its pane anew -
+the overlays and loops it handed in, the answers they came from - keeping the generations, so an answer
+to an ask made before the release is never taken for a new one. A reopen within the five minutes is the
+warm one it was; after them, the first open is a cold one. The temperature client's memory tier is not
+trimmed: it is capped by D-219 and serves the recorder too.
+
+**P-10, measured and fixed in go-tuiMaps (rc.34, L-29).** The renderer compared the blink phase on
+every frame, so with nothing blinking - watchpost places no blinking marker - a map repainted in full
+twice a blink period: 5.9 ms and 556 KB a render across a flip on an idle 149x38 map with a loop, about
+15 ms a second while the map is open. The phase is now compared only when a marker on the frame blinks:
+3.1 µs and 4 KB.
+
+**P-11's second half, measured: no change.** `Legend()` after every draw: 0.6 µs with a radar loop
+alone, 17 µs beside 12 grids, 69 µs beside 48 - under a tenth of a percent of a core at ten redraws a
+second. Closed by the measurement.
+
+**The release reaches the map from the console.** Its tick is the map window's, so the Router carries
+it to Observer whichever surface is shown (`observerScoped`), as the window's other answers.
+
+**A test that dated itself, fixed at its cause.** `TestAirNowsMonitorsAreMarkersInTheirCategory`
+failed the day after it was written: `airnowIn` read AirNow's file against the wall clock, so the
+fixture's forecast days fell out of "today" and "tomorrow" as real days passed. The forecast's days are
+now counted from the listener's hour on the ask (`askAnchor`, as every other layer's), and the test asks
+at its fixture's hour.
+
+**go-tuiMaps' gate asked for the host's test.** Its contract holds each requirement by a test a host
+can see, so L-29.1 is held by `TestAPhaseFlipRedrawsOnlyWhatBlinks` on the Map (a steady place, four
+flips, no redraw; a blinking place redrawn), beside the renderer's own test.
+
+**Mutation verdicts** (watchpost 13, go-tuiMaps 4): the release routed to Observer, the AirNow days from the ask's hour, the release's close count, its "still closed"
+check, the library's map closed, the release scheduled, the count raised, and each of the five
+generations carried (the view's survived first, at zero in the test; every generation is now set before
+the close); the phase compared only on a blinking marker, both ways - all caught.
