@@ -109,16 +109,17 @@ var airBoundary = map[string]airMember{
 	"Radio.SetVolume": {airShared, "HUM LEAD 2026-09-12: \"one volume setting for the app\" — the Router already mirrors it to both surfaces"},
 
 	// --- tty.Config: reaches the air --------------------------------------
-	"SetVoice":      {airMonitor, "a saved root is a cast change, and a recast is applied to the LIVE source"},
-	"SetCast":       {airMonitor, "`src.Recast()` — its own comment says \"the listener is waiting to hear it\", and on the console the listener is the AUDIENCE"},
-	"PreviewVoice":  {airMonitor, "an audition mixed over the output; on the console that output is the station's. See the note in air_boundary_test.go — this one has a UX consequence"},
-	"SetRelayDwell": {airMonitor, "re-sends the repeat mode so the Director hears the new dwell, and that reaches `src.Loop`"},
-	"NarrateEvent":  {airMonitor, "the [w] window's [space]: an operator-initiated read that ducks the broadcast. NOT the hazard rail, which is exempt from air ownership by D-74"},
-	"EndEventRead":  {airMonitor, "stops the read NarrateEvent started; paired with it, and a stop that outlived its start would leave the window's mark on a read nobody can end"},
-	"ReadReport":    {airGatedDownstream, "goes through `needsRead`, which asks `monitorHasTheAir()` — the one entry that already did"},
-	"StepBedRelay":  {airProgramme, "the console's own bed selector (D-90); guarding it would break the control it belongs to"},
-	"TuneRelay":     {airProgramme, "the relay-fault window's pick. HUM LEAD 2026-09-12 ruled it must stay usable and be routed correctly — F-101, stage C"},
-	"OnSurface":     {airDeclares, "`takeTheAir` — this is the thing that MOVES the air, so it cannot be gated on it"},
+	"SetVoice":       {airMonitor, "a saved root is a cast change, and a recast is applied to the LIVE source"},
+	"SetCast":        {airMonitor, "`src.Recast()` — its own comment says \"the listener is waiting to hear it\", and on the console the listener is the AUDIENCE"},
+	"PreviewVoice":   {airMonitor, "an audition mixed over the output; on the console that output is the station's. See the note in air_boundary_test.go — this one has a UX consequence"},
+	"SetRelayDwell":  {airMonitor, "re-sends the repeat mode so the Director hears the new dwell, and that reaches `src.Loop`"},
+	"NarrateEvent":   {airMonitor, "the [w] window's [space]: an operator-initiated read that ducks the broadcast. NOT the hazard rail, which is exempt from air ownership by D-74"},
+	"EndEventRead":   {airMonitor, "stops the read NarrateEvent started; paired with it, and a stop that outlived its start would leave the window's mark on a read nobody can end"},
+	"ReadReport":     {airGatedDownstream, "goes through `needsRead`, which asks `monitorHasTheAir()` — the one entry that already did"},
+	"StepBedRelay":   {airNone, "the console's own bed selector (D-90): it chooses and keeps a relay, and plays nothing (D-215)"},
+	"ToggleBedRelay": {airProgramme, "the console's play key for its bed (D-215); the console refuses it while the programme has the air (D-216), and it starts nothing over a card being read"},
+	"TuneRelay":      {airProgramme, "the relay-fault window's pick. HUM LEAD 2026-09-12 ruled it must stay usable and be routed correctly — F-101, stage C"},
+	"OnSurface":      {airDeclares, "`takeTheAir` — this is the thing that MOVES the air, so it cannot be gated on it"},
 	// THE OPERATOR'S REQUEST (R4). It reaches the AIR eventually — a scheduled
 	// card is read — but it reaches it the way every other card does: through
 	// the running order, in its turn, and never ahead of a hazard. The Director

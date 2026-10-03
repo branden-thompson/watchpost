@@ -225,6 +225,7 @@ func (*livePipelines).historyUsage
 func (*livePipelines).hydrate
 func (*livePipelines).injectHook
 func (*livePipelines).inputsFor
+func (*livePipelines).keepBedRelay
 func (*livePipelines).locateInRadius
 func (*livePipelines).lookInPool
 func (*livePipelines).lookupCtx
@@ -246,6 +247,7 @@ func (*livePipelines).moveCard
 func (*livePipelines).narrateEvent
 func (*livePipelines).newMap
 func (*livePipelines).noteBedCarrying
+func (*livePipelines).playBed
 func (*livePipelines).poolFor
 func (*livePipelines).producer
 func (*livePipelines).providers
@@ -264,6 +266,7 @@ func (*livePipelines).seedOnFirstMap
 func (*livePipelines).seedZoneShapes
 func (*livePipelines).seismicFor
 func (*livePipelines).selectedRelay
+func (*livePipelines).selectedStation
 func (*livePipelines).setBedStations
 func (*livePipelines).setHistory
 func (*livePipelines).setRelayDwell
@@ -280,12 +283,14 @@ func (*livePipelines).startPipelines
 func (*livePipelines).stationConfig
 func (*livePipelines).stepBedRelay
 func (*livePipelines).stopAll
+func (*livePipelines).stopBed
 func (*livePipelines).takeTheAir
 func (*livePipelines).tempCoreFor
 func (*livePipelines).tempKeyFor
 func (*livePipelines).testLocation
 func (*livePipelines).tidesHeld
 func (*livePipelines).tidesIn
+func (*livePipelines).toggleBedRelay
 func (*livePipelines).ttyConfig
 func (*livePipelines).ttyStats
 func (*livePipelines).tuneRelay
@@ -315,6 +320,7 @@ func (*mastercontrol).hold
 func (*mastercontrol).holdLine
 func (*mastercontrol).railFence
 func (*mastercontrol).resumeLine
+func (*mastercontrol).run
 func (*mastercontrol).silenceTheProgramme
 func (*mastercontrol).silent
 func (*mastercontrol).stopLine
@@ -370,6 +376,7 @@ func (*radioDeck).followMount
 func (*radioDeck).installVoice
 func (*radioDeck).label
 func (*radioDeck).listVoices
+func (*radioDeck).live
 func (*radioDeck).logStatus
 func (*radioDeck).monitorHasTheAir
 func (*radioDeck).needsRead
@@ -381,11 +388,13 @@ func (*radioDeck).overlay
 func (*radioDeck).pause
 func (*radioDeck).piperSpec
 func (*radioDeck).play
+func (*radioDeck).playing
 func (*radioDeck).pushStatus
 func (*radioDeck).rawVoice
 func (*radioDeck).readCard
 func (*radioDeck).readCast
 func (*radioDeck).readSynth
+func (*radioDeck).reading
 func (*radioDeck).recordResolution
 func (*radioDeck).render
 func (*radioDeck).resolveAt
@@ -408,6 +417,7 @@ func (*radioDeck).stationFor
 func (*radioDeck).stop
 func (*radioDeck).stopMonitor
 func (*radioDeck).stopRead
+func (*radioDeck).stopStation
 func (*radioDeck).synthReason
 func (*radioDeck).synthSource
 func (*radioDeck).tell

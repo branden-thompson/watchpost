@@ -172,11 +172,17 @@ type Config struct {
 
 	// StepBedRelay moves the bed's selection through the relays the station's
 	// fence reaches (D-78) — the `←` / `→` controls the reference draws.
-	// A COMMAND, FOR `OnSurface`'S REASON (D-79). Stepping the selection TUNES
-	// the relay it lands on and tells the console what it landed on — both of
-	// which reach the program, so doing it inline would send to a loop that is
+	// A COMMAND, FOR `OnSurface`'S REASON (D-79). Stepping the selection keeps
+	// the relay it lands on and tells the console what it landed on, which
+	// reaches the program, so doing it inline would send to a loop that is
 	// inside Update and cannot receive, and freeze the app on an arrow press.
+	// It plays nothing (D-215).
 	StepBedRelay func(by int) tea.Cmd
+
+	// ToggleBedRelay plays the bed's selected relay, or stops it (D-215): the
+	// console's play key. A COMMAND, FOR `OnSurface`'S REASON (D-79): tuning
+	// and halting the player reach the program.
+	ToggleBedRelay func() tea.Cmd
 
 	// StationArea is where the STATION transmits from and how far it reaches, at
 	// launch (D-72). Changes arrive as `StationAreaMsg`; this is the value the

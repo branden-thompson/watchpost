@@ -39,6 +39,11 @@ type Broadcaster struct {
 	// happens to exist nearby — and deriving one from the other would couple two
 	// numbers that have nothing to say to each other.
 	BedRadiusMi float64 `toml:"bed_radius_mi,omitempty"`
+
+	// BedRelay is the callsign of the relay the operator chose for the bed
+	// (D-214, D-215): selected again at launch while it streams near the
+	// station, and played only when the operator plays it or goes on air.
+	BedRelay string `toml:"bed_relay,omitempty"`
 }
 
 const (

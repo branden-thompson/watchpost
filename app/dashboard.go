@@ -192,6 +192,7 @@ func (lp *livePipelines) giveItAStation(cfg config.Config, idx *geodata.Index) {
 		lp.relayTable = tbl
 	}
 	lp.bedRadiusMi = cfg.Broadcaster.BedRadius()
+	lp.keepBedRelay(cfg)
 }
 
 // loadGeodata loads the embedded location index ONCE and builds the resolver
@@ -312,6 +313,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 		// and standby has to reach the words that are already going out.
 		if lp.deck != nil {
 			mc.silenceProgramme = lp.deck.stopRead
+			mc.playBed, mc.stopBed = lp.playBed, lp.stopBed // the bed heard on air and on a cut, stopped on standby (D-215)
 		}
 		mc.mu.Unlock()
 	}
@@ -385,7 +387,8 @@ func (lp *livePipelines) stationConfig(c *tty.Config, cfg config.Config, resolve
 	// THE AIR FOLLOWS THE SURFACE (D-73): one rail, one fence, moved between
 	// the listener's filter and the station's service area.
 	c.OnSurface = lp.takeTheAir
-	c.StepBedRelay = lp.stepBedRelay // THE BED'S SELECTOR (D-78), walking the station's fence
+	c.StepBedRelay = lp.stepBedRelay     // THE BED'S SELECTOR (D-78), walking the station's fence
+	c.ToggleBedRelay = lp.toggleBedRelay // and its play key (D-215)
 	// THE OPERATOR'S TWO ACTS ON A CARD (D-118), told to the schedule as
 	// events: an action is never shown as taken unless the schedule took it
 	// (FR-3.3).
@@ -834,6 +837,11 @@ type livePipelines struct {
 	// in for this: its zero value is a real relay, so it cannot say "nothing
 	// chosen yet".
 	bedRelay string
+
+	// bedCall is the callsign of the relay the operator chose - kept in the
+	// file (D-214) - which the selection is matched by whenever the relays near
+	// the station move, so it follows the relay and not its position.
+	bedCall string
 
 	// owner is which surface the operator is looking at, and therefore what the
 	// alert rail is scoped to (D-73, airscope.go).

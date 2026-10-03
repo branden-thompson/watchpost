@@ -106,13 +106,14 @@ func withinBedFence(stations []stream.Station, radiusMi float64) []stream.Statio
 func (lp *livePipelines) setBedStations(st []stream.Station) {
 	lp.mu.Lock()
 	lp.bedStations = st
-	if lp.bedPick >= len(st) {
-		lp.bedPick = 0 // the list moved under the selection
-	}
-	// AND A SELECTION THAT NO LONGER EXISTS IS CLEARED. A remembered relay from a
-	// region the station has left would sit on the row looking tuned.
-	if len(st) == 0 {
-		lp.bedRelay = ""
+	// THE SELECTION FOLLOWS THE RELAY, NOT ITS POSITION: matched by its
+	// callsign whenever the list moves - the kept one at launch included
+	// (D-214) - and cleared while it is not near the station.
+	lp.bedPick, lp.bedRelay = 0, ""
+	for i, s := range st { // the relays near the station (P10-02)
+		if lp.bedCall != "" && s.Callsign == lp.bedCall {
+			lp.bedPick, lp.bedRelay = i, relayLine(s)
+		}
 	}
 	p, line, carrying := lp.p, lp.bedRelay, lp.bedOn
 	lp.mu.Unlock()
@@ -136,16 +137,17 @@ func (lp *livePipelines) bedFenceMi() float64 {
 	return lp.bedRadiusMi
 }
 
-// stepBedRelay moves the operator's selection and tunes what they land on.
+// stepBedRelay moves the operator's selection, and keeps it (D-214). It plays
+// nothing: the operator hears the relay when they play it or go on air (D-215).
 //
 // IT WRAPS, because a selector that stopped at the ends would leave the operator
 // pressing a key that does nothing and wondering which of the two reasons it
 // was. With one relay in reach it is a no-op that stays on the one relay, which
 // is the honest answer to a fence that reaches one thing — and what the reach
 // advice warns about before they get here (D-77).
-// IT RETURNS A COMMAND (D-79). Tuning reaches the player and the row reaches the
-// program, and anything that talks back to the program must not run on the
-// Update loop.
+// IT RETURNS A COMMAND (D-79). The row reaches the program and the choice
+// reaches the file, and anything that talks back to the program must not run
+// on the Update loop.
 //
 // THE SELECTION MOVES INLINE, THOUGH. Which relay is chosen has to be TRUE by
 // the time the next frame draws, and only the two things that TALK are deferred.
@@ -161,27 +163,16 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 	// AND THE CHOICE IS REMEMBERED, not merely published (F-98, D-90). Published
 	// alone, it would be overwritten by the SETTLE — which publishes the same row
 	// from the Director's bed, on every tick — about a second later, and the
-	// operator's selection would revert to "(no relay tuned)". One fact needs ONE
-	// owner, and this is it: the only thing that tunes the station's bed is the
-	// only thing that says what it is tuned to.
-	lp.bedRelay = relayLine(chosen)
-	line := lp.bedRelay
+	// operator's selection would revert to "(no relay tuned)". The selector is
+	// the one owner of what is selected; playing it is `toggleBedRelay`'s and
+	// MasterControl's (D-215).
+	lp.bedRelay, lp.bedCall = relayLine(chosen), chosen.Callsign
+	line, call := lp.bedRelay, lp.bedCall
 	p := lp.p
 	lp.mu.Unlock()
 
 	return func() tea.Msg {
-		// THE STATION'S OWN RESOLUTION TUNES IT (D-117), not `tuneCallsign`, which
-		// searches the mount list the LISTENER's last tune left behind and returns in
-		// SILENCE when the callsign is not in it — the row would say tuned while the
-		// station carried dead air.
-		//
-		// `chosen` IS A RESOLVED STATION and carries its own mounts, so the engine
-		// is pointed at them directly, with the rest of the station's reach behind
-		// it to fall through to — which is what `tuneRef` does for the listener,
-		// through the same function.
-		if lp.deck != nil {
-			lp.deck.tuneResolved(chosen, relays)
-		}
+		_ = savePreference(func(cfg *config.Config) { cfg.Broadcaster.BedRelay = call }) // kept (D-214); a failed write keeps the session's choice
 		// AND THE CONSOLE IS TOLD WHAT IT LANDED ON. The Director publishes what
 		// the bed is CARRYING; this is what the operator has SELECTED, which is
 		// a different fact until they cut to it.
@@ -189,6 +180,65 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 			p.Send(tty.BedMsg{Relay: line, Carrying: lp.bedCarrying()})
 		}
 		return nil
+	}
+}
+
+// keepBedRelay is the launch's kept bed relay (D-214): selected once the
+// relays near the station are known, while it is among them.
+func (lp *livePipelines) keepBedRelay(cfg config.Config) {
+	lp.mu.Lock()
+	defer lp.mu.Unlock()
+	lp.bedCall = cfg.Broadcaster.BedRelay
+}
+
+// selectedStation is the relay the operator chose, as the relays near the
+// station resolve it, and the rest of them to fall through to.
+func (lp *livePipelines) selectedStation() (stream.Station, []stream.Station, bool) {
+	lp.mu.Lock()
+	defer lp.mu.Unlock()
+	if lp.bedRelay == "" || lp.bedPick >= len(lp.bedStations) {
+		return stream.Station{}, nil, false
+	}
+	return lp.bedStations[lp.bedPick], lp.bedStations, true
+}
+
+// toggleBedRelay plays the selected relay, or stops it when it is the one
+// playing - the console's play key (D-215, D-216). The console refuses the key
+// while the programme holds the air; here a card being read is refused too,
+// since starting the relay would stop it on the one player.
+func (lp *livePipelines) toggleBedRelay() tea.Cmd {
+	chosen, relays, ok := lp.selectedStation()
+	if !ok || lp.deck == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		switch {
+		case lp.deck.playing(chosen.Callsign):
+			lp.deck.stopStation()
+		case !lp.deck.reading():
+			// THE STATION'S OWN RESOLUTION TUNES IT (D-117), never `tuneCallsign`:
+			// `chosen` carries its own mounts, with the station's reach behind it
+			// to fall through to.
+			lp.deck.tuneResolved(chosen, relays)
+		}
+		return nil
+	}
+}
+
+// playBed starts the selected relay - going on air, or cutting the programme
+// to the bed (D-215) - unless it already plays or a card is being read.
+func (lp *livePipelines) playBed() {
+	chosen, relays, ok := lp.selectedStation()
+	if !ok || lp.deck == nil || lp.deck.playing(chosen.Callsign) || lp.deck.reading() {
+		return
+	}
+	lp.deck.tuneResolved(chosen, relays)
+}
+
+// stopBed stops a bed relay that is playing - standby is dead air (D-215).
+func (lp *livePipelines) stopBed() {
+	if lp.deck != nil && lp.deck.live() {
+		lp.deck.stopStation()
 	}
 }
 

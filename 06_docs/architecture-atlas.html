@@ -539,7 +539,7 @@ code{font-family:var(--mono);font-size:.92em}
   BC --&gt; RTR
 
   RTR --&gt;|&#34;OnSurface → takeTheAir&#34;| MC
-  MC[&#34;MasterControl&lt;br/&gt;&lt;b&gt;declares the air&lt;/b&gt;&lt;br/&gt;silences the bed&lt;br/&gt;silences the programme&#34;]
+  MC[&#34;MasterControl&lt;br/&gt;&lt;b&gt;declares the air&lt;/b&gt;&lt;br/&gt;plays the chosen bed relay on air&lt;br/&gt;stops it and silences the programme on standby&#34;]
 
   MC --&gt;|&#34;Aired{To}&#34;| DIR
   DIR[&#34;Director&lt;br/&gt;&lt;b&gt;arbitrates BOTH rotations&lt;/b&gt;&lt;br/&gt;holds the schedule + the dwell&#34;]
@@ -595,12 +595,12 @@ code{font-family:var(--mono);font-size:.92em}
   LP-&gt;&gt;LP: ticker.nudgeRescope()
   LP--&gt;&gt;DK: stopMonitor()
   Note over DK: NOT Stop() — that is guarded,&lt;br/&gt;and runs after the air moved (D-91)
-</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-4"><div class="meta"><h3>4. The guard boundary — D-91</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md</code></p><p class="lead"><strong>31 seams</strong> between a surface and <code>app</code>: 26 <code>tty.Config</code> func fields and 5 <code>tty.Radio</code> methods. The classification is a closed set, derived by reflection, ratcheting both ways (<code>app/air_boundary_test.go</code>).</p></div><div class="canvas"><pre class="mermaid">flowchart TB
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-4"><div class="meta"><h3>4. The guard boundary — D-91</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md</code></p><p class="lead"><strong>53 seams</strong> between a surface and <code>app</code>: 48 <code>tty.Config</code> func fields and 5 <code>tty.Radio</code> methods. The classification is a closed set, derived by reflection, ratcheting both ways (<code>app/air_boundary_test.go</code>).</p></div><div class="canvas"><pre class="mermaid">flowchart TB
   SURF[&#34;a surface calls in&#34;] --&gt; CLS{&#34;what can it do&lt;br/&gt;to the air?&#34;}
 
-  CLS --&gt;|airNone · 14| NONE[&#34;settings, queries, lookups&lt;br/&gt;&lt;i&gt;no guard owed&lt;/i&gt;&#34;]
-  CLS --&gt;|airMonitor · 7| MON{&#34;monitorHasTheAir()&#34;}
-  CLS --&gt;|airProgramme · 2| PROG[&#34;StepBedRelay · TuneRelay&lt;br/&gt;&lt;i&gt;the console&#39;s own&lt;/i&gt;&#34;]
+  CLS --&gt;|airNone · 34| NONE[&#34;settings, queries, lookups, the map&#39;s feeds,&lt;br/&gt;the bed selector&lt;br/&gt;&lt;i&gt;no guard owed&lt;/i&gt;&#34;]
+  CLS --&gt;|airMonitor · 10| MON{&#34;monitorHasTheAir()&#34;}
+  CLS --&gt;|airProgramme · 5| PROG[&#34;ToggleBedRelay · TuneRelay&lt;br/&gt;RequestCard · MoveCard · DropCard&lt;br/&gt;&lt;i&gt;the console&#39;s own&lt;/i&gt;&#34;]
   CLS --&gt;|airShared · 2| SHR[&#34;SetVolume — one volume for the app&lt;br/&gt;InjectAlert — feeds the exempt RAIL&#34;]
   CLS --&gt;|airGatedDownstream · 1| GD[&#34;ReadReport → needsRead&lt;br/&gt;&lt;i&gt;already asks&lt;/i&gt;&#34;]
   CLS --&gt;|airDeclares · 1| DEC[&#34;OnSurface — it MOVES the air&#34;]

@@ -3493,3 +3493,31 @@ sessions and draws every known city (D-211).
 city by a name the address never carries (the address names it upper-cased); fixed before it measured
 anything.
 
+## Batch 117 — the bed relay chosen, kept and played on air (D-214 to D-216; 2026-10-02)
+
+**Choosing is not playing (D-215).** Shift+arrows on the console's bed selector tuned the relay they
+landed on, so walking the list to find a relay played each one in turn - before the operator meant to
+hear anything. A step now only selects: the row names the relay and the choice is written to the file
+(`[broadcaster]` bed_relay, the relay's callsign). The relay plays when the operator presses space - the
+console's new play/pause key, the same key as Observer's radio - or goes on air, or cuts the programme to
+the bed with [b]. Standby stops it: dead air is no relay playing.
+
+**Never over a card (D-216).** The radio has one player, so a relay started while a card is read cuts
+the card short. On air with the programme carrying, space is refused and the status line says
+"The programme has the air: [b] cuts to the bed"; the note clears when the bed carries or the station
+goes to standby. Going on air or a cut to the bed starts nothing while a card is being read, and a relay
+already playing is not restarted.
+
+**Kept by the relay, not its place (D-214).** This is the last of D-214's choices - batch 115's entry
+named it batch 116, which went to P-14. The selection is matched by callsign whenever the relays near the
+station change, and at launch from the file: a reordered list keeps it, and a list without it (the
+station moved away) clears the row rather than showing a relay out of range.
+
+**The air boundary.** `StepBedRelay` is now `airNone` - it chooses and plays nothing - and the new
+`ToggleBedRelay` is `airProgramme`; the guard diagram in `as-built-air-and-deck.md` names it.
+
+**Mutation verdicts** (16): the read guard on play and on air, the already-playing guard, the stop
+branch, matching by callsign, the kept write, the three MasterControl seams, the station's stop, the
+refusal and its clearing, the key bound, the wiring, and another relay playing counted as not this
+one (it survived first; a test of a different relay playing now catches it) - all caught. Three anchors
+moved with the code (mCE, mY2, mZ5) and were re-pointed.

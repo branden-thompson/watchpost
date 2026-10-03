@@ -46,9 +46,12 @@ const (
 	// station's line-up and its bed; the arrows move through the relays the
 	// station's fence reaches. The reference mock draws all three, so all three
 	// are bound.
-	actBedCut    term.Action = "bed-cut"
-	actBedPrev   term.Action = "bed-prev"
-	actBedNext   term.Action = "bed-next"
+	actBedCut  term.Action = "bed-cut"
+	actBedPrev term.Action = "bed-prev"
+	actBedNext term.Action = "bed-next"
+	// actBedPlay plays the selected relay and stops it again (D-215): choosing a
+	// relay tunes nothing, so the operator hears it when they ask to.
+	actBedPlay   term.Action = "bed-play"
 	actQueuePrev term.Action = "queue-prev"
 	actQueueNext term.Action = "queue-next"
 
@@ -200,6 +203,9 @@ func broadcasterKeyMap() term.KeyMap {
 		// and no ambiguity to resolve at the keystroke.
 		actBedPrev: {Keys: []string{"shift+left"}, Help: "Previous Relay"},
 		actBedNext: {Keys: []string{"shift+right"}, Help: "Next Relay"},
+		// SPACE, AS OBSERVER'S RELAY PLAYS (D-215): one key starts and stops
+		// a relay on both surfaces.
+		actBedPlay: {Keys: []string{"space"}, Help: "Play/Pause Bed Relay"},
 		// THE QUEUE SCROLLS (D-87, HUM LEAD 2026-09-11): "that's why we have the
 		// vertical scroll bar so that works like Observer — that section just
 		// needs to be able to scroll up and down."
@@ -273,6 +279,10 @@ type Router struct {
 	// (D-78). Nil where there is no radio.
 	relays func(by int) tea.Cmd
 
+	// playBed plays the selected relay or stops it (D-215). Nil where there is
+	// no radio.
+	playBed func() tea.Cmd
+
 	// keyTime is the timing instrument's key clock (timing.go, M6).
 	keyTime *keyClock
 }
@@ -296,7 +306,7 @@ func NewRouter(o Dashboard) Router {
 	// arrive as a message; this is the value it opens with.
 	b.area, b.areaGen = o.cfg.StationArea, b.areaGen+1
 	return Router{observer: o, broadcaster: b, active: SurfaceObserver,
-		keys: o.consoleKeyMap(), onSurface: o.cfg.OnSurface, relays: o.cfg.StepBedRelay, keyTime: &keyClock{}}
+		keys: o.consoleKeyMap(), onSurface: o.cfg.OnSurface, relays: o.cfg.StepBedRelay, playBed: o.cfg.ToggleBedRelay, keyTime: &keyClock{}}
 }
 
 // Init delegates to the active surface. Observer asks for the terminal's
@@ -445,7 +455,7 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// IT DIES WITH ITS REASON. The only refusal there is says the station
 		// is ON AIR; once it is not, the sentence is false and must go, or the
 		// operator is left reading about a state they have already left.
-		if !out.stationIsLive() {
+		if !out.stationIsLive() || (out.refusal == bedRefusal && out.broadcaster.bed.Carrying) {
 			out.refusal = ""
 		}
 		out.broadcaster.statusNote = out.refusal
@@ -722,7 +732,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 	// NOT RETURNING IS THE FALL-THROUGH: execution continues past this
 	// switch to the active surface, which is exactly what an unbound key
 	// does.
-	case actBedCut, actBedPrev, actBedNext:
+	case actBedCut, actBedPrev, actBedNext, actBedPlay:
 		// AND ONLY WHEN THE STATION HAS A RELAY TO CARRY (D-117). Cutting
 		// to a bed nothing streams is dead air on the transmitter, which
 		// is the one outcome this control must not have — so the key is
@@ -940,8 +950,28 @@ func (r Router) bedControl(a term.Action) (Router, tea.Cmd) {
 		return r.stepBed(-1)
 	case actBedNext:
 		return r.stepBed(1)
+	case actBedPlay:
+		return r.playBedRelay()
 	}
 	return r, nil
+}
+
+// bedRefusal is why the play key did nothing while the programme has the air.
+const bedRefusal = "The programme has the air: [b] cuts to the bed"
+
+// playBedRelay plays the selected relay, or stops it (D-215).
+//
+// NEVER OVER THE PROGRAMME (D-216): on air with the line-up carrying, the relay
+// would cut a card short, so the key is refused and says what does work.
+func (r Router) playBedRelay() (Router, tea.Cmd) {
+	if r.active != SurfaceBroadcaster || r.playBed == nil {
+		return r, nil
+	}
+	if r.stationIsLive() && !r.broadcaster.bed.Carrying {
+		r.refusal = bedRefusal
+		return r, nil
+	}
+	return r, r.playBed()
 }
 
 // cutBed moves the programme between the line-up and the bed (D-78).
@@ -967,9 +997,10 @@ func (r Router) cutBed() Router {
 // IT IS THE APP'S LIST, NOT THE CONSOLE'S. Which relays are in reach is a fact
 // about the transmitter and the bed's fence (D-77), and a console that held its
 // own copy would be a second answer to what the operator may choose.
-// IT HANDS BACK A COMMAND (D-79). Landing on a relay TUNES it and tells the
-// console what it landed on, and both reach the program — so run inline, from
-// inside Update, they send to a loop that cannot receive and the app freezes.
+// IT HANDS BACK A COMMAND (D-79). Landing on a relay keeps it and tells the
+// console what it landed on, which reaches the program — so run inline, from
+// inside Update, it sends to a loop that cannot receive and the app freezes.
+// Landing plays nothing; space does (D-215).
 func (r Router) stepBed(by int) (Router, tea.Cmd) {
 	if r.active != SurfaceBroadcaster || r.relays == nil {
 		return r, nil

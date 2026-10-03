@@ -69,6 +69,8 @@ func keyFor(t *testing.T, binding string) tea.KeyPressMsg {
 		k = tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift}
 	case binding == "shift+right":
 		k = tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift}
+	case binding == "space":
+		k = tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
 	default:
 		k = tea.KeyPressMsg{Code: rune(binding[0]), Text: binding}
 	}

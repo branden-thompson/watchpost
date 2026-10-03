@@ -227,50 +227,54 @@ func TestAnUnchosenRelayLeavesTheDirectorsBedOnTheRow(t *testing.T) {
 	}
 }
 
-// THE SELECTOR TUNES WHAT IT RESOLVED, NOT WHAT THE LISTENER LAST TUNED (D-117).
+// A STEP SELECTS AND PLAYS NOTHING; THE PLAY KEY PLAYS THE CHOSEN RELAY (D-215).
+// "simply 'tuning' the relay should not start it as the human operator in
+// broadcast mode may not intend to 'hear' anything yet": a step moves the
+// selection and the row, and the deck is pointed at nothing until the operator
+// plays it - then at the chosen relay's own mounts, which a second press stops.
 //
-// `tuneCallsign` CANNOT DO THIS. It searches the mount list the LISTENER's last
-// tune left behind and returns in SILENCE when the callsign is not in it — so
-// unless Observer has tuned that same relay, the operator presses the key, the
-// row says it is tuned, and the station carries dead air.
-//
-// A RESOLVED STATION CARRIES ITS OWN MOUNTS, so the engine is pointed at them
-// directly. Asserted through the URLs, because "it called a different function"
-// is not the claim — "the engine is started on the chosen relay's own stream" is.
-func TestSteppingTheBedTunesTheChosenRelaysOwnMounts(t *testing.T) {
+// ASSERTED ON THE DECK'S OWN TUNE LIST: `startStation` WRITES `mountURLs`, and
+// that is what "the engine is started on the chosen relay's own stream" means.
+func TestAStepSelectsAndThePlayKeyPlaysTheChosenRelay(t *testing.T) {
 	lp := bedPipelines(t)
 	relays := lp.bedRelays()
 	if len(relays) < 2 {
 		t.Fatalf("the fixture needs somewhere to step; got %d relays", len(relays))
 	}
-	// ASSERTED ON THE DECK'S OWN TUNE LIST, which is the difference between the
-	// two paths: `startStation` WRITES `mountURLs` and `tuneCallsign` merely READS
-	// it. What `tuneList` produces is true either way, so asserting that would let
-	// a bed put back on `tuneCallsign` pass.
 	lp.deck = &radioDeck{}
 	if cmd := lp.stepBedRelay(1); cmd != nil {
 		cmd()
 	}
 	chosen := relays[1]
-	lp.deck.mu.Lock()
-	urls, owners := lp.deck.mountURLs, lp.deck.mountOwner
-	lp.deck.mu.Unlock()
-	if len(urls) == 0 {
-		t.Fatal("stepping the bed tuned nothing: the deck was never pointed at a stream")
-	}
-	// THE CHOSEN RELAY LEADS. The rest follow so the engine can fall through a
-	// dead mount, which is `tuneList`'s own rule.
-	if want := chosen.Mounts[0].URL; urls[0] != want {
-		t.Errorf("the engine would start on %q; the operator chose %q", urls[0], want)
-	}
-	if owners[urls[0]].Callsign != chosen.Callsign {
-		t.Errorf("the lead mount belongs to %q, not to the chosen %q",
-			owners[urls[0]].Callsign, chosen.Callsign)
-	}
-	// AND THE SELECTION IS WHAT THE ROW WILL SAY, which is the fact the operator
-	// reads back (F-98, D-90).
 	if got := lp.selectedRelay(); got != relayLine(chosen) {
 		t.Errorf("the row says %q; the operator chose %q", got, relayLine(chosen))
+	}
+	lp.deck.mu.Lock()
+	urls := lp.deck.mountURLs
+	lp.deck.mu.Unlock()
+	if len(urls) != 0 {
+		t.Fatalf("a step tuned %d mounts: choosing a relay must not start it", len(urls))
+	}
+	if cmd := lp.toggleBedRelay(); cmd != nil {
+		cmd()
+	}
+	lp.deck.mu.Lock()
+	urls, owners, mode := lp.deck.mountURLs, lp.deck.mountOwner, lp.deck.mode
+	lp.deck.mu.Unlock()
+	if len(urls) == 0 || mode != "live" {
+		t.Fatal("the play key tuned nothing: the deck was never pointed at a stream")
+	}
+	if want := chosen.Mounts[0].URL; urls[0] != want || owners[urls[0]].Callsign != chosen.Callsign {
+		t.Errorf("the engine would start on %q (%s); the operator chose %q", urls[0], owners[urls[0]].Callsign, want)
+	}
+	if cmd := lp.toggleBedRelay(); cmd != nil {
+		cmd()
+	}
+	lp.deck.mu.Lock()
+	mode = lp.deck.mode
+	lp.deck.mu.Unlock()
+	if mode != "" {
+		t.Errorf("a second press left the deck %q; want the relay stopped", mode)
 	}
 }
 

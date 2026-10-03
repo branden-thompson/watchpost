@@ -846,6 +846,45 @@ func (d *radioDeck) stopMonitor() {
 	d.engine.Halt()
 }
 
+// playing reports whether a relay of this callsign is what the engine plays.
+func (d *radioDeck) playing(callsign string) bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.mode != "live" || len(d.mountURLs) == 0 {
+		return false
+	}
+	return d.mountOwner[d.mountURLs[0]].Callsign == callsign
+}
+
+// live reports whether a relay is playing.
+func (d *radioDeck) live() bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.mode == "live"
+}
+
+// reading reports whether a main-track card is being read.
+func (d *radioDeck) reading() bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.mode == "read"
+}
+
+// stopStation stops the station's relay - the console's play key, or standby
+// (D-215). The STATION's stop, not the monitor's: the Director is not told the
+// operator stopped listening, which `stopMonitor` says (D-74).
+func (d *radioDeck) stopStation() {
+	d.tuneMu.Lock()
+	defer d.tuneMu.Unlock()
+	d.mu.Lock()
+	d.gen++
+	d.mode = ""
+	d.mu.Unlock()
+	if d.engine != nil {
+		d.engine.Halt()
+	}
+}
+
 // SetVolume implements tty.Radio.
 func (d *radioDeck) SetVolume(pct int) { d.engine.Volume(pct) }
 

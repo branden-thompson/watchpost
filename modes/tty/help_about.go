@@ -236,7 +236,7 @@ func helpGroups(surface Surface) []helpGroup {
 			// put the station on the air, order the line-up, choose the bed.
 			{"STATION", []term.Action{actStationToggle, actGainUp, actGainDown}, nil},
 			{"LINE UP", []term.Action{actQueuePrev, actQueueNext, actQueueOpen, actRequest}, nil},
-			{"BED", []term.Action{actBedCut, actBedPrev, actBedNext}, nil},
+			{"BED", []term.Action{actBedCut, actBedPrev, actBedNext, actBedPlay}, nil},
 			{"APP", []term.Action{actLookup, actSettings, actStatus, actAbout, term.HelpAction, actDiagnostics, actQuit}, nil},
 		}
 	}

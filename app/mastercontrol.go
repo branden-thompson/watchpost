@@ -90,6 +90,11 @@ type mastercontrol struct {
 	// Nil where there is no broadcast engine.
 	silenceProgramme func()
 
+	// playBed starts the operator's selected bed relay, and stopBed stops it
+	// (D-215): going on air and cutting to the bed are where the operator hears
+	// it; standby is dead air. Nil where there is no broadcast engine.
+	playBed, stopBed func()
+
 	// fence is what the alert rail is scoped to right now (D-75) — the
 	// listener's filter or the station's service area, whichever surface has
 	// the air. It travels with every `Aired`, so the rail is re-tested when the
@@ -130,6 +135,7 @@ func newMastercontrol(v narrationVoice, send func(tea.Msg)) *mastercontrol {
 func (m *mastercontrol) GoOnAir() {
 	m.HandAir(lineup.AirProgramme)
 	m.declare(lineup.Running)
+	m.run(func(m *mastercontrol) func() { return m.playBed }) // the bed is heard on air (D-215)
 }
 
 // GoToStandby takes the station to dead air.
@@ -245,7 +251,25 @@ func (m *mastercontrol) RequestCard(ref snapshot.LocationRef, kinds report.Set, 
 // THE PRODUCTION CALLER OF `lineup.CutOver` (FR-4.2, D-11, D-32). Without it
 // `bed.carries` is false for the life of every process and the pause it governs
 // never happens.
-func (m *mastercontrol) CutBed(toBed bool) { m.tell(lineup.CutOver{ToBed: toBed}) }
+func (m *mastercontrol) CutBed(toBed bool) {
+	m.tell(lineup.CutOver{ToBed: toBed})
+	if toBed {
+		m.run(func(m *mastercontrol) func() { return m.playBed }) // cut to the bed, the bed is heard (D-215)
+	}
+}
+
+// run calls one of the seams, read under the lock, or nothing.
+func (m *mastercontrol) run(seam func(*mastercontrol) func()) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	f := seam(m)
+	m.mu.Unlock()
+	if f != nil {
+		f()
+	}
+}
 
 // StopMonitor stops the operator's own listening.
 //
@@ -279,6 +303,7 @@ func (m *mastercontrol) declare(p lineup.Power) {
 	// still leaves a relay playing, and that is not dead air."
 	if p != lineup.Running {
 		m.silenceTheProgramme()
+		m.run(func(m *mastercontrol) func() { return m.stopBed }) // and the bed: dead air is no relay playing (D-215)
 	}
 	m.tell(lineup.Powered{To: p})
 }
