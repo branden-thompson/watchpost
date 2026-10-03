@@ -282,6 +282,9 @@ func aaPairs() []aaPair {
 		// A list's focus tokens are drawn on the MODAL ground, not the
 		// window's — every list-shaped surface that uses them is a floating
 		// window (0.14.0 Task 4.9).
+		// About's hosts: their own token, so the lift on the modal ground moves
+		// nothing else (D-233).
+		{AboutHost, modal},
 		{ListPointer, modal}, {ListFocus, modal}, {AlertDanger, append([]Token{ModalBGDark}, win...)}, {AlertModalText, append(append([]Token{}, tints...), AlertModalWarnBG, AlertModalAdvBG)},
 		{AlertModalWarnFG, []Token{AlertModalWarnBG}}, {AlertModalAdvFG, []Token{AlertModalAdvBG}},
 		// THE RAIL'S LETTERS, in the tone every band in the app carries its text.

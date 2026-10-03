@@ -3756,3 +3756,25 @@ the alerts, the buoys, the tides, a missing reading kept missing, the alert's di
 registered - all caught.
 
 No change a listener can see; the Data tab's size grows with them.
+
+## Batch 127 — the About window's warnings and colours (D-232, D-233; 2026-10-03)
+
+**The HUM LEAD's notes on batch 124 (D-232).** The warnings are three - "NOT INTENDED TO SUBSTITUTE OFFICIAL
+WARNING SOURCES, DEVICES, OR FOR LIFE SAFETY USE.", "FOR LIFE SAFETY, USE NOAA WEATHER RADIO AND COMPATIBLE
+DEVICES.", "WEATHER RELAYS MAY BE INCOMPLETE OR DELAYED." ("FOR OR" read "OR FOR", as the HUM LEAD
+confirmed) - in the focus yellow (`ListFocus`), a blank row under them before the terms. Each provider's
+title is bold white (`FocusPointer`) and each host light blue, measured plain so the right margin holds.
+
+**The hosts' own token (D-233).** FocusCell on the modal ground reads under AA in Nord, and registering it
+there would have lifted the shared token, lightening Nord's focused rows everywhere. The hosts take
+`AboutHost` instead: FocusCell's value in every theme (`withDerived`, before the AA pass), registered on the
+modal ground alone - Nord's About hosts read #98B2CC, its focused rows keep #81A1C1. Every token of every
+theme was diffed before and after: `about.host` is the only one that changed.
+
+**Two scripted edits that failed silently, caught before the gate.** A write that raised after opening
+`theme.go` emptied it (restored from HEAD, the file untouched by the batch before); and a comment appended
+mid-line commented out the `AlertDanger` and `AlertModalText` contrast pairs - the token diff showed
+`alert.danger` moving in five themes. Both fixed; the lessons are in the agent's memory.
+
+**Mutation verdicts** (7): the blank row, the warnings' yellow, the titles' white, the hosts' blue, the
+derivation, the modal pairing (`TestAboutHostReadsAndMovesNothingElse`), and the three warnings - all caught.

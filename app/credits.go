@@ -64,13 +64,12 @@ func creditGroups() []tty.CreditGroup {
 	}
 }
 
-// aboutWarnings open the About window (W21, D-229): what Watchpost is not, the
-// relays' lag, and - R-13's safety framing - where to turn for life safety.
+// aboutWarnings open the About window (D-232): what Watchpost is not, where to
+// turn for life safety - R-13's framing - and the relays' gaps and lag.
 func aboutWarnings() []string {
 	return []string{
-		"NOT INTENDED AS A SUBSTITUTE FOR OFFICIAL WARNING SOURCES OR DEVICES",
-		"WEATHER RELAYS MAY BE DELAYED",
-		"NOT INTENDED FOR LIFE SAFETY USE",
-		"FOR LIFE SAFETY: NOAA WEATHER RADIO AND WIRELESS EMERGENCY ALERTS",
+		"NOT INTENDED TO SUBSTITUTE OFFICIAL WARNING SOURCES, DEVICES, OR FOR LIFE SAFETY USE.",
+		"FOR LIFE SAFETY, USE NOAA WEATHER RADIO AND COMPATIBLE DEVICES.",
+		"WEATHER RELAYS MAY BE INCOMPLETE OR DELAYED.",
 	}
 }

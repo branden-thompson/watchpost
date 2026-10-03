@@ -1,4 +1,5 @@
 const AAContrast
+const AboutHost
 const AlertDanger
 const AlertLabel
 const AlertModalAdvBG
@@ -389,6 +390,7 @@ func thousands
 func truncate
 func withAA
 func withAgeLadder
+func withDerived
 func without
 func xterm256RGB
 type AlertRow

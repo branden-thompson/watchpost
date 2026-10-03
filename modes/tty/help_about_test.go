@@ -312,3 +312,36 @@ func TestHelpLaysOutOneOrTwoColumns(t *testing.T) {
 func helpRow(bind term.Binding) string {
 	return fmt.Sprintf("   %-12s - ", strings.Join(bind.Keys, ", "))
 }
+
+// THE ABOUT WINDOW'S MARKS (D-232): the warnings in the focus yellow, a blank
+// row under them; each group's title bold white; each host light blue - the
+// app's own focus colours, so every theme carries them.
+func TestAboutWindowsMarks(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	d, err := NewDashboard(Config{Version: "t", CreditGroups: aboutGroups(), AboutWarnings: []string{"FIRST WARNING", "LAST WARNING"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := d.aboutLines(d.opts())
+	joined := strings.Join(lines, "\n")
+	for _, want := range []string{
+		render.Tint("! FIRST WARNING", render.Tok(render.ListFocus)),
+		render.Tint("! LAST WARNING", render.Tok(render.ListFocus)),
+		render.Tint("NATIONAL OCEANIC AND ATMOSPHERIC ADMINISTRATION (NOAA)", render.Tok(render.FocusPointer)),
+		render.Tint("api.weather.gov", render.Tok(render.AboutHost)),
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("the window lacks %q", want)
+		}
+	}
+	last := -1
+	for i, l := range lines {
+		if strings.Contains(l, "LAST WARNING") {
+			last = i
+		}
+	}
+	if last < 0 || last+2 >= len(lines) || stripANSITest(lines[last+1]) != "" || !strings.Contains(lines[last+2], creditsNotice) {
+		t.Errorf("under the last warning come %q and %q; want a blank row, then the terms", lines[last+1], lines[last+2])
+	}
+}

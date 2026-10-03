@@ -332,11 +332,15 @@ func (d Dashboard) aboutPlan(o render.Opts, avail int) (twoCol bool, width int, 
 	return false, aboutWidth + panelChromeFor(oneBody, d.modalMax()) - panelFrame, oneBody > d.modalMax()
 }
 
-// aboutHead is what comes before the data sets: the warnings, the terms.
+// aboutHead is what comes before the data sets: the warnings, a blank row
+// under them (D-232), the terms.
 func (d Dashboard) aboutHead() []string {
 	var out []string
 	for _, w := range d.cfg.AboutWarnings { // the warnings (P10-02)
 		out = append(out, "! "+w)
+	}
+	if len(out) > 0 {
+		out = append(out, "")
 	}
 	return append(out, creditsNotice)
 }
@@ -360,9 +364,16 @@ func (d Dashboard) aboutLines(o render.Opts) []string {
 	inset := func(text string) string { return strings.Repeat(" ", modalInset) + text }
 	lines := []string{centre("WATCHPOST    v. " + d.cfg.Version), ""}
 	for _, h := range d.aboutHead() { // the warnings and the terms (P10-02)
+		if h == "" {
+			lines = append(lines, "")
+			continue
+		}
 		for i, l := range render.WrapText(h, content) {
 			if i > 0 {
 				l = "  " + l // a long warning wraps under its words
+			}
+			if strings.HasPrefix(h, "! ") {
+				l = render.Tint(l, render.Tok(render.ListFocus)) // the warnings in the focus yellow (D-232)
 			}
 			lines = append(lines, inset(l))
 		}
@@ -399,7 +410,10 @@ func (d Dashboard) aboutLines(o render.Opts) []string {
 func creditBlocks(groups []CreditGroup) []helpBlock {
 	var out []helpBlock
 	for _, g := range groups { // the providers (P10-02)
-		b := helpBlock{lines: render.WrapText(g.Name, aboutColumn)}
+		var b helpBlock
+		for _, l := range render.WrapText(g.Name, aboutColumn) { // its title, bold white (D-232; P10-02)
+			b.lines = append(b.lines, render.Tint(l, render.Tok(render.FocusPointer)))
+		}
 		for _, c := range g.Lines { // a provider's data sets (P10-02)
 			left, under := "  "+c.What, "  "
 			if c.Abbr != "" {
@@ -407,13 +421,14 @@ func creditBlocks(groups []CreditGroup) []helpBlock {
 				under = strings.Repeat(" ", 2+aboutAbbr+2)
 			}
 			gap := aboutColumn - render.Width(left) - render.Width(c.Host)
+			host := render.Tint(c.Host, render.Tok(render.AboutHost)) // the host light blue (D-232, D-233), measured plain
 			switch {
 			case c.Host == "":
 				b.lines = append(b.lines, left)
 			case gap >= 2:
-				b.lines = append(b.lines, left+strings.Repeat(" ", gap)+c.Host)
+				b.lines = append(b.lines, left+strings.Repeat(" ", gap)+host)
 			default:
-				b.lines = append(b.lines, left, strings.Repeat(" ", max(0, aboutColumn-render.Width(c.Host)))+c.Host)
+				b.lines = append(b.lines, left, strings.Repeat(" ", max(0, aboutColumn-render.Width(c.Host)))+host)
 			}
 			if c.Note != "" {
 				b.lines = append(b.lines, under+c.Note)

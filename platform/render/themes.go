@@ -212,7 +212,7 @@ func RegisterTheme(name string, overrides map[Token]string) {
 	}
 	themeMu.Lock()
 	defer themeMu.Unlock()
-	themeTable[name] = withAA(withAgeLadder(full, overrides))
+	themeTable[name] = withAA(withDerived(withAgeLadder(full, overrides)))
 	themeGen.Add(1)
 }
 

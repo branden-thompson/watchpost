@@ -55,9 +55,10 @@ func TestEverySourceIsCreditedOnce(t *testing.T) {
 			t.Errorf("the credits say %q", typo)
 		}
 	}
-	w := aboutWarnings()
-	if len(w) != 4 || !strings.Contains(w[0], "NOT INTENDED AS A SUBSTITUTE") || !strings.Contains(w[3], "NOAA WEATHER RADIO") {
-		t.Errorf("About's warnings are %q; want the mock's three and the life-safety pointer last (D-229)", w)
+	want := []string{"NOT INTENDED TO SUBSTITUTE OFFICIAL WARNING SOURCES, DEVICES, OR FOR LIFE SAFETY USE.",
+		"FOR LIFE SAFETY, USE NOAA WEATHER RADIO AND COMPATIBLE DEVICES.", "WEATHER RELAYS MAY BE INCOMPLETE OR DELAYED."}
+	if w := aboutWarnings(); strings.Join(w, "|") != strings.Join(want, "|") {
+		t.Errorf("About's warnings are %q; want D-232's three, in order", w)
 	}
 }
 

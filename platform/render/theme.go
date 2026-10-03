@@ -23,6 +23,7 @@ const (
 	FocusName    Token = "name.focus"       // focused row name
 	FocusCell    Token = "cell.focus"       // focused row: grey data cells read light blue (UAT 50.1)
 	FocusPointer Token = "pointer.focus"    // focused row pointer: bold white (UAT 50.2)
+	AboutHost    Token = "about.host"       // the About window's hosts: FocusCell's light blue, lifted on the modal ground alone (D-233)
 	ListPointer  Token = "pointer.list"     // a LIST's focused row: bold yellow — see render/list.go for why this is not FocusPointer
 	ListFocus    Token = "label.list.focus" // and its label: the same yellow, NOT bold
 	NameAdvisory Token = "name.advisory"    // location under advisory/statement
@@ -293,7 +294,7 @@ func withAgeLadder(t map[Token]string, named map[Token]string) map[Token]string 
 // registered theme copies from this one (quality pass Q1, L3-F17 — no
 // package-level map to guard).
 func defaultTheme() map[Token]string {
-	return withAA(withAgeLadder(map[Token]string{
+	return withAA(withDerived(withAgeLadder(map[Token]string{
 		TextBase:   "250",
 		TextBright: "97",
 
@@ -434,7 +435,16 @@ func defaultTheme() map[Token]string {
 		// 208 is this palette's own orange — what TempHi and FireMark already
 		// use — so the masthead borrows rather than introduces a colour.
 		TitleEditionBroadcaster: "1;208",
-	}, nil))
+	}, nil)))
+}
+
+// withDerived sets the tokens that take another token's value in every theme
+// before the AA pass lifts each on its own grounds: AboutHost is the theme's
+// FocusCell light blue, lifted on the modal ground without moving the
+// focused rows (D-233).
+func withDerived(t map[Token]string) map[Token]string {
+	t[AboutHost] = t[FocusCell]
+	return t
 }
 
 // Tok resolves a semantic token to its SGR params (or hex for window/

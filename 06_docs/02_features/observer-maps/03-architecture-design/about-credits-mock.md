@@ -127,8 +127,13 @@ As built, batch 124 (`app/credits.go`, `modes/tty/help_about.go`):
   rhasspy/piper-voices (MIT)" - the voices repository declares MIT (D-228; the HUM LEAD's correction).
 - **Added groups and lines:** NHC under NOAA; OPENFREEMAP, GEONAMES and VOICES. GitHub is not credited
   (D-228); Open-Meteo's air-quality host is not contacted, so not credited.
-- **The warnings:** the mock's three, and R-13's "FOR LIFE SAFETY: NOAA WEATHER RADIO AND WIRELESS
-  EMERGENCY ALERTS" (D-229).
+- **The warnings (D-232, after UAT of batch 124):** three - "NOT INTENDED TO SUBSTITUTE OFFICIAL WARNING
+  SOURCES, DEVICES, OR FOR LIFE SAFETY USE.", "FOR LIFE SAFETY, USE NOAA WEATHER RADIO AND COMPATIBLE
+  DEVICES." (R-13's pointer, D-229's line folded in), "WEATHER RELAYS MAY BE INCOMPLETE OR DELAYED." - in the
+  focus yellow, a blank row under them.
+- **The colours (D-232, D-233):** the group titles bold white (`FocusPointer`), the hosts light blue - their
+  own token, `AboutHost`, FocusCell's value lifted on the modal ground alone (Nord's reads #98B2CC; the
+  focused rows keep theirs).
 - **The layout:** the data sets in two columns where the window fits them (Help's rule, D-147); one column,
   scrolled, where the terminal is short, the window widened by the rail. "Built with ♥" as the mock draws
   it; the mock's "Built with:" stack, go-tuimaps named.
