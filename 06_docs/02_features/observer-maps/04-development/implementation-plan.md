@@ -390,6 +390,18 @@ UV fast within a session first.
 | W20.1 | **The readings stored**: each city's EPA hours kept across sessions - the global store or a local one, ruled when W20 opens - for the day they forecast, and gone after it | `app/mapairuv.go`, the store | Ruled at W20's opening | A city read in one session is not asked in the next, the same day; a reading from yesterday is never drawn |
 | W20.2 | **Every known city drawn**: the cities in view whose readings are held, beside the ones asked - within D-202's spacing, or a spacing ruled for them | `app/mapairuv.go` | Ruled at W20's opening | A view drawn after panning over more cities shows more of them, none closer than the spacing |
 
+## W21 — The About window's credits, one each (HUM LEAD, 2026-10-02) · after W20
+
+**HUM LEAD, 2026-10-02:** the `[a]` About window's data-source credits are listed once each, grouped by
+agency, as the mock draws them: `03-architecture-design/about-credits-mock.md`. It is a change to the
+window's layout and content, so it can come later. Two columns where the window is wide, the vertical
+scroll control where it is short.
+
+| # | Task | Files | Shape | Test first (RED) |
+|---|---|---|---|---|
+| W21.1 | **The credits, one each**: every data set under its agency, each source named once with its host, the notices and "Built with" as the mock draws them; the spellings and each source's required wording settled at W21's opening | `modes/tty/help_about.go`, the credits' owners | The mock; open points in its "To settle" list | No source is credited twice; every source the app contacts is credited; each credit a source's terms require is present |
+| W21.2 | **The smart columns**: two columns on a wide window, the scroll control on a short one, from the app's own column and scroll parts (D-147) | `modes/tty/help_about.go` | As the Settings window's columns | A wide window draws two columns, a short one scrolls and every line is reachable |
+
 ## The trace
 
 | Requirement | Task | | Requirement | Task |
