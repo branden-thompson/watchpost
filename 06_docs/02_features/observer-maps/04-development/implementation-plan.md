@@ -411,8 +411,9 @@ a ruling says so - that is a local copy, not data otherwise lost.
 
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
-| W22.1 | **The table**: every source the app fetches readings from - AirNow, Open-Meteo temperature and Marine, NDFD's totals, NWS observations, buoys, tides, quakes, fire, alerts - with whether it serves its history on demand, and the disk a dataset would take | the build log, a ruling a source with history | A table | - (research) |
-| W22.2 | **The datasets**: each source with no history on demand a history-store dataset, hourly and rolled up; each with history as its ruling says | `app/history.go`, each source's adapter | A dataset each | Each records what it fetched, and replays it |
+| W22.1 | **The table**: every source the app fetches readings from - AirNow, Open-Meteo temperature and Marine, NDFD's totals, NWS observations, buoys, tides, quakes, fire, alerts - with whether it serves its history on demand, and the disk a dataset would take | the build log, a ruling a source with history | A table | **Done 2026-10-03**: probed; D-230 (NWS's 7 days: stored), D-231 (the archived: stored) |
+| W22.2 | **The datasets** (D-230, D-231): a history-store dataset for each - NDFD's totals, NWS observations and alerts, CO-OPS, NDBC, USGS quakes, AirNow readings and forecasts, HMS, WFIGS, FIRMS, Open-Meteo temperature and Marine - kept as the Data tab's retention says, catalogued for the Analyst mode | `app/history.go`, each source's adapter | A dataset each | Each records what it fetched, readable by `Catalog`/`Series` |
+| W22.3 | **Raising a retention says what it costs** (D-231): before a longer retention is applied, a window says what it will take on disk and that what was not recorded cannot be fetched back | the Data tab, a confirmation window from the app's own | A window, as the app's confirmations are | Raising asks first, with the cost and the no-going-back line; lowering or keeping does not |
 
 ## The trace
 
