@@ -365,8 +365,8 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		Units:          cfg.Units,
 		Clock:          cfg.Clock,
 		Hydrate:        lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
-		Credits:        credits(),                     // data-source credits, licence obligations included (UAT 75)
-		AboutNotes:     aboutNotes(),                  // the relays' condition of use and the safety framing, after every credit
+		CreditGroups:   creditGroups(),                // About's data sets, a group a provider, each source once (W21)
+		AboutWarnings:  aboutWarnings(),               // About's warnings, the life-safety pointer last (W21, D-229)
 		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules
 		// ONE OWNER FOR THE TWO RINGS: the detail states each ring beside the
 		// list it admits, so the window and the spoken report agree on how far
@@ -440,7 +440,6 @@ func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
 	c.MapDetailChoice = cfg.MapDetail                                  // UAT-1 D-65: the map's detail
 	c.MapDetailLevel = cfg.MapDetailLevel                              // UAT-1 D-67: its level
 	c.MapAreaName = mapAreaNamer(lp.idx)                               // UAT-1 D-64: the title names what is in view
-	c.MapCredits = mapCredits()                                        // 0.18.0 D-148: the map's, in About with the rest
 }
 
 // attachDeck takes ownership of the player and starts what rides with it: the

@@ -3692,3 +3692,33 @@ the known (the second survived first: `TestKnownCitiesKeepTheSpacingAndTheView`)
 first, the same test), the day, the history listed, the hourly relisting, the state in the key, the
 dataset among the history's - all caught. A new test asked the EPA fixture for three cities at once and
 raced on its unlocked counter; it uses the fake that counts under a lock.
+
+## Batch 124 — the About window's credits, one each (W21, D-220, D-228, D-229; 2026-10-03)
+
+**One list, a group a provider.** About's credits were two flat lists, the station's (`credits()`) and the
+map's (`mapCredits()`), and NDBC, CO-OPS and USGS were in both. They are one list now, `creditGroups()`,
+laid out as the HUM LEAD's mock draws it (`about-credits-mock.md`): a provider's name, then each data set
+- its short name, what it is, its home at the right margin, a note under it where its terms ask. Every
+source the app reads is credited once, the map's sources with the station's; NHC, OpenFreeMap, GeoNames
+and the Piper voices, which the mock left out, have their lines (D-228); GitHub is not credited.
+
+**The licences, in the mock's format (D-220).** CC BY 4.0 on the Open-Meteo and GeoNames group names, and
+"Interpolated" on every grid drawn from Open-Meteo (the licence asks a change be said); the ODbL's
+OpenStreetMap credit under OpenFreeMap; AirNow's "preliminary data, not fully verified"; FIRMS credited
+to LANCE FIRMS, as the README already recorded NASA asks; the voices MIT, as their repository declares
+(the HUM LEAD corrected the model-card reading - the cards describe the training data). The mock's
+spellings corrected, NOAA's and NDFD's names given in full.
+
+**The warnings first (D-229):** the mock's three, and R-13's pointer, "FOR LIFE SAFETY: NOAA WEATHER RADIO
+AND WIRELESS EMERGENCY ALERTS". The old closing notes and their constants (`stream.Disclaimer`,
+`SafetyNote`, `SafetyNext`) are gone with them.
+
+**The smart columns (W21.2).** The data sets go side by side where the window fits two columns - Help's
+rule and helper (`helpTwoColumns`, D-147) - and stay one column, scrolled, where the terminal is short,
+the window widened by the scroll rail so no row is clipped. The README's credits paragraph says what the
+window says.
+
+**Mutation verdicts** (11): a source credited twice, CC BY on Open-Meteo, "Interpolated", the fourth
+warning, AirNow's note, the host at the margin, the note under its line, the two columns, the width from
+the plan, the warnings drawn, and the rail's room (survived first; the scrolled window's rule must be the
+column's 70 cells) - all caught.

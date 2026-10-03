@@ -155,7 +155,8 @@ func (d Dashboard) modalWidth() int {
 	case modalStatus:
 		return d.statusWidth() // providers beside requests when they fit, else the stretch
 	case modalAbout:
-		return aboutWidth
+		_, w, _ := d.aboutPlan(d.opts(), d.opts().Width) // two columns of data sets when they fit (W21.2)
+		return w
 	case modalMap:
 		return d.mapWindowCols()
 	case modalHelp:

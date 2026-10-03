@@ -3,32 +3,61 @@ package app
 import (
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/modes/tty"
 )
 
-// TestCreditsCoverEverySource is UAT 75 (OQ-15) with 0.18.0 D-148: every
-// source the build reads is credited in About - the station's and the map's
-// - each CC BY source with its licence, the map's basemap with the ODbL;
-// then the relays' condition of use and the safety framing, last.
-func TestCreditsCoverEverySource(t *testing.T) {
-	station := strings.Join(credits(), "\n")
-	for _, want := range []string{"National Weather Service", "Data Buoy Center", "Tides & Currents", "GeoNames", "Open-Meteo", "NWR transmitter", "wxradio.org"} {
-		if !strings.Contains(station, want) {
-			t.Errorf("the station's credits lack %q:\n%s", want, station)
+// creditText is every group and line as the window says them, one per line.
+func creditText(groups []tty.CreditGroup) string {
+	var b strings.Builder
+	for _, g := range groups {
+		b.WriteString(g.Name + "\n")
+		for _, c := range g.Lines {
+			b.WriteString(strings.Join([]string{c.Abbr, c.What, c.Host, c.Note}, " | ") + "\n")
 		}
 	}
-	if strings.Count(station, "CC BY 4.0") != 2 {
-		t.Errorf("both of the station's CC BY sources must carry their licence:\n%s", station)
-	}
-	maps := strings.Join(mapCredits(), "\n")
-	for _, want := range []string{"OpenFreeMap", "OpenStreetMap contributors (ODbL)", "MRMS", "Iowa Environmental Mesonet", "HRRR", "NDFD",
-		"Temperature, feels-like, wind and UV: Open-Meteo.com (CC BY 4.0)", "Rain and snow", "Waves", "Air quality", "AirNow", "WFIGS", "HMS", "USGS", "Data Buoy Center", "Tides & Currents"} {
-		if !strings.Contains(maps, want) {
-			t.Errorf("the map's credits lack %q:\n%s", want, maps)
+	return b.String()
+}
+
+// EVERY SOURCE IS CREDITED ONCE, WITH WHAT ITS TERMS ASK (W21, D-220, D-228):
+// the About window's data sets, a group a provider as the mock draws them -
+// each source the app reads once, never a station's list and a map's list
+// both; CC BY 4.0 on Open-Meteo and GeoNames, Open-Meteo's change said
+// ("interpolated") on every grid drawn from it, the ODbL's OpenStreetMap
+// credit, AirNow's condition; the voices under the licence they are published
+// under; GitHub, no data set, not credited; the mock's spellings corrected.
+func TestEverySourceIsCreditedOnce(t *testing.T) {
+	text := creditText(creditGroups())
+	for _, want := range []string{"National Weather Service", "National Data Buoy Center", "Tides & Currents", "Wildfire Satellite Hotspots",
+		"Tropical Storms", "Transmitter List", "MRMS", "HRRR", "National Digital Forecast Database", "Fire Hotspots, API Key Required", "WFIGS", "wxradio.org & weatherUSA",
+		"AirNow", "Envirofacts", "Earthquake Hazards Program", "IEM", "Geocoding", "Basemap Tiles", "Cities & Postal Codes", "rhasspy/piper-voices"} {
+		if n := strings.Count(text, want); n != 1 {
+			t.Errorf("%q is credited %d times; want once:\n%s", want, n, text)
 		}
 	}
-	notes := aboutNotes()
-	if len(notes) != 3 || !strings.Contains(notes[0], "not for life-safety") || notes[2] != SafetyNext {
-		t.Errorf("About's closing lines are %q; want the relays' condition of use, then the safety framing", notes)
+	for _, want := range []string{"OPEN-METEO (CC BY 4.0)", "GEONAMES (CC BY 4.0)", "© OpenStreetMap contributors (ODbL)", "preliminary data, not fully verified", "LANCE FIRMS", "(MIT)"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("the credits lack %q:\n%s", want, text)
+		}
+	}
+	for _, g := range creditGroups() {
+		if !strings.HasPrefix(g.Name, "OPEN-METEO") {
+			continue
+		}
+		for _, c := range g.Lines {
+			if c.What != "Geocoding" && !strings.HasSuffix(c.What, "Interpolated") {
+				t.Errorf("Open-Meteo's %q does not say it is interpolated (CC BY 4.0 asks a change be said)", c.What)
+			}
+		}
+	}
+	for _, typo := range []string{"INTEDED", "AERONAUTICAL", "UNITED STATED", "MESSONET", "UVIndex", "GitHub", "github.com"} {
+		if strings.Contains(text, typo) {
+			t.Errorf("the credits say %q", typo)
+		}
+	}
+	w := aboutWarnings()
+	if len(w) != 4 || !strings.Contains(w[0], "NOT INTENDED AS A SUBSTITUTE") || !strings.Contains(w[3], "NOAA WEATHER RADIO") {
+		t.Errorf("About's warnings are %q; want the mock's three and the life-safety pointer last (D-229)", w)
 	}
 }
 

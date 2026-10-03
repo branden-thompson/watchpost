@@ -191,14 +191,13 @@ type Config struct {
 	// at startup.
 	StationArea StationAreaMsg
 
-	Hydrate    func(ref snapshot.LocationRef) // on-demand hourly forecast for a RECENT row (UAT 72)
-	Credits    []string                       // About "Data Provided by" lines — the app owns the list (UAT 75)
-	MapCredits []string                       // About "Maps" lines (0.18.0 D-148): every credit in one window
-	AboutNotes []string                       // About's closing lines after every credit: conditions of use, the safety framing
-	Radio      Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
-	Spectrum   func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
-	SaveRadio  func(RadioPrefs) error         // keeps the radio panel's choices (D-214); nil keeps nothing
-	FireBoldMW float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
+	Hydrate       func(ref snapshot.LocationRef) // on-demand hourly forecast for a RECENT row (UAT 72)
+	CreditGroups  []CreditGroup                  // About's data sets, a group a provider, each source once - the app owns the list (W21)
+	AboutWarnings []string                       // About's warnings, first in the window (W21, D-229)
+	Radio         Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
+	Spectrum      func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
+	SaveRadio     func(RadioPrefs) error         // keeps the radio panel's choices (D-214); nil keeps nothing
+	FireBoldMW    float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
 
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
 	// reports against, and they are TWO because the data is two things: the

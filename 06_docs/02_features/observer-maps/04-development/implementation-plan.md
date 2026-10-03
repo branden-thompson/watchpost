@@ -399,9 +399,9 @@ scroll control where it is short.
 
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
-| W21.1 | **The credits, one each**: every data set under its agency, each source named once with its host, the notices and "Built with" as the mock draws them; the spellings and each source's required wording settled at W21's opening | `modes/tty/help_about.go`, the credits' owners | The mock; open points in its "To settle" list | No source is credited twice; every source the app contacts is credited; each credit a source's terms require is present |
-| W21.3 | **The VOICES group** (D-228): the Piper voices as a group in the data sets, with the attribution each installed voice's licence requires; GitHub not credited | `modes/tty/help_about.go`, the voices' licences | A group, as the agencies' | Each installed voice's required attribution is in the window |
-| W21.2 | **The smart columns**: two columns on a wide window, the scroll control on a short one, from the app's own column and scroll parts (D-147) | `modes/tty/help_about.go` | As the Settings window's columns | A wide window draws two columns, a short one scrolls and every line is reachable |
+| W21.1 | **The credits, one each**: every data set under its agency, each source named once with its host, the notices and "Built with" as the mock draws them; the spellings and each source's required wording settled at W21's opening | `modes/tty/help_about.go`, the credits' owners | The mock; open points in its "To settle" list | No source is credited twice; every source the app contacts is credited; each credit a source's terms require is present | **Built, batch 124** |
+| W21.3 | **The VOICES group** (D-228): the Piper voices as a group in the data sets, credited as the voices repository publishes them (MIT); GitHub not credited | `modes/tty/help_about.go`, the voices' licences | A group, as the agencies' | The voices are credited as published | **Built, batch 124** |
+| W21.2 | **The smart columns**: two columns on a wide window, the scroll control on a short one, from the app's own column and scroll parts (D-147) | `modes/tty/help_about.go` | As the Settings window's columns | A wide window draws two columns, a short one scrolls and every line is reachable | **Built, batch 124** |
 
 ## W22 — Every reading recorded is stored (D-224, D-226, D-227) · after W21
 

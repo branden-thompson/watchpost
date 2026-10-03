@@ -1,5 +1,3 @@
-const SafetyNext
-const SafetyNote
 const UserAgent
 const aheadRetry
 const aheadSoon
@@ -10,7 +8,6 @@ const alertLayerKey
 const areaMemoAge
 const areaMemoKeys
 const bandRecordCap
-const basemapAttribution
 const bedFenceFarMi
 const breakingGap
 const breakingHold
@@ -543,7 +540,7 @@ func ReportOnce
 func ReportOnceWithStats
 func RunDashboard
 func abbreviateHome
-func aboutNotes
+func aboutWarnings
 func addAlerts
 func addNow
 func addPartial
@@ -605,7 +602,7 @@ func contentsFromSegments
 func contourGrid
 func convertIf
 func countedBody
-func credits
+func creditGroups
 func dayReadings
 func dayStart
 func debugAddr
@@ -696,7 +693,6 @@ func loopSlots
 func macVoices
 func mainTrack
 func mapAreaNamer
-func mapCredits
 func mapHTTPDir
 func mapRetention
 func mapSourceList

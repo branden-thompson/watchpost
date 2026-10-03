@@ -44,67 +44,140 @@ func TestHelpFloatsOverDashboard(t *testing.T) {
 	}
 }
 
-func TestAboutWindowMatchesMock(t *testing.T) {
-	// UAT 68/70/75, 0.18.0 D-148: [a] floats the About window (78 cols): centred title +
-	// version, the app-owned credits list + licence notice and the build
-	// stack inset 3 from the frame, maker lines centred; esc closes.
-	m, err := NewDashboard(Config{Version: "0.1.0-test", Credits: []string{"NOAA National Weather Service (api.weather.gov)", "GeoNames.org cities & postal codes (CC BY 4.0)"},
-		MapCredits: []string{"Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors (ODbL)", strings.Repeat("a long credit ", 7) + "wraps."},
-		AboutNotes: []string{"Not a substitute for official warnings."}}) // D-148: every credit here, the map's too
+// aboutGroups is a set of credit groups as the app hands them in (W21).
+func aboutGroups() []CreditGroup {
+	return []CreditGroup{
+		{Name: "NATIONAL OCEANIC AND ATMOSPHERIC ADMINISTRATION (NOAA)", Lines: []CreditLine{
+			{Abbr: "NWS", What: "National Weather Service", Host: "api.weather.gov"},
+			{Abbr: "NDBC", What: "National Data Buoy Center", Host: "ndbc.noaa.gov"}}},
+		{Name: "UNITED STATES ENVIRONMENTAL PROTECTION AGENCY", Lines: []CreditLine{
+			{Abbr: "AQI", What: "U.S. EPA AirNow", Note: "preliminary data, not fully verified"}}},
+		{Name: "OPEN-METEO (CC BY 4.0)", Lines: []CreditLine{{What: "geocoding"}, {What: "Wind data, interpolated"}}},
+	}
+}
+
+// aboutFrame is the About window's framed lines, as drawn at a terminal size.
+func aboutFrame(t *testing.T, cfg Config, w, h int) (Dashboard, string) {
+	t.Helper()
+	m, err := NewDashboard(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var model tea.Model = m
-	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
-	m2, _ := model.Update(SnapshotMsg{Snap: snap()})
-	m2, _ = m2.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
-	d := m2.(Dashboard)
+	model, _ = model.Update(tea.WindowSizeMsg{Width: w, Height: h})
+	model, _ = model.Update(SnapshotMsg{Snap: snap()})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	d := model.(Dashboard)
 	if d.modal != modalAbout {
 		t.Fatal("[a] must open the About window")
 	}
-	v := stripANSITest(d.View().Content)
 	var frame []string
-	for _, l := range strings.Split(v, "\n") {
-		if i := strings.Index(l, "│"); i >= 0 && strings.Contains(l, "│") && strings.Count(l, "│") >= 2 {
+	for _, l := range strings.Split(stripANSITest(d.View().Content), "\n") {
+		if i := strings.Index(l, "│"); i >= 0 && strings.Count(l, "│") >= 2 {
 			frame = append(frame, l[i:])
 		}
 	}
-	body := strings.Join(frame, "\n")
+	return d, strings.Join(frame, "\n")
+}
+
+// THE ABOUT WINDOW IS THE MOCK'S (W21, about-credits-mock.md): the title and
+// the build on one line; the warnings first; the terms; the data sets, a group
+// a provider, each source once - its short name, what it is, its host at the
+// right margin, a note under it; then what it is built with and who made it.
+func TestAboutWindowMatchesMock(t *testing.T) {
+	d, body := aboutFrame(t, Config{Version: "0.1.0-test", CreditGroups: aboutGroups(),
+		AboutWarnings: []string{"NOT INTENDED AS A SUBSTITUTE FOR OFFICIAL WARNING SOURCES OR DEVICES", "WEATHER RELAYS MAY BE DELAYED"}}, 133, 80)
 	for _, want := range []string{
-		"│                             WATCHPOST Observer                             │",
-		"│                                v 0.1.0-test                                │",
-		"│   Data Provided by:                                                        │",
-		"│   NOAA National Weather Service (api.weather.gov)                          │",
-		"│   GeoNames.org cities & postal codes (CC BY 4.0)                           │",
-		"│   Maps:                                                                    │",
-		"│   Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors       │",
-		"│     (ODbL)                                                                 │", // wrapped under its start
-		"│   Not a substitute for official warnings.                                  │",
+		"│" + strings.Repeat(" ", 25) + "WATCHPOST    v. 0.1.0-test" + strings.Repeat(" ", 25) + "│", // 26 cells centred in 76
+		"│   ! NOT INTENDED AS A SUBSTITUTE FOR OFFICIAL WARNING SOURCES OR DEVICES   │",
+		"│   ! WEATHER RELAYS MAY BE DELAYED                                          │",
 		"│   All sources free to use with attribution.                                │",
+		"│   DATA SETS PROVIDED BY:                                                   │",
+		"│   NATIONAL OCEANIC AND ATMOSPHERIC ADMINISTRATION (NOAA)                   │",
+		"│     NWS     - National Weather Service                   api.weather.gov   │",
+		"│     NDBC    - National Data Buoy Center                    ndbc.noaa.gov   │",
+		"│     AQI     - U.S. EPA AirNow                                              │",
+		"│               preliminary data, not fully verified                         │",
+		"│   OPEN-METEO (CC BY 4.0)                                                   │",
+		"│     geocoding                                                              │",
 		"│   Built with:                                                              │",
-		"│   STUDS - Stylized Terminal UI Design System                               │",
-		"│                     Made with ♥ by Branden R. Thompson                     │",
-		"│                          github: branden-thompson                          │",
-		"│                      Make CLIs Great for Humans Again                      │",
+		"│   GO " + strings.TrimPrefix(runtime.Version(), "go") + " | BubbleTea | LipGloss | go-tuimaps",
+		"│   Stylized Terminal UI Design System (STUDS)                               │",
+		"│   github: branden-thompson                                                 │",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("About window missing %q:\n%s", want, body)
 		}
 	}
-	if !strings.Contains(body, "│     credit a long credit") || strings.Index(body, "Maps:") > strings.Index(body, "Not a substitute") || strings.Index(body, "Data Provided by:") > strings.Index(body, "Maps:") {
-		t.Errorf("a long credit does not wrap under its start, or the sections are out of order - the station's, the map's, then the notes:\n%s", body)
+	if !strings.Contains(body, "Built with ♥ by Branden R. Thompson") {
+		t.Errorf("the maker line is missing:\n%s", body)
 	}
-	if !strings.Contains(body, "│   GO "+strings.TrimPrefix(runtime.Version(), "go")+" | BubbleTea | LipGloss |") {
-		t.Fatalf("build line must carry the running Go version:\n%s", body)
-	}
-	for _, l := range strings.Split(v, "\n") {
-		if strings.Contains(l, "┌") && strings.Contains(l, "┐") && strings.Contains(l, "─ ") {
-			t.Fatalf("About window has no title: %q", l)
+	order := []string{"! NOT INTENDED", "All sources free", "DATA SETS PROVIDED BY:", "NATIONAL OCEANIC", "UNITED STATES ENVIRONMENTAL", "OPEN-METEO", "Built with:", "github:"}
+	for k := 1; k < len(order); k++ {
+		if strings.Index(body, order[k-1]) > strings.Index(body, order[k]) {
+			t.Errorf("%q comes after %q; want the mock's order", order[k-1], order[k])
 		}
 	}
-	m3, _ := m2.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if strings.Count(body, "National Data Buoy Center") != 1 {
+		t.Errorf("a source is credited %d times; want once", strings.Count(body, "National Data Buoy Center"))
+	}
+	m3, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if m3.(Dashboard).modal == modalAbout {
 		t.Fatal("esc must close the About window")
+	}
+}
+
+// THE ABOUT WINDOW TAKES TWO COLUMNS WHERE THEY FIT (W21.2): the data sets
+// side by side on a wide terminal, the groups whole in either column, and one
+// column, scrolled, where the terminal is short.
+func TestAboutTakesTwoColumnsWhereTheyFit(t *testing.T) {
+	cfg := Config{Version: "t", CreditGroups: aboutGroups()}
+	_, wide := aboutFrame(t, cfg, 220, 60)
+	row := ""
+	for _, l := range strings.Split(wide, "\n") {
+		if strings.Contains(l, "NATIONAL OCEANIC") {
+			row = l
+		}
+	}
+	if !strings.Contains(row, "UNITED STATES ENVIRONMENTAL") && !strings.Contains(row, "OPEN-METEO") {
+		t.Errorf("on a wide terminal the groups are not side by side:\n%s", wide)
+	}
+	_, narrow := aboutFrame(t, cfg, 133, 80)
+	for _, l := range strings.Split(narrow, "\n") {
+		if strings.Contains(l, "NATIONAL OCEANIC") && strings.Contains(l, "OPEN-METEO") {
+			t.Errorf("at 133 columns the groups are side by side: %q", l)
+		}
+	}
+	d, short := aboutFrame(t, cfg, 133, 24)
+	if strings.Contains(short, "github: branden-thompson") {
+		t.Fatalf("a short terminal shows the whole window; the fixture must make it scroll:\n%s", short)
+	}
+	whole := false // beside the scroll rail a row is still whole: the window widens by the rail
+	for _, l := range strings.Split(short, "\n") {
+		if strings.Contains(l, "National Weather Service") && strings.Contains(l, "api.weather.gov") {
+			whole = true
+		}
+	}
+	if !whole {
+		t.Errorf("scrolling, the NWS row is not whole on its line:\n%s", short)
+	}
+	for _, l := range strings.Split(short, "\n") {
+		if n := strings.Count(l, "─"); n > 0 && n != aboutColumn {
+			t.Errorf("scrolling, the rule is %d cells; want the column's %d - the rail is the window's to make room for", n, aboutColumn)
+		}
+	}
+	for range 60 { // to the end
+		m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+		d = m.(Dashboard)
+	}
+	var frame []string
+	for _, l := range strings.Split(stripANSITest(d.View().Content), "\n") {
+		if strings.Count(l, "│") >= 2 {
+			frame = append(frame, l)
+		}
+	}
+	if !strings.Contains(strings.Join(frame, "\n"), "github: branden-thompson") {
+		t.Errorf("scrolled to the end, the last line is not reachable:\n%s", strings.Join(frame, "\n"))
 	}
 }
 

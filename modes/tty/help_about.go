@@ -285,66 +285,141 @@ func orDefault(s, alt string) string {
 	return s
 }
 
-// About window (UAT 68/70 mock): title + version centred, the data providers
-// and the build stack inset 3, the maker lines centred. Lines are composed on
-// the interior and handed to the panel minus the two cells its chrome
-// already draws. Providers come from the live provider registry so a new
-// data source lists itself. WIDENED TO 78 (0.18.0 D-148): every credit is
-// here, the map's too, and a long one wraps under its own start.
+// CreditGroup is one provider's data sets in the About window (W21): its name
+// as the window says it, licence included where the provider's terms ask.
+type CreditGroup struct {
+	Name  string
+	Lines []CreditLine
+}
+
+// CreditLine is one data set: its short name (none for a source that has
+// none), what it is, its home at the right margin, and a note under it - a
+// condition of the source's own, such as AirNow's.
+type CreditLine struct {
+	Abbr, What, Host, Note string
+}
+
+// About window (W21, about-credits-mock.md): the title and the build on one
+// line; the warnings; the terms; the data sets, a group a provider, in two
+// columns where the terminal is wide enough (the Help window's rule, D-147);
+// what it is built with and who made it. It scrolls where the terminal is
+// short, widened by the rail so no column is clipped.
 const aboutWidth = 78
 
+// aboutColumn is one column of data sets: the single-column window's room
+// between its margins.
+const aboutColumn = aboutWidth - 2 - 2*modalInset
+
+// aboutAbbr is the short names' column, "NWS" to "CO-OPS".
+const aboutAbbr = 8
+
+// aboutPlan is the layout for a terminal content width: two columns of data
+// sets when the window fits, else one; its width, and whether it scrolls.
+func (d Dashboard) aboutPlan(o render.Opts, avail int) (twoCol bool, width int, rail bool) {
+	blocks := creditBlocks(d.cfg.CreditGroups)
+	fixed := len(d.aboutHead()) + len(d.aboutFoot(o)) + 2
+	if len(blocks) > 1 { // two columns need two groups to share between them
+		twoBody := fixed + len(helpTwoColumns(blocks, aboutColumn))
+		twoWidth := 2 + 2*modalInset + 2*aboutColumn + columnGap
+		if w := twoWidth + panelChromeFor(twoBody, d.modalMax()) - panelFrame; w <= avail {
+			return true, w, twoBody > d.modalMax()
+		}
+	}
+	oneBody := fixed
+	for _, b := range blocks { // the groups (P10-02)
+		oneBody += len(b.lines) + 1
+	}
+	return false, aboutWidth + panelChromeFor(oneBody, d.modalMax()) - panelFrame, oneBody > d.modalMax()
+}
+
+// aboutHead is what comes before the data sets: the warnings, the terms.
+func (d Dashboard) aboutHead() []string {
+	var out []string
+	for _, w := range d.cfg.AboutWarnings { // the warnings (P10-02)
+		out = append(out, "! "+w)
+	}
+	return append(out, creditsNotice)
+}
+
+// aboutFoot is what comes after them: what it is built with, who made it.
+func (d Dashboard) aboutFoot(o render.Opts) []string {
+	return []string{"Built with:", "", "GO " + strings.TrimPrefix(runtime.Version(), "go") + " | BubbleTea | LipGloss | go-tuimaps",
+		"Stylized Terminal UI Design System (STUDS)", "", "Built with " + o.Glyphs().Heart + " by Branden R. Thompson", "github: branden-thompson"}
+}
+
 func (d Dashboard) aboutLines(o render.Opts) []string {
-	interior := aboutWidth - 2
+	twoCol, width, rail := d.aboutPlan(o, o.Width)
+	interior := width - 2
+	if rail {
+		interior -= panelRail
+	}
+	content := interior - 2*modalInset
 	centre := func(text string) string {
 		return strings.Repeat(" ", max(0, (interior-render.Width(text))/2)) + text
 	}
-	// The window's own margin, from the one owner (UAT 70; D-1 at the T3.10 red team).
 	inset := func(text string) string { return strings.Repeat(" ", modalInset) + text }
-	lines := []string{
-		centre(render.Wordmark(render.EditionObserver)),
-		centre("v " + d.cfg.Version),
-		"",
-		inset("Data Provided by:"),
-		"",
-	}
-	credit := func(p string) { // a long credit wraps, its lines under its own start
-		for i, l := range render.WrapText(p, interior-2*modalInset-2) {
+	lines := []string{centre("WATCHPOST    v. " + d.cfg.Version), ""}
+	for _, h := range d.aboutHead() { // the warnings and the terms (P10-02)
+		for i, l := range render.WrapText(h, content) {
 			if i > 0 {
-				l = "  " + l
+				l = "  " + l // a long warning wraps under its words
 			}
 			lines = append(lines, inset(l))
 		}
 	}
-	for _, p := range d.cfg.Credits {
-		credit(p)
-	}
-	if len(d.cfg.MapCredits) > 0 { // D-148: the map's credits, here and nowhere else in full
-		lines = append(lines, "", inset("Maps:"), "")
-		for _, p := range d.cfg.MapCredits {
-			credit(p)
+	rule := inset(strings.Repeat(o.Glyphs().Rule, content))
+	lines = append(lines, rule, inset("DATA SETS PROVIDED BY:"), "")
+	blocks := creditBlocks(d.cfg.CreditGroups)
+	if twoCol {
+		for _, l := range helpTwoColumns(blocks, aboutColumn) { // the columns' rows (P10-02)
+			lines = append(lines, inset(l))
+		}
+	} else {
+		for _, b := range blocks { // the groups (P10-02)
+			for _, l := range b.lines {
+				lines = append(lines, inset(l))
+			}
+			lines = append(lines, "")
 		}
 	}
-	if len(d.cfg.AboutNotes) > 0 { // after every credit: conditions of use, then the safety framing (UAT 103, R-13)
-		lines = append(lines, "")
-		for _, p := range d.cfg.AboutNotes {
-			credit(p)
-		}
+	lines = append(lines, rule, "")
+	for _, l := range d.aboutFoot(o) { // the build and the maker (P10-02)
+		lines = append(lines, inset(l))
 	}
-	lines = append(lines,
-		"",
-		inset(creditsNotice), // UAT 75
-		"",
-		inset("Built with:"),
-		inset("GO "+strings.TrimPrefix(runtime.Version(), "go")+" | BubbleTea | LipGloss |"),
-		inset("STUDS - Stylized Terminal UI Design System"),
-		"",
-		centre("Made with "+o.Glyphs().Heart+" by Branden R. Thompson"),
-		centre("github: branden-thompson"),
-		centre("Make CLIs Great for Humans Again"),
-	)
 	out := make([]string, 0, len(lines))
 	for _, l := range lines {
 		out = append(out, strings.TrimPrefix(l, "  ")) // the panel chrome draws these two cells
+	}
+	return out
+}
+
+// creditBlocks are the groups as blocks of aboutColumn: the group's name,
+// then each data set - its short name, what it is, its home at the right
+// margin (on a line of its own where it does not fit), its note under it.
+func creditBlocks(groups []CreditGroup) []helpBlock {
+	var out []helpBlock
+	for _, g := range groups { // the providers (P10-02)
+		b := helpBlock{lines: render.WrapText(g.Name, aboutColumn)}
+		for _, c := range g.Lines { // a provider's data sets (P10-02)
+			left, under := "  "+c.What, "  "
+			if c.Abbr != "" {
+				left = "  " + render.PadTo(c.Abbr, aboutAbbr) + "- " + c.What
+				under = strings.Repeat(" ", 2+aboutAbbr+2)
+			}
+			gap := aboutColumn - render.Width(left) - render.Width(c.Host)
+			switch {
+			case c.Host == "":
+				b.lines = append(b.lines, left)
+			case gap >= 2:
+				b.lines = append(b.lines, left+strings.Repeat(" ", gap)+c.Host)
+			default:
+				b.lines = append(b.lines, left, strings.Repeat(" ", max(0, aboutColumn-render.Width(c.Host)))+c.Host)
+			}
+			if c.Note != "" {
+				b.lines = append(b.lines, under+c.Note)
+			}
+		}
+		out = append(out, b)
 	}
 	return out
 }

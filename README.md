@@ -265,13 +265,16 @@ for life safety use NOAA Weather Radio and Wireless Emergency Alerts. Coverage i
 National Weather Service); places outside the US resolve but carry no weather data yet.
 
 **Data and credits.** Watchpost reads public sources and shows their credits in the About window
-(`a`): National Weather Service / NOAA (forecasts, observations, alerts, products, coastal waters,
-transmitter list — public domain); NDBC buoys and CO-OPS tides/currents (NOAA); NOAA-NESDIS Hazard
-Mapping System fire detections and NIFC WFIGS incidents (public domain); active fire data from NASA
-FIRMS (<https://earthdata.nasa.gov/firms>, NASA open data — attribute LANCE/FIRMS); the USGS earthquake
-feed; GeoNames and Open-Meteo geocoding (CC BY 4.0, <https://creativecommons.org/licenses/by/4.0/>);
-NWR audio relayed by wxradio.org and weatherUSA (community relays — relayed audio lags and is not
-for life-safety use). Watchpost is not affiliated with NOAA, NIFC, the USGS or NASA.
+(`a`), a group a provider, each source once: NOAA - the National Weather Service, NDBC buoys, CO-OPS
+tides and currents, HMS fire detections, NHC storms, the NWR transmitter list, MRMS radar, HRRR radar
+ahead and NDFD forecasts (public domain); NASA FIRMS active fires (<https://earthdata.nasa.gov/firms>,
+credited to LANCE FIRMS); NIFC WFIGS incidents; the NWR audio relays of wxradio.org and weatherUSA
+(community relays - relayed audio lags and is not for life-safety use); U.S. EPA AirNow (preliminary
+data, not fully verified) and EPA Envirofacts UV; the USGS earthquake feed; the Iowa Environmental
+Mesonet's radar; Open-Meteo's geocoding and forecasts and GeoNames' places (CC BY 4.0,
+<https://creativecommons.org/licenses/by/4.0/>; Open-Meteo's grids are interpolated); OpenFreeMap's
+basemap (© OpenMapTiles, © OpenStreetMap contributors, ODbL); and the Piper voices
+(rhasspy/piper-voices, MIT). Watchpost is not affiliated with NOAA, NIFC, the USGS, the EPA or NASA.
 
 **What it talks to, and when.** Watchpost fetches only from the providers above, on the schedule the
 dashboard shows, and it sends nothing about you to any of them. One further connection is available and

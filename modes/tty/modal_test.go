@@ -24,7 +24,7 @@ var modalMarkers = map[string]string{
 	"remove":  "─ Remove Location ─",
 	"alerts":  "─ ALERT",
 	"status":  "─ Watchpost Status ─",
-	"about":   "Data Provided by:",
+	"about":   "DATA SETS PROVIDED BY:",
 	"setup":   "─ Settings ─",
 	"severe":  "NOTABLE EVENTS AND FORECASTS",
 }

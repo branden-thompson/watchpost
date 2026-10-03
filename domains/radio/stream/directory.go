@@ -25,7 +25,6 @@ import (
 // follows only same-origin redirects (httpx.SameOriginRedirect).
 const (
 	WxradioAttribution    = "NWR audio: wxradio.org & weatherUSA (community)"
-	Disclaimer            = "Relayed audio lags; not for life-safety use."
 	wxradioStatus         = "https://wxradio.org/status-json.xsl"
 	wxradioListen         = "https://wxradio.org/"
 	weatherUSAStatus      = "http://radio.weatherusa.net/status-json.xsl"

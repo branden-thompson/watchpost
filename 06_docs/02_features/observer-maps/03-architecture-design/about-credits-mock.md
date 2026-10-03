@@ -96,7 +96,7 @@ line in its agency's group, with what it supplies:
 | **OpenFreeMap**, © OpenMapTiles, © OpenStreetMap contributors | the map's basemap tiles | `tiles.openfreemap.org` | **ODbL: the OpenStreetMap credit is required.** It is in `mapCredits` today |
 | **GeoNames** | the offline place and ZIP index: cities15000 and US postal codes, embedded | `domains/locations/geodata` | **CC BY 4.0: attribution required** |
 | **NOAA NHC**, National Hurricane Center | current storms, Atlantic and Eastern Pacific | `www.nhc.noaa.gov` | public domain; a line in the NOAA group |
-| **Piper voices** (rhasspy), via Hugging Face | the offline speech voices, fetched on demand | `huggingface.co` | each voice model carries its own licence: **a VOICES group in the data sets, with each installed voice's required attribution (D-228)** |
+| **Piper voices** (rhasspy), via Hugging Face | the offline speech voices, fetched on demand | `huggingface.co` | the voices repository declares MIT (each model card names the data it was trained on): **a VOICES group in the data sets, credited MIT (D-228)** |
 | GitHub | the hourly "is there a newer Watchpost?" check | `api.github.com` | not a data set: **not credited (D-228)** |
 
 Hosts behind sources the mock already names:
@@ -114,17 +114,21 @@ Hosts behind sources the mock already names:
 while still respecting the intended format of the mock." The spellings below are corrected, and every
 required credit is present in the mock's own format.
 
-The points:
+As built, batch 124 (`app/credits.go`, `modes/tty/help_about.go`):
 
-- **Spellings.** The mock reads "INTEDED", "AERONAUTICAL", "UNITED STATED" and "MESSONET". The usual
-  names are "INTENDED", "National Aeronautics and Space Administration", "United States" and "Iowa
-  Environmental Mesonet". Confirm before building.
-- **The version line** is the build's own (`checkpoint/pre-w14-69-ge46d1673` was this build's),
-  drawn from the binary, never a literal.
-- **Credits each source's terms require** must still appear. Open-Meteo's CC BY 4.0 asks for a
-  statement of change, and the map interpolates its data (`OpenMeteoCredit`). Check the AirNow, HMS
-  and FIRMS terms the same way, and that every source the app contacts is listed (the closed lists:
-  `mapSourceList`, the station's providers).
-- **The "smart column" layout:** two columns where the window is wide enough, and the vertical
-  scroll control on the right where it is short. Use the app's existing column and scroll components
-  (D-147).
+- **Spellings corrected:** "INTENDED"; "NATIONAL OCEANIC **AND** ATMOSPHERIC ADMINISTRATION (NOAA)"; "NATIONAL
+  AERONAUTICS AND SPACE ADMINISTRATION (NASA)"; "UNITED STATES ENVIRONMENTAL PROTECTION AGENCY"; "IOWA
+  ENVIRONMENTAL MESONET"; NDFD by its name, "National Digital Forecast Database"; "UV Index".
+- **The version line** is the build's own, from the binary.
+- **The licences, in the mock's format:** "OPEN-METEO (CC BY 4.0)" and "GEONAMES (CC BY 4.0)" as group names;
+  every grid drawn from Open-Meteo says "Interpolated" (CC BY 4.0 asks a change be said); OpenFreeMap's
+  note names "© OpenMapTiles, © OpenStreetMap contributors (ODbL)"; AirNow's note "preliminary data, not
+  fully verified"; FIRMS' note "LANCE FIRMS, operated by NASA ESDIS"; the voices "Piper voices,
+  rhasspy/piper-voices (MIT)" - the voices repository declares MIT (D-228; the HUM LEAD's correction).
+- **Added groups and lines:** NHC under NOAA; OPENFREEMAP, GEONAMES and VOICES. GitHub is not credited
+  (D-228); Open-Meteo's air-quality host is not contacted, so not credited.
+- **The warnings:** the mock's three, and R-13's "FOR LIFE SAFETY: NOAA WEATHER RADIO AND WIRELESS
+  EMERGENCY ALERTS" (D-229).
+- **The layout:** the data sets in two columns where the window fits them (Help's rule, D-147); one column,
+  scrolled, where the terminal is short, the window widened by the rail. "Built with ♥" as the mock draws
+  it; the mock's "Built with:" stack, go-tuimaps named.

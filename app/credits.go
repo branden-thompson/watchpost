@@ -1,81 +1,76 @@
 package app
 
-import (
-	"github.com/branden-thompson/watchpost/domains/airquality"
-	"github.com/branden-thompson/watchpost/domains/fire/firms"
-	"github.com/branden-thompson/watchpost/domains/fire/hms"
-	"github.com/branden-thompson/watchpost/domains/fire/wfigs"
-	"github.com/branden-thompson/watchpost/domains/locations"
-	"github.com/branden-thompson/watchpost/domains/locations/openmeteo"
-	"github.com/branden-thompson/watchpost/domains/marine/coops"
-	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
-	"github.com/branden-thompson/watchpost/domains/radio/stream"
-	"github.com/branden-thompson/watchpost/domains/seismic/usgs"
-	"github.com/branden-thompson/watchpost/domains/temperature"
-	"github.com/branden-thompson/watchpost/domains/uv"
-	"github.com/branden-thompson/watchpost/domains/weather/nws"
-)
+import "github.com/branden-thompson/watchpost/modes/tty"
 
-// credits is the About window's "Data Provided by" list (OQ-15, UAT 75) —
-// every source the build reads, each line owned by its package. NOAA
-// products are public domain; GeoNames and Open-Meteo are CC BY 4.0, so
-// this list is a licence obligation, not a courtesy. Add a source here
-// when you add a provider or geocoder; the About window renders it as is.
-func credits() []string {
-	return []string{
-		nws.Attribution,
-		ndbc.Attribution,
-		coops.Attribution,
-		locations.Attribution,
-		openmeteo.Attribution,
-		hms.Attribution,           // wildfire detections (B5)
-		wfigs.Attribution,         // wildfire incidents (B5)
-		firms.Attribution,         // keyed detections (B5)
-		usgs.Attribution,          // earthquakes (0.11.0)
-		stream.TableAttribution,   // NWR transmitter list (B4)
-		stream.WxradioAttribution, // community audio relays (B4)
+// creditGroups are the About window's data sets (W21, the HUM LEAD's mock in
+// about-credits-mock.md): a group a provider, each source the app reads named
+// once - the station's sources and the map's alike - with what its terms ask.
+// NOAA's products are public domain; Open-Meteo and GeoNames are CC BY 4.0,
+// which asks for the credit and for a change to be said, so every grid drawn
+// from Open-Meteo says it is interpolated; OpenStreetMap's data is the ODbL,
+// whose credit is named; AirNow asks its readings be called preliminary, and
+// NASA that FIRMS data be credited to LANCE FIRMS. The
+// voices are credited under the licence they are published under (D-228).
+// Add a source here when a provider or a layer reads a new one.
+func creditGroups() []tty.CreditGroup {
+	return []tty.CreditGroup{
+		{Name: "NATIONAL OCEANIC AND ATMOSPHERIC ADMINISTRATION (NOAA)", Lines: []tty.CreditLine{
+			{Abbr: "NWS", What: "National Weather Service", Host: "api.weather.gov"},
+			{Abbr: "NDBC", What: "National Data Buoy Center", Host: "ndbc.noaa.gov"},
+			{Abbr: "CO-OPS", What: "Tides & Currents", Host: "tidesandcurrents.noaa.gov"},
+			{Abbr: "HMS", What: "Wildfire Satellite Hotspots", Host: "ospo.noaa.gov"},
+			{Abbr: "NHC", What: "Tropical Storms", Host: "nhc.noaa.gov"},
+			{Abbr: "NWR", What: "Transmitter List", Host: "weather.gov/nwr"},
+			{Abbr: "MRMS", What: "Current Radar for Maps"},
+			{Abbr: "HRRR", What: "Radar Ahead (forecast) for Maps"},
+			{Abbr: "NDFD", What: "National Digital Forecast Database", Host: "graphical.weather.gov"},
+		}},
+		{Name: "NATIONAL AERONAUTICS AND SPACE ADMINISTRATION (NASA)", Lines: []tty.CreditLine{
+			{Abbr: "FIRMS", What: "Fire Hotspots, API Key Required", Host: "earthdata.nasa.gov", Note: "LANCE FIRMS, operated by NASA ESDIS"},
+		}},
+		{Name: "NATIONAL INTERAGENCY FIRE CENTER", Lines: []tty.CreditLine{
+			{Abbr: "WFIGS", What: "Wildfire Incidents", Host: "nifc.gov"},
+		}},
+		{Name: "NATIONAL WEATHER RADIO", Lines: []tty.CreditLine{
+			{What: "wxradio.org & weatherUSA (community)"},
+		}},
+		{Name: "UNITED STATES ENVIRONMENTAL PROTECTION AGENCY", Lines: []tty.CreditLine{
+			{Abbr: "AQI", What: "U.S. EPA AirNow", Note: "preliminary data, not fully verified"},
+			{Abbr: "UVI", What: "U.S. EPA (Envirofacts)"},
+		}},
+		{Name: "UNITED STATES GEOLOGICAL SURVEY", Lines: []tty.CreditLine{
+			{What: "Earthquake Hazards Program", Host: "earthquake.usgs.gov"},
+		}},
+		{Name: "IOWA ENVIRONMENTAL MESONET", Lines: []tty.CreditLine{
+			{Abbr: "IEM", What: "Radar & Radar Ahead for Maps"},
+		}},
+		{Name: "OPEN-METEO (CC BY 4.0)", Lines: []tty.CreditLine{
+			{What: "Geocoding"},
+			{What: "Wind Data, Interpolated"},
+			{What: "Supplemental Temperature Data, Interpolated"},
+			{What: "Supplemental UV Index Data, Interpolated"},
+			{What: "Off-shore Wave Data, Interpolated"},
+			{What: "Rain and Snow Total Forecasts, Interpolated"},
+		}},
+		{Name: "OPENFREEMAP", Lines: []tty.CreditLine{
+			{What: "Basemap Tiles", Host: "openfreemap.org", Note: "© OpenMapTiles, © OpenStreetMap contributors (ODbL)"},
+		}},
+		{Name: "GEONAMES (CC BY 4.0)", Lines: []tty.CreditLine{
+			{What: "Cities & Postal Codes, the offline index", Host: "geonames.org"},
+		}},
+		{Name: "VOICES", Lines: []tty.CreditLine{
+			{What: "Piper voices, rhasspy/piper-voices (MIT)", Host: "huggingface.co"},
+		}},
 	}
 }
 
-// aboutNotes are the About window's closing lines, after every credit - the
-// station's and the map's (D-148): the relays' condition of use (UAT 103),
-// then R-13's safety framing, always last.
-func aboutNotes() []string {
-	return []string{stream.Disclaimer, SafetyNote, SafetyNext}
-}
-
-// mapCredits is the About window's "Maps" list (0.18.0 D-148): every source
-// the map draws from, its licence where it has one - the one place the
-// credits are said in full; the map says them short, in its badge row's
-// chips and the basemap's own credit line on the frame (D-131). Add a source
-// here when a layer reads a new one.
-func mapCredits() []string {
+// aboutWarnings open the About window (W21, D-229): what Watchpost is not, the
+// relays' lag, and - R-13's safety framing - where to turn for life safety.
+func aboutWarnings() []string {
 	return []string{
-		basemapAttribution,
-		"Radar: NOAA NCEP MRMS and the Iowa Environmental Mesonet (IEM)",
-		"Radar ahead: NOAA HRRR, via the Iowa Environmental Mesonet",
-		"Forecasts: NWS NDFD (graphical.weather.gov)",
-		temperature.OpenMeteoCredit,
-		temperature.OpenMeteoRainCredit,
-		temperature.OpenMeteoWavesCredit,
-		"Air quality: " + airquality.Attribution + " - its monitors and contours", // D-193
-		uv.Attribution, // UV's cold start (D-167)
-		"Fire: NIFC WFIGS perimeters and incidents; NOAA HMS satellite hotspots",
-		usgs.Attribution,
-		ndbc.Attribution,
-		coops.Attribution,
+		"NOT INTENDED AS A SUBSTITUTE FOR OFFICIAL WARNING SOURCES OR DEVICES",
+		"WEATHER RELAYS MAY BE DELAYED",
+		"NOT INTENDED FOR LIFE SAFETY USE",
+		"FOR LIFE SAFETY: NOAA WEATHER RADIO AND WIRELESS EMERGENCY ALERTS",
 	}
 }
-
-// basemapAttribution is the basemap's credit in full: OpenFreeMap's tiles,
-// OpenMapTiles' schema, OpenStreetMap's data under the ODbL - which also asks
-// for the credit on the map itself, where the library draws it.
-const basemapAttribution = "Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors (ODbL)"
-
-// SafetyNote / SafetyNext are the R-13 safety framing (discover G-3b), two
-// About lines: Watchpost shows what the sources publish, with the lag that
-// implies — it is not a warning system. Named in the README too.
-const (
-	SafetyNote = "Not a substitute for official warnings."
-	SafetyNext = "For life safety: NOAA Weather Radio and WEA."
-)
