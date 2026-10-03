@@ -3644,3 +3644,31 @@ batch 59's 778 and 1218), with its median down to 15 and 1 ms. **CPU-1, the warm
 reproduced** - the five warm reopens ran at 3.4-4.0 % of a core. Both closed; the profile route stays.
 The session itself: idle 1.2 % of a core, the map open 4.6-4.8 %, heap 58 MB idle and 94 MB ten minutes
 after the map closed (its five-minute release, batch 120, came in that phase).
+
+## Batch 122 — the ledger keyed as the checker keys (W14 S-2, D-222, D-223; 2026-10-03)
+
+**The ledger, and the test that reads its mirror.** The P10 checker names a method `Receiver.Name` (li-A2DH's `funcSymbol`, read
+in its source before drafting), so the rows the HUM LEAD ratified under a bare method name had stopped
+matching. A rekey was drafted in the scratchpad - symbol only, a RE-KEYED line opening each reason - and
+ratified whole (D-222): the Router's seven, `Dashboard.View`, `Engine.watchClip`, and the P10-04
+`keyAction` row. **P10 live 25 → 16.**
+
+**The unmatched check, run on its own.** `make p10` stops at its live findings before
+`p10-unmatched.sh` runs, so dead rows never showed. Run directly it named four rows in scope that match
+nothing - the P10-04 `Router.keyAction` row (the function has shrunk; D-222's question called it
+dormant, wrongly), `builtinOverrides`, `admit` and `dispatch` - all deleted as ratified (D-223). The
+first question named only two: their list had been read through `tail`, which cut the other two off; a
+second question corrected it. The ledger now holds 150 rows, every one in scope matching a finding;
+`p10-ledger-mirror.py`, `lint-ledger.sh` and `ledger-ratified.sh` pass.
+
+**The mirror's own guard learned the key.** `TestEveryRatifiedP10RowNamesCodeThatExists` looked for a
+row's symbol as a word in its file, and `Router.Init` never appears as written: the docs lane failed on
+all nine. A `Receiver.Name` symbol is now held only by a method of that name on that receiver, pointer or
+value, generic or not (`holdsSymbol`), which is stricter than the word it replaced -
+`TestAMethodRowNamesItsReceiver` pins it, a comment naming the method not counting. Mutation verdicts
+(3): the method branch, the generic receiver, the split on the dot - caught.
+
+W14's last open item is closed. Sixteen live findings remain: seven recursion artefacts of the name
+graph outside the ledger (a constructor and a method sharing a name, or a method reaching a same-named
+method), eight packages under the invariant density, and the Windows-only file - each for its own
+ruling when its code is next touched, as the rule scopes them.
