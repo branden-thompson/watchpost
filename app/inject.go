@@ -20,6 +20,7 @@ package app
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -114,12 +115,7 @@ func itoaN(n int) string {
 	if n <= 0 {
 		return "0"
 	}
-	var b []byte
-	for n > 0 { // bounded by the digits (P10-02)
-		b = append([]byte{byte('0' + n%10)}, b...)
-		n /= 10
-	}
-	return string(b)
+	return strconv.Itoa(n)
 }
 
 // scenario is one lane's fabricated payload. THE LANE IS THE SUBJECT: what a

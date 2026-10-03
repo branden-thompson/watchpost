@@ -335,13 +335,13 @@ func chargeOf(loops []tuimaps.Overlay) int64 {
 // trimForecast drops the farthest forecast frames, the same number from every
 // loop, until the loops fit the room left: the nearest hours matter most.
 func trimForecast(loops []tuimaps.Overlay, room int64) []tuimaps.Overlay {
-	for chargeOf(loops) > room {
-		longest := 0
-		for _, o := range loops {
-			longest = max(longest, len(o.Image.Frames))
-		}
-		if longest <= 1 {
-			return nil
+	longest := 0
+	for _, o := range loops {
+		longest = max(longest, len(o.Image.Frames))
+	}
+	for range longest { // a frame off the longest each time: at most its frames (P10-02)
+		if chargeOf(loops) <= room {
+			return loops
 		}
 		for i, o := range loops {
 			img := *o.Image
@@ -350,7 +350,10 @@ func trimForecast(loops []tuimaps.Overlay, room int64) []tuimaps.Overlay {
 			loops[i] = o
 		}
 	}
-	return loops
+	if chargeOf(loops) <= room {
+		return loops
+	}
+	return nil // a frame each, and still too big
 }
 
 // other is the region's other source, when it has one: the check on a loop
@@ -437,9 +440,12 @@ func trimToBudget(loops []tuimaps.Overlay) []tuimaps.Overlay {
 	for _, o := range loops {
 		longest = max(longest, len(o.Image.Frames))
 	}
-	drop := 0
-	for drop < longest-1 && charge(drop) > radarBudgetShare {
-		drop++
+	drop := max(longest-1, 0)
+	for d := range drop { // the fewest frames dropped that fit, at most all but one (P10-02)
+		if charge(d) <= radarBudgetShare {
+			drop = d
+			break
+		}
 	}
 	if drop == 0 {
 		return loops

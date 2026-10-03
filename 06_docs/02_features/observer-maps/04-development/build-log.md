@@ -3613,3 +3613,23 @@ flips, no redraw; a blinking place redrawn), beside the renderer's own test.
 check, the library's map closed, the release scheduled, the count raised, and each of the five
 generations carried (the view's survived first, at zero in the test; every generation is now set before
 the close); the phase compared only on a blinking marker, both ways - all caught.
+
+## Batch 121 — six loops that state their bounds (W14 S-4; 2026-10-03)
+
+**P10 live 31 → 25.** Six loops were bounded in fact but in a form the checker cannot see (P10-02,
+condition-only or bare `for`). Each now states its bound, with its behaviour unchanged: `itoaN` is
+`strconv.Itoa`; the two hour inserts (`hourRow`, `Series.hourIndex`) are a ranged search for the first
+hour not before the one placed; `trimForecast` takes a frame off the longest loop at most as many times
+as it has frames, and gives none when not even one frame each fits; the radar budget's drop is the fewest
+frames that fit, at most all but one; and the GeoJSON walk reads at most a token per byte of the body,
+the end always coming within. `Engine.watchClip`'s loop is left as it is: it is bounded in air time on
+purpose - a paused read does not spend its budget - and carries a ratified exemption whose bare-name
+key the checker no longer matches (S-2, the HUM LEAD's ledger edit).
+
+**Mutation verdicts** (6): the trim's "none fit" and the hour insert's place survived first - neither had
+a test; `TestTheHoursAheadFitWhatTheLoopLeaves` now asks for room for half a frame, and
+`TestAnHourGoesInItsPlace` places an hour between two later ones - then the radar budget's drop, its
+fewest-that-fit, and the rain row's place, all caught. The walk's "never ended" check is equivalent: the
+bound is never reached, as every token takes a byte.
+
+No change a listener can see.

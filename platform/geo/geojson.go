@@ -108,19 +108,21 @@ func layoutFor(kind string) (layout, bool) {
 func walk(raw json.RawMessage, l layout) (Shape, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	w := walker{l: l}
-	for {
+	ended := false
+	for range len(raw) + 1 { // every token takes a byte at least, so the end comes within (P10-02)
 		tok, err := dec.Token()
+		if errors.Is(err, io.EOF) {
+			ended = true
+			break
+		}
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
 			return nil, fmt.Errorf("%w: %v", ErrGeometry, err)
 		}
 		if err := w.token(tok); err != nil {
 			return nil, err
 		}
 	}
-	if w.depth != 0 {
+	if !ended || w.depth != 0 {
 		return nil, fmt.Errorf("%w: the coordinates end part-way through", ErrGeometry)
 	}
 	return w.out, nil

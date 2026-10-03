@@ -146,9 +146,12 @@ func (r *Rain) hourIndex(t time.Time) int {
 // their place when it is not there.
 func hourRow(hours *[]time.Time, rows *[][]float64, n int, t time.Time) int {
 	t = t.UTC().Truncate(time.Hour)
-	at := 0
-	for at < len(*hours) && (*hours)[at].Before(t) {
-		at++
+	at := len(*hours)
+	for i, h := range *hours { // the first hour not before t (P10-02)
+		if !h.Before(t) {
+			at = i
+			break
+		}
 	}
 	if at < len(*hours) && (*hours)[at].Equal(t) {
 		return at

@@ -354,6 +354,10 @@ func TestTheHoursAheadFitWhatTheLoopLeaves(t *testing.T) {
 	if !kept[0].Image.Frames[4].Valid.Equal(time.Date(2026, 9, 27, 21, 0, 0, 0, time.UTC)) {
 		t.Errorf("the frames kept end at %v; want the nearest five, the farthest dropped", kept[0].Image.Frames[4].Valid)
 	}
+	// AND NO ROOM FOR EVEN ONE FRAME IS NO HOURS AHEAD, not one frame over the budget.
+	if none := trimForecast([]tuimaps.Overlay{{ID: "radar/fc-b", Image: &tuimaps.Image{Frames: frames()}}}, one/2); none != nil {
+		t.Errorf("room for half a frame kept %d loops; want none", len(none))
+	}
 }
 
 // TestTheLoopsFramesAreFetchedSixAtATime is D-130 (UAT-2 U2-35): the frames

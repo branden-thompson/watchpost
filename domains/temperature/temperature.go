@@ -164,9 +164,12 @@ func (s *Series) hourIndex(t time.Time) int {
 			return i
 		}
 	}
-	at := 0
-	for at < len(s.Hours) && s.Hours[at].Before(t) {
-		at++
+	at := len(s.Hours)
+	for i, h := range s.Hours { // the first hour after t, where it goes (P10-02)
+		if !h.Before(t) {
+			at = i
+			break
+		}
 	}
 	n := s.Lattice.Cols * s.Lattice.Rows
 	insert := func(rows [][]float64) [][]float64 {
