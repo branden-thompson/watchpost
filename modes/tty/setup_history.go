@@ -75,11 +75,6 @@ func (d Dashboard) historyLines(o render.Opts) ([]string, int) {
 		at = len(lines)
 	}
 	lines = append(lines, "  "+setupMark(o, focus == rowHistoryClear)+settingLabel(render.PadTo("History -", historyLabelW), focus == rowHistoryClear)+"  "+o.KeyCap("space")+" clear history")
-	if d.cfg.HistoryUsage != nil {
-		for _, l := range render.WrapText(d.cfg.HistoryUsage(), mapNoteW) {
-			lines = append(lines, "    "+settingSupport(l))
-		}
-	}
 	return lines, at
 }
 
@@ -110,7 +105,7 @@ func (d Dashboard) confirmClearHistory(key tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		return d.settled(), nil
 	case "enter":
 		d.setup.confirmClear = false
-		d.setup.note, d.setup.noteRow = "Clearing the history…", rowHistoryClear
+		d.setup.note, d.setup.noteRow, d.setup.noteTone = "Clearing the history…", rowHistoryClear, noticeInfo
 		clear := d.cfg.ClearHistory
 		return d.settled(), func() tea.Msg { return historyClearedMsg{err: clear()} }
 	}
@@ -119,13 +114,17 @@ func (d Dashboard) confirmClearHistory(key tea.KeyPressMsg) (tea.Model, tea.Cmd)
 
 // applyHistoryCleared says, beside the row, that it went.
 func (d Dashboard) applyHistoryCleared(v historyClearedMsg) Dashboard {
-	note := "History cleared: recording starts again at the next hour."
+	note, tone := historyClearedNote, noticeDone
 	if v.err != nil {
-		note = "History partly cleared - " + v.err.Error()
+		note, tone = "Partly cleared - "+v.err.Error(), noticeFail
 	}
-	d.setup.note, d.setup.noteRow = note, rowHistoryClear
+	d.setup.note, d.setup.noteRow, d.setup.noteTone = note, rowHistoryClear, tone
 	return d.settled()
 }
+
+// historyClearedNote is what clearing the history says when it all went,
+// under the History label.
+const historyClearedNote = "Cleared: recording starts again at the next hour."
 
 // historyConfirmLines are the ARE YOU SURE's words, as ctrl+d's (D-152).
 func (d Dashboard) historyConfirmLines(o render.Opts) []string {

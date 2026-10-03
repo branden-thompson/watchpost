@@ -99,9 +99,6 @@ var (
 // and the column stays narrow enough to sit beside the first (U1-25).
 var mapDetailValueW = len("Essential")
 
-// mapNoteW is how wide a note under a row wraps in its column.
-const mapNoteW = 44
-
 // mapRow is one row of the Maps tab, its label padded to the tab's width.
 func (d Dashboard) mapRow(o render.Opts, lines []string, at int, id setupRowID, label, cell string) ([]string, int) {
 	return d.mapRowW(o, lines, at, id, label, cell, mapLabelW)
@@ -150,23 +147,8 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	lines, at = d.mapRow(o, lines, at, rowMapRadarAhead, "Radar ahead -", d.mapPicker(o, rowMapRadarAhead, radarAheadLabel(d.mapRadarAhead))) // D-114
 	lines, at = d.mapRow(o, lines, at, rowMapQuakes, "Quakes -", d.mapPicker(o, rowMapQuakes, quakeFeedLabel(d.mapQuakeFeed)))                // D-122
 	lines, at = d.mapRow(o, lines, at, rowMapTempSource, "Temperature -", d.mapPicker(o, rowMapTempSource, d.tempSourceLabel()))              // D-93, D-190
-	if !d.mapTempNDFD {
-		for _, l := range render.WrapText(meteredNote, mapNoteW) {
-			lines = append(lines, "    "+settingSupport(l))
-		}
-	}
-	lines, at = d.mapRow(o, lines, at, rowMapRainDetail, "Rain Day 4+ -", d.mapPicker(o, rowMapRainDetail, rainDetailLabel(d.mapRainFull))) // D-192
-	if d.mapRainFull {
-		for _, l := range render.WrapText(rainFullNote, mapNoteW) {
-			lines = append(lines, "    "+settingSupport(l))
-		}
-	}
-	lines, at = d.mapRow(o, lines, at, rowMapUVCities, "UV cities -", d.mapPicker(o, rowMapUVCities, strconv.Itoa(d.mapUVCities))) // D-202
-	if d.setup.focus == rowMapUVCities {                                                                                           // its cost said while it is being chosen (D-23)
-		for _, l := range render.WrapText(uvCitiesNote(d.mapUVCities), mapNoteW) {
-			lines = append(lines, "    "+settingSupport(l))
-		}
-	}
+	lines, at = d.mapRow(o, lines, at, rowMapRainDetail, "Rain Day 4+ -", d.mapPicker(o, rowMapRainDetail, rainDetailLabel(d.mapRainFull)))   // D-192
+	lines, at = d.mapRow(o, lines, at, rowMapUVCities, "UV cities -", d.mapPicker(o, rowMapUVCities, strconv.Itoa(d.mapUVCities)))            // D-202; its cost is a notice while it is chosen (D-23, D-237)
 	return lines, at
 }
 
@@ -200,9 +182,6 @@ func (d Dashboard) layerLines(o render.Opts) ([]string, int) {
 			flash = d.pickerFlashFor(rowMapLayers)
 		}
 		lines = append(lines, "  "+setupMark(o, here)+settingLabel(render.PadTo(l.Label+" -", labelW), here)+"  "+pickerCellW(state, newArrowChips(o), flash, mapDetailValueW))
-	}
-	for _, l := range costWarningLines(d.mapCost, mapNoteW) {
-		lines = append(lines, "    "+settingSupport(l))
 	}
 	return lines, at
 }
@@ -249,7 +228,7 @@ func (d Dashboard) clearMapData() (tea.Model, tea.Cmd) {
 	if m := d.mapPane.m; m != nil {
 		d.mapPane.call("Purge", func() { _, _ = m.Purge() })
 	}
-	d.setup.note, d.setup.noteRow = "Clearing map data…", rowMapClear
+	d.setup.note, d.setup.noteRow, d.setup.noteTone = "Clearing map data…", rowMapClear, noticeInfo
 	clear := d.cfg.ClearMapData
 	if clear == nil {
 		return d.settled(), nil
@@ -259,11 +238,11 @@ func (d Dashboard) clearMapData() (tea.Model, tea.Cmd) {
 
 // applyMapCleared says, beside the row, what went.
 func (d Dashboard) applyMapCleared(v mapClearedMsg) Dashboard {
-	note := "Map data cleared: " + strconv.Itoa(v.r.Files) + " tile files and " + strconv.Itoa(v.r.Zones) + " zone outlines removed."
+	note, tone := mapClearedNote(v.r), noticeDone
 	if v.r.Err != nil {
-		note = "Map data partly cleared - " + v.r.Err.Error()
+		note, tone = "Partly cleared - "+v.r.Err.Error(), noticeFail
 	}
-	d.setup.note, d.setup.noteRow = note, rowMapClear
+	d.setup.note, d.setup.noteRow, d.setup.noteTone = note, rowMapClear, tone
 	return d.settled()
 }
 
@@ -275,8 +254,5 @@ func (d Dashboard) mapExtraLines(o render.Opts, lines []string, at int) ([]strin
 		at = len(lines)
 	}
 	lines = append(lines, "  "+setupMark(o, focus == rowMapClear)+settingLabel(render.PadTo("Map data -", mapLabelW), focus == rowMapClear)+"  "+o.KeyCap("space")+" clear now")
-	for _, l := range render.WrapText(d.cfg.MapRetention, mapNoteW) {
-		lines = append(lines, "    "+settingSupport(l))
-	}
 	return lines, at
 }

@@ -66,22 +66,23 @@ func TestClearingTheHistoryAsksFirst(t *testing.T) {
 		t.Fatal("enter did not clear")
 	}
 	m, _ = m.(Dashboard).Update(cmd())
-	if cleared != 1 || !strings.Contains(m.(Dashboard).setup.note, "History cleared") {
+	if cleared != 1 || !strings.Contains(m.(Dashboard).setup.note, "Cleared: recording") {
 		t.Errorf("cleared %d times, the note %q", cleared, m.(Dashboard).setup.note)
 	}
 	d.cfg.ClearHistory = func() error { return errors.New("permission denied") }
 	m, _ = d.Update(historyClearedMsg{err: errors.New("permission denied")})
-	if !strings.Contains(m.(Dashboard).setup.note, "partly cleared") {
+	if !strings.Contains(m.(Dashboard).setup.note, "Partly cleared") {
 		t.Errorf("a failed clear says %q", m.(Dashboard).setup.note)
 	}
 }
 
-// WHAT THE HISTORY HOLDS IS SAID UNDER IT (D-175): its size and its place.
+// WHAT THE HISTORY HOLDS IS SAID IN THE DATA TAB'S NOTICES (D-175, D-237):
+// its size and its place.
 func TestTheHistorySaysWhatItHolds(t *testing.T) {
 	d := setupGolden(t, 133, 44, false, rowHistoryHours)
 	d.cfg.HistoryUsage = func() string { return "3.2 MB in ~/.local/share/watchpost/weather/history" }
-	if body := settingsText(d); !strings.Contains(body, "3.2 MB") || !strings.Contains(body, "~/.local/share/watchpost/weather/history") {
-		t.Errorf("the group does not say what the history holds and where:\n%s", body) // wrapped at the notes' width
+	if notes := strings.Join(footerText(d), "\n"); !strings.Contains(notes, "3.2 MB") || !strings.Contains(notes, "~/.local/share/watchpost/weather/history") {
+		t.Errorf("the notices do not say what the history holds and where:\n%s", notes)
 	}
 }
 

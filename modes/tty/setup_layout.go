@@ -91,16 +91,6 @@ type setupBlock struct {
 	w       int // the widest line, measured ONCE — see columnPlan
 	at, end int // the focused row's span within lines
 	focused bool
-
-	// noteH is how many of lines are a focused row's NOTE.
-	//
-	// The note appears only under the row the cursor is on, so a block's drawn
-	// height depends on where the cursor is. The split is balanced on heights,
-	// so counting the note would make the SPLIT depend on the cursor too, and
-	// the window would change width as the cursor moves through it. The note is
-	// wrapped so it cannot widen a block, but it can make one taller. The plan
-	// discounts it.
-	noteH int
 }
 
 // setupBlocks builds every group, in draw order.
@@ -229,8 +219,7 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 		cast := d.castLines(o)
 		b.lines = append(b.lines, cast...)
 		b.at = at + castLineOf(focus)
-		b = d.appendCastNote(b, focus, widest(cast))
-		b.end = len(b.lines) // the note, when there is one, is part of the row
+		b.end = b.at // its note is a notice, at the bottom (D-237)
 	}
 	if !b.focused {
 		b.at, b.end = 0, 0
@@ -293,36 +282,12 @@ func (d Dashboard) columnPlan(blocks []setupBlock, o render.Opts) (columns, bool
 // blockHeight is the total lines a run of blocks draws; widestBlock the widest
 // line among them, from the widths they measured when they were built.
 
-// appendCastNote adds the focused cast row's note, with the blank that belongs
-// to it. Its own function keeps setupBlock under the P10-01 statement bound —
-// the note is a self-contained step and reads better with a name on it.
-func (d Dashboard) appendCastNote(b setupBlock, focus setupRowID, castW int) setupBlock {
-	note := d.castNote(focus)
-	if note == "" || !b.focused {
-		return b
-	}
-	b.lines = append(b.lines, "")
-	b.noteH++ // the blank belongs to the note, and goes with it
-	// Notes belong to the row that raised them and are WRAPPED, never
-	// truncated: a reason a listener cannot read is not a reason. They stay no
-	// wider than the picker rows, so focusing one cannot flip the two-column
-	// layout out from under the reader, and FLUSH with the row labels rather
-	// than inset under them (HUM LEAD, UAT 2026-08-30).
-	for _, l := range render.WrapLines([]string{note}, max(20, castW-len(castNoteIndent))) { // bounded by the wrap (P10-02)
-		b.lines = append(b.lines, castNoteIndent+l)
-		b.noteH++
-	}
-	return b
-}
-
-// blockHeight is the height the SPLIT is planned against: the lines a run of
-// blocks draws, less any note. A note is transient — it belongs to whichever row
-// the cursor is on — and planning against it moves the layout as the cursor
-// moves. Use len(b.lines) for what is actually drawn.
+// blockHeight is the lines a run of blocks draws: the height the split is
+// planned against.
 func blockHeight(blocks []setupBlock) int {
 	n := 0
 	for _, b := range blocks {
-		n += len(b.lines) - b.noteH
+		n += len(b.lines)
 	}
 	return n
 }

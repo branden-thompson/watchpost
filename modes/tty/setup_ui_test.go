@@ -255,40 +255,6 @@ func TestACorrespondentNoteNeverWidensTheWindow(t *testing.T) {
 	}
 }
 
-// The note sits FLUSH with the label of the row that raised it, not inset under
-// it, as every other group's support line does.
-func TestACorrespondentNoteIsFlushWithItsRow(t *testing.T) {
-	d := setupGolden(t, 133, 44, false, rowCastAlerts)
-	note := d.castNote(rowCastAlerts)
-	if note == "" {
-		t.Skip("the fixture's focused row has no note")
-	}
-	block := d.setupBlock(d.opts(), groupCast)
-	var rowAt, noteAt = -1, -1
-	for _, l := range block.lines {
-		plain := stripANSITest(l)
-		trimmed := strings.TrimLeft(plain, " ")
-		if trimmed == "" {
-			continue
-		}
-		indent := len(plain) - len(trimmed)
-		// An UNFOCUSED row: the focused one carries the › in its indent, and the
-		// note aligns with the label, not with the mark.
-		if strings.HasPrefix(trimmed, "Location Report") {
-			rowAt = indent
-		}
-		if strings.HasPrefix(trimmed, strings.Fields(note)[0]) && rowAt >= 0 && noteAt < 0 {
-			noteAt = indent
-		}
-	}
-	if rowAt < 0 || noteAt < 0 {
-		t.Fatalf("could not find the row and its note:\n%s", strings.Join(block.lines, "\n"))
-	}
-	if noteAt != rowAt {
-		t.Errorf("the note starts at %d, its row's label at %d — flush, not inset", noteAt, rowAt)
-	}
-}
-
 // BOTH EXITS WRITE THE SAME GROUPS. enter on a WATCHPOST UI row saves and
 // closes, and it must carry the display preferences with it: the window state
 // is cleared on the way out, so a group left off this path is a group the

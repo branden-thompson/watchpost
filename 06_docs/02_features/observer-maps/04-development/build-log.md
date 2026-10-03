@@ -3868,3 +3868,41 @@ both records sat in different months; two days of one month now), one dataset's 
 production wiring - all caught. Three window mutants were first "killed" by a test that was not running: its
 name escaped the `-run` filter, and it failed on its own until an unset preset was read as its default; it
 now runs by name and passes.
+
+## Batch 132 — Settings' notices at the bottom of every tab (D-237; 2026-10-03)
+
+**The direction.** A note that appeared inside a group - Rain Day 4+'s cost, Open-Meteo's meter, UV cities'
+asks - pushed the groups below it down and could flip the column split; the HUM LEAD's mock moves every such
+note to a notice area at the bottom, over the controls, on every tab (D-237).
+
+**The area** (`modes/tty/setup_notices.go`). A notice is "! label - words": the mark and label in a column
+the tab's labels share, the words wrapped under their own first word, one cell of air at the right, as the
+About window's credit rows scan. The mark's colour says the kind: a cost to weigh in the advisory yellow
+(`AlertLabel`), an outcome in the providers' green (`ProviderOK`), a failure in `AlertDanger`, a fact in the
+window's own colour. Each tab's notices: Maps - Open-Meteo metered (Temperature), Rain Day 4+, UV cities
+while its row is focused, the layers' cost, and the map's retention or what clearing it did; Data - the
+history's size and place, or what clearing it did; Watchpost Radio - the focused voice row's note. The
+transmitter's storage sentence stays with the question it answers (FR-9.4: stated where the tower is set).
+
+**Nothing moves.** The window is centred, so a footer that grew would move every row in it. The area is as
+tall as the most its tab can say - each place sized for the longest words it can hold - with that room held
+above the notices, so a notice arriving or following the cursor changes no height. Where a tab does not fit
+the screen, the held room gives way to the body (`fitFooter`, one owner for the renderer and the keyboard's
+scroll), so the window is the screen's height whatever its notices say, and a tab with nothing to show draws
+as it did. The outcome words lead with what happened ("Cleared: …", "Partly cleared - …"): the label already
+names what was cleared, and the shorter words keep each outcome to one row.
+
+**A latent defect closed.** "Clear map data" and "Clear history" wrote their outcome to a note no frame drew;
+they now show in the area.
+
+**Measured.** The area first asked for the window's width itself, laying every tab out a second time per
+frame: 5614 allocations on the memo miss against a budget of 4934. Handed the width `footerModalChrome`
+already measured, 4900. Goldens: the five Settings goldens redrawn - the voice note at the bottom, the Data
+tab's held room, the Maps tab's notices.
+
+**Mutation verdicts** (14): no held room, a footer that never gives way, one that gives way past its held
+room, the warning and the outcome uncoloured, the wrap off its column, the voice note dropped, an outcome
+ignored, Rain Day 4+'s and UV cities' notices always shown, the blank kept when nothing shows, the history's
+size dropped, the notices left out of the footer - all caught. The layers' cost shown regardless was
+equivalent (an estimate under the thresholds has no words), and its guard is gone. The UV cities mutant was
+first caught only by a golden; the test that moves the cursor now asserts it.

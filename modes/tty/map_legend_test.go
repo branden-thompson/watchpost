@@ -37,14 +37,13 @@ func TestTheLegendBoxIsRetired(t *testing.T) {
 	}
 }
 
-// TestSettingsStatesTheRetention is W3.8 (FR-3.9): beside Clear map data,
-// Settings says how long the map's data is kept. What the map sends is the
+// TestSettingsStatesTheRetention is W3.8 (FR-3.9): in the Maps tab's notices
+// (D-237), Settings says how long the map's data is kept. What the map sends is the
 // Status window's (D-75, TestWhatTheMapContactsIsInTheStatusWindow).
 func TestSettingsStatesTheRetention(t *testing.T) {
 	s, _ := uiDash(t, rowMapClear)
 	s.cfg.MapRetention = "Kept 7 days."
-	body, _, _ := s.focusBody(s.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Kept 7 days.") {
+	if text := strings.Join(footerText(s), "\n"); !strings.Contains(text, "Map data") || !strings.Contains(text, "Kept 7 days.") {
 		t.Errorf("Settings does not say how long the map keeps its data:\n%s", text)
 	}
 }
@@ -72,7 +71,7 @@ func TestClearMapDataEmptiesTheLiveMapAndAsksTheApp(t *testing.T) {
 	if asked != 1 {
 		t.Errorf("the app was asked %d times", asked)
 	}
-	if !strings.Contains(d.setup.note, "7") || !strings.Contains(d.setup.note, "cleared") {
-		t.Errorf("Settings says %q after clearing", d.setup.note)
+	if notes := strings.Join(footerText(d), "\n"); !strings.Contains(notes, "Map data") || !strings.Contains(notes, "Cleared: 7 tile files and 3 zone outlines") {
+		t.Errorf("Settings' notices do not say what clearing removed (D-237):\n%s", notes)
 	}
 }

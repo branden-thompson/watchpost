@@ -112,11 +112,12 @@ type setupState struct {
 	// WATCHPOST RADIO - CORRESPONDENTS
 	cast CastView
 
-	// note is the line under the focused row, and noteRow whose row it belongs
-	// to — a note follows its row rather than floating at the bottom, so a
-	// listener reads the reason beside the thing it is about.
-	note    string
-	noteRow setupRowID
+	// note is an action's latest word - progress, an outcome, or why it
+	// failed - noteRow the row it is about and noteTone its kind: the tab's
+	// notice area shows it while that row's tab is open (D-237).
+	note     string
+	noteRow  setupRowID
+	noteTone noticeTone
 	// offered is the voice a preview has already asked about, for FR-4's
 	// ask-once flow.
 	offered string

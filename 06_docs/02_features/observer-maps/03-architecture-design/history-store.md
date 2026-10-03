@@ -116,7 +116,7 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 
 **Per dataset (D-171).** The fallback datasets keep 72 hours (the 48 needed, and margin). Trend datasets keep 30 days of hours by default, rolled up beyond that.
 
-**The [ Data ] Settings tab** lets the listener opt into longer hourly and trend retention, and shows the store's size. The byte budget follows what is chosen, not a fixed cap.
+**The [ Data ] Settings tab** lets the listener opt into longer hourly and trend retention, and shows the store's size in its notices, at the foot of the tab (D-237). The byte budget follows what is chosen, not a fixed cap.
 
 **When pruning runs.** `Prune(now)` runs when the store opens and hourly from the recorder; any instance may run it.
 

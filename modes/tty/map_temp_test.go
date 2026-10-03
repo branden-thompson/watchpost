@@ -431,8 +431,7 @@ func TestTheTemperatureSourceIsASetting(t *testing.T) {
 	if d.mapTempNDFD || d.tempSourceLabel() != "Open-Meteo" || d.mapAsk().TempNDFD {
 		t.Errorf("→ gave %q; want Open-Meteo, in the ask", d.tempSourceLabel())
 	}
-	body, _, _ = d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "metered") {
+	if text := strings.Join(footerText(d), "\n"); !strings.Contains(text, "metered") { // a notice (D-237)
 		t.Errorf("Open-Meteo chosen, nothing says it is metered (D-190):\n%s", text)
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -862,8 +861,7 @@ func TestTheRainDensityIsASetting(t *testing.T) {
 	if !d.mapRainFull || !d.mapAsk().RainFull {
 		t.Error("→ did not choose the full density, in the ask")
 	}
-	body, _, _ = d.focusBody(d.opts())
-	if text := strings.Join(strings.Fields(stripANSITest(strings.Join(body, "\n"))), " "); !strings.Contains(text, "Full density asks Open-Meteo") {
+	if text := strings.Join(strings.Fields(strings.Join(footerText(d), "\n")), " "); !strings.Contains(text, "Full density asks Open-Meteo") { // a notice (D-237)
 		t.Errorf("the full density chosen, nothing says what it costs (D-23):\n%s", text)
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -886,8 +884,8 @@ func TestUVsCityCountIsASetting(t *testing.T) {
 	if !strings.Contains(text, "UV cities -") || !strings.Contains(text, "24") || d.mapAsk().UVCities != 24 {
 		t.Fatalf("the Maps tab has no UV cities row at 24, the default (D-202):\n%s", text)
 	}
-	if !strings.Contains(text, "EPA") || !strings.Contains(text, "an hour") {
-		t.Errorf("nothing says what the count costs (D-23):\n%s", text)
+	if notes := strings.Join(strings.Fields(strings.Join(footerText(d), "\n")), " "); !strings.Contains(notes, "EPA") || !strings.Contains(notes, "an hour") {
+		t.Errorf("nothing says what the count costs (D-23, a notice by D-237):\n%s", notes)
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m.(Dashboard)

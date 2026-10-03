@@ -222,7 +222,7 @@ func (d Dashboard) modalLines() []string {
 		// The pinned-footer windows are laid out at their own box width and
 		// their scroll follows the focus. Asked at the dashboard's width they
 		// would report a body nobody draws.
-		fw, _, _ := d.footerModalChrome(o)
+		fw, _, _, _ := d.footerModalChrome(o)
 		fo := o
 		fo.Width, w = min(o.Width, fw), fw
 		raw, _, _ = d.focusBody(fo)
@@ -260,20 +260,22 @@ func (d Dashboard) wrapModalAt(lines []string, w int) ([]string, int) {
 // nothing to focus scrolls exactly as far as it has lines and no further —
 // the same arithmetic floatModalFooter renders with, not a second copy of it.
 func (d Dashboard) footerModalScrollMax(o render.Opts) int {
-	width, _, footer := d.footerModalChrome(o)
+	width, _, footer, give := d.footerModalChrome(o)
 	if width == 0 {
 		return 0
 	}
 	o.Width = min(o.Width, width)
 	lines, _, _ := d.focusBody(o)
-	foot := d.wrapModal(footer, o.Width)
-	return max(0, len(d.wrapModal(lines, o.Width))-max(1, d.modalMax()-len(foot)))
+	body := d.wrapModal(lines, o.Width)
+	foot := fitFooter(d.wrapModal(footer, o.Width), give, len(body), d.modalMax())
+	return max(0, len(body)-max(1, d.modalMax()-len(foot)))
 }
 
 // footerModalChrome is the open pinned-footer window's frame: its width, its
-// title and its footer rows. One owner for the three windows that pin a footer,
-// so the renderer and the keyboard cannot disagree about the geometry.
-func (d Dashboard) footerModalChrome(o render.Opts) (width int, title string, footer []string) {
+// title, its footer rows, and how many of the footer's first rows are room
+// held that may give way to the body. One owner for the windows that pin a
+// footer, so the renderer and the keyboard cannot disagree about the geometry.
+func (d Dashboard) footerModalChrome(o render.Opts) (width int, title string, footer []string, give int) {
 	switch d.modal {
 	case modalSetup:
 		// SETTINGS, not the mock's "Setup / Configs": setup is what you do once,
@@ -281,19 +283,28 @@ func (d Dashboard) footerModalChrome(o render.Opts) (width int, title string, fo
 		// whenever. The CLI keeps `watchpost setup` — the run-it-once meaning is
 		// the right one there, and it is the pattern people expect of a tool's
 		// first run.
-		return d.modalWidth(), "Settings", d.setupChips(o)
+		w := d.modalWidth() // every tab laid out to measure it: asked once
+		notices, held := d.setupNotices(o, w)
+		return w, "Settings", append(notices, d.setupChips(o)...), held // the notices over the controls (D-237)
 	case modalDebug:
 		// THE WARNING RIDES THE BORDER (HUM LEAD mock, 2026-09-07), so it cannot
 		// scroll away from the control it is about.
-		return debugWidth, d.debugTitle(o, min(o.Width, debugWidth)), d.debugChips(o)
+		return debugWidth, d.debugTitle(o, min(o.Width, debugWidth)), d.debugChips(o), 0
 	case modalRequest:
-		return d.modalWidth(), requestTitle, d.requestChips(o)
+		return d.modalWidth(), requestTitle, d.requestChips(o), 0
 	case modalRelayFault:
 		// No title in the frame: the mock puts *** ERROR *** on its own line
 		// inside the box, over a plain top border.
-		return relayFaultWidth, "", d.relayFaultChips(o)
+		return relayFaultWidth, "", d.relayFaultChips(o), 0
 	}
-	return 0, "", nil
+	return 0, "", nil, 0
+}
+
+// fitFooter is a footer as drawn under a body of bodyLen lines: its held rows
+// give way, from the top, as far as the body needs them, so the window keeps
+// one height - its contents' while they fit, the screen's once they do not.
+func fitFooter(foot []string, give, bodyLen, maxLines int) []string {
+	return foot[min(give, max(0, bodyLen+len(foot)-maxLines)):]
 }
 
 // detailsModal renders the floating detail view (location-detail-mock.txt):
@@ -350,7 +361,7 @@ func (d Dashboard) floatModal(o render.Opts, width int, title string, lines []st
 // body would be missing precisely when the reader has scrolled far enough to
 // be lost.
 func (d Dashboard) floatModalFooter(o render.Opts) string {
-	width, title, footer := d.footerModalChrome(o)
+	width, title, footer, give := d.footerModalChrome(o)
 	fg, bg := render.ModalTone(d.darkBG)
 	o.Width = min(o.Width, width)
 	// THE BODY IS BUILT AT THE WIDTH IT IS DRAWN AT. A width passed in by the
@@ -358,7 +369,7 @@ func (d Dashboard) floatModalFooter(o render.Opts) string {
 	// width and measures it at another.
 	lines, at, end := d.focusBody(o)
 	wrapped, wrapAt := d.wrapModalAt(lines, o.Width)
-	foot := d.wrapModal(footer, o.Width)
+	foot := fitFooter(d.wrapModal(footer, o.Width), give, len(wrapped), d.modalMax())
 	// The scroll FOLLOWS THE FOCUS: at 80x24 most of the window is off screen,
 	// and a focused row the listener cannot see reads as a dead keyboard.
 	//

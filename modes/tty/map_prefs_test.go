@@ -13,7 +13,6 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
-	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 // alertLayers is the registry as the app hands it today: one layer.
@@ -231,17 +230,10 @@ func TestTheCostWarningsThresholds(t *testing.T) {
 			t.Errorf("%+v: got %q, want %q", c.cost, got, c.want)
 		}
 	}
-	t.Setenv("TERM", "xterm-256color") // bold shows only where styling does
-	rendering.SetColorEnabledForTest(true)
-	t.Cleanup(rendering.ResetColorEnabledForTest)
-	lines := costWarningLines(MapCost{Bytes: 2_200_000, Requests: 211}, 200)
-	if len(lines) != 2 || lines[0] != render.Bold("Map may experience performance issues at this zoom level.") || lines[0] == stripANSITest(lines[0]) {
-		t.Errorf("the warning's lines are %q; want the first sentence in bold, then the estimate", lines)
-	}
 }
 
 // TestTheCostWarningShowsBesideTheLayersAndOnTheMap: over the threshold, the
-// words are under the layers row and under the map; the estimate is asked
+// words are in Settings' notices and under the map; the estimate is asked
 // with the layers as chosen.
 func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 	asked := map[bool]int{}
@@ -260,13 +252,11 @@ func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 	}
 	d, _ = pressKey(d, "esc")
 	d = d.openSetupAt(rowMapLayers)
-	body, _, _ := d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Est. 5.0MB") {
-		t.Errorf("Settings does not warn beside the layers:\n%s", text)
+	if text := strings.Join(footerText(d), "\n"); !strings.Contains(text, "Map layers") || !strings.Contains(text, "Est. 5.0MB") {
+		t.Errorf("Settings does not warn of the layers' cost in its notices (D-237):\n%s", text)
 	}
 	d = d.setupSpace()
-	body, _, _ = d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); strings.Contains(text, "Est. 5.0MB") {
+	if text := strings.Join(footerText(d), "\n"); strings.Contains(text, "Est. 5.0MB") {
 		t.Errorf("the warning stayed after the layer went off:\n%s", text)
 	}
 	if asked[false] == 0 {

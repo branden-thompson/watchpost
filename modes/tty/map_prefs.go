@@ -146,20 +146,6 @@ func mapCostLine(c MapCost, width int) []string {
 	return render.WrapLines([]string{render.Tint(head, render.Tok(render.ListPointer)) + " " + costAdvice}, width)
 }
 
-// costWarningLines is the warning wrapped to a width, its first sentence in
-// bold (D-82).
-func costWarningLines(c MapCost, width int) []string {
-	head, detail := costWarningParts(c)
-	if head == "" {
-		return nil
-	}
-	var out []string
-	for _, l := range render.WrapText(head, width) {
-		out = append(out, render.Bold(l))
-	}
-	return append(out, render.WrapText(detail, width)...)
-}
-
 // refreshMapCost asks the app's estimate again, with the layers as chosen:
 // on opening the map or Settings, on the map's new data, and on a layer's
 // switch. The frame reads the answer; it never asks.
