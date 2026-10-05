@@ -2,10 +2,9 @@ package tty
 
 // setup_ui.go — the WATCHPOST UI group.
 //
-// Three display preferences that had no single home. The theme was a modal of
-// its own, reached by [t] and doing nothing but choose; the units were a
-// live-only [f]/[c] toggle that nothing remembered between runs; and the clock
-// was not a preference at all — every site formatted times its own way.
+// Three display preferences, one home: the theme, the units (remembered between
+// runs, not only toggled live) and the clock (one preference every site formats
+// times by).
 //
 // The theme is a PICKER (←→) and the other two are radio sets, because that is
 // what each one is: a theme is one of many and the list wraps, while units and
@@ -22,9 +21,9 @@ import (
 //
 // Recorded as it builds rather than tabulated afterwards. The group's two
 // question labels and the theme's support line are not focusable, so the
-// offsets are not a row's index — a hand-written table of them was already
-// wrong by one for the three clock rows, because it did not count the "Show
-// Time in:" label. A layout is not something to write down twice.
+// offsets are not a row's index — a hand-written table of them that misses the
+// "Show Time in:" label is wrong by one for the three clock rows. A layout is
+// not something to write down twice.
 func (d Dashboard) uiLines(o render.Opts) ([]string, int) {
 	focus, at := d.setup.focus, 0
 	lines := []string{
@@ -43,9 +42,9 @@ func (d Dashboard) uiLines(o render.Opts) ([]string, int) {
 			radioMark(d.setup.units == u, o.ASCII)+" "+settingLabel(u.Label(), focus == id))
 	}
 	// RADIO CONVENTION, not "Show Time in". Military
-	// stopped being only a clock when it took the NATO alphabet with it: it reads
-	// callsigns phonetically as well as writing times in four digits. The label
-	// names the whole convention because that is what the row now picks.
+	// is more than a clock: it carries the NATO alphabet, reading callsigns
+	// phonetically as well as writing times in four digits. The label names the
+	// whole convention because that is what the row picks.
 	lines = append(lines, "", "  "+settingLabel("Radio Convention:", false))
 	for _, c := range render.ClockOrder() {
 		id := clockRow(c)
@@ -115,7 +114,7 @@ func (d Dashboard) cycleTheme(forward bool) Dashboard {
 
 // setUnits and setClock select one option of a radio set.
 func (d Dashboard) setUnits(u render.Units) Dashboard {
-	d.setup.units, d.units = u, u // live, as [f]/[c] always were
+	d.setup.units, d.units = u, u // live, as [f]/[c] are
 	return d.uiTouched()
 }
 
@@ -133,9 +132,13 @@ func (d Dashboard) uiTouched() Dashboard {
 	return d.settled()
 }
 
-// uiForSave is what the window writes when it closes.
+// uiForSave is the display preferences as they are in effect - the values the
+// dashboard draws by, never a window's copy of them - so whichever window
+// saves them (Settings on close, the map's Overlays menu) writes what the
+// listener chose (U2-61).
 func (d Dashboard) uiForSave() UIPrefs {
-	return UIPrefs{Theme: d.themeName(), Units: d.setup.units.Key(), Clock: d.setup.clock.Key()}
+	return UIPrefs{Theme: render.ThemeName(), Units: d.units.Key(), Clock: d.clockFmt.Key(), Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key(),
+		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempNDFD), MapRainDetail: rainDetailKey(d.mapRainFull), MapUVCities: d.mapUVCities, MapRadarAhead: d.mapRadarAhead, MapQuakeFeed: d.mapQuakeFeed, MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
 }
 
 // uiApplyCmd writes the display preferences — and nothing else, for the same
@@ -156,13 +159,18 @@ func (d Dashboard) uiApplyCmd() tea.Cmd {
 
 // applyUISaved records the write's outcome. What was WRITTEN becomes what the
 // window opens with next time, so a re-open shows the file rather than the
-// launch-time preferences (the same bug the cast had at UAT #2).
+// launch-time preferences (as the cast does, UAT #2).
 func (d Dashboard) applyUISaved(v uiSavedMsg) Dashboard {
 	if v.err != nil {
 		d.setup.err = "could not save: " + v.err.Error()
 		return d.settled()
 	}
 	d.cfg.Units, d.cfg.Clock = v.prefs.Units, v.prefs.Clock
+	d.cfg.Maps, d.cfg.MapDescription = v.prefs.Maps, v.prefs.MapDescription
+	d.cfg.MapScale, d.cfg.MapNearbyKm, d.cfg.MapLayerChoice = v.prefs.MapScale, v.prefs.MapNearbyKm, v.prefs.MapLayers
+	d.cfg.MapRadarSource, d.cfg.MapTempSource, d.cfg.MapRadarAhead = v.prefs.MapRadarSource, v.prefs.MapTempSource, v.prefs.MapRadarAhead
+	d.cfg.MapQuakeFeed, d.cfg.MapRainDetail, d.cfg.MapUVCities = v.prefs.MapQuakeFeed, v.prefs.MapRainDetail, v.prefs.MapUVCities
+	d.cfg.MapDetailChoice, d.cfg.MapDetailLevel = v.prefs.MapDetail, v.prefs.MapDetailLevel
 	return d
 }
 

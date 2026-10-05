@@ -5,11 +5,9 @@ package tty
 // The reference names each region of the running order down the left edge, one
 // letter per row: LIVE, UP NEXT, BED, SCHEDULED, LINE UP.
 //
-// IT IS WHY THE CARD CARRIES NO STATE OF ITS OWN. An earlier card mock had a
-// "state strip" saying whether a card was live or scheduled, and the HUM LEAD
-// cut it: the rail already says it. Two carriers of one fact is the shape this
-// release keeps removing, and here the second one would have been on every card
-// rather than once per section.
+// IT IS WHY THE CARD CARRIES NO STATE OF ITS OWN: the rail already says whether
+// a card is live or scheduled, so a "state strip" on the card would be a second
+// carrier of one fact — on every card rather than once per section.
 
 import (
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -108,11 +106,10 @@ const (
 	//	… ┛   │
 	//	  144 148        (at the reference's 150)
 	//
-	// THE OUTER WALL IS GONE (HUM LEAD, 2026-09-11): "Notice the line on the far
+	// NO OUTER WALL (HUM LEAD, 2026-09-11): "Notice the line on the far
 	// right is gone — so ONLY the vertical scroll on positions 2-9 is present on
-	// the right hand side." It carried an inner wall AND an outer one, which the
-	// running order never needed: the cards are boxes with their own borders, so
-	// a frame around them was a second edge saying the same thing.
+	// the right hand side." The cards are boxes with their own borders, so a
+	// frame around them would be a second edge saying the same thing.
 	bcRightChrome = 5
 
 	// bcPriorityWidth is the alert column's box, and it is DERIVED FROM WHAT IT
@@ -122,10 +119,8 @@ const (
 	// twenty-five, and a place name at twenty-two — fifty-one cells, plus the
 	// card's own inset on both sides and the box's two rails. Fifty-nine.
 	//
-	// IT WAS FIFTY-FOUR, derived from `burstWhen`'s one long line back when the
-	// box drew prose. That line is gone and the number outlived it: the table it
-	// now holds is seven cells wider, so LOCATION was cut to seventeen and every
-	// place name past "Carlsbad, CA" came out as a stub.
+	// A NARROWER BOX CUTS LOCATION FIRST: at fifty-four, LOCATION is cut to
+	// seventeen and every place name past "Carlsbad, CA" comes out as a stub.
 	bcPriorityWidth = 59
 
 	// bcColumnGap is the air between the two tracks' columns.
@@ -230,17 +225,16 @@ var bcRailForms = map[string][]string{
 //
 // THE RAIL IS `render.Railify`, THE ONE OWNER (D-56). It already tracks a thumb
 // over a window and already pads with PadTo rather than PadBetween, "so a
-// full-width line must never push the rail right" — an off-by-one that surface
-// found and fixed once already.
+// full-width line must never push the rail right".
 //
 // IT IS APPLIED TO THE WHOLE BODY, not per region, because the running order
 // scrolls as one thing. At the reference's 150 columns this puts the rail at
 // 144 and the frame's edge at 149.
 //
-// THE WALL AND THE RAIL ARE ONE COLUMN, WHICH IS WHAT THE REFERENCE DRAWS. This
-// built them as two — a wall at 144 and a thumb at 145 — so the console carried
-// a column the mock does not have and everything right of the cards sat a cell
-// off (HUM LEAD, UAT 2026-09-10: "right hand lanes are off"). Counted off the
+// THE WALL AND THE RAIL ARE ONE COLUMN, WHICH IS WHAT THE REFERENCE DRAWS. Built
+// as two — a wall at 144 and a thumb at 145 — the console would carry a column
+// the mock does not have and everything right of the cards would sit a cell off
+// (HUM LEAD, UAT 2026-09-10: "right hand lanes are off"). Counted off the
 // mock: an ordinary row ends `╯   │    │` and the thumb row `█    │`, the thumb
 // standing exactly WHERE the bar was. One column, two glyphs.
 func (b Broadcaster) framed(body []string, total int) []string {
@@ -288,7 +282,7 @@ func (b Broadcaster) chrome(body []string, rail bool, total int) []string {
 // running order, the pool's own band — carries nothing. This is Observer's shape
 // exactly: `recentSection` puts ▲ on the band's bottom row, the track over the
 // data rows, and ▼ on the "Showing" line.
-// `shown` WAS A PARAMETER AND NOTHING READ IT (P10-07). The visible count is
+// THE VISIBLE COUNT IS DERIVED, NOT PASSED (P10-07). It is
 // DERIVED here — `track` is `len(body) - from - 2`, the body less its own caps —
 // and that is the number `Railify` is handed as its window. A second answer to
 // "how many rows are showing", passed by callers and silently ignored, is the
@@ -312,7 +306,7 @@ func (b Broadcaster) railed(body []string, from, lo, total int) []string {
 	// LEAD 2026-09-11): "We need to remove the extra lines on the right side of
 	// the UI next to LIVE and UP NEXT."
 	//
-	// It was the wall on every row, scrolling or not — a second vertical beside
+	// A wall on every row, scrolling or not, would be a second vertical beside
 	// two regions that have nothing to scroll, which reads as a column that
 	// stopped rather than as one that was never there. The reference draws the
 	// read regions one vertical narrower than the ones below them.
@@ -328,13 +322,12 @@ func (b Broadcaster) railed(body []string, from, lo, total int) []string {
 		// Width 1 over empty lines asks Railify for the GLYPHS and nothing else:
 		// `PadTo("", 0)` is empty, so each line it returns is the mark alone.
 		//
-		// THE CAPS ARE NOT PART OF THE WINDOW, and getting that wrong lost the
-		// thumb at the bottom of the list. `Railify` places the thumb at
-		// `lo*(window-1)/maxLo` and INDEXES ITS OWN `lines` with it, so its
-		// contract is that the window IS the track it was handed — pass a window
-		// two rows larger (the caps) and the last position falls off the end,
-		// silently drawing no thumb at all. Caught by a test that scrolled to the
-		// bottom and looked; invisible while everything fitted on one screen.
+		// THE CAPS ARE NOT PART OF THE WINDOW, or the thumb is lost at the bottom
+		// of the list. `Railify` places the thumb at `lo*(window-1)/maxLo` and
+		// INDEXES ITS OWN `lines` with it, so its contract is that the window IS the
+		// track it was handed — pass a window two rows larger (the caps) and the last
+		// position falls off the end, silently drawing no thumb at all: invisible
+		// while everything fits on one screen.
 		// THE TOTAL IS THE LIST'S, NOT THE BODY'S (D-106). The body's row count
 		// less the caps is right only while the rail spans the whole region, and
 		// wrong the moment it starts partway down.
@@ -353,16 +346,16 @@ func (b Broadcaster) railed(body []string, from, lo, total int) []string {
 		//
 		// A BREAK DOES NOT BREAK THE RAIL (HUM LEAD, UAT 2026-09-10: "the blank
 		// row in between sections needs to be completely blank"). That ruling is
-		// about the CARD regions' walls, and the rail no longer runs beside them
-		// (D-95, D-97), so the only blank rows left
+		// about the CARD regions' walls, and the rail does not run beside them
+		// (D-95, D-97), so the only blank rows
 		// under a rail are INSIDE one scrolling region — and a rail with a hole in
 		// it reads as two rails, which is the thing D-104 exists to stop being.
 		// A region with no rail carries no mark at all, one line above.
-		// ONE BLANK COLUMN AND THE SCROLL, AND NOTHING AFTER IT (D-104). The
-		// frame's outer wall on this side is gone: the cards are boxes with their
-		// own borders, so a wall around them was a second edge saying the same
-		// thing — and the blank is Observer's single cell (UAT 9.2), which comes
-		// from the table being `tableWidth` rather than from air added here.
+		// ONE BLANK COLUMN AND THE SCROLL, AND NOTHING AFTER IT (D-104). No outer
+		// wall on this side: the cards are boxes with their own borders, so a wall
+		// around them would be a second edge saying the same thing — and the blank is
+		// Observer's single cell (UAT 9.2), which comes from the table being
+		// `tableWidth` rather than from air added here.
 		out[i] = render.PadTo(r, b.frameWidth()-1) + mark
 	}
 	return out

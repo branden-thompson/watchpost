@@ -14,7 +14,7 @@ spawn env WATCHPOST_DEBUG_PPROF=1 WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6064 ./di
 catch {exec stty rows 44 cols 133 < $spawn_out(slave,name)}
 puts $lf "pid [exp_pid]"; flush $lf
 expect -timeout 30 -re "Setup|Quit" { phase $lf "A dashboard up" } timeout { phase $lf "A dashboard: no masthead" }
-expect -timeout 180 -re "\\d+ºF" { phase $lf "A first data" } timeout { phase $lf "A first data: not within 180 s" }
+expect -timeout 180 -re "\\d+°F" { phase $lf "A first data" } timeout { phase $lf "A first data: not within 180 s" }
 for {set i 1} {$i <= 6} {incr i} {
   hold 540
   send "w"; expect -timeout 15 "SEVERE" { phase $lf "W$i window open" } timeout { phase $lf "W$i window: not confirmed" }

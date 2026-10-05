@@ -83,20 +83,16 @@ func TestABedNobodyHasAnsweredAboutIsStillOffered(t *testing.T) {
 
 // TestTheRelayCountSurvivesALaterBedMessage.
 //
-// THE DEFECT THE ARCHITECTURE AUDIT FOUND (2026-09-13). `BedMsg` has THREE
-// publishers and only one of them sets `Relays`:
+// THE COUNT HAS ONE PUBLISHER. `BedMsg` has THREE — the resolver, the selector
+// and the deck's state — and only the resolver knows how many relays stream.
+// The console stores the WHOLE message, so a count carried on `BedMsg` would be
+// zeroed by either of the other two — and `bedAvailable()` is `!bedTold ||
+// Relays > 0`. The BED control would then disable itself while relays are
+// streaming.
 //
-//	app/bedrelay.go:125   {Relay, Carrying, Relays: len(st)}   ← the resolver
-//	app/bedrelay.go:191   {Relay, Carrying}                    ← the selector
-//	app/executors.go:288  {Relay, Carrying}                    ← the deck's state
-//
-// The console stores the WHOLE message, so either of the other two zeroes the
-// count the resolver established — and `bedAvailable()` is `!bedTold ||
-// Relays > 0`. The BED control then disables itself while relays are streaming.
-//
-// THAT IS D-117 FIRING BACKWARDS. The rule exists so the operator cannot choose
-// something that will broadcast dead air; this tells them there is nothing to
-// choose when there is.
+// THAT WOULD BE D-117 FIRING BACKWARDS. The rule exists so the operator cannot
+// choose something that will broadcast dead air; this would tell them there is
+// nothing to choose when there is.
 func TestTheRelayCountSurvivesALaterBedMessage(t *testing.T) {
 	b := NewBroadcaster()
 	b, _ = b.Update(BedMsg{Relay: "WXM66 Victorville, CA"})

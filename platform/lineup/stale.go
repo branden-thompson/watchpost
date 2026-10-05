@@ -76,8 +76,8 @@ func (d Director) dropStale() (Director, Card, bool) {
 		}
 		// ON THE OPERATOR'S PILE, because this is a DELIBERATE removal (D-35).
 		// PD-3's window exists to stop the station asserting something untrue,
-		// so a card dropped here was taken away on purpose — and before this it
-		// simply vanished, with nothing able to say what had gone or why.
+		// so a card dropped here is taken away on purpose — and the pile is what
+		// lets anything say what has gone and why.
 		//
 		// A FAILED card takes a different path and does NOT land here: routing
 		// around a fault is not something the operator did.
@@ -101,17 +101,16 @@ func (d Director) dropStale() (Director, Card, bool) {
 
 // dropExpired removes every STANDBY card whose hazards have all lapsed (D-155).
 //
-// A SECOND KIND OF OLD, AND THE ONE NOTHING WAS ASKING ABOUT. `firstStale`
-// judges the WORDS — how long ago they were composed — and skips a card with a
-// zero `BuiltAt` because a card that was never built has no words to go off.
-// True, and it left a hazard that was ADMITTED BUT NEVER BUILT invisible to
-// every age rule in the package. Measured: a tornado warning valid for thirty
-// minutes, admitted at a silent station, still sat on the rail six hours later —
-// `firstStale` found nothing, `Projection` counted it, `heldNotice` escalated to
-// its loudest rung telling the operator to go ON AIR and read it, and `Next()`
-// offered it the air. The executor declines to build an expired alert
-// (`eventsFor`), so the LISTENER heard nothing — the console asserted a pending
-// read the schedule could never take, which is FR-3.3 read backwards.
+// A SECOND KIND OF OLD. `firstStale` judges the WORDS — how long ago they were
+// composed — and skips a card with a zero `BuiltAt` because a card that was
+// never built has no words to go off. That leaves a hazard ADMITTED BUT NEVER
+// BUILT outside every word-age rule: a tornado warning valid for thirty
+// minutes, admitted at a silent station, would still sit on the rail six hours
+// later — `Projection` counting it, `heldNotice` escalating to its loudest rung
+// telling the operator to go ON AIR and read it, and `Next()` offering it the
+// air. The executor declines to build an expired alert (`eventsFor`), so the
+// LISTENER hears nothing — the console asserts a pending read the schedule can
+// never take, which is FR-3.3 read backwards.
 //
 // IT RUNS ON THE TICK, NOT WHERE THE AIR IS TAKEN, and that is the split from
 // `dropStale`. Staleness is a question about a card ABOUT TO BE READ, so judging
@@ -125,10 +124,9 @@ func (d Director) dropStale() (Director, Card, bool) {
 // was never read and never announced — so an apology would be words about a
 // silence nobody noticed.
 //
-// ON THE OPERATOR'S PILE, because the alternative is the defect the discard pile
-// was built to end: before it, a dropped card "simply vanished, with nothing
-// able to say what had gone or why" (D-35). A hazard leaving the rail is exactly
-// what the operator must be able to account for.
+// ON THE OPERATOR'S PILE (D-35): a dropped card must not simply vanish "with
+// nothing able to say what had gone or why", and a hazard leaving the rail is
+// exactly what the operator must be able to account for.
 func (d Director) dropExpired() Director {
 	// Bounded by the schedule: each pass removes one card, and a removed card is
 	// never held again (P10-02).
@@ -167,19 +165,19 @@ func (d Director) dropExpired() Director {
 // `Until` (a quake's instant) never expires, and one expiring EXACTLY now is
 // KEPT: the boundary errs towards telling the listener.
 //
-// AND THE PER-CARD RULE NOW AGREES WITH `eventsFor` TOO (F-110). It declined the
-// WHOLE burst when ANY of its refs had lapsed, so a card holding one lapsed and
-// one live hazard sat in the gap — held here, refused there, offered and
-// declined every cycle. The HUM LEAD ruled the end-user answer (2026-09-16:
-// "valid alerts need to be read, expired alerts must never be") and put the
-// per-hazard half where the words are made: the composer SKIPS a lapsed alert
-// and reads its live siblings, and declines only when nothing live is left —
-// which is the same card this function has already taken off the rail.
+// AND THE PER-CARD RULE AGREES WITH `eventsFor` TOO (F-110). The HUM LEAD ruled
+// the end-user answer (2026-09-16: "valid alerts need to be read, expired alerts
+// must never be"), and the per-hazard half lives where the words are made: the
+// composer SKIPS a lapsed alert and reads its live siblings, and declines only
+// when nothing live is left — which is the same card this function takes off
+// the rail. Declining the WHOLE burst when ANY ref has lapsed would leave a card
+// holding one lapsed and one live hazard in the gap — held here, refused there,
+// offered and declined every cycle.
 //
 // A CARD WITH NO ARRIVALS IS NEVER EXPIRED. That is the structural card — the
 // transition, whose words were fixed at proposal — and it is the exemption
-// `firstStale` was reaching for when it tested `BuiltAt` instead. Tested on what
-// the card IS rather than on whether it happens to have been built yet.
+// `firstStale` reaches by testing `BuiltAt`; here it is tested on what the card
+// IS rather than on whether it happens to have been built yet.
 func (d Director) firstExpired() (Card, bool) {
 	for t := Track(0); t < numTracks; t++ { // bounded by the registry (P10-02)
 		for _, c := range d.lineup.Cards(t) { // bounded by the schedule (P10-02)
@@ -226,7 +224,7 @@ func (d Director) firstStale() (Card, bool) {
 // RefreshAfter is how long a card's words may sit BEFORE the schedule asks for
 // them again, and it exists because D-84 lets a card wait indefinitely.
 //
-// THE DEFECT IT CLOSES IS THE ONE THE RULING CREATES. The Composer now works on
+// THE RISK IT CLOSES IS THE ONE THE RULING CREATES. The Composer works on
 // standby so the line is ready the instant the operator goes on air — and a
 // station can sit on standby for an hour. At `StaleAfter` the prepared card is
 // dropped as it takes the air (PD-3) and the listener's first words are "That
@@ -261,8 +259,8 @@ const RefreshAfter = StaleAfter / 2
 // in the line-up: `Built` comes home and `WithScript` overwrites the words and
 // the stamp in place. Nothing else about it changes.
 //
-// ONLY WHILE THE TRACK CANNOT ADVANCE, which bounds the new behaviour to exactly
-// the case that created it. A running station replaces its cards as it reads
+// ONLY WHILE THE TRACK CANNOT ADVANCE, which bounds it to exactly the case
+// that needs it. A running station replaces its cards as it reads
 // them, so nothing sits; a card that DOES sit on a running station is being held
 // by a rail drain, and PD-3's drop is the right answer there — mid-broadcast
 // there is no time to rebuild, which is the whole reason `readInstead` exists.
@@ -273,16 +271,15 @@ func (d Director) refreshStandby() (Director, []Effect) {
 	if d.advances(MainTrack) {
 		return d, nil
 	}
-	// AND NEVER WHILE THE RAIL HOLDS ANYTHING (DR-3, and the merge property test
-	// caught this within a minute of the refresh being wired).
+	// AND NEVER WHILE THE RAIL HOLDS ANYTHING (DR-3; the merge property test
+	// pins it).
 	//
 	// THE COMPOSER IS ONE BOUNDED RESOURCE. `toPrepare` stops one card ahead, so
-	// a rail holding [standing-by, admitted] leaves it idle — and this would have
-	// spent the idle moment on a REPORT. The hazard behind it becomes eligible
-	// the instant the one in front leaves the air, and its build would then queue
-	// behind a report's. "The rail is prepared first, not merely aired first" is
-	// property 5, and it was written because a plant that reversed the precedence
-	// in `toPrepare` SURVIVED.
+	// a rail holding [standing-by, admitted] leaves it idle — and without this a
+	// refresh would spend the idle moment on a REPORT. The hazard behind it
+	// becomes eligible the instant the one in front leaves the air, and its build
+	// would then queue behind a report's. "The rail is prepared first, not merely
+	// aired first" is property 5.
 	//
 	// BLUNTER THAN IT STRICTLY NEEDS TO BE, deliberately: the precise rule is
 	// "no rail card still needs composing", and this refuses while the rail holds
@@ -292,14 +289,14 @@ func (d Director) refreshStandby() (Director, []Effect) {
 	// WHAT THE RAIL CAN READ, NOT WHAT IT HOLDS (D-150) — the same rule D-139
 	// carries in `toPrepare` and `givingWay`, at the call site easiest to miss.
 	//
-	// THE INTERACTION IS WHY IT MATTERS MORE THAN A MISSED SITE. Since D-139 an
+	// THE INTERACTION IS WHY IT MATTERS MORE THAN A MISSED SITE. Under D-139 an
 	// out-of-fence rail card is IMMORTAL AND INVISIBLE: `Next` skips it,
 	// `toPrepare` skips it — so it never reaches Standby with a `BuiltAt` and
 	// `firstStale` can never drop it — and `Projection` hides it, so the
-	// operator cannot drop it either. Asking the raw track therefore stayed
-	// permanently true, and the main track's standing-by report was never
-	// re-hydrated for the life of the fence: it aged past `StaleAfter` and the
-	// listener heard "That report is out of date and has been dropped."
+	// operator cannot drop it either. Asking the raw track would therefore stay
+	// permanently true, and the main track's standing-by report would never be
+	// re-hydrated for the life of the fence: it would age past `StaleAfter` and
+	// the listener would hear "That report is out of date and has been dropped."
 	if len(d.lineup.Projection(AlertRail)) > 0 {
 		return d, nil
 	}

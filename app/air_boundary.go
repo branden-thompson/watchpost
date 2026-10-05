@@ -12,27 +12,24 @@ package app
 // THE MODEL IS NOT NEW AND IS NOT IN QUESTION (D-74, and 00-REQUIRED-READING's
 // "ONE DECK, ONE AIR"): both surfaces run through ONE deck on purpose, the
 // Director arbitrates both rotations, and MasterControl gates the deck from the
-// air. What was missing is that only ONE of the deck's entry points asked.
+// air. What this file holds is that EVERY one of the deck's entry points asks.
 //
-// SIZED BEFORE IT WAS BUILT (FR-2.1a, 02-analysis/air-reachability-survey.md).
-// Nineteen functions in this package can change what is audible; three were live
-// defects, four were latent, and twelve owe nothing. A mechanism aimed at
-// "everything that can reach the air" would have been aimed at nineteen when the
-// population that needs a decision is seven.
+// SIZED BY THE SURVEY (FR-2.1a, 02-analysis/air-reachability-survey.md).
+// Nineteen functions in this package can change what is audible; seven need a
+// decision and twelve owe nothing. The mechanism is aimed at those seven, not at
+// "everything that can reach the air".
 //
-// THE CLASSIFICATION ITSELF LIVES IN THE TEST (air_boundary_test.go), and the
-// `wires` gate is what put it there: every member of `airReach` was reported
-// NO WRITER, because the guards check `monitorHasTheAir()` directly and never
-// consulted the table. A table production does not read is a SECOND CARRIER of
-// what the guards already say, and it would drift from them — which is the exact
-// shape this whole batch exists to remove. What the table is FOR is the gate:
-// "every seam is classified, and every monitor row has a behaviour test." That
-// is a test's job, so it lives with the test.
+// THE CLASSIFICATION ITSELF LIVES IN THE TEST (air_boundary_test.go). The guards
+// check `monitorHasTheAir()` directly, so a table in production has no reader —
+// the `wires` gate reports every member NO WRITER — and is a SECOND CARRIER of
+// what the guards already say, free to drift from them. What the table is FOR is
+// the gate: "every seam is classified, and every monitor row has a behaviour
+// test." That is a test's job, so it lives with the test.
 //
-// THE GUARD IS AT THE CALLER, NOT THE METHOD, and the survey is what settled
-// that: `tune` serves the monitor's `SetMode` AND the Director's `Tune` effect;
-// `tuneCallsign` serves Observer's relay pick (MVS-D-76). A guard inside it would
-// break the half that is entitled to the air.
+// THE GUARD IS AT THE CALLER, NOT THE METHOD: `tune` serves the monitor's
+// `SetMode` AND the Director's `Tune` effect; `tuneCallsign` serves Observer's
+// relay pick (MVS-D-76). A guard inside it would break the half that is
+// entitled to the air.
 //
 // THE CONSOLE'S BED IS ON THE OTHER SIDE OF THAT SEAM (D-117). Tuning it through
 // `tuneCallsign` requires the callsign to already be in the list the LISTENER's

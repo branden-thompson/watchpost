@@ -2,7 +2,80 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
-## [0.17.0] — unreleased
+## [0.18.0] — 2026-10-05
+
+### Added
+- **A map.** `g` opens the map of the focused location's region, drawn by go-tuiMaps v0.2.0. It never
+  shows more than that one region: the contiguous US, Alaska, Hawaii, the US Caribbean, American
+  Samoa, or Guam and the Northern Marianas. It pans, zooms, steps between your locations (`[` `]`) and
+  jumps between regions (`1`–`6`). The README's *Map* section lists every key.
+- **Two modes.** Radar mode plays the last two hours of radar as a loop (MRMS, or IEM for the lower
+  48), with the hours ahead from the HRRR model. Forecast mode (`R`) steps through now and the days
+  ahead.
+- **Layers.** The alert areas, by the severe window's categories; temperature and feels-like; wind
+  and gusts; rain and snow; UV; air quality; wave height; fire perimeters and hotspots; earthquakes;
+  buoys; and tide stations. They are switched in the Overlays menu (`O`) or in Settings. A badge names
+  each layer drawn and its source.
+- **The map in words.** The Area Alerts box (`A`) says which alerts cover the place, which come near
+  it, and every other alert in view. Settings can put the description in place of the picture, where
+  the Overlays menu is then drawn as text too. Until the alerts for the view are in, the map says
+  "Alerts for the map are loading."; if they cannot be asked, it says so - never that none is there.
+  The alerts come first: the other layers follow, each with its own time limit.
+- **A font without braille is remedied by `--ascii`.** The picture is drawn in braille. Under
+  `--ascii` the window gives the description in its place.
+- **A cost warning.** The map and Settings warn when the layers switched on would fetch more than
+  3 MB or 25 requests in one refresh. Settings also warns when a metered source (Open-Meteo) is chosen.
+- **A history recorder.** While watchpost runs, in any mode, it records the station's region every
+  hour: NDFD's forecast, AirNow's national file and the USGS feed. It also records the region the map
+  last showed, the cities the map read UV for, and - for the places you watch - the NWS's observations
+  and alerts, buoys, tides, and the fire and earthquake feeds. The map draws past hours from the record
+  when a source does not answer. Settings' *Data* tab sets how long it is kept (hourly detail, and
+  trends), shows its size, and clears it. When several copies run, each hour is fetched once.
+- **MAP STATUS in the Status window.** It lists every host the map can contact, whether each is
+  answering, and which hosts opening the map tells what is in view.
+- **Clear map data** (Settings, Maps) empties what the map keeps: tiles, radar, temperature, zone
+  outlines, the tide predictions for the stations in view and the cities read for UV. A clear that
+  leaves something behind gives a count and points to the diagnostics.
+- **About credits, one each.** The About window names each source once, grouped by provider, with the
+  credit its terms ask for. It opens by saying Watchpost is no substitute for official warnings.
+
+### Changed
+- **Settings is in tabs:** Data, Watchpost UI, Watchpost Radio, Broadcaster and Maps, on both
+  surfaces. Each tab's notices sit at its foot.
+- **The watched places' zone outlines are taken when the map first opens**, not at start-up. Nothing
+  is fetched for the map before `g`.
+- **Go 1.25.13 is the floor** (`go.mod`), with go-tuiMaps v0.2.0: at 1.25.0, 28 standard-library
+  vulnerabilities are reachable (go-tuiMaps D-133).
+- **Every data client fetches over https and refuses private addresses** (a proxy you configure
+  excepted); the radio relay's directory, plain http by its publisher, has a client of its own.
+  CO-OPS requests name watchpost in NOAA's own `application` parameter.
+- **The opt-in debug server** (`WATCHPOST_DEBUG_PPROF=1`) answers only loopback requests from no web
+  page, and never says a file path.
+
+### Moved to 0.19.0
+Each by a ruling recorded in `06_docs/02_features/observer-maps/02-analysis/rulings.md`:
+
+| Requirement | What it asks | Ruling |
+|---|---|---|
+| FR-1.8 | The window says, outside `--ascii`, that the picture is braille and names the remedy | D-244 |
+| FR-5.8 | A motion Setting: off, slow, normal | D-245 |
+| FR-5.9 | Loop rates of 1 and 2 frames a second, with a 2-second hold | D-245 |
+| FR-9.6 | A loop speed Setting, 200 to 1000 ms | D-245 |
+| FR-9.5 | The radar's time step as a Setting | D-246 |
+| FR-7.1 | The Monochrome theme drawing the map without colour | D-247 |
+| FR-7.2 | A guard refusing colour literals in the map's packages | D-247 |
+| FR-7.5 | A test matrix of palette, theme ground and colour depth | D-247 |
+| Reduce motion | The library's `ReduceMotion` behind a Setting | D-255 |
+
+0.18.0 plays the loop at a fixed one-second step, five minutes a frame. The loop plays only when you
+press `space` and stops on the same key.
+
+### Known
+- **An alert none of whose zone outlines could be drawn** is missing from the map's description,
+  which can then say no alert covers a place that one does. The station's alert list still names the
+  alert (D-250).
+
+## [0.17.0] — 2026-09-21
 
 ### Added
 - **Weather data now carries where things are.** An alert's own polygon is kept instead of being

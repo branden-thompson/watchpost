@@ -3,9 +3,8 @@ package closedset
 import "testing"
 
 // TestEachMemberFailsOnBothBadQuadrants is the instrument's own validation. A
-// gate nobody has watched fail is not a gate, and this one exists precisely
-// because two earlier hand-written gates reported green while measuring less
-// than they claimed.
+// gate nobody has watched fail is not a gate: a hand-written gate can report
+// green while measuring less than it claims.
 func TestEachMemberFailsOnBothBadQuadrants(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -30,7 +29,7 @@ func TestEachMemberFailsOnBothBadQuadrants(t *testing.T) {
 }
 
 // TestAnEmptySetIsARefusal — a walk over nothing passes trivially, which is the
-// shape every one of this repo's false-green gates had.
+// shape of a false-green gate.
 func TestAnEmptySetIsARefusal(t *testing.T) {
 	spy := &testing.T{}
 	done := make(chan struct{})

@@ -55,8 +55,8 @@ code{font-family:var(--mono);font-size:.92em}
 </style>
 <div class="wrap">
   <aside class="side">
-    <h1 class="brand">Watchpost Architecture Atlas<small>49 diagrams, in reading order. What the program is, area by area.</small></h1>
-    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li></ul></nav>
+    <h1 class="brand">Watchpost Architecture Atlas<small>56 diagrams, in reading order. What the program is, area by area.</small></h1>
+    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li><li><a href="#observer-maps">observer maps<span class="n">7</span></a></li></ul></nav>
     <p class="how"><strong>This page is generated.</strong> The tracked documents are the source of truth; rebuild with <code>go run ./tools/atlas</code>. Only fenced mermaid blocks are read — <strong>a change written in the prose beside a diagram never reaches this page</strong>, so put the fact in the diagram.</p>
   </aside>
   <main><section class="level" id="watchpost-cli"><header class="lvl"><h2>The shape of the program</h2></header><article class="dia" id="watchpost-cli-0"><div class="meta"><h3>1. System overview</h3><p class="file"><code>06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">graph TB
@@ -66,9 +66,11 @@ code{font-family:var(--mono);font-size:.92em}
     FIRE[HMS · WFIGS · FIRMS]
     ICE[NWR Icecast relays]
     TTS[OS TTS engines&lt;br/&gt;say · System.Speech · espeak-ng]
+    OFM[OpenFreeMap tiles&lt;br/&gt;0.18.0: the closed list&#39;s basemap]
   end
+  LIB[go-tuiMaps&lt;br/&gt;0.18.0: the map library&lt;br/&gt;fetches and caches its own tiles]
   subgraph domains [domains/]
-    W[weather] ; A[alerts] ; F[fire] ; L[locations] ; R[radio&lt;br/&gt;stream + synth]
+    W[weather] ; A[alerts] ; F[fire] ; L[locations] ; R[radio&lt;br/&gt;stream + synth] ; Z[nws/zones&lt;br/&gt;0.18.0: alert zone outlines]
   end
   subgraph platform [platform/]
     SCHED[sched&lt;br/&gt;tiered scheduler, 5 tiers + cache]
@@ -87,6 +89,10 @@ code{font-family:var(--mono);font-size:.92em}
   R --&gt;|PCM| AUDIO
   TTY --&gt; REND &amp; TERM ; REP --&gt; TERM
   APP[app/ composition root] -.wires.-&gt; domains &amp; modes &amp; platform
+  APP --&gt;|0.18.0: map builder + alert feed| TTY
+  TTY --&gt;|0.18.0: draws in Update| LIB
+  LIB --&gt;|tiles, confined to the source| OFM
+  NWS --&gt;|zone geometry, on the first map| Z
 </pre></div></article><article class="dia" id="watchpost-cli-1"><div class="meta"><h3>3. Scheduler (platform/sched)</h3><p class="file"><code>06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">graph LR
   T1[Tier 1 alerts&lt;br/&gt;20s batched zones] --&gt; BUCKET[token bucket ~5 req/s&lt;br/&gt;jittered backoff 429/5xx]
   T2[Tier 2 obs&lt;br/&gt;60–120s per station] --&gt; BUCKET
@@ -533,7 +539,7 @@ code{font-family:var(--mono);font-size:.92em}
   BC --&gt; RTR
 
   RTR --&gt;|&#34;OnSurface → takeTheAir&#34;| MC
-  MC[&#34;MasterControl&lt;br/&gt;&lt;b&gt;declares the air&lt;/b&gt;&lt;br/&gt;silences the bed&lt;br/&gt;silences the programme&#34;]
+  MC[&#34;MasterControl&lt;br/&gt;&lt;b&gt;declares the air&lt;/b&gt;&lt;br/&gt;plays the chosen bed relay on air&lt;br/&gt;stops it and silences the programme on standby&#34;]
 
   MC --&gt;|&#34;Aired{To}&#34;| DIR
   DIR[&#34;Director&lt;br/&gt;&lt;b&gt;arbitrates BOTH rotations&lt;/b&gt;&lt;br/&gt;holds the schedule + the dwell&#34;]
@@ -589,12 +595,12 @@ code{font-family:var(--mono);font-size:.92em}
   LP-&gt;&gt;LP: ticker.nudgeRescope()
   LP--&gt;&gt;DK: stopMonitor()
   Note over DK: NOT Stop() — that is guarded,&lt;br/&gt;and runs after the air moved (D-91)
-</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-4"><div class="meta"><h3>4. The guard boundary — D-91</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md</code></p><p class="lead"><strong>31 seams</strong> between a surface and <code>app</code>: 26 <code>tty.Config</code> func fields and 5 <code>tty.Radio</code> methods. The classification is a closed set, derived by reflection, ratcheting both ways (<code>app/air_boundary_test.go</code>).</p></div><div class="canvas"><pre class="mermaid">flowchart TB
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-4"><div class="meta"><h3>4. The guard boundary — D-91</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md</code></p><p class="lead"><strong>53 seams</strong> between a surface and <code>app</code>: 48 <code>tty.Config</code> func fields and 5 <code>tty.Radio</code> methods. The classification is a closed set, derived by reflection, ratcheting both ways (<code>app/air_boundary_test.go</code>).</p></div><div class="canvas"><pre class="mermaid">flowchart TB
   SURF[&#34;a surface calls in&#34;] --&gt; CLS{&#34;what can it do&lt;br/&gt;to the air?&#34;}
 
-  CLS --&gt;|airNone · 14| NONE[&#34;settings, queries, lookups&lt;br/&gt;&lt;i&gt;no guard owed&lt;/i&gt;&#34;]
-  CLS --&gt;|airMonitor · 7| MON{&#34;monitorHasTheAir()&#34;}
-  CLS --&gt;|airProgramme · 2| PROG[&#34;StepBedRelay · TuneRelay&lt;br/&gt;&lt;i&gt;the console&#39;s own&lt;/i&gt;&#34;]
+  CLS --&gt;|airNone · 34| NONE[&#34;settings, queries, lookups, the map&#39;s feeds,&lt;br/&gt;the bed selector&lt;br/&gt;&lt;i&gt;no guard owed&lt;/i&gt;&#34;]
+  CLS --&gt;|airMonitor · 10| MON{&#34;monitorHasTheAir()&#34;}
+  CLS --&gt;|airProgramme · 5| PROG[&#34;ToggleBedRelay · TuneRelay&lt;br/&gt;RequestCard · MoveCard · DropCard&lt;br/&gt;&lt;i&gt;the console&#39;s own&lt;/i&gt;&#34;]
   CLS --&gt;|airShared · 2| SHR[&#34;SetVolume — one volume for the app&lt;br/&gt;InjectAlert — feeds the exempt RAIL&#34;]
   CLS --&gt;|airGatedDownstream · 1| GD[&#34;ReadReport → needsRead&lt;br/&gt;&lt;i&gt;already asks&lt;/i&gt;&#34;]
   CLS --&gt;|airDeclares · 1| DEC[&#34;OnSurface — it MOVES the air&#34;]
@@ -807,6 +813,156 @@ code{font-family:var(--mono);font-size:.92em}
   V --&gt; O{modal open?} -- yes --&gt; OV[Overlay compositor]
   TK[&#34;tick 300 ms — armed while:&lt;br/&gt;anyLoading ∨ volFlash pending/just-expired ∨&lt;br/&gt;(playing ∧ detail≠&#39;&#39; ∧ ¬vizTicking) ∨ showStatus ∨ showDetails&#34;] -.-&gt; U
   VZ[vizTick 50 ms] -. only while Viz on and playing .-&gt; U
+</pre></div></article></section><section class="level" id="observer-maps"><header class="lvl"><h2>observer maps</h2></header><article class="dia" id="observer-maps-0"><div class="meta"><h3>AS BUILT 0.18.0 — how it fits (D-41, D-45; BUILD batches 1–5)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/approach-1-render-placement.md</code></p><p class="lead">Drawn from the code as of batch 5 (<code>modes/tty/map_pane.go</code>, <code>app/maps.go</code>, <code>app/mapfeed.go</code>). Every library call but <code>Work</code> is made in <code>Update</code>; <code>View</code> prints the stored lines. <strong>Still owed:</strong> the <code>NextCall</code> tick (<code>mapTickMsg</code>), W2.2&#39;s goroutine record, and W2.6&#39;s join on close.</p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
+  participant K as Listener (g, arrows, [ ])
+  participant BT as Bubble Tea loop (Update)
+  participant A as app (maps.go, mapfeed.go)
+  participant F as tea.Cmd (feed)
+  participant W as tea.Cmd (Work)
+  participant L as go-tuiMaps Map
+  participant V as View (pure)
+  K-&gt;&gt;BT: g
+  BT-&gt;&gt;A: NewMap(size) on the first g (seeds zone outlines once, FR-3.2)
+  A-&gt;&gt;L: New, SetFetchOptions, CacheRoot, SetCacheMaxAge, Source
+  BT-&gt;&gt;L: SetBound(region) · Recentre(place) · Render(size, now)
+  BT-&gt;&gt;F: MapFeed(snap, place)
+  F-&gt;&gt;A: resolveAlertAreas (zone store) → one overlay per alert, notes
+  F--&gt;&gt;BT: mapFeedMsg{gen} (an older gen is dropped)
+  BT-&gt;&gt;L: Set each overlay · Remove the gone · Render
+  BT-&gt;&gt;W: Work while Pending &gt; 0
+  W-&gt;&gt;L: Work(ctx)
+  W--&gt;&gt;BT: mapWorkedMsg{did}
+  BT-&gt;&gt;L: Render on every event (key, size, data, landing)
+  BT-&gt;&gt;BT: store lines, counters, draw generation (the memo keys on it)
+  V-&gt;&gt;V: print stored lines + notes + status line (no library call)
+</pre></div></article><article class="dia" id="observer-maps-1"><div class="meta"><h3>What the window&#39;s body is</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TB
+  S{&#34;selected place?&#34;} -- &#34;none&#34; --&gt; N[&#34;stated: no location is selected (FR-1.3)&#34;]
+  S -- &#34;in no region&#34; --&gt; O[&#34;stated: outside every region, nothing wider drawn (FR-2.5)&#34;]
+  S -- &#34;maps off in Settings&#34; --&gt; OFF[&#34;stated: maps are off, and where to turn them on (FR-1.6)&#34;]
+  S -- &#34;in a region&#34; --&gt; A{&#34;--ascii, or the description instead?&#34;}
+  A -- &#34;yes&#34; --&gt; T[&#34;the description in place of the picture (FR-1.7)\n(under --ascii, first: the picture is braille and the remedy - FR-1.8 outside --ascii is cut to 0.19.0, D-244)\nthe Overlays menu, when open, drawn as text in its place (D-267)&#34;]
+  A -- &#34;no&#34; --&gt; F{&#34;a 69x12 map fits? (mapMinBody, the one owner)&#34;}
+  F -- &#34;no&#34; --&gt; FL[&#34;stated: the size needed and the size present,\nthen the description (FR-1.4)&#34;]
+  F -- &#34;yes&#34; --&gt; DS{&#34;description with the picture?&#34;}
+  DS -- &#34;yes (the default)&#34; --&gt; D1[&#34;the description in the Area Alerts box on the first rows (D-55 as D-63 keeps it)&#34;] --&gt; M
+  DS -- &#34;off&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)\nthe window about 80% of the terminal each way (U1-13), never under what 69x12 needs\nthe picture flush to the borders (U1-27)&#34;]
+  M --&gt; BXS[&#34;the boxes over it: Area Alerts (A, D-63) and MAP DETAILS / OVERLAYS (O, U2-39):\nthe warning; the tints a radio group (Temperature ← Actual/Feels like →, UV Index, Air Quality);\nData Points, Hazards (Fire ← All/Named/Hotspots →) and Alert Areas, each ← Enabled → over its boxes;\nthe detail preset (Minimal/Standard/All) over its switches (D-141 to D-146);\nevery choice the app&#39;s picker, [←] value [→], its chip blinking as pressed (D-147)&#34;] --&gt; BG[&#34;the badge row (D-131, D-133): a badge a layer drawn, LABEL [SRC], the Overlays menu&#39;s order\nthe full credits About&#39;s (D-148); what never changes about the data the Status window&#39;s (D-132)&#34;]
+  BG --&gt; NT[&#34;the notes that come and go, only while one applies: a source that did not answer with its Setting, what a source lacks; an area not fully drawn is the diagnostics&#39; alone, said once while it lasts (D-240)&#34;]
+  NT --&gt; CW[&#34;the cost warning, when the overlays switched on would cost more than 3,000,000 bytes or 25 requests a refresh (FR-9.2, D-149)\ncounted over the overlays chosen alone: radar is the mode, not counted\none line, the HUM LEAD&#39;s words (D-133); the estimate under the timeline&#39;s right end&#34;]
+  CW --&gt; ST[&#34;under the map (D-103, D-105): the colour row, the loop&#39;s row and timeline with the controls beside them, MAPS: 1-6, the chips; no legend (retired, D-103)\nthe status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window&#34;]
+</pre></div></article><article class="dia" id="observer-maps-2"><div class="meta"><h3>Settings, in tabs (D-62)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  subgraph S[&#34;Settings: one window, the tab is the focused row&#39;s&#34;]
+    DA[&#34;Data (D-71)\nDATA · ALERTS - EVENTS · HISTORY (D-175)&#34;]
+    UI[&#34;Watchpost UI (D-71)\nWATCHPOST UI&#34;]
+    R[&#34;Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY&#34;]
+    B[&#34;Broadcaster\nSTATION: transmitter · service radius&#34;]
+    M[&#34;Maps\nMAP | MAP - LAYERS · MAP - DETAIL, side by side&#34;]
+    NA[&#34;setup_notices.go · the notice area (D-237)\nat the foot of every tab, over the controls: ! label - words, wrapped under the words\nthe mark&#39;s colour its kind: a cost, an outcome, a failure, a fact\nas tall as the most the tab can say; the held room gives way to the body (fitFooter)&#34;]
+  end
+  O([&#34;Observer&#34;]) --&gt; DA &amp; UI &amp; R &amp; B &amp; M
+  C([&#34;the console&#34;]) --&gt; DA &amp; UI &amp; R &amp; B &amp; M
+  N[&#34;D-70: every surface shows every tab and row;\neach row still writes only its own values&#34;] -.-&gt; O &amp; C
+  K[&#34;keys: ←→ switch tabs unless the focused row is a picker or toggle\ntab / shift+tab switch tabs from any row · ↑↓ walk a tab&#39;s rows&#34;] -.-&gt; S
+</pre></div></article><article class="dia" id="observer-maps-3"><div class="meta"><h3>The parts, and who may name whom</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p><p class="lead"><code>app/</code> is the only package that may name a domain and what draws (the import rule, <code>scripts/lint-imports.sh</code>), so the zone store and the weather service are reached from <code>app/</code> alone, and the window is handed functions.</p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  subgraph app[&#34;app/ — the composition root&#34;]
+    MB[&#34;maps.go · mapBuilder\nthe registered basemap (OpenFreeMap)\nwatchpost/‹version›, 256 MiB, 7 days\n4 MiB shared memory cache\nseeds zone outlines on the first map&#34;]
+    REG[&#34;maplayers.go · the registry (W1.13)\nlayers and sources register from their own files\nalert areas (mapfeed.go) · OpenFreeMap (maps.go)\nrefreshCost: each layer&#39;s own, summed&#34;]
+    MF[&#34;mapfeed.go · mapFeed, by part (D-268)\nthe alerts: one overlay per alert, severity → role, zones under their own bound\npartial areas labelled; what is undrawn in words, for the diagnostics alone (D-124, D-240)\nwhich alerts&#39; missing zones hold the place (the description says so); a failed ask said (D-266)\nthe other layers: fire, the sea&#39;s stations, AirNow, quakes, each input bounded at 10 s&#34;]
+    MG[&#34;mapgeometry.go · resolveAlertAreas&#34;]
+    MV[&#34;mapinview.go · the alerts in view (D-66; no scope to choose, D-76)\nthe states and marine areas the view touches (a 5x5 sample)\none request, remembered 2 minutes; kept to the view\nthe estimate reads the memory, never fetches&#34;]
+    MS[&#34;maps.go · mapSourceList (D-75)\neach host the map contacts, and what it is sent&#34;]
+    HI[&#34;history.go · the recorder (D-172, D-234)\nwhenever watchpost runs, in any mode, maps on or off\na pass every five minutes; each hour claimed by one instance\nNDFD&#39;s hour and totals for the station&#39;s region and the map&#39;s last; AirNow&#39;s national file; the USGS feed\nreplayed when a source does not answer (D-166)&#34;]
+    MQ[&#34;mapquakes.go · the earthquakes (D-80, D-122, D-123)\nthe USGS feed chosen, in view: rings by magnitude, coloured by age\nNEW within the loop&#39;s hours; one overlay for all (D-129)&#34;]
+    MR[&#34;mapradar.go · the radar (W8)\nMRMS by default, IEM for the lower 48 if chosen (D-83); none in American Samoa\n24 five-minute slots over two hours, a missing one a stated gap\nnewest first, six at a time (D-130); an all-empty loop checked against the other source (D-84)\ntrimmed of its oldest frames to fit the 24 MiB image budget (D-88)\nmeasured once, live, the lower 48 cold (batch 44): the loop in 1.26 s, 1.45 s with three hours ahead\neach frame&#39;s check kept by the frame - source, region, box, time, size (P-17)\nthe hours ahead (D-113): HRRR&#39;s quarter-hours from IEM, fetched alongside (D-130), a forecast loop a box,\nthe same boxes&#39; last standing in while a new fetch runs (U2-59),\nthe observed drawn until now and the forecast after it; the farthest trimmed to fit\nbeyond the lower 48 (maprain.go, D-115): Open-Meteo&#39;s hourly rain in radar&#39;s scale, painted with a table of its own, a frame an hour&#34;]
+    MT[&#34;maptemp.go · the temperature (W10)\nUV: EPA&#39;s cities first (D-186) - the spread asked and every city read today in view, no two within the spacing (D-225); each city&#39;s hours kept in the history&#39;s epa-uv-cities (D-224)\na whole answer kept for its hour, by region, boxes, source, mode, units and hour (P-16) - UV and air added to a copy\none Temperature picker for both modes (D-190): NDFD by default where it covers, else Open-Meteo; a box NDFD refuses is Open-Meteo&#39;s\nRadar mode: every hour up to now, each grid during its hour\none look in both modes: labelled isotherms over faint bands (D-102, Grid.Lines)\nNow and each day&#39;s high and low, each during its step (D-94, D-97)\na lattice a fixed box of the fields&#39; own (D-111): the radar&#39;s in the lower 48, the whole region elsewhere, split at the antimeridian; a day the source lacks filled from Open-Meteo (D-100), else said\noff by default, fetched and held while the map is open (D-99)\nwind in the same requests (W11): Radar mode&#39;s every hour, Forecast mode&#39;s Now and each day&#39;s peak (D-108);\nits direction interpolated as a vector; off by default (D-110)\nan answer the same all hour: nothing handed in again (U2-13)\nfeels-like in the same requests (W13.1, D-119): drawn as temperature is; NDFD&#39;s days worked out, Now filled from Open-Meteo\nForecast mode&#39;s rain and snow (maprain.go, W12.3, D-192): NDFD&#39;s totals for today and three days on; past them Open-Meteo&#39;s heaviest hour in radar&#39;s scale, the day&#39;s total marked on it (D-116, go-tuiMaps L-17)&#34;]
+  end
+  subgraph domains[&#34;domains/&#34;]
+    ZS[&#34;nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days&#34;]
+    RD[&#34;radar · IEM, MRMS (W8.3)\nfixed boxes, never the view (D-47); outside the lower 48 each MRMS product&#39;s whole extent; only advertised times, always sent (D-84)\nits own client: memory only, 1 MiB cap, public addresses, https&#34;]
+    TD[&#34;temperature · NDFD, Open-Meteo (W10.2)\na lattice of at most 80 points a box, never the view (D-47)\nNDFD: the hour sent with its zone; offshore missing, never zero\na cell drawn only where its nearest point has a value (D-101)\nwind: hourly speed and direction; each day&#39;s peak worked out from NDFD&#39;s hours\nits own client: 2 MiB cap, public addresses, https; 24 MiB in memory and a 64 MiB disk cache at map-http, in the stated total (D-219)\nOpen-Meteo through the quota gate: while held, what is in the cache is served; only a network answer frees it (D-217)\nwaves: NDFD first; Open-Meteo Marine only for the points past NDFD&#39;s reach, the land it answered nothing for left out - kept by lattice in marine-land.json beside quota.json, merged across instances, asked again after 90 days, gone with Clear map data (D-194, D-218)&#34;]
+    WS[&#34;nws · Provider.ZonesFor\nthe place&#39;s own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)&#34;]
+  end
+  subgraph tty[&#34;modes/tty — the Observer&#34;]
+    MW[&#34;map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\n1-6 snap to a region; at an edge a chip names the neighbour, the next press crosses (D-77, D-81)\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s\na layer off: its overlays not set (key before the slash)\nthe view moved: the feed asked again once it settles (600 ms)\na radar answer swaps its loops all or none, the leaving ones first (U2-59)\nclosed: the app forgets the zone shapes (D-162); closed five minutes, the window lets its map go - the library&#39;s map and the pictures handed in - and the next open builds a new one, generations carried on (D-221)&#34;]
+    MD[&#34;map_describe.go · the description follows the view (D-74, D-78)\nthe place - Currently: … only while the place is in view; else the view&#39;s name\n‹event› in effect for this area · for nearby ‹areas› · for ‹areas›, until ‹time›\nevery alert in view, most severe first; the box ends &#39;And N more in view.&#39;&#34;]
+    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · 1-6 region · PgUp/PgDn scroll\nA Area Alerts (closed on open, D-87) · R Radar mode on/off (D-94) · O Overlays · L free (the legend retired, D-103)\nspace play · shift+← shift+→ step · n now (D-86): the loop in Radar mode, the days in Forecast mode\n&lt; &gt; the days&#39; high or low (D-97)\nunder the map (D-103, D-105): the colour row, the notes, the picture&#39;s status and estimate,\nthe loop&#39;s row RADAR · FRAME · NEWEST · STOPPED (yellow) or PLAYING (green) over the timeline, the controls beside them,\na blank, MAPS: 1-6, a blank, the chips&#34;]
+    PT[&#34;map_parts.go · the parts, one each whatever the mode (D-103)\nchipBox: the edge chip, the mode&#39;s chip · chipFace: every source&#39;s chip, &#34;  NAME  &#34; bold on its own ground, black or white words (D-134) · mapBadge + withTab: the badge, one line, a tab on the frame&#39;s top right (D-120)\nscrubber: radar&#39;s loop and Forecast mode&#39;s steps, one bar\nmap_scrub.go lays the rows under the map from them&#34;]
+    MTW[&#34;map_temp.go · the two modes (D-94)\nevery grid handed in up front with its span; a step moves the moment, never a Set (L-15.1, L-15.2)\nthe feed&#39;s overlays - alerts, quakes, fire, the sea&#39;s stations - on every frame of both modes (D-275)\nForecast mode: the host steps and plays, the last day held\nwind beside temperature or alone: braille arrows, every other with its speed (D-109, go-tuiMaps L-16)\nno main overlay on: temperature turned on for Forecast mode alone, a chip says so (D-103, D-104)\nan arrow in the Overlays menu moves its cursor alone; a refused refresh keeps what is drawn (U2-13, U2-14)\nrain and snow: Forecast mode&#39;s row, on by default; the colour row says MODEL RAIN · NOT RADAR (D-117)\nfeels like: its own row, never on with temperature - one tint; FEELS on the badge&#39;s step and the colour row (D-119)&#34;]
+    BX[&#34;map_boxes.go · over the map (UAT-1)\nthe radar&#39;s badge, upper right: RADAR DATA, the source&#39;s chip, the frame&#39;s time (D-92)\nin Forecast mode: FORECAST, the temperature&#39;s source, the step\nthe library&#39;s stamp handed to it (ShowStamp, go-tuiMaps D-87)\nArea Alerts, upper left (D-63) · the Controls moved under the map (D-103), the pressed chip blinks\nMAP DETAILS / OVERLAYS, in Settings&#39; heading style (D-103): alert areas and [w]&#39;s categories, earthquakes, temperature, the map&#39;s detail (D-65, D-80); radar is R&#39;s (D-94)\ndetail: the level is a preset, the switches the truth; the library at Full (D-79)\nthe title names the view by scale (D-64)&#34;]
+    ST2[&#34;Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · Description · Opens at · Nearby (no alert scope, D-76) · Radar · Radar ahead · Quakes · Temperature (D-190) · Rain Day 4+ · UV cities\nMAP - LAYERS: a picker a registered layer, Enabled or Disabled\nMAP - DETAIL: the preset (D-67); a row per detail layer, ← Enabled → (U1-35); Lakes, never the sea (U1-39) · Map data: clear\nNOTICES at the bottom (D-237): Open-Meteo metered · Rain Day 4+ · UV cities · the layers&#39; cost · the retention or what clearing did&#34;]
+    SW[&#34;status.go · the Status window\nMAP STATUS (D-150): a row a host the map can contact - OK, FAIL, or IDLE until asked\nthe notes about the data (D-132); what opening the map sends (D-151)&#34;]
+  end
+  subgraph plat[&#34;platform/&#34;]
+    RG[&#34;geo · RegionOf\nsix regions with their waters; Hawaii and the Caribbean wide enough to see their weather (D-91)\narrangement.go: Neighbour, RegionNumbered (D-77)&#34;]
+    HX[&#34;httpx · DiskCacheBytes, with temperature&#39;s CacheBytes and the tiles&#39; cap, the one stated total\nConfig.MemBytes / DiskBytes size a client&#39;s tiers; Cached reads the cache, never the network (D-217, D-219)\nClear map data empties the map clients&#39; caches, memory and disk&#34;]
+  end
+  L[&#34;go-tuiMaps v0.2.0\nSetBound · Source · Set/Remove · Work · Render · Warnings&#34;]
+  MB -- &#34;Config.NewMap(size)&#34; --&gt; MW
+  MF -- &#34;Config.MapFeed(ask: snap, place, view, part)\ntwo lanes: the alerts first and on their own, the layers after (D-268)\nuntil the alerts land: &#39;Alerts for the map are loading.&#39; (D-266)\nan unchanged overlay is not handed in again; a refused one keeps its last (U1-28, D-257)&#34; --&gt; MW
+  MF --&gt; MG --&gt; ZS
+  MF -- &#34;ask.View&#34; --&gt; MV --&gt; WS
+  MR --&gt; RD
+  MT --&gt; TD
+  HI --&gt; TD
+  MT -- &#34;the hours recorded&#34; --&gt; HI
+  MT --&gt; RD
+  MT -- &#34;Config.MapTemperature(ask: mode, source, unit, the hour&#39;s start)\none request at a time; asked only while on (D-25)&#34; --&gt; MW
+  MW --&gt; MTW
+  MR -- &#34;Config.MapRadar(ask): the whole loop\none request at a time; shown once in (D-85); a region left cancelled (D-130)\nits own command: the alerts never wait (W8.12)&#34; --&gt; MW
+  SD[&#34;severe.go · severeDeck.feedCopy\nthe ticker&#39;s feed&#34;] --&gt; MQ --&gt; MF
+  MF -- &#34;alert/‹category›/‹id›: [w]&#39;s Classify; forecasts not drawn (D-80)\nTimes: each overlay&#39;s onset and end (D-98)&#34; --&gt; MW
+  MS -- &#34;Config.MapSources&#34; --&gt; SW
+  MF --&gt; WS
+  MB -. &#34;first g&#34; .-&gt; ZS
+  MW --&gt; RG
+  MW --&gt; MK
+  MW --&gt; PT
+  MW --&gt; BX
+  NM[&#34;mapnames.go · mapAreaNamer\nthe city index: a town · part of a state · the state · the region&#34;] -- &#34;Config.MapAreaName&#34; --&gt; BX
+  ST2 --&gt; MW
+  ST2 -- &#34;Config.ClearMapData&#34; --&gt; CL[&#34;app clearMapData\nPurge on a bare map (no source, no seed)\nzone store Forget + ForgetCached\n(httpx ForgetPrefix: zones only)&#34;]
+  MW -- &#34;Report(place) at every draw&#34; --&gt; MD
+  MW --&gt; L
+  MB --&gt; L
+  MB --&gt; HX
+  MF -. &#34;registers alert areas&#34; .-&gt; REG
+  MB -. &#34;registers OpenFreeMap&#34; .-&gt; REG
+  REG -- &#34;Config.MapLayers · Config.MapCost&#34; --&gt; ST2
+  REG -- &#34;Config.MapCost&#34; --&gt; MW
+</pre></div></article><article class="dia" id="observer-maps-4"><div class="meta"><h3>The windows, a stack (D-106, D-107)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  K[&#34;a key&#34;] --&gt; RT[&#34;Router: the swap, the console&#39;s keys&#34;]
+  RT --&gt; W{&#34;the window shown claims...&#34;}
+  W -- &#34;every key (Setup, Add, Remove, Request)&#34; --&gt; ALL[&#34;its handler: nothing reaches the Observer&#34;]
+  W -- &#34;the keys it binds (the map)&#34; --&gt; B{&#34;bound?&#34;}
+  B -- &#34;yes&#34; --&gt; MAPK[&#34;the window&#39;s&#34;]
+  B -- &#34;no&#34; --&gt; OBS[&#34;the Observer&#39;s bindings&#34;]
+  W -- &#34;none&#34; --&gt; OBS
+  OBS --&gt; NAV[&#34;a nav action: the shown window&#39;s own nav,\nelse the table&#34;]
+</pre></div></article><article class="dia" id="observer-maps-5"><div class="meta"><h3>The windows, a stack (D-106, D-107)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TB
+  O[&#34;open(m)&#34;] --&gt; Q{&#34;m?&#34;}
+  Q -- &#34;none&#34; --&gt; CLR[&#34;the stack emptied: nothing shown&#34;]
+  Q -- &#34;the one shown&#34; --&gt; SAME[&#34;no change&#34;]
+  Q -- &#34;already under&#34; --&gt; BACK[&#34;returned to: the windows over it left behind\nits scroll as it was; resumed&#34;]
+  Q -- &#34;a new one&#34; --&gt; T{&#34;the one shown is a search or a confirmation?\n(Add, Remove)&#34;}
+  T -- &#34;yes&#34; --&gt; REP[&#34;replaced: it is done, never returned to&#34;]
+  T -- &#34;no&#34; --&gt; PUSH[&#34;pushed under, with its scroll; m shown over it&#34;]
+  C[&#34;close() - esc, or the key that opened it&#34;] --&gt; E{&#34;a window under?&#34;}
+  E -- &#34;yes&#34; --&gt; POP[&#34;the one below shown again, its scroll restored; resumed&#34;]
+  E -- &#34;no&#34; --&gt; NONE[&#34;nothing shown: the dashboard&#34;]
+  POP --&gt; R[&#34;resume, at the end of the Update: the map drawn again,\nits work, its radar and temperature asked as they have stood&#34;]
+  BACK --&gt; R
+</pre></div></article><article class="dia" id="observer-maps-6"><div class="meta"><h3>The map&#39;s commands, its clock and its close (W2)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  U[&#34;Update (the Bubble Tea goroutine)\nevery library call but Work, each recovered&#34;] -- &#34;Pending &gt; 0&#34; --&gt; W[&#34;Work command\nadmitted by mapWorkers\nat most four loops in flight (PF-3)&#34;]
+  U -- &#34;the feed asked&#34; --&gt; F[&#34;feed commands, one a lane\nalerts · layers (D-268)\nadmitted by mapWorkers&#34;]
+  W -- &#34;mapWorkedMsg&#34; --&gt; U
+  F -- &#34;mapFeedMsg, by lane&#34; --&gt; U
+  W &amp; F -. &#34;a panic: mapPanicMsg\nthe map released and marked failed, the diagnostics told (QA-11)&#34; .-&gt; U
+  U -- &#34;after every Update: NextCall&#34; --&gt; T[&#34;one tick outstanding\n(50 ms floor)&#34;]
+  U -- &#34;pan, zoom, resize&#34; --&gt; VS[&#34;the settle tick, 600 ms\nby view generation (D-66)&#34;]
+  VS -- &#34;mapViewSettledMsg: the newest&#34; --&gt; U
+  T -- &#34;mapTickMsg at the time still wanted&#34; --&gt; U
+  Q[&#34;the program ends\ncloseOnExit → Router.CloseMap&#34;] --&gt; C[&#34;closeMap\ncancel · join (≤ 2 s) · Close&#34;]
+  C -. &#34;refuses what starts after&#34; .-&gt; W &amp; F
 </pre></div></article></section></main>
 </div>
 <script type="module">

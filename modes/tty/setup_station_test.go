@@ -21,8 +21,8 @@ func stationSetup(t *testing.T, at setupRowID) Dashboard {
 	t.Helper()
 	d := setupGolden(t, 133, 44, false, at)
 	d.surface = SurfaceBroadcaster
-	// THE BOUNDS ARE HANDED IN, AS THE APP HANDS THEM IN (D-124). They were
-	// constants in this package and are now `platform/config`'s alone; a fixture
+	// THE BOUNDS ARE HANDED IN, AS THE APP HANDS THEM IN (D-124). They are
+	// `platform/config`'s alone; a fixture
 	// that omits them gets a window which refuses every radius, which is the
 	// deliberate fail-closed behaviour and not something to paper over.
 	d.cfg.ServiceRadiusMinMi, d.cfg.ServiceRadiusMaxMi = 2, 100
@@ -42,7 +42,7 @@ func TestAWindowWithNoBoundsRefusesEveryRadius(t *testing.T) {
 		t.Fatal("a window with no bounds must not report usable ones")
 	}
 	// ZERO IS IN THIS LIST BECAUSE IT IS THE ONLY VALUE THAT DISCRIMINATES, and
-	// leaving it out is what let mutant mAS3 survive. With the bounds unset, a
+	// leaving it out lets mutant mAS3 survive. With the bounds unset, a
 	// check that forgets to ask whether it was TOLD compares `v >= 0 && v <= 0` —
 	// which refuses 2, 25, 50 and 100 exactly as the correct code does, and
 	// ADMITS zero. Zero is what `serviceRadiusChoice` returns for "not a number",
@@ -57,12 +57,12 @@ func TestAWindowWithNoBoundsRefusesEveryRadius(t *testing.T) {
 	}
 }
 
-// THEY ARE THE CONSOLE'S AND ONLY THE CONSOLE'S (D-72, D-18's M4 metric).
-//
-// A listener has no transmitter and no service area; Observer's own default
-// location is the row these two sit beside. A leak in either direction is the
-// failure the scope table exists to count.
-func TestTheStationsSettingsAreTheConsolesAlone(t *testing.T) {
+// THEY ARE THE STATION'S, AND EVERY SURFACE SHOWS THEM (0.18.0 D-70, which
+// supersedes D-92's visibility: "settings show now be the same across ALL UI
+// modes"). A leak is a row writing another mode's values, which the scope in
+// the table rules — not a station row SHOWN in Observer. The rows sit on the
+// Broadcaster tab.
+func TestTheStationsSettingsAreOnEverySurface(t *testing.T) {
 	console := setupOffers(stationSetup(t, rowFIRMSKey))
 	observer := setupOffers(setupGolden(t, 133, 44, false, rowFIRMSKey))
 
@@ -70,21 +70,24 @@ func TestTheStationsSettingsAreTheConsolesAlone(t *testing.T) {
 		if !strings.Contains(console, want) {
 			t.Errorf("the console's Settings window does not offer %q", want)
 		}
-		if strings.Contains(observer, want) {
-			t.Errorf("%q leaked into OBSERVER, which has no station", want)
+		if !strings.Contains(observer, want) {
+			t.Errorf("Observer's Settings window does not offer %q (D-70)", want)
 		}
 	}
-	// AND THEY SIT IN DATA, where the HUM LEAD put them: "These options should be
-	// under the 'DATA' settings group in the modal."
-	data := setupOffers(stationSetup(t, rowTransmitter))
-	head := strings.Index(data, "DATA")
-	next := strings.Index(data, "WATCHPOST UI")
-	if head < 0 || next < 0 {
-		t.Fatalf("the window has no DATA group to put them in")
+	// AND THEY SIT ON THE BROADCASTER TAB (D-62): its one group, STATION.
+	st := stationSetup(t, rowTransmitter)
+	if st.setupTab() != tabBroadcaster {
+		t.Fatalf("the transmitter is on the %s tab, want Broadcaster", st.setupTab().Label())
 	}
-	for _, want := range []string{"Transmitter (epicenter):", "Service radius:"} {
-		if at := strings.Index(data, want); at < head || at > next {
-			t.Errorf("%q is at %d, outside DATA (%d..%d)", want, at, head, next)
+	var page strings.Builder
+	for _, blk := range st.setupBlocks(st.opts()) {
+		for _, l := range blk.lines {
+			page.WriteString(stripANSITest(l) + "\n")
+		}
+	}
+	for _, want := range []string{"STATION", "Transmitter (epicenter):", "Service radius:"} {
+		if !strings.Contains(page.String(), want) {
+			t.Errorf("the Broadcaster tab does not draw %q:\n%s", want, page.String())
 		}
 	}
 }
@@ -136,7 +139,7 @@ func TestTheServiceRadiusTakesDigitsAndReplacesTheStoredOne(t *testing.T) {
 		m, _ := d.setupRowText(tea.KeyPressMsg{Code: r, Text: string(r)})
 		d = m.(Dashboard)
 	}
-	// 50, NOT 2550 — the defect the alert radius was fixed for at UAT 2026-09-08.
+	// 50, NOT 2550 — the rule the alert radius keeps too (UAT 2026-09-08).
 	if d.setup.serviceMi != "50" {
 		t.Errorf("typing 50 over a stored 25 gave %q", d.setup.serviceMi)
 	}
@@ -241,9 +244,17 @@ func TestABorrowedEpicentreSaysSo(t *testing.T) {
 func TestTheTransmitterQuestionStatesTheStorageBoundary(t *testing.T) {
 	o := render.Opts{ASCII: true}
 	got := stripANSITest(strings.Join(stationSetup(t, rowTransmitter).setupTransmitterLines(o, " "), "\n"))
-	for _, want := range []string{"stays on this machine", "National Weather Service", "debug dump"} { // bounded by the phrase list (P10-02)
+	for _, want := range []string{"Stored in config.toml", "only sent to the NWS as required"} { // bounded by the phrase list (P10-02); UAT-1 U1-32's words (D-75)
 		if !strings.Contains(got, want) {
 			t.Errorf("the transmitter question does not say %q; the operator is owed the storage boundary (FR-9.4):\n%s", want, got)
 		}
+	}
+	// UAT-1 U1-31: the sentence is ONE line, so no wrap can split its tint.
+	whole := false
+	for _, l := range strings.Split(got, "\n") {
+		whole = whole || strings.Contains(l, "Stored in config.toml; only sent to the NWS as required.")
+	}
+	if !whole {
+		t.Errorf("the storage sentence is split across lines:\n%s", got)
 	}
 }

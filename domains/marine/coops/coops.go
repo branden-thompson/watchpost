@@ -267,6 +267,58 @@ func (p *Provider) loadStations(ctx context.Context) error {
 	return nil
 }
 
+// Station is a tide station as the map draws it (0.18.0 D-128).
+type Station struct {
+	ID, Name string
+	Lat, Lon float64
+}
+
+// TideStations are every tide-prediction station, from the list the
+// places' tides read daily.
+func (p *Provider) TideStations(ctx context.Context) ([]Station, error) {
+	if err := p.loadStations(ctx); err != nil {
+		return nil, err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make([]Station, len(p.tide))
+	for i, s := range p.tide {
+		out[i] = Station{ID: s.ID, Name: s.Name, Lat: s.Lat, Lon: s.Lng}
+	}
+	return out, nil
+}
+
+// HeldTideStations is the tide stations already held, asking nothing: nil
+// until TideStations or the station's own tides have loaded the list. The
+// map's cost estimate reads it (0.18.0 W14, C-2) - an estimate never fetches.
+func (p *Provider) HeldTideStations() []Station {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.tide) == 0 {
+		return nil
+	}
+	out := make([]Station, len(p.tide))
+	for i, s := range p.tide {
+		out[i] = Station{ID: s.ID, Name: s.Name, Lat: s.Lat, Lon: s.Lng}
+	}
+	return out
+}
+
+// NextTide is a station's next high or low after a moment, from its
+// predictions - the places' own request, cached as theirs is.
+func (p *Provider) NextTide(ctx context.Context, id string, after time.Time) (snapshot.TideEvent, error) {
+	tides, err := p.fetchTides(ctx, id)
+	if err != nil {
+		return snapshot.TideEvent{}, err
+	}
+	for _, e := range tides {
+		if e.Time.After(after) {
+			return e, nil
+		}
+	}
+	return snapshot.TideEvent{}, fmt.Errorf("coops: no tide after %s at %s", after.Format(time.RFC3339), id)
+}
+
 // nearest returns the closest station within radiusKM.
 func nearest(list []station, lat, lon, radiusKM float64) (station, float64, bool) {
 	if c := nearestN(list, lat, lon, radiusKM, 1); len(c) > 0 {
@@ -295,13 +347,30 @@ func nearestN(list []station, lat, lon, radiusKM float64, n int) []candidate {
 	return out
 }
 
-// query builds a datagetter URL: GMT, metric, JSON.
+// ForgetTides drops the client's cached answers to tide-prediction questions,
+// in memory and on disk, and says how many (D-269: Clear map data): every
+// URL that begins with the predictions product's application name.
+func (p *Provider) ForgetTides() (int, error) {
+	return p.client.ForgetPrefix(p.productPrefix("predictions"))
+}
+
+// productPrefix is the start of every datagetter URL for one product. Each
+// request names its product in CO-OPS's application parameter, which sorts
+// before every other, so a product's cached answers share a URL prefix in
+// memory and on disk alike.
+func (p *Provider) productPrefix(product string) string {
+	return p.base + "/api/prod/datagetter?" + url.Values{"application": {"watchpost." + product}}.Encode() + "&"
+}
+
+// query builds a datagetter URL: GMT, metric, JSON, its product named in the
+// application parameter too.
 func (p *Provider) query(product, stationID string, extra url.Values) string {
 	q := url.Values{"product": {product}, "station": {stationID}, "time_zone": {"gmt"}, "units": {"metric"}, "format": {"json"}}
 	for k, v := range extra {
 		q[k] = v
 	}
-	return p.base + "/api/prod/datagetter?" + q.Encode()
+	q.Del("application")
+	return p.productPrefix(product) + q.Encode()
 }
 
 // window is the prediction window: from today 00:00 UTC for rangeHours.

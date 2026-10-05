@@ -15,14 +15,7 @@ import (
 // nothing. That is deliberate and different from "no data available": the sea
 // is not missing for Denver, it is not applicable.
 func (lp *livePipelines) marineFor(ref snapshot.LocationRef) synth.MarineReport {
-	var asms []*snapshot.Assembler
-	if lp.priority != nil {
-		asms = append(asms, lp.priority.asm)
-	}
-	if lp.recent != nil {
-		asms = append(asms, lp.recent.asm)
-	}
-	for _, asm := range asms {
+	for _, asm := range lp.assemblers() {
 		if m, tzName, lat, lon, ok := asm.MarineFor(ref); ok {
 			return marineReportOf(m, tzName, lat, lon)
 		}

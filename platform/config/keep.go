@@ -14,10 +14,10 @@ import (
 //
 // The hole this closes: load → edit → save goes through the typed struct, so
 // any key the struct has no field for is silently dropped on the next write.
-// Before 0.14.0 that was harmless — there were no other builds. From 0.14.0 on
-// it is not: a 0.13.0 binary opening a 0.14.0 file would delete the whole cast
-// on its next save, and the listener would lose every assignment by doing
-// nothing more than running an older build once.
+// With more than one build reading the file, a build that does not know the
+// cast would delete the whole cast on its next save, and the listener would
+// lose every assignment by doing nothing more than running an older build
+// once.
 //
 // So Save merges: the OLD file's unknown keys are copied into the newly
 // marshalled document before it is written. This build cannot know what they
@@ -40,8 +40,8 @@ const maxUnknownReported = 32
 // sense of the old file simply reports no unknown keys, and Save then writes
 // the typed document unchanged. The recover is scoped to this function alone —
 // a panic in a caller's loop must never be swallowed here and read as "no
-// unknown keys" (red-team; go-toml v2.2.4 panicked on a quoted key carrying an
-// escape, which is why v2.4.3 is a required bump, not an optional one).
+// unknown keys" (red-team; go-toml before v2.4.3 panics on a quoted key
+// carrying an escape, so v2.4.3 is a required minimum, not an optional one).
 func unknownKeys(raw []byte) (paths [][]string) {
 	defer func() {
 		if r := recover(); r != nil {

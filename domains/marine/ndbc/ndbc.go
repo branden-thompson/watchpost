@@ -191,6 +191,7 @@ func (p *Provider) loadStations(ctx context.Context) error {
 		Stations []station `xml:"station"`
 	}
 	if err := xml.Unmarshal(raw, &doc); err != nil {
+		p.client.Forget(p.base + "/activestations.xml") // a body that does not parse is not served again (C-5)
 		return fmt.Errorf("ndbc station list: %w", err)
 	}
 	kept := doc.Stations[:0]
@@ -234,12 +235,14 @@ func (p *Provider) fetchStation(ctx context.Context, st station, distKM float64)
 	id := strings.ToUpper(st.ID)
 	// 5day2 (UAT 72): the same columns as realtime2 at a ninth of the size
 	// (23 KB vs 207 KB — 45 days of rows we never read).
-	raw, err := p.client.GetText(ctx, fmt.Sprintf("%s/data/5day2/%s_5day.txt", p.base, id), httpx.TTL(obsTTL))
+	u := fmt.Sprintf("%s/data/5day2/%s_5day.txt", p.base, id)
+	raw, err := p.client.GetText(ctx, u, httpx.TTL(obsTTL))
 	if err != nil {
 		return nil, fmt.Errorf("ndbc %s: %w", id, err)
 	}
 	mar, err := ParseRealtime(raw)
 	if err != nil {
+		p.client.Forget(u) // a body that does not parse is not served again (C-5)
 		return nil, fmt.Errorf("ndbc %s: %w", id, err)
 	}
 	mar.Buoy = id

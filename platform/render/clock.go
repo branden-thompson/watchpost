@@ -2,11 +2,11 @@ package render
 
 // clock.go — how a time of day is written, for the whole app.
 //
-// Before this every site picked its own layout: the alert list wrote "3:04 PM",
-// the tide table "15:04", the forecast's sunrise "1504" and the Updated stamps
-// "15:04:05". Three conventions on one screen, none of them anything a listener
-// had chosen. This is the one owner, and the choice behind it lives in
-// Settings → WATCHPOST UI → Radio Convention.
+// ONE OWNER. Left to each site, the alert list writes "3:04 PM", the tide
+// table "15:04", the forecast's sunrise "1504" and the Updated stamps
+// "15:04:05" — three conventions on one screen, none of them anything a
+// listener chose. The choice behind this lives in Settings → WATCHPOST UI →
+// Radio Convention.
 //
 // The methods are named for what a SITE needs — a bare time, a time with
 // seconds, a date and time, a full stamp — rather than for a layout string, so

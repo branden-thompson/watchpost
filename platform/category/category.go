@@ -1,12 +1,12 @@
 // Package category is THE registry of alert categories.
 //
-// One concept was declared four times — the severe window's tab, the window
-// layer's mirror of it, the ticker's lane, and the national stack's capping
-// bucket — each with a list of its own kept beside it. Adding a category meant
-// editing six places, and forgetting any one of them failed silently: a lane
-// missing from the rotation never reached the band, a bucket missing from the
-// cap dropped its alerts from the stack, and two enums disagreeing filed every
-// row one tab over. All three happened in 0.14.0 (F-21).
+// One concept has four faces — the severe window's tab, the window layer's
+// mirror of it, the ticker's lane, and the national stack's capping bucket.
+// Declared four times, each with a list of its own beside it, a category would
+// mean editing six places, and forgetting any one of them fails silently: a
+// lane missing from the rotation never reaches the band, a bucket missing from
+// the cap drops its alerts from the stack, and two enums disagreeing file every
+// row one tab over (F-21).
 //
 // So the categories are declared once, here, and everything else is a view of
 // this. It lives under platform/ because scripts/lint-imports.sh forbids

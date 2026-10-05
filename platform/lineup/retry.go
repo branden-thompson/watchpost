@@ -2,10 +2,9 @@ package lineup
 
 // retry.go — how long a card that FAILED sits out before it is offered again.
 //
-// THE DEFECT THIS EXISTS FOR (HUM LEAD, UAT 2026-09-10): "the lineup is FLYING
-// through locations rapidly even on standby — so it seems like cards are
-// constantly getting discarded and proposed / accepted." It was, and the loop
-// had nothing in it to slow it down:
+// THE LOOP THIS BREAKS (HUM LEAD, UAT 2026-09-10: "the lineup is FLYING
+// through locations rapidly"). Without a cool-off, nothing in it slows it
+// down:
 //
 //	decline → Failed{Routed} → the card is discarded → the step PUBLISHES →
 //	the publish executor asks the producer to top the line-up off → the producer
@@ -15,8 +14,8 @@ package lineup
 // at pump speed, for as long as the fault lasts. Every executor refusal reaches
 // it: a muted listener, a report that would not compose, a script that rendered
 // nothing to say. The executor's comment says the work "will be offered again"
-// on the producer's "NEXT CYCLE", which was the right intent — what nobody
-// noticed is that a publish IS a cycle, so "next" meant "now".
+// on the producer's "NEXT CYCLE" — and a publish IS a cycle, so without this
+// "next" means "now".
 //
 // THE RATE LIMIT LIVES ON THE DIRECTOR, not on the producer, because it is a
 // decision about the SCHEDULE. The Director already refuses a duplicate identity
@@ -56,9 +55,8 @@ const (
 	//
 	// THIRTY-TWO IS THREE TIMES THE DEEPEST LINE-UP the console can show. If a
 	// station somehow fails more distinct locations than that inside one
-	// cool-off, the oldest is forgotten and retried early — which is the
-	// behaviour that existed before this file, for one card, rather than a new
-	// failure of its own.
+	// cool-off, the oldest is forgotten and retried early — one card back on
+	// the loop's pace, rather than a new failure of its own.
 	retryMemory = 32
 )
 

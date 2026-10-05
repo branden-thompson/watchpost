@@ -3,8 +3,7 @@ package tty
 // broadcaster_cardbox_test.go — the card as a BOX (D-52's rendering, D-57's marks).
 //
 // The reference draws every card as four rows: a top border, the title row, a
-// body row, and a bottom border. The console drew flat rows until now, which is
-// why D-57's TEST CORNERS had nowhere to sit — corners need borders.
+// body row, and a bottom border.
 
 import (
 	"strings"
@@ -17,13 +16,13 @@ import (
 
 // boxOf draws one card as a box, with nothing in it.
 //
-// `cardLane.box` RETIRED AT D-110 — it drew the flat, ordered slots of the
-// pre-table running order, and those became rows of `LineupTable` at D-94. What
-// this file is about is the BOX, which is still drawn, so the fixture reaches the
-// drawer that still exists rather than keeping a wrapper alive for one caller.
+// THE FIXTURE REACHES THE BOX'S OWN DRAWER. The running order's slots are rows
+// of `LineupTable` (D-94, D-110); what this file is about is the BOX, so the
+// fixture calls the drawer that draws it rather than keeping a wrapper alive for
+// one caller.
 func boxOf(t *testing.T, box int, c lineup.Card, handle, badge string) []string {
 	t.Helper()
-	_ = handle // the handle left the title row at D-110; the way in is the footer
+	_ = handle // the handle is not on the title row (D-110); the way in is the footer
 	g := render.Opts{ASCII: true}.Glyphs()
 	return newCardLane(box, g).boxOf(c, badge, nil)
 }
@@ -61,8 +60,8 @@ func TestACardHasBordersOnEveryEdge(t *testing.T) {
 	if !strings.HasPrefix(bottom, "+") || !strings.HasSuffix(bottom, "+") {
 		t.Errorf("the bottom row is a border; got %q", bottom[:12])
 	}
-	// EVERY INTERIOR ROW, however many the body gives it (D-87 made the height
-	// the body's). A card that lost a wall on one row would read as damage.
+	// EVERY INTERIOR ROW, however many the body gives it (the height is the
+	// body's, D-87). A card that lost a wall on one row would read as damage.
 	for i, r := range rows[1 : len(rows)-1] {
 		if !strings.HasPrefix(r, "|") || !strings.HasSuffix(r, "|") {
 			t.Errorf("interior row %d must be walled on both sides; got %q", i+1, r)
@@ -74,8 +73,8 @@ func TestACardHasBordersOnEveryEdge(t *testing.T) {
 //
 // THE HANDLE IS NOT ON THIS ROW. The reference puts the badge in the border —
 // `━━━ • STANDARD • ━━━` — and the handle in the footer beside the presenter, so
-// no row carries them both. What
-// survives is that the box says what GRADE the card is without spending a line.
+// no row carries them both. The box says what GRADE the card is without
+// spending a line.
 func TestTheBoxsRuleCarriesTheGrade(t *testing.T) {
 	rule := boxOf(t, 132, aCard(t, "OCEANSIDE, CA"), "6", "STANDARD")[0]
 	if !strings.Contains(rule, "STANDARD") {
@@ -90,20 +89,15 @@ func TestTheBoxsRuleCarriesTheGrade(t *testing.T) {
 	}
 }
 
-// THE CORNERS' MARK RETIRED AT D-87, ON ITS OWN REASONING.
+// ONE FABRICATED-EVENT MARK, NOT TWO (D-87).
 //
-// D-57 put the fabricated-event mark at BOTH ends of a card because "a card can
-// be occluded from either side by the priority overlay, and two corners cannot
-// both be covered by a box that starts at the left." The tracks are columns now
-// and nothing is occluded, so the title row's mark is always visible and the
-// second copy cost every card a row.
+// Two corners guard a card occluded from either side by a priority overlay
+// (D-57). The tracks are columns and nothing is occluded, so one mark is always
+// visible and a second copy would cost every card a row.
 //
-// WHAT SURVIVES IS THE FACT ITSELF: a fabricated event still says so, once,
-// where the operator reads the card's name.
-// AND IT SAYS SO IN THE RULE NOW (D-110), because that is where the card's name
-// went. Without this the mark would simply have stopped being drawn when the
-// title row retired — a fabricated event that looks exactly like a real one,
-// which is the screenshot hazard FR-4.4 exists to prevent.
+// A FABRICATED EVENT SAYS SO, ONCE, where the operator reads the card's name:
+// in the rule (D-110). Without it a fabricated event looks exactly like a real
+// one, which is the screenshot hazard FR-4.4 exists to prevent.
 func TestAFabricatedCardStillSaysSoInItsRule(t *testing.T) {
 	c := aCard(t, "OCEANSIDE, CA")
 	c.Test = true
@@ -133,20 +127,15 @@ func TestARealCardHasNoCorners(t *testing.T) {
 	}
 }
 
-// THE REFERENCE'S OWN GEOMETRY, at the reference's own card width.
+// THE REFERENCE'S OWN RULE, at the reference's own card width (D-110): the LINE
+// UP card of `mock-broadcaster-v1.txt` is 132 cells.
 //
-// `mock-broadcaster-v1.txt` draws the LINE UP card between columns 9 and 140 —
-// 132 cells — with the handle at 134..138 and the border at 140, so ONE cell
-// sits between them. The component right-aligns a badge FLUSH, which put the
-// handle hard against the border until the tail carried that cell itself.
+// What the v3 reference fixes is the RULE: the card's name three marks in from
+// the corner, the grade three marks in from the other, and the corners landing
+// whatever the title's length.
 //
 // MEASURED IN RUNES, because the badge's bullets are three bytes each and a
 // byte offset here reads as a plausible wrong number.
-// THE REFERENCE'S OWN RULE, at the reference's own card width (D-110).
-//
-// THE HANDLE'S GEOMETRY RETIRED WITH THE TITLE ROW. What the v3 reference fixes
-// is the RULE: the card's name three marks in from the corner, the grade three
-// marks in from the other, and the corners landing whatever the title's length.
 func TestTheBoxsRuleMatchesTheReferenceGeometry(t *testing.T) {
 	rule := []rune(boxOf(t, 132, aCard(t, "OCEANSIDE, CA 92057"), "6", "STANDARD")[0])
 	if got := len(rule); got != 132 {
@@ -164,8 +153,8 @@ func TestTheBoxsRuleMatchesTheReferenceGeometry(t *testing.T) {
 // rounded corners -> straight corners … All Main track cards should have BOLD
 // lines (like the masthead)."
 //
-// SHARED, NOT COPIED. `render.HeavyBox` is the set the masthead has drawn since
-// 0.13.0, and the test asks the SAME function rather than repeating the marks —
+// SHARED, NOT COPIED. `render.HeavyBox` is the set the masthead draws, and the
+// test asks the SAME function rather than repeating the marks —
 // a literal here would pass while the two drifted apart, which is the thing it
 // is meant to prevent.
 func TestACardIsDrawnInTheMastheadsBox(t *testing.T) {
@@ -187,7 +176,7 @@ func TestACardIsDrawnInTheMastheadsBox(t *testing.T) {
 		}
 	}
 	// AND NOT THE ROUNDED ONES, which is the half the HUM LEAD asked for by
-	// name. They have no user left and are gone from the glyph set.
+	// name. They are not in the glyph set.
 	for _, round := range []string{"╭", "╮", "╰", "╯"} {
 		if strings.Contains(strings.Join(rows, ""), round) {
 			t.Errorf("the card still draws the rounded corner %q", round)

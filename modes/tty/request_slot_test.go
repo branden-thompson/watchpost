@@ -13,12 +13,12 @@ import (
 
 // THE SLOT THE OPERATOR TYPES IS NOT THE INDEX THE SCHEDULE TAKES (D-119/D-156).
 //
-// THE DEFECT, SAID PLAINLY: `position()` returned the typed number verbatim, and
-// `Requested.To` is documented as "the same number `Moved.To` carries" — the one
-// the card window's move path has subtracted `liveOffset` from since D-119. Two
-// operator paths into one field, disagreeing by one on STANDBY, which is the
-// console's normal state. The card landed a row below the slot that was asked
-// for, and the window's own confirmation named the slot.
+// THE RISK, SAID PLAINLY: `Requested.To` is documented as "the same number
+// `Moved.To` carries" — the one the card window's move path subtracts
+// `liveOffset` from (D-119). A `position()` that returned the typed number
+// verbatim would make two operator paths into one field disagree by one on
+// STANDBY, which is the console's normal state: the card would land a row below
+// the slot that was asked for, while the window's own confirmation named the slot.
 //
 // IT IS DRIVEN THROUGH THE ROUTER WITH REAL KEYS (P-1). Calling
 // `requestSchedule` directly would pass with the wiring absent: `Dashboard`'s
@@ -89,15 +89,15 @@ func TestARequestedCardLandsInTheSlotTheOperatorTyped(t *testing.T) {
 
 // THE REQUEST WINDOW RETRIES A LOOKUP THAT COULD NOT BE ASKED (D-157).
 //
-// THE FOURTH STATE, TAUGHT TO ONE OF TWO TWINS. `[l]` and the Line-Up Request
-// window share `locateState`, and `[l]` handled all four answers while this one
-// handled two. On "could not ask" — a timeout, which is a verdict about the
-// LOOKUP and not about the place — enter did nothing at all.
+// THE FOURTH STATE, IN BOTH TWINS. `[l]` and the Line-Up Request window share
+// `locateState`, and both handle all four answers. On "could not ask" — a
+// timeout, which is a verdict about the LOOKUP and not about the place — enter
+// asks again.
 //
-// THREE SENTENCES IN ONE WINDOW, AND THEY DISAGREED. The helper line, shared and
-// therefore right, read "The lookup did not answer; press enter to try again".
-// The chip read "Choose a location", about a place that was never checked. And
-// the key itself did neither. D-151's dead control, reached from a third side.
+// THREE SENTENCES IN ONE WINDOW, AND THEY AGREE. The helper line, shared and
+// therefore right, reads "The lookup did not answer; press enter to try again".
+// The chip must not read "Choose a location" about a place that was never
+// checked, and the key must do what both say — else it is D-151's dead control.
 func TestTheRequestWindowRetriesALookupThatCouldNotBeAsked(t *testing.T) {
 	var asks int
 	vista := snapshot.LocationRef{Label: "Vista, CA"}
@@ -153,17 +153,17 @@ func TestTheRequestWindowRetriesALookupThatCouldNotBeAsked(t *testing.T) {
 
 // AND THE SLOT IS STILL RIGHT WHEN THE WINDOW IS SUBMITTED FROM OBSERVER (D-160).
 //
-// THE PATH D-156 DID NOT WIRE, and it is reachable by a route the console
-// deliberately supports. `ctrl+o` swaps out of an open window on purpose — the
-// escape hatch an operator needs — so the Line-Up Request window opened with `r`
-// on the console outlives the surface that opened it. With Observer active,
-// `update` calls `r.observer.Update` DIRECTLY; `throughToObserver`, the only
-// place that carried the offset, is never reached.
+// A PATH THAT BYPASSES `throughToObserver`, and it is reachable by a route the
+// console deliberately supports. `ctrl+o` swaps out of an open window on purpose
+// — the escape hatch an operator needs — so the Line-Up Request window opened
+// with `r` on the console outlives the surface that opened it. With Observer
+// active, `update` calls `r.observer.Update` DIRECTLY, and `throughToObserver`
+// is never reached.
 //
-// SO THE OFFSET READ ZERO, which is the RUNNING station's answer, and on STANDBY
-// it is wrong by one: the card lands a row below the slot the operator typed,
-// with the window's own confirmation naming the slot they asked for. That is
-// D-119 verbatim, surviving inside its own fix.
+// AN OFFSET THAT READS ZERO there is the RUNNING station's answer, and on
+// STANDBY it is wrong by one: the card lands a row below the slot the operator
+// typed, with the window's own confirmation naming the slot they asked for —
+// D-119 again.
 //
 // IT DRIVES THE ROUTER, like its sibling above, because a direct call to
 // `requestSchedule` passes with the wiring absent: the offset field reads zero

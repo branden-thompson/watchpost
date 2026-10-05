@@ -10,8 +10,8 @@ package tty
 //
 // "(nothing scheduled)" IS A DEAD END. It says the station has nothing and gives
 // the operator nowhere to look; ten shimmering slots say the machine is working
-// and the data is coming. Observer has said that since UAT 18.2 — this is the
-// console adopting it rather than inventing a second answer.
+// and the data is coming. Observer says the same (UAT 18.2); the console
+// adopts it rather than inventing a second answer.
 
 import (
 	"strings"
@@ -27,8 +27,8 @@ import (
 // the reference is drawn at has seventy-four. The queue scrolls, which is what
 // its rail is for.
 //
-// WHAT DID NOT CHANGE is the rule D-64 exists for: a station with nothing
-// scheduled shows SLOTS rather than a sentence saying it has nothing.
+// THE RULE D-64 EXISTS FOR HOLDS: a station with nothing scheduled shows
+// SLOTS rather than a sentence saying it has nothing.
 func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
@@ -40,7 +40,7 @@ func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
 			boxes++
 		}
 	}
-	// FIVE RULED ROWS NOW (D-94, D-95): the AIR box draws three — a top, a
+	// FIVE RULED ROWS (D-94, D-95): the AIR box draws three — a top, a
 	// divider between LIVE NOW and RELAY BED, and a bottom — and the one
 	// remaining CARD, UP NEXT, draws two. Everything below is a TABLE.
 	//
@@ -50,8 +50,8 @@ func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
 		t.Errorf("an empty line-up drew %d ruled rows; want 6 — the masthead's one, the air box's "+
 			"three (top, the LIVE/BED divider, bottom) and UP NEXT's two", boxes)
 	}
-	// AND THE TABLE STILL DRAWS ITS SLOTS, which is where the rest of the running
-	// order went.
+	// AND THE TABLE DRAWS ITS SLOTS, which is where the rest of the running
+	// order is.
 	for _, want := range []string{"02.", "03."} {
 		if !strings.Contains(stripANSITest(b.View().Content), want) {
 			t.Errorf("an empty line-up drew no %q row; a slot is an ADDRESS whether or not it is filled", want)
@@ -93,11 +93,10 @@ func TestAFilledSlotIsStill(t *testing.T) {
 
 	rows := strings.Split(stripANSITest(b.View().Content), "\n")
 	for _, r := range rows {
-		// THE SHIMMER IS THE WAITING PLACEHOLDER, not any three dots. This asked
-		// for "..." and matched the TRUNCATION ELLIPSIS the moment the card lost
-		// three columns to the right margin (D-100) — a card whose title is
-		// abbreviated is not a card that is loading, and only one of those is a
-		// defect.
+		// THE SHIMMER IS THE WAITING PLACEHOLDER, not any three dots. Asking for
+		// "..." would match the TRUNCATION ELLIPSIS whenever the card loses three
+		// columns to the right margin (D-100) — a card whose title is abbreviated is
+		// not a card that is loading, and only one of those is a defect.
 		if strings.Contains(r, "OCEANSIDE") && strings.Contains(r, "waiting for the line-up") {
 			t.Errorf("a decided card must not shimmer:\n%q", r)
 		}
@@ -111,7 +110,7 @@ func TestAFilledSlotIsStill(t *testing.T) {
 // CANNOT put anything in: the line-up is drawn from UP NEXT down while nothing is
 // on the air (liveOffset), and `SHIFT+ENTER` is what fills slot 0 rather than any
 // per-slot control. It draws the standby box, and that box carries no handle
-// because `[0]` would open nothing — which is the defect F-97 was filed for.
+// because `[0]` would open nothing (F-97).
 func TestAnEmptySlotStillCarriesItsHandle(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
@@ -137,7 +136,7 @@ func TestAnEmptySlotStillCarriesItsHandle(t *testing.T) {
 //
 // The shimmer test above advances the phase by hand, so it proves the DRAWING
 // animates and says nothing about whether anything ever advances it. Three
-// plants survived on exactly that gap — the frame never incrementing, the tick
+// plants live in exactly that gap — the frame never incrementing, the tick
 // never arming, and the tick never stopping.
 func TestTheTickAdvancesTheShimmerAndReArms(t *testing.T) {
 	b := NewBroadcaster()

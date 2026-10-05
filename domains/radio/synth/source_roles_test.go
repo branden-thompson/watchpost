@@ -111,15 +111,15 @@ func TestEachSegmentRendersInItsRolesVoice(t *testing.T) {
 }
 
 // The cache key carries the VOICE, so two correspondents reading the same words
-// keep their own audio. Before 0.14.0 the key was the segment key alone, which
-// with a cast would have handed one voice's audio to another.
+// keep their own audio. A key of the segment alone would, with a cast, hand one
+// voice's audio to another.
 func TestTheCacheKeySeparatesTwoVoicesOnTheSameSegment(t *testing.T) {
 	a, b := newCastVoice("Alpha"), newCastVoice("Bravo")
 	// ATOMIC because the resolver runs on the RENDER goroutine while the test
-	// writes this one. As a plain bool it was a real data race that only the
-	// full `-race ./...` run had enough scheduling pressure to catch — green
-	// five times out of five in isolation. An intermittent race in a test
-	// reddens CI on someone else's commit.
+	// writes this one. As a plain bool it is a real data race that only the
+	// full `-race ./...` run has enough scheduling pressure to catch — it
+	// passes in isolation. An intermittent race in a test reddens CI on
+	// someone else's commit.
 	var flip atomic.Bool
 	src, _ := NewSource(a, func(context.Context) ([]Segment, error) {
 		return []Segment{{Key: "same", Text: "identical words", Role: cast.Weather}}, nil
@@ -317,7 +317,7 @@ func TestWriterNeverStarvesAcrossHandOvers(t *testing.T) {
 // A paced reader at real time sees no gap beyond the output path's slack, even
 // when every render is slow. This is the symptom half of R6; the test above is
 // the cause half, and both are kept because a fast machine can pass this one
-// while the bug is present.
+// while the cause is present.
 func TestAPacedReaderSeesNoGapAcrossAHandOver(t *testing.T) {
 	slow := func(name string) *slowVoice {
 		return &slowVoice{castVoice: castVoice{name: name, rate: 22050}, delay: 300 * time.Millisecond}
@@ -486,14 +486,13 @@ func countLine(lines []string, want string) int {
 	return n
 }
 
-// UAT 2026-08-30 (bug #5): "Eddie took over for Karen" and then, three seconds
-// later, "This is Eddie signing off" — he introduced himself twice.
-//
-// It happened where a location had no seismic report, so the fire report ran
-// straight into the sign-off across a voice change. The sign-off NAMES ITS OWN
-// SPEAKER, so preceding it with an introduction is redundant by construction,
-// not merely repetitive: the listener still hears the change of voice and is
-// still told whose it is.
+// NO INTRODUCTION BEFORE A SPEAKER WHO NAMES ITSELF (UAT 2026-08-30, bug #5).
+// Where a location has no seismic report, the fire report runs straight into
+// the sign-off across a voice change, and an introduction there reads "Eddie
+// took over for Karen" and then, three seconds later, "This is Eddie signing
+// off". The sign-off NAMES ITS OWN SPEAKER, so preceding it with an
+// introduction is redundant by construction, not merely repetitive: the
+// listener still hears the change of voice and is still told whose it is.
 func TestNoHandOverIntoASegmentThatNamesItsOwnSpeaker(t *testing.T) {
 	karen, eddie := newCastVoice("Karen"), newCastVoice("Eddie")
 	src, _ := NewSource(karen, func(context.Context) ([]Segment, error) {

@@ -5,7 +5,11 @@ package globalfeed
 // from a feed is bounded here (P4 F5 / NFR-5): short fields and lists through
 // platform/plaintext, prose to maxProseRunes, numbers to their physical ranges.
 
-import "time"
+import (
+	"time"
+
+	"github.com/branden-thompson/watchpost/platform/geo"
+)
 
 // maxProseRunes bounds an NWS description/instruction: real products run 1–3 KB;
 // the cap only stops a hostile feed from growing the window without bound.
@@ -63,6 +67,7 @@ type SevereDetail struct {
 	Sent          time.Time
 	Expires       time.Time
 	Ends          time.Time // zero when absent
+	Area          geo.Shape // the alert's own polygon; empty for a zone-only alert (0.18.0 W5.3)
 	Onset         time.Time // zero when absent
 	AffectedZones []string
 	References    []string

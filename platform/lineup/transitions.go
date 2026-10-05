@@ -38,7 +38,9 @@ package lineup
 // through Settings, composed by the app from `transition/resume.txt` — so there
 // is ONE owner of the sentence and the Director never invents one. With no words
 // it arranges nothing, which is the same degradation shape as D-48's cadence
-// term: better to move on than to speak a line nobody wrote.
+// term: better to move on than to speak a line nobody wrote. NO WORDS ARE
+// HANDED IN TODAY (D-163): the production line-up sets neither, so nothing is
+// arranged; app/schedule.go is where they would be.
 //
 // RE-DERIVING IS FREE. `slots()` gives Transition `textAtStandby: false`, so a
 // transition's words are fixed at proposal — no composer, no network, nothing to
@@ -116,9 +118,9 @@ func (d Director) around(c Card) (lead Card, hasLead bool, tail Card, hasTail bo
 	// AND IT IS WHAT TELLS "READ" FROM "NEVER PLAYED" WITH NO STORED
 	// ASSOCIATION. A takeover dropped or declined before it aired never had a
 	// hand-back to strand; one that aired leaves its hand-back at the head of
-	// the track, where `stillHolds` keeps it. A first attempt derived the tail
-	// from admission instead, and a dropped takeover left a stray "we now
-	// return to our regularly scheduled programming" with nothing before it.
+	// the track, where `stillHolds` keeps it. Derived from admission instead,
+	// the tail of a dropped takeover would leave a stray "we now return to our
+	// regularly scheduled programming" with nothing before it.
 	if c.Slot.handsBack() && c.State == OnAir {
 		tail, hasTail = d.mint(tailID(c.ID), c, d.settings.ProgrammeReturn)
 	}
@@ -193,8 +195,8 @@ func (d Director) reconcileJoins() Director {
 // stillHolds reports whether the transition at index i still sits where it was
 // minted to sit.
 //
-// ASKED OF THE SCHEDULE, NOT OF THE RUNNING ORDER, and that distinction is a
-// DEFECT THIS FILE ALREADY HAD. Deriving the wanted set from the running order
+// ASKED OF THE SCHEDULE, NOT OF THE RUNNING ORDER. Deriving the wanted set from
+// the running order
 // alone prunes a hand-back the moment the card it hands back FROM is read: the
 // takeover finishes, leaves the schedule, and the transition is deleted in the
 // same settle — one step before it would have been spoken. The listener hears

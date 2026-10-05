@@ -93,9 +93,9 @@ func TestTheUpNextBoxWearsTheSameBlueAsTheDirectionBand(t *testing.T) {
 		t.Skip("this fixture draws no DIRECTION band; the comparison needs one")
 	}
 	// THE GROUND IMMEDIATELY BEFORE THE WORD, not the first one on the row.
-	// That row carries several bands side by side, so `FindString` returned the
-	// LEFTMOST — a grey cell three bands away — and the test reported a
-	// mismatch that was entirely its own. The escape that paints a run of text
+	// That row carries several bands side by side, so `FindString` would return
+	// the LEFTMOST — a grey cell three bands away — and the test would report a
+	// mismatch that is entirely its own. The escape that paints a run of text
 	// is the last one opened before it.
 	head := direction[:strings.Index(direction, "D I R E C T I O N")]
 	all := bgRe.FindAllString(head, -1)
@@ -104,7 +104,7 @@ func TestTheUpNextBoxWearsTheSameBlueAsTheDirectionBand(t *testing.T) {
 	}
 	want := all[len(all)-1]
 	// THE LABEL CELL, NOT THE BOX (D-136). The report beside it keeps the modal
-	// tone; it was painting BOTH that the HUM LEAD corrected with a diagram.
+	// tone; painting BOTH is what the ruling rules out.
 	// The cell is the row carrying the caption, which is the only row whose
 	// label segment has text in it.
 	var cell string

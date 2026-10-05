@@ -6,14 +6,12 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// The words the sea is described in — lifted here from modes/tty so the SCREEN
-// and the VOICE cannot describe the same sea differently (RS-11).
+// The words the sea is described in — kept here, outside modes/tty, so the
+// SCREEN and the VOICE cannot describe the same sea differently (RS-11).
 //
-// Before 0.14.0 these lived in the Details view alone, because only the Details
-// view spoke about the sea. The maritime report reads the same records aloud,
-// and two implementations of "is this rough?" is precisely the kind of drift a
-// listener would catch and never trust again. The lift is a MOVE, not a
-// rewrite: the Details view's output is byte-for-byte what it was.
+// The Details view and the maritime report read the same records, and two
+// implementations of "is this rough?" is precisely the kind of drift a listener
+// would catch and never trust again.
 
 // SeaState words a significant wave height using the Douglas sea-state bands.
 func SeaState(m float64) string {

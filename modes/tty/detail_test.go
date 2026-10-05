@@ -141,6 +141,10 @@ func TestDetailGridAlignsCurrentlyWithForecast(t *testing.T) {
 	}
 	if col(content(feels), "Humidity") != forecastHiLoCol || col(content(fc), "HIGH") != forecastHiLoCol {
 		t.Fatalf("humidity must share the HIGH/LOW column:\n%q\n%q", feels, fc)
+	} // FEELS LIKE SAYS HOW FAR FROM THE AIR, AS A DIFFERENCE (W14 S-6): 24.4 °C
+	// against 22.8 is 1.6 °C, scaled to +3 °F - never offset by 32.
+	if !strings.Contains(feels, "(+3°F)") {
+		t.Errorf("the feels-like row does not say +3°F from the air: %q", feels)
 	}
 }
 
@@ -233,8 +237,9 @@ func TestDetailsOnRecentRowHydratesHourly(t *testing.T) {
 
 // THE CARD SAYS WHEN THE STATION IS NOT YOURS.
 //
-// UAT 2026-09-05: Lone Pine read 86 °F at half past six from a station in Death
-// Valley. Beyond twenty miles the provider refuses the observation outright;
+// UAT 2026-09-05: a station far enough away reads another place's weather — Lone
+// Pine, observed from Death Valley. Beyond twenty miles the provider refuses the
+// observation outright;
 // between ten and twenty it is used and the listener is told, because a reading
 // from the far side of a ridge is a different microclimate.
 //
@@ -356,7 +361,7 @@ func TestTheHourlyWindowRollsTwelveHoursFromNow(t *testing.T) {
 	}
 	// AND THE DAY IS NAMED WHEN IT TURNS OVER. Without it the column reads
 	// 22:00, 23:00, 00:00, 01:00 and the times look like they run backwards.
-	// The day is its own column now, so it sits two cells from the hour — the
+	// The day is its own column, so it sits two cells from the hour — the
 	// gap the mock draws, and the reason the hour does not move on that row.
 	if !strings.Contains(body, "Tue  00:00") {
 		t.Errorf("the window crosses midnight and does not say so:\n%s", body)
@@ -365,7 +370,7 @@ func TestTheHourlyWindowRollsTwelveHoursFromNow(t *testing.T) {
 
 // AND THE HOURS LINE UP WITH THE DAYS BELOW THEM. Both are drawn from one
 // column spec (whenCols), so this holds by construction rather than by two
-// functions agreeing about a number — which is what it was.
+// functions agreeing about a number.
 func TestTheHourlyRowsShareTheForecastColumns(t *testing.T) {
 	tz := time.Local
 	now := time.Date(2026, 9, 7, 8, 0, 0, 0, tz)

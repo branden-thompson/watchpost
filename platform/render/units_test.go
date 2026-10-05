@@ -81,3 +81,19 @@ func TestLoadingShimmerNotNA(t *testing.T) {
 		t.Fatalf("post-load missing values must read n/a:\n%s", loaded)
 	}
 }
+
+// A TEMPERATURE DIFFERENCE IS SAID IN THE LISTENER'S UNITS (W14 S-6): the
+// detail view's feels-like is so many degrees above or below the air, in °C
+// for metric as its value is, and in °F scaled with no offset - 5 °C above
+// is 9 °F above, never 41.
+func TestATemperatureDifferenceFollowsTheUnits(t *testing.T) {
+	for _, c := range []struct {
+		units Units
+		dc    float64
+		want  string
+	}{{UnitF, 5, "+9°F"}, {UnitF, -2.5, "-4°F"}, {UnitC, 5, "+5°C"}, {UnitC, -2.5, "-2°C"}} {
+		if got := (Opts{Units: c.units}).TempDelta(c.dc); got != c.want {
+			t.Errorf("%v of %v: %q, want %q", c.units, c.dc, got, c.want)
+		}
+	}
+}

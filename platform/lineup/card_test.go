@@ -9,10 +9,9 @@ import (
 // locationCard is a proposal for a location report — the main track's ordinary
 // card, and the shape most of the broadcast has.
 //
-// RENAMED FROM `report` AT R4: `platform/report` is a package this package now
-// imports, and a helper sharing its name shadows it. The collision is invisible
-// until something in the package needs the import, which is why it surfaced two
-// batches after the package was written.
+// NOT NAMED `report`: `platform/report` is a package this package imports, and a
+// helper sharing its name shadows it — a collision that stays invisible until
+// something in the package needs the import.
 func locationCard(id string) Card {
 	return Card{ID: id, Slot: LocationReport, Origin: FromObserver,
 		Subject: id, Headline: "Conditions for " + id}
@@ -54,8 +53,8 @@ func at(t *testing.T, c Card, path ...State) Card {
 // TestTheCardStatesAdvanceOnlyAlongTheDeclaredPath restates the transition
 // table in the test, deliberately. It is not proving the table is right — it is
 // making the table a CONTRACT: changing what a card may do next has to be done
-// in two places, on purpose, and a change made in only one fails here. The
-// mutants for this task are what prove the assertion can fail at all.
+// in two places, on purpose, and a change made in only one fails here. Its
+// mutants are what prove the assertion can fail at all.
 func TestTheCardStatesAdvanceOnlyAlongTheDeclaredPath(t *testing.T) {
 	legal := map[State][]State{
 		Proposed:  {Admitted, Refused},
@@ -91,9 +90,9 @@ func TestNoCardReachesTheAirWithoutPassingThroughStandby(t *testing.T) {
 	}
 }
 
-// TestEveryExitFromOnAirIsReachable is DR-24. The architecture's state diagram
-// drew only ON AIR -> DONE, but the requirement enumerates five exits — read in
-// full, discarded, superseded, cancelled, context ended — and the last four are
+// TestEveryExitFromOnAirIsReachable is DR-24. The requirement enumerates five
+// exits from ON AIR — read in full, discarded, superseded, cancelled, context
+// ended — and the last four are
 // all the same transition. A card that could only leave the air by finishing
 // would make a superseded takeover unexpressible, and the release effect DR-24
 // pairs with the cue would have nowhere to hang.
@@ -165,9 +164,9 @@ func TestOnlyAReportComposesItsTextAtStandby(t *testing.T) {
 	// BOTH DIRECTIONS, FROM THE REGISTRY. Propose names the structural slots
 	// literally, twice, because P10-05 counts only call-free conditions — so
 	// this walk is what stops those lists drifting from the registry they
-	// stand in for. Pinning only the with-words direction left the second list
+	// stand in for. Pinning only the with-words direction leaves the second list
 	// unpinned: a slot added to the registry and to one list but not the other
-	// passed the whole suite, and a wordless structural card then wedged the
+	// would pass the whole suite, and a wordless structural card would wedge the
 	// rail behind it.
 	for slot := Slot(0); slot < numSlots; slot++ {
 		card := Card{ID: "x", Slot: slot, Headline: "a headline", Subject: "a subject"}
@@ -283,8 +282,8 @@ func (c Card) mustText(t *testing.T) Card {
 }
 
 // TestOnlyACardOnTheAirIsLocked. The lock is derived from the state, never
-// stored beside it — two carriers of one rule is how the duck regression was
-// possible (PD-1's lesson applied to the card).
+// stored beside it — two carriers of one rule can disagree (PD-1, applied to
+// the card).
 func TestOnlyACardOnTheAirIsLocked(t *testing.T) {
 	for s := State(0); s < numStates; s++ {
 		c := locationCard("Bonsall")

@@ -8,18 +8,15 @@ import (
 // testmark_test.go — a fabricated alert stays fabricated all the way to the card
 // (D-55, FR-4.4).
 //
-// THE GAP THIS CLOSES WAS FOUND WHILE RE-EXAMINING THE INJECTOR'S SAFEGUARDS.
-// Every surface that existed when they were written marks a fabricated event:
-// the ticker band puts `**TEST EVENT**` at BOTH ends, the severe window leads
-// its EVENT column with it, and the audio says "this is only a test" four
-// separate times. But `Arrival.Test` reached `selectBurst`'s ordering AND
-// NOWHERE ELSE — `takeoverOf` built the card from the headline and dropped it.
+// EVERY SURFACE MARKS A FABRICATED EVENT: the ticker band puts `**TEST EVENT**`
+// at BOTH ends, the severe window leads its EVENT column with it, and the audio
+// says "this is only a test" four separate times. The card is a surface too, so
+// `Arrival.Test` must reach it through `takeoverOf`, not stop at
+// `selectBurst`'s ordering.
 //
-// So the console would draw a fabricated takeover as an ordinary one. That is
-// the exact hazard the injector's original "never ship" rule was written
-// against — "a screenshot of a fabricated tornado warning is indistinguishable
-// from a real one" — arriving on the newest surface, which did not exist when
-// that rule was written.
+// A console drawing a fabricated takeover as an ordinary one is the exact
+// hazard the injector's "never ship" rule was written against — "a screenshot
+// of a fabricated tornado warning is indistinguishable from a real one".
 
 func TestAFabricatedAlertsCardSaysSo(t *testing.T) {
 	now := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)

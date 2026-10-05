@@ -11,12 +11,11 @@ import (
 
 // AN OVERRIDE IN THE USER'S KEY TABLE CHANGES THE CONSOLE'S CHORD (FR-1.5).
 //
-// THE REQUIREMENT'S OWN EXIT SENTENCE, DRIVEN. The gate carried
-// `TestTheSwapActionsAreInTheKeyMapAndSoAreRebindable`, which asserts the swap
-// actions ARE IN the map — and a map an override can never reach satisfies that
-// test perfectly. `broadcasterKeyMap()` went to the Router raw: no `[keys]`
-// entry could change a single console binding, so the requirement was unmet for
-// the whole of 0.16.0 with a green gate beside it.
+// THE REQUIREMENT'S OWN EXIT SENTENCE, DRIVEN.
+// `TestTheSwapActionsAreInTheKeyMapAndSoAreRebindable` asserts the swap actions
+// ARE IN the map — and a map an override can never reach satisfies that test
+// perfectly. Were `broadcasterKeyMap()` handed to the Router raw, no `[keys]`
+// entry could change a single console binding, with that gate green beside it.
 //
 // `ctrl+b` IS WHY IT MATTERS. It is tmux's default prefix — the survey FR-1.5
 // names — so the operator most likely to need the rebind is the one the default
@@ -55,10 +54,9 @@ func TestAnOverrideInTheKeyTableChangesTheConsolesChord(t *testing.T) {
 
 // AND AN OVERRIDE THAT COLLIDES INSIDE THE CONSOLE'S OWN SCOPE IS A BUILD ERROR.
 //
-// NEVER A SILENT WIN (D-15). The Dashboard's map has been validated since
-// 0.13.0; the console's was not validated at all, because it was never merged —
-// so a table that bound the bed and the Broadcaster swap to one key would have
-// been accepted and one of them would simply have stopped working.
+// NEVER A SILENT WIN (D-15). The console's map is merged and validated as the
+// Dashboard's is — unvalidated, a table that binds the bed and the Broadcaster
+// swap to one key would be accepted and one of them would simply stop working.
 func TestAConsoleOverrideThatCollidesIsRefusedAtBuild(t *testing.T) {
 	_, err := NewDashboard(Config{KeyOverrides: term.KeyMap{
 		// `b` is already the bed's (D-56, D-78).
@@ -99,12 +97,11 @@ func TestAnOverrideForTheOtherSurfaceDoesNotBreakTheConsole(t *testing.T) {
 // HUM LEAD, 2026-09-16: collisions are reconciled, and a key binding functions as
 // expected.
 //
-// THE UPGRADE THIS PROTECTS. `lookup = "b"` is valid in 0.15.0: `b` is unused on
-// Observer. 0.16.0 adds a console that binds `b` to the relay bed, and D-158
-// applies `[keys]` to the console for the first time — so a refusal on collision
-// stops the app starting over a binding the listener has never seen and did not
-// change. `term.Merge`'s own doc names that outcome: "refusing to launch over one
-// is a broken upgrade".
+// THE UPGRADE THIS PROTECTS. `lookup = "b"` is valid on Observer, where `b` is
+// unused; the console binds `b` to the relay bed, and `[keys]` applies to the
+// console too (D-158) — so a refusal on collision would stop the app starting
+// over a binding the listener has never seen and did not change. `term.Merge`'s
+// own doc names that outcome: "refusing to launch over one is a broken upgrade".
 //
 // SO THE REBIND APPLIES WHERE IT FITS AND IS WITHHELD WHERE IT WOULD COLLIDE.
 // Both surfaces do what the operator expects, and the withholding is REPORTED in

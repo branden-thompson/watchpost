@@ -3,9 +3,8 @@ package tty
 // setup.go — the Settings window's STATE and its KEYS: what is being edited,
 // what each keypress does to it, and what is written when it closes.
 //
-// WHERE THE REST OF THE WINDOW LIVES. It was one 1,210-line file; it is now
-// four, along the grain it already read in and following the naming the package
-// already used (2026-09-06, a pure move):
+// WHERE THE REST OF THE WINDOW LIVES. It is four files, along the grain the
+// window reads in and following the package's naming:
 //
 //	setup.go         this — the window's state, its key handling, its saves
 //	setup_layout.go  geometry: groups become blocks, blocks become columns,
@@ -13,11 +12,10 @@ package tty
 //	setup_form.go    the three questions with no group file of their own —
 //	                 default location, the FIRMS key, the alert radius
 //
-// and one file per question GROUP, as before: setup_rows.go (the row table),
+// and one file per question GROUP: setup_rows.go (the row table),
 // setup_cast.go, setup_ui.go, setup_relay.go, setup_tones.go.
 //
-// Originally split from dashboard.go by the quality pass (Q2); the map of where
-// things happen is docs/where-things-happen.md.
+// The map of where things happen is docs/where-things-happen.md.
 
 import (
 	"fmt"
@@ -44,11 +42,18 @@ import (
 // a location is chosen, and [s] reopens the window.
 // setupFocus names the question the keys go to (UAT 111.3: every question
 // is on screen at once; tab / shift+tab move between them).
-// The focus is now an INDEX INTO setupTable (setup_rows.go), not a state
-// machine over three questions. Twenty rows across four groups cannot be
+// The focus is an INDEX INTO setupTable (setup_rows.go), not a state
+// machine over the questions. Twenty rows across four groups cannot be
 // enumerated by hand in four places without drifting.
 type setupState struct {
 	focus setupRowID
+
+	// HISTORY (D-175, D-177): the retention chosen, and the ARE YOU SURE open.
+	history      HistoryRetention
+	confirmClear bool
+	// raise is a longer retention waiting on its question (D-231): what it
+	// costs, and that what was not recorded cannot be fetched back.
+	raise *historyRaise
 
 	// DATA
 	query  string
@@ -72,7 +77,7 @@ type setupState struct {
 
 	// serviceMi is the miles buffer for the service radius, and serviceSeeded
 	// says it still holds the STORED value — the same first-digit-replaces rule
-	// the alert radius learned at UAT 2026-09-08, for the same reason.
+	// the alert radius follows (UAT 2026-09-08), for the same reason.
 	serviceMi     string
 	serviceSeeded bool
 
@@ -95,9 +100,9 @@ type setupState struct {
 	// appending (HUM LEAD, UAT 2026-09-08).
 	//
 	// Without this, opening a window that reads "[50] mi" and typing 20 — the
-	// obvious way to change it — produced 5020, a five-thousand-mile radius,
-	// and the listener reasonably read the result as "my choice was not saved".
-	// It was saved; it was just not the number they entered.
+	// obvious way to change it — produces 5020, a five-thousand-mile radius,
+	// and the listener reasonably reads the result as "my choice was not saved".
+	// It is saved; it is just not the number they entered.
 	radiusSeeded bool
 
 	// ALERTS - TONE
@@ -107,11 +112,12 @@ type setupState struct {
 	// WATCHPOST RADIO - CORRESPONDENTS
 	cast CastView
 
-	// note is the line under the focused row, and noteRow whose row it belongs
-	// to — a note follows its row rather than floating at the bottom, so a
-	// listener reads the reason beside the thing it is about.
-	note    string
-	noteRow setupRowID
+	// note is an action's latest word - progress, an outcome, or why it
+	// failed - noteRow the row it is about and noteTone its kind: the tab's
+	// notice area shows it while that row's tab is open (D-237).
+	note     string
+	noteRow  setupRowID
+	noteTone noticeTone
 	// offered is the voice a preview has already asked about, for FR-4's
 	// ask-once flow.
 	offered string
@@ -121,6 +127,9 @@ type setupState struct {
 	// against and the blink is the only acknowledgement a key did anything.
 	flash    pickerFlash
 	flashEnd time.Time
+
+	// layerAt is the layers row's cursor: which layer space switches (0.18.0).
+	layerAt int
 
 	// castDirty marks the cast or tone state changed and not yet written.
 	//
@@ -149,9 +158,8 @@ type setupState struct {
 // writer goes through it.
 func (st setupState) touch() setupState { st.gen++; return st }
 
-// openSetupAt opens Setup with a row already focused — what V does now that
-// the voice chooser is retired (MVS-D-3): the listener presses the key they
-// always pressed and lands on the correspondents.
+// openSetupAt opens Setup with a row already focused — what V does
+// (MVS-D-3): the listener presses V and lands on the correspondents.
 func (d Dashboard) openSetupAt(at setupRowID) Dashboard {
 	d = d.openSetup()
 	if d.modal == modalSetup {
@@ -164,7 +172,7 @@ func (d Dashboard) openSetupAt(at setupRowID) Dashboard {
 // openSetup toggles the Setup window with fresh state (the alert preference
 // seeded from config), alone on top.
 func (d Dashboard) openSetup() Dashboard {
-	d = d.toggle(modalSetup)
+	d = d.toggle(modalSetup).refreshMapCost() // the Maps tab's warning reads the estimate
 	// Seeded from config, so the window opens showing what is in force — the
 	// cast and the tone state are copied so editing them cannot reach the
 	// stored config before a save.
@@ -198,6 +206,7 @@ func (d Dashboard) openSetup() Dashboard {
 	// so it is resolved once on open rather than left to the renderer's
 	// fallback.
 	d.setup.relayDwell = d.cfg.RelayDwell
+	d.setup.history = d.cfg.History
 	d.setup.relayLang = d.cfg.RelayLang
 	if d.setup.relayLang == "" {
 		d.setup.relayLang = defaultRelayLang()
@@ -224,6 +233,12 @@ func (d Dashboard) openSetup() Dashboard {
 // tab / shift+tab move between the questions; enter accepts the focused
 // one (and saves on the last); esc closes without saving.
 func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if d.setup.raise != nil {
+		return d.confirmRaise(key) // the question owns the keys (D-61)
+	}
+	if d.setup.confirmClear {
+		return d.confirmClearHistory(key) // the ARE YOU SURE owns the keys (D-61)
+	}
 	switch key.String() {
 	case "esc":
 		// Closing APPLIES what was recorded. esc is not a cancel for the cast
@@ -240,26 +255,25 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		d = d.close()
 		d.setup = setupState{}
 		return d, apply
-	case "tab":
-		d.setup.focus, d.setup.err = stepGroup(d.setup.focus, 1, d.rowVisible), ""
+	case "tab": // D-62: tab and shift+tab switch tabs from any row
+		d.setup.focus, d.setup.err = d.stepTab(1), ""
 		return d.settled(), nil
 	case "shift+tab":
-		d.setup.focus, d.setup.err = stepGroup(d.setup.focus, -1, d.rowVisible), ""
+		d.setup.focus, d.setup.err = d.stepTab(-1), ""
 		return d.settled(), nil
 	}
 	// ONE KEYBOARD RULE for the whole window (the batch's constraint): ↑↓ walk
 	// a group's rows, space operates the focused control, ←→ cycle a picker,
 	// enter accepts and moves on — and saves on the last row.
 	//
-	// bubbletea v2 names the space key "space"; a `" "` case never fires. That
-	// is not a detail: today's setup.go has exactly such a dead case, and it is
-	// why the alert radio could not be operated with space before now.
+	// bubbletea v2 names the space key "space"; a `" "` case never fires, and a
+	// control behind one cannot be operated with space.
 	if key.String() == "ctrl+r" {
 		// A WINDOW-level key, not a row-level one. The chip that names it is
 		// drawn beside the key field, and a listener reads a chip and presses
 		// the key — they do not first check which row has the focus. Scoped to
-		// the key row it simply did nothing from anywhere else, which reads as
-		// broken. (UAT 2026-08-30.)
+		// the key row it would do nothing from anywhere else, which reads as
+		// broken (UAT 2026-08-30).
 		d.setup.reveal = !d.setup.reveal
 		return d.settled(), nil
 	}
@@ -272,8 +286,8 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// The body is memoised on that counter, so a writer that forgets to bump it
 	// renders one keystroke late — which is not a stale cache to the person
 	// typing, it is a keyboard that does not work. Trusting every writer to
-	// remember was the wrong shape: the typed rows did not, and the window
-	// stopped showing what was being typed into it. One place cannot forget.
+	// remember is the wrong shape: one that forgets leaves the window not
+	// showing what is typed into it. One place cannot forget.
 	m, cmd := d.setupRowText(key)
 	if next, ok := m.(Dashboard); ok {
 		return next.settled(), cmd
@@ -312,15 +326,30 @@ func (d Dashboard) setupRowText(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // particular row does with text" are two different questions.
 func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 	picker := setupTable()[d.setup.focus].picker
+	if d.setup.focus == rowMapClear && (key.String() == "space" || key.String() == "enter") {
+		m, cmd := d.clearMapData()
+		return m, cmd, true
+	}
+	if d.setup.focus == rowHistoryClear && (key.String() == "space" || key.String() == "enter") {
+		m, cmd := d.askClearHistory()
+		return m, cmd, true
+	}
 	switch key.String() {
-	case "up":
-		if !d.rowTakesArrows() {
-			d.setup.focus = prevRow(d.setup.focus, d.rowVisible)
-			return d.settled(), nil, true
+	case "up", "down":
+		down := key.String() == "down"
+		if d.setup.focus == rowMapLayers { // ↑↓ walk the layers, then leave (HUM LEAD, 2026-09-30)
+			if nd, moved := d.stepLayer(down); moved {
+				return nd, nil, true
+			}
 		}
-	case "down":
 		if !d.rowTakesArrows() {
-			d.setup.focus = nextRow(d.setup.focus, d.rowVisible)
+			if down {
+				d.setup.focus = nextRow(d.setup.focus, d.rowVisible)
+				d.setup.layerAt = 0 // entering the layers from above: the first
+			} else {
+				d.setup.focus = prevRow(d.setup.focus, d.rowVisible)
+				d.setup.layerAt = max(len(d.cfg.MapLayers)-1, 0) // from below: the last
+			}
 			return d.settled(), nil, true
 		}
 	case "space":
@@ -329,6 +358,24 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 		}
 		return d.setupSpace(), nil, true
 	case "left", "right":
+		if !d.rowTakesLeftRight() { // D-62: the arrows switch tabs, unless the focused row operates with them
+			step := 1
+			if key.String() == "left" {
+				step = -1
+			}
+			d.setup.focus, d.setup.err = d.stepTab(step), ""
+			return d.settled(), nil, true
+		}
+		if d.setup.focus == rowMapsOn {
+			d.mapsOff = !d.mapsOff // 0.18.0: two states, so either arrow is "the other one"
+			return d.uiTouched(), nil, true
+		}
+		if d.setup.focus == rowMapDesc {
+			return d.cycleMapDesc(key.String() == "right"), nil, true
+		}
+		if m, ok := d.mapPrefArrow(key.String() == "right"); ok {
+			return m, nil, true
+		}
 		if setupTable()[d.setup.focus].kind == rowToggle {
 			// A two-state control: ←→ and space all do the same thing, because
 			// there is nothing to cycle THROUGH — there are two states and
@@ -355,7 +402,7 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 			return d.settled(), nil, true
 		}
 	case "p":
-		if picker {
+		if picker && !mapPickerRow(d.setup.focus) { // the map's pickers have nothing to preview
 			m, cmd := d.setupPreview()
 			return m, cmd, true
 		}
@@ -435,10 +482,12 @@ func (d Dashboard) rowVisible(id setupRowID) bool {
 	if id < 0 || id >= setupRowCount {
 		return false // outside the table: not a row, so not a visible one
 	}
-	// D-18's RULING, ASKED HERE (D-92). `stepRow` already walks only visible
-	// rows and `setupBlock` already draws only visible rows — this seam was built
-	// for exactly this and returned `true` for everything until now.
-	return setupTable()[id].scope.shownOn(d.surface)
+	// D-18's RULING, ASKED HERE (D-92). `stepRow` walks only visible rows and
+	// `setupBlock` draws only visible rows, so this one seam decides both.
+	if id == rowMapLayers && len(d.cfg.MapLayers) == 0 {
+		return false // no layer registered: nothing to pick, and no group drawn (D-92)
+	}
+	return d.onFocusedTab(id) // D-62: a tab draws and walks its own rows; D-70: on every surface
 }
 
 // setupSpace operates the focused control: select a radio, toggle a checkbox.
@@ -458,6 +507,35 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.setClock(render.Clock24)
 	case rowClockMil:
 		return d.setClock(render.ClockMil)
+	case rowMapsOn:
+		d.mapsOff = !d.mapsOff // live: g says so at once (W1.8)
+		return d.uiTouched()
+	case rowMapDesc:
+		return d.cycleMapDesc(true)
+	case rowMapScale:
+		return d.cycleMapScale(true)
+	case rowMapNearby:
+		return d.cycleNearby(true)
+	case rowMapRadarSource:
+		return d.toggleRadarSource()
+	case rowMapTempSource:
+		return d.toggleTempSource()
+	case rowMapRainDetail:
+		return d.toggleRainDetail()
+	case rowMapUVCities:
+		return d.cycleUVCities(true)
+	case rowMapRadarAhead:
+		return d.cycleRadarAhead(true)
+	case rowMapQuakes:
+		return d.cycleQuakeFeed(true)
+	case rowMapDetailLevel:
+		return d.cycleDetailLevel(true).uiTouched()
+	case rowMapLayers:
+		return d.toggleLayer()
+	case rowMapDetailBorders, rowMapDetailWater, rowMapDetailRivers, rowMapDetailNames,
+		rowMapDetailRoads, rowMapDetailRail, rowMapDetailParks:
+		nd, _ := d.toggleDetailRow(id)
+		return nd
 	default:
 		switch setupTable()[id].kind {
 		case rowToggle:
@@ -488,40 +566,39 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 			return d.settled(), nil
 		}
 	}
-	// The display preferences write on this exit too. setupFinishCmd owns the
-	// location, radius, cast and tones; the WATCHPOST UI group is uiApplyCmd's,
-	// and leaving it out of this path meant enter saved four groups of five and
-	// then discarded the fifth with the window state.
-	cmd := sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)),
-		d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd(),
-		d.transmitterApplyCmd(), d.serviceRadiusApplyCmd())
+	// setupFinishCmd owns the location, the FIRMS key, the cast and the tones;
+	// everything else closing the window writes is closeWrites', the list esc
+	// writes too - one list, so no setting is saved by one exit and dropped by
+	// the other (U2-61).
+	cmd := sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)), d.closeWrites())
 	return d.commitToModel(), cmd
 }
 
 // commitToModel makes the MODEL agree with what closing the window just wrote.
 //
-// THE WRITE WAS NEVER THE PROBLEM. These three settings persist through a setter
-// that returns nothing, so nothing wrote the new value back into d.cfg — and
-// openSetup seeds the form FROM d.cfg, so re-opening showed the old choice and
-// the listener reasonably concluded the save had failed. It had not: HUM LEAD,
-// UAT 2026-09-08, saw the [w] window correctly trim its events to the new radius
-// while Settings still displayed the previous one. The config file, the ticker
-// pipeline and the severe window all had the new value; only the form did not.
+// THE WRITE IS NOT THE PROBLEM. These three settings persist through a setter
+// that returns nothing, so nothing writes the new value back into d.cfg — and
+// openSetup seeds the form FROM d.cfg, so without this a re-open shows the old
+// choice and the listener reasonably concludes the save failed, while the config
+// file, the ticker pipeline and the severe window all have the new value.
 //
-// The display preferences never had this bug because uiApplyCmd returns a
-// uiSavedMsg and applyUISaved writes the values back (setup_ui.go) — this is
-// that same round trip, for the three settings whose setters cannot report an
-// outcome to return.
+// The display preferences get this from uiApplyCmd, which returns a
+// uiSavedMsg that applyUISaved writes back (setup_ui.go) — this is that same
+// round trip, for the three settings whose setters cannot report an outcome to
+// return.
 //
 // CALL IT AFTER THE CMDS ARE BUILT. applyIfChanged compares the new value with
 // d.cfg, so updating d.cfg first would make every write look like a no-op and
 // nothing would be saved at all.
 //
 // The guards match applyIfChanged's exactly. If they drift, the model and the
-// file disagree about what is in force, which is a worse bug than this one.
+// file disagree about what is in force, which is worse than a stale form.
 func (d Dashboard) commitToModel() Dashboard {
 	if d.cfg.SetAlertRadius != nil {
 		d.cfg.AlertRadiusMi = d.setup.alertRadiusChoice()
+	}
+	if d.cfg.SetHistory != nil {
+		d.cfg.History = d.setup.history // the next open shows what was written (D-175)
 	}
 	if d.cfg.SetRelayDwell != nil && d.setup.relayDwell > 0 {
 		d.cfg.RelayDwell = d.setup.relayDwell
@@ -554,10 +631,9 @@ func (d Dashboard) commitToModel() Dashboard {
 // radiusApplyCmd and relayApplyCmd are the SINGLE owners of those two writes.
 //
 // The window has two exits and they must agree. The esc case says so in as many
-// words — "no group can be saved by one route and dropped by the other" — and
-// the rotation was saved by enter and dropped by esc anyway, because the write
-// was spelled out inside the enter path where esc could not reach it (HUM LEAD,
-// UAT 2026-09-04). The alert radius had the same defect and nobody had tried it.
+// words — "no group can be saved by one route and dropped by the other" — and a
+// write spelled out inside the enter path, where esc cannot reach it, breaks
+// that promise (HUM LEAD, UAT 2026-09-04).
 // One owner per setting, called from both exits, is what makes the promise
 // checkable; TestBothExitsSaveTheSameSettings is what keeps it true.
 //
@@ -635,10 +711,17 @@ func (d Dashboard) relayLangApplyCmd() tea.Cmd {
 		func(v string) bool { return v != "" })
 }
 
-// applyOnCloseCmds is THE list of what closing the window writes. Both exits
-// use it, so adding a setting to the window means adding it here once.
+// applyOnCloseCmds is what esc writes: the cast and tones, and closeWrites.
 func (d Dashboard) applyOnCloseCmds() tea.Cmd {
-	return sequenceWrites(d.castApplyCmd(), d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd())
+	return sequenceWrites(d.castApplyCmd(), d.closeWrites())
+}
+
+// closeWrites is THE list of what closing the window writes beside the cast,
+// the tones, the location and the FIRMS key. Both exits write it, so adding a
+// setting to the window means adding it here once.
+func (d Dashboard) closeWrites() tea.Cmd {
+	return sequenceWrites(d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd(),
+		d.transmitterApplyCmd(), d.serviceRadiusApplyCmd(), d.historyApplyCmd())
 }
 
 func sequenceWrites(cmds ...tea.Cmd) tea.Cmd {
@@ -728,7 +811,7 @@ func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // HUM LEAD, 2026-09-13: it functions "like the Service alerts radius filer
 // option in Settings just without the 'all alerts' option (so no radio button)".
 //
-// THE SAME FIRST-DIGIT-REPLACES RULE the alert radius learned at UAT 2026-09-08,
+// THE SAME FIRST-DIGIT-REPLACES RULE as the alert radius (UAT 2026-09-08),
 // and for the same reason: a field showing a number the operator did not type is
 // a field they are about to type OVER, not one they are appending to. Without it
 // a stored 25 and a typed 50 make 2550.
@@ -796,9 +879,9 @@ func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	default:
 		if r := key.Text; r >= "0" && r <= "9" {
 			// A KEY THAT CHANGES NOTHING SELECTS NOTHING (VALIDATE red team,
-			// 2026-09-08). Moving this out of the length guard let a digit typed
-			// into a full buffer flip the radio to "Within" while leaving the
-			// number alone — a press that appears to choose and does not.
+			// 2026-09-08). Outside the length guard, a digit typed into a full
+			// buffer would flip the radio to "Within" while leaving the number
+			// alone — a press that appears to choose and does not.
 			if d.setup.radiusSeeded || len([]rune(d.setup.radiusMi)) < 4 {
 				d.setup.filtered = true // typing a distance means Filtered
 			}
@@ -856,12 +939,10 @@ func (d Dashboard) currentTransmitter() *snapshot.LocationRef {
 // service radius does not — a station serves a region or it is not set up. Two
 // miles is the smallest region a transmitter can usefully be the centre of.
 //
-// THEY WERE CONSTANTS HERE, and the comment above them said `modes/tty` "may not
-// import `platform/config` (make lint-imports)". THAT WAS NOT TRUE — it compiles
-// and the gate passes. The real reason is a convention nothing had written down:
-// no package under `modes/` reads storage, because the UI is handed what it
-// needs. So the numbers now arrive through `Config`, `platform/config` owns them
-// alone, and the tie-test that stood between two copies is retired.
+// THEY ARRIVE THROUGH `Config`, NOT AS CONSTANTS HERE. No package under
+// `modes/` reads storage, because the UI is handed what it needs — so
+// `platform/config` owns the numbers alone, and there is no second copy to
+// keep in step.
 //
 // UNSET REFUSES EVERYTHING, and that is deliberate. `ok` is false until the app
 // supplies the bounds, and `inServiceRange` then admits no radius at all — a

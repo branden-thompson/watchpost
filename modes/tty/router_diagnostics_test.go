@@ -21,10 +21,9 @@ import (
 
 // consoleWith puts the operator on the console, over a REAL Dashboard.
 //
-// A BARE `Dashboard{}` HAS NO KEYMAP, so a forwarded ctrl+d reaches nothing —
-// which the first draft of these tests discovered by failing. The window is
-// reached through the Observer's own bindings, so the fixture has to be a
-// Dashboard that HAS them.
+// A BARE `Dashboard{}` HAS NO KEYMAP, so a forwarded ctrl+d reaches nothing.
+// The window is reached through the Observer's own bindings, so the fixture
+// has to be a Dashboard that HAS them.
 func consoleWith(t *testing.T, d Dashboard) Router {
 	t.Helper()
 	r := NewRouter(d)
@@ -57,8 +56,8 @@ func TestTheConsoleIsStillDrawnBeneathTheDiagnosticsWindow(t *testing.T) {
 	r := consoleWith(t, goldenDash(t, false))
 	before := r.View().Content
 	// ANCHORED ON THE STATION LINE, NOT ON "LINE UP". The left rail spells its
-	// section names VERTICALLY now (D-60) — L, I, N, E, blank, U, P down the
-	// edge — so the label is no longer a string in the frame at all.
+	// section names VERTICALLY (D-60) — L, I, N, E, blank, U, P down the edge —
+	// so the label is not a string in the frame at all.
 	if !strings.Contains(before, "STATION AIR:") {
 		t.Fatalf("fixture: the console must be drawing its lanes; got:\n%s", before)
 	}
@@ -95,16 +94,14 @@ func TestItIsTheObserversOwnWindowAndNotACopy(t *testing.T) {
 	}
 }
 
-// THE WINDOW SITS ON TOP OF THE FRAME, NOT BESIDE IT — and this is the test the
-// first version of these did not have.
+// THE WINDOW SITS ON TOP OF THE FRAME, NOT BESIDE IT.
 //
-// It asserted only that the composited frame CHANGED, which a window rendered
-// off to the RIGHT satisfies perfectly. In UAT the diagnostics box and its
-// confirmation appeared side by side, both pinned to the top rail, because
-// `render.Overlay` centres on the TERMINAL width and positions against the
-// BASE's height — so compositing the confirmation onto the bare 70-wide window
-// put it at x=70 in a 200-column terminal, past the right edge of the thing it
-// was covering.
+// A composited frame that merely CHANGED is satisfied perfectly by a window
+// rendered off to the RIGHT. `render.Overlay` centres on the TERMINAL width and
+// positions against the BASE's height — so compositing the confirmation onto
+// the bare 70-wide window puts it at x=70 in a 200-column terminal, past the
+// right edge of the thing it covers, and the diagnostics box and its
+// confirmation sit side by side, both pinned to the top rail.
 //
 // THE SHAPE THIS PINS: the frame keeps its size, and every layer lands INSIDE
 // it. A composite that grows the frame has placed something beside it.
@@ -174,16 +171,15 @@ func firstLine(s string) string {
 
 // EVERY LAYER CENTRES ON THE TERMINAL, WHICH IS WHAT "ON TOP OF" MEANS HERE.
 //
-// THE UAT BUG THIS PINS. `render.Overlay` centres on the TERMINAL width and
+// THE LAYOUT THIS PINS. `render.Overlay` centres on the TERMINAL width and
 // positions against the BASE's height, so compositing the confirmation onto the
-// bare 84-cell window put it at x=(150-65)/2=42 INSIDE AN 84-CELL BASE. The
-// pair then went onto the frame as one 107-cell block, landing the confirmation
+// bare 84-cell window puts it at x=(150-65)/2=42 INSIDE AN 84-CELL BASE. The
+// pair then goes onto the frame as one 107-cell block, landing the confirmation
 // at column 63 in a 150-column terminal — 20 cells off centre, and visibly
 // BESIDE the window rather than on it.
 //
-// The first attempt at a test asserted only that the composite was no wider
-// than the frame, and the broken layout FIT INSIDE a 150-cell frame, so it
-// passed. Width was never the property. POSITION is.
+// That layout FITS INSIDE a 150-cell frame, so a test of the composite's width
+// alone passes it. Width is not the property. POSITION is.
 func TestEveryLayerCentresOnTheTerminal(t *testing.T) {
 	// `wiredDebug` opens the window itself, so pressing ctrl+d here would
 	// TOGGLE IT SHUT — the fixture and the keypress fighting each other.
@@ -214,12 +210,10 @@ func TestEveryLayerCentresOnTheTerminal(t *testing.T) {
 // centreOfLineContaining is the mid-column of the drawn text on the first line
 // holding `want` — enough to say where a box sits without parsing its borders.
 // MEASURED IN RUNES, and that is not a detail. `strings.Index` returns a BYTE
-// offset, and the frame is full of box-drawing at three bytes a glyph — so once
-// the frame ran the full height, the walls to the left of the confirmation
-// inflated its "column" by seven and this test failed against correct code.
-//
-// The same trap put the card's handle one cell off the reference earlier in this
-// release. In a frame made of box characters, a byte offset is never a column.
+// offset, and the frame is full of box-drawing at three bytes a glyph — so in a
+// full-height frame the walls to the left of the confirmation inflate its
+// "column" by seven and the test fails against correct code. In a frame made of
+// box characters, a byte offset is never a column.
 func centreOfLineContaining(frame, want string) (int, bool) {
 	w := []rune(want)
 	for _, line := range strings.Split(frame, "\n") {
@@ -233,13 +227,13 @@ func centreOfLineContaining(frame, want string) (int, bool) {
 	return 0, false
 }
 
-// THE MASTHEAD'S DATA REACHES THE CONSOLE THROUGH THE ROUTER, AND THAT IS THE
-// PART UNIT TESTS KEEP MISSING.
+// THE MASTHEAD'S DATA REACHES THE CONSOLE THROUGH THE ROUTER, AND ONLY A TEST
+// THROUGH THE ROUTER CAN SEE IT.
 //
-// THE THIRD TIME THIS SHAPE HAS BITTEN in this release. The console's own tests
-// set `b.version` and `b.snap` themselves, so deleting BOTH production wirings —
-// `b.version = o.cfg.Version` in NewRouter, and SnapshotMsg's fan-out — changed
-// no assertion anywhere. Same as the top-off's depth and producer seam.
+// The console's own tests set `b.version` and `b.snap` themselves, so deleting
+// BOTH production wirings — `b.version = o.cfg.Version` in NewRouter, and
+// SnapshotMsg's fan-out — changes no assertion there. The top-off's depth and
+// producer seam have the same shape.
 //
 // SO IT IS DRIVEN THE WAY PRODUCTION DRIVES IT: a Router built over a Dashboard
 // that HAS a version, and a snapshot delivered as a MESSAGE.
@@ -266,11 +260,10 @@ func TestTheConsoleLearnsTheVersionAndTheSnapshotThroughTheRouter(t *testing.T) 
 // THE GAIN THE CONSOLE DRAWS IS THE LEVEL OBSERVER OWNS, AND PRESSING IT FROM
 // THE CONSOLE MOVES THAT ONE LEVEL.
 //
-// PLANTED FIRST THIS TIME. The wiring has been the survivor three times running
-// in this release — the top-off's depth, its producer seam, the masthead's
-// version and snapshot — every time because a unit test set the field itself.
-// So this drives the KEY, through the Router, and reads the level back from the
-// surface that owns it.
+// A UNIT TEST THAT SETS THE FIELD ITSELF CANNOT SEE THE WIRING — the shape the
+// top-off's depth, its producer seam and the masthead's version and snapshot
+// share. So this drives the KEY, through the Router, and reads the level back
+// from the surface that owns it.
 func TestGainPressedOnTheConsoleMovesObserversOwnLevel(t *testing.T) {
 	r := consoleWith(t, goldenDash(t, true))
 	before := r.observer.radioVolume
@@ -313,10 +306,9 @@ func TestGainDownReachesTheSameLevel(t *testing.T) {
 // HUM LEAD, UAT 2026-09-10: "None of the chip controls work — s / a / ? / q in
 // broadcaster UI mode."
 //
-// THEY WERE PRINTED AS TEXT AND BOUND TO NOTHING. The console named five
-// controls in its masthead and answered to none of them — a UI lying about what
-// it can do, which is worse than a sparse one. This walks the masthead's OWN
-// list rather than a list written here, so a control added to the row without a
+// A CONTROL PRINTED AS TEXT AND BOUND TO NOTHING is a UI lying about what it
+// can do, which is worse than a sparse one. This walks the masthead's OWN list
+// rather than a list written here, so a control added to the row without a
 // binding fails immediately.
 func TestEveryAdvertisedControlIsBound(t *testing.T) {
 	b := NewBroadcaster()

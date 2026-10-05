@@ -51,10 +51,10 @@ func seismicRows(o render.Opts, loc *snapshot.Location, now time.Time, cw, lookb
 
 // seismicTable is the quakes, through the kit (0.15.0).
 //
-// THE COLUMNS WERE PadTo LITERALS, which is the same table written by hand: the
-// widths were counted once and every change since has had to re-count them, and
-// a value one cell too long pushed the rest of its row right. FIT sizes each
-// column to its own widest cell, so the table is as wide as what is in it.
+// THE COLUMNS ARE FIT, NOT PadTo LITERALS: hand-counted widths must be
+// re-counted on every change, and a value one cell too long pushes the rest of
+// its row right. FIT sizes each column to its own widest cell, so the table is
+// as wide as what is in it.
 //
 // DISTANCE AND DIRECTION ARE TWO COLUMNS, as they are in the fire tables: a
 // number aligns on its right edge and a heading on its left, and together in

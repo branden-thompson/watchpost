@@ -6,20 +6,8 @@ import (
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
-
-// kmPerMi converts the fence's radius, and is written out here rather than
-// imported.
-//
-// THE ARITHMETIC IS DELIBERATELY IDENTICAL to globalfeed.WithinMiles
-// (domains/globalfeed/stack.go:22) — the same haversine, the same constant, the
-// same `<=`. platform/ cannot import domains/*, and extracting a shared helper
-// would mean editing the hazard path to route through it, where a rounding
-// difference at the boundary would put one hazard on the tape and not in the
-// burst. scopeEvents already warns that "the two surfaces cannot disagree about
-// one hazard"; matching the form is how this one keeps that promise, and this
-// comment is the reason it is not extracted at its second caller.
-const kmPerMi = 1.609344
 
 // QuakeReachFrom is the magnitude at which a quake starts carrying reach of its
 // own. It is the feed's own "strong quake" threshold (domains/globalfeed/
@@ -78,11 +66,10 @@ func QuakeReachMi(mag float64) float64 {
 		mag = quakeReachTo
 	}
 	reach := quakeReachBase * math.Pow(2, mag-QuakeReachFrom)
-	// NOT `reach >= quakeReachBase`, which was the first form and was WRONG:
-	// that is the threshold guard above said a second time, so deleting the
-	// guard left this to return 0 in its place and the deletion changed nothing
-	// observable. m83 survived on exactly that, and a check that can stand in
-	// for the rule it is checking is not an invariant.
+	// NOT `reach >= quakeReachBase`: that is the threshold guard above said a
+	// second time, so deleting the guard would leave this to return 0 in its
+	// place and the deletion would change nothing observable (mutant m83). A
+	// check that can stand in for the rule it is checking is not an invariant.
 	if err := invariant.Check(!math.IsInf(reach, 0) && !math.IsNaN(reach), "a magnitude never buys unbounded reach"); err != nil {
 		return 0
 	}
@@ -107,7 +94,7 @@ type Fence struct {
 	// HasOrigin is whether one is set at all. A fence with nowhere to measure
 	// from admits NOTHING rather than falling back to the global stack the UI
 	// says is scoped away — today's rule (app/ticker.go:tickerDeck.scopeToRadius,
-	// which returns nil with no watchlist), unchanged.
+	// which returns nil with no watchlist).
 	Lat, Lon  float64
 	HasOrigin bool
 
@@ -173,7 +160,7 @@ func (f Fence) Admits(a Arrival) bool {
 	if err := invariant.Check(!math.IsNaN(km), "the distance to an arrival is a number"); err != nil {
 		return false
 	}
-	if km <= f.RadiusMi*kmPerMi {
+	if km <= units.KmOf(f.RadiusMi) { // the hazard tape's measure (globalfeed.WithinMiles): the same haversine, mile and <=, so the two surfaces cannot disagree about one hazard
 		return true
 	}
 	// THE SIGNIFICANCE EXCEPTION, and it is for a DISASTER. Such a disaster has
@@ -182,7 +169,7 @@ func (f Fence) Admits(a Arrival) bool {
 	if a.Category != category.Disasters {
 		return false
 	}
-	return km <= a.ReachMi*kmPerMi
+	return km <= units.KmOf(a.ReachMi)
 }
 
 // AdmitsAny reports whether a fence admits ANY of the arrivals a card was
@@ -214,7 +201,7 @@ func (f Fence) AdmitsAny(from []Arrival) bool {
 //
 // IT LIVES IN platform/ BECAUSE EVERY `ForTest` EXPORT DOES (D-124), and it
 // exists because the console's held-hazard band has to be tested against a rail
-// the fence EXCLUDES: that is the case where the band was telling the operator
+// the fence EXCLUDES: that is the case where the band could tell the operator
 // to go on air and read something going on air would not read.
 func RefencedForTest(l Lineup, f Fence) Lineup {
 	d := Director{lineup: l, settings: Settings{Fence: f}}

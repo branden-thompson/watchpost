@@ -80,9 +80,9 @@ type locateState struct {
 	//
 	// THE PRESS IS HELD, NOT DISCARDED AND NOT OBEYED. Discarding it makes the
 	// key inert while the field thinks — the dead control D-129 exists to
-	// prevent. Obeying it was worse and is what shipped: the not-yet-known
-	// branch fell through to the UNSCOPED resolver, so the console's scope was
-	// escapable by being quick, which is the very defect D-129 was filed for.
+	// prevent. Obeying it is worse: the not-yet-known branch would fall through
+	// to the UNSCOPED resolver, so the console's scope would be escapable by
+	// being quick, which is the very defect D-129 was filed for.
 	//
 	// SO THE PRESS BRINGS THE ANSWER FORWARD and waits for it: the scoped hook
 	// is asked at once rather than at the end of the pause, and the verdict
@@ -185,13 +185,11 @@ const (
 
 // onSubmit is what [enter] means in this state.
 //
-// ONE OWNER OF THE FOUR-WAY ANSWER, AT THE SECOND CALLER. The `[l]` window spelt
-// these four cases out as an ordered run of `if`s and the Line-Up Request window
-// spelt out two of them, which is how the third state went missing: on "could
-// not ask" the request window's `valid()` returned false and enter did NOTHING,
-// while `locateNote` — shared, and therefore right — printed "The lookup did not
-// answer; press enter to try again". A window instructing an action it refuses,
-// which is D-151's own defect reached from a third side.
+// ONE OWNER OF THE FOUR-WAY ANSWER, FOR BOTH WINDOWS. Spelt out per window, a
+// state goes missing: a window whose enter does NOTHING on "could not ask",
+// while `locateNote` — shared, and therefore right — prints "The lookup did not
+// answer; press enter to try again", is a window instructing an action it
+// refuses, which is D-151's own defect.
 //
 // THE ORDER IS THE RULE. "Not settled" outranks everything because a field still
 // thinking has no answer to refuse on; "could not ask" outranks "not reachable"

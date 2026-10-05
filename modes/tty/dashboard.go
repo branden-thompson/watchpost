@@ -11,12 +11,14 @@
 package tty
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
 	"unicode"
 
 	tea "charm.land/bubbletea/v2"
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
@@ -52,8 +54,8 @@ type TickerBreakingMsg struct{ Item TickerItem }
 // TickerBreakingDoneMsg ends a breaking-news takeover.
 type TickerBreakingDoneMsg struct{}
 
-// Viewport padding (UAT 14.3: left back to 3 now the tables are fixed -
-// a deliberate reversion; right stays 2 with the rail gutter beyond it).
+// Viewport padding (UAT 14.3: left 3 with the tables fixed; right 2 with the
+// rail gutter beyond it).
 const (
 	viewPadLeft  = 3
 	viewPadRight = 2
@@ -68,11 +70,73 @@ const recentWindow = 3
 // into a location ref; Commit persists the watchlist and rebuilds the live
 // pipelines with the new watch/recent ref sets (UAT 26).
 type Config struct {
-	Version      string
-	KeyOverrides term.KeyMap // user [keys] table (validated at build)
-	Resolve      func(query string) (snapshot.LocationRef, error)
-	Commit       func(watch, recent []snapshot.LocationRef) error
-	SetTheme     func(name string) error // live theme switch + persist (UAT 53)
+	Version string
+	// Timed is the timing instrument's ear (W14, D-154): nil, and nothing is
+	// measured; the app sets it only under WATCHPOST_DEBUG_TIMING=1.
+	Timed func(Timing)
+	// MapFrame is the map's frame recorder (D-198): nil unless
+	// WATCHPOST_DEBUG_MAPFRAMES names a file.
+	MapFrame func(MapFrame)
+	// MapClosed is told when the map window closes - really closes, not a
+	// window opened over it (D-106): the app lets the zone store's memory go,
+	// the disk tier serving it back on reopen (D-162).
+	MapClosed    func()
+	KeyOverrides term.KeyMap                                   // user [keys] table (validated at build)
+	NewMap       func(size tuimaps.Size) (*tuimaps.Map, error) // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
+	MapFeed      func(ctx context.Context, ask MapAsk) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
+	// MapRadar is the radar the map draws (W8): the whole loop, asked off the
+	// UI goroutine, shown once it is in (D-85).
+	MapRadar func(ctx context.Context, ask MapAsk) MapRadar
+	// MapRadarSource is the file's word for the lower 48's radar: "iem", or
+	// MRMS, the default (D-83).
+	MapRadarSource string
+	// MapRadarAhead is the file's hours ahead for the radar loop (D-114).
+	MapRadarAhead int
+	// MapQuakeFeed is the file's word for the quakes drawn (D-122): USGS's
+	// feed by its name, M2.5+ over the past week by default.
+	MapQuakeFeed string
+	// MapProblem takes what went wrong with the map that the listener cannot
+	// act on (D-124): the diagnostics', never shown. Nil drops it.
+	MapProblem func(string)
+	// MapTempSource is the file's word for the map's temperature, both modes:
+	// "open-meteo", or NDFD, the default (D-93, D-190).
+	MapTempSource string
+	// MapRainDetail is the file's word for the rain's density past NDFD's
+	// reach: "full", or coarse, the default (D-192).
+	MapRainDetail string
+	// MapFrameText asks the frame recorder for each frame's text as well (D-198).
+	MapFrameText bool
+	// MapUVCities is the file's count of cities UV asks EPA for: 8, 24 or
+	// 48; anything else is 24, the default (D-202).
+	MapUVCities int
+	// MapTemperature is the temperature the map draws (W10): every hour's or
+	// step's grids, each with its span, asked off the UI goroutine.
+	MapTemperature func(ctx context.Context, ask MapAsk) MapTemperature
+	Maps           string // 0.18.0: the file's words for the map's two Settings (UIPrefs')
+	MapDescription string
+	ClearMapData   func() MapCleared // 0.18.0 W3.8: the app empties what the live map cannot reach
+	// MapDisk names a map's disk cache - the app's tile directory and cap.
+	// Clear map data lets the live map's go while the app empties it off the
+	// UI goroutine, and names it again once the app has answered (PF-4).
+	MapDisk        func(m *tuimaps.Map) error
+	MapSources     []MapSource     // 0.18.0 W1.12, D-75: what the map contacts and sends, for the Status window (FR-9.4)
+	MapRetention   string          // 0.18.0 W3.8: how long the map's data is kept, and the one stated total (FR-3.5, FR-3.9)
+	MapScale       string          // 0.18.0 W4.3: the file's word for the scale the map opens at
+	MapNearbyKm    int             // 0.18.0 W9.2: the file's nearby distance; 0 is the default
+	MapLayerChoice map[string]bool // 0.18.0 W1.11: the layers switched from their defaults, by key
+	MapLayers      []MapLayer      // 0.18.0 W1.13: the app's registry of layers, in its order
+	// MapCost is the app's estimate of one refresh with the layers as chosen
+	// (0.18.0 W1.14, FR-9.2). Arithmetic over the snapshot: it fetches nothing.
+	MapCost func(ask MapAsk, on func(key string) bool) MapCost
+	// MapDetailChoice is the map's detail switched from Watchpost's defaults,
+	// by key (D-65); MapAreaName names what is in view from the view's centre
+	// and width, for the title (D-64). Nil draws the selected place's name.
+	MapDetailChoice map[string]bool
+	MapDetailLevel  string // D-67: the file's word for the detail level; Weather by default
+	MapAreaName     func(centre tuimaps.LonLat, widthKm float64) string
+	Resolve         func(query string) (snapshot.LocationRef, error)
+	Commit          func(watch, recent []snapshot.LocationRef) error
+	SetTheme        func(name string) error // live theme switch + persist (UAT 53)
 
 	// 0.14.0 — the WATCHPOST UI group's three display preferences, written
 	// together when Settings closes. One hook rather than three: they are one
@@ -106,32 +170,38 @@ type Config struct {
 	// IT RETURNS A COMMAND, AND THAT IS LOAD-BEARING (D-79). Taking the air
 	// STOPS THE MONITOR'S AUDIO, and halting the player calls back into the
 	// program — so doing it inline would `Send` to a loop that is inside Update
-	// and cannot receive. The app froze hard on `ctrl+b`, and Observer already
-	// had the answer: `withCmd(func() tea.Msg { radio.Stop(); return nil })`.
+	// and cannot receive, and the app would freeze. Observer does the same:
+	// `withCmd(func() tea.Msg { radio.Stop(); return nil })`.
 	OnSurface func(active Surface) tea.Cmd
 
 	// StepBedRelay moves the bed's selection through the relays the station's
-	// fence reaches (D-78) — the `←` / `→` controls, which the reference has
-	// drawn since the first wave and which were bound to nothing.
-	// A COMMAND, FOR `OnSurface`'S REASON (D-79). Stepping the selection TUNES
-	// the relay it lands on and tells the console what it landed on — both of
-	// which reach the program, so doing it inline sends to a loop that is inside
-	// Update and cannot receive. This froze the app on the first arrow press
-	// after the first freeze was fixed: the same defect, one function along.
+	// fence reaches (D-78) — the `←` / `→` controls the reference draws.
+	// A COMMAND, FOR `OnSurface`'S REASON (D-79). Stepping the selection keeps
+	// the relay it lands on and tells the console what it landed on, which
+	// reaches the program, so doing it inline would send to a loop that is
+	// inside Update and cannot receive, and freeze the app on an arrow press.
+	// It plays nothing (D-215).
 	StepBedRelay func(by int) tea.Cmd
+
+	// ToggleBedRelay plays the bed's selected relay, or stops it (D-215): the
+	// console's play key. A COMMAND, FOR `OnSurface`'S REASON (D-79): tuning
+	// and halting the player reach the program.
+	ToggleBedRelay func() tea.Cmd
 
 	// StationArea is where the STATION transmits from and how far it reaches, at
 	// launch (D-72). Changes arrive as `StationAreaMsg`; this is the value the
 	// console opens with, because a message sent before the program's loop is
-	// running has nobody to receive it — which is exactly how the first version
-	// of this deadlocked the whole app at startup.
+	// running has nobody to receive it — sent then, it deadlocks the whole app
+	// at startup.
 	StationArea StationAreaMsg
 
-	Hydrate    func(ref snapshot.LocationRef) // on-demand hourly forecast for a RECENT row (UAT 72)
-	Credits    []string                       // About "Data Provided by" lines — the app owns the list (UAT 75)
-	Radio      Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
-	Spectrum   func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
-	FireBoldMW float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
+	Hydrate       func(ref snapshot.LocationRef) // on-demand hourly forecast for a RECENT row (UAT 72)
+	CreditGroups  []CreditGroup                  // About's data sets, a group a provider, each source once - the app owns the list (W21)
+	AboutWarnings []string                       // About's warnings, first in the window (W21, D-229)
+	Radio         Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
+	Spectrum      func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
+	SaveRadio     func(RadioPrefs) error         // keeps the radio panel's choices (D-214); nil keeps nothing
+	FireBoldMW    float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
 
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
 	// reports against, and they are TWO because the data is two things: the
@@ -155,8 +225,8 @@ type Config struct {
 	SetAlertRadius func(int) // 0.12.0: persist the radius and tell the ticker pipeline to re-scope; nil in tests
 
 	// THE STATION'S OWN TWO (D-115, F-87). Where it transmits from and how far it
-	// serves — the settings the console's whole line-up is derived from, and
-	// until now writable only by editing the config file.
+	// serves — the settings the console's whole line-up is derived from, written
+	// from the window rather than only by editing the config file.
 	//
 	// `Transmitter` IS A POINTER because "not set" is a real and DIFFERENT state
 	// from "set to somewhere": a station with none borrows the listener's default
@@ -166,10 +236,10 @@ type Config struct {
 	// is a region the Producer must offer from on the very next cycle, which is
 	// the re-derivation the HUM LEAD asked to be able to UAT.
 	// THE OPERATOR'S TWO ACTS ON A SCHEDULED CARD (D-118). The schedule owns
-	// both — `lineup.Moved` and `lineup.Dropped` have modelled them since 0.14.0
-	// and nothing could emit either — and FR-3.3 is why they are events rather
-	// than setters: "an action must never be shown as taken unless the schedule
-	// took it". Nil in tests, and on a build with no schedule to tell.
+	// both — `lineup.Moved` and `lineup.Dropped` model them — and FR-3.3 is why
+	// they are events rather than setters: "an action must never be shown as
+	// taken unless the schedule took it". Nil in tests, and on a build with no
+	// schedule to tell.
 	MoveCard func(id string, to int)
 	DropCard func(id string)
 
@@ -212,9 +282,9 @@ type Config struct {
 	//
 	// ONE CARRIER, NOT TWO. Holding them here as well as
 	// `config.MinServiceRadiusMi`/`MaxServiceRadiusMi` would be two carriers of
-	// one fact, kept honest only by a test importing both.
-	// A test that prevents drift is not the same as a fact with one owner, and
-	// the HUM LEAD ruled 2026-09-13 to fix it properly.
+	// one fact, kept honest only by a test importing both — and a test that
+	// prevents drift is not the same as a fact with one owner (HUM LEAD,
+	// 2026-09-13).
 	//
 	// THROUGH `Config` RATHER THAN BY IMPORTING `platform/config`, which would
 	// compile and pass `lint-imports` and would still be wrong: nothing under
@@ -233,6 +303,17 @@ type Config struct {
 	// one NWR cycle); nil in tests.
 	RelayDwell    time.Duration
 	SetRelayDwell func(time.Duration)
+	// History is the history's retention as the file holds it; SetHistory
+	// writes a new one and applies it to the running store; ClearHistory
+	// empties the store; HistoryUsage says what it holds and where (W18;
+	// D-175, D-177).
+	History      HistoryRetention
+	SetHistory   func(HistoryRetention)
+	ClearHistory func() error
+	HistoryUsage func() string
+	// HistoryCost says what keeping a longer window would take on disk (D-231):
+	// trends or the hourly detail, from one preset key to another.
+	HistoryCost func(trends bool, from, to string) string
 	// RelayLang is which language wins when two relays share a transmitter
 	// site, and SetRelayLang persists a change. "" means the default
 	// (English). The listener's call, not the table's (HUM LEAD, UAT
@@ -248,10 +329,10 @@ type Config struct {
 	ReadReport func()
 
 	// InjectAlert fires a fabricated alert into the pipeline, and
-	// DebugScenarios are what the ctrl+d window offers (F-21b). BOTH ARE NIL IN
-	// A RELEASE BUILD — the app compiles the injector out entirely, so the
-	// window has nothing to offer and says so. A fabricated tornado warning
-	// must not be producible from a shipped binary by any means.
+	// DebugScenarios are what the ctrl+d window offers (F-21b). NIL WHERE THE APP
+	// WIRES NO INJECTOR, and the window then has nothing to offer and says so.
+	// Every fabricated alert is marked as a TEST EVENT wherever it reaches: an
+	// UNMARKED hazard is never fabricated (D-152, NFR-2).
 	InjectAlert    func(key string)
 	DebugScenarios []DebugScenario
 }
@@ -268,8 +349,15 @@ type ZoneShapeStats struct {
 }
 
 type Stats struct {
-	Requests  httpx.RequestStats
-	Pipelines [2]PipelineStats // [0] priority, [1] recent
+	Requests httpx.RequestStats
+	// MapRequests are the map's own clients' counters (0.18.0 D-150): the
+	// radar's, the temperature's, the basemap's tiles'. The map's other
+	// hosts share the station's client, and Requests holds them.
+	MapRequests httpx.RequestStats
+	Pipelines   [2]PipelineStats // [0] priority, [1] recent
+	// MapProblems are the map's last problems the listener cannot act on
+	// (D-124): the diagnostics' alone.
+	MapProblems []string
 
 	// ZoneShapes is what the zone-outline store has done since launch
 	// (0.17.0). **A new path over the network with no counters is invisible**:
@@ -308,9 +396,22 @@ type Stats struct {
 // render types, because this crosses the app seam and the app is what writes
 // them to the file.
 type UIPrefs struct {
-	Theme string
-	Units string
-	Clock string
+	Theme          string
+	Units          string
+	Clock          string
+	Maps           string // "on" (the default) or "off" (0.18.0)
+	MapDescription string // "with" (the default), "instead" or "off"
+	MapScale       string // "state" (the default), "county" or "region"
+	MapNearbyKm    int
+	MapRadarSource string          // "iem", or MRMS by default (D-83)
+	MapTempSource  string          // "open-meteo", or NDFD by default (D-190)
+	MapRainDetail  string          // "full", or coarse by default (D-192)
+	MapUVCities    int             // UV's EPA cities: 8, 24 or 48; 0 is the default, 24 (D-202)
+	MapRadarAhead  int             // the radar loop's hours ahead (D-114)
+	MapQuakeFeed   string          // the quakes drawn, USGS's feed by its name (D-122)
+	MapLayers      map[string]bool // the layers switched from their defaults
+	MapDetail      map[string]bool // the map's detail switched from its defaults (D-65)
+	MapDetailLevel string          // "essential", "weather" (the default), "standard" or "full" (D-67)
 }
 
 // PipelineStats counts one pipeline's publishes and the triggers its
@@ -394,6 +495,28 @@ func (m RepeatMode) String() string {
 	return "Off"
 }
 
+// Key is the persisted form (D-214).
+func (m RepeatMode) Key() string {
+	switch m {
+	case RepeatOne:
+		return "one"
+	case RepeatWatchlist:
+		return "watchlist"
+	}
+	return "off"
+}
+
+// ParseRepeatMode is the persisted form read back: Off for anything else.
+func ParseRepeatMode(s string) RepeatMode {
+	switch s {
+	case "one":
+		return RepeatOne
+	case "watchlist":
+		return RepeatWatchlist
+	}
+	return RepeatOff
+}
+
 // next is the [r] cycle: Off → One → Watchlist → Off.
 func (m RepeatMode) next() RepeatMode { return (m + 1) % 3 }
 
@@ -407,10 +530,9 @@ func (m RepeatMode) next() RepeatMode { return (m + 1) % 3 }
 // row that asked — without a drawer they are sent and dropped on arrival, which
 // is a preview that is silent when it works and silent when it fails.
 //
-// THAT IS ALSO WHY IT STAYS ON THE NFR-8 GREP LIST AND WHY THE LIST CANNOT READ
-// ZERO. The list was written expecting this message to die with the chooser. It
-// did not die, it was repurposed — the name means "a note about a voice", which
-// is what it is, and nothing here is residue of the retired window.
+// THAT IS ALSO WHY IT IS ON THE NFR-8 GREP LIST AND WHY THE LIST CANNOT READ
+// ZERO. The name means "a note about a voice", which is what it is, and it
+// serves the Settings cast rows rather than any retired window.
 type VoiceNoteMsg struct{ Text string }
 
 type RadioStatusMsg struct {
@@ -459,6 +581,7 @@ func defaultKeyMap() term.KeyMap {
 		"alert-prev":   {Keys: []string{"left"}, Help: "Previous Alert"},
 		"alert-next":   {Keys: []string{"right"}, Help: "Next Alert"},
 		"close":        {Keys: []string{"esc"}, Help: "Close"},
+		actMap:         {Keys: []string{"g"}, Help: "Map"}, // 0.18.0 FR-1.1; the map's other keys wait for W1.16's one ruling
 	}
 }
 
@@ -502,18 +625,42 @@ type Dashboard struct {
 	//
 	// ZERO IS THE RUNNING STATION'S ANSWER, which is also what an unset field
 	// reads as — so `requestSchedule` is tested through the Router rather than
-	// by calling it directly, or the wiring would be exactly as absent as it
-	// was before D-156 and nothing would say so.
+	// by calling it directly, or the wiring could be absent and nothing would
+	// say so (D-156).
 	liveOffset int
 
-	modal   modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	mapPane mapPane
+	// mapCloses counts the map's closings: a release carries the count it was
+	// scheduled at, so only the newest close's lets the map go (D-221).
+	mapCloses uint64
+	// mapReleaseAfter is how long the map stays closed before it is let go.
+	mapReleaseAfter time.Duration
+	mapsOff         bool        // 0.18.0: the Setting; g says so and builds nothing (W1.8)
+	mapDesc         mapDescMode // 0.18.0: the description with the picture, instead of it, or off (W1.10)
+	// The Maps tab's others (0.18.0 batch 9): the scale the map opens at, the
+	// nearby distance, the layer choices as one comparable word, and the last
+	// estimate of a refresh's cost, asked in Update and read by the frame.
+	mapScale        mapScaleMode
+	mapNearbyKm     int
+	mapLayerChoice  string
+	mapCost         MapCost
+	mapDetailChoice string         // the map's detail choices as one comparable word (D-65)
+	mapDetailLevel  tuimaps.Detail // how much of the basemap is drawn (D-67, go-tuiMaps D-82)
+	mapRadarIEM     bool           // IEM for the lower 48's radar, else MRMS (D-83)
+	mapTempNDFD     bool           // NDFD for the map's temperature, both modes, else Open-Meteo (D-93, D-190)
+	mapRainFull     bool           // Open-Meteo's full density for the rain past NDFD's reach (D-192)
+	mapUVCities     int            // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
+	mapRadarAhead   int            // the radar loop's hours ahead: 1, 3, 6 or 12 (D-114)
+	mapQuakeFeed    string         // the quakes drawn: USGS's feed by its name (D-122)
+	mapKeys         term.KeyMap
+	modal           modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode         string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
 	// search box, kept only while the window is serving the CONSOLE (D-129,
 	// D-130). On Observer it stays zero: the listener's lookup reaches anywhere
 	// and has nothing to check.
 	addLocate  locateState
-	lookupRef  *snapshot.LocationRef // the location a lookup opened Details for, until its data lands (HUM LEAD UAT 2026-08-28: the modal showed the old top RECENT row meanwhile)
+	lookupRef  *snapshot.LocationRef // the location a lookup opened Details for, until its data lands (HUM LEAD UAT 2026-08-28: else the modal shows the old top RECENT row meanwhile)
 	addErr     string                // resolve failure surfaced in the modal
 	setup      setupState
 	relayFault relayFaultState
@@ -522,10 +669,12 @@ type Dashboard struct {
 	request     requestState
 	debug       debugState
 	voiceIdx    int
-	voiceList   []string // snapshot of the hook's list, taken when the chooser opens (UAT 85: never from View)
-	radioVoice  string   // the chosen correspondent (chip label)
-	addQuery    string   // add-location search buffer
-	modalScroll int      // shared scroll for floating modals (UAT 10.4)
+	voiceList   []string        // snapshot of the hook's list, taken when the chooser opens (UAT 85: never from View)
+	radioVoice  string          // the chosen correspondent (chip label)
+	addQuery    string          // add-location search buffer
+	modalScroll int             // shared scroll for floating modals (UAT 10.4)
+	under       []stackedWindow // the windows under the one shown, nearest last (D-107)
+	resumed     modal           // the window returned to, whose resume runs at the end of this Update (D-107)
 
 	// surface is which surface the operator is looking at, mirrored by the
 	// Router (D-92).
@@ -545,14 +694,14 @@ type Dashboard struct {
 	// REACHED FOR: the Dashboard has no lineup and must not grow one — the same
 	// rule the console follows for the power and the bed.
 	//
-	// A RENDERER AND NOT A SNAPSHOT, and the ASCII parity gate is what settled
-	// that. Anything built once in the console's glyph vocabulary is drawn later
-	// by a window with a vocabulary of its own, and the two disagreed the first
-	// time the gate flipped `--ascii` after the hand-over: the window carried a
-	// bullet in its title and two arrows in its chips, neither with an ASCII form.
-	// Asking the console at DRAW time, with the window's own Opts, means there is
-	// no moment at which the two can differ — and it is why the TITLE comes back
-	// from the renderer too rather than being handed over as a finished string.
+	// A RENDERER AND NOT A SNAPSHOT, which the ASCII parity gate holds it to.
+	// Anything built once in the console's glyph vocabulary is drawn later by a
+	// window with a vocabulary of its own, and the two disagree as soon as
+	// `--ascii` flips after the hand-over — a bullet in the title and arrows in
+	// the chips, with no ASCII form. Asking the console at DRAW time, with the
+	// window's own Opts, means there is no moment at which the two can differ —
+	// and it is why the TITLE comes back from the renderer too rather than being
+	// handed over as a finished string.
 	//
 	// THE IDENTITY IS THE CARD'S ID AND NOT ITS TITLE, which is what `Card.ID` is
 	// for: "ID addresses the card for the life of the lineup." A rendered title
@@ -587,11 +736,11 @@ type Dashboard struct {
 	// reference across the model's copies, like the memos.
 	tickerScrolls map[TickerCategory]int
 	breaking      *TickerItem // 0.12.0: a breaking-news takeover — one event centred, overrides the tape until done
-	// tickerMuted is the visual half of a mute the app no longer has. NOT
+	// tickerMuted is the visual half of a mute the app does not have. NOT
 	// SEEDED FROM CONFIG (red team 2026-09-05, C-1): ticker_muted is a 0.13.0
-	// back-compat mirror, not this binary's state. It survives only because
+	// back-compat mirror, not this binary's state.
 	// TestMuteDeepLinksRatherThanFlippingAHeaderChip sets it both ways to prove
-	// the retired [M] Mute/Unmute label cannot come back (MVS-D-48).
+	// no [M] Mute/Unmute label is drawn (MVS-D-48).
 	tickerMuted  bool
 	darkBG       bool                 // terminal mode (bubbletea BackgroundColorMsg)
 	frame        int                  // animation phase (loading shimmer, UAT 18.2b)
@@ -687,8 +836,8 @@ func scopedOverrides(base, observer, over term.KeyMap) (term.KeyMap, []string) {
 //
 // IT READS THE EFFECTIVE MAP, not the base: an override that has already been
 // withheld leaves its action on the console's own key, and that key is then
-// taken by whoever holds it. Answering from the base instead is what let a
-// vacated key be granted twice.
+// taken by whoever holds it. Answering from the base instead grants a vacated
+// key twice.
 //
 // THE CLASH IT REPORTS IS THE OVERRIDDEN ACTION, because that is the one with
 // somewhere else to go. The incumbent keeps what it had.
@@ -744,21 +893,20 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	// SCOPED SO ONE SURFACE'S REBIND CANNOT BREAK THE OTHER (F-114, HUM LEAD
 	// 2026-09-16: collisions are reconciled, and a binding functions as expected).
 	//
-	// THE REQUIREMENT WAS UNMET AND ITS GATE DID NOT SAY SO. FR-1.5's exit is
-	// "an override in the user's key table changes the chord"; the test asserted
-	// that the swap ACTIONS ARE IN THE MAP, which a map no override can reach
-	// satisfies perfectly. `broadcasterKeyMap()` went to the Router raw, so no
-	// `[keys]` entry could change a single console binding — including `ctrl+b`,
-	// tmux's own prefix.
+	// FR-1.5's exit is "an override in the user's key table changes the chord" —
+	// for every console binding, `ctrl+b` (tmux's own prefix) among them. A test
+	// that finds only that the swap ACTIONS ARE IN THE MAP is satisfied
+	// perfectly by a map no override can reach.
 	//
-	// AND FIXING THAT CAN BREAK AN UPGRADE. FIVE actions live in both scopes —
-	// lookup, about, status, help and quit — so a key free on Observer may
-	// already be taken on the console. Settings, diagnostics and the gain pair
-	// LOOK shared and are not: each surface names its own, so an override for one
-	// does not reach the other. `lookup = "b"` was valid in 0.15.0 and `b` is the console's bed,
-	// so applying it to both scopes made a config the operator did not change
-	// refuse to launch. `term.Merge`'s own doc names that outcome: "losing a
-	// binding is a nuisance; refusing to launch over one is a broken upgrade".
+	// AND APPLYING OVERRIDES TO BOTH SCOPES CAN BREAK AN UPGRADE. FIVE actions
+	// live in both scopes — lookup, about, status, help and quit — so a key free
+	// on Observer may already be taken on the console. Settings, diagnostics and
+	// the gain pair LOOK shared and are not: each surface names its own, so an
+	// override for one does not reach the other. `lookup = "b"` is valid on
+	// Observer and `b` is the console's bed, so applying it to both scopes would
+	// make a config the operator did not change refuse to launch. `term.Merge`'s
+	// own doc names that outcome: "losing a binding is a nuisance; refusing to
+	// launch over one is a broken upgrade".
 	//
 	// SO AN OVERRIDE IS APPLIED WHERE IT FITS AND WITHHELD WHERE IT WOULD
 	// COLLIDE. The listener's `b` binds lookup on Observer; the console keeps `b`
@@ -770,7 +918,11 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("console key bindings invalid: %w", err)
 	}
-	d := Dashboard{cfg: cfg, keys: keys, consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	mapKeys, err := mapKeysFrom(cfg.KeyOverrides)
+	if err != nil {
+		return Dashboard{}, err
+	}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -779,10 +931,10 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 
 // consoleKeyMap is the console's bindings as the OPERATOR has them.
 //
-// ONE OWNER, READ BY BOTH THE ROUTER AND THE HELP VIEW. They each reached for
-// `broadcasterKeyMap()` directly, so a rebound chord would have been answered by
-// the Router and mis-printed by the help — the surface whose entire job is to
-// tell the operator which key to press.
+// ONE OWNER, READ BY BOTH THE ROUTER AND THE HELP VIEW. Reaching for
+// `broadcasterKeyMap()` directly, a rebound chord would be answered by the
+// Router and mis-printed by the help — the surface whose entire job is to tell
+// the operator which key to press.
 //
 // A HAND-BUILT DASHBOARD FALLS BACK TO THE DEFAULTS. Tests construct
 // `Dashboard{}` literals, and a nil map would leave the Router with no bindings
@@ -810,14 +962,13 @@ type committedMsg struct {
 	// What a Setup save actually WROTE. The window is seeded from cfg when it
 	// opens, and cfg is captured once when the app is built — so without this
 	// the next open would show the launch-time cast and silently discard what
-	// the listener had just saved. (UAT 2026-08-30: found by saving a cast,
-	// closing Setup and re-opening it.)
+	// the listener had just saved (UAT 2026-08-30).
 	cast  CastView
 	tones ToneState
 	saved bool
 }
 
-// tickMsg drives the loading shimmer (UAT 18.2b) and, since Q3, every
+// tickMsg drives the loading shimmer (UAT 18.2b) and (Q3) every
 // other wall-clock element of the frame: the marquee (when the visualizer
 // tick is not already redrawing), the volume blink's clearing, the [S]
 // ages and the Details labels. It runs only while one of them is showing
@@ -845,15 +996,19 @@ func (d Dashboard) tickNeeded() bool {
 	switch {
 	case d.volFlash != "": // pending or just expired — the tick after expiry clears it
 		return true
+	case d.mapPane.flash != "": // U1-11: the controls' blink, same rule
+		return true
 	case d.setup.flash != flashNone: // the picker's press blink, same rule
+		return true
+	case d.mapPane.menuFlash != flashNone: // the Overlays menu's picker blink (D-147), same rule (W14, C-3)
 		return true
 	case d.modal == modalStatus || d.modal == modalDetails: // [S] ages; Details "N min ago" labels and LoadingDots
 		return true
 	// ITS CLOCK RUNS DOWN ON ITS OWN AND ACTS AT ZERO (MVS-D-76). Without this
-	// the window opened with no tick armed, so stepRelayFault was never called:
-	// the countdown sat at <10> for ever, the fall-through never fired, and the
-	// frame never redrew between key presses — which is what "reactions were
-	// slow" was. A window that acts by itself must keep the clock that acts.
+	// the window opens with no tick armed, so stepRelayFault is never called:
+	// the countdown sits at <10> for ever, the fall-through never fires, and the
+	// frame never redraws between key presses ("reactions were slow"). A window
+	// that acts by itself must keep the clock that acts.
 	case d.modal == modalRelayFault:
 		return true
 	case len(d.ticker) > 0: // 0.12.0: the marquee scrolls continuously while events are active
@@ -871,8 +1026,6 @@ func (d Dashboard) tickNeeded() bool {
 // still waiting on the Director. Those are two questions with one answer about
 // what to do with the answer — so the question stays with each surface and this
 // is called with it.
-//
-// It was written out twice, once per surface, and the duplicate gate said so.
 func armShimmer(armed, needed bool, cmd tea.Cmd) (bool, tea.Cmd) {
 	if armed || !needed {
 		return armed, cmd
@@ -899,7 +1052,13 @@ func vizTick() tea.Cmd { return tickEvery(50*time.Millisecond, vizTickMsg{}) }
 // Init implements tea.Model — asks the terminal for its background color
 // so the window tint tracks light/dark mode (UAT 10.2). The animation tick
 // arms itself from the first message that needs it (Q3).
-func (d Dashboard) Init() tea.Cmd { return tea.RequestBackgroundColor }
+func (d Dashboard) Init() tea.Cmd {
+	if d.radioRepeat == RepeatOff || d.cfg.Radio == nil {
+		return tea.RequestBackgroundColor
+	}
+	radio, mode := d.cfg.Radio, d.radioRepeat // a kept repeat reaches the player at launch (D-214)
+	return tea.Batch(tea.RequestBackgroundColor, func() tea.Msg { radio.SetRepeat(mode, nil); return nil })
+}
 
 // Update implements tea.Model: dispatch the message, then arm the shimmer
 // tick if the resulting frame animates (Q3 tick predicate).
@@ -909,7 +1068,10 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if err := invariant.Check(ok, "dispatch must return the dashboard model"); err != nil {
 		return m, cmd
 	}
-	return next.armTick(cmd)
+	next, resumeCmd := next.resume()  // D-107: a window returned to picks up where it was
+	next = next.mapPanicked()         // QA-11: a panic a map call or command stopped marks the map failed
+	next, mapCmd := next.armMapTick() // 0.18.0 W2.2: the map's clock, armed after every Update
+	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd))
 }
 
 // handleTicker applies one global-event-ticker message and re-arms the frame
@@ -939,9 +1101,20 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch v := msg.(type) {
 	case tea.WindowSizeMsg:
 		d.width, d.height = v.Width, v.Height
+		if d.modal == modalMap {
+			d, settle := d.boundMap().viewMoved() // a new size is a new view: its alerts are asked once it settles (D-66); marked before it is drawn
+			return d.renderMap(), settle          // the bound's least zoom depends on the size; drawn at the window's new size, in Update (D-41, D-45's size row)
+		}
 		return d, nil
 	case SnapshotMsg:
-		return d.applySnapshot(v)
+		m, cmd := d.applySnapshot(v)
+		if next, ok := m.(Dashboard); ok && next.modal == modalMap {
+			next, feed := next.requestFeed().askFeed() // 0.18.0: new data, so the map's alerts are asked again (D-45's data row) - one ask in flight (D-157)
+			next, radar := next.refreshRadar()         // and the radar, once its loop has stood two minutes (D-85)
+			next, temp := next.refreshTemp()           // and the temperature, as it stands or the hour turns (W10)
+			return next, tea.Batch(cmd, feed, radar, temp)
+		}
+		return m, cmd
 	case RecentSnapshotMsg:
 		return d.applyRecent(v), nil
 	case TickerMsg, TickerAdvanceMsg, TickerBreakingMsg, TickerBreakingDoneMsg:
@@ -967,6 +1140,28 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.handleSettingsSaved(msg), nil // the Settings window's apply-on-close outcomes, one owner
 	case vizTickMsg:
 		return d.vizFrame()
+	case historyClearedMsg:
+		return d.applyHistoryCleared(v), nil
+	case mapClearedMsg:
+		return d.applyMapCleared(v), nil // 0.18.0 W3.8: Settings says what went
+	case mapFeedMsg:
+		return d.applyMapFeed(v) // 0.18.0: the alerts, set and drawn in Update (D-41)
+	case mapRadarMsg:
+		return d.applyMapRadar(v) // W8: the radar, set and drawn in Update (D-41)
+	case mapRadarAgainMsg:
+		return d.applyRadarAgain(v) // D-204: the hours ahead owed
+	case mapTempMsg:
+		return d.applyMapTemp(v) // W10: the temperature, set and drawn in Update (D-41)
+	case forecastTickMsg:
+		return d.applyForecastTick(v) // D-94: Forecast mode's playback
+	case mapWorkedMsg:
+		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
+	case mapTickMsg:
+		return d.applyMapTick(v), nil // 0.18.0 W2.2: the library asked to be drawn now
+	case mapReleaseMsg:
+		return d.applyMapRelease(v), nil // D-221: the map closed a while is let go
+	case mapViewSettledMsg:
+		return d.applyViewSettled(v) // 0.18.0 D-66: the view stood still - its alerts are asked
 	case tea.KeyPressMsg:
 		return d.handleKeyPress(v)
 	}
@@ -1005,9 +1200,8 @@ func (d Dashboard) handleSevere(msg tea.Msg) Dashboard {
 // handleKeyPress routes a key press, un-fusing a lone esc first: a lone esc
 // followed by a key reaches the model FUSED as alt+key — the terminal sends
 // ESC then the byte, and the input layer has no ESC timeout to tell them
-// apart (probed on a pty against 0.12.0 too: esc then `a` never opened
-// About). No binding uses alt, so the only reading is the user's: esc, then
-// the key (0.13.0 red-team, PTY).
+// apart (on a pty, esc then `a` does not open About). No binding uses alt, so
+// the only reading is the user's: esc, then the key (0.13.0 red-team, PTY).
 func (d Dashboard) handleKeyPress(v tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	esc, key, fused := splitEscFusion(v)
 	if !fused {
@@ -1032,10 +1226,10 @@ func splitEscFusion(k tea.KeyPressMsg) (esc, key tea.KeyPressMsg, fused bool) {
 		key.Code, key.Mod = k.Code+0x60, key.Mod|tea.ModCtrl
 	}
 	// Every other alt chord — an arrow, backspace, delete, a non-ASCII rune —
-	// is the same fusion (REVIEW R5-C-08: esc then ↓ lost both); no binding
-	// uses alt, so nothing is shadowed. An UPPERCASE key after the esc arrives
-	// as alt+shift+letter with no text: the letter is the key (VALIDATE
-	// 2026-08-29 — esc then S/V/T/M/A were lost on a real pty).
+	// is the same fusion (REVIEW R5-C-08: unsplit, esc then ↓ loses both); no
+	// binding uses alt, so nothing is shadowed. An UPPERCASE key after the esc
+	// arrives as alt+shift+letter with no text: the letter is the key (VALIDATE
+	// 2026-08-29: unsplit, esc then S/V/T/M/A are lost on a real pty).
 	if key.Text == "" && key.Mod&^tea.ModShift == 0 && k.Code >= 0x20 && k.Code <= 0x7e {
 		r := rune(k.Code)
 		if key.Mod&tea.ModShift != 0 {
@@ -1070,11 +1264,17 @@ func (d Dashboard) applyTick() Dashboard {
 	if d.volFlash != "" && !time.Now().Before(d.volFlashEnd) {
 		d.volFlash = "" // the blink clears on the first tick after it expires (UAT 41)
 	}
+	if d.mapPane.flash != "" && !time.Now().Before(d.mapPane.flashEnd) {
+		d.mapPane.flash = "" // U1-11: the controls' blink ends on the tick after it expires
+	}
+	if d.mapPane.menuFlash != flashNone && !time.Now().Before(d.mapPane.menuFlashEnd) {
+		d.mapPane.menuFlash = flashNone // the menu's picker blink ends as Settings' does (D-147)
+		d.mapPane.gen++
+	}
 	if d.setup.flash != flashNone && !time.Now().Before(d.setup.flashEnd) {
-		// Without this the blink stayed lit until something ELSE happened to
-		// redraw the window — which is exactly what "it stays green for an
-		// extended period" was. A blink needs a tick to end
-		// it, not only one to start it.
+		// Without this the blink stays lit until something ELSE happens to
+		// redraw the window ("it stays green for an extended period"). A blink
+		// needs a tick to end it, not only one to start it.
 		d.setup.flash = flashNone
 		d.setup = d.setup.touch()
 	}
@@ -1102,15 +1302,8 @@ func (d Dashboard) applySnapshot(v SnapshotMsg) (tea.Model, tea.Cmd) {
 
 // handleKey routes through the merged KeyMap (D-15: keys are data).
 func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch d.modal { // windows that own the keyboard while open
-	case modalSetup:
-		return d.handleSetupKey(key)
-	case modalAdd:
-		return d.handleAddKey(key)
-	case modalRemove:
-		return d.handleRemoveKey(key)
-	case modalRequest:
-		return d.handleRequestKey(key)
+	if m, cmd, ok := d.routeWindowKey(key); ok {
+		return m, cmd // F-184: the window shown takes what it declares it owns
 	}
 	act, bound := d.keys.Lookup(key.String())
 	if !bound {
@@ -1119,15 +1312,23 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch act {
 	case "quit":
 		return d, tea.Quit
-	case "units-f":
+	case "units-f", "units-c":
 		d.units = render.UnitF
-	case "units-c":
-		d.units = render.UnitC
+		if act == "units-c" {
+			d.units = render.UnitC
+		}
+		if d.modal == modalMap {
+			d = d.renderMap() // 0.18.0 D-45's units row: the description's distances follow the units
+		}
+		d.setup.uiDirty = true // kept, as Settings' units are (U2-61)
+		save := d.uiApplyCmd()
+		d.setup.uiDirty = false
+		return d, save
 	case "ticker-mute":
-		// [M] now OPENS Settings at the tone rows rather than toggling them
-		//. The six classes are separately mutable, and
-		// one key cannot mean six things, so it takes a listener to the group that
-		// does — the same place the header chip points them.
+		// [M] OPENS Settings at the tone rows rather than toggling them. The six
+		// classes are separately mutable, and one key cannot mean six things, so
+		// it takes a listener to the group that does — the same place the header
+		// chip points them.
 		return d.openSetupAt(firstOfGroup(groupTone)), nil
 	default:
 		if act == "add-location" {
@@ -1167,8 +1368,9 @@ func (d Dashboard) canAddFocused() bool {
 	if loc == nil || d.watchlistFull() {
 		return false
 	}
+	ref := refOf(*loc)
 	for _, r := range refsOf(d.snap) {
-		if r.Zip == loc.Zip {
+		if sameLocation(r, ref) { // #23: by ZIP only when there is one - a park or a lake has none
 			return false
 		}
 	}
@@ -1195,11 +1397,10 @@ func (d Dashboard) hydrateCmd() tea.Cmd {
 }
 
 // modal names the one floating window that can be open (quality pass Q6,
-// L3-F15): before it, ten booleans kept exclusivity by hand at ten reset
-// sites and the red team found them inconsistent (help left Alerts open
-// underneath, a voice error reopened the chooser over Details). Now opening
-// a window closes whatever was open, by construction; the exclusivity test
-// asserts it on the rendered frame.
+// L3-F15): opening a window closes whatever was open, by construction, where
+// booleans kept exclusive by hand at reset sites drift apart (help left over
+// Alerts, a voice error over Details); the exclusivity test asserts it on the
+// rendered frame.
 type modal int
 
 const (
@@ -1235,6 +1436,9 @@ const (
 	// outside all three.
 	modalRequest
 
+	// modalMap is the map window (0.18.0 W1.1).
+	modalMap
+
 	// numModals bounds the set; it is not itself a modal. It exists so the
 	// memo-completeness guard can DERIVE the list of windows rather than carry
 	// a hand-written one — a hand-written list of windows is the same shape as
@@ -1244,13 +1448,57 @@ const (
 )
 
 // open shows m alone, scrolled to the top.
+//
+// THE WINDOWS ARE A STACK (D-106, D-107). A window opened from another opens
+// over it, and closing it returns to the one below - Details opened from the
+// map goes back to the map. A window already in the stack is returned to,
+// never doubled. A search or confirmation window is replaced by what it
+// opens: it is done, and never returned to.
 func (d Dashboard) open(m modal) Dashboard {
+	was := d.mapShown()
+	d = d.openWindow(m)
+	return d.tellMapClosed(was)
+}
+
+// openWindow is open's work: the window shown, and the stack under it.
+func (d Dashboard) openWindow(m modal) Dashboard {
 	if m != modalDetails {
 		d.lookupRef = nil // only Details waits for a lookup (R5-B-09)
+	}
+	switch at := d.stackIndex(m); {
+	case m == modalNone:
+		d.under = nil
+	case m == d.modal:
+	case at >= 0:
+		d.modal, d.modalScroll, d.resumed = m, d.under[at].scroll, m
+		d.under = d.under[:at:at] // the windows over it are left behind
+		return d
+	case d.modal != modalNone && !transient(d.modal):
+		d.under = append(append(make([]stackedWindow, 0, len(d.under)+1), d.under...), stackedWindow{d.modal, d.modalScroll}) // a copy: Dashboards are values
 	}
 	d.modal, d.modalScroll = m, 0
 	return d
 }
+
+// stackedWindow is a window under the one shown, and where its scroll was left.
+type stackedWindow struct {
+	modal  modal
+	scroll int
+}
+
+// stackIndex is where a window is in the stack under the one shown, or -1.
+func (d Dashboard) stackIndex(m modal) int {
+	for i, s := range d.under {
+		if s.modal == m {
+			return i
+		}
+	}
+	return -1
+}
+
+// transient reports whether a window is done once it opens another - a
+// search or a confirmation - and so is replaced, never returned to (D-107).
+func transient(m modal) bool { return m == modalAdd || m == modalRemove }
 
 // close dismisses whatever is open.
 //
@@ -1259,12 +1507,59 @@ func (d Dashboard) open(m modal) Dashboard {
 // no longer see — and a read cut short is NOT marked as read, because it was
 // not heard.
 func (d Dashboard) close() Dashboard {
+	was := d.mapShown()
+	d = d.closeWindow()
+	return d.tellMapClosed(was)
+}
+
+// mapShown reports whether the map window is open: shown, or in the stack
+// under the window shown (D-106), which returns to it.
+func (d Dashboard) mapShown() bool { return d.modal == modalMap || d.stackIndex(modalMap) >= 0 }
+
+// tellMapClosed tells the app the map has closed, when it was shown and now
+// is not anywhere (D-162), and schedules the map's release (D-221).
+func (d Dashboard) tellMapClosed(was bool) Dashboard {
+	if !was || d.mapShown() {
+		return d
+	}
+	if d.cfg.MapClosed != nil {
+		d.cfg.MapClosed()
+	}
+	d.mapCloses++
+	gen := d.mapCloses
+	return d.withCmd(tea.Batch(d.pendingCmd, tea.Tick(d.mapReleaseAfter, func(time.Time) tea.Msg { return mapReleaseMsg{gen: gen} })))
+}
+
+// closeWindow is close's work: back to the window under it, or to none.
+func (d Dashboard) closeWindow() Dashboard {
 	if d.modal == modalSevere && d.severeReading != "" && d.cfg.EndEventRead != nil {
 		d.cfg.EndEventRead()
 	}
-	d.lookupRef = nil      // a closed Details modal no longer waits for a lookup
-	d.severeDetail = false // a closed window forgets its record view (REVIEW R5-A-04)
-	return d.open(modalNone)
+	d.lookupRef = nil             // a closed Details modal no longer waits for a lookup
+	d.severeDetail = false        // a closed window forgets its record view (REVIEW R5-A-04)
+	if n := len(d.under); n > 0 { // back to the window below (D-107), which resumes
+		below := d.under[n-1]
+		d.under = d.under[: n-1 : n-1]
+		d.modal, d.modalScroll, d.resumed = below.modal, below.scroll, below.modal
+		return d
+	}
+	return d.openWindow(modalNone) // close tells the app, once
+}
+
+// resume runs a window's return (D-107) at the end of the Update that
+// returned to it, whoever closed what was over it: the map is drawn again,
+// its work asked for, and what has stood - its radar, its temperature - asked
+// again. Nothing else keeps state that goes stale under another window.
+func (d Dashboard) resume() (Dashboard, tea.Cmd) {
+	m := d.resumed
+	d.resumed = modalNone
+	if m != modalMap || d.modal != modalMap || d.mapPane.m == nil {
+		return d, nil
+	}
+	d = d.renderMap()
+	d, radar := d.refreshRadar()
+	d, temp := d.refreshTemp()
+	return d, tea.Batch(d.mapWorkCmd(), radar, temp)
 }
 
 // handleRadio owns the messages the radio sends the dashboard: the deck's
@@ -1279,13 +1574,12 @@ func (d Dashboard) handleRadio(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case VoiceNoteMsg:
 		// THE DECK'S WORDS REACH THE ROW THAT ASKED (F-41). Landing them in
 		// d.voiceNote would put them where nothing draws them, so a preview would
-		// be silent while it worked and silent when it
-		// failed. castNote already renders exactly this ("the deck's own words:
-		// progress, or why it failed"); the wire went to the wrong field.
+		// be silent while it worked and silent when it failed. castNote renders
+		// exactly this ("the deck's own words: progress, or why it failed").
 		//
 		// AND IT TOUCHES THE GENERATION. The modal memo keys Settings on
 		// setup.gen, so a note stored without a touch would be written and never
-		// drawn — the still-picture defect that cost three UAT rounds (F-30).
+		// drawn — the still-picture defect (F-30).
 		d.setup.note = v.Text
 		d.setup = d.setup.touch()
 	case RelaySilentMsg:
@@ -1299,14 +1593,13 @@ func (d Dashboard) handleRadio(msg tea.Msg) (tea.Model, tea.Cmd) {
 //
 // THE COUNTDOWN RIDES THIS TICK rather than starting a timer of its own — one
 // clock in the model, and a window that cannot outlive the loop that draws it.
-// Split out of dispatch, which the P10 complexity gate failed at 17 once the
-// two-branch countdown landed in it.
+// Split out of dispatch to keep it within the P10 complexity bound.
 func (d Dashboard) onTick() (tea.Model, tea.Cmd) {
 	// THE MODEL'S OWN CLOCK, not time.Now(). d.now is the clock every other
 	// wall-clock element of the frame reads and the one tests pin; calling
-	// time.Now() here made this the one moving part of the frame a test could
-	// not drive, which is why the countdown's WIRE went unpinned while its
-	// arithmetic had a test of its own.
+	// time.Now() here would make this the one moving part of the frame a test
+	// could not drive, leaving the countdown's WIRE unpinned while its
+	// arithmetic has a test of its own.
 	next, done := d.stepRelayFault(d.now())
 	if done {
 		return next.fallThroughRelayFault()
@@ -1323,7 +1616,8 @@ func (d Dashboard) toggle(m modal) Dashboard {
 }
 
 // toggleModal owns the open/close actions for every floating window (split
-// from handleKey, P10-04). Opening one closes the others.
+// from handleKey, P10-04). Opening one opens it over the one shown, and
+// closing it returns there (D-107).
 func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 	if d, ok := d.toggleSevere(act); ok {
 		return d, true // 0.13.0: the severe window's open / drill-in / back-out
@@ -1339,16 +1633,17 @@ func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 		return d.toggle(modalStatus), true // UAT 24.2
 	case "about":
 		return d.toggle(modalAbout), true // UAT 68
+	case actMap:
+		return d.toggleMap(), true // 0.18.0 FR-1.1
 	case "theme":
-		// The chooser it opened is retired: [t] now
-		// opens Settings at the theme picker, the same way [V] opens it at the
-		// correspondents. The key a listener already knows still goes where the
-		// thing lives.
+		// [t] opens Settings at the theme picker, the same way [V] opens it at
+		// the correspondents. The key a listener already knows still goes where
+		// the thing lives.
 		return d.openSetupAt(rowTheme), true
 	case "voice":
-		// V keeps its binding and its place in Help's RADIO group, but the
-		// chooser it opened is retired (MVS-D-3): it now opens Setup SCROLLED
-		// TO the correspondents, which is where a voice is chosen from 0.14.0.
+		// V keeps its binding and its place in Help's RADIO group, and opens
+		// Setup SCROLLED TO the correspondents, which is where a voice is chosen
+		// (MVS-D-3).
 		return d.openSetupAt(rowCastAlerts), true // UAT 84 / FR-14
 	case "setup":
 		return d.openSetup(), true // UAT 100
@@ -1371,12 +1666,11 @@ func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 // toggleSevere routes the WINDOW actions: opening one, and the keys that belong
 // to whichever one is open.
 //
-// SPLIT BY WINDOW AT THE COMPLEXITY CEILING (P10-04, D-159). The cases mixed
-// `act` with `d.modal` and with `d.debug.confirm`, so three windows' handling
-// sat in one body and the reader had to hold all three to follow any one. Every
-// case named its modal exactly, which is what makes the split ORDER-PRESERVING:
-// a case that could only match one window moves to that window's function, and
-// nothing that could match two is separated.
+// SPLIT BY WINDOW AT THE COMPLEXITY CEILING (P10-04, D-159). Each window's
+// keys have a function of their own, so a reader holds one window to follow
+// it. Every case names its modal exactly, which is what makes the split
+// ORDER-PRESERVING: a case that can only match one window lives in that
+// window's function, and nothing that could match two is separated.
 func (d Dashboard) toggleSevere(act term.Action) (Dashboard, bool) {
 	switch act {
 	case "severe":
@@ -1518,6 +1812,38 @@ func (d Dashboard) WithRadio(r Radio) Dashboard {
 func (d Dashboard) WithRadioMode(mode RadioMode) Dashboard {
 	d.radioMode = mode
 	return d
+}
+
+// RadioPrefs are the radio panel's kept choices (D-214): the volume - the
+// console's gain is the same number - the repeat and the visualizer.
+type RadioPrefs struct {
+	Volume int
+	Repeat RepeatMode
+	Viz    bool
+}
+
+// WithRadioPrefs opens the panel on the kept choices, and save keeps each
+// change (nil keeps nothing).
+func (d Dashboard) WithRadioPrefs(p RadioPrefs, save func(RadioPrefs) error) Dashboard {
+	d.radioVolume, d.radioRepeat, d.radioViz = min(max(p.Volume, 0), 100), p.Repeat, p.Viz
+	d.cfg.SaveRadio = save
+	return d
+}
+
+// RadioPrefs is the panel's choices as they stand.
+func (d Dashboard) RadioPrefs() RadioPrefs {
+	return RadioPrefs{Volume: d.radioVolume, Repeat: d.radioRepeat, Viz: d.radioViz}
+}
+
+// saveRadioCmd keeps the panel's choices, beside whatever the press already
+// asked of the player.
+func (d Dashboard) saveRadioCmd() Dashboard {
+	save := d.cfg.SaveRadio
+	if save == nil {
+		return d
+	}
+	p := RadioPrefs{Volume: d.radioVolume, Repeat: d.radioRepeat, Viz: d.radioViz}
+	return d.withCmd(tea.Batch(d.pendingCmd, func() tea.Msg { _ = save(p); return nil })) // a failed save keeps the session's choice; the next press tries again
 }
 
 // WithSpectrum attaches the visualizer feed (UAT 92).

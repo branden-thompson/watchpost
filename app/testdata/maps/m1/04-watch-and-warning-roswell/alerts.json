@@ -1,0 +1,252 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.7b2845d2a530ac72e6b038ad704fd9c1efa50814.001.1",
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -104.89,
+       33.35
+      ],
+      [
+       -104.88,
+       33.33
+      ],
+      [
+       -104.96,
+       33.3
+      ],
+      [
+       -105.16,
+       33.32
+      ],
+      [
+       -105.24,
+       33.29
+      ],
+      [
+       -105.26,
+       33.33
+      ],
+      [
+       -105.19,
+       33.35
+      ],
+      [
+       -105.25,
+       33.35
+      ],
+      [
+       -105.37,
+       33.4
+      ],
+      [
+       -105.36,
+       33.44
+      ],
+      [
+       -105.27,
+       33.46
+      ],
+      [
+       -105.22,
+       33.39
+      ],
+      [
+       -104.99,
+       33.34
+      ],
+      [
+       -104.89,
+       33.36
+      ],
+      [
+       -104.89,
+       33.35
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.7b2845d2a530ac72e6b038ad704fd9c1efa50814.001.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.7b2845d2a530ac72e6b038ad704fd9c1efa50814.001.1",
+    "areaDesc": "Chaves, NM; Lincoln, NM",
+    "geocode": {
+     "SAME": [
+      "035005",
+      "035027"
+     ],
+     "UGC": [
+      "NMC005",
+      "NMC027"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/county/NMC005",
+     "https://api.weather.gov/zones/county/NMC027"
+    ],
+    "references": [],
+    "sent": "2026-09-23T17:49:00-06:00",
+    "effective": "2026-09-23T17:49:00-06:00",
+    "onset": "2026-09-23T17:49:00-06:00",
+    "expires": "2026-09-23T21:30:00-06:00",
+    "ends": "2026-09-23T21:30:00-06:00",
+    "status": "Actual",
+    "messageType": "Alert",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Likely",
+    "urgency": "Expected",
+    "event": "Flood Warning",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Albuquerque NM",
+    "headline": "Flood Warning issued September 23 at 5:49PM MDT until September 23 at 9:30PM MDT by NWS Albuquerque NM",
+    "description": "* WHAT...Flooding caused by excessive rainfall is occurring.\n\n* WHERE...Southeastern Lincoln County in central New Mexico...\nWestern Chaves County in southeastern New Mexico...\n\n* WHEN...Until 930 PM MDT.\n\n* IMPACTS...Flooding of rivers, creeks, streams, and other low-lying\nand flood-prone locations is imminent or occurring. Low-water\ncrossings are inundated with water and may not be passable.\n\n* ADDITIONAL DETAILS...\n- At 544 PM MDT, the public reported flooding in the warned area,\nwith low water crossings along the Rio Hondo inundated with water\nand impassable.\n- This includes feeder creeks and streams into the Rio Hondo. These\ntributaries may inundate additional low water crossings.\n- Some locations that will experience flooding include...\nTinnie, Hondo, San Patricio and Sunset.\n- http://www.weather.gov/safety/flood",
+    "instruction": "Turn around, don't drown when encountering flooded roads. Most flood\ndeaths occur in vehicles.\n\nBe aware of your surroundings and do not drive on flooded roads.",
+    "response": "Avoid",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "FLWABQ"
+     ],
+     "WMOidentifier": [
+      "WGUS45 KABQ 232349"
+     ],
+     "NWSheadline": [
+      "FLOOD WARNING IN EFFECT UNTIL 930 PM MDT THIS EVENING... ...REPLACES FLOOD ADVISORY"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.NEW.KABQ.FA.W.0007.260923T2349Z-260924T0330Z/"
+     ],
+     "eventEndingTime": [
+      "2026-09-23T21:30:00-06:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "FLW"
+     ],
+     "NationalWeatherService": [
+      "FAW"
+     ]
+    }
+   }
+  },
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.82f4230f5f5149c0e14e4fb4a34a29b12e361428.002.1",
+   "type": "Feature",
+   "geometry": null,
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.82f4230f5f5149c0e14e4fb4a34a29b12e361428.002.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.82f4230f5f5149c0e14e4fb4a34a29b12e361428.002.1",
+    "areaDesc": "South Central Mountains; De Baca County; Chaves County Plains; Eastern Lincoln County; Southwest Chaves County",
+    "geocode": {
+     "SAME": [
+      "035027",
+      "035011",
+      "035005"
+     ],
+     "UGC": [
+      "NMZ226",
+      "NMZ237",
+      "NMZ238",
+      "NMZ239",
+      "NMZ240"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/forecast/NMZ226",
+     "https://api.weather.gov/zones/forecast/NMZ237",
+     "https://api.weather.gov/zones/forecast/NMZ238",
+     "https://api.weather.gov/zones/forecast/NMZ239",
+     "https://api.weather.gov/zones/forecast/NMZ240"
+    ],
+    "references": [
+     {
+      "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.1eb68ac6c531972ee1663789d8a2644738a44471.001.1",
+      "identifier": "urn:oid:2.49.0.1.840.0.1eb68ac6c531972ee1663789d8a2644738a44471.001.1",
+      "sender": "sender@nws.invalid",
+      "sent": "2026-09-23T13:03:00-06:00"
+     }
+    ],
+    "sent": "2026-09-23T13:11:00-06:00",
+    "effective": "2026-09-23T13:11:00-06:00",
+    "onset": "2026-09-23T13:11:00-06:00",
+    "expires": "2026-09-23T21:00:00-06:00",
+    "ends": "2026-09-25T06:00:00-06:00",
+    "status": "Actual",
+    "messageType": "Update",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Possible",
+    "urgency": "Future",
+    "event": "Flood Watch",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Albuquerque NM",
+    "headline": "Flood Watch issued September 23 at 1:11PM MDT until September 25 at 6:00AM MDT by NWS Albuquerque NM",
+    "description": "* WHAT...Flash flooding caused by excessive rainfall continues to be\npossible.\n\n* WHERE...Portions of central, east central, and southeast New\nMexico, including the following areas, in central New Mexico,\nEastern Lincoln County and South Central Mountains. In east central\nNew Mexico, De Baca County. In southeast New Mexico, Chaves County\nPlains and Southwest Chaves County.\n\n* WHEN...Through late Thursday night.\n\n* IMPACTS...Excessive runoff may result in flooding of rivers,\ncreeks, streams, and other low-lying and flood-prone locations.\nCreeks and streams may rise out of their banks. Flooding may occur\nin poor drainage and urban areas. Low-water crossings may be\nflooded. Storm drains and ditches may become clogged with debris.\nExtensive street flooding and flooding of creeks and rivers are\npossible.\n\n* ADDITIONAL DETAILS...\n- Rounds of showers and storms will continue through Thursday\nnight. While rainfall will generally be light to moderate, heavy\nrainfall rates up to 2 inches per hour will have the potential to\nproduce rapid runoff. Soils are becoming increasingly saturated\nfrom persistent rainfall over the past couple of days, further\nelevating the risk of flash flooding. Rainfall amounts will\ngenerally range from 1 to 2 inches, with isolated totals up to 4\ninches.\n- Rapid runoff and flash flooding will be most likely in complex\nterrain, below recent burn scars, low-lying areas, urban areas,\nnormally dry arroyos, near rivers and streams, and in locations\nwhere the ground is already saturated from recent heavy rainfall.\n- http://www.weather.gov/safety/flood",
+    "instruction": "You should monitor later forecasts and be prepared to take action\nshould Flash Flood Warnings be issued.  Never drive through flood\nwaters.  Most flash flood deaths occur in automobiles.",
+    "response": "Prepare",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "FFAABQ"
+     ],
+     "WMOidentifier": [
+      "WGUS65 KABQ 231911"
+     ],
+     "NWSheadline": [
+      "FLOOD WATCH NOW IN EFFECT THROUGH LATE THURSDAY NIGHT"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.EXT.KABQ.FA.A.0024.000000T0000Z-260925T1200Z/"
+     ],
+     "eventEndingTime": [
+      "2026-09-25T06:00:00-06:00"
+     ],
+     "expiredReferences": [
+      "sender@nws.invalid,urn:oid:2.49.0.1.840.0.c772a8501888f88c5d14598a53e6da4684ae7a1c.002.1,2026-09-23T02:00:00-06:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.72abc9365a5ae9f14055e0f06ce1934634ad9843.001.1,2026-09-22T11:57:00-06:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.8fc016a4b9ec1707d18193d617968f63442ff884.002.1,2026-09-22T01:02:00-06:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.5d5a0a0d75628f12e23f2eacf1c58d9903408030.001.1,2026-09-21T14:23:00-06:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.e30c65b86489bfb60ede387d77cf5a40887bf1f8.001.1,2026-09-21T01:02:00-06:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "FFA"
+     ],
+     "NationalWeatherService": [
+      "FAA"
+     ]
+    }
+   }
+  }
+ ]
+}

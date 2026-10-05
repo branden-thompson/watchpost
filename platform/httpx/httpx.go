@@ -17,6 +17,7 @@
 package httpx
 
 import (
+	"cmp"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -27,10 +28,14 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptrace"
+	"net/netip"
 	"net/url"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/sync/singleflight"
 
@@ -44,6 +49,8 @@ func isSecretParam(name string) bool {
 	switch strings.ToLower(name) {
 	case "key", "appid", "access_key", "token", "apikey", "api_key", "map_key":
 		return true
+	case "bbox": // not a secret, but where the map is looking (0.18.0 W8.14a, D-47): never in an error's text
+		return true
 	}
 	return false
 }
@@ -56,6 +63,14 @@ type Config struct {
 	MaxRetries int           // retries beyond the first attempt; 0 = none (the zero value is the safe reading — PA-7); the dashboard uses 1, report 3
 	Timeout    time.Duration // per-request; default 30s
 	CacheDir   string        // on-disk cache tier; "" = memory only
+	MemBytes   int           // the memory tier's cap, a quarter of it the largest entry it keeps; 0 = the package's 8 MB
+	DiskBytes  int64         // the disk tier's cap; 0 = the package's 256 MB (DiskCacheBytes)
+
+	// The radar client's hardening (0.18.0 W8.5, FR-5.7, RK-11, D-55); the
+	// zero values are every other client's behaviour.
+	MaxBodyBytes  int64 // refuse a body past this as it is read, never cached; 0 = the package's 32 MB
+	RefusePrivate bool  // refuse to dial a loopback, private, link-local or unspecified address, after resolution
+	HTTPSOnly     bool  // refuse any address that is not https
 }
 
 // Client is safe for concurrent use.
@@ -63,25 +78,26 @@ type Client struct {
 	cfg      Config
 	http     *http.Client
 	cache    *cache
-	stats    *reqStats          // per-host counters since launch (quality pass Q0)
-	memo     *failureMemo       // per-host failure memo, normal lane only (quality pass Q1, plan §2.3)
-	sf       singleflight.Group // one in-flight request per URL
-	inflight [2]chan struct{}   // per-lane cap on requests in flight (UAT 73)
+	stats    *reqStats            // per-host counters since launch (quality pass Q0)
+	memo     *failureMemo         // per-host failure memo, normal lane only (quality pass Q1, plan §2.3)
+	sf       singleflight.Group   // one in-flight request per URL
+	inflight [lanes]chan struct{} // per-lane cap on requests in flight (UAT 73)
 
 	mu   sync.Mutex
-	next [2]time.Time // earliest start per lane (lazy token pacing): [normal, priority]
+	next [lanes]time.Time // earliest start per lane (lazy token pacing): normal, priority, interactive
 }
 
-// Resource ceilings (B3 UAT 73 — the adversarial perf pass). The launch
-// burst once opened hundreds of connections at once; every one blocked an
-// OS thread in a cgo DNS lookup, and Go never retires threads (15 → 137).
-// A pure-Go resolver removes the cgo threads; the per-host connection cap
-// and the in-flight cap keep the burst to a handful of sockets.
+// Resource ceilings (B3 UAT 73 — the adversarial perf pass). An unbounded
+// launch burst opens hundreds of connections at once; through the cgo
+// resolver every one blocks an OS thread in a DNS lookup, and Go never
+// retires threads. A pure-Go resolver removes the cgo threads; the per-host
+// connection cap and the in-flight cap keep the burst to a handful of sockets.
 const (
 	maxInflight         = 16 // normal lane
 	maxInflightPriority = 8  // favourites' lane
+	maxInflightInteract = 8  // the listener's lane (D-156): a map ask's fetches, a lookup
 	maxConnsPerHost     = 8
-	idleConnTimeout     = 11 * time.Minute // keeps a warm connection across the 10-minute tiers (Q5, L4-F13): the counters showed a TLS handshake per tick per host at 90 s
+	idleConnTimeout     = 11 * time.Minute // keeps a warm connection across the 10-minute tiers (Q5, L4-F13): at 90 s the counters show a TLS handshake per tick per host
 )
 
 // NewTransport builds a transport with the app-wide policy — a pure-Go
@@ -90,6 +106,143 @@ const (
 // client (the ICY stream reader, the voice-model downloader — Q5). Each
 // caller may tune the copy it receives.
 func NewTransport() *http.Transport { return newTransport() }
+
+// publicDialer is the shared dialer that refuses, after resolution, any
+// address that is not a public one: the check runs on the address actually
+// dialled, so a name that resolves to 127.0.0.1 is refused (RK-11, D-55).
+func publicDialer() *net.Dialer {
+	return &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second, Resolver: &net.Resolver{PreferGo: true},
+		Control: func(_, address string, _ syscall.RawConn) error { return refusePrivate(address) }}
+}
+
+// notPublic are the ranges that reach something other than the public
+// internet: "this" network, private, shared (CGNAT), loopback, link-local,
+// IETF protocol assignments, documentation, benchmarking, multicast and
+// class E in IPv4; in IPv6 the unspecified, loopback and IPv4-compatible
+// block, NAT64 (which can reach any IPv4 address, private ones included),
+// discard-only, documentation, unique local, link-local and multicast. An
+// IPv4-mapped IPv6 address is checked as the IPv4 address it carries.
+var notPublic = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),
+	netip.MustParsePrefix("10.0.0.0/8"),
+	netip.MustParsePrefix("100.64.0.0/10"),
+	netip.MustParsePrefix("127.0.0.0/8"),
+	netip.MustParsePrefix("169.254.0.0/16"),
+	netip.MustParsePrefix("172.16.0.0/12"),
+	netip.MustParsePrefix("192.0.0.0/24"),
+	netip.MustParsePrefix("192.0.2.0/24"),
+	netip.MustParsePrefix("192.168.0.0/16"),
+	netip.MustParsePrefix("198.18.0.0/15"),
+	netip.MustParsePrefix("198.51.100.0/24"),
+	netip.MustParsePrefix("203.0.113.0/24"),
+	netip.MustParsePrefix("224.0.0.0/4"),
+	netip.MustParsePrefix("240.0.0.0/4"),
+	netip.MustParsePrefix("::/96"),
+	netip.MustParsePrefix("64:ff9b::/96"),
+	netip.MustParsePrefix("64:ff9b:1::/48"),
+	netip.MustParsePrefix("100::/64"),
+	netip.MustParsePrefix("2001:db8::/32"),
+	netip.MustParsePrefix("fc00::/7"),
+	netip.MustParsePrefix("fe80::/10"),
+	netip.MustParsePrefix("ff00::/8"),
+}
+
+// refusePrivate is the dial check: an error for an address in notPublic, or
+// one that is not an address at all.
+func refusePrivate(address string) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
+	ip, err := netip.ParseAddr(host)
+	if err != nil {
+		return fmt.Errorf("refused to dial %s: not an address: %w", host, ErrNotPublic)
+	}
+	ip = ip.Unmap().WithZone("")
+	for _, p := range notPublic { // a fixed list (P10-02)
+		if p.Contains(ip) {
+			return fmt.Errorf("refused to dial %s: %w", host, ErrNotPublic)
+		}
+	}
+	return nil
+}
+
+// Dialer is how a transport connects: the shape of http.Transport's
+// DialContext.
+type Dialer = func(ctx context.Context, network, address string) (net.Conn, error)
+
+// ProxyExempt pairs a transport's proxy function with its dialer so that the
+// proxy the environment names - often on loopback or the LAN - is reached
+// while every other connection keeps its address check (QA-12, QA-14). Its
+// Proxy remembers each proxy address it returns; its DialContext dials those
+// addresses directly and every other address through the checked dialer.
+// Whether a connection goes through the proxy is decided per connection, so a
+// host the proxy does not carry, dialled directly, still meets the check.
+type ProxyExempt struct {
+	proxyOf func(*http.Request) (*url.URL, error)
+	checked Dialer
+	direct  Dialer
+	mu      sync.Mutex
+	proxies map[string]bool
+}
+
+// NewProxyExempt is a proxy function and dialer pair: proxyOf names the
+// proxy (http.ProxyFromEnvironment in production), checked dials everything
+// but the proxy, direct dials the proxy.
+func NewProxyExempt(proxyOf func(*http.Request) (*url.URL, error), checked, direct Dialer) *ProxyExempt {
+	return &ProxyExempt{proxyOf: proxyOf, checked: checked, direct: direct, proxies: map[string]bool{}}
+}
+
+// Proxy is the transport's proxy function: proxyOf's answer, its address
+// remembered as one the dialer may reach unchecked.
+func (p *ProxyExempt) Proxy(r *http.Request) (*url.URL, error) {
+	if p.proxyOf == nil {
+		return nil, nil
+	}
+	u, err := p.proxyOf(r)
+	if err != nil || u == nil {
+		return u, err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.proxies[proxyAddress(u)] = true
+	return u, nil
+}
+
+// DialContext dials a remembered proxy address directly, and any other
+// address through the checked dialer.
+func (p *ProxyExempt) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	p.mu.Lock()
+	toProxy := p.proxies[address]
+	p.mu.Unlock()
+	if toProxy {
+		return p.direct(ctx, network, address)
+	}
+	return p.checked(ctx, network, address)
+}
+
+// proxyAddress is a proxy's host and port as the transport dials it: the
+// scheme's own port when none is written.
+func proxyAddress(u *url.URL) string {
+	if u.Port() != "" {
+		return u.Host
+	}
+	port := map[string]string{"http": "80", "https": "443", "socks5": "1080", "socks5h": "1080"}[u.Scheme]
+	return net.JoinHostPort(u.Hostname(), port)
+}
+
+// clientTransport is a client's transport: the shared one, its proxy named
+// by proxyOf. Under RefusePrivate every connection but the one to that proxy
+// refuses a private address.
+func clientTransport(cfg Config, proxyOf func(*http.Request) (*url.URL, error)) *http.Transport {
+	t := newTransport()
+	t.Proxy = proxyOf
+	if cfg.RefusePrivate {
+		pe := NewProxyExempt(proxyOf, publicDialer().DialContext, t.DialContext)
+		t.Proxy, t.DialContext = pe.Proxy, pe.DialContext
+	}
+	return t
+}
 
 // newTransport builds the shared transport with a pure-Go resolver.
 func newTransport() *http.Transport {
@@ -150,6 +303,11 @@ type StatusError struct {
 	Status   int
 	Attempts int  // 0 for a non-retryable failure — it was never retried
 	Degraded bool // true when the retries ran out and last-good data is being served
+	// Reason is the start of the failure's body, one printable line of at
+	// most maxReasonBytes, for a source to read - Open-Meteo says there which
+	// of its limits was spent (W18.1, D-165). It is never put in Error()'s
+	// words, and never shown: a host may echo a request back.
+	Reason string
 }
 
 func (e *StatusError) Error() string {
@@ -203,18 +361,42 @@ func (e *ReachError) Endpoint() string { return hostOf(e.URL) }
 // Requests whose context carries WithPriority pace on their own lane at the
 // same rate — the momentary ceiling is 2x RatePerSec, still polite — so a
 // two-location batch lands in seconds instead of minutes.
+//
+// Interactive lane (0.18.0 D-156): what the listener has just asked for — the
+// map's data, a lookup — must not queue behind that same burst, where a cold
+// map waits ~20 s for its alerts. It paces on a third lane (a momentary ceiling of 3x
+// RatePerSec across all three) and, unlike the priority lane, keeps the
+// failure memo: a host that is down is not hammered by every pan.
 type laneKey struct{}
+
+// The lanes, each with its own pacing and in-flight cap.
+const (
+	laneNormal = iota
+	lanePriority
+	laneInteractive
+	lanes
+)
 
 // WithPriority marks every request made under ctx for the priority lane.
 func WithPriority(ctx context.Context) context.Context {
-	return context.WithValue(ctx, laneKey{}, true)
+	return context.WithValue(ctx, laneKey{}, lanePriority)
 }
 
+// WithInteractive marks every request made under ctx for the interactive
+// lane: the listener is waiting on it (D-156).
+func WithInteractive(ctx context.Context) context.Context {
+	return context.WithValue(ctx, laneKey{}, laneInteractive)
+}
+
+// Interactive reports whether requests under ctx go on the interactive lane:
+// what a composition root's wiring test reads (D-156).
+func Interactive(ctx context.Context) bool { return lane(ctx) == laneInteractive }
+
 func lane(ctx context.Context) int {
-	if v, _ := ctx.Value(laneKey{}).(bool); v {
-		return 1
+	if v, ok := ctx.Value(laneKey{}).(int); ok && v >= 0 && v < lanes {
+		return v
 	}
-	return 0
+	return laneNormal
 }
 
 // New builds a Client. An empty UserAgent is refused: it would produce silent
@@ -241,8 +423,9 @@ func New(cfg Config) (*Client, error) {
 	// Lazy token pacing: no background goroutine for pacing (B0 red-team
 	// F2). Each request reserves the next start slot under the mutex and
 	// sleeps outside it.
-	return &Client{cfg: cfg, http: &http.Client{Timeout: cfg.Timeout, Transport: newTransport(), CheckRedirect: SameOriginRedirect}, cache: newCache(cfg.CacheDir), stats: newReqStats(), memo: newFailureMemo(),
-		inflight: [2]chan struct{}{make(chan struct{}, maxInflight), make(chan struct{}, maxInflightPriority)}}, nil
+	transport := clientTransport(cfg, http.ProxyFromEnvironment)
+	return &Client{cfg: cfg, http: &http.Client{Timeout: cfg.Timeout, Transport: transport, CheckRedirect: SameOriginRedirect}, cache: newCacheSized(cfg.CacheDir, cmp.Or(cfg.DiskBytes, maxDiskBytes), cmp.Or(cfg.MemBytes, maxMemBytes)), stats: newReqStats(), memo: newFailureMemo(),
+		inflight: [lanes]chan struct{}{make(chan struct{}, maxInflight), make(chan struct{}, maxInflightPriority), make(chan struct{}, maxInflightInteract)}}, nil
 }
 
 // acquire takes an in-flight slot on the request's lane (or fails on ctx).
@@ -356,13 +539,24 @@ func (c *Client) GetJSON(ctx context.Context, rawURL string, out any, opts ...Op
 // poison guard, made available to GetText callers — red-team B5 P6).
 func (c *Client) Forget(rawURL string) { c.cache.forget(rawURL) }
 
+// Cached is a URL's fresh body from the cache, memory or disk, or false - it
+// never asks the network, and an expired entry is not fresh (D-217). The
+// slice is the cache's own, read-only as GetText's is.
+func (c *Client) Cached(rawURL string) ([]byte, bool) {
+	body, ok := c.cache.get(rawURL)
+	if ok {
+		c.stats.add(statHost(rawURL), func(h *HostStats) { h.Cache++ })
+	}
+	return body, ok
+}
+
 // GetText fetches a URL and returns the raw body (text products such as
 // NDBC realtime files) through the same pacing, retry, cache and redaction
 // path.
 //
 // READ-ONLY CONTRACT (quality pass Q3, L1-F9, CQ-12): the slice is the
 // cache's own — a cache hit returns the stored body without copying (the
-// HMS archive is 1.4 MB and was copied on every Fetch). Callers parse it
+// HMS archive is 1.4 MB, too large to copy on every Fetch). Callers parse it
 // and must never write into it; every consumer package carries a
 // TestGetTextCallersMustNotMutate that runs its parser and checks the
 // bytes are unchanged.
@@ -410,10 +604,9 @@ func (c *Client) fetch(ctx context.Context, rawURL string, opts []Option) ([]byt
 			// whole TTL, so re-asking is waste; a degraded 5xx is the far end
 			// having a bad minute and must be asked again when the window is up.
 			//
-			// Degraded failures became StatusErrors at 0.14.0 so [S] could show
-			// their status in a column, which put them in this branch for the
-			// first time — a failing relay directory stopped being retried at
-			// all, and the test that pins the retry window caught it.
+			// Degraded failures are StatusErrors too, so [S] can show their
+			// status in a column, which puts them in this branch — without the
+			// Degraded check a failing relay directory would never be retried.
 			var se *StatusError
 			if !ro.noCache && errors.As(err, &se) && !se.Degraded && se.Status != http.StatusTooManyRequests {
 				c.cache.putNegative(rawURL, err)
@@ -485,12 +678,15 @@ func (c *Client) do(ctx context.Context, rawURL string, cond conditional) ([]byt
 	if err := invariant.Check(c.cfg.MaxRetries >= 0, "retry budget must be non-negative"); err != nil {
 		return nil, nil, err
 	}
-	req := request{rawURL: rawURL, safe: RedactURL(rawURL), host: statHost(rawURL), priority: lane(ctx) == 1, cond: cond}
+	req := request{rawURL: rawURL, safe: RedactURL(rawURL), host: statHost(rawURL), priority: lane(ctx) == lanePriority, cond: cond}
+	if c.cfg.HTTPSOnly && !strings.HasPrefix(rawURL, "https://") {
+		return nil, nil, fmt.Errorf("refused %s: this client fetches over https only", req.safe)
+	}
 	// The memo is consulted on the normal lane only (plan §2.3, R2-3): the
 	// priority lane always attempts — it is the half-open probe that clears
 	// the memo on success — so alerts and the first view are never blackholed.
 	if err := c.memoRefusal(req); err != nil {
-		c.stats.add(req.host, func(h *HostStats) { h.FastFail++ })
+		c.stats.add(req.host, func(h *HostStats) { h.FastFail++; h.LastFail = time.Now() })
 		return nil, nil, err
 	}
 	release, err := c.acquire(ctx)
@@ -525,7 +721,7 @@ func (c *Client) do(ctx context.Context, rawURL string, cond conditional) ([]byt
 		// Transport-level cause survives, redacted (B0 red-team F1).
 		return nil, nil, &ReachError{URL: req.safe, Attempts: last.attempts, Err: redactErr(last.err)}
 	}
-	return nil, nil, &StatusError{URL: req.safe, Status: last.status, Attempts: last.attempts, Degraded: true}
+	return nil, nil, &StatusError{URL: req.safe, Status: last.status, Attempts: last.attempts, Degraded: true, Reason: last.reason}
 }
 
 // request is one GET's identity for the retry loop.
@@ -543,6 +739,7 @@ type outcome struct {
 	hdr      http.Header
 	err      error
 	status   int
+	reason   string // a failure's reason, as StatusError.Reason
 	attempts int
 	final    bool
 }
@@ -569,20 +766,27 @@ func (c *Client) attemptOnce(ctx context.Context, req request, attempt int) outc
 	res, err := c.doAttempt(ctx, req)
 	switch {
 	case err == nil && res.status == http.StatusNotModified:
-		c.stats.add(req.host, func(h *HostStats) { h.NotModified++; h.H2 += b2i(res.h2) })
+		c.stats.add(req.host, func(h *HostStats) { h.NotModified++; h.H2 += b2i(res.h2); h.LastOK = time.Now() })
 		c.memo.clear(req.host)
 		out.hdr, out.final = res.hdr, true // no body: the caller renews its stored one
 	case err == nil && res.status == http.StatusOK:
-		c.stats.add(req.host, func(h *HostStats) { h.Net++; h.BytesNet += int64(len(res.body)); h.H2 += b2i(res.h2) })
+		c.stats.add(req.host, func(h *HostStats) {
+			h.Net++
+			h.BytesNet += int64(len(res.body))
+			h.H2 += b2i(res.h2)
+			h.LastOK = time.Now()
+		})
 		c.memo.clear(req.host)
 		out.body, out.hdr, out.final = res.body, res.hdr, true
 	case err != nil && res.status != 0:
+		c.stats.add(req.host, func(h *HostStats) { h.LastFail = time.Now() })
 		out.err, out.final = err, true // non-retryable failure (4xx), already actionable + redacted; never arms the memo
 	case errors.Is(err, errRedirectRefused):
 		out.err, out.final = redactErr(err), true // our own policy, not the host's fault: no retry, no memo
 	default:
+		c.stats.add(req.host, func(h *HostStats) { h.LastFail = time.Now() }) // how it is doing now (D-150)
 		c.noteFailure(req.host, req.rawURL, res, err)
-		out.err, out.status = err, res.status
+		out.err, out.status, out.reason = err, res.status, res.reason
 	}
 	return out
 }
@@ -594,6 +798,7 @@ type attemptResult struct {
 	hdr        http.Header
 	status     int
 	h2         bool          // the response arrived over HTTP/2 (RequestStats)
+	reason     string        // a failure's reason (StatusError.Reason)
 	retryAfter time.Duration // a 429/503 Retry-After, clamped (0 = none)
 }
 
@@ -633,19 +838,27 @@ func (c *Client) doAttempt(ctx context.Context, r request) (attemptResult, error
 		return res, nil
 	}
 	if resp.StatusCode != http.StatusOK {
+		res.reason = reasonOf(resp.Body)
 		_, _ = io.Copy(io.Discard, resp.Body)
 		if !retryable(resp.StatusCode) {
-			return res, &StatusError{URL: safe, Status: resp.StatusCode}
+			return res, &StatusError{URL: safe, Status: resp.StatusCode, Reason: res.reason}
 		}
 		res.retryAfter = parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
 		return res, nil
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes+1))
+	limit := int64(maxBodyBytes)
+	if c.cfg.MaxBodyBytes > 0 {
+		limit = c.cfg.MaxBodyBytes
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
 		return res, fmt.Errorf("bad response body from %s: %w", safe, redactErr(err))
 	}
-	if len(body) > maxBodyBytes {
-		return res, fmt.Errorf("response from %s exceeds %d MB — refused", safe, maxBodyBytes>>20)
+	if int64(len(body)) > limit {
+		// Refused AS IT READS, and final: the caller has an error and nothing
+		// reaches the cache, which is written only after a success (FR-5.7).
+		res.status = http.StatusRequestEntityTooLarge
+		return res, &StatusError{URL: safe, Status: http.StatusRequestEntityTooLarge}
 	}
 	res.body, res.hdr = body, resp.Header
 	return res, nil
@@ -684,6 +897,32 @@ func (c *Client) sleepBackoff(ctx context.Context, attempt int, safe string) err
 	}
 }
 
+// maxReasonBytes bounds a failure's kept reason: enough for a sentence.
+const maxReasonBytes = 256
+
+// reasonOf is the start of a failure's body as one printable line: control
+// characters are spaces, runs of space are one, at most maxReasonBytes.
+func reasonOf(r io.Reader) string {
+	raw, _ := io.ReadAll(io.LimitReader(r, 4*maxReasonBytes)) // a failed read keeps what came: a reason is best effort
+	var b strings.Builder
+	space := false
+	for _, ch := range string(raw) { // bounded by the read (P10-02)
+		if !unicode.IsPrint(ch) || unicode.IsSpace(ch) {
+			space = b.Len() > 0
+			continue
+		}
+		if space {
+			b.WriteByte(' ')
+			space = false
+		}
+		if b.Len()+utf8.RuneLen(ch) > maxReasonBytes {
+			break
+		}
+		b.WriteRune(ch)
+	}
+	return b.String()
+}
+
 func retryable(status int) bool {
 	return status == http.StatusTooManyRequests || status >= 500
 }
@@ -700,3 +939,8 @@ func redactErr(err error) error {
 
 // CacheStats reports the client's memory cache tier.
 func (c *Client) CacheStats() Stats { return c.cache.stats() }
+
+// ForgetPrefix drops every cached response whose URL starts with prefix,
+// in memory and on disk, and says how many (0.18.0 W3.8: "Clear map data"
+// forgets the zone outlines and nothing else the station has cached).
+func (c *Client) ForgetPrefix(prefix string) (int, error) { return c.cache.forgetPrefix(prefix) }

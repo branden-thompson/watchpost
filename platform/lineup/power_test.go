@@ -11,8 +11,7 @@ import (
 // programme is a director holding one location report on the main track and
 // nothing else — the watchlist rotation, which is most of the broadcast.
 //
-// The main track's filling is the Phase 3 absorb of armDwell/advanceQueue; here
-// it is seeded directly, which is the state that absorb will produce.
+// The main track is seeded directly here, in the state its filling produces.
 func programme(t *testing.T, d Director, ids ...string) Director {
 	t.Helper()
 	for _, id := range ids {
@@ -28,7 +27,7 @@ func programme(t *testing.T, d Director, ids ...string) Director {
 }
 
 // TestANewDirectorIsStopped. The zero value is how a station starts: nothing is
-// playing until the listener asks for it, which is today's `d.mode == ""`
+// playing until the listener asks for it, the same rule as `d.mode == ""`
 // (app/radio.go:radioDeck.setMode). A director that came up running would put a report to air
 // on launch, which no listener asked for.
 func TestANewDirectorIsStopped(t *testing.T) {
@@ -46,14 +45,12 @@ func TestANewDirectorIsStopped(t *testing.T) {
 // whole reason a running state is built for Observer's own merits: the listener
 // stopped the radio, and the programme stays stopped.
 //
-// IT IS BUILT, THOUGH, AND THAT IS D-84. The argument against — "a card built
-// while stopped would spend 1.03 s of network on a report that has no cutover to
-// be ready for" — is half right and the HUM LEAD overturned the half that
-// matters: the cutover IS the operator pressing a key, and the 1.03 s is exactly
-// what they must not hear. "when the operator does — the line **should be ready
-// to go** at that point."
+// IT IS BUILT, THOUGH, AND THAT IS D-84. A card built while stopped spends
+// 1.03 s of network ahead of the cutover, and the cutover IS the operator
+// pressing a key: the 1.03 s is exactly what they must not hear. "when the
+// operator does — the line **should be ready to go** at that point."
 //
-// WHAT DID NOT CHANGE is the half PD-1 is actually about: nothing SPEAKS.
+// WHAT HOLDS is the half PD-1 is actually about: nothing SPEAKS.
 func TestTheMainTrackIsPreparedButNotReadWhileTheRadioIsStopped(t *testing.T) {
 	d := programme(t, New(Settings{Max: 10}, planNow), "bonsall", "oceanside")
 
@@ -88,8 +85,8 @@ func TestTheMainTrackIsPreparedButNotReadWhileTheRadioIsStopped(t *testing.T) {
 
 // TestAStoppedRadioStillReadsTheAlertRail — the asymmetry, and it is deliberate.
 //
-// STOPPING THE RADIO STOPS THE PROGRAMME, NOT THE HAZARDS. That is today's
-// behaviour and it is not being changed: Stop halts the engine, which silences
+// STOPPING THE RADIO STOPS THE PROGRAMME, NOT THE HAZARDS. Stop halts the
+// engine, which silences
 // the broadcast, while a takeover reads through the narrator's own path and is
 // never asked about the deck's mode (app/executors.go asks only whether the
 // voice is silent or muted). Mute is the control for "do not speak to me"; stop
@@ -169,10 +166,9 @@ func TestStoppingDoesNotCutAnAlertShort(t *testing.T) {
 	}
 }
 
-// TestTheRunningStateIsTheOnlyCarrier. Today the rule is `d.mode != ""` PLUS an
-// epoch counter — one rule in two places, which is the shape that produced the
-// duck-lift bug (RD-2). Here it is one field and one predicate, and this is the
-// whole truth table.
+// TestTheRunningStateIsTheOnlyCarrier. One rule in two places — `d.mode != ""`
+// PLUS an epoch counter — is the shape of the duck-lift bug (RD-2). Here it is
+// one field and one predicate, and this is the whole truth table.
 func TestTheRunningStateIsTheOnlyCarrier(t *testing.T) {
 	for _, tc := range []struct {
 		power Power
@@ -279,8 +275,8 @@ func TestBothPowersNameThemselves(t *testing.T) {
 }
 
 // TestAStepPublishesOnceAndLast — stopping the radio takes the programme off
-// the air AND settles, and those were two separate settles: one step described
-// two publishes, with the first no longer last.
+// the air AND settles, and the step must still describe ONE publish, and that
+// one last.
 //
 // It matters because the pump runs publishes CONCURRENTLY — a publish holds no
 // resource — so a reader could apply the older snapshot after the newer one and

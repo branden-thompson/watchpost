@@ -180,10 +180,10 @@ func TestOnlyTheChosenKindsAreGathered(t *testing.T) {
 // the UGC filtering after it — and the one most often not wanted: a FIRE-only
 // card has no use for a zone forecast.
 //
-// MUTANT mAX2 MADE THEM UNCONDITIONAL AND SURVIVED, because the test above counts
-// the deck's three HOOKS and the products do not go through one. They go over the
-// wire, so this counts requests instead — which is the only way to ask "did you
-// go and get it" of a source that has no seam of its own.
+// THE TEST ABOVE CANNOT SEE THEM: it counts the deck's three HOOKS and the
+// products do not go through one, so making them unconditional passes it. They
+// go over the wire, so this counts requests instead — which is the only way to
+// ask "did you go and get it" of a source that has no seam of its own.
 func TestTheForecastProductsAreNotPulledUnlessAsked(t *testing.T) {
 	load := func(want report.Set) int64 {
 		t.Helper()
@@ -212,9 +212,9 @@ func TestTheForecastProductsAreNotPulledUnlessAsked(t *testing.T) {
 // whole report, not an empty one. Read the other way round, the station would
 // compose a frame with nothing in it and the rotation would go quiet.
 //
-// MUTANT mAX3 MADE THE DEFAULT EMPTY AND SURVIVED: nothing drove `composeFor`'s
-// default at all, because the one test that reaches it is about a location
-// NOBODY WATCHES and fails before composing.
+// THIS IS THE TEST THAT DRIVES `composeFor`'s DEFAULT: the other one that
+// reaches it is about a location NOBODY WATCHES and fails before composing, so
+// an empty default passes it.
 func TestACardThatNamesNoSetStillComposesAFullReport(t *testing.T) {
 	var gotFire, gotSeismic, gotMarine bool
 	_, weather, products := offlineProviders(t)

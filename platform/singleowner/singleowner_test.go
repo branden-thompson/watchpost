@@ -95,3 +95,18 @@ func TestTheQualifiedSpellingIsNotMissed(t *testing.T) {
 		t.Error("a QUALIFIED construction outside the owner must be caught")
 	}
 }
+
+// TestTheRepositoryMetadataIsNotWalked: git adds and removes files under .git
+// (its index lock) while a walk reads the tree, and nothing there is source, so
+// the walk must not enter it; a non-owner "site" placed there proves it does not.
+func TestTheRepositoryMetadataIsNotWalked(t *testing.T) {
+	root := fixture(t, map[string]string{
+		"owner/owner.go":      "package owner\ntype Widget struct{}\nvar _ = Widget{}\n",
+		".git/hooks/stray.go": "package hooks\nimport \"x/owner\"\nvar _ = owner.Widget{}\n",
+	})
+	spy := &testing.T{}
+	CheckIn(spy, root, "widget", map[string]string{"owner/owner.go": "the owner"}, matchWidget)
+	if spy.Failed() {
+		t.Error("a file under .git must never be policed or walked")
+	}
+}

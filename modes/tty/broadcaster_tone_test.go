@@ -60,7 +60,7 @@ func TestAnOperatorsCardIsToldFromTheStationsOwn(t *testing.T) {
 	}
 	// AND BOTH CARRY THE CONSOLE'S OWN TEXT TONE, which is what keeps the AA
 	// lift inside the console — registering the base text tone against these
-	// grounds moved it in two themes and took Observer's tables with it.
+	// grounds would move it in two themes and take Observer's tables with it.
 	for _, got := range []string{mine, theirs} {
 		if !contains(got, render.Tok(render.CardText)) {
 			t.Errorf("%q does not carry the card's own text tone", got)
@@ -155,10 +155,10 @@ func admitted(t *testing.T, c lineup.Card) lineup.Card {
 // press <shift+a> that modal should MATCH the tone, not be the blue that is
 // currently is."
 //
-// THE CARD AND ITS WINDOW WERE TWO COLOURS ONE KEYPRESS APART. `cardTone` painted
-// the takeover box with the [w] window's category tint — correctly, and that rule
-// stands — and `modalCard` floated on the standard modal ground, so opening the
-// hazard threw its severity away.
+// THE CARD AND ITS WINDOW ARE ONE COLOUR. `cardTone` paints the takeover box
+// with the [w] window's category tint, and `modalCard` floats on that same
+// ground rather than the standard modal one, so opening the hazard keeps its
+// severity.
 //
 // ASKED OF THE REGISTRY, NOT OF A LITERAL, which is the rule the card's own tint
 // already follows: `category.Of(k).Tint` IS what [w] paints that category, so the
@@ -182,10 +182,10 @@ func TestTheAlertWindowWearsTheCardsGround(t *testing.T) {
 		if out.observer.modal != modalCard {
 			t.Fatalf("%v: [A] did not open the card window", k)
 		}
-		// ASSERTED ON THE RENDERED WINDOW, NOT ON THE FIELD. The first version of
-		// this checked `out.observer.cardGround` — the value STORED — and passed
-		// against a build where `modalCard` ignored it entirely. A stored ground
-		// is not a painted one, and the operator sees the paint.
+		// ASSERTED ON THE RENDERED WINDOW, NOT ON THE FIELD. A check of
+		// `out.observer.cardGround` — the value STORED — passes against a build
+		// where `modalCard` ignores it entirely. A stored ground is not a painted
+		// one, and the operator sees the paint.
 		want := render.Tok(category.Of(k).Tint)
 		win := out.observer.renderModal(out.observer.opts())
 		if !contains(win, want) {
@@ -218,8 +218,8 @@ func TestAReportsWindowKeepsTheStandardGround(t *testing.T) {
 
 	// AND THE CASE THAT ACTUALLY DISCRIMINATES. The fixture above cannot: a
 	// location report has no arrivals, so `worstCategory` refuses it and the
-	// ground comes back "" whether or not the SLOT is checked — mutant mAV2
-	// deleted the slot guard and this test passed anyway.
+	// ground comes back "" whether or not the SLOT is checked — mutant mAV2,
+	// the slot guard deleted, passes it.
 	//
 	// A NON-HAZARD CARD CARRYING ARRIVALS is the state that separates the two
 	// guards. The app does not produce one today; the rule is "only a HAZARD
@@ -233,11 +233,10 @@ func TestAReportsWindowKeepsTheStandardGround(t *testing.T) {
 
 // TestTheOpenHazardWindowRefreshes.
 //
-// `refreshCardWindow` searched the MAIN TRACK alone — complete while a digit was
-// the only way in, and incomplete the moment `[A]` opened a card on the ALERT
-// RAIL (D-126). A window that never refreshes goes stale exactly where staleness
-// matters most: a burst gains hazards while the operator is reading it, and the
-// window goes on showing the old list.
+// `refreshCardWindow` searches the ALERT RAIL as well as the MAIN TRACK, because
+// `[A]` opens a card there (D-126). A window that never refreshes goes stale
+// exactly where staleness matters most: a burst gains hazards while the
+// operator is reading it, and the window goes on showing the old list.
 func TestTheOpenHazardWindowRefreshes(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })

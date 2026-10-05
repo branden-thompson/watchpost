@@ -6,40 +6,32 @@ import (
 	"testing"
 )
 
-// THE INJECTION SEAM IS ABSENT FROM A RELEASE BINARY (F-21b).
+// THE INJECTOR IS IN EVERY BUILD (0.18.0 D-152, overturning F-21b).
 //
-// A screenshot of a fabricated tornado warning is indistinguishable from a real
-// one, so the capability is BUILD-TAGGED rather than runtime-gated: a runtime
-// gate is one config mistake from being reachable; a build tag is not in the
-// file the linker reads.
+// Every surface a test event reaches says it is a test, it lives two minutes,
+// and ctrl+d asks ARE YOU SURE first, so a screenshot of a fabricated tornado
+// warning cannot pass for a real one. A station operator tests their alerts as
+// a radio station does (HUM LEAD, #9), so the capability ships, and the rule is
+// that it can fabricate nothing UNMARKED (TestEveryFabricatedEventIsMarkedAsOne,
+// TestATestEventIsMarkedOnEverySurface).
 //
-// This asserts the property structurally, because it cannot be asserted
-// behaviourally — a release build has no Inject to call, so no test can call it
-// and observe nothing happening. It reads the source the way lint-imports and
-// lint-watermark do, which is the shape a rule about WHICH CODE EXISTS has to
-// take (F-22).
-func TestInjectionIsAbsentFromAReleaseBuild(t *testing.T) {
-	debug, release := readSource(t, "inject_debug.go"), readSource(t, "inject_release.go")
-
-	if !strings.HasPrefix(strings.TrimSpace(debug), "//go:build watchpost_debug") {
-		t.Error("the injector must be behind the debug tag, or it ships")
+// This guards against a build tag taking it out: it runs in the plain build, so
+// a release path that loses the injector fails here, not in a listener's hands.
+func TestTheInjectorIsInEveryBuild(t *testing.T) {
+	if (&livePipelines{}).injectHook() == nil {
+		t.Error("the normal build supplies no injector: ctrl+d cannot test an alert (D-152)")
 	}
-	if !strings.HasPrefix(strings.TrimSpace(release), "//go:build !watchpost_debug") {
-		t.Error("the release file must exclude the debug tag, or both compile at once")
+	if len(debugScenarios()) == 0 {
+		t.Error("the normal build offers no scenarios, so ctrl+d has no question to ask (D-152)")
 	}
-	// The capability itself: only the debug file may define a way to put an
-	// event into the queue.
-	if !strings.Contains(debug, "func (t *tickerDeck) Inject(") {
-		t.Error("the debug build defines Inject")
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(release, "func (t *tickerDeck) Inject(") {
-		t.Error("a release build must define no Inject at all")
-	}
-	// And the call site is SHARED, so the two builds differ in what exists
-	// rather than in what the tick does.
-	if !strings.Contains(release, "func (t *tickerDeck) takeInjected()") ||
-		!strings.Contains(debug, "func (t *tickerDeck) takeInjected()") {
-		t.Error("both builds provide takeInjected, so the tick has one call site")
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".go") && strings.Contains(readSource(t, e.Name()), "watchpost_"+"debug") { // split, so this file does not name it
+			t.Errorf("%s names the retired debug tag: one build (D-152)", e.Name())
+		}
 	}
 
 	// THE SEAM IS WHERE A REAL ALERT ENTERS. An injector that shortcut the

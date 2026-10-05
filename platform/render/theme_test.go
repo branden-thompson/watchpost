@@ -130,7 +130,7 @@ func TestGlyphsSwapAsOneSetUnderASCII(t *testing.T) {
 	}
 }
 
-// Quality pass Q4a-004 (A11-2): the table tokens every theme now owns must
+// Quality pass Q4a-004 (A11-2): the table tokens every theme owns must
 // read at WCAG AA (≥ 4.5:1) against the theme's own window background;
 // the text tokens ride the same check.
 func TestThemeTokenContrastAA(t *testing.T) {
@@ -231,11 +231,11 @@ func TestCategoryToneContrastAA(t *testing.T) {
 
 // A THEME CALLED MONOCHROME HAS NO COLOUR IN IT.
 //
-// It overrides every chromatic token BY HAND, so anything added since the last
-// pass over it leaks the default's colour. Three did: the list pointer and the
-// focused label kept their yellow, and every modal kept the blue slate tile.
+// It overrides every chromatic token BY HAND, so a token it does not override
+// leaks the default's colour — a list pointer's yellow, a modal's blue slate
+// tile.
 //
-// Grounds and foregrounds both, because the tile was the one a listener saw
+// Grounds and foregrounds both, because the tile is the one a listener sees
 // first — it is behind every window in the app.
 func TestMonochromeHasNoColourInIt(t *testing.T) {
 	prev := ThemeName()

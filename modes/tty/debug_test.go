@@ -7,10 +7,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// THE WINDOW CANNOT OFFER WHAT THE BUILD DOES NOT HAVE (F-21).
+// THE WINDOW CANNOT OFFER WHAT IT WAS NOT GIVEN (F-21).
 //
-// A release build compiles the injector out, so the app supplies no hook and no
-// scenarios. The window must then say so plainly rather than render a row that
+// The app always supplies the injector (0.18.0 D-152, TestTheInjectorIsInEveryBuild);
+// a window built without one must say so plainly rather than render a row that
 // does nothing — a disabled control is a control someone will try, and this one
 // fabricates tornado warnings.
 func TestTheDebugWindowOffersNoInjectionWithoutAHook(t *testing.T) {
@@ -19,7 +19,7 @@ func TestTheDebugWindowOffersNoInjectionWithoutAHook(t *testing.T) {
 	d = d.open(modalDebug)
 
 	got := stripANSITest(strings.Join(firstOf(d.debugLines(d.opts())), "\n"))
-	if !strings.Contains(got, "NOT AVAILABLE IN THIS BUILD") {
+	if !strings.Contains(got, "INJECTION IS NOT AVAILABLE") {
 		t.Errorf("a build with no injector says so:\n%s", got)
 	}
 	if strings.Contains(got, "INJECT AN ALERT") {
@@ -32,8 +32,8 @@ func TestTheDebugWindowOffersNoInjectionWithoutAHook(t *testing.T) {
 	// AND SCENARIOS WITHOUT A HOOK OFFER NOTHING EITHER. A build that listed
 	// them and wired no injector would render rows that silently do nothing —
 	// and a row that fabricates a tornado warning is the last place to leave a
-	// control that might or might not be connected. The first version of this
-	// test left both nil, so a mutant deleting the guard SURVIVED it.
+	// control that might or might not be connected. With both left nil, a
+	// mutant deleting the guard would survive this test.
 	d.cfg.DebugScenarios = []DebugScenario{{Label: "one alert", Key: "one"}}
 	if got := d.debugScenarios(); len(got) != 0 {
 		t.Errorf("scenarios without an injector must not be offered, got %v", got)
@@ -187,11 +187,10 @@ func firstOf(lines []string, _, _ int) []string { return lines }
 
 // AND THE WINDOW A RELEASE BUILD SHIPS IS READABLE AT THE FLOOR (FR-5).
 //
-// Injection is compiled out of a release binary, so the shipped ctrl+d window
-// is prose and no question. Running past the fold at 80x24 with the scroll pinned
-// at zero puts every line of what it exists to say out of reach of any key, in
-// the build that ships. So both halves are asserted: that it fits, and that every
-// line of it is on screen.
+// Without an injector the ctrl+d window is prose and no question. Running past
+// the fold at 80x24 with the scroll pinned at zero puts every line of what it
+// exists to say out of reach of any key. So both halves are asserted: that it
+// fits, and that every line of it is on screen.
 func TestTheShippedDiagnosticsWindowIsReadableAtTheFloor(t *testing.T) {
 	d := debugAtTheFloor(t)
 	d.cfg.InjectAlert, d.cfg.DebugScenarios = nil, nil // a release build
@@ -212,7 +211,7 @@ func TestTheShippedDiagnosticsWindowIsReadableAtTheFloor(t *testing.T) {
 }
 
 // debugAtTheFloor is the ctrl+d window at 80x24 — the app's documented floor —
-// with the scenarios a debug build offers (app/inject_debug.go).
+// with the scenarios the app offers (app/inject.go).
 func debugAtTheFloor(t *testing.T) Dashboard {
 	t.Helper()
 	d := dash(t).(Dashboard)
@@ -231,7 +230,7 @@ func debugAtTheFloor(t *testing.T) Dashboard {
 //
 // THE CURSOR IS NOT TEXT, and dropping it is what makes the comparison sound: a
 // row reads "› a burst" while it is focused and "a burst" while it is not, so a
-// probe that kept the glyph reported the unfocused form as unreachable — an
+// probe that kept the glyph would report the unfocused form as unreachable — an
 // artifact of the instrument, in a measurement whose whole subject is
 // instruments that lie.
 func modalTextOf(line string) string {

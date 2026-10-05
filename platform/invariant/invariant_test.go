@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Quality pass Q2 (L3-F27): the P10 keystone had no test of its own. Four
+// Quality pass Q2 (L3-F27): the P10 keystone's own test. Four
 // cases pin the contract every caller relies on — a true condition is
 // silent, a false one names the violation, an unnamed violation is itself
 // an error, and the error never panics.

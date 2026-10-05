@@ -3,11 +3,11 @@ package render
 // status_table.go — the [S] window's tables, laid out by the KIT (0.14.0).
 //
 // THE RULE: when we need a table, we use a go-studs table. That is what it was
-// vendored for. These three were hand-rolled with
-// fmt.Sprintf and column widths measured by hand, which reimplemented — worse —
-// what ColumnDefinition already does: Width for a fixed column, Fill for the one
-// that takes the slack, Truncatable with its own floor and tail, and
-// NoLeadingGutter to pair a mark cell with the column it belongs to.
+// vendored for. A table hand-rolled with fmt.Sprintf and column widths measured
+// by hand reimplements — worse — what ColumnDefinition already does: Width for
+// a fixed column, Fill for the one that takes the slack, Truncatable with its
+// own floor and tail, and NoLeadingGutter to pair a mark cell with the column
+// it belongs to.
 //
 // The seam is the one SevereTable already uses: modes/tty builds the CELLS,
 // this package lays them out. A mode never touches the kit.
@@ -59,13 +59,11 @@ func (o Opts) StatusTable(cols []StatusColumn, rows []StatusRow, inner int, head
 	// come out a cell apart; the window needs a rectangle, so this is where it
 	// becomes one, padded up and clamped down by OUR measure.
 	// TruncateCells, WHICH MEASURES WHAT `Width` MEASURES. Reaching for
-	// `splitCells` instead — because "TruncateCells counts an escape sequence's
-	// bytes as content and will cut through the middle of one" — works the defect
-	// around HERE rather than fixing it THERE, and leaves every other caller on
-	// it: the console's masthead hits the same bug through the same function and
-	// loses half its content (HUM LEAD, UAT 2026-09-10). A known-wrong shared
-	// function with a
-	// local detour around it is the shape "one canonical way" exists to stop.
+	// `splitCells` instead, to dodge an escape-sequence fault in TruncateCells,
+	// would work the defect around HERE rather than fixing it THERE, and leave
+	// every other caller on it — the console's masthead among them (HUM LEAD, UAT
+	// 2026-09-10). A known-wrong shared function with a local detour around it is
+	// the shape "one canonical way" exists to stop.
 	fit := func(line string) string { return PadTo(TruncateCells(line, inner), inner) }
 	out := []string{fit(dt.RenderHeader())}
 	for _, r := range def.Rows {
@@ -83,8 +81,8 @@ const statusGutter = 2
 // go-studs puts air before a column only from INDEX THREE (gutterBefore is
 // `i >= 3`), because the dashboard tables it was written for lead with a
 // prefix, a number and a name that butt together on purpose. Ours do not: every
-// column here is a separate reading and the first three ran into each other —
-// "COOPS · COOPS-OBSREF OK".
+// column here is a separate reading, and without the air the first three run
+// into each other — "COOPS · COOPS-OBSREF OK".
 //
 // Rather than fork the kit for a layout preference, the air is folded into the
 // columns it is missing from: the width grows by a gutter, and a LEFT-aligned

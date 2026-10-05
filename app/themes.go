@@ -88,6 +88,16 @@ func setUIHook(p tty.UIPrefs) error {
 			cfg.Theme = p.Theme
 		}
 		cfg.Units, cfg.Clock = p.Units, p.Clock
+		cfg.Maps, cfg.MapDescription = p.Maps, p.MapDescription // 0.18.0: the map's Settings, written with the group
+		cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayers = p.MapScale, p.MapNearbyKm, p.MapLayers
+		cfg.MapRadarSource = p.MapRadarSource      // D-83
+		cfg.MapTemperatureSource = p.MapTempSource // D-93
+		cfg.MapRainDetail = p.MapRainDetail        // D-192
+		cfg.MapUVCities = p.MapUVCities            // D-202
+		cfg.MapRadarAheadHours = p.MapRadarAhead   // D-114
+		cfg.MapQuakeFeed = p.MapQuakeFeed          // D-122
+		cfg.MapAlertScope = ""                     // retired (D-76): the next save lets the key go
+		cfg.MapDetail, cfg.MapDetailLevel = p.MapDetail, p.MapDetailLevel
 		return nil
 	})
 }

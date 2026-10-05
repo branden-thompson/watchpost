@@ -8,7 +8,7 @@ import (
 
 // PD-3 — A CARD WHOSE WORDS OUTLIVED THEIR VALIDITY IS NOT READ.
 //
-// The table below is the whole rule, written before the code was. Each row is a
+// The table below is the whole rule. Each row is a
 // STANDBY card at the moment the air comes free; the outcome is what a listener
 // gets.
 //
@@ -36,8 +36,7 @@ import (
 // The track matters and is not a detail: advances(AlertRail) is unconditionally
 // true, because the rail drains whatever the listener has done to the
 // programme. So a stopped-programme case can only be posed on the MAIN TRACK —
-// posing it on the rail tests the rail's always-advance rule instead, which is
-// the mistake the first version of row 5 made.
+// posing it on the rail tests the rail's always-advance rule instead.
 func stagedOn(t *testing.T, track Track, age time.Duration) Director {
 	t.Helper()
 	d := New(Settings{Max: 10}, planNow)
@@ -236,10 +235,10 @@ func TestPD3TheNoticeSaysWhatHappened(t *testing.T) {
 //	 been admitted. No need for the director to choose / move another card — it's
 //	 still the same card, the order has been decided."
 //
-// THE DEFECT THIS CLOSES IS ONE D-84 ITSELF CREATED. The Composer now works on
-// standby so the line is ready the instant the operator goes on air — and a
-// station can sit on standby for an hour. Without a refresh the prepared card is
-// dropped as it takes the air (PD-3) and the station opens by apologising.
+// THE COMPOSER WORKS ON STANDBY (D-84), so the line is ready the instant the
+// operator goes on air — and a station can sit on standby for an hour. Without a
+// refresh the prepared card is dropped as it takes the air (PD-3) and the
+// station opens by apologising.
 func TestAStandingByCardsWordsAreAskedForAgainRatherThanDropped(t *testing.T) {
 	base := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
 	d := New(Settings{Max: 5, Depth: 3}, base) // STOPPED: the operator is setting up
@@ -302,11 +301,9 @@ func TestARefreshIsAskedForOnceWhileItIsInFlight(t *testing.T) {
 // nothing sits. A card that DOES sit on a running station is being held by a
 // rail drain, and PD-3's drop is the right answer there — mid-broadcast there is
 // no time to rebuild, which is the whole reason readInstead exists.
-// THE FIRST VERSION OF THIS TEST COULD NOT FAIL, and a plant said so. It put ONE
-// card on a running station and ticked — but a running station reads that card
-// immediately, so by the tick there was no standing-by card left to refresh and
-// the assertion held whatever the code did. Deleting the guard it exists to pin
-// SURVIVED.
+// ONE CARD ON A RUNNING STATION CANNOT POSE THIS: a running station reads that
+// card immediately, so by the tick there is no standing-by card left to refresh
+// and the assertion holds whatever the code does.
 //
 // The state it has to construct is a card WAITING: one on the air, and one
 // standing by behind it with its words already aged.

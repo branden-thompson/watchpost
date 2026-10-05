@@ -38,9 +38,8 @@ func cardCellOf(t *testing.T, row string) string {
 //
 //	┏━━ LOCATION REPORT • Oceanside, CA 92057 ━━━━━━ • STANDARD • ━━━┓
 //
-// IT WAS A ROW, and that row spent a line of the card saying what the frame
-// around it could say for free — on the one box on this console whose job is to
-// hold a manifest.
+// A ROW WOULD SPEND a line of the card saying what the frame around it says for
+// free — on the one box on this console whose job is to hold a manifest.
 func TestTheUpNextCardNamesItselfInItsRule(t *testing.T) {
 	rows := upNextAt(t, card(t, "a", "Oceanside, CA 92057"))
 	if len(rows) < 3 {
@@ -107,8 +106,8 @@ func TestTheUpNextCardFollowsTheReferencesOrder(t *testing.T) {
 // still has one.
 //
 // F-97 ONE ROW ALONG. The way in is in the footer, and a footer given only to a
-// decided card puts an empty slot out of reach — the same defect the chip riding
-// the title row was moved to close.
+// decided card puts an empty slot out of reach — the same defect F-97 closes for
+// the chip on the title row.
 func TestTheUpNextCardIsAddressableEmptyOrNot(t *testing.T) {
 	empty := NewBroadcaster()
 	empty.width, empty.height, empty.ascii = 150, 74, true
@@ -124,30 +123,25 @@ func TestTheUpNextCardIsAddressableEmptyOrNot(t *testing.T) {
 		if !strings.Contains(last, chipFor("1")) {
 			t.Errorf("%s: the card is not addressable; %q is missing from %q", tc.name, chipFor("1"), last)
 		}
-		// AND IT NO LONGER NAMES A PRESENTER (D-131). The per-card PRESENTER
-		// control was dropped; the label outlived it and drew `PRESENTER: N/A`
-		// on every card — HUM LEAD, UAT 2026-09-14. Pinned as an ABSENCE
-		// because that is what regresses: the label is easy to put back beside
-		// a field that still exists.
+		// AND IT NAMES NO PRESENTER (D-131). There is no per-card PRESENTER
+		// control, so a label for one would draw `PRESENTER: N/A` on every
+		// card. Pinned as an ABSENCE because that is what regresses: the label
+		// is easy to put back beside a field that still exists.
 		if strings.Contains(last, "PRESENTER") {
 			t.Errorf("%s: the footer still names the removed per-card presenter: %q", tc.name, last)
 		}
 	}
 }
 
-// THE BOX HAS TWO GROUNDS (D-114, D-134, corrected by D-136).
+// THE BOX HAS TWO GROUNDS (D-114, D-134, D-136).
 //
-// HUM LEAD, 2026-09-13: "the UP Next Box probably needs a bkg color other than
-// none - I suggest the same Blue as the modal FOR NOW."  Then 2026-09-15: "make
-// the cell background color of the UP NEXT box the same 'blue' token color used
-// as the bkg for 'DIRECTION' and 'TODAY' column."  Then, with a diagram, the
-// correction: the LABEL CELL is that blue; the report beside it is "STANDARD
-// MODAL BLUE" and its "content ... should not be all bold and white, but the
-// standard text color".
+// The LABEL CELL is "the same 'blue' token color used as the bkg for
+// 'DIRECTION' and 'TODAY' column"; the report beside it is "STANDARD MODAL
+// BLUE" and its "content ... should not be all bold and white, but the
+// standard text color" (HUM LEAD).
 //
-// SO THE TEST MEASURES BOTH, and would have caught the over-application: the
-// first version asked only whether every row carried the bands' blue, which a
-// box painted entirely in it passes perfectly.
+// SO THE TEST MEASURES BOTH: asking only whether every row carries the bands'
+// blue is a question a box painted entirely in it passes perfectly.
 func TestTheUpNextBoxWearsTwoGrounds(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
@@ -205,8 +199,8 @@ func TestTheUpNextBoxWearsTwoGrounds(t *testing.T) {
 // AND THE BOX'S TITLE READS AS A MODAL'S DOES (D-118).
 //
 // HUM LEAD, 2026-09-13: "Let's make the Title 'LOCATION REPORT * <location>'
-// Bold and White like the Modals." Now that the box wears the modal's own tile
-// (D-114), the tone of its name was the only thing still telling them apart.
+// Bold and White like the Modals." The box wears the modal's own tile (D-114),
+// so the tone of its name is the one thing that could still tell them apart.
 func TestTheBoxTitleReadsLikeAModalTitle(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
@@ -236,11 +230,9 @@ func TestTheBoxTitleReadsLikeAModalTitle(t *testing.T) {
 //
 // DRIVEN DIRECTLY, BECAUSE NO CALLER CAN EXPRESS THE FAULT. Both boxes are built
 // by `shell`, which pads every row to the box's width — so through `readPair` the
-// pad is a no-op, and mutant mS0 deleted it without changing a single frame. It
-// SURVIVED the whole 2026-09-13 corpus sweep for exactly that reason. The rule
-// guards a width DISAGREEMENT between the box and the join, which is the defect
-// `withControl` really did ship: a second copy of the air box's width, and the
-// `b` chip fell off the row.
+// pad is a no-op, and deleting it (mutant mS0) changes no frame. The rule guards
+// a width DISAGREEMENT between the box and the join — a second copy of the air
+// box's width, say, which drops the `b` chip off the row.
 func TestTheColumnsNeverBleedIntoEachOther(t *testing.T) {
 	const lw, rw = 10, 6
 	gap := "  "

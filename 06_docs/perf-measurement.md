@@ -207,3 +207,44 @@ trade the performance ruling was written for.
 - **Decide whether a partial name may resolve from the pool.** It is the only change that removes the
   round trip rather than hiding it, and it is a behaviour ruling, not an optimisation — see the fork
   recorded for the HUM LEAD.
+
+---
+
+## The standard workload, v1 (0.18.0 W14, D-154) — how every before-and-after is taken
+
+**This closes the gap this document named at 0.15.0**: "the missing thing is a versioned standard
+workload". Built at W14's opening, with the rule that the pass measures before it cuts.
+
+| Part | Where | What |
+|---|---|---|
+| Configs | `06_docs/perf/workload-v1/config-{default,heavy}.toml` | Ten fixed, spread places; synth radio. `default` is a new listener's map; `heavy` turns every overlay on — Air quality the tint (the heaviest at a national view, D-149), every alert category, fire All, detail All. **Versioned: change a byte and it is v2** |
+| Driver | `scripts/quality/workload.expect` | A real binary on a **149×38** pty (the plan's M5 size, W2.9). `session`: phases of N minutes — A idle, B radio on, C the map at the place (a pan every 15 s), D national with the loop playing, E zoomed three steps (a pan every 15 s), F map closed — then five warm opens. `cold`: one fresh launch and `g`. A wait that times out fails the run |
+| Runner | `scripts/quality/workload.sh session\|cold <variant> <outdir> [N]` | A **scratch HOME** holding the config alone (the listener's own file and caches are never touched), `WATCHPOST_DEBUG_TIMING=1` and `WATCHPOST_DEBUG_PPROF=1`, `soak.sh` beside the driver every 20 s, the counters read every minute |
+| Instrument | `modes/tty/timing.go`, `app/timing.go` | In the host, off unless `WATCHPOST_DEBUG_TIMING=1`; its records on `/debug/counters` as `timings` |
+| Summary | `go run ./tools/perfsum -in <outdir>` | Per phase: CPU % from the **cumulative** CPU time (`soak.sh`'s `cpu_time`; `pcpu` is a decaying average), footprint median and max, heap, goroutines, threads. Per phase, trigger and event: n, median, p90, max — nearest rank, so every figure is a run that happened |
+
+**The timing events** — against the ask that started the clock (`open`, a map action such as
+`map.region.1`, `overlay`):
+
+| Event | Means |
+|---|---|
+| `answered:feed\|radar\|temp` | That answer landed: the network and the app's assembly |
+| `complete` | The library's first `Complete` frame — **the basemap whole, not M5** |
+| `m5` | **M5 as D-46 defines it**: the first complete frame holding every alert's area — complete, the view still (its settle tick has asked, D-66), no work waiting, and the alerts asked since the ask drawn |
+| `settled` | Nothing left to come: `m5`'s conditions and no radar or temperature in flight |
+| `tick` | M6: how late the map's clock landed against the moment the library asked for |
+| `key` | M6: a key's arrival to the frame it produced |
+
+**Rules for a run that counts.**
+- **Nothing else runs on the machine** — no gate, no build, no test. A compile beside a run is in its
+  CPU column.
+- **Cold means a fresh HOME**: an empty cache, the map never opened. A session's phase C is the map
+  cold with the station warm; `cold` runs open it at first data, the station itself still starting.
+- **Live network**: `run.txt` records the commit, the host and when. Compare runs of the same
+  workload version, and read a single outlier as the network until a second run says otherwise.
+- **n ≥ 5** for any timing quoted; a resource figure is a phase's samples, and a phase is compared
+  only with the same phase.
+
+**Found while building it.** `soak-1h.expect` and `soak-phases.expect` waited for `º` (U+00BA) where
+the app draws `°` (U+00B0), so every earlier soak began on a silent 120–180 s timeout rather than at
+first data. Fixed in all three drivers; the new one fails the run on that timeout.

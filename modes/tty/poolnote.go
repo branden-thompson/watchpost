@@ -42,9 +42,9 @@ func poolNote(query string, ref *snapshot.LocationRef, outside bool) (fact, asid
 // wider than the window it draws into is the same defect as not wrapping at
 // all: the lines come back tinted and too long, the FRAME wraps them a second
 // time, and the second wrap happens after the colour — so the tail arrives
-// plain. The console's lookup is 56 cells inside a 133-cell terminal, and it
-// was being wrapped to 112: "Broadcast Radius" came out grey under a red
-// sentence (HUM LEAD, UAT 2026-09-14, second screenshot of the same rule).
+// plain. The console's lookup is 56 cells inside a 133-cell terminal; wrapped
+// to 112, "Broadcast Radius" comes out grey under a red sentence (HUM LEAD,
+// UAT 2026-09-14).
 func modalHelperWidth(width int) int {
 	return max(12, width-4-2*modalInset-4)
 }
@@ -53,9 +53,9 @@ func modalHelperWidth(width int) int {
 //
 // WRAPPED FIRST, THEN TINTED LINE BY LINE. A tint applied to the whole string
 // is a pair of escape codes at its two ENDS, so a wrap leaves every line after
-// the first with no colour on it — which is exactly how "Broadcast Radius"
-// trailed off into plain grey mid-sentence (HUM LEAD, UAT 2026-09-14, with the
-// screenshot). Styling survives a wrap only if every line carries it.
+// the first with no colour on it — and "Broadcast Radius" trails off into
+// plain grey mid-sentence (HUM LEAD, UAT 2026-09-14). Styling survives a wrap
+// only if every line carries it.
 func poolNoteLines(o render.Opts, fact, aside string, width int) []string {
 	if fact == "" {
 		return nil

@@ -58,6 +58,15 @@ var histPhrases = regexp.MustCompile(`(?i)` + strings.Join([]string{
 	`stayed in place after`,
 	`was \d+, bumped`,
 	`this (used|was) to`,
+	// AN ACCOUNT OF THE FIX'S OWN DEFECT, the shape a bug report's comment takes:
+	// what the screen showed before the change, and how long it took.
+	`\bwas blank\b`,
+	`\bwere never (seen|drawn|shown|said)\b`,
+	`\bdrew nothing until\b`,
+	`\btook half a minute\b`,
+	`\bbefore the upgrade\b`,
+	`\bbatch \d+('s)? (made|replaced|changed|removed|denser)`,
+	`\b(was|were) made (denser|twice|coarser)`,
 }, "|"))
 
 // histExempt lets a comment say the word without narrating.

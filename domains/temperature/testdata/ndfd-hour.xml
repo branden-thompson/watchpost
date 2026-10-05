@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dwml version="1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://digital.weather.gov/xml/schema/DWML.xsd">
+  <head>
+    <product srsName="WGS 1984" concise-name="time-series" operational-mode="official">
+      <title>NOAA's National Weather Service Forecast Data</title>
+      <field>meteorological</field>
+      <category>forecast</category>
+      <creation-date refresh-frequency="PT30M">2026-09-27T01:09:42Z</creation-date>
+    </product>
+    <source>
+      <more-information>https://digital.weather.gov/xml/</more-information>
+      <production-center>Meteorological Development Laboratory<sub-center>Weather Information Applications Division</sub-center></production-center>
+      <disclaimer>http://www.nws.noaa.gov/disclaimer.html</disclaimer>
+      <credit>https://www.weather.gov/</credit>
+      <credit-logo>https://www.weather.gov/logorequest</credit-logo>
+      <feedback>https://www.weather.gov/contact</feedback>
+    </source>
+  </head>
+  <data>
+    <location>
+      <location-key>point1</location-key>
+      <point latitude="33.00" longitude="-121.00"/>
+    </location>
+    <location>
+      <location-key>point2</location-key>
+      <point latitude="33.00" longitude="-119.00"/>
+    </location>
+    <location>
+      <location-key>point3</location-key>
+      <point latitude="33.00" longitude="-117.00"/>
+    </location>
+    <location>
+      <location-key>point4</location-key>
+      <point latitude="31.00" longitude="-121.00"/>
+    </location>
+    <location>
+      <location-key>point5</location-key>
+      <point latitude="31.00" longitude="-119.00"/>
+    </location>
+    <location>
+      <location-key>point6</location-key>
+      <point latitude="31.00" longitude="-117.00"/>
+    </location>
+    <moreWeatherInformation applicable-location="point1">http://forecast.weather.gov/MapClick.php?textField1=33.00&amp;textField2=-121.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point2">http://forecast.weather.gov/MapClick.php?textField1=33.00&amp;textField2=-119.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point3">http://forecast.weather.gov/MapClick.php?textField1=33.00&amp;textField2=-117.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point4">http://forecast.weather.gov/MapClick.php?textField1=31.00&amp;textField2=-121.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point5">http://forecast.weather.gov/MapClick.php?textField1=31.00&amp;textField2=-119.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point6">http://forecast.weather.gov/MapClick.php?textField1=31.00&amp;textField2=-117.00</moreWeatherInformation>
+    <time-layout time-coordinate="local" summarization="none">
+      <layout-key>k-p1h-n64-1</layout-key>
+      <start-valid-time>2026-09-26T18:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-26T19:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-26T20:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-26T21:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-26T22:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-26T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T00:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T01:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T02:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T03:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T04:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T06:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T07:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T08:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T09:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T10:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T12:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T13:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T14:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T15:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T16:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T18:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T19:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T20:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T21:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T22:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-27T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T00:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T01:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T02:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T03:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T04:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T08:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T14:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T20:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T02:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T08:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T14:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-01T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-01T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-01T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-01T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-02T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-02T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-02T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-02T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-03T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-03T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-03T17:00:00-07:00</start-valid-time>
+    </time-layout>
+    <parameters applicable-location="point1">
+      <temperature type="hourly" units="Fahrenheit" time-layout="k-p1h-n64-1">
+        <name>Temperature</name>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+      </temperature>
+    </parameters>
+    <parameters applicable-location="point2">
+      <temperature type="hourly" units="Fahrenheit" time-layout="k-p1h-n64-1">
+        <name>Temperature</name>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+      </temperature>
+    </parameters>
+    <parameters applicable-location="point3">
+      <temperature type="hourly" units="Fahrenheit" time-layout="k-p1h-n64-1">
+        <name>Temperature</name>
+        <value>80</value>
+        <value>77</value>
+        <value>73</value>
+        <value>71</value>
+        <value>71</value>
+        <value>69</value>
+        <value>69</value>
+        <value>69</value>
+        <value>69</value>
+        <value>69</value>
+        <value>69</value>
+        <value>68</value>
+        <value>68</value>
+        <value>68</value>
+        <value>71</value>
+        <value>75</value>
+        <value>78</value>
+        <value>80</value>
+        <value>84</value>
+        <value>86</value>
+        <value>86</value>
+        <value>86</value>
+        <value>84</value>
+        <value>82</value>
+        <value>80</value>
+        <value>77</value>
+        <value>73</value>
+        <value>73</value>
+        <value>71</value>
+        <value>71</value>
+        <value>71</value>
+        <value>68</value>
+        <value>68</value>
+        <value>68</value>
+        <value>68</value>
+        <value>68</value>
+        <value>66</value>
+        <value>73</value>
+        <value>78</value>
+        <value>73</value>
+        <value>62</value>
+        <value>57</value>
+        <value>57</value>
+        <value>57</value>
+        <value>62</value>
+        <value>77</value>
+        <value>84</value>
+        <value>78</value>
+        <value>68</value>
+        <value>66</value>
+        <value>84</value>
+        <value>86</value>
+        <value>69</value>
+        <value>66</value>
+        <value>86</value>
+        <value>86</value>
+        <value>69</value>
+        <value>66</value>
+        <value>86</value>
+        <value>86</value>
+        <value>71</value>
+        <value>66</value>
+        <value>87</value>
+        <value>87</value>
+      </temperature>
+    </parameters>
+    <parameters applicable-location="point4">
+      <temperature type="hourly" units="Fahrenheit" time-layout="k-p1h-n64-1">
+        <name>Temperature</name>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+      </temperature>
+    </parameters>
+    <parameters applicable-location="point5">
+      <temperature type="hourly" units="Fahrenheit" time-layout="k-p1h-n64-1">
+        <name>Temperature</name>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+      </temperature>
+    </parameters>
+    <parameters applicable-location="point6">
+      <temperature type="hourly" units="Fahrenheit" time-layout="k-p1h-n64-1">
+        <name>Temperature</name>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+        <value xsi:nil="true"/>
+      </temperature>
+    </parameters>
+  </data>
+</dwml>

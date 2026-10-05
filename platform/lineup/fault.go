@@ -42,12 +42,11 @@ const faultRunLimit = 3
 // not "was this card important" — the Director cannot know that — but "is there
 // anything left", and that is only answerable once the failed card is out and
 // the schedule has settled around its absence.
-// ONE CONDITION, NOT TWO. This began as "nothing on air AND nothing held", and
-// the mutant that deleted the on-air half SURVIVED — correctly, because OnAir
-// scans the very tracks held() counts, so an empty schedule cannot have a card
-// on the air. The second check was the same rule written twice, which reads
-// like extra safety and is extra surface: a later reader has to work out
-// whether the two can disagree, and they cannot.
+// ONE CONDITION, NOT TWO. OnAir scans the very tracks held() counts, so an
+// empty schedule cannot have a card on the air, and "nothing on air AND
+// nothing held" would be the same rule written twice — which reads like extra
+// safety and is extra surface: a later reader has to work out whether the two
+// can disagree, and they cannot.
 func (d Director) stopped() bool { return d.lineup.held() == 0 }
 
 // escalation is the effect a fault raises, or nothing when the Director routed

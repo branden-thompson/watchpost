@@ -14,11 +14,10 @@ import (
 // real device does for a minutes-long read: it consumes in real time, so the
 // buffer stays reachable for as long as the engine keeps the player.
 //
-// fakeOutput CANNOT be used here, and finding that out is what made this probe
-// trustworthy: it drains at memory speed, so an 8 MB clip is finished in
-// microseconds and released whether or not the engine holds it. The control
-// below caught exactly that — the first version of this test "passed" while
-// proving nothing.
+// fakeOutput CANNOT be used here: it drains at memory speed, so an 8 MB clip is
+// finished in microseconds and released whether or not the engine holds it,
+// and the test would pass while proving nothing. The control below catches
+// exactly that.
 type retainingOutput struct{}
 
 type retainingPlayer struct {
@@ -47,8 +46,7 @@ type bigClip struct{ *bytes.Reader }
 //
 // THE FLAG IS ATOMIC BECAUSE A FINALIZER RUNS ON THE COLLECTOR'S GOROUTINE.
 // A plain bool here is a genuine data race — written by the finalizer, read by
-// this loop — and `make race` caught it on the first full run after this test
-// was written.
+// this loop.
 func freedAfter(freed *atomic.Bool, d time.Duration) bool {
 	deadline := time.Now().Add(d)
 	for time.Now().Before(deadline) {
@@ -63,16 +61,14 @@ func freedAfter(freed *atomic.Bool, d time.Duration) bool {
 
 // F-28 — A STOPPED READ LETS GO OF ITS AUDIO.
 //
-// Resident memory after a long event read was reported at 133–175 MB across UAT
-// sessions. Nobody had established whether that is a leak or simply what a
-// minutes-long read costs: 44.1 kHz stereo 16-bit is ~10 MB per minute of
-// decoded PCM, so those numbers are plausible with nothing wrong. The row asked
-// for a pprof session; the question is narrower than that and answerable here —
-// whether a stopped read's buffer and its player are RELEASED — and as a test it
-// keeps answering after this release, which a one-off session does not.
+// Resident memory after a long event read can reach 133–175 MB, which is
+// plausible with nothing wrong: 44.1 kHz stereo 16-bit is ~10 MB per minute of
+// decoded PCM. What tells a leak from the cost of a minutes-long read is whether
+// a stopped read's buffer and its player are RELEASED, and this answers that on
+// every run.
 //
-// [esc] is the path that matters: MVS-D-75 made closing the window stop the
-// read, and Pause-before-Close is new in 0.14.0.
+// [esc] is the path that matters: closing the window stops the read
+// (MVS-D-75), pausing it before it closes.
 func TestAStoppedReadReleasesItsBufferAndPlayer(t *testing.T) {
 	e, err := New(retainingOutput{}, "watchpost/test (t@example.com)", nil)
 	if err != nil {
@@ -128,9 +124,8 @@ func TestTheRetentionProbeCanSeeAClipThatIsStillHeld(t *testing.T) {
 // touch heldOrder — it only counts it for the debug line. So at this layer a
 // held line survives a stop, and DropHeld is what lets it go.
 //
-// THAT IS THE CONTRACT, NOT A LEAK, and the distinction cost a wrong test to
-// find: written as "a paused read that is stopped must not strand its audio"
-// this failed, and it looked like a defect. It is not, because the app never
+// THAT IS THE CONTRACT, NOT A LEAK. A paused read that is stopped keeps its
+// audio at this layer, and that is not a defect, because the app never
 // leaves a held line behind — app/director.go calls dropHeld() whenever a
 // suspended job is released or its context ends, on both paths. That guarantee
 // lives in the ARBITER, so it is pinned there

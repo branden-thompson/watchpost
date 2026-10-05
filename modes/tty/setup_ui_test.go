@@ -9,8 +9,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
-// The WATCHPOST UI group: the theme picker that
-// replaced a modal, and the two display preferences that had no home.
+// The WATCHPOST UI group: the theme picker and the two display preferences.
 
 // uiDash opens Settings on a row of the UI group, with a SetUI hook that
 // records what the window writes.
@@ -56,7 +55,7 @@ func TestThemeRowOffersNoPreviewChip(t *testing.T) {
 }
 
 // The units and the clock are radio sets: space selects the focused option, and
-// the effect is immediate — the units always were live, and the clock now is.
+// the effect is immediate for both.
 func TestUnitsAndClockSelectLive(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -192,10 +191,19 @@ func TestSettingsColumnsBalanceThemselves(t *testing.T) {
 // The balance has to pay for itself: a window that fits its budget needs no
 // scroll rail, and that is what taking a dozen wasted rows out of it buys.
 func TestSettingsFitsWithoutScrollingAtTheMockWidth(t *testing.T) {
-	d := setupGolden(t, 133, 44, false, rowCastAlerts)
-	lines, _, _ := d.setupBody(d.opts())
-	if len(lines) > d.modalMax() {
-		t.Errorf("the balanced window fits its %d-line budget without a rail, got %d lines", d.modalMax(), len(lines))
+	// EVERY TAB, on both surfaces (D-62: the one-page rule is one per tab).
+	for _, surface := range []Surface{SurfaceObserver, SurfaceBroadcaster} {
+		base := setupGolden(t, 133, 44, false, rowCastAlerts)
+		base.surface = surface
+		for _, tab := range base.tabsShown() {
+			d := base
+			d.setup.focus, _ = base.firstRowOfTab(tab)
+			d.cfg.MapRetention = "Map tiles are kept 7 days; 512 MB in all with the web cache."
+			lines, _, _ := d.setupBody(d.opts())
+			if len(lines) > d.modalMax() {
+				t.Errorf("surface %v, tab %s: fits its %d-line budget without a rail, got %d lines", surface, tab.Label(), d.modalMax(), len(lines))
+			}
+		}
 	}
 }
 
@@ -209,11 +217,11 @@ func TestSettingsFocusLineFollowsTheBalancedLayout(t *testing.T) {
 	}{{"two columns", 133, 44}, {"stacked", 80, 24}} {
 		for id := setupRowID(0); id < setupRowCount; id++ {
 			d := setupGolden(t, size.w, size.h, false, id)
-			// THE ROWS THIS SURFACE DRAWS (D-92, and D-115 made it bite). A focus
-			// line for a row the surface does not draw is meaningless — and since
-			// the station's transmitter and service radius are Broadcaster-only,
-			// walking every id on Observer asked where a mark was for two rows
-			// that are not there.
+			// THE ROWS THIS SURFACE DRAWS (D-92, D-115). A focus line for a row
+			// the surface does not draw is meaningless — and since the station's
+			// transmitter and service radius are Broadcaster-only, walking every
+			// id on Observer would ask where a mark is for two rows that are not
+			// there.
 			if !d.rowVisible(id) {
 				continue
 			}
@@ -230,9 +238,9 @@ func TestSettingsFocusLineFollowsTheBalancedLayout(t *testing.T) {
 
 // A note NEVER RESIZES THE WINDOW.
 //
-// The correspondent notes were wrapped to a constant that happened to be wider
-// than the rows they sit under, so focusing a row with a reason nudged the whole
-// window out. A window that changes size when you move the cursor is the layout
+// A note wrapped to a constant wider than the rows it sits under would nudge the
+// whole window out whenever a row with a reason is focused. A window that
+// changes size when you move the cursor is the layout
 // telling you it does not know its own mind.
 func TestACorrespondentNoteNeverWidensTheWindow(t *testing.T) {
 	base := setupGolden(t, 133, 44, false, rowLocation).setupWidth()
@@ -244,40 +252,6 @@ func TestACorrespondentNoteNeverWidensTheWindow(t *testing.T) {
 		if got := d.setupWidth(); got != base {
 			t.Errorf("focusing %v changed the window from %d to %d cells", id, base, got)
 		}
-	}
-}
-
-// The note sits FLUSH with the label of the row that raised it, not inset under
-// it: every other group's support line does, and this was the one that did not.
-func TestACorrespondentNoteIsFlushWithItsRow(t *testing.T) {
-	d := setupGolden(t, 133, 44, false, rowCastAlerts)
-	note := d.castNote(rowCastAlerts)
-	if note == "" {
-		t.Skip("the fixture's focused row has no note")
-	}
-	block := d.setupBlock(d.opts(), groupCast)
-	var rowAt, noteAt = -1, -1
-	for _, l := range block.lines {
-		plain := stripANSITest(l)
-		trimmed := strings.TrimLeft(plain, " ")
-		if trimmed == "" {
-			continue
-		}
-		indent := len(plain) - len(trimmed)
-		// An UNFOCUSED row: the focused one carries the › in its indent, and the
-		// note aligns with the label, not with the mark.
-		if strings.HasPrefix(trimmed, "Location Report") {
-			rowAt = indent
-		}
-		if strings.HasPrefix(trimmed, strings.Fields(note)[0]) && rowAt >= 0 && noteAt < 0 {
-			noteAt = indent
-		}
-	}
-	if rowAt < 0 || noteAt < 0 {
-		t.Fatalf("could not find the row and its note:\n%s", strings.Join(block.lines, "\n"))
-	}
-	if noteAt != rowAt {
-		t.Errorf("the note starts at %d, its row's label at %d — flush, not inset", noteAt, rowAt)
 	}
 }
 

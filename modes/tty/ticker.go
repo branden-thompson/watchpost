@@ -19,7 +19,7 @@ import (
 )
 
 // TickerSeverity is retained for ordering within a category (the app sorts
-// most-recent-most-severe); the band colour is now per-category, not per-tier.
+// most-recent-most-severe); the band colour is per-category, not per-tier.
 type TickerSeverity int
 
 const (
@@ -45,8 +45,8 @@ const (
 )
 
 // tickerCatOrder is the rotation — the registry's own, not a list kept beside
-// it. A lane missing from a hand-kept order never reached the band however many
-// alerts it held (F-21).
+// it. A lane missing from a hand-kept order would never reach the band however
+// many alerts it held (F-21).
 func tickerCatOrder() []TickerCategory { return category.Lanes() }
 
 // TickerItem is one active alert as the marquee shows it. The app composes Text
@@ -80,10 +80,9 @@ type TickerItem struct {
 // LISTENER'S ZONE: "<Type> · <Location>  declared 3:42 PM · expires 4:15 PM".
 //
 // .Local() on both, and it is not optional. The feeds publish UTC, and the
-// spoken line localises — so without it the band said "0026" for an event the
-// radio was calling "Seventeen Twenty-Six Hours", the same instant seven hours
-// apart. It went missing when the formatting moved
-// here from the app, which localised.
+// spoken line localises — so without it the band says "0026" for an event the
+// radio calls "Seventeen Twenty-Six Hours", the same instant seven hours
+// apart.
 //
 // The Clock methods deliberately do NOT localise: the alert list formats in the
 // LOCATION's zone, because a tide or an expiry happens where the weather is.
@@ -92,9 +91,9 @@ func (d Dashboard) tapeLine(o render.Opts, it TickerItem) string {
 	// THE ONE PLACE THE TAPE'S TEXT CROSSES THE GLYPH BOUNDARY (F-47). Head is
 	// built by the Producer (app/ticker.go:611), which composes DATA and has no
 	// view options, so its separator is always the middot; the tape is where a
-	// frame learns whether it is being drawn under --ascii. tickerBullet already
-	// knew this — the separator BETWEEN items had both forms while the one INSIDE
-	// an item did not.
+	// frame learns whether it is being drawn under --ascii. tickerBullet gives
+	// the separator BETWEEN items both forms; this gives the one INSIDE an item
+	// both too.
 	dot := o.Glyphs().Dot
 	head := it.Head
 	if o.ASCII {
@@ -133,15 +132,15 @@ const tickerRightReserve = 4
 //
 // PREPENDED AND POSTPENDED, ON THE ITEM (HUM LEAD 2026-09-07). The tape
 // scrolls: a marker at one end only is off-window half the time, and a marker
-// at both ends means the item cannot be on screen without one of them. It sat
-// in the band's top row first, as lane chrome, on the argument that an 18-cell
-// prefix per item at the 80-column floor makes the marker the majority of the
-// tape — the ruling overrides that argument, and it is the ITEM that is
-// fabricated rather than the lane it happens to be filed under.
+// at both ends means the item cannot be on screen without one of them. NOT
+// LANE CHROME in the band's top row, though an 18-cell prefix per item at the
+// 80-column floor makes the marker the majority of the tape — the ruling
+// overrides that argument, and it is the ITEM that is fabricated rather than
+// the lane it happens to be filed under.
 //
 // TWO ASTERISKS, NOT THREE, and the ruling's own wording is the reason twice
 // over: it is what was written, and at 14 cells it fits the severe window's
-// EVENT column ahead of a product where "*** TEST EVENT ***" did not — that
+// EVENT column ahead of a product where "*** TEST EVENT ***" does not — that
 // column truncates, and a mark that pushes the product out of its own column
 // is a mark that hides what it is marking.
 const testEventMark = "**TEST EVENT**"
@@ -230,18 +229,17 @@ func centerText(text string, width int) string {
 // clipToWidth truncates text to at most width display cells (wide runes count
 // as their cell width, so the result never overflows the band).
 //
-// ONE OWNER (D-141). This walked runes asking `render.Width` for each: a lone
-// \x1b measures 0, but '[', '1' and 'm' measure 1 apiece, so EVERY BOLD SPAN
-// COST EIGHT PHANTOM CELLS. Text that fitted was cut anyway, the cut landed
-// mid-escape leaving a bare \x1b in the frame, and the SGR was never closed so
-// the weight bled into whatever followed.
+// ONE OWNER (D-141): `render.TruncateCells`, which skips escape sequences when
+// counting and remembers whether the last one was a reset, so it can close a
+// span it cuts through. A rune walk asking `render.Width` for each would
+// measure a lone \x1b as 0 but '[', '1' and 'm' as 1 apiece, so EVERY BOLD SPAN
+// WOULD COST EIGHT PHANTOM CELLS: text that fits is cut anyway, the cut lands
+// mid-escape leaving a bare \x1b in the frame, and the SGR is never closed so
+// the weight bleeds into whatever follows.
 //
-// `render.TruncateCells` ALREADY KNEW ALL OF THIS — it skips escape sequences
-// when counting and remembers whether the last one was a reset, so it can close
-// a span it cuts through. This function was a second, naive copy of a decision
-// that had one correct owner, which is the same shape as D-129a (a caveat
-// wrapped to the wrong width) and D-138 (a band centred instead of wrapped).
-// Width measurement is not a thing to reimplement per caller.
+// Width measurement is not a thing to reimplement per caller — the same shape
+// as D-129a (a caveat wrapped to the wrong width) and D-138 (a band centred
+// instead of wrapped).
 func clipToWidth(text string, width int) string {
 	return render.TruncateCells(text, width)
 }

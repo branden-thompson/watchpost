@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
@@ -103,15 +104,25 @@ type nwsProps struct {
 
 // nwsFeature is one entry of the feed.
 type nwsFeature struct {
-	ID         string   `json:"id"` // the alert URI — stable
-	Properties nwsProps `json:"properties"`
-	Geometry   struct {
-		Coordinates json.RawMessage `json:"coordinates"` // GeoJSON Point/Polygon/MultiPolygon, or absent (zone-only)
-	} `json:"geometry"`
+	ID         string          `json:"id"` // the alert URI — stable
+	Properties nwsProps        `json:"properties"`
+	Geometry   json.RawMessage `json:"geometry"` // GeoJSON Point/Polygon/MultiPolygon, or absent/null (zone-only)
 }
 
 type nwsFeed struct {
 	Features []json.RawMessage `json:"features"` // decoded one by one: a malformed value skips ITS entry, never the source (REVIEW R5-C-12)
+}
+
+// coordinatesOf is a geometry's coordinates, or nothing for an absent, null
+// or unreadable geometry.
+func coordinatesOf(geometry json.RawMessage) json.RawMessage {
+	var g struct {
+		Coordinates json.RawMessage `json:"coordinates"`
+	}
+	if len(geometry) == 0 || json.Unmarshal(geometry, &g) != nil {
+		return nil
+	}
+	return g.Coordinates
 }
 
 // geoPoint returns a representative point (the first vertex) of a GeoJSON
@@ -163,7 +174,11 @@ func firstParam(params map[string][]string, key string) string {
 // severeDetailOf bounds one CAP feature's record fields (P4 F5 / NFR-5): short
 // fields and lists through platform/plaintext, prose to maxProseRunes, and the
 // parameters map through the allowlist only (S7).
-func severeDetailOf(p nwsProps) *SevereDetail {
+//
+// The alert's own polygon is kept, read by the same bounded reader the
+// station's own alerts use (0.18.0 W5.3): an unreadable shape is no shape,
+// and the alert still stands.
+func severeDetailOf(p nwsProps, geometry json.RawMessage) *SevereDetail {
 	d := &SevereDetail{
 		Headline: plaintext.ClampField(p.Headline), Description: clampProse(p.Description), Instruction: clampProse(p.Instruction),
 		Severity: plaintext.ClampField(p.Severity), Certainty: plaintext.ClampField(p.Certainty), Urgency: plaintext.ClampField(p.Urgency),
@@ -181,6 +196,9 @@ func severeDetailOf(p nwsProps) *SevereDetail {
 		refs = append(refs, x.ID)
 	}
 	d.References = plaintext.ClampList(refs)
+	if area, err := geo.ReadGeometry(geometry); err == nil {
+		d.Area = area
+	}
 	return d
 }
 
@@ -242,7 +260,7 @@ func (n *NWS) parse(body []byte, u string) ([]Event, error) {
 			until = p.Expires
 		}
 		ends, _ := time.Parse(time.RFC3339, until)
-		lat, lon, ok := geoPoint(f.Geometry.Coordinates) // ok=false for a zone-only alert (no geometry) → a scoped surface keeps it only by the tracked-alert tie
+		lat, lon, ok := geoPoint(coordinatesOf(f.Geometry)) // ok=false for a zone-only alert (no geometry) → a scoped surface keeps it only by the tracked-alert tie
 		out = append(out, Event{
 			ID:         clampID(f.ID), // bounded (R3-D-02; ids get the longer bound, R5-B-05); the supersede map is keyed on the raw id above, looked up with the same
 			Class:      ClassSevereWx,
@@ -256,7 +274,7 @@ func (n *NWS) parse(body []byte, u string) ([]Event, error) {
 			At:         at.UTC(),
 			Until:      ends.UTC(),
 			Source:     n.Name(),
-			Severe:     severeDetailOf(p),
+			Severe:     severeDetailOf(p, f.Geometry),
 		})
 	}
 	return out, nil

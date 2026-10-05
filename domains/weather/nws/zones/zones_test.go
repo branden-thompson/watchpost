@@ -2,6 +2,7 @@ package zones
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -236,14 +237,14 @@ func serveByKind(t *testing.T, asked *[]string) *httptest.Server {
 //
 // **A zone id says which kind it is in its third character** - Z for a
 // forecast zone, C for a county - and the two live at different paths.
-// Everything was asked for under /zones/forecast, so every county id answered
-// 404 and resolved to nothing at all.
+// Asked for under /zones/forecast, every county id answers 404 and resolves to
+// nothing at all.
 //
-// Measured against the live service on the day this was written: of 332 active
-// alerts, 47 named county zones and nothing else, and 45 of those 47 were
-// Flood Warnings. There is no mixed case to fall back on - not one alert named
-// both kinds - so a county-only alert had no area, permanently, and flood is
-// the hazard a map is most wanted for.
+// Measured against the live service: of 332 active alerts, 47 named county
+// zones and nothing else, and 45 of those 47 were Flood Warnings. There is no
+// mixed case to fall back on - not one alert named both kinds - so a
+// county-only alert asked for at the wrong path has no area, permanently, and
+// flood is the hazard a map is most wanted for.
 func TestACountyZoneIsFetchedWhereCountyZonesLive(t *testing.T) {
 	var asked []string
 	srv := serveByKind(t, &asked)
@@ -287,10 +288,10 @@ func TestAZoneIdOfNoKnownKindIsRefused(t *testing.T) {
 	}
 }
 
-// TestTheStoreForgetsThroughItsOwnFrontDoor is RT-4's call site, which the
-// first test of it never touched: it called forget by hand, so deleting the
-// line that calls forget left the suite green. This drives Zone, which is the
-// only way the cap ever fires in the running program.
+// TestTheStoreForgetsThroughItsOwnFrontDoor is RT-4's call site: a test that
+// calls forget by hand stays green when the line that calls forget is deleted.
+// This drives Zone, which is the only way the cap ever fires in the running
+// program.
 func TestTheStoreForgetsThroughItsOwnFrontDoor(t *testing.T) {
 	var asked []string
 	srv := serveByKind(t, &asked)
@@ -312,10 +313,10 @@ func TestTheStoreForgetsThroughItsOwnFrontDoor(t *testing.T) {
 	}
 }
 
-// TestAskingForMoreZonesThanExistIsBoundedAndSaysSo is the fan-out the
-// infosec review found: nothing capped how many zones one resolve could
-// demand, and the client paces everything the program does at five a second,
-// so a large enough alerts response is hours with no weather fetched.
+// TestAskingForMoreZonesThanExistIsBoundedAndSaysSo is the fan-out bound (an
+// infosec review finding): uncapped, one resolve could demand any number of
+// zones, and the client paces everything the program does at five a second,
+// so a large enough alerts response would be hours with no weather fetched.
 func TestAskingForMoreZonesThanExistIsBoundedAndSaysSo(t *testing.T) {
 	var asked []string
 	srv := serveByKind(t, &asked)
@@ -345,9 +346,9 @@ func TestAskingForMoreZonesThanExistIsBoundedAndSaysSo(t *testing.T) {
 }
 
 // TestAZonesNameIsBoundedLikeEveryOtherStringFromOutside. The name arrives in
-// the same answer as the shape and was the one field in this release that was
-// never clamped: the transport admits 32 MiB, and the store keeps two thousand
-// shapes, so an unbounded name is tens of gigabytes of a name.
+// the same answer as the shape and is clamped like it: the transport admits
+// 32 MiB, and the store keeps two thousand shapes, so an unbounded name is tens
+// of gigabytes of a name.
 func TestAZonesNameIsBoundedLikeEveryOtherStringFromOutside(t *testing.T) {
 	huge := strings.Repeat("a", 1<<20)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -370,12 +371,11 @@ func TestAZonesNameIsBoundedLikeEveryOtherStringFromOutside(t *testing.T) {
 
 // TestAPanicFetchingOneZoneDoesNotEndTheProgram.
 //
-// **A recover only catches panics in its own goroutine.** The guard for this
-// was written in the caller, while the fetches happen in children of it, so it
-// had never once fired - proved by handing the store a client that is not
-// there, which killed the test binary outright. The guard is inside the
-// goroutine that can panic now, and the zone it was fetching is reported
-// missing like any other it could not get.
+// **A recover only catches panics in its own goroutine.** The fetches happen
+// in children of the caller, so a guard in the caller never fires - handing the
+// store a client that is not there would kill the test binary outright. The
+// guard is inside the goroutine that can panic, and the zone it was fetching is
+// reported missing like any other it could not get.
 func TestAPanicFetchingOneZoneDoesNotEndTheProgram(t *testing.T) {
 	s := New(nil, "http://127.0.0.1:1") // no client at all
 	got, missing := s.Zones(context.Background(), []string{"INZ027", "INC003"})
@@ -387,5 +387,111 @@ func TestAPanicFetchingOneZoneDoesNotEndTheProgram(t *testing.T) {
 	}
 	if s.Stats().Failed == 0 {
 		t.Error("nothing was counted as failed; a fetch that panics is a fetch that failed")
+	}
+}
+
+// TestAHeldZoneIsFetchedAgainOnceAWeekOld is 0.18.0 W5.6 (FR-4.6, D-43): a
+// shape held six days is served from hand; held eight, it is fetched again on
+// its next use - a zone redrawn by the service shows within a week.
+func TestAHeldZoneIsFetchedAgainOnceAWeekOld(t *testing.T) {
+	var hits atomic.Int64
+	srv := serveZones(t, &hits)
+	defer srv.Close()
+	s := newStore(t, srv.URL)
+	start := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	now := start
+	s.now = func() time.Time { return now }
+	if _, err := s.Zone(context.Background(), "TXZ119"); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		days  int
+		again bool
+	}{{6, false}, {8, true}, {9, false}} {
+		now = start.Add(time.Duration(c.days) * 24 * time.Hour)
+		before := s.Stats().Fetched
+		if _, err := s.Zone(context.Background(), "TXZ119"); err != nil {
+			t.Fatal(err)
+		}
+		if again := s.Stats().Fetched > before; again != c.again {
+			t.Errorf("day %d: fetched again %v, want %v", c.days, again, c.again)
+		}
+	}
+}
+
+// TestForgetDropsEveryHeldShape is 0.18.0 W3.8: "Clear map data" empties the
+// shapes the store holds, so the next use fetches them again.
+func TestForgetDropsEveryHeldShape(t *testing.T) {
+	var hits atomic.Int64
+	srv := serveZones(t, &hits)
+	defer srv.Close()
+	s := newStore(t, srv.URL)
+	if _, err := s.Zone(context.Background(), "TXZ119"); err != nil {
+		t.Fatal(err)
+	}
+	if n := s.Forget(); n != 1 || s.Held() != 0 {
+		t.Errorf("forgot %d, %d still held", n, s.Held())
+	}
+	before := s.Stats().Fetched
+	if _, err := s.Zone(context.Background(), "TXZ119"); err != nil || s.Stats().Fetched != before+1 {
+		t.Error("a forgotten shape was served from hand")
+	}
+}
+
+// TestZoneFetchesArePolite is 0.18.0 W3.9 (NFR-4, D-46): however many zones
+// one resolve names, never more than six are asked for at once - and more
+// than one is, so the bound is the limit and not a queue - each carrying the
+// station's user-agent.
+func TestZoneFetchesArePolite(t *testing.T) {
+	var inFlight, most atomic.Int32
+	var agentsMu sync.Mutex
+	agents := map[string]bool{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := inFlight.Add(1)
+		defer inFlight.Add(-1)
+		for {
+			m := most.Load()
+			if n <= m || most.CompareAndSwap(m, n) {
+				break
+			}
+		}
+		agentsMu.Lock()
+		agents[r.UserAgent()] = true
+		agentsMu.Unlock()
+		time.Sleep(30 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"properties":{"id":"z","name":"Z"},"geometry":{"type":"Polygon","coordinates":[[[-85,41],[-84,41],[-84,42],[-85,41]]]}}`))
+	}))
+	defer srv.Close()
+	c, err := httpx.New(httpx.Config{UserAgent: "watchpost-test", RatePerSec: 500})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := make([]string, 30)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("TXZ%03d", i)
+	}
+	got, _ := New(c, srv.URL).Zones(context.Background(), ids)
+	if len(got) != len(ids) {
+		t.Fatalf("%d of %d zones came back", len(got), len(ids))
+	}
+	const ruled = 6 // D-46: bounded at six, the number ruled - not the constant this guards
+	if m := most.Load(); m > ruled || m < 2 {
+		t.Errorf("at most %d zone requests were in flight at once; want between 2 and %d", m, ruled)
+	}
+	if len(agents) != 1 || !agents["watchpost-test"] {
+		t.Errorf("zone requests carried the agents %v, want the station's alone", agents)
+	}
+}
+
+// TestAStoreWithNoClientRefusesRatherThanPanics holds the store's guards
+// (D-248): a store built without a client answers a direct Zone with an
+// error, not a panic, and a nil store holds nothing.
+func TestAStoreWithNoClientRefusesRatherThanPanics(t *testing.T) {
+	if _, err := New(nil, "").Zone(context.Background(), "INZ027"); err == nil {
+		t.Error("a store with no client answered a zone")
+	}
+	var s *Store
+	if n := s.Held(); n != 0 {
+		t.Errorf("a nil store holds %d", n)
 	}
 }

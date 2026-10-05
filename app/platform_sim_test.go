@@ -2,16 +2,17 @@ package app
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
-// RUN THE WHOLE PACKAGE AS ANOTHER PLATFORM, because the first time 0.14.0 ran
-// on Linux was its release PR, and it panicked.
+// RUN THE WHOLE PACKAGE AS ANOTHER PLATFORM, so a platform defect shows here
+// rather than the first time the code runs on Linux.
 //
 // asPlatform steers one test at a time, which only helps for a test that already
-// knew it was platform-dependent. The defects that reached CI were the ones that
-// did NOT know: app/voices.go read runtime.GOOS behind the seam's back, and a
-// test branched on the real OS while the code under test used the seam. Neither
+// knows it is platform-dependent. The defects that slip through are the ones that
+// do NOT know: code that reads runtime.GOOS behind the seam's back, or a test
+// that branches on the real OS while the code under test uses the seam. Neither
 // is visible on the machine it was written on, because there the two agree.
 //
 //	WATCHPOST_TEST_GOOS=linux go test ./app     (or `make test-linux`)
@@ -26,5 +27,21 @@ func TestMain(m *testing.M) {
 	if goos := os.Getenv("WATCHPOST_TEST_GOOS"); goos != "" {
 		setRuntimeGOOS(goos)
 	}
-	os.Exit(m.Run())
+	// NO TEST WRITES THE DEVELOPER'S CONFIG OR STATE: every preference a setter
+	// keeps (D-214) goes to a directory of this run's own unless a test points
+	// it at one of its own (withConfigFile), and so do the quota's hold and the
+	// kept land (D-218).
+	dir, err := os.MkdirTemp("", "watchpost-app-test-config-")
+	if err != nil {
+		panic(err)
+	}
+	if err := os.Setenv("XDG_CONFIG_HOME", dir); err != nil {
+		panic(err)
+	}
+	if err := os.Setenv("XDG_STATE_HOME", filepath.Join(dir, "state")); err != nil {
+		panic(err)
+	}
+	code := m.Run()
+	_ = os.RemoveAll(dir)
+	os.Exit(code)
 }

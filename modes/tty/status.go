@@ -1,8 +1,7 @@
 package tty
 
 // status.go — the [S] Watchpost Status window: uptime and version, the endpoint table, the pipelines,
-// the issues and the dumps. Split from dashboard.go by the
-// quality pass (Q2, pure move); the map of where things happen is
+// the issues and the dumps. The map of where things happen is
 // docs/where-things-happen.md.
 
 import (
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -22,7 +22,7 @@ import (
 //
 // ONE COLUMN. There is no REQUESTS section to sit beside PROVIDERS: its counters
 // are columns of the providers table, because httpx counts per HOST and that is
-// what the table is keyed by (HUM LEAD, UAT 2026-08-30). Every remaining block is
+// what the table is keyed by (HUM LEAD, UAT 2026-08-30). Every block is
 // a wide table with nothing to pair it with.
 func (d Dashboard) statusLines() []string {
 	o := d.opts()
@@ -32,7 +32,11 @@ func (d Dashboard) statusLines() []string {
 	// unfilled — and the modal memo means a frame does this once, not per tick.
 	blocks := d.statusBlocks(d.statusInner())
 	lines := []string{d.statusHeadline(o), ""} // the window's own row, then air
-	lines = append(lines, stacked(blocks.providers, blocks.pipelines, blocks.issues, blocks.dumps)...)
+	sections := [][]string{blocks.providers}
+	if len(blocks.maps) > 0 { // a build with no map has no MAP block, and no gap for one
+		sections = append(sections, blocks.maps)
+	}
+	lines = append(lines, stacked(append(sections, blocks.pipelines, blocks.issues, blocks.dumps)...)...)
 	return append(lines, "", " "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll")))
 }
 
@@ -47,7 +51,7 @@ func (d Dashboard) statusLines() []string {
 // destroys it.
 func (d Dashboard) statusWidth() int {
 	b := d.statusBlocks(0) // natural: what the content wants before any stretch
-	want := widest(b.providers, b.pipelines, b.issues, b.dumps) + panelFrame + panelRail + columnMargin
+	want := widest(b.providers, b.maps, b.pipelines, b.issues, b.dumps) + panelFrame + panelRail + columnMargin
 	return min(d.opts().Width, max(max(68, d.width*60/100), want))
 }
 
@@ -80,8 +84,8 @@ func (d Dashboard) statusHeadline(o render.Opts) string {
 		note = render.Tint("· update check pending", render.Tok(render.TableMuted))
 	}
 	// The note is the first thing to go on a narrow window: the version names
-	// the build, the note only qualifies it. Without the ladder the row ran past
-	// the window's inner width and the panel re-flowed it.
+	// the build, the note only qualifies it. Without the ladder the row runs past
+	// the window's inner width and the panel re-flows it.
 	inner := d.statusInner()
 	room := max(1, inner-render.Width(left)-1)
 	right := render.FirstFit(room, ver+"   "+note, ver, "")
@@ -126,11 +130,11 @@ func statusHeader(name string) string { return " " + render.Tint(name, render.To
 // statusSections are the [S] body's blocks, each a header and its rows.
 //
 // [S] answers "is the DATA arriving?". Who is reading and which tones sound are
-// settings, and 0.14.0 briefly reported them here as well — two windows telling
-// the same story, one of which could not change it. They live in [s] Settings,
-// which is the window that owns them.
+// settings, and they live in [s] Settings, the window that owns them —
+// reporting them here too would be two windows telling the same story, one of
+// which cannot change it.
 type statusSections struct {
-	providers, pipelines, issues, dumps []string
+	providers, maps, pipelines, issues, dumps []string
 }
 
 // statusBlocks composes the sections (headers inset 1, rows inset 3 — with
@@ -145,7 +149,13 @@ func (d Dashboard) statusBlocks(fillTo int) statusSections {
 		st = d.cfg.Stats()
 		b.dumps = dumpLines(st)
 	}
-	b.providers = d.providerLines(o, st, fillTo)
+	// THE TWO ENDPOINT TABLES ARE ONE TABLE'S SHAPE (0.18.0 D-150, the HUM LEAD):
+	// API STATUS and MAP STATUS share their columns' widths and their form, so
+	// every column but the filling ENDPOINT lines up down the window.
+	apiRows, mapRows := d.apiRows(st), mapHostRows(d.cfg.MapSources, st, d.now())
+	shape := endpointShape(o, apiRows, mapRows)
+	b.providers = d.providerLines(o, st, apiRows, shape, fillTo)
+	b.maps = d.mapSourceLines(o, mapRows, shape, fillTo) // D-150: whether the map is working
 	b.pipelines = d.pipelineLines(o, st, fillTo)
 	b.issues = append([]string{statusHeader("ISSUES")}, d.issueLines(o, fillTo, d.snap, d.recent)...)
 	return b
@@ -158,8 +168,7 @@ func (d Dashboard) statusBlocks(fillTo int) statusSections {
 // several providers share one — nws and nws-marine are both api.weather.gov.
 // A row per provider would either repeat the same numbers twice or leave them
 // blank, and neither says what is true.
-func (d Dashboard) providerLines(o render.Opts, st Stats, fillTo int) []string {
-	rows := endpointRows(providersOf(d.snap), st)
+func (d Dashboard) providerLines(o render.Opts, st Stats, rows []endpointRow, shape tableShape, fillTo int) []string {
 	// THE TWO COUNTS RECONCILED, on the header. The masthead counts PROVIDERS
 	// and this table has one row per ENDPOINT — nws and nws-marine share
 	// api.weather.gov, coops and coops-obs share tidesandcurrents — so a
@@ -171,26 +180,57 @@ func (d Dashboard) providerLines(o render.Opts, st Stats, fillTo int) []string {
 	// look for the difference between them.
 	lines := []string{statusHeader(fmt.Sprintf("API STATUS  (%d providers over %d endpoints)",
 		len(providersOf(d.snap)), claimedRows(rows)))}
-	for i := range rows { // the age is read ONCE, so every row of a frame agrees
+	if len(rows) == 0 {
+		return append(lines, "   awaiting first snapshot...")
+	}
+	return append(lines, providerTable(o, rows, "PROVIDERS", shape, fillTo)...)
+}
+
+// apiRows are API STATUS's rows, each host's age read ONCE, so every row of
+// a frame agrees.
+func (d Dashboard) apiRows(st Stats) []endpointRow {
+	rows := endpointRows(providersOf(d.snap), st)
+	for i := range rows {
 		if !rows[i].fetchedAt.IsZero() {
 			rows[i].age = d.now().Sub(rows[i].fetchedAt)
 		}
 	}
-	if len(rows) == 0 {
-		return append(lines, "   awaiting first snapshot...")
-	}
-	// A LADDER, widest form first, exactly as the masthead's control row does.
-	// The window can never be wider than the terminal, and the panel WRAPS what
-	// it cannot fit — a wrap re-flows on whitespace, so an over-wide table row
-	// comes back with every column collapsed to one space. A table that will not
-	// fit has to lose columns, not alignment.
-	for form := range statusForms {
-		if out, ok := providerTable(o, rows, form, statusAvail(o), fillTo); ok {
-			return append(lines, out...)
+	return rows
+}
+
+// tableShape is the endpoint tables' shared shape: the width form, and the
+// widths of the columns they share (D-150).
+type tableShape struct {
+	form, epMin, whoW, stateW int
+}
+
+// endpointShape is the widest form both endpoint tables fit, and their
+// columns' widths over both. A LADDER, widest form first, exactly as the
+// masthead's control row does: the window can never be wider than the
+// terminal, and the panel WRAPS what it cannot fit - a wrap re-flows on
+// whitespace, so an over-wide table row comes back with every column
+// collapsed to one space. A table that will not fit loses columns, not
+// alignment; and both lose the same ones.
+func endpointShape(o render.Opts, tables ...[]endpointRow) tableShape {
+	s := tableShape{epMin: len("ENDPOINT"), whoW: len("PROVIDERS"), stateW: len("STATUS")}
+	for _, rows := range tables {
+		for _, r := range rows {
+			s.whoW, s.stateW = max(s.whoW, render.Width(r.providers)), max(s.stateW, render.Width(r.state))
+			s.epMin = min(max(s.epMin, render.Width(r.endpoint)), statusEndpointMax)
 		}
 	}
-	out, _ := providerTable(o, rows, statusForms-1, 0, fillTo) // the narrowest, whatever the room
-	return append(lines, out...)
+	for s.form = 0; s.form < statusForms-1; s.form++ {
+		fits := true
+		for _, rows := range tables {
+			if widest(providerTable(o, rows, "PROVIDERS", s, 0)) > statusAvail(o) {
+				fits = false
+			}
+		}
+		if fits {
+			break
+		}
+	}
+	return s
 }
 
 // claimedRows is how many rows a PROVIDER stands behind — the ticker's feeds
@@ -211,10 +251,10 @@ func claimedRows(rows []endpointRow) int {
 //
 // The ticker's feeds and the geocoder are counted by httpx and are not snapshot
 // providers, so they have no status to show. HealthGlyph reads anything that is
-// not "ok" as a failure, which put a red ✘ on www.nhc.noaa.gov while the
-// masthead — which counts snapshot providers only — said everything was fine
-// . An unmeasured host is not a failing one, and the
-// two surfaces must not contradict each other about it.
+// not "ok" as a failure, which would put a red ✘ on www.nhc.noaa.gov while the
+// masthead — which counts snapshot providers only — says everything is fine.
+// An unmeasured host is not a failing one, and the two surfaces must not
+// contradict each other about it.
 func endpointMark(o render.Opts, r endpointRow) (glyph, tone string) {
 	// PLAIN TEXT and a separate tone, never a pre-tinted cell. The kit measures
 	// a cell by its BYTES, so an escape sequence inside one is counted as
@@ -252,21 +292,16 @@ func statusAvail(o render.Opts) int { return o.Width - panelFrame - panelRail - 
 // it, and it is truncatable, so a host longer than the room is cut rather than
 // pushing the measurements out of line. Everything else is a fixed width — a
 // number and its heading must not drift apart.
-func providerTable(o render.Opts, rows []endpointRow, form, avail, fillTo int) ([]string, bool) {
-	provW, stateW := len("PROVIDERS"), len("STATUS")
-	epMin := len("ENDPOINT")
-	for _, r := range rows {
-		provW, stateW = max(provW, render.Width(r.providers)), max(stateW, render.Width(r.state))
-		epMin = min(max(epMin, render.Width(r.endpoint)), statusEndpointMax)
-	}
+func providerTable(o render.Opts, rows []endpointRow, who string, shape tableShape, fillTo int) []string {
+	form, provW, stateW, epMin := shape.form, max(shape.whoW, len(who)), shape.stateW, shape.epMin
 	// THE MARK RIDES IN THE ENDPOINT CELL rather than a column of its own.
 	//
 	// ✔ is an ambiguous-width rune: the kit's width table reads it as two cells
-	// where ours reads one, so a fixed column sized for it came out a cell adrift
-	// on every row. The fix is not to argue with the table about a rune, it is to
-	// leave the disagreement nowhere to land — inside the FILL column the kit can
-	// only ever under-pad, which PadTo corrects, and over-running is the failure
-	// that actually costs content.
+	// where ours reads one, so a fixed column sized for it comes out a cell adrift
+	// on every row. The answer is not to argue with the table about a rune, it is
+	// to leave the disagreement nowhere to land — inside the FILL column the kit
+	// can only ever under-pad, which PadTo corrects, and over-running is the
+	// failure that actually costs content.
 	//
 	// It reads better too: the endpoint carries its own health tone, so a failing
 	// host is a red NAME rather than a red mark beside a grey one.
@@ -275,7 +310,7 @@ func providerTable(o render.Opts, rows []endpointRow, form, avail, fillTo int) (
 			MinWidth: len(statusInset) + statusMarkW + epMin, Truncatable: true},
 	}
 	if form < 3 {
-		cols = append(cols, render.StatusColumn{Header: "PROVIDERS", Width: provW, Truncatable: true, MinWidth: len("PROVIDERS")})
+		cols = append(cols, render.StatusColumn{Header: who, Width: provW, Truncatable: true, MinWidth: len(who)}) // PROVIDERS, or MAP STATUS's LAYERS (D-150)
 	}
 	cols = append(cols,
 		render.StatusColumn{Header: "STATUS", Width: stateW},
@@ -294,20 +329,16 @@ func providerTable(o render.Opts, rows []endpointRow, form, avail, fillTo int) (
 	// FIT IS TESTED AT THE NATURAL WIDTH, not the filled one. A filled table is
 	// exactly as wide as it was told to be, so testing that against the room
 	// always says "too wide" and the ladder falls straight to its narrowest
-	// form — which is what happened the first time.
+	// form.
 	head := render.Tok(render.ModalTitle)
-	natural := o.StatusTable(cols, out, render.StatusNaturalWidth(cols), head)
-	if widest(natural) > avail {
-		return natural, false
-	}
 	// THE MEASURING PASS RETURNS THE NATURAL TABLE. Filling to the room
 	// available on that pass would tell statusWidth the content wants the whole
 	// terminal, and the window would stretch to 193 columns on a 200-column
 	// screen instead of the 60 % every content window uses.
 	if fillTo > 0 {
-		return o.StatusTable(cols, out, fillTo, head), true
+		return o.StatusTable(cols, out, fillTo, head)
 	}
-	return natural, true
+	return o.StatusTable(cols, out, render.StatusNaturalWidth(cols), head)
 }
 
 // tonedCell is one cell together with the tone it is painted in, so a cell and
@@ -315,9 +346,9 @@ func providerTable(o render.Opts, rows []endpointRow, form, avail, fillTo int) (
 //
 // The alternative — a slice of strings beside a map keyed by position — makes
 // the colour depend on where a column happens to sit, and this table's column
-// set VARIES BY FORM. Muting "the second cell" meant muting PROVIDERS at the
-// wide forms and STATUS at the narrow one, which is the width the app's own
-// supported floor sits at.
+// set VARIES BY FORM. Muting "the second cell" would mean muting PROVIDERS at
+// the wide forms and STATUS at the narrow one, which is the width the app's
+// own supported floor sits at.
 type tonedCell struct {
 	text string
 	tone string
@@ -370,12 +401,12 @@ const statusMarkW = 2
 // column zero and a table that starts where the header does reads as a
 // continuation of it.
 //
-// IT CANNOT DRIFT FROM modalInset, and it stays a CONST to do it. This comment
-// and columns.go's both cited the same HUM LEAD ruling while carrying their own
-// copy of the number (D-1, red team 2026-09-05) — but deriving it with
-// strings.Repeat would make it a package-level variable, which P10-06 refuses
-// and rightly: it would then be writable. The assertion below fails to COMPILE
-// if the two ever disagree, which is the stronger guarantee anyway.
+// IT CANNOT DRIFT FROM modalInset, and it stays a CONST to do it. A second
+// copy of one ruled number is a second carrier of one rule (D-1, red team
+// 2026-09-05) — but deriving it with strings.Repeat would make it a
+// package-level variable, which P10-06 refuses and rightly: it would then be
+// writable. The assertion below fails to COMPILE if the two ever disagree,
+// which is the stronger guarantee anyway.
 const statusInset = "   "
 
 // The compile-time tie. A negative or over-long index here is a build error, so
@@ -514,7 +545,7 @@ func statusRank(s string) int {
 func (d Dashboard) pipelineLines(o render.Opts, st Stats, fillTo int) []string {
 	text := render.Tok(render.TextBase)
 	// A LADDER, like the providers table: at 80 columns the full set is a cell
-	// wider than the window and the clamp ate the S off ROWS. The counters go in
+	// wider than the window and the clamp would eat the S off ROWS. The counters go in
 	// the order they are least missed — FOLDED, then PUBLISHES, then LOCATIONS —
 	// so what survives at the narrowest width is what a pipeline is judged by:
 	// its name, when it last ran, and how much it is holding.
@@ -680,7 +711,7 @@ func (d Dashboard) issueLines(o render.Opts, fillTo int, snaps ...*snapshot.Snap
 	//
 	// WRAPPED HERE, not left to the panel. The panel wraps to its own content
 	// width, which is wider than the tables by the scroll rail — so a message
-	// left to it overran the columns above it by exactly the rail. Wrapping at
+	// left to it would overrun the columns above it by exactly the rail. Wrapping at
 	// the table's width keeps the block a rectangle.
 	tailInset := "       "
 	tailW := max(20, widest(laid)-len(tailInset))
@@ -814,7 +845,7 @@ func foldWarnings(snaps []*snapshot.Snapshot) []*issue {
 			it.count++
 			// THE ROW DESCRIBES ONE OCCURRENCE — the latest. Keeping the first
 			// occurrence's endpoint, status and blame beside the last one's
-			// message produced a row that read "HTTP 502 · provider_error" over
+			// message would produce a row that reads "HTTP 502 · provider_error" over
 			// a sentence about a 404, and the blame column is the point of this
 			// table: a diagnostic that names the wrong side sends somebody to
 			// fix the wrong thing.
@@ -830,10 +861,10 @@ func foldWarnings(snaps []*snapshot.Snapshot) []*issue {
 		issues = append(issues, byKey[k])
 	}
 	// STABLE, AND TOTALLY ORDERED. Collecting from a map and sorting on a
-	// comparator that ties left the row order to Go's random map iteration:
-	// identical input produced a different table on every render, and the
-	// maxIssueRows cut then hid a different class each time. The final tiebreak
-	// makes the order a function of the data alone.
+	// comparator that ties would leave the row order to Go's random map
+	// iteration: identical input would produce a different table on every
+	// render, and the maxIssueRows cut would hide a different class each time.
+	// The final tiebreak makes the order a function of the data alone.
 	sort.SliceStable(issues, func(i, j int) bool {
 		a, b := issues[i], issues[j]
 		if fatal := a.code == snapshot.WarnProviderError; fatal != (b.code == snapshot.WarnProviderError) {
@@ -853,4 +884,121 @@ func providersOf(sn *snapshot.Snapshot) []snapshot.ProviderStatus {
 		return nil
 	}
 	return sn.Providers
+}
+
+// MapSource is one service the map contacts, its host, and what it is sent
+// (0.18.0 D-75: the Status window lists them, where FR-9.4's words were).
+type MapSource struct {
+	// Layers are the layers the host serves, MAP STATUS's LAYERS (D-150).
+	Name, Host, Layers string
+	// Notes are said under the source: what never changes about its data
+	// (D-132). Its credit is the About window's (D-148).
+	Notes []string
+	// Sent is what the host is sent of the view - "tiles", "city names" -
+	// or "" where it is asked only for fixed regions or national files
+	// (D-261). The disclosure under MAP STATUS is built from it.
+	Sent string
+}
+
+// mapFixedOnly is the disclosure's last sentence, and all of it when no
+// host is sent the view.
+const mapFixedOnly = "Every other host gets fixed regions or national files, never the view."
+
+// mapDisclosure is FR-9.4's disclosure, one line under MAP STATUS (D-151,
+// D-261): the hosts the map tells what is in view, each with what it is
+// sent, built from the table's sources so it names exactly them.
+func mapDisclosure(sources []MapSource) string {
+	var sent []string
+	for _, s := range sources {
+		if s.Sent != "" {
+			sent = append(sent, s.Name+" ("+s.Sent+")")
+		}
+	}
+	if len(sent) == 0 {
+		return mapFixedOnly
+	}
+	return "Opening the map tells these hosts what is in view: " + strings.Join(sent, ", ") + ". " + mapFixedOnly
+}
+
+// mapSourceLines is MAP STATUS (D-150): the API STATUS table's own
+// component - the go-studs data table through providerTable - a row a host
+// the map can contact, whether it is answering, when it last did, what it
+// has fetched. A host not asked this run is IDLE, dimmed: not broken, not in
+// use. Then the notes about the data (D-132) and what the map sends (D-151).
+func (d Dashboard) mapSourceLines(o render.Opts, rows []endpointRow, shape tableShape, fillTo int) []string {
+	if len(d.cfg.MapSources) == 0 {
+		return nil
+	}
+	head := "MAP STATUS"
+	if m := d.mapPane.m; m != nil {
+		if disk := m.CacheUse().Disk; disk.Limit > 0 {
+			head += "  (tiles held " + render.HumanBytes(disk.Held) + " of " + render.HumanBytes(disk.Limit) + ")"
+		}
+	}
+	table := providerTable(o, rows, "LAYERS", shape, fillTo)
+	out := append([]string{statusHeader(head)}, table...)
+	// THE WORDS UNDER IT WRAP TO THE TABLE, never widen the window: unwrapped,
+	// the disclosure would set the window to the terminal's width, past every
+	// modal's rule (the HUM LEAD's screenshot, 2026-09-29).
+	wrapAt := max(widest(table)-len(statusInset), 40)
+	muted := render.Tok(render.TableMuted)
+	var words []string
+	for _, s := range d.cfg.MapSources {
+		words = append(words, s.Notes...) // D-132: about the data, never a credit (D-148)
+	}
+	words = append(words, d.mapNotesNow()...)              // D-159: the map's notes as they stand, where its window points when they yield
+	words = append(words, mapDisclosure(d.cfg.MapSources)) // D-151, D-261
+	for _, w := range words {
+		for _, l := range render.WrapText(w, wrapAt) {
+			out = append(out, statusInset+render.Tint(l, muted))
+		}
+	}
+	return out
+}
+
+// mapHostRows are the map's hosts as the table's rows, one a host - its
+// layers joined - with its counters from the map's clients or the station's:
+// OK while its last answer is its latest word, FAIL while a failure is,
+// IDLE before it is asked.
+func mapHostRows(sources []MapSource, st Stats, now time.Time) []endpointRow {
+	at := map[string]int{}
+	var rows []endpointRow
+	for _, s := range sources {
+		if i, ok := at[s.Host]; ok {
+			if s.Layers != "" && !strings.Contains(rows[i].providers, s.Layers) {
+				rows[i].providers += ", " + s.Layers
+			}
+			continue
+		}
+		at[s.Host] = len(rows)
+		r := endpointRow{endpoint: s.Host, providers: s.Layers, state: "IDLE", status: snapshot.ProviderOff}
+		h, ok := hostIn(st.MapRequests, s.Host)
+		if !ok {
+			h, ok = hostIn(st.Requests, s.Host)
+		}
+		if ok && h.Attempts+h.Cache+h.Neg > 0 {
+			r.seen, r.claimed = true, true
+			r.tries, r.net, r.cache, r.neg, r.bytes = h.Attempts, h.Net, h.Cache, h.Neg, h.BytesNet
+			r.fetchedAt = h.LastOK
+			r.state, r.status = "OK", snapshot.ProviderOK
+			if h.LastFail.After(h.LastOK) {
+				r.state, r.status = "FAIL", snapshot.ProviderDegraded
+			}
+			if !r.fetchedAt.IsZero() {
+				r.age = now.Sub(r.fetchedAt)
+			}
+		}
+		rows = append(rows, r)
+	}
+	return rows
+}
+
+// hostIn is one host's counters in a view, if it has any.
+func hostIn(rs httpx.RequestStats, host string) (httpx.HostStats, bool) {
+	for _, h := range rs.Hosts {
+		if h.Host == host {
+			return h, true
+		}
+	}
+	return httpx.HostStats{}, false
 }

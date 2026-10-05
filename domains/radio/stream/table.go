@@ -129,9 +129,9 @@ func (t *Table) Nearest(lat, lon float64, n int) []Near {
 	// Co-located transmitters are not a curiosity: Coachella KIG78 and Coachella
 	// / Spanish WNG712 share a mast and so share their coordinates to six
 	// decimals, giving a KM that compares exactly equal. sort.Slice is not
-	// stable, so which of the pair a listener got was unspecified — it could
-	// differ between runs on the same input, and Vista, CA got the Spanish feed
-	// that way (HUM LEAD, UAT 2026-09-04).
+	// stable, so without a second key which of the pair a listener gets is
+	// unspecified — it can differ between runs on the same input, and give
+	// Vista, CA the Spanish feed (HUM LEAD, UAT 2026-09-04).
 	//
 	// The callsign is a tie-break, NOT a language policy: that KIG78 sorts
 	// before WNG712 is luck, not intent. A language preference is the setting

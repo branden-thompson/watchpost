@@ -55,8 +55,7 @@ func TestColorPassStyling(t *testing.T) {
 //
 // "WATCHPOST Observer" (HUM LEAD, 2026-08-30): the wordmark keeps its gradient
 // and the edition names which experience this build is, so the Broadcaster
-// dashboard a later version brings arrives as a different word here rather than
-// as a rename.
+// dashboard is a different word here rather than a rename.
 func TestWordmarkTintsTheEditionWithItsOwnToken(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
@@ -67,7 +66,7 @@ func TestWordmarkTintsTheEditionWithItsOwnToken(t *testing.T) {
 	if want := Tint(EditionObserver, Tok(TitleEdition)); !strings.Contains(marked, want) {
 		t.Errorf("the edition must be tinted with TitleEdition (%q):\n%q", want, marked)
 	}
-	// The wordmark keeps the gradient it always had: per-rune, so no single SGR
+	// The wordmark keeps its gradient: per-rune, so no single SGR
 	// run covers the whole of it.
 	if !strings.Contains(marked, "\x1b[1;38;2;") {
 		t.Errorf("the wordmark keeps its gradient:\n%q", marked)
@@ -83,5 +82,25 @@ func TestWordmarkTintsTheEditionWithItsOwnToken(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	if got := Wordmark(EditionObserver); got != "WATCHPOST Observer" {
 		t.Errorf("with colour disabled the masthead is plain text, got %q", got)
+	}
+}
+
+// TestSwatchTextReadsOnEveryColour is UAT-2 U2-18: the temperature key's
+// words read on every band, the pale middle ones too. Black or white,
+// whichever stands out more - never under 4.5:1 on any colour.
+func TestSwatchTextReadsOnEveryColour(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+	for _, c := range [][3]int{{240, 232, 144}, {238, 255, 187}, {221, 255, 255}, {34, 0, 68}, {0, 34, 119}, {255, 136, 68}, {128, 128, 128}} {
+		out := SwatchText("68", uint8(c[0]), uint8(c[1]), uint8(c[2]))
+		fg := luminance(255, 255, 255)
+		if strings.Contains(out, "38;2;0;0;0") {
+			fg = luminance(0, 0, 0)
+		} else if !strings.Contains(out, "38;2;255;255;255") {
+			t.Fatalf("%v: no foreground set: %q", c, out)
+		}
+		if r := contrastRatio(fg, luminance(c[0], c[1], c[2])); r < 4.5 {
+			t.Errorf("%v: the words read at %.2f:1", c, r)
+		}
 	}
 }

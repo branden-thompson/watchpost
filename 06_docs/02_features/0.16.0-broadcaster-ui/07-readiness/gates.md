@@ -435,11 +435,11 @@ hole and is fixed; one guards a retired rule.**
 
 | Mutant | Verdict | Detector |
 |---|---|---|
-| `mAA1` — the listeners location leaks to the console | CAUGHT | TestTheConsoleDrawsOnlyTheSettingsThatApplyToIt |
-| `mAA2` — a group heading is drawn over nothing | **SURVIVED → CAUGHT** | nothing, until the helper stopped re-deriving the rule; now `TestTheConsoleDrawsOnlyTheSettingsThatApplyToIt` |
+| `mAA1` — the listeners location leaks to the console | **RETIRED 2026-09-25** | It guarded D-92 (a mode's own settings appear only in its mode). 0.18.0 **D-70** made every setting shown on every surface - *"settings show now be the same across ALL UI modes"* - so the mutant changed nothing a test could see. **RETIRED BY THE HUM LEAD 2026-09-25**, never self-issued. ~~TestTheConsoleDrawsOnlyTheSettingsThatApplyToIt~~ → `TestEverySurfaceOffersEverySetting`; each row still writes only its own values (the D-18 table's test) |
+| `mAA2` — a group heading is drawn over nothing | **SURVIVED → CAUGHT** | nothing, until the helper stopped re-deriving the rule; then ~~TestTheConsoleDrawsOnlyTheSettingsThatApplyToIt~~ (gone with D-70); now `TestSetupGoldenEveryTab`, `TestEveryWindowClearsItsMargins` and the reachability test - a tab drawing another tab's headings |
 | `mAA3` — the window opens on a row nobody can see | CAUGHT | TestTheWindowOpensOnARowThisSurfaceDraws |
 | `mAA4` — tab lands in a group this surface hides | CAUGHT | TestTheKeyboardNeverFocusesAHiddenRow |
-| `mAA5` — the window ignores the surface entirely | CAUGHT | TestSetupAllocBudget |
+| `mAA5` — the window ignores the surface entirely | **RETIRED 2026-09-25** | It mutated `rowVisible` to draw every row on every surface - the behaviour 0.18.0 **D-70** now requires (*"settings show now be the same across ALL UI modes"*), and its line is gone. **RETIRED BY THE HUM LEAD 2026-09-25** (0.18.0 D-73), never self-issued. What `rowVisible` still decides - a tab draws its own rows - is held by `TestSetupGoldenEveryTab` and the reachability test. M4 ("settings bleed") is owed a new definition: a row writing another mode's values |
 | `mAB1` — the rail breaks between the tables | **RETIRED 2026-09-13** | It guarded D-104 (one control over BOTH tables).  D-106 retired that rule — *"Location Pool Scrolls, Line-up doesnt"* — and deleted its detector with it, so the mutant defended a design the product had abandoned.  **RETIRED BY THE HUM LEAD 2026-09-13**, never self-issued.  The rail's actual behaviour is pinned by `mAC2`, `mAC3` and `TestTheScrollControlIsThePoolsAlone` |
 | `mAB2` — the pool is whatever is left over | CAUGHT | TestTheScrollControlIsThePoolsAlone |
 | `mAB3` — the hazard touches the place | CAUGHT | TestTheHazardNeverTouchesThePlace |

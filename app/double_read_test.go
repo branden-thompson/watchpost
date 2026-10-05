@@ -17,9 +17,9 @@ import (
 // A burst's card ID is its LEAD's, so two bursts with different leads can carry
 // the same alert; and the seen store is written line by line AS EACH IS SAID,
 // so an alert queued but not yet spoken is invisible both to the producer's
-// unread filter and to the Director's duplicate-ID check. The overlapping
-// alerts were then read back to back, and an alert that repeats itself is an
-// alert a listener stops trusting.
+// unread filter and to the Director's duplicate-ID check. Unguarded, the
+// overlapping alerts are read back to back, and an alert that repeats itself is
+// an alert a listener stops trusting.
 //
 // PINNED AT THE BUILD, WHICH IS WHERE THE RACE LANDS. The producer's filter
 // runs when the burst is OFFERED; the gap is between that and the compose, so a

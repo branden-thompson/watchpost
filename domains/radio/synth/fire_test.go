@@ -36,10 +36,10 @@ func TestFireSegmentsReadTheScript(t *testing.T) {
 		"This is the Watchpost Fire and Hotspot report for Oceanside, California. This report is derived from data from NOAA's Hazard Mapping System, the National Interagency Fire Center, and NASA FIRMS. Data for this report may be delayed or incomplete, and is not intended for life safety use.",
 		"There are currently 2 hotspots within a 16 mile fire ring in your area.",
 		"The strongest hotspot is 6 miles north of your location, with a fire radiative power of 62 megawatts, detected 2 hours ago by GOES-West.",
-		// THE SUBJECT CHANGES HERE, and the read now says so (HUM LEAD, UAT
+		// THE SUBJECT CHANGES HERE, and the read says so (HUM LEAD, UAT
 		// 2026-09-08). Everything above is a satellite pixel inside the 16 mile
 		// fire ring; everything below is a NAMED incident inside the wider 31
-		// mile radius, and on the air the two were indistinguishable.
+		// mile radius, and unmarked, on the air the two are indistinguishable.
 		"There are currently 2 named incidents within a 31 mile radius of your area, reported in the last 4 days.", // 76h = 3.17 days; the window rounds UP so the claim stays true,
 		"Timber is 12 miles east of your location, with a size of 12,915 acres, has been active for 3 days and 4 hours, and is 26 percent contained.",
 		"Convoy, at a distance of 29 miles, has been active for 3 hours.",
@@ -116,13 +116,10 @@ func join(segs []Segment) string {
 
 // A FRESHNESS WINDOW IS NOT CLAIMED WITHOUT A DATE (red team, 2026-09-08).
 //
-// oldestIncidentWords fell through to "day" when NO incident carried a
-// discovery time — so the read said "reported in the last day" about data that
-// has no date at all. WFIGS's FireDiscoveryDateTime is nullable, so this is
-// reachable, and it is spoken output: a listener cannot go back and check.
-//
-// The function's own comment already promised this behaviour. The code did not
-// have it, and no test asked.
+// oldestIncidentWords must not fall through to "day" when NO incident carries
+// a discovery time — the read would say "reported in the last day" about data
+// that has no date at all. WFIGS's FireDiscoveryDateTime is nullable, so this
+// is reachable, and it is spoken output: a listener cannot go back and check.
 func TestAnUndatedIncidentListClaimsNoFreshnessWindow(t *testing.T) {
 	now := time.Now()
 	f := func(v float64) *float64 { return &v }
@@ -158,14 +155,14 @@ func TestAnUndatedIncidentListClaimsNoFreshnessWindow(t *testing.T) {
 // 2026-09-08).
 //
 // FireState.AsOf is the freshest answer from ANY fire feed, so with HMS up and
-// WFIGS down it is set — and the read stated "there are currently no named
-// incidents within a 31 mile radius" as a FACT, one sentence after crediting the
-// National Interagency Fire Center as a source of the report. The mirror case
-// says "no hotspots" while HMS and FIRMS are both down.
+// WFIGS down it is set — and a read keyed on it would state "there are currently
+// no named incidents within a 31 mile radius" as a FACT, one sentence after
+// crediting the National Interagency Fire Center as a source of the report. The
+// mirror case would say "no hotspots" while HMS and FIRMS are both down.
 //
-// This is the distinction the UAT already forced on screen — "fire feed not yet
-// available" is not "none within this radius" — applied per FEED rather than per
-// ring, and on the air rather than only on screen.
+// This is the distinction the screen makes — "fire feed not yet available" is
+// not "none within this radius" — applied per FEED rather than per ring, and on
+// the air as well as on screen.
 func TestAHalfWhoseFeedDidNotAnswerSaysSoRatherThanZero(t *testing.T) {
 	now := time.Now()
 	base := FireReport{Known: true, RadiusKm: 25, IncidentRadiusKm: 50,

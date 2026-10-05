@@ -2,11 +2,11 @@ package tty
 
 // setup_rows.go — the Setup window's row table (0.14.0 P4 Task 4.4).
 //
-// Before this the window had three questions and a focus enum that was a small
-// state machine: each key handler knew which question it was in and what came
-// next. Twenty rows across four groups cannot be written that way — the
-// keyboard rule, the focus order, the › mark and the scroll would each end up
-// with their own idea of the order, and they would drift.
+// Twenty rows across four groups cannot be driven by a focus enum that is a
+// small state machine, each key handler knowing which question it is in and
+// what comes next — the keyboard rule, the focus order, the › mark and the
+// scroll would each end up with their own idea of the order, and they would
+// drift.
 //
 // So there is ONE TABLE. It says what every focusable row is, which group it
 // belongs to, how it is operated and what it edits; the focus becomes an INDEX
@@ -28,6 +28,11 @@ const (
 	groupTone
 	groupCast
 	groupRelay
+	groupStation
+	groupMap
+	groupLayers    // the map's weather layers, a picker each (HUM LEAD, 2026-09-30)
+	groupMapLayers // UAT-1 U1-25: the map's own detail
+	groupHistory   // W18: the local history (D-171, D-175, D-177)
 )
 
 // setupRowKind is how a row is operated. It decides which keys do anything on
@@ -58,11 +63,9 @@ const (
 	rowLocation setupRowID = iota
 
 	// THE STATION'S OWN TWO (D-115, F-87). Where it transmits from and how far
-	// it serves — the settings the whole console is derived from, and until now
-	// the only way to change either was to edit the config file by hand.
+	// it serves — the settings the whole console is derived from.
 	//
-	// HUM LEAD, 2026-09-13: "Currently I cannot change these settings [without]
-	// direct code changes - we need [them] exposed so I can also UAT the
+	// HUM LEAD, 2026-09-13: "we need [them] exposed so I can also UAT the
 	// re-derivation logic."
 	//
 	// THEY SIT WITH THE LISTENER'S DEFAULT LOCATION, in DATA, because they answer
@@ -74,11 +77,8 @@ const (
 
 	rowFIRMSKey
 
-	// WATCHPOST UI — the display preferences. The
-	// theme chooser was a modal of its own; it is one picker row here, and the
-	// two questions under it had no home at all: the units were a live-only
-	// [f]/[c] toggle nothing remembered, and the clock was whatever each site
-	// had hard-coded.
+	// WATCHPOST UI — the display preferences: the theme as one picker row, and
+	// the units and the clock, each remembered and read by every site.
 	rowTheme
 	rowUnitsImperial
 	rowUnitsMetric
@@ -89,6 +89,13 @@ const (
 	// ALERTS - EVENTS
 	rowEventsAll
 	rowEventsWithin
+
+	// HISTORY (W18; D-171, D-175, D-177): how long the local history keeps its
+	// hours and its trends, and clearing it. Recorded in any mode (D-172), so
+	// every surface shows it.
+	rowHistoryHours
+	rowHistoryTrends
+	rowHistoryClear
 
 	// ALERTS - TONE. No mode radio: each class carries its own state, so the
 	// row says whether that class will sound rather than leaving a listener to
@@ -117,6 +124,34 @@ const (
 	// sixth correspondent so the next pacing setting has somewhere to land.
 	rowRelayDwell
 	rowRelayLang
+
+	// MAP (0.18.0 W1.8, W1.10, W1.11, W1.12, W3.8): on or off, the
+	// description's mode, the scale it opens at, the nearby distance, the
+	// layers, and the action that empties the map's data.
+	rowMapsOn
+	rowMapDesc
+	rowMapScale
+	rowMapNearby
+	// IN THE ORDER THEY ARE DRAWN: focus walks this order, and a row declared out
+	// of drawn order is one ↓ skips (HUM LEAD, 2026-09-30).
+	rowMapRadarSource // the lower 48's radar: MRMS or IEM (D-83)
+	rowMapRadarAhead  // the radar loop's hours ahead (D-114)
+	rowMapQuakes      // the quakes drawn: M2.5+ or M1.0+, the past week or day (D-122)
+	rowMapTempSource  // the map's temperature, both modes: NDFD or Open-Meteo (D-93, D-190)
+	rowMapRainDetail  // the rain's density past NDFD's reach: coarse or full (D-192)
+	rowMapUVCities    // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
+	rowMapDetailLevel
+	// THE MAP'S DETAIL, A ROW EACH (UAT-1 U1-35): the "← Enabled →" pattern
+	// every other on/off row has, in mapDetailLayers' order.
+	rowMapDetailBorders
+	rowMapDetailWater
+	rowMapDetailRivers
+	rowMapDetailNames
+	rowMapDetailRoads
+	rowMapDetailRail
+	rowMapDetailParks
+	rowMapClear
+	rowMapLayers // MAP - LAYERS, drawn after MAP - DETAIL: the two columns balance so
 
 	setupRowCount
 )
@@ -161,27 +196,10 @@ const (
 //
 // The two closest analogues are in this very file — `setupRowKind` and
 // `setupGroupID`, both static classifications, both without a sentinel — so this
-// matches the convention rather than dodging the gate.  What the gate would have
-// bought is a range check on values that can only come from the table below;
+// matches the convention rather than dodging the gate.  What the gate would
+// buy is a range check on values that can only come from the table below;
 // what the completeness check actually needs is `scopeUnruled`, and
 // TestEverySettingsRowIsRuledForItsSurface asks for that directly.
-
-// shownOn reports whether a row of this scope is drawn on a surface.
-func (sc setupScope) shownOn(s Surface) bool {
-	switch sc {
-	case scopeObserver:
-		return s != SurfaceBroadcaster
-	case scopeBroadcaster:
-		return s == SurfaceBroadcaster
-	case scopeUnruled:
-		// SHOWN, AND THE GATE FAILS ON IT. A settings row that vanishes silently
-		// is worse than one that appears where it should not: the first is
-		// invisible and the second is reportable.
-		return true
-	}
-	// scopeShared and scopeSplit: both surfaces draw them.
-	return true
-}
 
 // setupRow describes one focusable row.
 type setupRow struct {
@@ -221,8 +239,8 @@ func setupTable() [setupRowCount]setupRow {
 		// to "function like the Default location setting for Observer" and the
 		// radius "like the Service alerts radius filter option in Settings just
 		// without the 'all alerts' option (so no radio button)".
-		rowTransmitter:   {rowTransmitter, groupData, scopeBroadcaster, rowInput, false, "", ""},
-		rowServiceRadius: {rowServiceRadius, groupData, scopeBroadcaster, rowInput, false, "", ""},
+		rowTransmitter:   {rowTransmitter, groupStation, scopeBroadcaster, rowInput, false, "", ""},
+		rowServiceRadius: {rowServiceRadius, groupStation, scopeBroadcaster, rowInput, false, "", ""},
 
 		rowFIRMSKey: {rowFIRMSKey, groupData, scopeShared, rowInput, false, "", ""},
 
@@ -234,11 +252,41 @@ func setupTable() [setupRowCount]setupRow {
 		rowClock24:       {rowClock24, groupUI, scopeShared, rowRadio, false, "", ""},
 		rowClockMil:      {rowClockMil, groupUI, scopeShared, rowRadio, false, "", ""},
 
+		// THE MAP IS THE LISTENER'S (0.18.0): Observer draws it, the console does not.
+		// ONE LINE EACH: the WATCHPOST UI group must still fit the window unscrolled.
+		rowMapsOn:         {rowMapsOn, groupMap, scopeObserver, rowToggle, false, "", ""},
+		rowMapDesc:        {rowMapDesc, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapScale:       {rowMapScale, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapNearby:      {rowMapNearby, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapRadarSource: {rowMapRadarSource, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapTempSource:  {rowMapTempSource, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapRainDetail:  {rowMapRainDetail, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapUVCities:    {rowMapUVCities, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapRadarAhead:  {rowMapRadarAhead, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapQuakes:      {rowMapQuakes, groupMap, scopeObserver, rowPicker, true, "", ""},
+		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one
+		// under the cursor; ←→ move it when there is more than one.
+		rowMapLayers: {rowMapLayers, groupLayers, scopeObserver, rowCheck, false, "", ""},
+		// THE MAP'S OWN DETAIL (D-65): the library's basemap layers, weather-first.
+		rowMapDetailLevel:   {rowMapDetailLevel, groupMapLayers, scopeObserver, rowPicker, true, "", ""}, // go-tuiMaps D-82, D-67
+		rowMapDetailBorders: {rowMapDetailBorders, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailWater:   {rowMapDetailWater, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailRivers:  {rowMapDetailRivers, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailNames:   {rowMapDetailNames, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailRoads:   {rowMapDetailRoads, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailRail:    {rowMapDetailRail, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailParks:   {rowMapDetailParks, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		// AN ACTION, operated by space: it empties the map's data (W3.8).
+		rowMapClear: {rowMapClear, groupMapLayers, scopeObserver, rowCheck, false, "", ""},
+
 		// OBSERVER'S ALERT RADIUS (D-18 row 25, per D-20): it bounds ARRIVALS over
 		// an unbounded location set. The station's service radius is a HARD bound
 		// on LOOKUPS and a separate setting — two radii, not one.
-		rowEventsAll:    {rowEventsAll, groupEvents, scopeObserver, rowRadio, false, "", ""},
-		rowEventsWithin: {rowEventsWithin, groupEvents, scopeObserver, rowRadio, false, "", ""},
+		rowEventsAll:     {rowEventsAll, groupEvents, scopeObserver, rowRadio, false, "", ""},
+		rowHistoryHours:  {rowHistoryHours, groupHistory, scopeShared, rowPicker, true, "", ""},
+		rowHistoryTrends: {rowHistoryTrends, groupHistory, scopeShared, rowPicker, true, "", ""},
+		rowHistoryClear:  {rowHistoryClear, groupHistory, scopeShared, rowCheck, false, "", ""}, // an action, as Map data's (space)
+		rowEventsWithin:  {rowEventsWithin, groupEvents, scopeObserver, rowRadio, false, "", ""},
 
 		// TONES ARE SPLIT (D-18 rows 8, 9): both surfaces have them, with
 		// INDEPENDENT values. They render on both today; the separate storage is
@@ -300,19 +348,30 @@ func setupGroupTitle(g setupGroupID) string {
 	case groupTone:
 		// "ALERTS - TONE", not the sketch's bare "ALERTS": there is an
 		// "ALERTS - EVENTS" group directly above it, and two adjacent groups
-		// both called ALERTS would be ambiguous. The "( [M] toggles )" note is
-		// gone — the rows now say Enabled or MUTED outright, so there is
-		// nothing left for it to explain.
+		// both called ALERTS would be ambiguous. There is no "( [M] toggles )"
+		// note — the rows say Enabled or MUTED outright, so there is nothing
+		// for it to explain.
 		return "ALERTS - TONE"
 	case groupCast:
 		return "WATCHPOST RADIO - CORRESPONDENTS"
 	case groupRelay:
 		return "WATCHPOST RADIO - RELAY REPLAY"
+	case groupMap:
+		return "MAP"
+	case groupLayers:
+		return "MAP - LAYERS"
+	case groupMapLayers:
+		return "MAP - DETAIL"
+	case groupStation:
+		return "STATION"
+	case groupHistory:
+		return "HISTORY"
 	}
 	return ""
 }
 
-// firstOfGroup is the row tab lands on for each group — the five tab stops.
+// firstOfGroup is a group's first row: where a deep link into Settings (t, V, M)
+// lands, whatever tab that puts it on (D-62: the tab follows the focus).
 func firstOfGroup(g setupGroupID) setupRowID {
 	id, _ := visibleRowOfGroup(g, func(setupRowID) bool { return true })
 	return id
@@ -321,11 +380,9 @@ func firstOfGroup(g setupGroupID) setupRowID {
 // visibleRowOfGroup is the first row of a group that THIS SURFACE draws, and
 // whether the group draws one at all (D-92).
 //
-// ONE FUNCTION FOR BOTH FACTS, because they are one walk. The first draft had
-// `firstVisibleOfGroup` and `groupHasAVisibleRow` side by side and the `dupes`
-// gate reported them as twins at 34 nodes — correctly: the loop was identical and
-// only the return differed. A pair like that is two places for the visibility
-// rule to drift.
+// ONE FUNCTION FOR BOTH FACTS, because they are one walk. Two functions would
+// share an identical loop and differ only in the return — twins to the `dupes`
+// gate, and two places for the visibility rule to drift.
 //
 // THE BOOL IS NOT REDUNDANT WITH THE ID. `rowLocation` is a real row AND the
 // zero value, so "found rowLocation" and "found nothing" are indistinguishable
@@ -342,7 +399,7 @@ func visibleRowOfGroup(g setupGroupID, visible func(setupRowID) bool) (setupRowI
 
 // setupGroups is every group, in draw order.
 func setupGroups() []setupGroupID {
-	return []setupGroupID{groupData, groupUI, groupEvents, groupTone, groupCast, groupRelay}
+	return []setupGroupID{groupData, groupUI, groupEvents, groupHistory, groupTone, groupCast, groupRelay, groupStation, groupMap, groupMapLayers, groupLayers}
 }
 
 // nextRow is ↓ and prevRow is ↑. Both WRAP: ↓ on the last row returns to the
@@ -383,44 +440,19 @@ func stepRow(cur setupRowID, step int, visible func(setupRowID) bool) setupRowID
 	return cur
 }
 
-// stepGroup walks to the next group that DRAWS something on this surface (D-92).
-//
-// COUNTER-BOUNDED, like stepRow and for the same reason: with every group hidden
-// an unbounded walk would spin rather than leave the focus alone.
-func stepGroup(cur setupRowID, step int, visible func(setupRowID) bool) setupRowID {
-	table := setupTable()
-	groups := setupGroups()
-	at := 0
-	for i, g := range groups {
-		if g == table[cur].group {
-			at = i
-			break
-		}
-	}
-	n := len(groups)
-	for i := 1; i <= n; i++ { // bounded by the group set (P10-02)
-		g := groups[((at+i*step)%n+n)%n]
-		if id, ok := visibleRowOfGroup(g, visible); ok {
-			return id
-		}
-	}
-	return cur
-}
-
 // enterSaves reports whether enter on this row SAVES rather than advancing.
 //
 // The rule is one sentence: ENTER ON A TEXT FIELD COMMITS IT AND MOVES ON;
 // ENTER ANYWHERE ELSE SAVES.
 //
-// The rule this replaces — "enter saves on the last row of its group" — was
-// wrong for exactly the rows a listener types into. The FIRMS key row is the
-// last row of DATA, so arriving there and pressing enter (the natural "let me
-// into this field" gesture) saved and closed the window, and there was no way
-// to reach the field at all. (UAT 2026-08-30 #12: "I can never change or enter
-// a FIRMS key".)
+// "Enter saves on the last row of its group" would be wrong for exactly the
+// rows a listener types into. The FIRMS key row is the last row of DATA, so
+// arriving there and pressing enter (the natural "let me into this field"
+// gesture) would save and close the window, and the field could never be
+// reached (UAT 2026-08-30 #12).
 //
-// With this rule the DATA flow is what it was before 0.14.0: type a location,
-// enter, type a key, enter, enter to save.
+// With this rule the DATA flow is: type a location, enter, type a key, enter,
+// enter to save.
 func enterSaves(cur setupRowID) bool { return setupTable()[cur].kind != rowInput }
 
 // setupMark and settingLabel are the shared list-focus pattern
@@ -458,7 +490,7 @@ func checkMark(o render.Opts, ticked bool) string {
 // toggleCell draws a two-state control as `[←] STATE [→]` — the same chips as a
 // voice picker, because it is the same gesture, and the STATE rather than a box.
 //
-// A checkbox made a listener combine two things to know an answer: the box's
+// A checkbox makes a listener combine two things to know an answer: the box's
 // tick and the group's mode. The state word answers it outright, which is what
 // the group is for.
 func toggleCell(state string, c arrowChips, flash pickerFlash) string {
@@ -471,9 +503,8 @@ func toggleCell(state string, c arrowChips, flash pickerFlash) string {
 //
 // Thirteen controls draw two chips each, and a chip is a styled span: building
 // twenty-six of them per frame — twenty-four of which are byte-identical —
-// was the single largest thing this window allocated (when the
-// tone toggles pushed the frame past its pin). The flashed pair is still built
-// per press, which is one chip on one row.
+// would be the single largest thing this window allocates. The flashed pair is
+// still built per press, which is one chip on one row.
 type arrowChips struct{ left, right, litLeft, litRight string }
 
 func newArrowChips(o render.Opts) arrowChips {
@@ -499,8 +530,8 @@ const toggleStateW = 7 // "Enabled"
 // pickerCell draws a voice picker as `[←] <name> [→]` — key chips, not the
 // mock's `│ <name> │ ▾ │` dropdown.
 //
-// The mock drew a dropdown because it assumed a sub-panel would open. It does
-// not: `←→` cycle the list in place. A control that LOOKS like a dropdown and
+// The mock draws a dropdown as though a sub-panel opens. None does: `←→`
+// cycle the list in place. A control that LOOKS like a dropdown and
 // is not is a promise the window cannot keep, and the chips say exactly which
 // keys move it — the same shape as the player's volume control, which is the
 // other place in the app where two keys step through a value in place.
@@ -557,18 +588,20 @@ const pickerNameW = 17
 // pickerFlashFor's window, matching the volume chips' 350 ms (UAT 41).
 const pickerFlashDur = 350 * time.Millisecond
 
+// itself is cycleIn's key for a list of the choices themselves.
+func itself[T any](t T) T { return t }
+
 // cycleIn moves one entry through a picker's list, wrapping at both ends.
 //
-// ONE OWNER FOR THE WRAP ARITHMETIC (metric D, 2026-09-08). The relay language
-// and relay dwell pickers each carried their own copy of
-// `((at+step)%len+len)%len` — the expression that makes -1 wrap to the end
-// rather than panicking — and an off-by-one in one of them would be invisible
-// in the other. The saving is not the six lines; it is that the arithmetic
-// exists once.
+// ONE OWNER FOR THE WRAP ARITHMETIC (metric D, W14 S-7): every picker that
+// steps through a list of choices - the relay language and dwell, a role's
+// voice, the map's scale, detail level, fire, nearby distance, quakes, UV
+// cities and hours ahead, the Settings tabs - steps through this, so
+// `((at+step)%len+len)%len`, the expression that makes -1 wrap to the end,
+// exists once and an off-by-one cannot hide in one copy.
 //
-// A value not in the list starts at index 0, which is what both copies did:
-// a config written by hand can name a choice a later build removed, and the
-// picker has to land somewhere.
+// A value not in the list starts at index 0: a config written by hand can
+// name a choice a later build removed, and the picker has to land somewhere.
 func cycleIn[T any, K comparable](list []T, key func(T) K, cur K, forward bool) T {
 	at := 0
 	for i, it := range list { // bounded by the list (P10-02)

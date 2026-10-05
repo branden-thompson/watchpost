@@ -1,8 +1,8 @@
 package app
 
 // Quality pass Q2 (plan §3 Q2, red-team R2-22): a pure file move must not
-// add, drop or rename a top-level declaration. The golden was captured
-// before the first move; `-update-declset` re-captures after an
+// add, drop or rename a top-level declaration. The golden is the
+// declaration set as committed; `-update-declset` re-captures it after an
 // intentional change (a batch that adds code).
 
 import (

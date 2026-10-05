@@ -27,3 +27,19 @@ func BenchmarkKey(b *testing.B) {
 		_ = Key(ref)
 	}
 }
+
+// TestPlaceIDIsNotAnEmptyZip is #23: a ref's ZIP names its place only when it
+// has one; two places without one are two places, and one place is one.
+func TestPlaceIDIsNotAnEmptyZip(t *testing.T) {
+	park := LocationRef{Label: "Guajome Park, CA", Lat: 33.2472, Lon: -117.2711}
+	lake := LocationRef{Label: "Lake Henshaw, CA", Lat: 33.2350, Lon: -116.7600}
+	if PlaceID(park) == PlaceID(lake) {
+		t.Fatal("two places without a ZIP are two places")
+	}
+	if PlaceID(park) != PlaceID(LocationRef{Label: "Guajome Regional Park", Lat: 33.24721, Lon: -117.27109}) {
+		t.Fatal("one place without a ZIP is one place, whatever it is called")
+	}
+	if PlaceID(LocationRef{Zip: "92081", Lat: 1}) != PlaceID(LocationRef{Zip: "92081", Lat: 2}) {
+		t.Fatal("a ZIP names its place")
+	}
+}

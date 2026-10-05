@@ -2,7 +2,7 @@ package lineup
 
 // THE MERGE'S PROPERTIES, ACROSS RANDOMISED TIMING (0.16.0 P3).
 //
-// A SCENARIO UAT TARGETS PRECEDENCE AND DUPLICATION, NOT TIMING. That was the
+// A SCENARIO UAT TARGETS PRECEDENCE AND DUPLICATION, NOT TIMING. That is the
 // safety lens's objection to P3's controls and it is right: a fixed scenario
 // cannot reach the case where a cycle ends at the same tick an alert arrives,
 // which is exactly where a merged producer breaks. So the rules are asserted
@@ -124,13 +124,12 @@ func (m *merged) step(ev Event) {
 	next, fx := m.d.Step(ev)
 	m.d = next
 	// ONLY WHAT THE DRIVER CAN ANSWER GOES INTO THE BACKLOG (red team blind
-	// spot 7, measured). Queuing every effect and drawing one at random per
-	// service call is wrong because only a BuildCard or a Speak comes home as an
-	// event — and a Publish is emitted on EVERY settle, so the queue fills
-	// with effects the driver could only discard. Measured: 29,798 service
-	// calls, 4,680 of them actionable — 15.7% — and the ratio worsens through a
-	// run, which makes the DELAYED BUILD this test exists for rarer the longer
-	// it goes.
+	// spot 7). Queuing every effect and drawing one at random per service call
+	// is wrong because only a BuildCard or a Speak comes home as an event — and
+	// a Publish is emitted on EVERY settle, so the queue fills with effects the
+	// driver could only discard: about one service call in six is actionable,
+	// and the ratio worsens through a run, which makes the DELAYED BUILD this
+	// test exists for rarer the longer it goes.
 	//
 	// The others are dropped rather than queued because that is what they are:
 	// a publish is a send to a console, a cue and a release are the band's, a
@@ -168,10 +167,10 @@ func (m *merged) step(ev Event) {
 	// twice, and the schedule is what has to refuse it.
 	m.checkUnique(ev)
 
-	// 5. THE RAIL IS PREPARED FIRST, not merely aired first — FOUND BY A PLANT
-	// THAT SURVIVED. Reversing the precedence in `Next` is caught by property
-	// 4; reversing it in `toPrepare` was not, and it is the more dangerous of
-	// the two. Preparation is the expensive step (a cold build is ~1 s of
+	// 5. THE RAIL IS PREPARED FIRST, not merely aired first. Reversing the
+	// precedence in `Next` is caught by property 4; reversing it in `toPrepare`
+	// is not, and it is the more dangerous of the two. Preparation is the
+	// expensive step (a cold build is ~1 s of
 	// network), and an unready rail card BLOCKS the air entirely — so composing
 	// a report ahead of a waiting hazard does not merely reorder the reads, it
 	// holds the whole station silent while the hazard queues behind a weather
@@ -312,9 +311,9 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 			}
 			now = now.Add(time.Duration(rng.Intn(90)) * time.Second)
 			// A STOP DOES NOT LAST FOR EVER. Left to case 7 alone the station
-			// was down 44% of the time and the main track barely aired, so the
-			// resume gets its own faster path — the stop is still a state with
-			// duration, just a shorter one.
+			// would be down nearly half the time and the main track would barely
+			// air, so the resume gets its own faster path — the stop is still a
+			// state with duration, just a shorter one.
 			if stopped && rng.Intn(3) == 0 {
 				m.step(Aired{To: AirProgramme})
 				m.step(Powered{To: Running})
@@ -335,15 +334,14 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 			case 7:
 				// A STOP IS A STATE WITH DURATION, NOT AN INSTANT (red team
 				// finding 3). Stepping Stopped and Running as an atomic pair
-				// means that across 300 runs and 2,630 needs, NOT ONE
-				// ordinary event is ever stepped against a stopped Director —
-				// and the whole asymmetry the merge turns on (DR-3: the rail
-				// advances while the programme is stopped, the main track does
-				// not) went unexercised. A neutralised PD-1 guard passed every
-				// property.
+				// means NOT ONE ordinary event is ever stepped against a
+				// stopped Director — and the whole asymmetry the merge turns on
+				// (DR-3: the rail advances while the programme is stopped, the
+				// main track does not) goes unexercised, so a neutralised PD-1
+				// guard would pass every property.
 				//
-				// Now the station stays down until a later iteration flips it
-				// back, so needs, arrivals, ticks and completions all land
+				// So the station stays down until a later iteration flips it
+				// back, and needs, arrivals, ticks and completions all land
 				// while it is off.
 				if stopped {
 					m.step(Aired{To: AirProgramme})
@@ -367,10 +365,10 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 		}
 		for id, n := range m.admits {
 			totalAdmits += n
-			// A LOCATION, NOT A HAZARD (red team finding 4). This counted every
-			// card re-aired, and 35 of the 38 it reported were rail cards from
-			// a repeated burst — so the gate below could have stayed green with
-			// the rotation never once coming round, which is the exact case
+			// A LOCATION, NOT A HAZARD (red team finding 4). Counting every card
+			// re-aired counts mostly rail cards from a repeated burst — so the
+			// gate below could stay green with the rotation never once coming
+			// round, which is the exact case
 			// property 3 exists to tell apart from a double read. The same
 			// isRead the report counter uses, twelve lines up.
 			if m.airs[id] > 1 && isRead(id) {
@@ -381,8 +379,8 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 		stoppedEvents += m.whileStopped
 	}
 
-	// SILENCE IS A DISTINCT VERDICT (INST-2). Every one of these ran green
-	// against a station that never read anything, so the run's REACH is
+	// SILENCE IS A DISTINCT VERDICT (INST-2). Every one of these is green
+	// against a station that never reads anything, so the run's REACH is
 	// asserted, not assumed — and each figure names the property it feeds.
 	t.Logf("%d runs, %d steps: %d admissions, %d readings (%d reports, %d hazards), %d locations read more than once, %d events on a stopped station",
 		runs, totalSteps, totalAdmits, totalAirs, reportAirs, railAirs, repeats, stoppedEvents)

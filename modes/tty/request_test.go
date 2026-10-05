@@ -41,8 +41,8 @@ func requestDash(t *testing.T, sent *int) Dashboard {
 // A window that closed on an invalid form would be exactly that — the operator
 // would believe they had scheduled a report, and nothing would have been sent.
 //
-// MUTANT mAZ3 CLOSED IT REGARDLESS AND SURVIVED: the window's own validity was
-// asserted nowhere, on the one path where being wrong is silent.
+// MUTANT mAZ3 CLOSES IT REGARDLESS: this is where the window's own validity
+// is asserted, on the one path where being wrong is silent.
 func TestAnIncompleteRequestIsNotScheduledAndTheWindowStaysOpen(t *testing.T) {
 	var sent int
 	d := requestDash(t, &sent)
@@ -60,11 +60,10 @@ func TestAnIncompleteRequestIsNotScheduledAndTheWindowStaysOpen(t *testing.T) {
 	}
 	// AND THE CHIP SAYS WHICH THING IS MISSING rather than going quiet.
 	//
-	// THIS ASSERTION ALONE CANNOT SEE A CONSTANT FUNCTION, and for a release it
-	// did not: `blocker()` returned this string unconditionally and this test
-	// passed throughout. The discrimination is proved in
-	// request_blocker_test.go — TestTheBlockerIsNotAConstantFunction — which is
-	// where a reader should look before trusting this line.
+	// THIS ASSERTION ALONE CANNOT SEE A CONSTANT FUNCTION: a `blocker()` that
+	// returned this string unconditionally would pass it. The discrimination is
+	// proved in request_blocker_test.go — TestTheBlockerIsNotAConstantFunction —
+	// which is where a reader should look before trusting this line.
 	if got := out.request.blocker(); got != "Choose a location" {
 		t.Errorf("the chip says %q; it names the first unmet condition", got)
 	}
@@ -167,11 +166,10 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 	d = typeLocation(t, d, "denver, co")
 	// THE RENDERED WINDOW, NOT THE BODY.
 	//
-	// THIS TEST READ `requestBody` AND PASSED WHILE THE COLOUR WAS BROKEN. The
-	// body is PRE-WRAP; the window wraps it afterwards, and the wrap is what
-	// dropped the tint — "Broadcast Radius" landed on a second line in plain
-	// grey and no assertion here could see it, because no assertion here looked
-	// at what the operator does.
+	// THE BODY IS PRE-WRAP; the window wraps it afterwards, and the wrap can
+	// drop the tint — "Broadcast Radius" lands on a second line, and only the
+	// rendered window shows whether it kept its colour. Reading `requestBody`
+	// would pass while the colour is broken.
 	d.width, d.height = 120, 40
 	lines := strings.Split(d.renderModal(d.opts()), "\n")
 	fact, aside := d.request.note()
@@ -179,18 +177,17 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 		t.Fatalf("the window has nothing to say about a location outside the radius: %q / %q", fact, aside)
 	}
 
-	// EACH LINE ON ITS OWN. The first version of this joined them and asked
-	// whether the TINT appeared anywhere in the result — so removing it from the
-	// fact was masked by the aside still carrying it, and mutant mBB1 survived.
-	// Two lines, two assertions.
+	// EACH LINE ON ITS OWN. Joining them and asking whether the TINT appears
+	// anywhere lets the aside still carrying it mask its removal from the fact
+	// (mutant mBB1). Two lines, two assertions.
 	// THREE PROBES, NAMED RATHER THAN MATCHED BY WORDS. A generic word matcher
-	// caught the FOOTER chip, which shares "outside", "service" and "radius"
+	// catches the FOOTER chip, which shares "outside", "service" and "radius"
 	// with the fact — so each probe is a word that appears in the helper and
 	// nowhere else in the window.
 	//
 	// "Radius" IS THE ONE THAT MATTERS: it is the wrapped continuation of the
-	// aside, the line that lost its colour, and the reason this test now reads
-	// the RENDERED window instead of the body.
+	// aside, the line that can lose its colour, and the reason this test reads
+	// the RENDERED window rather than the body.
 	want := render.Tok(render.NameWarning)
 	for _, probe := range []string{"station's", "Observer", "Radius"} {
 		found := false
@@ -233,7 +230,7 @@ func TestTheWindowOpensOnTheBottomSlot(t *testing.T) {
 	}
 	// AND ON STANDBY IT IS ONE LOWER, because LIVE is empty and the line-up is
 	// drawn from UP NEXT down (D-84). The same translation the card window's
-	// move path has applied since D-119.
+	// move path applies (D-119).
 	if got, want := st.position(1), lineup.MainTrackCap-2; got != want {
 		t.Errorf("on standby the bottom slot is index %d, want %d", got, want)
 	}
@@ -288,11 +285,11 @@ func TestPrioritizeIsBoldAndYellow(t *testing.T) {
 }
 
 // REVIEW 2026-09-17 (ruling 7-i) — THE REQUEST WINDOW KEEPS NON-ASCII. Typing
-// "Peña" gave "Pea": the handler took a key only when its String() was one
-// BYTE, so every ñ, é and ü in the gazetteer's 676 such names was dropped,
-// on a station whose whole point is hyper-local places. The Lookup window
-// already keeps them through key.Text; this holds the Request window to the
-// same rule through the real key path.
+// "Peña" must not give "Pea": a handler that takes a key only when its String()
+// is one BYTE drops every ñ, é and ü in the gazetteer's 676 such names, on a
+// station whose whole point is hyper-local places. The Lookup window keeps them
+// through key.Text; this holds the Request window to the same rule through the
+// real key path.
 func TestTheRequestWindowKeepsNonASCIILetters(t *testing.T) {
 	var sent int
 	var m tea.Model = requestDash(t, &sent)
@@ -301,5 +298,42 @@ func TestTheRequestWindowKeepsNonASCIILetters(t *testing.T) {
 	}
 	if got := m.(Dashboard).request.query; got != "Peña" {
 		t.Errorf("the Request window holds %q after typing Peña; an operator in Peñasquitos cannot ask for it", got)
+	}
+}
+
+// THE REQUEST WINDOW IS BUILT FROM THE APP'S CONTROLS (W14 S-7, D-147): a
+// report's box is Settings' checkMark, the row under the pointer wears the
+// list's ListMark, and the position is chosen with radioMark - never
+// look-alikes, which drift from the originals one fix at a time.
+func TestTheRequestWindowUsesTheAppsControls(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+	var sent int
+	d := requestDash(t, &sent)
+	d.width, d.height = 120, 40
+	rows := requestRows()
+	d.request.field, d.request.at = requestReports, 0
+	d.request.chosen = d.request.chosen.Add(rows[0]) // every report starts ticked: the second is unticked here
+	if len(rows) > 1 {
+		d.request.chosen = d.request.chosen.Without(rows[1])
+	}
+	o := d.opts()
+	body, _, _ := d.requestBody(o)
+	text := strings.Join(body, "\n")
+	first := report.Of(rows[0]).Label
+	if want := o.ListMark(true) + checkMark(o, true) + " " + render.PadTo(first, 7); !strings.Contains(text, want) {
+		t.Errorf("the focused, chosen report row is not the list's pointer and Settings' tick: want %q in\n%s", want, stripANSITest(text))
+	}
+	if len(rows) > 1 {
+		if want := o.ListMark(false) + checkMark(o, false) + " " + render.PadTo(report.Of(rows[1]).Label, 7); !strings.Contains(text, want) {
+			t.Errorf("an unchosen row is not Settings' empty box: want %q", want)
+		}
+	}
+	plain := stripANSITest(text)
+	if !strings.Contains(plain, radioMark(true, o.ASCII)+"  Line-Up Slot") || !strings.Contains(plain, radioMark(false, o.ASCII)+"  ") {
+		t.Errorf("the position is not chosen with radioMark:\n%s", plain)
+	}
+	if strings.Contains(plain, "("+o.Glyphs().OK+")") || strings.Contains(plain, "( )") {
+		t.Errorf("a hand-built radio is still drawn:\n%s", plain)
 	}
 }

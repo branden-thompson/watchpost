@@ -3,7 +3,7 @@
 package app
 
 // Windows has no SIGUSR1; the diagnostic dump is reachable through the
-// env hook only: launch with WATCHPOST_DEBUG_PPROF=1 and GET
+// env hook only: launch with WATCHPOST_DEBUG_PPROF=1 and POST to
 // http://127.0.0.1:6060/debug/dump (quality pass Q0, C1).
 
 import "context"

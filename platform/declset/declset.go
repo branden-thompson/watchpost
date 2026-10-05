@@ -41,10 +41,10 @@ func Set(dir string) ([]string, error) {
 // always the router" — so those checks derive their subject list rather than
 // enumerating it (INST-1).
 //
-// NOT go/parser.ParseDir, WHICH IS DEPRECATED and was the shape three such
-// checks had copied between them. Its replacement, x/tools/go/packages, is a
-// dependency and a type-check for a job that is a directory listing; this is
-// that listing, once, where the package that already did it lives.
+// NOT go/parser.ParseDir, WHICH IS DEPRECATED. Its replacement,
+// x/tools/go/packages, is a dependency and a type-check for a job that is a
+// directory listing; this is that listing, once, where the package that
+// already did it lives.
 //
 // TEST FILES ARE EXCLUDED, and every caller so far wants that: a rule about
 // production code must not be satisfied by a test that happens to mention the

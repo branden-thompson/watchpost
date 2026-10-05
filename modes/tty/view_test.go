@@ -12,7 +12,7 @@ import (
 )
 
 func TestViewOpensWithTwoBlankLines(t *testing.T) {
-	// UAT 10.3 (was UAT-3.1): two blank lines above the header; one after it.
+	// UAT 10.3: two blank lines above the header; one after it.
 	v := dash(t).View().Content
 	lines := strings.Split(v, "\n")
 	for i := range 2 {
@@ -104,8 +104,8 @@ func TestNarrowTerminalRowsFitAndModalsCenter(t *testing.T) {
 			t.Fatalf("row %d exceeds the terminal width (%d): %q", i, w, l)
 		}
 	}
-	// [T] Size retired with the breakpoints (MVS-D-23); the narrow row is
-	// keys only and fits without wrapping.
+	// No [T] Size key (MVS-D-23); the narrow row is keys only and fits
+	// without wrapping.
 	if !strings.Contains(v, "[space]") || strings.Contains(v, "Size:") {
 		t.Fatal("narrow radio controls are keys only, with no size toggle")
 	}
@@ -229,7 +229,7 @@ func TestViewFillsToBottomInset(t *testing.T) {
 
 // The 80x24 floor (NFR-2): the frame never exceeds the terminal — the
 // inset gives first, then the window shrinks below its 3-row floor to what
-// fits (round 4, B-07: the wrapped control row pushed it to 25 lines) —
+// fits (round 4, B-07: a wrapped control row would push it to 25 lines) —
 // and every line fits the width.
 func TestTheFloorFrameAt80x24(t *testing.T) {
 	m := dash(t)

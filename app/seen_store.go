@@ -2,15 +2,9 @@ package app
 
 // seen_store.go — the ids the ticker has already announced.
 //
-// SPLIT OUT OF ticker.go (2026-09-06). It was one of five separable concerns in
-// a 978-line file with no header comment at all: the Producer, the words a
-// burst says, the marquee's rows, this store and the metro tie. A file that
-// holds five things cannot say what it holds, and app/ticker.go is the file the
-// role model (MVS-D-77, S-7) calls the PRODUCER — a role that explicitly does
-// not own words or pacing.
-//
-// A PURE MOVE. Nothing here changed; TestDeclarationSetUnchanged is the guard
-// that says so.
+// ITS OWN FILE, NOT ticker.go's. A file that holds several things cannot say
+// what it holds, and app/ticker.go is the file the role model (MVS-D-77, S-7)
+// calls the PRODUCER — a role that explicitly does not own words or pacing.
 
 import (
 	"encoding/json"
@@ -132,7 +126,7 @@ func (s *seenStore) save() {
 		_ = os.MkdirAll(filepath.Dir(s.path), 0o700) // private, like the config store (NFR-13)
 		_ = os.WriteFile(s.path, b, 0o600)
 		// WriteFile applies the mode only on create and MkdirAll never re-modes:
-		// a store left by 0.12.0 at 0644/0755 is tightened here (R3-D-01).
+		// a store left at 0644/0755 is tightened here (R3-D-01).
 		_ = os.Chmod(s.path, 0o600)
 		_ = os.Chmod(filepath.Dir(s.path), 0o700)
 	}

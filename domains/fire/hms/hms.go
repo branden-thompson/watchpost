@@ -18,10 +18,11 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/fire"
+	"github.com/branden-thompson/watchpost/platform/agememo"
+	"github.com/branden-thompson/watchpost/platform/bodymemo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -52,26 +53,36 @@ var ErrTruncated = errors.New("hms: archive holds more than 200000 placemarks �
 
 // Provider is the HMS snapshot provider. The parsed archive is memoized by
 // content hash (red-team B5 P1): every RECENT location runs its own
-// scheduler, so without the memo one 15-minute tick parsed the same 1.4 MB
+// scheduler, so without the memo one 15-minute tick parses the same 1.4 MB
 // KMZ fifty times (measured 4.5 GB allocated, 616 MB heap peak); with it
 // the archive is parsed once per change, ~120 ms and ~90 MB, whoever asks.
 type Provider struct {
 	client *httpx.Client
 	url    string
 	rules  fire.Rules
-	memo   fire.Memo[[]Point] // the last archive's parse (Q3: the shared fire.Memo)
+	memo   *bodymemo.Memo[struct{}, []Point] // the last archive's parse, errors kept (Q3)
 
 	// The archive is larger than the client cache's in-memory ceiling, so httpx
 	// serves it from disk — and the fire tier rehydrates across every pipeline,
-	// so without this the same disk file was read (and hashed for the memo) tens
-	// of times a window even though it changes every 10 min. This coalesces the
-	// burst: one parsed archive is reused for coalesceFor, whoever asks. (0.12.0
-	// memory pass — the disk re-read was the app's single largest allocator.)
-	mu        sync.Mutex
-	cached    []Point
-	cachedErr error // ErrTruncated (or nil) for the cached parse — reused with it
-	cachedAt  time.Time
-	now       func() time.Time // time.Now in production; a stub in tests
+	// so without this the same disk file is read (and hashed for the memo) tens
+	// of times a window even though it changes every 10 min, which makes it the
+	// app's single largest allocator. This coalesces the burst: one parsed
+	// archive is reused for coalesceFor, whoever asks, and stands in for up to
+	// maxLastGood when a read fails (F6).
+	coalesce *agememo.Memo[struct{}, archive]
+	now      func() time.Time // time.Now in production; a stub in tests
+}
+
+// newCoalesce is the coalescing memo's constructor as a value: P10's call
+// graph matches a call by its bare name, and agememo.New called inside this
+// package's New reads as New calling itself (as wfigs' perimeter memo).
+var newCoalesce = agememo.New[struct{}, archive]
+
+// archive is a parsed archive: its points, and ErrTruncated (or nil) for the
+// parse - reused with it.
+type archive struct {
+	pts  []Point
+	soft error
 }
 
 // coalesceFor is how long a parsed archive is reused before another read — well
@@ -87,21 +98,29 @@ const maxLastGood = 30 * time.Minute
 // MemoPoints reports how many parsed points the archive memo holds (the
 // diagnostic dump's view of the memo; one archive at a time by design).
 func (p *Provider) MemoPoints() int {
-	pts, _ := p.memo.Peek()
+	pts, _ := p.memo.Last(struct{}{})
 	return len(pts)
 }
 
 // MemoStats is the memo's size and its parse count since launch — the
 // diagnostic dump's parse-spike counter (plan §1: parse spikes reported
 // per event).
-func (p *Provider) MemoStats() (points, parses int) { return p.MemoPoints(), p.memo.Parses() }
+func (p *Provider) MemoStats() (points, parses int) {
+	_, parses = p.memo.Stats()
+	return p.MemoPoints(), parses
+}
+
+// DefaultURL is the production archive.
+const DefaultURL = "https://www.ospo.noaa.gov/data/spl/kmlfiles/fire/fireAllSats.kmz"
 
 // New builds the provider; url "" means the production archive.
 func New(client *httpx.Client, url string, rules fire.Rules) *Provider {
 	if url == "" {
-		url = "https://www.ospo.noaa.gov/data/spl/kmlfiles/fire/fireAllSats.kmz"
+		url = DefaultURL
 	}
-	return &Provider{client: client, url: url, rules: rules, now: time.Now}
+	p := &Provider{client: client, url: url, rules: rules, now: time.Now, memo: bodymemo.NewKeepingErrors[struct{}, []Point](1)}
+	p.coalesce = newCoalesce(agememo.Options{Fresh: coalesceFor, StandIn: maxLastGood, Now: func() time.Time { return p.now() }})
+	return p
 }
 
 // ID implements snapshot.Provider.
@@ -152,41 +171,37 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 // (what parsed is served). A fetch/parse error while a recent good parse exists
 // returns the last good points, so a blip never blanks fire on the watchlist.
 func (p *Provider) points(ctx context.Context) ([]Point, error) {
-	// Within the coalesce window reuse the parsed archive (and its truncation
-	// state) — no re-read, no re-hash. The lock is NOT held across the fetch:
-	// httpx single-flights concurrent identical GETs and the large-entry cache
-	// serves the KMZ from memory, so releasing it avoids stalling every fire
-	// fetch (and shutdown) behind one slow network read (red-team 0.12.0 P4 F9).
-	p.mu.Lock()
-	if p.cached != nil && p.now().Sub(p.cachedAt) < coalesceFor {
-		pts, perr := p.cached, p.cachedErr
-		p.mu.Unlock()
-		return pts, perr
-	}
-	last, lastAt := p.cached, p.cachedAt
-	p.mu.Unlock()
-
-	// Serve a recent last-good archive over a transient error, but not forever:
-	// past maxLastGood the data is too stale to present as current (F6).
-	serveLast := func(err error) ([]Point, error) {
-		if last != nil && p.now().Sub(lastAt) < maxLastGood {
-			return last, nil
+	// No lock is held across the read: httpx single-flights identical GETs and
+	// the large-entry cache serves the KMZ from memory, and a caller waiting on
+	// another's read gives up with its own ctx - nothing stalls every fire fetch
+	// (and shutdown) behind one slow read (red-team 0.12.0 P4 F9).
+	a, err := p.coalesce.Do(ctx, struct{}{}, func() (archive, error) {
+		raw, err := p.client.GetText(ctx, p.url, httpx.TTL(archiveTTL))
+		if err != nil {
+			return archive{}, err
 		}
+		pts, perr := p.memo.Parsed(struct{}{}, raw, Parse)
+		if perr != nil && !errors.Is(perr, ErrTruncated) {
+			p.client.Forget(p.url) // a cached body that does not parse must not be served for the rest of its TTL (P6)
+			return archive{}, perr
+		}
+		return archive{pts: pts, soft: truncErr(perr)}, nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	raw, err := p.client.GetText(ctx, p.url, httpx.TTL(archiveTTL))
-	if err != nil {
-		return serveLast(err)
+	return a.pts, a.soft // nil, or ErrTruncated (soft)
+}
+
+// Points are every detection in the archive, for the map (0.18.0 D-121):
+// the places' own coalesced read, none of their radius. A truncated archive
+// is served as read.
+func (p *Provider) Points(ctx context.Context) ([]Point, error) {
+	pts, err := p.points(ctx)
+	if errors.Is(err, ErrTruncated) {
+		err = nil
 	}
-	pts, perr := p.memo.Get(raw, Parse)
-	if perr != nil && !errors.Is(perr, ErrTruncated) {
-		p.client.Forget(p.url) // a cached body that does not parse must not be served for the rest of its TTL (P6)
-		return serveLast(perr)
-	}
-	p.mu.Lock()
-	p.cached, p.cachedErr, p.cachedAt = pts, truncErr(perr), p.now()
-	p.mu.Unlock()
-	return pts, perr // nil, or ErrTruncated (soft)
+	return pts, err
 }
 
 // truncErr keeps only ErrTruncated as the cached parse's carried error.
@@ -198,7 +213,7 @@ func truncErr(err error) error {
 }
 
 // parsed returns the archive's points, parsing only when the bytes changed.
-func (p *Provider) parsed(raw []byte) ([]Point, error) { return p.memo.Get(raw, Parse) }
+func (p *Provider) parsed(raw []byte) ([]Point, error) { return p.memo.Parsed(struct{}{}, raw, Parse) }
 
 // Point is one HMS detection.
 type Point struct {
@@ -395,7 +410,7 @@ const maxFields = 32
 
 // parseDescription reads "Lon: -121.55<br>Lat: 49.89<br>YearDay: 2026237<br>Time: 0201UTC<br>Satellite: GOES-EAST<br>Method: NGFS<br>Ecosystem: 22<br>FRP: 10.980MW"
 // with strings.Cut, field by field, no map (Q3, PF-7); the last value of a
-// repeated key wins, as before.
+// repeated key wins.
 func parseDescription(desc, coords string, in *interner) (Point, bool) {
 	f := descFields(desc, in)
 	if f.lon == "" || f.lat == "" {

@@ -151,8 +151,8 @@ func TestTheManifestHeadingNamesItsColumns(t *testing.T) {
 //
 // The reference draws "LOCATION REPORT • Oceanside, CA" and the producer
 // supplies only the location — as it should, because what a card is ABOUT and
-// what KIND of card it is are two facts with two owners. The HUM LEAD saw the
-// consequence in UAT: the cards read "Oceanside, CA" with no kind at all.
+// what KIND of card it is are two facts with two owners. A kind taken from the
+// producer leaves the cards reading "Oceanside, CA" with no kind at all.
 func TestACardsTitleIsItsKindThenItsSubject(t *testing.T) {
 	g := render.Opts{ASCII: true}.Glyphs()
 	got := cardTitle(lineup.Card{Slot: lineup.LocationReport, Headline: "Oceanside, CA"}, g)
@@ -163,7 +163,7 @@ func TestACardsTitleIsItsKindThenItsSubject(t *testing.T) {
 		t.Errorf("the title is %q; the subject comes last", got)
 	}
 	// THE SEPARATOR IS THE GLYPH SET'S, so --ascii needs no special case — the
-	// parity gate caught the first draft's literal bullet.
+	// parity gate rejects a literal bullet.
 	if !strings.Contains(got, g.Bullet) {
 		t.Errorf("the title is %q; its separator is not the glyph set's", got)
 	}
@@ -180,11 +180,10 @@ func TestACardsTitleIsItsKindThenItsSubject(t *testing.T) {
 
 // THE CONSOLE HAS ONE CLOCK, AND IT IS NEVER NIL (D-87).
 //
-// `Broadcaster.clock` already existed and falls back to `time.Now`; the first
-// draft of the stamp read the raw `now` FIELD instead, which production never
-// sets — so the age the operator uses to decide whether to trust a report was
-// missing in the real app and present in every test. Two carriers of one fact,
-// and the tests had the one that worked.
+// `Broadcaster.clock` falls back to `time.Now`; the raw `now` FIELD is never set
+// in production, so a stamp that read it would show the age the operator uses to
+// decide whether to trust a report in every test and never in the real app. Two
+// carriers of one fact, and the tests would have the one that works.
 func TestTheConsolesStampAlwaysCarriesAnAge(t *testing.T) {
 	b := NewBroadcaster() // no clock injected: production's own state
 	b.width, b.ascii = 150, true
@@ -195,8 +194,8 @@ func TestTheConsolesStampAlwaysCarriesAnAge(t *testing.T) {
 	rows := b.readBody(b.opts(), lane, c, "1", true)
 	stamp := ""
 	for _, r := range rows {
-		// "DATA PULL:" SINCE D-110, which is the reference's own label and the
-		// short form with it — the card is glanced at, the window is read.
+		// "DATA PULL:" (D-110), which is the reference's own label, and the short
+		// form with it — the card is glanced at, the window is read.
 		if strings.Contains(r, "DATA PULL") {
 			stamp = r
 		}

@@ -1,10 +1,10 @@
 # Extending watchpost
 
 > **Status:** everything named here exists and the steps are verified against the shipped code
-> (Documented-Commands-Execute rule). The planned `app/registry.go` / `View` interface
-> was not built. The second top-level view arrived in 0.16.0 — the Broadcaster console — and it
-> came with a thin **Router** (`modes/tty/router.go`), not a registry: the Router is the Bubble Tea
-> model handed to the program, and it fans messages to the two surfaces (FR-1.1, FR-1.2).
+> (Documented-Commands-Execute rule). There is no view registry. The two top-level views, the
+> Observer and the Broadcaster console, sit under a thin **Router** (`modes/tty/router.go`): the
+> Router is the Bubble Tea model handed to the program, and it fans messages to the two surfaces
+> (FR-1.1, FR-1.2).
 
 watchpost is organized so you can find a feature by its name (`domains/…`) and extend it by
 touching **one folder plus one wiring line**. Two invariants keep everything honest — the import
@@ -83,9 +83,8 @@ back through `RadioStatusMsg`. `[m] Mode` (UAT 97) is the smallest complete exam
 The growth axis this codebase was designed around, and the one a newcomer is most likely to be handed.
 `platform/report/report.go`'s package comment is the authority; this is the route to it.
 
-**The registry's cost is one row. The FEATURE's cost is not.** `report-requests-plan.md` committed to
-"one row and nothing else" and F-111 disproved it; that document is amended, and this table is what a
-fifth kind actually costs.
+**The registry's cost is one row. The FEATURE's cost is not** (F-111). This table is what a new kind
+costs.
 
 | # | Where | What |
 |---|---|---|
@@ -118,6 +117,25 @@ gate performs it for you.
 its declared width and `FullLabel` is already 21; `render.PadTo` pads and never truncates, so a long
 label shifts its neighbour rather than clipping. Ask before choosing one.
 
+## Walkthrough 5 — add a map layer
+
+The map's layers live in one registry, `app/maplayers.go`. A layer registers itself from its own file,
+and Settings' MAP - LAYERS rows, the Overlays menu and the cost estimate all walk the registry, so a new
+layer edits none of them. The earthquakes (`app/mapquakes.go`) are the smallest complete example.
+
+| Step | File | What you do |
+|---|---|---|
+| 1 | `modes/tty/map_temp.go` (beside the other keys) | A key for the layer, e.g. `const LightningLayer = "lightning"`. Every overlay the layer makes has an id that starts with the key and a slash (`lightning/…`): the window switches a layer's overlays by the part before the slash. |
+| 2 | `app/map<layer>.go` | In the file's `init`, `registerMapLayer(mapLayer{key, label, on, cost, chips})`: the words Settings shows, whether it is on by default, its cost function, and the badge's source names when they never change. A key registered twice panics. The new row appears in Settings and in the Overlays menu's *Data Points* group with no further edit. |
+| 3 | the same file | The cost function: what one refresh would fetch if nothing were held, as bytes and requests. `refreshCost` sums it over the layers switched on; above 3,000,000 bytes or 25 requests, the window and Settings warn. |
+| 4 | `modes/tty/map_prefs.go`, `app/maplayers.go`, `app/mapfeed.go` | The data. A flag on `MapAsk`, set from `layerOn` in `mapAsk`, so it is fetched only while on. A field on `mapInputs`, filled in `fetchInputs` (one goroutine an input, all joined before the feed reads any). Its overlays added in `mapFeedWith` (`addNow` for one drawn as now). Fetch in `app/` or a domain, never in `modes/`, and over fixed boxes or national files, never the view, unless the Status window's disclosure says so. A gridded field rides `mapTemperature` instead. |
+| 5 | `app/map<layer>.go`, `app/maps.go` | Its hosts: a `<layer>Hosts()` returning `[]tty.MapSource`, appended in `mapSourceList`, so the Status window's MAP STATUS lists them. A new host must be on FR-3.8's closed list. |
+| 6 | `app/credits.go` | Its credit in `creditGroups`, with what the source's terms ask. |
+| 7 | Tests | Add the key to `TestAFakeLayerPlugsInWithoutEditingTheOthers`' list and the host to `TestEveryRegisteredSourceIsOnTheClosedList`' closed list (both in `app/maplayers_test.go`), so a layer or host cannot arrive unnoticed. Then a cost test, and a feed test over a recorded answer showing the overlays arrive with the layer's key. |
+
+**Fetch only while on.** The estimate counts only the layers switched on, so a layer that fetches while
+off spends what the warning never shows.
+
 ## Rules you inherit for free
 
 - **A network call is not automatically a provider, and Walkthrough 2 is not the only shape.** A
@@ -128,8 +146,7 @@ label shifts its neighbour rather than clipping. Ask before choosing one.
   `app/release.go`: it asks GitHub whether a newer release exists, **once, at startup**, and is opt-in
   (`update_check`). It appears in `[S]`'s host table only because it goes through `httpx`. Before
   adding another non-provider fetch, say in `architecture.md §1.1` why it is not hazard data, state
-  its bound, and make that bound reachable by a test — `app/release.go` used to poll hourly, and that
-  poller is the entire reason it read as a feed. See `architecture.md §1.1` and §1.2 (which root a new
+  its bound, and make that bound reachable by a test. See `architecture.md §1.1` and §1.2 (which root a new
   file belongs under).
 
 
@@ -164,8 +181,7 @@ label shifts its neighbour rather than clipping. Ask before choosing one.
 
 - **`make verify` runs every gate in `06_docs/required-gates.txt` except three, and the three it
   skips matter.** `release-matrix` and `install-test` are CI-only — they build five platforms and
-  install what was built — and they are the **only release-path callers of `scripts/lint-injector.sh`** (`build-diag` and the gate self-test call it too), the check
-  standing between a debug-injector build and a release. `p10` is a phase-exit gate, run by
+  install what was built, which `verify` runs before they exist. `p10` is a phase-exit gate, run by
   `make quality` at BUILD and REVIEW exit rather than on every verify. A green local `verify` does
   not cover them; a green CI run and a green `quality` do. Read `required-gates.txt` rather than any
   count written in prose (this page names none): the Makefile,

@@ -13,6 +13,7 @@ import (
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 func bedPipelines(t *testing.T) *livePipelines {
@@ -56,7 +57,7 @@ func TestTheBedSelectorWalksTheStationsFence(t *testing.T) {
 	}
 	// NEAREST FIRST, and all of them inside the fence.
 	for _, n := range relays {
-		if mi := n.KM * 0.621371; mi > config.DefaultBedRadiusMi+0.001 {
+		if mi := units.MilesOf(n.KM); mi > config.DefaultBedRadiusMi+0.001 {
 			t.Errorf("%s is %.1f mi out and the fence is %v", n.Callsign, mi, config.DefaultBedRadiusMi)
 		}
 	}
@@ -132,18 +133,17 @@ func TestTheSelectorReportsWhatTheDirectorSaidAboutCarrying(t *testing.T) {
 
 // THE OPERATOR'S CHOICE STICKS (F-98, D-90).
 //
-// HUM LEAD, UAT 2026-09-11: "Relay control ← (no relay tuned) → doesn't 'stick' to
-// my choice — no matter what I choose it will constantly go back to (no relay
-// tuned) so there's no way to ensure which bed relay I've actually selected."
+// The row names the relay the operator chose and keeps naming it, so the operator
+// can be sure which bed relay is selected.
 //
-// THE MECHANISM: two publishers of BedMsg, and the frequent one did not know about
-// the operator. `stepBedRelay` sends the relay it tuned; the SETTLE sends
-// `describeBed(v.Bed)` — the DIRECTOR's bed ref, a watchlist LOCATION key the
-// station's relay selector never touches — and a settle happens on every tick. So
-// the selection was overwritten with "" about a second after every keypress.
+// THE MECHANISM: two publishers of BedMsg. `stepBedRelay` sends the relay it
+// tuned; the SETTLE sends `describeBed(v.Bed)` — the DIRECTOR's bed ref, a
+// watchlist LOCATION key the station's relay selector never touches — and a
+// settle happens on every tick. A settle that ignores the operator overwrites the
+// selection with "" about a second after every keypress.
 //
-// It is the same two-publisher problem `noteBedCarrying` already solved for
-// `Carrying`, left unsolved for the relay itself.
+// It is the same two-publisher problem `noteBedCarrying` solves for `Carrying`,
+// solved here for the relay itself.
 func TestTheOperatorsRelayChoiceSurvivesTheNextSettle(t *testing.T) {
 	lp := bedPipelines(t)
 	if cmd := lp.stepBedRelay(1); cmd != nil {
@@ -155,8 +155,7 @@ func TestTheOperatorsRelayChoiceSurvivesTheNextSettle(t *testing.T) {
 	}
 
 	// THE SETTLE, WITH THE DIRECTOR'S BED UNTUNED — which is the ordinary state of
-	// a station whose operator is choosing a relay before going on the air, and
-	// the exact state the defect was reported in.
+	// a station whose operator is choosing a relay before going on the air.
 	var got []tty.BedMsg
 	b := newBench(t, &scriptVoice{})
 	b.x.publish = func(m tea.Msg) {
@@ -188,7 +187,7 @@ func TestTheOperatorsRelayChoiceSurvivesTheNextSettle(t *testing.T) {
 //
 // THE STUB IN THE TEST BELOW CANNOT CATCH THIS. It hands `describeBed` a
 // `func() string { return "" }`, which asserts the FALLBACK and says nothing about
-// whether the real implementation would have returned "". A mutant found that gap.
+// whether the real implementation returns "".
 func TestAStationNobodyHasTouchedHasChosenNoRelay(t *testing.T) {
 	lp := bedPipelines(t)
 	if len(lp.bedRelays()) == 0 {
@@ -228,51 +227,54 @@ func TestAnUnchosenRelayLeavesTheDirectorsBedOnTheRow(t *testing.T) {
 	}
 }
 
-// THE SELECTOR TUNES WHAT IT RESOLVED, NOT WHAT THE LISTENER LAST TUNED (D-117).
+// A STEP SELECTS AND PLAYS NOTHING; THE PLAY KEY PLAYS THE CHOSEN RELAY (D-215).
+// "simply 'tuning' the relay should not start it as the human operator in
+// broadcast mode may not intend to 'hear' anything yet": a step moves the
+// selection and the row, and the deck is pointed at nothing until the operator
+// plays it - then at the chosen relay's own mounts, which a second press stops.
 //
-// THIS IS WHY THE BED DID NOTHING. `tuneCallsign` searches the mount list the
-// LISTENER's last tune left behind and returns in SILENCE when the callsign is
-// not in it — so unless Observer happened to have tuned that same relay, the
-// operator pressed the key, the row said it was tuned, and the station carried
-// dead air.
-//
-// A RESOLVED STATION CARRIES ITS OWN MOUNTS, so the engine is pointed at them
-// directly. Asserted through the URLs, because "it called a different function"
-// is not the claim — "the engine is started on the chosen relay's own stream" is.
-func TestSteppingTheBedTunesTheChosenRelaysOwnMounts(t *testing.T) {
+// ASSERTED ON THE DECK'S OWN TUNE LIST: `startStation` WRITES `mountURLs`, and
+// that is what "the engine is started on the chosen relay's own stream" means.
+func TestAStepSelectsAndThePlayKeyPlaysTheChosenRelay(t *testing.T) {
 	lp := bedPipelines(t)
 	relays := lp.bedRelays()
 	if len(relays) < 2 {
 		t.Fatalf("the fixture needs somewhere to step; got %d relays", len(relays))
 	}
-	// ASSERTED ON THE DECK'S OWN TUNE LIST, which is the difference between the
-	// two paths: `startStation` WRITES `mountURLs` and `tuneCallsign` merely READS
-	// it. A first version of this checked what `tuneList` produces — true either
-	// way — and a mutant that put the bed back on `tuneCallsign` SURVIVED it.
 	lp.deck = &radioDeck{}
 	if cmd := lp.stepBedRelay(1); cmd != nil {
 		cmd()
 	}
 	chosen := relays[1]
-	lp.deck.mu.Lock()
-	urls, owners := lp.deck.mountURLs, lp.deck.mountOwner
-	lp.deck.mu.Unlock()
-	if len(urls) == 0 {
-		t.Fatal("stepping the bed tuned nothing: the deck was never pointed at a stream")
-	}
-	// THE CHOSEN RELAY LEADS. The rest follow so the engine can fall through a
-	// dead mount, which is `tuneList`'s own rule.
-	if want := chosen.Mounts[0].URL; urls[0] != want {
-		t.Errorf("the engine would start on %q; the operator chose %q", urls[0], want)
-	}
-	if owners[urls[0]].Callsign != chosen.Callsign {
-		t.Errorf("the lead mount belongs to %q, not to the chosen %q",
-			owners[urls[0]].Callsign, chosen.Callsign)
-	}
-	// AND THE SELECTION IS WHAT THE ROW WILL SAY, which is the fact the operator
-	// reads back (F-98, D-90).
 	if got := lp.selectedRelay(); got != relayLine(chosen) {
 		t.Errorf("the row says %q; the operator chose %q", got, relayLine(chosen))
+	}
+	lp.deck.mu.Lock()
+	urls := lp.deck.mountURLs
+	lp.deck.mu.Unlock()
+	if len(urls) != 0 {
+		t.Fatalf("a step tuned %d mounts: choosing a relay must not start it", len(urls))
+	}
+	if cmd := lp.toggleBedRelay(); cmd != nil {
+		cmd()
+	}
+	lp.deck.mu.Lock()
+	urls, owners, mode := lp.deck.mountURLs, lp.deck.mountOwner, lp.deck.mode
+	lp.deck.mu.Unlock()
+	if len(urls) == 0 || mode != "live" {
+		t.Fatal("the play key tuned nothing: the deck was never pointed at a stream")
+	}
+	if want := chosen.Mounts[0].URL; urls[0] != want || owners[urls[0]].Callsign != chosen.Callsign {
+		t.Errorf("the engine would start on %q (%s); the operator chose %q", urls[0], owners[urls[0]].Callsign, want)
+	}
+	if cmd := lp.toggleBedRelay(); cmd != nil {
+		cmd()
+	}
+	lp.deck.mu.Lock()
+	mode = lp.deck.mode
+	lp.deck.mu.Unlock()
+	if mode != "" {
+		t.Errorf("a second press left the deck %q; want the relay stopped", mode)
 	}
 }
 
@@ -296,9 +298,9 @@ func TestTheBedFenceKeepsOutWhatTheResolverWouldOffer(t *testing.T) {
 // the relays of the place the station has LEFT — and tuning one of them points
 // the transmitter at a stream for somewhere else entirely.
 //
-// PINNED THROUGH A SEAM, because the real resolve is network work on a goroutine
-// and a mutant that simply stopped it SURVIVED: nothing could observe whether it
-// had happened.
+// PINNED THROUGH A SEAM, because the real resolve is network work on a goroutine:
+// without the seam nothing observes whether it happens, and a resolve that never
+// runs passes.
 func TestAMovedStationReResolvesItsRelays(t *testing.T) {
 	lp := bedPipelines(t)
 	asked := make(chan struct{}, 4)

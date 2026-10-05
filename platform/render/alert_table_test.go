@@ -21,7 +21,7 @@ func alertLines(t *testing.T, rows []AlertRow, w int) []string {
 //
 //	[##.:3][ALERT TYPE: FILL][gutter:3][LOCATION: FIT; TRUNCATABLE]
 //
-// THE OFFSETS ARE NOT CONSTANTS ANY MORE, and that is the spec, not a loss: with
+// THE OFFSETS ARE NOT CONSTANTS, and that is the spec, not a loss: with
 // ALERT TYPE filling and LOCATION fitting, where the place name starts is a
 // function of the longest place name in the box. What is fixed is the SHAPE —
 // the number's four cells, and the three that must always stand between the

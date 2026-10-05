@@ -13,8 +13,8 @@ import (
 //
 // IT EXISTS SO THERE IS ONE EXEMPTION INSTEAD OF ONE PER POLLER. A loop that
 // runs until it is cancelled cannot state a bound in iterations — that is what
-// a clock is — so each one needed its own ratified P10-02 exemption, and the
-// count grew with every new poller. **Zero, one, many: at many, share** (HUM
+// a clock is — so each one would need its own ratified P10-02 exemption, and the
+// count would grow with every poller. **Zero, one, many: at many, share** (HUM
 // LEAD, 2026-09-03). This is the many.
 //
 // IT WAITS BEFORE IT RUNS. A caller that wants an immediate first pass calls fn

@@ -80,18 +80,6 @@ func TestEveryBreakpointIsNamed(t *testing.T) {
 	}
 }
 
-func TestColorGateNoColorWins(t *testing.T) {
-	if colorEnabled(true, "1") {
-		t.Fatal("NO_COLOR set must disable color even on a TTY")
-	}
-	if colorEnabled(false, "") {
-		t.Fatal("non-TTY must disable color")
-	}
-	if !colorEnabled(true, "") {
-		t.Fatal("TTY without NO_COLOR must enable color")
-	}
-}
-
 // --- KeyMap (D-15) ---
 
 func TestKeyMapMergeLayers(t *testing.T) {

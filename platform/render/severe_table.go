@@ -112,8 +112,8 @@ func severeHeaderLine(ev int, data []severeCol, bg string, ascii bool) string {
 // The mock's fixed widths: marks 5 · number 5 · LOCATION 22 (16 when
 // squeezed) · DECLARED 15 · EXPIRES 15; gutter 4 between the data columns
 // (2 in the mock; HUM LEAD UAT 2026-08-28 item 13).
-// (Marks were 7 with a severity glyph; HUM LEAD dropped the glyph at UAT
-// 2026-08-28 — every row in a tab wore the same one — and EVENT took the cells.)
+// (No severity glyph in the marks: every row in a tab would wear the same one,
+// so EVENT has those cells — HUM LEAD UAT 2026-08-28.)
 const (
 	severeMarksW     = 5
 	severeNumW       = 5

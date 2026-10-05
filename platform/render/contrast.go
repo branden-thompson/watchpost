@@ -8,8 +8,7 @@ import (
 
 // contrast.go — WCAG contrast as a render-time fact, not only a test's: the
 // alert tones are LIFTED to AA against their tints when a theme registers
-// (HUM LEAD 2026-08-28, red-team round 4 B-05: the module title read 4.20:1
-// by default and below AA in ten of twelve themes). A lift keeps the hue —
+// (HUM LEAD 2026-08-28, red-team round 4 B-05). A lift keeps the hue —
 // the colour is mixed toward white (or toward black on a light tint) only as
 // far as 4.5:1 needs — so a theme's intention survives while every pair
 // reads.
@@ -277,25 +276,30 @@ func aaPairs() []aaPair {
 		{GroupText, bands}, {TickerFG, lanes}, {TickerMutedFG, append(append([]Token{}, lanes...), GroupSectionBG)},
 		{StatePlaying, append(append([]Token{}, tints...), win...)}, {FocusPointer, append(append([]Token{}, tints...), win...)}, {ModalTitle, tints},
 		{ModalFG, modal}, {ModalTitle, modal},
-		// The confirm tile is a painted ground with text on it; it was in no pair,
-		// so nothing measured it, and Tokyo Night's read 4.17:1.
+		// The confirm tile is a painted ground with text on it; in no pair,
+		// nothing would measure it, and Tokyo Night's reads 4.17:1 unlifted.
 		{ModalFG, []Token{ConfirmBG}}, {ModalTitle, []Token{ConfirmBG}},
 		// A list's focus tokens are drawn on the MODAL ground, not the
 		// window's — every list-shaped surface that uses them is a floating
 		// window (0.14.0 Task 4.9).
+		// About's hosts: their own token, so the lift on the modal ground moves
+		// nothing else (D-233).
+		{AboutHost, modal},
+		// A credit row's note, a shade back from the text, read on the same ground (D-236).
+		{AboutNote, modal},
 		{ListPointer, modal}, {ListFocus, modal}, {AlertDanger, append([]Token{ModalBGDark}, win...)}, {AlertModalText, append(append([]Token{}, tints...), AlertModalWarnBG, AlertModalAdvBG)},
 		{AlertModalWarnFG, []Token{AlertModalWarnBG}}, {AlertModalAdvFG, []Token{AlertModalAdvBG}},
 		// THE RAIL'S LETTERS, in the tone every band in the app carries its text.
 		//
-		// MEASURED BEFORE IT WAS WRITTEN, because registering a pair is NOT free:
-		// `withAA` lifts a foreground until it reads on EVERY ground it is
-		// registered against, so widening a shared token's ground set changes it
-		// everywhere. GroupText moved in no theme against these three — the rail
+		// REGISTERING A PAIR IS NOT FREE: `withAA` lifts a foreground until it
+		// reads on EVERY ground it is registered against, so widening a shared
+		// token's ground set changes it everywhere. GroupText moves in no theme
+		// against these three — the rail
 		// grounds sit in the Group bands' own family, which is the point of
 		// deriving them that way.
 		{GroupText, rails},
 		// THE CONSOLE'S CARDS CARRY THEIR OWN TONE so this lift reaches nothing
-		// else: registering TextBase here moved it in two themes and took
+		// else: registering TextBase here would move it in two themes and take
 		// Observer's tables with it.
 		{CardText, cards},
 	}
@@ -342,9 +346,38 @@ func isCategoryTint(bg Token) bool {
 
 // categoryTints is THE list of the severe window's row tints — the one every
 // gate reads, so a tint added here is measured everywhere without anyone
-// remembering to add it. EventCatForecastBG reached three separate lists before
-// this existed, and passed two of them by being absent rather than by passing.
+// remembering to add it. With separate lists, a tint can pass a gate by being
+// absent from it rather than by passing.
 func categoryTints() []Token {
 	return []Token{EventCatDisasterBG, EventCatWarningBG, EventCatAdvisoryBG, EventCatWatchBG,
 		EventCatStmtBG, EventCatMarineBG, EventCatForecastBG, EventCatEmergencyBG}
+}
+
+// chipBlack and chipWhite are a chip's words: bold, black or white.
+const (
+	chipBlack = "1;38;2;0;0;0"
+	chipWhite = "1;38;2;255;255;255"
+)
+
+// ChipGrounds are the map's source chips' grounds (0.18.0 D-83, D-134).
+func ChipGrounds() []Token {
+	return []Token{MapRadarMRMSBG, MapRadarIEMBG, MapRadarModelBG, MapChipNWSBG, MapChipNDFDBG, MapChipOMeteoBG,
+		MapChipUSGSBG, MapChipNIFCBG, MapChipHMSBG, MapChipNDBCBG, MapChipCOOPSBG, MapChipAirNowBG, MapChipRecordedBG, MapChipEPABG,
+		MapChipNHCBG, MapChipNWRBG, MapChipFIRMSBG, MapChipRelaysBG, MapChipGeoNamesBG, MapChipOFMBG, MapChipPiperBG} // the credits' (D-235)
+}
+
+// NoticeGrounds are the map's notices' grounds (W18.1, D-165): measured as
+// the chips' are, their words ChipTones'.
+func NoticeGrounds() []Token { return []Token{MapNoticeQuotaBG} }
+
+// ChipTones is a chip's ground and its words in the theme in use: bold
+// black or bold white, whichever reads the more on that ground (D-134) - so
+// a yellow chip is never white on yellow, nor a blue one black on blue.
+func ChipTones(bg Token) string {
+	ground := Tok(bg)
+	fg := chipWhite
+	if Contrast(chipBlack, ground) > Contrast(chipWhite, ground) {
+		fg = chipBlack
+	}
+	return ground + ";" + fg
 }

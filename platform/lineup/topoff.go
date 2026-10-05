@@ -2,11 +2,11 @@ package lineup
 
 // topoff.go — the Producer tops off the lineup (D-40, HUM LEAD 2026-09-10).
 //
-// THE GAP: nothing read the track's depth. Two things queued a main-track card —
-// the deck reporting that a location needs a read, and the operator's undo — so
-// the schedule held about ONE card while the console drew ten slots, and a
-// dropped card left its slot empty for ever. 0.14.0's role model predicted it in
-// as many words: "Nothing produces location reports or credits; the rotation
+// THE DEPTH IS READ. Without a top-off only two things queue a main-track card
+// — the deck reporting that a location needs a read, and the operator's undo —
+// so the schedule would hold about ONE card while the console draws ten slots,
+// and a dropped card would leave its slot empty for ever. 0.14.0's role model
+// says as much: "Nothing produces location reports or credits; the rotation
 // does that implicitly."
 //
 // THE ROLE SPLIT IS THE DESIGN, not a comment on it:
@@ -23,7 +23,7 @@ package lineup
 //
 // WHICH ALSO DEFINES "IN DOUBT" rather than leaving it to be invented later. The
 // HUM LEAD's ruling says the Director "WHEN IN DOUBT may surface a choice modal
-// to the Operator", and doubt is now a fact about the schedule: the Director is
+// to the Operator", and doubt is a fact about the schedule: the Director is
 // in doubt exactly when its own criterion cannot separate the candidates — when
 // the proposals it is choosing between are all off the watchlist and therefore
 // all rank the same. That surfacing is the UI half and is not built here.
@@ -53,8 +53,7 @@ type Proposal struct {
 	// choose: D-48's cadence term discriminates between KINDS — "we haven't had
 	// a location report in a while" is not a statement about a location.
 	//
-	// THE ZERO VALUE IS A LOCATION REPORT, which is most of the broadcast and
-	// what every proposal was before this field existed.
+	// THE ZERO VALUE IS A LOCATION REPORT, which is most of the broadcast.
 	Slot Slot
 }
 
@@ -75,31 +74,27 @@ type Offered struct {
 //
 // ADMISSION IS A PROMISE TO READ. IT IS NOT A PROMISE TO READ *RIGHT NOW*.
 //
-// THE DISTINCTION IS THE WHOLE OF D-84 (HUM LEAD, 2026-09-11), and the first
-// draft of this comment got it wrong by saying DR-3 had been inverted. It has
-// not: nothing admitted is dropped unread, and the line-up the operator builds
-// on standby is that promise being KEPT — it goes to air when they press the
-// key. What was wrong was the INFERENCE, "therefore do not admit while
-// stopped".
+// THE DISTINCTION IS THE WHOLE OF D-84 (HUM LEAD, 2026-09-11). DR-3 holds:
+// nothing admitted is dropped unread, and the line-up the operator builds on
+// standby is that promise being KEPT — it goes to air when they press the key.
+// The inference "therefore do not admit while stopped" does not follow.
 //
 //	"being able to see, manage, and change the line up PRIOR to going on air is
 //	 a fundamental requirement — otherwise the user might as well just use
 //	 Observer."
 //
-// IT ASKED `advances` FIRST, under "admission is a promise to read (DR-3)", so a
-// station on standby admitted NOTHING: the console drew ten empty slots and the
-// operator had nothing to inspect, reorder or drop until after they had gone on
-// the air. The reasoning was that a stopped programme "would accumulate a
-// rotation nobody can drop" — and the answer is that the operator CAN drop it.
-// That is the whole point of the surface.
+// SO ADMISSION DOES NOT ASK `advances`. Gated on it, a station on standby would
+// admit NOTHING: the console would draw ten empty slots and the operator would
+// have nothing to inspect, reorder or drop until after they had gone on the
+// air. A stopped programme accumulates a rotation, and the operator CAN drop
+// it. That is the whole point of the surface.
 //
-// THE RULE THIS PACKAGE ALREADY HAD, one file along: `reconcileJoins` is "NOT
-// GATED ON `advances` … A stopped station still has a running order; it simply
-// is not reading it." Admission now says the same thing, and the gate lives in
-// ONE place — `airOnce`, which is where READING happens.
+// THE SAME RULE AS ONE FILE ALONG: `reconcileJoins` is "NOT GATED ON `advances`
+// … A stopped station still has a running order; it simply is not reading it."
+// The gate lives in ONE place — `airOnce`, which is where READING happens.
 //
-// AND EVERY CARD OF IT IS OWED A READ WHEN THE PROGRAMME COMES BACK, which the
-// old comment raised as the hazard. It is the REQUIREMENT.
+// AND EVERY CARD OF IT IS OWED A READ WHEN THE PROGRAMME COMES BACK. That is
+// the REQUIREMENT, not a hazard.
 func (d Director) onOffered(ev Offered) (Director, []Effect) {
 	// COUNTED IN THE LINE-UP, NOT THE SCHEDULE (D-44). The depth is a promise
 	// about what the OPERATOR sees: counting the Director's own cards against it
@@ -107,10 +102,10 @@ func (d Director) onOffered(ev Offered) (Director, []Effect) {
 	// rest empty for ever.
 	//
 	// HOW MANY SLOTS ARE OWED, and the loop below is the ONE thing that enforces
-	// it. An early `if need <= 0 { return }` stood here and its mutant SURVIVED:
-	// with the walk's own bound, flipping it to `< 0` changed no outcome, which
-	// is the rule written twice rather than an invariant — the same verdict, and
-	// the same remedy, as the DR-7 guard card.go's Propose records.
+	// it. An early `if need <= 0 { return }` here would be the rule written
+	// twice rather than an invariant: with the walk's own bound, its mutant
+	// flipping it to `< 0` changes no outcome — the same verdict, and the same
+	// remedy, as the DR-7 guard card.go's Propose records.
 	need := d.settings.Depth - len(d.lineup.Projection(MainTrack))
 	took := 0
 	for _, p := range d.chosen(ev.Proposals) { // bounded by the offer (P10-02)
@@ -132,8 +127,8 @@ func (d Director) onOffered(ev Offered) (Director, []Effect) {
 	// NEVER MORE THAN THE SLOTS THAT WERE OWED. The walk's bound is the one
 	// carrier of the depth and this is what says so out loud: a bound expressed
 	// only as a `break` is a bound that a later `continue` can walk straight
-	// past, which is exactly how the refused-proposal path could have spent a
-	// slot it never filled.
+	// past, and the refused-proposal path would then spend a slot it never
+	// filled.
 	if err := invariant.Check(took <= need, "a top-off fills the slots that were owed and no more"); err != nil {
 		return d, nil
 	}

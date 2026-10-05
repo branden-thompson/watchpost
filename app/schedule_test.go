@@ -70,7 +70,7 @@ func TestTheRunningScheduleTouchesNothing(t *testing.T) {
 // `stop` waits for the tick goroutine specifically: removing that wait leaves
 // this green, checked by removing it. The wait is still right — the tick
 // goroutine sends to the pump, and a sender outliving what it writes to is the
-// shape that turned a 0.12.0 tag red on the Linux race gate — but it is not
+// shape the Linux race gate fails on — but it is not
 // OBSERVABLE here, because `pump.send` already gives up on cancellation, so the
 // goroutine returns promptly either way. Claiming this test pins the ordering
 // would be claiming coverage that does not exist.
@@ -177,10 +177,9 @@ func TestEveryTickRefusesANonPositiveInterval(t *testing.T) {
 //
 // Every tune the Director asks for is AUTOMATIC — a dwell elapsed, a cycle
 // ended — and nobody pressed anything. Lifting the dip on an automatic
-// transition brought the next location's report in at full volume over a
-// breaking alert that was still reading — a distinction that rested on the case
-// of an identifier, `Tune` versus `tune`, where a listener heard the difference.
-// T2.3 gave the duck one owner, and this asserts the absorb keeps it.
+// transition brings the next location's report in at full volume over a
+// breaking alert still reading. The duck has one owner (T2.3), and this asserts
+// the absorb keeps it.
 func TestTheDirectorsTuneLeavesTheDuckAlone(t *testing.T) {
 	v := &scriptVoice{dur: time.Millisecond}
 	nar := testDirector(v, nil)
@@ -277,12 +276,11 @@ func TestTheProducersReachTheSchedule(t *testing.T) {
 
 	// AND AN ARRIVAL ACTUALLY REACHES THE READ.
 	//
-	// RED TEAM 2026-09-05: this test asserted only that emit was non-nil, and
-	// `schedule.carry`'s body could be replaced with `_ = ev` — every producer
-	// event dropped, the rail dead, no hazard ever read — with the whole app
-	// package still green. A NON-NIL POINTER TO A NO-OP IS THE SAME SILENCE
-	// this test was written to prevent, which is D-12 one layer further out
-	// than the version that caught the missing wiring.
+	// ASSERTING ONLY THAT emit IS NON-NIL IS NOT ENOUGH: `schedule.carry`'s body
+	// could be replaced with `_ = ev` — every producer event dropped, the rail
+	// dead, no hazard ever read — with the whole app package still green. A
+	// NON-NIL POINTER TO A NO-OP IS THE SAME SILENCE as missing wiring, which is
+	// D-12 one layer further out.
 	//
 	// Driven from the PRODUCER, so the assertion covers the whole wire:
 	// startTakeover -> carry -> pump -> Director -> build -> compose -> speak,
@@ -301,14 +299,13 @@ func TestTheProducersReachTheSchedule(t *testing.T) {
 	t.Error("an arrival never reached the read: the producer offered it, and nothing in the schedule acted on it")
 }
 
-// D-54: THE PRODUCTION WIRING, DRIVEN — and it was written because four plants
-// SURVIVED against tests that set the seams by hand.
+// D-54: THE PRODUCTION WIRING, DRIVEN — tests that set the seams by hand cannot
+// see it.
 //
-// The unit tests for the top-off set `x.propose` themselves and passed
+// The unit tests for the top-off set `x.propose` themselves and pass
 // `Settings{Depth: 2}` themselves, so deleting BOTH production wirings —
-// `propose: proposeFrom(watch)` and `Depth: tty.MainTrackSlots` — changed no
-// assertion anywhere. That is P-1's stubbed seam, and it is the same shape that
-// cost this release its P3 flip: "every test drove a stubbed seam."
+// `propose: proposeFrom(watch)` and `Depth: tty.MainTrackSlots` — changes no
+// assertion there. That is P-1's stubbed seam.
 //
 // So this drives `startSchedule` itself and watches what the CONSOLE is
 // published, which is the only path an operator will ever see.
@@ -327,20 +324,16 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 
 	// THE DEEPEST LINE-UP EVER PUBLISHED, not the latest one.
 	//
-	// THIS TEST WAS GREEN BECAUSE OF A DEFECT, which is worth stating plainly.
-	// It runs with a NIL DECK, so every card fails to compose the moment it is
-	// built — and until D-67 a routed failure was re-admitted on the publish the
-	// failure itself caused, so the track was continuously refilled at pump
-	// speed and a poll of `last` always caught ten cards in flight. The cool-off
-	// stopped the spin, and this assertion went to zero: what it had been
-	// measuring was the churn (HUM LEAD, UAT 2026-09-10: "the lineup is FLYING
-	// through locations rapidly").
+	// A POLL OF `last` WOULD MEASURE THE WRONG THING. This runs with a NIL DECK,
+	// so every card fails to compose the moment it is built, and D-67's cool-off
+	// keeps a routed failure from being re-admitted at pump speed — so the track
+	// drains, and a poll that caught ten cards in flight would be measuring
+	// churn, not the top-off.
 	//
 	// Its SUBJECT is the top-off — that the Director fills the console's window
 	// when the producer offers — and that happens once, at the first publish
 	// after the programme starts. So the peak is what to watch, and watching it
-	// at the publish rather than by polling is also what removes the race that
-	// let the defect hide here.
+	// at the publish rather than by polling also removes the race a poll carries.
 	var mu sync.Mutex
 	var last lineup.Lineup
 	deepest := 0
@@ -389,11 +382,10 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 	// Publish, so a depth that never satisfies would spin for ever and the
 	// line-up would run away.
 	//
-	// THE DEPTH IS A CEILING, NOT A FIXED LEVEL, and the first draft of this
-	// asserted the wrong thing: the station is LIVE here, so cards take the air
-	// and leave, and the count sits at nine as often as ten while the top-off
-	// refills behind them. Asserting equality made the test a race against the
-	// programme it was watching.
+	// THE DEPTH IS A CEILING, NOT A FIXED LEVEL: the station is LIVE here, so
+	// cards take the air and leave, and the count sits at nine as often as ten
+	// while the top-off refills behind them. Asserting equality would race the
+	// programme the test is watching.
 	deadline = time.Now().Add(250 * time.Millisecond)
 	for time.Now().Before(deadline) {
 		mu.Lock()
@@ -410,9 +402,9 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 //
 // `ReadID` is a pure function of the ref, and that IS the no-double-speak
 // mechanism (FR-2.5) — but only while BOTH paths key a location the same way.
-// A plant that keyed proposals by Label instead of `snapshot.Key` survived every
-// test, and it would have read a place twice: once because the producer offered
-// it, once because the deck reported it needed reading.
+// Proposals keyed by Label instead of `snapshot.Key` would read a place twice:
+// once because the producer offered it, once because the deck reported it
+// needed reading.
 func TestAProposalAndARotationReadShareOneIdentity(t *testing.T) {
 	ref := snapshot.LocationRef{Label: "Oceanside, CA", Zip: "92057", Lat: 33.1959, Lon: -117.3795, TZ: "America/Los_Angeles"}
 	ps := proposeFrom(func() []snapshot.LocationRef { return []snapshot.LocationRef{ref} })()
@@ -439,12 +431,11 @@ func TestAProposalAndARotationReadShareOneIdentity(t *testing.T) {
 // THE OPERATOR'S FIRST JOURNEY, end to end: arrive at an empty console, press
 // the control, and watch the line-up fill.
 //
-// IT HAD NO TEST, and it is the first thing anyone does. The console opens on a
-// STOPPED station showing "(nothing scheduled)", which is CORRECT — DR-3 makes
-// admission a promise to read, so a stopped programme must not accumulate a
-// rotation nobody can drop. But "correct and empty" is indistinguishable from
-// "broken and empty" from the operator's chair, and nothing proved which one
-// this was.
+// IT IS THE FIRST THING ANYONE DOES. The console opens on a STOPPED station
+// showing "(nothing scheduled)", which is CORRECT — DR-3 makes admission a
+// promise to read, so a stopped programme must not accumulate a rotation nobody
+// can drop. But "correct and empty" is indistinguishable from "broken and
+// empty" from the operator's chair, so this proves which one it is.
 //
 // IT DRIVES THE REAL CONTROL, `mastercontrol.GoOnAir`, which is what the
 // console's SHIFT+ENTER reaches — not `carry(Powered{...})` directly, because

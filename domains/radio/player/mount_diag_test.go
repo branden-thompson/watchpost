@@ -15,13 +15,13 @@ import (
 // TestMountDiag answers the one question the network cannot: IS ANYTHING COMING
 // OUT OF THIS MOUNT?
 //
-// A relay outage does not look like an outage. weatherusa.net answered every
-// probe correctly on 2026-09-04 — HTTP 200, Content-Type audio/mpeg, correct ICY
-// headers, ~19 KB/s of well-formed MP3 that decoded without a single error — and
-// broadcast DIGITAL SILENCE on every mount. Reachability, content type, byte
-// rate and decoder health were all green, and a listener heard nothing. The only
-// instrument that could tell the difference was one that decoded the audio and
-// looked at the samples.
+// A relay outage does not look like an outage. A relay can answer every probe
+// correctly — HTTP 200, Content-Type audio/mpeg, correct ICY headers, ~19 KB/s
+// of well-formed MP3 that decodes without a single error — and broadcast
+// DIGITAL SILENCE on every mount (weatherusa.net, 2026-09-04). Reachability,
+// content type, byte rate and decoder health are all green, and a listener
+// hears nothing. The only instrument that tells the difference is one that
+// decodes the audio and looks at the samples.
 //
 // It opens the mount exactly as the engine does — the same Open, the same
 // preroll, the same decoder — so what it reports is what a listener would get,

@@ -119,10 +119,10 @@ func TestTickerSingleLaneDoesNotRotate(t *testing.T) {
 	}
 }
 
-// [M] LEFT THE HEADER at 0.14.0. The six alert
-// classes are separately mutable now, and one key cannot mean six things — so
-// [M] opens Settings at the tone rows instead of flipping a single switch, and
-// the header no longer carries a chip whose label claimed to know the state.
+// [M] IS NOT IN THE HEADER. The six alert classes are separately mutable, and
+// one key cannot mean six things — so [M] opens Settings at the tone rows
+// rather than flipping a single switch, and the header carries no chip whose
+// label would claim to know the state.
 //
 // The binding stays live, which is the half that matters to a listener who
 // learnt the key.
@@ -188,7 +188,7 @@ func TestExpiredLaneDropsFromRotation(t *testing.T) {
 // nothing until the next cycle, and the band would sit there in the
 // old format with no way to tell it had been heard.
 //
-// The item carries the FACTS now and the tape is composed every frame, so the
+// The item carries the FACTS and the tape is composed every frame, so the
 // preference reaches it the way the theme does: immediately, because there is
 // nothing older to repaint.
 func TestTheTapeFollowsTheClockWithoutWaitingForACycle(t *testing.T) {
@@ -220,10 +220,10 @@ func TestTheTapeFollowsTheClockWithoutWaitingForACycle(t *testing.T) {
 //
 // tickerCatIdx indexes the PRESENT lanes, and the present set changes on every
 // publish as alerts arrive and expire. Keeping the index valid with
-// `idx %= len(cats)` silently teleports it whenever the set shrinks — and
+// `idx %= len(cats)` would silently teleport it whenever the set shrinks — and
 // because Disasters and Marine come from the national feed they are
 // almost always present AND first in the rotation order, so every shrink
-// dragged the band back onto them.
+// would drag the band back onto them.
 //
 // The rule: a lane that is still present keeps showing. Only a lane that has
 // actually gone hands over, and it hands over FORWARD.
@@ -247,7 +247,7 @@ func TestTickerLaneSurvivesThePresentSetChanging(t *testing.T) {
 		t.Fatalf("three rotations from Disasters should reach Watches, got %v", got)
 	}
 	// The Disasters lane empties. Watches is untouched and must keep showing —
-	// this is the case the modulo got wrong, landing on Marine.
+	// this is the case a modulo gets wrong, landing on Marine.
 	d.setTicker([]TickerItem{item(CatMarine, "m"), item(CatWarning, "w"), item(CatWatch, "x")})
 	if got := lane(d); got != CatWatch {
 		t.Errorf("a lane that is still present must keep showing; showing %v", got)
@@ -353,11 +353,11 @@ func TestTheBandsLanesAreDressedAndExcludeForecasts(t *testing.T) {
 //
 // PREPENDED AND POSTPENDED, ON THE ITEM (HUM LEAD, 2026-09-07). The tape
 // scrolls, so a marker at one end only is off-window half the time; a marker at
-// both ends means the item cannot be on screen without one of them. The earlier
-// design put it in the band's top row as lane chrome, on the argument that an
-// 18-cell prefix per item at the 80-column floor makes the marker the majority
-// of the tape — the ruling overrides that argument, and it is the item that is
-// fabricated rather than the lane.
+// both ends means the item cannot be on screen without one of them. Lane chrome
+// in the band's top row would be cheaper — an 18-cell prefix per item at the
+// 80-column floor makes the marker the majority of the tape — but the ruling
+// puts it on the item, because it is the item that is fabricated rather than
+// the lane.
 func TestTheTapeMarksAFabricatedItemAtBothEnds(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	real := TickerItem{ID: "tor", Category: CatWarning, Head: "Tornado Warning · Olathe, KS", Severity: TickerRed}

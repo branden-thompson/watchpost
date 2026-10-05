@@ -11,14 +11,14 @@ import (
 // EVERY REPORT KIND THE OPERATOR CAN CHOOSE REACHES THE COMPOSER (F-111).
 //
 // THE GAP THIS CLOSES IS SILENT AND OPERATOR-FACING. `report.Kind` is a CLOSED
-// SET with a `numKinds` sentinel and one registry, and 0.16.0 put that set in
-// front of the operator: the Line-Up Request window lists the kinds and they
-// choose (FR-3.4). `radioDeck.segments` answers each one with its OWN typed hook
+// SET with a `numKinds` sentinel and one registry, and that set is in front of
+// the operator: the Line-Up Request window lists the kinds and they choose
+// (FR-3.4). `radioDeck.segments` answers each one with its OWN typed hook
 // — `d.fire`, `d.seismic`, `d.marine`, and the NWS products path — so the
 // branches cannot be table-driven without erasing the types that make them
-// readable, and they were right to be written out.
+// readable, and they are written out on purpose.
 //
-// WHAT WAS MISSING IS THE GUARD, NOT A REFACTOR. Add a fifth kind and it appears
+// WHAT IS NEEDED IS THE GUARD, NOT A REFACTOR. Without it, add a fifth kind and it appears
 // in the registry, in the modal, and in the running order's labels — and
 // composes to NOTHING, because nothing here asks it to. The operator requests a
 // report, the card is built, and the thing they asked for is simply absent from
@@ -33,8 +33,7 @@ import (
 // green. P-9: read the paragraph before adding to a closed set; this is the
 // paragraph, made executable.
 //
-// The branches are not the defect and are not changed. The absence of anything
-// that notices a fifth is.
+// The branches stay as they are written; this is what notices a fifth.
 func TestEveryReportKindReachesTheComposer(t *testing.T) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "radio.go", nil, 0)
@@ -121,9 +120,9 @@ func kindIdents(t *testing.T) []string {
 		}
 		// THE BLOCK THAT DECLARES `Kind`, NOT EVERY CONST IN THE FILE. The first
 		// spec names the type — `NWS Kind = iota` — and the rest inherit it.
-		// Without this the walk also collected the display-string constants and
-		// reported them as kinds nobody composes, which is a guard failing for a
-		// reason that has nothing to do with what it guards.
+		// Without this the walk would also collect the display-string constants
+		// and report them as kinds nobody composes, which is a guard failing for
+		// a reason that has nothing to do with what it guards.
 		first, ok := gd.Specs[0].(*ast.ValueSpec)
 		if !ok || first.Type == nil {
 			return true
@@ -171,10 +170,10 @@ func kindIdents(t *testing.T) []string {
 // bypass found against it has the same shape: a branch that touches SOME value
 // reaching Compose without that value being the kind's report — a parameter, an
 // unrelated local, a `:=` shadow of the right name, a zero-value assignment. A
-// static rule that closed one of those was 36 lines that closed one token and
-// missed the next spelling, so it was deleted rather than extended. The last
-// step of adding a kind is a FIXTURE proving the right data arrives on the air,
-// and this gate is the reminder to write it, not a substitute for it.
+// static rule closing one of those closes one token and misses the next
+// spelling, so none is attempted. The last step of adding a kind is a FIXTURE
+// proving the right data arrives on the air, and this gate is the reminder to
+// write it, not a substitute for it.
 func TestEveryKindsBranchReachesTheComposer(t *testing.T) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "radio.go", nil, 0)

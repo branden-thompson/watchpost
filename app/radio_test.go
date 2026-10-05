@@ -46,7 +46,7 @@ func TestParseSayVoicesIsTheCuratedListInOrder(t *testing.T) {
 		"Aman (English (India)) en_IN    # Hello! My name is Aman.\n" +
 		"Aman (English (India)) en_IN    # Hi, I’m Siri!\n"
 	got := parseSayVoices(listing)
-	want := []string{systemVoice, "Aman (English (India))", "Daniel", "Eddy (English (US))", "Samantha", "Tessa"} // UAT 88: system voice first, Samantha back
+	want := []string{systemVoice, "Aman (English (India))", "Daniel", "Eddy (English (US))", "Samantha", "Tessa"} // UAT 88: system voice first, Samantha included
 	if strings.Join(got, "|") != strings.Join(want, "|") {
 		t.Fatalf("voices = %v", got)
 	}
@@ -179,8 +179,8 @@ func TestTheWatchlistDwellCanBeOverriddenForTesting(t *testing.T) {
 //
 // Coachella KIG78 and Coachella / Spanish WNG712 share a mast, so nothing about
 // the geography prefers either and the resolver's order between them is
-// arbitrary. Vista, CA got the Spanish feed that way, and the ruling was that
-// the choice belongs to the listener (HUM LEAD, UAT 2026-09-04).
+// arbitrary — Vista, CA could get either feed — so the choice belongs to the
+// listener (HUM LEAD, UAT 2026-09-04).
 //
 // The danger in a preference is that it stops being a tie-break: a listener who
 // prefers Spanish must not be sent to a Spanish transmitter in another county
@@ -236,13 +236,13 @@ func TestTheLanguagePreferenceOnlyBreaksATie(t *testing.T) {
 // THE CHOSEN STATION LEADS THE TUNE LIST.
 //
 // The engine starts at urls[0] and the deck is labelled with the station
-// chooseNearest picked. Those agreed for as long as chooseNearest meant "the
-// first candidate with a mount"; the language preference (HUM LEAD, UAT
-// 2026-09-04) may pick a co-located station further down, and then the deck
-// would name one transmitter while the audio came from the one beside it.
+// chooseNearest picked. The language preference (HUM LEAD, UAT 2026-09-04) may
+// pick a co-located station further down the candidates, so it must lead the
+// list, or the deck names one transmitter while the audio comes from the one
+// beside it.
 //
 // Every other candidate still follows, in order and without duplication, so the
-// fall-through a dead mount depends on is unchanged.
+// fall-through a dead mount depends on holds.
 func TestTheChosenStationLeadsTheTuneList(t *testing.T) {
 	mount := func(call, url string) []stream.Mount {
 		return []stream.Mount{{Callsign: call, URL: url, Relay: "weatherusa.net"}}

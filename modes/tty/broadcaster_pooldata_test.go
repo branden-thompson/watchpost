@@ -14,16 +14,16 @@ import (
 
 // ONE CONVERTER, AND THE POOL GOES THROUGH IT.
 //
-// THE POOL BUILT ITS OWN ROW BY HAND and copied six of sixteen fields: no HI, no
-// LOW, no TOMORROW at all, no trend arrow, no fire or seismic marks. Every one of
-// those columns drew "n/a" on the table whose purpose the HUM LEAD stated as
+// A POOL ROW BUILT BY HAND copies a few fields and drops the rest — HI, LOW,
+// TOMORROW, the trend arrow, the fire and seismic marks. Every one of those
+// columns then draws "n/a" on the table whose purpose the HUM LEAD stated as
 // "basic weather info to determine if they want to have that location
-// prioritized" — the operator was being asked to decide on data that was there
-// and not being shown.
+// prioritized" — asking the operator to decide on data that is there and not
+// shown.
 //
 // ASSERTED FIELD BY FIELD AGAINST OBSERVER'S OWN ROW, not against literals: what
 // makes this stay fixed is that the two rows come from ONE function, and a test
-// that restated the expected values would pass just as well if they forked again.
+// that restated the expected values would pass just as well if they forked.
 func TestThePoolsWeatherIsObserversWeather(t *testing.T) {
 	loc := poolLoc()
 	ref := snapshot.LocationRef{Label: loc.Label, Zip: loc.Zip, Lat: loc.Lat, Lon: loc.Lon, Population: 4000}
@@ -128,11 +128,10 @@ func poolLoc() *snapshot.Location {
 // HUM LEAD, UAT 2026-09-12: "fix this issues so seismic / fire / alerts show up
 // in the location pool as expected."
 //
-// TWO OF THE THREE COULD NOT APPEAR WHATEVER THE DATA SAID. `fillPoolWeather`
-// copied the alert fields and never touched `Fire` or `Seismic`, so those columns
-// were blank by construction — and a blank mark reads as "nothing is happening
-// there", which on a table for deciding what to put on the air is the wrong
-// answer told confidently.
+// A FILL THAT COPIES ONLY THE ALERT FIELDS leaves `Fire` and `Seismic` blank by
+// construction, whatever the data says — and a blank mark reads as "nothing is
+// happening there", which on a table for deciding what to put on the air is the
+// wrong answer told confidently.
 func TestThePoolRowCarriesEveryMark(t *testing.T) {
 	loc := poolLoc()
 	frp := 80.0
@@ -192,7 +191,7 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 	// this is the identity the join matches on.
 	// THE TABLE STARTS AT SLOT 2 (`bcScheduledFrom`): slot 0 is LIVE and slot 1 is
 	// the UP NEXT card, so the beat under test needs two ahead of it to be DRAWN
-	// at all. Without them this passed on an empty table for the wrong reason.
+	// at all. Without them this passes on an empty table for the wrong reason.
 	c := card(t, "c", string(snapshot.Key(ref)))
 	b := bcWith(t, card(t, "a", "live"), card(t, "b", "upnext"), c)
 	b.width, b.height, b.ascii = 150, 74, true
@@ -223,7 +222,7 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 			got.Marks.AlertCount, got.Marks.Fire, got.Marks.Seismic,
 			want.AlertCount, want.Fire, want.Seismic)
 	}
-	// AND THE CORRESPONDENT COLUMN IS GONE, with the `N/A` it always read.
+	// AND THERE IS NO CORRESPONDENT COLUMN, and no `N/A` in its place.
 	drawn := stripANSITest(b.opts().LineupTable(rows, 143))
 	if strings.Contains(drawn, "CORRESPONDENT") || strings.Contains(drawn, "N/A") {
 		t.Errorf("the running order still carries the correspondent column:\n%s", drawn)
@@ -235,13 +234,11 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 
 // TestTheConsoleReadsTheOperatorsFireThreshold.
 //
-// ONE PLACE, ONE ANSWER ABOUT WHETHER A FIRE IS BURNING HARD. The console's
-// threshold was `const bcFireBoldMW = 50` — Observer's DEFAULT, stated as a
-// constant because the console had no Config to read the override from. So an
-// operator who set `bold_frp_mw` in [fire] got their setting honoured on the
-// watchlist and ignored on the console, and one location could show a bold
-// hotspot on one surface and a plain one on the other. Two carriers of one
-// fact, which is the shape this codebase has removed repeatedly.
+// ONE PLACE, ONE ANSWER ABOUT WHETHER A FIRE IS BURNING HARD. A console
+// threshold of its own — Observer's DEFAULT 50, stated as a constant — would
+// honour an operator's `bold_frp_mw` in [fire] on the watchlist and ignore it
+// on the console, so one location could show a bold hotspot on one surface and
+// a plain one on the other. Two carriers of one fact.
 //
 // IT IS INHERITED THE WAY `ascii` AND `version` ARE — copied by `NewRouter`
 // from the Dashboard the Router is built over, RESOLVED (`d.fireBoldMW()`)
@@ -286,7 +283,7 @@ func TestTheConsoleReadsTheOperatorsFireThreshold(t *testing.T) {
 				t.Errorf("a %g MW hotspot with the threshold at %g: the console says hot=%v, want %v",
 					frp, tc.set, rows[0].FireHot, tc.wantHot)
 			}
-			// AND THE TWO SURFACES AGREE, which is the rule the constant broke.
+			// AND THE TWO SURFACES AGREE, which is the rule a constant of its own breaks.
 			if want := fireHot(loc.Fire.Hotspots, d.fireBoldMW()); rows[0].FireHot != want {
 				t.Errorf("the console says hot=%v and Observer says %v for one place",
 					rows[0].FireHot, want)

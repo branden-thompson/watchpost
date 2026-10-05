@@ -289,10 +289,10 @@ func TestAScriptThatRendersNothingFailsTheCardRatherThanBuildingSilence(t *testi
 	}
 }
 
-// TestSpeakReadsThroughTheNarratorAndComesHomeFinished. Speak is the existing
-// render and play, run through today's arbiter so the duck keeps its one owner
-// across Phase 2 (RD-2), in the takeover's class — the bars keep to the
-// broadcast, not the alert. It comes home as Finished, and only then.
+// TestSpeakReadsThroughTheNarratorAndComesHomeFinished. Speak is the render
+// and play, run through the arbiter so the duck keeps its one owner (RD-2), in
+// the takeover's class — the bars keep to the broadcast, not the alert. It
+// comes home as Finished, and only then.
 func TestSpeakReadsThroughTheNarratorAndComesHomeFinished(t *testing.T) {
 	for _, slot := range []lineup.Slot{lineup.BreakingAlert} { // the rail's one slot (T3.10 red team)
 		t.Run(slot.String(), func(t *testing.T) {
@@ -320,7 +320,7 @@ func TestSpeakReadsThroughTheNarratorAndComesHomeFinished(t *testing.T) {
 	}
 }
 
-// TestSpeakWithNoVoiceStillHoldsSoTheCalloutCanBeRead is P4 F10 carried over:
+// TestSpeakWithNoVoiceStillHoldsSoTheCalloutCanBeRead is P4 F10:
 // with no voice the line plays nothing, and the card still holds the air for
 // the fixed time so the band's callout is readable — never blitted past.
 func TestSpeakWithNoVoiceStillHoldsSoTheCalloutCanBeRead(t *testing.T) {
@@ -337,11 +337,11 @@ func TestSpeakWithNoVoiceStillHoldsSoTheCalloutCanBeRead(t *testing.T) {
 // TestSpeakEndedByTheContextComesHomeFailedNotFinished.
 //
 // A Finished for words that were never finished would tell the schedule a read
-// happened that did not — which is why this cannot come home Finished. It used
-// to come home with NOTHING, and that was the other half of the same defect: a
-// card that says nothing stays ON AIR for ever, and the band keeps a callout for
-// a read that has stopped (DR-24). Failed says exactly what happened, and the
-// release is paired with it.
+// happened that did not — which is why this cannot come home Finished. Nor can
+// it come home with NOTHING, the other half of the same defect: a card that
+// says nothing stays ON AIR for ever, and the band keeps a callout for a read
+// that has stopped (DR-24). Failed says exactly what happened, and the release
+// is paired with it.
 func TestSpeakEndedByTheContextComesHomeFailedNotFinished(t *testing.T) {
 	b := newBench(t, &scriptVoice{dur: time.Second})
 	ctx, cancel := context.WithCancel(context.Background())
@@ -438,23 +438,20 @@ func TestACueTheProducerCannotAccountForIsReportedAndFailsNothing(t *testing.T) 
 // TestAPublishIsCarriedAndDeclined — the effect's POSITION, which is what the
 // ordering guarantee rests on.
 //
-// IT IS NO LONGER "nobody reads it", AND THE COMMENT SAYS SO RATHER THAN
-// OUTLIVING THE FACT (the F-69 shape). The console reads it (0.16.0 P2) and the
-// producer answers it (P4, D-40) — a publish with a producer wired comes home
-// with an Offered, which `TestAPublishAsksTheProducerToTopTheLineUpOff` pins.
-// This bench has no producer, so it still comes home empty, and that is the
-// case being asserted here.
+// The console reads it (0.16.0 P2) and the producer answers it (P4, D-40) — a
+// publish with a producer wired comes home with an Offered, which
+// `TestAPublishAsksTheProducerToTopTheLineUpOff` pins. This bench has no
+// producer, so it comes home empty, and that is the case being asserted here.
 //
-// WHAT HAS NOT CHANGED is that the publish is LAST: the "readers are told last"
-// ordering in settle depends on its position, so it is pinned here separately
-// from anything that reads it.
+// THE PUBLISH IS LAST: the "readers are told last" ordering in settle depends
+// on its position, so it is pinned here separately from anything that reads it.
 func TestAPublishIsCarriedAndDeclined(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
 	d := lineup.New(lineup.Settings{Max: 10}, execNow)
 	d, fx := d.Step(lineup.Arrived{Arrivals: arrivals("a1")})
-	// IT IS STILL THE LAST THING A STEP DESCRIBES. A publish nobody reads must
-	// still be emitted in that position, or the ordering it guarantees is gone
-	// the day a reader arrives.
+	// IT IS THE LAST THING A STEP DESCRIBES. A publish must be emitted in that
+	// position whether or not anything reads it, or the ordering it guarantees is
+	// gone for every reader.
 	if len(fx) == 0 {
 		t.Fatal("a step described nothing")
 	}
@@ -471,31 +468,25 @@ func TestAPublishIsCarriedAndDeclined(t *testing.T) {
 // executor; nothing falls through to the default, which is what catches the set
 // growing a member the executors never learned.
 //
-// `Tune` LEFT THIS TABLE at T3.2b, which is the point of the table: an effect
-// stops being declined when its executor arrives, and the row goes with it. It
-// is asserted now by TestTheDirectorsTuneLeavesTheDuckAlone, which checks the
-// thing that actually matters about it — that an automatic tune does not lift
-// the alert duck.
+// AN EFFECT LEAVES THIS TABLE WHEN ITS EXECUTOR ARRIVES, which is the point of
+// the table. `Tune` is asserted by TestTheDirectorsTuneLeavesTheDuckAlone, which
+// checks the thing that actually matters about it — that an automatic tune does
+// not lift the alert duck.
 func TestEffectsNotYetEmittedAreDeclinedNotHalfDone(t *testing.T) {
 	for _, tc := range []struct {
 		effect lineup.Effect
 		failed string // the card that must be failed, or empty
 		task   string // the task named in the reason
 	}{
-		// THE MAIN TRACK ARRIVED (0.16.0 P3), so these three rows changed and
-		// this pin caught it — which is what it is for.
+		// A location-report BUILD is not declined by slot (0.16.0 P3): it
+		// declines only because THIS bench wires no composer, and the reason
+		// says so.
 		//
-		// A location-report BUILD is no longer declined by slot: it declines
-		// only because THIS bench wires no composer, and the reason says so.
-		// BOTH HALVES HAVE NOW ARRIVED (P3(a2) build, P3(a3) speak), and this
-		// pin fired at each one — which is exactly what a pin naming the task
-		// that will retire it is for.
-		//
-		// The SPEAK rows are GONE from this table. Both lanes perform now
-		// (F-91): the rail reads through the arbiter and the main track through
-		// the broadcast engine, so a row here would have to assert a decline
-		// that no longer happens. They are asserted positively in
-		// mainread_test.go, the transition by the LANE it bookends.
+		// There are no SPEAK rows. Both lanes perform (F-91): the rail reads
+		// through the arbiter and the main track through the broadcast engine,
+		// so a row here would assert a decline that does not happen. They are
+		// asserted positively in mainread_test.go, the transition by the LANE
+		// it bookends.
 		{lineup.BuildCard{ID: "r1", Slot: lineup.LocationReport, Subject: "33.2887,-117.2179"}, "r1", "no composer"},
 		{lineup.BuildCard{ID: "s1", Slot: lineup.SevereRead, Subject: "s1"}, "s1", "severe window"},
 		{lineup.BuildCard{ID: "h1", Slot: lineup.Transition, Subject: "h1"}, "h1", "proposal"},
@@ -525,13 +516,10 @@ func TestEffectsNotYetEmittedAreDeclinedNotHalfDone(t *testing.T) {
 // TestARealStepsEffectsAreBuiltNotDeclined feeds the executors what Step
 // actually emits, so the seam between the two is exercised and not assumed.
 //
-// IT CHANGED SHAPE AT T3.10b, exactly as its previous form said it would. Step
-// queues ONE takeover per burst (MVS-D-77), so the build names a BURST and
+// Step queues ONE takeover per burst (MVS-D-77), so the build names a BURST and
 // carries the alert ids it reads; the Composer turns those into the card's
-// words. Between T3.10a and T3.10b this pinned the DECLINE, because there was
-// no Composer on this side of the seam yet and the alternative — resolving the
-// producer's record from the card's own id — would have read the lead alert
-// alone and called the burst done.
+// words. Resolving the producer's record from the card's own id instead would
+// read the lead alert alone and call the burst done.
 func TestARealStepsEffectsAreBuiltNotDeclined(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
 	d := lineup.New(lineup.Settings{Max: 10}, execNow)
@@ -582,8 +570,8 @@ func TestARealStepsEffectsAreBuiltNotDeclined(t *testing.T) {
 	}
 }
 
-// TestAMutedReadIsDeclinedAndNothingIsConsumed — MVS-D-78, and mU2 found this
-// UNPINNED: the mutant deleted the mute check and NOTHING FAILED.
+// TestAMutedReadIsDeclinedAndNothingIsConsumed — MVS-D-78, pinned so that
+// deleting the mute check fails.
 //
 // The producer already refuses to send a burst while the listener is muted, so
 // this is the second door: `[M]` can land between an arrival and its read. Read
@@ -628,8 +616,8 @@ func TestAMutedReadIsDeclinedAndNothingIsConsumed(t *testing.T) {
 	}
 
 	// THE CONTROL. Unmuted, the same speak reads and marks — without it this
-	// passes against a speak that never works at all, which is the shape that
-	// let five fixtures prove nothing this release.
+	// passes against a speak that never works at all, and a fixture that cannot
+	// fail proves nothing.
 	c := newBench(t, &scriptVoice{})
 	if out := c.x.run(context.Background(), speak); len(out) != 1 {
 		t.Fatalf("unmuted, the same read produced %v, want one Finished", out)
@@ -690,16 +678,15 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 	}
 	// THE LIST IS EXPLICIT; ITS COMPLETENESS IS DERIVED.
 	//
-	// This was a hand-written map alone, and the `escalate` seam added at T3.4
-	// was simply not in it — so the one guard between "a fault channel exists"
-	// and "a fault channel reaches nobody" went unmeasured, and a mutant
-	// deleting that guard SURVIVED. A list you must remember to extend goes
-	// stale on the day it matters.
+	// A hand-written map alone goes stale: a seam missing from it leaves its
+	// guard — such as the one between "a fault channel exists" and "a fault
+	// channel reaches nobody" — unmeasured, and a mutant deleting that guard
+	// survives. A list you must remember to extend goes stale on the day it
+	// matters.
 	//
 	// reflect cannot SET an unexported field, so the strippers stay explicit.
 	// What is derived is that they COVER the struct: add a seam and this fails
-	// until it is listed or declared optional, which is the half that was
-	// missing (D-8).
+	// until it is listed or declared optional (D-8).
 	strippers := map[string]func(*executors){
 		"voice":     func(x *executors) { x.voice = nil },
 		"clock":     func(x *executors) { x.clock = nil },
@@ -718,9 +705,8 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 		"band":    true, // built by newExecutors itself, never passed in
 		// OPTIONAL ONLY UNTIL THE DIRECT PATH RETIRES (0.16.0 P3).
 		//
-		// nil means the main track cannot be built, which is exactly how every
-		// build behaved before this release and how every test that does not
-		// care behaves now. `build` declines rather than panicking.
+		// nil means the main track cannot be built, which is how every test
+		// that does not care behaves. `build` declines rather than panicking.
 		//
 		// IT BECOMES REQUIRED AT P3(d). Once startSynth's direct path is
 		// deleted, a nil composer means location reports never reach the air
@@ -729,8 +715,8 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 		// recorded here rather than remembered.
 		"compose": true,
 		// DELIBERATELY OPTIONAL (0.16.0 P2). nil means no surface is
-		// listening, which is every build before the console existed and
-		// every test that does not care. Refusing to build without it would
+		// listening, which is every test that does not care. Refusing to
+		// build without it would
 		// make the schedule depend on a UI — the wrong direction entirely.
 		"publish": true,
 		// DELIBERATELY OPTIONAL (0.16.0 P4, D-40). nil is a station with no
@@ -755,7 +741,7 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 		"noteBed": true,
 		// DELIBERATELY OPTIONAL, and the OTHER half of that same agreement
 		// (F-98, D-90). nil is a build with no console to have chosen a relay on,
-		// and the row then names the Director's bed exactly as it did before —
+		// and the row then names the Director's bed —
 		// which is why the fallback in `describeBed` is not dead code and has a
 		// test of its own.
 		"selected": true,
@@ -862,9 +848,9 @@ func TestTheBandHasOneWriter(t *testing.T) {
 // prerequisite for the rail.
 //
 // The narration arbiter gives way per SEQUENCE and takes the bed back the
-// moment nothing is waiting, so a rail of two cards dipped, lifted, dipped and
-// lifted between them — the listener hearing the broadcast surge back up
-// between two alerts of one burst. Measured before the hold existed:
+// moment nothing is waiting, so without a hold a rail of two cards dips, lifts,
+// dips and lifts between them — the listener hearing the broadcast surge back
+// up between two alerts of one burst. Unheld, the sequence is:
 //
 //	duck, aside:first, restore, duck, aside:second, restore
 //
@@ -872,8 +858,8 @@ func TestTheBandHasOneWriter(t *testing.T) {
 // per-sequence take-back in between is refused.
 //
 // THE UNBRACKETED CASE IS ASSERTED TOO, and it is the more important half: it
-// is today's Observer behaviour, which this change must not alter. Nothing
-// emits Duck yet, so every existing path must sound exactly as it did.
+// is the Observer behaviour, which the hold must not alter. A path that emits
+// no Duck sounds exactly as the arbiter alone makes it.
 func TestTheBedIsDippedOnceForAWholeDrain(t *testing.T) {
 	read := func(bracketed bool) string {
 		v := &scriptVoice{}
@@ -893,7 +879,7 @@ func TestTheBedIsDippedOnceForAWholeDrain(t *testing.T) {
 	if got, want := read(true), "duck,aside:first,aside:second,restore"; got != want {
 		t.Errorf("held for the drain the bed heard %q, want %q — one dip, one lift", got, want)
 	}
-	// Today's behaviour, unchanged: the arbiter still dips and lifts per read.
+	// Unbracketed, the arbiter dips and lifts per read.
 	if got, want := read(false), "duck,aside:first,restore,duck,aside:second,restore"; got != want {
 		t.Errorf("unheld the bed heard %q, want %q — Observer must sound exactly as it did", got, want)
 	}
@@ -918,14 +904,13 @@ func TestTheHeldBedIsGivenBackEvenIfNothingElseSpeaks(t *testing.T) {
 	}
 }
 
-// TestTheRailNeverLiftsTheBedOverALiveRead — the finding a fresh review found
-// and its mutant proved unpinned.
+// TestTheRailNeverLiftsTheBedOverALiveRead.
 //
 // Asking the arbiter whether it is idle and then acting on that answer puts the
 // question outside the effector's lock: a job admitted between the two has the
-// bed restored out from under it, and the
-// listener heard the broadcast surge to full volume over a read in progress —
-// the exact class the single-owner work exists to prevent.
+// bed restored out from under it, and the listener hears the broadcast surge to
+// full volume over a read in progress — the exact class the single-owner work
+// exists to prevent.
 //
 // PINNED SEQUENTIALLY, so it does not depend on a scheduler. A read is put on
 // the air and held there; releasing the rail's hold must leave the bed down,
@@ -972,25 +957,24 @@ func TestTheRailNeverLiftsTheBedOverALiveRead(t *testing.T) {
 // TestTheBedIsNeverLiftedBetweenTheDipAndTheClaim is F-D5, and it is the
 // ACQUIRE side of the defect mE6 pinned on the release side.
 //
-// `hold` once dipped the bed under the lock, let the lock go, and took it again
-// to set `held`. `hold` runs on the executor's goroutine and `takeBack` on the
-// arbiter's, sharing only this mutex — so a take-back landing in that window saw
-// held=false over a ducked bed and lifted it, and `held` was then set over a
+// If `hold` dips the bed under the lock, lets the lock go, and takes it again
+// to set `held`: `hold` runs on the executor's goroutine and `takeBack` on the
+// arbiter's, sharing only this mutex — so a take-back landing in that window sees
+// held=false over a ducked bed and lifts it, and `held` is then set over a
 // broadcast already back at full volume. The rail reads its whole drain against
-// an undipped bed, which is the exact thing MVS-D-67 asks for and the opposite
-// of what it gets.
+// an undipped bed, the opposite of what MVS-D-67 asks for.
 //
 // THE PROBE KEEPS A TAKE-BACK IN FLIGHT ACROSS THE WINDOW rather than hoping to
 // land in it: a goroutine calls takeBack in a tight loop for the whole duration
 // of the hold, so the dip is met by a lift within nanoseconds of becoming
-// visible. A first attempt that waited to OBSERVE the dip before lifting passed
-// against the defective code and was discarded — it never ran before hold had
-// finished, and an instrument that cannot fail is not measuring.
+// visible. A probe that waits to OBSERVE the dip before lifting passes against
+// the defective code — it never runs before hold has finished, and an
+// instrument that cannot fail is not measuring.
 //
 // When the dip and the claim are one critical section, no takeBack can run
 // between them and the bed stays down. When they are two, one gets in.
 // probeRounds is sized from the MEASURED hit rate, not guessed. At 300 rounds
-// the probe caught the defective code in four runs out of five — a test that
+// the probe catches the defective code in four runs out of five — a test that
 // misses a real defect one time in five is a coin toss, not a gate. The
 // per-round rate that implies is ~0.5 %, so 5000 rounds miss with probability
 // ~1e-12, and the whole loop still costs well under a second.
@@ -1115,15 +1099,14 @@ func escalationsIn(msgs []tea.Msg) []tty.StationFaultMsg {
 
 // THE DIRECTOR'S SPEAK READS THROUGH THE ONE READER (T3.8).
 //
-// This is what the change to a script-carrying Speak was FOR. The Director's
-// executor and the live takeover now perform a card the same way — the tone,
-// MVS-D-72's pauses, and the overlap that keeps a render out of every gap.
+// Speak carries a script, so the Director's executor and the live takeover
+// perform a card the same way — the tone, MVS-D-72's pauses, and the overlap
+// that keeps a render out of every gap.
 //
 // Two implementations of a ruling the HUM LEAD found BY EAR would be two places
 // for it to drift, and the one nobody edited would be the one that bites. The
 // assertion is that a MULTI-PART script is performed as its parts: a Reader
-// handed a flat string could not do this, which is precisely what Speak used to
-// hand it.
+// handed a flat string cannot do this.
 func TestTheDirectorsSpeakPerformsAScriptsParts(t *testing.T) {
 	v := &scriptVoice{}
 	b := newBench(t, v)
@@ -1142,10 +1125,9 @@ func TestTheDirectorsSpeakPerformsAScriptsParts(t *testing.T) {
 	}
 	// THREE SEPARATE UTTERANCES, not one containing three phrases.
 	//
-	// The first version of this asserted that all three texts appeared in
-	// order — and PASSED against a script flattened to one part, because
-	// Script.Text() joins the parts with spaces and the joined string contains
-	// them all in order. It measured nothing about parts. What only parts can
+	// Asserting that all three texts appear in order passes against a script
+	// flattened to one part, because Script.Text() joins the parts with spaces
+	// and the joined string contains them all in order. What only parts can
 	// satisfy is that the voice is asked THREE times, with a pause between
 	// each, which is the shape a listener hears.
 	got := v.got()
@@ -1174,11 +1156,8 @@ func TestTheDirectorsSpeakPerformsAScriptsParts(t *testing.T) {
 
 // TestTheDivertNoticeSaysTheCountAndTheDestination — DR-14, end to end.
 //
-// THE BURST IS A SNAPSHOT AND THE REMAINDER IS SPOKEN. Plan has computed a
-// Divert count since T1.3 and until now NOTHING CARRIED IT TO THE LISTENER: the
-// ticker's `diverted` field was written every cycle and read by nobody, and the
-// DivertNotice slot was proposed by nothing. Both were retired as dead; this is
-// the carrier they were standing in for.
+// THE BURST IS A SNAPSHOT AND THE REMAINDER IS SPOKEN. Plan computes a Divert
+// count, and the DivertNotice is what carries it to the listener.
 //
 // DRIVEN FROM Plan, so the spoken count is the planner's own arithmetic rather
 // than a number this test chose — DR-14's second check is "the spoken count
@@ -1251,14 +1230,14 @@ func TestTheDivertNoticeSaysTheCountAndTheDestination(t *testing.T) {
 // D-40: THE PRODUCER TOPS THE LINE-UP OFF, THROUGH THE SEAM THAT ALREADY
 // RETURNS EVENTS.
 //
-// The gap this closes was found by walking the operator's drop flow: only the
-// deck's NeedsRead and the operator's undo ever queued a main-track card, and
-// nothing read the track's DEPTH — so the schedule held about one card while the
-// console drew ten slots, and a dropped card left its slot empty for ever.
+// Without it only the deck's NeedsRead and the operator's undo queue a
+// main-track card, and nothing reads the track's DEPTH — so the schedule holds
+// about one card while the console draws ten slots, and a dropped card leaves
+// its slot empty for ever.
 //
 // NO NEW EFFECT. `run` already returns whatever an effect learned, and a publish
 // is the moment the schedule has settled — which is exactly when the producer
-// can see what the line-up still needs. That was the HUM LEAD's option 2.
+// can see what the line-up still needs.
 func TestAPublishAsksTheProducerToTopTheLineUpOff(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
 	b.x.propose = func() []lineup.Proposal {
@@ -1325,16 +1304,13 @@ func TestTheTopOffChainStopsOnceTheLineUpIsFull(t *testing.T) {
 	}
 }
 
-// A REPORT'S EXIT DOES NOT CLEAR THE HAZARD'S CALLOUT (F-71, closed at D-82).
+// A REPORT'S EXIT DOES NOT CLEAR THE HAZARD'S CALLOUT (F-71, D-82).
 //
-// `clearBand` carried this defect in an eight-line comment for two releases,
-// with its trigger named exactly: the release is paired with the CUE and not
-// with the card, `wasOnAir` was the whole of the enforcement, and "a
-// LocationReport is now routinely on the air without a cue … so every rotation
-// turn issues a release for a cue that never happened." It was benign only
-// because ONE card held the air at a time.
+// The release is paired with the CUE and not with the card: a LocationReport
+// is routinely on the air without a cue, so a release keyed on `wasOnAir` alone
+// would be issued every rotation turn for a cue that never happened.
 //
-// D-82 IS THAT TRIGGER. A hazard now reads over a report, and the report's exit
+// D-82 MAKES THAT MATTER. A hazard reads over a report, and the report's exit
 // would wipe the callout for a tornado warning still being spoken — on the one
 // surface DR-24 exists to protect.
 func TestAReportsExitLeavesTheHazardsCalloutUp(t *testing.T) {
@@ -1366,10 +1342,10 @@ func TestAReportsExitLeavesTheHazardsCalloutUp(t *testing.T) {
 // alerts need to be read, expired alerts must never be." Both halves are here,
 // on one card, because a burst is ONE card carrying many hazards (MVS-D-77).
 //
-// IT DECLINED THE WHOLE BURST, and that failed in both directions at once. A
-// live tornado warning went unread because a flash flood warning beside it had
-// lapsed — and the card was re-offered and re-declined every cycle, held by the
-// Director and refused here, with `heldNotice` counting it the whole time.
+// DECLINING THE WHOLE BURST FAILS IN BOTH DIRECTIONS AT ONCE. A live tornado
+// warning goes unread because a flash flood warning beside it has lapsed — and
+// the card is re-offered and re-declined every cycle, held by the Director and
+// refused here, with `heldNotice` counting it the whole time.
 func TestALapsedAlertIsSkippedAndItsLiveSiblingsAreRead(t *testing.T) {
 	b := newBench(t, nil)
 	// ONE LIVE, ONE LAPSED — the flood warning expired a minute ago.
@@ -1419,11 +1395,11 @@ func TestACardWhoseHazardsHaveAllLapsedIsDeclined(t *testing.T) {
 }
 
 // F-150 — A FAULT IS NOT A DECLINE. `escalation()` grades a failure by whether
-// it was DELIBERATE (Routed), and a decline was routed by definition — so a
-// compose error, a missing composer and an empty report all took the
-// deliberate-non-delivery exit and the operator saw nothing. The executors now
-// say which it was: a station that cannot do what it is wired to do FAULTS,
-// and DR-21's window is the cue when that stops the schedule.
+// it was DELIBERATE (Routed), and a decline is routed by definition — so a
+// compose error, a missing composer or an empty report graded as a decline
+// would take the deliberate-non-delivery exit and the operator would see
+// nothing. The executors say which it was: a station that cannot do what it is
+// wired to do FAULTS, and DR-21's window is the cue when that stops the schedule.
 func TestAStationThatCannotComposeFaultsAndAListenerWhoDeclinedIsRouted(t *testing.T) {
 	script := lineup.Script{Tone: "warning", Parts: []lineup.Part{{Kind: lineup.PartLine, Text: "a warning", Ref: "a1"}}}
 	for _, tc := range []struct {
@@ -1484,11 +1460,11 @@ func TestAVoiceThatCannotRenderFaultsAndAStoppedReadIsRouted(t *testing.T) {
 	}
 }
 
-// R2 REVIEW F1 (2026-09-17) — THE ESCALATION TRAVELS THE CHANNEL THE CLEAR
-// TRAVELS. The band was SET through the deck and CLEARED through the console
-// seam, and a nil deck — a supported build — swallowed the one message this
-// remediation exists to deliver: ON AIR over dead air, nothing on the console.
-// One owner: the executor publishes both, and the deck is not asked.
+// R2 REVIEW F1 — THE ESCALATION TRAVELS THE CHANNEL THE CLEAR TRAVELS. A band
+// SET through the deck and CLEARED through the console seam lets a nil deck — a
+// supported build — swallow the one message this remediation exists to
+// deliver: ON AIR over dead air, nothing on the console. One owner: the
+// executor publishes both, and the deck is not asked.
 func TestAnEscalationIsPublishedToTheConsole(t *testing.T) {
 	b := newBench(t, nil) // no voice; the executors never ask a deck, so none is built
 	out := b.x.run(context.Background(), lineup.Escalate{ID: "read:a", Run: 3, Reason: "the report could not be composed: no key"})

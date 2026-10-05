@@ -17,7 +17,7 @@ import (
 
 // Spec: mock M-V1 + D-15 (layered keymap; only '?' locked) + D-19 (a/A/ctrl+a
 // defaults; f/c live unit toggle) + R-12a. The dashboard reads ONLY the
-// Snapshot (import lint). This is the B3 skeleton for the first D-21 UAT.
+// Snapshot (import lint).
 
 func f64(v float64) *float64 { return &v }
 
@@ -114,15 +114,13 @@ func TestARetiredActionsOverrideIsDroppedNotRejected(t *testing.T) {
 	if _, ok := d.keys.Lookup("T"); ok {
 		t.Error("the retired action's key must not be bound")
 	}
-	// The NOTE is gone with [S]'s CONFIG block: the
-	// dashboard no longer keeps a list nothing reads. The behaviour this test
-	// exists for — launch, apply what is valid, drop what is not — is unchanged,
-	// and it is the half that matters to a listener upgrading.
+	// The dashboard keeps no NOTE of a dropped binding: nothing would read it.
+	// The behaviour this test exists for — launch, apply what is valid, drop what
+	// is not — is the half that matters to a listener upgrading.
 	//
-	// What a dropped binding no longer does is TELL anyone. `watchpost report
-	// --verbose` reports the cast's config problems but not this one, so a
-	// rebound key that quietly stops working has no surface at all. Worth a
-	// ruling before SHIP.
+	// A dropped binding is not reported anywhere. `watchpost report --verbose`
+	// reports the cast's config problems but not this one, so a rebound key that
+	// quietly stops working has no surface at all. Worth a ruling before SHIP.
 }
 
 // fakeHooks wires deterministic Resolve/Commit for flow tests (UAT 26).
@@ -149,8 +147,8 @@ func dashWithHooks(t *testing.T, h *fakeHooks) tea.Model {
 }
 
 // runCmd executes a command the way the program loop would: batches are
-// flattened (since Q3 the shimmer tick may ride along with a hook's
-// command) and tick messages are dropped, so a drain never loops on the
+// flattened (the shimmer tick may ride along with a hook's command) and
+// tick messages are dropped, so a drain never loops on the
 // animation. Running a tick costs its 300 ms once.
 func runCmd(cmd tea.Cmd) []tea.Msg {
 	if cmd == nil {

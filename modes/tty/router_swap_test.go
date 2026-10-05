@@ -61,15 +61,15 @@ func TestAnUndeclaredSurfaceIsRefused(t *testing.T) {
 }
 
 // The gate must be the ONE place the precondition is checked. A second
-// carrier of the same rule is the shape that produced the duck-lift bug, and
+// carrier of the same rule is the shape that lets two answers disagree, and
 // the band and the config writer each have an AST guard for exactly this.
 //
 // DERIVED (INST-1): it walks the package's syntax tree for reads of the
 // console's power, rather than asserting against a remembered list of files.
 func TestThePowerPreconditionHasOneReaderInTheRouter(t *testing.T) {
 	// THROUGH declset.Files, NOT go/parser.ParseDir. ParseDir is deprecated
-	// (Go 1.25) and three checks in this tree had copied the same shape; the
-	// package that already walked a package's non-test files owns it now.
+	// (Go 1.25), and the package that walks a package's non-test files owns
+	// that shape.
 	fset, files, err := declset.Files(".")
 	if err != nil {
 		t.Fatal(err)

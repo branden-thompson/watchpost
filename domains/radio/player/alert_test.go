@@ -370,9 +370,9 @@ func TestAuditionIsNeverTheLineInFlight(t *testing.T) {
 // engine state, not stream state, so a stream that started after the duck knows
 // nothing about it unless the engine applies it on the way in.
 //
-// This is the mechanism the app's fix relies on: with the duck lift removed from
-// the tune path, an automatic changeover can no longer un-duck, and this is why
-// starting a fresh stream underneath does not either.
+// The app relies on this: the tune path lifts no duck, so an automatic
+// changeover cannot un-duck, and this is why starting a fresh stream
+// underneath does not either.
 func TestANewStreamStartedUnderADuckPlaysDucked(t *testing.T) {
 	out := &recordingOutput{}
 	e, err := New(out, "watchpost/test (t@example.com)", nil)
@@ -418,8 +418,8 @@ func TestANewStreamStartedUnderADuckPlaysDucked(t *testing.T) {
 // The second half is the one that bites. A paused player stops reporting itself
 // as playing, which is exactly what a drained one does — so without the guard
 // the watch loop would call the cycle over and the watchlist would advance to
-// the next location while the alert that held it was still reading. Which is the
-// very collision holding was introduced to prevent.
+// the next location while the alert that held it was still reading: the very
+// collision holding exists to prevent.
 func TestHoldStopsTheBroadcastAndIsNotAnEndedStream(t *testing.T) {
 	out := &recordingOutput{}
 	e, err := New(out, "watchpost/test (t@example.com)", nil)
@@ -460,11 +460,12 @@ func TestHoldStopsTheBroadcastAndIsNotAnEndedStream(t *testing.T) {
 // A RENDERED REPORT STARTING UNDER AN ALERT IS HELD, NOT PLAYED.
 //
 // giveWay answers two things — how far to dip, and whether to hold outright —
-// and the start path read only the first. A relay came up correctly dipped, but
-// a rendered cycle came up PLAYING at full volume over the alert and was only
-// held on the watch loop's next tick. The whole reason a rendered report holds
-// rather than dips is that its words are lost under an alert; playing its first
-// words over one loses exactly what the rule exists to protect.
+// and the start path must read both. Reading only the first, a relay comes up
+// correctly dipped but a rendered cycle comes up PLAYING at full volume over
+// the alert and is only held on the watch loop's next tick. The whole reason a
+// rendered report holds rather than dips is that its words are lost under an
+// alert; playing its first words over one loses exactly what the rule exists
+// to protect.
 func TestARenderedReportStartingUnderAnAlertIsHeldFromTheFirstSample(t *testing.T) {
 	out := &recordingOutput{}
 	e, err := New(out, "test", func(Status) {})
@@ -546,10 +547,10 @@ func TestAnAlertClearingBeforeTheFirstTickStillLetsTheReportPlay(t *testing.T) {
 // A RELAY OPENED UNDER AN ALERT COMES UP DIPPED, NOT AT FULL VOLUME.
 //
 // giveWay answers two things at once — how far to dip and whether to hold — and
-// the open path has to honour BOTH. Holding was the half that was wrong before;
-// this is the other half at the same moment. A relay that opened at the knob's
-// volume would talk over the alert for a whole watch tick before the loop
-// pulled it down, which is the same defect wearing the other hat.
+// the open path has to honour BOTH. The test above pins holding; this is the
+// other half at the same moment. A relay that opened at the knob's volume
+// would talk over the alert for a whole watch tick before the loop pulled it
+// down: the same defect wearing the other hat.
 //
 // A real relay, because `live` is what decides dip-versus-hold and only the
 // relay path sets it.

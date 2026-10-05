@@ -28,7 +28,7 @@ func TestTheCapKeepsTheMostSevereNotTheMostRecent(t *testing.T) {
 	}
 	// The severe one is BURIED, not first. At index 0 it survives any truncation
 	// by insertion order alone, and the test then passes whatever the cut does —
-	// which is how it passed while the severity rule was not being applied.
+	// with or without the severity rule.
 	fetched = append(fetched, Event{ID: "tornado", Class: ClassSevereWx, Severity: SevRed,
 		Type: "Tornado Warning", At: now.Add(-40 * time.Minute), HasPoint: true})
 	stack, _ := Merge(fetched, map[string]bool{})
@@ -105,7 +105,7 @@ func TestANewHazardDuringAnOutbreakIsStillAnnounced(t *testing.T) {
 	}
 	// A special weather statement issued THIS MINUTE. It is less severe than a
 	// tornado warning, which is exactly why ordering the cut by severity drops
-	// it — while ordering by recency, as the previous cap did, kept it.
+	// it — while ordering by recency keeps it.
 	fetched = append(fetched, Event{ID: "statement", Class: ClassSevereWx, Severity: SevYellow,
 		Type: "Special Weather Statement", At: now, HasPoint: true})
 

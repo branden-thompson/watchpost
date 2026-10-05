@@ -6,6 +6,7 @@ package tty
 
 import (
 	"fmt"
+	"maps"
 	"runtime"
 	"sort"
 	"strings"
@@ -43,7 +44,18 @@ func (d Dashboard) helpBlocks(o render.Opts) []helpBlock {
 	keys := d.helpKeys()
 	for _, g := range helpGroups(d.surface) {
 		var rows []string
+		if g.rows != nil { // a window's own group, from its declaration (F-184)
+			for _, pr := range g.rows(keys, o.ASCII) {
+				rows = append(rows, fmt.Sprintf("   %-12s - %s", pr.keys, o.Marks(pr.help)))
+			}
+			for _, act := range g.actions {
+				seen[act] = true
+			}
+		}
 		for _, act := range g.actions {
+			if g.rows != nil {
+				break // listed above, a pair to a row
+			}
 			if bind, ok := keys[act]; ok {
 				rows = append(rows, row(bind, act))
 				seen[act] = true
@@ -197,6 +209,9 @@ func abs(n int) int {
 type helpGroup struct {
 	name    string
 	actions []term.Action
+	// rows lists the group a row an idea, where a window declares its own
+	// (window_keys.go): several actions that are one idea on one line.
+	rows func(keys term.KeyMap, ascii bool) []mapHelpRow
 }
 
 // helpGroups is the one owner of the grouping; a binding's group is its
@@ -211,37 +226,36 @@ type helpGroup struct {
 func helpGroups(surface Surface) []helpGroup {
 	// SURFACES LEADS ON BOTH, because it is the one group whose absence leaves
 	// the operator stuck. The swap is live on EITHER surface — the Router looks
-	// it up before either one sees the key — and it was documented on NEITHER:
-	// "it doesnt show the user how to swap between Observer and Broadcaster."
-	surfaces := helpGroup{"SURFACES", []term.Action{actSwapObserver, actSwapBroadcaster}}
+	// it up before either one sees the key — so both document it (HUM LEAD:
+	// "it doesnt show the user how to swap between Observer and Broadcaster.").
+	surfaces := helpGroup{"SURFACES", []term.Action{actSwapObserver, actSwapBroadcaster}, nil}
 	if surface == SurfaceBroadcaster {
 		return []helpGroup{
 			surfaces,
 			// THE CONSOLE'S OWN SECTIONS, in the order the operator meets them:
 			// put the station on the air, order the line-up, choose the bed.
-			{"STATION", []term.Action{actStationToggle, actGainUp, actGainDown}},
-			{"LINE UP", []term.Action{actQueuePrev, actQueueNext, actQueueOpen, actRequest}},
-			{"BED", []term.Action{actBedCut, actBedPrev, actBedNext}},
-			{"APP", []term.Action{actLookup, actSettings, actStatus, actAbout, term.HelpAction, actDiagnostics, actQuit}},
+			{"STATION", []term.Action{actStationToggle, actGainUp, actGainDown}, nil},
+			{"LINE UP", []term.Action{actQueuePrev, actQueueNext, actQueueOpen, actRequest}, nil},
+			{"BED", []term.Action{actBedCut, actBedPrev, actBedNext, actBedPlay}, nil},
+			{"APP", []term.Action{actLookup, actSettings, actStatus, actAbout, term.HelpAction, actDiagnostics, actQuit}, nil},
 		}
 	}
-	return []helpGroup{ // NAVIGATE and RADIO first: the two tall groups make the left column of the two-column layout (UAT mock 2026-08-28)
+	return append([]helpGroup{ // NAVIGATE and RADIO first: the two tall groups make the left column of the two-column layout (UAT mock 2026-08-28)
 		surfaces,
-		{"NAVIGATE", []term.Action{"nav-up", "nav-down", "details", "alert-details", "severe", "alert-prev", "alert-next", "close", term.HelpAction, "quit"}},
-		{"RADIO", []term.Action{"radio-play", "radio-repeat", "radio-mode", "radio-viz", "voice", "radio-vol-up", "radio-vol-dn"}},
-		{"WATCHLIST", []term.Action{"add-location", "remove", "lookup"}},
-		{"DISPLAY", []term.Action{"units-f", "units-c", "theme"}},
-		{"TICKER", []term.Action{"ticker-mute"}},
-		{"APP", []term.Action{"setup", "status", "about", "debug"}},
-	}
+		{"NAVIGATE", []term.Action{"nav-up", "nav-down", "details", "alert-details", "severe", actMap, "alert-prev", "alert-next", "close", term.HelpAction, "quit"}, nil},
+		{"RADIO", []term.Action{"radio-play", "radio-repeat", "radio-mode", "radio-viz", "voice", "radio-vol-up", "radio-vol-dn"}, nil},
+		{"WATCHLIST", []term.Action{"add-location", "remove", "lookup"}, nil},
+		{"DISPLAY", []term.Action{"units-f", "units-c", "theme"}, nil},
+		{"TICKER", []term.Action{"ticker-mute"}, nil},
+		{"APP", []term.Action{"setup", "status", "about", "debug"}, nil},
+	}, windowHelpGroups()...) // the windows' own keys, as each declares them (F-184): the map's (D-61)
 }
 
 // helpKeys is the map the window documents: the ACTIVE surface's.
 //
-// THE CONSOLE'S LIVES ON THE ROUTER, and the Help window is Observer's — which
-// is how the two came apart. `d.surface` is already mirrored on every update
-// (D-92) for exactly this class of question, so the window can ask it rather
-// than being told.
+// THE CONSOLE'S LIVES ON THE ROUTER, and the Help window is Observer's.
+// `d.surface` is mirrored on every update (D-92) for exactly this class of
+// question, so the window can ask it rather than being told.
 //
 // AND THE SWAP IS ADDED TO OBSERVER'S, because it is real there and absent from
 // its map: the Router intercepts it before either surface sees the key, so
@@ -254,6 +268,7 @@ func (d Dashboard) helpKeys() term.KeyMap {
 	for act, bind := range d.keys {
 		out[act] = bind
 	}
+	maps.Copy(out, d.mapKeys) // the map window's own scope, listed in its own group (D-61)
 	bc := d.consoleKeyMap()
 	for _, act := range []term.Action{actSwapObserver, actSwapBroadcaster} {
 		if bind, ok := bc[act]; ok {
@@ -270,43 +285,108 @@ func orDefault(s, alt string) string {
 	return s
 }
 
-// About window (UAT 68/70 mock, 60 cols): title + version centred, the
-// data providers and the build stack inset 3, the maker lines centred. Lines
-// are composed on the mock's 58-cell interior and handed to the panel
-// minus the two cells its chrome already draws, so every offset matches
-// the mock exactly. Providers come from the live provider registry so a
-// new data source lists itself.
-const aboutWidth = 60
+// CreditGroup is one provider's data sets in the About window (W21): its name
+// as the window says it, licence included where the provider's terms ask.
+type CreditGroup struct {
+	Name  string
+	Lines []CreditLine
+}
+
+// About window (W21, about-credits-mock.md): the title and the build on one
+// line; the warnings; the terms; the data sets, a group a provider, in two
+// columns where the terminal is wide enough (the Help window's rule, D-147);
+// what it is built with and who made it. It scrolls where the terminal is
+// short, widened by the rail so no column is clipped.
+const aboutWidth = 78
+
+// aboutColumn is one column of data sets: the single-column window's room
+// between its margins.
+const aboutColumn = aboutWidth - 2 - 2*modalInset
+
+// aboutPlan is the layout for a terminal content width: two columns of data
+// sets when the window fits, else one; its width, and whether it scrolls.
+func (d Dashboard) aboutPlan(o render.Opts, avail int) (twoCol bool, width int, rail bool) {
+	blocks := creditBlocks(d.cfg.CreditGroups)
+	fixed := len(d.aboutHead()) + len(d.aboutFoot(o)) + 2
+	if len(blocks) > 1 { // two columns need two groups to share between them
+		twoBody := fixed + len(helpTwoColumns(blocks, aboutColumn))
+		twoWidth := 2 + 2*modalInset + 2*aboutColumn + columnGap
+		if w := twoWidth + panelChromeFor(twoBody, d.modalMax()) - panelFrame; w <= avail {
+			return true, w, twoBody > d.modalMax()
+		}
+	}
+	oneBody := fixed
+	for _, b := range blocks { // the groups (P10-02)
+		oneBody += len(b.lines) + 1
+	}
+	return false, aboutWidth + panelChromeFor(oneBody, d.modalMax()) - panelFrame, oneBody > d.modalMax()
+}
+
+// aboutHead is what comes before the data sets: the warnings, a blank row
+// under them (D-232), the terms.
+func (d Dashboard) aboutHead() []string {
+	var out []string
+	for _, w := range d.cfg.AboutWarnings { // the warnings (P10-02)
+		out = append(out, "! "+w)
+	}
+	if len(out) > 0 {
+		out = append(out, "")
+	}
+	return append(out, creditsNotice)
+}
+
+// aboutFoot is what comes after them: what it is built with, who made it.
+func (d Dashboard) aboutFoot(o render.Opts) []string {
+	return []string{"Built with:", "", "GO " + strings.TrimPrefix(runtime.Version(), "go") + " | BubbleTea | LipGloss | go-tuimaps",
+		"Stylized Terminal UI Design System (STUDS)", "", "Built with " + o.Glyphs().Heart + " by Branden R. Thompson", "github: branden-thompson"}
+}
 
 func (d Dashboard) aboutLines(o render.Opts) []string {
-	interior := aboutWidth - 2
+	twoCol, width, rail := d.aboutPlan(o, o.Width)
+	interior := width - 2
+	if rail {
+		interior -= panelRail
+	}
+	content := interior - 2*modalInset
 	centre := func(text string) string {
 		return strings.Repeat(" ", max(0, (interior-render.Width(text))/2)) + text
 	}
-	// The window's own margin, from the one owner (UAT 70; D-1 at the T3.10 red team).
 	inset := func(text string) string { return strings.Repeat(" ", modalInset) + text }
-	lines := []string{
-		centre(render.Wordmark(render.EditionObserver)),
-		centre("v " + d.cfg.Version),
-		"",
-		inset("Data Provided by:"),
-		"",
+	lines := []string{centre(render.Tint("WATCHPOST", render.Tok(render.FocusPointer)) + "    v. " + d.cfg.Version), ""} // the name bold white (D-235)
+	for _, h := range d.aboutHead() {                                                                                    // the warnings and the terms (P10-02)
+		if h == "" {
+			lines = append(lines, "")
+			continue
+		}
+		for i, l := range render.WrapText(h, content) {
+			if i > 0 {
+				l = "  " + l // a long warning wraps under its words
+			}
+			if strings.HasPrefix(h, "! ") {
+				l = render.Tint(l, render.Tok(render.ListFocus)) // the warnings in the focus yellow (D-232)
+			}
+			lines = append(lines, inset(l))
+		}
 	}
-	for _, p := range d.cfg.Credits {
-		lines = append(lines, inset(p))
+	rule := inset(strings.Repeat(o.Glyphs().Rule, content))
+	lines = append(lines, rule, inset("DATA SETS PROVIDED BY:"), "")
+	blocks := creditBlocks(d.cfg.CreditGroups)
+	if twoCol {
+		for _, l := range helpTwoColumns(blocks, aboutColumn) { // the columns' rows (P10-02)
+			lines = append(lines, inset(l))
+		}
+	} else {
+		for _, b := range blocks { // the groups (P10-02)
+			for _, l := range b.lines {
+				lines = append(lines, inset(l))
+			}
+			lines = append(lines, "")
+		}
 	}
-	lines = append(lines,
-		"",
-		inset(creditsNotice), // UAT 75
-		"",
-		inset("Built with:"),
-		inset("GO "+strings.TrimPrefix(runtime.Version(), "go")+" | BubbleTea | LipGloss |"),
-		inset("STUDS - Stylized Terminal UI Design System"),
-		"",
-		centre("Made with "+o.Glyphs().Heart+" by Branden R. Thompson"),
-		centre("github: branden-thompson"),
-		centre("Make CLIs Great for Humans Again"),
-	)
+	lines = append(lines, rule, "")
+	for _, l := range d.aboutFoot(o) { // the build and the maker (P10-02)
+		lines = append(lines, inset(l))
+	}
 	out := make([]string, 0, len(lines))
 	for _, l := range lines {
 		out = append(out, strings.TrimPrefix(l, "  ")) // the panel chrome draws these two cells
@@ -314,7 +394,30 @@ func (d Dashboard) aboutLines(o render.Opts) []string {
 	return out
 }
 
+// creditBlocks are the groups as blocks of aboutColumn: the group's name bold
+// white, then each source's credit row (D-235), every row's chip in the one
+// column the whole set shares.
+func creditBlocks(groups []CreditGroup) []helpBlock {
+	var all []CreditLine
+	for _, g := range groups { // the providers (P10-02)
+		all = append(all, g.Lines...)
+	}
+	badgeW := badgeWidth(all)
+	var out []helpBlock
+	for _, g := range groups { // the providers (P10-02)
+		var b helpBlock
+		for _, l := range render.WrapText(g.Name, aboutColumn) { // its title, bold white (D-232; P10-02)
+			b.lines = append(b.lines, render.Tint(l, render.Tok(render.FocusPointer)))
+		}
+		for _, c := range g.Lines { // a provider's sources (P10-02)
+			b.lines = append(b.lines, creditRows(c, aboutColumn, badgeW)...)
+		}
+		out = append(out, b)
+	}
+	return out
+}
+
 // creditsNotice states the terms every listed source shares: NOAA data is
-// public domain, GeoNames and Open-Meteo are CC BY 4.0 — all free to use
-// with attribution (UAT 75).
+// public domain, GeoNames and Open-Meteo are CC BY 4.0, OpenStreetMap's is
+// ODbL — all free to use with attribution (UAT 75, D-148).
 const creditsNotice = "All sources free to use with attribution."

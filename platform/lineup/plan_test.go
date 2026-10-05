@@ -25,8 +25,7 @@ var planNow = time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 //
 // The point matters even in the ordering tests: the fence governs entry (DR-13),
 // so a fixture with nowhere to be is fenced out of any burst planned with a
-// radius set, and an ordering test would then assert an order over nothing. This
-// is what the fence's arrival broke, and it broke loudly, which is the point.
+// radius set, and an ordering test would then assert an order over nothing.
 func arrival(id string, c category.Category, sev int, age time.Duration) Arrival {
 	return Arrival{ID: id, Category: c, Headline: id + " headline", Subject: "Bonsall, CA",
 		Severity: sev, At: planNow.Add(-age),

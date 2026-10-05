@@ -3,16 +3,15 @@ package lineup
 // fence_prepare_test.go — an out-of-fence card must not block the rail at
 // PREPARATION, the way it already cannot block it at the air.
 //
-// THE JOURNEY THAT REACHES IT is this release's own headline one: Observer queues
+// THE JOURNEY THAT REACHES IT is a headline one: Observer queues
 // alerts under a wide fence, the operator swaps to Broadcaster, and `refence`
 // narrows to the station's own radius. A far card already at STANDBY stays
 // STANDBY — and `toPrepare` stops at any report standing by.
 //
-// `Next` HAS CARRIED THE SKIP SINCE D-75 AND SAYS WHY IN AS MANY WORDS:
-// "refusing it there would let it block every admissible card behind it, and a
-// hazard in the operator's own town would wait on one that is not." That is
-// exactly what happened one function along, because the rule was taught to the
-// air and not to the walk that feeds it.
+// `Next` CARRIES THE SKIP (D-75) AND SAYS WHY IN AS MANY WORDS: "refusing it
+// there would let it block every admissible card behind it, and a hazard in the
+// operator's own town would wait on one that is not." The walk that feeds the
+// air needs the same rule, or the same thing happens one function along.
 
 import "testing"
 

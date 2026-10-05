@@ -117,3 +117,23 @@ func TestEnterOnATextFieldMovesOnRatherThanSaving(t *testing.T) {
 		t.Errorf("any other row's chip reads Save: %q", got)
 	}
 }
+
+// A VOICE PICKER STEPS THROUGH ITS LIST BOTH WAYS (W14 S-7): → is the next
+// entry, ← the one before, both wrapping - from the inherit entry, → assigns
+// the first voice and ← the last (cyclePicker's rule).
+func TestAVoicePickerStepsBothWays(t *testing.T) {
+	d := setupGolden(t, 133, 44, false, rowCastWeather)
+	d.cfg.Voices = func() []string { return []string{"Ava", "Ben", "Cal"} }
+	role := roleOf(rowCastWeather)
+	d.setup.cast.Names[role] = ""
+	if got := d.cyclePicker(rowCastWeather, true).setup.cast.Names[role]; got != "Ava" {
+		t.Errorf("→ from inherit assigns %q; want the first voice, Ava", got)
+	}
+	if got := d.cyclePicker(rowCastWeather, false).setup.cast.Names[role]; got != "Cal" {
+		t.Errorf("← from inherit assigns %q; want the last voice, Cal", got)
+	}
+	d.setup.cast.Names[role] = "Ben"
+	if got := d.cyclePicker(rowCastWeather, true).setup.cast.Names[role]; got != "Cal" {
+		t.Errorf("→ from Ben assigns %q; want Cal", got)
+	}
+}

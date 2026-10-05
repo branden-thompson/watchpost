@@ -91,12 +91,11 @@ func TestPlainDropsBidiAndZeroWidthAndTruncateCellsCountsCells(t *testing.T) {
 // the row render of the right hand side of the LIVE card to truncate
 // inappropriately." The console lays the priority overlay ON the running order
 // at a column; the rows underneath carry a tinted headline, a badge and the
-// handle's chip; and the splice walked `[]rune`, so every escape character it
-// passed counted as a cell and every escape it landed on was overwritten.
+// handle's chip; and a splice that walks `[]rune` counts every escape character
+// it passes as a cell and overwrites every escape it lands on.
 //
-// It is D-66's defect one function along, and it was FILED as F-85 rather than
-// fixed — on the reasoning that it held "by accident of layout". It stopped
-// holding the moment a takeover was injected over a real card.
+// It is D-66's defect one function along (F-85), and no accident of layout
+// holds it off once a takeover is injected over a real card.
 func TestSpliceCellsLandsOnColumnsAndKeepsWhatItPassed(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
@@ -127,17 +126,17 @@ func TestSpliceCellsLandsOnColumnsAndKeepsWhatItPassed(t *testing.T) {
 
 // A CUT NEVER LANDS INSIDE AN ESCAPE SEQUENCE, and never counts one as content.
 //
-// THE UAT DEFECT THIS IS BUILT FROM (HUM LEAD, 2026-09-10): the console's
-// masthead read "WATCHPOS" and then stopped — no top border, no `Updated:`, no
-// API summary — and its colours CHANGED AS THE TERMINAL WAS RESIZED. One cause
-// for all of it: the frame clamps every row to the terminal's width through
-// this function, the wordmark carries a truecolor escape per rune, and the
-// escapes were counted as cells. So a 150-cell row was cut after ten visible
-// characters, THROUGH the middle of an escape — which the terminal then printed
-// as text and left the span open, so the tone bled and moved with the width.
+// THE UAT DEFECT THIS IS BUILT FROM (HUM LEAD, 2026-09-10): a masthead that
+// reads "WATCHPOS" and then stops — no top border, no `Updated:`, no API
+// summary — with colours that CHANGE AS THE TERMINAL IS RESIZED. One cause for
+// all of it: the frame clamps every row to the terminal's width through this
+// function, the wordmark carries a truecolor escape per rune, and escapes
+// counted as cells cut a 150-cell row after ten visible characters, THROUGH
+// the middle of an escape — which the terminal prints as text, leaving the
+// span open, so the tone bleeds and moves with the width.
 //
-// `Width` has always stripped ANSI. This is the other half of the same measure,
-// and the two disagreeing is what "one canonical way to do a thing" forbids.
+// `Width` strips ANSI. This is the other half of the same measure, and the two
+// disagreeing is what "one canonical way to do a thing" forbids.
 func TestTruncateCellsDoesNotCountOrCutEscapes(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
@@ -157,8 +156,8 @@ func TestTruncateCellsDoesNotCountOrCutEscapes(t *testing.T) {
 		t.Errorf("an escape survived the strip, so the cut landed inside one: %q", got)
 	}
 	// AND IT CLOSES WHAT IT OPENED. The frame pads to width after cutting, so a
-	// span left open paints the padding — which is the colour bleed the HUM LEAD
-	// saw travel as the window resized.
+	// span left open paints the padding — the colour bleed that travels as the
+	// window resizes.
 	if !strings.HasSuffix(got, "\x1b[0m") {
 		t.Errorf("a cut inside a coloured span closes it: %q", got)
 	}
@@ -168,10 +167,10 @@ func TestTruncateCellsDoesNotCountOrCutEscapes(t *testing.T) {
 // 2026-08-30).
 //
 // This function's contract is that a floating window wraps and never truncates,
-// so callers cannot reintroduce that class of bug. It held only for prose: a
-// provider error carrying a 200-character URL — no spaces in it anywhere — came
-// out as one over-wide line and the panel cut it, losing the half somebody would
-// need to act on it.
+// so callers cannot reintroduce that class of bug. That holds for a word with
+// no spaces too: a provider error carrying a 200-character URL must not come
+// out as one over-wide line for the panel to cut, losing the half somebody
+// would need to act on it.
 func TestWrapBreaksAWordWiderThanTheLine(t *testing.T) {
 	url := "https://api.weather.gov/alerts/active?status=actual&zone=CAC017%2CCAC027%2CCAC065%2CCAC073%2CCAZ043"
 	got := WrapText("latest: "+url+" kept failing (last HTTP 502)", 40)
@@ -219,7 +218,7 @@ func TestWrapNeverBreaksInsideAnEscape(t *testing.T) {
 // `plaintext.Text` at the boundary. It is not fixed here because this function
 // must measure what `Width` measures, and `Width` is `plaintext.StripSGR` —
 // teaching one half about OSC would make the cutter and the measurer disagree,
-// which is the class of defect that caused the 2026-09-10 masthead failure.
+// which is the class of defect behind the masthead test above.
 //
 // WHAT IS PINNED IS THE INVARIANT THAT MATTERS: the two agree.
 func TestTruncateCellsAgreesWithWidthAboutEscapes(t *testing.T) {
@@ -235,5 +234,58 @@ func TestTruncateCellsAgreesWithWidthAboutEscapes(t *testing.T) {
 	// AND A ROW THAT FITS IS RETURNED WHOLE, which is the fast path.
 	if got := TruncateCells("abc", 10); got != "abc" {
 		t.Errorf("a row that fits was altered: %q", got)
+	}
+}
+
+// TestSpliceCellsRestoresTheToneAfterThePatch is 0.18.0 UAT-1 U1-19: a row
+// that sets its colour once, before the span, keeps it after the patch. The
+// patch ends on a reset, so the row's own tone must be put back, or every
+// cell after the box draws in the terminal's default (the map's background
+// lost beside the Area Alerts box).
+func TestSpliceCellsRestoresTheToneAfterThePatch(t *testing.T) {
+	blue := "\x1b[48;5;17m"
+	row := blue + "abcdefgh" + "\x1b[0m"
+	got := SpliceCells(row, "XY", 2)
+	i := strings.Index(got, "XY")
+	if i < 0 {
+		t.Fatalf("the patch is not in the row: %q", got)
+	}
+	after := got[i+2:]
+	j := strings.Index(after, "e")
+	if j < 0 || !strings.Contains(after[:j], blue) {
+		t.Errorf("after the patch the row's tone is not restored before its next cell: %q", after)
+	}
+	if Width(got) != Width(row) {
+		t.Errorf("the row changed width: %d, was %d", Width(got), Width(row))
+	}
+	plainRow := "abcdefgh"
+	if got := SpliceCells(plainRow, "XY", 2); got != "ab\x1b[0mXY\x1b[0mefgh" {
+		t.Errorf("a row with no tone gained one: %q", got)
+	}
+}
+
+// TestSpliceCellsDoesNotRestoreAToneTheRowEnded: a reset before the span
+// ends the row's tone; the patch does not bring it back.
+func TestSpliceCellsDoesNotRestoreAToneTheRowEnded(t *testing.T) {
+	row := "\x1b[44mab\x1b[0mcdefgh"
+	got := SpliceCells(row, "XY", 3)
+	after := got[strings.Index(got, "XY")+2:]
+	if strings.Contains(after, "\x1b[44m") {
+		t.Errorf("a tone the row ended came back after the patch: %q", after)
+	}
+}
+
+// TestAFlushPanelRunsItsRowsBorderToBorder is 0.18.0 UAT-1 U1-27: the map
+// window's rows run from border to border, with none of the panel's inset;
+// every other window keeps it.
+func TestAFlushPanelRunsItsRowsBorderToBorder(t *testing.T) {
+	inset := Opts{Width: 20}.PanelColored("T", "abc", "")
+	flush := Opts{Width: 20, Flush: true}.PanelColored("T", "abc", "")
+	if row := strings.Split(inset, "\n")[1]; !strings.HasPrefix(row, "│  abc") {
+		t.Errorf("a panel lost its inset: %q", row)
+	}
+	row := strings.Split(flush, "\n")[1]
+	if !strings.HasPrefix(row, "│abc") || Width(row) != 20 || !strings.HasSuffix(row, "│") {
+		t.Errorf("a flush panel's row is %q (%d wide), want border, the row, border at 20", row, Width(row))
 	}
 }

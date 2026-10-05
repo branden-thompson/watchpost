@@ -16,15 +16,19 @@ const maxBoxes = 160
 
 // boxMemo is the parsed-box cache.
 //
-// THE CACHE IS platform/bodymemo (F-53). This held its own tick counter, hash
-// revalidation and least-recently-used eviction, and domains/fire/firms held a
-// byte-identical copy of all three. What is left here is the name the seismic
-// path calls it by, and the box's own key: the query URL.
+// THE CACHE IS platform/bodymemo (F-53) — tick counter, hash revalidation and
+// least-recently-used eviction, shared with domains/fire/firms. What this adds
+// is the name the seismic path calls it by, and the box's own key: the query
+// URL.
 type boxMemo struct {
 	cache *bodymemo.Memo[string, []feature]
 }
 
-func newBoxMemo() *boxMemo { return &boxMemo{cache: bodymemo.New[string, []feature](maxBoxes)} }
+// newBoxCache is the memo's constructor as a value, so that no function here
+// calls a function of its own name.
+var newBoxCache = bodymemo.New[string, []feature]
+
+func newBoxMemo() *boxMemo { return &boxMemo{cache: newBoxCache(maxBoxes)} }
 
 // features returns the box's parsed features, decoding only when the body has
 // changed since it was last seen (a shared or repeated body parses once).

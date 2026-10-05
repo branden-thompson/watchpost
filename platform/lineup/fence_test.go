@@ -7,6 +7,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // The listener, and the two places the HUM LEAD named in stating the rule.
@@ -20,7 +21,7 @@ var (
 // measures it. A test that asserted "~120 mi" without checking would be
 // asserting its own arithmetic.
 func milesFrom(f Fence, at [2]float64) float64 {
-	return geo.HaversineKM(f.Lat, f.Lon, at[0], at[1]) / kmPerMi
+	return geo.HaversineKM(f.Lat, f.Lon, at[0], at[1]) / units.KmPerMile
 }
 
 // quake is a disaster arrival at a point, carrying the reach its magnitude buys.
@@ -50,7 +51,7 @@ const ruledAdmitMi = 120
 // listener by the given miles, in the same arithmetic the fence uses.
 func northOf(f Fence, mi float64) [2]float64 {
 	const degPerKm = 1 / 111.19492664455873
-	return [2]float64{f.Lat + mi*kmPerMi*degPerKm, f.Lon}
+	return [2]float64{f.Lat + mi*units.KmPerMile*degPerKm, f.Lon}
 }
 
 // TestTheFixturesAreTheDistancesTheyClaim is the fixture-validity control
@@ -200,7 +201,7 @@ func TestNoFenceAdmitsEverything(t *testing.T) {
 	}
 }
 
-// TestAFenceWithNoOriginAdmitsNothing. Today's rule, unchanged: filtered with no
+// TestAFenceWithNoOriginAdmitsNothing. Today's rule: filtered with no
 // default location set shows NOTHING, rather than silently falling back to the
 // global stack the UI says is scoped away.
 func TestAFenceWithNoOriginAdmitsNothing(t *testing.T) {
@@ -241,10 +242,10 @@ func TestAPointlessAlertIsAdmittedOnlyByTheTrackedTie(t *testing.T) {
 func TestTheFenceAgreesWithTheTapeAboutEveryDistance(t *testing.T) {
 	const degPerKm = 1 / 111.19492664455873
 	for _, mi := range []float64{0, 1, 25, 49, 49.999, 50, 50.001, 51, 75, 500} {
-		at := [2]float64{bonsall.Lat + mi*kmPerMi*degPerKm, bonsall.Lon}
+		at := [2]float64{bonsall.Lat + mi*units.KmPerMile*degPerKm, bonsall.Lon}
 		a := Arrival{ID: "edge", Category: category.Warnings, Headline: "h", Subject: "s",
 			Lat: at[0], Lon: at[1], HasPoint: true}
-		want := geo.HaversineKM(bonsall.Lat, bonsall.Lon, at[0], at[1]) <= bonsall.RadiusMi*kmPerMi
+		want := geo.HaversineKM(bonsall.Lat, bonsall.Lon, at[0], at[1]) <= bonsall.RadiusMi*units.KmPerMile
 		if got := bonsall.Admits(a); got != want {
 			t.Errorf("at ~%.3f mi (measured %.4f): admitted = %v, want %v",
 				mi, milesFrom(bonsall, at), got, want)
@@ -264,10 +265,10 @@ func TestTheFenceAgreesWithTheTapeAboutEveryDistance(t *testing.T) {
 func TestAnAlertExactlyOnTheRadiusIsInside(t *testing.T) {
 	at := [2]float64{bonsall.Lat + 0.5, bonsall.Lon}
 	km := geo.HaversineKM(bonsall.Lat, bonsall.Lon, at[0], at[1])
-	edge := Fence{RadiusMi: km / kmPerMi, Lat: bonsall.Lat, Lon: bonsall.Lon, HasOrigin: true}
-	if edge.RadiusMi*kmPerMi != km {
+	edge := Fence{RadiusMi: km / units.KmPerMile, Lat: bonsall.Lat, Lon: bonsall.Lon, HasOrigin: true}
+	if edge.RadiusMi*units.KmPerMile != km {
 		t.Fatalf("the fixture does not sit exactly on the radius in the fence's own arithmetic (%.17g vs %.17g); this test would pin nothing",
-			edge.RadiusMi*kmPerMi, km)
+			edge.RadiusMi*units.KmPerMile, km)
 	}
 	a := Arrival{ID: "edge", Category: category.Warnings, Headline: "h", Subject: "s",
 		Lat: at[0], Lon: at[1], HasPoint: true}
@@ -282,12 +283,12 @@ func TestAnAlertExactlyOnTheRadiusIsInside(t *testing.T) {
 // The threshold below which a quake carries no reach is invisible against a
 // 50 mi fence — an M5.0's reach would be 23 mi, which is inside the radius
 // anyway, so removing the rule changes nothing there. It is visible against a
-// SMALL service area, which is the case a Broadcaster station actually has. m83
-// survived until this existed.
+// SMALL service area, which is the case a Broadcaster station actually has.
+// Without this test, mutant m83 survives.
 func TestAnOrdinaryQuakeBuysNoExceptionEvenAgainstATightFence(t *testing.T) {
 	const degPerKm = 1 / 111.19492664455873
 	tight := Fence{RadiusMi: 10, Lat: bonsall.Lat, Lon: bonsall.Lon, HasOrigin: true}
-	at := [2]float64{tight.Lat + 20*kmPerMi*degPerKm, tight.Lon}
+	at := [2]float64{tight.Lat + 20*units.KmPerMile*degPerKm, tight.Lon}
 	if d := milesFrom(tight, at); d < 19.5 || d > 20.5 {
 		t.Fatalf("the fixture measures %.1f mi, not the 20 it is meant to", d)
 	}
@@ -330,8 +331,8 @@ func TestTheFenceFiltersWhatReachesTheLineupAtAll(t *testing.T) {
 
 // TestTheFenceIsTheOnlyCarrierOfWhetherOneIsInForce. The ordering rule (DR-12)
 // asks whether a radius is set; so does admission. One question, one answer —
-// a separate boolean beside the radius could disagree with it, which is the
-// shape of every rule this release has had to un-split.
+// a separate boolean beside the radius could disagree with it, so there is
+// none.
 func TestTheFenceIsTheOnlyCarrierOfWhetherOneIsInForce(t *testing.T) {
 	stale := quake("d1", 4.0, [2]float64{bonsall.Lat, bonsall.Lon}) // no reach, at home
 	stale.At = planNow.Add(-96 * time.Hour)
@@ -368,7 +369,7 @@ func TestAnArrivalWithNoRealPointIsRefusedRatherThanSilentlyFencingEverythingOut
 
 // TestATrackedTieBelongsToTheScopeNotToTheArrival.
 //
-// THE DEFECT THIS PINS: a zone-only alert has no point, so the only thing that
+// THE RISK THIS PINS: a zone-only alert has no point, so the only thing that
 // can admit it is the app already following it at a watched location. That is a
 // fact about the SCOPE NOW IN FORCE. Carried on the arrival it is a fact about
 // WHICHEVER SCOPE ADMITTED IT FIRST — frozen at planning time and true for ever
@@ -412,7 +413,7 @@ func TestATrackedTieBelongsToTheScopeNotToTheArrival(t *testing.T) {
 // point and reaches the schedule by the tracked tie alone, which is what makes
 // a hyper-local station (FR-8.3) viable at all. Asserted at the radius the HUM
 // LEAD named, against a point alert five miles out that the same fence refuses
-// (REVIEW 2026-09-17: the row cited an Observer test at 100 miles).
+// (REVIEW 2026-09-17).
 func TestAThreeMileStationStillReceivesItsCountyWarning(t *testing.T) {
 	three := bonsall
 	three.RadiusMi = 3
@@ -424,7 +425,7 @@ func TestAThreeMileStationStillReceivesItsCountyWarning(t *testing.T) {
 	}
 	const degPerKm = 1 / 111.19492664455873
 	nearby := Arrival{ID: "point", Category: category.Warnings, Headline: "h", Subject: "s",
-		Lat: bonsall.Lat + 5*kmPerMi*degPerKm, Lon: bonsall.Lon, HasPoint: true}
+		Lat: bonsall.Lat + 5*units.KmPerMile*degPerKm, Lon: bonsall.Lon, HasPoint: true}
 	if three.Admits(nearby) {
 		t.Error("a three-mile fence admitted a point alert five miles out — the radius is not in force")
 	}

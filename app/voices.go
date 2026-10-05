@@ -1,6 +1,6 @@
 package app
 
-// voices.go — voices: discovery (macOS say, Piper catalogue), choice, preview, install. Split from radio.go by the quality pass (Q2, pure move).
+// voices.go — voices: discovery (macOS say, Piper catalogue), choice, preview, install.
 
 import (
 	"bytes"
@@ -76,8 +76,6 @@ func (d *radioDeck) rawVoice() (synth.Voice, error) {
 	// progress is reported back through the program; a deck with no program and
 	// no engine is a test's, and it has nowhere to report and nothing to play.
 	// Production is unaffected — a deck can only reach a tune once both are set.
-	// Four Linux CI rounds of this release died on this path, each in a slightly
-	// different dereference, because nothing stopped the download itself.
 	if !d.canInstall() {
 		return nil, fmt.Errorf("no voice for %s/%s: this deck is not wired to install one", runtimeGOOS(), runtime.GOARCH)
 	}
@@ -136,11 +134,9 @@ func (d *radioDeck) installVoice(spec synth.VoiceSpec, report func(string)) (syn
 // SetVoice chooses the ROOT correspondent (UAT 84) and hands a playing
 // broadcast over so the change is heard at once.
 //
-// The chooser that called this retired at P4 (MVS-D-3); from now on the
-// root is set in Setup like every other role, and a Setup save is a Recast. The
-// mechanism is already the same one, which is why this survives P2 unchanged in
-// behaviour: a root change IS a hard recast — the listener asked for it and is
-// waiting to hear it.
+// The root is set in Setup like every other role (MVS-D-3), and a Setup save
+// is a Recast. This is the same mechanism: a root change IS a hard recast —
+// the listener asked for it and is waiting to hear it.
 func (d *radioDeck) SetVoice(name string) {
 	d.mu.Lock()
 	d.voiceID = name
@@ -253,10 +249,10 @@ func (d *radioDeck) Voices() []string {
 func (d *radioDeck) discoverVoices() []string {
 	if runtimeGOOS() == "darwin" {
 		// Through the shared discoverMacVoices, not a second `say -v ?` of its
-		// own: P4's `report --verbose` needs the same answer without a deck,
-		// and two implementations of "which voices does this Mac have" is how
-		// the screen and the ear start disagreeing. The ceiling turns a wedged
-		// `say` into "not discovered yet" rather than a goroutine held forever.
+		// own: `report --verbose` needs the same answer without a deck, and two
+		// implementations of "which voices does this Mac have" is how the screen
+		// and the ear start disagreeing. The ceiling turns a wedged `say` into
+		// "not discovered yet" rather than a goroutine held forever.
 		ctx, cancel := context.WithTimeout(context.Background(), discoverTimeout)
 		defer cancel()
 		if list := discoverMacVoices(ctx); len(list) > 0 {
@@ -326,7 +322,7 @@ func parseSayVoices(listing string) []string {
 const defaultMacVoice = "Samantha"
 
 // defaultVoice is the Mac's own System Voice (always present; UAT 88/91 —
-// what a fresh setup heard first), else the first installed voice.
+// what a fresh setup hears first), else the first installed voice.
 func (d *radioDeck) defaultVoice() string {
 	if runtimeGOOS() == "darwin" {
 		return systemVoice

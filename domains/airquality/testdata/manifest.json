@@ -1,0 +1,12 @@
+{
+ "captured": "2026-09-29T00:51:00Z",
+ "source": "EPA AirNow (files.airnowtech.org/airnow/today/reportingarea.dat), the whole national file, trimmed to California's, Alaska's and Puerto Rico's rows",
+ "files": [
+  "reportingarea.dat",
+  "cur_aqi_combined.kml"
+ ],
+ "traps": {
+  "reportingarea.dat": "a forecast's day offset counts from its issue date: yesterday's issue's '1' is today, and both issues are in the file; most forecasts give a category and no AQI; each area has a row a pollutant, its primary marked Y; O is the latest observation, Y yesterday's",
+  "cur_aqi_combined.kml": "captured 2026-10-01T04:30Z (its folder 1hr_Combined_AQI_USA_2026100103, the hour in UTC): AirNow's current combined AQI as contour polygons styled #Good to #Hazardous; trimmed to California's twelve - the national #Good polygon (26,360 vertices, every other contour a hole in it) left out; contours nest, an #Unhealthy one inside #UnhealthySG, each a hole in the one around it; descriptions shortened"
+ }
+}

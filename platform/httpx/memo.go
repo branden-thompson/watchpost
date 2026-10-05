@@ -150,7 +150,7 @@ func (c *Client) noteFailure(host, rawURL string, res attemptResult, err error) 
 	}
 }
 
-// holdPacing pushes both lanes' next slot out by min(d, pacingHoldCap):
+// holdPacing pushes every lane's next slot out by min(d, pacingHoldCap):
 // a Retry-After is honoured on every lane, without a sleep inside do()
 // and without the dashboard going dark (R2-3).
 func (c *Client) holdPacing(d time.Duration, now time.Time) {

@@ -3,10 +3,9 @@ package main
 // artifacts_test.go — no built artefact is tracked in git.
 //
 // THE DENYLIST IS NOT THE GUARD. `.gitignore` names the tool binaries anyone has
-// thought of; it cannot name a tool that does not exist yet, and two binaries
-// reached commits while it stood — the second written by an author who had read
-// the paragraph describing the first. A list of names fails exactly when a new
-// tool arrives, which is the only time it is asked anything.
+// thought of; it cannot name a tool that does not exist yet. A list of names
+// fails exactly when a new tool arrives, which is the only time it is asked
+// anything.
 //
 // SO THIS ASKS THE INDEX. Every tracked file is checked for an executable magic
 // number, and anything large enough to be a build product has to be declared.

@@ -3,11 +3,11 @@ package main
 // The self-test: prove this instrument can FAIL before anyone quotes a number
 // from it.
 //
-// THE STANDING RULE IS "VALIDATE THE INSTRUMENT" and it exists because this
-// project has shipped three measurements that could not fail. A completeness
-// check is especially prone to it: if declarations were counted as uses, every
-// member would look wired, the tool would print "0 NOT" on any tree, and that
-// zero is exactly what a reader would take for good news.
+// THE STANDING RULE IS "VALIDATE THE INSTRUMENT": a measurement that cannot
+// fail measures nothing. A completeness check is especially prone to it: if
+// declarations were counted as uses, every member would look wired, the tool
+// would print "0 NOT" on any tree, and that zero is exactly what a reader
+// would take for good news.
 //
 // So each scenario below is a tree with a KNOWN answer, and the check is that
 // the tool reports that answer and no other. Two of them exist purely to fail
@@ -132,7 +132,7 @@ func perform(e Effect) string {
 	return ""
 }
 `,
-			// This is the Duck/Restore shape exactly: an executor and no producer.
+			// An executor and no producer.
 			want: []string{"Effect.Duck"},
 		},
 	}
@@ -164,13 +164,12 @@ func makeBeta() Flag { return Beta }
 
 func isAlpha(f Flag) bool { return f == Alpha }
 `,
-			// THE SCENARIO THAT MAKES THE DECLARATION SKIP LOAD-BEARING, and it
-			// took two attempts to write. The first gave Beta no writer either,
-			// so it was reported as unwired whether or not the mention counted —
-			// an assertion that held for the wrong reason. Beta now has a WRITER
-			// and its only other mention is inside a declaration: count that as
-			// a read and Beta looks wired, which is exactly the false pass the
-			// guard exists to refuse (D-2 wants the input that makes it fail).
+			// THE SCENARIO THAT MAKES THE DECLARATION SKIP LOAD-BEARING. Beta has a
+			// WRITER, and its only other mention is inside a declaration: count that
+			// as a read and Beta looks wired, which is exactly the false pass the
+			// guard exists to refuse (D-2 wants the input that makes it fail). Given
+			// no writer, Beta would be reported whether or not the mention counted —
+			// an assertion that holds for the wrong reason.
 			want: []string{"Flag.Beta"},
 		},
 	}
@@ -270,8 +269,8 @@ func only() Loose { return One }
 // ledgerCase is one triage of a known member set against a known ledger.
 //
 // THE EXPIRY IS THE PART THAT MUST NOT ROT. A ledger row is a promise to remove
-// it later, and this project's whole failure this week was a promise nobody
-// checked. These cases are what make the check itself checkable.
+// it later, and a promise nobody checks is the failure the expiry exists to
+// catch. These cases are what make the check itself checkable.
 type ledgerCase struct {
 	name      string
 	members   []member
@@ -313,10 +312,9 @@ func ledgerCases() []ledgerCase {
 
 // runFenceCases checks that an exemption is ONLY what sits inside the fence.
 //
-// THE TOOL FOUND THIS IN ITS OWN LEDGER on day two: a prose table listing rows
-// that had been closed re-created them, because any row whose first cell was a
-// backticked dotted name counted. A ledger where writing about a member exempts
-// it fails toward silence.
+// WITHOUT THE FENCE, a prose table listing closed rows re-creates them, because
+// any row whose first cell is a backticked dotted name counts. A ledger where
+// writing about a member exempts it fails toward silence.
 func runFenceCases() int {
 	body := "# ledger\n\n| `Set.Outside` | before the fence |\n\n" +
 		ledgerOpen + "\n\n| `Set.Inside` | a real exemption |\n\n" + ledgerClose +
@@ -366,11 +364,10 @@ func runLedgerCases() int {
 			fail++
 			continue
 		}
-		// AND THE EXIT DECISION, per case. Splitting the triage from the exit
-		// left a sabotage alive: dropping `stale` from the exit condition
-		// passed every case above, because they all check the triage and none
-		// checked what the process DOES with it. A gate that prints and exits
-		// zero is a reminder, not a gate.
+		// AND THE EXIT DECISION, per case. The cases above all check the triage
+		// and none checks what the process DOES with it, so dropping `stale` from
+		// the exit condition passes every one of them. A gate that prints and
+		// exits zero is a reminder, not a gate.
 		wantFail := len(lc.wantUnexp) > 0 || len(lc.wantStale) > 0
 		if got := failing(unexp, stale); got != wantFail {
 			fmt.Printf("  FAIL  %s: exit-decision %t, want %t\n", lc.name, got, wantFail)

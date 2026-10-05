@@ -5,8 +5,7 @@ package app
 // DERIVED, NOT ENUMERATED (INST-1). The check WALKS the package's AST for
 // every tea.NewProgram call rather than asserting against a remembered list
 // of call sites, so a THIRD one added later cannot slip past a list nobody
-// updated — which is exactly how the two sites here came to differ from the
-// plan's own count in the first place.
+// updated.
 
 import (
 	"go/ast"
@@ -17,8 +16,8 @@ import (
 
 func TestTheProgramsModelIsAlwaysTheRouter(t *testing.T) {
 	// THROUGH declset.Files, NOT go/parser.ParseDir. ParseDir is deprecated
-	// (Go 1.25) and three checks in this tree had copied the same shape; the
-	// package that already walked a package's non-test files owns it now.
+	// (Go 1.25), and declset is the one package that walks a package's
+	// non-test files for every check in this tree.
 	fset, files, err := declset.Files(".")
 	if err != nil {
 		t.Fatal(err)

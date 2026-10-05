@@ -12,9 +12,9 @@ import (
 //
 // The two paths to speech compose into different shapes — the rotation makes
 // []synth.Segment and plays it on the engine; a card carries lineup.Script and
-// is read through the arbiter. S0 named this adapter as the join. PartLine's
-// own comment already says it is "the whole of a location report", so the
-// model anticipated the card; what was missing was the translation.
+// is read through the arbiter. S0 names this adapter as the join. PartLine's
+// own comment says it is "the whole of a location report", so the model
+// holds the card; this is the translation.
 
 func TestSegmentsBecomeAScriptOfLines(t *testing.T) {
 	segs := []synth.Segment{

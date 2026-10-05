@@ -31,8 +31,7 @@ type Host interface {
 	// nothing, which is the one legitimately silent row (AM-19).
 	//
 	// It is a host fact of the same kind as Discovered and Installed, so it
-	// lives here rather than being re-derived at each call site. (The PLAN
-	// named three methods; this is the fourth, and P1's build log records why.)
+	// lives here rather than being re-derived at each call site.
 	Default() string
 }
 

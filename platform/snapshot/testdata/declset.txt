@@ -50,6 +50,7 @@ func Key
 func Keys
 func NewAssembler
 func Opaque
+func PlaceID
 func ReplaceKeys
 func Unreachable
 func WithFailure

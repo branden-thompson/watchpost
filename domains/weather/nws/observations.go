@@ -1,6 +1,6 @@
 package nws
 
-// observations.go — observations: the station fallback chain, SI conversion, wind and condition text parsing. Split from provider.go by the quality pass (Q2, pure move).
+// observations.go — observations: the station fallback chain, SI conversion, wind and condition text parsing.
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // --- observations ---
@@ -39,19 +40,17 @@ func (p *Provider) fetchObs(ctx context.Context, ref snapshot.LocationRef) (snap
 		}
 		// AN OBSERVATION FROM FAR ENOUGH AWAY IS NOT THIS LOCATION'S WEATHER.
 		//
-		// UAT 2026-09-05: Lone Pine, CA showed 86 °F at half past six in the
-		// morning. Nothing was stale and nothing was cached — the reading was
-		// forty-two minutes old and perfectly real. It came from FURNACE CREEK,
-		// DEATH VALLEY, 110 km east and below sea level, because the two nearer
-		// stations published no temperature and the fallback chain had no bound.
-		// The actual temperature was 59 °F.
+		// An unbounded fallback chain reaches readings that are fresh and
+		// perfectly real and describe another place: where Lone Pine, CA's two
+		// nearer stations publish no temperature, the next is FURNACE CREEK,
+		// DEATH VALLEY, 110 km east and below sea level — 86 °F at half past six
+		// in the morning against Lone Pine's 59 °F (UAT 2026-09-05).
 		//
 		// The chain is already ordered nearest-first, so this only ever discards
 		// candidates worse than one already rejected. And discarding is SAFE
 		// rather than lossy: an observation with no temperature is rehydrated
 		// from the location's OWN hourly forecast (rehydrateFromForecast), which
-		// for Lone Pine reads 59-60 °F. The right answer was available the whole
-		// time and the wrong one was suppressing it.
+		// for Lone Pine reads 59-60 °F.
 		if far(c.Source.DistanceKm) {
 			rejected = true
 			continue
@@ -69,13 +68,12 @@ func (p *Provider) fetchObs(ctx context.Context, ref snapshot.LocationRef) (snap
 	}
 	// NO LOCAL STATION IS A FACT, NOT A FAILURE.
 	//
-	// The two are opposite states and they were being returned as one. A
-	// network failure is transient: no observation comes back, the location
-	// stays LOADING and the retry owns it. A location whose every station is
-	// too far has a stable answer — there is no local observation and there
-	// will not be one on the next attempt — and returning an error there left
-	// Lone Pine's temperature loading forever (UAT 2026-09-05, introduced by
-	// the distance bound an hour earlier).
+	// The two are opposite states and must not be returned as one. A network
+	// failure is transient: no observation comes back, the location stays
+	// LOADING and the retry owns it. A location whose every station is too far
+	// has a stable answer — there is no local observation and there will not be
+	// one on the next attempt — and returning an error there would leave its
+	// temperature loading forever (UAT 2026-09-05).
 	//
 	// The empty observation is what the FORECAST fills.
 	// rehydrateFromForecast needs a Conditions to fill — it takes a SPARSE
@@ -157,9 +155,9 @@ func toSI(q quantity) *float64 {
 	case "wmoUnit:degC", "wmoUnit:percent", "wmoUnit:degree_(angle)", "wmoUnit:m":
 		// already target unit
 	case "wmoUnit:degF":
-		v = (v - 32) * 5 / 9
+		v = units.CelsiusOf(v)
 	case "wmoUnit:km_h-1":
-		v = v / 3.6
+		v = units.MpsOf(v)
 	case "wmoUnit:m_s-1":
 		// already m/s
 	case "wmoUnit:Pa":
@@ -187,7 +185,7 @@ func windFromText(s string) *float64 {
 	if !found {
 		return nil
 	}
-	v := roundTenth(mph * 0.44704)
+	v := roundTenth(units.MpsOfMph(mph))
 	return &v
 }
 

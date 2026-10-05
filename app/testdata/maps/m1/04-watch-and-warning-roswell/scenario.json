@@ -1,0 +1,29 @@
+{
+ "name": "04-watch-and-warning-roswell",
+ "place": {
+  "name": "Roswell, NM",
+  "lat": 33.3943,
+  "lon": -104.523
+ },
+ "failure": null,
+ "withheld_zones": [],
+ "sizes": [
+  "69x12",
+  "149x38"
+ ],
+ "answer_key": {
+  "urn:oid:2.49.0.1.840.0.7b2845d2a530ac72e6b038ad704fd9c1efa50814.001.1": {
+   "answer": "lies to one side",
+   "edge_km": 33.9,
+   "event": "Flood Warning",
+   "area": "Chaves, NM; Lincoln, NM"
+  },
+  "urn:oid:2.49.0.1.840.0.82f4230f5f5149c0e14e4fb4a34a29b12e361428.002.1": {
+   "answer": "covers",
+   "edge_km": 33.6,
+   "event": "Flood Watch",
+   "area": "South Central Mountains; De Baca County; Chaves County Plains; Eastern Lincoln County; Southwest Chaves County"
+  }
+ },
+ "answer_rule": "covers: the place is inside the area; stops short: outside, the nearest edge within 15 km; lies to one side: farther. Computed from the recorded geometry; the HUM LEAD confirms it before scoring."
+}

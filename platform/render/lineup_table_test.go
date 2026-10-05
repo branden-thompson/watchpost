@@ -14,8 +14,8 @@ import (
 
 func lineupFixture() []LineupRow {
 	mi := func(v float64) *float64 { return &v }
-	// CONDITIONS AND NOW SINCE D-116, where the correspondent was: the column read
-	// `N/A` on every row and the HUM LEAD spent it on the weather instead.
+	// CONDITIONS AND NOW (D-116), in the place a correspondent column would read
+	// `N/A` on every row: the HUM LEAD spends it on the weather.
 	return []LineupRow{
 		{Slot: 2, Num: "02.", ReportType: "Location Report", Location: "Fallbrook, CA", Zip: "92028",
 			DistMi: mi(5), Priority: "Standard", RequestedBy: "Producer",
@@ -72,9 +72,8 @@ func TestTheLineupTableDrawsItsColumnsAndGroups(t *testing.T) {
 
 // THE GROUP HEADER IS THE ONE OBSERVER DRAWS, not a copy of it.
 //
-// `groupHeader` and `columnHeader` took a LOCATION layout until D-94 and now take
-// the group spec, which is the only thing they ever used it for.  A copy would
-// have drifted the first time either was touched.
+// `groupHeader` and `columnHeader` take the group spec (D-94), which is all they
+// need of a layout.  A copy would drift the first time either was touched.
 func TestBothTablesDrawTheirHeadersThroughTheSameFunction(t *testing.T) {
 	o := Opts{Width: 150}
 	groups := lineupGroups()
@@ -96,8 +95,8 @@ func TestBothTablesDrawTheirHeadersThroughTheSameFunction(t *testing.T) {
 //
 // HUM LEAD, UAT 2026-09-12: "Rows in the Scheduled Line up should highlight just
 // like the location pool table." The pool's focused row reads light blue with its
-// name picked out; this one wore the pointer glyph and nothing else, so one
-// pointer looked like two different things on two tables the operator walks with
+// name picked out; a row wearing the pointer glyph and nothing else would make one
+// pointer look like two different things on two tables the operator walks with
 // one key.
 func TestTheFocusedSlotIsPaintedLikeTheFocusedLocation(t *testing.T) {
 	cols := lineupColumnDefs(150)

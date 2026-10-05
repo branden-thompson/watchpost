@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dwml version="1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://digital.weather.gov/xml/schema/DWML.xsd">
+  <head>
+    <product srsName="WGS 1984" concise-name="time-series" operational-mode="official">
+      <title>NOAA's National Weather Service Forecast Data</title>
+      <field>meteorological</field>
+      <category>forecast</category>
+      <creation-date refresh-frequency="PT30M">2026-09-30T23:34:38Z</creation-date>
+    </product>
+    <source>
+      <more-information>https://digital.weather.gov/xml/</more-information>
+      <production-center>Meteorological Development Laboratory<sub-center>Weather Information Applications Division</sub-center></production-center>
+      <disclaimer>http://www.nws.noaa.gov/disclaimer.html</disclaimer>
+      <credit>https://www.weather.gov/</credit>
+      <credit-logo>https://www.weather.gov/logorequest</credit-logo>
+      <feedback>https://www.weather.gov/contact</feedback>
+    </source>
+  </head>
+  <data>
+    <location>
+      <location-key>point1</location-key>
+      <point latitude="63.50" longitude="-150.00"/>
+    </location>
+    <location>
+      <location-key>point2</location-key>
+      <point latitude="63.50" longitude="-148.00"/>
+    </location>
+    <location>
+      <location-key>point3</location-key>
+      <point latitude="63.50" longitude="-146.00"/>
+    </location>
+    <location>
+      <location-key>point4</location-key>
+      <point latitude="63.00" longitude="-150.00"/>
+    </location>
+    <location>
+      <location-key>point5</location-key>
+      <point latitude="63.00" longitude="-148.00"/>
+    </location>
+    <location>
+      <location-key>point6</location-key>
+      <point latitude="63.00" longitude="-146.00"/>
+    </location>
+    <moreWeatherInformation applicable-location="point1">http://forecast.weather.gov/MapClick.php?textField1=63.50&amp;textField2=-150.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point2">http://forecast.weather.gov/MapClick.php?textField1=63.50&amp;textField2=-148.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point3">http://forecast.weather.gov/MapClick.php?textField1=63.50&amp;textField2=-146.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point4">http://forecast.weather.gov/MapClick.php?textField1=63.00&amp;textField2=-150.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point5">http://forecast.weather.gov/MapClick.php?textField1=63.00&amp;textField2=-148.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point6">http://forecast.weather.gov/MapClick.php?textField1=63.00&amp;textField2=-146.00</moreWeatherInformation>
+    <time-layout time-coordinate="local" summarization="none">
+      <layout-key>k-p6h-n13-1</layout-key>
+      <start-valid-time>2026-09-30T10:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-09-30T16:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-09-30T16:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-09-30T22:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-09-30T22:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-01T04:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-10-01T04:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-01T10:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-10-01T10:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-01T16:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-10-01T16:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-01T22:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-10-01T22:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-02T04:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-10-02T04:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-02T10:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-10-02T10:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-02T16:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-10-02T16:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-02T22:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-10-02T22:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-03T04:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-10-03T04:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-03T10:00:00-08:00</end-valid-time>
+      <start-valid-time>2026-10-03T10:00:00-08:00</start-valid-time>
+      <end-valid-time>2026-10-03T16:00:00-08:00</end-valid-time>
+    </time-layout>
+    <parameters applicable-location="point1">
+      <precipitation type="liquid" units="inches" time-layout="k-p6h-n13-1">
+        <name>Liquid Precipitation Amount</name>
+        <value>0.01</value>
+        <value>0.05</value>
+        <value>0.04</value>
+        <value>0.01</value>
+        <value>0.01</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+      <precipitation type="snow" units="inches" time-layout="k-p6h-n13-1">
+        <name>Snow Amount</name>
+        <value>0.20</value>
+        <value>0.91</value>
+        <value>0.59</value>
+        <value>0.20</value>
+        <value>0.20</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+    </parameters>
+    <parameters applicable-location="point2">
+      <precipitation type="liquid" units="inches" time-layout="k-p6h-n13-1">
+        <name>Liquid Precipitation Amount</name>
+        <value>0.06</value>
+        <value>0.16</value>
+        <value>0.15</value>
+        <value>0.09</value>
+        <value>0.01</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+      <precipitation type="snow" units="inches" time-layout="k-p6h-n13-1">
+        <name>Snow Amount</name>
+        <value>0.91</value>
+        <value>2.40</value>
+        <value>2.28</value>
+        <value>1.50</value>
+        <value>0.20</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+    </parameters>
+    <parameters applicable-location="point3">
+      <precipitation type="liquid" units="inches" time-layout="k-p6h-n13-1">
+        <name>Liquid Precipitation Amount</name>
+        <value>0.09</value>
+        <value>0.11</value>
+        <value>0.17</value>
+        <value>0.19</value>
+        <value>0.14</value>
+        <value>0.13</value>
+        <value>0.03</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+      <precipitation type="snow" units="inches" time-layout="k-p6h-n13-1">
+        <name>Snow Amount</name>
+        <value>1.42</value>
+        <value>1.61</value>
+        <value>2.80</value>
+        <value>3.19</value>
+        <value>2.52</value>
+        <value>2.28</value>
+        <value>0.51</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+    </parameters>
+    <parameters applicable-location="point4">
+      <precipitation type="liquid" units="inches" time-layout="k-p6h-n13-1">
+        <name>Liquid Precipitation Amount</name>
+        <value>0.01</value>
+        <value>0.03</value>
+        <value>0.02</value>
+        <value>0.02</value>
+        <value>0.02</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+      <precipitation type="snow" units="inches" time-layout="k-p6h-n13-1">
+        <name>Snow Amount</name>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+    </parameters>
+    <parameters applicable-location="point5">
+      <precipitation type="liquid" units="inches" time-layout="k-p6h-n13-1">
+        <name>Liquid Precipitation Amount</name>
+        <value>0.04</value>
+        <value>0.03</value>
+        <value>0.24</value>
+        <value>0.05</value>
+        <value>0.01</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+      <precipitation type="snow" units="inches" time-layout="k-p6h-n13-1">
+        <name>Snow Amount</name>
+        <value>0.20</value>
+        <value>0.20</value>
+        <value>2.52</value>
+        <value>0.51</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+    </parameters>
+    <parameters applicable-location="point6">
+      <precipitation type="liquid" units="inches" time-layout="k-p6h-n13-1">
+        <name>Liquid Precipitation Amount</name>
+        <value>0.09</value>
+        <value>0.05</value>
+        <value>0.09</value>
+        <value>0.13</value>
+        <value>0.10</value>
+        <value>0.06</value>
+        <value>0.04</value>
+        <value>0.02</value>
+        <value>0.01</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.01</value>
+      </precipitation>
+      <precipitation type="snow" units="inches" time-layout="k-p6h-n13-1">
+        <name>Snow Amount</name>
+        <value>0.98</value>
+        <value>0.39</value>
+        <value>1.10</value>
+        <value>1.61</value>
+        <value>1.10</value>
+        <value>0.79</value>
+        <value>0.39</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+        <value>0.00</value>
+      </precipitation>
+    </parameters>
+  </data>
+</dwml>

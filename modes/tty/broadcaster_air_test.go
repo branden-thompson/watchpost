@@ -7,9 +7,8 @@ package tty
 // source, so a box that holds the two and marks which is live says the
 // exclusivity in its shape rather than in a sentence.
 //
-// IT SUPERSEDES D-89's STANDBY BOX. That box was thirteen rows tall because LIVE
-// was one card of ten; as one row of two it says the same thing in the space it
-// has, and the HUM LEAD's wording is unchanged.
+// IT IS ONE ROW OF TWO, NOT A STANDBY BOX: it says the HUM LEAD's standby wording
+// in the space it has.
 
 import (
 	"strings"
@@ -44,7 +43,7 @@ func TestTheAirBoxAlwaysDrawsBothRows(t *testing.T) {
 	}
 }
 
-// AT REST THE LIVE ROW SAYS SO, in the HUM LEAD's own words (D-89, carried over).
+// AT REST THE LIVE ROW SAYS SO, in the HUM LEAD's own words (D-89).
 func TestTheLiveRowCarriesTheStandbyNoticeAtRest(t *testing.T) {
 	b := bcWith(t, card(t, "a", "Oceanside, CA"))
 	air := strings.Join(airRows(t, stripANSITest(b.View().Content)), "\n")

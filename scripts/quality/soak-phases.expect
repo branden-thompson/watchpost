@@ -16,7 +16,7 @@ proc hold {secs} { set start [clock seconds]; while {[clock seconds] - $start < 
 spawn env WATCHPOST_DEBUG_PPROF=1 WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6064 ./dist/watchpost
 catch {exec stty rows 44 cols 133 < $spawn_out(slave,name)}
 expect -timeout 30 "WATCHPOST"
-expect -timeout 120 -re "\\d+ºF"
+expect -timeout 120 -re "\\d+°F"
 phase $lf "A idle (radio off, viz off)"
 hold [expr {2*3600}]
 send " "; expect -timeout 120 "PLAYING" { phase $lf "B synth: PLAYING" } timeout { phase $lf "B synth: not confirmed" }

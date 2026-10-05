@@ -16,10 +16,8 @@ import (
 
 // P3: the executors can BUILD a location-report card.
 //
-// AT PARITY, AND NOTHING PRODUCES ONE YET. This is the T3.2a discipline that
-// worked in 0.14.0: wire the capability first and claim "nothing changes",
-// then switch the producer over. The two declines that said "read by the main
-// track, which arrives with T3.2" are what this removes.
+// THE CAPABILITY IS PINNED APART FROM THE PRODUCER: these drive the
+// executors' build directly, whatever offers the card.
 
 func buildDeps(t *testing.T, segs []synth.Segment, err error) *executors {
 	t.Helper()
@@ -71,19 +69,12 @@ func TestALocationReportThatComposesNothingIsDeclinedNotAired(t *testing.T) {
 	}
 }
 
-// D-33 RETIRED THE SPEAK HALF, AND THESE THREE TESTS WITH IT.
+// `speak` HAS NO REPORT HALF (D-33).
 //
-// P3(a3) taught `speak` to read a LocationReport as its own narration class,
-// and P3's flip built on that. The HUM LEAD ruled on 2026-09-09 that a chosen
-// read REPLACES the bed rather than speaking over it — so the programme is not
-// a narration, does not belong on the narration path, and `speak` declines
-// every slot that is not on the rail.
+// A chosen read REPLACES the bed rather than speaking over it — so the
+// programme is not a narration, does not belong on the narration path, and
+// `speak` declines every slot that is not on the rail.
 //
-// The three tests removed here pinned: that a report is spoken as the rotation
-// class, that a dark-stage card is declined at the air, and that the rail reads
-// whatever the stage is. The first two assert a design that no longer exists;
-// the third's subject — a stage that could hand the air over — went with it.
-//
-// WHAT REPLACES THEM is the single decline at the top of `speak`, and the two
-// BUILD tests above, which still stand: the executors can compose a report, and
-// a report that composes nothing is declined rather than aired.
+// WHAT PINS THE REPORT PATH is the single decline at the top of `speak`, and
+// the two BUILD tests above: the executors can compose a report, and a report
+// that composes nothing is declined rather than aired.

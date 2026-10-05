@@ -18,6 +18,7 @@ package render
 import (
 	"strings"
 
+	"github.com/branden-thompson/watchpost/platform/units"
 	studs "github.com/branden-thompson/watchpost/third_party/go-studs/components"
 )
 
@@ -42,20 +43,20 @@ type LineupRow struct {
 	DistMi   *float64
 
 	// Priority is the badge the card already wears; RequestedBy is its ORIGIN in
-	// the operator's words.  D-86 tinted the card by origin and the HUM LEAD's v3
-	// replaces that with this column — a shade implied it, a column says it.
+	// the operator's words (v3).  A shade on the card would only imply the
+	// origin; a column says it.
 	Priority    string
 	RequestedBy string
 
 	// Conditions, Now and Trend are the WEATHER where this beat is about (D-116).
 	//
-	// THEY REPLACED THE CORRESPONDENT (HUM LEAD, 2026-09-13): "I think we change
-	// P R E S E N T A T I O N / CORRESPONDENT to C U R R E N T L Y / CONDITIONS
-	// NOW … Useful information and doesn't require the correspondents wiring
-	// work." The column read `N/A` on every row because nothing calls
-	// `Card.WithReadBy` and main-track segments carry no cast role — so it was
-	// twenty-eight cells of a table saying nothing, where the operator deciding
-	// what to put on the air wanted to know what the weather is doing there.
+	// THEY STAND WHERE A CORRESPONDENT COLUMN WOULD (HUM LEAD, 2026-09-13): "I
+	// think we change P R E S E N T A T I O N / CORRESPONDENT to C U R R E N T L Y
+	// / CONDITIONS NOW … Useful information and doesn't require the
+	// correspondents wiring work." Nothing calls `Card.WithReadBy` and main-track
+	// segments carry no cast role, so a correspondent column would read `N/A` on
+	// every row — twenty-eight cells saying nothing, where the operator deciding
+	// what to put on the air wants to know what the weather is doing there.
 	Conditions string
 	Now        *float64
 	Trend      string
@@ -133,7 +134,7 @@ func (o Opts) LineupTable(rows []LineupRow, width int) string {
 //
 // IT ASKS `rowLen`, WHICH OWNS THE GEOMETRY. A gutter precedes columns 3..last
 // and the category spacer widens two of them, so the sum is not the column
-// widths plus one gutter per pair — re-deriving that here produced 138 for a
+// widths plus one gutter per pair — re-deriving that here gives 138 for a
 // table that occupies 140, and a surplus computed from a wrong base mis-splits
 // the day a column changes group or width.
 func lineupNaturalWidth() int {
@@ -166,7 +167,7 @@ func lineupColumnDefs(width int) []studs.ColumnDefinition {
 		// `terminalWidth - usedWidth` where `usedWidth` counts the FIXED columns
 		// and NOT the gutters, so the gutter allowance is handed out once per
 		// fill column. With one that error is absorbed; with two it is counted
-		// twice — measured, a 144-cell band rendered 190. An upstream candidate
+		// twice — measured, a 144-cell band renders 190. An upstream candidate
 		// (M6); patched around here rather than reimplemented, which is the
 		// standing rule for this kit.
 		//
@@ -202,10 +203,10 @@ func lineupColumnDefs(width int) []studs.ColumnDefinition {
 // HUM LEAD, UAT 2026-09-12: "Rows in the Scheduled Line up should highlight just
 // like the location pool table."
 //
-// THE POINTER WALKS BOTH TABLES AND ONLY ONE OF THEM ANSWERED. The pool's focused
-// row reads light blue with its name picked out; the running order's wore the
-// pointer glyph and nothing else, so the operator's eye had one cell to find on a
-// fifteen-row list — and the two halves of one pointer looked like two pointers.
+// THE POINTER WALKS BOTH TABLES AND BOTH ANSWER. The pool's focused row reads
+// light blue with its name picked out; a running order wearing the pointer glyph
+// and nothing else would give the operator's eye one cell to find on a
+// fifteen-row list — and make the two halves of one pointer look like two.
 //
 // LOCATION IS THE NAME HERE, which is what `rowStyles` picks out on the other
 // table: the cell that says WHICH row this is.
@@ -255,6 +256,6 @@ func kmOf(mi *float64) *float64 {
 	if mi == nil {
 		return nil
 	}
-	km := *mi / 0.621371
+	km := units.KmOf(*mi)
 	return &km
 }

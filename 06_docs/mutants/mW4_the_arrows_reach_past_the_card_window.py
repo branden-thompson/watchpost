@@ -1,11 +1,13 @@
 import pathlib
-# modalCard drops out of handleNav's list of scrolling windows, so the window draws
-# a scroll rail whose arrow keys do nothing to it and instead walk the TABLE
-# underneath — the D-58 defect ("the window on top owns the keys") in the window
-# that was added without being added to the list. Everything below the first twelve
-# rows becomes unreachable at 80x24, which is what FR-5 measures.
-p = pathlib.Path("modes/tty/nav.go"); s = p.read_text()
+# modalCard is declared without its own nav, so the window draws a scroll rail
+# whose arrow keys do nothing to it and instead walk the TABLE underneath - the
+# D-58 defect ("the window on top owns the keys") in a window added without
+# its scroll. Everything below the first twelve rows becomes unreachable at
+# 80x24, which is what FR-5 measures. Re-pointed at F-184's declarations
+# (window_keys.go), where the scrolling windows are now named; before, it was
+# handleNav's hand-written list.
+p = pathlib.Path("modes/tty/window_keys.go"); s = p.read_text()
 old = "	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout, modalCard:"
-new = "	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout:"
+new = "	case modalCard:\n\t\treturn windowKeys{claim: claimActions}, true\n	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout:"
 assert old in s, "mW4"
 p.write_text(s.replace(old, new, 1))

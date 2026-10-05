@@ -3,12 +3,11 @@ package render
 // aa_completeness_test.go — FR-8: the AA register covers every token, or says
 // why it cannot.
 //
-// THE AA GATE WAS A TAUTOLOGY. withAA LIFTS every pair in aaPairs when a theme
-// registers, and TestEveryPaintedPairReadsAAInEveryTheme ITERATES the same
-// list — so it can only fail if the lifter fails to converge. A token painted
-// somewhere and absent from the register is invisible to it: not failing, not
-// passing, not measured. ConfirmBG was exactly that, and it was genuinely
-// failing at 4.17:1 in Tokyo Night when someone went looking by hand (F-18).
+// THE AA GATE ALONE IS A TAUTOLOGY. withAA LIFTS every pair in aaPairs when a
+// theme registers, and TestEveryPaintedPairReadsAAInEveryTheme ITERATES the
+// same list — so it can only fail if the lifter fails to converge. A token
+// painted somewhere and absent from the register is invisible to it: not
+// failing, not passing, not measured (F-18).
 //
 // THE PRODUCER HAS TO BE SOMETHING OTHER THAN THE REGISTER, and the honest one
 // available is the TOKEN VOCABULARY: every token this package declares is in
@@ -64,6 +63,31 @@ var unmeasurable = map[Token]string{
 	SpectrumLow:  "decorative bars, redundant with the play mark and the volume; threshold is a HUM LEAD ruling (F-57)",
 	SpectrumMid:  "decorative bars (F-57)",
 	SpectrumHigh: "decorative bars (F-57)",
+	// THE MAP'S SOURCE CHIPS carry no one foreground: ChipTones picks bold
+	// black or white for each ground, so the register's fg x [bg] cannot hold
+	// them. They are MEASURED, every chip in every theme, by their own test.
+	MapRadarMRMSBG:    "a chip ground: its words, black or white, are chosen for it by ChipTones and measured by TestEveryChipIsItsOwnAndReadsInEveryTheme (0.18.0 D-134)",
+	MapRadarIEMBG:     "a chip ground (D-134)",
+	MapRadarModelBG:   "a chip ground (D-134)",
+	MapChipNWSBG:      "a chip ground (D-134)",
+	MapChipNDFDBG:     "a chip ground (D-134)",
+	MapChipOMeteoBG:   "a chip ground (D-134)",
+	MapChipUSGSBG:     "a chip ground (D-134)",
+	MapChipNIFCBG:     "a chip ground (D-134)",
+	MapChipHMSBG:      "a chip ground (D-134)",
+	MapChipNDBCBG:     "a chip ground (D-134)",
+	MapChipCOOPSBG:    "a chip ground (D-134)",
+	MapNoticeQuotaBG:  "a notice ground: its words chosen by ChipTones and measured with the chips (W18.1, D-165)",
+	MapChipRecordedBG: "a chip ground (D-178)",
+	MapChipAirNowBG:   "a chip ground (D-134)",
+	MapChipEPABG:      "a chip ground (D-167)",
+	MapChipNHCBG:      "a chip ground (D-235)",
+	MapChipNWRBG:      "a chip ground (D-235)",
+	MapChipFIRMSBG:    "a chip ground (D-235)",
+	MapChipRelaysBG:   "a chip ground (D-235)",
+	MapChipGeoNamesBG: "a chip ground (D-235)",
+	MapChipOFMBG:      "a chip ground (D-235)",
+	MapChipPiperBG:    "a chip ground (D-235)",
 }
 
 func TestEveryTokenIsMeasuredOrExcused(t *testing.T) {
@@ -81,20 +105,18 @@ func TestEveryTokenIsMeasuredOrExcused(t *testing.T) {
 
 // declaredTokens is the vocabulary, read from the source rather than listed:
 // a token added later is a member here without anyone remembering, which is
-// the whole point — F-18's defect was a token that shipped "passing AA" having
+// the whole point — F-18's shape is a token that reads as "passing AA" having
 // never been measured.
 func declaredTokens(t *testing.T) []Token {
 	t.Helper()
-	// THE WHOLE PACKAGE, NOT ONE FILE (red team, 2026-09-08). This parsed
-	// "theme.go" alone, so a token declared in any of the package's other
-	// 29 files was invisible to the gate — and a token the gate cannot see is a
-	// token nothing holds to WCAG AA. Planted: `const PlantedBG Token =
-	// "planted.bg"` in themes.go passed silently.
+	// THE WHOLE PACKAGE, NOT ONE FILE (red team, 2026-09-08). A token declared
+	// in a file the parse skips is invisible to the gate — and a token the gate
+	// cannot see is a token nothing holds to WCAG AA.
 	// EVERY .go FILE IN THE DIRECTORY, parsed one at a time. parser.ParseDir is
 	// deprecated (SA1019) precisely because it does not consider build tags when
 	// grouping files into packages — and "every file that might declare a token,
 	// tags or not" is exactly what this needs, so globbing is both simpler and
-	// more correct than the API that was deprecated for getting it wrong.
+	// more correct.
 	files, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatal(err)
@@ -148,10 +170,10 @@ func declaredTokens(t *testing.T) []Token {
 // sufficient rather than merely wide (red team, 2026-09-08).
 //
 // declaredTokens reads `Name Token = "value"`. A token written as a CONVERSION —
-// `Name = Token("value")` — has no ast.Ident type and is invisible to it;
-// planted in theme.go's own const block, it passed. Rather than teach the parser
-// every spelling, this forbids the other spellings: one shape to parse, and a
-// gate that fails the day someone invents a second.
+// `Name = Token("value")` — has no ast.Ident type and is invisible to it, even
+// in theme.go's own const block. Rather than teach the parser every spelling,
+// this forbids the other spellings: one shape to parse, and a gate that fails
+// the day someone invents a second.
 func TestEveryTokenIsDeclaredInTheOneShapeTheGateCanRead(t *testing.T) {
 	files, err := filepath.Glob("*.go")
 	if err != nil {

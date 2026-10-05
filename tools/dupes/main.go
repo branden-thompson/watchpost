@@ -1,19 +1,14 @@
 // dupes — metric D: operations implemented more than once with no ratified reason.
 //
-// THE THIRD INSTRUMENT, AND THE FIRST ONE COMMITTED. DISCOVER recorded that the
-// 0.14.1 duplicate-detection script "was never committed — the third instrument
-// this project has used and thrown away, after sampler.sh and this phase's
-// probes." A measurement that lives in someone's shell is a measurement the
-// next release cannot repeat, which is why metric D has been deferred twice
-// with a number nobody could reproduce. This one is in the tree, has a gate,
-// and has a ledger.
+// AN INSTRUMENT IN THE TREE. A measurement that lives in someone's shell is a
+// measurement the next release cannot repeat, and a number nobody can
+// reproduce. This one is in the tree, has a gate, and has a ledger.
 //
 // WHAT IT COUNTS. Two functions are the same OPERATION when their bodies have
 // the same token STRUCTURE — the same sequence of token kinds, with every
 // identifier and literal replaced by a placeholder. That catches the copy that
-// was renamed, which is the shape this project keeps finding by hand: `hz` in
-// severe.go while two other windows drew the same rule inline; one operation in
-// four hand-written copies (issue #7).
+// was renamed — one operation in several hand-written copies under different
+// names (issue #7).
 //
 // WHY A SIZE FLOOR, AND WHY THIS ONE. Without a floor this drowns in
 // `func (x T) Y() string { return x.y }`, which is not duplication, it is Go.
@@ -23,10 +18,9 @@
 // quartile of one-line accessors and the median real function, so it admits
 // roughly the top 60% by size and excludes the trivia.
 //
-// The first version of this file used 40 and called it a token count. It is a
-// node count, a substantial worked example measures 25, and the SELF-TEST
-// caught that on its first run — the floor had been set by guess against a unit
-// it was not measuring.
+// It is a NODE count, not a token count: a substantial worked example measures
+// 25, and the SELF-TEST checks the floor against it, so the floor is never set
+// by guess against a unit it is not measuring.
 //
 // usage: go run ./tools/dupes [-min 40] [-tests] [-ledger path] [-json]
 package main
@@ -59,7 +53,7 @@ type group struct {
 // reportText prints the human-readable result, including the scope line that
 // says what the number cannot see.
 //
-// INST-5, APPLIED TO THE INSTRUMENT THAT EARNED THE RULE, and separated from
+// INST-5, APPLIED TO THIS INSTRUMENT, and separated from
 // `main` at the length ceiling (P10-04, D-159). Flag parsing, orchestration and
 // REPORTING are three jobs; the first two are three lines each and this one is
 // the rest of the function.
@@ -141,15 +135,11 @@ func main() {
 // fingerprintBody reduces a body to its token STRUCTURE: every identifier and
 // literal becomes a placeholder, so a renamed copy fingerprints the same as its
 // original. Comments are already excluded — the scanner does not emit them.
-// IT TOOK A `*token.FileSet` AND THE SOURCE BYTES AND READ NEITHER (P10-07).
-// Positions are not part of a structural fingerprint and neither is the original
-// text — that is the whole point of one: it walks the AST and writes a
-// placeholder per node. Both were carried through because the functions around
-// this one take them.
+// IT TAKES NO `*token.FileSet` AND NO SOURCE BYTES (P10-07). Positions are not
+// part of a structural fingerprint and neither is the original text — that is
+// the whole point of one: it walks the AST and writes a placeholder per node.
 //
-// THE SECOND WAS HIDDEN BY THE FIRST. Removing `fset` is what made `src` visible
-// to the same check, which is the argument for fixing these rather than
-// exempting them: one dead parameter conceals the next.
+// DEAD PARAMETERS ARE FIXED, NOT EXEMPTED: one dead parameter conceals the next.
 func fingerprintBody(body *ast.BlockStmt) (string, int) {
 	var b strings.Builder
 	n := 0
@@ -294,13 +284,12 @@ func scan(root string, min int, withTests bool) ([]group, error) {
 // A row without a RATIFIED marker does not count, on the same rule the P10
 // ledger gate enforces — a reason nobody approved is not a reason.
 //
-// THE SITES ARE PART OF THE EXEMPTION, and leaving them out was a hole (red
-// team, 2026-09-08). Keyed on the fingerprint alone, a row naming two specific
-// functions granted "any set of functions with this AST shape, anywhere,
-// forever": a THIRD copy joining the ratified group passed silently, and so did
-// an unrelated function in another package that happened to share the shape.
-// What the HUM LEAD ratified was two named functions, and that is what this
-// records.
+// THE SITES ARE PART OF THE EXEMPTION (red team, 2026-09-08). Keyed on the
+// fingerprint alone, a row naming two specific functions would grant "any set
+// of functions with this AST shape, anywhere, forever": a THIRD copy joining the
+// ratified group would pass silently, and so would an unrelated function in
+// another package that happened to share the shape. What the HUM LEAD ratifies
+// is named functions, and that is what this records.
 func readLedger(path string) map[string][]string {
 	out := map[string][]string{}
 	b, err := os.ReadFile(path)
@@ -353,8 +342,7 @@ func covers(sites []string, g group) (bool, string) {
 
 // runSelfTest proves the detector fires on a KNOWN duplicate and stays quiet on
 // a known non-duplicate. Without both halves a detector that returns nothing
-// looks exactly like a codebase with no duplication — which is the state metric
-// D has been reported in twice, by instruments nobody kept.
+// looks exactly like a codebase with no duplication.
 func runSelfTest(min int) int {
 	dir, err := os.MkdirTemp("", "dupes-selftest")
 	if err != nil {

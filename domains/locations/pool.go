@@ -5,10 +5,9 @@ package locations
 // THE WATCHLIST IS THE OBSERVER'S, AND THE POOL IS THE STATION'S. The HUM LEAD
 // ruled the split on 2026-09-10: "the Observer watchlist is its lineup, and a
 // different rolling window / stack / list needs to serve as Broadcaster Location
-// Pool for producers to create the lineup." Until then the Producer offered the
-// watchlist, so the schedule could never be deeper than the number of places the
-// LISTENER happened to watch — three in his UAT, against ten drawn slots
-// (F-81, F-82).
+// Pool for producers to create the lineup." Offering the watchlist instead would
+// cap the schedule at the number of places the LISTENER happens to watch — often
+// a handful, against ten drawn slots (F-81, F-82).
 //
 // THE TRANSMITTER IS NOT THE DEFAULT LOCATION EITHER. It is the station's
 // epicentre, "from which the service radius fence radiates" — a setting of its
@@ -53,11 +52,10 @@ func Pool(idx *geodata.Index, transmitter snapshot.LocationRef, radiusMi float64
 	// repeated — Vista has four zip centroids inside twenty miles of Bonsall,
 	// and all four have different keys.
 	keys, names := map[snapshot.LocationKey]bool{}, map[string]bool{}
-	// IT RETURNED A VERDICT NOBODY READ (P10-07). "Was it added" is a real fact
-	// and every one of the call sites below discards it, which makes it a value
-	// that can be wrong for ever without anything noticing — and the day a caller
-	// starts trusting it, the bug is older than the line that reads it. The
-	// refusals are unchanged; only the unread answer is gone.
+	// IT RETURNS NO VERDICT (P10-07). "Was it added" is a real fact, but every call
+	// site below would discard it, which makes it a value that can be wrong for ever
+	// without anything noticing — and the day a caller starts trusting it, the bug
+	// is older than the line that reads it.
 	add := func(r snapshot.LocationRef) {
 		if r.Label == "" || len(out) >= limit {
 			return
@@ -81,7 +79,7 @@ func Pool(idx *geodata.Index, transmitter snapshot.LocationRef, radiusMi float64
 		if ref.Zip == "" {
 			// THE SLOW PATH ON A MISS, WHICH IS WHAT `Seeds` ALREADY DOES: the
 			// centroid scan costs ~6 ms and this runs at startup, not per
-			// keystroke. Without it "Rancho Penasquitos, CA" reached the pool
+			// keystroke. Without it "Rancho Penasquitos, CA" reaches the pool
 			// with no postal code — and the card the operator reads names one.
 			ref = cityToRef(idx, c)
 		}
@@ -118,13 +116,11 @@ func zipToRef(idx *geodata.Index, z geodata.ZipRow, fallbackTZ string) snapshot.
 }
 
 // tzFor backfills a zip row's timezone from the city table, which is where the
-// zone lives — a zip row carries none, and a ref saved without one was a real
-// defect once (the B2 PTY verification).
+// zone lives — a zip row carries none, and a ref saved without one is a defect
+// (the B2 PTY verification).
 // AND THE TRANSMITTER'S ZONE IS THE FALLBACK, because the tier that needs this
 // is exactly the tier the city table does not hold: San Luis Rey, Pala, Palomar
-// Mountain — every hyper-local place around Bonsall came back with no zone at
-// all, and a ref saved without one was a real defect once (the B2 PTY
-// verification).
+// Mountain — every hyper-local place around Bonsall has no zone there at all.
 //
 // THE ASSUMPTION IS STATED: a place within the station's own fence keeps the
 // station's clock. At the ruled maximum of fifty miles that is true everywhere

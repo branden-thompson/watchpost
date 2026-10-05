@@ -83,8 +83,6 @@ func TestAlertToneReturnsNilOnEveryMalformedEdge(t *testing.T) {
 }
 
 // PresetByName never returns silence: an unknown name is the LOUD default.
-// (Between P2 and P3 every name resolved here, because only Classic existed —
-// that was the deliberate intermediate state, and P3 ended it.)
 func TestPresetByNameFallsBackToTheLoudDefault(t *testing.T) {
 	for _, name := range []string{"", "nonsense", "CLASSIC", "dual tone"} {
 		got := PresetByName(name)

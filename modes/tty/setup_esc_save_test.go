@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"strings"
 	"testing"
 	"time"
@@ -14,16 +15,16 @@ import (
 // [20] mi radius and spanish choice — esc and re-open did not preserve my
 // choices."
 //
-// The write was never the problem. These settings persist through a setter that
-// returns nothing, so nothing wrote the value back into d.cfg — and openSetup
-// seeds the form FROM d.cfg, so re-opening showed the OLD choice. The same UAT
-// proved the write was real: the [w] window correctly trimmed its events to the
-// new radius while Settings still displayed the previous one.
+// The write alone is not enough. These settings persist through a setter that
+// returns nothing, and openSetup seeds the form FROM d.cfg — so unless the
+// value is written back into d.cfg, re-opening shows the OLD choice while the
+// write is real: the [w] window trims its events to the new radius and
+// Settings still displays the previous one.
 //
 // THE SECOND HALF IS WORSE THAN THE FIRST. applyIfChanged compares against
-// d.cfg, so with a stale d.cfg the change could not be UNDONE either: selecting
-// "All locations" compared 0 against a stale 0, saw no change, and wrote
-// nothing. The radius stayed in force with no way back through the window.
+// d.cfg, so with a stale d.cfg a change cannot be UNDONE either: selecting
+// "All locations" compares 0 against a stale 0, sees no change, and writes
+// nothing. The radius stays in force with no way back through the window.
 func TestClosingSettingsLeavesTheModelAgreeingWithTheWrite(t *testing.T) {
 	h := &setupHarness{}
 	cfg := h.config()
@@ -36,8 +37,7 @@ func TestClosingSettingsLeavesTheModelAgreeingWithTheWrite(t *testing.T) {
 
 	toEvents := func(model tea.Model) tea.Model {
 		model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
-		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		model = walkTo(t, model, rowEventsAll) // D-62: tab switches tabs; the events group is ↓ away on General
 		return model
 	}
 
@@ -45,8 +45,7 @@ func TestClosingSettingsLeavesTheModelAgreeingWithTheWrite(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	model = typeText(model, "oce")
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	model = walkTo(t, model, rowEventsAll)
 	model = typeText(model, "20")
 
 	var cmd tea.Cmd
@@ -59,7 +58,7 @@ func TestClosingSettingsLeavesTheModelAgreeingWithTheWrite(t *testing.T) {
 	if !h.radiusSet || h.radius != 20 {
 		t.Fatalf("esc writes the radius: set=%v radius=%d", h.radiusSet, h.radius)
 	}
-	// THE MODEL, not just the setter. This is the assertion the bug needed.
+	// THE MODEL, not just the setter. This is the assertion a stale model fails.
 	if got := model.(Dashboard).cfg.AlertRadiusMi; got != 20 {
 		t.Errorf("the model must know what it wrote; cfg.AlertRadiusMi=%d want 20", got)
 	}
@@ -68,7 +67,7 @@ func TestClosingSettingsLeavesTheModelAgreeingWithTheWrite(t *testing.T) {
 	}
 
 	// AND IT CAN BE UNDONE. Selecting All must write 0 — with a stale d.cfg this
-	// wrote nothing and the radius could not be cleared from the window at all.
+	// writes nothing and the radius cannot be cleared from the window at all.
 	h.radiusSet, h.radius = false, -1
 	model = toEvents(model)
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}) // select the focused radio: All
@@ -82,9 +81,9 @@ func TestClosingSettingsLeavesTheModelAgreeingWithTheWrite(t *testing.T) {
 	}
 }
 
-// THE RELAY LANGUAGE IS THE SAME BUG, and the UAT named it in the same breath:
+// THE RELAY LANGUAGE CARRIES THE SAME RISK, named in the same UAT breath:
 // "changed [20] mi radius and spanish choice". It is a PICKER rather than a
-// typed field, so it never had the append problem — only the stale model.
+// typed field, so it has no append problem — only the stale model.
 func TestTheRelayLanguageSurvivesClosingTheWindow(t *testing.T) {
 	h := &setupHarness{}
 	m, err := NewDashboard(h.config())
@@ -114,14 +113,13 @@ func TestTheRelayLanguageSurvivesClosingTheWindow(t *testing.T) {
 
 // TYPING OVER A STORED RADIUS REPLACES IT (HUM LEAD, UAT 2026-09-08).
 //
-// The window opened reading "[50] mi", the listener typed 20 — the obvious way
-// to change it — and got 5020: a five-thousand-mile radius, silently saved.
-// That is what "did not preserve my choices" actually was; the choice WAS
-// preserved, it just was not the one entered.
+// With the window reading "[50] mi", typing 20 — the obvious way to change it
+// — must give 20, not 5020: a five-thousand-mile radius, silently saved, is a
+// choice preserved that is not the one entered.
 //
-// No test covered this because both existing radius tests avoid the case: one
-// starts from an EMPTY field and types "50", the other uses space to pick All.
-// Typing over a value nobody had typed was the untested path.
+// Starting from an EMPTY field and typing "50", or using space to pick All,
+// both avoid this case; typing over a value nobody has typed is the path this
+// test covers.
 func TestTypingOverAStoredRadiusReplacesItRatherThanAppending(t *testing.T) {
 	open := func(stored int) tea.Model {
 		h := &setupHarness{}
@@ -136,8 +134,7 @@ func TestTypingOverAStoredRadiusReplacesItRatherThanAppending(t *testing.T) {
 		model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 		model = typeText(model, "oce")
 		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		model = walkTo(t, model, rowEventsAll) // D-62: tab switches tabs; the events group is ↓ away on General
 		return model
 	}
 
@@ -177,20 +174,18 @@ func TestTypingOverAStoredRadiusReplacesItRatherThanAppending(t *testing.T) {
 	}
 }
 
-// THE TWO GUARD SETS MUST AGREE, AND NOTHING MADE THEM (red team, 2026-09-08).
+// THE TWO GUARD SETS MUST AGREE (red team, 2026-09-08).
 //
 // commitToModel's own comment says it: "The guards match applyIfChanged's
 // exactly. If they drift, the model and the file disagree about what is in
-// force, which is a worse bug than this one." That was written, and then not
-// tested — the shape this release is about.
+// force, which is a worse bug than this one." A comment is not a test.
 //
 // The drift is silent and asymmetric, which is why it needs a test rather than
 // care. If applyIfChanged writes where commitToModel does not, the file moves
-// ahead of the model and the window shows a stale value — the defect just
-// fixed. If commitToModel updates where applyIfChanged does not write, the model
-// moves ahead of the FILE: the window shows a value that was never saved and is
-// gone at the next launch, which is worse because nothing on screen is wrong
-// until a restart.
+// ahead of the model and the window shows a stale value. If commitToModel
+// updates where applyIfChanged does not write, the model moves ahead of the
+// FILE: the window shows a value that was never saved and is gone at the next
+// launch, which is worse because nothing on screen is wrong until a restart.
 func TestTheModelAndTheFileAgreeAboutWhatWasWritten(t *testing.T) {
 	// Each case: a form state, and whether the write is expected. The model must
 	// change exactly when the write happens, never on one side alone.
@@ -222,6 +217,21 @@ func TestTheModelAndTheFileAgreeAboutWhatWasWritten(t *testing.T) {
 		{"dwell zero is not a choice", func(s *setupState) { s.relayDwell = 0 },
 			func(c *Config) { c.RelayDwell = time.Minute }, false,
 			func(d Dashboard) any { return d.cfg.RelayDwell }, time.Minute},
+		// THE STATION'S TWO ON ESC (U2-61): the model took them on either exit,
+		// the file only on enter - gone at the next launch.
+		{"transmitter moves", func(s *setupState) { s.txRef = &snapshot.LocationRef{Label: "Reno, NV", Lat: 39.5, Lon: -119.8} },
+			func(c *Config) { c.SetTransmitter = func(snapshot.LocationRef) {} }, true,
+			func(d Dashboard) any {
+				if d.cfg.Transmitter == nil {
+					return ""
+				}
+				return d.cfg.Transmitter.Label
+			}, "Reno, NV"},
+		{"service radius changes", func(s *setupState) { s.serviceMi = "75" },
+			func(c *Config) {
+				c.SetServiceRadius, c.ServiceRadiusMi, c.ServiceRadiusMinMi, c.ServiceRadiusMaxMi = func(int) {}, 50, 10, 250
+			}, true,
+			func(d Dashboard) any { return d.cfg.ServiceRadiusMi }, 75},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := &setupHarness{}

@@ -64,12 +64,16 @@ type Provider struct {
 
 }
 
+// newGridMemo is the grid memo's constructor as a value, so that New does
+// not call a function of its own name.
+var newGridMemo = bodymemo.New[string, gridDoc]
+
 // New builds the provider. base "" means the production API.
 func New(client *httpx.Client, base string) *Provider {
 	if base == "" {
 		base = "https://api.weather.gov"
 	}
-	return &Provider{client: client, base: base, cache: map[snapshot.LocationKey]*gridInfo{}, grids: bodymemo.New[string, gridDoc](maxGrids), now: time.Now}
+	return &Provider{client: client, base: base, cache: map[snapshot.LocationKey]*gridInfo{}, grids: newGridMemo(maxGrids), now: time.Now}
 }
 
 // ID implements snapshot.Provider.

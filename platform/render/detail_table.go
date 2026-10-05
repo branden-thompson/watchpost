@@ -2,11 +2,10 @@ package render
 
 // detail_table.go — a table INSIDE a report section (UAT 2026-09-07).
 //
-// THROUGH THE KIT, LIKE EVERY OTHER TABLE. The detail report's sections lay
-// their columns out by hand with PadTo, which is why adding a column means
-// re-counting every literal in the function — and why the fire section's
-// columns did not survive being asked to carry one more thing. A table with a
-// column spec can gain or lose a column without anyone re-counting anything.
+// THROUGH THE KIT, LIKE EVERY OTHER TABLE. Columns laid out by hand with PadTo
+// mean re-counting every literal in the function to add one, and they do not
+// survive being asked to carry one more thing. A table with a column spec can
+// gain or lose a column without anyone re-counting anything.
 //
 // ROWS ONLY, NO HEADER ROW: a detail section already has a heading of its own,
 // and a second bar of column names inside a report that is read top-to-bottom
@@ -155,9 +154,9 @@ func (o Opts) DetailTable(cols []StatusColumn, rows []StatusRow, inner, gutter i
 		return nil
 	}
 	// FIT FIRST, THEN THE GUTTERS. statusGutters adds its cell of air to a
-	// column's WIDTH, and a column with no width yet gets nothing — which is
-	// exactly how a right-aligned fit column ended up touching the name beside
-	// it. Sizing first gives it something to add to.
+	// column's WIDTH, and a column with no width yet gets nothing — so a
+	// right-aligned fit column would touch the name beside it. Sizing first
+	// gives it something to add to.
 	if gutter > 0 {
 		cols, rows = statusGutters(fitColumns(cols, rows), rows)
 		cols, rows = shrinkToFit(cols, rows, inner, gutter)

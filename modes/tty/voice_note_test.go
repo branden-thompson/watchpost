@@ -13,15 +13,15 @@ import (
 //
 // A voice preview takes seconds (Piper reads its model on every run) and can
 // fail. The deck says so — "loading <voice>…", "preview failed: <err>" — and
-// those words land in d.voiceNote, which the retired [V] chooser drew and nothing
-// else does. Unless the frame reads it, `p` is silent while it works and silent
-// when it fails, which is UAT 119's complaint with the feedback removed.
+// those words land in d.voiceNote. Unless the frame reads it, `p` is silent
+// while it works and silent when it fails — UAT 119's complaint, with the
+// feedback removed.
 //
 // TWO ASSERTIONS, AND THE SECOND IS THE ONE THAT BITES. The text must be in the
 // frame; and the frame must CHANGE when the note arrives. Settings is memoised
 // on setup.gen, so a note stored without touching the generation would be
-// written and never drawn — the still-picture defect that cost three UAT rounds
-// (F-30). A test that only checked the string would pass against that.
+// written and never drawn — the still-picture defect (F-30). A test that only
+// checked the string would pass against that.
 func TestAVoiceNoteFromTheDeckIsDrawnUnderTheRowThatAskedForIt(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	d := setupGolden(t, 133, 44, false, rowCastAlerts)
@@ -43,8 +43,7 @@ func TestAVoiceNoteFromTheDeckIsDrawnUnderTheRowThatAskedForIt(t *testing.T) {
 	// AND THE FRAME IS RENDERED HERE, DELIBERATELY. Without this the memo has
 	// nothing cached at the current generation, so the next View is a miss and
 	// draws the note whether or not the generation moved — a pin ABOVE the cache
-	// cannot see a cache bug (F-30's own lesson, and this test failed to catch
-	// its own control until the render was added).
+	// cannot see a cache bug (F-30).
 	primed := stripANSITest(model.(Dashboard).View().Content)
 	if strings.Contains(primed, "loading Karen") {
 		t.Fatal("the note is on screen before the deck said anything")

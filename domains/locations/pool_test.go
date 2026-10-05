@@ -47,9 +47,9 @@ func TestThePoolIsThreeTiersInsideTheFence(t *testing.T) {
 	seen := map[snapshot.LocationKey]bool{}
 	for _, r := range got {
 		// SOMETHING TO SAY, SOMEWHERE TO SAY IT ABOUT, A POSTAL CODE THE CARD
-		// NAMES, AND A CLOCK. The hyper-local tier came back with no timezone
-		// at all on the first build — every place the city table does not hold,
-		// which is the whole reason that tier exists.
+		// NAMES, AND A CLOCK. The hyper-local tier is the one at risk of carrying
+		// no timezone: it is every place the city table does not hold, which is the
+		// whole reason that tier exists.
 		if r.Label == "" || r.Lat == 0 || r.Lon == 0 || r.Zip == "" || r.TZ == "" {
 			t.Errorf("a pool entry the station cannot read: %+v", r)
 		}
