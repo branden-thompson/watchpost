@@ -2,15 +2,15 @@ package app
 
 // read_script.go — the Reader (MVS-D-77, T3.8).
 //
-// ONE READER, TWO CALLERS. The live takeover reads through it today; the
-// Director's Speak executor reads through it at T3.10. Two implementations of
-// MVS-D-72's pacing would be two places for the ruling to drift, and the pacing
-// is the thing a listener actually hears — the HUM LEAD found the old pacing by
-// ear, on a real alert, not by any gate.
+// ONE READER, TWO CALLERS. The live takeover and the Director's Speak executor
+// both read through it. Two implementations of MVS-D-72's pacing would be two
+// places for the ruling to drift, and the pacing is the thing a listener
+// actually hears — a pacing fault is found by ear, on a real alert, not by any
+// gate.
 //
 // WHAT IT OWNS: the shape of a read. The tone, the pauses between parts, and the
 // overlap that renders the next part while this one sounds, so no gap contains a
-// render — the ~1 s that made a takeover "feel broken".
+// render — the ~1 s that makes a takeover "feel broken".
 //
 // WHAT IT DOES NOT OWN: the words (the Composer), which alerts are in the burst
 // (the Producer), or when it is read (the Director). It is handed a script and
@@ -27,13 +27,9 @@ import (
 // gapAfter is MVS-D-72's structure, in ONE place: how long the Reader waits
 // after a part before the next begins.
 //
-// AND IT IS ONE PLACE NOW. That claim was false when it was written — the shape
-// was here and all four numbers were in the PRODUCER's file, so someone told to
-// change the pause between alerts edited this switch and found nothing to
-// change (red team 2026-09-05, Junior-Dev 10). The constants moved to the
-// bottom of this file on 2026-09-06 rather than the claim being softened: the
-// Reader owns pacing (S-7), so the numbers belong with the rule that reads
-// them.
+// THE NUMBERS LIVE WITH IT, at the bottom of this file: the Reader owns pacing
+// (S-7), so someone told to change the pause between alerts finds the rule and
+// its numbers together rather than a switch with nothing to change.
 //
 //	<tone>  2 s  <header>  1 s  <alert-1>  1 s  …  <alert-n>  2 s  <tail>
 //
@@ -66,8 +62,8 @@ type readHooks struct {
 // the part before it, and where the alert lines begin and end.
 //
 // A STRUCT RATHER THAN SIX ARGUMENTS. The look-ahead crosses iterations, which
-// is what made a single function do too much — P10 measured readScript at 20
-// against a bound of 15. Naming the state lets each step be its own step.
+// would make a single function do too much for P10's bound of 15. Naming the
+// state lets each step be its own step.
 type reader struct {
 	s         *speaker
 	h         readHooks
@@ -103,9 +99,8 @@ func readScript(s *speaker, sc lineup.Script, h readHooks) bool {
 // (FR-9.2).
 //
 // A TONE IS A PROMISE OF WORDS. The listener hears the attention tone, leans
-// in, and gets nothing — the failure reported three times in one burst at UAT
-// 2026-09-06 and impossible to diagnose from the outside, because a read that
-// ends early is Routed and raises nothing (I-2).
+// in, and gets nothing — a failure impossible to diagnose from the outside,
+// because a read that ends early is Routed and raises nothing (I-2).
 //
 // THE THREE LEGITIMATE TONES-WITH-NO-WORDS NEVER REACH HERE, and the check for
 // them would be a branch with no failing input (D-2). An operator pressing esc,
@@ -113,11 +108,8 @@ func readScript(s *speaker, sc lineup.Script, h readHooks) bool {
 // path to this line has already checked the air: openTone returns false when
 // its hold finds the context gone, and readPart checks before every callout. To
 // arrive here is to have passed an air check, so a guard on ctx.Err() would
-// read as extra safety and be extra surface — the shape relayfault.go's own
-// empty guard had.
-//
-// A planted mutation proved it: removing that guard broke nothing, because
-// nothing could construct the state it excluded.
+// read as extra safety and be extra surface: removing it would break nothing,
+// because nothing can construct the state it excludes.
 //
 // ONLY WHEN NOTHING WAS SPOKEN. A read that got a line out and then lost
 // the rest is a different failure with a different shape, and calling it this
@@ -151,10 +143,9 @@ func (r *reader) openTone(sc lineup.Script) bool {
 	//
 	// A takeover's band callout comes from INSIDE the read, per line (cueFor),
 	// so a read that gives up here produces a tone with no callout and no words
-	// — heard three times in one burst at UAT 2026-09-06 and impossible to
-	// diagnose from the outside, because a cut-short read is Routed and
-	// therefore raises nothing (I-2). The listener hears a promise and gets
-	// silence; the log now says where the promise was broken.
+	// — impossible to diagnose from the outside, because a cut-short read is
+	// Routed and therefore raises nothing (I-2). The listener hears a promise and
+	// gets silence; the log says where the promise was broken.
 	if ok := holdRest(r.s, toneDur, toneStart); ok {
 		return true
 	}
@@ -242,13 +233,6 @@ func lastLineIndex(sc lineup.Script) int {
 }
 
 // --- MVS-D-72's pause structure, and the wait that honours it ---
-//
-// MOVED HERE FROM ticker.go (2026-09-06). The Reader's own header claimed
-// gapAfter was "MVS-D-72's structure, in ONE place" while all four numbers —
-// breakingHold and the three gaps — lived in the PRODUCER's file, so someone
-// told to change the pause between alerts edited the switch and found nothing
-// to change (red team, Junior-Dev 10). The rule and its numbers are one place
-// now, and the claim is true. A pure move: no value changed.
 
 // breakingHold is the fallback centre-hold per event when there is no audio to
 // pace it (muted, or no voice) — the visual still steps (HUM LEAD 2026-08-27).
@@ -268,8 +252,7 @@ const breakingHold = 5 * time.Second
 // pads between segments, and false of this path: a takeover renders through
 // speaker.prepare → radioDeck.render → synth.AlertNarration, which is Say plus a
 // stereo conversion and pads nothing. Subtracting it puts every gap in the burst
-// 400 ms short of its ruling, 0.6 s where MVS-D-72 says 1 s. The
-// premise was never checked against the path that uses it.
+// 400 ms short of its ruling, 0.6 s where MVS-D-72 says 1 s.
 //
 // The 2 s after the tone is not here because it is not a wait: the tone preset
 // carries its own two-second tail inside the buffer, so holding the tone's own
@@ -285,9 +268,9 @@ const (
 //
 // THE POINT OF OVERLAPPING IS LOST WITHOUT IT. A render started during the tone
 // and then a full-length hold would simply move the dead air rather than remove
-// it — the listener would wait the tone AND the render, which is what this whole
-// change exists to stop. A negative remainder means the work outran the sound and
-// there is nothing left to wait.
+// it — the listener would wait the tone AND the render, which is what the
+// overlap exists to stop. A negative remainder means the work outran the sound
+// and there is nothing left to wait.
 func holdRest(s *speaker, d time.Duration, start time.Time) bool {
 	rest := d - time.Since(start)
 	if rest <= 0 {

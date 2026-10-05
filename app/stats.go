@@ -49,6 +49,7 @@ type diagSources struct {
 	priorityPub *publisher
 	recentPub   *publisher
 	deck        *radioDeck
+	timings     *timingLog // the timing instrument's intervals (W14), nil unless switched on
 	// The three directories the disk gauges size ("" = skipped): the HTTP
 	// cache (flat), the profiles dir and the voices dir (nested).
 	cacheDir, profilesDir, voicesDir string
@@ -173,6 +174,7 @@ func runtimeCounts() (goroutines, threads, fds int) {
 func (lp *livePipelines) ttyStats() tty.Stats {
 	src := lp.sources()
 	st := tty.Stats{Requests: requestStats(src.clients)}
+	st.MapRequests = httpx.MergeRequestStats(requestStats(lp.mapClients), lp.tiles.stats()) // D-150: the radar's, the temperature's and the tiles'
 	for i, pub := range [...]*publisher{src.priorityPub, src.recentPub} {
 		if pub != nil {
 			st.Pipelines[i] = pub.stats()
@@ -186,6 +188,7 @@ func (lp *livePipelines) ttyStats() tty.Stats {
 		st.ZoneShapes = tty.ZoneShapeStats{Fetched: z.Fetched, Failed: z.Failed, Served: z.Served, Held: z.Held}
 	}
 	st.Endpoints = providerEndpoints()
+	st.MapProblems = lp.problems.last()
 	st.Uptime = time.Since(lp.started)
 	if lp.release != nil {
 		st.Version, st.Latest, st.Behind = lp.release.Status()
@@ -197,7 +200,7 @@ func (lp *livePipelines) ttyStats() tty.Stats {
 // sources gathers the live diagnostic sources (the pipelines are wired
 // after lp is built, so this is read on demand, never cached).
 func (lp *livePipelines) sources() diagSources {
-	src := diagSources{clients: lp.clients, weather: lp.weather, tides: lp.tides, deck: lp.deck,
+	src := diagSources{clients: lp.clients, weather: lp.weather, tides: lp.tides, deck: lp.deck, timings: lp.timings,
 		cacheDir: cacheDir(), profilesDir: userCacheSubdir("profiles"), voicesDir: voiceDir()}
 	for _, pr := range lp.fire {
 		if h, ok := pr.(*hms.Provider); ok {

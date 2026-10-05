@@ -2,13 +2,13 @@ package render
 
 // alert_table.go — the takeover's contents, as a table (D-103).
 //
-// HUM LEAD, UAT 2026-09-12: "Alert box is not correct / doesn't match Mock when
-// alerts are present (should be a go studs table)."
+// HUM LEAD, UAT 2026-09-12: the alert box matches the mock when alerts are
+// present — "a go studs table".
 //
-// IT WAS PROSE. `burstBody` drew the Composer's own header sentence and then each
-// alert wrapped over two lines — which reads as a paragraph when what the operator
-// is doing is SCANNING a list to decide whether to let it interrupt the programme.
-// The reference draws two columns and ten numbered rows.
+// A TABLE, NOT PROSE. A header sentence with each alert wrapped over two lines
+// reads as a paragraph when what the operator is doing is SCANNING a list to
+// decide whether to let it interrupt the programme. The reference draws two
+// columns and ten numbered rows.
 
 import (
 	"strings"
@@ -32,8 +32,8 @@ type AlertRow struct {
 // the box and no wider, and is the one that gives way when there is not room.
 //
 // THE THREE-CELL GUTTER IS THE POINT OF THE SPEC. With ALERT TYPE filling, a
-// hazard that used its last cell sat flush against the place name — which is
-// what the HUM LEAD saw: "SEVERE THUNDERSTORM WARN…Harper, KS".
+// hazard that uses its last cell would sit flush against the place name:
+// "SEVERE THUNDERSTORM WARN…Harper, KS".
 const (
 	alertNumW = 3 // "##."
 	alertGap1 = 1 // between the number and the hazard
@@ -63,14 +63,14 @@ func alertWidths(rows []AlertRow, width int) (kind, loc int) {
 	// floor before the place name is cut at all, which is the reference's own
 	// priority: an operator can place "Rancho Pen…" and cannot place "SEV. T.ST…".
 	loc = min(loc, max(alertLocMin, room-alertKindW))
-	// THE HAZARD COLUMN NEVER REACHES ZERO (D-146). `max(0, …)` let it, and a
-	// zero-width column FAILS OPEN: `truncate(s, 0)` returns the string
+	// THE HAZARD COLUMN NEVER REACHES ZERO (D-146). `max(0, …)` would let it,
+	// and a zero-width column FAILS OPEN: `truncate(s, 0)` returns the string
 	// unchanged, so the box that lists what is about to be read would spill its
 	// widest row through the right-hand border rather than cutting it.
 	//
-	// UNREACHABLE TODAY behind the 100-column refusal, and pinned anyway —
-	// this is the surface naming the hazards, and "held by a rule stated
-	// somewhere else" is how the out-of-fence defects at this exit happened.
+	// UNREACHABLE behind the 100-column refusal, and pinned anyway — this is
+	// the surface naming the hazards, and a guarantee "held by a rule stated
+	// somewhere else" fails the day that other rule moves.
 	return max(alertKindMin, room-loc), loc
 }
 

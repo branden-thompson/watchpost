@@ -70,13 +70,11 @@ func TestResamplerKeepsDurationAndLevel(t *testing.T) {
 // fakeOutput drains PCM on a goroutine and counts bytes.
 type fakeOutput struct{ bytes atomic.Int64 }
 
-// fakePlayer models an output whose SOURCE CAN RUN OUT, which is the part the
-// atomics could not express (#17).
+// fakePlayer models an output whose SOURCE CAN RUN OUT (#17).
 //
-// playing and done were one atomic.Bool and a goroutine, so Play() after EOF
-// stored true with nothing left to clear it. Under a mutex the two facts move
-// together: a player whose source is exhausted is not playing, and cannot be
-// told otherwise.
+// With playing as one atomic.Bool and a goroutine, Play() after EOF stores true
+// with nothing left to clear it. Under a mutex the two facts move together: a
+// player whose source is exhausted is not playing, and cannot be told otherwise.
 type fakePlayer struct {
 	out  *fakeOutput
 	stop chan struct{}
@@ -308,31 +306,26 @@ func TestStreamClientRefusesCrossHostRedirect(t *testing.T) {
 	}
 }
 
-// THE FAKE PLAYER COULD REPORT PLAYING FOREVER, AND THAT IS #17 (B5 opening
-// task).
+// A FAKE PLAYER MUST NOT REPORT PLAYING FOREVER (#17).
 //
 // NewPlayer starts the drain goroutine at CONSTRUCTION; the caller calls Play()
 // after. If the source is short enough that the drain reaches EOF first, the
 // order is: goroutine stores playing=false and returns, then Play() stores
 // playing=true — with nothing left running to clear it. IsPlaying() is then
 // true for the rest of the process, watch() polls forever, and the engine's
-// state stays "playing" while nothing is playing at all.
+// state stays "playing" while nothing is playing at all — "completion status:
+// {State:playing ...}" from TestSourceCompletionReportsStoppedNotFailed. It is
+// an ORDERING race, not slow work, so it turns on goroutine scheduling (and so
+// on the platform), not on CPU load or repeat count.
 //
-// THAT IS THE REPORTED SYMPTOM, EXACTLY: issue #17,
-// TestSourceCompletionReportsStoppedNotFailed on Ubuntu, "completion status:
-// {State:playing ...}" after five seconds. It also explains what the issue's
-// own measurements could not — why starving the CPU did not move the 52 ms (it
-// is an ORDERING race, not slow work), why it never reproduced on macOS
-// (goroutine scheduling), and why twenty-five repeat runs came back clean.
-//
-// THE REAL PLAYER HAS THIS RULE AND THE FAKE DID NOT. oto refuses to enter the
-// playing state when its source is spent — internal/mux/mux.go:316, in
-// playImpl: `if p.eof && len(p.buf) == 0 { return }`. The double was missing a
-// rule the production implementation states outright, which is the whole of
-// #17: the engine was never at fault, and the instrument was.
+// THE REAL PLAYER HAS THIS RULE, SO THE FAKE HAS IT TOO. oto refuses to enter
+// the playing state when its source is spent — internal/mux/mux.go:316, in
+// playImpl: `if p.eof && len(p.buf) == 0 { return }`. A double missing a rule
+// the production implementation states outright faults the instrument, not the
+// engine.
 //
 // This test forces the order rather than waiting for it, which is what makes it
-// a proof instead of another sighting.
+// a proof instead of a sighting.
 func TestAFinishedFakePlayerNeverReportsPlaying(t *testing.T) {
 	out := &fakeOutput{}
 	p, err := out.NewPlayer(strings.NewReader("")) // exhausted at once
@@ -356,9 +349,9 @@ func TestAFinishedFakePlayerNeverReportsPlaying(t *testing.T) {
 // A CLIP THAT NEVER ENDS IS REPORTED (FR-9).
 //
 // The read's duration is open-loop: the app computes a PCM length and sleeps
-// it, and nothing observes that the audio finished. playClip's watcher has
-// always known — it polls the player and stops when the audio runs out or when
-// its ten-minute budget does — and now it says so when it was the budget.
+// it, and nothing observes that the audio finished. playClip's watcher knows
+// — it polls the player and stops when the audio runs out or when its
+// ten-minute budget does — and it says so when it was the budget.
 //
 // THAT IS THE HALF THAT MATTERS. A read that finishes is the easy case; the one
 // FR-9 exists for is the read that neither finishes nor errors, the player

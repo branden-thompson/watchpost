@@ -39,8 +39,8 @@ func TestLayerIsDecodedOncePerBodyChange(t *testing.T) {
 		t.Fatalf("fetch: %v %v", err, first.Err)
 	}
 	second, _ := p.Fetch(context.Background(), snapshot.FetchReq{Kind: snapshot.KindFire, Locations: []snapshot.LocationRef{oceanside}})
-	if p.memo.Parses() != 1 || hits.Load() != 1 {
-		t.Fatalf("one decode and one request for two fetches of the same body: parses=%d requests=%d", p.memo.Parses(), hits.Load())
+	if parsesOf(p) != 1 || hits.Load() != 1 {
+		t.Fatalf("one decode and one request for two fetches of the same body: parses=%d requests=%d", parsesOf(p), hits.Load())
 	}
 	if p.MemoIncidents() != 2 {
 		t.Fatalf("the memo holds the named incidents with a point (2 of 3): %d", p.MemoIncidents())
@@ -60,5 +60,37 @@ func TestGetTextCallersMustNotMutate(t *testing.T) {
 	}
 	if sha256.Sum256(raw) != before {
 		t.Fatal("decodeLayer wrote into the body it was handed (httpx.GetText contract)")
+	}
+}
+
+// parsesOf is how many layer bodies the provider has decoded.
+func parsesOf(p *Provider) int {
+	_, n := p.MemoStats()
+	return n
+}
+
+// A BAD LAYER IS DECODED ONCE: a body that does not decode is forgotten at the
+// cache, so the next fetch asks the service again - and the same bad bytes,
+// answered again, are not decoded again; their error is kept with them.
+func TestABadLayerIsDecodedOnce(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.Header().Set("Content-Type", "application/geo+json")
+		_, _ = w.Write([]byte(`{"type":"FeatureCollection","features":[{"type":`))
+	}))
+	defer srv.Close()
+	c, err := httpx.New(httpx.Config{UserAgent: "t"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := New(c, srv.URL, fire.Rules{RadiusKm: 50, IncidentRadiusKm: 80, MinConfidence: "nominal"})
+	for range 2 {
+		if _, err := p.Incidents(context.Background()); err == nil {
+			t.Fatal("a body that does not decode came back without an error")
+		}
+	}
+	if hits.Load() != 2 || parsesOf(p) != 1 {
+		t.Errorf("%d requests and %d decodes; want the bad body asked again and decoded once", hits.Load(), parsesOf(p))
 	}
 }

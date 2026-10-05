@@ -4,10 +4,10 @@ package tty
 //
 // D-130's GATE IS THREE-STATE — a definite no is refused, "not yet known" is
 // not — and the not-yet-known branch must not fall through to `cfg.Resolve`, the
-// UNSCOPED geocoder. Falling through leaves the UAT defect D-129 was filed for
-// reachable: type a location outside the service radius and press enter before
-// the 300 ms pause elapses, and it opens. The chip is drawn AVAILABLE while
-// unsettled, so the operator has no cue to wait.
+// UNSCOPED geocoder. Falling through leaves D-129's escape reachable: type a
+// location outside the service radius and press enter before the 300 ms pause
+// elapses, and it opens. The chip is drawn AVAILABLE while unsettled, so the
+// operator has no cue to wait.
 
 import (
 	"strings"
@@ -28,7 +28,7 @@ func consoleLookupTyping(t *testing.T, resolved *int) Dashboard {
 		return snapshot.LocationRef{Label: "Lone Pine, CA"}, false, true, true // real, out of radius
 	}
 	// THE TEMPTING ANSWER MUST BE AVAILABLE and refused, or the test passes for
-	// the wrong reason: this is the hook the leak went through.
+	// the wrong reason: this is the hook a leak would go through.
 	d.cfg.Resolve = func(string) (snapshot.LocationRef, error) {
 		*resolved++
 		return snapshot.LocationRef{Label: "Lone Pine, CA"}, nil

@@ -147,7 +147,7 @@ func TestSevereNavTabsAndRows(t *testing.T) {
 	if d := m.(Dashboard); d.severeTab != SevereWatches || d.severeRow != 0 {
 		t.Fatalf("right: tab %v row %d", d.severeTab, d.severeRow)
 	}
-	// Back past Warnings to Emergency, which is now the leftmost tab.
+	// Back past Warnings to Emergency, the leftmost tab.
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	if d := m.(Dashboard); d.severeTab != SevereEmergency {
@@ -165,8 +165,8 @@ func TestSevereBrowseFramesMatchTheMocksAtEveryWidth(t *testing.T) {
 		if w == 133 && !strings.Contains(frame, "EXPIRES") {
 			t.Fatal("133: every column, EXPIRES included")
 		}
-		// The count is stated ONCE, on the total line — the category heading
-		// that repeated it was removed (F-20).
+		// The count is stated ONCE, on the total line — no category heading
+		// repeats it (F-20).
 		if !strings.Contains(frame, "NOTABLE EVENTS AND FORECASTS") || !strings.Contains(frame, "9 Total Category Events") {
 			t.Fatalf("%d cols: header or total line missing:\n%s", w, frame)
 		}
@@ -285,7 +285,7 @@ func TestSevereDetailShowsTheRecordAndItsChips(t *testing.T) {
 
 func TestSevereWindowNeverForwardsProviderEscapes(t *testing.T) {
 	// An OSC clipboard write, a CSI clear, a raw C1 CSI and DCS, and a newline
-	// — in every field (NFR-5; R3-B-04: a newline split a row into three).
+	// — in every field (NFR-5; R3-B-04: a newline would split a row into three).
 	evil := "x\x1b]52;c;aGVsbG8=\x07y\x1b[2Jz\u009bq\u0090r\nw"
 	row := func(s string) SevereRow {
 		return SevereRow{Key: "k", Tab: SevereWarnings, Product: s, Location: s, Declared: s, Expires: s, Record: SevereRecord{Title: s, Meta: s, Timing: s, Area: s, Paras: []string{s}}}
@@ -328,9 +328,6 @@ func TestStatusModalGaugesTheSevereIndex(t *testing.T) {
 // each with the width invariant beside the byte pin (a pin alone can freeze
 // a defect — calibration "Byte Pins Ride With Invariant Assertions").
 func TestSevereGoldens(t *testing.T) {
-	local := time.Local
-	time.Local = time.UTC
-	t.Cleanup(func() { time.Local = local })
 	cases := []struct {
 		name  string
 		w     int
@@ -623,7 +620,7 @@ func TestLoneEscThenKeyIsNotLost(t *testing.T) {
 		t.Fatal("esc+ctrl+s fused must read as esc then ctrl+s")
 	}
 	// An uppercase key after the esc arrives as alt+shift+letter with no text:
-	// it is the letter (VALIDATE 2026-08-29 — esc then S was lost on a pty).
+	// it is the letter (VALIDATE 2026-08-29 — else esc then S is lost on a pty).
 	if _, second, ok := splitEscFusion(tea.KeyPressMsg{Code: 's', Mod: tea.ModAlt | tea.ModShift}); !ok || second.String() != "S" {
 		t.Fatalf("esc+shift+s reads as esc then S: %v %q", ok, second.String())
 	}
@@ -634,7 +631,7 @@ func TestLoneEscThenKeyIsNotLost(t *testing.T) {
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	// ESC CR / ESC HT / ESC ESC read as esc then the key itself — never ctrl+m /
-	// ctrl+i (round 4, B-08: the ctrl-byte rule swallowed Enter).
+	// ctrl+i (round 4, B-08: a ctrl-byte rule would swallow Enter).
 	for _, code := range []rune{tea.KeyEnter, tea.KeyTab, tea.KeyEscape, tea.KeyUp, tea.KeyDown, tea.KeyBackspace, tea.KeyDelete, 'é'} { // R5-C-08: arrows and the rest un-fuse too
 		first, second, ok := splitEscFusion(tea.KeyPressMsg{Code: code, Mod: tea.ModAlt})
 		if !ok || first.Code != tea.KeyEscape || second.Code != code || second.Mod != 0 {
@@ -723,7 +720,7 @@ func TestSpaceInTheWindowReadsTheFocusedEvent(t *testing.T) {
 }
 
 // The chip row holds ONE line at the 80-col --ascii floor (round 4, B-03:
-// the [space] chip re-flowed the row and the golden was recorded wrapped).
+// a [space] chip that re-flows the row would leave the golden wrapped).
 func TestSevereChipsHoldOneLineAtTheASCIIFloor(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d.cfg.NarrateEvent = func(string) {}
@@ -739,8 +736,7 @@ func TestSevereChipsHoldOneLineAtTheASCIIFloor(t *testing.T) {
 }
 
 // The renderer never trusts a focus past the tab (REVIEW R5-C-07); the TOTAL
-// line says "Showing N of M" when the cap hid rows (R5-A-05, moved there from
-// the removed category heading — F-20).
+// line says "Showing N of M" when the cap hid rows (R5-A-05, F-20).
 func TestSevereRendererClampsTheFocusAndSaysShowing(t *testing.T) {
 	d := severeBench(t)
 	d.severeRow = 999
@@ -753,13 +749,12 @@ func TestSevereRendererClampsTheFocusAndSaysShowing(t *testing.T) {
 	_ = short.View().Content // no panic at the floor with a wild focus
 }
 
-// EVERY severe category has a ticker lane.
-//
-// Advisories and Special Weather Statements had tabs and no lane, and they are
-// exactly the two whose rows come only from the tracked locations — so the
-// ticker, which reads the national feed, had no way to see them at all. A window
-// that promises a category the ticker never mentions is the drift this pins.
 // EVERY CATEGORY THE WINDOW NAMES HAS A TICKER LANE — EXCEPT FORECASTS.
+//
+// Advisories and Special Weather Statements are exactly the two tabs whose rows
+// come only from the tracked locations — so without a lane the ticker, which
+// reads the national feed, has no way to see them at all. A window that
+// promises a category the ticker never mentions is the drift this pins.
 //
 // The marquee is for what is happening. A forecast or an outlook is what MIGHT
 // happen, days out, over a whole forecast area, and the HUM LEAD ruled it off

@@ -86,8 +86,12 @@ type tileKey struct {
 	tile tile
 }
 
+// newTileCache is the memo's constructor as a value, so that no function
+// here calls a function of its own name.
+var newTileCache = bodymemo.New[tileKey, []Point]
+
 func newTileMemo() *tileMemo {
-	return &tileMemo{cache: bodymemo.New[tileKey, []Point](maxTiles), split: map[string]bool{}}
+	return &tileMemo{cache: newTileCache(maxTiles), split: map[string]bool{}}
 }
 
 // points returns the tile's parsed points, parsing only when the body changed.

@@ -1,11 +1,13 @@
 package app
 
-// Quality pass Q2 (L3-F22: app's pure logic was untested — 16 % at
-// DISCOVER). Tables for the config ↔ ref conversion, the RECENT restore,
-// the coordinate parser, the M1 predicate, the keymap layer, the stale
-// warning and the deck's labels.
+// Tables for app's pure logic (L3-F22): the config ↔ ref conversion, the
+// RECENT restore, the coordinate parser, the M1 predicate, the keymap layer,
+// the stale warning and the deck's labels.
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -126,5 +128,58 @@ func TestDeckLabelNamesTheTransmitterAndItsReach(t *testing.T) {
 	d.units = render.UnitC
 	if got := d.label(st); !strings.Contains(got, "40 km") {
 		t.Fatalf("metric units show kilometres: %q", got)
+	}
+}
+
+// TestRestoreKeepsPlacesWithoutAZip is #23 at launch: a watched park without a
+// ZIP must not make every saved place without one "already watched" - each is
+// its own place, and only the park itself drops out.
+func TestRestoreKeepsPlacesWithoutAZip(t *testing.T) {
+	park := snapshot.LocationRef{Label: "Guajome Park, CA", Lat: 33.2472, Lon: -117.2711}
+	lake := snapshot.LocationRef{Label: "Lake Henshaw, CA", Lat: 33.2350, Lon: -116.7600}
+	mesa := snapshot.LocationRef{Label: "Palomar Mountain, CA", Lat: 33.3220, Lon: -116.8750}
+	got := restoreRecent([]snapshot.LocationRef{lake, park, mesa, lake}, []snapshot.LocationRef{park}, nil, 5)
+	var labels []string
+	for _, r := range got {
+		labels = append(labels, r.Label)
+	}
+	if strings.Join(labels, ";") != "Lake Henshaw, CA;Palomar Mountain, CA" {
+		t.Fatalf("saved places without a ZIP survive a restart, the watched one and repeats dropped: got %v", labels)
+	}
+}
+
+// zipIdentity is a list deciding "same place" by ZIP: two ZIPs compared, or a
+// ZIP used as a set's key.
+var zipIdentity = regexp.MustCompile(`\w\.Zip\s*==\s*\w+\.Zip\b|\[\w+\.Zip\]`)
+
+// TestNoListComparesZips is #23's guard. Three lists - ctrl+a's check, RECENT
+// and the restart's restore - decide "same place", and deciding it by ZIP alone
+// makes one watched park without a ZIP turn every other such place "already watched".
+// snapshot.PlaceID is the one definition; a ZIP comparison is allowed only on
+// a line that also proves the ZIP is not empty.
+func TestNoListComparesZips(t *testing.T) {
+	if !zipIdentity.MatchString("if r.Zip == loc.Zip {") || !zipIdentity.MatchString("used[r.Zip] = true") {
+		t.Fatal("control: the pattern no longer sees the shapes #23 was made of; this guard checks nothing")
+	}
+	for _, dir := range []string{".", "../modes/tty"} {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range entries {
+			n := e.Name()
+			if e.IsDir() || !strings.HasSuffix(n, ".go") || strings.HasSuffix(n, "_test.go") {
+				continue
+			}
+			src, err := os.ReadFile(filepath.Join(dir, n))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i, line := range strings.Split(string(src), "\n") {
+				if zipIdentity.MatchString(line) && !strings.Contains(line, `.Zip != ""`) && !strings.HasPrefix(strings.TrimSpace(line), "//") {
+					t.Errorf("%s:%d decides a place by its ZIP - an empty ZIP is no identity (#23); use snapshot.PlaceID", filepath.Join(dir, n), i+1)
+				}
+			}
+		}
 	}
 }

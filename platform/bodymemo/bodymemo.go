@@ -1,14 +1,12 @@
 // Package bodymemo caches a PARSE, keyed by whatever the caller fetches by and
 // revalidated by the body's own hash.
 //
-// WHY IT EXISTS. Two providers had written this: domains/fire/firms keyed by
-// (source, tile) over parsed FIRMS points, and domains/seismic/usgs keyed by
-// URL over decoded GeoJSON features. F-53 records them as byte-identical in
-// their stats and the same shape around it — the same tick counter, the same
-// hash revalidation, the same least-recently-used eviction, written twice. Two
-// implementations of one operation is a defect that has not happened yet: the
-// day one is corrected and the other is not, they disagree and both look right
-// in isolation.
+// WHY IT EXISTS (F-53). domains/fire/firms keys it by (source, tile) over
+// parsed FIRMS points, and domains/seismic/usgs by URL over decoded GeoJSON
+// features — the same tick counter, the same hash revalidation, the same
+// least-recently-used eviction. Two implementations of one operation is a
+// defect that has not happened yet: the day one is corrected and the other is
+// not, they disagree and both look right in isolation.
 //
 // WHAT A MEMO OWES, ruled at OQ-9 (HUM LEAD, 2026-09-07):
 //
@@ -34,16 +32,18 @@ import (
 // Memo is a bounded, hash-revalidated parse cache. The zero value is not
 // usable; call New.
 type Memo[K comparable, V any] struct {
-	mu     sync.Mutex
-	tick   uint64
-	max    int
-	items  map[K]*entry[V]
-	parses int
+	mu        sync.Mutex
+	tick      uint64
+	max       int
+	items     map[K]*entry[V]
+	parses    int
+	keepsErrs bool // a failed parse is kept with its value, and answered again for the same body
 }
 
 type entry[V any] struct {
 	sum  [sha256.Size]byte
 	val  V
+	err  error
 	used uint64
 }
 
@@ -57,24 +57,44 @@ type entry[V any] struct {
 // governs eviction.
 func New[K comparable, V any](max int) *Memo[K, V] {
 	if max < 1 {
-		// THE CLAMP IS ALL THERE IS, AND SAYING SO IS THE POINT. An earlier
-		// version called `invariant.Check(false, …)` here and discarded the
-		// error under a comment claiming the violation "appears in the invariant
-		// record". There is no invariant record: `platform/invariant` is
-		// SIDE-EFFECT-FREE — `Check` builds an error and the CALLER'S return is
-		// the recovery — and this function returns no error, so nothing
-		// happened. A check that satisfies a density metric and produces no
-		// observable effect is the proxy-gate pattern this codebase treats as a
-		// defect, and it was added the same day as a fix for that pattern.
+		// THE CLAMP IS ALL THERE IS, AND SAYING SO IS THE POINT. `platform/invariant`
+		// is SIDE-EFFECT-FREE — `Check` builds an error and the CALLER'S return is the
+		// recovery — and this function returns no error, so an
+		// `invariant.Check(false, …)` here would have no observable effect. A check
+		// that satisfies a density metric and produces no observable effect is the
+		// proxy-gate pattern this codebase treats as a defect.
 		//
-		// RETURNING AN ERROR INSTEAD WAS CONSIDERED AND NOT TAKEN: a memo is
-		// built at start-up where nothing is watching, and turning a sizing
-		// mistake into a nil dereference at the first read is worse than
-		// clamping. The bound that MATTERS — that the memo never exceeds max —
-		// is checked in `Parsed`, where it can actually break.
+		// RETURNING AN ERROR INSTEAD IS NOT TAKEN: a memo is built at start-up where
+		// nothing is watching, and turning a sizing mistake into a nil dereference at
+		// the first read is worse than clamping. The bound that MATTERS — that the
+		// memo never exceeds max — is checked in `Parsed`, where it can actually break.
 		max = 1
 	}
 	return &Memo[K, V]{max: max, items: make(map[K]*entry[V], 64)}
+}
+
+// NewKeepingErrors builds a memo that keeps a failed parse too: the value and
+// the error the parse gave are answered again for the same body, so a bad body
+// is not parsed again for the rest of its cache life - the caller forgets it
+// at the cache - and a soft error's value comes back with it.
+func NewKeepingErrors[K comparable, V any](max int) *Memo[K, V] {
+	m := New[K, V](max)
+	m.keepsErrs = true
+	return m
+}
+
+// Last is the last parse kept for k, whatever body comes next: for a caller
+// that knows the body unchanged without hashing it, or that reads what it
+// holds without fetching. ok is false before a parse was kept.
+func (m *Memo[K, V]) Last(k K) (V, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e, ok := m.items[k]
+	if !ok {
+		var zero V
+		return zero, false
+	}
+	return e.val, true
 }
 
 // Parsed is the value for this key and body, parsing only when the body has
@@ -86,25 +106,36 @@ func New[K comparable, V any](max int) *Memo[K, V] {
 func (m *Memo[K, V]) Parsed(k K, raw []byte, parse func([]byte) (V, error)) (V, error) {
 	sum := sha256.Sum256(raw)
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.tick++
 	if e, ok := m.items[k]; ok && e.sum == sum {
 		e.used = m.tick
-		return e.val, nil
+		val, err := e.val, e.err
+		m.mu.Unlock()
+		return val, err
 	}
+	m.mu.Unlock()
+	// THE PARSE RUNS OUTSIDE THE LOCK (REVIEW PF-13): bodies of different keys
+	// - tiles fetched together - parse at once instead of one after another.
 	val, err := parse(raw)
-	if err != nil {
+	if err != nil && !m.keepsErrs {
 		var zero V
 		return zero, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.tick++
+	if e, ok := m.items[k]; ok && e.sum == sum { // the same body's parse landed first
+		e.used = m.tick
+		return e.val, e.err
 	}
 	m.parses++
 	if _, ok := m.items[k]; !ok && len(m.items) >= m.max {
 		m.evictLocked()
 	}
-	m.items[k] = &entry[V]{sum: sum, val: val, used: m.tick}
+	m.items[k] = &entry[V]{sum: sum, val: val, err: err, used: m.tick}
 	// THE BOUND IS THIS PACKAGE'S THIRD RULE, CHECKED WHERE IT CAN BREAK (P10-05).
 	// OQ-9 states it in the package doc — "It is bounded. At most max entries,
-	// least-recently-used out" — and nothing asserted it: the eviction is
+	// least-recently-used out" — and this asserts it: the eviction is
 	// conditional on a miss, so the day that condition is wrong the memo grows
 	// without bound and every observable (a hit returns what a parse would,
 	// parses counts misses) goes on reading correct.
@@ -114,10 +145,10 @@ func (m *Memo[K, V]) Parsed(k K, raw []byte, parse func([]byte) (V, error)) (V, 
 	// hit path would be measured by those pins rather than by this package.
 	// A miss has already parsed and allocated; this costs nothing it did not
 	// already spend.
-	if err := invariant.Check(len(m.items) <= m.max, "the memo holds at most max entries"); err != nil {
-		return val, err
+	if bound := invariant.Check(len(m.items) <= m.max, "the memo holds at most max entries"); bound != nil {
+		return val, bound
 	}
-	return val, nil
+	return val, err
 }
 
 // evictLocked drops the least-recently-used entry (caller holds mu).

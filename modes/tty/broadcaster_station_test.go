@@ -2,14 +2,14 @@ package tty
 
 // broadcaster_station_test.go — the station line, Variant C (D-21).
 //
-// VARIANT C WAS RATIFIED AND IS ALREADY BUILT: "the station state as a labelled
-// field, the transition in parentheses." It SUPERSEDES the reference mock's
+// VARIANT C IS THE RATIFIED LINE: "the station state as a labelled field, the
+// transition in parentheses." It stands in place of the reference mock's
 // centred `{ *** ON AIR | BROADCASTING *** }` banner and the separate
 // `[ SHIFT + ENTER ] GO TO STANDBY` control row — one line carries both.
 //
-// WHAT WAS WRONG WAS THE DRAWING, NOT THE WORDING. The transition sat at a
-// HARD-CODED COLUMN, padded with literal spaces, so it only landed correctly at
-// one width — the geometry the HUM LEAD ruled out.
+// WHAT IS PINNED IS THE DRAWING, NOT THE WORDING. A transition at a HARD-CODED
+// COLUMN, padded with literal spaces, lands correctly at only one width — the
+// geometry the HUM LEAD ruled out.
 
 import (
 	"strings"
@@ -40,17 +40,17 @@ func TestEveryStationStateSaysWhatItIs(t *testing.T) {
 		if !strings.Contains(got[0], "STATION AIR:") {
 			t.Errorf("power %v: Variant C is a LABELLED FIELD; got %q", p, got[0])
 		}
-		// AND THE TRANSITION RIDES THE SECOND ROW NOW (D-107). The reference puts
+		// AND THE TRANSITION RIDES THE SECOND ROW (D-107). The reference puts
 		// the GAIN bar at the right of the state's own row, so the control that
-		// changes the state moved down beside the transmitter it belongs with.
+		// changes the state sits below it, beside the transmitter it belongs with.
 		if !strings.Contains(got[1], "SHIFT + ENTER") {
 			t.Errorf("power %v: the transition has nowhere to be; got %q", p, got[1])
 		}
 	}
 }
 
-// THE TRANSITION IS RIGHT-ANCHORED AT EVERY WIDTH. It was padded to a fixed
-// column, which lands correctly at exactly one terminal size and nowhere else.
+// THE TRANSITION IS RIGHT-ANCHORED AT EVERY WIDTH. Padding to a fixed column
+// lands correctly at exactly one terminal size and nowhere else.
 func TestTheTransitionHintIsAnchoredToTheRightEdge(t *testing.T) {
 	for _, w := range []int{100, 110, 120, 130, 150} {
 		b := NewBroadcaster()
@@ -58,10 +58,10 @@ func TestTheTransitionHintIsAnchoredToTheRightEdge(t *testing.T) {
 		b.power = lineup.Running
 		got := b.stationLine()[1]
 		// IT FILLS THE BAND'S TEXT COLUMN — the terminal less the inset it keeps
-		// on EACH side (D-80). It asked `sectionWidth()`, which is the width of
-		// a region inside the frame's WALLS, and this band has had colour for
-		// its edge since D-70: three cells too wide, and the right-hand inset
-		// had nowhere to go.
+		// on EACH side (D-80). `sectionWidth()` is the width of a region inside
+		// the frame's WALLS, and this band has colour for its edge (D-70): sized
+		// by that, it is three cells too wide, and the right-hand inset has
+		// nowhere to go.
 		if c, want := utf8.RuneCountInString(got), b.bandWidth(); c != want {
 			t.Errorf("width %d: the station line is %d cells, want the band's %d\n%q", w, c, want, got)
 			continue
@@ -122,9 +122,9 @@ func TestTheStationLineCarriesTheGainControl(t *testing.T) {
 // which is confusing - this data is also tied DIRECTLY to the ON AIR state - so
 // it should all be in 1 section."
 //
-// IT HAD A ROW IN THE STATION LINES *AND* A ROW IN THE AIR BOX, each with its own
-// selector and its own state word — two controls for one bed, which an operator
-// has to test to tell apart.
+// A ROW IN THE STATION LINES *AND* A ROW IN THE AIR BOX, each with its own
+// selector and its own state word, would be two controls for one bed, which an
+// operator has to test to tell apart.
 func TestTheBedIsDrawnOnceInsideTheStationSection(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
@@ -242,21 +242,21 @@ func TestTheSectionsBackgroundSurvivesTheGainBar(t *testing.T) {
 //	the UI to determine what is and is not ON AIR."
 //
 // THREE THINGS SAID WHERE THE STATION IS SAID: the programme's state, the bed's
-// state, and the level. The bed was a separate card at the bottom of the frame —
+// state, and the level. A separate bed card at the bottom of the frame would be
 // a second place to look for the same question.
 func TestTheBedRidesInTheStationSection(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
-	// TWO TEXT ROWS AND THE AIR BOX SINCE D-107: the station's state with its
+	// TWO TEXT ROWS AND THE AIR BOX (D-107): the station's state with its
 	// gain, where it broadcasts from with its transition, and the LIVE NOW /
-	// RELAY BED pair under them. The bed's own labelled row and the standing
-	// prose went with the duplication.
+	// RELAY BED pair under them. There is no labelled bed row and no standing
+	// prose.
 	//
-	// AND A THIRD WHILE RUNNING, RULED 2026-09-16 (F-109): FR-5.5's boundary has
-	// a line of its own. It is not the standing prose D-107 removed — that
-	// explained a state the row above already names, and this qualifies a claim
-	// the row above MAKES. It appears only ON AIR, which is the only state that
+	// AND A THIRD WHILE RUNNING (F-109): FR-5.5's boundary has a line of its
+	// own. It is not standing prose (D-107) — that would explain a state the
+	// row above already names, and this qualifies a claim the row above
+	// MAKES. It appears only ON AIR, which is the only state that
 	// can mislead, so the band is one row taller in the state that already
 	// changes its colour entire.
 	if rows := b.stationLine(); len(rows) != 3 {
@@ -275,9 +275,8 @@ func TestTheBedRidesInTheStationSection(t *testing.T) {
 	}
 }
 
-// THE SELECTOR IS ON THE BED'S ROW, which is what F-77 was open about — it went
-// missing when Variant C absorbed the control line, and the ruling put it here
-// rather than restoring a separate card.
+// THE SELECTOR IS ON THE BED'S ROW (F-77): Variant C absorbs the control line,
+// and the ruling puts the selector here rather than on a separate card.
 func TestTheBedRowCarriesItsSelector(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
@@ -286,8 +285,8 @@ func TestTheBedRowCarriesItsSelector(t *testing.T) {
 	// ASKED OF THE CHIP RENDERER, which also names the arrows in WORDS under
 	// --ascii: a terminal that cannot draw them still gets a usable control,
 	// and the test does not have to know which form it got.
-	// SHIFTED SINCE D-111, and the chip says so: the bare arrows step the card's
-	// PRESENTER now, so a chip reading `←` here would name a key that moves a
+	// SHIFTED (D-111), and the chip says so: the bare arrows step the card's
+	// PRESENTER, so a chip reading `←` here would name a key that moves a
 	// different control.
 	for _, want := range []string{chipFor("⇧←"), chipFor("⇧→")} {
 		if !strings.Contains(got, want) {
@@ -314,7 +313,7 @@ func TestTheBedRowSaysWhetherItIsCarrying(t *testing.T) {
 //
 // MEASURED AT THE VALUE COLUMN ITSELF, not at the value's TEXT: the bed's value
 // opens with a key cap, so its arrow sits one cell in from where its value
-// starts — which is what a first version of this compared, and failed on.
+// starts, and a comparison of the text fails on that cell.
 func TestTheSectionsLabelsShareAValueColumn(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
@@ -379,16 +378,16 @@ func TestTheValueColumnHoldsWithColourOn(t *testing.T) {
 
 // bedRowOf is the station section's bed row, found by its LABEL.
 //
-// BY LABEL, NOT BY INDEX. These tests indexed `[1]`, and D-71 put the
-// transmitter's identity there — so three of them failed at once for a reason
-// none of them was about. A row found by what it SAYS survives the section
+// BY LABEL, NOT BY INDEX. Row `[1]` is the transmitter's identity (D-71), and
+// a row found by index fails for a reason the test is not about whenever the
+// section gains a row. A row found by what it SAYS survives the section
 // gaining another.
 // THE BED'S KEY SURVIVES THE BOX MOVING (D-107).
 //
-// `withControl` HAD ITS OWN COPY of the air box's body width. When the box moved
-// inside the station section one copy followed and the other did not, and what
-// fell off the end of the row was the `b` chip — the key that cuts the programme
-// to the bed. Two carriers of one number, found the way they always are.
+// `withControl` READS THE AIR BOX'S BODY WIDTH FROM ITS ONE OWNER. A copy of its
+// own drifts when the box moves inside the station section, and what falls off
+// the end of the row is the `b` chip — the key that cuts the programme to the
+// bed. Two carriers of one number.
 func TestTheBedsCutKeyIsInsideTheBox(t *testing.T) {
 	for _, w := range []int{110, 130, 150, 170} {
 		b := NewBroadcaster()

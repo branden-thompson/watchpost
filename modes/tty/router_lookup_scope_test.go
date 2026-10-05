@@ -36,9 +36,9 @@ func consoleLookupWith(t *testing.T, pool ...snapshot.LocationRef) Router {
 	t.Helper()
 	d := goldenDash(t, false)
 	d.cfg.LocateInRadius = poolOf(pool...)
-	// A RESOLVER THAT WOULD SAY YES. The defect was that the console asked THIS
-	// instead of the pool, so a fixture without it could pass for the wrong
-	// reason — the test needs the tempting answer to be available and refused.
+	// A RESOLVER THAT WOULD SAY YES. The console must ask the pool and never
+	// THIS, so a fixture without it could pass for the wrong reason — the test
+	// needs the tempting answer to be available and refused.
 	d.cfg.Resolve = func(string) (snapshot.LocationRef, error) {
 		return snapshot.LocationRef{Label: "Lone Pine, CA", Tag: "LONEPINE", Zip: "93545"}, nil
 	}

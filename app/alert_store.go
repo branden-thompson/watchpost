@@ -72,7 +72,7 @@ func (s *alertStore) get(id string) (globalfeed.Event, bool) {
 // capOldest keeps the newest maxAlertRecords entries. Called under the lock.
 //
 // SORT AND TRIM, the shape seenStore.capOldest already uses — one pass rather
-// than a condition-only loop that evicts one entry per turn. The loop form was
+// than a condition-only loop that evicts one entry per turn. That loop form is
 // bounded in fact and not in shape, which is what P10-02 is about: a bound the
 // reader has to derive is a bound the next edit can remove without noticing.
 func (s *alertStore) capOldest() {

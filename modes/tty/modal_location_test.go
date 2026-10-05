@@ -12,9 +12,9 @@ import (
 )
 
 func TestLKeyOpensLookupModal(t *testing.T) {
-	// UAT 26.4 (reworded 2026-08-27): [l] Lookup Location floats the search
-	// modal; typing builds the query (global bindings must not fire); esc
-	// cancels. (ctrl+a is now Favorite — see TestFavoriteChipEnabledOnRecentRowsOnly.)
+	// UAT 26.4: [l] Lookup Location floats the search modal; typing builds the
+	// query (global bindings must not fire); esc cancels. (ctrl+a is Favorite —
+	// see TestFavoriteChipEnabledOnRecentRowsOnly.)
 	m := dash(t)
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
 	if v := m.View().Content; !strings.Contains(v, "Lookup Location") || !strings.Contains(v, "Search:") {
@@ -128,7 +128,7 @@ func TestFavoriteMutesAtTheWatchlistCap(t *testing.T) {
 
 // A lookup opens Details on the looked-up location from the FIRST frame —
 // blank until its data lands — never on the row that held the index before
-// (HUM LEAD UAT 2026-08-28: the modal opened on the old top RECENT row).
+// (HUM LEAD UAT 2026-08-28).
 func TestLookupOpensDetailsOnTheLookedUpLocationFromTheFirstFrame(t *testing.T) {
 	m := dash(t)
 	rs := snap()
@@ -165,9 +165,9 @@ func TestLookupOpensDetailsOnTheLookedUpLocationFromTheFirstFrame(t *testing.T) 
 }
 
 // A lookup with an EMPTY RECENT list (the first run) keeps its focus through
-// a priority publish and lands by identity when the rebuilt list arrives
-// (REVIEW R5-C-02: the focus fell to the first favourite and the wait never
-// cleared).
+// a priority publish and lands by identity when the rebuilt list arrives,
+// rather than falling to the first favourite with a wait that never clears
+// (REVIEW R5-C-02).
 func TestLookupWithEmptyRecentSurvivesAPriorityPublish(t *testing.T) {
 	m := dash(t)
 	m, _ = m.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{SchemaVersion: snapshot.SchemaVersion}})
@@ -195,10 +195,10 @@ func TestLookupWithEmptyRecentSurvivesAPriorityPublish(t *testing.T) {
 
 // THE ROW APPEARS WITH THE MODAL, SHIMMERING.
 //
-// A lookup put nothing in the RECENT table until the rebuilt snapshot arrived,
-// so the row simply turned up some seconds later — which reads as the app having
-// missed the keystroke. It stands there from the first frame with the same
-// loading dots a location gets on launch, and fills in where it is.
+// A row that turns up only when the rebuilt snapshot arrives, some seconds
+// later, reads as the app having missed the keystroke. So it stands there from
+// the first frame with the same loading dots a location gets on launch, and
+// fills in where it is.
 func TestALookupDrawsAShimmeringRowBeforeItsDataLands(t *testing.T) {
 	m := dash(t)
 	rs := snap()
@@ -239,5 +239,58 @@ func TestALookupDrawsAShimmeringRowBeforeItsDataLands(t *testing.T) {
 	d = m.(Dashboard)
 	if got := d.numRecent(); got != len(landed.Locations) {
 		t.Errorf("the placeholder gives way rather than doubling: %d, want %d", got, len(landed.Locations))
+	}
+}
+
+// TestAPlaceWithoutAZipCanBeFavorited is #23: a place with no ZIP (a park, a
+// lake) is its own place, not "the place whose ZIP is empty". With one such
+// place watched, ctrl+a on another must favorite it; on the same place, it
+// stays inert. Identity is sameLocation's, everywhere.
+func TestAPlaceWithoutAZipCanBeFavorited(t *testing.T) {
+	h := &fakeHooks{}
+	m := dashWithHooks(t, h)
+	watch := snap()
+	watch.Locations = append(watch.Locations, snapshot.Location{Label: "Guajome Park, CA", Lat: 33.2472, Lon: -117.2711})
+	m, _ = m.Update(SnapshotMsg{Snap: watch})
+	rs := snap()
+	rs.Locations[0].Label, rs.Locations[0].Zip, rs.Locations[0].Lat, rs.Locations[0].Lon = "Lake Henshaw, CA", "", 33.2350, -116.7600
+	m, _ = m.Update(RecentSnapshotMsg{Snap: rs})
+	for range 2 { // onto the recent row
+		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	}
+	if d := m.(Dashboard); d.selectedLocation() == nil || d.selectedLocation().Label != "Lake Henshaw, CA" {
+		t.Fatalf("the fixture must focus the lake")
+	}
+	if !m.(Dashboard).canAddFocused() {
+		t.Fatal("#23: a place without a ZIP must be addable while another place without a ZIP is watched")
+	}
+	fav, cmd := m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
+	_ = drain(t, fav, cmd)
+	if len(h.committed) != 1 || h.committed[0][0][len(h.committed[0][0])-1].Label != "Lake Henshaw, CA" {
+		t.Fatalf("ctrl+a must favorite the lake: %+v", h.committed)
+	}
+
+	same := snap()
+	same.Locations[0].Label, same.Locations[0].Zip, same.Locations[0].Lat, same.Locations[0].Lon = "Guajome Park, CA", "", 33.2472, -117.2711
+	m, _ = m.Update(RecentSnapshotMsg{Snap: same})
+	if m.(Dashboard).canAddFocused() {
+		t.Fatal("the park is already watched: ctrl+a stays inert on it")
+	}
+}
+
+// TestRecentKeepsEveryPlaceWithoutAZip is #23's sibling: the RECENT list
+// dedupes by the same identity, so looking up a second place without a ZIP
+// keeps the first, and looking up the same one again moves it to the top.
+func TestRecentKeepsEveryPlaceWithoutAZip(t *testing.T) {
+	park := snapshot.LocationRef{Label: "Guajome Park, CA", Lat: 33.2472, Lon: -117.2711}
+	lake := snapshot.LocationRef{Label: "Lake Henshaw, CA", Lat: 33.2350, Lon: -116.7600}
+	city := snapshot.LocationRef{Label: "Vista, CA", Zip: "92081", Lat: 33.2, Lon: -117.24}
+	refs := prependRef(prependRef(prependRef(nil, park), city), lake)
+	if len(refs) != 3 || refs[0].Label != lake.Label || refs[2].Label != park.Label {
+		t.Fatalf("a second place without a ZIP must not drop the first: %+v", refs)
+	}
+	refs = prependRef(refs, park)
+	if len(refs) != 3 || refs[0].Label != park.Label {
+		t.Fatalf("the same place looked up again moves to the top, once: %+v", refs)
 	}
 }

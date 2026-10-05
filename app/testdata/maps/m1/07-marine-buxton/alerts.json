@@ -1,0 +1,169 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.75f50c5d0e02845375244f41525c8e654c9e4758.001.2",
+   "type": "Feature",
+   "geometry": null,
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.75f50c5d0e02845375244f41525c8e654c9e4758.001.2",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.75f50c5d0e02845375244f41525c8e654c9e4758.001.2",
+    "areaDesc": "Hatteras Island",
+    "geocode": {
+     "SAME": [
+      "037055"
+     ],
+     "UGC": [
+      "NCZ205"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/forecast/NCZ205"
+    ],
+    "references": [],
+    "sent": "2026-09-23T18:18:00-04:00",
+    "effective": "2026-09-23T18:18:00-04:00",
+    "onset": "2026-09-23T18:18:00-04:00",
+    "expires": "2026-09-24T06:30:00-04:00",
+    "ends": "2026-09-25T23:00:00-04:00",
+    "status": "Actual",
+    "messageType": "Alert",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Likely",
+    "urgency": "Expected",
+    "event": "Coastal Flood Warning",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Newport/Morehead City NC",
+    "headline": "Coastal Flood Warning issued September 23 at 6:18PM EDT until September 25 at 11:00PM EDT by NWS Newport/Morehead City NC",
+    "description": "* WHAT...For the Coastal Flood Warning, 2 to 4 feet of inundation\nabove ground level expected in low- lying areas near shorelines\nand tidal waterways. Up to 1 foot of inundation is possible for\nsound-side flooding from Buxton southward/westward when winds\nbecome more northerly late Thursday and Friday. For the High\nSurf Advisory, large breaking waves of 10 to 15 feet in the surf\nzone. For the Beach Hazards Statements, dangerous rip currents,\nlarge breaking waves, and strong longshore currents in the surf\nzone.\n\n* WHERE...Hatteras Island.\n\n* WHEN...For the Coastal Flood Warning, until 11 PM EDT Friday.\nFor the High Surf Advisory, until 8 PM EDT Saturday. For the\nfirst Beach Hazards Statement, until 8 PM EDT this evening.\nFor the second Beach Hazards Statement, from Thursday morning\nthrough Thursday evening.\n\n* IMPACTS...Numerous roads may be closed. Portions of Highway 12\nwill be inundated.Low lying property including homes,\nbusinesses, and some critical infrastructure will be inundated.\nSome shoreline and dune erosion will occur. Dangerous swimming\nand surfing conditions and localized beach erosion. Rip currents\ncan sweep even the best swimmers away from shore into deeper\nwater. Dangerous shore break can throw a swimmer or surfer head\nfirst into the bottom causing neck and back injuries. Strong\nlongshore currents will create dangerous swimming conditions.\n\n* ADDITIONAL DETAILS...The most likely time for strong rip\ncurrents to occur is a couple hours either side of low tide,\nwhich will occur around 12:25 PM Thursday.",
+    "instruction": "Take the necessary actions to protect flood-prone property. If\ntravel is required, do not drive around barricades or through\nwater of unknown depth.\n\nSwimmers should remain out of the water due to dangerous surf\nconditions.",
+    "response": "Avoid",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "CFWMHX"
+     ],
+     "WMOidentifier": [
+      "WHUS42 KMHX 232218"
+     ],
+     "NWSheadline": [
+      "COASTAL FLOOD WARNING REMAINS IN EFFECT UNTIL 11 PM EDT FRIDAY... ...HIGH SURF ADVISORY REMAINS IN EFFECT UNTIL 8 PM EDT SATURDAY... ...BEACH HAZARDS STATEMENT REMAINS IN EFFECT UNTIL 8 PM EDT THIS EVENING... ...BEACH HAZARDS STATEMENT IN EFFECT FROM THURSDAY MORNING THROUGH THURSDAY EVENING"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.CON.KMHX.CF.W.0002.000000T0000Z-260926T0300Z/"
+     ],
+     "eventEndingTime": [
+      "2026-09-25T23:00:00-04:00"
+     ],
+     "expiredReferences": [
+      "sender@nws.invalid,urn:oid:2.49.0.1.840.0.937ed4c337ca7463af853d2c1bd6a1f65de623c6.001.1,2026-09-23T04:48:00-04:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.3d3e3c839690debe21ae4c18ac1031d1ad43d868.001.1,2026-09-23T03:11:00-04:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.cb6863eecca1480d200925ab7677336abe68afe6.001.2,2026-09-22T16:42:00-04:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "CFW"
+     ],
+     "NationalWeatherService": [
+      "CFW"
+     ]
+    }
+   }
+  },
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.bf33c9676eeff7f6c81087bd8a3588e0604a8557.003.1",
+   "type": "Feature",
+   "geometry": null,
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.bf33c9676eeff7f6c81087bd8a3588e0604a8557.003.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.bf33c9676eeff7f6c81087bd8a3588e0604a8557.003.1",
+    "areaDesc": "S of Cape Hatteras NC to Ocracoke Inlet NC out to 20 NM; Waters from Cape Hatteras to Ocracoke Inlet NC from 20 to 60 NM",
+    "geocode": {
+     "SAME": [
+      "075154",
+      "075184"
+     ],
+     "UGC": [
+      "AMZ154",
+      "AMZ184"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/forecast/AMZ154",
+     "https://api.weather.gov/zones/forecast/AMZ184"
+    ],
+    "references": [],
+    "sent": "2026-09-23T15:20:00-04:00",
+    "effective": "2026-09-23T15:20:00-04:00",
+    "onset": "2026-09-23T15:20:00-04:00",
+    "expires": "2026-09-24T03:30:00-04:00",
+    "ends": "2026-09-25T20:00:00-04:00",
+    "status": "Actual",
+    "messageType": "Alert",
+    "category": "Met",
+    "severity": "Moderate",
+    "certainty": "Likely",
+    "urgency": "Expected",
+    "event": "Gale Warning",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Newport/Morehead City NC",
+    "headline": "Gale Warning issued September 23 at 3:20PM EDT until September 25 at 8:00PM EDT by NWS Newport/Morehead City NC",
+    "description": "* WHAT...North winds 25 to 30 kt with gusts up to 40 kt and seas\n16 to 21 ft.\n\n* WHERE...The coastal and offshore waters from Cape Hatteras to\nOcracoke Inlet.\n\n* WHEN...Until 8 PM EDT Friday.\n\n* IMPACTS...Strong winds will cause hazardous seas which could\ncapsize or damage vessels and reduce visibility.",
+    "instruction": "Mariners should alter plans to avoid these hazardous conditions.\nRemain in port, seek safe harbor, alter course, and/or secure the\nvessel for hazardous conditions.",
+    "response": "Avoid",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "MWWMHX"
+     ],
+     "WMOidentifier": [
+      "WHUS72 KMHX 231920"
+     ],
+     "NWSheadline": [
+      "GALE WARNING REMAINS IN EFFECT UNTIL 8 PM EDT FRIDAY"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "VTEC": [
+      "/O.CON.KMHX.GL.W.0026.000000T0000Z-260926T0000Z/"
+     ],
+     "eventEndingTime": [
+      "2026-09-25T20:00:00-04:00"
+     ],
+     "expiredReferences": [
+      "sender@nws.invalid,urn:oid:2.49.0.1.840.0.17dfc6372c5704e277ca7f3f17a72c4a83481af9.002.1,2026-09-23T03:06:00-04:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.061d5a4196007926089641f27f75e6b5d2ef3cf0.002.1,2026-09-23T02:20:00-04:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.bcfd206785581a656ba8ed4bd6817c7f2bf98ca7.003.1,2026-09-22T14:33:00-04:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.cf63c6fb6024c5155958c1bba1c5eeed4fc0d39f.003.1,2026-09-22T05:46:00-04:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.7fa8dde9ec9421c085fc3fb489744b086adfea50.009.1,2026-09-22T03:00:00-04:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.7fa8dde9ec9421c085fc3fb489744b086adfea50.005.2,2026-09-22T03:00:00-04:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "NWS"
+     ],
+     "NationalWeatherService": [
+      "GLW"
+     ]
+    }
+   }
+  }
+ ]
+}

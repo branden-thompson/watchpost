@@ -7,8 +7,8 @@
 // It does no caching of its own beyond remembering the shapes it has parsed.
 // The client already keeps a URL-keyed store with a disk tier, honours the
 // lifetime a server declares, and revalidates a stale entry rather than
-// discarding it - which is exactly what MG-11 and MG-13 asked for, already
-// built. What is kept here is the *parsed* shape, because parsing the text
+// discarding it - which is what MG-11 and MG-13 ask for. What is kept here is
+// the *parsed* shape, because parsing the text
 // again for every frame would be the waste.
 package zones
 
@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -32,8 +33,9 @@ import (
 // DefaultBase is the service the alerts themselves come from.
 const DefaultBase = "https://api.weather.gov"
 
-// fetchAtOnce bounds how many zones are asked for at the same time. The
-// service is a public good and this is a weather station, not a crawler.
+// fetchAtOnce is how many zone requests are in flight at once - the
+// concurrency, not a count (maxAtOnce is the count). The service is a public
+// good and this is a weather station, not a crawler.
 const fetchAtOnce = 6
 
 // Zone is one forecast zone: what it is called, and what it covers.
@@ -55,9 +57,10 @@ type Zone struct {
 // well over that, and for a watchlist's own zones many times over.
 const maxHeld = 2_000
 
-// maxAtOnce bounds how many distinct zones one resolve may ask for.
+// maxAtOnce is how many distinct zones one resolve may ask for in all - a
+// count, not the concurrency (fetchAtOnce is that).
 //
-// **Nothing bounded the fan-out**, and one alerts response names the zones:
+// **The fan-out needs a bound**, because one alerts response names the zones:
 // four thousand alerts of fifty zones each is two hundred thousand requests,
 // and the client paces every request the program makes at five a second, so
 // that is eleven hours in which no weather is fetched at all. Measured
@@ -66,6 +69,11 @@ const maxHeld = 2_000
 // silent.
 const maxAtOnce = 512
 
+// maxAge is how long a held shape is served before it is fetched again on its
+// next use (0.18.0 FR-4.6, D-43): the service redraws a zone a few times a
+// year, and a map drawing last year's line would be wrong without saying so.
+const maxAge = 7 * 24 * time.Hour
+
 // Store serves zone shapes by id. It is safe for concurrent use.
 type Store struct {
 	client *httpx.Client
@@ -73,11 +81,13 @@ type Store struct {
 
 	// limit is maxHeld, except in this package's own tests, which lower it to
 	// drive the forgetting through Zone rather than calling forget by hand -
-	// the call site was what nothing exercised (RT-4).
+	// so the call site itself is exercised (RT-4).
 	limit int
 
 	mu   sync.RWMutex
 	held map[string]Zone
+	at   map[string]time.Time // when each held shape was fetched
+	now  func() time.Time     // nil is the wall clock; the tests fix it
 
 	// What this has done, for the diagnostics window. **A new path over the
 	// network with no counters is invisible** (RT-5): when a map is blank
@@ -96,6 +106,14 @@ type Stats struct {
 	Held    int   `json:"held"`    // shapes in hand now
 }
 
+// clock is the store's time: the wall clock, unless a test fixed it.
+func (s *Store) clock() time.Time {
+	if s.now != nil {
+		return s.now()
+	}
+	return time.Now()
+}
+
 // Stats reports what this store has done.
 func (s *Store) Stats() Stats {
 	if s == nil {
@@ -109,7 +127,7 @@ func New(client *httpx.Client, base string) *Store {
 	if base == "" {
 		base = DefaultBase
 	}
-	return &Store{client: client, base: strings.TrimRight(base, "/"), held: map[string]Zone{}, limit: maxHeld}
+	return &Store{client: client, base: strings.TrimRight(base, "/"), held: map[string]Zone{}, at: map[string]time.Time{}, limit: maxHeld}
 }
 
 // Zone is one zone's shape, fetched if it is not already held.
@@ -119,8 +137,9 @@ func (s *Store) Zone(ctx context.Context, id string) (Zone, error) {
 	}
 	s.mu.RLock()
 	z, ok := s.held[id]
+	at := s.at[id]
 	s.mu.RUnlock()
-	if ok {
+	if ok && s.clock().Sub(at) < maxAge {
 		s.served.Add(1)
 		return z, nil
 	}
@@ -131,7 +150,7 @@ func (s *Store) Zone(ctx context.Context, id string) (Zone, error) {
 		return Zone{}, err
 	}
 	s.mu.Lock()
-	s.held[id] = z
+	s.held[id], s.at[id] = z, s.clock()
 	over := len(s.held) > s.limit
 	s.mu.Unlock()
 	if over {
@@ -175,11 +194,12 @@ func (s *Store) Zones(ctx context.Context, ids []string) (map[string]Zone, []str
 	g.SetLimit(fetchAtOnce)
 	for _, id := range wanted {
 		g.Go(func() (err error) {
-			// **The guard has to be in the goroutine that panics.** A recover
-			// in the caller cannot catch this one: recover only works in its
-			// own goroutine, and these are children of it. The seeding path
-			// had exactly that mistake, so a nil client took the program down
-			// through a guard written to stop it.
+			// **The guard has to be in the goroutine that panics.** A panic
+			// anywhere in a fetch - the client, the geometry reader, on an
+			// answer nobody foresaw - would otherwise end the program: recover
+			// only works in its own goroutine, and these are children of the
+			// caller. A nil store and a store with no client are refused
+			// before they reach here (Zone, fetch); this is for what is not.
 			defer func() {
 				if r := recover(); r != nil {
 					mu.Lock()
@@ -215,6 +235,7 @@ func (s *Store) forget() {
 			return
 		}
 		delete(s.held, id)
+		delete(s.at, id)
 	}
 }
 
@@ -236,6 +257,9 @@ func (s *Store) Seed(ctx context.Context, ids []string) {
 // Held is how many shapes are in hand, for a caller that wants to know whether
 // seeding has finished.
 func (s *Store) Held() int {
+	if s == nil {
+		return 0
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return len(s.held)
@@ -257,9 +281,9 @@ type zonePayload struct {
 // **A UGC id says its own kind in its third character** - `INZ027` is a
 // forecast zone, `INC003` a county - and the service keeps the two apart:
 // `/zones/forecast/INC003` is a 404 and `/zones/county/INC003` is the shape.
-// Asking for everything under one of them lost every alert that named the
-// other, which on the day this was written was 47 of 332 active alerts, 45 of
-// them Flood Warnings.
+// Asking for everything under one of them would lose every alert that names
+// the other - 47 of 332 active alerts at one measurement, 45 of them Flood
+// Warnings.
 //
 // The kind is read, never guessed: an id of neither kind is refused rather
 // than sent hopefully to one of them.
@@ -277,6 +301,9 @@ func pathFor(id string) (string, error) {
 }
 
 func (s *Store) fetch(ctx context.Context, id string) (Zone, error) {
+	if s.client == nil {
+		return Zone{}, fmt.Errorf("zones: %s: no client to ask with", id)
+	}
 	kind, err := pathFor(id)
 	if err != nil {
 		return Zone{}, err
@@ -290,9 +317,41 @@ func (s *Store) fetch(ctx context.Context, id string) (Zone, error) {
 	if err != nil {
 		return Zone{}, fmt.Errorf("zones: %s: %w", id, err)
 	}
-	// **Clamped like every other string from outside** (R5-C-05). It was the
-	// one that was not: a hostile 8 MB name was held whole, and the transport
-	// ceiling times the store's cap is tens of gigabytes.
+	// **Clamped like every other string from outside** (R5-C-05). Unclamped, a
+	// hostile 8 MB name would be held whole, and the transport ceiling times the
+	// store's cap is tens of gigabytes.
 	name := plaintext.ClampField(payload.Properties.Name)
 	return Zone{ID: id, Name: name, Area: area}, nil
+}
+
+// Forget drops every shape the store holds, and says how many (0.18.0 W3.8:
+// "Clear map data"). The next use fetches again.
+func (s *Store) Forget() int {
+	if s == nil {
+		return 0
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := len(s.held)
+	s.held, s.at = map[string]Zone{}, map[string]time.Time{}
+	return n
+}
+
+// Base is the service the store reads from, so a caller that clears the HTTP
+// cache's copies of its answers can name them.
+func (s *Store) Base() string {
+	if s == nil {
+		return ""
+	}
+	return s.base
+}
+
+// ForgetCached drops the HTTP cache's copies of the store's answers - every
+// zone outline, in memory and on disk - and nothing else it caches (0.18.0
+// W3.8, FR-3.10: the zone geometry is a record of where the map looked).
+func (s *Store) ForgetCached() (int, error) {
+	if s == nil || s.client == nil {
+		return 0, nil
+	}
+	return s.client.ForgetPrefix(s.base + "/zones/")
 }

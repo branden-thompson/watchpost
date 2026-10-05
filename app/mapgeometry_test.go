@@ -40,8 +40,8 @@ func zoneServer(t *testing.T) *httptest.Server {
 			// A lake inside a COUNTY zone - a county id, which also proves the county
 			// path is reached from here. One area, two rings. **No real fixture we
 			// hold has a hole**, and without one a merge and a join produce the
-			// same counts - which a mutation of the reader proved by surviving
-			// this test. It is written out here so the distinction is visible.
+			// same counts - so a mutation of the reader that merges survives without
+			// it. It is written out here so the distinction is visible.
 			geom = []byte(`{"type":"Polygon","coordinates":[` +
 				`[[-96.9,32.6],[-96.5,32.6],[-96.5,33.0],[-96.9,33.0],[-96.9,32.6]],` +
 				`[[-96.8,32.7],[-96.7,32.7],[-96.7,32.8],[-96.8,32.8],[-96.8,32.7]]]}`)
@@ -163,10 +163,10 @@ func TestAnAlertOverManyZonesKeepsThemApart(t *testing.T) {
 	}
 }
 
-// TestSeedingIsActuallyCalled is RT-2's guard. Seeding was approved, built and
-// tested, and then nothing called it — so it passed every test it had and did
-// nothing at all. **A test of the wiring is a different test from a test of the
-// thing**, and this is the one that was missing.
+// TestSeedingIsActuallyCalled is RT-2's guard. Seeding that nothing calls
+// passes every test of seeding and does nothing at all. **A test of the
+// wiring is a different test from a test of the thing**, and this is the
+// wiring one.
 func TestSeedingIsActuallyCalled(t *testing.T) {
 	srv := zoneServer(t)
 	defer srv.Close()

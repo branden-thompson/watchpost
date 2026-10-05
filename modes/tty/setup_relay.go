@@ -45,8 +45,8 @@ func relayDwells() []relayDwell {
 // relayLabelW is the group's own label column, and relayCellW its own picker
 // cell. Both rows use both, so the chips line up down the group the way they do
 // in every other group — the shared rowControlW is 21 and the rotation's label
-// is 32, so padding to the shared column aligns nothing and the two pickers sat
-// three cells apart.
+// is 32, so padding to the shared column aligns nothing and the two pickers
+// would sit three cells apart.
 func relayLabelW() int {
 	w := 0
 	for _, l := range []string{relayDwellLabelText, relayLangLabelText} { // bounded by the labels (P10-02)

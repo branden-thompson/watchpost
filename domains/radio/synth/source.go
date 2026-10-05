@@ -54,8 +54,8 @@ func OnWriter(ctx context.Context) bool {
 // the next cycle's segments and continues; a newly issued product never swaps
 // mid-segment (§10.4).
 //
-// From 0.14.0 each segment carries a ROLE and the Source asks a resolver who
-// reads it. Two correspondents in one cycle hand over to each other by name,
+// Each segment carries a ROLE and the Source asks a resolver who reads it.
+// Two correspondents in one cycle hand over to each other by name,
 // and — this is the part R6 depends on — THE HAND-OVER LINE IS RENDERED AHEAD,
 // on the render goroutine, at the boundary where the voice changes. The writer
 // only writes it. A hand-over rendered on the writer would cost 2–20 s of
@@ -72,7 +72,7 @@ type Source struct {
 	handoff func(from, to string) string // the scripted hand-over line; nil = the built-in
 
 	// Two generations, because two different things change a voice and they
-	// must behave differently (the batch's contract 1).
+	// must behave differently (contract 1).
 	//
 	//   softGen — a HOST FACT landed: discovery finished, an install completed.
 	//     Nobody asked for it and nobody is waiting for it, so it takes effect
@@ -117,7 +117,7 @@ func (s *Source) Err() error {
 }
 
 // NewSource builds a source. voice reads every role until SetResolver is
-// called, so a caller with no cast still gets 0.13.0's behaviour. onSeg may be
+// called, so a caller with no cast gets one voice for every role. onSeg may be
 // nil.
 func NewSource(voice Voice, next func(context.Context) ([]Segment, error), onSeg func(Segment, time.Duration)) (*Source, error) {
 	if err := invariant.Check(voice != nil && next != nil, "synth: voice and segment provider are required"); err != nil {
@@ -153,10 +153,9 @@ func (s *Source) SetHandoffLine(f func(from, to string) string) {
 // next segment RENDERED — with one segment of look-ahead, two segments later —
 // and the segment already rendered plays exactly as it was rendered.
 //
-// That look-ahead delay is a discovered contract, not an accident: it was found
-// by running the design, and a test asserting "the very next segment" would be
-// asserting something the architecture cannot deliver without making the writer
-// render, which is what R6 forbids.
+// That look-ahead delay is the contract, not an accident: a test asserting "the
+// very next segment" would be asserting something the architecture cannot
+// deliver without making the writer render, which is what R6 forbids.
 func (s *Source) Invalidate() {
 	s.mu.Lock()
 	s.softGen++
@@ -253,8 +252,7 @@ func (s *Source) repeating() bool {
 }
 
 // Rate is the PCM rate, fixed for the stream's life. A cast whose voices differ
-// in rate is out of scope for 0.14.0: a resampling decorator is on the backlog,
-// and until it lands the stream keeps the rate it opened with.
+// in rate is not resampled: the stream keeps the rate it opened with.
 func (s *Source) Rate() int { return s.rate }
 
 // duration is the spoken length of stereo PCM at the stream's rate.
@@ -347,8 +345,8 @@ func (s *Source) renderAhead(ctx context.Context, seg Segment, lastVoice Voice) 
 	// voiced by the OUTGOING correspondent with the INCOMING generation: the
 	// writer would see it as current, play it as rendered, and the listener
 	// would hear the old voice with no hand-over immediately after saving.
-	// (Found as an intermittent test failure; the window is a few microseconds
-	// wide and would have been a rare, unreproducible field report.)
+	// (The window is a few microseconds wide, so the failure would be rare and
+	// unreproducible.)
 	_, hardAtStart := s.generations()
 	v, err := s.voiceFor(seg.Role)
 	if err != nil {
@@ -600,8 +598,8 @@ func (s *Source) renderText(ctx context.Context, key string, v Voice, text strin
 }
 
 // say voices text with v (uncached) as MONO PCM; callers widen at write time —
-// the cache holds mono (0.9.0 exit measurement: 64 cached stereo segments crept
-// RSS by ~35 MB in 90 s).
+// the cache holds mono, because 64 cached stereo segments grow RSS by ~35 MB in
+// 90 s.
 func (s *Source) say(ctx context.Context, v Voice, text string) ([]byte, error) {
 	if v == nil {
 		return nil, ErrNoVoice
@@ -621,7 +619,7 @@ func (s *Source) Cached() (entries int, bytes int) {
 
 // maxCachedBytes bounds the rendered-audio cache in BYTES, not entries.
 //
-// Entries stopped being a usable bound once a cycle can hold more than one
+// Entries are not a usable bound when a cycle can hold more than one
 // voice: 40 entries in one voice is ~29 MB, but the same 40 entries across two
 // correspondents plus their hand-over lines is not, and the number that matters
 // to a small Linux box is megabytes. 40 MB covers a cycle in one voice (~29 MB),

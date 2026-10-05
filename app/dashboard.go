@@ -16,6 +16,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/domains/airquality"
 	"github.com/branden-thompson/watchpost/domains/fire"
 	"github.com/branden-thompson/watchpost/domains/fire/firms"
 	"github.com/branden-thompson/watchpost/domains/fire/hms"
@@ -24,6 +25,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
 	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
+	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
@@ -32,6 +34,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/weather/nws/zones"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
+	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -79,17 +82,29 @@ func RunDashboard(version string, opt Options) error {
 		return err
 	}
 	fireProvs, firmsProv := fireProviders(client, cfg) // B5
-	lp := &livePipelines{ctx: ctx, provider: provider,
+	lp := &livePipelines{ctx: ctx, provider: provider, timings: newTimingLog(),
 		marine: []snapshot.Provider{nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, // UAT 29 / 61 / 72
 		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
 		seismic: seismicProviders(client, cfg),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
-		zoneShapes: zoneShapes}
+		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas, // 0.18.0 D-66
+		mapQuakes: newMapQuakes(client, ""),   // 0.18.0 D-122: the map's own quake feeds
+		airnow:    airquality.New(client, "")} // 0.18.0 D-138: AirNow's one national file
+	if rs, rc, err := overClient(radar.NewClient, UserAgent, radarSourcesOver); err == nil {
+		lp.radar, lp.mapClients = rs, append(lp.mapClients, rc) // W8: a radar client that cannot be built is no radar, and the map says none answered
+	}
+	if ts, tc, err := overClient(newTempClient, UserAgent, tempSourcesOver); err == nil {
+		lp.temp, lp.mapClients = ts, append(lp.mapClients, tc) // W10: the same for the temperature
+	}
 	lp.attachDiagnostics(ctx, start)
-	lp.seedZoneShapes(ctx, refs)
+	lp.tiles = &tileCounter{}
+	lp.maps = newProductionMapBuilder(version, lp.tiles, lp.seedOnFirstMap(ctx)) // 0.18.0 FR-3.2: the zones are seeded by the first map, not here
 	idx, resolver, resolverErr := loadGeodata(client)
 	prefs, setRadius := tickerState(cfg) // 0.12.0: the shared mute + alert-radius state and the radius persist hook
 	lp.giveItAStation(cfg, idx)
+	if lp.temp != nil && lp.temp.uvCities != nil {
+		lp.temp.uvCities.cities = citiesFrom(func() *geodata.Index { return lp.idx }) // UV's markers, the largest cities in view (D-167, D-186)
+	}
 	model, err := tty.NewDashboard(lp.ttyConfig(version, opt, openSetup, cfg, keyOverrides, resolver, resolverErr, firmsProv, setRadius, uiHook(prefs.clock)))
 	if err != nil {
 		return err // e.g. a '?' rebind in [keys] — actionable from term.Merge
@@ -117,24 +132,32 @@ func RunDashboard(version string, opt Options) error {
 	return nil
 }
 
+// closeOnExit closes Observer's map in the model the program ended with
+// (0.18.0 W2.6, FR-8.2): its commands cancelled and joined, the map let go.
+func closeOnExit(final tea.Model) {
+	if c, ok := final.(interface{ CloseMap() }); ok {
+		c.CloseMap()
+	}
+}
+
 // runProgram runs the terminal program and turns its failure into one the
 // listener can act on.
 //
-// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), and this file already
-// names the remedy: `tickerState` carries the comment "one owner so RunDashboard
-// stays within its statement budget". The budget drifted back over, so the same
-// answer is applied again rather than the rule exempted.
+// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), the same remedy
+// `tickerState` applies: RunDashboard stays within its statement budget rather
+// than the rule being exempted.
 //
 // THE TRANSLATION IS THE POINT, not the call. A terminal library's "open
 // /dev/tty: device not configured" names a dependency the listener did not
 // choose and no step they can take; the sentence below names the step.
 func runProgram(p *tea.Program) error {
-	_, err := p.Run()
+	final, err := p.Run()
+	closeOnExit(final) // 0.18.0 W2.6: the map's workers joined, the map let go
 	if err == nil {
 		return nil
 	}
-	// AN ACTIONABLE ERROR, NOT THE TERMINAL LIBRARY'S (VALIDATE red team,
-	// 2026-09-08). Piping or redirecting stdin surfaced "bubbletea: error
+	// AN ACTIONABLE ERROR, NOT THE TERMINAL LIBRARY'S (VALIDATE red team).
+	// Piping or redirecting stdin makes the library report "bubbletea: error
 	// opening TTY: … open /dev/tty: device not configured", which names a
 	// dependency the listener did not choose and no step they can take.
 	// Watchpost is a full-screen program: without a terminal it has nothing
@@ -168,12 +191,13 @@ func (lp *livePipelines) giveItAStation(cfg config.Config, idx *geodata.Index) {
 		lp.relayTable = tbl
 	}
 	lp.bedRadiusMi = cfg.Broadcaster.BedRadius()
+	lp.keepBedRelay(cfg)
 }
 
 // loadGeodata loads the embedded location index ONCE and builds the resolver
 // that shares it.
 //
-// ONE CONCERN, AND IT ALREADY SAID SO (Q3, L1-F21/L4-F5): the resolver and the
+// ONE CONCERN (Q3, L1-F21/L4-F5): the resolver and the
 // seed list read the same index, and loading it twice would be two answers to
 // where a place is. Extracted at the statement ceiling (P10-04, D-159).
 //
@@ -200,8 +224,8 @@ func tickerState(cfg config.Config) (tickerPrefs, func(int)) {
 // preferences AND updates the clock the running ticker pipeline reads.
 //
 // Two places, like [M]'s hook. The ticker builds its tape in this package, so a
-// tape that kept the launch-time clock would be the one surface in the app still
-// writing times the way they were written before the setting existed.
+// tape that kept the launch-time clock would be the one surface in the app not
+// writing times the way the setting says.
 func uiHook(clock *atomic.Int32) func(tty.UIPrefs) error {
 	return func(u tty.UIPrefs) error {
 		clock.Store(int32(render.ClockByKey(u.Clock)))
@@ -214,35 +238,26 @@ func uiHook(clock *atomic.Int32) func(tty.UIPrefs) error {
 // clock.
 //
 // They travel together because they are one thing — a preference a running
-// pipeline must see change — and because threading a third atomic through two
-// signatures was one too many. The clock joined them at 0.14.0: the ticker
-// builds its tape in this package, so a tape holding the launch-time clock would
-// be the one surface not following the listener's choice.
+// pipeline must see change — and because threading each one through two
+// signatures on its own is too many. The ticker builds its tape in this
+// package, so a tape holding the launch-time clock would be the one surface not
+// following the listener's choice.
 type tickerPrefs struct {
 	muted  *atomic.Bool
 	radius *atomic.Int64
 	clock  *atomic.Int32
 	// updateCheck is the listener's opt-in to the startup release check. Read
 	// once at wiring: it decides whether the check runs at all. There is no
-	// poller — FR-7.1 retired it.
+	// poller (FR-7.1).
 	updateCheck bool
 }
 
-// [M]'s PERSIST HOOK WAS HERE, and is deleted (red team 2026-09-05, C-1).
-//
-// It flipped the tone mode, the deck's live tone state and the file, and it was
-// reached through tty.Config.MuteTicker — a field declared and never called.
-// MVS-D-48 retired the one-key toggle when [M] became a deep link into the
-// Settings tone rows, and the call site went with it; the hook has been dead
-// since before this release opened. Settings persists the tone rows through
-// saveTones, which is the same three places by the path that is actually taken.
-//
 // startPipelines launches the priority, recent, and ticker pipelines and marks
 // the FIRMS status, returning the CAS-guarded first-full-snapshot timer the
 // caller reports on exit (extracted so RunDashboard stays within the P10-04
-// statement budget after the 0.12.0 ticker wiring).
+// statement budget).
 func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, refs []snapshot.LocationRef, idx *geodata.Index, cfg config.Config, client *httpx.Client, prefs tickerPrefs, start time.Time) *atomic.Int64 {
-	firstFullNanos := &atomic.Int64{} // written by concurrent tier publishes (race-fixed)
+	firstFullNanos := &atomic.Int64{} // written by concurrent tier publishes, so atomic
 	// The favourites ride the client's priority lane (UAT 64): their
 	// requests never queue behind the seed pipeline's launch burst.
 	lp.severe = newSevereDeck(p.Send) // 0.13.0: the window's index — fed by the ticker cycle and by both publishers' hooks (the snapshot each is about to send)
@@ -254,14 +269,14 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 			firstFullNanos.CompareAndSwap(0, int64(time.Since(start)))
 		}
 		lp.severe.SetLocations(0, snap)
-	})
+	}, lp.recordFragment)
 	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
 	// THE STATION'S POOL RIDES THE RECENT PIPELINE (D-99). The console's pool table
 	// needs enough weather to decide on a location, and this is the machinery that
 	// already fetches a bounded set at a slow cadence — see withPool.
 	//
 	// `lp.poolRefs` DIRECTLY, not `currentPool()`: the lock is held here.
-	recentRefs := withPool(restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), lp.poolRefs)
+	recentRefs := withPool(restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), lp.poolRefs, refs)
 	lp.recent = startRecent(ctx, p, lp.providers(), recentRefs, func(snap *snapshot.Snapshot) { lp.severe.SetLocations(1, snap) }) // the tty owns the caps (Q6, L3-F11)
 	lp.mu.Unlock()
 	lp.markFIRMS()                         // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
@@ -276,7 +291,8 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// goroutine, because it is network work and the dashboard must not wait for
 	// it to open.
 	go lp.rebed(ctx)
-	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send) // a read ends with the app (A-08)
+	lp.startHistory(ctx, tty.HistoryRetention{Hours: cfg.HistoryHours, Trends: cfg.HistoryTrends}) // W18.3b: recorded whenever watchpost runs, in any mode (D-172), kept as the Data tab chose (D-175)
+	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send)                // a read ends with the app (A-08)
 	if lp.deck != nil {
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
 	}
@@ -296,6 +312,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 		// and standby has to reach the words that are already going out.
 		if lp.deck != nil {
 			mc.silenceProgramme = lp.deck.stopRead
+			mc.playBed, mc.stopBed = lp.playBed, lp.stopBed // the bed heard on air and on a cut, stopped on standby (D-215)
 		}
 		mc.mu.Unlock()
 	}
@@ -303,13 +320,12 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 		return scopeFor(&lp.owner, func() airScope { return listenerScope(prefs.radius, lp.currentWatch) }, lp.currentStation)
 	}) // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
 	// The schedule runs from here, over the SAME arbiter and effector the ticker
-	// was just given. It drives the live alert rail since T3.10b — so a
-	// listener notices nothing; T3.2b is the first thing it owns.
+	// is given above, and it drives the live alert rail.
 	// TWO LISTS, BECAUSE THERE ARE TWO PROGRAMMES (D-72, D-76). The
 	// STATION's pool is what its Producer offers and what its Composer resolves
 	// against; the LISTENER's watchlist is what the monitor's rotation moves
-	// through. D-72 moved all three seams to the pool and that was two-thirds
-	// right — the cut-over belongs to the monitor.
+	// through: the station's seams read the pool, and the cut-over belongs to
+	// the monitor.
 	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.resolvable, lp.currentWatch, lp.ticker, p.Send,
 		bedSeams{note: lp.noteBedCarrying, selected: lp.selectedRelay})
 	lp.wireDeckWarnings()
@@ -317,49 +333,10 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 }
 
 // ttyConfig assembles the dashboard config from the wired pipelines and the
-// launch switches — the hook set the TTY reads (extracted so RunDashboard stays
-// within the P10-04 length budget after the 0.12.0 ticker wiring).
+// launch switches: the hook set the TTY reads.
 func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, cfg config.Config, keyOverrides term.KeyMap, resolver *locations.Resolver, resolverErr error, firmsProv *firms.Provider, setRadius func(int), setUI func(tty.UIPrefs) error) tty.Config {
-	return tty.Config{
+	c := tty.Config{
 		Version: version, KeyOverrides: keyOverrides, ASCII: opt.ASCII,
-		// THE AIR FOLLOWS THE SURFACE (D-73). One rail, one fence, and this is
-		// what moves it between the listener's filter and the station's service
-		// area.
-		OnSurface: lp.takeTheAir,
-		// THE BED'S SELECTOR (D-78), walking the STATION's fence.
-		StepBedRelay: lp.stepBedRelay,
-		// WHERE THE STATION TRANSMITS FROM, AT LAUNCH (D-72). Changes arrive as
-		// a message; this is what the console opens with, because the program's
-		// loop is not running when the pool is first derived.
-		// AND AT LAUNCH, THE SAME PAIR (D-93). `publishArea` covers every later
-		// change; the program's loop is not running when the pool is first
-		// derived, so this is how the console opens with both.
-		// AND THE TWO SETTINGS THAT DERIVE IT (D-115, F-87). The console draws
-		// them and writes them; the app persists and RE-DERIVES, which is the half
-		// the HUM LEAD asked to be able to UAT.
-		// THE OPERATOR'S TWO ACTS ON A CARD (D-118). Told to the schedule as
-		// EVENTS, which is FR-3.3: "an action must never be shown as taken unless
-		// the schedule took it".
-		MoveCard: lp.moveCard,
-		DropCard: lp.dropCard,
-		// THE OPERATOR'S REQUEST, AND THE LOOKUP THAT VALIDATES IT (R4).
-		LocateInRadius:  lp.locateInRadius(resolver),
-		RequestCard:     lp.requestCard,
-		Transmitter:     transmitterOf(cfg),
-		SetTransmitter:  lp.setTransmitter,
-		ServiceRadiusMi: int(cfg.Broadcaster.ServiceRadius()),
-		// THE BOUNDS TRAVEL WITH THE VALUE THEY BOUND (D-124). `platform/config`
-		// owns these two numbers alone. Restating them in the window would put a
-		// test in this package between two copies, and a fact with one owner needs
-		// no such tie.
-		ServiceRadiusMinMi: config.MinServiceRadiusMi,
-		ServiceRadiusMaxMi: config.MaxServiceRadiusMi,
-		SetServiceRadius:   lp.setServiceRadius,
-		StationArea: tty.StationAreaMsg{
-			Transmitter: lp.currentStation().transmitter,
-			RadiusMi:    lp.currentStation().radiusMi,
-			Pool:        lp.currentPool(),
-		},
 		Stats:          lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
 		NarrateEvent:   lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
 		EndEventRead:   lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
@@ -367,6 +344,11 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		SetAlertRadius: setRadius,
 		RelayDwell:     lp.relayDwell(),
 		SetRelayDwell:  lp.setRelayDwell(),
+		History:        tty.HistoryRetention{Hours: cfg.HistoryHours, Trends: cfg.HistoryTrends}, // W18: the Data tab's HISTORY (D-175, D-177)
+		SetHistory:     lp.setHistory,
+		ClearHistory:   lp.clearHistory,
+		HistoryUsage:   lp.historyUsage,
+		HistoryCost:    lp.historyCost, // a longer retention says what it costs (D-231)
 		RelayLang:      lp.relayLang(),
 		TuneRelay:      lp.tuneRelay(),
 		ReadReport:     lp.readReport(),
@@ -384,15 +366,82 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		Units:          cfg.Units,
 		Clock:          cfg.Clock,
 		Hydrate:        lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
-		Credits:        credits(),                     // data-source credits, licence obligations included (UAT 75)
+		CreditGroups:   creditGroups(),                // About's data sets, a group a provider, each source once (W21)
+		AboutWarnings:  aboutWarnings(),               // About's warnings, the life-safety pointer last (W21, D-229)
 		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules
-		// THE SAME OWNER FOR THE TWO RINGS. The detail states each ring beside
-		// the list it admits, so the window and the spoken report cannot
-		// disagree about how far either looked.
+		// ONE OWNER FOR THE TWO RINGS: the detail states each ring beside the
+		// list it admits, so the window and the spoken report agree on how far
+		// either looked.
 		FireRadiusKm:         fireRules(cfg.Fire).RadiusKm,
 		FireIncidentRadiusKm: fireRules(cfg.Fire).IncidentRadiusKm,
 		SeismicDays:          seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
 	}
+	lp.stationConfig(&c, cfg, resolver)
+	lp.mapConfig(&c, cfg)
+	return c
+}
+
+// stationConfig is the Broadcaster's hooks: the air, the bed, the operator's
+// acts on a card and the station's place and reach.
+func (lp *livePipelines) stationConfig(c *tty.Config, cfg config.Config, resolver *locations.Resolver) {
+	// THE AIR FOLLOWS THE SURFACE (D-73): one rail, one fence, moved between
+	// the listener's filter and the station's service area.
+	c.OnSurface = lp.takeTheAir
+	c.StepBedRelay = lp.stepBedRelay     // THE BED'S SELECTOR (D-78), walking the station's fence
+	c.ToggleBedRelay = lp.toggleBedRelay // and its play key (D-215)
+	// THE OPERATOR'S TWO ACTS ON A CARD (D-118), told to the schedule as
+	// events: an action is never shown as taken unless the schedule took it
+	// (FR-3.3).
+	c.MoveCard, c.DropCard = lp.moveCard, lp.dropCard
+	// THE OPERATOR'S REQUEST, AND THE LOOKUP THAT VALIDATES IT (R4).
+	c.LocateInRadius, c.RequestCard = lp.locateInRadius(resolver), lp.requestCard
+	// WHERE THE STATION TRANSMITS FROM AND HOW FAR (D-72, D-93), and the two
+	// Settings that derive it (D-115): the console draws and writes them, the
+	// app persists and re-derives. Later changes arrive as a message; this is
+	// what the console opens with.
+	c.Transmitter, c.SetTransmitter = transmitterOf(cfg), lp.setTransmitter
+	c.ServiceRadiusMi, c.SetServiceRadius = int(cfg.Broadcaster.ServiceRadius()), lp.setServiceRadius
+	// THE BOUNDS TRAVEL WITH THE VALUE THEY BOUND (D-124): `platform/config`
+	// owns both numbers alone.
+	c.ServiceRadiusMinMi, c.ServiceRadiusMaxMi = config.MinServiceRadiusMi, config.MaxServiceRadiusMi
+	c.StationArea = tty.StationAreaMsg{
+		Transmitter: lp.currentStation().transmitter,
+		RadiusMi:    lp.currentStation().radiusMi,
+		Pool:        lp.currentPool(),
+	}
+}
+
+// mapConfig is the map window's hooks and Settings (0.18.0).
+func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
+	c.NewMap = lp.newMap()                                             // 0.18.0: the map window builds it on the first g (FR-3.2)
+	c.MapFeed = lp.mapFeed                                             // 0.18.0: the alerts it draws (FR-4.1)
+	c.MapRadar = lp.mapRadar                                           // 0.18.0 W8: the radar it draws
+	c.MapTemperature = lp.mapTemperature                               // 0.18.0 W10: the temperature it draws
+	c.ClearMapData = lp.clearMapData                                   // 0.18.0 W3.8: Settings' Clear map data
+	c.MapDisk = lp.mapDisk()                                           // PF-4: the live map names its disk cache again after a clear
+	c.MapSources = mapSourceList()                                     // 0.18.0 W1.12, D-75: what the map contacts, for the Status window (FR-9.4)
+	c.MapRetention = mapRetention()                                    // 0.18.0 W3.8 (FR-3.9)
+	c.Maps = cfg.Maps                                                  // 0.18.0 W1.10
+	c.MapDescription = cfg.MapDescription                              // 0.18.0 W1.10
+	c.MapScale = cfg.MapScale                                          // 0.18.0 W1.11, W4.3
+	c.MapNearbyKm = cfg.MapNearbyKm                                    // 0.18.0 W1.11, W9.2
+	c.MapRadarSource = cfg.MapRadarSource                              // D-83: the lower 48's radar
+	c.MapTempSource = cfg.MapTemperatureSource                         // D-93, D-190: the map's temperature
+	c.MapRainDetail = cfg.MapRainDetail                                // D-192: the rain's density past NDFD's reach
+	c.MapUVCities = cfg.MapUVCities                                    // D-202: how many cities UV asks EPA for
+	c.MapRadarAhead = cfg.MapRadarAheadHours                           // D-114: the radar loop's hours ahead
+	c.MapQuakeFeed = cfg.MapQuakeFeed                                  // D-122: the quakes the map draws
+	c.MapProblem = lp.problems.note                                    // D-124: the diagnostics', never the listener's
+	c.Timed = lp.timings.hook()                                        // W14's instrument: nil unless WATCHPOST_DEBUG_TIMING=1
+	c.MapFrame = newFrameLog().hook()                                  // D-198's recorder: nil unless WATCHPOST_DEBUG_MAPFRAMES names a file
+	c.MapFrameText = os.Getenv("WATCHPOST_DEBUG_MAPFRAMES_TEXT") != "" // the recorder keeps each frame's text too
+	c.MapClosed = lp.mapClosed                                         // D-162: the zone store's memory goes when the map closes
+	c.MapLayerChoice = cfg.MapLayers                                   // 0.18.0 W1.11
+	c.MapLayers = windowLayers()                                       // 0.18.0 W1.13: the registry's layers
+	c.MapCost = lp.mapCost                                             // 0.18.0 W1.14: the registry's estimate
+	c.MapDetailChoice = cfg.MapDetail                                  // UAT-1 D-65: the map's detail
+	c.MapDetailLevel = cfg.MapDetailLevel                              // UAT-1 D-67: its level
+	c.MapAreaName = mapAreaNamer(lp.idx)                               // UAT-1 D-64: the title names what is in view
 }
 
 // attachDeck takes ownership of the player and starts what rides with it: the
@@ -481,11 +530,19 @@ const coopsRatePerSec = 5
 // dashboard and report modes — single owner of the pacing knob). The
 // client is returned too, so its request counters can be read.
 func newCoops() (*coops.Provider, *httpx.Client, error) {
-	c, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: coopsRatePerSec, MaxRetries: 1, CacheDir: cacheDir()})
+	c, err := httpx.New(coopsClientConfig())
 	if err != nil {
 		return nil, nil, err
 	}
 	return coops.New(c, ""), c, nil
+}
+
+// coopsClientConfig is the CO-OPS client's configuration, named so a test
+// holds it: https only, and no dial to a private address but the proxy the
+// environment names (D-270).
+func coopsClientConfig() httpx.Config {
+	return httpx.Config{UserAgent: UserAgent, RatePerSec: coopsRatePerSec, MaxRetries: 1, CacheDir: cacheDir(),
+		RefusePrivate: true, HTTPSOnly: true}
 }
 
 // attachRadio wires the player (B4): the model needs the player and the
@@ -495,15 +552,15 @@ func newCoops() (*coops.Provider, *httpx.Client, error) {
 // THE MODEL IS THE ROUTER (P0, FR-1.1). Every sender in this package keeps
 // `p` or `p.Send` UNCHANGED and that is correct, not an oversight: a send
 // goes to the PROGRAM, and the program delivers to whichever model it holds.
-// The plan and its red-team audit both said ~9 senders would need rewiring;
-// measuring it found ZERO. `p.Send` was never model-scoped. Returns the program,
-// the deck (nil when it could not be built) and a stop func.
+// `p.Send` is not model-scoped, so no sender needs rewiring. Returns the
+// program, the deck (nil when it could not be built) and a stop func.
 func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provider, cfg config.Config, mode tty.RadioMode, fire func(snapshot.LocationRef) synth.FireReport, seismic func(snapshot.LocationRef) synth.SeismicReport, marine func(snapshot.LocationRef) synth.MarineReport) (*tea.Program, *radioDeck, func()) {
 	deck := newRadioDeck(nil, client, provider, render.UnitF)
 	if deck == nil {
 		return tea.NewProgram(tty.NewRouter(model)), nil, func() {}
 	}
 	deck.voiceID, deck.pref, deck.fire, deck.seismic, deck.marine = cfg.Voice, mode, fire, seismic, marine
+	model = keptRadio(deck, model, cfg)
 	// The whole cast, from the config: setCast validates it against this host
 	// OUTSIDE the deck's lock and memoises the problems for [S] (P4).
 	deck.setCast(castLoaded(cfg))
@@ -589,10 +646,52 @@ func saveRadioMode(mode tty.RadioMode) error {
 	return savePreference(func(cfg *config.Config) { cfg.Radio.Mode = mode.Key() })
 }
 
+// keptRadio gives the deck and the panel the radio's kept choices (D-214):
+// the relay's pacing and language, the volume before anything plays, and the
+// panel's repeat and visualizer with the hook that keeps them.
+func keptRadio(deck *radioDeck, model tty.Dashboard, cfg config.Config) tty.Dashboard {
+	deck.relayDwell, deck.relayLang = relayPrefsFrom(cfg)
+	prefs := radioPrefsFrom(cfg)
+	if deck.engine != nil {
+		deck.SetVolume(prefs.Volume)
+	}
+	return model.WithRadioPrefs(prefs, saveRadioPrefs)
+}
+
+// defaultVolume is the radio's volume with none kept.
+const defaultVolume = 55
+
+// saveRadioPrefs keeps the radio panel's choices (D-214).
+func saveRadioPrefs(p tty.RadioPrefs) error {
+	return savePreference(func(cfg *config.Config) {
+		vol := p.Volume
+		cfg.Radio.Volume, cfg.Radio.Repeat, cfg.Radio.Visualizer = &vol, p.Repeat.Key(), p.Viz
+	})
+}
+
+// radioPrefsFrom is the panel's kept choices: the default volume where none
+// is kept.
+func radioPrefsFrom(cfg config.Config) tty.RadioPrefs {
+	vol := defaultVolume
+	if cfg.Radio.Volume != nil {
+		vol = min(max(*cfg.Radio.Volume, 0), 100)
+	}
+	return tty.RadioPrefs{Volume: vol, Repeat: tty.ParseRepeatMode(cfg.Radio.Repeat), Viz: cfg.Radio.Visualizer}
+}
+
+// relayPrefsFrom is the relay's kept pacing and language: zero and "" where
+// none is kept, which the deck reads as unset.
+func relayPrefsFrom(cfg config.Config) (time.Duration, string) {
+	d, err := time.ParseDuration(cfg.Radio.RelayDwell)
+	if err != nil || d < 0 {
+		d = 0
+	}
+	return d, cfg.Radio.RelayLang
+}
+
 // savePreference is the no-error convenience over config.Mutate, for the
-// preference writes that cannot fail. It is an ADAPTER now, not a second write
-// path: it once called itself "the one path" while five siblings bypassed it,
-// which is the defect FR-1.1 closes.
+// preference writes that cannot fail. It is an ADAPTER over config.Mutate, not
+// a second write path (FR-1.1).
 func savePreference(edit func(cfg *config.Config)) error {
 	return config.Mutate(func(cfg *config.Config) error {
 		edit(cfg)
@@ -647,7 +746,7 @@ func newAssembler(refs []snapshot.LocationRef, providers []snapshot.Provider) *s
 }
 
 // livePipelines reconciles the running pipelines when the watchlist
-// changes (UAT 26, incremental since UAT 69): persist, then add/remove
+// changes (UAT 26, incremental per UAT 69): persist, then add/remove
 // exactly the changed locations — a lookup is one location's requests,
 // never a rebuild. Serialized — commits arrive from tea cmd goroutines.
 type livePipelines struct {
@@ -664,30 +763,47 @@ type livePipelines struct {
 	// this is only the reporting half, for [S].
 	unknownKeys []string
 
-	zoneShapes *zones.Store // the outlines an alert's zones name (0.17.0)
-	p          *tea.Program
-	provider   snapshot.Provider
-	marine     []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61)
-	fire       []snapshot.Provider // hms + wfigs + firms (B5)
-	firms      *firms.Provider     // the keyed one, so the Setup window can turn it on without a relaunch (UAT 100)
-	seismic    []snapshot.Provider // usgs (0.11.0)
-	rules      fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
-	priority   *pipeline
-	recent     *recentPipeline
-	ticker     *tickerDeck     // 0.12.0: waited at shutdown so its cache writes settle before teardown
-	severe     *severeDeck     // 0.13.0: the severe-events index the window lists
-	director   *director       // 0.13.0: the voice arbiter (app/director.go)
-	scripts    *script.Library // 0.13.0: the spoken lines (domains/radio/script)
-	reader     *eventReader    // 0.13.0: [space] in the window
-	schedule   *schedule       // 0.14.0 T3.2a: the Director, its executors and the pump — running, driving nothing yet
+	zoneShapes *zones.Store  // the outlines an alert's zones name (0.17.0)
+	radar      *radarSources // 0.18.0 W8: the map's radar sources, over their own hardened client
+	temp       *tempSources  // 0.18.0 W10: the map's temperature sources, over theirs
+	// tempAnswers keeps a whole temperature answer for its hour (W14 P-16).
+	tempAnswers lazyMemo[tempKey, tempCore]
+	// airGrids keeps each box's air quality grid for its file's hour (W14 P-19).
+	airGrids airGrids
+	history  *history.Store // W18.3b: what the sources said, recorded (D-166)
+	usage    usageCache     // its size as the Data tab says it, kept a while (U2-48)
+	// lastMapRegion is the region the map last asked temperature for: the
+	// history records it beside the station's (D-172).
+	lastMapRegion atomic.Value
+	maps          *mapBuilder // 0.18.0: builds the window's maps; nil builds none
+	p             *tea.Program
+	provider      snapshot.Provider
+	marine        []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61)
+	fire          []snapshot.Provider // hms + wfigs + firms (B5)
+	firms         *firms.Provider     // the keyed one, so the Setup window can turn it on without a relaunch (UAT 100)
+	seismic       []snapshot.Provider // usgs (0.11.0)
+	rules         fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
+	priority      *pipeline
+	recent        *recentPipeline
+	ticker        *tickerDeck          // 0.12.0: waited at shutdown so its cache writes settle before teardown
+	severe        *severeDeck          // 0.13.0: the severe-events index the window lists
+	mapQuakes     *mapQuakes           // 0.18.0 D-122: the map's quake feeds, the listener's choice
+	airnow        *airquality.Provider // 0.18.0 D-138: AirNow's reporting areas, for the map's air quality
+	mapClients    []*httpx.Client      // 0.18.0 D-150: the radar's and the temperature's, counted for MAP STATUS
+	tiles         *tileCounter         // 0.18.0 D-150: the basemap's tile fetches, counted
+	problems      mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
+	timings       *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
+	director      *director            // 0.13.0: the voice arbiter (app/director.go)
+	scripts       *script.Library      // 0.13.0: the spoken lines (domains/radio/script)
+	reader        *eventReader         // 0.13.0: [space] in the window
+	schedule      *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump
 
-	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit (0.12.0 follow-up)
+	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit
 
 	// THE STATION'S OWN WORLD (D-72, pool.go). `watchRefs` is the LISTENER's;
 	// these are the Broadcaster's — where it transmits from, how far it reaches,
-	// and the locations its Producer may offer. The two were one list serving
-	// two surfaces, and the station could never schedule more than the listener
-	// happened to watch.
+	// and the locations its Producer may offer. Two lists for two surfaces, so
+	// the station can schedule more than the listener happens to watch.
 	idx      *geodata.Index
 	station  stationArea
 	poolRefs []snapshot.LocationRef
@@ -711,8 +827,8 @@ type livePipelines struct {
 	//
 	// THE TABLE ABOVE IS NOT THIS. It lists every NOAA transmitter in the
 	// country; being in it says a tower exists, not that anything relays it.
-	// The selector walked the table and the operator could pick a callsign
-	// nothing streams — which then tuned to silence.
+	// A selector walking the table would let the operator pick a callsign
+	// nothing streams — which tunes to silence.
 	bedStations []stream.Station
 
 	// bedRefresh is how the relays are re-resolved, and it exists so a test can
@@ -722,13 +838,18 @@ type livePipelines struct {
 	// bedRelay is the relay the operator CHOSE, in the words the row shows, and
 	// "" until they choose one (F-98, D-90).
 	//
-	// REMEMBERED AND NOT MERELY PUBLISHED, which is the whole defect: the
-	// selector sent its relay to the console and kept nothing, so the SETTLE —
-	// which publishes the same row from the DIRECTOR's bed on every tick —
-	// overwrote it a second later and the choice reverted to "(no relay tuned)"
-	// whatever the operator picked. `bedPick` is an INDEX and cannot stand in for
-	// this: its zero value is a real relay, so it cannot say "nothing chosen yet".
+	// REMEMBERED AND NOT MERELY PUBLISHED: the SETTLE publishes the same row
+	// from the DIRECTOR's bed on every tick, so a relay sent to the console and
+	// kept nowhere is overwritten a second later and the row reads "(no relay
+	// tuned)" whatever the operator picked. `bedPick` is an INDEX and cannot stand
+	// in for this: its zero value is a real relay, so it cannot say "nothing
+	// chosen yet".
 	bedRelay string
+
+	// bedCall is the callsign of the relay the operator chose - kept in the
+	// file (D-214) - which the selection is matched by whenever the relays near
+	// the station move, so it follows the relay and not its position.
+	bedCall string
 
 	// owner is which surface the operator is looking at, and therefore what the
 	// alert rail is scoped to (D-73, airscope.go).
@@ -739,6 +860,14 @@ type livePipelines struct {
 	// radio deck, and the dumper itself.
 	clients []*httpx.Client
 	weather *nws.Provider
+	// areaAlerts asks the service for the alerts of areas by code, and
+	// areaMemo remembers its last answer (0.18.0 D-66, "Alerts in view").
+	areaAlerts func(ctx context.Context, areas []string) ([]snapshot.Alert, error)
+	areaMemo   lazyMemo[string, []snapshot.Alert]
+	// areasOf remembers the last view's area codes: the estimate asks for
+	// them on the UI goroutine at every answer, and a view's codes take 25
+	// scans of every town (REVIEW PF-7).
+	areasOf lastViewAreas
 	tides   *coops.Provider
 	deck    *radioDeck
 	dump    *dumper
@@ -748,14 +877,7 @@ type livePipelines struct {
 // state from whichever pipeline carries it (favourites first), with the
 // rings and the contributing feeds. Not Known → the report is skipped.
 func (lp *livePipelines) fireFor(ref snapshot.LocationRef) synth.FireReport {
-	var asms []*snapshot.Assembler
-	if lp.priority != nil {
-		asms = append(asms, lp.priority.asm)
-	}
-	if lp.recent != nil {
-		asms = append(asms, lp.recent.asm)
-	}
-	for _, asm := range asms {
+	for _, asm := range lp.assemblers() {
 		if fs, lat, lon, ok := asm.FireFor(ref); ok { // the narrow read: no snapshot clone per cycle (REVIEW C2)
 			return fireReportOf(fs, lat, lon, lp.rules, asm.ProviderStatus(lp.firms.ID()) == snapshot.ProviderOK)
 		}
@@ -767,14 +889,7 @@ func (lp *livePipelines) fireFor(ref snapshot.LocationRef) synth.FireReport {
 // quakes from whichever pipeline carries it (favourites first). No state → the
 // report is skipped.
 func (lp *livePipelines) seismicFor(ref snapshot.LocationRef) synth.SeismicReport {
-	var asms []*snapshot.Assembler
-	if lp.priority != nil {
-		asms = append(asms, lp.priority.asm)
-	}
-	if lp.recent != nil {
-		asms = append(asms, lp.recent.asm)
-	}
-	for _, asm := range asms {
+	for _, asm := range lp.assemblers() {
 		if ss, lat, lon, ok := asm.SeismicFor(ref); ok { // the narrow read: no snapshot clone per cycle (REVIEW C2)
 			return seismicReportOf(ss, lat, lon)
 		}
@@ -788,12 +903,22 @@ func (lp *livePipelines) markFIRMS() {
 		return
 	}
 	off := !lp.firms.Enabled()
-	if lp.priority != nil {
-		_ = lp.priority.asm.SetInactive(lp.firms.ID(), off)
+	for _, asm := range lp.assemblers() {
+		_ = asm.SetInactive(lp.firms.ID(), off)
 	}
-	if lp.recent != nil {
-		_ = lp.recent.asm.SetInactive(lp.firms.ID(), off)
+}
+
+// assemblers are the pipelines' assemblers that exist, favourites first: an
+// empty RECENT list starts a pipeline with none (W14, C-6).
+func (lp *livePipelines) assemblers() []*snapshot.Assembler {
+	var out []*snapshot.Assembler
+	if lp.priority != nil && lp.priority.asm != nil {
+		out = append(out, lp.priority.asm)
 	}
+	if lp.recent != nil && lp.recent.asm != nil {
+		out = append(out, lp.recent.asm)
+	}
+	return out
 }
 
 // setup is the Setup window's finish (UAT 100): persist, then key the live
@@ -822,14 +947,16 @@ func (lp *livePipelines) providers() []snapshot.Provider {
 
 func (lp *livePipelines) stopAll() {
 	lp.mu.Lock()
-	if lp.priority != nil {
-		lp.priority.stop()
-	}
-	lp.recent.stop()
-	ticker := lp.ticker
+	priority, recent, ticker := lp.priority, lp.recent, lp.ticker
 	lp.mu.Unlock()
-	// The ticker's cycle takes lp.mu (the watchlist tie), so drain it AFTER
-	// releasing the lock — waiting under it would deadlock against that tie.
+	// EVERY PIPELINE IS DRAINED AFTER RELEASING THE LOCK. A priority fetch
+	// that lands records itself in the history, which takes lp.mu, and the
+	// ticker's cycle takes it for the watchlist tie: waiting for either under
+	// the lock deadlocks, and q leaves the station running.
+	if priority != nil {
+		priority.stop()
+	}
+	recent.stop()
 	if ticker != nil {
 		ticker.stop()
 	}
@@ -837,20 +964,26 @@ func (lp *livePipelines) stopAll() {
 		lp.reader.End() // a [space] read in progress ends with the app, its goroutine waited for (A-08)
 	}
 	// LAST, and waited for. The schedule's tick goroutine writes to the pump, so
-	// both have an owner here rather than being abandoned to the context — the
-	// 0.12.0 lesson, where a fire-and-forget goroutine outlived what it wrote to
-	// and turned a release tag red on the Linux race gate.
+	// both have an owner here rather than being abandoned to the context, where
+	// a fire-and-forget goroutine can outlive what it writes to and race it.
 	lp.schedule.stop()
 }
 
 func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
-	if lp.weather != nil {
-		lp.weather.Retain(append(append([]snapshot.LocationRef(nil), watch...), recent...)) // the grid cache follows the location set (Q5, L4-F7)
-	}
 	// THE STATION'S POOL IS DERIVED BEFORE THE LOCK, not inside it: the scan
 	// reads only the embedded tables and its argument, and `lp.mu` is held for
 	// the rest of this function (D-72, pool.go).
 	nextStation, nextPool, restation := lp.reStation(watch)
+	if lp.weather != nil {
+		// THE GRID CACHE FOLLOWS EVERY PLACE THE APP FETCHES (Q5, L4-F7, W14
+		// P-13): the watchlist, the recent list and the station's pool - the
+		// pool as it will stand after this commit.
+		pool := nextPool
+		if !restation {
+			pool = lp.currentPool()
+		}
+		lp.weather.Retain(append(append(append([]snapshot.LocationRef(nil), watch...), recent...), pool...))
+	}
 	// PUBLISHED AFTER THE LOCK IS RELEASED, which is what this defer buys:
 	// deferred first, it runs LAST, and `tea.Program.Send` must never be called
 	// while `lp.mu` is held — the program's own handlers reach back into these
@@ -897,20 +1030,13 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 		// would leave it naming the region the station just left.
 		told = lp.p // read under the lock; sent above, after it
 	}
-	// THE POOL IS PART OF THE LIST, ON EVERY COMMIT AND NOT JUST AT THE SEED
-	// (D-112). This called `update(recent)` with the LISTENER's list alone, so the
-	// first time anything committed — a lookup, a favourite, a watchlist edit —
-	// `SetLocations` saw twenty-five locations that were no longer wanted, stopped
-	// every one of their schedulers and dropped their data. The pool table went
-	// back to shimmering and stayed there, which is what the HUM LEAD was looking
-	// at when rows four and down read `.·.` on a station that had been up for
-	// minutes.
-	//
-	// AND A MOVED STATION FETCHES ITS NEW CANDIDATES. Before this the new pool was
-	// PUBLISHED to the console and never fetched, so the console named a region
-	// whose weather nothing was asking for.
+	// THE POOL IS PART OF THE LIST ON EVERY COMMIT, NOT JUST AT THE SEED
+	// (D-112): reconciled against the listener's list alone, `SetLocations`
+	// would stop the pool's schedulers and drop its data. A moved station's
+	// new pool is what is fetched, as it is what is published. Watched places
+	// stay the priority pipeline's (D-208).
 	if lp.recent != nil {
-		lp.recent.update(withPool(recent, lp.poolRefs))
+		lp.recent.update(withPool(recent, lp.poolRefs, watch))
 	}
 	return nil
 }
@@ -918,11 +1044,11 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 // hydrate is the dashboard's Hydrate hook.
 func (lp *livePipelines) hydrate(ref snapshot.LocationRef) { lp.recent.hydrateHourly(ref) }
 
-// narrateEvent is the window's [space] hook — a play/PAUSE now (MVS-D-74). The deck is attached AFTER the
+// narrateEvent is the window's [space] hook — a play/PAUSE (MVS-D-74). The deck is attached AFTER the
 // dashboard is built (attachRadio needs the model), so the hook decides at
 // the press, not at wiring: with no deck to speak through the press is inert
-// — no ▶ mark, no busy reader for a silent record (R5-B-04; VALIDATE
-// 2026-08-29 found the wiring-time check had muted the chip for everyone).
+// — no ▶ mark, no busy reader for a silent record (R5-B-04). A wiring-time
+// check would mute the chip for everyone.
 
 // relayDwell is what the Settings window opens showing. Nil-safe: the deck is
 // not built in every mode, and a window that cannot show the setting is better
@@ -972,6 +1098,7 @@ func (lp *livePipelines) relayLang() string {
 // setting a preference, not asking for an interruption.
 func (lp *livePipelines) setRelayLang() func(string) {
 	return func(lang string) {
+		_ = savePreference(func(cfg *config.Config) { cfg.Radio.RelayLang = lang }) // kept (D-214); a failed write keeps the session's choice
 		if lp.deck == nil {
 			return
 		}
@@ -990,6 +1117,7 @@ func (lp *livePipelines) setRelayLang() func(string) {
 // this asks it to do that again with the new value.
 func (lp *livePipelines) setRelayDwell() func(time.Duration) {
 	return func(d time.Duration) {
+		_ = savePreference(func(cfg *config.Config) { cfg.Radio.RelayDwell = d.String() }) // kept (D-214); a failed write keeps the session's choice
 		if lp.deck == nil {
 			return
 		}

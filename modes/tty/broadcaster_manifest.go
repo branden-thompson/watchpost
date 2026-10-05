@@ -91,8 +91,8 @@ func dataAgeTone(d time.Duration) render.Token {
 func cardPulled(o render.Opts, c lineup.Card, now func() time.Time, room int) string {
 	if c.BuiltAt.IsZero() {
 		// NOT AN EM-DASH. Every mark on this console goes through the glyph set
-		// so `--ascii` needs no special case anywhere, and a literal here was the
-		// one rune the parity gate found.
+		// so `--ascii` needs no special case anywhere, and the parity gate rejects
+		// a literal rune here.
 		return "DATA PULLED:  " + o.Glyphs().Dash
 	}
 	at := c.BuiltAt
@@ -179,10 +179,9 @@ func manifestRow(no, name, detail string, room int) string {
 //
 // EMPTY UNTIL THE COMPOSER REPORTS IT (D-87 stage 2). The Composer builds a
 // report's segments and keeps what it counted to itself — "3 Hotspots / 10
-// incidents" is computed while composing and thrown away — so the manifest is a
-// new output of it rather than something the console can derive. The table is
-// built to the reference's shape now so the rows have somewhere to land, which
-// is the same order F-84's window was built in.
+// incidents" is computed while composing — so the manifest is an output of it
+// rather than something the console can derive. The table is built to the
+// reference's shape so the rows have somewhere to land.
 func (b Broadcaster) manifestRows(c lineup.Card, room int) []string {
 	rows := make([]string, 0, bcReadLines)
 	for i, m := range c.Contents { // bounded by the manifest (P10-02)
@@ -191,10 +190,10 @@ func (b Broadcaster) manifestRows(c lineup.Card, room int) []string {
 		}
 		rows = append(rows, bcCardInset+manifestRow(pad2(i+1), m.Name, m.Detail, room))
 	}
-	// THE BOUND IS IN THE SHAPE, NOT IN A COMMENT (P10-02). It carried the
-	// sentence "bounded by the card's height" and was still a condition-only
-	// loop, which is what the rule is actually about: a bound the reader has to
-	// derive is a bound the next edit can remove without noticing.
+	// THE BOUND IS IN THE SHAPE, NOT IN A COMMENT (P10-02). A condition-only loop
+	// labelled "bounded by the card's height" is what the rule is actually about:
+	// a bound the reader has to derive is a bound the next edit can remove without
+	// noticing.
 	for range max(0, bcReadLines-len(rows)) {
 		rows = append(rows, "")
 	}

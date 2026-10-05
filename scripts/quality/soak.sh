@@ -27,7 +27,7 @@ counters=http://$addr/debug/counters
 dump=http://$addr/debug/dump
 
 if [ ! -s "$out" ]; then
-  echo "utc,elapsed,rss_kb,footprint_kb,threads,pcpu,heap_alloc,heap_inuse,heap_objects,goroutines,fds,disk_files,disk_bytes,publishes_recent" >> "$out"
+  echo "utc,elapsed,rss_kb,footprint_kb,threads,pcpu,heap_alloc,heap_inuse,heap_objects,goroutines,fds,disk_files,disk_bytes,publishes_recent,cpu_time" >> "$out"
 fi
 
 # json_num NAME JSON — first "NAME":<number> in a compact JSON document.
@@ -54,6 +54,9 @@ threads() {
 i=0
 while [ "$i" -lt "$n" ] && kill -0 "$pid" 2>/dev/null; do
   rss=$(ps -o rss= -p "$pid" | tr -d ' '); cpu=$(ps -o pcpu= -p "$pid" | tr -d ' '); el=$(ps -o etime= -p "$pid" | tr -d ' ')
+  # cpu_time is the CUMULATIVE CPU time ([[dd-]hh:]mm:ss): pcpu is a decaying
+  # average, so a phase's CPU share is this column's change over its span (W14).
+  ct=$(ps -o time= -p "$pid" | tr -d ' ')
   fp=$(footprint_kb); th=$(threads)
   j=$(curl -fs --max-time 5 "$counters" 2>/dev/null || true)
   ha=; hi=; ho=; go=; fd=; df=; db=; pr=
@@ -63,7 +66,7 @@ while [ "$i" -lt "$n" ] && kill -0 "$pid" 2>/dev/null; do
     df=$(gauge disk.cache len "$j"); db=$(gauge disk.cache bytes "$j")
     pr=$(printf '%s' "$j" | grep -o '"recent":{"publishes":[0-9]*' | grep -o '[0-9]*$')
   fi
-  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$(date -u +%FT%TZ)" "$el" "$rss" "$fp" "$th" "$cpu" "$ha" "$hi" "$ho" "$go" "$fd" "$df" "$db" "$pr" >> "$out"
+  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$(date -u +%FT%TZ)" "$el" "$rss" "$fp" "$th" "$cpu" "$ha" "$hi" "$ho" "$go" "$fd" "$df" "$db" "$pr" "$ct" >> "$out"
   if [ $(( i % per_hour )) -eq 0 ]; then
     curl -fs -X POST --max-time 30 "$dump" >/dev/null 2>&1 || kill -USR1 "$pid" 2>/dev/null || true
   fi

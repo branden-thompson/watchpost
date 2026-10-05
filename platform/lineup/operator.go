@@ -3,10 +3,9 @@ package lineup
 // operator.go — the operator's three acts on a card (FR-3, P4).
 //
 // "EXECUTE THE WILL OF THE HUMAN OPERATOR" is the Director's charter, and this
-// is the half that was missing: the card model has carried the fields for two
-// releases — `director-requirements.md` says in as many words that "the card
-// model carries the fields; the controls arrive with the Broadcaster UI" — and
-// nothing could move a card.
+// is the half that carries it out: the card model carries the fields —
+// `director-requirements.md`: "the card model carries the fields; the controls
+// arrive with the Broadcaster UI" — and these are the acts that move a card.
 //
 // FR-3.3 IS WHY THESE ARE EVENTS AND NOT SETTERS. "An action must never be
 // shown as taken unless the schedule took it", and the named trap is that
@@ -143,20 +142,18 @@ func (d Director) onDropped(ev Dropped) (Director, []Effect) {
 // become untrue, which is the whole reason the staleness window exists.
 //
 // AND IT IS THE OPERATOR'S (FR-3.4). A human put this card back, and the card
-// says so: `Origin.FromOperator` has existed for two releases with nothing ever
-// constructing it.
+// says so: `Origin.FromOperator`.
 func (d Director) onRestored(ev Restored) (Director, []Effect) {
-	// NOTHING IS COMMITTED UNTIL ALL OF IT SUCCEEDS (F-74). The pile entry used
-	// to be spent here, on the line that takes it, and every refusal below
-	// returned the Director that had ALREADY LOST IT — so a restore the schedule
-	// would not accept destroyed the operator's one recovery and put nothing
-	// back, silently.
+	// NOTHING IS COMMITTED UNTIL ALL OF IT SUCCEEDS (F-74). Spending the pile
+	// entry on the line that takes it would have every refusal below return a
+	// Director that had ALREADY LOST IT — a restore the schedule would not
+	// accept would destroy the operator's one recovery and put nothing back,
+	// silently.
 	//
-	// IT WAS REACHED THE ORDINARY WAY, which is why this is a defect and not a
-	// hardening: ReadID is a pure function of the ref, so a location dropped and
-	// then re-queued by the rotation is holding the very identity the undo wants.
-	// `next` is therefore carried down as a LOCAL and assigned to the Director
-	// only at the end.
+	// IT IS REACHED THE ORDINARY WAY: ReadID is a pure function of the ref, so a
+	// location dropped and then re-queued by the rotation is holding the very
+	// identity the undo wants. `next` is therefore carried down as a LOCAL and
+	// assigned to the Director only at the end.
 	was, next, ok := d.lineup.takeDiscarded(ev.ID)
 	if !ok {
 		return d, nil
@@ -208,10 +205,9 @@ func (l Lineup) Reorder(id string, to int) (Lineup, error) {
 	track = append(track[:from], track[from+1:]...)
 	out.tracks[t] = track
 	// `to` IS A POSITION IN THE LINE-UP, NOT IN THE SCHEDULE, and this is its
-	// ONE bound. A `to >= 0 && to < len(Projection(t))` guard stood above and its
-	// mutant SURVIVED: the lookup refuses exactly the same set, so the guard
-	// could never decide anything — the rule written twice, which is the second
-	// time today (see topoff.go, and card.go's Propose before it).
+	// ONE bound. A separate `to >= 0 && to < len(Projection(t))` guard would be
+	// the rule written twice: the lookup refuses exactly the same set, so the
+	// guard could never decide anything and its mutant would survive.
 	//
 	// Using the schedule's own index here instead would be a SILENT off-by-N,
 	// because both numbers are valid indices and neither errors.
@@ -232,11 +228,10 @@ func (l Lineup) Reorder(id string, to int) (Lineup, error) {
 
 // MainTrackCap is how many cards the running order holds.
 //
-// THE SCHEDULE'S NUMBER, NOT THE SCREEN'S. `modes/tty` had it as
-// `MainTrackSlots` and the console is where it was first needed, but "the last
-// card falls off" is a SCHEDULE rule — the discard pile it falls into belongs to
-// the Lineup, and a cap the UI owned would be a bound the domain could not
-// enforce. The console reads this now, so there is one number (the D-124
+// THE SCHEDULE'S NUMBER, NOT THE SCREEN'S. The console is where it shows, but
+// "the last card falls off" is a SCHEDULE rule — the discard pile it falls into
+// belongs to the Lineup, and a cap the UI owned would be a bound the domain
+// could not enforce. The console reads this, so there is one number (the D-124
 // standing: a test that prevents drift is not the same as a fact with one owner).
 //
 // SIXTEEN: the card on the air, UP NEXT, and fourteen behind them.
@@ -280,14 +275,13 @@ func (l Lineup) Insert(t Track, c Card, to int) (Lineup, error) {
 	// PAST THE END MEANS THE END (D-149). The Line-Up Request window opens at
 	// slot 15 — the HUM LEAD's ruled default, "default to the bottom" — and a
 	// running order of three cards is the ordinary case, so the position the
-	// window offers by default named no visible card.
+	// window offers by default often names no visible card.
 	//
-	// IT WAS REFUSED SILENTLY, AND THE WINDOW HAD ALREADY CLOSED. `Insert`'s
-	// invariant failed, `onRequested` returned no effects, nothing was queued,
-	// and `requestSchedule` closes on `valid()` — so the operator was shown a
+	// A REFUSAL HERE WOULD BE SILENT, AND THE WINDOW HAS ALREADY CLOSED:
+	// `requestSchedule` closes on `valid()`, so the operator would be shown a
 	// scheduled request the schedule never took, which is FR-3.3's named trap on
-	// this release's headline control. The console compounds it: it draws slots
-	// 02..15 as empty ADDRESSES, and every one of them was refused.
+	// the headline control. The console draws slots 02..15 as empty ADDRESSES,
+	// and every one of them must be accepted.
 	//
 	// CLAMPED HERE RATHER THAN IN `scheduleIndex`, because that function also
 	// serves `Reorder`, where a slot the running order never drew is meaningless

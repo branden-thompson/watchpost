@@ -4,7 +4,7 @@ import pathlib
 # nothing is asking for (D-112).
 p = pathlib.Path("app/dashboard.go"); s = p.read_text()
 old = """	if lp.recent != nil {
-		lp.recent.update(withPool(recent, lp.poolRefs))
+		lp.recent.update(withPool(recent, lp.poolRefs, watch))
 	}
 	return nil"""
 assert old in s, "mAF3"
@@ -13,7 +13,7 @@ s = s.replace(old, new, 1)
 old2 = """	lp.watchRefs = append([]snapshot.LocationRef(nil), watch...) // re-home the ticker's tie to the new watchlist (under lp.mu, already held)"""
 assert old2 in s, "mAF3b"
 new2 = """	if lp.recent != nil {
-		lp.recent.update(withPool(recent, lp.poolRefs))
+		lp.recent.update(withPool(recent, lp.poolRefs, watch))
 	}
 """ + old2
 p.write_text(s.replace(old2, new2, 1))

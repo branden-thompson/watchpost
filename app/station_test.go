@@ -6,8 +6,8 @@ package app
 // what arrived, the Director schedules it, the Composer writes it and the Reader
 // performs it. A test-only entry point beside that — a `tickerDeck.breaking` the
 // tests call directly — would be a pin on a path nobody ships, which is D-12's
-// defect: three tests passing over an inert Settings row because they called the
-// cycle function instead of pressing the key.
+// hazard: a test that calls the cycle function instead of pressing the key
+// passes over an inert Settings row.
 //
 // So this drives the REAL path, end to end, and the only thing it replaces is
 // the pump's concurrency: effects run in this goroutine and their events feed
@@ -36,9 +36,9 @@ type station struct {
 	x       *executors
 	reports []string
 	// published is what the executors put on the console seam; escalated()
-	// reads the DR-21 escalations off it — the thing a LISTENER is told. It
-	// was an empty stub once, which is what let a nil-deref on this channel
-	// (I-1) and a modal for every deliberate decline (I-2) both through.
+	// reads the DR-21 escalations off it — the thing a LISTENER is told. An empty
+	// stub here would let a nil-deref on this channel (I-1) and a modal for every
+	// deliberate decline (I-2) both through.
 	published []tea.Msg
 
 	mu      sync.Mutex
@@ -113,10 +113,10 @@ func (s *station) takeover(ctx context.Context, evs []globalfeed.Event) {
 //
 // SPLIT OUT SO THE PRODUCER'S OWN DECISIONS ARE OBSERVABLE (red team
 // 2026-09-05). MVS-D-78's mute gate lives in startTakeover, and asserting it
-// after the drain could not see it: the burst reached the Director anyway,
-// speak declined on the SECOND mute gate, the Failed took the card off the rail,
-// and the rail read empty either way. Deleting the producer's gate left the
-// whole repository green.
+// after the drain cannot see it: the burst would reach the Director anyway,
+// speak would decline on the SECOND mute gate, the Failed would take the card
+// off the rail, and the rail reads empty either way — so deleting the
+// producer's gate would leave the whole repository green.
 func (s *station) offer(evs []globalfeed.Event) {
 	s.deck.startTakeover(evs)
 }
@@ -140,9 +140,7 @@ func (s *station) run(ctx context.Context, evs ...lineup.Event) {
 	//
 	// AND IT FAILS LOUDLY when the cap is reached, rather than returning with work
 	// still queued. A silent truncation here leaves every assertion in the caller
-	// running over a PARTIAL sequence,
-	// which is this release's own recorded failure mode wearing the harness's
-	// clothes.
+	// running over a PARTIAL sequence.
 	steps := 0
 	for ; len(queue) > 0 && steps < 10_000; steps++ {
 		ev := queue[0]

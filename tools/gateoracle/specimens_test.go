@@ -107,8 +107,7 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 				return Sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@./scripts/lint-a\n")(s)
 			}, assert: controlsReached, caught: true},
 		// `;` DISCARDS THE FIRST CONTROL'S STATUS — the line exits with the last
-		// command's. The reviewer's R4c called this CAUGHT and was right; an earlier
-		// draft of this table called it PASSES and was wrong. `&&` is the passing shape.
+		// command's, so the oracle CATCHES it (R4c). `&&` is the passing shape.
 		{name: "K4 two controls joined by ; — the first's failure is lost",
 			mk: Sub("\t@./scripts/lint-a.sh --self-test\n\t@./scripts/lint-b.sh --self-test\n", "\t@./scripts/lint-a.sh --self-test; ./scripts/lint-b.sh --self-test\n"), assert: controlsReached, caught: true},
 		{name: "K-ok two controls joined by && — both reached",
@@ -237,9 +236,9 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		{name: "P8 go run ./tools/x with no control anywhere",
 			mk: Sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go run ./tools/lintb\n"), assert: controlsReached, caught: true},
 		{name: "P9 .ONESHELL:", mk: prepend(".ONESHELL:"), assert: canFail, caught: true},
-		// THE REVIEWER'S "CORRECT" SPELLING IS THE F-152 DEFECT: `bad=$$(…); test -z`
-		// throws away the substitution's status, so a gofmt that fails to RUN prints
-		// nothing and passes. The oracle refused it and was right; `&&` keeps it.
+		// `bad=$$(…); test -z` IS THE F-152 DEFECT: it throws away the
+		// substitution's status, so a gofmt that fails to RUN prints nothing and
+		// passes. The oracle refuses it; `&&` keeps the status.
 		{name: "P10 find | xargs gofmt, the status thrown away by ;",
 			mk:     Sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@bad=$$(find . -name '*.go' | xargs gofmt -l); test -z \"$$bad\"\n"),
 			assert: canFail, caught: true},
@@ -299,8 +298,7 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		// ---- S. absence must be loud ----------------------------------------------------
 		// THE SKIP MUST BE IN THE SAME SHELL AS THE CHECK. `… || exit 0` on its own
 		// line exits that line's shell only; the next line runs the tool, gets 127,
-		// and the gate is red — loud by accident of a line break. An earlier draft
-		// of this table called the two-line form CAUGHT and the oracle was right.
+		// and the gate is red — loud by accident of a line break.
 		{name: "S1 command -v a2dh || exit 0; a2dh … in one shell",
 			mk:     Sub("lint-b:\n\t@scripts/lint-b.sh\n", "A2DH ?= a2dh\nlint-b:\n\t@command -v $(A2DH) >/dev/null 2>&1 || { echo 'a2dh not found, skipping'; exit 0; }; $(A2DH) p10 check\n"),
 			assert: canFail, caught: true},
@@ -368,10 +366,10 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		{name: "E1 .IGNORE: at the top", mk: prepend(".IGNORE:"), assert: canFail, caught: true},
 		{name: "E2 MAKEFLAGS += -i", mk: prepend("MAKEFLAGS += -i"), assert: canFail, caught: true},
 		{name: "E3 SHELL := /usr/bin/true", mk: prepend("SHELL := /usr/bin/true"), assert: canFail, caught: true},
-		// THE REVIEWER'S SPELLING WAS INERT. `.SHELLFLAGS := -c true; #` leaves the
-		// recipe red on 3.81 (no .SHELLFLAGS) AND on 4.4.1 — probed directly. The
-		// class is real: `-c :`, `-c "true ;"` and `-c true \#` all exit 0. A
-		// specimen must be an attack that works, or it proves nothing.
+		// `.SHELLFLAGS := -c true; #` IS INERT: it leaves the recipe red on 3.81
+		// (no .SHELLFLAGS) AND on 4.4.1. The class is real: `-c :`, `-c "true ;"`
+		// and `-c true \#` all exit 0. A specimen must be an attack that works, or
+		// it proves nothing.
 		{name: "E4 .SHELLFLAGS := -c : (a spelling that works)", mk: prepend(".SHELLFLAGS := -c :"), assert: canFail, caught: true},
 		{name: "E5 a - prefix on the check line",
 			mk: Sub("\t@./scripts/lint-a.sh\n", "\t-@./scripts/lint-a.sh\n"), assert: canFail, caught: true},
@@ -402,7 +400,7 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			mk: Sub("\t@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates",
 				"\t-@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates"),
 			assert: verifyFails, caught: true},
-		// the round-one control attacks, now decided by execution
+		// the round-one control attacks, decided by execution
 		{name: "A5 a control commented out (executed)",
 			mk: Sub("\t@./scripts/lint-a.sh --self-test", "\t# ./scripts/lint-a.sh --self-test"), assert: controlsReached, caught: true},
 		{name: "A6 a control behind || true (executed)",

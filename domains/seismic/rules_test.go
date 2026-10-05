@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // The ratified step function, boundary by boundary (objectives §4).
@@ -33,7 +34,7 @@ func TestRadiusMiForEveryBand(t *testing.T) {
 // Keep enforces the graduated rule at the objectives' own examples.
 func TestKeepGraduatedRule(t *testing.T) {
 	r := DefaultRules()
-	mi := func(m float64) float64 { return m * mileKm }
+	mi := func(m float64) float64 { return m * units.KmPerMile }
 	// M2.6 → 20 mi band: hidden at 200 km, shown at 40 km... but 40 km is 25 mi > 20, so hidden.
 	if r.Keep(2.6, mi(21)) {
 		t.Fatal("M2.6 at 21 mi is beyond its 20 mi band")
@@ -60,7 +61,7 @@ func TestMaxRadiusAndValidity(t *testing.T) {
 	if err := r.Valid(); err != nil {
 		t.Fatal(err)
 	}
-	if km := r.MaxRadiusKm(); km < 1000*mileKm-1 || km > 1000*mileKm+1 {
+	if km := r.MaxRadiusKm(); km < 1000*units.KmPerMile-1 || km > 1000*units.KmPerMile+1 {
 		t.Fatalf("widest reach is 1000 mi in km: %.1f", km)
 	}
 	// A non-ascending or empty ruleset is refused.
@@ -131,7 +132,7 @@ func TestQueryPlanEquivalenceWithBruteForce(t *testing.T) {
 			if m < q.MinMag || (q.MaxMag != 0 && m >= q.MaxMag) {
 				continue
 			}
-			if dMi <= q.RadiusMi && r.Keep(m, dMi*mileKm) {
+			if dMi <= q.RadiusMi && r.Keep(m, dMi*units.KmPerMile) {
 				return true
 			}
 		}
@@ -139,7 +140,7 @@ func TestQueryPlanEquivalenceWithBruteForce(t *testing.T) {
 	}
 	for _, m := range []float64{0.5, 1.0, 2.4, 2.5, 3.4, 3.5, 3.9, 4.0, 4.4, 4.9, 5.5, 6.5, 7.5} {
 		for _, dMi := range []float64{1, 3, 9, 10, 19, 20, 39, 40, 99, 100, 149, 150, 399, 400, 499, 500, 999, 1000, 1200} {
-			brute := r.Keep(m, dMi*mileKm) // the single wide-query truth
+			brute := r.Keep(m, dMi*units.KmPerMile) // the single wide-query truth
 			if plannedVisible(m, dMi) != brute {
 				t.Fatalf("equivalence broken at M%.1f %.0f mi: plan=%v brute=%v", m, dMi, plannedVisible(m, dMi), brute)
 			}

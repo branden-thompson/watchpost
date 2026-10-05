@@ -5,20 +5,19 @@ package lineup
 //
 // THE REQUEST WINDOW DEFAULTS TO SLOT 15 — the HUM LEAD's own ruling, "default to
 // the bottom - position 15" — so `scheduleIndex` cannot accept a position only
-// when it names a VISIBLE card or falls exactly at the end.  With a three-card
-// running order, the normal case, `to=15` is then refused: `Insert`'s invariant
-// fails, `onRequested` returns no effects, nothing is queued — and
-// `requestSchedule` has ALREADY
-// closed the window on `valid()`.
+// when it names a VISIBLE card or falls exactly at the end. With a three-card
+// running order, the normal case, `to=15` would then be refused: `Insert`'s
+// invariant fails, `onRequested` returns no effects, nothing is queued — and
+// `requestSchedule` has ALREADY closed the window on `valid()`.
 //
-// THE OPERATOR WAS SHOWN A SCHEDULED REQUEST THAT WAS NEVER TAKEN, which is
-// FR-3.3's named trap, on this release's headline new control, at its own
-// default.  The console compounds it: `broadcaster_lineup.go` deliberately draws
-// slots 02..15 EMPTY because "a slot is an ADDRESS the operator can put
-// something in" — every one of those addresses was refused.
+// THE OPERATOR WOULD BE SHOWN A SCHEDULED REQUEST THAT WAS NEVER TAKEN, which is
+// FR-3.3's named trap, at the control's own default. The console compounds it:
+// `broadcaster_lineup.go` deliberately draws slots 02..15 EMPTY because "a slot
+// is an ADDRESS the operator can put something in" — and every one of those
+// addresses would be refused.
 //
-// THIS FUNCTION'S OWN COMMENT ALREADY RULED IT: "A position PAST the last
-// visible card means the end of the schedule."  The code did not do that.
+// THE FUNCTION'S OWN COMMENT RULES IT: "A position PAST the last visible card
+// means the end of the schedule."
 
 import "testing"
 
@@ -44,11 +43,10 @@ func shortOrder(t *testing.T, n int) Lineup {
 
 // A REQUEST PAST THE END LANDS AT THE END.
 //
-// DRIVEN THROUGH `Insert`, NOT `scheduleIndex`. The first draft of this test
-// asserted against `scheduleIndex` directly and pushed the clamp INTO it — which
-// broke `Reorder`, where a slot the running order never drew is meaningless and
-// must stay refused. One function, two questions: the clamp belongs to the
-// caller that asks the question it answers.
+// DRIVEN THROUGH `Insert`, NOT `scheduleIndex`. A clamp pushed INTO
+// `scheduleIndex` would break `Reorder`, where a slot the running order never
+// drew is meaningless and must stay refused. One function, two questions: the
+// clamp belongs to the caller that asks the question it answers.
 func TestARequestPastTheEndLandsAtTheEnd(t *testing.T) {
 	for _, to := range []int{3, 4, 15} {
 		l := shortOrder(t, 3)
@@ -69,8 +67,9 @@ func TestARequestPastTheEndLandsAtTheEnd(t *testing.T) {
 	}
 }
 
-// AND A MOVE PAST THE RUNNING ORDER IS STILL REFUSED, which is the rule the
-// first draft broke. Stated here beside its twin so the distinction is visible.
+// AND A MOVE PAST THE RUNNING ORDER IS STILL REFUSED, which is the rule a clamp
+// inside `scheduleIndex` would break. Stated here beside its twin so the
+// distinction is visible.
 func TestAMovePastTheRunningOrderIsStillRefused(t *testing.T) {
 	l := shortOrder(t, 3)
 	if _, err := l.Reorder("a", 9); err == nil {
@@ -92,8 +91,8 @@ func requestCardFor(t *testing.T, id string) Card {
 	return adm
 }
 
-// AND A POSITION THAT NAMES A VISIBLE CARD IS UNCHANGED — the fix must not turn
-// every request into an append.
+// AND A POSITION THAT NAMES A VISIBLE CARD STAYS WHERE IT NAMES — the clamp
+// must not turn every request into an append.
 func TestAPositionThatNamesACardStillNamesIt(t *testing.T) {
 	l := shortOrder(t, 3)
 	for to := range 3 {

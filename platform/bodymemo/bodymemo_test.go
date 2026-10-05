@@ -3,7 +3,10 @@ package bodymemo
 import (
 	"errors"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // upper is a top-level parse function, which is also what both providers pass:
@@ -120,5 +123,29 @@ func TestPruneDropsWhatTheCallerNoLongerWants(t *testing.T) {
 	}
 	if parsesOf(m) == before {
 		t.Error("a dead key survived the prune: the memo is bounded by nothing")
+	}
+}
+
+// TestParsesOfDifferentKeysRunTogether is REVIEW PF-13: a parse runs outside
+// the memo's lock, so two keys' parses overlap.
+func TestParsesOfDifferentKeysRunTogether(t *testing.T) {
+	m := New[string, int](4)
+	var in, most atomic.Int64
+	parse := func([]byte) (int, error) {
+		n := in.Add(1)
+		for cur := most.Load(); n > cur && !most.CompareAndSwap(cur, n); cur = most.Load() {
+		}
+		time.Sleep(50 * time.Millisecond)
+		in.Add(-1)
+		return 1, nil
+	}
+	var wg sync.WaitGroup
+	for _, k := range []string{"a", "b", "c"} {
+		wg.Add(1)
+		go func() { defer wg.Done(); _, _ = m.Parsed(k, []byte(k), parse) }()
+	}
+	wg.Wait()
+	if most.Load() < 2 {
+		t.Errorf("at most %d parse ran at once; want different keys' parses together", most.Load())
 	}
 }

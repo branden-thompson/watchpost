@@ -9,15 +9,14 @@ package lineup
 // that rule expressed where it can be tested without an audio device: a
 // priority card on the air, over a bed the operator has cut to, and nothing
 // else. It is answerable from state the Director already holds, which is the
-// whole argument for putting it here — P3's four blockers were every one of
-// them in the join between this machine and the device.
+// whole argument for putting it here — the join between this machine and the
+// device is where the risk lives.
 //
 // WHAT IT IS NOT. The duck is not about which medium is AUDIBLE at this
 // instant: `Suppress` is inert when nothing is playing, and the engine re-reads
 // the source kind every tick so "how to yield" follows the audio. The Director
 // says an alert is on the air; the engine decides dip-or-hold. Asking the
-// deck's mode here "fixed an answer the audio could outlive" (radio.go), and
-// that design is not repeated.
+// deck's mode here would fix "an answer the audio could outlive" (radio.go).
 
 import (
 	"testing"
@@ -91,13 +90,13 @@ func TestAHazardOverACarryingBedDucksIt(t *testing.T) {
 	// until it leaves.
 	//
 	// SO THE RULE IS ENFORCED BY THE SCHEDULE, not by the order of this list —
-	// and a check asserting the position would be the vacuous class this project
-	// has shipped five of. It becomes reachable only if a lane can cue a card
+	// and a check asserting the position would be vacuous: it could not fail.
+	// It becomes reachable only if a lane can cue a card
 	// while another is still reading on it, which is the invariant OnAir keeps.
 }
 
-// THE OTHER HALF OF D-32, and it is the half that broke a release. Nothing ducks
-// when there is no programme UNDERNEATH the hazard.
+// THE OTHER HALF OF D-32. Nothing ducks when there is no programme UNDERNEATH
+// the hazard.
 //
 // ITS REASON IS NARROW, AND THE DISTINCTION MATTERS (D-82). "A chosen read
 // REPLACES the bed rather than playing over it, so there is nothing underneath to
@@ -144,8 +143,8 @@ func TestTheBedComesBackWhenTheRailIsDone(t *testing.T) {
 }
 
 // A SECOND HAZARD DOES NOT DIP A SECOND TIME (MVS-D-67): "one duck per RAIL
-// DRAIN, never per card." A rail of two cards that dipped, lifted and dipped
-// again between them was measured before that ruling existed.
+// DRAIN, never per card." A rail of two cards does not dip, lift and dip
+// again between them.
 func TestASecondHazardDoesNotDuckAgain(t *testing.T) {
 	d := onTheBed(t)
 	d, _ = d.Step(Arrived{Arrivals: []Arrival{aTornado()}})
@@ -175,12 +174,12 @@ func TestNothingIsRestoredThatWasNeverDucked(t *testing.T) {
 
 // THE PROGRAMME GIVES WAY TOO, NOT ONLY THE BED (D-82).
 //
-// MVS-D-67 is "one duck per RAIL DRAIN, never per card" — a rail of two cards
-// that dipped, lifted and dipped again between them was MEASURED. The mechanism
-// that holds it is the Director's Duck/Restore pair, and its one condition was
-// `bed.carries`: the bed was the only thing a hazard could be speaking over.
+// MVS-D-67 is "one duck per RAIL DRAIN, never per card" — never a rail of two
+// cards that dips, lifts and dips again between them. The mechanism that holds
+// it is the Director's Duck/Restore pair, and its condition is not only
+// `bed.carries`: the bed is not the only thing a hazard can be speaking over.
 //
-// Since D-82 a REPORT can be underneath. The arbiter gives way per SEQUENCE and
+// Under D-82 a REPORT can be underneath. The arbiter gives way per SEQUENCE and
 // takes it back the moment nothing is waiting, so between two hazards the engine
 // would un-hold a rendered report for the few milliseconds the schedule takes to
 // dispatch the next one — and un-holding a paused report is not a volume bounce,

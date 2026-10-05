@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dwml version="1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://digital.weather.gov/xml/schema/DWML.xsd">
+  <head>
+    <product srsName="WGS 1984" concise-name="time-series" operational-mode="official">
+      <title>NOAA's National Weather Service Forecast Data</title>
+      <field>meteorological</field>
+      <category>forecast</category>
+      <creation-date refresh-frequency="PT30M">2026-09-28T05:35:35Z</creation-date>
+    </product>
+    <source>
+      <more-information>https://digital.weather.gov/xml/</more-information>
+      <production-center>Meteorological Development Laboratory<sub-center>Weather Information Applications Division</sub-center></production-center>
+      <disclaimer>http://www.nws.noaa.gov/disclaimer.html</disclaimer>
+      <credit>https://www.weather.gov/</credit>
+      <credit-logo>https://www.weather.gov/logorequest</credit-logo>
+      <feedback>https://www.weather.gov/contact</feedback>
+    </source>
+  </head>
+  <data>
+    <location>
+      <location-key>point1</location-key>
+      <point latitude="33.00" longitude="-121.00"/>
+    </location>
+    <location>
+      <location-key>point2</location-key>
+      <point latitude="33.00" longitude="-119.00"/>
+    </location>
+    <location>
+      <location-key>point3</location-key>
+      <point latitude="33.00" longitude="-117.00"/>
+    </location>
+    <location>
+      <location-key>point4</location-key>
+      <point latitude="31.00" longitude="-121.00"/>
+    </location>
+    <location>
+      <location-key>point5</location-key>
+      <point latitude="31.00" longitude="-119.00"/>
+    </location>
+    <location>
+      <location-key>point6</location-key>
+      <point latitude="31.00" longitude="-117.00"/>
+    </location>
+    <moreWeatherInformation applicable-location="point1">http://forecast.weather.gov/MapClick.php?textField1=33.00&amp;textField2=-121.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point2">http://forecast.weather.gov/MapClick.php?textField1=33.00&amp;textField2=-119.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point3">http://forecast.weather.gov/MapClick.php?textField1=33.00&amp;textField2=-117.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point4">http://forecast.weather.gov/MapClick.php?textField1=31.00&amp;textField2=-121.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point5">http://forecast.weather.gov/MapClick.php?textField1=31.00&amp;textField2=-119.00</moreWeatherInformation>
+    <moreWeatherInformation applicable-location="point6">http://forecast.weather.gov/MapClick.php?textField1=31.00&amp;textField2=-117.00</moreWeatherInformation>
+    <time-layout time-coordinate="local" summarization="none">
+      <layout-key>k-p1h-n59-1</layout-key>
+      <start-valid-time>2026-09-27T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T00:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T01:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T02:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T03:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T04:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T06:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T07:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T08:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T09:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T10:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T12:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T13:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T14:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T15:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T16:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T18:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T19:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T20:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T21:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T22:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-28T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T00:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T01:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T02:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T03:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T04:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T06:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T07:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T08:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T09:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T10:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T14:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T20:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-29T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T02:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T08:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T14:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-09-30T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-01T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-01T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-01T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-01T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-02T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-02T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-02T17:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-02T23:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-03T05:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-03T11:00:00-07:00</start-valid-time>
+      <start-valid-time>2026-10-03T17:00:00-07:00</start-valid-time>
+    </time-layout>
+    <parameters applicable-location="point1">
+      <water-state time-layout="k-p1h-n59-1">
+        <waves type="significant" units="feet">
+          <name>Wave Height</name>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>10</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>8</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+        </waves>
+      </water-state>
+    </parameters>
+    <parameters applicable-location="point2">
+      <water-state time-layout="k-p1h-n59-1">
+        <waves type="significant" units="feet">
+          <name>Wave Height</name>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>4</value>
+          <value>3</value>
+          <value>3</value>
+          <value>3</value>
+          <value>3</value>
+          <value>3</value>
+          <value>3</value>
+          <value>3</value>
+          <value>3</value>
+          <value>3</value>
+          <value>3</value>
+        </waves>
+      </water-state>
+    </parameters>
+    <parameters applicable-location="point3">
+      <water-state time-layout="k-p1h-n59-1">
+        <waves type="significant" units="feet">
+          <name>Wave Height</name>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+          <value xsi:nil="true"/>
+        </waves>
+      </water-state>
+    </parameters>
+    <parameters applicable-location="point4">
+      <water-state time-layout="k-p1h-n59-1">
+        <waves type="significant" units="feet">
+          <name>Wave Height</name>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>7</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+        </waves>
+      </water-state>
+    </parameters>
+    <parameters applicable-location="point5">
+      <water-state time-layout="k-p1h-n59-1">
+        <waves type="significant" units="feet">
+          <name>Wave Height</name>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>9</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+        </waves>
+      </water-state>
+    </parameters>
+    <parameters applicable-location="point6">
+      <water-state time-layout="k-p1h-n59-1">
+        <waves type="significant" units="feet">
+          <name>Wave Height</name>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>8</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>7</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>6</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>5</value>
+          <value>4</value>
+          <value>4</value>
+          <value>4</value>
+          <value>4</value>
+          <value>4</value>
+          <value>4</value>
+          <value>4</value>
+          <value>4</value>
+          <value>4</value>
+          <value>4</value>
+          <value>4</value>
+        </waves>
+      </water-state>
+    </parameters>
+  </data>
+</dwml>

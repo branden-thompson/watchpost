@@ -13,19 +13,16 @@ import (
 )
 
 // One owner for the things the two producing decks — the radio and the ticker —
-// were each stating for themselves.
+// would otherwise each state for themselves.
 //
-// THIS FILE EXISTS BECAUSE OF ISSUE #7. That bug was a name-to-install lookup
-// written out four times, and the fourth was written by copying the third with
-// the comment "find-only, exactly as the deck's is" — faithfully, defect and
-// all. Nothing here is currently wrong. It is here because a policy stated in
-// two places has already proved it will be changed in one.
+// A POLICY STATED IN TWO PLACES GETS CHANGED IN ONE, and a copy carries its
+// original's defects with it (issue #7).
 
 // clockFrom is the listener's clock, twelve-hour when nothing has set one.
 //
-// The default is a POLICY, and radioDeck and tickerDeck each held their own
-// copy of it. They agree today; the failure mode is that they stop, and the
-// radio and the tape then disagree about what time it is on one screen.
+// The default is a POLICY, held here once for radioDeck and tickerDeck. Two
+// copies could stop agreeing, and the radio and the tape would then disagree
+// about what time it is on one screen.
 func clockFrom(pref *atomic.Int32) render.Clock {
 	if pref == nil {
 		return render.Clock12
@@ -39,7 +36,7 @@ func clockFrom(pref *atomic.Int32) render.Clock {
 //
 // The field is taken by pointer on purpose: passing the func by value would
 // read it without the lock, which is the exact discipline this exists to own.
-// Both producers had their own copy of it.
+// Both producers use this one.
 func tellUnder(mu *sync.Mutex, emit *func(lineup.Event), ev lineup.Event) {
 	mu.Lock()
 	fn := *emit
@@ -51,11 +48,11 @@ func tellUnder(mu *sync.Mutex, emit *func(lineup.Event), ev lineup.Event) {
 
 // setUnder writes one field under its owner's mutex.
 //
-// EXTRACTED AT THE SECOND CALLER (D-147), and the `dupes` gate is what found
-// the second: `mastercontrol.unhold` and `tickerDeck.setScope` were the same
-// twenty-six nodes — nil guard, lock, one assignment, unlock. The gate refused
-// the pair and a reason is RATIFIED, never self-issued, so this is the collapse
-// rather than an exemption.
+// ONE HELPER FOR BOTH CALLERS (D-147): `mastercontrol.unhold` and
+// `tickerDeck.setScope` are the same twenty-six nodes — nil guard, lock, one
+// assignment, unlock. The `dupes` gate refuses such a pair, and a reason is
+// RATIFIED, never self-issued, so they share this rather than carry an
+// exemption.
 //
 // IT SITS BESIDE `tellUnder` BECAUSE IT IS THE OTHER HALF OF ONE DISCIPLINE:
 // that one reads a callback under the lock and calls it OUTSIDE; this one
@@ -72,12 +69,9 @@ func setUnder[T any](mu *sync.Mutex, dst *T, v T) {
 // `say -v ?` has answered, the intersection afterwards, and the macOS sentinel
 // always present.
 //
-// radioDeck and hostFacts each wrote this out. hostfacts.go's own doc comment
-// says why that is dangerous — "two implementations of which voices does this
-// host have is how a report and a screen start disagreeing about the same
-// machine, so the deck and the report share this one" — and then it did not
-// share it. Installed, the third method of the same interface, is how issue #7
-// spread.
+// radioDeck and hostFacts both apply this one: two implementations of "which
+// voices does this host have" is how a report and a screen start disagreeing
+// about the same machine (issue #7).
 func discoveredIn(discovered []string, name string) bool {
 	if name == "" {
 		return false
@@ -114,9 +108,9 @@ func defaultVoiceFor(platform, dir string) string {
 //
 // NARROW ON PURPOSE. The category wins only for the products whose words
 // provably cannot carry it, which is exactly globalfeed's civil-emergency
-// table. Preferring the category everywhere would regress advisories: LaneOf
+// table. Preferring the category everywhere would break advisories: LaneOf
 // has no Advisory arm and defaults to Warnings, so a Small Craft Advisory would
-// start sounding like a warning.
+// sound like a warning.
 func toneClassOfEvent(e globalfeed.Event) cast.Class {
 	if c, ok := globalfeed.CivilEmergencyCategory(e.Type); ok {
 		if cls, ok := cast.ClassFor(c); ok {

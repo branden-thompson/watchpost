@@ -18,8 +18,8 @@ import (
 //
 // An alert that carries its own polygon uses it. **Four alerts in five carry
 // none** and name forecast zones instead, and those are resolved to the zones'
-// own outlines - which is the whole reason this release exists, because a map
-// that drew only the polygons would be blank through most of what it is for.
+// own outlines - which is the whole reason this exists, because a map that
+// drew only the polygons would be blank through most of what it is for.
 //
 // An alert whose zones cannot be got comes back with nothing, and that is not
 // an error here. Whether a partly-known area should be drawn at all is a
@@ -46,10 +46,10 @@ func resolveAlertAreas(ctx context.Context, store *zones.Store, snap *snapshot.S
 	if store != nil && len(wanted) > 0 {
 		var missing []string
 		held, missing = store.Zones(ctx, wanted)
-		// **The store reports what it could not get, and that is kept.** It
-		// was thrown away here, which made a shape built from two of nine
-		// parts indistinguishable from a whole one (MG-10 defers the DECISION
-		// to whatever draws; it never licensed dropping the evidence).
+		// **The store reports what it could not get, and that is kept.**
+		// Dropping it would make a shape built from two of nine parts
+		// indistinguishable from a whole one (MG-10 defers the DECISION to
+		// whatever draws; it never licenses dropping the evidence).
 		for _, id := range missing {
 			gone[id] = true
 		}
@@ -93,9 +93,8 @@ func resolveAlertAreas(ctx context.Context, store *zones.Store, snap *snapshot.S
 //
 // **Fetching only on demand is coldest exactly when the map matters** - severe
 // weather activates many zones at once - and a place has about two zones, so
-// this is a second's work once (MG-7). It was approved, built, tested and then
-// not called at all, which the BUILD-exit red team found (RT-2): a ruling that
-// does not run is a ruling that was not kept.
+// this is a second's work once (MG-7). It is called at start-up (RT-2): a
+// ruling that does not run is a ruling not kept.
 //
 // Nothing waits on it. A start-up with no network is an ordinary morning.
 func (lp *livePipelines) seedZoneShapes(ctx context.Context, refs []snapshot.LocationRef) {
@@ -105,8 +104,8 @@ func (lp *livePipelines) seedZoneShapes(ctx context.Context, refs []snapshot.Loc
 	go func() {
 		// **A background convenience must never take the program down.**
 		// Seeding runs off the start-up path, so a panic here would end a
-		// weather station because a map shortcut failed - found by a test
-		// that handed it a provider with no client.
+		// weather station because a map shortcut failed - a provider with no
+		// client is one way to get there.
 		defer func() { _ = recover() }()
 		var ids []string
 		for _, ref := range refs {
@@ -114,4 +113,13 @@ func (lp *livePipelines) seedZoneShapes(ctx context.Context, refs []snapshot.Loc
 		}
 		lp.zoneShapes.Seed(ctx, ids)
 	}()
+}
+
+// mapClosed is told when the map window closes (D-162): zone geometry is held
+// once - the map's outlines keep a warm reopen instant - so the zone store's
+// parsed copy goes, and the HTTP cache's copy serves it back on reopen.
+func (lp *livePipelines) mapClosed() {
+	if lp != nil && lp.zoneShapes != nil {
+		lp.zoneShapes.Forget()
+	}
 }

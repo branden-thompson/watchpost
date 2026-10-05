@@ -2,11 +2,10 @@ package app
 
 // pool.go — the station's own location pool, and what re-derives it (D-72).
 //
-// THE OBSERVER'S WATCHLIST IS NOT THE BROADCASTER'S LINE-UP. The HUM LEAD ruled
-// the split on 2026-09-10; until then the Producer offered `lp.currentWatch`, so
-// the station could only ever read the places the LISTENER happened to be
-// watching — three of them in his UAT, against a console that draws ten slots
-// (F-81, F-82).
+// THE OBSERVER'S WATCHLIST IS NOT THE BROADCASTER'S LINE-UP (F-81, F-82). The
+// Producer offers the station's own pool rather than `lp.currentWatch`, so the
+// station reads its service area and not only the places the LISTENER happens to
+// be watching — often a handful, against a console that draws ten slots.
 //
 // DERIVED, NOT PERSISTED. The pool is a pure function of the transmitter, the
 // service radius and the embedded tables; storing it would create a second
@@ -69,10 +68,10 @@ func stationFrom(cfg config.Config) stationArea {
 // thing the Producer must never do is offer a location the station cannot reach.
 // IT DOES NOT PUBLISH, AND THAT IS LOAD-BEARING. It is called from
 // `startPipelines`, BEFORE `p.Run()` — and `tea.Program.Send` on a program whose
-// loop has not started blocks for ever. The first version of this deadlocked the
-// entire app at launch, and `TestRunWithoutArgsStartsTheDashboard` sat on it for
-// ten minutes under `-race` rather than failing with a reason. The console opens
-// with the area on `tty.Config` instead; only CHANGES are sent.
+// loop has not started blocks for ever, which deadlocks the entire app at launch
+// (and `TestRunWithoutArgsStartsTheDashboard` hangs under `-race` rather than
+// failing with a reason). The console opens with the area on `tty.Config`
+// instead; only CHANGES are sent.
 func (lp *livePipelines) setStation(s stationArea) {
 	pool := lp.poolFor(s)
 	lp.mu.Lock()
@@ -102,11 +101,11 @@ func (lp *livePipelines) dropCard(id string) {
 
 // rebed re-resolves the station's relays, through a seam a test can hold.
 //
-// A SEAM BECAUSE THE REAL ONE IS NETWORK WORK AND A GOROUTINE. A mutant that
-// stopped the re-resolve on a move SURVIVED — nothing could observe whether it
-// happened — and "a moved station goes on offering the relays of the region it
-// left" is exactly the rule that must not be unpinned. `rp.newFor` is the same
-// shape for the same reason.
+// A SEAM BECAUSE THE REAL ONE IS NETWORK WORK AND A GOROUTINE. Without it
+// nothing can observe whether the re-resolve on a move happens, so a mutant that
+// stops it survives — and "a moved station goes on offering the relays of the
+// region it left" is exactly the rule that must not be unpinned. `rp.newFor` is
+// the same shape for the same reason.
 func (lp *livePipelines) rebed(ctx context.Context) {
 	lp.mu.Lock()
 	f := lp.bedRefresh
@@ -181,10 +180,9 @@ func (lp *livePipelines) setServiceRadius(mi int) {
 
 // restationTo installs a station area, re-derives its pool and publishes both.
 //
-// EXTRACTED AT THE SECOND CALLER, which is the standing rule: the transmitter
-// and the radius each change one half of the same derivation, and two copies of
-// "set, derive, publish" would be two places for one of the three to be
-// forgotten.
+// ONE HELPER FOR BOTH CALLERS: the transmitter and the radius each change one
+// half of the same derivation, and two copies of "set, derive, publish" would be
+// two places for one of the three to be forgotten.
 func (lp *livePipelines) restationTo(s stationArea) {
 	lp.setStation(s)
 	lp.mu.Lock()
@@ -196,10 +194,9 @@ func (lp *livePipelines) restationTo(s stationArea) {
 	// AND THE RAIL IS RE-TESTED AGAINST THE NEW FENCE (D-154). The station's
 	// service area IS the rail's fence on the console, so moving the region
 	// moves the fence — and everything already admitted was admitted under the
-	// old one. Without this a narrowing from 100 miles to 25 left a 100-mile
-	// hazard sitting on the rail, which is the sentence `Aired.Fence` claims to
-	// have fixed and did not: its guard is written for the air, and the air does
-	// not move when a setting changes.
+	// old one. Without this a narrowing from 100 miles to 25 leaves a 100-mile
+	// hazard sitting on the rail: `Aired.Fence`'s guard is written for the air,
+	// and the air does not move when a setting changes.
 	//
 	// AFTER `setStation`, NOT BEFORE. The fence is ASKED of the scope in force,
 	// and the scope in force is the one that was just installed a few lines up —
@@ -231,8 +228,8 @@ func (lp *livePipelines) restationTo(s stationArea) {
 // IT IS FOR CHANGES ONLY. At launch the console reads the area off `tty.Config`
 // — see setStation for why sending it then cannot work.
 // IT TAKES A SEND SEAM, NOT A PROGRAM (D-93). `*tea.Program` cannot be driven by
-// a test without running one, so the only way to check what this publishes was to
-// write a second copy of it in the test — which measures the copy. `func(tea.Msg)`
+// a test without running one, so the only other way to check what this publishes
+// is a second copy of it in the test — which measures the copy. `func(tea.Msg)`
 // is what the executors' own `publish` seam already is.
 func publishArea(send func(tea.Msg), s stationArea, pool []snapshot.LocationRef) {
 	if send == nil {
@@ -264,9 +261,9 @@ func (lp *livePipelines) currentPool() []snapshot.LocationRef {
 //
 // A FUNCTION RATHER THAN A CALL SITE, deliberately. `startSchedule` takes three
 // seams that all read the same list — what may be proposed, what a ref resolves
-// against, and what the bed cuts to — and the defect this release keeps
-// producing is a wiring nothing drives. A call site cannot be asserted; this
-// can, and a test does.
+// against, and what the bed cuts to — and the easiest defect to make here is a
+// wiring nothing drives. A call site cannot be asserted; this can, and a test
+// does.
 func (lp *livePipelines) producer() func() []snapshot.LocationRef { return lp.currentPool }
 
 // currentStation is where the console says the station transmits from.
@@ -307,7 +304,8 @@ func (lp *livePipelines) reStation(watch []snapshot.LocationRef) (stationArea, [
 }
 
 // withPool adds the station's pool to a location set, skipping what is already
-// there (D-99).
+// there and what is watched (D-99, D-208): the priority pipeline fetches every
+// watched place, and the pool's rows read it from that snapshot.
 //
 // THE POOL JOINS THE RECENT PIPELINE RATHER THAN GETTING ONE OF ITS OWN. That
 // pipeline already fetches a bounded set at the slow cadence, publishes into one
@@ -323,8 +321,11 @@ func (lp *livePipelines) reStation(watch []snapshot.LocationRef) (stationArea, [
 //
 // DEDUPED BY KEY, because a watched location inside the service area is one
 // location, and fetching it twice would double its cost for no new data.
-func withPool(recent, pool []snapshot.LocationRef) []snapshot.LocationRef {
-	seen := make(map[snapshot.LocationKey]bool, len(recent)+len(pool))
+func withPool(recent, pool, watch []snapshot.LocationRef) []snapshot.LocationRef {
+	seen := make(map[snapshot.LocationKey]bool, len(recent)+len(pool)+len(watch))
+	for _, w := range watch { // the watchlist, ten at most (P10-02)
+		seen[snapshot.Key(w)] = true
+	}
 	out := make([]snapshot.LocationRef, 0, len(recent)+len(pool))
 	for _, r := range append(append([]snapshot.LocationRef(nil), recent...), pool...) { // bounded (P10-02)
 		k := snapshot.Key(r)
@@ -368,13 +369,12 @@ const radiusLookupBudget = 5 * time.Second
 // locateInRadius answers the ONE question both location fields ask: CAN THE
 // STATION BROADCAST ABOUT THE PLACE THIS NAMES?
 //
-// THE POOL IS NOT THE TEST, AND THAT WAS THE DEFECT (D-130). The pool is capped
-// at 25 (locations.PoolCap) and is a DELIBERATE subset of the fence — so a real
-// place inside the service radius answered "not found" merely for being the
-// 26th. HUM LEAD, UAT 2026-09-14: "location search should accept any value
-// WITHIN the service radius, not just the 25 slot location pool. Example:
-// 'Rainbow, CA' is a valid location within a 25 mi radius of Oceanside, but now
-// it says that it's not a valid location."
+// THE POOL IS NOT THE TEST (D-130). The pool is capped at 25
+// (locations.PoolCap) and is a DELIBERATE subset of the fence — so testing
+// against it answers "not found" for a real place inside the service radius
+// merely for being the 26th. HUM LEAD, UAT 2026-09-14: "location search should
+// accept any value WITHIN the service radius, not just the 25 slot location
+// pool."
 //
 // AND THE OFFLINE DATA CANNOT ANSWER IT ALONE. Measured 2026-09-14: the
 // embedded index holds 34,106 cities and 41,490 zips, and Rainbow, CA is in
@@ -432,9 +432,9 @@ func (lp *livePipelines) locateInRadius(r *locations.Resolver) func(string) (sna
 		ref, _, err := r.Resolve(ctx, q)
 		if err != nil {
 			// A TIMEOUT IS NOT AN ANSWER (D-151). `found=false` is what a genuine
-			// no-match returns, and reporting a failed lookup the same way told
-			// the operator a real place does not exist — then disabled the key
-			// that would have retried it.
+			// no-match returns, and reporting a failed lookup the same way tells the
+			// operator a real place does not exist — and disables the key that would
+			// retry it.
 			return snapshot.LocationRef{}, false, false, !isLookupFailure(err)
 		}
 		if ref.Tag == "" {
@@ -469,14 +469,14 @@ func matchesQuery(ref snapshot.LocationRef, q string) bool {
 
 // requestCard carries the operator's request to the Director.
 //
-// IT REMEMBERS THE REF BEFORE IT ASKS, and that ordering is the fix (D-140).
-// The card the Director mints carries only a KEY; the Composer turns that key
-// back into a location by looking it up. Until 2026-09-15 it looked only in the
-// station's POOL — so a request for somewhere inside the service radius but
-// outside the capped 25 minted fine, closed the window as though scheduled, and
-// then failed to build. `Failed{Routed:true}` is treated as deliberate and
-// self-healing, so nothing surfaced: the operator was shown an action nothing
-// took, which is FR-3.3's named trap.
+// IT REMEMBERS THE REF BEFORE IT ASKS, and that ordering is load-bearing
+// (D-140). The card the Director mints carries only a KEY; the Composer turns
+// that key back into a location by looking it up in `resolvable`. Were the ref
+// looked for only in the station's POOL, a request for somewhere inside the
+// service radius but outside the capped 25 would mint fine, close the window as
+// though scheduled, and then fail to build. `Failed{Routed:true}` is treated as
+// deliberate and self-healing, so nothing would surface: the operator would be
+// shown an action nothing took, which is FR-3.3's named trap.
 //
 // IT REMEMBERS EVEN WITH NO DIRECTOR. The remembering is about what this
 // process must be able to RESOLVE, not about what it managed to schedule.
@@ -493,13 +493,12 @@ func (lp *livePipelines) requestCard(ref snapshot.LocationRef, kinds report.Set,
 
 // requestedCap bounds what the operator's requests may cost in memory.
 //
-// NOT THE MAIN TRACK'S DEPTH, AND THE FIRST VERSION SAID IT WAS (D-152). That
-// justification — "a request that has fallen off the bottom of the running order
-// can no longer be built" — described an eviction this code does not perform:
-// it drops the OLDEST REMEMBERED, while `Insert` sheds the LAST VISIBLE. With
-// the request window's default slot those are opposite ends, so sixteen requests
-// at the bottom would evict the ref of the card sitting at the TOP, still
-// unbuilt — and D-140's defect returns silently.
+// NOT THE MAIN TRACK'S DEPTH (D-152). "A request that has fallen off the bottom
+// of the running order can no longer be built" describes an eviction this code
+// does not perform: it drops the OLDEST REMEMBERED, while `Insert` sheds the LAST
+// VISIBLE. With the request window's default slot those are opposite ends, so a
+// cap at that depth lets sixteen requests at the bottom evict the ref of the
+// card sitting at the TOP, still unbuilt — and D-140's defect returns silently.
 //
 // SO THE CAP IS SIZED TO MAKE EVICTION UNREACHABLE IN A SESSION rather than
 // pretending to track the schedule. A `snapshot.LocationRef` is about a hundred
@@ -540,11 +539,11 @@ func (lp *livePipelines) rememberRequested(ref snapshot.LocationRef) {
 // resolvable is what the COMPOSER may turn a card's key back into: the station's
 // pool, plus whatever the operator has asked for.
 //
-// TWO QUESTIONS, NOT ONE (D-140). `schedule.go` said pool was "what its Producer
-// may offer AND what its Composer resolves against" — one list serving two
-// questions, which held only while the operator could request nothing else.
-// D-130 made that false. The Producer is still bounded by the pool: widening
-// what may be PROPOSED would let the station offer a location it never chose.
+// TWO QUESTIONS, NOT ONE (D-140). One list cannot be both what the Producer may
+// offer and what the Composer resolves against once the operator can request a
+// place outside the pool (D-130). The Producer stays bounded by the pool:
+// widening what may be PROPOSED would let the station offer a location it never
+// chose.
 func (lp *livePipelines) resolvable() []snapshot.LocationRef {
 	if lp == nil {
 		return nil

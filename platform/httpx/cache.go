@@ -6,6 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -22,11 +24,11 @@ import (
 // has, and an optional disk tier (CacheDir) holding the same entries so a
 // relaunch is warm. Disk files are a one-line JSON header (redacted URL,
 // expiry, validators) followed by the raw body — inspectable, and read
-// back without decoding (UAT 73: the earlier base64 format cost a third
-// more bytes and a full copy per read). Only public weather data ever
+// back without decoding (UAT 73: a base64 body would cost a third more
+// bytes and a full copy per read). Only public weather data ever
 // lands here.
 //
-// Quality pass Q1 (plan §2.2) added the rules that keep the tiers bounded
+// Quality pass Q1's rules (plan §2.2) keep the tiers bounded
 // over weeks: a persistence floor (short-lived entries never touch disk),
 // one retention rule (an expired entry that carries validators is kept for
 // a grace so Q5 can revalidate it), an allow-list sweep of the directory,
@@ -34,14 +36,16 @@ import (
 type cache struct {
 	dir          string
 	maxDiskBytes int64         // directory cap enforced by the sweep
+	memMax       int           // the small memory tier's cap
+	memEntryMax  int           // the largest entry the small tier keeps; larger ones go to the large tier
 	writes       chan entry    // disk writes happen on one goroutine, off the request path (UAT 73)
-	reads        chan struct{} // bounds concurrent disk reads (UAT 74): a 200-goroutine warm launch once spawned ~90 OS threads on short file syscalls
+	reads        chan struct{} // bounds concurrent disk reads (UAT 74): unbounded, a 200-goroutine warm launch spawns ~90 OS threads on short file syscalls
 	now          func() time.Time
 
 	mu         sync.Mutex
 	mem        map[string]*entry
 	bytes      int
-	large      map[string]*entry // entries over maxMemEntry kept resident (Q-mem): read from disk once, then served from memory
+	large      map[string]*entry // entries over memEntryMax kept resident (Q-mem): read from disk once, then served from memory
 	largeBytes int
 	tick       uint64 // LRU clock (shared across both tiers)
 	neg        map[string]negEntry
@@ -72,12 +76,12 @@ type negEntry struct {
 	until time.Time
 }
 
-// Memory-tier budget (UAT 73): the 60-location launch holds ~17 MB of raw
-// NWS bodies plus 6.6 MB of CO-OPS station lists if unbounded. 8 MB keeps
-// the products that are re-read within a cycle (gridpoints shared by two
-// consumers, buoy files shared by neighbours); anything larger than a
-// quarter of the budget is disk-only — it is parsed once and re-read from
-// disk if ever needed. Expired entries are swept first.
+// The default memory-tier budget (UAT 73): the 60-location launch holds
+// ~17 MB of raw NWS bodies plus 6.6 MB of CO-OPS station lists if unbounded.
+// 8 MB keeps the products that are re-read within a cycle (gridpoints shared
+// by two consumers, buoy files shared by neighbours); anything larger than a
+// quarter of the budget goes to the large tier. Expired entries are swept
+// first. A client may size its own (Config.MemBytes, D-219).
 const (
 	maxMemBytes = 8 << 20
 	maxMemEntry = maxMemBytes / 4
@@ -86,7 +90,7 @@ const (
 	maxDiskRead = 4
 )
 
-// Large-entry tier: an entry over maxMemEntry is otherwise disk-only and re-read
+// Large-entry tier: an entry over the small tier's entry limit is otherwise disk-only and re-read
 // from disk on every access — a large, hot, slow-changing feed (the HMS smoke
 // KMZ, the NWS active-alerts feed in an outbreak, the significant-quake feed) is
 // then read from disk dozens of times a window, which makes it the app's largest
@@ -98,7 +102,7 @@ const (
 	maxLargeEntries = 6
 )
 
-// Bounds added by the quality pass (plan §2.2, §0.8).
+// Bounds from the quality pass (plan §2.2, §0.8).
 const (
 	diskFloor        = 5 * time.Minute // caller TTL must exceed this (or pass Persist) for a disk write: obs/alerts never serve a relaunch (L4-F2)
 	staleGrace       = 24 * time.Hour  // an expired entry with validators lives this long past Expires, in memory and on disk (CQ-3, PA-4)
@@ -114,18 +118,28 @@ const (
 )
 
 // Allow-list (IS-1): the sweep touches only names it wrote. `.json` is the
-// pre-UAT-73 format (593 orphans found in DISCOVER, L4-F1).
+// pre-UAT-73 format, left behind as orphans (L4-F1).
 var (
 	cacheNameRe = regexp.MustCompile(`^[0-9a-f]{64}\.(cache|json)$`)
 	tmpNameRe   = regexp.MustCompile(`^[0-9a-f]{64}\.cache\.[0-9]+\.tmp$`)
 )
+
+// DiskCacheBytes is the disk cache's cap, which the station's one stated cache
+// total covers (0.18.0 FR-3.5).
+const DiskCacheBytes = maxDiskBytes
 
 func newCache(dir string) *cache { return newCacheWithCap(dir, maxDiskBytes) }
 
 // newCacheWithCap is newCache with the directory cap chosen before the
 // writer (and its start sweep) runs — tests use a small cap.
 func newCacheWithCap(dir string, capBytes int64) *cache {
-	c := &cache{dir: dir, maxDiskBytes: capBytes, now: time.Now, mem: map[string]*entry{}, large: map[string]*entry{}, neg: map[string]negEntry{}, reads: make(chan struct{}, maxDiskRead)}
+	return newCacheSized(dir, capBytes, maxMemBytes)
+}
+
+// newCacheSized is a cache with its disk cap and its small memory tier's cap
+// chosen (D-219); the tier keeps entries up to a quarter of its cap.
+func newCacheSized(dir string, capBytes int64, memBytes int) *cache {
+	c := &cache{dir: dir, maxDiskBytes: capBytes, memMax: memBytes, memEntryMax: memBytes / 4, now: time.Now, mem: map[string]*entry{}, large: map[string]*entry{}, neg: map[string]negEntry{}, reads: make(chan struct{}, maxDiskRead)}
 	if dir != "" {
 		if err := os.MkdirAll(dir, 0o700); err != nil { // private, like the config dir (red-team 0.9.0 S-F10)
 			c.dir = "" // no disk tier; memory still works
@@ -288,12 +302,12 @@ func (c *cache) renew(rawURL string, expires time.Time) {
 }
 
 // remember places an entry in the right memory tier within its byte budget: the
-// small tier for the common case, the large tier for entries over maxMemEntry
+// small tier for the common case, the large tier for entries over memEntryMax
 // (so a hot large feed is served from memory, not re-read from disk each time).
 func (c *cache) remember(rawURL string, e entry) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	// A body can cross the maxMemEntry boundary between fetches (an alerts feed
+	// A body can cross the memEntryMax boundary between fetches (an alerts feed
 	// swelling in an outbreak), so drop any prior copy from BOTH tiers before
 	// re-inserting — a URL must be resident in exactly one tier. Otherwise a
 	// stale small copy shadows a fresh large one (get() checks mem first) and
@@ -306,7 +320,7 @@ func (c *cache) remember(rawURL string, e entry) {
 		c.largeBytes -= len(old.Body)
 		delete(c.large, rawURL)
 	}
-	if len(e.Body) > maxMemEntry {
+	if len(e.Body) > c.memEntryMax {
 		if len(e.Body) > maxLargeBytes {
 			return // bigger than the whole large tier — stays disk-only
 		}
@@ -323,7 +337,7 @@ func (c *cache) remember(rawURL string, e entry) {
 	e.used = c.tick
 	c.mem[rawURL] = &e
 	c.bytes += len(e.Body)
-	if c.bytes > maxMemBytes || len(c.mem) > maxEntries {
+	if c.bytes > c.memMax || len(c.mem) > maxEntries {
 		c.evictLocked()
 	}
 }
@@ -333,7 +347,7 @@ func (c *cache) remember(rawURL string, e entry) {
 // with validators is an LRU citizen like any other, so a 304 has a body to
 // renew (PF-4) — until the tier is within budget (caller holds mu).
 func (c *cache) evictLocked() {
-	c.bytes = evictTier(c.mem, c.bytes, maxMemBytes, maxEntries, c.now())
+	c.bytes = evictTier(c.mem, c.bytes, c.memMax, maxEntries, c.now())
 }
 
 // evictTier drops a tier's expired-and-unrenewable entries, then its
@@ -572,6 +586,29 @@ func readEntry(path string) (entry, bool) {
 	return e, true
 }
 
+// maxHeaderLine bounds an entry's header line as readHeader reads it: a
+// redacted URL and two validators, far below it.
+const maxHeaderLine = 64 << 10
+
+// readHeader is an entry file's header line alone, its body left unread
+// (PF-11): what deciding by URL needs, whatever the body's size.
+func readHeader(path string) (entry, bool) {
+	f, err := os.Open(path)
+	if err != nil {
+		return entry{}, false
+	}
+	defer func() { _ = f.Close() }()
+	line, err := bufio.NewReader(io.LimitReader(f, maxHeaderLine)).ReadBytes('\n')
+	if err != nil {
+		return entry{}, false // no newline within the bound: not an entry
+	}
+	var e entry
+	if json.Unmarshal(line[:len(line)-1], &e) != nil {
+		return entry{}, false
+	}
+	return e, true
+}
+
 // negative reports a remembered non-retryable failure.
 func (c *cache) negative(rawURL string) (error, bool) {
 	c.mu.Lock()
@@ -655,7 +692,7 @@ func (c *cache) stats() Stats {
 
 // flush waits until the writer has finished every item handed to it
 // (tests): queued == handled, not merely an empty queue — the item in the
-// writer's hands and the start sweep count too (loaded CI runners exposed
+// writer's hands and the start sweep count too (a loaded CI runner shows
 // both differences).
 func (c *cache) flush() {
 	if c.writes == nil {
@@ -664,4 +701,55 @@ func (c *cache) flush() {
 	for i := 0; i < 5000 && c.handled.Load() < c.queued.Load(); i++ { // bounded wait (P10-02): ~5 s
 		time.Sleep(time.Millisecond)
 	}
+}
+
+// forgetPrefix drops every entry whose URL starts with prefix, from memory
+// and from disk, and says how many it removed (0.18.0 W3.8). Queued writes
+// land first, so none arrives after it.
+func (c *cache) forgetPrefix(prefix string) (int, error) {
+	c.flush()
+	removed := 0
+	c.mu.Lock()
+	for u, e := range c.mem {
+		if strings.HasPrefix(u, prefix) {
+			c.bytes -= len(e.Body)
+			delete(c.mem, u)
+			removed++
+		}
+	}
+	for u, e := range c.large {
+		if strings.HasPrefix(u, prefix) {
+			c.largeBytes -= len(e.Body)
+			delete(c.large, u)
+		}
+	}
+	for u := range c.neg {
+		if strings.HasPrefix(u, prefix) {
+			delete(c.neg, u)
+		}
+	}
+	c.mu.Unlock()
+	if c.dir == "" {
+		return removed, nil
+	}
+	files, err := filepath.Glob(filepath.Join(c.dir, "*.cache"))
+	if err != nil {
+		return removed, err
+	}
+	onDisk, failed := 0, 0
+	for _, f := range files {
+		e, ok := readHeader(f)
+		if !ok || !strings.HasPrefix(e.URL, RedactURL(prefix)) {
+			continue
+		}
+		if os.Remove(f) != nil {
+			failed++
+			continue
+		}
+		onDisk++
+	}
+	if failed > 0 {
+		return max(removed, onDisk), fmt.Errorf("httpx: %d cached entries could not be removed", failed)
+	}
+	return max(removed, onDisk), nil
 }

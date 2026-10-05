@@ -4,7 +4,7 @@ import pathlib
 # next settle has no way to know what was chosen, so it publishes the Director's
 # bed over it. A fact that is announced but not owned has no owner at all.
 p = pathlib.Path("app/bedrelay.go"); s = p.read_text()
-old = "\tlp.bedRelay = relayLine(chosen)\n\tline := lp.bedRelay"
-new = "\tline := relayLine(chosen)"
+old = "\tlp.bedRelay, lp.bedCall = relayLine(chosen), chosen.Callsign\n\tline, call := lp.bedRelay, lp.bedCall"
+new = "\tlp.bedCall = chosen.Callsign\n\tline, call := relayLine(chosen), lp.bedCall"
 assert old in s, "mY2"
 p.write_text(s.replace(old, new, 1))

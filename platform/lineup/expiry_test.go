@@ -28,16 +28,16 @@ func onStandbyWith(t *testing.T, now time.Time, arr ...Arrival) Director {
 
 // A LAPSED HAZARD LEAVES THE RAIL (D-155).
 //
-// MEASURED BEFORE THE FIX, and every number here is from that run: a tornado
-// warning valid for thirty minutes, admitted at a silent station, still sat on
-// the rail six hours later. `firstStale` found nothing — it skips a card with a
-// zero `BuiltAt`, and a card nobody has built has no words to have gone off.
-// `Projection` counted it, so `heldNotice` escalated to its loudest rung and
-// told the operator to go ON AIR and read it. `Next()` offered it the air.
+// WITHOUT IT, a tornado warning valid for thirty minutes, admitted at a silent
+// station, still sits on the rail six hours later. `firstStale` finds nothing —
+// it skips a card with a zero `BuiltAt`, and a card nobody has built has no
+// words to have gone off. `Projection` counts it, so `heldNotice` escalates to
+// its loudest rung and tells the operator to go ON AIR and read it. `Next()`
+// offers it the air.
 //
-// THE LISTENER WAS NEVER AT RISK — `eventsFor` declines to build an expired
-// alert, so the words never came. What the console asserted was a pending read
-// the schedule could never take, forever, which is FR-3.3 read backwards.
+// THE LISTENER IS NOT AT RISK — `eventsFor` declines to build an expired
+// alert, so the words never come. What the console would assert is a pending
+// read the schedule can never take, forever, which is FR-3.3 read backwards.
 func TestALapsedHazardLeavesTheRail(t *testing.T) {
 	t0 := time.Now()
 	d := onStandbyWith(t, t0, lapsing("twister", t0, 30*time.Minute))
@@ -61,8 +61,9 @@ func TestALapsedHazardLeavesTheRail(t *testing.T) {
 // AND A HAZARD STILL IN FORCE IS NEVER TOUCHED.
 //
 // THE DANGEROUS DIRECTION. Holding a live tornado warning off the air because a
-// drop rule was written a few minutes too eager would be far worse than the
-// defect above, which only ever cost the operator a misleading count.
+// drop rule was written a few minutes too eager would be far worse than a
+// lapsed card left on the rail, which only costs the operator a misleading
+// count.
 func TestAHazardStillInForceIsNotDropped(t *testing.T) {
 	t0 := time.Now()
 	d := onStandbyWith(t, t0, lapsing("twister", t0, 2*time.Hour))
@@ -73,9 +74,9 @@ func TestAHazardStillInForceIsNotDropped(t *testing.T) {
 		t.Fatalf("a warning with half an hour left is still in force; the rail holds %d", n)
 	}
 	if _, _, ok := d.lineup.Next(); !ok {
-		// THE MESSAGE SAYS WHAT HAPPENED, NOT WHAT SHOULD. It read "a hazard in
-		// force is offered the air" — the rule, printed at the moment the rule
-		// was broken, telling a reader debugging the failure the opposite of the
+		// THE MESSAGE SAYS WHAT HAPPENED, NOT WHAT SHOULD. Printing the rule —
+		// "a hazard in force is offered the air" — at the moment the rule is
+		// broken tells a reader debugging the failure the opposite of the
 		// truth.
 		t.Error("a hazard still in force is NOT offered the air")
 	}
@@ -85,8 +86,8 @@ func TestAHazardStillInForceIsNotDropped(t *testing.T) {
 //
 // EVERY, NOT ANY. A burst is ONE card carrying many hazards (MVS-D-77). Dropping
 // the card when the first of them lapses would take the rest off the air with
-// it — the same shape as the `heldNotice` defect that counted cards instead of
-// hazards, and with a far worse consequence.
+// it — the same shape as a `heldNotice` that counts cards instead of hazards,
+// and with a far worse consequence.
 func TestABurstSurvivesWhileAnyOfItsHazardsIsInForce(t *testing.T) {
 	t0 := time.Now()
 	d := onStandbyWith(t, t0,
@@ -112,12 +113,12 @@ func TestABurstSurvivesWhileAnyOfItsHazardsIsInForce(t *testing.T) {
 //
 // IT HAS TO BE. The Director decides what reaches the air and the executor
 // decides what can be built; a hazard the one calls live and the other calls
-// lapsed is a card offered forever and declined forever — which is the defect
-// this file exists to close, reintroduced from the other end.
+// lapsed is a card offered forever and declined forever — the failure this
+// file exists to prevent, arriving from the other end.
 //
-// IT COVERS THE PER-HAZARD DIMENSIONS; the per-card halves agree since F-110,
-// where the composer learned to skip a lapsed hazard rather than decline the
-// burst carrying it.
+// IT COVERS THE PER-HAZARD DIMENSIONS; the per-card halves agree because the
+// composer skips a lapsed hazard rather than declining the burst carrying it
+// (F-110).
 func TestThePerHazardExpiryBoundaryMatchesTheBuilders(t *testing.T) {
 	t0 := time.Now()
 

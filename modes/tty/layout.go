@@ -2,9 +2,9 @@ package tty
 
 // layout.go — the frame's geometry, computed once per View and once per key
 // event (quality pass Q3, plan §2.5, L5-F6): compact mode, the player rows,
-// module heights, the control row and the RECENT window. Before Q3 the
-// same facts were recomputed about eight times a frame, each time rendering
-// the radio module and the control row again to count their lines.
+// module heights, the control row and the RECENT window. Each recomputation of
+// these facts would render the radio module and the control row again to count
+// their lines.
 
 import (
 	"strings"
@@ -35,7 +35,7 @@ type frameLayout struct {
 func (d Dashboard) layout() frameLayout {
 	o := d.opts()
 	// The rows the geometry measures are built ONCE per frame and handed to
-	// both resolutions (round 4, B-06: they were built four times a tick).
+	// both resolutions (round 4, B-06).
 	rows := layoutRows{full: d.radioLines(o, false), compact: d.radioLines(o, true), controlRow: d.controlRow(o)}
 	fl := d.layoutWith(o, rows)
 	// The bands are the last thing to give (UAT 2026-08-27): only when the
@@ -104,6 +104,5 @@ const (
 func (d Dashboard) compact() bool { return d.layout().compact }
 
 // windowSize is the height-aware recent viewport (UAT 8.2); the Opts
-// argument is the caller's own resolution of the same width (kept so the
-// render sites read as before Q3).
+// argument is the caller's own resolution of the same width.
 func (d Dashboard) windowSize(render.Opts) int { return d.layout().window }

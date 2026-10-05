@@ -51,7 +51,7 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	model, _ = model.Update(SnapshotMsg{Snap: snap()}) // an existing watchlist stays, below the new default
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	view := stripANSITest(model.(Dashboard).View().Content)
-	for _, want := range []string{"› Default location:", "NASA FIRMS key:", "Key: ▌", "[tab] Next question", "[enter] Next"} {
+	for _, want := range []string{"› Default location:", "NASA FIRMS key:", "Key: ▌", "[tab] Next tab", "[enter] Next"} /* D-62: tab switches tabs */ {
 		if !strings.Contains(view, want) {
 			t.Fatalf("the form shows every question at once, missing %q:\n%s", want, view)
 		}
@@ -102,7 +102,7 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	first, _ := NewDashboard(h.config())
 	var fm tea.Model = first
 	fm, _ = fm.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
-	// tab moves between GROUPS now (five stops), so the key row is reached
+	// tab moves between GROUPS (five stops), so the key row is reached
 	// with ↓ within DATA; tab from DATA lands on the events group.
 	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	if !strings.Contains(stripANSITest(fm.(Dashboard).View().Content), "› NASA FIRMS key") {
@@ -114,13 +114,13 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 		t.Fatalf("saving without a location goes back to question 1 with the reason:\n%s", stripANSITest(fd.View().Content))
 	}
 	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
-	// shift+tab from the FIRST group wraps to the LAST — derived from the
-	// group list, not named, so the next group added moves the target here
-	// rather than turning this into a failure about nothing.
-	groups := setupGroups()
-	last := firstOfGroup(groups[len(groups)-1])
+	// shift+tab from the FIRST tab wraps to the LAST (D-62) — derived from the
+	// tabs this surface shows, not named, so the next tab added moves the
+	// target here rather than turning this into a failure about nothing.
+	tabs := fm.(Dashboard).tabsShown()
+	last, _ := fm.(Dashboard).firstRowOfTab(tabs[len(tabs)-1])
 	if got := fm.(Dashboard).setup.focus; got != last {
-		t.Fatalf("shift+tab from the first group wraps to the last (%v), got %v", last, got)
+		t.Fatalf("shift+tab from the first tab wraps to the last (%v), got %v", last, got)
 	}
 }
 
@@ -135,11 +135,9 @@ func TestSetupAlertPreferenceTogglesAndPersists(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	model = typeText(model, "oce")
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // location → key
-	// The events group is its own tab stop, and its two options are two ROWS
-	// rather than one line with two marks. TWO tabs: WATCHPOST UI sits between
-	// DATA and the events (0.14.0).
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	// The events group's two options are two ROWS rather than one line with
+	// two marks, reached with ↓ on the General tab (D-62).
+	model = walkTo(t, model, rowEventsAll)
 
 	view := stripANSITest(model.(Dashboard).View().Content)
 	if !strings.Contains(view, "● All locations (Default)") || !strings.Contains(view, "○ Within [    ] mi") {
@@ -169,8 +167,7 @@ func TestSetupAlertAllPersistsZero(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	model = typeText(model, "oce")
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab}) // → WATCHPOST UI
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab}) // → the events group
+	model = walkTo(t, model, rowEventsAll) // → the events group, on General (D-62)
 	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "● Within [25") {
 		t.Fatalf("a stored radius opens on Filtered [25]:\n%s", view)
 	}
@@ -205,7 +202,7 @@ func TestSetupFormKeyMasksAndStoresIt(t *testing.T) {
 		t.Fatalf("ctrl+r reveals it:\n%s", view)
 	}
 	// Enter on a text field commits it and moves on; enter on the next row —
-	// which is not a field — saves. That is 0.13.0's flow, one step shorter.
+	// which is not a field — saves.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // key field → the events group
 	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})  // → Save
 	model = drain(t, model, cmd)
@@ -257,7 +254,7 @@ func TestSetupFormShowsAStoredFIRMSKeyAndItsHealth(t *testing.T) {
 		t.Fatalf("bare enter keeps the default:\n%s", view)
 	}
 	// Enter on a text field commits it and moves on; enter on the next row —
-	// which is not a field — saves. That is 0.13.0's flow, one step shorter.
+	// which is not a field — saves.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // key field → the events group
 	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})  // → Save
 	model = drain(t, model, cmd)
@@ -275,12 +272,12 @@ func TestSetupFormShowsAStoredFIRMSKeyAndItsHealth(t *testing.T) {
 	}
 }
 
-// UAT 2026-08-30 (bug #2): saving a cast, closing Setup and re-opening it
-// showed the LAUNCH-TIME cast again.
+// UAT 2026-08-30 (#2): saving a cast, closing Setup and re-opening it shows the
+// cast just saved, not the LAUNCH-TIME one.
 //
-// The file was always right — the window is seeded from cfg, and cfg is
-// captured once when the app is built. So the save's outcome now carries what
-// it wrote, and the model seeds the next open from that.
+// The window is seeded from cfg, and cfg is captured once when the app is
+// built — so the save's outcome carries what it wrote, and the model seeds the
+// next open from that.
 func TestReopeningSetupShowsTheCastThatWasSaved(t *testing.T) {
 	h := &setupHarness{}
 	cfg := h.config()
@@ -297,7 +294,7 @@ func TestReopeningSetupShowsTheCastThatWasSaved(t *testing.T) {
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
 
 	// V opens at the first correspondent row; → picks a voice for it. There is
-	// no mode radio and no enabling checkbox any more.
+	// no mode radio and no enabling checkbox.
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'V', Text: "V"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	picked := model.(Dashboard).setup.cast.Names[roleAlerts]
@@ -325,8 +322,8 @@ func TestReopeningSetupShowsTheCastThatWasSaved(t *testing.T) {
 	}
 }
 
-// UAT 2026-08-30 (bug #3): ctrl+r did nothing unless the key row happened to
-// have the focus — but the chip that names it is read from anywhere.
+// UAT 2026-08-30 (#3): ctrl+r works wherever the focus is, because the chip
+// that names it is read from anywhere.
 func TestCtrlRRevealsFromAnyRow(t *testing.T) {
 	h := &setupHarness{}
 	m, _ := NewDashboard(h.config())
@@ -345,16 +342,16 @@ func TestCtrlRRevealsFromAnyRow(t *testing.T) {
 	}
 	// And from somewhere else entirely.
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}) // hide again
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})            // → the events group
+	model = walkTo(t, model, rowEventsAll)                                // → the events group
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
 	if v := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(v, "Key: abc123") {
 		t.Fatalf("ctrl+r is a window key, not a row key:\n%s", v)
 	}
 }
 
-// UAT 2026-08-30 (bug #4): the picker's press blink stayed lit "for an extended
-// period" — it had a tick to START it and none to END it, so it survived until
-// something else happened to redraw the window.
+// UAT 2026-08-30 (#4): the picker's press blink must not stay lit "for an
+// extended period" — it needs a tick to END it as well as one to START it, or
+// it survives until something else happens to redraw the window.
 func TestThePickerBlinkIsClearedByATick(t *testing.T) {
 	h := &setupHarness{}
 	cfg := h.config()
@@ -528,14 +525,18 @@ func TestTheRelayGroupIsReachableFromTheWindow(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d = d.open(modalSetup)
 
-	// tab walks the groups; the relay group is the last of them.
+	// tab walks the tabs (D-62), and ↓ walks the Watchpost Radio tab to the
+	// relay group, its last.
+	for i := 0; i < len(setupTabs())*2 && d.setupTab() != tabRadio; i++ { // twice round, so the wrap is covered
+		d.setup.focus = d.stepTab(1)
+	}
 	seen := map[setupGroupID]bool{}
-	for i := 0; i < len(setupGroups())*2; i++ { // twice round, so the wrap is covered
+	for i := 0; i < int(setupRowCount); i++ {
 		seen[setupTable()[d.setup.focus].group] = true
-		d.setup.focus = stepGroup(d.setup.focus, 1, d.rowVisible)
+		d.setup.focus = nextRow(d.setup.focus, d.rowVisible)
 	}
 	if !seen[groupRelay] {
-		t.Fatal("tab never reaches the RELAY REPLAY group; the setting is unreachable")
+		t.Fatal("the Watchpost Radio tab never reaches the RELAY REPLAY group; the setting is unreachable")
 	}
 
 	// And with it focused, the window draws its heading.
@@ -555,8 +556,8 @@ func TestTheRelayGroupIsReachableFromTheWindow(t *testing.T) {
 // Drawing the picker, cycling it and reaching the group all pass while the
 // value goes nowhere — the window saves the cast, the tones and the radius
 // through separate hooks, and a setting simply left out of setupFinishCmd
-// looks perfect on screen and changes nothing. That is the shape of the
-// Watchlist regression: every part correct except the wire.
+// looks perfect on screen and changes nothing: every part correct except the
+// wire.
 func TestTheChosenRotationIsSavedToTheRadio(t *testing.T) {
 	h := &setupHarness{}
 	m, err := NewDashboard(h.config())
@@ -572,11 +573,11 @@ func TestTheChosenRotationIsSavedToTheRadio(t *testing.T) {
 	// Walk to the relay group by its identity, not by counting tabs: a group
 	// added between here and there must not silently retarget this test.
 	d := model.(Dashboard)
-	for i := 0; i < len(setupGroups())+1; i++ {
-		if setupTable()[d.setup.focus].group == groupRelay {
-			break
-		}
-		d.setup.focus = stepGroup(d.setup.focus, 1, d.rowVisible)
+	for i := 0; i < len(setupTabs())+1 && d.setupTab() != tabRadio; i++ {
+		d.setup.focus = d.stepTab(1) // D-62: tab walks the tabs
+	}
+	for i := 0; i < int(setupRowCount) && setupTable()[d.setup.focus].group != groupRelay; i++ {
+		d.setup.focus = nextRow(d.setup.focus, d.rowVisible)
 	}
 	if setupTable()[d.setup.focus].group != groupRelay {
 		t.Fatal("never reached the relay group")
@@ -601,11 +602,9 @@ func TestTheChosenRotationIsSavedToTheRadio(t *testing.T) {
 
 // BOTH EXITS SAVE THE SAME SETTINGS.
 //
-// The window's esc case has always claimed this — "no group can be saved by one
-// route and dropped by the other" — and it was untrue for two settings at once.
-// The rotation was saved by enter and dropped by esc (HUM LEAD, UAT 2026-09-04);
-// the alert radius had been the same since 0.12.0 and nobody had pressed esc
-// after changing it. A comment is not a guard.
+// The window's esc case claims this — "no group can be saved by one route and
+// dropped by the other" (HUM LEAD, UAT 2026-09-04) — and a comment is not a
+// guard.
 //
 // This drives the WINDOW, changing settings by keypress and leaving by each
 // door in turn, so a setting whose write is spelled out inside one exit fails
@@ -662,9 +661,9 @@ func TestBothExitsSaveTheSameSettings(t *testing.T) {
 
 // THE LANGUAGE CHOICE REACHES THE RADIO, by both doors.
 //
-// The rotation row was drawn perfectly and inert because nothing pressed a key
-// at it; this is the same row shape, so it gets the same test — pressed from
-// the window, saved by each exit, checked at the hook.
+// A row can draw perfectly and be inert when nothing presses a key at it; this
+// is the rotation row's shape, so it gets the same test — pressed from the
+// window, saved by each exit, checked at the hook.
 func TestTheLanguageChoiceIsSavedToTheRadio(t *testing.T) {
 	for _, door := range []struct {
 		name string
@@ -758,4 +757,19 @@ func TestTheApplicationsDefaultIsShownAndNotUsed(t *testing.T) {
 	if len(refsOf(d.snap)) != 0 {
 		t.Errorf("the application's default reached the watchlist as %v; it is shown, never used", refsOf(d.snap))
 	}
+}
+
+// walkTo presses ↓ until a row has the focus, through the real key path; it
+// fails a test whose row cannot be reached that way. Under D-62 tab switches
+// tabs, so a row on the same tab is reached with ↓, as a listener reaches it.
+func walkTo(t *testing.T, model tea.Model, id setupRowID) tea.Model {
+	t.Helper()
+	for range int(setupRowCount) + 1 {
+		if model.(Dashboard).setup.focus == id {
+			return model
+		}
+		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	}
+	t.Fatalf("row %v cannot be reached with ↓ from where the window opened", id)
+	return model
 }

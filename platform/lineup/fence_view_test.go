@@ -10,10 +10,10 @@ import "testing"
 //	Observer's alert radius → User ctrl+b → Broadcaster UI loads → Meanwhile the
 //	alerts from Observer carry over
 //
-// `refence` MARKED THEM AND NOTHING ACTED ON THE MARK where the operator could
-// see it. `nextForAir` has skipped out-of-fence cards since D-75 — so they were
-// never READ — and `Projection` went on returning them, so the console drew a
-// takeover full of hazards the station would never broadcast.
+// `refence` MARKS THEM, AND THE MARK MUST REACH WHAT THE OPERATOR SEES.
+// `nextForAir` skips out-of-fence cards (D-75) — so they are never READ — and a
+// `Projection` that went on returning them would have the console draw a
+// takeover full of hazards the station will never broadcast.
 func TestAnOutOfFenceCardLeavesTheProjection(t *testing.T) {
 	near := aBurst(t, "near", 33.24, -117.29)
 	far := aBurst(t, "far", 37.2, -99.8) // Kansas, from an Oceanside station
@@ -41,8 +41,8 @@ func TestAnOutOfFenceCardLeavesTheProjection(t *testing.T) {
 	if got[0].ID != "near" {
 		t.Errorf("the projection kept %q; the fence admits only the near hazard", got[0].ID)
 	}
-	// AND THE AIR AGREES WITH THE FRAME, which is the point: the two used to
-	// disagree, and the frame was the one the operator was reading.
+	// AND THE AIR AGREES WITH THE FRAME, which is the point: the frame is the one
+	// the operator reads.
 	c, _, ok := d.lineup.Next()
 	if !ok || c.ID != "near" {
 		t.Errorf("the air offers %v (ok=%v); the frame and the air must name one card", c.ID, ok)

@@ -39,8 +39,8 @@ func consoleRouter(t *testing.T) Router {
 	b.ascii = true
 	// WITH THE KEYMAP THE REAL ROUTER IS BUILT WITH. A fixture without it skips
 	// the action switch entirely, so every test through it exercises the
-	// fall-through and none of the bindings — which is F-72's shape ("ASSIGNED AT
-	// CONSTRUCTION, and it was not") wearing a test's clothes.
+	// fall-through and none of the bindings — which is F-72's shape (a field
+	// ASSIGNED AT CONSTRUCTION that is not) wearing a test's clothes.
 	return Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster,
 		keys: broadcasterKeyMap()}
 }
@@ -72,10 +72,10 @@ func TestTheScrollControlSitsInObserversColumn(t *testing.T) {
 // top of the vertical scroll aligns with the headers of the table (so they dont
 // disappear when I scroll down)."
 //
-// D-104 SPANNED IT OVER BOTH on the strength of the shared pointer. The running
-// order does not actually move — fifteen slots is the whole list — so the control
-// was claiming a scroll that never happens, and the pool's own headings were
-// inside the window it drew.
+// NOT OVER BOTH, despite the shared pointer (D-104). The running order does not
+// actually move — fifteen slots is the whole list — so a control beside it
+// claims a scroll that never happens, and puts the pool's own headings inside
+// the window it draws.
 func TestTheScrollControlIsThePoolsAlone(t *testing.T) {
 	b := manyPool(t, 25)
 	b.width, b.height, b.ascii = 150, 58, true
@@ -166,8 +166,8 @@ func TestThePoolIsNotWhateverIsLeftOver(t *testing.T) {
 func TestEnterOpensTheRowThePointerIsOn(t *testing.T) {
 	r := consoleRouter(t)
 	// THE PREMISE, ASSERTED. A loop that only checks the rows that DID open
-	// passes just as well on a console where none of them do — which is the shape
-	// mT3 was, and the reason a test states what it needed before it reports.
+	// passes just as well on a console where none of them do — so a test states
+	// what it needed before it reports.
 	beyondADigit := 0
 	for at := range MainTrackSlots - bcScheduledFrom { // bounded by the table (P10-02)
 		r.broadcaster.selected = at
@@ -204,9 +204,10 @@ func TestEnterOpensTheRowThePointerIsOn(t *testing.T) {
 // (until we write the management controls)."
 //
 // THE CARD WINDOW IS THE CONSOLE'S AND OBSERVER ONLY DRAWS IT. With one open the
-// console stops owning the keys, so `enter` reached Observer — where it means
-// "open the details for the row I have selected", and that row is Observer's own.
-// The operator pressed enter on one location and was shown another.
+// console stops owning the keys, so an `enter` let through reaches Observer —
+// where it means "open the details for the row I have selected", and that row
+// is Observer's own: the operator presses enter on one location and is shown
+// another.
 func TestASecondEnterClosesTheCardWindow(t *testing.T) {
 	r := consoleRouter(t)
 	r.broadcaster.selected = 0
@@ -240,7 +241,7 @@ func TestASecondEnterClosesTheCardWindow(t *testing.T) {
 //
 // ONE KEY, WHATEVER THE POINTER IS ON. The pointer walks the running order and
 // the pool as one list, so `enter` opens a card above and a place below —
-// and before this it opened a card above and OBSERVER'S OWN selection below.
+// never OBSERVER'S OWN selection.
 func TestEnterOnAPoolRowOpensThatLocation(t *testing.T) {
 	r := consoleRouter(t)
 	pool := []snapshot.LocationRef{
@@ -260,8 +261,7 @@ func TestEnterOnAPoolRowOpensThatLocation(t *testing.T) {
 		if out.observer.modal != modalDetails {
 			t.Errorf("%s: enter opened %v, not the location details", want, out.observer.modal)
 		}
-		// THE LOCATION THE POINTER IS ON, which is the whole finding: it used to
-		// open Observer's own selected row instead.
+		// THE LOCATION THE POINTER IS ON, not Observer's own selected row.
 		if out.observer.lookupRef == nil || out.observer.lookupRef.Label != want {
 			t.Errorf("the details are about %v, want %q", out.observer.lookupRef, want)
 		}

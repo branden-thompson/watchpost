@@ -75,6 +75,12 @@ type dumpRecord struct {
 	Requests   httpx.RequestStats     `json:"requests"`
 	Pipelines  map[string]publishView `json:"pipelines"`
 	Gauges     []Gauge                `json:"gauges"`
+	// MapProblems are the map's last problems the listener cannot act on
+	// (0.18.0 D-124): here, and never on the screen.
+	MapProblems []string `json:"map_problems,omitempty"`
+	// Timings are the timing instrument's newest intervals (W14, D-154),
+	// under WATCHPOST_DEBUG_TIMING=1 alone.
+	Timings []timingRecord `json:"timings,omitempty"`
 }
 
 // memRecord is the MemStats subset the soak statistic reads (plan §1:
@@ -92,8 +98,8 @@ type memRecord struct {
 }
 
 // publishView is one pipeline's publish counters plus the size of its last
-// snapshot, measured only here (marshalling every publish would be the
-// churn the pass is removing — red-team R2-7).
+// snapshot, measured only here (marshalling every publish would be
+// churn on the publish path — red-team R2-7).
 type publishView struct {
 	Publishes     int64 `json:"publishes"`
 	Folded        int64 `json:"folded"`
@@ -197,9 +203,8 @@ func writeProfile(path, name string) error {
 // record builds counters.json's content (also served by /debug/counters).
 // It runs a GC first: the memory rows describe live memory, not garbage
 // waiting for a cycle — the series the soak statistic reads (plan §1).
-// Quality pass Q7 found the GC on the dump path only, so every 5-minute
-// sample the soaks took through /debug/counters before 0.10.1 was a
-// pre-GC reading; the hourly dumps were the post-GC truth.
+// The dump and /debug/counters both come through here, so every sample
+// is a post-GC reading.
 func (d *dumper) record(now time.Time) dumpRecord {
 	runtime.GC()
 	var ms runtime.MemStats
@@ -210,11 +215,13 @@ func (d *dumper) record(now time.Time) dumpRecord {
 		At: now.UTC(), UptimeS: now.Sub(d.started).Seconds(),
 		Mem:        memRecord{HeapAlloc: ms.HeapAlloc, HeapInuse: ms.HeapInuse, HeapObjects: ms.HeapObjects, HeapSys: ms.HeapSys, StackInuse: ms.StackInuse, Sys: ms.Sys, NumGC: ms.NumGC, TotalAlloc: ms.TotalAlloc, Mallocs: ms.Mallocs},
 		Goroutines: g, Threads: t, FDs: fds,
-		Requests:  st.Requests,
-		Pipelines: map[string]publishView{},
+		Requests:    st.Requests,
+		Pipelines:   map[string]publishView{},
+		MapProblems: st.MapProblems,
 	}
 	src := d.sources()
 	rec.Gauges = src.gauges()
+	rec.Timings = src.timings.last()
 	for i, pub := range [...]*publisher{src.priorityPub, src.recentPub} {
 		name := [...]string{"priority", "recent"}[i]
 		var last *snapshot.Snapshot
@@ -265,9 +272,9 @@ func pruneDumps(root string, keep int) error {
 //
 // THIS IS A PRIVACY FIX, NOT COSMETICS. The [S] window's DUMPS line is the one
 // place the app prints an absolute path, and README captures of that window
-// have shipped the maintainer's username publicly since 0.13.0 — a grep cannot
-// see it, because by then it is pixels. Abbreviating at the source means every
-// future capture is safe by construction rather than by someone remembering.
+// publish whatever it shows — a grep cannot see a username once it is pixels.
+// Abbreviating at the source means every capture is safe by construction
+// rather than by someone remembering.
 //
 // It is deliberately conservative: only an exact home prefix at a path boundary
 // is rewritten, and an unknown home leaves the path untouched, because a

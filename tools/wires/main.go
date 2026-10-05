@@ -1,20 +1,13 @@
 // wires — the producer/consumer completeness check over the closed sets.
 //
-// PROPOSED AT 0.14.0 AND UNBUILT UNTIL NOW. The 0.14.0 debrief called it "the
-// single highest-value thing 0.15.0 could inherit", against a defect shape it
-// had counted NINE times in one release:
+// THE DEFECT SHAPE IT CLOSES:
 //
 //	"The wire is not pinned. A rule implemented and pinned in one layer, not
 //	 carried by the layer that would deliver it."
 //
-// and round 3 wrote the design in one sentence: "Every Effect, every Event,
-// every Arrival field and every Slot must name a production writer and a
-// production reader, or carry an explicit 'unwired, and why' entry."
-//
-// It stayed unbuilt through 0.15.0 and 0.16.0 P3, and P3's audio merge was
-// another instance: `Duck` and `Restore` are declared effects with executors
-// and NO PRODUCER, and the batch that was supposed to give them one instead
-// routed around them.
+// and its design in one sentence: "Every Effect, every Event, every Arrival
+// field and every Slot must name a production writer and a production reader,
+// or carry an explicit 'unwired, and why' entry."
 //
 // WHAT IT CHECKS. For every member of every CLOSED SET in production code:
 //
@@ -37,19 +30,13 @@
 // A hand-written list of sets would go stale on the day a thirteenth is added,
 // which is the failure this tool exists to catch, one level up.
 //
-// WHAT IT CAUGHT ON ITS FIRST RUN, INCLUDING ONE I PREDICTED IT WOULD MISS.
-// This header claimed a priority enum compared only ordinally would count as
-// read, and therefore that `narrateRotation` — the class whose give-way was
-// P3's first blocker — would slip past. IT DID NOT. The ordinal comparisons in
-// the arbiter are `job.class > on.class`, variable against variable: the
-// CONSTANT is never named on either side, so nothing discriminates on it and
-// the member reports NO READER.
+// AN ORDINAL COMPARISON IS NOT A READ. The arbiter's `job.class > on.class`
+// compares variable against variable: the CONSTANT is never named on either
+// side, so nothing discriminates on it, and a member only ever compared that
+// way reports NO READER — as a member nothing constructs reports NO WRITER
+// (`Power.OffAir` unwritten is the unreachable STANDBY behind RS-3 and F-72).
 //
-// So the check would have found two of P3's four blockers before a line was
-// written: `narrateRotation` with no reader, and `Power.OffAir` with no writer,
-// which is the unreachable STANDBY behind RS-3 and F-72.
-//
-// THE REAL LIMIT, corrected. A reader is any discrimination — a switch case, an
+// THE REAL LIMIT. A reader is any discrimination — a switch case, an
 // equality, an ordered comparison against the constant, a registry key, or
 // membership of a set written out as a literal. A member discriminated on for
 // the WRONG reason still counts as read, and a member handled in three places
@@ -158,7 +145,7 @@ func report(members []member, ratified map[string]bool, asJSON, sites bool) {
 	unexplained, exempt, stale := triage(members, ratified)
 	// SILENCE IS A DISTINCT VERDICT (INST-2), IN BOTH OUTPUT MODES. Scanning
 	// nothing and finding nothing is a broken walk, not a clean tree, and it must
-	// not read as a pass — the JSON branch used to (REVIEW 2026-09-17).
+	// not read as a pass in either (REVIEW 2026-09-17).
 	if len(members) == 0 {
 		fmt.Fprintln(os.Stderr, "wires: found no closed sets at all — the walk did not run")
 		os.Exit(2)
@@ -198,8 +185,7 @@ func report(members []member, ratified map[string]bool, asJSON, sites bool) {
 // A STALE ROW MUST FAIL, NOT WARN. It is the whole enforcement: the ledger's
 // rows are owed, and what makes "remove it once the wiring lands" true is that
 // wiring the member breaks the build until the row goes. A stale row that only
-// printed a line would be a reminder, and a reminder is what this project has
-// repeatedly proved it does not act on.
+// printed a line would be a reminder, and a reminder is not enforcement.
 func failing(unexplained []member, stale []string) bool {
 	return len(unexplained) > 0 || len(stale) > 0
 }
@@ -209,11 +195,10 @@ func failing(unexplained []member, stale []string) bool {
 //
 // THE LEDGER'S OWN EXPIRY. Every row is OWED, not accepted (HUM LEAD
 // 2026-09-09: "they can join the ledger now, but need to be removed once wiring
-// is in place"), and a promise to clean up later is the exact shape this
-// project keeps paying for. So a row whose member is no longer unwired — or
-// whose member no longer EXISTS — is stale and it fails. Wiring the member is
-// what breaks the build until the row goes, which is the only version of
-// "remember to remove it" that works.
+// is in place"), and a promise to clean up later is not a mechanism. So a row
+// whose member is no longer unwired — or whose member no longer EXISTS — is
+// stale and it fails. Wiring the member is what breaks the build until the row
+// goes, which is the only version of "remember to remove it" that works.
 func triage(members []member, ratified map[string]bool) (unexplained, exempt []member, stale []string) {
 	left := map[string]bool{}
 	for k := range ratified { // bounded by the ledger (P10-02)
@@ -401,9 +386,9 @@ func countUses(fset *token.FileSet, files []*ast.File, decls map[string]*member)
 
 // note attributes one node to writing a member, reading one, or neither.
 //
-// SPLIT FROM THE WALK, and each arm is its own sentence. As one switch it
-// measured 26 against P10-04's bound of 15 — a function doing eight unrelated
-// jobs because they happened to share a type switch.
+// APART FROM THE WALK, and each arm is its own sentence. As one switch it
+// measures 26 against P10-04's bound of 15 — a function doing eight unrelated
+// jobs because they happen to share a type switch.
 func note(decls map[string]*member, n ast.Node, at string) {
 	switch v := n.(type) {
 	case *ast.CompositeLit:
@@ -446,9 +431,9 @@ func noteKeyValue(decls map[string]*member, v *ast.KeyValueExpr, at string) {
 	if m := decls[typeNameOf(v.Key)]; m != nil {
 		m.read(at)
 	}
-	// The member as the VALUE means something is being MADE with it. Missing
-	// this called every Power unwritten while `Powered{To: Running}` sat in two
-	// files.
+	// The member as the VALUE means something is being MADE with it. Without
+	// this arm, a member written only as a field value — `Powered{To: Running}`
+	// — reads as unwritten.
 	if m := decls[typeNameOf(v.Value)]; m != nil {
 		m.wrote(at)
 	}
@@ -457,9 +442,8 @@ func noteKeyValue(decls map[string]*member, v *ast.KeyValueExpr, at string) {
 // how is which half of the question a use answers.
 //
 // NAMED asWriter/asReader, NOT wrote/read. P10 resolves by NAME, so a free
-// function `wrote` calling a method `wrote` reads as recursion — the EIGHTH
-// collision of this shape in this release, and every one of them a function on
-// one type against a function on another. The rename is the cheap half.
+// function `wrote` calling a method `wrote` reads as recursion — a function on
+// one type against a function on another. Distinct names avoid the collision.
 type how func(*member, string)
 
 func asWriter(m *member, at string) { m.wrote(at) }
@@ -518,11 +502,10 @@ const (
 // readLedger reads the ratified exemptions: table rows BETWEEN THE FENCE, whose
 // first cell is `Set.Member` in backticks.
 //
-// THE FENCE IS NOT TIDINESS, IT IS A HAZARD FIX, and the tool found it in its
-// own ledger on day two. Without it every table row starting with a backticked
-// dotted name was an exemption — so a PROSE table listing rows that had been
-// CLOSED silently re-created them, and two obligations that had just been
-// discharged came back as exemptions with no ratification behind them.
+// THE FENCE IS NOT TIDINESS, IT IS A HAZARD FIX. Without it every table row
+// starting with a backticked dotted name is an exemption — so a PROSE table
+// listing CLOSED rows silently re-creates them, and discharged obligations
+// come back as exemptions with no ratification behind them.
 //
 // A ledger where writing about a member exempts it is worse than no ledger: it
 // fails in the direction of silence, and silence here means an unwired member

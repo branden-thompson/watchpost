@@ -1,4 +1,6 @@
 const AAContrast
+const AboutHost
+const AboutNote
 const AlertDanger
 const AlertLabel
 const AlertModalAdvBG
@@ -52,6 +54,28 @@ const KeyChipMuted
 const LightThemeName
 const ListFocus
 const ListPointer
+const MapChipAirNowBG
+const MapChipCOOPSBG
+const MapChipEPABG
+const MapChipFIRMSBG
+const MapChipGeoNamesBG
+const MapChipHMSBG
+const MapChipNDBCBG
+const MapChipNDFDBG
+const MapChipNHCBG
+const MapChipNIFCBG
+const MapChipNWRBG
+const MapChipNWSBG
+const MapChipOFMBG
+const MapChipOMeteoBG
+const MapChipPiperBG
+const MapChipRecordedBG
+const MapChipRelaysBG
+const MapChipUSGSBG
+const MapNoticeQuotaBG
+const MapRadarIEMBG
+const MapRadarMRMSBG
+const MapRadarModelBG
 const ModalBGDark
 const ModalBGLight
 const ModalFG
@@ -100,6 +124,7 @@ const VizOn
 const WindowBGDark
 const WindowBGLight
 const WordmarkName
+const aboutNoteShade
 const alertGap1
 const alertGap2
 const alertKindMin
@@ -108,6 +133,8 @@ const alertLocMin
 const alertNumW
 const boxInset
 const categoryBlend
+const chipBlack
+const chipWhite
 const clockKey12
 const clockKey24
 const clockKeyMil
@@ -186,6 +213,7 @@ func (Opts).StationDistance
 func (Opts).StatusTable
 func (Opts).TableRowLen
 func (Opts).Temp
+func (Opts).TempDelta
 func (Opts).TideHeight
 func (Opts).TrendGlyph
 func (Opts).Wind
@@ -193,6 +221,7 @@ func (Opts).alertHeader
 func (Opts).columnHeader
 func (Opts).groupHeader
 func (Opts).lineupRowData
+func (Opts).measured
 func (Opts).rowData
 func (Opts).scrollBody
 func (Opts).scrollWindow
@@ -211,6 +240,8 @@ func Band
 func Bold
 func BoxHeight
 func CategoryTone
+func ChipGrounds
+func ChipTones
 func ClockByKey
 func ClockOrder
 func ColorOn
@@ -230,6 +261,7 @@ func LightBox
 func ListLabel
 func ModalTone
 func NextTide
+func NoticeGrounds
 func Overlay
 func PadBetween
 func PadTo
@@ -250,6 +282,8 @@ func Spectrum
 func SpliceCells
 func StatusNaturalWidth
 func StripSGRForTest
+func Swatch
+func SwatchText
 func TableHeaderTone
 func ThemeGeneration
 func ThemeName
@@ -312,6 +346,7 @@ func hazardShort
 func hexRGB
 func init
 func isCategoryTint
+func keepTone
 func kmOf
 func layoutFor
 func liftAll
@@ -346,6 +381,7 @@ func severeHeaderFG
 func severeHeaderLine
 func severeMarks
 func sgrRaw
+func shadeBack
 func shrinkToFit
 func spaceCategories
 func spectrumTier
@@ -364,6 +400,7 @@ func thousands
 func truncate
 func withAA
 func withAgeLadder
+func withDerived
 func without
 func xterm256RGB
 type AlertRow

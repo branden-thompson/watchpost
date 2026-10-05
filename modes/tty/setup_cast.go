@@ -75,7 +75,7 @@ func roleOf(id setupRowID) string { return setupTable()[id].role }
 // castLines draws the group: five rows, each a thing a listener hears and the
 // voice that reads it.
 //
-// No mode radio and no enabling checkbox. Both made
+// No mode radio and no enabling checkbox. Both would make
 // a listener combine two controls to know one answer — is this report going to
 // be read by this voice? — where the row can simply say so. A row with no
 // assignment of its own shows the voice it INHERITS, so every row names whoever
@@ -104,11 +104,10 @@ const (
 // the air after it, in ONE value.
 //
 // The tone toggles and the correspondent pickers read it both, so the two groups
-// begin their controls in the same cell. They did not: the tone labels carried
-// a cell more air, and with the balanced columns putting both groups in the same
-// column that cell was visible as a step between them (HUM LEAD, UAT
-// 2026-08-30). Two groups drawing the same shape must not each decide its
-// geometry.
+// begin their controls in the same cell. With the balanced columns putting both
+// groups in the same column, a cell more air in one shows as a step between them
+// (HUM LEAD, UAT 2026-08-30). Two groups drawing the same shape must not each
+// decide its geometry.
 const rowControlW = castLabelW + 2
 
 // pickerName is what a picker DISPLAYS: the voice that will actually speak.
@@ -175,6 +174,16 @@ func (d Dashboard) cyclePicker(id setupRowID, forward bool) Dashboard {
 		d.setup.relayDwell = cycleRelayDwell(d.setup.relayDwell, forward)
 		return d
 	}
+	if id == rowHistoryHours { // D-175's presets
+		was := d.setup.history.Hours
+		d.setup.history.Hours = cycleHistory(historyHourChoices, was, forward)
+		return d.askIfLonger(false, historyHourChoices, was, d.setup.history.Hours)
+	}
+	if id == rowHistoryTrends {
+		was := d.setup.history.Trends
+		d.setup.history.Trends = cycleHistory(historyTrendChoices, was, forward)
+		return d.askIfLonger(true, historyTrendChoices, was, d.setup.history.Trends)
+	}
 	list := d.pickerList(id)
 	if len(list) == 0 {
 		return d
@@ -184,18 +193,7 @@ func (d Dashboard) cyclePicker(id setupRowID, forward bool) Dashboard {
 	if held == "" {
 		held = inheritEntry
 	}
-	at := 0
-	for i, e := range list {
-		if e == held {
-			at = i
-			break
-		}
-	}
-	step := 1
-	if !forward {
-		step = -1
-	}
-	next := list[((at+step)%len(list)+len(list))%len(list)]
+	next := cycleIn(list, itself, held, forward)
 	return d.assignRole(role, next)
 }
 
@@ -215,12 +213,12 @@ func (d Dashboard) assignRole(role, entry string) Dashboard {
 		names[role] = entry
 	}
 	d.setup.cast.Names = names
-	// The mode is DERIVED now that the window has no Single Voice / Cast
-	// radio: any assignment means a cast is in force, and clearing the last
-	// one means it is not. The key stays in the config — an older binary and
-	// a hand-edited file both still read it — but a listener never sets it
-	// directly, because they were being asked to operate a switch whose effect
-	// the rows already showed.
+	// The mode is DERIVED — the window has no Single Voice / Cast radio: any
+	// assignment means a cast is in force, and clearing the last one means it
+	// is not. The key stays in the config — an older binary and a hand-edited
+	// file both still read it — but a listener never sets it directly: a
+	// switch whose effect the rows already show is not one to ask them to
+	// operate.
 	d.setup.cast.Mode = castModeSingle
 	for _, r := range castRowOrder() {
 		if names[roleOf(r)] != "" {
@@ -261,7 +259,7 @@ func (d Dashboard) castNote(id setupRowID) string {
 		return "Inherits " + d.pickerName(id) + "."
 	case !d.voiceInstalled(name):
 		// NO SIZE here. The note has 46 cells under a 50-cell row and the size
-		// took it to 47, so it wrapped and left "(~63MB)" dangling on a line of
+		// takes it to 47, so it wraps and leaves "(~63MB)" dangling on a line of
 		// its own — and a longer voice name pushes it further (HUM LEAD, UAT
 		// 2026-08-30). The size belongs where a listener is about to spend it:
 		// the `p` offer below asks before downloading, and `report --verbose`

@@ -39,9 +39,8 @@ func equal(a, b []string) bool {
 
 // TestTheLineupTakesAdmittedCardsAndNothingElse is DR-3's guarantee made
 // structural: bounds apply at ADMISSION, so entry to the lineup IS admission
-// and a card that never passed the pre-screen has no way in. This is what
-// removes `breakingCap`'s defect rather than moving it — there is no later
-// moment at which something can be cut.
+// and a card that never passed the pre-screen has no way in. So there is no
+// later moment at which something can be cut.
 func TestTheLineupTakesAdmittedCardsAndNothingElse(t *testing.T) {
 	for s := State(0); s < numStates; s++ {
 		c := locationCard("Bonsall")
@@ -332,11 +331,11 @@ func TestTheTwoTracksNameThemselves(t *testing.T) {
 // TestQueueRefusesACardWhoseWordsShouldAlreadyBeOnIt — the OTHER door.
 //
 // Propose is not the only way in: Queue and Set write to the schedule too, and
-// a wordless burst head queued directly reached standby, described no build,
-// and stood there for ever with the rail stopped behind it — DR-3's guarantee
+// a wordless burst head queued directly would reach standby, describe no build,
+// and stand there for ever with the rail stopped behind it — DR-3's guarantee
 // failing from the other side, silently, because an invariant that returns an
-// error neither panics nor logs. The rule lives in check now, which every
-// write goes through.
+// error neither panics nor logs. The rule lives in check, which every write
+// goes through.
 func TestQueueRefusesACardWhoseWordsShouldAlreadyBeOnIt(t *testing.T) {
 	var l Lineup
 	for _, slot := range []Slot{Transition} { // the one structural slot left (T3.10 red team)
@@ -353,7 +352,7 @@ func TestQueueRefusesACardWhoseWordsShouldAlreadyBeOnIt(t *testing.T) {
 		t.Errorf("the rail holds %d cards, want the one that was queued", got)
 	}
 	// And a report is still queued with no words at all — that is DR-7's other
-	// half, and this rule must not have broken it.
+	// half, and this rule must not break it.
 	if _, err := l.Queue(MainTrack, Card{ID: "r", Slot: LocationReport, Headline: "h", Subject: "Bonsall", State: Admitted}); err != nil {
 		t.Errorf("a report was refused for having no words yet: %v", err)
 	}

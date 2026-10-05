@@ -24,10 +24,9 @@ func classRowOrder() []setupRowID {
 
 // ONE CLASS PER LINE, at every width.
 //
-// The classes were laid two abreast, and then two abreast with each sub-column
-// sized to its own labels. Both are gone. Six rows of one thing each is a list,
-// and a list is what this is: the eye runs down a single column of state words
-// and reads the answer, where two columns made it scan across a gap and back.
+// Six rows of one thing each is a list, and a list is what this is: the eye
+// runs down a single column of state words and reads the answer, where two
+// columns would make it scan across a gap and back.
 //
 // So there is no breakpoint here to keep in step with the window's, no
 // second-column geometry, and no arrangement for the scroll to disagree with —

@@ -51,10 +51,10 @@ func TestTheRelayFaultWindowIsTheMock(t *testing.T) {
 // the countdown takes, so a window that could omit it would have a default it
 // never showed.
 func TestTheFallThroughIsAlwaysOffered(t *testing.T) {
-	// EVERY candidate count, not just the empty one. The first version of this
-	// checked only "no relays left" and a mutant that dropped the fall-through
-	// whenever a relay remained SURVIVED it — the case the window actually
-	// meets, every time, went unmeasured (D-11).
+	// EVERY candidate count, not just the empty one. Checking only "no relays
+	// left" lets a mutant that drops the fall-through whenever a relay remains
+	// survive — and that is the case the window actually meets, every time
+	// (D-11).
 	for n := 0; n <= 3; n++ {
 		var cands []RelayCandidate
 		for i := 0; i < n; i++ {
@@ -80,16 +80,12 @@ func TestTheFallThroughIsAlwaysOffered(t *testing.T) {
 
 // TestTheCountdownRunsAndActs — the CLOCK AND ITS WIRE, driven through Update.
 //
-// RED TEAM 2026-09-05: onTick's whole body could be replaced with
-// `return d.applyTick(), nil` — deleting the countdown step AND the auto-close —
-// and this package stayed green. The arithmetic had a test that called
-// stepRelayFault directly and the fall-through had one that called
-// fallThroughRelayFault directly, so between them they pinned everything except
-// that anything ever calls either. That is the same D-12 shape three UAT rounds
-// already found in this window, one layer further out.
-//
-// Those two tests are folded in here: what they asserted is asserted below,
-// through tickMsg, against the model's own clock.
+// DRIVEN THROUGH tickMsg, against the model's own clock, so onTick's whole body
+// cannot be replaced with `return d.applyTick(), nil` — deleting the countdown
+// step AND the auto-close — with this package staying green. A test that calls
+// stepRelayFault directly and one that calls fallThroughRelayFault directly pin
+// everything between them except that anything ever calls either: the D-12
+// shape, one layer further out.
 func TestTheCountdownRunsAndActs(t *testing.T) {
 	tuned, read := "", false
 	d := faultDash(t)
@@ -102,7 +98,7 @@ func TestTheCountdownRunsAndActs(t *testing.T) {
 
 	// The command is run only once the window has CLOSED. Every other tick
 	// returns the shimmer's own tea.Tick, and running that blocks for its 300 ms
-	// — fifteen of them turned a millisecond test into four seconds.
+	// — fifteen of them would turn a millisecond test into four seconds.
 	step := func() Dashboard {
 		t.Helper()
 		m, cmd := d.Update(tickMsg{})
@@ -198,11 +194,10 @@ func TestEveryWayOutOfTheRelayFaultActs(t *testing.T) {
 			d.cfg.TuneRelay = func(k string) { tuned = k }
 			d.cfg.ReadReport = func() { read = true }
 			d.relayFault.focus = tc.focus
-			// THROUGH THE KEYBOARD (red team 2026-09-05). Calling
-			// chooseRelayFault directly left the `enter` branch in dashboard.go
-			// unpinned: replacing it with `return d, true` — the listener
-			// presses enter, nothing tunes, nothing reads, the window stays
-			// open — kept this package green.
+			// THROUGH THE KEYBOARD. Calling chooseRelayFault directly leaves the
+			// `enter` branch in dashboard.go unpinned: replacing it with `return d,
+			// true` — the listener presses enter, nothing tunes, nothing reads, the
+			// window stays open — would keep this package green.
 			m, cmd := d.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 			next := m.(Dashboard)
 			if cmd == nil {
@@ -256,15 +251,13 @@ func TestEscClosesTheRelayFaultWithoutActing(t *testing.T) {
 	}
 }
 
-// TestTheRelayFaultWindowRespondsToTheKEYS — D-12, and the reason this window
-// shipped feeling dead.
+// TestTheRelayFaultWindowRespondsToTheKEYS — D-12.
 //
-// Every other test in this file reaches past the keyboard: the wrap test calls
-// handleRelayFaultNav, the clock test calls stepRelayFault. Both were green
-// while, in a listener's hands, THE ARROWS APPEARED TO DO NOTHING AND THE CLOCK
-// NEVER MOVED — because the focus mark was untinted and no tick was ever armed,
-// so nothing on screen changed between key presses. A pin that starts one layer
-// below the key cannot see either. This one starts at the key.
+// A test that reaches past the keyboard — calling handleRelayFaultNav or
+// stepRelayFault — stays green while, in a listener's hands, THE ARROWS APPEAR
+// TO DO NOTHING AND THE CLOCK NEVER MOVES: an untinted focus mark and a tick
+// never armed leave nothing on screen changing between key presses. A pin that
+// starts one layer below the key cannot see either. This one starts at the key.
 func TestTheRelayFaultWindowRespondsToTheKeys(t *testing.T) {
 	d := faultDash(t)
 
@@ -291,10 +284,8 @@ func TestTheRelayFaultWindowRespondsToTheKeys(t *testing.T) {
 		t.Error("the window opens with nothing marked; a listener cannot tell what enter would take")
 	}
 	// EVERY PRESS, THROUGH Update, the way a listener makes it — INCLUDING THE
-	// WRAP AT BOTH ENDS. The wrap had a test of its own that called
-	// handleRelayFaultNav directly, which is the shape this file's own comments
-	// name as the reason the window shipped dead; it is folded in here (red team
-	// 2026-09-05).
+	// WRAP AT BOTH ENDS, which a direct call to handleRelayFaultNav would test
+	// from below the keyboard.
 	for _, tc := range []struct {
 		name  string
 		keys  []rune
@@ -325,14 +316,14 @@ func TestTheRelayFaultWindowRespondsToTheKeys(t *testing.T) {
 	}
 }
 
-// TestTheFocusMarkIsTintedByTheListsOwner. The mark moving is not enough: it was
-// a bare glyph with NO COLOUR, on a window a listener meets while something is
-// already wrong. render/list.go owns how every list marks focus (D-1), and this
-// window is a list.
+// TestTheFocusMarkIsTintedByTheListsOwner. The mark moving is not enough: a
+// bare glyph with NO COLOUR is easy to miss on a window a listener meets while
+// something is already wrong. render/list.go owns how every list marks focus
+// (D-1), and this window is a list.
 func TestTheFocusMarkIsTintedByTheListsOwner(t *testing.T) {
 	// COLOUR ON, DELIBERATELY. Tests run with it off, and with it off every
-	// assertion below is satisfied by the bare glyph — which is exactly the
-	// state that shipped. A tint pin that cannot see tint is not a pin.
+	// assertion below is satisfied by the bare glyph. A tint pin that cannot see
+	// tint is not a pin.
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 
@@ -361,19 +352,16 @@ func TestTheFocusMarkIsTintedByTheListsOwner(t *testing.T) {
 	}
 }
 
-// TestASecondSilenceReportDoesNotDisturbTheOpenWindow — the UAT defect, and the
-// reason the arrows "did not work" in a listener's hands while every test here
-// said they did.
+// TestASecondSilenceReportDoesNotDisturbTheOpenWindow.
 //
 // The silence detector fires once per STREAM, and the engine falls through to
 // the next mount. A station broadcasting silence on every mount — the outage
-// this window exists for — reports again about every five seconds. Each report
-// rebuilt the state: the cursor snapped back to the first row and the countdown
-// restarted at ten, so an arrow press was undone before the listener could act
-// on it.
+// this window exists for — reports again about every five seconds. A report
+// that rebuilt the state would snap the cursor back to the first row and
+// restart the countdown at ten, undoing an arrow press before the listener
+// could act on it.
 //
-// EVERY OTHER TEST IN THIS FILE OPENS THE WINDOW ONCE, which is why none of them
-// could see it.
+// A TEST THAT OPENS THE WINDOW ONCE CANNOT SEE THAT, so this one reports twice.
 func TestASecondSilenceReportDoesNotDisturbTheOpenWindow(t *testing.T) {
 	d := faultDash(t)
 
@@ -428,23 +416,21 @@ func TestASecondSilenceReportDoesNotDisturbTheOpenWindow(t *testing.T) {
 	}
 }
 
-// TestAWindowWithACursorRedrawsWhenItMoves — the defect three rounds of UAT
-// kept reporting, and the reason none of the pins above could see it.
+// TestAWindowWithACursorRedrawsWhenItMoves.
 //
-// The frame is MEMOISED on a key derived from the model (modalKeyFor). This
-// window's cursor and its clock were absent from that key, so the memo rendered
-// the window ONCE and replayed that frame for as long as it was open: the arrows
-// moved the cursor, the countdown ran down, the fall-through fired on time — and
-// the display never changed. Everything underneath was correct, which is why
-// every test passed and the window was still dead in the hand.
+// The frame is MEMOISED on a key derived from the model (modalKeyFor). A window
+// whose cursor and clock are absent from that key is rendered ONCE and replayed
+// for as long as it is open: the arrows move the cursor, the countdown runs
+// down, the fall-through fires on time — and the display never changes.
+// Everything underneath is correct, so every other test passes while the
+// window is dead in the hand.
 //
-// IT GOES THROUGH modalView, NOT renderModal. That distinction IS the test: the
-// pins above call renderModal, which is the memo's MISS path, so they could
-// never see a stale hit. A pin that starts below the cache cannot see a cache
-// bug.
+// IT GOES THROUGH modalView, NOT renderModal. That distinction IS the test:
+// renderModal is the memo's MISS path, so a pin through it can never see a
+// stale hit. A pin that starts below the cache cannot see a cache bug.
 //
 // THE TABLE IS THE POINT. This is a rule about every window that draws a cursor,
-// not about this one, and the ctrl+d window had the identical hole.
+// not about this one.
 func TestAWindowWithACursorRedrawsWhenItMoves(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -461,9 +447,9 @@ func TestAWindowWithACursorRedrawsWhenItMoves(t *testing.T) {
 			move: func(d Dashboard) Dashboard { return d.handleRelayFaultNav("nav-down") },
 		},
 		{
-			// THE SAME HOLE, IN THE WINDOW NEXT DOOR. Found while fixing this
-			// one: modalDebug was equally absent from the key, so ctrl+d's
-			// arrows were equally dead. A rule with one instance is an anecdote.
+			// THE SAME RULE, IN THE WINDOW NEXT DOOR: modalDebug's cursor must be in
+			// the key too, or ctrl+d's arrows are equally dead. A rule with one
+			// instance is an anecdote.
 			name: "the ctrl+d window's cursor",
 			open: func(d Dashboard) Dashboard {
 				d.cfg.InjectAlert = func(string) {}
@@ -513,10 +499,10 @@ func TestAWindowWithACursorRedrawsWhenItMoves(t *testing.T) {
 // (HUM LEAD, UAT 2026-09-05: "the content runs up against the right edge").
 //
 // THE FIXTURE USES A REAL STATION'S LABEL. The mock's placeholders are short, so
-// every line happened to clear the right border and nothing measured whether it
-// had to. A NOAA mount reads "KEC62 - San Diego, CA (NOAA Weather Radio All
-// Hazards, 162.400 MHz)" and ran straight into it. A margin that holds only for
-// short content is not a margin.
+// every line clears the right border and nothing measures whether it has to. A
+// NOAA mount reads "KEC62 - San Diego, CA (NOAA Weather Radio All Hazards,
+// 162.400 MHz)" and runs straight into it. A margin that holds only for short
+// content is not a margin.
 func TestEveryLineClearsBothMargins(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d.width, d.height = 133, 44
@@ -566,9 +552,9 @@ func TestEveryLineClearsBothMargins(t *testing.T) {
 // property test cannot exercise this — remove the bound and nothing fails, which
 // is a guard nobody can falsify (D-2).
 //
-// WRAPPED, NOT CUT. An earlier pass truncated, which is the class UAT 25 ruled
-// out in as many words on WrapLines. This asserts the difference directly: every
-// word of the input is still present afterwards.
+// WRAPPED, NOT CUT: truncation is the class UAT 25 rules out in as many words
+// on WrapLines. This asserts the difference directly: every word of the input
+// is still present afterwards.
 func TestALineTooLongForTheWindowIsWrappedNotCut(t *testing.T) {
 	words := []string{"alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel",
 		"india", "juliett", "kilo", "lima", "mike", "november", "oscar", "papa", "quebec"}
@@ -630,7 +616,7 @@ func TestARowWrapsUnderItsOwnValue(t *testing.T) {
 	//
 	// MEASURED IN RUNES, INSIDE THE BORDER. The box drawing is multi-byte, so a
 	// byte index counts the border as three columns and the two lines come out
-	// two apart when they are aligned — which cost a cycle.
+	// two apart when they are aligned.
 	inner := func(l string) []rune { r := []rune(l); return r[1 : len(r)-1] }
 	valueAt := runeIndex(inner(lines[first]), "Tune to")
 	contRunes := inner(lines[cont])
@@ -669,12 +655,11 @@ func runeIndex(r []rune, want string) int {
 
 // TestTheFocusedWayOutIsAlwaysOnSCREEN, at the app's documented floor.
 //
-// RED TEAM 2026-09-05: floatModalFooter took its scroll from `setupScroll`,
-// which read SETUP's body whatever window was open — so this window's scroll was
-// a permanent zero, nothing else writes d.modalScroll, and at 80x24 EVERY WAY
-// OUT WAS BELOW THE FOLD. The rail drew its arrows, the cursor moved, the screen
-// did not change: the reported "arrows do not work", reached by geometry rather
-// than by the memo, and invisible at the 133x44 the UAT ran at.
+// At 80x24 the ways out do not all fit, so the window must scroll to its focus.
+// A scroll read from SETUP's body (`setupScroll`) whatever window is open is a
+// permanent zero here, and EVERY WAY OUT IS BELOW THE FOLD: the rail draws its
+// arrows, the cursor moves, the screen does not change — "arrows do not work",
+// reached by geometry rather than by the memo, and invisible at 133x44.
 //
 // A focused row the listener cannot see is a dead keyboard, and this window is
 // one they meet while something is already wrong.
@@ -721,8 +706,8 @@ func TestTheFocusedWayOutIsAlwaysOnScreen(t *testing.T) {
 // exactly the one it takes the choice away from, mid-keystroke.
 //
 // MVS-D-76 IS UNTOUCHED. Doing nothing still falls through at ten seconds, and
-// still through the one door that enter uses. What changes is that pressing a
-// key is no longer doing nothing.
+// still through the one door that enter uses. Pressing a key is simply not
+// doing nothing.
 func TestMovingTheCursorHoldsTheRelayFaultClock(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d = d.openRelayFault(RelaySilentMsg{Candidates: []RelayCandidate{{Label: "KEC62", Key: "a"}}})
@@ -738,8 +723,8 @@ func TestMovingTheCursorHoldsTheRelayFaultClock(t *testing.T) {
 		}
 	}
 
-	// AND AN UNTOUCHED WINDOW STILL FALLS THROUGH, or this removed the ruling
-	// instead of narrowing it.
+	// AND AN UNTOUCHED WINDOW STILL FALLS THROUGH, or this rule would remove the
+	// ruling instead of narrowing it.
 	idle := dash(t).(Dashboard).openRelayFault(RelaySilentMsg{Candidates: []RelayCandidate{{Label: "KEC62", Key: "a"}}})
 	var ran bool
 	// relayFaultSeconds+1 steps: the first sets the clock's mark and spends

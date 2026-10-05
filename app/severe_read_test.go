@@ -64,8 +64,7 @@ func TestEventReaderDucksSpeaksRestoresAndOverlaysThePanel(t *testing.T) {
 	// second Read below is provably made WHILE the first read is in progress.
 	// The stubbed voice and stubbed sleep otherwise finish the whole sequence
 	// before the next line runs, and then the inertness assertion passes on
-	// timing rather than on the guard it is there to hold. It did not, on a
-	// Linux runner: the second read ran in full, four reading messages for two.
+	// timing rather than on the guard it is there to hold.
 	readGate := make(chan struct{})
 	var sleeps atomic.Int32
 	nar.sleep = func(_ context.Context, d time.Duration) bool {
@@ -130,7 +129,7 @@ func TestEventReadIsSuspendedByABreakingTakeover(t *testing.T) {
 	// takeover has not started, so the first sleep is the read's); every
 	// later step — the takeover's hold, the read's remaining steps — returns
 	// at once. The read cannot finish before the takeover resumes it, so the
-	// sequence is the same under any load (it flaked on real time under -race).
+	// sequence is the same under any load, which real time under -race is not.
 	readGate := make(chan struct{})
 	var sleeps atomic.Int32
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool {
@@ -270,11 +269,11 @@ func TestEventReadEndsWithTheApp(t *testing.T) {
 // where the test is: a tone is an ATTENTION SIGNAL, and a listener who pressed
 // [space] on a row they are looking at has already given theirs.
 //
-// It was also four seconds of delay. Every tone carries a two-second trailing
-// silence so a takeover has a beat between the signal and "…has been declared",
-// and the read held for the whole buffer — 2.8 to 4.0 seconds by class, of which
-// under a second and a half is audible. Measured at UAT as: tone, four seconds,
-// words.
+// It is also up to four seconds of delay. Every tone carries a two-second
+// trailing silence so a takeover has a beat between the signal and "…has been
+// declared", and a read behind a tone holds for the whole buffer — 2.8 to 4.0
+// seconds by class, of which under a second and a half is audible: tone, four
+// seconds, words.
 //
 // THE TAKEOVER'S TONE IS ASSERTED IN THE SAME TEST, because the ruling is about
 // who asked for the read and not about tones: an unattended alert still has to
@@ -385,10 +384,10 @@ func TestATakeoverEndingDoesNotResumeAPausedRead(t *testing.T) {
 // CLOSING THE WINDOW NEVER WAITS FOR THE READ (MVS-D-75, UAT 2026-09-03).
 //
 // `close` runs on Bubbletea's UPDATE goroutine, so anything it blocks on is a
-// frame that does not redraw. The first version called `End`, which waits for
-// the read's goroutine — right at shutdown, and about half a second of visible
-// hesitation on a keypress. *"Key controls for showing/hiding MUST feel instant
-// — that's the whole point of using a TUI."*
+// frame that does not redraw. `End` waits for the read's goroutine — right at
+// shutdown, and about half a second of visible hesitation on a keypress — so
+// the close path does not call it. *"Key controls for showing/hiding MUST feel
+// instant — that's the whole point of using a TUI."*
 //
 // The pin is the DIFFERENCE between the two, not a stopwatch on one: `Cancel`
 // returns while the read is still running, `End` returns only once it has
@@ -432,9 +431,9 @@ func TestClosingTheWindowStopsTheReadWithoutWaitingForIt(t *testing.T) {
 // AND THE SHUTDOWN PATH DOES WAIT — the distinction the split exists for.
 //
 // A SEPARATE READ, because Cancel FREES the reader: asking End afterwards would
-// find nothing left to wait for and return at once, which looks exactly like the
-// defect while being the right answer to a different question. The first version
-// of this test did that and failed for that reason.
+// find nothing left to wait for and return at once, which looks exactly like a
+// shutdown that does not wait while being the right answer to a different
+// question.
 func TestShutdownWaitsForTheReadItEnds(t *testing.T) {
 	release := make(chan struct{})
 	v := &scriptVoice{dur: time.Millisecond}
@@ -470,8 +469,8 @@ func TestShutdownWaitsForTheReadItEnds(t *testing.T) {
 // AND THE WINDOW'S HOOK IS WIRED TO THE ONE THAT DOES NOT WAIT.
 //
 // The test above pins `Cancel`'s behaviour and cannot see which of the two the
-// window actually calls — swapping the hook back to `End` left it green,
-// checked. This asserts the WIRING, which is where the half-second lived.
+// window actually calls — swapping the hook to `End` leaves it green. This
+// asserts the WIRING, which is where the half-second would live.
 func TestTheWindowsCloseHookDoesNotWaitForTheRead(t *testing.T) {
 	release := make(chan struct{})
 	defer close(release)
@@ -507,14 +506,14 @@ func TestTheWindowsCloseHookDoesNotWaitForTheRead(t *testing.T) {
 
 // FAST INPUT NEVER STACKS READS (UAT 2026-09-03).
 //
-// The sequence a listener actually performed: open, [space], [esc], reopen,
-// [space] on a DIFFERENT row. The first read's cleanup ran after the second had
-// started, cleared `busy` while it was playing and took its mark down — so the
-// next press launched a third read, and the window no longer knew which one
-// [space] should pause. *"It will then be playing two reports — and the program
-// gets confused when I hit space which report to pause."*
+// The sequence a listener performs: open, [space], [esc], reopen, [space] on a
+// DIFFERENT row. The first read's cleanup can run after the second has started;
+// clearing `busy` and taking the mark down then would let the next press launch
+// a third read, and the window would not know which one [space] should pause.
+// *"It will then be playing two reports — and the program gets confused when I
+// hit space which report to pause."*
 //
-// The reader is generational now: a read winding down clears nothing that
+// The reader is generational: a read winding down clears nothing that
 // belongs to the one that replaced it (the radioDeck.epoch pattern).
 func TestFastInputNeverLeavesTwoReadsRunning(t *testing.T) {
 	release := make(chan struct{})
@@ -599,7 +598,7 @@ func TestFastInputNeverLeavesTwoReadsRunning(t *testing.T) {
 //
 // THE PIN IS A SEND THAT NEVER RETURNS, which is what a full channel looks like
 // from the caller's side. If the close path sends, this hangs — exactly as the
-// app did. A test that merely counted sends would pass while the deadlock
+// app would. A test that merely counted sends would pass while the deadlock
 // remained, because the count would be right and the goroutine wrong.
 func TestTheClosePathNeverSendsAndSoCannotSoftlock(t *testing.T) {
 	stuck := make(chan struct{})
@@ -610,8 +609,8 @@ func TestTheClosePathNeverSendsAndSoCannotSoftlock(t *testing.T) {
 		func(string) (tty.SevereRow, bool) { return tornadoRow(), true },
 		// A send that never returns — but only for the CLEAR, which is the message
 		// the close path would send. Blocking every send would wedge this test's
-		// own Read in its setup, which is what it did when the set-mark moved
-		// into Read: the fixture hung before reaching a single assertion.
+		// own Read in its setup, since Read sends the set-mark: the fixture would
+		// hang before reaching a single assertion.
 		func(m tea.Msg) {
 			if v, ok := m.(tty.SevereReadingMsg); ok && v.Key == "" {
 				<-stuck
@@ -648,14 +647,14 @@ func lpFor(r *eventReader) *livePipelines { return &livePipelines{reader: r} }
 // A READ CAN BE PAUSED WHILE A TAKEOVER HAS THE AIR — the other ordering.
 //
 // `TestATakeoverEndingDoesNotResumeAPausedRead` pauses first and then lets an
-// alert arrive. This is the reverse, and it was broken: while the takeover
-// speaks the read is on the SUSPENDED stack rather than on the air, so
-// `pauseRead` looked only at `onAir`, found a takeover, and did nothing. The
-// listener pressed [space] and got no response — and when the alert finished,
-// `settle` promoted the read back, because nothing had marked it as their hold.
+// alert arrive. This is the reverse: while the takeover speaks the read is on
+// the SUSPENDED stack rather than on the air, so a `pauseRead` that looked only
+// at `onAir` would find a takeover and do nothing. The listener's [space] would
+// get no response — and when the alert finished, `settle` would promote the read
+// back, because nothing marked it as their hold.
 //
-// Found by review. The window is the whole duration of any takeover, against a
-// read that runs for minutes.
+// The window is the whole duration of any takeover, against a read that runs
+// for minutes.
 func TestAReadCanBePausedWhileATakeoverIsSpeaking(t *testing.T) {
 	v := &scriptVoice{dur: time.Hour}
 	nar := testDirector(v, nil)
@@ -689,8 +688,8 @@ func TestAReadCanBePausedWhileATakeoverIsSpeaking(t *testing.T) {
 
 	close(release)
 	<-takeoverDone
-	// THE HOLD SURVIVES THE TAKEOVER. This is what was actually broken: the read
-	// went back on the air the moment the alert finished.
+	// THE HOLD SURVIVES THE TAKEOVER: the read must not go back on the air the
+	// moment the alert finishes.
 	waitUntil(t, "the takeover to leave the air", func() bool {
 		nar.mu.Lock()
 		defer nar.mu.Unlock()
@@ -704,15 +703,15 @@ func TestAReadCanBePausedWhileATakeoverIsSpeaking(t *testing.T) {
 // TWO FAST PRESSES NEVER MISROUTE THE PAUSE OR THE MARK.
 //
 // Bubbletea runs each Cmd on its own goroutine, so two `[space]` presses are
-// genuinely concurrent Toggles — the update loop does not serialise them. Each
-// read the reader's state, released the lock, and acted on a snapshot the other
-// had already invalidated: the loser could pause the read the winner had just
-// started, and marked the row with the OLD key, putting the ▶ on a row that was
-// not reading.
+// genuinely concurrent Toggles — the update loop does not serialise them. Were
+// each to read the reader's state, release the lock, and act on a snapshot the
+// other had already invalidated, the loser could pause the read the winner had
+// just started, and mark the row with the OLD key, putting the ▶ on a row that
+// is not reading.
 //
 // INVISIBLE TO THE RACE DETECTOR — every access is properly locked; it is the
-// DECISION that was racing, not the memory. Found by review at ~2 % of presses;
-// this drives enough rounds to make that a near-certainty.
+// DECISION that would race, not the memory. At about 2 % of presses, this
+// drives enough rounds to make that a near-certainty.
 func TestConcurrentPressesNeverMarkARowThatIsNotReading(t *testing.T) {
 	var mu sync.Mutex
 	var bad []string
@@ -731,12 +730,12 @@ func TestConcurrentPressesNeverMarkARowThatIsNotReading(t *testing.T) {
 			bad = append(bad, v.Key)
 		})
 
-	// SIZED FOR THE RACE DETECTOR, WHICH IS HOW THE GATE RUNS IT. Measured by a
-	// reviewer against the broken code: 20/20 under -race, but only ~81/100
-	// without it, with batch-to-batch swings from 50 % to 92 %. So a bare
+	// SIZED FOR THE RACE DETECTOR, WHICH IS HOW THE GATE RUNS IT. Against an
+	// ungated reader it fails every time under -race, but only about four times
+	// in five without it, with wide swings between batches. So a bare
 	// `go test ./app -run ...` during development can miss this — the guarantee
-	// is `make race`, and 400 rounds bought no extra certainty while pushing the
-	// package's -race run from 90 s to 600 s.
+	// is `make race`, and more rounds buy no extra certainty while multiplying
+	// the package's -race run time.
 	marked := 0
 	for round := 0; round < 60; round++ {
 		var wg sync.WaitGroup
@@ -768,8 +767,8 @@ func TestConcurrentPressesNeverMarkARowThatIsNotReading(t *testing.T) {
 	}
 	// THE FIXTURE MUST HAVE MARKED SOMETHING. With no marks sent at all the
 	// disagreement check above can never fire and the test passes proving
-	// nothing — which it did, when a mutation removed the mark entirely rather
-	// than misrouting it.
+	// nothing — as it would against a mutation that removes the mark entirely
+	// rather than misrouting it.
 	if marked == 0 {
 		t.Fatal("no row was ever marked, so this proves nothing about which row the window shows")
 	}
@@ -779,12 +778,12 @@ func TestConcurrentPressesNeverMarkARowThatIsNotReading(t *testing.T) {
 //
 // The set-mark happens when the read STARTS, before the goroutine has looked the
 // row up — and a row can vanish from the feed between the frame the listener saw
-// and the key they pressed. The clear lived inside the narration sequence, which
-// that path never reaches, so the window kept a play mark for a read that never
-// began and nothing could take it down.
+// and the key they pressed. A clear that lived only inside the narration
+// sequence, which that path never reaches, would leave the window a play mark
+// for a read that never began, with nothing to take it down.
 //
-// Found by review. The existing fixture called `Read("nope")` and asserted
-// nothing about the messages afterwards, so it walked straight past this.
+// A bare `Read("nope")` that asserts nothing about the messages afterwards
+// walks straight past this, so this asserts them.
 func TestAReadForAMissingRowLeavesNoMark(t *testing.T) {
 	var mu sync.Mutex
 	var marks []tty.SevereReadingMsg
@@ -820,11 +819,10 @@ func TestAReadForAMissingRowLeavesNoMark(t *testing.T) {
 
 // A READ ASKED FOR *DURING* AN ALERT CAN BE PAUSED BEFORE IT EVER SPEAKS.
 //
-// The third ordering, and the third time this defect arrived. A read requested
-// while a takeover has the air is QUEUED — not on air, not suspended — so a
-// pause that looked only at those two did nothing, and the read started on its
-// own when the alert ended. The listener pressed [space] twice and got a read
-// they had told to wait.
+// The third ordering. A read requested while a takeover has the air is QUEUED
+// — not on air, not suspended — so a pause that looked only at those two would
+// do nothing, and the read would start on its own when the alert ended: a
+// listener who pressed [space] twice would get a read they had told to wait.
 func TestAQueuedReadCanBePausedBeforeItTakesTheAir(t *testing.T) {
 	nar := testDirector(&scriptVoice{dur: time.Hour}, nil)
 	release := make(chan struct{})
@@ -870,14 +868,14 @@ func TestAQueuedReadCanBePausedBeforeItTakesTheAir(t *testing.T) {
 // A PAUSE NEVER CLAIMS A READ THAT IS ALREADY DEAD.
 //
 // A read Cancel has killed stays on the suspended stack until its goroutine
-// unwinds, and a walk that matched on class alone found that corpse first. It
-// reported success — so the chip said Paused — while the read the listener could
-// actually hear carried on. A pause that LIES is worse than one that refuses.
+// unwinds, and a walk that matched on class alone would find that corpse first.
+// It would report success — so the chip says Paused — while the read the
+// listener can actually hear carries on. A pause that LIES is worse than one
+// that refuses.
 //
 // ASSERTED ON `pausable` DIRECTLY, because driving it through Run is a race with
-// the goroutine unwinding: the first version of this pin did that and stayed
-// green against the defect about half the time, which is a pin that reports
-// clean on broken code.
+// the goroutine unwinding: such a pin stays green against the defect about half
+// the time, which is a pin that reports clean on broken code.
 func TestAPauseNeverClaimsACancelledRead(t *testing.T) {
 	nar := testDirector(&scriptVoice{dur: time.Millisecond}, nil)
 	dead, killed := context.WithCancel(context.Background())
@@ -937,10 +935,10 @@ func TestThePauseAndTheReportNeverDisagree(t *testing.T) {
 			waiting: []*narrationJob{{class: narrateRead, ctx: dead, paused: true}}},
 		{what: "a cancelled read waiting, not paused",
 			waiting: []*narrationJob{{class: narrateRead, ctx: dead}}},
-		// THE CELL THAT PUT A CORPSE ON THE AIR. A paused read on top of the
+		// THE CELL THAT CAN PUT A CORPSE ON THE AIR. A paused read on top of the
 		// stack shields the dead one underneath from settle's drain, which stops
-		// at the first live job — so the dead one sat there waiting to be
-		// promoted, and was, with the bed ducked under it.
+		// at the first live job — so the dead one sits there waiting to be
+		// promoted, with the bed ducked under it if it ever is.
 		{what: "a cancelled read beneath a live paused one",
 			suspended: []*narrationJob{
 				{class: narrateRead, ctx: dead},
@@ -990,11 +988,10 @@ func TestThePauseAndTheReportNeverDisagree(t *testing.T) {
 
 // A PAUSED READ WAITING BEHIND AN ALERT GIVES THE BED BACK.
 //
-// `first()` learned to skip paused jobs; the take-back guard counted the queue
-// instead of asking it, so a queued read the listener had paused kept the
-// broadcast dipped for as long as they left it — with nobody speaking over it.
-// That is verbatim what the guard's own comment forbids, in the one place that
-// had not learned the rule.
+// `first()` skips paused jobs, and the take-back guard asks it rather than
+// counting the queue: a count would keep the broadcast dipped behind a queued
+// read the listener has paused, for as long as they leave it — with nobody
+// speaking over it, which is what the guard's own comment forbids.
 func TestAPausedQueuedReadGivesTheBedBack(t *testing.T) {
 	nar := testDirector(&scriptVoice{dur: time.Hour}, nil)
 	release, onAir := make(chan struct{}), make(chan struct{})
@@ -1023,11 +1020,11 @@ func TestAPausedQueuedReadGivesTheBedBack(t *testing.T) {
 
 // A READ THAT IS ALREADY GONE DOES NOT HOLD THE BED.
 //
-// The take-back guard asks `first()`, which learned to skip a listener's hold
-// but not a job whose context had ended. A cancelled read still sits in the
-// queue until its goroutine unwinds, so the broadcast stayed dipped for a read
-// nobody was going to hear — the same corpse window that made the pause lie,
-// arriving at the other half of the same guard.
+// The take-back guard asks `first()`, which skips a listener's hold AND a job
+// whose context has ended. A cancelled read still sits in the queue until its
+// goroutine unwinds, and counting it would keep the broadcast dipped for a read
+// nobody is going to hear — the same corpse window the pause guards against,
+// at the other half of the same guard.
 func TestADeadWaitingReadDoesNotHoldTheBed(t *testing.T) {
 	nar := testDirector(&scriptVoice{dur: time.Millisecond}, nil)
 	dead, kill := context.WithCancel(context.Background())
@@ -1050,23 +1047,22 @@ func TestADeadWaitingReadDoesNotHoldTheBed(t *testing.T) {
 
 // MVS-D-75 — CLOSING THE WINDOW STOPS THE READ, AUDIO INCLUDED.
 //
-// UAT 2026-09-05, and the ruling already existed: "closing the window stops the
-// read". What it did was end the read's SEQUENCE. The arbiter then released the
-// air, settled, and resumed the location read the `[w]` read had suspended —
-// while the `[w]` clip played on, because nothing stopped it. Two reports at
-// once, and the window showed no play mark on either, since the reader
-// correctly believed it had finished.
+// "Closing the window stops the read" means the AUDIO as well as the read's
+// SEQUENCE. Ending the sequence alone lets the arbiter release the air, settle,
+// and resume the location read the `[w]` read suspended — while the `[w]` clip
+// plays on. Two reports at once, and the window shows no play mark on either,
+// since the reader correctly believes it has finished.
 //
-// The engine could pause a line, resume one, and close the HELD ones. It could
-// not stop the line that was actually sounding.
+// So the engine stops the line that is actually sounding, not only the HELD
+// ones.
 func TestClosingTheWindowStopsTheReadsAudioNotJustItsSequence(t *testing.T) {
 	v := &scriptVoice{}
 	nar := testDirector(v, nil)
 	// THE READ MUST STILL BE READING WHEN IT IS CANCELLED. A sleep that returns
 	// at once makes the read FINISH immediately whatever its clip's length, and
 	// a finished read is correctly never stopped — so the assertion below would
-	// have been about the wrong thing. It passed in isolation and failed in the
-	// suite, which is the tell: the ordering was luck, not design.
+	// be about the wrong thing, and pass or fail on ordering luck rather than
+	// design.
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool {
 		<-ctx.Done() // park in the hold until [esc] cancels it
 		return false
@@ -1088,8 +1084,7 @@ func TestClosingTheWindowStopsTheReadsAudioNotJustItsSequence(t *testing.T) {
 	// WAIT UNTIL IT IS ACTUALLY SPEAKING. The mark is sent BEFORE the read's
 	// goroutine starts, so cancelling on the mark alone can arrive before the
 	// line ever plays — and then "no stop was recorded" would be true of a
-	// perfect implementation too, which is this release's most repeated
-	// mistake.
+	// perfect implementation too.
 	for deadline := time.Now().Add(2 * time.Second); !strings.Contains(v.got(), "speak:"); {
 		if time.Now().After(deadline) {
 			t.Fatalf("the read never reached its line, so this proves nothing: %s", v.got())
@@ -1128,16 +1123,15 @@ func TestAReadThatFinishesIsNeverCutOff(t *testing.T) {
 
 // TestTwoPressesCannotRaceTheSameReader.
 //
-// `Toggle`'s own comment records the defect and its rate: "two fast presses are
-// genuinely concurrent Toggles — not serialised by the update loop. Each read its
-// state, released the lock, and then acted on a snapshot the other had already
-// invalidated: the loser could pause the read the winner had just started, and
-// marked the row with the OLD key … Measured at about 2 % of presses, and
-// INVISIBLE TO THE RACE DETECTOR because it is a logic race, not a data one."
+// Two fast presses are genuinely concurrent Toggles — not serialised by the
+// update loop. Without the press gate, the loser can act on a snapshot the
+// other has invalidated: pause the read the winner has just started, and mark
+// the row with the OLD key. That is a logic race at about 2 % of presses,
+// INVISIBLE TO THE RACE DETECTOR because it is not a data one.
 //
-// SO `make race` CANNOT SEE IT AND NOR COULD ANYTHING ELSE: mutant mK3 removes
-// the press gate and survived the whole 2026-09-13 corpus sweep. A 2%-of-presses
-// defect is also not something a stress test can pin without being flaky.
+// SO `make race` CANNOT SEE IT (mutant mK3 removes the press gate), and a
+// 2%-of-presses defect is not something a stress test can pin without being
+// flaky.
 //
 // DRIVEN AT A CONTROLLED INTERLEAVING POINT INSTEAD. `mark` calls `send` from
 // INSIDE the decision, so the fixture's `send` is a place to stand in the middle
@@ -1153,9 +1147,9 @@ func TestTwoPressesCannotRaceTheSameReader(t *testing.T) {
 	r.busy, r.key = true, "k"
 
 	// NOT `sync.Once`, AND THAT IS THE WHOLE INSTRUMENT. `Do` BLOCKS concurrent
-	// callers until the first returns — so the second press stalled inside
+	// callers until the first returns — so the second press would stall inside
 	// `send` waiting for this orchestration to finish, at exactly the point
-	// being measured, and the test passed with the gate removed. An atomic swap
+	// being measured, and the test would pass with the gate removed. An atomic swap
 	// lets every later `send` return immediately, which is what makes the
 	// second press's progress observable.
 	var armed atomic.Bool

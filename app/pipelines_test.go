@@ -126,13 +126,12 @@ func awaitRuns(t *testing.T, runs *atomic.Int32, n int32) {
 
 func TestPublisherWindowFoldsAWave(t *testing.T) {
 	var runs atomic.Int32
-	// THE WINDOW IS GENEROUS ON PURPOSE. The old test used 40 ms and spaced twenty
-	// triggers a millisecond apart, so the wave itself very nearly filled the
-	// window; on a loaded CI box it spilled past, a second window opened, and
-	// folding twice was the CORRECT behaviour for the timing it was handed. It
-	// failed on one macOS leg while the other passed on the same commit (F-51).
+	// THE WINDOW IS GENEROUS ON PURPOSE. Twenty triggers spaced a millisecond
+	// apart very nearly fill a 40 ms window; on a loaded CI box the wave spills
+	// past, a second window opens, and folding twice is the CORRECT behaviour for
+	// that timing (F-51).
 	//
-	// Now the wave is sent back-to-back — microseconds — into a half-second
+	// So the wave is sent back-to-back — microseconds — into a half-second
 	// window, and the assertions wait for a state instead of sleeping past one.
 	pb := &publisher{window: 500 * time.Millisecond, run: func() *snapshot.Snapshot { runs.Add(1); return nil }}
 	pb.Trigger() // the first publish is immediate (F-1); the wave comes after it

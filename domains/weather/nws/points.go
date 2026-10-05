@@ -1,6 +1,6 @@
 package nws
 
-// points.go — the /points resolution memo: grid, forecast and observation-station chain per location, the preferred-station mark. Split from provider.go by the quality pass (Q2, pure move).
+// points.go — the /points resolution memo: grid, forecast and observation-station chain per location, the preferred-station mark (Q2).
 
 import (
 	"context"

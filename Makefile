@@ -1,13 +1,16 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify verify-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms vet-tags test-tags lint-identity install-test
+.PHONY: lint-plan-code test-say quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test
 
 BINARY := watchpost
 DIST   := dist
 PLATFORMS := darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64
 
-# VERSION is stamped into the binary (cmd/watchpost main.version): the tag on a
-# tagged commit, else the nearest tag + commit (and -dirty). Override: make VERSION=0.9.0
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
+# VERSION is stamped into the binary (cmd/watchpost main.version): the version
+# tag on a tagged commit, else the nearest version tag + commit (and -dirty).
+# Only v* tags count, so no other tag names a build (D-259). A work branch cut
+# before a release's squash merge finds that release's tag on main, not here.
+# Override: make VERSION=0.9.0
+VERSION ?= $(shell git describe --tags --match 'v*' --always --dirty 2>/dev/null | sed 's/^v//')
 # -trimpath: the build path is not shipped (FR-7.5, HUM LEAD 2026-09-08).
 # Without it every binary embeds the absolute directory it was compiled from —
 # 473 occurrences in watchpost-darwin-arm64, 485 in linux-amd64 — which names
@@ -19,26 +22,6 @@ LDFLAGS := -s -w -X main.version=$(VERSION)
 build:
 	@mkdir -p $(DIST)
 	go build $(TRIMPATH) -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY) ./cmd/watchpost
-
-# build-diag is the UAT build for the ctrl+d window's injection half (F-21b).
-#
-# IT STAMPS ITS OWN VERSION, and that is the point of the target existing. Built
-# by hand with a bare `go build`, the two artifacts differ only in a name: one
-# says 0.14.2-44-g00c48ce and the other 0.0.0-dev, and the operator reasonably
-# runs the one whose version matches the commit under test — then reports that
-# ctrl+d offers no injection, which is exactly what a clean build is supposed to
-# say. The +debug suffix travels into the About window and `--version`, so the
-# binary answers "which build is this" wherever the question is asked.
-#
-# NEVER SHIPPED: release-matrix builds the clean matrix and lint-injector fails
-# any artifact carrying the injector.
-build-diag:
-	@mkdir -p $(DIST)
-	go build $(TRIMPATH) -tags watchpost_debug -ldflags '-s -w -X main.version=$(VERSION)+debug' \
-	  -o $(DIST)/$(BINARY)-diag ./cmd/watchpost
-	@scripts/lint-injector.sh $(DIST)/$(BINARY)-diag >/dev/null 2>&1 \
-	  && { echo "build-diag: the injector is MISSING from the diagnostics build"; exit 1; } \
-	  || echo "build-diag: $(DIST)/$(BINARY)-diag carries the injector, as it must"
 
 test:
 	go test ./...
@@ -59,30 +42,13 @@ fmt:
 vet:
 	go vet ./...
 
-# THE BUILD-TAGGED SOURCE IS SOURCE, and nothing was compiling it. The injector
-# lives behind `watchpost_debug` (P10-08) so it cannot ship, which also means
-# `go vet ./...` never sees it: app/inject_seam_test.go — the test the whole
-# injector stands on — stopped compiling at T3.10b and stayed dark until the
-# BUILD-exit red team found it by hand (I-3). A tag with no gate is a tag that
-# rots. `mutants` is excluded deliberately: mutant-check owns it, and it costs
-# ~140s.
+# THE BUILD-TAGGED SOURCE IS SOURCE, and `go vet ./...` never sees it. The
+# property tests live behind `property`; a tag with no gate is a tag that rots
+# (the injector's tagged seam test stayed dark once, found by hand at a red
+# team, I-3). The injector itself is untagged since 0.18.0 D-152, and its tests
+# run with every other.
 vet-tags:
-	go vet -tags watchpost_debug ./...
-
-# AND RUN THEM. vet-tags proves the tagged tree COMPILES; it does not run a
-# single assertion in it. app/inject_seam_test.go — "the test the whole injector
-# stands on" — is behind the tag, so until now no gate in this repository had
-# ever executed it. It stayed dark once already, through a compile break that
-# vet alone would not have caught either, and was found by hand at a red team.
-#
-# The injector is the one capability that must never ship, and B3 makes its
-# surface user-facing. Asserting things about code no gate runs is how a
-# capability gets a green check and no measurement.
-#
-# ./app ONLY: it is the sole package with tagged tests, and the whole tree under
-# the tag costs a second full suite for nothing.
-test-tags:
-	go test -tags watchpost_debug -count=1 ./app
+	go vet -tags property ./modes/tty
 
 # Dependency hygiene (quality pass Q0, red-team PH-1/IS-9): go.mod must be tidy,
 # the module cache must match go.sum, and no known vulnerability may be reachable.
@@ -90,8 +56,15 @@ tidy:
 	go mod tidy -diff
 	go mod verify
 
+# govulncheck is PINNED (IS-M10): @latest ran whatever the module proxy served
+# that day, code no one had reviewed, inside the gate. v1.8.0 is the newest
+# release and the one the local ~/go/bin/govulncheck was built from; moving
+# it is a reviewed change to this line. The vulnerability database it reads
+# is fetched fresh on every run either way.
+GOVULNCHECK_VERSION := v1.8.0
+
 vuln:
-	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 # Import-direction gate: modes/* may import platform/* but NEVER domains/* (architecture §1).
 lint-imports:
@@ -112,6 +85,23 @@ lint-authoring:
 lint-watermark:
 	@./scripts/lint-watermark.sh
 
+# NO IMPLEMENTATION CODE IN A PLAN (observer-maps D-13, D-14, FR-8.1). A plan
+# names signatures, shapes and tests; a function body written into one is
+# neither compiled nor tested and quietly becomes the design. The parser decides
+# "has a body", and the self-test proves it can refuse one.
+lint-plan-code:
+	@go run ./tools/plancode -self-test
+	@go run ./tools/plancode
+
+# THE SPEECH SAFETY TEST RUNS ALONE (F-176, observer-maps D-58). It drives the
+# real macOS `say`, which a loaded box starves until the test's bound kills it;
+# the parallel suite skips it and this step runs it with nothing else. It must
+# pass with the listener's own watchpost open — the HUM LEAD's condition. It is
+# macOS-only: on another OS the test skips, so CI runs this step on macOS alone,
+# and there a missing `say` fails it.
+test-say:
+	@WATCHPOST_SAY_LEG=1 go test -count=1 -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth
+
 # THE PUBLISHED TREE NAMES NO PERSON AND NO MACHINE. A home directory, an
 # agent-harness scratchpad path, an internal project tree or an email address
 # reaching a PUBLIC repository cannot be taken back once someone clones it.
@@ -120,7 +110,7 @@ lint-watermark:
 # patterns in the P10 ledger mirror alone, and printed "no machine paths" while
 # the class was live in 21 other tracked files across two pushed branches.
 lint-identity:
-	@go test ./cmd/watchpost/ -run PublishedTreeNames -count=1
+	@go test ./cmd/watchpost/ -run 'PublishedTreeNames|OneTreeRule' -count=1
 
 # Positive controls: prove the custom gates still fire on known-bad input (calibration:
 # "Guard Tests Require Positive Controls"). Runs the linters against embedded bad fixtures.
@@ -133,13 +123,6 @@ gate-controls:
 	@./scripts/quality/lint-ledger.sh --self-test
 	@go run ./tools/dupes -self-test
 	@./scripts/quality/mutant-anchors.sh --self-test
-# THE INJECTOR CONTROL BELONGS HERE AND WAS NOT HERE. lint-injector is the only
-# thing standing between a build that can fabricate hazards and a release, and
-# its control — which proves the check can tell a stripped debug binary from a
-# stripped clean one — was invoked by nothing: the two real callers pass
-# artefacts, not `--self-test`. A control that exists and does not run is the
-# same as no control, with the paperwork of one.
-	@./scripts/lint-injector.sh --self-test
 
 # THE CHEAP HALF OF `mutant-check`, RUNNABLE BEFORE A COMMIT. It asks only
 # whether every mutant still FINDS its line — three tenths of a second against
@@ -189,10 +172,13 @@ mutant-check:
 # not reporting on the code, and it fails at random, which is the worst way for
 # it to be wrong.
 #
-# 40m is ~4x the slowest run observed, not a guess at the next mutant. The
-# corpus grows every release; when it approaches this, raise it and re-record
-# the measurement here rather than trimming the corpus to fit the clock.
-	@go test -tags mutants -v -count=1 -timeout 40m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
+# 120m: the corpus at 378 mutants ran 1,723 s on the developer's 18-core
+# machine (2026-10-03) and passed 40 minutes on a 4-core ubuntu-latest runner
+# without finishing, so 40m - once four times the slowest run - no longer is.
+# The corpus grows every release; when it approaches this, raise it and
+# re-record the measurement here rather than trimming the corpus to fit the
+# clock.
+	@go test -tags mutants -v -count=1 -timeout 120m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
 	  cat $(DIST)/mutant-check.log; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$rc
@@ -296,8 +282,24 @@ cache-clean:
 verify:
 	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
 
-verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest lint-identity gate-controls alloc-budget dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
+verify-gates: fmt vet vet-tags tidy vuln race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
+
+# THE DOCS LANE (go-tuiMaps v0.2.0 D-15; watchpost 0.18.0 D-38). A change that
+# is Markdown and nothing else runs what reads documents - every test, without
+# the cache, and the authoring and watermark lints - instead of the whole of
+# verify. tools/docslane decides from the change itself and refuses any other
+# file, tracked or not, so the rule is held here rather than remembered. It
+# refuses an unchanged tree too: run it before committing. It is local only:
+# CI and every other change run verify.
+verify-docs:
+	@go run ./tools/treelock -name verify-docs -- $(MAKE) --no-print-directory verify-docs-gates
+
+verify-docs-gates:
+	@go run ./tools/docslane
+	@go test -count=1 ./...
+	@$(MAKE) --no-print-directory test-say lint-authoring lint-watermark lint-plan-code
+	@echo "verify-docs: DOCS LANE GREEN - every other gate NOT RUN; a change with any file that is not Markdown needs make verify"
 
 # quality is the PHASE-EXIT set: gates a release runs at BUILD and REVIEW exit,
 # by the HUM LEAD, and records in the roster — not on every verify and not in
@@ -489,6 +491,13 @@ lint-update:
 alloc-budget:
 	go test -count=1 -run 'AllocBudget' ./...
 
+# The map's guard 3 at its full count (0.18.0 W2.4): 10,000 random sequences,
+# each printed map compared with a fresh render. Every `go test` runs 200; the
+# ten thousand take about two minutes, so they run once, here, not under the
+# race detector and not in every mutant's run.
+property:
+	go test -tags property -count=1 -run 'TestThePrintedMapIsAFreshRender' ./modes/tty
+
 # Wall-clock benchmarks: recorded, never gated (quality pass §0.1). Local, HUM LEAD.
 # Needs benchstat: go install golang.org/x/perf/cmd/benchstat@latest
 quality-bench:
@@ -501,7 +510,9 @@ quality-bench:
 # fresh clone would report every finding as unratified, and the record of what
 # was approved would be one disk failure from gone. Regenerating it here means it
 # cannot drift from the ledger it mirrors, and the lint means a machine path
-# cannot reach the public tree through it.
+# cannot reach the public tree through it. The gate then fails if the
+# regenerated mirror differs from the committed one: a stale public record is a
+# finding, and the fix is to commit what was regenerated.
 #
 # P10 safety-critical check (quality pass §1, red-team R2-2). The harness CLI and the
 # exemptions ledger live outside the public tree, so this is a LOCAL gate that must fail
@@ -516,6 +527,7 @@ p10:
 	@./scripts/quality/ledger-ratified.sh
 	@python3 ./scripts/quality/p10-ledger-mirror.py
 	@./scripts/quality/lint-ledger.sh
+	@git diff --quiet --exit-code -- 06_docs/p10-ledger.md || { git diff --stat -- 06_docs/p10-ledger.md; echo "p10: 06_docs/p10-ledger.md differed from the committed copy and has been regenerated; commit the regenerated mirror and run make p10 again"; exit 1; }
 	@echo "p10: 0 live, 0 unmatched, 0 unratified ($(P10_OUT))"
 
 # T-M (§10.12): cross-compile matrix — every milestone proves it stays green.
@@ -530,10 +542,6 @@ release-matrix:
 # shasum, which succeeded, and the failure was gone. The oracle painted
 # sha256sum red alone and release-matrix stayed green.
 	@cd $(DIST) && if command -v sha256sum >/dev/null; then sha256sum $(BINARY)-* > checksums.txt; else shasum -a 256 $(BINARY)-* > checksums.txt; fi
-# NFR-2, AND IT RUNS HERE RATHER THAN IN verify FOR A REASON. verify runs before
-# the published artifacts exist, so a check living there inspects a binary nobody
-# ships. These are the files the release workflow uploads.
-	@./scripts/lint-injector.sh $(DIST)/$(BINARY)-*
 	@echo "release-matrix: OK ($(VERSION))"
 
 # Installer smoke test: serve the release matrix locally and run scripts/install.sh

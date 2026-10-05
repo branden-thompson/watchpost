@@ -6,11 +6,10 @@ package app
 // CLASSIFIED for what it can do to the air, and every seam classified as the
 // monitor's is actually REFUSED while the console holds it.
 //
-// TWO HALVES, BECAUSE MEMBERSHIP IS NOT BEHAVIOUR. D-74's own retro records why:
-// plant `y4` — "the deck plays while the console owns the air" — SURVIVED,
-// because the tests asserted `monitorHasTheAir()`, the PREDICATE, and never that
-// the audio was actually skipped. A completeness gate alone would repeat that
-// exactly.
+// TWO HALVES, BECAUSE MEMBERSHIP IS NOT BEHAVIOUR. A test that asserts
+// `monitorHasTheAir()`, the PREDICATE, and never that the audio is actually
+// skipped lets plant `y4` — "the deck plays while the console owns the air" —
+// survive (D-74). A completeness gate alone has exactly that gap.
 
 import (
 	"context"
@@ -28,11 +27,10 @@ import (
 // spySource is a liveSource that records the two things which reach a broadcast
 // IN FLIGHT — which is the whole of what the air guard is about.
 //
-// IT LIVES HERE, NOT IN THE DOMAIN. The first draft of this test added
-// `RepeatingForTest` to `synth.Source`; the HUM LEAD caught it, and he was right
-// — every `ForTest` export in the tree is in `platform/`, and a domain does not
-// learn that this package has tests. `app` declares what it needs from a source
-// (livesource.go), so `app` can also say what a fake one does.
+// IT LIVES HERE, NOT IN THE DOMAIN. Every `ForTest` export in the tree is in
+// `platform/`, and a domain does not learn that this package has tests. `app`
+// declares what it needs from a source (livesource.go), so `app` can also say
+// what a fake one does.
 type spySource struct {
 	loops   []bool
 	recasts int
@@ -94,15 +92,14 @@ type airMember struct {
 //
 // IT IS A CLOSED SET AND THE GATE PROVES IT (air_boundary_test.go): a seam added
 // to `tty.Config` with no row here FAILS, and a row naming a seam that no longer
-// exists fails too. That is the one list-shaped thing in this repo that has not
-// gone stale — `reachabilityBaseline`'s shape — and it is chosen because three
-// hand-written lists have rotted in this package's history.
+// exists fails too. It is `reachabilityBaseline`'s shape: derived from the code
+// rather than kept by hand, because a hand-written list rots.
 //
 // MEMBERSHIP IS NOT BEHAVIOUR. A row saying `airMonitor` is a claim that the seam
 // is REFUSED while the console holds the air, and the gate cannot see that by
-// reflection — so every `airMonitor` row has a behaviour test beside it. D-74's
-// own retro is why: plant `y4` survived because the tests asserted the PREDICATE
-// and never that the audio was actually skipped.
+// reflection — so every `airMonitor` row has a behaviour test beside it. A test
+// that asserts the PREDICATE and never that the audio is actually skipped lets
+// plant `y4` survive (D-74).
 var airBoundary = map[string]airMember{
 	// --- tty.Radio: the monitor's control surface -------------------------
 	"Radio.Tune":      {airMonitor, "the operator tunes their own listening; the Director's rotation uses the lower-case `tune`"},
@@ -112,16 +109,17 @@ var airBoundary = map[string]airMember{
 	"Radio.SetVolume": {airShared, "HUM LEAD 2026-09-12: \"one volume setting for the app\" — the Router already mirrors it to both surfaces"},
 
 	// --- tty.Config: reaches the air --------------------------------------
-	"SetVoice":      {airMonitor, "a saved root is a cast change, and a recast is applied to the LIVE source"},
-	"SetCast":       {airMonitor, "`src.Recast()` — its own comment says \"the listener is waiting to hear it\", and on the console the listener is the AUDIENCE"},
-	"PreviewVoice":  {airMonitor, "an audition mixed over the output; on the console that output is the station's. See the note in air_boundary_test.go — this one has a UX consequence"},
-	"SetRelayDwell": {airMonitor, "re-sends the repeat mode so the Director hears the new dwell, and that reaches `src.Loop`"},
-	"NarrateEvent":  {airMonitor, "the [w] window's [space]: an operator-initiated read that ducks the broadcast. NOT the hazard rail, which is exempt from air ownership by D-74"},
-	"EndEventRead":  {airMonitor, "stops the read NarrateEvent started; paired with it, and a stop that outlived its start would leave the window's mark on a read nobody can end"},
-	"ReadReport":    {airGatedDownstream, "goes through `needsRead`, which asks `monitorHasTheAir()` — the one entry that already did"},
-	"StepBedRelay":  {airProgramme, "the console's own bed selector (D-90); guarding it would break the control it belongs to"},
-	"TuneRelay":     {airProgramme, "the relay-fault window's pick. HUM LEAD 2026-09-12 ruled it must stay usable and be routed correctly — F-101, stage C"},
-	"OnSurface":     {airDeclares, "`takeTheAir` — this is the thing that MOVES the air, so it cannot be gated on it"},
+	"SetVoice":       {airMonitor, "a saved root is a cast change, and a recast is applied to the LIVE source"},
+	"SetCast":        {airMonitor, "`src.Recast()` — its own comment says \"the listener is waiting to hear it\", and on the console the listener is the AUDIENCE"},
+	"PreviewVoice":   {airMonitor, "an audition mixed over the output; on the console that output is the station's. See the note in air_boundary_test.go — this one has a UX consequence"},
+	"SetRelayDwell":  {airMonitor, "re-sends the repeat mode so the Director hears the new dwell, and that reaches `src.Loop`"},
+	"NarrateEvent":   {airMonitor, "the [w] window's [space]: an operator-initiated read that ducks the broadcast. NOT the hazard rail, which is exempt from air ownership by D-74"},
+	"EndEventRead":   {airMonitor, "stops the read NarrateEvent started; paired with it, and a stop that outlived its start would leave the window's mark on a read nobody can end"},
+	"ReadReport":     {airGatedDownstream, "goes through `needsRead`, which asks `monitorHasTheAir()` — the one entry that already did"},
+	"StepBedRelay":   {airNone, "the console's own bed selector (D-90): it chooses and keeps a relay, and plays nothing (D-215)"},
+	"ToggleBedRelay": {airProgramme, "the console's play key for its bed (D-215); the console refuses it while the programme has the air (D-216), and it starts nothing over a card being read"},
+	"TuneRelay":      {airProgramme, "the relay-fault window's pick. HUM LEAD 2026-09-12 ruled it must stay usable and be routed correctly — F-101, stage C"},
+	"OnSurface":      {airDeclares, "`takeTheAir` — this is the thing that MOVES the air, so it cannot be gated on it"},
 	// THE OPERATOR'S REQUEST (R4). It reaches the AIR eventually — a scheduled
 	// card is read — but it reaches it the way every other card does: through
 	// the running order, in its turn, and never ahead of a hazard. The Director
@@ -141,6 +139,7 @@ var airBoundary = map[string]airMember{
 	"SetTones":       {airNone, "deliberately NOT a recast — the in-tree standard: \"[M] must be instant and must not disturb a broadcast in flight\""},
 	"SetRelayLang":   {airNone, "writes a field; takes effect on the NEXT tune, deliberately, so a language change does not cut a sentence"},
 	"SetAlertRadius": {airNone, "a filter bound; the rail re-scopes without touching the engine"},
+	"HistoryCost":    {airNone, "a measure of the history's disk, read for the Data tab's question (D-231); it writes nothing and reaches no output"},
 
 	// THE STATION'S OWN TWO (D-115). Both persist, re-derive the pool and publish
 	// the new area — and none of those three reaches the engine. What they change
@@ -180,19 +179,33 @@ var airBoundary = map[string]airMember{
 	"Voices":           {airNone, "lists what is installed"},
 	"VoiceInstalled":   {airNone, "a query"},
 	"Spectrum":         {airNone, "reads the visualiser tap"},
+	"SaveRadio":        {airNone, "D-214: writes the radio panel's kept volume, repeat and visualizer to the file; the player is told by its own seams"},
 	"FIRMSKey":         {airNone, "a key hint for the Settings window"},
 	"Stats":            {airNone, "the [S] counters"},
+	"MapFeed":          {airNone, "0.18.0: turns the snapshot's alerts into map overlays; it reaches the zone store and no audio"},
+	"MapRadar":         {airNone, "0.18.0 W8: fetches radar frames for the map through the radar client; it reaches no audio"},
+	"MapTemperature":   {airNone, "0.18.0 W10: fetches temperatures for the map through the temperature client; it reaches no audio"},
+	"MapProblem":       {airNone, "0.18.0 D-124: keeps the map's problems for the diagnostic dump; it reaches no audio"},
+	"MapClosed":        {airNone, "0.18.0 D-162: lets the zone store's memory go when the map closes; it reaches no audio"},
+	"Timed":            {airNone, "0.18.0 W14 (D-154): the timing instrument's intervals, kept for /debug/counters and nil unless WATCHPOST_DEBUG_TIMING=1; it reaches no audio"},
+	"MapFrame":         {airNone, "0.18.0 D-198: the map's frame recorder, appending drawn frames to a debug file; nil unless WATCHPOST_DEBUG_MAPFRAMES names one; it reaches no audio"},
+	"ClearMapData":     {airNone, "0.18.0: empties the map's tile files and zone outlines; it reaches no audio"},
+	"MapDisk":          {airNone, "PF-4: names the live map's tile directory again after a clear; it reaches no audio"},
+	"SetHistory":       {airNone, "W18: writes the local history's retention and applies it to the store; it reaches no audio"},
+	"ClearHistory":     {airNone, "W18: empties the local history's store; it reaches no audio"},
+	"HistoryUsage":     {airNone, "W18: reads the store's size and place for the Data tab; it reaches no audio"},
+	"MapAreaName":      {airNone, "UAT-1 D-64: names the map's view from the city index; it reaches no audio"},
+	"MapCost":          {airNone, "0.18.0: arithmetic over the snapshot's alerts and the layer registry; it fetches nothing and reaches no audio"},
+	"NewMap":           {airNone, "0.18.0: builds a map for the window to draw; it reaches no audio, and with no source named, nothing at all"},
 }
 
 // TestEverySurfaceSeamIsClassifiedForTheAir is the completeness half, and it
 // ratchets BOTH ways: a seam with no row fails, and a row naming a seam that no
 // longer exists fails too.
 //
-// DERIVED, NEVER LISTED. Three hand-written lists have rotted in this package's
-// history — `handleNav`'s scrolling windows, `modalLines`' default arm, and the
-// air itself, where one entry of nineteen asked. A list of seams maintained by
-// hand would rot in exactly the same way, and this is the shape that has not:
-// `reachabilityBaseline`'s.
+// DERIVED, NEVER LISTED. A list of seams maintained by hand rots as seams are
+// added; reading them by reflection is `reachabilityBaseline`'s shape, and it
+// cannot fall behind the code.
 func TestEverySurfaceSeamIsClassifiedForTheAir(t *testing.T) {
 	seen := map[string]bool{}
 
@@ -253,9 +266,9 @@ func deckOnTheConsole(t *testing.T, console bool) (*radioDeck, *spySource) {
 	return d, src
 }
 
-// THE ONE THE HUM LEAD'S RULING WAS MEASURED ON. Observer's repeat mode reached
-// `src.Loop`, and `d.source` during a main-track read IS the Broadcaster's card
-// (BD-9) — so the card on the air looped and the line-up never advanced.
+// REPEAT ON THE CONSOLE'S AIR. Observer's repeat mode reaches `src.Loop`, and
+// `d.source` during a main-track read IS the Broadcaster's card (BD-9) — so,
+// unguarded, the card on the air loops and the line-up never advances.
 func TestObserversRepeatModeCannotLoopTheCardOnTheAir(t *testing.T) {
 	d, src := deckOnTheConsole(t, true)
 	d.SetRepeat(tty.RepeatOne, nil)
@@ -291,16 +304,16 @@ func TestObserversCastChangeCannotRecastTheCardOnTheAir(t *testing.T) {
 // THE SWAP'S SILENCING IS NOT RE-TESTED HERE, DELIBERATELY.
 //
 // `air_test.go`'s "taking the air to the console did not stop the monitor" already
-// owns that property, drives it through `takeTheAir`, and REPORTED IT the moment
-// the guard went on `Stop` — which is how the trap was found. A second assertion
-// here would be a weaker copy of a test that has already proved it can fail.
+// owns that property, drives it through `takeTheAir`, and fails if the guard on
+// `Stop` refuses the swap's own silencing. A second assertion here would be a
+// weaker copy of it.
 
 // AND THE MONITOR'S OWN TUNE STOPS AT THE CONSOLE (mZ4).
 //
 // `tune`'s FIRST act is to take the location and bump the generation, before any
 // audio is reached — so a deck whose `ref` and `gen` have not moved is a deck that
-// did not tune. Asserting the guard's PREDICATE instead would be D-74's `y4` all
-// over again, which is what a surviving mutant reported here.
+// did not tune. Asserting the guard's PREDICATE instead lets a mutant survive
+// here, as D-74's `y4` did.
 func TestTheMonitorsTuneStopsAtTheConsole(t *testing.T) {
 	d, _ := deckOnTheConsole(t, true)
 	before := d.gen

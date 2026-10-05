@@ -1,0 +1,65 @@
+#!/usr/bin/env expect
+# workload.expect — W14's standard workload v1 (0.18.0 D-154), driven on a pty.
+# Run by scripts/quality/workload.sh, which sets HOME, the debug switches and
+# the sampler; never run by hand against the listener's own HOME.
+#
+#   workload.expect session <outdir> <phase_minutes> <binary> <counters_url>
+#   workload.expect cold    <outdir> <run_n>         <binary> <counters_url>
+#
+# 149x38: the plan's M5 size (W2.9). Phase changes go to <outdir>/phases.log
+# as "<utc> <phase>"; the process id to <outdir>/pid, for the sampler.
+set timeout 5
+lassign $argv mode outdir arg binary counters
+log_user 0
+set lf [open "$outdir/phases.log" a]
+proc phase {lf s} { puts $lf "[clock format [clock seconds] -format %Y-%m-%dT%H:%M:%SZ -gmt 1] $s"; flush $lf }
+# hold keeps the pty drained for secs, pressing key every every seconds (none
+# when every is 0): a key is what M6's key-to-frame timing measures.
+proc hold {secs key every} {
+  set start [clock seconds]; set last $start
+  while {[clock seconds] - $start < $secs} {
+    expect -timeout 1 -re ".+" {}
+    if {$every > 0 && [clock seconds] - $last >= $every} { send -- $key; set last [clock seconds] }
+  }
+}
+proc counters {url file} { catch {exec curl -fs --max-time 10 $url > $file} }
+
+spawn $binary
+set pf [open "$outdir/pid" w]; puts $pf [exp_pid]; close $pf
+catch {exec stty rows 38 cols 149 < $spawn_out(slave,name)}
+# A WAIT THAT TIMES OUT IS A FAILED RUN, never a phase begun late: the soak
+# scripts waited for U+00BA where the app draws U+00B0 (the degree sign) and
+# began every run on a silent timeout (found by this driver, W14).
+expect -timeout 30 "WATCHPOST" {} timeout { phase $lf "FAILED: no frame"; exit 1 }
+expect -timeout 180 -re "\\d+°F" {} timeout { phase $lf "FAILED: no data in 180 s"; exit 1 }
+phase $lf "L launched: first data"
+
+if {$mode eq "cold"} {
+  # One cold open: an empty cache, the map never opened. M5's clock is g.
+  send "g"; phase $lf "C$arg open (cold)"
+  hold 45 "" 0
+  counters $counters "$outdir/cold-$arg.json"
+  phase $lf "C$arg counters read"
+} else {
+  set secs [expr {$arg * 60}]
+  phase $lf "A idle (radio off)";                   hold $secs "" 0
+  send " "; phase $lf "B radio on (synth)";          hold $secs "" 0
+  send " "; sleep 2
+  send "g"; phase $lf "C map open at the place (cold), a pan every 15 s"
+  hold $secs "\033\[C" 15
+  send "1"; sleep 3; send " "
+  phase $lf "D map national (lower 48), loop playing";  hold $secs "" 0
+  send " "; for {set i 0} {$i < 3} {incr i} { send "+"; sleep 1 }
+  phase $lf "E map zoomed in three steps, a pan every 15 s"; hold $secs "\033\[D" 15
+  send "\033"; sleep 1
+  phase $lf "F map closed, idle";                     hold $secs "" 0
+  for {set i 1} {$i <= 5} {incr i} {
+    send "g"; phase $lf "W$i open (warm)"; hold 30 "" 0
+    send "\033"; hold 5 "" 0
+  }
+  counters $counters "$outdir/session-end.json"
+}
+send "q"
+expect -timeout 20 eof
+phase $lf "quit ok"
+close $lf

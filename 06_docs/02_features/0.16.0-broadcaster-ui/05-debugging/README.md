@@ -15,7 +15,7 @@ files already cite by path, this is the index to where each piece lives.
 | What was investigated | Where it is | What it concluded |
 | --- | --- | --- |
 | **The P3 flip** — the audio merge that was reverted the same day | `04-development/p3-flip-postmortem.md` (201 lines) | Four blockers, every one already answered in 0.14.0's documents.  *"The record was complete; it was not read."* |
-| **A gate that failed once and cannot be explained** | `06_docs/follow-ups.md` F-101 | Open.  Unreproduced; the mechanism was never identified. |
+| **A gate that failed once and cannot be explained** | F-101, closed at 0.18.0's BUILD exit | Closed, unexplained: the `test-tags` gate it failed in was retired (observer-maps D-153), so it cannot recur as it was; the mechanism was never identified. |
 | **A `t.TempDir()` cleanup that failed once** | `06_docs/follow-ups.md` F-102 | Open, re-verified 2026-09-15: 245 clean runs, no sighting, mechanism still unknown. |
 | **"Data requests feel a little slow"** | `06_docs/perf-measurement.md` | The card build is not the cause — 449 ms cold, 1–2 ms warm, not parallelisable.  Three candidates carried to 0.16.5. |
 | **The location lookup's real cost** | `06_docs/perf-measurement.md` | The offline index is 1–15 µs; the geocoder is ~200 ms warm, 939 ms cold.  Rainbow, CA is in neither embedded table — the network is the only authority for it. |

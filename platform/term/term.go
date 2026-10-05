@@ -64,10 +64,10 @@ func resolveWidth(tty, stdin int, columnsEnv string) int {
 // clamped into a terminal that cannot hold it is the F-55 defect — 57 cells
 // rendered into a 20-cell terminal, silently.
 //
-// FOUR CLASSES, RULED (D-50, HUM LEAD 2026-09-10). They REPLACE the 40/60/80/120
-// scale rather than joining it: `broadcaster.go` was the only production caller
-// of this enum, and Observer keeps its own `radioBP` at 84/146, so redefining
-// the boundaries here is F-68's "wire the platform one" answer.
+// FOUR CLASSES, RULED (D-50, HUM LEAD 2026-09-10). `broadcaster.go` is the
+// production caller of this enum, and Observer keeps its own `radioBP` at
+// 84/146, so the boundaries here are the console's — F-68's "wire the platform
+// one" answer.
 type Breakpoint int
 
 const (
@@ -118,16 +118,6 @@ func BreakpointFor(w int) Breakpoint {
 	}
 }
 
-// --- color ---
-
-// colorEnabled is the pure rule: NO_COLOR (any value) wins, then TTY-ness.
-func colorEnabled(stdoutIsTTY bool, noColorEnv string) bool {
-	if noColorEnv != "" {
-		return false
-	}
-	return stdoutIsTTY
-}
-
 // --- keybindings (D-15) ---
 
 // Action names something a view or the app can do ("help", "quit", "dive-in").
@@ -157,9 +147,9 @@ func Merge(layers ...KeyMap) (KeyMap, []string, error) {
 	// [keys] overrides. An override naming an action this build no longer has
 	// is DROPPED WITH A NOTE, never an error (FR-14, RS-21).
 	//
-	// A listener who rebound T for the player size in 0.13.0 must not find
-	// 0.14.0 refusing to start because that action retired. Losing a binding
-	// is a nuisance; refusing to launch over one is a broken upgrade.
+	// A listener whose config rebinds an action a later build retired must
+	// not find the app refusing to start. Losing a binding is a nuisance;
+	// refusing to launch over one is a broken upgrade.
 	out := KeyMap{}
 	maps.Copy(out, layers[0])
 	var dropped []string

@@ -19,11 +19,11 @@ import (
 // what makes adding an inter-card card "low cost" in the HUM LEAD's words rather
 // than in mine.
 //
-// AN EARLIER ARM FIRED ON `Origin == FromOperator` AND WAS WRONG. D-43's
-// bookended operator card was "an example to show the function of the DIRECTOR
-// understanding how a card fits into the line-up", not a requirement — and as a
-// rule it fired location-to-location, which MVS-D-80 forbids and S-5 calls
-// "jarring to a listening audience."
+// NO ARM FIRES ON `Origin == FromOperator`. D-43's bookended operator card is
+// "an example to show the function of the DIRECTOR understanding how a card
+// fits into the line-up", not a requirement — and as a rule it would fire
+// location-to-location, which MVS-D-80 forbids and S-5 calls "jarring to a
+// listening audience."
 
 const returnWords = "Watchpost Radio now returns to its regularly scheduled programming."
 
@@ -86,7 +86,7 @@ func TestALocationReportGetsNoTransitionEitherSide(t *testing.T) {
 }
 
 func TestAnOperatorsLocationReportIsStillJustALocationReport(t *testing.T) {
-	// D-43 REREAD: the bookending was an EXAMPLE of the Director understanding
+	// D-43: the bookending is an EXAMPLE of the Director understanding
 	// how a card fits, not a rule keyed on origin. A card's kind decides what it
 	// needs; who asked for it does not change what it sounds like.
 	d := seedT(t, Settings{ProgrammeReturn: returnWords},
@@ -171,10 +171,10 @@ func TestNoHandBackWhenTheStationHasNoWordsForOne(t *testing.T) {
 
 func TestATakeoverDroppedBeforeItAiredLeavesNoStrayHandBack(t *testing.T) {
 	// NOTHING WAS INTERRUPTED, so there is nothing to hand back from. This is
-	// what the on-air condition buys: a first attempt minted the hand-back at
-	// ADMISSION, and a dropped takeover left a stray "we now return to our
-	// regularly scheduled programming" with nothing before it — the station
-	// announcing a return from a programme it never left.
+	// what the on-air condition buys: a hand-back minted at ADMISSION would leave
+	// a dropped takeover's stray "we now return to our regularly scheduled
+	// programming" with nothing before it — the station announcing a return from
+	// a programme it never left.
 	d := seedT(t, Settings{ProgrammeReturn: returnWords},
 		aReport("a", "oceanside", FromDirector),
 		aTakeover("t1", "tornado warning"))
@@ -190,7 +190,7 @@ func TestATakeoverDroppedBeforeItAiredLeavesNoStrayHandBack(t *testing.T) {
 }
 
 func TestTheHandBackSurvivesTheTakeoverBeingRead(t *testing.T) {
-	// THE DEFECT A SKIPPED TEST FOUND, kept pinned through the rewrite. When the
+	// THE HAND-BACK OUTLIVES THE TAKEOVER. When the
 	// takeover finishes it leaves the schedule, and a hand-back derived only
 	// from what is still there would be deleted one step before it is spoken —
 	// the listener hears the programme resume with no hand-back at all, which is

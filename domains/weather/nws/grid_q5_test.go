@@ -68,7 +68,7 @@ func TestGridExtremesDecodeOncePerBody(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 3 {
-		if _, err := p.gridExtremes(context.Background(), g.gridURL); err != nil {
+		if _, err := p.gridDocument(context.Background(), g.gridURL); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -78,5 +78,31 @@ func TestGridExtremesDecodeOncePerBody(t *testing.T) {
 	p.Retain(nil)
 	if n, _ := p.grids.Stats(); n != 0 {
 		t.Fatalf("Retain prunes the memo with the cache: %d entries survived", n)
+	}
+}
+
+// THE MARINE READ AND THE DAILY FILL SHARE ONE DECODE (W14 P-13): both read
+// the same gridpoint body - up to about 1 MB - and the marine read decoded it
+// again in full every 30 minutes. One memoized decode per body serves both.
+func TestTheMarineReadAndTheFillShareOneDecode(t *testing.T) {
+	srv, _ := testServer(t)
+	p := newProvider(t, srv.URL)
+	g, err := p.resolve(context.Background(), oceanside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.gridDocument(context.Background(), g.gridURL); err != nil {
+		t.Fatal(err)
+	}
+	m := NewMarine(p)
+	frag, err := m.Fetch(context.Background(), snapshot.FetchReq{Kind: snapshot.KindMarine, Locations: []snapshot.LocationRef{oceanside}})
+	if err != nil || frag.Err != nil {
+		t.Fatalf("marine fetch: %v / %v", err, frag.Err)
+	}
+	if mar := frag.PerLocation[snapshot.Key(oceanside)].Marine; mar == nil || mar.SwellHeight == nil {
+		t.Fatalf("the marine read lost its series: %+v", mar)
+	}
+	if n := p.GridDecodes(); n != 1 {
+		t.Errorf("the fill and the marine read of one body decoded it %d times; want once", n)
 	}
 }

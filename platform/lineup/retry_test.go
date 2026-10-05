@@ -7,11 +7,11 @@ import (
 
 // A CARD THAT FAILED IS NOT RE-ADMITTED ON THE VERY NEXT OFFER.
 //
-// THE UAT DEFECT (HUM LEAD, 2026-09-10): "the lineup is FLYING through
+// THE UAT REPORT (HUM LEAD, 2026-09-10): "the lineup is FLYING through
 // locations rapidly even on standby — so it seems like cards are constantly
 // getting discarded and proposed / accepted."
 //
-// It was, and the loop is tight and unthrottled. `decline` returns
+// Without a cool-off the loop is tight and unthrottled. `decline` returns
 // `Failed{Routed: true}` on every refusal an executor can make — the listener is
 // muted, the report could not be composed, no script rendered — the Director
 // discards the card and PUBLISHES, the publish executor answers a publish by
@@ -21,8 +21,7 @@ import (
 // offer, admit. At pump speed, for as long as the fault lasts.
 //
 // The executor's own comment says the alerts "will be offered again" on the
-// producer's "next cycle". Nothing was wrong with that intent; what was missing
-// is that a publish IS a cycle, so "next" meant "now".
+// producer's "next cycle" — and a publish IS a cycle, so "next" means "now".
 func TestAFailedCardSitsOutBeforeItIsOfferedAgain(t *testing.T) {
 	d := offering(t, 3, "bonsall", "oceanside", "vista")
 	d, _ = d.Step(offers("bonsall", "oceanside", "vista"))

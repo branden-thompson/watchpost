@@ -9,16 +9,13 @@ import (
 
 // one_band_writer_test.go — FR-1.3 / F-22.
 //
-// D-1 and T2.3 hold that only mastercontrol writes the band. It was written
-// from app/director.go AND app/ticker.go before, two files constructing the
-// same takeover message, and the pair drifted.
+// D-1 and T2.3 hold that only mastercontrol writes the band: two files
+// constructing the same takeover message drift apart.
 //
-// F-22 records why this cannot be a test of behaviour: mutant m50 claimed to
-// guard the rule, and re-anchored to send the message directly instead of
-// through mastercontrol it SURVIVED — both forms produce the identical
-// observable message. Its earlier CAUGHT verdicts came from an unrelated early
-// return. It was retired rather than left as a green line measuring nothing,
-// and this replaces it.
+// F-22 records why this cannot be a test of behaviour: sending the message
+// directly instead of through mastercontrol produces the identical observable
+// message, so a behavioural check cannot tell the two apart. This structural
+// check is what guards the rule.
 func TestOnlyMastercontrolWritesTheBand(t *testing.T) {
 	banned := map[string]bool{"TickerBreakingMsg": true, "TickerBreakingDoneMsg": true}
 	singleowner.Check(t, "band writer",

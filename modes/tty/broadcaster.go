@@ -7,9 +7,6 @@ package tty
 // schedule the Director PUBLISHES and never keeps a second copy — a console
 // that painted its own idea of the running order would be asserting an order
 // the schedule does not follow, which is the release's UI-integrity risk.
-//
-// P1 IS THE SHELL. The lanes, the breakpoints and the size notice arrive here;
-// the station state is P2 and operator control is P4.
 
 import (
 	"fmt"
@@ -55,10 +52,10 @@ type StationFaultMsg struct {
 
 // BedMsg carries what the broadcast is riding on (F-79, closed at D-78).
 //
-// THE CONSOLE DREW A CONSTANT BEFORE THIS. `(no relay tuned)` and `○ INACTIVE`
-// were the true things it could say while the schedule published the lineup and
-// the power and nothing about the bed — so the one region D-62 built to answer
-// "what is on the air" was answering two thirds of it.
+// WITHOUT IT THE CONSOLE CAN ONLY DRAW A CONSTANT. `(no relay tuned)` and
+// `○ INACTIVE` are all it could truthfully say if the schedule published the
+// lineup and the power and nothing about the bed — and the one region D-62
+// built to answer "what is on the air" would answer two thirds of it.
 type BedMsg struct {
 	// Relay is how the bed's source reads on the row — a call sign, its
 	// frequency and how far out it is. Empty is "nothing is tuned".
@@ -79,11 +76,12 @@ type BedMsg struct {
 // relays reach this station" is a different sentence from "(no relay tuned)", and
 // only the count can tell them apart.
 //
-// ITS OWN MESSAGE, AND D-125 IS WHY. It was a field of `BedMsg`, which has THREE
-// publishers — the resolver, the selector and the deck's state — of which exactly
-// one set it. The other two left it at zero and silently retracted the resolver's
-// answer, so the console disabled a bed that was carrying. One fact, one message,
-// ONE WRITER: `setBedStations`, on the path that resolves them.
+// ITS OWN MESSAGE (D-125). `BedMsg` has THREE publishers — the resolver, the
+// selector and the deck's state — and only one of them knows this count. As a
+// field there, the other two would leave it at zero and silently retract the
+// resolver's answer, so the console would disable a bed that is carrying. One
+// fact, one message, ONE WRITER: `setBedStations`, on the path that resolves
+// them.
 type BedRelaysMsg struct{ Count int }
 
 // StationAreaMsg carries WHERE the station transmits from and how far it reaches
@@ -91,8 +89,7 @@ type BedRelaysMsg struct{ Count int }
 //
 // SEPARATE FROM THE LISTENER'S DEFAULT LOCATION, which is the ruling: "Default
 // Location no longer = Transmitter Location — this is Broadcaster epicenter from
-// which the service radius fence radiates from." The console drew both as
-// placeholder constants until now.
+// which the service radius fence radiates from."
 //
 // A MESSAGE, NOT A CONFIG FIELD, because it MOVES: a station borrowing the
 // listener's default location follows it, and the radius is an editable setting.
@@ -117,13 +114,12 @@ type StationAreaMsg struct {
 
 // MainTrackSlots is how many slots the console draws for the running order.
 //
-// THE SCHEDULE'S NUMBER, READ RATHER THAN RESTATED (R3). It was `16` here and
-// nowhere else, because the console was the first thing that needed it — and
-// then `Insert` needed a cap to shed the last card past, which made it a
-// SCHEDULE rule with the console holding the only copy.
+// THE SCHEDULE'S NUMBER, READ RATHER THAN RESTATED (R3). `Insert` sheds the
+// last card past it, which makes it a SCHEDULE rule, so the console reads the
+// schedule's number rather than holding a copy.
 //
 // `modes/` MAY IMPORT `platform/`, so this is a direct read rather than a value
-// handed through `Config` the way the service radius is (D-124): that one went
+// handed through `Config` the way the service radius is (D-124): that one goes
 // the long way round because `platform/config` is STORAGE and nothing under
 // `modes/` reads storage. The running order's length is not storage.
 const MainTrackSlots = lineup.MainTrackCap
@@ -198,8 +194,7 @@ type Broadcaster struct {
 
 	// THE POINTER MOVES AND THE WINDOW FOLLOWS IT at render time, where the room
 	// is known (scheduledLines, D-101). An offset held on the MODEL cannot know
-	// how many rows fit, which is why the window is derived rather than stored
-	// and never came back.
+	// how many rows fit, which is why the window is derived rather than stored.
 
 	// selected is the focused row, indexed across BOTH tables — the running order
 	// first, the pool after it (D-101).
@@ -222,10 +217,10 @@ type Broadcaster struct {
 	// ITS OWN FACT, ARRIVING ON ITS OWN MESSAGE (D-125). Carried on `BedMsg` it
 	// would have three publishers of which exactly ONE sets it, so the selector's
 	// message and the deck's state message would each leave it at zero — silently
-	// retracting the resolver's answer, and the console
-	// disabled a bed that was carrying. D-117 exists so the operator cannot pick
-	// something that broadcasts dead air; that defect told them there was nothing
-	// to pick while a relay was streaming.
+	// retracting the resolver's answer, and the console would disable a bed that
+	// is carrying. D-117 exists so the operator cannot pick something that
+	// broadcasts dead air; a zeroed count would tell them there is nothing to
+	// pick while a relay is streaming.
 	//
 	// UNTOLD IS NOT ZERO. Before the Producer has answered, the bed is OFFERED —
 	// refusing it on the strength of an answer nobody has given yet would hide
@@ -297,19 +292,18 @@ func (b Broadcaster) heldNotice() []string {
 	}
 	// HAZARDS, NOT CARDS — AND ONLY READABLE ONES (D-142).
 	//
-	// TWO DEFECTS IN ONE LINE, on the console's loudest safety surface. It
-	// counted CARDS: a burst is ONE card carrying many arrivals (MVS-D-77), so
-	// five hazards held read "1 HAZARD(S) HELD", and the escalation ladder keys
-	// off that number. And it read `Cards()` where every other rail reader
-	// reads `Projection()`, which drops out-of-fence cards precisely because
-	// they are NOT READ — so a rail the fence excluded still said "Go ON AIR to
-	// read them", an instruction that would read nothing, escalating to "may be
-	// dropped unread".
+	// TWO WAYS TO MISCOUNT, on the console's loudest safety surface. Counting
+	// CARDS undercounts: a burst is ONE card carrying many arrivals (MVS-D-77),
+	// so five hazards held would read "1 HAZARD(S) HELD", and the escalation
+	// ladder keys off that number. And `Cards()` keeps the out-of-fence cards
+	// that `Projection()` drops precisely because they are NOT READ — so a rail
+	// the fence excluded would say "Go ON AIR to read them", an instruction that
+	// reads nothing, escalating to "may be dropped unread".
 	//
 	// `Projection` IS THE ONE OWNER OF "WHAT THIS RAIL CAN ACTUALLY SAY", and
 	// counting its arrivals is the same question the takeover box answers — so
-	// the band and the box can no longer disagree about whether anything is
-	// being withheld.
+	// the band and the box cannot disagree about whether anything is being
+	// withheld.
 	var held int
 	for _, c := range b.lineup.Projection(lineup.AlertRail) { // bounded by the rail (P10-02)
 		if n := len(c.From); n > 0 {
@@ -335,10 +329,9 @@ func (b Broadcaster) heldNotice() []string {
 // this: 3 lines, message in the center, 3 line bkg should be the darker yellow
 // (not orange, not red) use the same tint as the 'LOCAL ALERT Advisory BKG'."
 //
-// ALMOST MISSED IS THE WHOLE FINDING. The notice was one unpainted row among
-// painted regions, which is the least visible thing a frame can contain — and
-// this is the one row that says a hazard is being held off the air. Its words
-// were right and nobody's eye stopped on them.
+// A BAND, BECAUSE A ROW IS MISSED. One unpainted row among painted regions is
+// the least visible thing a frame can contain — and this is the one row that
+// says a hazard is being held off the air.
 //
 // `AlertModalAdvBG` IS THE TINT NAMED: the LOCAL ALERT window's advisory tile,
 // "muted yellow" in its own comment — not `TickerAdvisoryBG`, which is the
@@ -390,8 +383,8 @@ func (b Broadcaster) placeNames(s string) string {
 }
 
 // muteNotice is the band an ON AIR station shows while the listener's [M]
-// holds: every hazard read is declined while it does, and a console that said
-// nothing let a station broadcast silence (REVIEW 2026-09-17, ruling 6-ii).
+// holds: every hazard read is declined while it does, and a console that says
+// nothing lets a station broadcast silence (REVIEW 2026-09-17, ruling 6-ii).
 func (b Broadcaster) muteNotice() []string {
 	if b.power != lineup.Running || !b.listenerMuted {
 		return nil
@@ -415,9 +408,8 @@ func (b Broadcaster) noticeBand(count, plain string) []string {
 	// WRAPPED BEFORE IT IS STYLED, WHICH IS D-129a's RULE AND THE REASON THIS
 	// IS NOT ONE `centerText` CALL. Centring alone CLIPS: the !!! rung's
 	// sentence is ~149 cells and the band is 127 at the HUM LEAD's width, so
-	// the most severe message on the console lost its ending — "may be drop".
-	// The previous single line wrapped in the terminal instead, so clipping
-	// would have been a regression introduced by making it prettier.
+	// the most severe message on the console would lose its ending — "may be
+	// drop".
 	//
 	// AND THE EMPHASIS IS APPLIED PER LINE, AFTER the wrap, for the same reason
 	// the caveat's tint is: styling spans do not survive being cut in half.
@@ -451,7 +443,7 @@ func (b Broadcaster) noticeBand(count, plain string) []string {
 //
 // PER LINE, AND ONLY WHAT THAT LINE HOLDS. A phrase split across a wrap is left
 // plain rather than half-bolded — the alternative is an escape opened on one
-// row and closed on the next, which is the defect D-129a was filed for.
+// row and closed on the next, which is the defect D-129a forbids.
 func emphasiseHeld(line, count string) string {
 	for _, phrase := range []string{count, "ON AIR"} {
 		line = strings.ReplaceAll(line, phrase, render.Bold(phrase))
@@ -559,12 +551,11 @@ func (b Broadcaster) powered(to lineup.Power) Broadcaster {
 
 // View renders the console: the priority track, the main track, the bed.
 //
-// STRUCTURE, NOT YET THE MOCK'S PIXELS. P1 is the shell — it renders the three
-// lanes in the mock's own vocabulary (the handles, the badges, the lane names)
-// from the PUBLISHED schedule. Byte-exact fidelity to
-// `01-objectives/mock-broadcaster-v1.txt` is NOT claimed here and is not
-// pretended: the mock is 150x74 with a column budget this does not yet honour,
-// and layout is the HUM LEAD's pass.
+// STRUCTURE, NOT THE MOCK'S PIXELS. It renders the three lanes in the mock's
+// own vocabulary (the handles, the badges, the lane names) from the PUBLISHED
+// schedule. Byte-exact fidelity to `01-objectives/mock-broadcaster-v1.txt` is
+// NOT claimed here and is not pretended: the mock is 150x74 with a column
+// budget this does not honour.
 func (b Broadcaster) View() tea.View {
 	lines := b.lanes()
 	if b.tooSmall() {
@@ -585,10 +576,10 @@ func (b Broadcaster) opts() render.Opts {
 // frameWidth is how much room the console's own content has: the terminal, less
 // the margin on BOTH sides (D-96, D-100).
 //
-// THREE COLUMNS EACH SIDE. The first cut took only the left, and the HUM LEAD saw
-// the result immediately: "3 col right inset not respected by the tables" — every
-// table ran to the terminal's edge while the boxes above stopped short of it. A
-// margin on one side is not a margin, it is a shift.
+// THREE COLUMNS EACH SIDE (HUM LEAD: "3 col right inset not respected by the
+// tables"). Inset on the left alone, every table runs to the terminal's edge
+// while the boxes above stop short of it. A margin on one side is not a margin,
+// it is a shift.
 //
 // THE LAYOUT IS BUILT AT THIS AND THE MARGIN IS ADDED ONCE. Building at the
 // terminal's width and insetting afterwards would push three columns of every
@@ -607,9 +598,8 @@ func (b Broadcaster) frameWidth() int {
 // OBSERVER'S OWN ARITHMETIC, and it is the reason the right margin is TWO and not
 // three: `rail := o.TableRowLen(days) + 2` with the comment "UAT 9.2: one blank
 // col between the last cell and the rail". Table, blank, control, two columns of
-// air. The console was drawing THREE blanks and putting the control a cell short
-// of Observer's, and the pool table was skipping the arithmetic entirely — which
-// is why the two tables ended in different columns.
+// air — and both of the console's tables do this arithmetic, so they end in the
+// same column as each other and as Observer's.
 func (b Broadcaster) tableWidth() int { return max(0, b.frameWidth()-2) }
 
 const (
@@ -639,7 +629,6 @@ const (
 	// number. Lowering it would let the console draw a frame the terminal
 	// cannot hold and clamp the remainder away — which is the F-55 defect this
 	// floor exists to prevent, arriving through the notice meant to prevent it.
-	// Flagged to the HUM LEAD rather than silently chosen.
 	bcMinRows = 44
 
 	// bcMinCols is the start of the platform's COMPACT class (D-50). Below it
@@ -647,18 +636,17 @@ const (
 	// precisely so this number is a boundary someone already reasoned about
 	// rather than one invented here.
 	//
-	// RAISED FROM 80 BY THE HUM LEAD'S RULING: "< 100 col : Not supported — we
+	// SET BY THE HUM LEAD'S RULING: "< 100 col : Not supported — we
 	// adopt a 'btop' style". It is `term.BreakUnsupported`'s own boundary, so
 	// the console and the classifier cannot drift apart.
 	bcMinCols = 100
 )
 
-// laneWidth IS GONE (D-80), and its seam is not. It was "the ONE place that
-// number is decided" when the frame was one lane; the layout has three owners
-// now, each of which knows what it is measuring — `cardBoxWidth` for a card
-// (which carries D-51's right-rail seam), `orderWidth` for a row of the running
-// order, `bandWidth` for the station's painted text. A fourth number that agreed
-// with all three by coincidence is what put the band three cells too wide.
+// THE LAYOUT HAS THREE WIDTH OWNERS (D-80), each of which knows what it is
+// measuring — `cardBoxWidth` for a card (which carries D-51's right-rail seam),
+// `orderWidth` for a row of the running order, `bandWidth` for the station's
+// painted text. A fourth number that agreed with all three only by coincidence
+// would put the band three cells too wide.
 
 // tooSmall reports whether the terminal is below the floor.
 func (b Broadcaster) tooSmall() bool {
@@ -668,9 +656,9 @@ func (b Broadcaster) tooSmall() bool {
 	// cannot drift, because a test asserts the floor is the first drawable
 	// width.
 	//
-	// It also keeps the classifier in production: the layout became fully fluid
-	// when the regions arrived, so nothing else branches on the class any more,
-	// and a vocabulary with no caller is the state F-68 was filed about.
+	// It also keeps the classifier in production: the layout is fully fluid, so
+	// nothing else branches on the class, and a vocabulary with no caller is the
+	// state F-68 names.
 	if term.BreakpointFor(b.width) == term.BreakUnsupported {
 		return true
 	}
@@ -680,23 +668,22 @@ func (b Broadcaster) tooSmall() bool {
 
 // clamp cuts the frame to the terminal, in BOTH directions.
 //
-// SILENT OVERFLOW IS A DEFECT, NOT A DEGRADATION (FR-7.3). F-55 measured the
-// other surface rendering 57 cells into a 20-cell terminal with no clamp and
-// no notice; this one does not inherit that. The clamp is applied to the
-// NOTICE as well as to the lanes — a notice that overflows would let a sweep
-// report zero overflows, which is the anti-solution the red team drove
-// through M5.
+// SILENT OVERFLOW IS A DEFECT, NOT A DEGRADATION (FR-7.3). Unclamped, a
+// surface renders 57 cells into a 20-cell terminal with no notice (F-55). It
+// applies to the NOTICE as well as to the lanes — a notice that overflows
+// would let a sweep report zero overflows, which is the anti-solution M5
+// names.
 func (b Broadcaster) clamp(lines []string) string {
 	if b.height > 0 && len(lines) > b.height {
 		lines = lines[:b.height]
 	}
 	// AND IT FILLS THE TERMINAL IT WAS GIVEN. A frame shorter than the screen
-	// looks identical in the alt-screen — the rest is simply blank — which is
-	// why this went unnoticed until something was COMPOSITED over it.
+	// looks identical in the alt-screen — the rest is simply blank — until
+	// something is COMPOSITED over it.
 	//
 	// `render.Overlay` centres vertically on the BASE's height, so a ten-line
-	// frame in a seventy-four-line terminal pinned every window to the top rail
-	// (UAT, 2026-09-10). The frame is the viewport, and it has to say so.
+	// frame in a seventy-four-line terminal would pin every window to the top
+	// rail (UAT, 2026-09-10). The frame is the viewport, and it has to say so.
 	// THE BOUND IS IN THE SHAPE (P10-02). The frame pads to the viewport's
 	// height, and that count is knowable before the loop rather than re-asked
 	// on every pass.
@@ -705,10 +692,9 @@ func (b Broadcaster) clamp(lines []string) string {
 			lines = append(lines, "")
 		}
 	}
-	// AND CUT TO IT, WHICH THE WIDTH SIDE HAS ALWAYS DONE (D-102). The rule below
-	// is already stated — "the frame IS the viewport, in both dimensions" — and
-	// only one dimension enforced it: height padded and never truncated, so a
-	// region that mis-budgeted by a row drew past the bottom of the terminal.
+	// AND CUT TO IT, AS THE WIDTH IS (D-102): "the frame IS the viewport, in
+	// both dimensions". A height padded and never truncated lets a region that
+	// mis-budgets by a row draw past the bottom of the terminal.
 	//
 	// IT IS A BACKSTOP, NOT THE BUDGET. Each region still windows itself
 	// (scheduledLines, poolLines), and this is what makes a mistake there a
@@ -722,11 +708,11 @@ func (b Broadcaster) clamp(lines []string) string {
 			// dimensions. Truncating alone leaves a ragged frame whose widest
 			// line is whatever the longest lane happens to be — and
 			// `render.Overlay` composites against that, so a window centred on
-			// the TERMINAL landed past the frame's right edge and the composite
-			// grew sideways instead of stacking (UAT, 2026-09-10).
+			// the TERMINAL lands past the frame's right edge and the composite
+			// grows sideways instead of stacking (UAT, 2026-09-10).
 			// AND INSET FROM THE LEFT, HERE AND NOWHERE ELSE (D-96). Observer
 			// insets EVERY row by three — masthead, radio panel, ticker, controls
-			// and table alike — and the console now matches it, so the operator's
+			// and table alike — and the console matches it, so the operator's
 			// eye finds the same left edge on both surfaces.
 			//
 			// ONE APPLICATION POINT, because an inset applied per region is an
@@ -742,20 +728,19 @@ func (b Broadcaster) clamp(lines []string) string {
 	// Watchpost Light has white lines and text when it should be inverted
 	// appropriately."
 	//
-	// NOTHING WAS PAINTING THEM WHITE. They were painted by NOBODY — every
-	// character this console draws without an explicit tint took the TERMINAL's
-	// default foreground, which on a dark terminal is white whatever theme the app
-	// is wearing. On the dark themes that happens to look right, so the whole
-	// surface has been reading the terminal's palette and calling it the theme's.
+	// UNARMED, UNTINTED TEXT IS PAINTED BY NOBODY — every character this console
+	// draws without an explicit tint takes the TERMINAL's default foreground,
+	// which on a dark terminal is white whatever theme the app is wearing. On
+	// the dark themes that happens to look right, which is what hides it.
 	//
-	// OBSERVER HAS ALWAYS DONE THIS, in `frameText`: it arms `TextBase` at the top
+	// OBSERVER DOES THE SAME, in `frameText`: it arms `TextBase` at the top
 	// of the frame and re-arms it after every inner reset, so tinted spans keep
 	// their colours and everything else is the theme's. This is that rule, applied
 	// where the console finishes its frame — one place, like the inset above it.
 	//
 	// THROUGH `FgSGR`, NOT `TintDefault`. That helper hard-codes a `38;5;` prefix
-	// and the Light theme's `TextBase` is TRUECOLOR — the one theme this finding
-	// was reported against would have come out as a palette index.
+	// and the Light theme's `TextBase` is TRUECOLOR — through that helper the
+	// Light theme would come out as a palette index.
 	out := strings.Join(lines, "\n")
 	if render.ColorOn() {
 		out = render.TintKeeping(out, render.FgSGR(render.Tok(render.TextBase)))
@@ -778,8 +763,8 @@ func (b Broadcaster) notice() []string {
 func (b Broadcaster) lanes() []string {
 	// THE FRAME OPENS WITH TWO BLANK ROWS, AS OBSERVER'S DOES (D-68). The HUM
 	// LEAD, annotating his own mock: "Universal 2 line inset like Observer."
-	// The console had its masthead hard against the top of the terminal, which
-	// is the one place in the app that does not breathe.
+	// Without them the masthead sits hard against the top of the terminal, the
+	// one place in the app that would not breathe.
 	out := b.inset()
 	out = append(out, strings.Split(b.header(b.opts()), "\n")...)
 	// THE STATION BAR IS A SECTION (see stationSection): one region, painted by
@@ -789,7 +774,7 @@ func (b Broadcaster) lanes() []string {
 	out = append(out, b.heldNotice()...)
 	out = append(out, b.faultNotice()...)
 	out = append(out, b.muteNotice()...)
-	// THE AIR BOX IS INSIDE THE STATION SECTION NOW (D-107), so nothing is drawn
+	// THE AIR BOX IS INSIDE THE STATION SECTION (D-107), so nothing is drawn
 	// here: `stationSection` carries it, painted with the section's own ground.
 	// A BARE BLANK ROW SEPARATES THE STATION SECTION FROM THE RUNNING ORDER, and
 	// the HUM LEAD annotated it twice: "Notice the blank line and how it
@@ -803,7 +788,7 @@ func (b Broadcaster) lanes() []string {
 	// added rather than inside them.
 	// NO SEPARATOR HERE. THE SECTION OWNS ITS OWN SPACING — `stationSection`
 	// carries a breathing row above and below, and a second blank appended out
-	// here made a DOUBLE gap that read as a rendering fault (HUM LEAD, UAT
+	// here would make a DOUBLE gap that reads as a rendering fault (HUM LEAD, UAT
 	// 2026-09-10). One owner for the air around a region, like everything else.
 
 	// THE PRIORITY TRACK IS INVISIBLE UNTIL IT HAS SOMETHING (D-61, HUM LEAD
@@ -811,7 +796,7 @@ func (b Broadcaster) lanes() []string {
 	// sits on top of the main rail — this gives the operator more space to
 	// view/manage the main rail during normal operation."
 	//
-	// A "(clear)" ROW IS NOT NOTHING. It spent two rows of the running order
+	// A "(clear)" ROW IS NOT NOTHING. It would spend two rows of the running order
 	// saying that a hazard is not happening, which is the state the station is
 	// in almost all of the time — and the track's own design is that it is
 	// "normally INVISIBLE to the operator, so the main track takes the full
@@ -821,28 +806,26 @@ func (b Broadcaster) lanes() []string {
 	// every state: putting the lane that interrupts everything below the lane it
 	// interrupts would say the wrong thing about which is which.
 
-	// UP NEXT AND THE TAKEOVER, LEVEL WITH EACH OTHER (D-97). The region machinery
-	// and the vertical rail retire here: LIVE went to the air box (D-95), the
-	// SCHEDULED slots went to the table (D-94), and what is left is two boxes side
-	// by side that the reference draws at the same height.
+	// UP NEXT AND THE TAKEOVER, LEVEL WITH EACH OTHER (D-97). LIVE is in the air
+	// box (D-95) and the SCHEDULED slots are the table (D-94), so what is drawn
+	// here is two boxes side by side that the reference draws at the same height.
 	out = append(out, b.chrome(b.readPair(), false, 0)...)
 	// AND THE POOL BELOW IT (D-98) — the candidates the operator promotes FROM,
 	// with enough weather to decide on them.
 	//
 	// ONE SCROLL CONTROL, AND IT BELONGS TO WHAT SCROLLS (D-106, HUM LEAD
-	// 2026-09-12: "Location Pool Scrolls, Line-up doesnt"). D-104 spanned it over
-	// both tables on the strength of the shared pointer; the running order does
-	// not actually move, so the control was claiming a scroll that never happens
-	// and the pool's headers were inside the window it drew. ▲ on the pool's
-	// column titles, ▼ on its "Showing" line — Observer's own shape.
+	// 2026-09-12: "Location Pool Scrolls, Line-up doesnt"). The running order does
+	// not actually move, so a control spanning both tables would claim a scroll
+	// that never happens and put the pool's headers inside the window it draws.
+	// ▲ on the pool's column titles, ▼ on its "Showing" line — Observer's own
+	// shape.
 	// THE WEATHER IS INDEXED ONCE FOR THE WHOLE FRAME (D-120). Both tables join
-	// against it — forty lookups that were forty linear scans.
+	// against it — forty lookups rather than forty linear scans.
 	sched, pool := b.spans(len(out))
 	// THE FIRST REGION THAT SCROLLS OWNS THE CONTROL, and each region is asked
-	// rather than assumed. Reading only the pool's answer made the running
-	// order's `from` a field nothing consulted — so a region could claim a scroll
-	// and the frame would not draw it, which a mutant found by claiming one and
-	// changing nothing.
+	// rather than assumed. Reading only the pool's answer would make the running
+	// order's `from` a field nothing consults — so a region could claim a scroll
+	// and the frame would not draw it.
 	from := -1
 	switch {
 	case sched.from >= 0:
@@ -881,8 +864,7 @@ func (b Broadcaster) scrollQueue(by int) Broadcaster {
 	b.selected = max(0, min(n-1, b.selected+by))
 	// THE WINDOW IS NOT MOVED HERE. It follows the pointer at RENDER time, where
 	// the room is known (scheduledLines) — a offset chosen at the keystroke cannot
-	// know how many rows fit, and the first attempt scrolled one way and never
-	// came back.
+	// know how many rows fit.
 	return b
 }
 
@@ -911,8 +893,7 @@ func (b Broadcaster) poolSelection() int {
 	return -1
 }
 
-// inset is the blank air above and below the whole frame — Observer's own, which
-// the console did not have.
+// inset is the blank air above and below the whole frame — Observer's own.
 func (b Broadcaster) inset() []string {
 	return make([]string, bcInsetRows)
 }
@@ -924,38 +905,32 @@ func (b Broadcaster) inset() []string {
 // the number is stated once here rather than being folded into a caller.
 const bcInsetRows = 2
 
-// THE LANE CAPTION RETIRED AT D-97, and with it `bcLaneLabel`, `laneLabelRow`
-// and `cardGap`. "MAIN SCHEDULE (ROLLING WINDOW)" named a column of cards that no
-// longer exists: LIVE went to the air box (D-95), the ordered slots to the table
-// (D-94), and UP NEXT is one of a pair. What the reference captions now is the
-// TABLE, and `bcScheduledHeading` is that caption.
+// THE TABLE IS WHAT THE REFERENCE CAPTIONS (D-97), and `bcScheduledHeading` is
+// that caption: LIVE is in the air box (D-95), the ordered slots are the table
+// (D-94), and UP NEXT is one of a pair.
 //
-// THE WORD IT OWED IS STILL OWED. FR-3.1 makes the slots a window onto a deeper
-// schedule and nothing on the surface says "rolling" any more — the scroll rail
-// implies it, which is weaker. Recorded here rather than lost.
+// FR-3.1 makes the slots a window onto a deeper schedule and nothing on the
+// surface says "rolling" — the scroll rail implies it, which is weaker.
 
-// THE REGIONS RETIRED WITH THE CARD COLUMN (D-110). `bcRegion` and `bcRegions`
-// divided the running order into named bands of cards; LIVE went to the air box
-// (D-95), the ordered slots to the table (D-94), and UP NEXT is one of a pair
-// (D-97). One card is not a region, and a table's regions are its group bands.
+// THE RUNNING ORDER HAS NO CARD REGIONS (D-110). One card is not a region, and
+// a table's regions are its group bands.
 
 // LIVE IS NOT A CARD REGION EITHER (D-95). What is on the air is one row of the
 // AIR BOX above the running order, beside the bed it is mutually exclusive with —
-// so the exclusivity is drawn rather than described. D-89's standby box retires
-// with it: the wording it carried is now the row's own empty state.
+// so the exclusivity is drawn rather than described. The standby wording (D-89)
+// is the row's own empty state.
 
-// SCHEDULED IS NO LONGER A CARD REGION (D-94). Slots 2 and up are a TABLE now —
-// Observer's table, through Observer's own machinery — so the region that drew
-// them as flat cards, and the vertical rail that named them, are gone. What the
-// rail said in letters down the side, the table says in a heading above it.
+// SCHEDULED IS A TABLE, NOT A CARD REGION (D-94). Slots 2 and up are
+// Observer's table, through Observer's own machinery, named by a heading above
+// it.
 
 // burstBody is what a takeover box lists: the hazards it would read, as a table
 // (D-103).
 //
-// IT WAS PROSE UNTIL THE HUM LEAD SAW IT (UAT 2026-09-12): the Composer's header
-// sentence, then each alert wrapped over two lines. That reads as a paragraph, and
-// what the operator is doing is SCANNING a list to decide whether to let it
-// interrupt the programme. The reference draws two columns and ten numbered rows.
+// A TABLE, NOT PROSE (UAT 2026-09-12). Alerts wrapped over two lines read as a
+// paragraph, and what the operator is doing is SCANNING a list to decide whether
+// to let it interrupt the programme. The reference draws two columns and ten
+// numbered rows.
 //
 // TEN ROWS WHETHER OR NOT THERE ARE TEN, which is the reference's own idiom and
 // the same rule the running order follows: a slot is an ADDRESS, and the box does
@@ -992,8 +967,8 @@ func (b Broadcaster) burstBody(c lineup.Card, w, list int) []string {
 // `Arrival.Headline` IS THE TAPE'S LINE, not the hazard's name: `tapeHead`
 // composes it as `<title> · <location>` because the ticker is one line and has to
 // carry both. This table has a LOCATION COLUMN, so the composition arrives back
-// as the place said twice — which is what the HUM LEAD saw, "SEVERE THUNDERSTORM
-// WARN…Harper, KS", the hazard cut short to make room for a repeat.
+// as the place said twice — "SEVERE THUNDERSTORM WARN…Harper, KS", the hazard
+// cut short to make room for a repeat.
 //
 // IT TAKES THE TITLE BACK RATHER THAN CHANGING WHAT `Headline` MEANS. That field
 // reaches the card, the ticker cue and the SPOKEN script; a hazard read on air
@@ -1009,23 +984,21 @@ func hazardOf(a lineup.Arrival) string {
 
 // bcAlertChrome is what the takeover box spends around its list: the two borders,
 // the air above the table, the table's own header, the air below, and the control
-// row. The TITLE ROW left at D-110 — the box names itself in its rule.
+// row. There is no TITLE ROW (D-110) — the box names itself in its rule.
 //
 // THE LIST IS WHAT IS LEFT, so the box is exactly as tall as the card beside it
 // (D-103). The reference draws ten rows because its UP NEXT card is that tall; a
-// constant here would have made the two boxes disagree about their own height and
-// cut whichever lost.
+// constant here would make the two boxes disagree about their own height and cut
+// whichever loses.
 const bcAlertChrome = 6
 
-// THE HAZARD'S TIMES RETIRED WITH THE PROSE (D-103). `burstWhen` drew
-// "<LOCATION> • 09/12 16:02 - 09/12 18:00" on every alert line; the reference's
-// table has three columns and none of them is a span. The times are still on the
-// arrival and still reachable through the card.
+// THE TAKEOVER TABLE CARRIES NO SPAN (D-103): the reference's table has three
+// columns and none of them is a span. The times are on the arrival and
+// reachable through the card.
 
-// AND `priorityColumn` RETIRED WITH THE OVERLAY (D-97). It drew the takeover as a
-// column of its own, as tall as the burst; the v3 pair draws it beside UP NEXT at
-// UP NEXT's height. Two drawers of one box is exactly the shape the `dupes` gate
-// is for, and only its tests were still calling this one.
+// THE TAKEOVER HAS ONE DRAWER (D-97): the pair draws it beside UP NEXT at UP
+// NEXT's height. Two drawers of one box is exactly the shape the `dupes` gate is
+// for.
 
 // bcGainCells is the gain bar's width, from the reference mock: thirty cells,
 // which is what the level steps across at the tens.
@@ -1045,15 +1018,11 @@ const bcGainCells = 30
 // a background tearing where a tinted run sits mid-line. This section contains
 // three of those: the gain bar's filled cells, its chips and its level.
 //
-// THE PALETTE IS NOT CHOSEN HERE. Colour is the HUM LEAD's own pass, so the
-// tone arrives as arguments and production passes what `stationTone` says —
-// which today is nothing at all. What is built now is that the pass will be a
-// token, not a sweep through every row.
+// THE PALETTE IS NOT CHOSEN HERE. The tone arrives as arguments and production
+// passes what `stationTone` says, so the colour is a token, not a sweep through
+// every row.
 func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
-	// WALLED LIKE EVERY OTHER ROW OF THE FRAME. The masthead draws its own box
-	// and the running order carries the rail's; without these the station
-	// section was the one region with no edges, and the frame read as broken
-	// between them.
+
 	rows := []string{}
 	// NO WALLS. THE COLOUR IS THE EDGE (HUM LEAD, UAT 2026-09-10): "we can
 	// remove the lines from the playing section, since we'll use color for the
@@ -1065,8 +1034,8 @@ func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
 	// four cells in, not hard against the edge.
 	// THE SAME INSET ON BOTH SIDES (HUM LEAD, UAT 2026-09-11): "since it's a
 	// colored bkg, let's ensure we have a consistent inset for content — 1 line
-	// top/bottom, 3 col left/right." It was FOUR on the left and NONE on the
-	// right, which reads as a band the text is sliding out of.
+	// top/bottom, 3 col left/right." Uneven insets read as a band the text is
+	// sliding out of.
 	//
 	// PADDED TO THE WIDTH LESS THE INSET, THEN THE INSET ADDED — not padded to
 	// the full width and trimmed, which would put the right-hand air inside the
@@ -1077,8 +1046,8 @@ func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
 	// INSIDE the station playing section … this data is also tied DIRECTLY to the
 	// ON AIR state - so it should all be in 1 section."
 	//
-	// AND THAT IS WHAT ENDS THE DUPLICATION. The bed had a row here AND a row in
-	// the box; one section means one place for it. What the box says — which of
+	// AND IT IS ONE PLACE FOR THE BED: one section means one row for it, not one
+	// here and another in the box. What the box says — which of
 	// the two is carrying — is the same question the STATION AIR row above asks,
 	// so the region answers it once, in the order the reference draws.
 	body := append(append([]string{""}, b.stationLine()...), b.airBox()...)
@@ -1092,8 +1061,8 @@ func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
 // the inset it keeps on each side.
 //
 // ONE OWNER, because the rows are built to it and the band is painted to it, and
-// the two disagreeing by three cells is exactly what put the text hard against
-// the right edge of a coloured band.
+// the two disagreeing by three cells puts the text hard against the right edge
+// of a coloured band.
 func (b Broadcaster) bandWidth() int {
 	w := b.frameWidth() - 2*len(bcSectionInset)
 	if w < 1 {
@@ -1102,12 +1071,7 @@ func (b Broadcaster) bandWidth() int {
 	return w
 }
 
-// stationTone is the section's colour, by state.
-//
-// EMPTY UNTIL THE COLOUR PASS. The HUM LEAD has named the intent — red on air,
-// grey on standby — and naming the TOKENS is their pass, not mine. `Block`
-// treats an empty pair as "no tone of its own: the frame's base tone paints it",
-// so the section is correct today and coloured by one edit here.
+// stationTone is the section's colour, by state: red on air, grey on standby.
 func (b Broadcaster) stationTone() (fg, bg string) {
 	// THE HUM LEAD NAMED BOTH TONES BY THE THING THEY ALREADY EXIST ON (UAT
 	// 2026-09-10): "the same grey taken as the Recent/Searched Locations on
@@ -1130,26 +1094,18 @@ func (b Broadcaster) stationTone() (fg, bg string) {
 // and 22 cells and each is taken only if it fits the band ENTIRE. Measured on the
 // real frame: the full sentence renders from 120 columns up, the middle form at
 // 100, and 99 is below the console's floor — where the frame is a refusal rather
-// than a console. So every DRAWABLE width states the boundary.
-//
-// THE MEASUREMENTS THIS PARAGRAPH ONCE QUOTED WERE THE OTHER PLACEMENT'S (D-160).
-// Ruling C put the boundary beside the state and the gain control, where the
-// spare space is 51 cells at 160 and 35 at 144 — so the shortened sentence
-// rendered only from 160 up, leaving FR-5.5 dead at the console's own reference
-// width: the D-153 defect reimplemented inside its own fix. The HUM LEAD then
-// ruled it a line of its own, which is what removed the constraint the rung
-// lengths were sized against. They are kept because 97 cells still does not fit
-// every width — but not for the reason the old text gave.
+// than a console. So every DRAWABLE width states the boundary, on a line of its
+// own (D-160).
 //
 // EVERY RUNG NEGATES THE SAME INFERENCE. The danger is an operator reading a
 // confident ON AIR and concluding their antenna is radiating, so the half that
 // can never be dropped is the one about the transmitter. "audio only" says what
 // Watchpost does produce and is the first thing to go.
 //
-// AND IT MUST NOT READ AS CONFIGURATION STATE, which the first wording did. The
-// BROADCASTING FROM row two lines down already says "(no transmitter set)" when
-// the operator has not chosen one — so "no transmitter observed" beside it reads
-// as the same complaint, and the operator concludes that SETTING a transmitter
+// AND IT MUST NOT READ AS CONFIGURATION STATE. The BROADCASTING FROM row two
+// lines down already says "(no transmitter set)" when the operator has not
+// chosen one — so a wording like "no transmitter observed" beside it reads as
+// the same complaint, and the operator concludes that SETTING a transmitter
 // will clear it. That inverts FR-5.5: the boundary is not a setup step they have
 // missed, it is a permanent property of the product. "unverified" is true of
 // every station, configured or not.
@@ -1179,10 +1135,9 @@ func bcAirBoundaries() []string {
 // radiating has been misled by us, so the boundary is stated HERE, where they
 // read it — not only in a design document.
 func (b Broadcaster) stationLine() []string {
-	// THE SEPARATOR COMES FROM THE GLYPH SET, not a literal. A middle dot here
-	// passed --ascii only because that test's fixture leaves the station
-	// STOPPED, whose line carries no separator — a coverage hole in my own gate,
-	// closed by sweeping every power state.
+	// THE SEPARATOR COMES FROM THE GLYPH SET, not a literal, so --ascii holds
+	// in every power state — STOPPED's line carries no separator, so only a
+	// sweep of every state proves it.
 	o := b.opts()
 	g := o.Glyphs()
 	state, to := "STOPPED", "ON AIR"
@@ -1196,7 +1151,7 @@ func (b Broadcaster) stationLine() []string {
 		// paints this band `AlertModalText` on `TickerEmergencyBG`, and
 		// AlertModalText IS white — so this states the tone the row already
 		// wears and adds the WEIGHT. Registering TextBright against the
-		// emergency ground instead would have lifted TextBright everywhere it
+		// emergency ground instead would lift TextBright everywhere it
 		// is painted, which `aaPairs` warns about in as many words: "widening a
 		// shared token's ground set changes it everywhere".
 		//
@@ -1212,9 +1167,9 @@ func (b Broadcaster) stationLine() []string {
 	// they just pressed; a sentence describing the state instead says what the row
 	// above it already names.
 	// THE BAND'S TEXT COLUMN: the terminal, less the inset on BOTH sides (D-80).
-	// It read `sectionWidth()` — the width of a region inside the frame's walls,
-	// which this band no longer has since colour became its edge (D-70) — so
-	// every row came out three cells too wide and the right-hand inset had
+	// Not `sectionWidth()` — the width of a region inside the frame's walls,
+	// which this band does not have because colour is its edge (D-70) — or
+	// every row comes out three cells too wide and the right-hand inset has
 	// nowhere to go.
 	lane := b.bandWidth()
 	// THE LABELS SHARE A VALUE COLUMN (D-62). "STATION:" and the bed's label are
@@ -1224,9 +1179,8 @@ func (b Broadcaster) stationLine() []string {
 	//
 	// PADDED THROUGH `render.PadTo`, WHICH IS ALREADY ANSI-AWARE — "right-pads
 	// a line to exactly width DISPLAY CELLS". That is how Observer handles the
-	// same problem, and a hand-rolled version stood here briefly: a verbatim
-	// reimplementation of PadTo, which is the second copy D-56 exists to
-	// prevent. The bed's label opens with a CHIP, so its escape codes are
+	// same problem, and a hand-rolled version here would be the second copy D-56
+	// exists to prevent. The bed's label opens with a CHIP, so its escape codes are
 	// bytes that are not cells, and the ONE function that knows that should be
 	// the only one that has to.
 	label := func(s string) string { return render.PadTo(s, bcLabelCells) }
@@ -1240,14 +1194,14 @@ func (b Broadcaster) stationLine() []string {
 	// THE BED'S STATE READS AS A SENTENCE AND SITS AT THE RIGHT, where the
 	// station's own transition hint sits — the two facts an operator checks
 	// without reading the row are both in the same column (D-71).
-	// THE BED SAYS WHAT IT IS ACTUALLY DOING (F-79). It said INACTIVE
-	// unconditionally, because nothing published the answer.
+	// THE BED SAYS WHAT IT IS ACTUALLY DOING (F-79), from the published answer
+	// rather than a constant INACTIVE.
 	rows := []string{
 		// THE GAIN RIDES THE STATE'S OWN ROW, where the reference draws it: how
 		// loud the station is and whether it is on the air are one question asked
 		// twice, and the operator checks them together.
 		render.PadBetween(render.TruncateCells(label("STATION AIR:")+state, max(0, room)), gain, lane),
-		// THE TRANSMITTER'S IDENTITY MOVED HERE FROM THE MASTHEAD (D-71). It is
+		// THE TRANSMITTER'S IDENTITY IS HERE, NOT IN THE MASTHEAD (D-71). It is
 		// a fact about the STATION; the masthead is what both surfaces share.
 		render.PadBetween(label("BROADCASTING FROM:")+b.transmitterRow(max(0, lane-bcLabelCells-render.Width(hint)-2)), hint, lane),
 	}
@@ -1255,31 +1209,30 @@ func (b Broadcaster) stationLine() []string {
 	// "Give F109C its own line in the section area then if it creates new
 	// defects").
 	//
-	// RULING C PUT IT ON THE STATION AIR ROW AND THAT CREATED TWO. Measured on
-	// the real frame, the row's spare space beside the state and the gain control
-	// is 35 cells at 144 — the console's own reference width — so the shortened
-	// sentence rendered only at 160 and above. FR-5.5 would have been dead at
-	// every width the console is actually used at: D-153's defect reimplemented
-	// inside its own fix. And the wording that DID fit sat two rows above
-	// "(no transmitter set)", so the operator reads a permanent property of the
-	// product as a setup step they missed, and concludes that choosing a
-	// transmitter clears it — the requirement inverted.
+	// NOT ON THE STATION AIR ROW, WHICH FAILS IT TWICE. Measured on the real
+	// frame, the row's spare space beside the state and the gain control is 35
+	// cells at 144 — the console's own reference width — so a shortened sentence
+	// there renders only at 160 and above, leaving FR-5.5 dead at every width
+	// the console is actually used at (D-153). And a wording that fits there sits
+	// two rows above "(no transmitter set)", so the operator reads a permanent
+	// property of the product as a setup step they missed, and concludes that
+	// choosing a transmitter clears it — the requirement inverted.
 	//
-	// A LINE OF ITS OWN HAS ROOM TO SAY IT PROPERLY, which is the whole gain:
-	// the full sentence names what IS happening (audio is leaving this program)
-	// before what cannot be known (whether a transmitter carries it), and a
-	// boundary that only ever half-appeared now appears whole at every width.
+	// A LINE OF ITS OWN HAS ROOM TO SAY IT PROPERLY: the full sentence names
+	// what IS happening (audio is leaving this program) before what cannot be
+	// known (whether a transmitter carries it), and the boundary appears whole
+	// at every width.
 	//
 	// ONLY WHILE RUNNING, because that is the claim that can mislead. STOPPED and
 	// STANDBY assert nothing about a transmitter, and a standing line there would
-	// be the prose row D-107 deliberately removed — "it explained a state the row
-	// above already names". The band is one row taller ON AIR, which is the state
-	// that already changes the band's colour entire.
+	// be prose explaining a state the row above already names (D-107). The band
+	// is one row taller ON AIR, which is the state that already changes the
+	// band's colour entire.
 	if b.power == lineup.Running {
 		// WHOLE OR NOT AT ALL, RUNG BY RUNG. A safety sentence cut mid-word is a
-		// different claim, not a shorter one: on the old placement the cut
-		// rendered as "· audio on" at 120 cells — complete, reassuring, and the
-		// opposite of the sentence it came from. Each rung is taken only if it
+		// different claim, not a shorter one: cut short, it can render as
+		// "· audio on" — complete, reassuring, and the opposite of the sentence
+		// it comes from. Each rung is taken only if it
 		// fits ENTIRE, longest first, and the shortest fits any width this
 		// console draws at.
 		for _, words := range bcAirBoundaries() { // bounded by the ladder (P10-02)
@@ -1289,33 +1242,18 @@ func (b Broadcaster) stationLine() []string {
 			}
 		}
 	}
-	// THE BED'S OWN ROW IS GONE (D-107). It was the SECOND place this console
-	// drew the bed — the selector and its state here, and the same selector and
-	// the same state in the LIVE NOW / RELAY BED box below — which the HUM LEAD
-	// called out exactly: "the BED is now duplicated in the UI - which is
-	// confusing - this data is also tied DIRECTLY to the ON AIR state - so it
-	// should all be in 1 section". The box is that one place.
+	// THE BED HAS NO ROW OF ITS OWN HERE (D-107). The LIVE NOW / RELAY BED box
+	// below is its one place: "this data is also tied DIRECTLY to the ON AIR
+	// state - so it should all be in 1 section".
 
-	// AND THE STANDING PROSE WITH IT. "the programme is stopped; hazards still
-	// read" explained a state the row above already names, and the reference has
+	// NO STANDING PROSE. A sentence like "the programme is stopped; hazards still
+	// read" explains a state the row above already names, and the reference has
 	// no line for it. A NOTICE STILL GETS ONE, because a refusal answers a key the
 	// operator just pressed and has to be somewhere they are looking.
-	// FR-5.5's BOUNDARY WAS ASSIGNED AND NEVER RENDERED, AND IT IS NOW BOTH
-	// (D-153 found it, F-109 ruled it, D-160 corrected this paragraph).
 	//
-	// WHAT D-153 FOUND: `why` carried a sentence per state and this row is drawn
-	// ONLY when a `statusNote` exists — by which point the note had already
-	// replaced it. So every per-state sentence was dead, including the one FR-5.5
-	// exists for. D-107 had removed the standing prose row and taken the boundary
-	// with it, while `stationLine`'s own comment still claimed the boundary is
-	// stated "HERE, where they read it — not only in a design document".
-	//
-	// WHAT CHANGED: the HUM LEAD ruled the placement (F-109), the boundary now
-	// renders on a line of its own above, and the dead `why` values were deleted.
-	// The two layout gates this paragraph once cited as reasons NOT to fix it —
-	// `TestTheBedRidesInTheStationSection` and `TestTheStationBandIsEvenlyInset` —
-	// were updated to the ruled shape rather than worked around.
-	//
+	// THIS ROW IS DRAWN ONLY WHEN A `statusNote` EXISTS, so it carries no
+	// per-state sentence — the note would always replace it. FR-5.5's boundary
+	// renders on a line of its own above (D-153, F-109, D-160).
 	if b.statusNote != "" {
 		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, lane)))
 	}
@@ -1342,20 +1280,17 @@ func (b Broadcaster) bedAvailable() bool { return !b.bedRelaysTold || b.bedRelay
 // section, and the user doesn't have to look to different parts of the UI to
 // determine what is and is not ON AIR."
 //
-// THE SELECTOR LIVES HERE, which is what F-77 was open about: it went missing
-// when Variant C absorbed the control row, and the ruling put it on this row
-// rather than restoring a separate card at the bottom of the frame.
+// THE SELECTOR LIVES HERE (F-77), on this row rather than on a separate card at
+// the bottom of the frame.
 func (b Broadcaster) bedSelector(o render.Opts) string {
 	// THE ARROWS GO THROUGH KeyCap, which is the one owner that already names
 	// them in WORDS under --ascii (`asciiKey`) — a literal here would print a
 	// glyph a terminal without them cannot draw, in the row that says whether
 	// the station is on the air.
-	// THE RELAY IS THE PUBLISHED ONE (F-79, closed at D-78). It was the constant
-	// `(no relay tuned)` while the schedule carried the lineup and the power and
-	// nothing about the bed.
+	// THE RELAY IS THE PUBLISHED ONE (F-79, D-78), never a constant.
 	//
-	// THE STATE LEFT THIS ROW AT D-71 and sits at the right of the section with
-	// the station's own transition hint; what stays here is the SELECTOR.
+	// THE STATE SITS AT THE RIGHT OF THE SECTION (D-71), with the station's own
+	// transition hint; what this row carries is the SELECTOR.
 	relay := b.bed.Relay
 	if relay == "" {
 		relay = bcNoRelay
@@ -1366,7 +1301,7 @@ func (b Broadcaster) bedSelector(o render.Opts) string {
 	if !b.bedAvailable() {
 		return bcNoRelaysHere
 	}
-	// SHIFTED (D-111). The bare arrows belong to the card's PRESENTER now, and a
+	// SHIFTED (D-111). The bare arrows belong to the card's PRESENTER, and a
 	// chip here that read `←` would name a key that steps a different control —
 	// which is worse than no chip, because the operator would try it.
 	return o.KeyCap("⇧←") + "  " + relay + "  " + o.KeyCap("⇧→")
@@ -1387,7 +1322,7 @@ const (
 
 	// bcNoRelay is what the bed's row says before a relay is tuned. The relay's
 	// own description — its call sign, frequency and distance — arrives with the
-	// bed's state, which the schedule does not publish yet (F-79).
+	// bed's state (F-79).
 	bcNoRelay = "(no relay tuned)"
 
 	// bcNoRelaysHere is what the row says when nothing STREAMS within the
@@ -1409,14 +1344,13 @@ const (
 // cardLane renders every card in one lane, at that lane's width (D-52).
 //
 // IT IS BUILT ONCE PER FRAME, NOT ONCE PER CARD, and that is not a
-// micro-optimisation: a row constructed per card put the console frame at 70
-// allocations against a budget of 14, which the alloc gate caught on the commit
-// that introduced it. The lane's width does not change between the cards in it,
-// so neither should the thing that measures it.
+// micro-optimisation: a row constructed per card puts the console frame at 70
+// allocations against a budget of 14. The lane's width does not change between
+// the cards in it, so neither should the thing that measures it.
 //
-// IT TAKES THE LANE, NOT A CLASS. The previous version took `wide bool` and
-// picked 60 or 30 columns from it, which is the hard-coded geometry the HUM LEAD
-// ruled out: "this layout can dynamically resize in between our breakpoints".
+// IT TAKES THE LANE, NOT A CLASS. A fixed width picked from a class is the
+// hard-coded geometry the HUM LEAD ruled out: "this layout can dynamically
+// resize in between our breakpoints".
 // The class still decides the FRAME; it does not decide the card's arithmetic.
 //
 // THE ANCHORING RULE, and it is the whole of the mock:
@@ -1430,10 +1364,9 @@ const (
 //
 // A GO-STUDS ROW, per the standing rule, and it earns its place rather than
 // merely satisfying it: the fill column is sized with the badge's width ALREADY
-// RESERVED, so a centred title cannot run into the badge. The hand-rolled draft
-// written while generating the mock tested whether the title fit BY LENGTH and
-// produced "…(COASTAL)D•" — a centred title can fit by length and still collide
-// by POSITION. Here that is structural rather than policed.
+// RESERVED, so a centred title cannot run into the badge. A centred title can
+// fit BY LENGTH and still collide by POSITION — "…(COASTAL)D•". Here that is
+// structural rather than policed.
 type cardLane struct {
 	// o is the render options the lane draws with. It carries the CHIP
 	// renderer, which the handle needs: `[ 6 ]` in the reference is a chip, not
@@ -1450,9 +1383,9 @@ type cardLane struct {
 	// IT IS A COLUMN AND NOT `SetPrefix` BECAUSE THE COMPONENT DOES NOT RENDER
 	// ONE ON DATA ROWS. `SetPrefix` is accounted for in the width calculation
 	// (`prefixWidth`, data_table_row.go:521) and written only by `RenderHeader`
-	// — so a prefix set here reserved its space and printed nothing, which the
-	// test caught. Recorded as an M6 upstream candidate rather than patched
-	// locally: the dependency is not re-implemented, and the gap goes home.
+	// — so a prefix set here reserves its space and prints nothing. The gap is
+	// an M6 upstream candidate rather than patched locally: the dependency is
+	// not re-implemented.
 	marked *components.DataTableRow
 	lane   int
 	g      render.Glyphs
@@ -1466,22 +1399,22 @@ func newCardLane(lane int, g render.Glyphs) cardLane {
 	headline := components.ColumnDefinition{
 		Name: "headline",
 		Fill: true,
-		// LEFT, FROM THE v2 REFERENCE (D-87). A centred title floated between
-		// the badge and the border while every other row of the card began at
-		// the same inset — so the one line naming the card was the one line that
-		// did not line up with it.
+		// LEFT, FROM THE v2 REFERENCE (D-87). A centred title floats between
+		// the badge and the border while every other row of the card begins at
+		// the same inset — so the one line naming the card would be the one line
+		// that does not line up with it.
 		Alignment:         "left",
 		Truncatable:       true,
 		TruncatedMinWidth: 8,
 		TruncationTail:    g.Ellipsis,
 	}
 	// THE CARD'S OWN INSET, AS A COLUMN (D-87). Every row of a card's interior
-	// begins three cells in, and until now the title row began at zero — so the
-	// one line naming the card was the one line that did not line up with it.
+	// begins three cells in, the title row included, so the one line naming the
+	// card lines up with the rest of it.
 	//
 	// A COLUMN RATHER THAN A PREFIX, because the badge is right-anchored to the
-	// ROW: prefixing would have pushed the row three cells wide and taken the
-	// handle with it.
+	// ROW: prefixing would push the row three cells wide and take the handle
+	// with it.
 	inset := components.ColumnDefinition{Name: "inset", Width: len(bcCardInset)}
 	mark := components.ColumnDefinition{
 		Name:  "mark",
@@ -1542,7 +1475,7 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	// THE HANDLE IS A CHIP, NOT TEXT WEARING BRACKETS (HUM LEAD, 2026-09-10:
 	// "[ 1 ] is a chip in the card(s)"). `KeyCap` paints " 6 " with the chip
 	// background in colour and falls back to "[6]" without it — so the
-	// reference's five cells ARE the chip, and hand-writing the brackets drew
+	// reference's five cells ARE the chip, and hand-written brackets would draw
 	// its costume while losing everything it is: the palette, --ascii's word
 	// forms, and every future state a control can show.
 	//
@@ -1561,8 +1494,8 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	out := render.PadTo(render.TruncateCells(row.RenderRow(data), l.lane), l.lane)
 	// A CARD THAT CANNOT BE LABELLED HONESTLY IS NOT DRAWN AT ALL (D-55).
 	//
-	// THE CLAMP ABOVE RUNS AT EVERY WIDTH, INCLUDING BELOW THE FLOOR, and a
-	// test caught it chopping the mark into "**TEST E" — the one output that is
+	// THE CLAMP ABOVE RUNS AT EVERY WIDTH, INCLUDING BELOW THE FLOOR, where it
+	// can chop the mark into "**TEST E" — the one output that is
 	// worse than no mark, because a reader takes a broken label for rendering
 	// damage and the warning beside it for real. Dropping the row is the safe
 	// direction: a fabricated takeover drawn WITHOUT its mark is the screenshot
@@ -1577,15 +1510,11 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	return out
 }
 
-// `box` RETIRED WITH THE CARD COLUMN (D-110). It drew a card with no interior —
-// the flat, ordered slots of the pre-table running order — and those became rows
-// of `LineupTable` at D-94. Its one remaining caller was itself.
-
 // boxOf is the card, with whatever the region puts INSIDE it below the first
 // row (D-68).
 //
 // THE READ CARDS ARE TALLER THAN THE SCHEDULED ONES, which is the reference and
-// was the HUM LEAD's UAT (2026-09-10): "the LIVE CARD should be bigger to
+// the HUM LEAD's UAT ruling (2026-09-10): "the LIVE CARD should be bigger to
 // support showing at least most the script being played … UP NEXT should also be
 // bigger." A card the operator READS FROM needs the words on it; a card they are
 // merely deciding the ORDER of needs its name and its handle.
@@ -1600,14 +1529,14 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 //
 // ONE DRAWER FOR BOTH, because everything except the interior is the same card.
 // A second box function would be a second place for a corner or a tint to drift,
-// which is the D-56 shape this file has already paid for once.
+// which is the D-56 shape.
 
 // inner is the box's interior width — everything between the two rails.
 //
-// ONE OWNER, because two things measure it now: the box that draws the borders
-// and the script window that has to fit inside them. `bandWidth` was the same
-// lesson at D-80 — a fourth number agreeing with three others by coincidence is
-// what put the station band three cells over its frame.
+// ONE OWNER, because two things measure it: the box that draws the borders and
+// the script window that has to fit inside them. `bandWidth` follows the same
+// rule (D-80): a number that agrees with the others only by coincidence puts a
+// band cells over its frame.
 func (l cardLane) inner() int { return l.lane - 2 }
 
 func (l cardLane) boxOf(c lineup.Card, badge string, body []string) []string {
@@ -1625,12 +1554,12 @@ func (l cardLane) badgeOf(badge string) string {
 // shell is a box of the card's shape, around whatever is put in it, painted on
 // one ground.
 //
-// EXTRACTED AT THE SECOND CALLER (D-89), which is the standing modularity rule.
+// SHARED BY BOTH CALLERS (D-89), which is the standing modularity rule.
 // The LIVE slot's empty state is a box with no card in it — no title row, no
 // badge, no handle — and drawing it through a second copy of these six lines
 // would be two places for a corner, a rule or a tint to drift. What differs
-// between a card and an empty slot is the CONTENTS, and that is now the only
-// thing that differs.
+// between a card and an empty slot is the CONTENTS, and that is the only thing
+// that differs.
 func (l cardLane) shell(boxTitle, boxBadge string, body []string, ground string) []string {
 	if l.lane < 4 {
 		return nil
@@ -1638,8 +1567,8 @@ func (l cardLane) shell(boxTitle, boxBadge string, body []string, ground string)
 	inner := l.inner()
 	// THE MASTHEAD'S BOX (D-85, HUM LEAD 2026-09-11): "Remove the rounded
 	// corners -> straight corners … All Main track cards should have BOLD lines
-	// (like the masthead)." That is `render.HeavyBox`, which the masthead has
-	// drawn since 0.13.0 — shared rather than copied, so the console and the
+	// (like the masthead)." That is `render.HeavyBox`, which the masthead
+	// draws — shared rather than copied, so the console and the
 	// header cannot come to disagree about what a border looks like.
 	bx := render.HeavyBox(l.o.ASCII)
 	rows := []string{bx.TL + boxRule(bx.Rule, boxTitle, boxBadge, inner) + bx.TR}
@@ -1658,13 +1587,8 @@ func (l cardLane) shell(boxTitle, boxBadge string, body []string, ground string)
 
 // bcStandbyNotice is the HUM LEAD's wording, verbatim (D-89): "empty state needs
 // to be a grey box with a centered text of: NO REPORTS READ OR ACTIVE IN STANDBY
-// MODE". The BOX retired at D-95; the SENTENCE is what the LIVE row says.
+// MODE". The SENTENCE is what the LIVE row says, without the box (D-95).
 const bcStandbyNotice = "NO REPORTS READ OR ACTIVE IN STANDBY MODE"
-
-// `standbyBox` RETIRED WITH THE LIVE CARD (D-110). D-89 drew the empty LIVE slot
-// as a grey box — "NO REPORTS READ OR ACTIVE IN STANDBY MODE" — and D-95 made
-// LIVE one ROW of the air box, where `liveLine` says the same sentence in the
-// space a row has. The words survived; the box around them did not.
 
 func cardTitle(c lineup.Card, g render.Glyphs) string {
 	head := plaintext.Text(c.Headline)
@@ -1675,9 +1599,8 @@ func cardTitle(c lineup.Card, g render.Glyphs) string {
 	case head == "":
 		return kind
 	}
-	// THE SEPARATOR COMES FROM THE GLYPH SET, never a literal — the parity gate
-	// found the first draft's bullet, which is the same catch it made on the
-	// station line and on this batch's em-dash.
+	// THE SEPARATOR COMES FROM THE GLYPH SET, never a literal, so --ascii's
+	// parity gate holds.
 	return kind + " " + g.Bullet + " " + head
 }
 
@@ -1743,8 +1666,8 @@ func boxRule(mark, title, badge string, inner int) string {
 	//
 	// `ModalTitle` IS THAT TREATMENT, and it is the panel's own: `PanelColored`
 	// tints every window title with it, so a box that named itself in the ground's
-	// base grey was the one titled thing on the frame not doing so. Now that the
-	// box wears the modal's tile (D-114) the difference was the only thing left
+	// base grey would be the one titled thing on the frame not doing so — and
+	// with the box wearing the modal's tile (D-114), that would be the only thing
 	// telling them apart.
 	//
 	// THE RULE'S MARKS KEEP THE GROUND'S TONE. What is being picked out is the
@@ -1791,8 +1714,9 @@ func cardTone(c lineup.Card) string {
 //
 // HUM LEAD, UAT 2026-09-13: "if the Card on the layout is the [w] orange - when I
 // press <shift+a> that modal should MATCH the tone, not be the blue that is
-// currently is." The card wore its category and the window it opened wore the
-// standard modal ground, so the same hazard was two colours one keypress apart.
+// currently is." With two owners the card wears its category and the window it
+// opens wears the standard modal ground — the same hazard in two colours one
+// keypress apart.
 func cardGroundToken(c lineup.Card) render.Token {
 	if c.Slot == lineup.BreakingAlert {
 		if worst, ok := worstCategory(c.From); ok {

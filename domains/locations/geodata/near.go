@@ -2,17 +2,17 @@ package geodata
 
 // near.go — what is inside a fence, nearest first (D-72).
 //
-// THE BROADCASTER'S CANDIDATE LOCATIONS COME FROM HERE. The Producer had only
-// the listener's WATCHLIST to offer, so the schedule could never be deeper than
-// the number of distinct places the listener happened to watch — three, in the
-// HUM LEAD's UAT, against a console that draws ten slots (F-81, F-82).
+// THE BROADCASTER'S CANDIDATE LOCATIONS COME FROM HERE. With only the
+// listener's WATCHLIST to offer, the schedule could never be deeper than the
+// number of distinct places the listener happens to watch — often a handful,
+// against a console that draws ten slots (F-81, F-82).
 //
-// NO PROVIDER CALL, AND NO NEW DATA. Both answers were already embedded in this
+// NO PROVIDER CALL, AND NO NEW DATA. Both answers are already embedded in this
 // package: 34,106 US cities with population and 41,490 zip centroids. That is
 // also why "major locations first" needs no ranking rule — the city table is
-// already population-filtered, so ordering by DISTANCE is ordering by
-// major-first, and the HUM LEAD's own example (Fallbrook, Vista, Oceanside,
-// Temecula) falls straight out of it.
+// population-filtered, so ordering by DISTANCE is ordering by major-first, and
+// the HUM LEAD's own example (Fallbrook, Vista, Oceanside, Temecula) falls
+// straight out of it.
 //
 // TWO SCANS RATHER THAN ONE, because they answer different questions. The city
 // table says what the REGION is; the zip table says what is HYPER-LOCAL — "the
@@ -21,13 +21,17 @@ package geodata
 //
 // A FULL SCAN, DELIBERATELY. It is 34k haversines at startup and on a settings
 // change, which measures in tens of milliseconds; a bounding-box prefilter would
-// be an optimisation against a product that is not finished (D-53).
+// be an optimisation against a product that is not finished (D-53). The map's
+// estimate scans too, on its UI goroutine, so the coordinates are parsed once
+// and held (W14): 2 ms a view rather than 31.
 
 import (
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // MilesBetween is the distance between two coordinates in STATUTE MILES, which
@@ -37,11 +41,8 @@ import (
 // distance; this is the one owner of "…in the miles the operator typed", so a
 // fence and a card cannot disagree about how far away a place is.
 func MilesBetween(lat1, lon1, lat2, lon2 float64) float64 {
-	return geo.HaversineKM(lat1, lon1, lat2, lon2) * milesPerKM
+	return units.MilesOf(geo.HaversineKM(lat1, lon1, lat2, lon2))
 }
-
-// milesPerKM converts kilometres to statute miles.
-const milesPerKM = 0.621371
 
 // Near is the US cities inside a fence of radiusMi around (lat, lon), nearest
 // first, at most limit of them.
@@ -50,20 +51,50 @@ const milesPerKM = 0.621371
 // no fence set is not asking for a region, and the safe reading of an unset
 // number is "nothing" rather than "everywhere".
 func (i *Index) Near(lat, lon, radiusMi float64, limit int) []City {
-	offs := i.nearOffsets(lat, lon, radiusMi, limit, len(i.cityOffs), func(n int) (int32, float64, float64, bool) {
-		off := i.cityOffs[n]
-		if field(i.cities, off, 3) != "US" {
-			return 0, 0, 0, false
-		}
-		la, err1 := strconv.ParseFloat(field(i.cities, off, 4), 64)
-		lo, err2 := strconv.ParseFloat(field(i.cities, off, 5), 64)
-		return off, la, lo, err1 == nil && err2 == nil
+	us := i.usCities()
+	offs := i.nearOffsets(lat, lon, radiusMi, limit, len(us), func(n int) (int32, float64, float64, bool) {
+		return us[n].off, us[n].lat, us[n].lon, true
 	})
 	out := make([]City, 0, len(offs))
 	for _, o := range offs { // bounded by the limit (P10-02)
 		out = append(out, i.parseCity(o))
 	}
 	return out
+}
+
+// placed is a US city row and its coordinates, parsed.
+type placed struct {
+	off      int32
+	lat, lon float64
+}
+
+// placesCache is the US city rows with their coordinates, parsed once.
+//
+// PARSED ONCE, BECAUSE THE MAP SCANS ON ITS UI GOROUTINE (W14). The line-up
+// scans on a settings change; the map's estimate reads the state under
+// twenty-five points of the view on every open, feed landing and switch, and
+// parsing the table each time costs 31 ms and a million allocations a view.
+// Held, the coordinates cost about 0.8 MB; the scan is still a full one.
+type placesCache struct {
+	placesOnce sync.Once
+	places     []placed
+}
+
+// usCities is every US city row whose coordinates parse, in the table's order.
+func (i *Index) usCities() []placed {
+	i.placesOnce.Do(func() {
+		for _, off := range i.cityOffs { // bounded by the index (P10-02)
+			if field(i.cities, off, 3) != "US" {
+				continue
+			}
+			lat, err1 := strconv.ParseFloat(field(i.cities, off, 4), 64)
+			lon, err2 := strconv.ParseFloat(field(i.cities, off, 5), 64)
+			if err1 == nil && err2 == nil {
+				i.places = append(i.places, placed{off, lat, lon})
+			}
+		}
+	})
+	return i.places
 }
 
 // NearZips is the zip centroids inside the same fence, nearest first.

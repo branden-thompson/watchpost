@@ -10,8 +10,8 @@ import (
 // `asciiMarks` derives the Unicode -> ASCII replacer by walking `Glyphs` with
 // reflection, precisely so a glyph added to one set and forgotten in the other
 // cannot slip through. Its switch handles `String` and `Array` — and a field of
-// any OTHER kind was silently skipped, which is the forgotten glyph arriving by
-// the one route the derivation exists to close.
+// any OTHER kind would be silently skipped, which is the forgotten glyph arriving
+// by the one route the derivation exists to close.
 //
 // THE CHECK IS HERE RATHER THAN IN A `default` ARM because the walk runs on a
 // render path through `sync.OnceValue`, which has no error channel: the only

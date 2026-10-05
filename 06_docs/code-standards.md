@@ -58,6 +58,8 @@ logger.SetOutput(io.Discard) // discard extra log output during tests
 | `the caller holds a.mu` | `this said the opposite for a fortnight` |
 | `one key, one meaning per surface (D-56)` — a ruling cited as AUTHORITY | the same ID used to narrate a change |
 | `EVERY, not ANY: a burst is one card carrying many hazards` | `the first fix did not work` |
+| `a cell is blank only where all four of its points are` | `land beside an empty point was blank`, `batch 97 made the lattice denser` |
+| `a box's eight asks one after another take tens of seconds` | `the asks took half a minute`, `under Notes they were never seen` |
 
 A counterfactual is fine when it carries the reason — *"carried on `BedMsg` it would have three
 publishers of which one sets it"* explains the design without narrating a past.

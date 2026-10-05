@@ -108,9 +108,9 @@ func (l Lineup) Cards(t Track) []Card {
 //
 // ENTRY TO THE LINEUP IS ADMISSION (DR-3). The lineup accepts nothing that has
 // not passed the pre-screen, and once a card is here it will be read: bounds
-// apply here and nowhere later. That is what removes `breakingCap`'s defect
-// rather than moving it — there is no subsequent moment at which a queued hazard
-// can be cut, so no hazard can be silenced by sorting last.
+// apply here and nowhere later. There is no subsequent moment at which a queued
+// hazard can be cut, so no hazard can be silenced by sorting last (the defect a
+// cap applied after queuing would have).
 func (l Lineup) Queue(t Track, c Card) (Lineup, error) {
 	if err := invariant.Check(t >= 0 && t < numTracks, "a card is queued onto one of the declared two tracks"); err != nil {
 		return l, err
@@ -194,22 +194,19 @@ func (l Lineup) held() int {
 func (l Lineup) toPrepare() (Card, Track, bool) {
 	for _, t := range []Track{AlertRail, MainTrack} { // the precedence, in one line
 		for _, c := range l.tracks[t] { // bounded by the track (P10-02)
-			// THE FENCE IS ASKED HERE TOO (D-139). `Next` has skipped
-			// out-of-fence cards since D-75 and says why in as many words:
-			// "refusing it there would let it block every admissible card
-			// behind it, and a hazard in the operator's own town would wait on
-			// one that is not." That is precisely what happened one function
-			// along, because the rule was taught to the AIR and not to the walk
-			// that feeds it.
+			// THE FENCE IS ASKED HERE TOO (D-139). `Next` skips out-of-fence
+			// cards (D-75) and says why in as many words: "refusing it there
+			// would let it block every admissible card behind it, and a hazard
+			// in the operator's own town would wait on one that is not." The
+			// walk that feeds the air needs the same rule as the air.
 			//
-			// IT SKIPS BEFORE BOTH ARMS, AND THAT IS THE WHOLE FIX. An
-			// out-of-fence card is one the air will never offer, so preparing
-			// it is wasted — and letting it STOP THE WALK as a report standing
-			// by is a permanent stall: nothing behind it is ever built, so
-			// nothing behind it can ever be aired, and `dropStale` is only
-			// reachable through the air. The journey that reaches it is this
-			// release's own headline one: Observer queues under a wide fence,
-			// ctrl+b re-fences to the station's.
+			// IT SKIPS BEFORE BOTH ARMS. An out-of-fence card is one the air
+			// will never offer, so preparing it is wasted — and letting it STOP
+			// THE WALK as a report standing by is a permanent stall: nothing
+			// behind it is ever built, so nothing behind it can ever be aired,
+			// and `dropStale` is only reachable through the air. The journey
+			// that reaches it is an ordinary one: Observer queues under a wide
+			// fence, ctrl+b re-fences to the station's.
 			if c.OutOfFence {
 				continue
 			}
@@ -255,16 +252,13 @@ func (l Lineup) Next() (Card, Track, bool) {
 				return c, t, true
 			}
 		}
-		// AND A CARD STILL READING IS PART OF THE DRAIN (D-82). This sentence
-		// was in the paragraph above from the beginning — "normal programming
-		// resumes only when it is dry" — and nothing here enforced it: the
-		// Director's "is anything on the air anywhere" check did, by accident,
-		// and that check had to go so a hazard could interrupt a report.
+		// AND A CARD STILL READING IS PART OF THE DRAIN (D-82). "Normal
+		// programming resumes only when it is dry" is enforced HERE, not by an
+		// "is anything on the air anywhere" check, which would stop a hazard
+		// interrupting a report.
 		//
 		// Without this the arrow points the other way and the schedule reads a
-		// report UNDER a hazard that is still speaking. Two tests caught it
-		// within a minute of the change, one of them a fixture that had been
-		// relying on the accident to age a card into staleness.
+		// report UNDER a hazard that is still speaking.
 		//
 		// WRITTEN FOR EITHER LANE, not for the rail. On the main track it says
 		// the same thing the fall-through below says, so there is no second rule
@@ -280,14 +274,12 @@ func (l Lineup) Next() (Card, Track, bool) {
 // OnAir is the card this LANE is reading, if one is.
 //
 // DERIVED, NEVER STORED. The Director could keep the identity beside the lineup,
-// and then the two could disagree — which is the shape of every rule this
-// release has had to un-split.
+// and then the two could disagree.
 //
-// AT MOST ONE CARD HOLDS THE AIR *ON A TRACK*, and the qualifier is D-82. Until
-// the main track could speak, "at most one, anywhere" was the same statement and
-// the stronger one was the natural way to write it. It had become the rule that
-// stops a hazard being read: a rail card could not take the air while a report
-// held it, so a tornado warning waited out the weather.
+// AT MOST ONE CARD HOLDS THE AIR *ON A TRACK*, and the qualifier is D-82. "At
+// most one, anywhere" would stop a hazard being read: a rail card could not take
+// the air while a report held it, so a tornado warning would wait out the
+// weather.
 //
 // TWO CARDS ON THE AIR IS NOT TWO VOICES. The rail speaks OVER the programme and
 // the programme HOLDS underneath it — one `Suppress`, and the engine picks dip
@@ -363,8 +355,7 @@ func (l Lineup) Set(c Card) (Lineup, error) {
 }
 
 // Remove takes a card off its track. The Director does this once a card is
-// finished or discarded; it is not the Operator's DROP control, which arrives
-// with the Broadcaster UI.
+// finished or discarded; it is not the Operator's DROP control (operator.go).
 func (l Lineup) Remove(id string) (Lineup, error) {
 	t, i, held := l.find(id)
 	if err := invariant.Check(held, "Remove takes a card the lineup is holding"); err != nil {

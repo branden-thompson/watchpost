@@ -1,8 +1,7 @@
 package tty
 
-// alerts.go — the alert modal and the alert area under the header. Split from dashboard.go by the
-// quality pass (Q2, pure move); the map of where things happen is
-// docs/where-things-happen.md.
+// alerts.go — the alert modal and the alert area under the header; the map of
+// where things happen is docs/where-things-happen.md.
 
 import (
 	"fmt"
@@ -46,10 +45,9 @@ func modalAlertTone(a snapshot.Alert) string {
 // alertPair picks the warning or advisory member of a token PAIR off the one
 // predicate (metric D, 2026-09-08).
 //
-// The foreground and the background were choosing independently, from copies of
-// the same three-line branch. They cannot disagree today, and the point is that
-// they cannot disagree TOMORROW either: the pairing is structural now rather
-// than a convention two functions happen to share.
+// The foreground and the background choose from the one predicate rather than
+// from copies of the same branch, so they cannot disagree: the pairing is
+// structural rather than a convention two functions happen to share.
 func alertPair(a snapshot.Alert, warn, adv render.Token) string {
 	if render.AlertIsWarning(a.Event, a.Severity) {
 		return render.Tok(warn)

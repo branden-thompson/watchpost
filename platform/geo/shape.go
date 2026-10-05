@@ -72,8 +72,10 @@ type Shape []Polygon
 // shape looks unreasonable.
 func (s Shape) Vertices() int {
 	n := 0
-	for _, p := range s {
-		n += p.Vertices()
+	for _, p := range s { // the shape's areas (P10-02)
+		for _, r := range p { // an area's rings (P10-02)
+			n += len(r)
+		}
 	}
 	return n
 }
@@ -107,9 +109,8 @@ func (s Shape) Empty() bool {
 //
 // Whether to draw a partly-known area is a question for whatever has a view to
 // answer it with, and nothing here has one (MG-10). That decision is deferred;
-// **the information it needs is not**, which is what was wrong before: the
-// missing ids were fetched, reported by the store, and then dropped by its
-// only caller.
+// **the information it needs is not**: the missing ids the store reports travel
+// with the area rather than being dropped by its caller.
 type Area struct {
 	Shape Shape
 	// Missing names the parts that could not be got, the way the source names
@@ -124,4 +125,4 @@ func (a Area) Complete() bool { return len(a.Missing) == 0 }
 // Empty reports whether there is nothing to draw. An area may be empty AND
 // incomplete - nothing was got - or empty and complete, which is the ordinary
 // alert that names no ground at all.
-func (a Area) Empty() bool { return a.Shape.Empty() }
+func (a Area) Empty() bool { return a.Shape.Vertices() == 0 }

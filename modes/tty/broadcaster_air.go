@@ -15,9 +15,8 @@ package tty
 // by the engine having one source, so a box that holds both and marks which is
 // live says the exclusivity in its shape.
 //
-// IT REPLACES THE LIVE CARD (D-89 retires with it). A slot the station reads from
-// needed a manifest when it was one of ten cards; as one row of two it needs to
-// say what is on the air and how to reach it.
+// IT IS A ROW, NOT A CARD (D-95). As one row of two it needs to say only what is
+// on the air and how to reach it.
 
 import (
 	"strings"
@@ -51,8 +50,7 @@ func (b Broadcaster) airBox() []string {
 	// than described: one of these two is the programme and the other is not.
 	// `Idle` and `Live` ARE THE STATE MARKS (D-62), and they already mean exactly
 	// this: "a thing's own state where it is NAMED". Borrowing another ramp here
-	// would give one glyph two meanings, which is the mistake that comment
-	// records an early draft making.
+	// would give one glyph two meanings.
 	liveMark, bedMark := g.Idle, g.Idle
 	if b.bed.Carrying {
 		bedMark = g.Live
@@ -71,9 +69,8 @@ func (b Broadcaster) airBox() []string {
 
 // liveLine is what is on the air, and the key that opens it.
 //
-// THE EMPTY STATE IS A SENTENCE, NOT A BOX (D-95, replacing D-89's). The HUM
-// LEAD's standby wording was written for a card thirteen rows tall; as one row it
-// says the same thing in the space it has.
+// THE EMPTY STATE IS A SENTENCE, NOT A BOX (D-95): one row says the HUM LEAD's
+// standby wording in the space it has.
 func (b Broadcaster) liveLine(o render.Opts) string {
 	c, decided := b.slotCard(b.mainTrack(), 0)
 	if !decided {
@@ -96,22 +93,19 @@ func (b Broadcaster) bedLine(o render.Opts) string {
 	// chip muted rather than removing it: the operator still learns the key exists
 	// and that it is not available here, which is what tells them the station's
 	// reach is the thing to change.
-	return b.withControl(bcCardInset+b.bedSelector(o), state+"   "+o.KeyCapIf("b", b.bedAvailable()))
+	return b.withControl(bcCardInset+b.bedSelector(o), state+"   "+o.KeyCapIf("space", b.bedAvailable())+" "+o.KeyCapIf("b", b.bedAvailable()))
 }
 
 // airBodyWidth is the air box's content column, and it is the ONE owner of that
 // number (D-107).
 //
-// THE BAND'S WIDTH, BECAUSE THE BOX IS NOW INSIDE THE BAND. It was built to the
-// frame's full width while it stood on its own below the station section — "Live
-// Now / Relay table should fill to the edge of the right 3 col inset" — and the
-// section it moved into keeps its own three-column inset on each side, which is
-// the edge it now fills to.
+// THE BAND'S WIDTH, BECAUSE THE BOX IS INSIDE THE BAND — "Live Now / Relay table
+// should fill to the edge of the right 3 col inset" — and the section keeps its
+// own three-column inset on each side, which is the edge it fills to.
 //
-// AND IT WAS COMPUTED TWICE. `withControl` had its own copy of this arithmetic;
-// when the box moved, one copy followed and the other did not, and the `b` chip
-// on the RELAY BED row — the key that cuts to the bed — was pushed off the end.
-// Two carriers of one number, found the way they always are.
+// AND IT IS COMPUTED ONCE. `withControl` reads it here: a second copy of this
+// arithmetic drifts when the box moves, and the `b` chip on the RELAY BED row —
+// the key that cuts to the bed — is pushed off the end.
 func (b Broadcaster) airBodyWidth() int {
 	return b.bandWidth() - bcAirLabelW - 3 // the two rails, and the label column's
 }
@@ -129,7 +123,7 @@ func (b Broadcaster) withControl(line, control string) string {
 
 // mainTrack is the rolling window of the running order, as the frame draws it.
 //
-// ONE OWNER, because three things ask for it now — the air box, the UP NEXT card
+// ONE OWNER, because three things ask for it — the air box, the UP NEXT card
 // and the table — and a second `Projection(...)[:MainTrackSlots]` would be a
 // second answer to how far the window reaches.
 func (b Broadcaster) mainTrack() []lineup.Card {

@@ -204,9 +204,9 @@ func TestIdentity(t *testing.T) {
 }
 
 // UAT 59 (Carlsbad, CA): the nearest NWS station (CBDSD, a mesonet site)
-// reports no sky condition and an intermittent temperature — the row read
-// "UNKNOWN n/a". Observations fall through the nearest stations until one
-// reports a complete (temperature + condition) observation.
+// reports no sky condition and an intermittent temperature — alone, the row
+// would read "UNKNOWN n/a". Observations fall through the nearest stations
+// until one reports a complete (temperature + condition) observation.
 func TestFetchObsFallsBackPastSparseStation(t *testing.T) {
 	var obsCalls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -327,7 +327,7 @@ func TestResolveDedupesConcurrentPoints(t *testing.T) {
 
 func TestTodayHighFillsFromGridpointAfterSunset(t *testing.T) {
 	// UAT 71: once local evening starts /forecast begins with "Tonight" —
-	// no daytime period, so today's HIGH folded to nil ("n/a"). The raw
+	// no daytime period, so today's HIGH would fold to nil ("n/a"). The raw
 	// gridpoint still carries today's maxTemperature; it fills the hole
 	// with provenance, and nws-marine's gridpoint fetch shares the download
 	// through the client cache (one request per grid per cycle).
@@ -390,17 +390,17 @@ func TestCountyUGCFromResolvedPoint(t *testing.T) {
 	}
 }
 
-// lonePine is the location that produced the defect, at its real coordinates.
+// lonePine is the worst-case location, at its real coordinates.
 var lonePine = snapshot.LocationRef{Label: "Lone Pine, CA", Lat: 36.6061, Lon: -118.0629}
 
 // AN OBSERVATION FROM BEYOND THE BOUND IS NOT THIS LOCATION'S WEATHER.
 //
-// UAT 2026-09-05, and the numbers here are the real ones. Lone Pine showed
-// 86 °F at half past six in the morning. Nothing was stale and nothing was
-// cached — the reading was forty-two minutes old and perfectly real. It came
-// from FURNACE CREEK, DEATH VALLEY: 110 km east, below sea level, and one of
-// the hottest places on earth. The two nearer stations published no
-// temperature, and the fallback chain had no bound on distance.
+// UAT 2026-09-05, and the numbers here are the real ones. Lone Pine's two
+// nearer stations publish no temperature, and a fallback chain with no bound
+// on distance reaches FURNACE CREEK, DEATH VALLEY: 110 km east, below sea
+// level, and one of the hottest places on earth — 86 °F at half past six in
+// the morning. Nothing is stale and nothing is cached: the reading is
+// forty-two minutes old and perfectly real, and not this location's.
 //
 // The station list is the one NWS actually returns for Lone Pine's grid point,
 // and it is why this location is the worst case imaginable: its fallback list
@@ -443,8 +443,8 @@ func TestAFarObservationIsNotThisLocationsWeather(t *testing.T) {
 
 	// DEATH VALLEY'S TEMPERATURE MUST NOT BE LONE PINE'S. Whether an
 	// observation comes back at all is secondary — an absent temperature is
-	// rehydrated from the location's OWN hourly forecast, which read 59-60 °F
-	// while this said 86.
+	// rehydrated from the location's OWN hourly forecast, which reads 59-60 °F
+	// where this says 86.
 	if c != nil && c.Temp != nil {
 		t.Errorf("a station %0.f km away supplied the temperature (%.1f °C); the bound is %.0f km",
 			*c.Source.DistanceKm, *c.Temp, ObsMaxKm)
@@ -454,8 +454,8 @@ func TestAFarObservationIsNotThisLocationsWeather(t *testing.T) {
 	}
 	// AND IT IS AN OBSERVATION, NOT AN ERROR. "No station near enough" is a
 	// stable fact; "the fetch failed" is transient and stays LOADING while the
-	// retry owns it. Returning the second for the first left Lone Pine's
-	// temperature loading forever — the regression this half exists to prevent.
+	// retry owns it. Returning the second for the first leaves Lone Pine's
+	// temperature loading forever.
 	if frag.Err != nil {
 		t.Errorf("no local station is a fact, not a failure: %v", frag.Err)
 	}
@@ -499,15 +499,15 @@ func TestTheDistanceBoundJudgesOnlyWhatItKnows(t *testing.T) {
 
 // A FETCH FAILURE IS NOT "NO LOCAL STATION".
 //
-// The two states are opposite and the fix turns on telling them apart. A
+// The two states are opposite and the bound turns on telling them apart. A
 // location whose stations are all too far has a STABLE answer — the forecast
 // fills it and the row settles. A location whose stations could not be REACHED
 // has a transient one: the row must stay loading and the retry must own it,
 // because the real observation is coming.
 //
-// Settling for the forecast on a network blip would be the same defect as the
-// original in a quieter costume: a plausible number standing in for the true
-// one, with nothing to say it had.
+// Settling for the forecast on a network blip would be the far-station defect
+// in a quieter costume: a plausible number standing in for the true one, with
+// nothing to say it has.
 func TestAFetchFailureStaysLoadingRatherThanSettling(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path

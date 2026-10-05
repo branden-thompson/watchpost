@@ -40,8 +40,8 @@ func TestBlockPaintsFullWidthAndRearms(t *testing.T) {
 		t.Fatalf("block must paint the full width, got %d", w)
 	}
 	afg, abg := "38;5;220", "49"
-	// No tone of its own (round 4, B-01: the header box rode an invalid
-	// "\x1b[250;49m"): padded, and not one escape added.
+	// No tone of its own (round 4, B-01): padded, and not one escape added -
+	// never an invalid "\x1b[250;49m".
 	if none := o.Block("a \x1b[1mb\x1b[0m c", "", ""); displayWidth(none) != 40 || strings.Count(none, "\x1b[") != 2 || !strings.HasPrefix(none, "a \x1b[1mb\x1b[0m c ") {
 		t.Fatalf("an untoned block adds no SGR: %q", none)
 	}
@@ -54,7 +54,7 @@ func TestBlockPaintsFullWidthAndRearms(t *testing.T) {
 }
 
 func TestModalBlockKeepsTileBGAfterInnerSpans(t *testing.T) {
-	// Session-13 regression: a chip or tint inside a modal line must never
+	// A chip or tint inside a modal line must never
 	// drop the tile background for the rest of the line (the reset re-arm
 	// must carry BOTH the base fg and the tile bg).
 	rendering.SetColorEnabledForTest(true)
@@ -100,5 +100,24 @@ func TestPanelTitleIsBoldWhite(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	if head := strings.SplitN(o.PanelColored("Title", "x", ""), "\n", 2)[0]; !strings.HasPrefix(head, "┌── Title ─") || strings.Contains(head, "\x1b") || displayWidth(head) != 40 {
 		t.Fatalf("colour off: plain, same width: %q", head)
+	}
+}
+
+// TestAScrollingPanelIsASCIIUnderASCII: the rail of a panel that scrolls is
+// drawn through the glyph set, so --ascii prints no ▲ █ │ ▼ - asserted here
+// because a window may not scroll at the size the ASCII survey draws.
+func TestAScrollingPanelIsASCIIUnderASCII(t *testing.T) {
+	lines := make([]string, 30)
+	for i := range lines {
+		lines[i] = "row"
+	}
+	out := Opts{Width: 40, ASCII: true}.ScrollPanel("Title", lines, 3, 10)
+	for _, r := range out {
+		if r > 0x7f && !strings.ContainsRune("┌┐└┘─│├┤", r) {
+			t.Fatalf("an ASCII scrolling panel carries %q:\n%s", r, out)
+		}
+	}
+	if !strings.Contains(out, "^") || !strings.Contains(out, "v") || !strings.Contains(out, "#") {
+		t.Errorf("the rail is not drawn in its ASCII glyphs:\n%s", out)
 	}
 }

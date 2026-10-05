@@ -13,8 +13,7 @@ import (
 //
 // THIS IS THE WHOLE POINT OF APPROACH C. There is no goroutine here, no sleep,
 // no clock to advance and nothing to synchronise with: a test states the events
-// and reads back the work. Three previous attempts on this code could not get
-// that property, and every fixture written against them was vacuous.
+// and reads back the work. Without that property every fixture is vacuous.
 func run(d Director, evs ...Event) (Director, []string) {
 	var out []string
 	for _, ev := range evs {
@@ -129,10 +128,9 @@ func TestABurstOfManyAlertsIsOneCardOnTheRail(t *testing.T) {
 	}
 }
 
-// TestTheCueAlwaysPrecedesTheWords is DR-18 turned from an accident into a
-// property. Today the ordering is whatever the call sites happen to do — Phase 0
-// pinned it (T0.3, m49) precisely because nothing enforced it. Here it is the
-// order of a returned list, which no call site can get wrong.
+// TestTheCueAlwaysPrecedesTheWords is DR-18 as a property (T0.3, m49): the
+// ordering is the order of a returned list, which no call site can get wrong,
+// rather than whatever the call sites happen to do.
 func TestTheCueAlwaysPrecedesTheWords(t *testing.T) {
 	d, _ := burst(t, 2)
 	lead := BurstID("a00")
@@ -155,7 +153,7 @@ func TestTheCueAlwaysPrecedesTheWords(t *testing.T) {
 func TestTheNextCardIsBuiltWhileThisOneReads(t *testing.T) {
 	// TWO BURSTS, because a burst is one card (MVS-D-77): the one-ahead is
 	// between cards, and reading it off two alerts of the same burst would be
-	// asserting it at a scale the schedule no longer has.
+	// asserting it at a scale the schedule does not have.
 	d, _ := rail(t, "a", "b")
 	first, second := BurstID("a00"), BurstID("b00")
 	d, fx := run(d, Built{ID: first, Script: Say("words")})
@@ -177,10 +175,10 @@ func TestTheNextCardIsBuiltWhileThisOneReads(t *testing.T) {
 }
 
 // TestEveryExitFromTheAirReleasesTheTicker is DR-24, and the reason it is a
-// property of Step's output rather than a discipline about call sites: today
-// TickerBreakingDoneMsg is sent on ONE path with five early returns above it
-// that send nothing, while the audio side is released unconditionally. Under the
-// Lineup a discarded or superseded card makes that ordinary.
+// property of Step's output rather than a discipline about call sites: a
+// release sent on ONE path, with early returns above it that send nothing,
+// misses every exit those returns take — and under the Lineup a discarded or
+// superseded card makes such exits ordinary.
 func TestEveryExitFromTheAirReleasesTheTicker(t *testing.T) {
 	lead := BurstID("a00")
 	for _, tc := range []struct {
@@ -281,8 +279,8 @@ func TestNothingIsBuiltTwiceHoweverManyTicksArrive(t *testing.T) {
 // thing the rail exists to prevent.
 func TestTheRailDrainsBeforeTheMainTrackThroughStep(t *testing.T) {
 	d := New(Settings{Max: 10}, planNow)
-	// The main track's filling is the Phase 3 absorb of armDwell/advanceQueue;
-	// here it is seeded directly, which is the state that absorb will produce.
+	// The main track is seeded directly here, in the state its filling
+	// produces.
 	report := at(t, proposed(t, Card{ID: "bonsall", Slot: LocationReport, Origin: FromObserver,
 		Subject: "Bonsall, CA", Headline: "Conditions for Bonsall"}), Admitted)
 	l, err := d.Lineup().Queue(MainTrack, report)
@@ -293,7 +291,7 @@ func TestTheRailDrainsBeforeTheMainTrackThroughStep(t *testing.T) {
 
 	// The report's build begins as soon as the schedule settles — D-84: the
 	// Composer works on standby, so the line is ready before the operator asks
-	// for it. It no longer waits for the power.
+	// for it. It does not wait for the power.
 	d, seeded := run(d, Tick{Now: planNow})
 	if !has(seeded, "build(bonsall)") {
 		t.Fatalf("settling produced %v, want the report's build", seeded)
@@ -351,10 +349,10 @@ func TestTheRailDrainsBeforeTheMainTrackThroughStep(t *testing.T) {
 // Q-3); the ladder that would ride or divert them is Broadcaster machinery and
 // is deliberately not built.
 //
-// This is m99: the mutant cleared the rail before queueing, and it survived. It
-// also walked straight past the post-condition meant to catch it, because
-// clearing the rail BEFORE the count is taken makes "the rail never got shorter"
-// true. An invariant that the mutation can reorder itself around is not a pin.
+// This pins m99, a mutant that clears the rail before queueing. A
+// post-condition such as "the rail never got shorter" cannot catch it, because
+// clearing the rail BEFORE the count is taken makes that true. An invariant
+// that the mutation can reorder itself around is not a pin.
 func TestABurstArrivingWhileTheRailDrainsAddsToIt(t *testing.T) {
 	reading := BurstID("a00")
 	d, _ := rail(t, "a", "b")
@@ -469,11 +467,10 @@ func TestTheClockOnlyMovesForward(t *testing.T) {
 // TestTheEffectSetIsClosed. The vocabulary IS the architecture's interface
 // (PL-6), so every member renders a line a person can act on.
 //
-// IT NO LONGER CARRIES THE LIST. This test enumerated eight members and omitted
-// Escalate — live since fault.go was written — so the one guard whose job is to
-// notice the set growing a member had already missed one (red team 2026-09-05,
-// I-6). everyEffect() is now the single list and effectset_test.go derives the
-// truth from the package source, so it cannot be short again.
+// IT CARRIES NO LIST OF ITS OWN (red team 2026-09-05, I-6): a hand enumeration
+// can be short a member, and noticing the set grow a member is this guard's
+// whole job. everyEffect() is the single list and effectset_test.go derives the
+// truth from the package source, so it cannot be short.
 func TestTheEffectSetIsClosed(t *testing.T) {
 	want := []string{
 		"build(x)", "speak(x)", "cue(x)", "release(x)",
@@ -601,7 +598,7 @@ func TestACardThatArrivesWithItsWordsTakesTheAirAndIsNeverBuilt(t *testing.T) {
 		t.Errorf("the step described %v; the alert behind the head must build while the head reads", fx)
 	}
 
-	// AND THE RAIL DRAINS BEHIND IT. This is the half the wedge destroyed: the
+	// AND THE RAIL DRAINS BEHIND IT. This is the half a wedge would destroy: the
 	// alert queued behind the head must still be prepared and read.
 	d2, after := run(d, Finished{ID: "head"})
 	if !has(after, "release(head)") {
@@ -691,12 +688,11 @@ func countHas(got []string, prefix string) int {
 // property of the schedule rather than a claim in a comment.
 //
 // The walk that lets preparation look past a card needing no build must not
-// also look past a report that is standing by. It did: each completed build
-// triggered the next, so with the first card still ON AIR three more were
-// built and a fourth was building. A report composed several reads before it
+// also look past a report that is standing by. If it did, each completed build
+// would trigger the next, so with the first card still ON AIR three more would
+// be built and a fourth building. A report composed several reads before it
 // plays speaks data that was true when it was built, which is the staleness
-// DR-7 exists to prevent — the freshness guarantee traded away for the
-// structural-card fix, silently.
+// DR-7 exists to prevent.
 func TestPreparationNeverRunsAheadOfTheAir(t *testing.T) {
 	first, second := BurstID("a00"), BurstID("b00")
 	d, _ := rail(t, "a", "b", "c", "d")
@@ -734,8 +730,8 @@ func TestPublishCarriesThePowerWithTheLineup(t *testing.T) {
 		d := New(Settings{Max: 5}, base)
 		// MAKE THE TRANSITION REAL. A Director starts STOPPED, so stepping to
 		// STOPPED changes nothing, settles nothing and publishes nothing — and
-		// the sweep would have asserted nothing for that value. The "no
-		// Publish" fatal below caught exactly that.
+		// the sweep would assert nothing for that value, which the "no
+		// Publish" fatal below catches.
 		from := Running
 		if p == Running {
 			from = OffAir

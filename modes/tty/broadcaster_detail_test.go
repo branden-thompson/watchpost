@@ -2,10 +2,10 @@ package tty
 
 // broadcaster_detail_test.go — F-97, the card's own window (D-88).
 //
-// THE DEFECT THIS RETIRES, reported in UAT 2026-09-11: "Pressing [1] doesn't open
-// the details modal." The chip had been drawn on every card since D-52 and bound
-// to nothing, and D-87 made that load-bearing by turning the card into a manifest
-// that defers to it.
+// THE CARD'S CHIP OPENS ITS WINDOW (UAT 2026-09-11: "Pressing [1] doesn't open
+// the details modal."). The chip is drawn on every card (D-52), and the card is
+// a manifest that defers to the window (D-87), so a chip bound to nothing leaves
+// the full read unreachable.
 
 import (
 	"strings"
@@ -161,9 +161,9 @@ func routerOnConsole(t *testing.T) Router {
 	return r
 }
 
-// THE DEFECT, DRIVEN THROUGH THE REAL KEY PATH. A test that called cardDetail
-// directly would have passed on the broken build: the body was never the missing
-// half, the BINDING was.
+// THE KEY, DRIVEN THROUGH THE REAL KEY PATH. A test that calls cardDetail
+// directly passes whether or not the key is bound: the BINDING is the half that
+// can go missing, not the body.
 func TestPressingTheSlotNumberOpensTheWindow(t *testing.T) {
 	r := routerOnConsole(t)
 	if r.observer.ModalOpen() {
@@ -243,9 +243,9 @@ func TestAnUnchangedCardDoesNotMoveTheGeneration(t *testing.T) {
 // HUM LEAD, UAT 2026-09-13: "[A] Details / Full Read / Manage in the alert window
 // doesn't currently work, it should function just like [1] in the Up Next card."
 //
-// THE CONTROL WAS DRAWN AND NOTHING BOUND IT. `burstBody` appends
-// "[A]  Details / Full Read / Manage" at the bottom of the takeover box, and no
-// handler anywhere took an `A` — so the box advertised a way in that did not
+// A DRAWN CONTROL MUST BE BOUND. `burstBody` appends
+// "[A]  Details / Full Read / Manage" at the bottom of the takeover box, so a
+// handler must take the `A` or the box advertises a way in that does not
 // exist. A painted control that does nothing is worse than an absent one: the
 // operator reasonably concludes the report has nothing to show.
 //
@@ -269,9 +269,9 @@ func TestTheAlertBoxsWayInOpensThePriorityCard(t *testing.T) {
 	}
 
 	// THROUGH `Update`, THE WAY A TERMINAL DOES. Driving `openCardWindow`
-	// directly is the seam D-121 was caught on this morning: twelve tests passed
-	// against a build whose controls did nothing, because they called the handler
-	// and the operator presses a KEY (P-1).
+	// directly calls the handler, and the operator presses a KEY (P-1): a test
+	// that skips the key passes against a build whose controls do nothing
+	// (D-121).
 	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
 	out := press(t, r, "A")
 	if out.observer.modal != modalCard {
@@ -285,7 +285,7 @@ func TestTheAlertBoxsWayInOpensThePriorityCard(t *testing.T) {
 	// id check cannot see. Mutant mAU2 gives the hazard window a builder of its
 	// own that composes the same title TODAY — so the two agree by coincidence
 	// rather than by construction, and the next change to `cardTitle` moves one
-	// and not the other. Comparing the id proved they were the same CARD; this
+	// and not the other. Comparing the id proves they are the same CARD; this
 	// proves they are the same WINDOW.
 	o := out.observer.opts()
 	_, draw, ok := b.alertDetail()
@@ -318,13 +318,13 @@ func TestTheAlertBoxsWayInRefusesWhenTheRailIsEmpty(t *testing.T) {
 
 // TestTheConsolesTwoDrawnControlsAreBound.
 //
-// `[l] Lookup Location from Pool` AND `[r] Request for Line-Up` have been DRAWN
-// in the console's control row since D-102 with nothing bound to either (R4b).
+// `[l] Lookup Location from Pool` AND `[r] Request for Line-Up` are DRAWN in
+// the console's control row (D-102), so both must be bound (R4b).
 // HUM LEAD, 2026-09-14: "i'll need r and l to be bound in broadcaster before I
 // can UAT."
 //
-// THROUGH `Update`, THE WAY A TERMINAL DOES — the seam D-121 was caught on, and
-// the reason twelve tests once passed against a build whose controls did nothing.
+// THROUGH `Update`, THE WAY A TERMINAL DOES — a test that calls the handler
+// passes against a build whose controls do nothing (D-121).
 func TestTheConsolesTwoDrawnControlsAreBound(t *testing.T) {
 	// THE CARD'S SUBJECT IS THE POOL ENTRY'S KEY, which is how the running order
 	// finds the weather for a card — so the fixture uses the same key rather
@@ -336,9 +336,8 @@ func TestTheConsolesTwoDrawnControlsAreBound(t *testing.T) {
 	// control refuses, correctly and uninformatively.
 	// AND THE POOL-KEYED CARD IS THE SECOND ONE, because at standby the line-up
 	// draws from UP NEXT down (D-84's `liveOffset`): the pointer's position 0 is
-	// slot 2, which is the second card. The same off-by-one that once put a move
-	// one slot low, and it is a FIXTURE fact rather than a behaviour — which is
-	// why it is written down here instead of being discovered again.
+	// slot 2, which is the second card. It is a FIXTURE fact rather than a
+	// behaviour, and the same off-by-one can put a move one slot low.
 	b := bcWith(t,
 		card(t, "c0", "first"),
 		card(t, "c1", string(snapshot.Key(vista))),
@@ -372,10 +371,9 @@ func TestTheConsolesTwoDrawnControlsAreBound(t *testing.T) {
 	// `[l]` IS THE LOCATION SEARCH BOX, NOT THE POINTED ROW'S DETAILS.
 	//
 	// HUM LEAD, UAT 2026-09-14: "the <l> press is in Broadcaster UI EXPECTING the
-	// location search modal, not the line-up location details modal." The first
-	// build of this read the control's label — "Lookup Location from Pool" — as
-	// "open the location the pointer is on", and that was wrong: it is a LOOKUP,
-	// which is a search.
+	// location search modal, not the line-up location details modal." The label
+	// "Lookup Location from Pool" does not mean "open the location the pointer is
+	// on": it is a LOOKUP, which is a search.
 	//
 	// IT IS OBSERVER'S OWN WINDOW, forwarded rather than reimplemented, so there
 	// is one search box with one behaviour.

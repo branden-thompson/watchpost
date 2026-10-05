@@ -24,11 +24,10 @@ import (
 )
 
 // frameAllocBudget is the pin per fixture size (allocations per View()).
-// Q0 sets it at DISCOVER's baseline × 1.05; Q3 lowers it to ≤ 6,000 at
-// 133×44 and Q4b to ≤ 3,300 (plan §1). A change that raises a count above
+// Each pin is a measurement × 1.05 (plan §1). A change that raises a count above
 // its budget is a regression the gate refuses.
 //
-// Since Q3 there are two paths: the memo HIT (every tick, marquee and
+// There are two paths: the memo HIT (every tick, marquee and
 // visualizer frame between input changes — the number §1's radio-on target
 // reads) and the MISS (a snapshot, key or resize re-renders the tables).
 // Every pin is x1.05 of the measurement taken against benchDash's LIVE MARQUEE
@@ -49,8 +48,8 @@ var frameAllocBudget = map[string]float64{
 // a second for as long as the app is up, and every allocation on it is a
 // permanent cost. Treat a failure here as a regression to fix, not a budget to
 // raise. Measured at x1.05 against benchDash's live marquee, whose showing lane
-// is FULL — the state that costs the most per frame, and the one the earlier
-// numbers (313/331/334/325, a tape spread thin across six lanes) did not reach.
+// is FULL — the state that costs the most per frame; a tape spread thin across
+// six lanes measures less.
 var frameAllocBudgetHit = map[string]float64{
 	"133x44": 365 * 1.05,
 	"133x70": 383 * 1.05,
@@ -71,9 +70,9 @@ func benchLoc(i int, days int, alert bool) snapshot.Location {
 	if alert {
 		loc.Alerts = []snapshot.Alert{{Event: "Extreme Heat Watch", Severity: "severe", Headline: "until Friday"}}
 	}
-	// 0.11.0: a recent quake so the budget measures the seismic row mark's
-	// per-row Tint on the miss path (REVIEW P5 D2 — the fixture previously
-	// carried no hazard marks, leaving that cost unmeasured).
+	// A recent quake so the budget measures the seismic row mark's per-row Tint
+	// on the miss path (REVIEW P5 D2): a fixture with no hazard marks leaves that
+	// cost unmeasured.
 	loc.Seismic = &snapshot.SeismicState{AsOf: loc.Harmonized.Source.IssuedAt, Quakes: []snapshot.Quake{{Mag: 4.2, DistanceKm: 20, Bearing: "NE", DepthKm: 8}}}
 	return loc
 }
@@ -205,7 +204,7 @@ func BenchmarkFrame_133x44_Miss(b *testing.B) {
 // publish, a key). Measured at P3-9 and set at × 1.05 like the frame pins.
 // The hit path here is dominated by render.Overlay's compositor, which is an
 // accepted cost — docs/accepted-costs.md §1 states why and what would re-open it.
-var severeAllocBudget = map[string]float64{"hit": 1_740 * 1.05, "miss": 5_248 * 1.05} // was 2_401 / 7_561 at the 0.13.0 BUILD exit
+var severeAllocBudget = map[string]float64{"hit": 1_740 * 1.05, "miss": 5_248 * 1.05}
 
 // severeBench is the window open over the 133×44 fixture with a 60-row
 // Warnings index (a busy outbreak day, not the 9-row mock).
@@ -263,130 +262,69 @@ func TestSevereFrameAllocBudget(t *testing.T) {
 	}
 }
 
-// --- P0 (0.14.0 multi-voice-support): the Setup window ---
+// --- the Setup window ---
 //
-// The "before" pins for the Setup window, taken at P0 against TODAY'S form so
-// the two new groups (ALERTS - TONE, WATCHPOST RADIO - CORRESPONDENTS) are added
-// against a recorded baseline rather than a guess. P4 Task 4.11 re-measures the
-// new window and re-pins these numbers — the pin is always a measurement, never
-// a formula (07-readiness/perf-protocol.md §2).
+// Its pins are always a measurement, never a formula
+// (07-readiness/perf-protocol.md §2).
 
 // setupAllocBudget pins the Setup window's frame at both sizes: the modal-memo
 // HIT (every tick while it is open) and the MISS (a key, a publish). Set at
 // × 1.05 of the measurement, as the frame and severe pins are.
+// Measured against the same live-marquee fixture as the frame pins, with the
+// CORRESPONDENTS group focused. A miss beyond TWICE the pre-feature window's
+// (3,476 at 133×44) means the builders are fixed rather than the pin raised.
 //
-// RE-PINNED at 0.14.0 P4 Task 4.11, against the NEW window (four groups, two
-// columns, the correspondents focused). P0 recorded the old window as an
-// informational baseline: 133×44 hit 3,046 / miss 3,476 · 80×24 hit 1,978 /
-// miss 2,478.
-//
-// What moved, and why it is acceptable:
-//
-//   - The HIT path got CHEAPER (3,046 → 2,114 and 1,978 → 1,799), because the
-//     modal memo now serves a window that is rebuilt far less often.
-//   - The MISS path grew (3,476 → 3,895 = 1.12x, and 2,478 → 3,474 = 1.40x).
-//     The plan's rule is that a miss beyond TWICE the baseline means the
-//     builders are fixed rather than the pin raised; both are well inside it,
-//     and the growth buys twenty rows where there were three.
-//   - 80×24 grew most because that is where the window STACKS: it builds both
-//     columns and then lays them one after the other, so a miss there does the
-//     two-column work and the stacking.
-//
-// Measured against the same live-marquee fixture as the frame pins.
+// 80×24 costs most on a miss because that is where the window STACKS: it builds
+// both columns and then lays them one after the other, so a miss there does the
+// two-column work and the stacking.
 var setupAllocBudget = map[string]float64{
-	"133x44-hit": 2_630 * 1.05, "133x44-miss": 3_808 * 1.05,
-	// 80x24-miss re-measured at 0.14.0 T3.2b for the RELAY REPLAY group's
-	// second row: 2_678 -> 2_800 (+4.6%), the cost of drawing two more lines
-	// and a spacer at the width where the window still scrolls. The 133x44
-	// numbers went DOWN over the same change (2_545 against a 2_762 budget),
-	// because sizing the pickers' cells to their own values took cells out of
-	// every row that has one.
-	"80x24-hit": 1_604 * 1.05, "80x24-miss": 2_800 * 1.05,
+	// 133x44 (D-62, U1-35/U1-36): the window is as wide as its widest tab on every
+	// tab, so a frame lays each tab's groups out to measure it, and it is held to
+	// 80% of the terminal, so more of the dashboard is drawn around it - the
+	// dashboard in sight is what U1-36 asks for.
+	"133x44-hit": 3_046 * 1.05, "133x44-miss": 4_699 * 1.05,
+	// 80x24 (D-67, D-70, D-71, D-202): every tab is laid out for the window's
+	// width, so a row on any tab - the RELAY REPLAY group's second row, the map's
+	// eight detail picker rows with their arrow chips, the Maps tab's UV cities
+	// row - costs every Settings frame.
+	"80x24-hit": 1_604 * 1.05, "80x24-miss": 3_491 * 1.05,
 }
 
-// Re-measured after the columns were BALANCED automatically (HUM LEAD, UAT
-// 2026-08-30). The window is much better and the numbers barely moved, and the
-// reason is worth writing down because it is the opposite of what was expected.
+// OVERLAY COSTS WHAT IT DOES NOT COVER. A dashboard row the modal sits over is
+// replaced outright, while a row beside or below it has to be spliced around,
+// and splicing a styled line means walking its escapes. A smaller window
+// uncovers more of the dashboard, so it costs more to composite: render.Overlay
+// is most of this window's hit-path allocations, and no amount of trimming the
+// window's own content touches it. That is a job for the performance pass.
 //
-// The window at 133×44 went from 39 body lines to 25 and from 121 cells wide to
-// 118 — short enough to need no scroll rail at all. The hypothesis was that a
-// shorter window would allocate less, since fewer rows are drawn.
-//
-// It allocates MORE on the hit path: 2,391 → 2,828. All 437 of that is
-// render.Overlay, measured directly (1,808 → 2,245 for the same frame). Overlay
-// costs what it does NOT cover: a dashboard row the modal sits over is replaced
-// outright, while a row beside or below it has to be spliced around, and
-// splicing a styled line means walking its escapes. A smaller window uncovers
-// more of the dashboard, so it costs more to composite.
-//
-// Which puts the real lever in view: Overlay is 2,245 of this window's 2,828
-// allocations per frame, on every tick it is open. Nothing else in the frame is
-// close, and no amount of trimming the window's own content will touch it.
-// That is a job for the performance pass, not for this change.
-//
-// The rebuild paths did move the right way where it matters: 80×24, which
-// stacks and so does the most work, went 4,464 → 4,484 (flat) after the split
-// search was made to cost nothing — see columnPlan and setupBlock.w. Before
-// that it was 6,904, because every candidate split re-measured every block.
+// The split search costs nothing (see columnPlan and setupBlock.w); a search
+// that re-measures every block for every candidate split costs about half again
+// on the 80×24 rebuild path.
 
-// Re-measured after the WATCHPOST UI group joined the window (HUM LEAD, UAT
-// 2026-08-30) — a picker and five radio rows, twelve lines.
-//
-// The MISS grew as the extra rows would predict (4,936 → 5,477 at 133×44,
-// 4,176 → 4,464 at 80×24): a miss builds the whole body, and the body is a
-// group longer.
-//
-// The HIT fell on both (2,761 → 2,391 and 2,018 → 1,832), which the group did
-// not do. The header did: [t] Theme and [M] Mute Severe Alerts left the row, so
-// the masthead builds five fewer styled chips on every frame — and unlike the
-// body, the header is rebuilt whether or not the modal memo hits. The two paths
-// moving in opposite directions is the same lesson as the tone group's: what
-// this window costs per frame and what it costs to rebuild are different
-// questions with different answers.
-//
-// Against P0's 3,476 the miss is now 1.58x, inside the plan's twice-the-baseline
-// rule but a third of the way through what is left of it.
+// WHAT THIS WINDOW COSTS PER FRAME AND WHAT IT COSTS TO REBUILD are different
+// questions with different answers. A miss builds the whole body, so a group
+// added to the body grows the miss; the header is rebuilt whether or not the
+// modal memo hits, so a chip in the masthead costs the hit path on every frame.
 
-// Re-measured after the tone group went to ONE CLASS PER LINE (HUM LEAD, UAT
-// 2026-08-30). Every path got cheaper — 133×44 hit 2,932 → 2,761 and miss
-// 5,461 → 4,936; 80×24 hit 2,411 → 2,018 and miss 4,768 → 4,176 — and the miss
-// is now 1.42x P0's 3,476, down from 1.57x.
-//
-// The saving is not really the group. Six short rows made the LEFT COLUMN
-// narrow enough that the window lays its groups side by side again, as the mock
-// draws them, and a two-column body is short enough to need no scroll rail. The
-// window stopped wrapping lines and stopped drawing a rail.
-//
-// Worth keeping in mind, because the intermediate arrangement proved the
-// converse: laying the classes two abreast with each sub-column sized to its own
-// labels made the group narrower AND made the 133×44 hit path DEARER (3,288),
-// because it left the window at a middling width where neither the two-column
-// body nor the rail-free body applied. This window's frame cost is not a
-// monotone function of how much it draws.
+// THIS WINDOW'S FRAME COST IS NOT A MONOTONE FUNCTION OF HOW MUCH IT DRAWS.
+// A left column narrow enough lets the window lay its groups side by side, as
+// the mock draws them, and a two-column body is short enough to need no scroll
+// rail or wrapped lines. A middling width where neither the two-column body nor
+// the rail-free body applies costs more on the hit path than a wider window.
 
-// WHERE THIS IS AGAINST THE PRE-FEATURE WINDOW, honestly: the miss path is now
-// 4,936 against P0's 3,476 — 1.42x. The plan's rule is that beyond TWICE the
-// baseline the BUILDERS are fixed rather than the pin raised, so there is
-// headroom, but it is being spent and the next addition should look at the
-// builders first.
+// THE MISS PATH IS SPENDING ITS HEADROOM under the twice-the-baseline rule, so
+// the next addition should look at the builders first.
 //
-// Two things were already tried and are kept because they are right, not
-// because they paid: the ←→ chips are built once per frame and shared by all
-// thirteen controls (they were being built twenty-six times), and the modal
+// Two things are kept because they are right, not because they pay: the ←→
+// chips are built once per frame and shared by all the controls, and the modal
 // memo keys on the Setup GENERATION rather than fmt.Sprintf("%+v") over a
-// struct carrying two maps. Neither moved the number much — the cost is spread
+// struct carrying two maps. Neither moves the number much — the cost is spread
 // across the frame rather than concentrated anywhere — which is itself worth
 // knowing before someone else goes looking.
 
-// Re-measured again after the UAT round that tinted every focused label
-// (settingLabel) — one more styled span on the focused row, and the group
-// headers moved to the bold ModalTitle tone.
-//
-// Re-measured before that after the UAT change that made each picker two key CHIPS
-// instead of a dropdown cell (HUM LEAD, 2026-08-30). Seven pickers x two chips
-// is fourteen more styled spans per frame; the hit path moved 2,114 -> 2,392
-// and the miss 3,895 -> 4,405. Still far inside the twice-the-baseline rule,
-// and the chips are what make the control honest about the keys that move it.
+// Each picker is two key CHIPS rather than a dropdown cell, and the focused
+// label is tinted (settingLabel): more styled spans per frame, and the chips
+// are what make the control honest about the keys that move it.
 
 // setupBench is the Setup window open over the fixture dashboard at w×h, with
 // the CORRESPONDENTS group focused — the heaviest state: the pickers draw, the
@@ -450,7 +388,7 @@ func TestSetupAllocBudget(t *testing.T) {
 // BenchmarkConsoleFrame is the console's frame on the path that COSTS: a full
 // pool, a full running order, and real snapshots behind both, so every row
 // joins its weather (D-120). A console with no pool measures the cheap path,
-// which is the mistake the alloc budget spent its whole history making.
+// which is the mistake an alloc budget most easily makes.
 func BenchmarkConsoleFrame(b *testing.B) {
 	c := loadedConsole(b, loadedPoolSize)
 	if loadedJoins(c) == 0 {
@@ -468,9 +406,9 @@ func BenchmarkConsoleFrame(b *testing.B) {
 //
 // THE OPERATOR HOLDING AN ARROW KEY IS THE REAL WORST CASE: the slot holds ONE
 // entry, so a selection that alternates never finds it. Every frame here rebuilds
-// both tables and the location index — which is what the console cost on every
-// frame before the memo, so this number should land near the old baseline and
-// says how much the memo can cost when it never helps.
+// both tables and the location index — which is what the console costs on every
+// frame without the memo, so this number says how much the memo can cost when it
+// never helps.
 func BenchmarkConsoleFrame_Miss(b *testing.B) {
 	c := loadedConsole(b, loadedPoolSize)
 	if loadedJoins(c) == 0 {
@@ -483,5 +421,41 @@ func BenchmarkConsoleFrame_Miss(b *testing.B) {
 		c.selected = i & 1
 		_ = c.View().Content
 		i++
+	}
+}
+
+// settingsTabPressAllocBudget is a Tab press in Settings - the key moving to
+// the next tab and the frame drawn - into its costliest tab, with the app's
+// layers registered (MAP - LAYERS) (U2-48).
+const settingsTabPressAllocBudget = 3_700
+
+// A SETTINGS TAB PRESS STAYS CRISP (U2-48, HUM LEAD: "key responses should be
+// very crisp and feel almost instant"): every tab, the layers registered as
+// the app registers them, a Tab press's work held to a pinned allocation
+// count - counted, not timed, so a busy machine cannot fail it nor hide it.
+func TestASettingsTabPressIsWithinItsAllocBudget(t *testing.T) {
+	if raceEnabled {
+		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
+	}
+	d := setupBench(t, 133, 44)
+	d.cfg.MapLayers = settingsLayers
+	d.cfg.HistoryUsage = func() string { return "Holds 728 KB, in ~/.local/share/watchpost/weather/history" }
+	_ = d.View().Content
+	worst, at := 0.0, ""
+	var m tea.Model = d
+	for range len(setupTabs()) {
+		from := m
+		allocs := testing.AllocsPerRun(10, func() {
+			next, _ := from.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+			_ = next.View().Content
+		})
+		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		if allocs > worst {
+			worst, at = allocs, m.(Dashboard).setupTab().Label()
+		}
+	}
+	t.Logf("a Tab press into %s, the costliest: %.0f allocs (budget %d)", at, worst, settingsTabPressAllocBudget)
+	if worst > settingsTabPressAllocBudget {
+		t.Errorf("a Tab press into %s allocates %.0f, budget %d", at, worst, settingsTabPressAllocBudget)
 	}
 }

@@ -20,9 +20,9 @@ import (
 
 // speakCard is a main-track card as the Director emits it.
 //
-// RENAMED FROM `report` AT R2: `platform/report` is a package this file's
-// own package now imports, and a helper sharing its name shadows it — the
-// collision is invisible until something in the package needs the import.
+// NOT `report`: `platform/report` is a package this file's own package
+// imports, and a helper sharing its name shadows it — the collision is
+// invisible until something in the package needs the import.
 func speakCard(id string, words ...string) lineup.Speak {
 	var parts []lineup.Part
 	for _, w := range words {
@@ -32,10 +32,9 @@ func speakCard(id string, words ...string) lineup.Speak {
 		Track: lineup.MainTrack, Script: lineup.Script{Parts: parts}}
 }
 
-// THE DEFECT THIS CLOSES, AND IT IS WHAT THE HUM LEAD HEARD (UAT 2026-09-11):
-// every location report was admitted, built, then DECLINED at Speak — "the
-// arbiter reads the rail, and the rail only" — which failed the card, discarded
-// it and benched its location for five minutes (D-67). With the pool at 25 and
+// A LOCATION REPORT IS READ, NOT DECLINED AT SPEAK. A report DECLINED there —
+// "the arbiter reads the rail, and the rail only" — fails the card, is discarded
+// and benches its location for five minutes (D-67). With the pool at 25 and
 // the console drawing ten slots, the whole pool benches in one pass and every
 // slot reads "waiting for the line-up". No audio, and the schedule churning.
 func TestTheProgrammeIsPerformedOnTheBroadcastEngineAndNotThroughTheArbiter(t *testing.T) {
@@ -55,7 +54,7 @@ func TestTheProgrammeIsPerformedOnTheBroadcastEngineAndNotThroughTheArbiter(t *t
 	}
 	// THE ARBITER MUST NOT HAVE SEEN IT (D-33). A programme read through the
 	// narration path speaks OVER the bed instead of replacing it, which is the
-	// design that was built once and ruled out.
+	// design D-33 rules out.
 	if v.got() != "" {
 		t.Errorf("the programme reached the narration arbiter (%q); a chosen read replaces the bed", v.got())
 	}
@@ -251,8 +250,8 @@ func TestAReadIsNotEndedByAStatusThatIsStillPlaying(t *testing.T) {
 	noteRead(nil, player.Status{State: player.Stopped}, true) // no session: inert, never a panic
 }
 
-// A MAIN-TRACK READ IS NOT THE BED MOVING (F-91) — and this is the churn the
-// HUM LEAD saw, arrived at from the other side.
+// A MAIN-TRACK READ IS NOT THE BED MOVING (F-91) — the same churn, arrived at
+// from the other side.
 //
 // The engine reports the same Playing and Stopped for a card as it does for the
 // bed. Told about them, the Director would take a card's start as `Tuned` — the
@@ -368,8 +367,7 @@ func TestTheOperatorSilencingTheStationStopsAReadAlreadyGoingOut(t *testing.T) {
 // `engine.Halt` waits for the audio goroutine, and that goroutine is calling
 // back into the program — so a halt reached from `Router.Update` sends to a loop
 // that cannot receive and the app freezes hard enough to need the terminal
-// killed. That is not a hypothetical: it is what happened on 2026-09-11, twice.
-// `stopRead` must return whether or not anything is playing, and the WORKER
+// killed. `stopRead` must return whether or not anything is playing, and the WORKER
 // waiting on the read is what does the halting.
 func TestStoppingAReadReturnsAtOnceAndEndsTheWait(t *testing.T) {
 	d := &radioDeck{}

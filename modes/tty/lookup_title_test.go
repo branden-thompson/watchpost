@@ -12,9 +12,8 @@ import (
 // F-42 — DETAILS OPENED FROM A LOOKUP NAMES THE PLACE FROM THE FIRST FRAME.
 //
 // lookupIndex is "-1 while it waits" for the rebuilt RECENT list to carry the
-// looked-up row, so selectedLocation has nothing to return until then and this
-// window titled itself the literal "Location" — about one run in three, caught
-// by the PTY journey on a step named for the property that was not holding.
+// looked-up row, so selectedLocation has nothing to return until then, and a
+// window titled from it alone reads the literal "Location".
 //
 // The ref is right there: lookupRef is "the location a lookup opened Details
 // for, until its data lands". A title that does not consult it falls back to the
@@ -66,19 +65,19 @@ func firstLines(s string, n int) string {
 
 // ISSUE #11 — A SECOND LOOKUP MUST NOT REPLAY THE FIRST ONE'S DETAILS.
 //
-// Reported against 0.14.0 from a real session: look up Miami and Lake Henshaw —
-// the previous lookup — is on screen until Miami's data lands, then "magically
-// swaps in". A regression of the 0.13.0 fix.
+// Look up Miami right after Lake Henshaw, and a stale memo puts Lake Henshaw —
+// the previous lookup — on screen until Miami's data lands, then Miami
+// "magically swaps in".
 //
 // THE MEMO KEY IS THE WHOLE STORY, and `selected` cannot stand in for the
 // lookup. modal_location.go focuses every lookup at the same index
 // (`d.selected = len(watch)`, the first RECENT row), so two lookups in a row
 // produce an identical modalKey while the location differs, and the single-slot
-// modal memo replays the cached frame. bodyKey has carried lookupKey since the
-// original fix; modalKey never did.
+// modal memo replays the cached frame. So modalKey carries lookupKey, as
+// bodyKey does.
 //
 // This asserts the KEY rather than the rendered frame, because the key is what
-// broke: a frame assertion would pass the moment anything else moved the key
+// decides: a frame assertion would pass the moment anything else moved the key
 // and would not say why.
 func TestASecondLookupDoesNotShareTheFirstsModalKey(t *testing.T) {
 	d := dash(t).(Dashboard)
@@ -102,7 +101,7 @@ func TestASecondLookupDoesNotShareTheFirstsModalKey(t *testing.T) {
 	if k1 == k2 {
 		t.Error("two different lookups share one modal key — the memo will replay the first one's Details")
 	}
-	// CONTROL: the same lookup twice must still hit, or the fix has simply
+	// CONTROL: the same lookup twice must still hit, or the key has simply
 	// disabled the memo for this window and traded a stale frame for a rebuild
 	// on every keystroke.
 	d.lookupRef = &second

@@ -8,20 +8,17 @@ import (
 	"github.com/branden-thompson/watchpost/platform/category"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
-
-// miPerKm converts the radius (miles, as the user sets it) to the kilometres
-// the haversine returns.
-const kmPerMi = 1.609344
 
 // WithinMiles reports whether (lat2, lon2) is inside radiusMi of (lat1, lon1).
 //
 // The one distance measure every scoped surface shares, so the severe window
 // can scope its TRACKED LOCATIONS by the same preference that scopes its feed
 // events — the statements and advisories tabs have no feed half at all, so
-// without it they were bounded by nothing but the watchlist.
+// without it they would be bounded by nothing but the watchlist.
 func WithinMiles(lat1, lon1, lat2, lon2, radiusMi float64) bool {
-	return geo.HaversineKM(lat1, lon1, lat2, lon2) <= radiusMi*kmPerMi
+	return geo.HaversineKM(lat1, lon1, lat2, lon2) <= units.KmOf(radiusMi)
 }
 
 // Active drops events whose active window has closed (now past Until), so a
@@ -56,8 +53,8 @@ const MaxPerLane = 30
 // The feed produces four. Advisories and statements reach the marquee from the
 // tracked locations rather than from here, and carry their own bound.
 // Lane is a category, named for the job it does here: the unit the national
-// stack's cap is per. NOT an enum of its own — it was, and a lane missing from
-// the order list beside it would have had its events dropped from the stack
+// stack's cap is per. NOT an enum of its own: a lane missing from an order
+// list beside a separate enum would have its events dropped from the stack
 // with nothing to say so (F-21).
 //
 // The national feed can only produce these four; the rest of the registry's
@@ -66,9 +63,8 @@ type Lane = category.Category
 
 const (
 	// LaneEmergency is the Emergency Orders lane — ReadRank 1, and the only
-	// lane the read ladder never demotes. It joined the national feed at the
-	// BUILD-exit red team (C-2): the query now asks for the Evacuation
-	// Immediate, so the lane can actually be occupied.
+	// lane the read ladder never demotes. The national query asks for the
+	// Evacuation Immediate (C-2), so the lane can actually be occupied.
 	LaneEmergency = category.Emergency
 	LaneDisasters = category.Disasters
 	LaneMarine    = category.Marine
@@ -88,7 +84,7 @@ func LaneOf(e Event) Lane {
 	}
 	// THE CIVIL-EMERGENCY FAMILY IS MATCHED BY NAME, BEFORE THE KEYWORD ARM.
 	// None of those products names a warning or a watch, so without this an
-	// evacuation order fell through to LaneWarning — the rung below the one the
+	// evacuation order would fall through to LaneWarning — the rung below the one the
 	// ladder reserves for it, and indistinguishable on the band from a
 	// thunderstorm warning (C-2). The table is shared with domains/severe so
 	// the window and the marquee cannot disagree about one hazard.
@@ -110,10 +106,9 @@ func LaneOf(e Event) Lane {
 // two agree.
 //
 // A LANE MISSING FROM HERE IS SILENTLY DROPPED, not merely uncapped: capPerLane
-// walks this list and keeps nothing else. That is why Emergency had to be added
-// here in the same change that taught LaneOf the family (C-2) — laning an
-// evacuation order correctly and leaving this list at four would have deleted
-// it from the marquee outright.
+// walks this list and keeps nothing else. So every lane LaneOf returns is
+// listed here (C-2) — laning an evacuation order correctly and leaving
+// Emergency off this list would delete it from the marquee outright.
 //
 // EMERGENCY LEADS, matching the read ladder and the window's tab order: an
 // evacuation order is the most serious thing the feed can carry.
@@ -121,8 +116,7 @@ func LaneOf(e Event) Lane {
 // FeedLanes is that list, for consumers outside this package. The ctrl+d
 // scenarios are DERIVED from it (FR-4.2), so a lane added to the feed arrives
 // with a way to exercise it instead of waiting for someone to remember the
-// window — which is how the scenario named for the emergency path came to
-// inject a Tornado Warning.
+// window — a hand-kept scenario can be named for one lane and inject another.
 func FeedLanes() []Lane { return laneOrder() }
 
 func laneOrder() []Lane {

@@ -44,10 +44,10 @@ const (
 	// numNarrationClasses bounds the set; it is not itself a class.
 	//
 	// IT EXISTS SO A GUARD CAN WALK THE TYPE. TestNothingOutranksATakeover
-	// protects an assumption `holdRest` depends on, and its first version
-	// iterated a hand-written list of the classes — so ADDING one, the exact
-	// case it was written for, left it green. A sentinel is the difference
-	// between a guard and a list that has to be remembered.
+	// protects an assumption `holdRest` depends on, and a hand-written list of
+	// the classes would leave it green when one is ADDED — the exact case it
+	// guards. A sentinel is the difference between a guard and a list that has
+	// to be remembered.
 	numNarrationClasses
 )
 
@@ -186,7 +186,7 @@ func (s *speaker) line(text string) time.Duration {
 // They are separable so a sequence can render DURING something that is already
 // sounding — the attention tone runs about two seconds and a render takes about
 // one, so a takeover that renders its first words while the tone plays starts
-// speaking the moment the tone ends instead of a beat later. That gap was
+// speaking the moment the tone ends instead of a beat later. That gap is
 // audible.
 func (s *speaker) prepare(text string) (clip, bool) {
 	if !s.live() || text == "" {
@@ -292,8 +292,8 @@ func (d *director) Run(ctx context.Context, class narrationClass, role cast.Role
 	defer cancel() // the child never outlives the job
 	job := &narrationJob{class: class, role: role, audible: audible && !d.silent(), ctx: ctx, cancel: cancel}
 	// The context's end wakes every wait this job may be parked in — the
-	// turn wait in admit, the air wait while suspended (REVIEW R5-B-02: a
-	// cancel landed while parked stayed parked until the takeover's release).
+	// turn wait in admit, the air wait while suspended (REVIEW R5-B-02: else a
+	// cancel landing while parked stays parked until the takeover's release).
 	stop := context.AfterFunc(ctx, func() {
 		d.mu.Lock()
 		d.turn.Broadcast()
@@ -341,7 +341,7 @@ func (d *director) admit(job *narrationJob) bool {
 	if job.audible {
 		// THE DUCK HAS ONE OWNER, and it is not this function (D-1). It is
 		// idempotent there, so a nested sequence asking again is a no-op rather
-		// than a second dip, and the arbiter no longer carries a flag that could
+		// than a second dip, and the arbiter carries no flag that could
 		// disagree with the deck's actual state.
 		d.mc.giveWay()
 	}
@@ -366,13 +366,10 @@ func (d *director) release(job *narrationJob) {
 		// ONLY A JOB THAT WAS CUT SHORT, and the arbiter can tell: a cancelled
 		// job's context carries the error, a completed one's does not.
 		//
-		// The first version stopped unconditionally, on the reasoning that
-		// closing a drained player is a no-op. It is not safe to rely on: a
-		// part's hold is its own length LESS the work already done, so the
+		// IT IS NOT UNCONDITIONAL, though closing a drained player is a no-op:
+		// a part's hold is its own length LESS the work already done, so the
 		// sequence can end a hair before the audio finishes draining, and an
-		// unconditional close would clip the tail of every read. Two tests
-		// caught it by recording a `stop` where a completed read had never had
-		// one.
+		// unconditional close would clip the tail of every read.
 		if radioDebugOn() {
 			radioDebugLog(fmt.Sprintf("release:onair cancelled=%v voice=%v audible=%v", job.ctx.Err() != nil, d.v != nil, job.audible))
 		}
@@ -422,14 +419,14 @@ func (d *director) settle() {
 		return
 	}
 	// A suspended job whose context ended while it waited is discarded, never
-	// resumed (R5-B-02: its held line played out while the duck was already
+	// resumed (R5-B-02: resumed, its held line would play out after the duck is
 	// lifted); the next one down gets the air. Bounded by the stack (P10-02).
 	//
 	// IT IS PROMPTNESS, NOT CORRECTNESS, AND ITS MUTANT IS EXPECTED TO SURVIVE.
 	// Disabling this loop entirely leaves the whole package green — checked —
 	// because the job's OWN goroutine cleans it up: its context ending wakes
 	// awaitAir, Run returns, and `release` does the same unsuspend and dropHeld.
-	// Since round 4 gave innermostResumable the liveness rule, a corpse left here
+	// innermostResumable carries the liveness rule, so a corpse left here
 	// is also never promoted and never holds the bed. What this loop buys is
 	// dropping the held line NOW rather than when the goroutine is scheduled.
 	//
@@ -464,9 +461,8 @@ func (d *director) settle() {
 	// A PAUSED WAITING READ HOLDS NOTHING EITHER, and `first()` is the one that
 	// knows: it already skips them, so asking it rather than counting the queue
 	// keeps this guard and the promotion rule reading the same state. Counting
-	// the queue left the broadcast dipped for as long as a listener kept a
-	// queued read paused — the exact failure the comment above forbids, in the
-	// one place that had not learned the rule.
+	// the queue would leave the broadcast dipped for as long as a listener kept a
+	// queued read paused — the exact failure the comment above forbids.
 	if d.first() == nil && d.innermostResumable() == nil {
 		d.mc.takeBack() // a no-op when nothing is ducked
 	}
@@ -495,8 +491,8 @@ func (d *director) innermostSuspended() *narrationJob {
 // OWN — so, not one a listener has paused. Callers hold d.mu.
 func (d *director) innermostResumable() *narrationJob {
 	for i := len(d.suspended) - 1; i >= 0; i-- { // bounded by the stack (P10-02)
-		// A DEAD JOB IS NOT RESUMABLE. Promoting one put a cancelled read back on
-		// the air with the bed ducked under it, while the chip said Paused — and
+		// A DEAD JOB IS NOT RESUMABLE. Promoting one puts a cancelled read back on
+		// the air with the bed ducked under it, while the chip says Paused — and
 		// a paused job above it on the stack shields it from settle's drain, so
 		// it can sit there indefinitely waiting to be promoted.
 		if j := d.suspended[i]; live(j) && !j.paused {
@@ -516,30 +512,29 @@ func (d *director) pauseRead() bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	// A READ IS PAUSED WHEREVER IT IS, and there are three places — which took
-	// three attempts to learn. On the air is the obvious one. SUSPENDED is where
-	// a takeover put it, and missing that meant [space] did nothing while an
-	// alert spoke, then settle promoted the read back when the alert ended.
-	// WAITING is where a read ASKED FOR during an alert sits, and missing that
-	// was the same failure again in a third ordering: the press ignored, the
-	// read starting on its own.
+	// A READ IS PAUSED WHEREVER IT IS, and there are three places. On the air
+	// is the obvious one. SUSPENDED is where a takeover put it: missing that,
+	// [space] does nothing while an alert speaks, then settle promotes the read
+	// back when the alert ends. WAITING is where a read ASKED FOR during an alert
+	// sits: missing that is the same failure in a third ordering — the press
+	// ignored, the read starting on its own.
 	//
 	// A suspended job is already held — the takeover's suspension called
 	// holdLine — so it is not held twice. A waiting job has never been on the
 	// air and holds nothing at all.
 	//
 	// AND NEVER A DEAD ONE. A read Cancel has killed is still on the stack until
-	// its goroutine unwinds, and claiming that corpse reported success while the
-	// live read carried on: the chip said Paused and nothing was.
+	// its goroutine unwinds, and claiming that corpse would report success while
+	// the live read carries on: the chip would say Paused and nothing would be.
 	for _, j := range d.reads() { // bounded by reads (P10-02)
 		if j.paused {
 			continue // an already-held read is not paused twice
 		}
 		j.paused = true
 		// LEAVING THE AIR IS THE ONLY DIFFERENCE between the three places, and
-		// it is here rather than in a branch of its own: a second branch meant a
-		// second copy of "which reads count", and the copy in reads() went dead
-		// while the live rule sat here — a decorative enumeration.
+		// it is here rather than in a branch of its own: a second branch would be a
+		// second copy of "which reads count", and one copy would go dead while the
+		// other carried the live rule — a decorative enumeration.
 		if j == d.onAir {
 			j.suspended = true
 			d.suspended = append(d.suspended, j)
@@ -556,15 +551,14 @@ func (d *director) pauseRead() bool {
 
 // live reports whether a job is still a candidate for anything.
 //
-// THE ONE CARRIER OF THAT QUESTION (D-1), and it took four review rounds to get
-// here. A job whose context has ended is still in its list until its goroutine
-// unwinds, and every asker was wrong about it in a different way: the pause
-// claimed the corpse and reported success, the report said a corpse was held,
-// the promotion put one back ON THE AIR with the bed ducked under it, and the
-// take-back guard kept the bed down for a read that was already gone.
+// THE ONE CARRIER OF THAT QUESTION (D-1). A job whose context has ended is
+// still in its list until its goroutine unwinds, and each asker that misjudges
+// it fails in a different way: the pause claims the corpse and reports success,
+// the report says a corpse is held, the promotion puts one back ON THE AIR with
+// the bed ducked under it, and the take-back guard keeps the bed down for a
+// read that is already gone.
 //
-// Five functions ask it. When it was written out five times, five of them
-// disagreed.
+// Five functions ask it, so it is written once.
 func live(j *narrationJob) bool { return j != nil && j.ctx.Err() == nil }
 
 // reads is EVERY LIVE READ THE DIRECTOR IS HOLDING, innermost first: on the air,
@@ -579,16 +573,14 @@ func live(j *narrationJob) bool { return j != nil && j.ctx.Err() == nil }
 // through heldRead. The bed's take-back guard does NOT ask it: that asks first()
 // and innermostResumable, which carry the liveness rule directly.
 //
-// THE COUNT IS STATED BECAUSE MISCOUNTING IT IS THE DEFECT. Four review rounds
-// went into discovering that a rule was written in more places than I had
-// counted — three places found one at a time, then a fifth asker of liveness,
-// then a sixth in settle's drain. A comment here claiming the wrong number is
-// how the seventh gets written.
+// THE COUNT IS STATED BECAUSE MISCOUNTING IT IS THE DEFECT. A rule written in
+// more places than are counted drifts, and a comment here claiming the wrong
+// number is how another copy gets written.
 //
 // DEAD READS ARE NOT HERE. A read Cancel has killed stays in its list until the
-// goroutine unwinds, and every asker was wrong about it in a different way — the
-// pause claimed the corpse and reported success, the report said a corpse was
-// held, and the window showed Paused over a read that was playing.
+// goroutine unwinds, and counting it misleads every asker differently — the
+// pause would claim the corpse and report success, the report would say a corpse
+// is held, and the window would show Paused over a read that is playing.
 func (d *director) reads() []*narrationJob {
 	var out []*narrationJob
 	if j := d.onAir; live(j) && j.class == narrateRead {
@@ -693,14 +685,14 @@ func (d *director) releaseBed() {
 
 // narrateDebug records who has the air and who was displaced (DR-23).
 //
-// THE ARBITER IS THE ONE THING THE TIMELINE COULD NOT SEE. A takeover reading
-// over a live `[w]` report was reported at UAT 2026-09-05 and could not be
-// reproduced: the ranking is right, and the read is paused before the tone
-// sounds (TestATakeoversToneNeverSoundsOverALiveRead). What no test reaches is
-// the audio layer underneath — whether the pause actually stopped the sound. A
-// line here says which job held the air and which was displaced, so the next
-// occurrence says whether the arbiter decided wrongly or the decision did not
-// take effect. Those are different defects with the same symptom.
+// THE ARBITER IS THE ONE THING THE TIMELINE CANNOT SEE. The ranking is tested,
+// and the read is paused before the tone sounds
+// (TestATakeoversToneNeverSoundsOverALiveRead). What no test reaches is the
+// audio layer underneath — whether the pause actually stopped the sound. A line
+// here says which job held the air and which was displaced, so a takeover heard
+// over a live `[w]` report says whether the arbiter decided wrongly or the
+// decision did not take effect. Those are different defects with the same
+// symptom.
 func narrateDebug(what string, job *narrationJob) {
 	if !radioDebugOn() || job == nil {
 		return

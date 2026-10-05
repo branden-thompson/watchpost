@@ -6,12 +6,11 @@ import (
 	"time"
 )
 
-// holdRest's `rest <= 0` BRANCH IS THE AIR CHECK, and nothing pinned it.
+// holdRest's `rest <= 0` BRANCH IS THE AIR CHECK, and this test pins it.
 //
-// Found the hard way (2026-09-06): mH0 disables that branch, the mutation was
-// committed by accident, and the whole suite — including `-race` — went green
-// over it. The mutant's own CAUGHT verdict had been a false positive from a
-// flaky test failing under load during the run.
+// mH0 disables that branch, and no other test catches it — the whole suite,
+// including `-race`, stays green over it, and a flaky test failing under load
+// during a mutant run can make its CAUGHT verdict a false positive.
 //
 // What the branch is for: `hold(d)` loops `for i < steps && d > 0`, so a
 // non-positive d never enters the loop and never reaches awaitAir — it returns

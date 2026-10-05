@@ -106,16 +106,15 @@ func TestNoSizeRendersPastTheTerminal(t *testing.T) {
 	t.Logf("swept %d widths x 5 heights; blind to a terminal narrower than 20 or wider than 200", len(widths))
 }
 
-// FR-7 / RT-23: the console must survive --ascii. This was flagged at the
-// DISCOVER red team as "no --ascii rendering exists, so the design is not
-// shown to survive that mode", carried through PLAN, and is closed here.
+// FR-7 / RT-23: the console must survive --ascii, and this shows the design
+// surviving that mode.
 //
 // THE SUBJECT LIST IS DERIVED (INST-1): it asks the glyph set what the
 // non-ASCII forms ARE, rather than naming a few by hand. A hand-written list
 // is stale the day someone adds a glyph.
 func TestTheConsoleCarriesNoNonASCIIUnderASCII(t *testing.T) {
-	// SWEEP EVERY POWER STATE. The first version used ONE fixture, which left
-	// the station STOPPED — and the ON AIR banner's separator slipped past it.
+	// SWEEP EVERY POWER STATE. One fixture leaves the station STOPPED, and the
+	// ON AIR banner's separator slips past it.
 	//
 	// DERIVED, not listed (INST-1): Power.String() returns "" for a value
 	// outside the declared set, so the walk asks the type where it ends
@@ -150,10 +149,9 @@ func assertASCIIOnly(t *testing.T, got string, p lineup.Power) {
 
 // D-50: THE FLOOR AND THE CLASSIFIER ARE ONE NUMBER, NOT TWO.
 //
-// The console's column floor was 80 and pinned by nothing, so it could drift
-// from `term.BreakpointFor` without a test noticing — two carriers of one rule,
-// which is the shape this release keeps having to un-split. The ruled boundary
-// is 100: "< 100 col : Not supported — we adopt a 'btop' style."
+// An unpinned column floor can drift from `term.BreakpointFor` without a test
+// noticing — two carriers of one rule. The ruled boundary is 100: "< 100 col :
+// Not supported — we adopt a 'btop' style."
 func TestTheColumnFloorIsTheUnsupportedBoundary(t *testing.T) {
 	cols, _ := bcSized(150, 74).minSize()
 	if term.BreakpointFor(cols) == term.BreakUnsupported {

@@ -19,9 +19,11 @@ graph TB
     FIRE[HMS · WFIGS · FIRMS]
     ICE[NWR Icecast relays]
     TTS[OS TTS engines<br/>say · System.Speech · espeak-ng]
+    OFM[OpenFreeMap tiles<br/>0.18.0: the closed list's basemap]
   end
+  LIB[go-tuiMaps<br/>0.18.0: the map library<br/>fetches and caches its own tiles]
   subgraph domains [domains/]
-    W[weather] ; A[alerts] ; F[fire] ; L[locations] ; R[radio<br/>stream + synth]
+    W[weather] ; A[alerts] ; F[fire] ; L[locations] ; R[radio<br/>stream + synth] ; Z[nws/zones<br/>0.18.0: alert zone outlines]
   end
   subgraph platform [platform/]
     SCHED[sched<br/>tiered scheduler, 5 tiers + cache]
@@ -40,6 +42,10 @@ graph TB
   R -->|PCM| AUDIO
   TTY --> REND & TERM ; REP --> TERM
   APP[app/ composition root] -.wires.-> domains & modes & platform
+  APP -->|0.18.0: map builder + alert feed| TTY
+  TTY -->|0.18.0: draws in Update| LIB
+  LIB -->|tiles, confined to the source| OFM
+  NWS -->|zone geometry, on the first map| Z
 ```
 
 **The one enforced arrow:** `modes/*` imports `platform/snapshot` and never any `domains/*` package (import-direction lint, Makefile `verify`). Everything M5 needs is structural.

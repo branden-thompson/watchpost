@@ -2,19 +2,17 @@
 
 // Package mutants guards the mutation corpus itself.
 //
-// WHY THIS IS GO AND NOT SHELL (D-9). The guards this replaces were bash, and
-// bash fails silently by default: exit codes vanish through pipes, counters die
-// in subshells, an unmatched glob passes as an empty list, and `--exclude
-// '.git/'` matches a directory but not the .git FILE a git worktree uses — which
-// made a guard run `git commit` against the developer's own repository while
-// reporting OK. Seventeen of one session's thirty-four defects were in those
-// scripts, against ten in the product.
+// WHY THIS IS GO AND NOT SHELL (D-9). Bash fails silently by default: exit
+// codes vanish through pipes, counters die in subshells, an unmatched glob
+// passes as an empty list, and `--exclude '.git/'` matches a directory but not
+// the .git FILE a git worktree uses — so a shell guard can run `git commit`
+// against the developer's own repository while reporting OK.
 //
 // As a Go test a t.Fatalf cannot be lost the way an exit code can, the copy is a
 // walk rather than rsync semantics, `.git` is skipped by NAME so a worktree's
 // .git FILE cannot come along, and the guard is testable by ordinary means —
-// which the shell controls never were, being a second implementation of the
-// thing they checked.
+// which a shell control is not, being a second implementation of the thing it
+// checks.
 //
 // IT IS BEHIND A BUILD TAG, and deliberately not part of `go test ./...`. It
 // copies and compiles the tree once per mutant, which is ~143s; inside the
@@ -39,9 +37,9 @@ import (
 
 // corpusFloor is the smallest corpus this project is ever expected to have.
 //
-// AN EMPTY OR MIS-GLOBBED CORPUS IS A FAILURE, NOT A PASS. The shell version
-// looped zero times, left every counter at zero and exited clean — a green gate
-// over nothing at all, while printing its own controls' success as reassurance.
+// AN EMPTY OR MIS-GLOBBED CORPUS IS A FAILURE, NOT A PASS. A loop over nothing
+// runs zero times, leaves every counter at zero and exits clean — a green gate
+// over nothing at all.
 const corpusFloor = 50
 
 // targetRE finds the files a mutant patches: every pathlib.Path("...") literal.
@@ -193,12 +191,12 @@ func packagesOf(mutant string) []string {
 // A mutant that no longer matches its source is a rule NOBODY IS MEASURING: a
 // sweep reports fewer verdicts than it launched and the tally still looks clean.
 // A mutant that removes a USE rather than a rule leaves the tree uncompilable,
-// and its verdict is no evidence either way. Six of each in one release, every
-// one of them found by paying for a sweep first.
+// and its verdict is no evidence either way. This test finds both before a
+// sweep is paid for.
 // mutantLanes is how many trees may compile at once. Four rather than one:
-// serial took 429 s when the corpus was 159 mutants (it is larger now, so the
-// envelope is understated); four keeps the run near three minutes while leaving
-// the machine enough to be used.
+// serial compiles every mutant's tree end to end and takes several times as
+// long; four keeps the run near three minutes while leaving the machine enough
+// to be used.
 const mutantLanes = 4
 
 func TestEveryMutantAppliesAndCompiles(t *testing.T) {
@@ -212,16 +210,16 @@ func TestEveryMutantAppliesAndCompiles(t *testing.T) {
 	//
 	// Each subtest compiles the whole tree. At one per CPU that is a dozen full
 	// builds at once, and on a loaded machine — the app under UAT, an editor —
-	// they start failing: 2026-09-04 produced a run where nine mutants were
-	// reported UNCOMPILABLE and one of the compile errors named `net/netip`.
-	// Nothing in this repository can break the standard library, so those
-	// verdicts were about the machine, not the code.
+	// they start failing: mutants are reported UNCOMPILABLE with compile errors
+	// that name the standard library (`net/netip`). Nothing in this repository
+	// can break the standard library, so such verdicts are about the machine,
+	// not the code.
 	//
 	// That is the guard's own failure mode arriving in its own output: it exists
-	// to say when a verdict is no evidence, and it was producing verdicts that
-	// were no evidence. A gate whose reliability falls as the corpus grows gets
-	// least trustworthy exactly when it is worth most, so the ceiling is here in
-	// the test rather than in whatever command happens to invoke it.
+	// to say when a verdict is no evidence. A gate whose reliability falls as the
+	// corpus grows gets least trustworthy exactly when it is worth most, so the
+	// ceiling is here in the test rather than in whatever command happens to
+	// invoke it.
 	lane := make(chan struct{}, mutantLanes)
 	for _, mutant := range corpus(t, root) {
 		name := filepath.Base(mutant)
@@ -245,20 +243,19 @@ func TestEveryMutantAppliesAndCompiles(t *testing.T) {
 	}
 }
 
-// D-4 IS NOT MECHANISABLE, AND THIS IS THE RECORD OF FINDING THAT OUT.
+// D-4 IS NOT MECHANISABLE.
 //
 // The rule reads: a mutant must delete a RULE, never weaken an ASSERTION, since
 // one that weakens a check measures the check and can never fail. It is true,
-// and three static predicates were written for it, each disproved by running it
-// against the corpus in under a second:
+// and every static predicate for it misclassifies mutants in the corpus:
 //
-//	"mentions invariant.Check"      flagged mD9 and m67, which DELETE rules —
+//	"mentions invariant.Check"      flags mD9 and m67, which DELETE rules —
 //	                                in this codebase an invariant IS how a rule
 //	                                is written
-//	"both sides mention one"        flagged m63 and mD5, whose real edits are
+//	"both sides mention one"        flags m63 and mD5, whose real edits are
 //	                                elsewhere and which merely quote a check as
 //	                                anchor context
-//	"the edit lands inside a check" flagged m67, which drops half of
+//	"the edit lands inside a check" flags m67, which drops half of
 //	                                `have.Slot == c.Slot && have.Origin == c.Origin`
 //	                                — a genuine rule deletion that is CAUGHT
 //
@@ -278,9 +275,9 @@ func TestEveryMutantAppliesAndCompiles(t *testing.T) {
 // their contents.
 //
 // SORTED AND CONTENT-ONLY, DELIBERATELY. A fingerprint built from an unsorted
-// walk piped through xargs gave a different answer for the same unchanged tree
-// on three consecutive runs, and told me a script had modified the working tree
-// when it had not. An instrument that cannot repeat itself is not measuring.
+// walk gives different answers for the same unchanged tree, and reports a
+// modified working tree when nothing changed. An instrument that cannot repeat
+// itself is not measuring.
 func digest(t *testing.T, dir string) string {
 	t.Helper()
 	h := sha256.New()

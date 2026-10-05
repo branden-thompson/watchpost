@@ -1,6 +1,7 @@
 package render
 
-// sgr.go — colour: raw SGR wrapping, tints, key caps, alert and radio tones, the window and modal palette. Split from render.go by the quality pass (Q2, pure move).
+// sgr.go — colour: raw SGR wrapping, tints, key caps, alert and radio tones, the
+// window and modal palette.
 
 import (
 	"fmt"
@@ -43,15 +44,14 @@ func ColorOn() bool { return colorOn() }
 //
 // WATCHPOST names the app; the edition names WHICH EXPERIENCE this build is.
 // Observer is the dashboard — watching, listening, reading. Broadcaster is the
-// station-running dashboard a later version brings, and it will pass its own
-// word through here (HUM LEAD, 2026-08-30). Delineating it now means the second
-// one arrives as a word, not as a rename.
+// station-running dashboard, and passes its own word through here (HUM LEAD,
+// 2026-08-30), so an edition arrives as a word, not as a rename.
 const (
 	WordmarkName    = "WATCHPOST"
 	EditionObserver = "Observer"
 
-	// EditionBroadcaster is the station-running dashboard, arriving as the word
-	// this block was written to hold (0.16.0). It is the ONE place either
+	// EditionBroadcaster is the station-running dashboard, the word this block
+	// holds for it (0.16.0). It is the ONE place either
 	// edition is spelled, so the masthead and the About window cannot disagree
 	// about which experience the build is.
 	EditionBroadcaster = "Broadcaster"
@@ -131,11 +131,9 @@ func TintDefault(s string) string { return TintKeeping(s, "38;5;"+Tok(TextBase))
 // inside it, by making every inner reset fall back to these parameters rather
 // than to the terminal's default.
 //
-// EXTRACTED AT THE SECOND CALLER (D-86). `TintDefault` was the first and the
-// Broadcaster's card grounds are the second: a card's row carries chips with
-// SGR of their own, and a plain wrap would leave the ground behind every chip
-// as a hole in the card. The rule is one line and it was about to be written
-// twice.
+// ONE OWNER FOR TWO CALLERS (D-86): `TintDefault` and the Broadcaster's card
+// grounds. A card's row carries chips with SGR of their own, and a plain wrap
+// would leave the ground behind every chip as a hole in the card.
 func TintKeeping(s, params string) string {
 	if !colorOn() || params == "" {
 		return s
@@ -151,6 +149,25 @@ func TintKeeping(s, params string) string {
 // the same color switch. Theme tokens with truecolor values ride this.
 func TintRaw(text, params string) string { return sgrRaw(text, params) }
 
+// Swatch paints text on a colour the data names - a radar class's, from the
+// map library's legend (0.18.0 D-89) - not a theme's: the colour IS the
+// datum. Plain text when colour is off.
+func Swatch(text string, r, g, b uint8) string {
+	return sgrRaw(text, "48;2;"+strconv.Itoa(int(r))+";"+strconv.Itoa(int(g))+";"+strconv.Itoa(int(b)))
+}
+
+// SwatchText is Swatch with words that read on it: black or white, whichever
+// stands out more on the colour - never under 4.5:1 (UAT-2 U2-18: the
+// temperature key's pale middle bands under white words).
+func SwatchText(text string, r, g, b uint8) string {
+	bg := luminance(int(r), int(g), int(b))
+	fg := "38;2;255;255;255"
+	if contrastRatio(luminance(0, 0, 0), bg) > contrastRatio(luminance(255, 255, 255), bg) {
+		fg = "38;2;0;0;0"
+	}
+	return sgrRaw(text, fg+";48;2;"+strconv.Itoa(int(r))+";"+strconv.Itoa(int(g))+";"+strconv.Itoa(int(b)))
+}
+
 // Tint wraps text in a fg code (bare 256 or basic SGR; "1;"-prefixed for
 // bold) through the go-studs gate - plain text when color is off.
 func Tint(text, code string) string {
@@ -164,8 +181,8 @@ func Tint(text, code string) string {
 // ("250") becomes "38;5;250", a bare basic code (30–37, 90–97) stays, and a
 // full "38;2;…" / "38;5;…" value is returned as it is. The one place a
 // foreground token becomes an escape outside Tint (the frame's base tone:
-// a truecolor TextBase once produced "38;5;38;2;40;40;40" — index 38, faint,
-// black BACKGROUND — the Watchpost Light screenshot, 2026-08-29).
+// a truecolor TextBase prefixed blindly would produce "38;5;38;2;40;40;40" —
+// index 38, faint, black BACKGROUND).
 func FgSGR(code string) string {
 	if code == "" || strings.ContainsAny(code, ";#") {
 		return code
@@ -306,7 +323,7 @@ func CategoryTone(hue Token, dark bool) (fg, bg string) {
 }
 
 // categoryBlend is how much of the category tint shows over the modal
-// substrate. 1.0 since the HUM LEAD UAT pass (2026-08-28): the EventCat*
+// substrate. 1.0 (HUM LEAD UAT pass, 2026-08-28): the EventCat*
 // values ARE the on-screen backgrounds (#633500 orange, #550909 red were
 // chosen looking at the window), on either substrate; the mixer stays for a
 // future blend.

@@ -2,10 +2,8 @@ package tty
 
 // router_lookup_test.go — the search window's ANSWER has to reach the window.
 //
-// HUM LEAD, UAT 2026-09-14: "now location search doesn't work at all - no
-// suggestion or error for invalid location; pressing <enter> does nothing …
-// tried multiple valid/invalid locations multiple times - same (lack) of
-// behavior."
+// HUM LEAD, UAT 2026-09-14: location search answers every query, valid or
+// invalid, with a suggestion or an error, and <enter> acts on it.
 
 import (
 	"errors"
@@ -124,7 +122,7 @@ func TestAValidLocationSearchedFromTheConsoleLands(t *testing.T) {
 // THE LIST IS DERIVED, NOT KEPT BY HAND. `observerScoped` names four reply
 // types, and a hand-kept list of types is the F-30 failure: the fifth one is
 // added to the Dashboard, nobody remembers this switch, and that window goes
-// quiet from the console exactly the way the search window did.
+// quiet from the console.
 //
 // SO THE GUARD READS THE PACKAGE. Every unexported `*Msg` the package declares
 // is either an ANSWER a window is owed — in which case the Router must carry it
@@ -180,12 +178,24 @@ func TestEveryWindowReplyIsRoutedBackToTheWindow(t *testing.T) {
 func typeOfMsg(t *testing.T, name string) reflect.Type {
 	t.Helper()
 	known := map[string]any{
-		"resolvedMsg":      resolvedMsg{},
-		"committedMsg":     committedMsg{},
-		"castSavedMsg":     castSavedMsg{},
-		"uiSavedMsg":       uiSavedMsg{},
-		"locatePauseMsg":   locatePauseMsg{},
-		"locateVerdictMsg": locateVerdictMsg{},
+		"resolvedMsg":       resolvedMsg{},
+		"committedMsg":      committedMsg{},
+		"castSavedMsg":      castSavedMsg{},
+		"uiSavedMsg":        uiSavedMsg{},
+		"locatePauseMsg":    locatePauseMsg{},
+		"locateVerdictMsg":  locateVerdictMsg{},
+		"mapWorkedMsg":      mapWorkedMsg{},
+		"mapTickMsg":        mapTickMsg{},        // 0.18.0 W2.2: the map's clock is owed to its window, not a cadence
+		"mapViewSettledMsg": mapViewSettledMsg{}, // 0.18.0 D-66: the view's settling asks its window's alerts
+		"mapFeedMsg":        mapFeedMsg{},
+		"mapRadarMsg":       mapRadarMsg{},
+		"mapRadarAgainMsg":  mapRadarAgainMsg{}, // D-204: the hours ahead owed are asked again by the map window
+		"mapTempMsg":        mapTempMsg{},       // W10
+		"forecastTickMsg":   forecastTickMsg{},  // D-94: Forecast mode's playback is owed to the map window
+		"mapClearedMsg":     mapClearedMsg{},
+		"historyClearedMsg": historyClearedMsg{},
+		"mapReleaseMsg":     mapReleaseMsg{}, // D-221: the map's release is owed to its window, whichever surface is shown
+		"mapPanicMsg":       mapPanicMsg{},   // QA-11: a map command stopped a panic, and its window is marked failed
 	}
 	v, ok := known[name]
 	if !ok {

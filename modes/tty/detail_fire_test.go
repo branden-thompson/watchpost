@@ -41,8 +41,8 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	joined := stripANSITest(raw)
 	for _, want := range []string{
 		// EACH LIST NAMES ITS OWN RING (UAT 2026-09-07). One heading over two
-		// feeds is what made "none within the fire ring" read as a claim about
-		// the named fires printed under it.
+		// feeds makes "none within the fire ring" read as a claim about the
+		// named fires printed under it.
 		"Hotspots  - Radius: 16 mi",
 		"Incidents - Radius: 31 mi",
 		// A hotspot is a satellite pixel: where, how hard, which bird, when,
@@ -89,8 +89,8 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	quiet := m3.(Dashboard)
 	quiet.modal = modalDetails
 	// THE QUIET ANSWER IS SAID TWICE, ONCE PER RING (UAT 2026-09-07). A single
-	// "none" over two lists is what let a listener read it as covering the
-	// named fires printed underneath.
+	// "none" over two lists lets a listener read it as covering the named
+	// fires printed underneath.
 	q := stripANSITest(strings.Join(quiet.detailLines(), "\n"))
 	if n := strings.Count(q, "none within this radius"); n != 2 {
 		t.Fatalf("each ring says its own none; got %d:\n%s", n, q)
@@ -102,12 +102,12 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 
 // THE DETAIL SHOWS EVERY NAMED FIRE THE ROW COUNTS (UAT 2026-09-07).
 //
-// The row wears n◆ from len(Incidents) and this list broke at three with no
-// word about the rest, so a location with five named fires read "5◆" on the
-// dashboard and listed three in the one place the app sends people for more
-// detail. The spoken report, meanwhile, names ALL of them — so the same
-// location had three different answers to "which fires are near me", and the
-// most complete one was the one you cannot re-read.
+// The row wears n◆ from len(Incidents) and the spoken report names ALL of
+// them, so a list that broke at three with no word about the rest would give a
+// location with five named fires "5◆" on the dashboard and three in the one
+// place the app sends people for more detail — three different answers to
+// "which fires are near me", and the most complete one the one that cannot be
+// re-read.
 //
 // HUM LEAD, 2026-09-07: "we direct user to the location detail for 'more
 // details' so location detail modal needs to show all 5."
@@ -128,21 +128,17 @@ func TestTheFireDetailListsEveryNamedIncident(t *testing.T) {
 
 	got := stripANSITest(strings.Join(fireRows(render.Opts{Width: 100}, loc, time.Now(), 50, 25, 50, 65), "\n"))
 	for _, n := range names {
-		if !strings.Contains(got, ellipsizeName(n)) {
+		if !strings.Contains(got, n) {
 			t.Errorf("%q is one of the %d fires the row counts and the detail does not list it:\n%s",
 				n, len(names), got)
 		}
 	}
 	// AND THE COUNT ON THE ROW IS THE COUNT IN THE LIST, which is the thing the
-	// two surfaces disagreed about.
+	// two surfaces must agree about.
 	if got, want := fireCount(loc.Fire), len(names); got != want {
 		t.Errorf("the row wears %d◆ for %d incidents", got, want)
 	}
 }
-
-// ellipsizeName is how the row draws a name, so the assertion compares what is
-// actually on screen rather than the name the fixture used.
-func ellipsizeName(n string) string { return ellipsize(n, 11, false) }
 
 // A LONG NAME COSTS THE AGE COLUMN, NOT THE CONTAINMENT (HUM LEAD, 2026-09-07).
 //

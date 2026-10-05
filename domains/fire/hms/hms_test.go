@@ -212,3 +212,39 @@ func TestParsedIsMemoizedByContent(t *testing.T) {
 		t.Fatal("different bytes parse afresh")
 	}
 }
+
+// A FAILED READ STANDS ON THE LAST GOOD ARCHIVE (F6): within maxLastGood of the
+// last good parse, a read that fails answers that archive's points; past it
+// the failure is said - fire too stale to present as current is not drawn.
+func TestAFailedReadStandsOnTheLastGoodArchive(t *testing.T) {
+	down := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if down {
+			http.Error(w, "down", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.google-earth.kmz")
+		_, _ = w.Write(kmz(t))
+	}))
+	defer srv.Close()
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
+	u := srv.URL + "/fireAllSats.kmz"
+	p := New(c, u, fire.DefaultRules())
+	clock := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
+	p.now = func() time.Time { return clock }
+	good, err := p.Points(context.Background())
+	if err != nil || len(good) == 0 {
+		t.Fatalf("the first read: %d points, %v", len(good), err)
+	}
+	down = true
+	c.Forget(u)
+	clock = clock.Add(maxLastGood / 2)
+	if pts, err := p.Points(context.Background()); err != nil || len(pts) != len(good) {
+		t.Errorf("a failed read within maxLastGood: %d points, %v; want the last good archive", len(pts), err)
+	}
+	c.Forget(u)
+	clock = clock.Add(maxLastGood)
+	if _, err := p.Points(context.Background()); err == nil {
+		t.Error("a failed read past maxLastGood answered without an error")
+	}
+}

@@ -26,9 +26,11 @@ WHAT IS NEVER CARRIED, and why each one matters on a PUBLIC repository:
     under `skill_path` and `next_step`. This is the most likely leak: a future
     agent drafting a reason copies the finding wholesale and the skill path
     rides along with it;
-  - anything under LI_PROJECTS / DESIGN_FOUNDATIONS, or the A2DH CLI's install
-    location — naming where the tool lives tells a reader nothing and exposes an
-    internal tree;
+  - any internal project tree, or the A2DH CLI's install location — naming
+    where the tool lives tells a reader nothing and exposes an internal tree.
+    The class is defined once, in Go (`tools/internaltrees`), by shape and by
+    the names read from the disk at run time, so a workspace rename does not
+    leave this filter describing the old layout;
   - usernames and email addresses.
 
 HOW TO ADD A ROW (for the next session):
@@ -43,26 +45,54 @@ HOW TO ADD A ROW (for the next session):
 """
 import os
 import re
+import subprocess
 import sys
 
 LEDGER = ".a2dh-p10-exemptions.yml"
 OUT = "06_docs/p10-ledger.md"
 
+
+def internal_trees():
+    """The internal-tree expression, asked of the one Go command that defines it.
+
+    A missing or failing command stops the generator: writing a public file with
+    one of its refusals silently absent is the failure this file exists to stop.
+    """
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    try:
+        out = subprocess.run(["go", "run", "./tools/internaltrees"], cwd=root,
+                             capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError) as err:
+        sys.exit(f"p10-ledger-mirror: cannot read the internal-tree rule from tools/internaltrees: {err}")
+    if not out:
+        sys.exit("p10-ledger-mirror: tools/internaltrees produced no pattern")
+    return out
+
+
 # The same patterns lint-ledger.sh enforces. Kept here so a bad row is refused
 # at WRITE time, not only at lint time — the earlier a leak is stopped the fewer
 # places it has been copied to.
-FORBIDDEN = [
-    (r"/Users/|/home/|/Volumes/", "an absolute machine path"),
-    (r"(^|[^A-Za-z0-9_])_a2dh/|\.a2dh[-.\w]*", "a path to the local harness"),
-    (r"\b\d\d_skills/", "an A2DH skill path (these ride in on the checker's own JSON)"),
-    (r"LI_PROJECTS|DESIGN_FOUNDATIONS", "an internal project tree"),
-    (r"\bAGENTS\.md\b|\bCLAUDE\.md\b|copilot-instructions", "a git-ignored harness file"),
-    (r"[\w.+-]+@[\w-]+\.[\w.]+", "an email address"),
-]
+def forbidden():
+    """The classes a public mirror may not carry, with the reason for each.
+
+    IT IS A FUNCTION, NOT A LITERAL. One row asks the Go command for the
+    internal-tree rule, and a module-level call makes merely importing this file
+    run a subprocess and, on failure, exit the interpreter - which is a hazard
+    for anything that reads this file rather than runs it, and untestable
+    besides.
+    """
+    return [
+        (r"/Users/|/home/|/Volumes/", "an absolute machine path"),
+        (r"(^|[^A-Za-z0-9_])_a2dh/|\.a2dh[-.\w]*", "a path to the local harness"),
+        (r"\b\d\d_skills/", "an A2DH skill path (these ride in on the checker's own JSON)"),
+        (internal_trees(), "an internal project tree"),
+        (r"\bAGENTS\.md\b|\bCLAUDE\.md\b|copilot-instructions", "a git-ignored harness file"),
+        (r"[\w.+-]+@[\w-]+\.[\w.]+", "an email address"),
+    ]
 
 
-def offending(text):
-    for pat, why in FORBIDDEN:
+def offending(text, classes):
+    for pat, why in classes:
         m = re.search(pat, text)
         if m:
             return f"{why} ({m.group(0)!r})"
@@ -78,10 +108,14 @@ def main():
         sys.exit(f"p10-ledger-mirror: {LEDGER} not found — run from the repository root")
     rows = yaml.safe_load(open(LEDGER))["exemptions"]
 
+    # Asked once: the internal-tree row shells out to the Go command that owns
+    # the rule, and a row-by-row call would run it hundreds of times.
+    classes = forbidden()
+
     bad = []
     for r in rows:
         blob = " ".join(str(v) for v in r.values())
-        why = offending(blob)
+        why = offending(blob, classes)
         if why:
             bad.append((r.get("file", "?"), r.get("rule_id", "?"), why))
         # A `file:` that is not in this repository is either a typo or a row

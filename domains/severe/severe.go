@@ -117,14 +117,14 @@ func Classify(class globalfeed.Class, product string) (Tab, bool) {
 	}
 	// The civil-emergency family is matched BY NAME, before the keyword arms.
 	// None of these products names a warning, watch or advisory, so without
-	// this they fall through to "not shown" — which is where the Weather
-	// Service's highest-urgency products were sitting.
+	// this they fall through to "not shown" — no place for the Weather
+	// Service's highest-urgency products.
 	//
-	// THE TABLE MOVED TO globalfeed AND IS NO LONGER OURS (C-2, D-1). The
-	// producer asks the same question when it lanes an arrival for the marquee
-	// and the read, and this package is the one that imports globalfeed rather
-	// than the reverse — so a copy here was a copy the marquee could not see,
-	// and it laned an evacuation order as an ordinary warning.
+	// THE TABLE IS globalfeed's (C-2, D-1). The producer asks the same question
+	// when it lanes an arrival for the marquee and the read, and this package is
+	// the one that imports globalfeed rather than the reverse — so a copy here
+	// would be a copy the marquee cannot see, and the marquee would lane an
+	// evacuation order as an ordinary warning.
 	if tab, ok := globalfeed.CivilEmergencyCategory(product); ok {
 		return tab, true
 	}

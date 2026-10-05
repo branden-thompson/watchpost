@@ -3,9 +3,8 @@ package tty
 // poolnote_wrap_test.go — the caveat must keep its colour ALL THE WAY TO THE
 // END, in every window that draws it.
 //
-// HUM LEAD, UAT 2026-09-14 (second report, with a screenshot): "'Broadcast
-// Radius' bug is back". Wrapping the text and tinting each line is only half the
-// rule — it lets the tint survive A wrap. The other half is WHOSE width it was
+// HUM LEAD, UAT 2026-09-14. Wrapping the text and tinting each line is only half
+// the rule — it lets the tint survive A wrap. The other half is WHOSE width it is
 // wrapped to: lines wrapped to the REQUEST window's width (119 cells at 133 cols)
 // and handed to a window 56 cells wide are wrapped AGAIN, and the second wrap is
 // the frame's, after the tint, so the tail comes out plain.
@@ -43,8 +42,7 @@ func everyCaveatLineIsStyled(t *testing.T, frame, what string) {
 		seen++
 		// THE ITALIC, NOT "any escape code". The PANEL tints its own background
 		// on every line it draws, so `contains "\x1b["` is true of every line in
-		// the window and measures nothing — which is how the first version of
-		// this test passed against the build in the HUM LEAD's screenshot.
+		// the window and measures nothing — it passes against a plain tail.
 		// Italic is the caveat's own, and the frame never adds it.
 		if !strings.Contains(line, "\x1b[3m") {
 			t.Errorf("%s: this line of the caveat lost the caveat's own styling — the tint died on "+
@@ -75,7 +73,7 @@ func TestTheConsoleLookupsCaveatKeepsItsColourAcrossTheWrap(t *testing.T) {
 
 // AND THE REQUEST WINDOW, which is where the rule was ruled. Both windows draw
 // the same sentence through the same helper, so both are measured here — a fix
-// that repaired one and left the other is exactly what happened the first time.
+// that repairs one and leaves the other is what this catches.
 func TestTheRequestWindowsCaveatKeepsItsColourAcrossTheWrap(t *testing.T) {
 	d := goldenDash(t, false)
 	d.request = requestOpen()

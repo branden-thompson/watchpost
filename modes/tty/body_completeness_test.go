@@ -14,10 +14,10 @@ package tty
 // That asymmetry is the ruling on OQ-9 (HUM LEAD, 2026-09-07) one layer up from
 // the data caches it was asked about.
 //
-// WHY A GUARD AND NOT THE TABLE. bodyKey's own comment already carries the
-// evidence: the enumerated table in memo_test.go said it had "one row per
-// field" and had 15 rows for 22 fields. A hand-kept register that tells the
-// next author it is complete is worse than no register.
+// WHY A GUARD AND NOT THE TABLE. An enumerated table that claims "one row per
+// field" drifts from the fields it names (bodyKey's own comment carries the
+// evidence), and a hand-kept register that tells the next author it is
+// complete is worse than no register.
 //
 // THE LAYOUT IS RE-DERIVED, NEVER HAND-BUILT. frameLayout has no independent
 // setter — d.layout() computes it — so perturbing one directly manufactures
@@ -113,8 +113,8 @@ func bodyFrame(d Dashboard, fl frameLayout) string {
 // tables, and the six are width, height, units, selected, recentOff and
 // radioViz — so most of what bodyKey carries is never varied by the walk at
 // all. Dropping any of those inputs from the key would leave the guard green:
-// a hole shaped exactly like coverage, which is the defect this release exists
-// to close, sitting inside the instrument written to close it.
+// a hole shaped exactly like coverage, inside the instrument meant to find
+// holes.
 //
 // THE REFLECTION WALK CANNOT DO BETTER ON ITS OWN, and the reason is worth
 // writing down: it BUMPS a value, and several of these inputs only matter when
@@ -172,8 +172,8 @@ var bodyKeyUnexercised = map[string]string{
 	// moving the bold rule from 50 MW to 1 MW re-draws nothing.
 	"fireBoldMW": "the bench fixture has no fire hotspots for the threshold to reclassify",
 	// THE THEME HAS NO Dashboard PREIMAGE AT ALL and is covered by its own test
-	// (TestTheBodyKeyCoversTheTheme), which switches the global and was watched
-	// failing with the field removed from the key.
+	// (TestTheBodyKeyCoversTheTheme), which switches the global and fails with
+	// the field removed from the key.
 	"theme": "covered by TestTheBodyKeyCoversTheTheme; it is a package global, not a field of anything",
 }
 

@@ -1,8 +1,7 @@
 package tty
 
-// body.go — the header, the two location tables and their empty states. Split from dashboard.go by the
-// quality pass (Q2, pure move); the map of where things happen is
-// docs/where-things-happen.md.
+// body.go — the header, the two location tables and their empty states; the
+// map of where things happen is docs/where-things-happen.md.
 
 import (
 	"fmt"
@@ -27,10 +26,9 @@ import (
 // the version leaves the title before the title would; the row inside
 // ladders the same way (headerRow). The header never exceeds the width.
 func (d Dashboard) header(o render.Opts) string {
-	// THE LADDERS ARE SHARED WITH THE CONSOLE (D-59, masthead.go). They were
-	// here first and this is still their only behavioural home — what moved is
-	// the CODE, so that the two surfaces cannot come to draw different
-	// mastheads, which is exactly what had happened.
+	// THE LADDERS ARE SHARED WITH THE CONSOLE (D-59, masthead.go), so the two
+	// surfaces cannot come to draw different mastheads. This is their only
+	// behavioural home.
 	rule := o.BoxRuleWidth()
 	title := mastheadTitle(render.EditionObserver, d.cfg.Version, rule)
 	stamp := mastheadStamp(o, title, d.snap, d.clock(), rule)
@@ -43,8 +41,8 @@ func (d Dashboard) header(o render.Opts) string {
 // loses its "API: " label, then the chips stand alone, then the summary leaves
 // — the row never exceeds the box's inner width.
 //
-// The ladder lost two rungs with [t] and [M] (0.14.0): the row starts nearly
-// forty cells shorter, so the narrow forms are reached far later than they were.
+// [t] and [M] are not on the row (0.14.0), which keeps it short, so the narrow
+// forms are reached only on narrow terminals.
 func (d Dashboard) headerRow(o render.Opts) string {
 	inner := o.BoxInnerWidth()
 	api := d.apiSummary(o) // UAT 24.2
@@ -56,7 +54,7 @@ func (d Dashboard) headerRow(o render.Opts) string {
 			}
 		}
 	}
-	// The bare-chip floor keeps [t] and [M]: they are still bound, and this row
+	// The bare-chip floor keeps [t] and [M]: they are bound, and this row
 	// is the only place a narrow terminal names any key at all.
 	chips := o.KeyCap("s") + " " + o.KeyCap("a") + " " + o.KeyCap("t") + " " + o.KeyCap("M") + " " + o.KeyCap("S") + " " + o.KeyCap("?") + " " + o.KeyCap("q")
 	for _, a := range []string{short, ""} {
@@ -71,15 +69,12 @@ func (d Dashboard) headerRow(o render.Opts) string {
 // first (UAT 56/57/100/102): 0 `[s] Settings  [a] About  [S] Status  [?] Help
 // [q] Quit`; 1 drops About, which is the least urgent of them.
 //
-// [t] Theme and [M] Mute Severe Alerts LEFT THE ROW at 0.14.0 (HUM LEAD, UAT
-// 2026-08-30): both are settings now, and both live in [s]. The bindings stay
+// [t] Theme and [M] Mute Severe Alerts ARE NOT ON THE ROW (0.14.0, HUM LEAD,
+// UAT 2026-08-30): both are settings, and both live in [s]. The bindings stay
 // live and both deep-link — [t] opens Settings at the theme picker, [M] at the
 // tone rows — so a listener who knows the keys still lands where the thing is.
-// THROUGH `o.Controls`, LIKE THE CONSOLE'S (one canonical way). The shape was
-// spelled out here by hand and spelled out AGAIN in the console — as string
-// literals with no chips at all, which is the UAT defect of 2026-09-10. Two
-// hand-built control rows are two chances to forget what a control looks like,
-// and one of them did. The output is unchanged.
+// THROUGH `o.Controls`, LIKE THE CONSOLE'S (one canonical way): two hand-built
+// control rows are two chances to forget what a control looks like.
 func (d Dashboard) headerControls(o render.Opts, form int) string {
 	items := []render.Control{render.Ctl("s", "Settings")}
 	if form == 0 {
@@ -169,13 +164,13 @@ func (d Dashboard) body(fl frameLayout) string {
 // intermediate string).
 func (d Dashboard) writeBody(b *strings.Builder, fl frameLayout, priority, recent string) {
 	b.WriteString(d.tickerMarquee(fl.o)) // 0.12.0: the 3-row global event ticker band, above the radio module
-	b.WriteString("\n")                  // the band's bottom row is the ticker/radio separator (absorbs the old blank)
+	b.WriteString("\n")                  // the band's bottom row is the ticker/radio separator
 	b.WriteString(d.radioPanel(fl))      // UAT 8.1: radio module first
 	b.WriteString("\n")                  // the boxes separate themselves — no blank between
 	b.WriteString(d.alertArea(fl))       // then the alert area (blanks per UAT 6.1/6.2)
 	b.WriteString("\n\n")
 	// UAT 26/43: controls live where they act - ABOVE the watchlist's group
-	// labels now (right-aligned to the table edge).
+	// labels (right-aligned to the table edge).
 	b.WriteString(fl.controlRow)
 	b.WriteByte('\n')
 	b.WriteString(priority)
@@ -211,6 +206,9 @@ func (d Dashboard) controlRow(o render.Opts) string {
 		o.KeyCapIf("shift+del", d.canRemoveFocused()) + " Unfavorite",
 	}
 	nav := o.KeyCap("↑↓") + " Navigate"
+	if keys := d.keys[actMap].Keys; len(keys) > 0 {
+		nav = o.KeyCap(keys[0]) + " Maps   " + nav // D-106: the map, left of Navigate
+	}
 	line := strings.Join(segs, "   ")
 	if render.Width(line)+render.Width(nav)+2 <= o.Width {
 		return render.PadBetween(line, nav, o.Width)
@@ -241,7 +239,7 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 	o, days := fl.o, fl.days
 	var b strings.Builder
 	// UAT 43/45: a full-width section band in the group-label style, no
-	// blank lines around it; the rail's ▲ rides the band now that the
+	// blank lines around it; the rail's ▲ rides the band, since the
 	// recent table shows rows only.
 	g := render.RailGlyphsFor(o.ASCII)                                                                                     // the rail's glyph set follows --ascii like every other mark (FR-13, round-2 CQ #19)
 	rail := o.TableRowLen(days) + 2                                                                                        // UAT 9.2: one blank col between the last cell and the rail
@@ -331,19 +329,16 @@ const extRowDays = 5
 
 // weatherRow is everything a SNAPSHOT knows about a location, as a table row.
 //
-// THE ONE CONVERTER (D-112), and it is one because it was two. The Broadcaster's
-// pool built its own row by hand — `fillPoolWeather` — and copied six of the
-// sixteen fields this sets: no HI, no LOW, no TOMORROW, no trend arrow, no fire
-// or seismic marks. Every one of those columns drew `n/a` on a table whose whole
-// purpose the HUM LEAD stated as "gives the human operator some basic weather
-// info to determine if they want to have that location prioritized".
+// THE ONE CONVERTER (D-112), for the Broadcaster's pool as for the watchlist. A
+// hand-built second copy carries only the fields it had on the day it was
+// written, and every column it lacks — HI, LOW, TOMORROW, the trend arrow, the
+// fire and seismic marks — draws `n/a` on a table whose whole purpose the HUM
+// LEAD stated as "gives the human operator some basic weather info to determine
+// if they want to have that location prioritized".
 //
-// IT DRIFTED IMMEDIATELY AND SILENTLY, which is what two carriers of one
-// conversion always do: the hand-written one was correct for the fields it had on
-// the day it was written, and every field added here since was added to one of
-// them. The pool table and the watchlist table are the SAME renderer already
-// (`render.PoolTable` is `tableFor` with one flag); this makes the data behind
-// them the same too.
+// Two carriers of one conversion drift silently. The pool table and the
+// watchlist table are the SAME renderer already (`render.PoolTable` is
+// `tableFor` with one flag); this makes the data behind them the same too.
 //
 // WHAT IT DOES NOT SET is what belongs to a SURFACE rather than to the weather:
 // the row's number, the operator's pointer, what the radio is playing, and — on

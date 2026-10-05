@@ -15,10 +15,10 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// B1 red-team #7: the stub-provider replay bypassed nws.fetchAlerts/mapAlert —
-// exactly where the truncated-AffectedZones bug lived. This variant drives the
+// B1 red-team #7: the stub-provider replay bypasses nws.fetchAlerts/mapAlert —
+// exactly where AffectedZones can be truncated. This variant drives the
 // REAL provider against a mutable httptest feed, covering zone mapping,
-// multi-zone alerts, and the two-pass fix.
+// multi-zone alerts, and the two-pass match.
 
 func TestReplayThroughRealNWSProvider(t *testing.T) {
 	var mu sync.Mutex
@@ -79,7 +79,7 @@ func TestReplayThroughRealNWSProvider(t *testing.T) {
 	if len(al) != 1 {
 		t.Fatalf("alert must map to our location via county UGC, got %d", len(al))
 	}
-	// The two-pass fix: full zone list survives even though our match was second.
+	// The two-pass match: the full zone list survives even though our match is second.
 	if len(al[0].AffectedZones) != 2 {
 		t.Fatalf("AffectedZones truncated (B1 #1 regression): %v", al[0].AffectedZones)
 	}

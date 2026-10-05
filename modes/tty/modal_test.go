@@ -4,8 +4,7 @@ package tty
 // asserted on the RENDERED frame — for every open modal and every opener
 // (each key that opens a window, and the voice-error message that reopens
 // the Voice chooser), View() carries at most one modal, and esc never moves
-// the focus. Written before the `type modal int` refactor; it is the pin
-// that refactor satisfies.
+// the focus.
 
 import (
 	"strings"
@@ -25,7 +24,7 @@ var modalMarkers = map[string]string{
 	"remove":  "─ Remove Location ─",
 	"alerts":  "─ ALERT",
 	"status":  "─ Watchpost Status ─",
-	"about":   "Data Provided by:",
+	"about":   "DATA SETS PROVIDED BY:",
 	"setup":   "─ Settings ─",
 	"severe":  "NOTABLE EVENTS AND FORECASTS",
 }
@@ -82,7 +81,7 @@ func TestExactlyOneModalRendersWhateverOpensOverWhat(t *testing.T) {
 	}
 }
 
-// [t] and [M] no longer open windows of their own: both DEEP-LINK into Settings
+// [t] and [M] open no windows of their own: both DEEP-LINK into Settings
 // (0.14.0). They are exercised here rather than in openers, which is keyed by
 // the window a key opens, because they open a window someone else already owns.
 func TestTheRetiredChoosersDeepLinkIntoSettings(t *testing.T) {

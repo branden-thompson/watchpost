@@ -11,12 +11,10 @@ import (
 
 // M2 — THE KEYPRESSES FROM THE DASHBOARD TO "ROLE X SPEAKS IN VOICE Y".
 //
-// MEASURED HERE, NOT IN THE PTY JOURNEY, because the journey could not measure
-// it. Its counter incremented once per scripted `send` and asserted 11 <= 11 —
-// arithmetic, incapable of failing (F-6). Rewritten to stop when the window
-// closed, it read a late redraw as "closed" and reported 2, then 3. An
-// app-level probe settled that: Settings is demonstrably still open after seven
-// keys, so the PTY's signal was wrong, not the app.
+// MEASURED HERE, NOT IN THE PTY JOURNEY, because a PTY cannot measure it. A
+// counter incremented once per scripted `send` is arithmetic, incapable of
+// failing (F-6), and stopping when the window closes reads a late redraw as
+// "closed" while Settings is still open.
 //
 // A PTY is the right instrument for "does this journey work against the real
 // binary" and the wrong one for "how many keys does it take". This drives the
@@ -25,9 +23,8 @@ import (
 // ESC IS THE SAVE. A picker row cycles with the arrows for as long as you like
 // and commits nothing; the window has exactly two exits, and both write through
 // sequenceWrites (setup.go: "no group can be saved by one route and dropped by
-// the other"). Enter ADVANCES from a picker row rather than saving, which is
-// why a path built out of Enters never terminated — and why the original ≤ 11
-// was never measuring a completed assignment either.
+// the other"). Enter ADVANCES from a picker row rather than saving, so a path
+// built out of Enters never terminates and never completes an assignment.
 func TestM2TheKeypressesToAssignACorrespondent(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	h := &setupHarness{}

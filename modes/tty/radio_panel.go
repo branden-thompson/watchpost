@@ -1,8 +1,7 @@
 package tty
 
-// radio_panel.go — the radio panel: controls, marquee, visualizer rows, radio key handling. Split from dashboard.go by the
-// quality pass (Q2, pure move); the map of where things happen is
-// docs/where-things-happen.md.
+// radio_panel.go — the radio panel: controls, marquee, visualizer rows, radio key handling. The
+// map of where things happen is docs/where-things-happen.md.
 
 import (
 	"fmt"
@@ -17,7 +16,7 @@ import (
 )
 
 // toggleRadio flips player state (UAT 37: chip labels follow state - pin/
-// repeat/visualizer/size). Audio itself lands with B4.
+// repeat/visualizer/size).
 func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
 	if act == "radio-play" && d.modal == modalSevere {
 		return d.readFocusedEvent(), true // inside the window [space] reads the focused EVENT, never the location underneath (0.13.0 UAT option B)
@@ -31,7 +30,7 @@ func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
 		return d.radioToggle()
 	case "radio-repeat":
 		d.radioRepeat = d.radioRepeat.next() // UAT 93: Off → One → Watchlist
-		return d.pushRepeat(), true
+		return d.pushRepeat().saveRadioCmd(), true
 	case "radio-mode":
 		d.radioMode = d.radioMode.next() // UAT 97: Synth ↔ Nearest Relay
 		if radio, mode := d.cfg.Radio, d.radioMode; radio != nil {
@@ -42,14 +41,17 @@ func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
 		if !d.radioViz {
 			d.vizBands = nil // off: nothing lingers for the next on
 		}
+		return d.saveRadioCmd(), true
 	case "radio-vol-up":
 		d.radioVolume = min(100, d.radioVolume+5)
 		d.volFlash, d.volFlashEnd = "+", time.Now().Add(350*time.Millisecond) // green blink (UAT 41)
-		return d.radioVolumeCmd()
+		d, _ = d.radioVolumeCmd()
+		return d.saveRadioCmd(), true
 	case "radio-vol-dn":
 		d.radioVolume = max(0, d.radioVolume-5)
 		d.volFlash, d.volFlashEnd = "-", time.Now().Add(350*time.Millisecond) // red blink
-		return d.radioVolumeCmd()
+		d, _ = d.radioVolumeCmd()
+		return d.saveRadioCmd(), true
 	default:
 		return d, false
 	}
@@ -105,12 +107,12 @@ func (d Dashboard) radioPanel(fl frameLayout) string {
 // so what is measured is what is drawn.
 func (d Dashboard) radioLines(o render.Opts, compactMode bool) []string {
 	inner := o.BoxInnerWidth() // the box's rows: borders and the 3-cell insets off
-	// Two different questions, and conflating them was a regression:
+	// Two different questions, and conflating them is a regression:
 	//
 	//   WIDTH decides the CONTROL STYLE — labelled controls and a viz toggle
 	//     at medium and wide, keys only at narrow.
 	//   HEIGHT (compactMode) decides the ROW COUNT — a short frame drops to
-	//     the two-row player, which is today's rule and is kept.
+	//     the two-row player.
 	//
 	// A 133-column terminal that happens to be short still gets labelled
 	// controls: it has the room for them, and taking them away because the
@@ -148,13 +150,13 @@ const (
 
 // radioBreakpoint picks the layout from the terminal's columns.
 //
-// This is what replaces the retired size toggle (MVS-D-23): every breakpoint has a STANDARD
-// VERTICAL SIZE, so there is nothing left for a size toggle to toggle. The
-// layout follows the window, which is what a listener resizing a terminal
-// expects anyway — they never had to press a key to get a wider table.
+// NO SIZE TOGGLE (MVS-D-23): every breakpoint has a STANDARD VERTICAL SIZE, so
+// there is nothing for a size toggle to toggle. The layout follows the window,
+// which is what a listener resizing a terminal expects anyway — no key gets
+// them a wider table either.
 //
-// A height-compact frame takes the NARROW player whatever the width: today's
-// rule, kept. A short terminal has no room for a visualizer however wide it is.
+// A height-compact frame takes the NARROW player whatever the width: a short
+// terminal has no room for a visualizer however wide it is.
 func radioBreakpoint(cols int, compact bool) radioBP {
 	switch {
 	case compact:
@@ -177,7 +179,7 @@ func radioBreakpoint(cols int, compact bool) radioBP {
 func (b radioBP) hasViz() bool { return b != radioNarrow }
 
 // radioParts are the styled player fragments shared by both layouts
-// (split from radioLines, P10-04).
+// (P10-04).
 type radioParts struct {
 	title, vol, clock, state string
 	controls                 []string
@@ -265,7 +267,7 @@ func (d Dashboard) marqueeTrack(inner int) string {
 		return band(fill(" LIVE RADIO "))
 	case d.radioPlaying && d.radioDetail != "" && w >= 8:
 		text := marquee(d.radioDetail, w, d.marqueeProgress(time.Now()))
-		if render.Width(text) <= w-2 { // air either side only when both fit — a w-1 line padded to w+1 broke the box (round 4, B-02)
+		if render.Width(text) <= w-2 { // air either side only when both fit — a w-1 line padded to w+1 breaks the box (round 4, B-02)
 			text = " " + text + " "
 		}
 		return band(fill(text))
@@ -314,7 +316,7 @@ func (d Dashboard) vizFrame() (tea.Model, tea.Cmd) {
 // radioMaxRows is the full player (HUM LEAD UAT 2026-08-28 facelift): the
 // head — "WATCHPOST WEATHER RADIO • ♪ station" … VOL + state — over the
 // marquee track, the visualizer rows inside the track when it is on (three
-// wide, one narrow), then the controls. No play line: there was never a
+// wide, one narrow), then the controls. No play line: there is no
 // timeline to scrub. Narrow: the title goes first, then the station reads
 // its short form, then it shortens.
 func (d Dashboard) radioMaxRows(o render.Opts, inner int, p radioParts) []string {
@@ -416,8 +418,8 @@ func (d Dashboard) radioStateLabel() string {
 // radioToggle: [space] plays the focused location, or stops when that
 // location is already the one playing (HUM LEAD 2026-08-27: "play on A,
 // navigate to B, space → play B, not stop"). Re-tuning to the focused
-// location while another plays is the common case now that a person browses
-// the list with the radio on.
+// location while another plays is the common case: a person browses the
+// list with the radio on.
 func (d Dashboard) radioToggle() (Dashboard, bool) {
 	radio := d.cfg.Radio
 	loc := d.selectedLocation()
@@ -473,7 +475,7 @@ func (d Dashboard) radioVolumeCmd() (Dashboard, bool) {
 }
 
 // radioControlLines wraps the player controls to the module width (UAT
-// 35.1) - the same smart wrap the footer uses; B4 wires the handlers.
+// 35.1) - the same smart wrap the footer uses.
 func (d Dashboard) radioControlLines(o render.Opts, inner int, bp radioBP) []string {
 	// UAT 52: an "On" state reads emphasized - repeat yellow bold, viz green bold.
 	onOff := func(b bool, tok render.Token) string {
@@ -498,7 +500,7 @@ func (d Dashboard) radioControlLines(o render.Opts, inner int, bp radioBP) []str
 	}
 	segs := []string{
 		o.KeyCap("space") + " " + play,       // UAT 39: action label follows state
-		o.KeyCap("r") + " Repeat: " + repeat, // [p] Pin retired (UAT 93): Repeat: Watchlist is how the player follows the list
+		o.KeyCap("r") + " Repeat: " + repeat, // UAT 93: Repeat: Watchlist is how the player follows the list
 		o.KeyCap("m") + " Mode: " + render.Tint(d.radioMode.String(), render.Tok(render.RadioStation)), // UAT 97
 	}
 	if bp.hasViz() {

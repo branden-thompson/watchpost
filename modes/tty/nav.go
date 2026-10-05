@@ -1,8 +1,7 @@
 package tty
 
-// nav.go — selection, sort and scroll: row navigation, modal scrolling, the RECENT viewport. Split from dashboard.go by the
-// quality pass (Q2, pure move); the map of where things happen is
-// docs/where-things-happen.md.
+// nav.go — selection, sort and scroll: row navigation, modal scrolling, the RECENT viewport. The
+// map of where things happen is docs/where-things-happen.md.
 
 import (
 	"sort"
@@ -13,27 +12,16 @@ import (
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
-// handleNav routes selection/paging actions (split from handleKey, P10-04).
+// handleNav routes selection/paging actions (P10-04).
 // The focus index spans BOTH tables (UAT 4.4): 0..numPriority-1 walks the
 // priority rows, then the recent rows, auto-scrolling the recent window.
 func (d Dashboard) handleNav(act term.Action) Dashboard {
-	switch d.modal {
-	// THE SCROLLING WINDOWS, AND THE LIST IS HAND-WRITTEN — which is why the
-	// card window was absent from it on the day it was built, and why the FR-5
-	// reachability gate is what found that rather than UAT. A window missing
-	// here draws a scroll rail whose arrow keys reach PAST it to the table
-	// underneath; `add` and `remove` are absent on purpose, because their own
-	// keys walk `selected` (modal_location.go).
-	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout, modalCard:
-		return d.handleModalNav(act)
-	case modalSevere:
-		return d.handleSevereNav(act) // 0.13.0: tabs and rows, or the record's scroll
-	case modalRelayFault:
-		return d.handleRelayFaultNav(act) // MVS-D-76: the three ways out of a dead relay
-	case modalDebug:
-		return d.handleDebugNav(act) // F-21
-	case modalRequest:
-		return d.handleRequestNav(act) // R4: a form, walked field by field
+	// THE WINDOW SHOWN WALKS ITS OWN (F-184): its scroll, its rows, its fields,
+	// as it declares (window_keys.go) - a hand-written list here would let a
+	// window missing from it draw a scroll rail whose arrows reach PAST it to
+	// the table underneath. A window with no nav leaves the arrows to the table.
+	if w, _ := windowKeysOf(d.modal); w.nav != nil {
+		return w.nav(d, act)
 	}
 	switch act {
 	case "nav-up":
@@ -95,9 +83,9 @@ func sortAlerts(sn *snapshot.Snapshot) {
 	}
 }
 
-// handleModalNav owns navigation while a modal floats (split from
-// handleNav, P10-04): up/down scroll the window (UAT 10.4); in the [A]
-// modal, left/right page alerts without an esc round-trip (UAT 23.1).
+// handleModalNav owns navigation while a modal floats (P10-04): up/down
+// scroll the window (UAT 10.4); in the [A] modal, left/right page alerts
+// without an esc round-trip (UAT 23.1).
 func (d Dashboard) handleModalNav(act term.Action) Dashboard {
 	switch act {
 	case "nav-up":
@@ -126,10 +114,10 @@ func (d Dashboard) numPriority() int {
 }
 
 // It counts the same list recentLocations draws WITHOUT BUILDING IT. The three
-// callers are all on the frame path, and since 0.12.0's ticker the frame draws
-// continuously — so copying fifty Location values to take a length ran forever,
-// at 6.2 MB/min, a fifth of the app's whole allocation rate (perf pass,
-// 2026-08-30). TestNumRecentAgreesWithTheDrawnList pins the two together.
+// callers are all on the frame path, and the ticker keeps the frame drawing
+// continuously — so copying fifty Location values to take a length would run
+// forever, at 6.2 MB/min, a fifth of the app's whole allocation rate (perf
+// pass, 2026-08-30). TestNumRecentAgreesWithTheDrawnList pins the two together.
 func (d Dashboard) numRecent() int {
 	n := 0
 	if d.lookupRef != nil && d.lookupIndex() < 0 {
@@ -183,8 +171,9 @@ func (d Dashboard) selectedLocation() *snapshot.Location {
 }
 
 // lookupIndex is the RECENT row of the looked-up location once the rebuilt
-// list carries it (found by identity, wherever it landed — R5-C-02: an empty
-// RECENT at lookup time put the focus past the tables); −1 while it waits.
+// list carries it (found by identity, wherever it landed — R5-C-02: by index,
+// an empty RECENT at lookup time puts the focus past the tables); −1 while it
+// waits.
 func (d Dashboard) lookupIndex() int {
 	if d.lookupRef == nil || d.recent == nil {
 		return -1

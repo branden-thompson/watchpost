@@ -12,6 +12,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/tz"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // --- forecast ---
@@ -76,15 +77,16 @@ func (p *Provider) fetchHourly(ctx context.Context, ref snapshot.LocationRef) (s
 
 // fillDailyFromGrid fills a day's missing HIGH/LOW from the raw gridpoint
 // maxTemperature/minTemperature series (B3 UAT 71): /forecast drops a
-// day's daytime period once local evening starts, so TODAY's HIGH read
-// "n/a" east of wherever 6 PM had passed. The gridpoint keeps the value
-// all day, and nws-marine already fetches it — the client cache makes this
-// one download per grid per cycle. A nicety: any failure leaves the hole.
+// day's daytime period once local evening starts, so without this TODAY's
+// HIGH reads "n/a" east of wherever 6 PM has passed. The gridpoint keeps the
+// value all day, and nws-marine reads the same document: one download and
+// one decode per grid per cycle (gridDocument). A nicety: any failure leaves
+// the hole.
 func (p *Provider) fillDailyFromGrid(ctx context.Context, g *gridInfo, daily []snapshot.Daily) {
 	if g.gridURL == "" || !hasTempHole(daily) {
 		return
 	}
-	grid, err := p.gridExtremes(ctx, g.gridURL)
+	grid, err := p.gridDocument(ctx, g.gridURL)
 	if err != nil {
 		return
 	}
@@ -107,12 +109,13 @@ func (p *Provider) fillDailyFromGrid(ctx context.Context, g *gridInfo, daily []s
 	}
 }
 
-// gridExtremes is the gridpoint's max/min series, decoded once per body
-// change (Q5b-6): the raw gridpoint is ~1 MB and every location on the
-// grid — and every 30-minute tier — asked for its own decode; now the
-// client cache serves the bytes and the memo the decode. Bound: one entry
-// per live grid (pruned in Retain).
-func (p *Provider) gridExtremes(ctx context.Context, gridURL string) (gridDoc, error) {
+// gridDocument is the gridpoint's series the app reads - the daily fill's
+// max and min and the marine read's swell and waves - decoded once per body
+// change (Q5b-6, W14 P-13): the raw gridpoint is up to ~1 MB, every location
+// on the grid and every 30-minute tier reads it, and the client cache serves
+// the bytes and the memo the decode. Bound: one entry per live grid (pruned
+// in Retain).
+func (p *Provider) gridDocument(ctx context.Context, gridURL string) (gridDoc, error) {
 	raw, err := p.client.GetText(ctx, gridURL) // read-only (httpx.GetText contract)
 	if err != nil {
 		return gridDoc{}, err
@@ -139,11 +142,19 @@ func decodeGridDoc(raw []byte) (gridDoc, error) {
 	return doc, nil
 }
 
-// gridDoc is the gridpoint fields the daily fill reads.
+// gridDoc is the gridpoint fields the daily fill and the marine read use.
 type gridDoc struct {
 	Properties struct {
-		Max gridSeries `json:"maxTemperature"`
-		Min gridSeries `json:"minTemperature"`
+		Max                     gridSeries `json:"maxTemperature"`
+		Min                     gridSeries `json:"minTemperature"`
+		PrimarySwellHeight      gridSeries `json:"primarySwellHeight"`
+		PrimarySwellDirection   gridSeries `json:"primarySwellDirection"`
+		WaveHeight              gridSeries `json:"waveHeight"`
+		WavePeriod              gridSeries `json:"wavePeriod"`
+		WindWaveHeight          gridSeries `json:"windWaveHeight"`
+		SecondarySwellHeight    gridSeries `json:"secondarySwellHeight"`
+		SecondarySwellDirection gridSeries `json:"secondarySwellDirection"`
+		WavePeriod2             gridSeries `json:"wavePeriod2"`
 	} `json:"properties"`
 }
 
@@ -184,7 +195,7 @@ func (s gridSeries) extremeOn(date string, tz *time.Location, wantMax bool) (flo
 		}
 		val := *v.Value
 		if s.UOM == "wmoUnit:degF" {
-			val = (val - 32) * 5 / 9
+			val = units.CelsiusOf(val)
 		}
 		if !found || (wantMax && val > best) || (!wantMax && val < best) {
 			best, found = val, true
@@ -231,7 +242,7 @@ func foldDaily(periods []period) []snapshot.Daily {
 
 func tempC(v float64, unit string) float64 {
 	if unit == "F" {
-		return roundTenth((v - 32) * 5 / 9)
+		return roundTenth(units.CelsiusOf(v))
 	}
 	return roundTenth(v)
 }

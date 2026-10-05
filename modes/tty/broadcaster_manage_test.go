@@ -63,8 +63,8 @@ func TestTheCardWindowOffersTheConsolesTwoControls(t *testing.T) {
 
 // AND NOT ON A CARD THE SCHEDULE WOULD REFUSE.
 //
-// D-45 RULES A LIVE CARD "Management Locked", and the card's own STATUS line has
-// said so since D-87 — so the window that shows that line must not also offer the
+// D-45 RULES A LIVE CARD "Management Locked", and the card's own STATUS line
+// says so (D-87) — so the window that shows that line must not also offer the
 // two keys it rules out. A control that is not offered and still WORKS is the
 // same lie as one that is offered and does not, so the keys are refused too.
 func TestALiveCardOffersNeitherControl(t *testing.T) {
@@ -113,8 +113,8 @@ func TestChangePositionSendsTheMove(t *testing.T) {
 	// THE SLOT THE OPERATOR TYPED, TRANSLATED TO A LINE-UP INDEX (D-119). On a
 	// station at STANDBY the two differ by one — LIVE is empty and the line-up is
 	// drawn from UP NEXT down (D-84) — and `Reorder` takes the INDEX. Sending the
-	// typed number straight through moved the card one place further down than
-	// the operator asked, silently, on the surface's normal state.
+	// typed number straight through would move the card one place further down
+	// than the operator asked, silently, on the surface's normal state.
 	wantTo := 7 - r.broadcaster.liveOffset()
 	if gotID != want || gotTo != wantTo {
 		t.Errorf("the schedule was told (%q, %d); slot 7 is line-up index %d", gotID, gotTo, wantTo)

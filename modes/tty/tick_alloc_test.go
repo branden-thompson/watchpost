@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-// P-1 — THE TICK PATH HAS A BUDGET NOW.
+// P-1 — THE TICK PATH HAS A BUDGET.
 //
-// TestFrameAllocBudget measures View() only, so the one per-300ms cost in the
-// app was unmeasured: advanceTicker rebuilds the CURRENT LANE'S ENTIRE TAPE —
+// TestFrameAllocBudget measures View() only, so this measures the one per-300ms
+// cost in the app: advanceTicker rebuilds the CURRENT LANE'S ENTIRE TAPE —
 // every tapeLine, joined, converted to runes — to obtain a single integer, the
 // loop length for `d.tickerScroll %= n`. It then throws the tape away, and the
 // renderer builds it again.
@@ -44,10 +44,10 @@ func TestTickAdvanceAllocBudget(t *testing.T) {
 
 // AND WITH A TEST EVENT ON THE TAPE (FR-4.4), against the same budget.
 //
-// THE EXISTING PIN CANNOT SEE THIS CHANGE. benchDash's marquee holds no
+// THE PIN ABOVE CANNOT SEE THE MARKING. benchDash's marquee holds no
 // fabricated events, so the marking's cost — the per-lane scan and the banner
-// row — is invisible to every allocation gate in this package. A budget whose
-// fixture cannot reach the new code is not a budget on it.
+// row — is invisible to every other allocation gate in this package. A budget
+// whose fixture cannot reach the code is not a budget on it.
 func TestTickAdvanceAllocBudgetWithATestEventOnTheTape(t *testing.T) {
 	if raceEnabled {
 		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")

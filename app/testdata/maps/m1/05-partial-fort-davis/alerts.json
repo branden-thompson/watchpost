@@ -1,0 +1,96 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.96a20b84ffe7e6d5f3fafc279dab60e396ad91e8.001.1",
+   "type": "Feature",
+   "geometry": null,
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.96a20b84ffe7e6d5f3fafc279dab60e396ad91e8.001.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.96a20b84ffe7e6d5f3fafc279dab60e396ad91e8.001.1",
+    "areaDesc": "Chinati Mountains; Marfa Plateau; Davis Mountains; Davis Mountains Foothills; Presidio Valley",
+    "geocode": {
+     "SAME": [
+      "048377",
+      "048243",
+      "048043",
+      "048109",
+      "048389"
+     ],
+     "UGC": [
+      "TXZ275",
+      "TXZ276",
+      "TXZ277",
+      "TXZ278",
+      "TXZ281"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/forecast/TXZ275",
+     "https://api.weather.gov/zones/forecast/TXZ276",
+     "https://api.weather.gov/zones/forecast/TXZ277",
+     "https://api.weather.gov/zones/forecast/TXZ278",
+     "https://api.weather.gov/zones/forecast/TXZ281"
+    ],
+    "references": [],
+    "sent": "2026-09-23T15:39:00-05:00",
+    "effective": "2026-09-23T15:39:00-05:00",
+    "onset": "2026-09-23T15:39:00-05:00",
+    "expires": "2026-09-24T03:30:00-05:00",
+    "ends": "2026-09-25T07:00:00-05:00",
+    "status": "Actual",
+    "messageType": "Alert",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Possible",
+    "urgency": "Future",
+    "event": "Flood Watch",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Midland/Odessa TX",
+    "headline": "Flood Watch issued September 23 at 3:39PM CDT until September 25 at 7:00AM CDT by NWS Midland/Odessa TX",
+    "description": "* WHAT...Flash flooding caused by excessive rainfall.\n\n* WHERE...A portion of southwest Texas, including the following\nareas, Chinati Mountains, Davis Mountains, Davis Mountains\nFoothills, Marfa Plateau and Presidio Valley.\n\n* WHEN...Through Friday morning.\n\n* IMPACTS...Excessive runoff may result in flooding of rivers,\ncreeks, streams, and other low-lying and flood-prone locations.\nFlooding may occur in poor drainage and urban areas. Low-water\ncrossings may be flooded.\n\n* ADDITIONAL DETAILS...\n- Additional rounds of numerous to widespread showers and\nthunderstorms will develop over the Watch area this afternoon\nthrough Thursday night. Heavy rainfall may quickly result in\nareas of flash flooding.\n- http://www.weather.gov/safety/flood",
+    "instruction": "You should monitor later forecasts and be prepared to take action\nshould Flash Flood Warnings be issued.",
+    "response": "Prepare",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "FFAMAF"
+     ],
+     "WMOidentifier": [
+      "WGUS64 KMAF 232039"
+     ],
+     "NWSheadline": [
+      "FLOOD WATCH IN EFFECT THROUGH FRIDAY MORNING"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.EXA.KMAF.FA.A.0005.000000T0000Z-260925T1200Z/"
+     ],
+     "eventEndingTime": [
+      "2026-09-25T07:00:00-05:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "FFA"
+     ],
+     "NationalWeatherService": [
+      "FAA"
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -10,11 +10,9 @@ package tty
 // — no more card occlusion, and this works because of the data that we're
 // ACTUALLY showing."
 //
-// So the rules those tests held are GONE, not weakened, and the tests went with
-// them rather than being bent into shape — a test kept alive against a retired
-// design is a test that asserts the past. What replaces them is narrower and
-// stronger: the tracks are built as separate columns and joined once, so there
-// is no splice to get wrong and nothing to be covered by.
+// THE TRACKS ARE BUILT AS SEPARATE COLUMNS AND JOINED ONCE, so there is no
+// splice to get wrong and nothing to be covered by — narrower and stronger
+// pins than an overlay would need.
 
 import (
 	"strings"
@@ -29,11 +27,9 @@ import (
 // HUM LEAD, 2026-09-12: "Up Next and Alert are always present — if there are no
 // active alerts taking over, then the box is simply empty."
 //
-// D-61 ruled the opposite in September: "the PRIORITY rail label ONLY shows up
-// when a priority card sits on top of the main rail — this gives the operator more
-// space to view/manage the main rail during normal operation." That reasoning was
-// about SPACE, and the v3 layout answers it differently: the column is reserved
-// either way (priorityWidth), so hiding the box bought nothing and cost the
+// D-61's reason for hiding the box when no priority card sits on the main rail
+// was SPACE, and the v3 layout answers it differently: the column is reserved
+// either way (priorityWidth), so hiding the box buys nothing and costs the
 // operator the knowledge of where a hazard will appear.
 //
 // AN EMPTY BOX IS THE POINT. The frame does not move when a hazard arrives, which
@@ -100,8 +96,8 @@ func TestTheTwoTracksNeverShareACell(t *testing.T) {
 // burst would close on a different row than the card next to it.
 //
 // AND THE LIST FOLLOWING THE HEIGHT IS WHAT KEEPS THE CONTROL ROW ON. A constant
-// ten rows overflowed the pair by one, the pair truncated the overflow, and what
-// came off the bottom was the one thing in the box the operator presses.
+// ten rows overflows the pair by one, the pair truncates the overflow, and what
+// comes off the bottom is the one thing in the box the operator presses.
 func TestTheTakeoverBoxCloseslevelWithUpNext(t *testing.T) {
 	short := withBurst(t, NewBroadcaster(), "one hazard")
 	tall := withBurst(t, NewBroadcaster(), "one hazard", "two", "three", "four", "five")
@@ -124,8 +120,7 @@ func TestTheTakeoverBoxCloseslevelWithUpNext(t *testing.T) {
 }
 
 // AND THE WAY IN SURVIVES THE FIT. Whatever the height works out to, the control
-// row is inside it — the defect that sent this rule back to the drawing board was
-// a box whose bottom line was cut off by the truncation above it.
+// row is inside it — not a bottom line cut off by the truncation above it.
 func TestTheTakeoverBoxKeepsItsControlRow(t *testing.T) {
 	b := withBurst(t, NewBroadcaster(), "a", "b", "c")
 	got := stripANSITest(strings.Join(b.readPair(), "\n"))

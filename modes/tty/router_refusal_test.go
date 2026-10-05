@@ -11,17 +11,15 @@ import (
 
 // A REFUSED SWAP SAYS WHY, ON THE SURFACE THE OPERATOR IS LOOKING AT.
 //
-// THE UAT DEFECT (HUM LEAD, 2026-09-10): "ctrl+o will soft lock randomly — so
-// ctrl+o -> ctrl+b -> ctrl+o (doesn't work the 2nd time) … While radio is on
-// standby I should flip back and forth easily."
+// HUM LEAD, 2026-09-10: "While radio is on standby I should flip back and forth
+// easily."
 //
-// It is not a lock and it is not random. Visiting Observer TUNES, and a tune
-// tells the Director the programme is RUNNING (mM3's own fix) — so the station
-// the operator left STOPPED is ON AIR when they come back, and FR-1.4 refuses
-// to let them leave a live console. The gate was right. What was missing is that
-// `Router.refusal` was RECORDED AND NEVER DRAWN, under a comment saying exactly
-// why that must not happen: "a refusal they cannot read is indistinguishable
-// from a broken control."
+// A REFUSAL IS NOT A LOCK. Visiting Observer TUNES, and a tune tells the
+// Director the programme is RUNNING (mM3) — so the station the operator left
+// STOPPED is ON AIR when they come back, and FR-1.4 refuses to let them leave a
+// live console. The gate is right, so `Router.refusal` is DRAWN, not only
+// recorded: "a refusal they cannot read is indistinguishable from a broken
+// control."
 func TestARefusedSwapIsShownToTheOperator(t *testing.T) {
 	d, err := NewDashboard(Config{})
 	if err != nil {
@@ -65,9 +63,9 @@ func TestARefusedSwapIsShownToTheOperator(t *testing.T) {
 // station's service area on the console — and `swapTo` is the ONE place a swap
 // is granted, so it is the one place that can say so.
 //
-// IT IS ASSERTED THROUGH THE KEYS, not by calling `swapTo`: the defect this
-// release keeps producing is a seam nothing drives, and a test that called the
-// method directly would pass over an unbound control.
+// IT IS ASSERTED THROUGH THE KEYS, not by calling `swapTo`: a seam nothing
+// drives is the defect to guard against, and a test that called the method
+// directly would pass over an unbound control.
 func TestASwapTellsTheAppWhoOwnsTheAir(t *testing.T) {
 	d, err := NewDashboard(Config{})
 	if err != nil {

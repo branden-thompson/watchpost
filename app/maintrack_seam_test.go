@@ -2,7 +2,7 @@ package app
 
 // THE MERGE'S SAFETY IS STRUCTURAL, so the check is too (0.16.0 P3).
 //
-// Two owners of the audio device speaking at once is this batch's defect, and
+// Two owners of the audio device speaking at once is the defect this guards, and
 // what prevents it is that every path to a synthesised read goes through ONE
 // function that asks the stage. A fourth call site added later — a new fallback,
 // a retry, a settings action — would reintroduce the second speaker silently,
@@ -12,18 +12,17 @@ package app
 // DERIVED, NOT ENUMERATED (INST-1): the walk finds the call sites rather than
 // comparing against a remembered list.
 //
-// IT WALKS THE WHOLE FILE, NOT ONLY ITS FUNCTIONS (red team 2026-09-09,
-// finding 2). The first version iterated `file.Decls` and skipped everything
-// that was not an `*ast.FuncDecl`, so a second speaker declared at package
-// level —
+// IT WALKS THE WHOLE FILE, NOT ONLY ITS FUNCTIONS. A walk that iterates
+// `file.Decls` and skips everything that is not an `*ast.FuncDecl` misses a
+// second speaker declared at package level —
 //
 //	var secondSpeaker = func(d *radioDeck, ref snapshot.LocationRef) {
 //		d.startSynth(ref, "a retry nobody routed through the seam", 0)
 //	}
 //
-// — was invisible to BOTH walks, and the counts did not move, so the INST-2
-// gate could not see it either. That is precisely the defect these tests exist
-// to catch, declared in the file they were reading. AT P3(d) THIS CHECK GETS STRICTER, not
+// — in BOTH walks, and the counts do not move, so the INST-2 gate cannot see it
+// either. That is precisely the defect these tests exist to catch, declared in
+// the file they are reading. AT P3(d) THIS CHECK GETS STRICTER, not
 // looser — startSynth goes to ZERO callers when the direct path retires, and
 // this test is where that is stated.
 

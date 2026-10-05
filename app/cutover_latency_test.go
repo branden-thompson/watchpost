@@ -46,12 +46,12 @@ func bonsall() snapshot.LocationRef {
 // as `app/app.go:123` sets it.
 //
 // It is a named constructor rather than an inline literal because leaving the
-// rate unset was a real defect in the first version of this instrument: the
-// zero value takes httpx's default of 5/sec (`httpx.go:232`), and eleven
-// requests at 5/sec is ~2.2 s — so the first measurement was reporting the token
-// bucket rather than the network, at one sixth the app's true rate, and it
-// looked like a plausible network figure. An instrument that measures its own
-// configuration mistake reads exactly like a measurement.
+// rate unset is easy to miss and silently wrong: the zero value takes httpx's
+// default of 5/sec (`httpx.go:232`), and eleven requests at 5/sec is ~2.2 s —
+// so the measurement would report the token bucket rather than the network, at
+// one sixth the app's true rate, and it looks like a plausible network figure.
+// An instrument that measures its own configuration mistake reads exactly like
+// a measurement.
 func cardBuildClient(t testing.TB) *httpx.Client {
 	t.Helper()
 	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: t.TempDir()})
@@ -95,8 +95,7 @@ func TestCardBuildCost(t *testing.T) {
 	// THE INSTRUMENT VALIDATES ITSELF BEFORE IT REPORTS. A build that produced
 	// no segments, or that never reached the network on the cold pass, has
 	// measured nothing — and a zero from a broken instrument reads exactly like
-	// a fast path, which is how four false numbers reached commit messages this
-	// release (remediation-review-loop.md).
+	// a fast path (remediation-review-loop.md).
 	if cold.segments == 0 {
 		t.Fatal("the cold build produced no segments — the instrument is measuring nothing")
 	}
@@ -113,7 +112,7 @@ func TestCardBuildCost(t *testing.T) {
 // TestCardBuildConcurrentFloor measures what CONCURRENCY alone would buy, and
 // what it would cost in extra requests (PL-3).
 //
-// The plan proposed to hide the card build behind standby. Before building a
+// The plan proposes hiding the card build behind standby. Before building a
 // standby lifecycle it is worth knowing whether the build can simply be made
 // fast: `segments()` issues its fetches in a straight line, but only one pair is
 // genuinely dependent — `products` needs `office`. The rest are independent.
@@ -166,8 +165,8 @@ func TestCardBuildConcurrentFloor(t *testing.T) {
 	after := totalRequests(client)
 
 	// SELF-VALIDATION. A concurrent run that resolved nothing would report a
-	// beautiful number for doing no work — the same shape as the rate-limiter
-	// mistake this file already made once.
+	// beautiful number for doing no work — the same shape as an unset rate limiter
+	// (cardBuildClient).
 	if office == "" || zone == "" || county == "" {
 		t.Fatalf("the concurrent build resolved nothing (office=%q zone=%q county=%q) — measuring nothing", office, zone, county)
 	}

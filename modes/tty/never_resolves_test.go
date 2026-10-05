@@ -13,13 +13,12 @@ import (
 // "If you look up a location and the commit succeeds but the data never lands —
 // bad geocode, no NWS coverage, somewhere the API just doesn't answer for — the
 // ref is already in RECENT/SEARCHED. It sits there with no data, permanently."
-// It shimmered, so it read as *still loading*, for ever and across restarts.
+// Shimmering, it reads as *still loading*, for ever and across restarts.
 //
-// THE ISSUE ASKED WHETHER THE TWO ARE EVEN DISTINGUISHABLE, and at the time
-// they were not: nothing recorded that a fetch had been ATTEMPTED for a
-// location, so "no data yet" and "no data ever" were the same value. This
-// tests the distinction, which is the actual fix; the treatment was already
-// there, because a post-load nil has always drawn an honest "n/a".
+// THE TWO ARE DISTINGUISHABLE because the app records that a fetch was
+// ATTEMPTED for a location, so "no data yet" and "no data ever" are different
+// values. This tests that distinction; the treatment is the honest "n/a" a
+// post-load nil draws.
 func TestALocationTheFeedCannotServeStopsShimmering(t *testing.T) {
 	answered := time.Now().Add(-2 * time.Minute)
 
@@ -38,7 +37,7 @@ func TestALocationTheFeedCannotServeStopsShimmering(t *testing.T) {
 	}
 
 	// AND THE ROW SAYS SO ON SCREEN rather than shimmering, using the "n/a"
-	// the post-load path already drew.
+	// the post-load path draws.
 	d := dash(t)
 	s := snap()
 	s.Locations = []snapshot.Location{{Label: "Nowhere, XX", Tag: "NOWH", WeatherAsOf: answered}}

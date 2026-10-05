@@ -1,6 +1,6 @@
 package app
 
-// radio_queue.go — the watchlist queue and the live-relay dwell: [r] Repeat, advancing, the nearest-station pick. Split from radio.go by the quality pass (Q2, pure move).
+// radio_queue.go — the watchlist queue and the live-relay dwell: [r] Repeat, advancing, the nearest-station pick.
 
 import (
 	"time"
@@ -18,10 +18,10 @@ import (
 // EXCEPT WHERE TWO STATIONS ARE EQUALLY THE ANSWER. Coachella KIG78 and
 // Coachella / Spanish WNG712 share a mast: same coordinates, same covering
 // status, so nothing about the geography prefers either and the resolver's
-// order between them is a tie-break, not a finding. Vista, CA got the Spanish
-// feed that way (HUM LEAD, UAT 2026-09-04), and the ruling was that the choice
-// is the listener's: "some humans will prefer english, some will prefer
-// spanish".
+// order between them is a tie-break, not a finding. Left to that order, Vista,
+// CA gets the Spanish feed, and the ruling (HUM LEAD, UAT 2026-09-04) is that
+// the choice is the listener's: "some humans will prefer english, some will
+// prefer spanish".
 //
 // So the preference decides the TIE and nothing else. A listener who prefers
 // Spanish does not get a Spanish station 200 km away over the English one in
@@ -65,18 +65,17 @@ func (d *radioDeck) SetRepeat(mode tty.RepeatMode, watchlist []snapshot.Location
 	d.mu.Unlock()
 	// THE DIRECTOR IS STILL TOLD; THE LIVE SOURCE IS NOT TOUCHED (D-91).
 	//
-	// THIS IS THE ONE THE HUM LEAD'S RULING WAS MEASURED ON: `d.source` is
-	// whatever is running, and per BD-9 that is the BROADCASTER's card during a
-	// main-track read — so Observer's repeat mode, reached from the Settings
-	// window the console forwards to, set the card ON THE AIR to loop. It would
-	// have read for ever and the line-up would never have advanced.
+	// `d.source` is whatever is running, and per BD-9 that is the BROADCASTER's
+	// card during a main-track read — so Observer's repeat mode, reached from the
+	// Settings window the console forwards to, would set the card ON THE AIR to
+	// loop: it would read for ever and the line-up would never advance.
 	//
 	// THE SETTING STILL APPLIES, which is the `SetTones` standard: "must not
 	// disturb a broadcast in flight". It lands on the monitor's next source.
 	if src != nil && d.monitorHasTheAir() {
 		src.Loop(mode == tty.RepeatOne)
 	}
-	// THE ROTATION IS THE DIRECTOR'S NOW (T3.2b). A zero dwell is how "repeat is
+	// THE ROTATION IS THE DIRECTOR'S (T3.2b). A zero dwell is how "repeat is
 	// not Watchlist" reaches it — the translation from the deck's mode enum
 	// happens here, once, rather than by a second copy of the enum living in the
 	// pure core. It is told on every change, playing or not: the Director holds

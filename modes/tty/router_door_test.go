@@ -3,15 +3,13 @@ package tty
 // F-72: THE CONSOLE MUST NOT BE A ONE-WAY DOOR.
 //
 // The swap gate correctly refuses to LEAVE the console while the station is
-// running — the ratified STANDBY-first rule (FR-1.4, D-1). What made that a
-// trap rather than a rule is that nothing could reach STANDBY: `Power.OffAir`
-// had no producer at all, so an operator who arrived with the radio playing had
-// no way off the surface but killing the process.
+// running — the ratified STANDBY-first rule (FR-1.4, D-1). It is a rule and not
+// a trap only because the console can reach STANDBY: with no producer of
+// `Power.OffAir`, an operator who arrived with the radio playing would have no
+// way off the surface but killing the process.
 //
-// IT WAS LATENT ONLY BECAUSE ARRIVING WAS ALSO IMPOSSIBLE — `Router.keys` was
-// never assigned, so no key reached the swap at all. That is why the keymap and
-// the control land in ONE change: installing the keymap alone is what makes the
-// trap live, and it would have surfaced as a different batch's bug.
+// THE KEYMAP AND THE CONTROL GO TOGETHER: a keymap that lets the operator
+// arrive, without the control that lets them leave, makes the trap live.
 
 import (
 	"strings"
@@ -37,11 +35,10 @@ func (s *station) CutBed(toBed bool) { s.bed = append(s.bed, toBed) }
 // withStation hands the router its control THE WAY PRODUCTION DOES — through
 // the message, not by assigning the field.
 //
-// A PLANT MADE THIS NECESSARY. The first version of these tests set `r.station`
-// directly, so a mutation that dropped the message on the floor left every one
-// of them green: they exercised the toggle and never the DELIVERY of the thing
-// the toggle needs. Same shape as a stubbed seam — the test drives past the
-// wire it is supposed to prove.
+// A test that sets `r.station` directly stays green under a mutation that drops
+// the message on the floor: it exercises the toggle and never the DELIVERY of
+// the thing the toggle needs. Same shape as a stubbed seam — the test drives
+// past the wire it is supposed to prove.
 func withStation(t *testing.T, r Router, s Station) Router {
 	t.Helper()
 	m, _ := r.Update(StationControlMsg{Control: s})
@@ -66,12 +63,14 @@ func keyFor(t *testing.T, binding string) tea.KeyPressMsg {
 		k = tea.KeyPressMsg{Code: rune(binding[len("ctrl+")]), Mod: tea.ModCtrl}
 	case binding == "shift+enter":
 		k = tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift}
-	// SHIFT + AN ARROW (D-111): the bed's relay selector moved there so the bare
+	// SHIFT + AN ARROW (D-111): the bed's relay selector is there so the bare
 	// arrows are free for the card's PRESENTER.
 	case binding == "shift+left":
 		k = tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift}
 	case binding == "shift+right":
 		k = tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift}
+	case binding == "space":
+		k = tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
 	default:
 		k = tea.KeyPressMsg{Code: rune(binding[0]), Text: binding}
 	}
@@ -162,14 +161,12 @@ func TestTheStationToggleDoesNothingFromObserver(t *testing.T) {
 
 // THE BED'S CONTROLS REACH THE STATION (D-78).
 //
-// `[B]` IS THE FIRST PRODUCTION CALLER `lineup.CutOver` HAS EVER HAD. The
-// Director has modelled the cut-over since 0.14.0 — FR-4.2, D-11, D-32 — and
-// nothing emitted it, so `bed.carries` was false for the life of every process
-// and the pause it governs had never once happened.
+// `[B]` IS THE PRODUCTION CALLER OF `lineup.CutOver`. The Director models the
+// cut-over (FR-4.2, D-11, D-32); with nothing emitting it, `bed.carries` is
+// false for the life of every process and the pause it governs never happens.
 //
 // DRIVEN THROUGH THE KEYS, for the reason this file's own helper exists: a test
-// that called `cutBed` directly would pass over an unbound control, which is
-// exactly the state these three were in.
+// that called `cutBed` directly would pass over an unbound control.
 func TestTheBedsControlsReachTheStation(t *testing.T) {
 	s := &station{}
 	var stepped []int
@@ -193,7 +190,7 @@ func TestTheBedsControlsReachTheStation(t *testing.T) {
 		t.Errorf("[b] on a carrying bed cuts BACK; asked %v", s.bed)
 	}
 
-	// SHIFTED SINCE D-111: the reference draws arrows on the bed's selector AND on
+	// SHIFTED (D-111): the reference draws arrows on the bed's selector AND on
 	// the card's PRESENTER, and one surface has one pair of arrow keys. The bed's
 	// are the SPECIFIC ones, reachable wherever the pointer happens to be.
 	m, _ = m.Update(keyPress(t, "shift+right"))
@@ -221,16 +218,15 @@ func TestTheBedsControlsReachTheStation(t *testing.T) {
 // AND A BED KEY DOES NOTHING TO THE BED FROM OBSERVER (D-79).
 //
 // THE ROUTER LOOKS A KEY UP BEFORE EITHER SURFACE SEES IT, so the bed's cases
-// ran on every surface. They returned unconditionally at first, which SWALLOWED
-// `left` and `right` on Observer — where they walk the alerts — and the
-// listener's navigation stopped working. Only a real key sequence through the
-// real binary showed it; every unit test pressed the arrows on the console.
+// run on every surface. Returning unconditionally would SWALLOW `left` and
+// `right` on Observer — where they walk the alerts — and stop the listener's
+// navigation, which no unit test that presses the arrows on the console sees.
 //
 // WHAT THIS REACHES, SAID PLAINLY (INST-5): it proves the bed is not TOUCHED
 // from Observer. It does NOT prove the key went on to reach the Dashboard —
 // this fixture's Observer has an empty table and an empty injector, so `right`
 // and an unbound key leave it in the same state either way. The pass-through is
-// covered by the pty smoke, which is where it was found.
+// covered by the pty smoke.
 func TestABedKeyDoesNothingToTheBedFromObserver(t *testing.T) {
 	s := &station{}
 	d, err := NewDashboard(Config{StepBedRelay: func(int) tea.Cmd { t.Error("the selector acted from Observer"); return nil }})

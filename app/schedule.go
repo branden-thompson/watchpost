@@ -3,22 +3,9 @@ package app
 // schedule.go — the Director, its executors and the pump, wired into the
 // running station (T3.2a).
 //
-// IT DRIVES THE LIVE ALERT RAIL (T3.10b). It did not when this file was
-// written — the header claimed, correctly then and falsely for the rest of the
-// release, that no arrival reached it — and the sentence stayed while the wiring
-// changed eighteen lines below, at `tick.emit = s.carry`. A file header telling
-// the next maintainer that the file wiring the Director into a weather radio is
-// dead is the most expensive comment in the tree (red team 2026-09-05, R-3).
-//
-// So: the producer states what arrived, the Director schedules it, the Composer
-// writes it and the Reader performs it. The main track still runs through the
-// radio deck.
-//
-// It is split from the absorb it enables (T3.2b) deliberately. Moving the
-// Watchlist dwell onto a Director that nothing drives would have deleted a
-// working five-minute advance and replaced it with something that never fires;
-// splitting isolates the risky half behind a claim a test can state — nothing
-// changes — and every later Phase 3 task needs this half regardless.
+// IT DRIVES THE LIVE ALERT RAIL (T3.10b), wired at `tick.emit = s.carry`. The
+// producer states what arrived, the Director schedules it, the Composer writes
+// it and the Reader performs it. The main track runs through the radio deck.
 
 import (
 	tea "charm.land/bubbletea/v2"
@@ -40,9 +27,9 @@ import (
 // scheduleTick is how often the Director is told the time.
 //
 // The clock is an EVENT (DR-20), so this is the resolution of every deadline
-// the schedule keeps. One second is far finer than anything it decides today —
-// the Watchlist dwell it absorbs at T3.2b is five minutes — and costs one
-// channel send a second on a goroutine that is otherwise asleep.
+// the schedule keeps. One second is far finer than anything it decides — the
+// Watchlist dwell is five minutes — and costs one channel send a second on a
+// goroutine that is otherwise asleep.
 const scheduleTick = time.Second
 
 // schedule owns the pump's lifetime.
@@ -57,10 +44,10 @@ type schedule struct {
 	// same stated reason: "A FUNCTION RATHER THAN A CALL SITE, deliberately …
 	// a call site cannot be asserted; this can, and a test does."
 	//
-	// THE DEFECT THAT ASKED FOR IT: the Composer resolved against the pool while
-	// the operator could request a wider set, and every test of the widening
-	// passed because each exercised the SET directly and none asked what the
-	// schedule had been handed. Reverting the wiring broke nothing.
+	// A TEST OF THE SET IS NOT A TEST OF THE WIRING: the Composer could resolve
+	// against the pool while the operator requests a wider set, and every test that
+	// exercises the SET directly would pass without asking what the schedule had
+	// been handed.
 	x *executors
 }
 
@@ -70,22 +57,21 @@ type schedule struct {
 // THE ARBITER AND THE EFFECTOR ARE THE ONES ALREADY RUNNING, not new ones. The
 // executors perform through `nar` and `nar.mc`, which is the same pair the
 // ticker's takeovers use — building a second effector here would put the band
-// and the duck back under two owners, which is the defect T2.3 removed and the
-// one this file would be the easiest place to reintroduce.
-// THE LISTS ARE NOT ONE LIST (D-76, split again at D-140). `pool` is the
+// and the duck back under two owners, which T2.3 rules out and this file would
+// be the easiest place to break.
+// THE LISTS ARE NOT ONE LIST (D-76, D-140). `pool` is the
 // STATION's candidates — what its Producer may OFFER. `resolvable` is what its
 // Composer may RESOLVE, which is the pool plus whatever the operator has
 // requested: D-130 lets them request anywhere inside the service radius, so the
 // two are not interchangeable. `watch` is the LISTENER's, and the
 // bed's cut-over is the MONITOR's rotation moving through it.
 //
-// D-72 MOVED ALL THREE TOGETHER AND THAT WAS TWO-THIRDS RIGHT. The reasoning
-// was that a Director scheduling a location its own Composer cannot resolve gets
-// it benched by D-67's cool-off — true of `propose` and `compose`, and NOT of
-// `cutTo`, which serves a rotation through the listener's own watchlist. A
-// watched location outside the station's pool stopped resolving and the tune
-// died as `schedule:tune-unknown`, silently. Found by DRAWING THE FLOW for the
-// HUM LEAD rather than by a gate.
+// `cutTo` DOES NOT RESOLVE AGAINST THE POOL. A Director scheduling a location
+// its own Composer cannot resolve gets it benched by D-67's cool-off — true of
+// `propose` and `compose`, and NOT of `cutTo`, which serves a rotation through
+// the listener's own watchlist. Resolved against the pool, a watched location
+// outside it would stop resolving and the tune would die as
+// `schedule:tune-unknown`, silently.
 // bedSeams is what the schedule needs from the console's bed row, and it is ONE
 // parameter because it is ONE concern (F-98, D-90).
 //
@@ -93,8 +79,9 @@ type schedule struct {
 // operator's selector and the settle — and each half is how one of them learns
 // what the other knows. `note` records the Director's `Carrying` so the selector
 // does not guess it; `selected` reports the operator's relay so the settle does
-// not overwrite it. Passed separately they were an eleventh and twelfth argument
-// to a function that already had ten, and nothing said they belonged together.
+// not overwrite it. Passed separately they would be an eleventh and twelfth
+// argument to a function that already has ten, and nothing would say they
+// belong together.
 type bedSeams struct {
 	// note records what the Director says about the bed carrying the programme.
 	note func(carrying bool)
@@ -147,15 +134,14 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// THE MAIN TRACK'S WORDS (0.16.0 P3). Required from P3(d): a station
 		// whose rotation is owned by the schedule and has no composer wired
 		// would queue every report and read none.
-		// THE SET TRAVELS ON THE EFFECT, so there is no lookup here (R4b). It
-		// was a `wants` callback in R2; `BuildCard` carries it now, for the same
-		// reason it carries the slot and the refs — looking it up from the
-		// published lineup would race the dispatch.
+		// THE SET TRAVELS ON THE EFFECT, so there is no lookup here (R4b).
+		// `BuildCard` carries it for the same reason it carries the slot and the
+		// refs — looking it up from the published lineup would race the dispatch.
 		// AND IT RESOLVES AGAINST MORE THAN THE POOL (D-140). A card carries a
-		// KEY; the Composer turns it back into a location. The operator may now
+		// KEY; the Composer turns it back into a location. The operator may
 		// request anywhere inside the SERVICE RADIUS (D-130), which is wider
-		// than the capped pool — so resolving against the pool alone failed to
-		// build exactly the cards the widening was ruled for, silently.
+		// than the capped pool — so resolving against the pool alone would fail
+		// to build exactly the cards the widening was ruled for, silently.
 		compose: composeFor(deck, resolvable),
 		// AND WHAT PERFORMS THEM (F-91, BD-9). The rail reads through the
 		// arbiter above; the programme is a source swap on the broadcast
@@ -175,6 +161,15 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 	// constant here would agree with it today and drift silently: the station
 	// would hold cards the operator cannot address, or leave slots empty for
 	// ever, and neither reads as a bug from either side.
+	//
+	// THE SEAM FOR THE SPOKEN TRANSITIONS (D-163). ProgrammeReturn and
+	// Announcement are left empty, so the Director arranges no transition:
+	// F-27's "Watchpost Radio now returns to its regularly scheduled
+	// programming" has no composer. The transitions are the Director's only
+	// additive act - it alone knows two adjacent cards came from different
+	// places - and the line-up's machinery for them is tested. To add them, set
+	// ProgrammeReturn here to transition/resume.txt, rendered by scriptText with
+	// its InProgress.
 	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax, Depth: tty.MainTrackSlots}, time.Now()), x.run,
 		func(f lineup.Effect, v any) { radioDebugLog("schedule:fault:" + lineup.Describe(f)) })
 	if p == nil {
@@ -186,14 +181,13 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 	go s.tick(run)
 	// THE PRODUCERS REPORT INTO IT, WIRED HERE (T3.10b).
 	//
-	// Both were the caller's job, and the ticker's was one line away from being
+	// Left to the caller, the ticker's wiring is one line away from being
 	// forgotten: without it the rail receives nothing and NO HAZARD IS EVER
 	// READ, while every test stays green because each wires its own schedule.
 	// That is the shape of D-12 — three tests passing over an inert Settings row
 	// because they called the cycle function instead of pressing the key — so
 	// the wiring lives with the thing that needs it and a test can assert it.
-	//
-	// There is nothing mutual about it any more: both are parameters.
+	// Both are parameters.
 	tick.mu.Lock()
 	tick.emit = s.carry
 	tick.mu.Unlock()
@@ -219,8 +213,8 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// program's Send, and THIS RUNS BEFORE THE PROGRAM'S LOOP DOES: a
 		// synchronous send here blocks until something reads it, and nothing
 		// will, because the reader is the loop this function returns to start.
-		// Measured: `TestRunWithoutArgsStartsTheDashboard` hung for the full
-		// ten-minute test timeout, with the trace pointing at this line.
+		// A synchronous send hangs `TestRunWithoutArgsStartsTheDashboard` for the
+		// full ten-minute test timeout.
 		//
 		// It is the shape every other startup-time sender already has —
 		// severeDeck publishes from its own goroutine for the same reason — and
@@ -239,9 +233,9 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 // THE UNEXPORTED tune, DELIBERATELY. Every tune the Director asks for is
 // automatic — a dwell elapsed, a cycle ended — and lifting the alert duck on an
 // automatic transition would bring the next location's report in at full volume
-// over a breaking alert still reading. T2.3 gave the duck ONE OWNER rather than
-// making that distinction a case of an identifier, and this calls the path that
-// never lifts it.
+// over a breaking alert still reading. The duck has ONE OWNER (T2.3) rather
+// than that distinction living in the case of an identifier, and this calls
+// the path that never lifts it.
 //
 // A KEY THAT NAMES NOTHING IS DROPPED, not guessed at. The listener can remove a
 // location from the watchlist between the Director planning a move and the move
@@ -265,10 +259,9 @@ func tuneTo(deck *radioDeck, watch func() []snapshot.LocationRef) func(string) {
 //
 // THE CARD STAYS DOMAIN-FREE (DR-1), so what travels through the schedule is an
 // identifier and nothing more, and the app is where it becomes a place again.
-// EXTRACTED AT THE SECOND CALLER: the cut-over asked this question first, and
-// the main-track composer asks the same one — two walks of the watchlist
-// comparing the same key would be two places for "what is a location's identity"
-// to drift.
+// ONE RESOLVER FOR BOTH CALLERS: the cut-over and the main-track composer ask
+// the same question — two walks of the watchlist comparing the same key would
+// be two places for "what is a location's identity" to drift.
 func refFor(watch func() []snapshot.LocationRef, ref string) (snapshot.LocationRef, bool) {
 	if watch == nil {
 		return snapshot.LocationRef{}, false // no watchlist to resolve against
@@ -288,8 +281,7 @@ func refFor(watch func() []snapshot.LocationRef, ref string) (snapshot.LocationR
 // the alerts, the office products, the sign-off — and hands back the segments it
 // would have voiced. It is the same call startSynth makes for its own source.
 //
-// WHAT IS SHARED IS THE TEXT, NOT THE DELIVERY, and the first draft of this
-// comment overclaimed it (red team 2026-09-09, finding 5). A synth.Segment
+// WHAT IS SHARED IS THE TEXT, NOT THE DELIVERY. A synth.Segment
 // carries Key, Text, Role, SelfIntro and Pause; scriptFromSegments keeps Text
 // and drops the rest, because lineup.Part has nowhere to put them. The source
 // consumes all five. So the two paths cannot say different WORDS — and can
@@ -325,9 +317,8 @@ func composeFor(deck *radioDeck, watch func() []snapshot.LocationRef) func(conte
 //
 // NAMED carry, NOT send, for the tool rather than the code: P10 resolves by
 // NAME, so a `send` here collides with pump.send — which is genuinely in a call
-// cycle — and reports this as recursion it has no part in. Fifth rename in this
-// release for the same false positive, and the collisions are all between a
-// method on one type and a method on another.
+// cycle — and reports this as recursion it has no part in. Those collisions are
+// always between a method on one type and a method on another.
 //
 // IT CARRIES THE SCHEDULE'S OWN CONTEXT, so a producer that outlives the station
 // — the deck reports a status after shutdown has begun — gives up rather than
@@ -351,8 +342,8 @@ func (s *schedule) tick(ctx context.Context) {
 //
 // Both, and in this order. The tick goroutine sends to the pump, so a stop that
 // waited only for the pump would leave a sender writing to a loop that had
-// returned — the shape that made a 0.12.0 tag go red on the Linux race gate,
-// where a fire-and-forget goroutine outlived the thing it wrote to.
+// returned — a fire-and-forget goroutine outliving the thing it writes to,
+// which the Linux race gate fails.
 func (s *schedule) stop() {
 	if s == nil {
 		return

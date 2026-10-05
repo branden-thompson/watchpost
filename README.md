@@ -125,6 +125,7 @@ tidal current.
 | `enter` | the location in full: hourly, the week, marine and tides, fire, quakes, the alerts |
 | `A` / `←` `→` | the focused location's alerts, one at a time |
 | `w` | **Severe Weather / Disaster Events** — every active event, by category (`←` `→`), event (`↑` `↓`); `enter` opens the record, `space` reads it aloud, `esc` backs out |
+| `g` | the **Map** of the focused location's region — radar, alert areas and the weather layers; `g` or `esc` closes it (its own keys are under [Map](#map)) |
 | `l` | look up any city or ZIP — it joins the top of RECENT and stays there |
 | `ctrl+a` / `shift+delete` | make the focused location a favourite (up to 10) / remove it |
 | `space` `+` `-` | radio: play or pause the focused location · volume up (`=` too) and down |
@@ -134,7 +135,7 @@ tidal current.
 | `f` `c` | Fahrenheit / Celsius |
 | `t` | the colour theme — thirteen built in, **Watchpost Light** for a light terminal |
 | `s` `a` `S` `?` `q` | Settings · About and data credits · the status of every data source · help · quit (`ctrl+c` too) |
-| `ctrl+d` | Diagnostics |
+| `ctrl+d` | Diagnostics — including a test alert, marked as one everywhere (see the Broadcaster's keys) |
 | `ctrl+b` / `B` · `ctrl+o` / `O` | the **Broadcaster** console for your station · back to the Observer (refused while the station is ON AIR — go to STANDBY first) |
 
 (`ctrl+s` also opens the severe window — unless your shell or tmux has it reserved for flow control,
@@ -159,6 +160,92 @@ and it lands on that event's category. A source that is down is named on the cat
 unavailable") — never a silently empty list.
 
 ![space reads the focused event: the player's head names it (EVENT · Severe Thunderstorm Warning · Lewis and Clark, MT), the notification report scrolls through the marquee, and the row wears the ▶](docs/img/event-read.png)
+
+## Map
+
+`g` opens the map of the focused location's region, and `g` or `esc` closes it. The map never shows
+more than one region: the contiguous US, Alaska, Hawaii, the US Caribbean, American Samoa, or Guam and
+the Northern Marianas. A place outside all of them gets a sentence saying so, and no map.
+
+**What it shows.** A basemap with the alert areas in view, coloured by severity. On top of that, the
+map runs in one of two modes:
+
+- **Radar mode** (the default) plays the last two hours of radar as a loop. It can add the hours ahead
+  from the HRRR model.
+- **Forecast mode** (`R` switches) steps through now and the days ahead.
+
+The layers are temperature, feels-like, wind, rain and snow, UV, air quality, waves, fire, earthquakes,
+buoys and tides. Switch them in the Overlays menu (`O`) or in Settings. Out of the box the radar, alert
+areas, fire, earthquakes, and rain and snow are on, and the rest are off. A badge above the map names
+each layer drawn and its source.
+
+The **Area Alerts** box (`A`) describes the map in words. It says which alerts cover the place, which
+come near it, and every other alert in view, most severe first. The description can also replace the
+picture or be switched off (Settings, *Description*).
+
+| Key (map open) | Does |
+|-----|------|
+| `↑` `↓` `←` `→` | pan; at a region's edge a chip names the next region, and a second press crosses to it |
+| `+` `=` / `-` | zoom in / out |
+| `[` `]` | the previous / next location on your list |
+| `1`–`6` | jump to a region: Continental US, Alaska, Hawaii, US Caribbean, American Samoa, Guam & N. Marianas |
+| `R` | Radar mode on / off (off is Forecast mode) |
+| `space` | play / stop the loop, or the forecast's steps |
+| `shift+←` `shift+→` · `n` | step back / on · back to now |
+| `<` `>` | Forecast mode: the days' highs or lows |
+| `A` · `O` | the Area Alerts box · the Overlays menu (`↑` `↓` move, `←` `→` change a choice, `space` switches, `esc` closes it) |
+| `PgUp` `PgDn` | scroll the window when it is longer than the screen |
+
+While the map is open these keys are the map's. Any other key works as it does on the dashboard. Each
+one is a keymap action, so `[keys]` in `config.toml` can rebind it.
+
+**Settings, Maps tab** (`s`, then `tab` to *Maps*):
+
+- **MAP:** maps on or off; where the description goes; the scale the map opens at (State, County or
+  Region); the distance that counts as nearby; the radar source (MRMS, or IEM for the lower 48); the
+  hours of radar ahead; which earthquakes (a USGS feed); the temperature source (NDFD or Open-Meteo);
+  how dense the rain is from day 4; and how many cities show UV.
+- **MAP - LAYERS:** each layer on or off.
+- **MAP - DETAIL:** the basemap's detail (borders, lakes, rivers, place names, major roads, rail and
+  parks) and *Map data*, which clears what the map keeps on disk.
+
+The foot of the tab warns when a choice costs a lot. That happens when Open-Meteo is chosen, because it
+bills per location, and when the layers you switched on would fetch more than 3 MB or 25 requests in
+one refresh.
+
+**A font without braille.** The picture is drawn in braille characters. If your terminal's font has
+none, the map shows empty boxes. Run `watchpost --ascii` and the window gives the map's description
+in words in place of the picture.
+
+The window needs room for a map 69 columns by 12 rows. In a smaller terminal it says what size it
+needs, then gives the description.
+
+**What the map contacts.** Nothing is fetched for the map until you press `g`. The Status window (`S`)
+lists every host the map can contact under MAP STATUS, with whether each is answering. What each one
+is sent:
+
+| Host | For | Sent |
+|---|---|---|
+| `tiles.openfreemap.org` | basemap | the tiles in view |
+| `api.weather.gov` | alert areas | the states, marine areas and alert zones in view |
+| `opengeo.ncep.noaa.gov` (MRMS), `mesonet.agron.iastate.edu` (IEM) | radar, radar ahead | fixed boxes, never the view |
+| `graphical.weather.gov` (NDFD), `api.open-meteo.com`, `marine-api.open-meteo.com` | temperature, feels-like, wind, UV, rain and snow, waves | points on fixed boxes, never the view |
+| `services3.arcgis.com` (NIFC WFIGS), `www.ospo.noaa.gov` (HMS) | fire | fixed boxes; HMS's national file |
+| `files.airnowtech.org` (AirNow) | air quality | nothing: national files |
+| `data.epa.gov` (EPA) | UV | the names of the largest cities in view |
+| `www.ndbc.noaa.gov`, `api.tidesandcurrents.noaa.gov` | buoys, tides | nothing for buoys (a national file); the tide stations in view |
+| `earthquake.usgs.gov` | earthquakes | nothing: the national feed chosen in Settings |
+
+**The history recorder runs whatever the maps setting.** While watchpost runs, in any mode, it records
+the station's region every hour: NDFD's forecast for the region, AirNow's national file and the USGS
+feed. It also records the region the map last showed, the cities the map read UV for, and - for the
+places you watch - the NWS's observations and alerts, the buoys, the tide stations, and the fire and
+earthquake feeds. The map uses the record to draw past hours when a source does not answer. Settings'
+*Data* tab sets how long the record is kept, shows its size, and clears it; *Clear map data* also
+clears the cities the map read. When several copies of watchpost run, each hour is fetched only once.
+The record is kept in `~/.local/share/watchpost/weather/history` (under `$XDG_DATA_HOME` when it is set);
+Open-Meteo's spent-quota mark (`quota.json`) and the sea points Open-Meteo Marine has no answer for
+(`marine-land.json`) are in `~/.local/state/watchpost` (under `$XDG_STATE_HOME`).
 
 ## Radio
 
@@ -211,7 +298,7 @@ to the Observer, and is refused while the station is ON AIR.
 | `l` | look up any city or ZIP |
 | `b` / `shift+←` `shift+→` | cut the main track over to the **bed** (the live relay) / previous and next relay |
 | `+` `=` `-` | gain up and down — one level, mirrored with the Observer's volume |
-| `ctrl+d` | Diagnostics |
+| `ctrl+d` | Diagnostics — **send a test alert** to check your station's alerting end to end, as a radio station tests its own: it asks ARE YOU SURE?, reads "This is a test of the Watchpost alert events system" before and after, is marked TEST EVENT on the ticker and in the severe window, and is gone in two minutes |
 | `s` `a` `S` `?` `q` | Settings · About · the status of every data source · help · quit |
 | `ctrl+o` / `O` | back to the Observer (refused while the station is ON AIR — go to STANDBY first) |
 
@@ -265,16 +352,20 @@ for life safety use NOAA Weather Radio and Wireless Emergency Alerts. Coverage i
 National Weather Service); places outside the US resolve but carry no weather data yet.
 
 **Data and credits.** Watchpost reads public sources and shows their credits in the About window
-(`a`): National Weather Service / NOAA (forecasts, observations, alerts, products, coastal waters,
-transmitter list — public domain); NDBC buoys and CO-OPS tides/currents (NOAA); NOAA-NESDIS Hazard
-Mapping System fire detections and NIFC WFIGS incidents (public domain); active fire data from NASA
-FIRMS (<https://earthdata.nasa.gov/firms>, NASA open data — attribute LANCE/FIRMS); the USGS earthquake
-feed; GeoNames and Open-Meteo geocoding (CC BY 4.0, <https://creativecommons.org/licenses/by/4.0/>);
-NWR audio relayed by wxradio.org and weatherUSA (community relays — relayed audio lags and is not
-for life-safety use). Watchpost is not affiliated with NOAA, NIFC, the USGS or NASA.
+(`a`), a group a provider, each source once: NOAA - the National Weather Service, NDBC buoys, CO-OPS
+tides and currents, HMS fire detections, NHC storms, the NWR transmitter list, MRMS radar, HRRR radar
+ahead and NDFD forecasts (public domain); NASA FIRMS active fires (<https://earthdata.nasa.gov/firms>,
+credited to LANCE FIRMS); NIFC WFIGS incidents; the NWR audio relays of wxradio.org and weatherUSA
+(community relays - relayed audio lags and is not for life-safety use); U.S. EPA AirNow (preliminary
+data, not fully verified) and EPA Envirofacts UV; the USGS earthquake feed; the Iowa Environmental
+Mesonet's radar; Open-Meteo's geocoding and forecasts and GeoNames' places (CC BY 4.0,
+<https://creativecommons.org/licenses/by/4.0/>; Open-Meteo's grids are interpolated); OpenFreeMap's
+basemap (© OpenMapTiles, © OpenStreetMap contributors, ODbL); and the Piper voices
+(rhasspy/piper-voices, MIT). Watchpost is not affiliated with NOAA, NIFC, the USGS, the EPA or NASA.
 
 **What it talks to, and when.** Watchpost fetches only from the providers above, on the schedule the
-dashboard shows, and it sends nothing about you to any of them. One further connection is available and
+dashboard shows, and sends each only what its answer needs: the places you watch, for the station, and
+what is in view, for the map (the Map section's table says which host is sent what). One further connection is available and
 is **off unless you turn it on**: `update_check = true` asks `api.github.com`, **once at startup**, whether a
 newer release has been published. It is a plain GET — no version, no identifier, nothing about your
 machine — and the answer is compared locally; the `S` window shows the result. Left off, the app never
@@ -387,7 +478,8 @@ installs shell completion.
 **Diagnostics.** `WATCHPOST_DEBUG_TIMING=1` prints launch→full-view time on exit.
 `WATCHPOST_DEBUG_PPROF=1` serves pprof on `127.0.0.1:6060` (or `WATCHPOST_DEBUG_PPROF_ADDR`), plus
 `/debug/counters` (live request, publish and memory counters as JSON) and `/debug/dump` (**POST** —
-it writes a profile set to disk, so a GET is refused). The `S` window shows the request counters per host since launch and the severe index
+it writes a profile set to disk, so a GET is refused). Every route answers only a request addressed to
+`127.0.0.1:<port>` or `localhost:<port>` that carries no `Origin` header, so a web page cannot reach it. The `S` window shows the request counters per host since launch and the severe index
 against its 500-row cap. A running dashboard writes a diagnostic dump — heap, allocs, goroutine and
 threadcreate profiles with `counters.json` — under the cache directory's `profiles/` on
 `kill -USR1 <pid>` (macOS/Linux; on Windows use `curl -X POST .../debug/dump`); dumps are at least a minute apart and
@@ -402,7 +494,8 @@ falls back to `radio`.
 
 ## Building from source
 
-Go 1.25 is the floor (`go.mod`); CI and the releases build with 1.27. `make build` (binary in
+Go 1.25.13 is the floor (`go.mod`). At 1.25.0, 28 standard-library vulnerabilities are reachable,
+so the map library, go-tuiMaps v0.2.0, requires 1.25.13 (its D-133), and watchpost does too. CI and the releases build with 1.27. `make build` (binary in
 `./dist`, version stamped from `git describe`), `make verify` (fmt, vet, tidy, vulnerability, race,
 import-direction, watermark and control gates with positive controls), `make release-matrix` (all
 targets, CGO off), `make install-test` (installer end to end against a local server). `make verify` runs from a clean

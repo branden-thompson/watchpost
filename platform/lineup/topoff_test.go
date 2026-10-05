@@ -7,11 +7,10 @@ import (
 
 // topoff_test.go — D-40: the Producer proposes, the Director chooses.
 //
-// THE GAP THIS CLOSES WAS FOUND BY WALKING A USER FLOW, not by a gate. Only two
-// things queued a main-track card — the deck reporting a location needs a read,
-// and the operator's undo — and NOTHING READ THE TRACK'S DEPTH. So the schedule
-// held about one card while the console drew ten slots, and dropping a card left
-// slot [9] empty for ever.
+// WITHOUT A TOP-OFF only two things queue a main-track card — the deck reporting
+// a location needs a read, and the operator's undo — and NOTHING READS THE
+// TRACK'S DEPTH. So the schedule holds about one card while the console draws
+// ten slots, and dropping a card leaves slot [9] empty for ever.
 
 // offering is a Director at Running with a watchlist, ready to be topped off.
 func offering(t *testing.T, depth int, watchlist ...string) Director {
@@ -50,8 +49,8 @@ func TestTheDirectorFillsTheMainTrackToDepth(t *testing.T) {
 		t.Fatalf("a depth of 3 takes exactly 3 of the 4 proposals; got %d (%v)", len(got), got)
 	}
 	// AND EACH ONE MUST BE SET MOVING. A card queued and left is a lineup the
-	// console draws and the station never speaks — the defect a plant caught in
-	// the rotation's own test by holding the effects and never asking for them.
+	// console draws and the station never speaks — which a test that holds the
+	// effects and never asks for them cannot see.
 	published := 0
 	built := 0
 	for _, e := range fx {
@@ -133,7 +132,7 @@ func TestAnOfferQueuesNothingWhenTheTrackIsAlreadyDeepEnough(t *testing.T) {
 // locations from the pool, and proposing reports to the Director … The director
 // should be choosing and populating the line-up."
 //
-// THE OLD HAZARD WAS "a rotation nobody can drop", AND THE OPERATOR CAN DROP IT.
+// THE HAZARD IS NOT "a rotation nobody can drop": THE OPERATOR CAN DROP IT.
 // That is the surface's whole reason to exist.
 func TestAnOfferFillsTheLineUpWhileTheProgrammeIsOnStandby(t *testing.T) {
 	d := New(Settings{Max: 5, Depth: 3, Watchlist: []string{"oceanside"}},
@@ -155,8 +154,8 @@ func TestAnOfferFillsTheLineUpWhileTheProgrammeIsOnStandby(t *testing.T) {
 //
 // The same inversion, for the same reason. A cut-over PAUSES the main track
 // (FR-4.2) — it does not abandon it — so the operator can go on planning the
-// reads that resume when they cut back. Refusing to admit here left them
-// managing an empty console while a relay played.
+// reads that resume when they cut back. Refusing to admit here would leave
+// them managing an empty console while a relay plays.
 func TestTheBedHoldingTheProgrammeDoesNotStopTheTopOff(t *testing.T) {
 	d := offering(t, 3, "oceanside", "carlsbad")
 	d, _ = d.Step(CutOver{ToBed: true})

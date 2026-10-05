@@ -100,9 +100,9 @@ func TestAHugeGeometryIsRefusedRatherThanHeld(t *testing.T) {
 
 // TestAGeometryOfEmptyRingsIsRefused is RT-1 from the BUILD-exit red team, and
 // it is the same failure this reader exists to prevent arriving by a different
-// door. The cap counted **positions**; nothing counted rings, so a document of
-// two million empty rings was accepted, held 117 MB, and reported zero
-// vertices. Depth was bounded and size was bounded; *quantity* was not.
+// door. A cap on **positions** alone counts no rings, so a document of two
+// million empty rings would be accepted, hold 117 MB, and report zero
+// vertices. Depth is bounded and size is bounded; so is *quantity*.
 func TestAGeometryOfEmptyRingsIsRefused(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(`{"type":"Polygon","coordinates":[`)

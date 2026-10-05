@@ -16,12 +16,11 @@ import (
 // A SCANNER, NOT A REGEXP, and the fast path returns the input itself.
 //
 // This sits under render.Width, which measures every cell of every row of every
-// frame; since 0.12.0's ticker the frame draws continuously, so it runs about
-// three times a second for as long as the app is up. Regexp.ReplaceAllString
-// builds a fresh string EVEN WHEN NOTHING MATCHES, and almost every cell
-// measured is plain text — ≈3.2 MB/min of copies of strings that had nothing to
-// strip (perf pass, 2026-08-30; flagged as item 26 of the L4 caching lens and
-// left to the render lens, which never picked it up).
+// frame; with the ticker the frame draws continuously, so it runs about three
+// times a second for as long as the app is up. Regexp.ReplaceAllString builds
+// a fresh string EVEN WHEN NOTHING MATCHES, and almost every cell measured is
+// plain text — a regexp here copies ≈3.2 MB/min of strings that have nothing
+// to strip (perf pass, 2026-08-30).
 //
 // TestStripSGRMatchesTheRegexpItReplaced holds this byte-identical to
 // `\x1b\[[0-9;]*m` over a corpus and 20,000 random strings built from the
@@ -151,12 +150,10 @@ func droppedSpans() [][2]rune {
 
 // The bounds on text that arrives from outside, and the one place they are set.
 //
-// THEY WERE SET TWICE. domains/globalfeed and domains/weather/nws each declared
-// maxListLen = 50 and maxFieldRunes = 120, and each carried its own pair of
-// helpers to apply them — clampSlice/clampField and clampList/clampRunes. Four
-// names, two declarations, one policy. They agreed, which is exactly the state
-// issue #7 was in before it did not: a limit raised in one feed and not the
-// other would sanitise two providers' prose to different lengths, silently.
+// ONE POLICY, ONE DECLARATION. domains/globalfeed and domains/weather/nws both
+// bound provider prose by these limits and helpers. Two declarations agree only
+// until they do not (issue #7): a limit raised in one feed and not the other
+// would sanitise two providers' prose to different lengths, silently.
 //
 // This package already says why that belongs here: it is the boundary for text
 // from outside, and a leaf, so "one owner, below both" (R5-C-05).
@@ -197,12 +194,11 @@ func ClampList(s []string) []string {
 // "a, b, and c" — with the Oxford comma, which is a house rule and not a
 // stylistic accident.
 //
-// ONE OWNER, BECAUSE IT WAS TWO (metric D, 2026-09-08). `app.spokenList` and
-// `synth.joinAnd` were byte-identical apart from their names, and both feed the
-// SPOKEN output: the burst head and the provider-transition line on one side,
-// the fire report's sources and facts on the other. Nothing would have caught
-// them diverging — a comma policy changed in one place would simply have made
-// two reports read differently, in a medium nobody can re-read.
+// ONE OWNER (metric D, 2026-09-08). Both sides of the SPOKEN output join with
+// it: the burst head and the provider-transition line in app, the fire
+// report's sources and facts in synth. Two copies could diverge with nothing
+// to catch it — a comma policy changed in one place would make two reports
+// read differently, in a medium nobody can re-read.
 //
 // It lives in plaintext because that is the package both sides already depend
 // on for text they are about to say, and because `modes/` may not import

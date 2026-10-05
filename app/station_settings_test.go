@@ -103,15 +103,11 @@ func TestSettingTheServiceRadiusReDerivesThePool(t *testing.T) {
 
 // TestTheAppHandsTheWindowItsServiceBounds.
 //
-// THIS REPLACES A TIE-TEST, and the replacement is the point (D-124). There used
-// to be TWO copies of 2 and 100 — `modes/tty`'s own constants and
-// `platform/config`'s clamp — and `TestSetupServiceBoundsMatchTheConfig` stood
-// between them asserting they were equal. A test that prevents drift is not the
-// same as a fact with one owner.
-//
-// `platform/config` owns them alone now and the window is HANDED them, so there
-// is nothing left to compare. What is left to check is the handing over: a build
-// that forgets it ships a window which refuses every radius the operator types.
+// THE BOUNDS HAVE ONE OWNER (D-124). `platform/config` alone owns 2 and 100 and
+// the window is HANDED them, so there is no second copy to compare: a test that
+// prevents drift is not the same as a fact with one owner. What is left to check
+// is the handing over: a build that forgets it ships a window which refuses
+// every radius the operator types.
 func TestTheAppHandsTheWindowItsServiceBounds(t *testing.T) {
 	lp := &livePipelines{}
 	cfg := lp.ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)

@@ -1,16 +1,16 @@
 ---
 title: "0.16.0 BUILD — the air, the deck and the guard boundary, AS BUILT"
-date: 2026-09-12
+date: 2026-10-02
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "Durable reference.  Redrawn after D-91 stage A at the HUM LEAD's request; supersedes diagrams.md for the audio path only."
+status: "Durable reference, kept current with the code.  Supersedes diagrams.md for the audio path only."
 ---
 
 # How this actually works now
 
 **`diagrams.md` is the PLAN's picture (2026-09-09) and stays as the record of what was intended.**
-This is the audio path as BUILT, after D-74, D-78, D-90 and D-91.
+This is the audio path as BUILT: D-74, D-78, D-90, D-91, and the bed relay's play rules (0.18.0 D-215, D-216).
 
 **Why it exists:** the shared-deck decision has been re-litigated across sessions because the model
 was rebuilt from `app/radio.go` instead of read from the rulings.  A picture is harder to
@@ -34,7 +34,7 @@ flowchart TB
   BC --> RTR
 
   RTR -->|"OnSurface → takeTheAir"| MC
-  MC["MasterControl<br/><b>declares the air</b><br/>silences the bed<br/>silences the programme"]
+  MC["MasterControl<br/><b>declares the air</b><br/>plays the chosen bed relay on air<br/>stops it and silences the programme on standby"]
 
   MC -->|"Aired{To}"| DIR
   DIR["Director<br/><b>arbitrates BOTH rotations</b><br/>holds the schedule + the dwell"]
@@ -121,7 +121,7 @@ re-fetching products (D-74).
 
 ## 4. The guard boundary — D-91
 
-**31 seams** between a surface and `app`: 26 `tty.Config` func fields and 5 `tty.Radio` methods.
+**53 seams** between a surface and `app`: 48 `tty.Config` func fields and 5 `tty.Radio` methods.
 The classification is a closed set, derived by reflection, ratcheting both ways
 (`app/air_boundary_test.go`).
 
@@ -129,9 +129,9 @@ The classification is a closed set, derived by reflection, ratcheting both ways
 flowchart TB
   SURF["a surface calls in"] --> CLS{"what can it do<br/>to the air?"}
 
-  CLS -->|airNone · 14| NONE["settings, queries, lookups<br/><i>no guard owed</i>"]
-  CLS -->|airMonitor · 7| MON{"monitorHasTheAir()"}
-  CLS -->|airProgramme · 2| PROG["StepBedRelay · TuneRelay<br/><i>the console's own</i>"]
+  CLS -->|airNone · 34| NONE["settings, queries, lookups, the map's feeds,<br/>the bed selector<br/><i>no guard owed</i>"]
+  CLS -->|airMonitor · 10| MON{"monitorHasTheAir()"}
+  CLS -->|airProgramme · 5| PROG["ToggleBedRelay · TuneRelay<br/>RequestCard · MoveCard · DropCard<br/><i>the console's own</i>"]
   CLS -->|airShared · 2| SHR["SetVolume — one volume for the app<br/>InjectAlert — feeds the exempt RAIL"]
   CLS -->|airGatedDownstream · 1| GD["ReadReport → needsRead<br/><i>already asks</i>"]
   CLS -->|airDeclares · 1| DEC["OnSurface — it MOVES the air"]
@@ -143,13 +143,18 @@ flowchart TB
   style REF fill:#7a4242,color:#fff
 ```
 
-**The seven refused:** `Radio.Tune`, `Radio.Stop`, `Radio.SetRepeat`, `Radio.SetMode`, `SetVoice`,
-`SetCast`, `PreviewVoice`, `NarrateEvent`/`EndEventRead`.
+**The ten refused:** `Radio.Tune`, `Radio.Stop`, `Radio.SetRepeat`, `Radio.SetMode`, `SetVoice`,
+`SetCast`, `PreviewVoice`, `SetRelayDwell`, `NarrateEvent`, `EndEventRead`.
+
+**The bed relay (0.18.0 D-215, D-216).** The console's selector (`StepBedRelay`) chooses and keeps a
+relay and plays nothing. Space (`ToggleBedRelay`), going on air and a cut to the bed play it; standby
+stops it. While the programme has the air, space is refused with a note pointing to `[b]`, and nothing
+starts the relay over a card being read.
 
 **The guard is at the CALLER, never the method** — because `tune` serves the monitor AND the
-Director's `Tune` effect, and `tuneCallsign` serves Observer's relay pick AND the console's own bed
-selector.  The exported `tty.Radio` methods are the monitor's surface; the lower-case internals are
-shared.
+Director's `Tune` effect.  `tuneCallsign` serves the relay-fault window's pick, and the console's bed
+relay plays through `tuneResolved` and stops through `stopStation`.  The exported `tty.Radio` methods
+are the monitor's surface; the lower-case internals are shared.
 
 ---
 
@@ -177,7 +182,7 @@ flowchart LR
 | **Card Composer** | what it says, at standby | arrangement, the UI |
 | **Director** | the order, the operator's will, BOTH rotations | the air |
 | **Reader** | performing the LIVE card, with its pacing | the running order |
-| **MasterControl** | **the air**; declares ON AIR / STANDBY; silences the bed and the programme | planning; owning the bed |
+| **MasterControl** | **the air**; declares ON AIR / STANDBY; plays the operator's chosen bed relay on air and on a cut, stops it and silences the programme on standby | planning; owning the bed |
 
 **MasterControl declares and everyone complies, the Director included** (MVS-D-77).
 
@@ -185,8 +190,6 @@ flowchart LR
 
 ## What this does not yet show
 
-- **Settings surface-awareness** (D-18 / M4) — stage B.  `setup*.go` has no reference to `Surface`
-  today, so Observer's rows are visible from the console.
 - **The relay-fault window's data flow on the console** — stage C.
-- **F-102** — voice preview is refused on the console; a cue/PFL bus is the real answer and there is
-  one audio out.
+- **Voice preview on the console** (`rulings-d91.md`) — refused while the console holds the air; a
+  cue/PFL bus is the real answer and there is one audio out.

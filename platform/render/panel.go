@@ -1,6 +1,6 @@
 package render
 
-// panel.go — panels, bands, modules, blocks, the scroll panel and the modal overlay compositor. Split from render.go by the quality pass (Q2, pure move).
+// panel.go — panels, bands, modules, blocks, the scroll panel and the modal overlay compositor.
 
 import (
 	"strings"
@@ -85,9 +85,13 @@ func (o Opts) PanelColored(title, content, fg string) string {
 		pad := max(0, w-displayWidth(tl+hz+hz+" "+title+" ")-1)
 		b.WriteString(tint(tl+hz+hz+" ") + title + tint(" "+strings.Repeat(hz, pad)+tr) + "\n")
 	}
+	inset, used := "  ", 4 // the two borders and a two-cell inset
+	if o.Flush {
+		inset, used = "", 2 // the borders alone (U1-27)
+	}
 	for _, line := range strings.Split(content, "\n") {
-		line = truncate(line, w-4)
-		b.WriteString(tint(vt) + "  " + line + strings.Repeat(" ", max(0, w-4-displayWidth(line))) + tint(vt) + "\n")
+		line = truncate(line, w-used)
+		b.WriteString(tint(vt) + inset + line + strings.Repeat(" ", max(0, w-used-displayWidth(line))) + tint(vt) + "\n")
 	}
 	b.WriteString(tint(bl + strings.Repeat(hz, max(0, w-2)) + br))
 	return b.String()
@@ -216,6 +220,9 @@ func (o Opts) scrollWindow(lines []string, scroll, maxLines int) []string {
 		return lines
 	}
 	inner := o.Width - 7
+	if o.Flush {
+		inner = o.Width - 5 // no inset to leave room for (U1-27)
+	}
 	maxScroll := len(lines) - maxLines
 	scroll = max(0, min(scroll, maxScroll))
 	thumb := 1
@@ -242,33 +249,10 @@ func (o Opts) scrollWindow(lines []string, scroll, maxLines int) []string {
 }
 
 func (o Opts) scrollBody(title string, lines []string, scroll, maxLines int) string {
-	if maxLines <= 0 {
-		maxLines = 1
-	}
-	if len(lines) <= maxLines {
-		return o.PanelColored(title, strings.Join(lines, "\n"), "")
-	}
-	maxScroll := len(lines) - maxLines
-	scroll = max(0, min(scroll, maxScroll))
-	win := make([]string, maxLines)
-	inner := o.Width - 7 // panel chrome (4) + rail col + gap
-	thumb := 1
-	if maxLines > 3 {
-		thumb = 1 + scroll*(maxLines-3)/max(1, maxScroll)
-	}
-	for i := range maxLines {
-		glyph := "│"
-		switch i {
-		case 0:
-			glyph = "▲"
-		case maxLines - 1:
-			glyph = "▼"
-		case thumb:
-			glyph = "█"
-		}
-		win[i] = PadTo(truncate(lines[scroll+i], inner), inner) + " " + glyph
-	}
-	return o.PanelColored(title, strings.Join(win, "\n"), "")
+	// ONE RAIL, THROUGH THE GLYPH SET. A second copy of scrollWindow with the
+	// rail's glyphs written in would draw ▲ █ │ ▼ in every scrolling window
+	// under --ascii.
+	return o.PanelColored(title, strings.Join(o.scrollWindow(lines, scroll, max(maxLines, 1)), "\n"), "")
 }
 
 // Overlay floats modal centered over base via lipgloss v2 Canvas/Layer
@@ -300,11 +284,11 @@ func Overlay(base, modal string, termWidth int) string {
 
 // BoxGlyphs is one box's border marks.
 //
-// EXTRACTED AT THE SECOND CALLER (D-85). `BoxTitled` spelled the heavy set out
-// inline, and the Broadcaster's cards now draw the same box — "All Main track
-// cards should have BOLD lines (like the masthead)" (HUM LEAD, 2026-09-11). Two
-// literals of six marks each is two places for a corner to drift, and the
-// modularity standard says extract at the second caller.
+// EXTRACTED AT THE SECOND CALLER (D-85). `BoxTitled` and the Broadcaster's cards
+// draw the same box — "All Main track cards should have BOLD lines (like the
+// masthead)" (HUM LEAD, 2026-09-11). Two literals of six marks each would be two
+// places for a corner to drift, and the modularity standard says extract at the
+// second caller.
 type BoxGlyphs struct {
 	TL, TR, BL, BR string
 	// Rule and Rail are the horizontal and the vertical. Named for what they DO
@@ -316,10 +300,9 @@ type BoxGlyphs struct {
 	// top rule, B where it meets the bottom, L and R where a rule crosses the
 	// outer rails, and X where both cross.
 	//
-	// THEY ARRIVED WITH THE CONSOLE'S AIR BOX, which is one box holding a label
-	// column and two stacked rows — the first thing in the app to divide a box
-	// rather than merely draw one. Under `--ascii` every mark is `+`, exactly as
-	// the corners already are.
+	// THE CONSOLE'S AIR BOX USES THEM: one box holding a label column and two
+	// stacked rows, dividing a box rather than merely drawing one. Under
+	// `--ascii` every mark is `+`, exactly as the corners are.
 	T, B, L, R, X string
 }
 
@@ -335,12 +318,11 @@ func LightBox(ascii bool) BoxGlyphs {
 
 // boxGlyphs is one weight's marks, or the ASCII fallback.
 //
-// COLLAPSED BY THE `dupes` GATE, and it was right to: the two sets above were
-// structurally identical and differed only in six literals, which is a
-// duplicate however differently they read. What the collapse actually fixes is
-// that the ASCII RULE was stated twice — a terminal without box drawing has no
-// weights to distinguish, so every weight falls to the same `+ - |`, and a rule
-// written twice is a rule that can come apart.
+// ONE FUNCTION FOR BOTH WEIGHTS: two sets structurally identical and differing
+// only in six literals are a duplicate however differently they read (the
+// `dupes` gate's rule). It also states the ASCII RULE once — a terminal without
+// box drawing has no weights to distinguish, so every weight falls to the same
+// `+ - |`, and a rule written twice is a rule that can come apart.
 func boxGlyphs(ascii bool, tl, tr, bl, br, rule, rail, t, b, l, r, x string) BoxGlyphs {
 	if ascii {
 		return BoxGlyphs{TL: "+", TR: "+", BL: "+", BR: "+", Rule: "-", Rail: "|",

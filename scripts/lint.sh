@@ -25,10 +25,10 @@ trap 'rm -f "$tmp" "$tmp.now"' EXIT
 # THE JSON GOES TO A FILE. Both writers default to stdout, so asking for JSON
 # there yields the text report interleaved with it — five lines of "JSON" that
 # no parser accepts.
-# PINNED, unlike vuln's @latest, and the difference is the point: govulncheck
-# SHOULD track the newest advisories, and a linter that tracks its newest rules
-# would break this ratchet on somebody else's release schedule. A new rule is a
-# decision to take deliberately, by moving this line and re-recording.
+# PINNED, as the Makefile's govulncheck is: a linter that tracks its newest
+# rules would break this ratchet on somebody else's release schedule. A new rule
+# is a decision to take deliberately, by moving this line and re-recording.
+# (govulncheck reads the newest advisories whatever its own version.)
 # THE EXIT CODE IS READ, NOT DISCARDED (F-118). 0 is clean and 1 is "issues
 # found", which the ratchet below judges; anything else (3 = a package failed
 # to load, 4 = timeout, 7 = bad config) means the run did not happen, and a run

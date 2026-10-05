@@ -37,11 +37,11 @@ func poolPipes(t *testing.T, pool []snapshot.LocationRef) *livePipelines {
 
 // THE POOL IS PART OF THE LIST ON EVERY COMMIT, not just at the seed.
 //
-// `withPool` WAS APPLIED ONCE, WHERE THE PIPELINE WAS BUILT, and every commit
-// after that reconciled against the LISTENER's list alone — so the first lookup,
-// favourite or watchlist edit told `SetLocations` that twenty-five locations were
-// no longer wanted. It stopped every one of their schedulers and dropped their
-// data, and the pool table went back to shimmering and stayed there.
+// `withPool` APPLIES ON EVERY COMMIT, not only where the pipeline is built. A
+// commit that reconciles against the LISTENER's list alone tells `SetLocations`
+// on the first lookup, favourite or watchlist edit that twenty-five locations are
+// not wanted: it stops every one of their schedulers and drops their data, and
+// the pool table goes back to shimmering and stays there.
 func TestTheStationsPoolSurvivesACommit(t *testing.T) {
 	pool := []snapshot.LocationRef{
 		{Label: "Fallbrook, CA", Zip: "92028", Lat: 33.37, Lon: -117.25},
@@ -62,8 +62,8 @@ func TestTheStationsPoolSurvivesACommit(t *testing.T) {
 			t.Errorf("%s fell out of the pipeline on a commit; nothing will fetch its weather", r.Label)
 		}
 	}
-	// AND THE LISTENER'S OWN LOCATIONS ARE STILL THERE, or the fix is just the
-	// defect pointing the other way.
+	// AND THE LISTENER'S OWN LOCATIONS ARE STILL THERE, or the pool has only
+	// pushed them out — the same defect pointing the other way.
 	if !held[snapshot.Key(recent[0])] {
 		t.Error("the recent list fell out instead")
 	}
@@ -92,7 +92,7 @@ func TestARestationedPoolIsWhatGetsFetched(t *testing.T) {
 		t.Fatal(err)
 	}
 	// THE PREMISE: the station actually MOVED. Without this the assertions below
-	// pass on a pool that never changed, which is the shape mT3 was.
+	// pass on a pool that never changed, which is the shape mT3 takes.
 	if len(lp.poolRefs) == 0 || snapshot.Key(lp.poolRefs[0]) == snapshot.Key(was) {
 		t.Fatalf("the station did not restation; the pool is still %v", lp.poolRefs)
 	}
@@ -101,6 +101,9 @@ func TestARestationedPoolIsWhatGetsFetched(t *testing.T) {
 		held[snapshot.Key(snapshot.LocationRef{Lat: l.Lat, Lon: l.Lon})] = true
 	}
 	for _, r := range lp.poolRefs {
+		if snapshot.Key(r) == snapshot.Key(watch[0]) {
+			continue // the transmitter is watched: the priority pipeline's (D-208)
+		}
 		if !held[snapshot.Key(r)] {
 			t.Fatalf("the new station's pool is published but not fetched: %s is missing", r.Label)
 		}

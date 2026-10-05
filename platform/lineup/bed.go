@@ -4,12 +4,10 @@ package lineup
 // Director makes about it: when a Watchlist relay has held it long enough and
 // the next location should take over (T3.2b, DR-3).
 //
-// THE DWELL WAS A TIMER INSIDE THE RADIO DECK. `armDwell` set a
-// `time.AfterFunc` and `advanceQueue` fired on it, which made "when does the bed
-// move" a thing you could only observe by waiting five minutes with a real
-// clock. Here it is a pure function of the bed's state, the listener's settings
-// and `now` — so a test states the schedule instead of watching for it (DR-2,
-// NFR-D-1).
+// THE DWELL IS A PURE FUNCTION of the bed's state, the listener's settings and
+// `now` — so a test states the schedule instead of watching for it (DR-2,
+// NFR-D-1). As a timer inside the radio deck, "when does the bed move" would be
+// a thing you could only observe by waiting five minutes with a real clock.
 
 import (
 	"time"
@@ -21,7 +19,7 @@ import (
 //
 // LIVE IS THE HALF THAT MATTERS. A relay never ends, so Watchlist gives it a
 // fixed turn and moves on; the synthesised broadcast ends on its own and needs
-// no dwell at all. The old code asked the same question as `d.mode == "live"`.
+// no dwell at all.
 type Tuned struct {
 	isEvent
 	Ref  string
@@ -82,9 +80,9 @@ type bed struct {
 	// the engine decides dip-or-hold from the source kind, re-read every tick.
 	//
 	// EDGE-TRIGGERED. MVS-D-67 is "one duck per RAIL DRAIN, never per card" —
-	// a rail of two cards that dipped, lifted and dipped again between them was
-	// MEASURED before that ruling — so what is emitted is the CHANGE, and a
-	// second hazard arriving over an already-ducked bed emits nothing.
+	// a rail of two cards must not dip, lift and dip again between them — so
+	// what is emitted is the CHANGE, and a second hazard arriving over an
+	// already-ducked bed emits nothing.
 	ducked bool
 
 	// asked and askedAt are the tune the Director has issued and not yet seen
@@ -118,9 +116,7 @@ func (d Director) onTuned(ev Tuned) (Director, []Effect) {
 	// A REPEAT REPORT DOES NOT RESTART THE TURN. A live relay sends a status
 	// every time its title changes, and each one says Playing — so a countdown
 	// restarted on every report would never elapse and the rotation would stop
-	// dead on whichever station talks most. The deck's armDwell was idempotent
-	// for exactly this reason ("a relay title change re-arms; it must not
-	// restart the countdown"), and the rule has to survive the move.
+	// dead on whichever station talks most.
 	if d.bed.ref == ev.Ref && d.bed.live == ev.Live && !d.bed.since.IsZero() {
 		return d, nil // the same bed, still carrying: its turn is already running
 	}
@@ -151,7 +147,7 @@ func (d Director) tuneAsked(ref string) Director {
 
 // stalledRotation is the report a tune that never landed raises, or nothing.
 //
-// UNLESS THE OPERATOR CHOSE SILENCE (FR-9.3, reworded by the HUM LEAD): a
+// UNLESS THE OPERATOR CHOSE SILENCE (FR-9.3, the HUM LEAD's wording): a
 // stopped station and a rotation that does not move by itself are both
 // deliberate, and I-2 holds that a deliberate non-delivery is not a fault. The
 // only case here is a station that was TOLD to move and did not.
@@ -209,8 +205,7 @@ func (d Director) advanceBed() (Director, []Effect) {
 	// A ONE-ENTRY WATCHLIST IS ALREADY WHERE IT IS GOING. The wrap makes the
 	// next entry the current one, so advancing would cut the audio and re-tune
 	// the same relay every five minutes for no reason — the listener hears their
-	// only station restart on a timer. Found by the density gate sending me back
-	// through this function.
+	// only station restart on a timer.
 	if next == d.bed.ref {
 		d.bed.since = d.now // its turn starts again; there is nowhere else to go
 		return d, nil
@@ -237,15 +232,14 @@ func (d Director) advanceBed() (Director, []Effect) {
 //
 // IT IS AN EVENT, NOT A TICK. The dwell is a deadline the Director can compute;
 // a cycle ending is something only the deck can observe, so it arrives the same
-// way an arrival does. `advanceQueue` had both callers and the absorb needs
-// both, which the state table made visible before any of this was written.
+// way an arrival does.
 type Ended struct{ isEvent }
 
 // onEnded moves the bed on when the programme it was carrying finished.
 //
 // NO DWELL IS CONSULTED. The turn is over because the broadcast is over, not
 // because a clock said so — a cycle that ran two minutes moves on at two
-// minutes, exactly as it does today.
+// minutes.
 func (d Director) onEnded(Ended) (Director, []Effect) {
 	// SOMETHING HAS TO HAVE BEEN PLAYING for a cycle to have ended. A deck
 	// reporting one with no bed tuned is a wiring fault, and advancing on it
@@ -270,11 +264,11 @@ func (d Director) onEnded(Ended) (Director, []Effect) {
 
 // dwellElapsed reports whether the live relay on the bed has had its turn.
 func (d Director) dwellElapsed() bool {
-	// A MONITOR THAT DOES NOT HAVE THE AIR DOES NOT ADVANCE (D-74). It asked
-	// `advances(MainTrack)` — the STATION's gate — which is how one rotation
-	// came to be governed by the other programme's power, and how Observer's
-	// tune came to declare the station ON AIR. The rail is exempt from both,
-	// deliberately: hazards still speak over a stopped programme.
+	// A MONITOR THAT DOES NOT HAVE THE AIR DOES NOT ADVANCE (D-74). Asking
+	// `advances(MainTrack)` — the STATION's gate — would govern one rotation by
+	// the other programme's power, and let Observer's tune declare the station ON
+	// AIR. The rail is exempt from both, deliberately: hazards still speak over a
+	// stopped programme.
 	if !d.advancesMonitor() {
 		return false
 	}
@@ -297,8 +291,7 @@ func (d Director) dwellElapsed() bool {
 // nextInWatchlist is the location after the one on the bed, wrapping; the first
 // when the bed is on something outside the queue.
 //
-// THE SAME RULE THE DECK'S nextInQueue HAD, moved rather than rewritten — a
-// listener whose bed is on a location they since removed from the watchlist
+// A listener whose bed is on a location they since removed from the watchlist
 // rejoins at the top rather than stopping.
 func (d Director) nextInWatchlist() (string, bool) {
 	q := d.settings.Watchlist
@@ -348,44 +341,38 @@ func (d Director) onCutOver(ev CutOver) (Director, []Effect) {
 //
 // TWO QUESTIONS, BOTH ANSWERABLE FROM STATE THE DIRECTOR ALREADY HOLDS — which
 // is the whole reason this decision belongs here rather than in the arbiter.
-// Three things could trigger a duck before this existed and only one of them
-// should: the rotation IS the programme, and ducking for it ducks the thing
-// being played.
+// Several things could trigger a duck and only one of them should: the
+// rotation IS the programme, and ducking for it ducks the thing being played.
 //
 // IT ASKS `carries`, NOT WHETHER AUDIO IS AUDIBLE. `Suppress` is inert when
 // nothing is playing and the engine re-reads the source kind every tick, so the
 // answer follows the audio by itself. Asking which medium is on at this instant
-// "fixed an answer the audio could outlive" (radio.go), and that design is not
-// repeated here.
+// would fix an answer the audio can outlive (radio.go).
 //
 // AND IT ASKS WHETHER THE RAIL HOLDS ANYTHING, not whether a card is on the
 // air: MVS-D-67 restores "only after the tail has played and the rail is
 // empty", so the bed stays down across a drain of several cards.
 func (d Director) givingWay() bool {
-	// WHAT THE RAIL CAN READ, NOT WHAT IT HOLDS (D-139). This asked the RAW
-	// TRACK where every other rail reader asks the PROJECTION, which drops
-	// out-of-fence cards precisely because "they are not READ".
+	// WHAT THE RAIL CAN READ, NOT WHAT IT HOLDS (D-139). Like every other rail
+	// reader this asks the PROJECTION, which drops out-of-fence cards precisely
+	// because "they are not READ".
 	//
-	// A RAIL OF CARDS THE FENCE EXCLUDES KEPT THIS TRUE FOR EVER: Duck was
-	// emitted and Restore never was, so the station broadcast the relay at duck
-	// gain indefinitely with nothing speaking over it. Measured by red team at
-	// BUILD exit — 200 minutes of ticks, still ducked, nothing on the rail that
-	// could ever speak.
+	// ASKED OF THE RAW TRACK, A RAIL OF CARDS THE FENCE EXCLUDES WOULD KEEP THIS
+	// TRUE FOR EVER: Duck emitted and Restore never, so the station broadcasts the
+	// relay at duck gain indefinitely with nothing on the rail that could ever
+	// speak over it.
 	//
-	// THE OTHER HALF OF THE RULE IS UNCHANGED, and it is why this asks whether
-	// the rail holds anything rather than whether a card is ON THE AIR:
-	// MVS-D-67 restores "only after the tail has played and the rail is empty",
-	// so the bed stays down across a drain of several cards.
+	// AND IT ASKS WHETHER THE RAIL HOLDS ANYTHING rather than whether a card is ON
+	// THE AIR: MVS-D-67 restores "only after the tail has played and the rail is
+	// empty", so the bed stays down across a drain of several cards.
 	if len(d.lineup.Projection(AlertRail)) == 0 {
 		return false
 	}
 	// WHAT IS UNDERNEATH IT — the bed carrying the programme, or a report
 	// reading on the main track (D-82).
 	//
-	// ONE CONDITION BECAME TWO ONLY BECAUSE THERE ARE NOW TWO THINGS THAT CAN BE
-	// UNDER a hazard. D-32 asked "what does the priority duck?" when the main
-	// track had no audio of its own and the answer could only be the bed; D-24
-	// answers the other half — the read PAUSES and resumes mid-sentence — and
+	// TWO CONDITIONS BECAUSE TWO THINGS CAN BE UNDER a hazard: D-32 answers for
+	// the bed, and D-24 for a read — which PAUSES and resumes mid-sentence — and
 	// this is the two of them said once.
 	//
 	// IT DOES NOT DECIDE DIP-OR-HOLD, AND THAT IS WHY ONE PREDICATE SERVES BOTH.
@@ -393,8 +380,7 @@ func (d Director) givingWay() bool {
 	// because a paused relay resumes into audio that is minutes stale; a
 	// rendered report holds, because dipping loses its words for good. The
 	// Director says only that the rail is speaking over the programme — asking
-	// which medium is on "fixed an answer the audio could outlive" (radio.go),
-	// and that design is not repeated here.
+	// which medium is on would fix an answer the audio can outlive (radio.go).
 	if d.bed.carries {
 		return true
 	}

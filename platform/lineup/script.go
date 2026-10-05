@@ -86,8 +86,8 @@ type Script struct {
 // ONE TRUTH. The parts are the script; this is a view of them, computed rather
 // than stored, so there is no second copy to fall out of step.
 func (s Script) Text() string {
-	// A BUILDER, NOT `out +=` (P-2): the old form reallocated and copied the
-	// whole string once per part.
+	// A BUILDER, NOT `out +=` (P-2): `+=` reallocates and copies the whole
+	// string once per part.
 	var b strings.Builder
 	for _, p := range s.Parts { // bounded by the script (P10-02)
 		if p.Text == "" {
@@ -103,10 +103,9 @@ func (s Script) Text() string {
 
 // Empty reports whether the script says nothing at all.
 // IT DOES NOT BUILD THE TEXT TO ANSWER A BOOLEAN (red team 2026-09-05, P-2).
-// This was `s.Text() == ""`, and Text concatenates with `out += p.Text` in a
-// loop — quadratic string building, allocating the whole script, to decide
-// whether any part has a character in it. It is called from invariants on the
-// settle path of every event, which includes every one-second tick.
+// `s.Text() == ""` would allocate the whole script to decide whether any part
+// has a character in it, and this is called from invariants on the settle
+// path of every event, which includes every one-second tick.
 func (s Script) Empty() bool {
 	for _, p := range s.Parts { // bounded by the script (P10-02)
 		if p.Text != "" {

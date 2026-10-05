@@ -63,11 +63,13 @@ type ZipRow struct {
 
 // Index holds the decompressed data and its lookup structures.
 type Index struct {
-	cities     []byte  // backing TSV
-	cityOffs   []int32 // line offsets, sorted by lowercased ASCII name
-	zips       []byte
-	zipOffs    []int32 // line offsets, sorted by zip
-	zipByPlace map[string][]int32
+	extentsCache         // the states' extents, computed on first use (states.go)
+	placesCache          // the US cities' coordinates, parsed on first use (near.go)
+	cities       []byte  // backing TSV
+	cityOffs     []int32 // line offsets, sorted by lowercased ASCII name
+	zips         []byte
+	zipOffs      []int32 // line offsets, sorted by zip
+	zipByPlace   map[string][]int32
 }
 
 // Load decompresses and indexes the embedded data (call once at startup).
@@ -90,8 +92,8 @@ func Load() (*Index, error) {
 		return nil, err
 	}
 	// Data is PRE-SORTED at build time (cities by lowercased ASCII name, zips
-	// by code — B2 red-team #5 deleted the runtime O(n log n × parse) sorts).
-	// Fail closed if a regenerated payload forgot the sort: an unsorted index
+	// by code — B2 red-team #5: no runtime O(n log n × parse) sorts).
+	// Fail closed if a regenerated payload forgets the sort: an unsorted index
 	// silently breaks every binary search.
 	if err := invariant.Check(sortedBy(idx.cityOffs, idx.cityKey), "embedded city data is not sorted — regenerate with the sorted trim pipeline"); err != nil {
 		return nil, err
@@ -214,7 +216,7 @@ func (i *Index) PrefixSearch(query string, limit int) []City {
 	lo := sort.Search(len(i.cityOffs), func(n int) bool { return i.cityKey(i.cityOffs[n]) >= q })
 	// Broad prefixes ("a") match thousands of rows: parse ONLY the population
 	// during the scan and keep a running top-limit selection; full rows parse
-	// for the winners alone (B2 budget test caught the 12ms full-parse+sort).
+	// for the winners alone (a full parse+sort takes ~12ms, over the B2 budget).
 	type cand struct {
 		off int32
 		pop int

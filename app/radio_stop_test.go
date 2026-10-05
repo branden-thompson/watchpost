@@ -54,11 +54,11 @@ func (endlessSilence) Read(b []byte) (int, error) { return len(b), nil }
 
 // A USER'S STOP DOES NOT TAKE AN ALERT OFF THE AIR.
 //
-// Stopping the radio lifted the alert suppression, which the takeover owns and
-// pairs with its own restore. Nothing was playing at that moment, so it looked
-// harmless — but the alert was still being read, and the next thing the
-// listener started came up at full volume over the top of it. Whether an alert
-// is on the air is not the stop button's to answer.
+// Stopping the radio leaves the alert suppression alone: the takeover owns it
+// and pairs it with its own restore. Nothing is playing at that moment, so
+// lifting it looks harmless — but the alert is still being read, and the next
+// thing the listener starts would come up at full volume over the top of it.
+// Whether an alert is on the air is not the stop button's to answer.
 func TestAUserStopDoesNotTakeAnAlertOffTheAir(t *testing.T) {
 	out := &heldOutput{}
 	eng, err := player.New(out, "test", func(player.Status) {})

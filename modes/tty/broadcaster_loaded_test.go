@@ -90,8 +90,7 @@ func TestTheLoadedFixtureActuallyJoins(t *testing.T) {
 	if hit != len(b.area.Pool) {
 		t.Errorf("%d of %d pool rows join their weather", hit, len(b.area.Pool))
 	}
-	// AND THE RUNNING ORDER JOINS TOO, which is what D-116 added and what makes
-	// this fixture different from the old one.
+	// AND THE RUNNING ORDER JOINS TOO (D-116).
 	rows := b.lineupRows(b.mainTrack(), b.locIndex())
 	joined := 0
 	for _, r := range rows { // bounded by the table (P10-02)
@@ -121,8 +120,7 @@ func loadedJoins(b Broadcaster) int {
 //
 // PINNED AS A RULE, NOT LEFT TO THE BUDGET. Putting the day cells back costs 351
 // allocations a frame and the budget's own five-percent headroom is 464 — so the
-// ratchet cannot see the regression it was re-based alongside. A mutant proved
-// exactly that by surviving.
+// ratchet cannot see it.
 func TestTheConsolesRowsBuildNoDayCells(t *testing.T) {
 	b := loadedConsole(t, loadedPoolSize)
 	for _, r := range b.poolRows(b.locIndex()) { // bounded by the pool (P10-02)
@@ -141,7 +139,7 @@ func TestTheConsolesRowsBuildNoDayCells(t *testing.T) {
 // AND OBSERVER STILL GETS ITS EXTENDED DAYS (D-120).
 //
 // THE CONSOLE SKIPS THEM and Observer draws them, which is the whole shape of
-// that change: the day cells are the CALLER's ask. A skip that reached Observer
+// the rule: the day cells are the CALLER's ask. A skip that reached Observer
 // would empty its ultra-wide columns — a regression in the shipped surface, paid
 // for by an optimisation on the new one, which is the trade the release posture
 // exists to refuse.
@@ -169,9 +167,9 @@ func TestObserverKeepsItsExtendedDays(t *testing.T) {
 // `render.LineupRow` HAS NO `Extended` FIELD. The console's running order draws
 // CONDITIONS and NOW, so day cells built for it are DISCARDED — the work costs
 // allocations and changes no output, which means no assertion about what the
-// table SAYS can ever catch it. A mutant that put them back survived a rule
-// asserted on the pool's rows and survived the frame budget too: 351 allocations
-// against 464 of five-percent headroom.
+// table SAYS can ever catch it. Putting them back passes a rule asserted on the
+// pool's rows and passes the frame budget too: 351 allocations against 464 of
+// five-percent headroom.
 //
 // SO THE ROWS ARE MEASURED ON THEIR OWN, where 351 is most of the number rather
 // than four percent of it. The budget stays a ratchet for DRIFT; this is the

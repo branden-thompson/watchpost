@@ -47,12 +47,11 @@ func reachDeck(t *testing.T, radiusMi int64) *tickerDeck {
 
 // C-3 — THE SIGNIFICANCE REACH REACHES THE LISTENER.
 //
-// BD-6 was implemented in platform/lineup, pinned there, and guarded by two
-// mutants — and connected to nothing. arrivalsOf never set Arrival.ReachMi, so
-// the fence compared every distance against zero; and the producer's own radius
-// filter dropped the distant quake before the Director ever saw it. The one
-// assignment of ReachMi in the whole tree was in fence_test.go, which built the
-// Arrival itself — D-12, a pin that does not start where the human starts.
+// BD-6 lives in platform/lineup and reaches a listener only through the wiring:
+// arrivalsOf must set Arrival.ReachMi, or the fence compares every distance
+// against zero; and the producer's own radius filter must not drop the distant
+// quake before the Director sees it. A pin that builds the Arrival itself does
+// not start where the human starts (D-12).
 //
 // This starts at the events the feed yields and ends at words in the air.
 func TestASignificantQuakeReachesAListenerOutsideTheirRadius(t *testing.T) {
@@ -71,7 +70,7 @@ func TestASignificantQuakeReachesAListenerOutsideTheirRadius(t *testing.T) {
 		t.Fatal("the fixture's quake is inside the radius; it pins nothing")
 	}
 
-	// THE PRODUCER'S OWN FILTER. This is the half that dropped it first.
+	// THE PRODUCER'S OWN FILTER. This is the half that drops it first.
 	scoped := deck.scopeToRadius([]globalfeed.Event{local, big})
 	if len(scoped) != 2 {
 		t.Fatalf("the producer's radius filter dropped the significant quake before the Director could see it: kept %d of 2", len(scoped))
@@ -93,7 +92,7 @@ func TestASignificantQuakeReachesAListenerOutsideTheirRadius(t *testing.T) {
 	}
 }
 
-// THE CONTROL, and without it the fix above could simply admit everything.
+// THE CONTROL, and without it the exception above could simply admit everything.
 // G-7: the exception is scaled by significance, not unbounded.
 func TestAnOrdinaryQuakeOutsideTheRadiusStaysOut(t *testing.T) {
 	deck := reachDeck(t, 50)

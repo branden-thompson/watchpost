@@ -12,12 +12,10 @@ import (
 
 // TestEveryLivePipelinesMethodIsReachedFromProductionCode.
 //
-// **This is a gate against one defect, and that defect has happened four
-// times.** Seeding the watched places' zones was measured, argued, ruled on,
-// built and tested - and nothing called it. It passed every test it had and
-// did nothing. The same shape then recurred three more times in the round that
-// was fixing it: a cap whose call site nothing exercised, counters nothing
-// read, and a panic guard in the wrong goroutine.
+// **This is a gate against one defect: code that is built and tested and that
+// nothing calls.** It passes every test it has and does nothing. The shape
+// covers a feature nothing invokes, a cap whose call site nothing exercises,
+// counters nothing reads, and a panic guard in the wrong goroutine.
 //
 // A test of a thing is not a test of its wiring, and unit tests cannot tell
 // the difference: they call the method themselves, so the method works and the
@@ -26,8 +24,8 @@ import (
 //
 // So this reads the source. Every method on `*livePipelines` must be called
 // somewhere outside a test. It is a weak statement - being called is not being
-// called correctly - but it is exactly the statement that was missing, and it
-// fails the moment a call site is deleted.
+// called correctly - but it is the statement no unit test makes, and it fails
+// the moment a call site is deleted.
 func TestEveryLivePipelinesMethodIsReachedFromProductionCode(t *testing.T) {
 	fset := token.NewFileSet()
 	entries, err := os.ReadDir(".")
@@ -61,8 +59,8 @@ func TestEveryLivePipelinesMethodIsReachedFromProductionCode(t *testing.T) {
 		// Every mention of a method in this file, by name - **a reference, not
 		// only a call**. A method handed over as a value is wired just as
 		// surely as one invoked (`newDumper(..., lp.ttyStats)`), and counting
-		// calls alone reported eleven live methods as dead. A gate that cries
-		// wolf is a gate people learn to skip.
+		// calls alone reports live methods as dead. A gate that cries wolf is a
+		// gate people learn to skip.
 		//
 		// The receiver is not resolved, so a same-named method on another type
 		// would let one through. That makes this weaker than it looks, and

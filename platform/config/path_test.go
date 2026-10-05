@@ -11,8 +11,8 @@ import (
 // domains/radio/synth already refuses a relative install dir by name (S-F5:
 // "$HOME unset must not exec ./piper/piper"). This path is the one that decides
 // what the radio SAYS — the watchlist, the FIRMS key and the script overrides —
-// and it had no such guard, so launching from an untrusted directory read that
-// directory's config.
+// and without the same guard, launching from an untrusted directory would read
+// that directory's config.
 func TestARelativeConfigHomeIsRefused(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "/tmp/abs-base")
 	abs, err := Path()

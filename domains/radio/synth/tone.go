@@ -9,10 +9,9 @@ import (
 
 // The alert attention signal.
 //
-// 0.12.0 had one tone: three ~1 kHz pulses then a 2 s pause, the shape the HUM
-// LEAD specified. 0.14.0 keeps that sound as Classic and makes it one of a
-// family, because a listener away from the screen should hear WHICH KIND of
-// alert is coming before any words arrive (FR-11).
+// Classic is the HUM LEAD's original signal — three ~1 kHz pulses then a 2 s
+// pause — and one of a family, because a listener away from the screen should
+// hear WHICH KIND of alert is coming before any words arrive (FR-11).
 //
 // A preset is PARAMETERS, never a recorded sample: parameters are reviewable
 // against `02-analysis/tones.md` §1, reproducible on any rate, and cost about a
@@ -78,7 +77,7 @@ type Preset struct {
 	Amp float64
 }
 
-// Classic is 0.12.0's tone, unchanged: three enveloped 1 kHz pulses, 200 ms
+// Classic is the original signal: three enveloped 1 kHz pulses, 200 ms
 // each, 100 ms apart. It precedes Advisories, and it is the fallback for any
 // preset name this build does not know — never silence.
 //

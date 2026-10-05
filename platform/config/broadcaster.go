@@ -5,12 +5,12 @@ package config
 // THE TRANSMITTER IS NOT THE DEFAULT LOCATION. The HUM LEAD ruled the split on
 // 2026-09-10: "Default Location no longer = Transmitter Location — this is
 // Broadcaster epicenter from which the service radius fence radiates from."
-// They were one field doing two jobs, and the jobs belong to different
-// surfaces: the default location is where the LISTENER lives, and the
-// transmitter is where the STATION broadcasts from.
+// They are two jobs, and the jobs belong to different surfaces: the default
+// location is where the LISTENER lives, and the transmitter is where the
+// STATION broadcasts from.
 //
 // THEY MAY WELL BE THE SAME PLACE, and on an existing install they start that
-// way — see `Station`. What changed is that they no longer have to be.
+// way — see `Station`. They do not have to be.
 
 // Broadcaster is the station's settings: where it transmits from, and how far
 // its service area reaches.
@@ -39,21 +39,21 @@ type Broadcaster struct {
 	// happens to exist nearby — and deriving one from the other would couple two
 	// numbers that have nothing to say to each other.
 	BedRadiusMi float64 `toml:"bed_radius_mi,omitempty"`
+
+	// BedRelay is the callsign of the relay the operator chose for the bed
+	// (D-214, D-215): selected again at launch while it streams near the
+	// station, and played only when the operator plays it or goes on air.
+	BedRelay string `toml:"bed_relay,omitempty"`
 }
 
 const (
 	// MinServiceRadiusMi and MaxServiceRadiusMi are the HUM LEAD's ruled bounds.
 	//
-	// 2026-09-10: "minimum distance is 2 miles, max distance is 50mi."
-	// 2026-09-13, SUPERSEDING THE CEILING, with the setting itself: "Need my
-	// service radius setting (min 2mi - Max 100 mi) setting in the Broadcaster
-	// Settings modal."
+	// 2026-09-13, with the setting itself: "Need my service radius setting (min
+	// 2mi - Max 100 mi) setting in the Broadcaster Settings modal."
 	//
-	// THE CEILING MOVED WHEN THE CONTROL DID, and that is not a coincidence worth
-	// smoothing over: fifty was ruled for a value only a hand-edited config could
-	// reach, and a hundred for one the operator can now type. Recorded rather
-	// than replaced, because the older number is still the reason the DEFAULT is
-	// where it is.
+	// THE CEILING IS FOR A VALUE THE OPERATOR TYPES in the Settings window, not
+	// one only a hand-edited config can reach.
 	//
 	// TWO MILES IS LEGAL AND NEARLY EMPTY, and that is measured rather than
 	// feared: around Bonsall a two-mile fence holds NO city and one zip place —
@@ -82,8 +82,8 @@ const (
 	//
 	// THE FLOOR IS 25 BECAUSE EVEN CHICAGO REACHES ONLY ONE THERE, and the
 	// ceiling is 150 because past it the bed is carrying a forecast for a region
-	// the station's listeners are not in — which is the whole objection that
-	// made the bed the station's business in the first place.
+	// the station's listeners are not in — which is the whole reason the bed is
+	// the station's business.
 	MinBedRadiusMi     = 25
 	MaxBedRadiusMi     = 150
 	DefaultBedRadiusMi = 100

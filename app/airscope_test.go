@@ -75,7 +75,7 @@ func TestAConsoleWithNoEpicentreKeepsTheListenersFence(t *testing.T) {
 //
 // IT DRIVES THE DECK'S OWN `fence()`, which is what the planner reads — a test
 // that called `scopeFor` alone would prove the answer and nothing about who asks
-// for it, which is the wiring shape this release keeps rebuilding.
+// for it, and the wiring is the part that can be cut.
 func TestTheDecksFenceFollowsTheScope(t *testing.T) {
 	deck := &tickerDeck{}
 	deck.setScope(func() airScope { return airScope{lat: 33.2881, lon: -117.2256, radiusMi: 25, set: true} })
@@ -96,8 +96,8 @@ func TestTheDecksFenceFollowsTheScope(t *testing.T) {
 }
 
 // THE STATION'S SCOPE IS THE ONE THE POOL WAS BUILT FROM. Two answers to "how
-// far does this station reach" is the shape that put the console's transmitter
-// and the listener's default location in one field to begin with.
+// far does this station reach" can disagree, and then the console's transmitter
+// and the listener's default location blur into one.
 func TestTheRailAndThePoolShareOneServiceArea(t *testing.T) {
 	lp := &livePipelines{idx: indexForTest(t)}
 	lp.setStation(stationFrom(config.Config{Locations: []config.Location{bonsallCfg}}))
@@ -142,7 +142,7 @@ func TestTakingTheAirAsksTheRailToReScopeAtOnce(t *testing.T) {
 	}
 
 	// AND IT NEVER BLOCKS THE PROGRAM'S GOROUTINE. A deck with no channel at
-	// all — the older tests — takes the air without a nudge rather than panicking.
+	// all — a bare test deck — takes the air without a nudge rather than panicking.
 	_ = (&livePipelines{ticker: &tickerDeck{}}).takeTheAir(tty.SurfaceObserver)
 	_ = (&livePipelines{}).takeTheAir(tty.SurfaceObserver)
 }
@@ -150,12 +150,12 @@ func TestTakingTheAirAsksTheRailToReScopeAtOnce(t *testing.T) {
 // AND THE FEED'S FILTER FOLLOWS THE SCOPE TOO — which is the half the operator
 // actually HEARS.
 //
-// IT SURVIVED THE FIRST PLANT RUN. `fence()` was asserted and `scopeToRadius`
-// was not, and the two do different jobs: the fence decides ORDER, the filter
-// decides WHAT REACHES THE RAIL AT ALL. A rail correctly ordered around alerts
-// that should not be on it is the defect the HUM LEAD named — "when I switch to
-// Broadcaster I don't hear alerts outside my service radius" — and only this
-// function can keep that promise.
+// ASSERTING `fence()` ALONE LEAVES `scopeToRadius` UNGUARDED, and the two do
+// different jobs: the fence decides ORDER, the filter decides WHAT REACHES THE
+// RAIL AT ALL. A rail correctly ordered around alerts that should not be on it
+// breaks the HUM LEAD's ruling — "when I switch to Broadcaster I don't hear
+// alerts outside my service radius" — and only this function can keep that
+// promise.
 func TestTheFeedsFilterFollowsTheScope(t *testing.T) {
 	when := time.Now().Add(-2 * time.Minute)
 	near := globalfeed.Event{ID: "near", Class: globalfeed.ClassSevereWx, Type: "Tornado Warning",
@@ -237,8 +237,8 @@ func TestTheDecksFenceCarriesTheScopesTieSet(t *testing.T) {
 // wrong direction: if the arrival's key and the tie set's key are normalised
 // differently, NO zone-only alert ever matches, every one of them is fenced out,
 // and a real flood warning at the listener's own watched location is never read.
-// The bypass this replaced admitted too much; getting the halves out of step
-// would admit nothing, which is worse.
+// Admitting too much is the loud failure; getting the halves out of step admits
+// nothing, which is worse.
 //
 // So the two normalisations are checked against ONE REAL CAP ID, end to end:
 // the id the watched location carries, through `alertKeysOf`, and the id the
@@ -247,8 +247,8 @@ func TestTheArrivalsKeyAndTheTieSetsKeyAreTheSameKey(t *testing.T) {
 	// THE TWO FORMS ONE ALERT ACTUALLY TAKES, which is the whole reason
 	// NormalizeID exists: the location path carries the bare OID and the ticker
 	// path carries the same OID under the feature URL. A fixture using one form
-	// on both sides normalises to itself and proves NOTHING — it passed against
-	// a build with the normalisation cut out, which is how this was caught.
+	// on both sides normalises to itself and proves NOTHING — it passes against
+	// a build with the normalisation cut out.
 	const bare = "urn:oid:2.49.0.1.840.0.1.001.1"
 	const feedID = "https://api.weather.gov/alerts/" + bare
 	watched := snapshot.Location{Label: "Bonsall", TZ: "America/Los_Angeles", Lat: 33.2881, Lon: -117.2256,

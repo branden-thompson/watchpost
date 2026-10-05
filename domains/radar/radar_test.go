@@ -1,0 +1,408 @@
+package radar
+
+// radar_test.go — 0.18.0 W8.2 to W8.5 and W8.3a over the recorded responses
+// (FR-5.3 as D-84 amends it, FR-5.7, FR-8.6, D-47).
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"image"
+	"image/png"
+	"math"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/httpx"
+)
+
+// fakeGet answers every request with a fixture and records the address.
+type fakeGet struct {
+	body []byte
+	asks []string
+}
+
+func (f *fakeGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]byte, error) {
+	f.asks = append(f.asks, rawURL)
+	return f.body, nil
+}
+
+func fixture(t testing.TB, name string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("testdata", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+func TestEveryRecordedRadarFixtureIsPresent(t *testing.T) {
+	var m struct {
+		Captured string   `json:"captured"`
+		Files    []string `json:"files"`
+	}
+	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) < 9 {
+		t.Fatalf("the manifest is %+v (%v)", m, err)
+	}
+	for _, f := range m.Files {
+		if len(fixture(t, f)) == 0 {
+			t.Errorf("%s is empty", f)
+		}
+	}
+}
+
+func TestTheTimesAreTheSourcesOwn(t *testing.T) {
+	iem := NewIEM(&fakeGet{body: fixture(t, "iem-times.json")}, "")
+	times, err := iem.Times(context.Background(), geo.RegionContiguous)
+	if err != nil || len(times) < 20 {
+		t.Fatalf("IEM's times: %d (%v)", len(times), err)
+	}
+	for i := 1; i < len(times); i++ {
+		if d := times[i].Sub(times[i-1]); d != 5*time.Minute {
+			t.Errorf("IEM's scans %v apart at %d; its grid is five minutes", d, i)
+		}
+	}
+	if _, err := iem.Times(context.Background(), geo.RegionAlaska); !errors.Is(err, ErrNotCovered) {
+		t.Errorf("IEM answered for Alaska: %v", err)
+	}
+	mt, err := mrmsTimes(fixture(t, "mrms-capabilities.xml"))
+	if err != nil || len(mt) < 40 || !mt[0].Before(mt[len(mt)-1]) {
+		t.Errorf("MRMS's times: %d (%v)", len(mt), err)
+	}
+	mrms := NewMRMS(&fakeGet{}, "")
+	for _, r := range []string{geo.RegionContiguous, geo.RegionAlaska, geo.RegionHawaii, geo.RegionCaribbean, geo.RegionMarianas} {
+		if !mrms.Covers(r) {
+			t.Errorf("MRMS does not cover %s", r)
+		}
+	}
+	if mrms.Covers(geo.RegionSamoa) || iem.Covers(geo.RegionSamoa) {
+		t.Error("a source claims American Samoa, which none covers")
+	}
+}
+
+// TestAFrameIsAskedForOnlyAtAnAdvertisedTime is D-84's request half: an
+// off-grid time, a zero time or any time not listed is refused before
+// anything is sent; an advertised one is always sent with its time, and the
+// box asked for is the radar box, never the view (D-47).
+func TestAFrameIsAskedForOnlyAtAnAdvertisedTime(t *testing.T) {
+	advertised := []time.Time{time.Date(2026, 9, 26, 15, 40, 0, 0, time.UTC), time.Date(2026, 9, 26, 15, 45, 0, 0, time.UTC)}
+	box := wholeBoxes[geo.RegionContiguous]
+	for _, s := range []Source{NewIEM(&fakeGet{}, ""), NewMRMS(&fakeGet{}, "")} {
+		get := &fakeGet{body: fixture(t, "iem-frame.png")}
+		switch v := s.(type) {
+		case *IEM:
+			v.get = get
+		case *MRMS:
+			v.get = get
+		}
+		for _, bad := range []time.Time{{}, time.Date(2026, 9, 26, 15, 41, 0, 0, time.UTC)} {
+			if _, err := s.Frame(context.Background(), geo.RegionContiguous, bad, advertised, box); !errors.Is(err, ErrNotAdvertised) {
+				t.Errorf("%s asked for %v: %v", s.Name(), bad, err)
+			}
+		}
+		if len(get.asks) != 0 {
+			t.Fatalf("%s sent a request for a time it does not hold: %v", s.Name(), get.asks)
+		}
+		if _, err := s.Frame(context.Background(), geo.RegionContiguous, advertised[0], advertised, box); err != nil {
+			t.Fatal(err)
+		}
+		u, _ := url.Parse(get.asks[0])
+		q := u.Query()
+		timeParam := q.Get("TIME") + q.Get("time")
+		if !strings.HasPrefix(timeParam, "2026-09-26T15:40:00") {
+			t.Errorf("%s sent time %q", s.Name(), timeParam)
+		}
+		if bbox := q.Get("BBOX"); bbox != "-126,23,-65,51" {
+			t.Errorf("%s asked for the box %q, not the radar box", s.Name(), bbox)
+		}
+		if !strings.HasPrefix(get.asks[0], "https://") {
+			t.Errorf("%s asked over %s", s.Name(), get.asks[0])
+		}
+	}
+}
+
+// TestTheCheckTellsAFrameFromNothing is D-84's picture half over the
+// recorded responses: a frame with echo paints; an off-grid or expired
+// answer is empty (which a request never provokes); a picture declaring more
+// pixels than a frame may have is refused before it decodes.
+func TestTheCheckTellsAFrameFromNothing(t *testing.T) {
+	for name, want := range map[string]bool{"iem-frame.png": false, "mrms-frame.png": false, "iem-offgrid.png": true, "mrms-expired.png": true} {
+		empty, err := Check(fixture(t, name))
+		if err != nil || empty != want {
+			t.Errorf("%s: empty %v (%v), want %v", name, empty, err, want)
+		}
+	}
+	var huge bytes.Buffer
+	if err := png.Encode(&huge, image.NewAlpha(image.Rect(0, 0, 600, 500))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Check(huge.Bytes()); !errors.Is(err, ErrTooLarge) {
+		t.Errorf("a 600x500 picture, past the library's 250,000 pixels, was not refused: %v", err)
+	}
+}
+
+// TestTheBoxesAreFixedAndWithinTheCap is W8.3a: every box is within the
+// library's per-image cap; a wide view takes the region's one box; a closer
+// one takes the grid's boxes it meets, one to four; a small move inside a box
+// asks for nothing new; American Samoa has none.
+func TestTheBoxesAreFixedAndWithinTheCap(t *testing.T) {
+	var all []Box
+	for _, b := range wholeBoxes {
+		all = append(all, b)
+	}
+	all = append(all, grid(wholeBoxes[geo.RegionContiguous])...)
+	for _, b := range all {
+		if b.Cols*b.Rows > maxPixels || b.Cols <= 0 || b.Rows <= 0 {
+			t.Errorf("%s is %dx%d, past the cap", b.Name, b.Cols, b.Rows)
+		}
+	}
+	if got := BoxesFor(geo.RegionContiguous, geo.Box{W: -125, S: 24, E: -66, N: 50}); len(got) != 1 || got[0].Name != "us" {
+		t.Errorf("the whole lower 48 takes %v", got)
+	}
+	socal := BoxesFor(geo.RegionContiguous, geo.Box{W: -119.6, S: 32.1, E: -115.0, N: 34.2})
+	if len(socal) < 1 || len(socal) > 4 {
+		t.Fatalf("a state view takes %d boxes", len(socal))
+	}
+	moved := BoxesFor(geo.RegionContiguous, geo.Box{W: -119.4, S: 32.2, E: -114.8, N: 34.3})
+	if len(moved) != len(socal) || moved[0].Name != socal[0].Name {
+		t.Errorf("a small move asked for new boxes: %v then %v", socal, moved)
+	}
+	if got := BoxesFor(geo.RegionSamoa, geo.Box{W: -171, S: -15, E: -168, N: -11}); got != nil {
+		t.Errorf("American Samoa takes %v", got)
+	}
+	if got := BoxesFor(geo.RegionAlaska, geo.Box{W: -150, S: 60, E: -149, N: 61}); len(got) != 1 || got[0].Name != "ak" {
+		t.Errorf("a close view in Alaska takes %v; want Alaska's one box, never the lower 48's grid", got)
+	}
+	if got := BoxesFor(geo.RegionHawaii, geo.Box{W: -158, S: 21, E: -157.5, N: 21.5}); len(got) != 1 || got[0].Name != "hi" {
+		t.Errorf("a close view in Hawaii takes %v", got)
+	}
+	for _, b := range socal { // the southern row alone: the view is south of the grid's middle
+		if b.S != wholeBoxes[geo.RegionContiguous].S {
+			t.Errorf("southern California takes %s, a northern box", b.Name)
+		}
+	}
+}
+
+// TestTheRadarClientKeepsNothingOnDisk is W8.14 and W8.5's client: memory
+// only (no cache directory, so no radar request reaches disk), the 1 MiB cap,
+// public addresses only, https only.
+func TestTheRadarClientKeepsNothingOnDisk(t *testing.T) {
+	c := ClientConfig("watchpost/test")
+	if c.CacheDir != "" || c.MaxBodyBytes != 1<<20 || !c.RefusePrivate || !c.HTTPSOnly {
+		t.Errorf("the radar client is %+v", c)
+	}
+}
+
+// TestTheRadarClientPacesSixAtOnce is D-130: the client's pace leaves room
+// for six frames in flight at a round trip of 200 ms, where the default five
+// a second fetches a frame every 200 ms however many are asked at once.
+func TestTheRadarClientPacesSixAtOnce(t *testing.T) {
+	if c := ClientConfig("watchpost/test"); c.RatePerSec < 6*5 {
+		t.Errorf("the radar client paces %d a second; six at once at 200 ms need 30", c.RatePerSec)
+	}
+}
+
+// TestARefreshFetchesOnlyTheNewFrames is W8.7 (FR-5.5): with a frame held, the
+// same frame asked again is not fetched again; a new time is.
+func TestARefreshFetchesOnlyTheNewFrames(t *testing.T) {
+	var hits atomic.Int32
+	png := fixture(t, "iem-frame.png")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		_, _ = w.Write(png)
+	}))
+	defer srv.Close()
+	c, err := httpx.New(httpx.Config{UserAgent: "test"}) // the loopback server: the radar client itself refuses it
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewIEM(c, srv.URL)
+	times := []time.Time{time.Date(2026, 9, 26, 15, 40, 0, 0, time.UTC), time.Date(2026, 9, 26, 15, 45, 0, 0, time.UTC)}
+	box := wholeBoxes[geo.RegionContiguous]
+	for _, at := range []time.Time{times[0], times[0], times[1], times[0], times[1]} {
+		if _, err := s.Frame(context.Background(), geo.RegionContiguous, at, times, box); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if hits.Load() != 2 {
+		t.Errorf("five asks over two frames fetched %d times; want each frame once", hits.Load())
+	}
+}
+
+// TestEachBoxIsItsProductsWholeExtent is UAT-2 U2-12: outside the lower 48 a
+// box is its MRMS product's whole extent, as the services' capabilities give
+// it - the radar reaches the sea south of the Big Island, below 17.5°N.
+func TestEachBoxIsItsProductsWholeExtent(t *testing.T) {
+	for region, want := range map[string]geo.Box{
+		geo.RegionHawaii: {W: -164, S: 15, E: -151, N: 26}, geo.RegionCaribbean: {W: -90, S: 10, E: -60, N: 25},
+		geo.RegionAlaska: {W: -176, S: 50, E: -126, N: 72}, geo.RegionMarianas: {W: 140, S: 9, E: 150, N: 18},
+	} {
+		b := wholeBoxes[region]
+		if b.W != want.W || b.S != want.S || b.E != want.E || b.N != want.N {
+			t.Errorf("%s's box is %v,%v to %v,%v; MRMS's product is %+v", region, b.W, b.S, b.E, b.N, want)
+		}
+	}
+	hi := wholeBoxes[geo.RegionHawaii]
+	if !(hi.S < 16 && hi.W < -155 && hi.E > -155) {
+		t.Error("the sea south of the Big Island is outside Hawaii's radar")
+	}
+}
+
+// TestHRRRReadsItsRunAndItsQuarterHours is D-113 and D-114: the run's start
+// as IEM states it, and the forecast frames after the newest observed one and
+// up to the horizon, on HRRR's quarter-hours.
+func TestHRRRReadsItsRunAndItsQuarterHours(t *testing.T) {
+	get := &fakeGet{body: fixture(t, "hrrr-run.json")}
+	run, err := NewHRRR(get, "").Run(context.Background())
+	if err != nil || !run.Equal(time.Date(2026, 9, 27, 17, 0, 0, 0, time.UTC)) {
+		t.Fatalf("the run is %v (%v); want 17:00Z", run, err)
+	}
+	if !strings.HasPrefix(get.asks[0], "https://mesonet.agron.iastate.edu/") {
+		t.Errorf("asked %s: not IEM's host", get.asks[0])
+	}
+	newest := time.Date(2026, 9, 27, 19, 40, 0, 0, time.UTC)
+	got := Minutes(run, newest, newest.Add(time.Hour))
+	if len(got) != 4 || got[0] != 165 || got[3] != 210 {
+		t.Errorf("the minutes after 19:40Z for an hour are %v; want 165, 180, 195, 210", got)
+	}
+}
+
+// TestAnHRRRFrameIsAskedAtARunMinuteOnly: a frame is asked at one of the run's
+// quarter-hours, by its layer, at half the radar box's size.
+func TestAnHRRRFrameIsAskedAtARunMinuteOnly(t *testing.T) {
+	get := &fakeGet{body: fixture(t, "hrrr-frame.png")}
+	s := NewHRRR(get, "")
+	b := Box{Name: "us", W: -126, S: 23, E: -65, N: 51, Cols: 600, Rows: 276}
+	run := time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)
+	if _, err := s.Frame(context.Background(), run, 20, b); err == nil {
+		t.Error("minute 20 is no quarter-hour, and was asked")
+	}
+	if _, err := s.Frame(context.Background(), run, 180, b); err != nil {
+		t.Fatal(err)
+	}
+	u, _ := url.Parse(get.asks[len(get.asks)-1])
+	if q := u.Query(); q.Get("LAYERS") != "refd_0180" || q.Get("WIDTH") != "300" || q.Get("HEIGHT") != "138" || u.Host != "mesonet.agron.iastate.edu" {
+		t.Errorf("the frame was asked as %s", get.asks[len(get.asks)-1])
+	}
+	if !NewHRRR(nil, "").Covers(geo.RegionContiguous) || NewHRRR(nil, "").Covers(geo.RegionHawaii) {
+		t.Error("HRRR covers the lower 48 alone")
+	}
+}
+
+// TestARateIsReadInRadarsScale is D-115's conversion, Marshall-Palmer: Z =
+// 200 R^1.6, in dBZ. A dry hour is no echo; a rate not known stays unknown.
+func TestARateIsReadInRadarsScale(t *testing.T) {
+	for _, c := range []struct{ rate, dbz float64 }{{1, 23.01}, {10, 39.01}, {50, 50.19}} {
+		if got := DBZOfRate(c.rate); math.Abs(got-c.dbz) > 0.01 {
+			t.Errorf("%v mm/h is %.2f dBZ; want %.2f", c.rate, got, c.dbz)
+		}
+	}
+	if DBZOfRate(0) != NoEcho || DBZOfRate(-1) != NoEcho {
+		t.Error("a dry hour is not radar's no echo")
+	}
+	if !math.IsNaN(DBZOfRate(math.NaN())) {
+		t.Error("a rate not known became a number")
+	}
+}
+
+// AN HRRR FRAME IS KEPT PER RUN (W14 P-15, D-212): the frame's address names
+// the forecast minute, and the server answers it from its newest run, so the
+// response cache keeps one entry a run and minute - a new run's minute is
+// fetched afresh, never answered with the last run's picture. The run never
+// reaches the server: the request is the same for every run.
+func TestAnHRRRFrameIsKeptPerRun(t *testing.T) {
+	var hits atomic.Int32
+	var mu sync.Mutex
+	var queries []string
+	png := fixture(t, "hrrr-frame.png")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		mu.Lock()
+		queries = append(queries, r.URL.RawQuery)
+		mu.Unlock()
+		_, _ = w.Write(png)
+	}))
+	defer srv.Close()
+	c, err := httpx.New(httpx.Config{UserAgent: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewHRRR(c, srv.URL)
+	box := wholeBoxes[geo.RegionContiguous]
+	first, second := time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC), time.Date(2026, 10, 2, 13, 0, 0, 0, time.UTC)
+	for _, run := range []time.Time{first, first, second, second} {
+		if _, err := s.Frame(context.Background(), run, 60, box); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if hits.Load() != 2 {
+		t.Errorf("two runs' minute 60, each asked twice, fetched %d times; want once a run", hits.Load())
+	}
+	if len(queries) == 2 && queries[0] != queries[1] {
+		t.Errorf("the server was asked %q then %q; want the same request for every run", queries[0], queries[1])
+	}
+}
+
+// TestABoxThatIsNoBoxIsNeverAskedFor holds the frame guards (D-248): a box
+// turned inside out, empty, unbounded or past the image cap is refused
+// before any source asks its server - the answer would be refused anyway,
+// after a request that cost the server and a slot of the client's pace.
+func TestABoxThatIsNoBoxIsNeverAskedFor(t *testing.T) {
+	at := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	good := Box{Name: "t", W: -100, S: 30, E: -90, N: 40, Cols: 100, Rows: 100}
+	bad := map[string]Box{}
+	for name, mut := range map[string]func(*Box){
+		"inside out": func(b *Box) { b.W, b.E = b.E, b.W },
+		"flat":       func(b *Box) { b.N = b.S },
+		"unbounded":  func(b *Box) { b.N = math.Inf(1) },
+		"NaN":        func(b *Box) { b.W = math.NaN() },
+		"no columns": func(b *Box) { b.Cols = 0 },
+		"no rows":    func(b *Box) { b.Rows = -1 },
+		"past cap":   func(b *Box) { b.Cols, b.Rows = 1000, 1000 },
+	} {
+		b := good
+		mut(&b)
+		bad[name] = b
+	}
+	for name, b := range bad {
+		get := &fakeGet{}
+		if _, err := NewIEM(get, "").Frame(context.Background(), geo.RegionContiguous, at, []time.Time{at}, b); err == nil {
+			t.Errorf("IEM asked for a box %s", name)
+		}
+		if _, err := NewMRMS(get, "").Frame(context.Background(), geo.RegionContiguous, at, []time.Time{at}, b); err == nil {
+			t.Errorf("MRMS asked for a box %s", name)
+		}
+		if _, err := NewHRRR(get, "").Frame(context.Background(), at, 15, b); err == nil {
+			t.Errorf("HRRR asked for a box %s", name)
+		}
+		if len(get.asks) != 0 {
+			t.Errorf("a box %s reached the server: %v", name, get.asks)
+		}
+	}
+	get := &fakeGet{}
+	if _, err := NewIEM(get, "").Frame(context.Background(), geo.RegionContiguous, at, []time.Time{at}, good); err != nil || len(get.asks) != 1 {
+		t.Errorf("a good box was refused: %v, %d asks", err, len(get.asks))
+	}
+}
+
+// TestEveryBoxDrawnIsOneAFrameCanBeDrawnFor holds the frame guard to the
+// boxes the map asks for: none of them is refused.
+func TestEveryBoxDrawnIsOneAFrameCanBeDrawnFor(t *testing.T) {
+	for region, whole := range wholeBoxes {
+		for _, b := range append([]Box{whole}, GridBoxes(region)...) {
+			if err := b.askable(); err != nil {
+				t.Errorf("%s's box %+v is refused: %v", region, b, err)
+			}
+		}
+	}
+}

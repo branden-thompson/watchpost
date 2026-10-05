@@ -27,12 +27,12 @@ var bonsallCfg = config.Location{Label: "Bonsall, CA", Zip: "92003", Lat: 33.288
 // Location Pool for producers to create the lineup."
 //
 // IT ASKS THE FUNCTION THE WIRING USES. `startSchedule` takes three seams that
-// all read one list, and the defect this release keeps producing is a wiring no
-// test drives — so the choice lives in `producer()` and this is what asserts it.
+// all read one list, and a wiring no test drives is a defect nothing catches —
+// so the choice lives in `producer()` and this is what asserts it.
 func TestTheProducerOffersTheStationsPoolNotTheWatchlist(t *testing.T) {
 	lp := &livePipelines{idx: indexForTest(t)}
 	// A WATCHLIST DELIBERATELY NOWHERE NEAR THE STATION. If the schedule were
-	// still fed by it, every name below would come back.
+	// fed by it, every name below would come back.
 	lp.setWatch([]snapshot.LocationRef{
 		{Label: "Anchorage, AK", Lat: 61.2181, Lon: -149.9003},
 		{Label: "Miami, FL", Lat: 25.7617, Lon: -80.1918},
@@ -106,11 +106,11 @@ func indexForTest(t *testing.T) *geodata.Index {
 
 // AND THE POOL FILLS THE CONSOLE'S WINDOW, END TO END.
 //
-// THE DEFECT THIS CLOSES IS F-82, MEASURED: `ReadID` is a pure function of the
-// ref and the lineup refuses a duplicate identity, so the schedule could never
-// be deeper than the number of DISTINCT places its producer offered. With the
-// listener's watchlist that was three; with the station's pool it is twenty-five,
-// and the console draws ten.
+// THE PROPERTY IS F-82's, MEASURED: `ReadID` is a pure function of the ref and
+// the lineup refuses a duplicate identity, so the schedule can never be deeper
+// than the number of DISTINCT places its producer offers. The listener's
+// watchlist offers three; the station's pool offers twenty-five, and the console
+// draws ten.
 //
 // IT DRIVES `startSchedule` ITSELF, through the same `producer()` the wiring
 // uses — the D-54 shape, because a unit test that hands the Director its own
@@ -159,14 +159,12 @@ func TestTheStationsPoolFillsTheConsolesWindow(t *testing.T) {
 
 // THE MONITOR'S ROTATION RESOLVES AGAINST THE LISTENER'S WATCHLIST (D-76).
 //
-// THE REGRESSION THIS PINS WAS MINE, AND IT WAS FOUND BY DRAWING THE FLOW rather
-// than by a gate. D-72 moved all three of `startSchedule`'s list-reading seams
-// from the watchlist to the station's pool, on the reasoning that a Director
+// `propose` and `compose` read the station's pool, because a Director
 // scheduling a location its own Composer cannot resolve gets it benched by
-// D-67's cool-off. True of `propose` and `compose`. NOT true of `cutTo`, which
-// serves `advanceBed` — the operator's own rotation, moving through their own
-// watchlist. A watched location outside the station's pool stopped resolving,
-// and the tune died as `schedule:tune-unknown` with nothing said.
+// D-67's cool-off. `cutTo` does NOT: it serves `advanceBed` — the operator's own
+// rotation, moving through their own watchlist. Built from the pool, a watched
+// location outside it stops resolving, and the tune dies as
+// `schedule:tune-unknown` with nothing said.
 func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 	// A LISTENER WATCHING SOMEWHERE THE STATION DOES NOT REACH — the HUM LEAD's
 	// own case: Lone Pine, listened to from a station in Bonsall.
@@ -194,10 +192,10 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 
 	// AND THE WIRING USES THE RIGHT ONE, driven through `startSchedule` itself.
 	//
-	// A PLANT SAID THIS WAS NEEDED. The assertions above compare the two lists
-	// and prove nothing about which one `cutTo` is built from — so swapping the
-	// wiring back to the pool SURVIVED them. The same shape as `producer()`'s: a
-	// call site cannot be asserted, so the test has to drive it.
+	// THE ASSERTIONS ABOVE ARE NOT ENOUGH. They compare the two lists and prove
+	// nothing about which one `cutTo` is built from — so swapping the wiring to the
+	// pool survives them. The same shape as `producer()`'s: a call site cannot be
+	// asserted, so the test has to drive it.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	t.Setenv("WATCHPOST_MAINTRACK", "dark") // so a tune the deck accepts reports it
@@ -212,7 +210,7 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 	// OBSERVED AT THE DECK, after the schedule has wired itself: a tune that
 	// RESOLVED reports the need it found, and a tune that did not resolve
 	// reports nothing at all (`schedule:tune-unknown`, silently — which is
-	// exactly how the regression hid).
+	// exactly how a wrong wiring hides).
 	var mu sync.Mutex
 	var tuned []string
 	deck.mu.Lock()
@@ -256,17 +254,15 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 
 // AND MOVING THE STATION'S REGION RE-SCOPES THE RAIL (D-154).
 //
-// THE TRIGGER `Aired` DOES NOT SERVE. The fence travels with the air, which is
-// true and was taken for the whole of it — so `d.settings.Fence` had exactly one
-// assignment in `platform/lineup`, behind the air-moved guard, and the operator
-// who narrows the service radius in Settings moves no air at all. Measured
-// before this: a hundred-mile hazard survived a narrowing to twenty-five, which
-// is the sentence `Aired.Fence`'s own comment claims to have fixed.
+// THE TRIGGER `Aired` DOES NOT SERVE. The fence travels with the air, but that
+// is not the whole of it: the operator who narrows the service radius in
+// Settings moves no air at all, so a fence assigned only behind the air-moved
+// guard lets a hundred-mile hazard survive a narrowing to twenty-five.
 //
 // IT IS CHECKED HERE RATHER THAN ON THE DIRECTOR because the Director's half is
-// already covered (`TestTheRailIsReScopedWhenTheServiceAreaNarrows...`) and this
-// is the half that was missing: the WIRING, and the fence it asks for. A handler
-// nothing calls is the defect, not the fix.
+// covered (`TestTheRailIsReScopedWhenTheServiceAreaNarrows...`) and this is the
+// other half: the WIRING, and the fence it asks for. A handler nothing calls is
+// the defect, not the fix.
 func TestMovingTheStationsRegionTellsTheDirectorTheNewFence(t *testing.T) {
 	var told []lineup.Event
 	nar := testDirector(nil, func(tea.Msg) {})
@@ -293,9 +289,9 @@ func TestMovingTheStationsRegionTellsTheDirectorTheNewFence(t *testing.T) {
 	if !refenced.Fence.InForce() || refenced.Fence.RadiusMi != 25 {
 		t.Errorf("the rail was re-scoped to %+v, want the region's own 25-mile fence", refenced.Fence)
 	}
-	// AND THE AIR IS NOT TOUCHED. Routing this through `HandAir` would have
-	// worked and would also have SILENCED THE PROGRAMME on the way past — a card
-	// cut off mid-sentence because the operator changed a setting.
+	// AND THE AIR IS NOT TOUCHED. Routing this through `HandAir` would work and
+	// would also SILENCE THE PROGRAMME on the way past — a card cut off
+	// mid-sentence because the operator changed a setting.
 	for i := range told {
 		if a, ok := told[i].(lineup.Aired); ok {
 			t.Errorf("changing a setting handed the air to %v", a.To)

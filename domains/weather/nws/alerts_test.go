@@ -9,9 +9,9 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// 0.13.0 (NFR-5, red-team S2): the location path was unbounded while the
-// ticker path was not; every CAP field now has a bound, and the issuing
-// office rides along for the superseded guard (NFR-12).
+// NFR-5 (red-team S2): every CAP field has a bound, on the location path as
+// on the ticker path, and the issuing office rides along for the superseded
+// guard (NFR-12).
 func TestMapAlertBoundsEveryFieldAndKeepsSender(t *testing.T) {
 	long := strings.Repeat("y", 10_000)
 	pr := alertProps{ID: "urn:oid:1", Event: long, Headline: long, Description: long, Instruction: long, SenderName: "NWS Test", AreaDesc: long}
@@ -38,8 +38,8 @@ func TestMapAlertBoundsEveryFieldAndKeepsSender(t *testing.T) {
 // A real CAP alert can affect more zones than the record keeps (the fixture's
 // Hydrologic Outlook has 81; Winter Storm Warnings span 50–100): the match
 // runs over the full list, the bound applies to the retained copy only
-// (0.13.0 red-team R3-A-01 — the earlier test used zone index 1 and passed
-// for the wrong reason).
+// (0.13.0 red-team R3-A-01 — a tracked zone inside the bound would pass for
+// the wrong reason).
 func TestMapAlertAttachesWhenTheZoneIsBeyondTheListCap(t *testing.T) {
 	// **The bound is maxZones, and it sits above every alert measured** - the
 	// largest live was forty-two zones, a Winter Storm Warning can name eighty.

@@ -120,7 +120,23 @@ func reportFetch(ctx context.Context, client *httpx.Client, provider *nws.Provid
 // budget the caller's shape allows — 1 under a scheduler that rehydrates
 // at 10/20/40 s, 3 for the one-shot report.
 func newDataClient(maxRetries int) (*httpx.Client, error) {
-	return httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: maxRetries, CacheDir: cacheDir()})
+	return httpx.New(dataClientConfig(maxRetries))
+}
+
+// dataClientConfig is the data client's configuration, named so a test holds
+// it. It refuses to dial a private address, the proxy the environment names
+// excepted, and fetches over https only (D-270, D-276). The radio relay's
+// directory, plain http by relay policy, has its own client
+// (directoryClientConfig).
+func dataClientConfig(maxRetries int) httpx.Config {
+	return httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: maxRetries, CacheDir: cacheDir(), RefusePrivate: true, HTTPSOnly: true}
+}
+
+// directoryClientConfig is the radio relay directory's client (D-276): http
+// allowed - weatherUSA's directory is plain http (domains/radio/stream) - and
+// a private address refused, the proxy the environment names excepted.
+func directoryClientConfig() httpx.Config {
+	return httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: cacheDir(), RefusePrivate: true}
 }
 
 // staleWarnings appends obs_stale warnings for observations older than 2h

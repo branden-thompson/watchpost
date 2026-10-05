@@ -47,14 +47,16 @@ jobs:
       # One step per gate so a red run names its gate from the API (quality pass PH-3).
       - run: make fmt
       - run: make vet
-      - run: make vet-tags # the debug build is vetted too, or its seam rots unseen
-      - run: make test-tags # and its tests RUN: vet-tags vets, it does not test
+      - run: make vet-tags # the tagged property tests are vetted too, or they rot unseen
       - run: make lint # golangci-lint + staticcheck, as a baseline ratchet
       - run: make tidy
       - run: make vuln
       - run: make race
+      - run: make test-say # the speech safety test, alone (F-176)
+        if: runner.os == 'macOS' # it drives macOS `say`; elsewhere it could only skip
       - run: make lint-imports
       - run: make lint-watermark
+      - run: make lint-plan-code
       - run: make lint-authoring
       # No home directory, harness path, internal tree or email in a PUBLIC tree.
       - run: make lint-identity
@@ -63,6 +65,7 @@ jobs:
       - run: make treelock-selftest
       - run: make gate-controls
       - run: make alloc-budget # malloc pins run outside the race detector (quality pass §0.1)
+      - run: make property # the map's guard 3 at its full 10,000 sequences, once, outside the race detector (0.18.0 W2.4)
       - run: make dupes # metric D: no duplicate operation without a RATIFIED reason
       - run: make wires # every closed-set member names a production writer and reader, or is RATIFIED as owed
       - run: make dupes-selftest # and the duplicate check itself can still fire: both positive controls

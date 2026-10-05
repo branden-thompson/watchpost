@@ -6,6 +6,8 @@
 // params for the raw-SGR path; window/gradient entries are #RRGGBB hex).
 package render
 
+import "strings"
+
 // Token names a semantic color role.
 type Token string
 
@@ -23,6 +25,8 @@ const (
 	FocusName    Token = "name.focus"       // focused row name
 	FocusCell    Token = "cell.focus"       // focused row: grey data cells read light blue (UAT 50.1)
 	FocusPointer Token = "pointer.focus"    // focused row pointer: bold white (UAT 50.2)
+	AboutHost    Token = "about.host"       // the About window's hosts: FocusCell's light blue, lifted on the modal ground alone (D-233)
+	AboutNote    Token = "about.note"       // a credit row's note: the window's text a shade back toward the modal ground, lifted to AA (D-236)
 	ListPointer  Token = "pointer.list"     // a LIST's focused row: bold yellow — see render/list.go for why this is not FocusPointer
 	ListFocus    Token = "label.list.focus" // and its label: the same yellow, NOT bold
 	NameAdvisory Token = "name.advisory"    // location under advisory/statement
@@ -125,7 +129,7 @@ const (
 	TickerWarningBG  Token = "ticker.warning.bg"
 	TickerWatchBG    Token = "ticker.watch.bg"
 	TickerMarineBG   Token = "ticker.marine.bg" // 0.12.0: the Tropical Cyclones lane (HUM LEAD colour pass)
-	// 0.14.0: the two lanes that joined when every severe category gained one.
+	// 0.14.0: the lanes that give every severe category one.
 	// They are LANE tokens, not category tints borrowed from the [w] window: a
 	// band is painted under bold white at full strength, a tint sits behind a
 	// row, and the AA register checks the two differently (HUM LEAD, UAT
@@ -133,6 +137,40 @@ const (
 	TickerAdvisoryBG  Token = "ticker.advisory.bg"  // Advisories — burnt orange, away from the Watch gold beside it
 	TickerEmergencyBG Token = "ticker.emergency.bg" // Emergency Orders — THE RED (MVS-D-62)
 	TickerStatementBG Token = "ticker.statement.bg" // Spec. Statements — teal, the one lane with no warm neighbour
+
+	// The map's source chips (0.18.0 D-83, D-134): each source's name, bold,
+	// on a ground of its own - MRMS green, IEM orange - its words black or
+	// white, whichever reads the more there (ChipTones).
+	MapRadarMRMSBG Token = "map.radar.mrms.bg"
+	MapRadarIEMBG  Token = "map.radar.iem.bg"
+	// MapRadarModelBG is the chip of the loop's forecast frames (D-113): a
+	// model, never radar, so a colour of its own - HRRR's.
+	MapRadarModelBG Token = "map.radar.model.bg"
+	// The other sources' chips (D-134): every source the map credits its own.
+	MapChipNWSBG    Token = "map.chip.nws.bg"
+	MapChipNDFDBG   Token = "map.chip.ndfd.bg"
+	MapChipOMeteoBG Token = "map.chip.ometeo.bg"
+	MapChipUSGSBG   Token = "map.chip.usgs.bg"
+	MapChipNIFCBG   Token = "map.chip.nifc.bg"
+	MapChipHMSBG    Token = "map.chip.hms.bg"
+	MapChipNDBCBG   Token = "map.chip.ndbc.bg"
+	MapChipCOOPSBG  Token = "map.chip.coops.bg"
+	MapChipAirNowBG Token = "map.chip.airnow.bg" // D-138
+	MapChipEPABG    Token = "map.chip.epa.bg"    // D-167: UV's cold start
+	// The credits' sources without a map layer yet, each its own chip (D-235).
+	MapChipNHCBG      Token = "map.chip.nhc.bg"
+	MapChipNWRBG      Token = "map.chip.nwr.bg"
+	MapChipFIRMSBG    Token = "map.chip.firms.bg"
+	MapChipRelaysBG   Token = "map.chip.relays.bg"
+	MapChipGeoNamesBG Token = "map.chip.geonames.bg"
+	MapChipOFMBG      Token = "map.chip.ofm.bg"
+	MapChipPiperBG    Token = "map.chip.piper.bg"
+	// MapNoticeQuotaBG is the ground of the map's notice that a source's
+	// quota is spent (W18.1, D-165): dark orange, its words ChipTones'.
+	MapNoticeQuotaBG Token = "map.notice.quota.bg"
+	// MapChipRecordedBG is the RECORDED chip's ground (D-173, D-178): a
+	// muted violet no source uses.
+	MapChipRecordedBG Token = "map.chip.recorded.bg"
 	TickerFG          Token = "ticker.fg"
 	TickerMutedFG     Token = "ticker.muted.fg"
 
@@ -150,8 +188,8 @@ const (
 	EventCatForecastBG  Token = "event.cat.forecast.bg"  // Forecasts and Outlooks — COLOUR IS THE HUM LEAD'S PASS
 	EventCatMarineBG    Token = "event.cat.marine.bg"
 
-	// The table's own palette (quality pass Q4a-004, L5-F4): before it the
-	// kit painted these from its $TERM-gated palette, outside the theme.
+	// The table's own palette (quality pass Q4a-004, L5-F4): the theme paints
+	// these, not the kit's $TERM-gated palette.
 	TableMuted Token = "table.muted" // row numbers and attribute cells (the kit's muted grey)
 	TableName  Token = "table.name"  // an unselected, un-alerted NAME cell (the kit's bright white)
 
@@ -177,17 +215,15 @@ const (
 	GradEnd   Token = "title.grad.end"
 
 	// TitleEdition is the EDITION word beside the wordmark — "Observer"
-	// today, "Broadcaster" when that dashboard arrives (0.14.0). Bold, in the
-	// theme's own light blue, so the edition reads as a companion to the
-	// gradient rather than a second wordmark competing with it.
+	// (0.14.0). Bold, in the theme's own light blue, so the edition reads as a
+	// companion to the gradient rather than a second wordmark competing with it.
 	//
 	// Its own token, not FocusCell borrowed: the two happen to share a colour
-	// in most themes and have nothing to do with each other, and the second
-	// edition will want to differ.
+	// in most themes and have nothing to do with each other.
 	TitleEdition Token = "title.edition"
 
-	// TitleEditionBroadcaster is the SECOND edition's word, and it is the "will
-	// want to differ" above arriving (HUM LEAD, 2026-09-14): "Let's make
+	// TitleEditionBroadcaster is the SECOND edition's word (HUM LEAD,
+	// 2026-09-14): "Let's make
 	// 'Broadcaster' text in the mastHead Orange vs. the Bold Light Blue - so:
 	// Observer - Bold Light Blue / Broadcaster - Bold Orange."
 	//
@@ -195,7 +231,7 @@ const (
 	// ARE ON. Both editions draw the same wordmark, the same ladders and the
 	// same stamp, and ctrl+o / ctrl+b swap between them in place — so the word
 	// beside the wordmark is the distinction, and two editions sharing one tone
-	// made it a distinction you had to READ rather than see.
+	// would make it a distinction you had to READ rather than see.
 	//
 	// EACH THEME'S OWN ORANGE, the way TitleEdition takes each theme's own
 	// light blue. Monochrome is the honest exception and says so at its entry.
@@ -255,8 +291,8 @@ func withAgeLadder(t map[Token]string, named map[Token]string) map[Token]string 
 		// "DID THIS THEME NAME IT", NOT "IS IT EMPTY". A registered theme starts
 		// from a COPY OF THE DEFAULT, so by the time this runs the slot is
 		// already full of the default's blue — and an emptiness test would leave
-		// every theme wearing Watchpost's ladder. Monochrome caught it at once:
-		// a theme whose whole purpose is to have no colour was handed four.
+		// every theme wearing Watchpost's ladder, Monochrome included: a theme
+		// whose whole purpose is to have no colour would be handed four.
 		if _, ok := named[f.dst]; !ok {
 			t[f.dst] = t[f.src]
 		}
@@ -269,7 +305,7 @@ func withAgeLadder(t map[Token]string, named map[Token]string) map[Token]string 
 // registered theme copies from this one (quality pass Q1, L3-F17 — no
 // package-level map to guard).
 func defaultTheme() map[Token]string {
-	return withAA(withAgeLadder(map[Token]string{
+	return withAA(withDerived(withAgeLadder(map[Token]string{
 		TextBase:   "250",
 		TextBright: "97",
 
@@ -341,8 +377,30 @@ func defaultTheme() map[Token]string {
 
 		TickerAdvisoryBG:  "48;2;129;60;14",  // #813C0E
 		TickerStatementBG: "48;2;25;105;102", // #196966
-		// PLACEHOLDER, pending the ruling: a new colour, or THE RED with every
-		// other lane shifted down. Magenta only so it is unmistakably not final.
+		MapRadarMRMSBG:    "48;2;28;110;52",  // #1C6E34, green: 6.2:1 under white
+		MapRadarIEMBG:     "48;2;168;72;0",   // #A84800, orange: 5.9:1 under white
+		MapRadarModelBG:   "48;2;106;63;160", // #6A3FA0, purple: a model's frames (D-113), 7.5:1 under white
+		// D-134: a hue a source, round the wheel from the three above.
+		MapChipNWSBG:      "48;2;29;78;216",  // #1D4ED8, blue
+		MapChipNDFDBG:     "48;2;15;118;110", // #0F766E, teal
+		MapChipOMeteoBG:   "48;2;250;204;21", // #FACC15, yellow
+		MapChipUSGSBG:     "48;2;71;85;105",  // #475569, slate
+		MapChipNIFCBG:     "48;2;220;38;38",  // #DC2626, red
+		MapChipHMSBG:      "48;2;190;24;93",  // #BE185D, magenta
+		MapChipNDBCBG:     "48;2;56;189;248", // #38BDF8, sky
+		MapChipCOOPSBG:    "48;2;132;204;22", // #84CC16, lime
+		MapChipAirNowBG:   "48;2;146;64;14",  // #92400E, brown
+		MapChipEPABG:      "48;2;22;101;52",  // #166534, forest green (D-167)
+		MapChipNHCBG:      "48;2;3;105;161",  // #0369A1, deep sky blue (D-235)
+		MapChipNWRBG:      "48;2;30;58;138",  // #1E3A8A, navy
+		MapChipFIRMSBG:    "48;2;249;115;22", // #F97316, bright orange
+		MapChipRelaysBG:   "48;2;77;124;15",  // #4D7C0F, olive
+		MapChipGeoNamesBG: "48;2;161;98;7",   // #A16207, amber
+		MapChipOFMBG:      "48;2;126;34;206", // #7E22CE, purple
+		MapChipPiperBG:    "48;2;15;23;42",   // #0F172A, ink
+		MapNoticeQuotaBG:  "48;2;194;65;12",  // #C2410C, dark orange (D-165)
+		MapChipRecordedBG: "48;2;91;75;138",  // #5B4B8A, muted violet (D-178)
+		// Emergency Orders take THE red (MVS-D-62).
 		TickerEmergencyBG: "48;2;150;20;20",     // #961414 — Emergency Orders: THE red
 		TickerFG:          "1;38;2;255;255;255", // bold white
 		TickerMutedFG:     "38;5;245",           // muted grey text
@@ -369,7 +427,7 @@ func defaultTheme() map[Token]string {
 		TableMuted: "245", // = tui.TableRowNumber / tui.TableAttribute
 		TableName:  "97",  // = tui.TableLabel
 
-		ConfirmBG: "48;2;79;12;12", // #4F0C0C — deep red under light text (UAT 109; was #AE7D7E, UAT 26.2)
+		ConfirmBG: "48;2;79;12;12", // #4F0C0C — deep red under light text (UAT 109)
 
 		AlertModalWarnFG: "38;2;190;84;84",   // #BE5454 (UAT 28.4)
 		AlertModalAdvFG:  "38;2;172;174;125", // #ACAE7D (UAT 28.3)
@@ -395,7 +453,33 @@ func defaultTheme() map[Token]string {
 		// 208 is this palette's own orange — what TempHi and FireMark already
 		// use — so the masthead borrows rather than introduces a colour.
 		TitleEditionBroadcaster: "1;208",
-	}, nil))
+	}, nil)))
+}
+
+// withDerived sets the tokens that take another token's value in every theme
+// before the AA pass lifts each on its own grounds: AboutHost is the theme's
+// FocusCell light blue, lifted on the modal ground without moving the
+// focused rows (D-233).
+func withDerived(t map[Token]string) map[Token]string {
+	t[AboutHost] = t[FocusCell]
+	t[AboutNote] = shadeBack(t[ModalFG], bgOf(t, ModalBGDark))
+	return t
+}
+
+// aboutNoteShade is how far a credit row's note sits back from the window's
+// text toward its ground (D-236): a shade, the AA pass lifting it where it
+// would not read.
+const aboutNoteShade = 0.25
+
+// shadeBack is a text tone moved aboutNoteShade of the way toward a ground; the
+// tone as it is where either does not parse.
+func shadeBack(fg, ground string) string {
+	r, g, b, ok := fgRGB(fg)
+	gr, gg, gb, gok := fgRGB(strings.Replace(ground, "48;", "38;", 1))
+	if !ok || !gok {
+		return fg
+	}
+	return mixToward(r, g, b, [3]int{gr, gg, gb}, aboutNoteShade, false)
 }
 
 // Tok resolves a semantic token to its SGR params (or hex for window/

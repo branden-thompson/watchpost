@@ -46,6 +46,10 @@ type Config struct {
 	Hints     map[string]map[string]string // provider id -> FetchReq.Hint
 	OnPublish func()                       // "new data applied" — MAY run concurrently from multiple tiers; the app snapshots (coalesced, UAT 74)
 	OnWarn    func(snapshot.Warning)       // optional observer (logs, M2 latency)
+	// OnFragment is told each fetch applied, with the locations it was asked
+	// for, after the assembler has it - the history's recorder (W22.2). MAY
+	// run concurrently from multiple tiers. Optional.
+	OnFragment func(snapshot.Fragment, []snapshot.LocationRef)
 }
 
 // Scheduler runs the tiers until Stop or context cancellation.
@@ -62,7 +66,7 @@ type Scheduler struct {
 
 // New validates and builds a Scheduler. A misconfigured scheduler is refused
 // outright (error-return recovery, P10 rule 1) — B1 red-team #5: warn-and-
-// continue here guaranteed a later nil-pointer panic in cycle().
+// continue here would guarantee a later nil-pointer panic in cycle().
 func New(cfg Config) (*Scheduler, error) {
 	if err := invariant.Check(cfg.Clock != nil, "scheduler requires a Clock"); err != nil {
 		cfg.Clock = RealClock{}
@@ -118,8 +122,8 @@ const (
 // runTier fires the tier on a fixed grid — start, start+Every, start+2·Every
 // … — waiting for the NEXT grid point after each cycle rather than Every
 // after the cycle ends (quality pass Q3, red-team PF-9: fifty RECENT
-// schedulers whose phases drifted by their own fetch times decorrelated
-// over hours and defeated the publish coalescer). A cycle that overruns
+// schedulers whose phases drift by their own fetch times decorrelate
+// over hours and defeat the publish coalescer). A cycle that overruns
 // its slot (retries) fires again at once and the grid restarts from then;
 // missed slots are never replayed.
 // ACCEPTED COST — see docs/accepted-costs.md §3 (ADR-03 option A). One of these
@@ -247,10 +251,12 @@ func (s *Scheduler) cycle(ctx context.Context, tier Tier, refs []snapshot.Locati
 			continue
 		}
 		// THE REFS THIS CYCLE ASKED ABOUT (#13). This is the dashboard's only
-		// refresh path, and it is the one that did not pass them — so no
-		// location ever recorded an attempt and a row the feed cannot serve
-		// shimmered for ever, which is the defect the field was added for.
+		// refresh path, so without them no location records an attempt and a
+		// row the feed cannot serve shimmers for ever.
 		s.cfg.Assembler.Apply(frag, snapshot.Keys(refs))
+		if s.cfg.OnFragment != nil {
+			s.cfg.OnFragment(frag, refs)
+		}
 		s.publish() // per provider (UAT 64): a slow provider never holds the others' data off screen
 		if frag.Err != nil {
 			for _, r := range unserved(refs, frag) {

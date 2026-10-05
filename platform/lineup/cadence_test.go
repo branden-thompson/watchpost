@@ -93,7 +93,7 @@ func TestTheOperatorCanTurnLastReadOffAndTheDirectorStillChooses(t *testing.T) {
 	// THE DEGRADATION REQUIREMENT, stated as a test: with the cadence term off
 	// the Director must still produce an order — not refuse, not stall, not fall
 	// back to the producer's whim. It falls through to the watchlist, which is
-	// what it ranked by before this term existed.
+	// what it ranks by without this term.
 	d := New(Settings{Max: 5, Depth: 4, WeighLastRead: false,
 		Watchlist: []string{"hazard", "oceanside"}},
 		time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC))
@@ -192,7 +192,7 @@ func seedRead(t *testing.T, d Director, id, subject string, slot Slot) Director 
 	return d
 }
 
-// A READ THAT WAS CUT OFF IS NOT A READ, and a plant found this untested.
+// A READ THAT WAS CUT OFF IS NOT A READ.
 //
 // `onDropped` refuses the on-air card outright, so the drop test above never
 // reaches the recording line at all. The case that DOES is the one D-45 names as

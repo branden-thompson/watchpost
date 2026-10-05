@@ -14,13 +14,14 @@
 fmt
 vet
 vet-tags
-test-tags
 tidy
 vuln
 race
+test-say
 lint
 lint-imports
 lint-watermark
+lint-plan-code
 lint-identity
 lint-authoring
 treelock-selftest
@@ -31,16 +32,17 @@ treelock-selftest
 p10
 gate-controls
 alloc-budget
+property
 dupes
 dupes-selftest
 wires
 wires-selftest
 mutant-anchors
 mutant-check
-# CI-ONLY, and required all the same. release-matrix is the SOLE caller of
-# scripts/lint-injector.sh — the only thing standing between a debug-injector
-# build and a release — and it cannot live in verify, which runs before the
-# published artifacts exist. Leaving these two off the list left them protected
+# CI-ONLY, and required all the same. release-matrix builds and checksums the
+# artifacts that ship, and cannot live in verify, which runs before they exist.
+# (Its lint-injector check retired with test-tags, 0.18.0 D-153: every build
+# carries the injector, D-152.) Leaving these two off the list left them protected
 # by two lists, which is exactly the condition that made alloc-budget deletable
 # and that this file exists to close (red team, 2026-09-08).
 release-matrix

@@ -4,16 +4,16 @@ package tty
 // surface along.
 //
 // THE TWO TABLES ARE 95% OF THE FRAME'S ALLOCATIONS AND 60% OF ITS TIME —
-// measured on a loaded console before this was written (D-53): 320 µs and 8796
-// allocs out of 537 µs and 9298. They change only when one of their inputs does,
-// so they are built once per input change and reused on every tick, clock and
+// measured on a loaded console without the memo (D-53): 320 µs and 8796 allocs
+// out of 537 µs and 9298. They change only when one of their inputs does, so
+// they are built once per input change and reused on every tick, clock and
 // bed-step frame between.
 //
 // THE KEY IS COMPLETE BY CONSTRUCTION — one field per input the tables read —
 // and the guard that makes that true is `broadcaster_memo_completeness_test.go`,
 // which DERIVES the fields from the struct rather than listing them. F-30 is why:
-// a hand-kept key froze three of Observer's windows in one release while the
-// model underneath worked perfectly, and the first took three UAT rounds to find.
+// a hand-kept key freezes a window while the model underneath works perfectly,
+// and nothing on screen says which input the key forgot.
 //
 // A MEMO MAY MISS. IT MUST NEVER WRONGLY HIT. Every choice here takes the miss.
 
@@ -44,16 +44,13 @@ type consoleKey struct {
 	// selected drives BOTH the focused row and the pool's scroll window — the
 	// window is derived from the selection (poolSpan), not stored beside it.
 	selected int
-	// recent is the weather behind both tables (D-99). A POINTER, as Observer
-	// keys them: a publish hands over a whole new snapshot rather than editing
-	// one, so the pointer moving IS the data changing.
-	//
-	// `snap` IS NOT HERE, AND WAS. The PRIORITY snapshot feeds the masthead's
-	// stamp and its API summary — `b.snap` has exactly two readers and neither is
-	// a table. Keyed on it, every priority publish threw away a cached pair that
-	// was still correct. The guard is what said so: dropping it from the key
-	// changed no table, which for a key field means it was never an input.
+	// recent and priority are the weather behind both tables: the pool's places
+	// from the recent snapshot (D-99), a watched place's from the priority one
+	// (D-208). POINTERS, as Observer keys them: a publish hands over a whole new
+	// snapshot rather than editing one, so the pointer moving IS the data
+	// changing.
 	recent    *snapshot.Snapshot
+	priority  *snapshot.Snapshot
 	lineupGen uint64
 	areaGen   uint64
 	// theme is render.ThemeGeneration: every Tok() tint in every cell.
@@ -77,7 +74,7 @@ func (b Broadcaster) consoleKeyFor(used int) consoleKey {
 	k := consoleKey{
 		width: b.width, height: b.height, used: used, ascii: b.ascii,
 		power: b.power, fireBoldMW: b.fireBold(), selected: b.selected,
-		recent: b.pool, lineupGen: b.lineupGen, areaGen: b.areaGen,
+		recent: b.pool, priority: b.snap, lineupGen: b.lineupGen, areaGen: b.areaGen,
 		theme: render.ThemeGeneration(),
 	}
 	if b.anyLoading() {
@@ -91,8 +88,8 @@ func (b Broadcaster) consoleKeyFor(used int) consoleKey {
 // IT OWNS THE INDEX TOO, and that is deliberate. `locIndex` builds a map over the
 // whole pool so the forty joins are not forty linear scans (D-120) — real work,
 // and pointless on a hit. Taking it inside means a hit costs the key comparison
-// and nothing else; leaving it outside would have paid for the index on every
-// frame to save the tables on most of them.
+// and nothing else; leaving it outside would pay for the index on every frame to
+// save the tables on most of them.
 func (b Broadcaster) spans(used int) (sched, pool scrollSpan) {
 	m := b.memo
 	if m == nil {
@@ -123,7 +120,7 @@ func (b Broadcaster) buildSpans(used int) (scrollSpan, scrollSpan) {
 //
 // IT CANNOT BE INHERITED FROM THE EMBEDDED TYPE, which is why there are three:
 // the guard is on the OUTER pointer, and a method promoted from `memoStats`
-// would have dereferenced the nil slot to reach itself. Same shape, different
+// would dereference the nil slot to reach itself. Same shape, different
 // receiver — the mutex-read accessor the HUM LEAD ratified on 2026-09-13, one
 // package along.
 func (m *consoleMemo) stats() *memoStats {
@@ -165,7 +162,7 @@ func (b Broadcaster) anyLoading() bool {
 // defect can have.
 //
 // IT IS A FUNCTION SO THAT THE RULE CAN BE TESTED. Written inline, the only way
-// to catch a regression was to hope the aliasing happened to become visible;
+// to catch a regression would be to hope the aliasing happened to become visible;
 // here the property — "the result does not share an array with the cache" — is a
 // thing a test can assert directly, whether or not today's capacities expose it.
 func joinSpans(sched, pool scrollSpan) []string {

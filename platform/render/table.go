@@ -1,6 +1,6 @@
 package render
 
-// table.go — the location table on go-studs DataTable — the ONLY go-studs consumer in the app (column spec, layout, row data, marks, styles, group headers). Split from render.go by the quality pass (Q2, pure move).
+// table.go — the location table on go-studs DataTable — the ONLY go-studs consumer in the app (column spec, layout, row data, marks, styles, group headers).
 
 import (
 	"fmt"
@@ -46,10 +46,9 @@ type LocationRow struct {
 
 // Base column spec, widths measured from the mock. GutterWidth 2 plus the
 // component's prefix-zone rule (no gutter before columns 0-2) reproduces the
-// mock's absolute offsets exactly. UAT 110 widened the marks block from 6
-// to 11 cells; 0.11.0 added the seismic glyph, 11 → 13 (`›  ▶ ● 5◆ 3⚠ ` —
+// mock's absolute offsets exactly. The marks block is 13 cells (`›  ▶ ● 5◆ 3⚠ ` —
 // pointer, two spacers, play, spacer, seismic glyph, spacer, fire count + ◆,
-// spacer, alert count + ⚠, spacer). Each growth comes out of NAME's floor
+// spacer, alert count + ⚠, spacer), and its width comes out of NAME's floor
 // (marksW + nameMinW = 30), so idx@13, name@18 and everything from LABEL on
 // keeps its offset: label@37,
 // zip@46, cond@55, now@69, hi@79, lo@86, tcond@95, thi@109, tlo@117 → 124.
@@ -106,8 +105,8 @@ const (
 	extDayW      = 18  // day column pitch
 	extCellW     = 15  // "H 888°F/888°F L" (fixed slots: 3-digit temps never stagger, UAT 4.2)
 	extMaxDays   = 5   // mock shows five day columns
-	marksW       = 13  // the marks block (0.11.0 mock `›  ▶ ● 5◆ 3⚠ 009.` — the seismic glyph joined UAT 110's `›  ▶ 3◆ 2⚠`, +2 cells)
-	nameMinW     = 17  // NAME fill floor: shrinks with every marks-block growth so LABEL@37 and everything downstream keep their offset (marksW + nameMinW = 30, invariant since UAT 110)
+	marksW       = 13  // the marks block (0.11.0 mock `›  ▶ ● 5◆ 3⚠ 009.`)
+	nameMinW     = 17  // NAME fill floor: marksW + nameMinW = 30, so LABEL@37 and everything downstream keep their offset
 	minFullW     = 115 // minimal full layout: all groups, LABEL hidden, NAME at floor
 	minNoTmrwW   = 84  // minimal layout without the TOMORROW group
 	stationColsW = 16  // WX STN + DIST with their gutters (UAT 60)
@@ -135,7 +134,7 @@ type layout struct {
 	//
 	// A FLAG ON THE LAYOUT, NOT A SECOND TABLE. The pool IS Observer's weather
 	// table with one column added — the same marks, the same bands, the same
-	// temperatures — and a copy would have duplicated every cell formatter in
+	// temperatures — and a copy would duplicate every cell formatter in
 	// this file. It defaults false, so Observer is untouched and its goldens say
 	// so.
 	pool bool
@@ -171,10 +170,10 @@ func layoutFor(width, days int) layout {
 //
 // IT IS A STEP, NOT A TAIL, BECAUSE THE POOL ADDS A COLUMN AFTER THE FACT
 // (D-104). `PoolTable` sets `l.pool` — which brings POPULATION in — on a layout
-// whose floor had already been measured WITHOUT it, so NAME kept a floor it could
-// no longer afford and the table drew two cells past its own width. Every band
-// row was two cells wider than the running order's beneath it, which is what the
-// HUM LEAD saw as the tables not respecting the right inset.
+// whose floor was measured WITHOUT it, so without a fresh fit NAME keeps a floor
+// it can no longer afford and the table draws two cells past its own width:
+// every band row two cells wider than the running order's beneath it, past the
+// right inset.
 func (l *layout) fitName(width int) {
 	// THE LADDER, IN THE HUM LEAD'S OWN ORDER (2026-09-12): "WX STN should be the
 	// first col to get hidden if something doesnt fit". Then the five-cell
@@ -192,8 +191,8 @@ func (l *layout) fitName(width int) {
 	//
 	// IT IS A STEP, NOT A TAIL, BECAUSE THE POOL ADDS A COLUMN AFTER THE FACT.
 	// `PoolTable` sets `l.pool` — which brings POPULATION in — on a layout whose
-	// floor had already been measured WITHOUT it, so NAME kept a floor it could no
-	// longer afford and the table drew two cells past its own width.
+	// floor was measured WITHOUT it, so without a fresh fit NAME keeps a floor it
+	// can no longer afford and the table draws two cells past its own width.
 	l.spaced, l.noWxStn = l.pool, false
 	room := func() int { return width - rowLen(l.columns(nil)) }
 	for _, give := range []func(){
@@ -277,7 +276,7 @@ func (l layout) columns(dates []string) []studs.ColumnDefinition {
 // of colour rather than as blocks with gaps. `groupHeader` already stretches
 // adjacent bands to the midpoint of whatever separates them — with a two-cell
 // gutter that midpoint falls a cell and a half short of where the column title
-// then centres, so every first-of-category cell sat left of its own heading.
+// then centres, so every first-of-category cell would sit left of its own heading.
 //
 // IT IS ADDED TO THE COLUMN, NOT BETWEEN THEM, because the kit's gutter is one
 // number for the whole table. A left-aligned column with three more cells of
@@ -487,11 +486,11 @@ func (o Opts) rowData(l layout, r LocationRow) []string {
 		data = append(data, r.Tag)
 	}
 	if l.station {
-		// THE CELLS FOLLOW `hides`, WHICH IS THE ONE OWNER OF THE POLICY. Emitting
-		// a WX STN cell for a column the layout had dropped handed the kit one
-		// value too many, and it answered with "Data length does not match column
-		// count" IN PLACE OF THE ROW — every location gone, in a table whose whole
-		// job is to show them.
+		// THE CELLS FOLLOW `hides`, WHICH IS THE ONE OWNER OF THE POLICY. A WX
+		// STN cell for a column the layout has dropped hands the kit one value
+		// too many, and it answers with "Data length does not match column
+		// count" IN PLACE OF THE ROW — every location gone, in a table whose
+		// whole job is to show them.
 		if !l.hides(baseCol{name: "wxstn"}) {
 			data = append(data, r.Station)
 		}
@@ -713,7 +712,7 @@ func groupsFor(l layout) []groupSpec {
 // column is painted with no label; the EXTENDED spacer is a gap the
 // neighbours share. Colour off: the bands' bracket form, per segment.
 // TAKES THE GROUP SPEC, NOT A LAYOUT (D-94). `layout` is the LOCATION table's
-// geometry and this only ever used it to reach `groupsFor`. Passing the spec is
+// geometry and this needs it only to reach `groupsFor`. Passing the spec is
 // what lets the console's line-up draw the same header row rather than a second
 // one that looks like it.
 func (o Opts) columnHeader(groups []groupSpec, cols []studs.ColumnDefinition, tableW int) string {
@@ -762,7 +761,7 @@ func (o Opts) columnHeader(groups []groupSpec, cols []studs.ColumnDefinition, ta
 		} else if s.at >= 0 {
 			// NO BRACKETS ON A STENCIL. They are the colour-off stand-in for the
 			// band's tint, and a bracket in the first cell would put the stencil
-			// back one column off its numbers — the very defect this fixes.
+			// back one column off its numbers — the very defect a stencil avoids.
 			b.WriteString(cell)
 		} else {
 			b.WriteString(bracketTitle(s.title, "", w))
@@ -778,11 +777,10 @@ func (o Opts) columnHeader(groups []groupSpec, cols []studs.ColumnDefinition, ta
 // row number LOOKS like with its digits taken out — so an operator reads it as
 // the first entry in the list and expects the numbers to hang from it. Centred
 // over a five-cell column a three-cell stencil lands one cell right of every
-// number beneath it, which is what the HUM LEAD saw at UAT (2026-09-12: "'##.'
-// column head misaligned").
+// number beneath it (HUM LEAD, UAT 2026-09-12: "'##.' column head misaligned").
 //
-// EVERY OTHER HEADER STAYS CENTRED, which is Observer's shipped look and was not
-// what the finding was about. A title that NAMES a column is a caption over it;
+// EVERY OTHER HEADER STAYS CENTRED, which is Observer's shipped look. A title
+// that NAMES a column is a caption over it;
 // a stencil belongs in the column.
 func stencilHeader(name string) bool { return name == "num" }
 
@@ -885,10 +883,10 @@ const StationFarKM = 16.09 // 10 miles
 func (o Opts) StationDistance(km *float64) string {
 	d := o.Distance(km)
 	// The nil check guards the DEREFERENCE, not the outcome: an unknown
-	// distance renders as an empty cell, which tints to nothing either way. A
-	// mutant removing it therefore survives, correctly — it is inert rather
-	// than a defect, and that is worth saying so the next reader does not go
-	// looking for the missing test.
+	// distance renders as an empty cell, which tints to nothing either way.
+	// Removing it is therefore inert rather than a defect, and no test can
+	// tell — worth saying so the next reader does not go looking for the
+	// missing test.
 	if km == nil || *km <= StationFarKM || strings.TrimSpace(d) == "" {
 		return d
 	}
@@ -923,6 +921,6 @@ func thousands(n int) string {
 func (o Opts) PoolTable(rows []LocationRow, width int) string {
 	l := layoutFor(width, 0)
 	l.pool = true
-	l.fitName(width) // POPULATION is in now; NAME's floor is measured again with it
+	l.fitName(width) // with POPULATION in, NAME's floor is measured again
 	return o.tableFor(l, rows, width)
 }

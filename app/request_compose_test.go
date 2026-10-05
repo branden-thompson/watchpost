@@ -56,7 +56,7 @@ func TestARequestedOutOfPoolLocationCanStillBeComposed(t *testing.T) {
 
 // AND THE PRODUCER IS NOT WIDENED WITH IT (D-72, D-40). What the Director may
 // be OFFERED is the station's pool; what the Composer must be able to RESOLVE
-// now also includes what the operator asked for. Merging the two would let the
+// also includes what the operator asked for. Merging the two would let the
 // Producer propose a location the station never chose.
 func TestRememberingARequestDoesNotWidenWhatTheProducerOffers(t *testing.T) {
 	vista := snapshot.LocationRef{Label: "Vista, CA", Zip: "92084", Lat: 33.2, Lon: -117.24}
@@ -104,17 +104,15 @@ func TestRequestCardRemembersWhatItAsksFor(t *testing.T) {
 
 // AND THE SCHEDULE'S OWN COMPOSER USES IT — the wiring, not just the set.
 //
-// THE FIRST VERSION OF THIS FILE DID NOT CHECK THIS, and reverting
-// `compose: composeFor(deck, resolvable)` back to `pool` left every test above
-// green: they exercised `resolvable` directly and never asked what the schedule
-// was handed. A fix nothing drives is a fix that can be undone silently — which
-// is the lesson pool_test.go's own `cutTo` wiring test already records, found
-// there by a plant that survived.
+// THE TESTS ABOVE EXERCISE `resolvable` DIRECTLY and never ask what the
+// schedule is handed, so reverting `compose: composeFor(deck, resolvable)` back
+// to `pool` would leave every one of them green. A fix nothing drives is a fix
+// that can be undone silently — pool_test.go's own `cutTo` wiring test guards
+// the same way.
 //
 // A REAL DECK, BECAUSE A NIL ONE CANNOT TELL THE WIRINGS APART. `composeFor`
 // refuses a nil deck BEFORE it resolves, so both wirings return "no audio deck"
-// and the assertion would pass on either — my second draft did exactly that and
-// its own control caught it.
+// and the assertion would pass on either — which the control below catches.
 func TestTheSchedulesComposerResolvesARequestedLocation(t *testing.T) {
 	vista := snapshot.LocationRef{Label: "Vista, CA", Zip: "92084", Lat: 33.2, Lon: -117.24}
 	rainbow := snapshot.LocationRef{Label: "Rainbow, CA", Tag: "RAINBOW", Lat: 33.41031, Lon: -117.14781}

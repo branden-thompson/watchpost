@@ -57,9 +57,9 @@ func TestTheAreaAndItsPoolTravelTogether(t *testing.T) {
 // THE POOL ARRIVES IN READ-PRIORITY ORDER, WITH HOME FIRST — and that order is
 // what the eviction ruling rests on (D-93).
 //
-// IT IS NOT GLOBALLY DISTANCE-SORTED, and a first draft of this test asserted
-// that it was and FAILED: "San Luis Rey, CA at 6.9 mi follows one at 24.3 mi".
-// `locations.Pool` is THREE TIERS, each nearest-first, concatenated —
+// IT IS NOT GLOBALLY DISTANCE-SORTED, and "San Luis Rey, CA at 6.9 mi follows
+// one at 24.3 mi" is correct. `locations.Pool` is THREE TIERS, each
+// nearest-first, concatenated —
 //
 //  1. HOME, the transmitter itself: "the most local report it has, and the one
 //     its listeners are standing in"
@@ -99,10 +99,9 @@ func TestAStationWithNoTransmitterPublishesAnEmptyPool(t *testing.T) {
 
 // publishTo drives the REAL publishArea and captures what it sent.
 //
-// A SECOND COPY OF ITS BODY WOULD MEASURE THE COPY. The first draft of this
-// helper rebuilt the message by hand, which would have passed with `publishArea`
-// deleted — the same shape as D-74's `y4`, where the predicate was asserted and
-// the behaviour was not.
+// A SECOND COPY OF ITS BODY WOULD MEASURE THE COPY. A helper that rebuilt the
+// message by hand would pass with `publishArea` deleted — the same shape as
+// D-74's `y4`, where the predicate is asserted and the behaviour is not.
 func publishTo(t *testing.T, out *[]tty.StationAreaMsg, s stationArea, pool []snapshot.LocationRef) {
 	t.Helper()
 	publishArea(func(m tea.Msg) {

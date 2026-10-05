@@ -11,6 +11,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // Segment is one narrated unit; Key identifies its content so rendered
@@ -20,8 +21,7 @@ type Segment struct {
 	Text string
 
 	// Role is who reads this segment. The zero value is cast.All — the root —
-	// so a segment nobody tagged is read by the voice that read everything
-	// before 0.14.0 (FR-2).
+	// so a segment nobody tagged is read by the root voice (FR-2).
 	Role cast.Role
 
 	// SelfIntro marks a segment that NAMES ITS OWN SPEAKER — today only the
@@ -32,8 +32,8 @@ type Segment struct {
 	// and then, seconds later, "This is Eddie for Watchpost Weather Radio."
 	// Nobody introduces themselves twice, so the Source suppresses the
 	// hand-over here and lets the segment do the introducing.
-	// (UAT 2026-08-30: heard when a location had no seismic report, so the
-	// fire report ran straight into the sign-off across a voice change.)
+	// (UAT 2026-08-30: it happens when a location has no seismic report, so the
+	// fire report runs straight into the sign-off across a voice change.)
 	SelfIntro bool
 
 	Pause time.Duration // extra silence after the text, beyond the standard gap (UAT 112.3)
@@ -44,9 +44,9 @@ type Segment struct {
 	// THE MANIFEST TRAVELS WITH THE WORDS IT SUMMARISES. The console shows the
 	// operator what a read contains before it goes on the air — "01. Watchpost
 	// Fire Report · 3 Hotspots / 10 incidents" — and those counts are things the
-	// Composer works out while composing and used to throw away. Carrying them
-	// on the segment means the summary and the script come from ONE compose and
-	// cannot describe different reads, which is the whole claim the card makes.
+	// Composer works out while composing. Carrying them on the segment means
+	// the summary and the script come from ONE compose and cannot describe
+	// different reads, which is the whole claim the card makes.
 	//
 	// EMPTY ON EVERY OTHER SEGMENT, which is what makes the manifest a list of
 	// SOURCES rather than of sentences: a fire report is many segments and one
@@ -81,13 +81,13 @@ type Composer struct {
 func (c Composer) say(report, part string, data any) string { return c.Scripts.Say(report, part, data) }
 
 // Reports carries the optional reports a cycle may include, so adding one is
-// a new FIELD rather than a new positional parameter (RS-12: Compose already
-// took eight, and the maritime report would have made nine). The ZERO VALUE
-// composes exactly the 0.13.0 broadcast — that is FR-2's anchor, and the
-// property every later batch is measured against.
+// a new FIELD rather than a new positional parameter (RS-12: as parameters,
+// Compose would take nine). The ZERO VALUE composes exactly the 0.13.0
+// broadcast — that is FR-2's anchor, and the property every addition is
+// measured against.
 //
-// Maritime joins this struct at P3 (Task 3.4). That it can, without touching
-// this signature or a single call site, is the whole point of the type.
+// Maritime is a field here (Task 3.4), carried without touching this
+// signature or a single call site, which is the whole point of the type.
 type Reports struct {
 	Fire     FireReport
 	Seismic  SeismicReport
@@ -129,7 +129,7 @@ func (c Composer) Compose(loc snapshot.Location, products []Product, now time.Ti
 	// THE WORDS ARE A LITERAL, NOT A SCRIPT LOOKUP, and that is deliberate. A
 	// phrase the script library does not carry is simply not spoken — silence is
 	// how a missing template fails here — so routing this sentence through
-	// `c.say` would make the fix disappear in exactly the case it exists for.
+	// `c.say` would make it disappear in exactly the case it exists for.
 	// Every other line in this function can afford that; this one cannot.
 	if reports.HazardsUnavailable {
 		const unreachable = "Hazard information is unavailable for this location. The alert feed could not be reached."
@@ -246,7 +246,7 @@ func (c Composer) LeadParts(location string, station Station, now time.Time, clo
 // Tail is the broadcast sign-off (UAT 79, HUM LEAD script).
 // Tail names the correspondent who reaches the sign-off.
 //
-// The empty-name branch is gone: spokenName (source.go) is the one owner of
+// Tail has no empty-name branch: spokenName (source.go) is the one owner of
 // "your correspondent", so the substitution happens once, where the name is
 // resolved, rather than being re-derived by everything that displays or speaks
 // it (RS-18).
@@ -272,9 +272,9 @@ func (c Composer) conditions(loc snapshot.Location, imperial bool) string {
 	}
 	if h.Wind != nil {
 		if imperial {
-			parts = append(parts, fmt.Sprintf("wind %s at %.0f miles per hour", compass(h.WindDirDeg), *h.Wind*2.23694))
+			parts = append(parts, fmt.Sprintf("wind %s at %.0f miles per hour", compass(h.WindDirDeg), units.MphOf(*h.Wind)))
 		} else {
-			parts = append(parts, fmt.Sprintf("wind %s at %.0f kilometres per hour", compass(h.WindDirDeg), *h.Wind*3.6))
+			parts = append(parts, fmt.Sprintf("wind %s at %.0f kilometers per hour", compass(h.WindDirDeg), units.KmhOf(*h.Wind)))
 		}
 	}
 	if len(parts) == 0 {
@@ -285,7 +285,7 @@ func (c Composer) conditions(loc snapshot.Location, imperial bool) string {
 
 func degrees(c float64, imperial bool) string {
 	if imperial {
-		return fmt.Sprintf("%.0f degrees", c*9/5+32)
+		return fmt.Sprintf("%.0f degrees", units.FahrenheitOf(c))
 	}
 	return fmt.Sprintf("%.0f degrees Celsius", c)
 }

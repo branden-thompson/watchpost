@@ -204,13 +204,12 @@ func TestFailingDirectoryIsAskedAtMostOncePerTTL(t *testing.T) {
 //
 // Coachella (KIG78) and Coachella / Spanish (WNG712) share a mast, so their
 // distance from any listener compares exactly equal. With a KM-only comparator
-// the winner was whatever the sort's internals produced — it was WNG712, which
-// is how Vista, CA got the Spanish feed (HUM LEAD, UAT 2026-09-04).
+// the winner is whatever the sort's internals produce — WNG712 gives Vista, CA
+// the Spanish feed (HUM LEAD, UAT 2026-09-04).
 //
 // This asserts the ORDER, not that the order is repeatable. Go's sort is
 // deterministic for a given input, so an "is it the same twice" test passes
-// against the very comparator that has no tie-break at all — the first version
-// of this test did exactly that and had to be thrown away. What is actually
+// against the very comparator that has no tie-break at all. What is actually
 // fragile is the tie moving when the table changes underneath it, and only
 // naming the expected winner catches that.
 //

@@ -1,6 +1,6 @@
 package nws
 
-// alerts.go — active alerts by zone and their mapping onto locations. Split from provider.go by the quality pass (Q2, pure move).
+// alerts.go — active alerts by zone and their mapping onto locations.
 
 import (
 	"context"
@@ -45,7 +45,7 @@ type alertProps struct {
 }
 
 // Field bounds for a CAP alert reaching the snapshot (0.13.0, NFR-5; red-team
-// S2 — the location path was unbounded while the ticker path was not).
+// S2 — the location path is bounded as the ticker path is).
 const (
 	maxIDRunes    = 200 // an id: the URL form of an OID is 31 runes longer (R5-B-05)
 	maxProseRunes = 4000
@@ -63,9 +63,9 @@ func (p *Provider) fetchAlerts(ctx context.Context, refs []snapshot.LocationRef,
 	zoneToKeys := map[string][]snapshot.LocationKey{}
 	var zones []string
 	// **One place that cannot be resolved must not cost the others theirs.**
-	// Returning here left EVERY watched location with no alerts, including
-	// places that were perfectly reachable: one bad lookup and the whole
-	// station went quiet. The error is kept and returned only if nothing
+	// Returning here would leave EVERY watched location with no alerts,
+	// including places that are perfectly reachable: one bad lookup and the
+	// whole station goes quiet. The error is kept and returned only if nothing
 	// resolved at all, so a total failure still degrades loudly.
 	var lastErr error
 	for _, ref := range refs {
@@ -159,9 +159,9 @@ func mapAlert(pr alertProps, geom json.RawMessage, zoneToKeys map[string][]snaps
 //
 // **The headline alone is not an identity.** The service writes the same
 // headline for every warning of a kind - "Tornado Warning issued" is what all
-// of them say - so two live hazards collided on one id, and everything keyed by
-// it kept one and lost the other: the ground resolved for drawing, the
-// read-once mark, the dedupe.
+// of them say - so two live hazards would collide on one id, and everything
+// keyed by it would keep one and lose the other: the ground resolved for
+// drawing, the read-once mark, the dedupe.
 //
 // What separates two alerts is where and when: the area described, who issued
 // it, and the minute it was sent. Hashed rather than concatenated so the result
@@ -213,4 +213,33 @@ func alertFrom(pr alertProps, geom json.RawMessage) snapshot.Alert {
 	}
 	a.AffectedZones = zones
 	return a
+}
+
+// AlertsInAreas is every active alert of the areas named - state and marine
+// area codes - in one request (0.18.0 D-66: the map's "Alerts in view"). Only
+// the codes are sent, never a place or a rectangle (D-47). No areas asks
+// nothing.
+func (p *Provider) AlertsInAreas(ctx context.Context, areas []string) ([]snapshot.Alert, error) {
+	codes := make([]string, 0, len(areas))
+	seen := map[string]bool{}
+	for _, a := range areas { // bounded by the caller's list (P10-02)
+		if a != "" && !seen[a] {
+			seen[a] = true
+			codes = append(codes, a)
+		}
+	}
+	if len(codes) == 0 {
+		return nil, nil
+	}
+	sort.Strings(codes)
+	var payload alertsPayload
+	u := fmt.Sprintf("%s/alerts/active?status=actual&area=%s", p.base, strings.Join(codes, ","))
+	if _, err := p.client.GetJSON(ctx, u, &payload); err != nil {
+		return nil, fmt.Errorf("alerts in view: %w", err)
+	}
+	out := make([]snapshot.Alert, 0, len(payload.Features))
+	for _, f := range payload.Features {
+		out = append(out, alertFrom(f.Properties, f.Geometry))
+	}
+	return out, nil
 }

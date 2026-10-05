@@ -2,22 +2,21 @@ package main
 
 // identity_test.go — the published tree names no person and no machine.
 //
-// THIS REPOSITORY IS PUBLIC, and the class has now leaked twice. A 0.14.0 sweep
-// deleted 32 pprof profiles for embedding a home directory and did not gate the
-// class, so it returned in a text profile, nine benchmark overlays and an
-// archived spike script — 22 files across two pushed branches, found by four
-// independent reviewers on the same day.
+// THIS REPOSITORY IS PUBLIC, and the class rides in on anything a tool writes
+// out: pprof and text profiles embed a home directory, and so do benchmark
+// overlays and archived spike scripts. Deleting the files without gating the
+// class lets it straight back in.
 //
-// THE RULE EXISTED AND WAS SCOPED TO ONE FILE. `scripts/quality/lint-ledger.sh`
+// A RULE SCOPED TO ONE FILE IS NOT ENOUGH. `scripts/quality/lint-ledger.sh`
 // refuses exactly these patterns, and refuses them only in the P10 ledger mirror
 // — then prints "no machine paths, no harness paths". A rule applied to one file
-// while its class is live in twenty-one others is the shape this project calls a
+// while its class can live in any other is the shape this project calls a
 // verifier that cannot verify.
 //
 // SO THIS ASKS THE WHOLE INDEX. It is deliberately a different question from
 // `scripts/quality/exposure-scan.py`, which surveys and reports and whose own
-// header says it is "a survey, not a gate": a survey nobody runs is what let the
-// count sit published and unacted-on.
+// header says it is "a survey, not a gate": a survey nobody runs leaves what it
+// counts published and unacted-on.
 
 import (
 	"os"
@@ -25,27 +24,32 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/tools/internaltrees/trees"
 )
 
 // identityPatterns are the classes that must never reach a public tree.
 //
 // EACH CARRIES WHAT IT COSTS A READER, because a gate that only says "refused"
 // teaches nobody why. These are the same expressions lint-ledger.sh applies to
-// the ledger mirror, plus the harness-scratchpad class it does not know about —
-// which was the larger of the two leaks.
-var identityPatterns = []struct {
+// the ledger mirror, plus the harness-scratchpad class it does not know about.
+type identityPattern struct {
 	name string
 	re   *regexp.Regexp
 	why  string
-}{
+}
+
+var identityPatterns = []identityPattern{
 	{"an absolute home directory", regexp.MustCompile(`(^|[^A-Za-z0-9._-])/(Users|home)/[a-z][a-z0-9._-]{2,}`),
 		"it names a person's account and a layout nobody outside can use"},
 	{"a home-relative personal path", regexp.MustCompile("(^|[\\s\"'`(])~/Desktop/|~/[A-Za-z0-9._-]*PERSONAL"),
 		"it names one person's desktop layout, which tells a public reader nothing"},
 	{"an agent-harness scratchpad path", regexp.MustCompile(`/private/tmp/claude-[0-9]+/`),
 		"it names the tooling a human used and the session they used it in"},
-	{"an internal project tree", regexp.MustCompile(`LI_PROJECTS|DESIGN_FOUNDATIONS`),
+	// nil until the test that scans builds it: see internalTrees below.
+	{"an internal project tree", nil,
 		"it says where internal tooling lives, which tells a public reader nothing"},
 	{"an email address", regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`),
 		"it is personal data"},
@@ -65,7 +69,8 @@ var identityExempt = exempt(&exemptionTable{
 	rows: map[string]string{
 		"cmd/watchpost/identity_test.go":                                       "this file — the patterns and their exemptions have to be written down somewhere",
 		"scripts/quality/lint-ledger.sh":                                       "the ledger linter's own rules and its self-test probes, which must contain what they refuse",
-		"scripts/quality/p10-ledger-mirror.py":                                 "the mirror generator's own refusal table — it names the classes it strips, so it must contain them",
+		"tools/internaltrees/trees/trees.go":                                   "the internal-tree rule itself — its retired names are the patterns it refuses",
+		"tools/internaltrees/trees/trees_test.go":                              "the internal-tree rule's controls, which must contain what they refuse",
 		"THIRD_PARTY_LICENSES.md":                                              "upstream authorship, reproduced because the licences require it; the addresses are the copyright holders' own",
 		"06_docs/02_features/severe-alerts-modals/04-development/p1-domain.md": "a public NOAA office contact, quoted as domain research — it is published by the agency and names no one here",
 		"domains/globalfeed/testdata/nws_active_unfiltered_trimmed.json":       "a captured NWS payload; the webmaster address in it is the agency's own, and rewriting a fixture forges it",
@@ -77,7 +82,7 @@ var identityExempt = exempt(&exemptionTable{
 		if err != nil {
 			return false
 		}
-		for _, pat := range identityPatterns { // bounded by the pattern list (P10-02)
+		for _, pat := range identityRules(t) { // bounded by the pattern list (P10-02)
 			if m := pat.re.FindString(string(body)); m != "" && !reservedForDocs.MatchString(m) {
 				return true
 			}
@@ -90,6 +95,7 @@ var identityExempt = exempt(&exemptionTable{
 // match on one of these is a fixture doing the right thing.
 var reservedForDocs = regexp.MustCompile(`(?i)@(example\.(com|org|net)|[a-z0-9.-]*\.(invalid|test|localhost|example))$|/(Users|home)/(user|you|someone|me|<[a-z]+>)\b`)
 
+// identity-gate: scans the index for every class.
 func TestThePublishedTreeNamesNoPersonOrMachine(t *testing.T) {
 	root := filepath.Join("..", "..")
 	out, err := exec.Command("git", "-C", root, "ls-files", "-z").Output()
@@ -101,6 +107,7 @@ func TestThePublishedTreeNamesNoPersonOrMachine(t *testing.T) {
 		t.Fatalf("the index holds %d files; this check has lost its subject", len(paths))
 	}
 
+	rules := identityRules(t) // once: the same table for every file
 	var scanned int
 	for _, p := range paths { // bounded by the index (P10-02)
 		// A FIXTURE IS EXEMPTED BY NAME, NOT BY DIRECTORY. A captured upstream
@@ -116,7 +123,7 @@ func TestThePublishedTreeNamesNoPersonOrMachine(t *testing.T) {
 			continue
 		}
 		scanned++
-		for _, pat := range identityPatterns { // bounded by the pattern list (P10-02)
+		for _, pat := range rules { // bounded by the pattern list (P10-02)
 			m := pat.re.FindString(string(body))
 			if m == "" || reservedForDocs.MatchString(m) {
 				continue
@@ -143,4 +150,130 @@ func isBinaryPath(p string) bool {
 		return true
 	}
 	return false
+}
+
+// internalTrees is the internal-project-tree class from package trees — the one
+// definition lint-ledger.sh and p10-ledger-mirror.py read too, through
+// tools/internaltrees. Its own controls live beside it in trees_test.go.
+//
+// A rule that cannot be built FAILS THE TEST THAT NEEDS IT, and only that one:
+// a gate missing a class still prints a pass, so it must never be skipped, and
+// a permissions error on the workspace must not take the rest of this package
+// down with it. Built once, on first use, by the test that reads it.
+var internalTrees = sync.OnceValues(func() (*regexp.Regexp, error) {
+	expr, err := trees.Expr(filepath.Join("..", ".."), os.Getenv("HOME"))
+	if err != nil {
+		return nil, err
+	}
+	re, err := regexp.Compile(expr)
+	if err != nil {
+		return nil, err
+	}
+	return re, nil
+})
+
+// identityRules is the pattern table with the internal-tree rule filled in. A
+// rule that cannot be built fails the caller, loudly, with the reason - never a
+// scan that quietly covers one class fewer.
+func identityRules(t *testing.T) []identityPattern {
+	t.Helper()
+	re, err := internalTrees()
+	if err != nil {
+		t.Fatalf("COULD NOT RUN — cannot build the internal-tree rule, so one class would go unscanned: %v", err)
+	}
+	out := make([]identityPattern, 0, len(identityPatterns))
+	var filled int
+	for _, pat := range identityPatterns { // bounded by the pattern list (P10-02)
+		if pat.re == nil {
+			pat.re, filled = re, filled+1
+		}
+		out = append(out, pat)
+	}
+	// EXACTLY ONE ROW IS FILLED IN. A nil is a positional sentinel, and a
+	// second one - a typo, a row added without its expression - would silently
+	// be scanned with the tree rule and its own class would go unchecked.
+	if filled != 1 {
+		t.Fatalf("COULD NOT RUN — %d pattern rows have no expression; exactly one (the internal-tree row) may", filled)
+	}
+	return out
+}
+
+// ONE DEFINITION, OR THE NEXT RENAME FINDS A COPY. Every gate that is not Go must
+// ask tools/internaltrees; a private copy of the pattern in any of them is the
+// defect package trees exists to remove.
+//
+// IT ASSERTS AN EXECUTION, NOT A MENTION. Every consumer names the rule in a
+// comment directly above its call, so a check for the string alone stays green
+// with the call deleted. Comments — whole-line, trailing and docstrings — are
+// stripped before that check.
+// identity-gate: every non-Go gate asks for the one rule.
+func TestEveryIdentityGateReadsTheOneTreeRule(t *testing.T) {
+	// The literal is safe here: this file is its own exemption row.
+	oldCopy := "LI_PROJECTS|DESIGN_FOUNDATIONS"
+	for _, rel := range []string{"scripts/quality/lint-ledger.sh", "scripts/quality/p10-ledger-mirror.py"} { // bounded (P10-02)
+		body, err := os.ReadFile(filepath.Join("..", "..", rel))
+		if err != nil {
+			t.Fatalf("%s: %v", rel, err)
+		}
+		// THE TWO CHECKS READ DIFFERENT TEXT, and that is the point. Whether the
+		// rule is RUN is asked of the code with comments stripped, because a
+		// mention is not a call. Whether a private copy SURVIVES is asked of the
+		// file whole: a copy sitting in a comment is still a copy, and still
+		// what the next rename finds.
+		if !strings.Contains(withoutComments(string(body)), "./tools/internaltrees") {
+			t.Errorf("%s does not RUN the rule from tools/internaltrees (a mention in a comment is not a call)", rel)
+		}
+		if strings.Contains(string(body), oldCopy) {
+			t.Errorf("%s still carries its own copy of the internal-tree pattern", rel)
+		}
+	}
+}
+
+// withoutComments drops every form of comment the two consumers can carry, so
+// a mention cannot stand in for a call: a whole-line `#`, a `#` after code on
+// the same line, and the triple-quoted blocks the Python consumer documents
+// itself with.
+//
+// IT ERRS TOWARDS STRIPPING, which is the safe direction for the question it
+// serves: a `#` inside a shell string is cut here too, so a call appearing only
+// inside such a string does not count as a call. It is the WRONG direction for
+// asking whether a private copy survives — stripping could hide one — so that
+// question reads the file whole, in the caller above.
+func withoutComments(body string) string {
+	body = tripleQuoted.ReplaceAllString(body, "")
+	out := make([]string, 0, 64)
+	for _, line := range strings.Split(body, "\n") { // bounded by the file (P10-02)
+		if i := strings.Index(line, "#"); i >= 0 {
+			line = line[:i]
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}
+
+// tripleQuoted matches a Python docstring in either quote style.
+var tripleQuoted = regexp.MustCompile(`(?s)""".*?"""|'''.*?'''`)
+
+// TestTheOneTreeRuleCheckSeesThroughAComment is the positive control for the test
+// above: the commented-out form must FAIL the check, and the live form must
+// pass it. Without this control, a `withoutComments` that stops stripping
+// would reopen the hole and nothing would say so.
+// identity-gate: the control for the check above.
+func TestTheOneTreeRuleCheckSeesThroughAComment(t *testing.T) {
+	commented := "# TREES=$(go run ./tools/internaltrees)\nexit 0\n"
+	if strings.Contains(withoutComments(commented), "./tools/internaltrees") {
+		t.Error("a commented-out call counted as a call")
+	}
+	live := "# reads the rule from ./tools/internaltrees\nTREES=$(go run ./tools/internaltrees)\n"
+	if !strings.Contains(withoutComments(live), "./tools/internaltrees") {
+		t.Error("a live call was stripped")
+	}
+	trailing := "exit 0  # see ./tools/internaltrees\n"
+	if strings.Contains(withoutComments(trailing), "./tools/internaltrees") {
+		t.Error("a mention after code on the same line counted as a call")
+	}
+	docstring := `"""reads the rule from ./tools/internaltrees."""` + "\nexit 0\n"
+	if strings.Contains(withoutComments(docstring), "./tools/internaltrees") {
+		t.Error("a mention inside a docstring counted as a call")
+	}
 }

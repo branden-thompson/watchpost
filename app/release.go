@@ -40,8 +40,7 @@ type releaseWatch struct {
 	// api is the endpoint, overridable ONLY by a test. It exists because the
 	// one-shot bound (FR-7.1) is not reachable otherwise: `start` is the thing
 	// being bounded, and with a hardcoded URL a test can only exercise
-	// `checkAt` and then claim something about `start` that it never ran. That
-	// claim was written, and two planted defects walked straight past it.
+	// `checkAt` and then claim something about `start` that it never ran.
 	api string
 }
 
@@ -67,19 +66,16 @@ func (w *releaseWatch) Status() (running, latest string, behind bool) {
 // something that is not one. Its absence is what makes the ruling visible in the
 // code rather than only in the architecture note.
 //
-// IT ALSO RETIRES A P10 EXEMPTION rather than carrying one. The ledger row for
-// this function was granted because an hourly ticker is "an unbounded event
-// loop by nature… no meaningful iteration count to bound it by". One check has
-// a bound of one.
+// IT NEEDS NO P10 EXEMPTION. An hourly ticker is "an unbounded event loop by
+// nature… no meaningful iteration count to bound it by"; one check has a bound
+// of one.
 //
 // WHAT THIS GIVES UP, SAID PLAINLY: a dashboard left running for weeks will not
-// notice a release published while it was up. That was the old comment's stated
-// point. It is accepted because ACTING on the notice needs a restart anyway, so
-// once-at-startup reports it at the moment the listener can do something about
-// it. If that ever proves wrong, the fix is a re-check when [S] OPENS — not a
-// timer — and it needs a don't-refetch-within guard, which is a slice of the
-// state being deleted here. Recorded so the next person weighs it rather than
-// rediscovering it.
+// notice a release published while it was up. It is accepted because ACTING on
+// the notice needs a restart anyway, so once-at-startup reports it at the moment
+// the listener can do something about it. If that ever proves wrong, the fix is
+// a re-check when [S] OPENS — not a timer — and it needs a
+// don't-refetch-within guard.
 func (w *releaseWatch) start(ctx context.Context, c *httpx.Client) {
 	if !w.on {
 		return // opt-in: no goroutine, no request, nothing to disclose

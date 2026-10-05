@@ -1,0 +1,75 @@
+---
+title: "0.18.0 Observer maps — REQUIRED READING, every session and after every compaction"
+date: 2026-09-22
+phase: ALL
+sev: SEV-0
+authority: HUM LEAD
+status: "MANDATORY.  Re-read at session start and after any context compaction, for the life of 0.18.0."
+---
+
+# Read this before touching 0.18.0
+
+**Why this file exists.** 0.18.0 runs in parallel with go-tuiMaps v0.2.0 (D-11), and the work
+started on a new machine whose agent memories did not survive the move. The HUM LEAD's condition for
+running two releases at once: **the record is kept current at every step, and every lesson that can
+be a failing test becomes one** — *"the rule an agent has to remember is a rule that will eventually
+be passed over in a new session."*
+
+## Where things are
+
+| | |
+|---|---|
+| Branch | `feature/map-drawing` → squash-merged `release/v0.18.0` at SHIP (D-2) |
+| Phase | **BUILD exit** since 2026-10-05: red team round 1 (`08-reports/red-team-build.md`), rulings D-250 to D-260; fixes that change no behaviour, UI or API land under the 2026-10-03 clearance, the rest are the HUM LEAD's. Then VALIDATE (M5 and M6 measured there, D-251) and SHIP. UAT is **closed** (D-239, 2026-10-03). **go-tuiMaps v0.2.0 is released and pinned** in `go.mod` (D-243), with go 1.25.13. Update this row at every phase transition |
+| Brief | `01-objectives/project-brief.md` — APPROVED (D-17); it is the body of issue #22 (D-19) |
+| Problem & metrics | `01-objectives/problem-statement.md` — M1, M1b, M2–M5 primary, M6 secondary (D-18, D-36), anti-solution hardened |
+| Rulings | `02-analysis/rulings.md` — **every ruling lands here the moment it is made** |
+| Paired release | go-tuiMaps v0.2.0 — **released** (its D-141) and pinned (D-243). It carries **HR-1..HR-10**: loops and their playback control, the MRMS table, a view bound, the contract fix, the triage, a host-settable fetcher, a colour-independent pattern, cache retention and purge, tile-host confinement (its L-1..L-10, its D-9). The two cross-reference through go-tuiMaps' `radar-loops/03-architecture-design/integration-map.md` |
+| Inherited | `06_docs/handoff-0.18.0.md` — **closed**: it served the start of 0.18.0; the record is here |
+| Follow-ups | `06_docs/follow-ups.md` only. F-174 is the Broadcaster's map (0.19.0) |
+
+## Where to pick up
+
+**BUILD exit (red team round 1).** The findings and their dispositions are
+`08-reports/red-team-build.md`; each HUM LEAD finding is a ruling, D-250 to D-260. What is built is
+`03-architecture-design/as-built-map.md` and the build log (`04-development/build-log.md`); the gates
+and the BUILD-exit P10 run are `07-readiness/gates.md`. The plan, `04-development/implementation-plan.md`,
+is APPROVED (D-56). The rulings log (`02-analysis/rulings.md`, D-1 to D-260) is the authority for every
+decision. The requirements cut to 0.19.0 (D-244 to D-247, D-255) are listed in the as-built page and the
+CHANGELOG.
+
+## The rules that cost something
+
+1. **Rulings one at a time**, with evidence, options, a recommendation and the strongest
+   counter-argument, recorded verbatim. Silence is not consent.
+2. **Never wider than the region the selected location sits in** (D-8, **D-28**) — the contiguous US,
+   Alaska, Hawaii, a territory, a marine area. No global or continental frame, ever, and no single
+   US-centred rectangle either: that version excluded Anchorage and San Juan.
+3. **Radar is a loop** (D-10), from IEM and MRMS both (D-9), from a **closed list** of sources
+   (D-31): no free-form address.
+4. **Nothing is fetched for the map before the listener asks for one** (D-21, **D-25**) — basemap, radar
+   **and NWS zone geometry**. The watched places' zones are seeded on the first map open (`app/maps.go`),
+   never at start-up. The history recorder is separate: it fetches the station's region hourly while
+   watchpost runs, whatever the maps setting (D-172, D-253).
+5. **A text description ships in phase 1** (D-26): where the picture cannot be drawn or read, the
+   window says in words what covers this place, how far and which way. It is the only path a screen
+   reader, an `--ascii` listener and a font without braille have.
+6. **Every requirement carries its phase** (D-33). Phase 1 is drawing and access, with pan and zoom
+   (D-49); phase 2 is the map from Details, layers and legends beyond phase 1's, and size tiers.
+7. **No code in PLAN** (D-13) — signatures and API shape only.
+8. **A test of a thing is not a test of its wiring** (handoff §4.1). Wire from the composition
+   root, and make the reachability gate see it.
+9. **Read what reads your output** (handoff §4.2) — open the consumer's source.
+10. **A gate is obeyed or ruled on**, never argued around. Both CI platforms green before merge.
+11. **Blind red team**, dispatched from `06_docs/red-team-brief.md`, never from memory.
+12. **No AI attribution** in commits, PRs or tracked files.
+13. **`make` must be GNU Make ≥ 3.82.** On macOS, `/opt/homebrew/opt/make/libexec/gnubin` first on
+    PATH, or the gate oracle reports COULD NOT RUN.
+14. **The listener chooses; the builders make choice cheap (D-23).** Default to a Settings option unless
+    a hard constraint (a source's request limit) forbids it; warn when a choice costs a lot of network,
+    never silently cap. Optimise and structure the code so choice is cheap to add. **Never architect
+    into a corner** — extensibility is a first-class requirement. Interactive toggles live in Settings;
+    flags only on one-shot CLI commands (D-22).
+15. **The docs lane (D-38).** A change that is Markdown alone runs `make verify-docs`, which covers
+    every test, `test-say` and the document lints. `tools/docslane` refuses any other file. Everything else,
+    and CI, runs `make verify`.

@@ -29,16 +29,16 @@ func warmupDeck(t *testing.T, seen *seenStore, evs []globalfeed.Event) *tickerDe
 
 // C-4 — THE LAUNCH SEED MUST NOT SWALLOW THE DOWN-TIME WINDOW.
 //
-// The first cycle of every launch marked every active event seen and returned,
-// to avoid a launch storm. But the PERSISTENT seen store already prevents
-// re-announcing across a restart, so the blanket seed only ever suppressed the
-// alerts that appeared while the app was NOT RUNNING — the one set a returning
-// listener has not heard.
+// A blanket seed — every active event marked seen on the first cycle of every
+// launch, to avoid a launch storm — suppresses only the alerts that appeared
+// while the app was NOT RUNNING, because the PERSISTENT seen store already
+// prevents re-announcing across a restart: the one set a returning listener has
+// not heard.
 //
 // The scenario: the lid closes at 2pm, a tornado warning is issued at 2:40, the
 // app is relaunched at 3:00. The warning is inside its active window, inside the
-// radius, and has never been in the seen store. It appeared on the tape and was
-// never spoken, and unread/Merge filtered it for ever after.
+// radius, and has never been in the seen store. Under a blanket seed it appears
+// on the tape and is never spoken, and unread/Merge filters it for ever after.
 func TestAnAlertIssuedWhileTheAppWasClosedIsStillAnnounced(t *testing.T) {
 	dir := t.TempDir()
 	// AN EARLIER SESSION, so this is a returning listener and not a first run.
@@ -62,7 +62,7 @@ func TestAnAlertIssuedWhileTheAppWasClosedIsStillAnnounced(t *testing.T) {
 	d.cycle(context.Background())
 
 	// THE PRODUCER'S OWN DECISION, asserted before anything drains — the same
-	// discipline the mute gate needed. Marking it seen and returning is
+	// discipline as the mute gate. Marking it seen and returning is
 	// invisible downstream: the rail simply reads empty.
 	if st.pendingCount() == 0 {
 		t.Error("the first cycle after a relaunch swallowed a warning issued while the app was closed: " +

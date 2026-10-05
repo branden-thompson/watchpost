@@ -8,12 +8,10 @@ package tty
 // it (setup_cast.go, setup_ui.go, setup_relay.go, setup_tones.go, and
 // setup_form.go for the three questions that have no group file of their own);
 // what a KEY does is in setup.go.
-//
-// SPLIT FROM setup.go (2026-09-06), a pure move. That file was 1,210 lines
-// holding three separable things — the window's state and keys, this, and the
-// form's rows — and the package already named its files after what they hold.
 
 import (
+	"strings"
+
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -34,17 +32,48 @@ func setupGroup(text string) string {
 // Setup needs its own width for the same reason Help does: its content decides
 // how wide it wants to be, and a fixed width would either waste a wide terminal
 // or force a stack on one that could hold both columns.
+//
+// ONE WIDTH FOR EVERY TAB (D-62): the widest tab's. A window that changed width
+// as the listener moved between tabs would be the layout not knowing its own
+// mind - the rule the correspondent notes were held to.
+//
+// AND NO WIDER THAN 80% OF THE TERMINAL (UAT-1 U1-36), as the map window is
+// (U1-13), so the dashboard stays in sight around it; a terminal too small for
+// that keeps the one-column floor, which the rows were written for.
 func (d Dashboard) setupWidth() int {
+	w := 0
+	for _, t := range d.tabsShown() {
+		on := d
+		if id, ok := d.firstRowOfTab(t); ok && t != d.setupTab() {
+			on.setup.focus = id
+		}
+		w = max(w, on.tabWidth())
+	}
+	return min(w, d.setupMaxWidth(d.opts()))
+}
+
+// setupMaxWidth is the widest the window may be: 80% of the terminal (U1-36),
+// or the one-column floor on a terminal too small for that. The column plan
+// fits against it, so two columns are laid only where they fit inside it.
+//
+// THE TERMINAL'S WIDTH, d.width: o.Width is the dashboard's, already less the
+// frame, and 80% of that is not the 80% the listener sees.
+func (d Dashboard) setupMaxWidth(o render.Opts) int {
+	return min(o.Width, max(setupOneColWidth, d.width*80/100))
+}
+
+// tabWidth is the width the open tab's groups want.
+func (d Dashboard) tabWidth() int {
 	o := d.opts()
 	blocks := d.setupBlocks(o)
 	if plan, ok := d.columnPlan(blocks, o); ok {
 		return plan.width
 	}
-	return max(setupOneColWidth, min(o.Width, widestBlock(blocks)+panelFrame+panelRail+columnMargin))
+	return max(setupOneColWidth, min(d.setupMaxWidth(o), widestBlock(blocks)+panelFrame+panelRail+columnMargin))
 }
 
-// setupOneColWidth is the stacked layout's floor: today's window width, which
-// the DATA group's lines were written for.
+// setupOneColWidth is the stacked layout's floor: the one-column window width,
+// which the DATA group's lines were written for.
 const setupOneColWidth = 78
 
 // setupLines is the Setup window body: the groups, laid in two BALANCED columns
@@ -62,16 +91,6 @@ type setupBlock struct {
 	w       int // the widest line, measured ONCE — see columnPlan
 	at, end int // the focused row's span within lines
 	focused bool
-
-	// noteH is how many of lines are a focused row's NOTE.
-	//
-	// The note appears only under the row the cursor is on, so a block's drawn
-	// height depends on where the cursor is. The split is balanced on heights,
-	// so that made the SPLIT depend on the cursor too, and the window changed
-	// width as you moved through it — 118 cells to 121 at 133x44. The note was
-	// already wrapped so it could not widen a block; nothing stopped it
-	// reshaping the layout by making one taller. The plan discounts it.
-	noteH int
 }
 
 // setupBlocks builds every group, in draw order.
@@ -97,10 +116,9 @@ func (d Dashboard) setupBlocks(o render.Opts) []setupBlock {
 // dataGroupLines draws the DATA group, which is the only one that cannot be a
 // single lines function.
 //
-// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), and it is the case that
-// broke the budget: the other five groups each delegate to one per-group lines
-// function, and this one inlined thirty-odd statements beside them. The fix is
-// the pattern its own neighbours already use.
+// ITS OWN FUNCTION UNDER THE STATEMENT CEILING (P10-04, D-159): the other five
+// groups each delegate to one per-group lines function, and this follows the
+// same pattern rather than inlining thirty-odd statements beside them.
 //
 // IT TAKES THE CURSOR AND DOES NOT RETURN IT. Each row appended shifts where the
 // NEXT row's focus span begins, so `at` moves all the way down this group — and
@@ -163,6 +181,33 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 	case groupTone:
 		b.lines = append(b.lines, d.toneLines(o)...)
 		b.at, b.end = at+toneLineOf(classRowOrder(), focus), len(b.lines)
+	case groupStation:
+		b.lines = append(b.lines, d.setupTransmitterLines(o, setupMark(o, focus == rowTransmitter))...)
+		if focus == rowTransmitter {
+			b.at, b.end = at, len(b.lines)
+		}
+		b.lines = append(b.lines, "")
+		svc := len(b.lines)
+		b.lines = append(b.lines, d.setupServiceLines(o, setupMark(o, focus == rowServiceRadius))...)
+		if focus == rowServiceRadius {
+			b.at, b.end = svc, len(b.lines)
+		}
+	case groupMap:
+		ml, mAt := d.mapSettingLines(o, nil, 0)
+		b.lines = append(b.lines, ml...)
+		b.at, b.end = at+mAt, len(b.lines)
+	case groupLayers:
+		ll, lAt := d.layerLines(o)
+		b.lines = append(b.lines, ll...)
+		b.at, b.end = at+lAt, at+lAt+1
+	case groupMapLayers:
+		ml, mAt := d.mapLayerLines(o, nil, 0)
+		b.lines = append(b.lines, ml...)
+		b.at, b.end = at+mAt, len(b.lines)
+	case groupHistory:
+		hl, hAt := d.historyLines(o)
+		b.lines = append(b.lines, hl...)
+		b.at, b.end = at+hAt, len(b.lines)
 	case groupRelay:
 		b.lines = append(b.lines, d.relayLines(o)...)
 		// The focused ROW, not the whole group: the mark is on one of the two
@@ -174,16 +219,15 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 		cast := d.castLines(o)
 		b.lines = append(b.lines, cast...)
 		b.at = at + castLineOf(focus)
-		b = d.appendCastNote(b, focus, widest(cast))
-		b.end = len(b.lines) // the note, when there is one, is part of the row
+		b.end = b.at // its note is a notice, at the bottom (D-237)
 	}
 	if !b.focused {
 		b.at, b.end = 0, 0
 	}
 	b.end = max(b.end, b.at)
 	// Measured HERE and carried, because the split search asks for it once per
-	// candidate: re-measuring made the 80x24 rebuild allocate half again as much
-	// as the hand-assigned columns it replaced. render.Width walks the escapes in
+	// candidate: re-measuring would make the 80x24 rebuild allocate half again as
+	// much. render.Width walks the escapes in
 	// a styled line, and a block is measured against every split that could put
 	// it in a column.
 	b.w = widest(b.lines)
@@ -199,12 +243,11 @@ type columns struct {
 
 // columnPlan picks the split, and reports whether two columns fit at all.
 //
-// THE SPLIT IS COMPUTED, not written down. The window had its groups assigned to
-// columns by hand, and every group added since made that assignment worse: by
-// 0.14.0 four groups stood against one, so the right column ended a dozen rows
-// short and the window was a dozen rows taller than it needed to be — which buys
-// a scroll rail nobody wanted and pays for those rows on every frame that draws
-// them.
+// THE SPLIT IS COMPUTED, not written down. A hand assignment of groups to
+// columns gets worse with every group added: four groups against one leaves the
+// right column a dozen rows short and the window a dozen rows taller than it
+// needs to be — which buys a scroll rail nobody wanted and pays for those rows
+// on every frame that draws them.
 //
 // The rule is the SPLIT POINT that leaves the two columns most nearly equal in
 // height, reading order preserved: groups fill the left column top to bottom,
@@ -228,7 +271,7 @@ func (d Dashboard) columnPlan(blocks []setupBlock, o render.Opts) (columns, bool
 			continue // a worse balance than one that already fits
 		}
 		w := twoColumnsWidth(leftW, widestBlock(blocks[split:]), panelChromeFor(left+4, d.modalMax()))
-		if w > o.Width {
+		if w > d.setupMaxWidth(o) {
 			continue
 		}
 		best, bestImbalance, found = columns{split: split, leftW: leftW, width: w}, imbalance, true
@@ -239,37 +282,12 @@ func (d Dashboard) columnPlan(blocks []setupBlock, o render.Opts) (columns, bool
 // blockHeight is the total lines a run of blocks draws; widestBlock the widest
 // line among them, from the widths they measured when they were built.
 
-// appendCastNote adds the focused cast row's note, with the blank that belongs
-// to it. Extracted from setupBlock, which the P10-01 statement bound caught
-// growing past 40 as the relay group landed — the note is a self-contained
-// step and reads better with a name on it.
-func (d Dashboard) appendCastNote(b setupBlock, focus setupRowID, castW int) setupBlock {
-	note := d.castNote(focus)
-	if note == "" || !b.focused {
-		return b
-	}
-	b.lines = append(b.lines, "")
-	b.noteH++ // the blank belongs to the note, and goes with it
-	// Notes belong to the row that raised them and are WRAPPED, never
-	// truncated: a reason a listener cannot read is not a reason. They stay no
-	// wider than the picker rows, so focusing one cannot flip the two-column
-	// layout out from under the reader, and FLUSH with the row labels rather
-	// than inset under them (HUM LEAD, UAT 2026-08-30).
-	for _, l := range render.WrapLines([]string{note}, max(20, castW-len(castNoteIndent))) { // bounded by the wrap (P10-02)
-		b.lines = append(b.lines, castNoteIndent+l)
-		b.noteH++
-	}
-	return b
-}
-
-// blockHeight is the height the SPLIT is planned against: the lines a run of
-// blocks draws, less any note. A note is transient — it belongs to whichever row
-// the cursor is on — and planning against it moves the layout as the cursor
-// moves. Use len(b.lines) for what is actually drawn.
+// blockHeight is the lines a run of blocks draws: the height the split is
+// planned against.
 func blockHeight(blocks []setupBlock) int {
 	n := 0
 	for _, b := range blocks {
-		n += len(b.lines) - b.noteH
+		n += len(b.lines)
 	}
 	return n
 }
@@ -301,6 +319,30 @@ func joinBlocks(blocks []setupBlock) (lines []string, at, end int) {
 // the one drawn would put the mark just off the edge — which reads as a dead
 // keyboard, since the listener sees nothing move.
 func (d Dashboard) setupBody(o render.Opts) (lines []string, focusAt, focusEnd int) {
+	lines, focusAt, focusEnd = d.setupPage(o)
+	// THE TAB ROW HEADS EVERY TAB (D-62), and the focus spans move down under it.
+	// A BLANK LINE STANDS BETWEEN IT AND THE GROUPS (UAT-1 U1-30) wherever the
+	// tab still fits the window with it; on a window too short for that - 80x24,
+	// where every line is below a fold - the tab row takes the first group's
+	// opening blank.
+	head := []string{d.setupTabRow(o, o.Width-4)}
+	opens := len(lines) > 0 && strings.TrimSpace(lines[0]) == ""
+	if opens && len(lines)+len(head) > d.modalMax()-setupChipRows {
+		return append(head, lines[1:]...), focusAt, focusEnd
+	}
+	if !opens {
+		head = append(head, "")
+	}
+	return append(head, lines...), focusAt + len(head), focusEnd + len(head)
+}
+
+// setupChipRows is the chip lines the footer takes at most (two, where they
+// wrap at 80 columns): what the blank under the tab row is measured against,
+// without drawing the chips to count them.
+const setupChipRows = 2
+
+// setupPage is the open tab's groups, in one or two columns.
+func (d Dashboard) setupPage(o render.Opts) (lines []string, focusAt, focusEnd int) {
 	blocks := d.setupBlocks(o)
 	// NOT modalWidth: that asks this function how wide it wants to be.
 	if plan, ok := d.columnPlan(blocks, o); ok {
@@ -327,20 +369,18 @@ func anyFocused(blocks []setupBlock) bool {
 
 // focusBody is the OPEN WINDOW's lines and the span its focused row occupies.
 //
-// IT ASKS THE OPEN WINDOW, NOT SETUP (red team 2026-09-05). modalScroll called
-// setupBody unconditionally, so every other pinned-footer window scrolled by
-// SETUP's focus against SETUP's line count — a permanent zero for the
-// relay-fault and ctrl+d windows, because nothing else writes d.modalScroll.
-// At 80x24, the app's documented floor, that put every one of the relay-fault
-// window's ways out below the fold: the rail drew its arrows, the cursor moved,
-// and the screen did not change. The reported "arrows do not work", arrived at
-// by geometry instead of by the memo.
+// IT ASKS THE OPEN WINDOW, NOT SETUP (red team 2026-09-05). Scrolled by SETUP's
+// focus against SETUP's line count, every other pinned-footer window gets a
+// permanent zero — nothing else writes d.modalScroll for the relay-fault and
+// ctrl+d windows. At 80x24, the app's documented floor, that puts every one of
+// the relay-fault window's ways out below the fold: the rail draws its arrows,
+// the cursor moves, and the screen does not change.
 //
-// at IS -1 WHEN THERE IS NOTHING TO FOCUS (FR-5). A release build compiles the
-// injector out, so the shipped ctrl+d window is prose and no list — and a
-// focus-following scroll has nothing to follow there. -1 says "this body
-// scrolls on its own"; 0 would say "hold the top", which is what pinned the
-// whole of that window's message below the fold at 80x24.
+// at IS -1 WHEN THERE IS NOTHING TO FOCUS (FR-5). A ctrl+d window with no
+// injector is prose and no list — and a focus-following scroll has nothing to
+// follow there. -1 says "this body scrolls on its own"; 0 would say "hold the
+// top", which would pin the whole of that window's message below the fold at
+// 80x24.
 func (d Dashboard) focusBody(o render.Opts) (lines []string, at, end int) {
 	switch d.modal {
 	case modalSetup:
@@ -412,9 +452,12 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 		action = "Save"
 	}
 	segs := []string{
-		o.KeyCap("tab") + " Next question",
+		o.KeyCap("tab") + " Next tab",
 		o.KeyCap("enter") + " " + action,
 		o.KeyCap("↑↓") + " Move",
+	}
+	if !d.rowTakesLeftRight() {
+		segs = append(segs, o.KeyCap("←→")+" Tabs") // D-62: the arrows switch tabs where the row does not take them
 	}
 	// OP-4: with one keyboard rule, `space` operates most of the window's rows
 	// and the mock's chip row names it nowhere. It is named here, and only
@@ -431,9 +474,30 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 		// The THEME picker names no preview key, because ←→ already preview it:
 		// the whole app repaints as the picker moves. Offering `p Preview` there
 		// would name a key for something that has already happened.
-		if d.setup.focus == rowTheme {
+		switch d.setup.focus {
+		case rowTheme:
 			segs = append(segs, o.KeyCap("←→")+" Theme (live)")
-		} else {
+		case rowMapDesc:
+			segs = append(segs, o.KeyCap("←→")+" Description") // 0.18.0: nothing to preview
+		case rowMapScale:
+			segs = append(segs, o.KeyCap("←→")+" Scale")
+		case rowMapNearby:
+			segs = append(segs, o.KeyCap("←→")+" Distance")
+		case rowMapRadarSource, rowMapTempSource:
+			segs = append(segs, o.KeyCap("←→")+" Source")
+		case rowMapRainDetail:
+			segs = append(segs, o.KeyCap("←→")+" Density")
+		case rowMapUVCities:
+			segs = append(segs, o.KeyCap("←→")+" Cities")
+		case rowMapRadarAhead:
+			segs = append(segs, o.KeyCap("←→")+" Hours")
+		case rowMapQuakes:
+			segs = append(segs, o.KeyCap("←→")+" Quakes")
+		case rowHistoryHours, rowHistoryTrends:
+			segs = append(segs, o.KeyCap("←→")+" Keep")
+		case rowMapDetailLevel:
+			segs = append(segs, o.KeyCap("←→")+" Detail")
+		default:
 			segs = append(segs, o.KeyCap("←→")+" Voice", o.KeyCap("p")+" Preview")
 		}
 	}
@@ -444,7 +508,7 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 	// there; the typed DATA rows still need enter, and esc still discards them.
 	// A chip that said Cancel over an auto-saving group would be lying.
 	closeLabel := "Cancel"
-	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI {
+	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI || g == groupMap || g == groupLayers || g == groupMapLayers {
 		closeLabel = "Close"
 	}
 	segs = append(segs, o.KeyCap("esc")+" "+closeLabel)

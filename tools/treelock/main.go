@@ -6,7 +6,7 @@
 // tree, runs a gate, and reverts — so an edit made while it is running is
 // reverted with it, and the work is gone with no error anywhere.
 //
-// `pgrep` IS NOT THE ANSWER, and finding that out is what this exists for.
+// `pgrep` IS NOT THE ANSWER.
 // Killing the parent of a sweep leaves the `go test` child running under the
 // next edit, and a name-matched search for "make verify" does not see it. A
 // lock is held by a PROCESS, so a child outliving its parent still holds it.

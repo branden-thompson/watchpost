@@ -265,10 +265,9 @@ func TestToneNameNamesThePresetAndIsLoudOutOfRange(t *testing.T) {
 			t.Errorf("an out-of-range class must still be nameable, got %q/%q", c.Key(), c.String())
 		}
 		// EVERY ACCESSOR GIVES THE SAME FALLBACK, and ToneRank joins the row it
-		// was added beside rather than answering the question differently. It
-		// returned Disaster's rank once — inaudible only because Warning and
-		// Disaster share the dual-tone, which is the accidental agreement
-		// MVS-D-73 was written to stop relying on.
+		// sits beside rather than answering the question differently. Returning
+		// Disaster's rank is inaudible only while Warning and Disaster share the
+		// dual-tone, which is the accidental agreement MVS-D-73 stops relying on.
 		if got := c.ToneRank(); got != ClassWarning.ToneRank() {
 			t.Errorf("Class(%d).ToneRank() = %d, want ClassWarning's %d — one fallback, not two",
 				c, got, ClassWarning.ToneRank())
