@@ -1,5 +1,5 @@
 ---
-title: "0.19.0 DISCOVER — wave 2 findings (measurements, D-18 budget)"
+title: "0.19.0 DISCOVER — wave 2 findings (measurements under D-18, then D-38)"
 date: 2026-10-06
 phase: DISCOVER
 sev: SEV-0
@@ -44,7 +44,7 @@ station's provider). The scripts and the one-sitting run's request log are kept 
   `lgdc.uml.edu/fastchar/getbest?ursiCode=<station>&charName=foF2,MUF(D),M(D),hmF2&DMUF=3000&fromDate=YYYY/MM/DD hh:mm:ss&toDate=...`
 - **One station per request**, any time range. The reply is text, with a confidence score (CS) per sounding, at a 5-minute cadence.
 - Three requests spaced 10-20 s apart drew no 429 today. The reply records the requester's IP.
-- *(Superseded by the one-sitting run: about 38 live stations, about 900 a day per copy.)* **What it costs a path-B client:** about 40 real-time stations, polled once an hour with one request each, is **about 960 requests a day for every running copy**.
+- *(Superseded by the one-sitting run: 39 live stations, about 940 a day per copy while open.)* **What it costs a path-B client:** about 40 real-time stations, polled once an hour with one request each, is **about 960 requests a day for every running copy**.
   - That is the 429 risk the 0.18.0 research met, multiplied by the number of copies running.
   - GIRO's terms ("free online access … only for educational and non-commercial research purposes") would carry to every one.
   - So path B in each listener's watchpost does not scale. It needs either a shared service (watchpost has none) or very sparse polling. **This is a finding for D-20's ruling.**
@@ -112,7 +112,7 @@ did not allow.
 
 - The 429 is a bare nginx page: no `Retry-After` and no rate-limit headers, before or after a refusal.
 - **A working model, fitted to both refusals and tested once:** a token bucket of about 90 requests that refills at about 3 a minute (about 180 an hour). The slow phase passed at 2.4 a minute, as the model predicts. Two refusals and one passing test are not a published limit, so the feature must still read a 429 as "back off", whatever the numbers.
-- **What path B costs, corrected:** 39 of 118 stations had data for the day (TR169's data came back on a recovery probe, whose body was not kept, so the pairs below use 38). One request per live station returns its whole day, so an hourly update is about 38 requests per copy (about 900 a day). That is inside the refill (about 4,300 a day) for one copy on one IP. It does not show what GIRO thinks of many copies, and its terms ("only for educational and non-commercial research purposes") still bind each one.
+- **What path B costs, corrected:** 39 of 118 stations had data for the day (TR169's data came back on a recovery probe, whose body was not kept, so the pairs below use 38). One request per live station returns its whole day, so an hourly update is about 39 requests per copy (about 940 a day). *(Since D-76, updates happen only while the Propagation mode is open.)* That is inside the refill (about 4,300 a day) for one copy on one IP. It does not show what GIRO thinks of many copies, and its terms ("only for educational and non-commercial research purposes") still bind each one.
 
 ### NOAA, measured
 
@@ -169,11 +169,11 @@ Kernel length 500-4000 km and noise 0.05-0.2 change these by at most 0.05; the d
 - **B alone wins only near stations**; beyond 1000 km climatology is a worse background than GloTEC.
 - **D alone** is 17% better than climatology, but never near the target.
 
-**Costs, per copy, under D-39:** about 38 GIRO requests and one 2.5 MB NOAA grid an hour. The
-computation is about 38 stations a GP solve an hour, trivial (G-G1).
+**Costs, per copy, under D-39:** about 39 GIRO requests and one 2.5 MB NOAA grid an hour, while the
+Propagation mode is open (D-76). The computation is about 39 stations a GP solve an hour, trivial (G-G1).
 
 **Terms:**
-- GIRO readings are CC BY-NC-SA; a computed field is likely a "substantially derivative product", which GIRO's rules leave unrestricted (OQ-G2, to be ruled).
+- GIRO readings are CC BY-NC-SA; a computed field is likely a "substantially derivative product", which GIRO's rules leave unrestricted (OQ-G2; since ruled: treated as such, D-41).
 - GloTEC is public domain.
 
 **Limits:**
@@ -206,4 +206,4 @@ A second day, or a week, would show whether the order holds.
 
 The day's count, UTC 2026-10-06 (**corrected**, red team CQ-E4):
 - **NOAA SWPC 29:** 3 by the wave-1 sources survey; 2 under D-18 (GloTEC 01:55Z; `json/f107_cm_flux.json` at 04:16:22Z, 22,838 B); 24 in the one-sitting run (D-38).
-- **GIRO 125:** 5 under D-18 (two POSTs, three FastChar), plus two reads of the form page; 120 in the one-sitting run (D-38), of them 23 past its stop rule (E-1).
+- **GIRO 127:** 5 under D-18 (two POSTs, three FastChar), 2 reads of the form page, and 120 in the one-sitting run (D-38), of them 23 past its stop rule (E-1).

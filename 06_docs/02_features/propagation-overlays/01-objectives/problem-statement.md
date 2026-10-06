@@ -4,7 +4,7 @@ date: 2026-10-05
 phase: DISCOVER (intake)
 sev: SEV-0
 authority: HUM LEAD
-status: "Statements LOCKED (D-7); metrics ruled (D-8, D-9), targets set in DISCOVER"
+status: "Statements LOCKED (D-7); metrics ruled (D-8, D-9), revised by D-73 (what open means), D-75 (floors) and D-76 (M3 retired); targets set from PLAN's dry run (D-49)"
 ---
 
 # Problem statements
@@ -43,37 +43,40 @@ anti-solution check before it locks.
 
 ### PS-1 (D-8)
 
-Targets are set from PLAN's dry run, each by its own ruling, before PLAN exits (D-49, amending D-8). M1 and M4 are measured against WSPR via
-wspr.live, with RBN as a cross-check (D-22), and their baseline is the IRI climatology, not KC2G (D-23).
-The numbers proposed at intake are kept as a starting point.
+Targets are set from PLAN's dry run, each by its own ruling, before PLAN exits (D-49, amending D-8), against
+the floors set before it (D-75). M1 and M4 are measured against WSPR via wspr.live, with RBN as a
+cross-check (D-22); only spots that, normalised to the reference circuit, would carry SSB voice at 100 W
+count (D-73). Their baseline is the IRI climatology, not KC2G (D-23). The numbers proposed at intake are
+kept as a starting point. **UAT (M2, M5, M5b) is graded by the HUM LEAD alone; the VALIDATE report says so
+(D-68).**
 
 | # | Name · symbol | Type | Definition | Measured in | Proposed at intake |
 |---|---|---|---|---|---|
-| M1 | Reach agreement · R₁ | accuracy | share of scenarios (station place, served area, UTC hour, band) where the station's answer, reaches or does not, matches observed reception reports for that path within ±1 h; the set holds both outcomes | % of scenarios | at least the IRI climatology's agreement plus N points (D-23; first proposed as KC2G's, less 5) |
-| M2 | Answerable from the station · A₁ | task (UAT) | the operator answers the reach question for N scenarios from the station alone, without leaving watchpost, correctly per M1's reference | correct of N; seconds each | 8 of 10, each within 30 s |
-| M3 | Told when it closes · L₁ (split by cause, D-48) | latency | M3a: a closure the model predicts (daytime absorption, MUF falling) is announced before it happens, with its expected time. M3b: a disturbance closure (D-RAP) is said within its target. M3c: a closure seen only in the measured field is said within its target. Each on screen and in words | minutes | M3a: before the closure; M3b: ≤ 15; M3c: ≤ 90 (D-48; first proposed as ≤ 20 for all) |
-| G1 | Station cost · C | guardrail (issue #25) | watchpost's added CPU time and resident memory with propagation on against off, over one hour | % CPU; MB | at most 1% mean CPU; 50 MB RSS |
+| M1 | Reach agreement · R₁ | accuracy | share of scenarios (the tower, a place in the served area, UTC hour, band) where the reference chart's answer ("best bands now" or "your frequency", D-76), reaches or does not, matches observed reception reports normalised to the reference circuit (D-73) for that path within ±1 h; the set holds both outcomes | % of scenarios | at least the IRI climatology's agreement plus N points (D-23; first proposed as KC2G's, less 5) |
+| M2 | Answerable from the station · A₁ | task (UAT) | the operator answers the reach question for N scenarios from the station alone (the Propagation mode, opened from the console, D-57), without leaving watchpost, correctly per M1's reference | correct of N; seconds each | 8 of 10, each within 30 s |
+| ~~M3~~ | ~~Told when it closes~~ | — | **Retired by D-76:** the reference chart replaced the monitoring readout and its closure notices; the operator learns by looking. An optional "band watch" is a follow-up, and M3 returns with it (D-48, D-72 and D-74 recorded its split and targets). | — | — |
+| G1 | Station cost · C | guardrail (issue #25) | watchpost's added CPU time, resident memory and downloads with the Propagation mode in use against not, over at least 48 hours (D-49) | % CPU; MB; MB a day | at most 1% mean CPU; 50 MB RSS (target set from the dry run, D-49) |
 
 Anti-solution check:
 - M1: a constant answer fails on the mixed set, and so does a well-drawn map with wrong numbers.
 - M2: a link out fails ("without leaving"). A spoken line passes as well as a map, so the metric does not prescribe a map.
-- M3: it measures whether the operator learns, which is PS-1's last clause.
+- M3: retired (D-76). PS-1's last clause ("the operator does not learn of it") is left to the band-watch follow-up.
 - G1: holds any solution to issue #25's resource limit; measured over at least 48 hours, with downloads a day (D-49).
 
 Answered in DISCOVER:
 - the reference: WSPR via wspr.live, with RBN as a cross-check (D-22);
-- the operator's bands: the "My HF bands" picker, 80 m and 40 m by default (D-30); the served area: the configured tower and service radius (`config.Broadcaster`; D-28).
+- the operator's bands: every band is answered in the reference chart, and the operator's own frequency can be entered (D-76; D-30's picker retired); the served area: the configured tower and service radius (`config.Broadcaster`).
 
 Note: watchpost transmits nothing; the Broadcaster makes audio on the computer, and any transmission is the
 operator's, under the laws where they are (D-45, D-46).
 
 ### PS-2 (D-9)
 
-Targets are set from PLAN's dry run, as for PS-1 (D-49). G1 is shared with PS-1.
+Targets are set from PLAN's dry run, as for PS-1 (D-49), against D-75's floors. G1 is shared with PS-1.
 
 | # | Name · symbol | Type | Definition | Measured in |
 |---|---|---|---|---|
-| M4 | Path agreement · R₂ | accuracy | share of scenarios (listener's place, target place, UTC hour, band) where watchpost's open or closed matches observed reception reports for that path within ±1 h; the set holds both outcomes | % of scenarios |
+| M4 | Path agreement · R₂ | accuracy | share of scenarios (listener's place, target place, UTC hour, band) where watchpost's open or closed matches observed reception reports normalised to the reference circuit (D-73) for that path within ±1 h; the set holds both outcomes | % of scenarios |
 | M5 | Answerable without leaving · A₂ | task (UAT) | the listener names, from watchpost alone, the bands open between their place and N target places at a given hour, correctly per M4's reference | correct of N; seconds each |
 | M5b | The same, in words · A₂ʷ | task (UAT) | M5 answered with no picture (`--ascii`, or "Instead of the map") | correct of N; seconds each |
 

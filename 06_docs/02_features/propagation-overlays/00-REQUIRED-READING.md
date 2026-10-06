@@ -19,9 +19,9 @@ one** (0.18.0 D-11).
 | | |
 |---|---|
 | Branch | `feature/propagation-overlays`, cut from `main` (31038ebf); squash-merged `release/0.19.0` at SHIP (D-5) |
-| Phase | **DISCOVER** (intake closed 2026-10-05, D-16) |
+| Phase | **DISCOVER exit** (intake closed 2026-10-05, D-16; red team rounds 1 and 2 dispositioned) |
 | Brief | `01-objectives/project-brief.md`, APPROVED (D-16) |
-| Problems and metrics | `01-objectives/problem-statement.md`: PS-1 (the Broadcaster operator), PS-2 (the Observer ham), LOCKED (D-7); M1-M5b and G1 (D-8, D-9), targets set in DISCOVER |
+| Problems and metrics | `01-objectives/problem-statement.md`: PS-1 (the Broadcaster operator), PS-2 (the Observer ham), LOCKED (D-7); M1, M2, M4, M5, M5b and G1 (D-8, D-9; M3 retired at D-76); "open" is the reference circuit (D-73); floors set before the dry run (D-75); targets from the dry run (D-49) |
 | Rulings | `02-analysis/rulings.md`: every ruling lands here the moment it is made; minor items are A-n rows, batched for veto (D-13) |
 | Requirements | `01-objectives/requirements.md` — wins on any conflict once approved at the DISCOVER gate; opens with "What the listener sees" |
 | Findings | `02-analysis/wave1-findings.md` (desk surveys), `02-analysis/wave2-findings.md` (measurements; the path's evidence is in go-ionomaps `02-analysis/evidence/`) |
@@ -36,7 +36,7 @@ one** (0.18.0 D-11).
 
 1. **MUF first, then accessibility (D-4)**, which amends 0.18.0 D-256. MUF's own words ship with the layer (M5b, D-9).
 2. **The reference implementation has no licence.** go-ionomaps reimplements from the published science; nothing is copied from `arodland/prop` (brief C-5).
-3. **Weather modes are never wider than the place's region** (0.18.0 D-8, D-28). Only the **Propagation mode** has its own world bound (D-21). The Broadcaster's own map (F-174) is regional, with a propagation readout, not a field (D-28 of this release).
-4. **Live requests follow the feature's throttle (D-39):** GIRO bursts of at most 40 an hour, at most 2 a minute sustained, a 429 backs off 60 s doubling to 15 minutes; NOAA at most 6 grids an hour. GIRO's measured limit is a bucket of about 90 refilling at about 3 a minute (D-38). Open-Meteo is never probed for research; no kc2g.com request until asked.
+3. **Weather modes are never wider than the place's region** (0.18.0 D-8, D-28). Only the **Propagation mode** has its own world bound (D-21). The Broadcaster reaches it by a key, from the tower (D-57); its own regional map is a follow-up again (D-77).
+4. **Live requests follow the feature's throttle (D-39, D-51, D-83):** GIRO bursts of at most 40 an hour, at most 2 a minute sustained, a 429 backs off 60 s doubling to 15 minutes, the live stations seeded and rotated; NOAA grids at most 6 an hour; only rate headers read at run time. GIRO's throttle is modelled from two refusals (D-38), as a bucket of about 90 refilling at about 3 a minute, not a published limit. **Since D-76 nothing is fetched until the Propagation mode is opened.** Open-Meteo is never probed for research; no kc2g.com request until asked.
 5. **Rulings one at a time**, with evidence (`file:line` for every claim about the code, REFLECT L3), options, a recommendation and the strongest counter-argument, recorded verbatim.
 6. **No code in PLAN** (0.18.0 D-13).

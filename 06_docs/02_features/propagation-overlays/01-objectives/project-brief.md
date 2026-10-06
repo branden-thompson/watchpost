@@ -9,11 +9,17 @@ authority: HUM LEAD
 directives: FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLAN; FULL TDD; FULL INST
 branch: feature/propagation-overlays
 paired_releases: "go-ionomaps (new, D-1, D-2); go-tuiMaps v0.3.0 (D-3)"
-issues: "branden-thompson/watchpost#25 (MUF), #12 (memo keys)"
-status: "APPROVED by the HUM LEAD 2026-10-05 (D-16). Problem statements LOCKED (D-7). Metrics ruled (D-8, D-9), targets set in DISCOVER. Rulings in 02-analysis/rulings.md."
+issues: "branden-thompson/watchpost#25 (MUF), #12 (memo keys), #27 (the history roll-up, D-55)"
+status: "APPROVED by the HUM LEAD 2026-10-05 (D-16) as the intake record. Problem statements LOCKED (D-7). Where DISCOVER's rulings changed it (D-17 to D-83), requirements.md is current and wins; this brief is not rewritten to match."
 ---
 
 # New Major Dual Projects | `watchpost-0.19.0` + `go-ionomaps`
+
+> **This is the intake brief, approved at D-16.** DISCOVER then answered its open questions and changed its
+> scope: the path (D-40), foF2 kept (D-24), the Broadcaster's answer (D-57, D-76, D-77), targets from the dry
+> run (D-49, D-75), the reference chart (D-76), no recording (D-78), and more. **`requirements.md` is the
+> current record and wins on any conflict.** The brief is kept as written, with these banners and the
+> corrections already noted inline.
 
 **LEVEL-1; SEV-0; FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLAN; FULL TDD; FULL INST**
 
@@ -137,7 +143,7 @@ list, and v0.3.0's own brief decides how.
 | **GR-2** | The point-to-point answer for a path at a given hour and band (or what a host needs to compute it) | R-1.2, R-2.1 |
 | **GR-3** | An error or an age, never a silently old or empty field (G-M4) | R-5.1 |
 | **GR-4** | Each source's name and terms, readable by the host, so it can credit them (G-M1) | R-3.1 |
-| **GR-5** | No HTTP client of its own that bypasses the host's single door: a host-settable fetcher (User-Agent, allowed hosts, timeout) | 0.18.0 HR-6's lesson (go-tuiMaps opened its own client) |
+| **GR-5** | No HTTP client of its own that bypasses the host's single door: a host-settable fetcher (User-Agent, timeout; "allowed hosts" struck at A-12) | 0.18.0 HR-6's lesson (go-tuiMaps opened its own client) |
 | **GR-6** | Its cost per update stated and bounded (G-G1) | R-4.1 |
 
 ## What leaves the machine
@@ -207,7 +213,7 @@ recorded (0.18.0 D-224, D-226). Whether MUF and eSSN are stored is a DISCOVER ru
   - both CI platforms green before merge;
   - no AI attribution;
   - no code in PLAN (0.18.0 D-13).
-- **Issues of record:** #25 and #12. The release PR closes them. #18, #23, #9 and #24 were closed with their evidence (D-14).
+- **Issues of record:** #25, #12 and #27 (D-55). The release PR closes them. #18, #23, #9 and #24 were closed with their evidence (D-14).
 
 ## Discovery Handoff Package
 
