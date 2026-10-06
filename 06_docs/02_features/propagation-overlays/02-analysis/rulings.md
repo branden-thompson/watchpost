@@ -1,7 +1,7 @@
 ---
 title: "0.19.0 Propagation overlays — HUM LEAD rulings"
 date: 2026-10-05
-phase: DISCOVER (intake)
+phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
 status: "LIVE — every ruling is written here the moment it is made."
@@ -33,6 +33,8 @@ here and cited from theirs.
 | D-12 | 2026-10-05 | PS-G's metrics: G-M1 free to build on, G-M2 reproducible, G-M3 fidelity (held-out ionosondes, KC2G a second reference), G-M4 fails out loud, G-G1 compute cost; targets in DISCOVER | "Approve all five" | G-M1 to G-M4 primary and G-G1 guardrail for go-giro-data, as defined in its `01-objectives/problem-statement.md`; targets set in DISCOVER. |
 | D-13 | 2026-10-05 | REFLECT recommendation 4: a minor-ruling class | "Adopt the A-n class (Recommended)" | **Standing rule for the train.** The agent decides references, wording, file and folder names, and cleanups that change no behaviour, UI, API, scope, data terms or anything outward; each is an A-n row below with its reason, reported to the HUM LEAD in a batch at the next natural stop, for veto. A veto becomes a D-row. Everything else stays a one-at-a-time ruling under SEV-0. |
 | D-14 | 2026-10-05 | Close #18, #23, #9, #24 now with evidence comments, or through the 0.19.0 release PR. Evidence: #18 `domains/radio/cast/tone.go:40`, `:77`, commits fd02e182 and c12266c2 (v0.15.0); #23 batch 55 (9a05e605, v0.18.0); #9 batch 56, `modes/tty/router.go:166` (v0.18.0); #24 the UV layer (v0.18.0, CHANGELOG line 16) | "Close the four now (Recommended)" | Closed 2026-10-05, each with its evidence. #12 stays open and is 0.19.0 scope: audit keys for identity versus position and give each omitted field its reason; its guard (`modes/tty/memo_completeness_test.go`, F-30) already exists. |
+| D-15 | 2026-10-05 | 0.19.0's scope beyond MUF, the accessibility carry-over and #12: add F-174 (the Broadcaster's own map), F-187/F-188 (the `say` hang and orphans), or neither | "Add F-174 and F-187/F-188" | **In scope:** MUF (PS-1, PS-2) first; then F-191 to F-194, F-196 to F-198, F-180, F-205 (D-4); #12 (D-14); F-174, its shape decided in DISCOVER (a map, or something smaller that answers PS-1); F-187 and F-188, so the gates stay reliable through BUILD. Every other follow-up waits unless DISCOVER finds MUF depends on it. |
+| D-16 | 2026-10-05 | Approve both project briefs (watchpost 0.19.0, go-giro-data) as presented, closing intake | "Approve both; open DISCOVER" | **APPROVED as presented.** Intake closed; DISCOVER opens. A-1 to A-5 reported with the briefs, no veto. |
 
 ## Agent decisions (A-n, D-13)
 
@@ -46,3 +48,4 @@ D-row.
 | A-3 | 2026-10-05 | go-giro-data's first feature folder is `06_docs/02_features/go-giro-data/` | mirrors go-tuiMaps' first feature folder, `go-tuimaps` | batch 1 |
 | A-4 | 2026-10-05 | go-giro-data's ignore and attribute files are trimmed copies of go-tuiMaps'; its local harness config (untracked) copies go-tuiMaps' with SEV-0 (D-1) | same harness shape; nothing library-specific carried over | batch 1 |
 | A-5 | 2026-10-05 | go-giro-data's public README stub and GitHub description: "Ionospheric MUF and foF2 maps for Go map hosts (in discovery)"; the README says nothing is usable yet and that data terms will be stated before any data is used | made with D-2's repo creation; outward, so listed for veto although it is wording | batch 1 |
+| A-6 | 2026-10-05 | `propagation-overlays/00-REQUIRED-READING.md` written, in 0.18.0's shape: where things are, and the rules that cost something | the session-start record for 0.19.0; pointing watchpost's CLAUDE.md at it needs the HUM LEAD's approval | batch 2 |
