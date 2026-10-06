@@ -4,7 +4,7 @@ date: 2026-10-06
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "IN PROGRESS — day 1 of the D-20 measurements; continues within D-18's daily budget"
+status: "IN PROGRESS — day 1 (D-18 budget) and the one-sitting run (D-38) recorded; the path ruling (D-20) next"
 ---
 
 # Wave 2 findings
@@ -64,7 +64,61 @@ to beat, and both miss the measured ionosphere by 0.6-1.1 MHz.
 - This weighs against path D, and toward measurements of the peak itself: ionosondes (path B), or INGV's measured Europe map where it applies.
 - Wave 2 continues: day and night, more latitudes, the three-way comparison at every pair.
 
+## The one-sitting run (D-38), 2026-10-06 13:23-13:34Z, for the day 2026-10-05
+
+watchpost's way: one request at a time, at most 5 a second (`platform/httpx/httpx.go:61`), every
+response's status, headers, size and time logged (scratchpad `burst-2026-10-05/requests.jsonl`).
+
+### GIRO's throttle, measured
+
+| Phase | Pace | Result |
+|---|---|---|
+| All 118 stations in the form's list, a whole day each | as fast as replies came (about 1.7 a second) | **95 served in 55 s; the 96th refused (429)** at 13:23:58 |
+| Recovery probe | after 60 s idle | served |
+| 22 stations not yet asked | one every 1.5 s, after 112 s idle | **8 served; the 9th refused (429)**; recovered after 60 s |
+| The last 13 | one every 25 s | **13 served, none refused** |
+
+- The 429 is a bare nginx page: no `Retry-After` and no rate-limit headers, before or after a refusal.
+- **A working model, fitted to both refusals and tested once:** a token bucket of about 90 requests that refills at about 3 a minute (about 180 an hour). The slow phase passed at 2.4 a minute, as the model predicts. Two refusals and one passing test are not a published limit, so the feature must still read a 429 as "back off", whatever the numbers.
+- **What path B costs, corrected:** 38 of 118 stations had data for the day. One request per live station returns its whole day, so an hourly update is about 38 requests per copy (about 900 a day). That is inside the refill (about 4,300 a day) for one copy on one IP. It does not show what GIRO thinks of many copies, and its terms ("only for educational and non-commercial research purposes") still bind each one.
+
+### NOAA, measured
+
+- 24 GloTEC grids (60 MB) in 17 s, all served.
+- Headers carry `Cache-Control`, `Expires` and `X-Cache` (a CDN), and nothing about rate. No limit was met or stated.
+
+### The full day: ionosonde vs GloTEC vs climatology
+
+`pairs.py`: a sounding within 10 minutes of a grid time, confidence score ≥ 70; GloTEC bilinear; PyIRI
+climatology (CCIR) with F10.7 = 100. **566 pairs, 28 stations, 24 hours.**
+
+| Subset | n | foF2 RMS, GloTEC | foF2 RMS, climatology | Bias, GloTEC | Bias, climatology | GloTEC closer |
+|---|---|---|---|---|---|---|
+| all | 566 | **1.14** | **1.38** | +0.50 | +0.71 | 62% |
+| GloTEC quality 3-5 (well observed) | 310 | **0.91** | 1.20 | +0.41 | +0.66 | 66% |
+| GloTEC quality 0-2 | 256 | 1.36 | 1.58 | +0.60 | +0.76 | 57% |
+
+MUF(3000) RMS: GloTEC 4.02 MHz, climatology 4.29. GloTEC's M(3000)F2 is a first-order inverse of hmF2,
+so its MUF error includes that approximation.
+
+**What this says, and does not:**
+- **Day 1's two pairs were not representative.** Over a whole day, GloTEC beats the climatology by about 17% in foF2 RMS, and by 24% where it is well observed. Both read high.
+- **Both are far from the literature's near-station target** (about 0.5 MHz, wave 1). Neither path D nor the climatology is good enough to read the band edge from, where the truth is.
+- **Path B cannot be scored this way.** An assimilation of these stations is close to them by construction. It is scored leave-one-station-out (G-M3), which needs B built at least as a prototype. Wave 2 cannot give B's number; it gives D's (about 0.9-1.1 MHz) and climatology's (about 1.2-1.4 MHz).
+- **Limits:**
+  - one day (2026-10-05);
+  - one F10.7 value;
+  - autoscaled soundings (their own error, typically 0.1-0.5 MHz);
+  - stations unevenly spread (28 with pairs).
+
 ## Requests (D-18)
+
+**The one-sitting run's requests (D-38):**
+- GIRO: 140, of which 2 were refused (429) and 2 were recovery probes; about 0.5 MB.
+- NOAA: 24 grids, 60 MB.
+- Each is logged in the scratchpad (`burst-2026-10-05/requests.jsonl`) with headers. The run's data stays outside the tree (GIRO: CC BY-NC-SA).
+
+
 
 | UTC | Source | Request | Result |
 |---|---|---|---|
