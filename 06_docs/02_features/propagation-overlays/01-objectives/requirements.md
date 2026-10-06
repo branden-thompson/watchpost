@@ -120,6 +120,15 @@ metric's instrument to run once before PLAN exit.
 | FR-10.4 | Ruling questions cite `file:line` for every claim about the code | L3 | the rulings log |
 | FR-10.5 | A batch carrying UAT verdicts lists their D-rows | L8 | the build log |
 
+## FR-11 — The acknowledgement (D-45, D-46)
+
+| # | Requirement | Source | Instrument |
+|---|---|---|---|
+| FR-11.1 *(O1)* | The first time propagation data is shown (the Propagation mode, or the Broadcaster's map or readout), a window says that watchpost does not transmit, that MUF and foF2 are provided as reference, and that anyone who transmits on HF is responsible for following all applicable laws where they are | D-45, D-46 | `TestTheAcknowledgementShowsBeforeTheFirstPropagationView` |
+| FR-11.2 *(O1)* | Closing it, with any of its keys, records that it was seen; it never gates the data or the fetch | D-46 | `TestClosingTheAcknowledgementRecordsItSeen`, `TestTheAcknowledgementGatesNothing` |
+| FR-11.3 *(O1)* | The record keeps the wording's version; a changed wording is shown once more | A-9 | `TestAChangedAcknowledgementShowsAgain` |
+| FR-11.4 *(O1)* | The window is drawn as text, readable without the picture, and named in Help | D-9; AX | `TestTheAcknowledgementReadsWithoutThePicture` |
+
 # Non-functional requirements
 
 | # | Requirement | Source | Instrument |
