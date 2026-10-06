@@ -34,7 +34,7 @@ metric's instrument to run once before PLAN exit.
 | FR-1.7 *(O1)* | Pan and zoom work as in the Observer's map; the view rehydrates with a loading indicator | D-25; 0.18.0 FR-1.10 | `TestThePropagationModePansAndZooms`, `TestTheWindowSaysWhatThePictureIs` (extended) |
 | FR-1.8 *(O1)* | **Paths start at the selected place** in the Observer; the selected place is marked | D-26 | `TestObserverPathsStartAtTheSelectedPlace` |
 | FR-1.9 *(O1)* | **Continental reference points are the default targets**; the answer is given for each, by UTC hour and HF band, between both limits (D-47) | D-25; R-1.2; D-47 | `TestTheContinentsAreTheDefaultTargets`, M4 |
-| FR-1.10 *(O1)* | A location can be **found by city, ZIP or coordinates**, using the Observer's existing lookup (D-147), marked and answered; **found places are never kept**, and can always be found again | D-25, D-27 | `TestAFoundPlaceIsAnsweredAndNotKept`, `TestTheLookupIsTheObserversOwn` |
+| FR-1.10 *(O1)* | A location can be **found by city, ZIP or coordinates** (D-61): an offline world-cities list answers first (GeoNames cities15000, CC BY 4.0, credited), coordinates parse locally (finite, ±90, wrapped), ZIPs use the existing US index; only on no local match does the online geocoder answer, non-US allowed in this mode, uncached and disclosed in MAP STATUS; the offline index loads on first use, memory bounded; marked and answered; **found places are never kept** | D-25, D-27, D-61; IS-4 | `TestAFoundPlaceIsAnsweredAndNotKept`, `TestALocalMatchSendsNothing`, `TestCoordinatesNeverGoOnline`, `TestTheOnlineFallbackIsUncached`, the index's load cost in the dry run |
 | FR-1.11 *(O1)* | The answer for **the point at the map's centre** as the listener pans: MUF, foF2, and which HF bands open to it from the origin, on screen and in words | D-37 | `TestTheCentreIsAnsweredAsTheMapPans`, `TestTheCentreAnswerIsSaid` |
 | FR-1.13 *(O1)* | **Hours ahead:** the listener steps the fields up to 24 h ahead, one hour per key press (no automatic play, AX-J), each forecast hour labelled as a forecast with the time it was made, on screen and in words | D-50; PS-2 "at a given hour" | `TestTheHoursStepOnAKey`, `TestAForecastHourSaysItIsAForecast` |
 | FR-1.12 *(O1)* | The mode is a member of every closed-set window test (reachability at 80×24, memo completeness, margins, glyph survey, keys, leaving) | 0.18.0 FR-1.5 | the closed-set tests, each enumerating the mode |
@@ -59,7 +59,7 @@ metric's instrument to run once before PLAN exit.
 
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
-| FR-3.1 *(O1)* | With no picture (`--ascii`, "Instead of the map"), the Propagation mode says in words what MUF and foF2 are at the selected place, which bands open to each target, and the data's age | D-9, M5b | `TestThePropagationWordsAnswerWithoutThePicture`, M5b (UAT) |
+| FR-3.1 *(O1)* | With no picture (`--ascii`, "Instead of the map"), the Propagation mode says in words what MUF and foF2 are at the origin (the selected place, or the tower), always, wherever the view is (D-64), then the centre's answer (D-37), which bands open to each target, and the data's age | D-9, D-64, M5b | `TestThePropagationWordsAnswerWithoutThePicture`, M5b (UAT) |
 | FR-3.2 *(O1)* | Words carry units (MHz) and band names, never a bare number | HR-3 (D-34) | `TestPropagationWordsCarryUnits` (on the library's `Answer.ValueUnit`) |
 | FR-3.3 *(O1)* | The description gains a seam a layer can add its sentence to; the alert sentences are unchanged | `wave1-findings.md` (Words) | `TestALayerAddsItsSentence`, `TestTheMemoKeyCoversEverythingTheFrameShows` (extended) |
 | FR-3.4 *(O1)* | The Broadcaster's readout and notice have spoken and screen-reader forms | D-28, M3 ("in words") | `TestTheReadoutIsSaid` |
@@ -85,7 +85,8 @@ metric's instrument to run once before PLAN exit.
 
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
-| FR-6.1 *(O1)* | The computed global MUF(3000) and foF2 grids are recorded hourly, and the readout's values at the tower | D-31 | `TestPropagationGridsAreRecordedHourly`, `TestTheTowerReadingsAreRecorded` |
+| FR-6.1 *(O1)* | The computed global MUF(3000) and foF2 grids, and the readout's values at the tower, are recorded hourly **from what propagation fetches anyway**; nothing is fetched for recording alone | D-31, D-62 | `TestPropagationGridsAreRecordedHourly`, `TestTheTowerReadingsAreRecorded`, `TestTheRecorderNeverFetchesAlone` |
+| FR-6.6 *(O1)* | **Backfill on request** (D-62): past hours are recomputed from archived inputs (GIRO's past readings; GloTEC's archive where it exists, else the climatology background) and recorded, under D-39's throttle; the control is ruled in PLAN | D-62 | `TestABackfillFillsTheGap`, `TestABackfillHoldsTheThrottle` |
 | FR-6.2 *(O1)* | The history store opens whenever any recorded source is on, not only NDFD | D-31; `app/history.go:147-156` | `TestTheStoreOpensWithoutNDFD` |
 | FR-6.3 *(O1)* | Each dataset may keep its own retention; the Data tab's value is the default | D-31; `app/history.go:496-505` | `TestADatasetKeepsItsOwnRetention` |
 | FR-6.4 *(O1)* | Raw source data (GIRO readings) is never stored | D-31; GIRO terms | `TestNoRawSourceDataIsStored` |
@@ -99,6 +100,7 @@ metric's instrument to run once before PLAN exit.
 | FR-7.2 *(O2)* | F-192, F-193, F-194, F-180: radar's motion Setting with reduce motion; the loop's rates and hold; the playback speed Setting | 0.18.0 D-245, D-255 | as each row |
 | FR-7.3 *(O2)* | F-196, F-197, F-198: the Monochrome theme hint; the colour-literal guard; the `CheckRamp` matrix | 0.18.0 D-247 | as each row |
 | FR-7.4 *(O2)* | F-205: the cursor placed for a screen reader; the description beyond alerts; the edge warning without a picture; the state words; the Maps tab; the outline key; "With the map" | 0.18.0 D-273 | as F-205's findings (AX-3 to AX-9) |
+| FR-7.5 | **SHIP is blocked while any FR-7 row lacks its passing test** (D-63); dropping a row takes a ruling | D-63 | a SHIP-gate check over FR-7's rows |
 
 ## FR-8 — Memo keys carry identity (R-7; #12, D-14)
 
