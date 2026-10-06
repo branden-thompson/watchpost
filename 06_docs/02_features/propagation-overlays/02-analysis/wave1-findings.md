@@ -73,3 +73,58 @@ None covers HR-1 to HR-5. OW-24 touches the same legend `Class` as HR-2, and OW-
 - The app-side keys (`tempKey`, `airGridKey`, `uvDayKey`, `frameKey`, the area memo, `feedKey`) carry identities only, and **have no completeness guard**.
 
 **Minor:** `setup_rows.go:63-71` says the transmitter rows sit in DATA; they sit on the Broadcaster tab (`setup_tabs.go:50-51`).
+
+## Sources and their terms (`giro.uml.edu` included at the HUM LEAD's request)
+
+No request went to any kc2g.com address and no source file of `arodland/prop` was opened. The survey's
+data requests stayed inside D-18's budget, logged below.
+
+| Source | What | Terms | Commercial / redistribute | Method |
+|---|---|---|---|---|
+| **GIRO / LGDC** (DIDBase, FastChar) | Station values from about 70 Digisondes: foF2, MUF(3000), M(D), hmF2. Not maps. Keyless web form; FastChar returned 429 earlier | CC BY-NC-SA 4.0. NC: "Data are not used or shared for commercial purpose". SA: "Shared, modified, or annotated data retain their original license". **"Development of substantially derivative products based on the acquired GIRO data is not restricted."** Cite Reinisch & Galkin 2011, doi:10.5047/eps.2011.03.001. **checked** (`giro.uml.edu/didbase/RulesOfTheRoad.html`) | NC; SA on the data itself; substantially derivative products unrestricted | measurements |
+| **GIRO IRTAM / GAMBIT** | Global real-time foF2 and hmF2 maps: GIF images, plus coefficients | Free tier: "open academic-use access", **the latest three days not available**. Real time is paid ($9,995 a year), and its clause F forbids sharing with third parties | No | published papers; coefficients plus IRI can rebuild a map; the assimilation code is not public |
+| **Australia BoM SWS** | Global foF2 and global *vertical* MUF images every 10 minutes; regional maps | Bureau copyright: personal or in-organisation use; "must not supply it to any other person or use it for any commercial purpose" | No | inputs listed (including GIRO); method not published |
+| **NOAA SWPC GloTEC** | **Global grid of NmF2 and hmF2** (2.5°×5°, every 10 minutes, keyless geojson). foF2 follows from NmF2 | NWS public domain (`weather.gov/disclaimer`) | **Yes** | published (Chou et al. 2023, doi:10.1029/2023SW003480): a Kalman filter on GNSS and COSMIC-2 over an IRI background; GNSS-driven, not ionosonde-driven; its accuracy at the F2 peak is unverified |
+| **NOAA WAM-IPE** | A physics model's forecast: NmF2 and hmF2 in NetCDF; MUF in its plots | NWS public domain | Yes | physics forecast, not a nowcast; files not confirmed (NOMADS returned empty) |
+| **INGV eSWua** | **MUF(3000)F2 nowcast map of Europe**, every 15 minutes, 0.5°, keyless JSON | CC BY 4.0, "even commercially"; cite doi:10.13127/ESWUA/HF, and acknowledge station owners (from the survey; the agent's own check was refused by the host) | **Yes** | described: stations into an IRI background, then kriging; code not public; **Europe only** |
+| NICT, DLR IMPC, SANSA, HamQSL | Station values, TEC only, or widgets | all rights reserved, permission required, or GIRO's terms inherited | No | - |
+| **PyIRI** | The IRI climatology in Python, global | MIT (GitHub licence API) | Yes | fully reproducible: a candidate open background |
+
+**PS-G's claim (D-11) — returns as a ruling.**
+- "The maps published today come with no licence or reuse terms, or for non-commercial use only, and none can be reproduced" is **refuted for a regional map**: INGV's Europe map is CC BY 4.0.
+- It is **weakened for a global one**: NOAA GloTEC publishes public-domain global NmF2 and hmF2, from which foF2, and an estimated MUF(3000), can be derived.
+- **What survives:** no global, ionosonde-driven MUF(3000) nowcast is published under terms that allow reuse, with a method that can be re-run end to end.
+
+**For the name and path.** GIRO's NC/SA terms bind its data, but "substantially derivative products" are
+unrestricted. A computed global field may qualify, and that needs a ruling. GloTEC (public domain) plus
+PyIRI (MIT) would be a fully open global path, GNSS-driven.
+
+## Reception reports (M1, M4 reference, OQ-1)
+
+| Source | Access | Terms | Fit |
+|---|---|---|---|
+| **WSPR via wspr.live** | keyless ClickHouse SQL, 20 requests a minute; hourly band × grid aggregation in one query | "allowed to use … for your own research and projects, as long as the results are accessible free of charge for everyone. … not allowed … commercial" | the survey's primary choice: standard beacons, power and SNR reported |
+| **Reverse Beacon Network** | daily CSV zips, archive from 2009, about 1 day late | "freely available for study and analysis"; asks that results be shared with the RBN community | cross-check |
+| PSKReporter | last 6-24 h only, one query per 5 min; MQTT live feed | no stated terms | unsuitable without a long live capture |
+
+**All three are one-sided evidence:**
+- A spot proves a band was open; no spot proves nothing unless the area is densely monitored.
+- Coverage is dense in Europe and North America, and sparse over the oceans and Africa.
+- Ground wave, short skip and sporadic-E muddy short paths and 10 m.
+
+## Data requests made (D-18 budget)
+
+| Source | Requests | Bytes |
+|---|---|---|
+| NOAA SWPC (GloTEC indexes and one geojson) | 3 | about 3.0 MB |
+| NOAA NOMADS (two directory listings, empty) | 2 | 0 |
+| INGV (one map viewer page) | 1 | not measured |
+
+No GIRO data, IRTAM, BoM API, wspr.live, RBN or PSKReporter data was requested.
+
+**Unverified:**
+- NOAA NCEI (HTTP 503) and NOMADS files;
+- GloTEC's F2-peak accuracy;
+- the IRI licence text;
+- whether INGV takes the shared stations' data from their owners or through LGDC;
+- ESA SWE, UKSSDC, VOACAP Online.
