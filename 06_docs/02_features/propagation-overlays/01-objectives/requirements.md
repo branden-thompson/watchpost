@@ -35,7 +35,7 @@ metric's instrument to run once before PLAN exit.
 | FR-1.8 *(O1)* | **Paths start at the selected place** in the Observer; the selected place is marked | D-26 | `TestObserverPathsStartAtTheSelectedPlace` |
 | FR-1.9 *(O1)* | **Continental reference points are the default targets**; the answer is given for each, by UTC hour and HF band | D-25; R-1.2 | `TestTheContinentsAreTheDefaultTargets`, M4 |
 | FR-1.10 *(O1)* | A location can be **found by city, ZIP or coordinates**, using the Observer's existing lookup (D-147), marked and answered; **found places are never kept**, and can always be found again | D-25, D-27 | `TestAFoundPlaceIsAnsweredAndNotKept`, `TestTheLookupIsTheObserversOwn` |
-| FR-1.11 *(O1)* | **PROPOSED, not ruled:** the answer for the point at the map's centre as the listener pans. It was offered in D-25's options; the HUM LEAD's answer named pan and zoom, not a centre answer | needs a ruling | — |
+| FR-1.11 *(O1)* | The answer for **the point at the map's centre** as the listener pans: MUF, foF2, and which HF bands open to it from the origin, on screen and in words | D-37 | `TestTheCentreIsAnsweredAsTheMapPans`, `TestTheCentreAnswerIsSaid` |
 | FR-1.12 *(O1)* | The mode is a member of every closed-set window test (reachability at 80×24, memo completeness, margins, glyph survey, keys, leaving) | 0.18.0 FR-1.5 | the closed-set tests, each enumerating the mode |
 
 ## FR-2 — The Broadcaster's map and readout (R-2; D-28 to D-30)
