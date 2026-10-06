@@ -55,8 +55,8 @@ code{font-family:var(--mono);font-size:.92em}
 </style>
 <div class="wrap">
   <aside class="side">
-    <h1 class="brand">Watchpost Architecture Atlas<small>56 diagrams, in reading order. What the program is, area by area.</small></h1>
-    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li><li><a href="#observer-maps">observer maps<span class="n">7</span></a></li></ul></nav>
+    <h1 class="brand">Watchpost Architecture Atlas<small>58 diagrams, in reading order. What the program is, area by area.</small></h1>
+    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li><li><a href="#observer-maps">observer maps<span class="n">7</span></a></li><li><a href="#propagation-overlays">propagation overlays<span class="n">2</span></a></li></ul></nav>
     <p class="how"><strong>This page is generated.</strong> The tracked documents are the source of truth; rebuild with <code>go run ./tools/atlas</code>. Only fenced mermaid blocks are read — <strong>a change written in the prose beside a diagram never reaches this page</strong>, so put the fact in the diagram.</p>
   </aside>
   <main><section class="level" id="watchpost-cli"><header class="lvl"><h2>The shape of the program</h2></header><article class="dia" id="watchpost-cli-0"><div class="meta"><h3>1. System overview</h3><p class="file"><code>06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">graph TB
@@ -963,6 +963,60 @@ code{font-family:var(--mono);font-size:.92em}
   T -- &#34;mapTickMsg at the time still wanted&#34; --&gt; U
   Q[&#34;the program ends\ncloseOnExit → Router.CloseMap&#34;] --&gt; C[&#34;closeMap\ncancel · join (≤ 2 s) · Close&#34;]
   C -. &#34;refuses what starts after&#34; .-&gt; W &amp; F
+</pre></div></article></section><section class="level" id="propagation-overlays"><header class="lvl"><h2>propagation overlays</h2></header><article class="dia" id="propagation-overlays-0"><div class="meta"><h3>The pieces</h3><p class="file"><code>06_docs/02_features/propagation-overlays/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  subgraph watchpost
+    MODE[&#34;modes/tty: Propagation mode&lt;br/&gt;chart, frequency entry, words&#34;]
+    ACK[&#34;modes/tty: acknowledgement window&lt;br/&gt;(D-81)&#34;]
+    APP[&#34;app/mapprop.go&lt;br/&gt;fields to overlays, answers to words&#34;]
+    DOM[&#34;domains/propagation&lt;br/&gt;one go-ionomaps object, its client&#34;]
+    GEO[&#34;platform/geo: coordinates, Maidenhead&lt;br/&gt;(FR-4.9, D-79)&#34;]
+    HTTPX[&#34;platform/httpx: a propagation client&lt;br/&gt;no 429 retry, status and headers&#34;]
+    CRED[&#34;app/credits.go, MAP STATUS&#34;]
+  end
+  subgraph go-ionomaps
+    LIB[&#34;ionomaps.Library&lt;br/&gt;Update, Fields, Bands, Reach&#34;]
+    ASSIM[&#34;assimilation&lt;br/&gt;foF2 and M(3000)F2 residuals&#34;]
+    BG[&#34;background&lt;br/&gt;GloTEC, else climatology&#34;]
+    CLIM[&#34;climatology&lt;br/&gt;PyIRI port, NRL refits behind a seam&#34;]
+    LIM[&#34;limits&lt;br/&gt;P.533 MUF, daytime absorption, D-RAP&#34;]
+    THR[&#34;throttle, live stations&lt;br/&gt;(D-39, D-51)&#34;]
+  end
+  subgraph go-tuiMaps
+    MAP[&#34;Map: fields over water, host ramp,&lt;br/&gt;units, terminator, night&#34;]
+  end
+  MODE --&gt; ACK
+  MODE --&gt; APP
+  APP --&gt; DOM
+  APP --&gt; MAP
+  APP --&gt; GEO
+  DOM --&gt; LIB
+  DOM --&gt; HTTPX
+  LIB --&gt; ASSIM --&gt; BG
+  BG --&gt; CLIM
+  LIB --&gt; LIM
+  LIB --&gt; THR
+  CRED --&gt; DOM
+</pre></div></article><article class="dia" id="propagation-overlays-1"><div class="meta"><h3>Opening the mode</h3><p class="file"><code>06_docs/02_features/propagation-overlays/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
+  participant L as Listener
+  participant W as Propagation mode (UI goroutine)
+  participant A as app/mapprop.go
+  participant P as domains/propagation
+  participant I as go-ionomaps
+  participant N as GIRO / NOAA
+  L-&gt;&gt;W: the mode&#39;s key
+  W-&gt;&gt;W: acknowledgement seen? if not, show it (Enter/Esc)
+  W-&gt;&gt;A: MapPropagation(ask), off the UI goroutine
+  A-&gt;&gt;P: snapshot for the hour
+  P-&gt;&gt;I: Update(now)
+  I-&gt;&gt;I: throttle: within D-39? else answer from the last good field
+  I-&gt;&gt;N: GIRO since the last reading; GloTEC newest (304 if unchanged); D-RAP
+  N--&gt;&gt;I: replies
+  I-&gt;&gt;I: parse, range-check, assimilate, limits
+  I--&gt;&gt;P: Snapshot (fields, valid, age, sources, background)
+  P--&gt;&gt;A: Snapshot
+  A-&gt;&gt;A: overlays, best bands, reach, words
+  A--&gt;&gt;W: MapPropagation (frames ready, words, notes)
+  W--&gt;&gt;L: the picture or the words
 </pre></div></article></section></main>
 </div>
 <script type="module">
