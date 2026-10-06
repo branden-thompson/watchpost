@@ -218,7 +218,7 @@ A desk check of documentation only, with no data request (`spaceweather.gov/prod
 | | |
 |---|---|
 | What | "the highest frequency affected by absorption of 1 dB due to either solar X-ray flux or SEP events or a combination of both"; global, plus polar maps at 10 dB |
-| Grid | tabular values every 5° of latitude and 15° of longitude |
+| Grid | the documentation said every 5° of latitude and 15° of longitude; **the file itself (fetched in PLAN's dry run, 2026-10-06) is every 2° of latitude and 4° of longitude**, 42 KB, with ETag and Last-Modified |
 | Cadence | "update continuously, driven by one-minute GOES X-ray flux data and by five-minute GOES proton flux data" |
 | Access | keyless ASCII, `services.swpc.noaa.gov/text/drap_global_frequencies.txt`; archive at NCEI |
 | Terms | none stated on the page beyond NOAA/NWS's (`weather.gov/disclaimer`): public domain, no endorsement |

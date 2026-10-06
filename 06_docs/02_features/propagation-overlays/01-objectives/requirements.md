@@ -19,7 +19,7 @@ status: "APPROVED at the DISCOVER gate (D-84), normative. On any conflict with t
 - **"Your frequency"**: type a frequency or a band ("7.188", "40 m") and it shows how far it should reach today: the skip zone and the area reached, drawn on the map and said in words (D-76).
 - **Stepping ahead**: hours can be stepped up to a day ahead, labelled as forecasts (D-50). The map's centre is answered as you pan (D-37).
 - **Without the picture**, everything is said in words, and your place is always said (D-9, D-64).
-- **From the Broadcaster**, a key opens it from the tower (D-57). A Broadcaster setting can send the broadcast audio to a device other than the screen reader's (D-80).
+- **From the Broadcaster**, a key opens it from the tower (D-57). Help says the broadcast shares the computer's default sound output with a screen reader (D-85).
 - **The first time it opens**, before anything is fetched, a window says that:
   - watchpost transmits nothing;
   - the maps are reference;
@@ -57,7 +57,7 @@ planned name is a commitment PLAN may rename, never drop. A row whose instrument
 **process commitment**: a document cannot fail, so the phase reports keep it.
 
 **Order (D-4):**
-- **O1** is MUF: the Propagation mode, its reference chart and words (D-9), sources, the audio-device Setting (D-80). #27's roll-up fix (FR-6.5) comes first in BUILD (D-55).
+- **O1** is MUF: the Propagation mode, its reference chart and words (D-9), sources, the shared-device statement (D-85). #27's roll-up fix (FR-6.5) comes first in BUILD (D-55).
 - **O2** is 0.18.0's accessibility carry-over, held by a SHIP gate (D-63).
 - **O3** is #12 and the `say` fixes (F-187, F-188), allowed earlier where a flaky gate blocks O1 (D-15).
 
@@ -88,7 +88,7 @@ planned name is a commitment PLAN may rename, never drop. A row whose instrument
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
 | FR-2.1 *(O1)* | **A console key opens the Propagation mode** over the console, its origin the tower, always marked; the key is a console action Help lists and clashes with no console key (`+`, `=`, `-`, `O` are taken) | D-57, D-25, D-26; AX-H | `TestTheConsoleOpensThePropagationModeFromTheTower`, `TestTheConsoleKeysDoNotClash` |
-| FR-2.2 *(O1)* | **An "Audio output device" Broadcaster-tab Setting** chooses the device the broadcast plays on, so it can differ from the screen reader's; Help and the Broadcaster tab say that, until one is chosen, the broadcast shares the default device with screen-reader speech | D-80; N-1 | `TestTheBroadcastPlaysOnTheChosenDevice`, `TestTheSharedDeviceIsSaid` |
+| FR-2.2 *(O1)* | **Help and the Broadcaster tab say plainly** that the broadcast plays on the computer's default output device, the same one a screen reader speaks on, so screen-reader speech can reach the broadcast audio. The device Setting is F-211 (D-85) | D-80, D-85; N-1 | `TestTheSharedDeviceIsSaid` |
 
 **Retired from FR-2 by ruling:** the regional Broadcaster map and its words (D-77; D-28, D-58), the readout,
 its Setting, the "My HF bands" picker, the closure notice and the console line (D-76; D-29, D-30, D-48, D-59,
@@ -207,7 +207,7 @@ without NDFD, per-dataset retention, and the dataset terms field (FR-6.1 to FR-6
 | RK-11 | **False "open":** both backgrounds read foF2 high on 2026-10-05 (GloTEC +0.4 to +0.5 MHz, climatology +0.7; B on D's bias not yet measured), so the chart could call open a band that is closed | medium | high | the dry run reports signed bias (FR-10.6); the reference circuit (D-73); every answer states its limit and age | agent |
 | RK-12 | **M1 may be unmeasurable at near-vertical distances:** WSPR spots under a few hundred kilometres are sparse, and muddied by ground wave | medium | high | the dry run checks density under the reference circuit first (FR-10.6); if too sparse, M1's reference returns as a ruling | agent |
 | RK-13 | One wrong reading (a NaN, an extreme value) poisons the whole field | low | high | go-ionomaps R-3.3 (physical ranges, no NaN or Inf out) | agent |
-| RK-14 | A blind operator's screen reader is mixed into the broadcast | medium (until FR-2.2) | high | the audio-device Setting (D-80, FR-2.2) | agent |
+| RK-14 | A blind operator's screen reader is mixed into the broadcast | medium | high | stated plainly (FR-2.2, D-85); the device Setting is F-211 | HUM LEAD (D-85) |
 
 ## Metrics of success
 
