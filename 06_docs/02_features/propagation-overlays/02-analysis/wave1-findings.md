@@ -199,3 +199,19 @@ Within budget:
 - two ITU recommendation PDFs, as documents.
 
 Reported to the HUM LEAD with these findings.
+
+## Addendum, 2026-10-06: D-RAP for disturbance absorption (D-47)
+
+A desk check of documentation only, with no data request (`spaceweather.gov/products/d-region-absorption-predictions-d-rap`).
+
+| | |
+|---|---|
+| What | "the highest frequency affected by absorption of 1 dB due to either solar X-ray flux or SEP events or a combination of both"; global, plus polar maps at 10 dB |
+| Grid | tabular values every 5° of latitude and 15° of longitude |
+| Cadence | "update continuously, driven by one-minute GOES X-ray flux data and by five-minute GOES proton flux data" |
+| Access | keyless ASCII, `services.swpc.noaa.gov/text/drap_global_frequencies.txt`; archive at NCEI |
+| Terms | none stated on the page beyond NOAA/NWS's (`weather.gov/disclaimer`): public domain, no endorsement |
+
+D-RAP covers **disturbance** absorption only (flares, solar energetic particles). Regular daytime absorption
+is not in it; it is computed from the sun's position (D-47, go-giro-data R-2.4). The fetch falls under D-39
+(NOAA: at most 6 an hour), and the file's size and format are measured in PLAN's dry run.
