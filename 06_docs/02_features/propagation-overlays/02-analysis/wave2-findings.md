@@ -114,7 +114,7 @@ so its MUF error includes that approximation.
 ## Requests (D-18)
 
 **The one-sitting run's requests (D-38):**
-- GIRO: 140, of which 2 were refused (429) and 2 were recovery probes; about 0.5 MB.
+- GIRO: 120, of which 2 were refused (429) and 2 were recovery probes; about 0.5 MB.
 - NOAA: 24 grids, 60 MB.
 - Each is logged in the scratchpad (`burst-2026-10-05/requests.jsonl`) with headers. The run's data stays outside the tree (GIRO: CC BY-NC-SA).
 
