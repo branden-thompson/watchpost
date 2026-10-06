@@ -43,12 +43,13 @@ anti-solution check before it locks.
 
 ### PS-1 (D-8)
 
-Targets are set in DISCOVER, after the KC2G baseline and the data's cadence are measured (D-8). The
-numbers proposed at intake are kept as a starting point.
+Targets are set in DISCOVER and the PLAN-time dry run (D-8). M1 and M4 are measured against WSPR via
+wspr.live, with RBN as a cross-check (D-22), and their baseline is the IRI climatology, not KC2G (D-23).
+The numbers proposed at intake are kept as a starting point.
 
 | # | Name · symbol | Type | Definition | Measured in | Proposed at intake |
 |---|---|---|---|---|---|
-| M1 | Reach agreement · R₁ | accuracy | share of scenarios (station place, served area, UTC hour, band) where the station's answer, reaches or does not, matches observed reception reports for that path within ±1 h; the set holds both outcomes | % of scenarios | the baseline of prop.kc2g.com's answers on the same scenarios, less 5 points |
+| M1 | Reach agreement · R₁ | accuracy | share of scenarios (station place, served area, UTC hour, band) where the station's answer, reaches or does not, matches observed reception reports for that path within ±1 h; the set holds both outcomes | % of scenarios | at least the IRI climatology's agreement plus N points (D-23; first proposed as KC2G's, less 5) |
 | M2 | Answerable from the station · A₁ | task (UAT) | the operator answers the reach question for N scenarios from the station alone, without leaving watchpost, correctly per M1's reference | correct of N; seconds each | 8 of 10, each within 30 s |
 | M3 | Told when it closes · L₁ | latency | from the first published update in which the operator's band stops reaching the served area, to the station saying so on screen and in words | minutes | at most 20 (one 15-minute update period and slack) |
 | G1 | Station cost · C | guardrail (issue #25) | watchpost's added CPU time and resident memory with propagation on against off, over one hour | % CPU; MB | at most 1% mean CPU; 50 MB RSS |
@@ -60,7 +61,7 @@ Anti-solution check:
 - G1: holds any solution to issue #25's resource limit.
 
 Open for DISCOVER:
-- which reception reports are the reference: WSPR, the Reverse Beacon Network or PSKReporter, each with its own terms;
+- ~~which reception reports are the reference~~: ruled, WSPR via wspr.live with RBN as a cross-check (D-22);
 - how the station learns the operator's band and served area.
 
 ### PS-2 (D-9)
