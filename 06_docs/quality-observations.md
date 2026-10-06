@@ -255,6 +255,14 @@ A family, because these are different jobs, and the existing skill is already on
    string does not distinguish them.
 3. `a2dh` has no SPIKE command — the backlog item already recorded.
 
+**From 0.18.0's REFLECT (2026-10-05), for the HUM LEAD to file upstream:**
+
+| Proposal | Why | State |
+|---|---|---|
+| The red-team brief computes its base (`git merge-base main HEAD`, checked with `git describe`) | every BUILD-exit reviewer was handed the wrong base from memory | to file |
+| Isolated agent worktrees start at the caller's branch tip and live outside the repository | five workers started at the last release; whole-tree tests scanned their copies | to file |
+| The red-team brief tells subagents to return their report as text | the harness refuses subagents' report files | to file |
+
 ---
 
 ## What UAT is for, and what it is not evidence of
@@ -3120,3 +3128,48 @@ the run count is. The fix is a pinned clock in the fixture, and the proof is a c
 minute per read — which turns the guard red every time, so the mechanism is measured rather than
 argued. 0.15.0's three CI rounds were each a real finding too; the budget line in the checklist
 ("expect Linux-only failures and treat each as a finding") earned its place a second time.
+
+## 0.18.0 and go-tuiMaps v0.2.0 — five shapes from the release's REFLECT (2026-10-05)
+
+The retrospective is `02_features/observer-maps/08-reports/reflect-report.md`. These are its shapes that
+travel.
+
+### A brief field filled from memory sends every reviewer to the wrong place
+
+All four BUILD-exit reviewers were handed v0.14.2 as the release's base, not its fork point, so three
+releases' history was in their scope. One of them noticed. **The tell:** a field of a dispatch brief
+the author typed, which the tree could have computed. **The rule:** the brief's base is
+`git merge-base main HEAD`, checked with `git describe`, and printed into the brief by the command
+that builds it.
+
+### Each side tested, the wire between them not
+
+D-98's times were computed by the app (tested) and drawn per step by the window (tested). The window
+dropped them in between, from W10 on, and nothing failed for weeks. The false all-clear while alerts
+loaded was the same shape: the description was right for a landed feed, and nothing asked about one
+that had not landed. **The tell:** a ruling whose behaviour crosses a package boundary, held by two
+unit tests and no test through the composition. **The rule:** such a ruling gets one assertion that
+drives both sides together - the composition root, or the PTY journey on the real binary.
+
+### A question's facts become the ruling's facts
+
+D-245's question said reduce motion forces playback off; the ruling repeated it, and watchpost had
+no reduce motion at all (D-255). **The tell:** a clause in a question stating what the code does,
+with no `file:line` the asker read that turn. **The rule:** every such clause cites its line, or it is
+not asked.
+
+### A gate that cannot fail on nothing is not a gate
+
+Three at once (BUILD-exit red team CQ-9): the docs lane passed an unchanged tree; a `-run` pattern
+could select no test and `go test` said ok; `test-say` skipped itself green on a platform without its
+voice. **The tell:** a gate whose green you have never seen turn red. **The rule:** a gate is proven
+by a watched failure, and its empty case fails closed - now pinned by `TestLaneRefusesAnEmptyChange`
+and `TestEveryRunSelectorSelectsATest`.
+
+### An isolated worker does not inherit the caller's branch, and lives where the caller's tests look
+
+Five parallel agents in isolated worktrees: each started at `origin/main` (the last release), not
+the branch tip, and had to notice and reset; and the worktrees sat under the repository, where the
+main tree's whole-tree tests (`TestOnlyMastercontrolWritesTheBand`) scanned their copies. **The rule:**
+an isolated worker's first act is to verify its base against the caller's tip; worktrees are removed
+before any whole-tree run in the main tree.

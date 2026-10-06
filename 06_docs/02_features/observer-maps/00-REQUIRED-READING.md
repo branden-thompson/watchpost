@@ -20,7 +20,7 @@ be passed over in a new session."*
 | | |
 |---|---|
 | Branch | `feature/map-drawing` → squash-merged `release/v0.18.0` at SHIP (D-2) |
-| Phase | **BUILD exit** since 2026-10-05: red team round 1 (`08-reports/red-team-build.md`), rulings D-250 to D-260; fixes that change no behaviour, UI or API land under the 2026-10-03 clearance, the rest are the HUM LEAD's. Then VALIDATE (M5 and M6 measured there, D-251) and SHIP. UAT is **closed** (D-239, 2026-10-03). **go-tuiMaps v0.2.0 is released and pinned** in `go.mod` (D-243), with go 1.25.13. Update this row at every phase transition |
+| Phase | **SHIPPED** 2026-10-05: watchpost **v0.18.0** released (PR #26, `31038ebf`, tag `v0.18.0`, closes #22) on **go-tuiMaps v0.2.0** (D-243). BUILD exit (D-264), REVIEW (D-279) and VALIDATE (D-282) approved; **REFLECT** is `08-reports/reflect-report.md` - read it before 0.19.0, whose order D-256 sets (accessibility first). UAT closed (D-239). |
 | Brief | `01-objectives/project-brief.md` — APPROVED (D-17); it is the body of issue #22 (D-19) |
 | Problem & metrics | `01-objectives/problem-statement.md` — M1, M1b, M2–M5 primary, M6 secondary (D-18, D-36), anti-solution hardened |
 | Rulings | `02-analysis/rulings.md` — **every ruling lands here the moment it is made** |
