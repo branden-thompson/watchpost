@@ -46,6 +46,24 @@ The ionosonde values are the sounding nearest 01:55Z.
 - **Not a verdict.** n = 2, one hour, night, one region. Both values sit above the published near-station target (about 0.5 MHz, wave 1).
 - Wave 2 continues: five stations a day across latitudes, each over a 24-hour window, paired with five GloTEC files spread over the day. That is about 25 pairs a day within D-18. NOAA's page states no accuracy for NmF2, hmF2 or foF2, and no retention for the product directory.
 
+## Against the baseline: climatology at the same stations
+
+PyIRI 0.0.4 (MIT; the release Python 3.9 installs), CCIR coefficients, `IRI_density_1day` for
+2026-10-06 01:55Z, F10.7 = 103 (NOAA's 2026-10-05 22:00 reading):
+
+| Station | Ionosonde foF2 | GloTEC foF2 | Climatology foF2 | Ionosonde MUF(3000) | GloTEC MUF(3000) | Climatology MUF(3000) |
+|---|---|---|---|---|---|---|
+| PQ052 Pruhonice | 3.10 | 3.74 | **3.78** | 8.61 | 10.26 | **10.30** |
+| JR055 Juliusruh | 2.28 | 3.39 | **3.41** | 6.28 | 9.32 | **9.26** |
+
+**At both stations GloTEC is the climatology to within 0.06 MHz.** This is in cells NOAA marks as best
+covered (`quality_flag` 5). Here, path D adds nothing over the IRI background that D-23 makes the baseline
+to beat, and both miss the measured ionosphere by 0.6-1.1 MHz.
+- **Still n = 2, one hour, one region, night.**
+- It fits GloTEC's design: GNSS total electron content constrains the column, not the F2 peak, and the filter relaxes to IRI (Chou et al. 2023).
+- This weighs against path D, and toward measurements of the peak itself: ionosondes (path B), or INGV's measured Europe map where it applies.
+- Wave 2 continues: day and night, more latitudes, the three-way comparison at every pair.
+
 ## Requests (D-18)
 
 | UTC | Source | Request | Result |
@@ -59,5 +77,5 @@ The ionosonde values are the sounding nearest 01:55Z.
 | 02:32:08Z | GIRO | FastChar JR055 01:30-02:30 | 200, 1,907 B |
 
 Today's count, UTC 2026-10-06:
-- **NOAA SWPC 4 of 5**: 3 by the wave-1 sources survey, 1 here.
+- **NOAA SWPC 5 of 5**: 3 by the wave-1 sources survey, 2 here (GloTEC 01:55Z; `json/f107_cm_flux.json` at 04:16:22Z, 22,838 B).
 - **GIRO 5 of 5** data requests (two POSTs, three FastChar), plus two reads of the form page.
