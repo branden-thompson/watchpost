@@ -34,6 +34,6 @@ one** (0.18.0 D-11).
 1. **MUF first, then accessibility (D-4)**, which amends 0.18.0 D-256. MUF's own words ship with the layer (M5b, D-9).
 2. **The reference implementation has no licence.** go-giro-data reimplements from the published science; nothing is copied from `arodland/prop` (brief C-5).
 3. **Weather modes are never wider than the place's region** (0.18.0 D-8, D-28). Only the **Propagation mode** has its own world bound (D-21). The Broadcaster's own map (F-174) is regional, with a propagation readout, not a field (D-28 of this release).
-4. **Live probes are budgeted.** GIRO returned 429 on its first probe; Open-Meteo is never probed for research.
+4. **Live requests follow the feature's throttle (D-39):** GIRO bursts of at most 40 an hour, at most 2 a minute sustained, a 429 backs off 60 s doubling to 15 minutes; NOAA at most 6 grids an hour. GIRO's measured limit is a bucket of about 90 refilling at about 3 a minute (D-38). Open-Meteo is never probed for research; no kc2g.com request until asked.
 5. **Rulings one at a time**, with evidence (`file:line` for every claim about the code, REFLECT L3), options, a recommendation and the strongest counter-argument, recorded verbatim.
 6. **No code in PLAN** (0.18.0 D-13).

@@ -111,6 +111,47 @@ so its MUF error includes that approximation.
   - autoscaled soundings (their own error, typically 0.1-0.5 MHz);
   - stations unevenly spread (28 with pairs).
 
+## Paths scored leave-one-station-out (offline, no new requests)
+
+Prototypes in the scratchpad (`loo.py`, `loo_hybrid.py`), on the 566 pairs above:
+- for each hour, each station is held out in turn;
+- the residual (ionosonde minus background) is predicted at it from the other stations that hour, by a Gaussian process with an exponential kernel in great-circle distance (positive definite on the sphere, Gneiting 2013);
+- background plus prediction is scored against the held-out reading.
+
+There is no effective-sunspot fit, no per-station time smoothing and no confidence weighting. These are
+the simplest versions of each path.
+
+| Path | foF2 RMS, all (n = 566) | 0-500 km to the nearest station (143) | 500-1000 km (69) | 1000-2000 km (130) | > 2000 km (224) |
+|---|---|---|---|---|---|
+| Climatology (D-23's baseline) | 1.38 | 0.76 | 1.47 | 1.45 | 1.61 |
+| **D** — GloTEC alone | 1.14 | 0.63 | 1.19 | 1.08 | 1.38 |
+| **B** — stations on a climatology background | 1.12-1.17 | **0.38** | 0.78 | 1.25 | 1.46 |
+| **B on D** — stations on a GloTEC background | **1.00** | **0.37** | **0.71** | **1.06** | **1.28** |
+
+Kernel length 500-4000 km and noise 0.05-0.2 change these by at most 0.05; the distance rows use
+1000 km and 0.2.
+
+**What this says:**
+- **B on D is best at every distance.** Near a station it reaches the literature's target (about 0.5 MHz) with room to spare. Far from stations it inherits GloTEC's advantage over climatology.
+- **B alone wins only near stations**; beyond 1000 km climatology is a worse background than GloTEC.
+- **D alone** is 17% better than climatology, but never near the target.
+
+**Costs, per copy, under D-39:** about 38 GIRO requests and one 2.5 MB NOAA grid an hour. The
+computation is about 38 stations a GP solve an hour, trivial (G-G1).
+
+**Terms:**
+- GIRO readings are CC BY-NC-SA; a computed field is likely a "substantially derivative product", which GIRO's rules leave unrestricted (OQ-G2, to be ruled).
+- GloTEC is public domain.
+
+**Limits:**
+- one day;
+- one F10.7 value;
+- no tuning;
+- autoscaled soundings;
+- 28 stations, mostly Europe, the Americas and Asia.
+
+A second day, or a week, would show whether the order holds.
+
 ## Requests (D-18)
 
 **The one-sitting run's requests (D-38):**
