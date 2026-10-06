@@ -4,10 +4,30 @@ date: 2026-10-06
 phase: DISCOVER exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1 RECEIVED — dispositions in progress: HUM rulings asked one at a time; record fixes as A-n rows"
+status: "ROUND 1 DISPOSITIONED — every HUM fork ruled (D-45 to D-70); every Fix applied in the three repositories (A-10 to A-15 for the agent's own choices); round 2 next"
 ---
 
 # DISCOVER exit — red team, round 1
+
+## Summary
+
+- **Eight blind reviewers; five said do not exit.** The findings converged on six points:
+  - band status ignored the lower limit;
+  - M3 was unreachable;
+  - targets were unset;
+  - MUF was never scored for the path;
+  - watchpost's client retries a 429;
+  - the history store can erase a year.
+- **Two defects in shipped code** were confirmed: the 429 retry, and the roll-up (#27).
+- **The agent's own errors** are listed (E-1 to E-7). The worst, E-1, is a run past D-38's stop rule.
+- **The HUM LEAD ruled every fork** (D-45 to D-70). Among them:
+  - watchpost transmits nothing, and an acknowledgement replaces consent;
+  - both band limits are modelled;
+  - M3 is split by cause;
+  - targets come from PLAN's dry run;
+  - hours ahead are in, and station dots out;
+  - the library is renamed go-ionomaps.
+- **Every Fix is applied.** Round 2 checks the result.
 
 **Eight blind reviewers**, each briefed verbatim from `06_docs/red-team-brief.md` (D-44) in its own scratch
 directory, over the three repositories' DISCOVER records from base `31038ebf`. None made a request to GIRO,

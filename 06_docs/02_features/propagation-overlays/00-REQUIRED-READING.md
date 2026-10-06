@@ -23,9 +23,12 @@ one** (0.18.0 D-11).
 | Brief | `01-objectives/project-brief.md`, APPROVED (D-16) |
 | Problems and metrics | `01-objectives/problem-statement.md`: PS-1 (the Broadcaster operator), PS-2 (the Observer ham), LOCKED (D-7); M1-M5b and G1 (D-8, D-9), targets set in DISCOVER |
 | Rulings | `02-analysis/rulings.md`: every ruling lands here the moment it is made; minor items are A-n rows, batched for veto (D-13) |
+| Requirements | `01-objectives/requirements.md` — wins on any conflict once approved at the DISCOVER gate; opens with "What the listener sees" |
+| Findings | `02-analysis/wave1-findings.md` (desk surveys), `02-analysis/wave2-findings.md` (measurements; the path's evidence is in go-ionomaps `02-analysis/evidence/`) |
+| Red team | `08-reports/red-team-discover.md` — round 1 and its dispositions |
 | Research | `00-research/rcc-muf-overlays.md` (0.18.0 D-238) |
-| go-ionomaps (formerly go-giro-data, D-56) | `github.com/branden-thompson/go-ionomaps`, public, MIT (D-2); branch `feature/discover`; its brief and PS-G in `06_docs/02_features/go-ionomaps/01-objectives/` (local checkout `../go-ionomaps`) |
-| go-tuiMaps v0.3.0 | paired release (D-3); branch `feature/propagation-fields` (A-7); HR-1..HR-5 ruled (D-32 to D-36), its log `06_docs/02_features/propagation-fields/02-analysis/rulings.md`; its brief is written in DISCOVER |
+| go-ionomaps (formerly go-giro-data, D-56) | `github.com/branden-thompson/go-ionomaps`, public, MIT (D-2); branch `feature/discover`; its brief, PS-G and requirements in `06_docs/02_features/go-ionomaps/01-objectives/` (local checkout `../go-ionomaps`) |
+| go-tuiMaps v0.3.0 | paired release (D-3); branch `feature/propagation-fields` (A-7); HR-1..HR-5 ruled (D-32 to D-36), its log `06_docs/02_features/propagation-fields/02-analysis/rulings.md`; its brief APPROVED (its D-8) |
 | Previous release | 0.18.0, shipped; its REFLECT is `../observer-maps/08-reports/reflect-report.md` |
 | Follow-ups | `06_docs/follow-ups.md` only |
 

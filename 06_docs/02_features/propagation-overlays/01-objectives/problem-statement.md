@@ -58,11 +58,14 @@ Anti-solution check:
 - M1: a constant answer fails on the mixed set, and so does a well-drawn map with wrong numbers.
 - M2: a link out fails ("without leaving"). A spoken line passes as well as a map, so the metric does not prescribe a map.
 - M3: it measures whether the operator learns, which is PS-1's last clause.
-- G1: holds any solution to issue #25's resource limit.
+- G1: holds any solution to issue #25's resource limit; measured over at least 48 hours, with downloads a day (D-49).
 
-Open for DISCOVER:
-- ~~which reception reports are the reference~~: ruled, WSPR via wspr.live with RBN as a cross-check (D-22);
-- how the station learns the operator's band and served area.
+Answered in DISCOVER:
+- the reference: WSPR via wspr.live, with RBN as a cross-check (D-22);
+- the operator's bands: the "My HF bands" picker, 80 m and 40 m by default (D-30); the served area: the configured tower and service radius (`config.Broadcaster`; D-28).
+
+Note: watchpost transmits nothing; the Broadcaster makes audio on the computer, and any transmission is the
+operator's, under the laws where they are (D-45, D-46).
 
 ### PS-2 (D-9)
 

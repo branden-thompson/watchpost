@@ -9,6 +9,17 @@ status: "COMPLETE — all four wave-1 surveys recorded; one budget breach (GitHu
 
 # Wave 1 findings
 
+## Summary
+
+- **The map library can't yet draw a global MUF map** a reader can read: fields stop at the coast, a field of the host's own kind gets no colour, labels and words carry no units, and there is no day/night line. Two of these were promises the library made and never built. All are now go-tuiMaps v0.3.0's (D-32 to D-36).
+- **Outside the US, watchpost shows no map and no words**, and it knows no operator's HF band; "band" already names the console's notice strips. Hence the Propagation mode with its own bound (D-21) and the "My HF bands" picker (D-30).
+- **No openly licensed, global, ionosonde-driven MUF map exists.** INGV's Europe map is CC BY 4.0, and NOAA's GloTEC is public domain but publishes no MUF. PS-G was amended to fit (D-19).
+- **The method is published** end to end. NASA's PyIRI (MIT) is the reference to port. IRI's own Fortran may not be redistributed.
+- **The history store** opens only with NDFD and applies one retention to every dataset (fixed in FR-6).
+- **One budget breach** (about 35 GitHub API calls) and one compute estimate about ten times low are recorded below.
+
+## How it was done
+
 Four read-only surveys (D-18):
 - sources and their terms, with `giro.uml.edu` added at the HUM LEAD's request;
 - the building blocks' licences and the published method;
@@ -178,7 +189,7 @@ The pipeline is published end to end, without `arodland/prop`.
 - The peak maps need about 1,400 multiply-adds per grid point and hour (foF2 988 coefficients, M(3000)F2 441), not IRI's full height profile.
 - A 2° globe is 16,471 points; 1° is 65,341.
 - **Estimate, not measured:**
-  - a whole day at 1° is about 2.4×10⁸ multiply-adds, under a second on one core;
+  - a whole day at 1° is about 2.2×10⁹ multiply-adds (65,341 points × 24 hours × about 1,429); **corrected** from 2.4×10⁸, about ten times low (red team DQ-F13). The earlier "under a second on one core" rested on the wrong figure and is withdrawn; the cost is measured in PLAN's dry run (G-G1);
   - under 50 MB at 2° in float32;
   - a spatial fit over 40-100 stations is trivial (n³ ≈ 10⁶).
 - Suggested default: 2° × 24 h, 1° as an option, recomputed only on new data (15 minutes).

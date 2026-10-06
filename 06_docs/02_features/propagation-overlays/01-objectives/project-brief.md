@@ -124,7 +124,7 @@ list, and v0.3.0's own brief decides how.
 | # | Need | Why | From |
 |---|---|---|---|
 | **HR-1** | A field that continues over water, settable by the host | a world MUF field otherwise shows land only | research gap 1; `internal/render/frame.go:92` has `FieldsOverWater` with no public setter |
-| **HR-2** | A fill and legend for a host-defined field: a host colour ramp through `CheckRamp`, or `muf` and `fof2` presets | borrowing the temperature preset mislabels the legend and `Describe` | research gap 2 (`facts.go:186`) |
+| **HR-2** | A fill and legend for a host-defined field: a host colour ramp through `CheckRamp`, or `muf` and `fof2` presets | borrowing the temperature preset mislabels the legend and `Describe` | research gap 2 (`facts.go:188-207`, corrected by wave 1) |
 | **HR-3** | Contour labels that carry a unit (MHz) | "12" alone is not an answer | research gap 3 |
 | **HR-4** | A day/night terminator (candidate) | the ionosphere follows the sun | research gap 4 |
 | **HR-5** | Station points coloured by value (candidate) | measured values beside the modelled field | research gap 5 |
@@ -150,8 +150,8 @@ and when, as 0.18.0's D-31 table did.
 ## Metrics of Success — RULED (D-8, D-9)
 
 Normative in `problem-statement.md`: M1-M3 (PS-1), M4, M5, M5b (PS-2), and G1, shared. They are not
-restated here, so there is one copy. Targets are set in DISCOVER, after the KC2G baseline and the data's
-cadence are measured.
+restated here, so there is one copy. Targets are set from PLAN's dry run, each by its own ruling (D-49); M1
+and M4's baseline is the IRI climatology, not KC2G (D-23).
 
 ## Technical Constraints
 
@@ -168,7 +168,7 @@ needs a ruling amending D-8 and D-28, or an answer that does not need one (words
 has no public setter. HR-1.
 
 ### C-3 — No fill for a host-defined field
-`classInk` returns 0 for preset 0, and the legend has no colours (research, `facts.go:186`). The presets
+`classInk` returns 0 for preset 0, and the legend has no colours (research; the code is `facts.go:188-207`, corrected by wave 1). The presets
 are fixed (`internal/colour/preset.go`). HR-2.
 
 ### C-4 — The Broadcaster has no map
@@ -215,7 +215,7 @@ recorded (0.18.0 D-224, D-226). Whether MUF and eSSN are stored is a DISCOVER ru
 1. The published sources and their terms: KC2G, GIRO (FastChar, DIDBase), Australia's Space Weather Services, NOAA SWPC, others. This also tests PS-G's claim (D-11).
 2. Path A / B / C for go-ionomaps, with cost (G-G1), fidelity (G-M3) and the licence of each building block (IRI, PyIRI).
 3. The reference reception reports for M1 and M4: WSPR, the Reverse Beacon Network, PSKReporter. Their access, terms and noise.
-4. The KC2G baseline for M1 and M4, and the data's real cadence, which together set every target (D-8, D-9).
+4. The baseline for M1 and M4, and the data's real cadence, which together set every target (D-8, D-9; since ruled: the IRI climatology, D-23, and targets from PLAN's dry run, D-49).
 5. The view: C-1's bound against a global field. Words, a table, a wider frame, or a propagation view of its own.
 6. PS-1's shape: the Broadcaster's map (F-174) or a smaller answer; how the band and served area are known.
 7. go-tuiMaps v0.3.0's list (HR-1 to HR-5) and its brief.
@@ -229,7 +229,7 @@ recorded (0.18.0 D-224, D-226). Whether MUF and eSSN are stored is a DISCOVER ru
 
 **Risk signals**
 - **RK-1:** the reference has no licence (C-5). A reimplementation must be traceable to published sources, not to its code.
-- **RK-2:** the data's terms (CC BY-NC-SA) and rate limits (C-6). The NC term binds whoever redistributes.
+- **RK-2:** the data's terms (CC BY-NC-SA) and rate limits (C-6). GIRO offers access "only for educational and non-commercial research purposes", which binds every copy that fetches, not only whoever redistributes (corrected after the red team, IS-5).
 - **RK-3:** the validation burden of path C (G-M3). The fit can grade itself unless readings are held out.
 - **RK-4:** compute cost on a terminal app (issue #25, G1, G-G1).
 - **RK-5:** three paired releases at SEV-0. The ceremony costs time (0.18.0 REFLECT on minor items, now D-13).

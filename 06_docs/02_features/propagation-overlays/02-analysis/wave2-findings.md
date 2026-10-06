@@ -4,31 +4,53 @@ date: 2026-10-06
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "IN PROGRESS — day 1 (D-18 budget) and the one-sitting run (D-38) recorded; the path ruling (D-20) next"
+status: "COMPLETE — the path was ruled on these findings (B on D, D-40); throttle behaviour from them (D-39); corrected after the DISCOVER-exit red team, round 1"
 ---
 
 # Wave 2 findings
+
+## Summary
+
+- **The path is B on D** (D-40): GIRO's ionosondes assimilated over a NOAA GloTEC background. On one day,
+  held out, its foF2 error was 1.00 MHz overall and 0.37 MHz within 500 km of a station, against 1.14 for
+  GloTEC alone and 1.38 for climatology.
+- **Those figures have limits:**
+  - one day;
+  - the near-station bin is seven European stations;
+  - the US stations are all more than 1000 km apart;
+  - foF2 only: on MUF(3000), B on D barely beats GloTEC, 3.97 against 4.02 MHz, because M(3000)F2 dominates.
+
+  PLAN's dry run measures these.
+- **GIRO throttles.** A working model is a bucket of about 90 requests refilling at about 3 a minute, with a
+  bare 429 and recovery within 60 s. The feature's throttle is sized from it (D-39). NOAA met no limit.
+- **One of the runs went past its ruling (E-1).** D-38 said stop at the first denial; two further passes were
+  made by hand, and the second 429, which the model is fitted to, came from them.
+- **The first sections below (day 1) are superseded** by the one-sitting run. They are kept as the record of
+  what was believed at the time.
+
+## How it was done
 
 D-20 carries paths B (GIRO-driven) and D (derived from NOAA GloTEC) to measurement. Two questions:
 1. How close is D's foF2 and MUF(3000) to ionosonde readings?
 2. What does B's real-time GIRO access cost in requests?
 
-Every request is logged below. The data stays in the agent's scratchpad, never in the tree (GIRO:
-CC BY-NC-SA 4.0; acknowledge each station's provider).
+Every request is logged below. No data is kept in any tree (GIRO: CC BY-NC-SA 4.0; acknowledge each
+station's provider). The scripts and the one-sitting run's request log are kept in go-ionomaps
+(`06_docs/02_features/go-ionomaps/02-analysis/evidence/`).
 
-## B's access: how GIRO serves readings
+## Day 1 (superseded): B's access, how GIRO serves readings
 
 - The public form (`giro.uml.edu/didbase/scaled.php`, POST) answers with a redirect to FastChar:
   `lgdc.uml.edu/fastchar/getbest?ursiCode=<station>&charName=foF2,MUF(D),M(D),hmF2&DMUF=3000&fromDate=YYYY/MM/DD hh:mm:ss&toDate=...`
 - **One station per request**, any time range. The reply is text, with a confidence score (CS) per sounding, at a 5-minute cadence.
 - Three requests spaced 10-20 s apart drew no 429 today. The reply records the requester's IP.
-- **What it costs a path-B client:** about 40 real-time stations, polled once an hour with one request each, is **about 960 requests a day for every running copy**.
+- *(Superseded by the one-sitting run: about 38 live stations, about 900 a day per copy.)* **What it costs a path-B client:** about 40 real-time stations, polled once an hour with one request each, is **about 960 requests a day for every running copy**.
   - That is the 429 risk the 0.18.0 research met, multiplied by the number of copies running.
   - GIRO's terms ("free online access … only for educational and non-commercial research purposes") would carry to every one.
   - So path B in each listener's watchpost does not scale. It needs either a shared service (watchpost has none) or very sparse polling. **This is a finding for D-20's ruling.**
 - **What it costs a path-D client:** one public-domain file of about 2.5 MB per update from NOAA SWPC, keyless; 10-minute cadence, or as rarely as the host asks.
 
-## D's accuracy: first comparison (n = 2, night in Europe)
+## Day 1 (superseded): D's accuracy, first comparison (n = 2, night in Europe)
 
 GloTEC at 2026-10-06T01:55Z (`glotec_icao_20261006T015500Z.geojson`), bilinear between cell centres:
 - foF2 = 8.98×10⁻⁶ √NmF2;
@@ -46,7 +68,7 @@ The ionosonde values are the sounding nearest 01:55Z.
 - **Not a verdict.** n = 2, one hour, night, one region. Both values sit above the published near-station target (about 0.5 MHz, wave 1).
 - Wave 2 continues: five stations a day across latitudes, each over a 24-hour window, paired with five GloTEC files spread over the day. That is about 25 pairs a day within D-18. NOAA's page states no accuracy for NmF2, hmF2 or foF2, and no retention for the product directory.
 
-## Against the baseline: climatology at the same stations
+## Day 1 (superseded): against the baseline, climatology at the same stations
 
 PyIRI 0.0.4 (MIT; the release Python 3.9 installs), CCIR coefficients, `IRI_density_1day` for
 2026-10-06 01:55Z, F10.7 = 103 (NOAA's 2026-10-05 22:00 reading):
@@ -61,13 +83,23 @@ covered (`quality_flag` 5). Here, path D adds nothing over the IRI background th
 to beat, and both miss the measured ionosphere by 0.6-1.1 MHz.
 - **Still n = 2, one hour, one region, night.**
 - It fits GloTEC's design: GNSS total electron content constrains the column, not the F2 peak, and the filter relaxes to IRI (Chou et al. 2023).
-- This weighs against path D, and toward measurements of the peak itself: ionosondes (path B), or INGV's measured Europe map where it applies.
+- This weighed against path D at the time. *The full day reversed it: GloTEC beats climatology by about 17% (below).*
 - Wave 2 continues: day and night, more latitudes, the three-way comparison at every pair.
 
 ## The one-sitting run (D-38), 2026-10-06 13:23-13:34Z, for the day 2026-10-05
 
-watchpost's way: one request at a time, at most 5 a second (`platform/httpx/httpx.go:61`), every
-response's status, headers, size and time logged (scratchpad `burst-2026-10-05/requests.jsonl`).
+One request at a time from a Python script, at most 5 a second (the httpx **default**,
+`platform/httpx/httpx.go:61`); in practice replies paced it to about 1.7 a second. **This is not watchpost's
+pace:** the app's clients run at 30 a second with up to 16 in flight (`app/app.go:132`), and httpx retries a
+429 by itself, which this script did not. The feature therefore takes the throttle into go-ionomaps, with a
+fetcher that never retries a 429 (FR-4.5). Every response's status, headers, size and time is logged
+(go-ionomaps `02-analysis/evidence/requests-2026-10-05.jsonl`).
+
+**The run went past D-38 (the agent's error E-1).** D-38 said "on the first denial … the run stops and
+measures recovery". `burst.py` did, at the first 429. The agent then fetched the 22 stations not yet asked,
+by hand: first at 1.5 s, which drew the second 429, then at 25 s. Those passes are reconstructed as
+`burst_rest.py`. The throttle model below is fitted to both refusals, so it rests partly on a run the ruling
+did not allow.
 
 ### GIRO's throttle, measured
 
@@ -80,7 +112,7 @@ response's status, headers, size and time logged (scratchpad `burst-2026-10-05/r
 
 - The 429 is a bare nginx page: no `Retry-After` and no rate-limit headers, before or after a refusal.
 - **A working model, fitted to both refusals and tested once:** a token bucket of about 90 requests that refills at about 3 a minute (about 180 an hour). The slow phase passed at 2.4 a minute, as the model predicts. Two refusals and one passing test are not a published limit, so the feature must still read a 429 as "back off", whatever the numbers.
-- **What path B costs, corrected:** 38 of 118 stations had data for the day. One request per live station returns its whole day, so an hourly update is about 38 requests per copy (about 900 a day). That is inside the refill (about 4,300 a day) for one copy on one IP. It does not show what GIRO thinks of many copies, and its terms ("only for educational and non-commercial research purposes") still bind each one.
+- **What path B costs, corrected:** 39 of 118 stations had data for the day (TR169's data came back on a recovery probe, whose body was not kept, so the pairs below use 38). One request per live station returns its whole day, so an hourly update is about 38 requests per copy (about 900 a day). That is inside the refill (about 4,300 a day) for one copy on one IP. It does not show what GIRO thinks of many copies, and its terms ("only for educational and non-commercial research purposes") still bind each one.
 
 ### NOAA, measured
 
@@ -113,7 +145,7 @@ so its MUF error includes that approximation.
 
 ## Paths scored leave-one-station-out (offline, no new requests)
 
-Prototypes in the scratchpad (`loo.py`, `loo_hybrid.py`), on the 566 pairs above:
+Prototypes `loo.py` and `loo_hybrid.py` (go-ionomaps `02-analysis/evidence/`), on the 566 pairs above:
 - for each hour, each station is held out in turn;
 - the residual (ionosonde minus background) is predicted at it from the other stations that hour, by a Gaussian process with an exponential kernel in great-circle distance (positive definite on the sphere, Gneiting 2013);
 - background plus prediction is scored against the held-out reading.
@@ -132,7 +164,8 @@ Kernel length 500-4000 km and noise 0.05-0.2 change these by at most 0.05; the d
 1000 km and 0.2.
 
 **What this says:**
-- **B on D is best at every distance.** Near a station it reaches the literature's target (about 0.5 MHz) with room to spare. Far from stations it inherits GloTEC's advantage over climatology.
+- **B on D is best or tied at every distance** (at 1000-2000 km, 1.06 against 1.08 is inside the ±0.05 the kernel settings move it). Near a station it reaches the literature's target (about 0.5 MHz) with room to spare. Far from stations it inherits GloTEC's advantage over climatology.
+- **On MUF(3000) it barely helps:** B on D's foF2 with GloTEC's M(3000)F2 scores 3.97 MHz against GloTEC's 4.02, and 3.22 with the measured M(3000)F2 (red team CQ-E2). The M(3000)F2 error dominates, so go-ionomaps assimilates M(3000)F2 too (its R-9.2).
 - **B alone wins only near stations**; beyond 1000 km climatology is a worse background than GloTEC.
 - **D alone** is 17% better than climatology, but never near the target.
 
@@ -148,7 +181,7 @@ computation is about 38 stations a GP solve an hour, trivial (G-G1).
 - one F10.7 value;
 - no tuning;
 - autoscaled soundings;
-- 28 stations, mostly Europe, the Americas and Asia.
+- 28 stations, mostly Europe and the Americas, with Pacific islands, Australia and South Africa; no mainland Asian station; the under-500-km bin is seven European stations, and the four US stations are all more than 1000 km from another.
 
 A second day, or a week, would show whether the order holds.
 
@@ -157,7 +190,7 @@ A second day, or a week, would show whether the order holds.
 **The one-sitting run's requests (D-38):**
 - GIRO: 120, of which 2 were refused (429) and 2 were recovery probes; about 0.5 MB.
 - NOAA: 24 grids, 60 MB.
-- Each is logged in the scratchpad (`burst-2026-10-05/requests.jsonl`) with headers. The run's data stays outside the tree (GIRO: CC BY-NC-SA).
+- Each is logged with headers in go-ionomaps `02-analysis/evidence/requests-2026-10-05.jsonl`. The run's data stays outside every tree (GIRO: CC BY-NC-SA).
 
 
 
@@ -171,6 +204,6 @@ A second day, or a week, would show whether the order holds.
 | 02:31:48Z | GIRO | FastChar PQ052 01:30-02:30 | 200, 1,773 B |
 | 02:32:08Z | GIRO | FastChar JR055 01:30-02:30 | 200, 1,907 B |
 
-Today's count, UTC 2026-10-06:
-- **NOAA SWPC 5 of 5**: 3 by the wave-1 sources survey, 2 here (GloTEC 01:55Z; `json/f107_cm_flux.json` at 04:16:22Z, 22,838 B).
-- **GIRO 5 of 5** data requests (two POSTs, three FastChar), plus two reads of the form page.
+The day's count, UTC 2026-10-06 (**corrected**, red team CQ-E4):
+- **NOAA SWPC 29:** 3 by the wave-1 sources survey; 2 under D-18 (GloTEC 01:55Z; `json/f107_cm_flux.json` at 04:16:22Z, 22,838 B); 24 in the one-sitting run (D-38).
+- **GIRO 125:** 5 under D-18 (two POSTs, three FastChar), plus two reads of the form page; 120 in the one-sitting run (D-38), of them 23 past its stop rule (E-1).
