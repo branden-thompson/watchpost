@@ -41,10 +41,10 @@ The ionosonde values are the sounding nearest 01:55Z.
 | PQ052 Pruhonice (50.0N 14.6E), 01:55Z, CS 90 | 3.10 | 3.74 | **+0.64 (+21%)** | 8.61 | 10.26 | **+1.65 (+19%)** |
 | JR055 Juliusruh (54.6N 13.4E), 01:53Z, CS 90 | 2.28 | 3.39 | **+1.11 (+49%)** | 6.28 | 9.32 | **+3.04 (+48%)** |
 
-- All four GloTEC cells around both stations carry `quality_flag` 5. Its meaning is not yet found in NOAA's documentation; it may mark background-dominated cells.
+- All four GloTEC cells around both stations carry `quality_flag` 5, **the best coverage**. NOAA: "the mean number of F-region observations in each vertical profile … rounded down to five" when larger than five (`spaceweather.gov/products/glotec`). The overestimates are in well-observed cells, so they are not a gap in coverage.
 - GloTEC's hmF2 is the same, 366 km, at both stations, against 346-348 km measured. That is a sign the F2 peak is model-led there.
 - **Not a verdict.** n = 2, one hour, night, one region. Both values sit above the published near-station target (about 0.5 MHz, wave 1).
-- Wave 2 continues: five stations a day across latitudes, each over a 24-hour window, paired with five GloTEC files spread over the day. That is about 25 pairs a day within D-18. `quality_flag` is to be read from NOAA's documentation.
+- Wave 2 continues: five stations a day across latitudes, each over a 24-hour window, paired with five GloTEC files spread over the day. That is about 25 pairs a day within D-18. NOAA's page states no accuracy for NmF2, hmF2 or foF2, and no retention for the product directory.
 
 ## Requests (D-18)
 
