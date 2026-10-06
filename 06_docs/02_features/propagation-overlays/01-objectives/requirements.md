@@ -4,7 +4,7 @@ date: 2026-10-06
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "DRAFT — for approval at the DISCOVER gate. On any conflict with the brief or the problem statement, this file wins once approved, and every change is a row in 02-analysis/rulings.md. Revised after the DISCOVER-exit red team, rounds 1 and 2 (08-reports/red-team-discover.md), and the HUM LEAD's reference-chart ruling (D-76)."
+status: "APPROVED at the DISCOVER gate (D-84), normative. On any conflict with the brief or the problem statement, this file wins once approved, and every change is a row in 02-analysis/rulings.md. Revised after the DISCOVER-exit red team, rounds 1 and 2 (08-reports/red-team-discover.md), and the HUM LEAD's reference-chart ruling (D-76)."
 ---
 
 # Requirements
@@ -79,7 +79,7 @@ planned name is a commitment PLAN may rename, never drop. A row whose instrument
 | FR-1.12 *(O1)* | The mode is a member of every closed-set window test (reachability at 80×24, memo completeness, margins, glyph survey, keys, leaving) | 0.18.0 FR-1.5 | the closed-set tests, each enumerating the mode |
 | FR-1.13 *(O1)* | **Hours ahead:** the listener steps the fields and answers up to 24 h ahead, one hour per key press (no automatic play), each forecast hour labelled a forecast with the time it was made, on screen and in words; **cut from 0.19.0 if its forecast misses D-75's floor** | D-50, D-75; AX-J | `TestTheHoursStepOnAKey`, `TestAForecastHourSaysItIsAForecast`; the forecast metric (D-75) |
 | FR-1.14 *(O1)* | **Every control in the mode is a keymap action** Help lists: choosing MUF or foF2, stepping the hour, moving between targets, finding a place, entering a frequency; the focused target is named in words; Help fits its window with them | AX-B; N-13 | `TestEveryPropagationControlIsAnAction`, `TestHelpFitsWithThePropagationKeys` |
-| FR-1.15 *(O1)* | **"Best bands now"** (D-76): for the near-vertical area around the origin (the service radius when opened from the tower) and for each target, each amateur band 160 m to 10 m is called open, above the upper limit, absorbed, disturbed, or no data, under the reference circuit (D-73), naming the limit that decided it; with **the hours today each band is expected open** (routine closures as a schedule, D-74) | D-47, D-73, D-74, D-76; AX-F | `TestBestBandsNameTheirLimit`, `TestTheDaysOpenHoursAreShown`; M1, M4 |
+| FR-1.15 *(O1)* | **"Best bands now"** (D-76): for the near-vertical area around the origin (within 400 km of the selected place, A-18; the service radius when opened from the tower) and for each target, each amateur band 160 m to 10 m is called open, above the upper limit, absorbed, disturbed, or no data, under the reference circuit (D-73), naming the limit that decided it; with **the hours today each band is expected open** (routine closures as a schedule, D-74) | D-47, D-73, D-74, D-76; AX-F | `TestBestBandsNameTheirLimit`, `TestTheDaysOpenHoursAreShown`; M1, M4 |
 | FR-1.16 *(O1)* | **"Your frequency"** (D-76): a frequency in MHz or a band name is accepted, checked and parsed locally; for this hour (or a forecast hour), the skip zone and the area reached from the origin are drawn on the map and said in words, with the limit that bounds them | D-76 | `TestYourFrequencyDrawsItsReach`, `TestYourFrequencyIsSaid`, `TestABadFrequencyIsSaidNotGuessed`; M1, M4 |
 | FR-1.17 *(O1)* | The chart's answers (best bands, your frequency, the centre) never block a keypress: they are computed off the UI goroutine, or within a per-keypress bound set in the dry run | N-8 | `TestAnswersNeverBlockTheUI` |
 

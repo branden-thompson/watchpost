@@ -1,7 +1,7 @@
 ---
 title: "0.19.0 Propagation overlays — HUM LEAD rulings"
 date: 2026-10-05
-phase: DISCOVER
+phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
 status: "LIVE — every ruling is written here the moment it is made."
@@ -102,6 +102,7 @@ here and cited from theirs.
 | D-81 | 2026-10-06 | The acknowledgement window's details (round 2, N-7, N-14) | "As recommended" | It appears the first time the Propagation mode opens, **before its first fetch**; it names what the fetch reaches (GIRO and NOAA, which learn the IP) and that MAP STATUS lists them; **Enter or Esc** closes it; the terminal cursor is placed on its first line. Refines D-46 and A-9. |
 | D-82 | 2026-10-06 | Reading order (round 2, Docs Q4) | "Listener first + glossary (Recommended)" | "What the listener sees" opens watchpost's requirements, with a short glossary; go-ionomaps' and go-tuiMaps' requirements each open with a three-line "What this gives the host". |
 | D-83 | 2026-10-06 | Response headers at run time (round 2, N-11) | "Rate headers only at run time (Recommended)" | At run time only rate-related headers are read (`Retry-After`, `X-RateLimit-*`, `RateLimit-*`), and their first sighting is logged to the diagnostics by host and header name. Full headers are kept only in measurement runs; CDN location headers (e.g. `X-Amz-Cf-Pop`) are stripped from anything committed, the committed request log included. Refines D-39. |
+| D-84 | 2026-10-06 | The DISCOVER gate: approve DISCOVER exit for watchpost 0.19.0, go-ionomaps and go-tuiMaps v0.3.0, and the three requirements files as what PLAN designs against (`08-reports/discover-report.md`, presented in full); A-6 to A-23 reported for veto | "Approve both" | **DISCOVER exits; PLAN opens**, its dry run first (FR-10.6). The three requirements files are **APPROVED** and normative. A-6 to A-23 stand (no veto). |
 
 ## Agent decisions (A-n, D-13)
 

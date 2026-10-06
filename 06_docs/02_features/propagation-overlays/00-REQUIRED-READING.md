@@ -19,7 +19,7 @@ one** (0.18.0 D-11).
 | | |
 |---|---|
 | Branch | `feature/propagation-overlays`, cut from `main` (31038ebf); squash-merged `release/0.19.0` at SHIP (D-5) |
-| Phase | **DISCOVER exit** (intake closed 2026-10-05, D-16; red team rounds 1 and 2 dispositioned) |
+| Phase | **PLAN** (DISCOVER approved 2026-10-06, D-84; `08-reports/discover-report.md`). PLAN opens with the dry run (FR-10.6), then rules each target against D-75's floors |
 | Brief | `01-objectives/project-brief.md`, APPROVED (D-16) |
 | Problems and metrics | `01-objectives/problem-statement.md`: PS-1 (the Broadcaster operator), PS-2 (the Observer ham), LOCKED (D-7); M1, M2, M4, M5, M5b and G1 (D-8, D-9; M3 retired at D-76); "open" is the reference circuit (D-73); floors set before the dry run (D-75); targets from the dry run (D-49) |
 | Rulings | `02-analysis/rulings.md`: every ruling lands here the moment it is made; minor items are A-n rows, batched for veto (D-13) |
