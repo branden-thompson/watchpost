@@ -4,7 +4,7 @@ date: 2026-10-05
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "IN PROGRESS — sections land as each wave-1 survey reports (D-18)"
+status: "COMPLETE — all four wave-1 surveys recorded; one budget breach (GitHub API) reported to the HUM LEAD"
 ---
 
 # Wave 1 findings
@@ -128,3 +128,74 @@ No GIRO data, IRTAM, BoM API, wspr.live, RBN or PSKReporter data was requested.
 - the IRI licence text;
 - whether INGV takes the shared stations' data from their owners or through LGDC;
 - ESA SWE, UKSSDC, VOACAP Online.
+
+## Building blocks: licences
+
+| Block | Licence | Port under MIT? | Ship its data under MIT? |
+|---|---|---|---|
+| **IRI-2020** (Fortran, coefficient and index files) | custom: "to use, copy, and modify" — **no right to distribute** **checked** (`irimodel.org/IRI-2020/00_iri-License.txt`) | **No** (a reimplementation from the published formulas is another matter) | No |
+| **PyIRI** (NASA/NRL, Forsythe et al. 2024) | **MIT** **checked** (GitHub metadata); computes global foF2 and M(3000)F2 for every point and hour as a few matrix products | **Yes**, keeping the notice | **Probably**, with a caveat: its CCIR/URSI tables come from CCIR/ITU and URSI, and PyIRI states no provenance for them. Its own spherical-harmonic refits are the most defensible to ship |
+| **PyIRTAM** | MIT; fetches GIRO's IRTAM coefficients at run time | Yes | No: the IRTAM coefficients are GIRO's (free tier three days late, D-19's finding) |
+| **ITU-R P.533-14, P.1239-4** | ITU copyright; recommendations are free to download; non-commercial reuse of content | The method (formulas) can be implemented; the text and tables cannot be copied | **No** for ITU-sourced tables |
+| **ITURHFProp** | ITU dedication: "free from any copyright assertions" for implementers; no LICENSE file | Likely yes | Its data files are not in the repository and fall under ITU terms |
+| **NeQuick G** | EUPL-1.2 (copyleft) | **No** | No |
+| Go implementations of IRI, NeQuick or P.533 | none found | - | - |
+
+**Consequence for D-2 (MIT, "subject to" the licence check):**
+- Port PyIRI's method and code (MIT), never IRI's Fortran.
+- Ship coefficient data only after a provenance ruling, or fetch it at run time.
+- Copy no ITU tables.
+
+## The method, from published sources (G-R8)
+
+The pipeline is published end to end, without `arodland/prop`.
+
+| Step | Primary citations |
+|---|---|
+| GIRO and autoscaling confidence | Reinisch & Galkin 2011 (doi:10.5047/eps.2011.03.001; required); Pignalberi et al. 2018 (filtering bad autoscaling, doi:10.1186/s40623-018-0952-z) |
+| Background | Forsythe et al. 2024, PyIRI (doi:10.1029/2023SW003739); ITU-R P.1239-4; Jones & Gallet 1965; Bilitza et al. 2022 (doi:10.1029/2022RG000792) |
+| Effective sunspot number | **Secan & Wilkinson 1997** (doi:10.1029/97RS01350); Brown, Bilitza & Yiğit 2017 (doi:10.1016/j.jastp.2017.08.022) |
+| Whole approach, closest prior art | **Galkin et al. 2012**, IRTAM (doi:10.1029/2011RS004952); Galkin et al. 2020, NECTAR (doi:10.1029/2020SW002463); **Pietrella et al. 2026**, effective R12 from ionosondes into IRI, MUF maps every 15 min (doi:10.1016/j.asr.2026.09.053) |
+| Assimilation on the sphere | Gneiting 2013 (valid kernels on spheres, doi:10.3150/12-BEJSP06); Jeong, Jun & Genton 2017 (doi:10.1214/17-STS620); kriging in modified-dip coordinates, Liu et al. 2023 (doi:10.3390/atmos14091399) |
+| MUF from foF2 and M(3000)F2 | ITU-R P.533-14 §3.4-3.5; Bradley & Dudeney 1973; Dudeney 1983 |
+
+**Traps the papers name:**
+- The ITU coefficients use R12 on the version-1 sunspot scale (k = 0.6), so SILSO's version 2 must be scaled.
+- foF2 is capped at R12 = 160.
+- The geomagnetic field is taken at epoch 1960, 300 km.
+- The P.533 equations were rebuilt from a garbled PDF extraction and must be checked against the PDF before coding.
+
+**Validation practice (G-M3):**
+- Leave-one-station-out scoring, with error reported against distance to the nearest station. IRTAM improves IRI only near assimilated stations (Pignalberi et al. 2021, doi:10.3390/atmos12081003).
+- Published foF2 errors:
+  - about 0.2 MHz (night) and 0.5 MHz (day) at a held-out site 685 km away (McNamara et al. 2013);
+  - 0.4-2.0 MHz in general (Gulyaeva et al. 2026);
+  - IRI's MUF(3000) off by 1-15% (Seba & Poedts 2024).
+- A starting target, to be checked against the full texts: about 0.5 MHz RMS near stations, 1-2 MHz far from them, IRI climatology as the baseline to beat.
+
+## Compute (G-G1)
+
+- The peak maps need about 1,400 multiply-adds per grid point and hour (foF2 988 coefficients, M(3000)F2 441), not IRI's full height profile.
+- A 2° globe is 16,471 points; 1° is 65,341.
+- **Estimate, not measured:**
+  - a whole day at 1° is about 2.4×10⁸ multiply-adds, under a second on one core;
+  - under 50 MB at 2° in float32;
+  - a spatial fit over 40-100 stations is trivial (n³ ≈ 10⁶).
+- Suggested default: 2° × 24 h, 1° as an option, recomputed only on new data (15 minutes).
+
+## Budget breach (D-18)
+
+The licences survey made **about 35 requests to the GitHub API** (repository searches, listings, README,
+LICENSE and CITATION reads, and parts of PyIRI's and PyIRTAM's MIT sources), against D-18's limit of 5
+per source.
+- No coefficient or data file was downloaded.
+- No `arodland/prop` file was opened.
+- No kc2g.com address was requested.
+
+Within budget:
+- OpenAlex 5;
+- Crossref 5;
+- Semantic Scholar 2 (both 429);
+- two ITU recommendation PDFs, as documents.
+
+Reported to the HUM LEAD with these findings.
