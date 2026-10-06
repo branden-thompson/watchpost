@@ -86,6 +86,7 @@ metric's instrument to run once before PLAN exit.
 | FR-6.2 *(O1)* | The history store opens whenever any recorded source is on, not only NDFD | D-31; `app/history.go:147-156` | `TestTheStoreOpensWithoutNDFD` |
 | FR-6.3 *(O1)* | Each dataset may keep its own retention; the Data tab's value is the default | D-31; `app/history.go:496-505` | `TestADatasetKeepsItsOwnRetention` |
 | FR-6.4 *(O1)* | Raw source data (GIRO readings) is never stored | D-31; GIRO terms | `TestNoRawSourceDataIsStored` |
+| FR-6.5 *(O1, first in BUILD)* | **The roll-up never erases a year (D-55, PF-F4):** a failed read of the year's roll-up refuses the write; roll-ups are split below the read cap (for example by month); each dataset has a byte bound beside its time retention; values are stored compactly, not one allocation each (PF-F5) | D-55; PF-F4, PF-F5 | `TestAFailedYearReadNeverRewritesTheYear`, `TestARollUpNeverPassesTheReadCap`, a 90-day global-grid soak |
 
 ## FR-7 — Accessibility carry-over (R-6; D-4)
 
@@ -144,7 +145,7 @@ metric's instrument to run once before PLAN exit.
 
 | # | Risk | Likelihood | Impact | Mitigation | Owner |
 |---|---|---|---|---|---|
-| RK-1 | The reference implementation has no licence; a reimplementation drifts toward its code | low | high | G-R8: every algorithm cites published work; `arodland/prop` never opened | agent |
+| RK-1 | The reference implementation has no licence; a reimplementation drifts toward its code | low | high | D-53: `arodland/prop` was read through the GitHub API in 0.18.0's research and is never opened again; no code copied; go-giro-data is written from papers and PyIRI (MIT); every exported function cites its source; a provenance table in PLAN | agent |
 | RK-2 | GIRO's terms (NC/SA) and rate limits; path B costs about 960 requests a day a copy (`wave2-findings.md`) | high (if B) | high | D-20 measures it; path D or a sparse schedule | HUM LEAD at D-20 |
 | RK-3 | The chosen field is not accurate enough (GloTEC overestimated foF2 at two stations in well-observed cells) | medium | high | wave 2's pairs; G-M3 against held-out ionosondes; M1/M4 against climatology (D-23) | agent |
 | RK-4 | Compute or memory too heavy for a terminal app | low | medium | G1, G-G1; 2° default; recompute on new data only | agent |
