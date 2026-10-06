@@ -51,7 +51,7 @@ The numbers proposed at intake are kept as a starting point.
 |---|---|---|---|---|---|
 | M1 | Reach agreement · R₁ | accuracy | share of scenarios (station place, served area, UTC hour, band) where the station's answer, reaches or does not, matches observed reception reports for that path within ±1 h; the set holds both outcomes | % of scenarios | at least the IRI climatology's agreement plus N points (D-23; first proposed as KC2G's, less 5) |
 | M2 | Answerable from the station · A₁ | task (UAT) | the operator answers the reach question for N scenarios from the station alone, without leaving watchpost, correctly per M1's reference | correct of N; seconds each | 8 of 10, each within 30 s |
-| M3 | Told when it closes · L₁ | latency | from the first published update in which the operator's band stops reaching the served area, to the station saying so on screen and in words | minutes | at most 20 (one 15-minute update period and slack) |
+| M3 | Told when it closes · L₁ (split by cause, D-48) | latency | M3a: a closure the model predicts (daytime absorption, MUF falling) is announced before it happens, with its expected time. M3b: a disturbance closure (D-RAP) is said within its target. M3c: a closure seen only in the measured field is said within its target. Each on screen and in words | minutes | M3a: before the closure; M3b: ≤ 15; M3c: ≤ 90 (D-48; first proposed as ≤ 20 for all) |
 | G1 | Station cost · C | guardrail (issue #25) | watchpost's added CPU time and resident memory with propagation on against off, over one hour | % CPU; MB | at most 1% mean CPU; 50 MB RSS |
 
 Anti-solution check:
