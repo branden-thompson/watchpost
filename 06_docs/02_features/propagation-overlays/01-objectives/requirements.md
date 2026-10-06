@@ -68,6 +68,7 @@ metric's instrument to run once before PLAN exit.
 | FR-4.2 *(O1)* | The Observer's Propagation mode fetches **nothing before it is opened**; the Broadcaster's readout is the only scheduled fetch (D-29), beside the history recorder | R-3.2; 0.18.0 D-25 | `TestThePropagationModeFetchesNothingUntilOpened` |
 | FR-4.3 *(O1)* | Every new host is listed in MAP STATUS with what it learns; a request that names the station's place says so | R-3.3; 0.18.0 D-31 | `TestMapStatusListsEveryPropagationHost`, the egress table in PLAN |
 | FR-4.4 *(O1)* | Requests go through watchpost's own client with its User-Agent; go-giro-data takes the host's fetcher | GR-5 | `TestPropagationFetchesUseTheHostsClient` |
+| FR-4.5 *(O1)* | **Throttle behaviour (D-39):** GIRO updates ask only the live stations (list refreshed at most daily), in one burst of at most 40, at most hourly, never more than 2 a minute sustained; a 429 stops the update and backs off 60 s doubling to 15 minutes, keeping the last good field with its age; NOAA newest grid only, at most 6 an hour; every response's rate headers are read | D-39; D-38 | `TestAnUpdateNeverExceedsItsBurst`, `TestA429BacksOffAndKeepsTheLastField`, `TestRetryAfterIsHonouredWhenSent` |
 
 ## FR-5 — Honesty (R-5)
 
@@ -125,7 +126,7 @@ metric's instrument to run once before PLAN exit.
 |---|---|---|---|
 | NFR-1 | **Cost (G1):** watchpost's added CPU and memory with propagation on stay within G1's target, set in DISCOVER | issue #25; D-8 | G1's measurement |
 | NFR-2 | **The library's cost (G-G1):** one update's CPU and memory, measured in go-giro-data | D-12 | G-G1 |
-| NFR-3 | **Live probes are budgeted** in every phase: at most 5 data requests a source a day unless ruled; never Open-Meteo for research; no kc2g.com request until asked | D-18 | the request log in each findings page |
+| NFR-3 | **Live probes follow the feature's throttle** in every phase (D-39, superseding D-18's 5 a day); never Open-Meteo for research; no kc2g.com request until asked | D-39 | the request log, with headers, in each findings page |
 | NFR-4 | **P10 clean** at every phase exit (`make p10`) | standing | `make p10` |
 | NFR-5 | **Both CI platforms green** before merge, the mode named (quick or full) | standing | the hosted run |
 
