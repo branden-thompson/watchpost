@@ -8,17 +8,17 @@ sev: SEV-0
 authority: HUM LEAD
 directives: FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLAN; FULL TDD; FULL INST
 branch: feature/propagation-overlays
-paired_releases: "go-giro-data (new, D-1, D-2); go-tuiMaps v0.3.0 (D-3)"
+paired_releases: "go-ionomaps (new, D-1, D-2); go-tuiMaps v0.3.0 (D-3)"
 issues: "branden-thompson/watchpost#25 (MUF), #12 (memo keys)"
 status: "APPROVED by the HUM LEAD 2026-10-05 (D-16). Problem statements LOCKED (D-7). Metrics ruled (D-8, D-9), targets set in DISCOVER. Rulings in 02-analysis/rulings.md."
 ---
 
-# New Major Dual Projects | `watchpost-0.19.0` + `go-giro-data`
+# New Major Dual Projects | `watchpost-0.19.0` + `go-ionomaps`
 
 **LEVEL-1; SEV-0; FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLAN; FULL TDD; FULL INST**
 
-This is watchpost's brief. go-giro-data has its own
-(`go-giro-data/06_docs/02_features/go-giro-data/01-objectives/project-brief.md`). go-tuiMaps v0.3.0 gets
+This is watchpost's brief. go-ionomaps has its own
+(`go-ionomaps/06_docs/02_features/go-ionomaps/01-objectives/project-brief.md`). go-tuiMaps v0.3.0 gets
 its brief in DISCOVER, once the host requirements below are settled, as v0.2.0 did (0.18.0 D-11).
 
 ## Summary & Intent
@@ -53,7 +53,7 @@ nobody they serve, and learns of it only if someone tells them. The Observer ham
 window open on a website (prop.kc2g.com), whose code and output carry no stated terms.
 
 **Three projects, one outcome.**
-- go-giro-data computes, or obtains, the ionospheric fields. It is a new public Go library (MIT, D-2), with its own problem statement (PS-G, D-11).
+- go-ionomaps computes, or obtains, the ionospheric fields. It is a new public Go library (MIT, D-2), with its own problem statement (PS-G, D-11).
 - go-tuiMaps v0.3.0 learns to draw them (D-3).
 - watchpost puts them in front of the operator.
 - watchpost pins the other two's release candidates in BUILD and ships on their final tags.
@@ -95,7 +95,7 @@ its instrument (REFLECT L1).
 - **R-3.3** Keyless sources first (0.18.0 D-185). Each new third party is listed in "What leaves the machine".
 
 ### R-4 — Cost (issue #25, need 2)
-- **R-4.1** watchpost's added CPU and memory with propagation on stay within G1, its target set in DISCOVER. Heavy computation, if any, belongs to go-giro-data and is measured there (G-G1).
+- **R-4.1** watchpost's added CPU and memory with propagation on stay within G1, its target set in DISCOVER. Heavy computation, if any, belongs to go-ionomaps and is measured there (G-G1).
 
 ### R-5 — Honesty
 - **R-5.1** The data's age is always said. Stale or partial data is said as stale or partial, never drawn as current (as 0.18.0's M3 and M4; G-M4 at the library).
@@ -129,7 +129,7 @@ list, and v0.3.0's own brief decides how.
 | **HR-4** | A day/night terminator (candidate) | the ionosphere follows the sun | research gap 4 |
 | **HR-5** | Station points coloured by value (candidate) | measured values beside the modelled field | research gap 5 |
 
-## Host requirements on go-giro-data (intake candidates)
+## Host requirements on go-ionomaps (intake candidates)
 
 | # | Need | Why |
 |---|---|---|
@@ -177,7 +177,7 @@ been a follow-up since 0.18.0 (F-174).
 
 ### C-5 — The reference implementation has no licence
 `arodland/prop`, the code behind prop.kc2g.com, has no licence (research line 17). Its method can be
-reimplemented from the published science. Its code cannot be copied. Binding on go-giro-data.
+reimplemented from the published science. Its code cannot be copied. Binding on go-ionomaps.
 
 ### C-6 — The measured data is rate-limited and non-commercial
 KC2G reads GIRO through a private FTP account (research line 26). GIRO's public FastChar endpoint
@@ -213,7 +213,7 @@ recorded (0.18.0 D-224, D-226). Whether MUF and eSSN are stored is a DISCOVER ru
 
 **Areas to investigate**
 1. The published sources and their terms: KC2G, GIRO (FastChar, DIDBase), Australia's Space Weather Services, NOAA SWPC, others. This also tests PS-G's claim (D-11).
-2. Path A / B / C for go-giro-data, with cost (G-G1), fidelity (G-M3) and the licence of each building block (IRI, PyIRI).
+2. Path A / B / C for go-ionomaps, with cost (G-G1), fidelity (G-M3) and the licence of each building block (IRI, PyIRI).
 3. The reference reception reports for M1 and M4: WSPR, the Reverse Beacon Network, PSKReporter. Their access, terms and noise.
 4. The KC2G baseline for M1 and M4, and the data's real cadence, which together set every target (D-8, D-9).
 5. The view: C-1's bound against a global field. Words, a table, a wider frame, or a propagation view of its own.
@@ -253,9 +253,9 @@ PROJECT BRIEF — COMPLETENESS CHECK
   [✓] Header              — dual projects; go-tuiMaps v0.3.0 paired (D-3)
   [✓] Directives          — LEVEL-1, SEV-0, eight phase directives (D-1)
   [✓] Summary / Intent    — what, why now, who benefits, cost of not building
-  [✓] Problem statements  — PS-1, PS-2 LOCKED (D-7); PS-G in go-giro-data's brief (D-11)
+  [✓] Problem statements  — PS-1, PS-2 LOCKED (D-7); PS-G in go-ionomaps's brief (D-11)
   [✓] Requirements        — R-1..R-9 at intake; requirements.md in DISCOVER
-  [✓] Host requirements   — HR-1..HR-5 (go-tuiMaps), GR-1..GR-6 (go-giro-data), candidates
+  [✓] Host requirements   — HR-1..HR-5 (go-tuiMaps), GR-1..GR-6 (go-ionomaps), candidates
   [✓] Metrics of Success  — ruled (D-8, D-9); targets in DISCOVER
   [✓] Tech Constraints    — C-1..C-8, measured at 538f3dbb / d1c4d5e
   [✓] Considerations      — D-4's cost, RCC paths, KC2G, principles, issues

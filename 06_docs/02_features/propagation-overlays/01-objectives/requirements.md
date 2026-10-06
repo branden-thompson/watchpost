@@ -68,7 +68,7 @@ metric's instrument to run once before PLAN exit.
 | FR-4.1 *(O1)* | Every propagation source is **credited in About** under its own terms (GIRO: CC BY-NC-SA, cite Reinisch & Galkin 2011, acknowledge station providers; NOAA: public domain, no endorsement; others as the path chooses) *(path)* | R-3.1; G-M1 | `TestEverySourceIsCreditedOnce` (extended), `TestEveryRegisteredSourceHasACredit` (new: ties sources to credits) |
 | FR-4.2 *(O1)* | The Observer's Propagation mode fetches **nothing before it is opened**; the Broadcaster's readout is the only scheduled fetch (D-29), beside the history recorder | R-3.2; 0.18.0 D-25 | `TestThePropagationModeFetchesNothingUntilOpened` |
 | FR-4.3 *(O1)* | Every new host is listed in MAP STATUS with what it learns; a request that names the station's place says so | R-3.3; 0.18.0 D-31 | `TestMapStatusListsEveryPropagationHost`, the egress table in PLAN |
-| FR-4.4 *(O1)* | Requests go through watchpost's own client with its User-Agent; go-giro-data takes the host's fetcher | GR-5 | `TestPropagationFetchesUseTheHostsClient` |
+| FR-4.4 *(O1)* | Requests go through watchpost's own client with its User-Agent; go-ionomaps takes the host's fetcher | GR-5 | `TestPropagationFetchesUseTheHostsClient` |
 | FR-4.5 *(O1)* | **Throttle behaviour (D-39):** GIRO updates ask only the live stations (list refreshed at most daily), in one burst of at most 40, at most hourly, never more than 2 a minute sustained; a 429 stops the update and backs off 60 s doubling to 15 minutes, keeping the last good field with its age; NOAA newest grid only, at most 6 an hour; every response's rate headers are read | D-39; D-38 | `TestAnUpdateNeverExceedsItsBurst`, `TestA429BacksOffAndKeepsTheLastField`, `TestRetryAfterIsHonouredWhenSent` |
 
 ## FR-5 — Honesty (R-5)
@@ -136,7 +136,7 @@ metric's instrument to run once before PLAN exit.
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
 | NFR-1 | **Cost (G1):** watchpost's added CPU and memory with propagation on stay within G1's target, set in DISCOVER | issue #25; D-8 | G1's measurement |
-| NFR-2 | **The library's cost (G-G1):** one update's CPU and memory, measured in go-giro-data | D-12 | G-G1 |
+| NFR-2 | **The library's cost (G-G1):** one update's CPU and memory, measured in go-ionomaps | D-12 | G-G1 |
 | NFR-3 | **Live probes follow the feature's throttle** in every phase (D-39, superseding D-18's 5 a day); never Open-Meteo for research; no kc2g.com request until asked | D-39 | the request log, with headers, in each findings page |
 | NFR-4 | **P10 clean** at every phase exit (`make p10`) | standing | `make p10` |
 | NFR-5 | **Both CI platforms green** before merge, the mode named (quick or full) | standing | the hosted run |
@@ -145,7 +145,7 @@ metric's instrument to run once before PLAN exit.
 
 | # | Risk | Likelihood | Impact | Mitigation | Owner |
 |---|---|---|---|---|---|
-| RK-1 | The reference implementation has no licence; a reimplementation drifts toward its code | low | high | D-53: `arodland/prop` was read through the GitHub API in 0.18.0's research and is never opened again; no code copied; go-giro-data is written from papers and PyIRI (MIT); every exported function cites its source; a provenance table in PLAN | agent |
+| RK-1 | The reference implementation has no licence; a reimplementation drifts toward its code | low | high | D-53: `arodland/prop` was read through the GitHub API in 0.18.0's research and is never opened again; no code copied; go-ionomaps is written from papers and PyIRI (MIT); every exported function cites its source; a provenance table in PLAN | agent |
 | RK-2 | GIRO's terms (NC/SA) and rate limits; path B costs about 960 requests a day a copy (`wave2-findings.md`) | high (if B) | high | D-20 measures it; path D or a sparse schedule | HUM LEAD at D-20 |
 | RK-3 | The chosen field is not accurate enough (GloTEC overestimated foF2 at two stations in well-observed cells) | medium | high | wave 2's pairs; G-M3 against held-out ionosondes; M1/M4 against climatology (D-23) | agent |
 | RK-4 | Compute or memory too heavy for a terminal app | low | medium | G1, G-G1; 2° default; recompute on new data only | agent |
@@ -162,7 +162,7 @@ Normative in `problem-statement.md`:
 - M1-M3 (PS-1);
 - M4, M5, M5b (PS-2);
 - G1, shared;
-- G-M1 to G-M4 and G-G1 (go-giro-data).
+- G-M1 to G-M4 and G-G1 (go-ionomaps).
 
 M1 and M4 are measured against WSPR, with RBN as a cross-check (D-22). Their baseline is the IRI
 climatology (D-23). Targets are set in DISCOVER and the PLAN-time dry run.

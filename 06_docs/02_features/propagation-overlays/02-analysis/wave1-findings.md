@@ -213,5 +213,5 @@ A desk check of documentation only, with no data request (`spaceweather.gov/prod
 | Terms | none stated on the page beyond NOAA/NWS's (`weather.gov/disclaimer`): public domain, no endorsement |
 
 D-RAP covers **disturbance** absorption only (flares, solar energetic particles). Regular daytime absorption
-is not in it; it is computed from the sun's position (D-47, go-giro-data R-2.4). The fetch falls under D-39
+is not in it; it is computed from the sun's position (D-47, go-ionomaps R-2.4). The fetch falls under D-39
 (NOAA: at most 6 an hour), and the file's size and format are measured in PLAN's dry run.

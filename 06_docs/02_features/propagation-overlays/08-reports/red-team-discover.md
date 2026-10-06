@@ -1,5 +1,5 @@
 ---
-title: "0.19.0 (with go-giro-data and go-tuiMaps v0.3.0) — DISCOVER exit red team, round 1"
+title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — DISCOVER exit red team, round 1"
 date: 2026-10-06
 phase: DISCOVER exit
 sev: SEV-0
@@ -94,7 +94,7 @@ number reproduces at F10.7 = 100, and the request log matches.
 - IS-3: physical-range checks, no NaN or Inf out of the library, station codes held to a pattern and passed through `url.Values`, credits from a static list.
 - IS-5: GIRO's non-commercial access condition is stated to users; RK-2 corrected; a dataset-terms field in the history store.
 - IS-6: hardening options and per-source body caps; the "allowed hosts" promise is built or struck.
-- IS-8: govulncheck in go-giro-data.
+- IS-8: govulncheck in go-ionomaps.
 
 **HUM:**
 - IS-4: the Observer's lookup refuses non-US places and sends typed text to Open-Meteo. A global find-a-place needs a different geocoding path. Coordinates are parsed locally (Fix).
@@ -122,7 +122,7 @@ number reproduces at F10.7 = 100, and the request log matches.
   - `facts.go:186`;
   - GC-3 "unverified";
   - go-tuiMaps citing watchpost D-23 for P-1 to P-3 (0.18.0 D-23 is meant);
-  - go-giro-data's bare "D-2";
+  - go-ionomaps's bare "D-2";
   - the issue of record promised against go-tuiMaps D-8;
   - "Europe, the Americas and Asia".
 - **The agent's errors** E-3 to E-7.
@@ -153,6 +153,6 @@ number reproduces at F10.7 = 100, and the request log matches.
 - BQ-F9 / DQ-F14: can the Broadcaster open the Propagation mode (issue #25 asks for MUF on a Broadcaster map), and the tower "always marked" row.
 - DQ-F9: does the recorder fetch for an Observer who never opens the mode?
 - BQ-F6: go-tuiMaps OW-14 to OW-26, owed to v0.3.0.
-- CQ-S3: the name go-giro-data, now that two of its three inputs are not GIRO.
+- CQ-S3: the name go-ionomaps, now that two of its three inputs are not GIRO.
 - HY-F1: delete the shipped work branches (`feature/map-drawing`, `feature/radar-loops`, local `feature/go-tuimaps`).
 - DQ-F19: a short summary atop each analysis page, or leave them as engineers' records.
