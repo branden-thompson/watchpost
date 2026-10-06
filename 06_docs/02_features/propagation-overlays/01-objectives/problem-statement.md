@@ -43,7 +43,7 @@ anti-solution check before it locks.
 
 ### PS-1 (D-8)
 
-Targets are set in DISCOVER and the PLAN-time dry run (D-8). M1 and M4 are measured against WSPR via
+Targets are set from PLAN's dry run, each by its own ruling, before PLAN exits (D-49, amending D-8). M1 and M4 are measured against WSPR via
 wspr.live, with RBN as a cross-check (D-22), and their baseline is the IRI climatology, not KC2G (D-23).
 The numbers proposed at intake are kept as a starting point.
 
@@ -66,7 +66,7 @@ Open for DISCOVER:
 
 ### PS-2 (D-9)
 
-Targets are set in DISCOVER, as for PS-1. G1 is shared with PS-1.
+Targets are set from PLAN's dry run, as for PS-1 (D-49). G1 is shared with PS-1.
 
 | # | Name · symbol | Type | Definition | Measured in |
 |---|---|---|---|---|
