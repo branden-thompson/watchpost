@@ -25,7 +25,7 @@ one** (0.18.0 D-11).
 | Rulings | `02-analysis/rulings.md`: every ruling lands here the moment it is made; minor items are A-n rows, batched for veto (D-13) |
 | Research | `00-research/rcc-muf-overlays.md` (0.18.0 D-238) |
 | go-giro-data | `github.com/branden-thompson/go-giro-data`, public, MIT (D-2); branch `feature/discover`; its brief and PS-G in `06_docs/02_features/go-giro-data/01-objectives/` |
-| go-tuiMaps v0.3.0 | paired release (D-3); its brief is written in DISCOVER from HR-1..HR-5; no branch yet |
+| go-tuiMaps v0.3.0 | paired release (D-3); branch `feature/propagation-fields` (A-7); HR-1..HR-5 ruled (D-32 to D-36), its log `06_docs/02_features/propagation-fields/02-analysis/rulings.md`; its brief is written in DISCOVER |
 | Previous release | 0.18.0, shipped; its REFLECT is `../observer-maps/08-reports/reflect-report.md` |
 | Follow-ups | `06_docs/follow-ups.md` only |
 
