@@ -22,9 +22,9 @@ scripts).
 | #27: can a shipped dataset reach the 32 MB read cap? (D-55) | **No.** The largest, NDFD hourly, holds about 14.5 KB a day of decompressed roll-up, about 5.3 MB a year. Two days of local data, projected linearly | measured; no 0.18.1 hotfix indicated |
 | WSPR density at near-vertical range under the reference circuit (D-73, D-91) | **Dense in the continental US on the near-vertical bands.** On 2026-10-05, spots between 50 and 400 km between US stations that clear **+13 dB** at 100 W (D-91; ground wave under 50 km removed): 656 (160 m, 67 station pairs), 19,642 (80 m, 791 pairs), 927 (60 m), 63,525 (40 m, 2,881 pairs), 2,723 (30 m), 1,973 (20 m), thinning above (12 m: 51); every band but 12 m had spots in all 24 hours. At the first count's +10 dB and no distance floor: 30,165 (80 m) and 82,564 (40 m), reproduced exactly by the second query | measured (one day) |
 | D-RAP's file | 42 KB text, a 2° × 4° latitude-longitude table plus valid time, recovery estimate and X-ray/proton messages; `Last-Modified`, `ETag`, `max-age=60` | measured |
-| MUF(3000) and foF2 held out for B on D, by station and distance, with signed bias; mainland US and Pacific separately | a week of data (2026-09-29 to 10-05) is downloading under the throttle | in progress |
-| The NRL refits (D-43), with the F10.7 rule | PyIRI 0.1.7 installed under Homebrew Python 3.12 (D-86); scored on the week | pending the week |
-| The forecast hours' error at +3 h and +12 h (D-75) | from the week's 3-hourly grids | pending the week |
+| MUF(3000) and foF2 held out for B on D, by station and distance, with signed bias; mainland US and Pacific separately | **Measured over the week** (below; 1,476 pairs, 30 stations): on the test days, mainland US, B on D 0.66 MHz foF2 and 2.10 MUF against climatology's 0.82 and 2.88, **so D-75's floor is met**; whole week, all stations, 0.90 and 3.41 against 1.08 and 3.77; signed bias +0.03 MHz foF2 (GloTEC +0.51, climatology +0.28). The Pacific stations are no better than climatology. A hybrid (M(3000)F2 assimilated over climatology, not GloTEC) cuts MUF to 3.26 overall | measured (a week, including a G1 to G2 storm) |
+| The NRL refits (D-43), with the F10.7 rule | **Measured:** CCIR refit and raw CCIR are level (foF2 1.08 and 1.08 MHz, MUF 3.77 and 3.79); URSI is worse (1.14, 3.97). The 30-day mean F10.7 beats the day's value on MUF (3.77 against 4.14), with foF2 level (1.08 and 1.07) | measured; the rule to rule |
+| The forecast hours' error at +3 h and +12 h (D-75) | **Measured:** R-1.3's decay toward climatology fails the floor at +12 h in the US (0.85 against 0.76 MHz foF2). A blend of yesterday's hybrid field and climatology (w = 0.5) is no worse than climatology at both leads on the test days. It is clearly better on quiet days (+12 h US 0.50 against 0.60), and level or slightly worse in the storm (MUF 4.44 against 4.29) | measured; the method to rule |
 | The answers' cost per keypress (FR-1.17) | **Measured in a spike** (below): at 2°, an hour step (reach, best bands, paths, centre) costs about 4.4 ms and a frequency change about 3.8 ms, with no allocations; at 1°, about 19 ms and 17 ms. Reach is the only answer that costs real time (about 212 ns a cell) | measured (spike) |
 | G1 over at least 48 hours | **The instrument is proven** (below): a 10-minute offline run of today's watchpost (89c6f5bf) gave RSS 55 to 58 MB, steady, and about 3% of one core. The 48-hour measurement needs a build with the mode, so it lands in BUILD (W10.2) with this harness | instrument dry-run done; measurement in BUILD |
 | M2, M5, M5b (UAT) | the protocol is written (`uat-protocol.md`); its scenarios are drawn in BUILD once the answers exist; graded by the HUM LEAD alone (D-68) | protocol drafted; the sitting is live (D-89) |
@@ -42,7 +42,9 @@ scripts).
 | 22:20:41Z onward | GIRO | 39 stations, 2026-09-29 to 10-05, one request each (one burst, D-39) | all 200 |
 | 22:21:28Z | wspr.live | one aggregate SQL query (near-vertical density) | 200, 314 B |
 | 22:21:42Z | NOAA SWPC | `text/drap_global_frequencies.txt` | 200, 42,469 B |
-| from 22:21Z, one every 10 minutes | NOAA SWPC | 56 GloTEC grids, 3-hourly over the week | in progress |
+| from 22:21Z, one every 10 minutes | NOAA SWPC | 56 GloTEC grids, 3-hourly over the week | all 200, ending 07:32:11Z |
+| 2026-10-07T07:32:11Z | NOAA SWPC | the week's fetch completed: 39 GIRO and 56 GloTEC requests | all 95 answered 200; no 429 |
+| 07:43:18Z | NOAA SWPC | `text/daily-geomagnetic-indices.txt` (the week's activity) | 200, 3,877 B |
 | 2026-10-07T01:41:41Z | NOAA SWPC | `text/daily-solar-indices.txt` (F10.7 by day, for the climatology's rule) | 200, 2,919 B |
 | 02:00:33Z | wspr.live | one aggregate SQL query: near-vertical density at +13 dB, ground wave removed (D-91) | 200, 442 B |
 | 2026-10-07T00:50:40Z | NOAA SWPC | D-RAP's product page (for PLAN's Q-2) | 301 to spaceweather.gov |
@@ -198,4 +200,101 @@ Every variant agrees with the naive one within 6e-14 (float32: 2e-7).
 - After that, the climatology's hour fields are kept for the day: 2 fields × 25 hours × 16,380 cells × 4 bytes is about 3.3 MB, and one new hour costs about 13 ms each hour.
 - An update every 10 minutes (D-94) adds the decode and the assimilation, about 11 ms.
 - Together that is roughly 0.1 s of CPU an hour, against G1's 1% (36 s an hour).
+
+## The week, scored (FR-10.6)
+
+**Run:** `week.py` (go-ionomaps `02-analysis/evidence/`), PyIRI 0.1.7 under Python 3.12 (D-86), over 2026-09-29 00:05Z to 10-05 21:05Z:
+- 56 GloTEC grids, 3-hourly;
+- 39 GIRO stations fetched, of which 30 had soundings at a confidence score of 70 or more;
+- 1,476 held-out pairs.
+
+**Tuning:**
+- kernel length and noise tuned on the first three days, then scored on the last four (823 pairs): B on D L = 2000 km, noise 0.5; B on C L = 2000 km, noise 0.2;
+- the forecast's decay constant and blend weight also tuned on the first three days.
+
+**The week's activity** (NOAA daily geomagnetic indices):
+- quiet to 10-03 (planetary A 2 to 8);
+- **a storm on 10-04 (A 36, Kp to 5.67, about G2) and 10-05 (A 24, Kp to 5.33, G1)**.
+
+So the tuning days were quiet and the test days run into the storm.
+
+**Methods** (every one held out at the scored station):
+
+| Method | What it is |
+|---|---|
+| GloTEC | the background alone: foF2 from NmF2, M(3000)F2 from hmF2 |
+| B on D | the plan (R-9.2): foF2 and M(3000)F2 residuals assimilated over GloTEC |
+| hybrid | foF2 from B on D; M(3000)F2 assimilated over the climatology instead of GloTEC |
+| B on C | both assimilated over the climatology (the fallback when GloTEC is missing) |
+| clim + mean | climatology plus the other stations' mean residual: a proxy for an effective sunspot number (CQ-N1) |
+| clim | the best climatology: CCIR refit, F10.7 the 30-day mean |
+
+**Held out, test days** (foF2 RMS / bias | MUF(3000) RMS / bias, MHz):
+
+| Region (n) | B on D | hybrid | GloTEC | B on C | clim + mean | clim |
+|---|---|---|---|---|---|---|
+| all (823) | 0.96 / +0.03 \| 3.60 / +0.06 | 0.96 \| **3.44** | 1.12 / +0.53 \| 3.92 | 1.06 \| 3.79 | 1.13 \| 4.10 | 1.14 / +0.20 \| 4.04 |
+| mainland US (119) | **0.66** / −0.09 \| **2.10** | 0.66 \| 2.08 | 0.76 / +0.39 \| 2.58 | 0.79 \| 2.56 | 0.87 \| 2.85 | 0.82 / −0.09 \| 2.88 |
+| Pacific (118) | 1.37 \| 5.58 | 1.37 \| 5.17 | 1.48 \| 5.95 | 1.34 \| 4.97 | 1.38 \| 5.18 | 1.38 \| 5.09 |
+| elsewhere (586) | 0.91 \| 3.33 | 0.91 \| 3.22 | 1.10 \| 3.62 | 1.04 \| 3.73 | 1.11 \| 4.07 | 1.15 \| 4.00 |
+
+**By distance to the nearest other reporting station** (whole week, foF2 | MUF):
+
+| Distance | B on D | hybrid | clim |
+|---|---|---|---|
+| under 500 km (373) | 0.33 \| 1.27 | 0.33 \| 1.27 | 0.72 \| 2.63 |
+| 500 to 1000 km (202) | 0.56 \| 1.99 | 0.56 \| 1.92 | 0.88 \| 2.87 |
+| 1000 to 2000 km (355) | 1.03 \| 3.93 | 1.03 \| 3.82 | 1.20 \| 4.39 |
+| over 2000 km (546) | 1.14 \| 4.34 | 1.14 \| 4.09 | 1.27 \| 4.25 |
+
+**By day** (all stations, foF2 | MUF):
+- B on D beats climatology every day, storm days included. On 10-04 it gets 1.01 | 4.05 against 1.18 | 4.48; in the US, 0.68 | 2.74 against 1.02 | 3.40.
+- The one exception is 10-03 in the US on foF2 (0.93 against 0.84).
+
+**By station:** the mainland-US stations score 0.42 to 0.75 MHz on foF2 (AL945, EG931, IF843, MHJ45), and the Pacific stations 0.77 to 1.60 (EA653 Adak best, WA619 Wake worst). Full table: `week.py`'s section 5.
+
+**Climatologies** (whole week, foF2 | MUF):
+
+| Variant | F10.7 30-day mean | F10.7 the day's |
+|---|---|---|
+| CCIR refit | 1.08 / +0.28 \| 3.77 | 1.07 / −0.27 \| 4.14 |
+| CCIR raw | 1.08 \| 3.79 | 1.07 \| 4.18 |
+| URSI refit | 1.14 \| 3.97 | 1.13 \| 4.34 |
+| URSI raw | 1.14 \| 4.01 | 1.14 \| 4.40 |
+
+**The forecast**, scored on the same pairs for every method:
+
+| | +3 h all | +3 h US | +12 h all | +12 h US |
+|---|---|---|---|---|
+| decay toward climatology (R-1.3; τ 6 h, 12 h) | 1.10 \| 4.05 | 0.79 \| 2.53 | 1.13 \| 4.05 | **0.85 \| 2.87** |
+| persistence | 1.18 \| 4.41 | 0.86 \| 2.70 | 1.27 \| 4.58 | 1.09 \| 3.44 |
+| yesterday | 1.16 \| 4.37 | 0.89 \| 2.88 | 1.18 \| 4.46 | 0.78 \| 2.94 |
+| blend of yesterday's B on D and climatology (w = 0.5) | 1.07 \| 3.96 | 0.81 \| 2.69 | 1.09 \| 4.03 | 0.72 \| 2.75 |
+| **the same with the hybrid** | **1.07 \| 3.93** | **0.81 \| 2.72** | **1.09 \| 3.99** | **0.72 \| 2.72** |
+| climatology | 1.12 \| 3.98 | 0.81 \| 2.73 | 1.14 \| 4.02 | 0.76 \| 2.78 |
+
+**Quiet against disturbed** (test days; 10-04 and 10-05 disturbed):
+
+| | +3 h quiet | +3 h storm | +12 h quiet | +12 h storm |
+|---|---|---|---|---|
+| hybrid blend, all | 0.95 \| 3.45 | 1.19 \| 4.39 | 0.96 \| 3.51 | 1.22 \| 4.44 |
+| climatology, all | 1.07 \| 3.69 | 1.18 \| 4.28 | 1.08 \| 3.75 | 1.20 \| 4.29 |
+| hybrid blend, US | 0.70 \| 2.03 | 0.92 \| 3.39 | 0.50 \| 1.99 | 0.94 \| 3.45 |
+| climatology, US | 0.75 \| 2.31 | 0.89 \| 3.17 | 0.60 \| 2.28 | 0.94 \| 3.33 |
+
+**Reading.**
+- **The B on D floor (D-75) is met**, in the US and overall, every day.
+- **The forecast floor is met only by the hybrid blend, and by thin margins** (0.00 to 0.05 MHz). R-1.3's decay fails at +12 h in the US.
+- On quiet days the blend beats climatology clearly. In the storm, no forecast beats climatology: the measured fields catch a storm, but nothing here foresees one (D-88).
+- The hybrid's gain is in MUF away from the US: GloTEC's hmF2-derived M(3000)F2 is the weak half.
+- The bias that RK-11 feared, a false "open" from a high foF2, is gone from B on D (+0.03 MHz). The assimilation's mean term removes it.
+- The effective-index proxy gains nothing over the assimilation.
+
+**Its limits:**
+- one week, at one solar level (F10.7 92 to 100);
+- one storm, of G1 to G2;
+- 30 stations, 4 of them mainland US and 4 Pacific;
+- kernels and weights tuned on three quiet days;
+- the hybrid and the blend were chosen after seeing four days of data (the interim runs), so their test scores flatter them slightly;
+- GIRO's autoscaled values are the truth here, with their own error.
 
