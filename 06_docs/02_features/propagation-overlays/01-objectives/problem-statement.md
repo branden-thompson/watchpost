@@ -96,3 +96,5 @@ Each target is ruled from PLAN's dry run, against D-75's floors, and listed here
 | M5b | 8 of 10 correct, each within 60 s | D-93 |
 | G1 | added mean CPU ≤ 1% of one core; added RSS ≤ 25 MB; downloads ≤ 15 MB an hour open at the default refresh, ≤ 3 MB an hour hourly, none closed | D-95 |
 | go-tuiMaps M5 | a whole-globe 2° field frame after a pan (fill, labelled contours, terminator, night) ≤ 16 ms at 400 × 110, ≤ 8 ms at 200 × 56 | D-96 |
+| M1 | agreement ≥ the IRI climatology's + 5 points, on the same ≥ 200 scenarios with both outcomes, over ≥ 3 days, by band | D-99 |
+| M4 | as M1, for the listener's paths | D-99 |
