@@ -40,8 +40,8 @@ flowchart LR
   end
   subgraph go-ionomaps
     LIB["ionomaps.Library<br/>Update, Fields, Bands, Reach"]
-    ASSIM["assimilation<br/>foF2 and M(3000)F2 residuals"]
-    BG["background<br/>GloTEC, else climatology"]
+    ASSIM["assimilation<br/>foF2 over GloTEC, M(3000)F2 over climatology (D-101)"]
+    BG["background<br/>GloTEC foF2, climatology M(3000)F2"]
     CLIM["climatology<br/>PyIRI port, NRL refits behind a seam"]
     LIM["limits<br/>P.533 MUF, daytime absorption, D-RAP"]
     THR["throttle, live stations<br/>(D-39, D-51)"]
@@ -153,6 +153,7 @@ type DayScale struct {
 type Hour struct {
     At       time.Time
     Forecast bool
+    ErrorMHz float32 // a forecast hour's typical foF2 error, as measured (D-103); 0 for the current hour
     MUF3000  Field
     FoF2     Field
 }

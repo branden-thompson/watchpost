@@ -24,7 +24,7 @@ scripts).
 | D-RAP's file | 42 KB text, a 2° × 4° latitude-longitude table plus valid time, recovery estimate and X-ray/proton messages; `Last-Modified`, `ETag`, `max-age=60` | measured |
 | MUF(3000) and foF2 held out for B on D, by station and distance, with signed bias; mainland US and Pacific separately | **Measured over the week** (below; 1,476 pairs, 30 stations): on the test days, mainland US, B on D 0.66 MHz foF2 and 2.10 MUF against climatology's 0.82 and 2.88, **so D-75's floor is met**; whole week, all stations, 0.90 and 3.41 against 1.08 and 3.77; signed bias +0.03 MHz foF2 (GloTEC +0.51, climatology +0.28). The Pacific stations are no better than climatology. A hybrid (M(3000)F2 assimilated over climatology, not GloTEC) cuts MUF to 3.26 overall | measured (a week, including a G1 to G2 storm) |
 | The NRL refits (D-43), with the F10.7 rule | **Measured:** CCIR refit and raw CCIR are level (foF2 1.08 and 1.08 MHz, MUF 3.77 and 3.79); URSI is worse (1.14, 3.97). The 30-day mean F10.7 beats the day's value on MUF (3.77 against 4.14), with foF2 level (1.08 and 1.07) | measured; the rule to rule |
-| The forecast hours' error at +3 h and +12 h (D-75) | **Measured:** R-1.3's decay toward climatology fails the floor at +12 h in the US (0.85 against 0.76 MHz foF2). A blend of yesterday's hybrid field and climatology (w = 0.5) is no worse than climatology at both leads on the test days. It is clearly better on quiet days (+12 h US 0.50 against 0.60), and level or slightly worse in the storm (MUF 4.44 against 4.29) | measured; the method to rule |
+| The forecast hours' error at +3 h and +12 h (D-75) | **Measured:** R-1.3's decay toward climatology fails the floor at +12 h in the US (0.85 against 0.76 MHz foF2). A blend of yesterday's hybrid field and climatology (w = 0.5) is no worse than climatology at both leads on the test days. It is clearly better on quiet days (+12 h US 0.50 against 0.60), and level or slightly worse in the storm (MUF 4.44 against 4.29) | measured; **ruled D-103**: the blend, every forecast hour labelled low-confidence |
 | The answers' cost per keypress (FR-1.17) | **Measured in a spike** (below): at 2°, an hour step (reach, best bands, paths, centre) costs about 4.4 ms and a frequency change about 3.8 ms, with no allocations; at 1°, about 19 ms and 17 ms. Reach is the only answer that costs real time (about 212 ns a cell) | measured (spike) |
 | G1 over at least 48 hours | **The instrument is proven** (below): a 10-minute offline run of today's watchpost (89c6f5bf) gave RSS 55 to 58 MB, steady, and about 3% of one core. The 48-hour measurement needs a build with the mode, so it lands in BUILD (W10.2) with this harness | instrument dry-run done; measurement in BUILD |
 | M2, M5, M5b (UAT) | the protocol is written (`uat-protocol.md`); its scenarios are drawn in BUILD once the answers exist; graded by the HUM LEAD alone (D-68) | protocol drafted; the sitting is live (D-89) |
@@ -297,4 +297,23 @@ So the tuning days were quiet and the test days run into the storm.
 - kernels and weights tuned on three quiet days;
 - the hybrid and the blend were chosen after seeing four days of data (the interim runs), so their test scores flatter them slightly;
 - GIRO's autoscaled values are the truth here, with their own error.
+
+### Skill by lead (quiet test days; decay from now, its constant tuned per lead)
+
+| Lead | US: forecast \| climatology | All: forecast \| climatology |
+|---|---|---|
+| now (the hybrid) | 0.71, 1.74 \| 0.74, 2.30 | 0.89, 3.09 \| 1.09, 3.75 |
+| +3 h | 0.73, 2.00 \| 0.75, 2.31 | 1.01, 3.61 \| 1.06, 3.69 |
+| +6 h | 0.75, 2.15 \| 0.73, 2.24 | 1.04, 3.57 \| 1.08, 3.69 |
+| +9 h | 0.83, 2.30 \| 0.74, 2.31 | 1.08, 3.78 \| 1.11, 3.75 |
+| +12 h | 0.70, 2.32 \| 0.60, 2.28 | 1.05, 3.71 \| 1.09, 3.78 |
+
+Each cell is foF2, then MUF (MHz).
+
+**Reading.**
+- Today's departure from climatology fades within about 3 hours.
+- What the blend keeps is recurrence: the same hour a day before.
+- The current hour is where the chart is clearly better than climatology.
+
+D-103 keeps 24 hours, labelled low-confidence.
 
