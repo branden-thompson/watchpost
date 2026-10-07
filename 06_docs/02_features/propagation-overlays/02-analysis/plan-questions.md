@@ -18,9 +18,9 @@ evidence, its options, a recommendation and the strongest counter-argument.
 | Q-1 | How the 40-request cap and the rotation probe share an update | go-ionomaps R-5.3; D-39, D-51 | **ruled D-87: A**, the probe inside the 40 |
 | Q-2 | The space-weather scales beyond D-RAP | PM-E2; D-47 | **ruled D-88: B**, named, not modelled |
 | Q-3 | A bias correction for a false "open" | RK-11 | **ruled D-105**: the live offset by default, compared with a learned typical one; a no-readings Setting |
-| Q-4 | The effective-sunspot fit | CQ-N1; go-ionomaps requirements, after R-9.4 | waits for the week's fallback scores |
+| Q-4 | The effective-sunspot fit | CQ-N1; go-ionomaps requirements, after R-9.4 | **ruled D-106**: no fit; the fallback is B on C |
 | Q-5 | The 400 km near-vertical radius | A-18 | **ruled D-100**: 400 km the default of a Setting (200, 400, 600) |
-| Q-7 | The climatology's magnetic coordinates: a table neither R-4.3 nor the design names | found in PLAN's dry run | waits for the week's raw-against-refit scores |
+| Q-7 | The climatology's magnetic coordinates: a table neither R-4.3 nor the design names | found in PLAN's dry run | **ruled D-107**: our own from IGRF-14, Apex.nc as test oracle |
 | Q-6 | Can a shipped dataset reach #27's cap? | D-55 | **answered by measurement: no** (`dry-run.md`); no 0.18.1 hotfix; #27 is still fixed first in BUILD |
 
 ## Q-1 — The 40-request cap and the rotation probe
