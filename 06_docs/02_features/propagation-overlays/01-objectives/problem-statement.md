@@ -87,7 +87,7 @@ Anti-solution check:
 
 ## Targets (D-49)
 
-Each target is ruled from PLAN's dry run, against D-75's floors, and listed here as it is ruled.
+Each target is ruled from PLAN's dry run, against D-75's floors, and listed here as it is ruled. **On a miss (D-118):** a floor cuts its feature (D-75); any other missed target comes to the HUM LEAD at VALIDATE with its evidence, never re-set silently. M1 and M4 become "no worse than climatology" if the climatology's measured agreement is above 90%.
 
 | Metric | Target | Ruling |
 |---|---|---|

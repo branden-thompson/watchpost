@@ -101,3 +101,6 @@ Nothing from it is committed: GIRO's data is CC BY-NC-SA, and its replies carry 
 | Fork 6: reading the netCDF tables | I-6 | **D-114:** a one-time plain-text export from the pinned PyIRI environment with source checksums; `tools/tables` standard library only |
 | Fork 7: privacy in the UAT record | I-5 | **D-115:** places as a region or 4-character locator, no callsigns; raw logs outside the tree |
 | Fork 8: the Pacific | L-F2, D-F15 | **D-116:** every answer says its distance to the nearest reporting station; beyond 2000 km "about as good as typical"; G-M3 reports the Pacific and distance bands, not gated |
+| Fork 9: go-tuiMaps M1 and M6 | B-F6, D-F3, L-F14 | **D-117:** M1 10 places, 8/10 picture and 8/10 words, HUM-graded, P8 task; M6 5 consecutive clean full runs |
+| Fork 10: a missed target | B-F5, L-F10 | **D-118:** floors cut; any other miss is a ruling at VALIDATE with evidence, never re-set silently; M1/M4 baseline measured first, >90% means "no worse than climatology" |
+| Fork 11: timing gates | C-10, P-7 | **D-119:** gates assert proxies; wall-clock targets a release step on the reference machine (fail when missing); a linux/amd64 run recorded |
