@@ -19,7 +19,7 @@ evidence, its options, a recommendation and the strongest counter-argument.
 | Q-2 | The space-weather scales beyond D-RAP | PM-E2; D-47 | **ruled D-88: B**, named, not modelled |
 | Q-3 | A bias correction for a false "open" | RK-11 | waits for the week's signed bias |
 | Q-4 | The effective-sunspot fit | CQ-N1; go-ionomaps requirements, after R-9.4 | waits for the week's fallback scores |
-| Q-5 | The 400 km near-vertical radius | A-18 | waits for the week's scores by distance; the WSPR density is in |
+| Q-5 | The 400 km near-vertical radius | A-18 | **ruled D-100**: 400 km the default of a Setting (200, 400, 600) |
 | Q-7 | The climatology's magnetic coordinates: a table neither R-4.3 nor the design names | found in PLAN's dry run | waits for the week's raw-against-refit scores |
 | Q-6 | Can a shipped dataset reach #27's cap? | D-55 | **answered by measurement: no** (`dry-run.md`); no 0.18.1 hotfix; #27 is still fixed first in BUILD |
 
