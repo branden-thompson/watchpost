@@ -222,7 +222,7 @@ R-3.4), `glotec` (typed GeoJSON, R-8.2), `drap`, `climatology` (the PyIRI port o
 | D-RAP missing | no "disturbed" state; said | R-2.6 |
 | scales missing | no level named, and the gap said; never shown as level 0 | FR-1.18 |
 | a hostile or broken reply | the value refused and counted; never NaN on the map | R-3.3 |
-| offline | the last good field with its age, or "no data yet" with the way to retry | FR-5.2; 0.18.0 D-124 |
+| offline | the last good field with its age, or "no data yet" naming the refresh-now key (D-120) | FR-5.2; 0.18.0 D-124 |
 
 ## Release order
 

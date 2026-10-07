@@ -104,3 +104,6 @@ Nothing from it is committed: GIRO's data is CC BY-NC-SA, and its replies carry 
 | Fork 9: go-tuiMaps M1 and M6 | B-F6, D-F3, L-F14 | **D-117:** M1 10 places, 8/10 picture and 8/10 words, HUM-graded, P8 task; M6 5 consecutive clean full runs |
 | Fork 10: a missed target | B-F5, L-F10 | **D-118:** floors cut; any other miss is a ruling at VALIDATE with evidence, never re-set silently; M1/M4 baseline measured first, >90% means "no worse than climatology" |
 | Fork 11: timing gates | C-10, P-7 | **D-119:** gates assert proxies; wall-clock targets a release step on the reference machine (fail when missing); a linux/amd64 run recorded |
+| Fork 12: the refresh Setting and its key | B-F9, A-2 | **D-120:** A-26 ratified; a refresh-now keymap action in FR-1.14, honoured under D-39; retry names the key |
+| Fork 13: the Broadcaster's words | A-3 | **D-121:** "Instead of the map", refresh and the no-readings correction shared across both modes; the radius Observer-only; FR-2.3, W7.2 |
+| Fork 14: when O2 ships | L-F10 | **D-122:** O2 becomes 0.19.1, the next release; FR-7, W8 and D-63's gate move with it; 0.19.0 is O1 and O3 |

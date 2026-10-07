@@ -79,7 +79,7 @@ planned name is a commitment PLAN may rename, never drop. A row whose instrument
 | FR-1.11 *(O1)* | The answer for **the point at the map's centre** as the listener pans: MUF, foF2, and which bands work to it from the origin, on screen and in words | D-37 | `TestTheCentreIsAnsweredAsTheMapPans`, `TestTheCentreAnswerIsSaid` |
 | FR-1.12 *(O1)* | The mode is a member of every closed-set window test (reachability at 80×24, memo completeness, margins, glyph survey, keys, leaving) | 0.18.0 FR-1.5 | the closed-set tests, each enumerating the mode |
 | FR-1.13 *(O1)* | **Hours ahead (D-103, D-109):** the listener steps the fields and answers up to 24 h ahead, one hour per key press (no automatic play). **Each hour ahead is the climatology for that hour, and carries a prominent label** beside the source chip and in words: "typical for this hour", not a forecast of today, with its typical error as measured on PLAN's week and that basis stated. While NOAA's G scale is 1 or more, each hour ahead also says a storm is in progress and typical conditions may not hold (D-88). The current hour stays the default and the freshest field (D-94) | D-50, D-75, D-88, D-103, D-109; AX-J | `TestTheHoursStepOnAKey`, `TestAnHourAheadSaysTypical`, `TestTheTypicalErrorStatesItsBasis`, `TestAStormSaysTypicalMayNotHold` |
-| FR-1.14 *(O1)* | **Every control in the mode is a keymap action** Help lists: choosing MUF or foF2, stepping the hour, moving between targets, finding a place, entering a frequency; the focused target is named in words; Help fits its window with them | AX-B; N-13 | `TestEveryPropagationControlIsAnAction`, `TestHelpFitsWithThePropagationKeys` |
+| FR-1.14 *(O1)* | **Every control in the mode is a keymap action** Help lists: choosing MUF or foF2, stepping the hour, moving between targets, finding a place, entering a frequency, **refreshing now** (D-120: honoured under D-39, an early ask answered from the last field with its age and the reason); the focused target is named in words; Help fits its window with them | AX-B; N-13; D-120 | `TestEveryPropagationControlIsAnAction`, `TestHelpFitsWithThePropagationKeys` |
 | FR-1.15 *(O1)* | **"Best bands now"** (D-76): for the near-vertical area around the origin (within 400 km of the selected place by default, a Maps-tab Setting offering 200, 400 or 600 km, A-18, D-100; the service radius when opened from the tower) and for each target, each amateur band 160 m to 10 m is called open, above the upper limit, absorbed, disturbed, or no data, under the reference circuit (D-73), naming the limit that decided it; with **the hours today each band is expected open** (routine closures as a schedule, D-74) | D-47, D-73, D-74, D-76, D-100; AX-F | `TestBestBandsNameTheirLimit`, `TestTheDaysOpenHoursAreShown`, `TestTheNearVerticalRadiusIsASetting`; M1, M4 |
 | FR-1.16 *(O1)* | **"Your frequency"** (D-76): a frequency in MHz or a band name is accepted, checked and parsed locally; for this hour (or a forecast hour), the skip zone and the area reached from the origin are drawn on the map and said in words, with the limit that bounds them | D-76 | `TestYourFrequencyDrawsItsReach`, `TestYourFrequencyIsSaid`, `TestABadFrequencyIsSaidNotGuessed`; M1, M4 |
 | FR-1.17 *(O1)* | The chart's answers (best bands, your frequency, the centre) never block a keypress: they are computed off the UI goroutine (A-27; an hour step measured at about 4.4 ms at 2° in the dry run) | N-8; A-27 | `TestAnswersNeverBlockTheUI` |
@@ -91,6 +91,7 @@ planned name is a commitment PLAN may rename, never drop. A row whose instrument
 |---|---|---|---|
 | FR-2.1 *(O1)* | **A console key opens the Propagation mode** over the console, its origin the tower, always marked; the key is a console action Help lists and clashes with no console key (`+`, `=`, `-`, `O` are taken) | D-57, D-25, D-26; AX-H | `TestTheConsoleOpensThePropagationModeFromTheTower`, `TestTheConsoleKeysDoNotClash` |
 | FR-2.2 *(O1)* | **Help and the Broadcaster tab say plainly** that the broadcast plays on the computer's default output device, the same one a screen reader speaks on, so screen-reader speech can reach the broadcast audio. The device Setting is F-211 (D-85) | D-80, D-85; N-1 | `TestTheSharedDeviceIsSaid` |
+| FR-2.3 *(O1)* | **The Broadcaster's Propagation mode honours the shared Settings (D-121):** "Instead of the map", the refresh Setting and the no-readings correction are one Setting each across both modes; the near-vertical radius is Observer-only (the Broadcaster uses its service radius) | D-58, D-121; A-3 | `TestTheConsolePropagationModeHonoursTheSharedSettings`, `TestInsteadOfTheMapIsShared` |
 
 **Retired from FR-2 by ruling:** the regional Broadcaster map and its words (D-77; D-28, D-58), the readout,
 its Setting, the "My HF bands" picker, the closure notice and the console line (D-76; D-29, D-30, D-48, D-59,
@@ -121,7 +122,7 @@ broadcast can be kept off the screen reader's device.
 | FR-4.7 *(O1)* | The propagation client refuses plain http, private addresses and **any host outside go-ionomaps' exported set** (D-113), with a body cap sized to each source | IS-6; D-113 | `TestThePropagationClientIsHardened`, `TestTheClientRefusesAnUnlistedHost` |
 | FR-4.8 *(O1)* | **One go-ionomaps object per process**, shared by every caller; the update runs off the UI goroutine | PF-F7, PF-F8 | `TestOneLibraryObjectPerProcess`, `TestTheUpdateNeverRunsOnTheUIGoroutine` |
 | FR-4.9 *(O1)* | **The coordinate parser is shared and finite-checked** in front of every resolver, the Observer's lookup and `watchpost report` included: coordinates never go online, `NaN` and `Inf` are refused, and the geocoder's `name` parameter is redacted in logs | N-3 (not excused by predating the change) | `TestEveryResolverParsesCoordinatesLocally`, `TestNaNCoordinatesAreRefused`, `TestTheGeocoderQueryIsRedacted` |
-| FR-4.10 *(O1)* | **Refresh while open (D-94, A-26):** while the mode is open, the fields follow each new GloTEC grid (every 10 minutes by default); GIRO is asked at most hourly and its last readings are re-assimilated over each new grid; D-RAP and the scales come with each update. A Setting (Maps tab) chooses every 10 minutes (default), hourly or on demand, each stating its download cost while open. Nothing refreshes while the mode is closed | D-94, A-26; P-2 | `TestAnOpenModeFollowsEachNewGrid`, `TestGIROIsAskedAtMostHourlyWhileOpen`, `TestTheRefreshSettingStatesItsCost`, `TestNothingRefreshesWhileClosed` |
+| FR-4.10 *(O1)* | **Refresh while open (D-94, A-26):** while the mode is open, the fields follow each new GloTEC grid (every 10 minutes by default); GIRO is asked at most hourly and its last readings are re-assimilated over each new grid; D-RAP and the scales come with each update. A Setting (Maps tab) chooses every 10 minutes (default), hourly or on demand (the refresh-now key, FR-1.14), each stating its measured wire cost while open (D-111, D-120). Nothing refreshes while the mode is closed | D-94, A-26; P-2 | `TestAnOpenModeFollowsEachNewGrid`, `TestGIROIsAskedAtMostHourlyWhileOpen`, `TestTheRefreshSettingStatesItsCost`, `TestNothingRefreshesWhileClosed` |
 
 ## FR-5 — Honesty (R-5)
 
@@ -142,14 +143,16 @@ broadcast can be kept off the screen reader's device.
 **Retired from FR-6 by D-78:** recording propagation grids and tower values, backfill, the store opening
 without NDFD, per-dataset retention, and the dataset terms field (FR-6.1 to FR-6.4, FR-6.6, FR-6.7).
 
-## FR-7 — Accessibility carry-over (R-6; D-4, D-63)
+## FR-7 — Accessibility carry-over (R-6; D-4, D-63, D-122)
+
+**Moved to 0.19.1 (D-122)**, the very next release; these rows are its requirements, and D-63's SHIP gate applies to 0.19.1's SHIP.
 
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
-| FR-7.1 *(O2)* | F-191 (FR-1.8): the window says its picture is braille and names the remedy | 0.18.0 D-244 | as F-191 |
-| FR-7.2 *(O2)* | F-192, F-193, F-194, F-180: radar's motion Setting with reduce motion; the loop's rates and hold; the playback speed Setting | 0.18.0 D-245, D-255 | as each row |
-| FR-7.3 *(O2)* | F-196, F-197, F-198: the Monochrome theme hint; the colour-literal guard; the `CheckRamp` matrix | 0.18.0 D-247 | as each row |
-| FR-7.4 *(O2)* | F-205: the cursor placed for a screen reader; the description beyond alerts; the edge warning without a picture; the state words; the Maps tab; the outline key; "With the map" | 0.18.0 D-273 | as F-205's findings (AX-3 to AX-9) |
+| FR-7.1 *(0.19.1)* | F-191 (FR-1.8): the window says its picture is braille and names the remedy | 0.18.0 D-244 | as F-191 |
+| FR-7.2 *(0.19.1)* | F-192, F-193, F-194, F-180: radar's motion Setting with reduce motion; the loop's rates and hold; the playback speed Setting | 0.18.0 D-245, D-255 | as each row |
+| FR-7.3 *(0.19.1)* | F-196, F-197, F-198: the Monochrome theme hint; the colour-literal guard; the `CheckRamp` matrix | 0.18.0 D-247 | as each row |
+| FR-7.4 *(0.19.1)* | F-205: the cursor placed for a screen reader; the description beyond alerts; the edge warning without a picture; the state words; the Maps tab; the outline key; "With the map" | 0.18.0 D-273 | as F-205's findings (AX-3 to AX-9) |
 | FR-7.5 | **SHIP is blocked while any FR-7 row lacks its passing test**; dropping a row takes a ruling | D-63 | a SHIP-gate check over FR-7's rows |
 
 ## FR-8 — Memo keys carry identity (R-7; #12, D-14)

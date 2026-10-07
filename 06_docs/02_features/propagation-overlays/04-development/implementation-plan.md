@@ -42,8 +42,8 @@ this plan's "UAT" section.
 | W4 | The data path: `domains/propagation`, `app/mapprop.go`, fetched only when open, honesty | FR-4.1 to FR-4.3, FR-4.5, FR-4.6, FR-4.8, FR-4.10, FR-5 (FR-5.4: D-105) | W2, **go-ionomaps rc** | O1 |
 | W5 | The reference chart: best bands, your frequency, the centre, hours ahead, finding a place | FR-1.7 to FR-1.11, FR-1.13, FR-1.15 to FR-1.18 | W3, W4 | O1 |
 | W6 | Words without the picture | FR-3.1, FR-3.2, FR-3.5 | W5 | O1 (ships with the layer, D-9) |
-| W7 | The Broadcaster: the key into the mode, the shared-device statement | FR-2.1, FR-2.2 | W5 | O1 |
-| W8 | Accessibility carry-over, gated before SHIP | FR-7.1 to FR-7.5 | — | O2 |
+| W7 | The Broadcaster: the key into the mode, the shared-device statement | FR-2.1 to FR-2.3 | W5 | O1 |
+| W8 | Accessibility carry-over, gated before SHIP — **0.19.1 (D-122)** | FR-7.1 to FR-7.5 | — | 0.19.1 |
 | W9 | Memo keys and the `say` fixes | FR-8, FR-9 | — | O3 (FR-9 earlier if a flaky gate blocks O1) |
 | W10 | Instruments: the journey, the G1 harness, the code-quality brief | FR-10.3, NFR-1 | W5 | through BUILD |
 
@@ -86,6 +86,7 @@ this plan's "UAT" section.
 | W5.5 | Space weather named: raised R, S or G scales and NOAA's outlook in the chart; hours ahead during a storm say typical may not hold; a missing feed said (D-88, D-109) | `app/mapprop.go`, `modes/tty/map_prop.go` | `TestARaisedScaleIsNamed`, `TestAStormSaysTypicalMayNotHold`, `TestMissingScalesAreNotShownAsZero` |
 | W6.1 | The words, in order, units for speech, status without the picture | `modes/tty/map_describe.go` | `TestThePropagationWordsAnswerWithoutThePicture`, `TestPropagationWordsCarryUnitsForSpeech`, `TestTheStatusIsSaidWithoutThePicture` |
 | W7.1 | The console key from the tower; the shared-device statement | `modes/tty/router.go:159-224`, `help_about.go` | `TestTheConsoleOpensThePropagationModeFromTheTower`, `TestTheConsoleKeysDoNotClash`, `TestTheSharedDeviceIsSaid` |
+| W7.2 | The shared Settings: "Instead of the map", refresh and the no-readings correction in both modes; the radius Observer-only (D-121) | `modes/tty/setup_rows.go:257-265` | `TestTheConsolePropagationModeHonoursTheSharedSettings`, `TestInsteadOfTheMapIsShared` |
 
 ## W8 to W10
 
