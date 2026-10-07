@@ -132,7 +132,7 @@ func (l *Library) Update(ctx context.Context) (Snapshot, error) // pull; throttl
 
 type Snapshot struct {
     Valid, Computed time.Time
-    Hours           []Hour     // now, then up to 24 forecast hours (R-1.3)
+    Hours           []Hour     // now, then up to 24 hours ahead, typical (R-1.3, D-109)
     Background      Background // GloTEC or Climatology (FR-5.2)
     Scales          Scales     // NOAA's R, S and G, named not modelled (D-88)
     Offset          Offset     // live and typical GloTEC-against-stations offsets (D-105)
@@ -157,8 +157,7 @@ type DayScale struct {
 
 type Hour struct {
     At       time.Time
-    Forecast bool
-    ErrorMHz float32 // a forecast hour's typical foF2 error, as measured (D-103); 0 for the current hour
+    Typical  bool    // an hour ahead: the climatology for that hour (D-109)
     MUF3000  Field
     FoF2     Field
 }
