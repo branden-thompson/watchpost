@@ -18,7 +18,7 @@ person. Definitions are in `01-objectives/problem-statement.md`; targets are rul
 |---|---|---|---|
 | M2 (PS-1) | the Broadcaster: the console key into the Propagation mode, from the tower (D-57) | "Does *frequency* reach *place in or near the served area* now?" | the answer matches watchpost's own answer (D-92) |
 | M5 (PS-2) | the Observer's map window, Propagation mode, picture on | "Which bands are open now between *your place* and *target*?" | the bands named are exactly the bands watchpost calls open (D-92) |
-| M5b (PS-2) | the same, with no picture (`--ascii`, or "Instead of the map") | as M5 | as M5, against the words alone (FR-3.1) |
+| M5b (PS-2) | the same, with no picture (`--ascii`, or "Instead of the map") | as M5 | as M5, against the words alone (FR-3.1). **It measures a sighted reader of the words**: the terminal cursor does not yet follow focus (F-205, D-110), and VALIDATE says so |
 
 **Seconds each:** from the question shown to the answer stated. A prompter script shows each question and records the times on a key press; it is built with the instruments (W10).
 
