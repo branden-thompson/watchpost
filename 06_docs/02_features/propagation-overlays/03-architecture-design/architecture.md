@@ -201,7 +201,7 @@ R-3.4), `glotec` (typed GeoJSON, R-8.2), `drap`, `climatology` (the PyIRI port o
 | Source | Each update | Since |
 |---|---|---|
 | GIRO | about 39 requests, readings since the last held (R-5.2), tens of KB | D-39, D-51 |
-| NOAA GloTEC | the newest grid, about 2.5 MB, or a 304 | FR-4.6 |
+| NOAA GloTEC | the newest grid, about 2.5 MB, or a 304; while open, each new grid every 10 minutes by default (about 15 MB an hour) | FR-4.6, D-94 |
 | NOAA D-RAP | about 42 KB, or a 304 | D-47 |
 | NOAA space-weather scales | about 1.1 KB, or a 304 | D-88 |
 | compute | a GP over about 39 stations, two fields, a 2° grid | G-G1, set in the dry run |

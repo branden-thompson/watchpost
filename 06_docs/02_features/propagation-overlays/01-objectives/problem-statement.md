@@ -84,3 +84,14 @@ Anti-solution check:
 - M4: a constant answer fails, as for M1.
 - M5: a link out fails.
 - M5b: an answer that exists only as colour on a map fails. MUF's words path therefore ships with the layer (D-9).
+
+## Targets (D-49)
+
+Each target is ruled from PLAN's dry run, against D-75's floors, and listed here as it is ruled.
+
+| Metric | Target | Ruling |
+|---|---|---|
+| M2 | 8 of 10 correct, each within 30 s | D-93 |
+| M5 | 8 of 10 correct, each within 45 s | D-93 |
+| M5b | 8 of 10 correct, each within 60 s | D-93 |
+| G1 | added mean CPU ≤ 1% of one core; added RSS ≤ 25 MB; downloads ≤ 15 MB an hour open at the default refresh, ≤ 3 MB an hour hourly, none closed | D-95 |

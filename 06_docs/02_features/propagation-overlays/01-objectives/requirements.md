@@ -121,6 +121,7 @@ broadcast can be kept off the screen reader's device.
 | FR-4.7 *(O1)* | The propagation client refuses plain http and private addresses, with a body cap sized to each source | IS-6; A-12 | `TestThePropagationClientIsHardened` |
 | FR-4.8 *(O1)* | **One go-ionomaps object per process**, shared by every caller; the update runs off the UI goroutine | PF-F7, PF-F8 | `TestOneLibraryObjectPerProcess`, `TestTheUpdateNeverRunsOnTheUIGoroutine` |
 | FR-4.9 *(O1)* | **The coordinate parser is shared and finite-checked** in front of every resolver, the Observer's lookup and `watchpost report` included: coordinates never go online, `NaN` and `Inf` are refused, and the geocoder's `name` parameter is redacted in logs | N-3 (not excused by predating the change) | `TestEveryResolverParsesCoordinatesLocally`, `TestNaNCoordinatesAreRefused`, `TestTheGeocoderQueryIsRedacted` |
+| FR-4.10 *(O1)* | **Refresh while open (D-94, A-26):** while the mode is open, the fields follow each new GloTEC grid (every 10 minutes by default); GIRO is asked at most hourly and its last readings are re-assimilated over each new grid; D-RAP and the scales come with each update. A Setting (Maps tab) chooses every 10 minutes (default), hourly or on demand, each stating its download cost while open. Nothing refreshes while the mode is closed | D-94, A-26; P-2 | `TestAnOpenModeFollowsEachNewGrid`, `TestGIROIsAskedAtMostHourlyWhileOpen`, `TestTheRefreshSettingStatesItsCost`, `TestNothingRefreshesWhileClosed` |
 
 ## FR-5 — Honesty (R-5)
 

@@ -20,6 +20,7 @@ evidence, its options, a recommendation and the strongest counter-argument.
 | Q-3 | A bias correction for a false "open" | RK-11 | waits for the week's signed bias |
 | Q-4 | The effective-sunspot fit | CQ-N1; go-ionomaps requirements, after R-9.4 | waits for the week's fallback scores |
 | Q-5 | The 400 km near-vertical radius | A-18 | waits for the week's scores by distance; the WSPR density is in |
+| Q-7 | The climatology's magnetic coordinates: a table neither R-4.3 nor the design names | found in PLAN's dry run | waits for the week's raw-against-refit scores |
 | Q-6 | Can a shipped dataset reach #27's cap? | D-55 | **answered by measurement: no** (`dry-run.md`); no 0.18.1 hotfix; #27 is still fixed first in BUILD |
 
 ## Q-1 — The 40-request cap and the rotation probe
@@ -66,3 +67,16 @@ evidence, its options, a recommendation and the strongest counter-argument.
 - B adds a source: a credit, a parser with its fuzzer, a fault case, and another thing to fail.
 - The scales are coarse. "G0" read as "all clear" can mislead while D-RAP already shows trouble.
 - During a storm the assimilated fields already carry its effect where stations report. B mainly helps the hours ahead and the places far from any station.
+
+## Q-7: the climatology's magnetic coordinates (found in PLAN)
+
+**Evidence** (PyIRI 0.1.7, as installed for the dry run, D-86):
+- **The refits.** NRL's spherical-harmonic coefficients (`sh_library.py`, `coefficients/SH/foF2_*.nc`, `M3000F2.nc`, about 1.9 MB each) are in quasi-dipole latitude and magnetic local time. For geographic input, `sh_library.py:121-136` converts through `Apex(...)`, which reads `coefficients/Apex/Apex.nc` (2.8 MB). That table holds spherical-harmonic fits of apexpy's coordinates for each year from 1900 to 2030 (`sh_library.py:9-11`); outside that range the nearest year is used (`:1611`).
+- **The raw tables.** CCIR and URSI (`main_library.py`) use the modified dip, computed from IGRF at 300 km (`main_library.py:137-141`, `igrf_library`). It reads `coefficients/IGRF/IGRF13.shc`, whose IGRF-13 coefficients are defined to 2025, so 2026 is extrapolated. IGRF-14 (IAGA, December 2024) covers 2025 to 2030.
+- go-ionomaps' R-4.3 allows one kind of third-party data, the NRL refits. The design's provenance table says "spherical harmonics in modip", which is right for the raw tables, not for the refits.
+- Either way the climatology needs a magnetic-coordinate table, and that table has a date limit.
+
+**The week's scores decide which path is worth its table.** The partial week (2026-09-29 to 10-01) has the refit and raw CCIR level, at foF2 0.98 and 0.98 MHz and MUF 3.34 and 3.36 MHz.
+
+**To rule after the scores:** which climatology path go-ionomaps ports (refits with Apex, or raw tables with IGRF-14), R-4.3 amended to name the table, and how the library says when its table's years run out.
+

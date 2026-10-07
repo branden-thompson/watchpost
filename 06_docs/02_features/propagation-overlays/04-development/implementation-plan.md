@@ -39,7 +39,7 @@ this plan's "UAT" section.
 | W1 | #27: the roll-up never erases a year | FR-6.5 | — | **first in BUILD (D-55)** |
 | W2 | The Propagation mode's shell: the mode, its bound, opening anywhere, its keys, the acknowledgement | FR-1.1 to FR-1.4, FR-1.12, FR-1.14, FR-11 | W0 | O1 |
 | W3 | The maps: the two layers over water, terminator, legend, words seam | FR-1.5, FR-1.6, FR-3.3 | W2, **go-tuiMaps v0.3.0 rc** | O1 |
-| W4 | The data path: `domains/propagation`, `app/mapprop.go`, fetched only when open, honesty | FR-4.1 to FR-4.3, FR-4.5, FR-4.6, FR-4.8, FR-5 | W2, **go-ionomaps rc** | O1 |
+| W4 | The data path: `domains/propagation`, `app/mapprop.go`, fetched only when open, honesty | FR-4.1 to FR-4.3, FR-4.5, FR-4.6, FR-4.8, FR-4.10, FR-5 | W2, **go-ionomaps rc** | O1 |
 | W5 | The reference chart: best bands, your frequency, the centre, hours ahead, finding a place | FR-1.7 to FR-1.11, FR-1.13, FR-1.15 to FR-1.18 | W3, W4 | O1 |
 | W6 | Words without the picture | FR-3.1, FR-3.2, FR-3.5 | W5 | O1 (ships with the layer, D-9) |
 | W7 | The Broadcaster: the key into the mode, the shared-device statement | FR-2.1, FR-2.2 | W5 | O1 |
@@ -76,6 +76,7 @@ this plan's "UAT" section.
 | W4.1 | `domains/propagation`: one object per process, the propagation client, nothing before the acknowledgement or the mode | `domains/propagation/`, `app/mapprop.go`, `modes/tty/dashboard.go:72` (`MapPropagation`) | `TestOneLibraryObjectPerProcess`, `TestThePropagationModeFetchesNothingUntilOpened`, `TestNothingIsFetchedBeforeTheAcknowledgement`, `TestTheUpdateNeverRunsOnTheUIGoroutine` |
 | W4.2 | Credits, MAP STATUS, rate headers only, nothing raw kept, 304s | `app/credits.go`, `app/maps.go:213-225` | `TestEveryRegisteredSourceHasACredit`, `TestMapStatusListsEveryPropagationHost`, `TestOnlyRateHeadersAreRead`, `TestNoRawSourceDataIsStored`, `TestAnUnchangedGridCostsA304` |
 | W4.3 | Honesty: age, stale, failed, fallback named, forecast never a measurement | `app/mapprop.go`, `modes/tty/` | `TestTheFieldsAgeIsAlwaysSaid`, `TestAStaleFieldIsSaidStale`, `TestTheFallbackIsNamed`, `TestAForecastHourSaysItIsAForecast` |
+| W4.4 | Refresh while open: each new GloTEC grid by default, GIRO at most hourly, the Setting with its cost (D-94, A-26) | `app/mapprop.go`, `modes/tty/setup_*.go`, `platform/config/` | `TestAnOpenModeFollowsEachNewGrid`, `TestGIROIsAskedAtMostHourlyWhileOpen`, `TestTheRefreshSettingStatesItsCost`, `TestNothingRefreshesWhileClosed` |
 | W5.1 | Best bands now (near-vertical 400 km or the service radius; targets; open hours today) | `app/mapprop.go`, `modes/tty/map_prop.go` | `TestBestBandsNameTheirLimit`, `TestTheDaysOpenHoursAreShown`, `TestTheContinentsAreTheDefaultTargets` |
 | W5.2 | Your frequency: entry, parse, reach drawn and said | as above | `TestYourFrequencyDrawsItsReach`, `TestYourFrequencyIsSaid`, `TestABadFrequencyIsSaidNotGuessed` |
 | W5.3 | Finding a place: the existing index, a mode-aware coverage gate, locators, the uncached online fallback, focus back | `domains/locations/resolver.go:101-102` | `TestAFoundPlaceIsAnsweredAndNotKept`, `TestALocalMatchSendsNothing`, `TestTheOnlineFallbackIsUncached`, `TestFocusReturnsAfterAFind` |
