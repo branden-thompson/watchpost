@@ -27,7 +27,9 @@ scripts).
 | The forecast hours' error at +3 h and +12 h (D-75) | from the week's 3-hourly grids | pending the week |
 | The answers' cost per keypress (FR-1.17) | needs the Go prototype of the path answer; measured in PLAN's spike | pending |
 | G1 over at least 48 hours | **The instrument is proven** (below): a 10-minute offline run of today's watchpost (89c6f5bf) gave RSS 55 to 58 MB, steady, and about 3% of one core. The 48-hour measurement needs a build with the mode, so it lands in BUILD (W10.2) with this harness | instrument dry-run done; measurement in BUILD |
-| M2, M5, M5b (UAT) | the protocol and its scenarios, written in PLAN; graded by the HUM LEAD alone (D-68) | pending |
+| M2, M5, M5b (UAT) | the protocol is written (`uat-protocol.md`); its scenarios are drawn in BUILD once the answers exist; graded by the HUM LEAD alone (D-68) | protocol drafted; the sitting is live (D-89) |
+| M1 and M4 (agreement with WSPR) | **a gap until BUILD:** the instrument needs the chart's path answer (go-ionomaps G6, G7). The WSPR density it needs is measured (above). Its target can be ruled now relative to the climatology baseline (D-23), with the absolute numbers measured by G10.4's instrument | gap, named |
+| D-73's +10 dB in 2.5 kHz against published practice | a desk check of the published SSB voice thresholds | pending |
 
 ## Requests made
 

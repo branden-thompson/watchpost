@@ -97,13 +97,13 @@ this plan's "UAT" section.
 
 ## UAT (M2, M5, M5b)
 
-Graded by the HUM LEAD alone (D-68):
+Graded by the HUM LEAD alone (D-68). The protocol is `07-readiness/uat-protocol.md`:
 - **M2:** ten reach questions from the station (the console key, then the chart);
 - **M5:** ten band questions to targets from the Observer;
-- **M5b:** the same ten without the picture.
+- **M5b:** ten more, drawn the same way, without the picture (A-25).
 
 Each is scored correct per M1/M4's reference (WSPR under the reference circuit, D-73), with seconds. The
-scenarios are drawn in BUILD from recorded days, and the answer key is fixed before the sitting.
+scenarios are drawn in BUILD and fixed before the sitting, which is live (D-89).
 
 ## The trace
 
