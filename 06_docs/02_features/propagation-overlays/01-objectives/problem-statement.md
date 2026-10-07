@@ -53,7 +53,7 @@ kept as a starting point. **UAT (M2, M5, M5b) is graded by the HUM LEAD alone; t
 | # | Name · symbol | Type | Definition | Measured in | Proposed at intake |
 |---|---|---|---|---|---|
 | M1 | Reach agreement · R₁ | accuracy | share of scenarios (the tower, a place in the served area, UTC hour, band) where the reference chart's answer ("best bands now" or "your frequency", D-76), reaches or does not, matches observed reception reports normalised to the reference circuit (D-73) for that path within ±1 h; the set holds both outcomes | % of scenarios | at least the IRI climatology's agreement plus N points (D-23; first proposed as KC2G's, less 5) |
-| M2 | Answerable from the station · A₁ | task (UAT) | the operator answers the reach question for N scenarios from the station alone (the Propagation mode, opened from the console, D-57), without leaving watchpost, correctly per M1's reference | correct of N; seconds each | 8 of 10, each within 30 s |
+| M2 | Answerable from the station · A₁ | task (UAT) | the operator answers the reach question for N scenarios from the station alone (the Propagation mode, opened from the console, D-57), without leaving watchpost, correctly per watchpost's own answer for that question (D-92; accuracy is M1's) | correct of N; seconds each | 8 of 10, each within 30 s |
 | ~~M3~~ | ~~Told when it closes~~ | — | **Retired by D-76:** the reference chart replaced the monitoring readout and its closure notices; the operator learns by looking. An optional "band watch" is a follow-up, and M3 returns with it (D-48, D-72 and D-74 recorded its split and targets). | — | — |
 | G1 | Station cost · C | guardrail (issue #25) | watchpost's added CPU time, resident memory and downloads with the Propagation mode in use against not, over at least 48 hours (D-49) | % CPU; MB; MB a day | at most 1% mean CPU; 50 MB RSS (target set from the dry run, D-49) |
 
@@ -77,7 +77,7 @@ Targets are set from PLAN's dry run, as for PS-1 (D-49), against D-75's floors. 
 | # | Name · symbol | Type | Definition | Measured in |
 |---|---|---|---|---|
 | M4 | Path agreement · R₂ | accuracy | share of scenarios (listener's place, target place, UTC hour, band) where watchpost's open or closed matches observed reception reports normalised to the reference circuit (D-73) for that path within ±1 h; the set holds both outcomes | % of scenarios |
-| M5 | Answerable without leaving · A₂ | task (UAT) | the listener names, from watchpost alone, the bands open between their place and N target places at a given hour, correctly per M4's reference | correct of N; seconds each |
+| M5 | Answerable without leaving · A₂ | task (UAT) | the listener names, from watchpost alone, the bands open between their place and N target places at a given hour, correctly per watchpost's own answer (D-92; accuracy is M4's) | correct of N; seconds each |
 | M5b | The same, in words · A₂ʷ | task (UAT) | M5 answered with no picture (`--ascii`, or "Instead of the map") | correct of N; seconds each |
 
 Anti-solution check:

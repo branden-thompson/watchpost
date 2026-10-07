@@ -102,7 +102,7 @@ Graded by the HUM LEAD alone (D-68). The protocol is `07-readiness/uat-protocol.
 - **M5:** ten band questions to targets from the Observer;
 - **M5b:** ten more, drawn the same way, without the picture (A-25).
 
-Each is scored correct per M1/M4's reference (WSPR under the reference circuit, D-73), with seconds. The
+Each is scored against watchpost's own answer (D-92), with seconds; the WSPR key is reported beside it. The
 scenarios are drawn in BUILD and fixed before the sitting, which is live (D-89).
 
 ## The trace

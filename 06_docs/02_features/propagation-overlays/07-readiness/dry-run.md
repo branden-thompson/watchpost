@@ -30,6 +30,7 @@ scripts).
 | M2, M5, M5b (UAT) | the protocol is written (`uat-protocol.md`); its scenarios are drawn in BUILD once the answers exist; graded by the HUM LEAD alone (D-68) | protocol drafted; the sitting is live (D-89) |
 | M1 and M4 (agreement with WSPR) | **a gap until BUILD:** the instrument needs the chart's path answer (go-ionomaps G6, G7). The WSPR density it needs is measured (above). Its target can be ruled now relative to the climatology baseline (D-23), with the absolute numbers measured by G10.4's instrument | gap, named |
 | D-73's +10 dB in 2.5 kHz against published practice | **Within published practice for just-usable SSB voice** (below): the sources span +4 to +14 dB in 2.5 kHz. ITU-R F.339-8's J3E "just usable" is 47 dB-Hz (stable) and 48 (fading), PEP to noise in 1 Hz, which is +13 and +14 dB in 2.5 kHz. WSPR's SNR is in 2500 Hz (WSJT-X 2.6.1 User Guide §7.1) | checked; **+13 dB ruled (D-91)** |
+| go-tuiMaps M5: a whole-globe frame with a field (v0.3.0 P7.1) | **Measured on v0.2.0** (below): after a pan, fill and labelled contours take 5.7 ms at 200 × 56 and **22.2 ms at 400 × 110**, over a 16 ms frame; fill alone 2.4 and 9.1 ms; an unchanged frame about 2 µs | measured |
 | The update's compute (go-ionomaps G-G1) and GloTEC's decode (R-8.2) | **Measured in the spike** (below): the Gaussian process over 39 stations, two fields, 6.0 ms at 2° and 22.6 ms at 1°; the typed decode of one real grid 4.87 ms and 740 KB, against 10.7 ms and 7.61 MB generic | measured (spike) |
 
 ## Requests made
@@ -150,4 +151,24 @@ Every figure converted to dB in 2.5 kHz: a dB-Hz figure less 34.0 dB; a 3 kHz fi
 - F.339's note 4 adds 11.5 dB for day-to-day fluctuation against monthly-median predictions. The chart answers the hour, not a monthly median, and M1 and M4 score against that hour's spots, so the note does not apply.
 
 The extracts are in the session's scratch space (`snr/`).
+
+## go-tuiMaps M5: a whole-globe frame with a field (v0.3.0 P7.1)
+
+**Measured on v0.2.0** (the code on `feature/propagation-fields`):
+- a scratch benchmark outside the tree, Apple M5 Pro, go1.27.1, Truecolor, no basemap, `-benchtime=2s -count=5`, medians;
+- a synthetic 2° whole-globe field (180 × 91, values 2 to 14). v0.2.0's generic host type has no ramp (L-2.4's defect), so the `temperature` preset's ramp was used with breaks every 1 MHz, giving 11 contour levels;
+- "pan" re-renders after a one-cell pan; "repeat" renders with nothing changed.
+
+| Frame | 200 × 56 | 400 × 110 |
+|---|---|---|
+| pan, fill | 2.37 ms; 716 KB, 10,777 allocations | 9.05 ms; 2.74 MB, 39,561 allocations |
+| pan, fill and labelled contours | 5.70 ms | **22.2 ms** |
+| repeat | 1.1 µs | 2.1 µs |
+| pan, no overlay | 0.14 ms | 0.51 ms |
+
+**Reading.**
+- A large terminal's frame after a pan does not fit 16 ms with contours, about 1.4 times over.
+- The profile puts most of the cost in colouring each cell: a text-contrast check using `math.Pow`, and blending the faint bands (about 50 to 65%). Contours are about 14%. There is about one allocation per cell.
+- These figures are 1.5 to 7 times the round-1 Performance reviewer's (3.9 and 14.8 ms with contours). The difference is not explained: possibly the colour depth or the field's resolution.
+- watchpost renders the map on the UI goroutine (round 1, F7: `modes/tty/map_pane.go:346-363`), so a slow frame there is a slow keypress.
 
