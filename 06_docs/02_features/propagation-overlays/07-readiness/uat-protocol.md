@@ -40,9 +40,9 @@ person. Definitions are in `01-objectives/problem-statement.md`; targets are rul
 M1's and M4's reference (D-22, D-73):
 - WSPR spots from wspr.live, with RBN as a cross-check;
 - each spot normalised to 100 W from its reported power (WSPR's SNR is already given in 2.5 kHz);
-- a path counts as open when normalised spots clear about +10 dB within ±1 h.
+- a path counts as open when normalised spots clear +13 dB within ±1 h (D-91, ITU-R F.339-8).
 
-The threshold is checked against published practice in PLAN (D-73; `dry-run.md`). Paths with no spots in either direction are left out of the key, never scored as closed.
+Paths with no spots in either direction are left out of the key, never scored as closed.
 
 ## How the sitting is held (D-89): live
 

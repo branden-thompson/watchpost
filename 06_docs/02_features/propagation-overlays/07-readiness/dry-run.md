@@ -20,7 +20,7 @@ scripts).
 |---|---|---|
 | GloTEC's availability | **100%**: 4,466 of 4,466 ten-minute grids from 2026-09-05 21:45Z to 2026-10-06 21:55Z, no gap; NOAA keeps about 31 days | measured |
 | #27: can a shipped dataset reach the 32 MB read cap? (D-55) | **No.** The largest, NDFD hourly, holds about 14.5 KB a day of decompressed roll-up, about 5.3 MB a year. Two days of local data, projected linearly | measured; no 0.18.1 hotfix indicated |
-| WSPR density at near-vertical range under the reference circuit (D-73) | **Dense in the continental US.** On 2026-10-05, spots under 400 km between US stations that clear +10 dB at 100 W: 1,204 (160 m), 30,165 (80 m), 1,120 (60 m), 82,564 (40 m), 7,567 (30 m), 10,795 (20 m), down to 7,569 (10 m); every band had pairs in all 24 hours (80 m: 1,579 station pairs; 40 m: 4,829). Ground wave under about 50 km is still to be filtered | measured (one day) |
+| WSPR density at near-vertical range under the reference circuit (D-73, D-91) | **Dense in the continental US on the near-vertical bands.** On 2026-10-05, spots between 50 and 400 km between US stations that clear **+13 dB** at 100 W (D-91; ground wave under 50 km removed): 656 (160 m, 67 station pairs), 19,642 (80 m, 791 pairs), 927 (60 m), 63,525 (40 m, 2,881 pairs), 2,723 (30 m), 1,973 (20 m), thinning above (12 m: 51); every band but 12 m had spots in all 24 hours. At the first count's +10 dB and no distance floor: 30,165 (80 m) and 82,564 (40 m), reproduced exactly by the second query | measured (one day) |
 | D-RAP's file | 42 KB text, a 2° × 4° latitude-longitude table plus valid time, recovery estimate and X-ray/proton messages; `Last-Modified`, `ETag`, `max-age=60` | measured |
 | MUF(3000) and foF2 held out for B on D, by station and distance, with signed bias; mainland US and Pacific separately | a week of data (2026-09-29 to 10-05) is downloading under the throttle | in progress |
 | The NRL refits (D-43), with the F10.7 rule | PyIRI 0.1.7 installed under Homebrew Python 3.12 (D-86); scored on the week | pending the week |
@@ -29,7 +29,8 @@ scripts).
 | G1 over at least 48 hours | **The instrument is proven** (below): a 10-minute offline run of today's watchpost (89c6f5bf) gave RSS 55 to 58 MB, steady, and about 3% of one core. The 48-hour measurement needs a build with the mode, so it lands in BUILD (W10.2) with this harness | instrument dry-run done; measurement in BUILD |
 | M2, M5, M5b (UAT) | the protocol is written (`uat-protocol.md`); its scenarios are drawn in BUILD once the answers exist; graded by the HUM LEAD alone (D-68) | protocol drafted; the sitting is live (D-89) |
 | M1 and M4 (agreement with WSPR) | **a gap until BUILD:** the instrument needs the chart's path answer (go-ionomaps G6, G7). The WSPR density it needs is measured (above). Its target can be ruled now relative to the climatology baseline (D-23), with the absolute numbers measured by G10.4's instrument | gap, named |
-| D-73's +10 dB in 2.5 kHz against published practice | a desk check of the published SSB voice thresholds | pending |
+| D-73's +10 dB in 2.5 kHz against published practice | **Within published practice for just-usable SSB voice** (below): the sources span +4 to +14 dB in 2.5 kHz. ITU-R F.339-8's J3E "just usable" is 47 dB-Hz (stable) and 48 (fading), PEP to noise in 1 Hz, which is +13 and +14 dB in 2.5 kHz. WSPR's SNR is in 2500 Hz (WSJT-X 2.6.1 User Guide §7.1) | checked; **+13 dB ruled (D-91)** |
+| The update's compute (go-ionomaps G-G1) and GloTEC's decode (R-8.2) | **Measured in the spike** (below): the Gaussian process over 39 stations, two fields, 6.0 ms at 2° and 22.6 ms at 1°; the typed decode of one real grid 4.87 ms and 740 KB, against 10.7 ms and 7.61 MB generic | measured (spike) |
 
 ## Requests made
 
@@ -40,6 +41,8 @@ scripts).
 | 22:21:28Z | wspr.live | one aggregate SQL query (near-vertical density) | 200, 314 B |
 | 22:21:42Z | NOAA SWPC | `text/drap_global_frequencies.txt` | 200, 42,469 B |
 | from 22:21Z, one every 10 minutes | NOAA SWPC | 56 GloTEC grids, 3-hourly over the week | in progress |
+| 2026-10-07T01:41:41Z | NOAA SWPC | `text/daily-solar-indices.txt` (F10.7 by day, for the climatology's rule) | 200, 2,919 B |
+| 02:00:33Z | wspr.live | one aggregate SQL query: near-vertical density at +13 dB, ground wave removed (D-91) | 200, 442 B |
 | 2026-10-07T00:50:40Z | NOAA SWPC | D-RAP's product page (for PLAN's Q-2) | 301 to spaceweather.gov |
 | 00:51:12Z | NOAA SWPC | `products/noaa-scales.json` (Q-2) | 200, 1,107 B, `ETag`, `max-age=60` |
 | 00:51:56Z | NOAA SWPC | D-RAP's product page at spaceweather.gov (Q-2) | 200, 80,868 B |
@@ -108,4 +111,43 @@ The idle 3% is today's baseline, before the mode. It is a candidate question for
 - the real formulas: the spike computes the full worst case for every cell, with no early exit;
 - the update's own cost: the Gaussian process over the stations, on two fields;
 - the app's other load. The machine was shared during the runs (load 6 to 12), which widens the spread on the composites (up to 41% at 1°).
+
+### The update's compute and GloTEC's decode (the same spike)
+
+| Benchmark | Before the pass | After |
+|---|---|---|
+| Gaussian process, 39 stations, foF2 and M(3000)F2, 2° | 39.8 ms | **6.0 ms**, no allocations |
+| The same, 1° | 153.5 ms | **22.6 ms** |
+| GloTEC decode, one real grid (5,184 points), typed | — | **4.87 ms**, 740 KB, 16 allocations |
+| The same, generic (`map[string]any`) | — | 10.7 ms, 7.61 MB, 191,890 allocations |
+
+- **Method:** kernel var·exp(−d/L) in great-circle distance, L = 4000 km and noise 1.0, as tuned on the week's first days (`week.py`). Two Cholesky solves at 39 × 39, then a prediction at every cell.
+- **The pass:** station unit vectors, dot products for the distance, no allocations. Before and after agree within 1e-8.
+- **Reading:** an update's compute (decode and assimilation) is about 11 ms at 2° and about 28 ms at 1°, off the UI goroutine.
+- **Not measured:** the network; the climatology's evaluation; the forecast hours (24 more fields, each a background step plus a decayed residual).
+- The grid file was read from the session's scratch space, outside the timed loop, and not copied.
+
+## D-73's threshold against published practice (desk check)
+
+Every figure converted to dB in 2.5 kHz: a dB-Hz figure less 34.0 dB; a 3 kHz figure plus 0.8 dB.
+
+| Source | Level | As published | In 2.5 kHz |
+|---|---|---|---|
+| ITU-R F.339-8 (02/2013), Annex 1 Table 1, J3E telephony, audio speech-to-noise (note 18) | just usable / marginally commercial / good commercial | 6 / 15 / 33 dB in 3 kHz | 6.8 / 15.8 / 33.8 |
+| the same, RF, stable (PEP to noise in 1 Hz) | the same | 47 / 56 / 64 dB-Hz | **13.0** / 22.0 / 30.0 |
+| the same, RF, fading, no diversity | the same | 48 / 61 / 72 dB-Hz | **14.0** / 27.0 / 38.0 |
+| VOACAP Online manual (OH6BG, rev. 2025-03-25, §2.1, §2.3) | minimum (internal) | 38 dB-Hz | 4.0 |
+| voacap.com input help, "Req'd SNR" | "reasonable" SSB | 45 dB-Hz | 11.0 |
+| K1JT's "Weak-Signal S/N Limits", as quoted on voacap.blogspot.com (2018-04) | minimum | about +10 dB in 2500 Hz | 10.0 (secondary; the slide itself not seen) |
+
+**WSPR's reference bandwidth** is 2500 Hz: WSJT-X 2.6.1 User Guide §7.1 ("a standard reference noise bandwidth of 2500 Hz"), §1 and §17.2.10. WSPR is a constant-envelope signal, so its power is its PEP. A WSPR spot normalised to 100 W therefore compares directly with F.339's PEP figures.
+
+**Reading.**
+- **Ruled at D-91: +13 dB**, F.339-8's stable "just usable".
+- +10 dB is inside the published spread (+4 to +14).
+- It is about 3 dB stricter than F.339's audio figure, and about 3 to 4 dB looser than its PEP figures.
+- F.339-8 is the only primary, versioned standard among the sources.
+- F.339's note 4 adds 11.5 dB for day-to-day fluctuation against monthly-median predictions. The chart answers the hour, not a monthly median, and M1 and M4 score against that hour's spots, so the note does not apply.
+
+The extracts are in the session's scratch space (`snr/`).
 

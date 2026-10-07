@@ -46,7 +46,7 @@ status: "APPROVED at the DISCOVER gate (D-84), normative. On any conflict with t
 | absorbed / lower limit | lower frequencies are soaked up by the D layer in daylight; below this limit a band is closed |
 | disturbed | a solar flare or particle event is absorbing more than usual (NOAA's D-RAP); degraded, not necessarily closed |
 | space-weather scales | NOAA's levels 0 to 5 for radio blackouts (R), solar radiation storms (S) and geomagnetic storms (G); named in the chart, not modelled (D-88) |
-| reference circuit | what "open" means here: SSB voice at 100 W with simple antennas, needing about +10 dB signal-to-noise (D-73) |
+| reference circuit | what "open" means here: SSB voice at 100 W with simple antennas, needing +13 dB signal-to-noise in 2.5 kHz (D-73; ITU-R F.339-8's "just usable", D-91) |
 | skip zone | the ring around a transmitter that a frequency jumps over: too far for the ground wave, too near for the sky wave |
 
 ## How to read the rows
