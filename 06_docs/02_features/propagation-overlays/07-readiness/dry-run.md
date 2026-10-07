@@ -23,7 +23,7 @@ scripts).
 | WSPR density at near-vertical range under the reference circuit (D-73, D-91) | **Dense in the continental US on the near-vertical bands.** On 2026-10-05, spots between 50 and 400 km between US stations that clear **+13 dB** at 100 W (D-91; ground wave under 50 km removed): 656 (160 m, 67 station pairs), 19,642 (80 m, 791 pairs), 927 (60 m), 63,525 (40 m, 2,881 pairs), 2,723 (30 m), 1,973 (20 m), thinning above (12 m: 51); every band but 12 m had spots in all 24 hours. At the first count's +10 dB and no distance floor: 30,165 (80 m) and 82,564 (40 m), reproduced exactly by the second query | measured (one day) |
 | D-RAP's file | 42 KB text, a 2° × 4° latitude-longitude table plus valid time, recovery estimate and X-ray/proton messages; `Last-Modified`, `ETag`, `max-age=60` | measured |
 | MUF(3000) and foF2 held out for B on D, by station and distance, with signed bias; mainland US and Pacific separately | **Measured over the week** (below; 1,476 pairs, 30 stations): on the test days, mainland US, B on D 0.66 MHz foF2 and 2.10 MUF against climatology's 0.82 and 2.88, **so D-75's floor is met**; whole week, all stations, 0.90 and 3.41 against 1.08 and 3.77; signed bias +0.03 MHz foF2 (GloTEC +0.51, climatology +0.28). The Pacific stations are no better than climatology. A hybrid (M(3000)F2 assimilated over climatology, not GloTEC) cuts MUF to 3.26 overall | measured (a week, including a G1 to G2 storm) |
-| The NRL refits (D-43), with the F10.7 rule | **Measured:** CCIR refit and raw CCIR are level (foF2 1.08 and 1.08 MHz, MUF 3.77 and 3.79); URSI is worse (1.14, 3.97). The 30-day mean F10.7 beats the day's value on MUF (3.77 against 4.14), with foF2 level (1.08 and 1.07) | measured; the rule to rule |
+| The NRL refits (D-43), with the F10.7 rule | **Measured:** CCIR refit and raw CCIR are level (foF2 1.08 and 1.08 MHz, MUF 3.77 and 3.79); URSI is worse (1.14, 3.97). The 30-day mean F10.7 beats the day's value on MUF (3.77 against 4.14), with foF2 level (1.08 and 1.07) | measured; **ruled D-104**: the 30-day mean |
 | The forecast hours' error at +3 h and +12 h (D-75) | **Measured:** R-1.3's decay toward climatology fails the floor at +12 h in the US (0.85 against 0.76 MHz foF2). A blend of yesterday's hybrid field and climatology (w = 0.5) is no worse than climatology at both leads on the test days. It is clearly better on quiet days (+12 h US 0.50 against 0.60), and level or slightly worse in the storm (MUF 4.44 against 4.29) | measured; **ruled D-103**: the blend, every forecast hour labelled low-confidence |
 | The answers' cost per keypress (FR-1.17) | **Measured in a spike** (below): at 2°, an hour step (reach, best bands, paths, centre) costs about 4.4 ms and a frequency change about 3.8 ms, with no allocations; at 1°, about 19 ms and 17 ms. Reach is the only answer that costs real time (about 212 ns a cell) | measured (spike) |
 | G1 over at least 48 hours | **The instrument is proven** (below): a 10-minute offline run of today's watchpost (89c6f5bf) gave RSS 55 to 58 MB, steady, and about 3% of one core. The 48-hour measurement needs a build with the mode, so it lands in BUILD (W10.2) with this harness | instrument dry-run done; measurement in BUILD |
@@ -316,4 +316,24 @@ Each cell is foF2, then MUF (MHz).
 - The current hour is where the chart is clearly better than climatology.
 
 D-103 keeps 24 hours, labelled low-confidence.
+
+### The live offset (Q-3, D-105)
+
+At each grid time, the mean over the reporting stations of sounding foF2 minus GloTEC foF2: what the assimilation removes (`offset.py`).
+
+| Day | Mean | Range | Stations |
+|---|---|---|---|
+| 09-29 | −0.39 | −0.54 to +0.00 | 26 to 29 |
+| 09-30 | −0.45 | −0.64 to −0.26 | 26 to 29 |
+| 10-01 | −0.63 | −0.80 to −0.43 | 26 to 29 |
+| 10-02 | −0.57 | −0.77 to −0.32 | 25 to 28 |
+| 10-03 | −0.51 | −0.84 to −0.22 | 25 to 27 |
+| 10-04 (storm) | −0.54 | −1.11 to +0.10 | 23 to 29 |
+| 10-05 (storm) | −0.51 | −0.87 to −0.15 | 23 to 25 |
+
+**The week:** mean −0.51 MHz, SD 0.23.
+
+A band of 2 SD (0.45 MHz) flagged 3 of 56 updates:
+- 10-04 00:05Z (−1.11) and 06:05Z (+0.10), at the storm's onset;
+- 09-29 06:05Z (+0.00), a quiet night.
 

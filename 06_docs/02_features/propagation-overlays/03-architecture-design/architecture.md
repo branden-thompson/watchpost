@@ -135,6 +135,7 @@ type Snapshot struct {
     Hours           []Hour     // now, then up to 24 forecast hours (R-1.3)
     Background      Background // GloTEC or Climatology (FR-5.2)
     Scales          Scales     // NOAA's R, S and G, named not modelled (D-88)
+    Offset          Offset     // live and typical GloTEC-against-stations offsets (D-105)
     Sources         []Source   // name, terms, citation (R-4.1)
     Stale           bool
     Age             time.Duration
@@ -143,6 +144,10 @@ type Scales struct {
     R, S, G int        // NOAA levels now, 0 to 5
     Outlook []DayScale // NOAA's next three days, as published
     Valid   time.Time  // zero when the feed is missing: never read as level 0
+}
+type Offset struct {
+    LiveMHz, TypicalMHz, SpreadMHz float32 // stations minus GloTEC, foF2
+    Corrected                      bool    // the no-readings correction is in use
 }
 type DayScale struct {
     Day                      time.Time
@@ -205,6 +210,7 @@ R-3.4), `glotec` (typed GeoJSON, R-8.2), `drap`, `climatology` (the PyIRI port o
 | NOAA GloTEC | the newest grid, about 2.5 MB, or a 304; while open, each new grid every 10 minutes by default (about 15 MB an hour) | FR-4.6, D-94 |
 | NOAA D-RAP | about 42 KB, or a 304 | D-47 |
 | NOAA space-weather scales | about 1.1 KB, or a 304 | D-88 |
+| NOAA daily solar indices | about 3 KB, at most once a day | D-104 |
 | compute | a GP over about 39 stations, two fields, a 2° grid | G-G1, set in the dry run |
 
 ## When things fail
