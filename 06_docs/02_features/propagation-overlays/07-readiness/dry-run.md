@@ -25,7 +25,7 @@ scripts).
 | MUF(3000) and foF2 held out for B on D, by station and distance, with signed bias; mainland US and Pacific separately | a week of data (2026-09-29 to 10-05) is downloading under the throttle | in progress |
 | The NRL refits (D-43), with the F10.7 rule | PyIRI 0.1.7 installed under Homebrew Python 3.12 (D-86); scored on the week | pending the week |
 | The forecast hours' error at +3 h and +12 h (D-75) | from the week's 3-hourly grids | pending the week |
-| The answers' cost per keypress (FR-1.17) | needs the Go prototype of the path answer; measured in PLAN's spike | pending |
+| The answers' cost per keypress (FR-1.17) | **Measured in a spike** (below): at 2°, an hour step (reach, best bands, paths, centre) costs about 4.4 ms and a frequency change about 3.8 ms, with no allocations; at 1°, about 19 ms and 17 ms. Reach is the only answer that costs real time (about 212 ns a cell) | measured (spike) |
 | G1 over at least 48 hours | **The instrument is proven** (below): a 10-minute offline run of today's watchpost (89c6f5bf) gave RSS 55 to 58 MB, steady, and about 3% of one core. The 48-hour measurement needs a build with the mode, so it lands in BUILD (W10.2) with this harness | instrument dry-run done; measurement in BUILD |
 | M2, M5, M5b (UAT) | the protocol is written (`uat-protocol.md`); its scenarios are drawn in BUILD once the answers exist; graded by the HUM LEAD alone (D-68) | protocol drafted; the sitting is live (D-89) |
 | M1 and M4 (agreement with WSPR) | **a gap until BUILD:** the instrument needs the chart's path answer (go-ionomaps G6, G7). The WSPR density it needs is measured (above). Its target can be ruled now relative to the climatology baseline (D-23), with the absolute numbers measured by G10.4's instrument | gap, named |
@@ -78,4 +78,34 @@ Both are fixed: the process id comes from the spawned process, and the run ends 
 The 48-hour run on a build with the mode, mode in use against not, is W10.2.
 
 The idle 3% is today's baseline, before the mode. It is a candidate question for that measurement (is the redraw rate needed when nothing changes?), not a 0.19.0 change.
+
+## The answers' cost per keypress, spike (FR-1.17)
+
+**The spike.**
+- Throwaway Go in the session's scratch space, never committed; the standard library only, `CGO_ENABLED=0`, one goroutine.
+- Apple M5 Pro, go1.27.1, `-benchtime=2s -count=5`. The table gives medians.
+- Synthetic smooth fields: foF2 2 to 14 MHz, M(3000)F2 2.5 to 3.8.
+- **The basic-MUF and absorption formulas are placeholders of equivalent cost**: the same count of trigonometric, square-root and exponential calls per path as a P.533-style computation, not the published equations.
+- One optimisation pass, as a real build would have: per-row and per-column sine and cosine tables, the solar zenith as a dot product, no allocations, band-independent work out of the band loop. A test holds the two versions to identical outputs.
+
+| Answer | Before the pass | After |
+|---|---|---|
+| Reach, 2° (180 × 91 cells) | 5.49 ms; 16,381 allocations | **3.47 ms**; none |
+| Reach, 1° (360 × 181) | 21.2 ms | **13.4 ms** |
+| Best bands, 400 km, now | 226 µs | **9.5 µs** |
+| Best bands, now and 24 hours | 5.49 ms | **170 µs** |
+| Paths, 7 targets × 10 bands × 24 hours | 587 µs | **36 µs** |
+| Centre (a point, bands now and 24 hours) | 120 µs | **3.7 µs** |
+| A frequency change, 2° (reach and centre) | 5.67 ms | **3.77 ms** |
+| An hour step, 2° (reach, best bands, paths, centre) | 7.14 ms | **4.43 ms** |
+| An hour step, 1° | 31.7 ms | **18.7 ms** |
+
+**Reading.** Every answer runs off the UI goroutine anyway (FR-1.17, FR-4.8), so the frame is never held.
+- At 2°, the default, an hour step takes about 4% of a 100 ms response and fits inside a 16 ms frame.
+- At 1°, it fits 100 ms but not a frame.
+
+**What it does not show:**
+- the real formulas: the spike computes the full worst case for every cell, with no early exit;
+- the update's own cost: the Gaussian process over the stations, on two fields;
+- the app's other load. The machine was shared during the runs (load 6 to 12), which widens the spread on the composites (up to 41% at 1°).
 
