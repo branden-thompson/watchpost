@@ -4,7 +4,7 @@ date: 2026-10-06
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "IN PROGRESS — measurements land here as they finish; targets are ruled from them (D-49), against the floors set before (D-75)"
+status: "COMPLETE for PLAN — every FR-10.6 item measured or its gap named; targets ruled at D-93 to D-99 and D-108; the forecast at D-103; G1 and M1/M4 measured in BUILD"
 ---
 
 # The dry run

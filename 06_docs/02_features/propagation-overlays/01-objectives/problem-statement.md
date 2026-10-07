@@ -98,3 +98,6 @@ Each target is ruled from PLAN's dry run, against D-75's floors, and listed here
 | go-tuiMaps M5 | a whole-globe 2° field frame after a pan (fill, labelled contours, terminator, night) ≤ 16 ms at 400 × 110, ≤ 8 ms at 200 × 56 | D-96 |
 | M1 | agreement ≥ the IRI climatology's + 5 points, on the same ≥ 200 scenarios with both outcomes, over ≥ 3 days, by band | D-99 |
 | M4 | as M1, for the listener's paths | D-99 |
+| go-ionomaps G-M3 | ≥ 15% below climatology in the mainland US, ≥ 10% overall, foF2 and MUF; near stations foF2 ≤ 0.5, MUF ≤ 1.6 MHz | D-108 |
+| go-ionomaps G-M2, G-G1 | see D-97, D-98 | D-97, D-98 |
+
