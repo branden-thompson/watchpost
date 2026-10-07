@@ -16,7 +16,7 @@ evidence, its options, a recommendation and the strongest counter-argument.
 | # | Question | From | State |
 |---|---|---|---|
 | Q-1 | How the 40-request cap and the rotation probe share an update | go-ionomaps R-5.3; D-39, D-51 | **ruled D-87: A**, the probe inside the 40 |
-| Q-2 | The space-weather scales beyond D-RAP | PM-E2; D-47 | drafted, to the HUM LEAD |
+| Q-2 | The space-weather scales beyond D-RAP | PM-E2; D-47 | **ruled D-88: B**, named, not modelled |
 | Q-3 | A bias correction for a false "open" | RK-11 | waits for the week's signed bias |
 | Q-4 | The effective-sunspot fit | CQ-N1; go-ionomaps requirements, after R-9.4 | waits for the week's fallback scores |
 | Q-5 | The 400 km near-vertical radius | A-18 | waits for the week's scores by distance; the WSPR density is in |

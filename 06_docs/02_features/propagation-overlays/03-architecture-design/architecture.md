@@ -90,7 +90,7 @@ sequenceDiagram
   A->>P: snapshot for the hour
   P->>I: Update(now)
   I->>I: throttle: within D-39? else answer from the last good field
-  I->>N: GIRO since the last reading; GloTEC newest (304 if unchanged); D-RAP
+  I->>N: GIRO since the last reading; GloTEC newest (304 if unchanged); D-RAP; the scales
   N-->>I: replies
   I->>I: parse, range-check, assimilate, limits
   I-->>P: Snapshot (fields, valid, age, sources, background)
@@ -134,10 +134,22 @@ type Snapshot struct {
     Valid, Computed time.Time
     Hours           []Hour     // now, then up to 24 forecast hours (R-1.3)
     Background      Background // GloTEC or Climatology (FR-5.2)
+    Scales          Scales     // NOAA's R, S and G, named not modelled (D-88)
     Sources         []Source   // name, terms, citation (R-4.1)
     Stale           bool
     Age             time.Duration
 }
+type Scales struct {
+    R, S, G int        // NOAA levels now, 0 to 5
+    Outlook []DayScale // NOAA's next three days, as published
+    Valid   time.Time  // zero when the feed is missing: never read as level 0
+}
+type DayScale struct {
+    Day                      time.Time
+    RMinorPct, RMajorPct, SPct int // NOAA's probabilities
+    G                        int
+}
+
 type Hour struct {
     At       time.Time
     Forecast bool
@@ -191,6 +203,7 @@ R-3.4), `glotec` (typed GeoJSON, R-8.2), `drap`, `climatology` (the PyIRI port o
 | GIRO | about 39 requests, readings since the last held (R-5.2), tens of KB | D-39, D-51 |
 | NOAA GloTEC | the newest grid, about 2.5 MB, or a 304 | FR-4.6 |
 | NOAA D-RAP | about 42 KB, or a 304 | D-47 |
+| NOAA space-weather scales | about 1.1 KB, or a 304 | D-88 |
 | compute | a GP over about 39 stations, two fields, a 2° grid | G-G1, set in the dry run |
 
 ## When things fail
@@ -201,6 +214,7 @@ R-3.4), `glotec` (typed GeoJSON, R-8.2), `drap`, `climatology` (the PyIRI port o
 | GIRO blocks for good | the GloTEC background alone, named | D-40, D-75; F-208 |
 | GloTEC missing | the climatology fallback, named | FR-5.2 |
 | D-RAP missing | no "disturbed" state; said | R-2.6 |
+| scales missing | no level named, and the gap said; never shown as level 0 | FR-1.18 |
 | a hostile or broken reply | the value refused and counted; never NaN on the map | R-3.3 |
 | offline | the last good field with its age, or "no data yet" with the way to retry | FR-5.2; 0.18.0 D-124 |
 
