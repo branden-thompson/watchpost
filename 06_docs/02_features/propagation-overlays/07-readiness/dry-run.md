@@ -26,7 +26,7 @@ scripts).
 | The NRL refits (D-43), with the F10.7 rule | PyIRI 0.1.7 installed under Homebrew Python 3.12 (D-86); scored on the week | pending the week |
 | The forecast hours' error at +3 h and +12 h (D-75) | from the week's 3-hourly grids | pending the week |
 | The answers' cost per keypress (FR-1.17) | needs the Go prototype of the path answer; measured in PLAN's spike | pending |
-| G1 over at least 48 hours | the instrument (CPU, RSS and bytes a day over a run) is proven on today's watchpost; the measurement needs a build with the mode, so it lands in BUILD with this harness | instrument pending |
+| G1 over at least 48 hours | **The instrument is proven** (below): a 10-minute offline run of today's watchpost (89c6f5bf) gave RSS 55 to 58 MB, steady, and about 3% of one core. The 48-hour measurement needs a build with the mode, so it lands in BUILD (W10.2) with this harness | instrument dry-run done; measurement in BUILD |
 | M2, M5, M5b (UAT) | the protocol and its scenarios, written in PLAN; graded by the HUM LEAD alone (D-68) | pending |
 
 ## Requests made
@@ -38,3 +38,42 @@ scripts).
 | 22:21:28Z | wspr.live | one aggregate SQL query (near-vertical density) | 200, 314 B |
 | 22:21:42Z | NOAA SWPC | `text/drap_global_frequencies.txt` | 200, 42,469 B |
 | from 22:21Z, one every 10 minutes | NOAA SWPC | 56 GloTEC grids, 3-hourly over the week | in progress |
+| 2026-10-07T00:50:40Z | NOAA SWPC | D-RAP's product page (for PLAN's Q-2) | 301 to spaceweather.gov |
+| 00:51:12Z | NOAA SWPC | `products/noaa-scales.json` (Q-2) | 200, 1,107 B, `ETag`, `max-age=60` |
+| 00:51:56Z | NOAA SWPC | D-RAP's product page at spaceweather.gov (Q-2) | 200, 80,868 B |
+
+## G1's instrument, dry run (REFLECT L1)
+
+**The harness.**
+- `expect` starts the binary in a 133 × 44 pseudo-terminal, under `sandbox-exec` with outbound network denied except loopback, and with a fresh `HOME`.
+- It writes the process id to a file, drains the output, and ends the run with SIGTERM after a set time (SIGKILL 10 s later if needed).
+- A sampler reads that id and records the UTC time, RSS, CPU time and command name with `ps` every 30 s.
+- A `perl` alarm bounds the whole run.
+- The scripts are in the session's scratch space; BUILD lands them as W10.2, with byte counts from the propagation client.
+
+**Two faults found and fixed before this run:**
+- the first sampler measured `expect`, not watchpost;
+- `q` did not end watchpost under the harness, so a run hung for about 55 minutes.
+
+Both are fixed: the process id comes from the spawned process, and the run ends by signal.
+
+**The run:** 2026-10-07T00:49:24Z to 00:58:58Z, 20 samples, all of the watchpost process itself:
+
+| Measure | Result |
+|---|---|
+| RSS | 55,408 KB at the first sample, 55 to 58 MB after, 57,808 KB at the last; no growth |
+| CPU | 17.7 s over 574 s, about 0.93 s every 30 s: **about 3% of one core** |
+| Screen | the Observer dashboard, first run, "awaiting first data..." |
+| Terminal output | 1.95 MB in 10 minutes (the dashboard redrawing) |
+| Downloads | none: outbound network denied |
+| Ending | SIGTERM at 600 s; the terminal restored; no process left behind |
+
+**What it does not show:**
+- the cost of real fetching and parsing, since everything was offline;
+- growth over hours;
+- the Propagation mode.
+
+The 48-hour run on a build with the mode, mode in use against not, is W10.2.
+
+The idle 3% is today's baseline, before the mode. It is a candidate question for that measurement (is the redraw rate needed when nothing changes?), not a 0.19.0 change.
+
