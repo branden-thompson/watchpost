@@ -58,5 +58,5 @@ Paths with no spots in either direction are left out of the key, never scored as
 
 ## Recording
 
-- Each sitting's answers, times and key go in `07-readiness/uat-results.md`.
+- Each sitting's answers, times and key go in `07-readiness/uat-results.md`, **redacted (D-115)**: places as a region or a 4-character locator, no callsigns. The raw prompter logs and WSPR rows stay outside the tree, with the PLAN evidence.
 - Each verdict becomes a D-row, listed in the build log batch that carries it (FR-10.5, REFLECT L8).

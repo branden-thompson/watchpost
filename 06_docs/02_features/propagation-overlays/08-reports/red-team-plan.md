@@ -97,3 +97,7 @@ Nothing from it is committed: GIRO's data is CC BY-NC-SA, and its replies carry 
 | Fork 2: the terminal cursor; how M5b is sat | A-1 | **D-110:** left in O2 (F-205, AX-3); VALIDATE states M5b measured a sighted reader of the words and that a screen reader cannot yet follow the mode's focus; the protocol says so |
 | Fork 3: the download figures | B-F8, P-2, C-M4, C-T3 | **D-111:** wire bytes, decimal MB; BUILD's first task (W0.0) measures a gzip grid and the index and re-rules D-95's downloads with 25% headroom, newest-grid discovery costed |
 | Fork 4: memory | P-3 | **D-112:** the library's live heap ≤ 15 MB (amends D-98); G1's 25 MB added RSS split library 15 / host conversion 4 / GC headroom; only the shown hour handed to go-tuiMaps |
+| Fork 5: host allowlist | I-2 (A-12) | **D-113:** go-ionomaps exports its hosts with their terms; the propagation client refuses any other; MAP STATUS and a test read the one set; A-12 withdrawn |
+| Fork 6: reading the netCDF tables | I-6 | **D-114:** a one-time plain-text export from the pinned PyIRI environment with source checksums; `tools/tables` standard library only |
+| Fork 7: privacy in the UAT record | I-5 | **D-115:** places as a region or 4-character locator, no callsigns; raw logs outside the tree |
+| Fork 8: the Pacific | L-F2, D-F15 | **D-116:** every answer says its distance to the nearest reporting station; beyond 2000 km "about as good as typical"; G-M3 reports the Pacific and distance bands, not gated |
