@@ -30,6 +30,7 @@ scripts).
 | M2, M5, M5b (UAT) | the protocol is written (`uat-protocol.md`); its scenarios are drawn in BUILD once the answers exist; graded by the HUM LEAD alone (D-68) | protocol drafted; the sitting is live (D-89) |
 | M1 and M4 (agreement with WSPR) | **a gap until BUILD:** the instrument needs the chart's path answer (go-ionomaps G6, G7). The WSPR density it needs is measured (above). Its target can be ruled now relative to the climatology baseline (D-23), with the absolute numbers measured by G10.4's instrument | gap, named |
 | D-73's +10 dB in 2.5 kHz against published practice | **Within published practice for just-usable SSB voice** (below): the sources span +4 to +14 dB in 2.5 kHz. ITU-R F.339-8's J3E "just usable" is 47 dB-Hz (stable) and 48 (fading), PEP to noise in 1 Hz, which is +13 and +14 dB in 2.5 kHz. WSPR's SNR is in 2500 Hz (WSJT-X 2.6.1 User Guide §7.1) | checked; **+13 dB ruled (D-91)** |
+| The climatology's evaluation (part of G-G1) | **Measured in the spike** (below): PyIRI's refit shape (900 spherical-harmonic terms × 11 Fourier terms, plus the Apex mapping), both fields: a first open of 25 hours at 2° takes 334 ms with each cell's QD coordinates cached (6.9 MB), against 3.4 s naive; each new hour 12.7 ms. A Legendre cache halves it again but costs 61 MB, over G1's 25 MB (D-95) | measured (spike) |
 | go-tuiMaps M5: a whole-globe frame with a field (v0.3.0 P7.1) | **Measured on v0.2.0** (below): after a pan, fill and labelled contours take 5.7 ms at 200 × 56 and **22.2 ms at 400 × 110**, over a 16 ms frame; fill alone 2.4 and 9.1 ms; an unchanged frame about 2 µs | measured |
 | The update's compute (go-ionomaps G-G1) and GloTEC's decode (R-8.2) | **Measured in the spike** (below): the Gaussian process over 39 stations, two fields, 6.0 ms at 2° and 22.6 ms at 1°; the typed decode of one real grid 4.87 ms and 740 KB, against 10.7 ms and 7.61 MB generic | measured (spike) |
 
@@ -171,4 +172,30 @@ The extracts are in the session's scratch space (`snr/`).
 - The profile puts most of the cost in colouring each cell: a text-contrast check using `math.Pow`, and blending the faint bands (about 50 to 65%). Contours are about 14%. There is about one allocation per cell.
 - These figures are 1.5 to 7 times the round-1 Performance reviewer's (3.9 and 14.8 ms with contours). The difference is not explained: possibly the colour depth or the field's resolution.
 - watchpost renders the map on the UI goroutine (round 1, F7: `modes/tty/map_pane.go:346-363`), so a slow frame there is a slow keypress.
+
+### The climatology's evaluation (the same spike)
+
+**The model's shape**, confirmed against PyIRI 0.1.7's `sh_library.py` (MIT), with random coefficients and none of its data copied:
+- 11 Fourier terms in time × 900 spherical-harmonic terms (lmax 29), for each of the two fields and both solar levels;
+- each cell mapped to quasi-dipole coordinates by a 441-term fit (Apex);
+- the Fourier terms combined once per hour; the solar-level blend folded into the coefficients, since the model is linear in them.
+
+| Case, both fields | 2° | 1° |
+|---|---|---|
+| one hour, naive | 134 ms; 302 MB allocated | 549 ms |
+| one hour, QD coordinates cached per day | **12.7 ms**; none | 49.9 ms |
+| one hour, Legendre values also cached | 6.7 ms | 27.7 ms |
+| the day's cache: QD only / Legendre float64 / float32 | **0.4** / 61.3 / 30.9 MB | 1.6 / 244 / 123 MB |
+| first open, 25 hours, naive | 3.39 s | 13.4 s |
+| first open, 25 hours, QD cached | **334 ms**; 6.9 MB | 1.29 s |
+| first open, 25 hours, Legendre cached | 191 ms; 68 MB | 737 ms |
+
+Every variant agrees with the naive one within 6e-14 (float32: 2e-7).
+
+**Reading.**
+- The Legendre cache is ruled out at 2° by G1's 25 MB (D-95). The QD-only cache fits.
+- A first open then costs about a third of a second, off the UI goroutine.
+- After that, the climatology's hour fields are kept for the day: 2 fields × 25 hours × 16,380 cells × 4 bytes is about 3.3 MB, and one new hour costs about 13 ms each hour.
+- An update every 10 minutes (D-94) adds the decode and the assimilation, about 11 ms.
+- Together that is roughly 0.1 s of CPU an hour, against G1's 1% (36 s an hour).
 
