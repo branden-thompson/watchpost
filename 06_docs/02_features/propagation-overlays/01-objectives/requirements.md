@@ -197,7 +197,7 @@ without NDFD, per-dataset retention, and the dataset terms field (FR-6.1 to FR-6
 
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
-| NFR-1 | **Cost (G1):** watchpost's added CPU, memory and downloads a day with the Propagation mode in use, measured over at least 48 hours, stay within G1's target (Targets in `problem-statement.md`: added CPU at most 1%; added RSS at most 25 MB, judged on measured RSS (D-112, D-131); downloads counted on the wire and re-ruled from W0.0's measurement (D-111)). The library's own cost is go-ionomaps' R-8.1 (G-G1, D-98) | issue #25; D-49, D-95 | G1's measurement |
+| NFR-1 | **Cost (G1):** watchpost's added CPU, memory and downloads a day with the Propagation mode in use, measured over at least 48 hours, stay within G1's target (Targets in `problem-statement.md`: added CPU at most 1%; added RSS at most 25 MB, judged on measured RSS (D-112, D-131); downloads on the wire at most 19 MB an hour at the 10-minute default and 3.3 MB an hour hourly (D-111, D-141)). The library's own cost is go-ionomaps' R-8.1 (G-G1, D-98) | issue #25; D-49, D-95 | G1's measurement |
 | NFR-3 | **Live requests follow the feature's throttle** in every phase (D-39); never Open-Meteo for research; no kc2g.com request until asked | D-39, D-83 | the request log, CDN location headers stripped, kept in go-ionomaps `02-analysis/evidence/` |
 | NFR-4 | **P10 clean** at every phase exit (`make p10`) | standing | `make p10` |
 | NFR-5 | **Both CI platforms green** before merge, the mode named (quick or full) | standing | the hosted run |

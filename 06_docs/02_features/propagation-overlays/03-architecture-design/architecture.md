@@ -246,7 +246,7 @@ Internal packages: go-ionomaps' design (`03-architecture-design/design.md`, "Pac
 | Source | Each update | Since |
 |---|---|---|
 | GIRO | about 39 requests, readings since the last held (R-5.2), tens of KB | D-39, D-51 |
-| NOAA GloTEC | the newest grid (timestamped, so never a 304), about 2.5 MB decoded and about 0.27 MB gzipped; while open, each new grid every 10 minutes by default; the wire cost re-ruled from W0.0 (D-111) | FR-4.6, D-94, D-111 |
+| NOAA GloTEC | the newest grid (timestamped, so never a 304), found through the gzipped index (38 KB); the grid is not compressed by NOAA, 2.5 MB on the wire; while open, each new grid every 10 minutes by default: about 15.3 MB an hour in all, target ≤ 19 (D-141) | FR-4.6, D-94, D-141 |
 | NOAA D-RAP | about 42 KB, or a 304 | D-47 |
 | NOAA space-weather scales | about 1.1 KB, or a 304 | D-88 |
 | NOAA daily solar indices | about 3 KB, at most once a day | D-104 |

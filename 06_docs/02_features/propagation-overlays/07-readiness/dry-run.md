@@ -368,3 +368,22 @@ A band of 2 SD (0.45 MHz) flagged 3 of 56 updates:
 
 Its limits: one week, one solar level, test days including the 10-04/05 storm.
 
+## W0.0, BUILD's first task: the wire cost (D-111, D-141)
+
+Three requests with `Accept-Encoding: gzip`, 2026-10-08 06:18-06:19Z, under D-39 (go-ionomaps
+`02-analysis/evidence/plan-dry-run/logs/w00-requests.log`):
+
+| Request | On the wire | Decoded | Compressed? |
+|---|---|---|---|
+| GloTEC directory index | 38,169 B | 504,889 B | yes (gzip) |
+| GloTEC grid `20261008T054500Z` | **2,503,369 B** | 2,503,369 B | **no** (`vary: Accept-Encoding`, no `content-encoding`) |
+| D-RAP | 3,168 B | 42,469 B | yes (gzip) |
+
+**The newest grid** is found through the index. The 05:45Z grid was last modified at 06:08:23Z and listed by 06:18Z, so publication runs about 23 to 33 minutes behind the grid's time.
+
+**An hour on the wire** (decimal MB):
+- At the 10-minute default: grids 15.02, the index 0.23, D-RAP 0.02, GIRO about 0.06, the scales and solar indices negligible, so **about 15.3 MB**.
+- Hourly: **about 2.6 MB**.
+
+D-141 sets the targets at 19 and 3.3 MB an hour (the measurement plus 25%). The PLAN red team's assumption of a 9× gzip saving (B-F8, P-2) does not hold for the grids.
+
