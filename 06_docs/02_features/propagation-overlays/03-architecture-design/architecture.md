@@ -121,7 +121,7 @@ type Response struct {
 type Validators struct{ ETag, LastModified string }
 
 type Options struct {
-    Grid      float64       // 2 by default, 1 as an option (R-1.1)
+    Grid      GridStep      // a typed choice; v0.1.0 has one value, 2° (R-1.1, D-125)
     Reference Circuit       // SSB voice, 100 W, +13 dB in 2.5 kHz (D-73, D-91)
     Clock     func() time.Time
     Tables    Tables        // the climatology's coefficients, swappable (D-43, R-4.4)

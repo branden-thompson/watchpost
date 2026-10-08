@@ -107,3 +107,8 @@ Nothing from it is committed: GIRO's data is CC BY-NC-SA, and its replies carry 
 | Fork 12: the refresh Setting and its key | B-F9, A-2 | **D-120:** A-26 ratified; a refresh-now keymap action in FR-1.14, honoured under D-39; retry names the key |
 | Fork 13: the Broadcaster's words | A-3 | **D-121:** "Instead of the map", refresh and the no-readings correction shared across both modes; the radius Observer-only; FR-2.3, W7.2 |
 | Fork 14: when O2 ships | L-F10 | **D-122:** O2 becomes 0.19.1, the next release; FR-7, W8 and D-63's gate move with it; 0.19.0 is O1 and O3 |
+| Fork 15: the oracle's tolerance | L-F5 | **D-123:** D-107 stands (set in BUILD from the measured agreement); the agreement is reported in MHz of MUF beside the tolerance chosen |
+| Fork 16: the evidence's home | H-5.1 | **D-124:** instruments committed to go-ionomaps `evidence/plan-dry-run/` (paths removed, placeholder headers); data and extracts stay local |
+| Fork 17: the 1° option | P-10 | **D-125:** 2° only in v0.1.0; a typed choice, so 1° can be added later |
+| Fork 18: the dry run's read order | D-F14 | **D-126:** a plain verdict first, then the table, then the detail |
+| Fork 19: words and the reach mark | A-5, A-6, A-8, A-10 | **D-127:** all four: state said, one line per target, a refresh keeps the place, go-tuiMaps L-2.6 (also closes C-T1's L-2.5 gap via P2.4) |
