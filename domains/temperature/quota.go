@@ -226,15 +226,16 @@ func (g *QuotaGate) claimProbeLocked(host string, now time.Time) bool {
 	if g.state == "" {
 		return true
 	}
-	holds, _ := readQuotaState(g.state)
-	if s, ok := holds[host]; ok && now.Before(s.Probe) {
-		return false // another instance has moved it: its probe
-	}
+	if holds, read := readQuotaState(g.state); read {
+		if s, ok := holds[host]; ok && now.Before(s.Probe) {
+			return false // another instance has moved it: its probe
+		}
+	} // no state to read: no other instance's probe to defer to
 	if !g.writeState(host, g.token) {
 		return true // the state cannot be written: probe by the gate's own memory
 	}
-	holds, _ = readQuotaState(g.state)
-	return holds[host].Prober == g.token
+	holds, read := readQuotaState(g.state)
+	return read && holds[host].Prober == g.token // unreadable after the write: not proven ours
 }
 
 // saveLocked writes the gate's holds to the shared state.

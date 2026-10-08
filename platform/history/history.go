@@ -1366,7 +1366,10 @@ func (s *Store) compact(d Dataset, dir string, date time.Time) int {
 	if err != nil {
 		return 0
 	}
-	written, _ := readAs[dayDoc](s, f.day, d)
+	written, ok := readAs[dayDoc](s, f.day, d)
+	if !ok {
+		return 0 // the day written cannot be read back: no hour's bucket goes
+	}
 	removed := 0
 	files, _ := os.ReadDir(f.buckets)
 	for i, b := range files { // bounded by maxDayBuckets (P10-02)
@@ -1475,7 +1478,10 @@ func (s *Store) rollUp(d Dataset, dir string, date time.Time) bool {
 	}
 	defer func() { _ = os.Remove(claim) }() // the claim let go
 	yp := filesAt(dir, date).year
-	year, _ := readAs[yearDoc](s, yp, d)
+	year, ok := readAs[yearDoc](s, yp, d)
+	if _, err := os.Stat(yp); !ok && err == nil {
+		return false // a year that exists but cannot be read is never written over (#27): the day waits
+	}
 	year.Schema, year.Dataset, year.Version, year.Key = schema, d.Name, d.Version, keyOf(dir)
 	year.Days = withDay(year.Days, entry)
 	if _, _, err := s.writeCounted(yp, year); err != nil {
@@ -1772,7 +1778,10 @@ func (s *Store) measure() {
 			sizes[""] += info.Size()
 		}
 	}
-	oldest, _ := walkSince(s.root)
+	oldest, recorded := walkSince(s.root)
+	if !recorded {
+		oldest = time.Time{} // nothing recorded yet: no oldest
+	}
 	now := s.now()
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -534,8 +534,10 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.toggleLayer()
 	case rowMapDetailBorders, rowMapDetailWater, rowMapDetailRivers, rowMapDetailNames,
 		rowMapDetailRoads, rowMapDetailRail, rowMapDetailParks:
-		nd, _ := d.toggleDetailRow(id)
-		return nd
+		if nd, ok := d.toggleDetailRow(id); ok {
+			return nd
+		}
+		return d // not a detail row after all: nothing to switch
 	default:
 		switch setupTable()[id].kind {
 		case rowToggle:

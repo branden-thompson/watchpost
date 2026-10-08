@@ -750,7 +750,7 @@ func TestTheRadarAndTemperatureAreReconciled(t *testing.T) {
 	}
 	calls = &[]string{}
 	d.mapPane.calls = calls
-	d, _ = d.setTemp()
+	d = d.setTemp()
 	if slices.Contains(*calls, "Set") || slices.Contains(*calls, "Remove") {
 		t.Errorf("unchanged grids were handed in again or taken off: %v", *calls)
 	}

@@ -95,7 +95,10 @@ func windowKeysOf(m modal) (windowKeys, bool) {
 // window that claims every key, its own to a window that binds some. False
 // when the key goes on to the Observer's bindings.
 func (d Dashboard) routeWindowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
-	w, _ := windowKeysOf(d.modal)
+	w, ok := windowKeysOf(d.modal)
+	if !ok {
+		return d, nil, false // no window of its own shown: the key goes on to the Observer's bindings
+	}
 	switch w.claim {
 	case claimAll:
 		m, cmd := w.all(d, key)

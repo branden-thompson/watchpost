@@ -103,6 +103,16 @@ func NormalizeID(id string) (key string, nws bool) {
 	return cand, true
 }
 
+// NormalizeKey is the key an alert is filed by, NWS or not: NormalizeID's key
+// when the id validates as an NWS alert, else the id trimmed. For a caller that
+// keys every id alike; one that must know whether it is NWS's asks NormalizeID.
+func NormalizeKey(id string) string {
+	if key, nws := NormalizeID(id); nws {
+		return key
+	}
+	return strings.TrimSpace(id)
+}
+
 // Classify maps an event class + product name to its tab; ok is false (and
 // the tab TabNone) for a product the window does not show (Air Quality Alert,
 // Hydrologic Outlook…). English substring matching on NWS product
@@ -174,14 +184,14 @@ func Guard(locs []snapshot.Location) map[string]bool {
 	seen := map[string]bool{}
 	for i := range locs {
 		for _, a := range locs[i].Alerts {
-			key, _ := NormalizeID(a.ID)
+			key := NormalizeKey(a.ID)
 			if seen[key] {
 				continue
 			}
 			seen[key] = true
 			r := globalfeed.Ref{ID: key, Sender: a.SenderName, Product: a.Event, Sent: a.Sent}
 			for _, x := range a.References {
-				if k, _ := NormalizeID(x); k != key {
+				if k := NormalizeKey(x); k != key {
 					r.Replaces = append(r.Replaces, k)
 				}
 			}
@@ -230,7 +240,7 @@ func Union(feed []globalfeed.Event, locs []snapshot.Location, now time.Time) []R
 // must not resurface via a tracked location whose zone query lagged).
 func (x *index) addFeed(feed []globalfeed.Event, superseded map[string]bool, now time.Time) {
 	for _, e := range feed {
-		key, _ := NormalizeID(e.ID)
+		key := NormalizeKey(e.ID)
 		if e.Superseded || superseded[key] { // the feed's own flag, or the Guard set from a tracked location's newer update (R3-A-04)
 			superseded[key] = true
 			continue
@@ -281,7 +291,7 @@ func (x *index) addLocations(locs []snapshot.Location, superseded map[string]boo
 // locationRow builds one location-path row; ok is false when the alert is
 // superseded, expired or a product the window does not show.
 func locationRow(a snapshot.Alert, ref *snapshot.LocationRef, superseded map[string]bool, now time.Time) (Row, bool) {
-	key, _ := NormalizeID(a.ID)
+	key := NormalizeKey(a.ID)
 	if superseded[key] {
 		return Row{}, false
 	}

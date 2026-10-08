@@ -45,12 +45,12 @@ func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
 	case "radio-vol-up":
 		d.radioVolume = min(100, d.radioVolume+5)
 		d.volFlash, d.volFlashEnd = "+", time.Now().Add(350*time.Millisecond) // green blink (UAT 41)
-		d, _ = d.radioVolumeCmd()
+		d = d.radioVolumeCmd()
 		return d.saveRadioCmd(), true
 	case "radio-vol-dn":
 		d.radioVolume = max(0, d.radioVolume-5)
 		d.volFlash, d.volFlashEnd = "-", time.Now().Add(350*time.Millisecond) // red blink
-		d, _ = d.radioVolumeCmd()
+		d = d.radioVolumeCmd()
 		return d.saveRadioCmd(), true
 	default:
 		return d, false
@@ -466,12 +466,12 @@ func sameRefs(a, b []snapshot.LocationRef) bool {
 }
 
 // radioVolumeCmd pushes the volume to the player (no-op when unwired).
-func (d Dashboard) radioVolumeCmd() (Dashboard, bool) {
+func (d Dashboard) radioVolumeCmd() Dashboard {
 	if d.cfg.Radio == nil {
-		return d, true
+		return d
 	}
 	radio, pct := d.cfg.Radio, d.radioVolume
-	return d.withCmd(func() tea.Msg { radio.SetVolume(pct); return nil }), true
+	return d.withCmd(func() tea.Msg { radio.SetVolume(pct); return nil })
 }
 
 // radioControlLines wraps the player controls to the module width (UAT

@@ -20,7 +20,7 @@ func (d Dashboard) handleNav(act term.Action) Dashboard {
 	// as it declares (window_keys.go) - a hand-written list here would let a
 	// window missing from it draw a scroll rail whose arrows reach PAST it to
 	// the table underneath. A window with no nav leaves the arrows to the table.
-	if w, _ := windowKeysOf(d.modal); w.nav != nil {
+	if w, ok := windowKeysOf(d.modal); ok && w.nav != nil {
 		return w.nav(d, act)
 	}
 	switch act {

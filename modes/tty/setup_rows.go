@@ -373,8 +373,10 @@ func setupGroupTitle(g setupGroupID) string {
 // firstOfGroup is a group's first row: where a deep link into Settings (t, V, M)
 // lands, whatever tab that puts it on (D-62: the tab follows the focus).
 func firstOfGroup(g setupGroupID) setupRowID {
-	id, _ := visibleRowOfGroup(g, func(setupRowID) bool { return true })
-	return id
+	if id, ok := visibleRowOfGroup(g, func(setupRowID) bool { return true }); ok {
+		return id
+	}
+	return 0 // a group with no rows: no row to land on
 }
 
 // visibleRowOfGroup is the first row of a group that THIS SURFACE draws, and

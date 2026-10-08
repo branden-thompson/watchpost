@@ -126,6 +126,7 @@ type mapPane struct {
 	tempAt, tempAnchor  time.Time
 	temp                MapTemperature
 	tempGiven           map[string]tuimaps.Overlay
+	tempHanded          bool // the last setTemp handed the library a changed grid: its work then draws the map (D-85)
 	// Forecast mode (D-94): the step shown, high or low, and its playback.
 	fcStep, fcHeld   int
 	fcLow, fcPlaying bool
@@ -838,7 +839,7 @@ func (d Dashboard) overlaysMenuKey(key string) (Dashboard, tea.Cmd, bool) {
 		return nd.followMenuFocus(), nil, true
 	}
 	nd = nd.timeFrom("overlay")
-	nd, _ = nd.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
+	nd = nd.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
 	var temp tea.Cmd
 	if (nd.layerOn(UVLayer) && !d.layerOn(UVLayer)) || (nd.layerOn(AirLayer) && !d.layerOn(AirLayer)) {
 		nd, temp = nd.askTemp() // UV and air quality are asked only while on (D-137, D-139)
@@ -923,8 +924,7 @@ func (d Dashboard) panOrCross(dx, dy int, dir geo.Direction, armed bool) Dashboa
 	if _, ok := geo.Neighbour(d.mapPane.region.Name, dir); !ok {
 		return d
 	}
-	if armed && d.mapPane.edge == dir {
-		next, _ := geo.Neighbour(d.mapPane.region.Name, dir)
+	if next, ok := geo.Neighbour(d.mapPane.region.Name, dir); ok && armed && d.mapPane.edge == dir {
 		return d.showRegion(next)
 	}
 	d.mapPane.edge, d.mapPane.edgeShown = dir, true

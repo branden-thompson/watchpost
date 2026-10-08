@@ -235,8 +235,8 @@ func alertLayerCost(in mapInputs) (int64, int) {
 			if !a.Area.Empty() {
 				continue
 			}
-			if cat, _ := alertCategory(a); in.switchedOn != nil && !in.switchedOn(tty.AlertCategorySwitch(cat)) {
-				continue // its category unchecked: nothing of it is fetched or drawn (D-149)
+			if cat, ok := alertCategory(a); !ok || (in.switchedOn != nil && !in.switchedOn(tty.AlertCategorySwitch(cat))) {
+				continue // never drawn (a forecast, or a product [w] does not show, D-80) or its category unchecked (D-149): nothing of it is fetched
 			}
 			for _, z := range a.AffectedZones {
 				zones[z] = true

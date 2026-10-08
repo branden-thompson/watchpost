@@ -835,7 +835,10 @@ func windHourGrids(s temperature.Series, box string, anchor, horizon time.Time, 
 func windForecastGrids(out *tty.MapTemperature, s temperature.Series, box string, anchor time.Time, mph bool) {
 	nowStep, days := forecastDays(anchor)
 	if speed, from, _, ok := s.WindAt(anchor); ok {
-		gust, _ := s.GustAt(anchor)
+		gust, hasGust := s.GustAt(anchor)
+		if !hasGust {
+			gust = nil // the series carries no gusts this hour: the wind is drawn without them
+		}
 		if o, ok := windGrid(tty.WindLayer+"/"+box+"/now", s.Lattice, speed, from, gust, mph, anchor, anchor); ok {
 			o.During = nowStep.Span
 			out.Wind = append(out.Wind, o)

@@ -35,7 +35,22 @@ type specimen struct {
 }
 
 func specimens() []specimen {
-	return append(append(append(histSpecimens(), deadSpecimens()...), docSpecimens()...), shellSpecimens()...)
+	return append(append(append(append(histSpecimens(), deadSpecimens()...), docSpecimens()...), shellSpecimens()...), okSpecimens()...)
+}
+
+// okSpecimens covers AP-OK-01 in both directions; each declares its callee, as
+// the module would.
+func okSpecimens() []specimen {
+	const decl = "\nfunc read(p string) (int, bool) { return 0, false }\n"
+	return []specimen{
+		{"ok-discarded-define", "package p\n\nfunc f() int { v, _ := read(\"x\"); return v }" + decl, []string{"AP-OK-01"}},
+		{"ok-discarded-assign-method", "package p\n\ntype s struct{}\n\nfunc (s) get() (string, bool) { return \"\", false }\n\nfunc f(x s) (v string) { v, _ = x.get(); return }\n", []string{"AP-OK-01"}},
+		{"ok-discarded-generic", "package p\n\nfunc readAs[T any](p string) (T, bool) { var z T; return z, false }\n\nfunc f() int { v, _ := readAs[int](\"x\"); return v }\n", []string{"AP-OK-01"}},
+		{"ok-ok-handled", "package p\n\nfunc f() int { if v, ok := read(\"x\"); ok { return v }; return -1 }" + decl, nil},
+		{"ok-ok-error-discard-is-errchecks", "package p\n\nfunc open(p string) (int, error) { return 0, nil }\n\nfunc f() int { v, _ := open(\"x\"); return v }\n", nil},
+		{"ok-ok-map-lookup", "package p\n\nfunc f(m map[string]int) int { v, _ := m[\"x\"]; return v }\n", nil},
+		{"ok-ok-ambiguous-name", "package p\n\nfunc read(p string) (int, bool) { return 0, false }\n\ntype t struct{}\n\nfunc (t) read() int { return 0 }\n\nfunc f() int { v, _ := read(\"x\"); return v }\n", nil},
+	}
 }
 
 // shellSpecimens covers AP-SHELL-01 in both directions.
@@ -174,11 +189,14 @@ func runSelfTest() int {
 		}
 		var got []string
 		seen := map[string]bool{}
-		for _, fd := range append(append(append(
+		fns := newOKFuncs()
+		fns.add(f)
+		for _, fd := range append(append(append(append(
 			checkHistory(fset, f, s.name),
 			checkBlankKeepAlive(fset, f, s.name)...),
 			checkDocAttached(fset, f, s.name)...),
-			checkShell(fset, f, s.name)...) {
+			checkShell(fset, f, s.name)...),
+			checkDiscardedOK(fset, f, s.name, fns)...) {
 			if !seen[fd.Rule] {
 				seen[fd.Rule] = true
 				got = append(got, fd.Rule)

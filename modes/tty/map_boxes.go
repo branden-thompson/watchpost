@@ -419,6 +419,13 @@ func (d Dashboard) detailOn(key string) bool {
 	return true
 }
 
+// chosenOn reports whether a choice word holds key, switched on: not chosen
+// reads as off.
+func chosenOn(word, key string) bool {
+	on, ok := choiceOf(word, key)
+	return ok && on
+}
+
 // choiceOf reads one key from a choice word ("roads=on,rail=off").
 func choiceOf(word, key string) (on, ok bool) {
 	for _, part := range strings.Split(word, ",") {
@@ -759,8 +766,7 @@ func (d Dashboard) pickFeels() bool {
 	case d.layerOn(TemperatureLayer):
 		return false
 	}
-	on, _ := choiceOf(d.mapLayerChoice, pickFeelsKey)
-	return on
+	return chosenOn(d.mapLayerChoice, pickFeelsKey)
 }
 
 // menuChoiceW is the menu's pickers' value width: its longest, "Feels like".

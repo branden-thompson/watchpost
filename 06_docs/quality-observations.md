@@ -3173,3 +3173,13 @@ the branch tip, and had to notice and reset; and the worktrees sat under the rep
 main tree's whole-tree tests (`TestOnlyMastercontrolWritesTheBand`) scanned their copies. **The rule:**
 an isolated worker's first act is to verify its base against the caller's tip; worktrees are removed
 before any whole-tree run in the main tree.
+
+## P10-07 cannot see a discarded bool (upstream request for li-A2DH, 0.19.0 D-142)
+
+`a2dh p10 check`'s P10-07 runs `errcheck` with `check-blank` off: it judges `error` returns only, and
+treats `_` as a deliberate discard. A function that returns a value and an `ok bool` is as much a
+return to check, and #27 was exactly that: `year, _ := readAs(...)` wrote an empty year over a full
+one. watchpost holds it locally as AP-OK-01 (`tools/authoring/okdiscard.go`, by name because a syntax
+tree has no types). **The request upstream:** P10-07 checks a discarded comma-ok bool from a function
+in the module, with type information (`go/types` or an analyzer), so no name heuristic is needed.
+

@@ -311,8 +311,10 @@ func CuratedSeverity(product string) (Severity, bool) {
 
 // severeSeverity maps a curated event name to its tier (unknown ⇒ orange).
 func severeSeverity(event string) Severity {
-	sev, _ := CuratedSeverity(event)
-	return sev
+	if sev, ok := CuratedSeverity(event); ok {
+		return sev
+	}
+	return SevOrange // not a curated event: orange
 }
 
 // decodeFeatures decodes the feed's entries one by one: a malformed entry

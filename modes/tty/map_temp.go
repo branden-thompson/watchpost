@@ -277,8 +277,8 @@ func (d Dashboard) applyMapTemp(v mapTempMsg) (tea.Model, tea.Cmd) {
 	for _, p := range v.temp.Problems {
 		d.problem(p) // D-124: the diagnostics', never the listener's
 	}
-	d, set := d.setTemp()
-	if !set || d.mapPane.m.Pending() == 0 {
+	d = d.setTemp()
+	if !d.mapPane.tempHanded || d.mapPane.m.Pending() == 0 {
 		d = d.renderMap() // else the work's answer draws it, whole (D-85)
 	}
 	cmds := []tea.Cmd{d.mapWorkCmd()}
@@ -383,13 +383,14 @@ func (d Dashboard) rainOn() bool {
 }
 
 // setTemp hands in the grids the mode draws and takes off the rest; an
-// unchanged grid is not handed in again (U1-28).
-func (d Dashboard) setTemp() (Dashboard, bool) {
+// unchanged grid is not handed in again (U1-28). Whether it handed any in is
+// kept as tempHanded, for the caller that draws only when the library will not.
+func (d Dashboard) setTemp() Dashboard {
 	given, set := d.reconcile(d.mapPane.tempGiven, d.tempOverlays(), func(o tuimaps.Overlay, err error) {
 		d.problem("Temperature: " + o.ID + " not drawn - " + err.Error()) // never swallowed (U2-5), never the listener's to act on (D-124)
 	})
-	d.mapPane.tempGiven = given
-	return d, set
+	d.mapPane.tempGiven, d.mapPane.tempHanded = given, set
+	return d
 }
 
 // reconcile hands the library the overlays wanted that changed, and takes
@@ -460,7 +461,7 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 	d.mapPane.fcGen++
 	d.mapPane.tempAuto = false // Forecast mode's alone (D-104)
 	d = d.ensureMainOverlay()
-	d, _ = d.setTemp() // what is held, drawn or taken off at once (D-99)
+	d = d.setTemp() // what is held, drawn or taken off at once (D-99)
 	d = d.refreshMapCost().showStep().retimeDrawn()
 	d, radar := d.askRadar()
 	d, temp := d.askTemp()
@@ -501,7 +502,7 @@ func (d Dashboard) flipHighLow() Dashboard {
 		return d
 	}
 	d.mapPane.fcLow = !d.mapPane.fcLow
-	d, _ = d.setTemp()
+	d = d.setTemp()
 	return d.renderMap()
 }
 

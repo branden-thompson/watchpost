@@ -61,7 +61,7 @@ this plan's "UAT" section.
 
 | # | Task | Files | Test first |
 |---|---|---|---|
-| W1.1 | A failed read of a year's roll-up refuses the write; P10's checker learns to see a discarded `ok` (C-P10: `make p10` passes `history.go:1478` today) | `platform/history/history.go:1478`, `tools/p10` | `TestAFailedYearReadNeverRewritesTheYear` (the reviewer's reproduction: a year past the cap), a P10 fixture with a discarded bool that the checker must flag |
+| W1.1 | A failed read of a year's roll-up refuses the write; a discarded `ok` is caught by a local rule, AP-OK-01 in `tools/authoring` (`make lint-authoring`), because the P10 checker is li-A2DH's CLI (D-142; the plan's `tools/p10` was the agent's error E-20) | `platform/history/history.go:1478`, `tools/authoring/okdiscard.go` | `TestAFailedYearReadNeverRewritesTheYear` (the reviewer's reproduction: a year past the cap); AP-OK-01's self-test specimens |
 | W1.2 | Roll-ups split below the decompressed read cap, sized from bytes; a byte bound per dataset; values stored compactly | `platform/history/` | `TestARollUpNeverPassesTheReadCap`, a 90-day global-grid soak (synthetic), the existing history tests |
 
 ## W2 to W7 — the feature

@@ -417,7 +417,7 @@ var fireModes = []string{FireAll, FireNamed, FireHotspots}
 // fireMode is the Fire row's choice, All until another is chosen.
 func (d Dashboard) fireMode() string {
 	for _, m := range fireModes[1:] {
-		if on, _ := choiceOf(d.mapLayerChoice, "fire:"+m); on {
+		if chosenOn(d.mapLayerChoice, "fire:"+m) {
 			return m
 		}
 	}
