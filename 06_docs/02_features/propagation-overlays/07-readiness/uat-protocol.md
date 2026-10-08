@@ -32,7 +32,7 @@ person. Definitions are in `01-objectives/problem-statement.md`; targets are rul
   - for M5 and M5b, at least two targets with no band open and two with three or more.
 
   A constant answer therefore fails (the M1 and M4 anti-solution checks).
-- Targets come from the chart's defaults (the continents, FR-1.15) and from places found by city, ZIP, coordinates and locator (FR-1.10), at least one of each.
+- Targets come from the chart's defaults (the continents, FR-1.9) and from places found by city, ZIP, coordinates and locator (FR-1.10), at least one of each.
 - **M5b has its own ten, drawn the same way as M5's**, so remembered answers from M5 cannot carry over (A-25).
 
 ## The answer key (D-92)

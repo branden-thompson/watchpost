@@ -4,7 +4,7 @@ date: 2026-10-06
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "COMPLETE for PLAN — every FR-10.6 item measured or its gap named; targets ruled at D-93 to D-99 and D-108; the forecast at D-103; G1 and M1/M4 measured in BUILD"
+status: "COMPLETE for PLAN — every FR-10.6 item measured or its gap named; targets ruled at D-93 to D-99, D-108 and D-134; hours ahead at D-109 (the climatology, labelled typical); G1, M1 and M4 measured in BUILD, G-M3 and the floors on fresh days (D-132)"
 ---
 
 # The dry run
@@ -15,7 +15,7 @@ status: "COMPLETE for PLAN — every FR-10.6 item measured or its gap named; tar
 - **Hours ahead are the climatology, labelled typical** (D-109). Nothing tested beats it in a storm, and the one method that beat it on quiet days needs a field from the day before that 0.19.0 never holds.
 - **The US floor is met** on the test days, with one US day missing on foF2.
 - **The weak places are the storm and the Pacific**, where the chart is about as good as the climatology. It says so by distance (D-116).
-- **The costs fit.** An update's compute is a few milliseconds; a cold open is about a third of a second; go-tuiMaps' frame is the one over budget (D-96).
+- **The costs fit, as far as measured** (G1's RSS and downloads are measured in BUILD). An update's compute is a few milliseconds; a cold open is about a third of a second; go-tuiMaps' frame is the one over budget (D-96).
 - **Its limits:** one week, one solar level, one storm, four mainland-US stations.
 
 REFLECT L1: each metric's instrument runs once before PLAN exits, and its number or its gap goes in the PLAN
@@ -33,11 +33,11 @@ scripts).
 | D-RAP's file | 42 KB text, a 2° × 4° latitude-longitude table plus valid time, recovery estimate and X-ray/proton messages; `Last-Modified`, `ETag`, `max-age=60` | measured |
 | MUF(3000) and foF2 held out for B on D, by station and distance, with signed bias; mainland US and Pacific separately | **Measured over the week** (below; 1,476 pairs, 30 stations): on the test days, mainland US, B on D 0.66 MHz foF2 and 2.10 MUF against climatology's 0.82 and 2.88, **so D-75's floor is met**; whole week, all stations, 0.90 and 3.41 against 1.08 and 3.77; signed bias +0.03 MHz foF2 (GloTEC +0.51, climatology +0.28). The Pacific stations are no better than climatology. A hybrid (M(3000)F2 assimilated over climatology, not GloTEC) cuts MUF to 3.26 overall | measured (a week, including a G1 to G2 storm) |
 | The NRL refits (D-43), with the F10.7 rule | **Measured:** CCIR refit and raw CCIR are level (foF2 1.08 and 1.08 MHz, MUF 3.77 and 3.79); URSI is worse (1.14, 3.97). The 30-day mean F10.7 beats the day's value on MUF (3.77 against 4.14), with foF2 level (1.08 and 1.07) | measured; **ruled D-104**: the 30-day mean |
-| The forecast hours' error at +3 h and +12 h (D-75) | **Measured:** R-1.3's decay toward climatology fails the floor at +12 h in the US (0.85 against 0.76 MHz foF2). A blend of yesterday's hybrid field and climatology (w = 0.5) is no worse than climatology at both leads on the test days. It is clearly better on quiet days (+12 h US 0.50 against 0.60), and level or slightly worse in the storm (MUF 4.44 against 4.29) | measured; **ruled D-103**: the blend, every forecast hour labelled low-confidence |
+| The forecast hours' error at +3 h and +12 h (D-75) | **Measured:** R-1.3's decay toward climatology fails the floor at +12 h in the US (0.85 against 0.76 MHz foF2). A blend of yesterday's hybrid field and climatology (w = 0.5) is no worse than climatology at both leads on the test days. It is clearly better on quiet days (+12 h US 0.50 against 0.60), and level or slightly worse in the storm (MUF 4.44 against 4.29) | measured; ruled D-103, then **D-109**: the blend needs a field from the day before that 0.19.0 never holds, so the hours ahead are the climatology, labelled typical |
 | The answers' cost per keypress (FR-1.17) | **Measured in a spike** (below): at 2°, an hour step (reach, best bands, paths, centre) costs about 4.4 ms and a frequency change about 3.8 ms, with no allocations; at 1°, about 19 ms and 17 ms. Reach is the only answer that costs real time (about 212 ns a cell) | measured (spike) |
 | G1 over at least 48 hours | **The instrument is proven** (below): a 10-minute offline run of today's watchpost (89c6f5bf) gave RSS 55 to 58 MB, steady, and about 3% of one core. The 48-hour measurement needs a build with the mode, so it lands in BUILD (W10.2) with this harness | instrument dry-run done; measurement in BUILD |
 | M2, M5, M5b (UAT) | the protocol is written (`uat-protocol.md`); its scenarios are drawn in BUILD once the answers exist; graded by the HUM LEAD alone (D-68) | protocol drafted; the sitting is live (D-89) |
-| M1 and M4 (agreement with WSPR) | **a gap until BUILD:** the instrument needs the chart's path answer (go-ionomaps G6, G7). The WSPR density it needs is measured (above). Its target is ruled relative to the climatology baseline (D-99: plus 5 points), with the absolute numbers measured by G10.4's instrument | gap, named; target ruled |
+| M1 and M4 (agreement with WSPR) | **a gap until BUILD:** the instrument needs the chart's path answer (go-ionomaps G6, G7). The WSPR density it needs is measured (above). Its target is ruled relative to the climatology baseline (D-99: plus 5 points), with the absolute numbers measured by W10.3's instrument | gap, named; target ruled |
 | D-73's +10 dB in 2.5 kHz against published practice | **Within published practice for just-usable SSB voice** (below): the sources span +4 to +14 dB in 2.5 kHz. ITU-R F.339-8's J3E "just usable" is 47 dB-Hz (stable) and 48 (fading), PEP to noise in 1 Hz, which is +13 and +14 dB in 2.5 kHz. WSPR's SNR is in 2500 Hz (WSJT-X 2.6.1 User Guide §7.1) | checked; **+13 dB ruled (D-91)** |
 | The climatology's evaluation (part of G-G1) | **Measured in the spike** (below): PyIRI's refit shape (900 spherical-harmonic terms × 11 Fourier terms, plus the Apex mapping), both fields: a first open of 25 hours at 2° takes 334 ms with each cell's QD coordinates cached (6.9 MB), against 3.4 s naive; each new hour 12.7 ms. A Legendre cache halves it again but costs 61 MB, over G1's 25 MB (D-95) | measured (spike) |
 | go-tuiMaps M5: a whole-globe frame with a field (v0.3.0 P7.1) | **Measured on v0.2.0** (below): after a pan, fill and labelled contours take 5.7 ms at 200 × 56 and **22.2 ms at 400 × 110**, over a 16 ms frame; fill alone 2.4 and 9.1 ms; an unchanged frame about 2 µs | measured |
@@ -67,7 +67,7 @@ scripts).
 - It writes the process id to a file, drains the output, and ends the run with SIGTERM after a set time (SIGKILL 10 s later if needed).
 - A sampler reads that id and records the UTC time, RSS, CPU time and command name with `ps` every 30 s.
 - A `perl` alarm bounds the whole run.
-- The scripts are in the session's scratch space; BUILD lands them as W10.2, with byte counts from the propagation client.
+- The scripts are committed in go-ionomaps `02-analysis/evidence/plan-dry-run/g1/` (D-124); BUILD builds on them as W10.2, with wire-byte counts from the propagation client.
 
 **Two faults found and fixed before this run:**
 - the first sampler measured `expect`, not watchpost;
@@ -98,7 +98,7 @@ The idle 3% is today's baseline, before the mode. It is a candidate question for
 ## The answers' cost per keypress, spike (FR-1.17)
 
 **The spike.**
-- Throwaway Go in the session's scratch space, never committed; the standard library only, `CGO_ENABLED=0`, one goroutine.
+- Throwaway Go, committed as evidence in go-ionomaps `02-analysis/evidence/plan-dry-run/spike/` (D-124; placeholder physics); the standard library only, `CGO_ENABLED=0`, one goroutine.
 - Apple M5 Pro, go1.27.1, `-benchtime=2s -count=5`. The table gives medians.
 - Synthetic smooth fields: foF2 2 to 14 MHz, M(3000)F2 2.5 to 3.8.
 - **The basic-MUF and absorption formulas are placeholders of equivalent cost**: the same count of trigonometric, square-root and exponential calls per path as a P.533-style computation, not the published equations.
@@ -324,7 +324,7 @@ Each cell is foF2, then MUF (MHz).
 - What the blend keeps is recurrence: the same hour a day before.
 - The current hour is where the chart is clearly better than climatology.
 
-D-103 keeps 24 hours, labelled low-confidence.
+D-103 kept 24 hours of the blend; D-109 then made the hours ahead the climatology, labelled typical, because the blend needs a field from the day before.
 
 ### The live offset (Q-3, D-105)
 
@@ -345,4 +345,26 @@ At each grid time, the mean over the reporting stations of sounding foF2 minus G
 A band of 2 SD (0.45 MHz) flagged 3 of 56 updates:
 - 10-04 00:05Z (−1.11) and 06:05Z (+0.10), at the storm's onset;
 - 09-29 06:05Z (+0.00), a quiet night.
+
+### Band answers, and the hours ahead's typical error (sections 10 and 11; D-130, D-134)
+
+**Where a blend's band answers differ from the climatology's** (MUF(3000) above each band; test days; the shipped climatology). These are D-130's corrected figures; the agent's error E-19 had quoted a raw-CCIR run.
+
+| Lead | Blend | Differs | Blend right | Climatology right | Neither |
+|---|---|---|---|---|---|
+| +3 h | past-GloTEC hybrid (not runnable in 0.19.0) | 174 of 733 | 76 | 56 | 42 |
+| +3 h | GIRO-only, stations over climatology (runnable) | 143 of 733 | 55 | 53 | 35 |
+| +12 h | past-GloTEC hybrid | 170 of 724 | 73 | 55 | 42 |
+| +12 h | GIRO-only | 141 of 724 | 53 | 51 | 37 |
+
+**The hours ahead's typical error by distance band** (the climatology, held out on the test days; D-134):
+
+| Nearest reporting station | n | foF2 \| MUF(3000) RMS, MHz |
+|---|---|---|
+| under 500 km | 207 | 0.77 \| 2.91 |
+| 500 to 1000 km | 104 | 0.91 \| 3.24 |
+| 1000 to 2000 km | 198 | 1.20 \| 4.49 |
+| over 2000 km | 314 | 1.36 \| 4.58 |
+
+Its limits: one week, one solar level, test days including the 10-04/05 storm.
 

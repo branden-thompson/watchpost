@@ -66,7 +66,7 @@ flowchart LR
 | Path | Holds | Why there |
 |---|---|---|
 | `modes/tty/map_prop*.go` (new) | The Propagation mode beside Radar and Forecast (`modes/tty/map_temp.go:167` decides Radar mode today); the chart; the frequency entry; the hour step; the words; the acknowledgement window | every window is a file of package `tty`; the closed-set guards are package-internal |
-| `modes/tty/dashboard.go` (`Config`, `:72`) | a new `MapPropagation func(ctx, ask MapAsk) MapPropagation`, beside `MapTemperature` (`:114`) | the window cannot import `domains/`; the app hands it functions (`MapAsk`, `modes/tty/map_prefs.go:556`) |
+| `modes/tty/dashboard.go` (`Config`, `:72`) | two seams beside `MapTemperature` (`:114`): `PropagationUpdate func(ctx) <-chan Snapshot` (the update's one owner, D-131) and `PropagationAnswers func(ctx, Snapshot, MapAsk) MapPropagation` (pure answers) | the window cannot import `domains/`; the app hands it functions (`MapAsk`, `modes/tty/map_prefs.go:556`) |
 | `app/mapprop.go` (new) | turns go-ionomaps' fields into `tuimaps.Grid` overlays and its answers into the chart's rows and words; credits; MAP STATUS entries | the only package that may name a domain and what draws |
 | `domains/propagation/` (new) | the one go-ionomaps object per process; the fetcher it is given; the acknowledgement's record read before the first fetch | a data source is a domain |
 | `platform/geo/coords.go`, `maidenhead.go` (new) | one finite-checked coordinate parser and the Maidenhead parser, used by every resolver (FR-4.9, D-79) | shared and pure |
@@ -81,29 +81,33 @@ sequenceDiagram
   participant L as Listener
   participant W as Propagation mode (UI goroutine)
   participant A as app/mapprop.go
-  participant P as domains/propagation
+  participant P as domains/propagation (the update's one owner)
   participant I as go-ionomaps
   participant N as GIRO / NOAA
   L->>W: the mode's key
   W->>W: acknowledgement seen? if not, show it (Enter/Esc)
-  W->>A: MapPropagation(ask), off the UI goroutine
-  A->>P: snapshot for the hour
-  P->>I: Update(now)
-  I->>I: throttle: within D-39? else answer from the last good field
-  I->>N: GIRO since the last reading; GloTEC newest (304 if unchanged); D-RAP; the scales
+  W->>P: PropagationUpdate(): start, or join the running update
+  Note over P: its own context and a 60 s deadline; a keypress never cancels it; closing the mode does
+  P->>I: Update(ctx)
+  I->>I: throttle (D-39): a cancelled burst still spends the hour; too soon, answer from the last field
+  I->>N: NOAA first (GloTEC newest by name or index, D-RAP, the scales; solar indices daily)
   N-->>I: replies
-  I->>I: parse, range-check, assimilate, limits
-  I-->>P: Snapshot (fields, valid, age, sources, background)
-  P-->>A: Snapshot
-  A->>A: overlays, best bands, reach, words
-  A-->>W: MapPropagation (frames ready, words, notes)
+  I-->>P: Snapshot 1: GloTEC and the climatology, no stations yet (said)
+  I->>N: GIRO since the last reading (one burst, at most 40)
+  N-->>I: replies
+  I-->>P: Snapshot 2: with the stations assimilated
+  P-->>W: snapshot ready (Computed, inputs' times)
+  W->>A: PropagationAnswers(snapshot, ask): off the UI goroutine
+  A->>A: overlays (the hour on screen), best bands, reach, words; memo keyed on every input
+  A-->>W: frames and words
   W-->>L: the picture or the words
+  Note over W,P: while open, the refresh tick (10 min default) or the refresh-now key starts the next update
 ```
 
 **The update and the answers are separate** (FR-1.17, FR-4.8; L-F9, P-4, P-5, P-6, A-29):
-- **One owner runs the update.** `domains/propagation` runs one `Update` at a time, in its own command with its own context, driven by a refresh tick while the mode is open (FR-4.10) or by the refresh-now key (D-120). A keypress never cancels it; closing the mode does (FR-4.2).
+- **One owner runs the update.** `domains/propagation` runs one `Update` at a time, in its own command with its own context and a 60 s deadline (a burst of 39 took 36 s in PLAN), driven by a refresh tick while the mode is open (FR-4.10) or by the refresh-now key (D-120). A keypress never cancels it; closing the mode does (FR-4.2), and a cancelled GIRO burst still spends the hour's budget (D-39). NOAA is fetched first, so a first picture (GloTEC and the climatology, said as "no stations yet") comes before the GIRO burst ends.
 - **Answers come from the last snapshot.** They are pure functions of it (R-2), asked in their own command, so an hour step or a new frequency is answered at once, never behind a GIRO burst.
-- **Their memo key carries the snapshot.** The key is (snapshot `Computed`, origin, hour, frequency), so a new snapshot misses the memo; the centre is keyed separately.
+- **Their memo key carries every input**: the snapshot's `Computed`, the origin, the hour, the frequency, the near-vertical radius (D-100) and the target set; a new snapshot or a changed Setting misses the memo; the centre is keyed separately. FR-8.2's guard covers this key.
 - **A returned snapshot is immutable** (fresh slices on every update).
 - **Only the hour on screen** is converted for go-tuiMaps (D-112).
 
@@ -119,30 +123,32 @@ type Response struct {
     Status     int
     Rate       RateHeaders // only the rate-related headers (D-83, FR-4.5); never a whole header (I-1)
     Validators Validators  // for the next ask
-    Body       []byte
-    NotChanged bool        // a 304 against the validators
+    Body       []byte      // empty on a 304 (Status says so)
 }
 type RateHeaders struct{ RetryAfter, Limit, Remaining, Reset string }
 type Validators struct{ ETag, LastModified string }
 
 type Options struct {
-    Grid              GridStep         // a typed choice; v0.1.0 has one value, 2° (R-1.1, D-125)
     Clock             func() time.Time
     Tables            Tables           // the refits, swappable (D-43, R-4.4)
-    CorrectNoReadings bool             // with no station readings held, GloTEC corrected by the typical offset (D-105)
 }
 // The reference circuit is fixed by ruling (D-73, D-91), so it is not an option.
 
-func New(f Fetcher, o Options) (*Library, error)                // refuses an unknown GridStep (R-3.5)
-func (l *Library) Update(ctx context.Context) (Snapshot, error) // pull; throttle inside (D-42); callers merged (R-5.6)
+func New(f Fetcher, o Options) (*Library, error)                                // the grid is 2° (R-1.1, D-138)
+func (l *Library) Update(ctx context.Context, u UpdateOptions) (Snapshot, error) // pull; throttle inside (D-42); safe for concurrent use (R-5.6)
+
+type UpdateOptions struct {
+    CorrectNoReadings bool // per update, from the host's Setting: no new object, no new burst (D-105, persona N5)
+}
 func (l *Library) Sources() []Source                            // every source: name, host, terms, citation (R-4.1, D-113)
 
 // A Snapshot is immutable: every Update returns fresh slices (P-6).
 type Snapshot struct {
     Computed     time.Time    // the age is the host's clock minus this
-    Hours        []Hour       // Hours[0] is now; then up to 24 hours ahead, typical (R-1.3, D-109)
+    Hours        []Hour       // Hours[0] is now; then up to 24 hours ahead, typical, sharing the climatology cache's fields (R-1.3, D-109, D-131)
+    NearestKm    []float32    // per cell: distance to the nearest assimilated station, one table per snapshot (R-2.11, D-116, D-131); a cell is measured within 500 km (R-3.2)
     Background   Backgrounds  // per field (D-101)
-    Inputs       Inputs       // what fed it (R-3.3, R-9.5, R-9.7)
+    Inputs       Inputs       // what fed it, and when (R-3.3, R-9.5, R-9.7, FR-5.1)
     Early        Reason       // why this is not from new data: none, too soon, GIRO paused, offline (R-5.4)
     Scales       Scales       // (D-88)
     Offset       Offset       // (D-105)
@@ -151,14 +157,21 @@ type Snapshot struct {
 type Backgrounds struct{ FoF2, M3000 Background } // foF2: GloTEC, else the climatology; M(3000)F2: the climatology
 type Inputs struct {
     Stations, Rejected int           // readings used, and refused by range checks (R-3.3)
+    GloTECValid        time.Time     // the grid's own valid time; zero when GloTEC was missing (FR-5.1)
+    OldestReading      time.Time     // the oldest GIRO reading assimilated (R-5.7, FR-5.1)
+    DRAPValid          time.Time     // zero when D-RAP was missing: no "disturbed" state (R-2.6)
     F107Mean           float32       // the 30-day mean used (D-104)
     F107Days           int           // observed days in it
     F107Age            time.Duration // since the solar file was last fetched
     CoordsExtrapolated bool          // past IGRF-14's last year (R-9.7)
 }
 type TypicalError struct {
+    Bands []BandError // by distance to the nearest reporting station (D-134)
+    Basis string      // where and when it was measured (D-109, D-134)
+}
+type BandError struct {
+    UpToKm              float32 // 500, 1000, 2000, then no limit
     FoF2MHz, MUF3000MHz float32
-    Basis               string // where it was measured (D-109)
 }
 type Scales struct {
     R, S, G int        // NOAA levels now, 0 to 5
@@ -177,7 +190,6 @@ type Offset struct {
 
 type Hour struct {
     At      time.Time
-    Typical bool // an hour ahead: the climatology for that hour (D-109)
     MUF3000 Field
     FoF2    Field
 }
@@ -185,11 +197,11 @@ type Field struct {
     West, South, East, North float64
     Cols, Rows               int
     Values                   []float32 // finite everywhere (R-3.3)
-    NoData                   []bool    // where no value is known
-    NearestKm                []float32 // distance to the nearest assimilated station (R-2.11, D-116)
+    NoData                   Bitset    // where no value is known (D-131)
 }
 
-// One place or many in one call (R-2.3); bad input refused (R-3.5); no answer fetches.
+// One place or many in one call (R-2.3), at most 64 places (R-3.5); bad input refused; no answer fetches.
+// `at` falls in the hour that contains it (the hour starting at its UTC hour).
 func (s Snapshot) At(points []LatLon, at time.Time) ([]Reading, error)                          // R-2.1
 func (s Snapshot) Bands(origins []LatLon, radiusKm float64, at time.Time) ([][]BandStatus, error) // near-vertical (R-2.8)
 func (s Snapshot) Path(from LatLon, to []LatLon, at time.Time) ([][]BandStatus, error)           // R-2.2
@@ -205,7 +217,7 @@ type BandStatus struct {
     Status    Status  // Open, AboveUpper, Absorbed, Disturbed, NoData (R-2.6)
     Limit     Limit   // which limit decided it, typed; the host writes the words (A-9)
     LimitMHz  float32
-    OpenHours []Span  // today in UTC, the whole day (R-2.8)
+    OpenHours []Span  // the UTC day's typical open hours, from the climatology (R-2.8, D-135)
     NearestKm float32 // (D-116)
 }
 type Reach struct {
@@ -234,7 +246,7 @@ Internal packages: go-ionomaps' design (`03-architecture-design/design.md`, "Pac
 | Source | Each update | Since |
 |---|---|---|
 | GIRO | about 39 requests, readings since the last held (R-5.2), tens of KB | D-39, D-51 |
-| NOAA GloTEC | the newest grid, about 2.5 MB, or a 304; while open, each new grid every 10 minutes by default (about 15 MB an hour) | FR-4.6, D-94 |
+| NOAA GloTEC | the newest grid (timestamped, so never a 304), about 2.5 MB decoded and about 0.27 MB gzipped; while open, each new grid every 10 minutes by default; the wire cost re-ruled from W0.0 (D-111) | FR-4.6, D-94, D-111 |
 | NOAA D-RAP | about 42 KB, or a 304 | D-47 |
 | NOAA space-weather scales | about 1.1 KB, or a 304 | D-88 |
 | NOAA daily solar indices | about 3 KB, at most once a day | D-104 |

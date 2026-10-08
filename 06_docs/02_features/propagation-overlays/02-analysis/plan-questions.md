@@ -10,8 +10,9 @@ status: "COMPLETE. Every question ruled (D-87, D-88, D-100, D-105, D-106, D-107;
 # PLAN questions
 
 The DISCOVER report (`08-reports/discover-report.md`, "PLAN questions") left six questions for PLAN, and PLAN's
-dry run found a seventh. All are ruled. Each question below gives its
-evidence, its options, a recommendation and the strongest counter-argument.
+dry run found a seventh. All are ruled. Q-1, Q-2 and Q-7 give their evidence, options, recommendation
+and strongest counter-argument in full; Q-3 to Q-6 give what was put and the counter-argument, with the
+options in their ruling rows.
 
 | # | Question | From | State |
 |---|---|---|---|
@@ -47,7 +48,7 @@ evidence, its options, a recommendation and the strongest counter-argument.
 - D-47 models both limits. The lower limit comes from daytime absorption, computed, and from NOAA SWPC's D-RAP for disturbances.
 - D-RAP's product page (spaceweather.gov, fetched 2026-10-07T00:51:56Z) says its components are "driven by one-minute GOES X-ray flux data and by five-minute GOES proton flux data". So it covers flares (NOAA's R scale) and solar proton events (the S scale). **No geomagnetic input is named.**
 - A geomagnetic storm (the G scale) is the third kind of disturbance. It lowers foF2 over hours to days (the upper limit), and it brings absorption at high latitudes.
-- The measured fields see a storm as it happens: GIRO's readings and GloTEC's grid. The climatology does not. The hours ahead carry the background forward, with the station corrections decaying toward climatology (go-ionomaps R-1.3), so nothing in them foresees a storm's onset or its recovery.
+- The measured fields see a storm as it happens: GIRO's readings and GloTEC's grid. The climatology does not. The hours ahead, as R-1.3 then stood, carried the background forward with the station corrections decaying toward climatology, so nothing in them foresaw a storm's onset or its recovery (since D-109 they are the climatology).
 - NOAA's scales feed, `services.swpc.noaa.gov/products/noaa-scales.json` (fetched 2026-10-07T00:51:12Z):
   - 1,107 bytes, with `ETag`, `Last-Modified` and `max-age=60`;
   - R, S and G now, the last 24 hours (`-1`), and probabilities or scales for the next three days.

@@ -97,9 +97,9 @@ Each target is ruled from PLAN's dry run, against D-75's floors, and listed here
 | M5 | 8 of 10 correct, each within 45 s | D-93 |
 | M5b | 8 of 10 correct, each within 60 s | D-93 |
 | G1 | added mean CPU ≤ 1% of one core; added RSS ≤ 25 MB (split, D-112: the library's live heap ≤ 15, the host's conversion ≤ 4, GC headroom the rest); downloads counted on the wire in decimal MB, **re-ruled in BUILD's first task from a measured gzip request with 25% headroom** (D-95's 15 and 3 MB an hour were decoded estimates), none closed | D-95, D-111 |
-| go-tuiMaps M5 | a whole-globe 2° field frame after a pan (fill, labelled contours, terminator, night) ≤ 16 ms at 400 × 110, ≤ 8 ms at 200 × 56 | D-96 |
+| go-tuiMaps M5 | a whole-globe 2° field frame after a pan (fill, labelled contours, terminator, night, the reach overlay) ≤ 16 ms at 400 × 110, ≤ 8 ms at 200 × 56 | D-96, D-137 |
 | M1 | agreement ≥ the IRI climatology's + 5 points, on the same ≥ 200 scenarios with both outcomes, over ≥ 3 days, by band | D-99 |
 | M4 | as M1, for the listener's paths | D-99 |
 | go-ionomaps G-M3 | ≥ 15% below climatology in the mainland US, ≥ 10% overall, foF2 and MUF; near stations foF2 ≤ 0.5, MUF ≤ 1.6 MHz | D-108 |
-| go-ionomaps G-M2, G-G1 | see D-97, D-98 | D-97, D-98 |
+| go-ionomaps G-M2, G-G1 | see D-97, D-98, D-112 | D-97, D-98, D-112 |
 

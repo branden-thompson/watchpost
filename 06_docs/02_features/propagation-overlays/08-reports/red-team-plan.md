@@ -4,7 +4,7 @@ date: 2026-10-07
 phase: PLAN exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1 DISPOSITIONED — all eight reports in, all 'do not exit'; every fork ruled (D-109 to D-127); the fix batch applied; A-25 to A-29 batched for veto"
+status: "ROUNDS 1 AND 2 DISPOSITIONED — round 1: eight reviewers, two Criticals, forks D-109 to D-127; round 2: four reviewers, no Critical, both round-1 Criticals closed, forks D-129 to D-138; both fix batches applied; A-25 to A-30 batched for veto"
 ---
 
 # PLAN exit — red team, round 1
@@ -24,7 +24,7 @@ status: "ROUND 1 DISPOSITIONED — all eight reports in, all 'do not exit'; ever
   - The public shape lacks fields the requirements promise.
   - The download and memory targets (D-95, D-98) don't add up.
   - The evidence behind about ten rulings lived only in a temp directory. It is now preserved outside the tree (below).
-- **What reproduced:** every published number. Docs, the PLAN lens and Hygiene each re-ran `week.py`. Every code citation checked holds.
+- **What reproduced:** every number published in `dry-run.md`; Docs, the PLAN lens and Hygiene each re-ran `week.py`. Every code citation checked holds. **But** the figures the agent put to the HUM LEAD in forks 1 and 8 came from an intermediate run and did not reproduce (E-19, found in round 2, corrected at D-129 and D-130).
 
 Reviewer notes: `reviewer-notes/plan-round-1.md`.
 
@@ -114,4 +114,40 @@ Nothing from it is committed: GIRO's data is CC BY-NC-SA, and its replies carry 
 | Fork 19: words and the reach mark | A-5, A-6, A-8, A-10 | **D-127:** all four: state said, one line per target, a refresh keeps the place, go-tuiMaps L-2.6 (also closes C-T1's L-2.5 gap via P2.4) |
 | **The fix batch** | every finding routed "fix" | **Applied across the three records.** The details:<br>- **Trace:** every test the requirements name is in a plan task (watchpost 95, go-ionomaps 74, go-tuiMaps 30 in scope; L-5's two are out of v0.3.0), and W0.4 makes it a docs-reading check.<br>- **New tasks:** M1/M4's instrument (W10.3) and the UAT prompter (W10.4); W2.0's map-mode type (C-M2); W4.6 (D-116); R-3.5 and G7.2 (caller bounds, no NaN, no fetch in answers); R-9.8 and G10.5 (the constants' basis and expiry); P7.0 (whole-globe contrast before optimising).<br>- **The shape completed** (A-29) and the update separated from the answers, with the memo key and immutability.<br>- **InfoSec rows:** I-1 (import ban), I-4, I-7, I-8, I-10.<br>- **Corrected:** FR-3's preamble; RK-3, RK-11, RK-12 and a new RK-15; the floors text; FR-1.16's range; FR-1.17's caveat.<br>- **Brought current:** REQUIRED-READING and `plan-questions.md`; the dry run's verdict first (D-126), with "every day", the kernel, the window and the command corrected.<br>- **Evidence and record:** NOTICE (IGRF-14, the Apex sample, hmF2 removed); the README; R-5.6, R-7.3, R-9.1's role; NFR-1; `loo_b_on_d.py` (renamed, docstring fixed); `dry_fetch.py` stops GIRO after the full back-off; `day.sh` deleted; G10.4's oracle is `week.py`; `week.py`'s station message computed; F-208 refreshed; F-212 (storm modelling) and F-213 (the idle redraw) added; W1.1 teaches P10 to see a discarded `ok`; `parseLatLon` deleted in W0.3; W8.1's rows name their tests before 0.19.1.<br>- **Sizes:** estimated, about 44 batches for the train. |
 | Not fixed, with the reason | C-C2 (`offset.py` re-runs `week.py`, 39 s); H-3.2 and C-E9 (`plancode` checks only watchpost) | C-C2: a one-off evidence script, and refactoring it risks the published numbers. H-3.2 and C-E9: go-ionomaps' gate arrives at G0 with a plan-code check; until then the gap is stated in the PLAN report |
+
+# Round 2 (D-128)
+
+**Four fresh blind reviewers.** No Critical; both of round 1's Criticals were confirmed closed, and the test
+trace was re-run mechanically by three of them (watchpost 95 of 95, go-ionomaps 74 of 74, go-tuiMaps 30 of 32
+with L-5's two out of scope). Notes: `reviewer-notes/plan-round-2.md`.
+
+| Reviewer | Verdict | Fix first |
+|---|---|---|
+| Combined personas (Accessibility, InfoSec, Performance) | Do not exit yet; no Critical | N1: A-29's shape broke D-112's memory cap |
+| PLAN lens (Principal Architect) | Do not exit yet; no Critical | LN1: the update's seam, deadline and cancelled-burst budget |
+| Code Quality | Do not exit yet; no Critical | CN1: D-109's figures do not reproduce |
+| Docs Quality | Do not exit yet; no Critical | DN-1: D-109, D-116 and RK-3's figures do not reproduce, and the Pacific result flips |
+
+## The agent's errors found in round 2
+
+| # | Error | Found by | Correction |
+|---|---|---|---|
+| E-19 | **Fork 1's band-answer figures and fork 8's Pacific and distance figures came from an intermediate run whose climatology was raw CCIR**, which D-43 forbids shipping. With the shipped climatology the Pacific hybrid is worse than the climatology (5.17 against 5.09), not better; the ledger's "every published figure reproduces" was false for these | CN1, DN-1 | D-129 (D-116 re-put; stands with honest words) and D-130 (D-109's figures corrected; conclusion unchanged); RK-3 and `dry-run.md` corrected; sections 10 and 11 published |
+
+## Round 2 dispositions
+
+| Fork / fix | Findings | Disposition |
+|---|---|---|
+| D-116's corrected premise | DN-1 (E-19) | **D-129:** D-116 stands; beyond 2000 km the words say "about as good as typical here, or worse"; fresh BUILD days re-check |
+| D-109's figures | CN1, DN-1 (E-19) | **D-130:** corrected (76 against 56; 55 against 53); conclusion unchanged |
+| Memory | persona N1, N2 | **D-131:** hours ahead share the climatology cache, one nearest-station table, no-data as a bitset (live about 7 MB, estimated); G1 judged on measured RSS |
+| Grading on the same week | LN2 | **D-132:** G10.4 scores at least 3 fresh days fetched in BUILD |
+| A screen reader in 0.19.0 | persona N6 | **D-133:** Help and the words say the focus limit (FR-3.7); RK-6 restated |
+| The typical error | LN6, DN-7, CN2 | **D-134:** by distance band from the test days (0.77 \| 2.91 to 1.36 \| 4.58 MHz); `week.py` section 11; G10.5 asserts |
+| The day's open hours | DN-6, LN7 | **D-135:** the climatology for every hour, labelled "typical day", beside the current hour; a disagreement said |
+| The words' order | persona N8 | **D-136:** a status block said once per open; one line per target; the order in FR-3.1 |
+| go-tuiMaps M5's case | DN-10 | **D-137:** the target includes the reach overlay |
+| `Options.Grid` | Code (a recommendation) | **D-138:** deleted |
+| **The fix batch** | every other round-2 finding | **Applied.** The details:<br>- **The architecture:** two seams (`PropagationUpdate`, `PropagationAnswers`) and the redrawn "Opening the mode" diagram; a 60 s deadline; a cancelled burst spends the hour; NOAA first, so a first picture comes before GIRO; the memo key on every input; the no-readings correction per update.<br>- **The shape:** the inputs' own times and D-RAP's state; "measured" defined as within 500 km; `NotChanged`, `Typical`, merging, the hmF2 check and `internal/forecast` removed (A-30).<br>- **Bounds and expiry:** `Retry-After` bounded and fuzzed; at most 64 places a call; R-9.8's expiry a release step.<br>- **Corrected text:** FR-5.1's age is the oldest input's; NFR-1 restated (D-111, D-112); the GloTEC 304 text corrected and the test renamed `TestAnUnchangedFeedCostsA304`; the SILSO row deleted; the go-ionomaps R-9 heading and floors current; `requirements.md`'s "forecasts" line, the dry run's stale lines, `plan-questions.md`, the UAT protocol's FR-1.9, RK-12's "one day"; "first in BUILD" made unambiguous (W0.0 then W1).<br>- **The O2 follow-ups:** rows at 0.19.1 (D-122), F-206 corrected, F-210 keeps the set-aside blend.<br>- **Evidence:** `week.py` checks the storm days and documents its sections; `offset.py`'s usage; `dry_fetch.py`'s back-off stated exactly and NOAA stops after giving up.<br>- **Tasks:** go-tuiMaps P7.2 (M6 and the release record); the release records' contents named; the size recalibrated to about 70 batches (RK-5); the trace complete again. |
+| Not changed, with the reason | LN9 (the two project briefs still say A-12 struck the allowlist) | The briefs are approved records kept as written, with a banner that `requirements.md` is current and wins (A-23) |
 
