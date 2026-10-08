@@ -975,8 +975,8 @@ code{font-family:var(--mono);font-size:.92em}
   end
   subgraph go-ionomaps
     LIB[&#34;ionomaps.Library&lt;br/&gt;Update, Fields, Bands, Reach&#34;]
-    ASSIM[&#34;assimilation&lt;br/&gt;foF2 and M(3000)F2 residuals&#34;]
-    BG[&#34;background&lt;br/&gt;GloTEC, else climatology&#34;]
+    ASSIM[&#34;assimilation&lt;br/&gt;foF2 over GloTEC, M(3000)F2 over climatology (D-101)&#34;]
+    BG[&#34;background&lt;br/&gt;GloTEC foF2, climatology M(3000)F2&#34;]
     CLIM[&#34;climatology&lt;br/&gt;PyIRI port, NRL refits behind a seam&#34;]
     LIM[&#34;limits&lt;br/&gt;P.533 MUF, daytime absorption, D-RAP&#34;]
     THR[&#34;throttle, live stations&lt;br/&gt;(D-39, D-51)&#34;]
@@ -1000,23 +1000,27 @@ code{font-family:var(--mono);font-size:.92em}
   participant L as Listener
   participant W as Propagation mode (UI goroutine)
   participant A as app/mapprop.go
-  participant P as domains/propagation
+  participant P as domains/propagation (the update&#39;s one owner)
   participant I as go-ionomaps
   participant N as GIRO / NOAA
   L-&gt;&gt;W: the mode&#39;s key
   W-&gt;&gt;W: acknowledgement seen? if not, show it (Enter/Esc)
-  W-&gt;&gt;A: MapPropagation(ask), off the UI goroutine
-  A-&gt;&gt;P: snapshot for the hour
-  P-&gt;&gt;I: Update(now)
-  I-&gt;&gt;I: throttle: within D-39? else answer from the last good field
-  I-&gt;&gt;N: GIRO since the last reading; GloTEC newest (304 if unchanged); D-RAP
+  W-&gt;&gt;P: PropagationUpdate(): start, or join the running update
+  Note over P: its own context and a 60 s deadline; a keypress never cancels it; closing the mode does
+  P-&gt;&gt;I: Update(ctx)
+  I-&gt;&gt;I: throttle (D-39): a cancelled burst still spends the hour; too soon, answer from the last field
+  I-&gt;&gt;N: NOAA first (GloTEC newest by name or index, D-RAP, the scales; solar indices daily)
   N--&gt;&gt;I: replies
-  I-&gt;&gt;I: parse, range-check, assimilate, limits
-  I--&gt;&gt;P: Snapshot (fields, valid, age, sources, background)
-  P--&gt;&gt;A: Snapshot
-  A-&gt;&gt;A: overlays, best bands, reach, words
-  A--&gt;&gt;W: MapPropagation (frames ready, words, notes)
+  I--&gt;&gt;P: Snapshot 1: GloTEC and the climatology, no stations yet (said)
+  I-&gt;&gt;N: GIRO since the last reading (one burst, at most 40)
+  N--&gt;&gt;I: replies
+  I--&gt;&gt;P: Snapshot 2: with the stations assimilated
+  P--&gt;&gt;W: snapshot ready (Computed, inputs&#39; times)
+  W-&gt;&gt;A: PropagationAnswers(snapshot, ask): off the UI goroutine
+  A-&gt;&gt;A: overlays (the hour on screen), best bands, reach, words; memo keyed on every input
+  A--&gt;&gt;W: frames and words
   W--&gt;&gt;L: the picture or the words
+  Note over W,P: while open, the refresh tick (10 min default) or the refresh-now key starts the next update
 </pre></div></article></section></main>
 </div>
 <script type="module">

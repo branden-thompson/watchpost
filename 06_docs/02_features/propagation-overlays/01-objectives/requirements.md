@@ -1,7 +1,7 @@
 ---
 title: "0.19.0 — Propagation overlays — REQUIREMENTS"
 date: 2026-10-06
-phase: PLAN
+phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
 status: "APPROVED at the DISCOVER gate (D-84), normative. On any conflict with the brief or the problem statement, this file wins once approved, and every change is a row in 02-analysis/rulings.md. Revised after the DISCOVER-exit red team (08-reports/red-team-discover.md), the reference-chart ruling (D-76), PLAN's dry run and rulings (D-85 to D-108) and the PLAN-exit red team (08-reports/red-team-plan.md, D-109 to D-127)."

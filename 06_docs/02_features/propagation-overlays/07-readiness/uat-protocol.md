@@ -4,7 +4,7 @@ date: 2026-10-07
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "DRAFT for the PLAN gate. The sitting is live (D-89)."
+status: "APPROVED at the PLAN gate (watchpost D-139). The sitting is live (D-89)."
 ---
 
 # UAT protocol: M2, M5, M5b

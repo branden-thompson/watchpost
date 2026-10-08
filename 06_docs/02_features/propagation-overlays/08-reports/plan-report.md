@@ -4,7 +4,7 @@ date: 2026-10-07
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "FOR THE PLAN GATE — presented to the HUM LEAD in full; approval asked below"
+status: "APPROVED by the HUM LEAD 2026-10-07 (D-139); the batched decisions stand (D-140); BUILD opens with W0.0 then W1"
 ---
 
 # PLAN report — 0.19.0, go-ionomaps v0.1.0, go-tuiMaps v0.3.0

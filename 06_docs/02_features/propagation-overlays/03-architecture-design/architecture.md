@@ -4,7 +4,7 @@ date: 2026-10-06
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "DRAFT for the PLAN gate. No code: signatures, shapes, file paths and flows only (0.18.0 D-13)."
+status: "APPROVED at the PLAN gate (watchpost D-139). No code: signatures, shapes, file paths and flows only (0.18.0 D-13)."
 ---
 
 # Architecture
