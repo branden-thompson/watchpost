@@ -48,7 +48,7 @@ vet:
 # team, I-3). The injector itself is untagged since 0.18.0 D-152, and its tests
 # run with every other.
 vet-tags:
-	go vet -tags property ./modes/tty
+	go vet -tags property ./modes/tty ./platform/history
 
 # Dependency hygiene (quality pass Q0, red-team PH-1/IS-9): go.mod must be tidy,
 # the module cache must match go.sum, and no known vulnerability may be reachable.
@@ -494,9 +494,11 @@ alloc-budget:
 # The map's guard 3 at its full count (0.18.0 W2.4): 10,000 random sequences,
 # each printed map compared with a fresh render. Every `go test` runs 200; the
 # ten thousand take about two minutes, so they run once, here, not under the
-# race detector and not in every mutant's run.
+# race detector and not in every mutant's run. Then the history's 90-day
+# global-grid soak (0.19.0 W1.2), about 45 seconds and half a gigabyte written.
 property:
 	go test -tags property -count=1 -run 'TestThePrintedMapIsAFreshRender' ./modes/tty
+	go test -tags property -count=1 -run 'TestNinetyDaysOfAGlobalGridStayReadable' ./platform/history
 
 # Wall-clock benchmarks: recorded, never gated (quality pass §0.1). Local, HUM LEAD.
 # Needs benchstat: go install golang.org/x/perf/cmd/benchstat@latest

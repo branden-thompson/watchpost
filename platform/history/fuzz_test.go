@@ -84,7 +84,7 @@ func FuzzReadDay(f *testing.F) {
 	}
 	f.Add(two)
 	year, err := json.Marshal(yearDoc{Schema: schema, Dataset: grid.Name, Version: grid.Version, Key: ndfd,
-		Days: []dayEntry{{Date: "2026-09-30", Shape: box, Hours: 2, Stats: map[string]map[string][]*float64{"temp": {"min": second.Values["temp"]}}}}})
+		Days: []dayEntry{{Date: "2026-09-30", Shape: box, Hours: 2, Stats: map[string]map[string]values{"temp": {"min": second.Values["temp"]}}}}})
 	if err != nil {
 		f.Fatal(err)
 	}
@@ -93,10 +93,12 @@ func FuzzReadDay(f *testing.F) {
 	dir := f.TempDir() // one a worker, its files written over by each input
 	f.Fuzz(func(t *testing.T, body []byte) {
 		now := t0
-		files := filesAt(filepath.Join(dir, grid.Name, "v1", "ndfd", "us-a"), t0)
+		series := filepath.Join(dir, grid.Name, "v1", "ndfd", "us-a")
+		files := filesAt(series, t0)
 		writeDoc(t, files.day, body)
 		writeDoc(t, files.bucket, body)
 		writeDoc(t, files.year, body)
+		writeDoc(t, rollupPart(series, t0, 1), body)
 		s := Open(dir, func() time.Time { return now }, grid)
 		got := s.Range(grid.Name, ndfd, day, day.Add(24*time.Hour-time.Second), 1000)
 		if len(got) > 24 {

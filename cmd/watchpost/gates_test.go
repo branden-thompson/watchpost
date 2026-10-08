@@ -377,7 +377,7 @@ func assertEveryBuildTrimmed(t reporter, m *buildModel) {
 
 // THE ALLOC PINS ARE ALL REACHED. TestEveryRunSelectorSelectsATest fails a
 // selector that reaches nothing; alloc-budget's pins are a set, so this also
-// counts them, and a rename that drops some of the eight fails here.
+// counts them, and a rename that drops some of the nine fails here.
 func TestTheAllocBudgetSelectsItsPins(t *testing.T) {
 	m := loadBuildModel(t)
 	m.mustRun(t)
@@ -391,8 +391,8 @@ func TestTheAllocBudgetSelectsItsPins(t *testing.T) {
 			}
 		}
 	}
-	if pins < 8 {
-		t.Errorf("alloc-budget's pattern %q selects %d pin(s); there were eight. A selector that "+
+	if pins < 9 {
+		t.Errorf("alloc-budget's pattern %q selects %d pin(s); there were nine. A selector that "+
 			"reaches nothing exits 0 and reports a budget nobody measured.", pattern, pins)
 	}
 }

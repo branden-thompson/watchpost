@@ -474,3 +474,34 @@ func TestTheHistorysSizeIsNotReadEveryFrame(t *testing.T) {
 		t.Errorf("after Clear history the size is %q; want it read again, the store emptied", cleared)
 	}
 }
+
+// EVERY DATASET HAS A BYTE BOUND (D-143, FR-6.5): beside its retention, the
+// most it holds on disk.
+func TestEveryDatasetHasAByteBound(t *testing.T) {
+	for _, d := range historyDatasets {
+		if d.MaxBytes <= 0 {
+			t.Errorf("%s has no byte bound", d.Name)
+		}
+	}
+}
+
+// THE DATA TAB SAYS WHICH DATASET ITS BOUND CUT SHORT (D-143): the retention
+// chosen is not what it keeps, so the tab names it, by its title.
+func TestTheDataTabSaysWhichDatasetItsBoundCutShort(t *testing.T) {
+	now := time.Date(2026, 9, 30, 15, 0, 0, 0, time.UTC)
+	tight := ndfdHourly
+	tight.MaxBytes = 1
+	store := history.Open(t.TempDir(), func() time.Time { return now }, tight)
+	if words := boundWords(store); words != "" {
+		t.Errorf("with nothing cut short the tab says %q", words)
+	}
+	yesterday := now.AddDate(0, 0, -1)
+	if !store.Put(tight.Name, history.Record{Key: history.Key{Source: "ndfd", Place: "us-a"}, At: yesterday, IssuedAt: yesterday,
+		Shape: history.Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"temp": {20}}}) {
+		t.Fatal("yesterday's record was not written")
+	}
+	store.RollUpAndPrune()
+	if words := boundWords(store); !strings.Contains(words, ndfdHourly.Title) || !strings.Contains(words, "size limit") {
+		t.Errorf("the bound cut %s short and the tab says %q", ndfdHourly.Title, words)
+	}
+}

@@ -52,8 +52,9 @@ var ndfdHourly = history.Dataset{
 		{Name: "gust", Label: "Gusts", Unit: "km/h", Decimals: 1},
 		{Name: "wind_from", Label: "Wind from", Unit: "°", Decimals: 0},
 	},
-	Hours: 72 * time.Hour,
-	Days:  30 * 24 * time.Hour,
+	Hours:    72 * time.Hour,
+	Days:     30 * 24 * time.Hour,
+	MaxBytes: largeHistoryBound,
 }
 
 // omUVHourly is Open-Meteo's UV index over each field box, each hour it
@@ -65,6 +66,7 @@ var omUVHourly = history.Dataset{
 	Fields:      []history.Field{{Name: "uv", Label: "UV index", Unit: "index", Decimals: 1}},
 	Hours:       72 * time.Hour,
 	Days:        30 * 24 * time.Hour,
+	MaxBytes:    historyBound,
 }
 
 // omRainDays is Open-Meteo's rain and snow over each field box, each day it
@@ -79,8 +81,9 @@ var omRainDays = history.Dataset{
 		{Name: "rain", Label: "Rain", Unit: "mm", Decimals: 1},
 		{Name: "snow", Label: "Snow", Unit: "cm", Decimals: 1},
 	},
-	Hours: 72 * time.Hour,
-	Days:  30 * 24 * time.Hour,
+	Hours:    72 * time.Hour,
+	Days:     30 * 24 * time.Hour,
+	MaxBytes: historyBound,
 }
 
 // ndfdWaves is NDFD's significant wave height over each field box, an hour a
@@ -93,6 +96,7 @@ var ndfdWaves = history.Dataset{
 	Fields:      []history.Field{{Name: "waves", Label: "Wave height", Unit: "m", Decimals: 1}},
 	Hours:       72 * time.Hour,
 	Days:        30 * 24 * time.Hour,
+	MaxBytes:    historyBound,
 }
 
 // epaUVCities is EPA's UV forecast for each city the map has read, an hour a
@@ -106,6 +110,7 @@ var epaUVCities = history.Dataset{
 	Fields:      []history.Field{{Name: "uv", Label: "UV index", Unit: "index", Decimals: 0}},
 	Hours:       72 * time.Hour,
 	Days:        30 * 24 * time.Hour,
+	MaxBytes:    historyBound,
 }
 
 // ndfdRainDays is NDFD's rain and snow over each field box, each day it gave:
@@ -118,9 +123,21 @@ var ndfdRainDays = history.Dataset{
 		{Name: "rain", Label: "Rain", Unit: "mm", Decimals: 1},
 		{Name: "snow", Label: "Snow", Unit: "cm", Decimals: 1},
 	},
-	Hours: 72 * time.Hour,
-	Days:  30 * 24 * time.Hour,
+	Hours:    72 * time.Hour,
+	Days:     30 * 24 * time.Hour,
+	MaxBytes: historyBound,
 }
+
+// The datasets' byte bounds (D-143): each past what the longest retention - a
+// year of hourly detail, five years of trends, which a document dataset keeps
+// whole - holds at the rates measured (0.19.0 build log, W1.2), so none is cut
+// short at those rates; the bound is the backstop for a rate nobody measured.
+// The two largest, NDFD's current hour and AirNow's national file, have the
+// larger.
+const (
+	largeHistoryBound = 4 << 30
+	historyBound      = 512 << 20
+)
 
 // historyDatasets are every dataset the history holds: the Data tab's
 // retention is theirs alike (D-175).
@@ -569,7 +586,22 @@ func (lp *livePipelines) readHistoryUsage() string {
 	if home, err := os.UserHomeDir(); err == nil && strings.HasPrefix(root, home) {
 		root = "~" + strings.TrimPrefix(root, home)
 	}
-	return "Holds " + sizeWords(store.Bytes()) + ", in " + root
+	return "Holds " + sizeWords(store.Bytes()) + ", in " + root + boundWords(store)
+}
+
+// boundWords names each dataset its byte bound has cut short of the chosen
+// retention (D-143), its oldest records removed first; "" when none.
+func boundWords(store *history.Store) string {
+	var cut []string
+	for _, d := range historyDatasets { // the datasets kept (P10-02)
+		if store.Bounded(d.Name) {
+			cut = append(cut, d.Title)
+		}
+	}
+	if len(cut) == 0 {
+		return ""
+	}
+	return ". Kept shorter than chosen, at its size limit, oldest first: " + strings.Join(cut, "; ") + "."
 }
 
 // historyCost says what keeping a longer window would take, for the Data tab's

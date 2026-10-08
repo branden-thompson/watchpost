@@ -187,36 +187,6 @@ func TestADayIsRolledUpThenPruned(t *testing.T) {
 	}
 }
 
-// A YEAR THAT CANNOT BE READ IS NEVER REWRITTEN (#27, 0.19.0 FR-6.5): a year's
-// roll-up past the read cap, or broken, reads as absent; writing the next day
-// over it would replace every day it held with one. The write is refused and
-// the day's hours are kept for a later pass.
-func TestAFailedYearReadNeverRewritesTheYear(t *testing.T) {
-	dir, now := t.TempDir(), t0
-	s := open(t, dir, &now)
-	day1 := t0.Truncate(24 * time.Hour)
-	s.Put(grid.Name, rec(day1.Add(time.Hour), 0, 10, 10, 10, 10))
-	now = day1.Add(4 * 24 * time.Hour)
-	s.RollUpAndPrune()
-	if len(s.Days(grid.Name, ndfd, day1, day1, 10)) != 1 {
-		t.Fatal("the first day was not rolled up")
-	}
-	year := filesAt(filepath.Join(dir, grid.Name, "v1", "ndfd", "us-a"), day1).year
-	if err := os.Truncate(year, maxDocBytes+1); err != nil { // past the read cap: unreadable, not absent
-		t.Fatal(err)
-	}
-	day2 := day1.Add(24 * time.Hour)
-	s.Put(grid.Name, rec(day2.Add(time.Hour), 0, 20, 20, 20, 20))
-	now = day2.Add(4 * 24 * time.Hour)
-	s.RollUpAndPrune()
-	if info, err := os.Stat(year); err != nil || info.Size() != maxDocBytes+1 {
-		t.Errorf("an unreadable year was rewritten: %v, %v", info.Size(), err)
-	}
-	if _, ok := s.Get(grid.Name, ndfd, day2.Add(time.Hour)); !ok {
-		t.Error("the day's hours went although its roll-up was refused")
-	}
-}
-
 // NOTHING BROKEN IS READ (D-124): a truncated file, another schema, another
 // version read as absent and are counted.
 func TestABrokenFileReadsAsAbsent(t *testing.T) {

@@ -34,6 +34,7 @@ const fromFill
 const fromRescue
 const fromSource
 const gustMargin
+const historyBound
 const historyEvery
 const historyQuakeFeed
 const hmsCredit
@@ -44,6 +45,7 @@ const knownUVCitiesMost
 const knownUVListEvery
 const landKeptFor
 const laneBacklog
+const largeHistoryBound
 const layerInputLimit
 const liveDwell
 const mainTrackDark
@@ -599,6 +601,7 @@ func bedAdvice
 func bedLabelOf
 func bedReachFor
 func beyondNDFD
+func boundWords
 func breakingItem
 func breakingLine
 func buildTemperatureWhole

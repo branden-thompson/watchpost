@@ -8,9 +8,12 @@
 // A record is written to its own bucket file, <YYYY-MM>/<DD>/<HHMM>.json.gz,
 // which no writer of another bucket touches; once its day is done the
 // buckets are compacted into the day's one file, <YYYY-MM>/<DD>.json.gz, and
-// past the hours' retention the day is rolled up into rollup/<YYYY>.json.gz.
-// A year of a series is 365 day files, not thousands, and `zcat` shows any
-// of it. Every read merges a day's file with its buckets not yet compacted.
+// past the hours' retention the day is rolled up into its month's parts,
+// rollup/<YYYY-MM>-p<N>.json.gz, each within a budget below the read cap
+// (0.18.0's rollup/<YYYY>.json.gz is still read). A year of a series is 365
+// day files, not thousands, and `zcat` shows any of it. Every read merges a
+// day's file with its buckets not yet compacted. A dataset past its byte
+// bound loses its oldest files first (D-143).
 //
 // SEVERAL INSTANCES, ONE STORE (design section 4, 4b). Every write is a temp
 // file renamed over its target, so a reader sees a whole document or the one
@@ -66,8 +69,10 @@ type Field struct {
 // of one record's bucket, a minute to a day (an hour when zero): NDFD's
 // hours, an ionosonde's MUF every 5 or 15 minutes, a tide gauge's 6; its
 // numeric fields; how long its records are kept (Hours) and how long its
-// days, rolled up, past that (Days; zero keeps no roll-up). Roll-ups are of
-// the numeric fields; a record's document is kept, not rolled up.
+// days, rolled up, past that (Days; zero keeps no roll-up); and the most it
+// holds on disk, every version (MaxBytes, D-143: past it, its oldest files go
+// first, before its retention ends; zero, no bound). Roll-ups are of the
+// numeric fields; a record's document is kept, not rolled up.
 type Dataset struct {
 	Name, Title, Description string // what it is, for a reader that did not register it (an Analyst's catalog)
 	Version                  int
@@ -75,6 +80,7 @@ type Dataset struct {
 	Fields                   []Field
 	Hours                    time.Duration
 	Days                     time.Duration
+	MaxBytes                 int64
 }
 
 // step is the dataset's bucket width, an hour by default, held to a minute
@@ -167,6 +173,9 @@ type Store struct {
 	// source, place - so the next pass goes on past it (QA-4); zero, from the
 	// start.
 	cursor [3]string
+	// bounded is each dataset its byte bound has cut short of its retention
+	// (D-143), since the store opened, was cleared, or the retention changed.
+	bounded map[string]bool
 }
 
 // heldDay is a day's hours as read, and its files when they were read.
@@ -365,6 +374,8 @@ func dayNames(dir, month string) []time.Time {
 			out = append(out, t)
 		} else if y, err := strconv.Atoi(name); err == nil && month == "rollup" {
 			out = append(out, time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC))
+		} else if start, ok := rollupMonth(name); ok && month == "rollup" {
+			out = append(out, start)
 		}
 	}
 	return out
@@ -419,8 +430,8 @@ func validSegment(v string) bool {
 }
 
 // seriesFiles are where a series' records for one time lie: the day's
-// compacted file, its directory of buckets, the bucket's own file, and the
-// year's roll-ups.
+// compacted file, its directory of buckets, the bucket's own file, and
+// 0.18.0's roll-ups of its year.
 type seriesFiles struct{ day, buckets, bucket, year string }
 
 // filesAt is a series' files for the bucket at; empty for no series.
@@ -440,6 +451,37 @@ func filesAt(dir string, at time.Time) seriesFiles {
 	}
 }
 
+// rollUpBudget bounds a roll-up part's decompressed size: half the read cap, so
+// a part the store writes is always one it can read back (#27, 0.19.0 W1.2).
+var rollUpBudget = maxDocBytes / 2
+
+// rollupPart is the n-th part of a series' roll-ups for at's month:
+// rollup/<YYYY-MM>-p<n>.json.gz.
+func rollupPart(dir string, at time.Time, n int) string {
+	return filepath.Join(dir, "rollup", at.Format("2006-01")+"-p"+strconv.Itoa(n)+".json.gz")
+}
+
+// rollupParts is a series' roll-up parts on disk, each month's numbers in
+// order, by "YYYY-MM": read from the directory, so a part removed never hides
+// the parts after it.
+func rollupParts(dir string) map[string][]int {
+	entries, err := os.ReadDir(filepath.Join(dir, "rollup"))
+	if err != nil {
+		return nil
+	}
+	out := map[string][]int{}
+	for _, e := range entries { // a series' roll-ups (P10-02)
+		month, part, found := strings.Cut(trimExt(e.Name()), "-p")
+		if n, err := strconv.Atoi(part); found && err == nil && n >= 1 {
+			out[month] = append(out[month], n)
+		}
+	}
+	for _, ns := range out { // the months (P10-02)
+		sort.Ints(ns)
+	}
+	return out
+}
+
 // dayDoc is a day's document on disk.
 type dayDoc struct {
 	Schema  int         `json:"schema"`
@@ -451,14 +493,14 @@ type dayDoc struct {
 }
 
 type hourEntry struct {
-	Hour   time.Time             `json:"at"`
-	Issued time.Time             `json:"issued"`
-	Shape  Shape                 `json:"shape"`
-	Values map[string][]*float64 `json:"values,omitempty"`
-	Doc    json.RawMessage       `json:"doc,omitempty"`
+	Hour   time.Time         `json:"at"`
+	Issued time.Time         `json:"issued"`
+	Shape  Shape             `json:"shape"`
+	Values map[string]values `json:"values,omitempty"`
+	Doc    json.RawMessage   `json:"doc,omitempty"`
 }
 
-// yearDoc is a year's roll-ups on disk.
+// yearDoc is roll-ups on disk: a month's part, or 0.18.0's year.
 type yearDoc struct {
 	Schema  int        `json:"schema"`
 	Dataset string     `json:"dataset"`
@@ -468,10 +510,10 @@ type yearDoc struct {
 }
 
 type dayEntry struct {
-	Date  string                           `json:"date"`
-	Shape Shape                            `json:"shape"`
-	Hours int                              `json:"hours"`
-	Stats map[string]map[string][]*float64 `json:"stats"` // field -> min|max|mean -> values
+	Date  string                       `json:"date"`
+	Shape Shape                        `json:"shape"`
+	Hours int                          `json:"hours"`
+	Stats map[string]map[string]values `json:"stats"` // field -> min|max|mean -> values
 }
 
 // Put records one bucket of a series, in the bucket's own file. It is skipped
@@ -589,7 +631,7 @@ func validRecord(d Dataset, r Record) bool {
 // toEntry is a record as its bucket's entry on disk: each of d's fields
 // rounded to its decimals, the document as it is.
 func toEntry(d Dataset, r Record, hour time.Time) hourEntry {
-	e := hourEntry{Hour: hour, Issued: r.IssuedAt.UTC(), Shape: r.Shape, Values: map[string][]*float64{}, Doc: r.Doc}
+	e := hourEntry{Hour: hour, Issued: r.IssuedAt.UTC(), Shape: r.Shape, Values: map[string]values{}, Doc: r.Doc}
 	if len(r.Values) == 0 {
 		return e
 	}
@@ -786,20 +828,43 @@ func (s *Store) Days(dataset string, k Key, from, to time.Time, max int) []Day {
 		return nil
 	}
 	from, to = from.UTC().Truncate(24*time.Hour), to.UTC()
-	var out []Day
-	for y := from.Year(); y <= to.Year() && len(out) < max; y++ { // bounded by the span (P10-02)
-		doc, ok := readAs[yearDoc](s, filesAt(dir, time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC)).year, d)
-		if !ok {
-			continue
+	byDate := map[string]dayEntry{}
+	for y := from.Year(); y <= to.Year(); y++ { // 0.18.0's yearly roll-ups, bounded by the span (P10-02)
+		if doc, ok := readAs[yearDoc](s, filesAt(dir, time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC)).year, d); ok {
+			addDays(byDate, doc.Days)
 		}
-		for _, e := range doc.Days { // at most 366 (P10-02)
-			date, err := time.Parse("2006-01-02", e.Date)
-			if err == nil && !date.Before(from) && !date.After(to) && len(out) < max {
-				out = append(out, fromDayEntry(k, date, e))
+	}
+	parts := rollupParts(dir)
+	first := time.Date(from.Year(), from.Month(), 1, 0, 0, 0, 0, time.UTC)
+	for m := first; !m.After(to); m = m.AddDate(0, 1, 0) { // the span's months (P10-02)
+		for _, n := range parts[m.Format("2006-01")] { // a month's parts, a broken one passed over (P10-02)
+			if doc, ok := readAs[yearDoc](s, rollupPart(dir, m, n), d); ok {
+				addDays(byDate, doc.Days) // a part's day stands over a yearly one
 			}
 		}
 	}
+	dates := make([]string, 0, len(byDate))
+	for date := range byDate { // the days read (P10-02)
+		dates = append(dates, date)
+	}
+	sort.Strings(dates)
+	var out []Day
+	for _, ds := range dates { // in date order (P10-02)
+		date, err := time.Parse("2006-01-02", ds)
+		if err == nil && !date.Before(from) && !date.After(to) && len(out) < max {
+			out = append(out, fromDayEntry(k, date, byDate[ds]))
+		}
+	}
 	return out
+}
+
+// addDays files days by their date, a later one standing over an earlier.
+func addDays(byDate map[string]dayEntry, days []dayEntry) {
+	for _, e := range days { // a file's days (P10-02)
+		if e.Date != "" {
+			byDate[e.Date] = e
+		}
+	}
 }
 
 // Stats is a copy of what the store has done.
@@ -852,8 +917,8 @@ func readAs[T any, P interface {
 	return doc, true
 }
 
-// maxDocBytes bounds a document read: a year's roll-ups of a large lattice
-// with room to spare.
+// maxDocBytes bounds a document read, decompressed: a roll-up part is held to
+// half of it (rollUpBudget).
 const maxDocBytes = 32 << 20
 
 // readDoc reads a compressed JSON document into v: false where it is absent
@@ -1009,9 +1074,96 @@ func writeGz(path string, v any) (fs.FileInfo, error) {
 // maxDecimals bounds a field's kept decimals: past it, rounding is noise.
 const maxDecimals = 9
 
-// encode is values as kept on disk: each rounded to decimals, a missing one
-// null.
-func encode(v []float64, decimals int) []*float64 {
+// values is a field's values as held and kept: a missing one NaN in memory and
+// null on disk, one allocation a field, not one a value (FR-6.5, PF-F5).
+type values []float64
+
+// MarshalJSON writes values as a JSON array, a missing one null, each number
+// as encoding/json writes a float64.
+func (v values) MarshalJSON() ([]byte, error) {
+	if v == nil {
+		return []byte("null"), nil
+	}
+	out := make([]byte, 0, 2+8*len(v))
+	out = append(out, '[')
+	for i, x := range v { // bounded by the shape (P10-02)
+		if i > 0 {
+			out = append(out, ',')
+		}
+		if math.IsNaN(x) || math.IsInf(x, 0) {
+			out = append(out, "null"...)
+			continue
+		}
+		out = appendNumber(out, x)
+	}
+	return append(out, ']'), nil
+}
+
+// appendNumber is x appended as encoding/json writes a float64: exponent form
+// only below 1e-6 or from 1e21, and a two-digit negative exponent's 0 dropped.
+func appendNumber(b []byte, x float64) []byte {
+	format := byte('f')
+	if abs := math.Abs(x); abs != 0 && (abs < 1e-6 || abs >= 1e21) {
+		format = 'e'
+	}
+	b = strconv.AppendFloat(b, x, format, -1, 64)
+	if n := len(b); format == 'e' && n >= 4 && b[n-4] == 'e' && b[n-3] == '-' && b[n-2] == '0' {
+		b[n-2] = b[n-1]
+		b = b[:n-1]
+	}
+	return b
+}
+
+// errNotValues is a document's values that are not numbers and nulls.
+var errNotValues = errors.New("history: values are numbers and nulls")
+
+// UnmarshalJSON reads a JSON array of numbers and nulls, a null as NaN; null
+// itself is no values. encoding/json has checked the syntax before it calls
+// this, so an element is whole between commas unless it is a string, an
+// object or an array, each of which is refused.
+func (v *values) UnmarshalJSON(raw []byte) error {
+	raw = bytes.TrimSpace(raw)
+	if string(raw) == "null" {
+		*v = nil
+		return nil
+	}
+	if len(raw) < 2 || raw[0] != '[' || raw[len(raw)-1] != ']' {
+		return errNotValues
+	}
+	body := bytes.TrimSpace(raw[1 : len(raw)-1])
+	if len(body) == 0 {
+		*v = values{}
+		return nil
+	}
+	n := bytes.Count(body, []byte{','}) + 1
+	out := make(values, 0, n)
+	for range n { // one element a pass (P10-02)
+		elem, rest, _ := bytes.Cut(body, []byte{','})
+		elem, body = bytes.TrimSpace(elem), rest
+		if string(elem) == "null" {
+			out = append(out, math.NaN())
+			continue
+		}
+		if len(elem) == 0 || bytes.IndexFunc(elem, notNumberByte) >= 0 {
+			return errNotValues
+		}
+		x, err := strconv.ParseFloat(string(elem), 64)
+		if err != nil {
+			return errNotValues // past a float64's range
+		}
+		out = append(out, x)
+	}
+	*v = out
+	return nil
+}
+
+// notNumberByte reports a byte no JSON number holds.
+func notNumberByte(r rune) bool {
+	return !strings.ContainsRune("0123456789+-.eE", r)
+}
+
+// encode is values as kept: each rounded to decimals, a missing one NaN.
+func encode(v []float64, decimals int) values {
 	if len(v) == 0 {
 		return nil
 	}
@@ -1019,30 +1171,23 @@ func encode(v []float64, decimals int) []*float64 {
 		return nil
 	}
 	scale := math.Pow(10, float64(decimals))
-	out := make([]*float64, len(v))
+	out := make(values, len(v))
 	for i, x := range v { // bounded by the shape (P10-02)
-		if math.IsNaN(x) || math.IsInf(x, 0) {
-			continue // missing: null on disk
+		out[i] = math.NaN() // missing: null on disk
+		if !math.IsNaN(x) && !math.IsInf(x, 0) {
+			out[i] = math.Round(x*scale) / scale
 		}
-		r := math.Round(x*scale) / scale
-		out[i] = &r
 	}
 	return out
 }
 
-// decode is values as read from disk: a null is NaN.
-func decode(v []*float64) []float64 {
+// decode is values as a reader is given them: its own copy, so nothing it
+// does reaches the days the store holds.
+func decode(v values) []float64 {
 	if len(v) == 0 {
 		return nil
 	}
-	out := make([]float64, len(v))
-	for i, p := range v { // P10-02
-		out[i] = math.NaN()
-		if p != nil {
-			out[i] = *p
-		}
-	}
-	return out
+	return append([]float64(nil), v...)
 }
 
 // fromEntry is a bucket's entry as its record.
@@ -1184,6 +1329,9 @@ func (s *Store) prunePass(now time.Time) {
 	sets := s.datasets()
 	sort.Slice(sets, func(i, j int) bool { return sets[i].Name < sets[j].Name })
 	for _, d := range sets { // a handful (P10-02)
+		removals += s.holdToBound(d, now, &visits, maxPruneRemovals-removals)
+	}
+	for _, d := range sets { // a handful (P10-02)
 		if d.Name < from[0] {
 			continue // passed already
 		}
@@ -1206,6 +1354,161 @@ func (s *Store) prunePass(now time.Time) {
 	s.mu.Lock()
 	s.cursor = [3]string{} // the last series passed: the next pass starts again
 	s.mu.Unlock()
+}
+
+// holdToBound removes a dataset's oldest files while it holds more than its
+// byte bound (D-143): its roll-ups, oldest first, then its oldest days, each
+// day with its buckets; never the current day. Every version counts, so every
+// version's series are looked at: each one's roll-ups and oldest month in a
+// pass, a month emptied leaving the next for the following pass. The files
+// removed, at most budget.
+func (s *Store) holdToBound(d Dataset, now time.Time, visits *int, budget int) int {
+	if d.MaxBytes <= 0 || budget <= 0 || visits == nil {
+		return 0
+	}
+	if s.BytesOf(d.Name) <= d.MaxBytes {
+		return 0
+	}
+	if s.versionDir(d.Name, d.Version) == "" {
+		return 0
+	}
+	var series []string
+	for _, v := range readDirs(filepath.Join(s.root, d.Name), visits) { // its versions (P10-02)
+		series = append(series, listSeries(filepath.Join(s.root, d.Name, v), visits)...)
+	}
+	today := now.Truncate(24 * time.Hour)
+	removed := 0
+	for _, f := range oldestFiles(series, visits) { // bounded by maxPruneVisits (P10-02)
+		if removed >= budget || s.BytesOf(d.Name) <= d.MaxBytes {
+			break
+		}
+		if !f.at.Before(today) {
+			continue // the current day is being recorded
+		}
+		removed += s.removeFiles(f)
+	}
+	if removed > 0 {
+		s.mu.Lock()
+		if s.bounded == nil {
+			s.bounded = map[string]bool{}
+		}
+		s.bounded[d.Name] = true
+		s.mu.Unlock()
+		s.note(func(st *Stats) { st.Pruned++ }, true)
+	}
+	return removed
+}
+
+// oldFile is a file a byte bound may remove: a roll-up, or a day's file with
+// its buckets' directory, and the first day it holds.
+type oldFile struct {
+	at            time.Time
+	path, buckets string
+}
+
+// oldestFiles is what a bound removes first across series, oldest first, a
+// roll-up before a day of the same date: each series' roll-ups and the days
+// of its oldest month.
+func oldestFiles(series []string, visits *int) []oldFile {
+	var out []oldFile
+	for _, dir := range series { // bounded by maxPruneVisits (P10-02)
+		rdir := filepath.Join(dir, "rollup")
+		for _, e := range readEntries(rdir, visits) { // a series' roll-ups (P10-02)
+			if start, ok := rollupStart(trimExt(e.Name())); ok && !e.IsDir() {
+				out = append(out, oldFile{at: start, path: filepath.Join(rdir, e.Name())})
+			}
+		}
+		months := readDirs(dir, visits)
+		sort.Strings(months)
+		for _, month := range months { // the oldest month only: the first that is one (P10-02)
+			if _, err := time.Parse("2006-01", month); err != nil {
+				continue
+			}
+			out = append(out, monthDays(filepath.Join(dir, month), month, visits)...)
+			break
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if !out[i].at.Equal(out[j].at) {
+			return out[i].at.Before(out[j].at)
+		}
+		return out[i].buckets == "" && out[j].buckets != ""
+	})
+	return out
+}
+
+// monthDays is a month directory's days, each its file and its buckets'
+// directory, whichever stand.
+func monthDays(mdir, month string, visits *int) []oldFile {
+	byDate := map[string]oldFile{}
+	for _, e := range readEntries(mdir, visits) { // a month's days (P10-02)
+		dd := trimExt(e.Name())
+		date, err := time.Parse("2006-01/02", month+"/"+dd)
+		if err != nil || e.Name()[0] == '.' {
+			continue
+		}
+		byDate[dd] = oldFile{at: date, path: filepath.Join(mdir, dd+".json.gz"), buckets: filepath.Join(mdir, dd)}
+	}
+	out := make([]oldFile, 0, len(byDate))
+	for _, f := range byDate { // P10-02
+		out = append(out, f)
+	}
+	return out
+}
+
+// readEntries is a directory's entries, counted as a visit; none past the
+// pass's visits or where it cannot be read.
+func readEntries(dir string, visits *int) []os.DirEntry {
+	if *visits >= maxPruneVisits {
+		return nil
+	}
+	*visits++
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	return entries
+}
+
+// rollupStart is when a roll-up file's days begin: a year's, or a month
+// part's.
+func rollupStart(name string) (time.Time, bool) {
+	if y, err := strconv.Atoi(name); err == nil {
+		return time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC), true
+	}
+	return rollupMonth(name)
+}
+
+// removeFiles removes an old file and, for a day, its buckets: the files
+// removed.
+func (s *Store) removeFiles(f oldFile) int {
+	removed := 0
+	if s.removeCounted(f.path) {
+		removed++
+	}
+	if f.buckets == "" {
+		return removed
+	}
+	files, _ := os.ReadDir(f.buckets)
+	for i, b := range files { // bounded by maxDayBuckets (P10-02)
+		if i < maxDayBuckets && s.removeCounted(filepath.Join(f.buckets, b.Name())) {
+			removed++
+		}
+	}
+	_ = os.Remove(f.buckets) // only once empty
+	return removed
+}
+
+// Bounded reports whether a dataset's byte bound has cut it short of its
+// retention (D-143) since the store opened, was cleared, or the dataset's
+// retention changed: the Data tab says so.
+func (s *Store) Bounded(dataset string) bool {
+	if s == nil {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.bounded[dataset]
 }
 
 // cursorAfter reports whether series a comes after b, dataset then source
@@ -1434,7 +1737,8 @@ func (s *Store) expireDay(d Dataset, dir string, date time.Time, now time.Time) 
 	return removed
 }
 
-// pruneYears removes years of roll-ups wholly past the days' retention.
+// pruneYears removes roll-ups wholly past the days' retention: 0.18.0's years
+// and the months' parts.
 func (s *Store) pruneYears(d Dataset, dir string, now time.Time, budget int) int {
 	if dir == "" || budget <= 0 {
 		return 0
@@ -1444,12 +1748,12 @@ func (s *Store) pruneYears(d Dataset, dir string, now time.Time, budget int) int
 		return 0
 	}
 	removed := 0
-	for _, e := range entries { // a file a year (P10-02)
-		y, err := strconv.Atoi(trimExt(e.Name()))
-		if err != nil || removed >= budget {
+	for _, e := range entries { // a file a year, or a part a month (P10-02)
+		end, ok := rollupEnd(trimExt(e.Name()))
+		if !ok || removed >= budget {
 			continue
 		}
-		if now.Sub(time.Date(y+1, 1, 1, 0, 0, 0, 0, time.UTC)) > d.Hours+d.Days && s.removeCounted(filepath.Join(dir, e.Name())) {
+		if now.Sub(end) > d.Hours+d.Days && s.removeCounted(filepath.Join(dir, e.Name())) {
 			removed++
 			s.note(func(st *Stats) { st.Pruned++ }, true)
 		}
@@ -1457,11 +1761,36 @@ func (s *Store) pruneYears(d Dataset, dir string, now time.Time, budget int) int
 	return removed
 }
 
+// rollupEnd is when a roll-up file's days end: a year's (0.18.0's "2026") or a
+// month part's ("2026-09-p1"); false for any other name.
+func rollupEnd(name string) (time.Time, bool) {
+	if y, err := strconv.Atoi(name); err == nil {
+		return time.Date(y+1, 1, 1, 0, 0, 0, 0, time.UTC), true
+	}
+	if start, ok := rollupMonth(name); ok {
+		return start.AddDate(0, 1, 0), true
+	}
+	return time.Time{}, false
+}
+
+// rollupMonth is the month a part's name ("2026-09-p1") holds.
+func rollupMonth(name string) (time.Time, bool) {
+	month, part, found := strings.Cut(name, "-p")
+	if !found {
+		return time.Time{}, false
+	}
+	if _, err := strconv.Atoi(part); err != nil {
+		return time.Time{}, false
+	}
+	start, err := time.Parse("2006-01", month)
+	return start, err == nil
+}
+
 // rollUp writes a day's numeric fields - each point's minimum, maximum and
-// mean over the day's records - into its year's roll-up, under the series'
-// roll-up claim (a year's file is read, merged and replaced, so one writer at
-// a time), and reports whether the year now holds that day: only then may
-// its records go. A day of documents alone rolls up to nothing and is kept
+// mean over the day's records - into its month's roll-ups, under the series'
+// roll-up claim for that month (a part is read, merged and replaced, so one
+// writer at a time), and reports whether a part now holds that day: only then
+// may its records go. A day of documents alone rolls up to nothing and is kept
 // until the days' retention passes too.
 func (s *Store) rollUp(d Dataset, dir string, date time.Time) bool {
 	entries := s.dayEntries(dir, d, date)
@@ -1472,26 +1801,71 @@ func (s *Store) rollUp(d Dataset, dir string, date time.Time) bool {
 	if !ok {
 		return false
 	}
-	claim := filepath.Join(dir, "rollup", ".claim-"+strconv.Itoa(date.Year()))
+	claim := filepath.Join(dir, "rollup", ".claim-"+date.Format("2006-01"))
 	if !s.claim(claim) {
-		return false // another instance is rolling up this year: next pass
+		return false // another instance is rolling up this month: next pass
 	}
 	defer func() { _ = os.Remove(claim) }() // the claim let go
-	yp := filesAt(dir, date).year
-	year, ok := readAs[yearDoc](s, yp, d)
-	if _, err := os.Stat(yp); !ok && err == nil {
-		return false // a year that exists but cannot be read is never written over (#27): the day waits
+	path, doc, ok := s.partFor(d, dir, date, entry)
+	if !ok {
+		return false // a part cannot be read (#27), or the day fits no part: the day waits
 	}
-	year.Schema, year.Dataset, year.Version, year.Key = schema, d.Name, d.Version, keyOf(dir)
-	year.Days = withDay(year.Days, entry)
-	if _, _, err := s.writeCounted(yp, year); err != nil {
+	doc.Schema, doc.Dataset, doc.Version, doc.Key = schema, d.Name, d.Version, keyOf(dir)
+	doc.Days = withDay(doc.Days, entry)
+	if _, _, err := s.writeCounted(path, doc); err != nil {
 		return false
 	}
-	if back, ok := readAs[yearDoc](s, yp, d); ok && hasDay(back.Days, entry.Date) {
+	if back, ok := readAs[yearDoc](s, path, d); ok && hasDay(back.Days, entry.Date) {
 		s.note(func(st *Stats) { st.RolledUp++ }, true)
 		return true
 	}
 	return false
+}
+
+// maxMonthParts bounds a month's parts: each holds at least one day.
+const maxMonthParts = 31
+
+// partFor is the part a day's entry is written to, and what it holds now: the
+// part already holding that date; else the month's last part, when the entry
+// still fits its budget; else a new part. False when a part exists but cannot
+// be read - it is never written over (#27) - or when the entry, alone or in
+// its date's part, would pass the budget: a part the store writes is always
+// one it can read back (W1.2).
+func (s *Store) partFor(d Dataset, dir string, date time.Time, entry dayEntry) (string, yearDoc, bool) {
+	var lastPath string
+	var last yearDoc
+	parts := rollupParts(dir)[date.Format("2006-01")]
+	for _, n := range parts { // a month's parts, at most maxMonthParts written (P10-02)
+		path := rollupPart(dir, date, n)
+		doc, ok := readAs[yearDoc](s, path, d)
+		if !ok {
+			return "", yearDoc{}, false
+		}
+		if hasDay(doc.Days, entry.Date) {
+			return path, doc, fitsBudget(withDay(doc.Days, entry))
+		}
+		lastPath, last = path, doc
+	}
+	if !fitsBudget([]dayEntry{entry}) {
+		return "", yearDoc{}, false // larger than a part on its own
+	}
+	if lastPath != "" && fitsBudget(withDay(last.Days, entry)) {
+		return lastPath, last, true
+	}
+	if len(parts) >= maxMonthParts {
+		return "", yearDoc{}, false
+	}
+	next := 1
+	if len(parts) > 0 {
+		next = parts[len(parts)-1] + 1
+	}
+	return rollupPart(dir, date, next), yearDoc{}, true
+}
+
+// fitsBudget reports whether days, written as a part, stay within the budget.
+func fitsBudget(days []dayEntry) bool {
+	raw, err := json.Marshal(yearDoc{Days: days})
+	return err == nil && len(raw) <= rollUpBudget
 }
 
 // dayStats is a day's records rolled up, field by field and point by point;
@@ -1505,35 +1879,35 @@ func dayStats(d Dataset, doc dayDoc) (dayEntry, bool) {
 	if n <= 0 {
 		return dayEntry{}, false
 	}
-	e := dayEntry{Date: doc.Date, Shape: shape, Hours: len(doc.Hours), Stats: map[string]map[string][]*float64{}}
+	e := dayEntry{Date: doc.Date, Shape: shape, Hours: len(doc.Hours), Stats: map[string]map[string]values{}}
 	for _, f := range d.Fields { // a dataset's few (P10-02)
 		lo, hi, sum, count := make([]float64, n), make([]float64, n), make([]float64, n), make([]int, n)
 		for _, h := range doc.Hours { // a day's buckets (P10-02)
 			if h.Shape != shape {
 				return dayEntry{}, false
 			}
-			for i, p := range h.Values[f.Name] { // bounded by the shape (P10-02)
-				if p == nil || i >= n {
+			for i, x := range h.Values[f.Name] { // bounded by the shape (P10-02)
+				if math.IsNaN(x) || i >= n {
 					continue
 				}
-				if count[i] == 0 || *p < lo[i] {
-					lo[i] = *p
+				if count[i] == 0 || x < lo[i] {
+					lo[i] = x
 				}
-				if count[i] == 0 || *p > hi[i] {
-					hi[i] = *p
+				if count[i] == 0 || x > hi[i] {
+					hi[i] = x
 				}
-				sum[i] += *p
+				sum[i] += x
 				count[i]++
 			}
 		}
-		e.Stats[f.Name] = map[string][]*float64{"min": statsOf(lo, count, 1, f), "max": statsOf(hi, count, 1, f), "mean": statsOf(sum, count, 0, f)}
+		e.Stats[f.Name] = map[string]values{"min": statsOf(lo, count, 1, f), "max": statsOf(hi, count, 1, f), "mean": statsOf(sum, count, 0, f)}
 	}
 	return e, true
 }
 
 // statsOf is one statistic's values on disk: missing where no record had a
 // value there; a mean is the sum over its count (asIs 0), a bound as it is.
-func statsOf(v []float64, count []int, asIs int, f Field) []*float64 {
+func statsOf(v []float64, count []int, asIs int, f Field) values {
 	if len(v) == 0 {
 		return nil
 	}
@@ -1621,6 +1995,9 @@ func (s *Store) Retain(name string, hours, days time.Duration) bool {
 	s.mu.Lock()
 	d, ok := s.sets[name]
 	if ok {
+		if d.Hours != hours || d.Days != days {
+			delete(s.bounded, name) // said again only once the bound cuts the new retention short
+		}
 		d.Hours, d.Days = hours, days
 		s.sets[name] = d
 	}
@@ -1808,7 +2185,7 @@ func (s *Store) Clear() error {
 		errs = append(errs, os.RemoveAll(filepath.Join(s.root, e.Name())))
 	}
 	s.mu.Lock()
-	s.sizes, s.oldest, s.measured = map[string]int64{}, time.Time{}, s.now()
+	s.sizes, s.oldest, s.measured, s.bounded = map[string]int64{}, time.Time{}, s.now(), nil
 	s.mu.Unlock()
 	for _, d := range s.datasets() { // P10-02
 		s.writeManifest(d)
@@ -1841,6 +2218,9 @@ func (s *Store) ForgetDataset(name string) (int, error) {
 		return nil
 	})
 	err := os.RemoveAll(dir)
+	s.mu.Lock()
+	delete(s.bounded, name)
+	s.mu.Unlock()
 	s.writeManifest(d)
 	s.measure()
 	return files, err

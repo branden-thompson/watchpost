@@ -26,10 +26,11 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 
 **Every kind of source (D-179).** The store is not the weather's alone: a dataset is whatever a source says, by time.
 
-**`Dataset{Name, Title, Description string; Version int; Step time.Duration; Fields []Field; Hours, Days time.Duration}`**
+**`Dataset{Name, Title, Description string; Version int; Step time.Duration; Fields []Field; Hours, Days time.Duration; MaxBytes int64}`**
 
 - `Step` is the width of one record's bucket: a minute to a day, an hour by default - NDFD's hour, an ionosonde's MUF every 5 or 15 minutes, a tide gauge's 6.
 - `Hours` is how long its records are kept; `Days` how long its days, rolled up, are kept past that (zero: none).
+- `MaxBytes` is the most it holds on disk, every version counted (0.19.0 D-143; zero: no bound). Past it, its oldest files go first, before its retention ends (section 5).
 - `Title` and `Description` are for a reader that did not register it (D-180).
 
 **`Field{Name, Label, Unit string; Decimals int}`** - `temp`, "Temperature", °C, 1; `muf`, "Maximum usable frequency", MHz, 2. Decimals 0 to 9.
@@ -57,9 +58,12 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 | `manifest.json.gz` (per dataset version) | the dataset's description (D-180) | at open, when absent or changed |
 | `<YYYY-MM>/<DD>/<HHMM>.json.gz` | one bucket's record | by `Put`, a file of its own |
 | `<YYYY-MM>/<DD>.json.gz` | a finished day's records, compacted | by the prune pass, once the day is done |
-| `rollup/<YYYY>.json.gz` | a year's days rolled up | by the prune pass, past the hours' retention |
+| `rollup/<YYYY-MM>-p<N>.json.gz` | a month's days rolled up, in parts | by the prune pass, past the hours' retention |
+| `rollup/<YYYY>.json.gz` | a year's days rolled up, as 0.18.0 wrote them | read, never written; pruned past the days' retention |
 
-- A year of a series is 365 day files once compacted, not thousands; a trend's range read opens one file a day. Every read merges a day's file with its buckets not yet compacted, the newer issue where both hold a bucket.
+- A year of a series is 365 day files once compacted, not thousands; a trend's range read opens one file a day.
+- **A roll-up part never passes the read cap (0.19.0 #27, FR-6.5).** A part is held to a budget of half the read cap, 16 MiB decompressed. A day goes to the part already holding its date, else the month's last part while it stays within the budget, else a new part. A part that exists but cannot be read is never written over: the day waits, its hours kept. A month's parts are listed from the directory, so a part removed hides none after it. A 31-day month of a 2° global grid with two fields is about 16.7 MB, one part (`TestNinetyDaysOfAGlobalGridStayReadable`, `make property`).
+- **Values are held as one array a field**, a missing one NaN, not one allocation a value (FR-6.5). On disk they are written exactly as before, a missing one `null`. Every read merges a day's file with its buckets not yet compacted, the newer issue where both hold a bucket.
 - Compressed JSON, versioned: `zcat` shows any of it; `null` carries NaN; no new dependency.
 - **Two tiers.** Within the hourly retention every bucket is kept; beyond it each day is rolled up and its records removed. Fallback datasets keep records only; trend datasets roll up (D-176: NDFD's hours roll up into trends).
 - **Sizes - per region, not per place (D-171).** The lower 48's nine boxes, each an 80-point lattice, cover every place inside them:
@@ -80,7 +84,7 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 
 - **Each bucket is its own file.** `Put` writes it by temp file (in its own directory), fsync and rename; no writer of another bucket touches it. Two writers of one bucket write the same data; a newer issue replaces an older, never the other way.
 - **A finished day is compacted under a claim.** The day's `.compact-<DD>` claim is created exclusively; the holder writes the day's file from everything it reads, reads it back, and removes each bucket file the day's file holds at an issue at least as new - a bucket written meanwhile is left for the next pass.
-- **A year's roll-up is written under the series' roll-up claim** (`rollup/.claim-<YYYY>`), the one file still read, merged and replaced - one writer at a time; a day's records go only once the year is read back holding it.
+- **A month's roll-up part is written under the series' roll-up claim** (`rollup/.claim-<YYYY-MM>`), the one file still read, merged and replaced - one writer at a time; a day's records go only once its part is read back holding it.
 - **A bucket is fetched by one instance.** `Claim` creates `.claim-<DD>T<HHMM>` exclusively; a bucket already recorded is claimed by none.
 - **A claim holds its time**, on the store's clock. One older than 10 minutes with nothing recorded is stale - its claimant crashed or closed - and is taken over.
 - **Readers** skip every name beginning with `.`; every removal tolerates what another instance removed first; temp files older than 10 minutes are swept.
@@ -116,7 +120,9 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 
 **Per dataset (D-171).** The fallback datasets keep 72 hours (the 48 needed, and margin). Trend datasets keep 30 days of hours by default, rolled up beyond that.
 
-**The [ Data ] Settings tab** lets the listener opt into longer hourly and trend retention, and shows the store's size in its notices, at the foot of the tab (D-237). The byte budget follows what is chosen, not a fixed cap.
+**The [ Data ] Settings tab** lets the listener opt into longer hourly and trend retention, and shows the store's size in its notices, at the foot of the tab (D-237). The byte budget follows what is chosen.
+
+**A byte bound per dataset (0.19.0 D-143).** Each dataset also declares the most it holds on disk, every version counted. 0.18.0's datasets are bounded far past what the longest retention holds at their measured rates: 4 GiB for NDFD's current hour and AirNow's national file, 512 MiB for the rest. When a dataset passes its bound, the prune pass removes its oldest files first: roll-ups, then days with their buckets, never the current day. The tab then names it: "Kept shorter than chosen, at its size limit, oldest first: ...". A changed retention clears that until the bound acts again.
 
 **When pruning runs.** `Prune(now)` runs when the store opens and hourly from the recorder; any instance may run it.
 
@@ -130,7 +136,7 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 - `Open(root string, now func() time.Time, sets ...Dataset) *Store` - never fails; an unusable root is a store whose writes fail and reads find nothing. Writes each dataset's manifest.
 - `(*Store) Put(dataset string, r Record) bool` - records one bucket.
 - `(*Store) Claim(dataset string, k Key, at time.Time) bool` - this instance's to fetch.
-- `(*Store) RollUpAndPrune()` - compacts finished days, rolls up and removes what is past retention, sweeps; bounded (256 directories visited, 64 files removed a pass); any instance may run it.
+- `(*Store) RollUpAndPrune()` - compacts finished days, rolls up and removes what is past retention or past a dataset's byte bound, sweeps; bounded (256 directories visited, 64 files removed a pass); any instance may run it.
 
 **Reading**
 
@@ -138,6 +144,7 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 - `(*Store) Range(dataset string, k Key, from, to time.Time, max int) []Record` - a span, oldest first.
 - `(*Store) Latest(dataset string, k Key, at time.Time, maxAge time.Duration) (Record, bool)` - the newest at or before `at` (replay).
 - `(*Store) Days(dataset string, k Key, from, to time.Time, max int) []Day` - rolled-up days (trends).
+- `(*Store) Bounded(dataset string) bool` - whether its byte bound has cut it short of its retention (D-143).
 
 **Browsing - for a reader that did not write it (D-180, the Analyst mode to come)**
 
