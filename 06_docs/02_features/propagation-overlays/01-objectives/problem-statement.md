@@ -89,17 +89,17 @@ Anti-solution check:
 
 Each target is ruled from PLAN's dry run, against D-75's floors, and listed here as it is ruled. **On a miss (D-118):** a floor cuts its feature (D-75); any other missed target comes to the HUM LEAD at VALIDATE with its evidence, never re-set silently. M1 and M4 become "no worse than climatology" if the climatology's measured agreement is above 90%.
 
-**Measured on (D-F15):** every target was set from one week (2026-09-29 to 10-05; F10.7 92 to 100; one G1 to G2 storm; four mainland-US stations) and from spikes on one machine (an Apple M5 Pro). G-M3's near-station limits come from the whole week, tuning days included. The Pacific is no better than the climatology and is reported separately (D-116). M1 and M4's baseline is not yet measured (W10.3).
+**Measured on (D-F15):** every target was set from one week (2026-09-29 to 10-05; F10.7 92 to 100; one G1 to G2 storm; four mainland-US stations) and from spikes on one machine (an Apple M5 Pro). G-M3's near-station limits come from the whole week, tuning days included. In the Pacific the hybrid is worse than the climatology (MUF 5.17 against 5.09; D-129) and is reported separately (D-116). G-M3 and the floors are judged on at least 3 fresh days fetched in BUILD (D-132). M1 and M4's baseline is not yet measured (W10.3).
 
 | Metric | Target | Ruling |
 |---|---|---|
 | M2 | 8 of 10 correct, each within 30 s | D-93 |
 | M5 | 8 of 10 correct, each within 45 s | D-93 |
 | M5b | 8 of 10 correct, each within 60 s | D-93 |
-| G1 | added mean CPU ≤ 1% of one core; added RSS ≤ 25 MB (split, D-112: the library's live heap ≤ 15, the host's conversion ≤ 4, GC headroom the rest); downloads counted on the wire in decimal MB, **re-ruled in BUILD's first task from a measured gzip request with 25% headroom** (D-95's 15 and 3 MB an hour were decoded estimates), none closed | D-95, D-111 |
+| G1 | added mean CPU ≤ 1% of one core; added RSS ≤ 25 MB, judged on measured RSS over 48 hours (D-131; the library's live heap ≤ 15 MB as its proxy, D-112); downloads counted on the wire in decimal MB, **re-ruled in BUILD's first task from a measured gzip request with 25% headroom** (D-95's 15 and 3 MB an hour were decoded estimates), none closed | D-95, D-111, D-112, D-131 |
 | go-tuiMaps M5 | a whole-globe 2° field frame after a pan (fill, labelled contours, terminator, night, the reach overlay) ≤ 16 ms at 400 × 110, ≤ 8 ms at 200 × 56 | D-96, D-137 |
 | M1 | agreement ≥ the IRI climatology's + 5 points, on the same ≥ 200 scenarios with both outcomes, over ≥ 3 days, by band | D-99 |
 | M4 | as M1, for the listener's paths | D-99 |
-| go-ionomaps G-M3 | ≥ 15% below climatology in the mainland US, ≥ 10% overall, foF2 and MUF; near stations foF2 ≤ 0.5, MUF ≤ 1.6 MHz | D-108 |
+| go-ionomaps G-M3 | ≥ 15% below climatology in the mainland US, ≥ 10% overall, foF2 and MUF; near stations foF2 ≤ 0.5, MUF ≤ 1.6 MHz; on ≥ 3 fresh days | D-108, D-132 |
 | go-ionomaps G-M2, G-G1 | see D-97, D-98, D-112 | D-97, D-98, D-112 |
 
