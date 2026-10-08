@@ -4,13 +4,13 @@ date: 2026-10-07
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "IN PROGRESS. Each question goes to the HUM LEAD one at a time; the ruling lands in rulings.md the moment it is made."
+status: "COMPLETE. Every question ruled (D-87, D-88, D-100, D-105, D-106, D-107; Q-6 answered by measurement); each section gives what was put, including its strongest counter-argument."
 ---
 
 # PLAN questions
 
-The DISCOVER report (`08-reports/discover-report.md`, "PLAN questions") left six questions for PLAN. Three
-need the week's scores (`07-readiness/dry-run.md`), and they wait for them. Each question below gives its
+The DISCOVER report (`08-reports/discover-report.md`, "PLAN questions") left six questions for PLAN, and PLAN's
+dry run found a seventh. All are ruled. Each question below gives its
 evidence, its options, a recommendation and the strongest counter-argument.
 
 | # | Question | From | State |
@@ -68,6 +68,34 @@ evidence, its options, a recommendation and the strongest counter-argument.
 - The scales are coarse. "G0" read as "all clear" can mislead while D-RAP already shows trouble.
 - During a storm the assimilated fields already carry its effect where stations report. B mainly helps the hours ahead and the places far from any station.
 
+## Q-3: a bias correction for a false "open" (RK-11), ruled D-105
+
+**Put:** both backgrounds read foF2 high over the week (GloTEC +0.51 MHz, the climatology +0.28); the
+assimilation's mean term removes it (held-out bias +0.03); a fixed offset would act only with no readings
+held. The HUM LEAD asked to default to the live offset and offer the fixed one, to compare.
+**Counter-argument put:** the threshold comes from one week, and a flag that fires on a quiet night teaches
+people to ignore it. **Ruled:** the live offset by default; a learned typical offset; both in Status; the
+disagreement said above 2 SD; a no-readings Setting.
+
+## Q-4: the effective-sunspot fit (CQ-N1), ruled D-106
+
+**Put:** the week's proxy (climatology plus the other stations' mean residual) gains nothing (test days
+foF2 1.13 against 1.14 MHz); the stations over the climatology, the real fallback, score 1.06.
+**Counter-argument put:** a true fit through the model is not the proxy, and it is the chart KC2G publishes.
+**Ruled:** no fit; the fallback is the stations over the climatology.
+
+## Q-5: the 400 km near-vertical radius (A-18), ruled D-100
+
+**Put:** nothing in the dry run argues against 400 km (WSPR at +13 dB dense under 400 km on 160 to 40 m);
+P-2 favours a Setting. **Counter-argument put:** one more control for a number most listeners will not
+change, and large radii stop being near-vertical. **Ruled:** 400 km the default of a Setting (200, 400,
+600 km); the Broadcaster keeps its service radius.
+
+## Q-6: can a shipped dataset reach #27's cap? (D-55)
+
+**Answered by measurement:** no. The largest, NDFD hourly, holds about 5.3 MB a year of decompressed
+roll-up against the 32 MB cap. #27 is still fixed first in BUILD.
+
 ## Q-7: the climatology's magnetic coordinates (found in PLAN)
 
 **Evidence** (PyIRI 0.1.7, as installed for the dry run, D-86):
@@ -78,5 +106,5 @@ evidence, its options, a recommendation and the strongest counter-argument.
 
 **The week's scores decide which path is worth its table.** The partial week (2026-09-29 to 10-01) has the refit and raw CCIR level, at foF2 0.98 and 0.98 MHz and MUF 3.34 and 3.36 MHz.
 
-**To rule after the scores:** which climatology path go-ionomaps ports (refits with Apex, or raw tables with IGRF-14), R-4.3 amended to name the table, and how the library says when its table's years run out.
+**Ruled D-107** (after the HUM LEAD asked how much science building our own would take): go-ionomaps computes its own quasi-dipole coordinates and MLT from IGRF-14 at build time and ships them; a sample of PyIRI's `Apex.nc` is the test oracle; a test fails as IGRF-14's end nears. **Counter-argument put:** real extra science in a large release, and IGRF carries the same 2030 date, so the gain is control, not permanence. The oracle's tolerance is set in BUILD (D-123).
 

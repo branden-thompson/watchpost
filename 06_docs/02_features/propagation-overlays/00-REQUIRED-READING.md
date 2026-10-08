@@ -19,13 +19,15 @@ one** (0.18.0 D-11).
 | | |
 |---|---|
 | Branch | `feature/propagation-overlays`, cut from `main` (31038ebf); squash-merged `release/0.19.0` at SHIP (D-5) |
-| Phase | **PLAN** (DISCOVER approved 2026-10-06, D-84; `08-reports/discover-report.md`). PLAN opens with the dry run (FR-10.6), then rules each target against D-75's floors |
+| Phase | **PLAN**, its exit red team round 1 ruled (D-109 to D-127) and its fixes applied; the PLAN report next. DISCOVER approved 2026-10-06 (D-84). O2 moved to 0.19.1 (D-122) |
 | Brief | `01-objectives/project-brief.md`, APPROVED (D-16) |
 | Problems and metrics | `01-objectives/problem-statement.md`: PS-1 (the Broadcaster operator), PS-2 (the Observer ham), LOCKED (D-7); M1, M2, M4, M5, M5b and G1 (D-8, D-9; M3 retired at D-76); "open" is the reference circuit (D-73); floors set before the dry run (D-75); targets from the dry run (D-49) |
 | Rulings | `02-analysis/rulings.md`: every ruling lands here the moment it is made; minor items are A-n rows, batched for veto (D-13) |
 | Requirements | `01-objectives/requirements.md` — wins on any conflict once approved at the DISCOVER gate; opens with "What the listener sees" |
 | Findings | `02-analysis/wave1-findings.md` (desk surveys), `02-analysis/wave2-findings.md` (measurements; the path's evidence is in go-ionomaps `02-analysis/evidence/`) |
-| Red team | `08-reports/red-team-discover.md` — round 1 and its dispositions |
+| PLAN | `03-architecture-design/architecture.md` (the three projects, the update, go-ionomaps' shape); `04-development/implementation-plan.md` (W0 to W10, the UAT); `07-readiness/dry-run.md` (what was measured; a plain verdict first); `07-readiness/uat-protocol.md` (M2, M5, M5b, live, D-89); `02-analysis/plan-questions.md` (Q-1 to Q-7, all ruled); targets in `01-objectives/problem-statement.md` ("Targets") |
+| Evidence | go-ionomaps `02-analysis/evidence/` (`week.py`, `offset.py`, `plan-dry-run/`, D-124); the data itself stays outside the tree (GIRO's terms) in a local folder named in the PLAN report |
+| Red team | `08-reports/red-team-discover.md` (DISCOVER, rounds 1 and 2); `08-reports/red-team-plan.md` (PLAN exit, round 1: eight reviewers, every fork ruled), notes in `08-reports/reviewer-notes/` |
 | Research | `00-research/rcc-muf-overlays.md` (0.18.0 D-238) |
 | go-ionomaps (formerly go-giro-data, D-56) | `github.com/branden-thompson/go-ionomaps`, public, MIT (D-2); branch `feature/discover`; its brief, PS-G and requirements in `06_docs/02_features/go-ionomaps/01-objectives/` (local checkout `../go-ionomaps`) |
 | go-tuiMaps v0.3.0 | paired release (D-3); branch `feature/propagation-fields` (A-7); HR-1..HR-5 ruled (D-32 to D-36), its log `06_docs/02_features/propagation-fields/02-analysis/rulings.md`; its brief APPROVED (its D-8) |

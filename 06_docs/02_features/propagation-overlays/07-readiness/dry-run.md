@@ -9,12 +9,21 @@ status: "COMPLETE for PLAN — every FR-10.6 item measured or its gap named; tar
 
 # The dry run
 
+## What the dry run found
+
+- **The current hour is clearly better than the climatology**, most of all near stations. Within 500 km of a reporting station it is about half the climatology's error. In the mainland US, MUF is 2.1 MHz RMS against 2.9.
+- **Hours ahead are the climatology, labelled typical** (D-109). Nothing tested beats it in a storm, and the one method that beat it on quiet days needs a field from the day before that 0.19.0 never holds.
+- **The US floor is met** on the test days, with one US day missing on foF2.
+- **The weak places are the storm and the Pacific**, where the chart is about as good as the climatology. It says so by distance (D-116).
+- **The costs fit.** An update's compute is a few milliseconds; a cold open is about a third of a second; go-tuiMaps' frame is the one over budget (D-96).
+- **Its limits:** one week, one solar level, one storm, four mainland-US stations.
+
 REFLECT L1: each metric's instrument runs once before PLAN exits, and its number or its gap goes in the PLAN
 report. FR-10.6 lists what this dry run measures. Requests follow D-39's throttle. The evidence scripts are
 in go-ionomaps `06_docs/02_features/go-ionomaps/02-analysis/evidence/` (`dry_fetch.py` and the scoring
 scripts).
 
-## Summary so far
+## The measurements
 
 | Item (FR-10.6) | Result | State |
 |---|---|---|
@@ -125,10 +134,10 @@ The idle 3% is today's baseline, before the mode. It is a candidate question for
 | GloTEC decode, one real grid (5,184 points), typed | — | **4.87 ms**, 740 KB, 16 allocations |
 | The same, generic (`map[string]any`) | — | 10.7 ms, 7.61 MB, 191,890 allocations |
 
-- **Method:** kernel var·exp(−d/L) in great-circle distance, L = 4000 km and noise 1.0, as tuned on the week's first days (`week.py`). Two Cholesky solves at 39 × 39, then a prediction at every cell.
+- **Method:** kernel var·exp(−d/L) in great-circle distance, L = 4000 km and noise 1.0, the values an early partial run tuned; the full week tuned L = 2000 km and noise 0.5 (below). The cost does not depend on L or the noise. Two Cholesky solves at 39 × 39, then a prediction at every cell.
 - **The pass:** station unit vectors, dot products for the distance, no allocations. Before and after agree within 1e-8.
 - **Reading:** an update's compute (decode and assimilation) is about 11 ms at 2° and about 28 ms at 1°, off the UI goroutine.
-- **Not measured:** the network; the climatology's evaluation; the forecast hours (24 more fields, each a background step plus a decayed residual).
+- **Not measured here:** the network. The climatology's evaluation is measured below; since D-109 the hours ahead are the climatology's hours, so they add no cost of their own.
 - The grid file was read from the session's scratch space, outside the timed loop, and not copied.
 
 ## D-73's threshold against published practice (desk check)
@@ -203,7 +212,7 @@ Every variant agrees with the naive one within 6e-14 (float32: 2e-7).
 
 ## The week, scored (FR-10.6)
 
-**Run:** `week.py` (go-ionomaps `02-analysis/evidence/`), PyIRI 0.1.7 under Python 3.12 (D-86), over 2026-09-29 00:05Z to 10-05 21:05Z:
+**Run:** `week.py DIR DSI 2026-10-04,2026-10-05` (go-ionomaps `02-analysis/evidence/`; the storm days are a required argument), PyIRI 0.1.7 under Python 3.12 (D-86), over 2026-09-29 00:05Z to 10-05 21:05Z. The "30-day" F10.7 mean covered 23 to 29 observed days, because NOAA's file starts 2026-09-06; the scorer states the window and refuses fewer than 20. Every method is scored on the same pairs, and the climatology is the one that ships (the CCIR refit, A-28):
 - 56 GloTEC grids, 3-hourly;
 - 39 GIRO stations fetched, of which 30 had soundings at a confidence score of 70 or more;
 - 1,476 held-out pairs.
@@ -283,8 +292,8 @@ So the tuning days were quiet and the test days run into the storm.
 | climatology, US | 0.75 \| 2.31 | 0.89 \| 3.17 | 0.60 \| 2.28 | 0.94 \| 3.33 |
 
 **Reading.**
-- **The B on D floor (D-75) is met**, in the US and overall, every day.
-- **The forecast floor is met only by the hybrid blend, and by thin margins** (0.00 to 0.05 MHz). R-1.3's decay fails at +12 h in the US.
+- **The current hour's floor (D-75) is met** on the test days in aggregate, in the US and overall. One US day misses on foF2: 10-03, 0.93 against the climatology's 0.84 (the agent's error E-17 had said "every day").
+- **The forecast floor was met only by the hybrid blend, and by thin margins** (0.00 to 0.06 MHz). R-1.3's decay fails at +12 h in the US. The blend needs a field from the day before, which no ruled data path supplies (the red team's B-F1; the agent's error E-15), so **D-109 makes the hours ahead the climatology, labelled typical**.
 - On quiet days the blend beats climatology clearly. In the storm, no forecast beats climatology: the measured fields catch a storm, but nothing here foresees one (D-88).
 - The hybrid's gain is in MUF away from the US: GloTEC's hmF2-derived M(3000)F2 is the weak half.
 - The bias that RK-11 feared, a false "open" from a high foF2, is gone from B on D (+0.03 MHz). The assimilation's mean term removes it.

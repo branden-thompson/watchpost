@@ -145,7 +145,7 @@ so its MUF error includes that approximation.
 
 ## Paths scored leave-one-station-out (offline, no new requests)
 
-Prototypes `loo.py` and `loo_hybrid.py` (go-ionomaps `02-analysis/evidence/`), on the 566 pairs above:
+Prototypes `loo.py` and `loo_b_on_d.py` (go-ionomaps `02-analysis/evidence/`), on the 566 pairs above:
 - for each hour, each station is held out in turn;
 - the residual (ionosonde minus background) is predicted at it from the other stations that hour, by a Gaussian process with an exponential kernel in great-circle distance (positive definite on the sphere, Gneiting 2013);
 - background plus prediction is scored against the held-out reading.

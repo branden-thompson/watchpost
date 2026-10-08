@@ -4,7 +4,7 @@ date: 2026-10-07
 phase: PLAN exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1 IN DISPOSITION — all eight reports in, all 'do not exit'; forks going to the HUM LEAD one at a time; fixes batched"
+status: "ROUND 1 DISPOSITIONED — all eight reports in, all 'do not exit'; every fork ruled (D-109 to D-127); the fix batch applied; A-25 to A-29 batched for veto"
 ---
 
 # PLAN exit — red team, round 1
@@ -112,3 +112,6 @@ Nothing from it is committed: GIRO's data is CC BY-NC-SA, and its replies carry 
 | Fork 17: the 1° option | P-10 | **D-125:** 2° only in v0.1.0; a typed choice, so 1° can be added later |
 | Fork 18: the dry run's read order | D-F14 | **D-126:** a plain verdict first, then the table, then the detail |
 | Fork 19: words and the reach mark | A-5, A-6, A-8, A-10 | **D-127:** all four: state said, one line per target, a refresh keeps the place, go-tuiMaps L-2.6 (also closes C-T1's L-2.5 gap via P2.4) |
+| **The fix batch** | every finding routed "fix" | **Applied across the three records.** The details:<br>- **Trace:** every test the requirements name is in a plan task (watchpost 95, go-ionomaps 74, go-tuiMaps 30 in scope; L-5's two are out of v0.3.0), and W0.4 makes it a docs-reading check.<br>- **New tasks:** M1/M4's instrument (W10.3) and the UAT prompter (W10.4); W2.0's map-mode type (C-M2); W4.6 (D-116); R-3.5 and G7.2 (caller bounds, no NaN, no fetch in answers); R-9.8 and G10.5 (the constants' basis and expiry); P7.0 (whole-globe contrast before optimising).<br>- **The shape completed** (A-29) and the update separated from the answers, with the memo key and immutability.<br>- **InfoSec rows:** I-1 (import ban), I-4, I-7, I-8, I-10.<br>- **Corrected:** FR-3's preamble; RK-3, RK-11, RK-12 and a new RK-15; the floors text; FR-1.16's range; FR-1.17's caveat.<br>- **Brought current:** REQUIRED-READING and `plan-questions.md`; the dry run's verdict first (D-126), with "every day", the kernel, the window and the command corrected.<br>- **Evidence and record:** NOTICE (IGRF-14, the Apex sample, hmF2 removed); the README; R-5.6, R-7.3, R-9.1's role; NFR-1; `loo_b_on_d.py` (renamed, docstring fixed); `dry_fetch.py` stops GIRO after the full back-off; `day.sh` deleted; G10.4's oracle is `week.py`; `week.py`'s station message computed; F-208 refreshed; F-212 (storm modelling) and F-213 (the idle redraw) added; W1.1 teaches P10 to see a discarded `ok`; `parseLatLon` deleted in W0.3; W8.1's rows name their tests before 0.19.1.<br>- **Sizes:** estimated, about 44 batches for the train. |
+| Not fixed, with the reason | C-C2 (`offset.py` re-runs `week.py`, 39 s); H-3.2 and C-E9 (`plancode` checks only watchpost) | C-C2: a one-off evidence script, and refactoring it risks the published numbers. H-3.2 and C-E9: go-ionomaps' gate arrives at G0 with a plan-code check; until then the gap is stated in the PLAN report |
+

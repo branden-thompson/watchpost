@@ -1,10 +1,10 @@
 ---
 title: "0.19.0 — Propagation overlays — REQUIREMENTS"
 date: 2026-10-06
-phase: DISCOVER
+phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "APPROVED at the DISCOVER gate (D-84), normative. On any conflict with the brief or the problem statement, this file wins once approved, and every change is a row in 02-analysis/rulings.md. Revised after the DISCOVER-exit red team, rounds 1 and 2 (08-reports/red-team-discover.md), and the HUM LEAD's reference-chart ruling (D-76)."
+status: "APPROVED at the DISCOVER gate (D-84), normative. On any conflict with the brief or the problem statement, this file wins once approved, and every change is a row in 02-analysis/rulings.md. Revised after the DISCOVER-exit red team (08-reports/red-team-discover.md), the reference-chart ruling (D-76), PLAN's dry run and rulings (D-85 to D-108) and the PLAN-exit red team (08-reports/red-team-plan.md, D-109 to D-127)."
 ---
 
 # Requirements
@@ -81,8 +81,8 @@ planned name is a commitment PLAN may rename, never drop. A row whose instrument
 | FR-1.13 *(O1)* | **Hours ahead (D-103, D-109):** the listener steps the fields and answers up to 24 h ahead, one hour per key press (no automatic play). **Each hour ahead is the climatology for that hour, and carries a prominent label** beside the source chip and in words: "typical for this hour", not a forecast of today, with its typical error as measured on PLAN's week and that basis stated. While NOAA's G scale is 1 or more, each hour ahead also says a storm is in progress and typical conditions may not hold (D-88). The current hour stays the default and the freshest field (D-94) | D-50, D-75, D-88, D-103, D-109; AX-J | `TestTheHoursStepOnAKey`, `TestAnHourAheadSaysTypical`, `TestTheTypicalErrorStatesItsBasis`, `TestAStormSaysTypicalMayNotHold` |
 | FR-1.14 *(O1)* | **Every control in the mode is a keymap action** Help lists: choosing MUF or foF2, stepping the hour, moving between targets, finding a place, entering a frequency, **refreshing now** (D-120: honoured under D-39, an early ask answered from the last field with its age and the reason); the focused target is named in words, and **each control's current state is said: the layer (MUF or foF2), the hour, the frequency entry open and what it holds (D-127)**; Help fits its window with them | AX-B; N-13; D-120 | `TestEveryPropagationControlIsAnAction`, `TestHelpFitsWithThePropagationKeys` |
 | FR-1.15 *(O1)* | **"Best bands now"** (D-76): for the near-vertical area around the origin (within 400 km of the selected place by default, a Maps-tab Setting offering 200, 400 or 600 km, A-18, D-100; the service radius when opened from the tower) and for each target, each amateur band 160 m to 10 m is called open, above the upper limit, absorbed, disturbed, or no data, under the reference circuit (D-73), naming the limit that decided it; with **the hours today each band is expected open** (routine closures as a schedule, D-74) | D-47, D-73, D-74, D-76, D-100; AX-F | `TestBestBandsNameTheirLimit`, `TestTheDaysOpenHoursAreShown`, `TestTheNearVerticalRadiusIsASetting`; M1, M4 |
-| FR-1.16 *(O1)* | **"Your frequency"** (D-76): a frequency in MHz or a band name is accepted, checked and parsed locally; for this hour (or a forecast hour), the skip zone and the area reached from the origin are drawn on the map and said in words, with the limit that bounds them | D-76 | `TestYourFrequencyDrawsItsReach`, `TestYourFrequencyIsSaid`, `TestABadFrequencyIsSaidNotGuessed`; M1, M4 |
-| FR-1.17 *(O1)* | The chart's answers (best bands, your frequency, the centre) never block a keypress: they are computed off the UI goroutine (A-27; an hour step measured at about 4.4 ms at 2° in the dry run) | N-8; A-27 | `TestAnswersNeverBlockTheUI` |
+| FR-1.16 *(O1)* | **"Your frequency"** (D-76): a frequency in MHz or a band name is accepted, checked against HF, 1.8 to 30 MHz, and parsed locally; for this hour (or an hour ahead, typical, D-109), the skip zone and the area reached from the origin are drawn on the map and said in words, with the limit that bounds them | D-76 | `TestYourFrequencyDrawsItsReach`, `TestYourFrequencyIsSaid`, `TestABadFrequencyIsSaidNotGuessed`; M1, M4 |
+| FR-1.17 *(O1)* | The chart's answers (best bands, your frequency, the centre) never block a keypress: they are computed off the UI goroutine (A-27; an hour step measured at about 4.4 ms at 2° in the dry run's spike, with placeholder formulas of equivalent cost) | N-8; A-27 | `TestAnswersNeverBlockTheUI` |
 | FR-1.18 *(O1)* | **Space weather named (D-88):** any of NOAA's R, S or G scales above 0 is named in the chart and in the words, with NOAA's outlook; while G is 1 or more, each hour ahead says a storm is in progress and typical conditions may not hold (D-109); a missing scales feed is said, not shown as level 0 | D-88; PM-E2 | `TestARaisedScaleIsNamed`, `TestAStormSaysTypicalMayNotHold`, `TestMissingScalesAreNotShownAsZero` |
 
 ## FR-2 — The Broadcaster (R-2; D-57, D-80)
@@ -99,8 +99,9 @@ D-60, D-74).
 
 ## FR-3 — In words (R-1.3; D-9)
 
-"In words" and "said" mean **screen text a screen reader reads**. With D-80's device Setting, the
-broadcast can be kept off the screen reader's device.
+"In words" and "said" mean **screen text a screen reader reads**. The broadcast plays on the computer's
+default output device, which a screen reader shares; FR-2.2 says so plainly, and the device Setting is a
+follow-up (D-85, F-211).
 
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
@@ -119,7 +120,7 @@ broadcast can be kept off the screen reader's device.
 | FR-4.3 *(O1)* | Every new host is listed in MAP STATUS with what it learns: GIRO and NOAA learn the IP (GIRO's replies echo it back); the online geocoder learns the typed text; no request names the origin | 0.18.0 D-31; IS-2, IS-4 | `TestMapStatusListsEveryPropagationHost` (reads go-ionomaps' exported host set, D-113), the egress table in PLAN |
 | FR-4.4 *(O1)* | **The propagation client is its own instance** (not the data client's), with no shared pacing hold and no host avoidance from other traffic; it **never retries a 429** and returns status and headers on every outcome, so go-ionomaps alone decides a back-off (`platform/httpx/httpx.go:926-928` retries a 429; `memo.go:138-149` holds every lane on a Retry-After; `httpx.go:838-847` drops headers on a non-200) | D-39; IS-1, N-5 | `TestThePropagationFetcherNeverRetriesA429`, `TestA429ReturnsItsHeaders`, `TestAGIRORefusalNeverPausesWeather` |
 | FR-4.5 *(O1)* | At run time only rate-related headers are read (`Retry-After`, `X-RateLimit-*`, `RateLimit-*`); their first sighting goes to the diagnostics by host and header name | D-83 | `TestOnlyRateHeadersAreRead` |
-| FR-4.6 *(O1)* | **Nothing raw is kept:** GIRO's replies (which carry the requester's IP) never enter the HTTP cache, the diagnostics or an error; GloTEC, D-RAP and the scales are fetched uncached and dropped after parsing, with their validators (ETag, Last-Modified) held in memory so an unchanged poll costs a 304 | IS-2; PF-F6; N-12 | `TestNoRawSourceDataIsStored` (scans the HTTP cache directory and the diagnostics), `TestAnUnchangedGridCostsA304` (D-RAP, the scales, the solar indices; GloTEC grids are timestamped, D-111) |
+| FR-4.6 *(O1)* | **Nothing raw is kept:** GIRO's replies (which carry the requester's IP) never enter the HTTP cache, the diagnostics, an error or an error's reason text (the propagation client keeps no reply text, I-8); GloTEC, D-RAP and the scales are fetched uncached and dropped after parsing, with their validators (ETag, Last-Modified) held in memory so an unchanged poll costs a 304 | IS-2; PF-F6; N-12 | `TestNoRawSourceDataIsStored` (scans the HTTP cache directory and the diagnostics), `TestAnUnchangedGridCostsA304` (D-RAP, the scales, the solar indices; GloTEC grids are timestamped, D-111) |
 | FR-4.7 *(O1)* | The propagation client refuses plain http, private addresses and **any host outside go-ionomaps' exported set** (D-113), with a body cap sized to each source | IS-6; D-113 | `TestThePropagationClientIsHardened`, `TestTheClientRefusesAnUnlistedHost` |
 | FR-4.8 *(O1)* | **One go-ionomaps object per process**, shared by every caller; the update runs off the UI goroutine | PF-F7, PF-F8 | `TestOneLibraryObjectPerProcess`, `TestTheUpdateNeverRunsOnTheUIGoroutine` |
 | FR-4.9 *(O1)* | **The coordinate parser is shared and finite-checked** in front of every resolver, the Observer's lookup and `watchpost report` included: coordinates never go online, `NaN` and `Inf` are refused, and the geocoder's `name` parameter is redacted in logs | N-3 (not excused by predating the change) | `TestEveryResolverParsesCoordinatesLocally`, `TestNaNCoordinatesAreRefused`, `TestTheGeocoderQueryIsRedacted` |
@@ -168,7 +169,7 @@ without NDFD, per-dataset retention, and the dataset terms field (FR-6.1 to FR-6
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
 | FR-9.1 *(O3)* | A normal exit, or an interrupt or termination signal, leaves no `say` child behind | F-187 | `TestNoSayOutlivesAnOrderlyExit` |
-| FR-9.2 *(O3)* | A `say` left by a watchpost killed outright is found and ended at the next start, by process, not by its temp directory's name | F-187 | `TestAnOrphanedSayIsEndedAtStart` |
+| FR-9.2 *(O3)* | A `say` left by a watchpost killed outright is found and ended at the next start, by process, not by its temp directory's name; **only a process proven to be watchpost's is ended**: the same user, a `watchpost-say-` path in its arguments, and a process ID and start time watchpost recorded (I-4) | F-187; I-4 | `TestAnOrphanedSayIsEndedAtStart`, `TestAnUnrelatedSayIsNeverEnded` |
 | FR-9.3 *(O3)* | `make test-say` cannot hang the gate: it has a bound, and a hang is diagnosed (the hung process sampled) rather than retried blind | F-188 | the gate's own bound; `06_docs/required-gates.txt` |
 
 ## FR-10 — Instruments (R-9; REFLECT L1-L8)
@@ -206,17 +207,18 @@ without NDFD, per-dataset retention, and the dataset terms field (FR-6.1 to FR-6
 |---|---|---|---|---|---|
 | RK-1 | The reference implementation has no licence; a reimplementation drifts toward its code | low | high | D-53: `arodland/prop` was read through the GitHub API in 0.18.0's research and is never opened again; no code copied; go-ionomaps is written from papers and PyIRI (MIT); every exported function cites its source; a provenance table in PLAN | agent |
 | RK-2 | **GIRO's load and terms:** an update asks GIRO about 39 times; GIRO offers access "only for educational and non-commercial research purposes"; contact was ruled out (D-41) | medium | high | fetches only when the mode is opened (D-76); D-39's throttle in one object per process; the seed and rotation (D-51); the fallback background if GIRO refuses (D-40, D-75); fleet scenarios in the DISCOVER report; F-208 | HUM LEAD (D-41) |
-| RK-3 | **The chosen field is not accurate enough.** On 2026-10-05, held out, B on D's foF2 RMS was 1.00 MHz overall and 0.37 within 500 km of a station (seven European stations); the mainland-US stations scored 0.51-0.81 (AL945, EG931, IF843, MHJ45), the Pacific stations 1.2-1.8 (EA653 Adak, LL721 Kauai, WA619 Wake, GU513 Guam); on MUF(3000) it barely beat GloTEC (3.97 against 4.02 MHz) | medium | high | go-ionomaps assimilates M(3000)F2 too (its R-9.2); the dry run measures by station and distance (FR-10.6); D-75's floor and fallback | agent |
+| RK-3 | **The chosen field is not accurate enough.** PLAN's week (held out, test days): the hybrid's foF2 RMS 0.96 MHz overall and 0.66 in the mainland US against the climatology's 1.15 and 0.82; within 500 km of a reporting station 0.33; the Pacific no better than the climatology (MUF 5.15 against 5.22) | medium | high | the hybrid (D-101); confidence said by distance (D-116); G-M3's targets (D-108) and their route on a miss (D-118) | agent |
 | RK-4 | Compute or memory too heavy for a terminal app | low | medium | G1 over 48 hours; G-G1; 2° default; answers off the UI goroutine (FR-1.17, FR-4.8) | agent |
 | RK-5 | Three paired releases at SEV-0 cost time | high | medium | D-13 (minor rulings batched); scope cut at D-76 to D-78 | HUM LEAD, agent |
 | RK-6 | Accessibility last again (D-4 order) | high | high | M5b and FR-3 ship words with the layer; the SHIP gate on FR-7 (D-63) | HUM LEAD |
 | RK-7 | Two bounds in one window let a weather frame go global | low | high | FR-1.2's tests over every frame | agent |
 | RK-9 | #27's fix changes a store 0.18.0's datasets rely on | medium | medium | existing history tests; the split and byte bound tested per dataset | agent |
 | RK-10 | The library's label move (D-34) shifts every existing layer's labels | high | low | specimens redrawn in the same batch (`diagrams-move-with-code`) | agent |
-| RK-11 | **False "open":** both backgrounds read foF2 high on 2026-10-05 (GloTEC +0.4 to +0.5 MHz, climatology +0.7; B on D's bias not yet measured), so the chart could call open a band that is closed | medium | high | the dry run reports signed bias (FR-10.6); the reference circuit (D-73); every answer states its limit and age | agent |
-| RK-12 | **M1 may be unmeasurable at near-vertical distances:** WSPR spots under a few hundred kilometres are sparse, and muddied by ground wave | medium | high | the dry run checks density under the reference circuit first (FR-10.6); if too sparse, M1's reference returns as a ruling | agent |
+| RK-11 | **False "open":** both backgrounds read foF2 high (PLAN's week: GloTEC +0.51 MHz, the climatology +0.28) | low | high | the assimilation's mean term removes it (the hybrid's held-out bias +0.03); the live and typical offsets compared and said (D-105); every answer states its limit, age and nearest station (D-116) | agent |
+| RK-12 | **M1 may be unmeasurable at near-vertical distances** | low | high | measured: at +13 dB with ground wave removed, WSPR under 400 km is dense on 160 to 40 m in all 24 hours (`07-readiness/dry-run.md`); the instrument is W10.3 | agent |
 | RK-13 | One wrong reading (a NaN, an extreme value) poisons the whole field | low | high | go-ionomaps R-3.3 (physical ranges, no NaN or Inf out) | agent |
 | RK-14 | A blind operator's screen reader is mixed into the broadcast | medium | high | stated plainly (FR-2.2, D-85); the device Setting is F-211 | HUM LEAD (D-85) |
+| RK-15 | **NOAA feeds on the main path:** GloTEC, D-RAP, the scales and the daily solar indices; the climatology's F10.7 (D-104) now feeds every hour's M(3000)F2 (D-101) and every hour ahead (D-109) | low | medium | each missing feed is said with its age (FR-5.2); the last F10.7 mean held is used with its age (R-9.5); the host set is fixed (D-113) | agent |
 
 ## Metrics of success
 
@@ -228,6 +230,6 @@ Normative in `problem-statement.md`:
 
 **"Open"** means the reference circuit (D-73). M1 and M4 are scored against WSPR spots normalised to it,
 with RBN as a cross-check (D-22). Their baseline is the IRI climatology (D-23). **Floors are set before the
-dry run (D-75):** B on D must beat the climatology in the US, and the forecast hours must be no worse than
-it. Every other target is set from the dry run, each by its own ruling (D-49), except M3b and M3c's, which
+dry run (D-75):** the current hour (the hybrid, D-101) must beat the climatology in the US, and the hours
+ahead must be no worse than it (met by construction since D-109). Every other target is set from the dry run, each by its own ruling (D-49), except M3b and M3c's, which
 D-48 set and D-76 retired.

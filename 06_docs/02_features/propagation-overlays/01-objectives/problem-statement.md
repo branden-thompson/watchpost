@@ -89,6 +89,8 @@ Anti-solution check:
 
 Each target is ruled from PLAN's dry run, against D-75's floors, and listed here as it is ruled. **On a miss (D-118):** a floor cuts its feature (D-75); any other missed target comes to the HUM LEAD at VALIDATE with its evidence, never re-set silently. M1 and M4 become "no worse than climatology" if the climatology's measured agreement is above 90%.
 
+**Measured on (D-F15):** every target was set from one week (2026-09-29 to 10-05; F10.7 92 to 100; one G1 to G2 storm; four mainland-US stations) and from spikes on one machine (an Apple M5 Pro). G-M3's near-station limits come from the whole week, tuning days included. The Pacific is no better than the climatology and is reported separately (D-116). M1 and M4's baseline is not yet measured (W10.3).
+
 | Metric | Target | Ruling |
 |---|---|---|
 | M2 | 8 of 10 correct, each within 30 s | D-93 |
