@@ -858,6 +858,7 @@ func runtimeCounts
 func runtimeGOOS
 func saveCast
 func savePreference
+func savePropagationAck
 func saveRadioMode
 func saveRadioPrefs
 func saveTones

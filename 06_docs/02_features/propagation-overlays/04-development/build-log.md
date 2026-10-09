@@ -100,3 +100,20 @@ release candidates (go-tuiMaps v0.3.0 first, D-3), O1 and O3 (`implementation-pl
     - m122 assigned the field to itself, which the harness's `go vet` refuses, and stopped the second `make verify`. It now deletes the reset. Every new mutant is now applied and vetted by hand before verify.
 - **Docs:** the as-built map diagram draws `map_prop.go` and the P key; the atlas is regenerated.
 - **Checks:** `modes/tty` and `app` whole with `-race`; then `make verify`.
+
+## Batch 6 — W2.5, the acknowledgement (D-46, D-81, A-9, A-34)
+
+- **The window.** The first P opens it over the map, in the same key press that enters the Propagation mode, so it is shown before anything of the mode's is fetched (W4.1 adds the fetch). It is a window of its own, `modalPropAck`, stacked over the map; Enter or Esc closes it to the map in the Propagation mode, and no other key leaves it.
+- **The record (A-9).** Closing it saves the wording's version, `propagation_ack` in the config, through a save hook of its own (`SavePropagationAck`, classified for the air in `app/air_boundary_test.go`). A version seen older is shown once more. With the wording at version 1, "older" and "never seen" are both 0, so the comparison is a function the test calls with versions 1 and 2 (`ackDue`).
+- **The cursor (D-81).** The terminal cursor stands at the start of its first line, found in the frame as drawn; it is placed nowhere else (D-110).
+- **Found by the reachability gate:** at 80x24 one of its lines could not be brought on screen, since a window that takes every key scrolled with none. The Observer's scroll keys now read it.
+- **Found by its own `--ascii` test: two leaks older than this release.** The radio panel's head joined its title and station with a literal "•", and its track's rails were a literal "│"; under `--ascii` both printed. They now come from the glyph set (`*` and `|` under `--ascii`). `TestASCIIFramesCarryNothingButASCII` did not reach that panel state; `TestTheAcknowledgementReadsWithoutThePicture` holds it now.
+- **Batch 5's tests** close the acknowledgement with Enter when P opens it, as a listener does.
+- **`app`'s declaration set** gains `savePropagationAck` (`-update-declset`).
+- **W2.4 waits for W3.1 and W4.1** (A-34): its controls act on the layers and the update those bring.
+- **Mutants** m129 to m134, each applied, vetted and checked killed by hand, restored by copy.
+  - m134 first left a variable unused, which vet refused; rewritten.
+  - Under m129 the package ran into its timeout: the tests' key helper ran every command a key returned, and Esc on the map schedules its five-minute release. The helper now runs only what a key on the acknowledgement asks for, and the window test stops at once if P opened none; m129 is killed in 42 s.
+- **Docs:** the as-built map diagram draws the acknowledgement; the atlas is regenerated.
+- **The first `make verify` stopped at `lint-authoring`** (AP-HIST-01): a comment said versions "seen older", which reads as history. It now states the rule.
+- **Checks:** `modes/tty`, `app` and `platform/config` whole with `-race`; then `make verify`.

@@ -87,6 +87,7 @@ var reachabilityBaseline = map[modal]int{
 	modalRelayFault: 1,
 	modalDebug:      0,
 	modalCard:       0,
+	modalPropAck:    0, // its arrows scroll it: every word of the acknowledgement is on screen at the floor (D-81)
 }
 
 // reachabilityNote is what is KNOWN about a non-zero baseline, so the number is

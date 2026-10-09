@@ -82,6 +82,8 @@ func windowKeysOf(m modal) (windowKeys, bool) {
 		return windowKeys{claim: claimAll, all: Dashboard.handleAddKey}, true // its own keys walk `selected`
 	case modalRemove:
 		return windowKeys{claim: claimAll, all: Dashboard.handleRemoveKey}, true
+	case modalPropAck:
+		return windowKeys{claim: claimAll, all: Dashboard.handlePropAckKey}, true // D-81: Enter or Esc closes it; the arrows read it
 	case modalRequest:
 		return windowKeys{claim: claimAll, all: Dashboard.handleRequestKey, nav: Dashboard.handleRequestNav}, true // R4: a form, walked field by field
 	case modalMap:

@@ -305,6 +305,8 @@ func modalName(m modal) string {
 		return "request"
 	case modalMap:
 		return "map"
+	case modalPropAck:
+		return "propagation-ack"
 	}
 	return "modal-" + strconv.Itoa(int(m))
 }

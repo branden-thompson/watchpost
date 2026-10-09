@@ -24,7 +24,21 @@ const (
 // weather mode's data again, as R does.
 func (d Dashboard) togglePropagation() (Dashboard, tea.Cmd) {
 	d.mapPane.prop = !d.mapPane.prop
-	return d.enterMode()
+	d, cmd := d.enterMode()
+	if d.mapMode() == modePropagation && d.propAckDue() {
+		d = d.openPropAck() // before anything of the mode's is fetched (D-81)
+	}
+	return d, cmd
+}
+
+// cursorAt is where the terminal cursor stands in a frame: on the
+// acknowledgement's first line while it is shown (D-81); false elsewhere,
+// where focus is still drawn and not placed (D-110, F-205).
+func (d Dashboard) cursorAt(frame string) (x, y int, ok bool) {
+	if d.modal != modalPropAck {
+		return 0, 0, false
+	}
+	return propAckCursor(frame)
 }
 
 // enterMode sets the map up for the mode it is now in: its bound, its layers

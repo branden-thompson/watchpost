@@ -442,6 +442,14 @@ func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
 	c.MapDetailChoice = cfg.MapDetail                                  // UAT-1 D-65: the map's detail
 	c.MapDetailLevel = cfg.MapDetailLevel                              // UAT-1 D-67: its level
 	c.MapAreaName = mapAreaNamer(lp.idx)                               // UAT-1 D-64: the title names what is in view
+	c.PropagationAck = cfg.PropagationAck                              // 0.19.0 A-9: the acknowledgement's wording last seen
+	c.SavePropagationAck = savePropagationAck                          // and kept once closed (D-81)
+}
+
+// savePropagationAck keeps the version of the acknowledgement seen (0.19.0
+// A-9).
+func savePropagationAck(version int) error {
+	return savePreference(func(cfg *config.Config) { cfg.PropagationAck = version })
 }
 
 // attachDeck takes ownership of the player and starts what rides with it: the

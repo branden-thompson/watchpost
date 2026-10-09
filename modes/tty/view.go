@@ -39,6 +39,9 @@ func (d Dashboard) View() tea.View {
 		content = render.Overlay(content, box, d.width)
 	}
 	v := tea.NewView(content)
+	if x, y, ok := d.cursorAt(content); ok {
+		v.Cursor = tea.NewCursor(x, y) // D-81: on the acknowledgement's first line; nowhere else yet (F-205)
+	}
 	v.AltScreen = true
 	v.BackgroundColor = render.WindowBG(d.darkBG) // UAT 10.2: blue-grey window
 	return v
@@ -103,6 +106,8 @@ func (d Dashboard) renderModal(o render.Opts) string {
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines(o)) // UAT 68
 	case modalMap:
 		return d.mapWindow(o)
+	case modalPropAck:
+		return d.floatModal(o, d.modalWidth(), "Propagation", d.propAckLines(o)) // D-46, D-81
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
 	case modalCard:
@@ -162,6 +167,8 @@ func (d Dashboard) modalWidth() int {
 		return w
 	case modalMap:
 		return d.mapWindowCols()
+	case modalPropAck:
+		return propAckWidth
 	case modalHelp:
 		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
 	case modalCard:
@@ -214,6 +221,8 @@ func (d Dashboard) modalLines() []string {
 		raw = d.aboutLines(o)
 	case modalMap:
 		raw, o.Width = d.mapBodyLines(), w // measured at the width the map window is drawn at, not the dashboard's
+	case modalPropAck:
+		raw = d.propAckLines(o)
 	case modalSevere:
 		raw = d.severeDetailLines(o) // only the record scrolls; the table windows itself
 	case modalCard:

@@ -12,11 +12,16 @@ import (
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
-// pressMap presses a key the map binds and settles what it asked for.
+// pressMap presses a key the map binds and settles what it asked for. An
+// acknowledgement it opens is closed with Enter, as a listener would.
 func pressMap(t *testing.T, d Dashboard, key string) Dashboard {
 	t.Helper()
 	m, cmd := d.Update(mapKeyMsg(t, key))
-	return settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
+	if d = m.(Dashboard); d.modal == modalPropAck {
+		m, _ = d.Update(mapKeyMsg(t, "enter"))
+		d = m.(Dashboard)
+	}
+	return settleRadar(t, feedAndSettle(t, d), cmd)
 }
 
 // TestThePropagationModeIsAKeymapAction is W2.1 (FR-1.1, D-153, D-154): P

@@ -310,6 +310,9 @@ type Config struct {
 	// 2.5_day, 1.0_week or 1.0_day.
 	MapQuakeFeed string          `toml:"map_quake_feed,omitempty"`
 	MapLayers    map[string]bool `toml:"map_layers,omitempty"` // layer key -> on
+	// PropagationAck is the version of the Propagation mode's acknowledgement
+	// last seen (0.19.0 A-9, D-81): a newer wording is shown once more.
+	PropagationAck int `toml:"propagation_ack,omitempty"`
 	// MapAlertScope is RETIRED (0.18.0 D-76): the map draws every alert in
 	// view, so there is no scope to choose. It is still read, so a file that
 	// has it is not reported as holding an unknown key, and it is written

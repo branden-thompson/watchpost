@@ -201,7 +201,12 @@ type Config struct {
 	Radio         Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
 	Spectrum      func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
 	SaveRadio     func(RadioPrefs) error         // keeps the radio panel's choices (D-214); nil keeps nothing
-	FireBoldMW    float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
+
+	// PropagationAck is the acknowledgement's wording last seen (A-9), and
+	// SavePropagationAck keeps it once closed; nil keeps nothing (0.19.0 W2.5).
+	PropagationAck     int
+	SavePropagationAck func(int) error
+	FireBoldMW         float64 // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
 
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
 	// reports against, and they are TWO because the data is two things: the
@@ -1438,6 +1443,7 @@ const (
 
 	// modalMap is the map window (0.18.0 W1.1).
 	modalMap
+	modalPropAck // the Propagation mode's acknowledgement, over the map (D-46, D-81)
 
 	// numModals bounds the set; it is not itself a modal. It exists so the
 	// memo-completeness guard can DERIVE the list of windows rather than carry
