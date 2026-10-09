@@ -299,6 +299,7 @@ type modalKey struct {
 	mapStatus  tuimaps.Status // and whether the picture is whole
 	mapPending bool           // and whether it is still loading
 	mapOutside string         // the place in no region, which the window states instead
+	mapProp    bool           // the Propagation mode
 	mapNotes   string         // the feed's notes, printed under the map
 	mapLegend  bool           // the legend over the map
 }
@@ -337,7 +338,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 	case modalMap:
 		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
 		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending
-		k.mapOutside, k.mapNotes = d.mapPane.outside, strings.Join(d.mapPane.notes, "\n")
+		k.mapOutside, k.mapNotes, k.mapProp = d.mapPane.outside, strings.Join(d.mapPane.notes, "\n"), d.mapPane.prop
 		k.mapLegend = d.mapPane.modeChip
 		k.mapAlerts, k.mapMenu, k.mapMenuAt, k.mapFlash = d.mapPane.alertsOn, d.mapPane.menuOn, d.mapPane.menuAt, d.mapPane.flash
 		k.mapEdge, k.mapEdgeOn = d.mapPane.edge, d.mapPane.edgeShown

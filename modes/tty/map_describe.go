@@ -62,6 +62,9 @@ func (d Dashboard) describeUpTo(most int) []string {
 	v := d.viewBox(d.mapBodySize())
 	here := d.mapPane.m == nil || v.Contains(loc.Lat, loc.Lon)
 	out := []string{d.viewHeading(*loc, here)}
+	if d.mapMode() == modePropagation {
+		return append(out, propagationWords) // no alert is drawn in it (D-21)
+	}
 	if !d.layerOn(AlertLayer) {
 		return append(out, alertLayerOffText) // off is said, never "nothing is there"
 	}

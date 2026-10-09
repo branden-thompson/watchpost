@@ -428,7 +428,7 @@ func chosenOn(word, key string) bool {
 
 // choiceOf reads one key from a choice word ("roads=on,rail=off").
 func choiceOf(word, key string) (on, ok bool) {
-	for _, part := range strings.Split(word, ",") {
+	for part := range strings.SplitSeq(word, ",") { // no slice: a frame asks this for every layer
 		if k, v, found := strings.Cut(part, "="); found && k == key {
 			return v == "on", true
 		}

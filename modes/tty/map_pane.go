@@ -61,6 +61,7 @@ type mapPane struct {
 	ticks     uint64
 	region    geo.Region     // the region the map is held inside (FR-2.1)
 	outside   string         // the place that is in no region, when it is not (FR-2.5)
+	prop      bool           // in the Propagation mode (D-153); never saved (D-154)
 	status    tuimaps.Status // the last frame's: whole, or still sharpening
 	pending   bool           // work was waiting when it was drawn
 	offline   bool           // a tile failed since the picture was last whole
@@ -141,7 +142,8 @@ type mapView struct {
 	centre tuimaps.LonLat
 	zoom   float64
 	size   tuimaps.Size
-	region geo.Region // the region the frame was bound to (D-28, D-77)
+	region geo.Region // the region the frame was bound to (D-28, D-77); none in the Propagation mode
+	mode   mapMode
 }
 
 // MapFeed is what the map draws from the station's data (0.18.0 W5): an
@@ -264,6 +266,7 @@ func (d Dashboard) toggleMap() Dashboard {
 	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false            // Forecast mode opens on Now, stopped (D-94)
 	d.mapPane.fcGen++
 	d.mapPane.tempAuto, d.mapPane.modeChip = false, false
+	d.mapPane.prop = false    // every open is a weather mode: the Propagation mode is never kept (D-154)
 	d = d.ensureMainOverlay() // D-103: a map opened in Forecast mode is never blank
 	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().requestFeed()
 	d.mapPane.viewAsked = d.mapPane.viewGen // the open asks for its view: a move's tick dropped while closed is answered here (W14)
@@ -282,16 +285,48 @@ func (d Dashboard) toggleMap() Dashboard {
 // tiles, a braille cell two dots wide and four high.
 func (d Dashboard) boundMap() Dashboard {
 	m, r := d.mapPane.m, d.mapPane.region
-	if m == nil || r.Name == "" {
+	if m == nil {
 		return d
 	}
-	least := regionFitZoom(r, d.mapBodySize())
+	var b tuimaps.Bound // the Propagation mode's: none, the whole world (D-21)
+	switch d.mapMode() {
+	case modeRadar, modeForecast:
+		if r.Name == "" {
+			return d
+		}
+		b = tuimaps.Bound{MinZoom: regionFitZoom(r, d.mapBodySize()), W: r.W, S: r.S, E: r.E, N: r.N}
+	case modePropagation:
+	}
 	var err error
 	d.mapPane.call("SetBound", func() {
-		err = m.SetBound(tuimaps.Bound{MinZoom: least, W: r.W, S: r.S, E: r.E, N: r.N})
+		err = m.SetBound(b)
 	})
 	if err != nil {
 		d.problem("Map bound: " + r.Name + " refused - " + err.Error()) // ours to fix, never the listener's (D-124)
+	}
+	return d.holdWorld()
+}
+
+// worldLatitude is as far north and south as the map draws.
+const worldLatitude = 85.0511
+
+// worldZoom is the Propagation mode's least zoom: the whole world fills the
+// map one way or the other.
+func worldZoom(size tuimaps.Size) float64 {
+	return regionFitZoom(geo.Region{W: -180, S: -worldLatitude, E: 180, N: worldLatitude}, size)
+}
+
+// holdWorld keeps the Propagation mode's view at worldZoom or nearer. Its map
+// has no bound, so that a view may cross any meridian, and the library would
+// otherwise zoom out past the world; the weather modes are held by theirs.
+func (d Dashboard) holdWorld() Dashboard {
+	m := d.mapPane.m
+	if m == nil || d.mapMode() == modeRadar || d.mapMode() == modeForecast {
+		return d
+	}
+	least := worldZoom(d.mapBodySize())
+	if _, z := m.Centre(); z < least {
+		d.mapPane.call("Zoom", func() { _ = m.Zoom(least) })
 	}
 	return d
 }
@@ -347,7 +382,7 @@ func (d Dashboard) descBlock(width int) []string {
 // renderMap draws the map into the pane. It is called from Update only.
 func (d Dashboard) renderMap() Dashboard {
 	m := d.mapPane.m
-	if m == nil || d.mapPane.outside != "" {
+	if m == nil || d.outsideStated() {
 		return d // FR-2.5: nothing wider is drawn in its place
 	}
 	var frame tuimaps.Frame
@@ -370,7 +405,7 @@ func (d Dashboard) renderMap() Dashboard {
 	d.mapPane.lines, d.mapPane.failed = insetLines(frame.Lines), ""
 	if d.mapPane.views != nil {
 		c, z := m.Centre()
-		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize(), region: d.mapPane.region})
+		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize(), region: d.mapPane.region, mode: d.mapMode()})
 	}
 	d.mapPane.status = frame.Status
 	d.mapPane.call("Legend", func() { d.mapPane.legend = m.Legend() })
@@ -471,8 +506,8 @@ func (d Dashboard) mapBodyLines() []string {
 		return []string{noSelectionText}
 	case d.mapsOff:
 		return []string{mapsOffText}
-	case d.mapPane.outside != "":
-		return []string{d.mapPane.outside + " is outside every region the map covers - the contiguous United States, Alaska, Hawaii, Puerto Rico and the Virgin Islands, Guam and the Northern Marianas, and American Samoa - so no map is drawn for it."}
+	case d.outsideStated():
+		return []string{d.outsideText()}
 	case d.mapPane.failed != "":
 		return []string{d.mapPane.failed}
 	}
@@ -628,8 +663,14 @@ func (d Dashboard) mapStatusLine() string {
 	// D-89's order: the radar's line, the estimate after a slash, then what
 	// the picture's status says - W8.8's loop and its age always first.
 	lead := d.mapPane.radarLine
-	if d.mapMode() == modeForecast && d.cfg.MapRadar != nil {
-		lead = d.forecastStatus() // D-94: Forecast mode's line in the radar's place
+	switch d.mapMode() {
+	case modeForecast:
+		if d.cfg.MapRadar != nil {
+			lead = d.forecastStatus() // D-94: Forecast mode's line in the radar's place
+		}
+	case modePropagation:
+		lead = propagationStatus
+	case modeRadar:
 	}
 	if est := costEstimate(d.mapCost); est != "" {
 		lead = strings.TrimPrefix(lead+" / "+est, " / ")
@@ -655,7 +696,7 @@ func (d Dashboard) mapChips() []string {
 	for _, c := range []struct {
 		act  term.Action
 		name string
-	}{{actMapAlerts, "Area Alerts"}, {actMapRadar, d.radarChipWords()}, {actMapOverlays, "Overlays"}} {
+	}{{actMapAlerts, "Area Alerts"}, {actMapRadar, d.radarChipWords()}, {actMapProp, d.propChipWords()}, {actMapOverlays, "Overlays"}} {
 		if keys := d.mapKeys[c.act].Keys; len(keys) > 0 {
 			chips = append(chips, d.opts().KeyCap(keys[0])+" "+c.name)
 		}
@@ -739,7 +780,7 @@ var mapRegionShort = []string{"US", "Alaska", "Hawaii", "Caribbean", "Samoa", "G
 var mapRegionLabels = []string{"Continental US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam & N. Marianas"}
 
 // mapActions is the map window's actions in the order Help lists them.
-var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapOverlays,
+var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapProp, actMapOverlays,
 	actMapPlay, actMapBack, actMapOn, actMapNewest, actMapHighLow}, mapRegionActs...)
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
@@ -755,11 +796,12 @@ func defaultMapKeyMap() term.KeyMap {
 		actMapZoomOut:    {Keys: []string{"-"}, Help: "Zoom Out"},
 		actMapScrollUp:   {Keys: []string{"pgup"}, Help: "Scroll Up"},
 		actMapScrollDown: {Keys: []string{"pgdown"}, Help: "Scroll Down"},
-		actMapAlerts:     {Keys: []string{"A"}, Help: "Area Alerts"},        // D-63: over the upper left, as the legend is the upper right
-		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},           // D-65: the weather layers and the map's detail
-		actMapRadar:      {Keys: []string{"R"}, Help: "Radar On / Off"},     // D-94: Radar mode, else Forecast mode
-		actMapPlay:       {Keys: []string{"space"}, Help: "Play / Stop"},    // D-61: the playback keys, radar's or the forecast's
-		actMapBack:       {Keys: []string{"shift+left"}, Help: "Step Back"}, // D-86: at the timeline's ends
+		actMapAlerts:     {Keys: []string{"A"}, Help: "Area Alerts"},          // D-63: over the upper left, as the legend is the upper right
+		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},             // D-65: the weather layers and the map's detail
+		actMapRadar:      {Keys: []string{"R"}, Help: "Radar On / Off"},       // D-94: Radar mode, else Forecast mode
+		actMapProp:       {Keys: []string{"P"}, Help: "Propagation On / Off"}, // D-153: the Propagation mode, and back
+		actMapPlay:       {Keys: []string{"space"}, Help: "Play / Stop"},      // D-61: the playback keys, radar's or the forecast's
+		actMapBack:       {Keys: []string{"shift+left"}, Help: "Step Back"},   // D-86: at the timeline's ends
 		actMapOn:         {Keys: []string{"shift+right"}, Help: "Step On"},
 		actMapNewest:     {Keys: []string{"n"}, Help: "Now"},
 		actMapHighLow:    {Keys: []string{"<", ">"}, Help: "High / Low"}, // D-97: Forecast mode's days
@@ -811,16 +853,23 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	case actMapRadar: // D-94: Radar mode on and off
 		nd, cmd := d.flashMapKey(act).switchMode()
 		return nd, cmd, true
+	case actMapProp: // D-153: the Propagation mode, and back
+		nd, cmd := d.flashMapKey(act).togglePropagation()
+		return nd, cmd, true
 	case actMapHighLow: // D-97: the days' high or low
 		return d.flashMapKey(act).flipHighLow(), d.mapWorkCmd(), true
 	}
-	d = d.flashMapKey(act)           // U1-11: the controls' chip blinks
-	if d.mapMode() == modeForecast { // Forecast mode: the host steps (D-94)
+	d = d.flashMapKey(act) // U1-11: the controls' chip blinks
+	switch d.mapMode() {
+	case modeForecast: // the host steps (D-94)
 		if nd, cmd, ok := d.handleForecastPlayback(act); ok {
 			return nd, tea.Batch(cmd, nd.mapWorkCmd()), true
 		}
-	} else if nd, ok := d.handlePlayback(act); ok {
-		return nd, nd.mapWorkCmd(), true
+	case modeRadar:
+		if nd, ok := d.handlePlayback(act); ok {
+			return nd, nd.mapWorkCmd(), true
+		}
+	case modePropagation: // no playback yet: the hours ahead step with W5
 	}
 	return d.moveMapView(act)
 }
@@ -904,6 +953,7 @@ func (d Dashboard) moveMapView(act term.Action) (tea.Model, tea.Cmd, bool) {
 			}
 		}
 	}
+	d = d.holdWorld()
 	d, settle := d.viewMoved() // marked moved before it is drawn: its view is not in until its settle tick asks (W14's instrument)
 	d = d.renderMap()
 	return d, tea.Batch(d.mapWorkCmd(), settle), true // the alerts are the settle tick's to ask: never on every key (D-66, W14's P-2)
@@ -918,8 +968,8 @@ func (d Dashboard) panOrCross(dx, dy int, dir geo.Direction, armed bool) Dashboa
 	before, _ := m.Centre()
 	d.mapPane.call("PanCells", func() { _ = m.PanCells(dx, dy) })
 	after, _ := m.Centre()
-	if math.Abs(after.Lat-before.Lat) > 1e-9 || math.Abs(after.Lon-before.Lon) > 1e-9 {
-		return d
+	if math.Abs(after.Lat-before.Lat) > 1e-9 || math.Abs(after.Lon-before.Lon) > 1e-9 || d.mapMode() == modePropagation {
+		return d // moved, or at the world's edge in the Propagation mode: no region lies beyond
 	}
 	if _, ok := geo.Neighbour(d.mapPane.region.Name, dir); !ok {
 		return d
@@ -954,12 +1004,17 @@ func (d Dashboard) followSelection() Dashboard {
 		return d
 	}
 	region, ok := geo.RegionOf(loc.Lat, loc.Lon)
+	d.mapPane.outside = ""
 	if !ok {
 		d.mapPane.outside = loc.Label
+	}
+	if ok {
+		d.mapPane.region = region
+	}
+	if d.outsideStated() {
 		return d
 	}
-	d.mapPane.outside, d.mapPane.region = "", region
-	d = d.boundMap()
+	d = d.boundMap() // the region's, or in the Propagation mode none
 	d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}) })
 	return d
 }
@@ -1269,7 +1324,7 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 		{join(actMapScrollUp, actMapScrollDown), "Scroll"},
 		{join(actMapAlerts, actMapOverlays), "Area Alerts / Overlays"},
 		{shiftArrows(join(actMapPlay, actMapBack, actMapOn, actMapNewest), ascii), "Play / Back / On / Now"},
-		{join(actMapRadar, actMapHighLow), "Radar Mode / Forecast Hi-Lo"}, // D-94, D-97
+		{join(actMapRadar, actMapProp, actMapHighLow), "Radar / Propagation / Forecast Hi-Lo"}, // D-94, D-153, D-97
 	}
 	// D-77: the region keys in two rows of three, each number's region named
 	// in order - six rows push Help past its window.

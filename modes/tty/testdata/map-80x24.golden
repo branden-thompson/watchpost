@@ -19,7 +19,7 @@
    ›│⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⠔⠢⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⣀⣀⠤⠤│   
     │├───┤ 20 km⠀⠀⠀⠀⠀⠀OpenFreeMap (c) OpenMapTiles Data from OpenStreetMap│   
     │ This is a coarser picture: the map has no finer tiles for this view.│   
-    │ [A] Area Alerts  [R] Radar On  [O] Overlays                         │   
+    │ [A] Area Alerts  [R] Radar On  [P] Propagation Off  [O] Overlays    │   
     └─────────────────────────────────────────────────────────────────────┘   
         ●       006. Benchmark City 06        90005   P.CLOUDY       82°F     
         ●    1⚠ 007. Benchmark City 07        90006   P.CLOUDY       84°F     

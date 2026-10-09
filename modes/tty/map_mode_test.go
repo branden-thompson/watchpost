@@ -1,10 +1,12 @@
 package tty
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/branden-thompson/watchpost/platform/declset"
@@ -76,7 +78,25 @@ func modeSlips(fset *token.FileSet, f *ast.File, modes []string) []string {
 			if x.Name == "radarMode" {
 				at(x, "the Radar-or-not boolean: name the mode")
 			}
+		case *ast.IfStmt:
+			if x.Else != nil && names(x.Cond) {
+				at(x, "an else after a mode comparison: a mode added later lands in it")
+			}
 		case *ast.SwitchStmt:
+			if x.Tag == nil {
+				decides, hasDefault := false, false
+				for _, s := range x.Body.List {
+					cc := s.(*ast.CaseClause)
+					hasDefault = hasDefault || cc.List == nil
+					for _, e := range cc.List {
+						decides = decides || names(e)
+					}
+				}
+				if decides && hasDefault {
+					at(x, "a default in a switch that decides by mode: a mode added later lands in it")
+				}
+				return true
+			}
 			call, ok := x.Tag.(*ast.CallExpr)
 			if !ok {
 				return true
@@ -141,14 +161,28 @@ func (d D) a() bool { return d.mapMode() != modeRadar }
 func (d D) b() bool { return !(d.mapMode() == modeForecast) }
 func (d D) c() bool { return d.radarMode() }
 func (d D) e() { switch d.mapMode() { case modeRadar: } }
-func (d D) g() { switch d.mapMode() { case modeRadar, modeForecast: default: } }
-func (d D) ok() bool { return d.mapMode() == modeForecast }
+func (d D) g() { switch d.mapMode() { default: } }
+func (d D) h() { if d.mapMode() == modeRadar { d.x() } else { d.y() } }
+func (d D) i() { switch { case d.mapMode() == modeRadar: d.x(); default: d.y() } }
+func (d D) ok() bool { if d.mapMode() == modeForecast { return true }; switch { case d.mapMode() == modeRadar: }; return false }
 `
 	pf, err := parser.ParseFile(fset, "planted.go", planted, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := modeSlips(fset, pf, modes); len(got) != 5 {
-		t.Errorf("the planted slips gave %d findings, want 5: %v", len(got), got)
+	flagged := map[int]bool{}
+	for _, f := range modeSlips(fset, pf, modes) {
+		var line int
+		if _, err := fmt.Sscanf(strings.TrimPrefix(f, "planted.go:"), "%d", &line); err == nil {
+			flagged[line] = true
+		}
+	}
+	for line := 2; line <= 8; line++ {
+		if !flagged[line] {
+			t.Errorf("planted slip on line %d was not caught", line)
+		}
+	}
+	if flagged[9] {
+		t.Error("the planted function that names its modes was flagged")
 	}
 }

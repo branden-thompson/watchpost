@@ -63,7 +63,7 @@ release candidates (go-tuiMaps v0.3.0 first, D-3), O1 and O3 (`implementation-pl
 ## Batch 4 — W2.0, the map-mode type; D-152's toolchain; the rulings since batch 3
 
 - **The map-mode type (C-M2, A-29).** `radarMode()` was a boolean, so each of its negations meant "Forecast, or any mode added later". It is now `mapMode()`, returning `modeRadar` or `modeForecast` (`modes/tty/map_temp.go`).
-  - Every site names the mode it means: `d.radarMode()` became `== modeRadar` and `!d.radarMode()` became `== modeForecast`. A third mode (Propagation, W2.1) therefore takes neither branch until a site decides for it, which suits a mode that draws none of the weather layers (W2.2).
+  - Every site names the mode it means: `d.radarMode()` became `== modeRadar` and `!d.radarMode()` became `== modeForecast`. **That alone did not keep a third mode out of the other modes' branches:** an `else`, a tagless switch's `default` and an early return still caught it (batch 5's survey found the sites; batch 5 widened the test and audited them).
   - **27 call sites**, not the plan's 28, which counted the definition.
   - `TestEveryMapModeIsHandledAtEverySite` walks the package and fails on a mode compared with `!=`, a negated mode comparison, a switch on the mode that leaves one out or has a default, and the old boolean. Five planted slips are caught. The modes are read from the declarations, with the type carried down an `iota` block; the agent's first walk missed `modeForecast` there.
   - Mutants m119 (a site decides by "not Radar") and m120 (the radar layer read as Forecast), each checked killed by hand and restored by copy.
@@ -75,4 +75,28 @@ release candidates (go-tuiMaps v0.3.0 first, D-3), O1 and O3 (`implementation-pl
   - go-tuiMaps P0, P1 and P2.1 are built; `v0.3.0-rc.1`'s release check is green but it is not tagged.
   - go-ionomaps G0 to G4.2 are built, G4.2 being the NOAA-only `Library.Update` (its D-56, A-4).
   - Neither is pushed: the GitHub token lacks the `workflow` scope. W3.1 and W4.1 import both, so they wait for the push; W2.1 to W2.5 do not.
+- **Checks:** `modes/tty` and `app` whole with `-race`; then `make verify`.
+
+## Batch 5 — W2.1 to W2.3, the Propagation mode: its key, its bound, a place in no region (D-153, D-154, A-33)
+
+- **The mode.** `modePropagation` joins Radar and Forecast. `mapPane.prop` holds it, so it is never saved, and every open clears it (D-154). P enters it and returns to the mode it came from; R leaves it for Radar (D-153). Both recentre on the selected place.
+- **Batch 4's claim corrected.** A survey of the map's code found that a site written `if mode == Forecast { … } else { … }`, a tagless switch with a `default`, or an early return sends a new mode into another mode's branch. `TestEveryMapModeIsHandledAtEverySite` now also fails on an `else` after a mode comparison and on a `default` in a switch that decides by mode (seven planted slips, each caught by line).
+  - The sites were rewritten as three-way switches: the temperature's and feels-like's days, the rows under the map, the playback keys, the badge, the chips and the status line.
+  - The early returns were audited by hand: `ensureMainOverlay`, `flipHighLow` and the forecast's tick now stop for the Propagation mode as for Radar.
+- **Layers (FR-1.4).** `layerOn` is false for every weather layer in the Propagation mode, which takes the radar's loop, the temperature, the alert areas and their badges off. Nothing of the weather's is asked on entering it. `retime` filters the held feed by layer, so a step before the feed's next answer cannot draw the weather again (m127, which survived until the test looked before that answer).
+- **Bound (FR-1.2, FR-1.7).** No region's bound in the Propagation mode, so a view can cross any meridian.
+  - **Found:** with the zero bound go-tuiMaps v0.2.0 zooms below 0 (-6 reached), and `TestEachModeKeepsItsOwnBound`'s drive at that zoom was killed for memory.
+  - watchpost holds the least zoom, the world filling the map one way (`holdWorld`), after every zoom, resize and entry. F-214 asks the library for a least zoom without a box.
+  - The weather modes keep the library's bound: back from the Propagation mode, every frame is inside its region.
+- **A place in no region (FR-1.3).** The words name P, as bound; P draws the Propagation mode there, on the place; P again gives the stated state back.
+- **Words (FR-1.1).** The badge PROPAGATION, a chip `[P] Propagation On/Off`, a status line, a loop row, and a sentence in the description: every path, `--ascii` and "Instead of the map" included (A-33).
+- **The frame's cost.** The first build cost 140 more allocations a memo miss: `layerOn` now asks the mode, and `choiceOf` split the choices into a new slice on every call. `strings.SplitSeq` walks them without one; the miss is 4,011, below batch 4's 4,164, and no budget moved.
+- **Goldens.** The three map goldens changed by the P chip alone (`-update-golden`).
+- **m119 re-pointed.** Its line, the playback `if` in `handleMapKey`, became a switch, and `make verify`'s `mutant-anchors` stopped the first run of this batch: the agent rewrote the line without grepping the mutants first. It now mutates `flipHighLow`'s guard to "not Forecast", which the mode test catches.
+- **Mutants** m121 to m128, each checked killed by hand and restored by copy:
+  - three of the agent's own needed work:
+    - m123 did not compile (a duplicate case) and was rewritten.
+    - m124 was first "killed" only by the process running out of memory, so the bound test now asserts the zoom before its drive.
+    - m122 assigned the field to itself, which the harness's `go vet` refuses, and stopped the second `make verify`. It now deletes the reset. Every new mutant is now applied and vetted by hand before verify.
+- **Docs:** the as-built map diagram draws `map_prop.go` and the P key; the atlas is regenerated.
 - **Checks:** `modes/tty` and `app` whole with `-race`; then `make verify`.

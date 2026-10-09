@@ -40,19 +40,25 @@ func (d Dashboard) scrubRows(width int) []string {
 	switch {
 	case d.mapMode() == modeRadar:
 		out = append(out, " "+d.radarLegendRow(width))
-	case d.rainOn():
+	case d.mapMode() == modeForecast && d.rainOn():
 		head, preset := d.rainKey()
 		out = append(out, " "+d.rainRow(head, preset, width)) // D-117: radar's colours, said to be a model's; D-184: NDFD's totals in their own
-	default:
+	case d.mapMode() == modeForecast:
 		out = append(out, " "+d.tempLegendRow(width)) // W10.10: the bands' colours, as radar's are
+	case d.mapMode() == modePropagation:
+		out = append(out, "") // its legend comes with its layers (W3.1); the row is held, so the map's size never depends on the mode
 	}
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
 	}
 	out = append(out, " "+render.TruncateCells(d.pictureStatus(), width)) // blank when whole: the map's size never waits on it
-	tl := d.mapPane.radarTimeline
-	if d.mapMode() == modeForecast {
+	var tl []string                                                       // the Propagation mode's: none yet, its rows held blank
+	switch d.mapMode() {
+	case modeRadar:
+		tl = d.mapPane.radarTimeline
+	case modeForecast:
 		tl = d.mapPane.fcTimeline // D-94: Forecast mode's steps
+	case modePropagation:
 	}
 	block := []string{d.loopRow(d.scrubW())}
 	for i := range radarRows {
@@ -212,6 +218,9 @@ func (d Dashboard) loopRow(width int) string {
 			return item(render.Tint("PLAYING", render.Tok(render.ProviderOK)))
 		}
 		return item(render.Tint("STOPPED", render.Tok(render.ListPointer)))
+	}
+	if d.mapMode() == modePropagation {
+		return render.PadTo("", from) + render.TruncateCells(propagationLabel+" · NO DATA YET", max(width-from, 1))
 	}
 	if d.mapMode() == modeForecast {
 		steps := d.forecastSteps()

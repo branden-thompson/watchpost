@@ -363,8 +363,13 @@ func (d Dashboard) nearbyLabel() string {
 }
 
 // layerOn reports whether a layer is drawn: the listener's choice, or the
-// builders' default. A key the registry does not name is drawn.
+// builders' default. A key the registry does not name is drawn. In the
+// Propagation mode no weather layer is (D-21, FR-1.4); the choices are kept
+// for the weather modes.
 func (d Dashboard) layerOn(key string) bool {
+	if d.mapMode() == modePropagation {
+		return false
+	}
 	if key == TemperatureLayer && d.mapPane.tempAuto && d.mapMode() == modeForecast {
 		return true // Forecast mode turned it on (D-103), its alone (D-104)
 	}

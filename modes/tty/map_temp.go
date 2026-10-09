@@ -169,13 +169,17 @@ type mapMode uint8
 
 // The map's modes.
 const (
-	modeRadar    mapMode = iota + 1 // the radar loop: the radar layer on
-	modeForecast                    // the days ahead: the radar layer off
+	modeRadar       mapMode = iota + 1 // the radar loop: the radar layer on
+	modeForecast                       // the days ahead: the radar layer off
+	modePropagation                    // MUF and foF2 over the world: P, never saved (D-153, D-154)
 )
 
-// mapMode is the mode the map is in: Radar while the radar layer is on
-// (D-94), else Forecast.
+// mapMode is the mode the map is in: Propagation while P holds it (D-153),
+// else Radar while the radar layer is on (D-94), else Forecast.
 func (d Dashboard) mapMode() mapMode {
+	if d.mapPane.prop {
+		return modePropagation
+	}
 	if d.chosen(RadarLayer) {
 		return modeRadar
 	}
@@ -315,20 +319,18 @@ func (d Dashboard) tempOverlays() []tuimaps.Overlay {
 	if d.layerOn(TemperatureLayer) { // held, not drawn, while off (D-99)
 		out = append(out, t.Overlays...)
 		switch {
-		case d.mapMode() == modeRadar:
-		case d.mapPane.fcLow:
+		case d.mapMode() == modeForecast && d.mapPane.fcLow:
 			out = append(out, t.Low...)
-		default:
+		case d.mapMode() == modeForecast:
 			out = append(out, t.High...)
 		}
 	}
 	if d.layerOn(FeelsLayer) { // feels-like, as temperature (D-119)
 		out = append(out, t.Feels...)
 		switch {
-		case d.mapMode() == modeRadar:
-		case d.mapPane.fcLow:
+		case d.mapMode() == modeForecast && d.mapPane.fcLow:
 			out = append(out, t.FeelsLow...)
-		default:
+		case d.mapMode() == modeForecast:
 			out = append(out, t.FeelsHigh...)
 		}
 	}
@@ -462,17 +464,30 @@ const (
 // switchMode turns Radar mode on or off (D-94): the radar layer's switch,
 // saved as the Overlays menu saves it. The loop, the temperature and every
 // timed overlay are asked or set again for the mode, and Forecast mode opens
-// on Now, stopped.
+// on Now, stopped. From the Propagation mode it goes to Radar (D-153).
 func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 	choice := choicesOf(d.mapLayerChoice)
 	if choice == nil {
 		choice = map[string]bool{}
 	}
-	choice[RadarLayer] = d.mapMode() == modeForecast
+	leaving := false
+	switch d.mapMode() {
+	case modeRadar:
+		choice[RadarLayer] = false
+	case modeForecast:
+		choice[RadarLayer] = true
+	case modePropagation:
+		choice[RadarLayer], leaving = true, true
+	}
 	d.mapLayerChoice = layerChoiceKey(choice)
 	d.setup.uiDirty = true
 	save := d.uiApplyCmd()
 	d.setup.uiDirty = false
+	if leaving {
+		d.mapPane.prop = false
+		d, cmd := d.enterMode() // the region's bound back, and the weather's data asked again
+		return d, tea.Batch(save, cmd)
+	}
 	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false
 	d.mapPane.fcGen++
 	d.mapPane.tempAuto = false // Forecast mode's alone (D-104)
@@ -488,7 +503,7 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 // draw no main overlay (D-103) - a blank map reads as broken - and shows the
 // chip that says so. It is Forecast mode's alone, never saved (D-104).
 func (d Dashboard) ensureMainOverlay() Dashboard {
-	if d.mapMode() == modeRadar || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) || d.layerOn(UVLayer) || d.layerOn(AirLayer) {
+	if d.mapMode() == modeRadar || d.mapMode() == modePropagation || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) || d.layerOn(UVLayer) || d.layerOn(AirLayer) {
 		return d // a main overlay is on already: temperature, feels-like, wind, UV or air quality (D-110, D-119, D-137, D-139)
 	}
 	d.mapPane.tempAuto, d.mapPane.modeChip = true, true
@@ -514,7 +529,7 @@ func (d Dashboard) showStep() Dashboard {
 
 // flipHighLow switches Forecast mode's days between high and low (D-97).
 func (d Dashboard) flipHighLow() Dashboard {
-	if d.mapMode() == modeRadar {
+	if d.mapMode() == modeRadar || d.mapMode() == modePropagation {
 		return d
 	}
 	d.mapPane.fcLow = !d.mapPane.fcLow
@@ -562,7 +577,7 @@ func (d Dashboard) handleForecastPlayback(act term.Action) (Dashboard, tea.Cmd, 
 
 // applyForecastTick advances a playing forecast one step, holding the last.
 func (d Dashboard) applyForecastTick(v forecastTickMsg) (tea.Model, tea.Cmd) {
-	if v.gen != d.mapPane.fcGen || !d.mapPane.fcPlaying || d.modal != modalMap || d.mapMode() == modeRadar {
+	if v.gen != d.mapPane.fcGen || !d.mapPane.fcPlaying || d.modal != modalMap || d.mapMode() == modeRadar || d.mapMode() == modePropagation {
 		return d, nil
 	}
 	last := len(d.forecastSteps()) - 1
@@ -625,7 +640,7 @@ func (d Dashboard) retime() Dashboard {
 	if d.mapPane.m == nil || d.mapPane.feed == nil {
 		return d
 	}
-	return d.setFeed(*d.mapPane.feed)
+	return d.setFeed(d.feedForLayers(*d.mapPane.feed)) // the mode's layers: none of the weather's in the Propagation mode
 }
 
 // retimeDrawn is retime, drawn once: the feed's overlays set again with the
