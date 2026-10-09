@@ -104,6 +104,18 @@ this plan's "UAT" section.
 | W10.3 | **The M1 and M4 instrument (L-F1, H-4.1, C-T2):** the scenario draw (at least 200 per metric, both outcomes, at least 3 days); WSPR spots normalised to 100 W at +13 dB (D-91) within ±1 h; the climatology baseline's answers on the same scenarios, measured first (D-118); per-band agreement reported; the inputs kept outside the tree with the PLAN evidence | the instrument's dry run on recorded days, then the measurement on a build with the mode |
 | W10.4 | The UAT prompter: shows each question, records the times on a key press, captures watchpost's words as the scored key (D-89, D-92), writes `uat-results.md` redacted (D-115) | a scripted run over the protocol's questions on a recorded build |
 
+## UAT-1, the early slice (D-151)
+
+The first UAT build comes as early as the data allows, and UAT then shapes the rest (D-151). Its contents, in this order:
+
+| Project | Tasks | What it gives the build |
+|---|---|---|
+| go-tuiMaps | P0, P1, P2.1, then `v0.3.0-rc.1` | fields over water; the `muf` and `fof2` presets |
+| go-ionomaps | G0 to G4 | the gate; the types and fetcher; the GloTEC parser; the climatology; the background: foF2 from GloTEC, M(3000)F2 from the climatology, so MUF is real |
+| watchpost | W2.0 to W2.5, W3.1, W4.1 | the mode, its world bound, opening anywhere, its keys and Help, the acknowledgement, the two layers, the data path, fetched only while open |
+
+**Not in UAT-1, and said on screen:** no GIRO stations or assimilation (go-ionomaps G5, G9), so the field is the background alone. The reference chart (W5), hours ahead (G8), words without the picture (W6) and the Broadcaster (W7) follow in later builds. Each build is announced when it is ready. UAT's verdicts become D-rows (0.18.0 L8), and the plan's later order is set from them.
+
 ## UAT (M2, M5, M5b)
 
 Graded by the HUM LEAD alone (D-68). The protocol is `07-readiness/uat-protocol.md`:

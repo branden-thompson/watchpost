@@ -265,7 +265,7 @@ func (d Dashboard) quotaNoticeText() string {
 // last answer, held - neither. sources are the fallbacks' own, once each.
 func (d Dashboard) quotaLayers() (fallbacks, missing int, sources []string) {
 	for _, key := range openMeteoLayers { // six (P10-02)
-		if !d.layerOn(key) || (key == RainLayer && d.radarMode()) {
+		if !d.layerOn(key) || (key == RainLayer && d.mapMode() == modeRadar) {
 			continue
 		}
 		chips := d.mapPane.temp.Chips[key]
@@ -537,7 +537,7 @@ func (d Dashboard) overlayRows() []overlayRow {
 	group := func(key, label string, layers []string, fill bool) {
 		var members []overlayRow
 		for _, k := range layers {
-			if _, ok := registered[k]; !ok || (k == RainLayer && d.radarMode()) {
+			if _, ok := registered[k]; !ok || (k == RainLayer && d.mapMode() == modeRadar) {
 				placed[k] = true // Rain & snow is Forecast mode's alone: Radar mode's rain is the radar (D-117)
 				continue
 			}

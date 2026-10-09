@@ -162,9 +162,25 @@ func ForecastSteps(anchor time.Time) []ForecastStep {
 // Day 3 to Day 7).
 const forecastDays = 7
 
-// radarMode reports whether the map is in Radar mode: the radar layer is on
-// (D-94). Off, it is in Forecast mode.
-func (d Dashboard) radarMode() bool { return d.chosen(RadarLayer) }
+// mapMode is the map's mode (D-94). A place that decides by it names the
+// modes it means - == a mode, or a switch listing every mode - so a mode
+// added later falls into no other's behaviour (W2.0, C-M2).
+type mapMode uint8
+
+// The map's modes.
+const (
+	modeRadar    mapMode = iota + 1 // the radar loop: the radar layer on
+	modeForecast                    // the days ahead: the radar layer off
+)
+
+// mapMode is the mode the map is in: Radar while the radar layer is on
+// (D-94), else Forecast.
+func (d Dashboard) mapMode() mapMode {
+	if d.chosen(RadarLayer) {
+		return modeRadar
+	}
+	return modeForecast
+}
 
 // tempAnchor is the start of the listener's hour: Forecast mode's Now, and
 // what its days are counted from.
@@ -299,7 +315,7 @@ func (d Dashboard) tempOverlays() []tuimaps.Overlay {
 	if d.layerOn(TemperatureLayer) { // held, not drawn, while off (D-99)
 		out = append(out, t.Overlays...)
 		switch {
-		case d.radarMode():
+		case d.mapMode() == modeRadar:
 		case d.mapPane.fcLow:
 			out = append(out, t.Low...)
 		default:
@@ -309,7 +325,7 @@ func (d Dashboard) tempOverlays() []tuimaps.Overlay {
 	if d.layerOn(FeelsLayer) { // feels-like, as temperature (D-119)
 		out = append(out, t.Feels...)
 		switch {
-		case d.radarMode():
+		case d.mapMode() == modeRadar:
 		case d.mapPane.fcLow:
 			out = append(out, t.FeelsLow...)
 		default:
@@ -318,17 +334,17 @@ func (d Dashboard) tempOverlays() []tuimaps.Overlay {
 	}
 	if d.layerOn(WindLayer) { // the wind's, beside it or alone (D-110)
 		out = append(out, t.Wind...)
-		if !d.radarMode() {
+		if d.mapMode() == modeForecast {
 			out = append(out, t.WindDays...)
 		}
 	}
 	if d.layerOn(WaveLayer) { // the waves, over the sea alone (D-126)
 		out = append(out, t.Waves...)
-		if !d.radarMode() {
+		if d.mapMode() == modeForecast {
 			out = append(out, t.WaveDays...)
 		}
 	}
-	if d.layerOn(RainLayer) && !d.radarMode() { // Forecast mode's rain and snow (D-117)
+	if d.layerOn(RainLayer) && d.mapMode() == modeForecast { // Forecast mode's rain and snow (D-117)
 		out = append(out, t.Rain...)
 	}
 	for _, m := range []struct {
@@ -337,7 +353,7 @@ func (d Dashboard) tempOverlays() []tuimaps.Overlay {
 	}{{UVLayer, t.UV, t.UVDays}, {AirLayer, t.Air, t.AirDays}} { // D-137, D-139
 		if d.layerOn(m.layer) {
 			out = append(out, m.hours...)
-			if !d.radarMode() {
+			if d.mapMode() == modeForecast {
 				out = append(out, m.day...)
 			}
 		}
@@ -371,7 +387,7 @@ func (d Dashboard) rainKey() (head, preset string) {
 
 // rainOn reports whether Forecast mode draws its rain and snow now.
 func (d Dashboard) rainOn() bool {
-	if d.radarMode() || !d.layerOn(RainLayer) {
+	if d.mapMode() == modeRadar || !d.layerOn(RainLayer) {
 		return false
 	}
 	for id := range d.mapPane.tempGiven {
@@ -452,7 +468,7 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 	if choice == nil {
 		choice = map[string]bool{}
 	}
-	choice[RadarLayer] = !d.radarMode()
+	choice[RadarLayer] = d.mapMode() == modeForecast
 	d.mapLayerChoice = layerChoiceKey(choice)
 	d.setup.uiDirty = true
 	save := d.uiApplyCmd()
@@ -472,7 +488,7 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 // draw no main overlay (D-103) - a blank map reads as broken - and shows the
 // chip that says so. It is Forecast mode's alone, never saved (D-104).
 func (d Dashboard) ensureMainOverlay() Dashboard {
-	if d.radarMode() || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) || d.layerOn(UVLayer) || d.layerOn(AirLayer) {
+	if d.mapMode() == modeRadar || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) || d.layerOn(UVLayer) || d.layerOn(AirLayer) {
 		return d // a main overlay is on already: temperature, feels-like, wind, UV or air quality (D-110, D-119, D-137, D-139)
 	}
 	d.mapPane.tempAuto, d.mapPane.modeChip = true, true
@@ -488,7 +504,7 @@ func (d Dashboard) showStep() Dashboard {
 		return d
 	}
 	var sp tuimaps.Span
-	if !d.radarMode() {
+	if d.mapMode() == modeForecast {
 		steps := d.forecastSteps()
 		sp = steps[min(d.mapPane.fcStep, len(steps)-1)].Span
 	}
@@ -498,7 +514,7 @@ func (d Dashboard) showStep() Dashboard {
 
 // flipHighLow switches Forecast mode's days between high and low (D-97).
 func (d Dashboard) flipHighLow() Dashboard {
-	if d.radarMode() {
+	if d.mapMode() == modeRadar {
 		return d
 	}
 	d.mapPane.fcLow = !d.mapPane.fcLow
@@ -546,7 +562,7 @@ func (d Dashboard) handleForecastPlayback(act term.Action) (Dashboard, tea.Cmd, 
 
 // applyForecastTick advances a playing forecast one step, holding the last.
 func (d Dashboard) applyForecastTick(v forecastTickMsg) (tea.Model, tea.Cmd) {
-	if v.gen != d.mapPane.fcGen || !d.mapPane.fcPlaying || d.modal != modalMap || d.radarMode() {
+	if v.gen != d.mapPane.fcGen || !d.mapPane.fcPlaying || d.modal != modalMap || d.mapMode() == modeRadar {
 		return d, nil
 	}
 	last := len(d.forecastSteps()) - 1
@@ -573,7 +589,7 @@ type TimedOverlay struct {
 // timedAnchor is the moment the mode calls now: in Radar mode the newest
 // observed frame, else the start of the listener's hour.
 func (d Dashboard) timedAnchor() time.Time {
-	if d.radarMode() && d.mapPane.m != nil {
+	if d.mapMode() == modeRadar && d.mapPane.m != nil {
 		if st := d.mapPane.m.Loop(); st.Count > 0 {
 			return st.Now
 		}
@@ -593,7 +609,7 @@ func (d Dashboard) spanFor(t TimedOverlay) tuimaps.Span {
 	if !t.From.IsZero() && !t.From.After(d.now()) && t.From.After(anchor) {
 		sp.From = anchor
 	}
-	if t.Happened && !d.radarMode() {
+	if t.Happened && d.mapMode() == modeForecast {
 		sp.Until = anchor
 	}
 	if !sp.Until.IsZero() && sp.Until.Before(sp.From) {
@@ -679,7 +695,7 @@ func (d Dashboard) badgeStep() string {
 // stepSource is the source of the step shown: Open-Meteo on a day it filled
 // (D-100), else the source asked.
 func (d Dashboard) stepSource() string {
-	if at := d.mapPane.fcStep; at > 0 && !d.radarMode() {
+	if at := d.mapPane.fcStep; at > 0 && d.mapMode() == modeForecast {
 		side := "high"
 		switch {
 		case !d.layerOn(TemperatureLayer) && !d.layerOn(FeelsLayer) && d.layerOn(WindLayer):

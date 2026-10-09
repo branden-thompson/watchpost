@@ -158,8 +158,8 @@ func TestRSwitchesBetweenRadarAndForecastModes(t *testing.T) {
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
 	d = settleRadar(t, m.(Dashboard), cmd)
-	if d.radarMode() || len(d.mapPane.radarGiven) != 0 {
-		t.Fatalf("R left Radar mode on (%v) or its loops (%d)", d.radarMode(), len(d.mapPane.radarGiven))
+	if d.mapMode() == modeRadar || len(d.mapPane.radarGiven) != 0 {
+		t.Fatalf("R left Radar mode on (%v) or its loops (%d)", d.mapMode() == modeRadar, len(d.mapPane.radarGiven))
 	}
 	if !d.radarTimelineOn() || len(d.mapPane.fcTimeline) != radarRows {
 		t.Errorf("Forecast mode holds no timeline rows (%d); the steps are its scrubber (D-94)", len(d.mapPane.fcTimeline))
@@ -175,7 +175,7 @@ func TestRSwitchesBetweenRadarAndForecastModes(t *testing.T) {
 		t.Error("the temperature was not asked again for Forecast mode")
 	}
 	m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	if d = settleRadar(t, m.(Dashboard), cmd); !d.radarMode() || len(d.mapPane.radarGiven) == 0 {
+	if d = settleRadar(t, m.(Dashboard), cmd); d.mapMode() != modeRadar || len(d.mapPane.radarGiven) == 0 {
 		t.Error("R again did not bring Radar mode and its loop back")
 	}
 }

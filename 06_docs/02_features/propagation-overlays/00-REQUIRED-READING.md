@@ -19,7 +19,7 @@ one** (0.18.0 D-11).
 | | |
 |---|---|
 | Branch | `feature/propagation-overlays`, cut from `main` (31038ebf); squash-merged `release/0.19.0` at SHIP (D-5) |
-| Phase | **BUILD** (PLAN approved 2026-10-07, D-139; `08-reports/plan-report.md`). W0.0 (the wire cost) and W1 (#27: roll-up parts, a byte bound per dataset, compact values) are built (`04-development/build-log.md`, batches 1 to 3); next, the libraries' release candidates, go-tuiMaps v0.3.0 first. PLAN's red team: two rounds (`08-reports/red-team-plan.md`). DISCOVER approved 2026-10-06 (D-84). O2 moved to 0.19.1 (D-122) |
+| Phase | **BUILD** (PLAN approved 2026-10-07, D-139; `08-reports/plan-report.md`). W0.0 (the wire cost), W1 (#27: roll-up parts, a byte bound per dataset, compact values) and W2.0 (the map-mode type) are built (`04-development/build-log.md`, batches 1 to 4). go-tuiMaps P0 to P2.1 and go-ionomaps G0 to G4.2 are built, unpushed until the token has the `workflow` scope. Next, W2.1 to W2.5, then W3.1 and W4.1 once the libraries are pushed: UAT-1 (D-151). PLAN's red team: two rounds (`08-reports/red-team-plan.md`). DISCOVER approved 2026-10-06 (D-84). O2 moved to 0.19.1 (D-122) |
 | Brief | `01-objectives/project-brief.md`, APPROVED (D-16) |
 | Problems and metrics | `01-objectives/problem-statement.md`: PS-1 (the Broadcaster operator), PS-2 (the Observer ham), LOCKED (D-7); M1, M2, M4, M5, M5b and G1 (D-8, D-9; M3 retired at D-76); "open" is the reference circuit (D-73); floors set before the dry run (D-75); targets from the dry run (D-49) |
 | Rulings | `02-analysis/rulings.md`: every ruling lands here the moment it is made; minor items are A-n rows, batched for veto (D-13) |

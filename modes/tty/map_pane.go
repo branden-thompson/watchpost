@@ -628,7 +628,7 @@ func (d Dashboard) mapStatusLine() string {
 	// D-89's order: the radar's line, the estimate after a slash, then what
 	// the picture's status says - W8.8's loop and its age always first.
 	lead := d.mapPane.radarLine
-	if !d.radarMode() && d.cfg.MapRadar != nil {
+	if d.mapMode() == modeForecast && d.cfg.MapRadar != nil {
 		lead = d.forecastStatus() // D-94: Forecast mode's line in the radar's place
 	}
 	if est := costEstimate(d.mapCost); est != "" {
@@ -814,8 +814,8 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	case actMapHighLow: // D-97: the days' high or low
 		return d.flashMapKey(act).flipHighLow(), d.mapWorkCmd(), true
 	}
-	d = d.flashMapKey(act) // U1-11: the controls' chip blinks
-	if !d.radarMode() {    // Forecast mode: the host steps (D-94)
+	d = d.flashMapKey(act)           // U1-11: the controls' chip blinks
+	if d.mapMode() == modeForecast { // Forecast mode: the host steps (D-94)
 		if nd, cmd, ok := d.handleForecastPlayback(act); ok {
 			return nd, tea.Batch(cmd, nd.mapWorkCmd()), true
 		}

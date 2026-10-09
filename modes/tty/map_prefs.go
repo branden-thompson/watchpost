@@ -365,15 +365,15 @@ func (d Dashboard) nearbyLabel() string {
 // layerOn reports whether a layer is drawn: the listener's choice, or the
 // builders' default. A key the registry does not name is drawn.
 func (d Dashboard) layerOn(key string) bool {
-	if key == TemperatureLayer && d.mapPane.tempAuto && !d.radarMode() {
+	if key == TemperatureLayer && d.mapPane.tempAuto && d.mapMode() == modeForecast {
 		return true // Forecast mode turned it on (D-103), its alone (D-104)
 	}
 	return d.chosen(key)
 }
 
 // chosen is a layer as the listener chose it: its tick, inside its group.
-// radarMode reads the radar through it rather than through layerOn, which
-// would ask radarMode again - a cycle P10 forbids (W14, S-3); the radar is
+// mapMode reads the radar through it rather than through layerOn, which
+// would ask mapMode again - a cycle P10 forbids (W14, S-3); the radar is
 // never Forecast mode's own, so the answer is the same.
 func (d Dashboard) chosen(key string) bool {
 	if g, ok := layerGroup[key]; ok && !d.groupOn(g) {
@@ -630,7 +630,7 @@ func (d Dashboard) mapAsk() MapAsk {
 		snap = &joined
 	}
 	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
-		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RainFull: d.mapRainFull, UVCities: d.mapUVCities, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fire: d.layerOn(FireLayer), Quakes: d.layerOn(QuakeLayer), AlertsOff: !d.layerOn(AlertLayer), AlertCategoriesOff: d.alertCategoriesOff(), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
+		Forecast: d.mapMode() == modeForecast, TempNDFD: d.mapTempNDFD, RainFull: d.mapRainFull, UVCities: d.mapUVCities, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fire: d.layerOn(FireLayer), Quakes: d.layerOn(QuakeLayer), AlertsOff: !d.layerOn(AlertLayer), AlertCategoriesOff: d.alertCategoriesOff(), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

@@ -38,7 +38,7 @@ const scrubBoxRows = 1 + radarRows + 1
 func (d Dashboard) scrubRows(width int) []string {
 	var out []string
 	switch {
-	case d.radarMode():
+	case d.mapMode() == modeRadar:
 		out = append(out, " "+d.radarLegendRow(width))
 	case d.rainOn():
 		head, preset := d.rainKey()
@@ -51,7 +51,7 @@ func (d Dashboard) scrubRows(width int) []string {
 	}
 	out = append(out, " "+render.TruncateCells(d.pictureStatus(), width)) // blank when whole: the map's size never waits on it
 	tl := d.mapPane.radarTimeline
-	if !d.radarMode() {
+	if d.mapMode() == modeForecast {
 		tl = d.mapPane.fcTimeline // D-94: Forecast mode's steps
 	}
 	block := []string{d.loopRow(d.scrubW())}
@@ -110,7 +110,7 @@ func (d Dashboard) badgeRows(width int) []string {
 func (d Dashboard) badges() []string {
 	var out []string
 	for _, l := range d.cfg.MapLayers {
-		if l.Key == RadarLayer || (l.Key == RainLayer && d.radarMode()) || !d.layerOn(l.Key) {
+		if l.Key == RadarLayer || (l.Key == RainLayer && d.mapMode() == modeRadar) || !d.layerOn(l.Key) {
 			continue
 		}
 		chips := l.Chips
@@ -213,7 +213,7 @@ func (d Dashboard) loopRow(width int) string {
 		}
 		return item(render.Tint("STOPPED", render.Tok(render.ListPointer)))
 	}
-	if !d.radarMode() {
+	if d.mapMode() == modeForecast {
 		steps := d.forecastSteps()
 		at := min(d.mapPane.fcStep, len(steps)-1)
 		lead := "FORECAST"
