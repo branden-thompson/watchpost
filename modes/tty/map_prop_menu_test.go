@@ -3,6 +3,7 @@ package tty
 import (
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -70,5 +71,33 @@ func TestTheMenuInThePropagationModeShowsTintsAndDetail(t *testing.T) {
 	}
 	if d = pressMap(t, d, "P"); len(d.overlayRows()) != weather || d.mapLayerChoice != choice {
 		t.Errorf("back in the weather mode the menu has %d rows of %d, choices %q of %q", len(d.overlayRows()), weather, d.mapLayerChoice, choice)
+	}
+}
+
+// TestThePropagationRowIsTheFourthOverlay is D-161 and D-162: in both modes
+// the menu has one OVERLAYS heading and one MAP DETAIL heading, and Radio
+// Propagation is the OVERLAYS group's fourth row, after the three tints.
+func TestThePropagationRowIsTheFourthOverlay(t *testing.T) {
+	d := screenDash(t, "with", false)
+	d.cfg.PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
+	d.cfg.PropagationAck = propAckVersion
+	for _, mode := range []string{"weather", "propagation"} {
+		if mode == "propagation" {
+			d = pressMap(t, d, "P")
+		}
+		var lines []string
+		for _, l := range d.overlaysBox() {
+			lines = append(lines, strings.Trim(stripANSITest(l), "│ "))
+		}
+		if n := strings.Count(strings.Join(lines, "\n"), "\nMAP DETAIL\n"); n != 1 {
+			t.Errorf("%s: %d MAP DETAIL headings; want one:\n%s", mode, n, strings.Join(lines, "\n"))
+		}
+		at := slices.Index(lines, "OVERLAYS")
+		if at < 0 || at+4 >= len(lines) || !strings.HasSuffix(lines[at+4], "Radio Propagation") || !strings.HasSuffix(lines[at+3], "Air Quality") {
+			t.Errorf("%s: Radio Propagation is not the fourth row under OVERLAYS:\n%s", mode, strings.Join(lines, "\n"))
+		}
+		if n := strings.Count(strings.Join(lines, "\n"), "\nOVERLAYS\n"); n != 1 {
+			t.Errorf("%s: %d OVERLAYS headings; want one", mode, n)
+		}
 	}
 }

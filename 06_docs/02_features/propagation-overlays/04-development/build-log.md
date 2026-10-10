@@ -170,3 +170,10 @@ release candidates (go-tuiMaps v0.3.0 first, D-3), O1 and O3 (`implementation-pl
 - **Mutants** m151 to m157, each applied, vetted, killed and restored by copy.
   - m153 was first killed only by a panic in another test. The legend test checked 160m's colour, which a colourless fixture cannot see; the class mapping is now a function the test asks directly, and m153 was re-pointed at it.
 - **Docs:** the as-built map diagram; the atlas.
+
+## Batch 10 — UAT-1, round 2: one MAP DETAIL, Radio Propagation the fourth overlay (D-161, D-162)
+
+- **UAT verdicts carried (0.18.0 L8):** D-161 (two MAP DETAIL headings in the Overlays menu), D-162 (Radio Propagation as the OVERLAYS group's fourth row).
+- **One cause:** the menu heads each row's section by whether the row is an overlay (`modes/tty/map_boxes.go:641-643`). Batch 9's Radio Propagation row was not marked one, so it opened a MAP DETAIL section of its own between the tints and the rest, and in the weather modes OVERLAYS was headed a second time after it. Marked an overlay, it is the fourth row under one OVERLAYS heading in both modes.
+- **Missed in batch 9:** its menu tests read the rows, not the menu as drawn; `TestThePropagationRowIsTheFourthOverlay` reads the drawn menu in both modes.
+- **Mutant** m158, applied, vetted, killed and restored by copy.

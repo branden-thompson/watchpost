@@ -534,7 +534,7 @@ func (d Dashboard) overlayRows() []overlayRow {
 		}
 	}
 	if d.cfg.PropagationUpdate != nil {
-		out = append(out, overlayRow{kind: menuRadio, key: propagationRowKey, label: propagationRowLabel}) // D-158: the mode as a tint
+		out = append(out, overlayRow{kind: menuRadio, key: propagationRowKey, label: propagationRowLabel, weather: true}) // D-158: the mode as a tint, the OVERLAYS group's fourth (D-161, D-162)
 	}
 	if d.mapMode() == modePropagation { // D-159: the tints and the map's detail; the weather's groups wait, their ticks kept
 		out = append(out, overlayRow{kind: menuPreset, key: detailLevelKey, label: "Preset"})
