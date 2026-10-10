@@ -165,6 +165,10 @@ const (
 	MapChipGeoNamesBG Token = "map.chip.geonames.bg"
 	MapChipOFMBG      Token = "map.chip.ofm.bg"
 	MapChipPiperBG    Token = "map.chip.piper.bg"
+	// The Propagation mode's sources (0.19.0 FR-4.1), each its own chip.
+	MapChipSWPCBG  Token = "map.chip.swpc.bg"
+	MapChipPyIRIBG Token = "map.chip.pyiri.bg"
+	MapChipIGRFBG  Token = "map.chip.igrf.bg"
 	// MapNoticeQuotaBG is the ground of the map's notice that a source's
 	// quota is spent (W18.1, D-165): dark orange, its words ChipTones'.
 	MapNoticeQuotaBG Token = "map.notice.quota.bg"
@@ -398,6 +402,9 @@ func defaultTheme() map[Token]string {
 		MapChipGeoNamesBG: "48;2;161;98;7",   // #A16207, amber
 		MapChipOFMBG:      "48;2;126;34;206", // #7E22CE, purple
 		MapChipPiperBG:    "48;2;15;23;42",   // #0F172A, ink
+		MapChipSWPCBG:     "48;2;192;38;211", // #C026D3, fuchsia (0.19.0 FR-4.1)
+		MapChipPyIRIBG:    "48;2;67;56;202",  // #4338CA, indigo
+		MapChipIGRFBG:     "48;2;14;116;144", // #0E7490, deep cyan
 		MapNoticeQuotaBG:  "48;2;194;65;12",  // #C2410C, dark orange (D-165)
 		MapChipRecordedBG: "48;2;91;75;138",  // #5B4B8A, muted violet (D-178)
 		// Emergency Orders take THE red (MVS-D-62).

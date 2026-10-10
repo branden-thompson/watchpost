@@ -19,6 +19,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	ionomaps "github.com/branden-thompson/go-ionomaps"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
@@ -55,31 +56,40 @@ const mapWorkLimit = 30 * time.Second
 // mapPane is what the Dashboard holds of the map: the library's map, the
 // lines last drawn, and the counters they were drawn at (FR-8.4, D-45).
 type mapPane struct {
-	m         *tuimaps.Map
-	lines     []string
-	changed   uint64
-	ticks     uint64
-	region    geo.Region     // the region the map is held inside (FR-2.1)
-	outside   string         // the place that is in no region, when it is not (FR-2.5)
-	prop      bool           // in the Propagation mode (D-153); never saved (D-154)
-	status    tuimaps.Status // the last frame's: whole, or still sharpening
-	pending   bool           // work was waiting when it was drawn
-	offline   bool           // a tile failed since the picture was last whole
-	gen       uint64         // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed    string         // why the map could not be built or drawn, said in the window
-	diskOff   bool           // a clear let the disk cache go; named again when the app answers (PF-4)
-	clearErr  error          // what the live map refused in a clear, for the app's answer (IS-M5)
-	calls     *[]string      // tests only: the library calls made, by name, in order
-	where     *[]callSite    // tests only: each call and the goroutine it ran on (W2.2)
-	workers   *mapWorkers    // the commands running for this map, joined on close (W2.6)
-	tickAt    time.Time      // the tick outstanding, at the library's NextCall (W2.2)
-	alertsOn  bool           // the Area Alerts box is open; it waits for A (D-87)
-	menuOn    bool           // the Overlays menu is open (D-65)
-	menuAt    int            // the menu's cursor
-	flash     term.Action    // the map key last pressed, blinking in the controls (U1-11)
-	edge      geo.Direction  // the edge whose chip is showing (D-81)
-	edgeShown bool           // a press held still at the edge: the next the same way crosses
-	flashEnd  time.Time      // when its blink ends
+	m       *tuimaps.Map
+	lines   []string
+	changed uint64
+	ticks   uint64
+	region  geo.Region // the region the map is held inside (FR-2.1)
+	outside string     // the place that is in no region, when it is not (FR-2.5)
+	prop    bool       // in the Propagation mode (D-153); never saved (D-154)
+
+	// The Propagation mode's session (W4.1): its update's context, whether
+	// one is in flight, the session's generation, and the last result.
+	propCtx    context.Context
+	propCancel context.CancelFunc
+	propBusy   bool
+	propGen    uint64
+	propSnap   *ionomaps.Snapshot
+	propErr    error
+	status     tuimaps.Status // the last frame's: whole, or still sharpening
+	pending    bool           // work was waiting when it was drawn
+	offline    bool           // a tile failed since the picture was last whole
+	gen        uint64         // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed     string         // why the map could not be built or drawn, said in the window
+	diskOff    bool           // a clear let the disk cache go; named again when the app answers (PF-4)
+	clearErr   error          // what the live map refused in a clear, for the app's answer (IS-M5)
+	calls      *[]string      // tests only: the library calls made, by name, in order
+	where      *[]callSite    // tests only: each call and the goroutine it ran on (W2.2)
+	workers    *mapWorkers    // the commands running for this map, joined on close (W2.6)
+	tickAt     time.Time      // the tick outstanding, at the library's NextCall (W2.2)
+	alertsOn   bool           // the Area Alerts box is open; it waits for A (D-87)
+	menuOn     bool           // the Overlays menu is open (D-65)
+	menuAt     int            // the menu's cursor
+	flash      term.Action    // the map key last pressed, blinking in the controls (U1-11)
+	edge       geo.Direction  // the edge whose chip is showing (D-81)
+	edgeShown  bool           // a press held still at the edge: the next the same way crosses
+	flashEnd   time.Time      // when its blink ends
 	// menuFlash is the Overlays menu's picker chip blinking at row
 	// menuFlashAt until menuFlashEnd: Settings' pickers' feedback (D-147).
 	menuFlash    pickerFlash
@@ -266,7 +276,8 @@ func (d Dashboard) toggleMap() Dashboard {
 	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false            // Forecast mode opens on Now, stopped (D-94)
 	d.mapPane.fcGen++
 	d.mapPane.tempAuto, d.mapPane.modeChip = false, false
-	d.mapPane.prop = false    // every open is a weather mode: the Propagation mode is never kept (D-154)
+	d.mapPane.prop = false // every open is a weather mode: the Propagation mode is never kept (D-154)
+	d = d.stopPropagation()
 	d = d.ensureMainOverlay() // D-103: a map opened in Forecast mode is never blank
 	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().requestFeed()
 	d.mapPane.viewAsked = d.mapPane.viewGen // the open asks for its view: a move's tick dropped while closed is answered here (W14)
@@ -669,7 +680,7 @@ func (d Dashboard) mapStatusLine() string {
 			lead = d.forecastStatus() // D-94: Forecast mode's line in the radar's place
 		}
 	case modePropagation:
-		lead = propagationStatus
+		lead = d.propStatusWords()
 	case modeRadar:
 	}
 	if est := costEstimate(d.mapCost); est != "" {

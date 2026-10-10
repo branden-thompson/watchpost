@@ -880,6 +880,7 @@ code{font-family:var(--mono);font-size:.92em}
     ZS[&#34;nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days&#34;]
     RD[&#34;radar · IEM, MRMS (W8.3)\nfixed boxes, never the view (D-47); outside the lower 48 each MRMS product&#39;s whole extent; only advertised times, always sent (D-84)\nits own client: memory only, 1 MiB cap, public addresses, https&#34;]
     TD[&#34;temperature · NDFD, Open-Meteo (W10.2)\na lattice of at most 80 points a box, never the view (D-47)\nNDFD: the hour sent with its zone; offshore missing, never zero\na cell drawn only where its nearest point has a value (D-101)\nwind: hourly speed and direction; each day&#39;s peak worked out from NDFD&#39;s hours\nits own client: 2 MiB cap, public addresses, https; 24 MiB in memory and a 64 MiB disk cache at map-http, in the stated total (D-219)\nOpen-Meteo through the quota gate: while held, what is in the cache is served; only a network answer frees it (D-217)\nwaves: NDFD first; Open-Meteo Marine only for the points past NDFD&#39;s reach, the land it answered nothing for left out - kept by lattice in marine-land.json beside quota.json, merged across instances, asked again after 90 days, gone with Clear map data (D-194, D-218)&#34;]
+    PD[&#34;propagation · Service (0.19.0 W4.1)\nthe one go-ionomaps object, made on the first update (FR-4.8)\none update at a time, joined by any asked while it runs (D-131); its own 60 s deadline; the mode&#39;s context ends it\nits fetcher: https to go-ionomaps&#39; own hosts alone (FR-4.7); of each reply the status, the rate headers and the validators (FR-4.5)&#34;]
     WS[&#34;nws · Provider.ZonesFor\nthe place&#39;s own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)&#34;]
   end
   subgraph tty[&#34;modes/tty — the Observer&#34;]
@@ -895,9 +896,11 @@ code{font-family:var(--mono);font-size:.92em}
   end
   subgraph plat[&#34;platform/&#34;]
     RG[&#34;geo · RegionOf\nsix regions with their waters; Hawaii and the Caribbean wide enough to see their weather (D-91)\narrangement.go: Neighbour, RegionNumbered (D-77)&#34;]
+    HP[&#34;httpx · Plain (0.19.0 FR-4.4)\nthe propagation client: every reply handed back as it came, a 429 included; no retry, no cache, no shared pacing\nhttps alone, no private address, an 8 MB cap&#34;]
     HX[&#34;httpx · DiskCacheBytes, with temperature&#39;s CacheBytes and the tiles&#39; cap, the one stated total\nConfig.MemBytes / DiskBytes size a client&#39;s tiers; Cached reads the cache, never the network (D-217, D-219)\nClear map data empties the map clients&#39; caches, memory and disk&#34;]
   end
-  L[&#34;go-tuiMaps v0.2.0\nSetBound · Source · Set/Remove · Work · Render · Warnings&#34;]
+  IO[&#34;go-ionomaps\nLibrary.Update: GloTEC&#39;s newest grid through its index, the solar file daily; the background (D-101)\nD-39 for NOAA: one ask every ten minutes, six grids an hour, a 429 backs off&#34;]
+  L[&#34;go-tuiMaps v0.3.0-rc.1\nSetBound · Source · Set/Remove · Work · Render · Warnings&#34;]
   MB -- &#34;Config.NewMap(size)&#34; --&gt; MW
   MF -- &#34;Config.MapFeed(ask: snap, place, view, part)\ntwo lanes: the alerts first and on their own, the layers after (D-268)\nuntil the alerts land: &#39;Alerts for the map are loading.&#39; (D-266)\nan unchanged overlay is not handed in again; a refused one keeps its last (U1-28, D-257)&#34; --&gt; MW
   MF --&gt; MG --&gt; ZS
@@ -910,6 +913,9 @@ code{font-family:var(--mono);font-size:.92em}
   MT -- &#34;Config.MapTemperature(ask: mode, source, unit, the hour&#39;s start)\none request at a time; asked only while on (D-25)&#34; --&gt; MW
   MW --&gt; MTW
   MW --&gt; MP
+  MPU[&#34;mapprop.go · the Propagation update&#39;s seam (0.19.0 W4.1)\nMAP STATUS&#39;s GIRO and NOAA SWPC rows, read from go-ionomaps&#39; own hosts (FR-4.3)&#34;] -- &#34;Config.PropagationUpdate(ctx)\nasked once the mode is open and its acknowledgement closed (FR-4.2, D-81); every 10 minutes while open (FR-4.10)&#34; --&gt; MP
+  MPU --&gt; PD --&gt; IO
+  PD --&gt; HP
   MR -- &#34;Config.MapRadar(ask): the whole loop\none request at a time; shown once in (D-85); a region left cancelled (D-130)\nits own command: the alerts never wait (W8.12)&#34; --&gt; MW
   SD[&#34;severe.go · severeDeck.feedCopy\nthe ticker&#39;s feed&#34;] --&gt; MQ --&gt; MF
   MF -- &#34;alert/‹category›/‹id›: [w]&#39;s Classify; forecasts not drawn (D-80)\nTimes: each overlay&#39;s onset and end (D-98)&#34; --&gt; MW

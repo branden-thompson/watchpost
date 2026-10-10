@@ -26,9 +26,10 @@ func (d Dashboard) togglePropagation() (Dashboard, tea.Cmd) {
 	d.mapPane.prop = !d.mapPane.prop
 	d, cmd := d.enterMode()
 	if d.mapMode() == modePropagation && d.propAckDue() {
-		d = d.openPropAck() // before anything of the mode's is fetched (D-81)
+		return d.openPropAck(), cmd // before anything of the mode's is fetched (D-81): closing it asks
 	}
-	return d, cmd
+	d, update := d.askPropagation()
+	return d, tea.Batch(cmd, update)
 }
 
 // cursorAt is where the terminal cursor stands in a frame: on the
@@ -57,6 +58,7 @@ func (d Dashboard) enterMode() (Dashboard, tea.Cmd) {
 	case modePropagation:
 		return d, tea.Batch(feed, radar, d.mapWorkCmd()) // nothing of the weather's is asked for
 	case modeRadar, modeForecast:
+		d = d.stopPropagation() // the Propagation mode's update ends with it (FR-4.2)
 	}
 	d, temp := d.askTemp()
 	return d, tea.Batch(feed, radar, temp, d.mapWorkCmd())

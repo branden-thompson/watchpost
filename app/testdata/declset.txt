@@ -72,6 +72,7 @@ const numNarrationClasses
 const overlayStep
 const pastHours
 const perimeterBytes
+const propagationBodyBytes
 const publishCoalesce
 const pumpBacklog
 const quakeFeedBase
@@ -271,6 +272,7 @@ func (*livePipelines).noteBedCarrying
 func (*livePipelines).playBed
 func (*livePipelines).poolFor
 func (*livePipelines).producer
+func (*livePipelines).propagationUpdate
 func (*livePipelines).providers
 func (*livePipelines).reStation
 func (*livePipelines).readHistoryUsage
@@ -352,6 +354,7 @@ func (*mastercontrol).tell
 func (*mastercontrol).unhold
 func (*pipeline).stop
 func (*pipeline).update
+func (*propagationHolder).service
 func (*publisher).Trigger
 func (*publisher).fire
 func (*publisher).lastSnapshot
@@ -554,6 +557,7 @@ func (mainTrackStage).String
 func (mainTrackStage).reports
 func (mapInputs).drawable
 func (mapInputs).withInView
+func (readOnly).Fetch
 func (stationRecorder).alerts
 func (stationRecorder).buoy
 func (stationRecorder).fires
@@ -792,6 +796,10 @@ func placeInView
 func pointShape
 func priorityTiers
 func profileNames
+func propagationClientConfig
+func propagationHostList
+func propagationHosts
+func propagationSources
 func proposeFrom
 func providerEndpoints
 func pruneDumps
@@ -1039,6 +1047,7 @@ type narrationClass
 type narrationJob
 type narrationVoice
 type pipeline
+type propagationHolder
 type publishView
 type publisher
 type pump
@@ -1047,6 +1056,7 @@ type radarSources
 type radioDeck
 type rainRescue
 type readHooks
+type readOnly
 type readSession
 type reader
 type recentPipeline
@@ -1087,6 +1097,7 @@ var areaMemoRules
 var coopsTides
 var epaUVCities
 var errDumpTooSoon
+var errPropagationUnavailable
 var errReadStopped
 var firmsHotspots
 var forward
@@ -1101,6 +1112,7 @@ var ndbcBuoys
 var ndfdHourly
 var ndfdRainDays
 var ndfdWaves
+var newPropagationService
 var nwsAlerts
 var nwsObservations
 var omRainDays

@@ -89,6 +89,7 @@ flowchart LR
     ZS["nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days"]
     RD["radar · IEM, MRMS (W8.3)\nfixed boxes, never the view (D-47); outside the lower 48 each MRMS product's whole extent; only advertised times, always sent (D-84)\nits own client: memory only, 1 MiB cap, public addresses, https"]
     TD["temperature · NDFD, Open-Meteo (W10.2)\na lattice of at most 80 points a box, never the view (D-47)\nNDFD: the hour sent with its zone; offshore missing, never zero\na cell drawn only where its nearest point has a value (D-101)\nwind: hourly speed and direction; each day's peak worked out from NDFD's hours\nits own client: 2 MiB cap, public addresses, https; 24 MiB in memory and a 64 MiB disk cache at map-http, in the stated total (D-219)\nOpen-Meteo through the quota gate: while held, what is in the cache is served; only a network answer frees it (D-217)\nwaves: NDFD first; Open-Meteo Marine only for the points past NDFD's reach, the land it answered nothing for left out - kept by lattice in marine-land.json beside quota.json, merged across instances, asked again after 90 days, gone with Clear map data (D-194, D-218)"]
+    PD["propagation · Service (0.19.0 W4.1)\nthe one go-ionomaps object, made on the first update (FR-4.8)\none update at a time, joined by any asked while it runs (D-131); its own 60 s deadline; the mode's context ends it\nits fetcher: https to go-ionomaps' own hosts alone (FR-4.7); of each reply the status, the rate headers and the validators (FR-4.5)"]
     WS["nws · Provider.ZonesFor\nthe place's own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)"]
   end
   subgraph tty["modes/tty — the Observer"]
@@ -104,9 +105,11 @@ flowchart LR
   end
   subgraph plat["platform/"]
     RG["geo · RegionOf\nsix regions with their waters; Hawaii and the Caribbean wide enough to see their weather (D-91)\narrangement.go: Neighbour, RegionNumbered (D-77)"]
+    HP["httpx · Plain (0.19.0 FR-4.4)\nthe propagation client: every reply handed back as it came, a 429 included; no retry, no cache, no shared pacing\nhttps alone, no private address, an 8 MB cap"]
     HX["httpx · DiskCacheBytes, with temperature's CacheBytes and the tiles' cap, the one stated total\nConfig.MemBytes / DiskBytes size a client's tiers; Cached reads the cache, never the network (D-217, D-219)\nClear map data empties the map clients' caches, memory and disk"]
   end
-  L["go-tuiMaps v0.2.0\nSetBound · Source · Set/Remove · Work · Render · Warnings"]
+  IO["go-ionomaps\nLibrary.Update: GloTEC's newest grid through its index, the solar file daily; the background (D-101)\nD-39 for NOAA: one ask every ten minutes, six grids an hour, a 429 backs off"]
+  L["go-tuiMaps v0.3.0-rc.1\nSetBound · Source · Set/Remove · Work · Render · Warnings"]
   MB -- "Config.NewMap(size)" --> MW
   MF -- "Config.MapFeed(ask: snap, place, view, part)\ntwo lanes: the alerts first and on their own, the layers after (D-268)\nuntil the alerts land: 'Alerts for the map are loading.' (D-266)\nan unchanged overlay is not handed in again; a refused one keeps its last (U1-28, D-257)" --> MW
   MF --> MG --> ZS
@@ -119,6 +122,9 @@ flowchart LR
   MT -- "Config.MapTemperature(ask: mode, source, unit, the hour's start)\none request at a time; asked only while on (D-25)" --> MW
   MW --> MTW
   MW --> MP
+  MPU["mapprop.go · the Propagation update's seam (0.19.0 W4.1)\nMAP STATUS's GIRO and NOAA SWPC rows, read from go-ionomaps' own hosts (FR-4.3)"] -- "Config.PropagationUpdate(ctx)\nasked once the mode is open and its acknowledgement closed (FR-4.2, D-81); every 10 minutes while open (FR-4.10)" --> MP
+  MPU --> PD --> IO
+  PD --> HP
   MR -- "Config.MapRadar(ask): the whole loop\none request at a time; shown once in (D-85); a region left cancelled (D-130)\nits own command: the alerts never wait (W8.12)" --> MW
   SD["severe.go · severeDeck.feedCopy\nthe ticker's feed"] --> MQ --> MF
   MF -- "alert/‹category›/‹id›: [w]'s Classify; forecasts not drawn (D-80)\nTimes: each overlay's onset and end (D-98)" --> MW

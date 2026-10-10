@@ -206,7 +206,12 @@ type Config struct {
 	// SavePropagationAck keeps it once closed; nil keeps nothing (0.19.0 W2.5).
 	PropagationAck     int
 	SavePropagationAck func(int) error
-	FireBoldMW         float64 // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
+
+	// PropagationUpdate starts the Propagation mode's update, or joins the
+	// one running, and sends its result (0.19.0 W4.1, D-131). ctx is the
+	// mode's: leaving the mode ends it. nil fetches nothing.
+	PropagationUpdate func(ctx context.Context) <-chan PropagationResult
+	FireBoldMW        float64 // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
 
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
 	// reports against, and they are TWO because the data is two things: the
@@ -1159,6 +1164,10 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyMapTemp(v) // W10: the temperature, set and drawn in Update (D-41)
 	case forecastTickMsg:
 		return d.applyForecastTick(v) // D-94: Forecast mode's playback
+	case propUpdatedMsg:
+		return d.applyPropUpdated(v) // W4.1: the Propagation mode's update, kept in Update
+	case propTickMsg:
+		return d.applyPropTick(v) // FR-4.10: its refresh
 	case mapWorkedMsg:
 		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
 	case mapTickMsg:
@@ -1531,6 +1540,7 @@ func (d Dashboard) tellMapClosed(was bool) Dashboard {
 	if d.cfg.MapClosed != nil {
 		d.cfg.MapClosed()
 	}
+	d = d.stopPropagation() // nothing is fetched for a map no longer shown (FR-4.2)
 	d.mapCloses++
 	gen := d.mapCloses
 	return d.withCmd(tea.Batch(d.pendingCmd, tea.Tick(d.mapReleaseAfter, func(time.Time) tea.Msg { return mapReleaseMsg{gen: gen} })))

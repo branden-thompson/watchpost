@@ -397,8 +397,9 @@ func observerScoped(msg tea.Msg) bool {
 		locatePauseMsg, locateVerdictMsg,
 		mapWorkedMsg, mapFeedMsg, mapRadarMsg, mapRadarAgainMsg, mapClearedMsg, mapTickMsg, mapViewSettledMsg, // 0.18.0: what the map's Work landed, its clock and its settling are owed to Observer's map window
 		mapTempMsg, forecastTickMsg, // W10: the temperature, and Forecast mode's playback, are the map window's too
-		mapReleaseMsg, // D-221: the map's release, due whichever surface is shown
-		mapPanicMsg:   // QA-11: a map command stopped a panic, and the map window is marked failed
+		mapReleaseMsg,               // D-221: the map's release, due whichever surface is shown
+		propUpdatedMsg, propTickMsg, // 0.19.0 W4.1: the Propagation mode's update and its refresh are the map window's
+		mapPanicMsg: // QA-11: a map command stopped a panic, and the map window is marked failed
 		return true
 	}
 	return false

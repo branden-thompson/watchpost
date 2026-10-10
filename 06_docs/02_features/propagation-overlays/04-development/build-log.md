@@ -117,3 +117,30 @@ release candidates (go-tuiMaps v0.3.0 first, D-3), O1 and O3 (`implementation-pl
 - **Docs:** the as-built map diagram draws the acknowledgement; the atlas is regenerated.
 - **The first `make verify` stopped at `lint-authoring`** (AP-HIST-01): a comment said versions "seen older", which reads as history. It now states the rule.
 - **Checks:** `modes/tty`, `app` and `platform/config` whole with `-race`; then `make verify`.
+
+## Batch 7 — W4.1, the data path: the propagation client, the one service, the update in the window (D-155, D-156, A-35)
+
+- **The libraries.** watchpost requires go-tuiMaps `v0.3.0-rc.1` and go-ionomaps at its pushed G4.2 (a pseudo-version); both are on GitHub since the token gained the `workflow` scope.
+- **The propagation client** (`platform/httpx/plain.go`, FR-4.4, FR-4.7): every reply as it came, a 429 included, asked once; no cache, no pacing shared with the data client; https alone, no private address, an 8 MB cap; no error carries the reply. Its tests were written with it, not before it.
+- **The service** (`domains/propagation`, FR-4.5, FR-4.7, FR-4.8, D-131): the one go-ionomaps object; a fetcher that refuses a host the library does not export and hands it only the status, the rate headers and the validators, each rate header's first sighting noted by host and name; one update at a time, joined by any asked while it runs, its own 60 s deadline, ended by the mode's context.
+- **The window** (`modes/tty/map_prop_update.go`): `Config.PropagationUpdate`, called in a command, never on the UI goroutine.
+  - The first update starts when the acknowledgement closes, or at once when none is due (A-35); every 10 minutes after while the mode is open.
+  - Leaving the mode, opening the map again or closing it ends the session's update; a late result or tick is dropped by generation.
+  - The status line and the words say the snapshot: foF2's background and GloTEC's time, M(3000)F2's, the time computed, an early answer's reason; with no field, the library's words, which say when it asks again.
+- **The app** (`app/mapprop.go`): the service made on the first update, once a process (`TestOneLibraryObjectPerProcess`); MAP STATUS lists GIRO and NOAA SWPC from go-ionomaps' own hosts (FR-4.3); About credits SWPC, PyIRI and IGRF-14, three chips of their own (A-35).
+- **Rulings:** L flips the layer (D-155) and U refreshes now (D-156); both keys come with W3.1 and W2.4 in batch 8, where there is a layer to flip.
+- **Not yet drawn:** the fields themselves (W3.1, batch 8). The day/night terminator waits for go-tuiMaps P4, after `v0.3.0-rc.1`.
+- **Two guards found what the targeted runs missed:**
+  - `TestEveryWindowReplyIsRoutedBackToTheWindow`: the two new messages are routed to the map window, so a Broadcaster-surface map gets them.
+  - `TestEveryRegisteredSourceIsOnTheClosedList`: GIRO and NOAA SWPC join the closed list of hosts (FR-4.3, D-113).
+- **P10:**
+  - Bare-name recursion: go-ionomaps' constructor is a package value; the service's method is `Ask`, not `Update`; the window's local is `seam`.
+  - Density: the fetcher reads its hosts from the service's own library, which removed a probe library and two small functions. Real checks are phrased so P10 counts them, and three are added: a service not made with `New`, a negative deadline, a reply with no HTTP status.
+- **Mutants** m135 to m144, each applied, vetted, killed and restored by copy.
+  - **The agent's first run did not restore:** in zsh an unquoted `$FILES` is one word, so the copies aside failed and all ten mutants were applied on top of each other. Each was undone by inverting its own replacement, latest first (one by its context, its text occurring five times); every touched package then passed; the run was repeated with an array and a check after every restore.
+  - m138 survived until the join test compared the two answers: unjoined updates still asked NOAA once, the library answering the second "too soon".
+  - m142 was first "killed" only by the routing guard; its own test now delivers an old session's tick to a new idle one.
+  - Five anchors moved with this batch's edits and were re-pointed: m122, m131, m136, m137, m144.
+- **The first `make verify` stopped in `cmd/watchpost`:** `THIRD_PARTY_LICENSES.md` did not list go-tuiMaps `v0.3.0-rc.1` or go-ionomaps at their required versions. A `go.mod` change touches every package, and the agent had run only the packages it edited; the whole tree is now run before verify. Regenerated with `scripts/third-party-licenses.sh`.
+  - **Found:** the script copied each module's licence but not its NOTICE. go-ionomaps names PyIRI's MIT licence there, and yaml/v3's Apache-2.0 NOTICE was missing from the file before this release. The script now copies a module's NOTICE too. go-ionomaps' NOTICE names PyIRI's licence and copyright but not its full text, which must ship before go-ionomaps' first tag and 0.19.0's SHIP (F-215).
+- **Docs:** the as-built map diagram draws the service, the client and the seam; the atlas is regenerated.

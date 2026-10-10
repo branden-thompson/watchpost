@@ -34,6 +34,9 @@ var chipGrounds = map[string]render.Token{
 	"GEONAMES": render.MapChipGeoNamesBG,
 	"OFM":      render.MapChipOFMBG,
 	"PIPER":    render.MapChipPiperBG,
+	"SWPC":     render.MapChipSWPCBG, // the Propagation mode's sources (0.19.0 FR-4.1)
+	"PYIRI":    render.MapChipPyIRIBG,
+	"IGRF-14":  render.MapChipIGRFBG,
 	"RECORDED": render.MapChipRecordedBG, // not a source: the history, appended after one (D-173, D-178)
 }
 

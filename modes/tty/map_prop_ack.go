@@ -63,11 +63,12 @@ func (d Dashboard) handlePropAckKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	d = d.close()
 	d.cfg.PropagationAck = propAckVersion
+	d, update := d.askPropagation() // seen: the mode's first update (D-81)
 	save := d.cfg.SavePropagationAck
 	if save == nil {
-		return d, nil
+		return d, update
 	}
-	return d, func() tea.Msg { _ = save(propAckVersion); return nil } // a failed save shows it again next session, never an error (D-124)
+	return d, tea.Batch(update, func() tea.Msg { _ = save(propAckVersion); return nil }) // a failed save shows it again next session, never an error (D-124)
 }
 
 // propAckCursor is where the terminal cursor stands on the acknowledgement,

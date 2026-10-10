@@ -221,6 +221,7 @@ func mapSourceList() []tty.MapSource {
 	out = append(out, fireHosts()...)                                                              // D-121: the fire's two
 	out = append(out, marineHosts()...)                                                            // D-127, D-128: the sea's stations
 	out = append(out, airHosts()...)                                                               // D-138: AirNow
+	out = append(out, propagationHosts()...)                                                       // 0.19.0 FR-4.3: GIRO and NOAA SWPC
 	return append(out, tty.MapSource{Name: "USGS", Host: hostOf(quakeFeedBase), Layers: "quakes"}) // D-122
 }
 

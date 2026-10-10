@@ -179,6 +179,7 @@ var airBoundary = map[string]airMember{
 	"Voices":             {airNone, "lists what is installed"},
 	"VoiceInstalled":     {airNone, "a query"},
 	"Spectrum":           {airNone, "reads the visualiser tap"},
+	"PropagationUpdate":  {airNone, "0.19.0 W4.1: asks go-ionomaps for the Propagation mode's fields over its own client; nothing on the air reads them"},
 	"SavePropagationAck": {airNone, "0.19.0 A-9: writes the acknowledgement's version seen to the file; nothing on the air reads it"},
 	"SaveRadio":          {airNone, "D-214: writes the radio panel's kept volume, repeat and visualizer to the file; the player is told by its own seams"},
 	"FIRMSKey":           {airNone, "a key hint for the Settings window"},

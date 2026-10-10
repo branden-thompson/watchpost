@@ -443,6 +443,7 @@ func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
 	c.MapDetailLevel = cfg.MapDetailLevel                              // UAT-1 D-67: its level
 	c.MapAreaName = mapAreaNamer(lp.idx)                               // UAT-1 D-64: the title names what is in view
 	c.PropagationAck = cfg.PropagationAck                              // 0.19.0 A-9: the acknowledgement's wording last seen
+	c.PropagationUpdate = lp.propagationUpdate                         // 0.19.0 W4.1: the Propagation mode's update, its one owner (D-131)
 	c.SavePropagationAck = savePropagationAck                          // and kept once closed (D-81)
 }
 
@@ -800,6 +801,7 @@ type livePipelines struct {
 	mapClients    []*httpx.Client      // 0.18.0 D-150: the radar's and the temperature's, counted for MAP STATUS
 	tiles         *tileCounter         // 0.18.0 D-150: the basemap's tile fetches, counted
 	problems      mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
+	propagation   propagationHolder    // 0.19.0 W4.1: the one go-ionomaps object, made on the first update
 	timings       *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
 	director      *director            // 0.13.0: the voice arbiter (app/director.go)
 	scripts       *script.Library      // 0.13.0: the spoken lines (domains/radio/script)
