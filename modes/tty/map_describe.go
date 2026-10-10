@@ -63,7 +63,11 @@ func (d Dashboard) describeUpTo(most int) []string {
 	here := d.mapPane.m == nil || v.Contains(loc.Lat, loc.Lon)
 	out := []string{d.viewHeading(*loc, here)}
 	if d.mapMode() == modePropagation {
-		return append(out, propagationWords, d.propStatusWords()+".") // no alert is drawn in it (D-21); its status said without the picture (FR-3.5)
+		words := propagationWords
+		if d.mapPane.propSnap != nil {
+			words = "This is the Propagation mode, over the whole world: " + propLayerName(d.mapPane.propLayer) + " is drawn, in megahertz." // FR-3.2
+		}
+		return append(out, words, d.propStatusWords()+".") // no alert is drawn in it (D-21); its status said without the picture (FR-3.5)
 	}
 	if !d.layerOn(AlertLayer) {
 		return append(out, alertLayerOffText) // off is said, never "nothing is there"

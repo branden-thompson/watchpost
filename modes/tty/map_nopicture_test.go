@@ -79,19 +79,20 @@ const (
 	boxIsWords  = "no picture: the Area Alerts box is the description in a box, and the description is on screen whole already"
 	playUnseen  = "no picture: the step it plays shows at the next step, in the badge, and the play state is the timeline's, which is drawn under a picture"
 	regionNamed = "no picture: the region it shows is the one the description already names"
+	propOnly    = "the Propagation mode's alone (D-155, D-156): in the weather mode the screen opens in, it acts on nothing"
 )
 
 // invisibleKeys are the window's keys whose effect is not on screen in a
 // mode, each with why that is right.
 var invisibleKeys = map[string]map[string]string{
-	"with": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits},
-	"off":  {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits},
+	"with": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits, "L": propOnly, "U": propOnly},
+	"off":  {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits, "L": propOnly, "U": propOnly},
 	"instead": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits,
 		"up": viewUnseen, "down": viewUnseen, "left": viewUnseen, "right": viewUnseen, "+": viewUnseen, "=": viewUnseen, "-": viewUnseen,
-		"A": boxIsWords, "space": playUnseen, "1": regionNamed},
+		"A": boxIsWords, "space": playUnseen, "1": regionNamed, "L": propOnly, "U": propOnly},
 	"ascii": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits,
 		"up": viewUnseen, "down": viewUnseen, "left": viewUnseen, "right": viewUnseen, "+": viewUnseen, "=": viewUnseen, "-": viewUnseen,
-		"A": boxIsWords, "space": playUnseen, "1": regionNamed},
+		"A": boxIsWords, "space": playUnseen, "1": regionNamed, "L": propOnly, "U": propOnly},
 }
 
 // TestTheMenusFocusStaysOnScreenWithoutAPicture is D-267: the menu drawn as

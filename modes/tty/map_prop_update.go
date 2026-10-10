@@ -75,6 +75,7 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		d.mapPane.propSnap = &snap
 	}
 	d.mapPane.propErr = v.res.Err
+	d = d.setProp().renderMap()
 	gen := v.gen
 	return d, tea.Tick(propRefreshEvery, func(time.Time) tea.Msg { return propTickMsg{gen: gen} })
 }
@@ -100,7 +101,7 @@ func (d Dashboard) propStatusWords() string {
 	snap, err := d.mapPane.propSnap, d.mapPane.propErr
 	switch {
 	case snap != nil:
-		return snapshotWords(*snap)
+		return snapshotWords(*snap, d.mapPane.propLayer)
 	case err != nil && !errors.Is(err, context.Canceled):
 		return "Propagation · " + strings.TrimPrefix(err.Error(), "ionomaps: ")
 	case d.mapPane.propBusy:
@@ -109,21 +110,22 @@ func (d Dashboard) propStatusWords() string {
 	return propagationStatus
 }
 
-// snapshotWords say what a snapshot was made from and when (FR-5.1).
-func snapshotWords(s ionomaps.Snapshot) string {
-	words := []string{"Propagation"}
-	switch s.Background.FoF2 {
-	case ionomaps.GloTEC:
-		words = append(words, "foF2 from GloTEC at "+s.Inputs.GloTECValid.UTC().Format("15:04 UTC"))
-	case ionomaps.Climatology:
-		words = append(words, "foF2 from the climatology: no GloTEC grid")
-	}
-	words = append(words, "M(3000)F2 from the "+s.Background.M3000.String(), "computed "+s.Computed.UTC().Format("15:04 UTC"))
+// snapshotWords say the layer drawn, when the snapshot was computed and why
+// it is not new if it is not, then what it was made from (FR-5.1): the most
+// needed first, as a narrow window cuts the line's end.
+func snapshotWords(s ionomaps.Snapshot, layer int) string {
+	words := []string{"Propagation", propLayerName(layer), "at " + s.Computed.UTC().Format("15:04 UTC")}
 	switch s.Early {
 	case ionomaps.TooSoon:
 		words = append(words, "asked too soon: the last field")
 	case ionomaps.Offline:
 		words = append(words, "NOAA not reached: the last field")
 	}
-	return strings.Join(words, " · ")
+	switch s.Background.FoF2 {
+	case ionomaps.GloTEC:
+		words = append(words, "foF2 from GloTEC at "+s.Inputs.GloTECValid.UTC().Format("15:04 UTC"))
+	case ionomaps.Climatology:
+		words = append(words, "foF2 from the climatology: no GloTEC grid")
+	}
+	return strings.Join(append(words, "M(3000)F2 from the "+s.Background.M3000.String()), " · ")
 }

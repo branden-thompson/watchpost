@@ -46,7 +46,7 @@ func (d Dashboard) scrubRows(width int) []string {
 	case d.mapMode() == modeForecast:
 		out = append(out, " "+d.tempLegendRow(width)) // W10.10: the bands' colours, as radar's are
 	case d.mapMode() == modePropagation:
-		out = append(out, "") // its legend comes with its layers (W3.1); the row is held, so the map's size never depends on the mode
+		out = append(out, " "+d.propLegendRow(width)) // the layer's colours in MHz (FR-1.5)
 	}
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
@@ -220,7 +220,11 @@ func (d Dashboard) loopRow(width int) string {
 		return item(render.Tint("STOPPED", render.Tok(render.ListPointer)))
 	}
 	if d.mapMode() == modePropagation {
-		return render.PadTo("", from) + render.TruncateCells(propagationLabel+" · NO DATA YET", max(width-from, 1))
+		words := propagationLabel + " · NO DATA YET"
+		if snap := d.mapPane.propSnap; snap != nil {
+			words = propagationLabel + " · " + strings.ToUpper(propLayerName(d.mapPane.propLayer)) + " · COMPUTED " + snap.Computed.UTC().Format("15:04 UTC")
+		}
+		return render.PadTo("", from) + render.TruncateCells(words, max(width-from, 1))
 	}
 	if d.mapMode() == modeForecast {
 		steps := d.forecastSteps()

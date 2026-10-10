@@ -144,3 +144,17 @@ release candidates (go-tuiMaps v0.3.0 first, D-3), O1 and O3 (`implementation-pl
 - **The first `make verify` stopped in `cmd/watchpost`:** `THIRD_PARTY_LICENSES.md` did not list go-tuiMaps `v0.3.0-rc.1` or go-ionomaps at their required versions. A `go.mod` change touches every package, and the agent had run only the packages it edited; the whole tree is now run before verify. Regenerated with `scripts/third-party-licenses.sh`.
   - **Found:** the script copied each module's licence but not its NOTICE. go-ionomaps names PyIRI's MIT licence there, and yaml/v3's Apache-2.0 NOTICE was missing from the file before this release. The script now copies a module's NOTICE too. go-ionomaps' NOTICE names PyIRI's licence and copyright but not its full text, which must ship before go-ionomaps' first tag and 0.19.0's SHIP (F-215).
 - **Docs:** the as-built map diagram draws the service, the client and the seam; the atlas is regenerated.
+
+## Batch 8 — W3.1 and W2.4: the fields drawn, L and U (D-155, D-156, A-36) — UAT-1
+
+- **The fields** (`modes/tty/map_prop_draw.go`, FR-1.5, FR-1.6): the snapshot's hour on screen as go-tuiMaps v0.3.0's `MUFGrid` or `FoF2Grid`, its preset and unit, labelled contours over bands, continued over the sea; handed in and taken off through the window's one `reconcile`, on each update and as the mode is entered or left.
+- **The legend row** keys the layer by its colours: "MUF(3000), MHz" or "foF2, MHz".
+- **L** flips the layer (D-155); **U** asks for an update now (D-156), honoured under the library's throttle, its early answer said with its reason; in the weather modes neither acts (`invisibleKeys` says why).
+- **Chips:** in the Propagation mode `[L]` the layer and `[U] Refresh Now` stand in the places of Area Alerts and Radar.
+- **Found by `TestTheLegendBelongsToItsSurface`:** a tenth map row pushed Help past its window at 133x44, so the Observer's row-mark legend fell below the fold. Help's map group is nine rows again: Scroll joins Zoom, and P, L and U share one row.
+- **Found by its own test:** the status line, cut at the window's width, hid an early answer's reason at its end; the layer, the time and the reason come first now, the backgrounds after.
+- **`TestTheLegendBoxIsRetired`** held L free since D-103; L is the Propagation layer's now (D-155), and the test says so.
+- **Mutants** m145 to m150, each applied, vetted, killed and restored by copy; m149 survived until the layer test read the legend row itself rather than any row naming foF2.
+- **One live update** through the real client and service, before verify (three NOAA requests, under D-39), from a throwaway program not kept: 1.1 s; GloTEC's grid valid 01:25 UTC at 01:59 UTC; F10.7 mean 103.6 over 29 days; MUF(3000) 7.2 to 38.4 MHz (mean 19.6), foF2 2.6 to 13.3 MHz (mean 6.5) over the 16,200 cells.
+- **Not yet:** the terminator (go-tuiMaps P4), the hours ahead, the chart, the stations (G5, G9), the Broadcaster's key (FR-2).
+- **Checks:** the whole tree's tests; `modes/tty` and `app` with `-race`; then `make verify`.

@@ -21,11 +21,12 @@ func legendDash(t *testing.T, cfg Config) Dashboard {
 
 // TestTheLegendBoxIsRetired is D-103: the map says everything the legend
 // box did - the colour rows under it, the severity digits on the outlines -
-// so the box is gone and L is free: no binding, no chip, no Help row.
+// so the box is gone: no chip, no Help row. L, freed by it, is the
+// Propagation mode's layer now (0.19.0 D-155).
 func TestTheLegendBoxIsRetired(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
-	if _, bound := d.mapKeys.Lookup("L"); bound {
-		t.Error("L is still bound in the map window")
+	if act, bound := d.mapKeys.Lookup("L"); bound && act != actMapLayer {
+		t.Errorf("L is bound to %s in the map window; it is the Propagation layer's (D-155)", act)
 	}
 	if strings.Contains(stripANSITest(d.mapStatusLine()), "Legend") {
 		t.Error("the chips still offer the legend")

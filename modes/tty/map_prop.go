@@ -50,7 +50,7 @@ func (d Dashboard) enterMode() (Dashboard, tea.Cmd) {
 	d.mapPane.tempAuto = false
 	d.mapPane.gen++
 	d = d.ensureMainOverlay()
-	d = d.followSelection().setTemp()
+	d = d.followSelection().setTemp().setProp()
 	d = d.refreshMapCost().showStep().retimeDrawn().requestFeed()
 	d, feed := d.askFeed()
 	d, radar := d.askRadar()

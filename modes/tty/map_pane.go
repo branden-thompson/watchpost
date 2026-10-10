@@ -72,24 +72,26 @@ type mapPane struct {
 	propGen    uint64
 	propSnap   *ionomaps.Snapshot
 	propErr    error
-	status     tuimaps.Status // the last frame's: whole, or still sharpening
-	pending    bool           // work was waiting when it was drawn
-	offline    bool           // a tile failed since the picture was last whole
-	gen        uint64         // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed     string         // why the map could not be built or drawn, said in the window
-	diskOff    bool           // a clear let the disk cache go; named again when the app answers (PF-4)
-	clearErr   error          // what the live map refused in a clear, for the app's answer (IS-M5)
-	calls      *[]string      // tests only: the library calls made, by name, in order
-	where      *[]callSite    // tests only: each call and the goroutine it ran on (W2.2)
-	workers    *mapWorkers    // the commands running for this map, joined on close (W2.6)
-	tickAt     time.Time      // the tick outstanding, at the library's NextCall (W2.2)
-	alertsOn   bool           // the Area Alerts box is open; it waits for A (D-87)
-	menuOn     bool           // the Overlays menu is open (D-65)
-	menuAt     int            // the menu's cursor
-	flash      term.Action    // the map key last pressed, blinking in the controls (U1-11)
-	edge       geo.Direction  // the edge whose chip is showing (D-81)
-	edgeShown  bool           // a press held still at the edge: the next the same way crosses
-	flashEnd   time.Time      // when its blink ends
+	propLayer  int                        // MUF(3000) or foF2 (D-155), the session's
+	propGiven  map[string]tuimaps.Overlay // the Propagation overlays handed in
+	status     tuimaps.Status             // the last frame's: whole, or still sharpening
+	pending    bool                       // work was waiting when it was drawn
+	offline    bool                       // a tile failed since the picture was last whole
+	gen        uint64                     // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed     string                     // why the map could not be built or drawn, said in the window
+	diskOff    bool                       // a clear let the disk cache go; named again when the app answers (PF-4)
+	clearErr   error                      // what the live map refused in a clear, for the app's answer (IS-M5)
+	calls      *[]string                  // tests only: the library calls made, by name, in order
+	where      *[]callSite                // tests only: each call and the goroutine it ran on (W2.2)
+	workers    *mapWorkers                // the commands running for this map, joined on close (W2.6)
+	tickAt     time.Time                  // the tick outstanding, at the library's NextCall (W2.2)
+	alertsOn   bool                       // the Area Alerts box is open; it waits for A (D-87)
+	menuOn     bool                       // the Overlays menu is open (D-65)
+	menuAt     int                        // the menu's cursor
+	flash      term.Action                // the map key last pressed, blinking in the controls (U1-11)
+	edge       geo.Direction              // the edge whose chip is showing (D-81)
+	edgeShown  bool                       // a press held still at the edge: the next the same way crosses
+	flashEnd   time.Time                  // when its blink ends
 	// menuFlash is the Overlays menu's picker chip blinking at row
 	// menuFlashAt until menuFlashEnd: Settings' pickers' feedback (D-147).
 	menuFlash    pickerFlash
@@ -708,6 +710,12 @@ func (d Dashboard) mapChips() []string {
 		act  term.Action
 		name string
 	}{{actMapAlerts, "Area Alerts"}, {actMapRadar, d.radarChipWords()}, {actMapProp, d.propChipWords()}, {actMapOverlays, "Overlays"}} {
+		if d.mapMode() == modePropagation && c.act == actMapAlerts {
+			c.act, c.name = actMapLayer, propLayerName(d.mapPane.propLayer) // the mode's own controls in the weather's place (D-155, D-156)
+		}
+		if d.mapMode() == modePropagation && c.act == actMapRadar {
+			c.act, c.name = actMapRefresh, "Refresh Now"
+		}
 		if keys := d.mapKeys[c.act].Keys; len(keys) > 0 {
 			chips = append(chips, d.opts().KeyCap(keys[0])+" "+c.name)
 		}
@@ -791,7 +799,7 @@ var mapRegionShort = []string{"US", "Alaska", "Hawaii", "Caribbean", "Samoa", "G
 var mapRegionLabels = []string{"Continental US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam & N. Marianas"}
 
 // mapActions is the map window's actions in the order Help lists them.
-var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapProp, actMapOverlays,
+var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapProp, actMapLayer, actMapRefresh, actMapOverlays,
 	actMapPlay, actMapBack, actMapOn, actMapNewest, actMapHighLow}, mapRegionActs...)
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
@@ -811,6 +819,8 @@ func defaultMapKeyMap() term.KeyMap {
 		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},             // D-65: the weather layers and the map's detail
 		actMapRadar:      {Keys: []string{"R"}, Help: "Radar On / Off"},       // D-94: Radar mode, else Forecast mode
 		actMapProp:       {Keys: []string{"P"}, Help: "Propagation On / Off"}, // D-153: the Propagation mode, and back
+		actMapLayer:      {Keys: []string{"L"}, Help: "Layer: MUF / foF2"},    // D-155: the Propagation mode's layer
+		actMapRefresh:    {Keys: []string{"U"}, Help: "Refresh Now"},          // D-156: its update now, under D-39
 		actMapPlay:       {Keys: []string{"space"}, Help: "Play / Stop"},      // D-61: the playback keys, radar's or the forecast's
 		actMapBack:       {Keys: []string{"shift+left"}, Help: "Step Back"},   // D-86: at the timeline's ends
 		actMapOn:         {Keys: []string{"shift+right"}, Help: "Step On"},
@@ -866,6 +876,11 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		return nd, cmd, true
 	case actMapProp: // D-153: the Propagation mode, and back
 		nd, cmd := d.flashMapKey(act).togglePropagation()
+		return nd, cmd, true
+	case actMapLayer: // D-155: MUF(3000) or foF2
+		return d.flashMapKey(act).flipPropLayer(), d.mapWorkCmd(), true
+	case actMapRefresh: // D-156: an update now
+		nd, cmd := d.flashMapKey(act).refreshProp()
 		return nd, cmd, true
 	case actMapHighLow: // D-97: the days' high or low
 		return d.flashMapKey(act).flipHighLow(), d.mapWorkCmd(), true
@@ -1331,11 +1346,11 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 	rows := []mapHelpRow{
 		{join(actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight), "Pan"},
 		{join(actMapPrev, actMapNext), "Previous / Next Location"},
-		{join(actMapZoomIn, actMapZoomOut), "Zoom In / Out"},
-		{join(actMapScrollUp, actMapScrollDown), "Scroll"},
+		{join(actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown), "Zoom In / Out / Scroll"}, // one row: Help holds at 133x44
 		{join(actMapAlerts, actMapOverlays), "Area Alerts / Overlays"},
 		{shiftArrows(join(actMapPlay, actMapBack, actMapOn, actMapNewest), ascii), "Play / Back / On / Now"},
-		{join(actMapRadar, actMapProp, actMapHighLow), "Radar / Propagation / Forecast Hi-Lo"}, // D-94, D-153, D-97
+		{join(actMapRadar, actMapHighLow), "Radar Mode / Forecast Hi-Lo"},                   // D-94, D-97
+		{join(actMapProp, actMapLayer, actMapRefresh), "Propagation / Layer / Refresh Now"}, // D-153, D-155, D-156
 	}
 	// D-77: the region keys in two rows of three, each number's region named
 	// in order - six rows push Help past its window.

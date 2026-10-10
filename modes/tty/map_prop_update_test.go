@@ -153,13 +153,14 @@ func TestAnUpdatesResultIsSaid(t *testing.T) {
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
 	status := stripANSITest(d.mapStatusLine())
-	for _, want := range []string{"GloTEC", "11:30 UTC", "climatology", "12:00 UTC"} {
-		if !strings.Contains(status, want) {
-			t.Errorf("the status %q does not say %q", status, want)
-		}
+	if !strings.Contains(status, "12:00 UTC") {
+		t.Errorf("the status %q does not say when it was computed", status)
 	}
-	if !strings.Contains(strings.Join(d.describeLinesAll(), " "), "GloTEC") {
-		t.Errorf("the words do not say the snapshot: %q", d.describeLinesAll())
+	words := strings.Join(d.describeLinesAll(), " ")
+	for _, want := range []string{"GloTEC at 11:30 UTC", "M(3000)F2 from the climatology", "12:00 UTC"} {
+		if !strings.Contains(words, want) {
+			t.Errorf("the words %q do not say %q", words, want)
+		}
 	}
 	failed := &seam{answer: PropagationResult{Err: errors.New("ionomaps: no field yet: it is asked again at the first update after 12:01:00 UTC")}}
 	d, cmd = keyCmd(t, propDash(t, failed, true), "P")
