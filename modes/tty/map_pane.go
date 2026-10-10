@@ -611,6 +611,9 @@ func (d Dashboard) reportPlace() Dashboard {
 // (D-133), then the notes that come and go, each only while it applies
 // (D-132), then the cost warning; wrapped to the map's width.
 func (d Dashboard) noteLines(width int) []string {
+	if d.mapMode() == modePropagation {
+		return nil // its badges and its words are in its block under the map (D-157)
+	}
 	out := d.badgeRows(width)
 	if d.notesYield(width) {
 		out = append(out, render.WrapText(notesYieldLine(len(d.mapNotesNow())), width)...) // D-159: the map keeps its floor
@@ -903,6 +906,9 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 // overlaysMenuKey is a key while the Overlays menu is open; false when the
 // menu does not take it.
 func (d Dashboard) overlaysMenuKey(key string) (Dashboard, tea.Cmd, bool) {
+	if nd, cmd, ok := d.radioChangesMode(key); ok {
+		return nd, cmd, true
+	}
 	nd, ok := d.handleOverlaysKey(key)
 	if !ok {
 		return d, nil, false
@@ -913,17 +919,24 @@ func (d Dashboard) overlaysMenuKey(key string) (Dashboard, tea.Cmd, bool) {
 	if nd.mapLayerChoice == d.mapLayerChoice && nd.mapDetailChoice == d.mapDetailChoice && nd.mapDetailLevel == d.mapDetailLevel {
 		return nd.followMenuFocus(), nil, true
 	}
-	nd = nd.timeFrom("overlay")
-	nd = nd.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
+	return nd.menuApplied(d)
+}
+
+// menuApplied puts a switch made in the menu on the map, d the window before
+// it: the temperature drawn or taken off at once, UV and air quality asked
+// only while on, the choice saved, the feed asked again.
+func (d Dashboard) menuApplied(before Dashboard) (Dashboard, tea.Cmd, bool) {
+	d = d.timeFrom("overlay")
+	d = d.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
 	var temp tea.Cmd
-	if (nd.layerOn(UVLayer) && !d.layerOn(UVLayer)) || (nd.layerOn(AirLayer) && !d.layerOn(AirLayer)) {
-		nd, temp = nd.askTemp() // UV and air quality are asked only while on (D-137, D-139)
+	if (d.layerOn(UVLayer) && !before.layerOn(UVLayer)) || (d.layerOn(AirLayer) && !before.layerOn(AirLayer)) {
+		d, temp = d.askTemp() // UV and air quality are asked only while on (D-137, D-139)
 	}
-	nd = nd.renderMap()
-	save := nd.uiApplyCmd()
-	nd.setup.uiDirty = false
-	nd, feed := nd.askFeed()
-	return nd.followMenuFocus(), tea.Batch(save, nd.mapWorkCmd(), feed, temp), true // radar is R's, not the menu's (D-94)
+	d = d.renderMap()
+	save := d.uiApplyCmd()
+	d.setup.uiDirty = false
+	d, feed := d.askFeed()
+	return d.followMenuFocus(), tea.Batch(save, d.mapWorkCmd(), feed, temp), true // radar is R's, not the menu's (D-94)
 }
 
 // mapWindowKey is a key that works on the window itself, with a map or

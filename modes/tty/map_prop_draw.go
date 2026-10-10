@@ -1,12 +1,16 @@
 package tty
 
 import (
+	"fmt"
 	"math"
+	"strconv"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -100,3 +104,158 @@ func (d Dashboard) propLegendRow(width int) string {
 	}
 	return d.presetRow("muf", "MUF(3000), MHz │ ", "LOWER ", " HIGHER", width)
 }
+
+// hfBand is an amateur HF band by its lower edge: the MUF and foF2
+// presets' class edges (D-144, D-145), 160 metres to 10.
+type hfBand struct {
+	name string
+	low  float64 // MHz
+	mhz  string  // as the legend writes it
+}
+
+// hfBands are the bands, low to high; foF2's classes are the first six.
+var hfBands = []hfBand{{"160m", 1.8, "1.8"}, {"80m", 3.5, "3.5"}, {"60m", 5.3, "5.3"}, {"40m", 7, "7"}, {"30m", 10.1, "10.1"},
+	{"20m", 14, "14"}, {"17m", 18.068, "18.07"}, {"15m", 21, "21"}, {"12m", 24.89, "24.89"}, {"10m", 28, "28"}}
+
+// fof2Bands is how many of the bands foF2's classes key (D-145).
+const fof2Bands = 6
+
+// bandsUnder are the bands whose lower edge is under a frequency.
+func bandsUnder(mhz float64) []hfBand {
+	var out []hfBand
+	for _, b := range hfBands {
+		if b.low < mhz {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+// propLegendRows are D-160's two legend lines: each class by its band on
+// its colour, and under each its lower edge in MHz; one line, cut as
+// presetRow cuts it, where the library's classes are not the bands (with at
+// most a leading class below them, which keys none).
+func (d Dashboard) propLegendRows(width int) [2]string {
+	preset, head, bands := "muf", "MUF(3000) │ ", hfBands
+	if d.mapPane.propLayer == propFoF2 {
+		preset, head, bands = "fof2", "foF2 │ ", hfBands[:fof2Bands]
+	}
+	var classes []tuimaps.Class
+	for _, e := range d.mapPane.legend {
+		if e.Preset == preset {
+			classes = e.Classes
+		}
+	}
+	each := 0
+	if len(bands) > 0 {
+		each = (width - render.Width(head)) / len(bands)
+	}
+	aligned, ok := bandClasses(classes, len(bands))
+	if !ok || each < 7 {
+		return [2]string{d.propLegendRow(width), ""}
+	}
+	var names, edges strings.Builder
+	for i, b := range bands {
+		c := aligned[i]
+		names.WriteString(render.SwatchText(render.PadTo(b.name, each-1), c.Colour.R, c.Colour.G, c.Colour.B) + " ")
+		edges.WriteString(render.PadTo(b.mhz, each))
+	}
+	mhzHead := strings.Repeat(" ", max(render.Width(head)-render.Width("MHz │ "), 0)) + "MHz │ "
+	return [2]string{head + strings.TrimRight(names.String(), " "), mhzHead + strings.TrimRight(edges.String(), " ")}
+}
+
+// bandClasses are a legend's classes one a band, n of them: the classes as
+// they are, or without a leading class below the first band - foF2's under
+// 1.8 MHz, drawn as nothing (D-149); false for any other count.
+func bandClasses(classes []tuimaps.Class, n int) ([]tuimaps.Class, bool) {
+	switch len(classes) {
+	case n:
+		return classes, true
+	case n + 1:
+		return classes[1:], true
+	}
+	return nil, false
+}
+
+// cellValue is a field's value at a place, MHz; false off the field or
+// where it has no data.
+func cellValue(f ionomaps.Field, lat, lon float64) (float64, bool) {
+	if f.Cols <= 0 || f.Rows <= 0 || len(f.Values) != f.Cols*f.Rows {
+		return 0, false
+	}
+	col := int((lon - f.West) / (f.East - f.West) * float64(f.Cols))
+	row := int((f.North - lat) / (f.North - f.South) * float64(f.Rows))
+	col, row = min(max(col, 0), f.Cols-1), min(max(row, 0), f.Rows-1)
+	i := row*f.Cols + col
+	if f.NoData.Has(i) {
+		return 0, false
+	}
+	return float64(f.Values[i]), true
+}
+
+// propBlock is D-157's block under the map, in the timeline's five rows:
+// the header with the sources' badges; the mode and when it was computed;
+// the selected place now, and the bands under its foF2 and MUF(3000).
+func (d Dashboard) propBlock(width int) []string {
+	badges := []string{chipFace("SWPC"), chipFace("PYIRI"), chipFace("IGRF-14")}
+	out := []string{"RADIO FREQUENCY PROPAGATION    " + strings.Join(badges, "  ")}
+	snap, loc := d.mapPane.propSnap, d.selectedLocation()
+	if snap == nil || len(snap.Hours) == 0 {
+		out = append(out, "MODE: "+propLayerName(d.mapPane.propLayer)+" · "+strings.TrimPrefix(d.propStatusWords(), "Propagation · "))
+		return padRows(out, width)
+	}
+	at := snap.Computed.In(d.now().Location())
+	ago := int(d.now().Sub(snap.Computed).Minutes())
+	mode := "MODE: " + propLayerName(d.mapPane.propLayer) + " · COMPUTED " + d.clockFmt.Time(at) + " " + at.Format("MST") +
+		" (" + strconv.Itoa(max(ago, 0)) + " min ago) · upper limits only"
+	if status := d.pictureStatus(); status != "" {
+		mode += " · " + status // the picture's own status, its row the legend's MHz in this mode (D-160)
+	}
+	out = append(out, mode)
+	if loc == nil {
+		return padRows(out, width)
+	}
+	fo, okF := cellValue(snap.Hours[0].FoF2, loc.Lat, loc.Lon)
+	muf, okM := cellValue(snap.Hours[0].MUF3000, loc.Lat, loc.Lon)
+	if !okF || !okM {
+		return padRows(append(out, strings.ToUpper(loc.Label)+" NOW · no data at the place"), width)
+	}
+	out = append(out, fmt.Sprintf("%s NOW · foF2 %.1f MHz · MUF(3000) %.1f MHz", strings.ToUpper(loc.Label), fo, muf))
+	out = append(out, "  Local, to ~400 km (NVIS): "+bandNames(bandsUnder(fo)))
+	hops := bandsUnder(muf)
+	if len(hops) == 0 {
+		return padRows(append(out, "  ~3,000 km hops through here: none of the bands"), width)
+	}
+	return padRows(append(out, fmt.Sprintf("  ~3,000 km hops through here: up to %s (%.1f MHz)", hops[len(hops)-1].name, muf)), width)
+}
+
+// bandNames are bands by name, or "none of the bands".
+func bandNames(bands []hfBand) string {
+	if len(bands) == 0 {
+		return "none of the bands"
+	}
+	names := make([]string, len(bands))
+	for i, b := range bands {
+		names[i] = b.name
+	}
+	return strings.Join(names, " ")
+}
+
+// padRows are the block's rows, five, each cut to the width.
+func padRows(rows []string, width int) []string {
+	out := make([]string, propBlockRows)
+	for i := range out {
+		if i < len(rows) {
+			out[i] = render.TruncateCells(rows[i], width)
+		}
+	}
+	return out
+}
+
+// propBlockRows are the block's rows: the loop row, the timeline's and the
+// estimate's, which the weather modes hold.
+const propBlockRows = radarRows + 2
+
+// propWordsWidth is the width the block is laid out at for the words: wide
+// enough that no line of it is cut.
+const propWordsWidth = 200

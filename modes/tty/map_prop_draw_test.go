@@ -58,14 +58,14 @@ func TestBothPropagationLayersDrawWithTheirUnits(t *testing.T) {
 	if g.Type.Preset != "muf" || g.Type.Unit != "MHz" || g.Cols != 180 || g.Rows != 90 || g.Values[0] != 18 {
 		t.Errorf("the grid is %+v at %v", g.Type, g.Values[0])
 	}
-	if row := stripANSITest(d.scrubRows(d.mapTextW())[0]); !strings.Contains(row, "MUF(3000), MHz") {
-		t.Errorf("the legend row does not key MUF(3000) in MHz: %q", row)
+	if rows := d.scrubRows(d.mapTextW()); !strings.Contains(stripANSITest(rows[0]), "MUF(3000) │") || !strings.Contains(stripANSITest(rows[1]), "MHz │") {
+		t.Errorf("the legend does not key MUF(3000) in MHz: %q, %q", stripANSITest(rows[0]), stripANSITest(rows[1]))
 	}
 	d = pressMap(t, d, "L")
 	if g = propGrid(t, d); g.Type.Preset != "fof2" || g.Type.Unit != "MHz" || g.Values[0] != 6 {
 		t.Errorf("after L the grid is %+v at %v; want foF2", g.Type, g.Values[0])
 	}
-	if row := stripANSITest(d.scrubRows(d.mapTextW())[0]); !strings.Contains(row, "foF2, MHz") {
+	if row := stripANSITest(d.scrubRows(d.mapTextW())[0]); !strings.Contains(row, "foF2 │") {
 		t.Errorf("after L the legend row does not key foF2: %q", row)
 	}
 	if d = pressMap(t, d, "P"); len(d.mapPane.propGiven) != 0 {

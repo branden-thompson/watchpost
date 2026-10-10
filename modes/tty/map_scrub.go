@@ -46,13 +46,17 @@ func (d Dashboard) scrubRows(width int) []string {
 	case d.mapMode() == modeForecast:
 		out = append(out, " "+d.tempLegendRow(width)) // W10.10: the bands' colours, as radar's are
 	case d.mapMode() == modePropagation:
-		out = append(out, " "+d.propLegendRow(width)) // the layer's colours in MHz (FR-1.5)
+		out = append(out, " "+d.propLegendRows(width)[0]) // its bands on their colours; their MHz is its note line (D-160)
 	}
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
 	}
-	out = append(out, " "+render.TruncateCells(d.pictureStatus(), width)) // blank when whole: the map's size never waits on it
-	var tl []string                                                       // the Propagation mode's: none yet, its rows held blank
+	status := d.pictureStatus()
+	if d.mapMode() == modePropagation {
+		status = d.propLegendRows(width)[1] // the legend's MHz in this row; the picture's status joins the mode line (D-160)
+	}
+	out = append(out, " "+render.TruncateCells(status, width)) // blank when whole: the map's size never waits on it
+	var tl []string                                            // the Propagation mode's: none yet, its rows held blank
 	switch d.mapMode() {
 	case modeRadar:
 		tl = d.mapPane.radarTimeline
@@ -70,6 +74,9 @@ func (d Dashboard) scrubRows(width int) []string {
 	}
 	est := costEstimate(d.mapCost) // under the timeline's right end, as the HUM LEAD drew it (D-133)
 	block = append(block, strings.Repeat(" ", max(d.scrubW()-render.Width(est), 0))+est)
+	if d.mapMode() == modePropagation {
+		block = d.propBlock(d.scrubW()) // D-157: the same rows, its own answer
+	}
 	if d.scrubBoxFits() {
 		box := d.scrubControls()
 		for i := range block {
@@ -218,13 +225,6 @@ func (d Dashboard) loopRow(width int) string {
 			return item(render.Tint("PLAYING", render.Tok(render.ProviderOK)))
 		}
 		return item(render.Tint("STOPPED", render.Tok(render.ListPointer)))
-	}
-	if d.mapMode() == modePropagation {
-		words := propagationLabel + " · NO DATA YET"
-		if snap := d.mapPane.propSnap; snap != nil {
-			words = propagationLabel + " · " + strings.ToUpper(propLayerName(d.mapPane.propLayer)) + " · COMPUTED " + snap.Computed.UTC().Format("15:04 UTC")
-		}
-		return render.PadTo("", from) + render.TruncateCells(words, max(width-from, 1))
 	}
 	if d.mapMode() == modeForecast {
 		steps := d.forecastSteps()

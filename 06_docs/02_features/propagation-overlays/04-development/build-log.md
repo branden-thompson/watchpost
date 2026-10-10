@@ -158,3 +158,15 @@ release candidates (go-tuiMaps v0.3.0 first, D-3), O1 and O3 (`implementation-pl
 - **One live update** through the real client and service, before verify (three NOAA requests, under D-39), from a throwaway program not kept: 1.1 s; GloTEC's grid valid 01:25 UTC at 01:59 UTC; F10.7 mean 103.6 over 29 days; MUF(3000) 7.2 to 38.4 MHz (mean 19.6), foF2 2.6 to 13.3 MHz (mean 6.5) over the 16,200 cells.
 - **Not yet:** the terminator (go-tuiMaps P4), the hours ahead, the chart, the stations (G5, G9), the Broadcaster's key (FR-2).
 - **Checks:** the whole tree's tests; `modes/tty` and `app` with `-race`; then `make verify`.
+
+## Batch 9 — UAT-1's verdicts: the rows under the Propagation map, the menu's Propagation row, the band legend (D-157 to D-160, A-37)
+
+- **UAT verdicts carried (0.18.0 L8):** D-157 (the rows under the map, the HUM LEAD's mock, "here now, then continents"), D-158 (the Overlays menu's Propagation row), D-159 (the menu in the mode: tints and detail), D-160 (the legend, band over MHz).
+- **The rows under the map** (D-157, `modes/tty/map_prop_draw.go`): in the timeline's five rows, the header with the sources' chips; the mode, the time computed in the station's clock and zone and its age, "upper limits only"; the selected place now, its foF2 and MUF(3000); the bands under foF2 for near-vertical paths to about 400 km; the highest band under MUF(3000) for about 3,000 km hops. The words say the same.
+  - **Found:** in the agent's first layout the map came out a row shorter than in the weather mode when the weather mode drew no badge row. The legend's MHz line now takes the picture status's row, and the picture's status joins the mode line, so the height is the weather modes' (`TestThePropagationRowsFollowTheMock`).
+  - **Found:** the first wiring recursed (the note lines asked whether the picture fits, which counts the note lines) and overflowed the stack; the mode's note lines are none now.
+- **The legend** (D-160): the bands on their colours, and under each its lower edge in MHz. foF2's legend carries a class under 1.8 MHz, drawn as nothing (D-149), which keys no band; `bandClasses` aligns the library's classes to the bands and falls back to the one-line row for any other count.
+- **The menu** (D-158, D-159): a "Radio Propagation" radio row among the tints. Space on it is P; on it chosen, it leaves as P does; a weather tint chosen in the Propagation mode returns to the weather mode with the tint drawn, never toggled off. In the mode the menu is the tints and MAP DETAILS; the weather groups return, their ticks kept. The menu's apply step is one function, `menuApplied`, for the menu's own switches and these.
+- **Mutants** m151 to m157, each applied, vetted, killed and restored by copy.
+  - m153 was first killed only by a panic in another test. The legend test checked 160m's colour, which a colourless fixture cannot see; the class mapping is now a function the test asks directly, and m153 was re-pointed at it.
+- **Docs:** the as-built map diagram; the atlas.

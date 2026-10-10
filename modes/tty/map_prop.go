@@ -103,3 +103,54 @@ func (d Dashboard) outsideStated() bool {
 	}
 	return false
 }
+
+// The Overlays menu's row for the Propagation mode (D-158, A-37).
+const (
+	propagationRowKey   = "propagation"
+	propagationRowLabel = "Radio Propagation"
+)
+
+// radioChangesMode is space or enter on a tint that moves between the modes
+// (D-158): the Propagation row is P - into the mode, or, chosen, back out to
+// the weather mode it came from; a weather tint chosen in the Propagation
+// mode returns to that weather mode with the tint drawn. false for any other
+// key or row, which the menu handles as before.
+func (d Dashboard) radioChangesMode(key string) (Dashboard, tea.Cmd, bool) {
+	rows := d.overlayRows()
+	if len(rows) == 0 || (key != "space" && key != "enter") {
+		return d, nil, false
+	}
+	r := rows[d.mapPane.menuAt%len(rows)]
+	if r.kind != menuRadio {
+		return d, nil, false
+	}
+	at := d.mapPane.menuAt
+	switch {
+	case r.key == propagationRowKey:
+		nd, cmd := d.togglePropagation()
+		nd.mapPane.menuAt = at // the tints lead the menu in both modes: the cursor stays on its row
+		return nd.followMenuFocus(), cmd, true
+	case d.mapMode() == modePropagation:
+		nd, cmd := d.togglePropagation()
+		nd.mapPane.menuAt = at
+		nd = nd.chooseTint(r.key)
+		nd, more, _ := nd.menuApplied(d)
+		return nd, tea.Batch(cmd, more), true
+	}
+	return d, nil, false
+}
+
+// chooseTint draws a weather tint: chosen, the others not; never cleared,
+// as space on a chosen tint would clear it (D-142).
+func (d Dashboard) chooseTint(key string) Dashboard {
+	if key == TemperatureLayer && d.pickFeels() {
+		key = FeelsLayer
+	}
+	d.mapPane.tempAuto = false
+	return d.withChoice(func(c map[string]bool) {
+		for _, t := range oneTint {
+			c[t] = false
+		}
+		c[key] = true
+	})
+}

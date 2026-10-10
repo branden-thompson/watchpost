@@ -533,6 +533,16 @@ func (d Dashboard) overlayRows() []overlayRow {
 			out = append(out, overlayRow{kind: menuRadio, key: r.key, label: r.label, weather: true})
 		}
 	}
+	if d.cfg.PropagationUpdate != nil {
+		out = append(out, overlayRow{kind: menuRadio, key: propagationRowKey, label: propagationRowLabel}) // D-158: the mode as a tint
+	}
+	if d.mapMode() == modePropagation { // D-159: the tints and the map's detail; the weather's groups wait, their ticks kept
+		out = append(out, overlayRow{kind: menuPreset, key: detailLevelKey, label: "Preset"})
+		for _, l := range mapDetailLayers() {
+			out = append(out, overlayRow{kind: menuDetail, key: l.key, label: l.label})
+		}
+		return out
+	}
 	placed := map[string]bool{RadarLayer: true, TemperatureLayer: true, FeelsLayer: true, UVLayer: true, AirLayer: true, AlertLayer: true}
 	group := func(key, label string, layers []string, fill bool) {
 		var members []overlayRow
@@ -751,6 +761,9 @@ func (d Dashboard) rowGroupOn(group string) bool {
 // tintChosen reports whether a radio row is the tint chosen: Temperature's
 // is either of its measures (D-119).
 func (d Dashboard) tintChosen(key string) bool {
+	if key == propagationRowKey {
+		return d.mapMode() == modePropagation
+	}
 	if key == TemperatureLayer {
 		return d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer)
 	}
