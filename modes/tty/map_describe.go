@@ -68,8 +68,8 @@ func (d Dashboard) describeUpTo(most int) []string {
 			words = "This is the Propagation mode, over the whole world: " + propLayerName(d.mapPane.propLayer) + " is drawn, in megahertz." // FR-3.2
 		}
 		out = append(out, words, d.propStatusWords()+".")   // no alert is drawn in it (D-21); its status said without the picture (FR-3.5)
-		for _, l := range d.propBlock(propWordsWidth)[2:] { // the place now, as the rows under the picture say it (D-157)
-			if l = strings.TrimSpace(l); l != "" {
+		for _, l := range d.propBlock(propWordsWidth)[3:] { // the place now, as the rows under the picture say it (D-157)
+			if l = strings.Join(strings.Fields(l), " "); l != "" {
 				out = append(out, l+".")
 			}
 		}

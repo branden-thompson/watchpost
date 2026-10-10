@@ -15,7 +15,11 @@ import (
 // mode it came from.
 func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	s := &seam{answer: PropagationResult{Snapshot: propSnapAt(time.Now().UTC().Add(-12*time.Minute).Truncate(time.Minute), 18)}}
-	d := propDash(t, s, true)
+	var asked []string // radar configured, as the app's is: the rows under the map are drawn only with its timeline
+	d := openMap(t, Config{PropagationUpdate: s.update, PropagationAck: propAckVersion, MapRadar: radarFeed(t, "MRMS", &asked)}, 133, 44)
+	if !d.radarTimelineOn() {
+		t.Fatal("the fixture holds no timeline rows: the rows under the map would not be drawn")
+	}
 	weather := d.mapBodySize()
 	d, cmd := keyCmd(t, d, "P")
 	d = runProp(t, d, cmd)
@@ -29,6 +33,20 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 			t.Errorf("the rows under the map do not say %q:\n%s", want, rows)
 		}
 	}
+	block := d.propBlock(d.scrubW()) // D-163: a blank row between the mode and the place; the answer under NOW
+	label := strings.ToUpper(d.selectedLocation().Label)
+	if !strings.HasPrefix(block[1], "MODE:") || strings.TrimSpace(block[2]) != "" || !strings.HasPrefix(block[3], label+"   NOW · ") {
+		t.Errorf("the block is not header, mode, a blank row, then the place:\n%s", strings.Join(block, "\n"))
+	}
+	now := strings.Index(block[3], "NOW")
+	for _, l := range block[4:6] {
+		if strings.Index(l, "Local") != now && strings.Index(l, "~3,000") != now {
+			t.Errorf("%q is not aligned under NOW, at %d", l, now)
+		}
+	}
+	if lines, holds := len(d.mapBodyLines()), d.modalMax(); lines != holds {
+		t.Errorf("the window's body is %d lines and the window holds %d: the rows under the map and the map's size disagree", lines, holds)
+	}
 	for _, l := range strings.Split(rows, "\n") {
 		if strings.Contains(l, "NVIS") && strings.Contains(l, "40m") {
 			t.Errorf("40m (7 MHz) is above foF2 6 MHz, yet listed: %q", l)
@@ -40,8 +58,8 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 			t.Errorf("without the picture the words do not say %q: %q", want, words)
 		}
 	}
-	if got := d.mapBodySize(); got != weather {
-		t.Errorf("the map is %v in the Propagation mode and %v in the weather mode", got, weather)
+	if got := d.mapBodySize(); got.Rows > weather.Rows || got.Rows < weather.Rows-2 {
+		t.Errorf("the map is %v in the Propagation mode and %v in the weather mode; D-163 takes a row or two", got, weather)
 	}
 }
 

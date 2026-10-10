@@ -51,12 +51,8 @@ func (d Dashboard) scrubRows(width int) []string {
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
 	}
-	status := d.pictureStatus()
-	if d.mapMode() == modePropagation {
-		status = d.propLegendRows(width)[1] // the legend's MHz in this row; the picture's status joins the mode line (D-160)
-	}
-	out = append(out, " "+render.TruncateCells(status, width)) // blank when whole: the map's size never waits on it
-	var tl []string                                            // the Propagation mode's: none yet, its rows held blank
+	out = append(out, " "+render.TruncateCells(d.pictureStatus(), width)) // blank when whole: the map's size never waits on it
+	var tl []string                                                       // the Propagation mode's: none yet, its rows held blank
 	switch d.mapMode() {
 	case modeRadar:
 		tl = d.mapPane.radarTimeline

@@ -611,8 +611,11 @@ func (d Dashboard) reportPlace() Dashboard {
 // (D-133), then the notes that come and go, each only while it applies
 // (D-132), then the cost warning; wrapped to the map's width.
 func (d Dashboard) noteLines(width int) []string {
-	if d.mapMode() == modePropagation {
-		return nil // its badges and its words are in its block under the map (D-157)
+	if d.mapMode() == modePropagation { // its badges and words are in its block (D-157); its one note, the legend's MHz (D-160)
+		if d.cfg.ASCII || d.mapDesc == mapDescInstead { // no picture meant (not mapPicture: its fit counts these lines)
+			return nil
+		}
+		return []string{d.propLegendRows(width)[1]}
 	}
 	out := d.badgeRows(width)
 	if d.notesYield(width) {
@@ -652,6 +655,9 @@ func (d Dashboard) mapChromeRows(noteRows int) int {
 	rows := mapStatusRows + noteRows
 	if d.radarTimelineOn() {
 		rows += radarRows + radarExtraRows
+	}
+	if d.radarTimelineOn() && d.mapMode() == modePropagation {
+		rows += propBlockRows - (radarRows + 2) // its block's blank row before the place (D-163)
 	}
 	return rows
 }

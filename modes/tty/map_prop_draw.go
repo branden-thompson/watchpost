@@ -206,27 +206,25 @@ func (d Dashboard) propBlock(width int) []string {
 	}
 	at := snap.Computed.In(d.now().Location())
 	ago := int(d.now().Sub(snap.Computed).Minutes())
-	mode := "MODE: " + propLayerName(d.mapPane.propLayer) + " · COMPUTED " + d.clockFmt.Time(at) + " " + at.Format("MST") +
-		" (" + strconv.Itoa(max(ago, 0)) + " min ago) · upper limits only"
-	if status := d.pictureStatus(); status != "" {
-		mode += " · " + status // the picture's own status, its row the legend's MHz in this mode (D-160)
-	}
-	out = append(out, mode)
+	out = append(out, "MODE: "+propLayerName(d.mapPane.propLayer)+" · COMPUTED "+d.clockFmt.Time(at)+" "+at.Format("MST")+
+		" ("+strconv.Itoa(max(ago, 0))+" min ago) · upper limits only", "") // D-163: a blank row before the place
 	if loc == nil {
 		return padRows(out, width)
 	}
+	place := strings.ToUpper(loc.Label) + "   " // D-163: the place in a column of its own, its answer under NOW
+	under := strings.Repeat(" ", render.Width(place))
 	fo, okF := cellValue(snap.Hours[0].FoF2, loc.Lat, loc.Lon)
 	muf, okM := cellValue(snap.Hours[0].MUF3000, loc.Lat, loc.Lon)
 	if !okF || !okM {
-		return padRows(append(out, strings.ToUpper(loc.Label)+" NOW · no data at the place"), width)
+		return padRows(append(out, place+"NOW · no data at the place"), width)
 	}
-	out = append(out, fmt.Sprintf("%s NOW · foF2 %.1f MHz · MUF(3000) %.1f MHz", strings.ToUpper(loc.Label), fo, muf))
-	out = append(out, "  Local, to ~400 km (NVIS): "+bandNames(bandsUnder(fo)))
+	out = append(out, fmt.Sprintf("%sNOW · foF2 %.1f MHz · MUF(3000) %.1f MHz", place, fo, muf))
+	out = append(out, under+"Local, to ~400 km (NVIS): "+bandNames(bandsUnder(fo)))
 	hops := bandsUnder(muf)
 	if len(hops) == 0 {
-		return padRows(append(out, "  ~3,000 km hops through here: none of the bands"), width)
+		return padRows(append(out, under+"~3,000 km hops through here: none of the bands"), width)
 	}
-	return padRows(append(out, fmt.Sprintf("  ~3,000 km hops through here: up to %s (%.1f MHz)", hops[len(hops)-1].name, muf)), width)
+	return padRows(append(out, fmt.Sprintf("%s~3,000 km hops through here: up to %s (%.1f MHz)", under, hops[len(hops)-1].name, muf)), width)
 }
 
 // bandNames are bands by name, or "none of the bands".
@@ -241,7 +239,7 @@ func bandNames(bands []hfBand) string {
 	return strings.Join(names, " ")
 }
 
-// padRows are the block's rows, five, each cut to the width.
+// padRows are the block's rows, propBlockRows of them, each cut to the width.
 func padRows(rows []string, width int) []string {
 	out := make([]string, propBlockRows)
 	for i := range out {
@@ -252,9 +250,10 @@ func padRows(rows []string, width int) []string {
 	return out
 }
 
-// propBlockRows are the block's rows: the loop row, the timeline's and the
-// estimate's, which the weather modes hold.
-const propBlockRows = radarRows + 2
+// propBlockRows are the block's rows (D-163): the header, the mode, a blank
+// row, the place and its two answers - one more than the weather modes' loop
+// row, timeline and estimate, which mapChromeRows counts.
+const propBlockRows = radarRows + 3
 
 // propWordsWidth is the width the block is laid out at for the words: wide
 // enough that no line of it is cut.

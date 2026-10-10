@@ -177,3 +177,10 @@ release candidates (go-tuiMaps v0.3.0 first, D-3), O1 and O3 (`implementation-pl
 - **One cause:** the menu heads each row's section by whether the row is an overlay (`modes/tty/map_boxes.go:641-643`). Batch 9's Radio Propagation row was not marked one, so it opened a MAP DETAIL section of its own between the tints and the rest, and in the weather modes OVERLAYS was headed a second time after it. Marked an overlay, it is the fourth row under one OVERLAYS heading in both modes.
 - **Missed in batch 9:** its menu tests read the rows, not the menu as drawn; `TestThePropagationRowIsTheFourthOverlay` reads the drawn menu in both modes.
 - **Mutant** m158, applied, vetted, killed and restored by copy.
+
+## Batch 11 — UAT-1, round 3: the rows under the Propagation map laid out for scanning (D-163, A-38)
+
+- **UAT verdict carried (0.18.0 L8):** D-163, the HUM LEAD's round-3 mock.
+- **The layout:** a blank row after the legend, which is the picture's own status row when it has one; the header; the mode line; a blank row; the place's name in its own column with its foF2, MUF(3000) and two answers aligned under NOW. The block is six rows, counted by `mapChromeRows`; the map is a row or two shorter than in a weather mode.
+- **Found:** `TestThePropagationRowsFollowTheMock` used a fixture with no radar source, where the rows under the map are not drawn at all, the blind spot that hid the empty area in UAT-1. It now uses one with radar, as the app has; mutant m159 (the blank row not counted) survived until it did.
+- **Mutants:** m151 and m157 re-pointed to the new lines; m159 and m160 new; each applied, vetted, killed and restored by copy.
