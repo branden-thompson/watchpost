@@ -40,6 +40,19 @@ trap 'go mod tidy >/dev/null 2>&1 || true' EXIT
       echo "_no licence file found in the module — check upstream before shipping_"
     fi
     echo
+    # A module's NOTICE travels with it too: Apache-2.0 asks for it, and a
+    # module that ports or embeds another's work names it there.
+    for f in NOTICE NOTICE.md NOTICE.txt; do
+      if [ -n "$dir" ] && [ -f "$dir/$f" ]; then
+        echo "Its $f:"
+        echo
+        echo '```'
+        cat "$dir/$f"
+        echo '```'
+        echo
+        break
+      fi
+    done
   done
 } > "$out"
 echo "third-party-licenses: wrote $out ($(grep -c '^## ' "$out") modules, $(grep -c 'no licence file' "$out") without a file)"

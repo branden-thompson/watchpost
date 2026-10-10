@@ -2,6 +2,19 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.18.1] — 2026-10-10
+
+### Fixed
+- **The heaviest rain totals are drawn.** In Forecast mode a day's rain and snow total of 2 inches
+  (50.8 mm) or more drew nothing: those areas showed the basemap alone, while the legend still listed
+  both of the heaviest classes. go-tuiMaps v0.2.1 draws every class in its own colour (issue #28).
+- **Built with Go 1.27.2,** which fixes an HTTP/2 crash in the standard library (GO-2026-6617) that the
+  map's fetcher could reach. The module's floor is Go 1.26.9; the Go 1.25 line has no fix.
+
+### Changed
+- `THIRD_PARTY_LICENSES.md` carries each module's NOTICE as well as its licence, as Apache-2.0 asks:
+  yaml/v3's NOTICE was missing.
+
 ## [0.18.0] — 2026-10-05
 
 ### Added
