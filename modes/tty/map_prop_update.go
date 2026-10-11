@@ -29,7 +29,7 @@ type (
 		gen uint64
 		res PropagationResult
 	}
-	propTickMsg struct{ gen uint64 }
+	propTickMsg struct{ gen, seq uint64 }
 )
 
 // askPropagation starts the mode's update, or joins the one running (D-131):
@@ -38,8 +38,8 @@ type (
 // called in the command, never on the UI goroutine (FR-4.8).
 func (d Dashboard) askPropagation() (Dashboard, tea.Cmd) {
 	seam := d.cfg.PropagationUpdate
-	ready := seam != nil && !d.mapPane.propBusy && d.modal == modalMap
-	if !ready || d.mapMode() == modeRadar || d.mapMode() == modeForecast {
+	ready := seam != nil && !d.mapPane.propBusy && d.modal == modalMap && d.mapMode() == modePropagation
+	if !ready {
 		return d, nil
 	}
 	if d.mapPane.propCtx == nil {
@@ -75,9 +75,16 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		d.mapPane.propSnap = &snap
 	}
 	d.mapPane.propErr = v.res.Err
-	d = d.setProp().renderMap()
-	gen := v.gen
-	return d, tea.Tick(propRefreshEvery, func(time.Time) tea.Msg { return propTickMsg{gen: gen} })
+	return d.setProp().renderMap().nextPropTick()
+}
+
+// nextPropTick sets the session's next refresh tick, the one tick that asks:
+// any set before it asks nothing, so one chain of ticks runs however many
+// updates were asked.
+func (d Dashboard) nextPropTick() (Dashboard, tea.Cmd) {
+	d.mapPane.propTickSeq++
+	tick := propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq}
+	return d, tea.Tick(propRefreshEvery, func(time.Time) tea.Msg { return tick })
 }
 
 // applyPropTick asks again on the refresh tick; with another window over the
@@ -86,12 +93,14 @@ func (d Dashboard) applyPropTick(v propTickMsg) (tea.Model, tea.Cmd) {
 	if v.gen != d.mapPane.propGen {
 		return d, nil
 	}
+	if v.seq != d.mapPane.propTickSeq {
+		return d, nil // a later tick is set
+	}
 	nd, cmd := d.askPropagation()
 	if cmd != nil {
 		return nd, cmd
 	}
-	gen := v.gen
-	return d, tea.Tick(propRefreshEvery, func(time.Time) tea.Msg { return propTickMsg{gen: gen} })
+	return d.nextPropTick()
 }
 
 // propStatusWords are the Propagation mode's status: asking, what the last

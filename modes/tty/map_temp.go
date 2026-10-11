@@ -488,9 +488,7 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 		d, cmd := d.enterMode() // the region's bound back, and the weather's data asked again
 		return d, tea.Batch(save, cmd)
 	}
-	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false
-	d.mapPane.fcGen++
-	d.mapPane.tempAuto = false // Forecast mode's alone (D-104)
+	d = d.resetPlayback() // the automatic temperature is Forecast mode's alone (D-104)
 	d = d.ensureMainOverlay()
 	d = d.setTemp() // what is held, drawn or taken off at once (D-99)
 	d = d.refreshMapCost().showStep().retimeDrawn()
@@ -503,11 +501,11 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 // draw no main overlay (D-103) - a blank map reads as broken - and shows the
 // chip that says so. It is Forecast mode's alone, never saved (D-104).
 func (d Dashboard) ensureMainOverlay() Dashboard {
-	if d.mapMode() == modeRadar || d.mapMode() == modePropagation || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) || d.layerOn(UVLayer) || d.layerOn(AirLayer) {
-		return d // a main overlay is on already: temperature, feels-like, wind, UV or air quality (D-110, D-119, D-137, D-139)
+	mainOn := d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) || d.layerOn(UVLayer) || d.layerOn(AirLayer) // temperature, feels-like, wind, UV or air quality (D-110, D-119, D-137, D-139)
+	if d.mapMode() == modeForecast && d.cfg.MapTemperature != nil && !mainOn {
+		d.mapPane.tempAuto, d.mapPane.modeChip = true, true
+		d.mapPane.gen++
 	}
-	d.mapPane.tempAuto, d.mapPane.modeChip = true, true
-	d.mapPane.gen++
 	return d
 }
 
@@ -527,14 +525,23 @@ func (d Dashboard) showStep() Dashboard {
 	return d
 }
 
+// resetPlayback is a mode's start: Forecast mode's playback on Now and
+// stopped, a step in flight dropped, and no automatic temperature until the
+// mode asks for one (D-94, D-104).
+func (d Dashboard) resetPlayback() Dashboard {
+	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false
+	d.mapPane.fcGen++
+	d.mapPane.tempAuto = false
+	return d
+}
+
 // flipHighLow switches Forecast mode's days between high and low (D-97).
 func (d Dashboard) flipHighLow() Dashboard {
-	if d.mapMode() == modeRadar || d.mapMode() == modePropagation {
-		return d
+	if d.mapMode() == modeForecast {
+		d.mapPane.fcLow = !d.mapPane.fcLow
+		return d.setTemp().renderMap()
 	}
-	d.mapPane.fcLow = !d.mapPane.fcLow
-	d = d.setTemp()
-	return d.renderMap()
+	return d
 }
 
 // forecastTickMsg is Forecast mode's playback step, to the play it belongs to.
@@ -577,7 +584,8 @@ func (d Dashboard) handleForecastPlayback(act term.Action) (Dashboard, tea.Cmd, 
 
 // applyForecastTick advances a playing forecast one step, holding the last.
 func (d Dashboard) applyForecastTick(v forecastTickMsg) (tea.Model, tea.Cmd) {
-	if v.gen != d.mapPane.fcGen || !d.mapPane.fcPlaying || d.modal != modalMap || d.mapMode() == modeRadar || d.mapMode() == modePropagation {
+	playing := v.gen == d.mapPane.fcGen && d.mapPane.fcPlaying && d.modal == modalMap && d.mapMode() == modeForecast
+	if !playing {
 		return d, nil
 	}
 	last := len(d.forecastSteps()) - 1
@@ -813,16 +821,27 @@ func (d Dashboard) legendHas(preset string) bool {
 	return slices.ContainsFunc(d.mapPane.legend, func(e tuimaps.LegendEntry) bool { return e.Preset == preset })
 }
 
+// legendClasses are a preset's classes in the map's legend, low to high:
+// none where it is not drawn.
+func (d Dashboard) legendClasses(preset string) []tuimaps.Class {
+	for _, e := range d.mapPane.legend {
+		if e.Preset == preset {
+			return e.Classes
+		}
+	}
+	return nil
+}
+
+// rainIsRadar reports whether a layer is rain and snow in Radar mode, where
+// the radar is the rain: the layer is Forecast mode's alone (D-117).
+func (d Dashboard) rainIsRadar(key string) bool {
+	return key == RainLayer && d.mapMode() == modeRadar
+}
+
 // presetRow is a preset's colours as a row of swatches, low to high, each
 // class's words on it in black or white, whichever reads (U2-18).
 func (d Dashboard) presetRow(preset, head, colder, warmer string, width int) string {
-	var classes []tuimaps.Class
-	for _, e := range d.mapPane.legend {
-		if e.Preset == preset {
-			classes = e.Classes
-			break
-		}
-	}
+	classes := d.legendClasses(preset)
 	room := width - render.Width(head+colder+warmer)
 	if len(classes) == 0 || room < len(classes)*2 {
 		return ""

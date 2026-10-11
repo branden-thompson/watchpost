@@ -55,14 +55,14 @@ func fieldGrid(f ionomaps.Field) tuimaps.Grid {
 // layer alone (D-112); none outside the mode or before a snapshot.
 func (d Dashboard) propOverlays() []tuimaps.Overlay {
 	snap := d.mapPane.propSnap
-	if d.mapMode() == modeRadar || d.mapMode() == modeForecast || snap == nil || len(snap.Hours) == 0 {
-		return nil
+	if d.mapMode() == modePropagation && snap != nil && len(snap.Hours) > 0 {
+		h := snap.Hours[0]
+		if d.mapPane.propLayer == propFoF2 {
+			return []tuimaps.Overlay{tuimaps.FoF2Grid("propagation/fof2", fieldGrid(h.FoF2), h.At)}
+		}
+		return []tuimaps.Overlay{tuimaps.MUFGrid("propagation/muf", fieldGrid(h.MUF3000), h.At)}
 	}
-	h := snap.Hours[0]
-	if d.mapPane.propLayer == propFoF2 {
-		return []tuimaps.Overlay{tuimaps.FoF2Grid("propagation/fof2", fieldGrid(h.FoF2), h.At)}
-	}
-	return []tuimaps.Overlay{tuimaps.MUFGrid("propagation/muf", fieldGrid(h.MUF3000), h.At)}
+	return nil
 }
 
 // setProp hands the library the Propagation mode's overlays as they stand,
@@ -81,20 +81,17 @@ func (d Dashboard) setProp() Dashboard {
 
 // flipPropLayer is L: MUF(3000) or foF2, in the Propagation mode alone.
 func (d Dashboard) flipPropLayer() Dashboard {
-	if d.mapMode() == modeRadar || d.mapMode() == modeForecast {
-		return d
+	if d.mapMode() == modePropagation {
+		d.mapPane.propLayer = 1 - d.mapPane.propLayer
+		return d.setProp().renderMap()
 	}
-	d.mapPane.propLayer = 1 - d.mapPane.propLayer
-	return d.setProp().renderMap()
+	return d
 }
 
-// refreshProp is U: an update now, in the Propagation mode alone, under the
-// library's throttle (D-120): an early ask is answered from the last field
-// with its reason.
+// refreshProp is U: an update now, in the Propagation mode alone (as every
+// ask is), under the library's throttle (D-120): an early ask is answered
+// from the last field with its reason.
 func (d Dashboard) refreshProp() (Dashboard, tea.Cmd) {
-	if d.mapMode() == modeRadar || d.mapMode() == modeForecast {
-		return d, nil
-	}
 	return d.askPropagation()
 }
 
@@ -141,12 +138,7 @@ func (d Dashboard) propLegendRows(width int) [2]string {
 	if d.mapPane.propLayer == propFoF2 {
 		preset, head, bands = "fof2", "foF2 │ ", hfBands[:fof2Bands]
 	}
-	var classes []tuimaps.Class
-	for _, e := range d.mapPane.legend {
-		if e.Preset == preset {
-			classes = e.Classes
-		}
-	}
+	classes := d.legendClasses(preset)
 	each := 0
 	if len(bands) > 0 {
 		each = (width - render.Width(head)) / len(bands)
@@ -178,8 +170,9 @@ func bandClasses(classes []tuimaps.Class, n int) ([]tuimaps.Class, bool) {
 	return nil, false
 }
 
-// cellValue is a field's value at a place, MHz; false off the field or
-// where it has no data.
+// cellValue is a field's value at a place, MHz, from the cell it falls in
+// (a place off the field, from the nearest edge cell); false for a field
+// with no cells or where the cell has no data.
 func cellValue(f ionomaps.Field, lat, lon float64) (float64, bool) {
 	if f.Cols <= 0 || f.Rows <= 0 || len(f.Values) != f.Cols*f.Rows {
 		return 0, false
@@ -222,8 +215,8 @@ func (d Dashboard) propBlockAs(width int, styled bool) []string {
 		out = append(out, "MODE: "+field(propLayerName(d.mapPane.propLayer))+" · "+strings.TrimPrefix(d.propStatusWords(), "Propagation · "))
 		return padRows(out, width)
 	}
-	at := snap.Computed.In(d.now().Location())
-	age := d.now().Sub(snap.Computed)
+	now := d.now()
+	at, age := snap.Computed.In(now.Location()), now.Sub(snap.Computed)
 	ago := "(just now)"
 	if age >= time.Minute {
 		ago = "(" + strconv.Itoa(int(age.Minutes())) + " min ago)"
@@ -248,6 +241,21 @@ func (d Dashboard) propBlockAs(width int, styled bool) []string {
 		return padRows(append(out, under+"~3,000 km hops through here: none of the bands"), width)
 	}
 	return padRows(append(out, fmt.Sprintf("%s~3,000 km hops through here: up to %s (%.1f MHz)", under, hops[len(hops)-1].name, muf)), width)
+}
+
+// propAgeShown reports whether the block says a snapshot's age, which moves
+// with the clock (D-166).
+func (d Dashboard) propAgeShown() bool {
+	return d.modal == modalMap && d.mapMode() == modePropagation && d.mapPane.propSnap != nil && len(d.mapPane.propSnap.Hours) > 0
+}
+
+// propAgeMinutes is the age the block says, in whole minutes: the frame
+// moves when it does; -1 while no age is said.
+func (d Dashboard) propAgeMinutes() int64 {
+	if !d.propAgeShown() {
+		return -1
+	}
+	return int64(d.now().Sub(d.mapPane.propSnap.Computed) / time.Minute)
 }
 
 // bandNames are bands by name, or "none of the bands".
@@ -276,7 +284,7 @@ func padRows(rows []string, width int) []string {
 // propBlockRows are the block's rows (D-163): the header, the mode, a blank
 // row, the place and its two answers - one more than the weather modes' loop
 // row, timeline and estimate, which mapChromeRows counts.
-const propBlockRows = radarRows + 3
+const propBlockRows = scrubBoxRows + 1
 
 // propWordsWidth is the width the block is laid out at for the words: wide
 // enough that no line of it is cut.

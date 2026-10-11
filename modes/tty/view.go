@@ -137,7 +137,7 @@ func (d Dashboard) modalMax() int {
 		// its own status, notes and radar timeline, up to the terminal's height
 		// minus 8.
 		base := max(d.height*80/100-5, mapMinBody.Rows+1)
-		need := mapMinBody.Rows + d.mapChromeRows(len(d.noteLines(d.mapTextW())))
+		need := mapMinBody.Rows + d.mapChromeRows(d.noteRowCount(d.mapTextW()))
 		return max(5, min(d.height-8, max(base, need)))
 	}
 	return max(5, d.height-12)

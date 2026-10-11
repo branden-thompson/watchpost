@@ -14,7 +14,7 @@ import (
 )
 
 // mapKeyMsg is a key the map window binds, as the terminal sends it.
-func mapKeyMsg(t *testing.T, key string) tea.KeyPressMsg {
+func mapKeyMsg(t testing.TB, key string) tea.KeyPressMsg {
 	t.Helper()
 	named := map[string]tea.KeyPressMsg{
 		"up": {Code: tea.KeyUp}, "down": {Code: tea.KeyDown}, "left": {Code: tea.KeyLeft}, "right": {Code: tea.KeyRight},

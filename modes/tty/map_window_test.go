@@ -35,7 +35,7 @@ func placedSnap() *snapshot.Snapshot {
 }
 
 // mapDash is the dashboard at 133x44 with a placed location and maps on.
-func mapDash(t *testing.T, cfg Config) Dashboard {
+func mapDash(t testing.TB, cfg Config) Dashboard {
 	t.Helper()
 	if cfg.Version == "" {
 		cfg.Version = "0.18.0-test"
@@ -66,7 +66,7 @@ func pressKey(d Dashboard, key string) (Dashboard, tea.Cmd) {
 
 // settleMap runs the map's work as Bubble Tea would - each Work command's
 // message fed back through Update - until nothing more is pending.
-func settleMap(t *testing.T, d Dashboard) Dashboard {
+func settleMap(t testing.TB, d Dashboard) Dashboard {
 	t.Helper()
 	for range 50 {
 		cmd := d.mapWorkCmd()

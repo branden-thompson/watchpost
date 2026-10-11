@@ -71,11 +71,15 @@ func (d Dashboard) handlePropAckKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return d, tea.Batch(update, func() tea.Msg { _ = save(propAckVersion); return nil }) // a failed save shows it again next session, never an error (D-124)
 }
 
+// propAckMark is how much of the first line finds it in the frame: its
+// opening words, which no window width the acknowledgement allows wraps.
+const propAckMark = 12
+
 // propAckCursor is where the terminal cursor stands on the acknowledgement,
 // D-81: the start of its first line, found in the frame as drawn; false when
 // it is not on screen.
 func propAckCursor(frame string) (x, y int, ok bool) {
-	first := propAckText[0][:12]
+	first := propAckText[0][:propAckMark]
 	for row, line := range strings.Split(frame, "\n") { // bounded by the frame (P10-02)
 		if at := strings.Index(line, first); at >= 0 {
 			return render.Width(line[:at]), row, true // the cells before it, its colours not counted

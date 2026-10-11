@@ -20,7 +20,7 @@ import (
 )
 
 // openMap is the window open at a size with one alert over Oceanside.
-func openMap(t *testing.T, cfg Config, w, h int) Dashboard {
+func openMap(t testing.TB, cfg Config, w, h int) Dashboard {
 	t.Helper()
 	if cfg.MapFeed == nil {
 		cfg.MapFeed = boxFeed(-117.6, -117.1, false)

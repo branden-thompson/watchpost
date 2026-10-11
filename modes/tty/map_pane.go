@@ -66,32 +66,33 @@ type mapPane struct {
 
 	// The Propagation mode's session (W4.1): its update's context, whether
 	// one is in flight, the session's generation, and the last result.
-	propCtx    context.Context
-	propCancel context.CancelFunc
-	propBusy   bool
-	propGen    uint64
-	propSnap   *ionomaps.Snapshot
-	propErr    error
-	propLayer  int                        // MUF(3000) or foF2 (D-155), the session's
-	propGiven  map[string]tuimaps.Overlay // the Propagation overlays handed in
-	status     tuimaps.Status             // the last frame's: whole, or still sharpening
-	pending    bool                       // work was waiting when it was drawn
-	offline    bool                       // a tile failed since the picture was last whole
-	gen        uint64                     // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed     string                     // why the map could not be built or drawn, said in the window
-	diskOff    bool                       // a clear let the disk cache go; named again when the app answers (PF-4)
-	clearErr   error                      // what the live map refused in a clear, for the app's answer (IS-M5)
-	calls      *[]string                  // tests only: the library calls made, by name, in order
-	where      *[]callSite                // tests only: each call and the goroutine it ran on (W2.2)
-	workers    *mapWorkers                // the commands running for this map, joined on close (W2.6)
-	tickAt     time.Time                  // the tick outstanding, at the library's NextCall (W2.2)
-	alertsOn   bool                       // the Area Alerts box is open; it waits for A (D-87)
-	menuOn     bool                       // the Overlays menu is open (D-65)
-	menuAt     int                        // the menu's cursor
-	flash      term.Action                // the map key last pressed, blinking in the controls (U1-11)
-	edge       geo.Direction              // the edge whose chip is showing (D-81)
-	edgeShown  bool                       // a press held still at the edge: the next the same way crosses
-	flashEnd   time.Time                  // when its blink ends
+	propCtx     context.Context
+	propCancel  context.CancelFunc
+	propBusy    bool
+	propGen     uint64
+	propTickSeq uint64 // the latest refresh tick set: an earlier one asks nothing
+	propSnap    *ionomaps.Snapshot
+	propErr     error
+	propLayer   int                        // MUF(3000) or foF2 (D-155), kept across sessions until the map is released
+	propGiven   map[string]tuimaps.Overlay // the Propagation overlays handed in
+	status      tuimaps.Status             // the last frame's: whole, or still sharpening
+	pending     bool                       // work was waiting when it was drawn
+	offline     bool                       // a tile failed since the picture was last whole
+	gen         uint64                     // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed      string                     // why the map could not be built or drawn, said in the window
+	diskOff     bool                       // a clear let the disk cache go; named again when the app answers (PF-4)
+	clearErr    error                      // what the live map refused in a clear, for the app's answer (IS-M5)
+	calls       *[]string                  // tests only: the library calls made, by name, in order
+	where       *[]callSite                // tests only: each call and the goroutine it ran on (W2.2)
+	workers     *mapWorkers                // the commands running for this map, joined on close (W2.6)
+	tickAt      time.Time                  // the tick outstanding, at the library's NextCall (W2.2)
+	alertsOn    bool                       // the Area Alerts box is open; it waits for A (D-87)
+	menuOn      bool                       // the Overlays menu is open (D-65)
+	menuAt      int                        // the menu's cursor
+	flash       term.Action                // the map key last pressed, blinking in the controls (U1-11)
+	edge        geo.Direction              // the edge whose chip is showing (D-81)
+	edgeShown   bool                       // a press held still at the edge: the next the same way crosses
+	flashEnd    time.Time                  // when its blink ends
 	// menuFlash is the Overlays menu's picker chip blinking at row
 	// menuFlashAt until menuFlashEnd: Settings' pickers' feedback (D-147).
 	menuFlash    pickerFlash
@@ -275,11 +276,10 @@ func (d Dashboard) toggleMap() Dashboard {
 	m, scale, km := d.mapPane.m, d.mapScale.zoom(), float64(d.mapNearbyKm)
 	d.mapPane.call("Zoom", func() { _ = m.Zoom(scale) })        // every open is at the chosen scale (W4.3); the bound holds it
 	d.mapPane.call("SetNearby", func() { _ = m.SetNearby(km) }) // the description's "near" as chosen (W9.2)
-	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false            // Forecast mode opens on Now, stopped (D-94)
-	d.mapPane.fcGen++
-	d.mapPane.tempAuto, d.mapPane.modeChip = false, false
+	d = d.resetPlayback()                                       // Forecast mode opens on Now, stopped (D-94)
+	d.mapPane.modeChip = false
 	d.mapPane.prop = false // every open is a weather mode: the Propagation mode is never kept (D-154)
-	d = d.stopPropagation()
+	d = d.stopPropagation().setProp()
 	d = d.ensureMainOverlay() // D-103: a map opened in Forecast mode is never blank
 	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().requestFeed()
 	d.mapPane.viewAsked = d.mapPane.viewGen // the open asks for its view: a move's tick dropped while closed is answered here (W14)
@@ -302,12 +302,13 @@ func (d Dashboard) boundMap() Dashboard {
 		return d
 	}
 	var b tuimaps.Bound // the Propagation mode's: none, the whole world (D-21)
+	name := "the whole world"
 	switch d.mapMode() {
 	case modeRadar, modeForecast:
 		if r.Name == "" {
 			return d
 		}
-		b = tuimaps.Bound{MinZoom: regionFitZoom(r, d.mapBodySize()), W: r.W, S: r.S, E: r.E, N: r.N}
+		b, name = tuimaps.Bound{MinZoom: regionFitZoom(r, d.mapBodySize()), W: r.W, S: r.S, E: r.E, N: r.N}, r.Name
 	case modePropagation:
 	}
 	var err error
@@ -315,7 +316,7 @@ func (d Dashboard) boundMap() Dashboard {
 		err = m.SetBound(b)
 	})
 	if err != nil {
-		d.problem("Map bound: " + r.Name + " refused - " + err.Error()) // ours to fix, never the listener's (D-124)
+		d.problem("Map bound: " + name + " refused - " + err.Error()) // ours to fix, never the listener's (D-124)
 	}
 	return d.holdWorld()
 }
@@ -334,12 +335,14 @@ func worldZoom(size tuimaps.Size) float64 {
 // otherwise zoom out past the world; the weather modes are held by theirs.
 func (d Dashboard) holdWorld() Dashboard {
 	m := d.mapPane.m
-	if m == nil || d.mapMode() == modeRadar || d.mapMode() == modeForecast {
+	if m == nil {
 		return d
 	}
-	least := worldZoom(d.mapBodySize())
-	if _, z := m.Centre(); z < least {
-		d.mapPane.call("Zoom", func() { _ = m.Zoom(least) })
+	if d.mapMode() == modePropagation {
+		least := worldZoom(d.mapBodySize())
+		if _, z := m.Centre(); z < least {
+			d.mapPane.call("Zoom", func() { _ = m.Zoom(least) })
+		}
 	}
 	return d
 }
@@ -365,8 +368,8 @@ func mercatorY(lat float64) float64 {
 // mapBodySize is the map's size in cells: the window's body, which the
 // window's frame and wrapping leave as they are.
 func (d Dashboard) mapBodySize() tuimaps.Size {
-	cols := d.mapCols()                                                     // border to border (U1-27)
-	avail := d.modalMax() - d.mapChromeRows(len(d.noteLines(d.mapTextW()))) // under the map its notes, the status and the chips, and the radar's held rows (D-86, D-89); the description is a box over it (D-63)
+	cols := d.mapCols()                                                   // border to border (U1-27)
+	avail := d.modalMax() - d.mapChromeRows(d.noteRowCount(d.mapTextW())) // under the map its notes, the status and the chips, and the radar's held rows (D-86, D-89); the description is a box over it (D-63)
 	return tuimaps.Size{Cols: cols, Rows: max(min(avail, d.modalMax()), 1)}
 }
 
@@ -612,7 +615,7 @@ func (d Dashboard) reportPlace() Dashboard {
 // (D-132), then the cost warning; wrapped to the map's width.
 func (d Dashboard) noteLines(width int) []string {
 	if d.mapMode() == modePropagation { // its badges and words are in its block (D-157); its one note, the legend's MHz (D-160)
-		if d.cfg.ASCII || d.mapDesc == mapDescInstead { // no picture meant (not mapPicture: its fit counts these lines)
+		if !d.propNoteShown() {
 			return nil
 		}
 		return []string{d.propLegendRows(width)[1]}
@@ -627,6 +630,26 @@ func (d Dashboard) noteLines(width int) []string {
 	}
 	out = append(out, mapCostLine(d.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words laid out as D-89
 	return out
+}
+
+// propNoteShown reports whether the Propagation mode's note line, its
+// legend's MHz, is shown: not where no picture is meant (not mapPicture: its
+// fit counts this line).
+func (d Dashboard) propNoteShown() bool {
+	return !d.cfg.ASCII && d.mapDesc != mapDescInstead
+}
+
+// noteRowCount is how many rows noteLines gives at a width, counted without
+// drawing the Propagation mode's legend: the map's size asks it many times a
+// frame.
+func (d Dashboard) noteRowCount(width int) int {
+	if d.mapMode() == modePropagation {
+		if !d.propNoteShown() {
+			return 0
+		}
+		return 1
+	}
+	return len(d.noteLines(width))
 }
 
 // mapNotesNow is the map's notes as they stand: the feed's, the radar's
@@ -653,11 +676,12 @@ func notesYieldLine(n int) string {
 // and chips, the notes, and the radar timeline while it is held.
 func (d Dashboard) mapChromeRows(noteRows int) int {
 	rows := mapStatusRows + noteRows
-	if d.radarTimelineOn() {
-		rows += radarRows + radarExtraRows
+	if !d.radarTimelineOn() {
+		return rows
 	}
-	if d.radarTimelineOn() && d.mapMode() == modePropagation {
-		rows += propBlockRows - (radarRows + 2) // its block's blank row before the place (D-163)
+	rows += radarRows + radarExtraRows
+	if d.mapMode() == modePropagation {
+		rows += propBlockRows - scrubBoxRows // its block's blank row before the place (D-163)
 	}
 	return rows
 }
@@ -714,17 +738,19 @@ func (d Dashboard) mapStatusLine() string {
 // Area Alerts, the mode, Overlays (D-63, D-65, D-94; no legend chip,
 // D-103).
 func (d Dashboard) mapChips() []string {
-	var chips []string
-	for _, c := range []struct {
+	type chip struct {
 		act  term.Action
 		name string
-	}{{actMapAlerts, "Area Alerts"}, {actMapRadar, d.radarChipWords()}, {actMapProp, d.propChipWords()}, {actMapOverlays, "Overlays"}} {
-		if d.mapMode() == modePropagation && c.act == actMapAlerts {
-			c.act, c.name = actMapLayer, propLayerName(d.mapPane.propLayer) // the mode's own controls in the weather's place (D-155, D-156)
-		}
-		if d.mapMode() == modePropagation && c.act == actMapRadar {
-			c.act, c.name = actMapRefresh, "Refresh Now"
-		}
+	}
+	var controls []chip
+	switch d.mapMode() {
+	case modeRadar, modeForecast:
+		controls = []chip{{actMapAlerts, "Area Alerts"}, {actMapRadar, d.radarChipWords()}}
+	case modePropagation: // the mode's own controls in the weather's place (D-155, D-156)
+		controls = []chip{{actMapLayer, propLayerName(d.mapPane.propLayer)}, {actMapRefresh, "Refresh Now"}}
+	}
+	var chips []string
+	for _, c := range append(controls, chip{actMapProp, d.propChipWords()}, chip{actMapOverlays, "Overlays"}) {
 		if keys := d.mapKeys[c.act].Keys; len(keys) > 0 {
 			chips = append(chips, d.opts().KeyCap(keys[0])+" "+c.name)
 		}
@@ -766,7 +792,8 @@ func (d Dashboard) releaseMap() Dashboard {
 		}
 	}
 	d.mapPane = mapPane{calls: p.calls, where: p.where, views: p.views, clock: p.clock, changed: p.changed, ticks: p.ticks,
-		gen: p.gen + 1, viewGen: p.viewGen, viewAsked: p.viewAsked, feedGen: p.feedGen, lanes: keptSeqs(p.lanes), fcGen: p.fcGen}
+		gen: p.gen + 1, viewGen: p.viewGen, viewAsked: p.viewAsked, feedGen: p.feedGen, lanes: keptSeqs(p.lanes), fcGen: p.fcGen,
+		propGen: p.propGen, propTickSeq: p.propTickSeq}
 	return d
 }
 
@@ -1016,10 +1043,11 @@ func (d Dashboard) panOrCross(dx, dy int, dir geo.Direction, armed bool) Dashboa
 	if math.Abs(after.Lat-before.Lat) > 1e-9 || math.Abs(after.Lon-before.Lon) > 1e-9 || d.mapMode() == modePropagation {
 		return d // moved, or at the world's edge in the Propagation mode: no region lies beyond
 	}
-	if _, ok := geo.Neighbour(d.mapPane.region.Name, dir); !ok {
+	next, ok := geo.Neighbour(d.mapPane.region.Name, dir)
+	if !ok {
 		return d
 	}
-	if next, ok := geo.Neighbour(d.mapPane.region.Name, dir); ok && armed && d.mapPane.edge == dir {
+	if armed && d.mapPane.edge == dir {
 		return d.showRegion(next)
 	}
 	d.mapPane.edge, d.mapPane.edgeShown = dir, true

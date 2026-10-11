@@ -53,7 +53,7 @@ func propDash(t *testing.T, s *seam, seen bool) Dashboard {
 
 // keyCmd presses a key and returns the model and the command it asked for,
 // unrun.
-func keyCmd(t *testing.T, d Dashboard, key string) (Dashboard, tea.Cmd) {
+func keyCmd(t testing.TB, d Dashboard, key string) (Dashboard, tea.Cmd) {
 	t.Helper()
 	m, cmd := d.Update(mapKeyMsg(t, key))
 	return m.(Dashboard), cmd
@@ -61,7 +61,7 @@ func keyCmd(t *testing.T, d Dashboard, key string) (Dashboard, tea.Cmd) {
 
 // runProp runs a command and feeds every Propagation result it carries back
 // through Update; ticks and other waits are not run.
-func runProp(t *testing.T, d Dashboard, cmd tea.Cmd) Dashboard {
+func runProp(t testing.TB, d Dashboard, cmd tea.Cmd) Dashboard {
 	t.Helper()
 	for _, msg := range propMsgs(cmd) {
 		m, _ := d.Update(msg)
@@ -176,13 +176,13 @@ func TestTheModeRefreshesWhileOpen(t *testing.T) {
 	s := &seam{answer: PropagationResult{Err: errors.New("offline")}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	m, cmd := d.Update(propTickMsg{gen: d.mapPane.propGen})
+	m, cmd := d.Update(propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq})
 	if d = runProp(t, m.(Dashboard), cmd); s.count() != 2 {
 		t.Fatalf("the refresh tick asked %d times in all; want twice", s.count())
 	}
-	stale := d.mapPane.propGen
+	stale := propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq}
 	d, _ = keyCmd(t, d, "P") // left
-	m, cmd = d.Update(propTickMsg{gen: stale})
+	m, cmd = d.Update(stale)
 	if runProp(t, m.(Dashboard), cmd); s.count() != 2 {
 		t.Errorf("a tick from before the mode was left asked again (%d)", s.count())
 	}
@@ -190,7 +190,7 @@ func TestTheModeRefreshesWhileOpen(t *testing.T) {
 	if d = runProp(t, d, cmd); s.count() != 3 || d.mapPane.propBusy {
 		t.Fatalf("re-entering asked %d in all, busy %v", s.count(), d.mapPane.propBusy)
 	}
-	m, cmd = d.Update(propTickMsg{gen: stale})
+	m, cmd = d.Update(stale)
 	if runProp(t, m.(Dashboard), cmd); s.count() != 3 {
 		t.Errorf("an old session's tick asked again in the new one (%d)", s.count())
 	}

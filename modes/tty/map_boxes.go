@@ -265,7 +265,7 @@ func (d Dashboard) quotaNoticeText() string {
 // last answer, held - neither. sources are the fallbacks' own, once each.
 func (d Dashboard) quotaLayers() (fallbacks, missing int, sources []string) {
 	for _, key := range openMeteoLayers { // six (P10-02)
-		if !d.layerOn(key) || (key == RainLayer && d.mapMode() == modeRadar) {
+		if !d.layerOn(key) || d.rainIsRadar(key) {
 			continue
 		}
 		chips := d.mapPane.temp.Chips[key]
@@ -502,7 +502,7 @@ type overlayRow struct {
 	kind       rowKind
 	key, label string
 	group      string // the group a checkbox belongs to, whose switch dims it
-	weather    bool   // a registry layer or its group; otherwise the map's own detail
+	overlay    bool   // in the OVERLAYS section: a registry layer, its group, or the Propagation mode's row; otherwise MAP DETAIL
 }
 
 // oneTint are the layers that share one tint: switching one on switches the
@@ -530,11 +530,11 @@ func (d Dashboard) overlayRows() []overlayRow {
 	var out []overlayRow
 	for _, r := range []struct{ key, label string }{{TemperatureLayer, "Temperature"}, {UVLayer, "UV Index"}, {AirLayer, "Air Quality"}} {
 		if _, ok := registered[r.key]; ok {
-			out = append(out, overlayRow{kind: menuRadio, key: r.key, label: r.label, weather: true})
+			out = append(out, overlayRow{kind: menuRadio, key: r.key, label: r.label, overlay: true})
 		}
 	}
 	if d.cfg.PropagationUpdate != nil {
-		out = append(out, overlayRow{kind: menuRadio, key: propagationRowKey, label: propagationRowLabel, weather: true}) // D-158: the mode as a tint, the OVERLAYS group's fourth (D-161, D-162)
+		out = append(out, overlayRow{kind: menuRadio, key: propagationRowKey, label: propagationRowLabel, overlay: true}) // D-158: the mode as a tint, the OVERLAYS group's fourth (D-161, D-162)
 	}
 	if d.mapMode() == modePropagation { // D-159: the tints and the map's detail; the weather's groups wait, their ticks kept
 		out = append(out, overlayRow{kind: menuPreset, key: detailLevelKey, label: "Preset"})
@@ -547,7 +547,7 @@ func (d Dashboard) overlayRows() []overlayRow {
 	group := func(key, label string, layers []string, fill bool) {
 		var members []overlayRow
 		for _, k := range layers {
-			if _, ok := registered[k]; !ok || (k == RainLayer && d.mapMode() == modeRadar) {
+			if _, ok := registered[k]; !ok || d.rainIsRadar(k) {
 				placed[k] = true // Rain & snow is Forecast mode's alone: Radar mode's rain is the radar (D-117)
 				continue
 			}
@@ -559,25 +559,25 @@ func (d Dashboard) overlayRows() []overlayRow {
 			if k == QuakeLayer {
 				label = "Quakes" // as the HUM LEAD wrote it (U2-39)
 			}
-			members, placed[k] = append(members, overlayRow{kind: kind, key: k, label: label, group: key, weather: true}), true
+			members, placed[k] = append(members, overlayRow{kind: kind, key: k, label: label, group: key, overlay: true}), true
 		}
 		if fill {
 			for _, k := range order {
 				if !placed[k] && !slices.Contains(hazardLayers, k) {
-					members, placed[k] = append(members, overlayRow{kind: menuCheck, key: k, label: registered[k], group: key, weather: true}), true
+					members, placed[k] = append(members, overlayRow{kind: menuCheck, key: k, label: registered[k], group: key, overlay: true}), true
 				}
 			}
 		}
 		if len(members) > 0 {
-			out = append(append(out, overlayRow{kind: menuGroup, key: key, label: label, weather: true}), members...)
+			out = append(append(out, overlayRow{kind: menuGroup, key: key, label: label, overlay: true}), members...)
 		}
 	}
 	group(groupPoints, "Data Points", pointLayers, true)
 	group(groupHazards, "Hazards", hazardLayers, false)
 	if _, ok := registered[AlertLayer]; ok {
-		out = append(out, overlayRow{kind: menuGroup, key: AlertLayer, label: "Alert Areas", weather: true})
+		out = append(out, overlayRow{kind: menuGroup, key: AlertLayer, label: "Alert Areas", overlay: true})
 		for _, c := range AlertCategories() { // D-80: [w]'s categories
-			out = append(out, overlayRow{kind: menuCheck, key: AlertCategorySwitch(c.Key), label: strings.ToUpper(c.Key[:1]) + c.Key[1:], group: AlertLayer, weather: true}) // short, to fit two to a line
+			out = append(out, overlayRow{kind: menuCheck, key: AlertCategorySwitch(c.Key), label: strings.ToUpper(c.Key[:1]) + c.Key[1:], group: AlertLayer, overlay: true}) // short, to fit two to a line
 		}
 	}
 	out = append(out, overlayRow{kind: menuPreset, key: detailLevelKey, label: "Preset"})
@@ -639,7 +639,7 @@ func (d Dashboard) menuRowLines() []string {
 	for i := 0; i < len(rows); i++ {
 		r := rows[i]
 		section := "MAP DETAIL"
-		if r.weather {
+		if r.overlay {
 			section = "OVERLAYS"
 		}
 		if section != heading {
@@ -710,7 +710,7 @@ func (d Dashboard) menuCellPair(rows []overlayRow, i int) (string, bool) {
 	cellW := (overlayMenuW - 4) / 2
 	cell := func(r overlayRow, at int) string {
 		on := d.detailOn(r.key)
-		if r.weather {
+		if r.overlay {
 			on = d.ticked(r.key)
 		}
 		return d.dimmed(r, render.PadTo(o.ListMark(at == d.mapPane.menuAt)+checkMark(o, on)+" "+r.label, cellW))

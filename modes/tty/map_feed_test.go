@@ -34,7 +34,7 @@ func squareFeed(asked *int, label string) func(context.Context, MapAsk) MapFeed 
 }
 
 // feedAndSettle runs the pending feed command, then the map's work.
-func feedAndSettle(t *testing.T, d Dashboard) Dashboard {
+func feedAndSettle(t testing.TB, d Dashboard) Dashboard {
 	t.Helper()
 	for lane := range feedLanes { // both lanes' answers, the alerts' first (D-268)
 		if cmd := d.mapFeedCmd(lane); cmd != nil {

@@ -64,11 +64,39 @@ func modeSlips(fset *token.FileSet, f *ast.File, modes []string) []string {
 		return found
 	}
 	at := func(n ast.Node, why string) { out = append(out, fset.Position(n.Pos()).String()+": "+why) }
+	inChain := map[*ast.BinaryExpr]bool{}
+	var compared func(e ast.Expr, named map[string]bool) // the modes an || chain compares with ==
+	compared = func(e ast.Expr, named map[string]bool) {
+		switch y := e.(type) {
+		case *ast.ParenExpr:
+			compared(y.X, named)
+		case *ast.BinaryExpr:
+			switch y.Op {
+			case token.LOR:
+				inChain[y] = true
+				compared(y.X, named)
+				compared(y.Y, named)
+			case token.EQL:
+				for _, side := range []ast.Expr{y.X, y.Y} {
+					if isMode(side) {
+						named[side.(*ast.Ident).Name] = true
+					}
+				}
+			}
+		}
+	}
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch x := n.(type) {
 		case *ast.BinaryExpr:
 			if x.Op == token.NEQ && (isMode(x.X) || isMode(x.Y)) {
 				at(x, "a mode compared with != also means every mode added later")
+			}
+			if x.Op == token.LOR && !inChain[x] {
+				named := map[string]bool{}
+				compared(x, named)
+				if len(modes) > 2 && len(named) == len(modes)-1 {
+					at(x, "every mode but one, joined with ||, also means every mode added later: name the one")
+				}
 			}
 		case *ast.UnaryExpr:
 			if x.Op == token.NOT && names(x.X) {
@@ -164,6 +192,7 @@ func (d D) e() { switch d.mapMode() { case modeRadar: } }
 func (d D) g() { switch d.mapMode() { default: } }
 func (d D) h() { if d.mapMode() == modeRadar { d.x() } else { d.y() } }
 func (d D) i() { switch { case d.mapMode() == modeRadar: d.x(); default: d.y() } }
+func (d D) j() bool { return d.on && (d.mapMode() == modeRadar || d.mapMode() == modeForecast) }
 func (d D) ok() bool { if d.mapMode() == modeForecast { return true }; switch { case d.mapMode() == modeRadar: }; return false }
 `
 	pf, err := parser.ParseFile(fset, "planted.go", planted, 0)
@@ -177,12 +206,12 @@ func (d D) ok() bool { if d.mapMode() == modeForecast { return true }; switch { 
 			flagged[line] = true
 		}
 	}
-	for line := 2; line <= 8; line++ {
+	for line := 2; line <= 9; line++ {
 		if !flagged[line] {
 			t.Errorf("planted slip on line %d was not caught", line)
 		}
 	}
-	if flagged[9] {
+	if flagged[10] {
 		t.Error("the planted function that names its modes was flagged")
 	}
 }

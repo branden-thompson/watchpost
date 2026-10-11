@@ -25,7 +25,7 @@ import (
 
 // radarFeed answers with a loop of n frames over southern California from
 // the source named; asked records each ask's newestOnly and the IEM choice.
-func radarFeed(t *testing.T, source string, asked *[]string) func(context.Context, MapAsk) MapRadar {
+func radarFeed(t testing.TB, source string, asked *[]string) func(context.Context, MapAsk) MapRadar {
 	t.Helper()
 	png, err := os.ReadFile("../../domains/radar/testdata/iem-frame.png")
 	if err != nil {

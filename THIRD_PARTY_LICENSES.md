@@ -188,7 +188,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## github.com/branden-thompson/go-ionomaps v0.0.0-20261009143217-ef97f06ddf9b
+## github.com/branden-thompson/go-ionomaps v0.0.0-20261011170628-20c40256a9db
 
 ```
 MIT License

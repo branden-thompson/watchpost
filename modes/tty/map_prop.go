@@ -45,9 +45,7 @@ func (d Dashboard) cursorAt(frame string) (x, y int, ok bool) {
 // enterMode sets the map up for the mode it is now in: its bound, its layers
 // and its playback, and asks what the mode draws.
 func (d Dashboard) enterMode() (Dashboard, tea.Cmd) {
-	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false
-	d.mapPane.fcGen++
-	d.mapPane.tempAuto = false
+	d = d.resetPlayback()
 	d.mapPane.gen++
 	d = d.ensureMainOverlay()
 	d = d.followSelection().setTemp().setProp()
@@ -131,11 +129,12 @@ func (d Dashboard) radioChangesMode(key string) (Dashboard, tea.Cmd, bool) {
 		nd.mapPane.menuAt = at // the tints lead the menu in both modes: the cursor stays on its row
 		return nd.followMenuFocus(), cmd, true
 	case d.mapMode() == modePropagation:
-		nd, cmd := d.togglePropagation()
+		nd := d.chooseTint(r.key) // chosen while this mode draws none of it: leaving draws and asks for it, once
+		nd, cmd := nd.timeFrom("overlay").togglePropagation()
 		nd.mapPane.menuAt = at
-		nd = nd.chooseTint(r.key)
-		nd, more, _ := nd.menuApplied(d)
-		return nd, tea.Batch(cmd, more), true
+		save := nd.uiApplyCmd()
+		nd.setup.uiDirty = false
+		return nd.followMenuFocus(), tea.Batch(cmd, save), true
 	}
 	return d, nil, false
 }

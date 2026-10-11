@@ -397,13 +397,7 @@ func (d Dashboard) radarLegendRow(width int) string {
 
 // rainRow is radar's colours as a row under a head of its own.
 func (d Dashboard) rainRow(head, preset string, width int) string {
-	var classes []tuimaps.Class
-	for _, e := range d.mapPane.legend {
-		if e.Preset == preset {
-			classes = e.Classes
-			break
-		}
-	}
+	classes := d.legendClasses(preset)
 	lighter, heavier := "LIGHTER ", " HEAVIER"
 	room := width - render.Width(head+lighter+heavier)
 	if len(classes) == 0 || room < len(classes)*3 {

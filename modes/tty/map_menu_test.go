@@ -218,7 +218,7 @@ func TestEveryBoxIsDrawnOnce(t *testing.T) {
 		}
 		boxes++
 		on := d.detailOn(r.key)
-		if r.weather {
+		if r.overlay {
 			on = d.ticked(r.key)
 		}
 		cell := regexp.MustCompile(regexp.QuoteMeta(stripANSITest(checkMark(d.opts(), on))+" "+r.label) + `( |$)`)

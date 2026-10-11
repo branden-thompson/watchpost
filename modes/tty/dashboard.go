@@ -201,6 +201,7 @@ type Config struct {
 	Radio         Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
 	Spectrum      func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
 	SaveRadio     func(RadioPrefs) error         // keeps the radio panel's choices (D-214); nil keeps nothing
+	FireBoldMW    float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
 
 	// PropagationAck is the acknowledgement's wording last seen (A-9), and
 	// SavePropagationAck keeps it once closed; nil keeps nothing (0.19.0 W2.5).
@@ -211,7 +212,6 @@ type Config struct {
 	// one running, and sends its result (0.19.0 W4.1, D-131). ctx is the
 	// mode's: leaving the mode ends it. nil fetches nothing.
 	PropagationUpdate func(ctx context.Context) <-chan PropagationResult
-	FireBoldMW        float64 // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
 
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
 	// reports against, and they are TWO because the data is two things: the
@@ -1013,6 +1013,8 @@ func (d Dashboard) tickNeeded() bool {
 	case d.mapPane.menuFlash != flashNone: // the Overlays menu's picker blink (D-147), same rule (W14, C-3)
 		return true
 	case d.modal == modalStatus || d.modal == modalDetails: // [S] ages; Details "N min ago" labels and LoadingDots
+		return true
+	case d.propAgeShown(): // the Propagation snapshot's "N min ago" (D-166)
 		return true
 	// ITS CLOCK RUNS DOWN ON ITS OWN AND ACTS AT ZERO (MVS-D-76). Without this
 	// the window opens with no tick armed, so stepRelayFault is never called:
