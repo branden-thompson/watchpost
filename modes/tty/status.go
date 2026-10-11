@@ -793,28 +793,33 @@ type MapSource struct {
 	Notes []string
 	// Sent is what the host is sent of the view - "tiles", "city names" -
 	// or "" where it is asked only for fixed regions or national files
-	// (D-261). The disclosure under MAP STATUS is built from it.
+	// (D-261). The disclosure under the hosts is built from it.
 	Sent string
 }
 
-// mapFixedOnly is the disclosure's last sentence, and all of it when no
-// host is sent the view.
-const mapFixedOnly = "Every other host gets fixed regions or national files, never the view."
+// mapFixedOnly is the disclosure, tersely (D-173), when no host is sent the
+// view.
+const mapFixedOnly = "No host sent the map view; all get fixed regions or national files"
 
-// mapDisclosure is FR-9.4's disclosure, one line under MAP STATUS (D-151,
-// D-261): the hosts the map tells what is in view, each with what it is
-// sent, built from the table's sources so it names exactly them.
+// mapDisclosure is FR-9.4's disclosure, one line under the hosts (D-151,
+// D-261, D-173): the hosts the map tells what is in view, each by its badge
+// with what it is sent, built from the sources so it names exactly them.
 func mapDisclosure(sources []MapSource) string {
 	var sent []string
 	for _, s := range sources {
-		if s.Sent != "" {
-			sent = append(sent, s.Name+" ("+s.Sent+")")
+		if s.Sent == "" {
+			continue
 		}
+		name := s.Badge
+		if name == "" {
+			name = s.Name
+		}
+		sent = append(sent, name+" ("+s.Sent+")")
 	}
 	if len(sent) == 0 {
 		return mapFixedOnly
 	}
-	return "Opening the map tells these hosts what is in view: " + strings.Join(sent, ", ") + ". " + mapFixedOnly
+	return "Map view sent to: " + strings.Join(sent, ", ") + "; all other hosts get fixed regions or national files"
 }
 
 // hostIn is one host's counters in a view, if it has any.

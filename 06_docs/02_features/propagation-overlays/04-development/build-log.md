@@ -240,3 +240,11 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Mutants:** m180 to m187 new; m177 re-pointed (a count joined its block); every mutant on a file this batch changed applied and vetted (twenty-seven). The declaration lock of `app` re-captured.
 - **go-tuiMaps** at `13270b9`: safe ramps keep every preset's classes (its D-29), which watchpost does not use. `THIRD_PARTY_LICENSES.md` regenerated.
 - **Docs:** the as-built map diagram; the atlas; README, `docs/extending.md` and `docs/where-things-happen.md`; FR-4.3 and FR-11.1, and the architecture's two mentions, now name the Status window.
+
+## Batch 16 — the Status window's UAT: groups apart, a note once, the notes terse (D-171 to D-173, A-44)
+
+- **UAT verdicts carried (0.18.0 L8):** D-171 (a blank row between the groups), D-172 (a note several hosts carry said once - the propagation sources' twice), D-173 (the notes terse, in the HUM LEAD's example's style); A-44 for the wordings.
+- **Built:** `sourceLines` puts a blank row before each group after the first; `mapWords` says each note once; MRMS's, Open-Meteo's and the propagation sources' notes and the disclosure are terse, the disclosure naming its hosts by their badges ("Map view sent to: OFM (tiles), NWS (…)"). The map's notes that come and go are the map window's words too, and stay.
+- **Tests:** `TestTheGroupsStandApartAndANoteIsSaidOnce`, written first; the tests that read the old wordings read the new ones.
+- **Mutants** m188 and m189, applied, vetted, killed and restored by copy; m188's first form (an empty `append`) failed vet and was rewritten. Every mutant on a file this batch changed applied and vetted (five).
+- **Docs:** none moved; no diagram draws a note's words.

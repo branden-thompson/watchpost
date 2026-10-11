@@ -254,7 +254,9 @@ func (d Dashboard) sourceLines(o render.Opts, rows []endpointRow, shape tableSha
 			continue
 		}
 		table := chippedSources(providerTable(o, g, "SOURCES", shape, fillTo), g)
-		if !headed {
+		if headed {
+			out = append(out, "") // a blank row between the groups (D-171)
+		} else {
 			out, headed = append(out, table[0]), true // the columns, once over every group
 		}
 		out = append(out, statusHeader(d.groupTitle(i)))
@@ -294,7 +296,12 @@ func (d Dashboard) mapWords(tableW int) []string {
 	words = append(words, d.mapNotesNow()...)
 	words = append(words, mapDisclosure(d.cfg.MapSources))
 	var out []string
+	said := map[string]bool{}
 	for _, w := range words {
+		if said[w] {
+			continue // a note several hosts carry is said once (D-172)
+		}
+		said[w] = true
 		for _, l := range render.WrapText(w, wrapAt) {
 			out = append(out, statusInset+render.Tint(l, muted))
 		}

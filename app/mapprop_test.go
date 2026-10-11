@@ -87,7 +87,7 @@ func TestMapStatusListsEveryPropagationHost(t *testing.T) {
 			t.Errorf("MAP STATUS does not list %s", h)
 			continue
 		}
-		if !strings.Contains(strings.Join(r.Notes, " "), "IP address") {
+		if !strings.Contains(strings.Join(r.Notes, " "), "this computer's IP") {
 			t.Errorf("%s's row does not say it learns the IP address: %+v", h, r)
 		}
 	}

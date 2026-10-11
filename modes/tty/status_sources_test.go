@@ -119,3 +119,31 @@ func TestTheSourcesAreTheirBadges(t *testing.T) {
 		}
 	}
 }
+
+// TestTheGroupsStandApartAndANoteIsSaidOnce is D-171 and D-172: a blank row
+// before each group after the first, and a note two hosts carry said once.
+func TestTheGroupsStandApartAndANoteIsSaidOnce(t *testing.T) {
+	d := groupedStatus(t)
+	note := "Propagation sources asked only while the mode is open; learn this computer's IP, sent no place"
+	d.cfg.MapSources = append(d.cfg.MapSources, MapSource{Name: "GIRO", Host: "lgdc.uml.edu", Badge: "GIRO", Notes: []string{note}},
+		MapSource{Name: "NOAA SWPC", Host: "services.swpc.noaa.gov", Badge: "SWPC", Notes: []string{note}})
+	lines := d.statusBlocks(d.statusInner()).sources
+	plain := make([]string, len(lines))
+	for i, l := range lines {
+		plain[i] = strings.TrimSpace(stripANSITest(l))
+	}
+	firstGroup := true
+	for i, l := range plain {
+		for _, g := range statusGroups {
+			if strings.HasPrefix(l, g.title) {
+				if !firstGroup && plain[i-1] != "" {
+					t.Errorf("no blank row before %q:\n%s", l, strings.Join(plain, "\n"))
+				}
+				firstGroup = false
+			}
+		}
+	}
+	if n := strings.Count(strings.Join(plain, " "), "asked only while the mode is open"); n != 1 {
+		t.Errorf("a note two hosts carry is said %d times; want once", n)
+	}
+}

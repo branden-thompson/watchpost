@@ -155,7 +155,7 @@ func tempChips(source string, filled bool) map[string][]string {
 }
 
 // tempFrameNote is what Radar mode says of its temperature (D-96).
-const tempFrameNote = "Each radar frame draws its own hour's temperature."
+const tempFrameNote = "Temperature drawn per radar frame's hour"
 
 // mapTemperature is the window's temperature for the mode, every grid built
 // with its span. Where the chosen source has nothing for a day, Open-Meteo

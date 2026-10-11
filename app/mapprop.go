@@ -119,7 +119,7 @@ func propagationHosts() []tty.MapSource {
 	for _, s := range propagationSources() {
 		for _, h := range s.Hosts {
 			out = append(out, tty.MapSource{Name: s.Name, Host: h, Layers: "MUF, foF2",
-				Notes: []string{"Asked only while the Propagation mode is open; it learns this computer's IP address, and is sent no place."}})
+				Notes: []string{"Propagation sources asked only while the mode is open; learn this computer's IP, sent no place"}}) // said once under the hosts (D-172)
 		}
 	}
 	return out

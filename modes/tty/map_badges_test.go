@@ -142,7 +142,7 @@ func TestMapStatusSaysWhetherTheMapWorks(t *testing.T) {
 		{Name: "IEM", Host: "mesonet.agron.iastate.edu", Layers: "radar", Badge: "IEM"},
 		{Name: "IEM again", Host: "mesonet.agron.iastate.edu", Layers: "radar ahead", Badge: "IEM"},
 		{Name: "AirNow", Host: "files.airnowtech.org", Layers: "air", Badge: "AIRNOW"},
-		{Name: "MRMS", Host: "mrms.ncep.noaa.gov", Layers: "radar", Badge: "MRMS", Notes: []string{"MRMS radar's colours are approximate."}}}})
+		{Name: "MRMS", Host: "mrms.ncep.noaa.gov", Layers: "radar", Badge: "MRMS", Notes: []string{"MRMS colors approximate; scale read from legend"}}}})
 	d.width = 140
 	block := stripANSITest(strings.Join(d.statusBlocks(0).sources, "\n"))
 	row := func(host string) string {
@@ -163,7 +163,7 @@ func TestMapStatusSaysWhetherTheMapWorks(t *testing.T) {
 	if r := row("files.airnowtech.org"); !strings.Contains(r, "IDLE") {
 		t.Errorf("a host not asked: %q; want IDLE", r)
 	}
-	for _, w := range []string{"MAP DRAWING DATA", "SOURCES", "MRMS radar's colours are approximate.", "Opening the map tells these hosts what is in view"} {
+	for _, w := range []string{"MAP DRAWING DATA", "SOURCES", "MRMS colors approximate; scale read from legend", "Map view sent to"} {
 		if !strings.Contains(block, w) {
 			t.Errorf("the map's hosts lack %q:\n%s", w, block)
 		}
@@ -225,7 +225,7 @@ func TestTheRecordedChipIsItsOwn(t *testing.T) {
 func TestTheDisclosureNamesEveryHostSentTheView(t *testing.T) {
 	sources := []MapSource{{Name: "Tiles", Sent: "tiles"}, {Name: "Cities", Sent: "city names, with UV on"}, {Name: "Fixed"}}
 	line := mapDisclosure(sources)
-	for _, w := range []string{"Tiles (tiles)", "Cities (city names, with UV on)", "never the view"} {
+	for _, w := range []string{"Map view sent to: ", "Tiles (tiles)", "Cities (city names, with UV on)", "all other hosts get fixed regions or national files"} {
 		if !strings.Contains(line, w) {
 			t.Errorf("the disclosure lacks %q: %q", w, line)
 		}
