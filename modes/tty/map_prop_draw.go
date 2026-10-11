@@ -208,8 +208,7 @@ func (d Dashboard) propBlockAs(width int, styled bool) []string {
 		}
 		return text
 	}
-	badges := []string{chipFace("SWPC"), chipFace("PYIRI"), chipFace("IGRF-14")}
-	out := []string{"RADIO FREQUENCY PROPAGATION    " + strings.Join(badges, "  ")}
+	out := []string{"RADIO FREQUENCY PROPAGATION    " + strings.Join(d.propBadges(styled), "  ")}
 	snap, loc := d.mapPane.propSnap, d.selectedLocation()
 	if snap == nil || len(snap.Hours) == 0 {
 		out = append(out, "MODE: "+field(propLayerName(d.mapPane.propLayer))+" · "+strings.TrimPrefix(d.propStatusWords(), "Propagation · "))
@@ -256,6 +255,33 @@ func (d Dashboard) propAgeMinutes() int64 {
 		return -1
 	}
 	return int64(d.now().Sub(d.mapPane.propSnap.Computed) / time.Minute)
+}
+
+// propBadges are the sources' badges (D-168): lit for a source that fed the
+// snapshot shown, dimmed for one that did not; as plain words, only the ones
+// that fed it.
+func (d Dashboard) propBadges(styled bool) []string {
+	snap := d.mapPane.propSnap
+	shown := snap != nil && len(snap.Hours) > 0
+	var out []string
+	for _, s := range []struct {
+		name string
+		fed  bool
+	}{
+		{"SWPC", shown && snap.Background.FoF2 == ionomaps.GloTEC}, // the solar index alone, under the climatology, counts as unused
+		{"PYIRI", shown}, // M(3000)F2 is the climatology's at every cell
+		{"IGRF-14", shown},
+	} {
+		switch {
+		case styled && s.fed:
+			out = append(out, chipFace(s.name))
+		case styled:
+			out = append(out, chipDimmed(s.name))
+		case s.fed:
+			out = append(out, s.name)
+		}
+	}
+	return out
 }
 
 // bandNames are bands by name, or "none of the bands".

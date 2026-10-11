@@ -49,7 +49,7 @@ func TestTheAcknowledgementShowsBeforeTheFirstFetch(t *testing.T) {
 		t.Fatalf("P showed window %d in mode %d; want the acknowledgement over the Propagation mode", d.modal, d.mapMode())
 	}
 	words := strings.Join(propAckText, " ")
-	for _, want := range []string{"does not transmit", "reference", "responsible for following all applicable laws", "GIRO", "NOAA", "IP address", "MAP STATUS", "Enter or Esc"} {
+	for _, want := range []string{"does not transmit", "reference", "responsible for following all applicable laws", "GIRO", "NOAA", "IP address", "Status window", "Enter or Esc"} {
 		if !strings.Contains(words, want) {
 			t.Errorf("the acknowledgement does not say %q", want)
 		}
@@ -148,7 +148,7 @@ func TestTheAcknowledgementReadsWithoutThePicture(t *testing.T) {
 	d := ackPress(t, ackDash(t, 0, true, &saved), "P")
 	screen := stripANSITest(d.View().Content)
 	flat := strings.Join(strings.Fields(screen), " ")
-	for _, want := range []string{"does not transmit", "MAP STATUS", "Enter or Esc"} {
+	for _, want := range []string{"does not transmit", "Status window", "Enter or Esc"} {
 		if !strings.Contains(flat, want) {
 			t.Errorf("--ascii does not say %q:\n%s", want, screen)
 		}

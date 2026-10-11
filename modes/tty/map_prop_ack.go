@@ -10,7 +10,7 @@ import (
 
 // propAckVersion is the acknowledgement's wording, as recorded once seen
 // (A-9): a changed wording raises it, and it is shown once more.
-const propAckVersion = 1
+const propAckVersion = 2
 
 // propAckWidth is the acknowledgement's width: within the 80-column floor.
 const propAckWidth = 64
@@ -20,7 +20,7 @@ const propAckWidth = 64
 var propAckText = []string{
 	"Watchpost does not transmit. The MUF and foF2 it draws are provided as reference.",
 	"Anyone who transmits on HF is responsible for following all applicable laws where they are.",
-	"To draw them, watchpost asks GIRO (the Lowell Global Ionospheric Radio Observatory) and NOAA's Space Weather Prediction Center, which learn this computer's IP address. MAP STATUS lists them.",
+	"To draw them, watchpost asks GIRO (the Lowell Global Ionospheric Radio Observatory) and NOAA's Space Weather Prediction Center, which learn this computer's IP address. The Status window (S) lists them.",
 	"Enter or Esc closes this. It is shown again only if these words change.",
 }
 

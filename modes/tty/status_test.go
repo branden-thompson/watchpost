@@ -33,7 +33,7 @@ func TestStatusModalAndControlPlacement(t *testing.T) {
 	}
 	m2, _ := m.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
 	sv := m2.View().Content
-	for _, want := range []string{"Watchpost Status", "UPTIME", "API STATUS", "NWS", "PIPELINES", "PRIORITY", "RECENT", "ISSUES"} {
+	for _, want := range []string{"Watchpost Status", "UPTIME", "DATA SOURCES", "NWS", "PIPELINES", "PRIORITY", "RECENT", "ISSUES"} {
 		if !strings.Contains(sv, want) {
 			t.Fatalf("status modal missing %q:\n%s", want, sv)
 		}
@@ -123,11 +123,11 @@ func TestStatusModalShowsRequestAndDumpRows(t *testing.T) {
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
 	sv, _ := model.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
 	v := stripANSITest(sv.View().Content)
-	// There is no REQUESTS block: its counters are columns of the API STATUS
+	// There is no REQUESTS block: its counters are columns of the DATA SOURCES
 	// table, keyed by the host they were counted against. The window they
 	// cover is the UPTIME row at the top — printing it twice, three lines apart,
 	// would invite a reader to look for the difference (0.14.0).
-	for _, want := range []string{"providers over", "ENDPOINT", "api.weather.gov", "1234", "980", "4560", "12.3M",
+	for _, want := range []string{"hosts in", "ENDPOINT", "api.weather.gov", "1234", "980", "4560", "12.3M",
 		"api.tidesandcurrents.noaa.gov", "PUBLISHES", "DUMPS", "last: 20260826T120000Z ok", "trigger: kill -USR1 4242"} {
 		if !strings.Contains(v, want) {
 			t.Fatalf("status modal missing %q:\n%s", want, v)
@@ -181,7 +181,7 @@ func TestStatusIsOneColumnAndFitsItsTerminal(t *testing.T) {
 			t.Fatalf("%d cols: the headline row then a blank, got %q / %q", w, lines[0], lines[1])
 		}
 		text := stripANSITest(strings.Join(lines, "\n"))
-		for _, want := range []string{"API STATUS", "ENDPOINT", "api.weather.gov", "PIPELINES", "SEVERE INDEX", "ISSUES", "DUMPS", "kill -USR1"} {
+		for _, want := range []string{"DATA SOURCES", "ENDPOINT", "api.weather.gov", "PIPELINES", "SEVERE INDEX", "ISSUES", "DUMPS", "kill -USR1"} {
 			if !strings.Contains(text, want) {
 				t.Fatalf("%d cols: %q missing:\n%s", w, want, text)
 			}
@@ -193,7 +193,7 @@ func TestStatusIsOneColumnAndFitsItsTerminal(t *testing.T) {
 			t.Fatalf("%d cols: an unclaimed host must still be listed:\n%s", w, text)
 		}
 		last := -1
-		for _, name := range []string{"API STATUS", "PIPELINES", "ISSUES", "DUMPS"} {
+		for _, name := range []string{"DATA SOURCES", "PIPELINES", "ISSUES", "DUMPS"} {
 			if i := strings.Index(text, name); i < last {
 				t.Fatalf("%d cols: %s out of order", w, name)
 			} else {
@@ -234,7 +234,7 @@ func TestAnUnmeasuredHostReadsNeutralNotFailed(t *testing.T) {
 	d := mm.(Dashboard)
 
 	var row string
-	for _, l := range d.statusBlocks(0).providers {
+	for _, l := range d.statusBlocks(0).sources {
 		if strings.Contains(l, "www.nhc.noaa.gov") {
 			row = stripANSITest(l)
 		}
@@ -465,35 +465,9 @@ func statusWithMap(t *testing.T, width int, sources []MapSource) Dashboard {
 }
 
 // mapSources is a map host list with a long note, as the app's.
-var mapSources = []MapSource{{Name: "OpenFreeMap", Host: "tiles.openfreemap.org", Layers: "basemap"},
-	{Name: "National Weather Service", Host: "api.weather.gov", Layers: "alert areas"},
-	{Name: "Open-Meteo", Host: "api.open-meteo.com", Layers: "temperature, UV, rain", Notes: []string{"Each radar frame draws its own hour's temperature."}}}
-
-// TestTheEndpointTablesAreOneShape is D-150 as the HUM LEAD asked it: API
-// STATUS and MAP STATUS share their columns - ENDPOINT filling, every other
-// column at the same place in both - filled to the same width.
-func TestTheEndpointTablesAreOneShape(t *testing.T) {
-	d := statusWithMap(t, 200, mapSources)
-	b := d.statusBlocks(d.statusInner())
-	header := func(lines []string) string {
-		for _, l := range lines {
-			if p := stripANSITest(l); strings.Contains(p, "ENDPOINT") {
-				return p
-			}
-		}
-		t.Fatal("no header row")
-		return ""
-	}
-	api, maps := header(b.providers), header(b.maps)
-	for _, col := range []string{"STATUS", "FETCHED", "TRIES", "NET", "CACHE", "BYTES"} {
-		if strings.Index(api, col) != strings.Index(maps, col) {
-			t.Errorf("%s is at column %d in API STATUS and %d in MAP STATUS:\n%s\n%s", col, strings.Index(api, col), strings.Index(maps, col), api, maps)
-		}
-	}
-	if render.Width(api) != render.Width(maps) || render.Width(api) < d.statusInner()-2 {
-		t.Errorf("the tables fill %d and %d of %d", render.Width(api), render.Width(maps), d.statusInner())
-	}
-}
+var mapSources = []MapSource{{Name: "OpenFreeMap", Host: "tiles.openfreemap.org", Layers: "basemap", Badge: "OFM"},
+	{Name: "National Weather Service", Host: "api.weather.gov", Layers: "alert areas", Badge: "NWS"},
+	{Name: "Open-Meteo", Host: "api.open-meteo.com", Layers: "temperature, UV, rain", Badge: "O-METEO", Notes: []string{"Each radar frame draws its own hour's temperature."}}}
 
 // TestTheMapsWordsNeverWidenTheWindow is D-151: the disclosure wraps to the
 // table, not to the terminal's width, so it never sets the window's; the
@@ -505,12 +479,12 @@ func TestTheMapsWordsNeverWidenTheWindow(t *testing.T) {
 	}
 	b := with.statusBlocks(with.statusInner())
 	table := 0
-	for _, l := range b.maps {
+	for _, l := range b.sources {
 		if p := stripANSITest(l); strings.Contains(p, "ENDPOINT") {
 			table = render.Width(p)
 		}
 	}
-	for _, l := range b.maps {
+	for _, l := range b.sources {
 		if p := stripANSITest(l); strings.Contains(p, "Opening") || strings.Contains(p, "every other host") {
 			if render.Width(p) > table {
 				t.Errorf("the disclosure's line %q is wider than the table (%d)", p, table)

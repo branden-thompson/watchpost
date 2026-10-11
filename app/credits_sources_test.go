@@ -43,3 +43,35 @@ func TestEveryPropagationSourceIsCredited(t *testing.T) {
 		}
 	}
 }
+
+// TestEveryStatusSourceIsGroupedAndCredited is D-170 (A-43): every station
+// provider, every map source and every named host serves a feature and has
+// a badge, and every badge is About's chip for a source - or a source About
+// does not credit yet (creditPending), so the Status window never names a
+// host by a chip the app does not show.
+func TestEveryStatusSourceIsGroupedAndCredited(t *testing.T) {
+	badges := map[string]bool{}
+	for _, g := range creditGroups() {
+		for _, l := range g.Lines {
+			badges[l.Badge] = true
+		}
+	}
+	known := func(badge string) bool { return badges[badge] || creditPending[badge] != "" }
+	sources := providerSources()
+	for id := range providerEndpoints() {
+		s, ok := sources[id]
+		if !ok || s.Feature == 0 || !known(s.Badge) {
+			t.Errorf("provider %s: %+v; want a feature and a credited badge", id, s)
+		}
+	}
+	for host, s := range hostSources() {
+		if s.Feature == 0 || !known(s.Badge) {
+			t.Errorf("host %s: %+v; want a feature and a credited badge", host, s)
+		}
+	}
+	for _, s := range mapSourceList() {
+		if !known(s.Badge) {
+			t.Errorf("map source %s (%s) has the badge %q, which About does not show", s.Name, s.Host, s.Badge)
+		}
+	}
+}

@@ -221,7 +221,8 @@ The window needs room for a map 69 columns by 12 rows. In a smaller terminal it 
 needs, then gives the description.
 
 **What the map contacts.** Nothing is fetched for the map until you press `g`. The Status window (`S`)
-lists every host the map can contact under MAP STATUS, with whether each is answering. What each one
+lists every host the app contacts, grouped by what it serves - common data, weather, adverse events,
+map drawing - each named by its source's badge, with whether it is answering. What each map host
 is sent:
 
 | Host | For | Sent |

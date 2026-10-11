@@ -892,7 +892,7 @@ code{font-family:var(--mono);font-size:.92em}
     MTW[&#34;map_temp.go · the two weather modes (D-94)\nevery grid handed in up front with its span; a step moves the moment, never a Set (L-15.1, L-15.2)\nthe feed&#39;s overlays - alerts, quakes, fire, the sea&#39;s stations - on every frame of both modes (D-275)\nForecast mode: the host steps and plays, the last day held\nwind beside temperature or alone: braille arrows, every other with its speed (D-109, go-tuiMaps L-16)\nno main overlay on: temperature turned on for Forecast mode alone, a chip says so (D-103, D-104)\nan arrow in the Overlays menu moves its cursor alone; a refused refresh keeps what is drawn (U2-13, U2-14)\nrain and snow: Forecast mode&#39;s row, on by default; the colour row says MODEL RAIN · NOT RADAR (D-117)\nfeels like: its own row, never on with temperature - one tint; FEELS on the badge&#39;s step and the colour row (D-119)&#34;]
     BX[&#34;map_boxes.go · over the map (UAT-1)\nthe radar&#39;s badge, upper right: RADAR DATA, the source&#39;s chip, the frame&#39;s time (D-92)\nin Forecast mode: FORECAST, the temperature&#39;s source, the step\nthe library&#39;s stamp handed to it (ShowStamp, go-tuiMaps D-87)\nArea Alerts, upper left (D-63) · the Controls moved under the map (D-103), the pressed chip blinks\nMAP DETAILS / OVERLAYS, in Settings&#39; heading style (D-103): alert areas and [w]&#39;s categories, earthquakes, temperature, the map&#39;s detail (D-65, D-80); radar is R&#39;s (D-94)\ndetail: the level is a preset, the switches the truth; the library at Full (D-79)\nthe title names the view by scale (D-64)&#34;]
     ST2[&#34;Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · Description · Opens at · Nearby (no alert scope, D-76) · Radar · Radar ahead · Quakes · Temperature (D-190) · Rain Day 4+ · UV cities\nMAP - LAYERS: a picker a registered layer, Enabled or Disabled\nMAP - DETAIL: the preset (D-67); a row per detail layer, ← Enabled → (U1-35); Lakes, never the sea (U1-39) · Map data: clear\nNOTICES at the bottom (D-237): Open-Meteo metered · Rain Day 4+ · UV cities · the layers&#39; cost · the retention or what clearing did&#34;]
-    SW[&#34;status.go · the Status window\nMAP STATUS (D-150): a row a host the map can contact - OK, FAIL, or IDLE until asked\nthe notes about the data (D-132); what opening the map sends (D-151)&#34;]
+    SW[&#34;status.go, status_sources.go · the Status window\nDATA SOURCES (0.19.0 D-170): a row a host, in one group - COMMON, WEATHER, ADVERSE EVENTS, MAP DRAWING - named by its badges\nthe station&#39;s and the map&#39;s counters together; a map host OK, FAIL, or IDLE until asked (D-150)\nthe notes about the data (D-132); what opening the map sends (D-151)&#34;]
   end
   subgraph plat[&#34;platform/&#34;]
     RG[&#34;geo · RegionOf\nsix regions with their waters; Hawaii and the Caribbean wide enough to see their weather (D-91)\narrangement.go: Neighbour, RegionNumbered (D-77)&#34;]
@@ -913,7 +913,7 @@ code{font-family:var(--mono);font-size:.92em}
   MT -- &#34;Config.MapTemperature(ask: mode, source, unit, the hour&#39;s start)\none request at a time; asked only while on (D-25)&#34; --&gt; MW
   MW --&gt; MTW
   MW --&gt; MP
-  MPU[&#34;mapprop.go · the Propagation update&#39;s seam (0.19.0 W4.1)\nMAP STATUS&#39;s GIRO and NOAA SWPC rows, read from go-ionomaps&#39; own hosts (FR-4.3)&#34;] -- &#34;Config.PropagationUpdate(ctx)\nasked once the mode is open and its acknowledgement closed (FR-4.2, D-81); every 10 minutes while open (FR-4.10)&#34; --&gt; MP
+  MPU[&#34;mapprop.go · the Propagation update&#39;s seam (0.19.0 W4.1)\nthe Status window&#39;s GIRO and NOAA SWPC rows, read from go-ionomaps&#39; own hosts (FR-4.3), its client&#39;s asks counted (D-169)&#34;] -- &#34;Config.PropagationUpdate(ctx)\nasked once the mode is open and its acknowledgement closed (FR-4.2, D-81); every 10 minutes while open (FR-4.10)&#34; --&gt; MP
   MPU --&gt; PD --&gt; IO
   PD --&gt; HP
   MR -- &#34;Config.MapRadar(ask): the whole loop\none request at a time; shown once in (D-85); a region left cancelled (D-130)\nits own command: the alerts never wait (W8.12)&#34; --&gt; MW
@@ -979,7 +979,7 @@ code{font-family:var(--mono);font-size:.92em}
     DOM[&#34;domains/propagation&lt;br/&gt;one go-ionomaps object, its client&#34;]
     GEO[&#34;platform/geo: coordinates, Maidenhead&lt;br/&gt;(FR-4.9, D-79)&#34;]
     HTTPX[&#34;platform/httpx: a propagation client&lt;br/&gt;no 429 retry, status and headers&#34;]
-    CRED[&#34;app/credits.go, MAP STATUS&#34;]
+    CRED[&#34;app/credits.go, the Status window&#34;]
   end
   subgraph go-ionomaps
     LIB[&#34;ionomaps.Library&lt;br/&gt;Update, Fields, Bands, Reach&#34;]

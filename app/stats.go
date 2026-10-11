@@ -174,7 +174,7 @@ func runtimeCounts() (goroutines, threads, fds int) {
 func (lp *livePipelines) ttyStats() tty.Stats {
 	src := lp.sources()
 	st := tty.Stats{Requests: requestStats(src.clients)}
-	st.MapRequests = httpx.MergeRequestStats(requestStats(lp.mapClients), lp.tiles.stats()) // D-150: the radar's, the temperature's and the tiles'
+	st.MapRequests = httpx.MergeRequestStats(requestStats(lp.mapClients), lp.tiles.stats(), lp.propagation.requestStats()) // D-150: the radar's, the temperature's and the tiles'; D-169: the propagation client's
 	for i, pub := range [...]*publisher{src.priorityPub, src.recentPub} {
 		if pub != nil {
 			st.Pipelines[i] = pub.stats()
@@ -188,6 +188,7 @@ func (lp *livePipelines) ttyStats() tty.Stats {
 		st.ZoneShapes = tty.ZoneShapeStats{Fetched: z.Fetched, Failed: z.Failed, Served: z.Served, Held: z.Held}
 	}
 	st.Endpoints = providerEndpoints()
+	st.ProviderSources, st.HostSources = providerSources(), hostSources() // D-170: the Status window's groups
 	st.MapProblems = lp.problems.last()
 	st.Uptime = time.Since(lp.started)
 	if lp.release != nil {

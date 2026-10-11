@@ -12,8 +12,8 @@ github.com/aymanbagabas/go-udiff v0.4.1 h1:OEIrQ8maEeDBXQDoGCbbTTXYJMYRCRO1fnodZ
 github.com/aymanbagabas/go-udiff v0.4.1/go.mod h1:0L9PGwj20lrtmEMeyw4WKJ/TMyDtvAoK9bf2u/mNo3w=
 github.com/branden-thompson/go-ionomaps v0.0.0-20261011170628-20c40256a9db h1:/D966SXyyDF4cE+LjnKgvyEPwzjEccMR3aOcTzcPb4U=
 github.com/branden-thompson/go-ionomaps v0.0.0-20261011170628-20c40256a9db/go.mod h1:XwJvZH1auKOSr1ohRW3FRO2tT7fLlkxEMZbqB+O7PlI=
-github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261011190927-69132c86ecb6 h1:YCYvlwWUFaUes60uWT3prbMJW+SZcB90Lr9P6XYUFTk=
-github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261011190927-69132c86ecb6/go.mod h1:MxLYM9fk3DFVUUBYClxyoCGT+5aLfTldCANq6hKHJzQ=
+github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261011212047-13270b950536 h1:tsKJhbzkcU41OaD5tJIFyiDUJfF0J4bHYNXHb0sERQQ=
+github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261011212047-13270b950536/go.mod h1:MxLYM9fk3DFVUUBYClxyoCGT+5aLfTldCANq6hKHJzQ=
 github.com/charmbracelet/colorprofile v0.4.3 h1:QPa1IWkYI+AOB+fE+mg/5/4HRMZcaXex9t5KX76i20Q=
 github.com/charmbracelet/colorprofile v0.4.3/go.mod h1:/zT4BhpD5aGFpqQQqw7a+VtHCzu+zrQtt1zhMt9mR4Q=
 github.com/charmbracelet/ultraviolet v0.0.0-20260812204455-68fa937c71be h1:qEvkJy1sjJXP+yf8IH2o13NV+Rh4nIUHjaLNJ+pWxpI=

@@ -125,3 +125,45 @@ func TestThePropagationClientsErrorsCarryNoSecret(t *testing.T) {
 		t.Errorf("the error carries the address's secret: %v", err)
 	}
 }
+
+// TestThePropagationClientCountsItsRequests is D-169: each ask is counted on
+// its host as the data client counts it - an answer, a 304, a refusal, no
+// reply - so the Status window shows the host's activity.
+func TestThePropagationClientCountsItsRequests(t *testing.T) {
+	statuses := []int{http.StatusOK, http.StatusNotModified, http.StatusTooManyRequests}
+	i := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(statuses[i%len(statuses)])
+		if statuses[i%len(statuses)] == http.StatusOK {
+			_, _ = w.Write([]byte("grid"))
+		}
+		i++
+	}))
+	defer srv.Close()
+	p := plainFor(t, 1024)
+	for range statuses {
+		if _, err := p.Get(context.Background(), srv.URL, "", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	host := statHost(srv.URL)
+	var h HostStats
+	for _, x := range p.RequestStats().Hosts {
+		if x.Host == host {
+			h = x
+		}
+	}
+	if h.Attempts != 3 || h.Net != 1 || h.NotModified != 1 || h.BytesNet != 4 || h.LastOK.IsZero() {
+		t.Errorf("three asks counted as %+v", h)
+	}
+	if !h.LastFail.After(h.LastOK) {
+		t.Error("a 429 after the answers is not the host's latest word")
+	}
+	silent := plainFor(t, 1024)
+	if _, err := silent.Get(context.Background(), "http://127.0.0.1:1/x", "", ""); err == nil {
+		t.Fatal("an address with no listener answered")
+	}
+	if hs := silent.RequestStats().Hosts; len(hs) != 1 || hs[0].Attempts != 1 || hs[0].LastFail.IsZero() || !hs[0].LastOK.IsZero() {
+		t.Errorf("an ask with no reply counted as %+v", hs)
+	}
+}

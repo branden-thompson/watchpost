@@ -78,9 +78,9 @@ func TestTheNotesYieldWhereTheWindowCannot(t *testing.T) {
 	if !strings.Contains(joined, "Status") || strings.Contains(joined, "A note the feed carries") {
 		t.Errorf("the notes did not collapse to one line naming Status:\n%s", joined)
 	}
-	// AND THE POINTER IS TRUE: the Status window's MAP STATUS carries them.
+	// AND THE POINTER IS TRUE: the Status window carries them, under the map's hosts.
 	d.cfg.MapSources = []MapSource{{Name: "tiles", Layers: "Basemap"}}
-	status := stripANSITest(strings.Join(d.statusBlocks(0).maps, "\n"))
+	status := stripANSITest(strings.Join(d.statusBlocks(0).sources, "\n"))
 	for _, n := range d.mapPane.notes {
 		if !strings.Contains(strings.Join(strings.Fields(status), " "), strings.Join(strings.Fields(n), " ")) {
 			t.Errorf("the notes point to the Status window, which does not say %q:\n%s", n, status)

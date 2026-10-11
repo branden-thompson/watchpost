@@ -356,6 +356,7 @@ func (*mastercontrol).tell
 func (*mastercontrol).unhold
 func (*pipeline).stop
 func (*pipeline).update
+func (*propagationHolder).requestStats
 func (*propagationHolder).service
 func (*publisher).Trigger
 func (*publisher).fire
@@ -694,6 +695,7 @@ func historyExtra
 func historyPlace
 func holdRest
 func hostOf
+func hostSources
 func hostsFor
 func hourGrids
 func inViewOnly
@@ -804,6 +806,7 @@ func propagationHosts
 func propagationSources
 func proposeFrom
 func providerEndpoints
+func providerSources
 func pruneDumps
 func publishArea
 func quakeAgeRole
@@ -1108,6 +1111,7 @@ var goosSeam
 var historyDatasets
 var historyKeeps
 var hmsHotspots
+var mapBadges
 var mapLayers
 var mapSources
 var ndbcBuoys

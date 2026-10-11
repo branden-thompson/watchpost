@@ -36,7 +36,7 @@ flowchart LR
     DOM["domains/propagation<br/>one go-ionomaps object, its client"]
     GEO["platform/geo: coordinates, Maidenhead<br/>(FR-4.9, D-79)"]
     HTTPX["platform/httpx: a propagation client<br/>no 429 retry, status and headers"]
-    CRED["app/credits.go, MAP STATUS"]
+    CRED["app/credits.go, the Status window"]
   end
   subgraph go-ionomaps
     LIB["ionomaps.Library<br/>Update, Fields, Bands, Reach"]
@@ -67,7 +67,7 @@ flowchart LR
 |---|---|---|
 | `modes/tty/map_prop*.go` (new) | The Propagation mode beside Radar and Forecast (`modes/tty/map_temp.go:167` decides Radar mode today); the chart; the frequency entry; the hour step; the words; the acknowledgement window | every window is a file of package `tty`; the closed-set guards are package-internal |
 | `modes/tty/dashboard.go` (`Config`, `:72`) | two seams beside `MapTemperature` (`:114`): `PropagationUpdate func(ctx) <-chan Snapshot` (the update's one owner, D-131) and `PropagationAnswers func(ctx, Snapshot, MapAsk) MapPropagation` (pure answers) | the window cannot import `domains/`; the app hands it functions (`MapAsk`, `modes/tty/map_prefs.go:556`) |
-| `app/mapprop.go` (new) | turns go-ionomaps' fields into `tuimaps.Grid` overlays and its answers into the chart's rows and words; credits; MAP STATUS entries | the only package that may name a domain and what draws |
+| `app/mapprop.go` (new) | turns go-ionomaps' fields into `tuimaps.Grid` overlays and its answers into the chart's rows and words; credits; the Status window's entries | the only package that may name a domain and what draws |
 | `domains/propagation/` (new) | the one go-ionomaps object per process; the fetcher it is given; the acknowledgement's record read before the first fetch | a data source is a domain |
 | `platform/geo/coords.go`, `maidenhead.go` (new) | one finite-checked coordinate parser and the Maidenhead parser, used by every resolver (FR-4.9, D-79) | shared and pure |
 | `platform/httpx/` (existing) | a client built for propagation: no retry on 429, status and headers returned on every outcome, no shared pacing hold (FR-4.4) | the single door |

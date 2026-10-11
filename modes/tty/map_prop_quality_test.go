@@ -5,6 +5,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	ionomaps "github.com/branden-thompson/go-ionomaps"
+
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 // TestOnlyTheLatestRefreshTickAsks is FR-4.10 (D-94): each result sets the
@@ -142,3 +146,38 @@ func TestTheNoteRowsAreCountedAsDrawn(t *testing.T) {
 		}
 	}
 }
+
+// TestTheSourcesBadgesSayWhatFedTheSnapshot is D-168 (A-42): before any
+// snapshot every source's badge is dimmed; with one, PYIRI and IGRF-14 are
+// lit, and SWPC is lit when foF2 is GloTEC's and dimmed when it is the
+// climatology's.
+func TestTheSourcesBadgesSayWhatFedTheSnapshot(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	climatology := propSnapAt(time.Now().UTC(), 18)
+	climatology.Background.FoF2 = ionomaps.Climatology
+	for _, c := range []struct {
+		name string
+		snap *ionomaps.Snapshot
+		lit  map[string]bool
+	}{
+		{"no snapshot", nil, map[string]bool{"SWPC": false, "PYIRI": false, "IGRF-14": false}},
+		{"foF2 from GloTEC", ptr(propSnapAt(time.Now().UTC(), 18)), map[string]bool{"SWPC": true, "PYIRI": true, "IGRF-14": true}},
+		{"foF2 from the climatology", &climatology, map[string]bool{"SWPC": false, "PYIRI": true, "IGRF-14": true}},
+	} {
+		d := propDash(t, &seam{answer: PropagationResult{Err: errors.New("offline")}}, true)
+		d.mapPane.prop, d.mapPane.propSnap = true, c.snap
+		head := d.propBlock(d.scrubW())[0]
+		for badge, lit := range c.lit {
+			want := chipDimmed(badge)
+			if lit {
+				want = chipFace(badge)
+			}
+			if !strings.Contains(head, want) {
+				t.Errorf("%s: %s is not %s: %q", c.name, badge, map[bool]string{true: "lit", false: "dimmed"}[lit], head)
+			}
+		}
+	}
+}
+
+func ptr[T any](v T) *T { return &v }

@@ -268,7 +268,7 @@ Sources the library reads, or will read, and their terms:
    text or tables are reproduced.
 ```
 
-## github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261011190927-69132c86ecb6
+## github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261011212047-13270b950536
 
 ```
 MIT License

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
@@ -27,12 +28,9 @@ func propagationClientConfig() httpx.PlainConfig {
 	return httpx.PlainConfig{UserAgent: UserAgent, MaxBodyBytes: propagationBodyBytes, RefusePrivate: true, HTTPSOnly: true}
 }
 
-// newPropagationService is how the service is made; a test counts it.
-var newPropagationService = func(note func(string)) (*propagation.Service, error) {
-	client, err := httpx.NewPlain(propagationClientConfig())
-	if err != nil {
-		return nil, err
-	}
+// newPropagationService is how the service is made over its client; a test
+// counts it.
+var newPropagationService = func(note func(string), client *httpx.Plain) (*propagation.Service, error) {
 	return propagation.New(client, propagation.Options{Note: note})
 }
 
@@ -40,15 +38,33 @@ var newPropagationService = func(note func(string)) (*propagation.Service, error
 // on the first update, which the window asks only once its mode is open
 // (FR-4.2).
 type propagationHolder struct {
-	once sync.Once
-	svc  *propagation.Service
-	err  error
+	once   sync.Once
+	svc    *propagation.Service
+	err    error
+	client atomic.Pointer[httpx.Plain] // the Status window reads its counts from the UI goroutine (D-169)
 }
 
-// service is the one service, made once.
+// service is the one service, made once, over its own client.
 func (h *propagationHolder) service(note func(string)) (*propagation.Service, error) {
-	h.once.Do(func() { h.svc, h.err = newPropagationService(note) })
+	h.once.Do(func() {
+		client, err := httpx.NewPlain(propagationClientConfig())
+		if err != nil {
+			h.err = err
+			return
+		}
+		h.client.Store(client)
+		h.svc, h.err = newPropagationService(note, client)
+	})
 	return h.svc, h.err
+}
+
+// requestStats are the propagation client's asks per host (D-169); none
+// before the first update makes it.
+func (h *propagationHolder) requestStats() httpx.RequestStats {
+	if c := h.client.Load(); c != nil {
+		return c.RequestStats()
+	}
+	return httpx.RequestStats{}
 }
 
 // propagationUpdate is the window's seam (D-131): the service's update, its

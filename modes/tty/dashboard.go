@@ -400,6 +400,12 @@ type Stats struct {
 	// request counters are per host, so a host has exactly one set of them and
 	// a provider does not.
 	Endpoints map[string][]string
+	// ProviderSources are what each provider serves and its badge, by its id;
+	// HostSources the same of a host no provider claims - the ticker's feeds,
+	// the geocoder - by host. The window groups and names its hosts by them
+	// (0.19.0 D-170).
+	ProviderSources map[string]StatusSource
+	HostSources     map[string]StatusSource
 }
 
 // UIPrefs is the WATCHPOST UI group's answer, as config words. Strings, not

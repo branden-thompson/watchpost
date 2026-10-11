@@ -138,13 +138,13 @@ func TestMapStatusSaysWhetherTheMapWorks(t *testing.T) {
 		{Host: "tiles.openfreemap.org", Attempts: 212, Net: 180, BytesNet: 24 << 20, LastOK: now.Add(-12 * time.Second)},
 		{Host: "mesonet.agron.iastate.edu", Attempts: 12, Net: 2, LastOK: now.Add(-10 * time.Minute), LastFail: now.Add(-6 * time.Minute)}}}}
 	d := mapDash(t, Config{Stats: func() Stats { return stats }, MapSources: []MapSource{
-		{Name: "OpenFreeMap", Host: "tiles.openfreemap.org", Layers: "basemap", Sent: "tiles"},
-		{Name: "IEM", Host: "mesonet.agron.iastate.edu", Layers: "radar"},
-		{Name: "IEM again", Host: "mesonet.agron.iastate.edu", Layers: "radar ahead"},
-		{Name: "AirNow", Host: "files.airnowtech.org", Layers: "air"},
-		{Name: "MRMS", Host: "mrms.ncep.noaa.gov", Layers: "radar", Notes: []string{"MRMS radar's colours are approximate."}}}})
+		{Name: "OpenFreeMap", Host: "tiles.openfreemap.org", Layers: "basemap", Badge: "OFM", Sent: "tiles"},
+		{Name: "IEM", Host: "mesonet.agron.iastate.edu", Layers: "radar", Badge: "IEM"},
+		{Name: "IEM again", Host: "mesonet.agron.iastate.edu", Layers: "radar ahead", Badge: "IEM"},
+		{Name: "AirNow", Host: "files.airnowtech.org", Layers: "air", Badge: "AIRNOW"},
+		{Name: "MRMS", Host: "mrms.ncep.noaa.gov", Layers: "radar", Badge: "MRMS", Notes: []string{"MRMS radar's colours are approximate."}}}})
 	d.width = 140
-	block := stripANSITest(strings.Join(d.statusBlocks(0).maps, "\n"))
+	block := stripANSITest(strings.Join(d.statusBlocks(0).sources, "\n"))
 	row := func(host string) string {
 		for _, l := range strings.Split(block, "\n") {
 			if strings.Contains(l, host) {
@@ -154,18 +154,18 @@ func TestMapStatusSaysWhetherTheMapWorks(t *testing.T) {
 		t.Fatalf("no row for %s:\n%s", host, block)
 		return ""
 	}
-	if r := row("tiles.openfreemap.org"); !strings.Contains(r, "basemap") || !strings.Contains(r, "OK") || !strings.Contains(r, "212") {
+	if r := row("tiles.openfreemap.org"); !strings.Contains(r, "OFM") || !strings.Contains(r, "OK") || !strings.Contains(r, "212") {
 		t.Errorf("the tiles' row: %q", r)
 	}
-	if r := row("mesonet.agron.iastate.edu"); !strings.Contains(r, "FAIL") || !strings.Contains(r, "radar, radar ahead") {
-		t.Errorf("a host failing since its last answer: %q; want FAIL, its layers joined", r)
+	if r := row("mesonet.agron.iastate.edu"); !strings.Contains(r, "FAIL") || strings.Count(r, "IEM") != 1 {
+		t.Errorf("a host failing since its last answer: %q; want FAIL, its badge once", r)
 	}
 	if r := row("files.airnowtech.org"); !strings.Contains(r, "IDLE") {
 		t.Errorf("a host not asked: %q; want IDLE", r)
 	}
-	for _, w := range []string{"MAP STATUS", "LAYERS", "MRMS radar's colours are approximate.", "Opening the map tells these hosts what is in view"} {
+	for _, w := range []string{"MAP DRAWING DATA", "SOURCES", "MRMS radar's colours are approximate.", "Opening the map tells these hosts what is in view"} {
 		if !strings.Contains(block, w) {
-			t.Errorf("MAP STATUS lacks %q:\n%s", w, block)
+			t.Errorf("the map's hosts lack %q:\n%s", w, block)
 		}
 	}
 	if strings.Count(block, "mesonet.agron.iastate.edu") != 1 {

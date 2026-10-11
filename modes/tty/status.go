@@ -32,11 +32,7 @@ func (d Dashboard) statusLines() []string {
 	// unfilled — and the modal memo means a frame does this once, not per tick.
 	blocks := d.statusBlocks(d.statusInner())
 	lines := []string{d.statusHeadline(o), ""} // the window's own row, then air
-	sections := [][]string{blocks.providers}
-	if len(blocks.maps) > 0 { // a build with no map has no MAP block, and no gap for one
-		sections = append(sections, blocks.maps)
-	}
-	lines = append(lines, stacked(append(sections, blocks.pipelines, blocks.issues, blocks.dumps)...)...)
+	lines = append(lines, stacked(blocks.sources, blocks.pipelines, blocks.issues, blocks.dumps)...)
 	return append(lines, "", " "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll")))
 }
 
@@ -51,7 +47,7 @@ func (d Dashboard) statusLines() []string {
 // destroys it.
 func (d Dashboard) statusWidth() int {
 	b := d.statusBlocks(0) // natural: what the content wants before any stretch
-	want := widest(b.providers, b.maps, b.pipelines, b.issues, b.dumps) + panelFrame + panelRail + columnMargin
+	want := widest(b.sources, b.pipelines, b.issues, b.dumps) + panelFrame + panelRail + columnMargin
 	return min(d.opts().Width, max(max(68, d.width*60/100), want))
 }
 
@@ -134,7 +130,7 @@ func statusHeader(name string) string { return " " + render.Tint(name, render.To
 // reporting them here too would be two windows telling the same story, one of
 // which cannot change it.
 type statusSections struct {
-	providers, maps, pipelines, issues, dumps []string
+	sources, pipelines, issues, dumps []string
 }
 
 // statusBlocks composes the sections (headers inset 1, rows inset 3 — with
@@ -149,53 +145,14 @@ func (d Dashboard) statusBlocks(fillTo int) statusSections {
 		st = d.cfg.Stats()
 		b.dumps = dumpLines(st)
 	}
-	// THE TWO ENDPOINT TABLES ARE ONE TABLE'S SHAPE (0.18.0 D-150, the HUM LEAD):
-	// API STATUS and MAP STATUS share their columns' widths and their form, so
-	// every column but the filling ENDPOINT lines up down the window.
-	apiRows, mapRows := d.apiRows(st), mapHostRows(d.cfg.MapSources, st, d.now())
-	shape := endpointShape(o, apiRows, mapRows)
-	b.providers = d.providerLines(o, st, apiRows, shape, fillTo)
-	b.maps = d.mapSourceLines(o, mapRows, shape, fillTo) // D-150: whether the map is working
+	// ONE ROW A HOST, IN ONE GROUP (0.19.0 D-170), every group in one table's
+	// shape (0.18.0 D-150), so every column but the filling ENDPOINT lines up
+	// down the window.
+	rows := sourceRows(providersOf(d.snap), st, d.cfg.MapSources, d.now())
+	b.sources = d.sourceLines(o, rows, endpointShape(o, rows), fillTo)
 	b.pipelines = d.pipelineLines(o, st, fillTo)
 	b.issues = append([]string{statusHeader("ISSUES")}, d.issueLines(o, fillTo, d.snap, d.recent)...)
 	return b
-}
-
-// providerLines is the PROVIDERS table: ONE ROW PER ENDPOINT, naming the
-// providers that use it, its freshness, and the request counters for that host.
-//
-// Keyed by endpoint because the counters are: httpx counts per HOST, and
-// several providers share one — nws and nws-marine are both api.weather.gov.
-// A row per provider would either repeat the same numbers twice or leave them
-// blank, and neither says what is true.
-func (d Dashboard) providerLines(o render.Opts, st Stats, rows []endpointRow, shape tableShape, fillTo int) []string {
-	// THE TWO COUNTS RECONCILED, on the header. The masthead counts PROVIDERS
-	// and this table has one row per ENDPOINT — nws and nws-marine share
-	// api.weather.gov, coops and coops-obs share tidesandcurrents — so a
-	// listener counting rows finds fewer than the masthead promised and has no
-	// way to see why. The header says both.
-	// NO "requests since launch, <time>" HERE. The counters are cumulative from
-	// launch and the window they cover is the UPTIME on the row above, which is
-	// the same value — printing it twice, three lines apart, invites a reader to
-	// look for the difference between them.
-	lines := []string{statusHeader(fmt.Sprintf("API STATUS  (%d providers over %d endpoints)",
-		len(providersOf(d.snap)), claimedRows(rows)))}
-	if len(rows) == 0 {
-		return append(lines, "   awaiting first snapshot...")
-	}
-	return append(lines, providerTable(o, rows, "PROVIDERS", shape, fillTo)...)
-}
-
-// apiRows are API STATUS's rows, each host's age read ONCE, so every row of
-// a frame agrees.
-func (d Dashboard) apiRows(st Stats) []endpointRow {
-	rows := endpointRows(providersOf(d.snap), st)
-	for i := range rows {
-		if !rows[i].fetchedAt.IsZero() {
-			rows[i].age = d.now().Sub(rows[i].fetchedAt)
-		}
-	}
-	return rows
 }
 
 // tableShape is the endpoint tables' shared shape: the width form, and the
@@ -231,19 +188,6 @@ func endpointShape(o render.Opts, tables ...[]endpointRow) tableShape {
 		}
 	}
 	return s
-}
-
-// claimedRows is how many rows a PROVIDER stands behind — the ticker's feeds
-// and the geocoder are listed for their traffic but are not providers, so they
-// do not count toward the masthead's total.
-func claimedRows(rows []endpointRow) int {
-	n := 0
-	for _, r := range rows {
-		if r.claimed {
-			n++
-		}
-	}
-	return n
 }
 
 // endpointMark is the row's health glyph — or a NEUTRAL DASH when no snapshot
@@ -462,59 +406,9 @@ type endpointRow struct {
 	claimed                       bool // whether a snapshot provider reports this host's health
 	age                           time.Duration
 	tries, net, cache, neg, bytes int64
-}
-
-// endpointRows folds the provider statuses onto their hosts and joins the
-// request counters. A provider with no endpoint mapped still gets a row, under
-// its own id, rather than vanishing from the diagnostic.
-func endpointRows(provs []snapshot.ProviderStatus, st Stats) []endpointRow {
-	byHost := map[string]*endpointRow{}
-	var order []string
-	for _, p := range provs {
-		hosts := st.Endpoints[p.ID]
-		if len(hosts) == 0 {
-			hosts = []string{p.ID} // unmapped: name it rather than drop it
-		}
-		for _, h := range hosts {
-			r, ok := byHost[h]
-			if !ok {
-				r = &endpointRow{endpoint: h, claimed: true}
-				byHost[h], order = r, append(order, h)
-			}
-			if r.providers == "" {
-				r.providers = strings.ToUpper(p.ID)
-			} else {
-				r.providers += " · " + strings.ToUpper(p.ID)
-			}
-			// The WORST status on a shared host wins, and the OLDEST fetch: a
-			// row that says ok because one of its two feeds is fine would hide
-			// the one that is not.
-			if r.status == "" || worseStatus(p.Status, r.status) {
-				r.status, r.state = p.Status, roleState(p)
-			}
-			if r.fetchedAt.IsZero() || (!p.FetchedAt.IsZero() && p.FetchedAt.Before(r.fetchedAt)) {
-				r.fetchedAt = p.FetchedAt
-			}
-		}
-	}
-	for _, h := range st.Requests.Hosts {
-		r, ok := byHost[h.Host]
-		if !ok {
-			// A HOST NO PROVIDER CLAIMS still gets a row. The ticker's feeds and
-			// the geocoder are counted by httpx and are not snapshot providers,
-			// so dropping them would have this window under-report the traffic it
-			// exists to account for.
-			r = &endpointRow{endpoint: h.Host, providers: "—", state: "not reported"}
-			byHost[h.Host], order = r, append(order, h.Host)
-		}
-		r.seen = true
-		r.tries, r.net, r.cache, r.neg, r.bytes = h.Attempts, h.Net, h.Cache, h.Neg, h.BytesNet
-	}
-	out := make([]endpointRow, 0, len(order))
-	for _, h := range order {
-		out = append(out, *byHost[h])
-	}
-	return out
+	features                      uint8    // a bit a StatusFeature that uses the host (D-170)
+	badges                        []string // its sources' badges, once each
+	reported, mapped              bool     // a station provider reports on it; the map uses it
 }
 
 // roleState is the mock's STATUS cell: the role and the status in one word
@@ -891,6 +785,9 @@ func providersOf(sn *snapshot.Snapshot) []snapshot.ProviderStatus {
 type MapSource struct {
 	// Layers are the layers the host serves, MAP STATUS's LAYERS (D-150).
 	Name, Host, Layers string
+	// Badge is the source's chip, as the map and About show it; the Status
+	// window names the host by it (D-170).
+	Badge string
 	// Notes are said under the source: what never changes about its data
 	// (D-132). Its credit is the About window's (D-148).
 	Notes []string
@@ -918,79 +815,6 @@ func mapDisclosure(sources []MapSource) string {
 		return mapFixedOnly
 	}
 	return "Opening the map tells these hosts what is in view: " + strings.Join(sent, ", ") + ". " + mapFixedOnly
-}
-
-// mapSourceLines is MAP STATUS (D-150): the API STATUS table's own
-// component - the go-studs data table through providerTable - a row a host
-// the map can contact, whether it is answering, when it last did, what it
-// has fetched. A host not asked this run is IDLE, dimmed: not broken, not in
-// use. Then the notes about the data (D-132) and what the map sends (D-151).
-func (d Dashboard) mapSourceLines(o render.Opts, rows []endpointRow, shape tableShape, fillTo int) []string {
-	if len(d.cfg.MapSources) == 0 {
-		return nil
-	}
-	head := "MAP STATUS"
-	if m := d.mapPane.m; m != nil {
-		if disk := m.CacheUse().Disk; disk.Limit > 0 {
-			head += "  (tiles held " + render.HumanBytes(disk.Held) + " of " + render.HumanBytes(disk.Limit) + ")"
-		}
-	}
-	table := providerTable(o, rows, "LAYERS", shape, fillTo)
-	out := append([]string{statusHeader(head)}, table...)
-	// THE WORDS UNDER IT WRAP TO THE TABLE, never widen the window: unwrapped,
-	// the disclosure would set the window to the terminal's width, past every
-	// modal's rule (the HUM LEAD's screenshot, 2026-09-29).
-	wrapAt := max(widest(table)-len(statusInset), 40)
-	muted := render.Tok(render.TableMuted)
-	var words []string
-	for _, s := range d.cfg.MapSources {
-		words = append(words, s.Notes...) // D-132: about the data, never a credit (D-148)
-	}
-	words = append(words, d.mapNotesNow()...)              // D-159: the map's notes as they stand, where its window points when they yield
-	words = append(words, mapDisclosure(d.cfg.MapSources)) // D-151, D-261
-	for _, w := range words {
-		for _, l := range render.WrapText(w, wrapAt) {
-			out = append(out, statusInset+render.Tint(l, muted))
-		}
-	}
-	return out
-}
-
-// mapHostRows are the map's hosts as the table's rows, one a host - its
-// layers joined - with its counters from the map's clients or the station's:
-// OK while its last answer is its latest word, FAIL while a failure is,
-// IDLE before it is asked.
-func mapHostRows(sources []MapSource, st Stats, now time.Time) []endpointRow {
-	at := map[string]int{}
-	var rows []endpointRow
-	for _, s := range sources {
-		if i, ok := at[s.Host]; ok {
-			if s.Layers != "" && !strings.Contains(rows[i].providers, s.Layers) {
-				rows[i].providers += ", " + s.Layers
-			}
-			continue
-		}
-		at[s.Host] = len(rows)
-		r := endpointRow{endpoint: s.Host, providers: s.Layers, state: "IDLE", status: snapshot.ProviderOff}
-		h, ok := hostIn(st.MapRequests, s.Host)
-		if !ok {
-			h, ok = hostIn(st.Requests, s.Host)
-		}
-		if ok && h.Attempts+h.Cache+h.Neg > 0 {
-			r.seen, r.claimed = true, true
-			r.tries, r.net, r.cache, r.neg, r.bytes = h.Attempts, h.Net, h.Cache, h.Neg, h.BytesNet
-			r.fetchedAt = h.LastOK
-			r.state, r.status = "OK", snapshot.ProviderOK
-			if h.LastFail.After(h.LastOK) {
-				r.state, r.status = "FAIL", snapshot.ProviderDegraded
-			}
-			if !r.fetchedAt.IsZero() {
-				r.age = now.Sub(r.fetchedAt)
-			}
-		}
-		rows = append(rows, r)
-	}
-	return rows
 }
 
 // hostIn is one host's counters in a view, if it has any.
