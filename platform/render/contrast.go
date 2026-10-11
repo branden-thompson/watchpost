@@ -309,7 +309,8 @@ func aaPairs() []aaPair {
 	// one ground only is never lifted for the other, and no test measures it
 	// there.
 	onBoth := []Token{TableMuted, TableName, ProviderOK, ProviderDown, AlertLabel, TextBase, TextBright, TitleEdition, TitleEditionBroadcaster,
-		DataNew, DataFresh, DataUsable, DataAged, DataStale}
+		DataNew, DataFresh, DataUsable, DataAged, DataStale,
+		FreshNow, Fresh5, Fresh15, Fresh30, Fresh45, Fresh60, FreshOld} // the freshness ramp (0.19.0 D-166): on the map window's ground, and any
 	for _, fg := range onBoth {
 		pairs = append(pairs, aaPair{fg, append(append([]Token{}, win...), modal...)})
 	}
@@ -364,7 +365,8 @@ func ChipGrounds() []Token {
 	return []Token{MapRadarMRMSBG, MapRadarIEMBG, MapRadarModelBG, MapChipNWSBG, MapChipNDFDBG, MapChipOMeteoBG,
 		MapChipUSGSBG, MapChipNIFCBG, MapChipHMSBG, MapChipNDBCBG, MapChipCOOPSBG, MapChipAirNowBG, MapChipRecordedBG, MapChipEPABG,
 		MapChipNHCBG, MapChipNWRBG, MapChipFIRMSBG, MapChipRelaysBG, MapChipGeoNamesBG, MapChipOFMBG, MapChipPiperBG, // the credits' (D-235)
-		MapChipSWPCBG, MapChipPyIRIBG, MapChipIGRFBG} // the Propagation mode's sources (0.19.0 FR-4.1)
+		MapChipSWPCBG, MapChipPyIRIBG, MapChipIGRFBG, // the Propagation mode's sources (0.19.0 FR-4.1)
+		MapChipMUFBG, MapChipFoF2BG} // and its two fields (D-165)
 }
 
 // NoticeGrounds are the map's notices' grounds (W18.1, D-165): measured as

@@ -169,6 +169,12 @@ const (
 	MapChipSWPCBG  Token = "map.chip.swpc.bg"
 	MapChipPyIRIBG Token = "map.chip.pyiri.bg"
 	MapChipIGRFBG  Token = "map.chip.igrf.bg"
+	// The Propagation mode's two fields, chips of their own (0.19.0 D-165).
+	MapChipMUFBG  Token = "map.chip.muf.bg"
+	MapChipFoF2BG Token = "map.chip.fof2.bg"
+	// MapPropPlace is the place's name under the Propagation map: the
+	// window title's bold bright text (0.19.0 D-164), derived per theme.
+	MapPropPlace Token = "map.prop.place"
 	// MapNoticeQuotaBG is the ground of the map's notice that a source's
 	// quota is spent (W18.1, D-165): dark orange, its words ChipTones'.
 	MapNoticeQuotaBG Token = "map.notice.quota.bg"
@@ -309,7 +315,7 @@ func withAgeLadder(t map[Token]string, named map[Token]string) map[Token]string 
 // registered theme copies from this one (quality pass Q1, L3-F17 — no
 // package-level map to guard).
 func defaultTheme() map[Token]string {
-	return withAA(withDerived(withAgeLadder(map[Token]string{
+	return withAA(withDerived(withFreshLadder(withAgeLadder(map[Token]string{
 		TextBase:   "250",
 		TextBright: "97",
 
@@ -405,6 +411,8 @@ func defaultTheme() map[Token]string {
 		MapChipSWPCBG:     "48;2;192;38;211", // #C026D3, fuchsia (0.19.0 FR-4.1)
 		MapChipPyIRIBG:    "48;2;67;56;202",  // #4338CA, indigo
 		MapChipIGRFBG:     "48;2;14;116;144", // #0E7490, deep cyan
+		MapChipMUFBG:      "48;2;124;32;80",  // #7C2050, plum: the MUF ramp's middle (D-165)
+		MapChipFoF2BG:     "48;2;174;93;45",  // #AE5D2D, rust: the ramp's colour at foF2's band edges
 		MapNoticeQuotaBG:  "48;2;194;65;12",  // #C2410C, dark orange (D-165)
 		MapChipRecordedBG: "48;2;91;75;138",  // #5B4B8A, muted violet (D-178)
 		// Emergency Orders take THE red (MVS-D-62).
@@ -460,7 +468,7 @@ func defaultTheme() map[Token]string {
 		// 208 is this palette's own orange — what TempHi and FireMark already
 		// use — so the masthead borrows rather than introduces a colour.
 		TitleEditionBroadcaster: "1;208",
-	}, nil)))
+	}, nil), nil)))
 }
 
 // withDerived sets the tokens that take another token's value in every theme
@@ -469,6 +477,7 @@ func defaultTheme() map[Token]string {
 // focused rows (D-233).
 func withDerived(t map[Token]string) map[Token]string {
 	t[AboutHost] = t[FocusCell]
+	t[MapPropPlace] = t[ModalTitle] // the window title's weight and tone: bold white on a dark window (D-164)
 	t[AboutNote] = shadeBack(t[ModalFG], bgOf(t, ModalBGDark))
 	return t
 }

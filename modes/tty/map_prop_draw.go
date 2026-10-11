@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	ionomaps "github.com/branden-thompson/go-ionomaps"
@@ -193,32 +194,54 @@ func cellValue(f ionomaps.Field, lat, lon float64) (float64, bool) {
 	return float64(f.Values[i]), true
 }
 
-// propBlock is D-157's block under the map, in the timeline's five rows:
-// the header with the sources' badges; the mode and when it was computed;
-// the selected place now, and the bands under its foF2 and MUF(3000).
-func (d Dashboard) propBlock(width int) []string {
+// propBlock is D-157's block under the map, styled for the picture: the
+// place's name bold (D-164), the fields as chips (D-165), the age on the
+// freshness ramp (D-166).
+func (d Dashboard) propBlock(width int) []string { return d.propBlockAs(width, true) }
+
+// propBlockAs is the block, styled or as plain words: the header with the
+// sources' badges; the mode and when it was computed; a blank row; the
+// selected place now, and the bands under its foF2 and MUF(3000).
+func (d Dashboard) propBlockAs(width int, styled bool) []string {
+	field := func(name string) string { // D-165: a chip of its own
+		if styled {
+			return chipFace(name)
+		}
+		return name
+	}
+	tint := func(text string, tok render.Token) string {
+		if styled {
+			return render.Tint(text, render.Tok(tok))
+		}
+		return text
+	}
 	badges := []string{chipFace("SWPC"), chipFace("PYIRI"), chipFace("IGRF-14")}
 	out := []string{"RADIO FREQUENCY PROPAGATION    " + strings.Join(badges, "  ")}
 	snap, loc := d.mapPane.propSnap, d.selectedLocation()
 	if snap == nil || len(snap.Hours) == 0 {
-		out = append(out, "MODE: "+propLayerName(d.mapPane.propLayer)+" · "+strings.TrimPrefix(d.propStatusWords(), "Propagation · "))
+		out = append(out, "MODE: "+field(propLayerName(d.mapPane.propLayer))+" · "+strings.TrimPrefix(d.propStatusWords(), "Propagation · "))
 		return padRows(out, width)
 	}
 	at := snap.Computed.In(d.now().Location())
-	ago := int(d.now().Sub(snap.Computed).Minutes())
-	out = append(out, "MODE: "+propLayerName(d.mapPane.propLayer)+" · COMPUTED "+d.clockFmt.Time(at)+" "+at.Format("MST")+
-		" ("+strconv.Itoa(max(ago, 0))+" min ago) · upper limits only", "") // D-163: a blank row before the place
+	age := d.now().Sub(snap.Computed)
+	ago := "(just now)"
+	if age >= time.Minute {
+		ago = "(" + strconv.Itoa(int(age.Minutes())) + " min ago)"
+	}
+	out = append(out, "MODE: "+field(propLayerName(d.mapPane.propLayer))+" · COMPUTED "+d.clockFmt.Time(at)+" "+at.Format("MST")+
+		" "+tint(ago, render.FreshnessTone(age))+" · upper limits only", "") // D-166; D-163: a blank row before the place
 	if loc == nil {
 		return padRows(out, width)
 	}
-	place := strings.ToUpper(loc.Label) + "   " // D-163: the place in a column of its own, its answer under NOW
-	under := strings.Repeat(" ", render.Width(place))
+	name := strings.ToUpper(loc.Label)
+	place := tint(name, render.MapPropPlace) + "   " // D-164; D-163: the place in a column of its own, its answer under NOW
+	under := strings.Repeat(" ", render.Width(name)+3)
 	fo, okF := cellValue(snap.Hours[0].FoF2, loc.Lat, loc.Lon)
 	muf, okM := cellValue(snap.Hours[0].MUF3000, loc.Lat, loc.Lon)
 	if !okF || !okM {
 		return padRows(append(out, place+"NOW · no data at the place"), width)
 	}
-	out = append(out, fmt.Sprintf("%sNOW · foF2 %.1f MHz · MUF(3000) %.1f MHz", place, fo, muf))
+	out = append(out, fmt.Sprintf("%sNOW · %s %.1f MHz · %s %.1f MHz", place, field("foF2"), fo, field("MUF(3000)"), muf))
 	out = append(out, under+"Local, to ~400 km (NVIS): "+bandNames(bandsUnder(fo)))
 	hops := bandsUnder(muf)
 	if len(hops) == 0 {

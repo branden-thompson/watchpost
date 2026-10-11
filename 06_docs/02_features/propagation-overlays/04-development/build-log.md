@@ -184,3 +184,12 @@ release candidates (go-tuiMaps v0.3.0 first, D-3), O1 and O3 (`implementation-pl
 - **The layout:** a blank row after the legend, which is the picture's own status row when it has one; the header; the mode line; a blank row; the place's name in its own column with its foF2, MUF(3000) and two answers aligned under NOW. The block is six rows, counted by `mapChromeRows`; the map is a row or two shorter than in a weather mode.
 - **Found:** `TestThePropagationRowsFollowTheMock` used a fixture with no radar source, where the rows under the map are not drawn at all, the blind spot that hid the empty area in UAT-1. It now uses one with radar, as the app has; mutant m159 (the blank row not counted) survived until it did.
 - **Mutants:** m151 and m157 re-pointed to the new lines; m159 and m160 new; each applied, vetted, killed and restored by copy.
+
+## Batch 12 — UAT-1, round 4: the place in bold, the fields as chips, the age on a general freshness ramp, the badge (D-164 to D-167, A-39)
+
+- **UAT verdicts carried (0.18.0 L8):** D-164 (the place in bold white), D-165 (MUF(3000) and foF2 as chips), D-166 (the age's colour, a seven-rung ramp, made general-use at the HUM LEAD's follow-up), D-167 (the badge "RADIO FREQ. PROPAGATION").
+- **The freshness ramp** (`platform/render/freshness.go`): seven tokens, `FreshnessTone(age)` for any feature, filled per theme from the theme's own colours (`withFreshLadder`, beside `withAgeLadder`) and held to AA like every tone. The ladder the app already had (`DataNew` to `DataStale`) has five rungs to 15 minutes and, by the Broadcaster's ruling, no red; it is unchanged.
+- **The place** takes `MapPropPlace`, the window title's tone; **the fields** are chips with grounds of their own; the age reads "(just now)" under a minute.
+- **The words** are built from the same block, plain: a colour-on test found them carrying the picture's styling once (mutant m166 survived the colourless fixture).
+- **Mutants** m161 to m166, each applied, vetted, killed and restored by copy; m157 and m160 re-pointed to this batch's lines.
+- **Docs:** the as-built map diagram; the atlas.

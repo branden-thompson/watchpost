@@ -6,6 +6,9 @@ import (
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 // TestThePropagationRowsFollowTheMock is D-157: under the Propagation map,
@@ -25,8 +28,8 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	d = runProp(t, d, cmd)
 	rows := stripANSITest(strings.Join(d.scrubRows(d.mapTextW()), "\n"))
 	for _, want := range []string{"RADIO FREQUENCY PROPAGATION", "SWPC", "PYIRI", "IGRF-14",
-		"MODE: MUF(3000)", "COMPUTED", "(12 min ago) · upper limits only",
-		"NOW · foF2 6.0 MHz · MUF(3000) 18.0 MHz",
+		"MODE:   MUF(3000)   · COMPUTED", "(12 min ago) · upper limits only", // the fields as chips (D-165)
+		"NOW ·   foF2   6.0 MHz ·   MUF(3000)   18.0 MHz",
 		"Local, to ~400 km (NVIS): 160m 80m 60m",
 		"~3,000 km hops through here: up to 20m (18.0 MHz)"} {
 		if !strings.Contains(rows, want) {
@@ -101,5 +104,46 @@ func TestThePropagationLegendIsBandOverMHz(t *testing.T) {
 	}
 	if muf, ok := bandClasses(classes[:3], fof2Bands); ok || muf != nil {
 		t.Error("a legend of three classes was aligned to six bands")
+	}
+}
+
+// TestRoundFourMarksStandOut is D-164 to D-167: the place's name in the
+// window title's bold bright tone; MUF(3000) and foF2 as chips of their own
+// wherever the block names them; the snapshot's age on the freshness ramp;
+// the badge "RADIO FREQ. PROPAGATION".
+func TestRoundFourMarksStandOut(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	for _, c := range []struct {
+		age  time.Duration
+		says string
+	}{{20 * time.Second, "(just now)"}, {9 * time.Minute, "(9 min ago)"}, {75 * time.Minute, "(75 min ago)"}} {
+		s := &seam{answer: PropagationResult{Snapshot: propSnapAt(time.Now().Add(-c.age), 27)}}
+		d, cmd := keyCmd(t, propDash(t, s, true), "P")
+		d = runProp(t, d, cmd)
+		block := d.propBlock(d.scrubW())
+		label := strings.ToUpper(d.selectedLocation().Label)
+		if !strings.Contains(block[3], render.Tint(label, render.Tok(render.MapPropPlace))) {
+			t.Errorf("the place is not in the bold bright tone: %q", block[3])
+		}
+		for _, chip := range []string{chipFace("foF2"), chipFace("MUF(3000)")} {
+			if !strings.Contains(block[3], chip) {
+				t.Errorf("the place's line does not carry the chip %q: %q", chip, block[3])
+			}
+		}
+		if !strings.Contains(block[1], chipFace("MUF(3000)")) {
+			t.Errorf("the mode line does not carry its layer's chip: %q", block[1])
+		}
+		if want := render.Tint(c.says, render.Tok(render.FreshnessTone(c.age))); !strings.Contains(block[1], want) {
+			t.Errorf("%v: the age is not %q on its rung of the ramp: %q", c.age, c.says, block[1])
+		}
+		for _, w := range d.describeLinesAll() { // the words without the picture are plain (FR-3.5)
+			if strings.Contains(w, "\x1b[") && strings.Contains(w, "NOW") {
+				t.Errorf("the words carry styling: %q", w)
+			}
+		}
+	}
+	if b := stripANSITest(propDash(t, &seam{}, true).propagationBadge()); !strings.Contains(b, "RADIO FREQ. PROPAGATION") {
+		t.Errorf("the badge says %q", b)
 	}
 }

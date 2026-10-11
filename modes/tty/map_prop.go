@@ -13,7 +13,7 @@ const actMapProp term.Action = "map.propagation"
 // The Propagation mode's words while it has nothing to draw: its badge, its
 // line in the radar's place, and its sentence in the description.
 const (
-	propagationLabel  = "PROPAGATION"
+	propagationLabel  = "RADIO FREQ. PROPAGATION" // D-167
 	propagationStatus = "Propagation · whole world · no propagation data drawn yet"
 	propagationWords  = "This is the Propagation mode, over the whole world. No propagation data is drawn yet."
 )
