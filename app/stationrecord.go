@@ -34,8 +34,8 @@ var nwsObservations = history.Dataset{
 		{Name: "precip_1h", Label: "Precipitation, the hour", Unit: "mm", Decimals: 1},
 		{Name: "visibility", Label: "Visibility", Unit: "m", Decimals: 0},
 	},
-	Hours:    72 * time.Hour,
-	Days:     30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
 	MaxBytes: historyBound,
 }
 
@@ -45,7 +45,7 @@ var nwsAlerts = history.Dataset{
 	Name: "nws-alerts", Version: 1, Step: time.Hour,
 	Title:       "NWS, the alerts",
 	Description: "Each National Weather Service alert the station's locations were sent, its document as sent, at the hour it was sent.",
-	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
+	Hours:       historyHours,
 	MaxBytes:    historyBound,
 }
 
@@ -64,8 +64,8 @@ var ndbcBuoys = history.Dataset{
 		{Name: "gust", Label: "Gusts", Unit: "m/s", Decimals: 1},
 		{Name: "water_temp", Label: "Water temperature", Unit: "°C", Decimals: 1},
 	},
-	Hours:    72 * time.Hour,
-	Days:     30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
 	MaxBytes: historyBound,
 }
 
@@ -76,8 +76,8 @@ var coopsTides = history.Dataset{
 	Title:       "CO-OPS, the tide level",
 	Description: "NOAA CO-OPS's observed water level at each tide station the station's locations are near, above MLLW, an hour a record.",
 	Fields:      []history.Field{{Name: "tide_level", Label: "Tide level", Unit: "m", Decimals: 2}},
-	Hours:       72 * time.Hour,
-	Days:        30 * 24 * time.Hour,
+	Hours:       historyHours,
+	Days:        historyDays,
 	MaxBytes:    historyBound,
 }
 

@@ -76,7 +76,7 @@ func scan(root string) ([]Finding, int, error) {
 			return nil
 		}
 		fset := token.NewFileSet()
-		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments|parser.SkipObjectResolution) // no check reads resolved names
 		if err != nil {
 			return nil // unparseable: not this tool's complaint
 		}
@@ -86,11 +86,7 @@ func scan(root string) ([]Finding, int, error) {
 	})
 	var out []Finding
 	for _, p := range all { // bounded by the tree's files (P10-02)
-		out = append(out, checkHistory(p.fset, p.f, p.rel)...)
-		out = append(out, checkBlankKeepAlive(p.fset, p.f, p.rel)...)
-		out = append(out, checkDocAttached(p.fset, p.f, p.rel)...)
-		out = append(out, checkShell(p.fset, p.f, p.rel)...)
-		out = append(out, checkDiscardedOK(p.fset, p.f, p.rel, fns)...)
+		out = append(out, checkFile(p.fset, p.f, p.rel, fns)...)
 	}
 	files := len(all)
 	sort.Slice(out, func(i, j int) bool {
@@ -173,4 +169,15 @@ func main() {
 	fmt.Println("  It decides the rules a syntax tree can decide. It cannot see a comment that is")
 	fmt.Println("  merely WRONG — the larger class, which still needs a reader.")
 	fmt.Println("  The rules are written out in 06_docs/code-standards.md.")
+}
+
+// checkFile is every rule run over one file: the one list the scan and the
+// self-test share, so a rule cannot be added to one and not the other.
+func checkFile(fset *token.FileSet, f *ast.File, rel string, fns okFuncs) []Finding {
+	var out []Finding
+	out = append(out, checkHistory(fset, f, rel)...)
+	out = append(out, checkBlankKeepAlive(fset, f, rel)...)
+	out = append(out, checkDocAttached(fset, f, rel)...)
+	out = append(out, checkShell(fset, f, rel)...)
+	return append(out, checkDiscardedOK(fset, f, rel, fns)...)
 }

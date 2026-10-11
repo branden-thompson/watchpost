@@ -48,20 +48,19 @@ const (
 // withFreshLadder fills the freshness ramp from the theme's own colours
 // where the theme has not named a rung, as withAgeLadder fills its ladder.
 func withFreshLadder(t map[Token]string, named map[Token]string) map[Token]string {
-	for _, f := range []struct{ dst, src Token }{
+	t = borrowUnnamed(t, named, []borrowed{
 		{FreshNow, FocusCell},   // the theme's own light blue
 		{Fresh5, ProviderOK},    // the green it calls healthy
 		{Fresh45, AlertLabel},   // the yellow it calls caution
 		{Fresh60, FireMark},     // the orange it calls hot
 		{FreshOld, AlertDanger}, // the red it calls warning
-	} {
-		if _, ok := named[f.dst]; !ok {
-			t[f.dst] = t[f.src]
-		}
-	}
-	for tok, v := range map[Token]string{Fresh15: freshLightGreen, Fresh30: freshGreenYellow} {
-		if _, ok := named[tok]; !ok && t[tok] == "" {
-			t[tok] = v
+	})
+	for _, own := range [2]struct {
+		tok Token
+		v   string
+	}{{Fresh15, freshLightGreen}, {Fresh30, freshGreenYellow}} {
+		if _, ok := named[own.tok]; !ok {
+			t[own.tok] = own.v
 		}
 	}
 	return t

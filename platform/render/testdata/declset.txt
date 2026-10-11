@@ -337,6 +337,7 @@ func bgRGB
 func bgTruecolor
 func blend
 func boldFg
+func borrowUnnamed
 func boxGlyphs
 func boxRule
 func bracketTitle
@@ -438,6 +439,7 @@ type Token
 type Units
 type aaPair
 type baseCol
+type borrowed
 type colGeom
 type groupSpec
 type layout

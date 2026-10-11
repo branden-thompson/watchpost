@@ -3,7 +3,7 @@ package httpx
 import (
 	"context"
 	"errors"
-	"io"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -41,11 +41,9 @@ type Answer struct {
 	Body   []byte // empty on a 304
 }
 
-// The Plain client's refusals: each names what was wrong, never the reply.
-var (
-	errPlainNotHTTPS = errors.New("httpx: the address is not https")
-	errPlainTooLarge = errors.New("httpx: the reply is larger than this source's cap")
-)
+// errPlainNotHTTPS is the Plain client's refusal of an address that is not
+// https: it names what was wrong, never the reply.
+var errPlainNotHTTPS = errors.New("httpx: the address is not https")
 
 // NewPlain is a Plain client.
 func NewPlain(cfg PlainConfig) (*Plain, error) {
@@ -65,15 +63,18 @@ func NewPlain(cfg PlainConfig) (*Plain, error) {
 
 // Get asks an address once, with the validators of the last answer when it
 // has them, and returns the reply whatever its status. An error is a request
-// that got no reply, or one refused here; it carries the address redacted
-// and never the reply's text.
+// refused here, one that got no reply (a ReachError, after its one attempt),
+// or a reply past the cap (a StatusError, 413), each as the data client
+// gives it; every one carries the address redacted and never the reply's
+// text.
 func (p *Plain) Get(ctx context.Context, rawURL, etag, lastModified string) (Answer, error) {
+	safe := RedactURL(rawURL)
 	if p.httpsOnly && !strings.HasPrefix(rawURL, "https://") {
-		return Answer{}, &ReachError{URL: RedactURL(rawURL), Err: errPlainNotHTTPS}
+		return Answer{}, fmt.Errorf("refused %s: %w", safe, errPlainNotHTTPS)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return Answer{}, &ReachError{URL: RedactURL(rawURL), Err: errors.New("httpx: the address does not parse")}
+		return Answer{}, fmt.Errorf("bad request for %s: %w", safe, redactErr(err))
 	}
 	req.Header.Set("User-Agent", p.ua)
 	if etag != "" {
@@ -84,15 +85,15 @@ func (p *Plain) Get(ctx context.Context, rawURL, etag, lastModified string) (Ans
 	}
 	resp, err := p.http.Do(req)
 	if err != nil {
-		return Answer{}, &ReachError{URL: RedactURL(rawURL), Err: err}
+		return Answer{}, &ReachError{URL: safe, Attempts: 1, Err: redactErr(err)}
 	}
 	defer func() { _ = resp.Body.Close() }() // read in full below; a failed close loses nothing
-	body, err := io.ReadAll(io.LimitReader(resp.Body, p.maxBody+1))
+	body, whole, err := readCapped(resp.Body, p.maxBody)
 	if err != nil {
-		return Answer{}, &ReachError{URL: RedactURL(rawURL), Err: err}
+		return Answer{}, fmt.Errorf("bad response body from %s: %w", safe, redactErr(err))
 	}
-	if int64(len(body)) > p.maxBody {
-		return Answer{}, &ReachError{URL: RedactURL(rawURL), Err: errPlainTooLarge}
+	if !whole {
+		return Answer{}, &StatusError{URL: safe, Status: http.StatusRequestEntityTooLarge}
 	}
 	return Answer{Status: resp.StatusCode, Header: resp.Header, Body: body}, nil
 }

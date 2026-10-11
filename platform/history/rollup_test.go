@@ -166,3 +166,30 @@ func TestAFailedYearReadNeverRewritesTheYear(t *testing.T) {
 		t.Error("the day's hours went although its roll-up was refused")
 	}
 }
+
+// A ROLL-UP'S NAME IS READ ONE WAY by every reader and the pruning: a year's
+// file, or a month's part numbered from 1; any other name is no roll-up, so
+// no reader sees a file the others do not.
+func TestARollUpsNameIsReadOneWay(t *testing.T) {
+	sep := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	for _, c := range []struct {
+		name       string
+		ok         bool
+		start, end time.Time
+		part       int
+	}{
+		{"2026", true, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC), 0},
+		{"2026-09-p1", true, sep, sep.AddDate(0, 1, 0), 1},
+		{"2026-09-p12", true, sep, sep.AddDate(0, 1, 0), 12},
+		{"2026-09-p0", false, time.Time{}, time.Time{}, 0},
+		{"2026-13-p1", false, time.Time{}, time.Time{}, 0},
+		{"2026-09-px", false, time.Time{}, time.Time{}, 0},
+		{"2026-09", false, time.Time{}, time.Time{}, 0},
+		{"notes", false, time.Time{}, time.Time{}, 0},
+	} {
+		r, ok := parseRollup(c.name)
+		if ok != c.ok || (ok && (!r.start.Equal(c.start) || !r.end.Equal(c.end) || r.part != c.part)) {
+			t.Errorf("%q: %+v, %v; want %v to %v part %d, %v", c.name, r, ok, c.start, c.end, c.part, c.ok)
+		}
+	}
+}

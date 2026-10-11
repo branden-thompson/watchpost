@@ -10,7 +10,7 @@
 // buckets are compacted into the day's one file, <YYYY-MM>/<DD>.json.gz, and
 // past the hours' retention the day is rolled up into its month's parts,
 // rollup/<YYYY-MM>-p<N>.json.gz, each within a budget below the read cap
-// (0.18.0's rollup/<YYYY>.json.gz is still read). A year of a series is 365
+// (a series' yearly roll-up, rollup/<YYYY>.json.gz, is read too). A year of a series is 365
 // day files, not thousands, and `zcat` shows any of it. Every read merges a
 // day's file with its buckets not yet compacted. A dataset past its byte
 // bound loses its oldest files first (D-143).
@@ -357,8 +357,8 @@ func (s *Store) Extent(dataset string, k Key) (first, last time.Time, ok bool) {
 }
 
 // dayNames are the days a month directory holds - its day files and its
-// days' bucket directories - or a roll-up directory's years as their first
-// days.
+// days' bucket directories - or the first days of a roll-up directory's
+// files, its years and its months' parts.
 func dayNames(dir, month string) []time.Time {
 	if dir == "" || month == "" {
 		return nil
@@ -368,14 +368,12 @@ func dayNames(dir, month string) []time.Time {
 		return nil
 	}
 	var out []time.Time
-	for _, e := range entries { // a month's days, or the years (P10-02)
+	for _, e := range entries { // a month's days, or a roll-up directory's files (P10-02)
 		name := trimExt(e.Name())
 		if t, err := time.Parse("2006-01/02", month+"/"+name); err == nil && name[0] != '.' {
 			out = append(out, t)
-		} else if y, err := strconv.Atoi(name); err == nil && month == "rollup" {
-			out = append(out, time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC))
-		} else if start, ok := rollupMonth(name); ok && month == "rollup" {
-			out = append(out, start)
+		} else if r, ok := parseRollup(name); ok && month == "rollup" {
+			out = append(out, r.start)
 		}
 	}
 	return out
@@ -431,7 +429,7 @@ func validSegment(v string) bool {
 
 // seriesFiles are where a series' records for one time lie: the day's
 // compacted file, its directory of buckets, the bucket's own file, and
-// 0.18.0's roll-ups of its year.
+// its yearly roll-up.
 type seriesFiles struct{ day, buckets, bucket, year string }
 
 // filesAt is a series' files for the bucket at; empty for no series.
@@ -471,9 +469,9 @@ func rollupParts(dir string) map[string][]int {
 	}
 	out := map[string][]int{}
 	for _, e := range entries { // a series' roll-ups (P10-02)
-		month, part, found := strings.Cut(trimExt(e.Name()), "-p")
-		if n, err := strconv.Atoi(part); found && err == nil && n >= 1 {
-			out[month] = append(out[month], n)
+		if r, ok := parseRollup(trimExt(e.Name())); ok && r.part >= 1 {
+			month := r.start.Format("2006-01")
+			out[month] = append(out[month], r.part)
 		}
 	}
 	for _, ns := range out { // the months (P10-02)
@@ -500,7 +498,7 @@ type hourEntry struct {
 	Doc    json.RawMessage   `json:"doc,omitempty"`
 }
 
-// yearDoc is roll-ups on disk: a month's part, or 0.18.0's year.
+// yearDoc is roll-ups on disk: a month's part, or a yearly roll-up.
 type yearDoc struct {
 	Schema  int        `json:"schema"`
 	Dataset string     `json:"dataset"`
@@ -829,7 +827,7 @@ func (s *Store) Days(dataset string, k Key, from, to time.Time, max int) []Day {
 	}
 	from, to = from.UTC().Truncate(24*time.Hour), to.UTC()
 	byDate := map[string]dayEntry{}
-	for y := from.Year(); y <= to.Year(); y++ { // 0.18.0's yearly roll-ups, bounded by the span (P10-02)
+	for y := from.Year(); y <= to.Year(); y++ { // the yearly roll-ups, bounded by the span (P10-02)
 		if doc, ok := readAs[yearDoc](s, filesAt(dir, time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC)).year, d); ok {
 			addDays(byDate, doc.Days)
 		}
@@ -1144,7 +1142,7 @@ func (v *values) UnmarshalJSON(raw []byte) error {
 			out = append(out, math.NaN())
 			continue
 		}
-		if len(elem) == 0 || bytes.IndexFunc(elem, notNumberByte) >= 0 {
+		if len(elem) == 0 || !numberBytes(elem) {
 			return errNotValues
 		}
 		x, err := strconv.ParseFloat(string(elem), 64)
@@ -1157,10 +1155,23 @@ func (v *values) UnmarshalJSON(raw []byte) error {
 	return nil
 }
 
-// notNumberByte reports a byte no JSON number holds.
-func notNumberByte(r rune) bool {
-	return !strings.ContainsRune("0123456789+-.eE", r)
+// numberBytes reports whether every byte of b is one a JSON number holds.
+func numberBytes(b []byte) bool {
+	for _, c := range b { // bounded by the element (P10-02)
+		if !numberByte[c] {
+			return false
+		}
+	}
+	return true
 }
+
+// numberByte is, by byte, whether a JSON number holds it.
+var numberByte = func() (t [256]bool) {
+	for _, c := range []byte("0123456789+-.eE") {
+		t[c] = true
+	}
+	return t
+}()
 
 // encode is values as kept: each rounded to decimals, a missing one NaN.
 func encode(v []float64, decimals int) values {
@@ -1328,8 +1339,11 @@ func (s *Store) prunePass(now time.Time) {
 	s.mu.Unlock()
 	sets := s.datasets()
 	sort.Slice(sets, func(i, j int) bool { return sets[i].Name < sets[j].Name })
+	// The bounds' own visits: a dataset that cannot get under its bound never
+	// spends the walk's.
+	bounds := 0
 	for _, d := range sets { // a handful (P10-02)
-		removals += s.holdToBound(d, now, &visits, maxPruneRemovals-removals)
+		removals += s.holdToBound(d, now, &bounds, maxPruneRemovals-removals)
 	}
 	for _, d := range sets { // a handful (P10-02)
 		if d.Name < from[0] {
@@ -1414,8 +1428,8 @@ func oldestFiles(series []string, visits *int) []oldFile {
 	for _, dir := range series { // bounded by maxPruneVisits (P10-02)
 		rdir := filepath.Join(dir, "rollup")
 		for _, e := range readEntries(rdir, visits) { // a series' roll-ups (P10-02)
-			if start, ok := rollupStart(trimExt(e.Name())); ok && !e.IsDir() {
-				out = append(out, oldFile{at: start, path: filepath.Join(rdir, e.Name())})
+			if r, ok := parseRollup(trimExt(e.Name())); ok && !e.IsDir() {
+				out = append(out, oldFile{at: r.start, path: filepath.Join(rdir, e.Name())})
 			}
 		}
 		months := readDirs(dir, visits)
@@ -1468,15 +1482,6 @@ func readEntries(dir string, visits *int) []os.DirEntry {
 		return nil
 	}
 	return entries
-}
-
-// rollupStart is when a roll-up file's days begin: a year's, or a month
-// part's.
-func rollupStart(name string) (time.Time, bool) {
-	if y, err := strconv.Atoi(name); err == nil {
-		return time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC), true
-	}
-	return rollupMonth(name)
 }
 
 // removeFiles removes an old file and, for a day, its buckets: the files
@@ -1737,8 +1742,8 @@ func (s *Store) expireDay(d Dataset, dir string, date time.Time, now time.Time) 
 	return removed
 }
 
-// pruneYears removes roll-ups wholly past the days' retention: 0.18.0's years
-// and the months' parts.
+// pruneYears removes roll-ups wholly past the days' retention: the yearly
+// roll-ups and the months' parts.
 func (s *Store) pruneYears(d Dataset, dir string, now time.Time, budget int) int {
 	if dir == "" || budget <= 0 {
 		return 0
@@ -1749,11 +1754,11 @@ func (s *Store) pruneYears(d Dataset, dir string, now time.Time, budget int) int
 	}
 	removed := 0
 	for _, e := range entries { // a file a year, or a part a month (P10-02)
-		end, ok := rollupEnd(trimExt(e.Name()))
+		r, ok := parseRollup(trimExt(e.Name()))
 		if !ok || removed >= budget {
 			continue
 		}
-		if now.Sub(end) > d.Hours+d.Days && s.removeCounted(filepath.Join(dir, e.Name())) {
+		if now.Sub(r.end) > d.Hours+d.Days && s.removeCounted(filepath.Join(dir, e.Name())) {
 			removed++
 			s.note(func(st *Stats) { st.Pruned++ }, true)
 		}
@@ -1761,29 +1766,35 @@ func (s *Store) pruneYears(d Dataset, dir string, now time.Time, budget int) int
 	return removed
 }
 
-// rollupEnd is when a roll-up file's days end: a year's (0.18.0's "2026") or a
-// month part's ("2026-09-p1"); false for any other name.
-func rollupEnd(name string) (time.Time, bool) {
-	if y, err := strconv.Atoi(name); err == nil {
-		return time.Date(y+1, 1, 1, 0, 0, 0, 0, time.UTC), true
-	}
-	if start, ok := rollupMonth(name); ok {
-		return start.AddDate(0, 1, 0), true
-	}
-	return time.Time{}, false
+// rollupName is a roll-up file's name, read: the days it holds, from start
+// to end, and its part - 0 for a year's file (rollup/<YYYY>.json.gz), 1 on
+// for a month's parts (rollup/<YYYY-MM>-p<n>.json.gz).
+type rollupName struct {
+	start, end time.Time
+	part       int
 }
 
-// rollupMonth is the month a part's name ("2026-09-p1") holds.
-func rollupMonth(name string) (time.Time, bool) {
+// parseRollup reads a roll-up file's name, its extension trimmed: the one
+// reading the store's readers and its pruning share, so a file one sees the
+// others see; false for any other name.
+func parseRollup(name string) (rollupName, bool) {
+	if y, err := strconv.Atoi(name); err == nil {
+		start := time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC)
+		return rollupName{start: start, end: start.AddDate(1, 0, 0)}, true
+	}
 	month, part, found := strings.Cut(name, "-p")
 	if !found {
-		return time.Time{}, false
+		return rollupName{}, false
 	}
-	if _, err := strconv.Atoi(part); err != nil {
-		return time.Time{}, false
+	n, err := strconv.Atoi(part)
+	if err != nil || n < 1 {
+		return rollupName{}, false
 	}
 	start, err := time.Parse("2006-01", month)
-	return start, err == nil
+	if err != nil {
+		return rollupName{}, false
+	}
+	return rollupName{start: start, end: start.AddDate(0, 1, 0), part: n}, true
 }
 
 // rollUp writes a day's numeric fields - each point's minimum, maximum and

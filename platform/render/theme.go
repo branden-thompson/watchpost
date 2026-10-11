@@ -291,13 +291,22 @@ const (
 // per-theme entry — and without lifting the tokens it borrows FROM, which stay
 // registered only against the grounds they are actually painted on.
 func withAgeLadder(t map[Token]string, named map[Token]string) map[Token]string {
-	for _, f := range []struct{ dst, src Token }{
+	return borrowUnnamed(t, named, []borrowed{
 		{DataNew, FocusCell},     // the theme's own light blue
 		{DataFresh, ProviderOK},  // the green it already calls "healthy"
 		{DataUsable, AlertLabel}, // the yellow it already calls "caution"
 		{DataAged, FireMark},     // the orange it already calls "hot"
 		{DataStale, FireMark},    // the same orange TODAY: the ruling promises no red rung
-	} {
+	})
+}
+
+// borrowed is a token a ladder fills, and the theme's token it borrows from.
+type borrowed struct{ dst, src Token }
+
+// borrowUnnamed gives each ladder token its source's colour, where the theme
+// has not named the token itself.
+func borrowUnnamed(t map[Token]string, named map[Token]string, pairs []borrowed) map[Token]string {
+	for _, f := range pairs {
 		// "DID THIS THEME NAME IT", NOT "IS IT EMPTY". A registered theme starts
 		// from a COPY OF THE DEFAULT, so by the time this runs the slot is
 		// already full of the default's blue — and an emptiness test would leave

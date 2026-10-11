@@ -181,7 +181,7 @@ func runSelfTest() int {
 	bad := 0
 	for _, s := range specimens() { // bounded by the table (P10-02)
 		fset := token.NewFileSet()
-		f, err := parser.ParseFile(fset, s.name+".go", s.src, parser.ParseComments)
+		f, err := parser.ParseFile(fset, s.name+".go", s.src, parser.ParseComments|parser.SkipObjectResolution)
 		if err != nil {
 			fmt.Printf("  BROKEN SPECIMEN  %s: %v\n", s.name, err)
 			bad++
@@ -191,12 +191,7 @@ func runSelfTest() int {
 		seen := map[string]bool{}
 		fns := newOKFuncs()
 		fns.add(f)
-		for _, fd := range append(append(append(append(
-			checkHistory(fset, f, s.name),
-			checkBlankKeepAlive(fset, f, s.name)...),
-			checkDocAttached(fset, f, s.name)...),
-			checkShell(fset, f, s.name)...),
-			checkDiscardedOK(fset, f, s.name, fns)...) {
+		for _, fd := range checkFile(fset, f, s.name, fns) {
 			if !seen[fd.Rule] {
 				seen[fd.Rule] = true
 				got = append(got, fd.Rule)

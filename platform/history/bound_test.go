@@ -3,6 +3,7 @@ package history
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -152,5 +153,36 @@ func TestARemovedPartHidesNoLaterPart(t *testing.T) {
 	left := s.Days(long.Name, ndfd, start, start.AddDate(0, 0, 29), 40)
 	if len(left) == 0 || len(left) >= all {
 		t.Fatalf("%d of %d days read with the first part removed: the later parts were hidden, or nothing went", len(left), all)
+	}
+}
+
+// A DATASET THAT CANNOT GET UNDER ITS BOUND STARVES NO OTHER: one held over
+// its bound by its current day alone, across more series than a pass may
+// visit, leaves the other datasets' expiry to run.
+func TestABoundThatCannotBeMetStarvesNoOtherDataset(t *testing.T) {
+	stuck := bounded(1)
+	stuck.Name = "aaa-stuck" // first in a pass's order
+	expiring := long
+	expiring.Name, expiring.Days = "zzz-expiring", 2*24*time.Hour
+	dir, now := t.TempDir(), t0
+	s := Open(dir, func() time.Time { return now }, stuck, expiring)
+	for i := range maxPruneVisits {
+		r := rec(t0, 0, 1, 1, 1, 1)
+		r.Key.Place = "p" + strconv.Itoa(i)
+		s.Put(stuck.Name, r)
+	}
+	old := t0.AddDate(0, 0, -10)
+	s.Put(expiring.Name, rec(old, 0, 1, 1, 1, 1))
+	for range 8 {
+		s.RollUpAndPrune()
+	}
+	if len(s.Days(expiring.Name, ndfd, old, old, 1)) != 0 {
+		t.Error("a day past its dataset's retention was kept: the other dataset's bound spent every pass")
+	}
+	if _, ok := s.Get(expiring.Name, ndfd, old); ok {
+		t.Error("a record past its dataset's retention was kept: the other dataset's bound spent every pass")
+	}
+	if _, ok := s.Get(stuck.Name, Key{Source: "ndfd", Place: "p0"}, t0); !ok {
+		t.Error("the current day went for the bound")
 	}
 }

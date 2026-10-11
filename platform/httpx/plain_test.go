@@ -100,13 +100,28 @@ func TestThePropagationClientIsHardened(t *testing.T) {
 		t.Error("a loopback address was dialled with private addresses refused")
 	}
 	_, err = plainFor(t, 1024).Get(context.Background(), srv.URL, "", "")
-	if !errors.Is(err, errPlainTooLarge) {
-		t.Errorf("a body past the cap: %v", err)
+	var se *StatusError
+	if !errors.As(err, &se) || se.Status != http.StatusRequestEntityTooLarge {
+		t.Errorf("a body past the cap is not the data client's 413: %v", err)
 	}
 	if err != nil && strings.Contains(err.Error(), "203.0.113.9") {
 		t.Errorf("an error carries the reply's text: %v", err)
 	}
 	if _, err := NewPlain(PlainConfig{}); err == nil {
 		t.Error("a client with no user agent was made")
+	}
+}
+
+// TestThePropagationClientsErrorsCarryNoSecret is IS-1, as the data client
+// keeps it: an address that got no reply is said redacted, after its one
+// attempt.
+func TestThePropagationClientsErrorsCarryNoSecret(t *testing.T) {
+	_, err := plainFor(t, 1024).Get(context.Background(), "http://127.0.0.1:1/x?key=secret-token", "", "")
+	var re *ReachError
+	if !errors.As(err, &re) || re.Attempts != 1 {
+		t.Fatalf("an address with no reply: %v; want a ReachError after one attempt", err)
+	}
+	if strings.Contains(err.Error(), "secret-token") {
+		t.Errorf("the error carries the address's secret: %v", err)
 	}
 }

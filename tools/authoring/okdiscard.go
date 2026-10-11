@@ -3,10 +3,10 @@ package main
 // AP-OK-01: a value taken from a module function together with its bool, with
 // the bool thrown away.
 //
-// THE BUG IT CATCHES (#27, 0.19.0 D-142). `year, _ := readAs(...)` carried on
-// with an empty year when the read failed, and wrote it over a year of real
-// roll-ups. P10-07 cannot see this: it checks `error` returns only, and treats
-// `_` as a deliberate discard. A bool that says "the value is good" is as much a
+// WHY (#27, 0.19.0 D-142): `year, _ := readAs(...)` goes on with an empty
+// year when the read fails, and can write it over a year of real roll-ups.
+// P10-07 cannot see this: it checks `error` returns only, and treats `_` as a
+// deliberate discard. A bool that says "the value is good" is as much a
 // return to check as an error.
 //
 // A SYNTAX TREE HAS NO TYPES, so the callee is known by name: the module's

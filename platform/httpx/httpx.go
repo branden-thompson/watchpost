@@ -850,11 +850,11 @@ func (c *Client) doAttempt(ctx context.Context, r request) (attemptResult, error
 	if c.cfg.MaxBodyBytes > 0 {
 		limit = c.cfg.MaxBodyBytes
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
+	body, whole, err := readCapped(resp.Body, limit)
 	if err != nil {
 		return res, fmt.Errorf("bad response body from %s: %w", safe, redactErr(err))
 	}
-	if int64(len(body)) > limit {
+	if !whole {
 		// Refused AS IT READS, and final: the caller has an error and nothing
 		// reaches the cache, which is written only after a success (FR-5.7).
 		res.status = http.StatusRequestEntityTooLarge
@@ -925,6 +925,16 @@ func reasonOf(r io.Reader) string {
 
 func retryable(status int) bool {
 	return status == http.StatusTooManyRequests || status >= 500
+}
+
+// readCapped reads a body up to limit bytes; whole is false when it runs
+// past, read only as far as one byte more than the cap.
+func readCapped(r io.Reader, limit int64) (body []byte, whole bool, err error) {
+	body, err = io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, false, err
+	}
+	return body, int64(len(body)) <= limit, nil
 }
 
 // redactErr rewrites any URL embedded in a transport error so secrets in query

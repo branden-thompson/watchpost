@@ -121,3 +121,27 @@ func TestARecordReadIsItsReadersOwn(t *testing.T) {
 		t.Errorf("a reader's change reached the store: read again as %v", again.Values["temp"][0])
 	}
 }
+
+// BenchmarkValuesDecode reads a large lattice's values, as a roll-up part's
+// read does: a hundred thousand numbers and missing ones.
+func BenchmarkValuesDecode(b *testing.B) {
+	in := make([]float64, 100_000)
+	for i := range in {
+		in[i] = float64(i%997) / 7
+		if i%13 == 0 {
+			in[i] = math.NaN()
+		}
+	}
+	raw, err := json.Marshal(values(in))
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.SetBytes(int64(len(raw)))
+	b.ReportAllocs()
+	for b.Loop() {
+		var v values
+		if err := json.Unmarshal(raw, &v); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

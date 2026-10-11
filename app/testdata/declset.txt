@@ -35,7 +35,9 @@ const fromRescue
 const fromSource
 const gustMargin
 const historyBound
+const historyDays
 const historyEvery
+const historyHours
 const historyQuakeFeed
 const hmsCredit
 const holdStep

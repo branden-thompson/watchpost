@@ -52,8 +52,8 @@ var ndfdHourly = history.Dataset{
 		{Name: "gust", Label: "Gusts", Unit: "km/h", Decimals: 1},
 		{Name: "wind_from", Label: "Wind from", Unit: "°", Decimals: 0},
 	},
-	Hours:    72 * time.Hour,
-	Days:     30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
 	MaxBytes: largeHistoryBound,
 }
 
@@ -64,8 +64,8 @@ var omUVHourly = history.Dataset{
 	Title:       "Open-Meteo, the UV index",
 	Description: "Open-Meteo's UV index over each field box of a region, each hour it answered.",
 	Fields:      []history.Field{{Name: "uv", Label: "UV index", Unit: "index", Decimals: 1}},
-	Hours:       72 * time.Hour,
-	Days:        30 * 24 * time.Hour,
+	Hours:       historyHours,
+	Days:        historyDays,
 	MaxBytes:    historyBound,
 }
 
@@ -81,8 +81,8 @@ var omRainDays = history.Dataset{
 		{Name: "rain", Label: "Rain", Unit: "mm", Decimals: 1},
 		{Name: "snow", Label: "Snow", Unit: "cm", Decimals: 1},
 	},
-	Hours:    72 * time.Hour,
-	Days:     30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
 	MaxBytes: historyBound,
 }
 
@@ -94,8 +94,8 @@ var ndfdWaves = history.Dataset{
 	Title:       "NDFD, wave height",
 	Description: "The National Weather Service's significant wave height over each field box's sea, an hour a record.",
 	Fields:      []history.Field{{Name: "waves", Label: "Wave height", Unit: "m", Decimals: 1}},
-	Hours:       72 * time.Hour,
-	Days:        30 * 24 * time.Hour,
+	Hours:       historyHours,
+	Days:        historyDays,
 	MaxBytes:    historyBound,
 }
 
@@ -108,8 +108,8 @@ var epaUVCities = history.Dataset{
 	Title:       "EPA, the UV index by city",
 	Description: "The EPA's hourly UV index forecast for each city the map has read, an hour a record.",
 	Fields:      []history.Field{{Name: "uv", Label: "UV index", Unit: "index", Decimals: 0}},
-	Hours:       72 * time.Hour,
-	Days:        30 * 24 * time.Hour,
+	Hours:       historyHours,
+	Days:        historyDays,
 	MaxBytes:    historyBound,
 }
 
@@ -123,8 +123,8 @@ var ndfdRainDays = history.Dataset{
 		{Name: "rain", Label: "Rain", Unit: "mm", Decimals: 1},
 		{Name: "snow", Label: "Snow", Unit: "cm", Decimals: 1},
 	},
-	Hours:    72 * time.Hour,
-	Days:     30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
 	MaxBytes: historyBound,
 }
 
@@ -137,6 +137,14 @@ var ndfdRainDays = history.Dataset{
 const (
 	largeHistoryBound = 4 << 30
 	historyBound      = 512 << 20
+)
+
+// Every dataset's retention until the Data tab's is applied: its hours of
+// detail and its days of roll-ups. The Data tab's retention applies to every
+// dataset alike (D-175, D-231).
+const (
+	historyHours = 72 * time.Hour
+	historyDays  = 30 * 24 * time.Hour
 )
 
 // historyDatasets are every dataset the history holds: the Data tab's

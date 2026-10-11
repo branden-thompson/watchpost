@@ -4,4 +4,4 @@ import pathlib
 p = pathlib.Path("platform/httpx/plain.go"); s = p.read_text()
 old = "\treturn Answer{Status: resp.StatusCode, Header: resp.Header, Body: body}, nil"
 assert old in s, "m135"
-p.write_text(s.replace(old, "\tif resp.StatusCode == http.StatusTooManyRequests {\n\t\treturn Answer{}, errPlainTooLarge\n\t}\n\treturn Answer{Status: resp.StatusCode, Header: resp.Header, Body: body}, nil"))
+p.write_text(s.replace(old, "\tif resp.StatusCode == http.StatusTooManyRequests {\n\t\treturn Answer{}, errPlainNotHTTPS\n\t}\n\treturn Answer{Status: resp.StatusCode, Header: resp.Header, Body: body}, nil"))
