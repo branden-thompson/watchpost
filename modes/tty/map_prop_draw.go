@@ -65,11 +65,11 @@ const propNightStep = 5 * time.Minute
 // layer alone (D-112), and the night with its edge for the moment shown;
 // none outside the mode or before a snapshot.
 func (d Dashboard) propOverlays() []tuimaps.Overlay {
-	snap := d.mapPane.propSnap
-	if !d.inPropagation() || snap == nil || len(snap.Hours) == 0 {
+	shown := d.propOnScreen()
+	if !d.inPropagation() || len(shown.Hours) == 0 {
 		return nil
 	}
-	h := snap.Hours[0]
+	h := shown.Hours[0]
 	field := tuimaps.MUFGrid("propagation/muf", fieldGrid(h.MUF3000), h.At)
 	if d.mapPane.propLayer == propFoF2 {
 		field = tuimaps.FoF2Grid("propagation/fof2", fieldGrid(h.FoF2), h.At)
@@ -82,8 +82,13 @@ func (d Dashboard) propOverlays() []tuimaps.Overlay {
 }
 
 // propNightMoment is the moment the night is drawn for: the clock, to the
-// step.
-func (d Dashboard) propNightMoment() time.Time { return d.now().UTC().Truncate(propNightStep) }
+// step; an hour ahead, the middle of that hour.
+func (d Dashboard) propNightMoment() time.Time {
+	if shown, ok := d.propShown(); ok && d.mapPane.propAhead > 0 {
+		return shown.Hours[0].At.Add(30 * time.Minute).UTC()
+	}
+	return d.now().UTC().Truncate(propNightStep)
+}
 
 // propNight is the night side and its edge at a moment (L-4.1 to L-4.3): no
 // words of its own, the edge dotted at every depth.
@@ -267,20 +272,29 @@ func (d Dashboard) propBlockAs(width, below int, styled bool) []string {
 	if age >= time.Minute {
 		ago = "(" + strconv.Itoa(int(age.Minutes())) + " min ago)"
 	}
-	out = append(out, "MODE: "+field(propLayerName(d.mapPane.propLayer))+" · COMPUTED "+d.clockFmt.Time(at)+" "+at.Format("MST")+
-		" "+tint(ago, render.FreshnessTone(age))+" · upper limits only", d.propFreqLine()) // D-166; D-163: a blank row before the place, the frequency held there (D-179)
+	mode := "MODE: " + field(propLayerName(d.mapPane.propLayer)) + " · COMPUTED " + d.clockFmt.Time(at) + " " + at.Format("MST") +
+		" " + tint(ago, render.FreshnessTone(age)) + " · upper limits only" // D-166
+	if loc != nil && d.mapPane.propAhead > 0 { // an hour ahead: typical, said where the time was (FR-1.13, D-109)
+		mode = "MODE: " + field(propLayerName(d.mapPane.propLayer)) + " · " + tint(d.propAheadLabel(loc.Lat, loc.Lon), render.AlertLabel)
+	}
+	out = append(out, mode, d.propFreqLine()) // D-163: a blank row before the place, the frequency held there (D-179)
 	if loc == nil {
 		return padRows(out, width)
 	}
 	name := strings.ToUpper(loc.Label)
 	place := tint(name, render.MapPropPlace) + "   " // D-164; D-163: the place in a column of its own, its answer under NOW
 	under := strings.Repeat(" ", render.Width(name)+3)
-	fo, okF := cellValue(snap.Hours[0].FoF2, loc.Lat, loc.Lon)
-	muf, okM := cellValue(snap.Hours[0].MUF3000, loc.Lat, loc.Lon)
-	if !okF || !okM {
-		return padRows(append(out, place+"NOW · no data at the place"), width)
+	shown := d.propOnScreen()
+	when := "NOW"
+	if k := d.mapPane.propAhead; k > 0 {
+		when = "+" + strconv.Itoa(k) + " h"
 	}
-	out = append(out, fmt.Sprintf("%sNOW · %s %.1f MHz · %s %.1f MHz", place, field("foF2"), fo, field("MUF(3000)"), muf))
+	fo, okF := cellValue(shown.Hours[0].FoF2, loc.Lat, loc.Lon)
+	muf, okM := cellValue(shown.Hours[0].MUF3000, loc.Lat, loc.Lon)
+	if !okF || !okM {
+		return padRows(append(out, place+when+" · no data at the place"), width)
+	}
+	out = append(out, fmt.Sprintf("%s%s · %s %.1f MHz · %s %.1f MHz", place, when, field("foF2"), fo, field("MUF(3000)"), muf))
 	out = append(out, under+"Local, to ~"+strconv.Itoa(d.mapPropRadiusKm)+" km (NVIS): "+bandNames(bandsUnder(fo))) // D-100: the Setting's radius
 	if best := d.propBestLine(); best != "" {
 		out = append(out, under+best) // D-176, D-177: the continents, in the 3,000 km hops' place, and the key to the chart

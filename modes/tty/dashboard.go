@@ -1097,7 +1097,8 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next = next.followPropNight()         // go-tuiMaps P4: the night moves with the clock
 	next, chartCmd := next.armPropChart() // W5.1: the chart's answers, asked when what they come from changes
 	next, reachCmd := next.armPropReach() // W5.2: and the frequency's reach
-	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd))
+	next, aheadCmd := next.armPropAhead() // W5.4: and the hour ahead shown
+	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd, aheadCmd))
 }
 
 // handleTicker applies one global-event-ticker message and re-arms the frame
@@ -1184,6 +1185,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyPropChart(v), nil
 	case propReachMsg:
 		return d.applyPropReach(v), nil
+	case propAheadMsg:
+		return d.applyPropAhead(v), nil
 	case propUpdatedMsg:
 		return d.applyPropUpdated(v) // W4.1: the Propagation mode's update, kept in Update
 	case propTickMsg:

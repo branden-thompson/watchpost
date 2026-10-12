@@ -73,6 +73,7 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 	if len(v.res.Snapshot.Hours) > 0 {
 		snap := v.res.Snapshot
 		d.mapPane.propSnap = &snap
+		d.mapPane.propAheadHours, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
 	}
 	d.mapPane.propErr = v.res.Err
 	return d.setProp().renderMap().nextPropTick()

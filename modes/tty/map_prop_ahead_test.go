@@ -1,0 +1,137 @@
+package tty
+
+import (
+	"strings"
+	"testing"
+	"time"
+
+	ionomaps "github.com/branden-thompson/go-ionomaps"
+)
+
+// stepAhead presses a key that steps the hours and works out the hour it
+// armed, as the app's command would.
+func stepAhead(t *testing.T, d Dashboard, key string) Dashboard {
+	t.Helper()
+	m, _ := d.Update(mapKeyMsg(t, key))
+	d = m.(Dashboard)
+	d.mapPane.propAheadAsked = 0 // the harness dropped the command the Update armed: ask again
+	d, cmd := d.armPropAhead()
+	if cmd != nil {
+		m, _ = d.Update(cmd())
+		d = m.(Dashboard)
+	}
+	return d
+}
+
+// TestTheHoursStepOnAKey is FR-1.13 (D-103): shift+right steps an hour ahead,
+// to 24 at most, shift+left back, n to now; the field drawn is the hour's,
+// the climatology's, not the snapshot's flat field.
+func TestTheHoursStepOnAKey(t *testing.T) {
+	d := chartDash(t)
+	now := d.mapPane.propSnap.Hours[0]
+	d = stepAhead(t, d, "shift+right")
+	if d.mapPane.propAhead != 1 {
+		t.Fatalf("shift+right steps to hour %d; want 1", d.mapPane.propAhead)
+	}
+	shown, ok := d.propShown()
+	if !ok || !shown.Hours[0].At.Equal(now.At.Add(time.Hour)) || !shown.Hours[0].Typical {
+		t.Fatalf("the hour shown is %v (typical %v, ready %v); want the hour after %v, typical", shown.Hours[0].At, shown.Hours[0].Typical, ok, now.At)
+	}
+	g := propGrid(t, d)
+	if g.Values[0] == float64(now.MUF3000.Values[0]) && g.Values[len(g.Values)/2] == float64(now.MUF3000.Values[len(g.Values)/2]) {
+		t.Error("an hour ahead draws the snapshot's own field, not the climatology's")
+	}
+	for range 30 {
+		d = stepAhead(t, d, "shift+right")
+	}
+	if d.mapPane.propAhead != 24 {
+		t.Errorf("stepping on stops at %d; want 24", d.mapPane.propAhead)
+	}
+	if d = stepAhead(t, d, "shift+left"); d.mapPane.propAhead != 23 {
+		t.Errorf("shift+left steps to %d; want 23", d.mapPane.propAhead)
+	}
+	if d = stepAhead(t, d, "n"); d.mapPane.propAhead != 0 {
+		t.Errorf("n steps to %d; want now", d.mapPane.propAhead)
+	}
+	if g := propGrid(t, d); g.Values[0] != float64(now.MUF3000.Values[0]) {
+		t.Error("back at now, the field drawn is not the snapshot's")
+	}
+}
+
+// TestAnHourAheadSaysTypical is FR-1.13 (D-109): an hour ahead is labelled
+// typical for that hour, not a forecast, under the map and in the words;
+// now is not.
+func TestAnHourAheadSaysTypical(t *testing.T) {
+	d := chartDash(t)
+	if strings.Contains(stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n")), "TYPICAL") {
+		t.Fatal("the current hour is labelled typical")
+	}
+	d = stepAhead(t, stepAhead(t, d, "shift+right"), "shift+right")
+	block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n"))
+	for _, want := range []string{"+2 h", "TYPICAL, NOT A FORECAST", "+2 h ·"} {
+		if !strings.Contains(block, want) {
+			t.Errorf("two hours ahead the block does not say %q:\n%s", want, block)
+		}
+	}
+	if words := strings.Join(d.describeLinesAll(), " "); !strings.Contains(words, "typical for this hour, not a forecast") {
+		t.Errorf("without the picture an hour ahead is not said to be typical: %q", words)
+	}
+}
+
+// TestTheTypicalErrorStatesItsBasis is FR-1.13 (D-134): an hour ahead says
+// its typical error for the place's distance band, in the layer drawn, and
+// the words state what it was measured on.
+func TestTheTypicalErrorStatesItsBasis(t *testing.T) {
+	d := chartDash(t)
+	d.mapPane.propSnap.TypicalError.Basis = "the week the plan measured"
+	d.mapPane.propSnap.TypicalError.Bands = append(d.mapPane.propSnap.TypicalError.Bands[:0], typicalBand(0, 1.36, 4.58))
+	d = stepAhead(t, d, "shift+right")
+	if block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, "±4.6 MHz") {
+		t.Errorf("the block does not give MUF(3000)'s typical error, 4.6 MHz:\n%s", block)
+	}
+	if words := strings.Join(d.describeLinesAll(), " "); !strings.Contains(words, "the week the plan measured") {
+		t.Errorf("the words do not state the basis: %q", words)
+	}
+}
+
+// TestAnHourStepNeverWaitsForAnUpdate is FR-1.17: stepping the hours asks
+// the network nothing; the hour is worked out from the snapshot held.
+func TestAnHourStepNeverWaitsForAnUpdate(t *testing.T) {
+	d, s := drawnDash(t)
+	asked := s.count()
+	m, cmd := d.Update(mapKeyMsg(t, "shift+right"))
+	if runProp(t, m.(Dashboard), cmd); s.count() != asked {
+		t.Errorf("an hour step asked for an update: %d asks, %d before", s.count(), asked)
+	}
+}
+
+// TestANewSnapshotMissesTheAnswerMemo is FR-1.13 and D-131: a new snapshot
+// drops the hours ahead worked out from the old one, and the chart is asked
+// again for it.
+func TestANewSnapshotMissesTheAnswerMemo(t *testing.T) {
+	d := stepAhead(t, chartDash(t), "shift+right")
+	if len(d.mapPane.propAheadHours) == 0 {
+		t.Fatal("no hour ahead was kept")
+	}
+	next := *d.mapPane.propSnap
+	next.Computed = next.Computed.Add(10 * time.Minute)
+	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: next}})
+	d = m.(Dashboard)
+	if len(d.mapPane.propAheadHours) != 0 {
+		t.Error("the hours ahead of the old snapshot were kept for the new one")
+	}
+	if d.mapPane.propAheadAsked != 1 {
+		t.Fatalf("the hour ahead shown was not asked again for the new snapshot (asked %d)", d.mapPane.propAheadAsked)
+	}
+	d.mapPane.propAheadAsked = 0
+	d, cmd := d.armPropAhead()
+	m, _ = d.Update(cmd()) // the hour ahead lands; the Update asks for the chart of the new snapshot
+	if d = m.(Dashboard); d.mapPane.propChartAsked.computed != next.Computed {
+		t.Error("the chart was not asked again for the new snapshot")
+	}
+}
+
+// typicalBand is a typical error's distance band.
+func typicalBand(upToKm, fo, muf float32) ionomaps.BandError {
+	return ionomaps.BandError{UpToKm: upToKm, FoF2MHz: fo, MUF3000MHz: muf}
+}

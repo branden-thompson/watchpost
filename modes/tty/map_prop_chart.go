@@ -63,11 +63,12 @@ type propChartMsg struct{ chart propChart }
 // the selected place, in the Propagation mode with the map shown; false
 // when there is nothing to work it out from.
 func (d Dashboard) propChartWanted() (propChartKey, bool) {
-	snap, loc := d.mapPane.propSnap, d.selectedLocation()
-	if !d.mapShown() || !d.inPropagation() || snap == nil || len(snap.Hours) == 0 || loc == nil {
+	shown, ok := d.propShown()
+	loc := d.selectedLocation()
+	if !ok || !d.mapShown() || !d.inPropagation() || loc == nil {
 		return propChartKey{}, false
 	}
-	return propChartKey{computed: snap.Computed, hour: snap.Hours[0].At, origin: ionomaps.LatLon{Lat: loc.Lat, Lon: loc.Lon}, radiusKm: float64(d.mapPropRadiusKm)}, true
+	return propChartKey{computed: shown.Computed, hour: shown.Hours[0].At, origin: ionomaps.LatLon{Lat: loc.Lat, Lon: loc.Lon}, radiusKm: float64(d.mapPropRadiusKm)}, true
 }
 
 // armPropChart asks for the chart when what it is worked out from has
@@ -79,7 +80,7 @@ func (d Dashboard) armPropChart() (Dashboard, tea.Cmd) {
 		return d, nil
 	}
 	d.mapPane.propChartAsked = key
-	snap := *d.mapPane.propSnap
+	snap := d.propOnScreen()
 	return d, func() tea.Msg { return propChartMsg{chart: workPropChart(snap, key)} }
 }
 

@@ -275,3 +275,14 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Tests:** `TestYourFrequencyDrawsItsReach`, `TestYourFrequencyIsSaid`, `TestABadFrequencyIsSaidNotGuessed`. **Not test first:** the code was written while go-tuiMaps' gate ran and the tests after it; each rule's mutant (m200 to m206) is shown caught instead. The closed-set guards name the new window, message and key.
 - **Mutants:** m200 to m206 new, each applied, vetted, killed and restored by copy; m198 re-pointed (its return line now appends the night). Every mutant on a file this batch changed applied and vetted (sixty-eight, and these eight).
 - **Docs:** the as-built map diagram (F, the entry, the reach); the atlas.
+
+## Batch 19 — W5.4, hours ahead: typical for the hour, its error and basis (A-48)
+
+- **The hours** (`modes/tty/map_prop_ahead.go`): shift+right steps an hour ahead, to 24; shift+left back; n now (A-48). Each hour ahead is go-ionomaps' `Snapshot.Ahead`, the climatology at the snapshot's F10.7 mean, worked out in a command once and kept for the snapshot held (FR-1.17); a new snapshot drops them. Nothing is fetched for a step.
+- **One hour on screen:** `propOnScreen` is the snapshot with the hour shown, and every reader takes it - the field and the night (the middle of the hour ahead), the block's place row ("+2 h" for NOW), the chart and the reach, whose keys carry the hour, so each is asked again when the hour moves. `propShown` adds whether that hour is the one asked for.
+- **Said typical** (FR-1.13, D-109, D-134): the mode line names the hour, "TYPICAL, NOT A FORECAST" and the typical error at the place in the layer drawn; the words say the same before the place, with the error's basis.
+- **Tests written first:** `TestTheHoursStepOnAKey`, `TestAnHourAheadSaysTypical`, `TestTheTypicalErrorStatesItsBasis`, `TestAnHourStepNeverWaitsForAnUpdate`, `TestANewSnapshotMissesTheAnswerMemo`. The last first asked for the chart at once after a new snapshot; the hour ahead has to be worked out again first, and the test now follows that order.
+- **Found by the authoring check:** four readers threw away whether the hour was ready; the one function became two, `propOnScreen` and `propShown`.
+- **Mutants:** m207 to m213 new, each applied, vetted, killed and restored by copy; m148, m162, m163 and m209 re-pointed. Every mutant on a file this batch changed applied and vetted (seventy-one).
+- **Not done:** the centre's answer (D-180) is the next batch.
+- **Docs:** the as-built map diagram (the hours ahead); the atlas.

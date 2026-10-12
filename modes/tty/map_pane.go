@@ -85,6 +85,9 @@ type mapPane struct {
 	propFreqErr    string                     // why the entry did not take it
 	propReach      propReach                  // the frequency's reach (W5.2)
 	propReachAsked propReachKey               // what the reach was last asked for: asked once
+	propAhead      int                        // the hour shown ahead of the snapshot's, 0 for now (FR-1.13)
+	propAheadHours map[int]ionomaps.Hour      // the hours ahead worked out from the snapshot held
+	propAheadAsked int                        // the hour ahead last asked for: asked once
 	status         tuimaps.Status             // the last frame's: whole, or still sharpening
 	pending        bool                       // work was waiting when it was drawn
 	offline        bool                       // a tile failed since the picture was last whole
@@ -947,7 +950,10 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		if nd, ok := d.handlePlayback(act); ok {
 			return nd, nd.mapWorkCmd(), true
 		}
-	case modePropagation: // no playback yet: the hours ahead step with W5
+	case modePropagation: // the hours ahead (FR-1.13)
+		if nd, ok := d.stepPropAhead(act); ok {
+			return nd, nd.mapWorkCmd(), true
+		}
 	}
 	return d.moveMapView(act)
 }

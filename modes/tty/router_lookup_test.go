@@ -199,6 +199,7 @@ func typeOfMsg(t *testing.T, name string) reflect.Type {
 		"propTickMsg":       propTickMsg{},    // and its refresh tick
 		"propChartMsg":      propChartMsg{},   // W5.1: the chart's answers, owed to the map and its chart window
 		"propReachMsg":      propReachMsg{},   // W5.2: the frequency's reach, owed to the map
+		"propAheadMsg":      propAheadMsg{},   // W5.4: the hour ahead, owed to the map
 		"mapPanicMsg":       mapPanicMsg{},    // QA-11: a map command stopped a panic, and its window is marked failed
 	}
 	v, ok := known[name]

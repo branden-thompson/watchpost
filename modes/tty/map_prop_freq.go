@@ -86,7 +86,7 @@ func (d Dashboard) armPropReach() (Dashboard, tea.Cmd) {
 		return d, nil
 	}
 	d.mapPane.propReachAsked = key
-	snap := *d.mapPane.propSnap
+	snap := d.propOnScreen()
 	return d, func() tea.Msg {
 		field, err := snap.Reach(key.origin, key.mhz, key.hour)
 		return propReachMsg{reach: propReach{key: key, field: field, err: err}}
