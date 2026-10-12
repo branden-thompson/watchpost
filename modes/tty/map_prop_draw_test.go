@@ -26,7 +26,7 @@ func propSnapAt(at time.Time, mhz float32) ionomaps.Snapshot {
 		return f
 	}
 	return ionomaps.Snapshot{Computed: at, Hours: []ionomaps.Hour{{At: at, MUF3000: field(mhz), FoF2: field(mhz / 3)}},
-		Background: ionomaps.Backgrounds{FoF2: ionomaps.GloTEC, M3000: ionomaps.Climatology}, Inputs: ionomaps.Inputs{GloTECValid: at.Add(-30 * time.Minute)}}
+		Background: ionomaps.Backgrounds{FoF2: ionomaps.GloTEC, M3000: ionomaps.Climatology}, Inputs: ionomaps.Inputs{GloTECValid: at.Add(-30 * time.Minute), F107Mean: 150}}
 }
 
 // drawnDash is the map in the Propagation mode with a snapshot drawn.
@@ -40,13 +40,16 @@ func drawnDash(t *testing.T) (Dashboard, *seam) {
 // propGrid is the one Propagation grid handed to the library, and its preset.
 func propGrid(t *testing.T, d Dashboard) *tuimaps.Grid {
 	t.Helper()
-	if len(d.mapPane.propGiven) != 1 {
-		t.Fatalf("%d Propagation overlays handed in; want one, the hour on screen (D-112)", len(d.mapPane.propGiven))
-	}
+	var grids []*tuimaps.Grid
 	for _, o := range d.mapPane.propGiven {
-		return o.Grid
+		if o.Grid != nil {
+			grids = append(grids, o.Grid)
+		}
 	}
-	return nil
+	if len(grids) != 1 {
+		t.Fatalf("%d Propagation fields handed in; want one, the hour on screen (D-112)", len(grids))
+	}
+	return grids[0]
 }
 
 // TestBothPropagationLayersDrawWithTheirUnits is W3.1 (FR-1.5, D-24): the
@@ -67,6 +70,9 @@ func TestBothPropagationLayersDrawWithTheirUnits(t *testing.T) {
 	}
 	if row := stripANSITest(d.scrubRows(d.mapTextW())[0]); !strings.Contains(row, "foF2 │") {
 		t.Errorf("after L the legend row does not key foF2: %q", row)
+	}
+	if row := stripANSITest(d.propLegendRows(40)[0]); !strings.Contains(row, "foF2, MHz │") { // too narrow for a band a class: one line (D-160)
+		t.Errorf("after L the narrow legend row does not key foF2: %q", row)
 	}
 	if d = pressMap(t, d, "P"); len(d.mapPane.propGiven) != 0 {
 		t.Errorf("leaving the mode left %d Propagation overlays drawn", len(d.mapPane.propGiven))
@@ -131,7 +137,7 @@ func TestHelpFitsWithThePropagationKeys(t *testing.T) {
 		m, _ := d.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		d = m.(Dashboard).open(modalHelp)
 		text := strings.Join(strings.Fields(stripANSITest(strings.Join(d.modalLines(), " "))), " ") // wrapped at the floor: read as one text
-		for _, want := range []string{"Radar Mode / Forecast Hi-Lo", "Propagation / Layer / Refresh Now", "Zoom In / Out / Scroll"} {
+		for _, want := range []string{"Radar Mode / Forecast Hi-Lo", "Propagation / Layer / Refresh / Chart", "Zoom In / Out / Scroll"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("%dx%d: Help lacks %q", size[0], size[1], want)
 			}

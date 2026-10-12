@@ -109,6 +109,9 @@ type Config struct {
 	// MapUVCities is the file's count of cities UV asks EPA for: 8, 24 or
 	// 48; anything else is 24, the default (D-202).
 	MapUVCities int
+	// MapPropRadius is the file's near-vertical radius for the Propagation
+	// mode, km: 200, 400 or 600; anything else is 400, the default (D-100).
+	MapPropRadius int
 	// MapTemperature is the temperature the map draws (W10): every hour's or
 	// step's grids, each with its span, asked off the UI goroutine.
 	MapTemperature func(ctx context.Context, ask MapAsk) MapTemperature
@@ -423,6 +426,7 @@ type UIPrefs struct {
 	MapTempSource  string          // "open-meteo", or NDFD by default (D-190)
 	MapRainDetail  string          // "full", or coarse by default (D-192)
 	MapUVCities    int             // UV's EPA cities: 8, 24 or 48; 0 is the default, 24 (D-202)
+	MapPropRadius  int             // the Propagation mode's near-vertical radius, km: 200, 400 or 600; 0 is the default, 400 (D-100)
 	MapRadarAhead  int             // the radar loop's hours ahead (D-114)
 	MapQuakeFeed   string          // the quakes drawn, USGS's feed by its name (D-122)
 	MapLayers      map[string]bool // the layers switched from their defaults
@@ -666,6 +670,7 @@ type Dashboard struct {
 	mapTempNDFD     bool           // NDFD for the map's temperature, both modes, else Open-Meteo (D-93, D-190)
 	mapRainFull     bool           // Open-Meteo's full density for the rain past NDFD's reach (D-192)
 	mapUVCities     int            // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
+	mapPropRadiusKm int            // the Propagation mode's near-vertical radius: 200, 400 or 600 km (D-100)
 	mapRadarAhead   int            // the radar loop's hours ahead: 1, 3, 6 or 12 (D-114)
 	mapQuakeFeed    string         // the quakes drawn: USGS's feed by its name (D-122)
 	mapKeys         term.KeyMap
@@ -938,7 +943,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -1086,10 +1091,12 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if err := invariant.Check(ok, "dispatch must return the dashboard model"); err != nil {
 		return m, cmd
 	}
-	next, resumeCmd := next.resume()  // D-107: a window returned to picks up where it was
-	next = next.mapPanicked()         // QA-11: a panic a map call or command stopped marks the map failed
-	next, mapCmd := next.armMapTick() // 0.18.0 W2.2: the map's clock, armed after every Update
-	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd))
+	next, resumeCmd := next.resume()      // D-107: a window returned to picks up where it was
+	next = next.mapPanicked()             // QA-11: a panic a map call or command stopped marks the map failed
+	next, mapCmd := next.armMapTick()     // 0.18.0 W2.2: the map's clock, armed after every Update
+	next = next.followPropNight()         // go-tuiMaps P4: the night moves with the clock
+	next, chartCmd := next.armPropChart() // W5.1: the chart's answers, asked when what they come from changes
+	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd))
 }
 
 // handleTicker applies one global-event-ticker message and re-arms the frame
@@ -1172,6 +1179,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyMapTemp(v) // W10: the temperature, set and drawn in Update (D-41)
 	case forecastTickMsg:
 		return d.applyForecastTick(v) // D-94: Forecast mode's playback
+	case propChartMsg:
+		return d.applyPropChart(v), nil
 	case propUpdatedMsg:
 		return d.applyPropUpdated(v) // W4.1: the Propagation mode's update, kept in Update
 	case propTickMsg:
@@ -1460,7 +1469,8 @@ const (
 
 	// modalMap is the map window (0.18.0 W1.1).
 	modalMap
-	modalPropAck // the Propagation mode's acknowledgement, over the map (D-46, D-81)
+	modalPropAck   // the Propagation mode's acknowledgement, over the map (D-46, D-81)
+	modalPropChart // B: the Propagation mode's reference chart, over the map (D-176)
 
 	// numModals bounds the set; it is not itself a modal. It exists so the
 	// memo-completeness guard can DERIVE the list of windows rather than carry

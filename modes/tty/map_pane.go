@@ -66,33 +66,37 @@ type mapPane struct {
 
 	// The Propagation mode's session (W4.1): its update's context, whether
 	// one is in flight, the session's generation, and the last result.
-	propCtx     context.Context
-	propCancel  context.CancelFunc
-	propBusy    bool
-	propGen     uint64
-	propTickSeq uint64 // the latest refresh tick set: an earlier one asks nothing
-	propSnap    *ionomaps.Snapshot
-	propErr     error
-	propLayer   int                        // MUF(3000) or foF2 (D-155), kept across sessions until the map is released
-	propGiven   map[string]tuimaps.Overlay // the Propagation overlays handed in
-	status      tuimaps.Status             // the last frame's: whole, or still sharpening
-	pending     bool                       // work was waiting when it was drawn
-	offline     bool                       // a tile failed since the picture was last whole
-	gen         uint64                     // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed      string                     // why the map could not be built or drawn, said in the window
-	diskOff     bool                       // a clear let the disk cache go; named again when the app answers (PF-4)
-	clearErr    error                      // what the live map refused in a clear, for the app's answer (IS-M5)
-	calls       *[]string                  // tests only: the library calls made, by name, in order
-	where       *[]callSite                // tests only: each call and the goroutine it ran on (W2.2)
-	workers     *mapWorkers                // the commands running for this map, joined on close (W2.6)
-	tickAt      time.Time                  // the tick outstanding, at the library's NextCall (W2.2)
-	alertsOn    bool                       // the Area Alerts box is open; it waits for A (D-87)
-	menuOn      bool                       // the Overlays menu is open (D-65)
-	menuAt      int                        // the menu's cursor
-	flash       term.Action                // the map key last pressed, blinking in the controls (U1-11)
-	edge        geo.Direction              // the edge whose chip is showing (D-81)
-	edgeShown   bool                       // a press held still at the edge: the next the same way crosses
-	flashEnd    time.Time                  // when its blink ends
+	propCtx        context.Context
+	propCancel     context.CancelFunc
+	propBusy       bool
+	propGen        uint64
+	propTickSeq    uint64 // the latest refresh tick set: an earlier one asks nothing
+	propSnap       *ionomaps.Snapshot
+	propErr        error
+	propLayer      int                        // MUF(3000) or foF2 (D-155), kept across sessions until the map is released
+	propGiven      map[string]tuimaps.Overlay // the Propagation overlays handed in
+	propChart      propChart                  // the reference chart's answers (W5.1)
+	propChartAsked propChartKey               // what the chart was last asked for: asked once
+	propChartRow   int                        // the chart's row its typical day is drawn for: 0 the near-vertical area
+	propNightAt    time.Time                  // the moment the night handed in is for
+	status         tuimaps.Status             // the last frame's: whole, or still sharpening
+	pending        bool                       // work was waiting when it was drawn
+	offline        bool                       // a tile failed since the picture was last whole
+	gen            uint64                     // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed         string                     // why the map could not be built or drawn, said in the window
+	diskOff        bool                       // a clear let the disk cache go; named again when the app answers (PF-4)
+	clearErr       error                      // what the live map refused in a clear, for the app's answer (IS-M5)
+	calls          *[]string                  // tests only: the library calls made, by name, in order
+	where          *[]callSite                // tests only: each call and the goroutine it ran on (W2.2)
+	workers        *mapWorkers                // the commands running for this map, joined on close (W2.6)
+	tickAt         time.Time                  // the tick outstanding, at the library's NextCall (W2.2)
+	alertsOn       bool                       // the Area Alerts box is open; it waits for A (D-87)
+	menuOn         bool                       // the Overlays menu is open (D-65)
+	menuAt         int                        // the menu's cursor
+	flash          term.Action                // the map key last pressed, blinking in the controls (U1-11)
+	edge           geo.Direction              // the edge whose chip is showing (D-81)
+	edgeShown      bool                       // a press held still at the edge: the next the same way crosses
+	flashEnd       time.Time                  // when its blink ends
 	// menuFlash is the Overlays menu's picker chip blinking at row
 	// menuFlashAt until menuFlashEnd: Settings' pickers' feedback (D-147).
 	menuFlash    pickerFlash
@@ -835,7 +839,7 @@ var mapRegionShort = []string{"US", "Alaska", "Hawaii", "Caribbean", "Samoa", "G
 var mapRegionLabels = []string{"Continental US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam & N. Marianas"}
 
 // mapActions is the map window's actions in the order Help lists them.
-var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapProp, actMapLayer, actMapRefresh, actMapOverlays,
+var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapProp, actMapLayer, actMapRefresh, actMapChart, actMapOverlays,
 	actMapPlay, actMapBack, actMapOn, actMapNewest, actMapHighLow}, mapRegionActs...)
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
@@ -857,6 +861,7 @@ func defaultMapKeyMap() term.KeyMap {
 		actMapProp:       {Keys: []string{"P"}, Help: "Propagation On / Off"}, // D-153: the Propagation mode, and back
 		actMapLayer:      {Keys: []string{"L"}, Help: "Layer: MUF / foF2"},    // D-155: the Propagation mode's layer
 		actMapRefresh:    {Keys: []string{"U"}, Help: "Refresh Now"},          // D-156: its update now, under D-39
+		actMapChart:      {Keys: []string{"B"}, Help: "Best Bands Chart"},     // D-176: the reference chart over the map
 		actMapPlay:       {Keys: []string{"space"}, Help: "Play / Stop"},      // D-61: the playback keys, radar's or the forecast's
 		actMapBack:       {Keys: []string{"shift+left"}, Help: "Step Back"},   // D-86: at the timeline's ends
 		actMapOn:         {Keys: []string{"shift+right"}, Help: "Step On"},
@@ -918,6 +923,8 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	case actMapRefresh: // D-156: an update now
 		nd, cmd := d.flashMapKey(act).refreshProp()
 		return nd, cmd, true
+	case actMapChart: // D-176: the reference chart
+		return d.flashMapKey(act).openPropChart(), nil, true
 	case actMapHighLow: // D-97: the days' high or low
 		return d.flashMapKey(act).flipHighLow(), d.mapWorkCmd(), true
 	}
@@ -1396,8 +1403,8 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 		{join(actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown), "Zoom In / Out / Scroll"}, // one row: Help holds at 133x44
 		{join(actMapAlerts, actMapOverlays), "Area Alerts / Overlays"},
 		{shiftArrows(join(actMapPlay, actMapBack, actMapOn, actMapNewest), ascii), "Play / Back / On / Now"},
-		{join(actMapRadar, actMapHighLow), "Radar Mode / Forecast Hi-Lo"},                   // D-94, D-97
-		{join(actMapProp, actMapLayer, actMapRefresh), "Propagation / Layer / Refresh Now"}, // D-153, D-155, D-156
+		{join(actMapRadar, actMapHighLow), "Radar Mode / Forecast Hi-Lo"},                                    // D-94, D-97
+		{join(actMapProp, actMapLayer, actMapRefresh, actMapChart), "Propagation / Layer / Refresh / Chart"}, // D-153, D-155, D-156, D-176
 	}
 	// D-77: the region keys in two rows of three, each number's region named
 	// in order - six rows push Help past its window.

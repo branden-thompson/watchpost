@@ -151,6 +151,7 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	lines, at = d.mapRow(o, lines, at, rowMapTempSource, "Temperature -", d.mapPicker(o, rowMapTempSource, d.tempSourceLabel()))              // D-93, D-190
 	lines, at = d.mapRow(o, lines, at, rowMapRainDetail, "Rain Day 4+ -", d.mapPicker(o, rowMapRainDetail, rainDetailLabel(d.mapRainFull)))   // D-192
 	lines, at = d.mapRow(o, lines, at, rowMapUVCities, "UV cities -", d.mapPicker(o, rowMapUVCities, strconv.Itoa(d.mapUVCities)))            // D-202; its cost is a notice while it is chosen (D-23, D-237)
+	lines, at = d.mapRow(o, lines, at, rowMapPropRadius, "NVIS radius -", d.mapPicker(o, rowMapPropRadius, d.propRadiusLabel()))              // D-100: the Propagation mode's near-vertical area
 	return lines, at
 }
 

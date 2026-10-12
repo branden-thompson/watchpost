@@ -14,8 +14,8 @@ import (
 // TestThePropagationRowsFollowTheMock is D-157: under the Propagation map,
 // the header with the sources' badges, the mode and computed line, and the
 // answer for the selected place now - its foF2 and MUF(3000), the bands
-// under each - said as upper limits; the map's height as in the weather
-// mode it came from.
+// under foF2 - said as upper limits, then the continents (D-176, D-177);
+// the map's height as in the weather mode it came from.
 func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	s := &seam{answer: PropagationResult{Snapshot: propSnapAt(time.Now().UTC().Add(-12*time.Minute).Truncate(time.Minute), 18)}}
 	var asked []string // radar configured, as the app's is: the rows under the map are drawn only with its timeline
@@ -25,13 +25,13 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	}
 	weather := d.mapBodySize()
 	d, cmd := keyCmd(t, d, "P")
-	d = runProp(t, d, cmd)
+	d = workChart(t, runProp(t, d, cmd))
 	rows := stripANSITest(strings.Join(d.scrubRows(d.mapTextW()), "\n"))
 	for _, want := range []string{"RADIO FREQUENCY PROPAGATION", "SWPC", "PYIRI", "IGRF-14",
 		"MODE:   MUF(3000)   · COMPUTED", "(12 min ago) · upper limits only", // the fields as chips (D-165)
 		"NOW ·   foF2   6.0 MHz ·   MUF(3000)   18.0 MHz",
 		"Local, to ~400 km (NVIS): 160m 80m 60m",
-		"~3,000 km hops through here: up to 20m (18.0 MHz)"} {
+		"Up to: NA ", " · OC ", "B chart"} {
 		if !strings.Contains(rows, want) {
 			t.Errorf("the rows under the map do not say %q:\n%s", want, rows)
 		}
@@ -43,7 +43,7 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	}
 	now := strings.Index(block[3], "NOW")
 	for _, l := range block[4:6] {
-		if strings.Index(l, "Local") != now && strings.Index(l, "~3,000") != now {
+		if strings.Index(l, "Local") != now && strings.Index(l, "Up to:") != now {
 			t.Errorf("%q is not aligned under NOW, at %d", l, now)
 		}
 	}
@@ -56,7 +56,7 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 		}
 	}
 	words := strings.Join(d.describeLinesAll(), " ")
-	for _, want := range []string{"NOW · foF2 6.0 MHz · MUF(3000) 18.0 MHz.", "Local, to ~400 km (NVIS): 160m 80m 60m.", "up to 20m (18.0 MHz)."} {
+	for _, want := range []string{"NOW · foF2 6.0 MHz · MUF(3000) 18.0 MHz.", "Local, to ~400 km (NVIS): 160m 80m 60m.", "Up to: NA "} {
 		if !strings.Contains(words, want) {
 			t.Errorf("without the picture the words do not say %q: %q", want, words)
 		}

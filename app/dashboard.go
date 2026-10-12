@@ -429,6 +429,7 @@ func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
 	c.MapTempSource = cfg.MapTemperatureSource                         // D-93, D-190: the map's temperature
 	c.MapRainDetail = cfg.MapRainDetail                                // D-192: the rain's density past NDFD's reach
 	c.MapUVCities = cfg.MapUVCities                                    // D-202: how many cities UV asks EPA for
+	c.MapPropRadius = cfg.MapPropagationRadiusKm                       // 0.19.0 D-100: the Propagation mode's near-vertical radius
 	c.MapRadarAhead = cfg.MapRadarAheadHours                           // D-114: the radar loop's hours ahead
 	c.MapQuakeFeed = cfg.MapQuakeFeed                                  // D-122: the quakes the map draws
 	c.MapProblem = lp.problems.note                                    // D-124: the diagnostics', never the listener's

@@ -140,6 +140,7 @@ const (
 	rowMapTempSource  // the map's temperature, both modes: NDFD or Open-Meteo (D-93, D-190)
 	rowMapRainDetail  // the rain's density past NDFD's reach: coarse or full (D-192)
 	rowMapUVCities    // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
+	rowMapPropRadius  // the Propagation mode's near-vertical radius: 200, 400 or 600 km (D-100)
 	rowMapDetailLevel
 	// THE MAP'S DETAIL, A ROW EACH (UAT-1 U1-35): the "← Enabled →" pattern
 	// every other on/off row has, in mapDetailLayers' order.
@@ -262,6 +263,7 @@ func setupTable() [setupRowCount]setupRow {
 		rowMapTempSource:  {rowMapTempSource, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapRainDetail:  {rowMapRainDetail, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapUVCities:    {rowMapUVCities, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapPropRadius:  {rowMapPropRadius, groupMap, scopeObserver, rowPicker, true, "", ""}, // the Broadcaster keeps its service radius (D-121)
 		rowMapRadarAhead:  {rowMapRadarAhead, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapQuakes:      {rowMapQuakes, groupMap, scopeObserver, rowPicker, true, "", ""},
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one

@@ -51,18 +51,56 @@ func fieldGrid(f ionomaps.Field) tuimaps.Grid {
 		Values: values, Lines: true, OverWater: true}
 }
 
+// The day and night's roles on the Propagation map (go-tuiMaps P4).
+const (
+	propTerminatorRole = tuimaps.TerminatorLine
+	propNightRole      = tuimaps.NightTint
+)
+
+// propNightStep is how far the night drawn may lag the clock: the line moves
+// about a quarter of a degree a minute.
+const propNightStep = 5 * time.Minute
+
 // propOverlays are the Propagation mode's overlays: the hour on screen, its
-// layer alone (D-112); none outside the mode or before a snapshot.
+// layer alone (D-112), and the night with its edge for the moment shown;
+// none outside the mode or before a snapshot.
 func (d Dashboard) propOverlays() []tuimaps.Overlay {
 	snap := d.mapPane.propSnap
-	if d.mapMode() == modePropagation && snap != nil && len(snap.Hours) > 0 {
-		h := snap.Hours[0]
-		if d.mapPane.propLayer == propFoF2 {
-			return []tuimaps.Overlay{tuimaps.FoF2Grid("propagation/fof2", fieldGrid(h.FoF2), h.At)}
-		}
-		return []tuimaps.Overlay{tuimaps.MUFGrid("propagation/muf", fieldGrid(h.MUF3000), h.At)}
+	if !d.inPropagation() || snap == nil || len(snap.Hours) == 0 {
+		return nil
 	}
-	return nil
+	h := snap.Hours[0]
+	field := tuimaps.MUFGrid("propagation/muf", fieldGrid(h.MUF3000), h.At)
+	if d.mapPane.propLayer == propFoF2 {
+		field = tuimaps.FoF2Grid("propagation/fof2", fieldGrid(h.FoF2), h.At)
+	}
+	return []tuimaps.Overlay{field, propNight(d.propNightMoment())}
+}
+
+// propNightMoment is the moment the night is drawn for: the clock, to the
+// step.
+func (d Dashboard) propNightMoment() time.Time { return d.now().UTC().Truncate(propNightStep) }
+
+// propNight is the night side and its edge at a moment (L-4.1 to L-4.3): no
+// words of its own, the edge dotted at every depth.
+func propNight(at time.Time) tuimaps.Overlay {
+	return tuimaps.Overlay{ID: "propagation/night", Valid: at, Keeps: time.Hour, Features: []tuimaps.Feature{
+		{Kind: tuimaps.Polygon, Rings: tuimaps.NightSide(at), Role: propNightRole},
+		{Kind: tuimaps.Line, Rings: [][]tuimaps.LonLat{tuimaps.Terminator(at)}, Role: propTerminatorRole},
+	}}
+}
+
+// followPropNight hands the night in again when the clock has moved a step
+// past the one drawn, while the Propagation map is shown.
+func (d Dashboard) followPropNight() Dashboard {
+	if d.modal != modalMap || !d.inPropagation() || d.mapPane.propSnap == nil {
+		return d
+	}
+	if at := d.propNightMoment(); !at.Equal(d.mapPane.propNightAt) {
+		d.mapPane.propNightAt = at
+		return d.setProp().renderMap()
+	}
+	return d
 }
 
 // setProp hands the library the Propagation mode's overlays as they stand,
@@ -190,12 +228,17 @@ func cellValue(f ionomaps.Field, lat, lon float64) (float64, bool) {
 // propBlock is D-157's block under the map, styled for the picture: the
 // place's name bold (D-164), the fields as chips (D-165), the age on the
 // freshness ramp (D-166).
-func (d Dashboard) propBlock(width int) []string { return d.propBlockAs(width, true) }
+func (d Dashboard) propBlock(width int) []string {
+	return d.propBlockAs(width, max(width, d.mapTextW()), true)
+}
 
 // propBlockAs is the block, styled or as plain words: the header with the
 // sources' badges; the mode and when it was computed; a blank row; the
-// selected place now, and the bands under its foF2 and MUF(3000).
-func (d Dashboard) propBlockAs(width int, styled bool) []string {
+// selected place now, and the bands under its foF2 and MUF(3000); the
+// continents. The rows beside the Controls box are cut at width, the rows
+// below it, with nothing beside them, at below.
+func (d Dashboard) propBlockAs(width, below int, styled bool) []string {
+	padRows := func(rows []string, width int) []string { return padRowsBeside(rows, width, below) }
 	field := func(name string) string { // D-165: a chip of its own
 		if styled {
 			return chipFace(name)
@@ -234,12 +277,11 @@ func (d Dashboard) propBlockAs(width int, styled bool) []string {
 		return padRows(append(out, place+"NOW · no data at the place"), width)
 	}
 	out = append(out, fmt.Sprintf("%sNOW · %s %.1f MHz · %s %.1f MHz", place, field("foF2"), fo, field("MUF(3000)"), muf))
-	out = append(out, under+"Local, to ~400 km (NVIS): "+bandNames(bandsUnder(fo)))
-	hops := bandsUnder(muf)
-	if len(hops) == 0 {
-		return padRows(append(out, under+"~3,000 km hops through here: none of the bands"), width)
+	out = append(out, under+"Local, to ~"+strconv.Itoa(d.mapPropRadiusKm)+" km (NVIS): "+bandNames(bandsUnder(fo))) // D-100: the Setting's radius
+	if best := d.propBestLine(); best != "" {
+		out = append(out, under+best) // D-176, D-177: the continents, in the 3,000 km hops' place, and the key to the chart
 	}
-	return padRows(append(out, fmt.Sprintf("%s~3,000 km hops through here: up to %s (%.1f MHz)", under, hops[len(hops)-1].name, muf)), width)
+	return padRows(out, width)
 }
 
 // propAgeShown reports whether the block says a snapshot's age, which moves
@@ -296,20 +338,26 @@ func bandNames(bands []hfBand) string {
 	return strings.Join(names, " ")
 }
 
-// padRows are the block's rows, propBlockRows of them, each cut to the width.
-func padRows(rows []string, width int) []string {
+// padRowsBeside are the block's rows, propBlockRows of them, each cut to
+// the width beside the Controls box, or below it to the width below.
+func padRowsBeside(rows []string, width, below int) []string {
 	out := make([]string, propBlockRows)
 	for i := range out {
+		w := width
+		if i >= scrubBoxRows {
+			w = below
+		}
 		if i < len(rows) {
-			out[i] = render.TruncateCells(rows[i], width)
+			out[i] = render.TruncateCells(rows[i], w)
 		}
 	}
 	return out
 }
 
-// propBlockRows are the block's rows (D-163): the header, the mode, a blank
-// row, the place and its two answers - one more than the weather modes' loop
-// row, timeline and estimate, which mapChromeRows counts.
+// propBlockRows are the block's rows (D-163, D-177): the header, the mode, a
+// blank row, the place, its near-vertical answer and the continents' line -
+// one more than the weather modes' loop row, timeline and estimate, which
+// mapChromeRows counts.
 const propBlockRows = scrubBoxRows + 1
 
 // propWordsWidth is the width the block is laid out at for the words: wide

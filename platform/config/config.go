@@ -296,6 +296,9 @@ type Config struct {
 	// MapUVCities is how many cities UV asks EPA for (D-202): 8, 24 or 48;
 	// empty is 24, the default. Each city is one keyless ask an hour.
 	MapUVCities int `toml:"map_uv_cities,omitempty"`
+	// MapPropagationRadiusKm is the Propagation mode's near-vertical area
+	// (0.19.0 D-100, A-18): 200, 400 or 600 km; empty is 400, the default.
+	MapPropagationRadiusKm int `toml:"map_propagation_radius_km,omitempty"`
 
 	// HistoryHours and HistoryTrends are the local history's retention, the
 	// Data tab's presets (W18, D-175): "72h", "7d", "30d", "1y" and "30d",

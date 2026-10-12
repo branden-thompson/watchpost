@@ -243,6 +243,33 @@ func (d Dashboard) cycleNearby(forward bool) Dashboard {
 	return d.uiTouched()
 }
 
+// propRadiusChoices are the Propagation mode's near-vertical radii, km
+// (D-100, A-18).
+var propRadiusChoices = []int{200, 400, 600}
+
+// propRadiusDefaultKm is the near-vertical radius by default (D-100).
+const propRadiusDefaultKm = 400
+
+// propRadiusByKm reads the file's number; anything not offered is the
+// default.
+func propRadiusByKm(km int) int {
+	for _, c := range propRadiusChoices {
+		if c == km {
+			return km
+		}
+	}
+	return propRadiusDefaultKm
+}
+
+// cyclePropRadius moves the near-vertical radius picker, and round again.
+func (d Dashboard) cyclePropRadius(forward bool) Dashboard {
+	d.mapPropRadiusKm = cycleIn(propRadiusChoices, itself, d.mapPropRadiusKm, forward)
+	return d.uiTouched()
+}
+
+// propRadiusLabel is the radius in the units the description speaks.
+func (d Dashboard) propRadiusLabel() string { return d.distanceLabel(d.mapPropRadiusKm) }
+
 // toggleRadarSource switches the lower 48's radar between MRMS and IEM (D-83).
 func (d Dashboard) toggleRadarSource() Dashboard {
 	d.mapRadarIEM = !d.mapRadarIEM
@@ -354,12 +381,16 @@ func (d Dashboard) radarSourceLabel() string {
 }
 
 // nearbyLabel is the distance in the units the description speaks.
-func (d Dashboard) nearbyLabel() string {
-	km := strconv.Itoa(d.mapNearbyKm) + " km"
+func (d Dashboard) nearbyLabel() string { return d.distanceLabel(d.mapNearbyKm) }
+
+// distanceLabel is a distance in kilometres as the description speaks it:
+// kilometres, or miles with the kilometres beside them.
+func (d Dashboard) distanceLabel(km int) string {
+	metric := strconv.Itoa(km) + " km"
 	if d.units != render.UnitF {
-		return km
+		return metric
 	}
-	return strconv.Itoa(int(math.Round(units.MilesOf(float64(d.mapNearbyKm))))) + " miles (" + km + ")"
+	return strconv.Itoa(int(math.Round(units.MilesOf(float64(km))))) + " miles (" + metric + ")"
 }
 
 // layerOn reports whether a layer is drawn: the listener's choice, or the
@@ -525,7 +556,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapPropRadius || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -543,6 +574,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.toggleRainDetail(), true
 	case rowMapUVCities:
 		return d.cycleUVCities(forward), true
+	case rowMapPropRadius:
+		return d.cyclePropRadius(forward), true
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(forward), true
 	case rowMapQuakes:

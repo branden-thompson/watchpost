@@ -108,6 +108,8 @@ func (d Dashboard) renderModal(o render.Opts) string {
 		return d.mapWindow(o)
 	case modalPropAck:
 		return d.floatModal(o, d.modalWidth(), "Propagation", d.propAckLines(o)) // D-46, D-81
+	case modalPropChart:
+		return d.floatModal(o, d.modalWidth(), "Best Bands", d.propChartLines(o)) // D-176
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
 	case modalCard:
@@ -169,6 +171,8 @@ func (d Dashboard) modalWidth() int {
 		return d.mapWindowCols()
 	case modalPropAck:
 		return propAckWidth
+	case modalPropChart:
+		return propChartWidth
 	case modalHelp:
 		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
 	case modalCard:
@@ -223,6 +227,8 @@ func (d Dashboard) modalLines() []string {
 		raw, o.Width = d.mapBodyLines(), w // measured at the width the map window is drawn at, not the dashboard's
 	case modalPropAck:
 		raw = d.propAckLines(o)
+	case modalPropChart:
+		raw = d.propChartLines(o)
 	case modalSevere:
 		raw = d.severeDetailLines(o) // only the record scrolls; the table windows itself
 	case modalCard:

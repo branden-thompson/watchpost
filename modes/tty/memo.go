@@ -293,18 +293,21 @@ type modalKey struct {
 	// THE MAP'S DRAW, by generation, and why it could not draw (0.18.0 W2.1).
 	// The lines are drawn in Update and raise the generation each time, so the
 	// key moves with every frame the library gave (F-30's rule, D-45).
-	mapGen     uint64
-	mapFailed  string
-	mapOffline bool           // the status line's offline note
-	mapStatus  tuimaps.Status // and whether the picture is whole
-	mapPending bool           // and whether it is still loading
-	mapOutside string         // the place in no region, which the window states instead
-	mapProp    bool           // the Propagation mode
-	mapPropSay string         // its status, as said
-	mapPropLyr int            // its layer
-	mapPropAge int64          // its snapshot's age in whole minutes, said and toned (D-166)
-	mapNotes   string         // the feed's notes, printed under the map
-	mapLegend  bool           // the legend over the map
+	mapGen        uint64
+	mapFailed     string
+	mapOffline    bool           // the status line's offline note
+	mapStatus     tuimaps.Status // and whether the picture is whole
+	mapPending    bool           // and whether it is still loading
+	mapOutside    string         // the place in no region, which the window states instead
+	mapProp       bool           // the Propagation mode
+	mapPropSay    string         // its status, as said
+	mapPropLyr    int            // its layer
+	mapPropAge    int64          // its snapshot's age in whole minutes, said and toned (D-166)
+	propChart     propChartKey   // the chart window's answers (D-176)
+	mapPropRadius int            // the near-vertical radius the block says (D-100)
+	chartRow      int            // and the row its typical day is drawn for
+	mapNotes      string         // the feed's notes, printed under the map
+	mapLegend     bool           // the legend over the map
 }
 
 // modalMemo is the single slot.
@@ -334,10 +337,12 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 		mapsOff: d.mapsOff, mapDesc: d.mapDesc,
-		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapDetail: d.mapDetailChoice, mapLevel: d.mapDetailLevel.String(),
+		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapPropRadius: d.mapPropRadiusKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapDetail: d.mapDetailChoice, mapLevel: d.mapDetailLevel.String(),
 		mapWords: d.cfg.MapRetention, // the map's sources are the Status window's, which keys on its own inputs
 	}
 	switch d.modal {
+	case modalPropChart:
+		k.propChart, k.chartRow, k.mapGen = d.mapPane.propChart.key, d.mapPane.propChartRow, d.mapPane.gen
 	case modalMap:
 		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
 		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending

@@ -25,7 +25,8 @@ func keptPrefs() UIPrefs {
 	return UIPrefs{Units: "metric", Clock: "mil", Maps: "off", MapDescription: "instead", MapScale: "county",
 		MapNearbyKm: otherThan(mapNearbyChoices, mapNearbyDefaultKm), MapRadarSource: "iem", MapTempSource: "open-meteo",
 		MapRainDetail: "full", MapUVCities: 48, MapRadarAhead: otherThan(radarAheadChoices, radarAheadDefault),
-		MapQuakeFeed: otherThan(quakeFeeds, quakeFeedDefault), MapLayers: map[string]bool{RadarLayer: false},
+		MapPropRadius: otherThan(propRadiusChoices, propRadiusDefaultKm),
+		MapQuakeFeed:  otherThan(quakeFeeds, quakeFeedDefault), MapLayers: map[string]bool{RadarLayer: false},
 		MapDetail: map[string]bool{"parks": true}, MapDetailLevel: "full"}
 }
 
@@ -53,7 +54,7 @@ func TestASettingIsSavedAsItIsWhateverSavesIt(t *testing.T) {
 	}
 	cfg := Config{Units: want.Units, Clock: want.Clock, Maps: want.Maps, MapDescription: want.MapDescription, MapScale: want.MapScale,
 		MapNearbyKm: want.MapNearbyKm, MapRadarSource: want.MapRadarSource, MapTempSource: want.MapTempSource,
-		MapRainDetail: want.MapRainDetail, MapUVCities: want.MapUVCities, MapRadarAhead: want.MapRadarAhead,
+		MapRainDetail: want.MapRainDetail, MapUVCities: want.MapUVCities, MapRadarAhead: want.MapRadarAhead, MapPropRadius: want.MapPropRadius,
 		MapQuakeFeed: want.MapQuakeFeed, MapLayers: []MapLayer{{Key: RadarLayer, Label: "Radar", On: true}},
 		MapLayerChoice: want.MapLayers, MapDetailChoice: want.MapDetail, MapDetailLevel: want.MapDetailLevel}
 	var saved *UIPrefs

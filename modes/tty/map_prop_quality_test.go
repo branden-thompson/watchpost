@@ -56,8 +56,8 @@ func TestAReleasedMapDropsTheOldSessionsTick(t *testing.T) {
 // Propagation mode it was closed in.
 func TestAReopenedMapDrawsNoPropagationField(t *testing.T) {
 	d, _ := drawnDash(t)
-	if len(d.mapPane.propGiven) != 1 {
-		t.Fatalf("the fixture drew %d Propagation overlays", len(d.mapPane.propGiven))
+	if len(d.mapPane.propGiven) != 2 {
+		t.Fatalf("the fixture drew %d Propagation overlays; want the field and the night", len(d.mapPane.propGiven))
 	}
 	d = d.toggleMap().toggleMap()
 	if d.mapMode() == modePropagation || len(d.mapPane.propGiven) != 0 {
@@ -76,10 +76,10 @@ func TestThePropagationAgeMovesWithTheClock(t *testing.T) {
 	d.now = func() time.Time { return clock }
 	d, cmd := keyCmd(t, d, "P")
 	d = runProp(t, d, cmd)
+	d.mapPane.flash = "" // P's blink spent: the age alone needs the tick now, and the frame is memoised without it
 	if !strings.Contains(stripANSITest(d.View().Content), "(just now)") {
 		t.Fatal("the fixture's snapshot is not said to be just now")
 	}
-	d.mapPane.flash = "" // P's blink spent: the age alone needs the tick now
 	if !d.tickNeeded() {
 		t.Error("no tick is armed while the age is shown: it would not move")
 	}

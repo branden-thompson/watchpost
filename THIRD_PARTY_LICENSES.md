@@ -188,7 +188,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## github.com/branden-thompson/go-ionomaps v0.0.0-20261011170628-20c40256a9db
+## github.com/branden-thompson/go-ionomaps v0.0.0-20261012050848-8befd5b0ac80
 
 ```
 MIT License
@@ -260,15 +260,17 @@ Sources the library reads, or will read, and their terms:
    kept as the evaluation's test oracle:
      tools/tables/igrf/igrf14coeffs.txt (IAGA's coefficient file, as fetched 2026-10-09)
      tools/tables/igrf/golden-igrf.txt (ppigrf's values)
-   The library's own quasi-dipole coordinates are generated from it at build time:
+   The library's own quasi-dipole coordinates and the gyrofrequency at 300 km are generated from it at
+   build time:
      internal/magcoords/coords.bin
+     internal/magcoords/gyro.bin
    Cite: IAGA Working Group V-MOD, the International Geomagnetic Reference Field, 14th generation.
 
 5. ITU-R P.533 and P.1239: methods implemented from the published recommendations; no recommendation
    text or tables are reproduced.
 ```
 
-## github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261011212047-13270b950536
+## github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261012045810-d0348215dedb
 
 ```
 MIT License
