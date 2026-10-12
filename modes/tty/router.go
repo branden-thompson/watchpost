@@ -400,6 +400,7 @@ func observerScoped(msg tea.Msg) bool {
 		mapReleaseMsg,               // D-221: the map's release, due whichever surface is shown
 		propUpdatedMsg, propTickMsg, // 0.19.0 W4.1: the Propagation mode's update and its refresh are the map window's
 		propChartMsg, // W5.1: and its chart's answers
+		propReachMsg, // W5.2: and the frequency's reach
 		mapPanicMsg:  // QA-11: a map command stopped a panic, and the map window is marked failed
 		return true
 	}

@@ -79,6 +79,12 @@ type mapPane struct {
 	propChartAsked propChartKey               // what the chart was last asked for: asked once
 	propChartRow   int                        // the chart's row its typical day is drawn for: 0 the near-vertical area
 	propNightAt    time.Time                  // the moment the night handed in is for
+	propFreqMHz    float64                    // the frequency held (D-178), 0 for none
+	propFreqLabel  string                     // and as it is said: "14.200 MHz" or "40m"
+	propFreqQuery  string                     // what the entry holds as it is typed
+	propFreqErr    string                     // why the entry did not take it
+	propReach      propReach                  // the frequency's reach (W5.2)
+	propReachAsked propReachKey               // what the reach was last asked for: asked once
 	status         tuimaps.Status             // the last frame's: whole, or still sharpening
 	pending        bool                       // work was waiting when it was drawn
 	offline        bool                       // a tile failed since the picture was last whole
@@ -839,7 +845,7 @@ var mapRegionShort = []string{"US", "Alaska", "Hawaii", "Caribbean", "Samoa", "G
 var mapRegionLabels = []string{"Continental US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam & N. Marianas"}
 
 // mapActions is the map window's actions in the order Help lists them.
-var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapProp, actMapLayer, actMapRefresh, actMapChart, actMapOverlays,
+var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapProp, actMapLayer, actMapRefresh, actMapChart, actMapFreq, actMapOverlays,
 	actMapPlay, actMapBack, actMapOn, actMapNewest, actMapHighLow}, mapRegionActs...)
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
@@ -862,6 +868,7 @@ func defaultMapKeyMap() term.KeyMap {
 		actMapLayer:      {Keys: []string{"L"}, Help: "Layer: MUF / foF2"},    // D-155: the Propagation mode's layer
 		actMapRefresh:    {Keys: []string{"U"}, Help: "Refresh Now"},          // D-156: its update now, under D-39
 		actMapChart:      {Keys: []string{"B"}, Help: "Best Bands Chart"},     // D-176: the reference chart over the map
+		actMapFreq:       {Keys: []string{"F"}, Help: "Your Frequency"},       // D-178: its reach drawn over the field
 		actMapPlay:       {Keys: []string{"space"}, Help: "Play / Stop"},      // D-61: the playback keys, radar's or the forecast's
 		actMapBack:       {Keys: []string{"shift+left"}, Help: "Step Back"},   // D-86: at the timeline's ends
 		actMapOn:         {Keys: []string{"shift+right"}, Help: "Step On"},
@@ -925,6 +932,8 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		return nd, cmd, true
 	case actMapChart: // D-176: the reference chart
 		return d.flashMapKey(act).openPropChart(), nil, true
+	case actMapFreq: // D-178: your frequency
+		return d.flashMapKey(act).openPropFreq(), nil, true
 	case actMapHighLow: // D-97: the days' high or low
 		return d.flashMapKey(act).flipHighLow(), d.mapWorkCmd(), true
 	}
@@ -1400,11 +1409,11 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 	rows := []mapHelpRow{
 		{join(actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight), "Pan"},
 		{join(actMapPrev, actMapNext), "Previous / Next Location"},
-		{join(actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown), "Zoom In / Out / Scroll"}, // one row: Help holds at 133x44
-		{join(actMapAlerts, actMapOverlays), "Area Alerts / Overlays"},
+		{join(actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown), "Zoom In / Out / Scroll"},    // one row: Help holds at 133x44
+		{join(actMapAlerts, actMapOverlays, actMapChart, actMapFreq), "Alerts / Overlays / Bands / Freq."}, // D-176, D-178: the chart and the frequency share a row so Help keeps its legend
 		{shiftArrows(join(actMapPlay, actMapBack, actMapOn, actMapNewest), ascii), "Play / Back / On / Now"},
-		{join(actMapRadar, actMapHighLow), "Radar Mode / Forecast Hi-Lo"},                                    // D-94, D-97
-		{join(actMapProp, actMapLayer, actMapRefresh, actMapChart), "Propagation / Layer / Refresh / Chart"}, // D-153, D-155, D-156, D-176
+		{join(actMapRadar, actMapHighLow), "Radar Mode / Forecast Hi-Lo"},                   // D-94, D-97
+		{join(actMapProp, actMapLayer, actMapRefresh), "Propagation / Layer / Refresh Now"}, // D-153, D-155, D-156
 	}
 	// D-77: the region keys in two rows of three, each number's region named
 	// in order - six rows push Help past its window.

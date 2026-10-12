@@ -123,7 +123,7 @@ func TestHelpListsEachWindowsOwnGroup(t *testing.T) {
 		}
 	})
 	help := stripANSITest(strings.Join(helpTextLines(t), "\n"))
-	if !strings.Contains(help, "Propagation / Layer / Refresh / Chart") {
+	if !strings.Contains(help, "Propagation / Layer / Refresh Now") {
 		t.Error("Help lost the map's rows")
 	}
 }

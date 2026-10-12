@@ -74,7 +74,11 @@ func (d Dashboard) propOverlays() []tuimaps.Overlay {
 	if d.mapPane.propLayer == propFoF2 {
 		field = tuimaps.FoF2Grid("propagation/fof2", fieldGrid(h.FoF2), h.At)
 	}
-	return []tuimaps.Overlay{field, propNight(d.propNightMoment())}
+	out := []tuimaps.Overlay{field}
+	if reach, ok := d.propReachShown(); ok {
+		out = append(out, propReachOverlay(reach, h.At)) // after the field: its edge alone over it (L-2.6)
+	}
+	return append(out, propNight(d.propNightMoment()))
 }
 
 // propNightMoment is the moment the night is drawn for: the clock, to the
@@ -264,7 +268,7 @@ func (d Dashboard) propBlockAs(width, below int, styled bool) []string {
 		ago = "(" + strconv.Itoa(int(age.Minutes())) + " min ago)"
 	}
 	out = append(out, "MODE: "+field(propLayerName(d.mapPane.propLayer))+" · COMPUTED "+d.clockFmt.Time(at)+" "+at.Format("MST")+
-		" "+tint(ago, render.FreshnessTone(age))+" · upper limits only", "") // D-166; D-163: a blank row before the place
+		" "+tint(ago, render.FreshnessTone(age))+" · upper limits only", d.propFreqLine()) // D-166; D-163: a blank row before the place, the frequency held there (D-179)
 	if loc == nil {
 		return padRows(out, width)
 	}

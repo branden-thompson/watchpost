@@ -1096,7 +1096,8 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, mapCmd := next.armMapTick()     // 0.18.0 W2.2: the map's clock, armed after every Update
 	next = next.followPropNight()         // go-tuiMaps P4: the night moves with the clock
 	next, chartCmd := next.armPropChart() // W5.1: the chart's answers, asked when what they come from changes
-	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd))
+	next, reachCmd := next.armPropReach() // W5.2: and the frequency's reach
+	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd))
 }
 
 // handleTicker applies one global-event-ticker message and re-arms the frame
@@ -1181,6 +1182,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyForecastTick(v) // D-94: Forecast mode's playback
 	case propChartMsg:
 		return d.applyPropChart(v), nil
+	case propReachMsg:
+		return d.applyPropReach(v), nil
 	case propUpdatedMsg:
 		return d.applyPropUpdated(v) // W4.1: the Propagation mode's update, kept in Update
 	case propTickMsg:
@@ -1471,6 +1474,7 @@ const (
 	modalMap
 	modalPropAck   // the Propagation mode's acknowledgement, over the map (D-46, D-81)
 	modalPropChart // B: the Propagation mode's reference chart, over the map (D-176)
+	modalPropFreq  // F: the Propagation mode's frequency entry, over the map (D-178)
 
 	// numModals bounds the set; it is not itself a modal. It exists so the
 	// memo-completeness guard can DERIVE the list of windows rather than carry

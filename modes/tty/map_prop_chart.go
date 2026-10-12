@@ -218,7 +218,11 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 		}
 		out = append(out, line)
 	}
-	out = append(out, string(propOpenGlyph)+" open under the upper limit   "+string(propClosedGlyph)+" above it   blank: no data", "")
+	out = append(out, string(propOpenGlyph)+" open under the upper limit   "+string(propClosedGlyph)+" above it   blank: no data")
+	if f := d.propFreqLine(); f != "" {
+		out = append(out, f) // D-178: what is held
+	}
+	out = append(out, "")
 	out = append(out, "TYPICAL DAY, UTC: "+names[row])
 	if propDiffers(answers[row], c.key.hour) {
 		out[len(out)-1] += " · now differs from a typical day"

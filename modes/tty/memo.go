@@ -305,9 +305,12 @@ type modalKey struct {
 	mapPropAge    int64          // its snapshot's age in whole minutes, said and toned (D-166)
 	propChart     propChartKey   // the chart window's answers (D-176)
 	mapPropRadius int            // the near-vertical radius the block says (D-100)
-	chartRow      int            // and the row its typical day is drawn for
-	mapNotes      string         // the feed's notes, printed under the map
-	mapLegend     bool           // the legend over the map
+	freqQuery     string         // the frequency entry as typed, why it was not taken, and the frequency held (D-178)
+	freqErr       string
+	freqHeld      float64
+	chartRow      int    // and the row its typical day is drawn for
+	mapNotes      string // the feed's notes, printed under the map
+	mapLegend     bool   // the legend over the map
 }
 
 // modalMemo is the single slot.
@@ -343,6 +346,9 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 	switch d.modal {
 	case modalPropChart:
 		k.propChart, k.chartRow, k.mapGen = d.mapPane.propChart.key, d.mapPane.propChartRow, d.mapPane.gen
+		k.freqHeld = d.mapPane.propFreqMHz
+	case modalPropFreq:
+		k.freqQuery, k.freqErr, k.freqHeld = d.mapPane.propFreqQuery, d.mapPane.propFreqErr, d.mapPane.propFreqMHz
 	case modalMap:
 		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
 		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending

@@ -73,6 +73,9 @@ func (d Dashboard) describeUpTo(most int) []string {
 				out = append(out, l+".")
 			}
 		}
+		if f := d.propFreqLine(); f != "" {
+			out = append(out, f+".") // your frequency after the bands (FR-3.1)
+		}
 		return out
 	}
 	if !d.layerOn(AlertLayer) {
