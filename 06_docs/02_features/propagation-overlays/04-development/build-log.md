@@ -286,3 +286,14 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Mutants:** m207 to m213 new, each applied, vetted, killed and restored by copy; m148, m162, m163 and m209 re-pointed. Every mutant on a file this batch changed applied and vetted (seventy-one).
 - **Not done:** the centre's answer (D-180) is the next batch.
 - **Docs:** the as-built map diagram (the hours ahead); the atlas.
+
+## Batch 20 — W5.4, the centre's answer: a box over the map, said last (D-180, A-49)
+
+- **Ruling carried:** D-180 (the centre's answer in a box over the map's upper left, a mark at the centre); A-49 for its details.
+- **The answer** (`modes/tty/map_prop_centre.go`): the map's centre to half a degree; from the selected place, the path's bands (go-ionomaps `Path`) beyond the near-vertical radius, the area's within it; worked out in a command when the map moves or what it comes from changes, from the hour on screen, so an hour ahead is answered as that hour (FR-1.11, FR-1.17).
+- **On screen:** a "Centre" box over the map's upper left - the place, MUF(3000) and foF2 there, the distance from the selected place (or "Near-vertical from" within the radius), the limit and the highest band open - and a "+" at the map's centre; it gives way to the Overlays menu. The library is asked for its centre only in the Propagation mode (`TestTheMapIsDrawnInUpdate` holds the weather modes' calls).
+- **Said** last in the words (FR-3.1).
+- **One shape for the answers:** the chart, the reach and the centre are asked through one `armAnswer` and kept through one `applyPropAnswer`, with `askAnswer` and `answered` beneath them: the duplicate check found the centre's ask and keep copied from the chart's.
+- **Tests written first:** `TestTheCentreIsAnsweredAsTheMapPans`, `TestTheCentreAnswerIsSaid`.
+- **Mutants:** m214 to m217 new; m191 and m215 re-pointed by the collapse; each applied, vetted, killed and restored by copy. Every mutant on a file this batch changed applied and vetted (fifty-six).
+- **Docs:** the as-built map diagram (the centre box); the atlas.

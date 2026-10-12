@@ -79,36 +79,8 @@ func (d Dashboard) propReachWanted() (propReachKey, bool) {
 }
 
 // armPropReach asks for the reach when what it is worked out from has
-// changed, once, in a command (FR-1.17): about 30 ms, never in Update.
-func (d Dashboard) armPropReach() (Dashboard, tea.Cmd) {
-	key, ok := d.propReachWanted()
-	if !ok || key == d.mapPane.propReach.key || key == d.mapPane.propReachAsked {
-		return d, nil
-	}
-	d.mapPane.propReachAsked = key
-	snap := d.propOnScreen()
-	return d, func() tea.Msg {
-		field, err := snap.Reach(key.origin, key.mhz, key.hour)
-		return propReachMsg{reach: propReach{key: key, field: field, err: err}}
-	}
-}
-
-// applyPropReach keeps the reach asked for last and hands it to the map; a
-// refused one is said in diagnostics (D-124).
-func (d Dashboard) applyPropReach(v propReachMsg) Dashboard {
-	if v.reach.key != d.mapPane.propReachAsked {
-		return d // an older ask's
-	}
-	d.mapPane.propReach = v.reach
-	if v.reach.err != nil {
-		d.problem("Propagation: the reach not worked out - " + v.reach.err.Error())
-	}
-	d = d.setProp()
-	if d.modal == modalMap {
-		return d.renderMap()
-	}
-	return d
-}
+// changed (about 30 ms, never in Update).
+func (d Dashboard) armPropReach() (Dashboard, tea.Cmd) { return d.armAnswer(answerReach) }
 
 // propReachShown is the reach for what the window shows now; false while
 // none is held, or it is being worked out.

@@ -74,14 +74,89 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 // armPropChart asks for the chart when what it is worked out from has
 // changed, once, in a command (FR-1.17): after every Update, as the map's
 // clock is armed.
-func (d Dashboard) armPropChart() (Dashboard, tea.Cmd) {
-	key, ok := d.propChartWanted()
-	if !ok || key == d.mapPane.propChart.key || key == d.mapPane.propChartAsked {
-		return d, nil
-	}
-	d.mapPane.propChartAsked = key
+func (d Dashboard) armPropChart() (Dashboard, tea.Cmd) { return d.armAnswer(answerChart) }
+
+// propAnswer names one of the Propagation mode's answers worked out off the
+// UI goroutine.
+type propAnswer uint8
+
+// The answers.
+const (
+	answerChart  propAnswer = iota // the chart (W5.1)
+	answerReach                    // the frequency's reach (W5.2)
+	answerCentre                   // the map centre's (W5.4)
+)
+
+// armAnswer asks for one answer when what it is worked out from has
+// changed, once, in a command (FR-1.17), from the snapshot on screen.
+func (d Dashboard) armAnswer(which propAnswer) (Dashboard, tea.Cmd) {
 	snap := d.propOnScreen()
-	return d, func() tea.Msg { return propChartMsg{chart: workPropChart(snap, key)} }
+	var cmd tea.Cmd
+	switch which {
+	case answerChart:
+		key, ok := d.propChartWanted()
+		cmd = askAnswer(key, ok, d.mapPane.propChart.key, &d.mapPane.propChartAsked, func() tea.Msg { return propChartMsg{chart: workPropChart(snap, key)} })
+	case answerReach:
+		key, ok := d.propReachWanted()
+		cmd = askAnswer(key, ok, d.mapPane.propReach.key, &d.mapPane.propReachAsked, func() tea.Msg {
+			field, err := snap.Reach(key.origin, key.mhz, key.hour)
+			return propReachMsg{reach: propReach{key: key, field: field, err: err}}
+		})
+	case answerCentre:
+		key, ok := d.propCentreWanted()
+		cmd = askAnswer(key, ok, d.mapPane.propCentre.key, &d.mapPane.propCentreAsked, func() tea.Msg { return propCentreMsg{centre: workPropCentre(snap, key)} })
+	}
+	return d, cmd
+}
+
+// applyPropAnswer keeps an answer when it is to the ask made last - an older
+// ask's is dropped - and draws it; a reach is handed to the map as well.
+func (d Dashboard) applyPropAnswer(msg tea.Msg) Dashboard {
+	switch v := msg.(type) {
+	case propChartMsg:
+		if v.chart.key != d.mapPane.propChartAsked {
+			return d
+		}
+		d.mapPane.propChart = v.chart
+		return d.answered(v.chart.err, "the chart not worked out")
+	case propReachMsg:
+		if v.reach.key != d.mapPane.propReachAsked {
+			return d
+		}
+		d.mapPane.propReach = v.reach
+		return d.setProp().answered(v.reach.err, "the reach not worked out")
+	case propCentreMsg:
+		if v.centre.key != d.mapPane.propCentreAsked {
+			return d
+		}
+		d.mapPane.propCentre = v.centre
+		return d.answered(v.centre.err, "the centre not answered")
+	}
+	return d
+}
+
+// askAnswer is how each of the Propagation mode's answers - the chart, the
+// reach, the centre - is asked for: in a command, never in Update
+// (FR-1.17), when what it is worked out from has changed, and once.
+func askAnswer[K comparable](wanted K, ok bool, held K, asked *K, work tea.Cmd) tea.Cmd {
+	if !ok || wanted == held || wanted == *asked {
+		return nil
+	}
+	*asked = wanted
+	return work
+}
+
+// answered draws an answer kept, and says a refused one in diagnostics
+// (D-124), never to the listener.
+func (d Dashboard) answered(err error, what string) Dashboard {
+	if err != nil {
+		d.problem("Propagation: " + what + " - " + err.Error())
+	}
+	d.mapPane.gen++
+	if d.modal == modalMap {
+		return d.renderMap()
+	}
+	return d
 }
 
 // workPropChart works the chart out: off the UI goroutine, about 5 ms.
@@ -108,23 +183,6 @@ func workPropChart(snap ionomaps.Snapshot, key propChartKey) propChart {
 	}
 	c.local, c.targets = local[0], paths
 	return c
-}
-
-// applyPropChart keeps the chart asked for last; a refused one is said in
-// diagnostics (D-124) and the window shows no chart.
-func (d Dashboard) applyPropChart(v propChartMsg) Dashboard {
-	if v.chart.key != d.mapPane.propChartAsked {
-		return d // an older ask's
-	}
-	d.mapPane.propChart = v.chart
-	if v.chart.err != nil {
-		d.problem("Propagation: the chart not worked out - " + v.chart.err.Error())
-	}
-	d.mapPane.gen++
-	if d.modal == modalMap {
-		return d.renderMap()
-	}
-	return d
 }
 
 // propChartShown reports whether the chart answers for what the window

@@ -1091,14 +1091,15 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if err := invariant.Check(ok, "dispatch must return the dashboard model"); err != nil {
 		return m, cmd
 	}
-	next, resumeCmd := next.resume()      // D-107: a window returned to picks up where it was
-	next = next.mapPanicked()             // QA-11: a panic a map call or command stopped marks the map failed
-	next, mapCmd := next.armMapTick()     // 0.18.0 W2.2: the map's clock, armed after every Update
-	next = next.followPropNight()         // go-tuiMaps P4: the night moves with the clock
-	next, chartCmd := next.armPropChart() // W5.1: the chart's answers, asked when what they come from changes
-	next, reachCmd := next.armPropReach() // W5.2: and the frequency's reach
-	next, aheadCmd := next.armPropAhead() // W5.4: and the hour ahead shown
-	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd, aheadCmd))
+	next, resumeCmd := next.resume()        // D-107: a window returned to picks up where it was
+	next = next.mapPanicked()               // QA-11: a panic a map call or command stopped marks the map failed
+	next, mapCmd := next.armMapTick()       // 0.18.0 W2.2: the map's clock, armed after every Update
+	next = next.followPropNight()           // go-tuiMaps P4: the night moves with the clock
+	next, chartCmd := next.armPropChart()   // W5.1: the chart's answers, asked when what they come from changes
+	next, reachCmd := next.armPropReach()   // W5.2: and the frequency's reach
+	next, aheadCmd := next.armPropAhead()   // W5.4: and the hour ahead shown
+	next, centreCmd := next.armPropCentre() // and the map centre's answer
+	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd, aheadCmd, centreCmd))
 }
 
 // handleTicker applies one global-event-ticker message and re-arms the frame
@@ -1181,10 +1182,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyMapTemp(v) // W10: the temperature, set and drawn in Update (D-41)
 	case forecastTickMsg:
 		return d.applyForecastTick(v) // D-94: Forecast mode's playback
-	case propChartMsg:
-		return d.applyPropChart(v), nil
-	case propReachMsg:
-		return d.applyPropReach(v), nil
+	case propChartMsg, propReachMsg, propCentreMsg:
+		return d.applyPropAnswer(v), nil // W5: the chart, the reach, the centre
 	case propAheadMsg:
 		return d.applyPropAhead(v), nil
 	case propUpdatedMsg:
