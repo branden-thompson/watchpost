@@ -526,6 +526,8 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.cycleUVCities(true)
 	case rowMapPropRadius:
 		return d.cyclePropRadius(true)
+	case rowMapPropNoise:
+		return d.cyclePropNoise(true)
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(true)
 	case rowMapQuakes:

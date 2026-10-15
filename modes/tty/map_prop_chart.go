@@ -45,6 +45,7 @@ type propChartKey struct {
 	computed, hour time.Time
 	origin         ionomaps.LatLon
 	radiusKm       float64
+	noise          ionomaps.Noise // the snapshot's: a new noise rebuilds it at the same time (D-187)
 }
 
 // propChart is the chart's answers (W5.1): the near-vertical area's bands
@@ -69,7 +70,7 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 	if !ok || !d.mapShown() || !d.inPropagation() || loc == nil {
 		return propChartKey{}, false
 	}
-	return propChartKey{computed: shown.Computed, hour: shown.Hours[0].At, origin: ionomaps.LatLon{Lat: loc.Lat, Lon: loc.Lon}, radiusKm: float64(d.mapPropRadiusKm)}, true
+	return propChartKey{computed: shown.Computed, hour: shown.Hours[0].At, origin: ionomaps.LatLon{Lat: loc.Lat, Lon: loc.Lon}, radiusKm: float64(d.mapPropRadiusKm), noise: shown.Noise}, true
 }
 
 // armPropChart asks for the chart when what it is worked out from has
@@ -238,11 +239,15 @@ func (d Dashboard) propBestLine() string {
 // propChartWidth is the chart window's width: within the 80-column floor.
 const propChartWidth = 78
 
-// The chart's glyphs: open, disturbed (open, its lower edge under D-RAP's
-// 1 dB frequency), and above the upper limit; no data is blank.
+// The chart's glyphs (D-192): open, disturbed (open, its lower edge under
+// D-RAP's 1 dB frequency), absorbed and weak (closed by the lower limit:
+// the day's absorption, or too faint even without it), and above the upper
+// limit; no data is blank.
 const (
 	propOpenGlyph      = '●'
 	propDisturbedGlyph = '◐'
+	propAbsorbedGlyph  = '○'
+	propWeakGlyph      = '◌'
 	propClosedGlyph    = '·'
 )
 
@@ -269,7 +274,7 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 	if loc := d.selectedLocation(); loc != nil {
 		name = strings.ToUpper(loc.Label)
 	}
-	out := []string{"From " + name + " · " + c.key.hour.UTC().Format("15:04 UTC") + " · upper limits only", ""}
+	out := []string{"From " + name + " · " + c.key.hour.UTC().Format("15:04 UTC") + " · 100 W, 0 dBi, +13 dB · " + strings.ToLower(propNoiseLabel(c.key.noise)) + " noise", ""}
 	head := render.PadTo("", propNameW+2)
 	for _, b := range hfBands {
 		head += fmt.Sprintf("%3s", strings.TrimSuffix(b.name, "m")) // each band's number over its glyph
@@ -292,7 +297,8 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 			unscored = append(unscored, names[i])
 		}
 	}
-	out = append(out, string(propOpenGlyph)+" open   "+string(propDisturbedGlyph)+" disturbed (D-RAP)   "+string(propClosedGlyph)+" above the upper limit   blank: no data")
+	out = append(out, string(propOpenGlyph)+" open   "+string(propDisturbedGlyph)+" disturbed (D-RAP)   "+string(propAbsorbedGlyph)+" absorbed   "+string(propWeakGlyph)+" weak",
+		string(propClosedGlyph)+" above the upper limit   blank: no data")
 	if len(unscored) > 0 {
 		out = append(out, "Nearest station unscored, verify on air: "+strings.Join(unscored, ", ")) // D-181
 	}
@@ -317,8 +323,13 @@ func (d Dashboard) propBandCells(bands []ionomaps.BandStatus) string {
 	var b strings.Builder
 	for _, s := range bands {
 		g := d.propGlyph(s.Status == ionomaps.Open, s.Status == ionomaps.StatusNoData)
-		if s.Status == ionomaps.Disturbed {
+		switch s.Status {
+		case ionomaps.Disturbed:
 			g = render.Tint(string(propDisturbedGlyph), render.Tok(render.NameAdvisory))
+		case ionomaps.Absorbed:
+			g = render.Tint(string(propAbsorbedGlyph), render.Tok(render.KeyChipMuted))
+		case ionomaps.Weak:
+			g = render.Tint(string(propWeakGlyph), render.Tok(render.KeyChipMuted))
 		}
 		b.WriteString(" " + g + " ")
 	}
@@ -345,28 +356,36 @@ func propLimitWords(b ionomaps.BandStatus) string {
 		name = "foF2"
 	case ionomaps.LimitDRAP:
 		name = "D-RAP"
+	case ionomaps.LimitAbsorption, ionomaps.LimitCircuit:
+		name = "LUF"
 	}
 	return fmt.Sprintf("%s %.1f MHz", name, b.LimitMHz)
 }
 
-// propRowLimitWords name a row's limits: its upper limit, from a band it
-// decided, and D-RAP's 1 dB frequency when it disturbs any band; empty
-// with no data.
+// propRowLimitWords name a row's limits (D-192): its upper limit, from a
+// band it decided; the LUF when the lower limit closes any band; and D-RAP's
+// 1 dB frequency when it disturbs any; empty with no data.
 func propRowLimitWords(bands []ionomaps.BandStatus) string {
-	var upper, drap string
+	var upper, lower, drap string
 	for _, b := range bands {
-		switch {
-		case b.Status == ionomaps.StatusNoData:
-		case b.Limit == ionomaps.LimitDRAP:
+		switch b.Limit {
+		case ionomaps.LimitDRAP:
 			drap = propLimitWords(b)
-		case upper == "":
-			upper = propLimitWords(b)
+		case ionomaps.LimitAbsorption, ionomaps.LimitCircuit:
+			lower = propLimitWords(b)
+		case ionomaps.LimitMUF, ionomaps.LimitFoF2:
+			if upper == "" {
+				upper = propLimitWords(b)
+			}
 		}
 	}
-	if upper != "" && drap != "" {
-		return upper + " · " + drap
+	var parts []string
+	for _, w := range []string{upper, lower, drap} {
+		if w != "" {
+			parts = append(parts, w)
+		}
 	}
-	return upper + drap
+	return strings.Join(parts, " · ")
 }
 
 // propDayHead marks the typical day's hours every three, and the hour shown.

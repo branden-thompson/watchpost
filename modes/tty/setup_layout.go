@@ -491,6 +491,8 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 			segs = append(segs, o.KeyCap("←→")+" Cities")
 		case rowMapPropRadius:
 			segs = append(segs, o.KeyCap("←→")+" Radius")
+		case rowMapPropNoise:
+			segs = append(segs, o.KeyCap("←→")+" Noise")
 		case rowMapRadarAhead:
 			segs = append(segs, o.KeyCap("←→")+" Hours")
 		case rowMapQuakes:

@@ -6,6 +6,7 @@ package tty
 // W1.13, R-9.2) and the warning when they would cost a lot (W1.14, FR-9.2).
 
 import (
+	ionomaps "github.com/branden-thompson/go-ionomaps"
 	"math"
 	"slices"
 	"sort"
@@ -264,6 +265,53 @@ func propRadiusByKm(km int) int {
 // cyclePropRadius moves the near-vertical radius picker, and round again.
 func (d Dashboard) cyclePropRadius(forward bool) Dashboard {
 	d.mapPropRadiusKm = cycleIn(propRadiusChoices, itself, d.mapPropRadiusKm, forward)
+	return d.uiTouched()
+}
+
+// propNoiseChoices are the reference circuit's noise environments, quietest
+// last, the default first (D-187): P.372's man-made noise categories.
+var propNoiseChoices = []ionomaps.Noise{ionomaps.NoiseResidential, ionomaps.NoiseCity, ionomaps.NoiseRural, ionomaps.NoiseQuietRural}
+
+// propNoiseKeys are the file's names for them.
+var propNoiseKeys = map[ionomaps.Noise]string{ionomaps.NoiseResidential: "residential", ionomaps.NoiseCity: "city", ionomaps.NoiseRural: "rural", ionomaps.NoiseQuietRural: "quiet-rural"}
+
+// propNoiseByKey reads the file's name; anything not offered is residential.
+func propNoiseByKey(key string) ionomaps.Noise {
+	for n, k := range propNoiseKeys {
+		if k == key {
+			return n
+		}
+	}
+	return ionomaps.NoiseResidential
+}
+
+// propNoiseKey is the file's name for an environment; residential, the
+// default, is written empty.
+func propNoiseKey(n ionomaps.Noise) string {
+	if n == ionomaps.NoiseResidential {
+		return ""
+	}
+	return propNoiseKeys[n]
+}
+
+// propNoiseLabel is an environment as the Settings and the chart say it.
+func propNoiseLabel(n ionomaps.Noise) string {
+	switch n {
+	case ionomaps.NoiseCity:
+		return "City"
+	case ionomaps.NoiseRural:
+		return "Rural"
+	case ionomaps.NoiseQuietRural:
+		return "Quiet rural"
+	}
+	return "Residential"
+}
+
+// cyclePropNoise moves the noise picker, and round again; the mode, if
+// open, asks for its snapshot with the new noise, which go-ionomaps answers
+// without a request (D-187).
+func (d Dashboard) cyclePropNoise(forward bool) Dashboard {
+	d.mapPropNoise = cycleIn(propNoiseChoices, itself, d.mapPropNoise, forward)
 	return d.uiTouched()
 }
 
@@ -556,7 +604,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapPropRadius || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapPropRadius || id == rowMapPropNoise || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -576,6 +624,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.cycleUVCities(forward), true
 	case rowMapPropRadius:
 		return d.cyclePropRadius(forward), true
+	case rowMapPropNoise:
+		return d.cyclePropNoise(forward), true
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(forward), true
 	case rowMapQuakes:

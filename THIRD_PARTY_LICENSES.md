@@ -188,7 +188,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## github.com/branden-thompson/go-ionomaps v0.0.0-20261015001138-a88f0450fbc6
+## github.com/branden-thompson/go-ionomaps v0.0.0-20261015141903-0ab4636ffb3f
 
 ```
 MIT License
@@ -282,6 +282,12 @@ Sources the library reads, or will read, and their terms:
    DiurnalAbsorptionExponent, themselves from NTIA's REC533 - are ported into the library (watchpost
    D-186):
      internal/limits/absorption.go
+   P.533-14 Table 2, the auroral and other signal losses Lh, as ITUHFProp's FindLh holds it (checked value
+   for value against the recommendation's own table), is ported too (watchpost D-189):
+     internal/limits/auroral.go
+   P.533-14 Tables 3 (W, X, Y) and 5 (the winter anomaly), for paths past 7000 km, are ported as the
+   recommendation prints them, which ITUHFProp holds too but for one cell (watchpost D-191):
+     internal/limits/longpath.go
    ITUHFProp's own values of those factors at fixed inputs are kept as their test oracle:
      internal/limits/testdata/itu-absorption-golden.txt
 ```

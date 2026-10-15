@@ -49,7 +49,20 @@ func (d Dashboard) askPropagation() (Dashboard, tea.Cmd) {
 	d.mapPane.propBusy = true
 	d.mapPane.gen++
 	ctx, gen := d.mapPane.propCtx, d.mapPane.propGen
-	return d, func() tea.Msg { return propUpdatedMsg{gen: gen, res: <-seam(ctx)} }
+	noise := d.mapPropNoise
+	return d, func() tea.Msg { return propUpdatedMsg{gen: gen, res: <-seam(ctx, noise)} }
+}
+
+// armPropNoise asks for the mode's update when the snapshot shown was made
+// for another noise environment than the Setting's (D-187): go-ionomaps
+// answers it from what it holds, asking nothing. A changed Setting is so
+// shown as soon as the map is.
+func (d Dashboard) armPropNoise() (Dashboard, tea.Cmd) {
+	snap := d.mapPane.propSnap
+	if snap == nil || snap.Noise == d.mapPropNoise {
+		return d, nil
+	}
+	return d.askPropagation()
 }
 
 // stopPropagation ends the mode's session: its update cancelled, a late

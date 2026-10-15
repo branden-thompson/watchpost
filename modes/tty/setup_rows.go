@@ -141,6 +141,7 @@ const (
 	rowMapRainDetail  // the rain's density past NDFD's reach: coarse or full (D-192)
 	rowMapUVCities    // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
 	rowMapPropRadius  // the Propagation mode's near-vertical radius: 200, 400 or 600 km (D-100)
+	rowMapPropNoise   // the Propagation mode's reference circuit's noise: city, residential, rural or quiet rural (D-187)
 	rowMapDetailLevel
 	// THE MAP'S DETAIL, A ROW EACH (UAT-1 U1-35): the "← Enabled →" pattern
 	// every other on/off row has, in mapDetailLayers' order.
@@ -264,6 +265,7 @@ func setupTable() [setupRowCount]setupRow {
 		rowMapRainDetail:  {rowMapRainDetail, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapUVCities:    {rowMapUVCities, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapPropRadius:  {rowMapPropRadius, groupMap, scopeObserver, rowPicker, true, "", ""}, // the Broadcaster keeps its service radius (D-121)
+		rowMapPropNoise:   {rowMapPropNoise, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapRadarAhead:  {rowMapRadarAhead, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapQuakes:      {rowMapQuakes, groupMap, scopeObserver, rowPicker, true, "", ""},
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one

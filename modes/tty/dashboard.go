@@ -13,6 +13,7 @@ package tty
 import (
 	"context"
 	"fmt"
+	ionomaps "github.com/branden-thompson/go-ionomaps"
 	"sort"
 	"time"
 	"unicode"
@@ -112,6 +113,9 @@ type Config struct {
 	// MapPropRadius is the file's near-vertical radius for the Propagation
 	// mode, km: 200, 400 or 600; anything else is 400, the default (D-100).
 	MapPropRadius int
+	// MapPropNoise is the file's noise environment for the Propagation
+	// mode's reference circuit; anything not offered is residential (D-187).
+	MapPropNoise string
 	// MapTemperature is the temperature the map draws (W10): every hour's or
 	// step's grids, each with its span, asked off the UI goroutine.
 	MapTemperature func(ctx context.Context, ask MapAsk) MapTemperature
@@ -211,10 +215,11 @@ type Config struct {
 	PropagationAck     int
 	SavePropagationAck func(int) error
 
-	// PropagationUpdate starts the Propagation mode's update, or joins the
+	// PropagationUpdate starts the Propagation mode's update, with the
+	// reference circuit's noise environment (D-187), or joins the
 	// one running, and sends its result (0.19.0 W4.1, D-131). ctx is the
 	// mode's: leaving the mode ends it. nil fetches nothing.
-	PropagationUpdate func(ctx context.Context) <-chan PropagationResult
+	PropagationUpdate func(ctx context.Context, noise ionomaps.Noise) <-chan PropagationResult
 
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
 	// reports against, and they are TWO because the data is two things: the
@@ -427,6 +432,7 @@ type UIPrefs struct {
 	MapRainDetail  string          // "full", or coarse by default (D-192)
 	MapUVCities    int             // UV's EPA cities: 8, 24 or 48; 0 is the default, 24 (D-202)
 	MapPropRadius  int             // the Propagation mode's near-vertical radius, km: 200, 400 or 600; 0 is the default, 400 (D-100)
+	MapPropNoise   string          // the reference circuit's noise: "city", "rural", "quiet-rural"; empty is residential (D-187)
 	MapRadarAhead  int             // the radar loop's hours ahead (D-114)
 	MapQuakeFeed   string          // the quakes drawn, USGS's feed by its name (D-122)
 	MapLayers      map[string]bool // the layers switched from their defaults
@@ -671,6 +677,7 @@ type Dashboard struct {
 	mapRainFull     bool           // Open-Meteo's full density for the rain past NDFD's reach (D-192)
 	mapUVCities     int            // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
 	mapPropRadiusKm int            // the Propagation mode's near-vertical radius: 200, 400 or 600 km (D-100)
+	mapPropNoise    ionomaps.Noise // the reference circuit's noise environment (D-187)
 	mapRadarAhead   int            // the radar loop's hours ahead: 1, 3, 6 or 12 (D-114)
 	mapQuakeFeed    string         // the quakes drawn: USGS's feed by its name (D-122)
 	mapKeys         term.KeyMap
@@ -943,7 +950,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapPropNoise: propNoiseByKey(cfg.MapPropNoise), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -1099,7 +1106,8 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, reachCmd := next.armPropReach()   // W5.2: and the frequency's reach
 	next, aheadCmd := next.armPropAhead()   // W5.4: and the hour ahead shown
 	next, centreCmd := next.armPropCentre() // and the map centre's answer
-	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd, aheadCmd, centreCmd))
+	next, noiseCmd := next.armPropNoise()   // D-187: a snapshot for another noise than the Setting's asked again
+	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd, aheadCmd, centreCmd, noiseCmd))
 }
 
 // handleTicker applies one global-event-ticker message and re-arms the frame

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	ionomaps "github.com/branden-thompson/go-ionomaps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -62,7 +63,7 @@ func TestOneLibraryObjectPerProcess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // nothing is fetched: the updates end at once
 	for range 3 {
-		<-c.PropagationUpdate(ctx)
+		<-c.PropagationUpdate(ctx, ionomaps.NoiseResidential)
 	}
 	if made != 1 {
 		t.Errorf("three updates made %d objects; want one", made)

@@ -102,11 +102,13 @@ func New(get Getter, o Options) (*Service, error) {
 	return &Service{lib: lib, fetch: f, deadline: deadline}, nil
 }
 
-// Ask starts an update, or joins the one running, and sends its result.
+// Ask starts an update with the host's options, or joins the one running
+// (whose options are its own: the caller asks again if they differ), and
+// sends its result.
 // ctx is the mode's: closing the mode ends the update it started; the update
 // also ends at its own deadline. A key press never cancels it. The update
 // runs to its end in its own goroutine and hands its result to every caller.
-func (s *Service) Ask(ctx context.Context) <-chan Result {
+func (s *Service) Ask(ctx context.Context, opts ionomaps.UpdateOptions) <-chan Result {
 	out := make(chan Result, 1)
 	made := s != nil && s.lib != nil
 	if !made {
@@ -121,7 +123,7 @@ func (s *Service) Ask(ctx context.Context) <-chan Result {
 		go func() {
 			uctx, cancel := context.WithTimeout(ctx, s.deadline)
 			defer cancel()
-			snap, err := s.lib.Update(uctx, ionomaps.UpdateOptions{})
+			snap, err := s.lib.Update(uctx, opts)
 			r.res = Result{Snapshot: snap, Err: err}
 			s.mu.Lock()
 			s.running = nil

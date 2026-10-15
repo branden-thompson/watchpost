@@ -22,6 +22,7 @@ type propCentreKey struct {
 	computed, hour time.Time
 	origin, centre ionomaps.LatLon
 	radiusKm       float64
+	noise          ionomaps.Noise // the snapshot's (D-187)
 }
 
 // propCentre is the map centre's answer (FR-1.11, D-180): the bands from
@@ -64,7 +65,7 @@ func (d Dashboard) propCentreWanted() (propCentreKey, bool) {
 	if !at {
 		return propCentreKey{}, false
 	}
-	return propCentreKey{computed: key.computed, hour: key.hour, origin: key.origin, centre: centre, radiusKm: key.radiusKm}, true
+	return propCentreKey{computed: key.computed, hour: key.hour, origin: key.origin, centre: centre, radiusKm: key.radiusKm, noise: key.noise}, true
 }
 
 // armPropCentre asks for the centre's answer when the map has moved, or

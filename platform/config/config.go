@@ -299,6 +299,10 @@ type Config struct {
 	// MapPropagationRadiusKm is the Propagation mode's near-vertical area
 	// (0.19.0 D-100, A-18): 200, 400 or 600 km; empty is 400, the default.
 	MapPropagationRadiusKm int `toml:"map_propagation_radius_km,omitempty"`
+	// MapPropagationNoise is the man-made noise the Propagation mode's
+	// reference circuit hears (0.19.0 D-187): "city", "rural" or
+	// "quiet-rural"; empty is residential, the default.
+	MapPropagationNoise string `toml:"map_propagation_noise,omitempty"`
 
 	// HistoryHours and HistoryTrends are the local history's retention, the
 	// Data tab's presets (W18, D-175): "72h", "7d", "30d", "1y" and "30d",

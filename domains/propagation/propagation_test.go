@@ -114,7 +114,7 @@ func TestAnUpdateIsJoinedNotDoubled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, b := s.Ask(context.Background()), s.Ask(context.Background())
+	a, b := s.Ask(context.Background(), ionomaps.UpdateOptions{}), s.Ask(context.Background(), ionomaps.UpdateOptions{})
 	close(rec.hold)
 	ra, rb := <-a, <-b
 	if ra.Snapshot.Early != rb.Snapshot.Early || ra.Snapshot.Early == ionomaps.TooSoon {
@@ -140,7 +140,7 @@ func TestClosingTheModeCancelsTheUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	got := s.Ask(ctx)
+	got := s.Ask(ctx, ionomaps.UpdateOptions{})
 	cancel()
 	select {
 	case r := <-got:
@@ -161,7 +161,7 @@ func TestAnUpdateHasItsOwnDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	select {
-	case <-s.Ask(context.Background()):
+	case <-s.Ask(context.Background(), ionomaps.UpdateOptions{}):
 	case <-time.After(5 * time.Second):
 		t.Fatal("an update past its deadline never answered")
 	}
@@ -174,7 +174,7 @@ func TestAnUpdateHasItsOwnDeadline(t *testing.T) {
 	if _, err := New(rec, Options{Deadline: -time.Second}); !errors.Is(err, errNoDeadline) {
 		t.Errorf("a negative deadline: %v", err)
 	}
-	if r := <-(&Service{}).Ask(context.Background()); !errors.Is(r.Err, errNoService) {
+	if r := <-(&Service{}).Ask(context.Background(), ionomaps.UpdateOptions{}); !errors.Is(r.Err, errNoService) {
 		t.Errorf("a service not made with New: %v", r.Err)
 	}
 }
@@ -188,4 +188,28 @@ func fetcherOf(get Getter, note func(string)) (*fetcher, error) {
 		return nil, err
 	}
 	return s.fetch, nil
+}
+
+// TestTheHostsOptionsReachTheLibrary is 0.19.0 D-187: the noise environment
+// the window asks with is the update's, so the snapshot answers for it.
+func TestTheHostsOptionsReachTheLibrary(t *testing.T) {
+	var b strings.Builder
+	for d := 30; d >= 1; d-- {
+		day := fixedClock().AddDate(0, 0, -d)
+		b.WriteString(day.Format("2006 01 02") + "  150  140  1  2  0  0  0  0  0  0  0\n")
+	}
+	rec := &recorder{answer: func(url string) (httpx.Answer, error) {
+		if strings.HasSuffix(url, "daily-solar-indices.txt") {
+			return httpx.Answer{Status: 200, Body: []byte(b.String())}, nil
+		}
+		return httpx.Answer{Status: 404}, nil
+	}}
+	s, err := New(rec, Options{Clock: fixedClock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := <-s.Ask(context.Background(), ionomaps.UpdateOptions{Noise: ionomaps.NoiseCity})
+	if r.Err != nil || len(r.Snapshot.Hours) == 0 || r.Snapshot.Noise != ionomaps.NoiseCity {
+		t.Errorf("asked with city noise: %v, %d hours, noise %v", r.Err, len(r.Snapshot.Hours), r.Snapshot.Noise)
+	}
 }

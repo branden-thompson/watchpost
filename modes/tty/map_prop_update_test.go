@@ -18,14 +18,16 @@ import (
 type seam struct {
 	mu     sync.Mutex
 	asked  int
+	noises []ionomaps.Noise // the noise each ask was made with
 	ctxs   []context.Context
 	answer PropagationResult
 	wait   bool // when set, it answers only once its context ends
 }
 
-func (s *seam) update(ctx context.Context) <-chan PropagationResult {
+func (s *seam) update(ctx context.Context, noise ionomaps.Noise) <-chan PropagationResult {
 	s.mu.Lock()
 	s.asked++
+	s.noises = append(s.noises, noise)
 	s.ctxs = append(s.ctxs, ctx)
 	wait, answer := s.wait, s.answer
 	s.mu.Unlock()

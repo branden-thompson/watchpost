@@ -44,8 +44,8 @@ func TestTheContinentsAreTheDefaultTargets(t *testing.T) {
 		if len(bands) != len(hfBands) {
 			t.Fatalf("%s has %d bands; want %d", propContinents[i].name, len(bands), len(hfBands))
 		}
-		if bands[0].Limit != ionomaps.LimitMUF && !propContinents[i].near(c.key.origin, c.key.radiusKm) {
-			t.Errorf("%s's 160m names limit %v; a path's is its MUF", propContinents[i].name, bands[0].Limit)
+		if l := bands[0].Limit; l != ionomaps.LimitMUF && l != ionomaps.LimitAbsorption && l != ionomaps.LimitCircuit && !propContinents[i].near(c.key.origin, c.key.radiusKm) {
+			t.Errorf("%s's 160m names limit %v; a path's is its MUF, or the lower limit's (D-70)", propContinents[i].name, l)
 		}
 	}
 	block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n"))
@@ -56,8 +56,8 @@ func TestTheContinentsAreTheDefaultTargets(t *testing.T) {
 	}
 }
 
-// TestBestBandsNameTheirLimit is FR-1.15 (D-73, D-175): the chart window
-// says its answers are upper limits only, the near-vertical area's limit is
+// TestBestBandsNameTheirLimit is FR-1.15 (D-73, D-187): the chart window
+// says the reference circuit and its noise, the near-vertical area's limit is
 // foF2 and each target's the path's MUF, each with its value.
 func TestBestBandsNameTheirLimit(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
@@ -65,7 +65,7 @@ func TestBestBandsNameTheirLimit(t *testing.T) {
 		t.Fatalf("B opened window %v; want the chart (D-176)", d.modal)
 	}
 	text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
-	for _, want := range []string{"upper limits only", "Local, ~400 km", "foF2 6.0 MHz", "North America", "Oceania", "MUF "} {
+	for _, want := range []string{"100 W, 0 dBi, +13 dB · residential noise", "Local, ~400 km", "foF2 6.0 MHz", "North America", "Oceania", "MUF "} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the chart does not say %q:\n%s", want, text)
 		}

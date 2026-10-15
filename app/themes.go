@@ -95,6 +95,7 @@ func setUIHook(p tty.UIPrefs) error {
 		cfg.MapRainDetail = p.MapRainDetail          // D-192
 		cfg.MapUVCities = p.MapUVCities              // D-202
 		cfg.MapPropagationRadiusKm = p.MapPropRadius // 0.19.0 D-100
+		cfg.MapPropagationNoise = p.MapPropNoise     // 0.19.0 D-187
 		cfg.MapRadarAheadHours = p.MapRadarAhead     // D-114
 		cfg.MapQuakeFeed = p.MapQuakeFeed            // D-122
 		cfg.MapAlertScope = ""                       // retired (D-76): the next save lets the key go
