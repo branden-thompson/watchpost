@@ -96,6 +96,7 @@ func (d Dashboard) layoutWith(o render.Opts, built layoutRows) frameLayout {
 const (
 	chromeLines = 11
 	bottomInset = 2
+	topInset    = 2 // the frame's top padding (UAT 10.3), which bottomInset mirrors
 )
 
 // compact reports whether the terminal is too short for the full modules

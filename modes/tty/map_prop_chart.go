@@ -62,15 +62,15 @@ type propChart struct {
 type propChartMsg struct{ chart propChart }
 
 // propChartWanted is the chart the window wants: for the snapshot shown and
-// the selected place, in the Propagation mode with the map shown; false
-// when there is nothing to work it out from.
+// the mode's origin (D-193), in the Propagation mode with the map shown;
+// false when there is nothing to work it out from.
 func (d Dashboard) propChartWanted() (propChartKey, bool) {
 	shown, ok := d.propShown()
-	loc := d.selectedLocation()
-	if !ok || !d.mapShown() || !d.inPropagation() || loc == nil {
+	origin := d.mapPane.propOrigin
+	if !ok || !d.mapShown() || !d.inPropagation() || !origin.ok {
 		return propChartKey{}, false
 	}
-	return propChartKey{computed: shown.Computed, hour: shown.Hours[0].At, origin: ionomaps.LatLon{Lat: loc.Lat, Lon: loc.Lon}, radiusKm: float64(d.mapPropRadiusKm), noise: shown.Noise}, true
+	return propChartKey{computed: shown.Computed, hour: shown.Hours[0].At, origin: origin.at, radiusKm: float64(d.mapPropRadiusKm), noise: shown.Noise}, true
 }
 
 // armPropChart asks for the chart when what it is worked out from has
@@ -271,8 +271,8 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 	}
 	c := d.mapPane.propChart
 	name := "the selected place"
-	if loc := d.selectedLocation(); loc != nil {
-		name = strings.ToUpper(loc.Label)
+	if o := d.mapPane.propOrigin; o.ok {
+		name = strings.ToUpper(o.name)
 	}
 	out := []string{"From " + name + " · " + c.key.hour.UTC().Format("15:04 UTC") + " · 100 W, 0 dBi, +13 dB · " + strings.ToLower(propNoiseLabel(c.key.noise)) + " noise", ""}
 	head := render.PadTo("", propNameW+2)
@@ -348,41 +348,24 @@ func (d Dashboard) propGlyph(open, noData bool) string {
 	return render.Tint(string(propClosedGlyph), render.Tok(render.KeyChipMuted))
 }
 
-// propLimitWords name the limit that decided a band and its value (R-2.6).
-func propLimitWords(b ionomaps.BandStatus) string {
-	name := "MUF"
-	switch b.Limit {
-	case ionomaps.LimitFoF2:
-		name = "foF2"
-	case ionomaps.LimitDRAP:
-		name = "D-RAP"
-	case ionomaps.LimitAbsorption, ionomaps.LimitCircuit:
-		name = "LUF"
-	}
-	return fmt.Sprintf("%s %.1f MHz", name, b.LimitMHz)
-}
-
 // propRowLimitWords name a row's limits (D-192): its upper limit, from a
 // band it decided; the LUF when the lower limit closes any band; and D-RAP's
 // 1 dB frequency when it disturbs any; empty with no data.
 func propRowLimitWords(bands []ionomaps.BandStatus) string {
-	var upper, lower, drap string
+	l := limitsOf(bands)
+	upper := "MUF"
 	for _, b := range bands {
-		switch b.Limit {
-		case ionomaps.LimitDRAP:
-			drap = propLimitWords(b)
-		case ionomaps.LimitAbsorption, ionomaps.LimitCircuit:
-			lower = propLimitWords(b)
-		case ionomaps.LimitMUF, ionomaps.LimitFoF2:
-			if upper == "" {
-				upper = propLimitWords(b)
-			}
+		if b.Limit == ionomaps.LimitFoF2 {
+			upper = "foF2"
 		}
 	}
 	var parts []string
-	for _, w := range []string{upper, lower, drap} {
-		if w != "" {
-			parts = append(parts, w)
+	for _, w := range []struct {
+		name string
+		mhz  float64
+	}{{upper, l.upper}, {"LUF", l.luf}, {"D-RAP", l.drap}} {
+		if w.mhz > 0 {
+			parts = append(parts, w.name+" "+mhzWords(w.mhz)+" MHz")
 		}
 	}
 	return strings.Join(parts, " · ")

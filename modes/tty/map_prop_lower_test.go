@@ -98,6 +98,7 @@ func TestTheChartIsAskedAnewForANewNoise(t *testing.T) {
 	if again == key || again.noise != ionomaps.NoiseQuietRural {
 		t.Errorf("the chart's key %+v did not change with the noise", again)
 	}
+	d.surface = SurfaceBroadcaster // the centre is answered as a target on the Broadcaster (D-193)
 	if c, _ := d.propCentreWanted(); c.noise != ionomaps.NoiseQuietRural {
 		t.Errorf("the centre's key carries noise %v", c.noise)
 	}

@@ -14,8 +14,9 @@ import (
 
 // propAllocBudget pins the Propagation window over the 133×44 fixture, its
 // block under the map drawn: measured and set at × 1.05, as the other pins
-// are.
-var propAllocBudget = map[string]float64{"hit": 950 * 1.05, "miss": 1_337 * 1.05, "hit colour": 1_469 * 1.05, "miss colour": 2_876 * 1.05}
+// are. D-194's window, inset to inset and 85% wide, draws more map rows than
+// U1-13's, and every row costs its allocations.
+var propAllocBudget = map[string]float64{"hit": 1_270 * 1.05, "miss": 1_733 * 1.05, "hit colour": 1_751 * 1.05, "miss colour": 3_409 * 1.05}
 
 // propBench is the map in the Propagation mode, a snapshot drawn, its clock
 // pinned so the age holds still, every piece of work landed.

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
+
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // chartDash is the map in the Propagation mode with a snapshot drawn and the
@@ -133,21 +135,48 @@ func TestADisagreementWithTheTypicalDayIsSaid(t *testing.T) {
 	}
 }
 
-// TestTheOriginIsTheSelectedPlaceOrTheTower is FR-1.8: the chart answers
-// from the selected place, and asks again when the selection moves. (The
-// tower, from the Broadcaster, comes with its key: W7.)
-func TestTheOriginIsTheSelectedPlaceOrTheTower(t *testing.T) {
+// TestTheOriginFollowsTheUIMode is FR-1.8 as D-193 amends it: on Observer
+// the chart answers from the map's centre, to half a degree, named for the
+// view, and a pan asks again; on the Broadcaster from its transmitter, or,
+// with none set, the selected place, said; a UI mode added later must rule
+// its own (TestEveryUIModeHasAPropagationRole).
+func TestTheOriginFollowsTheUIMode(t *testing.T) {
 	d := chartDash(t)
-	loc := d.selectedLocation()
-	if o := d.mapPane.propChart.key.origin; o.Lat != loc.Lat || o.Lon != loc.Lon {
-		t.Fatalf("the chart answers from %v; the selected place is at %v, %v", o, loc.Lat, loc.Lon)
+	centre, _ := d.propCentreAt()
+	if o := d.mapPane.propChart.key.origin; o != centre || d.mapPane.propOrigin.name != d.viewName() {
+		t.Fatalf("Observer's chart answers from %v (%q); the centre is %v (%q)", o, d.mapPane.propOrigin.name, centre, d.viewName())
 	}
-	moved := pressMap(t, d, "]")
-	if moved.selectedLocation() == loc {
-		t.Skip("the fixture has one place: nothing to move to")
-	}
+	moved := pressMap(t, d, "right")
+	moved = moved.renderMap()
 	if _, cmd := moved.armPropChart(); cmd == nil && moved.mapPane.propChartAsked == d.mapPane.propChart.key {
-		t.Error("the selection moved and the chart was not asked again")
+		t.Error("the map panned and Observer's chart was not asked again")
+	}
+	if _, asked := workCentre(t, d).propCentreWanted(); asked || strings.Contains(stripANSITest(strings.Join(workCentre(t, d).mapBodyLines(), "\n")), "┌─ Centre") {
+		t.Error("Observer's centre is its origin, yet it is asked and drawn as a target")
+	}
+	st := stationDash(t)
+	loc := st.selectedLocation()
+	if o := st.mapPane.propOrigin; o.at.Lat != loc.Lat || o.at.Lon != loc.Lon || !strings.HasSuffix(o.name, bcNoTransmitter) {
+		t.Errorf("with no transmitter the station's origin is %+v; the selected place, said", o)
+	}
+	st.cfg.Transmitter = &snapshot.LocationRef{Label: "KXYZ tower", Lat: 40.1, Lon: -105.2}
+	st = st.renderMap()
+	if o := st.mapPane.propOrigin; o.at != (ionomaps.LatLon{Lat: 40.1, Lon: -105.2}) || o.name != "KXYZ tower" {
+		t.Errorf("with a transmitter the station's origin is %+v; the transmitter", o)
+	}
+}
+
+// TestEveryUIModeHasAPropagationRole is D-193's table walked: every UI mode
+// rules where its Propagation answers come from, so a mode added later
+// (Analyst, D-27) cannot inherit one silently.
+func TestEveryUIModeHasAPropagationRole(t *testing.T) {
+	for s := Surface(0); s < numSurfaces; s++ {
+		if propRoles[s].origin == propOriginUnruled {
+			t.Errorf("UI mode %d has no Propagation role: rule its origin in propRoles (D-193)", s)
+		}
+	}
+	if (Dashboard{surface: numSurfaces}).propRole().origin != propFromCentre {
+		t.Error("an unruled UI mode does not fall back to exploring from the centre")
 	}
 }
 

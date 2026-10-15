@@ -90,6 +90,7 @@ type mapPane struct {
 	propAheadAsked  int                        // the hour ahead last asked for: asked once
 	propCentre      propCentre                 // the map centre's answer (FR-1.11, D-180)
 	propCentreAsked propCentreKey              // what the centre was last asked for: asked once
+	propOrigin      propPlace                  // where the Propagation mode answers from, worked out in Update (D-193)
 	status          tuimaps.Status             // the last frame's: whole, or still sharpening
 	pending         bool                       // work was waiting when it was drawn
 	offline         bool                       // a tile failed since the picture was last whole
@@ -457,6 +458,9 @@ func (d Dashboard) renderMap() Dashboard {
 		d.mapPane.offline = false
 	}
 	d.mapPane.title = d.mapTitleAt(d.mapBodySize())
+	if d.inPropagation() {
+		d.mapPane.propOrigin = d.propOriginNow() // read here, in Update, as the title is; the frame only prints it (D-41, D-193)
+	}
 	d.mapPane.radarLine = d.radarStatus()                 // read from the library here, in Update; the frame only prints it (D-41)
 	d.mapPane.radarTimeline = d.radarTimeline(d.scrubW()) // beside the controls (D-103)
 	d.mapPane.fcTimeline = d.forecastTimeline(d.scrubW())
@@ -702,9 +706,9 @@ func (d Dashboard) mapChromeRows(noteRows int) int {
 }
 
 // notesYield reports whether the notes must collapse to one line (D-159):
-// only where even the window's ceiling - the terminal's height minus 8 -
-// cannot hold the map at its floor with every note line shown, and one line
-// would. Growing the window comes first.
+// only where even the window's ceiling (D-194) cannot hold the map at its
+// floor with every note line shown, and one line would. Growing the window
+// comes first.
 func (d Dashboard) notesYield(width int) bool {
 	notes := d.mapNotesNow()
 	if len(notes) < 2 {
@@ -714,8 +718,7 @@ func (d Dashboard) notesYield(width int) bool {
 	for _, n := range notes {
 		full += len(render.WrapText(n, width))
 	}
-	ceiling := d.height - 8
-	return mapMinBody.Rows+d.mapChromeRows(full) > ceiling
+	return mapMinBody.Rows+d.mapChromeRows(full) > d.mapCeiling()
 }
 
 // mapStatusLine says what the picture is while it is not whole, and names

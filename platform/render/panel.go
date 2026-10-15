@@ -266,6 +266,14 @@ func (o Opts) scrollBody(title string, lines []string, scroll, maxLines int) str
 // would need re-checking on every lipgloss release. A memo does not help either
 // — the marquee moves the base every frame.
 func Overlay(base, modal string, termWidth int) string {
+	return OverlayAt(base, modal, termWidth, -1)
+}
+
+// OverlayAt is Overlay with the window's top row given: centred across the
+// terminal's width, its top at row y; a y below zero centres it down the
+// base as Overlay does. The Map window, alone, sits at the frame's top
+// inset (D-194).
+func OverlayAt(base, modal string, termWidth, y int) string {
 	// v2.0.2 note: Layer.Draw ignores X/Y (positioning lives in the
 	// Compositor) and Layer.Width/Height are unset fields - measure with
 	// lipgloss.Width/Height and composite through the Compositor. Centering
@@ -275,7 +283,9 @@ func Overlay(base, modal string, termWidth int) string {
 		termWidth = lipgloss.Width(base)
 	}
 	x := max(0, (termWidth-lipgloss.Width(modal))/2)
-	y := max(0, (lipgloss.Height(base)-lipgloss.Height(modal))/2)
+	if y < 0 {
+		y = max(0, (lipgloss.Height(base)-lipgloss.Height(modal))/2)
+	}
 	return lipgloss.NewCompositor(
 		lipgloss.NewLayer(base),
 		lipgloss.NewLayer(modal).X(x).Y(y).Z(1),

@@ -26,6 +26,7 @@ func TestRadarOverAnAlertAtEachDepth(t *testing.T) {
 		depth tuimaps.Depth
 	}{{"truecolor", tuimaps.Truecolor}, {"256", tuimaps.Colours256}, {"16", tuimaps.Colours16}, {"none", tuimaps.NoColour}}
 	var furniture []string // truecolor's characters: radar is colour alone there, so this is everything else
+	digits := 0            // truecolor's severity digits: the outline's every one, which no depth may lose
 	for _, dp := range depths {
 		d.mapPane.m.ColourDepth(dp.depth)
 		f, err := d.mapPane.m.Render(size, at)
@@ -44,10 +45,13 @@ func TestRadarOverAnAlertAtEachDepth(t *testing.T) {
 			if !strings.Contains(frame, "\x1b[48;2;") {
 				t.Fatal("truecolor: no radar under the map: this pins nothing")
 			}
-			furniture = plain
+			furniture, digits = plain, strings.Count(text, "3")
+			if digits == 0 {
+				t.Fatal("truecolor: no severity digit on the outline: this pins nothing")
+			}
 		}
-		if n := strings.Count(text, "3"); n < 8 {
-			t.Errorf("%s: %d severity digits on the outline; want them all", dp.name, n)
+		if n := strings.Count(text, "3"); n != digits {
+			t.Errorf("%s: %d severity digits on the outline; want them all, %d", dp.name, n, digits)
 		}
 		for row, line := range furniture {
 			want, got := []rune(line), []rune(plain[row])

@@ -88,7 +88,7 @@ func TestADisturbedBandIsDrawnAndNamed(t *testing.T) {
 			local = l
 		}
 	}
-	if !strings.Contains(local, string(propDisturbedGlyph)) || !strings.Contains(local, "foF2 6.0 MHz · D-RAP 2.5 MHz") {
+	if !strings.Contains(local, string(propDisturbedGlyph)) || !strings.HasSuffix(local, "D-RAP 2.5 MHz") || !strings.Contains(local, "foF2 6.0 MHz · ") {
 		t.Errorf("the local row, 160 m disturbed, reads %q", local)
 	}
 	if !strings.Contains(text, string(propDisturbedGlyph)+" disturbed (D-RAP)") {
@@ -120,7 +120,7 @@ func TestAnUnscoredNearestStationIsSaid(t *testing.T) {
 	if w := d.propNearestWords(ionomaps.Nearest{Km: 300, Unscored: true, Known: true}); !strings.HasPrefix(w, "Nearest station ") || !strings.HasSuffix(w, ", unscored: verify on air") {
 		t.Errorf("an unscored station 300 km away: %q", w)
 	}
-	box := workCentre(t, chartDash(t))
+	box := workCentre(t, stationDash(t))
 	if lines := stripANSITest(strings.Join(box.propCentreBox(), "\n")); !strings.Contains(lines, "No station fed this answer") {
 		t.Errorf("the centre box, no station fed, does not say so:\n%s", lines)
 	}

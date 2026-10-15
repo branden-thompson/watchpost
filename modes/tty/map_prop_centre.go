@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	ionomaps "github.com/branden-thompson/go-ionomaps"
@@ -19,10 +18,8 @@ const propCentreStep = 0.5
 
 // propCentreKey is what the centre's answer is worked out from.
 type propCentreKey struct {
-	computed, hour time.Time
-	origin, centre ionomaps.LatLon
-	radiusKm       float64
-	noise          ionomaps.Noise // the snapshot's (D-187)
+	propChartKey // what the chart is worked out from: the snapshot, hour, origin, radius and noise
+	centre       ionomaps.LatLon
 }
 
 // propCentre is the map centre's answer (FR-1.11, D-180): the bands from
@@ -58,14 +55,14 @@ func (d Dashboard) propCentreAt() (ionomaps.LatLon, bool) {
 // out from, or the map not the window shown.
 func (d Dashboard) propCentreWanted() (propCentreKey, bool) {
 	key, ok := d.propChartWanted()
-	if !ok || d.modal != modalMap {
-		return propCentreKey{}, false // the library is asked for its centre only in this mode (D-41)
+	if !ok || d.modal != modalMap || !d.propRole().target {
+		return propCentreKey{}, false // the library is asked for its centre only in this mode (D-41); on Observer the block is the centre's (D-193)
 	}
 	centre, at := d.propCentreAt()
 	if !at {
 		return propCentreKey{}, false
 	}
-	return propCentreKey{computed: key.computed, hour: key.hour, origin: key.origin, centre: centre, radiusKm: key.radiusKm, noise: key.noise}, true
+	return propCentreKey{propChartKey: key, centre: centre}, true
 }
 
 // armPropCentre asks for the centre's answer when the map has moved, or
@@ -88,15 +85,17 @@ func workPropCentre(snap ionomaps.Snapshot, key propCentreKey) propCentre {
 	return c
 }
 
-// propCentreLines are the centre's answer: where it is, MUF(3000) and foF2
-// there, and from the selected place the distance, the limit and the
-// highest band open; nil while there is none for the snapshot shown.
+// propCentreLines are the Broadcaster's answer for the centre, the target
+// (D-193): where it is, MUF(3000) and foF2 there, and from the station the
+// distance, the bands usable and the limits, and the frequency held; nil
+// on Observer, or while there is none for the snapshot shown.
 func (d Dashboard) propCentreLines() []string {
-	c, loc := d.mapPane.propCentre, d.selectedLocation()
+	c, origin := d.mapPane.propCentre, d.mapPane.propOrigin
 	shown := d.propOnScreen()
-	if loc == nil || len(shown.Hours) == 0 || !c.key.computed.Equal(shown.Computed) || c.err != nil || len(c.bands) == 0 {
+	if !d.propRole().target || !origin.ok || len(shown.Hours) == 0 || !c.key.computed.Equal(shown.Computed) || c.err != nil || len(c.bands) == 0 {
 		return nil
 	}
+	from := strings.ToUpper(origin.name)
 	ns, ew := "N", "E"
 	if c.key.centre.Lat < 0 {
 		ns = "S"
@@ -111,14 +110,14 @@ func (d Dashboard) propCentreLines() []string {
 		out = append(out, fmt.Sprintf("MUF(3000) %.1f · foF2 %.1f MHz", muf, fo))
 	}
 	if c.km <= c.key.radiusKm {
-		out = append(out, "Near-vertical from "+strings.ToUpper(loc.Label)) // within the radius: the area's answer
+		out = append(out, "Near-vertical from "+from) // within the radius: the area's answer
 	} else {
-		out = append(out, "From "+strings.ToUpper(loc.Label)+": "+d.roundDistance(c.km))
+		out = append(out, "From "+from+": "+d.roundDistance(c.km))
 	}
 	if c.bands[0].Status == ionomaps.StatusNoData {
 		return append(out, "no data on the path")
 	}
-	out = append(out, propRowLimitWords(c.bands)+" · up to "+highestOpen(c.bands))
+	out = append(out, d.propTarget(c.bands)...)
 	return append(out, d.propNearestWords(c.nearest))
 }
 
@@ -154,12 +153,14 @@ func (d Dashboard) propCentreBox() []string {
 // the centre, in the Propagation mode, while the menu leaves the corner
 // free.
 func (d Dashboard) withPropCentre(lines []string, size tuimaps.Size) []string {
-	box := d.propCentreBox()
-	if !d.inPropagation() || d.mapPane.menuOn || box == nil || len(lines) == 0 {
+	if !d.inPropagation() || d.mapPane.menuOn || len(lines) == 0 {
 		return lines
 	}
-	lines = spliceBox(lines, []string{"+"}, size.Rows/2, insetCols+size.Cols/2) // the centre answered
-	return spliceBox(lines, box, 0, insetCols)
+	lines = spliceBox(lines, []string{"+"}, size.Rows/2, insetCols+size.Cols/2) // the centre: the origin on Observer, the target on the Broadcaster (D-193)
+	if box := d.propCentreBox(); box != nil {
+		lines = spliceBox(lines, box, 0, insetCols)
+	}
+	return lines
 }
 
 // propCentreWords are the centre's answer said (FR-3.1): last.

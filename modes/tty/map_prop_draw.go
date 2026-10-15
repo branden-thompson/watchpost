@@ -261,7 +261,8 @@ func (d Dashboard) propBlockAs(width, below int, styled bool) []string {
 		return text
 	}
 	out := []string{"RADIO FREQUENCY PROPAGATION    " + strings.Join(d.propBadges(styled), "  ")}
-	snap, loc := d.mapPane.propSnap, d.selectedLocation()
+	snap := d.mapPane.propSnap
+	origin := d.mapPane.propOrigin // D-193: the centre on Observer, the station on the Broadcaster
 	if snap == nil || len(snap.Hours) == 0 {
 		out = append(out, "MODE: "+field(propLayerName(d.mapPane.propLayer))+" · "+strings.TrimPrefix(d.propStatusWords(), "Propagation · "))
 		return padRows(out, width)
@@ -273,24 +274,27 @@ func (d Dashboard) propBlockAs(width, below int, styled bool) []string {
 		ago = "(" + strconv.Itoa(int(age.Minutes())) + " min ago)"
 	}
 	mode := "MODE: " + field(propLayerName(d.mapPane.propLayer)) + " · COMPUTED " + d.clockFmt.Time(at) + " " + at.Format("MST") +
-		" " + tint(ago, render.FreshnessTone(age)) + " · upper limits only" // D-166
-	if loc != nil && d.mapPane.propAhead > 0 { // an hour ahead: typical, said where the time was (FR-1.13, D-109)
-		mode = "MODE: " + field(propLayerName(d.mapPane.propLayer)) + " · " + tint(d.propAheadLabel(loc.Lat, loc.Lon), render.AlertLabel)
+		" " + tint(ago, render.FreshnessTone(age)) + " · " + strings.ToLower(propNoiseLabel(snap.Noise)) + " noise" // D-166; D-187: the circuit's noise, the chart saying the rest
+	if origin.ok && d.mapPane.propAhead > 0 { // an hour ahead: typical, said where the time was (FR-1.13, D-109)
+		mode = "MODE: " + field(propLayerName(d.mapPane.propLayer)) + " · " + tint(d.propAheadLabel(origin.at.Lat, origin.at.Lon), render.AlertLabel)
 	}
 	out = append(out, mode, d.propFreqLine()) // D-163: a blank row before the place, the frequency held there (D-179)
-	if loc == nil {
+	if !origin.ok {
 		return padRows(out, width)
 	}
-	name := strings.ToUpper(loc.Label)
+	name := strings.ToUpper(origin.name)
 	place := tint(name, render.MapPropPlace) + "   " // D-164; D-163: the place in a column of its own, its answer under NOW
 	under := strings.Repeat(" ", render.Width(name)+3)
+	if render.Width(name) > propPlaceColMax { // a long name (a view's, D-193): its answers under it at a short indent, the block's rows unchanged
+		under = strings.Repeat(" ", propLongIndent)
+	}
 	shown := d.propOnScreen()
 	when := "NOW"
 	if k := d.mapPane.propAhead; k > 0 {
 		when = "+" + strconv.Itoa(k) + " h"
 	}
-	fo, okF := cellValue(shown.Hours[0].FoF2, loc.Lat, loc.Lon)
-	muf, okM := cellValue(shown.Hours[0].MUF3000, loc.Lat, loc.Lon)
+	fo, okF := cellValue(shown.Hours[0].FoF2, origin.at.Lat, origin.at.Lon)
+	muf, okM := cellValue(shown.Hours[0].MUF3000, origin.at.Lat, origin.at.Lon)
 	if !okF || !okM {
 		return padRows(append(out, place+when+" · no data at the place"), width)
 	}
@@ -301,6 +305,13 @@ func (d Dashboard) propBlockAs(width, below int, styled bool) []string {
 	}
 	return padRows(out, width)
 }
+
+// The place's column in the block: under a name wider than this, the
+// answers are indented by the second, not under NOW (A-51).
+const (
+	propPlaceColMax = 24
+	propLongIndent  = 2
+)
 
 // propAgeShown reports whether the block says a snapshot's age, which moves
 // with the clock (D-166).

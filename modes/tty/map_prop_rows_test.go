@@ -8,6 +8,7 @@ import (
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -28,7 +29,7 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	d = workChart(t, runProp(t, d, cmd))
 	rows := stripANSITest(strings.Join(d.scrubRows(d.mapTextW()), "\n"))
 	for _, want := range []string{"RADIO FREQUENCY PROPAGATION", "SWPC", "PYIRI", "IGRF-14",
-		"MODE:   MUF(3000)   · COMPUTED", "(12 min ago) · upper limits only", // the fields as chips (D-165)
+		"MODE:   MUF(3000)   · COMPUTED", "(12 min ago) · residential noise", // the fields as chips (D-165); the circuit's noise (D-187)
 		"NOW ·   foF2   6.0 MHz ·   MUF(3000)   18.0 MHz",
 		"Local, to ~400 km (NVIS): 160m 80m 60m",
 		"Up to: NA ", " · OC ", "B chart"} {
@@ -36,16 +37,27 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 			t.Errorf("the rows under the map do not say %q:\n%s", want, rows)
 		}
 	}
-	block := d.propBlock(d.scrubW()) // D-163: a blank row between the mode and the place; the answer under NOW
-	label := strings.ToUpper(d.selectedLocation().Label)
+	block := d.propBlock(d.scrubW())                    // D-163: a blank row between the mode and the place; the answer under NOW
+	label := strings.ToUpper(d.mapPane.propOrigin.name) // D-193: on Observer the map's centre, named for the view
 	if !strings.HasPrefix(block[1], "MODE:") || strings.TrimSpace(block[2]) != "" || !strings.HasPrefix(block[3], label+"   NOW · ") {
 		t.Errorf("the block is not header, mode, a blank row, then the place:\n%s", strings.Join(block, "\n"))
 	}
-	now := strings.Index(block[3], "NOW")
+	under := strings.Index(block[3], "NOW") // under NOW, or a short indent under a name too long for the column (A-51)
+	if len([]rune(label)) > propPlaceColMax {
+		under = propLongIndent
+	}
 	for _, l := range block[4:6] {
-		if strings.Index(l, "Local") != now && strings.Index(l, "Up to:") != now {
-			t.Errorf("%q is not aligned under NOW, at %d", l, now)
+		if strings.Index(l, "Local") != under && strings.Index(l, "Up to:") != under {
+			t.Errorf("%q is not aligned at %d", l, under)
 		}
+	}
+	st := d // a name that fits its column: the answers stand under NOW (D-163)
+	st.surface, st.cfg.Transmitter = SurfaceBroadcaster, &snapshot.LocationRef{Label: "KXYZ", Lat: 33.2, Lon: -117.3}
+	st = workChart(t, st.renderMap())
+	short := st.propBlock(st.scrubW())
+	at := strings.Index(short[3], "NOW")
+	if !strings.HasPrefix(short[3], "KXYZ   NOW · ") || strings.Index(short[4], "Local") != at || strings.Index(short[5], "Up to:") != at {
+		t.Errorf("under a short name the answers do not stand under NOW (%d):\n%s", at, strings.Join(short, "\n"))
 	}
 	if lines, holds := len(d.mapBodyLines()), d.modalMax(); lines != holds {
 		t.Errorf("the window's body is %d lines and the window holds %d: the rows under the map and the map's size disagree", lines, holds)
@@ -122,7 +134,7 @@ func TestRoundFourMarksStandOut(t *testing.T) {
 		d, cmd := keyCmd(t, propDash(t, s, true), "P")
 		d = runProp(t, d, cmd)
 		block := d.propBlock(d.scrubW())
-		label := strings.ToUpper(d.selectedLocation().Label)
+		label := strings.ToUpper(d.mapPane.propOrigin.name) // D-193
 		if !strings.Contains(block[3], render.Tint(label, render.Tok(render.MapPropPlace))) {
 			t.Errorf("the place is not in the bold bright tone: %q", block[3])
 		}
