@@ -188,7 +188,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## github.com/branden-thompson/go-ionomaps v0.0.0-20261012050848-8befd5b0ac80
+## github.com/branden-thompson/go-ionomaps v0.0.0-20261015001138-a88f0450fbc6
 
 ```
 MIT License
@@ -232,6 +232,9 @@ Sources the library reads, or will read, and their terms:
    Acknowledge each station's data provider.
    A field computed from these readings is treated as a substantially derivative product, which GIRO's
    rules leave unrestricted. That reading is this project's own and has not been confirmed by GIRO.
+   The stations' codes, and the positions GIRO states for the live ones, are shipped as the live-station
+   list's seed (watchpost D-51); station metadata, never readings:
+     internal/stations/seed.txt
 
 2. NOAA Space Weather Prediction Center: GloTEC (NmF2), D-RAP (D-region absorption)
    the space-weather scales (R, S, G) and the daily solar indices (F10.7)
@@ -260,14 +263,27 @@ Sources the library reads, or will read, and their terms:
    kept as the evaluation's test oracle:
      tools/tables/igrf/igrf14coeffs.txt (IAGA's coefficient file, as fetched 2026-10-09)
      tools/tables/igrf/golden-igrf.txt (ppigrf's values)
-   The library's own quasi-dipole coordinates and the gyrofrequency at 300 km are generated from it at
-   build time:
+   The library's own quasi-dipole coordinates, the gyrofrequency at 300 km, and the gyrofrequency and
+   dip at 100 km are generated from it at build time:
      internal/magcoords/coords.bin
      internal/magcoords/gyro.bin
+     internal/magcoords/field100.bin
    Cite: IAGA Working Group V-MOD, the International Geomagnetic Reference Field, 14th generation.
 
 5. ITU-R P.533 and P.1239: methods implemented from the published recommendations; no recommendation
-   text or tables are reproduced.
+   text is reproduced, and no table except those taken from ITUHFProp (6).
+
+6. ITUHFProp (ITU-R Study Group 3, github.com/ITU-R-Study-Group-3/ITU-R-HF), ITU's reference
+   implementation of ITU-R P.533. Its README: it "may be used by implementers in their implementation of
+   the Recommendation as well as in revisions of the specific original Recommendation and in other ITU
+   Recommendations, free from any copyright assertions", provided "as is" with no warranty.
+   P.533-14's absorption factors - ATnoon (Fig. 1), the penetration factor phi (Fig. 2) and the diurnal
+   exponent p (Fig. 3), ITUHFProp's AbsorptionFactor, AbsorptionLayerPenetrationFactor and
+   DiurnalAbsorptionExponent, themselves from NTIA's REC533 - are ported into the library (watchpost
+   D-186):
+     internal/limits/absorption.go
+   ITUHFProp's own values of those factors at fixed inputs are kept as their test oracle:
+     internal/limits/testdata/itu-absorption-golden.txt
 ```
 
 ## github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261012132716-e97d5ab68680

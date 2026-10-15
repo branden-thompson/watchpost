@@ -194,6 +194,10 @@ func TestTheModeRefreshesWhileOpen(t *testing.T) {
 	if runProp(t, m.(Dashboard), cmd); s.count() != 3 {
 		t.Errorf("an old session's tick asked again in the new one (%d)", s.count())
 	}
+	m, cmd = d.Update(propTickMsg{gen: stale.gen, seq: d.mapPane.propTickSeq}) // the old session's, at the live tick's number: only its session tells it apart
+	if runProp(t, m.(Dashboard), cmd); s.count() != 3 {
+		t.Errorf("a tick from a session since left, at the live tick's number, asked again (%d)", s.count())
+	}
 }
 
 // TestLeavingTheModeCancelsItsUpdate is FR-4.2: leaving the Propagation mode

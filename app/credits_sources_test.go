@@ -9,8 +9,7 @@ import (
 // yet, each with why: the day one is read or reproduced, it is credited and
 // leaves this list.
 var creditPending = map[string]string{
-	"GIRO":        "not read until go-ionomaps' station assimilation (G5, A-35)",
-	"ITU-R P.533": "cited for its method; no text or tables reproduced",
+	"ITU-R P.533": "cited for its method; its tables reach the library through ITUHFProp, credited as such (D-186)",
 	"P.1239":      "cited for its method; no text or tables reproduced",
 }
 

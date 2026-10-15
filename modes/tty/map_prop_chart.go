@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -51,8 +52,8 @@ type propChartKey struct {
 // none, which is ours to fix (D-124).
 type propChart struct {
 	key     propChartKey
-	local   []ionomaps.BandStatus
-	targets [][]ionomaps.BandStatus // by propContinents
+	local   ionomaps.Answer
+	targets []ionomaps.Answer // by propContinents
 	err     error
 }
 
@@ -159,6 +160,10 @@ func (d Dashboard) answered(err error, what string) Dashboard {
 	return d
 }
 
+// errPropAnswers is an answer of another length than the places asked:
+// the library's to fix, said in diagnostics (D-124).
+var errPropAnswers = errors.New("go-ionomaps answered a different number of places than were asked")
+
 // workPropChart works the chart out: off the UI goroutine, about 5 ms.
 func workPropChart(snap ionomaps.Snapshot, key propChartKey) propChart {
 	c := propChart{key: key}
@@ -174,6 +179,10 @@ func workPropChart(snap ionomaps.Snapshot, key propChartKey) propChart {
 	paths, err := snap.Path(key.origin, to, key.hour)
 	if err != nil {
 		c.err = err
+		return c
+	}
+	if len(local) != 1 || len(paths) != len(propContinents) {
+		c.err = errPropAnswers
 		return c
 	}
 	for i, t := range propContinents {
@@ -217,7 +226,7 @@ func (d Dashboard) propBestLine() string {
 	}
 	parts := make([]string, len(propContinents))
 	for i, t := range propContinents {
-		parts[i] = t.short + " " + highestOpen(d.mapPane.propChart.targets[i])
+		parts[i] = t.short + " " + highestOpen(d.mapPane.propChart.targets[i].Bands)
 	}
 	line := "Up to: " + strings.Join(parts, " · ")
 	if keys := d.mapKeys[actMapChart].Keys; len(keys) > 0 {
@@ -229,17 +238,19 @@ func (d Dashboard) propBestLine() string {
 // propChartWidth is the chart window's width: within the 80-column floor.
 const propChartWidth = 78
 
-// The chart's glyphs: open, and above the upper limit; no data is blank.
+// The chart's glyphs: open, disturbed (open, its lower edge under D-RAP's
+// 1 dB frequency), and above the upper limit; no data is blank.
 const (
-	propOpenGlyph   = '●'
-	propClosedGlyph = '·'
+	propOpenGlyph      = '●'
+	propDisturbedGlyph = '◐'
+	propClosedGlyph    = '·'
 )
 
 // propChartRows are the chart's rows: the near-vertical area, then each
 // continent.
-func (d Dashboard) propChartRows() (names []string, answers [][]ionomaps.BandStatus) {
+func (d Dashboard) propChartRows() (names []string, answers []ionomaps.Answer) {
 	names = []string{fmt.Sprintf("Local, ~%d km", int(d.mapPane.propChart.key.radiusKm))}
-	answers = [][]ionomaps.BandStatus{d.mapPane.propChart.local}
+	answers = []ionomaps.Answer{d.mapPane.propChart.local}
 	for i, t := range propContinents {
 		names, answers = append(names, t.name), append(answers, d.mapPane.propChart.targets[i])
 	}
@@ -266,28 +277,35 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 	out = append(out, head)
 	names, answers := d.propChartRows()
 	row := min(d.mapPane.propChartRow, len(names)-1)
-	for i, bands := range answers {
+	var unscored []string
+	for i, a := range answers {
 		pointer := "  "
 		if i == row {
 			pointer = "▸ "
 		}
-		line := pointer + render.PadTo(names[i], propNameW) + d.propBandCells(bands)
-		if len(bands) > 0 && bands[0].Status != ionomaps.StatusNoData {
-			line += " " + propLimitWords(bands[0])
+		line := pointer + render.PadTo(names[i], propNameW) + d.propBandCells(a.Bands)
+		if w := propRowLimitWords(a.Bands); w != "" {
+			line += " " + w
 		}
 		out = append(out, line)
+		if a.Nearest.Known && a.Nearest.Unscored {
+			unscored = append(unscored, names[i])
+		}
 	}
-	out = append(out, string(propOpenGlyph)+" open under the upper limit   "+string(propClosedGlyph)+" above it   blank: no data")
+	out = append(out, string(propOpenGlyph)+" open   "+string(propDisturbedGlyph)+" disturbed (D-RAP)   "+string(propClosedGlyph)+" above the upper limit   blank: no data")
+	if len(unscored) > 0 {
+		out = append(out, "Nearest station unscored, verify on air: "+strings.Join(unscored, ", ")) // D-181
+	}
 	if f := d.propFreqLine(); f != "" {
 		out = append(out, f) // D-178: what is held
 	}
 	out = append(out, "")
 	out = append(out, "TYPICAL DAY, UTC: "+names[row])
-	if propDiffers(answers[row], c.key.hour) {
+	if propDiffers(answers[row].Bands, c.key.hour) {
 		out[len(out)-1] += " · now differs from a typical day"
 	}
 	out = append(out, d.propDayHead(c.key.hour))
-	return append(out, d.propDayRows(answers[row])...)
+	return append(out, d.propDayRows(answers[row].Bands)...)
 }
 
 // propNameW is the chart's name column: the longest row name and a space.
@@ -298,7 +316,11 @@ const propNameW = 16
 func (d Dashboard) propBandCells(bands []ionomaps.BandStatus) string {
 	var b strings.Builder
 	for _, s := range bands {
-		b.WriteString(" " + d.propGlyph(s.Status == ionomaps.Open, s.Status == ionomaps.StatusNoData) + " ")
+		g := d.propGlyph(s.Status == ionomaps.Open, s.Status == ionomaps.StatusNoData)
+		if s.Status == ionomaps.Disturbed {
+			g = render.Tint(string(propDisturbedGlyph), render.Tok(render.NameAdvisory))
+		}
+		b.WriteString(" " + g + " ")
 	}
 	return b.String()
 }
@@ -315,13 +337,36 @@ func (d Dashboard) propGlyph(open, noData bool) string {
 	return render.Tint(string(propClosedGlyph), render.Tok(render.KeyChipMuted))
 }
 
-// propLimitWords name the limit that decided a row and its value (R-2.6).
+// propLimitWords name the limit that decided a band and its value (R-2.6).
 func propLimitWords(b ionomaps.BandStatus) string {
 	name := "MUF"
-	if b.Limit == ionomaps.LimitFoF2 {
+	switch b.Limit {
+	case ionomaps.LimitFoF2:
 		name = "foF2"
+	case ionomaps.LimitDRAP:
+		name = "D-RAP"
 	}
 	return fmt.Sprintf("%s %.1f MHz", name, b.LimitMHz)
+}
+
+// propRowLimitWords name a row's limits: its upper limit, from a band it
+// decided, and D-RAP's 1 dB frequency when it disturbs any band; empty
+// with no data.
+func propRowLimitWords(bands []ionomaps.BandStatus) string {
+	var upper, drap string
+	for _, b := range bands {
+		switch {
+		case b.Status == ionomaps.StatusNoData:
+		case b.Limit == ionomaps.LimitDRAP:
+			drap = propLimitWords(b)
+		case upper == "":
+			upper = propLimitWords(b)
+		}
+	}
+	if upper != "" && drap != "" {
+		return upper + " · " + drap
+	}
+	return upper + drap
 }
 
 // propDayHead marks the typical day's hours every three, and the hour shown.

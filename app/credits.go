@@ -11,7 +11,9 @@ import "github.com/branden-thompson/watchpost/modes/tty"
 // whose credit is named; AirNow asks its readings be called preliminary, and
 // NASA that FIRMS data be credited to LANCE FIRMS. The
 // voices are credited under the licence they are published under (D-228), as
-// is PyIRI, whose climatology go-ionomaps ports (0.19.0 FR-4.1).
+// is PyIRI, whose climatology go-ionomaps ports (0.19.0 FR-4.1), and
+// ITUHFProp, whose absorption factors it ports (D-186). GIRO's readings are
+// for non-commercial use, and its line says so.
 // Every line is a chip, a phrase, an endpoint and a note where there is one
 // (D-235): the credit-row component draws them all.
 // Add a source here when a provider or a layer reads a new one.
@@ -27,7 +29,7 @@ func creditGroups() []tty.CreditGroup {
 			{Badge: "MRMS", What: "Current Radar for Maps"},
 			{Badge: "HRRR", What: "Radar Ahead (forecast) for Maps"},
 			{Badge: "NDFD", What: "Gridded Forecast Data", Host: "graphical.weather.gov"},
-			{Badge: "SWPC", What: "Ionosphere (GloTEC) & Solar Indices", Host: "services.swpc.noaa.gov"},
+			{Badge: "SWPC", What: "Ionosphere (GloTEC), D-RAP & Solar Indices", Host: "services.swpc.noaa.gov"},
 		}},
 		{Name: "NATIONAL AERONAUTICS AND SPACE ADMINISTRATION (NASA)", Lines: []tty.CreditLine{
 			{Badge: "FIRMS", What: "Fire Hotspots, API Key Required", Host: "earthdata.nasa.gov", Note: "LANCE FIRMS, operated by NASA ESDIS"},
@@ -62,9 +64,13 @@ func creditGroups() []tty.CreditGroup {
 		{Name: "GEONAMES (CC BY 4.0)", Lines: []tty.CreditLine{
 			{Badge: "GEONAMES", What: "Cities & Postal Codes", Host: "geonames.org", Note: "The offline place index"},
 		}},
+		{Name: "LOWELL GIRO DATA CENTER (CC BY-NC-SA 4.0)", Lines: []tty.CreditLine{
+			{Badge: "GIRO", What: "Ionosonde Stations", Host: "lgdc.uml.edu", Note: "Non-commercial use only; Reinisch & Galkin 2011"},
+		}},
 		{Name: "IONOSPHERE MODELS", Lines: []tty.CreditLine{
 			{Badge: "PYIRI", What: "Ionosphere Climatology (MIT)", Note: "© 2023 victoriyaforsythe; Forsythe et al. 2024, ported"},
 			{Badge: "IGRF-14", What: "Magnetic Coordinates", Note: "IAGA's International Geomagnetic Reference Field"},
+			{Badge: "ITUHFPROP", What: "P.533 Absorption Factors", Note: "ITU-R Study Group 3, ported"},
 		}},
 		{Name: "VOICES", Lines: []tty.CreditLine{
 			{Badge: "PIPER", What: "Piper Voices (MIT)", Host: "huggingface.co", Note: "rhasspy/piper-voices"},

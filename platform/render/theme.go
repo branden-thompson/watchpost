@@ -169,6 +169,8 @@ const (
 	MapChipSWPCBG  Token = "map.chip.swpc.bg"
 	MapChipPyIRIBG Token = "map.chip.pyiri.bg"
 	MapChipIGRFBG  Token = "map.chip.igrf.bg"
+	MapChipGIROBG  Token = "map.chip.giro.bg"
+	MapChipITUBG   Token = "map.chip.itu.bg"
 	// The Propagation mode's two fields, chips of their own (0.19.0 D-165).
 	MapChipMUFBG  Token = "map.chip.muf.bg"
 	MapChipFoF2BG Token = "map.chip.fof2.bg"
@@ -420,6 +422,8 @@ func defaultTheme() map[Token]string {
 		MapChipSWPCBG:     "48;2;192;38;211", // #C026D3, fuchsia (0.19.0 FR-4.1)
 		MapChipPyIRIBG:    "48;2;67;56;202",  // #4338CA, indigo
 		MapChipIGRFBG:     "48;2;14;116;144", // #0E7490, deep cyan
+		MapChipGIROBG:     "48;2;21;128;61",  // #15803D, green: GIRO's stations (0.19.0 G5)
+		MapChipITUBG:      "48;2;0;156;219",  // #009CDB, ITU's blue: ITUHFProp's absorption factors (D-186)
 		MapChipMUFBG:      "48;2;124;32;80",  // #7C2050, plum: the MUF ramp's middle (D-165)
 		MapChipFoF2BG:     "48;2;174;93;45",  // #AE5D2D, rust: the ramp's colour at foF2's band edges
 		MapNoticeQuotaBG:  "48;2;194;65;12",  // #C2410C, dark orange (D-165)

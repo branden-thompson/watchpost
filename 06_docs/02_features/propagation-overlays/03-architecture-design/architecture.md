@@ -90,13 +90,16 @@ sequenceDiagram
   Note over P: its own context and a 60 s deadline; a keypress never cancels it; closing the mode does
   P->>I: Update(ctx)
   I->>I: throttle (D-39): a cancelled burst still spends the hour; too soon, answer from the last field
-  I->>N: NOAA first (GloTEC newest by name or index, D-RAP, the scales; solar indices daily)
+  I->>N: NOAA (GloTEC newest by name or index, the solar indices daily, D-RAP)
   N-->>I: replies
-  I-->>P: Snapshot 1: GloTEC and the climatology, no stations yet (said)
+  I-->>P: Snapshot 1: GloTEC and the climatology, GIRO due: said StationsNext (D-183)
+  P-->>W: snapshot 1 shown, "asking GIRO's stations"
+  W->>P: PropagationUpdate() again at once (StationsNext)
+  P->>I: Update(ctx)
   I->>N: GIRO since the last reading (one burst, at most 40)
   N-->>I: replies
-  I-->>P: Snapshot 2: with the stations assimilated
-  P-->>W: snapshot ready (Computed, inputs' times)
+  I-->>P: Snapshot 2: the stations up to an hour old assimilated (D-184)
+  P-->>W: snapshot ready (Computed, inputs' times, stations)
   W->>A: PropagationAnswers(snapshot, ask): off the UI goroutine
   A->>A: overlays (the hour on screen), best bands, reach, words; memo keyed on every input
   A-->>W: frames and words
@@ -105,7 +108,7 @@ sequenceDiagram
 ```
 
 **The update and the answers are separate** (FR-1.17, FR-4.8; L-F9, P-4, P-5, P-6, A-29):
-- **One owner runs the update.** `domains/propagation` runs one `Update` at a time, in its own command with its own context and a 60 s deadline (a burst of 39 took 36 s in PLAN), driven by a refresh tick while the mode is open (FR-4.10) or by the refresh-now key (D-120). A keypress never cancels it; closing the mode does (FR-4.2), and a cancelled GIRO burst still spends the hour's budget (D-39). NOAA is fetched first, so a first picture (GloTEC and the climatology, said as "no stations yet") comes before the GIRO burst ends.
+- **One owner runs the update.** `domains/propagation` runs one `Update` at a time, in its own command with its own context and a 60 s deadline (a burst of 39 took 36 s in PLAN), driven by a refresh tick while the mode is open (FR-4.10) or by the refresh-now key (D-120). A keypress never cancels it; closing the mode does (FR-4.2), and a cancelled GIRO burst still spends the hour's budget (D-39). NOAA is fetched first: when GIRO is due, that update returns its snapshot said `StationsNext` and the window shows it and asks again at once, and the second update makes the burst (D-183), so a first picture comes before the GIRO burst ends.
 - **Answers come from the last snapshot.** They are pure functions of it (R-2), asked in their own command, so an hour step or a new frequency is answered at once, never behind a GIRO burst.
 - **Their memo key carries every input**: the snapshot's `Computed`, the origin, the hour, the frequency, the near-vertical radius (D-100) and the target set; a new snapshot or a changed Setting misses the memo; the centre is keyed separately. FR-8.2's guard covers this key.
 - **A returned snapshot is immutable** (fresh slices on every update).

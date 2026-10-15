@@ -66,9 +66,11 @@ const MapChipCOOPSBG
 const MapChipEPABG
 const MapChipFIRMSBG
 const MapChipFoF2BG
+const MapChipGIROBG
 const MapChipGeoNamesBG
 const MapChipHMSBG
 const MapChipIGRFBG
+const MapChipITUBG
 const MapChipMUFBG
 const MapChipNDBCBG
 const MapChipNDFDBG

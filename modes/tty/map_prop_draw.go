@@ -331,6 +331,7 @@ func (d Dashboard) propBadges(styled bool) []string {
 		{"SWPC", shown && snap.Background.FoF2 == ionomaps.GloTEC}, // the solar index alone, under the climatology, counts as unused
 		{"PYIRI", shown}, // M(3000)F2 is the climatology's at every cell
 		{"IGRF-14", shown},
+		{"GIRO", shown && snap.Inputs.Stations > 0}, // only when stations were assimilated into the field
 	} {
 		switch {
 		case styled && s.fed:

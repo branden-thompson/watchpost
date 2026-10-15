@@ -28,10 +28,11 @@ type propCentreKey struct {
 // the selected place to it and how far it is; or why there is none, which
 // is ours to fix (D-124).
 type propCentre struct {
-	key   propCentreKey
-	bands []ionomaps.BandStatus
-	km    float64
-	err   error
+	key     propCentreKey
+	bands   []ionomaps.BandStatus
+	nearest ionomaps.Nearest // the answer's nearest station (R-2.11)
+	km      float64
+	err     error
 }
 
 // propCentreMsg is a centre's answer worked out.
@@ -74,14 +75,14 @@ func (d Dashboard) armPropCentre() (Dashboard, tea.Cmd) { return d.armAnswer(ans
 // the place, the area's; farther, the path's.
 func workPropCentre(snap ionomaps.Snapshot, key propCentreKey) propCentre {
 	c := propCentre{key: key, km: geo.HaversineKM(key.origin.Lat, key.origin.Lon, key.centre.Lat, key.centre.Lon)}
-	var got [][]ionomaps.BandStatus
+	var got []ionomaps.Answer
 	if c.km <= key.radiusKm {
 		got, c.err = snap.Bands([]ionomaps.LatLon{key.origin}, key.radiusKm, key.hour)
 	} else {
 		got, c.err = snap.Path(key.origin, []ionomaps.LatLon{key.centre}, key.hour)
 	}
 	if c.err == nil && len(got) == 1 {
-		c.bands = got[0]
+		c.bands, c.nearest = got[0].Bands, got[0].Nearest
 	}
 	return c
 }
@@ -116,7 +117,21 @@ func (d Dashboard) propCentreLines() []string {
 	if c.bands[0].Status == ionomaps.StatusNoData {
 		return append(out, "no data on the path")
 	}
-	return append(out, propLimitWords(c.bands[0])+" · up to "+highestOpen(c.bands))
+	out = append(out, propRowLimitWords(c.bands)+" · up to "+highestOpen(c.bands))
+	return append(out, d.propNearestWords(c.nearest))
+}
+
+// propNearestWords say how far the answer's nearest station is, and when
+// its readings are unscored, to verify on air (D-181); or that none fed it.
+func (d Dashboard) propNearestWords(n ionomaps.Nearest) string {
+	if !n.Known {
+		return "No station fed this answer"
+	}
+	w := "Nearest station " + d.roundDistance(float64(n.Km))
+	if n.Unscored {
+		w += ", unscored: verify on air"
+	}
+	return w
 }
 
 // propCentreBox is the centre's answer boxed for the map's upper left

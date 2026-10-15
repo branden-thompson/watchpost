@@ -39,7 +39,8 @@ func TestTheContinentsAreTheDefaultTargets(t *testing.T) {
 	if c.err != nil || len(c.targets) != len(propContinents) {
 		t.Fatalf("the chart holds %d targets (%v); want the %d continents", len(c.targets), c.err, len(propContinents))
 	}
-	for i, bands := range c.targets {
+	for i, a := range c.targets {
+		bands := a.Bands
 		if len(bands) != len(hfBands) {
 			t.Fatalf("%s has %d bands; want %d", propContinents[i].name, len(bands), len(hfBands))
 		}
@@ -80,11 +81,11 @@ func TestBestBandsNameTheirLimit(t *testing.T) {
 // open; the arrows move the target the day is drawn for.
 func TestTheDaysOpenHoursAreShown(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
-	day := d.propDayRows(d.mapPane.propChart.local)
+	day := d.propDayRows(d.mapPane.propChart.local.Bands)
 	if len(day) != len(hfBands) {
 		t.Fatalf("the typical day has %d rows; want one a band", len(day))
 	}
-	for i, b := range d.mapPane.propChart.local {
+	for i, b := range d.mapPane.propChart.local.Bands {
 		cells := []rune(stripANSITest(day[i]))
 		cells = cells[len(cells)-47:] // 24 hours, a space between each
 		for h := range 24 {
@@ -120,13 +121,13 @@ func TestADisagreementWithTheTypicalDayIsSaid(t *testing.T) {
 	for i := range agree {
 		agree[i] = ionomaps.BandStatus{Band: ionomaps.AllBands()[i], Status: ionomaps.AboveUpper, Limit: ionomaps.LimitFoF2}
 	}
-	c.local = agree
+	c.local = ionomaps.Answer{Bands: agree}
 	if text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); strings.Contains(text, "now differs") {
 		t.Errorf("every band closed now and in its typical day, yet a difference is said:\n%s", text)
 	}
 	differ := append([]ionomaps.BandStatus(nil), agree...)
 	differ[0].OpenHours = []ionomaps.Span{{From: hour, To: hour.Add(time.Hour)}} // typically open this hour, closed now
-	c.local = differ
+	c.local = ionomaps.Answer{Bands: differ}
 	if text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(text, "now differs from a typical day") {
 		t.Errorf("160m is typically open this hour and closed now, yet no difference is said:\n%s", text)
 	}
@@ -169,7 +170,7 @@ func TestAnswersNeverBlockTheUI(t *testing.T) {
 	if _, again := d.armPropChart(); again != nil {
 		t.Error("the chart was asked twice for the same snapshot and place")
 	}
-	older := propChartMsg{chart: propChart{key: propChartKey{radiusKm: 1}, targets: make([][]ionomaps.BandStatus, len(propContinents))}}
+	older := propChartMsg{chart: propChart{key: propChartKey{radiusKm: 1}, targets: make([]ionomaps.Answer, len(propContinents))}}
 	if m, _ := d.Update(older); len(m.(Dashboard).mapPane.propChart.targets) != 0 {
 		t.Error("an answer to an older ask was kept over the one asked for")
 	}

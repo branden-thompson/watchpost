@@ -37,6 +37,8 @@ var chipGrounds = map[string]render.Token{
 	"SWPC":      render.MapChipSWPCBG, // the Propagation mode's sources (0.19.0 FR-4.1)
 	"PYIRI":     render.MapChipPyIRIBG,
 	"IGRF-14":   render.MapChipIGRFBG,
+	"GIRO":      render.MapChipGIROBG,
+	"ITUHFPROP": render.MapChipITUBG,
 	"MUF(3000)": render.MapChipMUFBG, // the Propagation mode's fields (D-165)
 	"foF2":      render.MapChipFoF2BG,
 	"RECORDED":  render.MapChipRecordedBG, // not a source: the history, appended after one (D-173, D-178)

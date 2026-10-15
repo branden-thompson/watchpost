@@ -91,6 +91,8 @@ var unmeasurable = map[Token]string{
 	MapChipSWPCBG:     "a chip ground (0.19.0 FR-4.1)",
 	MapChipPyIRIBG:    "a chip ground (0.19.0 FR-4.1)",
 	MapChipIGRFBG:     "a chip ground (0.19.0 FR-4.1)",
+	MapChipGIROBG:     "a chip ground (0.19.0 G5)",
+	MapChipITUBG:      "a chip ground (0.19.0 D-186)",
 	MapChipMUFBG:      "a chip ground (0.19.0 D-165)",
 	MapChipFoF2BG:     "a chip ground (0.19.0 D-165)",
 	MapPropPlace:      "the window title's tone, derived (0.19.0 D-164): ModalTitle is measured",

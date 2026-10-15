@@ -3,6 +3,7 @@ package tty
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -76,6 +77,13 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		d.mapPane.propAheadHours, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
 	}
 	d.mapPane.propErr = v.res.Err
+	if v.res.Err == nil && v.res.Snapshot.Early == ionomaps.StationsNext {
+		nd, cmd := d.setProp().renderMap().askPropagation() // NOAA's field is shown; GIRO's stations at once (go-ionomaps D-63)
+		if cmd != nil {
+			return nd, cmd
+		}
+		return nd.nextPropTick()
+	}
 	return d.setProp().renderMap().nextPropTick()
 }
 
@@ -130,6 +138,13 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 		words = append(words, "asked too soon: the last field")
 	case ionomaps.Offline:
 		words = append(words, "NOAA not reached: the last field")
+	case ionomaps.StationsNext:
+		words = append(words, "asking GIRO's stations")
+	}
+	if s.Inputs.Stations > 0 {
+		words = append(words, fmt.Sprintf("%d stations, oldest %s", s.Inputs.Stations, s.Inputs.OldestReading.UTC().Format("15:04 UTC")))
+	} else if s.Early != ionomaps.StationsNext {
+		words = append(words, "no stations: the background alone")
 	}
 	switch s.Background.FoF2 {
 	case ionomaps.GloTEC:
