@@ -14,7 +14,15 @@ import (
 func TestAClosedBandIsDrawnByItsKind(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
 	c := &d.mapPane.propChart
+	// The row is written whole: the fixture's snapshot is for the wall clock's
+	// hour, whose absorption can close another band at another LUF.
 	bands := append([]ionomaps.BandStatus(nil), c.local.Bands...)
+	for i := range bands {
+		bands[i] = ionomaps.BandStatus{Band: bands[i].Band, Status: ionomaps.AboveUpper, Limit: ionomaps.LimitFoF2, LimitMHz: 6}
+		if i < len(hfBands) && hfBands[i].low < 6 {
+			bands[i].Status = ionomaps.Open
+		}
+	}
 	bands[0] = ionomaps.BandStatus{Band: bands[0].Band, Status: ionomaps.Absorbed, Limit: ionomaps.LimitAbsorption, LimitMHz: 4.2}
 	bands[1] = ionomaps.BandStatus{Band: bands[1].Band, Status: ionomaps.Weak, Limit: ionomaps.LimitCircuit, LimitMHz: 4.2}
 	c.local.Bands = bands

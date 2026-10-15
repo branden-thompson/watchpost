@@ -174,6 +174,7 @@ func broadcasterKeyMap() term.KeyMap {
 		// search box that belongs behind it.
 		actLookup:        {Keys: []string{"l"}, Help: "Lookup Location"},
 		actRequest:       {Keys: []string{"r"}, Help: "Line-Up Request"},
+		actMap:           {Keys: []string{"g"}, Help: "Map"}, // Observer's key and window, on the station's place (D-56, D-195)
 		actStatus:        {Keys: []string{"S"}, Help: "Status"},
 		actHelp:          {Keys: []string{"?"}, Help: "Help"},
 		actQuit:          {Keys: []string{"q"}, Help: "Quit"},
@@ -808,7 +809,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 			return r, nil, true
 		}
 	case actGainUp, actGainDown,
-		actSettings, actAbout, actStatus, actHelp, actQuit, actLookup:
+		actSettings, actAbout, actStatus, actHelp, actQuit, actLookup, actMap:
 		out, cmd := r.throughToObserver(msg)
 		return out, cmd, true
 	case actDiagnostics:

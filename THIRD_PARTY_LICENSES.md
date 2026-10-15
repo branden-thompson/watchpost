@@ -292,7 +292,7 @@ Sources the library reads, or will read, and their terms:
      internal/limits/testdata/itu-absorption-golden.txt
 ```
 
-## github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261012132716-e97d5ab68680
+## github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261015214940-9dc4ff3f72e3
 
 ```
 MIT License

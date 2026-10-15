@@ -707,7 +707,7 @@ const (
 // drawn (UAT-1 U1-14). The watchlist's snapshot is shared, so the selected
 // place joins a copy.
 func (d Dashboard) mapAsk() MapAsk {
-	place := d.selectedLocation()
+	place := d.mapPlace()
 	snap := d.snap
 	if place != nil && d.selected >= d.numPriority() {
 		joined := snapshot.Snapshot{}

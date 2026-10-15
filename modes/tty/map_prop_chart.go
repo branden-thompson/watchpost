@@ -70,7 +70,7 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 	if !ok || !d.mapShown() || !d.inPropagation() || !origin.ok {
 		return propChartKey{}, false
 	}
-	return propChartKey{computed: shown.Computed, hour: shown.Hours[0].At, origin: origin.at, radiusKm: float64(d.mapPropRadiusKm), noise: shown.Noise}, true
+	return propChartKey{computed: shown.Computed, hour: shown.Hours[0].At, origin: origin.at, radiusKm: float64(d.propRadiusKm()), noise: shown.Noise}, true
 }
 
 // armPropChart asks for the chart when what it is worked out from has

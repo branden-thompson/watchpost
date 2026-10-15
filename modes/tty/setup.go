@@ -614,12 +614,18 @@ func (d Dashboard) commitToModel() Dashboard {
 	// the OLD epicentre and the operator would reasonably read the save as failed.
 	// The guards match the ApplyCmds' exactly; if they drift, the model and the
 	// file disagree about what is in force.
+	moved := false // the station's place or reach changed: an open map follows it (D-195)
 	if d.cfg.SetTransmitter != nil && d.setup.txRef != nil {
 		ref := *d.setup.txRef
+		moved = d.cfg.Transmitter == nil || *d.cfg.Transmitter != ref
 		d.cfg.Transmitter = &ref
 	}
 	if v := d.setup.serviceRadiusChoice(); d.cfg.SetServiceRadius != nil && d.inServiceRange(v) {
+		moved = moved || d.cfg.ServiceRadiusMi != v
 		d.cfg.ServiceRadiusMi = v
+	}
+	if moved && d.mapPane.m != nil && d.mapRole().zone {
+		d = d.followSelection().setZone()
 	}
 	if d.cfg.SetRelayLang != nil && d.setup.relayLang != "" {
 		d.cfg.RelayLang = d.setup.relayLang

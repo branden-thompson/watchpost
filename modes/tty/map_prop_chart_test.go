@@ -166,17 +166,21 @@ func TestTheOriginFollowsTheUIMode(t *testing.T) {
 	}
 }
 
-// TestEveryUIModeHasAPropagationRole is D-193's table walked: every UI mode
-// rules where its Propagation answers come from, so a mode added later
-// (Analyst, D-27) cannot inherit one silently.
-func TestEveryUIModeHasAPropagationRole(t *testing.T) {
+// TestEveryUIModeHasAMapRole is D-193's and D-195's table walked: every UI
+// mode rules whose place its map is on and where its Propagation answers come
+// from, so a mode added later (Analyst, D-27) cannot inherit them silently;
+// an unruled one is Observer's.
+func TestEveryUIModeHasAMapRole(t *testing.T) {
 	for s := Surface(0); s < numSurfaces; s++ {
-		if propRoles[s].origin == propOriginUnruled {
-			t.Errorf("UI mode %d has no Propagation role: rule its origin in propRoles (D-193)", s)
+		if r := mapRoles[s]; r.place == mapPlaceUnruled || r.prop.origin == propOriginUnruled {
+			t.Errorf("UI mode %d has no map role: rule its place and Propagation origin in mapRoles (D-193, D-195)", s)
 		}
 	}
+	if (Dashboard{surface: numSurfaces}).mapRole() != mapRoles[SurfaceObserver] {
+		t.Error("an unruled UI mode does not fall back to Observer's role")
+	}
 	if (Dashboard{surface: numSurfaces}).propRole().origin != propFromCentre {
-		t.Error("an unruled UI mode does not fall back to exploring from the centre")
+		t.Error("an unruled UI mode does not explore from the centre")
 	}
 }
 

@@ -299,7 +299,7 @@ func (d Dashboard) propBlockAs(width, below int, styled bool) []string {
 		return padRows(append(out, place+when+" · no data at the place"), width)
 	}
 	out = append(out, fmt.Sprintf("%s%s · %s %.1f MHz · %s %.1f MHz", place, when, field("foF2"), fo, field("MUF(3000)"), muf))
-	out = append(out, under+"Local, to ~"+strconv.Itoa(d.mapPropRadiusKm)+" km (NVIS): "+bandNames(bandsUnder(fo))) // D-100: the Setting's radius
+	out = append(out, under+"Local, to ~"+strconv.Itoa(d.propRadiusKm())+" km ("+d.propLocalName()+"): "+bandNames(bandsUnder(fo))) // D-100: the Setting's radius; the service radius on the Broadcaster (FR-2.3)
 	if best := d.propBestLine(); best != "" {
 		out = append(out, under+best) // D-176, D-177: the continents, in the 3,000 km hops' place, and the key to the chart
 	}

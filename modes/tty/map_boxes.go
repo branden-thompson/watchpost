@@ -102,9 +102,18 @@ func (d Dashboard) controlsBox() []string {
 	return boxed("Controls", []string{
 		"    " + cap(actMapPanUp, "↑") + "     " + cap(actMapZoomIn, "+"),
 		" " + cap(actMapPanLeft, "←") + cap(actMapPanDown, "↓") + cap(actMapPanRight, "→") + "  " + cap(actMapZoomOut, "-"),
-		" " + cap(actMapPrev, "[") + cap(actMapNext, "]") + " place",
+		d.placeRow(),
 		" " + regionCaps(o, slices.Contains(mapRegionActs, d.mapPane.flash) && time.Now().Before(d.mapPane.flashEnd)) + " region", // D-77: the region keys, prominently
 	}, controlsInner)
+}
+
+// placeRow is the controls box's place line: [ and ] where the UI mode
+// steps through the places; where it does not (D-195), what the red ring is.
+func (d Dashboard) placeRow() string {
+	if !d.mapRole().placeKeys {
+		return " red: service"
+	}
+	return " " + d.controlCap(actMapPrev, "[") + d.controlCap(actMapNext, "]") + " place"
 }
 
 // controlCap is a key's chip, inverted while it blinks (U1-11); a region
@@ -934,7 +943,7 @@ func (d Dashboard) chooseOnRow(r overlayRow, forward bool) Dashboard {
 // centre and width, with the selected place while it is in view. With no
 // namer, the selected place.
 func (d Dashboard) mapTitleAt(size tuimaps.Size) string {
-	loc, m := d.selectedLocation(), d.mapPane.m
+	loc, m := d.mapPlace(), d.mapPane.m
 	if loc == nil {
 		return ""
 	}

@@ -75,6 +75,9 @@ type mapPane struct {
 	propErr         error
 	propLayer       int                        // MUF(3000) or foF2 (D-155), kept across sessions until the map is released
 	propGiven       map[string]tuimaps.Overlay // the Propagation overlays handed in
+	zoneGiven       map[string]tuimaps.Overlay // the service area handed in (D-195)
+	tower           tuimaps.Place              // the tower's mark placed, or none
+	roleDrawn       Surface                    // the UI mode the place and marks were set for
 	propChart       propChart                  // the reference chart's answers (W5.1)
 	propChartAsked  propChartKey               // what the chart was last asked for: asked once
 	propChartRow    int                        // the chart's row its typical day is drawn for: 0 the near-vertical area
@@ -271,7 +274,7 @@ func (d Dashboard) toggleMap() Dashboard {
 		return d.close()
 	}
 	d = d.open(modalMap).timeFrom("open")
-	loc := d.selectedLocation()
+	loc := d.mapPlace()
 	if loc == nil || d.mapsOff {
 		return d // FR-1.3, FR-1.6: the window says so; nothing is built for it
 	}
@@ -297,7 +300,7 @@ func (d Dashboard) toggleMap() Dashboard {
 	d.mapPane.prop = false // every open is a weather mode: the Propagation mode is never kept (D-154)
 	d = d.stopPropagation().setProp()
 	d = d.ensureMainOverlay() // D-103: a map opened in Forecast mode is never blank
-	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().requestFeed()
+	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().setZone().requestFeed()
 	d.mapPane.viewAsked = d.mapPane.viewGen // the open asks for its view: a move's tick dropped while closed is answered here (W14)
 	d = d.renderMap()
 	d, feed := d.askFeed()
@@ -413,6 +416,7 @@ func (d Dashboard) descBlock(width int) []string {
 
 // renderMap draws the map into the pane. It is called from Update only.
 func (d Dashboard) renderMap() Dashboard {
+	d = d.followRole() // a swap of UI modes with the map open: its place and marks follow (D-195)
 	m := d.mapPane.m
 	if m == nil || d.outsideStated() {
 		return d // FR-2.5: nothing wider is drawn in its place
@@ -528,7 +532,7 @@ func (d Dashboard) mapTitle() string {
 	if d.mapPane.title != "" && d.modal == modalMap && d.mapPane.m != nil {
 		return "Map " + d.opts().Glyphs().Dot + " " + d.mapPane.title // D-64: what is in view
 	}
-	if loc := d.selectedLocation(); loc != nil {
+	if loc := d.mapPlace(); loc != nil {
 		return "Map " + d.opts().Glyphs().Dot + " " + loc.Label
 	}
 	return "Map"
@@ -537,7 +541,7 @@ func (d Dashboard) mapTitle() string {
 // mapBodyLines is what the window shows: the map, or a stated reason why not.
 func (d Dashboard) mapBodyLines() []string {
 	switch {
-	case d.selectedLocation() == nil:
+	case d.mapPlace() == nil:
 		return []string{noSelectionText}
 	case d.mapsOff:
 		return []string{mapsOffText}
@@ -614,7 +618,7 @@ func (d Dashboard) followMenuFocus() Dashboard {
 // reportPlace keeps the library's answers for the selected place, which the
 // description reads. It needs no Work and no frame.
 func (d Dashboard) reportPlace() Dashboard {
-	m, loc := d.mapPane.m, d.selectedLocation()
+	m, loc := d.mapPane.m, d.mapPlace()
 	d.mapPane.report = tuimaps.PlaceReport{}
 	if m == nil || loc == nil {
 		return d
@@ -1041,10 +1045,14 @@ func (d Dashboard) moveMapView(act term.Action) (tea.Model, tea.Cmd, bool) {
 		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(1) })
 	case actMapZoomOut:
 		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(-1) })
-	case actMapPrev:
-		d = d.handleNav("nav-up").followSelection().requestFeed() // the notes speak of the place
-	case actMapNext:
-		d = d.handleNav("nav-down").followSelection().requestFeed()
+	case actMapPrev, actMapNext:
+		nav := term.Action("nav-down")
+		if act == actMapPrev {
+			nav = "nav-up"
+		}
+		if d.mapRole().placeKeys { // D-195: the Broadcaster's map stays on its station
+			d = d.handleNav(nav).followSelection().requestFeed() // the notes speak of the place
+		}
 	default:
 		if n := slices.Index(mapRegionActs, act); n >= 0 {
 			if r, ok := geo.RegionNumbered(n + 1); ok {
@@ -1099,7 +1107,7 @@ func (d Dashboard) showRegion(r geo.Region) Dashboard {
 // inside the region that location is in (FR-2.1). A location in no region
 // draws nothing wider in its place: the window says so (FR-2.5).
 func (d Dashboard) followSelection() Dashboard {
-	loc, m := d.selectedLocation(), d.mapPane.m
+	loc, m := d.mapPlace(), d.mapPane.m
 	if loc == nil || m == nil {
 		return d
 	}
@@ -1129,7 +1137,7 @@ func (d Dashboard) requestFeed() Dashboard {
 // feedKey is the place and view an ask made now would be for.
 func (d Dashboard) feedKey() feedKey {
 	k := feedKey{view: d.mapPane.viewGen}
-	if loc := d.selectedLocation(); loc != nil {
+	if loc := d.mapPlace(); loc != nil {
 		k.place = snapshot.Key(refOf(*loc))
 	}
 	return k
@@ -1148,7 +1156,7 @@ func keptSeqs(lanes [feedLanes]feedLane) [feedLanes]feedLane {
 // askFeed asks the app for the map's feed, each lane apart (D-268): the
 // alerts and the other layers, so a slow layer never holds the alerts back.
 func (d Dashboard) askFeed() (Dashboard, tea.Cmd) {
-	if d.cfg.MapFeed == nil || d.mapPane.m == nil || d.modal != modalMap || d.selectedLocation() == nil {
+	if d.cfg.MapFeed == nil || d.mapPane.m == nil || d.modal != modalMap || d.mapPlace() == nil {
 		return d, nil
 	}
 	cmds := make([]tea.Cmd, 0, feedLanes)
@@ -1184,7 +1192,7 @@ func (d Dashboard) askLane(lane int) (Dashboard, tea.Cmd) {
 // mapFeedCmd is a lane's ask in flight's command, off the UI goroutine (the
 // zones the alerts name may be fetched), cancelled with it.
 func (d Dashboard) mapFeedCmd(lane int) tea.Cmd {
-	feed, loc := d.cfg.MapFeed, d.selectedLocation()
+	feed, loc := d.cfg.MapFeed, d.mapPlace()
 	if feed == nil || d.mapPane.m == nil || d.modal != modalMap || loc == nil {
 		return nil
 	}
@@ -1435,7 +1443,7 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 		}
 		rows = append(rows, mapHelpRow{strings.Join(keys, ", "), "Region: " + strings.Join(names, ", ")})
 	}
-	return rows
+	return slices.DeleteFunc(rows, func(r mapHelpRow) bool { return r.keys == "" }) // a key the UI mode does not bind is not listed (D-195)
 }
 
 // mapStatusText is what the status line says of the picture while it is not

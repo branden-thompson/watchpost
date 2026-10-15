@@ -263,7 +263,7 @@ func (d Dashboard) scrubControls() []string {
 	return boxed("Controls", []string{
 		"    " + cap(actMapPanUp, "↑") + "     " + cap(actMapZoomIn, "+"),
 		" " + cap(actMapPanLeft, "←") + cap(actMapPanDown, "↓") + cap(actMapPanRight, "→") + "  " + cap(actMapZoomOut, "-"),
-		" " + cap(actMapPrev, "[") + cap(actMapNext, "]") + " place",
+		d.placeRow(),
 	}, controlsInner)[:scrubBoxRows]
 }
 

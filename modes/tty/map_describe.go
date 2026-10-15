@@ -55,13 +55,16 @@ func (d Dashboard) describeLinesAll() []string { return d.describeUpTo(0) }
 // zero, at most that many alerts are said, and the last line says how many
 // more there are.
 func (d Dashboard) describeUpTo(most int) []string {
-	loc := d.selectedLocation()
+	loc := d.mapPlace()
 	if loc == nil {
 		return nil
 	}
 	v := d.viewBox(d.mapBodySize())
 	here := d.mapPane.m == nil || v.Contains(loc.Lat, loc.Lon)
 	out := []string{d.viewHeading(*loc, here)}
+	if w := d.zoneWords(); w != "" {
+		out = append(out, w) // the red circle said without the picture, in every mode (D-195)
+	}
 	if d.mapMode() == modePropagation {
 		words := propagationWords
 		if d.mapPane.propSnap != nil {

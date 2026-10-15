@@ -9,35 +9,21 @@ import (
 // propOriginKind is where a UI mode's Propagation answers come from (D-193).
 type propOriginKind uint8
 
-// The kinds. The zero value is unruled: a UI mode added later (Analyst,
-// D-27) must say which it is, and TestEveryUIModeHasAPropagationRole fails
-// until it does.
+// The kinds. The zero value is unruled: each UI mode's row in mapRoles
+// (D-195) says which it is, and TestEveryUIModeHasAMapRole fails until it
+// does.
 const (
 	propOriginUnruled propOriginKind = iota
 	propFromCentre                   // the map's centre, as it pans: exploring
-	propFromStation                  // the station's transmitter: the centre is a target
+	propFromStation                  // the station's: the centre is a target
 )
 
 // propRole is how a UI mode uses the Propagation mode (D-193): its origin,
-// and whether the map's centre is answered as a target from it.
+// and whether the map's centre is answered as a target from it. It is a part
+// of the UI mode's map role (mapRoles).
 type propRole struct {
 	origin propOriginKind
 	target bool
-}
-
-// propRoles are each UI mode's (D-193): Observer explores from the centre;
-// the Broadcaster answers from its station, the centre the target.
-var propRoles = [numSurfaces]propRole{
-	SurfaceObserver:    {origin: propFromCentre},
-	SurfaceBroadcaster: {origin: propFromStation, target: true},
-}
-
-// propRole is the UI mode on screen's role; an unruled one explores.
-func (d Dashboard) propRole() propRole {
-	if d.surface < 0 || d.surface >= numSurfaces || propRoles[d.surface].origin == propOriginUnruled {
-		return propRole{origin: propFromCentre}
-	}
-	return propRoles[d.surface]
 }
 
 // propPlace is the Propagation mode's origin (D-193), worked out in Update
@@ -53,16 +39,17 @@ type propPlace struct {
 // the selected place, its name saying it stands in for a transmitter; not
 // ok with nothing to answer from.
 func (d Dashboard) propOriginNow() propPlace {
-	loc := d.selectedLocation()
 	if d.propRole().origin == propFromStation {
-		if t := d.cfg.Transmitter; t != nil && (t.Lat != 0 || t.Lon != 0) {
-			return propPlace{at: ionomaps.LatLon{Lat: t.Lat, Lon: t.Lon}, name: t.Label, ok: true}
-		}
-		if loc == nil {
+		station := d.stationPlace()
+		switch {
+		case station == nil:
 			return propPlace{}
+		case d.noTransmitter():
+			return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: station.Label + " " + bcNoTransmitter, ok: true}
 		}
-		return propPlace{at: ionomaps.LatLon{Lat: loc.Lat, Lon: loc.Lon}, name: loc.Label + " " + bcNoTransmitter, ok: true}
+		return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: d.cfg.Transmitter.Label, ok: true}
 	}
+	loc := d.selectedLocation()
 	if c, ok := d.propCentreAt(); ok {
 		return propPlace{at: c, name: d.viewName(), ok: true}
 	}

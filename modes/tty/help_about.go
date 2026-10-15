@@ -230,15 +230,15 @@ func helpGroups(surface Surface) []helpGroup {
 	// "it doesnt show the user how to swap between Observer and Broadcaster.").
 	surfaces := helpGroup{"SURFACES", []term.Action{actSwapObserver, actSwapBroadcaster}, nil}
 	if surface == SurfaceBroadcaster {
-		return []helpGroup{
+		return append([]helpGroup{
 			surfaces,
 			// THE CONSOLE'S OWN SECTIONS, in the order the operator meets them:
 			// put the station on the air, order the line-up, choose the bed.
 			{"STATION", []term.Action{actStationToggle, actGainUp, actGainDown}, nil},
 			{"LINE UP", []term.Action{actQueuePrev, actQueueNext, actQueueOpen, actRequest}, nil},
 			{"BED", []term.Action{actBedCut, actBedPrev, actBedNext, actBedPlay}, nil},
-			{"APP", []term.Action{actLookup, actSettings, actStatus, actAbout, term.HelpAction, actDiagnostics, actQuit}, nil},
-		}
+			{"APP", []term.Action{actLookup, actMap, actSettings, actStatus, actAbout, term.HelpAction, actDiagnostics, actQuit}, nil},
+		}, windowHelpGroups()...) // the map's own keys, as its role binds them (D-195)
 	}
 	return append([]helpGroup{ // NAVIGATE and RADIO first: the two tall groups make the left column of the two-column layout (UAT mock 2026-08-28)
 		surfaces,
@@ -262,7 +262,13 @@ func helpGroups(surface Surface) []helpGroup {
 // neither keymap carries it and neither help could show it.
 func (d Dashboard) helpKeys() term.KeyMap {
 	if d.surface == SurfaceBroadcaster {
-		return d.consoleKeyMap()
+		out := maps.Clone(d.consoleKeyMap()) // a copy: the console's own map is never written
+		for act, bind := range d.mapKeys {   // the map window's own scope, as on Observer (D-61) ...
+			if d.mapRole().placeKeys || (act != actMapPrev && act != actMapNext) { // ... less what its role does not bind (D-195)
+				out[act] = bind
+			}
+		}
+		return out
 	}
 	out := term.KeyMap{}
 	for act, bind := range d.keys {
