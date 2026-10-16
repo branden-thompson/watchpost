@@ -26,7 +26,8 @@ func propSnapAt(at time.Time, mhz float32) ionomaps.Snapshot {
 		return f
 	}
 	return ionomaps.Snapshot{Computed: at, Hours: []ionomaps.Hour{{At: at, MUF3000: field(mhz), FoF2: field(mhz / 3)}},
-		Background: ionomaps.Backgrounds{FoF2: ionomaps.GloTEC, M3000: ionomaps.Climatology}, Inputs: ionomaps.Inputs{GloTECValid: at.Add(-30 * time.Minute), F107Mean: 150}}
+		Background: ionomaps.Backgrounds{FoF2: ionomaps.GloTEC, M3000: ionomaps.Climatology}, Inputs: ionomaps.Inputs{GloTECValid: at.Add(-30 * time.Minute), F107Mean: 150},
+		Scales: ionomaps.Scales{Valid: at}} // NOAA's scales read, all at 0
 }
 
 // drawnAt is the moment drawnDash's snapshot is made and its clock reads:

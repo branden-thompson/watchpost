@@ -278,6 +278,11 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 	if s := d.mapPane.propSnap; s != nil && propOffsetNote(s.Offset) != "" {
 		out[1] = propOffsetNote(s.Offset) // FR-5.4: the chart's status label, under its header
 	}
+	if s := d.mapPane.propSnap; s != nil {
+		if l := propScalesLine(s.Scales); l != "" {
+			out = append(out[:1], l, out[1]) // FR-1.18: under the header, before the offset's row
+		}
+	}
 	head := render.PadTo("", propNameW+4) // the pointer and the shade (D-198) before the names
 	for _, b := range hfBands {
 		head += fmt.Sprintf("%3s", strings.TrimSuffix(b.name, "m")) // each band's number over its glyph

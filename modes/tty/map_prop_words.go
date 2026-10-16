@@ -100,6 +100,9 @@ func (d Dashboard) propStatusBlock() string {
 	age, _, _ := d.propAge(snap)
 	made := strings.TrimPrefix(snapshotWords(snap, d.mapPane.propLayer), "Propagation · "+propLayerName(d.mapPane.propLayer)+" · ")
 	parts := []string{age, "computed " + made}
+	if sw := propScalesWords(snap.Scales); sw != "" {
+		parts = append(parts, sw) // FR-1.18
+	}
 	if d.propChartShown() {
 		c := d.mapPane.propChart
 		parts = append(parts, "at the origin, "+d.propStationWords(c.local.Nearest))

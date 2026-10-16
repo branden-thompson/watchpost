@@ -143,11 +143,13 @@ func (d Dashboard) propAheadLabel(lat, lon float64) string {
 	}
 	at := d.mapPane.propSnap.Hours[0].At.Add(time.Duration(k) * time.Hour).UTC()
 	label := fmt.Sprintf("+%d h %s UTC · TYPICAL, NOT A FORECAST", k, at.Format("15:04"))
-	if _, ok := d.propShown(); !ok {
-		return label + " · being worked out"
-	}
-	if e, ok := d.propTypicalError(lat, lon); ok {
+	if _, shown := d.propShown(); !shown {
+		label += " · being worked out"
+	} else if e, ok := d.propTypicalError(lat, lon); ok {
 		label += fmt.Sprintf(" · ±%.1f MHz", e)
+	}
+	if propStorm(d.mapPane.propSnap.Scales) {
+		label += " · STORM: TYPICAL MAY NOT HOLD" // FR-1.18, D-109
 	}
 	return label
 }
@@ -160,6 +162,9 @@ func (d Dashboard) propAheadWords(lat, lon float64) string {
 		return ""
 	}
 	words := []string{fmt.Sprintf("%d hours ahead: typical for this hour, not a forecast", k)}
+	if propStorm(d.mapPane.propSnap.Scales) {
+		words = append(words, "a geomagnetic storm is in progress: typical conditions may not hold") // FR-1.18, D-109
+	}
 	if e, ok := d.propTypicalError(lat, lon); ok {
 		words = append(words, fmt.Sprintf("its typical error at the place is %.1f MHz in %s", e, propLayerName(d.mapPane.propLayer)))
 	}
