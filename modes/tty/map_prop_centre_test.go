@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -42,6 +43,9 @@ func TestTheCentreIsAnsweredAsTheMapPans(t *testing.T) {
 			t.Errorf("the centre box does not say %q:\n%s", want, box)
 		}
 	}
+	if !regexp.MustCompile(`usable [^\n│]* · foF2 `).MatchString(box) {
+		t.Errorf("a centre within the near-vertical radius is not answered from the area, its limit foF2:\n%s", box)
+	}
 	window := stripANSITest(strings.Join(d.mapBodyLines(), "\n"))
 	if !strings.Contains(window, "┌─ Centre") {
 		t.Errorf("the centre box is not over the map:\n%s", window)
@@ -54,7 +58,8 @@ func TestTheCentreIsAnsweredAsTheMapPans(t *testing.T) {
 	if after := d.mapPane.propCentre.key.centre; after == before {
 		t.Errorf("six pans east left the centre answered at %v", after)
 	}
-	if box := stripANSITest(strings.Join(d.propCentreBox(), "\n")); !strings.Contains(box, "From OCEANSIDE, CA (NO TRANSMITTER SET): ") || !strings.Contains(box, "MUF ") {
+	pathLimit := regexp.MustCompile(`usable[^\n│]* · MUF \d`) // the usable line's limit: the best frequency's words say "MUF" too
+	if box := stripANSITest(strings.Join(d.propCentreBox(), "\n")); !strings.Contains(box, "From OCEANSIDE, CA (NO TRANSMITTER SET): ") || !pathLimit.MatchString(box) {
 		t.Errorf("a centre far from the place is not given its distance and the path's MUF:\n%s", box)
 	}
 }

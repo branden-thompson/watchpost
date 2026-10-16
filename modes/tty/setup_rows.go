@@ -154,6 +154,7 @@ const (
 	rowMapDetailRoads
 	rowMapDetailRail
 	rowMapDetailParks
+	rowMapDetailNight // Day / night (D-199): last of the detail, its row in mapDetailLayers' order
 	rowMapClear
 	rowMapLayers // MAP - LAYERS, drawn after MAP - DETAIL: the two columns balance so
 
@@ -284,6 +285,7 @@ func setupTable() [setupRowCount]setupRow {
 		rowMapDetailRoads:   {rowMapDetailRoads, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
 		rowMapDetailRail:    {rowMapDetailRail, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
 		rowMapDetailParks:   {rowMapDetailParks, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailNight:   {rowMapDetailNight, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
 		// AN ACTION, operated by space: it empties the map's data (W3.8).
 		rowMapClear: {rowMapClear, groupMapLayers, scopeObserver, rowCheck, false, "", ""},
 

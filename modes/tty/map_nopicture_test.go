@@ -101,12 +101,12 @@ var invisibleKeys = map[string]map[string]string{
 func TestTheMenusFocusStaysOnScreenWithoutAPicture(t *testing.T) {
 	m, _ := screenDash(t, "with", true).Update(tea.WindowSizeMsg{Width: 133, Height: 30})
 	d := m.(Dashboard)
-	for _, k := range []string{"O", "up"} { // up from the first row is the last: Parks
+	for _, k := range []string{"O", "up"} { // up from the first row is the last: Day / night (D-199)
 		m, _ := d.Update(mapKeyMsg(t, k))
 		d = m.(Dashboard)
 	}
-	if text := stripANSITest(d.View().Content); !strings.Contains(text, "> [ ] Parks") {
-		t.Errorf("the focused row, Parks, is not on screen:\n%s", text)
+	if text := stripANSITest(d.View().Content); !strings.Contains(text, "> [ ] Day / night") {
+		t.Errorf("the focused row, Day / night, is not on screen:\n%s", text)
 	}
 	m, _ = d.Update(mapKeyMsg(t, "down")) // and round to the first
 	if text := stripANSITest(m.(Dashboard).View().Content); !strings.Contains(text, "> * Temperature") {

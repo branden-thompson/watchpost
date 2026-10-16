@@ -65,6 +65,9 @@ func (d Dashboard) describeUpTo(most int) []string {
 	if w := d.zoneWords(); w != "" {
 		out = append(out, w) // the red circle said without the picture, in every mode (D-195)
 	}
+	if w := d.nightWords(); w != "" {
+		out = append(out, w) // the night said where it is drawn (D-199)
+	}
 	if d.mapMode() == modePropagation {
 		words := propagationWords
 		if d.mapPane.propSnap != nil {

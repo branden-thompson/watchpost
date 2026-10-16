@@ -56,12 +56,12 @@ func TestAReleasedMapDropsTheOldSessionsTick(t *testing.T) {
 // Propagation mode it was closed in.
 func TestAReopenedMapDrawsNoPropagationField(t *testing.T) {
 	d, _ := drawnDash(t)
-	if len(d.mapPane.propGiven) != 2 {
-		t.Fatalf("the fixture drew %d Propagation overlays; want the field and the night", len(d.mapPane.propGiven))
+	if len(d.mapPane.propGiven) != 1 || len(d.mapPane.nightGiven) != 1 {
+		t.Fatalf("the fixture drew %d Propagation overlays and %d nights; want the field and the night", len(d.mapPane.propGiven), len(d.mapPane.nightGiven))
 	}
 	d = d.toggleMap().toggleMap()
-	if d.mapMode() == modePropagation || len(d.mapPane.propGiven) != 0 {
-		t.Errorf("reopened in mode %d with %d Propagation overlays still drawn", d.mapMode(), len(d.mapPane.propGiven))
+	if d.mapMode() == modePropagation || len(d.mapPane.propGiven) != 0 || len(d.mapPane.nightGiven) != 0 {
+		t.Errorf("reopened in mode %d with %d Propagation overlays and %d nights still drawn (Day / night is off)", d.mapMode(), len(d.mapPane.propGiven), len(d.mapPane.nightGiven))
 	}
 }
 

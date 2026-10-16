@@ -29,11 +29,20 @@ func propSnapAt(at time.Time, mhz float32) ionomaps.Snapshot {
 		Background: ionomaps.Backgrounds{FoF2: ionomaps.GloTEC, M3000: ionomaps.Climatology}, Inputs: ionomaps.Inputs{GloTECValid: at.Add(-30 * time.Minute), F107Mean: 150}}
 }
 
-// drawnDash is the map in the Propagation mode with a snapshot drawn.
+// drawnAt is the moment drawnDash's snapshot is made and its clock reads:
+// one in the morning at Oceanside in October, the absorption at its least,
+// so the answers that hang on the sun - the LUF, the best frequency - are the
+// same at every hour the tests are run.
+var drawnAt = time.Date(2026, 10, 11, 8, 0, 0, 0, time.UTC)
+
+// drawnDash is the map in the Propagation mode with a snapshot drawn, its
+// clock held at drawnAt.
 func drawnDash(t *testing.T) (Dashboard, *seam) {
 	t.Helper()
-	s := &seam{answer: PropagationResult{Snapshot: propSnapAt(time.Now().UTC().Truncate(time.Minute), 18)}}
-	d, cmd := keyCmd(t, propDash(t, s, true), "P")
+	s := &seam{answer: PropagationResult{Snapshot: propSnapAt(drawnAt, 18)}}
+	d := propDash(t, s, true)
+	d.now = func() time.Time { return drawnAt }
+	d, cmd := keyCmd(t, d, "P")
 	return runProp(t, d, cmd), s
 }
 

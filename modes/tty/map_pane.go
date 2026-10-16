@@ -83,7 +83,8 @@ type mapPane struct {
 	propChart       propChart                  // the reference chart's answers (W5.1)
 	propChartAsked  propChartKey               // what the chart was last asked for: asked once
 	propChartRow    int                        // the chart's row its typical day is drawn for: 0 the near-vertical area
-	propNightAt     time.Time                  // the moment the night handed in is for
+	nightGiven      map[string]tuimaps.Overlay // the night handed in (D-199)
+	nightAt         time.Time                  // the moment the night handed in is for
 	propFreqMHz     float64                    // the frequency held (D-178), 0 for none
 	propFreqLabel   string                     // and as it is said: "14.200 MHz" or "40m"
 	propFreqQuery   string                     // what the entry holds as it is typed

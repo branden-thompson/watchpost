@@ -728,7 +728,7 @@ func (d Dashboard) mapAsk() MapAsk {
 // detailRowLayer is the detail layer a Map detail row switches, and whether the
 // row is one (UAT-1 U1-35: a row each, in mapDetailLayers' order).
 func detailRowLayer(id setupRowID) (mapDetailLayer, bool) {
-	if id < rowMapDetailBorders || id > rowMapDetailParks {
+	if id < rowMapDetailBorders || id > rowMapDetailNight {
 		return mapDetailLayer{}, false
 	}
 	return mapDetailLayers()[id-rowMapDetailBorders], true

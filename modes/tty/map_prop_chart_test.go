@@ -213,25 +213,29 @@ func TestAnswersNeverBlockTheUI(t *testing.T) {
 // step, the night handed in moves with it, with nothing else changing.
 func TestTheNightFollowsTheClock(t *testing.T) {
 	d, _ := drawnDash(t)
-	later := d.now().Add(2 * propNightStep)
+	later := d.now().Add(2 * nightStep)
 	d.now = func() time.Time { return later }
 	m, _ := d.Update(struct{}{})
-	night, ok := m.(Dashboard).mapPane.propGiven["propagation/night"]
-	if want := later.UTC().Truncate(propNightStep); !ok || !night.Valid.Equal(want) {
+	night, ok := m.(Dashboard).mapPane.nightGiven[mapNightID]
+	if want := later.UTC().Truncate(nightStep); !ok || !night.Valid.Equal(want) {
 		t.Errorf("the night handed in is for %v (%v); the clock says %v", night.Valid, ok, want)
 	}
 }
 
 // TestTheNightIsDrawnOnThePropagationMap is go-tuiMaps P4 in the mode
 // (L-4.1 to L-4.3, D-174): the terminator and the night side are handed in
-// with the field, for the moment shown.
+// with the field, for the moment shown, whatever the Day / night switch
+// (D-199).
 func TestTheNightIsDrawnOnThePropagationMap(t *testing.T) {
 	d, _ := drawnDash(t)
+	if d.detailOn(nightDetailKey) {
+		t.Fatal("control: Day / night is on, so this proves nothing about the mode drawing it always")
+	}
 	var line, night bool
-	for _, o := range d.propOverlays() {
+	for _, o := range d.mapPane.nightGiven {
 		for _, f := range o.Features {
-			line = line || f.Role == propTerminatorRole
-			night = night || f.Role == propNightRole
+			line = line || f.Role == terminatorRole
+			night = night || f.Role == nightRole
 		}
 	}
 	if !line || !night {

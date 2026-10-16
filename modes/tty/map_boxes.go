@@ -336,7 +336,12 @@ type mapDetailLayer struct {
 	layer      tuimaps.Layer
 	level      tuimaps.Detail // the least level whose preset switches it on (D-79)
 	shows      string         // when the style first draws it, said beside it: "" when it always does
+	overlay    bool           // drawn by the map as an overlay, not a layer of the library's basemap (D-199)
 }
+
+// detailNever is a preset no level reaches: a switch that is off until
+// turned on, whatever the level (D-199).
+const detailNever = tuimaps.DetailFull + 1
 
 // mapDetailLayers is the map's own detail, in the menu's order. THE SWITCHES
 // ARE THE TRUTH (D-79): the detail level is a preset that sets them, and a
@@ -346,13 +351,14 @@ type mapDetailLayer struct {
 // nothing reads as broken (UAT-1 U1-42).
 func mapDetailLayers() []mapDetailLayer {
 	return []mapDetailLayer{
-		{"borders", "Borders", tuimaps.BorderLayer, tuimaps.DetailEssential, ""},
-		{"water", "Lakes", tuimaps.WaterLayer, tuimaps.DetailEssential, ""}, // inland water: the sea and its coast are never switched (U1-39, go-tuiMaps D-85)
-		{"rivers", "Rivers", tuimaps.RiverLayer, tuimaps.DetailWeather, ""},
-		{"names", "Place names", tuimaps.LabelLayer, tuimaps.DetailWeather, ""},
-		{"roads", "Major roads", tuimaps.RoadLayer, tuimaps.DetailWeather, ""},
-		{"rail", "Rail", tuimaps.RailLayer, tuimaps.DetailStandard, "county zoom"},  // the style's zoom 8; the county scale is 9
-		{"parks", "Parks", tuimaps.ParkLayer, tuimaps.DetailStandard, "state zoom"}, // the style's zoom 6, the state scale
+		{"borders", "Borders", tuimaps.BorderLayer, tuimaps.DetailEssential, "", false},
+		{"water", "Lakes", tuimaps.WaterLayer, tuimaps.DetailEssential, "", false}, // inland water: the sea and its coast are never switched (U1-39, go-tuiMaps D-85)
+		{"rivers", "Rivers", tuimaps.RiverLayer, tuimaps.DetailWeather, "", false},
+		{"names", "Place names", tuimaps.LabelLayer, tuimaps.DetailWeather, "", false},
+		{"roads", "Major roads", tuimaps.RoadLayer, tuimaps.DetailWeather, "", false},
+		{"rail", "Rail", tuimaps.RailLayer, tuimaps.DetailStandard, "county zoom", false},  // the style's zoom 8; the county scale is 9
+		{"parks", "Parks", tuimaps.ParkLayer, tuimaps.DetailStandard, "state zoom", false}, // the style's zoom 6, the state scale
+		{nightDetailKey, "Day / night", 0, detailNever, "", true},                          // D-199: the night side shaded, its edge dotted; always so in the Propagation mode
 	}
 }
 
@@ -389,8 +395,12 @@ func detailLevelLabel(l tuimaps.Detail) string {
 // cycleDetailLevel moves the level round the four and sets every switch to
 // its preset (D-79).
 func (d Dashboard) cycleDetailLevel(forward bool) Dashboard {
+	night := d.detailOn(nightDetailKey)
 	d.mapDetailLevel = cycleIn(mapDetailLevels(), itself, d.mapDetailLevel, forward)
-	d.mapDetailChoice = "" // the preset: every switch as the level sets it
+	d.mapDetailChoice = "" // the preset: every switch as the level sets it ...
+	if night {
+		d.mapDetailChoice = layerChoiceKey(map[string]bool{nightDetailKey: true}) // ... but Day / night, which no level sets (D-199)
+	}
 	return d.applyDetail()
 }
 
@@ -407,7 +417,7 @@ func detailShows(l mapDetailLayer) string {
 // from the level's preset (D-79).
 func (d Dashboard) detailLevelShown() string {
 	for _, l := range mapDetailLayers() {
-		if d.detailOn(l.key) != (l.level <= d.mapDetailLevel) {
+		if !l.overlay && d.detailOn(l.key) != (l.level <= d.mapDetailLevel) { // Day / night is no level's (D-199)
 			return "Custom"
 		}
 	}
@@ -472,6 +482,9 @@ func (d Dashboard) applyDetail() Dashboard {
 	d.mapPane.call("SetDetail:"+all.String(), func() { _ = m.SetDetail(all) })
 	d.mapPane.call("Layers:minor-roads:off", func() { m.Layers(tuimaps.MinorRoadLayer, false) }) // city zoom only: not offered (U1-42)
 	for _, l := range mapDetailLayers() {
+		if l.overlay {
+			continue // the map's own overlay, handed in by setNight below
+		}
 		on, layer := d.detailOn(l.key), l.layer
 		word := "off"
 		if on {
@@ -479,7 +492,7 @@ func (d Dashboard) applyDetail() Dashboard {
 		}
 		d.mapPane.call("Layers:"+l.key+":"+word, func() { m.Layers(layer, on) })
 	}
-	return d
+	return d.setNight() // Day / night is the map's own overlay (D-199)
 }
 
 // setDetail switches a detail layer and keeps the choice.
@@ -548,7 +561,9 @@ func (d Dashboard) overlayRows() []overlayRow {
 	if d.mapMode() == modePropagation { // D-159: the tints and the map's detail; the weather's groups wait, their ticks kept
 		out = append(out, overlayRow{kind: menuPreset, key: detailLevelKey, label: "Preset"})
 		for _, l := range mapDetailLayers() {
-			out = append(out, overlayRow{kind: menuDetail, key: l.key, label: l.label})
+			if l.key != nightDetailKey { // the night is always drawn in this mode: no switch to offer (D-199)
+				out = append(out, overlayRow{kind: menuDetail, key: l.key, label: l.label})
+			}
 		}
 		return out
 	}

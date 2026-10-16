@@ -51,16 +51,6 @@ func fieldGrid(f ionomaps.Field) tuimaps.Grid {
 		Values: values, Lines: true, OverWater: true}
 }
 
-// The day and night's roles on the Propagation map (go-tuiMaps P4).
-const (
-	propTerminatorRole = tuimaps.TerminatorLine
-	propNightRole      = tuimaps.NightTint
-)
-
-// propNightStep is how far the night drawn may lag the clock: the line moves
-// about a quarter of a degree a minute.
-const propNightStep = 5 * time.Minute
-
 // propOverlays are the Propagation mode's overlays: the hour on screen, its
 // layer alone (D-112), and the night with its edge for the moment shown;
 // none outside the mode or before a snapshot.
@@ -78,7 +68,7 @@ func (d Dashboard) propOverlays() []tuimaps.Overlay {
 	if reach, ok := d.propReachShown(); ok {
 		out = append(out, propReachOverlay(reach, h.At)) // after the field: its edge alone over it (L-2.6)
 	}
-	return append(out, propNight(d.propNightMoment()))
+	return out // the night is the map's, drawn in every mode that wants it (D-199)
 }
 
 // propNightMoment is the moment the night is drawn for: the clock, to the
@@ -87,29 +77,7 @@ func (d Dashboard) propNightMoment() time.Time {
 	if shown, ok := d.propShown(); ok && d.mapPane.propAhead > 0 {
 		return shown.Hours[0].At.Add(30 * time.Minute).UTC()
 	}
-	return d.now().UTC().Truncate(propNightStep)
-}
-
-// propNight is the night side and its edge at a moment (L-4.1 to L-4.3): no
-// words of its own, the edge dotted at every depth.
-func propNight(at time.Time) tuimaps.Overlay {
-	return tuimaps.Overlay{ID: "propagation/night", Valid: at, Keeps: time.Hour, Features: []tuimaps.Feature{
-		{Kind: tuimaps.Polygon, Rings: tuimaps.NightSide(at), Role: propNightRole},
-		{Kind: tuimaps.Line, Rings: [][]tuimaps.LonLat{tuimaps.Terminator(at)}, Role: propTerminatorRole},
-	}}
-}
-
-// followPropNight hands the night in again when the clock has moved a step
-// past the one drawn, while the Propagation map is shown.
-func (d Dashboard) followPropNight() Dashboard {
-	if d.modal != modalMap || !d.inPropagation() || d.mapPane.propSnap == nil {
-		return d
-	}
-	if at := d.propNightMoment(); !at.Equal(d.mapPane.propNightAt) {
-		d.mapPane.propNightAt = at
-		return d.setProp().renderMap()
-	}
-	return d
+	return d.now().UTC().Truncate(nightStep)
 }
 
 // setProp hands the library the Propagation mode's overlays as they stand,
@@ -123,7 +91,7 @@ func (d Dashboard) setProp() Dashboard {
 	})
 	d.mapPane.propGiven = given
 	d.mapPane.gen++
-	return d
+	return d.setNight() // the night with the mode: always in it, by the detail switch out of it (D-199)
 }
 
 // flipPropLayer is L: MUF(3000) or foF2, in the Propagation mode alone.

@@ -1112,7 +1112,7 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, resumeCmd := next.resume()          // D-107: a window returned to picks up where it was
 	next = next.mapPanicked()                 // QA-11: a panic a map call or command stopped marks the map failed
 	next, mapCmd := next.armMapTick()         // 0.18.0 W2.2: the map's clock, armed after every Update
-	next = next.followPropNight()             // go-tuiMaps P4: the night moves with the clock
+	next = next.followNight()                 // go-tuiMaps P4, D-199: the night moves with the moment shown
 	next, chartCmd := next.armPropChart()     // W5.1: the chart's answers, asked when what they come from changes
 	next, reachCmd := next.armPropReach()     // W5.2: and the frequency's reach
 	next, aheadCmd := next.armPropAhead()     // W5.4: and the hour ahead shown
