@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -88,13 +89,13 @@ func TestADisturbedBandIsDrawnAndNamed(t *testing.T) {
 			local = l
 		}
 	}
-	if !strings.Contains(local, string(propDisturbedGlyph)) || !strings.HasSuffix(local, "D-RAP 2.5 MHz") || !strings.Contains(local, "foF2 6.0 MHz · ") {
+	if !strings.Contains(local, string(propDisturbedGlyph)) || !strings.Contains(local, "D-RAP 2.5 · best ~") || !strings.Contains(local, "foF2 6.0 · ") {
 		t.Errorf("the local row, 160 m disturbed, reads %q", local)
 	}
 	if !strings.Contains(text, string(propDisturbedGlyph)+" disturbed (D-RAP)") {
 		t.Errorf("the legend does not name the disturbed glyph:\n%s", text)
 	}
-	if w := propRowLimitWords(bands[:1]); w != "D-RAP 2.5 MHz" {
+	if w := propLimitWords(bands[:1], " MHz"); w != "D-RAP 2.5 MHz" {
 		t.Errorf("a row whose only band is disturbed says %q", w)
 	}
 }
@@ -106,13 +107,14 @@ func TestADisturbedBandIsDrawnAndNamed(t *testing.T) {
 func TestAnUnscoredNearestStationIsSaid(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
 	c := &d.mapPane.propChart
-	if text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); strings.Contains(text, "unscored") {
-		t.Errorf("no answer's station is unscored, yet the chart says so:\n%s", text)
+	unscoredRow := regexp.MustCompile(`(?m)^[ ▸] \? `) // D-198: an unscored nearest station is the row's ? shade
+	if text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); unscoredRow.MatchString(text) {
+		t.Errorf("no answer's station is unscored, yet a row says so:\n%s", text)
 	}
 	c.targets[2].Nearest = ionomaps.Nearest{Km: 300, Unscored: true, Known: true}
 	text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
-	if !strings.Contains(text, "Nearest station unscored, verify on air: "+propContinents[2].name) {
-		t.Errorf("%s's nearest station is unscored and the chart does not say so:\n%s", propContinents[2].name, text)
+	if !regexp.MustCompile(`(?m)^  \? `+regexp.QuoteMeta(propContinents[2].name)).MatchString(text) || !strings.Contains(text, "? unscored") {
+		t.Errorf("%s's nearest station is unscored and its row's shade, or the legend, does not say so:\n%s", propContinents[2].name, text)
 	}
 	if w := d.propNearestWords(ionomaps.Nearest{}); w != "No station fed this answer" {
 		t.Errorf("no station: %q", w)

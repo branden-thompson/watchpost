@@ -124,9 +124,17 @@ func (d Dashboard) helpLines(o render.Opts) []string {
 		}
 	}
 	lines = append(lines, d.helpLegend(o))
+	if d.surface == SurfaceBroadcaster {
+		lines = append(lines, "", " "+sharedDeviceNote) // FR-2.2, D-85
+	}
 	lines = append(lines, d.helpWithheld()...)
 	return append(lines, "", "  "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll"))) // chips like every other modal (UAT 68.2)
 }
+
+// sharedDeviceNote is FR-2.2's statement (D-80, D-85): the broadcast and a
+// screen reader share the computer's default sound output, until the device
+// Setting (F-211) lets the broadcast play elsewhere.
+const sharedDeviceNote = "The broadcast plays on this computer's default sound output, the same one a screen reader speaks on: screen-reader speech can reach the broadcast."
 
 // helpWithheld names the `[keys]` entries that did not reach THIS surface.
 //

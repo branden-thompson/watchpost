@@ -428,8 +428,9 @@ func BenchmarkConsoleFrame_Miss(b *testing.B) {
 
 // settingsTabPressAllocBudget is a Tab press in Settings - the key moving to
 // the next tab and the frame drawn - into its costliest tab, with the app's
-// layers registered (MAP - LAYERS) (U2-48).
-const settingsTabPressAllocBudget = 3_700
+// layers registered (MAP - LAYERS) (U2-48). 0.19.0 D-120 and D-105 add two
+// Maps rows: 3,740 measured, × 1.05 is 3,927.
+const settingsTabPressAllocBudget = 3_927
 
 // A SETTINGS TAB PRESS STAYS CRISP (U2-48, HUM LEAD: "key responses should be
 // very crisp and feel almost instant"): every tab, the layers registered as

@@ -19,6 +19,7 @@ import (
 func TestASavedSettingIsTheSettingAfterARestart(t *testing.T) {
 	want := tty.UIPrefs{Theme: render.ThemeNames()[len(render.ThemeNames())-1], Units: "metric", Clock: "mil", Maps: "off", MapDescription: "instead", MapScale: "county",
 		MapNearbyKm: 25, MapRadarSource: "iem", MapTempSource: "open-meteo", MapRainDetail: "full", MapUVCities: 48, MapPropRadius: 600, MapPropNoise: "quiet-rural",
+		MapPropRefresh: "hourly", MapPropNoReadings: "corrected",
 		MapRadarAhead: 6, MapQuakeFeed: "1.0_day", MapLayers: map[string]bool{"radar": false},
 		MapDetail: map[string]bool{"parks": true}, MapDetailLevel: "full"}
 	v := reflect.ValueOf(want)
@@ -42,6 +43,7 @@ func TestASavedSettingIsTheSettingAfterARestart(t *testing.T) {
 	back := map[string]any{"Theme": cfg.Theme, "Units": got.Units, "Clock": got.Clock, "Maps": got.Maps, "MapDescription": got.MapDescription,
 		"MapScale": got.MapScale, "MapNearbyKm": got.MapNearbyKm, "MapRadarSource": got.MapRadarSource,
 		"MapTempSource": got.MapTempSource, "MapRainDetail": got.MapRainDetail, "MapUVCities": got.MapUVCities, "MapPropRadius": got.MapPropRadius, "MapPropNoise": got.MapPropNoise,
+		"MapPropRefresh": got.MapPropRefresh, "MapPropNoReadings": got.MapPropNoReadings,
 		"MapRadarAhead": got.MapRadarAhead, "MapQuakeFeed": got.MapQuakeFeed, "MapLayers": got.MapLayerChoice,
 		"MapDetail": got.MapDetailChoice, "MapDetailLevel": got.MapDetailLevel}
 	for i := range v.NumField() {

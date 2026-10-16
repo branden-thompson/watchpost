@@ -67,7 +67,7 @@ func TestBestBandsNameTheirLimit(t *testing.T) {
 		t.Fatalf("B opened window %v; want the chart (D-176)", d.modal)
 	}
 	text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
-	for _, want := range []string{"100 W, 0 dBi, +13 dB · residential noise", "Local, ~400 km", "foF2 6.0 MHz", "North America", "Oceania", "MUF "} {
+	for _, want := range []string{"100 W, 0 dBi, +13 dB · residential noise", "Local, ~400 km", "foF2 6.0", "North America", "Oceania", "MUF ", "figures in MHz"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the chart does not say %q:\n%s", want, text)
 		}

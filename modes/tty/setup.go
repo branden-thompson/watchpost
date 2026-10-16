@@ -528,6 +528,10 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.cyclePropRadius(true)
 	case rowMapPropNoise:
 		return d.cyclePropNoise(true)
+	case rowMapPropRefresh:
+		return d.cyclePropRefresh(true)
+	case rowMapPropReadings:
+		return d.togglePropCorrect()
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(true)
 	case rowMapQuakes:

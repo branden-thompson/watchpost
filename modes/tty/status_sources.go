@@ -294,6 +294,9 @@ func (d Dashboard) mapWords(tableW int) []string {
 		words = append(words, s.Notes...)
 	}
 	words = append(words, d.mapNotesNow()...)
+	if s := d.mapPane.propSnap; s != nil {
+		words = append(words, propOffsetWords(s.Offset)) // FR-5.4: the live offset beside its typical value
+	}
 	words = append(words, mapDisclosure(d.cfg.MapSources))
 	var out []string
 	said := map[string]bool{}

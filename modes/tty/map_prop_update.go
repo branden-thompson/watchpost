@@ -19,16 +19,13 @@ type PropagationResult struct {
 	Err      error
 }
 
-// propRefreshEvery is how often an open Propagation mode asks again: each
-// new GloTEC grid (FR-4.10, D-94's default; the Setting comes later).
-const propRefreshEvery = 10 * time.Minute
-
 // propUpdatedMsg is an update's result, to the session of the mode that
 // asked; propTickMsg is the refresh tick, to the same.
 type (
 	propUpdatedMsg struct {
-		gen uint64
-		res PropagationResult
+		gen     uint64
+		res     PropagationResult
+		correct bool // the no-readings correction it was asked with (D-105)
 	}
 	propTickMsg struct{ gen, seq uint64 }
 )
@@ -48,21 +45,40 @@ func (d Dashboard) askPropagation() (Dashboard, tea.Cmd) {
 	}
 	d.mapPane.propBusy = true
 	d.mapPane.gen++
-	ctx, gen := d.mapPane.propCtx, d.mapPane.propGen
-	noise := d.mapPropNoise
-	return d, func() tea.Msg { return propUpdatedMsg{gen: gen, res: <-seam(ctx, noise)} }
+	ctx, gen, opts := d.mapPane.propCtx, d.mapPane.propGen, d.propOptions()
+	return d, func() tea.Msg {
+		return propUpdatedMsg{gen: gen, res: <-seam(ctx, opts), correct: opts.CorrectNoReadings}
+	}
 }
 
-// armPropNoise asks for the mode's update when the snapshot shown was made
-// for another noise environment than the Setting's (D-187): go-ionomaps
-// answers it from what it holds, asking nothing. A changed Setting is so
-// shown as soon as the map is.
-func (d Dashboard) armPropNoise() (Dashboard, tea.Cmd) {
+// propOptions are the update's options as the Settings stand: the reference
+// circuit's noise (D-187) and the no-readings correction (D-105).
+func (d Dashboard) propOptions() ionomaps.UpdateOptions {
+	return ionomaps.UpdateOptions{Noise: d.mapPropNoise, CorrectNoReadings: d.mapPropCorrect}
+}
+
+// armPropOptions asks for the mode's update when the snapshot shown was made
+// with other options than the Settings' - another noise (D-187), or the
+// no-readings correction (D-105) asked otherwise: go-ionomaps answers it
+// from what it holds, asking nothing. A changed Setting is so shown as soon
+// as the map is.
+func (d Dashboard) armPropOptions() (Dashboard, tea.Cmd) {
 	snap := d.mapPane.propSnap
-	if snap == nil || snap.Noise == d.mapPropNoise {
+	if snap == nil || (snap.Noise == d.mapPropNoise && d.mapPane.propSnapCorrect == d.mapPropCorrect) {
 		return d, nil
 	}
 	return d.askPropagation()
+}
+
+// armPropRefresh sets the session's next tick by the refresh Setting when it
+// changed while the mode is open (D-120): hourly from every 10 minutes, or
+// none on demand; a chain set before it asks nothing.
+func (d Dashboard) armPropRefresh() (Dashboard, tea.Cmd) {
+	open := d.mapPane.propCtx != nil && !d.mapPane.propBusy && d.mapPane.propSnap != nil
+	if !open || d.mapPane.propTickEvery == d.mapPropRefresh.every() {
+		return d, nil
+	}
+	return d.nextPropTick()
 }
 
 // stopPropagation ends the mode's session: its update cancelled, a late
@@ -74,6 +90,7 @@ func (d Dashboard) stopPropagation() Dashboard {
 	}
 	d.mapPane.propCtx, d.mapPane.propCancel, d.mapPane.propBusy = nil, nil, false
 	d.mapPane.propGen++
+	d.mapPane.propTickEvery = 0
 	return d
 }
 
@@ -86,7 +103,10 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 	d.mapPane.gen++
 	if len(v.res.Snapshot.Hours) > 0 {
 		snap := v.res.Snapshot
-		d.mapPane.propSnap = &snap
+		d.mapPane.propSnap, d.mapPane.propSnapCorrect = &snap, v.correct
+		if snap.Offset.Measured {
+			d.problem(propOffsetWords(snap.Offset)) // the diagnostics' record of each live offset (FR-5.4)
+		}
 		d.mapPane.propAheadHours, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
 	}
 	d.mapPane.propErr = v.res.Err
@@ -100,13 +120,19 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 	return d.setProp().renderMap().nextPropTick()
 }
 
-// nextPropTick sets the session's next refresh tick, the one tick that asks:
-// any set before it asks nothing, so one chain of ticks runs however many
-// updates were asked.
+// nextPropTick sets the session's next refresh tick by the Setting (FR-4.10,
+// D-120), the one tick that asks: any set before it asks nothing, so one
+// chain of ticks runs however many updates were asked. On demand it sets
+// none: only the refresh-now key asks.
 func (d Dashboard) nextPropTick() (Dashboard, tea.Cmd) {
 	d.mapPane.propTickSeq++
+	every := d.mapPropRefresh.every()
+	d.mapPane.propTickEvery = every
+	if every == 0 {
+		return d, nil
+	}
 	tick := propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq}
-	return d, tea.Tick(propRefreshEvery, func(time.Time) tea.Msg { return tick })
+	return d, tea.Tick(every, func(time.Time) tea.Msg { return tick })
 }
 
 // applyPropTick asks again on the refresh tick; with another window over the
@@ -141,6 +167,39 @@ func (d Dashboard) propStatusWords() string {
 	return propagationStatus
 }
 
+// propOffsetNote is the offset's state said beside the field (FR-5.4,
+// D-105): GloTEC unusually far from the stations now, or the typical offset
+// applied while no readings are held; empty otherwise.
+func propOffsetNote(o ionomaps.Offset) string {
+	switch {
+	case o.Apart():
+		return "GloTEC unusually far from the stations now"
+	case o.Corrected:
+		return "corrected by the typical offset"
+	}
+	return ""
+}
+
+// propOffsetWords are the offset as the Status window and the diagnostics
+// say it (FR-5.4): the live offset - GloTEC's foF2 against the stations' -
+// beside its typical value and spread, and whether they are unusually far
+// apart; with no live offset, why, and whether the typical one is applied.
+func propOffsetWords(o ionomaps.Offset) string {
+	typical := fmt.Sprintf("typical %+.2f MHz, spread %.2f", o.TypicalMHz, o.SpreadMHz)
+	if !o.Measured {
+		w := "Propagation offset (GloTEC against the stations): no live offset, fewer than five readings; " + typical
+		if o.Corrected {
+			w += "; the typical offset is applied"
+		}
+		return w
+	}
+	w := fmt.Sprintf("Propagation offset (GloTEC against the stations): live %+.2f MHz; %s", o.LiveMHz, typical)
+	if o.Apart() {
+		w += "; unusually far apart now"
+	}
+	return w
+}
+
 // snapshotWords say the layer drawn, when the snapshot was computed and why
 // it is not new if it is not, then what it was made from (FR-5.1): the most
 // needed first, as a narrow window cuts the line's end.
@@ -165,5 +224,9 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	case ionomaps.Climatology:
 		words = append(words, "foF2 from the climatology: no GloTEC grid")
 	}
-	return strings.Join(append(words, "M(3000)F2 from the "+s.Background.M3000.String()), " · ")
+	words = append(words, "M(3000)F2 from the "+s.Background.M3000.String())
+	if n := propOffsetNote(s.Offset); n != "" {
+		words = append(words, n) // FR-5.4
+	}
+	return strings.Join(words, " · ")
 }

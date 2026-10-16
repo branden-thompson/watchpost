@@ -145,14 +145,16 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	// NO ALERTS SCOPE (D-76): the map draws every alert in view, and what it
 	// draws is switched at the map, in the Overlays menu.
 	lines, at = d.mapRow(o, lines, at, rowMapNearby, "Nearby -", d.mapPicker(o, rowMapNearby, d.nearbyLabel()))
-	lines, at = d.mapRow(o, lines, at, rowMapRadarSource, "Radar -", d.mapPicker(o, rowMapRadarSource, d.radarSourceLabel()))                 // D-83
-	lines, at = d.mapRow(o, lines, at, rowMapRadarAhead, "Radar ahead -", d.mapPicker(o, rowMapRadarAhead, radarAheadLabel(d.mapRadarAhead))) // D-114
-	lines, at = d.mapRow(o, lines, at, rowMapQuakes, "Quakes -", d.mapPicker(o, rowMapQuakes, quakeFeedLabel(d.mapQuakeFeed)))                // D-122
-	lines, at = d.mapRow(o, lines, at, rowMapTempSource, "Temperature -", d.mapPicker(o, rowMapTempSource, d.tempSourceLabel()))              // D-93, D-190
-	lines, at = d.mapRow(o, lines, at, rowMapRainDetail, "Rain Day 4+ -", d.mapPicker(o, rowMapRainDetail, rainDetailLabel(d.mapRainFull)))   // D-192
-	lines, at = d.mapRow(o, lines, at, rowMapUVCities, "UV cities -", d.mapPicker(o, rowMapUVCities, strconv.Itoa(d.mapUVCities)))            // D-202; its cost is a notice while it is chosen (D-23, D-237)
-	lines, at = d.mapRow(o, lines, at, rowMapPropRadius, "NVIS radius -", d.mapPicker(o, rowMapPropRadius, d.propRadiusLabel()))              // D-100: the Propagation mode's near-vertical area
-	lines, at = d.mapRow(o, lines, at, rowMapPropNoise, "RX noise -", d.mapPicker(o, rowMapPropNoise, propNoiseLabel(d.mapPropNoise)))        // D-187: the reference circuit's noise
+	lines, at = d.mapRow(o, lines, at, rowMapRadarSource, "Radar -", d.mapPicker(o, rowMapRadarSource, d.radarSourceLabel()))                      // D-83
+	lines, at = d.mapRow(o, lines, at, rowMapRadarAhead, "Radar ahead -", d.mapPicker(o, rowMapRadarAhead, radarAheadLabel(d.mapRadarAhead)))      // D-114
+	lines, at = d.mapRow(o, lines, at, rowMapQuakes, "Quakes -", d.mapPicker(o, rowMapQuakes, quakeFeedLabel(d.mapQuakeFeed)))                     // D-122
+	lines, at = d.mapRow(o, lines, at, rowMapTempSource, "Temperature -", d.mapPicker(o, rowMapTempSource, d.tempSourceLabel()))                   // D-93, D-190
+	lines, at = d.mapRow(o, lines, at, rowMapRainDetail, "Rain Day 4+ -", d.mapPicker(o, rowMapRainDetail, rainDetailLabel(d.mapRainFull)))        // D-192
+	lines, at = d.mapRow(o, lines, at, rowMapUVCities, "UV cities -", d.mapPicker(o, rowMapUVCities, strconv.Itoa(d.mapUVCities)))                 // D-202; its cost is a notice while it is chosen (D-23, D-237)
+	lines, at = d.mapRow(o, lines, at, rowMapPropRadius, "NVIS radius -", d.mapPicker(o, rowMapPropRadius, d.propRadiusLabel()))                   // D-100: the Propagation mode's near-vertical area
+	lines, at = d.mapRow(o, lines, at, rowMapPropNoise, "RX noise -", d.mapPicker(o, rowMapPropNoise, propNoiseLabel(d.mapPropNoise)))             // D-187: the reference circuit's noise
+	lines, at = d.mapRow(o, lines, at, rowMapPropRefresh, "HF refresh -", d.mapPicker(o, rowMapPropRefresh, d.propRefreshLabel()))                 // D-120: its cost a notice while it is chosen
+	lines, at = d.mapRow(o, lines, at, rowMapPropReadings, "No readings -", d.mapPicker(o, rowMapPropReadings, noReadingsLabel(d.mapPropCorrect))) // D-105: while no station readings are held
 	return lines, at
 }
 

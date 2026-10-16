@@ -75,6 +75,8 @@ type mapPane struct {
 	propErr         error
 	propLayer       int                        // MUF(3000) or foF2 (D-155), kept across sessions until the map is released
 	propGiven       map[string]tuimaps.Overlay // the Propagation overlays handed in
+	propSnapCorrect bool                       // the no-readings correction the snapshot shown was asked with (D-105)
+	propTickEvery   time.Duration              // the refresh chain's wait; zero with none set (D-120)
 	zoneGiven       map[string]tuimaps.Overlay // the service area handed in (D-195)
 	tower           tuimaps.Place              // the tower's mark placed, or none
 	roleDrawn       Surface                    // the UI mode the place and marks were set for

@@ -138,7 +138,7 @@ func (d Dashboard) uiTouched() Dashboard {
 // listener chose (U2-61).
 func (d Dashboard) uiForSave() UIPrefs {
 	return UIPrefs{Theme: render.ThemeName(), Units: d.units.Key(), Clock: d.clockFmt.Key(), Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key(),
-		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempNDFD), MapRainDetail: rainDetailKey(d.mapRainFull), MapUVCities: d.mapUVCities, MapPropRadius: d.mapPropRadiusKm, MapPropNoise: propNoiseKey(d.mapPropNoise), MapRadarAhead: d.mapRadarAhead, MapQuakeFeed: d.mapQuakeFeed, MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
+		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempNDFD), MapRainDetail: rainDetailKey(d.mapRainFull), MapUVCities: d.mapUVCities, MapPropRadius: d.mapPropRadiusKm, MapPropNoise: propNoiseKey(d.mapPropNoise), MapPropRefresh: propRefreshKey(d.mapPropRefresh), MapPropNoReadings: noReadingsKey(d.mapPropCorrect), MapRadarAhead: d.mapRadarAhead, MapQuakeFeed: d.mapQuakeFeed, MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
 }
 
 // uiApplyCmd writes the display preferences — and nothing else, for the same
@@ -171,6 +171,7 @@ func (d Dashboard) applyUISaved(v uiSavedMsg) Dashboard {
 	d.cfg.MapRadarSource, d.cfg.MapTempSource, d.cfg.MapRadarAhead = v.prefs.MapRadarSource, v.prefs.MapTempSource, v.prefs.MapRadarAhead
 	d.cfg.MapQuakeFeed, d.cfg.MapRainDetail, d.cfg.MapUVCities = v.prefs.MapQuakeFeed, v.prefs.MapRainDetail, v.prefs.MapUVCities
 	d.cfg.MapPropRadius, d.cfg.MapPropNoise = v.prefs.MapPropRadius, v.prefs.MapPropNoise
+	d.cfg.MapPropRefresh, d.cfg.MapPropNoReadings = v.prefs.MapPropRefresh, v.prefs.MapPropNoReadings
 	d.cfg.MapDetailChoice, d.cfg.MapDetailLevel = v.prefs.MapDetail, v.prefs.MapDetailLevel
 	return d
 }

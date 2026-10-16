@@ -278,7 +278,11 @@ func (d Dashboard) propBlockAs(width, below int, styled bool) []string {
 	if origin.ok && d.mapPane.propAhead > 0 { // an hour ahead: typical, said where the time was (FR-1.13, D-109)
 		mode = "MODE: " + field(propLayerName(d.mapPane.propLayer)) + " · " + tint(d.propAheadLabel(origin.at.Lat, origin.at.Lon), render.AlertLabel)
 	}
-	out = append(out, mode, d.propFreqLine()) // D-163: a blank row before the place, the frequency held there (D-179)
+	held := d.propFreqLine()
+	if n := propOffsetNote(snap.Offset); n != "" { // FR-5.4: the offset's state, in the row the mode line leaves, never cut off its end
+		held = strings.TrimPrefix(held+" · ", " · ") + tint(n, render.AlertLabel)
+	}
+	out = append(out, mode, held) // D-163: a blank row before the place, the frequency held there (D-179)
 	if !origin.ok {
 		return padRows(out, width)
 	}

@@ -134,14 +134,16 @@ const (
 	rowMapNearby
 	// IN THE ORDER THEY ARE DRAWN: focus walks this order, and a row declared out
 	// of drawn order is one ↓ skips (HUM LEAD, 2026-09-30).
-	rowMapRadarSource // the lower 48's radar: MRMS or IEM (D-83)
-	rowMapRadarAhead  // the radar loop's hours ahead (D-114)
-	rowMapQuakes      // the quakes drawn: M2.5+ or M1.0+, the past week or day (D-122)
-	rowMapTempSource  // the map's temperature, both modes: NDFD or Open-Meteo (D-93, D-190)
-	rowMapRainDetail  // the rain's density past NDFD's reach: coarse or full (D-192)
-	rowMapUVCities    // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
-	rowMapPropRadius  // the Propagation mode's near-vertical radius: 200, 400 or 600 km (D-100)
-	rowMapPropNoise   // the Propagation mode's reference circuit's noise: city, residential, rural or quiet rural (D-187)
+	rowMapRadarSource  // the lower 48's radar: MRMS or IEM (D-83)
+	rowMapRadarAhead   // the radar loop's hours ahead (D-114)
+	rowMapQuakes       // the quakes drawn: M2.5+ or M1.0+, the past week or day (D-122)
+	rowMapTempSource   // the map's temperature, both modes: NDFD or Open-Meteo (D-93, D-190)
+	rowMapRainDetail   // the rain's density past NDFD's reach: coarse or full (D-192)
+	rowMapUVCities     // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
+	rowMapPropRadius   // the Propagation mode's near-vertical radius: 200, 400 or 600 km (D-100)
+	rowMapPropNoise    // the Propagation mode's reference circuit's noise: city, residential, rural or quiet rural (D-187)
+	rowMapPropRefresh  // how often an open Propagation mode asks again (D-120)
+	rowMapPropReadings // while no station readings are held: GloTEC as is or corrected (D-105)
 	rowMapDetailLevel
 	// THE MAP'S DETAIL, A ROW EACH (UAT-1 U1-35): the "← Enabled →" pattern
 	// every other on/off row has, in mapDetailLayers' order.
@@ -256,18 +258,20 @@ func setupTable() [setupRowCount]setupRow {
 
 		// THE MAP IS THE LISTENER'S (0.18.0): Observer draws it, the console does not.
 		// ONE LINE EACH: the WATCHPOST UI group must still fit the window unscrolled.
-		rowMapsOn:         {rowMapsOn, groupMap, scopeObserver, rowToggle, false, "", ""},
-		rowMapDesc:        {rowMapDesc, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapScale:       {rowMapScale, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapNearby:      {rowMapNearby, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapRadarSource: {rowMapRadarSource, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapTempSource:  {rowMapTempSource, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapRainDetail:  {rowMapRainDetail, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapUVCities:    {rowMapUVCities, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapPropRadius:  {rowMapPropRadius, groupMap, scopeObserver, rowPicker, true, "", ""}, // the Broadcaster keeps its service radius (D-121)
-		rowMapPropNoise:   {rowMapPropNoise, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapRadarAhead:  {rowMapRadarAhead, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapQuakes:      {rowMapQuakes, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapsOn:          {rowMapsOn, groupMap, scopeObserver, rowToggle, false, "", ""},
+		rowMapDesc:         {rowMapDesc, groupMap, scopeShared, rowPicker, true, "", ""}, // "Instead of the map" is one Setting for both UI modes (D-121)
+		rowMapScale:        {rowMapScale, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapNearby:       {rowMapNearby, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapRadarSource:  {rowMapRadarSource, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapTempSource:   {rowMapTempSource, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapRainDetail:   {rowMapRainDetail, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapUVCities:     {rowMapUVCities, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapPropRadius:   {rowMapPropRadius, groupMap, scopeObserver, rowPicker, true, "", ""}, // the Broadcaster keeps its service radius (D-121)
+		rowMapPropNoise:    {rowMapPropNoise, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapPropRefresh:  {rowMapPropRefresh, groupMap, scopeShared, rowPicker, true, "", ""},  // one Setting for both UI modes (D-121)
+		rowMapPropReadings: {rowMapPropReadings, groupMap, scopeShared, rowPicker, true, "", ""}, // one Setting for both UI modes (D-121)
+		rowMapRadarAhead:   {rowMapRadarAhead, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapQuakes:       {rowMapQuakes, groupMap, scopeObserver, rowPicker, true, "", ""},
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one
 		// under the cursor; ←→ move it when there is more than one.
 		rowMapLayers: {rowMapLayers, groupLayers, scopeObserver, rowCheck, false, "", ""},

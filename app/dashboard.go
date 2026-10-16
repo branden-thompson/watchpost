@@ -431,6 +431,8 @@ func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
 	c.MapUVCities = cfg.MapUVCities                                    // D-202: how many cities UV asks EPA for
 	c.MapPropRadius = cfg.MapPropagationRadiusKm                       // 0.19.0 D-100: the Propagation mode's near-vertical radius
 	c.MapPropNoise = cfg.MapPropagationNoise                           // 0.19.0 D-187: the reference circuit's noise
+	c.MapPropRefresh = cfg.MapPropagationRefresh                       // 0.19.0 D-120: how often an open mode asks again
+	c.MapPropNoReadings = cfg.MapPropagationNoReadings                 // 0.19.0 D-105: while no station readings are held
 	c.MapRadarAhead = cfg.MapRadarAheadHours                           // D-114: the radar loop's hours ahead
 	c.MapQuakeFeed = cfg.MapQuakeFeed                                  // D-122: the quakes the map draws
 	c.MapProblem = lp.problems.note                                    // D-124: the diagnostics', never the listener's

@@ -303,6 +303,14 @@ type Config struct {
 	// reference circuit hears (0.19.0 D-187): "city", "rural" or
 	// "quiet-rural"; empty is residential, the default.
 	MapPropagationNoise string `toml:"map_propagation_noise,omitempty"`
+	// MapPropagationRefresh is how often an open Propagation mode asks again:
+	// empty for each new GloTEC grid (the default), "hourly" or "on-demand"
+	// (0.19.0 D-120).
+	MapPropagationRefresh string `toml:"map_propagation_refresh,omitempty"`
+	// MapPropagationNoReadings is what the Propagation mode draws while no
+	// station readings are held: empty for GloTEC as is (the default), or
+	// "corrected" by the typical offset (0.19.0 D-105).
+	MapPropagationNoReadings string `toml:"map_propagation_no_readings,omitempty"`
 
 	// HistoryHours and HistoryTrends are the local history's retention, the
 	// Data tab's presets (W18, D-175): "72h", "7d", "30d", "1y" and "30d",

@@ -116,6 +116,12 @@ type Config struct {
 	// MapPropNoise is the file's noise environment for the Propagation
 	// mode's reference circuit; anything not offered is residential (D-187).
 	MapPropNoise string
+	// MapPropRefresh is the file's refresh for an open Propagation mode:
+	// "hourly", "on-demand", or each new grid (D-120).
+	MapPropRefresh string
+	// MapPropNoReadings is the file's choice for while no station readings
+	// are held: "corrected" by the typical offset, or GloTEC as is (D-105).
+	MapPropNoReadings string
 	// MapTemperature is the temperature the map draws (W10): every hour's or
 	// step's grids, each with its span, asked off the UI goroutine.
 	MapTemperature func(ctx context.Context, ask MapAsk) MapTemperature
@@ -216,10 +222,11 @@ type Config struct {
 	SavePropagationAck func(int) error
 
 	// PropagationUpdate starts the Propagation mode's update, with the
-	// reference circuit's noise environment (D-187), or joins the
-	// one running, and sends its result (0.19.0 W4.1, D-131). ctx is the
-	// mode's: leaving the mode ends it. nil fetches nothing.
-	PropagationUpdate func(ctx context.Context, noise ionomaps.Noise) <-chan PropagationResult
+	// Settings' options - the reference circuit's noise (D-187) and the
+	// no-readings correction (D-105) - or joins the one running, and sends
+	// its result (0.19.0 W4.1, D-131). ctx is the mode's: leaving the mode
+	// ends it. nil fetches nothing.
+	PropagationUpdate func(ctx context.Context, opts ionomaps.UpdateOptions) <-chan PropagationResult
 
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
 	// reports against, and they are TWO because the data is two things: the
@@ -420,24 +427,26 @@ type Stats struct {
 // render types, because this crosses the app seam and the app is what writes
 // them to the file.
 type UIPrefs struct {
-	Theme          string
-	Units          string
-	Clock          string
-	Maps           string // "on" (the default) or "off" (0.18.0)
-	MapDescription string // "with" (the default), "instead" or "off"
-	MapScale       string // "state" (the default), "county" or "region"
-	MapNearbyKm    int
-	MapRadarSource string          // "iem", or MRMS by default (D-83)
-	MapTempSource  string          // "open-meteo", or NDFD by default (D-190)
-	MapRainDetail  string          // "full", or coarse by default (D-192)
-	MapUVCities    int             // UV's EPA cities: 8, 24 or 48; 0 is the default, 24 (D-202)
-	MapPropRadius  int             // the Propagation mode's near-vertical radius, km: 200, 400 or 600; 0 is the default, 400 (D-100)
-	MapPropNoise   string          // the reference circuit's noise: "city", "rural", "quiet-rural"; empty is residential (D-187)
-	MapRadarAhead  int             // the radar loop's hours ahead (D-114)
-	MapQuakeFeed   string          // the quakes drawn, USGS's feed by its name (D-122)
-	MapLayers      map[string]bool // the layers switched from their defaults
-	MapDetail      map[string]bool // the map's detail switched from its defaults (D-65)
-	MapDetailLevel string          // "essential", "weather" (the default), "standard" or "full" (D-67)
+	Theme             string
+	Units             string
+	Clock             string
+	Maps              string // "on" (the default) or "off" (0.18.0)
+	MapDescription    string // "with" (the default), "instead" or "off"
+	MapScale          string // "state" (the default), "county" or "region"
+	MapNearbyKm       int
+	MapRadarSource    string          // "iem", or MRMS by default (D-83)
+	MapTempSource     string          // "open-meteo", or NDFD by default (D-190)
+	MapRainDetail     string          // "full", or coarse by default (D-192)
+	MapUVCities       int             // UV's EPA cities: 8, 24 or 48; 0 is the default, 24 (D-202)
+	MapPropRadius     int             // the Propagation mode's near-vertical radius, km: 200, 400 or 600; 0 is the default, 400 (D-100)
+	MapPropNoise      string          // the reference circuit's noise: "city", "rural", "quiet-rural"; empty is residential (D-187)
+	MapPropRefresh    string          // the open mode's refresh: "hourly", "on-demand"; empty is each new grid (D-120)
+	MapPropNoReadings string          // while no station readings are held: "corrected"; empty is GloTEC as is (D-105)
+	MapRadarAhead     int             // the radar loop's hours ahead (D-114)
+	MapQuakeFeed      string          // the quakes drawn, USGS's feed by its name (D-122)
+	MapLayers         map[string]bool // the layers switched from their defaults
+	MapDetail         map[string]bool // the map's detail switched from its defaults (D-65)
+	MapDetailLevel    string          // "essential", "weather" (the default), "standard" or "full" (D-67)
 }
 
 // PipelineStats counts one pipeline's publishes and the triggers its
@@ -678,6 +687,8 @@ type Dashboard struct {
 	mapUVCities     int            // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
 	mapPropRadiusKm int            // the Propagation mode's near-vertical radius: 200, 400 or 600 km (D-100)
 	mapPropNoise    ionomaps.Noise // the reference circuit's noise environment (D-187)
+	mapPropRefresh  propRefresh    // how often an open mode asks again (D-120)
+	mapPropCorrect  bool           // GloTEC corrected by the typical offset while no readings are held (D-105)
 	mapRadarAhead   int            // the radar loop's hours ahead: 1, 3, 6 or 12 (D-114)
 	mapQuakeFeed    string         // the quakes drawn: USGS's feed by its name (D-122)
 	mapKeys         term.KeyMap
@@ -950,7 +961,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapPropNoise: propNoiseByKey(cfg.MapPropNoise), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapPropNoise: propNoiseByKey(cfg.MapPropNoise), mapPropRefresh: propRefreshByKey(cfg.MapPropRefresh), mapPropCorrect: cfg.MapPropNoReadings == noReadingsCorrected, mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -1098,16 +1109,17 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if err := invariant.Check(ok, "dispatch must return the dashboard model"); err != nil {
 		return m, cmd
 	}
-	next, resumeCmd := next.resume()        // D-107: a window returned to picks up where it was
-	next = next.mapPanicked()               // QA-11: a panic a map call or command stopped marks the map failed
-	next, mapCmd := next.armMapTick()       // 0.18.0 W2.2: the map's clock, armed after every Update
-	next = next.followPropNight()           // go-tuiMaps P4: the night moves with the clock
-	next, chartCmd := next.armPropChart()   // W5.1: the chart's answers, asked when what they come from changes
-	next, reachCmd := next.armPropReach()   // W5.2: and the frequency's reach
-	next, aheadCmd := next.armPropAhead()   // W5.4: and the hour ahead shown
-	next, centreCmd := next.armPropCentre() // and the map centre's answer
-	next, noiseCmd := next.armPropNoise()   // D-187: a snapshot for another noise than the Setting's asked again
-	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd, aheadCmd, centreCmd, noiseCmd))
+	next, resumeCmd := next.resume()          // D-107: a window returned to picks up where it was
+	next = next.mapPanicked()                 // QA-11: a panic a map call or command stopped marks the map failed
+	next, mapCmd := next.armMapTick()         // 0.18.0 W2.2: the map's clock, armed after every Update
+	next = next.followPropNight()             // go-tuiMaps P4: the night moves with the clock
+	next, chartCmd := next.armPropChart()     // W5.1: the chart's answers, asked when what they come from changes
+	next, reachCmd := next.armPropReach()     // W5.2: and the frequency's reach
+	next, aheadCmd := next.armPropAhead()     // W5.4: and the hour ahead shown
+	next, centreCmd := next.armPropCentre()   // and the map centre's answer
+	next, optsCmd := next.armPropOptions()    // D-187, D-105: a snapshot made with other options than the Settings' asked again
+	next, refreshCmd := next.armPropRefresh() // D-120: the refresh tick follows its Setting
+	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd, aheadCmd, centreCmd, optsCmd, refreshCmd))
 }
 
 // handleTicker applies one global-event-ticker message and re-arms the frame

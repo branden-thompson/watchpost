@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/branden-thompson/watchpost/domains/propagation"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -63,7 +64,7 @@ func TestOneLibraryObjectPerProcess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // nothing is fetched: the updates end at once
 	for range 3 {
-		<-c.PropagationUpdate(ctx, ionomaps.NoiseResidential)
+		<-c.PropagationUpdate(ctx, ionomaps.UpdateOptions{})
 	}
 	if made != 1 {
 		t.Errorf("three updates made %d objects; want one", made)
@@ -91,5 +92,40 @@ func TestMapStatusListsEveryPropagationHost(t *testing.T) {
 		if !strings.Contains(strings.Join(r.Notes, " "), "this computer's IP") {
 			t.Errorf("%s's row does not say it learns the IP address: %+v", h, r)
 		}
+	}
+}
+
+// solarDays answers NOAA's daily solar file and nothing else: enough for
+// go-ionomaps to build a field from its climatology, asking nothing more.
+type solarDays struct{}
+
+func (solarDays) Get(_ context.Context, rawURL, _, _ string) (httpx.Answer, error) {
+	if !strings.HasSuffix(rawURL, "daily-solar-indices.txt") {
+		return httpx.Answer{Status: 404}, nil
+	}
+	var b strings.Builder
+	for d := 30; d >= 1; d-- {
+		b.WriteString(solarNoon().AddDate(0, 0, -d).Format("2006 01 02") + "  150  140  1  2  0  0  0  0  0  0  0\n")
+	}
+	return httpx.Answer{Status: 200, Body: []byte(b.String())}, nil
+}
+
+func solarNoon() time.Time { return time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC) }
+
+// TestTheWindowsOptionsReachTheLibrary is FR-4.8's seam with D-187 and
+// D-105: the update the window asks carries its options to go-ionomaps
+// whole, so the snapshot answers for the noise asked.
+func TestTheWindowsOptionsReachTheLibrary(t *testing.T) {
+	was := newPropagationService
+	newPropagationService = func(func(string), *httpx.Plain) (*propagation.Service, error) {
+		return propagation.New(solarDays{}, propagation.Options{Clock: solarNoon})
+	}
+	t.Cleanup(func() { newPropagationService = was })
+	lp := &livePipelines{}
+	var c tty.Config
+	lp.mapConfig(&c, config.Default())
+	r := <-c.PropagationUpdate(context.Background(), ionomaps.UpdateOptions{Noise: ionomaps.NoiseCity, CorrectNoReadings: true})
+	if r.Err != nil || len(r.Snapshot.Hours) == 0 || r.Snapshot.Noise != ionomaps.NoiseCity {
+		t.Errorf("asked with city noise: %v, %d hours, noise %v", r.Err, len(r.Snapshot.Hours), r.Snapshot.Noise)
 	}
 }

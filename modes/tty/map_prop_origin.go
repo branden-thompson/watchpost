@@ -96,6 +96,55 @@ func usableBands(bands []ionomaps.BandStatus) []string {
 	return out
 }
 
+// propBestFactor is the share of the upper limit the best frequency is
+// taken at (D-197): ITU-R P.373's FOT, commonly about 85 % of the MUF on F2
+// paths - a rule of thumb, the MUF being the hour's estimate.
+const propBestFactor = 0.85
+
+// propBest is an answer's best frequency (D-197): 85 % of its upper limit,
+// and the band whose lower edge fits under it and above the LUF; false where
+// none does - no frequency serves - or no upper limit is known (zero mhz).
+func propBest(l propLimits) (mhz float64, band string, ok bool) {
+	if l.upper <= 0 {
+		return 0, "", false
+	}
+	mhz = propBestFactor * l.upper
+	for i := len(hfBands) - 1; i >= 0; i-- {
+		if b := hfBands[i]; b.low <= mhz && b.low >= l.luf {
+			return mhz, b.name, true
+		}
+	}
+	return mhz, "", false
+}
+
+// propBestWords say the best frequency (D-197): long for the centre box,
+// "best ~15.0 MHz (20m), 85% of the MUF"; short for a chart row, "best ~15.0
+// (20m)"; where none serves, so; empty with no upper limit.
+func propBestWords(l propLimits, long bool) string {
+	mhz, band, ok := propBest(l)
+	switch {
+	case mhz == 0:
+		return ""
+	case !ok && long:
+		return "no frequency serves on this path"
+	case !ok:
+		return "none serves"
+	case long:
+		return "best ~" + mhzWords(mhz) + " MHz (" + band + "), 85% of the MUF"
+	}
+	return "best ~" + mhzWords(mhz) + " (" + band + ")"
+}
+
+// propRowWords are a chart row's limits and its best frequency, in MHz
+// without the unit on each (D-197, D-198).
+func propRowWords(bands []ionomaps.BandStatus) string {
+	limits, best := propLimitWords(bands, ""), propBestWords(limitsOf(bands), false)
+	if limits == "" || best == "" {
+		return limits + best
+	}
+	return limits + " · " + best
+}
+
 // mhzWords is a frequency as the windows say it: to a tenth of a megahertz.
 func mhzWords(v float64) string { return strconv.FormatFloat(v, 'f', 1, 64) }
 
@@ -111,7 +160,10 @@ func (d Dashboard) propTarget(bands []ionomaps.BandStatus) []string {
 	default:
 		reach = "usable " + u[0] + "-" + u[len(u)-1]
 	}
-	out := []string{reach + " · " + propRowLimitWords(bands)}
+	out := []string{reach + " · " + propLimitWords(bands, " MHz")}
+	if best := propBestWords(limitsOf(bands), true); best != "" {
+		out = append(out, best) // D-197
+	}
 	if f := d.mapPane.propFreqMHz; f > 0 {
 		out = append(out, propFreqVerdict(f, d.mapPane.propFreqLabel, limitsOf(bands)))
 	}

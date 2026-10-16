@@ -34,7 +34,7 @@ func TestAClosedBandIsDrawnByItsKind(t *testing.T) {
 		}
 	}
 	cells := []rune(local)
-	if !strings.Contains(local, string(propAbsorbedGlyph)) || !strings.Contains(local, string(propWeakGlyph)) || !strings.Contains(local, "foF2 6.0 MHz · LUF 4.2 MHz") {
+	if !strings.Contains(local, string(propAbsorbedGlyph)) || !strings.Contains(local, string(propWeakGlyph)) || !strings.Contains(local, "foF2 6.0 · LUF 4.2 · none serves") {
 		t.Errorf("the local row, 160 m absorbed and 80 m weak, reads %q (%d cells)", local, len(cells))
 	}
 	for _, want := range []string{string(propAbsorbedGlyph) + " absorbed", string(propWeakGlyph) + " weak", string(propClosedGlyph) + " above the upper limit"} {
@@ -42,7 +42,7 @@ func TestAClosedBandIsDrawnByItsKind(t *testing.T) {
 			t.Errorf("the legend does not say %q:\n%s", want, text)
 		}
 	}
-	if w := propRowLimitWords([]ionomaps.BandStatus{{Status: ionomaps.Weak, Limit: ionomaps.LimitCircuit, LimitMHz: 9}, {Status: ionomaps.Disturbed, Limit: ionomaps.LimitDRAP, LimitMHz: 3}, {Status: ionomaps.Open, Limit: ionomaps.LimitMUF, LimitMHz: 18}}); w != "MUF 18.0 MHz · LUF 9.0 MHz · D-RAP 3.0 MHz" {
+	if w := propLimitWords([]ionomaps.BandStatus{{Status: ionomaps.Weak, Limit: ionomaps.LimitCircuit, LimitMHz: 9}, {Status: ionomaps.Disturbed, Limit: ionomaps.LimitDRAP, LimitMHz: 3}, {Status: ionomaps.Open, Limit: ionomaps.LimitMUF, LimitMHz: 18}}, " MHz"); w != "MUF 18.0 MHz · LUF 9.0 MHz · D-RAP 3.0 MHz" {
 		t.Errorf("a row's limits read %q; the upper, then the LUF, then D-RAP's", w)
 	}
 }
@@ -72,7 +72,7 @@ func TestTheNoiseSettingIsTheUpdates(t *testing.T) {
 		t.Errorf("the picker steps %v", seen)
 	}
 	d = d.cyclePropNoise(true) // City
-	d, again := d.armPropNoise()
+	d, again := d.armPropOptions()
 	if again == nil {
 		t.Fatal("the Setting changed and the snapshot, made for Residential, was not asked again")
 	}
@@ -82,7 +82,7 @@ func TestTheNoiseSettingIsTheUpdates(t *testing.T) {
 	city := stationsSnap(0, ionomaps.Fresh)
 	city.Noise = ionomaps.NoiseCity
 	d.mapPane.propSnap = &city
-	if _, again := d.armPropNoise(); again != nil {
+	if _, again := d.armPropOptions(); again != nil {
 		t.Error("a snapshot made for the Setting's noise was asked again")
 	}
 	if propNoiseKey(ionomaps.NoiseCity) != "city" || propNoiseByKey("quiet-rural") != ionomaps.NoiseQuietRural || propNoiseByKey("nonsense") != ionomaps.NoiseResidential || propNoiseKey(ionomaps.NoiseResidential) != "" {

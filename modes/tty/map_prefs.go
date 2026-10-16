@@ -604,7 +604,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapPropRadius || id == rowMapPropNoise || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapPropRadius || id == rowMapPropNoise || id == rowMapPropRefresh || id == rowMapPropReadings || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -626,6 +626,10 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.cyclePropRadius(forward), true
 	case rowMapPropNoise:
 		return d.cyclePropNoise(forward), true
+	case rowMapPropRefresh:
+		return d.cyclePropRefresh(forward), true
+	case rowMapPropReadings:
+		return d.togglePropCorrect(), true
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(forward), true
 	case rowMapQuakes:

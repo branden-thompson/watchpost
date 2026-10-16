@@ -37,7 +37,7 @@ func stationDash(t *testing.T) Dashboard {
 func TestTheCentreIsAnsweredAsTheMapPans(t *testing.T) {
 	d := workCentre(t, stationDash(t))
 	box := stripANSITest(strings.Join(d.propCentreBox(), "\n"))
-	for _, want := range []string{"Centre", "MUF(3000) 18.0", "foF2 6.0", "OCEANSIDE, CA (NO TRANSMITTER SET)", "usable ", "LUF "} {
+	for _, want := range []string{"Centre", "MUF(3000) 18.0", "foF2 6.0", "OCEANSIDE, CA (NO TRANSMITTER SET)", "usable ", "best ~"} { // the LUF only at hours the absorption closes a band
 		if !strings.Contains(box, want) {
 			t.Errorf("the centre box does not say %q:\n%s", want, box)
 		}
@@ -108,7 +108,7 @@ func TestTheTargetSaysWhatIsUsable(t *testing.T) {
 	bands[0] = ionomaps.BandStatus{Status: ionomaps.Absorbed, Limit: ionomaps.LimitAbsorption, LimitMHz: 4}
 	bands[9] = ionomaps.BandStatus{Status: ionomaps.AboveUpper, Limit: ionomaps.LimitMUF, LimitMHz: 16}
 	var d Dashboard
-	if got := d.propTarget(bands); len(got) != 1 || got[0] != "nothing usable at 100 W · MUF 16.0 MHz · LUF 4.0 MHz" {
+	if got := d.propTarget(bands); len(got) != 2 || got[0] != "nothing usable at 100 W · MUF 16.0 MHz · LUF 4.0 MHz" || got[1] != "best ~13.6 MHz (30m), 85% of the MUF" {
 		t.Errorf("no band open: %q", got)
 	}
 	bands[3] = band(ionomaps.Open)
@@ -118,11 +118,11 @@ func TestTheTargetSaysWhatIsUsable(t *testing.T) {
 	bands[5] = band(ionomaps.Disturbed)
 	d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = 7.2, "7.2 MHz"
 	got := d.propTarget(bands)
-	if got[0] != "usable 40m-20m · MUF 16.0 MHz · LUF 4.0 MHz" || len(got) != 2 || got[1] != "7.2 MHz: open" {
+	if got[0] != "usable 40m-20m · MUF 16.0 MHz · LUF 4.0 MHz" || len(got) != 3 || got[2] != "7.2 MHz: open" {
 		t.Errorf("40m open and 20m disturbed, 7.2 MHz held: %q", got)
 	}
 	bands[0].Limit, d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = ionomaps.LimitCircuit, 3, "3.0 MHz"
-	if got := d.propTarget(bands); got[1] != "3.0 MHz: too weak at 100 W - go up to 4.0+" {
-		t.Errorf("under a LUF the circuit decides, 3 MHz held: %q", got[1])
+	if got := d.propTarget(bands); got[len(got)-1] != "3.0 MHz: too weak at 100 W - go up to 4.0+" {
+		t.Errorf("under a LUF the circuit decides, 3 MHz held: %q", got)
 	}
 }

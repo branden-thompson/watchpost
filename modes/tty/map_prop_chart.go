@@ -275,33 +275,30 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 		name = strings.ToUpper(o.name)
 	}
 	out := []string{"From " + name + " · " + c.key.hour.UTC().Format("15:04 UTC") + " · 100 W, 0 dBi, +13 dB · " + strings.ToLower(propNoiseLabel(c.key.noise)) + " noise", ""}
-	head := render.PadTo("", propNameW+2)
+	if s := d.mapPane.propSnap; s != nil && propOffsetNote(s.Offset) != "" {
+		out[1] = propOffsetNote(s.Offset) // FR-5.4: the chart's status label, under its header
+	}
+	head := render.PadTo("", propNameW+4) // the pointer and the shade (D-198) before the names
 	for _, b := range hfBands {
 		head += fmt.Sprintf("%3s", strings.TrimSuffix(b.name, "m")) // each band's number over its glyph
 	}
 	out = append(out, head)
 	names, answers := d.propChartRows()
 	row := min(d.mapPane.propChartRow, len(names)-1)
-	var unscored []string
 	for i, a := range answers {
 		pointer := "  "
 		if i == row {
 			pointer = "▸ "
 		}
-		line := pointer + render.PadTo(names[i], propNameW) + d.propBandCells(a.Bands)
-		if w := propRowLimitWords(a.Bands); w != "" {
+		line := pointer + propShade(a.Nearest, o.ASCII) + " " + render.PadTo(names[i], propNameW) + d.propBandCells(a.Bands)
+		if w := propRowWords(a.Bands); w != "" {
 			line += " " + w
 		}
 		out = append(out, line)
-		if a.Nearest.Known && a.Nearest.Unscored {
-			unscored = append(unscored, names[i])
-		}
 	}
 	out = append(out, string(propOpenGlyph)+" open   "+string(propDisturbedGlyph)+" disturbed (D-RAP)   "+string(propAbsorbedGlyph)+" absorbed   "+string(propWeakGlyph)+" weak",
-		string(propClosedGlyph)+" above the upper limit   blank: no data")
-	if len(unscored) > 0 {
-		out = append(out, "Nearest station unscored, verify on air: "+strings.Join(unscored, ", ")) // D-181
-	}
+		string(propClosedGlyph)+" above the upper limit   blank: no data   figures in MHz",
+		propShadeLegend(o.ASCII)) // D-198
 	if f := d.propFreqLine(); f != "" {
 		out = append(out, f) // D-178: what is held
 	}
@@ -312,6 +309,68 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 	}
 	out = append(out, d.propDayHead(c.key.hour))
 	return append(out, d.propDayRows(answers[row].Bands)...)
+}
+
+// The nearest reporting station's distances the shades break at (D-116,
+// D-198): beyond the far one an answer is about as good as typical.
+const (
+	propNearKm = 500
+	propFarKm  = 2000
+)
+
+// propShade is a chart row's nearest reporting station as a shade (D-198),
+// go-tuiMaps' own no-colour key: within 500 km, 500 to 2000 km, farther or
+// none; ? where the nearest is unscored. Under --ascii, #, + and . for them.
+func propShade(n ionomaps.Nearest, ascii bool) string {
+	shades := [3]string{"▓", "▒", "░"}
+	if ascii {
+		shades = [3]string{"#", "+", "."}
+	}
+	switch {
+	case !n.Known:
+		return shades[2]
+	case n.Unscored:
+		return "?"
+	case n.Km < propNearKm:
+		return shades[0]
+	case n.Km < propFarKm:
+		return shades[1]
+	}
+	return shades[2]
+}
+
+// propNearestSummary says each chart row's nearest reporting station
+// (FR-5.5, D-198), what the shades draw: its distance, unscored said, and
+// beyond 2000 km or with none that the answer is about as good as typical
+// there; empty before the chart is worked out.
+func (d Dashboard) propNearestSummary() string {
+	if !d.propChartShown() {
+		return ""
+	}
+	names, answers := d.propChartRows()
+	parts := make([]string, 0, len(names))
+	for i, a := range answers {
+		n, w := a.Nearest, names[i]+": "
+		switch {
+		case !n.Known:
+			w += "no station, about as good as typical"
+		case n.Km >= propFarKm:
+			w += "a station " + d.roundDistance(float64(n.Km)) + " away, about as good as typical"
+		default:
+			w += "a station " + d.roundDistance(float64(n.Km)) + " away"
+		}
+		if n.Known && n.Unscored {
+			w += ", unscored: verify on air"
+		}
+		parts = append(parts, w)
+	}
+	return "Nearest reporting station - " + strings.Join(parts, "; ") + "."
+}
+
+// propShadeLegend is the shades' key (D-198).
+func propShadeLegend(ascii bool) string {
+	near, mid, far := propShade(ionomaps.Nearest{Known: true}, ascii), propShade(ionomaps.Nearest{Known: true, Km: propNearKm}, ascii), propShade(ionomaps.Nearest{}, ascii)
+	return "nearest station: " + near + " <500 km   " + mid + " 500-2000 km   " + far + " farther, ~typical   ? unscored"
 }
 
 // propNameW is the chart's name column: the longest row name and a space.
@@ -348,10 +407,11 @@ func (d Dashboard) propGlyph(open, noData bool) string {
 	return render.Tint(string(propClosedGlyph), render.Tok(render.KeyChipMuted))
 }
 
-// propRowLimitWords name a row's limits (D-192): its upper limit, from a
+// propLimitWords name an answer's limits (D-192): its upper limit, from a
 // band it decided; the LUF when the lower limit closes any band; and D-RAP's
-// 1 dB frequency when it disturbs any; empty with no data.
-func propRowLimitWords(bands []ionomaps.BandStatus) string {
+// 1 dB frequency when it disturbs any; each figure in MHz with the unit given
+// after it (the chart's rows write none, D-198); empty with no data.
+func propLimitWords(bands []ionomaps.BandStatus, unit string) string {
 	l := limitsOf(bands)
 	upper := "MUF"
 	for _, b := range bands {
@@ -365,7 +425,7 @@ func propRowLimitWords(bands []ionomaps.BandStatus) string {
 		mhz  float64
 	}{{upper, l.upper}, {"LUF", l.luf}, {"D-RAP", l.drap}} {
 		if w.mhz > 0 {
-			parts = append(parts, w.name+" "+mhzWords(w.mhz)+" MHz")
+			parts = append(parts, w.name+" "+mhzWords(w.mhz)+unit)
 		}
 	}
 	return strings.Join(parts, " · ")
