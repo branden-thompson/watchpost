@@ -9,11 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/branden-thompson/watchpost/domains/locations/coverage"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/locations/openmeteo"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -55,6 +57,12 @@ func (r *Resolver) TypeAhead(query string, limit int) []Suggestion {
 	if q == "" {
 		return nil
 	}
+	if ref, typed, err := typedPlace(q); typed {
+		if err != nil {
+			return nil
+		}
+		return []Suggestion{{Display: ref.Label, Ref: ref}} // read here, never looked up (FR-4.9)
+	}
 	if zipRe.MatchString(q) {
 		if z, ok := r.idx.Zip(q); ok {
 			ref := r.zipToRef(z, q)
@@ -92,6 +100,9 @@ func (r *Resolver) Resolve(ctx context.Context, query string) (ref snapshot.Loca
 	if err := invariant.Check(q != "", "cannot resolve an empty location query"); err != nil {
 		return snapshot.LocationRef{}, false, err
 	}
+	if ref, typed, err := typedPlace(q); typed {
+		return ref, false, err // coordinates and locators are read here and never go online (FR-4.9)
+	}
 	if zipRe.MatchString(q) {
 		if z, ok := r.idx.Zip(q); ok {
 			return r.zipToRef(z, q), false, nil
@@ -105,13 +116,51 @@ func (r *Resolver) Resolve(ctx context.Context, query string) (ref snapshot.Loca
 		}
 	}
 	if r.fallback == nil {
-		return snapshot.LocationRef{}, false, fmt.Errorf("no match for %q in the offline index and no network fallback — try 'City, ST' or a 5-digit zip", q)
+		return snapshot.LocationRef{}, false, errors.New("no match in the offline index and no network fallback — try 'City, ST' or a 5-digit zip") // never the query (FR-4.9)
 	}
-	ref, err = r.fallback.Resolve(ctx, q)
+	geocode := r.fallback.Resolve // the online fallback's method, through a value: P10-01 matches calls by bare name (D-202)
+	ref, err = geocode(ctx, q)
 	if err != nil {
 		return snapshot.LocationRef{}, false, err
 	}
 	return ref, true, nil
+}
+
+// typedPlace reads a place typed as coordinates ("33.2, -117.38") or a
+// Maidenhead locator ("DM13af"), locally (FR-4.9, FR-1.10): typed is false
+// for any other query. A pair of numbers that is not on the globe, or a
+// place in no region the weather covers, is refused here, offline.
+func typedPlace(q string) (ref snapshot.LocationRef, typed bool, err error) {
+	at, label := geo.LatLon{}, ""
+	if p, ok := geo.ParseCoordinates(q); ok {
+		at, label = p, fmt.Sprintf("%.4f, %.4f", p.Lat, p.Lon)
+	} else if p, ok := geo.ParseLocator(q); ok {
+		at, label = p, geo.LocatorLabel(q)
+	} else if numberPair(q) {
+		return snapshot.LocationRef{}, true, errors.New("coordinates are two numbers: latitude from -90 to 90, then longitude from -180 to 180")
+	} else {
+		return snapshot.LocationRef{}, false, nil
+	}
+	if _, in := geo.RegionOf(at.Lat, at.Lon); !in {
+		return snapshot.LocationRef{}, true, errors.New(coverage.Outside(label))
+	}
+	return snapshot.LocationRef{Label: label, Lat: at.Lat, Lon: at.Lon}, true, nil
+}
+
+// numberPair reports whether a query is written as two numbers - which
+// strconv would read, "NaN" and "Inf" among them - so that coordinates the
+// parser refuses are refused, never looked up online (FR-4.9).
+func numberPair(q string) bool {
+	parts := strings.FieldsFunc(q, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' })
+	if len(parts) != 2 {
+		return false
+	}
+	for _, p := range parts {
+		if _, err := strconv.ParseFloat(p, 64); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 // cityPart strips a trailing ", ST" qualifier.

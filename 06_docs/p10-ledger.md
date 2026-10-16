@@ -9,7 +9,7 @@
 
 **It is generated.** Add a row by ratifying it with the HUM LEAD, writing it to the ledger, re-running `scripts/quality/p10-ledger-mirror.py`, and running `scripts/quality/lint-ledger.sh`. The generator refuses to write a row carrying an absolute path, a harness path, an A2DH skill path, an internal project tree, or an email address — and the lint refuses the file if one ever gets in another way.
 
-**161 rows.**
+**160 rows.**
 
 ## P10-00-BUILD-COVERAGE (1)
 
@@ -17,14 +17,13 @@
 |---|---|---|---|
 | `app/dump_windows.go` | `package` | 2026-10-05 | Compiled only for Windows (//go:build windows): a no-op dump trigger and the [S] modal's one-line hint, since Windows has no SIGUSR1. The analysers do not see it under darwin; run under GOOS=windows GOARCH=amd64 they report nothing for it beyond the app package's existing density row. As go-tuiMaps D-21 and D-138 did for their platform files. Observer-maps D-248. RATIFIED by the HUM LEAD 2026-10-05 ("Guards, then ratify the rest"). |
 
-## P10-01-CONTROL-FLOW (34)
+## P10-01-CONTROL-FLOW (33)
 
 | File | Symbol | Ratified | Reason |
 |---|---|---|---|
 | `pkg/schema/schema.go` | `typeSchemaDepth` | 2026-09-06 | Structural recursion over the finite contract type graph, explicitly depth-bounded (maxDepth=12, invariant-checked, fails loudly). Dev/test-time only. B1a; ratify at gate. RATIFIED by the HUM LEAD 2026-09-06 ("Ratified"), presented as the 23-row list enumerated at 0.14.0 REVIEW exit (F-45); recorded in 06_docs/02_features/multi-voice-support/04-development/director-build-log.md. |
 | `platform/sched/sched.go` | `Now` | 2026-09-06 | Analyzer false positive: the syntactic same-package cycle pass reads RealClock.Now -> time.Now as self-recursion; it is a cross-package call. Canonical Clock method names kept. B1b; ratify at gate. RATIFIED by the HUM LEAD 2026-09-06 ("Ratified"), presented as the 23-row list enumerated at 0.14.0 REVIEW exit (F-45); recorded in 06_docs/02_features/multi-voice-support/04-development/director-build-log.md. |
 | `platform/sched/sched.go` | `After` | 2026-09-06 | Same false positive as Now: RealClock.After -> time.After is cross-package, not recursion. B1b; ratify at gate. RATIFIED by the HUM LEAD 2026-09-06 ("Ratified"), presented as the 23-row list enumerated at 0.14.0 REVIEW exit (F-45); recorded in 06_docs/02_features/multi-voice-support/04-development/director-build-log.md. |
-| `domains/locations/resolver.go` | `Resolve` | 2026-09-08 | Analyzer false positive (ratified class, D-20): Resolver.Resolve -> r.fallback.Resolve is an interface call to another type, read as self-recursion by the syntactic name-based pass. RATIFIED BY PRECEDENT, HUM LEAD 2026-09-08: this row predates the structured `ratified:` field and carried no dated approval of its own. It is ratified as part of the set carried forward from the releases that accepted it, on the HUM LEAD's explicit ruling — not self-approved, and not inferred from its own wording. |
 | `domains/radio/player/icy.go` | `Close` | 2026-09-08 | Stream.Close delegates to the wrapped body's Close (io.Closer) — same-named interface method, not recursion. B4 UAT 76. RATIFIED BY PRECEDENT, HUM LEAD 2026-09-08: this row predates the structured `ratified:` field and carried no dated approval of its own. It is ratified as part of the set carried forward from the releases that accepted it, on the HUM LEAD's explicit ruling — not self-approved, and not inferred from its own wording. |
 | `domains/radio/player/output.go` | `NewPlayer` | 2026-09-08 | OtoOutput.NewPlayer delegates to oto.Context.NewPlayer — same-named method on another type, not recursion. B4 UAT 76. RATIFIED BY PRECEDENT, HUM LEAD 2026-09-08: this row predates the structured `ratified:` field and carried no dated approval of its own. It is ratified as part of the set carried forward from the releases that accepted it, on the HUM LEAD's explicit ruling — not self-approved, and not inferred from its own wording. |
 | `domains/radio/player/tap.go` | `Read` | 2026-09-08 | tapReader.Read pulls from the wrapped io.Reader and copies the frames aside — same-named interface method, not recursion (the resampler/icy pattern). B4 UAT 92. RATIFIED BY PRECEDENT, HUM LEAD 2026-09-08: this row predates the structured `ratified:` field and carried no dated approval of its own. It is ratified as part of the set carried forward from the releases that accepted it, on the HUM LEAD's explicit ruling — not self-approved, and not inferred from its own wording. |

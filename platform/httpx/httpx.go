@@ -51,6 +51,8 @@ func isSecretParam(name string) bool {
 		return true
 	case "bbox": // not a secret, but where the map is looking (0.18.0 W8.14a, D-47): never in an error's text
 		return true
+	case "name": // the geocoder's typed place: what was looked up is never in an error's text (0.19.0 FR-4.9)
+		return true
 	}
 	return false
 }

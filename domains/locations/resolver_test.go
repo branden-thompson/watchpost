@@ -2,6 +2,7 @@ package locations
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -142,5 +143,62 @@ func TestTypeAheadSingleCallBudget(t *testing.T) {
 		if el := time.Since(start); el > budget {
 			t.Fatalf("TypeAhead(%q) took %v (>%v budget)", q, el, budget)
 		}
+	}
+}
+
+// offlineOnly is a fallback that fails the test when asked: nothing typed as
+// coordinates or a locator may go online (FR-4.9).
+type offlineOnly struct{ t *testing.T }
+
+func (o offlineOnly) Resolve(_ context.Context, q string) (snapshot.LocationRef, error) {
+	o.t.Errorf("%q went to the online geocoder", q)
+	return snapshot.LocationRef{}, errors.New("asked")
+}
+
+// TestEveryResolverParsesCoordinatesLocally is FR-4.9 (W0.3): the one
+// resolver every lookup goes through - the Observer's, the console's,
+// `watchpost report` - reads coordinates itself, offers them as you type and
+// never sends them online; a pair that is not two finite numbers on the
+// globe is refused, offline, saying what one is.
+func TestEveryResolverParsesCoordinatesLocally(t *testing.T) {
+	r := testResolver(t, offlineOnly{t})
+	ref, fell, err := r.Resolve(context.Background(), " 33.2 , -117.38 ")
+	if err != nil || fell || ref.Lat != 33.2 || ref.Lon != -117.38 || ref.Label != "33.2000, -117.3800" {
+		t.Fatalf("coordinates resolved to %+v (fell back %v): %v", ref, fell, err)
+	}
+	if s := r.TypeAhead("33.2,-117.38", 5); len(s) != 1 || s[0].Ref != ref {
+		t.Errorf("the type-ahead offers %+v for coordinates", s)
+	}
+	for _, q := range []string{"NaN,NaN", "Inf, 0", "33.2, 400", "1e3,2"} {
+		if _, _, err := r.Resolve(context.Background(), q); err == nil || !strings.Contains(err.Error(), "latitude") {
+			t.Errorf("%q: %v; refused, saying what a coordinate pair is", q, err)
+		}
+	}
+}
+
+// TestCoordinatesAndLocatorsNeverGoOnline is FR-4.9 and FR-1.10 (W0.3): a
+// Maidenhead locator is read locally to the centre of its square; a place
+// typed either way in no region the weather covers is refused, offline, as a
+// city there is.
+func TestCoordinatesAndLocatorsNeverGoOnline(t *testing.T) {
+	r := testResolver(t, offlineOnly{t})
+	ref, fell, err := r.Resolve(context.Background(), "dm13AF")
+	if err != nil || fell || ref.Label != "DM13af" || ref.Lat < 33 || ref.Lat > 33.25 || ref.Lon < -118 || ref.Lon > -117.9 {
+		t.Fatalf("the locator resolved to %+v (fell back %v): %v", ref, fell, err)
+	}
+	for _, q := range []string{"51.5,-0.12", "IO91wm"} { // London
+		if _, _, err := r.Resolve(context.Background(), q); err == nil || !strings.Contains(err.Error(), "outside") {
+			t.Errorf("%q, outside every region: %v", q, err)
+		}
+	}
+}
+
+// TestNoLookupErrorQuotesTheQuery is FR-4.9 (W0.3): a place not found is
+// said without quoting what was typed.
+func TestNoLookupErrorQuotesTheQuery(t *testing.T) {
+	const typed = "Zzqxj Private Lane"
+	_, _, err := testResolver(t, nil).Resolve(context.Background(), typed)
+	if err == nil || strings.Contains(err.Error(), "Zzqxj") {
+		t.Errorf("offline, no match: %v", err)
 	}
 }

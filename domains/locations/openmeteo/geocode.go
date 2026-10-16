@@ -53,10 +53,10 @@ func (g *Geocoder) Resolve(ctx context.Context, query string) (snapshot.Location
 	}
 	u := fmt.Sprintf("%s/v1/search?count=5&name=%s", g.base, url.QueryEscape(query))
 	if _, err := g.client.GetJSON(ctx, u, &payload); err != nil {
-		return snapshot.LocationRef{}, fmt.Errorf("geocoding %q: %w", query, err)
+		return snapshot.LocationRef{}, fmt.Errorf("geocoding: %w", err) // never the query (FR-4.9): the URL's name is redacted
 	}
 	if len(payload.Results) == 0 {
-		return snapshot.LocationRef{}, fmt.Errorf("no location found for %q — try 'City, ST' or a zip code", query)
+		return snapshot.LocationRef{}, errors.New("no location found by that name — try 'City, ST' or a zip code")
 	}
 	r := payload.Results[0]
 	if r.CountryCode != "" && !coverage.NWS(r.CountryCode) { // the same answer as the offline index (round 2 N-2)

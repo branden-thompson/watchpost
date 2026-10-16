@@ -5,6 +5,7 @@ package app
 // the stale warning and the deck's labels.
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -14,23 +15,29 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/platform/config"
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-func TestParseLatLonTable(t *testing.T) {
-	for in, want := range map[string][3]any{
-		"33.24,-117.29":    {33.24, -117.29, true},
-		" 33.24 , -117.29": {33.24, -117.29, true},
-		"91,0":             {0.0, 0.0, false}, // latitude out of range
-		"0,181":            {0.0, 0.0, false},
-		"33.24":            {0.0, 0.0, false},
-		"a,b":              {0.0, 0.0, false},
-		"1,2,3":            {0.0, 0.0, false},
-	} {
-		lat, lon, ok := parseLatLon(in)
-		if ok != want[2].(bool) || (ok && (lat != want[0].(float64) || lon != want[1].(float64))) {
-			t.Errorf("parseLatLon(%q) = %v %v %v, want %v", in, lat, lon, ok, want)
+// TestTheReportResolvesCoordinatesThroughTheResolver is FR-4.9 (W0.3):
+// `watchpost report` reads coordinates and locators through the one
+// resolver every lookup uses - its own parser, which took "NaN", is gone -
+// so a pair off the globe or "NaN" is refused, and a place outside the
+// weather's regions is said so.
+func TestTheReportResolvesCoordinatesThroughTheResolver(t *testing.T) {
+	client, err := httpx.New(httpx.Config{UserAgent: "t", RatePerSec: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for in, want := range map[string]string{" 33.24 , -117.29": "33.2400, -117.2900", "DM13af": "DM13af"} {
+		if ref, fell, err := resolveQuery(context.Background(), client, in); err != nil || fell || ref.Label != want {
+			t.Errorf("%q resolved to %+v (fell back %v): %v", in, ref, fell, err)
+		}
+	}
+	for _, in := range []string{"NaN,NaN", "91,0", "0,181", "1e2,3", "0,0"} {
+		if ref, _, err := resolveQuery(context.Background(), client, in); err == nil {
+			t.Errorf("%q was taken as %+v", in, ref)
 		}
 	}
 }

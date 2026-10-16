@@ -6,8 +6,6 @@ import (
 	"context"
 	"fmt"
 	"golang.org/x/sync/errgroup"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/locations"
@@ -160,14 +158,13 @@ func staleWarnings(asm *snapshot.Assembler, snap *snapshot.Snapshot) {
 	}
 }
 
-// resolveQuery accepts "lat,lon" directly, else resolves embedded-first with
-// the Open-Meteo online fallback (AI-8 hybrid; B2).
+// resolveQuery resolves through the one resolver every lookup uses:
+// coordinates and Maidenhead locators read locally, never sent online
+// (FR-4.9), else embedded-first with the Open-Meteo online fallback (AI-8
+// hybrid; B2).
 func resolveQuery(ctx context.Context, client *httpx.Client, query string) (snapshot.LocationRef, bool, error) {
 	if err := invariant.Check(client != nil, "resolveQuery requires a client"); err != nil {
 		return snapshot.LocationRef{}, false, err
-	}
-	if lat, lon, ok := parseLatLon(query); ok {
-		return snapshot.LocationRef{Label: query, Lat: lat, Lon: lon}, false, nil
 	}
 	idx, err := geodata.Load()
 	if err != nil {
@@ -185,17 +182,4 @@ func resolveQuery(ctx context.Context, client *httpx.Client, query string) (snap
 		return snapshot.LocationRef{}, false, err
 	}
 	return ref, fellBack, nil
-}
-
-func parseLatLon(s string) (lat, lon float64, ok bool) {
-	parts := strings.Split(s, ",")
-	if len(parts) != 2 {
-		return 0, 0, false
-	}
-	lat, err1 := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
-	lon, err2 := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
-	if err1 != nil || err2 != nil || lat < -90 || lat > 90 || lon < -180 || lon > 180 {
-		return 0, 0, false
-	}
-	return lat, lon, true
 }

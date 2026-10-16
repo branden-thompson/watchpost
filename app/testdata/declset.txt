@@ -787,7 +787,6 @@ func onTheRail
 func overClient
 func overlayStamp
 func pairOf
-func parseLatLon
 func parseSayVoices
 func partOfState
 func partialNote

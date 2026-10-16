@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -47,5 +48,28 @@ func TestResolveNoResultIsActionable(t *testing.T) {
 	_, err := NewGeocoder(c, srv.URL).Resolve(context.Background(), "xyzzy")
 	if err == nil {
 		t.Fatal("must error on no results")
+	}
+}
+
+// TestTheGeocoderQueryIsRedacted is FR-4.9 (W0.3): what was typed never
+// appears in an error - not in the words, not in the URL a failed request
+// names, where `name` is redacted as a key would be.
+func TestTheGeocoderQueryIsRedacted(t *testing.T) {
+	const typed = "Zzqxj Private Lane"
+	failing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusInternalServerError) }))
+	defer failing.Close()
+	empty := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"results":[]}`)) }))
+	defer empty.Close()
+	c, _ := httpx.New(httpx.Config{UserAgent: "t", RatePerSec: 1000})
+	for name, srv := range map[string]*httptest.Server{"a failed request": failing, "no result": empty} {
+		_, err := NewGeocoder(c, srv.URL).Resolve(context.Background(), typed)
+		if err == nil {
+			t.Fatalf("%s: no error", name)
+		}
+		for _, part := range []string{typed, "Zzqxj", "Zzqxj+Private", "Zzqxj%20Private"} {
+			if strings.Contains(err.Error(), part) {
+				t.Errorf("%s: the error quotes what was typed: %v", name, err)
+			}
+		}
 	}
 }
