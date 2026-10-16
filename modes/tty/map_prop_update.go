@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -158,13 +159,66 @@ func (d Dashboard) propStatusWords() string {
 	snap, err := d.mapPane.propSnap, d.mapPane.propErr
 	switch {
 	case snap != nil:
-		return snapshotWords(*snap, d.mapPane.propLayer)
+		age, _, _ := d.propAge(*snap)
+		return snapshotWords(*snap, d.mapPane.propLayer) + " · " + age // FR-5.1, FR-5.2
 	case err != nil && !errors.Is(err, context.Canceled):
-		return "Propagation · " + strings.TrimPrefix(err.Error(), "ionomaps: ")
+		return "Propagation · " + strings.TrimPrefix(err.Error(), "ionomaps: ") + " · " + d.firstKey(actMapRefresh) + " refreshes now" // D-120: the key that asks again
 	case d.mapPane.propBusy:
 		return "Propagation · asking NOAA for the newest grid"
 	}
 	return propagationStatus
+}
+
+// propStaleAfter is how old the oldest input may be before the field is
+// said stale (FR-5.2, A-56): an hour, go-ionomaps' own currency for a GloTEC
+// grid - past it the field falls to the climatology, named - and for a GIRO
+// reading (D-184).
+const propStaleAfter = time.Hour
+
+// propOldestInput is when the oldest input in use was valid (FR-5.1, A-30):
+// GloTEC's grid where it is the background, and the oldest GIRO reading
+// assimilated; false with neither - the climatology alone.
+func propOldestInput(s ionomaps.Snapshot) (time.Time, bool) {
+	var oldest time.Time
+	if s.Background.FoF2 == ionomaps.GloTEC && !s.Inputs.GloTECValid.IsZero() {
+		oldest = s.Inputs.GloTECValid
+	}
+	if r := s.Inputs.OldestReading; s.Inputs.Stations > 0 && !r.IsZero() && (oldest.IsZero() || r.Before(oldest)) {
+		oldest = r
+	}
+	return oldest, !oldest.IsZero()
+}
+
+// propAge says the field's age (FR-5.1, FR-5.2): its oldest input's, "data
+// 25 min old", "data just in", or past an hour "STALE: data 2 h 5 min old";
+// "climatology" with no measured input. The age is for the freshness tone,
+// zero for the climatology.
+func (d Dashboard) propAge(s ionomaps.Snapshot) (words string, age time.Duration, stale bool) {
+	oldest, ok := propOldestInput(s)
+	if !ok {
+		return "climatology", 0, false
+	}
+	age = max(d.now().Sub(oldest), 0)
+	words = "data just in"
+	if age >= time.Minute {
+		words = "data " + spanWords(age) + " old"
+	}
+	if age > propStaleAfter {
+		return "STALE: " + words, age, true
+	}
+	return words, age, false
+}
+
+// spanWords is a span to the minute, "25 min" or "2 h 5 min".
+func spanWords(span time.Duration) string {
+	m := int(span.Minutes())
+	if m < 60 {
+		return strconv.Itoa(m) + " min"
+	}
+	if m%60 == 0 {
+		return strconv.Itoa(m/60) + " h"
+	}
+	return strconv.Itoa(m/60) + " h " + strconv.Itoa(m%60) + " min"
 }
 
 // propOffsetNote is the offset's state said beside the field (FR-5.4,

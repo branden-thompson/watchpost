@@ -23,9 +23,16 @@ const propagationBodyBytes = 8 << 20
 
 // propagationClientConfig is the propagation client's: its own instance, no
 // retry, no cache, no pacing shared with the data client (FR-4.4), https
-// alone, no private address and a body cap (FR-4.7).
+// alone, no private address and a body cap (FR-4.7), each host's tightened to
+// what go-ionomaps parses from its source (W0.2).
 func propagationClientConfig() httpx.PlainConfig {
-	return httpx.PlainConfig{UserAgent: UserAgent, MaxBodyBytes: propagationBodyBytes, RefusePrivate: true, HTTPSOnly: true}
+	caps := map[string]int64{}
+	for _, s := range propagationSources() {
+		for _, h := range s.Hosts {
+			caps[h] = int64(s.MaxBytes)
+		}
+	}
+	return httpx.PlainConfig{UserAgent: UserAgent, MaxBodyBytes: propagationBodyBytes, MaxBodyByHost: caps, RefusePrivate: true, HTTPSOnly: true}
 }
 
 // newPropagationService is how the service is made over its client; a test

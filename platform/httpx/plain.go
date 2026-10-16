@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ type Plain struct {
 	http      *http.Client
 	ua        string
 	maxBody   int64
+	hostMax   map[string]int64 // a host's own cap, tighter than maxBody (W0.2)
 	httpsOnly bool
 	stats     *reqStats // its asks per host, as the data client counts them (D-169)
 }
@@ -29,10 +31,11 @@ type Plain struct {
 // plain http, private addresses and the package's body cap, for tests.
 type PlainConfig struct {
 	UserAgent     string
-	Timeout       time.Duration // per request; default 30 s
-	MaxBodyBytes  int64         // refuse a body past this; 0 = the package's 32 MB
-	RefusePrivate bool          // refuse to dial a loopback, private, link-local or unspecified address
-	HTTPSOnly     bool          // refuse any address that is not https
+	Timeout       time.Duration    // per request; default 30 s
+	MaxBodyBytes  int64            // refuse a body past this; 0 = the package's 32 MB
+	MaxBodyByHost map[string]int64 // a host's own cap where tighter: what its source's replies may be (0.19.0 W0.2)
+	RefusePrivate bool             // refuse to dial a loopback, private, link-local or unspecified address
+	HTTPSOnly     bool             // refuse any address that is not https
 }
 
 // Answer is one reply as it came.
@@ -78,7 +81,7 @@ func NewPlain(cfg PlainConfig) (*Plain, error) {
 	}
 	t := clientTransport(Config{RefusePrivate: cfg.RefusePrivate}, http.ProxyFromEnvironment)
 	return &Plain{http: &http.Client{Timeout: cfg.Timeout, Transport: t, CheckRedirect: SameOriginRedirect},
-		ua: cfg.UserAgent, maxBody: cfg.MaxBodyBytes, httpsOnly: cfg.HTTPSOnly, stats: newReqStats()}, nil
+		ua: cfg.UserAgent, maxBody: cfg.MaxBodyBytes, hostMax: maps.Clone(cfg.MaxBodyByHost), httpsOnly: cfg.HTTPSOnly, stats: newReqStats()}, nil
 }
 
 // RequestStats reports the client's asks since it was built, per host (D-169).
@@ -114,7 +117,11 @@ func (p *Plain) Get(ctx context.Context, rawURL, etag, lastModified string) (Ans
 		return Answer{}, &ReachError{URL: safe, Attempts: 1, Err: redactErr(err)}
 	}
 	defer func() { _ = resp.Body.Close() }() // read in full below; a failed close loses nothing
-	body, whole, err := readCapped(resp.Body, p.maxBody)
+	limit := p.maxBody
+	if own, ok := p.hostMax[host]; ok && own > 0 && own < limit {
+		limit = own // the host's own cap (W0.2)
+	}
+	body, whole, err := readCapped(resp.Body, limit)
 	if err != nil {
 		p.stats.add(host, failed)
 		return Answer{}, fmt.Errorf("bad response body from %s: %w", safe, redactErr(err))

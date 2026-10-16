@@ -77,15 +77,15 @@ func TestThePropagationAgeMovesWithTheClock(t *testing.T) {
 	d, cmd := keyCmd(t, d, "P")
 	d = runProp(t, d, cmd)
 	d.mapPane.flash = "" // P's blink spent: the age alone needs the tick now, and the frame is memoised without it
-	if !strings.Contains(stripANSITest(d.View().Content), "(just now)") {
-		t.Fatal("the fixture's snapshot is not said to be just now")
+	if !strings.Contains(stripANSITest(d.View().Content), "(data 30 min old)") {
+		t.Fatal("the fixture's grid, valid 30 min before its snapshot, is not said 30 min old")
 	}
 	if !d.tickNeeded() {
 		t.Error("no tick is armed while the age is shown: it would not move")
 	}
 	clock = at.Add(2*time.Minute + 10*time.Second)
-	if view := stripANSITest(d.View().Content); !strings.Contains(view, "(2 min ago)") {
-		t.Errorf("two minutes on, the frame still says %q", between(view, "COMPUTED", "upper"))
+	if view := stripANSITest(d.View().Content); !strings.Contains(view, "(data 32 min old)") {
+		t.Errorf("two minutes on, the frame still says %q", between(view, "COMPUTED", "noise"))
 	}
 }
 

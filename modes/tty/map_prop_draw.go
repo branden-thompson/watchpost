@@ -236,13 +236,14 @@ func (d Dashboard) propBlockAs(width, below int, styled bool) []string {
 		return padRows(out, width)
 	}
 	now := d.now()
-	at, age := snap.Computed.In(now.Location()), now.Sub(snap.Computed)
-	ago := "(just now)"
-	if age >= time.Minute {
-		ago = "(" + strconv.Itoa(int(age.Minutes())) + " min ago)"
+	at := snap.Computed.In(now.Location())
+	words, age, stale := d.propAge(*snap) // FR-5.1: the oldest input's age, never the time computed
+	tone := render.FreshnessTone(age)
+	if stale {
+		tone = render.AlertLabel // FR-5.2
 	}
 	mode := "MODE: " + field(propLayerName(d.mapPane.propLayer)) + " · COMPUTED " + d.clockFmt.Time(at) + " " + at.Format("MST") +
-		" " + tint(ago, render.FreshnessTone(age)) + " · " + strings.ToLower(propNoiseLabel(snap.Noise)) + " noise" // D-166; D-187: the circuit's noise, the chart saying the rest
+		" " + tint("("+words+")", tone) + " · " + strings.ToLower(propNoiseLabel(snap.Noise)) + " noise" // D-166; D-187: the circuit's noise, the chart saying the rest
 	if origin.ok && d.mapPane.propAhead > 0 { // an hour ahead: typical, said where the time was (FR-1.13, D-109)
 		mode = "MODE: " + field(propLayerName(d.mapPane.propLayer)) + " · " + tint(d.propAheadLabel(origin.at.Lat, origin.at.Lon), render.AlertLabel)
 	}

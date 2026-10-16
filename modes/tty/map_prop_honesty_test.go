@@ -7,6 +7,7 @@ package tty
 // the Settings both UI modes share (FR-2.3, D-121).
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +15,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
+
+	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 // TestTheBestFrequencyIsNamed is D-197: 85 % of the upper limit and the band
@@ -273,5 +277,108 @@ func TestInsteadOfTheMapIsShared(t *testing.T) {
 	}
 	if !d.shownOnSurface(rowMapDesc) {
 		t.Error("the Setting is not drawn on the console")
+	}
+}
+
+// ageSnap is a snapshot computed at now, its GloTEC grid valid gridAgo
+// earlier, and its oldest GIRO reading readingAgo earlier (none for zero).
+func ageSnap(now time.Time, gridAgo, readingAgo time.Duration) ionomaps.Snapshot {
+	s := propSnapAt(now, 18)
+	s.Inputs.GloTECValid = now.Add(-gridAgo)
+	if readingAgo > 0 {
+		s.Inputs.Stations, s.Inputs.OldestReading = 4, now.Add(-readingAgo)
+	}
+	return s
+}
+
+// TestTheAgeIsTheOldestInputs is FR-5.1 (A-30): the age said is the oldest
+// input's - GloTEC's grid, or the oldest GIRO reading assimilated where that
+// is older - never the time the field was computed; with the climatology
+// alone, that is said in its place.
+func TestTheAgeIsTheOldestInputs(t *testing.T) {
+	now := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
+	d := Dashboard{now: func() time.Time { return now }}
+	for _, c := range []struct {
+		snap ionomaps.Snapshot
+		says string
+	}{
+		{ageSnap(now, 25*time.Minute, 0), "data 25 min old"},
+		{ageSnap(now, 25*time.Minute, 50*time.Minute), "data 50 min old"},
+		{ageSnap(now, 40*time.Minute, 10*time.Minute), "data 40 min old"},
+		{ageSnap(now, 20*time.Second, 0), "data just in"},
+	} {
+		if got, _, _ := d.propAge(c.snap); got != c.says {
+			t.Errorf("%v grid, %v reading: %q; want %q", now.Sub(c.snap.Inputs.GloTECValid), now.Sub(c.snap.Inputs.OldestReading), got, c.says)
+		}
+	}
+	clim := ageSnap(now, 25*time.Minute, 0)
+	clim.Background.FoF2 = ionomaps.Climatology
+	if got, _, _ := d.propAge(clim); got != "climatology" {
+		t.Errorf("the climatology alone is said %q", got)
+	}
+}
+
+// TestTheFieldsAgeIsAlwaysSaid is FR-5.1: on screen, in the mode line on its
+// freshness tone, and in the words.
+func TestTheFieldsAgeIsAlwaysSaid(t *testing.T) {
+	d, _ := drawnDash(t)
+	words, age, _ := d.propAge(*d.mapPane.propSnap)
+	if block := strings.Join(d.propBlock(d.scrubW()), "\n"); !strings.Contains(block, render.Tint("("+words+")", render.Tok(render.FreshnessTone(age)))) {
+		t.Errorf("the mode line does not say %q on its tone:\n%s", words, stripANSITest(block))
+	}
+	if !strings.Contains(d.propStatusWords(), words) {
+		t.Errorf("the words do not say %q: %q", words, d.propStatusWords())
+	}
+}
+
+// TestAStaleFieldIsSaidStale is FR-5.2 (A-56): past an hour - go-ionomaps'
+// own currency for a grid and a reading - the field is said stale, in the
+// alert's tone, on screen and in the words.
+func TestAStaleFieldIsSaidStale(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	d, _ := drawnDash(t)
+	old := ageSnap(d.now(), 2*time.Hour+5*time.Minute, 0)
+	d.mapPane.propSnap = &old
+	words, _, stale := d.propAge(old)
+	if !stale || words != "STALE: data 2 h 5 min old" {
+		t.Fatalf("a field two hours old is said %q (stale %v)", words, stale)
+	}
+	if block := strings.Join(d.propBlock(d.scrubW()), "\n"); !strings.Contains(block, render.Tint("("+words+")", render.Tok(render.AlertLabel))) {
+		t.Errorf("the mode line does not say it stale in the alert's tone:\n%s", stripANSITest(block))
+	}
+	if !strings.Contains(d.propStatusWords(), "STALE") {
+		t.Errorf("the words do not say it stale: %q", d.propStatusWords())
+	}
+}
+
+// TestAFailedFetchIsSaidWithItsPath is FR-5.2 (D-120, 0.18.0 D-124): an
+// update that failed is said with the key that asks again.
+func TestAFailedFetchIsSaidWithItsPath(t *testing.T) {
+	d := propDash(t, &seam{}, true)
+	d.mapPane.propErr = errors.New("ionomaps: NOAA not reached")
+	if w := d.propStatusWords(); !strings.Contains(w, "NOAA not reached") || !strings.Contains(w, "U refreshes now") {
+		t.Errorf("a failed update is said %q; with the key that asks again", w)
+	}
+}
+
+// TestTheFallbackIsNamed is FR-5.2: with no GloTEC grid the climatology's
+// foF2 is named in the words, its source's badge is dimmed, and with no
+// measured input at all the mode line says "climatology" where an age would
+// be.
+func TestTheFallbackIsNamed(t *testing.T) {
+	d, _ := drawnDash(t)
+	s := ageSnap(d.now(), 0, 10*time.Minute)
+	s.Background.FoF2, s.Inputs.GloTECValid = ionomaps.Climatology, time.Time{}
+	d.mapPane.propSnap = &s
+	if w := d.propStatusWords(); !strings.Contains(w, "foF2 from the climatology: no GloTEC grid") {
+		t.Errorf("the climatology's foF2, with stations, is said %q", w)
+	}
+	if got := strings.Join(d.propBadges(false), " "); strings.Contains(got, "SWPC") {
+		t.Errorf("no GloTEC grid fed the field and the badges are %q", got)
+	}
+	s.Inputs.Stations, s.Inputs.OldestReading = 0, time.Time{}
+	if block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, "(climatology)") {
+		t.Errorf("the climatology alone is not said on the mode line:\n%s", block)
 	}
 }

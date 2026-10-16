@@ -129,3 +129,20 @@ func TestTheWindowsOptionsReachTheLibrary(t *testing.T) {
 		t.Errorf("asked with city noise: %v, %d hours, noise %v", r.Err, len(r.Snapshot.Hours), r.Snapshot.Noise)
 	}
 }
+
+// TestEachPropagationSourceHasItsOwnCap is 0.19.0 W0.2 (FR-4.4, D-201): the
+// propagation client takes no more from a host than go-ionomaps parses from
+// it - GIRO's bound, not NOAA's grid's.
+func TestEachPropagationSourceHasItsOwnCap(t *testing.T) {
+	caps := propagationClientConfig().MaxBodyByHost
+	for _, s := range propagationSources() {
+		for _, h := range s.Hosts {
+			if caps[h] != int64(s.MaxBytes) || caps[h] <= 0 {
+				t.Errorf("%s's cap is %d; the library's bound is %d", h, caps[h], s.MaxBytes)
+			}
+		}
+	}
+	if caps["lgdc.uml.edu"] >= caps["services.swpc.noaa.gov"] {
+		t.Errorf("GIRO's cap %d is not under NOAA's %d", caps["lgdc.uml.edu"], caps["services.swpc.noaa.gov"])
+	}
+}

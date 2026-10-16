@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // plainFor is a Plain client for a local test server: plain http and a
@@ -165,5 +166,77 @@ func TestThePropagationClientCountsItsRequests(t *testing.T) {
 	}
 	if hs := silent.RequestStats().Hosts; len(hs) != 1 || hs[0].Attempts != 1 || hs[0].LastFail.IsZero() || !hs[0].LastOK.IsZero() {
 		t.Errorf("an ask with no reply counted as %+v", hs)
+	}
+}
+
+// TestEachSourceHasItsOwnCap is 0.19.0 W0.2 (FR-4.4, D-201): a host's own
+// cap, tighter than the client's, refuses a body past it as the client's cap
+// does; another host keeps the client's.
+func TestEachSourceHasItsOwnCap(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(strings.Repeat("x", 2048)))
+	}))
+	defer srv.Close()
+	host := strings.TrimPrefix(strings.Split(srv.URL, ":")[1], "//")
+	capped, err := NewPlain(PlainConfig{UserAgent: "watchpost-test", MaxBodyBytes: 1 << 20, MaxBodyByHost: map[string]int64{host: 1024}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = capped.Get(context.Background(), srv.URL, "", "")
+	var se *StatusError
+	if !errors.As(err, &se) || se.Status != http.StatusRequestEntityTooLarge {
+		t.Errorf("a body past the host's own cap: %v; the client's 413", err)
+	}
+	other, err := NewPlain(PlainConfig{UserAgent: "watchpost-test", MaxBodyBytes: 1 << 20, MaxBodyByHost: map[string]int64{"elsewhere.example": 1024}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a, err := other.Get(context.Background(), srv.URL, "", ""); err != nil || len(a.Body) != 2048 {
+		t.Errorf("a host with no cap of its own was held to another's: %v", err)
+	}
+}
+
+// TestAGIRORefusalNeverPausesWeather is 0.19.0 FR-4.4 (D-39, IS-1): a 429
+// with a long Retry-After to the propagation client holds nothing the data
+// client asks, on that host or another - the two share no pacing hold and no
+// host avoidance.
+func TestAGIRORefusalNeverPausesWeather(t *testing.T) {
+	refused := true
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if refused {
+			w.Header().Set("Retry-After", "3600")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+	data, err := New(Config{UserAgent: "watchpost-test", RatePerSec: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a, err := plainFor(t, 0).Get(context.Background(), srv.URL+"/giro", "", ""); err != nil || a.Status != http.StatusTooManyRequests {
+		t.Fatalf("control: the 429 was not handed back: %+v %v", a, err)
+	}
+	refused = false
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	var got struct{ OK bool }
+	if _, err := data.GetJSON(ctx, srv.URL+"/weather", &got); err != nil || !got.OK {
+		t.Errorf("after the propagation client was refused, the data client waited or failed on the same host: %v", err)
+	}
+	// Control: the data client does hold after its own 429, so the test above
+	// is about the two clients being apart, not about a hold that never happens.
+	held, err := New(Config{UserAgent: "watchpost-test", RatePerSec: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	refused = true
+	_, _ = held.GetJSON(context.Background(), srv.URL+"/weather", &got)
+	refused = false
+	short, stop := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer stop()
+	if _, err := held.GetJSON(short, srv.URL+"/weather", &got); err == nil {
+		t.Fatal("control: the data client does not hold after its own 429, so this proves nothing")
 	}
 }

@@ -29,7 +29,7 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	d = workChart(t, runProp(t, d, cmd))
 	rows := stripANSITest(strings.Join(d.scrubRows(d.mapTextW()), "\n"))
 	for _, want := range []string{"RADIO FREQUENCY PROPAGATION", "SWPC", "PYIRI", "IGRF-14",
-		"MODE:   MUF(3000)   · COMPUTED", "(12 min ago) · residential noise", // the fields as chips (D-165); the circuit's noise (D-187)
+		"MODE:   MUF(3000)   · COMPUTED", "(data 42 min old) · residential noise", // the fields as chips (D-165); the circuit's noise (D-187)
 		"NOW ·   foF2   6.0 MHz ·   MUF(3000)   18.0 MHz",
 		"Local, to ~400 km (NVIS): 160m 80m 60m",
 		"Up to: NA ", " · OC ", "B chart"} {
@@ -129,7 +129,7 @@ func TestRoundFourMarksStandOut(t *testing.T) {
 	for _, c := range []struct {
 		age  time.Duration
 		says string
-	}{{20 * time.Second, "(just now)"}, {9 * time.Minute, "(9 min ago)"}, {75 * time.Minute, "(75 min ago)"}} {
+	}{{20 * time.Second, "(data 30 min old)"}, {9 * time.Minute, "(data 39 min old)"}, {75 * time.Minute, "(STALE: data 1 h 45 min old)"}} { // FR-5.1: the fixture's grid is valid 30 min before its snapshot
 		s := &seam{answer: PropagationResult{Snapshot: propSnapAt(time.Now().Add(-c.age), 27)}}
 		d, cmd := keyCmd(t, propDash(t, s, true), "P")
 		d = runProp(t, d, cmd)
@@ -146,7 +146,11 @@ func TestRoundFourMarksStandOut(t *testing.T) {
 		if !strings.Contains(block[1], chipFace("MUF(3000)")) {
 			t.Errorf("the mode line does not carry its layer's chip: %q", block[1])
 		}
-		if want := render.Tint(c.says, render.Tok(render.FreshnessTone(c.age))); !strings.Contains(block[1], want) {
+		tone := render.FreshnessTone(c.age + 30*time.Minute)
+		if c.age+30*time.Minute > propStaleAfter {
+			tone = render.AlertLabel // FR-5.2
+		}
+		if want := render.Tint(c.says, render.Tok(tone)); !strings.Contains(block[1], want) {
 			t.Errorf("%v: the age is not %q on its rung of the ramp: %q", c.age, c.says, block[1])
 		}
 		for _, w := range d.describeLinesAll() { // the words without the picture are plain (FR-3.5)
