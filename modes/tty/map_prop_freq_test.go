@@ -73,7 +73,7 @@ func TestYourFrequencyIsSaid(t *testing.T) {
 			t.Errorf("the block's frequency row %q does not say %q", row, want)
 		}
 	}
-	if words := strings.Join(d.describeLinesAll(), " "); !strings.Contains(words, "YOUR FREQUENCY 14.200 MHz") {
+	if words := strings.Join(d.describeLinesAll(), " "); !strings.Contains(words, "Your frequency: 14.200 megahertz held; its reach: skip zone to about ") {
 		t.Errorf("without the picture the frequency is not said: %q", words)
 	}
 	if chart := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(chart, "YOUR FREQUENCY 14.200 MHz") {

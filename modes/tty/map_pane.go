@@ -77,6 +77,8 @@ type mapPane struct {
 	propGiven       map[string]tuimaps.Overlay // the Propagation overlays handed in
 	propSnapCorrect bool                       // the no-readings correction the snapshot shown was asked with (D-105)
 	propTickEvery   time.Duration              // the refresh chain's wait; zero with none set (D-120)
+	propApplied     int                        // snapshots applied this session, GIRO's following NOAA's at once not counted: past one, a refresh (FR-3.6)
+	propUpdatedAt   time.Time                  // when the last was applied, by the window's clock (FR-3.6)
 	zoneGiven       map[string]tuimaps.Overlay // the service area handed in (D-195)
 	tower           tuimaps.Place              // the tower's mark placed, or none
 	roleDrawn       Surface                    // the UI mode the place and marks were set for

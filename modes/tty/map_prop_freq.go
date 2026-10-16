@@ -106,22 +106,26 @@ func (d Dashboard) propFreqLine() string {
 	if d.mapPane.propFreqMHz == 0 {
 		return ""
 	}
-	line := "YOUR FREQUENCY " + d.mapPane.propFreqLabel
-	field, ok := d.propReachShown()
-	switch {
-	case !ok:
-		line += " · being worked out"
-	case !field.Reaches:
-		line += " · above the MUF everywhere: it reaches nowhere"
-	case field.SkipKm == 0:
-		line += " · no skip zone"
-	default:
-		line += " · skip zone to ~" + d.roundDistance(float64(field.SkipKm))
-	}
+	line := "YOUR FREQUENCY " + d.mapPane.propFreqLabel + " · " + d.propReachWords()
 	if keys := d.mapKeys[actMapFreq].Keys; len(keys) > 0 {
 		line += " · " + keys[0] + " change"
 	}
 	return line
+}
+
+// propReachWords say the frequency held's reach (D-178): its skip zone,
+// that it reaches nowhere, or that it is being worked out.
+func (d Dashboard) propReachWords() string {
+	field, ok := d.propReachShown()
+	switch {
+	case !ok:
+		return "being worked out"
+	case !field.Reaches:
+		return "above the MUF everywhere: it reaches nowhere"
+	case field.SkipKm == 0:
+		return "no skip zone"
+	}
+	return "skip zone to ~" + d.roundDistance(float64(field.SkipKm))
 }
 
 // roundDistance is a distance in the units the description speaks, to the

@@ -68,7 +68,7 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 		}
 	}
 	words := strings.Join(d.describeLinesAll(), " ")
-	for _, want := range []string{"NOW · foF2 6.0 MHz · MUF(3000) 18.0 MHz.", "Local, to ~400 km (NVIS): 160m 80m 60m.", "Up to: NA "} {
+	for _, want := range []string{", now: MUF(3000) 18.0 megahertz, foF2 6.0 megahertz.", "Local, about 400 kilometres: ", "North America: "} { // the bands open follow the hour: this fixture reads the clock
 		if !strings.Contains(words, want) {
 			t.Errorf("without the picture the words do not say %q: %q", want, words)
 		}

@@ -69,29 +69,7 @@ func (d Dashboard) describeUpTo(most int) []string {
 		out = append(out, w) // the night said where it is drawn (D-199)
 	}
 	if d.mapMode() == modePropagation {
-		words := propagationWords
-		if d.mapPane.propSnap != nil {
-			words = "This is the Propagation mode, over the whole world: " + propLayerName(d.mapPane.propLayer) + " is drawn, in megahertz." // FR-3.2
-		}
-		out = append(out, words, d.propStatusWords()+".")
-		if a := d.propAheadWords(loc.Lat, loc.Lon); a != "" {
-			out = append(out, a) // an hour ahead: typical, its error and basis, before the place (FR-1.13, D-136)
-		} // no alert is drawn in it (D-21); its status said without the picture (FR-3.5)
-		for _, l := range d.propBlockAs(propWordsWidth, propWordsWidth, false)[3:] { // the place now, as the rows under the picture say it (D-157)
-			if l = strings.Join(strings.Fields(l), " "); l != "" {
-				out = append(out, l+".")
-			}
-		}
-		if f := d.propFreqLine(); f != "" {
-			out = append(out, f+".") // your frequency after the bands (FR-3.1)
-		}
-		if n := d.propNearestSummary(); n != "" {
-			out = append(out, n) // how good each answer is, by its nearest station (FR-5.5, D-198)
-		}
-		if c := d.propCentreWords(); c != "" {
-			out = append(out, c) // and the centre, last (FR-1.11, FR-3.1)
-		}
-		return out
+		return append(out, d.propWords(loc.Lat, loc.Lon)...) // no alert is drawn in it (D-21); its words in D-136's order (W6.1)
 	}
 	if !d.layerOn(AlertLayer) {
 		return append(out, alertLayerOffText) // off is said, never "nothing is there"

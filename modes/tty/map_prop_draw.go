@@ -206,29 +206,19 @@ func cellValue(f ionomaps.Field, lat, lon float64) (float64, bool) {
 // place's name bold (D-164), the fields as chips (D-165), the age on the
 // freshness ramp (D-166).
 func (d Dashboard) propBlock(width int) []string {
-	return d.propBlockAs(width, max(width, d.mapTextW()), true)
+	return d.propBlockAs(width, max(width, d.mapTextW()))
 }
 
-// propBlockAs is the block, styled or as plain words: the header with the
-// sources' badges; the mode and when it was computed; a blank row; the
-// selected place now, and the bands under its foF2 and MUF(3000); the
-// continents. The rows beside the Controls box are cut at width, the rows
-// below it, with nothing beside them, at below.
-func (d Dashboard) propBlockAs(width, below int, styled bool) []string {
+// propBlockAs is the block: the header with the sources' badges; the mode
+// and when it was computed; a blank row; the selected place now, and the
+// bands under its foF2 and MUF(3000); the continents. The rows beside the
+// Controls box are cut at width, the rows below it, with nothing beside
+// them, at below.
+func (d Dashboard) propBlockAs(width, below int) []string {
 	padRows := func(rows []string, width int) []string { return padRowsBeside(rows, width, below) }
-	field := func(name string) string { // D-165: a chip of its own
-		if styled {
-			return chipFace(name)
-		}
-		return name
-	}
-	tint := func(text string, tok render.Token) string {
-		if styled {
-			return render.Tint(text, render.Tok(tok))
-		}
-		return text
-	}
-	out := []string{"RADIO FREQUENCY PROPAGATION    " + strings.Join(d.propBadges(styled), "  ")}
+	field := chipFace // D-165: a chip of its own
+	tint := func(text string, tok render.Token) string { return render.Tint(text, render.Tok(tok)) }
+	out := []string{"RADIO FREQUENCY PROPAGATION    " + strings.Join(d.propBadges(true), "  ")}
 	snap := d.mapPane.propSnap
 	origin := d.mapPane.propOrigin // D-193: the centre on Observer, the station on the Broadcaster
 	if snap == nil || len(snap.Hours) == 0 {
@@ -362,7 +352,3 @@ func padRowsBeside(rows []string, width, below int) []string {
 // one more than the weather modes' loop row, timeline and estimate, which
 // mapChromeRows counts.
 const propBlockRows = scrubBoxRows + 1
-
-// propWordsWidth is the width the block is laid out at for the words: wide
-// enough that no line of it is cut.
-const propWordsWidth = 200

@@ -339,34 +339,6 @@ func propShade(n ionomaps.Nearest, ascii bool) string {
 	return shades[2]
 }
 
-// propNearestSummary says each chart row's nearest reporting station
-// (FR-5.5, D-198), what the shades draw: its distance, unscored said, and
-// beyond 2000 km or with none that the answer is about as good as typical
-// there; empty before the chart is worked out.
-func (d Dashboard) propNearestSummary() string {
-	if !d.propChartShown() {
-		return ""
-	}
-	names, answers := d.propChartRows()
-	parts := make([]string, 0, len(names))
-	for i, a := range answers {
-		n, w := a.Nearest, names[i]+": "
-		switch {
-		case !n.Known:
-			w += "no station, about as good as typical"
-		case n.Km >= propFarKm:
-			w += "a station " + d.roundDistance(float64(n.Km)) + " away, about as good as typical"
-		default:
-			w += "a station " + d.roundDistance(float64(n.Km)) + " away"
-		}
-		if n.Known && n.Unscored {
-			w += ", unscored: verify on air"
-		}
-		parts = append(parts, w)
-	}
-	return "Nearest reporting station - " + strings.Join(parts, "; ") + "."
-}
-
 // propShadeLegend is the shades' key (D-198).
 func propShadeLegend(ascii bool) string {
 	near, mid, far := propShade(ionomaps.Nearest{Known: true}, ascii), propShade(ionomaps.Nearest{Known: true, Km: propNearKm}, ascii), propShade(ionomaps.Nearest{}, ascii)

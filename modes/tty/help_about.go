@@ -123,7 +123,7 @@ func (d Dashboard) helpLines(o render.Opts) []string {
 			lines = append(lines, "")
 		}
 	}
-	lines = append(lines, d.helpLegend(o))
+	lines = append(lines, d.helpLegend(o), "", " "+propFocusLimit) // FR-3.7, D-133
 	if d.surface == SurfaceBroadcaster {
 		lines = append(lines, "", " "+sharedDeviceNote) // FR-2.2, D-85
 	}

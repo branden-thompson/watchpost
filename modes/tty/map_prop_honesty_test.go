@@ -76,12 +76,10 @@ func TestEachRowShowsItsNearestStation(t *testing.T) {
 	if !strings.Contains(text, "▓ "+propContinents[0].name) || !strings.Contains(text, "░ "+propContinents[1].name) || !strings.Contains(text, "nearest station: ▓ <500 km") {
 		t.Errorf("the rows' shades or their key are not drawn:\n%s", text)
 	}
-	words := d.propNearestSummary()
-	if !strings.Contains(words, propContinents[0].name+": a station ") || !strings.Contains(words, propContinents[1].name+": a station ") || !strings.Contains(words, "away, about as good as typical") {
-		t.Errorf("the words do not say each row's nearest station: %q", words)
-	}
-	if !strings.Contains(strings.Join(d.close().describeLinesAll(), " "), "Nearest reporting station - ") {
-		t.Error("the map's words do not carry the nearest stations")
+	words := d.close().describeLinesAll()
+	near, far := words[lineWith(words, propContinents[0].name+": ")], words[lineWith(words, propContinents[1].name+": ")]
+	if !strings.Contains(near, "nearest station ") || strings.Contains(near, "about as good as typical") || !strings.HasSuffix(far, "away, about as good as typical.") {
+		t.Errorf("the words do not say each row's nearest station:\n%s\n%s", near, far)
 	}
 }
 

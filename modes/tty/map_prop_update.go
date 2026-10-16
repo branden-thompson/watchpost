@@ -91,7 +91,7 @@ func (d Dashboard) stopPropagation() Dashboard {
 	}
 	d.mapPane.propCtx, d.mapPane.propCancel, d.mapPane.propBusy = nil, nil, false
 	d.mapPane.propGen++
-	d.mapPane.propTickEvery = 0
+	d.mapPane.propTickEvery, d.mapPane.propApplied = 0, 0
 	return d
 }
 
@@ -109,6 +109,10 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 			d.problem(propOffsetWords(snap.Offset)) // the diagnostics' record of each live offset (FR-5.4)
 		}
 		d.mapPane.propAheadHours, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
+		if snap.Early != ionomaps.StationsNext {
+			d.mapPane.propApplied++ // GIRO's stations, asked at once, complete the first answer (FR-3.6)
+		}
+		d.mapPane.propUpdatedAt = d.now()
 	}
 	d.mapPane.propErr = v.res.Err
 	if v.res.Err == nil && v.res.Snapshot.Early == ionomaps.StationsNext {
@@ -160,7 +164,11 @@ func (d Dashboard) propStatusWords() string {
 	switch {
 	case snap != nil:
 		age, _, _ := d.propAge(*snap)
-		return snapshotWords(*snap, d.mapPane.propLayer) + " · " + age // FR-5.1, FR-5.2
+		words := snapshotWords(*snap, d.mapPane.propLayer) + " · " + age // FR-5.1, FR-5.2
+		if f := d.propFailedWords(); f != "" {
+			words = "Propagation · " + f + " · " + strings.TrimPrefix(words, "Propagation · ") // FR-5.2: a failed update first, over the field kept
+		}
+		return words
 	case err != nil && !errors.Is(err, context.Canceled):
 		return "Propagation · " + strings.TrimPrefix(err.Error(), "ionomaps: ") + " · " + d.firstKey(actMapRefresh) + " refreshes now" // D-120: the key that asks again
 	case d.mapPane.propBusy:

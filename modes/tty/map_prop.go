@@ -15,7 +15,7 @@ const actMapProp term.Action = "map.propagation"
 const (
 	propagationLabel  = "RADIO FREQ. PROPAGATION" // D-167
 	propagationStatus = "Propagation · whole world · no propagation data drawn yet"
-	propagationWords  = "This is the Propagation mode, over the whole world. No propagation data is drawn yet."
+	propagationWords  = "The Propagation mode, over the whole world: no propagation data is drawn yet."
 )
 
 // togglePropagation enters the Propagation mode, or leaves it for the mode it
