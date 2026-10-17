@@ -1,9 +1,9 @@
 package tty
 
-// map_prefs.go — the Maps tab's other Settings (0.18.0 batch 9): the scale
-// the map opens at (W1.11, W4.3, FR-2.3), how near an alert's edge must be to
-// be called near (W9.2, FR-7.4), the layers the app's registry names (W1.11,
-// W1.13, R-9.2) and the warning when they would cost a lot (W1.14, FR-9.2).
+// map_prefs.go — the Maps tab's other Settings: the scale the map opens at
+// (W1.11, W4.3, FR-2.3), how near an alert's edge must be to be called near
+// (W9.2, FR-7.4), the layers the app's registry names (W1.11, W1.13, R-9.2)
+// and the warning when they would cost a lot (W1.14, FR-9.2).
 
 import (
 	ionomaps "github.com/branden-thompson/go-ionomaps"

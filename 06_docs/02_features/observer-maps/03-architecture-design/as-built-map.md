@@ -105,10 +105,10 @@ flowchart LR
   end
   subgraph plat["platform/"]
     RG["geo · RegionOf\nsix regions with their waters; Hawaii and the Caribbean wide enough to see their weather (D-91)\narrangement.go: Neighbour, RegionNumbered (D-77)"]
-    HP["httpx · Plain (0.19.0 FR-4.4)\nthe propagation client: every reply handed back as it came, a 429 included; no retry, no cache, no shared pacing\nhttps alone, no private address, an 8 MB cap"]
+    HP["httpx · Plain (0.19.0 FR-4.4)\nthe propagation client: every reply handed back as it came, a 429 included; no retry, no cache, no shared pacing\nhttps alone, no private address; each host's cap go-ionomaps' bound for its source, 8 MB at most (0.19.0 A-56)"]
     HX["httpx · DiskCacheBytes, with temperature's CacheBytes and the tiles' cap, the one stated total\nConfig.MemBytes / DiskBytes size a client's tiers; Cached reads the cache, never the network (D-217, D-219)\nClear map data empties the map clients' caches, memory and disk"]
   end
-  IO["go-ionomaps\nLibrary.Update: GloTEC's newest grid through its index, the solar file daily; the background (D-101)\nD-39 for NOAA: one ask every ten minutes, six grids an hour, a 429 backs off"]
+  IO["go-ionomaps\nLibrary.Update: the solar file daily, GloTEC's newest grid through its index, D-RAP and NOAA's scales; GIRO's burst at most hourly, its readings assimilated (G9)\nD-39: NOAA asked every ten minutes, six grids an hour, a 429 backs off; the answers - bands, paths, reach, hours ahead - pure functions of a snapshot"]
   L["go-tuiMaps v0.3.0-rc.1\nSetBound · Source · Set/Remove · Work · Render · Warnings"]
   MB -- "Config.NewMap(size)" --> MW
   MF -- "Config.MapFeed(ask: snap, place, view, part)\ntwo lanes: the alerts first and on their own, the layers after (D-268)\nuntil the alerts land: 'Alerts for the map are loading.' (D-266)\nan unchanged overlay is not handed in again; a refused one keeps its last (U1-28, D-257)" --> MW

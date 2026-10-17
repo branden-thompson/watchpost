@@ -1,8 +1,8 @@
 package tty
 
-// map_prefs_test.go — 0.18.0 batch 9: the Maps tab's default scale (W1.11,
-// W4.3, FR-2.3), the nearby distance (W9.2 folded, FR-7.4), the layers the
-// registry names (W1.11, W1.13, FR-9.3) and the cost warning (W1.14, FR-9.2).
+// map_prefs_test.go — the Maps tab's default scale (W1.11, W4.3, FR-2.3),
+// the nearby distance (W9.2 folded, FR-7.4), the layers the registry names
+// (W1.11, W1.13, FR-9.3) and the cost warning (W1.14, FR-9.2).
 
 import (
 	"context"

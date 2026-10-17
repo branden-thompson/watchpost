@@ -3,7 +3,9 @@ package propagation
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -211,5 +213,38 @@ func TestTheHostsOptionsReachTheLibrary(t *testing.T) {
 	r := <-s.Ask(context.Background(), ionomaps.UpdateOptions{Noise: ionomaps.NoiseCity})
 	if r.Err != nil || len(r.Snapshot.Hours) == 0 || r.Snapshot.Noise != ionomaps.NoiseCity {
 		t.Errorf("asked with city noise: %v, %d hours, noise %v", r.Err, len(r.Snapshot.Hours), r.Snapshot.Noise)
+	}
+}
+
+// TestNoRawSourceDataIsStored is FR-4.6 (IS-2, I-8): a GIRO reply carries the
+// requester's address in its text; nothing of any reply - its text, or a
+// rate header's value - reaches the diagnostics or an error, and the
+// propagation client has no cache or directory to keep one in.
+func TestNoRawSourceDataIsStored(t *testing.T) {
+	const address = "203.0.113.7"
+	body := []byte("# Requested by unknown guest from IP:" + address + "\nno reply this library reads\n")
+	rec := &recorder{answer: func(string) (httpx.Answer, error) {
+		return httpx.Answer{Status: 200, Body: body, Header: http.Header{"Retry-After": {address}}}, nil
+	}}
+	var notes []string
+	s, err := New(rec, Options{Clock: fixedClock, Note: func(n string) { notes = append(notes, n) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := <-s.Ask(context.Background(), ionomaps.UpdateOptions{})
+	if rec.count() == 0 || len(notes) == 0 {
+		t.Fatalf("control: %d asks, %d notes; the check reads nothing", rec.count(), len(notes))
+	}
+	kept := append(notes, fmt.Sprint(r.Err))
+	for _, k := range kept {
+		if strings.Contains(k, address) || strings.Contains(k, "Requested by") {
+			t.Errorf("a reply's text reached %q", k)
+		}
+	}
+	plain := reflect.TypeOf(httpx.PlainConfig{})
+	for i := range plain.NumField() {
+		if name := strings.ToLower(plain.Field(i).Name); strings.Contains(name, "cache") || strings.Contains(name, "dir") {
+			t.Errorf("the propagation client's config has %s: a reply could be kept", plain.Field(i).Name)
+		}
 	}
 }

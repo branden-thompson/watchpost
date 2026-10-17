@@ -495,8 +495,8 @@ falls back to `radio`.
 
 ## Building from source
 
-Go 1.25.13 is the floor (`go.mod`). At 1.25.0, 28 standard-library vulnerabilities are reachable,
-so the map library, go-tuiMaps v0.2.0, requires 1.25.13 (its D-133), and watchpost does too. CI and the releases build with 1.27. `make build` (binary in
+Go 1.26.9 is the floor (`go.mod`): the map library, go-tuiMaps, requires it (its D-28), because below it
+standard-library vulnerabilities its code reaches are unfixed, and watchpost does too. CI and the releases build with 1.27. `make build` (binary in
 `./dist`, version stamped from `git describe`), `make verify` (fmt, vet, tidy, vulnerability, race,
 import-direction, watermark and control gates with positive controls), `make release-matrix` (all
 targets, CGO off), `make install-test` (installer end to end against a local server). `make verify` runs from a clean

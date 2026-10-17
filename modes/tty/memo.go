@@ -234,7 +234,7 @@ type modalKey struct {
 	mapsOff  bool   // 0.18.0: the map's Settings, drawn by Settings and by the map window
 	mapWords string // the map's disclosure and retention words, drawn by Settings and the map window
 	mapDesc  mapDescMode
-	// The Maps tab's others and the estimate (0.18.0 batch 9): Settings draws
+	// The Maps tab's others and the estimate: Settings draws
 	// them, and the map window draws the warning.
 	mapScale  mapScaleMode
 	mapNearby int

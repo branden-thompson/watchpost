@@ -4,7 +4,7 @@ date: 2026-10-05
 phase: DISCOVER (intake)
 sev: SEV-0
 authority: HUM LEAD
-status: "Statements LOCKED (D-7); metrics ruled (D-8, D-9), revised by D-73 (what open means), D-75 (floors) and D-76 (M3 retired); targets set from PLAN's dry run (D-49)"
+status: "Statements LOCKED (D-7); metrics ruled (D-8, D-9), revised by D-73 (what open means), D-75 (floors) and D-76 (M3 retired); targets set from PLAN's dry run (D-49); PS-1's population a hypothesis (D-217)"
 ---
 
 # Problem statements
@@ -16,6 +16,12 @@ Two primary statements (D-6), locked as written (D-7). Each carries its own metr
 > A station operator relaying watchpost's broadcasts on amateur HF cannot tell, from the station,
 > whether the band they transmit on will reach the area they serve at that hour, so a broadcast can go
 > out on a band that carries it nowhere near its listeners, and the operator does not learn of it.
+
+**PS-1 is a hypothesis the HUM LEAD holds (D-217).** Its population - operators relaying watchpost's
+broadcasts on amateur HF - rests on no evidence gathered for this release: every stakeholder is the HUM
+LEAD (D-68), and such relays are allowed only occasionally (D-45). The release addresses PS-1 in part:
+an operator can ask from the station (M2), and is not told of a closure, the clause F-209 carries (D-76).
+The BUILD and VALIDATE reports say so.
 
 ## PS-2 — the Observer ham
 

@@ -1,10 +1,10 @@
 package tty
 
-// map_prop_honesty_test.go — 0.19.0 batch 25: the best frequency (D-197),
-// each answer's confidence by its nearest station (FR-5.5, D-198), the
-// offset compared and the no-readings Setting (FR-5.4, D-105), the refresh
-// Setting (FR-4.10, D-120), the shared-device statement (FR-2.2, D-85) and
-// the Settings both UI modes share (FR-2.3, D-121).
+// map_prop_honesty_test.go — the best frequency (D-197), each answer's
+// confidence by its nearest station (FR-5.5, D-198), the offset compared and
+// the no-readings Setting (FR-5.4, D-105), the refresh Setting (FR-4.10,
+// D-120), the shared-device statement (FR-2.2, D-85) and the Settings both
+// UI modes share (FR-2.3, D-121).
 
 import (
 	"errors"

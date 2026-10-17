@@ -18,9 +18,11 @@ import (
 // under foF2 - said as upper limits, then the continents (D-176, D-177);
 // the map's height as in the weather mode it came from.
 func TestThePropagationRowsFollowTheMock(t *testing.T) {
-	s := &seam{answer: PropagationResult{Snapshot: propSnapAt(time.Now().UTC().Add(-12*time.Minute).Truncate(time.Minute), 18)}}
+	computed := time.Now().UTC().Add(-12 * time.Minute).Truncate(time.Minute)
+	s := &seam{answer: PropagationResult{Snapshot: propSnapAt(computed, 18)}}
 	var asked []string // radar configured, as the app's is: the rows under the map are drawn only with its timeline
 	d := openMap(t, Config{PropagationUpdate: s.update, PropagationAck: propAckVersion, MapRadar: radarFeed(t, "MRMS", &asked)}, 133, 44)
+	d.now = func() time.Time { return computed.Add(12 * time.Minute) } // the ages read the same at any minute the test starts
 	if !d.radarTimelineOn() {
 		t.Fatal("the fixture holds no timeline rows: the rows under the map would not be drawn")
 	}
@@ -130,8 +132,11 @@ func TestRoundFourMarksStandOut(t *testing.T) {
 		age  time.Duration
 		says string
 	}{{20 * time.Second, "(data 30 min old)"}, {9 * time.Minute, "(data 39 min old)"}, {75 * time.Minute, "(STALE: data 1 h 45 min old)"}} { // FR-5.1: the fixture's grid is valid 30 min before its snapshot
-		s := &seam{answer: PropagationResult{Snapshot: propSnapAt(time.Now().Add(-c.age), 27)}}
-		d, cmd := keyCmd(t, propDash(t, s, true), "P")
+		now := time.Now()
+		s := &seam{answer: PropagationResult{Snapshot: propSnapAt(now.Add(-c.age), 27)}}
+		held := propDash(t, s, true)
+		held.now = func() time.Time { return now } // the age reads the same however long the test runs
+		d, cmd := keyCmd(t, held, "P")
 		d = runProp(t, d, cmd)
 		block := d.propBlock(d.scrubW())
 		label := strings.ToUpper(d.mapPane.propOrigin.name) // D-193

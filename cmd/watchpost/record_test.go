@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -20,8 +21,13 @@ var releaseRecord = filepath.Join("..", "..", "06_docs", "02_features", "propaga
 // "NFR-2", "IS-1").
 var requirementRow = regexp.MustCompile(`^\| \*{0,2}[A-Z]+-[\d.]+`)
 
-// testName is a test or fuzz target named in backticks.
-var testName = regexp.MustCompile("`((?:Test|Fuzz)[A-Za-z0-9_]+)`")
+// testName is a test or fuzz target named in backticks, the library it is
+// in before it when it is one of the paired libraries': "go-ionomaps
+// `TestX`".
+var testName = regexp.MustCompile("(go-ionomaps |go-tuiMaps )?`((?:Test|Fuzz)[A-Za-z0-9_]+)`")
+
+// testFunc is a test or fuzz target's declaration.
+var testFunc = regexp.MustCompile(`(?m)^func ((?:Test|Fuzz)[A-Za-z0-9_]+)\(`)
 
 // goFileRef is a Go file named in backticks, its line or range after it if
 // one is given.
@@ -38,20 +44,67 @@ func testsNamed(requirements string) []string {
 			continue
 		}
 		for _, m := range testName.FindAllStringSubmatch(line, -1) {
-			out = append(out, m[1])
+			out = append(out, m[1]+m[2])
 		}
 	}
 	slices.Sort(out)
 	return slices.Compact(out)
 }
 
-// notInPlan are the names the plan does not carry.
+// notInPlan are the names the plan does not carry, a library's test with
+// its library before it.
 func notInPlan(names []string, plan string) []string {
 	var out []string
 	for _, n := range names {
-		if !strings.Contains(plan, "`"+n+"`") {
+		lib, name, found := strings.Cut(n, " ")
+		want := "`" + n + "`"
+		if found {
+			want = lib + " `" + name + "`"
+		}
+		if !strings.Contains(plan, want) {
 			out = append(out, n)
 		}
+	}
+	return out
+}
+
+// notInCode are the names no test in the tree declares; a paired library's
+// test is checked in its own repository.
+func notInCode(names []string, declared map[string]bool) []string {
+	var out []string
+	for _, n := range names {
+		if !strings.Contains(n, " ") && !declared[n] {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// declaredTests are every test and fuzz target the tree declares.
+func declaredTests(t *testing.T, root string) map[string]bool {
+	t.Helper()
+	out := map[string]bool{}
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && (d.Name() == ".git" || d.Name() == ".claude") {
+			return filepath.SkipDir
+		}
+		if d.IsDir() || !strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		for _, m := range testFunc.FindAllStringSubmatch(string(b), -1) {
+			out[m[1]] = true
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 	return out
 }
@@ -98,6 +151,21 @@ func TestEveryRequirementsTestIsInAPlanTask(t *testing.T) {
 	}
 }
 
+// TestEveryRequirementsTestExists is the BUILD red team's B-F4 (D-F2): every
+// test the requirements name is declared in the tree - a paired library's,
+// written "go-ionomaps `TestX`", in its own - so no requirement leans on a
+// test that was never written or has since been renamed.
+func TestEveryRequirementsTestExists(t *testing.T) {
+	names := testsNamed(readRecord(t, "01-objectives/requirements.md"))
+	declared := declaredTests(t, filepath.Join("..", ".."))
+	if len(declared) < 1000 {
+		t.Fatalf("the tree declares %d tests; the walk is broken", len(declared))
+	}
+	if missing := notInCode(names, declared); len(missing) > 0 {
+		t.Errorf("the requirements name %d tests the tree does not declare: %v", len(missing), missing)
+	}
+}
+
 // TestEveryRulingNamingCodeCitesItsLine is FR-10.4 (REFLECT L3): a ruling
 // row that names a Go file cites the line its claim is about.
 func TestEveryRulingNamingCodeCitesItsLine(t *testing.T) {
@@ -110,6 +178,50 @@ func TestEveryRulingNamingCodeCitesItsLine(t *testing.T) {
 	}
 }
 
+// citedLine is a Go file's line or range cited in a normative document, the
+// paired library before it when the file is one of theirs.
+var citedLine = regexp.MustCompile("(go-ionomaps |go-tuiMaps )?`([A-Za-z0-9_./-]+\\.go):(\\d+)(?:-(\\d+))?`")
+
+// unresolvedCitations are the citations in a document that name no file in
+// the tree - a bare file name included - or a line past its end; a paired
+// library's is checked in its own repository.
+func unresolvedCitations(doc, root string) []string {
+	var out []string
+	for _, m := range citedLine.FindAllStringSubmatch(doc, -1) {
+		if m[1] != "" {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(root, m[2]))
+		last := m[3]
+		if m[4] != "" {
+			last = m[4]
+		}
+		n, _ := strconv.Atoi(last)
+		if err != nil || n > strings.Count(string(b), "\n")+1 {
+			out = append(out, m[2]+":"+last)
+		}
+	}
+	return out
+}
+
+// TestEveryCodeCitationResolves is the BUILD red team's C-10 and D-F5: in
+// the documents that state the release as it is, every Go file cited by
+// line is a path in the tree and the line is in the file. A ruling's
+// citation is its moment's, the tree it cited in git, so the rulings are
+// held to citing a line at all (TestEveryRulingNamingCodeCitesItsLine).
+func TestEveryCodeCitationResolves(t *testing.T) {
+	root := filepath.Join("..", "..")
+	for _, doc := range []string{"00-REQUIRED-READING.md", "01-objectives/requirements.md", "03-architecture-design/architecture.md", "04-development/implementation-plan.md"} {
+		if bad := unresolvedCitations(readRecord(t, doc), root); len(bad) > 0 {
+			t.Errorf("%s cites code that is not there: %v", doc, bad)
+		}
+	}
+	planted := "`cmd/watchpost/record_test.go:1` `cmd/watchpost/record_test.go:99999` `record_test.go:1` go-ionomaps `reach.go:9` `no/such.go:1`"
+	if got := unresolvedCitations(planted, root); !slices.Equal(got, []string{"cmd/watchpost/record_test.go:99999", "record_test.go:1", "no/such.go:1"}) {
+		t.Errorf("the planted citations gave %v", got)
+	}
+}
+
 // TestTheRecordChecksFailOnAPlantedGap is W0.4's acceptance: each check
 // reports a planted gap - a test the plan dropped, a ruling without its
 // line - and passes the same record without it.
@@ -117,6 +229,13 @@ func TestTheRecordChecksFailOnAPlantedGap(t *testing.T) {
 	req := "| FR-1.1 *(O1)* | words | D-1 | `TestA`, `TestB` |\n| **NFR-2** | more | D-2 | `FuzzC` |\nprose `TestNotARow`\n"
 	if got := testsNamed(req); !slices.Equal(got, []string{"FuzzC", "TestA", "TestB"}) {
 		t.Fatalf("the requirement rows name %v", got)
+	}
+	lib := testsNamed("| FR-2 | x | D-3 | go-ionomaps `TestL` |\n")
+	if got := notInCode(append(testsNamed(req), lib...), map[string]bool{"TestA": true, "FuzzC": true}); !slices.Equal(got, []string{"TestB"}) {
+		t.Errorf("a test never written: %v (a library's test is its own repository's)", got)
+	}
+	if got := notInPlan(lib, "| W1 | `TestL` |"); len(got) != 1 {
+		t.Errorf("a library's test the plan names as the tree's: %v", got)
 	}
 	plan := "| W1 | x | `TestA`, `FuzzC` |"
 	if got := notInPlan(testsNamed(req), plan); !slices.Equal(got, []string{"TestB"}) {

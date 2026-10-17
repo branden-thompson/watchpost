@@ -282,8 +282,8 @@ var setupAllocBudget = map[string]float64{
 	// tab, so a frame lays each tab's groups out to measure it, and it is held to
 	// 80% of the terminal, so more of the dashboard is drawn around it - the
 	// dashboard in sight is what U1-36 asks for.
-	// 0.19.0 batch 22: the Maps tab's RX noise picker row (D-187), a row with
-	// its arrow chips, measured at 4,942 on a miss.
+	// The Maps tab's RX noise picker row (D-187), a row with its arrow chips,
+	// measures 4,942 on a miss.
 	"133x44-hit": 3_046 * 1.05, "133x44-miss": 4_942 * 1.05,
 	// 80x24 (D-67, D-70, D-71, D-202): every tab is laid out for the window's
 	// width, so a row on any tab - the RELAY REPLAY group's second row, the map's

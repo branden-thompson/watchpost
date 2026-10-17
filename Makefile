@@ -280,7 +280,7 @@ cache-clean:
 # they are wrong, and a caller that waited would hide that from whoever started
 # the second one.
 verify:
-	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
+	@go run ./tools/treelock -name verify -- go run ./tools/runlog -lane verify -- $(MAKE) --no-print-directory verify-gates
 
 verify-gates: fmt vet vet-tags tidy vuln race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
@@ -293,7 +293,7 @@ verify-gates: fmt vet vet-tags tidy vuln race test-say lint lint-imports lint-wa
 # refuses an unchanged tree too: run it before committing. It is local only:
 # CI and every other change run verify.
 verify-docs:
-	@go run ./tools/treelock -name verify-docs -- $(MAKE) --no-print-directory verify-docs-gates
+	@go run ./tools/treelock -name verify-docs -- go run ./tools/runlog -lane verify-docs -- $(MAKE) --no-print-directory verify-docs-gates
 
 verify-docs-gates:
 	@go run ./tools/docslane

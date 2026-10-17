@@ -896,10 +896,10 @@ code{font-family:var(--mono);font-size:.92em}
   end
   subgraph plat[&#34;platform/&#34;]
     RG[&#34;geo · RegionOf\nsix regions with their waters; Hawaii and the Caribbean wide enough to see their weather (D-91)\narrangement.go: Neighbour, RegionNumbered (D-77)&#34;]
-    HP[&#34;httpx · Plain (0.19.0 FR-4.4)\nthe propagation client: every reply handed back as it came, a 429 included; no retry, no cache, no shared pacing\nhttps alone, no private address, an 8 MB cap&#34;]
+    HP[&#34;httpx · Plain (0.19.0 FR-4.4)\nthe propagation client: every reply handed back as it came, a 429 included; no retry, no cache, no shared pacing\nhttps alone, no private address; each host&#39;s cap go-ionomaps&#39; bound for its source, 8 MB at most (0.19.0 A-56)&#34;]
     HX[&#34;httpx · DiskCacheBytes, with temperature&#39;s CacheBytes and the tiles&#39; cap, the one stated total\nConfig.MemBytes / DiskBytes size a client&#39;s tiers; Cached reads the cache, never the network (D-217, D-219)\nClear map data empties the map clients&#39; caches, memory and disk&#34;]
   end
-  IO[&#34;go-ionomaps\nLibrary.Update: GloTEC&#39;s newest grid through its index, the solar file daily; the background (D-101)\nD-39 for NOAA: one ask every ten minutes, six grids an hour, a 429 backs off&#34;]
+  IO[&#34;go-ionomaps\nLibrary.Update: the solar file daily, GloTEC&#39;s newest grid through its index, D-RAP and NOAA&#39;s scales; GIRO&#39;s burst at most hourly, its readings assimilated (G9)\nD-39: NOAA asked every ten minutes, six grids an hour, a 429 backs off; the answers - bands, paths, reach, hours ahead - pure functions of a snapshot&#34;]
   L[&#34;go-tuiMaps v0.3.0-rc.1\nSetBound · Source · Set/Remove · Work · Render · Warnings&#34;]
   MB -- &#34;Config.NewMap(size)&#34; --&gt; MW
   MF -- &#34;Config.MapFeed(ask: snap, place, view, part)\ntwo lanes: the alerts first and on their own, the layers after (D-268)\nuntil the alerts land: &#39;Alerts for the map are loading.&#39; (D-266)\nan unchanged overlay is not handed in again; a refused one keeps its last (U1-28, D-257)&#34; --&gt; MW

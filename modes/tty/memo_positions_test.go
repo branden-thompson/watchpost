@@ -65,7 +65,7 @@ func TestEveryPositionFieldHasAReason(t *testing.T) {
 			t.Errorf("%s: position fields with no reason: %v", file, missing)
 		}
 	}
-	if seen < 12 {
+	if seen < 13 {
 		t.Errorf("%d position fields found in the memo keys; the audit found 13 - the reading is broken", seen)
 	}
 }
