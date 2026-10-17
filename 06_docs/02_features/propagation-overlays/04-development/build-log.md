@@ -455,3 +455,11 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Tests written first:** `TestTheOnlineFallbackIsUncached` and `TestALocalMatchSendsNothing` against the domain, `TestAFoundPlaceIsAnsweredAndNotKept` and `TestFocusReturnsAfterAFind` against the window; `TestTheBroadcasterAnswersAFoundPlaceAsItsTarget` after, for D-193's other UI mode; `/` added to `TestEveryPropagationControlIsAnAction`; Help's tests to its new row.
 - **Mutants:** m381 to m392 new, each killed; m311 re-pointed to the gated line. Every mutant on a file this batch changed applied and vetted: 73 killed.
 - **Docs:** A-63; the plan's W5.3; REQUIRED-READING (the build-first list built); the atlas.
+
+## Batch 35 - F-216: CI's actions on Node.js 24, the runner image pinned (BUILD red team H-13; A-64)
+
+- **The red team's remediation, first item:** F-216 fell due on 2026-10-19 - GitHub forces the Node.js 20 actions onto Node.js 24 and moves `ubuntu-latest` to Ubuntu 26 that day.
+- **The actions:** every workflow's `actions/checkout`, `actions/setup-go` and `softprops/action-gh-release` re-pinned by commit to its latest release, each built for Node.js 24 (read from its `action.yml`), and each read for the inputs the workflows pass.
+- **The runner:** the Linux jobs pin `ubuntu-24.04` (A-64); a move to Ubuntu 26 will be its own change.
+- **The follow-ups file** keeps its own rule: closed rows deleted (H-12), F-216 with them.
+- **Tests:** none new; the hosted run on this commit is the test of the workflows, read before the next batch.
