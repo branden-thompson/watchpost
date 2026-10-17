@@ -13,7 +13,7 @@ import (
 // fed by n stations, the oldest reading at 11:55, said early for the reason.
 func stationsSnap(n int, early ionomaps.Reason) ionomaps.Snapshot {
 	at := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
-	s := ionomaps.Snapshot{Computed: at, Hours: []ionomaps.Hour{{At: at}}, Early: early,
+	s := ionomaps.Snapshot{Computed: at, Now: ionomaps.Hour{At: at}, Reason: early,
 		Background: ionomaps.Backgrounds{FoF2: ionomaps.GloTEC, M3000: ionomaps.Climatology},
 		Inputs:     ionomaps.Inputs{GloTECValid: at.Add(-30 * time.Minute), Stations: n}}
 	if n > 0 {

@@ -11,6 +11,7 @@ import (
 var creditPending = map[string]string{
 	"ITU-R P.533": "cited for its method; its tables reach the library through ITUHFProp, credited as such (D-186)",
 	"P.1239":      "cited for its method; no text or tables reproduced",
+	"P.371":       "cited for its method, the sunspot number from the flux by its equation; no text or tables reproduced",
 }
 
 // TestEveryPropagationSourceIsCredited is FR-4.1: every source the

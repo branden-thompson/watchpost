@@ -55,17 +55,17 @@ func (d Dashboard) askPropagation() (Dashboard, tea.Cmd) {
 // propOptions are the update's options as the Settings stand: the reference
 // circuit's noise (D-187) and the no-readings correction (D-105).
 func (d Dashboard) propOptions() ionomaps.UpdateOptions {
-	return ionomaps.UpdateOptions{Noise: d.mapPropNoise, CorrectNoReadings: d.mapPropCorrect}
+	return ionomaps.UpdateOptions{Noise: d.mapPropNoise, CorrectNoReadings: d.mapPropCorrect, NoStations: d.mapPropNoGIRO}
 }
 
 // armPropOptions asks for the mode's update when the snapshot shown was made
-// with other options than the Settings' - another noise (D-187), or the
-// no-readings correction (D-105) asked otherwise: go-ionomaps answers it
+// with other options than the Settings' - another noise (D-187), the
+// no-readings correction (D-105) or the stations (D-214) asked otherwise: go-ionomaps answers it
 // from what it holds, asking nothing. A changed Setting is so shown as soon
 // as the map is.
 func (d Dashboard) armPropOptions() (Dashboard, tea.Cmd) {
 	snap := d.mapPane.propSnap
-	if snap == nil || (snap.Noise == d.mapPropNoise && d.mapPane.propSnapCorrect == d.mapPropCorrect) {
+	if snap == nil || (snap.Noise == d.mapPropNoise && d.mapPane.propSnapCorrect == d.mapPropCorrect && snap.Inputs.NoStations == d.mapPropNoGIRO) {
 		return d, nil
 	}
 	return d.askPropagation()
@@ -102,20 +102,20 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 	}
 	d.mapPane.propBusy = false
 	d.mapPane.gen++
-	if len(v.res.Snapshot.Hours) > 0 {
+	if propHasField(v.res.Snapshot) {
 		snap := v.res.Snapshot
 		d.mapPane.propSnap, d.mapPane.propSnapCorrect = &snap, v.correct
 		if snap.Offset.Measured {
 			d.problem(propOffsetWords(snap.Offset)) // the diagnostics' record of each live offset (FR-5.4)
 		}
-		d.mapPane.propAheadHours, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
-		if snap.Early != ionomaps.StationsNext {
+		d.mapPane.propAheadSnaps, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
+		if snap.Reason != ionomaps.StationsNext {
 			d.mapPane.propApplied++ // GIRO's stations, asked at once, complete the first answer (FR-3.6)
 		}
 		d.mapPane.propUpdatedAt = d.now()
 	}
 	d.mapPane.propErr = v.res.Err
-	if v.res.Err == nil && v.res.Snapshot.Early == ionomaps.StationsNext {
+	if v.res.Err == nil && v.res.Snapshot.Reason == ionomaps.StationsNext {
 		nd, cmd := d.setProp().renderMap().askPropagation() // NOAA's field is shown; GIRO's stations at once (go-ionomaps D-63)
 		if cmd != nil {
 			return nd, cmd
@@ -267,7 +267,7 @@ func propOffsetWords(o ionomaps.Offset) string {
 // needed first, as a narrow window cuts the line's end.
 func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	words := []string{"Propagation", propLayerName(layer), "at " + s.Computed.UTC().Format("15:04 UTC")}
-	switch s.Early {
+	switch s.Reason {
 	case ionomaps.TooSoon:
 		words = append(words, "asked too soon: the last field")
 	case ionomaps.Offline:
@@ -277,7 +277,7 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	}
 	if s.Inputs.Stations > 0 {
 		words = append(words, fmt.Sprintf("%d stations, oldest %s", s.Inputs.Stations, s.Inputs.OldestReading.UTC().Format("15:04 UTC")))
-	} else if s.Early != ionomaps.StationsNext {
+	} else if s.Reason != ionomaps.StationsNext {
 		words = append(words, "no stations: the background alone")
 	}
 	switch s.Background.FoF2 {

@@ -39,6 +39,7 @@ var chipGrounds = map[string]render.Token{
 	"IGRF-14":   render.MapChipIGRFBG,
 	"GIRO":      render.MapChipGIROBG,
 	"ITUHFPROP": render.MapChipITUBG,
+	"P.372":     render.MapChipITUBG, // ITU's blue, as ITUHFProp's: the noise constants (go-ionomaps NOTICE 5)
 	"MUF(3000)": render.MapChipMUFBG, // the Propagation mode's fields (D-165)
 	"foF2":      render.MapChipFoF2BG,
 	"RECORDED":  render.MapChipRecordedBG, // not a source: the history, appended after one (D-173, D-178)

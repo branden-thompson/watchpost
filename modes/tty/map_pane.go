@@ -100,7 +100,7 @@ type mapPane struct {
 	propReach       propReach                  // the frequency's reach (W5.2)
 	propReachAsked  propReachKey               // what the reach was last asked for: asked once
 	propAhead       int                        // the hour shown ahead of the snapshot's, 0 for now (FR-1.13)
-	propAheadHours  map[int]ionomaps.Hour      // the hours ahead worked out from the snapshot held
+	propAheadSnaps  map[int]ionomaps.Snapshot  // the hours ahead worked out from the snapshot held, each a snapshot of its own
 	propAheadAsked  int                        // the hour ahead last asked for: asked once
 	propCentre      propCentre                 // the map centre's answer (FR-1.11, D-180)
 	propCentreAsked propCentreKey              // what the centre was last asked for: asked once

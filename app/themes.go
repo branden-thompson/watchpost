@@ -98,6 +98,7 @@ func setUIHook(p tty.UIPrefs) error {
 		cfg.MapPropagationNoise = p.MapPropNoise           // 0.19.0 D-187
 		cfg.MapPropagationRefresh = p.MapPropRefresh       // 0.19.0 D-120
 		cfg.MapPropagationNoReadings = p.MapPropNoReadings // 0.19.0 D-105
+		cfg.MapPropagationStations = p.MapPropStations     // 0.19.0 D-214
 		cfg.MapRadarAheadHours = p.MapRadarAhead           // D-114
 		cfg.MapQuakeFeed = p.MapQuakeFeed                  // D-122
 		cfg.MapAlertScope = ""                             // retired (D-76): the next save lets the key go

@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -129,18 +130,7 @@ func NewSharedQuotaGate(get Getter, now func() time.Time, state string) *QuotaGa
 
 // DefaultQuotaState is $XDG_STATE_HOME/watchpost/quota.json, by default
 // ~/.local/state/...; "" where neither resolves.
-func DefaultQuotaState() string {
-	base := os.Getenv("XDG_STATE_HOME")
-	abs := filepath.IsAbs(base)
-	if abs {
-		return filepath.Join(base, "watchpost", "quota.json")
-	}
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".local", "state", "watchpost", "quota.json")
-}
+func DefaultQuotaState() string { return config.StatePath("quota.json") }
 
 // heldHost is a spent host's quota and when it is next asked.
 type heldHost struct {

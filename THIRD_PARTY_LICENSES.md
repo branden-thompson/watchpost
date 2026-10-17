@@ -188,7 +188,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## github.com/branden-thompson/go-ionomaps v0.0.0-20261017034439-d7e7f3c5b1ca
+## github.com/branden-thompson/go-ionomaps v0.1.0-rc.1
 
 ```
 MIT License
@@ -221,7 +221,7 @@ go-ionomaps
 Copyright (c) 2026 Branden Thompson. The code is licensed under the MIT licence (LICENSE).
 The MIT licence covers this repository's code only. It does not relicense any data.
 
-Sources the library reads, or will read, and their terms:
+Sources the library reads, or is built from, and their terms:
 
 1. GIRO, the Global Ionospheric Radio Observatory (Lowell GIRO Data Center, UMass Lowell)
    Station readings (foF2, M(3000)F2), fetched by the host at run time; never stored in this
@@ -270,8 +270,13 @@ Sources the library reads, or will read, and their terms:
      internal/magcoords/field100.bin
    Cite: IAGA Working Group V-MOD, the International Geomagnetic Reference Field, 14th generation.
 
-5. ITU-R P.533 and P.1239: methods implemented from the published recommendations; no recommendation
-   text is reproduced, and no table except those taken from ITUHFProp (6).
+5. ITU-R P.533, P.1239, P.372 and P.371: methods implemented from the published recommendations; no
+   recommendation text is reproduced. The tables shipped are P.533-14's Tables 2, 3 and 5, listed with
+   their sources in 6, and P.372-18 Table 1's man-made noise constants c and d for the four categories
+   the library offers (watchpost D-187), in:
+     internal/limits/budget.go
+   P.371-9's relation between the sunspot number and the 10.7 cm flux (its eq. (4)) is used inverted;
+   P.1239-4's foE is used as an equation.
 
 6. ITUHFProp (ITU-R Study Group 3, github.com/ITU-R-Study-Group-3/ITU-R-HF), ITU's reference
    implementation of ITU-R P.533. Its README: it "may be used by implementers in their implementation of

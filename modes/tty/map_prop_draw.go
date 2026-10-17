@@ -56,10 +56,10 @@ func fieldGrid(f ionomaps.Field) tuimaps.Grid {
 // none outside the mode or before a snapshot.
 func (d Dashboard) propOverlays() []tuimaps.Overlay {
 	shown := d.propOnScreen()
-	if !d.inPropagation() || len(shown.Hours) == 0 {
+	if !d.inPropagation() || !propHasField(shown) {
 		return nil
 	}
-	h := shown.Hours[0]
+	h := shown.Now
 	field := tuimaps.MUFGrid("propagation/muf", fieldGrid(h.MUF3000), h.At)
 	if d.mapPane.propLayer == propFoF2 {
 		field = tuimaps.FoF2Grid("propagation/fof2", fieldGrid(h.FoF2), h.At)
@@ -81,9 +81,9 @@ func (d Dashboard) propNightMoment() time.Time {
 	case !ok:
 		return d.now().UTC().Truncate(nightStep)
 	case d.mapPane.propAhead > 0:
-		return shown.Hours[0].At.Add(30 * time.Minute).UTC()
+		return shown.Now.At.Add(30 * time.Minute).UTC()
 	}
-	return shown.Hours[0].At.UTC().Truncate(nightStep)
+	return shown.Now.At.UTC().Truncate(nightStep)
 }
 
 // setProp hands the library the Propagation mode's overlays as they stand,
@@ -227,7 +227,7 @@ func (d Dashboard) propBlockAs(width, below int) []string {
 	out := []string{"RADIO FREQUENCY PROPAGATION    " + strings.Join(d.propBadges(true), "  ")}
 	snap := d.mapPane.propSnap
 	origin := d.mapPane.propOrigin // D-193: the centre on Observer, the station on the Broadcaster
-	if snap == nil || len(snap.Hours) == 0 {
+	if snap == nil || !propHasField(*snap) {
 		out = append(out, "MODE: "+field(propLayerName(d.mapPane.propLayer))+" · "+strings.TrimPrefix(d.propStatusWords(), "Propagation · "))
 		return padRows(out, width)
 	}
@@ -262,8 +262,8 @@ func (d Dashboard) propBlockAs(width, below int) []string {
 	if k := d.mapPane.propAhead; k > 0 {
 		when = "+" + strconv.Itoa(k) + " h"
 	}
-	fo, okF := cellValue(shown.Hours[0].FoF2, origin.at.Lat, origin.at.Lon)
-	muf, okM := cellValue(shown.Hours[0].MUF3000, origin.at.Lat, origin.at.Lon)
+	fo, okF := cellValue(shown.Now.FoF2, origin.at.Lat, origin.at.Lon)
+	muf, okM := cellValue(shown.Now.MUF3000, origin.at.Lat, origin.at.Lon)
 	if !okF || !okM {
 		return padRows(append(out, place+when+" · no data at the place"), width)
 	}
@@ -285,7 +285,7 @@ const (
 // propAgeShown reports whether the block says a snapshot's age, which moves
 // with the clock (D-166).
 func (d Dashboard) propAgeShown() bool {
-	return d.modal == modalMap && d.mapMode() == modePropagation && d.mapPane.propSnap != nil && len(d.mapPane.propSnap.Hours) > 0
+	return d.modal == modalMap && d.mapMode() == modePropagation && d.mapPane.propSnap != nil && propHasField(*d.mapPane.propSnap)
 }
 
 // propBadges are the sources' badges (D-168): lit for a source that fed the
@@ -293,7 +293,7 @@ func (d Dashboard) propAgeShown() bool {
 // that fed it.
 func (d Dashboard) propBadges(styled bool) []string {
 	snap := d.mapPane.propSnap
-	shown := snap != nil && len(snap.Hours) > 0
+	shown := snap != nil && propHasField(*snap)
 	var out []string
 	for _, s := range []struct {
 		name string

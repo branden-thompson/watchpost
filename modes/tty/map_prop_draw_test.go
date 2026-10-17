@@ -25,7 +25,7 @@ func propSnapAt(at time.Time, mhz float32) ionomaps.Snapshot {
 		}
 		return f
 	}
-	return ionomaps.Snapshot{Computed: at, Hours: []ionomaps.Hour{{At: at, MUF3000: field(mhz), FoF2: field(mhz / 3)}},
+	return ionomaps.Snapshot{Computed: at, Now: ionomaps.Hour{At: at, MUF3000: field(mhz), FoF2: field(mhz / 3)},
 		Background: ionomaps.Backgrounds{FoF2: ionomaps.GloTEC, M3000: ionomaps.Climatology}, Inputs: ionomaps.Inputs{GloTECValid: at.Add(-30 * time.Minute), F107Mean: 150},
 		Scales: ionomaps.Scales{Valid: at}} // NOAA's scales read, all at 0
 }
@@ -96,7 +96,7 @@ func TestAPropagationFieldCrossesTheSea(t *testing.T) {
 	if g := propGrid(t, d); !g.OverWater {
 		t.Error("the Propagation field stops at the shore")
 	}
-	f := propSnapAt(time.Now(), 9).Hours[0].MUF3000
+	f := propSnapAt(time.Now(), 9).Now.MUF3000
 	f.NoData = ionomaps.Bitset{}
 	if g := fieldGrid(f); len(g.Values) != 180*90 || math.IsNaN(g.Values[5]) {
 		t.Fatalf("a whole field converted to %d values, the sixth %v", len(g.Values), g.Values[5])
@@ -187,7 +187,7 @@ func TestEachControlsStateIsSaid(t *testing.T) {
 func TestURefreshesNowUnderTheThrottle(t *testing.T) {
 	d, s := drawnDash(t)
 	early := propSnapAt(time.Now().UTC().Truncate(time.Minute), 18)
-	early.Early = ionomaps.TooSoon
+	early.Reason = ionomaps.TooSoon
 	s.mu.Lock()
 	s.answer = PropagationResult{Snapshot: early}
 	s.mu.Unlock()

@@ -10,6 +10,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/propagation"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -38,7 +39,7 @@ func propagationClientConfig() httpx.PlainConfig {
 // newPropagationService is how the service is made over its client; a test
 // counts it.
 var newPropagationService = func(note func(string), client *httpx.Plain) (*propagation.Service, error) {
-	return propagation.New(client, propagation.Options{Note: note})
+	return propagation.New(client, propagation.Options{Note: note, StateFile: config.StatePath("propagation-throttle.json")}) // GIRO's throttle across restarts (D-213)
 }
 
 // propagationHolder is the process's one go-ionomaps object (FR-4.8), made
@@ -102,22 +103,9 @@ func propagationHostList() []string {
 	return hosts
 }
 
-// propagationSources are the library's sources, its hosts and terms.
-func propagationSources() []ionomaps.Source {
-	lib, err := ionomaps.New(readOnly{}, ionomaps.Options{})
-	if err != nil {
-		return nil
-	}
-	return lib.Sources()
-}
-
-// readOnly is a fetcher that is never asked: the library is made to read
-// its sources alone.
-type readOnly struct{}
-
-func (readOnly) Fetch(context.Context, string, ionomaps.Validators) (ionomaps.Response, error) {
-	return ionomaps.Response{}, errPropagationUnavailable
-}
+// propagationSources are the library's sources, its hosts and terms, read
+// with no library made (C-5).
+func propagationSources() []ionomaps.Source { return ionomaps.Sources() }
 
 // propagationHosts are MAP STATUS's rows for the Propagation mode's hosts
 // (FR-4.3): each learns the IP address; none is sent the view or the place.

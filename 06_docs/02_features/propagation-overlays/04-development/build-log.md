@@ -473,3 +473,14 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Batch 28's hosted failure fixed at its cause:** `TestThePropagationRowsFollowTheMock` and `TestRoundFourMarksStandOut` hold the dashboard's clock, and `TestAnAgeIsReadAgainstAHeldClock` keeps every such test holding it. Hosted CI failed on batch 28 (this test, macOS) and on batch 32 (the shell hook, both systems) without being read; it is read after every push since.
 - **`tools/runlog`** records each verify run (H-8); this commit carries the line of the run that passed it.
 - **Tests:** `TestEveryRequirementsTestExists`, `TestEveryCodeCitationResolves`, `TestNoRawSourceDataIsStored`, `TestAnAgeIsReadAgainstAHeldClock`, `TestEachRunIsRecorded`, `TestTheTreeIsWhatTheRunSaw`; each new check was shown failing on a planted gap or a hand mutant.
+
+## Batch 37 - watchpost on go-ionomaps v0.1.0-rc.1: the hours ahead their own, no stations, the throttle kept (A-66)
+
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.1, the API as reviewed (D-216). The hours ahead are snapshots of their own, so the chart at an hour ahead carries none of today's disturbance (L-F2); the answers are for the shown snapshot's own hour; the sources come from `ionomaps.Sources()` with no library made (C-5).
+- **A catch before the first run:** the first "has a field" check read the field's values, but the tests' fixtures - and the old check - count a snapshot by its hour; go-ionomaps gives one with no hour when it has no field, so the hour is the test.
+- **"HF stations"** (D-214, FR-4.11) and **GIRO's throttle kept across restarts** (D-213, FR-4.12), its file in the state directory, which `platform/config.StatePath` now names for the quota's file too; the app's tests' guard against writing the developer's state names it.
+- **About credits P.372** (the library ships its four noise constants); P.371 is pending, cited for its equation alone.
+- **The architecture** says what watchpost relies on in go-ionomaps by role and points to the library's own documentation (D-F4).
+- **Mutants:** m393 to m399, each applied and killed before the gate; m148, m180, m209, m212, m213, m218, m333, m364 and m365 re-pointed at the code as it reads now.
+- **Goldens:** the Maps tab's, for the new row; the app's declaration set, for the fetcher no longer needed.
+- **Tests:** `TestAnHourAheadCarriesNoDisturbance`, `TestNoStationsIsASetting`, `TestTheThrottleStateOutlivesARestart`; the two settings guards carry the new field.

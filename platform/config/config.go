@@ -311,6 +311,10 @@ type Config struct {
 	// station readings are held: empty for GloTEC as is (the default), or
 	// "corrected" by the typical offset (0.19.0 D-105).
 	MapPropagationNoReadings string `toml:"map_propagation_no_readings,omitempty"`
+	// MapPropagationStations is whether the Propagation mode asks GIRO for
+	// its stations: empty to ask (the default), or "none" for NOAA and the
+	// climatology alone (0.19.0 D-214).
+	MapPropagationStations string `toml:"map_propagation_stations,omitempty"`
 
 	// HistoryHours and HistoryTrends are the local history's retention, the
 	// Data tab's presets (W18, D-175): "72h", "7d", "30d", "1y" and "30d",
@@ -566,4 +570,19 @@ func Save(cfg Config) error {
 		return fmt.Errorf("cannot activate new config: %w", err)
 	}
 	return nil
+}
+
+// StatePath is a file of watchpost's state by its name:
+// $XDG_STATE_HOME/watchpost/<name>, by default ~/.local/state/watchpost/;
+// "" where neither resolves.
+func StatePath(name string) string {
+	base := os.Getenv("XDG_STATE_HOME")
+	if filepath.IsAbs(base) {
+		return filepath.Join(base, "watchpost", name)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".local", "state", "watchpost", name)
 }

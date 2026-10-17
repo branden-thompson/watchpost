@@ -115,121 +115,23 @@ sequenceDiagram
 - **A returned snapshot is immutable** (fresh slices on every update).
 - **Only the hour on screen** is converted for go-tuiMaps (D-112).
 
-## go-ionomaps' shape (signatures only)
+## go-ionomaps, as watchpost uses it
 
-Package `ionomaps`, module `github.com/branden-thompson/go-ionomaps`:
+The signatures are go-ionomaps' own: its package documentation (`go doc -all
+github.com/branden-thompson/go-ionomaps`) and its API review (go-ionomaps
+`06_docs/02_features/go-ionomaps/03-architecture-design/api-review.md`, D-216). They are not copied here,
+where they went stale (BUILD red team D-F4). What watchpost relies on, by the role it plays:
 
-```go
-type Fetcher interface {
-    Fetch(ctx context.Context, url string, validators Validators) (Response, error)
-}
-type Response struct {
-    Status     int
-    Rate       RateHeaders // only the rate-related headers (D-83, FR-4.5); never a whole header (I-1)
-    Validators Validators  // for the next ask
-    Body       []byte      // empty on a 304 (Status says so)
-}
-type RateHeaders struct{ RetryAfter, Limit, Remaining, Reset string }
-type Validators struct{ ETag, LastModified string }
-
-type Options struct {
-    Clock             func() time.Time
-    Tables            Tables           // the refits, swappable (D-43, R-4.4)
-}
-// The reference circuit is fixed by ruling (D-73, D-91), so it is not an option.
-
-func New(f Fetcher, o Options) (*Library, error)                                // the grid is 2° (R-1.1, D-138)
-func (l *Library) Update(ctx context.Context, u UpdateOptions) (Snapshot, error) // pull; throttle inside (D-42); safe for concurrent use (R-5.6)
-
-type UpdateOptions struct {
-    CorrectNoReadings bool // per update, from the host's Setting: no new object, no new burst (D-105, persona N5)
-}
-func (l *Library) Sources() []Source                            // every source: name, host, terms, citation (R-4.1, D-113)
-
-// A Snapshot is immutable: every Update returns fresh slices (P-6).
-type Snapshot struct {
-    Computed     time.Time    // the age is the host's clock minus this
-    Hours        []Hour       // Hours[0] is now; then up to 24 hours ahead, typical, sharing the climatology cache's fields (R-1.3, D-109, D-131)
-    NearestKm    []float32    // per cell: distance to the nearest assimilated station, one table per snapshot (R-2.11, D-116, D-131); a cell is measured within 500 km (R-3.2)
-    Background   Backgrounds  // per field (D-101)
-    Inputs       Inputs       // what fed it, and when (R-3.3, R-9.5, R-9.7, FR-5.1)
-    Early        Reason       // why this is not from new data: none, too soon, GIRO paused, offline (R-5.4)
-    Scales       Scales       // (D-88)
-    Offset       Offset       // (D-105)
-    TypicalError TypicalError // the hours ahead's error, with its basis (D-109)
-}
-type Backgrounds struct{ FoF2, M3000 Background } // foF2: GloTEC, else the climatology; M(3000)F2: the climatology
-type Inputs struct {
-    Stations, Rejected int           // readings used, and refused by range checks (R-3.3)
-    GloTECValid        time.Time     // the grid's own valid time; zero when GloTEC was missing (FR-5.1)
-    OldestReading      time.Time     // the oldest GIRO reading assimilated (R-5.7, FR-5.1)
-    DRAPValid          time.Time     // zero when D-RAP was missing: no "disturbed" state (R-2.6)
-    F107Mean           float32       // the 30-day mean used (D-104)
-    F107Days           int           // observed days in it
-    F107Age            time.Duration // since the solar file was last fetched
-    CoordsExtrapolated bool          // past IGRF-14's last year (R-9.7)
-}
-type TypicalError struct {
-    Bands []BandError // by distance to the nearest reporting station (D-134)
-    Basis string      // where and when it was measured (D-109, D-134)
-}
-type BandError struct {
-    UpToKm              float32 // 500, 1000, 2000, then no limit
-    FoF2MHz, MUF3000MHz float32
-}
-type Scales struct {
-    R, S, G int        // NOAA levels now, 0 to 5
-    Outlook []DayScale // NOAA's next three days, as published
-    Valid   time.Time  // zero when the feed is missing: never read as level 0
-}
-type DayScale struct {
-    Day                        time.Time
-    RMinorPct, RMajorPct, SPct int // NOAA's probabilities
-    G                          int
-}
-type Offset struct {
-    LiveMHz, TypicalMHz, SpreadMHz float32 // stations minus GloTEC, foF2
-    Corrected                      bool    // the no-readings correction is in use
-}
-
-type Hour struct {
-    At      time.Time
-    MUF3000 Field
-    FoF2    Field
-}
-type Field struct {
-    West, South, East, North float64
-    Cols, Rows               int
-    Values                   []float32 // finite everywhere (R-3.3)
-    NoData                   Bitset    // where no value is known (D-131)
-}
-
-// One place or many in one call (R-2.3), at most 64 places (R-3.5); bad input refused; no answer fetches.
-// `at` falls in the hour that contains it (the hour starting at its UTC hour).
-func (s Snapshot) At(points []LatLon, at time.Time) ([]Reading, error)                          // R-2.1
-func (s Snapshot) Bands(origins []LatLon, radiusKm float64, at time.Time) ([][]BandStatus, error) // near-vertical (R-2.8)
-func (s Snapshot) Path(from LatLon, to []LatLon, at time.Time) ([][]BandStatus, error)           // R-2.2
-func (s Snapshot) Reach(origin LatLon, mhz float64, at time.Time) (Reach, error)                 // R-2.9
-
-type Reading struct {
-    FoF2, MUF3000 float32
-    NoData        bool
-    NearestKm     float32
-}
-type BandStatus struct {
-    Band      Band    // 160 m ... 10 m
-    Status    Status  // Open, AboveUpper, Absorbed, Disturbed, NoData (R-2.6)
-    Limit     Limit   // which limit decided it, typed; the host writes the words (A-9)
-    LimitMHz  float32
-    OpenHours []Span  // the UTC day's typical open hours, from the climatology (R-2.8, D-135)
-    NearestKm float32 // (D-116)
-}
-type Reach struct {
-    SkipKm, MaxKm float64
-    Area          Field // reached or not, for go-tuiMaps' host ramp (L-2.2) and its non-colour edge (L-2.6)
-    Limit         Limit
-}
-```
+| watchpost's need | go-ionomaps |
+|---|---|
+| one library object per process, over the propagation client (FR-4.8) | `New(fetcher, Options)`; the fetcher asks only the hosts `Sources()` names (FR-4.7) |
+| GIRO's throttle across restarts (FR-4.12, D-213) | `(*Library).State()` after each update, `Restore(bytes)` at start; a refused state starts as new (`ErrBadState`) |
+| an update with the Settings' options (FR-4.10, FR-4.11) | `Update(ctx, UpdateOptions{Noise, CorrectNoReadings, NoStations})`; the snapshot's `Reason` says fresh, too soon, GIRO paused, offline, stations next or unfinished; `ErrNoField` when there is none |
+| the field drawn, its age and its inputs (FR-1.1 to FR-1.6, FR-5) | `Snapshot.Now` (its hour's MUF(3000) and foF2 fields), `Computed`, `Inputs` (with `Refused`, `GloTECFilled`, `NoStations`), `Background`, `Scales`, `Offset` |
+| the hours ahead (FR-1.13, D-109) | `Snapshot.Ahead(k)`: a snapshot of its own, typical, with none of now's disturbance or offset (L-F2) |
+| the answers (FR-1.9 to FR-1.16) | `Readings`, `Bands`, `Path`, `Reach` on a snapshot, each for its own hour; pure, never a fetch (FR-1.17) |
+| the hours ahead's typical error said (D-134) | `Snapshot.TypicalError.Basis`, in words a listener can be told; `Source` is the citation (AX-3) |
+| credits (FR-4.1) | `Sources()`, read with no library made (C-5) |
 
 Internal packages: go-ionomaps' design (`03-architecture-design/design.md`, "Packages") holds the one list (C-U3).
 

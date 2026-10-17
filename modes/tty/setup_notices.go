@@ -153,6 +153,7 @@ func (d Dashboard) mapNoticeSlots() []noticeSlot {
 		slotOf(settingsNotice{"Rain Day 4+", rainFullNote, noticeWarn}, d.mapRainFull),
 		slotOf(settingsNotice{"UV cities", uvCitiesNote(d.mapUVCities), noticeInfo}, d.setup.focus == rowMapUVCities, uvCitiesNote(uvCityChoices[len(uvCityChoices)-1])),
 		slotOf(settingsNotice{"HF refresh", propRefreshNote(d.mapPropRefresh), noticeInfo}, d.setup.focus == rowMapPropRefresh, propRefreshNote(refreshEvery10)),
+		slotOf(settingsNotice{"HF stations", stationsNote(d.mapPropNoGIRO), noticeInfo}, d.setup.focus == rowMapPropStations, stationsNote(false)),
 		slotOf(settingsNotice{"Map layers", strings.TrimSpace(head + " " + detail), noticeWarn}, true, worstHead+" "+worstDetail),
 		d.outcomeSlot("Map data", d.cfg.MapRetention, rowMapClear, mapClearedNote(MapCleared{Files: 99999, Zones: 99999})),
 	}

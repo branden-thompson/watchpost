@@ -63,8 +63,10 @@ func TestNoTestWritesTheDevelopersConfig(t *testing.T) {
 	if home != "" && strings.HasPrefix(path, home) {
 		t.Errorf("the config is %s, under the home directory: a test that keeps a preference writes the real file", path)
 	}
-	if state := temperature.DefaultQuotaState(); home != "" && strings.HasPrefix(state, home) {
-		t.Errorf("the state is %s, under the home directory: a test that holds a quota or learns land writes the real files", state)
+	for _, state := range []string{temperature.DefaultQuotaState(), config.StatePath("propagation-throttle.json")} {
+		if home != "" && strings.HasPrefix(state, home) {
+			t.Errorf("the state is %s, under the home directory: a test that holds a quota, learns land or keeps GIRO's throttle writes the real files", state)
+		}
 	}
 }
 

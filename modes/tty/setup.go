@@ -532,6 +532,8 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.cyclePropRefresh(true)
 	case rowMapPropReadings:
 		return d.togglePropCorrect()
+	case rowMapPropStations:
+		return d.togglePropStations()
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(true)
 	case rowMapQuakes:

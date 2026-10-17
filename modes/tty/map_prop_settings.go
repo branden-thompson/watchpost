@@ -105,3 +105,41 @@ func (d Dashboard) togglePropCorrect() Dashboard {
 	d.mapPropCorrect = !d.mapPropCorrect
 	return d.uiTouched()
 }
+
+// noStationsKey is the file's word for no GIRO (D-214); empty asks GIRO, the
+// default.
+const noStationsKey = "none"
+
+// stationsKey is the file's word for the stations choice.
+func stationsKey(noGIRO bool) string {
+	if noGIRO {
+		return noStationsKey
+	}
+	return ""
+}
+
+// stationsLabel is the row's words (D-214): GIRO's stations asked, or none.
+func stationsLabel(noGIRO bool) string {
+	if noGIRO {
+		return "None (NOAA alone)"
+	}
+	return "GIRO"
+}
+
+// stationsNote is what the choice means, said beside the row while it has
+// the focus: GIRO's terms when GIRO is asked (D-214, FR-4.1), what the field
+// is made of when it is not.
+func stationsNote(noGIRO bool) string {
+	if noGIRO {
+		return "GIRO is not asked; the field is NOAA's GloTEC and the climatology alone"
+	}
+	return "GIRO's readings are offered for educational and non-commercial research use only"
+}
+
+// togglePropStations switches GIRO's stations; an open mode asks for its
+// snapshot with the choice, which go-ionomaps answers without a request
+// (armPropOptions).
+func (d Dashboard) togglePropStations() Dashboard {
+	d.mapPropNoGIRO = !d.mapPropNoGIRO
+	return d.uiTouched()
+}

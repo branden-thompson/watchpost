@@ -71,6 +71,7 @@ func creditGroups() []tty.CreditGroup {
 			{Badge: "PYIRI", What: "Ionosphere Climatology (MIT)", Note: "© 2023 victoriyaforsythe; Forsythe et al. 2024, ported"},
 			{Badge: "IGRF-14", What: "Magnetic Coordinates", Note: "IAGA's International Geomagnetic Reference Field"},
 			{Badge: "ITUHFPROP", What: "P.533 Absorption Factors", Note: "ITU-R Study Group 3, ported"},
+			{Badge: "P.372", What: "Man-made Noise Levels", Note: "ITU-R P.372-18 Table 1's four categories"},
 		}},
 		{Name: "VOICES", Lines: []tty.CreditLine{
 			{Badge: "PIPER", What: "Piper Voices (MIT)", Host: "huggingface.co", Note: "rhasspy/piper-voices"},

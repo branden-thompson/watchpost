@@ -69,13 +69,13 @@ func (d Dashboard) propOriginWords() []string {
 	if k := d.mapPane.propAhead; k > 0 {
 		when = spoken(strconv.Itoa(k)+" h") + " ahead"
 	}
-	fo, okF := cellValue(shown.Hours[0].FoF2, origin.at.Lat, origin.at.Lon)
-	muf, okM := cellValue(shown.Hours[0].MUF3000, origin.at.Lat, origin.at.Lon)
+	fo, okF := cellValue(shown.Now.FoF2, origin.at.Lat, origin.at.Lon)
+	muf, okM := cellValue(shown.Now.MUF3000, origin.at.Lat, origin.at.Lon)
 	if !okF || !okM {
 		return []string{upperFirst(origin.name + ", " + when + ": no data at the place.")}
 	}
 	answer := fmt.Sprintf("%s, %s: MUF(3000) %s megahertz, foF2 %s megahertz.", origin.name, when, mhzWords(muf), mhzWords(fo))
-	return []string{upperFirst(answer), d.propDayWords(origin, shown.Hours[0].At)}
+	return []string{upperFirst(answer), d.propDayWords(origin, shown.Now.At)}
 }
 
 // propDayWords say whether the sun is up at a place at a moment, and when

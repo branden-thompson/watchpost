@@ -70,7 +70,7 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 	if !ok || !d.mapShown() || !d.inPropagation() || !origin.ok {
 		return propChartKey{}, false
 	}
-	return propChartKey{computed: shown.Computed, hour: shown.Hours[0].At, origin: origin.at, radiusKm: float64(d.propRadiusKm()), noise: shown.Noise}, true
+	return propChartKey{computed: shown.Computed, hour: shown.Now.At, origin: origin.at, radiusKm: float64(d.propRadiusKm()), noise: shown.Noise}, true
 }
 
 // armPropChart asks for the chart when what it is worked out from has
@@ -101,7 +101,7 @@ func (d Dashboard) armAnswer(which propAnswer) (Dashboard, tea.Cmd) {
 	case answerReach:
 		key, ok := d.propReachWanted()
 		cmd = askAnswer(key, ok, d.mapPane.propReach.key, &d.mapPane.propReachAsked, func() tea.Msg {
-			field, err := snap.Reach(key.origin, key.mhz, key.hour)
+			field, err := snap.Reach(key.origin, key.mhz)
 			return propReachMsg{reach: propReach{key: key, field: field, err: err}}
 		})
 	case answerCentre:
@@ -168,7 +168,7 @@ var errPropAnswers = errors.New("go-ionomaps answered a different number of plac
 // workPropChart works the chart out: off the UI goroutine, about 5 ms.
 func workPropChart(snap ionomaps.Snapshot, key propChartKey) propChart {
 	c := propChart{key: key}
-	local, err := snap.Bands([]ionomaps.LatLon{key.origin}, key.radiusKm, key.hour)
+	local, err := snap.Bands([]ionomaps.LatLon{key.origin}, key.radiusKm)
 	if err != nil {
 		c.err = err
 		return c
@@ -177,7 +177,7 @@ func workPropChart(snap ionomaps.Snapshot, key propChartKey) propChart {
 	for i, t := range propContinents {
 		to[i] = t.at
 	}
-	paths, err := snap.Path(key.origin, to, key.hour)
+	paths, err := snap.Path(key.origin, to)
 	if err != nil {
 		c.err = err
 		return c

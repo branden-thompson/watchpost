@@ -149,7 +149,7 @@ func TestTheUpdateNeverRunsOnTheUIGoroutine(t *testing.T) {
 // name when it asks again (D-124).
 func TestAnUpdatesResultIsSaid(t *testing.T) {
 	at := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
-	snap := ionomaps.Snapshot{Computed: at, Hours: []ionomaps.Hour{{At: at}},
+	snap := ionomaps.Snapshot{Computed: at, Now: ionomaps.Hour{At: at},
 		Background: ionomaps.Backgrounds{FoF2: ionomaps.GloTEC, M3000: ionomaps.Climatology},
 		Inputs:     ionomaps.Inputs{GloTECValid: at.Add(-30 * time.Minute)}}
 	s := &seam{answer: PropagationResult{Snapshot: snap}}

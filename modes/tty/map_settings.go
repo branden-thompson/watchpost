@@ -155,6 +155,7 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	lines, at = d.mapRow(o, lines, at, rowMapPropNoise, "RX noise -", d.mapPicker(o, rowMapPropNoise, propNoiseLabel(d.mapPropNoise)))             // D-187: the reference circuit's noise
 	lines, at = d.mapRow(o, lines, at, rowMapPropRefresh, "HF refresh -", d.mapPicker(o, rowMapPropRefresh, d.propRefreshLabel()))                 // D-120: its cost a notice while it is chosen
 	lines, at = d.mapRow(o, lines, at, rowMapPropReadings, "No readings -", d.mapPicker(o, rowMapPropReadings, noReadingsLabel(d.mapPropCorrect))) // D-105: while no station readings are held
+	lines, at = d.mapRow(o, lines, at, rowMapPropStations, "HF stations -", d.mapPicker(o, rowMapPropStations, stationsLabel(d.mapPropNoGIRO)))    // D-214: GIRO's terms a notice beside it
 	return lines, at
 }
 

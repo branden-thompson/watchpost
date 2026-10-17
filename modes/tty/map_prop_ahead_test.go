@@ -28,14 +28,14 @@ func stepAhead(t *testing.T, d Dashboard, key string) Dashboard {
 // the climatology's, not the snapshot's flat field.
 func TestTheHoursStepOnAKey(t *testing.T) {
 	d := chartDash(t)
-	now := d.mapPane.propSnap.Hours[0]
+	now := d.mapPane.propSnap.Now
 	d = stepAhead(t, d, "shift+right")
 	if d.mapPane.propAhead != 1 {
 		t.Fatalf("shift+right steps to hour %d; want 1", d.mapPane.propAhead)
 	}
 	shown, ok := d.propShown()
-	if !ok || !shown.Hours[0].At.Equal(now.At.Add(time.Hour)) || !shown.Hours[0].Typical {
-		t.Fatalf("the hour shown is %v (typical %v, ready %v); want the hour after %v, typical", shown.Hours[0].At, shown.Hours[0].Typical, ok, now.At)
+	if !ok || !shown.Now.At.Equal(now.At.Add(time.Hour)) || !shown.Now.Typical {
+		t.Fatalf("the hour shown is %v (typical %v, ready %v); want the hour after %v, typical", shown.Now.At, shown.Now.Typical, ok, now.At)
 	}
 	g := propGrid(t, d)
 	if g.Values[0] == float64(now.MUF3000.Values[0]) && g.Values[len(g.Values)/2] == float64(now.MUF3000.Values[len(g.Values)/2]) {
@@ -110,14 +110,14 @@ func TestAnHourStepNeverWaitsForAnUpdate(t *testing.T) {
 // again for it.
 func TestANewSnapshotMissesTheAnswerMemo(t *testing.T) {
 	d := stepAhead(t, chartDash(t), "shift+right")
-	if len(d.mapPane.propAheadHours) == 0 {
+	if len(d.mapPane.propAheadSnaps) == 0 {
 		t.Fatal("no hour ahead was kept")
 	}
 	next := *d.mapPane.propSnap
 	next.Computed = next.Computed.Add(10 * time.Minute)
 	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: next}})
 	d = m.(Dashboard)
-	if len(d.mapPane.propAheadHours) != 0 {
+	if len(d.mapPane.propAheadSnaps) != 0 {
 		t.Error("the hours ahead of the old snapshot were kept for the new one")
 	}
 	if d.mapPane.propAheadAsked != 1 {
@@ -134,4 +134,41 @@ func TestANewSnapshotMissesTheAnswerMemo(t *testing.T) {
 // typicalBand is a typical error's distance band.
 func typicalBand(upToKm, fo, muf float32) ionomaps.BandError {
 	return ionomaps.BandError{UpToKm: upToKm, FoF2MHz: fo, MUF3000MHz: muf}
+}
+
+// TestAnHourAheadCarriesNoDisturbance is the BUILD red team's L-F2: an hour
+// ahead is typical, so today's D-RAP disturbance is not on it - the chart
+// says a band disturbed now and none at six, twelve or eighteen hours ahead.
+func TestAnHourAheadCarriesNoDisturbance(t *testing.T) {
+	d, _ := drawnDash(t)
+	f := d.mapPane.propSnap.Now.FoF2
+	f.Values = make([]float32, len(f.Values))
+	for i := range f.Values {
+		f.Values[i] = 25 // D-RAP's 1 dB frequency at 25 MHz everywhere: every open band disturbed
+	}
+	f.NoData = ionomaps.Bitset{}
+	held := *d.mapPane.propSnap
+	held.Disturbance = f
+	d.mapPane.propSnap = &held
+	disturbed := func(c propChart) bool {
+		for _, a := range append([]ionomaps.Answer{c.local}, c.targets...) {
+			for _, b := range a.Bands {
+				if b.Status == ionomaps.Disturbed {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	if d = workChart(t, d); !disturbed(d.mapPane.propChart) {
+		t.Fatal("control: now's chart says no band disturbed under D-RAP at 25 MHz")
+	}
+	for _, k := range []int{6, 12, 18} {
+		for d.mapPane.propAhead < k {
+			d = stepAhead(t, d, "shift+right")
+		}
+		if d = workChart(t, d); disturbed(d.mapPane.propChart) {
+			t.Errorf("+%d h: the chart says a band disturbed; an hour ahead is typical", k)
+		}
+	}
 }

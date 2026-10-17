@@ -75,9 +75,9 @@ func workPropCentre(snap ionomaps.Snapshot, key propCentreKey) propCentre {
 	c := propCentre{key: key, km: geo.HaversineKM(key.origin.Lat, key.origin.Lon, key.centre.Lat, key.centre.Lon)}
 	var got []ionomaps.Answer
 	if c.km <= key.radiusKm {
-		got, c.err = snap.Bands([]ionomaps.LatLon{key.origin}, key.radiusKm, key.hour)
+		got, c.err = snap.Bands([]ionomaps.LatLon{key.origin}, key.radiusKm)
 	} else {
-		got, c.err = snap.Path(key.origin, []ionomaps.LatLon{key.centre}, key.hour)
+		got, c.err = snap.Path(key.origin, []ionomaps.LatLon{key.centre})
 	}
 	if c.err == nil && len(got) == 1 {
 		c.bands, c.nearest = got[0].Bands, got[0].Nearest
@@ -92,7 +92,7 @@ func workPropCentre(snap ionomaps.Snapshot, key propCentreKey) propCentre {
 func (d Dashboard) propCentreLines() []string {
 	c, origin := d.mapPane.propCentre, d.mapPane.propOrigin
 	shown := d.propOnScreen()
-	if !d.propRole().target || !origin.ok || len(shown.Hours) == 0 || !c.key.computed.Equal(shown.Computed) || c.err != nil || len(c.bands) == 0 {
+	if !d.propRole().target || !origin.ok || !propHasField(shown) || !c.key.computed.Equal(shown.Computed) || c.err != nil || len(c.bands) == 0 {
 		return nil
 	}
 	from := strings.ToUpper(origin.name)
@@ -104,8 +104,8 @@ func (d Dashboard) propCentreLines() []string {
 		ew = "W"
 	}
 	out := []string{fmt.Sprintf("%.1f°%s %.1f°%s", math.Abs(c.key.centre.Lat), ns, math.Abs(c.key.centre.Lon), ew)}
-	muf, okM := cellValue(shown.Hours[0].MUF3000, c.key.centre.Lat, c.key.centre.Lon)
-	fo, okF := cellValue(shown.Hours[0].FoF2, c.key.centre.Lat, c.key.centre.Lon)
+	muf, okM := cellValue(shown.Now.MUF3000, c.key.centre.Lat, c.key.centre.Lon)
+	fo, okF := cellValue(shown.Now.FoF2, c.key.centre.Lat, c.key.centre.Lon)
 	if okM && okF {
 		out = append(out, fmt.Sprintf("MUF(3000) %.1f · foF2 %.1f MHz", muf, fo))
 	}

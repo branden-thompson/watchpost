@@ -11,6 +11,8 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -28,9 +30,10 @@ type Getter interface {
 // Options are the service's settings: a clock for tests, the update's own
 // deadline, and where each rate header's first sighting is noted.
 type Options struct {
-	Clock    func() time.Time
-	Deadline time.Duration // 0 is the architecture's 60 s
-	Note     func(string)  // the diagnostics; nil notes nothing
+	Clock     func() time.Time
+	Deadline  time.Duration // 0 is the architecture's 60 s
+	Note      func(string)  // the diagnostics; nil notes nothing
+	StateFile string        // where GIRO's throttle state is kept across restarts (D-213); "" keeps none
 }
 
 // updateDeadline is an update's own deadline: a GIRO burst of 39 took 36 s
@@ -48,6 +51,8 @@ type Service struct {
 	lib      *ionomaps.Library
 	fetch    *fetcher
 	deadline time.Duration
+	state    string       // the throttle state's file, or "" (D-213)
+	note     func(string) // the diagnostics
 
 	mu      sync.Mutex
 	running *run
@@ -90,7 +95,7 @@ func New(get Getter, o Options) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, src := range lib.Sources() { // the library's own hosts, before anything is fetched (D-113)
+	for _, src := range ionomaps.Sources() { // the library's own hosts, before anything is fetched (D-113)
 		for _, h := range src.Hosts {
 			f.hosts[h] = true
 		}
@@ -99,7 +104,57 @@ func New(get Getter, o Options) (*Service, error) {
 	if deadline == 0 {
 		deadline = updateDeadline
 	}
-	return &Service{lib: lib, fetch: f, deadline: deadline}, nil
+	s := &Service{lib: lib, fetch: f, deadline: deadline, state: o.StateFile, note: o.Note}
+	s.restoreState()
+	return s, nil
+}
+
+// restoreState takes the throttle state the last run kept (D-213), so a
+// restart within the hour of a burst asks GIRO nothing new; one that cannot
+// be read or that go-ionomaps refuses is noted, and the library starts as
+// new - there is nothing for a listener to do (D-124).
+func (s *Service) restoreState() {
+	if s.state == "" {
+		return
+	}
+	b, err := os.ReadFile(s.state)
+	if errors.Is(err, os.ErrNotExist) {
+		return // a first run
+	}
+	if err == nil {
+		err = s.lib.Restore(b)
+	}
+	if err == nil {
+		return
+	}
+	if s.note == nil {
+		return
+	}
+	s.note("Propagation: GIRO's throttle state was not taken, so it starts as new - " + err.Error())
+}
+
+// keepState writes the throttle state after an update, through a file
+// beside it renamed into place, so a run killed mid-write leaves the last
+// whole state; a failure is noted (D-124).
+func (s *Service) keepState() {
+	if s.state == "" {
+		return
+	}
+	err := os.MkdirAll(filepath.Dir(s.state), 0o700)
+	tmp := s.state + ".tmp"
+	if err == nil {
+		err = os.WriteFile(tmp, s.lib.State(), 0o600)
+	}
+	if err == nil {
+		err = os.Rename(tmp, s.state)
+	}
+	if err == nil {
+		return
+	}
+	if s.note == nil {
+		return
+	}
+	s.note("Propagation: GIRO's throttle state was not kept - " + err.Error())
 }
 
 // Ask starts an update with the host's options, or joins the one running
@@ -124,6 +179,7 @@ func (s *Service) Ask(ctx context.Context, opts ionomaps.UpdateOptions) <-chan R
 			uctx, cancel := context.WithTimeout(ctx, s.deadline)
 			defer cancel()
 			snap, err := s.lib.Update(uctx, opts)
+			s.keepState()
 			r.res = Result{Snapshot: snap, Err: err}
 			s.mu.Lock()
 			s.running = nil

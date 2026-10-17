@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -119,8 +121,8 @@ func TestAnUpdateIsJoinedNotDoubled(t *testing.T) {
 	a, b := s.Ask(context.Background(), ionomaps.UpdateOptions{}), s.Ask(context.Background(), ionomaps.UpdateOptions{})
 	close(rec.hold)
 	ra, rb := <-a, <-b
-	if ra.Snapshot.Early != rb.Snapshot.Early || ra.Snapshot.Early == ionomaps.TooSoon {
-		t.Errorf("two joined updates were answered %v and %v: a second update ran, and was told too soon", ra.Snapshot.Early, rb.Snapshot.Early)
+	if ra.Snapshot.Reason != rb.Snapshot.Reason || ra.Snapshot.Reason == ionomaps.TooSoon {
+		t.Errorf("two joined updates were answered %v and %v: a second update ran, and was told too soon", ra.Snapshot.Reason, rb.Snapshot.Reason)
 	}
 	index := 0
 	for _, u := range rec.asked {
@@ -146,7 +148,7 @@ func TestClosingTheModeCancelsTheUpdate(t *testing.T) {
 	cancel()
 	select {
 	case r := <-got:
-		if r.Err == nil && len(r.Snapshot.Hours) != 0 {
+		if r.Err == nil && len(r.Snapshot.Now.FoF2.Values) != 0 {
 			t.Errorf("a cancelled update gave a field: %+v", r.Snapshot.Inputs)
 		}
 	case <-time.After(5 * time.Second):
@@ -211,8 +213,8 @@ func TestTheHostsOptionsReachTheLibrary(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := <-s.Ask(context.Background(), ionomaps.UpdateOptions{Noise: ionomaps.NoiseCity})
-	if r.Err != nil || len(r.Snapshot.Hours) == 0 || r.Snapshot.Noise != ionomaps.NoiseCity {
-		t.Errorf("asked with city noise: %v, %d hours, noise %v", r.Err, len(r.Snapshot.Hours), r.Snapshot.Noise)
+	if r.Err != nil || len(r.Snapshot.Now.FoF2.Values) == 0 || r.Snapshot.Noise != ionomaps.NoiseCity {
+		t.Errorf("asked with city noise: %v, %d cells, noise %v", r.Err, len(r.Snapshot.Now.FoF2.Values), r.Snapshot.Noise)
 	}
 }
 
@@ -246,5 +248,49 @@ func TestNoRawSourceDataIsStored(t *testing.T) {
 		if name := strings.ToLower(plain.Field(i).Name); strings.Contains(name, "cache") || strings.Contains(name, "dir") {
 			t.Errorf("the propagation client's config has %s: a reply could be kept", plain.Field(i).Name)
 		}
+	}
+}
+
+// TestTheThrottleStateOutlivesARestart is watchpost D-213: the service keeps
+// go-ionomaps' throttle state in its file after each update, and a service
+// made over that file - the next run - takes it; a file it cannot take is
+// noted and the service starts as new, never failing to start.
+func TestTheThrottleStateOutlivesARestart(t *testing.T) {
+	var b strings.Builder
+	for d := 30; d >= 1; d-- {
+		b.WriteString(fixedClock().AddDate(0, 0, -d).Format("2006 01 02") + "  150  140  1  2  0  0  0  0  0  0  0\n")
+	}
+	rec := &recorder{answer: func(url string) (httpx.Answer, error) {
+		if strings.HasSuffix(url, "daily-solar-indices.txt") {
+			return httpx.Answer{Status: 200, Body: []byte(b.String())}, nil
+		}
+		return httpx.Answer{Status: 404}, nil
+	}}
+	file := filepath.Join(t.TempDir(), "state", "propagation-throttle.json")
+	first, err := New(rec, Options{Clock: fixedClock, StateFile: file})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := <-first.Ask(context.Background(), ionomaps.UpdateOptions{}); r.Err != nil {
+		t.Fatal(r.Err)
+	}
+	kept, err := os.ReadFile(file)
+	if err != nil || len(kept) == 0 {
+		t.Fatalf("after an update the state file holds %d bytes (%v)", len(kept), err)
+	}
+	if _, err := os.Stat(file + ".tmp"); !errors.Is(err, os.ErrNotExist) {
+		t.Error("the write's file beside the state was left behind")
+	}
+	var notes []string
+	next, err := New(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }})
+	if err != nil || len(notes) != 0 || string(next.lib.State()) != string(kept) {
+		t.Errorf("the next run did not take the state kept (%v, notes %v)", err, notes)
+	}
+	if err := os.WriteFile(file, []byte("{held"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	notes = nil
+	if _, err := New(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }}); err != nil || len(notes) != 1 || !strings.Contains(notes[0], "starts as new") {
+		t.Errorf("a state that cannot be taken: %v, notes %v; want the service made and the refusal noted", err, notes)
 	}
 }

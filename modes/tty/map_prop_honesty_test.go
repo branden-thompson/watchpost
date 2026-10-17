@@ -173,6 +173,30 @@ func TestTheNoReadingsCorrectionIsASetting(t *testing.T) {
 	}
 }
 
+// TestNoStationsIsASetting is watchpost D-214: the Maps tab's picker asks
+// GIRO by default, with GIRO's terms beside it, or none; the update is asked
+// with it, a snapshot asked otherwise is asked again, and it round-trips the
+// file.
+func TestNoStationsIsASetting(t *testing.T) {
+	s := &seam{answer: PropagationResult{Snapshot: stationsSnap(0, ionomaps.Fresh)}}
+	d, cmd := keyCmd(t, propDash(t, s, true), "P")
+	d = runProp(t, d, cmd)
+	if s.opts[0].NoStations || stationsLabel(d.mapPropNoGIRO) != "GIRO" || !strings.Contains(stationsNote(false), "non-commercial") {
+		t.Fatalf("the first update was asked with %+v; GIRO asked by default, its terms beside the row", s.opts[0])
+	}
+	d = d.togglePropStations()
+	d, again := d.armPropOptions()
+	if again == nil {
+		t.Fatal("the Setting changed and the snapshot, asked with GIRO, was not asked again")
+	}
+	if d = runProp(t, d, again); !s.opts[len(s.opts)-1].NoStations {
+		t.Errorf("the update after choosing none was asked with %+v", s.opts[len(s.opts)-1])
+	}
+	if stationsKey(true) != "none" || stationsKey(false) != "" || stationsLabel(true) != "None (NOAA alone)" || !strings.Contains(stationsNote(true), "not asked") {
+		t.Error("the file's words, the row's or the notice's do not say the choice")
+	}
+}
+
 // TestTheRefreshSettingStatesItsCost is FR-4.10 (D-120, D-141): the Maps
 // tab's picker, every 10 minutes by default, hourly, or on demand on the
 // refresh-now key, each with its measured cost; the open mode's tick follows

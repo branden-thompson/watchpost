@@ -144,6 +144,7 @@ const (
 	rowMapPropNoise    // the Propagation mode's reference circuit's noise: city, residential, rural or quiet rural (D-187)
 	rowMapPropRefresh  // how often an open Propagation mode asks again (D-120)
 	rowMapPropReadings // while no station readings are held: GloTEC as is or corrected (D-105)
+	rowMapPropStations // GIRO's stations asked, or none (D-214)
 	rowMapDetailLevel
 	// THE MAP'S DETAIL, A ROW EACH (UAT-1 U1-35): the "← Enabled →" pattern
 	// every other on/off row has, in mapDetailLayers' order.
@@ -271,6 +272,7 @@ func setupTable() [setupRowCount]setupRow {
 		rowMapPropNoise:    {rowMapPropNoise, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapPropRefresh:  {rowMapPropRefresh, groupMap, scopeShared, rowPicker, true, "", ""},  // one Setting for both UI modes (D-121)
 		rowMapPropReadings: {rowMapPropReadings, groupMap, scopeShared, rowPicker, true, "", ""}, // one Setting for both UI modes (D-121)
+		rowMapPropStations: {rowMapPropStations, groupMap, scopeShared, rowPicker, true, "", ""}, // one Setting for both UI modes (D-121)
 		rowMapRadarAhead:   {rowMapRadarAhead, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapQuakes:       {rowMapQuakes, groupMap, scopeObserver, rowPicker, true, "", ""},
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one

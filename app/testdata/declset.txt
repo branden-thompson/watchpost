@@ -560,7 +560,6 @@ func (mainTrackStage).String
 func (mainTrackStage).reports
 func (mapInputs).drawable
 func (mapInputs).withInView
-func (readOnly).Fetch
 func (stationRecorder).alerts
 func (stationRecorder).buoy
 func (stationRecorder).fires
@@ -1063,7 +1062,6 @@ type radarSources
 type radioDeck
 type rainRescue
 type readHooks
-type readOnly
 type readSession
 type reader
 type recentPipeline

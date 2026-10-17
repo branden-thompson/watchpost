@@ -125,8 +125,8 @@ func TestTheWindowsOptionsReachTheLibrary(t *testing.T) {
 	var c tty.Config
 	lp.mapConfig(&c, config.Default())
 	r := <-c.PropagationUpdate(context.Background(), ionomaps.UpdateOptions{Noise: ionomaps.NoiseCity, CorrectNoReadings: true})
-	if r.Err != nil || len(r.Snapshot.Hours) == 0 || r.Snapshot.Noise != ionomaps.NoiseCity {
-		t.Errorf("asked with city noise: %v, %d hours, noise %v", r.Err, len(r.Snapshot.Hours), r.Snapshot.Noise)
+	if r.Err != nil || len(r.Snapshot.Now.FoF2.Values) == 0 || r.Snapshot.Noise != ionomaps.NoiseCity {
+		t.Errorf("asked with city noise: %v, %d cells, noise %v", r.Err, len(r.Snapshot.Now.FoF2.Values), r.Snapshot.Noise)
 	}
 }
 
