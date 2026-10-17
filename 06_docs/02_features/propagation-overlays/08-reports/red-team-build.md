@@ -4,7 +4,7 @@ date: 2026-10-17
 phase: BUILD exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1 IN DISPOSITION — eight blind reviewers (D-203), all eight: do not exit BUILD; two Criticals; forks put to the HUM LEAD one at a time; remediation batches follow"
+status: "ROUND 1 DISPOSITIONED — eight blind reviewers (D-203), all eight: do not exit BUILD; two Criticals; the thirteen forks ruled D-204 to D-217; remediation batched below"
 ---
 
 # BUILD exit — red team, round 1
@@ -53,6 +53,32 @@ Each is put singly, with its evidence, options, a recommendation and the stronge
 11. **The P10 workarounds: fix the analysers, or ratify the pattern as a class** (C-7); **go-ionomaps' root and `internal/limits` ledger rows** (C-8, H-3, H-4), with go-ionomaps' A-7 to A-17 put for veto.
 12. **The libraries' API corrections before v0.3.0 and v0.1.0 freeze:** `Snapshot.Hours` (C-11, L-F14), go-tuiMaps' two-class edge mark (C-18), its colour-count error kind (C-17, L-F13), and `CheckedDialerFor` adopted or dropped (C-15, I-7).
 13. **PS-1's population: evidence, or accepted as a hypothesis** (B-F2).
+
+## The rulings
+
+| Fork | Ruling |
+|---|---|
+| 1, a found place | D-204: a target row on the Observer; the map does not move |
+| 2, the reach | D-205: the lower limit applied |
+| 3, the pins | D-206: merge `main`, tag go-ionomaps v0.1.0-rc.1 and go-tuiMaps v0.3.0-rc.2, pin and gate |
+| 3b, colour depth | D-207: a "Colour depth" Setting, Automatic by default |
+| 4, the metrics | D-208: G10.1, G10.2 and the M1/M4 baseline in BUILD; the long runs beside REVIEW, D-118 and D-132 amended |
+| 5, the M5 frame | D-209: fixed in go-tuiMaps before rc.2, the benchmark in M5's shape |
+| 6, the read order | D-210: identical targets grouped, the station said once, the mode before the weather |
+| 7, a reader's place | D-211: the scroll anchored to the sentence at its top |
+| 8, the answers seam | D-212: built, the targets an input |
+| 9, GIRO's throttle | D-213: its state persisted across restarts |
+| 10, GIRO-free | D-214: a "no stations" option, and a watchpost Setting |
+| 11, the P10 pattern | D-215: the gaps upstream; the code written to the rules' intent |
+| 12, the APIs | D-216: all four corrections, and a holistic review of both libraries' APIs |
+| 13, PS-1 | D-217: a hypothesis, said |
+
+## The remediation batches, in order
+
+1. **F-216 first** (due 2026-10-19): the CI actions re-pinned off Node 20 and the runner image chosen.
+2. **go-ionomaps:** the API review and its corrections (`Snapshot.Now`, an ahead snapshot with no live disturbance, `Sources()` a package function, `Band.Name`), the reach's lower limit, "no stations", the throttle's state, L-F4 to L-F6, L-F12, I-5, C-20, C-22, C-24, P-2, G10.1 and G10.2, the P10 rework (D-215) with its ledger rows put for ratification, the README, NOTICE, the evidence logs, the gate's fixes (C-9, H-11), its release checklist; v0.1.0-rc.1.
+3. **go-tuiMaps:** `main` merged (v0.2.1), the API review and its corrections (the explicit edge mark, `MalformedRamp`, the host-ramp warning once), the M5 frame (D-209), C-25, C-27, `socks5h`, C-16, the README and contract, the P10 rework; v0.3.0-rc.2.
+4. **watchpost:** `main` merged (0.18.1), pinned to both release candidates; the answers seam with the found target row; the colour-depth and no-stations Settings; the throttle kept; then the words, the keys, the join, the session state and the remaining findings below; the record.
 
 ## The agent's own remediation, without a ruling
 
