@@ -46,6 +46,10 @@ func (d Dashboard) helpBlocks(o render.Opts) []helpBlock {
 		var rows []string
 		if g.rows != nil { // a window's own group, from its declaration (F-184)
 			for _, pr := range g.rows(keys, o.ASCII) {
+				if pr.keys == "" {
+					rows = append(rows, "   "+o.Marks(pr.help)) // key-name pairs (AX-6)
+					continue
+				}
 				rows = append(rows, fmt.Sprintf("   %-12s - %s", pr.keys, o.Marks(pr.help)))
 			}
 			for _, act := range g.actions {

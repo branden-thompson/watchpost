@@ -152,7 +152,7 @@ func TestThePlaybackKeysDriveTheLoop(t *testing.T) {
 	for _, r := range mapHelpRows(defaultMapKeyMap(), false) {
 		help = append(help, r.keys+" "+r.help)
 	}
-	if !strings.Contains(strings.Join(help, "\n"), "space, ⇧←, ⇧→, n Play") {
+	if !strings.Contains(strings.Join(help, "\n"), "space Play") {
 		t.Errorf("Help does not list the playback keys:\n%s", strings.Join(help, "\n"))
 	}
 }

@@ -53,7 +53,7 @@ func (d Dashboard) propFindLines(o render.Opts) []string {
 	case d.mapPane.propFindBusy:
 		lines = append(lines, "  Finding it...", "")
 	case d.mapPane.propFindErr != "":
-		for _, l := range render.WrapText(o.Glyphs().Alert+" "+d.mapPane.propFindErr+" - change it and press Enter.", propFindWidth-8) {
+		for _, l := range render.WrapText(o.Glyphs().Alert+" "+d.mapPane.propFindErr+". Change it, or press Enter to try again.", propFindWidth-8) { // a lookup that did not answer is tried again as it is (AX-10)
 			lines = append(lines, "  "+l)
 		}
 		lines = append(lines, "")
@@ -88,6 +88,10 @@ func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return propFoundMsg{seq: seq, ref: ref, err: err}
 		}
 	case "esc":
+		if d.mapPane.propFindBusy {
+			d.mapPane.propFindSeq++ // the find in flight cancelled: its answer is dropped (AX-11)
+			d.mapPane.propFindBusy = false
+		}
 		return d.close(), nil
 	case "backspace":
 		if r := []rune(d.mapPane.propFindQuery); len(r) > 0 {
@@ -159,6 +163,9 @@ func (d Dashboard) propFoundWords() string {
 	f := d.mapPane.propFound
 	if f == nil {
 		return ""
+	}
+	if c, ok := d.propCentreAt(); ok && propStepped(f.Lat, f.Lon) != c {
+		return "Found " + f.Label + ": marked on the map, and not kept." // panned away: the centre is another place (AX-1)
 	}
 	return "Found " + f.Label + ": marked at the map's centre, and not kept."
 }

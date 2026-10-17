@@ -65,13 +65,23 @@ func TestTheCentreIsAnsweredAsTheMapPans(t *testing.T) {
 }
 
 // TestTheCentreAnswerIsSaid is FR-1.11 and FR-3.1: without the picture the
-// centre's answer is said, last.
+// centre's answer is said, the last of the mode's words - the place's
+// weather and the night after them (D-210) - naming the station as it is
+// written, not in the box's capitals (AX-8).
 func TestTheCentreAnswerIsSaid(t *testing.T) {
 	d := workCentre(t, stationDash(t))
-	words := d.describeLinesAll()
-	last := words[len(words)-1]
+	loc := d.mapPlace()
+	mode := d.propWords(loc.Lat, loc.Lon)
+	last := mode[len(mode)-1]
 	if !strings.Contains(last, "The map's centre") || !strings.Contains(last, "MUF(3000) 18.0") {
-		t.Errorf("the words do not end with the centre's answer: %q", last)
+		t.Errorf("the mode's words do not end with the centre's answer: %q", last)
+	}
+	if !strings.Contains(last, "near-vertical from Oceanside, CA") || strings.Contains(last, "OCEANSIDE") || strings.Contains(last, "; No station") {
+		t.Errorf("the centre's words name the station in capitals, or begin a clause with one: %q", last)
+	}
+	words := d.describeLinesAll()
+	if at := lineWith(words, "The map's centre"); at != len(mode)-1 || !strings.HasPrefix(words[at+1], "Oceanside, CA") {
+		t.Errorf("the place's weather heading is not after the mode's words:\n%s", strings.Join(words, "\n"))
 	}
 }
 

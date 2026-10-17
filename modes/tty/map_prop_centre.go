@@ -45,9 +45,14 @@ func (d Dashboard) propCentreAt() (ionomaps.LatLon, bool) {
 	}
 	var c tuimaps.LonLat
 	d.mapPane.call("Centre", func() { c, _ = m.Centre() })
+	return propStepped(c.Lat, c.Lon), true
+}
+
+// propStepped is a point to the centre's step, its longitude wrapped.
+func propStepped(lat, lon float64) ionomaps.LatLon {
 	step := func(v float64) float64 { return math.Round(v/propCentreStep) * propCentreStep }
-	lon := math.Mod(math.Mod(c.Lon+180, 360)+360, 360) - 180
-	return ionomaps.LatLon{Lat: step(c.Lat), Lon: step(lon)}, true
+	lon = math.Mod(math.Mod(lon+180, 360)+360, 360) - 180
+	return ionomaps.LatLon{Lat: step(lat), Lon: step(lon)}
 }
 
 // propCentreWanted is the centre's answer the window wants: for the hour
@@ -86,24 +91,17 @@ func workPropCentre(snap ionomaps.Snapshot, key propCentreKey) propCentre {
 }
 
 // propCentreLines are the Broadcaster's answer for the centre, the target
-// (D-193): where it is, MUF(3000) and foF2 there, and from the station the
-// distance, the bands usable and the limits, and the frequency held; nil
-// on Observer, or while there is none for the snapshot shown.
-func (d Dashboard) propCentreLines() []string {
+// (D-193): where it is, MUF(3000) and foF2 there, and from the station - by
+// the name given, the box's in capitals, the words' as it is (AX-8) - the
+// distance, the bands usable and the limits, and the frequency held; nil on
+// Observer, or while there is none for the snapshot shown.
+func (d Dashboard) propCentreLines(from string) []string {
 	c, origin := d.mapPane.propCentre, d.mapPane.propOrigin
 	shown := d.propOnScreen()
 	if !d.propRole().target || !origin.ok || !propHasField(shown) || !c.key.computed.Equal(shown.Computed) || c.err != nil || len(c.bands) == 0 {
 		return nil
 	}
-	from := strings.ToUpper(origin.name)
-	ns, ew := "N", "E"
-	if c.key.centre.Lat < 0 {
-		ns = "S"
-	}
-	if c.key.centre.Lon < 0 {
-		ew = "W"
-	}
-	out := []string{fmt.Sprintf("%.1f°%s %.1f°%s", math.Abs(c.key.centre.Lat), ns, math.Abs(c.key.centre.Lon), ew)}
+	out := []string{latLonText(c.key.centre)}
 	muf, okM := cellValue(shown.Now.MUF3000, c.key.centre.Lat, c.key.centre.Lon)
 	fo, okF := cellValue(shown.Now.FoF2, c.key.centre.Lat, c.key.centre.Lon)
 	if okM && okF {
@@ -137,7 +135,7 @@ func (d Dashboard) propNearestWords(n ionomaps.Nearest) string {
 // propCentreBox is the centre's answer boxed for the map's upper left
 // (D-180); nil while there is none.
 func (d Dashboard) propCentreBox() []string {
-	lines := d.propCentreLines()
+	lines := d.propCentreLines(strings.ToUpper(d.mapPane.propOrigin.name))
 	if lines == nil {
 		return nil
 	}
@@ -163,11 +161,29 @@ func (d Dashboard) withPropCentre(lines []string, size tuimaps.Size) []string {
 	return lines
 }
 
-// propCentreWords are the centre's answer said (FR-3.1): last.
+// propCentreWords are the centre's answer said (FR-3.1): the last of the
+// mode's words, the station named as it is, and each clause begun in the
+// sentence's lower case.
 func (d Dashboard) propCentreWords() string {
-	lines := d.propCentreLines()
+	lines := d.propCentreLines(d.mapPane.propOrigin.name)
+	if c := d.mapPane.propCentre; lines == nil && c.err != nil {
+		if key, ok := d.propCentreWanted(); ok && key == c.key {
+			return "The map's centre is " + d.propNotAvailable() + "." // AX-9
+		}
+	}
 	if lines == nil {
 		return ""
 	}
+	for i, l := range lines {
+		for _, lead := range propCentreLeads {
+			if strings.HasPrefix(l, lead) {
+				lines[i] = strings.ToLower(lead[:1]) + l[1:]
+			}
+		}
+	}
 	return "The map's centre, " + strings.Join(lines, "; ") + "."
 }
+
+// propCentreLeads are the box's lines that begin with a capital as a line
+// does, and inside the words' sentence do not.
+var propCentreLeads = []string{"Near-vertical from ", "From ", "No station ", "Nearest station "}

@@ -290,7 +290,7 @@ func (d Dashboard) wrapModalAt(lines []string, w int) ([]string, int) {
 	if full := render.WrapLines(lines, w-used); len(full) <= d.modalMax() {
 		return full, w - used
 	}
-	return render.WrapLines(lines, w-used-3), w - used - 3
+	return render.WrapLines(lines, w-used-modalRailCols), w - used - modalRailCols
 }
 
 // footerModalScrollMax is how far a pinned-footer window scrolls: its wrapped

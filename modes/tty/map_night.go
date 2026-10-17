@@ -85,10 +85,17 @@ func (d Dashboard) followNight() Dashboard {
 }
 
 // nightWords say the night on the map (FR-3.1, D-199): its shade and dotted
-// edge, and the moment they are for; none where it is not drawn.
+// edge - the edge alone in the Propagation mode, whose field the shade does
+// not darken (AX-13) - and the moment they are for, by the window's clock
+// as every other time in the words (AX-8); none where it is not drawn.
 func (d Dashboard) nightWords() string {
 	if len(d.mapPane.nightGiven) == 0 {
 		return ""
 	}
-	return "The night side is shaded and its edge dotted, as at " + d.mapPane.nightAt.Format("15:04 UTC") + "."
+	at := d.mapPane.nightAt.In(d.now().Location())
+	when := d.clockFmt.Time(at) + " " + at.Format("MST")
+	if d.mapMode() == modePropagation {
+		return "The night side's edge is dotted, as at " + when + "."
+	}
+	return "The night side is shaded and its edge dotted, as at " + when + "."
 }

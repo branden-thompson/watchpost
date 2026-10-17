@@ -203,6 +203,20 @@ func (d Dashboard) propChartShown() bool {
 	return ok && key == c.key && c.err == nil && len(c.targets) == len(propContinents)
 }
 
+// propChartFailed reports whether the chart wanted could not be worked out.
+func (d Dashboard) propChartFailed() bool {
+	key, ok := d.propChartWanted()
+	c := d.mapPane.propChart
+	return ok && key == c.key && c.err != nil
+}
+
+// propNotAvailable is what is said for an answer that could not be worked
+// out (AX-9): not "being worked out" for ever, and the key that asks again
+// (D-124: never an error without a way to resolve it).
+func (d Dashboard) propNotAvailable() string {
+	return "not available; " + d.firstKey(actMapRefresh) + " tries again"
+}
+
 // highestOpen is the highest band a target's answer calls open, by name;
 // "none", or "no data" where it has none.
 func highestOpen(bands []ionomaps.BandStatus) string {
@@ -249,7 +263,21 @@ const (
 	propAbsorbedGlyph  = '○'
 	propWeakGlyph      = '◌'
 	propClosedGlyph    = '·'
+	propNowGlyph       = '▼' // the typical day's hour shown
 )
+
+// propASCIIMarks are the chart's glyphs under --ascii (AX-4): letters a
+// screen reader says, where the circles are read as their Unicode names;
+// above the upper limit a dash, the dot being the station shade's.
+var propASCIIMarks = map[rune]string{propOpenGlyph: "O", propDisturbedGlyph: "D", propAbsorbedGlyph: "A", propWeakGlyph: "W", propClosedGlyph: "-", propNowGlyph: "v"}
+
+// mark is a chart glyph as the window draws it: under --ascii, its letter.
+func (d Dashboard) mark(g rune) string {
+	if d.cfg.ASCII {
+		return propASCIIMarks[g]
+	}
+	return string(g)
+}
 
 // propChartRows are the chart's rows: the near-vertical area, then each
 // continent.
@@ -266,6 +294,9 @@ func (d Dashboard) propChartRows() (names []string, answers []ionomaps.Answer) {
 // hour; each row's bands now and its limit; the selected row's typical day,
 // band by hour, and whether now differs from it (D-135).
 func (d Dashboard) propChartLines(o render.Opts) []string {
+	if d.propChartFailed() {
+		return insetModalLines([]string{"The chart is " + d.propNotAvailable() + "."}, debugProseWidth(o, propChartWidth))
+	}
 	if !d.propChartShown() {
 		return insetModalLines([]string{"The chart is being worked out."}, debugProseWidth(o, propChartWidth))
 	}
@@ -293,7 +324,7 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 	for i, a := range answers {
 		pointer := "  "
 		if i == row {
-			pointer = "▸ "
+			pointer = o.Glyphs().Pointer + " "
 		}
 		line := pointer + propShade(a.Nearest, o.ASCII) + " " + render.PadTo(names[i], propNameW) + d.propBandCells(a.Bands)
 		if w := propRowWords(a.Bands); w != "" {
@@ -301,8 +332,8 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 		}
 		out = append(out, line)
 	}
-	out = append(out, string(propOpenGlyph)+" open   "+string(propDisturbedGlyph)+" disturbed (D-RAP)   "+string(propAbsorbedGlyph)+" absorbed   "+string(propWeakGlyph)+" weak",
-		string(propClosedGlyph)+" above the upper limit   blank: no data   figures in MHz",
+	out = append(out, d.mark(propOpenGlyph)+" open   "+d.mark(propDisturbedGlyph)+" disturbed (D-RAP)   "+d.mark(propAbsorbedGlyph)+" absorbed   "+d.mark(propWeakGlyph)+" weak",
+		d.mark(propClosedGlyph)+" above the upper limit   blank: no data   figures in MHz",
 		propShadeLegend(o.ASCII)) // D-198
 	if f := d.propFreqLine(); f != "" {
 		out = append(out, f) // D-178: what is held
@@ -313,7 +344,24 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 		out[len(out)-1] += " · now differs from a typical day"
 	}
 	out = append(out, d.propDayHead(c.key.hour))
-	return append(out, d.propDayRows(answers[row].Bands)...)
+	out = append(out, d.propDayRows(answers[row].Bands)...)
+	if d.cfg.ASCII {
+		for i := range out {
+			out[i] = strings.ReplaceAll(out[i], " · ", " "+o.Glyphs().Dot+" ") // the separators too (AX-4)
+		}
+	}
+	return append(out, "", d.propChartControls(o))
+}
+
+// propChartControls is the chart window's controls line (AX-6), as every
+// window has: the arrows choose the row whose typical day is drawn, PgUp and
+// PgDn scroll, Esc or the chart's key closes it.
+func (d Dashboard) propChartControls(o render.Opts) string {
+	closeKeys := "esc"
+	if k := d.firstKey(actMapChart); k != "" {
+		closeKeys = k + "/esc"
+	}
+	return "  " + o.Controls("   ", render.Ctl("↑↓", "Row"), render.Ctl("pgup/pgdn", "Scroll"), render.Ctl(closeKeys, "Close"))
 }
 
 // The nearest reporting station's distances the shades break at (D-116,
@@ -361,11 +409,11 @@ func (d Dashboard) propBandCells(bands []ionomaps.BandStatus) string {
 		g := d.propGlyph(s.Status == ionomaps.Open, s.Status == ionomaps.StatusNoData)
 		switch s.Status {
 		case ionomaps.Disturbed:
-			g = render.Tint(string(propDisturbedGlyph), render.Tok(render.NameAdvisory))
+			g = render.Tint(d.mark(propDisturbedGlyph), render.Tok(render.NameAdvisory))
 		case ionomaps.Absorbed:
-			g = render.Tint(string(propAbsorbedGlyph), render.Tok(render.KeyChipMuted))
+			g = render.Tint(d.mark(propAbsorbedGlyph), render.Tok(render.KeyChipMuted))
 		case ionomaps.Weak:
-			g = render.Tint(string(propWeakGlyph), render.Tok(render.KeyChipMuted))
+			g = render.Tint(d.mark(propWeakGlyph), render.Tok(render.KeyChipMuted))
 		}
 		b.WriteString(" " + g + " ")
 	}
@@ -379,9 +427,9 @@ func (d Dashboard) propGlyph(open, noData bool) string {
 	case noData:
 		return " "
 	case open:
-		return render.Tint(string(propOpenGlyph), render.Tok(render.ProviderOK))
+		return render.Tint(d.mark(propOpenGlyph), render.Tok(render.ProviderOK))
 	}
-	return render.Tint(string(propClosedGlyph), render.Tok(render.KeyChipMuted))
+	return render.Tint(d.mark(propClosedGlyph), render.Tok(render.KeyChipMuted))
 }
 
 // propLimitWords name an answer's limits (D-192): its upper limit, from a
@@ -416,7 +464,7 @@ func (d Dashboard) propDayHead(hour time.Time) string {
 	for h := range 24 {
 		switch {
 		case h == now:
-			b.WriteString("▼ ")
+			b.WriteString(d.mark(propNowGlyph) + " ")
 		case h%3 == 0:
 			b.WriteString(render.PadTo(fmt.Sprintf("%02d", h), 2))
 		default:

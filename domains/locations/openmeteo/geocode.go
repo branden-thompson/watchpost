@@ -71,9 +71,15 @@ func (g *Geocoder) search(ctx context.Context, query string, world bool) (snapsh
 		opts = append(opts, httpx.NoCache()) // never kept (FR-1.10)
 	}
 	if _, err := g.client.GetJSON(ctx, u, &payload, opts...); err != nil {
+		if world { // the Propagation mode's finder: what it finds without the network (AX-10)
+			return snapshot.LocationRef{}, fmt.Errorf("the online lookup did not answer (%w); coordinates, a grid locator and the world's larger cities are found without it", err)
+		}
 		return snapshot.LocationRef{}, fmt.Errorf("geocoding: %w", err) // never the query (FR-4.9): the URL's name is redacted
 	}
 	if len(payload.Results) == 0 {
+		if world {
+			return snapshot.LocationRef{}, errors.New("no place found by that name - try a city and its country, coordinates or a grid locator") // anywhere on the globe, not 'City, ST' (AX-10)
+		}
 		return snapshot.LocationRef{}, errors.New("no location found by that name — try 'City, ST' or a zip code")
 	}
 	r := payload.Results[0]

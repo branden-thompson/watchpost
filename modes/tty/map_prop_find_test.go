@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	tuimaps "github.com/branden-thompson/go-tuimaps"
+
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -96,6 +98,9 @@ func TestFocusReturnsAfterAFind(t *testing.T) {
 	if d.modal != modalPropFind || !strings.Contains(strings.Join(d.propFindLines(d.opts()), "\n"), "no match in the offline index") {
 		t.Fatalf("a failed find: window %v, lines %q", d.modal, d.propFindLines(d.opts()))
 	}
+	if lines := strings.Join(strings.Fields(strings.Join(d.propFindLines(d.opts()), " ")), " "); !strings.Contains(lines, "press Enter to try") {
+		t.Errorf("a failed find does not say Enter tries again (AX-10): %q", lines)
+	}
 	if m, _ := d.Update(mapKeyMsg(t, "esc")); m.(Dashboard).modal != modalMap {
 		t.Errorf("Esc left window %v; the map", m.(Dashboard).modal)
 	}
@@ -124,5 +129,76 @@ func TestTheBroadcasterAnswersAFoundPlaceAsItsTarget(t *testing.T) {
 	d = typeFind(t, d, "Reykjavik")
 	if words := workCentre(t, d).propCentreWords(); !strings.Contains(words, "64.") {
 		t.Errorf("the centre's answer is not for the place found: %q", words)
+	}
+}
+
+// TestTheCentreIsNamedWhereverItIs is BUILD red team AX-1 (D-193, D-64):
+// abroad, the Observer's origin - the map's centre - is named for where it
+// is, never for the region last drawn: the place found while the centre
+// rests on it, then, panned away, the town nearest the centre, and with no
+// town near, its coordinates, said as degrees.
+func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
+	d := chartDash(t)
+	region := d.mapPane.region.Name
+	d.cfg.FindPlace = func(string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	d.cfg.PlaceNear = func(lat, lon float64) string {
+		if lat > 30 && lat < 40 && lon > 130 && lon < 145 {
+			return "Tokyo, JP"
+		}
+		return ""
+	}
+	d = typeFind(t, d, "Reykjavik")
+	words := strings.Join(propWordsFrom(t, d), "\n")
+	if d.mapPane.propOrigin.name != reykjavik.Label || !strings.Contains(words, "Reykjavik, IS, now: ") {
+		t.Errorf("centred on the place found, the origin is %q:\n%s", d.mapPane.propOrigin.name, words)
+	}
+	pan := func(d Dashboard, lat, lon float64) Dashboard {
+		t.Helper()
+		if err := d.mapPane.m.Recentre(tuimaps.LonLat{Lon: lon, Lat: lat}); err != nil {
+			t.Fatal(err)
+		}
+		return d.renderMap()
+	}
+	d = pan(d, 35.7, 139.7)
+	words = strings.Join(d.describeLinesAll(), "\n")
+	if !strings.Contains(words, "Near Tokyo, JP, now: ") || strings.Contains(words, region) {
+		t.Errorf("panned to Tokyo, the words do not name it, or name %q:\n%s", region, words)
+	}
+	if title := d.viewName(); title != "near Tokyo, JP" {
+		t.Errorf("panned to Tokyo, the view is named %q", title)
+	}
+	if !strings.Contains(words, "Found Reykjavik, IS: marked on the map, and not kept.") {
+		t.Errorf("panned away, the words still put the place found at the centre:\n%s", words)
+	}
+	d = pan(d, -40, -140)
+	if words = strings.Join(d.describeLinesAll(), "\n"); !strings.Contains(words, "40.0 degrees south 140.0 degrees west, now: ") || strings.Contains(words, region) {
+		t.Errorf("over open sea, the words do not say the centre's coordinates, or name %q:\n%s", region, words)
+	}
+}
+
+// TestEscCancelsAFindInFlight is BUILD red team AX-11: Esc while a find is
+// still being looked up cancels it - its answer, arriving late, neither
+// marks a place nor moves the map.
+func TestEscCancelsAFindInFlight(t *testing.T) {
+	d := chartDash(t)
+	d.cfg.FindPlace = func(string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	before, _ := d.mapPane.m.Centre()
+	d = pressMap(t, d, "/")
+	for _, r := range "Reykjavik" {
+		m, _ := d.Update(mapKeyMsg(t, string(r)))
+		d = m.(Dashboard)
+	}
+	m, cmd := d.Update(mapKeyMsg(t, "enter"))
+	d = m.(Dashboard)
+	m, _ = d.Update(mapKeyMsg(t, "esc"))
+	d = m.(Dashboard)
+	if d.mapPane.propFindBusy {
+		t.Error("Esc left the find busy")
+	}
+	m, _ = d.Update(cmd())
+	d = m.(Dashboard)
+	after, _ := d.mapPane.m.Centre()
+	if d.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) || after != before {
+		t.Errorf("a find cancelled with Esc still landed: %v, %v, centre %+v (was %+v)", d.mapPane.propFound, placeIDs(d), after, before)
 	}
 }

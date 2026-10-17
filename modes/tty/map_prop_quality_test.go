@@ -176,6 +176,9 @@ func TestTheSourcesBadgesSayWhatFedTheSnapshot(t *testing.T) {
 			if !strings.Contains(head, want) {
 				t.Errorf("%s: %s is not %s: %q", c.name, badge, map[bool]string{true: "lit", false: "dimmed"}[lit], head)
 			}
+			if plain := stripANSITest(head); strings.Contains(plain, "("+badge+")") == lit {
+				t.Errorf("%s: without colour %s does not read %s: %q", c.name, badge, map[bool]string{true: "lit", false: "dimmed"}[lit], plain)
+			}
 		}
 	}
 }

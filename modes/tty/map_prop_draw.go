@@ -113,6 +113,15 @@ func (d Dashboard) flipPropLayer() Dashboard {
 // ask is), under the library's throttle (D-120): an early ask is answered
 // from the last field with its reason.
 func (d Dashboard) refreshProp() (Dashboard, tea.Cmd) {
+	if d.mapPane.propChart.err != nil { // an answer that failed is asked again with the update (AX-9)
+		d.mapPane.propChart, d.mapPane.propChartAsked = propChart{}, propChartKey{}
+	}
+	if d.mapPane.propReach.err != nil {
+		d.mapPane.propReach, d.mapPane.propReachAsked = propReach{}, propReachKey{}
+	}
+	if d.mapPane.propCentre.err != nil {
+		d.mapPane.propCentre, d.mapPane.propCentreAsked = propCentre{}, propCentreKey{}
+	}
 	return d.askPropagation()
 }
 

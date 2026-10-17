@@ -64,9 +64,11 @@ func chipFace(face string) string {
 }
 
 // chipDimmed is a chip whose source fed nothing shown: its words in the
-// muted tone the app dims with (D-143), on no ground (D-168).
+// muted tone the app dims with (D-143), on no ground (D-168), and in
+// brackets, the width of a lit chip, so it reads dimmed without colour too
+// (AX-12).
 func chipDimmed(face string) string {
-	return render.Tint("  "+face+"  ", render.Tok(render.TableMuted))
+	return render.Tint(" ("+face+") ", render.Tok(render.TableMuted))
 }
 
 // mapBadge is the badge's words, in either mode (D-92, U2-19), on one line

@@ -76,6 +76,9 @@ func TestTheDetailAndTheNamerReachTheWindow(t *testing.T) {
 	if cfg.MapAreaName == nil || cfg.MapAreaName(tuimaps.LonLat{Lon: -117.38, Lat: 33.2}, 400) != "Southern California" {
 		t.Error("the window is not handed the station's namer")
 	}
+	if cfg.PlaceNear == nil || cfg.PlaceNear(35.5, 139.5) == "" {
+		t.Error("the window is not handed the world's namer")
+	}
 	withConfigFile(t)
 	if err := setUIHook(tty.UIPrefs{Units: "metric", MapDetail: map[string]bool{"parks": true}, MapDetailLevel: "full"}); err != nil {
 		t.Fatal(err)
@@ -94,5 +97,36 @@ func TestAHamletAtTheCentreNamesTheTown(t *testing.T) {
 	}
 	if got := placeInView(near[:1]); got.Name != "Hamlet" {
 		t.Errorf("with no town, named %q", got.Name)
+	}
+}
+
+// TestAPointIsNamedAnywhere is BUILD red team AX-1: the Propagation mode's
+// centre, a point anywhere on the globe, is named by the town nearest it in
+// any country; with none within placeNearKm, nothing, and the window says the
+// coordinates. Asked again at the same point, the name is the one kept.
+func TestAPointIsNamedAnywhere(t *testing.T) {
+	idx, err := geodata.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := placeNamer(idx)
+	for _, c := range []struct {
+		lat, lon float64
+		suffix   string
+	}{{35.5, 139.5, ", JP"}, {51.5, 0, ", GB"}, {-34, 151, ", AU"}, {33, -117, ", CA"}} {
+		if got := name(c.lat, c.lon); len(got) <= len(c.suffix) || got[len(got)-len(c.suffix):] != c.suffix {
+			t.Errorf("(%.1f, %.1f) is named %q; a town ending %q", c.lat, c.lon, got, c.suffix)
+		}
+	}
+	if got := name(-40, -140); got != "" {
+		t.Errorf("the open South Pacific is named %q; nothing", got)
+	}
+	if got := placeNamer(nil)(35.5, 139.5); got != "" {
+		t.Errorf("with no index, %q; nothing", got)
+	}
+	name(35.5, 139.5)
+	allocs := testing.AllocsPerRun(20, func() { name(35.5, 139.5) }) // a point with towns: a scan would parse them
+	if allocs != 0 {
+		t.Errorf("the same point asked again cost %.0f allocations; the name kept costs none", allocs)
 	}
 }

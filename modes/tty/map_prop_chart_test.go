@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -262,5 +263,37 @@ func TestTheNearVerticalRadiusIsASetting(t *testing.T) {
 	}
 	if p := d.uiForSave(); p.MapPropRadius != 600 {
 		t.Errorf("the radius saved is %d; want 600", p.MapPropRadius)
+	}
+}
+
+// TestTheChartIsReadableInASCII is BUILD red team AX-4: under --ascii the
+// chart draws letters a screen reader says - O, D, A, W, a dash, > and v - and
+// none of the circles, pointer or arrow a reader names by their Unicode
+// names; the words say the local area's typical day, its open hours in UTC.
+func TestTheChartIsReadableInASCII(t *testing.T) {
+	d := chartDash(t)
+	d.cfg.ASCII = true
+	o := d.opts()
+	chart := stripANSITest(strings.Join(d.propChartLines(o), "\n"))
+	for _, g := range []string{"●", "◐", "○", "◌", "·", "▸", "▼"} {
+		if strings.Contains(chart, g) {
+			t.Errorf("under --ascii the chart draws %q:\n%s", g, chart)
+		}
+	}
+	for _, want := range []string{"O open", "D disturbed (D-RAP)", "A absorbed", "W weak", "- above the upper limit", o.Glyphs().Pointer + " "} {
+		if !strings.Contains(chart, want) {
+			t.Errorf("under --ascii the chart does not draw %q:\n%s", want, chart)
+		}
+	}
+	if !strings.Contains(chart, "Row") || !strings.Contains(chart, "Close") {
+		t.Errorf("the chart window has no controls line (AX-6):\n%s", chart)
+	}
+	words := propWordsFrom(t, d)
+	typical := lineWith(words, "On a typical day")
+	if typical < 0 || typical != lineWith(words, "Local, about")+1 {
+		t.Fatalf("the local area's typical day is not said after its line:\n%s", strings.Join(words, "\n"))
+	}
+	if !regexp.MustCompile(`\d+ metres \d\d:\d\d to \d\d:\d\d`).MatchString(words[typical]) {
+		t.Errorf("the typical day does not say a band's open hours: %q", words[typical])
 	}
 }

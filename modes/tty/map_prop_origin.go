@@ -1,6 +1,8 @@
 package tty
 
 import (
+	"fmt"
+	"math"
 	"strconv"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
@@ -35,7 +37,7 @@ type propPlace struct {
 }
 
 // propOriginNow is the origin for the UI mode on screen, in Update: the
-// map's centre and the view's name, or the transmitter and its label, or
+// map's centre and its name (propCentreName), or the transmitter and its label, or
 // the selected place, its name saying it stands in for a transmitter; not
 // ok with nothing to answer from.
 func (d Dashboard) propOriginNow() propPlace {
@@ -51,12 +53,39 @@ func (d Dashboard) propOriginNow() propPlace {
 	}
 	loc := d.selectedLocation()
 	if c, ok := d.propCentreAt(); ok {
-		return propPlace{at: c, name: d.viewName(), ok: true}
+		return propPlace{at: c, name: d.propCentreName(c), ok: true}
 	}
 	if loc == nil {
 		return propPlace{}
 	}
 	return propPlace{at: ionomaps.LatLon{Lat: loc.Lat, Lon: loc.Lon}, name: loc.Label, ok: true} // no map yet: the selected place
+}
+
+// propCentreName names the centre answered, anywhere on the globe (D-193,
+// BUILD red team AX-1): the place found while the centre rests on it, else
+// the town nearest it, else its coordinates.
+func (d Dashboard) propCentreName(c ionomaps.LatLon) string {
+	if f := d.mapPane.propFound; f != nil && propStepped(f.Lat, f.Lon) == c {
+		return f.Label
+	}
+	if d.cfg.PlaceNear != nil {
+		if town := d.cfg.PlaceNear(c.Lat, c.Lon); town != "" {
+			return "near " + town
+		}
+	}
+	return latLonText(c)
+}
+
+// latLonText is a point as the windows write it: "35.5°N 139.5°E".
+func latLonText(c ionomaps.LatLon) string {
+	ns, ew := "N", "E"
+	if c.Lat < 0 {
+		ns = "S"
+	}
+	if c.Lon < 0 {
+		ew = "W"
+	}
+	return fmt.Sprintf("%.1f°%s %.1f°%s", math.Abs(c.Lat), ns, math.Abs(c.Lon), ew)
 }
 
 // propLimits are the limits an answer's bands name (R-2.6): the upper

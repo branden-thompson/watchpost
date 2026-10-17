@@ -103,7 +103,7 @@ func TestTheRegionKeysAreShownWithTheControls(t *testing.T) {
 	for _, r := range mapHelpRows(defaultMapKeyMap(), false) {
 		help = append(help, r.keys+" "+r.help)
 	}
-	if text := strings.Join(help, "\n"); !strings.Contains(text, "1, 2, 3 Region: US, Alaska, Hawaii") || !strings.Contains(text, "4, 5, 6 Region: Caribbean, Samoa, Guam") {
+	if text := strings.Join(help, "\n"); !strings.Contains(text, "Region 1 US, 2 Alaska, 3 Hawaii") || !strings.Contains(text, "Region 4 Caribbean, 5 Samoa, 6 Guam") {
 		t.Errorf("Help does not list the region keys:\n%s", text)
 	}
 }

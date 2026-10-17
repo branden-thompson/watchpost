@@ -175,6 +175,7 @@ var airBoundary = map[string]airMember{
 	"Commit":             {airNone, "persists the watchlist and re-stations; publishes the area, touches no engine"},
 	"Resolve":            {airNone, "a location lookup"},
 	"FindPlace":          {airNone, "0.19.0 FR-1.10: the Propagation mode's lookup anywhere; the place found is never kept and nothing on the air reads it"},
+	"PlaceNear":          {airNone, "0.19.0 AX-1: names the Propagation mode's centre from the embedded city table; it reads nothing the air does and sends nothing"},
 	"Suggest":            {airNone, "a search"},
 	"Hydrate":            {airNone, "an hourly forecast fetch for a RECENT row"},
 	"Voices":             {airNone, "lists what is installed"},

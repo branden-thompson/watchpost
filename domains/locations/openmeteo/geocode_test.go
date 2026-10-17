@@ -62,15 +62,38 @@ func TestTheGeocoderQueryIsRedacted(t *testing.T) {
 	defer empty.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t", RatePerSec: 1000})
 	for name, srv := range map[string]*httptest.Server{"a failed request": failing, "no result": empty} {
-		_, err := NewGeocoder(c, srv.URL).Resolve(context.Background(), typed)
-		if err == nil {
-			t.Fatalf("%s: no error", name)
-		}
-		for _, part := range []string{typed, "Zzqxj", "Zzqxj+Private", "Zzqxj%20Private"} {
-			if strings.Contains(err.Error(), part) {
-				t.Errorf("%s: the error quotes what was typed: %v", name, err)
+		for _, err := range []error{second(NewGeocoder(c, srv.URL).Resolve(context.Background(), typed)), second(NewGeocoder(c, srv.URL).ResolveWorld(context.Background(), typed))} {
+			if err == nil {
+				t.Fatalf("%s: no error", name)
+			}
+			for _, part := range []string{typed, "Zzqxj", "Zzqxj+Private", "Zzqxj%20Private"} {
+				if strings.Contains(err.Error(), part) {
+					t.Errorf("%s: the error quotes what was typed: %v", name, err)
+				}
 			}
 		}
+	}
+}
+
+// second is a call's error.
+func second[T any](_ T, err error) error { return err }
+
+// TestTheWorldsFailuresSayItsOwnFix is BUILD red team AX-10: the Propagation
+// mode's finder, which finds anywhere, is never told to try 'City, ST' or a
+// zip code; a lookup that did not answer says what is found without it.
+func TestTheWorldsFailuresSayItsOwnFix(t *testing.T) {
+	failing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusInternalServerError) }))
+	defer failing.Close()
+	empty := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"results":[]}`)) }))
+	defer empty.Close()
+	c, _ := httpx.New(httpx.Config{UserAgent: "t", RatePerSec: 1000})
+	_, err := NewGeocoder(c, empty.URL).ResolveWorld(context.Background(), "nowhere")
+	if err == nil || strings.Contains(err.Error(), "City, ST") || !strings.Contains(err.Error(), "its country, coordinates or a grid locator") {
+		t.Errorf("no result anywhere is said %v", err)
+	}
+	_, err = NewGeocoder(c, failing.URL).ResolveWorld(context.Background(), "nowhere")
+	if err == nil || !strings.Contains(err.Error(), "found without it") {
+		t.Errorf("a lookup that did not answer is said %v", err)
 	}
 }
 

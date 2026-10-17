@@ -161,7 +161,12 @@ func TestTheBroadcastersMapOffersNoPlaceKeys(t *testing.T) {
 	if box := stripANSITest(strings.Join(bc.controlsBox(), "\n")); strings.Contains(box, "place") || !strings.Contains(box, "red: service") {
 		t.Errorf("the Broadcaster's controls box offers the place keys, or does not say the red ring:\n%s", box)
 	}
-	if help := stripANSITest(strings.Join(bc.helpLines(bc.opts()), "\n")); strings.Contains(help, "Previous / Next Location") || !strings.Contains(help, " MAP") || !strings.Contains(help, "Pan") {
+	for _, r := range mapHelpRows(bc.helpKeys(), false) { // the keys Help lists on the Broadcaster (D-195)
+		if r.keys == "" && r.help == "" {
+			t.Error("the Broadcaster's Help lists an empty row for keys it does not bind")
+		}
+	}
+	if help := stripANSITest(strings.Join(bc.helpLines(bc.opts()), "\n")); strings.Contains(help, "Next Location") || !strings.Contains(help, " MAP") || !strings.Contains(help, "Pan") {
 		t.Errorf("the Broadcaster's Help lists the place keys, or not the map's group:\n%s", help)
 	}
 	obs := open(SurfaceObserver)
@@ -174,11 +179,12 @@ func TestTheBroadcastersMapOffersNoPlaceKeys(t *testing.T) {
 }
 
 // TestTheServiceAreaIsSaid is FR-2.4 (D-195, FR-3.1): without the picture the
-// words say the red circle is the station's service area, its radius and its
-// tower; Observer's say nothing of one.
+// words say the circle is the station's service area, its radius and its
+// tower - not its colour, which the map draws only where it draws colour
+// (AX-12); Observer's say nothing of one.
 func TestTheServiceAreaIsSaid(t *testing.T) {
 	words := strings.Join(stationMap(t, Config{}).describeLinesAll(), " ")
-	if !strings.Contains(words, "The red circle is the station's service area: ") || !strings.Contains(words, "around Bonsall, CA") {
+	if !strings.Contains(words, "The circle around Bonsall, CA is the station's service area: ") || strings.Contains(words, "red") {
 		t.Errorf("the words do not say the service area: %q", words)
 	}
 	if obs := strings.Join(openMap(t, Config{ServiceRadiusMi: 100}, 133, 44).describeLinesAll(), " "); strings.Contains(obs, "service area") {

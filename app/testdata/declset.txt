@@ -74,6 +74,7 @@ const numNarrationClasses
 const overlayStep
 const pastHours
 const perimeterBytes
+const placeNearKm
 const propagationBodyBytes
 const publishCoalesce
 const pumpBacklog
@@ -797,6 +798,7 @@ func piperInstallFor
 func piperVoiceNames
 func pixelsOf
 func placeInView
+func placeNamer
 func pointShape
 func priorityTiers
 func profileNames

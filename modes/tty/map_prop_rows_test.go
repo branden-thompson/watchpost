@@ -44,12 +44,12 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	if !strings.HasPrefix(block[1], "MODE:") || strings.TrimSpace(block[2]) != "" || !strings.HasPrefix(block[3], label+"   NOW · ") {
 		t.Errorf("the block is not header, mode, a blank row, then the place:\n%s", strings.Join(block, "\n"))
 	}
-	under := strings.Index(block[3], "NOW") // under NOW, or a short indent under a name too long for the column (A-51)
+	under := cellIndex(block[3], "NOW") // under NOW, or a short indent under a name too long for the column (A-51)
 	if len([]rune(label)) > propPlaceColMax {
 		under = propLongIndent
 	}
 	for _, l := range block[4:6] {
-		if strings.Index(l, "Local") != under && strings.Index(l, "Up to:") != under {
+		if cellIndex(l, "Local") != under && cellIndex(l, "Up to:") != under {
 			t.Errorf("%q is not aligned at %d", l, under)
 		}
 	}
@@ -167,4 +167,14 @@ func TestRoundFourMarksStandOut(t *testing.T) {
 	if b := stripANSITest(propDash(t, &seam{}, true).propagationBadge()); !strings.Contains(b, "RADIO FREQ. PROPAGATION") {
 		t.Errorf("the badge says %q", b)
 	}
+}
+
+// cellIndex is the column a text starts at in a line, in cells - a name in
+// coordinates carries degree signs, two bytes each - or -1.
+func cellIndex(line, text string) int {
+	at := strings.Index(line, text)
+	if at < 0 {
+		return -1
+	}
+	return render.Width(line[:at])
 }

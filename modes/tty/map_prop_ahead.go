@@ -2,6 +2,7 @@ package tty
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -167,7 +168,7 @@ func (d Dashboard) propAheadWords(lat, lon float64) string {
 	if k == 0 || d.mapPane.propSnap == nil {
 		return ""
 	}
-	words := []string{fmt.Sprintf("%d hours ahead: typical for this hour, not a forecast", k)}
+	words := []string{hoursWords(k) + " ahead: typical for this hour, not a forecast"}
 	if propStorm(d.mapPane.propSnap.Scales) {
 		words = append(words, "a geomagnetic storm is in progress: typical conditions may not hold") // FR-1.18, D-109
 	}
@@ -178,4 +179,12 @@ func (d Dashboard) propAheadWords(lat, lon float64) string {
 		words = append(words, b) // in words a listener can be told; the citation is the library's Source (AX-3)
 	}
 	return strings.Join(words, "; ") + "."
+}
+
+// hoursWords is a count of hours said: "1 hour", "3 hours".
+func hoursWords(k int) string {
+	if k == 1 {
+		return "1 hour"
+	}
+	return strconv.Itoa(k) + " hours"
 }

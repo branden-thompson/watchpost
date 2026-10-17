@@ -117,7 +117,10 @@ func (d Dashboard) propFreqLine() string {
 // that it reaches nowhere, or that it is being worked out.
 func (d Dashboard) propReachWords() string {
 	field, ok := d.propReachShown()
+	key, wanted := d.propReachWanted()
 	switch {
+	case !ok && wanted && key == d.mapPane.propReach.key && d.mapPane.propReach.err != nil:
+		return d.propNotAvailable() // AX-9
 	case !ok:
 		return "being worked out"
 	case !field.Reaches:

@@ -150,7 +150,10 @@ type Config struct {
 	MapDetailChoice map[string]bool
 	MapDetailLevel  string // D-67: the file's word for the detail level; Weather by default
 	MapAreaName     func(centre tuimaps.LonLat, widthKm float64) string
-	Resolve         func(query string) (snapshot.LocationRef, error)
+	// PlaceNear names a point anywhere on the globe by the town nearest it
+	// (0.19.0 AX-1), "" where none is near: the Propagation mode's centre.
+	PlaceNear func(lat, lon float64) string
+	Resolve   func(query string) (snapshot.LocationRef, error)
 	// FindPlace finds a place anywhere on the globe for the Propagation mode
 	// (0.19.0 FR-1.10): locally first, and only on a miss online, uncached.
 	FindPlace func(query string) (snapshot.LocationRef, error)
@@ -1152,8 +1155,19 @@ func (d Dashboard) handleTicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return d.armTick(nil)
 }
 
-// dispatch routes one message to its handler.
+// dispatch routes one message to its handler, keeping a reader's place in
+// the Propagation mode's words across whatever it changes (D-211).
 func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
+	place, keep := d.wordsPlaceNow(msg)
+	m, cmd := d.route(msg)
+	if next, ok := m.(Dashboard); ok {
+		m = next.followReader(msg, place, keep)
+	}
+	return m, cmd
+}
+
+// route sends one message to its handler.
+func (d Dashboard) route(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch v := msg.(type) {
 	case tea.WindowSizeMsg:
 		d.width, d.height = v.Width, v.Height

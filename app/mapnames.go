@@ -7,6 +7,7 @@ package app
 import (
 	"math"
 	"strings"
+	"sync"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
@@ -50,6 +51,36 @@ func mapAreaNamer(idx *geodata.Index) func(tuimaps.LonLat, float64) string {
 			return geodata.StateName(state)
 		}
 		return partOfState(idx.StateExtents()[state], at) + " " + geodata.StateName(state)
+	}
+}
+
+// placeNearKm is how far from a point the Propagation mode looks for a town
+// to name it by (AX-1): farther, the point is said by its coordinates.
+const placeNearKm = 100
+
+// placeNamer names a point anywhere on the globe for the Propagation mode
+// (D-193, BUILD red team AX-1): the town of some size nearest it within
+// placeNearKm, of any country, or "" where there is none. The last point's
+// name is kept: the map asks on every frame, and the centre moves by steps.
+func placeNamer(idx *geodata.Index) func(lat, lon float64) string {
+	var mu sync.Mutex
+	var lastLat, lastLon float64
+	var last string
+	asked := false
+	return func(lat, lon float64) string {
+		if idx == nil {
+			return ""
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if asked && lat == lastLat && lon == lastLon {
+			return last
+		}
+		lastLat, lastLon, last, asked = lat, lon, "", true
+		if near := idx.NearWorld(lat, lon, units.MilesOf(placeNearKm), 20); len(near) > 0 {
+			last = placeInView(near).Label()
+		}
+		return last
 	}
 }
 

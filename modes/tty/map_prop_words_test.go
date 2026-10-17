@@ -6,6 +6,8 @@ package tty
 
 import (
 	"context"
+
+	tea "charm.land/bubbletea/v2"
 	"errors"
 	"regexp"
 	"strings"
@@ -35,6 +37,23 @@ func propWordsFrom(t *testing.T, d Dashboard) []string {
 func lineWith(lines []string, text string) int {
 	for i, l := range lines {
 		if strings.Contains(l, text) {
+			return i
+		}
+	}
+	return -1
+}
+
+// targetLine is the index of the line that says a target, its name among
+// the names that begin it (D-210: targets with the same answer share a
+// line), or -1.
+func targetLine(lines []string, name string) int {
+	name = spoken(name)
+	for i, l := range lines {
+		names, _, ok := strings.Cut(l, ": ")
+		if !ok {
+			continue
+		}
+		if names == name || strings.HasPrefix(names, name+", ") || strings.HasPrefix(names, name+" and ") || strings.HasSuffix(names, " "+name) || strings.Contains(names, ", "+name+",") || strings.Contains(names, ", "+name+" and") {
 			return i
 		}
 	}
@@ -74,9 +93,10 @@ func TestTheWordsFollowTheRuledOrder(t *testing.T) {
 	}
 }
 
-// TestThePropagationWordsAnswerWithoutThePicture is FR-3.1 (D-64, D-127):
-// the words say the origin's answer wherever the view is, and each target's
-// bands one line each, its name first, the open before the closed.
+// TestThePropagationWordsAnswerWithoutThePicture is FR-3.1 (D-64, D-127,
+// D-210): the words say the origin's answer wherever the view is, and each
+// target's bands, on a line its name begins - with the other targets that
+// have the same answer - the open before the closed.
 func TestThePropagationWordsAnswerWithoutThePicture(t *testing.T) {
 	d := chartDash(t)
 	d.mapDesc = mapDescInstead
@@ -86,15 +106,12 @@ func TestThePropagationWordsAnswerWithoutThePicture(t *testing.T) {
 	}
 	names, _ := d.propChartRows()
 	for _, n := range names {
-		i := lineWith(words, spoken(n)+": ")
+		i := targetLine(words, n)
 		if i < 0 {
 			t.Errorf("no line starts with the target %q:\n%s", n, strings.Join(words, "\n"))
 			continue
 		}
 		line := words[i]
-		if !strings.HasPrefix(line, spoken(n)+": ") {
-			t.Errorf("the target's line does not start with its name: %q", line)
-		}
 		if open, closed := strings.Index(line, "open on "), strings.Index(line, "above the upper limit"); open >= 0 && closed >= 0 && open > closed {
 			t.Errorf("a target's closed bands are said before its open: %q", line)
 		}
@@ -139,6 +156,17 @@ func TestSpokenWritesTheFiguresOut(t *testing.T) {
 		"data 1 min old":                      "data 1 minute old",
 		"STALE: data 2 h 5 min old":           "STALE: data 2 hours 5 minutes old",
 		"a station 250 mi away":               "a station 250 miles away",
+		// AX-2: a figure no frequency's name leads keeps its own unit
+		"Found 33.2000, -117.3800: marked":                 "Found 33.2000 degrees north 117.3800 degrees west: marked",
+		"Found -33.8700, 151.2100: marked":                 "Found 33.8700 degrees south 151.2100 degrees east: marked",
+		"1.5 hours":                                        "1.5 hours",
+		"Oceanside, CA - Currently: 73°F, clear":           "Oceanside, CA - Currently: 73 degrees Fahrenheit, clear",
+		"MUF 14.2 · LUF 3.1 · D-RAP 5.0":                   "MUF 14.2 megahertz, LUF 3.1 megahertz, D-RAP 5.0 megahertz",
+		"above the MUF - come down under 14.2":             "above the MUF - come down under 14.2 megahertz",
+		"absorbed - go up to 3.1+":                         "absorbed - go up to 3.1 megahertz or higher",
+		"disturbed (D-RAP to 5.0)":                         "disturbed (D-RAP to 5.0 megahertz)",
+		"best ~5.1 (80m)":                                  "best about 5.1 megahertz (80 metres)",
+		"its typical error at the place is 1.2 MHz in MUF": "its typical error at the place is 1.2 megahertz in MUF",
 	} {
 		if got := spoken(in); got != want {
 			t.Errorf("spoken(%q) = %q; want %q", in, got, want)
@@ -189,15 +217,64 @@ func refreshed(t *testing.T, d Dashboard) Dashboard {
 	return m.(Dashboard)
 }
 
-// TestARefreshKeepsTheReadersPlace is FR-3.6 (D-127): a refresh keeps the
-// window's scroll and the menu's focus.
+// TestARefreshKeepsTheReadersPlace is FR-3.6 (D-127) and D-211: a reader
+// scrolled to a sentence finds it still at the window's top - or, near the
+// words' end, in view with the window scrolled to it - after a refresh,
+// which drops the opening's sentences above it and adds "updated at", and
+// after an hour step, which adds the hour's; a target being worked out again
+// is found again once it is answered; the menu's focus is kept; the reader's
+// own scroll moves the place.
 func TestARefreshKeepsTheReadersPlace(t *testing.T) {
-	d, _ := drawnDash(t)
+	d := chartDash(t)
 	d.mapDesc = mapDescInstead
-	d.modalScroll, d.mapPane.menuAt = 3, 2
-	d = refreshed(t, d)
-	if d.modalScroll != 3 || d.mapPane.menuAt != 2 {
-		t.Errorf("after a refresh the scroll is %d and the menu's focus %d; 3 and 2 kept", d.modalScroll, d.mapPane.menuAt)
+	d.mapPane.menuAt = 2
+	m, _ := d.Update(tea.WindowSizeMsg{Width: 100, Height: 20}) // the words longer than the window
+	d = m.(Dashboard)
+	rowOf := func(d Dashboard, prefix string) int {
+		for i, l := range d.modalLines() {
+			if strings.HasPrefix(strings.TrimSpace(render.Plain(l)), prefix) {
+				return i
+			}
+		}
+		t.Fatalf("no row begins %q:\n%s", prefix, strings.Join(d.modalLines(), "\n"))
+		return -1
+	}
+	kept := func(d Dashboard, prefix string) bool {
+		at, end := rowOf(d, prefix), max(len(d.modalLines())-d.modalMax(), 0)
+		return d.modalScroll == at || (d.modalScroll == end && at > end && at < end+d.modalMax())
+	}
+	if body, rows := d.mapBodyLines(), d.modalLines(); len(rows) != len(body) {
+		t.Errorf("the window wrapped the words again into %d rows from %d: text that scrolls is wrapped clear of the rail", len(rows), len(body))
+	}
+	d.modalScroll = rowOf(d, "Status: ")
+	before := d.modalScroll
+	d = workChart(t, refreshed(t, d))
+	if !kept(d, "Status: ") || d.mapPane.menuAt != 2 {
+		t.Errorf("after a refresh the scroll is %d, the status block at row %d, the menu's focus %d; the block at the top and 2 kept", d.modalScroll, rowOf(d, "Status: "), d.mapPane.menuAt)
+	}
+	d = workChart(t, stepAhead(t, d, "shift+right"))
+	if !kept(d, "Status: ") {
+		t.Errorf("after an hour step the scroll is %d, the status block at row %d; the block kept at the top", d.modalScroll, rowOf(d, "Status: "))
+	}
+	if d.modalScroll == before {
+		t.Errorf("the fixture moved nothing above the reader: the scroll is %d before and after", before)
+	}
+	d = workChart(t, stepAhead(t, d, "n")) // back to now: a target, being worked out again after a refresh
+	d.modalScroll = rowOf(d, "North America: ")
+	d.mapPane.wordsAt, _ = d.wordsTop()
+	later := drawnAt.Add(10 * time.Minute)
+	d.now = func() time.Time { return later }
+	m, _ = d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: propSnapAt(later, 18)}})
+	d = m.(Dashboard)
+	if lineWith(d.modalLines(), "being worked out") < 0 {
+		t.Fatal("control: after a refresh the targets are not being worked out again")
+	}
+	if d = workChart(t, d); !kept(d, "North America: ") {
+		t.Errorf("once answered again, North America's sentence is at row %d and the scroll %d; at the top", rowOf(d, "North America: "), d.modalScroll)
+	}
+	m, _ = d.Update(mapKeyMsg(t, "pgup"))
+	if d = m.(Dashboard); d.mapPane.wordsAt.keys != nil && hasKey(d.mapPane.wordsAt.keys, "target:North America") && d.modalScroll > 0 {
+		t.Errorf("after the reader's own scroll the place kept is still %v", d.mapPane.wordsAt.keys)
 	}
 }
 
@@ -257,7 +334,8 @@ func TestTheFocusLimitIsSaid(t *testing.T) {
 
 // TestCaveatsAreSaidOncePerOpen is D-136: the status block's caveats - the
 // offset, a disagreement with the typical day, the origin's station - are
-// said once, in it; a target's line carries only its own "about typical".
+// said once, in it; a target's line carries only its own "about typical",
+// and none at all when every row's station reads the same (D-210).
 func TestCaveatsAreSaidOncePerOpen(t *testing.T) {
 	d := chartDash(t)
 	words := propWordsFrom(t, d)
@@ -275,13 +353,51 @@ func TestCaveatsAreSaidOncePerOpen(t *testing.T) {
 			}
 		}
 	}
+	if _, once := d.propStationOnce(); !once || !strings.Contains(words[status], "for the origin and every target, no reporting station") {
+		t.Fatalf("every row's station reads the same, and the status block does not say it once: %q", words[status])
+	}
+	d.mapPane.propChart.targets[1].Nearest = ionomaps.Nearest{Known: true, Km: 300} // one row's station near: each row says its own
+	words = propWordsFrom(t, d)
 	names, answers := d.propChartRows()
 	for i, n := range names {
-		line := words[lineWith(words, spoken(n)+": ")]
+		line := words[targetLine(words, n)]
 		far := !answers[i].Nearest.Known || answers[i].Nearest.Km >= propFarKm
 		if says := strings.Contains(line, "about as good as typical"); says != far {
 			t.Errorf("%s's line says about typical %v; its station is far %v: %q", n, says, far, line)
 		}
+	}
+}
+
+// TestIdenticalTargetsShareALine is D-210: targets with the same answer are
+// said once, on one line their names begin; the local area keeps its own
+// line; when every row's station reads the same it is on no row.
+func TestIdenticalTargetsShareALine(t *testing.T) {
+	d := chartDash(t)
+	words := propWordsFrom(t, d)
+	names, answers := d.propChartRows()
+	lines := map[int]bool{}
+	for _, n := range names {
+		lines[targetLine(words, n)] = true
+	}
+	distinct := map[string]bool{}
+	for _, a := range answers[1:] {
+		distinct[propBandsSaid(a.Bands)+propRowWords(a.Bands)] = true
+	}
+	if len(lines) != 1+len(distinct) {
+		t.Errorf("%d targets with %d distinct answers are said on %d lines; %d:\n%s", len(names)-1, len(distinct), len(lines), 1+len(distinct), strings.Join(words, "\n"))
+	}
+	said := map[string]bool{}
+	for _, l := range words {
+		if said[l] {
+			t.Errorf("a line is said twice: %q", l)
+		}
+		said[l] = true
+	}
+	if !strings.HasPrefix(words[targetLine(words, names[0])], spoken(names[0])+": ") {
+		t.Errorf("the local area does not keep its own line:\n%s", strings.Join(words, "\n"))
+	}
+	if n := strings.Count(strings.Join(words, "\n"), "no reporting station"); n != 1 {
+		t.Errorf("the station every row shares is said %d times; once:\n%s", n, strings.Join(words, "\n"))
 	}
 }
 
@@ -337,5 +453,81 @@ func TestEachTargetSaysItsStation(t *testing.T) {
 		if got := d.propStationWords(c.n); got != c.want {
 			t.Errorf("%+v: %q; want %q", c.n, got, c.want)
 		}
+	}
+}
+
+// TestTheNightIsSaidAsItIsDrawn is BUILD red team AX-13 and AX-8: in the
+// Propagation mode the night's shade does not darken the field, so the words
+// say its dotted edge alone; its moment is said by the window's clock, as
+// the sun's turn is.
+func TestTheNightIsSaidAsItIsDrawn(t *testing.T) {
+	d := chartDash(t)
+	words := d.describeLinesAll()
+	i := lineWith(words, "The night side")
+	if i < 0 {
+		t.Fatalf("the fixture's night is not said:\n%s", strings.Join(words, "\n"))
+	}
+	at := d.mapPane.nightAt.In(d.now().Location())
+	if want := "The night side's edge is dotted, as at " + d.clockFmt.Time(at) + " " + at.Format("MST") + "."; words[i] != want {
+		t.Errorf("the night is said %q; %q", words[i], want)
+	}
+}
+
+// TestTheShortNamesAreSaidInFull is BUILD red team AX-8: the short names the
+// words use are said in full on opening the mode, and not again after a
+// refresh, as the focus limit is.
+func TestTheShortNamesAreSaidInFull(t *testing.T) {
+	d, _ := drawnDash(t)
+	words := propWordsFrom(t, d)
+	if lineWith(words, propTerms) < 0 {
+		t.Errorf("on opening, the short names are not said in full:\n%s", strings.Join(words, "\n"))
+	}
+	for _, short := range []string{"foF2", "LUF", "M(3000)F2", "D-RAP", "GloTEC"} {
+		if !strings.Contains(propTerms, short+", ") {
+			t.Errorf("%s is not said in full", short)
+		}
+	}
+	if lineWith(propWordsFrom(t, refreshed(t, d)), propTerms) >= 0 {
+		t.Error("the short names are said again after a refresh")
+	}
+}
+
+// TestAFailedAnswerSaysHowToAskAgain is BUILD red team AX-9 (D-124): an
+// answer that could not be worked out - the chart, the reach, the centre -
+// is said as not available, with the key that asks again, never as being
+// worked out for ever; that key asks for it again.
+func TestAFailedAnswerSaysHowToAskAgain(t *testing.T) {
+	refused := errors.New("refused")
+	d := heldDash(t)
+	d.mapPane.propChart.err = refused
+	d.mapPane.propReach = propReach{key: d.mapPane.propReachAsked, err: refused}
+	d.mapPane.propCentre.err, d.mapPane.propCentre.bands = refused, nil
+	again := "not available; " + d.firstKey(actMapRefresh) + " tries again"
+	words := strings.Join(propWordsFrom(t, d), "\n")
+	for _, want := range []string{"The best bands are " + again + ".", "its reach: " + again, "The map's centre is " + again + "."} {
+		if !strings.Contains(words, want) {
+			t.Errorf("the words do not say %q:\n%s", want, words)
+		}
+	}
+	if strings.Contains(words, "being worked out") {
+		t.Errorf("a failed answer is said as being worked out:\n%s", words)
+	}
+	if chart := strings.Join(d.propChartLines(d.opts()), "\n"); !strings.Contains(chart, "The chart is "+again) {
+		t.Errorf("the chart window does not say how to ask again:\n%s", chart)
+	}
+	m, _ := d.Update(mapKeyMsg(t, d.firstKey(actMapRefresh)))
+	d = m.(Dashboard)
+	if d.mapPane.propChart.err != nil || d.mapPane.propReach.err != nil || d.mapPane.propCentre.err != nil || d.mapPane.propChart.key != (propChartKey{}) {
+		t.Error("the refresh key left a failed answer held, so it is never asked again")
+	}
+	if !workChart(t, d).propChartShown() {
+		t.Error("asked again, the chart is not answered")
+	}
+}
+
+// TestAnHourIsSaidSingly: one hour ahead is "1 hour", not "1 hours".
+func TestAnHourIsSaidSingly(t *testing.T) {
+	if hoursWords(1) != "1 hour" || hoursWords(3) != "3 hours" {
+		t.Errorf("hours said %q and %q", hoursWords(1), hoursWords(3))
 	}
 }

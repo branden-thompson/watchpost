@@ -97,6 +97,7 @@ type mapPane struct {
 	propFindSeq     uint64                     // the latest find: an earlier one's answer is dropped
 	propFound       *snapshot.LocationRef      // the place found and marked; never kept (D-27)
 	foundMarked     bool                       // its mark is on the map
+	wordsAt         wordsPlace                 // the reader's place in the words, kept until they scroll (D-211)
 	propReach       propReach                  // the frequency's reach (W5.2)
 	propReachAsked  propReachKey               // what the reach was last asked for: asked once
 	propAhead       int                        // the hour shown ahead of the snapshot's, 0 for now (FR-1.13)
@@ -571,17 +572,11 @@ func (d Dashboard) mapBodyLines() []string {
 		out = append(render.WrapText(belowFloorText(d.mapBodySize()), width), "") // FR-1.4: the notice carries the description
 	}
 	if !picture {
-		block := d.descBlock(width)
-		if d.mapPane.menuOn {
-			block = d.overlaysText() // D-267: the open menu owns the keys, so it is drawn where the picture would be
+		text := d.textInstead(out, width)
+		if len(text) > d.modalMax() {
+			text = d.textInstead(out, width-modalRailCols) // it will scroll: wrapped clear of the rail, so the window need not wrap it again into stubs (D-211)
 		}
-		for _, l := range block {
-			out = append(out, " "+l)
-		}
-		for _, l := range d.noteLines(width) {
-			out = append(out, " "+l)
-		}
-		return out
+		return text
 	}
 	size := d.mapBodySize()
 	out = append(out, d.withModeChip(d.withEdgeChip(d.withControls(d.withQuotaNotice(d.withOverlays(d.withPropCentre(d.withAreaAlerts(d.mapPane.lines, size), size)), size), size), size), size)...) // the notice under every control (D-181)
@@ -595,6 +590,28 @@ func (d Dashboard) mapBodyLines() []string {
 		return out
 	}
 	return append(out, d.scrubRows(width)...) // D-103: the rows under the map, in either mode
+}
+
+// modalRailCols are the columns a scrolling window's rail takes from its
+// text (wrapModalAt).
+const modalRailCols = 3
+
+// textInstead is the window's text in place of the picture, after its
+// leading lines: the description, or the open menu, and the notes, wrapped
+// to a width.
+func (d Dashboard) textInstead(lead []string, width int) []string {
+	out := slices.Clone(lead)
+	block := d.descBlock(width)
+	if d.mapPane.menuOn {
+		block = d.overlaysText() // D-267: the open menu owns the keys, so it is drawn where the picture would be
+	}
+	for _, l := range block {
+		out = append(out, " "+l)
+	}
+	for _, l := range d.noteLines(width) {
+		out = append(out, " "+l)
+	}
+	return out
 }
 
 // mapPicture reports whether the window draws the picture: not under
@@ -1417,6 +1434,10 @@ func (d Dashboard) layerLabel(key string) string {
 
 // mapHelpRow is one row of Help's MAP group: several actions that are one
 // idea, listed on one line so the group fits (D-61's ten keys in four rows).
+// A row of several actions is written as pairs, each key beside its name,
+// with no keys column: a screen reader reads a row in order, so keys listed
+// apart from their names are matched by position, which it cannot do
+// (AX-6).
 type mapHelpRow struct{ keys, help string }
 
 // shiftArrows writes the shifted arrows short, so the radar's row fits Help's
@@ -1429,35 +1450,45 @@ func shiftArrows(keys string, ascii bool) string {
 }
 
 // mapHelpRows are the MAP group's rows, read from the merged keys so a
-// [keys] rebind shows.
+// [keys] rebind shows: a row of one action's keys in the keys column, a row
+// of several as key-name pairs (AX-6), and the hours' keys as the
+// Propagation mode uses them (FR-1.14).
 func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
-	keys0 := func(act term.Action) []string { return keys[act].Keys }
-	join := func(acts ...term.Action) string {
-		var all []string
-		for _, a := range acts {
-			all = append(all, keys[a].Keys...)
+	type named struct {
+		act  term.Action
+		name string
+	}
+	pairs := func(ns ...named) mapHelpRow {
+		var out []string
+		for _, n := range ns {
+			if ks := keys[n.act].Keys; len(ks) > 0 {
+				out = append(out, shiftArrows(strings.Join(ks, "/"), ascii)+" "+n.name) // one action's keys together: "+/= Zoom In"
+			}
 		}
-		return strings.Join(all, ", ")
+		return mapHelpRow{help: strings.Join(out, ", ")}
 	}
 	rows := []mapHelpRow{
-		{join(actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight), "Pan"},
-		{join(actMapPrev, actMapNext), "Previous / Next Location"},
-		{join(actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown), "Zoom In / Out / Scroll"},    // one row: Help holds at 133x44
-		{join(actMapAlerts, actMapOverlays, actMapChart, actMapFreq), "Alerts / Overlays / Bands / Freq."}, // D-176, D-178: the chart and the frequency share a row so Help keeps its legend
-		{shiftArrows(join(actMapPlay, actMapBack, actMapOn, actMapNewest), ascii), "Play / Back / On / Now"},
-		{join(actMapRadar, actMapHighLow), "Radar Mode / Forecast Hi-Lo"},                                  // D-94, D-97
-		{join(actMapProp, actMapLayer, actMapRefresh, actMapFind), "Propagation / Layer / Refresh / Find"}, // D-153, D-155, D-156; FR-1.10
+		{strings.Join(slices.Concat(keys[actMapPanUp].Keys, keys[actMapPanDown].Keys, keys[actMapPanLeft].Keys, keys[actMapPanRight].Keys), ", "), "Pan"},
+		pairs(named{actMapPrev, "Previous"}, named{actMapNext, "Next Location"}),
+		pairs(named{actMapZoomIn, "Zoom In"}, named{actMapZoomOut, "Out"}, named{actMapScrollUp, "Scroll Up"}, named{actMapScrollDown, "Down"}),
+		pairs(named{actMapAlerts, "Alerts"}, named{actMapOverlays, "Overlays"}, named{actMapChart, "Bands"}, named{actMapFreq, "Freq."}), // D-176, D-178
+		pairs(named{actMapBack, "Back"}, named{actMapOn, "On"}, named{actMapNewest, "Now (an hour, in Propagation)"}),                    // FR-1.14: a frame, a day, or in Propagation an hour
+		pairs(named{actMapRadar, "Radar Mode"}, named{actMapPlay, "Play"}, named{actMapHighLow, "Forecast Hi-Lo"}),                       // D-94, D-97
+		pairs(named{actMapProp, "Propagation"}, named{actMapLayer, "Layer"}, named{actMapRefresh, "Refresh"}, named{actMapFind, "Find"}), // D-153, D-155, D-156; FR-1.10
 	}
-	// D-77: the region keys in two rows of three, each number's region named
-	// in order - six rows push Help past its window.
+	// D-77: the region keys in two rows of three, each key beside its region.
 	for _, half := range [][]int{{0, 1, 2}, {3, 4, 5}} {
-		var keys, names []string
+		var ns []named
 		for _, i := range half {
-			keys, names = append(keys, keys0(mapRegionActs[i])...), append(names, mapRegionShort[i])
+			ns = append(ns, named{mapRegionActs[i], mapRegionShort[i]})
 		}
-		rows = append(rows, mapHelpRow{strings.Join(keys, ", "), "Region: " + strings.Join(names, ", ")})
+		r := pairs(ns...)
+		if r.help != "" {
+			r.help = "Region " + r.help
+		}
+		rows = append(rows, r)
 	}
-	return slices.DeleteFunc(rows, func(r mapHelpRow) bool { return r.keys == "" }) // a key the UI mode does not bind is not listed (D-195)
+	return slices.DeleteFunc(rows, func(r mapHelpRow) bool { return r.keys == "" && r.help == "" }) // a key the UI mode does not bind is not listed (D-195)
 }
 
 // mapStatusText is what the status line says of the picture while it is not

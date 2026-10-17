@@ -111,12 +111,13 @@ func (d Dashboard) followRole() Dashboard {
 }
 
 // zoneWords are the words for the service area (D-195), said without the
-// picture: its radius around the station; none for a UI mode without one.
+// picture: its radius around the station, and no colour - the map draws it
+// red only where it draws colour (AX-12); none for a UI mode without one.
 func (d Dashboard) zoneWords() string {
 	loc, mi := d.mapPlace(), d.cfg.ServiceRadiusMi
 	if !d.mapRole().zone || loc == nil || mi <= 0 {
 		return ""
 	}
 	radius := d.distanceLabel(int(math.Round(d.serviceKm())))
-	return "The red circle is the station's service area: " + radius + " around " + loc.Label + "."
+	return "The circle around " + loc.Label + " is the station's service area: " + radius + "."
 }
