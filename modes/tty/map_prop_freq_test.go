@@ -40,8 +40,8 @@ func TestYourFrequencyDrawsItsReach(t *testing.T) {
 		t.Fatalf("after Enter: window %v, %v MHz held; want the map, 14.2", d.modal, d.mapPane.propFreqMHz)
 	}
 	o, ok := d.mapPane.propGiven["propagation/reach"]
-	if !ok || o.Grid == nil || len(o.Grid.Type.Breaks) != 1 || o.Grid.Type.Preset != "" {
-		t.Fatalf("the reach handed in is %+v (%v); want a two-class host field", o.Grid, ok)
+	if !ok || o.Grid == nil || len(o.Grid.Type.Breaks) != 1 || o.Grid.Type.Preset != "" || !o.Grid.Type.Edge {
+		t.Fatalf("the reach handed in is %+v (%v); want a two-class host field asked for as its edge (go-tuiMaps v0.3.0 Type.Edge)", o.Grid, ok)
 	}
 	loc := d.selectedLocation()
 	near, far := -1.0, -1.0

@@ -440,6 +440,8 @@ func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
 	c.MapPropRefresh = cfg.MapPropagationRefresh                       // 0.19.0 D-120: how often an open mode asks again
 	c.MapPropNoReadings = cfg.MapPropagationNoReadings                 // 0.19.0 D-105: while no station readings are held
 	c.MapPropStations = cfg.MapPropagationStations                     // 0.19.0 D-214: whether GIRO is asked for stations
+	c.MapColourDepth = cfg.MapColourDepth                              // 0.19.0 D-207: the map's colour depth
+	c.NoColor = os.Getenv("NO_COLOR") != ""                            // and NO_COLOR, which means none whatever is chosen
 	c.MapRadarAhead = cfg.MapRadarAheadHours                           // D-114: the radar loop's hours ahead
 	c.MapQuakeFeed = cfg.MapQuakeFeed                                  // D-122: the quakes the map draws
 	c.MapProblem = lp.problems.note                                    // D-124: the diagnostics', never the listener's

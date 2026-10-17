@@ -25,13 +25,9 @@ const (
 )
 
 // mapNight is the night side and its edge at a moment (L-4.1 to L-4.3): no
-// words of its own, the edge dotted at every depth.
-func mapNight(at time.Time) tuimaps.Overlay {
-	return tuimaps.Overlay{ID: mapNightID, Valid: at, Keeps: time.Hour, Features: []tuimaps.Feature{
-		{Kind: tuimaps.Polygon, Rings: tuimaps.NightSide(at), Role: nightRole},
-		{Kind: tuimaps.Line, Rings: [][]tuimaps.LonLat{tuimaps.Terminator(at)}, Role: terminatorRole},
-	}}
-}
+// words of its own, the edge dotted at every depth - go-tuiMaps' own
+// composition of the two, in its roles.
+func mapNight(at time.Time) tuimaps.Overlay { return tuimaps.NightOverlay(mapNightID, at) }
 
 // nightWanted is whether the night is drawn and for what moment (D-174,
 // D-199): in the Propagation mode always once it has a snapshot, for the hour

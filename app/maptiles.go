@@ -9,7 +9,6 @@ package app
 import (
 	"crypto/tls"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"sync"
@@ -34,11 +33,13 @@ const (
 // TestTheTileTransportMatchesTheLibrarys holds it to the library's source.
 func libraryTransport() http.RoundTripper { return libraryTransportVia(http.ProxyFromEnvironment) }
 
-// libraryTransportVia is libraryTransport with its proxy named by proxyOf.
+// libraryTransportVia is libraryTransport with its proxy named by proxyOf:
+// go-tuiMaps' checked dialer and the proxy function to set beside it, which
+// reaches the proxy proxyOf names even at a private address and refuses
+// every other (go-tuiMaps L-7.4, watchpost D-216).
 func libraryTransportVia(proxyOf func(*http.Request) (*url.URL, error)) *http.Transport {
-	direct := &net.Dialer{Timeout: tileFirstByte}
-	pe := httpx.NewProxyExempt(proxyOf, tuimaps.CheckedDialer(), direct.DialContext)
-	return &http.Transport{Proxy: pe.Proxy, DialContext: pe.DialContext,
+	dial, proxy := tuimaps.CheckedDialerFor(proxyOf)
+	return &http.Transport{Proxy: proxy, DialContext: dial,
 		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12}, TLSHandshakeTimeout: tileFirstByte,
 		ResponseHeaderTimeout: tileFirstByte, IdleConnTimeout: tileIdle, ForceAttemptHTTP2: true}
 }

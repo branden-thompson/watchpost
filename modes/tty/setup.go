@@ -514,6 +514,8 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.cycleMapDesc(true)
 	case rowMapScale:
 		return d.cycleMapScale(true)
+	case rowMapColours:
+		return d.cycleMapDepth(true)
 	case rowMapNearby:
 		return d.cycleNearby(true)
 	case rowMapRadarSource:

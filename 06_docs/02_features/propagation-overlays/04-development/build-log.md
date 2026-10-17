@@ -511,3 +511,13 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Found running the packages whole:** `TestTheOriginFollowsTheUIMode` asked for the chart straight after a pan, which now waits for the view to settle; the app's declaration set re-captured for `sweptWords`; and the identity check read the credentials case's address, `user:pass@` and a host, as an e-mail address - it is built from its parts now.
 - **Docs:** A-68; FR-1.11, FR-1.17, FR-4.2, FR-4.7, FR-4.9 and FR-9.2 as built; the plan's W6.3.
 
+## Batch 40 - W4.8, watchpost on go-tuiMaps v0.3.0-rc.2: the reach's edge asked for, the colour depth a Setting (A-69)
+
+- **The re-pin** (D-206): go-tuiMaps v0.3.0-rc.2, tagged on `dd67d22` after its local full gate, its hosted quick and full gates on both architectures, and its release check, all green. The re-pin checklist: tidy, the licence list, `cmd/watchpost` whole, the alloc budget.
+- **What rc.2 asks of a host:** the reach, a two-class host field, is drawn as its edge only when its type asks (`Type.Edge`), so watchpost asks; the night is `NightOverlay(id, at)`; the tiles take `CheckedDialerFor` in place of watchpost's own proxy exemption (D-216).
+- **"Colours" (D-207):** Automatic, Truecolor, 256, 16 or None; Automatic and `NO_COLOR` both leave the depth to go-tuiMaps' reading of the terminal, through the `TerminalDepth` this release candidate added for it (go-tuiMaps A-15).
+- **Found by the gate:** the map's library-call guard needed the frame's new `ColourDepth` call allowed beside `Units`; the two settings guards carry the new field; the Maps tab's golden carries the new row.
+- **Tests:** `TestTheColourDepthIsASetting`; `TestYourFrequencyDrawsItsReach` now requires the edge asked for.
+- **Mutants:** m435 to m439, each killed.
+- **Docs:** A-69; FR-1.21; the plan's W4.8.
+

@@ -92,11 +92,11 @@ func (d Dashboard) propReachShown() (ionomaps.ReachField, bool) {
 }
 
 // propReachOverlay is the reach as a two-class host field over the layer
-// drawn: go-tuiMaps draws its edge broken, over the filled field its edge
-// alone (L-2.6, D-127).
+// drawn, asked for as its edge alone: go-tuiMaps draws it broken, over the
+// filled field (L-2.6, D-127; go-tuiMaps v0.3.0 `Type.Edge`).
 func propReachOverlay(f ionomaps.ReachField, at time.Time) tuimaps.Overlay {
 	g := fieldGrid(f.Field)
-	g.Type, g.Lines = tuimaps.Type{Breaks: []float64{0.5}}, false // reached or not; no data where a control point has none
+	g.Type, g.Lines = tuimaps.Type{Breaks: []float64{0.5}, Edge: true}, false // reached or not; no data where a control point has none
 	return tuimaps.Overlay{ID: "propagation/reach", Valid: at, Keeps: time.Hour, Grid: &g}
 }
 

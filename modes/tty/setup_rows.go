@@ -131,6 +131,7 @@ const (
 	rowMapsOn
 	rowMapDesc
 	rowMapScale
+	rowMapColours // the map's colour depth: Automatic, Truecolor, 256, 16 or None (D-207)
 	rowMapNearby
 	// IN THE ORDER THEY ARE DRAWN: focus walks this order, and a row declared out
 	// of drawn order is one ↓ skips (HUM LEAD, 2026-09-30).
@@ -263,6 +264,7 @@ func setupTable() [setupRowCount]setupRow {
 		rowMapsOn:          {rowMapsOn, groupMap, scopeObserver, rowToggle, false, "", ""},
 		rowMapDesc:         {rowMapDesc, groupMap, scopeShared, rowPicker, true, "", ""}, // "Instead of the map" is one Setting for both UI modes (D-121)
 		rowMapScale:        {rowMapScale, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapColours:      {rowMapColours, groupMap, scopeShared, rowPicker, true, "", ""}, // both UI modes draw a map (D-195)
 		rowMapNearby:       {rowMapNearby, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapRadarSource:  {rowMapRadarSource, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapTempSource:   {rowMapTempSource, groupMap, scopeObserver, rowPicker, true, "", ""},

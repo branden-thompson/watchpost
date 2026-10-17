@@ -315,6 +315,10 @@ type Config struct {
 	// its stations: empty to ask (the default), or "none" for NOAA and the
 	// climatology alone (0.19.0 D-214).
 	MapPropagationStations string `toml:"map_propagation_stations,omitempty"`
+	// MapColourDepth is the map's colour depth: empty for Automatic, following
+	// the terminal (the default), or "truecolor", "256", "16" or "none"
+	// (0.19.0 D-207).
+	MapColourDepth string `toml:"map_colour_depth,omitempty"`
 
 	// HistoryHours and HistoryTrends are the local history's retention, the
 	// Data tab's presets (W18, D-175): "72h", "7d", "30d", "1y" and "30d",

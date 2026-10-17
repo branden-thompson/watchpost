@@ -434,7 +434,9 @@ func (d Dashboard) renderMap() Dashboard {
 	var err error
 	miles := d.units == render.UnitF
 	d.mapPane.call("Units", func() { m.Units(miles, miles) }) // the description's distances and temperatures in the station's units
-	d = d.reportPlace()                                       // first: the description's length decides the map's size
+	depth := d.mapDepthHint()
+	d.mapPane.call("ColourDepth", func() { m.ColourDepth(depth) }) // the Setting's depth, or the terminal's (D-207); the same hint again changes nothing
+	d = d.reportPlace()                                            // first: the description's length decides the map's size
 	if !d.mapFits() {
 		d.mapPane.lines = nil
 		d.mapPane.gen++
