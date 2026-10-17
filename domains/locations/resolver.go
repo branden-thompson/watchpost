@@ -180,6 +180,8 @@ func typedPlace(q string, anywhere bool) (ref snapshot.LocationRef, typed bool, 
 		at, label = p, geo.LocatorLabel(q)
 	} else if numberPair(q) {
 		return snapshot.LocationRef{}, true, errors.New("coordinates are two numbers: latitude from -90 to 90, then longitude from -180 to 180")
+	} else if positionShaped(q) {
+		return snapshot.LocationRef{}, true, errors.New("that reads as a position in a form not read here: write coordinates as two decimal numbers, latitude then longitude (33.2, -117.38), or a grid locator of 4, 6 or 8 characters") // refused here, never sent (FR-4.9, I-2)
 	} else {
 		return snapshot.LocationRef{}, false, nil
 	}
@@ -187,6 +189,29 @@ func typedPlace(q string, anywhere bool) (ref snapshot.LocationRef, typed bool, 
 		return snapshot.LocationRef{}, true, errors.New(coverage.Outside(label))
 	}
 	return snapshot.LocationRef{Label: label, Lat: at.Lat, Lon: at.Lon}, true, nil
+}
+
+// positionShape is a query made only of figures, separators, degree and
+// minute marks and the compass letters; locatorShape one shaped like a grid
+// locator, its letters and figures in a locator's places; zipPlusFour a ZIP
+// with its four, which is a place, not a position.
+var (
+	positionShape = regexp.MustCompile(`^[0-9\s.,;:°'"+\-NSEWnsew]+$`)
+	numberGroup   = regexp.MustCompile(`[0-9]+`)
+	locatorShape  = regexp.MustCompile(`^[A-Za-z]{2}[0-9]{2}([A-Za-z]{2}([0-9]{2}([A-Za-z]{2})?)?)?$`)
+	zipPlusFour   = regexp.MustCompile(`^[0-9]{5}-[0-9]{4}$`)
+)
+
+// positionShaped reports whether a query the parsers did not read is still
+// written as a position - "33.2N 117.4W", "33°12'N 117°23'W", "33.2;-117.38",
+// three numbers, a locator of ten characters or one with a letter out of
+// its range - so it is refused here, never sent online (FR-4.9, BUILD red
+// team I-2).
+func positionShaped(q string) bool {
+	if locatorShape.MatchString(q) {
+		return true
+	}
+	return positionShape.MatchString(q) && !zipPlusFour.MatchString(q) && len(numberGroup.FindAllString(q, 3)) >= 2
 }
 
 // numberPair reports whether a query is written as two numbers - which

@@ -201,7 +201,7 @@ func TestURefreshesNowUnderTheThrottle(t *testing.T) {
 	held := &seam{wait: true}
 	d, _ = keyCmd(t, propDash(t, held, true), "P")
 	d, cmd = keyCmd(t, d, "U")
-	if cmd != nil && len(propMsgs(cmd)) > 0 || d.mapPane.propBusy != true {
+	if cmd != nil && len(propMsgs(cmd)) > 0 || d.mapPane.propSess.busy != true {
 		t.Error("U with an update in flight asked again")
 	}
 	_ = d.stopPropagation()

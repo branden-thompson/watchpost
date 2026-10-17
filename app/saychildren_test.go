@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,7 +28,7 @@ func TestTheRunSweepsOrphansAndEndsItsChildren(t *testing.T) {
 		t.Fatal(err)
 	}
 	procs := &sweepProcs{}
-	stop, swept := sayChildren(dir, procs)
+	stop, swept, _ := sayChildren(dir, procs)
 	defer synth.SetRecordDir("")
 	if swept != 1 || len(procs.ended) != 1 || procs.ended[0] != 4242 {
 		t.Errorf("the start swept %d, ended %v; the one orphan", swept, procs.ended)
@@ -35,5 +36,17 @@ func TestTheRunSweepsOrphansAndEndsItsChildren(t *testing.T) {
 	stop()
 	if live := synth.LiveChildren(); len(live) != 0 {
 		t.Errorf("after the stop, children still run: %v", live)
+	}
+}
+
+// TestTheSweepIsToldToTheDiagnostics is the BUILD red team's I-3: what a
+// start's sweep ended, and what it could not, is in the diagnostics; a sweep
+// that found nothing says nothing.
+func TestTheSweepIsToldToTheDiagnostics(t *testing.T) {
+	if w := sweptWords(0, 0); w != "" {
+		t.Errorf("an empty sweep says %q", w)
+	}
+	if w := sweptWords(2, 1); !strings.Contains(w, "2 speech process") || !strings.Contains(w, "1 could not be") {
+		t.Errorf("a sweep of two ended and one not says %q", w)
 	}
 }

@@ -11,6 +11,7 @@ import (
 // workCentre runs the centre's command, when one is due, and applies it.
 func workCentre(t *testing.T, d Dashboard) Dashboard {
 	t.Helper()
+	d = settled(t, d)
 	d.mapPane.propCentreAsked = propCentreKey{}
 	d, cmd := d.armPropCentre()
 	if cmd == nil {
@@ -139,5 +140,23 @@ func TestTheTargetSaysWhatIsUsable(t *testing.T) {
 	bands[0].Limit, d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = ionomaps.LimitCircuit, 3, "3.0 MHz"
 	if got := d.propTarget(bands); got[len(got)-1] != "3.0 MHz: too weak at 100 W - go up to 4.0+" {
 		t.Errorf("under a LUF the circuit decides, 3 MHz held: %q", got)
+	}
+}
+
+// TestTheCentreBoxIsForWhatIsShown is the BUILD red team's P-6: the Centre
+// box is the answer for the hour, the noise and the station shown - after an
+// hour step it is gone until the hour's answer is worked out, never the
+// hour before's.
+func TestTheCentreBoxIsForWhatIsShown(t *testing.T) {
+	d := workCentre(t, stationDash(t))
+	if d.propCentreBox() == nil {
+		t.Fatal("control: the centre is not answered")
+	}
+	d = stepAhead(t, d, "shift+right")
+	if box := d.propCentreBox(); box != nil {
+		t.Errorf("after an hour step the box shows the hour before's answer:\n%s", strings.Join(box, "\n"))
+	}
+	if d = workCentre(t, d); d.propCentreBox() == nil {
+		t.Error("the hour's answer, worked out, is not shown")
 	}
 }

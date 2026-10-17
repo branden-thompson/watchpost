@@ -98,7 +98,10 @@ func workPropCentre(snap ionomaps.Snapshot, key propCentreKey) propCentre {
 func (d Dashboard) propCentreLines(from string) []string {
 	c, origin := d.mapPane.propCentre, d.mapPane.propOrigin
 	shown := d.propOnScreen()
-	if !d.propRole().target || !origin.ok || !propHasField(shown) || !c.key.computed.Equal(shown.Computed) || c.err != nil || len(c.bands) == 0 {
+	if key, ok := d.propCentreWanted(); !ok || key != c.key { // the answer for what is shown now: the hour, the noise, the station (P-6)
+		return nil
+	}
+	if !d.propRole().target || !origin.ok || !propHasField(shown) || c.err != nil || len(c.bands) == 0 {
 		return nil
 	}
 	out := []string{latLonText(c.key.centre)}

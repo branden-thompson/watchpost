@@ -230,10 +230,10 @@ type Config struct {
 	PropagationAck     int
 	SavePropagationAck func(int) error
 
-	// PropagationUpdate starts the Propagation mode's update, with the
-	// Settings' options - the reference circuit's noise (D-187) and the
-	// no-readings correction (D-105) - or joins the one running, and sends
-	// its result (0.19.0 W4.1, D-131). ctx is the mode's: leaving the mode
+	// PropagationUpdate runs the Propagation mode's update, with the
+	// Settings' options - the reference circuit's noise (D-187), the
+	// no-readings correction (D-105) and the stations (D-214) - and sends
+	// its own result (0.19.0 W4.1, A-30, C-2). ctx is the mode's: leaving the mode
 	// ends it. nil fetches nothing.
 	PropagationUpdate func(ctx context.Context, opts ionomaps.UpdateOptions) <-chan PropagationResult
 

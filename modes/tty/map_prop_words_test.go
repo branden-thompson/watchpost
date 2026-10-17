@@ -181,11 +181,11 @@ func TestTheStatusIsSaidWithoutThePicture(t *testing.T) {
 	d := propDash(t, &seam{}, true)
 	d.cfg.ASCII = true
 	d = pressMap(t, d, "P")
-	d.mapPane.propBusy, d.mapPane.propSnap = true, nil
+	d.mapPane.propSess.busy, d.mapPane.propSnap = true, nil
 	if words := strings.Join(propWordsFrom(t, d), "\n"); !strings.Contains(words, "asking NOAA for the newest grid") {
 		t.Errorf("asking is not said:\n%s", words)
 	}
-	d.mapPane.propBusy, d.mapPane.propErr = false, errors.New("ionomaps: NOAA not reached")
+	d.mapPane.propSess.busy, d.mapPane.propErr = false, errors.New("ionomaps: NOAA not reached")
 	if words := strings.Join(propWordsFrom(t, d), "\n"); !strings.Contains(words, "NOAA not reached") || !strings.Contains(words, "U refreshes now") {
 		t.Errorf("a failure is not said with its path:\n%s", words)
 	}

@@ -73,7 +73,7 @@ func (d Dashboard) propSentences(lat, lon float64) []wordSentence {
 		}
 	}
 	out = append(out, said("status", d.propStatusBlock()))
-	if d.mapPane.propApplied < 2 {
+	if d.mapPane.propSess.applied < 2 {
 		out = append(out, said("focus", propFocusLimit), said("terms", propTerms)) // on opening, not after a refresh (FR-3.7, D-136, AX-8)
 	}
 	out = append(out, d.propTargetWords()...)
@@ -146,7 +146,7 @@ func (d Dashboard) propStatusBlock() string {
 			parts = append(parts, "now differs from a typical day there")
 		}
 	}
-	if d.mapPane.propApplied > 1 {
+	if d.mapPane.propSess.applied > 1 {
 		at := d.mapPane.propUpdatedAt.In(d.now().Location())
 		parts = append(parts, "updated at "+d.clockFmt.Time(at)+" "+at.Format("MST"))
 	}

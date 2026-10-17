@@ -66,9 +66,7 @@ type mapPane struct {
 
 	// The Propagation mode's session (W4.1): its update's context, whether
 	// one is in flight, the session's generation, and the last result.
-	propCtx         context.Context
-	propCancel      context.CancelFunc
-	propBusy        bool
+	propSess        propSession // the open mode's own state, dropped whole when it is left (C-3)
 	propGen         uint64
 	propTickSeq     uint64 // the latest refresh tick set: an earlier one asks nothing
 	propSnap        *ionomaps.Snapshot
@@ -76,8 +74,6 @@ type mapPane struct {
 	propLayer       int                        // MUF(3000) or foF2 (D-155), kept across sessions until the map is released
 	propGiven       map[string]tuimaps.Overlay // the Propagation overlays handed in
 	propSnapCorrect bool                       // the no-readings correction the snapshot shown was asked with (D-105)
-	propTickEvery   time.Duration              // the refresh chain's wait; zero with none set (D-120)
-	propApplied     int                        // snapshots applied this session, GIRO's following NOAA's at once not counted: past one, a refresh (FR-3.6)
 	propUpdatedAt   time.Time                  // when the last was applied, by the window's clock (FR-3.6)
 	zoneGiven       map[string]tuimaps.Overlay // the service area handed in (D-195)
 	tower           tuimaps.Place              // the tower's mark placed, or none
@@ -98,6 +94,7 @@ type mapPane struct {
 	propFound       *snapshot.LocationRef      // the place found and marked; never kept (D-27)
 	foundMarked     bool                       // its mark is on the map
 	wordsAt         wordsPlace                 // the reader's place in the words, kept until they scroll (D-211)
+	propBuilt       uint64                     // how many snapshots have been kept: the answers' keys carry it (L-F3)
 	propReach       propReach                  // the frequency's reach (W5.2)
 	propReachAsked  propReachKey               // what the reach was last asked for: asked once
 	propAhead       int                        // the hour shown ahead of the snapshot's, 0 for now (FR-1.13)

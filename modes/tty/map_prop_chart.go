@@ -43,6 +43,7 @@ func (t propTarget) near(origin ionomaps.LatLon, radiusKm float64) bool {
 // propChartKey is what the chart's answers are worked out from.
 type propChartKey struct {
 	computed, hour time.Time
+	built          uint64 // which snapshot kept: one rebuilt at the same time is another (L-F3)
 	origin         ionomaps.LatLon
 	radiusKm       float64
 	noise          ionomaps.Noise // the snapshot's: a new noise rebuilds it at the same time (D-187)
@@ -70,7 +71,7 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 	if !ok || !d.mapShown() || !d.inPropagation() || !origin.ok {
 		return propChartKey{}, false
 	}
-	return propChartKey{computed: shown.Computed, hour: shown.Now.At, origin: origin.at, radiusKm: float64(d.propRadiusKm()), noise: shown.Noise}, true
+	return propChartKey{computed: shown.Computed, hour: shown.Now.At, built: d.mapPane.propBuilt, origin: origin.at, radiusKm: float64(d.propRadiusKm()), noise: shown.Noise}, true
 }
 
 // armPropChart asks for the chart when what it is worked out from has
@@ -79,7 +80,9 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 func (d Dashboard) armPropChart() (Dashboard, tea.Cmd) { return d.armAnswer(answerChart) }
 
 // propAnswer names one of the Propagation mode's answers worked out off the
-// UI goroutine.
+// UI goroutine. One body asks for all three: written out for each, the
+// chart's and the centre's are the same code, which the duplicate check
+// refuses (BUILD red team C-4, declined).
 type propAnswer uint8
 
 // The answers.
@@ -92,21 +95,27 @@ const (
 // armAnswer asks for one answer when what it is worked out from has
 // changed, once, in a command (FR-1.17), from the snapshot on screen.
 func (d Dashboard) armAnswer(which propAnswer) (Dashboard, tea.Cmd) {
-	snap := d.propOnScreen()
+	if d.mapPane.viewGen != d.mapPane.viewAsked && (which == answerCentre || d.propRole().origin == propFromCentre) {
+		return d, nil // the view still moving: an answer from or to its centre is asked once it settles, not at every step (P-1)
+	}
 	var cmd tea.Cmd
 	switch which {
 	case answerChart:
 		key, ok := d.propChartWanted()
-		cmd = askAnswer(key, ok, d.mapPane.propChart.key, &d.mapPane.propChartAsked, func() tea.Msg { return propChartMsg{chart: workPropChart(snap, key)} })
+		cmd = askAnswer(&d, key, ok, d.mapPane.propChart.key, &d.mapPane.propChartAsked, func(snap ionomaps.Snapshot, key propChartKey) tea.Msg {
+			return propChartMsg{chart: workPropChart(snap, key)}
+		})
 	case answerReach:
 		key, ok := d.propReachWanted()
-		cmd = askAnswer(key, ok, d.mapPane.propReach.key, &d.mapPane.propReachAsked, func() tea.Msg {
+		cmd = askAnswer(&d, key, ok, d.mapPane.propReach.key, &d.mapPane.propReachAsked, func(snap ionomaps.Snapshot, key propReachKey) tea.Msg {
 			field, err := snap.Reach(key.origin, key.mhz)
 			return propReachMsg{reach: propReach{key: key, field: field, err: err}}
 		})
 	case answerCentre:
 		key, ok := d.propCentreWanted()
-		cmd = askAnswer(key, ok, d.mapPane.propCentre.key, &d.mapPane.propCentreAsked, func() tea.Msg { return propCentreMsg{centre: workPropCentre(snap, key)} })
+		cmd = askAnswer(&d, key, ok, d.mapPane.propCentre.key, &d.mapPane.propCentreAsked, func(snap ionomaps.Snapshot, key propCentreKey) tea.Msg {
+			return propCentreMsg{centre: workPropCentre(snap, key)}
+		})
 	}
 	return d, cmd
 }
@@ -139,13 +148,15 @@ func (d Dashboard) applyPropAnswer(msg tea.Msg) Dashboard {
 
 // askAnswer is how each of the Propagation mode's answers - the chart, the
 // reach, the centre - is asked for: in a command, never in Update
-// (FR-1.17), when what it is worked out from has changed, and once.
-func askAnswer[K comparable](wanted K, ok bool, held K, asked *K, work tea.Cmd) tea.Cmd {
+// (FR-1.17), when what it is worked out from has changed, and once; the
+// snapshot on screen is copied for it only then (P-5).
+func askAnswer[K comparable](d *Dashboard, wanted K, ok bool, held K, asked *K, work func(ionomaps.Snapshot, K) tea.Msg) tea.Cmd {
 	if !ok || wanted == held || wanted == *asked {
 		return nil
 	}
 	*asked = wanted
-	return work
+	snap := d.propOnScreen()
+	return func() tea.Msg { return work(snap, wanted) }
 }
 
 // answered draws an answer kept, and says a refused one in diagnostics

@@ -19,10 +19,23 @@ func chartDash(t *testing.T) Dashboard {
 	return workChart(t, d)
 }
 
+// settled is the dashboard once its view has stood still: the settle tick
+// the harness dropped, delivered (P-1: an answer from or to the centre waits
+// for it).
+func settled(t *testing.T, d Dashboard) Dashboard {
+	t.Helper()
+	if d.mapPane.viewGen == d.mapPane.viewAsked || d.modal != modalMap {
+		return d
+	}
+	m, _ := d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+	return m.(Dashboard)
+}
+
 // workChart runs the chart's command and applies it: the one the last
 // Update armed, which the harness that fed it dropped, asked again.
 func workChart(t *testing.T, d Dashboard) Dashboard {
 	t.Helper()
+	d = settled(t, d)
 	d.mapPane.propChartAsked = propChartKey{}
 	d, cmd := d.armPropChart()
 	if cmd == nil {
@@ -148,7 +161,7 @@ func TestTheOriginFollowsTheUIMode(t *testing.T) {
 		t.Fatalf("Observer's chart answers from %v (%q); the centre is %v (%q)", o, d.mapPane.propOrigin.name, centre, d.viewName())
 	}
 	moved := pressMap(t, d, "right")
-	moved = moved.renderMap()
+	moved = settled(t, moved.renderMap()) // asked once the view stands still (P-1)
 	if _, cmd := moved.armPropChart(); cmd == nil && moved.mapPane.propChartAsked == d.mapPane.propChart.key {
 		t.Error("the map panned and Observer's chart was not asked again")
 	}
@@ -295,5 +308,52 @@ func TestTheChartIsReadableInASCII(t *testing.T) {
 	}
 	if !regexp.MustCompile(`\d+ metres \d\d:\d\d to \d\d:\d\d`).MatchString(words[typical]) {
 		t.Errorf("the typical day does not say a band's open hours: %q", words[typical])
+	}
+}
+
+// TestARebuiltSnapshotIsAnsweredAgain is the BUILD red team's L-F3: the
+// no-readings correction or the stations switched rebuild the snapshot at
+// the same moment, and the chart, the reach and the centre are worked out
+// again for it - never shown from the snapshot they were worked out for.
+func TestARebuiltSnapshotIsAnsweredAgain(t *testing.T) {
+	d := chartDash(t)
+	d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = 7.2, "7.2 MHz"
+	before := d.mapPane.propChart.key
+	rebuilt := propSnapAt(d.mapPane.propSnap.Computed, 25) // the same moment, other values
+	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: rebuilt}, correct: !d.mapPane.propSnapCorrect})
+	d = m.(Dashboard)
+	if !d.mapPane.propSnap.Computed.Equal(before.computed) {
+		t.Fatal("control: the rebuilt snapshot is not of the same moment")
+	}
+	if d.propChartShown() {
+		t.Error("the chart worked out for the snapshot before is shown for the rebuilt one")
+	}
+	if key, ok := d.propReachWanted(); ok && key == d.mapPane.propReach.key && d.mapPane.propReach.key != (propReachKey{}) {
+		t.Error("the reach worked out for the snapshot before is the one wanted for the rebuilt one")
+	}
+	d = workChart(t, d)
+	if !d.propChartShown() || d.mapPane.propChart.key == before {
+		t.Errorf("the rebuilt snapshot's chart is not worked out: %+v", d.mapPane.propChart.key)
+	}
+}
+
+// TestAPanAsksOnceItSettles is the BUILD red team's P-1: on the Observer the
+// chart answers for the map's centre, so a pan held down would ask it again
+// at every half degree; it is asked once the view has stood still.
+func TestAPanAsksOnceItSettles(t *testing.T) {
+	d := chartDash(t)
+	for range 4 {
+		m, _ := d.Update(mapKeyMsg(t, "right"))
+		d = m.(Dashboard)
+	}
+	d.mapPane.propChartAsked = propChartKey{} // what the harness's dropped commands had asked
+	if _, cmd := d.armPropChart(); cmd != nil {
+		t.Error("the chart was asked while the view was still moving")
+	}
+	m, _ := d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+	d = m.(Dashboard)
+	d.mapPane.propChartAsked = propChartKey{}
+	if _, cmd := d.armPropChart(); cmd == nil {
+		t.Error("the chart was not asked once the view stood still")
 	}
 }

@@ -2,6 +2,7 @@ package synth
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,14 +24,36 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// fakeProcs is the process table a sweep sees, and what it ended.
+// fakeProcs is the process table a sweep sees, and what it ended; refuse
+// makes every end fail, and swap changes a process between its two reads.
 type fakeProcs struct {
-	procs map[int]Proc
-	ended []int
+	procs  map[int]Proc
+	ended  []int
+	refuse bool
+	swap   map[int]Proc
+	reads  int
 }
 
-func (f *fakeProcs) Inspect(pid int) (Proc, bool) { p, ok := f.procs[pid]; return p, ok }
-func (f *fakeProcs) End(pid int) error            { f.ended = append(f.ended, pid); return nil }
+func (f *fakeProcs) Inspect(pid int) (Proc, bool) {
+	f.reads++
+	if q, ok := f.swap[pid]; ok && f.reads > 1 {
+		return q, true
+	}
+	p, ok := f.procs[pid]
+	return p, ok
+}
+
+func (f *fakeProcs) End(pid int) error {
+	if f.refuse {
+		return errors.New("operation not permitted")
+	}
+	f.ended = append(f.ended, pid)
+	return nil
+}
+
+// sweepNow is the clock the sweep tests age records by: a day after none of
+// them, so the age-out applies only where a test says.
+var sweepNow = time.Date(2026, 10, 15, 10, 0, 0, 0, time.UTC)
 
 // recordAt writes a child's record as a running watchpost would.
 func recordAt(t *testing.T, dir string, pid, parent int, started time.Time) {
@@ -48,7 +71,7 @@ func TestAnOrphanedSayIsEndedAtStart(t *testing.T) {
 	dir, started := t.TempDir(), time.Date(2026, 10, 15, 9, 0, 0, 0, time.UTC)
 	recordAt(t, dir, 4242, 4000, started)
 	procs := &fakeProcs{procs: map[int]Proc{4242: {UID: 501, PPID: 1, Started: started.Add(time.Second), Args: "say -o /tmp/watchpost-say-123/out.wav -f /tmp/watchpost-say-123/in.txt"}}}
-	if n := SweepOrphans(dir, procs, 501); n != 1 || len(procs.ended) != 1 || procs.ended[0] != 4242 {
+	if n, _ := SweepOrphans(dir, procs, 501, sweepNow); n != 1 || len(procs.ended) != 1 || procs.ended[0] != 4242 {
 		t.Fatalf("the orphan: %d ended, %v", n, procs.ended)
 	}
 	if left, _ := os.ReadDir(dir); len(left) != 0 {
@@ -72,12 +95,13 @@ func TestAnUnrelatedSayIsNeverEnded(t *testing.T) {
 		"another user's":           {Proc{UID: 502, PPID: 1, Started: started, Args: ours.Args}, false},
 		"its watchpost still runs": {Proc{UID: 501, PPID: 4000, Started: started, Args: ours.Args}, true},
 		"no watchpost-say- path":   {Proc{UID: 501, PPID: 1, Started: started, Args: "say hello"}, false},
+		"not the say program":      {Proc{UID: 501, PPID: 1, Started: started, Args: "/usr/bin/tail -f /tmp/watchpost-say-9/out.wav"}, false},
 		"its process ID reused":    {Proc{UID: 501, PPID: 1, Started: started.Add(time.Hour), Args: ours.Args}, false},
 	} {
 		dir := t.TempDir()
 		recordAt(t, dir, 4242, 4000, started)
 		procs := &fakeProcs{procs: map[int]Proc{4242: c.proc}}
-		if n := SweepOrphans(dir, procs, 501); n != 0 || len(procs.ended) != 0 {
+		if n, _ := SweepOrphans(dir, procs, 501, sweepNow); n != 0 || len(procs.ended) != 0 {
 			t.Errorf("%s: ended %v", name, procs.ended)
 		}
 		if left, _ := os.ReadDir(dir); (len(left) == 1) != c.kept {
@@ -86,11 +110,11 @@ func TestAnUnrelatedSayIsNeverEnded(t *testing.T) {
 	}
 	dir := t.TempDir()
 	procs := &fakeProcs{procs: map[int]Proc{4242: ours}}
-	if n := SweepOrphans(dir, procs, 501); n != 0 || len(procs.ended) != 0 {
+	if n, _ := SweepOrphans(dir, procs, 501, sweepNow); n != 0 || len(procs.ended) != 0 {
 		t.Errorf("a say nothing recorded was ended: %v", procs.ended)
 	}
 	recordAt(t, dir, 5151, 4000, started)
-	SweepOrphans(dir, &fakeProcs{procs: map[int]Proc{}}, 501)
+	SweepOrphans(dir, &fakeProcs{procs: map[int]Proc{}}, 501, sweepNow)
 	if left, _ := os.ReadDir(dir); len(left) != 0 {
 		t.Errorf("the record of a process that is gone is kept: %v", left)
 	}
@@ -168,5 +192,34 @@ func TestSayIsTrackedWhileItRuns(t *testing.T) {
 	}
 	if live := LiveChildren(); len(live) != 0 {
 		t.Errorf("after say ended, it is still held: %v", live)
+	}
+}
+
+// TestAnOrphanThatCannotBeEndedIsTriedAgain is the BUILD red team's I-3 and
+// I-4: an orphan whose end fails keeps its record, so the next start tries
+// again, and is counted; a process that changed between the sweep's read and
+// the end - its process ID reused - is never ended; a record a day old whose
+// process runs under another parent is let go.
+func TestAnOrphanThatCannotBeEndedIsTriedAgain(t *testing.T) {
+	started := time.Date(2026, 10, 15, 9, 0, 0, 0, time.UTC)
+	orphan := Proc{UID: 501, PPID: 1, Started: started, Args: "/usr/bin/say -o /tmp/watchpost-say-9/out.wav"}
+	dir := t.TempDir()
+	recordAt(t, dir, 4242, 4000, started)
+	if ended, failed := SweepOrphans(dir, &fakeProcs{procs: map[int]Proc{4242: orphan}, refuse: true}, 501, sweepNow); ended != 0 || failed != 1 {
+		t.Errorf("an end that failed: %d ended, %d failed", ended, failed)
+	}
+	if left, _ := os.ReadDir(dir); len(left) != 1 {
+		t.Errorf("the record of an orphan not ended was let go: %v", left)
+	}
+	reused := Proc{UID: 501, PPID: 1, Started: started.Add(time.Hour), Args: orphan.Args}
+	procs := &fakeProcs{procs: map[int]Proc{4242: orphan}, swap: map[int]Proc{4242: reused}}
+	if ended, _ := SweepOrphans(dir, procs, 501, sweepNow); ended != 0 || len(procs.ended) != 0 {
+		t.Errorf("a process that changed before it was ended was ended: %v", procs.ended)
+	}
+	recordAt(t, dir, 5151, 4000, started)
+	running := Proc{UID: 501, PPID: 4000, Started: started, Args: orphan.Args}
+	SweepOrphans(dir, &fakeProcs{procs: map[int]Proc{5151: running}}, 501, started.Add(recordMaxAge+time.Minute))
+	if left, _ := os.ReadDir(dir); len(left) != 0 {
+		t.Errorf("a record a day old whose process runs under another parent is kept: %v", left)
 	}
 }

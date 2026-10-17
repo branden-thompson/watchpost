@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -61,6 +62,12 @@ func TestTheClientRefusesAnUnlistedHost(t *testing.T) {
 	if _, err := f.Fetch(context.Background(), "http://services.swpc.noaa.gov/text/x.txt", ionomaps.Validators{}); err == nil {
 		t.Error("plain http was asked")
 	}
+	withCredentials := (&url.URL{Scheme: "https", User: url.UserPassword("u", "p"), Host: "services.swpc.noaa.gov", Path: "/text/x.txt"}).String()
+	for _, u := range []string{"https://services.swpc.noaa.gov:8443/text/x.txt", withCredentials} {
+		if _, err := f.Fetch(context.Background(), u, ionomaps.Validators{}); err == nil {
+			t.Errorf("a listed host on another port, or with credentials, was asked (I-6): %s", u)
+		}
+	}
 	if rec.count() != 0 {
 		t.Errorf("the client was asked %d times", rec.count())
 	}
@@ -69,8 +76,10 @@ func TestTheClientRefusesAnUnlistedHost(t *testing.T) {
 		t.Errorf("a reply with no status: %v", err)
 	}
 	rec.answer = nil
-	if _, err := f.Fetch(context.Background(), "https://services.swpc.noaa.gov/text/x.txt", ionomaps.Validators{}); err != nil {
-		t.Errorf("a listed host was refused: %v", err)
+	for _, u := range []string{"https://services.swpc.noaa.gov/text/x.txt", "https://services.swpc.noaa.gov:443/text/x.txt"} {
+		if _, err := f.Fetch(context.Background(), u, ionomaps.Validators{}); err != nil {
+			t.Errorf("a listed host was refused: %v", err)
+		}
 	}
 }
 
@@ -108,11 +117,10 @@ func TestOnlyRateHeadersAreRead(t *testing.T) {
 	}
 }
 
-// TestAnUpdateIsJoinedNotDoubled is FR-4.8 (D-131): updates asked while one
-// runs join it - one ask of NOAA, one result to each. Two updates not joined
-// would also ask NOAA once, since the library answers the second "too soon";
-// the same answer to both is what shows they were one.
-func TestAnUpdateIsJoinedNotDoubled(t *testing.T) {
+// TestTwoUpdatesAskNOAAOnce is FR-4.8 (A-30): updates asked at once run one
+// at a time in go-ionomaps - the second waits for the first and is answered
+// from what it fetched, so NOAA's index is asked once.
+func TestTwoUpdatesAskNOAAOnce(t *testing.T) {
 	rec := &recorder{hold: make(chan struct{})}
 	s, err := New(rec, Options{Clock: fixedClock})
 	if err != nil {
@@ -120,10 +128,8 @@ func TestAnUpdateIsJoinedNotDoubled(t *testing.T) {
 	}
 	a, b := s.Ask(context.Background(), ionomaps.UpdateOptions{}), s.Ask(context.Background(), ionomaps.UpdateOptions{})
 	close(rec.hold)
-	ra, rb := <-a, <-b
-	if ra.Snapshot.Reason != rb.Snapshot.Reason || ra.Snapshot.Reason == ionomaps.TooSoon {
-		t.Errorf("two joined updates were answered %v and %v: a second update ran, and was told too soon", ra.Snapshot.Reason, rb.Snapshot.Reason)
-	}
+	<-a
+	<-b
 	index := 0
 	for _, u := range rec.asked {
 		if strings.HasSuffix(u, "/geojson_2d_urt/") {
@@ -131,7 +137,46 @@ func TestAnUpdateIsJoinedNotDoubled(t *testing.T) {
 		}
 	}
 	if index != 1 {
-		t.Errorf("two joined updates asked the index %d times: %v", index, rec.asked)
+		t.Errorf("two updates asked at once asked the index %d times: %v", index, rec.asked)
+	}
+}
+
+// TestAReopenedModeGetsItsOwnUpdate is the BUILD red team's C-2: a mode left
+// while its update is still ending, then opened again, is answered by an
+// update of its own - never handed the left session's cancelled result,
+// which the window would hide and not ask again until its next tick.
+func TestAReopenedModeGetsItsOwnUpdate(t *testing.T) {
+	slow := make(chan struct{})
+	rec := &recorder{}
+	first := true
+	rec.answer = func(string) (httpx.Answer, error) {
+		rec.mu.Lock()
+		wait := first
+		first = false
+		rec.mu.Unlock()
+		if wait {
+			<-slow // the left session's update, still ending when the mode opens again
+			return httpx.Answer{}, context.Canceled
+		}
+		return httpx.Answer{Status: 404}, nil
+	}
+	s, err := New(rec, Options{Clock: fixedClock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, leave := context.WithCancel(context.Background())
+	gone := s.Ask(left, ionomaps.UpdateOptions{})
+	leave()
+	again := s.Ask(context.Background(), ionomaps.UpdateOptions{})
+	close(slow)
+	<-gone
+	select {
+	case r := <-again:
+		if errors.Is(r.Err, context.Canceled) {
+			t.Errorf("the reopened mode was handed the left session's cancelled update: %v", r.Err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the reopened mode's update never answered")
 	}
 }
 

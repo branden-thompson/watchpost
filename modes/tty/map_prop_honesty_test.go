@@ -164,7 +164,7 @@ func TestTheNoReadingsCorrectionIsASetting(t *testing.T) {
 	if d = runProp(t, d, again); !s.opts[len(s.opts)-1].CorrectNoReadings {
 		t.Errorf("the update after choosing the correction was asked with %+v", s.opts[len(s.opts)-1])
 	}
-	d.mapPane.propBusy = false // the ask the Update loop set off has landed: only the kept correction decides
+	d.mapPane.propSess.busy = false // the ask the Update loop set off has landed: only the kept correction decides
 	if _, more := d.armPropOptions(); more != nil || !d.mapPane.propSnapCorrect {
 		t.Errorf("a snapshot asked with the Setting's correction was asked again, or its correction not kept (%v)", d.mapPane.propSnapCorrect)
 	}
@@ -205,8 +205,8 @@ func TestTheRefreshSettingStatesItsCost(t *testing.T) {
 	s := &seam{answer: PropagationResult{Snapshot: stationsSnap(0, ionomaps.Fresh)}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	if d.propRefreshLabel() != "Every 10 min" || d.mapPane.propTickEvery != 10*time.Minute {
-		t.Fatalf("the Setting starts at %q, its tick %v", d.propRefreshLabel(), d.mapPane.propTickEvery)
+	if d.propRefreshLabel() != "Every 10 min" || d.mapPane.propSess.tickEvery != 10*time.Minute {
+		t.Fatalf("the Setting starts at %q, its tick %v", d.propRefreshLabel(), d.mapPane.propSess.tickEvery)
 	}
 	for _, want := range []struct {
 		label, note string
@@ -221,8 +221,8 @@ func TestTheRefreshSettingStatesItsCost(t *testing.T) {
 		if d, cmd = d.armPropRefresh(); cmd != nil {
 			tick = true
 		}
-		if d.propRefreshLabel() != want.label || !strings.Contains(propRefreshNote(d.mapPropRefresh), want.note) || d.mapPane.propTickEvery != want.every || tick != (want.every > 0) {
-			t.Errorf("%s: the row says %q, costs %q, ticks every %v (a tick set: %v)", want.label, d.propRefreshLabel(), propRefreshNote(d.mapPropRefresh), d.mapPane.propTickEvery, tick)
+		if d.propRefreshLabel() != want.label || !strings.Contains(propRefreshNote(d.mapPropRefresh), want.note) || d.mapPane.propSess.tickEvery != want.every || tick != (want.every > 0) {
+			t.Errorf("%s: the row says %q, costs %q, ticks every %v (a tick set: %v)", want.label, d.propRefreshLabel(), propRefreshNote(d.mapPropRefresh), d.mapPane.propSess.tickEvery, tick)
 		}
 	}
 	if propRefreshByKey("hourly") != refreshHourly || propRefreshByKey("nonsense") != refreshEvery10 || propRefreshKey(refreshOnDemand) != "on-demand" || propRefreshKey(refreshEvery10) != "" {
@@ -281,8 +281,8 @@ func TestTheConsolePropagationModeHonoursTheSharedSettings(t *testing.T) {
 	d.surface, d.mapPropCorrect, d.mapPropRefresh = SurfaceBroadcaster, true, refreshHourly
 	d, cmd := keyCmd(t, d, "P")
 	d = runProp(t, d, cmd)
-	if !s.opts[0].CorrectNoReadings || d.mapPane.propTickEvery != time.Hour {
-		t.Errorf("on the console the update was asked with %+v and ticks every %v", s.opts[0], d.mapPane.propTickEvery)
+	if !s.opts[0].CorrectNoReadings || d.mapPane.propSess.tickEvery != time.Hour {
+		t.Errorf("on the console the update was asked with %+v and ticks every %v", s.opts[0], d.mapPane.propSess.tickEvery)
 	}
 }
 

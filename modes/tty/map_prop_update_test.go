@@ -190,8 +190,8 @@ func TestTheModeRefreshesWhileOpen(t *testing.T) {
 		t.Errorf("a tick from before the mode was left asked again (%d)", s.count())
 	}
 	d, cmd = keyCmd(t, d, "P") // a new session, its update answered: none in flight
-	if d = runProp(t, d, cmd); s.count() != 3 || d.mapPane.propBusy {
-		t.Fatalf("re-entering asked %d in all, busy %v", s.count(), d.mapPane.propBusy)
+	if d = runProp(t, d, cmd); s.count() != 3 || d.mapPane.propSess.busy {
+		t.Fatalf("re-entering asked %d in all, busy %v", s.count(), d.mapPane.propSess.busy)
 	}
 	m, cmd = d.Update(stale)
 	if runProp(t, m.(Dashboard), cmd); s.count() != 3 {

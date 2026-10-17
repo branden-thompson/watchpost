@@ -925,6 +925,7 @@ func stationFrom
 func stationsIn
 func subjectOf
 func suggestHook
+func sweptWords
 func tapeHead
 func tellUnder
 func tempChips

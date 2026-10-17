@@ -31,22 +31,33 @@ type (
 	propTickMsg struct{ gen, seq uint64 }
 )
 
-// askPropagation starts the mode's update, or joins the one running (D-131):
+// propSession is one open Propagation mode's own state (BUILD red team
+// C-3): made as the mode opens and dropped whole when it is left, so nothing
+// of a left session is carried into the next.
+type propSession struct {
+	ctx       context.Context
+	cancel    context.CancelFunc // ends the session's update
+	busy      bool               // an update asked and not yet answered
+	tickEvery time.Duration      // the refresh chain's wait; zero with none set (D-120)
+	applied   int                // snapshots applied, GIRO's following NOAA's at once not counted: past one, a refresh (FR-3.6)
+}
+
+// askPropagation asks for the mode's update (A-30):
 // only in the Propagation mode, with the map the window shown and its
 // acknowledgement closed (FR-4.2, D-81), and one at a time. The seam is
 // called in the command, never on the UI goroutine (FR-4.8).
 func (d Dashboard) askPropagation() (Dashboard, tea.Cmd) {
 	seam := d.cfg.PropagationUpdate
-	ready := seam != nil && !d.mapPane.propBusy && d.modal == modalMap && d.mapMode() == modePropagation
+	ready := seam != nil && !d.mapPane.propSess.busy && d.modal == modalMap && d.mapMode() == modePropagation
 	if !ready {
 		return d, nil
 	}
-	if d.mapPane.propCtx == nil {
-		d.mapPane.propCtx, d.mapPane.propCancel = context.WithCancel(context.Background())
+	if d.mapPane.propSess.ctx == nil {
+		d.mapPane.propSess.ctx, d.mapPane.propSess.cancel = context.WithCancel(context.Background())
 	}
-	d.mapPane.propBusy = true
+	d.mapPane.propSess.busy = true
 	d.mapPane.gen++
-	ctx, gen, opts := d.mapPane.propCtx, d.mapPane.propGen, d.propOptions()
+	ctx, gen, opts := d.mapPane.propSess.ctx, d.mapPane.propGen, d.propOptions()
 	return d, func() tea.Msg {
 		return propUpdatedMsg{gen: gen, res: <-seam(ctx, opts), correct: opts.CorrectNoReadings}
 	}
@@ -75,8 +86,8 @@ func (d Dashboard) armPropOptions() (Dashboard, tea.Cmd) {
 // changed while the mode is open (D-120): hourly from every 10 minutes, or
 // none on demand; a chain set before it asks nothing.
 func (d Dashboard) armPropRefresh() (Dashboard, tea.Cmd) {
-	open := d.mapPane.propCtx != nil && !d.mapPane.propBusy && d.mapPane.propSnap != nil
-	if !open || d.mapPane.propTickEvery == d.mapPropRefresh.every() {
+	open := d.mapPane.propSess.ctx != nil && !d.mapPane.propSess.busy && d.mapPane.propSnap != nil
+	if !open || d.mapPane.propSess.tickEvery == d.mapPropRefresh.every() {
 		return d, nil
 	}
 	return d.nextPropTick()
@@ -86,12 +97,11 @@ func (d Dashboard) armPropRefresh() (Dashboard, tea.Cmd) {
 // result or tick dropped. The last snapshot is kept to show at once when the
 // mode opens again.
 func (d Dashboard) stopPropagation() Dashboard {
-	if d.mapPane.propCancel != nil {
-		d.mapPane.propCancel()
+	if d.mapPane.propSess.cancel != nil {
+		d.mapPane.propSess.cancel()
 	}
-	d.mapPane.propCtx, d.mapPane.propCancel, d.mapPane.propBusy = nil, nil, false
+	d.mapPane.propSess = propSession{}
 	d.mapPane.propGen++
-	d.mapPane.propTickEvery, d.mapPane.propApplied = 0, 0
 	return d.markFound(nil) // a found place is not kept past the mode (D-27)
 }
 
@@ -100,17 +110,18 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 	if v.gen != d.mapPane.propGen {
 		return d, nil // a left session's
 	}
-	d.mapPane.propBusy = false
+	d.mapPane.propSess.busy = false
 	d.mapPane.gen++
 	if propHasField(v.res.Snapshot) {
 		snap := v.res.Snapshot
 		d.mapPane.propSnap, d.mapPane.propSnapCorrect = &snap, v.correct
+		d.mapPane.propBuilt++ // a snapshot rebuilt at the same moment - the correction, the stations - is another (L-F3)
 		if snap.Offset.Measured {
 			d.problem(propOffsetWords(snap.Offset)) // the diagnostics' record of each live offset (FR-5.4)
 		}
 		d.mapPane.propAheadSnaps, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
 		if snap.Reason != ionomaps.StationsNext {
-			d.mapPane.propApplied++ // GIRO's stations, asked at once, complete the first answer (FR-3.6)
+			d.mapPane.propSess.applied++ // GIRO's stations, asked at once, complete the first answer (FR-3.6)
 		}
 		d.mapPane.propUpdatedAt = d.now()
 	}
@@ -132,7 +143,7 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 func (d Dashboard) nextPropTick() (Dashboard, tea.Cmd) {
 	d.mapPane.propTickSeq++
 	every := d.mapPropRefresh.every()
-	d.mapPane.propTickEvery = every
+	d.mapPane.propSess.tickEvery = every
 	if every == 0 {
 		return d, nil
 	}
@@ -171,7 +182,7 @@ func (d Dashboard) propStatusWords() string {
 		return words
 	case err != nil && !errors.Is(err, context.Canceled):
 		return "Propagation · " + strings.TrimPrefix(err.Error(), "ionomaps: ") + " · " + d.firstKey(actMapRefresh) + " refreshes now" // D-120: the key that asks again
-	case d.mapPane.propBusy:
+	case d.mapPane.propSess.busy:
 		return "Propagation · asking NOAA for the newest grid"
 	}
 	return propagationStatus

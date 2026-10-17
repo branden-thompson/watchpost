@@ -1,7 +1,9 @@
 // Package propagation is the Propagation mode's data source (0.19.0 W4.1):
 // the one go-ionomaps object the process holds (FR-4.8), the fetcher it is
-// given over the propagation client (FR-4.4, FR-4.5, FR-4.7), and the one
-// update that runs at a time, joined by any asked while it runs (D-131).
+// given over the propagation client (FR-4.4, FR-4.5, FR-4.7), and its
+// updates, one at a time - go-ionomaps runs one `Update` at a time itself, so
+// an update asked while another runs waits for it and is answered from what
+// it fetched (A-30).
 // Nothing here fetches until an update is asked, and the window asks only
 // once its mode is open and its acknowledgement shown (FR-4.2, D-81).
 package propagation
@@ -46,7 +48,7 @@ type Result struct {
 	Err      error
 }
 
-// Service holds the one library object and the update in flight.
+// Service holds the one library object.
 type Service struct {
 	lib      *ionomaps.Library
 	fetch    *fetcher
@@ -54,14 +56,7 @@ type Service struct {
 	state    string       // the throttle state's file, or "" (D-213)
 	note     func(string) // the diagnostics
 
-	mu      sync.Mutex
-	running *run
-}
-
-// run is an update in flight, and its result once it is done.
-type run struct {
-	done chan struct{}
-	res  Result
+	stateMu sync.Mutex // one write of the state file at a time: two asks' updates end one after the other
 }
 
 // The service's refusals.
@@ -140,6 +135,8 @@ func (s *Service) keepState() {
 	if s.state == "" {
 		return
 	}
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
 	err := os.MkdirAll(filepath.Dir(s.state), 0o700)
 	tmp := s.state + ".tmp"
 	if err == nil {
@@ -157,12 +154,11 @@ func (s *Service) keepState() {
 	s.note("Propagation: GIRO's throttle state was not kept - " + err.Error())
 }
 
-// Ask starts an update with the host's options, or joins the one running
-// (whose options are its own: the caller asks again if they differ), and
-// sends its result.
-// ctx is the mode's: closing the mode ends the update it started; the update
-// also ends at its own deadline. A key press never cancels it. The update
-// runs to its end in its own goroutine and hands its result to every caller.
+// Ask runs an update with the caller's options and sends its result: its
+// own, never another caller's (BUILD red team C-2) - an update asked while
+// one runs waits for it in go-ionomaps and is answered from what it fetched.
+// ctx is the mode's: closing the mode ends the update it asked for; the
+// update also ends at its own deadline. A key press never cancels it.
 func (s *Service) Ask(ctx context.Context, opts ionomaps.UpdateOptions) <-chan Result {
 	out := make(chan Result, 1)
 	made := s != nil && s.lib != nil
@@ -170,25 +166,13 @@ func (s *Service) Ask(ctx context.Context, opts ionomaps.UpdateOptions) <-chan R
 		out <- Result{Err: errNoService}
 		return out
 	}
-	s.mu.Lock()
-	r := s.running
-	if r == nil {
-		r = &run{done: make(chan struct{})}
-		s.running = r
-		go func() {
-			uctx, cancel := context.WithTimeout(ctx, s.deadline)
-			defer cancel()
-			snap, err := s.lib.Update(uctx, opts)
-			s.keepState()
-			r.res = Result{Snapshot: snap, Err: err}
-			s.mu.Lock()
-			s.running = nil
-			s.mu.Unlock()
-			close(r.done)
-		}()
-	}
-	s.mu.Unlock()
-	go func() { <-r.done; out <- r.res }()
+	go func() {
+		uctx, cancel := context.WithTimeout(ctx, s.deadline)
+		defer cancel()
+		snap, err := s.lib.Update(uctx, opts)
+		s.keepState()
+		out <- Result{Snapshot: snap, Err: err}
+	}()
 	return out
 }
 
@@ -217,8 +201,8 @@ func (f *fetcher) Fetch(ctx context.Context, rawURL string, v ionomaps.Validator
 		return ionomaps.Response{}, errUnlisted
 	}
 	host := u.Hostname()
-	if u.Scheme != "https" {
-		return ionomaps.Response{}, errUnlisted
+	if u.Scheme != "https" || u.User != nil || (u.Port() != "" && u.Port() != "443") {
+		return ionomaps.Response{}, errUnlisted // the listed host on its own port, with no credentials (I-6)
 	}
 	if !f.hosts[host] {
 		return ionomaps.Response{}, errUnlisted

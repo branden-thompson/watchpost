@@ -37,6 +37,11 @@ type Procs interface {
 // watchpost-say- directory.
 const sayMarker = "watchpost-say-"
 
+// recordMaxAge is how long a record of a process that is not provably
+// watchpost's is kept: a say lasts seconds, so a record a day old whose
+// process still runs under another parent is its process ID reused (I-4).
+const recordMaxAge = 24 * time.Hour
+
 // startSlack is how far a process's start time may lie from the one
 // recorded and still be the process recorded: the record is written just
 // after the start, and ps reads to the second.
@@ -121,16 +126,19 @@ func writeRecord(dir string, pid, parent int, started time.Time) error {
 
 // SweepOrphans ends the say processes a watchpost killed outright left
 // behind (FR-9.2): a recorded process is ended only when it is the user's
-// own, orphaned (its parent gone, it is the init process's), its arguments
-// name a watchpost-say- path, and it started when the record says. A record
-// whose process is gone, or that was ended, is let go; one whose watchpost
-// still runs is kept. It says how many it ended.
-func SweepOrphans(dir string, procs Procs, uid int) int {
+// own say, orphaned (its parent gone, it is the init process's), its
+// arguments name a watchpost-say- path, and it started when the record says
+// - read again just before it is ended, so a process ID reused between the
+// two is never ended. A record whose process is gone, or that was ended, is
+// let go; one that could not be ended is kept, so the next start tries again;
+// one whose watchpost still runs is kept for a day (I-3, I-4). It says how
+// many it ended, and how many it could not; now is the clock the records
+// are aged by.
+func SweepOrphans(dir string, procs Procs, uid int, now time.Time) (ended, failed int) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return 0
+		return 0, 0
 	}
-	ended := 0
 	for _, e := range entries {
 		pid, ok := strings.CutPrefix(e.Name(), "say-")
 		n, err := strconv.Atoi(pid)
@@ -143,16 +151,27 @@ func SweepOrphans(dir string, procs Procs, uid int) int {
 		switch {
 		case !alive || !ok:
 			_ = os.Remove(path) // gone, or a record that cannot be read
+		case orphanOf(p, uid, started) && !stillOrphan(procs, n, uid, started):
+			_ = os.Remove(path) // changed between the two reads: not provably watchpost's
 		case orphanOf(p, uid, started) && procs.End(n) == nil:
 			ended++
 			_ = os.Remove(path)
-		case p.PPID != 1:
+		case orphanOf(p, uid, started):
+			failed++ // kept: the next start tries again
+		case p.PPID != 1 && now.Sub(started) < recordMaxAge:
 			// its watchpost still runs: the record is kept
 		default:
 			_ = os.Remove(path) // not provably watchpost's: never ended, its record let go
 		}
 	}
-	return ended
+	return ended, failed
+}
+
+// stillOrphan reads a process again just before it is ended: still the
+// orphan its record names.
+func stillOrphan(procs Procs, pid, uid int, started time.Time) bool {
+	p, alive := procs.Inspect(pid)
+	return alive && orphanOf(p, uid, started)
 }
 
 // recordedStart is when a record says its child started.
@@ -173,9 +192,10 @@ func recordedStart(path string) (time.Time, bool) {
 }
 
 // orphanOf is whether a process is provably a say watchpost started and
-// left (I-4): the same user, orphaned, a watchpost-say- path in its
-// arguments, and started when its record says.
+// left (I-4): the same user, orphaned, the say program itself with a
+// watchpost-say- path in its arguments, and started when its record says.
 func orphanOf(p Proc, uid int, started time.Time) bool {
 	gap := p.Started.Sub(started)
-	return p.UID == uid && p.PPID == 1 && strings.Contains(p.Args, sayMarker) && gap <= startSlack && gap >= -startSlack
+	program, _, _ := strings.Cut(p.Args, " ")
+	return p.UID == uid && p.PPID == 1 && filepath.Base(program) == "say" && strings.Contains(p.Args, sayMarker) && gap <= startSlack && gap >= -startSlack
 }

@@ -75,7 +75,7 @@ func (h *propagationHolder) requestStats() httpx.RequestStats {
 	return httpx.RequestStats{}
 }
 
-// propagationUpdate is the window's seam (D-131): the service's update, its
+// propagationUpdate is the window's seam (A-30): the service's update, its
 // result as the window reads it.
 func (lp *livePipelines) propagationUpdate(ctx context.Context, opts ionomaps.UpdateOptions) <-chan tty.PropagationResult {
 	out := make(chan tty.PropagationResult, 1)

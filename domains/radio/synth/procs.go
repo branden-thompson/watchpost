@@ -19,7 +19,7 @@ const psStart = "Mon Jan _2 15:04:05 2006"
 // Inspect reads a process's owner, parent, start time and arguments; false
 // when it is gone or ps cannot say.
 func (SystemProcs) Inspect(pid int) (Proc, bool) {
-	out, err := exec.Command("ps", "-ww", "-o", "uid=,ppid=,lstart=,command=", "-p", strconv.Itoa(pid)).Output()
+	out, err := exec.Command("/bin/ps", "-ww", "-o", "uid=,ppid=,lstart=,command=", "-p", strconv.Itoa(pid)).Output()
 	if err != nil {
 		return Proc{}, false
 	}

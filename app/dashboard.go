@@ -75,7 +75,7 @@ func RunDashboard(version string, opt Options) error {
 	keyOverrides := toKeyMap(cfg.Keys)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stopSay, _ := sayChildren(userCacheSubdir("say-children"), synth.SystemProcs{}) // orphans ended, this run's children held and ended at exit (FR-9.1, FR-9.2)
+	stopSay, swept, unswept := sayChildren(userCacheSubdir("say-children"), synth.SystemProcs{}) // orphans ended, this run's children held and ended at exit (FR-9.1, FR-9.2)
 	defer stopSay()
 
 	applyThemes(cfg.Theme) // built-ins + user theme files; persisted choice (UAT 53)
@@ -92,6 +92,9 @@ func RunDashboard(version string, opt Options) error {
 		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas, // 0.18.0 D-66
 		mapQuakes: newMapQuakes(client, ""),   // 0.18.0 D-122: the map's own quake feeds
 		airnow:    airquality.New(client, "")} // 0.18.0 D-138: AirNow's one national file
+	if w := sweptWords(swept, unswept); w != "" {
+		lp.problems.note(w) // the diagnostics', never the listener's (D-124, I-3)
+	}
 	if rs, rc, err := overClient(radar.NewClient, UserAgent, radarSourcesOver); err == nil {
 		lp.radar, lp.mapClients = rs, append(lp.mapClients, rc) // W8: a radar client that cannot be built is no radar, and the map says none answered
 	}

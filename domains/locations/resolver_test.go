@@ -242,3 +242,21 @@ func TestALocalMatchSendsNothing(t *testing.T) {
 		t.Error("with no fallback, a miss was answered")
 	}
 }
+
+// TestAPositionInAnotherFormNeverGoesOnline is the BUILD red team's I-2
+// (FR-4.9): a position written in a form the parsers do not read is refused
+// here, with how to write it, by every lookup - never sent to the geocoder;
+// a ZIP with its four, a place and not a position, is not refused as one.
+func TestAPositionInAnotherFormNeverGoesOnline(t *testing.T) {
+	r := testResolver(t, offlineOnly{t})
+	for _, q := range []string{"33.2N 117.4W", "33°12'N 117°23'W", "33.2;-117.38", "33.2, -117.38, 10", "DM13af45xy", "DZ13", "33 12 117 23"} {
+		for name, resolve := range map[string]func(context.Context, string) (snapshot.LocationRef, bool, error){"the weather's": r.Resolve, "the Propagation mode's": r.ResolveAnywhere} {
+			if _, fell, err := resolve(context.Background(), q); err == nil || fell || !strings.Contains(err.Error(), "latitude then longitude") {
+				t.Errorf("%s lookup of %q: fell back %v, %v", name, q, fell, err)
+			}
+		}
+	}
+	if positionShaped("92003-1234") || positionShaped("29 Palms") || positionShaped("92003") {
+		t.Error("a ZIP, a ZIP with its four or a town with a figure in its name reads as a position")
+	}
+}
