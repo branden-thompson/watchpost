@@ -358,6 +358,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		DebugScenarios: debugScenarios(), // and empty with it
 		SetRelayLang:   lp.setRelayLang(),
 		Resolve:        resolveHook(resolver, resolverErr),
+		FindPlace:      findHook(resolver, resolverErr), // 0.19.0 FR-1.10: the Propagation mode's finder
 		Suggest:        suggestHook(resolver),
 		Setup:          lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
 		OpenSetup:      openSetup,

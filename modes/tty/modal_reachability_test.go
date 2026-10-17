@@ -90,6 +90,7 @@ var reachabilityBaseline = map[modal]int{
 	modalPropAck:    0, // its arrows scroll it: every word of the acknowledgement is on screen at the floor (D-81)
 	modalPropChart:  0, // PgDn scrolls it, its arrows picking the row its day is drawn for (D-176)
 	modalPropFreq:   0, // the entry fits at the floor (D-178)
+	modalPropFind:   0, // the finder fits at the floor (FR-1.10)
 }
 
 // reachabilityNote is what is KNOWN about a non-zero baseline, so the number is

@@ -673,6 +673,7 @@ func fieldBoxes
 func fieldGrid
 func fillDays
 func fillPast
+func findHook
 func fireChosen
 func fireHosts
 func fireLayerCost

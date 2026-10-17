@@ -34,8 +34,22 @@ func NewGeocoder(client *httpx.Client, base string) *Geocoder {
 }
 
 // Resolve returns the best match for a query, with zip and timezone populated
-// (R-2': the rendered label always carries a zip when one exists).
+// (R-2': the rendered label always carries a zip when one exists); a place
+// the weather does not cover is refused.
 func (g *Geocoder) Resolve(ctx context.Context, query string) (snapshot.LocationRef, error) {
+	return g.search(ctx, query, false)
+}
+
+// ResolveWorld is Resolve for the Propagation mode, which answers anywhere
+// (0.19.0 FR-1.10, D-61): any country's place, and the answer never kept -
+// the request is not cached, so no query is held on disk.
+func (g *Geocoder) ResolveWorld(ctx context.Context, query string) (snapshot.LocationRef, error) {
+	return g.search(ctx, query, true)
+}
+
+// search asks the geocoder: refusing a place outside the weather's coverage
+// unless world, and, for world, keeping no cached answer.
+func (g *Geocoder) search(ctx context.Context, query string, world bool) (snapshot.LocationRef, error) {
 	if err := invariant.Check(query != "", "cannot resolve an empty location query"); err != nil {
 		return snapshot.LocationRef{}, err
 	}
@@ -52,14 +66,18 @@ func (g *Geocoder) Resolve(ctx context.Context, query string) (snapshot.Location
 		} `json:"results"`
 	}
 	u := fmt.Sprintf("%s/v1/search?count=5&name=%s", g.base, url.QueryEscape(query))
-	if _, err := g.client.GetJSON(ctx, u, &payload); err != nil {
+	var opts []httpx.Option
+	if world {
+		opts = append(opts, httpx.NoCache()) // never kept (FR-1.10)
+	}
+	if _, err := g.client.GetJSON(ctx, u, &payload, opts...); err != nil {
 		return snapshot.LocationRef{}, fmt.Errorf("geocoding: %w", err) // never the query (FR-4.9): the URL's name is redacted
 	}
 	if len(payload.Results) == 0 {
 		return snapshot.LocationRef{}, errors.New("no location found by that name — try 'City, ST' or a zip code")
 	}
 	r := payload.Results[0]
-	if r.CountryCode != "" && !coverage.NWS(r.CountryCode) { // the same answer as the offline index (round 2 N-2)
+	if !world && r.CountryCode != "" && !coverage.NWS(r.CountryCode) { // the same answer as the offline index (round 2 N-2)
 		return snapshot.LocationRef{}, errors.New(coverage.Outside(r.Name + ", " + r.CountryCode))
 	}
 	label := r.Name

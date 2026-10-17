@@ -85,14 +85,14 @@ const (
 // invisibleKeys are the window's keys whose effect is not on screen in a
 // mode, each with why that is right.
 var invisibleKeys = map[string]map[string]string{
-	"with": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly},
-	"off":  {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly},
+	"with": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly, "/": propOnly},
+	"off":  {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly, "/": propOnly},
 	"instead": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits,
 		"up": viewUnseen, "down": viewUnseen, "left": viewUnseen, "right": viewUnseen, "+": viewUnseen, "=": viewUnseen, "-": viewUnseen,
-		"A": boxIsWords, "space": playUnseen, "1": regionNamed, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly},
+		"A": boxIsWords, "space": playUnseen, "1": regionNamed, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly, "/": propOnly},
 	"ascii": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits,
 		"up": viewUnseen, "down": viewUnseen, "left": viewUnseen, "right": viewUnseen, "+": viewUnseen, "=": viewUnseen, "-": viewUnseen,
-		"A": boxIsWords, "space": playUnseen, "1": regionNamed, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly},
+		"A": boxIsWords, "space": playUnseen, "1": regionNamed, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly, "/": propOnly},
 }
 
 // TestTheMenusFocusStaysOnScreenWithoutAPicture is D-267: the menu drawn as

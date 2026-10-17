@@ -73,3 +73,34 @@ func TestTheGeocoderQueryIsRedacted(t *testing.T) {
 		}
 	}
 }
+
+// TestTheOnlineFallbackIsUncached is 0.19.0 FR-1.10 (D-61): the Propagation
+// mode's lookup answers a place in any country, and keeps no answer - the
+// same query asked twice is asked of the geocoder twice, where the weather's
+// lookup is answered the second time from its cache.
+func TestTheOnlineFallbackIsUncached(t *testing.T) {
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		w.Header().Set("Cache-Control", "max-age=3600")
+		_, _ = w.Write([]byte(`{"results":[{"name":"Reykjavik","latitude":64.1,"longitude":-21.9,"country_code":"IS","timezone":"Atlantic/Reykjavik"}]}`))
+	}))
+	defer srv.Close()
+	c, err := httpx.New(httpx.Config{UserAgent: "t", RatePerSec: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := NewGeocoder(c, srv.URL)
+	for range 2 {
+		ref, err := g.ResolveWorld(context.Background(), "Reykjavik")
+		if err != nil || ref.Label != "Reykjavik, IS" || ref.Lat != 64.1 {
+			t.Fatalf("a place in Iceland: %+v, %v", ref, err)
+		}
+	}
+	if hits != 2 {
+		t.Errorf("the world lookup asked %d times for two lookups; never kept, it asks each time", hits)
+	}
+	if _, err := g.Resolve(context.Background(), "Reykjavik"); err == nil {
+		t.Error("control: the weather's lookup took a place it does not cover")
+	}
+}

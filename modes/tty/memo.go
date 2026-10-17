@@ -293,23 +293,25 @@ type modalKey struct {
 	// THE MAP'S DRAW, by generation, and why it could not draw (0.18.0 W2.1).
 	// The lines are drawn in Update and raise the generation each time, so the
 	// key moves with every frame the library gave (F-30's rule, D-45).
-	mapGen        uint64
-	mapFailed     string
-	mapOffline    bool           // the status line's offline note
-	mapStatus     tuimaps.Status // and whether the picture is whole
-	mapPending    bool           // and whether it is still loading
-	mapOutside    string         // the place in no region, which the window states instead
-	mapProp       bool           // the Propagation mode
-	mapPropSay    string         // its status, as said
-	mapPropLyr    int            // its layer
-	propChart     propChartKey   // the chart window's answers (D-176)
-	mapPropRadius int            // the near-vertical radius the block says (D-100)
-	freqQuery     string         // the frequency entry as typed, why it was not taken, and the frequency held (D-178)
-	freqErr       string
-	freqHeld      float64
-	chartRow      int    // and the row its typical day is drawn for; position: a row of the chart's fixed targets (#12)
-	mapNotes      string // the feed's notes, printed under the map
-	mapLegend     bool   // the legend over the map
+	mapGen                        uint64
+	mapFailed                     string
+	mapOffline                    bool           // the status line's offline note
+	mapStatus                     tuimaps.Status // and whether the picture is whole
+	mapPending                    bool           // and whether it is still loading
+	mapOutside                    string         // the place in no region, which the window states instead
+	mapProp                       bool           // the Propagation mode
+	mapPropSay                    string         // its status, as said
+	mapPropLyr                    int            // its layer
+	propChart                     propChartKey   // the chart window's answers (D-176)
+	mapPropRadius                 int            // the near-vertical radius the block says (D-100)
+	freqQuery                     string         // the frequency entry as typed, why it was not taken, and the frequency held (D-178)
+	findQuery, findErr, findLabel string         // the place finder's: what is typed, why none was found, the place marked (FR-1.10)
+	findBusy                      bool
+	freqErr                       string
+	freqHeld                      float64
+	chartRow                      int    // and the row its typical day is drawn for; position: a row of the chart's fixed targets (#12)
+	mapNotes                      string // the feed's notes, printed under the map
+	mapLegend                     bool   // the legend over the map
 }
 
 // modalMemo is the single slot.
@@ -348,6 +350,11 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.freqHeld = d.mapPane.propFreqMHz
 	case modalPropFreq:
 		k.freqQuery, k.freqErr, k.freqHeld = d.mapPane.propFreqQuery, d.mapPane.propFreqErr, d.mapPane.propFreqMHz
+	case modalPropFind:
+		k.findQuery, k.findErr, k.findBusy = d.mapPane.propFindQuery, d.mapPane.propFindErr, d.mapPane.propFindBusy
+		if f := d.mapPane.propFound; f != nil {
+			k.findLabel = f.Label
+		}
 	case modalMap:
 		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
 		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending

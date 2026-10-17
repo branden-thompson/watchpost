@@ -108,7 +108,7 @@ func TestAPropagationFieldCrossesTheSea(t *testing.T) {
 // the weather modes L and U do nothing.
 func TestEveryPropagationControlIsAnAction(t *testing.T) {
 	km := defaultMapKeyMap()
-	for act, key := range map[term.Action]string{actMapProp: "P", actMapLayer: "L", actMapRefresh: "U"} {
+	for act, key := range map[term.Action]string{actMapProp: "P", actMapLayer: "L", actMapRefresh: "U", actMapFind: "/"} {
 		if !slices.Equal(km[act].Keys, []string{key}) || !slices.Contains(mapActions, act) || km[act].Help == "" {
 			t.Errorf("%s is %+v, listed %v; want %s", act, km[act], slices.Contains(mapActions, act), key)
 		}
@@ -147,7 +147,7 @@ func TestHelpFitsWithThePropagationKeys(t *testing.T) {
 		m, _ := d.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		d = m.(Dashboard).open(modalHelp)
 		text := strings.Join(strings.Fields(stripANSITest(strings.Join(d.modalLines(), " "))), " ") // wrapped at the floor: read as one text
-		for _, want := range []string{"Radar Mode / Forecast Hi-Lo", "Propagation / Layer / Refresh Now", "Zoom In / Out / Scroll"} {
+		for _, want := range []string{"Radar Mode / Forecast Hi-Lo", "Propagation / Layer / Refresh / Find", "Zoom In / Out / Scroll"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("%dx%d: Help lacks %q", size[0], size[1], want)
 			}

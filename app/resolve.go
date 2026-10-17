@@ -53,3 +53,19 @@ func resolveHook(r *locations.Resolver, buildErr error) func(string) (snapshot.L
 		return ref, nil
 	}
 }
+
+// findHook is the Propagation mode's place finder (0.19.0 FR-1.10): the
+// resolver's lookup anywhere on the globe - local first, online only on a
+// miss, uncached - under the lookup's own deadline. Its answer is never
+// kept: nothing here saves it.
+func findHook(r *locations.Resolver, buildErr error) func(string) (snapshot.LocationRef, error) {
+	if buildErr != nil {
+		return func(string) (snapshot.LocationRef, error) { return snapshot.LocationRef{}, buildErr }
+	}
+	return func(query string) (snapshot.LocationRef, error) {
+		rctx, done := lookupContext()
+		defer done()
+		ref, _, err := r.ResolveAnywhere(rctx, query)
+		return ref, err
+	}
+}

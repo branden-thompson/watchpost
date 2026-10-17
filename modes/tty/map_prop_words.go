@@ -39,6 +39,9 @@ func (d Dashboard) propWords(lat, lon float64) []string {
 	if a := d.propAheadWords(lat, lon); a != "" {
 		out = append(out, spoken(a)) // an hour ahead: typical, before the place (FR-1.13, D-136)
 	}
+	if f := d.propFoundWords(); f != "" {
+		out = append(out, spoken(f)) // the place found, said (FR-1.10)
+	}
 	out = append(out, d.propOriginWords()...)
 	out = append(out, d.propStatusBlock())
 	if d.mapPane.propApplied < 2 {

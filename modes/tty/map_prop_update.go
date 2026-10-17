@@ -92,7 +92,7 @@ func (d Dashboard) stopPropagation() Dashboard {
 	d.mapPane.propCtx, d.mapPane.propCancel, d.mapPane.propBusy = nil, nil, false
 	d.mapPane.propGen++
 	d.mapPane.propTickEvery, d.mapPane.propApplied = 0, 0
-	return d
+	return d.markFound(nil) // a found place is not kept past the mode (D-27)
 }
 
 // applyPropUpdated keeps an update's result and sets the next refresh tick.

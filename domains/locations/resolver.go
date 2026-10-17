@@ -30,6 +30,13 @@ type Fallback interface {
 	Resolve(ctx context.Context, query string) (snapshot.LocationRef, error)
 }
 
+// WorldFallback is the online resolver's answer anywhere, uncached (0.19.0
+// FR-1.10): the Propagation mode's lookup, which the weather's coverage does
+// not bound.
+type WorldFallback interface {
+	ResolveWorld(ctx context.Context, query string) (snapshot.LocationRef, error)
+}
+
 // Resolver combines the embedded index with the online fallback.
 type Resolver struct {
 	idx      *geodata.Index
@@ -57,7 +64,7 @@ func (r *Resolver) TypeAhead(query string, limit int) []Suggestion {
 	if q == "" {
 		return nil
 	}
-	if ref, typed, err := typedPlace(q); typed {
+	if ref, typed, err := typedPlace(q, false); typed {
 		if err != nil {
 			return nil
 		}
@@ -100,7 +107,7 @@ func (r *Resolver) Resolve(ctx context.Context, query string) (ref snapshot.Loca
 	if err := invariant.Check(q != "", "cannot resolve an empty location query"); err != nil {
 		return snapshot.LocationRef{}, false, err
 	}
-	if ref, typed, err := typedPlace(q); typed {
+	if ref, typed, err := typedPlace(q, false); typed {
 		return ref, false, err // coordinates and locators are read here and never go online (FR-4.9)
 	}
 	if zipRe.MatchString(q) {
@@ -126,11 +133,46 @@ func (r *Resolver) Resolve(ctx context.Context, query string) (ref snapshot.Loca
 	return ref, true, nil
 }
 
+// ResolveAnywhere is Resolve for the Propagation mode (0.19.0 FR-1.10, the
+// mode-aware coverage gate): coordinates and locators anywhere on the globe,
+// a ZIP, and the embedded index's cities in any country, all answered here
+// and sending nothing; only when nothing local matches does the online
+// geocoder answer, uncached. fellBack reports that it did.
+func (r *Resolver) ResolveAnywhere(ctx context.Context, query string) (ref snapshot.LocationRef, fellBack bool, err error) {
+	q := strings.TrimSpace(query)
+	if err := invariant.Check(q != "", "cannot resolve an empty location query"); err != nil {
+		return snapshot.LocationRef{}, false, err
+	}
+	if ref, typed, err := typedPlace(q, true); typed {
+		return ref, false, err
+	}
+	if zipRe.MatchString(q) {
+		if z, ok := r.idx.Zip(q); ok {
+			return r.zipToRef(z, q), false, nil
+		}
+	} else if hits := r.idx.PrefixSearch(cityPart(q), 8); len(hits) > 0 {
+		if c, ok := pickCity(hits, q); ok {
+			return cityToRef(r.idx, c), false, nil
+		}
+	}
+	world, ok := r.fallback.(WorldFallback)
+	if !ok {
+		return snapshot.LocationRef{}, false, errors.New("no match in the offline index - try a city, coordinates or a grid locator") // never the query (FR-4.9)
+	}
+	lookup := world.ResolveWorld // through a value: P10-01 matches calls by bare name (D-202)
+	ref, err = lookup(ctx, q)
+	if err != nil {
+		return snapshot.LocationRef{}, false, err
+	}
+	return ref, true, nil
+}
+
 // typedPlace reads a place typed as coordinates ("33.2, -117.38") or a
 // Maidenhead locator ("DM13af"), locally (FR-4.9, FR-1.10): typed is false
-// for any other query. A pair of numbers that is not on the globe, or a
-// place in no region the weather covers, is refused here, offline.
-func typedPlace(q string) (ref snapshot.LocationRef, typed bool, err error) {
+// for any other query. A pair of numbers that is not on the globe is refused
+// here, offline; so is a place in no region the weather covers, unless
+// anywhere - the Propagation mode's lookup.
+func typedPlace(q string, anywhere bool) (ref snapshot.LocationRef, typed bool, err error) {
 	at, label := geo.LatLon{}, ""
 	if p, ok := geo.ParseCoordinates(q); ok {
 		at, label = p, fmt.Sprintf("%.4f, %.4f", p.Lat, p.Lon)
@@ -141,7 +183,7 @@ func typedPlace(q string) (ref snapshot.LocationRef, typed bool, err error) {
 	} else {
 		return snapshot.LocationRef{}, false, nil
 	}
-	if _, in := geo.RegionOf(at.Lat, at.Lon); !in {
+	if _, in := geo.RegionOf(at.Lat, at.Lon); !in && !anywhere {
 		return snapshot.LocationRef{}, true, errors.New(coverage.Outside(label))
 	}
 	return snapshot.LocationRef{Label: label, Lat: at.Lat, Lon: at.Lon}, true, nil
@@ -255,4 +297,7 @@ func (r *Resolver) zipToRef(z geodata.ZipRow, zip string) snapshot.LocationRef {
 	return snapshot.LocationRef{Label: label, Zip: zip, Lat: z.Lat, Lon: z.Lon, TZ: tz}
 }
 
-var _ Fallback = (*openmeteo.Geocoder)(nil) // compile-time interface pin
+var (
+	_ Fallback      = (*openmeteo.Geocoder)(nil) // compile-time interface pins
+	_ WorldFallback = (*openmeteo.Geocoder)(nil)
+)

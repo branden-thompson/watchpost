@@ -148,8 +148,11 @@ type Config struct {
 	MapDetailLevel  string // D-67: the file's word for the detail level; Weather by default
 	MapAreaName     func(centre tuimaps.LonLat, widthKm float64) string
 	Resolve         func(query string) (snapshot.LocationRef, error)
-	Commit          func(watch, recent []snapshot.LocationRef) error
-	SetTheme        func(name string) error // live theme switch + persist (UAT 53)
+	// FindPlace finds a place anywhere on the globe for the Propagation mode
+	// (0.19.0 FR-1.10): locally first, and only on a miss online, uncached.
+	FindPlace func(query string) (snapshot.LocationRef, error)
+	Commit    func(watch, recent []snapshot.LocationRef) error
+	SetTheme  func(name string) error // live theme switch + persist (UAT 53)
 
 	// 0.14.0 — the WATCHPOST UI group's three display preferences, written
 	// together when Settings closes. One hook rather than three: they are one
@@ -1206,6 +1209,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyPropAnswer(v), nil // W5: the chart, the reach, the centre
 	case propAheadMsg:
 		return d.applyPropAhead(v), nil
+	case propFoundMsg:
+		return d.applyPropFound(v) // FR-1.10: a find's answer, kept in Update
 	case propUpdatedMsg:
 		return d.applyPropUpdated(v) // W4.1: the Propagation mode's update, kept in Update
 	case propTickMsg:
@@ -1497,6 +1502,7 @@ const (
 	modalPropAck   // the Propagation mode's acknowledgement, over the map (D-46, D-81)
 	modalPropChart // B: the Propagation mode's reference chart, over the map (D-176)
 	modalPropFreq  // F: the Propagation mode's frequency entry, over the map (D-178)
+	modalPropFind  // /: the Propagation mode's place finder, over the map (FR-1.10)
 
 	// numModals bounds the set; it is not itself a modal. It exists so the
 	// memo-completeness guard can DERIVE the list of windows rather than carry

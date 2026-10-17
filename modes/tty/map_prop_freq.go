@@ -146,11 +146,17 @@ func (d Dashboard) roundDistance(km float64) string {
 // openPropFreq is F: the frequency entry over the map, in the Propagation
 // mode alone, holding the frequency already held.
 func (d Dashboard) openPropFreq() Dashboard {
+	d.mapPane.propFreqQuery, d.mapPane.propFreqErr = "", ""
+	return d.openInPropagation(modalPropFreq)
+}
+
+// openInPropagation opens one of the Propagation mode's entries over the
+// map: in that mode alone.
+func (d Dashboard) openInPropagation(m modal) Dashboard {
 	if !d.inPropagation() {
 		return d
 	}
-	d.mapPane.propFreqQuery, d.mapPane.propFreqErr = "", ""
-	return d.open(modalPropFreq)
+	return d.open(m)
 }
 
 // propFreqWidth is the entry's width: within the 80-column floor.

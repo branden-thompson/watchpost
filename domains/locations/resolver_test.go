@@ -202,3 +202,43 @@ func TestNoLookupErrorQuotesTheQuery(t *testing.T) {
 		t.Errorf("offline, no match: %v", err)
 	}
 }
+
+// worldFallback counts the online asks the Propagation mode's lookup makes.
+type worldFallback struct {
+	fakeFallback
+	world int
+}
+
+func (w *worldFallback) ResolveWorld(_ context.Context, q string) (snapshot.LocationRef, error) {
+	w.world++
+	return snapshot.LocationRef{Label: "Online Place, XX", Lat: 10, Lon: 20}, nil
+}
+
+// TestALocalMatchSendsNothing is 0.19.0 FR-1.10 (D-61, the mode-aware
+// coverage gate): the Propagation mode's lookup answers a world city from
+// the embedded index, and coordinates and a locator anywhere on the globe,
+// sending nothing; only a query nothing local matches goes online - where
+// the weather's lookup refuses what it does not cover.
+func TestALocalMatchSendsNothing(t *testing.T) {
+	fb := &worldFallback{}
+	r := testResolver(t, fb)
+	for q, wantLat := range map[string]float64{"London": 51.5, "64.1466, -21.9426": 64.1466, "IO91wm": 51.5} {
+		ref, fellBack, err := r.ResolveAnywhere(context.Background(), q)
+		if err != nil || fellBack || ref.Lat < wantLat-0.5 || ref.Lat > wantLat+0.5 {
+			t.Errorf("%q: %+v, fell back %v, %v", q, ref, fellBack, err)
+		}
+	}
+	if fb.world != 0 || fb.called {
+		t.Errorf("local matches went online: %d world asks, weather's %v", fb.world, fb.called)
+	}
+	if _, _, err := r.Resolve(context.Background(), "64.1466, -21.9426"); err == nil {
+		t.Error("control: the weather's lookup took coordinates it does not cover")
+	}
+	if ref, fellBack, err := r.ResolveAnywhere(context.Background(), "Zzyzxville Nowhere"); err != nil || !fellBack || fb.world != 1 || ref.Label != "Online Place, XX" {
+		t.Errorf("a query nothing local matches: %+v, fell back %v, %d asks, %v", ref, fellBack, fb.world, err)
+	}
+	offline := testResolver(t, nil)
+	if _, _, err := offline.ResolveAnywhere(context.Background(), "Zzyzxville Nowhere"); err == nil {
+		t.Error("with no fallback, a miss was answered")
+	}
+}
