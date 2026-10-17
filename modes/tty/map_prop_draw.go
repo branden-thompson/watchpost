@@ -71,13 +71,19 @@ func (d Dashboard) propOverlays() []tuimaps.Overlay {
 	return out // the night is the map's, drawn in every mode that wants it (D-199)
 }
 
-// propNightMoment is the moment the night is drawn for: the clock, to the
-// step; an hour ahead, the middle of that hour.
+// propNightMoment is the moment the night is drawn for: the field's own
+// time, to the step - the sun as it stood when the field was made, however
+// old the field (W3.1); an hour ahead, the middle of that hour; the clock
+// before any field.
 func (d Dashboard) propNightMoment() time.Time {
-	if shown, ok := d.propShown(); ok && d.mapPane.propAhead > 0 {
+	shown, ok := d.propShown()
+	switch {
+	case !ok:
+		return d.now().UTC().Truncate(nightStep)
+	case d.mapPane.propAhead > 0:
 		return shown.Hours[0].At.Add(30 * time.Minute).UTC()
 	}
-	return d.now().UTC().Truncate(nightStep)
+	return shown.Hours[0].At.UTC().Truncate(nightStep)
 }
 
 // setProp hands the library the Propagation mode's overlays as they stand,

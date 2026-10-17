@@ -57,17 +57,11 @@ func (d Dashboard) describeLinesAll() []string { return d.describeUpTo(0) }
 func (d Dashboard) describeUpTo(most int) []string {
 	loc := d.mapPlace()
 	if loc == nil {
-		return nil
+		return d.layerWords() // no place to say: what the layers draw is still said (FR-3.3)
 	}
 	v := d.viewBox(d.mapBodySize())
 	here := d.mapPane.m == nil || v.Contains(loc.Lat, loc.Lon)
-	out := []string{d.viewHeading(*loc, here)}
-	if w := d.zoneWords(); w != "" {
-		out = append(out, w) // the red circle said without the picture, in every mode (D-195)
-	}
-	if w := d.nightWords(); w != "" {
-		out = append(out, w) // the night said where it is drawn (D-199)
-	}
+	out := append([]string{d.viewHeading(*loc, here)}, d.layerWords()...) // before the alerts' early returns (FR-3.3)
 	if d.mapMode() == modePropagation {
 		return append(out, d.propWords(loc.Lat, loc.Lon)...) // no alert is drawn in it (D-21); its words in D-136's order (W6.1)
 	}
@@ -112,6 +106,23 @@ func (d Dashboard) describeUpTo(most int) []string {
 		said = append(said[:most-1], "And "+strconv.Itoa(len(said)-most+1)+" more in view.")
 	}
 	return append(out, said...)
+}
+
+// mapLayerSentences are the layers that add a sentence to the description
+// (FR-3.3, AX-C): the service area's circle (D-195) and the night (D-199);
+// a layer added later adds its own here, said in every case the alerts'
+// words return early from.
+var mapLayerSentences = []func(Dashboard) string{Dashboard.zoneWords, Dashboard.nightWords}
+
+// layerWords are the sentences the layers drawn add, in order.
+func (d Dashboard) layerWords() []string {
+	var out []string
+	for _, say := range mapLayerSentences {
+		if w := say(d); w != "" {
+			out = append(out, w)
+		}
+	}
+	return out
 }
 
 // viewHeading is the description's first line: the place and how it is now

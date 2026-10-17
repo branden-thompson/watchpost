@@ -209,19 +209,6 @@ func TestAnswersNeverBlockTheUI(t *testing.T) {
 	}
 }
 
-// TestTheNightFollowsTheClock is L-4.3 in the mode: as the clock moves a
-// step, the night handed in moves with it, with nothing else changing.
-func TestTheNightFollowsTheClock(t *testing.T) {
-	d, _ := drawnDash(t)
-	later := d.now().Add(2 * nightStep)
-	d.now = func() time.Time { return later }
-	m, _ := d.Update(struct{}{})
-	night, ok := m.(Dashboard).mapPane.nightGiven[mapNightID]
-	if want := later.UTC().Truncate(nightStep); !ok || !night.Valid.Equal(want) {
-		t.Errorf("the night handed in is for %v (%v); the clock says %v", night.Valid, ok, want)
-	}
-}
-
 // TestTheNightIsDrawnOnThePropagationMap is go-tuiMaps P4 in the mode
 // (L-4.1 to L-4.3, D-174): the terminator and the night side are handed in
 // with the field, for the moment shown, whatever the Day / night switch

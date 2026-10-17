@@ -92,3 +92,78 @@ func TestThePropagationModeAlwaysDrawsTheNight(t *testing.T) {
 		}
 	}
 }
+
+// TestTheTerminatorIsDrawnForTheFieldsTime is W3.1 (D-174): in the
+// Propagation mode the night is drawn for the field's own time, not the
+// clock's, however long the field is held; an hour ahead, for the middle of
+// that hour.
+func TestTheTerminatorIsDrawnForTheFieldsTime(t *testing.T) {
+	d, _ := drawnDash(t)
+	later := drawnAt.Add(50 * time.Minute)
+	d.now = func() time.Time { return later }
+	m, _ := d.Update(struct{}{})
+	d = m.(Dashboard)
+	if got := d.mapPane.nightGiven[mapNightID].Valid; !got.Equal(drawnAt.Truncate(nightStep)) {
+		t.Errorf("a field made at %v, the clock at %v: the night is drawn for %v", drawnAt, later, got)
+	}
+	next := drawnAt.Add(40 * time.Minute)
+	m, _ = d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: propSnapAt(next, 18)}})
+	if d = m.(Dashboard); !d.mapPane.nightGiven[mapNightID].Valid.Equal(next) {
+		t.Errorf("a field made at %v: the night is drawn for %v", next, d.mapPane.nightGiven[mapNightID].Valid)
+	}
+	d = stepAhead(t, d, "shift+right")
+	if got, want := d.mapPane.nightGiven[mapNightID].Valid, next.Add(time.Hour+30*time.Minute); !got.Equal(want) {
+		t.Errorf("an hour ahead the night is drawn for %v; the middle of the hour, %v", got, want)
+	}
+}
+
+// TestALayerAddsItsSentence is FR-3.3 (AX-C, N-9): a layer's sentence is
+// said in each of the four cases the alerts' words return early from - the
+// alerts switched off, the alerts never asked, the selected place out of
+// view, and no selected place at all.
+func TestALayerAddsItsSentence(t *testing.T) {
+	on := menuKey(t, at(t, menuMap(t), nightDetailKey), "space")
+	on.mapPane.menuOn = false
+	const night = "The night side is shaded and its edge dotted"
+	says := func(d Dashboard) bool { return strings.Contains(strings.Join(d.describeLinesAll(), " "), night) }
+	if !says(on) {
+		t.Fatal("control: the night is not said with everything in place")
+	}
+	off := on
+	off.cfg.MapLayers = slices.Clone(on.cfg.MapLayers)
+	for i := range off.cfg.MapLayers {
+		if off.cfg.MapLayers[i].Key == AlertLayer {
+			off.cfg.MapLayers[i].On = false
+		}
+	}
+	off.mapLayerChoice = ""
+	unasked := on
+	unasked.mapPane.lanes[laneAlerts] = feedLane{} // an array: the copy is its own
+	away := on
+	for range 12 {
+		away = pressMap(t, away, "right")
+	}
+	nowhere := on
+	nowhere.selected = 1 << 20
+	for _, c := range []struct {
+		name    string
+		d       Dashboard
+		control func(Dashboard) bool
+	}{
+		{"the alerts switched off", off, func(d Dashboard) bool { return slices.Contains(d.describeLinesAll(), alertLayerOffText) }},
+		{"the alerts never asked", unasked, func(d Dashboard) bool { return slices.Contains(d.describeLinesAll(), mapAlertsLoadingText) }},
+		{"the place out of view", away, func(d Dashboard) bool {
+			loc := d.mapPlace()
+			return loc != nil && !d.viewBox(d.mapBodySize()).Contains(loc.Lat, loc.Lon)
+		}},
+		{"no selected place", nowhere, func(d Dashboard) bool { return d.mapPlace() == nil }},
+	} {
+		if !c.control(c.d) {
+			t.Errorf("%s: control: the case is not in force", c.name)
+			continue
+		}
+		if !says(c.d) {
+			t.Errorf("%s: the night's sentence is not said: %q", c.name, c.d.describeLinesAll())
+		}
+	}
+}
