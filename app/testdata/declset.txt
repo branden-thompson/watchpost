@@ -660,6 +660,7 @@ func dumpHint
 func dumpHint
 func durationUnits
 func echoes
+func endOnHangUp
 func envWatchlistDwell
 func errKind
 func eventNarration
@@ -874,6 +875,7 @@ func savePropagationAck
 func saveRadioMode
 func saveRadioPrefs
 func saveTones
+func sayChildren
 func scenarioKeyFor
 func scopeEvents
 func scopeFor

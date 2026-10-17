@@ -40,8 +40,8 @@ type bodyKey struct {
 	controlRows    int
 	window, days   int
 	snap, recent   *snapshot.Snapshot
-	selected       int
-	recentOff      int
+	selected       int // position: the row it marks indexes the rows snap, recent and lookup key by identity (#12)
+	recentOff      int // position: the scroll into the recent rows, which recent keys by identity (#12)
 	units          render.Units
 	ascii          bool
 	thinBands      bool                 // the bands' height
@@ -192,9 +192,9 @@ type modalKey struct {
 	modal         modal
 	opts          render.Opts // width, units, ascii, bands — Frame zeroed (the shimmer keys separately)
 	width, height int
-	scroll        int
-	selected      int
-	alertIdx      int
+	scroll        int // position: the scroll into the window's lines, whose content the other fields key (#12)
+	selected      int // position: as bodyKey's - snap, recent and lookup carry the rows it indexes (#12)
+	alertIdx      int // position: an alert of the selected place, whose alerts snap and recent carry (#12)
 	// THE PENDING LOOKUP, because `selected` cannot stand in for it. Every
 	// lookup focuses the same index — modal_location.go sets
 	// `d.selected = len(watch)`, the first RECENT row — so two lookups in a row
@@ -206,7 +206,7 @@ type modalKey struct {
 	snap, recent              *snapshot.Snapshot
 	severeGen                 uint64
 	severeTab                 SevereTab
-	severeRow                 int
+	severeRow                 int // position: a row of the severe index, which severeGen and severeTab carry (#12)
 	severeDetail              bool
 	breakingID                string // the ▶ mark on the event being read (while the window is open)
 	readingKey                string // the ▶ on the event being read
@@ -218,7 +218,7 @@ type modalKey struct {
 	addRef            string
 	addState          uint8
 	radioVoice        string
-	voiceIdx, nvoices int
+	voiceIdx, nvoices int // position: a voice of the list taken when the chooser opens and fixed while it is open (#12)
 	// THE CARD WINDOW'S IDENTITY AND GENERATION (D-88). cardRows is a func and a
 	// key must be comparable, so the generation is what carries what it draws —
 	// the same stand-in setupGen makes for Setup's two maps.
@@ -245,7 +245,7 @@ type modalKey struct {
 	// The boxes over the map (UAT-1): which are open, the menu's cursor and
 	// the key blinking in the controls.
 	mapAlerts, mapMenu bool
-	mapMenuAt          int
+	mapMenuAt          int // position: a row of the menu, whose rows mapLayers, mapDetail, mapLevel and the mode carry (#12)
 	mapFlash           term.Action
 	mapEdge            geo.Direction // the edge's chip (D-81): which side, and whether it shows
 	mapEdgeOn          bool
@@ -264,7 +264,7 @@ type modalKey struct {
 	// would move the cursor in the model with nothing on screen following, and
 	// the countdown would reach a fall-through that fires while the display
 	// still reads <10>. See the case below.
-	faultFocus, faultLeft int
+	faultFocus, faultLeft int // position: a button of the fault window's fixed set; faultLeft is its clock (#12)
 
 	// faultHeld is the clock's hold (FR-6.4). The footer reads "Auto Close
 	// held" instead of a number, so it is a third thing the frame shows that
@@ -272,7 +272,7 @@ type modalKey struct {
 	faultHeld bool
 	// debugFocus is the ctrl+d window's cursor — the same rule: absent, its
 	// arrows would move the model while the memo replays the frame.
-	debugFocus int
+	debugFocus int // position: a row of the ctrl+d window's fixed list (#12)
 	// severeReadPause is the severe window's Pause/Play state, the same rule
 	// again. The frame reads it twice — the chip flips Pause<->Play, and every
 	// row's glyph — while pausing leaves readingKey unchanged, so without it the
@@ -287,7 +287,7 @@ type modalKey struct {
 	reqRef            string
 	reqPriority       bool
 	reqState          uint8
-	reqAt             int
+	reqAt             int // position: a row of the fixed set of report kinds (#12)
 	reqChosen         report.Set
 
 	// THE MAP'S DRAW, by generation, and why it could not draw (0.18.0 W2.1).
@@ -302,13 +302,12 @@ type modalKey struct {
 	mapProp       bool           // the Propagation mode
 	mapPropSay    string         // its status, as said
 	mapPropLyr    int            // its layer
-	mapPropAge    int64          // its snapshot's age in whole minutes, said and toned (D-166)
 	propChart     propChartKey   // the chart window's answers (D-176)
 	mapPropRadius int            // the near-vertical radius the block says (D-100)
 	freqQuery     string         // the frequency entry as typed, why it was not taken, and the frequency held (D-178)
 	freqErr       string
 	freqHeld      float64
-	chartRow      int    // and the row its typical day is drawn for
+	chartRow      int    // and the row its typical day is drawn for; position: a row of the chart's fixed targets (#12)
 	mapNotes      string // the feed's notes, printed under the map
 	mapLegend     bool   // the legend over the map
 }
@@ -353,7 +352,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
 		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending
 		k.mapOutside, k.mapNotes, k.mapProp = d.mapPane.outside, strings.Join(d.mapPane.notes, "\n"), d.mapPane.prop
-		k.mapPropSay, k.mapPropLyr, k.mapPropAge = d.propStatusWords(), d.mapPane.propLayer, d.propAgeMinutes()
+		k.mapPropSay, k.mapPropLyr = d.propStatusWords(), d.mapPane.propLayer // the words carry the age, to the minute, and STALE past the hour (D-166, FR-5.1)
 		k.mapLegend = d.mapPane.modeChip
 		k.mapAlerts, k.mapMenu, k.mapMenuAt, k.mapFlash = d.mapPane.alertsOn, d.mapPane.menuOn, d.mapPane.menuAt, d.mapPane.flash
 		k.mapEdge, k.mapEdgeOn = d.mapPane.edge, d.mapPane.edgeShown

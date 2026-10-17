@@ -288,15 +288,6 @@ func (d Dashboard) propAgeShown() bool {
 	return d.modal == modalMap && d.mapMode() == modePropagation && d.mapPane.propSnap != nil && len(d.mapPane.propSnap.Hours) > 0
 }
 
-// propAgeMinutes is the age the block says, in whole minutes: the frame
-// moves when it does; -1 while no age is said.
-func (d Dashboard) propAgeMinutes() int64 {
-	if !d.propAgeShown() {
-		return -1
-	}
-	return int64(d.now().Sub(d.mapPane.propSnap.Computed) / time.Minute)
-}
-
 // propBadges are the sources' badges (D-168): lit for a source that fed the
 // snapshot shown, dimmed for one that did not; as plain words, only the ones
 // that fed it.

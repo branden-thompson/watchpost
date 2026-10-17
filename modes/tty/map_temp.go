@@ -857,6 +857,9 @@ func (d Dashboard) presetRow(preset, head, colder, warmer string, width int) str
 
 // tempMemoKey is everything of the temperature and Forecast mode the frame
 // shows, as one word for the window's memo (F-30).
+//
+// fcStep is a position (#12): a step of the forecast, whose steps the
+// timeline's words beside it carry.
 func (d Dashboard) tempMemoKey() string {
 	p := d.mapPane
 	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), fmt.Sprint(p.temp.LayerNotes), fmt.Sprint(p.temp.Chips), strconv.FormatBool(d.rainOn()),

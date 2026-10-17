@@ -131,38 +131,28 @@ func TestTheRecordChecksFailOnAPlantedGap(t *testing.T) {
 	}
 }
 
-// hookRun is one `go test` line of the pre-push hook: its tests and package.
-var hookRun = regexp.MustCompile(`(?m)^go test -count=1 -run '\^\(?([A-Za-z0-9_|]+)\)?\$' (\./[a-z/]+)$`)
+// hookRuns are the pre-push hook's runs: each package and its tests.
+var hookRuns = regexp.MustCompile(`\{"(\./[a-z/]+)", \[\]string\{([^}]*)\}\}`)
 
 // TestThePrePushHookRunsTheRecordsTests is W0.1 (FR-10.2, REFLECT L5): the
-// hook is executable, `make hooks` installs it, and every test it runs is
-// declared in the package it names - a renamed test would otherwise leave
-// the hook running nothing and passing.
+// hook is Go (tools/prepush), `make hooks` builds and installs it, and every
+// test it runs is declared in the package it names - a renamed test would
+// otherwise leave the hook running nothing and passing.
 func TestThePrePushHookRunsTheRecordsTests(t *testing.T) {
 	root := filepath.Join("..", "..")
-	path := filepath.Join(root, "scripts", "hooks", "pre-push")
-	info, err := os.Stat(path)
+	raw, err := os.ReadFile(filepath.Join(root, "tools", "prepush", "main.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode()&0o111 == 0 {
-		t.Error("the pre-push hook is not executable")
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	runs := hookRun.FindAllStringSubmatch(string(raw), -1)
+	runs := hookRuns.FindAllStringSubmatch(strings.Join(strings.Fields(string(raw)), " "), -1)
 	if len(runs) < 3 {
-		t.Fatalf("the hook runs %d test lines; the record's, the as-built map's and the atlas's", len(runs))
+		t.Fatalf("the hook runs %d packages; the record's, the as-built map's and the atlas's", len(runs))
 	}
-	named := 0
 	for _, r := range runs {
-		src := packageSource(t, filepath.Join(root, r[2]))
-		for _, name := range strings.Split(r[1], "|") {
-			named++
-			if !strings.Contains(src, "func "+name+"(t *testing.T)") {
-				t.Errorf("the hook runs %s in %s, which declares no such test", name, r[2])
+		src := packageSource(t, filepath.Join(root, r[1]))
+		for _, name := range regexp.MustCompile(`"(Test[A-Za-z0-9_]+)"`).FindAllStringSubmatch(r[2], -1) {
+			if !strings.Contains(src, "func "+name[1]+"(t *testing.T)") {
+				t.Errorf("the hook runs %s in %s, which declares no such test", name[1], r[1])
 			}
 		}
 	}
@@ -175,8 +165,8 @@ func TestThePrePushHookRunsTheRecordsTests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(mk), "hooks:\n\t@git config core.hooksPath scripts/hooks") {
-		t.Error("make hooks does not install scripts/hooks")
+	if !strings.Contains(string(mk), "hooks:\n\t@go build -trimpath -o $(HOOKS_DIR)/pre-push ./tools/prepush\n\t@git config core.hooksPath $(HOOKS_DIR)") {
+		t.Error("make hooks does not build and install tools/prepush")
 	}
 }
 
@@ -196,4 +186,26 @@ func packageSource(t *testing.T, dir string) string {
 		b.Write(raw)
 	}
 	return b.String()
+}
+
+// TestTheSayLegIsBoundedAndDiagnosed is 0.19.0 FR-9.3 (F-188): make
+// test-say has a bound of its own, and its test samples a say still running
+// near that bound, so a hang is read, not retried blind.
+func TestTheSayLegIsBoundedAndDiagnosed(t *testing.T) {
+	root := filepath.Join("..", "..")
+	mk, err := os.ReadFile(filepath.Join(root, "Makefile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	leg := regexp.MustCompile(`(?m)^test-say:\n\t(.+)$`).FindStringSubmatch(string(mk))
+	if leg == nil || !regexp.MustCompile(`-timeout \d+m`).MatchString(leg[1]) {
+		t.Errorf("make test-say has no bound of its own: %v", leg)
+	}
+	src, err := os.ReadFile(filepath.Join(root, "domains", "radio", "synth", "synth_test.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "defer diagnoseHang(t, ") {
+		t.Error("the say test does not sample a hang near its bound")
+	}
 }

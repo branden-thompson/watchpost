@@ -75,6 +75,8 @@ func RunDashboard(version string, opt Options) error {
 	keyOverrides := toKeyMap(cfg.Keys)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	stopSay, _ := sayChildren(userCacheSubdir("say-children"), synth.SystemProcs{}) // orphans ended, this run's children held and ended at exit (FR-9.1, FR-9.2)
+	defer stopSay()
 
 	applyThemes(cfg.Theme) // built-ins + user theme files; persisted choice (UAT 53)
 	tides, tidesClient, err := newCoops()

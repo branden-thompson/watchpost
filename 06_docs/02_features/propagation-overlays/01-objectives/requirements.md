@@ -174,7 +174,7 @@ without NDFD, per-dataset retention, and the dataset terms field (FR-6.1 to FR-6
 |---|---|---|---|
 | FR-9.1 *(O3)* | A normal exit, or an interrupt or termination signal, leaves no `say` child behind | F-187 | `TestNoSayOutlivesAnOrderlyExit` |
 | FR-9.2 *(O3)* | A `say` left by a watchpost killed outright is found and ended at the next start, by process, not by its temp directory's name; **only a process proven to be watchpost's is ended**: the same user, a `watchpost-say-` path in its arguments, and a process ID and start time watchpost recorded (I-4) | F-187; I-4 | `TestAnOrphanedSayIsEndedAtStart`, `TestAnUnrelatedSayIsNeverEnded` |
-| FR-9.3 *(O3)* | `make test-say` cannot hang the gate: it has a bound, and a hang is diagnosed (the hung process sampled) rather than retried blind | F-188 | the gate's own bound; `06_docs/required-gates.txt` |
+| FR-9.3 *(O3)* | `make test-say` cannot hang the gate: it has a bound, and a hang is diagnosed (the hung process sampled) rather than retried blind | F-188 | the gate's own bound; `06_docs/required-gates.txt`; `TestTheSayLegIsBoundedAndDiagnosed` |
 
 ## FR-10 — Instruments (R-9; REFLECT L1-L8)
 

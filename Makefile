@@ -100,7 +100,7 @@ lint-plan-code:
 # macOS-only: on another OS the test skips, so CI runs this step on macOS alone,
 # and there a missing `say` fails it.
 test-say:
-	@WATCHPOST_SAY_LEG=1 go test -count=1 -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth
+	@WATCHPOST_SAY_LEG=1 go test -count=1 -timeout 3m -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth
 
 # THE PUBLISHED TREE NAMES NO PERSON AND NO MACHINE. A home directory, an
 # agent-harness scratchpad path, an internal project tree or an email address
@@ -546,12 +546,15 @@ release-matrix:
 	@cd $(DIST) && if command -v sha256sum >/dev/null; then sha256sum $(BINARY)-* > checksums.txt; else shasum -a 256 $(BINARY)-* > checksums.txt; fi
 	@echo "release-matrix: OK ($(VERSION))"
 
-# hooks points this clone's git at scripts/hooks: the pre-push hook runs the
-# tests that read the record, in seconds (0.19.0 W0.1, FR-10.2). Local to
-# the clone; `git config --unset core.hooksPath` takes it off.
+# hooks builds the pre-push hook (tools/prepush) into this clone's git folder
+# and points git at it: it runs the tests that read the record, in seconds
+# (0.19.0 W0.1, FR-10.2). Local to the clone; `git config --unset
+# core.hooksPath` takes it off.
+HOOKS_DIR = $(shell git rev-parse --git-path watchpost-hooks)
 hooks:
-	@git config core.hooksPath scripts/hooks
-	@echo "hooks: pre-push runs the record's tests (scripts/hooks/pre-push)"
+	@go build -trimpath -o $(HOOKS_DIR)/pre-push ./tools/prepush
+	@git config core.hooksPath $(HOOKS_DIR)
+	@echo "hooks: pre-push runs the record's tests (tools/prepush)"
 
 # Installer smoke test: serve the release matrix locally and run scripts/install.sh
 # against it (no GitHub involved), then check the installed binary reports the version.

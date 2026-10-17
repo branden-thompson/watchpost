@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -202,6 +204,7 @@ func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 	// waved through (the same argument as F-29).
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+	defer diagnoseHang(t, 110*time.Second)() // F-188: a hang near the bound is sampled, read rather than retried blind (FR-9.3)
 
 	// A CONTROL RENDER FIRST, to tell "this box cannot speak" apart from "our
 	// input broke it". GitHub's macOS runner has /usr/bin/say and it produces
@@ -756,4 +759,19 @@ func TestTheConditionsSayTheListenersUnits(t *testing.T) {
 			t.Errorf("imperial %v: %q; want it to say %q", imperial, got, want)
 		}
 	}
+}
+
+// diagnoseHang samples every say child still running when the bound is
+// near (0.19.0 FR-9.3, F-188): a hang is diagnosed - the hung process's
+// stacks, by macOS's sample - rather than retried blind. The stop it returns
+// takes the watch off.
+func diagnoseHang(t *testing.T, after time.Duration) (stop func()) {
+	t.Helper()
+	timer := time.AfterFunc(after, func() {
+		for _, pid := range LiveChildren() {
+			out, err := exec.Command("sample", strconv.Itoa(pid), "2").CombinedOutput()
+			t.Logf("say %d is still running after %v; sampled (%v):\n%s", pid, after, err, out)
+		}
+	})
+	return func() { timer.Stop() }
 }

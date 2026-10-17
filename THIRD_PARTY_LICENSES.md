@@ -188,7 +188,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## github.com/branden-thompson/go-ionomaps v0.0.0-20261016204215-762879ada9a5
+## github.com/branden-thompson/go-ionomaps v0.0.0-20261017034439-d7e7f3c5b1ca
 
 ```
 MIT License
@@ -290,6 +290,31 @@ Sources the library reads, or will read, and their terms:
      internal/limits/longpath.go
    ITUHFProp's own values of those factors at fixed inputs are kept as their test oracle:
      internal/limits/testdata/itu-absorption-golden.txt
+
+PyIRI's licence, in full, as MIT asks it to accompany every copy (3; watchpost F-215), from
+github.com/victoriyaforsythe/PyIRI, LICENSE:
+
+   MIT License
+
+   Copyright (c) 2023 victoriyaforsythe
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 ```
 
 ## github.com/branden-thompson/go-tuimaps v0.3.0-rc.1.0.20261015214940-9dc4ff3f72e3
