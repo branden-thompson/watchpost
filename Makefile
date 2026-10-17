@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: lint-plan-code test-say quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test
+.PHONY: hooks lint-plan-code test-say quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test
 
 BINARY := watchpost
 DIST   := dist
@@ -545,6 +545,13 @@ release-matrix:
 # sha256sum red alone and release-matrix stayed green.
 	@cd $(DIST) && if command -v sha256sum >/dev/null; then sha256sum $(BINARY)-* > checksums.txt; else shasum -a 256 $(BINARY)-* > checksums.txt; fi
 	@echo "release-matrix: OK ($(VERSION))"
+
+# hooks points this clone's git at scripts/hooks: the pre-push hook runs the
+# tests that read the record, in seconds (0.19.0 W0.1, FR-10.2). Local to
+# the clone; `git config --unset core.hooksPath` takes it off.
+hooks:
+	@git config core.hooksPath scripts/hooks
+	@echo "hooks: pre-push runs the record's tests (scripts/hooks/pre-push)"
 
 # Installer smoke test: serve the release matrix locally and run scripts/install.sh
 # against it (no GitHub involved), then check the installed binary reports the version.

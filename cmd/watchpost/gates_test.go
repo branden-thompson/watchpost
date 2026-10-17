@@ -77,6 +77,7 @@ var unlisted = exempt(&exemptionTable{
 		"mutant-verdicts":   "the corpus SWEEP — hours, and its verdicts are promoted into the release record by hand; mutant-anchors and mutant-check are the per-push halves",
 		"tree-free":         "it ASKS whether a gate run is in flight and reports; it asserts nothing about the code",
 		"lint-update":       "it REWRITES the golangci baseline; it is the opposite of a gate, and running it on a gate path would erase the ratchet",
+		"hooks":             "it INSTALLS the pre-push hook (git config core.hooksPath); it asserts nothing, and the hook's tests all run under race on every gate path (0.19.0 W0.1)",
 		"verify-docs-gates": "the docs lane (go-tuiMaps v0.2.0 D-15, watchpost 0.18.0 D-38): a local SUBSET of verify for a change that is Markdown alone, refused by tools/docslane for any other file; CI and every other change run verify, which runs every gate this does",
 	},
 	exists: func(t *testing.T, g string) bool { return loadBuildModel(t).targets[g] != nil },

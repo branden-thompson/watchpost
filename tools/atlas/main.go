@@ -60,9 +60,24 @@ func main() {
 }
 
 func run() error {
+	out, n, err := render(".")
+	if err != nil {
+		return err
+	}
+	dest := filepath.Join("06_docs", "architecture-atlas.html")
+	if err := os.WriteFile(dest, []byte(out), 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("%d diagrams -> %s\n", n, dest)
+	return nil
+}
+
+// render is the atlas page built from the documents under a repository
+// root, and how many diagrams it holds.
+func render(repo string) (string, int, error) {
 	var found []diagram
 	for _, root := range []string{"06_docs", "docs"} {
-		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		err := filepath.Walk(filepath.Join(repo, root), func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() || !strings.HasSuffix(path, ".md") {
 				return err
 			}
@@ -70,15 +85,19 @@ func run() error {
 			if err != nil {
 				return err
 			}
-			found = append(found, read(path, string(raw))...)
+			rel, err := filepath.Rel(repo, path)
+			if err != nil {
+				return err
+			}
+			found = append(found, read(rel, string(raw))...)
 			return nil
 		})
 		if err != nil {
-			return err
+			return "", 0, err
 		}
 	}
 	if len(found) == 0 {
-		return fmt.Errorf("no mermaid blocks found")
+		return "", 0, fmt.Errorf("no mermaid blocks found")
 	}
 	sort.SliceStable(found, func(i, j int) bool { return found[i].file < found[j].file })
 
@@ -131,12 +150,7 @@ func run() error {
 		"<!--BODY-->", body.String(),
 		"<!--COUNT-->", fmt.Sprint(len(found)),
 	).Replace(page)
-	dest := filepath.Join("06_docs", "architecture-atlas.html")
-	if err := os.WriteFile(dest, []byte(out), 0o644); err != nil {
-		return err
-	}
-	fmt.Printf("%d diagrams -> %s\n", len(found), dest)
-	return nil
+	return out, len(found), nil
 }
 
 // read pulls every diagram out of one document.
