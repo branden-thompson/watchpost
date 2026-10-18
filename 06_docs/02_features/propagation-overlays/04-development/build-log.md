@@ -642,3 +642,8 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **The BUILD report** is marked approved (D-233); this is the exit commit.
 - **Tests:** `TestAPlaceAbroadIsSaidByItsCountry` (in `platform/geo` and in the words). **Mutants:** m494 new, killed. m493, on a check that a US label ending in its state's code could never reach, survived: the check was removed and the mutant with it.
 - **Docs:** D-230 to D-234; A-78; the plan's W9.4; F-218 closed; the P10 ledger's mirror.
+
+## BUILD exited (D-233)
+
+- **On `e889e72a`** (batch 50): `make verify` green, `make p10` with no live, unmatched or unratified finding, and hosted CI green on Ubuntu and macOS - the first run to carry batches 48 to 50, the runs on `1e6c60b2` and `a9401314` having been cancelled by later pushes. The libraries' hosted full gates are green on go-ionomaps `8f6c085` and go-tuiMaps `d93fac5`.
+- **REVIEW is open,** with D-208's long runs beside it: G1's 48 hours, G10.4's fresh-day fetch and G-M3, and the graded M1/M4 run.

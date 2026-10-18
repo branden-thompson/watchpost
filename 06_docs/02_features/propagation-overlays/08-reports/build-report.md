@@ -4,7 +4,7 @@ date: 2026-10-18
 phase: BUILD exit
 sev: SEV-0
 authority: HUM LEAD
-status: "APPROVED by the HUM LEAD 2026-10-18 (D-233): BUILD exits with batch 50, D-230 and D-231 built, on its green full gate and hosted CI read; the rulings (D-230 to D-234) are below"
+status: "APPROVED by the HUM LEAD 2026-10-18 (D-233). BUILD exited on e889e72a (batch 50): its full gate green, hosted CI green on Ubuntu and macOS, P10 clean. REVIEW is open."
 ---
 
 # BUILD report — 0.19.0, go-ionomaps v0.1.0, go-tuiMaps v0.3.0
