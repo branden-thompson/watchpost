@@ -120,7 +120,7 @@ follow-up (D-85, F-211).
 
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
-| FR-4.1 *(O1)* | Every propagation source is **credited in About** under its own terms: GIRO (CC BY-NC-SA 4.0; Reinisch & Galkin 2011; each station's provider; **non-commercial access** stated); NOAA SWPC GloTEC, D-RAP, the space-weather scales and the daily solar indices (public domain; no endorsement); PyIRI (MIT; Forsythe et al. 2024; the NRL refits and their CCIR/URSI lineage); GeoNames (already credited). WSPR (wspr.live, WSPRnet) and RBN are credited in the reports that use them | G-M1; D-22, D-41, D-43, D-69; IS-5 | `TestEverySourceIsCreditedOnce` (extended), `TestEveryPropagationSourceIsCredited` (ties the library's sources to credits) |
+| FR-4.1 *(O1)* | Every propagation source is **credited in About** under its own terms: GIRO (CC BY-NC-SA 4.0; Reinisch & Galkin 2011; each station's provider; **non-commercial access** stated); NOAA SWPC GloTEC, D-RAP, the space-weather scales and the daily solar indices (public domain; no endorsement); PyIRI (MIT; Forsythe et al. 2024; the NRL refits and their CCIR/URSI lineage); GeoNames (already credited). WSPR (wspr.live, WSPRnet) is credited in the reports that use it (RBN ruled out, D-226) | G-M1; D-22, D-41, D-43, D-69; IS-5 | `TestEverySourceIsCreditedOnce` (extended), `TestEveryPropagationSourceIsCredited` (ties the library's sources to credits) |
 | FR-4.2 *(O1)* | **Nothing propagation-related is fetched until the Propagation mode is opened**, and nothing before its acknowledgement (FR-11) has been shown; nothing is fetched in the background. Each update the mode asks for is its own: one asked while another runs waits for it in go-ionomaps and is answered from what it fetched, and a mode left and opened again is never handed the left session's cancelled update (C-2) | D-76, D-81; 0.18.0 D-25; A-30; C-2 | `TestThePropagationModeFetchesNothingUntilOpened`, `TestNothingIsFetchedBeforeTheAcknowledgement`, `TestTwoUpdatesAskNOAAOnce`, `TestAReopenedModeGetsItsOwnUpdate` |
 | FR-4.3 *(O1)* | Every new host is listed in the Status window (D-170) with what it learns: GIRO and NOAA learn the IP (GIRO's replies echo it back); the online geocoder learns the typed text; no request names the origin | 0.18.0 D-31; IS-2, IS-4 | `TestMapStatusListsEveryPropagationHost` (reads go-ionomaps' exported host set, D-113), the egress table in PLAN |
 | FR-4.4 *(O1)* | **The propagation client is its own instance** (not the data client's), with no shared pacing hold and no host avoidance from other traffic; it **never retries a 429** and returns status and headers on every outcome, so go-ionomaps alone decides a back-off (the data client retries a 429, `platform/httpx/httpx.go:704-719`; holds every lane on a Retry-After, `platform/httpx/memo.go:138-141`; and returns no headers with a non-200, `platform/httpx/httpx.go:726`) | D-39; IS-1, N-5 | `TestThePropagationClientNeverRetriesA429`, `TestThePropagationClientReturnsEveryOutcome`, `TestAGIRORefusalNeverPausesWeather` |
@@ -235,8 +235,8 @@ Normative in `problem-statement.md`:
 - G1, shared;
 - G-M1 to G-M4 and G-G1 (go-ionomaps).
 
-**"Open"** means the reference circuit (D-73). M1 and M4 are scored against WSPR spots normalised to it,
-with RBN as a cross-check (D-22). Their baseline is the IRI climatology (D-23). **Floors are set before the
+**"Open"** means the reference circuit (D-73). M1 and M4 are scored against WSPR spots normalised to it
+(D-22; RBN ruled out by D-226: it reports no transmitter's power, so it cannot be normalised). Their baseline is the IRI climatology (D-23). **Floors are set before the
 dry run (D-75):** the current hour (the hybrid, D-101) must beat the climatology in the US, and the hours
 ahead must be no worse than it (met by construction since D-109). Every other target is set from the dry run, each by its own ruling (D-49), except M3b and M3c's, which
 D-48 set and D-76 retired.

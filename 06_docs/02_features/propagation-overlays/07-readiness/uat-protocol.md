@@ -40,7 +40,7 @@ person. Definitions are in `01-objectives/problem-statement.md`; targets are rul
 **Scored:** watchpost's own answer to each question at the sitting's hour, read from its words and recorded by the prompter as the sitting runs (the words path, FR-3.1, so it holds for M5b too).
 
 **Reported beside it, not gated:** M1's and M4's reference (D-22, D-73, D-91):
-- WSPR spots from wspr.live, with RBN as a cross-check;
+- WSPR spots from wspr.live (RBN ruled out, D-226);
 - each spot normalised to 100 W from its reported power (WSPR's SNR is already given in 2.5 kHz);
 - a path counts as open when normalised spots clear +13 dB within ±1 h (D-91, ITU-R F.339-8).
 

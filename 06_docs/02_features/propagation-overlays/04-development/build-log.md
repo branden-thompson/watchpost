@@ -606,3 +606,9 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
   - **The BUILD report** misstated floor 2. The hours ahead are the climatology, so that floor is met by construction. The report also left out D-217's PS-1 sentence, and claimed hosted CI was read after every push when several runs were cancelled by the next push.
   - **Batch 45** renamed `reservoir.offer` and added guards to satisfy P10's analysers, which D-215 forbids.
   - **The remediation** carried D-205 into the library but not into watchpost's words.
+
+## Docs after round 2 - its forks ruled (D-226 to D-229)
+
+- **D-226:** RBN is ruled out, saying why: it reports no transmitter's power, so it cannot be normalised to the reference circuit. The problem statement, the requirements and the UAT protocol now say WSPR alone grades M1 and M4.
+- **D-227:** the reach's cost is contained in watchpost (the latest ask wins, hour steps settle) and cut in go-ionomaps (the lower limit on a coarser grid of distances, its accuracy measured), in rc.3.
+- **D-228:** the graded run shows a 95 % paired interval. **D-229:** `Inputs.Unread` and `BadEdge` go into rc.3.

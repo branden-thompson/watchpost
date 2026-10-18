@@ -50,8 +50,8 @@ anti-solution check before it locks.
 ### PS-1 (D-8)
 
 Targets are set from PLAN's dry run, each by its own ruling, before PLAN exits (D-49, amending D-8), against
-the floors set before it (D-75). M1 and M4 are measured against WSPR via wspr.live, with RBN as a
-cross-check (D-22); only spots that, normalised to the reference circuit, would carry SSB voice at 100 W
+the floors set before it (D-75). M1 and M4 are measured against WSPR via wspr.live alone
+(D-22, amended by D-226: RBN cannot be normalised to the reference circuit); only spots that, normalised to the reference circuit, would carry SSB voice at 100 W
 count (D-73). Their baseline is the IRI climatology, not KC2G (D-23). The numbers proposed at intake are
 kept as a starting point. **UAT (M2, M5, M5b) is graded by the HUM LEAD alone; the VALIDATE report says so
 (D-68).**
@@ -70,7 +70,7 @@ Anti-solution check:
 - G1: holds any solution to issue #25's resource limit; measured over at least 48 hours, with downloads a day (D-49).
 
 Answered in DISCOVER:
-- the reference: WSPR via wspr.live, with RBN as a cross-check (D-22);
+- the reference: WSPR via wspr.live (D-22; RBN ruled out by D-226, its transmitters' power unknown);
 - the operator's bands: every band is answered in the reference chart, and the operator's own frequency can be entered (D-76; D-30's picker retired); the served area: the configured tower and service radius (`config.Broadcaster`).
 
 Note: watchpost transmits nothing; the Broadcaster makes audio on the computer, and any transmission is the

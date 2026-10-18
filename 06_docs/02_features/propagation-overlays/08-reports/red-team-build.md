@@ -115,6 +115,13 @@ Each is put singly, with its evidence, options, a recommendation and the stronge
 3. **M1/M4's uncertainty:** report an interval beside each figure, and say whether the target is judged on it (BL2-6).
 4. **The libraries' last API corrections before they freeze:** go-ionomaps' `Inputs.Refused` and `Kept`; go-tuiMaps' Edge refusal kind (CN2-15, CN2-10).
 
+| Fork | Ruling |
+|---|---|
+| 1, RBN | D-226: ruled out, saying why; WSPR alone grades M1 and M4 |
+| 2, the reach's cost | D-227: contained in watchpost (the latest ask wins, hour steps settle), and the method made cheaper in go-ionomaps, its accuracy measured |
+| 3, uncertainty | D-228: a 95 % paired interval shown; the target still judged on the point estimate |
+| 4, the APIs | D-229: `Inputs.Unread` in go-ionomaps, `BadEdge` in go-tuiMaps, in rc.3 |
+
 ### The agent's remediation, without a ruling
 
 Each batch goes through its gate, and hosted CI on the tip is read and recorded before the next.
