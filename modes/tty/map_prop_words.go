@@ -94,10 +94,13 @@ func (d Dashboard) propOriginWords() []string {
 	if !origin.ok {
 		return nil
 	}
-	shown := d.propOnScreen()
+	shown, ready := d.propShown()
 	when := "now"
 	if k := d.mapPane.propAhead; k > 0 {
 		when = hoursWords(k) + " ahead"
+	}
+	if !ready && d.mapPane.propAhead > 0 {
+		return []string{upperFirst(spoken(origin.name + ", " + when + ": being worked out."))} // never now's figures said as the hour's
 	}
 	fo, okF := cellValue(shown.Now.FoF2, origin.at.Lat, origin.at.Lon)
 	muf, okM := cellValue(shown.Now.MUF3000, origin.at.Lat, origin.at.Lon)

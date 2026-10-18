@@ -103,6 +103,7 @@ const recordedChip
 const releaseAPI
 const requestedCap
 const scheduleTick
+const settleBound
 const statedCacheBytes
 const systemVoice
 const tempFrameNote
@@ -361,6 +362,7 @@ func (*pipeline).stop
 func (*pipeline).update
 func (*propagationHolder).requestStats
 func (*propagationHolder).service
+func (*propagationHolder).settle
 func (*publisher).Trigger
 func (*publisher).fire
 func (*publisher).lastSnapshot
@@ -743,6 +745,7 @@ func loadSeen
 func loadUserThemes
 func lockedCopy
 func lookupContext
+func lookupContextUnder
 func loopSlots
 func loopbackOnly
 func macVoices

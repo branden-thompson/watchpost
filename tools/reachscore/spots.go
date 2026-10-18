@@ -46,9 +46,6 @@ const (
 
 // inUS reports whether a place is in the mainland US box.
 func inUS(p ionomaps.LatLon) bool {
-	if !(p.Lat >= usSouth && p.Lat <= usNorth) {
-		return false
-	}
 	return p.Lat >= usSouth && p.Lat <= usNorth && p.Lon >= usWest && p.Lon <= usEast
 }
 
@@ -65,9 +62,6 @@ var wsprBands = []struct {
 // bandOf is go-ionomaps' band for a wspr.live band number; false for a
 // band it does not answer.
 func bandOf(n int) (ionomaps.Band, bool) {
-	if n < 1 {
-		return 0, false // wspr.live's LF and MF bands
-	}
 	for _, b := range wsprBands {
 		if b.n == n {
 			return b.band, true
@@ -84,9 +78,6 @@ func bandOf(n int) (ionomaps.Band, bool) {
 // needs where a station is, not who. The day reaches back to 23:00 the day
 // before, its first window's hour, and stops at 23:00, the next day's.
 func spotsQuery(day time.Time, regionKm float64) string {
-	if !(regionKm > 0) {
-		return "" // no region: no query is made
-	}
 	var bands, near []string
 	for _, b := range wsprBands {
 		bands = append(bands, strconv.Itoa(b.n))
@@ -154,14 +145,8 @@ func spotsCommand(args []string, out io.Writer) (err error) {
 
 // fetchDays fetches each day not yet kept, pausing between asks.
 func (f fetcher) fetchDays(ds []time.Time, dir string, regionKm float64, out io.Writer) error {
-	if f.client == nil || f.sleep == nil {
-		return errUsage
-	}
 	if !(regionKm > 0) {
-		return errUsage
-	}
-	if len(ds) == 0 {
-		return errDays
+		return errUsage // no region: the query would ask for every transmitter in the US alone
 	}
 	asked := false
 	for _, d := range ds {
@@ -196,9 +181,6 @@ var errGivenUp = fmt.Errorf("wspr.live refused or did not answer through the %v 
 
 // fetchDay asks for a day, backing off after a refusal or no answer.
 func (f fetcher) fetchDay(day time.Time, regionKm float64) ([]byte, error) {
-	if f.client == nil {
-		return nil, errUsage
-	}
 	u := f.base + "?query=" + url.QueryEscape(spotsQuery(day, regionKm))
 	for wait := firstBackOff; wait <= longestPause; wait *= 2 {
 		body, status, err := f.ask(u, day)
@@ -220,12 +202,6 @@ var rateHeaders = []string{"retry-after", "x-ratelimit", "ratelimit"}
 // ask is one request, logged: when, the day, the status, the size, the
 // seconds and the rate headers alone.
 func (f fetcher) ask(u string, day time.Time) ([]byte, int, error) {
-	if f.client == nil || f.log == nil {
-		return nil, 0, errUsage
-	}
-	if u == "" {
-		return nil, 0, errUsage
-	}
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return nil, 0, err
@@ -290,9 +266,6 @@ const spotFields = 10
 // readSpots reads a day's rows; a row of another shape, or a value out of
 // its bounds, is an error naming its line.
 func readSpots(r io.Reader) ([]spot, error) {
-	if r == nil {
-		return nil, errUsage
-	}
 	var out []spot
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 64<<10), 1<<20)

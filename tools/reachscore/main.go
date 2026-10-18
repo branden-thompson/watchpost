@@ -38,9 +38,6 @@ func run(args []string, out io.Writer) error {
 	if len(args) == 0 {
 		return errUsage
 	}
-	if out == nil {
-		return errUsage
-	}
 	switch args[0] {
 	case "spots":
 		return spotsCommand(args[1:], out)

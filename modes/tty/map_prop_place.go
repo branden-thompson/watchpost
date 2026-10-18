@@ -11,6 +11,7 @@ package tty
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -135,10 +136,29 @@ func (d Dashboard) followReader(msg tea.Msg, place wordsPlace, keep bool) Dashbo
 		}
 		d.mapPane.wordsAt = top
 	case keep:
-		d = d.keepWordsPlace(place)
+		if anchor := d.wordsAnchorNow(); anchor != d.mapPane.wordsAnchored {
+			d = d.keepWordsPlace(place) // the words may have moved: find the place again
+			d.mapPane.wordsAnchored = anchor
+		}
 		d.mapPane.wordsAt = place
 	}
 	return d
+}
+
+// wordsAnchor is what the words' layout is made from: the map's generation,
+// which every answer, refresh and hour step raises, the window's size, and
+// the minute, which the words' ages count in. While it stands the place kept
+// is where it was, so a message that changes none - the visualiser's tick -
+// lays out no words (D-211).
+type wordsAnchor struct {
+	gen    uint64
+	w, h   int
+	minute time.Time
+}
+
+// wordsAnchorNow is the words' anchor as the dashboard stands.
+func (d Dashboard) wordsAnchorNow() wordsAnchor {
+	return wordsAnchor{gen: d.mapPane.gen, w: d.width, h: d.height, minute: d.now().Truncate(time.Minute)}
 }
 
 // keepWordsPlace puts the sentence the reader was at back at the window's

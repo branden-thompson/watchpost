@@ -552,3 +552,41 @@ func TestDayAndNightAreSaidAsTheLineIsDrawn(t *testing.T) {
 		t.Errorf("the sun's centre 0.4° below the horizon, past the drawn line, is said %q", w)
 	}
 }
+
+// TestAKeptPlaceLaysOutNoWordsWhileNothingChanges is D-211 at its cost: a
+// message that changes none of what the words are made from - the
+// visualiser's tick - leaves the scroll where it is, laying out no words,
+// and the next answer finds the place again.
+func TestAKeptPlaceLaysOutNoWordsWhileNothingChanges(t *testing.T) {
+	d := chartDash(t)
+	d.mapDesc = mapDescInstead
+	m, _ := d.Update(tea.WindowSizeMsg{Width: 100, Height: 20})
+	d = m.(Dashboard)
+	d.modalScroll = 3
+	d.mapPane.wordsAt, _ = d.wordsTop()
+	m, _ = d.Update(struct{}{}) // anchors the place
+	d = m.(Dashboard)
+	kept := d.modalScroll
+	d.modalScroll = 0 // moved by nothing the words are made from
+	m, _ = d.Update(struct{}{})
+	if d = m.(Dashboard); d.modalScroll != 0 {
+		t.Errorf("a message that changed nothing laid the words out again: the scroll moved to %d", d.modalScroll)
+	}
+	d.mapPane.gen++ // an answer, a refresh or an hour step
+	m, _ = d.Update(struct{}{})
+	if d = m.(Dashboard); d.modalScroll != kept {
+		t.Errorf("after the words changed the place is at %d; found again at %d", d.modalScroll, kept)
+	}
+}
+
+// TestAnHourAheadIsNotSaidBeforeItIsWorkedOut is FR-3.1 (round 2 PN2-10):
+// while an hour ahead is being worked out the words say so, never now's
+// figures under that hour's name.
+func TestAnHourAheadIsNotSaidBeforeItIsWorkedOut(t *testing.T) {
+	d := chartDash(t)
+	d.mapPane.propAhead, d.mapPane.propAheadSnaps = 3, nil
+	w := strings.Join(d.propOriginWords(), " ")
+	if !strings.Contains(w, "3 hours ahead: being worked out") || strings.Contains(w, "MUF(3000)") {
+		t.Errorf("an hour ahead not yet worked out is said %q", w)
+	}
+}

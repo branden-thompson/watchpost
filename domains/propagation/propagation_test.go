@@ -323,8 +323,8 @@ func TestTheThrottleStateOutlivesARestart(t *testing.T) {
 	if err != nil || len(kept) == 0 {
 		t.Fatalf("after an update the state file holds %d bytes (%v)", len(kept), err)
 	}
-	if _, err := os.Stat(file + ".tmp"); !errors.Is(err, os.ErrNotExist) {
-		t.Error("the write's file beside the state was left behind")
+	if left, _ := filepath.Glob(file + ".*.tmp"); len(left) != 0 {
+		t.Errorf("the write's file beside the state was left behind: %v", left)
 	}
 	var notes []string
 	next, err := New(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }})
@@ -338,4 +338,32 @@ func TestTheThrottleStateOutlivesARestart(t *testing.T) {
 	if _, err := New(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }}); err != nil || len(notes) != 1 || !strings.Contains(notes[0], "starts as new") {
 		t.Errorf("a state that cannot be taken: %v, notes %v; want the service made and the refusal noted", err, notes)
 	}
+}
+
+// TestAnUpdateInFlightKeepsItsStateBeforeTheEnd is watchpost D-213 at the
+// app's end: Settle waits for an update still running - a burst the quit
+// cancelled - until it has kept the throttle state, within its bound.
+func TestAnUpdateInFlightKeepsItsStateBeforeTheEnd(t *testing.T) {
+	release := make(chan struct{})
+	rec := &recorder{answer: func(url string) (httpx.Answer, error) {
+		<-release
+		return httpx.Answer{Status: 404}, nil
+	}}
+	file := filepath.Join(t.TempDir(), "propagation-throttle.json")
+	s, err := New(rec, Options{Clock: fixedClock, StateFile: file})
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := s.Ask(context.Background(), ionomaps.UpdateOptions{})
+	if s.Settle(20 * time.Millisecond) {
+		t.Fatal("Settle reported the update ended while it was still asking")
+	}
+	close(release)
+	if !s.Settle(5 * time.Second) {
+		t.Fatal("the update did not end within the bound")
+	}
+	if _, err := os.Stat(file); err != nil {
+		t.Errorf("after Settle the state is not kept: %v", err)
+	}
+	<-done
 }

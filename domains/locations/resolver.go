@@ -125,8 +125,7 @@ func (r *Resolver) Resolve(ctx context.Context, query string) (ref snapshot.Loca
 	if r.fallback == nil {
 		return snapshot.LocationRef{}, false, errors.New("no match in the offline index and no network fallback — try 'City, ST' or a 5-digit zip") // never the query (FR-4.9)
 	}
-	geocode := r.fallback.Resolve // the online fallback's method, through a value: P10-01 matches calls by bare name (D-202)
-	ref, err = geocode(ctx, q)
+	ref, err = r.fallback.Resolve(ctx, q)
 	if err != nil {
 		return snapshot.LocationRef{}, false, err
 	}
@@ -159,8 +158,7 @@ func (r *Resolver) ResolveAnywhere(ctx context.Context, query string) (ref snaps
 	if !ok {
 		return snapshot.LocationRef{}, false, errors.New("no match in the offline index - try a city, coordinates or a grid locator") // never the query (FR-4.9)
 	}
-	lookup := world.ResolveWorld // through a value: P10-01 matches calls by bare name (D-202)
-	ref, err = lookup(ctx, q)
+	ref, err = world.ResolveWorld(ctx, q)
 	if err != nil {
 		return snapshot.LocationRef{}, false, err
 	}
@@ -191,27 +189,28 @@ func typedPlace(q string, anywhere bool) (ref snapshot.LocationRef, typed bool, 
 	return snapshot.LocationRef{Label: label, Lat: at.Lat, Lon: at.Lon}, true, nil
 }
 
-// positionShape is a query made only of figures, separators, degree and
-// minute marks and the compass letters; locatorShape one shaped like a grid
-// locator, its letters and figures in a locator's places; zipPlusFour a ZIP
-// with its four, which is a place, not a position.
+// numberGroup is a run of figures, in any script's digits; locatorShape a
+// query shaped like a grid locator, its letters and figures in a locator's
+// places; zipPlusFour a ZIP with its four, which is a place, not a position.
 var (
-	positionShape = regexp.MustCompile(`^[0-9\s.,;:°'"+\-NSEWnsew]+$`)
-	numberGroup   = regexp.MustCompile(`[0-9]+`)
-	locatorShape  = regexp.MustCompile(`^[A-Za-z]{2}[0-9]{2}([A-Za-z]{2}([0-9]{2}([A-Za-z]{2})?)?)?$`)
-	zipPlusFour   = regexp.MustCompile(`^[0-9]{5}-[0-9]{4}$`)
+	numberGroup  = regexp.MustCompile(`\p{Nd}+`)
+	locatorShape = regexp.MustCompile(`^[A-Za-z]{2}[0-9]{2}([A-Za-z]{2}([0-9]{2}([A-Za-z]{2})?)?)?$`)
+	zipPlusFour  = regexp.MustCompile(`^[0-9]{5}-[0-9]{4}$`)
 )
 
-// positionShaped reports whether a query the parsers did not read is still
-// written as a position - "33.2N 117.4W", "33°12'N 117°23'W", "33.2;-117.38",
-// three numbers, a locator of ten characters or one with a letter out of
-// its range - so it is refused here, never sent online (FR-4.9, BUILD red
-// team I-2).
+// positionShaped reports whether a query the parsers did not read may still
+// be a position, so it is refused here, never sent online (FR-4.9): a
+// locator of ten characters or one with a letter out of its range, or any
+// query holding two runs of figures - "33.2N 117.4W", "33°12′N", "lat 33.2
+// lon -117.38", "geo:33.2,-117.38" - whatever marks or words are around
+// them, a ZIP with its four excepted. A place's name has one run of figures
+// at most ("29 Palms"); the rule closes the gap by its shape, not by a list
+// of spellings.
 func positionShaped(q string) bool {
 	if locatorShape.MatchString(q) {
 		return true
 	}
-	return positionShape.MatchString(q) && !zipPlusFour.MatchString(q) && len(numberGroup.FindAllString(q, 3)) >= 2
+	return !zipPlusFour.MatchString(q) && len(numberGroup.FindAllString(q, 2)) >= 2
 }
 
 // numberPair reports whether a query is written as two numbers - which

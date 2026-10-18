@@ -117,7 +117,7 @@ func TestTheDrawIsBalancedSoAConstantScoresHalf(t *testing.T) {
 	var constant [metrics]tally
 	for _, s := range set {
 		n[s.Metric][s.Outcome]++
-		constant[s.Metric].add(s.Outcome, true, false)
+		constant[s.Metric].add(s.Outcome, true)
 	}
 	if n[m1] != [outcomes]int{10, 5, 5} || n[m4] != [outcomes]int{3, 3, 0} {
 		t.Errorf("drawn by outcome: M1 %v, M4 %v; want [10 5 5] and [3 3 0]", n[m1], n[m4])
@@ -169,7 +169,7 @@ func TestBandStrataKeepTheHoursSignal(t *testing.T) {
 		}
 		var tl tally
 		for _, s := range set {
-			tl.add(s.Outcome, knowsTheHour(s), false)
+			tl.add(s.Outcome, knowsTheHour(s))
 		}
 		return tl.total()
 	}

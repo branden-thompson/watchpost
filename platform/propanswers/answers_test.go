@@ -4,7 +4,6 @@ package propanswers
 // of their own; the chart's targets an input (D-204), bands read by name.
 
 import (
-	"errors"
 	"math"
 	"reflect"
 	"strings"
@@ -78,9 +77,10 @@ func TestBandsAreReadByName(t *testing.T) {
 
 // TestAnAskOffTheGlobeIsRefused is the package's boundary (D-212, the BUILD
 // red team's L-F12): a radius negative or not a number, or a place - the
-// origin, a target, the centre - off the globe or not a number, is refused as
-// ErrAsk, never worked into an answer; a frequency that is none is said so,
-// and a figure that is not a number is never said "NaN".
+// origin, a target, the centre - off the globe or not a number, is refused by
+// go-ionomaps, whose checks the package relies on (D-215), never worked into
+// an answer; a frequency that is none is said so, and a figure that is not a
+// number is never said "NaN".
 func TestAnAskOffTheGlobeIsRefused(t *testing.T) {
 	snap := snapAt(time.Date(2026, 10, 11, 8, 0, 0, 0, time.UTC), 18)
 	nan := math.NaN()
@@ -90,26 +90,23 @@ func TestAnAskOffTheGlobeIsRefused(t *testing.T) {
 		"a radius not a number":     {Origin: here, RadiusKm: nan},
 		"the origin's latitude 91":  {Origin: ionomaps.LatLon{Lat: 91, Lon: 0}, RadiusKm: 400},
 		"the origin's latitude NaN": {Origin: ionomaps.LatLon{Lat: nan, Lon: 0}, RadiusKm: 400},
-		"the origin's longitude":    {Origin: ionomaps.LatLon{Lat: 0, Lon: 181}, RadiusKm: 400},
+		"the origin's longitude":    {Origin: ionomaps.LatLon{Lat: 0, Lon: 600}, RadiusKm: 400},
 		"a target's latitude":       {Origin: here, RadiusKm: 400, Targets: []Target{{Name: "x", At: ionomaps.LatLon{Lat: nan}}}},
-		"a target's longitude":      {Origin: here, RadiusKm: 400, Targets: []Target{{Name: "x", At: ionomaps.LatLon{Lon: -200}}}},
+		"a target's longitude":      {Origin: here, RadiusKm: 400, Targets: []Target{{Name: "x", At: ionomaps.LatLon{Lon: -600}}}},
 	} {
-		if _, err := WorkChart(snap, ask); !errors.Is(err, ErrAsk) {
-			t.Errorf("%s: %v; refused as ErrAsk", name, err)
+		if c, err := WorkChart(snap, ask); err == nil {
+			t.Errorf("%s: answered %+v; refused", name, c)
 		}
 	}
 	for name, c := range map[string][3]ionomaps.LatLon{
 		"the origin's latitude":  {{Lat: 95}, here},
 		"the origin's longitude": {{Lon: nan}, here},
 		"the centre's latitude":  {here, {Lat: -95}},
-		"the centre's longitude": {here, {Lon: 190}},
+		"the centre's longitude": {here, {Lon: 600}},
 	} {
-		if _, err := WorkCentre(snap, c[0], c[1], 400); !errors.Is(err, ErrAsk) {
-			t.Errorf("the centre, %s off the globe: %v", name, err)
+		if _, err := WorkCentre(snap, c[0], c[1], 400); err == nil {
+			t.Errorf("the centre, %s off the globe, answered", name)
 		}
-	}
-	if _, err := WorkCentre(snap, here, here, -5); !errors.Is(err, ErrAsk) {
-		t.Errorf("the centre with a negative radius: %v", err)
 	}
 	if (Target{At: here}).Near(here, nan) || (Target{At: ionomaps.LatLon{Lat: nan}}).Near(here, 400) {
 		t.Error("a radius or a target not a number is near")

@@ -73,15 +73,12 @@ func (d Dashboard) propOverlays() []tuimaps.Overlay {
 
 // propNightMoment is the moment the night is drawn for: the field's own
 // time, to the step - the sun as it stood when the field was made, however
-// old the field (W3.1); an hour ahead, the middle of that hour; the clock
-// before any field.
+// old the field (W3.1) - an hour ahead's being its start, the moment its
+// field and its words are for; the clock before any field.
 func (d Dashboard) propNightMoment() time.Time {
 	shown, ok := d.propShown()
-	switch {
-	case !ok:
+	if !ok {
 		return d.now().UTC().Truncate(nightStep)
-	case d.mapPane.propAhead > 0:
-		return shown.Now.At.Add(30 * time.Minute).UTC()
 	}
 	return shown.Now.At.UTC().Truncate(nightStep)
 }
@@ -141,9 +138,16 @@ type hfBand struct {
 	mhz  string  // as the legend writes it
 }
 
-// hfBands are the bands, low to high; foF2's classes are the first six.
-var hfBands = []hfBand{{"160m", 1.8, "1.8"}, {"80m", 3.5, "3.5"}, {"60m", 5.3, "5.3"}, {"40m", 7, "7"}, {"30m", 10.1, "10.1"},
-	{"20m", 14, "14"}, {"17m", 18.068, "18.07"}, {"15m", 21, "21"}, {"12m", 24.89, "24.89"}, {"10m", 28, "28"}}
+// hfBands are the bands go-ionomaps answers, low to high, by its own names
+// and lower edges, the legend's to two places; foF2's classes are the first
+// six.
+var hfBands = func() []hfBand {
+	var out []hfBand
+	for _, b := range ionomaps.AllBands() {
+		out = append(out, hfBand{name: b.String(), low: b.LowMHz(), mhz: strconv.FormatFloat(math.Round(b.LowMHz()*100)/100, 'f', -1, 64)})
+	}
+	return out
+}()
 
 // fof2Bands is how many of the bands foF2's classes key (D-145).
 const fof2Bands = 6

@@ -4,10 +4,12 @@ package tty
 // mode (FR-1.10; D-25, D-27, D-61, D-79).
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
@@ -60,7 +62,7 @@ func TestAFoundPlaceIsAnsweredAndNotKept(t *testing.T) {
 	commits := 0
 	d.cfg.Commit = func(_, _ []snapshot.LocationRef) error { commits++; return nil }
 	asked := ""
-	d.cfg.FindPlace = func(q string) (snapshot.LocationRef, error) { asked = q; return reykjavik, nil }
+	d.cfg.FindPlace = func(_ context.Context, q string) (snapshot.LocationRef, error) { asked = q; return reykjavik, nil }
 	recent := len(d.recentLocations())
 	before, _ := d.mapPane.m.Centre()
 	origin := d.mapPane.propOrigin.at
@@ -101,7 +103,7 @@ func TestAFoundPlaceIsAnsweredAndNotKept(t *testing.T) {
 // arrives late is dropped; an empty Enter takes the mark off.
 func TestFocusReturnsAfterAFind(t *testing.T) {
 	d := chartDash(t)
-	d.cfg.FindPlace = func(string) (snapshot.LocationRef, error) {
+	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) {
 		return snapshot.LocationRef{}, errors.New("no match in the offline index - try a city, coordinates or a grid locator")
 	}
 	d = typeFind(t, d, "nowhere at all")
@@ -114,7 +116,7 @@ func TestFocusReturnsAfterAFind(t *testing.T) {
 	if m, _ := d.Update(mapKeyMsg(t, "esc")); m.(Dashboard).modal != modalMap {
 		t.Errorf("Esc left window %v; the map", m.(Dashboard).modal)
 	}
-	d.cfg.FindPlace = func(string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	d = typeFind(t, d, "Reykjavik")
 	if d.modal != modalMap {
 		t.Errorf("after a place was found the focus is on window %v; the map", d.modal)
@@ -135,7 +137,7 @@ func TestFocusReturnsAfterAFind(t *testing.T) {
 // the map's centre and so the target its answer is for.
 func TestTheBroadcasterAnswersAFoundPlaceAsItsTarget(t *testing.T) {
 	d := stationDash(t)
-	d.cfg.FindPlace = func(string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	d = typeFind(t, d, "Reykjavik")
 	if words := workCentre(t, d).propCentreWords(); !strings.Contains(words, "64.") {
 		t.Errorf("the centre's answer is not for the place found: %q", words)
@@ -150,7 +152,7 @@ func TestTheBroadcasterAnswersAFoundPlaceAsItsTarget(t *testing.T) {
 func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 	d := chartDash(t)
 	region := d.mapPane.region.Name
-	d.cfg.FindPlace = func(string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	d.cfg.PlaceNear = func(lat, lon float64) string {
 		if lat > 30 && lat < 40 && lon > 130 && lon < 145 {
 			return "Tokyo, JP"
@@ -192,7 +194,7 @@ func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 // marks a place nor moves the map.
 func TestEscCancelsAFindInFlight(t *testing.T) {
 	d := chartDash(t)
-	d.cfg.FindPlace = func(string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	before, _ := d.mapPane.m.Centre()
 	d = pressMap(t, d, "/")
 	for _, r := range "Reykjavik" {
@@ -211,5 +213,41 @@ func TestEscCancelsAFindInFlight(t *testing.T) {
 	after, _ := d.mapPane.m.Centre()
 	if d.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) || after != before {
 		t.Errorf("a find cancelled with Esc still landed: %v, %v, centre %+v (was %+v)", d.mapPane.propFound, placeIDs(d), after, before)
+	}
+}
+
+// TestACancelledFindCancelsItsRequest is FR-4.9 and AX-11: Esc over a find
+// in flight drops its answer and stops its lookup too - a query the
+// listener took back is not sent on to the online geocoder.
+func TestACancelledFindCancelsItsRequest(t *testing.T) {
+	d := chartDash(t)
+	stopped := make(chan error, 1)
+	d.cfg.FindPlace = func(ctx context.Context, _ string) (snapshot.LocationRef, error) {
+		<-ctx.Done()
+		stopped <- ctx.Err()
+		return snapshot.LocationRef{}, ctx.Err()
+	}
+	d = pressMap(t, d, "/")
+	for _, r := range "Reykjavik" {
+		m, _ := d.Update(mapKeyMsg(t, string(r)))
+		d = m.(Dashboard)
+	}
+	m, find := d.Update(mapKeyMsg(t, "enter"))
+	d = m.(Dashboard)
+	if find == nil {
+		t.Fatal("control: Enter asked nothing")
+	}
+	go find()
+	m, _ = d.Update(mapKeyMsg(t, "esc"))
+	select {
+	case err := <-stopped:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("the find stopped with %v; want cancelled", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("Esc left the find's lookup running")
+	}
+	if m.(Dashboard).modal != modalMap {
+		t.Errorf("Esc left window %v", m.(Dashboard).modal)
 	}
 }

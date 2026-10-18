@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
@@ -50,6 +51,20 @@ type propagationHolder struct {
 	svc    *propagation.Service
 	err    error
 	client atomic.Pointer[httpx.Plain] // the Status window reads its counts from the UI goroutine (D-169)
+}
+
+// settleBound is how long the app's end waits for an update in flight to
+// keep GIRO's throttle state: a cancelled burst stops at its next ask.
+const settleBound = 2 * time.Second
+
+// settle waits at the app's end for an update in flight to keep its state
+// (D-213); a service never made has nothing to wait for. The once orders
+// this read after the service was made.
+func (h *propagationHolder) settle(bound time.Duration) {
+	h.once.Do(func() {})
+	if h.svc != nil {
+		h.svc.Settle(bound)
+	}
 }
 
 // service is the one service, made once, over its own client.

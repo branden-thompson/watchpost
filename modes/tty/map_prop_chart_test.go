@@ -381,3 +381,58 @@ func TestARefreshAnsweredTooSoonKeepsItsAnswers(t *testing.T) {
 		t.Error("a snapshot rebuilt with the correction switched is kept as the one held")
 	}
 }
+
+// TestAPanSettledUnderAWindowIsAnsweredOnReturn is P-1's settle without its
+// trap: a pan, then a window over the map before the view settles - the
+// frequency entry here - leaves the settle tick waiting, and back at the
+// map the view is answered, never left "being worked out" until the next
+// pan.
+func TestAPanSettledUnderAWindowIsAnsweredOnReturn(t *testing.T) {
+	d := pressMap(t, chartDash(t), "right")
+	gen := d.mapPane.viewGen
+	d = pressMap(t, d, "F")
+	if d.modal != modalPropFreq {
+		t.Fatalf("control: F opened window %v", d.modal)
+	}
+	m, cmd := d.Update(mapViewSettledMsg{gen: gen})
+	d = m.(Dashboard)
+	if cmd == nil || d.mapPane.viewAsked == gen {
+		t.Fatal("a settle tick under the window was dropped, or asked for a view the map does not show")
+	}
+	m, _ = d.Update(mapKeyMsg(t, "esc"))
+	d = m.(Dashboard)
+	if d.modal != modalMap {
+		t.Fatalf("control: esc left window %v", d.modal)
+	}
+	m, _ = d.Update(mapViewSettledMsg{gen: gen}) // the tick it waited with
+	d = m.(Dashboard)
+	d.mapPane.propChartAsked = propChartKey{}
+	if _, ask := d.armPropChart(); d.mapPane.viewAsked != gen || ask == nil {
+		t.Errorf("back at the map the view is not answered: asked %d of %d, chart asked %v", d.mapPane.viewAsked, gen, ask != nil)
+	}
+}
+
+// TestEachBandIsFoundByItsName is the BUILD red team's L-F8: a row's glyphs
+// sit under the bands they name, whatever order the answer gives them in,
+// and a band the answer lacks is blank; the typical day's rows are named by
+// their bands; the bands and their edges are go-ionomaps' own.
+func TestEachBandIsFoundByItsName(t *testing.T) {
+	var d Dashboard
+	cells := stripANSITest(d.propBandCells([]ionomaps.BandStatus{{Band: ionomaps.Band20m, Status: ionomaps.Open}}))
+	if len([]rune(cells)) != 3*len(hfBands) {
+		t.Fatalf("the row is %d cells for %d bands: %q", len([]rune(cells)), len(hfBands), cells)
+	}
+	for i, hb := range hfBands {
+		cell := strings.TrimSpace(string([]rune(cells)[3*i : 3*i+3]))
+		if (hb.name == "20m") != (cell != "") {
+			t.Errorf("under %s the row has %q; only 20m answered", hb.name, cell)
+		}
+	}
+	if len(hfBands) != len(ionomaps.AllBands()) || hfBands[6].mhz != "18.07" || hfBands[0].name != ionomaps.Band160m.String() {
+		t.Errorf("the bands are not go-ionomaps' own: %+v", hfBands)
+	}
+	rows := d.propDayRows([]ionomaps.BandStatus{{Band: ionomaps.Band40m}, {Band: ionomaps.Band10m}})
+	if !strings.HasPrefix(rows[0], "40m") || !strings.HasPrefix(rows[1], "10m") {
+		t.Errorf("the typical day's rows are not named by their bands: %q", rows)
+	}
+}

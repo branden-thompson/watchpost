@@ -80,7 +80,7 @@ func (d Dashboard) propReachWanted() (propReachKey, bool) {
 }
 
 // armPropReach asks for the reach when what it is worked out from has
-// changed (about 30 ms, never in Update).
+// changed (about 0.2 s, never in Update; D-227), one at a time.
 func (d Dashboard) armPropReach() (Dashboard, tea.Cmd) { return d.armAnswer(answerReach) }
 
 // propReachShown is the reach for what the window shows now; false while
@@ -107,16 +107,24 @@ func (d Dashboard) propFreqLine() string {
 	if d.mapPane.propFreqMHz == 0 {
 		return ""
 	}
-	line := "YOUR FREQUENCY " + d.mapPane.propFreqLabel + " · " + d.propReachWords()
+	line := "YOUR FREQUENCY " + d.mapPane.propFreqLabel + " · " + d.propReachRow()
 	if keys := d.mapKeys[actMapFreq].Keys; len(keys) > 0 {
 		line += " · " + keys[0] + " change"
 	}
 	return line
 }
 
-// propReachWords say the frequency held's reach (D-178): its skip zone,
-// that it reaches nowhere, or that it is being worked out.
-func (d Dashboard) propReachWords() string {
+// propReachWords say the frequency held's reach (D-178): its skip zone and
+// the limit that stops it, that it reaches nowhere and why, or that it is
+// being worked out - the words in full, the block's row short (propReachRow).
+func (d Dashboard) propReachWords() string { return d.propReach(true) }
+
+// propReachRow is the reach for the block's row: a reach that goes
+// somewhere without its limit, which the words say, so the row keeps its key.
+func (d Dashboard) propReachRow() string { return d.propReach(false) }
+
+// propReach is the reach said, in full or short.
+func (d Dashboard) propReach(full bool) string {
 	field, ok := d.propReachShown()
 	key, wanted := d.propReachWanted()
 	switch {
@@ -124,12 +132,38 @@ func (d Dashboard) propReachWords() string {
 		return d.propNotAvailable() // AX-9
 	case !ok:
 		return "being worked out"
-	case !field.Reaches:
-		return "above the MUF everywhere: it reaches nowhere"
-	case field.SkipKm == 0:
-		return "no skip zone"
 	}
-	return "skip zone to ~" + d.roundDistance(float64(field.SkipKm))
+	return reachSaid(field, d.roundDistance(float64(field.SkipKm)), full)
+}
+
+// reachLimitWords are the words for the limit a reach names (D-205): where
+// it reaches nowhere, why; where it reaches, what bounds it.
+var reachLimitWords = map[ionomaps.Limit][2]string{
+	ionomaps.LimitMUF:        {"above the MUF everywhere", "the MUF"},
+	ionomaps.LimitAbsorption: {"absorbed everywhere", "absorption"},
+	ionomaps.LimitCircuit:    {"too weak at 100 W everywhere", "the signal too weak at 100 W"},
+}
+
+// reachSaid says a reach worked out (D-178, FR-1.16, D-205): how far its
+// skip zone runs and, in full, the limit that bounds it; or that it reaches
+// nowhere and which limit stops it - never the MUF when the absorption or
+// the circuit does.
+func reachSaid(f ionomaps.ReachField, skip string, full bool) string {
+	words, named := reachLimitWords[f.Limit]
+	if !named {
+		words = reachLimitWords[ionomaps.LimitMUF]
+	}
+	reached := "skip zone to ~" + skip
+	if f.SkipKm == 0 {
+		reached = "no skip zone"
+	}
+	switch {
+	case !f.Reaches:
+		return "it reaches nowhere: " + words[0]
+	case !full:
+		return reached
+	}
+	return reached + ", limited by " + words[1]
 }
 
 // roundDistance is a distance in the units the description speaks, to the

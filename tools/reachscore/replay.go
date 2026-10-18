@@ -116,9 +116,6 @@ func (r *replay) Fetch(_ context.Context, u string, _ ionomaps.Validators) (iono
 	if r.in == nil {
 		return ionomaps.Response{}, errUnknownAsk
 	}
-	if u == "" {
-		return ionomaps.Response{}, errUnknownAsk
-	}
 	switch {
 	case u == glotecIndex:
 		return r.index(), nil
@@ -137,9 +134,6 @@ func (r *replay) Fetch(_ context.Context, u string, _ ionomaps.Validators) (iono
 
 // answer is a 200 with a body.
 func answer(body []byte) ionomaps.Response {
-	if body == nil {
-		return ionomaps.Response{Status: replayMissing} // nothing held to serve
-	}
 	return ionomaps.Response{Status: replayOK, Body: body}
 }
 
@@ -147,9 +141,6 @@ func answer(body []byte) ionomaps.Response {
 // as links, as NOAA's index names them.
 func (r *replay) index() ionomaps.Response {
 	if !r.grids {
-		return ionomaps.Response{Status: replayMissing}
-	}
-	if r.in == nil {
 		return ionomaps.Response{Status: replayMissing}
 	}
 	var b bytes.Buffer
@@ -161,9 +152,6 @@ func (r *replay) index() ionomaps.Response {
 
 // gridsBy are the grids' names valid at or before the clock, in order.
 func (r *replay) gridsBy() []string {
-	if r.in == nil {
-		return nil
-	}
 	var out []string
 	for name, valid := range r.in.grids {
 		if !valid.After(r.now) {
@@ -177,12 +165,6 @@ func (r *replay) gridsBy() []string {
 // grid is a grid's file; missing when withheld, unknown, or valid after
 // the clock.
 func (r *replay) grid(name string) (ionomaps.Response, error) {
-	if r.in == nil {
-		return ionomaps.Response{Status: replayMissing}, nil
-	}
-	if name == "" {
-		return ionomaps.Response{Status: replayMissing}, nil // the index itself, asked without its slash
-	}
 	valid, known := r.in.grids[name]
 	if !r.grids || !known || valid.After(r.now) {
 		return ionomaps.Response{Status: replayMissing}, nil
@@ -200,9 +182,6 @@ var solarDay = regexp.MustCompile(`^(\d{4} \d{2} \d{2})\s`)
 // solarBefore is the solar file as it stood at the clock: the rows of days
 // before the clock's UTC day, the headers kept.
 func solarBefore(body []byte, now time.Time) []byte {
-	if len(body) == 0 {
-		return nil
-	}
 	today := now.UTC().Truncate(24 * time.Hour)
 	var b bytes.Buffer
 	for line := range bytes.Lines(body) {
@@ -260,9 +239,6 @@ func (r *replay) station(u string) (ionomaps.Response, error) {
 func project(body []byte, from, to, now time.Time) ([]byte, error) {
 	if to.Before(from) {
 		return nil, errUnknownAsk
-	}
-	if len(body) == 0 {
-		return nil, nil
 	}
 	var b bytes.Buffer
 	for line := range bytes.Lines(body) {

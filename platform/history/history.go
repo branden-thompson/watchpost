@@ -695,16 +695,13 @@ func (s *Store) heldDayOf(f seriesFiles, d Dataset, day time.Time) heldDay {
 	if s.days == nil {
 		return heldDay{files: now, entries: s.readDay(f, d, day, entries)}
 	}
-	// THE FILES DECIDE, NOT THE AGE: what was read stands while they do. (Last,
-	// Forget and Do, not Get and Put: P10's call graph matches a call by its
-	// bare name, and this store's own Get and Put reach here.)
+	// THE FILES DECIDE, NOT THE AGE: what was read stands while they do, so the
+	// day is the last read whatever its age, read again when its files change.
 	if held, _, ok := s.days.Last(f.day); ok && held.files == now {
 		return held
 	}
-	s.days.Forget(f.day)
-	held, _ := s.days.Do(context.Background(), f.day, func() (heldDay, error) {
-		return heldDay{files: now, entries: s.readDay(f, d, day, entries)}, nil
-	})
+	held := heldDay{files: now, entries: s.readDay(f, d, day, entries)}
+	s.days.Put(f.day, held)
 	return held
 }
 
@@ -1381,7 +1378,7 @@ func (s *Store) prunePass(now time.Time) {
 // pass, a month emptied leaving the next for the following pass. The files
 // removed, at most budget.
 func (s *Store) holdToBound(d Dataset, now time.Time, visits *int, budget int) int {
-	if d.MaxBytes <= 0 || budget <= 0 || visits == nil {
+	if d.MaxBytes <= 0 || budget <= 0 {
 		return 0
 	}
 	if s.BytesOf(d.Name) <= d.MaxBytes {
@@ -1533,7 +1530,7 @@ func cursorAfter(a, b [3]string) bool {
 
 // listSeries is a dataset version's series directories, source then place.
 func listSeries(vdir string, visits *int) []string {
-	if vdir == "" || visits == nil {
+	if vdir == "" {
 		return nil
 	}
 	if *visits >= maxPruneVisits {
@@ -1571,7 +1568,7 @@ func readDirs(dir string, visits *int) []string {
 // directory it empties, or finds empty, is removed, and the series' own and
 // its source's once they hold nothing.
 func (s *Store) pruneSeries(d Dataset, dir string, now time.Time, visits *int, budget int) int {
-	if dir == "" || visits == nil {
+	if dir == "" {
 		return 0
 	}
 	if budget <= 0 {

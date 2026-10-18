@@ -1013,6 +1013,7 @@ func (lp *livePipelines) stopAll() {
 	if lp.reader != nil {
 		lp.reader.End() // a [space] read in progress ends with the app, its goroutine waited for (A-08)
 	}
+	lp.propagation.settle(settleBound) // an update in flight keeps GIRO's throttle state before the app ends (D-213)
 	// LAST, and waited for. The schedule's tick goroutine writes to the pump, so
 	// both have an owner here rather than being abandoned to the context, where
 	// a fire-and-forget goroutine can outlive what it writes to and race it.

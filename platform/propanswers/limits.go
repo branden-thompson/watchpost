@@ -23,9 +23,6 @@ type Limits struct {
 
 // LimitsOf reads an answer's limits from its bands.
 func LimitsOf(bands []ionomaps.BandStatus) Limits {
-	if len(bands) == 0 {
-		return Limits{} // no answer: no limit decides
-	}
 	var l Limits
 	for _, b := range bands {
 		switch b.Limit {
@@ -44,9 +41,6 @@ func LimitsOf(bands []ionomaps.BandStatus) Limits {
 
 // Usable are the bands an answer can use: open or disturbed, by name.
 func Usable(bands []ionomaps.BandStatus) []string {
-	if len(bands) == 0 {
-		return nil
-	}
 	var out []string
 	for _, b := range bands {
 		if b.Status == ionomaps.Open || b.Status == ionomaps.Disturbed {
@@ -106,9 +100,6 @@ func BestWords(l Limits, long bool) string {
 // frequency when it disturbs any; each figure in MHz with the unit given
 // after it (the chart's rows write none, D-198); empty with no data.
 func LimitWords(bands []ionomaps.BandStatus, unit string) string {
-	if len(bands) == 0 {
-		return "" // no data: no limit to name
-	}
 	l := LimitsOf(bands)
 	upper := "MUF"
 	for _, b := range bands {
@@ -131,9 +122,6 @@ func LimitWords(bands []ionomaps.BandStatus, unit string) string {
 // RowWords are a chart row's limits and its best frequency, in MHz without
 // the unit on each (D-197, D-198).
 func RowWords(bands []ionomaps.BandStatus) string {
-	if len(bands) == 0 {
-		return ""
-	}
 	limits, best := LimitWords(bands, ""), BestWords(LimitsOf(bands), false)
 	if limits == "" || best == "" {
 		return limits + best
@@ -176,9 +164,6 @@ func MHz(v float64) string {
 // HighestOpen is the highest band an answer calls open, by name; "none", or
 // "no data" where it has none.
 func HighestOpen(bands []ionomaps.BandStatus) string {
-	if len(bands) == 0 {
-		return "no data"
-	}
 	best, data := "none", false
 	for _, b := range bands {
 		data = data || b.Status != ionomaps.StatusNoData
@@ -194,9 +179,6 @@ func HighestOpen(bands []ionomaps.BandStatus) string {
 
 // OpenAt reports whether a moment falls in one of the spans.
 func OpenAt(spans []ionomaps.Span, at time.Time) bool {
-	if len(spans) == 0 {
-		return false // never typically open
-	}
 	for _, s := range spans {
 		if !at.Before(s.From) && at.Before(s.To) {
 			return true
@@ -208,9 +190,6 @@ func OpenAt(spans []ionomaps.Span, at time.Time) bool {
 // Differs reports whether any band's status now differs from its typical day
 // at the hour (D-135); a band with no data now is no difference.
 func Differs(bands []ionomaps.BandStatus, hour time.Time) bool {
-	if len(bands) == 0 {
-		return false // no answer differs from nothing
-	}
 	at := hour.UTC().Truncate(time.Hour)
 	for _, b := range bands {
 		if b.Status != ionomaps.StatusNoData && (b.Status == ionomaps.Open) != OpenAt(b.OpenHours, at) {

@@ -9,8 +9,11 @@ package tty
 // (D-27). Focus returns to the map.
 
 import (
-	tea "charm.land/bubbletea/v2"
+	"context"
+	"errors"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
@@ -85,14 +88,20 @@ func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		d.mapPane.propFindSeq++
 		d.mapPane.propFindBusy, d.mapPane.propFindErr = true, ""
 		seq := d.mapPane.propFindSeq
+		ctx, cancel := context.WithCancel(context.Background())
+		d.mapPane.propFindCancel = cancel
 		return d, func() tea.Msg {
-			ref, err := find(q)
+			defer cancel()
+			ref, err := find(ctx, q)
 			return propFoundMsg{seq: seq, ref: ref, err: err}
 		}
 	case "esc":
 		if d.mapPane.propFindBusy {
 			d.mapPane.propFindSeq++ // the find in flight cancelled: its answer is dropped (AX-11)
 			d.mapPane.propFindBusy = false
+			if d.mapPane.propFindCancel != nil {
+				d.mapPane.propFindCancel() // and its request with it: a query the listener took back is not sent on
+			}
 		}
 		return d.close(), nil
 	case "backspace":
@@ -119,6 +128,9 @@ func (d Dashboard) applyPropFound(v propFoundMsg) (tea.Model, tea.Cmd) {
 	d.mapPane.propFindBusy = false
 	if v.err != nil {
 		d.mapPane.propFindErr = v.err.Error()
+		if cause := errors.Unwrap(v.err); cause != nil {
+			d.problem("Propagation finder: " + cause.Error()) // the cause for the diagnostics; the words above are the listener's (D-124)
+		}
 		return d, nil
 	}
 	ref := v.ref

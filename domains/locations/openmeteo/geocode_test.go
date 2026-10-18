@@ -2,6 +2,7 @@ package openmeteo
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -92,8 +93,8 @@ func TestTheWorldsFailuresSayItsOwnFix(t *testing.T) {
 		t.Errorf("no result anywhere is said %v", err)
 	}
 	_, err = NewGeocoder(c, failing.URL).ResolveWorld(context.Background(), "nowhere")
-	if err == nil || !strings.Contains(err.Error(), "found without it") {
-		t.Errorf("a lookup that did not answer is said %v", err)
+	if err == nil || !strings.Contains(err.Error(), "found without it") || strings.Contains(err.Error(), "http") || errors.Unwrap(err) == nil {
+		t.Errorf("a lookup that did not answer is said %v: the words alone, the cause kept for the diagnostics", err)
 	}
 }
 
@@ -125,5 +126,24 @@ func TestTheOnlineFallbackIsUncached(t *testing.T) {
 	}
 	if _, err := g.Resolve(context.Background(), "Reykjavik"); err == nil {
 		t.Error("control: the weather's lookup took a place it does not cover")
+	}
+}
+
+// TestTheGeocodersTextIsCleaned is FR-4.9 at the terminal (PN2-6): a
+// place's name and region from the geocoder reach the terminal and the
+// words, so an escape sequence or a control character in them is dropped
+// before either sees it.
+func TestTheGeocodersTextIsCleaned(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"results":[{"name":"Reyk\u001b]52;c;aGk=\u0007javik\n","latitude":64.1,"longitude":-21.9,"country_code":"I\u0007S","timezone":"Atlantic/Reykjavik"}]}`))
+	}))
+	defer srv.Close()
+	c, err := httpx.New(httpx.Config{UserAgent: "t", RatePerSec: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, err := NewGeocoder(c, srv.URL).ResolveWorld(context.Background(), "Reykjavik")
+	if err != nil || strings.ContainsAny(ref.Label, "\x1b\x07\n") {
+		t.Errorf("the place found is labelled %q (%v); no escape or control character", ref.Label, err)
 	}
 }

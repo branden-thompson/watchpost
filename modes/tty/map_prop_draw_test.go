@@ -147,7 +147,7 @@ func TestHelpFitsWithThePropagationKeys(t *testing.T) {
 		m, _ := d.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		d = m.(Dashboard).open(modalHelp)
 		text := strings.Join(strings.Fields(stripANSITest(strings.Join(d.modalLines(), " "))), " ") // wrapped at the floor: read as one text
-		for _, want := range []string{"R Radar Mode, space Play, </> Forecast Hi-Lo", "⇧← Back, ⇧→ On, n Now (an hour, in Propagation)", "P Propagation, L Layer, U Refresh, / Find", "+/= Zoom In"} {
+		for _, want := range []string{"R Radar Mode, space Play, </> Forecast Hi-Lo", "⇧← Back, ⇧→ On (an hour in Propagation), n Now", "P Propagation, L Layer, U Refresh, / Find", "+/= Zoom In"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("%dx%d: Help lacks %q", size[0], size[1], want)
 			}

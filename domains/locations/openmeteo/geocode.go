@@ -13,6 +13,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/locations/coverage"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -72,7 +73,7 @@ func (g *Geocoder) search(ctx context.Context, query string, world bool) (snapsh
 	}
 	if _, err := g.client.GetJSON(ctx, u, &payload, opts...); err != nil {
 		if world { // the Propagation mode's finder: what it finds without the network (AX-10)
-			return snapshot.LocationRef{}, fmt.Errorf("the online lookup did not answer (%w); coordinates, a grid locator and the world's larger cities are found without it", err)
+			return snapshot.LocationRef{}, LookupFailed{Cause: err}
 		}
 		return snapshot.LocationRef{}, fmt.Errorf("geocoding: %w", err) // never the query (FR-4.9): the URL's name is redacted
 	}
@@ -83,7 +84,8 @@ func (g *Geocoder) search(ctx context.Context, query string, world bool) (snapsh
 		return snapshot.LocationRef{}, errors.New("no location found by that name — try 'City, ST' or a zip code")
 	}
 	r := payload.Results[0]
-	if !world && r.CountryCode != "" && !coverage.NWS(r.CountryCode) { // the same answer as the offline index (round 2 N-2)
+	r.Name, r.Admin1, r.CountryCode = cleanField(r.Name), cleanField(r.Admin1), cleanField(r.CountryCode) // the provider's text reaches the terminal and the words
+	if !world && r.CountryCode != "" && !coverage.NWS(r.CountryCode) {                                    // the same answer as the offline index (round 2 N-2)
 		return snapshot.LocationRef{}, errors.New(coverage.Outside(r.Name + ", " + r.CountryCode))
 	}
 	label := r.Name
@@ -128,3 +130,21 @@ func abbrevState(name string) string {
 	}
 	return name
 }
+
+// cleanField is a geocoder's field made safe to show and say: one line, no
+// escape sequence or control character a server could address the terminal
+// with, at most a field's length.
+func cleanField(s string) string { return plaintext.ClampField(plaintext.Line(s)) }
+
+// LookupFailed is a world lookup the geocoder did not answer: its words are
+// the listener's - what is found without it - and its cause, the transport's
+// error, is for the diagnostics alone (errors.Unwrap), never said.
+type LookupFailed struct{ Cause error }
+
+// Error is the listener's words.
+func (e LookupFailed) Error() string {
+	return "the online lookup did not answer; coordinates, a grid locator and the world's larger cities are found without it"
+}
+
+// Unwrap is the cause, for the diagnostics.
+func (e LookupFailed) Unwrap() error { return e.Cause }

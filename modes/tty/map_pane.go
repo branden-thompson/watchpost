@@ -91,9 +91,11 @@ type mapPane struct {
 	propFindErr     string                     // why it found none
 	propFindBusy    bool                       // a find in flight
 	propFindSeq     uint64                     // the latest find: an earlier one's answer is dropped
+	propFindCancel  context.CancelFunc         // cancels the find in flight, its request with it
 	propFound       *snapshot.LocationRef      // the place found and marked; never kept (D-27)
 	foundMarked     bool                       // its mark is on the map
 	wordsAt         wordsPlace                 // the reader's place in the words, kept until they scroll (D-211)
+	wordsAnchored   wordsAnchor                // what the words were laid out from when the place was last found
 	propBuilt       uint64                     // how many snapshots have been kept: the answers' keys carry it (L-F3)
 	propReach       propReach                  // the frequency's reach (W5.2)
 	propReachAsked  propReachKey               // what the reach was last asked for: asked once
@@ -991,7 +993,8 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		}
 	case modePropagation: // the hours ahead (FR-1.13)
 		if nd, ok := d.stepPropAhead(act); ok {
-			return nd, nd.mapWorkCmd(), true
+			nd, settle := nd.viewMoved() // an hour step settles as a pan does: the reach is asked once the hour stands (D-227)
+			return nd, tea.Batch(nd.mapWorkCmd(), settle), true
 		}
 	}
 	return d.moveMapView(act)
@@ -1471,7 +1474,7 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 		pairs(named{actMapPrev, "Previous"}, named{actMapNext, "Next Location"}),
 		pairs(named{actMapZoomIn, "Zoom In"}, named{actMapZoomOut, "Out"}, named{actMapScrollUp, "Scroll Up"}, named{actMapScrollDown, "Down"}),
 		pairs(named{actMapAlerts, "Alerts"}, named{actMapOverlays, "Overlays"}, named{actMapChart, "Bands"}, named{actMapFreq, "Freq."}), // D-176, D-178
-		pairs(named{actMapBack, "Back"}, named{actMapOn, "On"}, named{actMapNewest, "Now (an hour, in Propagation)"}),                    // FR-1.14: a frame, a day, or in Propagation an hour
+		pairs(named{actMapBack, "Back"}, named{actMapOn, "On (an hour in Propagation)"}, named{actMapNewest, "Now"}),                     // FR-1.14: a frame, a day, or in Propagation an hour
 		pairs(named{actMapRadar, "Radar Mode"}, named{actMapPlay, "Play"}, named{actMapHighLow, "Forecast Hi-Lo"}),                       // D-94, D-97
 		pairs(named{actMapProp, "Propagation"}, named{actMapLayer, "Layer"}, named{actMapRefresh, "Refresh"}, named{actMapFind, "Find"}), // D-153, D-155, D-156; FR-1.10
 	}
@@ -1522,10 +1525,19 @@ func (d Dashboard) viewMoved() (Dashboard, tea.Cmd) {
 }
 
 // applyViewSettled asks the feed again once the view has stood still: the map
-// draws every alert in view (D-66, D-76). A superseded tick is dropped.
+// draws every alert in view (D-66, D-76). A superseded tick is dropped; one
+// that lands while a window is over the map waits for the map to be in
+// front again, so the view's asks - the alerts and the Propagation mode's
+// answers (P-1) - are never left waiting for another move.
 func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
-	if d.modal != modalMap || v.gen != d.mapPane.viewGen {
+	if v.gen != d.mapPane.viewGen {
 		return d, nil
+	}
+	if d.modal != modalMap && d.mapShown() {
+		return d, tea.Tick(mapSettleDelay, func(time.Time) tea.Msg { return v })
+	}
+	if d.modal != modalMap {
+		return d, nil // the map closed: its open asks for its view
 	}
 	d.mapPane.viewAsked = v.gen
 	d, feed := d.requestFeed().askFeed()

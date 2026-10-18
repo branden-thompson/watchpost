@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	ionomaps "github.com/branden-thompson/go-ionomaps"
+
 	"github.com/branden-thompson/watchpost/platform/geo"
 )
 
@@ -120,5 +122,61 @@ func TestABadFrequencyIsSaidNotGuessed(t *testing.T) {
 		if back := m.(Dashboard); back.modal != modalMap || back.mapPane.propFreqMHz != 7.188 {
 			t.Errorf("%q: Esc left window %v holding %v MHz", bad, back.modal, back.mapPane.propFreqMHz)
 		}
+	}
+}
+
+// TestTheReachSaysWhichLimitStopsIt is FR-1.16 and D-205: a reach is said
+// with the limit go-ionomaps names - reaching nowhere because the absorption
+// or the circuit closes every cell is never said as above the MUF - and a
+// reach that goes somewhere says what bounds it.
+func TestTheReachSaysWhichLimitStopsIt(t *testing.T) {
+	for _, c := range []struct {
+		f    ionomaps.ReachField
+		want string
+	}{
+		{ionomaps.ReachField{Limit: ionomaps.LimitAbsorption}, "it reaches nowhere: absorbed everywhere"},
+		{ionomaps.ReachField{Limit: ionomaps.LimitCircuit}, "it reaches nowhere: too weak at 100 W everywhere"},
+		{ionomaps.ReachField{Limit: ionomaps.LimitMUF}, "it reaches nowhere: above the MUF everywhere"},
+		{ionomaps.ReachField{Reaches: true, SkipKm: 800, Limit: ionomaps.LimitMUF}, "skip zone to ~800 km, limited by the MUF"},
+		{ionomaps.ReachField{Reaches: true, Limit: ionomaps.LimitAbsorption}, "no skip zone, limited by absorption"},
+	} {
+		if got := reachSaid(c.f, "800 km", true); got != c.want {
+			t.Errorf("%+v: %q; want %q", c.f, got, c.want)
+		}
+	}
+	if got := reachSaid(ionomaps.ReachField{Reaches: true, SkipKm: 800, Limit: ionomaps.LimitCircuit}, "800 km", false); got != "skip zone to ~800 km" {
+		t.Errorf("the block's row is %q; the skip zone alone, the words saying the limit", got)
+	}
+	if got := reachSaid(ionomaps.ReachField{Limit: ionomaps.LimitAbsorption}, "", false); got != "it reaches nowhere: absorbed everywhere" {
+		t.Errorf("the block's row for a reach nowhere is %q; why, always", got)
+	}
+}
+
+// TestHourStepsAskOneReachAtATime is D-227: a reach costs a fifth of a
+// second or more, so hour steps held down ask none until the hour stands -
+// as a pan's answers wait for the view - and a reach in flight is answered
+// before the latest one wanted is asked: never a queue of the hours passed.
+// On the Broadcaster, whose origin is the transmitter, not the moving centre.
+func TestHourStepsAskOneReachAtATime(t *testing.T) {
+	d := enterFreq(t, stationDash(t), "14.2")
+	for range 3 {
+		d = stepAhead(t, d, "shift+right") // each hour worked out, as its command does
+	}
+	if d.mapPane.propReachAsked != d.mapPane.propReach.key {
+		t.Error("a reach was asked while the hours were still stepping")
+	}
+	d = settled(t, d) // the hour stands: the Update asks its reach
+	first, _ := d.propReachWanted()
+	if d.mapPane.propReachAsked != first {
+		t.Fatal("the hour stood and its reach was not asked")
+	}
+	d = settled(t, stepAhead(t, d, "shift+right"))
+	latest, _ := d.propReachWanted()
+	if d.mapPane.propReachAsked != first {
+		t.Error("a second reach was asked while the first was in flight")
+	}
+	m, _ := d.Update(propReachMsg{reach: propReach{key: first}}) // the first answered, its hour now passed
+	if d = m.(Dashboard); d.mapPane.propReachAsked != latest {
+		t.Errorf("once the first was answered, the latest hour's reach was not asked: asked %+v", d.mapPane.propReachAsked.hour)
 	}
 }

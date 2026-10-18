@@ -23,6 +23,7 @@ var runs = []struct {
 		"TestWhereThingsHappenNamesRealSymbols", "TestAcceptedCostsNamesRealSymbols", "TestFollowUpsCiteTestsThatExist",
 		"TestTheRosterCitesTestsThatExist", "TestEveryRatifiedP10RowNamesCodeThatExists", "TestAMethodRowNamesItsReceiver",
 		"TestEveryRequirementsTestIsInAPlanTask", "TestEveryRulingNamingCodeCitesItsLine",
+		"TestEveryRequirementsTestExists", "TestEveryCodeCitationResolves",
 	}},
 	{"./app", []string{"TestTheAsBuiltMapIsKeptInStep"}},
 	{"./tools/atlas", []string{"TestTheAtlasMatchesAFreshRender"}},

@@ -16,7 +16,6 @@ import (
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
-	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/propanswers"
 )
 
@@ -46,12 +45,6 @@ const (
 
 // clocks are the scored clocks of the days, in order.
 func clocks(ds []time.Time) []time.Time {
-	if len(ds) == 0 {
-		return nil
-	}
-	if len(ds) > maxDays {
-		return nil
-	}
 	var out []time.Time
 	for _, d := range ds {
 		for h := time.Duration(0); h < 24*time.Hour; h += scoredEvery {
@@ -65,6 +58,7 @@ func clocks(ds []time.Time) []time.Time {
 type hourFacts struct {
 	Grid     bool
 	Stations int
+	Unread   int // NOAA's files the update fetched and could not read
 	F107     float32
 }
 
@@ -83,10 +77,6 @@ var errReplayed = errors.New("a column's snapshot is fed other than the column s
 func snapshots(in *recorded, col column, at []time.Time) (map[time.Time]ionomaps.Snapshot, map[time.Time]hourFacts, error) {
 	if in == nil || len(at) == 0 {
 		return nil, nil, errUsage
-	}
-	bounded := len(at) <= maxDays*8 // the hourly walk below is at most maxDays days long
-	if err := invariant.Check(bounded, "more scored clocks than maxDays days hold"); err != nil {
-		return nil, nil, err
 	}
 	rp := replayFor(in, col)
 	lib, err := ionomaps.New(rp, ionomaps.Options{Clock: rp.clock})
@@ -111,7 +101,7 @@ func snapshots(in *recorded, col column, at []time.Time) (map[time.Time]ionomaps
 		}
 		if scored[t] {
 			snaps[t] = s
-			facts[t] = hourFacts{Grid: !s.Inputs.GloTECValid.IsZero(), Stations: s.Inputs.Stations, F107: s.Inputs.F107Mean}
+			facts[t] = hourFacts{Grid: !s.Inputs.GloTECValid.IsZero(), Stations: s.Inputs.Stations, Unread: len(s.Inputs.Unread), F107: s.Inputs.F107Mean}
 		}
 	}
 	if len(rp.unknown) > 0 {
@@ -125,19 +115,24 @@ func replayFor(in *recorded, col column) *replay {
 	return &replay{in: in, grids: col != climatology}
 }
 
-// fedAsSaid checks a column's snapshots were fed as the column says: the
-// climatology's never by a grid, no column but the shipped build's by a
-// station.
+// fedAsSaid checks a column's snapshots were fed as the column says, both
+// ways: the climatology's never by a grid and the others by one at every
+// scored hour, no column but the shipped build's by a station and the
+// shipped build's by some, and none from a file the library could not read.
+// A day's grids missing would otherwise turn the background into the
+// climatology, and the run would still finish.
 func fedAsSaid(col column, facts map[time.Time]hourFacts) error {
-	if col >= columns {
-		return errReplayed
-	}
+	stations := 0
 	for t, f := range facts {
-		gridded := col == climatology && f.Grid
-		stationed := col != shipped && f.Stations > 0
-		if gridded || stationed {
-			return fmt.Errorf("%w: %s at %s", errReplayed, col, t.Format(time.RFC3339))
+		gridWrong := (col == climatology) == f.Grid
+		stationWrong := col != shipped && f.Stations > 0
+		if gridWrong || stationWrong || f.Unread > 0 {
+			return fmt.Errorf("%w: %s at %s (grid %t, %d stations, %d files unread)", errReplayed, col, t.Format(time.RFC3339), f.Grid, f.Stations, f.Unread)
 		}
+		stations += f.Stations
+	}
+	if col == shipped && stations == 0 {
+		return fmt.Errorf("%w: no station's reading reached the shipped build at any scored hour", errReplayed)
 	}
 	return nil
 }
@@ -146,11 +141,15 @@ func fedAsSaid(col column, facts map[time.Time]hourFacts) error {
 // disturbed reaches (`propanswers.Usable`); absorbed, too weak and above the
 // upper limit do not.
 func reaches(b ionomaps.BandStatus) bool {
-	if b.Band < ionomaps.Band160m || b.Band > ionomaps.Band10m {
-		return false // a status for no band reaches nowhere
-	}
 	return len(propanswers.Usable([]ionomaps.BandStatus{b})) == 1
 }
+
+// errNoData is an answer with no field for the scenario's band: counted it
+// would read as "does not reach", so the run stops instead.
+var errNoData = errors.New("the field has no value for the scenario's band")
+
+// errNoScenarios is a run that drew nothing to score.
+var errNoScenarios = errors.New("no scenario was drawn: the spots hold no monitored pair for the metrics' reach")
 
 // errNoBand is an answer that does not name the scenario's band.
 var errNoBand = errors.New("the answer names no status for the scenario's band")
@@ -159,7 +158,7 @@ var errNoBand = errors.New("the answer names no status for the scenario's band")
 // M1 from the tower, the place within its served area answered by the
 // area (FR-2.3); M4 from the listener, the transmitter as a found place
 // (D-204), within the near-vertical radius answered by the area. noData is
-// a band the field had no value for.
+// a band the field had no value for, which stops the run.
 func answerOne(snap ionomaps.Snapshot, s scenario, r reach) (reached, noData bool, err error) {
 	radius := r.NearKm
 	if s.Metric == m1 {
@@ -168,9 +167,6 @@ func answerOne(snap ionomaps.Snapshot, s scenario, r reach) (reached, noData boo
 	chart, err := propanswers.WorkChart(snap, propanswers.Ask{Origin: s.Origin, RadiusKm: radius, Targets: []propanswers.Target{{At: s.Target}}})
 	if err != nil {
 		return false, false, err
-	}
-	if len(chart.Targets) != 1 {
-		return false, false, propanswers.ErrAnswers
 	}
 	for _, b := range chart.Targets[0].Bands {
 		if b.Band == s.Band {
@@ -182,23 +178,17 @@ func answerOne(snap ionomaps.Snapshot, s scenario, r reach) (reached, noData boo
 
 // tally is one column's agreement over some scenarios, by outcome.
 type tally struct {
-	n, agree, noData [outcomes]int
+	n, agree [outcomes]int
 }
 
 // add counts one answer against its scenario's outcome.
-func (t *tally) add(o outcome, reached, noData bool) {
-	if t == nil {
-		return
-	}
+func (t *tally) add(o outcome, reached bool) {
 	if o >= outcomes {
 		return
 	}
 	t.n[o]++
 	if reached == (o == open) {
 		t.agree[o]++
-	}
-	if noData {
-		t.noData[o]++
 	}
 }
 
@@ -235,10 +225,13 @@ func scoreSet(set []scenario, snaps [columns]map[time.Time]ionomaps.Snapshot, r 
 				return scored{}, fmt.Errorf("%s has no snapshot at %s", c, s.At.Format(time.RFC3339))
 			}
 			reached, noData, err := answerOne(snap, s, r)
+			if err == nil && noData {
+				err = errNoData
+			}
 			if err != nil {
 				return scored{}, fmt.Errorf("%s, %s at %s: %w", s.Metric, c, s.At.Format(time.RFC3339), err)
 			}
-			out.tallies[b][c].add(s.Outcome, reached, noData)
+			out.tallies[b][c].add(s.Outcome, reached)
 			out.answers[i][c] = reached
 		}
 	}
@@ -329,6 +322,9 @@ func scoreCommand(args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if len(set) == 0 {
+		return errNoScenarios
+	}
 	at := clocks(ds)
 	var snaps [columns]map[time.Time]ionomaps.Snapshot
 	var facts [columns]map[time.Time]hourFacts
@@ -350,7 +346,8 @@ func scoreCommand(args []string, out io.Writer) error {
 		return err
 	}
 	return report(out, reportOf{flags: f, days: ds, set: set, counts: d.counts, res: res, facts: facts,
-		grids: len(in.grids), stations: len(in.giro), spotFiles: len(spotFiles), sum: sum, rev: revision()})
+		grids: len(in.grids), stations: len(in.giro), spotFiles: len(spotFiles), sum: sum, rev: revision(),
+		intervals: intervalsOf(set, res.answers, f.seed)})
 }
 
 // drawDays reads each day's spots and draws the set from every scored
@@ -358,9 +355,6 @@ func scoreCommand(args []string, out io.Writer) error {
 func drawDays(ds []time.Time, f scoreFlags) ([]scenario, *drawer, []string, error) {
 	if len(ds) == 0 {
 		return nil, nil, nil, errDays
-	}
-	if f.k < 1 {
-		return nil, nil, nil, errUsage
 	}
 	d := newDrawer(f.k, f.seed, f.strata == strataBandHour)
 	var files []string

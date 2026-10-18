@@ -25,9 +25,6 @@ var statusSaid = []struct {
 // BandsSaid are a target's bands by state, the open before the closed:
 // "open on 20m; above the upper limit on 17, 15, 12 and 10m".
 func BandsSaid(bands []ionomaps.BandStatus) string {
-	if len(bands) == 0 {
-		return "no data"
-	}
 	var parts []string
 	for _, s := range statusSaid {
 		var nums []string

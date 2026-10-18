@@ -119,6 +119,9 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		if snap.Offset.Measured {
 			d.problem(propOffsetWords(snap.Offset)) // the diagnostics' record of each live offset (FR-5.4)
 		}
+		if snap.Inputs.Rejected > 0 {
+			d.problem(fmt.Sprintf("Propagation: GIRO's last burst sent %d rows the range checks refused", snap.Inputs.Rejected)) // counted, never on the field (FR-5.2)
+		}
 		if !same { // a refresh answered too soon is the snapshot held: its answers and hours ahead stand (P-4)
 			d.mapPane.propBuilt++                                       // a snapshot rebuilt at the same moment - the correction, the stations - is another (L-F3)
 			d.mapPane.propAheadSnaps, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
@@ -189,6 +192,8 @@ func (d Dashboard) propStatusWords() string {
 			words = "Propagation · " + f + " · " + strings.TrimPrefix(words, "Propagation · ") // FR-5.2: a failed update first, over the field kept
 		}
 		return words
+	case errors.Is(err, context.DeadlineExceeded):
+		return "Propagation · NOAA did not answer in time · " + d.firstKey(actMapRefresh) + " refreshes now" // the words, never the context's error text
 	case err != nil && !errors.Is(err, context.Canceled):
 		return "Propagation · " + strings.TrimPrefix(err.Error(), "ionomaps: ") + " · " + d.firstKey(actMapRefresh) + " refreshes now" // D-120: the key that asks again
 	case d.mapPane.propSess.busy:
@@ -294,11 +299,21 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 		words = append(words, "NOAA not reached: the last field")
 	case ionomaps.StationsNext:
 		words = append(words, "asking GIRO's stations")
+	case ionomaps.GIROPaused:
+		words = append(words, "GIRO paused after a refusal: the readings it gave first")
+	case ionomaps.Unfinished:
+		words = append(words, "the update stopped before every file came: built from what was held")
 	}
-	if s.Inputs.Stations > 0 {
+	if len(s.Inputs.Unread) > 0 {
+		words = append(words, "could not read NOAA's "+strings.Join(s.Inputs.Unread, ", ")+": the last held used") // FR-5.2
+	}
+	switch {
+	case s.Inputs.Stations > 0:
 		words = append(words, fmt.Sprintf("%d stations, oldest %s", s.Inputs.Stations, s.Inputs.OldestReading.UTC().Format("15:04 UTC")))
-	} else if s.Reason != ionomaps.StationsNext {
-		words = append(words, "no stations: the background alone")
+	case s.Inputs.NoStations:
+		words = append(words, "no stations by choice: the background alone") // D-214
+	case s.Reason != ionomaps.StationsNext:
+		words = append(words, "no station readings this hour: the background alone")
 	}
 	switch s.Background.FoF2 {
 	case ionomaps.GloTEC:

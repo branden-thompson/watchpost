@@ -60,14 +60,11 @@ type Chart struct {
 	Targets []ionomaps.Answer
 }
 
-// The asks refused. ErrAnswers is an answer of another length than the
-// places asked: the library's to fix, said in the diagnostics (D-124).
-// ErrAsk is an ask no answer can be worked out from: a radius negative or not
-// a number, or a place off the globe (a NaN among them, L-F12).
-var (
-	ErrAnswers = errors.New("go-ionomaps answered a different number of places than were asked")
-	ErrAsk     = errors.New("propanswers: the ask's radius is not a distance, or a place in it is off the globe")
-)
+// ErrAnswers is an answer of another length than the places asked: the
+// library's to fix, said in the diagnostics (D-124). An ask the library
+// cannot answer - a radius that is no distance, a place off the globe or not
+// a number - is refused by go-ionomaps itself, its error returned.
+var ErrAnswers = errors.New("go-ionomaps answered a different number of places than were asked")
 
 // WorkChart works a chart out (W5.1): the near-vertical area's bands, and
 // each target's path from the origin - within the area, the area's answer.
@@ -75,27 +72,12 @@ var (
 // day (BenchmarkTheChartIsWorkedOut); a caller keeps it off the UI goroutine
 // (FR-1.17).
 func WorkChart(snap ionomaps.Snapshot, ask Ask) (Chart, error) {
-	if !(ask.RadiusKm >= 0) {
-		return Chart{}, ErrAsk
-	}
-	if !(ask.Origin.Lat >= -90 && ask.Origin.Lat <= 90) {
-		return Chart{}, ErrAsk
-	}
-	if !(ask.Origin.Lon >= -180 && ask.Origin.Lon <= 180) {
-		return Chart{}, ErrAsk
-	}
 	local, err := snap.Bands([]ionomaps.LatLon{ask.Origin}, ask.RadiusKm)
 	if err != nil {
 		return Chart{}, err
 	}
 	to := make([]ionomaps.LatLon, len(ask.Targets))
 	for i, t := range ask.Targets {
-		if !(t.At.Lat >= -90 && t.At.Lat <= 90) {
-			return Chart{}, ErrAsk
-		}
-		if !(t.At.Lon >= -180 && t.At.Lon <= 180) {
-			return Chart{}, ErrAsk
-		}
 		to[i] = t.At
 	}
 	paths, err := snap.Path(ask.Origin, to)
@@ -124,21 +106,6 @@ type Centre struct {
 // WorkCentre is the centre's answer: within the near-vertical radius of the
 // origin, the area's; farther, the path's.
 func WorkCentre(snap ionomaps.Snapshot, origin, centre ionomaps.LatLon, radiusKm float64) (Centre, error) {
-	if !(radiusKm >= 0) {
-		return Centre{}, ErrAsk
-	}
-	if !(origin.Lat >= -90 && origin.Lat <= 90) {
-		return Centre{}, ErrAsk
-	}
-	if !(origin.Lon >= -180 && origin.Lon <= 180) {
-		return Centre{}, ErrAsk
-	}
-	if !(centre.Lat >= -90 && centre.Lat <= 90) {
-		return Centre{}, ErrAsk
-	}
-	if !(centre.Lon >= -180 && centre.Lon <= 180) {
-		return Centre{}, ErrAsk
-	}
 	c := Centre{Km: geo.HaversineKM(origin.Lat, origin.Lon, centre.Lat, centre.Lon)}
 	var got []ionomaps.Answer
 	var err error

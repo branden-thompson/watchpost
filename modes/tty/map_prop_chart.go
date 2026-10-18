@@ -85,8 +85,12 @@ const (
 // armAnswer asks for one answer when what it is worked out from has
 // changed, once, in a command (FR-1.17), from the snapshot on screen.
 func (d Dashboard) armAnswer(which propAnswer) (Dashboard, tea.Cmd) {
-	if d.mapPane.viewGen != d.mapPane.viewAsked && (which == answerCentre || d.propRole().origin == propFromCentre) {
-		return d, nil // the view still moving: an answer from or to its centre is asked once it settles, not at every step (P-1)
+	moving := d.mapPane.viewGen != d.mapPane.viewAsked
+	if moving && (which == answerCentre || which == answerReach || d.propRole().origin == propFromCentre) {
+		return d, nil // the view or the hour still moving: an answer from or to its centre, and the reach, are asked once it settles, not at every step (P-1, D-227)
+	}
+	if which == answerReach && d.mapPane.propReachAsked != (propReachKey{}) && d.mapPane.propReachAsked != d.mapPane.propReach.key {
+		return d, nil // one reach at a time (D-227): the one asked is answered first, then the latest wanted is asked
 	}
 	var cmd tea.Cmd
 	switch which {
@@ -362,10 +366,22 @@ func propShadeLegend(ascii bool) string {
 const propNameW = 16
 
 // propBandCells are a row's bands now, a glyph each under its band's
-// number, three cells a band.
+// number, three cells a band: each band found by the band it names, never
+// by its place in the answer, a band the answer lacks left blank.
 func (d Dashboard) propBandCells(bands []ionomaps.BandStatus) string {
 	var b strings.Builder
-	for _, s := range bands {
+	for _, hb := range hfBands {
+		s, found := ionomaps.BandStatus{}, false
+		for _, a := range bands {
+			if a.Band.String() == hb.name {
+				s, found = a, true
+				break
+			}
+		}
+		if !found {
+			b.WriteString("   ")
+			continue
+		}
 		g := d.propGlyph(s.Status == ionomaps.Open, s.Status == ionomaps.StatusNoData)
 		switch s.Status {
 		case ionomaps.Disturbed:
@@ -414,9 +430,9 @@ func (d Dashboard) propDayHead(hour time.Time) string {
 // open where the band is typically open that hour (D-135).
 func (d Dashboard) propDayRows(bands []ionomaps.BandStatus) []string {
 	out := make([]string, 0, len(bands))
-	for i, s := range bands {
+	for _, s := range bands {
 		var b strings.Builder
-		b.WriteString(render.PadTo(hfBands[min(i, len(hfBands)-1)].name, 6))
+		b.WriteString(render.PadTo(s.Band.String(), 6))
 		day := d.mapPane.propChart.key.hour.UTC().Truncate(24 * time.Hour)
 		for h := range 24 {
 			b.WriteString(d.propGlyph(propanswers.OpenAt(s.OpenHours, day.Add(time.Duration(h)*time.Hour)), false))

@@ -160,8 +160,9 @@ type Config struct {
 	PlaceNear func(lat, lon float64) string
 	Resolve   func(query string) (snapshot.LocationRef, error)
 	// FindPlace finds a place anywhere on the globe for the Propagation mode
-	// (0.19.0 FR-1.10): locally first, and only on a miss online, uncached.
-	FindPlace func(query string) (snapshot.LocationRef, error)
+	// (0.19.0 FR-1.10): locally first, and only on a miss online, uncached;
+	// the context is cancelled when the listener cancels the find.
+	FindPlace func(ctx context.Context, query string) (snapshot.LocationRef, error)
 	Commit    func(watch, recent []snapshot.LocationRef) error
 	SetTheme  func(name string) error // live theme switch + persist (UAT 53)
 

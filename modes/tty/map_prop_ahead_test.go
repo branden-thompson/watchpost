@@ -109,7 +109,7 @@ func TestAnHourStepNeverWaitsForAnUpdate(t *testing.T) {
 // drops the hours ahead worked out from the old one, and the chart is asked
 // again for it.
 func TestANewSnapshotMissesTheAnswerMemo(t *testing.T) {
-	d := stepAhead(t, chartDash(t), "shift+right")
+	d := settled(t, stepAhead(t, chartDash(t), "shift+right")) // the hour stands: its answers are asked (D-227)
 	if len(d.mapPane.propAheadSnaps) == 0 {
 		t.Fatal("no hour ahead was kept")
 	}

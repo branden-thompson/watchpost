@@ -1,6 +1,8 @@
 package tty
 
 import (
+	"context"
+	"fmt"
 	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"regexp"
 	"strings"
@@ -69,8 +71,33 @@ func TestTheStationsAreCreditedWhenTheyFedIt(t *testing.T) {
 	if got := strings.Join(d.propBadges(false), " "); strings.Contains(got, "GIRO") {
 		t.Errorf("no stations fed the snapshot and the badges are %q", got)
 	}
-	if w := snapshotWords(none, 0); !strings.Contains(w, "no stations: the background alone") {
+	if w := snapshotWords(none, 0); !strings.Contains(w, "no station readings this hour: the background alone") {
 		t.Errorf("a snapshot no station fed says %q", w)
+	}
+}
+
+// TestEverySnapshotsStateIsSaid is FR-5.2 and the BUILD red team's L-F5,
+// L-F6 (round 2 BL2-3, CN2-5): a snapshot the stations' burst left paused,
+// one an update left unfinished, NOAA's files that could not be read, and
+// no stations by the listener's choice (D-214) are each said - never read
+// as a fresh field.
+func TestEverySnapshotsStateIsSaid(t *testing.T) {
+	paused, unfinished := stationsSnap(3, ionomaps.GIROPaused), stationsSnap(0, ionomaps.Unfinished)
+	unread, chosen := stationsSnap(0, ionomaps.Fresh), stationsSnap(0, ionomaps.Fresh)
+	unread.Inputs.Unread = []string{"GloTEC", "D-RAP"}
+	chosen.Inputs.NoStations = true
+	for _, c := range []struct {
+		s    ionomaps.Snapshot
+		want string
+	}{
+		{paused, "GIRO paused after a refusal"},
+		{unfinished, "the update stopped before every file came"},
+		{unread, "could not read NOAA's GloTEC, D-RAP: the last held used"},
+		{chosen, "no stations by choice: the background alone"},
+	} {
+		if w := snapshotWords(c.s, 0); !strings.Contains(w, c.want) {
+			t.Errorf("%v: %q does not say %q", c.s.Reason, w, c.want)
+		}
 	}
 }
 
@@ -126,5 +153,16 @@ func TestAnUnscoredNearestStationIsSaid(t *testing.T) {
 	box := workCentre(t, stationDash(t))
 	if lines := stripANSITest(strings.Join(box.propCentreBox(), "\n")); !strings.Contains(lines, "No station fed this answer") {
 		t.Errorf("the centre box, no station fed, does not say so:\n%s", lines)
+	}
+}
+
+// TestADeadlineIsSaidInWords is FR-5.2: an update that ran out of time is
+// said as NOAA not answering in time, with the key that asks again, never as
+// the context's own error text.
+func TestADeadlineIsSaidInWords(t *testing.T) {
+	d := propDash(t, &seam{}, true)
+	d.mapPane.propSnap, d.mapPane.propErr = nil, fmt.Errorf("ionomaps: no field; update again: %w", context.DeadlineExceeded)
+	if w := d.propStatusWords(); !strings.Contains(w, "NOAA did not answer in time") || strings.Contains(w, "deadline") {
+		t.Errorf("an update out of time is said %q", w)
 	}
 }

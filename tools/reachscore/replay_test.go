@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -30,8 +31,9 @@ var testDay = time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC)
 func writeRecorded(t *testing.T) (dir, solar string) {
 	t.Helper()
 	dir = t.TempDir()
-	for _, name := range []string{"glotec_icao_20260929T000500Z.geojson", "glotec_icao_20260929T030500Z.geojson"} {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte("{}"), 0o600); err != nil { // not a grid: go-ionomaps reads it as a changed format
+	for _, valid := range []time.Time{testDay.Add(5 * time.Minute), testDay.Add(3*time.Hour + 5*time.Minute)} {
+		name := "glotec_icao_" + valid.Format("20060102T150405Z") + ".geojson"
+		if err := os.WriteFile(filepath.Join(dir, name), glotecGrid(t, valid, 6), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -57,6 +59,39 @@ func writeRecorded(t *testing.T) (dir, solar string) {
 		t.Fatal(err)
 	}
 	return dir, solar
+}
+
+// glotecGrid is a GloTEC grid in NOAA's layout - 72 by 72 points, NmF2 for
+// foF2 everywhere - valid at a moment.
+func glotecGrid(t *testing.T, valid time.Time, foF2 float64) []byte {
+	t.Helper()
+	type feature struct {
+		Geometry struct {
+			Coordinates [2]float64 `json:"coordinates"`
+		} `json:"geometry"`
+		Properties struct {
+			NmF2    float64 `json:"NmF2"`
+			HmF2    float64 `json:"hmF2"`
+			Quality int     `json:"quality_flag"`
+		} `json:"properties"`
+	}
+	doc := struct {
+		Features []feature `json:"features"`
+		TimeTag  string    `json:"time_tag"`
+	}{TimeTag: valid.UTC().Format(time.RFC3339)}
+	for i := range 72 {
+		for j := range 72 {
+			var f feature
+			f.Geometry.Coordinates = [2]float64{-177.5 + 5*float64(i), -88.75 + 2.5*float64(j)}
+			f.Properties.NmF2, f.Properties.HmF2, f.Properties.Quality = (foF2/8.98e-6)*(foF2/8.98e-6), 300, 5
+			doc.Features = append(doc.Features, f)
+		}
+	}
+	b, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }
 
 // TestTheReplayServesNothingAfterItsClock is the replay's one promise: at
@@ -137,10 +172,11 @@ func TestTheReplayAnswersOnlyWhatItHolds(t *testing.T) {
 	}
 }
 
-// TestEachColumnIsFedAsItSays runs the replay through go-ionomaps: the
-// replies it serves are read and assimilated in the shipped build's column,
-// no other column is given a station's reading, the climatology's no grid -
-// and each scenario is answered with a status for its band.
+// TestEachColumnIsFedAsItSays runs the replay through go-ionomaps: the grids
+// it serves are the background of every column but the climatology's, the
+// replies are read and assimilated in the shipped build's column and no
+// other, nothing is left unread - and each scenario is answered with a
+// status for its band.
 func TestEachColumnIsFedAsItSays(t *testing.T) {
 	dir, solar := writeRecorded(t)
 	in, err := loadRecorded(dir, solar)
@@ -158,8 +194,8 @@ func TestEachColumnIsFedAsItSays(t *testing.T) {
 		if c == shipped && f.Stations < 3 {
 			t.Errorf("the shipped build assimilated %d of the four stations' readings; want them read through the replay", f.Stations)
 		}
-		if c != shipped && f.Stations != 0 || f.Grid {
-			t.Errorf("%s: %+v; want no station, and no grid (the test's grids are not grids)", c, f)
+		if c != shipped && f.Stations != 0 || f.Grid != (c != climatology) || f.Unread != 0 {
+			t.Errorf("%s: %+v; want no station but in the shipped build, a grid but in the climatology, nothing unread", c, f)
 		}
 		if f.F107 != 100 {
 			t.Errorf("%s: F10.7 mean %v; want the solar file's 100", c, f.F107)
@@ -186,7 +222,7 @@ func TestEachColumnIsFedAsItSays(t *testing.T) {
 	if err := report(&b, reportOf{flags: scoreFlags{seed: 1, k: 10, strata: strataBandHour}, days: []time.Time{testDay}, set: set, counts: d.counts, res: res, facts: facts, rev: "test"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"## M1", "## M4", "| 40m | 1 (1 / 0 / 0) |", "| 20m | 1 (0 / 0 / 1) |", "Against the target (D-99)", "## The replay"} {
+	for _, want := range []string{"## M1", "## M4", "| 40m | 1 (1 / 0 / 0) |", "| 20m | 1 (0 / 0 / 1) |", "Against the target (D-99, judged on the point estimate", "## The replay"} {
 		if !strings.Contains(b.String(), want) {
 			t.Errorf("the table lacks %q:\n%s", want, b.String())
 		}

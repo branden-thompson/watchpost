@@ -249,14 +249,15 @@ func TestALocalMatchSendsNothing(t *testing.T) {
 // a ZIP with its four, a place and not a position, is not refused as one.
 func TestAPositionInAnotherFormNeverGoesOnline(t *testing.T) {
 	r := testResolver(t, offlineOnly{t})
-	for _, q := range []string{"33.2N 117.4W", "33°12'N 117°23'W", "33.2;-117.38", "33.2, -117.38, 10", "DM13af45xy", "DZ13", "33 12 117 23"} {
+	for _, q := range []string{"33.2N 117.4W", "33°12'N 117°23'W", "33.2;-117.38", "33.2, -117.38, 10", "DM13af45xy", "DZ13", "33 12 117 23",
+		"33°12′N 117°23′W", "33º12'N", "33.2, −117.38", "(33.2, -117.38)", "lat 33.2 lon -117.38", "geo:33.2,-117.38", "３３.２ １１７.３８"} { // round 2 PN2-4: the forms a list of spellings missed
 		for name, resolve := range map[string]func(context.Context, string) (snapshot.LocationRef, bool, error){"the weather's": r.Resolve, "the Propagation mode's": r.ResolveAnywhere} {
 			if _, fell, err := resolve(context.Background(), q); err == nil || fell || !strings.Contains(err.Error(), "latitude then longitude") {
 				t.Errorf("%s lookup of %q: fell back %v, %v", name, q, fell, err)
 			}
 		}
 	}
-	if positionShaped("92003-1234") || positionShaped("29 Palms") || positionShaped("92003") {
+	if positionShaped("92003-1234") || positionShaped("29 Palms") || positionShaped("92003") || positionShaped("Area 51") {
 		t.Error("a ZIP, a ZIP with its four or a town with a figure in its name reads as a position")
 	}
 }

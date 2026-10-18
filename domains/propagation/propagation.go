@@ -56,7 +56,8 @@ type Service struct {
 	state    string       // the throttle state's file, or "" (D-213)
 	note     func(string) // the diagnostics
 
-	stateMu sync.Mutex // one write of the state file at a time: two asks' updates end one after the other
+	stateMu sync.Mutex     // one write of the state file at a time: two asks' updates end one after the other
+	running sync.WaitGroup // the updates in flight, which Settle waits for
 }
 
 // The service's refusals.
@@ -66,10 +67,6 @@ var (
 	errNoService  = errors.New("propagation: the service was not made with New")
 	errNoStatus   = errors.New("propagation: the reply has no HTTP status")
 )
-
-// newLibrary is go-ionomaps' constructor, as a value, so a call to it is not
-// read as New's own (P10-01's bare-name match).
-var newLibrary = ionomaps.New
 
 // An HTTP status is from 100 to 599.
 const (
@@ -86,7 +83,7 @@ func New(get Getter, o Options) (*Service, error) {
 		return nil, errNoDeadline
 	}
 	f := &fetcher{get: get, hosts: map[string]bool{}, note: o.Note, seen: map[string]bool{}}
-	lib, err := newLibrary(f, ionomaps.Options{Clock: o.Clock})
+	lib, err := ionomaps.New(f, ionomaps.Options{Clock: o.Clock})
 	if err != nil {
 		return nil, err
 	}
@@ -128,9 +125,10 @@ func (s *Service) restoreState() {
 	s.note("Propagation: GIRO's throttle state was not taken, so it starts as new - " + err.Error())
 }
 
-// keepState writes the throttle state after an update, through a file
-// beside it renamed into place, so a run killed mid-write leaves the last
-// whole state; a failure is noted (D-124).
+// keepState writes the throttle state after an update, through a file of
+// its own beside it renamed into place - so a run killed mid-write leaves
+// the last whole state, and two runs never write through one file; a
+// failure is noted (D-124).
 func (s *Service) keepState() {
 	if s.state == "" {
 		return
@@ -138,12 +136,21 @@ func (s *Service) keepState() {
 	s.stateMu.Lock()
 	defer s.stateMu.Unlock()
 	err := os.MkdirAll(filepath.Dir(s.state), 0o700)
-	tmp := s.state + ".tmp"
+	var tmp *os.File
 	if err == nil {
-		err = os.WriteFile(tmp, s.lib.State(), 0o600)
+		tmp, err = os.CreateTemp(filepath.Dir(s.state), filepath.Base(s.state)+".*.tmp")
 	}
 	if err == nil {
-		err = os.Rename(tmp, s.state)
+		_, err = tmp.Write(s.lib.State())
+		if cerr := tmp.Close(); err == nil {
+			err = cerr
+		}
+		if err == nil {
+			err = os.Rename(tmp.Name(), s.state)
+		}
+		if err != nil {
+			_ = os.Remove(tmp.Name()) // a failed write leaves no file of its own behind
+		}
 	}
 	if err == nil {
 		return
@@ -166,7 +173,9 @@ func (s *Service) Ask(ctx context.Context, opts ionomaps.UpdateOptions) <-chan R
 		out <- Result{Err: errNoService}
 		return out
 	}
+	s.running.Add(1)
 	go func() {
+		defer s.running.Done()
 		uctx, cancel := context.WithTimeout(ctx, s.deadline)
 		defer cancel()
 		snap, err := s.lib.Update(uctx, opts)
@@ -174,6 +183,27 @@ func (s *Service) Ask(ctx context.Context, opts ionomaps.UpdateOptions) <-chan R
 		out <- Result{Snapshot: snap, Err: err}
 	}()
 	return out
+}
+
+// Settle waits up to a bound for the updates in flight to end and keep the
+// throttle state (D-213), so a listener who quits during GIRO's burst - the
+// mode's context cancelled, the burst stopping at its next ask - leaves the
+// hour it spent recorded; false when the bound passed first.
+func (s *Service) Settle(bound time.Duration) bool {
+	if s == nil {
+		return true
+	}
+	done := make(chan struct{})
+	go func() {
+		s.running.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(bound):
+		return false
+	}
 }
 
 // fetcher is go-ionomaps' Fetcher over the propagation client: https to the

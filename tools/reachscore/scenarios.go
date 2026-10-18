@@ -101,12 +101,6 @@ type window struct {
 // is in, the one before and the one after (±1 h, M1 and M4).
 func windowOf(spots []spot, at time.Time, band ionomaps.Band) window {
 	w := window{heard: map[pair]float64{}, tx: map[string]ionomaps.LatLon{}, rx: map[string]ionomaps.LatLon{}}
-	if len(spots) == 0 {
-		return w
-	}
-	if band < ionomaps.Band160m || band > ionomaps.Band10m {
-		return w // not a band go-ionomaps answers: no pair is drawn on it
-	}
 	hour := at.Truncate(time.Hour)
 	for _, s := range spots {
 		in := s.Band == band && !s.Hour.Before(hour.Add(-time.Hour)) && !s.Hour.After(hour.Add(time.Hour))
@@ -144,9 +138,6 @@ func inRegion(p ionomaps.LatLon, km float64) bool {
 	if !(km > 0) {
 		return false
 	}
-	if !(p.Lat >= -90 && p.Lat <= 90) {
-		return false // off the globe: in no region
-	}
 	for _, c := range propanswers.Continents {
 		if geo.HaversineKM(p.Lat, p.Lon, c.At.Lat, c.At.Lon) <= km {
 			return true
@@ -162,9 +153,6 @@ func inRegion(p ionomaps.LatLon, km float64) bool {
 func (w window) classify(at time.Time, band ionomaps.Band, r reach, emit func(scenario)) {
 	if emit == nil || !(r.SkyKm >= 0) {
 		return
-	}
-	if len(w.tx) == 0 || len(w.rx) == 0 {
-		return // nothing heard in the window: no pair is monitored
 	}
 	txs, rxs := sortedKeys(w.tx), sortedKeys(w.rx)
 	for _, t := range txs {
@@ -223,14 +211,9 @@ type reservoir struct {
 	kept    []scenario
 }
 
-// keep puts a scenario to the reservoir (Vitter's algorithm R).
-func (r *reservoir) keep(s scenario, k int, rng *rand.Rand) {
-	if k < 1 {
-		return // a reservoir of nothing keeps nothing
-	}
-	if rng == nil {
-		return
-	}
+// sample takes a scenario into the reservoir's uniform sample of k
+// (Vitter's algorithm R).
+func (r *reservoir) sample(s scenario, k int, rng *rand.Rand) {
 	r.offered++
 	if len(r.kept) < k {
 		r.kept = append(r.kept, s)
@@ -261,11 +244,8 @@ func newDrawer(k int, seed uint64, byHour bool) *drawer {
 
 // offer counts a scenario and puts it to its stratum's sample.
 func (d *drawer) offer(s scenario) {
-	if s.Outcome >= outcomes {
-		return
-	}
-	if s.Metric >= metrics {
-		return
+	if s.Outcome >= outcomes || s.Metric >= metrics {
+		return // not a scenario this draw counts: its outcome and metric index the strata
 	}
 	hour := -1
 	if d.byHour {
@@ -279,16 +259,13 @@ func (d *drawer) offer(s scenario) {
 		d.counts[b] = &[outcomes]int{}
 	}
 	d.counts[b][s.Outcome]++
-	d.strata[st][s.Outcome].keep(s, d.k, d.rng)
+	d.strata[st][s.Outcome].sample(s, d.k, d.rng)
 }
 
 // set is the drawn set (B1), the strata in order: each as many closed as
 // open, at most k, the closed half weak and half unheard as far as each
 // goes and the rest from the other - so a constant answer scores 50 %.
 func (d *drawer) set() ([]scenario, error) {
-	if len(d.strata) == 0 {
-		return nil, nil
-	}
 	keys := make([]stratum, 0, len(d.strata))
 	for k := range d.strata {
 		keys = append(keys, k)
@@ -320,9 +297,6 @@ func (d *drawer) set() ([]scenario, error) {
 func (d *drawer) shuffled(in []scenario) []scenario {
 	if len(in) == 0 {
 		return nil
-	}
-	if d.rng == nil {
-		return slices.Clone(in)
 	}
 	out := slices.Clone(in)
 	d.rng.Shuffle(len(out), func(i, j int) { out[i], out[j] = out[j], out[i] })

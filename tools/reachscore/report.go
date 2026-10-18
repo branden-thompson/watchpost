@@ -29,6 +29,7 @@ type reportOf struct {
 	spotFiles int
 	sum       string
 	rev       string
+	intervals intervals
 }
 
 // targetPoints is D-99's margin: the shipped build's agreement at least the
@@ -44,9 +45,6 @@ const (
 func report(w io.Writer, r reportOf) error {
 	if w == nil || len(r.days) == 0 {
 		return errUsage
-	}
-	if r.res.tallies == nil {
-		return errUsage // nothing was scored
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "# M1 and M4, %s to %s\n\n", r.days[0].Format(time.DateOnly), r.days[len(r.days)-1].Format(time.DateOnly))
@@ -67,9 +65,6 @@ func pct(agree, n int) string {
 	if n == 0 {
 		return "-"
 	}
-	if agree < 0 || agree > n {
-		return "?" // more agreeing than asked: a tally is wrong, and no figure is printed for it
-	}
 	return fmt.Sprintf("%.1f", 100*float64(agree)/float64(n))
 }
 
@@ -79,10 +74,7 @@ func writeMetric(b *strings.Builder, m metric, r reportOf) {
 	if b == nil || m >= metrics {
 		return
 	}
-	if r.counts == nil {
-		return
-	}
-	fmt.Fprintf(b, "\n## %s\n\n| Band | Scenarios (open / weak / unheard) | Open in all pairs | Climatology | Background | Shipped | Shipped - climatology |\n|---|---|---|---|---|---|---|\n", m)
+	fmt.Fprintf(b, "\n## %s\n\nEach agreement and lead with its 95 %% paired bootstrap interval (D-228).\n\n| Band | Scenarios (open / weak / unheard) | Open in all pairs | Climatology | Background | Shipped | Shipped - climatology |\n|---|---|---|---|---|---|---|\n", m)
 	var all [columns]tally
 	var allCounts [outcomes]int
 	for _, wb := range wsprBands {
@@ -95,15 +87,14 @@ func writeMetric(b *strings.Builder, m metric, r reportOf) {
 			for o := range outcomes {
 				all[col].n[o] += t[col].n[o]
 				all[col].agree[o] += t[col].agree[o]
-				all[col].noData[o] += t[col].noData[o]
 			}
 		}
 		for o := range outcomes {
 			allCounts[o] += c[o]
 		}
-		writeRow(b, wb.band.String(), *t, *c)
+		writeRow(b, wb.band.String(), *t, *c, r.intervals.byBand[k])
 	}
-	writeRow(b, "**All**", all, allCounts)
+	writeRow(b, "**All**", all, allCounts, r.intervals.all[m])
 	fmt.Fprintf(b, "\nBy kind, the agreement on open / weak / unheard:\n\n| | Climatology | Background | Shipped |\n|---|---|---|---|\n| **All** |")
 	for col := range columns {
 		fmt.Fprintf(b, " %s / %s / %s |", pct(all[col].agree[open], all[col].n[open]), pct(all[col].agree[weak], all[col].n[weak]), pct(all[col].agree[unheard], all[col].n[unheard]))
@@ -111,21 +102,12 @@ func writeMetric(b *strings.Builder, m metric, r reportOf) {
 	fmt.Fprintln(b)
 	n, ca := all[climatology].total()
 	_, sa := all[shipped].total()
-	var noData int
-	for col := range columns {
-		for o := range outcomes {
-			noData += all[col].noData[o]
-		}
-	}
-	fmt.Fprintf(b, "\nAgainst the target (D-99): %s.\n", verdict(ca, sa, n))
-	fmt.Fprintf(b, "Answers with no field for the band: %d of %d, counted as not reaching.\n", noData, int(columns)*n)
+	fmt.Fprintf(b, "\nAgainst the target (D-99, judged on the point estimate, D-228): %s.\n", verdict(ca, sa, n))
 }
 
-// writeRow writes one band's row, or the metric's total.
-func writeRow(b *strings.Builder, name string, t [columns]tally, c [outcomes]int) {
-	if b == nil {
-		return
-	}
+// writeRow writes one band's row, or the metric's total: each column's
+// agreement and the shipped build's lead, each with its interval.
+func writeRow(b *strings.Builder, name string, t [columns]tally, c [outcomes]int, iv bounds) {
 	n, _ := t[climatology].total()
 	nb, _ := t[background].total()
 	ns, _ := t[shipped].total()
@@ -137,7 +119,7 @@ func writeRow(b *strings.Builder, name string, t [columns]tally, c [outcomes]int
 	fmt.Fprintf(b, "| %s | %d (%d / %d / %d) | %s |", name, n, t[climatology].n[open], t[climatology].n[weak], t[climatology].n[unheard], pct(c[open], pairs))
 	for col := range columns {
 		_, a := t[col].total()
-		fmt.Fprintf(b, " %s |", pct(a, n))
+		fmt.Fprintf(b, " %s [%.1f, %.1f] |", pct(a, n), iv.cols[col].lo, iv.cols[col].hi)
 	}
 	_, ca := t[climatology].total()
 	_, sa := t[shipped].total()
@@ -145,16 +127,13 @@ func writeRow(b *strings.Builder, name string, t [columns]tally, c [outcomes]int
 		fmt.Fprintln(b, " - |")
 		return
 	}
-	fmt.Fprintf(b, " %+.1f |\n", 100*float64(sa-ca)/float64(n))
+	fmt.Fprintf(b, " %+.1f [%+.1f, %+.1f] |\n", 100*float64(sa-ca)/float64(n), iv.lead.lo, iv.lead.hi)
 }
 
 // verdict is the shipped build's agreement against D-99's target.
 func verdict(climAgree, shipAgree, n int) string {
 	if n == 0 {
 		return "no scenarios"
-	}
-	if climAgree > n || shipAgree > n {
-		return "more agreeing than scenarios: a tally is wrong, no verdict"
 	}
 	clim, ship := 100*float64(climAgree)/float64(n), 100*float64(shipAgree)/float64(n)
 	target, rule := clim+targetPoints, "the climatology's plus 5 points"
@@ -170,9 +149,6 @@ func verdict(climAgree, shipAgree, n int) string {
 
 // writeFeeds writes what fed each column at the scored hours.
 func writeFeeds(b *strings.Builder, facts [columns]map[time.Time]hourFacts) {
-	if b == nil {
-		return
-	}
 	fmt.Fprintf(b, "\n## The replay\n\n| Column | Scored hours | With a GloTEC grid | Stations assimilated, mean | F10.7 mean, range |\n|---|---|---|---|---|\n")
 	for col := range columns {
 		var grids, stations int
@@ -246,7 +222,7 @@ func keepScenarios(path string, set []scenario, answers [][columns]bool) error {
 func revision() string {
 	head, err := exec.Command("git", "rev-parse", "--short=12", "HEAD").Output()
 	if err != nil {
-		return "an unknown revision"
+		return "an unknown revision: these figures are not citable (E-19)"
 	}
 	status, err := exec.Command("git", "status", "--porcelain").Output()
 	if err != nil || len(strings.TrimSpace(string(status))) > 0 {

@@ -5,11 +5,13 @@ package main
 // a plan task - and every ruling row that names a Go file cites its line.
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -182,43 +184,105 @@ func TestEveryRulingNamingCodeCitesItsLine(t *testing.T) {
 // paired library before it when the file is one of theirs.
 var citedLine = regexp.MustCompile("(go-ionomaps |go-tuiMaps )?`([A-Za-z0-9_./-]+\\.go):(\\d+)(?:-(\\d+))?`")
 
-// unresolvedCitations are the citations in a document that name no file in
-// the tree - a bare file name included - or a line past its end; a paired
-// library's is checked in its own repository.
+// citedSymbol is a Go file cited with the symbol its claim is about -
+// "`path.go:Symbol`", the form the flow map uses (docs_test.go) - the
+// paired library before it when the file is one of theirs.
+var citedSymbol = regexp.MustCompile("(go-ionomaps |go-tuiMaps )?`([A-Za-z0-9_./-]+\\.go):([A-Za-z_][A-Za-z0-9_]*)`")
+
+// declaresName reports whether a Go file declares a name at its top level -
+// a function, a method, a type, a variable or a constant - or as a field of
+// a struct type it declares.
+func declaresName(path, name string) bool {
+	f, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.SkipObjectResolution)
+	if err != nil {
+		return false
+	}
+	for _, d := range f.Decls {
+		switch d := d.(type) {
+		case *ast.FuncDecl:
+			if d.Name.Name == name {
+				return true
+			}
+		case *ast.GenDecl:
+			for _, s := range d.Specs {
+				switch s := s.(type) {
+				case *ast.TypeSpec:
+					if s.Name.Name == name || fieldNamed(s, name) {
+						return true
+					}
+				case *ast.ValueSpec:
+					for _, n := range s.Names {
+						if n.Name == name {
+							return true
+						}
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+// fieldNamed reports whether a type spec is a struct with a field of a name.
+func fieldNamed(s *ast.TypeSpec, name string) bool {
+	st, ok := s.Type.(*ast.StructType)
+	if !ok {
+		return false
+	}
+	for _, f := range st.Fields.List {
+		for _, n := range f.Names {
+			if n.Name == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// unresolvedCitations are the citations in a living document that do not
+// hold: a Go file cited by line - lines drift as the code moves, so a
+// living document cites the symbol - or by a symbol the file does not
+// declare, or a file not in the tree; a paired library's is checked in its
+// own repository.
 func unresolvedCitations(doc, root string) []string {
 	var out []string
 	for _, m := range citedLine.FindAllStringSubmatch(doc, -1) {
-		if m[1] != "" {
-			continue
+		if m[1] == "" {
+			out = append(out, m[2]+":"+m[3]+" (cite its symbol)")
 		}
-		b, err := os.ReadFile(filepath.Join(root, m[2]))
-		last := m[3]
-		if m[4] != "" {
-			last = m[4]
-		}
-		n, _ := strconv.Atoi(last)
-		if err != nil || n > strings.Count(string(b), "\n")+1 {
-			out = append(out, m[2]+":"+last)
+	}
+	for _, m := range citedSymbol.FindAllStringSubmatch(doc, -1) {
+		if m[1] == "" && !declaresName(filepath.Join(root, m[2]), m[3]) {
+			out = append(out, m[2]+":"+m[3])
 		}
 	}
 	return out
 }
 
-// TestEveryCodeCitationResolves is the BUILD red team's C-10 and D-F5: in
-// the documents that state the release as it is, every Go file cited by
-// line is a path in the tree and the line is in the file. A ruling's
-// citation is its moment's, the tree it cited in git, so the rulings are
-// held to citing a line at all (TestEveryRulingNamingCodeCitesItsLine).
+// TestEveryCodeCitationResolves is the BUILD red team's C-10 and D-F5 and
+// round 2's CN2-7 and DN2-8: the documents that state the release as it is
+// cite code by the symbol their claim is about, and each file declares it -
+// a line number moves with the code and only proved the line was there. A
+// ruling's citation is its moment's, the tree it cited in git, so the
+// rulings are held to citing a line at all
+// (TestEveryRulingNamingCodeCitesItsLine).
 func TestEveryCodeCitationResolves(t *testing.T) {
 	root := filepath.Join("..", "..")
+	cited := 0
 	for _, doc := range []string{"00-REQUIRED-READING.md", "01-objectives/requirements.md", "03-architecture-design/architecture.md", "04-development/implementation-plan.md"} {
-		if bad := unresolvedCitations(readRecord(t, doc), root); len(bad) > 0 {
-			t.Errorf("%s cites code that is not there: %v", doc, bad)
+		text := readRecord(t, doc)
+		cited += len(citedSymbol.FindAllString(text, -1))
+		if bad := unresolvedCitations(text, root); len(bad) > 0 {
+			t.Errorf("%s cites code that does not hold: %v", doc, bad)
 		}
 	}
-	planted := "`cmd/watchpost/record_test.go:1` `cmd/watchpost/record_test.go:99999` `record_test.go:1` go-ionomaps `reach.go:9` `no/such.go:1`"
-	if got := unresolvedCitations(planted, root); !slices.Equal(got, []string{"cmd/watchpost/record_test.go:99999", "record_test.go:1", "no/such.go:1"}) {
-		t.Errorf("the planted citations gave %v", got)
+	if cited < 10 {
+		t.Errorf("the living documents cite %d symbols; the reading is broken", cited)
+	}
+	planted := "`cmd/watchpost/record_test.go:1` `cmd/watchpost/record_test.go:unresolvedCitations` `cmd/watchpost/record_test.go:citedSymbol` `cmd/watchpost/record_test.go:noSuchName` go-ionomaps `reach.go:Reach` `no/such.go:X`"
+	want := []string{"cmd/watchpost/record_test.go:1 (cite its symbol)", "cmd/watchpost/record_test.go:noSuchName", "no/such.go:X"}
+	if got := unresolvedCitations(planted, root); !slices.Equal(got, want) {
+		t.Errorf("the planted citations gave %v; want %v", got, want)
 	}
 }
 
@@ -275,7 +339,8 @@ func TestThePrePushHookRunsTheRecordsTests(t *testing.T) {
 			}
 		}
 	}
-	for _, must := range []string{"TestEveryRequirementsTestIsInAPlanTask", "TestEveryRulingNamingCodeCitesItsLine", "TestTheAsBuiltMapIsKeptInStep", "TestTheAtlasMatchesAFreshRender"} {
+	for _, must := range []string{"TestEveryRequirementsTestIsInAPlanTask", "TestEveryRulingNamingCodeCitesItsLine", "TestEveryRequirementsTestExists",
+		"TestEveryCodeCitationResolves", "TestTheAsBuiltMapIsKeptInStep", "TestTheAtlasMatchesAFreshRender"} {
 		if !strings.Contains(string(raw), must) {
 			t.Errorf("the hook does not run %s", must)
 		}
