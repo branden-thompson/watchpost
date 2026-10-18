@@ -564,3 +564,12 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Tests:** `TestAnHourAheadIsLabelledByTheHourShown`. **Mutants:** m455 new.
 - **Docs:** A-73; FR-1.13; the plan's W4.9; follow-ups (F-217 closed).
 
+## Batch 45 - W10.3, the M1/M4 instrument built (A-74)
+
+- **What:** `tools/reachscore`, built to the four forks ruled (D-218 to D-221). `spots` sends wspr.live one aggregate query a day, locators and never callsigns, and keeps the answer outside the tree. `score` draws B1's set, answers each scenario three ways through go-ionomaps by replaying PLAN's recorded files, reads each answer by C1, scores by A2 and prints the table by band. It also writes the scenarios and the inputs' checksums outside the tree. Its design and settings are in `07-readiness/m1-m4-instrument.md`, "As built".
+- **The replay's promise is tested:** nothing dated after the clock is served (the index, the grids, the solar rows, the stations' readings), and any unknown address fails the run. An end-to-end test runs recorded-shape replies through go-ionomaps and finds them assimilated in the shipped build's column, and in no other.
+- **P10:** the package's checks bring it to 2.0. `reservoir.offer` is named `keep`, because P10-01 matches calls by bare name and read `drawer.offer` calling it as recursion. The spots scanner is bounded.
+- **Hosted CI:** the run on `573b5bcd` (batch 44) was in progress when this batch was committed.
+- **Tests:** the thirteen named in the plan's W10.3. **Mutants:** m456 to m469 new, all killed.
+- **Docs:** A-74; the plan's W10.3; the instrument page's "As built" and its diagram.
+

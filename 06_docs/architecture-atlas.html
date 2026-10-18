@@ -55,8 +55,8 @@ code{font-family:var(--mono);font-size:.92em}
 </style>
 <div class="wrap">
   <aside class="side">
-    <h1 class="brand">Watchpost Architecture Atlas<small>58 diagrams, in reading order. What the program is, area by area.</small></h1>
-    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li><li><a href="#observer-maps">observer maps<span class="n">7</span></a></li><li><a href="#propagation-overlays">propagation overlays<span class="n">2</span></a></li></ul></nav>
+    <h1 class="brand">Watchpost Architecture Atlas<small>59 diagrams, in reading order. What the program is, area by area.</small></h1>
+    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li><li><a href="#observer-maps">observer maps<span class="n">7</span></a></li><li><a href="#propagation-overlays">propagation overlays<span class="n">3</span></a></li></ul></nav>
     <p class="how"><strong>This page is generated.</strong> The tracked documents are the source of truth; rebuild with <code>go run ./tools/atlas</code>. Only fenced mermaid blocks are read — <strong>a change written in the prose beside a diagram never reaches this page</strong>, so put the fact in the diagram.</p>
   </aside>
   <main><section class="level" id="watchpost-cli"><header class="lvl"><h2>The shape of the program</h2></header><article class="dia" id="watchpost-cli-0"><div class="meta"><h3>1. System overview</h3><p class="file"><code>06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">graph TB
@@ -1032,6 +1032,17 @@ code{font-family:var(--mono);font-size:.92em}
   A--&gt;&gt;W: rows and words, kept under a key of everything they came from
   W--&gt;&gt;L: the picture or the words
   Note over W,P: while open, the refresh tick (10 min default) or the refresh-now key starts the next update
+</pre></div></article><article class="dia" id="propagation-overlays-2"><div class="meta"><h3>As built: `tools/reachscore` (batch 45, A-74)</h3><p class="file"><code>06_docs/02_features/propagation-overlays/07-readiness/m1-m4-instrument.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  W[wspr.live: one aggregate query a day] --&gt;|spots kept outside the tree| D[draw B1: band x UTC hour, open = closed]
+  P[PLAN&#39;s recorded files: GloTEC grids, GIRO replies, solar file] --&gt; R[replay at the clock: nothing dated after it]
+  R --&gt; C1[go-ionomaps: no grid, no stations = climatology]
+  R --&gt; C2[go-ionomaps: grids, no stations = background]
+  R --&gt; C3[go-ionomaps: grids and stations = shipped build]
+  D --&gt; A[each scenario answered by propanswers.WorkChart, read by C1]
+  C1 --&gt; A
+  C2 --&gt; A
+  C3 --&gt; A
+  A --&gt; T[table by band: agreement, base rate, each kind of closed, the target]
 </pre></div></article></section></main>
 </div>
 <script type="module">

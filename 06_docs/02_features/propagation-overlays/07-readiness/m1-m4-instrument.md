@@ -4,8 +4,9 @@ Up: [plan, W10.3](../04-development/implementation-plan.md) · [problem statemen
 
 **Where this stands (2026-10-18).** D-208 puts the M1/M4 scorer's baseline inside BUILD: the
 climatology's agreement with WSPR, the shipped build's, and a column for the background alone (B-F7).
-This page is the instrument's design. **Its four forks are ruled, each as recommended: A2 (D-218), B1
-(D-219), C1 (D-220), D1 (D-221).** The instrument is built to them next; nothing has been fetched yet.
+This page is the instrument's design and, below, what was built. **Its four forks are ruled, each as
+recommended: A2 (D-218), B1 (D-219), C1 (D-220), D1 (D-221).** The instrument is built to them
+(`tools/reachscore`, batch 45, A-74); its dry run on PLAN's week comes next.
 
 ## What is already fixed
 
@@ -91,9 +92,68 @@ and band at most, the spots' fields only (time, band, the two locators, power, S
 and the continents' regions; nothing else is fetched for the dry run. The spots, like PLAN's, stay
 outside the tree with the PLAN evidence.
 
-## Built after the rulings
+## As built: `tools/reachscore` (batch 45, A-74)
 
-A tool under `tools/` (Go, as the shell ledger asks): it reads the spots, draws the set by B, answers it
-three ways through go-ionomaps by replaying the day's recorded inputs, reads each answer by C, scores by
-A, and writes the per-band table with its inputs' checksums. The run's figures come from the committed
-tool at the committed version (E-19).
+A Go tool with two commands. `spots` sends wspr.live the day's one query and keeps the answer outside the
+tree. `score` reads the spots, draws the set by B1, answers each scenario three ways through go-ionomaps
+by replaying the days' recorded files, reads each answer by C1, scores by A2, and prints the table by
+band. It keeps the scenarios and the inputs' checksums outside the tree as well. The table names the
+tool's commit and says whether the tree was clean; figures are cited only from a clean, committed tree
+(E-19).
+
+```mermaid
+flowchart LR
+  W[wspr.live: one aggregate query a day] -->|spots kept outside the tree| D[draw B1: band x UTC hour, open = closed]
+  P[PLAN's recorded files: GloTEC grids, GIRO replies, solar file] --> R[replay at the clock: nothing dated after it]
+  R --> C1[go-ionomaps: no grid, no stations = climatology]
+  R --> C2[go-ionomaps: grids, no stations = background]
+  R --> C3[go-ionomaps: grids and stations = shipped build]
+  D --> A[each scenario answered by propanswers.WorkChart, read by C1]
+  C1 --> A
+  C2 --> A
+  C3 --> A
+  A --> T[table by band: agreement, base rate, each kind of closed, the target]
+```
+
+**What it sends.** wspr.live is sent one query a day: the spots heard by receivers in the mainland US,
+on the ten bands go-ionomaps answers, from transmitters in the US or within the region of a continent's
+reference point. The query aggregates them per pair of locators, band and hour, keeping the count and
+the strongest SNR normalised to 100 W. **Locators are fetched, never callsigns**, which is all "the spots'
+fields" above names. Each day's window runs from 23:00 the day before to 23:00, covering every scored
+hour's ±1 h. The courtesy matches D-39's for GIRO: one query at a time, 15 s apart, and after a refusal
+60 s doubling to 15 minutes before the day is given up. A day already kept is never asked for again.
+The request log keeps the rate headers alone (D-83).
+
+**The replay.** One library per column runs through the days hour by hour, as a host left running would,
+making the stations' burst when it is due. The replay answers from the recorded files at the library's
+clock:
+- GloTEC's index lists only the grids valid by then.
+- The solar file holds only the days before.
+- A station's reply is cut to the window asked and the clock, in the columns go-ionomaps asks for, with
+  the line naming the original requester left out.
+
+It never serves anything dated after the clock. Any address it does not know fails the run. It also
+checks each column was fed as the column says: no grid in the climatology's, and no station's reading
+outside the shipped build's.
+
+**The scored hours.** Every third UTC hour, with the clock at 35 minutes past: PLAN's week kept a grid
+every three hours, at 5 past (`dry_fetch.py`). That makes each scored hour's grid the newest one, and
+well within go-ionomaps' hour.
+
+**The instrument's settings (A-74), which shape the set and are put to the HUM LEAD with the dry run's
+figures:**
+
+| Setting | Value | Why |
+|---|---|---|
+| The ground wave's reach | pairs under 50 km are not drawn | PLAN's own cut (`dry-run.md`, "ground wave removed") |
+| M1's served area | receivers 50 to 161 km from the tower, answered for a 161 km service radius | 161 km is the largest service radius ruled (100 mi); the default 25 mi (40 km) lies inside the ground wave's reach |
+| M4's targets | transmitters within 1000 km of a continent's reference point | the regions the chart's six targets stand for (FR-1.9) |
+| M4's listener | answered with the 400 km near-vertical radius | the Setting's default |
+| The draw | at most 10 of each outcome per stratum, seed 19 | B1 needs tens per stratum; the seed fixes the set |
+
+**What the dry run cannot say.** PLAN's week kept no D-RAP table and no scales file, so every column
+lacks a disturbance: "disturbed" is never said, and C1's reading of it is not exercised. The solar file
+PLAN kept begins on 2026-09-06, so the early days' F10.7 means average fewer than 30 days. A locator
+names a square rather than a station: two stations in one square count as one, and a 4-character
+locator is a square about 110 by 170 km in the US. "Monitored" means monitored by the US receivers the query
+keeps.
