@@ -49,7 +49,8 @@ type diagSources struct {
 	priorityPub *publisher
 	recentPub   *publisher
 	deck        *radioDeck
-	timings     *timingLog // the timing instrument's intervals (W14), nil unless switched on
+	timings     *timingLog         // the timing instrument's intervals (W14), nil unless switched on
+	propagation *propagationHolder // the propagation client's wire bytes (0.19.0 G1), nil when not wired
 	// The three directories the disk gauges size ("" = skipped): the HTTP
 	// cache (flat), the profiles dir and the voices dir (nested).
 	cacheDir, profilesDir, voicesDir string
@@ -201,7 +202,7 @@ func (lp *livePipelines) ttyStats() tty.Stats {
 // sources gathers the live diagnostic sources (the pipelines are wired
 // after lp is built, so this is read on demand, never cached).
 func (lp *livePipelines) sources() diagSources {
-	src := diagSources{clients: lp.clients, weather: lp.weather, tides: lp.tides, deck: lp.deck, timings: lp.timings,
+	src := diagSources{clients: lp.clients, weather: lp.weather, tides: lp.tides, deck: lp.deck, timings: lp.timings, propagation: &lp.propagation,
 		cacheDir: cacheDir(), profilesDir: userCacheSubdir("profiles"), voicesDir: voiceDir()}
 	for _, pr := range lp.fire {
 		if h, ok := pr.(*hms.Provider); ok {

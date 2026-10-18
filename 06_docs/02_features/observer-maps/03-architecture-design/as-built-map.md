@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD exit
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — Batches 1–138, drawn against go-tuiMaps v0.2.0; and 0.19.0 batches 1–50, against go-ionomaps v0.1.0-rc.3 and go-tuiMaps v0.3.0-rc.3. Each release's build log says what each batch moved."
+status: "LIVE — Batches 1–138, drawn against go-tuiMaps v0.2.0; and 0.19.0 batches 1–51, against go-ionomaps v0.1.0-rc.3 and go-tuiMaps v0.3.0-rc.3. Each release's build log says what each batch moved."
 ---
 
 # As built: where the map lives
@@ -106,7 +106,7 @@ flowchart LR
   subgraph plat["platform/"]
     RG["geo · RegionOf\nsix regions with their waters; Hawaii and the Caribbean wide enough to see their weather (D-91)\narrangement.go: Neighbour, RegionNumbered (D-77)"]
     PA["propanswers · the answers (0.19.0 D-212)\nthe chart (WorkChart), the centre (WorkCentre), the limits and their words, from a snapshot and an ask; go-ionomaps' own checks refuse an ask off the globe (D-215)\nthe TTY renders them; a later mode asks with targets of its own"]
-    HP["httpx · Plain (0.19.0 FR-4.4)\nthe propagation client: every reply handed back as it came, a 429 included; no retry, no cache, no shared pacing\nhttps alone, no private address; each host's cap go-ionomaps' bound for its source, 8 MB at most (0.19.0 A-56)"]
+    HP["httpx · Plain (0.19.0 FR-4.4)\nthe propagation client: every reply handed back as it came, a 429 included; no retry, no cache, no shared pacing\nhttps alone, no private address; each host's cap go-ionomaps' bound for its source, 8 MB at most (0.19.0 A-56)\nthe bytes read off its connections counted, compressed as they came: G1's downloads in the debug counters (0.19.0 DN-12)"]
     HX["httpx · DiskCacheBytes, with temperature's CacheBytes and the tiles' cap, the one stated total\nConfig.MemBytes / DiskBytes size a client's tiers; Cached reads the cache, never the network (D-217, D-219)\nClear map data empties the map clients' caches, memory and disk"]
   end
   IO["go-ionomaps v0.1.0-rc.3\nLibrary.Update: the solar file daily, GloTEC's newest grid through its index, D-RAP and NOAA's scales; GIRO's burst at most hourly, its readings assimilated (G9), or none by the host's choice (D-214)\nD-39: NOAA asked every ten minutes, six grids an hour, a 429 or a 5xx backs off; the answers - bands, paths, reach, hours ahead - pure functions of a snapshot\nthe day's climatology cells kept, the hours ahead read from them (D-222); the reach's lower limit on a polar grid (D-227)"]

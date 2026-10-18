@@ -43,6 +43,34 @@ func TestThePropagationClientsAsksReachTheStatusWindow(t *testing.T) {
 	t.Errorf("the propagation client's ask is not in the map's counters: %+v", lp.ttyStats().MapRequests.Hosts)
 }
 
+// TestThePropagationClientsWireBytesReachTheCounters is 0.19.0 G1's
+// downloads (D-141, DN-12): the counters record carries what the propagation
+// client read off the wire, nothing before the first update makes it.
+func TestThePropagationClientsWireBytesReachTheCounters(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("grid")) }))
+	defer srv.Close()
+	client, err := httpx.NewPlain(httpx.PlainConfig{UserAgent: "watchpost-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lp := &livePipelines{}
+	d := newDumper(t.TempDir(), time.Now(), lp.sources, lp.ttyStats)
+	if got := d.record(time.Now()).PropagationWireBytes; got != 0 {
+		t.Fatalf("%d bytes counted before any update", got)
+	}
+	lp.propagation.client.Store(client)
+	if _, err := client.Get(context.Background(), srv.URL, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if got := d.record(time.Now()).PropagationWireBytes; got <= int64(len("grid")) || got != client.WireBytes() {
+		t.Errorf("the counters carry %d wire bytes; the client read %d", got, client.WireBytes())
+	}
+	var none *propagationHolder
+	if none.wireBytes() != 0 {
+		t.Error("no holder counts bytes")
+	}
+}
+
 // TestOneLibraryObjectPerProcess is 0.19.0 FR-4.8: however many updates are
 // asked, and however many times the window's configuration is built, the
 // process makes one go-ionomaps object, and only when an update is asked.

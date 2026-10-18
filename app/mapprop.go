@@ -90,6 +90,19 @@ func (h *propagationHolder) requestStats() httpx.RequestStats {
 	return httpx.RequestStats{}
 }
 
+// wireBytes is what the propagation client has read off the wire, still
+// compressed (G1, D-141); 0 before the first update makes it, or with no
+// holder.
+func (h *propagationHolder) wireBytes() int64 {
+	if h == nil {
+		return 0
+	}
+	if c := h.client.Load(); c != nil {
+		return c.WireBytes()
+	}
+	return 0
+}
+
 // propagationUpdate is the window's seam (A-30): the service's update, its
 // result as the window reads it.
 func (lp *livePipelines) propagationUpdate(ctx context.Context, opts ionomaps.UpdateOptions) <-chan tty.PropagationResult {

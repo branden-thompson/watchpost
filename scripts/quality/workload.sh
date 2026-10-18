@@ -7,6 +7,7 @@
 #   scripts/quality/workload.sh session <default|heavy> <outdir> [phase_minutes=10]
 #   scripts/quality/workload.sh cold    <default|heavy> <outdir> [runs=5]
 #   scripts/quality/workload.sh warm    <default|heavy> <outdir> [runs=4]
+#   scripts/quality/workload.sh g1      <default|heavy> <outdir> [minutes=2880] [cycle_minutes=60]
 #
 # Runs ./dist/watchpost (make build first) under a SCRATCH HOME holding
 # 06_docs/perf/workload-v1/config-<variant>.toml, so the listener's own config
@@ -15,8 +16,15 @@
 # WATCHPOST_DEBUG_PPROF=1 the counters it is read from. A session is sampled
 # beside the driver by soak.sh every 20 s. Live network: the run records when
 # and where it ran, and a comparison is between runs of the same workload.
+#
+# g1 is 0.19.0's G1 (W10.2): two processes side by side for 48 hours, each in
+# its own HOME and on its own debug address. <outdir>/use opens the map and
+# its Propagation mode and, each cycle, pans, steps an hour and enters a
+# frequency; <outdir>/idle never opens the map. Each is sampled every two
+# minutes and its counters read every ten; `go run ./tools/perfsum -g1
+# <outdir>` reads the difference against G1's targets.
 set -eu
-mode=${1:?session|cold|warm}; variant=${2:?default|heavy}; out=${3:?outdir}; arg=${4:-}
+mode=${1:?session|cold|warm|g1}; variant=${2:?default|heavy}; out=${3:?outdir}; arg=${4:-}; arg2=${5:-}
 root=$(git rev-parse --show-toplevel)
 cfg=$root/06_docs/perf/workload-v1/config-$variant.toml
 bin=$root/dist/watchpost
@@ -36,10 +44,12 @@ fresh_home() {
   echo "$h"
 }
 
-# drive runs the expect driver under a HOME with the switches on.
+# drive runs the expect driver under a HOME with the switches on:
+# drive <home> <mode> <arg> [debug_addr] [outdir] [arg2].
 drive() {
-  HOME=$1 XDG_CONFIG_HOME= XDG_CACHE_HOME= WATCHPOST_DEBUG_TIMING=1 WATCHPOST_DEBUG_PPROF=1 WATCHPOST_DEBUG_PPROF_ADDR=$addr \
-    expect "$root/scripts/quality/workload.expect" "$2" "$out" "$3" "$bin" "$counters"
+  a=${4:-$addr}; o=${5:-$out}
+  HOME=$1 XDG_CONFIG_HOME= XDG_CACHE_HOME= XDG_STATE_HOME= WATCHPOST_DEBUG_TIMING=1 WATCHPOST_DEBUG_PPROF=1 WATCHPOST_DEBUG_PPROF_ADDR=$a \
+    expect "$root/scripts/quality/workload.expect" "$2" "$o" "$3" "$bin" "http://$a/debug/counters" "${6:-}"
 }
 
 case $mode in
@@ -81,6 +91,33 @@ session)
   wait "$drv"
   kill "$smp" 2>/dev/null || true
   rm -rf "$h" ;;
-*) echo "workload: mode is session or cold"; exit 2 ;;
+g1)
+  mins=${arg:-2880}; cycle=${arg2:-60}
+  for armname in use idle; do
+    mkdir -p "$out/$armname"; rm -f "$out/$armname/pid"
+  done
+  hu=$(fresh_home); hi=$(fresh_home)
+  drive "$hu" g1-use "$mins" 127.0.0.1:6072 "$out/use" "$cycle" &
+  du=$!
+  drive "$hi" g1-idle "$mins" 127.0.0.1:6073 "$out/idle" "$cycle" &
+  di=$!
+  for armname in use idle; do
+    while [ ! -s "$out/$armname/pid" ] && kill -0 "$du" 2>/dev/null && kill -0 "$di" 2>/dev/null; do sleep 1; done
+  done
+  hours=$(( (mins + 59) / 60 + 1 ))
+  WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6072 "$root/scripts/quality/soak.sh" "$(cat "$out/use/pid")" "$hours" "$out/use/samples.csv" 120 &
+  su=$!
+  WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6073 "$root/scripts/quality/soak.sh" "$(cat "$out/idle/pid")" "$hours" "$out/idle/samples.csv" 120 &
+  si=$!
+  while kill -0 "$du" 2>/dev/null || kill -0 "$di" 2>/dev/null; do
+    curl -fs --max-time 10 http://127.0.0.1:6072/debug/counters >> "$out/use/counters.jsonl" 2>/dev/null && echo >> "$out/use/counters.jsonl" || true
+    curl -fs --max-time 10 http://127.0.0.1:6073/debug/counters >> "$out/idle/counters.jsonl" 2>/dev/null && echo >> "$out/idle/counters.jsonl" || true
+    sleep 600
+  done
+  wait "$du" || echo "workload: the use arm's driver failed - see $out/use/phases.log"
+  wait "$di" || echo "workload: the idle arm's driver failed - see $out/idle/phases.log"
+  kill "$su" "$si" 2>/dev/null || true
+  rm -rf "$hu" "$hi" ;;
+*) echo "workload: mode is session, cold, warm or g1"; exit 2 ;;
 esac
 echo "workload: $mode $variant done - $out"

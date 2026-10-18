@@ -5,11 +5,13 @@
 #
 #   workload.expect session <outdir> <phase_minutes> <binary> <counters_url>
 #   workload.expect cold    <outdir> <run_n>         <binary> <counters_url>
+#   workload.expect g1-use  <outdir> <minutes>       <binary> <counters_url> <cycle_minutes>
+#   workload.expect g1-idle <outdir> <minutes>       <binary> <counters_url> <cycle_minutes>
 #
 # 149x38: the plan's M5 size (W2.9). Phase changes go to <outdir>/phases.log
 # as "<utc> <phase>"; the process id to <outdir>/pid, for the sampler.
 set timeout 5
-lassign $argv mode outdir arg binary counters
+lassign $argv mode outdir arg binary counters cycle
 log_user 0
 set lf [open "$outdir/phases.log" a]
 proc phase {lf s} { puts $lf "[clock format [clock seconds] -format %Y-%m-%dT%H:%M:%SZ -gmt 1] $s"; flush $lf }
@@ -34,7 +36,43 @@ expect -timeout 30 "WATCHPOST" {} timeout { phase $lf "FAILED: no frame"; exit 1
 expect -timeout 180 -re "\\d+°F" {} timeout { phase $lf "FAILED: no data in 180 s"; exit 1 }
 phase $lf "L launched: first data"
 
-if {$mode eq "cold"} {
+if {$mode eq "g1-use"} {
+  # 0.19.0 G1 (W10.2), the mode in use: the map opened at the place, the
+  # Propagation mode opened and its acknowledgement seen; then each cycle a
+  # pan (east, then back west, so the view stays near the place), an hour
+  # step ahead and back to now, and a frequency entered, alternating two so
+  # each entry asks a reach (D-227: G1 holds a frequency while panning).
+  send "g"; hold 20 "" 0
+  send "P"
+  expect -timeout 30 "Enter" {} timeout { phase $lf "FAILED: no acknowledgement"; exit 1 }
+  send "\r"
+  expect -timeout 120 "MUF" {} timeout { phase $lf "FAILED: the Propagation mode drew no MUF"; exit 1 }
+  hold 60 "" 0
+  phase $lf "G measured: the Propagation mode open"
+  set end [expr {[clock seconds] + $arg * 60}]
+  set freqs {14.2 7.15}; set labels {"14.200 MHz" "7.150 MHz"}; set pans {"\033\[C" "\033\[D"}
+  for {set i 0} {[clock seconds] < $end} {incr i} {
+    set next [expr {[clock seconds] + $cycle * 60}]
+    send -- [lindex $pans [expr {$i % 2}]]; hold 10 "" 0
+    send -- "\033\[1;2C"; hold 30 "" 0
+    send "n"; hold 10 "" 0
+    send "F"; sleep 1; send -- [lindex $freqs [expr {$i % 2}]]; send "\r"
+    expect -timeout 60 [lindex $labels [expr {$i % 2}]] {
+      phase $lf "U$i pan, hour step, [lindex $labels [expr {$i % 2}]] drawn"
+    } timeout {
+      phase $lf "U$i WARN: [lindex $labels [expr {$i % 2}]] not seen drawn"
+    }
+    if {$next > $end} { set next $end }
+    hold [expr {$next - [clock seconds]}] "" 0
+  }
+  counters $counters "$outdir/g1-end.json"
+} elseif {$mode eq "g1-idle"} {
+  # G1's other arm: the same build and workload's config, the map never
+  # opened, so the Propagation mode never fetches (D-76).
+  phase $lf "G measured: the mode never opened"
+  hold [expr {$arg * 60}] "" 0
+  counters $counters "$outdir/g1-end.json"
+} elseif {$mode eq "cold"} {
   # One cold open: an empty cache, the map never opened. M5's clock is g.
   send "g"; phase $lf "C$arg open (cold)"
   hold 45 "" 0

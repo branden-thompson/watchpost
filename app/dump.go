@@ -81,6 +81,10 @@ type dumpRecord struct {
 	// Timings are the timing instrument's newest intervals (W14, D-154),
 	// under WATCHPOST_DEBUG_TIMING=1 alone.
 	Timings []timingRecord `json:"timings,omitempty"`
+	// PropagationWireBytes is what the propagation client has read off the
+	// wire since it was made, compressed as it came: 0.19.0 G1's downloads
+	// (D-141, DN-12).
+	PropagationWireBytes int64 `json:"propagation_wire_bytes"`
 }
 
 // memRecord is the MemStats subset the soak statistic reads (plan §1:
@@ -222,6 +226,7 @@ func (d *dumper) record(now time.Time) dumpRecord {
 	src := d.sources()
 	rec.Gauges = src.gauges()
 	rec.Timings = src.timings.last()
+	rec.PropagationWireBytes = src.propagation.wireBytes()
 	for i, pub := range [...]*publisher{src.priorityPub, src.recentPub} {
 		name := [...]string{"priority", "recent"}[i]
 		var last *snapshot.Snapshot

@@ -363,6 +363,7 @@ func (*pipeline).update
 func (*propagationHolder).requestStats
 func (*propagationHolder).service
 func (*propagationHolder).settle
+func (*propagationHolder).wireBytes
 func (*publisher).Trigger
 func (*publisher).fire
 func (*publisher).lastSnapshot

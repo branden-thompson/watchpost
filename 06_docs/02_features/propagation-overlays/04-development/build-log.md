@@ -647,3 +647,13 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 
 - **On `e889e72a`** (batch 50): `make verify` green, `make p10` with no live, unmatched or unratified finding, and hosted CI green on Ubuntu and macOS - the first run to carry batches 48 to 50, the runs on `1e6c60b2` and `a9401314` having been cancelled by later pushes. The libraries' hosted full gates are green on go-ionomaps `8f6c085` and go-tuiMaps `d93fac5`.
 - **REVIEW is open,** with D-208's long runs beside it: G1's 48 hours, G10.4's fresh-day fetch and G-M3, and the graded M1/M4 run.
+
+## Batch 51 - REVIEW: the G1 harness built (W10.2; A-79)
+
+- **The agent's error:** the BUILD report, as approved, said G1's harness was built. It was not. W10.2 had no driver, no wire count and no summary. The report's line is corrected and the error listed there.
+- **The wire count (DN-12):** the propagation client counts the bytes read off its own connections, before decryption and decompression, and the debug counters carry it as `propagation_wire_bytes`. Only the propagation client is counted: G1's downloads are the mode's (D-141).
+- **The driver:** `scripts/quality/workload.sh g1` runs two watchposts side by side, each in its own scratch HOME and on its own debug address. In one, the Propagation mode is open, with a pan, an hour step and a frequency entered each hour; the other never opens the map (A-79). Each is sampled every two minutes and its counters read every ten.
+- **The summary:** `perfsum -g1` measures each arm from its "G measured" phase and reads the difference against G1's targets. It exits 1 on a miss, and says when a run is shorter than 48 hours.
+- **P10:** P10-01 reads `countedConn.Read`, which calls the connection's `Read`, as recursion. That is the io.Reader adapter class the ledger already holds for `tapReader.Read`. A row is put to the HUM LEAD, not written (the ledger is edited only on ratification).
+- **Tests:** `TestThePropagationClientCountsItsWireBytes`, `TestThePropagationClientsWireBytesReachTheCounters`, `TestAG1RunIsTheDifferenceOfItsArms`. **Mutants:** m495 to m504 new, all killed.
+- **Docs:** A-79; the plan's W10.2; the BUILD report's G1 row and its errors.

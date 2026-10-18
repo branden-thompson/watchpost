@@ -71,7 +71,7 @@ Both rounds are in `red-team-build.md`, with every finding by its ID; the review
 | M1 (agreement with WSPR, the tower's served area) | **baseline measured, target missed on PLAN's week:** 53.4 % for both climatology and shipped (target 58.4 %); graded on fresh days beside REVIEW | D-99, D-118, D-221, D-224, D-228 |
 | M4 (the listener's paths) | **baseline measured, target missed on PLAN's week:** 64.2 % for the climatology, 66.9 % shipped, lead +2.6 [+1.2, +4.0] (target 69.2 %); graded on fresh days beside REVIEW | the same |
 | M2, M5, M5b (UAT) | the protocol is ready; the live sitting is VALIDATE's (D-89) | D-93 |
-| G1 (station cost) | the harness built; its 48-hour run beside REVIEW, holding a frequency while panning (D-227) | D-208, D-227 |
+| G1 (station cost) | **the harness was not built at BUILD exit**, though this report said it was; built in REVIEW (batch 51, A-79), its 48-hour run beside REVIEW, holding a frequency while panning (D-227) | D-208, D-227 |
 | go-ionomaps G-M2 (reproducible) | built: `TestAFieldIsReproducedFromItsInputs` holds the climatology's field to a golden both runners check (G10.1). The assimilated field is not in the golden; synthetic stations would flatten it | D-97, D-208 |
 | go-ionomaps G-M4 (faults said) | built: `TestEveryFaultIsReported` (G10.2), its GIRO cases passing only when the fault is reported | D-208 |
 | go-ionomaps G-M3 (error against climatology) | on at least 3 fresh days beside REVIEW (G10.4) | D-108, D-132 |
@@ -108,6 +108,7 @@ gate failed once in round 2, on a fuzz target's clock and not a crash, and is gr
 | — | Batch 45 renamed a method and added guards to satisfy P10's analysers, which D-215 forbids | batch 48: the guards removed, the shortfall put to the HUM LEAD |
 | — | This report's first version misstated floor 2, left out D-217's sentence, and said hosted CI was read after every push when several runs had been cancelled | this revision |
 | — | A mutant whose anchor still matched no longer compiled after batch 48 simplified its function; the full gate's first run caught it | m364 rewritten; the touched files' mutants compile-checked before the gate |
+| — | This report, as approved, said G1's harness was built. It was not: W10.2 had no driver, no wire count and no summary until REVIEW, and the approval rested on that line | the harness built in batch 51; this line corrected and the HUM LEAD told |
 
 ## What REVIEW inherits
 

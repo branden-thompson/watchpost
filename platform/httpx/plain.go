@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
@@ -24,7 +26,8 @@ type Plain struct {
 	maxBody   int64
 	hostMax   map[string]int64 // a host's own cap, tighter than maxBody (W0.2)
 	httpsOnly bool
-	stats     *reqStats // its asks per host, as the data client counts them (D-169)
+	stats     *reqStats    // its asks per host, as the data client counts them (D-169)
+	wire      atomic.Int64 // bytes read from its connections, before any decompression (0.19.0 D-111, DN-12)
 }
 
 // PlainConfig is a Plain client's settings; the zero hardening values allow
@@ -80,9 +83,38 @@ func NewPlain(cfg PlainConfig) (*Plain, error) {
 		cfg.MaxBodyBytes = maxBodyBytes
 	}
 	t := clientTransport(Config{RefusePrivate: cfg.RefusePrivate}, http.ProxyFromEnvironment)
-	return &Plain{http: &http.Client{Timeout: cfg.Timeout, Transport: t, CheckRedirect: SameOriginRedirect},
-		ua: cfg.UserAgent, maxBody: cfg.MaxBodyBytes, hostMax: maps.Clone(cfg.MaxBodyByHost), httpsOnly: cfg.HTTPSOnly, stats: newReqStats()}, nil
+	p := &Plain{http: &http.Client{Timeout: cfg.Timeout, Transport: t, CheckRedirect: SameOriginRedirect},
+		ua: cfg.UserAgent, maxBody: cfg.MaxBodyBytes, hostMax: maps.Clone(cfg.MaxBodyByHost), httpsOnly: cfg.HTTPSOnly, stats: newReqStats()}
+	dial := t.DialContext
+	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		c, err := dial(ctx, network, addr)
+		if err != nil {
+			return nil, err
+		}
+		return countedConn{Conn: c, read: &p.wire}, nil
+	}
+	return p, nil
 }
+
+// countedConn counts the bytes read from a connection as they arrive: what
+// the wire carried - TLS records, gzip-compressed bodies - not what the
+// transport hands up once it has decrypted and decompressed them.
+type countedConn struct {
+	net.Conn
+	read *atomic.Int64
+}
+
+// Read reads from the connection and counts what it read.
+func (c countedConn) Read(b []byte) (int, error) {
+	n, err := c.Conn.Read(b)
+	c.read.Add(int64(n))
+	return n, err
+}
+
+// WireBytes is the bytes the client has read from its connections since it
+// was built, before decryption and decompression: G1's downloads on the
+// wire (0.19.0 D-111, D-141).
+func (p *Plain) WireBytes() int64 { return p.wire.Load() }
 
 // RequestStats reports the client's asks since it was built, per host (D-169).
 func (p *Plain) RequestStats() RequestStats { return p.stats.snapshot() }

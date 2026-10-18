@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -131,5 +132,85 @@ func TestARunThatLostItsMapFails(t *testing.T) {
 	out.Reset()
 	if code := run([]string{"-in", dir}, &out, &bytes.Buffer{}); code == 0 || !strings.Contains(out.String(), "| C map open | 2 |") {
 		t.Errorf("a run that lost its map twice in C: exit %d\n%s", code, out.String())
+	}
+}
+
+// TestAG1RunIsTheDifferenceOfItsArms is 0.19.0 W10.2: each arm measured from
+// its "G measured" phase, the use arm's added CPU and RSS over the idle
+// arm's, its downloads from the counters' wire bytes, each against G1's
+// target; a target missed is a failed run.
+func TestAG1RunIsTheDifferenceOfItsArms(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const head = "utc,elapsed,rss_kb,footprint_kb,threads,pcpu,heap_alloc,heap_inuse,heap_objects,goroutines,fds,disk_files,disk_bytes,publishes_recent,cpu_time\n"
+	arm := func(name string, rssKB [3]int, cpu [3]string, wire [3]int64) {
+		write(name+"/phases.log", "2026-10-19T00:00:00Z L launched: first data\n2026-10-19T01:00:00Z G measured\n")
+		// The sample before the measure is the open's: never counted.
+		write(name+"/samples.csv", head+
+			"2026-10-19T00:30:00Z,,999999,,20,,,,,50,,,,,0:01.00\n"+
+			fmt.Sprintf("2026-10-19T01:00:00Z,,%d,,20,,,,,50,,,,,%s\n", rssKB[0], cpu[0])+
+			fmt.Sprintf("2026-10-20T01:00:00Z,,%d,,20,,,,,50,,,,,%s\n", rssKB[1], cpu[1])+
+			fmt.Sprintf("2026-10-21T01:00:00Z,,%d,,20,,,,,50,,,,,%s\n", rssKB[2], cpu[2]))
+		var recs strings.Builder
+		for i, at := range []string{"2026-10-19T00:30:00Z", "2026-10-19T01:00:00Z", "2026-10-21T01:00:00Z"} {
+			fmt.Fprintf(&recs, "{\"at\":%q,\"propagation_wire_bytes\":%d}\n", at, wire[i])
+		}
+		write(name+"/counters.jsonl", recs.String())
+	}
+	sum := func(useCPU string, useWire int64) (string, int) {
+		arm("use", [3]int{204800, 215040, 225280}, [3]string{"10:00.00", "40:00.00", useCPU}, [3]int64{5e6, 6e6, useWire})
+		arm("idle", [3]int{102400, 112640, 122880}, [3]string{"10:00.00", "30:00.00", "50:00.00"}, [3]int64{0, 0, 0})
+		var out, errOut bytes.Buffer
+		code := run([]string{"-g1", dir}, &out, &errOut)
+		if code == 2 {
+			t.Fatalf("exit 2: %s", errOut.String())
+		}
+		return out.String(), code
+	}
+	// Over 48 h the use arm spends 62 minutes of CPU (2.15 %), the idle arm
+	// 40 (1.39 %): +0.76; RSS medians 210 and 110 MB; 6 MB to 486 MB on the
+	// wire, counted from the first record inside the run, is 10 MB an hour.
+	out, code := sum("1:12:00", 486e6)
+	for _, want := range []string{
+		"| the mode in use | 48.0 | 3 | 2.15 | 210.0 / 220.0 |",
+		"| the mode never opened | 48.0 | 3 | 1.39 | 110.0 / 120.0 |",
+		"| added mean CPU, % of one core | +0.76 | at most 1 | met |",
+		"| added RSS, MB (medians) | +100.0 | at most 25 | **missed** |",
+		"| downloads on the wire while open, MB an hour | 10.00 | at most 19 | met |",
+		"| downloads with the mode never opened, MB | 0.00 | none | met |",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the summary lacks %q:\n%s", want, out)
+		}
+	}
+	if code != 1 || strings.Contains(out, "a dry run") {
+		t.Errorf("a 48-hour run missing a target exits %d", code)
+	}
+	if out, _ := sum("2:00:00", 1e9); !strings.Contains(out, "| 20.71 | at most 19 | **missed** |") || !strings.Contains(out, "| +2.43 | at most 1 | **missed** |") {
+		t.Errorf("1 GB and 110 minutes of CPU over 48 hours are not misses:\n%s", out)
+	}
+	write("use/counters.jsonl", "{\"at\":\"2026-10-20T01:00:00Z\",\"propagation_wire_bytes\":5}\n{\"at\":\"2026-10-20T01:30:00Z\",\"propagation_wire_bytes\":9}\n")
+	var u bytes.Buffer
+	if run([]string{"-g1", dir}, &u, &bytes.Buffer{}); !strings.Contains(u.String(), "| unread | at most 19 | **missed** |") {
+		t.Errorf("records half an hour apart are read as a rate:\n%s", u.String())
+	}
+	write("idle/counters.jsonl", "{\"at\":\"2026-10-20T01:00:00Z\",\"propagation_wire_bytes\":5}\n{\"at\":\"2026-10-21T01:00:00Z\",\"propagation_wire_bytes\":9}\n")
+	var b bytes.Buffer
+	if run([]string{"-g1", dir}, &b, &bytes.Buffer{}); !strings.Contains(b.String(), "| 0.00 | none | **missed** |") {
+		t.Errorf("an idle arm that read the wire is not a miss:\n%s", b.String())
+	}
+	write("idle/phases.log", "2026-10-19T00:00:00Z L launched: first data\n")
+	if code := run([]string{"-g1", dir}, &bytes.Buffer{}, &bytes.Buffer{}); code != 2 {
+		t.Errorf("an arm that never reached its measure exits %d", code)
+	}
+	if code := run([]string{"-g1", dir, "-in", dir}, &bytes.Buffer{}, &bytes.Buffer{}); code != 2 {
+		t.Errorf("both flags exit %d", code)
 	}
 }

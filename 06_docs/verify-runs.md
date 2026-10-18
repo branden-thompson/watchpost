@@ -42,3 +42,5 @@ says exactly what passed.
 | 2026-10-18T18:47:59Z | a9401314 | bda2d1056921 | verify | FAILED (exit 2) | 2 |
 | 2026-10-18T19:35:28Z | a9401314 | bf712f12ceee | verify | green | 2711 |
 | 2026-10-18T21:32:11Z | e889e72a | 41412436bc8e | verify-docs | green | 150 |
+| 2026-10-18T21:58:13Z | 40c55306 | 91df9b7e292b | verify-docs | FAILED (exit 2) | 0 |
+| 2026-10-18T22:44:32Z | 40c55306 | f9278ba257db | verify | green | 2604 |

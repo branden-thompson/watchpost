@@ -1,6 +1,8 @@
 package httpx
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"net/http"
@@ -238,5 +240,46 @@ func TestAGIRORefusalNeverPausesWeather(t *testing.T) {
 	defer stop()
 	if _, err := held.GetJSON(short, srv.URL+"/weather", &got); err == nil {
 		t.Fatal("control: the data client does not hold after its own 429, so this proves nothing")
+	}
+}
+
+// TestThePropagationClientCountsItsWireBytes is 0.19.0 G1's downloads (D-141,
+// DN-12): what the client read from the wire, a compressed body compressed,
+// not the body it handed up; and every connection counted, a second ask
+// adding its own.
+func TestThePropagationClientCountsItsWireBytes(t *testing.T) {
+	body := strings.Repeat("a grid of numbers, much repeated; ", 6000)
+	var packed bytes.Buffer
+	zw := gzip.NewWriter(&packed)
+	_, _ = zw.Write([]byte(body))
+	_ = zw.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept-Encoding") != "gzip" {
+			t.Errorf("the client asked with Accept-Encoding %q", r.Header.Get("Accept-Encoding"))
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		_, _ = w.Write(packed.Bytes())
+	}))
+	defer srv.Close()
+	p := plainFor(t, int64(2*len(body)))
+	if p.WireBytes() != 0 {
+		t.Fatalf("a new client has read %d bytes", p.WireBytes())
+	}
+	got, err := p.Get(context.Background(), srv.URL, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got.Body) != body {
+		t.Fatalf("the body handed up is %d bytes, want %d", len(got.Body), len(body))
+	}
+	one := p.WireBytes()
+	if one < int64(packed.Len()) || one > int64(packed.Len())+1024 {
+		t.Errorf("one ask read %d bytes off the wire; the compressed body is %d and the body %d", one, packed.Len(), len(body))
+	}
+	if _, err := p.Get(context.Background(), srv.URL, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if two := p.WireBytes(); two < one+int64(packed.Len()) {
+		t.Errorf("two asks read %d bytes, the first alone %d", two, one)
 	}
 }
