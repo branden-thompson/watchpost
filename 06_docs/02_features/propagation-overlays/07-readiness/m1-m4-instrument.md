@@ -100,7 +100,7 @@ outside the tree with the PLAN evidence.
 ## As built: `tools/reachscore` (batch 45, A-74)
 
 A Go tool with two commands. `spots` sends wspr.live the day's one query and keeps the answer outside the
-tree. `score` reads the spots, draws the set by B1, answers each scenario three ways through go-ionomaps
+tree. `score` reads the spots, draws the set by band (D-224; B1's band and hour with `-strata band-hour`), answers each scenario three ways through go-ionomaps
 by replaying the days' recorded files, reads each answer by C1, scores by A2, and prints the table by
 band. It keeps the scenarios and the inputs' checksums outside the tree as well. The table names the
 tool's commit and says whether the tree was clean; figures are cited only from a clean, committed tree
@@ -108,7 +108,7 @@ tool's commit and says whether the tree was clean; figures are cited only from a
 
 ```mermaid
 flowchart LR
-  W[wspr.live: one aggregate query a day] -->|spots kept outside the tree| D[draw B1: band x UTC hour, open = closed]
+  W[wspr.live: one aggregate query a day] -->|spots kept outside the tree| D[draw by band, D-224: open = closed in each band]
   P[PLAN's recorded files: GloTEC grids, GIRO replies, solar file] --> R[replay at the clock: nothing dated after it]
   R --> C1[go-ionomaps: no grid, no stations = climatology]
   R --> C2[go-ionomaps: grids, no stations = background]
@@ -117,7 +117,7 @@ flowchart LR
   C1 --> A
   C2 --> A
   C3 --> A
-  A --> T[table by band: agreement, base rate, each kind of closed, the target]
+  A --> T[table by band: agreement and lead with 95 % intervals, D-228; base rate; each kind of closed; the target]
 ```
 
 **What it sends.** wspr.live is sent one query a day: the spots heard by receivers in the mainland US,
@@ -175,8 +175,9 @@ column, and on average 36 stations assimilated in the shipped build's.
 | M1 | 1594 (797 open, 399 weak, 398 unheard) | 50.4 % | 50.7 % | 50.4 % | 55.4 %: **missed** |
 | M4 | 1504 (752 open, 377 weak, 375 unheard) | 58.4 % | 60.7 % | 60.7 % | 63.4 %: **missed** |
 
-Open pairs are 7.4 % of M1's pairs and 4.0 % of M4's, which is the base rate. By kind, every column agrees
-with fewer than 40 % of the open pairs and with 72 to 91 % of the closed ones.
+Open pairs are 7.4 % of M1's pairs and 4.0 % of M4's, which is the base rate. By kind, under this draw
+every column agrees with fewer than 40 % of the open pairs and with 72 to 91 % of the closed ones; by band
+alone (below), with 29 to 52 % of the open pairs and 72 to 92 % of the closed.
 
 **What M1's 50 % is.** The model behaves as the physics says. Over the served area, 40 m reaches by US
 day (15 to 21 UTC) and not at night. 80 m reaches at night and is absorbed at midday. 30 m and above

@@ -1,11 +1,12 @@
 // Command reachscore is the M1 and M4 instrument (0.19.0 W10.3; D-208,
 // D-218 to D-221; `07-readiness/m1-m4-instrument.md`). "spots" fetches the
 // days' WSPR spots heard in the mainland US from wspr.live, one filtered
-// aggregate query a day; "score" draws the scenarios from them (B1), answers
-// each three ways through go-ionomaps by replaying the days' recorded NOAA
-// and GIRO files - the climatology, the background alone, the shipped build
-// - reads each answer as the product does (C1), scores it against the spots
-// (A2) and prints the table by band. The spots, the recorded files and the
+// aggregate query a day; "score" draws the scenarios from them by band
+// (D-224), answers each three ways through go-ionomaps by replaying the
+// days' recorded NOAA and GIRO files - the climatology, the background
+// alone, the shipped build - reads each answer as the product does (C1),
+// scores it against the spots (A2) and prints the table by band, each
+// figure with its interval (D-228). The spots, the recorded files and the
 // scenarios stay outside the tree: GIRO's terms, and the locators place
 // stations.
 //

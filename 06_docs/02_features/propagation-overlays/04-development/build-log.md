@@ -622,3 +622,15 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **The record's checks:** living documents cite code by symbol, and the check found a stale one at once (`MapPropagation`, now `PropagationUpdate`). The hook runs batch 36's checks, and the as-built map is held to 0.19.0's batches and redrawn.
 - **Tests:** the twelve named in the plan's W9.4, and `TestTheIntervalKeepsThePairing`. **Mutants:** m472 to m492 new, all killed. Two first failed vet and one survived its test, which was made to check a reach is not asked at all while stepping. m219, m410, m434 and m465 re-pointed; m364 rewritten, its anchor still matching but its mutation no longer compiling, which the gate's first run caught. m365 (the hour's middle) and m445, m446, m448 (the guards D-215 removed) retired.
 - **Docs:** A-76; FR-1.16 and FR-1.17; the plan's W9.4 and W10.3; the as-built map; F-218.
+
+## Batch 49 - `main`'s 0.18.1 merged; the record's round 2 findings (A-77)
+
+- **`main` merged** (BL2-8): 0.18.1's changelog entry, Go 1.27.2 already on the branch. The branch's newer pins and library versions stand, `go.sum` and the licence list are regenerated, and `main`'s comment, with no history in it, is taken.
+- **The record:**
+  - the README and CHANGELOG say 0.19.0 (DN2-10);
+  - the BUILD report is revised: floor 2 met by construction (DN2-3), PS-1 addressed in part (D-217, DN2-4), the hosted runs as they were (DN2-9), the M5 figures reconciled (DN2-14), and M1/M4 with intervals and how to read them (DN2-15);
+  - the architecture's answers path, seams and memo key (DN2-7);
+  - the instrument page's draw, interval and by-kind figures (DN2-11);
+  - the status lines (DN2-12) and the required reading's rows (DN2-14).
+- **The dry run again,** from `1e6c60b2`, a clean tree, by band: M1 53.4 % in every column, the lead +0.1 [-0.7, +0.9]; M4 64.2 % for the climatology against 66.9 % shipped, the lead +2.6 [+1.2, +4.0]. The figures are unchanged, now with D-228's intervals.
+- **Docs:** A-77; the BUILD report; the as-built map's batches.

@@ -2,6 +2,43 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [Unreleased] — 0.19.0
+
+### Added
+- **The Propagation mode** (`P` on the map): HF radio conditions over the whole world - the highest
+  usable frequency over 3,000 km (MUF(3000)) or the F2 layer's critical frequency (foF2), from NOAA's
+  GloTEC and GIRO's ionosondes over a climatology, computed by go-ionomaps v0.1.0. Beside the map, the
+  bands usable near the place and on the path to each continent and to a place found (`/`); your
+  frequency's reach (`F`), its skip zone and the limit that stops it; the hours ahead (`shift+→`), each
+  labelled typical; the bands chart (`B`); and words for every answer. Answers are for a 100 W voice
+  circuit with simple antennas.
+- **The Broadcaster's own map** (`g` on the console): centred on the transmitter, the service radius
+  drawn in every mode, with its own Propagation mode answering for the map's centre from the station.
+- **Day and night on the map**, as a map detail: the night side shaded and the terminator dotted.
+- **Settings:** the near-vertical radius, the receiver's noise, how often the Propagation mode refreshes,
+  what it draws with no station readings, whether GIRO's stations are asked at all, and the map's colour
+  depth (automatic by default).
+
+### Changed
+- The map's library is go-tuiMaps v0.3.0: fields over water, the MUF and foF2 presets, the terminator,
+  and a default colour depth that follows the terminal.
+- Nothing is fetched for the Propagation mode until it is opened. GIRO is asked at most once an hour and
+  its throttle is kept across restarts (`propagation-throttle.json`, times only); GIRO records the
+  address it is asked from, and its data is for non-commercial use.
+
+## [0.18.1] — 2026-10-10
+
+### Fixed
+- **The heaviest rain totals are drawn.** In Forecast mode a day's rain and snow total of 2 inches
+  (50.8 mm) or more drew nothing: those areas showed the basemap alone, while the legend still listed
+  both of the heaviest classes. go-tuiMaps v0.2.1 draws every class in its own colour (issue #28).
+- **Built with Go 1.27.2,** which fixes an HTTP/2 crash in the standard library (GO-2026-6617) that the
+  map's fetcher could reach. The module's floor is Go 1.26.9; the Go 1.25 line has no fix.
+
+### Changed
+- `THIRD_PARTY_LICENSES.md` carries each module's NOTICE as well as its licence, as Apache-2.0 asks:
+  yaml/v3's NOTICE was missing.
+
 ## [0.18.0] — 2026-10-05
 
 ### Added

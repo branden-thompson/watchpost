@@ -163,16 +163,24 @@ unavailable") — never a silently empty list.
 
 ## Map
 
-`g` opens the map of the focused location's region, and `g` or `esc` closes it. The map never shows
-more than one region: the contiguous US, Alaska, Hawaii, the US Caribbean, American Samoa, or Guam and
-the Northern Marianas. A place outside all of them gets a sentence saying so, and no map.
+`g` opens the map of the focused location's region, and `g` or `esc` closes it. Its weather modes never
+show more than one region: the contiguous US, Alaska, Hawaii, the US Caribbean, American Samoa, or Guam
+and the Northern Marianas. A place outside all of them gets a sentence saying so, and no weather map;
+the Propagation mode, below, opens there, since it draws the whole world.
 
 **What it shows.** A basemap with the alert areas in view, coloured by severity. On top of that, the
-map runs in one of two modes:
+map runs in one of three modes:
 
 - **Radar mode** (the default) plays the last two hours of radar as a loop. It can add the hours ahead
   from the HRRR model.
 - **Forecast mode** (`R` switches) steps through now and the days ahead.
+- **Propagation mode** (`P`) draws HF radio conditions over the whole world: the highest usable
+  frequency over 3,000 km (MUF(3000)) or the F2 layer's critical frequency (foF2), from NOAA's GloTEC
+  and GIRO's ionosondes over a climatology (go-ionomaps). Beside the map: the bands usable near the
+  place and on the path to each continent, and to a place found with `/`; your frequency's reach (`F`),
+  with its skip zone and the limit that stops it; the hours ahead, each labelled typical; and the
+  words for every answer. `B` opens the chart of the bands now and through a typical day. The answers
+  are for a 100 W voice circuit with simple antennas.
 
 The layers are temperature, feels-like, wind, rain and snow, UV, air quality, waves, fire, earthquakes,
 buoys and tides. Switch them in the Overlays menu (`O`) or in Settings. Out of the box the radar, alert
@@ -194,6 +202,8 @@ picture or be switched off (Settings, *Description*).
 | `shift+←` `shift+→` · `n` | step back / on · back to now |
 | `<` `>` | Forecast mode: the days' highs or lows |
 | `A` · `O` | the Area Alerts box · the Overlays menu (`↑` `↓` move, `←` `→` change a choice, `space` switches, `esc` closes it) |
+| `P` | the Propagation mode on / off |
+| `L` · `U` · `B` · `F` · `/` | Propagation mode: the layer (MUF or foF2) · refresh now · the bands chart · your frequency · find a place anywhere |
 | `PgUp` `PgDn` | scroll the window when it is longer than the screen |
 
 While the map is open these keys are the map's. Any other key works as it does on the dashboard. Each
@@ -204,7 +214,10 @@ one is a keymap action, so `[keys]` in `config.toml` can rebind it.
 - **MAP:** maps on or off; where the description goes; the scale the map opens at (State, County or
   Region); the distance that counts as nearby; the radar source (MRMS, or IEM for the lower 48); the
   hours of radar ahead; which earthquakes (a USGS feed); the temperature source (NDFD or Open-Meteo);
-  how dense the rain is from day 4; and how many cities show UV.
+  how dense the rain is from day 4; how many cities show UV; and for the Propagation mode, the
+  near-vertical radius (*NVIS radius*), the receiver's noise (*RX noise*), how often it refreshes
+  (*HF refresh*), what it draws while no station readings are held (*No readings*), whether GIRO's
+  stations are asked at all (*HF stations*), and the map's *Colours* (automatic, or a depth chosen).
 - **MAP - LAYERS:** each layer on or off.
 - **MAP - DETAIL:** the basemap's detail (borders, lakes, rivers, place names, major roads, rail and
   parks) and *Map data*, which clears what the map keeps on disk.
@@ -220,7 +233,8 @@ in words in place of the picture.
 The window needs room for a map 69 columns by 12 rows. In a smaller terminal it says what size it
 needs, then gives the description.
 
-**What the map contacts.** Nothing is fetched for the map until you press `g`. The Status window (`S`)
+**What the map contacts.** Nothing is fetched for the map until you press `g`, and nothing for the
+Propagation mode until you open it. The Status window (`S`)
 lists every host the app contacts, grouped by what it serves - common data, weather, adverse events,
 map drawing - each named by its source's badge, with whether it is answering. What each map host
 is sent:
@@ -236,6 +250,8 @@ is sent:
 | `data.epa.gov` (EPA) | UV | the names of the largest cities in view |
 | `www.ndbc.noaa.gov`, `api.tidesandcurrents.noaa.gov` | buoys, tides | nothing for buoys (a national file); the tide stations in view |
 | `earthquake.usgs.gov` | earthquakes | nothing: the national feed chosen in Settings |
+| `services.swpc.noaa.gov` (NOAA SWPC) | Propagation mode | nothing: GloTEC's newest grid, the daily solar indices, D-RAP and the space-weather scales, at most every ten minutes |
+| `lgdc.uml.edu` (GIRO) | Propagation mode, unless *HF stations* is off | the stations' codes and a time window, at most one burst an hour; GIRO records the address it is asked from, and its data is for non-commercial use |
 
 **The history recorder runs whatever the maps setting.** While watchpost runs, in any mode, it records
 the station's region every hour: NDFD's forecast for the region, AirNow's national file and the USGS
@@ -245,8 +261,9 @@ earthquake feeds. The map uses the record to draw past hours when a source does 
 *Data* tab sets how long the record is kept, shows its size, and clears it; *Clear map data* also
 clears the cities the map read. When several copies of watchpost run, each hour is fetched only once.
 The record is kept in `~/.local/share/watchpost/weather/history` (under `$XDG_DATA_HOME` when it is set);
-Open-Meteo's spent-quota mark (`quota.json`) and the sea points Open-Meteo Marine has no answer for
-(`marine-land.json`) are in `~/.local/state/watchpost` (under `$XDG_STATE_HOME`).
+Open-Meteo's spent-quota mark (`quota.json`), the sea points Open-Meteo Marine has no answer for
+(`marine-land.json`) and GIRO's throttle across restarts (`propagation-throttle.json`, times only, no
+reading) are in `~/.local/state/watchpost` (under `$XDG_STATE_HOME`).
 
 ## Radio
 
@@ -297,6 +314,7 @@ to the Observer, and is refused while the station is ON AIR.
 | `0`-`9` / `A` | open a card by its handle (the first ten; the running order scrolls to the rest) / the takeover's card |
 | `r` | **Line-Up Request** — ask for a place inside the radius, by name |
 | `l` | look up any city or ZIP |
+| `g` | the station's own map: centred on the transmitter, the service radius drawn in red in every mode; `P` its Propagation mode, the box over the map answering for the map's centre from the station |
 | `b` / `shift+←` `shift+→` | cut the main track over to the **bed** (the live relay) / previous and next relay |
 | `+` `=` `-` | gain up and down — one level, mirrored with the Observer's volume |
 | `ctrl+d` | Diagnostics — **send a test alert** to check your station's alerting end to end, as a radio station tests its own: it asks ARE YOU SURE?, reads "This is a test of the Watchpost alert events system" before and after, is marked TEST EVENT on the ticker and in the severe window, and is gone in two minutes |

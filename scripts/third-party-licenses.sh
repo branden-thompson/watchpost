@@ -41,7 +41,7 @@ trap 'go mod tidy >/dev/null 2>&1 || true' EXIT
     fi
     echo
     # A module's NOTICE travels with it too: Apache-2.0 asks for it, and a
-    # module that ports or embeds another's work names it there (0.19.0 F-215).
+    # module that ports or embeds another's work names it there.
     for f in NOTICE NOTICE.md NOTICE.txt; do
       if [ -n "$dir" ] && [ -f "$dir/$f" ]; then
         echo "Its $f:"

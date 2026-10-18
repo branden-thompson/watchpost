@@ -975,9 +975,10 @@ code{font-family:var(--mono);font-size:.92em}
   C -. &#34;refuses what starts after&#34; .-&gt; W &amp; F
 </pre></div></article></section><section class="level" id="propagation-overlays"><header class="lvl"><h2>propagation overlays</h2></header><article class="dia" id="propagation-overlays-0"><div class="meta"><h3>The pieces</h3><p class="file"><code>06_docs/02_features/propagation-overlays/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
   subgraph watchpost
-    MODE[&#34;modes/tty: Propagation mode&lt;br/&gt;chart, frequency entry, words&#34;]
+    MODE[&#34;modes/tty: Propagation mode&lt;br/&gt;fields to overlays, chart, frequency entry, words&#34;]
     ACK[&#34;modes/tty: acknowledgement window&lt;br/&gt;(D-81)&#34;]
-    APP[&#34;app/mapprop.go&lt;br/&gt;fields to overlays, answers to words&#34;]
+    ANS[&#34;platform/propanswers&lt;br/&gt;the answers: chart, centre, limits, their words (D-212)&#34;]
+    APP[&#34;app/mapprop.go&lt;br/&gt;the one service and its client; hosts, credits&#34;]
     DOM[&#34;domains/propagation&lt;br/&gt;one go-ionomaps object, its client&#34;]
     GEO[&#34;platform/geo: coordinates, Maidenhead&lt;br/&gt;(FR-4.9, D-79)&#34;]
     HTTPX[&#34;platform/httpx: a propagation client&lt;br/&gt;no 429 retry, status and headers&#34;]
@@ -996,8 +997,10 @@ code{font-family:var(--mono);font-size:.92em}
   end
   MODE --&gt; ACK
   MODE --&gt; APP
+  MODE --&gt; ANS
+  MODE --&gt; MAP
+  ANS --&gt; LIB
   APP --&gt; DOM
-  APP --&gt; MAP
   APP --&gt; GEO
   DOM --&gt; LIB
   DOM --&gt; HTTPX
@@ -1035,7 +1038,7 @@ code{font-family:var(--mono);font-size:.92em}
   W--&gt;&gt;L: the picture or the words
   Note over W,P: while open, the refresh tick (10 min default) or the refresh-now key starts the next update
 </pre></div></article><article class="dia" id="propagation-overlays-2"><div class="meta"><h3>As built: `tools/reachscore` (batch 45, A-74)</h3><p class="file"><code>06_docs/02_features/propagation-overlays/07-readiness/m1-m4-instrument.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
-  W[wspr.live: one aggregate query a day] --&gt;|spots kept outside the tree| D[draw B1: band x UTC hour, open = closed]
+  W[wspr.live: one aggregate query a day] --&gt;|spots kept outside the tree| D[draw by band, D-224: open = closed in each band]
   P[PLAN&#39;s recorded files: GloTEC grids, GIRO replies, solar file] --&gt; R[replay at the clock: nothing dated after it]
   R --&gt; C1[go-ionomaps: no grid, no stations = climatology]
   R --&gt; C2[go-ionomaps: grids, no stations = background]
@@ -1044,7 +1047,7 @@ code{font-family:var(--mono);font-size:.92em}
   C1 --&gt; A
   C2 --&gt; A
   C3 --&gt; A
-  A --&gt; T[table by band: agreement, base rate, each kind of closed, the target]
+  A --&gt; T[table by band: agreement and lead with 95 % intervals, D-228; base rate; each kind of closed; the target]
 </pre></div></article></section></main>
 </div>
 <script type="module">
