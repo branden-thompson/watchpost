@@ -112,7 +112,7 @@ func TestTheTerminatorIsDrawnForTheFieldsTime(t *testing.T) {
 		t.Errorf("a field made at %v: the night is drawn for %v", next, d.mapPane.nightGiven[mapNightID].Valid)
 	}
 	d = stepAhead(t, d, "shift+right")
-	if got, want := d.mapPane.nightGiven[mapNightID].Valid, next.Add(time.Hour+30*time.Minute); !got.Equal(want) {
+	if got, want := d.mapPane.nightGiven[mapNightID].Valid, next.Add(time.Hour).Truncate(time.Hour).Add(30*time.Minute); !got.Equal(want) { // the hour shown starts on the hour (go-ionomaps A-23)
 		t.Errorf("an hour ahead the night is drawn for %v; the middle of the hour, %v", got, want)
 	}
 }

@@ -148,7 +148,7 @@ func (d Dashboard) propAheadLabel(lat, lon float64) string {
 	if k == 0 || d.mapPane.propSnap == nil {
 		return ""
 	}
-	at := d.mapPane.propSnap.Now.At.Add(time.Duration(k) * time.Hour).UTC()
+	at := d.mapPane.propSnap.Now.At.Add(time.Duration(k) * time.Hour).UTC().Truncate(time.Hour) // the hour shown: go-ionomaps' hours ahead are their hour's start (its A-23)
 	label := fmt.Sprintf("+%d h %s UTC · TYPICAL, NOT A FORECAST", k, at.Format("15:04"))
 	if _, shown := d.propShown(); !shown {
 		label += " · being worked out"

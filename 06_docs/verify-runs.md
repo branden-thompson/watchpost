@@ -25,3 +25,5 @@ says exactly what passed.
 | 2026-10-18T02:27:51Z | f487782f | f152705a4c39 | verify-docs | green | 152 |
 | 2026-10-18T02:34:04Z | 3d4fa87a | cab156e63010 | verify-docs | green | 248 |
 | 2026-10-18T03:32:27Z | d6fba065 | 9d032e2d08c5 | verify-docs | green | 152 |
+| 2026-10-18T04:28:48Z | e5459d28 | 989b3294a27d | verify | FAILED (exit 2) | 258 |
+| 2026-10-18T05:10:33Z | e5459d28 | 989b3294a27d | verify | green | 2321 |

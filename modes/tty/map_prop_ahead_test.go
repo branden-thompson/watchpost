@@ -172,3 +172,16 @@ func TestAnHourAheadCarriesNoDisturbance(t *testing.T) {
 		}
 	}
 }
+
+// TestAnHourAheadIsLabelledByTheHourShown is go-ionomaps' A-23 as watchpost
+// says it: an hour ahead is the climatology at its UTC hour's start, so a
+// snapshot made at 08:40 labels its first hour ahead 09:00, the hour drawn.
+func TestAnHourAheadIsLabelledByTheHourShown(t *testing.T) {
+	d, _ := drawnDash(t)
+	next := drawnAt.Add(40 * time.Minute)
+	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: propSnapAt(next, 18)}})
+	d = stepAhead(t, m.(Dashboard), "shift+right")
+	if label := d.propAheadLabel(33.2, -117.38); !strings.HasPrefix(label, "+1 h 09:00 UTC") {
+		t.Errorf("a snapshot made at 08:40 labels its first hour ahead %q; the hour shown, 09:00", label)
+	}
+}

@@ -556,3 +556,11 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 
 - **Designed, not built:** `07-readiness/m1-m4-instrument.md` sets out the three columns (the climatology, the background alone, the shipped build) and four choices that decide what the instrument measures - what evidences "closed" (A), how the scenarios are drawn (B), how an answer reads as open (C), and which days (D) - each with a recommendation and its strongest counter-argument. None is a minor choice (D-13), so the instrument waits for them; nothing has been fetched.
 
+## Batch 44 - W4.9, watchpost on go-ionomaps v0.1.0-rc.2: the day's climatology hours kept (A-73)
+
+- **The re-pin** (D-222): go-ionomaps v0.1.0-rc.2, tagged on `2436c8a` after its full gate and its hosted quick and full gates. The library keeps the day's climatology hours and builds on an unchanged background (its A-23), so an hour ahead is worked out once a day whichever snapshot asks; F-217's row is deleted. The re-pin checklist: tidy, the licence list, `cmd/watchpost` whole, the alloc budget.
+- **What it changes here:** an hour ahead is now its UTC hour from the hour's start, so the mode line labels it so, and the night for it is drawn for the hour's middle. `TestTheTerminatorIsDrawnForTheFieldsTime` had expected the snapshot's minutes carried forward (10:10 for the hour 09:00 to 10:00), not the middle its own comment named; it expects 09:30 now.
+- **Hosted CI:** the run on `d6fba065`, carrying batches 38 to 43, passed on macOS and Ubuntu - the first to finish since batch 37, each push before it having cancelled the last.
+- **Tests:** `TestAnHourAheadIsLabelledByTheHourShown`. **Mutants:** m455 new.
+- **Docs:** A-73; FR-1.13; the plan's W4.9; follow-ups (F-217 closed).
+
