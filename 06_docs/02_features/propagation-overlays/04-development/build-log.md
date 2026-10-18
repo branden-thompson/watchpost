@@ -552,3 +552,7 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Mutants:** m454 new; m430 re-pointed.
 - **Docs:** A-72; FR-1.17 as measured; the plan's W6.5.
 
+## The M1/M4 instrument's design, put for rulings (W10.3, D-208)
+
+- **Designed, not built:** `07-readiness/m1-m4-instrument.md` sets out the three columns (the climatology, the background alone, the shipped build) and four choices that decide what the instrument measures - what evidences "closed" (A), how the scenarios are drawn (B), how an answer reads as open (C), and which days (D) - each with a recommendation and its strongest counter-argument. None is a minor choice (D-13), so the instrument waits for them; nothing has been fetched.
+
