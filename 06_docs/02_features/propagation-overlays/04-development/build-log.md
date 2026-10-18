@@ -634,3 +634,11 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
   - the status lines (DN2-12) and the required reading's rows (DN2-14).
 - **The dry run again,** from `1e6c60b2`, a clean tree, by band: M1 53.4 % in every column, the lead +0.1 [-0.7, +0.9]; M4 64.2 % for the climatology against 66.9 % shipped, the lead +2.6 [+1.2, +4.0]. The figures are unchanged, now with D-228's intervals.
 - **Docs:** A-77; the BUILD report; the as-built map's batches.
+
+## Batch 50 - D-230 and D-231 built: the BUILD exit commit (A-78)
+
+- **D-230:** `propagation.NewService`, the geocoder's `Geocode` and the history store's `Record`: distinct names for each layer's step, so P10-01 reads no call as recursion (renamed with gopls, the geocoder's own method by hand; gopls passed over the property-tagged soak test, which the gate's `vet-tags` caught). The two density rows are ratified in the ledger, and `make p10` reports no live finding.
+- **D-231:** the words say a place abroad by its country's name ("near Tokyo, Japan"), from the tz database's public-domain ISO 3166 table, only where the place's country is known and not the US. F-218 is closed.
+- **The BUILD report** is marked approved (D-233); this is the exit commit.
+- **Tests:** `TestAPlaceAbroadIsSaidByItsCountry` (in `platform/geo` and in the words). **Mutants:** m494 new, killed. m493, on a check that a US label ending in its state's code could never reach, survived: the check was removed and the mutant with it.
+- **Docs:** D-230 to D-234; A-78; the plan's W9.4; F-218 closed; the P10 ledger's mirror.

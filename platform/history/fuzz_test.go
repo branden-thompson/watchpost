@@ -23,7 +23,7 @@ func written(f *testing.F) []byte {
 	f.Helper()
 	dir, now := f.TempDir(), t0
 	s := Open(dir, func() time.Time { return now }, grid)
-	if !s.Put(grid.Name, rec(t0, 0, 21.04, math.NaN(), -3.96, 10)) {
+	if !s.Record(grid.Name, rec(t0, 0, 21.04, math.NaN(), -3.96, 10)) {
 		f.Fatal("not written")
 	}
 	raw, err := os.ReadFile(filesAt(filepath.Join(dir, grid.Name, "v1", "ndfd", "us-a"), t0).bucket)

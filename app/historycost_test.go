@@ -20,8 +20,8 @@ func TestALongerRetentionsCostIsMeasured(t *testing.T) {
 	}
 	for h := 0; h < 48; h++ {
 		at := now.Add(-time.Duration(h) * time.Hour)
-		store.Put(ndfdHourly.Name, history.Record{Key: history.Key{Source: "ndfd", Place: "box"}, At: at, IssuedAt: at, Shape: pointShape(1, 1), Values: map[string][]float64{"temp": {20}}})
-		store.Put(nwsAlerts.Name, history.Record{Key: alertKey("a" + at.String()), At: at, IssuedAt: at, Doc: []byte(`{"event":"` + strings.Repeat("x", 400) + `"}`)})
+		store.Record(ndfdHourly.Name, history.Record{Key: history.Key{Source: "ndfd", Place: "box"}, At: at, IssuedAt: at, Shape: pointShape(1, 1), Values: map[string][]float64{"temp": {20}}})
+		store.Record(nwsAlerts.Name, history.Record{Key: alertKey("a" + at.String()), At: at, IssuedAt: at, Doc: []byte(`{"event":"` + strings.Repeat("x", 400) + `"}`)})
 	}
 	hourly := historyCostOf(store, false, "72h", "30d", now)
 	trends := historyCostOf(store, true, "30d", "1y", now)
@@ -34,7 +34,7 @@ func TestALongerRetentionsCostIsMeasured(t *testing.T) {
 	valuesOnly := history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly)
 	for h := 0; h < 48; h++ {
 		at := now.Add(-time.Duration(h) * time.Hour)
-		valuesOnly.Put(ndfdHourly.Name, history.Record{Key: history.Key{Source: "ndfd", Place: "box"}, At: at, IssuedAt: at, Shape: pointShape(1, 1), Values: map[string][]float64{"temp": {20}}})
+		valuesOnly.Record(ndfdHourly.Name, history.Record{Key: history.Key{Source: "ndfd", Place: "box"}, At: at, IssuedAt: at, Shape: pointShape(1, 1), Values: map[string][]float64{"temp": {20}}})
 	}
 	hourlyDay, trendDay := historyExtra(valuesOnly, false, "72h", "7d", now), historyExtra(valuesOnly, true, "30d", "90d", now)
 	if trendDay*24 > hourlyDay*60/4*2 || trendDay == 0 { // 56 trend days at a 24th against 4 hourly days

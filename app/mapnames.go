@@ -60,27 +60,29 @@ const placeNearKm = 100
 
 // placeNamer names a point anywhere on the globe for the Propagation mode
 // (D-193, BUILD red team AX-1): the town of some size nearest it within
-// placeNearKm, of any country, or "" where there is none. The last point's
-// name is kept: the map asks on every frame, and the centre moves by steps.
-func placeNamer(idx *geodata.Index) func(lat, lon float64) string {
+// placeNearKm, of any country, with its country's ISO 3166 code (D-231), or
+// "" where there is none. The last point's name is kept: the map asks on
+// every frame, and the centre moves by steps.
+func placeNamer(idx *geodata.Index) func(lat, lon float64) (string, string) {
 	var mu sync.Mutex
 	var lastLat, lastLon float64
-	var last string
+	var last, lastCountry string
 	asked := false
-	return func(lat, lon float64) string {
+	return func(lat, lon float64) (string, string) {
 		if idx == nil {
-			return ""
+			return "", ""
 		}
 		mu.Lock()
 		defer mu.Unlock()
 		if asked && lat == lastLat && lon == lastLon {
-			return last
+			return last, lastCountry
 		}
-		lastLat, lastLon, last, asked = lat, lon, "", true
+		lastLat, lastLon, last, lastCountry, asked = lat, lon, "", "", true
 		if near := idx.NearWorld(lat, lon, units.MilesOf(placeNearKm), 20); len(near) > 0 {
-			last = placeInView(near).Label()
+			c := placeInView(near)
+			last, lastCountry = c.Label(), c.Country
 		}
-		return last
+		return last, lastCountry
 	}
 }
 

@@ -273,9 +273,9 @@ func (h *historian) record(ctx context.Context, lat temperature.Lattice, now tim
 			rec.Values["feels"] = v["feels"] // kept for this hour an hour ago (D-188)
 		}
 	}
-	h.store.Put(ndfdHourly.Name, rec)
+	h.store.Record(ndfdHourly.Name, rec)
 	if next, ok := nextFeels(s, rec); ok {
-		h.store.Put(ndfdHourly.Name, next)
+		h.store.Record(ndfdHourly.Name, next)
 	}
 	h.recordWaves(ctx, temperature.LatticeFor(lat.Name, lat.Box), now)
 }
@@ -296,7 +296,7 @@ func (h *historian) recordWaves(ctx context.Context, lat temperature.Lattice, no
 	if !ok || allMissing(vals) {
 		return
 	}
-	h.store.Put(ndfdWaves.Name, history.Record{Key: history.Key{Source: "ndfd", Place: lat.Name}, At: next, IssuedAt: now, Shape: shapeOf(lat), Values: map[string][]float64{"waves": vals}})
+	h.store.Record(ndfdWaves.Name, history.Record{Key: history.Key{Source: "ndfd", Place: lat.Name}, At: next, IssuedAt: now, Shape: shapeOf(lat), Values: map[string][]float64{"waves": vals}})
 }
 
 // historyQuakeFeed is the USGS feed the historian keeps: every quake of
@@ -320,7 +320,7 @@ func (h *historian) recordTotals(ctx context.Context, lat temperature.Lattice, n
 		if allMissing(t.QPF[k]) && allMissing(t.Snow[k]) {
 			continue
 		}
-		h.store.Put(ndfdRainDays.Name, history.Record{Key: key, At: dayStart(local, k), IssuedAt: now.Truncate(time.Hour), Shape: shapeOf(lat),
+		h.store.Record(ndfdRainDays.Name, history.Record{Key: key, At: dayStart(local, k), IssuedAt: now.Truncate(time.Hour), Shape: shapeOf(lat),
 			Values: map[string][]float64{"rain": t.QPF[k], "snow": t.Snow[k]}})
 	}
 }
@@ -670,7 +670,7 @@ func recordUV(store *history.Store, box string, s temperature.Series, anchor tim
 		if h.After(anchor) || i >= len(s.UV) || allMissing(s.UV[i]) {
 			continue
 		}
-		store.Put(omUVHourly.Name, history.Record{Key: history.Key{Source: "openmeteo", Place: box}, At: h, IssuedAt: h, Shape: shape, Values: map[string][]float64{"uv": s.UV[i]}})
+		store.Record(omUVHourly.Name, history.Record{Key: history.Key{Source: "openmeteo", Place: box}, At: h, IssuedAt: h, Shape: shape, Values: map[string][]float64{"uv": s.UV[i]}})
 	}
 }
 

@@ -21,7 +21,7 @@ func bounded(max int64) Dataset {
 func dayByDay(s *Store, d Dataset, start time.Time, days int, now *time.Time) {
 	for i := 0; i < days; i++ {
 		day := start.AddDate(0, 0, i)
-		s.Put(d.Name, rec(day.Add(time.Hour), 0, float64(i), 1, 2, 3))
+		s.Record(d.Name, rec(day.Add(time.Hour), 0, float64(i), 1, 2, 3))
 		*now = day.AddDate(0, 0, 1)
 		for p := 0; p < 4; p++ {
 			s.RollUpAndPrune()
@@ -78,8 +78,8 @@ func TestTheCurrentDayIsNeverRemovedForTheBound(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := Open(dir, func() time.Time { return now }, d)
 	yesterday := t0.Truncate(24*time.Hour).AddDate(0, 0, -1)
-	s.Put(d.Name, rec(yesterday.Add(time.Hour), 0, 1, 1, 1, 1))
-	s.Put(d.Name, rec(t0, 0, 2, 2, 2, 2))
+	s.Record(d.Name, rec(yesterday.Add(time.Hour), 0, 1, 1, 1, 1))
+	s.Record(d.Name, rec(t0, 0, 2, 2, 2, 2))
 	s.RollUpAndPrune()
 	if _, ok := s.Get(d.Name, ndfd, t0); !ok {
 		t.Error("the current day's record went for the bound")
@@ -95,7 +95,7 @@ func TestAChangedRetentionClearsTheBoundsWords(t *testing.T) {
 	d := bounded(1)
 	dir, now := t.TempDir(), t0
 	s := Open(dir, func() time.Time { return now }, d)
-	s.Put(d.Name, rec(t0.AddDate(0, 0, -1), 0, 1, 1, 1, 1))
+	s.Record(d.Name, rec(t0.AddDate(0, 0, -1), 0, 1, 1, 1, 1))
 	s.RollUpAndPrune()
 	if !s.Bounded(d.Name) {
 		t.Fatal("the bound acted and the store does not say so")
@@ -169,10 +169,10 @@ func TestABoundThatCannotBeMetStarvesNoOtherDataset(t *testing.T) {
 	for i := range maxPruneVisits {
 		r := rec(t0, 0, 1, 1, 1, 1)
 		r.Key.Place = "p" + strconv.Itoa(i)
-		s.Put(stuck.Name, r)
+		s.Record(stuck.Name, r)
 	}
 	old := t0.AddDate(0, 0, -10)
-	s.Put(expiring.Name, rec(old, 0, 1, 1, 1, 1))
+	s.Record(expiring.Name, rec(old, 0, 1, 1, 1, 1))
 	for range 8 {
 		s.RollUpAndPrune()
 	}

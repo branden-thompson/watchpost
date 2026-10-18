@@ -25,7 +25,7 @@ type fakeGeocoder struct {
 	known map[string]snapshot.LocationRef
 }
 
-func (f *fakeGeocoder) Resolve(_ context.Context, q string) (snapshot.LocationRef, error) {
+func (f *fakeGeocoder) Geocode(_ context.Context, q string) (snapshot.LocationRef, error) {
 	f.asked = append(f.asked, q)
 	if ref, ok := f.known[q]; ok {
 		return ref, nil
@@ -172,7 +172,7 @@ func TestATimedOutLookupReportsThatItCouldNotAsk(t *testing.T) {
 // hangingGeocoder never answers; the context decides.
 type hangingGeocoder struct{}
 
-func (hangingGeocoder) Resolve(ctx context.Context, _ string) (snapshot.LocationRef, error) {
+func (hangingGeocoder) Geocode(ctx context.Context, _ string) (snapshot.LocationRef, error) {
 	<-ctx.Done()
 	return snapshot.LocationRef{}, ctx.Err()
 }

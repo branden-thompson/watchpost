@@ -25,7 +25,7 @@ func TestResolveZipQuery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := NewGeocoder(c, srv.URL).Resolve(context.Background(), "92057")
+	ref, err := NewGeocoder(c, srv.URL).Geocode(context.Background(), "92057")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestResolveNoResultIsActionable(t *testing.T) {
 	}))
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t", RatePerSec: 1000})
-	_, err := NewGeocoder(c, srv.URL).Resolve(context.Background(), "xyzzy")
+	_, err := NewGeocoder(c, srv.URL).Geocode(context.Background(), "xyzzy")
 	if err == nil {
 		t.Fatal("must error on no results")
 	}
@@ -63,7 +63,7 @@ func TestTheGeocoderQueryIsRedacted(t *testing.T) {
 	defer empty.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t", RatePerSec: 1000})
 	for name, srv := range map[string]*httptest.Server{"a failed request": failing, "no result": empty} {
-		for _, err := range []error{second(NewGeocoder(c, srv.URL).Resolve(context.Background(), typed)), second(NewGeocoder(c, srv.URL).ResolveWorld(context.Background(), typed))} {
+		for _, err := range []error{second(NewGeocoder(c, srv.URL).Geocode(context.Background(), typed)), second(NewGeocoder(c, srv.URL).ResolveWorld(context.Background(), typed))} {
 			if err == nil {
 				t.Fatalf("%s: no error", name)
 			}
@@ -124,7 +124,7 @@ func TestTheOnlineFallbackIsUncached(t *testing.T) {
 	if hits != 2 {
 		t.Errorf("the world lookup asked %d times for two lookups; never kept, it asks each time", hits)
 	}
-	if _, err := g.Resolve(context.Background(), "Reykjavik"); err == nil {
+	if _, err := g.Geocode(context.Background(), "Reykjavik"); err == nil {
 		t.Error("control: the weather's lookup took a place it does not cover")
 	}
 }

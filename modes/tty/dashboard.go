@@ -156,8 +156,10 @@ type Config struct {
 	MapDetailLevel  string // D-67: the file's word for the detail level; Weather by default
 	MapAreaName     func(centre tuimaps.LonLat, widthKm float64) string
 	// PlaceNear names a point anywhere on the globe by the town nearest it
-	// (0.19.0 AX-1), "" where none is near: the Propagation mode's centre.
-	PlaceNear func(lat, lon float64) string
+	// (0.19.0 AX-1), "" where none is near: the Propagation mode's centre;
+	// country is the town's ISO 3166 code, which the words say a place
+	// abroad by (D-231).
+	PlaceNear func(lat, lon float64) (label, country string)
 	Resolve   func(query string) (snapshot.LocationRef, error)
 	// FindPlace finds a place anywhere on the globe for the Propagation mode
 	// (0.19.0 FR-1.10): locally first, and only on a miss online, uncached;

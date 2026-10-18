@@ -41,7 +41,7 @@ func TestClearingForgetsTheTidesAndTheUVCities(t *testing.T) {
 	city := geodata.City{Name: "San Diego", ASCII: "San Diego", State: "CA", Lat: 32.7, Lon: -117.2, TZ: "America/Los_Angeles"}
 	known.record(store, city, []uv.Reading{{At: now, Index: 7}, {At: now.Add(time.Hour), Index: 8}})
 	kept := history.Key{Source: "ndfd", Place: "us-a"}
-	store.Put(ndfdHourly.Name, history.Record{Key: kept, At: now, IssuedAt: now, Shape: pointShape(32.7, -117.2), Values: map[string][]float64{"temp": {20}}})
+	store.Record(ndfdHourly.Name, history.Record{Key: kept, At: now, IssuedAt: now, Shape: pointShape(32.7, -117.2), Values: map[string][]float64{"temp": {20}}})
 
 	lp := &livePipelines{tides: tides, history: store}
 	got := lp.clearMapData()

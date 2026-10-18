@@ -9,7 +9,7 @@
 
 **It is generated.** Add a row by ratifying it with the HUM LEAD, writing it to the ledger, re-running `scripts/quality/p10-ledger-mirror.py`, and running `scripts/quality/lint-ledger.sh`. The generator refuses to write a row carrying an absolute path, a harness path, an A2DH skill path, an internal project tree, or an email address — and the lint refuses the file if one ever gets in another way.
 
-**160 rows.**
+**162 rows.**
 
 ## P10-00-BUILD-COVERAGE (1)
 
@@ -83,7 +83,7 @@
 | `third_party/go-studs/components/progress.go` | `package` | 2026-09-08 | frozen because: upstream-governed copy of go-studs (HUM LEAD 2026-08-25, release checklist A3), edited only through third_party/go-studs/patches (quality pass C4). real items: 1 P10-04-SMALL-FUNCTIONS finding(s) in progress.go at Q1 (see 07-readiness/p10-q1.json). patch: none planned — upstream candidate. removable when: that patch lands locally or upstream and the finding is gone. RATIFIED BY PRECEDENT, HUM LEAD 2026-09-08: this row predates the structured `ratified:` field and carried no dated approval of its own. It is ratified as part of the set carried forward from the releases that accepted it, on the HUM LEAD's explicit ruling — not self-approved, and not inferred from its own wording. |
 | `third_party/go-studs/components/progress.go` | `CreateProgressBar` | 2026-09-08 | frozen because: upstream-governed copy of go-studs (HUM LEAD 2026-08-25, release checklist A3), edited only through third_party/go-studs/patches (quality pass C4). real items: 1 P10-04-SMALL-FUNCTIONS finding(s) in progress.go at Q1 (see 07-readiness/p10-q1.json). patch: none planned — upstream candidate. removable when: that patch lands locally or upstream and the finding is gone. RATIFIED BY PRECEDENT, HUM LEAD 2026-09-08: this row predates the structured `ratified:` field and carried no dated approval of its own. It is ratified as part of the set carried forward from the releases that accepted it, on the HUM LEAD's explicit ruling — not self-approved, and not inferred from its own wording. |
 
-## P10-05-INVARIANT-DENSITY (72)
+## P10-05-INVARIANT-DENSITY (74)
 
 | File | Symbol | Ratified | Reason |
 |---|---|---|---|
@@ -159,6 +159,8 @@
 | `tools/docslane` | `package` | 2026-10-05 | Density 1.25 across 4 functions. It exits zero only when every file changed since the last commit is Markdown, and it fails closed: an error from git, or any file it cannot classify, sends the change to the full gate. Pinned by 4 tests. Further checks in four functions would assert what the fail-closed exit already decides. As go-tuiMaps D-22 did for its small tools. Observer-maps D-248. RATIFIED by the HUM LEAD 2026-10-05 ("Guards, then ratify the rest"). |
 | `tools/perfsum` | `package` | 2026-10-05 | Density 1.58 across 12 functions. A summariser of one workload run's files into before-and-after numbers, run by hand; it already checks its inputs (invariant.Check on the run's phases and samples) and a missing or malformed file is an error returned. Pinned by 6 tests. The remaining functions are arithmetic over samples already checked. As go-tuiMaps D-22 did for its small tools. Observer-maps D-248. RATIFIED by the HUM LEAD 2026-10-05 ("Guards, then ratify the rest"). |
 | `tools/plancode` | `package` | 2026-10-05 | Density 0.86 across 7 functions. An AST lint refusing implementation code in plan documents; a block that does not parse is reported, not asserted against, and go/parser decides every state an invariant could contend. The instrument is proved by its -self-test, which make runs before the lint itself, so it cannot pass without firing. Same class as the ratified tools/authoring row; as go-tuiMaps D-22 did for its small tools. Observer-maps D-248. RATIFIED by the HUM LEAD 2026-10-05 ("Guards, then ratify the rest"). |
+| `platform/propanswers` | `package` | 2026-10-18 | Density 0.94 across 17 changed functions. The Propagation mode's answers worked out from a go-ionomaps snapshot and an ask; under watchpost D-215 the checks that only raised the count were removed - eight empty-input returns whose loops give the same answer, and bounds that repeated go-ionomaps' own with other limits - so an ask off the globe or a radius that is no distance is refused by the library, its error returned. What it still checks is real: a target near nothing for a radius or a place not a number, a frequency that is none, a figure never said "NaN". Pinned by its tests, the boundary test among them, and the TTY's. 0.19.0 D-230. RATIFIED by the HUM LEAD 2026-10-18 ("Rename 3, ratify 2"). |
+| `tools/reachscore` | `package` | 2026-10-18 | Density 1.34 across 61 changed functions. The M1/M4 instrument, a development tool run by hand, never linked into the product binary; under watchpost D-215 the guards batch 45 added only for the count were removed. Its real checks stay and fail the run closed: a column fed other than it says, both ways; a file the library could not read; an answer with no field; no scenario drawn; an address the replay does not hold; a stratum drawn unbalanced. Pinned by 16 tests and mutants m456 to m471 and m488 to m490. 0.19.0 D-230. RATIFIED by the HUM LEAD 2026-10-18 ("Rename 3, ratify 2"). |
 
 ## P10-06-MINIMAL-SCOPE (23)
 

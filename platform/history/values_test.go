@@ -110,7 +110,7 @@ func TestValuesReadAllocBudget(t *testing.T) {
 func TestARecordReadIsItsReadersOwn(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := Open(dir, func() time.Time { return now }, grid)
-	s.Put(grid.Name, rec(t0, 0, 1, 2, 3, 4))
+	s.Record(grid.Name, rec(t0, 0, 1, 2, 3, 4))
 	r, ok := s.Get(grid.Name, ndfd, t0)
 	if !ok {
 		t.Fatal("the record was not read")

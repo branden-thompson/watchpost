@@ -34,14 +34,14 @@ func NewGeocoder(client *httpx.Client, base string) *Geocoder {
 	return &Geocoder{client: client, base: base}
 }
 
-// Resolve returns the best match for a query, with zip and timezone populated
+// Geocode returns the best match for a query, with zip and timezone populated
 // (R-2': the rendered label always carries a zip when one exists); a place
 // the weather does not cover is refused.
-func (g *Geocoder) Resolve(ctx context.Context, query string) (snapshot.LocationRef, error) {
+func (g *Geocoder) Geocode(ctx context.Context, query string) (snapshot.LocationRef, error) {
 	return g.search(ctx, query, false)
 }
 
-// ResolveWorld is Resolve for the Propagation mode, which answers anywhere
+// ResolveWorld is Geocode for the Propagation mode, which answers anywhere
 // (0.19.0 FR-1.10, D-61): any country's place, and the answer never kept -
 // the request is not cached, so no query is held on disk.
 func (g *Geocoder) ResolveWorld(ctx context.Context, query string) (snapshot.LocationRef, error) {
@@ -106,7 +106,7 @@ func (g *Geocoder) search(ctx context.Context, query string, world bool) (snapsh
 			zip = p
 		}
 	}
-	return snapshot.LocationRef{Label: label, Zip: zip, Lat: r.Latitude, Lon: r.Longitude, TZ: r.Timezone}, nil
+	return snapshot.LocationRef{Label: label, Zip: zip, Lat: r.Latitude, Lon: r.Longitude, TZ: r.Timezone, Country: r.CountryCode}, nil
 }
 
 // abbrevState maps common US state names to postal codes (label compactness);

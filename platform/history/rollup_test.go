@@ -58,7 +58,7 @@ func TestARollUpNeverPassesTheReadCap(t *testing.T) {
 	start := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 	for i := 0; i < 40; i++ {
 		day := start.AddDate(0, 0, i)
-		s.Put(long.Name, rec(day.Add(time.Hour), 0, float64(i), 1, 2, 3))
+		s.Record(long.Name, rec(day.Add(time.Hour), 0, float64(i), 1, 2, 3))
 	}
 	now = start.AddDate(0, 0, 44)
 	rollAll(s)
@@ -98,7 +98,7 @@ func TestADayTooLargeForAPartWaits(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := openLong(t, dir, &now)
 	day := t0.Truncate(24 * time.Hour)
-	s.Put(long.Name, rec(day.Add(time.Hour), 0, 1, 2, 3, 4))
+	s.Record(long.Name, rec(day.Add(time.Hour), 0, 1, 2, 3, 4))
 	now = day.AddDate(0, 0, 4)
 	rollAll(s)
 	if len(s.Days(long.Name, ndfd, day, day, 10)) != 0 {
@@ -128,7 +128,7 @@ func TestALegacyYearRollUpIsStillRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	day := legacy.AddDate(0, 0, 1)
-	s.Put(long.Name, rec(day.Add(time.Hour), 0, 9, 9, 9, 9))
+	s.Record(long.Name, rec(day.Add(time.Hour), 0, 9, 9, 9, 9))
 	now = day.AddDate(0, 0, 4)
 	rollAll(s)
 	days := s.Days(long.Name, ndfd, legacy, day, 10)
@@ -145,7 +145,7 @@ func TestAFailedYearReadNeverRewritesTheYear(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := openLong(t, dir, &now)
 	day1 := t0.Truncate(24*time.Hour).AddDate(0, 0, -1) // 2026-09-29: both days in one month
-	s.Put(long.Name, rec(day1.Add(time.Hour), 0, 10, 10, 10, 10))
+	s.Record(long.Name, rec(day1.Add(time.Hour), 0, 10, 10, 10, 10))
 	now = day1.AddDate(0, 0, 4)
 	rollAll(s)
 	if len(s.Days(long.Name, ndfd, day1, day1, 10)) != 1 {
@@ -156,7 +156,7 @@ func TestAFailedYearReadNeverRewritesTheYear(t *testing.T) {
 		t.Fatal(err)
 	}
 	day2 := day1.AddDate(0, 0, 1)
-	s.Put(long.Name, rec(day2.Add(time.Hour), 0, 20, 20, 20, 20))
+	s.Record(long.Name, rec(day2.Add(time.Hour), 0, 20, 20, 20, 20))
 	now = day2.AddDate(0, 0, 4)
 	rollAll(s)
 	if info, err := os.Stat(part); err != nil || info.Size() != maxDocBytes+1 {

@@ -40,7 +40,7 @@ func propagationClientConfig() httpx.PlainConfig {
 // newPropagationService is how the service is made over its client; a test
 // counts it.
 var newPropagationService = func(note func(string), client *httpx.Plain) (*propagation.Service, error) {
-	return propagation.New(client, propagation.Options{Note: note, StateFile: config.StatePath("propagation-throttle.json")}) // GIRO's throttle across restarts (D-213)
+	return propagation.NewService(client, propagation.Options{Note: note, StateFile: config.StatePath("propagation-throttle.json")}) // GIRO's throttle across restarts (D-213)
 }
 
 // propagationHolder is the process's one go-ionomaps object (FR-4.8), made

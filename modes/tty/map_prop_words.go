@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"regexp"
 	"strings"
@@ -95,6 +96,7 @@ func (d Dashboard) propOriginWords() []string {
 		return nil
 	}
 	shown, ready := d.propShown()
+	origin.name = geo.SpokenPlace(origin.name, origin.country) // a place abroad by its country (D-231)
 	when := "now"
 	if k := d.mapPane.propAhead; k > 0 {
 		when = hoursWords(k) + " ahead"
@@ -193,6 +195,9 @@ func (d Dashboard) propTargetWords() []wordSentence {
 		}
 		if !once {
 			say += "; " + d.propStationWords(a.Nearest)
+		}
+		if pf := d.mapPane.propFound; pf != nil && names[i] == d.mapPane.propChart.key.found.Name {
+			names[i] = geo.SpokenPlace(names[i], pf.Country) // a place found abroad by its country (D-231)
 		}
 		if strings.Contains(names[i], ",") {
 			say = names[i] + "\x00" + say // a name with a comma - the local area's, a place found - keeps its own line: a list would blur it

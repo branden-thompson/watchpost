@@ -45,7 +45,7 @@ func TestNinetyDaysOfAGlobalGridStayReadable(t *testing.T) {
 			at := day.Add(time.Duration(h) * time.Hour)
 			r := Record{Key: key, At: at, IssuedAt: at, Shape: shape,
 				Values: map[string][]float64{"muf": field(at, 2.2), "fof2": field(at, 1)}}
-			if !s.Put(world.Name, r) {
+			if !s.Record(world.Name, r) {
 				t.Fatalf("day %d hour %d was not written", d, h)
 			}
 		}

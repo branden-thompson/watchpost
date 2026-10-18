@@ -122,7 +122,7 @@ func TestOnlyRateHeadersAreRead(t *testing.T) {
 // from what it fetched, so NOAA's index is asked once.
 func TestTwoUpdatesAskNOAAOnce(t *testing.T) {
 	rec := &recorder{hold: make(chan struct{})}
-	s, err := New(rec, Options{Clock: fixedClock})
+	s, err := NewService(rec, Options{Clock: fixedClock})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestAReopenedModeGetsItsOwnUpdate(t *testing.T) {
 		}
 		return httpx.Answer{Status: 404}, nil
 	}
-	s, err := New(rec, Options{Clock: fixedClock})
+	s, err := NewService(rec, Options{Clock: fixedClock})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +184,7 @@ func TestAReopenedModeGetsItsOwnUpdate(t *testing.T) {
 // update it started, and the result says so.
 func TestClosingTheModeCancelsTheUpdate(t *testing.T) {
 	rec := &recorder{hold: make(chan struct{})}
-	s, err := New(rec, Options{Clock: fixedClock})
+	s, err := NewService(rec, Options{Clock: fixedClock})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestClosingTheModeCancelsTheUpdate(t *testing.T) {
 // sources never answer ends at its deadline, whatever the caller's context.
 func TestAnUpdateHasItsOwnDeadline(t *testing.T) {
 	rec := &recorder{hold: make(chan struct{})}
-	s, err := New(rec, Options{Clock: fixedClock, Deadline: 50 * time.Millisecond})
+	s, err := NewService(rec, Options{Clock: fixedClock, Deadline: 50 * time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,13 +214,13 @@ func TestAnUpdateHasItsOwnDeadline(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("an update past its deadline never answered")
 	}
-	if _, err := New(rec, Options{}); err != nil {
+	if _, err := NewService(rec, Options{}); err != nil {
 		t.Errorf("the default options were refused: %v", err)
 	}
-	if _, err := New(nil, Options{}); !errors.Is(err, errNoClient) {
+	if _, err := NewService(nil, Options{}); !errors.Is(err, errNoClient) {
 		t.Errorf("no client: %v", err)
 	}
-	if _, err := New(rec, Options{Deadline: -time.Second}); !errors.Is(err, errNoDeadline) {
+	if _, err := NewService(rec, Options{Deadline: -time.Second}); !errors.Is(err, errNoDeadline) {
 		t.Errorf("a negative deadline: %v", err)
 	}
 	if r := <-(&Service{}).Ask(context.Background(), ionomaps.UpdateOptions{}); !errors.Is(r.Err, errNoService) {
@@ -232,7 +232,7 @@ func fixedClock() time.Time { return time.Date(2026, 10, 9, 12, 0, 0, 0, time.UT
 
 // fetcherOf is the fetcher a service is made with.
 func fetcherOf(get Getter, note func(string)) (*fetcher, error) {
-	s, err := New(get, Options{Note: note})
+	s, err := NewService(get, Options{Note: note})
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func TestTheHostsOptionsReachTheLibrary(t *testing.T) {
 		}
 		return httpx.Answer{Status: 404}, nil
 	}}
-	s, err := New(rec, Options{Clock: fixedClock})
+	s, err := NewService(rec, Options{Clock: fixedClock})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +274,7 @@ func TestNoRawSourceDataIsStored(t *testing.T) {
 		return httpx.Answer{Status: 200, Body: body, Header: http.Header{"Retry-After": {address}}}, nil
 	}}
 	var notes []string
-	s, err := New(rec, Options{Clock: fixedClock, Note: func(n string) { notes = append(notes, n) }})
+	s, err := NewService(rec, Options{Clock: fixedClock, Note: func(n string) { notes = append(notes, n) }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,7 +312,7 @@ func TestTheThrottleStateOutlivesARestart(t *testing.T) {
 		return httpx.Answer{Status: 404}, nil
 	}}
 	file := filepath.Join(t.TempDir(), "state", "propagation-throttle.json")
-	first, err := New(rec, Options{Clock: fixedClock, StateFile: file})
+	first, err := NewService(rec, Options{Clock: fixedClock, StateFile: file})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +327,7 @@ func TestTheThrottleStateOutlivesARestart(t *testing.T) {
 		t.Errorf("the write's file beside the state was left behind: %v", left)
 	}
 	var notes []string
-	next, err := New(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }})
+	next, err := NewService(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }})
 	if err != nil || len(notes) != 0 || string(next.lib.State()) != string(kept) {
 		t.Errorf("the next run did not take the state kept (%v, notes %v)", err, notes)
 	}
@@ -335,7 +335,7 @@ func TestTheThrottleStateOutlivesARestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	notes = nil
-	if _, err := New(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }}); err != nil || len(notes) != 1 || !strings.Contains(notes[0], "starts as new") {
+	if _, err := NewService(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }}); err != nil || len(notes) != 1 || !strings.Contains(notes[0], "starts as new") {
 		t.Errorf("a state that cannot be taken: %v, notes %v; want the service made and the refusal noted", err, notes)
 	}
 }
@@ -350,7 +350,7 @@ func TestAnUpdateInFlightKeepsItsStateBeforeTheEnd(t *testing.T) {
 		return httpx.Answer{Status: 404}, nil
 	}}
 	file := filepath.Join(t.TempDir(), "propagation-throttle.json")
-	s, err := New(rec, Options{Clock: fixedClock, StateFile: file})
+	s, err := NewService(rec, Options{Clock: fixedClock, StateFile: file})
 	if err != nil {
 		t.Fatal(err)
 	}

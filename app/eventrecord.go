@@ -120,7 +120,7 @@ func (r stationRecorder) hotspots(ref snapshot.LocationRef, f *snapshot.FireStat
 	if provider == "firms" {
 		set = firmsHotspots
 	}
-	r.store.Put(set.Name, history.Record{Key: history.Key{Source: provider, Place: historyPlace(ref.Label)}, At: f.AsOf, IssuedAt: f.AsOf, Doc: doc})
+	r.store.Record(set.Name, history.Record{Key: history.Key{Source: provider, Place: historyPlace(ref.Label)}, At: f.AsOf, IssuedAt: f.AsOf, Doc: doc})
 }
 
 // incident keeps an incident's size and containment at the fetch's hour.
@@ -129,7 +129,7 @@ func (r stationRecorder) incident(inc snapshot.Incident, at time.Time) {
 	if err != nil || at.IsZero() || inc.Name == "" {
 		return
 	}
-	r.store.Put(wfigsIncidents.Name, history.Record{Key: incidentKey(inc), At: at, IssuedAt: at, Shape: pointShape(inc.Lat, inc.Lon),
+	r.store.Record(wfigsIncidents.Name, history.Record{Key: incidentKey(inc), At: at, IssuedAt: at, Shape: pointShape(inc.Lat, inc.Lon),
 		Values: map[string][]float64{"acres": reading(inc.Acres), "contained": reading(inc.PercentContained)}, Doc: doc})
 }
 
@@ -150,7 +150,7 @@ func quakeHours(store *history.Store, events []globalfeed.Event, now time.Time) 
 		if err != nil {
 			continue
 		}
-		store.Put(usgsQuakes.Name, history.Record{Key: quakeSeries, At: h, IssuedAt: now, Doc: doc})
+		store.Record(usgsQuakes.Name, history.Record{Key: quakeSeries, At: h, IssuedAt: now, Doc: doc})
 	}
 }
 
@@ -214,7 +214,7 @@ func airNational(store *history.Store, areas []airquality.Area, hour time.Time) 
 	if err != nil {
 		return
 	}
-	store.Put(airnowHourly.Name, history.Record{Key: airSeries, At: hour, IssuedAt: hour, Doc: doc})
+	store.Record(airnowHourly.Name, history.Record{Key: airSeries, At: hour, IssuedAt: hour, Doc: doc})
 }
 
 // airAt is the national file as the history holds it for an hour, and

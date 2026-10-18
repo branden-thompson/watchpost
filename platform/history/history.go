@@ -518,10 +518,10 @@ type dayEntry struct {
 	Stats map[string]map[string]values `json:"stats"` // field -> min|max|mean -> values
 }
 
-// Put records one bucket of a series, in the bucket's own file. It is skipped
+// Record records one bucket of a series, in the bucket's own file. It is skipped
 // when an equal or newer issue of that bucket is already recorded. False
 // when it could not be written.
-func (s *Store) Put(dataset string, r Record) bool {
+func (s *Store) Record(dataset string, r Record) bool {
 	failed := func(st *Stats) { st.PutFailures++ }
 	dir, d, ok := s.seriesDir(dataset, r.Key)
 	if !ok {

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	ionomaps "github.com/branden-thompson/go-ionomaps"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/platform/propanswers"
@@ -153,11 +154,11 @@ func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 	d := chartDash(t)
 	region := d.mapPane.region.Name
 	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
-	d.cfg.PlaceNear = func(lat, lon float64) string {
+	d.cfg.PlaceNear = func(lat, lon float64) (string, string) {
 		if lat > 30 && lat < 40 && lon > 130 && lon < 145 {
-			return "Tokyo, JP"
+			return "Tokyo, JP", "JP"
 		}
-		return ""
+		return "", ""
 	}
 	pan := func(d Dashboard, lat, lon float64) Dashboard {
 		t.Helper()
@@ -174,7 +175,7 @@ func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 	}
 	d = pan(d, 35.7, 139.7)
 	words = strings.Join(d.describeLinesAll(), "\n")
-	if !strings.Contains(words, "Near Tokyo, JP, now: ") || strings.Contains(words, region) {
+	if !strings.Contains(words, "Near Tokyo, Japan, now: ") || strings.Contains(words, region) { // said by its country (D-231)
 		t.Errorf("panned to Tokyo, the words do not name it, or name %q:\n%s", region, words)
 	}
 	if title := d.viewName(); title != "near Tokyo, JP" {
@@ -249,5 +250,21 @@ func TestACancelledFindCancelsItsRequest(t *testing.T) {
 	}
 	if m.(Dashboard).modal != modalMap {
 		t.Errorf("Esc left window %v", m.(Dashboard).modal)
+	}
+}
+
+// TestAPlaceAbroadIsSaidByItsCountry is D-231 (F-218): the words say the
+// centre's town abroad by its country's name - "near Tokyo, Japan" - while
+// the box keeps the code; a place found abroad likewise.
+func TestAPlaceAbroadIsSaidByItsCountry(t *testing.T) {
+	d := chartDash(t)
+	d.cfg.PlaceNear = func(float64, float64) (string, string) { return "Tokyo, JP", "JP" }
+	d.mapPane.propOrigin = propPlace{at: ionomaps.LatLon{Lat: 35.7, Lon: 139.7}, name: "near Tokyo, JP", country: "JP", ok: true}
+	if w := strings.Join(d.propOriginWords(), " "); !strings.Contains(w, "near Tokyo, Japan") || strings.Contains(w, "Tokyo, JP") {
+		t.Errorf("the origin abroad is said %q", w)
+	}
+	d.mapPane.propOrigin = propPlace{at: ionomaps.LatLon{Lat: 33.2, Lon: -117.4}, name: "Oceanside, CA", country: "US", ok: true}
+	if w := strings.Join(d.propOriginWords(), " "); !strings.Contains(w, "Oceanside, CA") {
+		t.Errorf("a US place lost its state's code: %q", w)
 	}
 }

@@ -66,7 +66,7 @@ func TestEverySeriesPastRetentionIsPruned(t *testing.T) {
 	s := Open(dir, func() time.Time { return now }, brief)
 	const n = 600
 	for i := range n {
-		if !s.Put(brief.Name, briefRec(i, t0)) {
+		if !s.Record(brief.Name, briefRec(i, t0)) {
 			t.Fatal("not written")
 		}
 	}
@@ -100,7 +100,7 @@ func TestAPruneSoakStaysBounded(t *testing.T) {
 	for h := range hours {
 		now = t0.Add(time.Duration(h) * time.Hour)
 		for range perHour {
-			if !s.Put(brief.Name, briefRec(next%n, now)) {
+			if !s.Record(brief.Name, briefRec(next%n, now)) {
 				t.Fatal("not written")
 			}
 			next++
@@ -130,7 +130,7 @@ func TestAPutDoesNotReadItsDayAgain(t *testing.T) {
 	a, b := open(t, dir, &now), open(t, dir, &now)
 	day := t0.Truncate(24 * time.Hour)
 	for h := range 24 {
-		if !a.Put(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0)) {
+		if !a.Record(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0)) {
 			t.Fatal("not written")
 		}
 	}
@@ -146,13 +146,13 @@ func TestAPutDoesNotReadItsDayAgain(t *testing.T) {
 	if reads := a.Stats().DayReads; reads != 1 {
 		t.Errorf("reading the day back read its files again (%d reads)", reads)
 	}
-	if !a.Put(grid.Name, rec(day.Add(5*time.Hour), time.Minute, 50, 0, 0, 0)) {
+	if !a.Record(grid.Name, rec(day.Add(5*time.Hour), time.Minute, 50, 0, 0, 0)) {
 		t.Fatal("a newer issue was not written")
 	}
 	if r, _ := a.Get(grid.Name, ndfd, day.Add(5*time.Hour)); r.Values["temp"][0] != 50 {
 		t.Errorf("a newer issue reads back as %v", r.Values["temp"][0])
 	}
-	if !b.Put(grid.Name, rec(day.Add(6*time.Hour), time.Hour, 60, 0, 0, 0)) {
+	if !b.Record(grid.Name, rec(day.Add(6*time.Hour), time.Hour, 60, 0, 0, 0)) {
 		t.Fatal("not written")
 	}
 	if r, _ := a.Get(grid.Name, ndfd, day.Add(6*time.Hour)); r.Values["temp"][0] != 60 {
@@ -173,10 +173,10 @@ func TestTheStoreKeepsItsSizeAsItGoes(t *testing.T) {
 	}
 	day := t0.Truncate(24 * time.Hour)
 	for h := range 6 {
-		s.Put(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0))
-		s.Put(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), time.Minute, float64(h), 1, 0, 0)) // a newer issue replaces its bucket
+		s.Record(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0))
+		s.Record(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), time.Minute, float64(h), 1, 0, 0)) // a newer issue replaces its bucket
 	}
-	s.Put(muf.Name, Record{Key: Key{Source: "giro", Place: "pa836"}, At: day.Add(-48 * time.Hour), IssuedAt: day, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {12}}})
+	s.Record(muf.Name, Record{Key: Key{Source: "giro", Place: "pa836"}, At: day.Add(-48 * time.Hour), IssuedAt: day, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {12}}})
 	check := func(when string, since bool) {
 		t.Helper()
 		if got, want := s.Bytes(), treeBytes(dir); got != want {
@@ -226,11 +226,11 @@ func TestTheStoreKeepsItsSizeAsItGoes(t *testing.T) {
 func TestOneDatasetIsForgotten(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := open(t, dir, &now)
-	s.Put(grid.Name, rec(t0, 0, 1, 1, 1, 1))
+	s.Record(grid.Name, rec(t0, 0, 1, 1, 1, 1))
 	st := Key{Source: "giro", Place: "pa836"}
 	for q := range 3 {
 		at := t0.Add(time.Duration(q) * 15 * time.Minute)
-		s.Put(muf.Name, Record{Key: st, At: at, IssuedAt: at, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {12}}})
+		s.Record(muf.Name, Record{Key: st, At: at, IssuedAt: at, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {12}}})
 	}
 	n, err := s.ForgetDataset(muf.Name)
 	if err != nil || n != 3 {
@@ -245,7 +245,7 @@ func TestOneDatasetIsForgotten(t *testing.T) {
 	if s.BytesOf(muf.Name) != treeBytes(filepath.Join(dir, muf.Name)) || s.Bytes() != treeBytes(dir) {
 		t.Errorf("the size is not kept: %d against %d", s.Bytes(), treeBytes(dir))
 	}
-	if !s.Put(muf.Name, Record{Key: st, At: t0, IssuedAt: t0, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {13}}}) {
+	if !s.Record(muf.Name, Record{Key: st, At: t0, IssuedAt: t0, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {13}}}) {
 		t.Error("the dataset does not record after it was forgotten")
 	}
 	if n, err := s.ForgetDataset("not-held"); n != 0 || err != nil {

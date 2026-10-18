@@ -9,6 +9,7 @@ import (
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/propanswers"
 )
 
@@ -159,7 +160,8 @@ func (d Dashboard) withPropCentre(lines []string, size tuimaps.Size) []string {
 // mode's words, the station named as it is, and each clause begun in the
 // sentence's lower case.
 func (d Dashboard) propCentreWords() string {
-	lines := d.propCentreLines(d.mapPane.propOrigin.name)
+	o := d.mapPane.propOrigin
+	lines := d.propCentreLines(geo.SpokenPlace(o.name, o.country)) // the station abroad by its country (D-231)
 	if c := d.mapPane.propCentre; lines == nil && c.err != nil {
 		if key, ok := d.propCentreWanted(); ok && key == c.key {
 			return "The map's centre is " + d.propNotAvailable() + "." // AX-9

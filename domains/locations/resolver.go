@@ -27,7 +27,7 @@ var zipRe = regexp.MustCompile(`^\d{5}$`)
 
 // Fallback is the online resolver interface (openmeteo.Geocoder in prod).
 type Fallback interface {
-	Resolve(ctx context.Context, query string) (snapshot.LocationRef, error)
+	Geocode(ctx context.Context, query string) (snapshot.LocationRef, error)
 }
 
 // WorldFallback is the online resolver's answer anywhere, uncached (0.19.0
@@ -125,7 +125,7 @@ func (r *Resolver) Resolve(ctx context.Context, query string) (ref snapshot.Loca
 	if r.fallback == nil {
 		return snapshot.LocationRef{}, false, errors.New("no match in the offline index and no network fallback — try 'City, ST' or a 5-digit zip") // never the query (FR-4.9)
 	}
-	ref, err = r.fallback.Resolve(ctx, q)
+	ref, err = r.fallback.Geocode(ctx, q)
 	if err != nil {
 		return snapshot.LocationRef{}, false, err
 	}
@@ -273,6 +273,7 @@ func cityToRefWith(zip func(geodata.City) string, c geodata.City) snapshot.Locat
 		// THE INDEX'S OWN FIGURE (D-98). The pool's table draws it;
 		// nothing else reads it, and nothing else has to.
 		Population: c.Population,
+		Country:    c.Country,
 	}
 }
 

@@ -15,7 +15,7 @@ import (
 func TestADayIsReadFromItsFilesOnceWhileTheyStand(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	a, b := open(t, dir, &now), open(t, dir, &now)
-	if !a.Put(grid.Name, rec(t0, 0, 1, 2, 3, 4)) {
+	if !a.Record(grid.Name, rec(t0, 0, 1, 2, 3, 4)) {
 		t.Fatal("not written")
 	}
 	reads := func() int64 { return b.Stats().DayReads }
@@ -28,13 +28,13 @@ func TestADayIsReadFromItsFilesOnceWhileTheyStand(t *testing.T) {
 	if n := reads() - start; n != 1 {
 		t.Errorf("three reads of an unchanged day read its files %d times; want once", n)
 	}
-	if !a.Put(grid.Name, rec(t0.Add(time.Hour), 0, 5, 6, 7, 8)) {
+	if !a.Record(grid.Name, rec(t0.Add(time.Hour), 0, 5, 6, 7, 8)) {
 		t.Fatal("not written")
 	}
 	if _, ok := a.Get(grid.Name, ndfd, t0.Add(time.Hour)); !ok {
 		t.Error("an hour this store put was not read back: the day was kept past its change")
 	}
-	if !b.Put(grid.Name, rec(t0.Add(2*time.Hour), 0, 9, 9, 9, 9)) {
+	if !b.Record(grid.Name, rec(t0.Add(2*time.Hour), 0, 9, 9, 9, 9)) {
 		t.Fatal("not written")
 	}
 	if _, ok := a.Get(grid.Name, ndfd, t0.Add(2*time.Hour)); !ok {
@@ -49,7 +49,7 @@ func TestAnHourFiledUnderAnotherDayIsNotRead(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := open(t, dir, &now)
 	next := t0.Add(24 * time.Hour)
-	if !s.Put(grid.Name, rec(t0, 0, 1, 1, 1, 1)) || !s.Put(grid.Name, rec(next, 0, 2, 2, 2, 2)) {
+	if !s.Record(grid.Name, rec(t0, 0, 1, 1, 1, 1)) || !s.Record(grid.Name, rec(next, 0, 2, 2, 2, 2)) {
 		t.Fatal("not written")
 	}
 	series := filepath.Join(dir, grid.Name, "v1", "ndfd", "us-a")

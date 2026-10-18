@@ -74,8 +74,8 @@ const (
 	lastStatus  = 599
 )
 
-// New is the service over the propagation client. It fetches nothing.
-func New(get Getter, o Options) (*Service, error) {
+// NewService is the service over the propagation client. It fetches nothing.
+func NewService(get Getter, o Options) (*Service, error) {
 	if get == nil {
 		return nil, errNoClient
 	}

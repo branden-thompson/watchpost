@@ -31,9 +31,10 @@ type propRole struct {
 // propPlace is the Propagation mode's origin (D-193), worked out in Update
 // with the map's title and read by the frame: where it is and its name.
 type propPlace struct {
-	at   ionomaps.LatLon
-	name string
-	ok   bool
+	at      ionomaps.LatLon
+	name    string
+	country string // ISO 3166, when known: the words say a place abroad by its country (D-231)
+	ok      bool
 }
 
 // propOriginNow is the origin for the UI mode on screen, in Update: the
@@ -49,11 +50,12 @@ func (d Dashboard) propOriginNow() propPlace {
 		case d.noTransmitter():
 			return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: station.Label + " " + bcNoTransmitter, ok: true}
 		}
-		return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: d.cfg.Transmitter.Label, ok: true}
+		return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: d.cfg.Transmitter.Label, country: d.cfg.Transmitter.Country, ok: true}
 	}
 	loc := d.selectedLocation()
 	if c, ok := d.propCentreAt(); ok {
-		return propPlace{at: c, name: d.propCentreName(c), ok: true}
+		name, country := d.propCentreNamed(c)
+		return propPlace{at: c, name: name, country: country, ok: true}
 	}
 	if loc == nil {
 		return propPlace{}
@@ -65,15 +67,22 @@ func (d Dashboard) propOriginNow() propPlace {
 // BUILD red team AX-1): the place found while the centre rests on it, else
 // the town nearest it, else its coordinates.
 func (d Dashboard) propCentreName(c ionomaps.LatLon) string {
+	name, _ := d.propCentreNamed(c)
+	return name
+}
+
+// propCentreNamed is propCentreName with the named place's country, when
+// known (D-231).
+func (d Dashboard) propCentreNamed(c ionomaps.LatLon) (name, country string) {
 	if f := d.mapPane.propFound; f != nil && propStepped(f.Lat, f.Lon) == c {
-		return f.Label
+		return f.Label, f.Country
 	}
 	if d.cfg.PlaceNear != nil {
-		if town := d.cfg.PlaceNear(c.Lat, c.Lon); town != "" {
-			return "near " + town
+		if town, cc := d.cfg.PlaceNear(c.Lat, c.Lon); town != "" {
+			return "near " + town, cc
 		}
 	}
-	return latLonText(c)
+	return latLonText(c), ""
 }
 
 // latLonText is a point as the windows write it: "35.5°N 139.5°E".

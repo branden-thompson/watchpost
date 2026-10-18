@@ -35,7 +35,7 @@ func testResolver(t *testing.T, fb Fallback) *Resolver {
 
 type fakeFallback struct{ called bool }
 
-func (f *fakeFallback) Resolve(_ context.Context, q string) (snapshot.LocationRef, error) {
+func (f *fakeFallback) Geocode(_ context.Context, q string) (snapshot.LocationRef, error) {
 	f.called = true
 	return snapshot.LocationRef{Label: "Fallback City", Lat: 1, Lon: 2}, nil
 }
@@ -150,7 +150,7 @@ func TestTypeAheadSingleCallBudget(t *testing.T) {
 // coordinates or a locator may go online (FR-4.9).
 type offlineOnly struct{ t *testing.T }
 
-func (o offlineOnly) Resolve(_ context.Context, q string) (snapshot.LocationRef, error) {
+func (o offlineOnly) Geocode(_ context.Context, q string) (snapshot.LocationRef, error) {
 	o.t.Errorf("%q went to the online geocoder", q)
 	return snapshot.LocationRef{}, errors.New("asked")
 }

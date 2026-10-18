@@ -118,7 +118,7 @@ func solarNoon() time.Time { return time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC
 func TestTheWindowsOptionsReachTheLibrary(t *testing.T) {
 	was := newPropagationService
 	newPropagationService = func(func(string), *httpx.Plain) (*propagation.Service, error) {
-		return propagation.New(solarDays{}, propagation.Options{Clock: solarNoon})
+		return propagation.NewService(solarDays{}, propagation.Options{Clock: solarNoon})
 	}
 	t.Cleanup(func() { newPropagationService = was })
 	lp := &livePipelines{}
