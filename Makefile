@@ -546,15 +546,13 @@ release-matrix:
 	@cd $(DIST) && if command -v sha256sum >/dev/null; then sha256sum $(BINARY)-* > checksums.txt; else shasum -a 256 $(BINARY)-* > checksums.txt; fi
 	@echo "release-matrix: OK ($(VERSION))"
 
-# hooks builds the pre-push hook (tools/prepush) into this clone's git folder
-# and points git at it: it runs the tests that read the record, in seconds
-# (0.19.0 W0.1, FR-10.2). Local to the clone; `git config --unset
+# hooks installs the pre-push hook into this clone's git folder and points
+# git at it: it runs the tests that read the record, in seconds (0.19.0 W0.1,
+# FR-10.2). It refuses where it would silence a hook already in place
+# (tools/prepush -install). Local to the clone; `git config --unset
 # core.hooksPath` takes it off.
-HOOKS_DIR = $(shell git rev-parse --git-path watchpost-hooks)
 hooks:
-	@go build -trimpath -o $(HOOKS_DIR)/pre-push ./tools/prepush
-	@git config core.hooksPath $(HOOKS_DIR)
-	@echo "hooks: pre-push runs the record's tests (tools/prepush)"
+	@go run ./tools/prepush -install
 
 # Installer smoke test: serve the release matrix locally and run scripts/install.sh
 # against it (no GitHub involved), then check the installed binary reports the version.

@@ -48,6 +48,35 @@ type Options struct {
 	ASCII     bool // --ascii: row marks and legend in their ASCII forms (A11-10)
 }
 
+// newLivePipelines is the run's pipelines over its clients and providers:
+// the marine, fire and seismic feeds, the map's own quake and air-quality
+// feeds, and the radar and temperature clients, each over its own client - a
+// client that cannot be built is no radar or temperature, and the map says
+// none answered (W8, W10).
+func newLivePipelines(ctx context.Context, cfg config.Config, client *httpx.Client, provider *nws.Provider,
+	tides *coops.Provider, tidesClient *httpx.Client, fireProvs []snapshot.Provider, firmsProv *firms.Provider) *livePipelines {
+	// The shapes of the zones an alert names. It shares the client, so the
+	// disk cache, the declared freshness and the conditional refresh are the
+	// ones already in place (MG-11, MG-13). Seeded by the first map, once the
+	// watched places are known.
+	zoneShapes := zones.New(client, "")
+	lp := &livePipelines{ctx: ctx, provider: provider, timings: newTimingLog(),
+		marine: []snapshot.Provider{nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, // UAT 29 / 61 / 72
+		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
+		seismic: seismicProviders(client, cfg),
+		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
+		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas, // 0.18.0 D-66
+		mapQuakes: newMapQuakes(client, ""),   // 0.18.0 D-122: the map's own quake feeds
+		airnow:    airquality.New(client, "")} // 0.18.0 D-138: AirNow's one national file
+	if rs, rc, err := overClient(radar.NewClient, UserAgent, radarSourcesOver); err == nil {
+		lp.radar, lp.mapClients = rs, append(lp.mapClients, rc)
+	}
+	if ts, tc, err := overClient(newTempClient, UserAgent, tempSourcesOver); err == nil {
+		lp.temp, lp.mapClients = ts, append(lp.mapClients, tc)
+	}
+	return lp
+}
+
 // RunDashboard starts the live TUI. Returns after the user quits.
 func RunDashboard(version string, opt Options) error {
 	start := time.Now()
@@ -66,11 +95,6 @@ func RunDashboard(version string, opt Options) error {
 		return err
 	}
 	provider := nws.New(client, "")
-	// The shapes of the zones an alert names. It shares the client, so the
-	// disk cache, the declared freshness and the conditional refresh are the
-	// ones already in place (MG-11, MG-13). Seeded below, once the watched
-	// places are known.
-	zoneShapes := zones.New(client, "")
 
 	keyOverrides := toKeyMap(cfg.Keys)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -84,32 +108,15 @@ func RunDashboard(version string, opt Options) error {
 		return err
 	}
 	fireProvs, firmsProv := fireProviders(client, cfg) // B5
-	lp := &livePipelines{ctx: ctx, provider: provider, timings: newTimingLog(),
-		marine: []snapshot.Provider{nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, // UAT 29 / 61 / 72
-		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
-		seismic: seismicProviders(client, cfg),
-		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
-		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas, // 0.18.0 D-66
-		mapQuakes: newMapQuakes(client, ""),   // 0.18.0 D-122: the map's own quake feeds
-		airnow:    airquality.New(client, "")} // 0.18.0 D-138: AirNow's one national file
+	lp := newLivePipelines(ctx, cfg, client, provider, tides, tidesClient, fireProvs, firmsProv)
 	if w := sweptWords(swept, unswept); w != "" {
 		lp.problems.note(w) // the diagnostics', never the listener's (D-124, I-3)
 	}
-	if rs, rc, err := overClient(radar.NewClient, UserAgent, radarSourcesOver); err == nil {
-		lp.radar, lp.mapClients = rs, append(lp.mapClients, rc) // W8: a radar client that cannot be built is no radar, and the map says none answered
-	}
-	if ts, tc, err := overClient(newTempClient, UserAgent, tempSourcesOver); err == nil {
-		lp.temp, lp.mapClients = ts, append(lp.mapClients, tc) // W10: the same for the temperature
-	}
-	lp.attachDiagnostics(ctx, start)
-	lp.tiles = &tileCounter{}
-	lp.maps = newProductionMapBuilder(version, lp.tiles, lp.seedOnFirstMap(ctx)) // 0.18.0 FR-3.2: the zones are seeded by the first map, not here
+	lp.attachMaps(ctx, version, start)
 	idx, resolver, resolverErr := loadGeodata(client)
 	prefs, setRadius := tickerState(cfg) // 0.12.0: the shared mute + alert-radius state and the radius persist hook
 	lp.giveItAStation(cfg, idx)
-	if lp.temp != nil && lp.temp.uvCities != nil {
-		lp.temp.uvCities.cities = citiesFrom(func() *geodata.Index { return lp.idx }) // UV's markers, the largest cities in view (D-167, D-186)
-	}
+	lp.wireUVCities()
 	model, err := tty.NewDashboard(lp.ttyConfig(version, opt, openSetup, cfg, keyOverrides, resolver, resolverErr, firmsProv, setRadius, uiHook(prefs.clock)))
 	if err != nil {
 		return err // e.g. a '?' rebind in [keys] — actionable from term.Merge
@@ -117,12 +124,6 @@ func RunDashboard(version string, opt Options) error {
 	p, deck, stopRadio := attachRadio(model, client, provider, cfg, tty.ParseRadioMode(cfg.Radio.Mode), lp.fireFor, lp.seismicFor, lp.marineFor) // B4 / UAT 97 / 114 / P4 / 0.14.0
 	defer stopRadio()
 	lp.attachDeck(ctx, p, deck, client, prefs, version, start)
-	// AND THE DECK LEARNS WHO HAS THE AIR (D-74). Wired HERE because the deck
-	// exists from here — and from the owner the Router already maintains, so the
-	// question has one answer and the deck keeps no flag of its own.
-	if deck != nil {
-		deck.air = func() bool { return lp.owner.get() != tty.SurfaceBroadcaster }
-	}
 
 	firstFullNanos := lp.startPipelines(ctx, p, refs, idx, cfg, client, prefs, start)
 	// Cancel BEFORE waiting (red-team 0.9.0 C-2): stopAll waits for every
@@ -467,6 +468,24 @@ func savePropagationAck(version int) error {
 	return savePreference(func(cfg *config.Config) { cfg.PropagationAck = version })
 }
 
+// attachMaps readies the map's side of the run: the diagnostics, the tiles'
+// counters and the map builder, whose first map seeds the zones (0.18.0
+// FR-3.2).
+func (lp *livePipelines) attachMaps(ctx context.Context, version string, start time.Time) {
+	lp.attachDiagnostics(ctx, start)
+	lp.tiles = &tileCounter{}
+	lp.maps = newProductionMapBuilder(version, lp.tiles, lp.seedOnFirstMap(ctx))
+}
+
+// wireUVCities gives UV's markers the largest cities in view, from the index
+// the station was given (D-167, D-186); with no temperature client, none.
+func (lp *livePipelines) wireUVCities() {
+	if lp.temp == nil || lp.temp.uvCities == nil {
+		return
+	}
+	lp.temp.uvCities.cities = citiesFrom(func() *geodata.Index { return lp.idx })
+}
+
 // attachDeck takes ownership of the player and starts what rides with it: the
 // live clock the broadcast reads, this run's launch time, and the hourly
 // "is there a newer Watchpost?" check (0.14.0, release.go).
@@ -475,10 +494,17 @@ func savePropagationAck(version int) error {
 // it can be wired — and because RunDashboard is at the safety gate's statement
 // ceiling and each of these on its own line is a line it does not have.
 func (lp *livePipelines) attachDeck(ctx context.Context, p *tea.Program, deck *radioDeck, client *httpx.Client, prefs tickerPrefs, version string, start time.Time) {
-	deck.clockPref = prefs.clock // one preference, one holder: the tape and the broadcast read the same value
 	lp.p, lp.deck = p, deck
 	lp.started, lp.release = start, newReleaseWatch(version, prefs.updateCheck)
 	lp.release.start(ctx, client)
+	if deck == nil {
+		return // no deck could be built (attachRadio): nothing to tell it
+	}
+	deck.clockPref = prefs.clock // one preference, one holder: the tape and the broadcast read the same value
+	// AND THE DECK LEARNS WHO HAS THE AIR (D-74). Wired HERE because the deck
+	// exists from here — and from the owner the Router already maintains, so the
+	// question has one answer and the deck keeps no flag of its own.
+	deck.air = func() bool { return lp.owner.get() != tty.SurfaceBroadcaster }
 }
 
 // attachDiagnostics builds the dump and its triggers (quality pass Q0):

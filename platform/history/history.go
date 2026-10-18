@@ -428,9 +428,12 @@ func validSegment(v string) bool {
 }
 
 // seriesFiles are where a series' records for one time lie: the day's
-// compacted file, its directory of buckets, the bucket's own file, and
-// its yearly roll-up.
-type seriesFiles struct{ day, buckets, bucket, year string }
+// compacted file, its directory of buckets, the bucket's own file, and an
+// older release's yearly roll-up - read while one is held, never written:
+// roll-ups are a month's parts since 0.19.0 (#27, W1.2), and pruneRollups
+// removes a yearly one once its days are past retention, so none outlives
+// the longest retention, a year, after the release that stopped writing them.
+type seriesFiles struct{ day, buckets, bucket, oldYear string }
 
 // filesAt is a series' files for the bucket at; empty for no series.
 func filesAt(dir string, at time.Time) seriesFiles {
@@ -445,7 +448,7 @@ func filesAt(dir string, at time.Time) seriesFiles {
 		day:     filepath.Join(month, dd+".json.gz"),
 		buckets: filepath.Join(month, dd),
 		bucket:  filepath.Join(month, dd, at.Format("1504")+".json.gz"),
-		year:    filepath.Join(dir, "rollup", strconv.Itoa(at.Year())+".json.gz"),
+		oldYear: filepath.Join(dir, "rollup", strconv.Itoa(at.Year())+".json.gz"),
 	}
 }
 
@@ -498,8 +501,9 @@ type hourEntry struct {
 	Doc    json.RawMessage   `json:"doc,omitempty"`
 }
 
-// yearDoc is roll-ups on disk: a month's part, or a yearly roll-up.
-type yearDoc struct {
+// rollupDoc is roll-ups on disk: a month's part, or an older release's yearly
+// roll-up, read alike.
+type rollupDoc struct {
 	Schema  int        `json:"schema"`
 	Dataset string     `json:"dataset"`
 	Version int        `json:"version"`
@@ -828,7 +832,7 @@ func (s *Store) Days(dataset string, k Key, from, to time.Time, max int) []Day {
 	from, to = from.UTC().Truncate(24*time.Hour), to.UTC()
 	byDate := map[string]dayEntry{}
 	for y := from.Year(); y <= to.Year(); y++ { // the yearly roll-ups, bounded by the span (P10-02)
-		if doc, ok := readAs[yearDoc](s, filesAt(dir, time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC)).year, d); ok {
+		if doc, ok := readAs[rollupDoc](s, filesAt(dir, time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC)).oldYear, d); ok {
 			addDays(byDate, doc.Days)
 		}
 	}
@@ -836,7 +840,7 @@ func (s *Store) Days(dataset string, k Key, from, to time.Time, max int) []Day {
 	first := time.Date(from.Year(), from.Month(), 1, 0, 0, 0, 0, time.UTC)
 	for m := first; !m.After(to); m = m.AddDate(0, 1, 0) { // the span's months (P10-02)
 		for _, n := range parts[m.Format("2006-01")] { // a month's parts, a broken one passed over (P10-02)
-			if doc, ok := readAs[yearDoc](s, rollupPart(dir, m, n), d); ok {
+			if doc, ok := readAs[rollupDoc](s, rollupPart(dir, m, n), d); ok {
 				addDays(byDate, doc.Days) // a part's day stands over a yearly one
 			}
 		}
@@ -893,8 +897,8 @@ func (s *Store) note(tally func(*Stats), result bool) bool {
 // header is what a document says of itself: its schema, dataset and version.
 type header interface{ header() (int, string, int) }
 
-func (doc *dayDoc) header() (int, string, int)  { return doc.Schema, doc.Dataset, doc.Version }
-func (doc *yearDoc) header() (int, string, int) { return doc.Schema, doc.Dataset, doc.Version }
+func (doc *dayDoc) header() (int, string, int)    { return doc.Schema, doc.Dataset, doc.Version }
+func (doc *rollupDoc) header() (int, string, int) { return doc.Schema, doc.Dataset, doc.Version }
 
 // readAs is a document of d's - a day's or a year's - or false where it is
 // absent, does not parse, or is another schema or version, each but absence
@@ -1581,7 +1585,7 @@ func (s *Store) pruneSeries(d Dataset, dir string, now time.Time, visits *int, b
 		before, mdir := removed, filepath.Join(dir, month)
 		empty := false
 		if month == "rollup" {
-			removed += s.pruneYears(d, mdir, now, budget-removed)
+			removed += s.pruneRollups(d, mdir, now, budget-removed)
 		} else if entries, err := os.ReadDir(mdir); err == nil {
 			for _, e := range entries { // a month's days and their buckets (P10-02)
 				if removed >= budget {
@@ -1742,9 +1746,9 @@ func (s *Store) expireDay(d Dataset, dir string, date time.Time, now time.Time) 
 	return removed
 }
 
-// pruneYears removes roll-ups wholly past the days' retention: the yearly
-// roll-ups and the months' parts.
-func (s *Store) pruneYears(d Dataset, dir string, now time.Time, budget int) int {
+// pruneRollups removes roll-ups wholly past the days' retention: the months'
+// parts, and an older release's yearly roll-ups.
+func (s *Store) pruneRollups(d Dataset, dir string, now time.Time, budget int) int {
 	if dir == "" || budget <= 0 {
 		return 0
 	}
@@ -1826,7 +1830,7 @@ func (s *Store) rollUp(d Dataset, dir string, date time.Time) bool {
 	if _, _, err := s.writeCounted(path, doc); err != nil {
 		return false
 	}
-	if back, ok := readAs[yearDoc](s, path, d); ok && hasDay(back.Days, entry.Date) {
+	if back, ok := readAs[rollupDoc](s, path, d); ok && hasDay(back.Days, entry.Date) {
 		s.note(func(st *Stats) { st.RolledUp++ }, true)
 		return true
 	}
@@ -1842,15 +1846,15 @@ const maxMonthParts = 31
 // be read - it is never written over (#27) - or when the entry, alone or in
 // its date's part, would pass the budget: a part the store writes is always
 // one it can read back (W1.2).
-func (s *Store) partFor(d Dataset, dir string, date time.Time, entry dayEntry) (string, yearDoc, bool) {
+func (s *Store) partFor(d Dataset, dir string, date time.Time, entry dayEntry) (string, rollupDoc, bool) {
 	var lastPath string
-	var last yearDoc
+	var last rollupDoc
 	parts := rollupParts(dir)[date.Format("2006-01")]
 	for _, n := range parts { // a month's parts, at most maxMonthParts written (P10-02)
 		path := rollupPart(dir, date, n)
-		doc, ok := readAs[yearDoc](s, path, d)
+		doc, ok := readAs[rollupDoc](s, path, d)
 		if !ok {
-			return "", yearDoc{}, false
+			return "", rollupDoc{}, false
 		}
 		if hasDay(doc.Days, entry.Date) {
 			return path, doc, fitsBudget(withDay(doc.Days, entry))
@@ -1858,24 +1862,24 @@ func (s *Store) partFor(d Dataset, dir string, date time.Time, entry dayEntry) (
 		lastPath, last = path, doc
 	}
 	if !fitsBudget([]dayEntry{entry}) {
-		return "", yearDoc{}, false // larger than a part on its own
+		return "", rollupDoc{}, false // larger than a part on its own
 	}
 	if lastPath != "" && fitsBudget(withDay(last.Days, entry)) {
 		return lastPath, last, true
 	}
 	if len(parts) >= maxMonthParts {
-		return "", yearDoc{}, false
+		return "", rollupDoc{}, false
 	}
 	next := 1
 	if len(parts) > 0 {
 		next = parts[len(parts)-1] + 1
 	}
-	return rollupPart(dir, date, next), yearDoc{}, true
+	return rollupPart(dir, date, next), rollupDoc{}, true
 }
 
 // fitsBudget reports whether days, written as a part, stay within the budget.
 func fitsBudget(days []dayEntry) bool {
-	raw, err := json.Marshal(yearDoc{Days: days})
+	raw, err := json.Marshal(rollupDoc{Days: days})
 	return err == nil && len(raw) <= rollUpBudget
 }
 

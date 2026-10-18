@@ -345,6 +345,71 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		mapWords: d.cfg.MapRetention, // the map's sources are the Status window's, which keys on its own inputs
 	}
 	switch d.modal {
+	case modalPropChart, modalPropFreq, modalPropFind, modalMap:
+		k = d.mapModalKey(k)
+	case modalSetup:
+		// The GENERATION, not the state. Formatting the whole struct — which
+		// carries two maps — would run on every frame and grow with them, the
+		// largest single thing this window could cost. Every writer of the Setup
+		// state bumps gen (setupState.touch, via settled/castTouched).
+		k.setupGen = d.setup.gen
+	case modalStatus:
+		k.second = d.now().Truncate(time.Second).Unix()
+		if d.cfg.Stats != nil {
+			k.stats = statsFingerprint(d.cfg.Stats())
+		}
+	case modalSevere:
+		if d.breaking != nil {
+			k.breakingID = d.breaking.ID
+		}
+		k.readingKey, k.severeReadPause = d.severeReading, d.severeReadPause
+	case modalDetails:
+		k.minute = d.now().Truncate(time.Minute).Unix() // the "N min ago" labels (projected here only — R3-B-09)
+		if d.anyLoading() {
+			k.shimmer = ((d.frame % 4) + 4) % 4
+		}
+	case modalRequest, modalDebug, modalRelayFault:
+		k = d.formModalKey(k)
+	}
+	return k
+}
+
+// formModalKey is the part of the key of the windows that are forms - the
+// request, the diagnostics and the relay fault: every field each draws that
+// moves.
+func (d Dashboard) formModalKey(k modalKey) modalKey {
+	switch d.modal {
+	case modalRequest:
+		// EVERY FIELD THE WINDOW DRAWS — `field`, `query`, `outside` and
+		// `prioritize`, as F-30's guard requires. The ref is keyed by its LABEL
+		// because a pointer moves without the frame changing.
+		st := d.request
+		k.reqField, k.reqQuery, k.reqSlot = st.field, st.query, st.slot
+		k.reqState, k.reqPriority = st.locate.keyState(), st.prioritize
+		k.reqAt, k.reqChosen = st.at, st.chosen
+		k.reqRef = st.locate.keyLabel()
+	case modalDebug:
+		// THE PICKER'S VALUE, not the question's index: the window has one
+		// question and the value is what moves on the frame (HUM LEAD mock,
+		// 2026-09-07). The confirmation is NOT here, and does not need to be —
+		// it is a second layer composited outside this memo, and the window
+		// underneath it is unchanged.
+		k.debugFocus = d.debug.focus*1000 + d.debugPick()
+	case modalRelayFault:
+		// EVERYTHING THE FRAME SHOWS THAT MOVES. This window has two such things;
+		// without them the memo replays one frame while the model underneath it
+		// works perfectly — the arrows move the cursor, the clock runs down, the
+		// fall-through fires on time, and the DISPLAY never changes (UAT 2026-09-05).
+		k.faultFocus, k.faultLeft, k.faultHeld = d.relayFault.focus, d.relayFault.left, d.relayFault.held
+	}
+	return k
+}
+
+// mapModalKey is the map's windows' part of the key - the chart, the
+// frequency entry, the finder and the map itself: everything each draws that
+// moves.
+func (d Dashboard) mapModalKey(k modalKey) modalKey {
+	switch d.modal {
 	case modalPropChart:
 		k.propChart, k.chartRow, k.mapGen = d.mapPane.propChart.key, d.mapPane.propChartRow, d.mapPane.gen
 		k.freqHeld = d.mapPane.propFreqMHz
@@ -367,49 +432,6 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.mapRadarTimeline = strings.Join(d.mapPane.radarTimeline, "\n") + "\n" + d.mapPane.radarBadgeTime
 		k.mapTitle = d.mapPane.title
 		k.mapTemp = d.tempMemoKey()
-	case modalRequest:
-		// EVERY FIELD THE WINDOW DRAWS — `field`, `query`, `outside` and
-		// `prioritize`, as F-30's guard requires. The ref is keyed by its LABEL
-		// because a pointer moves without the frame changing.
-		st := d.request
-		k.reqField, k.reqQuery, k.reqSlot = st.field, st.query, st.slot
-		k.reqState, k.reqPriority = st.locate.keyState(), st.prioritize
-		k.reqAt, k.reqChosen = st.at, st.chosen
-		k.reqRef = st.locate.keyLabel()
-	case modalSetup:
-		// The GENERATION, not the state. Formatting the whole struct — which
-		// carries two maps — would run on every frame and grow with them, the
-		// largest single thing this window could cost. Every writer of the Setup
-		// state bumps gen (setupState.touch, via settled/castTouched).
-		k.setupGen = d.setup.gen
-	case modalStatus:
-		k.second = d.now().Truncate(time.Second).Unix()
-		if d.cfg.Stats != nil {
-			k.stats = statsFingerprint(d.cfg.Stats())
-		}
-	case modalSevere:
-		if d.breaking != nil {
-			k.breakingID = d.breaking.ID
-		}
-		k.readingKey, k.severeReadPause = d.severeReading, d.severeReadPause
-	case modalDetails:
-		k.minute = d.now().Truncate(time.Minute).Unix() // the "N min ago" labels (projected here only — R3-B-09)
-		if d.anyLoading() {
-			k.shimmer = ((d.frame % 4) + 4) % 4
-		}
-	case modalDebug:
-		// THE PICKER'S VALUE, not the question's index: the window has one
-		// question and the value is what moves on the frame (HUM LEAD mock,
-		// 2026-09-07). The confirmation is NOT here, and does not need to be —
-		// it is a second layer composited outside this memo, and the window
-		// underneath it is unchanged.
-		k.debugFocus = d.debug.focus*1000 + d.debugPick()
-	case modalRelayFault:
-		// EVERYTHING THE FRAME SHOWS THAT MOVES. This window has two such things;
-		// without them the memo replays one frame while the model underneath it
-		// works perfectly — the arrows move the cursor, the clock runs down, the
-		// fall-through fires on time, and the DISPLAY never changes (UAT 2026-09-05).
-		k.faultFocus, k.faultLeft, k.faultHeld = d.relayFault.focus, d.relayFault.left, d.relayFault.held
 	}
 	return k
 }

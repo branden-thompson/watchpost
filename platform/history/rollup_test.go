@@ -116,7 +116,7 @@ func TestALegacyYearRollUpIsStillRead(t *testing.T) {
 	s := openLong(t, dir, &now)
 	legacy := t0.Truncate(24*time.Hour).AddDate(0, 0, -1) // 2026-09-29
 	one := func(v float64) values { return values{v, v, v, v} }
-	doc := yearDoc{Schema: schema, Dataset: long.Name, Version: long.Version, Key: ndfd, Days: []dayEntry{{
+	doc := rollupDoc{Schema: schema, Dataset: long.Name, Version: long.Version, Key: ndfd, Days: []dayEntry{{
 		Date: legacy.Format("2006-01-02"), Shape: box, Hours: 1,
 		Stats: map[string]map[string]values{"temp": {"min": one(7), "max": one(7), "mean": one(7)}},
 	}}}

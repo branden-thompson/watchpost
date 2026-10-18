@@ -7,9 +7,11 @@ import (
 	"github.com/branden-thompson/watchpost/platform/invariant"
 )
 
-// horizon is the elevation the sun rises and sets at, refraction and its
-// disc allowed for, as SunTimes uses.
-const horizon = -0.833
+// horizon is the elevation Up and NextTurn turn at: the sun's centre on the
+// horizon, with no refraction - the terminator go-tuiMaps draws - so the
+// Propagation mode's words say day or night as its picture shows it (BUILD
+// red team L-F9). SunTimes keeps the published sunrise's -0.833°.
+const horizon = 0.0
 
 // Elevation is the sun's elevation in degrees at a place and moment (NOAA's
 // general solar position equations, to about a tenth of a degree).

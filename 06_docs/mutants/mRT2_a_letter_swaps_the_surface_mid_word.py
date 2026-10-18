@@ -4,13 +4,13 @@ import pathlib
 # MID-WORD: "Oceanside" -> "ceanside", "Bonsall" -> "onsall". Those are the HUM
 # LEAD's own station and the hyper-local case D-130 was ruled for.
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
-old = """	case actSwapObserver:
-		if r.typingInAWindow(k) {
-			break
-		}"""
-new = """	case actSwapObserver:
-		if false {
-			break
-		}"""
+old = """	if r.typingInAWindow(k) {
+		return r, nil, false
+	}
+	to := SurfaceObserver"""
+new = """	if false {
+		return r, nil, false
+	}
+	to := SurfaceObserver"""
 assert old in s, "mRT2"
 p.write_text(s.replace(old, new, 1))

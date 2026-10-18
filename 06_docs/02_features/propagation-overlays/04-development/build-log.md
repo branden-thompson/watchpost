@@ -532,3 +532,15 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Mutants:** m440 to m448 new; m190, m193 to m195, m197, m216, m222, m228, m231, m242, m243, m245, m271 to m275, m341, m342 and m347 re-pointed.
 - **Docs:** A-70; FR-1.9 and FR-1.10 as built; the architecture's seam row and diagram, and the atlas re-rendered from it (the gate found it stale); the plan's W6.4.
 
+## Batch 42 - W9.3, the remaining code findings: one horizon, short functions, the history's names, the hook (A-71)
+
+- **L-F9:** the words said day or night at -0.833°, the sunrise convention, and the line is drawn at the sun's centre on the horizon, so a place just past the line on the night side was said to be in daylight. The words turn where the line is drawn now; the weather's sunrise times keep the convention.
+- **C-6:** P10's 60-line rule reads only the functions a change touches, so long functions this release changed went unseen. Every control-flow one is under 60 now, split along seams it already had; the data tables are left whole (A-71). The atlas renders the same bytes from its split `render`; go-ionomaps' `loadIGRF` is in two (its `94fb27e`).
+- **Found splitting `RunDashboard`:** `attachRadio` returns no deck when it cannot build one, and `attachDeck` set that deck's clock unasked; `TestARunWithNoDeckStarts` holds the guard.
+- **C-12:** the history's yearly roll-up is named for what it is, an older release's, and its comment says when reading it can end.
+- **H-9, I-8:** the hook runs the record's tests from the tree, never a stale binary; it refuses a tree the push does not carry; `make hooks` writes an absolute path and refuses where it would silence another hook, saying how to keep both - each case run in a scratch repository. The README names it.
+- **Found by the gate:** the installer was first a shell script; the gate oracle refused its `#!/bin/sh`, and the shell ledger refused a new script without a ruling (everything is Go unless it must not be, A-62). It is Go now, `tools/prepush -install`; and the authoring lint refused the hook as a shell program in a Go string, so the hook is `tools/prehook`, a Go stub that runs `go run ./tools/prepush` from the tree.
+- **Tests:** `TestDayAndNightAreSaidAsTheLineIsDrawn`, `TestARunWithNoDeckStarts`, `TestThePushedTreeIsTheTested`, `TestHooksAreNeverSilenced`, `TestTheHookRunsOnlyItsOwnTree`; `TestTheNextTurnIsTheSunriseOrSunset` to the drawn horizon; `TestThePrePushHookRunsTheRecordsTests` reads the installer, which now carries what it held the Makefile to.
+- **Mutants:** m449 to m453 new; mAG3, mRT2, m305 and m110 re-pointed.
+- **Docs:** A-71; FR-3.1 and FR-10.2 as built; the plan's W9.3; the README.
+

@@ -222,6 +222,7 @@ func (*livePipelines).applyHistory
 func (*livePipelines).assemblers
 func (*livePipelines).attachDeck
 func (*livePipelines).attachDiagnostics
+func (*livePipelines).attachMaps
 func (*livePipelines).bedCarrying
 func (*livePipelines).bedFenceMi
 func (*livePipelines).bedRelays
@@ -323,6 +324,7 @@ func (*livePipelines).ttyStats
 func (*livePipelines).tuneRelay
 func (*livePipelines).viewAlerts
 func (*livePipelines).wireDeckWarnings
+func (*livePipelines).wireUVCities
 func (*mapBuilder).build
 func (*mapBuilder).disk
 func (*mapProblems).last
@@ -770,6 +772,7 @@ func newEventReader
 func newExecutors
 func newFrameLog
 func newHostFacts
+func newLivePipelines
 func newMapBuilder
 func newMapQuakes
 func newMastercontrol

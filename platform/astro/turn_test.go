@@ -21,16 +21,18 @@ func TestTheSunIsUpByDayAndDownByNight(t *testing.T) {
 	}
 }
 
-// TestTheNextTurnIsTheSunriseOrSunset is FR-3.1 (AX-E): from the night the
-// next turn is the sunrise SunTimes gives, from the day the sunset, to a
-// couple of minutes; and Up says which side the place is on.
+// TestTheNextTurnIsTheSunriseOrSunset is FR-3.1 (AX-E, L-F9): from the night
+// the next turn is the sunrise, from the day the sunset - the sun's centre
+// crossing the horizon, as the drawn terminator has it, a few minutes after
+// SunTimes' refracted sunrise and before its sunset; and Up says which side
+// the place is on.
 func TestTheNextTurnIsTheSunriseOrSunset(t *testing.T) {
 	night := time.Date(2026, 10, 11, 8, 0, 0, 0, time.UTC)
 	rise, set, ok := SunTimes(33.2, -117.38, night.Add(-8*time.Hour), time.UTC) // the local calendar day of 11 October
 	if !ok {
 		t.Fatal("the sun rises at Oceanside in October")
 	}
-	near := func(a, b time.Time) bool { return a.Sub(b).Abs() < 3*time.Minute }
+	near := func(a, b time.Time) bool { return a.Sub(b).Abs() < 8*time.Minute }
 	turn, ok := NextTurn(33.2, -117.38, night)
 	if !ok || Up(33.2, -117.38, night) || !near(turn, rise) {
 		t.Errorf("from 08:00 UTC the next turn is %v (ok %v, up %v); the sunrise is %v", turn, ok, Up(33.2, -117.38, night), rise)
@@ -39,6 +41,9 @@ func TestTheNextTurnIsTheSunriseOrSunset(t *testing.T) {
 	turn, ok = NextTurn(33.2, -117.38, day)
 	if !ok || !Up(33.2, -117.38, day) || !near(turn, set) {
 		t.Errorf("an hour after sunrise the next turn is %v (ok %v); the sunset is %v", turn, ok, set)
+	}
+	if e := Elevation(33.2, -117.38, turn); e < -0.1 || e > 0.1 || !turn.Before(set) {
+		t.Errorf("at the sunset turn %v the sun's elevation is %.2f°; the centre on the horizon, before the refracted sunset %v", turn, e, set)
 	}
 }
 

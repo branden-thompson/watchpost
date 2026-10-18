@@ -1219,41 +1219,57 @@ func (d Dashboard) route(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.vizFrame()
 	case historyClearedMsg:
 		return d.applyHistoryCleared(v), nil
-	case mapClearedMsg:
-		return d.applyMapCleared(v), nil // 0.18.0 W3.8: Settings says what went
-	case mapFeedMsg:
-		return d.applyMapFeed(v) // 0.18.0: the alerts, set and drawn in Update (D-41)
-	case mapRadarMsg:
-		return d.applyMapRadar(v) // W8: the radar, set and drawn in Update (D-41)
-	case mapRadarAgainMsg:
-		return d.applyRadarAgain(v) // D-204: the hours ahead owed
-	case mapTempMsg:
-		return d.applyMapTemp(v) // W10: the temperature, set and drawn in Update (D-41)
-	case forecastTickMsg:
-		return d.applyForecastTick(v) // D-94: Forecast mode's playback
-	case propChartMsg, propReachMsg, propCentreMsg:
-		return d.applyPropAnswer(v), nil // W5: the chart, the reach, the centre
-	case propAheadMsg:
-		return d.applyPropAhead(v), nil
-	case propFoundMsg:
-		return d.applyPropFound(v) // FR-1.10: a find's answer, kept in Update
-	case propUpdatedMsg:
-		return d.applyPropUpdated(v) // W4.1: the Propagation mode's update, kept in Update
-	case propTickMsg:
-		return d.applyPropTick(v) // FR-4.10: its refresh
-	case mapWorkedMsg:
-		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
-	case mapTickMsg:
-		return d.applyMapTick(v), nil // 0.18.0 W2.2: the library asked to be drawn now
-	case mapReleaseMsg:
-		return d.applyMapRelease(v), nil // D-221: the map closed a while is let go
-	case mapViewSettledMsg:
-		return d.applyViewSettled(v) // 0.18.0 D-66: the view stood still - its alerts are asked
 	case tea.KeyPressMsg:
 		return d.handleKeyPress(v)
 	}
+	if m, cmd, ok := d.routeMap(msg); ok {
+		return m, cmd
+	}
 	return d, nil
 }
+
+// routeMap sends the map's messages to their handlers - its feeds, its
+// clock, the Propagation mode's update and answers - each set and drawn in
+// Update (D-41); false for a message that is none of them.
+func (d Dashboard) routeMap(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
+	switch v := msg.(type) {
+	case mapClearedMsg:
+		return d.applyMapCleared(v), nil, true // 0.18.0 W3.8: Settings says what went
+	case mapFeedMsg:
+		return routed(d.applyMapFeed(v)) // 0.18.0: the alerts, set and drawn in Update (D-41)
+	case mapRadarMsg:
+		return routed(d.applyMapRadar(v)) // W8: the radar, set and drawn in Update (D-41)
+	case mapRadarAgainMsg:
+		return routed(d.applyRadarAgain(v)) // D-204: the hours ahead owed
+	case mapTempMsg:
+		return routed(d.applyMapTemp(v)) // W10: the temperature, set and drawn in Update (D-41)
+	case forecastTickMsg:
+		return routed(d.applyForecastTick(v)) // D-94: Forecast mode's playback
+	case propChartMsg, propReachMsg, propCentreMsg:
+		return d.applyPropAnswer(v), nil, true // W5: the chart, the reach, the centre
+	case propAheadMsg:
+		return d.applyPropAhead(v), nil, true
+	case propFoundMsg:
+		return routed(d.applyPropFound(v)) // FR-1.10: a find's answer, kept in Update
+	case propUpdatedMsg:
+		return routed(d.applyPropUpdated(v)) // W4.1: the Propagation mode's update, kept in Update
+	case propTickMsg:
+		return routed(d.applyPropTick(v)) // FR-4.10: its refresh
+	case mapWorkedMsg:
+		return routed(d.applyMapWorked(v)) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
+	case mapTickMsg:
+		return d.applyMapTick(v), nil, true // 0.18.0 W2.2: the library asked to be drawn now
+	case mapReleaseMsg:
+		return d.applyMapRelease(v), nil, true // D-221: the map closed a while is let go
+	case mapViewSettledMsg:
+		return routed(d.applyViewSettled(v)) // 0.18.0 D-66: the view stood still - its alerts are asked
+	default:
+		return d, nil, false
+	}
+}
+
+// routed is a handler's answer as routeMap gives it: answered.
+func routed(m tea.Model, cmd tea.Cmd) (tea.Model, tea.Cmd, bool) { return m, cmd, true }
 
 // handleSettingsSaved applies one apply-on-close outcome from the Settings
 // window — the cast and tones, or the display preferences.

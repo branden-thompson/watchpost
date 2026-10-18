@@ -696,37 +696,8 @@ func (r Router) routeKey(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 // this says `false`.
 func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Model, tea.Cmd, bool) {
 	switch a {
-	// THE SWAP IS BOUND TO A LETTER, AND A LETTER IS TEXT (D-148).
-	//
-	// `O` and `B` swap surfaces. A case that returned on them UNCONDITIONALLY
-	// — above the "a window on top owns the keys" check below, which is the
-	// rule D-58 states and which every GUARDED case in this switch
-	// observes — would lose those letters from a place name typed into
-	// either location field, and `O` would swap the surface MID-WORD:
-	//
-	//	"Oceanside" -> "ceanside", and the operator is on Observer
-	//	"Bonsall"   -> "onsall"
-	//
-	// Those are the HUM LEAD's own station and the hyper-local case
-	// D-130 was ruled for; "Lone Pine", "Rainbow" and "Vista" carry no
-	// capital B or O, so they cannot show it.
-	//
-	// ONLY THE PRINTABLE FORM IS WITHHELD. `ctrl+o` and `ctrl+b` carry
-	// no text, so no field can want them — they still swap out of an
-	// open window, which is the escape hatch an operator needs. With
-	// nothing open, the letters swap.
-	case actSwapObserver:
-		if r.typingInAWindow(k) {
-			break
-		}
-		out, cmd := r.swapTo(SurfaceObserver)
-		return out, cmd, true
-	case actSwapBroadcaster:
-		if r.typingInAWindow(k) {
-			break
-		}
-		out, cmd := r.swapTo(SurfaceBroadcaster)
-		return out, cmd, true
+	case actSwapObserver, actSwapBroadcaster: // a letter, and a letter is text (D-148): swapKey
+		return r.swapKey(k, a)
 	case actStationToggle:
 		return r.toggleStation(), nil, true
 	// THE BED'S CONTROLS ARE THE CONSOLE'S, AND THEY FALL THROUGH
@@ -758,46 +729,8 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 			r.broadcaster = r.broadcaster.scrollQueue(scrollStep(a))
 			return r, nil, true
 		}
-	case actQueueOpen:
-		// A SECOND PRESS CLOSES THE WINDOW THE FIRST ONE OPENED (D-109).
-		//
-		// HUM LEAD, UAT 2026-09-12: "<enter> (again) flows to Oceanside, CA
-		// location card from Observer … hitting <enter> a 2nd time should
-		// just close that modal for now (until we write the management
-		// controls)."
-		//
-		// THE CARD WINDOW IS THE CONSOLE'S; OBSERVER ONLY DRAWS IT. With one
-		// open, `consoleOwnsTheKeys` is false, so a key let through falls to
-		// Observer — where `enter` means "open the details for the row I have
-		// selected", and the row Observer has selected is its own. The
-		// operator presses enter on Rancho Penasquitos and is shown
-		// Oceanside: a surface they are not looking at, acting on state they
-		// cannot see.
-		//
-		// CLOSING IS THE HONEST ANSWER UNTIL THE MANAGEMENT CONTROLS EXIST.
-		// The window has nothing for a second press to do, and a key that
-		// does nothing is better than a key that does something elsewhere.
-		// WHICHEVER WINDOW IT OPENED (D-113). `enter` on a POOL row opens
-		// Details, so a second press there closes Details rather than
-		// falling through to Observer.
-		//
-		// NAMED, NOT "ANY OPEN MODAL". The diagnostics window uses `enter`
-		// to pick a scenario (D-58) and closing it on that key would take
-		// the console's rule into a window the console does not own.
-		if r.active == SurfaceBroadcaster &&
-			(r.observer.modal == modalCard || r.observer.modal == modalDetails) {
-			r.observer = r.observer.close()
-			return r, nil, true
-		}
-		if r.consoleOwnsTheKeys() {
-			// IT REFUSES QUIETLY, exactly as a digit on an empty slot does,
-			// and for the same reason: the pointer is in the POOL, or the
-			// Director has not filled the slot it is on. Falling through
-			// leaves `enter` free for whatever else is drawn.
-			if out, opened := r.openPointedCard(); opened {
-				return out, nil, true
-			}
-		}
+	case actQueueOpen: // a second press closes the window the first one opened (D-109): queueOpenKey
+		return r.queueOpenKey()
 	// THE REQUEST WINDOW (R4), through the keymap (D-135).
 	//
 	// IT FALLS THROUGH ON OBSERVER rather than returning, for the same
@@ -821,6 +754,86 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 		return out, cmd, true
 	}
 	// NOT ANSWERED. The key falls past the switch to the active surface.
+	return r, nil, false
+}
+
+// swapKey says whether the swap was answered: false - not answered, carry on -
+// while the operator is typing into a window, so the letter reaches it.
+//
+// THE SWAP IS BOUND TO A LETTER, AND A LETTER IS TEXT (D-148).
+//
+// `O` and `B` swap surfaces. A case that returned on them UNCONDITIONALLY
+// — above the "a window on top owns the keys" check in keyAction, which is the
+// rule D-58 states and which every GUARDED case in this switch
+// observes — would lose those letters from a place name typed into
+// either location field, and `O` would swap the surface MID-WORD:
+//
+//	"Oceanside" -> "ceanside", and the operator is on Observer
+//	"Bonsall"   -> "onsall"
+//
+// Those are the HUM LEAD's own station and the hyper-local case
+// D-130 was ruled for; "Lone Pine", "Rainbow" and "Vista" carry no
+// capital B or O, so they cannot show it.
+//
+// ONLY THE PRINTABLE FORM IS WITHHELD. `ctrl+o` and `ctrl+b` carry
+// no text, so no field can want them — they still swap out of an
+// open window, which is the escape hatch an operator needs. With
+// nothing open, the letters swap.
+func (r Router) swapKey(k tea.KeyPressMsg, a term.Action) (tea.Model, tea.Cmd, bool) {
+	if r.typingInAWindow(k) {
+		return r, nil, false
+	}
+	to := SurfaceObserver
+	if a == actSwapBroadcaster {
+		to = SurfaceBroadcaster
+	}
+	out, cmd := r.swapTo(to)
+	return out, cmd, true
+}
+
+// queueOpenKey says false - not answered, carry on - where neither closes nor
+// opens anything, so enter reaches what else is drawn.
+//
+// A SECOND PRESS CLOSES THE WINDOW THE FIRST ONE OPENED (D-109).
+//
+// HUM LEAD, UAT 2026-09-12: "<enter> (again) flows to Oceanside, CA
+// location card from Observer … hitting <enter> a 2nd time should
+// just close that modal for now (until we write the management
+// controls)."
+//
+// THE CARD WINDOW IS THE CONSOLE'S; OBSERVER ONLY DRAWS IT. With one
+// open, `consoleOwnsTheKeys` is false, so a key let through falls to
+// Observer — where `enter` means "open the details for the row I have
+// selected", and the row Observer has selected is its own. The
+// operator presses enter on Rancho Penasquitos and is shown
+// Oceanside: a surface they are not looking at, acting on state they
+// cannot see.
+//
+// CLOSING IS THE HONEST ANSWER UNTIL THE MANAGEMENT CONTROLS EXIST.
+// The window has nothing for a second press to do, and a key that
+// does nothing is better than a key that does something elsewhere.
+// WHICHEVER WINDOW IT OPENED (D-113). `enter` on a POOL row opens
+// Details, so a second press there closes Details rather than
+// falling through to Observer.
+//
+// NAMED, NOT "ANY OPEN MODAL". The diagnostics window uses `enter`
+// to pick a scenario (D-58) and closing it on that key would take
+// the console's rule into a window the console does not own.
+func (r Router) queueOpenKey() (tea.Model, tea.Cmd, bool) {
+	if r.active == SurfaceBroadcaster &&
+		(r.observer.modal == modalCard || r.observer.modal == modalDetails) {
+		r.observer = r.observer.close()
+		return r, nil, true
+	}
+	if r.consoleOwnsTheKeys() {
+		// IT REFUSES QUIETLY, exactly as a digit on an empty slot does,
+		// and for the same reason: the pointer is in the POOL, or the
+		// Director has not filled the slot it is on. Falling through
+		// leaves `enter` free for whatever else is drawn.
+		if out, opened := r.openPointedCard(); opened {
+			return out, nil, true
+		}
+	}
 	return r, nil, false
 }
 

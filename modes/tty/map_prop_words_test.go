@@ -17,6 +17,7 @@ import (
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
+	"github.com/branden-thompson/watchpost/platform/astro"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -530,5 +531,24 @@ func TestAFailedAnswerSaysHowToAskAgain(t *testing.T) {
 func TestAnHourIsSaidSingly(t *testing.T) {
 	if hoursWords(1) != "1 hour" || hoursWords(3) != "3 hours" {
 		t.Errorf("hours said %q and %q", hoursWords(1), hoursWords(3))
+	}
+}
+
+// TestDayAndNightAreSaidAsTheLineIsDrawn is the BUILD red team's L-F9: the
+// words say day or night by the horizon the drawn terminator uses - the sun's
+// centre, no refraction - so a place just past the line on the night side is
+// said to be at night, where the sunrise convention's -0.833° said day.
+func TestDayAndNightAreSaidAsTheLineIsDrawn(t *testing.T) {
+	d := chartDash(t)
+	at := time.Date(2026, 10, 12, 2, 30, 0, 0, time.UTC) // an hour after sunset at Oceanside
+	for e := astro.Elevation(33.2, -117.38, at); e < -0.4; e = astro.Elevation(33.2, -117.38, at) {
+		at = at.Add(-time.Minute) // back to the minute the sun's centre is 0.4° below the horizon
+	}
+	if e := astro.Elevation(33.2, -117.38, at); e > -0.2 || e < -0.6 {
+		t.Fatalf("control: the elevation found is %.2f°", e)
+	}
+	place := propPlace{at: ionomaps.LatLon{Lat: 33.2, Lon: -117.38}, name: "Oceanside", ok: true}
+	if w := d.propDayWords(place, at); !strings.HasPrefix(w, "It is night at Oceanside") {
+		t.Errorf("the sun's centre 0.4° below the horizon, past the drawn line, is said %q", w)
 	}
 }

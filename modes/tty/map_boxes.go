@@ -559,13 +559,7 @@ func (d Dashboard) overlayRows() []overlayRow {
 		out = append(out, overlayRow{kind: menuRadio, key: propagationRowKey, label: propagationRowLabel, overlay: true}) // D-158: the mode as a tint, the OVERLAYS group's fourth (D-161, D-162)
 	}
 	if d.mapMode() == modePropagation { // D-159: the tints and the map's detail; the weather's groups wait, their ticks kept
-		out = append(out, overlayRow{kind: menuPreset, key: detailLevelKey, label: "Preset"})
-		for _, l := range mapDetailLayers() {
-			if l.key != nightDetailKey { // the night is always drawn in this mode: no switch to offer (D-199)
-				out = append(out, overlayRow{kind: menuDetail, key: l.key, label: l.label})
-			}
-		}
-		return out
+		return append(out, detailRows(nightDetailKey)...) // the night is always drawn in this mode: no switch to offer (D-199)
 	}
 	placed := map[string]bool{RadarLayer: true, TemperatureLayer: true, FeelsLayer: true, UVLayer: true, AirLayer: true, AlertLayer: true}
 	group := func(key, label string, layers []string, fill bool) {
@@ -599,14 +593,29 @@ func (d Dashboard) overlayRows() []overlayRow {
 	group(groupPoints, "Data Points", pointLayers, true)
 	group(groupHazards, "Hazards", hazardLayers, false)
 	if _, ok := registered[AlertLayer]; ok {
-		out = append(out, overlayRow{kind: menuGroup, key: AlertLayer, label: "Alert Areas", overlay: true})
-		for _, c := range AlertCategories() { // D-80: [w]'s categories
-			out = append(out, overlayRow{kind: menuCheck, key: AlertCategorySwitch(c.Key), label: strings.ToUpper(c.Key[:1]) + c.Key[1:], group: AlertLayer, overlay: true}) // short, to fit two to a line
-		}
+		out = append(out, alertAreaRows()...)
 	}
-	out = append(out, overlayRow{kind: menuPreset, key: detailLevelKey, label: "Preset"})
+	return append(out, detailRows("")...)
+}
+
+// alertAreaRows are the Alert Areas group: its header and [w]'s categories
+// (D-80), each short, to fit two to a line.
+func alertAreaRows() []overlayRow {
+	out := []overlayRow{{kind: menuGroup, key: AlertLayer, label: "Alert Areas", overlay: true}}
+	for _, c := range AlertCategories() {
+		out = append(out, overlayRow{kind: menuCheck, key: AlertCategorySwitch(c.Key), label: strings.ToUpper(c.Key[:1]) + c.Key[1:], group: AlertLayer, overlay: true})
+	}
+	return out
+}
+
+// detailRows are the map's detail: its preset and a switch a layer, less the
+// one a mode always draws, if any.
+func detailRows(always string) []overlayRow {
+	out := []overlayRow{{kind: menuPreset, key: detailLevelKey, label: "Preset"}}
 	for _, l := range mapDetailLayers() {
-		out = append(out, overlayRow{kind: menuDetail, key: l.key, label: l.label})
+		if l.key != always {
+			out = append(out, overlayRow{kind: menuDetail, key: l.key, label: l.label})
+		}
 	}
 	return out
 }

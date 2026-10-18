@@ -492,6 +492,9 @@ func (d Dashboard) rowVisible(id setupRowID) bool {
 
 // setupSpace operates the focused control: select a radio, toggle a checkbox.
 func (d Dashboard) setupSpace() Dashboard {
+	if nd, ok := d.mapPrefArrow(true); ok {
+		return nd // the map's pickers and switches: space is their → (one owner, mapPrefArrow)
+	}
 	switch id := d.setup.focus; id {
 	case rowEventsAll:
 		d.setup.filtered = false
@@ -512,44 +515,6 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.uiTouched()
 	case rowMapDesc:
 		return d.cycleMapDesc(true)
-	case rowMapScale:
-		return d.cycleMapScale(true)
-	case rowMapColours:
-		return d.cycleMapDepth(true)
-	case rowMapNearby:
-		return d.cycleNearby(true)
-	case rowMapRadarSource:
-		return d.toggleRadarSource()
-	case rowMapTempSource:
-		return d.toggleTempSource()
-	case rowMapRainDetail:
-		return d.toggleRainDetail()
-	case rowMapUVCities:
-		return d.cycleUVCities(true)
-	case rowMapPropRadius:
-		return d.cyclePropRadius(true)
-	case rowMapPropNoise:
-		return d.cyclePropNoise(true)
-	case rowMapPropRefresh:
-		return d.cyclePropRefresh(true)
-	case rowMapPropReadings:
-		return d.togglePropCorrect()
-	case rowMapPropStations:
-		return d.togglePropStations()
-	case rowMapRadarAhead:
-		return d.cycleRadarAhead(true)
-	case rowMapQuakes:
-		return d.cycleQuakeFeed(true)
-	case rowMapDetailLevel:
-		return d.cycleDetailLevel(true).uiTouched()
-	case rowMapLayers:
-		return d.toggleLayer()
-	case rowMapDetailBorders, rowMapDetailWater, rowMapDetailRivers, rowMapDetailNames,
-		rowMapDetailRoads, rowMapDetailRail, rowMapDetailParks, rowMapDetailNight:
-		if nd, ok := d.toggleDetailRow(id); ok {
-			return nd
-		}
-		return d // not a detail row after all: nothing to switch
 	default:
 		switch setupTable()[id].kind {
 		case rowToggle:

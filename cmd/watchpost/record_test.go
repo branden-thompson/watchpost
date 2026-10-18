@@ -284,8 +284,21 @@ func TestThePrePushHookRunsTheRecordsTests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(mk), "hooks:\n\t@go build -trimpath -o $(HOOKS_DIR)/pre-push ./tools/prepush\n\t@git config core.hooksPath $(HOOKS_DIR)") {
-		t.Error("make hooks does not build and install tools/prepush")
+	if !strings.Contains(string(mk), "hooks:\n\t@go run ./tools/prepush -install") {
+		t.Error("make hooks does not install through tools/prepush")
+	}
+	inst, err := os.ReadFile(filepath.Join(root, "tools", "prepush", "install.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, must := range []string{`"./tools/prehook"`, `"config", "core.hooksPath", dir`, "--path-format=absolute"} {
+		if !strings.Contains(string(inst), must) {
+			t.Errorf("make hooks's installer does not %q: the hook would not run tools/prepush from the tree, or not be found (H-9)", must)
+		}
+	}
+	hook, err := os.ReadFile(filepath.Join(root, "tools", "prehook", "main.go"))
+	if err != nil || !strings.Contains(string(hook), `exec.Command("go", "run", "./tools/prepush")`) {
+		t.Errorf("the hook does not run tools/prepush from the tree (%v): a built copy of it goes stale (H-9)", err)
 	}
 }
 
