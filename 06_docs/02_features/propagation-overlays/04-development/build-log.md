@@ -582,3 +582,8 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **wspr.live:** seven requests, one a day, each answered 200 in 3 to 4 s, about 53 MB a day. The spots stay outside the tree with the PLAN evidence.
 - **Tests:** `TestBandStrataKeepTheHoursSignal`. **Mutants:** m470 new, killed.
 - **Docs:** A-75; the plan's W10.3; the instrument page's "The dry run".
+
+## Docs after batch 46 - the dry run by band alone, and fork E
+
+- **The run** (`reachscore` at `d56225bf`, a clean tree, `-strata band -k 80`): M1 53.4 % in every column; M4 64.2 % for the climatology against 66.9 % for the shipped build. Neither draw reaches D-99's +5 points on either metric. The background alone carries M4's lead; the stations add about nothing.
+- **Fork E** (`07-readiness/m1-m4-instrument.md`): the draw the graded run on fresh days uses, put to the HUM LEAD.

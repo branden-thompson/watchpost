@@ -190,4 +190,39 @@ the model neither right nor wrong on M1. It shows that B1 as ruled measures what
 
 The instrument can also draw its strata by band alone (`-strata band`), so the hours fall as they come
 and an answer that knows the hour can show it. A constant answer still scores 50 % within each band.
-The choice is put to the HUM LEAD with that run's figures.
+
+## The dry run by band alone (2026-10-18)
+
+The run used `reachscore` at `d56225bf` on a clean tree, with `-strata band -k 80` (the same size of set),
+seed 19, and the same inputs and checksum.
+
+| | Scenarios | Climatology | Background | Shipped | The target (D-99) |
+|---|---|---|---|---|---|
+| M1 | 1600 | 53.4 % | 53.4 % | 53.4 % | 58.4 %: **missed** |
+| M4 | 1600 | 64.2 % | 66.8 % | 66.9 % | 69.2 %: **missed** |
+
+With the hours left in, M1 gains on 40 m and 60 m (63 to 68 %), but the six bands from 30 m up stay at
+50 % under either draw. Near-vertical, those bands never reach (foF2 under 10 MHz). WSPR hears 1.4 to
+3.3 % of their pairs: sporadic E, scatter or ground wave, none of which the model claims to answer.
+Balancing makes those few half of each band's set.
+
+On M4 the shipped build leads the climatology by 2.6 points, and by 2.3 under B1 as ruled. The
+background alone carries the lead (GloTEC); the stations add about nothing on these paths.
+
+**Neither draw reaches D-99's +5 points on either metric.** No floor rides on M1 or M4 (D-75), so a miss
+comes to the HUM LEAD at VALIDATE with its evidence (D-118); the graded run is on fresh days beside
+REVIEW (D-221). What remains to rule now is the draw that graded run uses: the fork below.
+
+## Fork E: the draw for the graded run
+
+| | Option | For | Against |
+|---|---|---|---|
+| E1 | **B1 as ruled** (band × hour, balanced) | already ruled; the anti-solution holds in every hour | M1 is 50 % for any band-and-hour model by construction: it cannot grade M1 |
+| E2 | **By band alone, balanced** (`-strata band`) | a constant answer still scores 50 % in each band; the hour's signal, all a served area's answer can carry, counts | the upper bands' few skywave-free opens still fix six of M1's ten bands at 50 % |
+| E3 | E2, **M1 graded on the bands near-vertical answers (160 m to 40 m)**, the rest reported | M1 is graded where the model makes a claim | narrows M1 after seeing the data |
+| E4 | B2, the base rate as it falls | agreement reads as accuracy in use | open is 4 to 7 % of pairs, so "always closed" scores 93 to 96 % and D-118's "no worse than climatology" applies: the target says little |
+
+**Recommended: E2**, with the per-band table that already shows which bands carry the grade.
+**Strongest counter-argument:** E3 is the honest reading of what near-vertical answers claim. E2 lets
+six bands at a forced 50 % dilute M1's grade. The cost of E3 is choosing M1's bands after seeing these
+figures, on the week the targets were set on.
