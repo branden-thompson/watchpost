@@ -2,11 +2,10 @@
 
 Up: [plan, W10.3](../04-development/implementation-plan.md) · [problem statement, M1 and M4](../01-objectives/problem-statement.md) · [dry run](dry-run.md) · [rulings](../02-analysis/rulings.md)
 
-**Where this stands (2026-10-17).** D-208 puts the M1/M4 scorer's baseline inside BUILD: the
+**Where this stands (2026-10-18).** D-208 puts the M1/M4 scorer's baseline inside BUILD: the
 climatology's agreement with WSPR, the shipped build's, and a column for the background alone (B-F7).
-This page is the instrument's design. **Nothing is built and nothing is fetched yet:** four choices
-below decide what the instrument measures, and none of them is a minor one (D-13), so each is put for
-a ruling first.
+This page is the instrument's design. **Its four forks are ruled, each as recommended: A2 (D-218), B1
+(D-219), C1 (D-220), D1 (D-221).** The instrument is built to them next; nothing has been fetched yet.
 
 ## What is already fixed
 
