@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"regexp"
 	"strings"
 	"testing"
@@ -95,7 +96,7 @@ func TestADisturbedBandIsDrawnAndNamed(t *testing.T) {
 	if !strings.Contains(text, string(propDisturbedGlyph)+" disturbed (D-RAP)") {
 		t.Errorf("the legend does not name the disturbed glyph:\n%s", text)
 	}
-	if w := propLimitWords(bands[:1], " MHz"); w != "D-RAP 2.5 MHz" {
+	if w := propanswers.LimitWords(bands[:1], " MHz"); w != "D-RAP 2.5 MHz" {
 		t.Errorf("a row whose only band is disturbed says %q", w)
 	}
 }
@@ -113,8 +114,8 @@ func TestAnUnscoredNearestStationIsSaid(t *testing.T) {
 	}
 	c.targets[2].Nearest = ionomaps.Nearest{Km: 300, Unscored: true, Known: true}
 	text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
-	if !regexp.MustCompile(`(?m)^  \? `+regexp.QuoteMeta(propContinents[2].name)).MatchString(text) || !strings.Contains(text, "? unscored") {
-		t.Errorf("%s's nearest station is unscored and its row's shade, or the legend, does not say so:\n%s", propContinents[2].name, text)
+	if !regexp.MustCompile(`(?m)^  \? `+regexp.QuoteMeta(propanswers.Continents[2].Name)).MatchString(text) || !strings.Contains(text, "? unscored") {
+		t.Errorf("%s's nearest station is unscored and its row's shade, or the legend, does not say so:\n%s", propanswers.Continents[2].Name, text)
 	}
 	if w := d.propNearestWords(ionomaps.Nearest{}); w != "No station fed this answer" {
 		t.Errorf("no station: %q", w)

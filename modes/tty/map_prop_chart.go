@@ -1,15 +1,14 @@
 package tty
 
 import (
-	"errors"
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
-	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
@@ -17,36 +16,23 @@ import (
 // actMapChart opens the reference chart over the map (D-176).
 const actMapChart term.Action = "map.chart"
 
-// propTarget is a place the chart answers for.
-type propTarget struct {
-	name, short string
-	at          ionomaps.LatLon
-}
-
-// propContinents are the chart's default targets (FR-1.9, A-45): on each
-// inhabited continent, the city where its amateur radio is busiest.
-var propContinents = []propTarget{
-	{"North America", "NA", ionomaps.LatLon{Lat: 41.88, Lon: -87.63}},  // Chicago
-	{"South America", "SA", ionomaps.LatLon{Lat: -23.55, Lon: -46.63}}, // São Paulo
-	{"Europe", "EU", ionomaps.LatLon{Lat: 50.11, Lon: 8.68}},           // Frankfurt
-	{"Africa", "AF", ionomaps.LatLon{Lat: -26.20, Lon: 28.05}},         // Johannesburg
-	{"Asia", "AS", ionomaps.LatLon{Lat: 35.68, Lon: 139.69}},           // Tokyo
-	{"Oceania", "OC", ionomaps.LatLon{Lat: -33.87, Lon: 151.21}},       // Sydney
-}
-
-// near reports whether a target is within the near-vertical area around an
-// origin: no path to it, its answer the area's.
-func (t propTarget) near(origin ionomaps.LatLon, radiusKm float64) bool {
-	return geo.HaversineKM(origin.Lat, origin.Lon, t.at.Lat, t.at.Lon) <= radiusKm
-}
-
 // propChartKey is what the chart's answers are worked out from.
 type propChartKey struct {
 	computed, hour time.Time
 	built          uint64 // which snapshot kept: one rebuilt at the same time is another (L-F3)
 	origin         ionomaps.LatLon
 	radiusKm       float64
-	noise          ionomaps.Noise // the snapshot's: a new noise rebuilds it at the same time (D-187)
+	noise          ionomaps.Noise     // the snapshot's: a new noise rebuilds it at the same time (D-187)
+	found          propanswers.Target // the place found, a target beside the continents on the Observer (D-204); zero for none
+}
+
+// targets are the chart's targets: the continents, and the place found
+// after them (D-204).
+func (k propChartKey) targets() []propanswers.Target {
+	if k.found.Name == "" {
+		return propanswers.Continents
+	}
+	return append(append([]propanswers.Target(nil), propanswers.Continents...), k.found)
 }
 
 // propChart is the chart's answers (W5.1): the near-vertical area's bands
@@ -55,7 +41,7 @@ type propChartKey struct {
 type propChart struct {
 	key     propChartKey
 	local   ionomaps.Answer
-	targets []ionomaps.Answer // by propContinents
+	targets []ionomaps.Answer // by the key's targets: the continents, then the place found
 	err     error
 }
 
@@ -71,7 +57,11 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 	if !ok || !d.mapShown() || !d.inPropagation() || !origin.ok {
 		return propChartKey{}, false
 	}
-	return propChartKey{computed: shown.Computed, hour: shown.Now.At, built: d.mapPane.propBuilt, origin: origin.at, radiusKm: float64(d.propRadiusKm()), noise: shown.Noise}, true
+	key := propChartKey{computed: shown.Computed, hour: shown.Now.At, built: d.mapPane.propBuilt, origin: origin.at, radiusKm: float64(d.propRadiusKm()), noise: shown.Noise}
+	if f := d.mapPane.propFound; f != nil && !d.propRole().target {
+		key.found = propanswers.Target{Name: f.Label, Short: "FOUND", At: ionomaps.LatLon{Lat: f.Lat, Lon: f.Lon}} // on the Observer a target row; on the Broadcaster the centre is the target (D-204)
+	}
+	return key, true
 }
 
 // armPropChart asks for the chart when what it is worked out from has
@@ -172,38 +162,11 @@ func (d Dashboard) answered(err error, what string) Dashboard {
 	return d
 }
 
-// errPropAnswers is an answer of another length than the places asked:
-// the library's to fix, said in diagnostics (D-124).
-var errPropAnswers = errors.New("go-ionomaps answered a different number of places than were asked")
-
-// workPropChart works the chart out: off the UI goroutine, about 5 ms.
+// workPropChart works the chart out off the UI goroutine (W5.1): the answers
+// package's, for the key's origin, radius and targets (D-212).
 func workPropChart(snap ionomaps.Snapshot, key propChartKey) propChart {
-	c := propChart{key: key}
-	local, err := snap.Bands([]ionomaps.LatLon{key.origin}, key.radiusKm)
-	if err != nil {
-		c.err = err
-		return c
-	}
-	to := make([]ionomaps.LatLon, len(propContinents))
-	for i, t := range propContinents {
-		to[i] = t.at
-	}
-	paths, err := snap.Path(key.origin, to)
-	if err != nil {
-		c.err = err
-		return c
-	}
-	if len(local) != 1 || len(paths) != len(propContinents) {
-		c.err = errPropAnswers
-		return c
-	}
-	for i, t := range propContinents {
-		if t.near(key.origin, key.radiusKm) {
-			paths[i] = local[0] // no path: the near-vertical area's answer
-		}
-	}
-	c.local, c.targets = local[0], paths
-	return c
+	got, err := propanswers.WorkChart(snap, propanswers.Ask{Origin: key.origin, RadiusKm: key.radiusKm, Targets: key.targets()})
+	return propChart{key: key, local: got.Local, targets: got.Targets, err: err}
 }
 
 // propChartShown reports whether the chart answers for what the window
@@ -211,7 +174,7 @@ func workPropChart(snap ionomaps.Snapshot, key propChartKey) propChart {
 func (d Dashboard) propChartShown() bool {
 	key, ok := d.propChartWanted()
 	c := d.mapPane.propChart
-	return ok && key == c.key && c.err == nil && len(c.targets) == len(propContinents)
+	return ok && key == c.key && c.err == nil && len(c.targets) == len(key.targets())
 }
 
 // propChartFailed reports whether the chart wanted could not be worked out.
@@ -228,31 +191,15 @@ func (d Dashboard) propNotAvailable() string {
 	return "not available; " + d.firstKey(actMapRefresh) + " tries again"
 }
 
-// highestOpen is the highest band a target's answer calls open, by name;
-// "none", or "no data" where it has none.
-func highestOpen(bands []ionomaps.BandStatus) string {
-	best, data := "none", false
-	for i, b := range bands {
-		data = data || b.Status != ionomaps.StatusNoData
-		if b.Status == ionomaps.Open && i < len(hfBands) {
-			best = hfBands[i].name
-		}
-	}
-	if !data {
-		return "no data"
-	}
-	return best
-}
-
 // propBestLine is the block's line for the continents (D-176): each one's
 // highest open band, and the key that opens the chart.
 func (d Dashboard) propBestLine() string {
 	if !d.propChartShown() {
 		return ""
 	}
-	parts := make([]string, len(propContinents))
-	for i, t := range propContinents {
-		parts[i] = t.short + " " + highestOpen(d.mapPane.propChart.targets[i].Bands)
+	parts := make([]string, len(propanswers.Continents))
+	for i, t := range propanswers.Continents {
+		parts[i] = t.Short + " " + propanswers.HighestOpen(d.mapPane.propChart.targets[i].Bands)
 	}
 	line := "Up to: " + strings.Join(parts, " · ")
 	if keys := d.mapKeys[actMapChart].Keys; len(keys) > 0 {
@@ -292,13 +239,15 @@ func (d Dashboard) mark(g rune) string {
 
 // propChartRows are the chart's rows: the near-vertical area, then each
 // continent.
-func (d Dashboard) propChartRows() (names []string, answers []ionomaps.Answer) {
+func (d Dashboard) propChartRows() (names []string, rows []ionomaps.Answer) {
 	names = []string{fmt.Sprintf("Local, ~%d km", int(d.mapPane.propChart.key.radiusKm))}
-	answers = []ionomaps.Answer{d.mapPane.propChart.local}
-	for i, t := range propContinents {
-		names, answers = append(names, t.name), append(answers, d.mapPane.propChart.targets[i])
+	rows = []ionomaps.Answer{d.mapPane.propChart.local}
+	for i, t := range d.mapPane.propChart.key.targets() {
+		if i < len(d.mapPane.propChart.targets) {
+			names, rows = append(names, t.Name), append(rows, d.mapPane.propChart.targets[i])
+		}
 	}
-	return names, answers
+	return names, rows
 }
 
 // propChartLines are the chart window's lines (D-176): the origin and the
@@ -330,15 +279,15 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 		head += fmt.Sprintf("%3s", strings.TrimSuffix(b.name, "m")) // each band's number over its glyph
 	}
 	out = append(out, head)
-	names, answers := d.propChartRows()
+	names, rows := d.propChartRows()
 	row := min(d.mapPane.propChartRow, len(names)-1)
-	for i, a := range answers {
+	for i, a := range rows {
 		pointer := "  "
 		if i == row {
 			pointer = o.Glyphs().Pointer + " "
 		}
 		line := pointer + propShade(a.Nearest, o.ASCII) + " " + render.PadTo(names[i], propNameW) + d.propBandCells(a.Bands)
-		if w := propRowWords(a.Bands); w != "" {
+		if w := propanswers.RowWords(a.Bands); w != "" {
 			line += " " + w
 		}
 		out = append(out, line)
@@ -351,11 +300,11 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 	}
 	out = append(out, "")
 	out = append(out, "TYPICAL DAY, UTC: "+names[row])
-	if propDiffers(answers[row].Bands, c.key.hour) {
+	if propanswers.Differs(rows[row].Bands, c.key.hour) {
 		out[len(out)-1] += " · now differs from a typical day"
 	}
 	out = append(out, d.propDayHead(c.key.hour))
-	out = append(out, d.propDayRows(answers[row].Bands)...)
+	out = append(out, d.propDayRows(rows[row].Bands)...)
 	if d.cfg.ASCII {
 		for i := range out {
 			out[i] = strings.ReplaceAll(out[i], " · ", " "+o.Glyphs().Dot+" ") // the separators too (AX-4)
@@ -443,30 +392,6 @@ func (d Dashboard) propGlyph(open, noData bool) string {
 	return render.Tint(d.mark(propClosedGlyph), render.Tok(render.KeyChipMuted))
 }
 
-// propLimitWords name an answer's limits (D-192): its upper limit, from a
-// band it decided; the LUF when the lower limit closes any band; and D-RAP's
-// 1 dB frequency when it disturbs any; each figure in MHz with the unit given
-// after it (the chart's rows write none, D-198); empty with no data.
-func propLimitWords(bands []ionomaps.BandStatus, unit string) string {
-	l := limitsOf(bands)
-	upper := "MUF"
-	for _, b := range bands {
-		if b.Limit == ionomaps.LimitFoF2 {
-			upper = "foF2"
-		}
-	}
-	var parts []string
-	for _, w := range []struct {
-		name string
-		mhz  float64
-	}{{upper, l.upper}, {"LUF", l.luf}, {"D-RAP", l.drap}} {
-		if w.mhz > 0 {
-			parts = append(parts, w.name+" "+mhzWords(w.mhz)+unit)
-		}
-	}
-	return strings.Join(parts, " · ")
-}
-
 // propDayHead marks the typical day's hours every three, and the hour shown.
 func (d Dashboard) propDayHead(hour time.Time) string {
 	var b strings.Builder
@@ -494,7 +419,7 @@ func (d Dashboard) propDayRows(bands []ionomaps.BandStatus) []string {
 		b.WriteString(render.PadTo(hfBands[min(i, len(hfBands)-1)].name, 6))
 		day := d.mapPane.propChart.key.hour.UTC().Truncate(24 * time.Hour)
 		for h := range 24 {
-			b.WriteString(d.propGlyph(openAt(s.OpenHours, day.Add(time.Duration(h)*time.Hour)), false))
+			b.WriteString(d.propGlyph(propanswers.OpenAt(s.OpenHours, day.Add(time.Duration(h)*time.Hour)), false))
 			if h < 23 {
 				b.WriteString(" ")
 			}
@@ -502,28 +427,6 @@ func (d Dashboard) propDayRows(bands []ionomaps.BandStatus) []string {
 		out = append(out, b.String())
 	}
 	return out
-}
-
-// openAt reports whether a moment falls in one of the spans.
-func openAt(spans []ionomaps.Span, at time.Time) bool {
-	for _, s := range spans {
-		if !at.Before(s.From) && at.Before(s.To) {
-			return true
-		}
-	}
-	return false
-}
-
-// propDiffers reports whether any band's status now differs from its typical
-// day at the hour (D-135); a band with no data now is no difference.
-func propDiffers(bands []ionomaps.BandStatus, hour time.Time) bool {
-	at := hour.UTC().Truncate(time.Hour)
-	for _, b := range bands {
-		if b.Status != ionomaps.StatusNoData && (b.Status == ionomaps.Open) != openAt(b.OpenHours, at) {
-			return true
-		}
-	}
-	return false
 }
 
 // openPropChart is B: the chart over the map, in the Propagation mode alone.
@@ -557,7 +460,7 @@ func (d Dashboard) handlePropChartKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 	case "up":
 		d.mapPane.propChartRow = max(d.mapPane.propChartRow-1, 0)
 	case "down":
-		d.mapPane.propChartRow = min(d.mapPane.propChartRow+1, len(propContinents))
+		d.mapPane.propChartRow = min(d.mapPane.propChartRow+1, len(d.mapPane.propChart.key.targets()))
 	case "pgup":
 		return d.handleModalNav("nav-up"), nil
 	case "pgdown":

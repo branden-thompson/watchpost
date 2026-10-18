@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"regexp"
 	"strings"
 	"time"
@@ -103,7 +104,7 @@ func (d Dashboard) propOriginWords() []string {
 	if !okF || !okM {
 		return []string{upperFirst(spoken(origin.name + ", " + when + ": no data at the place."))}
 	}
-	answer := fmt.Sprintf("%s, %s: MUF(3000) %s MHz, foF2 %s MHz.", origin.name, when, mhzWords(muf), mhzWords(fo))
+	answer := fmt.Sprintf("%s, %s: MUF(3000) %s MHz, foF2 %s MHz.", origin.name, when, propanswers.MHz(muf), propanswers.MHz(fo))
 	return []string{upperFirst(spoken(answer)), spoken(d.propDayWords(origin, shown.Now.At))} // a centre named by its coordinates, said as degrees (AX-1)
 }
 
@@ -142,7 +143,7 @@ func (d Dashboard) propStatusBlock() string {
 		} else {
 			parts = append(parts, "at the origin, "+d.propStationWords(c.local.Nearest))
 		}
-		if propDiffers(c.local.Bands, c.key.hour) {
+		if propanswers.Differs(c.local.Bands, c.key.hour) {
 			parts = append(parts, "now differs from a typical day there")
 		}
 	}
@@ -178,20 +179,20 @@ func (d Dashboard) propTargetWords() []wordSentence {
 	if !d.propChartShown() {
 		return []wordSentence{said("targets", "The best bands are being worked out.")}
 	}
-	names, answers := d.propChartRows()
+	names, rows := d.propChartRows()
 	_, once := d.propStationOnce()
 	var order []string // each answer said, in the order first met
 	named := map[string][]string{}
-	for i, a := range answers {
-		say := propBandsSaid(a.Bands)
-		if w := propRowWords(a.Bands); w != "" {
+	for i, a := range rows {
+		say := propanswers.BandsSaid(a.Bands)
+		if w := propanswers.RowWords(a.Bands); w != "" {
 			say += "; " + w
 		}
 		if !once {
 			say += "; " + d.propStationWords(a.Nearest)
 		}
-		if i == 0 {
-			say = "\x00" + say // the local area's line is its own: its name carries a comma a list would blur
+		if strings.Contains(names[i], ",") {
+			say = names[i] + "\x00" + say // a name with a comma - the local area's, a place found - keeps its own line: a list would blur it
 		}
 		if _, met := named[say]; !met {
 			order = append(order, say)
@@ -204,114 +205,33 @@ func (d Dashboard) propTargetWords() []wordSentence {
 		for _, n := range named[say] {
 			keys = append(keys, "target:"+n)
 		}
-		out = append(out, wordSentence{keys: keys, text: spoken(listWords(named[say])+": "+strings.TrimPrefix(say, "\x00")) + "."})
+		_, line, cut := strings.Cut(say, "\x00")
+		if !cut {
+			line = say
+		}
+		out = append(out, wordSentence{keys: keys, text: spoken(propanswers.List(named[say])+": "+line) + "."})
 		if len(out) == 1 {
-			out = append(out, said("typical", spoken(d.propTypicalWords(answers[0].Bands)))) // the local area's typical day, after its line (FR-1.15, AX-4)
+			out = append(out, said("typical", spoken(propanswers.TypicalWords(rows[0].Bands, d.mapPane.propChart.key.hour)))) // the local area's typical day, after its line (FR-1.15, AX-4)
 		}
 	}
 	return out
-}
-
-// propTypicalWords are the hours of the UTC day each band is typically open
-// in the local area (FR-1.15, AX-4): the chart's typical day, said.
-func (d Dashboard) propTypicalWords(bands []ionomaps.BandStatus) string {
-	day := d.mapPane.propChart.key.hour.UTC().Truncate(24 * time.Hour)
-	end := day.Add(24 * time.Hour)
-	var parts []string
-	for i, b := range bands {
-		if i >= len(hfBands) {
-			break
-		}
-		var spans []string
-		for _, sp := range b.OpenHours {
-			from, to := sp.From, sp.To
-			if from.Before(day) {
-				from = day
-			}
-			if to.After(end) {
-				to = end
-			}
-			if !from.Before(to) {
-				continue
-			}
-			until := to.UTC().Format("15:04")
-			if to.Equal(end) {
-				until = "24:00"
-			}
-			spans = append(spans, from.UTC().Format("15:04")+" to "+until)
-		}
-		if len(spans) > 0 {
-			parts = append(parts, hfBands[i].name+" "+listWords(spans))
-		}
-	}
-	if len(parts) == 0 {
-		return "On a typical day no band is open in the local area."
-	}
-	return "On a typical day in the local area, in UTC, open: " + strings.Join(parts, "; ") + "."
 }
 
 // propStationOnce is the nearest station said once (D-210): its words, and
 // true when every row of the chart - the local area's and each target's -
 // reads the same.
 func (d Dashboard) propStationOnce() (string, bool) {
-	_, answers := d.propChartRows()
-	if len(answers) == 0 {
+	_, rows := d.propChartRows()
+	if len(rows) == 0 {
 		return "", false
 	}
-	first := d.propStationWords(answers[0].Nearest)
-	for _, a := range answers[1:] {
+	first := d.propStationWords(rows[0].Nearest)
+	for _, a := range rows[1:] {
 		if d.propStationWords(a.Nearest) != first {
 			return "", false
 		}
 	}
 	return first, true
-}
-
-// propStatusSaid are the bands' states in the order said: the open first.
-var propStatusSaid = []struct {
-	status ionomaps.Status
-	words  string
-}{
-	{ionomaps.Open, "open on "},
-	{ionomaps.Disturbed, "disturbed on "},
-	{ionomaps.Absorbed, "absorbed on "},
-	{ionomaps.Weak, "too weak on "},
-	{ionomaps.AboveUpper, "above the upper limit on "},
-}
-
-// propBandsSaid are a target's bands by state, the open before the closed:
-// "open on 20m; above the upper limit on 17, 15, 12 and 10m".
-func propBandsSaid(bands []ionomaps.BandStatus) string {
-	var parts []string
-	for _, s := range propStatusSaid {
-		var nums []string
-		for i, b := range bands {
-			if b.Status == s.status && i < len(hfBands) {
-				nums = append(nums, strings.TrimSuffix(hfBands[i].name, "m"))
-			}
-		}
-		if len(nums) > 0 {
-			parts = append(parts, s.words+listWords(nums)+"m")
-		}
-	}
-	if len(parts) == 0 {
-		return "no data"
-	}
-	if bandsOpen(bands) == 0 {
-		parts = append([]string{"nothing open"}, parts...)
-	}
-	return strings.Join(parts, "; ")
-}
-
-// bandsOpen counts the bands open or disturbed.
-func bandsOpen(bands []ionomaps.BandStatus) int {
-	n := 0
-	for _, b := range bands {
-		if b.Status == ionomaps.Open || b.Status == ionomaps.Disturbed {
-			n++
-		}
-	}
-	return n
 }
 
 // upperFirst is a sentence begun with a capital: a view's name may not be.
@@ -321,15 +241,6 @@ func upperFirst(s string) string {
 		return s
 	}
 	return strings.ToUpper(string(r[0])) + string(r[1:])
-}
-
-// listWords joins words as a sentence lists them: "a", "a and b", "a, b
-// and c".
-func listWords(items []string) string {
-	if len(items) < 2 {
-		return strings.Join(items, "")
-	}
-	return strings.Join(items[:len(items)-1], ", ") + " and " + items[len(items)-1]
 }
 
 // propStationWords say an answer's nearest reporting station (D-116,

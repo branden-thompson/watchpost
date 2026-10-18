@@ -2,8 +2,8 @@ package tty
 
 import (
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"math"
-	"strconv"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 )
@@ -88,134 +88,24 @@ func latLonText(c ionomaps.LatLon) string {
 	return fmt.Sprintf("%.1f°%s %.1f°%s", math.Abs(c.Lat), ns, math.Abs(c.Lon), ew)
 }
 
-// propLimits are the limits an answer's bands name (R-2.6): the upper
-// limit, the LUF and whether the circuit is too weak there rather than
-// absorbed (D-70), and D-RAP's 1 dB frequency; zero where none decides.
-type propLimits struct {
-	upper, luf, drap float64
-	weak             bool
-}
-
-// limitsOf reads an answer's limits from its bands.
-func limitsOf(bands []ionomaps.BandStatus) propLimits {
-	var l propLimits
-	for _, b := range bands {
-		switch b.Limit {
-		case ionomaps.LimitMUF, ionomaps.LimitFoF2:
-			if l.upper == 0 {
-				l.upper = float64(b.LimitMHz)
-			}
-		case ionomaps.LimitAbsorption, ionomaps.LimitCircuit:
-			l.luf, l.weak = float64(b.LimitMHz), l.weak || b.Limit == ionomaps.LimitCircuit
-		case ionomaps.LimitDRAP:
-			l.drap = float64(b.LimitMHz)
-		}
-	}
-	return l
-}
-
-// usableBands are the bands an answer can use: open or disturbed, by name.
-func usableBands(bands []ionomaps.BandStatus) []string {
-	var out []string
-	for i, b := range bands {
-		if (b.Status == ionomaps.Open || b.Status == ionomaps.Disturbed) && i < len(hfBands) {
-			out = append(out, hfBands[i].name)
-		}
-	}
-	return out
-}
-
-// propBestFactor is the share of the upper limit the best frequency is
-// taken at (D-197): ITU-R P.373's FOT, commonly about 85 % of the MUF on F2
-// paths - a rule of thumb, the MUF being the hour's estimate.
-const propBestFactor = 0.85
-
-// propBest is an answer's best frequency (D-197): 85 % of its upper limit,
-// and the band whose lower edge fits under it and above the LUF; false where
-// none does - no frequency serves - or no upper limit is known (zero mhz).
-func propBest(l propLimits) (mhz float64, band string, ok bool) {
-	if l.upper <= 0 {
-		return 0, "", false
-	}
-	mhz = propBestFactor * l.upper
-	for i := len(hfBands) - 1; i >= 0; i-- {
-		if b := hfBands[i]; b.low <= mhz && b.low >= l.luf {
-			return mhz, b.name, true
-		}
-	}
-	return mhz, "", false
-}
-
-// propBestWords say the best frequency (D-197): long for the centre box,
-// "best ~15.0 MHz (20m), 85% of the MUF"; short for a chart row, "best ~15.0
-// (20m)"; where none serves, so; empty with no upper limit.
-func propBestWords(l propLimits, long bool) string {
-	mhz, band, ok := propBest(l)
-	switch {
-	case mhz == 0:
-		return ""
-	case !ok && long:
-		return "no frequency serves on this path"
-	case !ok:
-		return "none serves"
-	case long:
-		return "best ~" + mhzWords(mhz) + " MHz (" + band + "), 85% of the MUF"
-	}
-	return "best ~" + mhzWords(mhz) + " (" + band + ")"
-}
-
-// propRowWords are a chart row's limits and its best frequency, in MHz
-// without the unit on each (D-197, D-198).
-func propRowWords(bands []ionomaps.BandStatus) string {
-	limits, best := propLimitWords(bands, ""), propBestWords(limitsOf(bands), false)
-	if limits == "" || best == "" {
-		return limits + best
-	}
-	return limits + " · " + best
-}
-
-// mhzWords is a frequency as the windows say it: to a tenth of a megahertz.
-func mhzWords(v float64) string { return strconv.FormatFloat(v, 'f', 1, 64) }
-
 // propTarget is the station's answer for the map's centre (D-193): the
 // usable bands from the station and the limits, and how the frequency held
 // (D-178) fares on the path - and which way to move it.
 func (d Dashboard) propTarget(bands []ionomaps.BandStatus) []string {
 	reach := "nothing usable at 100 W"
-	switch u := usableBands(bands); len(u) {
+	switch u := propanswers.Usable(bands); len(u) {
 	case 0:
 	case 1:
 		reach = "usable " + u[0]
 	default:
 		reach = "usable " + u[0] + "-" + u[len(u)-1]
 	}
-	out := []string{reach + " · " + propLimitWords(bands, " MHz")}
-	if best := propBestWords(limitsOf(bands), true); best != "" {
+	out := []string{reach + " · " + propanswers.LimitWords(bands, " MHz")}
+	if best := propanswers.BestWords(propanswers.LimitsOf(bands), true); best != "" {
 		out = append(out, best) // D-197
 	}
 	if f := d.mapPane.propFreqMHz; f > 0 {
-		out = append(out, propFreqVerdict(f, d.mapPane.propFreqLabel, limitsOf(bands)))
+		out = append(out, propanswers.FreqVerdict(f, d.mapPane.propFreqLabel, propanswers.LimitsOf(bands)))
 	}
 	return out
-}
-
-// propFreqVerdict is a held frequency on a path (D-193): with the LUF at or
-// over the MUF, no frequency serves - too weak at 100 W; above the MUF, come
-// down under it; under the LUF, go up to it (absorbed, or too weak); under
-// D-RAP's 1 dB frequency, disturbed; else open.
-func propFreqVerdict(f float64, label string, l propLimits) string {
-	held := label + ": "
-	switch {
-	case l.upper > 0 && l.luf >= l.upper:
-		return held + "too weak at 100 W on this path"
-	case l.upper > 0 && f >= l.upper:
-		return held + "above the MUF - come down under " + mhzWords(l.upper)
-	case l.luf > 0 && f < l.luf && l.weak:
-		return held + "too weak at 100 W - go up to " + mhzWords(l.luf) + "+"
-	case l.luf > 0 && f < l.luf:
-		return held + "absorbed - go up to " + mhzWords(l.luf) + "+"
-	case l.drap > 0 && f < l.drap:
-		return held + "disturbed (D-RAP to " + mhzWords(l.drap) + ")"
-	}
-	return held + "open"
 }

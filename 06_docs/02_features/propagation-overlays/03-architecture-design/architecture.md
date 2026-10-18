@@ -66,7 +66,7 @@ flowchart LR
 | Path | Holds | Why there |
 |---|---|---|
 | `modes/tty/map_prop*.go` (new) | The Propagation mode beside Radar and Forecast (`modes/tty/map_temp.go:167` decides Radar mode today); the chart; the frequency entry; the hour step; the words; the acknowledgement window | every window is a file of package `tty`; the closed-set guards are package-internal |
-| `modes/tty/dashboard.go` (`Config`, `:72`) | two seams beside `MapTemperature` (`:114`): `PropagationUpdate func(ctx, opts ionomaps.UpdateOptions) <-chan Snapshot` (the update's one owner, A-30; the Settings' options whole: the reference circuit's noise, D-187, and the no-readings correction, D-105) and `PropagationAnswers func(ctx, Snapshot, MapAsk) MapPropagation` (pure answers) | the window cannot import `domains/`; the app hands it functions (`MapAsk`, `modes/tty/map_prefs.go:556`) |
+| `modes/tty/dashboard.go` (`Config`, `:72`) | two seams beside `MapTemperature` (`:114`): `PropagationUpdate func(ctx, opts ionomaps.UpdateOptions) <-chan Snapshot` (the update's one owner, A-30; the Settings' options whole: the reference circuit's noise, D-187, and the no-readings correction, D-105) and the answers in `platform/propanswers` (D-212): pure functions of the snapshot and an ask - the origin, the near-vertical radius and the targets, the continents and a place found (D-204) - to rows, limits and words, which the window calls off the UI goroutine and a later mode (D-27, D-28) asks with targets of its own | the window cannot import `domains/`: the update comes through the app's function; the answers, holding no state and fetching nothing, are a platform package it imports |
 | `app/mapprop.go` (new) | turns go-ionomaps' fields into `tuimaps.Grid` overlays and its answers into the chart's rows and words; credits; the Status window's entries | the only package that may name a domain and what draws |
 | `domains/propagation/` (new) | the one go-ionomaps object per process; the fetcher it is given; the acknowledgement's record read before the first fetch | a data source is a domain |
 | `platform/geo/coords.go`, `maidenhead.go` (new) | one finite-checked coordinate parser and the Maidenhead parser, used by every resolver (FR-4.9, D-79) | shared and pure |
@@ -80,13 +80,13 @@ flowchart LR
 sequenceDiagram
   participant L as Listener
   participant W as Propagation mode (UI goroutine)
-  participant A as app/mapprop.go
+  participant A as platform/propanswers
   participant P as domains/propagation (the update's one owner)
   participant I as go-ionomaps
   participant N as GIRO / NOAA
   L->>W: the mode's key
   W->>W: acknowledgement seen? if not, show it (Enter/Esc)
-  W->>P: PropagationUpdate(): start, or join the running update
+  W->>P: PropagationUpdate(): an update of its own (go-ionomaps runs one at a time, C-2)
   Note over P: its own context and a 60 s deadline; a keypress never cancels it; closing the mode does
   P->>I: Update(ctx)
   I->>I: throttle (D-39): a cancelled burst still spends the hour; too soon, answer from the last field
@@ -100,9 +100,9 @@ sequenceDiagram
   N-->>I: replies
   I-->>P: Snapshot 2: the stations up to an hour old assimilated (D-184)
   P-->>W: snapshot ready (Computed, inputs' times, stations)
-  W->>A: PropagationAnswers(snapshot, ask): off the UI goroutine
-  A->>A: overlays (the hour on screen), best bands, reach, words; memo keyed on every input
-  A-->>W: frames and words
+  W->>A: propanswers.WorkChart / WorkCentre (snapshot, ask): in a command, off the UI goroutine
+  A->>A: best bands for the origin's area and each target, the centre's, limits and words
+  A-->>W: rows and words, kept under a key of everything they came from
   W-->>L: the picture or the words
   Note over W,P: while open, the refresh tick (10 min default) or the refresh-now key starts the next update
 ```

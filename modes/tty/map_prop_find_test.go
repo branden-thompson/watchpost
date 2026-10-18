@@ -5,12 +5,13 @@ package tty
 
 import (
 	"errors"
-	"math"
 	"slices"
 	"strings"
 	"testing"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -48,10 +49,12 @@ func placeIDs(d Dashboard) []string {
 	return ids
 }
 
-// TestAFoundPlaceIsAnsweredAndNotKept is FR-1.10 (D-27): a place found
-// anywhere - here one no weather region covers - is centred, so the centre
-// answers for it; marked; said; and never kept: nothing is committed, the
-// recent places are as they were, and leaving the mode takes the mark off.
+// TestAFoundPlaceIsAnsweredAndNotKept is FR-1.9 and FR-1.10 (D-27, D-204):
+// on the Observer a place found anywhere - here one no weather region covers
+// - is marked, joins the chart as a target row beside the continents,
+// answered from the origin, and is said; the map stays where it was, so the
+// origin is still its centre; and nothing is kept: no commit, the recent
+// places as they were, and leaving the mode takes the mark and the row off.
 func TestAFoundPlaceIsAnsweredAndNotKept(t *testing.T) {
 	d := chartDash(t)
 	commits := 0
@@ -59,22 +62,29 @@ func TestAFoundPlaceIsAnsweredAndNotKept(t *testing.T) {
 	asked := ""
 	d.cfg.FindPlace = func(q string) (snapshot.LocationRef, error) { asked = q; return reykjavik, nil }
 	recent := len(d.recentLocations())
+	before, _ := d.mapPane.m.Centre()
+	origin := d.mapPane.propOrigin.at
 	d = typeFind(t, d, "Reykjavik")
 	if asked != "Reykjavik" {
 		t.Errorf("the finder was asked %q", asked)
 	}
-	c, _ := d.mapPane.m.Centre()
-	if math.Abs(c.Lat-reykjavik.Lat) > 0.5 || math.Abs(c.Lon-reykjavik.Lon) > 0.5 {
-		t.Errorf("the map's centre is %+v; the found place is %+v", c, reykjavik)
+	if c, _ := d.mapPane.m.Centre(); c != before || d.mapPane.propOrigin.at != origin {
+		t.Errorf("the find moved the map to %+v (origin %+v); on the Observer it stays at %+v (D-204)", c, d.mapPane.propOrigin.at, before)
 	}
 	if !slices.Contains(placeIDs(d), foundPlaceID) {
 		t.Errorf("the found place is not marked: %v", placeIDs(d))
 	}
-	if words := strings.Join(d.describeLinesAll(), " "); !strings.Contains(words, "Found Reykjavik, IS: marked at the map's centre, and not kept.") {
-		t.Errorf("the words do not say the place found:\n%s", words)
+	d = workChart(t, d)
+	names, rows := d.propChartRows()
+	if len(names) != 2+len(propanswers.Continents) || names[len(names)-1] != reykjavik.Label || len(rows[len(rows)-1].Bands) == 0 {
+		t.Fatalf("the chart's rows are %v; the continents, then the place found, answered", names)
 	}
-	if o := d.mapPane.propOrigin.at; math.Abs(o.Lat-reykjavik.Lat) > 0.5 || math.Abs(o.Lon-reykjavik.Lon) > 0.5 {
-		t.Errorf("the Observer answers from %+v; the map's centre, the found place, is %+v (D-193)", o, reykjavik)
+	if k := d.mapPane.propChart.key; k.origin != origin {
+		t.Errorf("the found place is answered from %+v; from the origin %+v", k.origin, origin)
+	}
+	words := strings.Join(propWordsFrom(t, d), "\n")
+	if !strings.Contains(words, "Found Reykjavik, IS: marked on the map and answered with the targets, and not kept.") || !strings.Contains(words, "\nReykjavik, IS: ") {
+		t.Errorf("the words do not say the place found, or its line:\n%s", words)
 	}
 	if commits != 0 || len(d.recentLocations()) != recent {
 		t.Errorf("the found place was kept: %d commits, %d recent places (were %d)", commits, len(d.recentLocations()), recent)
@@ -147,17 +157,18 @@ func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 		}
 		return ""
 	}
-	d = typeFind(t, d, "Reykjavik")
-	words := strings.Join(propWordsFrom(t, d), "\n")
-	if d.mapPane.propOrigin.name != reykjavik.Label || !strings.Contains(words, "Reykjavik, IS, now: ") {
-		t.Errorf("centred on the place found, the origin is %q:\n%s", d.mapPane.propOrigin.name, words)
-	}
 	pan := func(d Dashboard, lat, lon float64) Dashboard {
 		t.Helper()
 		if err := d.mapPane.m.Recentre(tuimaps.LonLat{Lon: lon, Lat: lat}); err != nil {
 			t.Fatal(err)
 		}
 		return d.renderMap()
+	}
+	d = typeFind(t, d, "Reykjavik")
+	d = pan(d, reykjavik.Lat, reykjavik.Lon) // the Observer's map stays on a find (D-204); panned onto the place, it is named for it
+	words := strings.Join(propWordsFrom(t, d), "\n")
+	if d.mapPane.propOrigin.name != reykjavik.Label || !strings.Contains(words, "Reykjavik, IS, now: ") {
+		t.Errorf("centred on the place found, the origin is %q:\n%s", d.mapPane.propOrigin.name, words)
 	}
 	d = pan(d, 35.7, 139.7)
 	words = strings.Join(d.describeLinesAll(), "\n")
@@ -167,7 +178,7 @@ func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 	if title := d.viewName(); title != "near Tokyo, JP" {
 		t.Errorf("panned to Tokyo, the view is named %q", title)
 	}
-	if !strings.Contains(words, "Found Reykjavik, IS: marked on the map, and not kept.") {
+	if strings.Contains(words, "marked at the map's centre") {
 		t.Errorf("panned away, the words still put the place found at the centre:\n%s", words)
 	}
 	d = pan(d, -40, -140)

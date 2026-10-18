@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"regexp"
 	"strings"
 	"testing"
@@ -93,20 +94,20 @@ func TestTheCentreAnswerIsSaid(t *testing.T) {
 func TestTheHeldFrequencyIsJudgedOnThePath(t *testing.T) {
 	for _, c := range []struct {
 		f    float64
-		l    propLimits
+		l    propanswers.Limits
 		want string
 	}{
-		{20, propLimits{upper: 14}, "above the MUF - come down under 14.0"},
-		{14, propLimits{upper: 14}, "above the MUF - come down under 14.0"},
-		{20, propLimits{upper: 14, luf: 15}, "too weak at 100 W on this path"},
-		{20, propLimits{upper: 14, luf: 14}, "too weak at 100 W on this path"},
-		{3, propLimits{upper: 14, luf: 5, weak: true}, "too weak at 100 W - go up to 5.0+"},
-		{3, propLimits{upper: 14, luf: 5}, "absorbed - go up to 5.0+"},
-		{7, propLimits{upper: 14, luf: 5, drap: 9}, "disturbed (D-RAP to 9.0)"},
-		{10, propLimits{upper: 14, luf: 5, drap: 9}, "open"},
-		{10, propLimits{}, "open"},
+		{20, propanswers.Limits{Upper: 14}, "above the MUF - come down under 14.0"},
+		{14, propanswers.Limits{Upper: 14}, "above the MUF - come down under 14.0"},
+		{20, propanswers.Limits{Upper: 14, LUF: 15}, "too weak at 100 W on this path"},
+		{20, propanswers.Limits{Upper: 14, LUF: 14}, "too weak at 100 W on this path"},
+		{3, propanswers.Limits{Upper: 14, LUF: 5, Weak: true}, "too weak at 100 W - go up to 5.0+"},
+		{3, propanswers.Limits{Upper: 14, LUF: 5}, "absorbed - go up to 5.0+"},
+		{7, propanswers.Limits{Upper: 14, LUF: 5, DRAP: 9}, "disturbed (D-RAP to 9.0)"},
+		{10, propanswers.Limits{Upper: 14, LUF: 5, DRAP: 9}, "open"},
+		{10, propanswers.Limits{}, "open"},
 	} {
-		if got := propFreqVerdict(c.f, "7.2 MHz", c.l); got != "7.2 MHz: "+c.want {
+		if got := propanswers.FreqVerdict(c.f, "7.2 MHz", c.l); got != "7.2 MHz: "+c.want {
 			t.Errorf("%.1f MHz under %+v: %q; want %q", c.f, c.l, got, c.want)
 		}
 	}
@@ -123,15 +124,23 @@ func TestTheTargetSaysWhatIsUsable(t *testing.T) {
 	}
 	bands[0] = ionomaps.BandStatus{Status: ionomaps.Absorbed, Limit: ionomaps.LimitAbsorption, LimitMHz: 4}
 	bands[9] = ionomaps.BandStatus{Status: ionomaps.AboveUpper, Limit: ionomaps.LimitMUF, LimitMHz: 16}
+	named := func() { // each band named, as go-ionomaps names it: its words read the band, never its place (L-F8)
+		for i := range bands {
+			bands[i].Band = ionomaps.Band(i + 1)
+		}
+	}
+	named()
 	var d Dashboard
 	if got := d.propTarget(bands); len(got) != 2 || got[0] != "nothing usable at 100 W · MUF 16.0 MHz · LUF 4.0 MHz" || got[1] != "best ~13.6 MHz (30m), 85% of the MUF" {
 		t.Errorf("no band open: %q", got)
 	}
 	bands[3] = band(ionomaps.Open)
+	named()
 	if got := d.propTarget(bands); got[0] != "usable 40m · MUF 16.0 MHz · LUF 4.0 MHz" {
 		t.Errorf("one band open: %q", got[0])
 	}
 	bands[5] = band(ionomaps.Disturbed)
+	named()
 	d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = 7.2, "7.2 MHz"
 	got := d.propTarget(bands)
 	if got[0] != "usable 40m-20m · MUF 16.0 MHz · LUF 4.0 MHz" || len(got) != 3 || got[2] != "7.2 MHz: open" {

@@ -6,6 +6,7 @@ package tty
 
 import (
 	"context"
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 
 	tea "charm.land/bubbletea/v2"
 	"errors"
@@ -358,10 +359,10 @@ func TestCaveatsAreSaidOncePerOpen(t *testing.T) {
 	}
 	d.mapPane.propChart.targets[1].Nearest = ionomaps.Nearest{Known: true, Km: 300} // one row's station near: each row says its own
 	words = propWordsFrom(t, d)
-	names, answers := d.propChartRows()
+	names, rows := d.propChartRows()
 	for i, n := range names {
 		line := words[targetLine(words, n)]
-		far := !answers[i].Nearest.Known || answers[i].Nearest.Km >= propFarKm
+		far := !rows[i].Nearest.Known || rows[i].Nearest.Km >= propFarKm
 		if says := strings.Contains(line, "about as good as typical"); says != far {
 			t.Errorf("%s's line says about typical %v; its station is far %v: %q", n, says, far, line)
 		}
@@ -374,17 +375,17 @@ func TestCaveatsAreSaidOncePerOpen(t *testing.T) {
 func TestIdenticalTargetsShareALine(t *testing.T) {
 	d := chartDash(t)
 	words := propWordsFrom(t, d)
-	names, answers := d.propChartRows()
+	names, rows := d.propChartRows()
 	lines := map[int]bool{}
 	for _, n := range names {
 		lines[targetLine(words, n)] = true
 	}
 	distinct := map[string]bool{}
-	for _, a := range answers[1:] {
-		distinct[propBandsSaid(a.Bands)+propRowWords(a.Bands)] = true
+	for _, a := range rows[1:] {
+		distinct[propanswers.BandsSaid(a.Bands)+propanswers.RowWords(a.Bands)] = true
 	}
 	if len(lines) != 1+len(distinct) {
-		t.Errorf("%d targets with %d distinct answers are said on %d lines; %d:\n%s", len(names)-1, len(distinct), len(lines), 1+len(distinct), strings.Join(words, "\n"))
+		t.Errorf("%d targets with %d distinct rows are said on %d lines; %d:\n%s", len(names)-1, len(distinct), len(lines), 1+len(distinct), strings.Join(words, "\n"))
 	}
 	said := map[string]bool{}
 	for _, l := range words {
@@ -421,16 +422,16 @@ func TestTheDayAndItsTurnAreSaid(t *testing.T) {
 func TestTheBandsAreSaidOpenFirst(t *testing.T) {
 	bands := make([]ionomaps.BandStatus, len(hfBands))
 	for i := range bands {
-		bands[i].Status = ionomaps.AboveUpper
+		bands[i].Status, bands[i].Band = ionomaps.AboveUpper, ionomaps.Band(i+1)
 	}
-	if got := propBandsSaid(bands); got != "nothing open; above the upper limit on 160, 80, 60, 40, 30, 20, 17, 15, 12 and 10m" {
+	if got := propanswers.BandsSaid(bands); got != "nothing open; above the upper limit on 160, 80, 60, 40, 30, 20, 17, 15, 12 and 10m" {
 		t.Errorf("every band above the upper limit: %q", got)
 	}
 	bands[0].Status, bands[2].Status, bands[5].Status = ionomaps.Absorbed, ionomaps.Disturbed, ionomaps.Open
-	if got := propBandsSaid(bands); !strings.HasPrefix(got, "open on 20m; disturbed on 60m; absorbed on 160m; above the upper limit on 80, 40, 30") {
+	if got := propanswers.BandsSaid(bands); !strings.HasPrefix(got, "open on 20m; disturbed on 60m; absorbed on 160m; above the upper limit on 80, 40, 30") {
 		t.Errorf("open, disturbed and closed bands: %q", got)
 	}
-	if got := listWords([]string{"a"}); got != "a" {
+	if got := propanswers.List([]string{"a"}); got != "a" {
 		t.Errorf("one item listed: %q", got)
 	}
 }

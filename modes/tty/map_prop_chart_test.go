@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"regexp"
 	"strings"
 	"testing"
@@ -52,16 +53,16 @@ func workChart(t *testing.T, d Dashboard) Dashboard {
 func TestTheContinentsAreTheDefaultTargets(t *testing.T) {
 	d := chartDash(t)
 	c := d.mapPane.propChart
-	if c.err != nil || len(c.targets) != len(propContinents) {
-		t.Fatalf("the chart holds %d targets (%v); want the %d continents", len(c.targets), c.err, len(propContinents))
+	if c.err != nil || len(c.targets) != len(propanswers.Continents) {
+		t.Fatalf("the chart holds %d targets (%v); want the %d continents", len(c.targets), c.err, len(propanswers.Continents))
 	}
 	for i, a := range c.targets {
 		bands := a.Bands
 		if len(bands) != len(hfBands) {
-			t.Fatalf("%s has %d bands; want %d", propContinents[i].name, len(bands), len(hfBands))
+			t.Fatalf("%s has %d bands; want %d", propanswers.Continents[i].Name, len(bands), len(hfBands))
 		}
-		if l := bands[0].Limit; l != ionomaps.LimitMUF && l != ionomaps.LimitAbsorption && l != ionomaps.LimitCircuit && !propContinents[i].near(c.key.origin, c.key.radiusKm) {
-			t.Errorf("%s's 160m names limit %v; a path's is its MUF, or the lower limit's (D-70)", propContinents[i].name, l)
+		if l := bands[0].Limit; l != ionomaps.LimitMUF && l != ionomaps.LimitAbsorption && l != ionomaps.LimitCircuit && !propanswers.Continents[i].Near(c.key.origin, c.key.radiusKm) {
+			t.Errorf("%s's 160m names limit %v; a path's is its MUF, or the lower limit's (D-70)", propanswers.Continents[i].Name, l)
 		}
 	}
 	block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n"))
@@ -106,7 +107,7 @@ func TestTheDaysOpenHoursAreShown(t *testing.T) {
 		cells = cells[len(cells)-47:] // 24 hours, a space between each
 		for h := range 24 {
 			at := d.mapPane.propChart.key.hour.UTC().Truncate(24 * time.Hour).Add(time.Duration(h) * time.Hour)
-			if want := openAt(b.OpenHours, at); (cells[2*h] == propOpenGlyph) != want {
+			if want := propanswers.OpenAt(b.OpenHours, at); (cells[2*h] == propOpenGlyph) != want {
 				t.Errorf("%s at %02d UTC is drawn %q; typically open: %v", hfBands[i].name, h, cells[2*h], want)
 			}
 		}
@@ -158,7 +159,7 @@ func TestTheOriginFollowsTheUIMode(t *testing.T) {
 	d := chartDash(t)
 	centre, _ := d.propCentreAt()
 	if o := d.mapPane.propChart.key.origin; o != centre || d.mapPane.propOrigin.name != d.viewName() {
-		t.Fatalf("Observer's chart answers from %v (%q); the centre is %v (%q)", o, d.mapPane.propOrigin.name, centre, d.viewName())
+		t.Fatalf("Observer's chart rows from %v (%q); the centre is %v (%q)", o, d.mapPane.propOrigin.name, centre, d.viewName())
 	}
 	moved := pressMap(t, d, "right")
 	moved = settled(t, moved.renderMap()) // asked once the view stands still (P-1)
@@ -217,7 +218,7 @@ func TestAnswersNeverBlockTheUI(t *testing.T) {
 	if _, again := d.armPropChart(); again != nil {
 		t.Error("the chart was asked twice for the same snapshot and place")
 	}
-	older := propChartMsg{chart: propChart{key: propChartKey{radiusKm: 1}, targets: make([]ionomaps.Answer, len(propContinents))}}
+	older := propChartMsg{chart: propChart{key: propChartKey{radiusKm: 1}, targets: make([]ionomaps.Answer, len(propanswers.Continents))}}
 	if m, _ := d.Update(older); len(m.(Dashboard).mapPane.propChart.targets) != 0 {
 		t.Error("an answer to an older ask was kept over the one asked for")
 	}
@@ -268,7 +269,7 @@ func TestTheNearVerticalRadiusIsASetting(t *testing.T) {
 	}
 	d = workChart(t, d)
 	if got := d.mapPane.propChart.key.radiusKm; got != 600 {
-		t.Errorf("the chart answers for %v km; the Setting says 600", got)
+		t.Errorf("the chart rows for %v km; the Setting says 600", got)
 	}
 	block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n"))
 	if !strings.Contains(block, "Local, to ~600 km (NVIS)") {

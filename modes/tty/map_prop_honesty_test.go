@@ -8,6 +8,7 @@ package tty
 
 import (
 	"errors"
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"strings"
 	"testing"
 	"time"
@@ -26,19 +27,19 @@ import (
 // Broadcaster's target box long.
 func TestTheBestFrequencyIsNamed(t *testing.T) {
 	for _, c := range []struct {
-		l           propLimits
+		l           propanswers.Limits
 		short, long string
 	}{
-		{propLimits{upper: 17.6, luf: 6.2}, "best ~15.0 (20m)", "best ~15.0 MHz (20m), 85% of the MUF"},
-		{propLimits{upper: 6}, "best ~5.1 (80m)", "best ~5.1 MHz (80m), 85% of the MUF"},
-		{propLimits{upper: 18.5, luf: 18.5}, "none serves", "no frequency serves on this path"},
-		{propLimits{upper: 6, luf: 4.2}, "none serves", "no frequency serves on this path"},
-		{propLimits{}, "", ""},
+		{propanswers.Limits{Upper: 17.6, LUF: 6.2}, "best ~15.0 (20m)", "best ~15.0 MHz (20m), 85% of the MUF"},
+		{propanswers.Limits{Upper: 6}, "best ~5.1 (80m)", "best ~5.1 MHz (80m), 85% of the MUF"},
+		{propanswers.Limits{Upper: 18.5, LUF: 18.5}, "none serves", "no frequency serves on this path"},
+		{propanswers.Limits{Upper: 6, LUF: 4.2}, "none serves", "no frequency serves on this path"},
+		{propanswers.Limits{}, "", ""},
 	} {
-		if got := propBestWords(c.l, false); got != c.short {
+		if got := propanswers.BestWords(c.l, false); got != c.short {
 			t.Errorf("%+v: the row says %q; want %q", c.l, got, c.short)
 		}
-		if got := propBestWords(c.l, true); got != c.long {
+		if got := propanswers.BestWords(c.l, true); got != c.long {
 			t.Errorf("%+v: the box says %q; want %q", c.l, got, c.long)
 		}
 	}
@@ -73,11 +74,11 @@ func TestEachRowShowsItsNearestStation(t *testing.T) {
 	c.targets[0].Nearest = ionomaps.Nearest{Known: true, Km: 350}
 	c.targets[1].Nearest = ionomaps.Nearest{Known: true, Km: 2900}
 	text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
-	if !strings.Contains(text, "▓ "+propContinents[0].name) || !strings.Contains(text, "░ "+propContinents[1].name) || !strings.Contains(text, "nearest station: ▓ <500 km") {
+	if !strings.Contains(text, "▓ "+propanswers.Continents[0].Name) || !strings.Contains(text, "░ "+propanswers.Continents[1].Name) || !strings.Contains(text, "nearest station: ▓ <500 km") {
 		t.Errorf("the rows' shades or their key are not drawn:\n%s", text)
 	}
 	words := d.close().describeLinesAll()
-	near, far := words[lineWith(words, propContinents[0].name+": ")], words[lineWith(words, propContinents[1].name+": ")]
+	near, far := words[lineWith(words, propanswers.Continents[0].Name+": ")], words[lineWith(words, propanswers.Continents[1].Name+": ")]
 	if !strings.Contains(near, "nearest station ") || strings.Contains(near, "about as good as typical") || !strings.HasSuffix(far, "away, about as good as typical.") {
 		t.Errorf("the words do not say each row's nearest station:\n%s\n%s", near, far)
 	}

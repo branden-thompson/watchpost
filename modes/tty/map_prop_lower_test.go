@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"strings"
 	"testing"
 
@@ -42,7 +43,7 @@ func TestAClosedBandIsDrawnByItsKind(t *testing.T) {
 			t.Errorf("the legend does not say %q:\n%s", want, text)
 		}
 	}
-	if w := propLimitWords([]ionomaps.BandStatus{{Status: ionomaps.Weak, Limit: ionomaps.LimitCircuit, LimitMHz: 9}, {Status: ionomaps.Disturbed, Limit: ionomaps.LimitDRAP, LimitMHz: 3}, {Status: ionomaps.Open, Limit: ionomaps.LimitMUF, LimitMHz: 18}}, " MHz"); w != "MUF 18.0 MHz · LUF 9.0 MHz · D-RAP 3.0 MHz" {
+	if w := propanswers.LimitWords([]ionomaps.BandStatus{{Status: ionomaps.Weak, Limit: ionomaps.LimitCircuit, LimitMHz: 9}, {Status: ionomaps.Disturbed, Limit: ionomaps.LimitDRAP, LimitMHz: 3}, {Status: ionomaps.Open, Limit: ionomaps.LimitMUF, LimitMHz: 18}}, " MHz"); w != "MUF 18.0 MHz · LUF 9.0 MHz · D-RAP 3.0 MHz" {
 		t.Errorf("a row's limits read %q; the upper, then the LUF, then D-RAP's", w)
 	}
 }

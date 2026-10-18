@@ -1007,13 +1007,13 @@ code{font-family:var(--mono);font-size:.92em}
 </pre></div></article><article class="dia" id="propagation-overlays-1"><div class="meta"><h3>Opening the mode</h3><p class="file"><code>06_docs/02_features/propagation-overlays/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
   participant L as Listener
   participant W as Propagation mode (UI goroutine)
-  participant A as app/mapprop.go
+  participant A as platform/propanswers
   participant P as domains/propagation (the update&#39;s one owner)
   participant I as go-ionomaps
   participant N as GIRO / NOAA
   L-&gt;&gt;W: the mode&#39;s key
   W-&gt;&gt;W: acknowledgement seen? if not, show it (Enter/Esc)
-  W-&gt;&gt;P: PropagationUpdate(): start, or join the running update
+  W-&gt;&gt;P: PropagationUpdate(): an update of its own (go-ionomaps runs one at a time, C-2)
   Note over P: its own context and a 60 s deadline; a keypress never cancels it; closing the mode does
   P-&gt;&gt;I: Update(ctx)
   I-&gt;&gt;I: throttle (D-39): a cancelled burst still spends the hour; too soon, answer from the last field
@@ -1027,9 +1027,9 @@ code{font-family:var(--mono);font-size:.92em}
   N--&gt;&gt;I: replies
   I--&gt;&gt;P: Snapshot 2: the stations up to an hour old assimilated (D-184)
   P--&gt;&gt;W: snapshot ready (Computed, inputs&#39; times, stations)
-  W-&gt;&gt;A: PropagationAnswers(snapshot, ask): off the UI goroutine
-  A-&gt;&gt;A: overlays (the hour on screen), best bands, reach, words; memo keyed on every input
-  A--&gt;&gt;W: frames and words
+  W-&gt;&gt;A: propanswers.WorkChart / WorkCentre (snapshot, ask): in a command, off the UI goroutine
+  A-&gt;&gt;A: best bands for the origin&#39;s area and each target, the centre&#39;s, limits and words
+  A--&gt;&gt;W: rows and words, kept under a key of everything they came from
   W--&gt;&gt;L: the picture or the words
   Note over W,P: while open, the refresh tick (10 min default) or the refresh-now key starts the next update
 </pre></div></article></section></main>

@@ -5,6 +5,7 @@ package tty
 // outlook of a storm to come, and a missing feed said, never level 0.
 
 import (
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"strconv"
 	"strings"
 
@@ -105,7 +106,7 @@ func propScalesWords(s ionomaps.Scales) string {
 	}
 	parts := propScaleParts(s, true)
 	if o := propOutlookParts(s, true); len(o) > 0 {
-		parts = append(parts, "NOAA expects "+listWords(o))
+		parts = append(parts, "NOAA expects "+propanswers.List(o))
 	}
 	if len(parts) == 0 {
 		return ""

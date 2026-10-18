@@ -17,3 +17,5 @@ says exactly what passed.
 | 2026-10-17T20:29:24Z | a4989670 | 0ef64003e32a | verify | green | 2342 |
 | 2026-10-17T22:09:50Z | c5e56294 | 6380fa151680 | verify | green | 2397 |
 | 2026-10-17T23:02:29Z | 84d74514 | ea1c08095f2a | verify | green | 2287 |
+| 2026-10-17T23:30:39Z | 5691d77e | 2b8dadd59caf | verify | FAILED (exit 2) | 262 |
+| 2026-10-18T00:11:02Z | 5691d77e | 6975eb630d58 | verify | green | 2311 |

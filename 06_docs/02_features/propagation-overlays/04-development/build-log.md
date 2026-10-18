@@ -521,3 +521,14 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Mutants:** m435 to m439, each killed.
 - **Docs:** A-69; FR-1.21; the plan's W4.8.
 
+## Batch 41 - W6.4, the answers a package of their own, a found place a target (A-70)
+
+- **D-212 (L-F1):** the architecture named an answers seam that W5 never built - the chart's, the centre's and the limits' working-out lived in the window, the chart's targets a fixed list. They are `platform/propanswers` now: the snapshot and an ask (the origin, the radius, the targets) to rows, limits and words. The window calls it in a command as before; a later mode asks it with targets of its own. The moved code kept its tests; twenty mutants were re-pointed at it and each is killed.
+- **Found moving it:** the package was first written under `domains/propagation`, which the window may not import; it is a platform package, holding no state and fetching nothing. And a local variable the chart and the words called `answers` would have shadowed it; it is `rows`.
+- **D-204 (B-F1, Critical):** on the Observer a found place was centred and so became the origin, where FR-1.9 and M5 make it a target. It is the chart's last row now, answered from the origin, and the map stays where it is; on the Broadcaster a find is centred, as before.
+- **L-F8:** the answers read each band by the band it names, never by its place in a list; two test fixtures that named no band name them now, as go-ionomaps does.
+- **Tests:** `TestTheTargetsAreAnInput`, `TestBandsAreReadByName` in the package; `TestAFoundPlaceIsAnsweredAndNotKept` rewritten for D-204; `TestTheCentreIsNamedWhereverItIs` pans onto the place it found.
+- **P10 found the new package at 0.50 checks a function:** the code had moved from the window, under its density row, to a package with none. It checks its boundary now - radii, every coordinate on the globe and not a number, a frequency that is none - and answers empty input at once; `TestAnAskOffTheGlobeIsRefused` holds each check (m445 to m448).
+- **Mutants:** m440 to m448 new; m190, m193 to m195, m197, m216, m222, m228, m231, m242, m243, m245, m271 to m275, m341, m342 and m347 re-pointed.
+- **Docs:** A-70; FR-1.9 and FR-1.10 as built; the architecture's seam row and diagram, and the atlas re-rendered from it (the gate found it stale); the plan's W6.4.
+

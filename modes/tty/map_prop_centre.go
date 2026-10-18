@@ -9,7 +9,7 @@ import (
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
-	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/propanswers"
 )
 
 // propCentreStep is how finely the centre is answered: half a degree, so a
@@ -74,20 +74,11 @@ func (d Dashboard) propCentreWanted() (propCentreKey, bool) {
 // what it is worked out from has changed.
 func (d Dashboard) armPropCentre() (Dashboard, tea.Cmd) { return d.armAnswer(answerCentre) }
 
-// workPropCentre is the centre's answer: within the near-vertical radius of
-// the place, the area's; farther, the path's.
+// workPropCentre is the centre's answer off the UI goroutine: the answers
+// package's (D-212).
 func workPropCentre(snap ionomaps.Snapshot, key propCentreKey) propCentre {
-	c := propCentre{key: key, km: geo.HaversineKM(key.origin.Lat, key.origin.Lon, key.centre.Lat, key.centre.Lon)}
-	var got []ionomaps.Answer
-	if c.km <= key.radiusKm {
-		got, c.err = snap.Bands([]ionomaps.LatLon{key.origin}, key.radiusKm)
-	} else {
-		got, c.err = snap.Path(key.origin, []ionomaps.LatLon{key.centre})
-	}
-	if c.err == nil && len(got) == 1 {
-		c.bands, c.nearest = got[0].Bands, got[0].Nearest
-	}
-	return c
+	got, err := propanswers.WorkCentre(snap, key.origin, key.centre, key.radiusKm)
+	return propCentre{key: key, bands: got.Bands, nearest: got.Nearest, km: got.Km, err: err}
 }
 
 // propCentreLines are the Broadcaster's answer for the centre, the target

@@ -2,9 +2,11 @@ package tty
 
 // map_prop_find.go — finding a place in the Propagation mode (0.19.0 W5.3,
 // FR-1.10; D-25, D-27, D-61, D-79): a city, a ZIP, coordinates or a grid
-// locator, anywhere on the globe. The place found is centred - so the
-// centre's answer is its answer (D-193) - marked, and said; it is never
-// kept, and can always be found again (D-27). Focus returns to the map.
+// locator, anywhere on the globe. The place found is marked and said; on the
+// Observer it joins the chart as a target, answered from the origin, and the
+// map stays where it is; on the Broadcaster it is centred, its target being
+// the centre (D-193, D-204). It is never kept, and can always be found again
+// (D-27). Focus returns to the map.
 
 import (
 	tea "charm.land/bubbletea/v2"
@@ -107,8 +109,9 @@ func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 // applyPropFound takes a find's answer: a failure is said in the entry,
-// which stays open to change what was typed; a place is marked and centred,
-// the entry closes and the map has the focus again.
+// which stays open to change what was typed; a place is marked, and centred
+// on the Broadcaster alone (D-204); the entry closes and the map has the
+// focus again.
 func (d Dashboard) applyPropFound(v propFoundMsg) (tea.Model, tea.Cmd) {
 	if v.seq != d.mapPane.propFindSeq {
 		return d, nil // a later find's answer is the one wanted
@@ -123,7 +126,7 @@ func (d Dashboard) applyPropFound(v propFoundMsg) (tea.Model, tea.Cmd) {
 	if d.modal == modalPropFind {
 		d = d.close() // focus back on the map (FR-1.10)
 	}
-	if m := d.mapPane.m; m != nil {
+	if m := d.mapPane.m; m != nil && d.propRole().target { // the Broadcaster's target is the centre; on the Observer the place is a target row and the map stays (D-204)
 		d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: ref.Lon, Lat: ref.Lat}) })
 	}
 	d, settle := d.viewMoved()
@@ -163,6 +166,9 @@ func (d Dashboard) propFoundWords() string {
 	f := d.mapPane.propFound
 	if f == nil {
 		return ""
+	}
+	if !d.propRole().target {
+		return "Found " + f.Label + ": marked on the map and answered with the targets, and not kept." // a target row, the map where it was (D-204)
 	}
 	if c, ok := d.propCentreAt(); ok && propStepped(f.Lat, f.Lon) != c {
 		return "Found " + f.Label + ": marked on the map, and not kept." // panned away: the centre is another place (AX-1)
