@@ -114,12 +114,15 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 	d.mapPane.gen++
 	if propHasField(v.res.Snapshot) {
 		snap := v.res.Snapshot
+		same := d.mapPane.propSnap != nil && sameSnapshot(*d.mapPane.propSnap, snap) && d.mapPane.propSnapCorrect == v.correct
 		d.mapPane.propSnap, d.mapPane.propSnapCorrect = &snap, v.correct
-		d.mapPane.propBuilt++ // a snapshot rebuilt at the same moment - the correction, the stations - is another (L-F3)
 		if snap.Offset.Measured {
 			d.problem(propOffsetWords(snap.Offset)) // the diagnostics' record of each live offset (FR-5.4)
 		}
-		d.mapPane.propAheadSnaps, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
+		if !same { // a refresh answered too soon is the snapshot held: its answers and hours ahead stand (P-4)
+			d.mapPane.propBuilt++                                       // a snapshot rebuilt at the same moment - the correction, the stations - is another (L-F3)
+			d.mapPane.propAheadSnaps, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
+		}
 		if snap.Reason != ionomaps.StationsNext {
 			d.mapPane.propSess.applied++ // GIRO's stations, asked at once, complete the first answer (FR-3.6)
 		}
@@ -134,6 +137,12 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		return nd.nextPropTick()
 	}
 	return d.setProp().renderMap().nextPropTick()
+}
+
+// sameSnapshot reports whether a snapshot is the one held: of the same moment
+// and made with the same options, as a refresh answered too soon is.
+func sameSnapshot(held, got ionomaps.Snapshot) bool {
+	return held.Computed.Equal(got.Computed) && held.Noise == got.Noise && held.Inputs.NoStations == got.Inputs.NoStations
 }
 
 // nextPropTick sets the session's next refresh tick by the Setting (FR-4.10,

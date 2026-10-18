@@ -358,3 +358,26 @@ func TestAPanAsksOnceItSettles(t *testing.T) {
 		t.Error("the chart was not asked once the view stood still")
 	}
 }
+
+// TestARefreshAnsweredTooSoonKeepsItsAnswers is the BUILD red team's P-4: a
+// refresh answered too soon hands back the snapshot held - its moment and its
+// options - and its answers and hours ahead stand, never worked out again; a
+// snapshot rebuilt with other options is another.
+func TestARefreshAnsweredTooSoonKeepsItsAnswers(t *testing.T) {
+	d := stepAhead(t, chartDash(t), "shift+right")
+	if len(d.mapPane.propAheadSnaps) == 0 {
+		t.Fatal("control: no hour ahead is worked out")
+	}
+	built := d.mapPane.propBuilt
+	again := *d.mapPane.propSnap
+	again.Reason = ionomaps.TooSoon
+	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: again}, correct: d.mapPane.propSnapCorrect})
+	d = m.(Dashboard)
+	if d.mapPane.propBuilt != built || len(d.mapPane.propAheadSnaps) == 0 {
+		t.Errorf("a refresh answered too soon counted as another snapshot (built %d, was %d) or dropped the hours ahead (%d)", d.mapPane.propBuilt, built, len(d.mapPane.propAheadSnaps))
+	}
+	m, _ = d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: again}, correct: !d.mapPane.propSnapCorrect})
+	if d = m.(Dashboard); d.mapPane.propBuilt == built || len(d.mapPane.propAheadSnaps) != 0 {
+		t.Error("a snapshot rebuilt with the correction switched is kept as the one held")
+	}
+}

@@ -71,7 +71,9 @@ var (
 
 // WorkChart works a chart out (W5.1): the near-vertical area's bands, and
 // each target's path from the origin - within the area, the area's answer.
-// It takes about 5 ms; a caller keeps it off the UI goroutine (FR-1.17).
+// It takes about 21 ms on an Apple M5 Pro, most of it the bands' typical
+// day (BenchmarkTheChartIsWorkedOut); a caller keeps it off the UI goroutine
+// (FR-1.17).
 func WorkChart(snap ionomaps.Snapshot, ask Ask) (Chart, error) {
 	if !(ask.RadiusKm >= 0) {
 		return Chart{}, ErrAsk

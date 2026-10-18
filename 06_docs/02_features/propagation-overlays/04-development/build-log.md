@@ -544,3 +544,11 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Mutants:** m449 to m453 new; mAG3, mRT2, m305 and m110 re-pointed.
 - **Docs:** A-71; FR-3.1 and FR-10.2 as built; the plan's W9.3; the README.
 
+## Batch 43 - W6.5, the answers' figures, and a too-soon refresh keeps its answers (A-72)
+
+- **P-4:** FR-1.17 cited 4.4 ms, a figure from the dry run's spike with placeholder formulas, and a comment said about 5 ms. Measured on an Apple M5 Pro, the chart takes about 21 ms and the centre about 8 ms (`BenchmarkTheChartIsWorkedOut`, `BenchmarkTheCentreIsWorkedOut`, three runs each); both are worked out off the UI goroutine, the centre's once the view settles (P-1).
+- **P-4's waste:** every refresh, even one answered too soon with the snapshot held, counted as another snapshot, so every answer and every hour ahead (about 35 ms each) was worked out again. A snapshot of the same moment and options is the one held now.
+- **Tests:** `TestARefreshAnsweredTooSoonKeepsItsAnswers`; the two benchmarks.
+- **Mutants:** m454 new; m430 re-pointed.
+- **Docs:** A-72; FR-1.17 as measured; the plan's W6.5.
+
