@@ -598,3 +598,11 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 ## Docs after batch 47 - the BUILD report
 
 - **`08-reports/build-report.md`**, presented to the HUM LEAD: what was built, round 1's remediation, the metrics at BUILD exit with what a floor miss would remove (D-208), the agent's errors, what REVIEW inherits, and the rulings asked.
+
+## Docs after the BUILD report - red team round 2 (D-225)
+
+- **Four blind reviewers** looked at `559f22db`, `2436c8a` and `228d6f7`. All four say do not exit BUILD, with no Critical. Round 1's closure, what the remediation itself brought in, the forks and the remediation's order are in `08-reports/red-team-build.md`, "Round 2"; the notes are in `reviewer-notes/build-round-2.md`.
+- **The agent's errors this round found:**
+  - **The BUILD report** misstated floor 2. The hours ahead are the climatology, so that floor is met by construction. The report also left out D-217's PS-1 sentence, and claimed hosted CI was read after every push when several runs were cancelled by the next push.
+  - **Batch 45** renamed `reservoir.offer` and added guards to satisfy P10's analysers, which D-215 forbids.
+  - **The remediation** carried D-205 into the library but not into watchpost's words.
