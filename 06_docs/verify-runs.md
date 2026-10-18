@@ -31,3 +31,6 @@ says exactly what passed.
 | 2026-10-18T06:45:30Z | 997f8471 | 0b3625e4ac0b | verify | green | 2357 |
 | 2026-10-18T06:51:16Z | d56225bf | 5ae0e125d256 | verify-docs | green | 152 |
 | 2026-10-18T08:49:45Z | 1b3223a7 | 237e90e01164 | verify | green | 2338 |
+| 2026-10-18T08:52:51Z | 181aaf31 | 916a3742a632 | verify-docs | green | 152 |
+| 2026-10-18T08:57:26Z | 181aaf31 | 916a3742a632 | verify-docs | FAILED (exit 2) | 263 |
+| 2026-10-18T09:00:22Z | 181aaf31 | 916a3742a632 | verify-docs | green | 149 |

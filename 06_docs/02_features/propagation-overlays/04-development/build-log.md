@@ -594,3 +594,7 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **The instrument:** `-strata band` with 80 of each outcome per band is now the default. `-strata band-hour -k 10` still gives D-219's first draw, so the dry run's first figures can be reproduced.
 - **Tests:** `TestTheDefaultDrawIsByBand`. **Mutants:** m471 new, killed.
 - **Docs:** D-224; the instrument page (section B amended, fork E ruled, the draw's setting); the plan's W10.3.
+
+## Docs after batch 47 - the BUILD report
+
+- **`08-reports/build-report.md`**, presented to the HUM LEAD: what was built, round 1's remediation, the metrics at BUILD exit with what a floor miss would remove (D-208), the agent's errors, what REVIEW inherits, and the rulings asked.
