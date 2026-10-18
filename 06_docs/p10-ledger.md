@@ -9,7 +9,7 @@
 
 **It is generated.** Add a row by ratifying it with the HUM LEAD, writing it to the ledger, re-running `scripts/quality/p10-ledger-mirror.py`, and running `scripts/quality/lint-ledger.sh`. The generator refuses to write a row carrying an absolute path, a harness path, an A2DH skill path, an internal project tree, or an email address — and the lint refuses the file if one ever gets in another way.
 
-**162 rows.**
+**163 rows.**
 
 ## P10-00-BUILD-COVERAGE (1)
 
@@ -17,7 +17,7 @@
 |---|---|---|---|
 | `app/dump_windows.go` | `package` | 2026-10-05 | Compiled only for Windows (//go:build windows): a no-op dump trigger and the [S] modal's one-line hint, since Windows has no SIGUSR1. The analysers do not see it under darwin; run under GOOS=windows GOARCH=amd64 they report nothing for it beyond the app package's existing density row. As go-tuiMaps D-21 and D-138 did for their platform files. Observer-maps D-248. RATIFIED by the HUM LEAD 2026-10-05 ("Guards, then ratify the rest"). |
 
-## P10-01-CONTROL-FLOW (33)
+## P10-01-CONTROL-FLOW (34)
 
 | File | Symbol | Ratified | Reason |
 |---|---|---|---|
@@ -54,6 +54,7 @@
 | `modes/tty/router.go` | `Router.keyAction` | 2026-09-16 | RE-KEYED 2026-10-03 to the checker's Receiver.Name key (W14 S-2); the finding and its reason unchanged. RATIFIED by the HUM LEAD 2026-10-03 ("Ratify all ten"). A NAME-GRAPH ARTEFACT, NOT RECURSION, and it was proven rather than asserted: `r.surface()` returns the `surfaceView` interface, whose only implementers are Broadcaster and Dashboard, and NEITHER HOLDS A ROUTER FIELD — so no cycle exists for the call graph to close. The checker matches on METHOD NAME, and the Elm/Bubble Tea architecture this console is built on names the delegating method the same thing at every level: a Router's Update calls a surface's Update. Same class as the ratified platform/sched Now/After and locations Resolve rows. Verified independently by a blind agent at 0.16.0 BUILD exit, which walked the full 221-line body and confirmed `update` never calls itself. RATIFIED by the HUM LEAD 2026-09-16 ("recommendation approved" / "ratified"), after a blind second audit re-examined every candidate; recorded in 06_docs/02_features/0.16.0-broadcaster-ui/08-reports/red-team-build.md. |
 | `modes/tty/router.go` | `Router.throughToObserver` | 2026-09-16 | RE-KEYED 2026-10-03 to the checker's Receiver.Name key (W14 S-2); the finding and its reason unchanged. RATIFIED by the HUM LEAD 2026-10-03 ("Ratify all ten"). A NAME-GRAPH ARTEFACT, NOT RECURSION, and it was proven rather than asserted: `r.surface()` returns the `surfaceView` interface, whose only implementers are Broadcaster and Dashboard, and NEITHER HOLDS A ROUTER FIELD — so no cycle exists for the call graph to close. The checker matches on METHOD NAME, and the Elm/Bubble Tea architecture this console is built on names the delegating method the same thing at every level: a Router's Update calls a surface's Update. Same class as the ratified platform/sched Now/After and locations Resolve rows. Verified independently by a blind agent at 0.16.0 BUILD exit, which walked the full 221-line body and confirmed `update` never calls itself. RATIFIED by the HUM LEAD 2026-09-16 ("recommendation approved" / "ratified"), after a blind second audit re-examined every candidate; recorded in 06_docs/02_features/0.16.0-broadcaster-ui/08-reports/red-team-build.md. |
 | `modes/tty/view.go` | `Dashboard.View` | 2026-09-16 | RE-KEYED 2026-10-03 to the checker's Receiver.Name key (W14 S-2); the finding and its reason unchanged. RATIFIED by the HUM LEAD 2026-10-03 ("Ratify all ten"). A NAME-GRAPH ARTEFACT, NOT RECURSION, and it was proven rather than asserted: `r.surface()` returns the `surfaceView` interface, whose only implementers are Broadcaster and Dashboard, and NEITHER HOLDS A ROUTER FIELD — so no cycle exists for the call graph to close. The checker matches on METHOD NAME, and the Elm/Bubble Tea architecture this console is built on names the delegating method the same thing at every level: a Router's Update calls a surface's Update. Same class as the ratified platform/sched Now/After and locations Resolve rows. Verified independently by a blind agent at 0.16.0 BUILD exit, which walked the full 221-line body and confirmed `update` never calls itself. RATIFIED by the HUM LEAD 2026-09-16 ("recommendation approved" / "ratified"), after a blind second audit re-examined every candidate; recorded in 06_docs/02_features/0.16.0-broadcaster-ui/08-reports/red-team-build.md. |
+| `platform/httpx/plain.go` | `countedConn.Read` | 2026-10-18 | countedConn.Read reads from the connection it wraps and counts the bytes - a same-named interface method on another type, not recursion (the tapReader.Read pattern). It is a net.Conn, so the method must be named Read. G1's downloads on the wire (0.19.0 W10.2, DN-12). Pinned by TestThePropagationClientCountsItsWireBytes and mutants m495, m496. 0.19.0 D-235. RATIFIED by the HUM LEAD 2026-10-18 ("Ratified"). |
 
 ## P10-02-BOUNDED-LOOPS (8)
 

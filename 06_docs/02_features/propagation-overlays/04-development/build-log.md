@@ -657,3 +657,7 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **P10:** P10-01 reads `countedConn.Read`, which calls the connection's `Read`, as recursion. That is the io.Reader adapter class the ledger already holds for `tapReader.Read`. A row is put to the HUM LEAD, not written (the ledger is edited only on ratification).
 - **Tests:** `TestThePropagationClientCountsItsWireBytes`, `TestThePropagationClientsWireBytesReachTheCounters`, `TestAG1RunIsTheDifferenceOfItsArms`. **Mutants:** m495 to m504 new, all killed.
 - **Docs:** A-79; the plan's W10.2; the BUILD report's G1 row and its errors.
+
+## Docs after batch 51 - D-235
+
+- **D-235:** the HUM LEAD ratified the P10-01 row for `countedConn.Read`. It is written in the ledger, and its mirror is regenerated.

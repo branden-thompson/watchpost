@@ -44,3 +44,5 @@ says exactly what passed.
 | 2026-10-18T21:32:11Z | e889e72a | 41412436bc8e | verify-docs | green | 150 |
 | 2026-10-18T21:58:13Z | 40c55306 | 91df9b7e292b | verify-docs | FAILED (exit 2) | 0 |
 | 2026-10-18T22:44:32Z | 40c55306 | f9278ba257db | verify | green | 2604 |
+| 2026-10-18T23:28:00Z | 9eedc35d | d19434492057 | verify-docs | FAILED (exit 2) | 146 |
+| 2026-10-18T23:30:56Z | 9eedc35d | 6fab22f2ebbc | verify-docs | green | 159 |
