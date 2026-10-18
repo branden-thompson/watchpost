@@ -178,12 +178,12 @@ func TestEachColumnIsFedAsItSays(t *testing.T) {
 		t.Errorf("the set answered: %+v", res)
 	}
 	var b bytes.Buffer
-	d := newDrawer(10, 1)
+	d := newDrawer(10, 1, true)
 	for _, s := range set {
 		d.offer(s)
 	}
 	facts := [columns]map[time.Time]hourFacts{}
-	if err := report(&b, reportOf{flags: scoreFlags{seed: 1, k: 10}, days: []time.Time{testDay}, set: set, counts: d.counts, res: res, facts: facts, rev: "test"}); err != nil {
+	if err := report(&b, reportOf{flags: scoreFlags{seed: 1, k: 10, strata: strataBandHour}, days: []time.Time{testDay}, set: set, counts: d.counts, res: res, facts: facts, rev: "test"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"## M1", "## M4", "| 40m | 1 (1 / 0 / 0) |", "| 20m | 1 (0 / 0 / 1) |", "Against the target (D-99)", "## The replay"} {

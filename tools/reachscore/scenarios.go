@@ -203,7 +203,8 @@ func sortedKeys(m map[string]ionomaps.LatLon) []string {
 	return out
 }
 
-// stratum is B1's stratum: the metric, the band and the UTC hour.
+// stratum is B1's stratum: the metric, the band and the UTC hour - the
+// hour -1 when the strata are by band alone.
 type stratum struct {
 	Metric metric
 	Band   ionomaps.Band
@@ -244,15 +245,17 @@ func (r *reservoir) keep(s scenario, k int, rng *rand.Rand) {
 // of each outcome, and per metric's band how many of each there were.
 type drawer struct {
 	k      int
+	byHour bool
 	rng    *rand.Rand
 	strata map[stratum]*[outcomes]reservoir
 	counts map[base]*[outcomes]int
 }
 
 // newDrawer is a drawer keeping at most k of each outcome a stratum, its
+// strata by band and UTC hour (D-219) or, byHour false, by band alone, its
 // draws fixed by the seed.
-func newDrawer(k int, seed uint64) *drawer {
-	return &drawer{k: max(k, 1), rng: rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15)),
+func newDrawer(k int, seed uint64, byHour bool) *drawer {
+	return &drawer{k: max(k, 1), byHour: byHour, rng: rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15)),
 		strata: map[stratum]*[outcomes]reservoir{}, counts: map[base]*[outcomes]int{}}
 }
 
@@ -264,7 +267,11 @@ func (d *drawer) offer(s scenario) {
 	if s.Metric >= metrics {
 		return
 	}
-	st, b := stratum{s.Metric, s.Band, s.At.Hour()}, base{s.Metric, s.Band}
+	hour := -1
+	if d.byHour {
+		hour = s.At.Hour()
+	}
+	st, b := stratum{s.Metric, s.Band, hour}, base{s.Metric, s.Band}
 	if d.strata[st] == nil {
 		d.strata[st] = &[outcomes]reservoir{}
 	}

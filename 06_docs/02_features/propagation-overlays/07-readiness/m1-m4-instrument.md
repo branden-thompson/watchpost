@@ -6,7 +6,8 @@ Up: [plan, W10.3](../04-development/implementation-plan.md) · [problem statemen
 climatology's agreement with WSPR, the shipped build's, and a column for the background alone (B-F7).
 This page is the instrument's design and, below, what was built. **Its four forks are ruled, each as
 recommended: A2 (D-218), B1 (D-219), C1 (D-220), D1 (D-221).** The instrument is built to them
-(`tools/reachscore`, batch 45, A-74); its dry run on PLAN's week comes next.
+(`tools/reachscore`, batch 45, A-74). **Its dry run on PLAN's week (below) misses both targets, and
+shows that B1 as ruled cannot grade M1:** a fork for the HUM LEAD.
 
 ## What is already fixed
 
@@ -157,3 +158,36 @@ PLAN kept begins on 2026-09-06, so the early days' F10.7 means average fewer tha
 names a square rather than a station: two stations in one square count as one, and a 4-character
 locator is a square about 110 by 170 km in the US. "Monitored" means monitored by the US receivers the query
 keeps.
+
+## The dry run: PLAN's week, B1 as ruled (2026-10-18)
+
+The run used `reachscore` at `997f8471` on a clean tree, with seed 19 and k = 10. Its inputs were 56 grids,
+39 GIRO replies, the solar file and 7 days' spots (seven requests to wspr.live, each answered 200). The
+inputs' checksum is `ade16837...db7ad`. Every column was fed as it says: no grid in the climatology's
+column, and on average 36 stations assimilated in the shipped build's.
+
+| | Scenarios | Climatology | Background | Shipped | The target (D-99) |
+|---|---|---|---|---|---|
+| M1 | 1594 (797 open, 399 weak, 398 unheard) | 50.4 % | 50.7 % | 50.4 % | 55.4 %: **missed** |
+| M4 | 1504 (752 open, 377 weak, 375 unheard) | 58.4 % | 60.7 % | 60.7 % | 63.4 %: **missed** |
+
+Open pairs are 7.4 % of M1's pairs and 4.0 % of M4's, which is the base rate. By kind, every column agrees
+with fewer than 40 % of the open pairs and with 72 to 91 % of the closed ones.
+
+**What M1's 50 % is.** The model behaves as the physics says. Over the served area, 40 m reaches by US
+day (15 to 21 UTC) and not at night. 80 m reaches at night and is absorbed at midday. 30 m and above
+never reach near-vertical: foF2 stays under 10 MHz. But within one hour a 161 km served area gets
+nearly one answer, and B1 balances open against closed **within each hour**. An answer that is constant
+within the hour therefore scores exactly 50 %, whichever way it falls. The scenarios show it: 40 m at
+15 UTC reaches 8 of 10 open pairs and 8 of 10 closed ones. So under B1 as ruled, **no model whose
+answer depends on band and hour can exceed the climatology by 5 points on M1**, and every model the
+product could use is one. M4 escapes in part, because its paths differ in length and direction within
+the hour.
+
+**What it is not.** Within an hour, what separates a pair heard from a pair unheard is the stations:
+their antennas, power, schedules and local noise. No ionospheric model can know that. The run shows
+the model neither right nor wrong on M1. It shows that B1 as ruled measures what the model cannot answer.
+
+The instrument can also draw its strata by band alone (`-strata band`), so the hours fall as they come
+and an answer that knows the hour can show it. A constant answer still scores 50 % within each band.
+The choice is put to the HUM LEAD with that run's figures.

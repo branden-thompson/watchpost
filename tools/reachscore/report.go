@@ -50,7 +50,7 @@ func report(w io.Writer, r reportOf) error {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "# M1 and M4, %s to %s\n\n", r.days[0].Format(time.DateOnly), r.days[len(r.days)-1].Format(time.DateOnly))
-	fmt.Fprintf(&b, "Tool: reachscore at %s; seed %d; at most %d of each outcome a stratum (band, UTC hour).\n", r.rev, r.flags.seed, r.flags.k)
+	fmt.Fprintf(&b, "Tool: reachscore at %s; seed %d; at most %d of each outcome a stratum, the strata by %s.\n", r.rev, r.flags.seed, r.flags.k, r.flags.strata)
 	fmt.Fprintf(&b, "Inputs: %d GloTEC grids, %d GIRO replies, the solar file, %d days' spots; sha256 of their checksums %s.\n", r.grids, r.stations, r.spotFiles, r.sum)
 	fmt.Fprintf(&b, "Reach: pairs at least %.0f km apart; M1's places within %.0f km of the tower, answered for that service radius; M4's transmitters within %.0f km of a continent's reference point, the listener answered with a %.0f km near-vertical radius.\n",
 		r.flags.r.SkyKm, r.flags.r.ServedKm, r.flags.r.RegionKm, r.flags.r.NearKm)

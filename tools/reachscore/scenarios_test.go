@@ -94,7 +94,7 @@ func TestTheStrongestSpotInTheWindowDecides(t *testing.T) {
 // counted for the base rate, and the draw fixed by its seed.
 func TestTheDrawIsBalancedSoAConstantScoresHalf(t *testing.T) {
 	feed := func(seed uint64) (*drawer, []scenario) {
-		d := newDrawer(10, seed)
+		d := newDrawer(10, seed, true)
 		for o, n := range []int{open: 30, weak: 5, unheard: 50} { // in a fixed order: the draw is fixed by its seed and the order offered
 			for j := range n {
 				d.offer(scenario{Metric: m1, At: scoredHour, Band: ionomaps.Band40m, Km: float64(j), Outcome: outcome(o)})
@@ -139,5 +139,44 @@ func TestTheDrawIsBalancedSoAConstantScoresHalf(t *testing.T) {
 	}
 	if !same || !differs {
 		t.Errorf("the draw: the same seed the same set %t, another seed another %t", same, differs)
+	}
+}
+
+// TestBandStrataKeepTheHoursSignal is why the strata are a choice: an
+// answer that knows only the hour - all a served area's answer can know
+// within it - scores exactly half under D-219's band-and-hour strata, which
+// balance each hour apart, and above half by band alone when the hours
+// differ.
+func TestBandStrataKeepTheHoursSignal(t *testing.T) {
+	night, day := scoredHour, scoredHour.Add(12*time.Hour)
+	knowsTheHour := func(s scenario) bool { return s.At.Equal(night) } // the band reaches at night only
+	score := func(byHour bool) (n, agree int) {
+		d := newDrawer(40, 3, byHour)
+		for j := range 40 {
+			at, o := night, open
+			if j%4 == 3 {
+				o = unheard // a night pair unheard now and then
+			}
+			d.offer(scenario{Metric: m4, At: at, Band: ionomaps.Band80m, Km: float64(j), Outcome: o})
+			d.offer(scenario{Metric: m4, At: day, Band: ionomaps.Band80m, Km: float64(j), Outcome: weak}) // closed by day
+			if j%4 == 0 {
+				d.offer(scenario{Metric: m4, At: day, Band: ionomaps.Band80m, Km: float64(j) + 0.5, Outcome: open})
+			}
+		}
+		set, err := d.set()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var tl tally
+		for _, s := range set {
+			tl.add(s.Outcome, knowsTheHour(s), false)
+		}
+		return tl.total()
+	}
+	if n, agree := score(true); n == 0 || 2*agree != n {
+		t.Errorf("by band and hour, the hour's answer agrees %d of %d; want exactly half", agree, n)
+	}
+	if n, agree := score(false); n == 0 || 10*agree < 7*n {
+		t.Errorf("by band alone, the hour's answer agrees %d of %d; want well above half", agree, n)
 	}
 }

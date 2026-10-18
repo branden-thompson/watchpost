@@ -251,8 +251,17 @@ type scoreFlags struct {
 	from, to                  string
 	seed                      uint64
 	k                         int
+	strata                    string
 	r                         reach
 }
+
+// The draw's strata: by band and UTC hour as D-219 rules, or by band
+// alone, the hours as they fall - which keeps the hour's signal, the one an
+// answer constant across a served area within the hour can carry.
+const (
+	strataBandHour = "band-hour"
+	strataBand     = "band"
+)
 
 // maxK is the most of each outcome a stratum may keep: past it the answers
 // take hours, and B1 needs tens.
@@ -278,6 +287,7 @@ func parseScoreFlags(args []string) (scoreFlags, error) {
 	fs.StringVar(&f.to, "to", "", "last UTC day, YYYY-MM-DD")
 	fs.Uint64Var(&f.seed, "seed", 19, "the draw's seed")
 	fs.IntVar(&f.k, "k", 10, "at most this many of each outcome a stratum")
+	fs.StringVar(&f.strata, "strata", strataBandHour, "the draw's strata: "+strataBandHour+" (D-219) or "+strataBand)
 	fs.Float64Var(&f.r.SkyKm, "sky-km", defaultSkyKm, "pairs nearer than this are the ground wave's, not drawn")
 	fs.Float64Var(&f.r.ServedKm, "served-km", defaultServedKm, "M1: the service radius, the served area's places within it")
 	fs.Float64Var(&f.r.RegionKm, "region-km", defaultRegionKm, "M4: a continent's region, transmitters within this of its reference point")
@@ -289,6 +299,9 @@ func parseScoreFlags(args []string) (scoreFlags, error) {
 		return f, errUsage
 	}
 	if f.k < 1 || f.k > maxK {
+		return f, errUsage
+	}
+	if f.strata != strataBandHour && f.strata != strataBand {
 		return f, errUsage
 	}
 	if !(f.r.SkyKm >= 0) || !(f.r.ServedKm > f.r.SkyKm) || !(f.r.RegionKm > 0) || !(f.r.NearKm > 0) || f.r.ServedKm > maxRadiusKm || f.r.NearKm > maxRadiusKm {
@@ -348,7 +361,7 @@ func drawDays(ds []time.Time, f scoreFlags) ([]scenario, *drawer, []string, erro
 	if f.k < 1 {
 		return nil, nil, nil, errUsage
 	}
-	d := newDrawer(f.k, f.seed)
+	d := newDrawer(f.k, f.seed, f.strata == strataBandHour)
 	var files []string
 	for _, day := range ds {
 		path := spotsFile(f.spots, day)

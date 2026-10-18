@@ -573,3 +573,12 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Tests:** the thirteen named in the plan's W10.3. **Mutants:** m456 to m469 new, all killed.
 - **Docs:** A-74; the plan's W10.3; the instrument page's "As built" and its diagram.
 
+
+## Batch 46 - W10.3, the M1/M4 dry run on PLAN's week, and the strata as an option (A-75)
+
+- **The dry run** (`reachscore` at `997f8471`, a clean tree): M1 50.4 % for the shipped build against the climatology's 50.4 %; M4 60.7 % against 58.4 %. Both miss D-99's +5 points. The figures and what they mean are in `07-readiness/m1-m4-instrument.md`, "The dry run".
+- **The finding:** B1 balances open against closed within each band and hour, and a served area's answer is nearly constant within the hour, so M1 scores 50 % for any model whose answer depends on band and hour. The scenarios show it (40 m at 15 UTC: 8 of 10 open pairs reached, 8 of 10 closed). It comes to the HUM LEAD as a fork.
+- **The strata as an option:** `-strata band` draws by band alone, so the two runs can be put side by side. D-219's band and hour stays the default.
+- **wspr.live:** seven requests, one a day, each answered 200 in 3 to 4 s, about 53 MB a day. The spots stay outside the tree with the PLAN evidence.
+- **Tests:** `TestBandStrataKeepTheHoursSignal`. **Mutants:** m470 new, killed.
+- **Docs:** A-75; the plan's W10.3; the instrument page's "The dry run".
