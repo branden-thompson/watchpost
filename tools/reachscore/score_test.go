@@ -53,3 +53,16 @@ func TestAColumnFedOtherwiseFailsTheRun(t *testing.T) {
 		}
 	}
 }
+
+// TestTheDefaultDrawIsByBand is D-224 (fork E): unless told otherwise the
+// draw is by band alone, 80 of each outcome a band - the size B1's ten
+// per band and hour made - and the strata are one of the two ruled.
+func TestTheDefaultDrawIsByBand(t *testing.T) {
+	f, err := parseScoreFlags([]string{"-inputs", "i", "-solar", "s", "-spots", "p", "-out", "o"})
+	if err != nil || f.strata != strataBand || f.k != 80 {
+		t.Errorf("the default draw: strata %q, k %d, %v; want %q and 80", f.strata, f.k, err, strataBand)
+	}
+	if _, err := parseScoreFlags([]string{"-inputs", "i", "-solar", "s", "-spots", "p", "-out", "o", "-strata", "hour"}); !errors.Is(err, errUsage) {
+		t.Errorf("strata by hour alone: %v; want errUsage", err)
+	}
+}

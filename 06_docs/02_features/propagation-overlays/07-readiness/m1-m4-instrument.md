@@ -6,8 +6,9 @@ Up: [plan, W10.3](../04-development/implementation-plan.md) · [problem statemen
 climatology's agreement with WSPR, the shipped build's, and a column for the background alone (B-F7).
 This page is the instrument's design and, below, what was built. **Its four forks are ruled, each as
 recommended: A2 (D-218), B1 (D-219), C1 (D-220), D1 (D-221).** The instrument is built to them
-(`tools/reachscore`, batch 45, A-74). **Its dry run on PLAN's week (below) misses both targets, and
-shows that B1 as ruled cannot grade M1:** a fork for the HUM LEAD.
+(`tools/reachscore`, batch 45, A-74). **Its dry run on PLAN's week (below) misses both targets under
+either draw. It showed that B1 as ruled cannot grade M1, so the graded run draws by band alone (fork E,
+D-224).**
 
 ## What is already fixed
 
@@ -63,6 +64,9 @@ mainland US and its served area the receivers within the service radius (D-195);
 listener and the six continents' reference points' regions (FR-1.9), so M4 tests the paths the chart
 answers. **Strongest counter-argument:** WSPR's stations are not where listeners and towers are, so the
 set measures WSPR's geography.
+
+**Amended by D-224 (fork E, below):** the graded run draws by band alone, balanced in each band, the
+hours as they fall; B1's band and hour strata grade no band-and-hour model on M1.
 
 ### C. How a chart answer is read as open or closed
 
@@ -150,7 +154,7 @@ figures:**
 | M1's served area | receivers 50 to 161 km from the tower, answered for a 161 km service radius | 161 km is the largest service radius ruled (100 mi); the default 25 mi (40 km) lies inside the ground wave's reach |
 | M4's targets | transmitters within 1000 km of a continent's reference point | the regions the chart's six targets stand for (FR-1.9) |
 | M4's listener | answered with the 400 km near-vertical radius | the Setting's default |
-| The draw | at most 10 of each outcome per stratum, seed 19 | B1 needs tens per stratum; the seed fixes the set |
+| The draw | by band alone, at most 80 of each outcome per band, seed 19 (D-224); `-strata band-hour -k 10` gives D-219's first draw | the size B1's ten per band and hour made; the seed fixes the set |
 
 **What the dry run cannot say.** PLAN's week kept no D-RAP table and no scales file, so every column
 lacks a disturbance: "disturbed" is never said, and C1's reading of it is not exercised. The solar file
@@ -222,7 +226,9 @@ REVIEW (D-221). What remains to rule now is the draw that graded run uses: the f
 | E3 | E2, **M1 graded on the bands near-vertical answers (160 m to 40 m)**, the rest reported | M1 is graded where the model makes a claim | narrows M1 after seeing the data |
 | E4 | B2, the base rate as it falls | agreement reads as accuracy in use | open is 4 to 7 % of pairs, so "always closed" scores 93 to 96 % and D-118's "no worse than climatology" applies: the target says little |
 
-**Recommended: E2**, with the per-band table that already shows which bands carry the grade.
+**Ruled E2 (D-224, "E2 band only (Rec.)"), amending D-219:** the graded run draws by band alone, and
+`-strata band` with 80 of each outcome per band is the instrument's default. The per-band table already
+shows which bands carry the grade.
 **Strongest counter-argument:** E3 is the honest reading of what near-vertical answers claim. E2 lets
 six bands at a forced 50 % dilute M1's grade. The cost of E3 is choosing M1's bands after seeing these
 figures, on the week the targets were set on.

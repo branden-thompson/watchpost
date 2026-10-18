@@ -255,9 +255,10 @@ type scoreFlags struct {
 	r                         reach
 }
 
-// The draw's strata: by band and UTC hour as D-219 rules, or by band
-// alone, the hours as they fall - which keeps the hour's signal, the one an
-// answer constant across a served area within the hour can carry.
+// The draw's strata: by band alone, the hours as they fall (D-224) - which
+// keeps the hour's signal, the one an answer constant across a served area
+// within the hour can carry - or by band and UTC hour, as D-219 first
+// ruled.
 const (
 	strataBandHour = "band-hour"
 	strataBand     = "band"
@@ -286,8 +287,8 @@ func parseScoreFlags(args []string) (scoreFlags, error) {
 	fs.StringVar(&f.from, "from", "", "first UTC day, YYYY-MM-DD")
 	fs.StringVar(&f.to, "to", "", "last UTC day, YYYY-MM-DD")
 	fs.Uint64Var(&f.seed, "seed", 19, "the draw's seed")
-	fs.IntVar(&f.k, "k", 10, "at most this many of each outcome a stratum")
-	fs.StringVar(&f.strata, "strata", strataBandHour, "the draw's strata: "+strataBandHour+" (D-219) or "+strataBand)
+	fs.IntVar(&f.k, "k", 80, "at most this many of each outcome a stratum")
+	fs.StringVar(&f.strata, "strata", strataBand, "the draw's strata: "+strataBand+" (D-224) or "+strataBandHour+" (D-219 as first ruled)")
 	fs.Float64Var(&f.r.SkyKm, "sky-km", defaultSkyKm, "pairs nearer than this are the ground wave's, not drawn")
 	fs.Float64Var(&f.r.ServedKm, "served-km", defaultServedKm, "M1: the service radius, the served area's places within it")
 	fs.Float64Var(&f.r.RegionKm, "region-km", defaultRegionKm, "M4: a continent's region, transmitters within this of its reference point")

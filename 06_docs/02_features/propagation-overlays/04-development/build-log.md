@@ -587,3 +587,10 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 
 - **The run** (`reachscore` at `d56225bf`, a clean tree, `-strata band -k 80`): M1 53.4 % in every column; M4 64.2 % for the climatology against 66.9 % for the shipped build. Neither draw reaches D-99's +5 points on either metric. The background alone carries M4's lead; the stations add about nothing.
 - **Fork E** (`07-readiness/m1-m4-instrument.md`): the draw the graded run on fresh days uses, put to the HUM LEAD.
+
+## Batch 47 - W10.3, the graded run's draw by band alone (D-224)
+
+- **The ruling:** fork E, "E2 band only (Rec.)" (D-224, amending D-219). The graded run on fresh days draws by band alone, balanced in each band, the hours as they fall.
+- **The instrument:** `-strata band` with 80 of each outcome per band is now the default. `-strata band-hour -k 10` still gives D-219's first draw, so the dry run's first figures can be reproduced.
+- **Tests:** `TestTheDefaultDrawIsByBand`. **Mutants:** m471 new, killed.
+- **Docs:** D-224; the instrument page (section B amended, fork E ruled, the draw's setting); the plan's W10.3.

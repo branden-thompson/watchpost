@@ -1,7 +1,7 @@
 package main
 
 // scenarios.go - the scenarios: each window's pairs given their outcome by
-// D-218 (A2), and the set drawn from them by D-219 (B1).
+// D-218 (A2), and the set drawn from them by D-219 (B1) as D-224 amends it.
 
 import (
 	"math/rand/v2"
@@ -252,7 +252,7 @@ type drawer struct {
 }
 
 // newDrawer is a drawer keeping at most k of each outcome a stratum, its
-// strata by band and UTC hour (D-219) or, byHour false, by band alone, its
+// strata by band and UTC hour (D-219) or, byHour false, by band alone (D-224), its
 // draws fixed by the seed.
 func newDrawer(k int, seed uint64, byHour bool) *drawer {
 	return &drawer{k: max(k, 1), byHour: byHour, rng: rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15)),
