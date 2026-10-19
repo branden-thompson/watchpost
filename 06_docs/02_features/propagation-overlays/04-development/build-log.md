@@ -661,3 +661,15 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 ## Docs after batch 51 - D-235
 
 - **D-235:** the HUM LEAD ratified the P10-01 row for `countedConn.Read`. It is written in the ledger, and its mirror is regenerated.
+
+## Batch 52 - REVIEW: G1's third arm (A-80); the graded M1/M4 run; G10.4's fetch
+
+- **The fresh days are fetched** (G10.4, D-132): 2026-10-12 to 10-17 under D-39, 87 requests, every one answered 200. That is 39 GIRO replies and 48 GloTEC grids, kept outside the tree, with NOAA's solar and geomagnetic indices beside them. F10.7 was 105 to 109, and no day reached Kp 5, so the week has no storm day.
+- **The graded M1/M4 run** (D-221), from a clean worktree of `2ecdaa36`, on the same days. M1: the shipped build 53.7 % against the climatology's 52.4 %, lead +1.3 [+0.4, +2.3], target 57.4 %, missed. M4: 68.4 % against 64.4 %, lead +4.0 [+2.6, +5.5], target 69.4 %, missed by 1.0 point. The climatology scored about the same on PLAN's week (53.4 %, 64.2 %). The figures and their reading are on the instrument page; the misses go to VALIDATE (D-118).
+- **G1's dry run** on the built binary, 8 minutes, 3-minute cycles. Every cycle's pan, hour step and frequency entry took effect, the frequency drawn each time; the arm with the mode never opened read nothing off the wire. Two things came of it:
+  - the summary read no downloads, because the poller's records were the launch's alone, so the driver's end record now counts (2.58 MB in those minutes);
+  - in its first minutes the use arm ran 78 MB above the arm with the map never opened, much of it the map's own. A third arm, the map open in Forecast mode, now measures the mode's own cost beside it, and `perfsum -g1 -against` names the comparison judged (A-80). D-236 ruled, before the 48-hour run's figures exist, that G1 is judged against the map open (J1), and `-against map` is the default.
+  - The third arm's first dry run failed its own check: it waited for the chip's "Radar Off", which the renderer redraws only where it changes, so the words never reached the pty whole. A capture of the switch showed the title "FORECAST MODE" drawn whole, and the driver now waits for that.
+- **The agent's error:** G10.4's instrument, the Go replica that scores G-M3, was not built at BUILD exit, and the BUILD report did not say so. The report's row is corrected; the instrument is go-ionomaps work before G-M3's verdict.
+- **Tests:** `TestAG1RunIsJudgedAgainstTheArmNamed`; `TestAG1RunIsTheDifferenceOfItsArms` updated. **Mutants:** m505 to m508 new, all killed; m501 and m503 re-pointed to the summary's new lines.
+- **Docs:** A-80; D-236; the instrument page's graded run; the BUILD report's G-M3 row and errors; the plan's W10.2.

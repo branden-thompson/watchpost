@@ -3,11 +3,12 @@
 // comparison reads: each phase's resources, and each timing's spread.
 //
 //	perfsum -in <run dir>
-//	perfsum -g1 <run dir>
+//	perfsum -g1 <run dir> [-against map|idle]
 //
-// -g1 reads a G1 run instead (0.19.0 W10.2; workload.sh g1): its two arms,
-// the Propagation mode in use and never opened, and their difference against
-// G1's targets (g1.go).
+// -g1 reads a G1 run instead (0.19.0 W10.2; workload.sh g1): the Propagation
+// mode in use against the map open and against the map never opened, each
+// difference against G1's targets, the one -against names judged: the map
+// open by default, as D-236 ruled (g1.go).
 //
 // Resources, per phase of phases.log, from samples.csv (soak.sh):
 //   - CPU % is the change in cumulative CPU time over the phase's span, from
@@ -56,7 +57,8 @@ func run(args []string, out, errOut io.Writer) int {
 	fs := flag.NewFlagSet("perfsum", flag.ContinueOnError)
 	fs.SetOutput(errOut)
 	in := fs.String("in", "", "the run's directory")
-	g1 := fs.String("g1", "", "a G1 run's directory: its use and idle arms")
+	g1 := fs.String("g1", "", "a G1 run's directory: its use, map and idle arms")
+	against := fs.String("against", "map", "-g1: the arm G1 is judged against, map (D-236) or idle")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -66,7 +68,8 @@ func run(args []string, out, errOut io.Writer) int {
 	}
 	sum := summarise
 	if *g1 != "" {
-		sum, *in = summariseG1, *g1
+		sum = func(dir string) (string, int, error) { return summariseG1(dir, *against) }
+		*in = *g1
 	}
 	s, lost, err := sum(*in)
 	if err != nil {

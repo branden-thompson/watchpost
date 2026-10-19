@@ -6,6 +6,7 @@
 #   workload.expect session <outdir> <phase_minutes> <binary> <counters_url>
 #   workload.expect cold    <outdir> <run_n>         <binary> <counters_url>
 #   workload.expect g1-use  <outdir> <minutes>       <binary> <counters_url> <cycle_minutes>
+#   workload.expect g1-map  <outdir> <minutes>       <binary> <counters_url> <cycle_minutes>
 #   workload.expect g1-idle <outdir> <minutes>       <binary> <counters_url> <cycle_minutes>
 #
 # 149x38: the plan's M5 size (W2.9). Phase changes go to <outdir>/phases.log
@@ -62,6 +63,27 @@ if {$mode eq "g1-use"} {
     } timeout {
       phase $lf "U$i WARN: [lindex $labels [expr {$i % 2}]] not seen drawn"
     }
+    if {$next > $end} { set next $end }
+    hold [expr {$next - [clock seconds]}] "" 0
+  }
+  counters $counters "$outdir/g1-end.json"
+} elseif {$mode eq "g1-map"} {
+  # G1's arm with the map open and the Propagation mode never opened: the
+  # map at the place in Forecast mode, panned on the use arm's cycle, so the
+  # difference from the use arm is the mode's own.
+  send "g"; hold 20 "" 0
+  # The mode's title, drawn whole on the switch; a chip's words are redrawn
+  # only where they change, so "Radar Off" never reaches the pty entire.
+  send "R"
+  expect -timeout 30 "FORECAST MODE" {} timeout { phase $lf "FAILED: Forecast mode not shown"; exit 1 }
+  hold 60 "" 0
+  phase $lf "G measured: the map open in Forecast mode"
+  set end [expr {[clock seconds] + $arg * 60}]
+  set pans {"\033\[C" "\033\[D"}
+  for {set i 0} {[clock seconds] < $end} {incr i} {
+    set next [expr {[clock seconds] + $cycle * 60}]
+    send -- [lindex $pans [expr {$i % 2}]]
+    phase $lf "M$i pan"
     if {$next > $end} { set next $end }
     hold [expr {$next - [clock seconds]}] "" 0
   }

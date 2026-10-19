@@ -1,10 +1,14 @@
 package main
 
 // g1.go — the G1 summary (0.19.0 W10.2): watchpost's added cost with the
-// Propagation mode in use against never opened, over a run of at least 48
-// hours (problem-statement G1). workload.sh g1 writes the run as two arms,
-// <run>/use and <run>/idle, each a session directory (phases.log, samples.csv,
-// counters.jsonl), run side by side on the same machine and the same network.
+// Propagation mode in use against not, over a run of at least 48 hours
+// (problem-statement G1). workload.sh g1 writes the run as three arms, each a
+// session directory (phases.log, samples.csv, counters.jsonl, g1-end.json),
+// run side by side on the same machine and the same network: <run>/use, the
+// mode in use; <run>/map, the map open in Forecast mode; <run>/idle, the map
+// never opened. The use arm is compared with each; -against names the
+// comparison G1 is judged on (the map open, D-236), and the other is
+// reported.
 //
 // Each arm is measured from its "G measured" phase - the use arm's once the
 // mode is open - to its last sample:
@@ -12,11 +16,12 @@ package main
 //   - RSS is ps's resident set, median and max (the target is judged on the
 //     median difference, D-131);
 //   - downloads are the propagation client's wire bytes (DN-12), in decimal
-//     MB, over the time between the counters' first and last records inside
-//     the span.
+//     MB, over the time between the first and last counters records inside
+//     the span, the driver's end-of-run record among them.
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -45,42 +50,81 @@ type g1Arm struct {
 	wireRead  bool    // two counters records inside the span, an hour or more apart
 }
 
-// summariseG1 renders a G1 run and returns how many targets it missed.
-func summariseG1(dir string) (string, int, error) {
+// g1Bases are the arms the use arm is compared with (A-79, A-80): the key
+// -against takes, the arm's directory, and its words.
+var g1Bases = []struct{ key, words string }{
+	{"idle", "the map never opened"},
+	{"map", "the map open in Forecast mode"},
+}
+
+// summariseG1 renders a G1 run and returns how many of the judged
+// comparison's targets it missed.
+func summariseG1(dir, against string) (string, int, error) {
+	judged := false
+	for _, base := range g1Bases {
+		judged = judged || base.key == against
+	}
+	if !judged {
+		return "", 0, fmt.Errorf("-against is idle or map, not %q", against)
+	}
 	use, err := readG1Arm(filepath.Join(dir, "use"))
 	if err != nil {
 		return "", 0, fmt.Errorf("use: %w", err)
 	}
-	idle, err := readG1Arm(filepath.Join(dir, "idle"))
-	if err != nil {
-		return "", 0, fmt.Errorf("idle: %w", err)
+	type based struct {
+		key, words string
+		arm        g1Arm
+	}
+	var bases []based
+	for _, base := range g1Bases {
+		arm, err := readG1Arm(filepath.Join(dir, base.key))
+		if errors.Is(err, os.ErrNotExist) && base.key != against {
+			continue // a run from before the arm was added: the judged arm alone is required
+		}
+		if err != nil {
+			return "", 0, fmt.Errorf("%s: %w", base.key, err)
+		}
+		bases = append(bases, based{base.key, base.words, arm})
 	}
 	var b strings.Builder
 	head, _ := os.ReadFile(filepath.Join(dir, "run.txt"))
 	fmt.Fprintf(&b, "# %s\n\n", strings.TrimSpace(string(head)))
 	b.WriteString("## The arms\n\n| Arm | Hours | Samples | CPU % | RSS MB (median / max) | Footprint MB (median) | Heap MB (median) | Wire MB an hour | Wire MB a day |\n|---|---|---|---|---|---|---|---|---|\n")
-	for _, a := range []struct {
-		name string
-		arm  g1Arm
-	}{{"the mode in use", use}, {"the mode never opened", idle}} {
-		r := a.arm.res
-		fmt.Fprintf(&b, "| %s | %.1f | %d | %.2f | %.1f / %.1f | %.1f | %.1f | %s | %s |\n", a.name, a.arm.hours, r.samples, r.cpuPct, r.rssMedMB, r.rssMaxMB, r.footMedMB, r.heapMedMB, a.arm.perHour(1), a.arm.perHour(24))
+	row := func(name string, a g1Arm) {
+		r := a.res
+		fmt.Fprintf(&b, "| %s | %.1f | %d | %.2f | %.1f / %.1f | %.1f | %.1f | %s | %s |\n", name, a.hours, r.samples, r.cpuPct, r.rssMedMB, r.rssMaxMB, r.footMedMB, r.heapMedMB, a.perHour(1), a.perHour(24))
+	}
+	row("the mode in use", use)
+	for _, base := range bases {
+		row(base.words, base.arm)
 	}
 	missed := 0
-	verdict := func(ok bool) string {
-		if ok {
+	verdict := func(ok, counts bool) string {
+		switch {
+		case ok:
 			return "met"
+		case counts:
+			missed++
 		}
-		missed++
 		return "**missed**"
 	}
-	cpu, rss := use.res.cpuPct-idle.res.cpuPct, use.res.rssMedMB-idle.res.rssMedMB
-	b.WriteString("\n## Against G1's targets\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n")
-	fmt.Fprintf(&b, "| added mean CPU, %% of one core | %+.2f | at most %.0f | %s |\n", cpu, g1AddedCPUPct, verdict(cpu <= g1AddedCPUPct))
-	fmt.Fprintf(&b, "| added RSS, MB (medians) | %+.1f | at most %.0f | %s |\n", rss, g1AddedRSSMB, verdict(rss <= g1AddedRSSMB))
-	fmt.Fprintf(&b, "| downloads on the wire while open, MB an hour | %s | at most %.0f | %s |\n", use.perHour(1), g1WireMBHour, verdict(use.wireRead && use.wireMB/use.wireHours <= g1WireMBHour))
-	fmt.Fprintf(&b, "| downloads with the mode never opened, MB | %s | none | %s |\n", idle.total(), verdict(idle.wireRead && idle.wireMB == 0))
-	if use.hours < 48 || idle.hours < 48 {
+	short := use.hours < 48
+	b.WriteString("\n## The mode's downloads\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n")
+	fmt.Fprintf(&b, "| downloads on the wire while open, MB an hour | %s | at most %.0f | %s |\n", use.perHour(1), g1WireMBHour, verdict(use.wireRead && use.wireMB/use.wireHours <= g1WireMBHour, true))
+	for _, base := range bases {
+		counts := base.key == against
+		how := "reported, not judged"
+		if counts {
+			how = "**judged** (-against " + base.key + ")"
+		}
+		cpu, rss := use.res.cpuPct-base.arm.res.cpuPct, use.res.rssMedMB-base.arm.res.rssMedMB
+		fmt.Fprintf(&b, "\n## The mode in use against %s: %s\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n", base.words, how)
+		fmt.Fprintf(&b, "| added mean CPU, %% of one core | %+.2f | at most %.0f | %s |\n", cpu, g1AddedCPUPct, verdict(cpu <= g1AddedCPUPct, counts))
+		fmt.Fprintf(&b, "| added RSS, MB (medians) | %+.1f | at most %.0f | %s |\n", rss, g1AddedRSSMB, verdict(rss <= g1AddedRSSMB, counts))
+		fmt.Fprintf(&b, "| downloads with the Propagation mode never opened, MB | %s | none | %s |\n", base.arm.total(), verdict(base.arm.wireRead && base.arm.wireMB == 0, counts))
+		short = short || base.arm.hours < 48
+	}
+	if short {
 		b.WriteString("\nThe run is shorter than G1's 48 hours: a dry run, not the measure.\n")
 	}
 	return b.String(), missed, nil
@@ -132,7 +176,7 @@ func readG1Arm(dir string) (g1Arm, error) {
 			a.hours = s.at.Sub(from).Hours()
 		}
 	}
-	first, last, err := wireSpan(filepath.Join(dir, "counters.jsonl"), from)
+	first, last, err := wireSpan(dir, from)
 	if err != nil {
 		return g1Arm{}, err
 	}
@@ -152,20 +196,25 @@ type wireRecord struct {
 	Wire int64     `json:"propagation_wire_bytes"`
 }
 
-// wireSpan is the first and last counters records at or after from.
-func wireSpan(path string, from time.Time) (first, last wireRecord, err error) {
-	raw, err := os.ReadFile(path)
+// wireSpan is the first and last counters records at or after from: the
+// polled counters.jsonl, then the driver's end-of-run g1-end.json when it
+// wrote one.
+func wireSpan(dir string, from time.Time) (first, last wireRecord, err error) {
+	raw, err := os.ReadFile(filepath.Join(dir, "counters.jsonl"))
 	if err != nil {
 		return first, last, err
+	}
+	if end, err := os.ReadFile(filepath.Join(dir, "g1-end.json")); err == nil {
+		raw = append(append(raw, '\n'), end...)
 	}
 	dec := json.NewDecoder(strings.NewReader(string(raw)))
 	for i := 0; dec.More(); i++ {
 		if i == maxRows {
-			return first, last, fmt.Errorf("counters.jsonl: more than %d records", maxRows)
+			return first, last, fmt.Errorf("counters: more than %d records", maxRows)
 		}
 		var r wireRecord
 		if err := dec.Decode(&r); err != nil {
-			return first, last, fmt.Errorf("counters.jsonl: %w", err)
+			return first, last, fmt.Errorf("counters: %w", err)
 		}
 		if r.At.Before(from) {
 			continue

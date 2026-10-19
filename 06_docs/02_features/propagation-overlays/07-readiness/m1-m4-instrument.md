@@ -2,13 +2,14 @@
 
 Up: [plan, W10.3](../04-development/implementation-plan.md) · [problem statement, M1 and M4](../01-objectives/problem-statement.md) · [dry run](dry-run.md) · [rulings](../02-analysis/rulings.md)
 
-**Where this stands (2026-10-18).** D-208 puts the M1/M4 scorer's baseline inside BUILD: the
+**Where this stands (2026-10-19).** D-208 puts the M1/M4 scorer's baseline inside BUILD: the
 climatology's agreement with WSPR, the shipped build's, and a column for the background alone (B-F7).
 This page is the instrument's design and, below, what was built. **Its four forks are ruled, each as
 recommended: A2 (D-218), B1 (D-219), C1 (D-220), D1 (D-221).** The instrument is built to them
 (`tools/reachscore`, batch 45, A-74). **Its dry run on PLAN's week (below) misses both targets under
 either draw. It showed that B1 as ruled cannot grade M1, so the graded run draws by band alone (fork E,
-D-224).**
+D-224).** **The graded run on fresh days (the last section) misses both targets too: M1 53.7 % against
+57.4 %, M4 68.4 % against 69.4 %.** The misses go to VALIDATE (D-118).
 
 ## What is already fixed
 
@@ -233,3 +234,26 @@ shows which bands carry the grade.
 **Strongest counter-argument:** E3 is the honest reading of what near-vertical answers claim. E2 lets
 six bands at a forced 50 % dilute M1's grade. The cost of E3 is choosing M1's bands after seeing these
 figures, on the week the targets were set on.
+
+## The graded run: fresh days, 2026-10-12 to 10-17 (D-221)
+
+Scored by `reachscore` at `2ecdaa36`, from a clean worktree of that commit; by band (D-224), seed 19,
+80 of each outcome a band, with D-232's settings. The inputs are 48 GloTEC grids, 39 GIRO replies, the
+solar file and 6 days' spots, fetched under D-39 and kept outside the tree (`m1m4-fresh/`, `fresh/`).
+F10.7 was 105 to 109; no day reached Kp 5. The table and the scenarios are in `m1m4-fresh/graded*`.
+
+| Metric | Scenarios | Climatology | Background | Shipped | Shipped - climatology | Target (climatology + 5) |
+|---|---|---|---|---|---|---|
+| M1 | 1600 | 52.4 % [49.9, 54.9] | 52.8 % | 53.7 % [51.3, 56.1] | +1.3 [+0.4, +2.3] | 57.4 %: **missed** |
+| M4 | 1600 | 64.4 % [62.1, 66.7] | 65.8 % | 68.4 % [66.1, 70.8] | +4.0 [+2.6, +5.5] | 69.4 %: **missed** |
+
+**The climatology on both sets of days (D-221):** M1 53.4 % on PLAN's week and 52.4 % on the fresh
+days; M4 64.2 % and 64.4 %. Its scores barely move between the weeks, so the climatology is a stable
+baseline.
+
+**What changed from PLAN's week:**
+- M4's lead grew from +2.6 to +4.0 points, and its interval reaches past +5. The gain is in the upper bands, where the stations assimilated now help: 17 m +5.6, 15 m +9.4, 12 m +13.8, the background alone adding little there.
+- M1's lead, +0.1 on PLAN's week, is +1.3 [+0.4, +2.3], carried by 40 m and 30 m (+5.0, +6.2). The six bands from 20 m up are again at 50 % in every column: near-vertical, they never reach.
+
+**Both metrics miss D-99's target on the point estimate (D-228)**: M1 by 3.7 points and M4 by 1.0. No
+floor rides on either (D-75), so the misses come to the HUM LEAD at VALIDATE with this evidence (D-118).

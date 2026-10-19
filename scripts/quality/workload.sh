@@ -17,12 +17,13 @@
 # beside the driver by soak.sh every 20 s. Live network: the run records when
 # and where it ran, and a comparison is between runs of the same workload.
 #
-# g1 is 0.19.0's G1 (W10.2): two processes side by side for 48 hours, each in
-# its own HOME and on its own debug address. <outdir>/use opens the map and
+# g1 is 0.19.0's G1 (W10.2): three processes side by side for 48 hours, each
+# in its own HOME and on its own debug address. <outdir>/use opens the map and
 # its Propagation mode and, each cycle, pans, steps an hour and enters a
-# frequency; <outdir>/idle never opens the map. Each is sampled every two
-# minutes and its counters read every ten; `go run ./tools/perfsum -g1
-# <outdir>` reads the difference against G1's targets.
+# frequency; <outdir>/map opens the map in Forecast mode and pans on the same
+# cycle; <outdir>/idle never opens the map. Each is sampled every two minutes
+# and its counters read every ten; `go run ./tools/perfsum -g1 <outdir>`
+# reads the differences against G1's targets.
 set -eu
 mode=${1:?session|cold|warm|g1}; variant=${2:?default|heavy}; out=${3:?outdir}; arg=${4:-}; arg2=${5:-}
 root=$(git rev-parse --show-toplevel)
@@ -93,31 +94,41 @@ session)
   rm -rf "$h" ;;
 g1)
   mins=${arg:-2880}; cycle=${arg2:-60}
-  for armname in use idle; do
-    mkdir -p "$out/$armname"; rm -f "$out/$armname/pid"
+  # Each arm: its name, its debug port; the drivers' and samplers' pids and
+  # the HOMEs in the same order.
+  arms="use:6072 map:6074 idle:6073"
+  drivers=; homes=
+  for a in $arms; do
+    n=${a%%:*}; p=${a##*:}
+    mkdir -p "$out/$n"; rm -f "$out/$n/pid"
+    h=$(fresh_home); homes="$homes $h"
+    drive "$h" "g1-$n" "$mins" "127.0.0.1:$p" "$out/$n" "$cycle" &
+    drivers="$drivers $!"
   done
-  hu=$(fresh_home); hi=$(fresh_home)
-  drive "$hu" g1-use "$mins" 127.0.0.1:6072 "$out/use" "$cycle" &
-  du=$!
-  drive "$hi" g1-idle "$mins" 127.0.0.1:6073 "$out/idle" "$cycle" &
-  di=$!
-  for armname in use idle; do
-    while [ ! -s "$out/$armname/pid" ] && kill -0 "$du" 2>/dev/null && kill -0 "$di" 2>/dev/null; do sleep 1; done
+  for a in $arms; do
+    n=${a%%:*}; i=0
+    while [ ! -s "$out/$n/pid" ] && [ "$i" -lt 300 ]; do sleep 1; i=$((i + 1)); done
+    [ -s "$out/$n/pid" ] || { echo "workload: the $n arm never started"; exit 1; }
   done
   hours=$(( (mins + 59) / 60 + 1 ))
-  WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6072 "$root/scripts/quality/soak.sh" "$(cat "$out/use/pid")" "$hours" "$out/use/samples.csv" 120 &
-  su=$!
-  WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6073 "$root/scripts/quality/soak.sh" "$(cat "$out/idle/pid")" "$hours" "$out/idle/samples.csv" 120 &
-  si=$!
-  while kill -0 "$du" 2>/dev/null || kill -0 "$di" 2>/dev/null; do
-    curl -fs --max-time 10 http://127.0.0.1:6072/debug/counters >> "$out/use/counters.jsonl" 2>/dev/null && echo >> "$out/use/counters.jsonl" || true
-    curl -fs --max-time 10 http://127.0.0.1:6073/debug/counters >> "$out/idle/counters.jsonl" 2>/dev/null && echo >> "$out/idle/counters.jsonl" || true
+  samplers=
+  for a in $arms; do
+    n=${a%%:*}; p=${a##*:}
+    WATCHPOST_DEBUG_PPROF_ADDR="127.0.0.1:$p" "$root/scripts/quality/soak.sh" "$(cat "$out/$n/pid")" "$hours" "$out/$n/samples.csv" 120 &
+    samplers="$samplers $!"
+  done
+  running() { for d in $drivers; do kill -0 "$d" 2>/dev/null && return 0; done; return 1; }
+  while running; do
+    for a in $arms; do
+      n=${a%%:*}; p=${a##*:}
+      curl -fs --max-time 10 "http://127.0.0.1:$p/debug/counters" >> "$out/$n/counters.jsonl" 2>/dev/null && echo >> "$out/$n/counters.jsonl" || true
+    done
     sleep 600
   done
-  wait "$du" || echo "workload: the use arm's driver failed - see $out/use/phases.log"
-  wait "$di" || echo "workload: the idle arm's driver failed - see $out/idle/phases.log"
-  kill "$su" "$si" 2>/dev/null || true
-  rm -rf "$hu" "$hi" ;;
+  for d in $drivers; do wait "$d" || echo "workload: an arm's driver failed - see $out/*/phases.log"; done
+  for s in $samplers; do kill "$s" 2>/dev/null || true; done
+  wait 2>/dev/null || true
+  for h in $homes; do rm -rf "$h"; done ;;
 *) echo "workload: mode is session, cold, warm or g1"; exit 2 ;;
 esac
 echo "workload: $mode $variant done - $out"
