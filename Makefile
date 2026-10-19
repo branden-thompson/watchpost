@@ -27,7 +27,14 @@ test:
 	go test ./...
 
 race:
-	go test -race -count=1 ./...
+# -timeout, measured, as mutant-check's below: under -race, modes/tty, the
+# slowest package, ran 226 s on the developer's machine and 290 to 489 s on
+# the hosted runners (2026-10-18 and 19), then past go test's default 10
+# minutes on macos-latest (2026-10-19), with nothing in it changed. 30m is
+# three times the slowest finished run, so the clock reports a hang, not a
+# slow runner. When the package nears it, raise it and re-record the
+# measurement here.
+	go test -race -count=1 -timeout 30m ./...
 
 fmt:
 # GOFMT'S OWN STATUS IS READ. `test -z "$$(gofmt -l …)"` is true when gofmt prints

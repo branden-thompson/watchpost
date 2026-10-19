@@ -685,3 +685,9 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **A finding for the HUM LEAD:** with GloTEC's index unanswered, go-ionomaps' update says `Offline` - "nothing could be fetched" - though the solar file arrived, and never offers GIRO's burst, so in a GloTEC outage the map shows the climatology unmoved by any station. Found by `ionomapstest`'s test of the library without GloTEC; not changed here.
 - **Mutants:** m457, m458, m459 and m468 retired with `replay.go`; their kills are `ionomapstest`'s hand mutants (a grid indexed after the clock, a reading after the clock, the clock's own day in the solar file, the requester's line kept). m464 re-pointed to `replayOptions`. The other 14 of `reachscore`'s mutants all compile and are killed.
 - **Docs:** D-237, D-238; the instrument page's replay; the plan's W10.3; the as-built map.
+
+## Batch 54 - REVIEW: the race leg's clock, measured
+
+- **Batch 53's hosted CI failed on macOS alone**, with "panic: test timed out after 10m0s" in `modes/tty` under the race detector. The test then running had been going for one second, and the batch changed nothing in that package. Under the race detector, `modes/tty` had run 290 to 489 s on the hosted runners and 226 s on the reference machine: a budget at the edge of `go test`'s default, as the mutant check's once was.
+- **`make race` gets a measured `-timeout 30m`**, three times the slowest finished run, its measurement recorded beside it in the Makefile, as the mutant check's is. The same day, go-ionomaps' GloTEC fuzz target got its own count, for the same reason.
+- **Docs:** the as-built map's batches.
