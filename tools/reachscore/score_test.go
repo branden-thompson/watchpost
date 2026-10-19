@@ -96,3 +96,26 @@ func TestTheIntervalKeepsThePairing(t *testing.T) {
 		t.Errorf("the same seed gave %+v then %+v", a, again)
 	}
 }
+
+// TestOnlyAFileTheReplayServesFailsTheRun is D-239's reach into the
+// instrument: the library names every NOAA file it did not read, so the
+// replay's never-recorded D-RAP and scales, and the climatology column's
+// withheld GloTEC, are expected; a GloTEC grid any other column was served
+// and did not read, or the solar file, is counted and fails the run.
+func TestOnlyAFileTheReplayServesFailsTheRun(t *testing.T) {
+	for _, c := range []struct {
+		unread []string
+		col    column
+		want   int
+	}{
+		{[]string{"D-RAP", "scales"}, shipped, 0},
+		{[]string{"GloTEC", "D-RAP", "scales"}, climatology, 0},
+		{[]string{"GloTEC", "D-RAP", "scales"}, background, 1},
+		{[]string{"solar", "D-RAP"}, climatology, 1},
+		{[]string{"GloTEC", "solar"}, shipped, 2},
+	} {
+		if got := unreadHeld(c.unread, c.col); got != c.want {
+			t.Errorf("%v in %s: %d counted, want %d", c.unread, c.col, got, c.want)
+		}
+	}
+}

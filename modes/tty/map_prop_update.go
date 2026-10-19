@@ -296,16 +296,16 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	case ionomaps.TooSoon:
 		words = append(words, "asked too soon: the last field")
 	case ionomaps.Offline:
-		words = append(words, "NOAA not reached: the last field")
+		words = append(words, "nothing came back from NOAA: built from what is held") // D-239: never more than happened
 	case ionomaps.StationsNext:
 		words = append(words, "asking GIRO's stations")
 	case ionomaps.GIROPaused:
-		words = append(words, "GIRO paused after a refusal: the readings it gave first")
+		words = append(words, "GIRO paused after a refusal or no answer: the readings it gave first")
 	case ionomaps.Unfinished:
 		words = append(words, "the update stopped before every file came: built from what was held")
 	}
-	if len(s.Inputs.Unread) > 0 {
-		words = append(words, "could not read NOAA's "+strings.Join(s.Inputs.Unread, ", ")+": the last held used") // FR-5.2
+	if len(s.Inputs.Unread) > 0 { // a Partial snapshot's, or one GIRO's state said first (D-239)
+		words = append(words, "NOAA's "+strings.Join(s.Inputs.Unread, ", ")+" not read this update") // FR-5.2: what stands in is said below, the background by its source
 	}
 	switch {
 	case s.Inputs.Stations > 0:

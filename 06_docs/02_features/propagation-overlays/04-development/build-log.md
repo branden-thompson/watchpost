@@ -691,3 +691,15 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Batch 53's hosted CI failed on macOS alone**, with "panic: test timed out after 10m0s" in `modes/tty` under the race detector. The test then running had been going for one second, and the batch changed nothing in that package. Under the race detector, `modes/tty` had run 290 to 489 s on the hosted runners and 226 s on the reference machine: a budget at the edge of `go test`'s default, as the mutant check's once was.
 - **`make race` gets a measured `-timeout 30m`**, three times the slowest finished run, its measurement recorded beside it in the Makefile, as the mutant check's is. The same day, go-ionomaps' GloTEC fuzz target got its own count, for the same reason.
 - **Docs:** the as-built map's batches.
+
+## Batch 55 - REVIEW: an outage said truly (D-239); go-ionomaps v0.1.0-rc.5
+
+- **D-239, the HUM LEAD's ruling on batch 53's finding:** "Approved to fix the GloTEC outage defect, we should never have data mislabelled".
+- **go-ionomaps `v0.1.0-rc.5`:** GIRO's burst is offered whenever it is due, whatever NOAA answered. `Inputs.Unread` names every NOAA file asked for and not read. A snapshot short of any is the new reason `Partial`; `Offline` means no NOAA file came back and GIRO was not due. Its record is go-ionomaps' D-82 and A-27.
+- **watchpost's words say no more than happened:**
+  - `Offline` reads "nothing came back from NOAA: built from what is held", where it said "NOAA not reached: the last field" even when NOAA had answered;
+  - files not read are "NOAA's GloTEC not read this update", with what stands in said by the background's own words, where they said "the last held used" even with no grid held and the climatology drawn;
+  - GIRO's pause reads "after a refusal or no answer".
+- **`tools/reachscore`:** recorded days hold no D-RAP and no scales, so the library now names them unread on every replayed hour. The instrument's fail-closed check counts every other file unread: a GloTEC grid or the solar file not read still fails the run.
+- **Tests:** `TestEverySnapshotsStateIsSaid` holds each state's words, and that they never claim "the last held" for a GloTEC outage nor "NOAA not reached" where NOAA answered; `TestOnlyAFileTheReplayServesFailsTheRun`. **Mutants:** m509 to m512 new, all killed. m509 first failed vet, its removal leaving an import unused, and was rewritten.
+- **Docs:** D-239; the as-built map; the required reading's library version.

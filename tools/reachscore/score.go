@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
@@ -59,7 +60,7 @@ func clocks(ds []time.Time) []time.Time {
 type hourFacts struct {
 	Grid     bool
 	Stations int
-	Unread   int // NOAA's files the update fetched and could not read
+	Unread   int // NOAA's files the update asked for and did not read, D-RAP and the scales left out: the days never hold them (go-ionomaps D-82)
 	F107     float32
 }
 
@@ -102,13 +103,33 @@ func snapshots(in *ionomapstest.Recorded, col column, at []time.Time) (map[time.
 		}
 		if scored[t] {
 			snaps[t] = s
-			facts[t] = hourFacts{Grid: !s.Inputs.GloTECValid.IsZero(), Stations: s.Inputs.Stations, Unread: len(s.Inputs.Unread), F107: s.Inputs.F107Mean}
+			facts[t] = hourFacts{Grid: !s.Inputs.GloTECValid.IsZero(), Stations: s.Inputs.Stations, Unread: unreadHeld(s.Inputs.Unread, col), F107: s.Inputs.F107Mean}
 		}
 	}
 	if unknown := rp.Unknown(); len(unknown) > 0 {
 		return nil, nil, fmt.Errorf("%w: %v", errUnknownAsks, unknown)
 	}
 	return snaps, facts, fedAsSaid(col, facts)
+}
+
+// neverRecorded are the NOAA files dry_fetch.py keeps none of: the replay
+// answers them as missing, and the library names them unread (D-239).
+var neverRecorded = []string{"D-RAP", "scales"}
+
+// unreadHeld are the files an update did not read that the column's replay
+// serves - a GloTEC grid outside the climatology's column, the solar file -
+// which fail the run: an answer built without one is not the column it
+// claims to be. What a column withholds, the climatology's GloTEC, is not
+// counted.
+func unreadHeld(unread []string, col column) int {
+	n := 0
+	for _, f := range unread {
+		withheld := col == climatology && f == "GloTEC"
+		if !slices.Contains(neverRecorded, f) && !withheld {
+			n++
+		}
+	}
+	return n
 }
 
 // replayOptions are a column's replay: the climatology's withholds GloTEC.

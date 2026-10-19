@@ -78,25 +78,33 @@ func TestTheStationsAreCreditedWhenTheyFedIt(t *testing.T) {
 
 // TestEverySnapshotsStateIsSaid is FR-5.2 and the BUILD red team's L-F5,
 // L-F6 (round 2 BL2-3, CN2-5): a snapshot the stations' burst left paused,
-// one an update left unfinished, NOAA's files that could not be read, and
-// no stations by the listener's choice (D-214) are each said - never read
-// as a fresh field.
+// one an update left unfinished, NOAA's files not read, and no stations by
+// the listener's choice (D-214) are each said - never read as a fresh field.
+// D-239: no word says more than happened - a GloTEC outage with no grid
+// held is said with the climatology as its source, never "the last held",
+// and nothing fetched from NOAA is never "NOAA not reached" when NOAA
+// answered.
 func TestEverySnapshotsStateIsSaid(t *testing.T) {
 	paused, unfinished := stationsSnap(3, ionomaps.GIROPaused), stationsSnap(0, ionomaps.Unfinished)
-	unread, chosen := stationsSnap(0, ionomaps.Fresh), stationsSnap(0, ionomaps.Fresh)
+	unread, chosen := stationsSnap(0, ionomaps.Partial), stationsSnap(0, ionomaps.Fresh)
 	unread.Inputs.Unread = []string{"GloTEC", "D-RAP"}
+	unread.Background.FoF2 = ionomaps.Climatology
+	offline := stationsSnap(0, ionomaps.Offline)
 	chosen.Inputs.NoStations = true
 	for _, c := range []struct {
-		s    ionomaps.Snapshot
-		want string
+		s           ionomaps.Snapshot
+		want, never string
 	}{
-		{paused, "GIRO paused after a refusal"},
-		{unfinished, "the update stopped before every file came"},
-		{unread, "could not read NOAA's GloTEC, D-RAP: the last held used"},
-		{chosen, "no stations by choice: the background alone"},
+		{paused, "GIRO paused after a refusal or no answer", "NOAA not reached"},
+		{unfinished, "the update stopped before every file came", "NOAA not reached"},
+		{unread, "NOAA's GloTEC, D-RAP not read this update · no station readings this hour", "the last held"},
+		{unread, "foF2 from the climatology: no GloTEC grid", "the last held"},
+		{offline, "nothing came back from NOAA: built from what is held", "NOAA not reached"},
+		{chosen, "no stations by choice: the background alone", "not read"},
 	} {
-		if w := snapshotWords(c.s, 0); !strings.Contains(w, c.want) {
-			t.Errorf("%v: %q does not say %q", c.s.Reason, w, c.want)
+		w := snapshotWords(c.s, 0)
+		if !strings.Contains(w, c.want) || strings.Contains(w, c.never) {
+			t.Errorf("%v: %q does not say %q, or says %q", c.s.Reason, w, c.want, c.never)
 		}
 	}
 }
