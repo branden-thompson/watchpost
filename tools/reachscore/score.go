@@ -15,6 +15,7 @@ import (
 	"time"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
+	"github.com/branden-thompson/go-ionomaps/ionomapstest"
 
 	"github.com/branden-thompson/watchpost/platform/propanswers"
 )
@@ -74,12 +75,12 @@ var errReplayed = errors.New("a column's snapshot is fed other than the column s
 // hour as a host left running would ask - the stations' burst after
 // NOAA's when it is due - and keeps the snapshot and its facts at each
 // scored clock.
-func snapshots(in *recorded, col column, at []time.Time) (map[time.Time]ionomaps.Snapshot, map[time.Time]hourFacts, error) {
+func snapshots(in *ionomapstest.Recorded, col column, at []time.Time) (map[time.Time]ionomaps.Snapshot, map[time.Time]hourFacts, error) {
 	if in == nil || len(at) == 0 {
 		return nil, nil, errUsage
 	}
-	rp := replayFor(in, col)
-	lib, err := ionomaps.New(rp, ionomaps.Options{Clock: rp.clock})
+	rp := in.Replay(replayOptions(col))
+	lib, err := ionomaps.New(rp, ionomaps.Options{Clock: rp.Now})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -91,7 +92,7 @@ func snapshots(in *recorded, col column, at []time.Time) (map[time.Time]ionomaps
 	snaps, facts := map[time.Time]ionomaps.Snapshot{}, map[time.Time]hourFacts{}
 	ctx := context.Background()
 	for t := at[0]; !t.After(at[len(at)-1]); t = t.Add(time.Hour) {
-		rp.now = t
+		rp.SetNow(t)
 		s, err := lib.Update(ctx, opts)
 		if err == nil && s.Reason == ionomaps.StationsNext {
 			s, err = lib.Update(ctx, opts)
@@ -104,15 +105,15 @@ func snapshots(in *recorded, col column, at []time.Time) (map[time.Time]ionomaps
 			facts[t] = hourFacts{Grid: !s.Inputs.GloTECValid.IsZero(), Stations: s.Inputs.Stations, Unread: len(s.Inputs.Unread), F107: s.Inputs.F107Mean}
 		}
 	}
-	if len(rp.unknown) > 0 {
-		return nil, nil, fmt.Errorf("%w: %v", errUnknownAsks, rp.unknown)
+	if unknown := rp.Unknown(); len(unknown) > 0 {
+		return nil, nil, fmt.Errorf("%w: %v", errUnknownAsks, unknown)
 	}
 	return snaps, facts, fedAsSaid(col, facts)
 }
 
-// replayFor is a column's replay: the climatology's withholds GloTEC.
-func replayFor(in *recorded, col column) *replay {
-	return &replay{in: in, grids: col != climatology}
+// replayOptions are a column's replay: the climatology's withholds GloTEC.
+func replayOptions(col column) ionomapstest.Options {
+	return ionomapstest.Options{WithoutGloTEC: col == climatology}
 }
 
 // fedAsSaid checks a column's snapshots were fed as the column says, both
@@ -314,7 +315,7 @@ func scoreCommand(args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	in, err := loadRecorded(f.inputs, f.solar)
+	in, err := ionomapstest.Open(f.inputs, f.solar)
 	if err != nil {
 		return err
 	}
@@ -337,7 +338,7 @@ func scoreCommand(args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	files := append(append([]string{}, in.files...), spotFiles...)
+	files := append(in.Files(), spotFiles...)
 	sum, err := checksums(files, filepath.Join(f.out, "inputs.sha256"))
 	if err != nil {
 		return err
@@ -346,7 +347,7 @@ func scoreCommand(args []string, out io.Writer) error {
 		return err
 	}
 	return report(out, reportOf{flags: f, days: ds, set: set, counts: d.counts, res: res, facts: facts,
-		grids: len(in.grids), stations: len(in.giro), spotFiles: len(spotFiles), sum: sum, rev: revision(),
+		grids: len(in.GridTimes()), stations: len(in.Stations()), spotFiles: len(spotFiles), sum: sum, rev: revision(),
 		intervals: intervalsOf(set, res.answers, f.seed)})
 }
 

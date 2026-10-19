@@ -131,8 +131,8 @@ hour's ±1 h. The courtesy matches D-39's for GIRO: one query at a time, 15 s ap
 The request log keeps the rate headers alone (D-83).
 
 **The replay.** One library per column runs through the days hour by hour, as a host left running would,
-making the stations' burst when it is due. The replay answers from the recorded files at the library's
-clock:
+making the stations' burst when it is due. The replay is go-ionomaps' own `ionomapstest` (D-237), which
+its instrument for G-M3 shares, and answers from the recorded files at the library's clock:
 - GloTEC's index lists only the grids valid by then.
 - The solar file holds only the days before.
 - A station's reply is cut to the window asked and the clock, in the columns go-ionomaps asks for, with

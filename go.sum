@@ -10,8 +10,8 @@ github.com/alecthomas/repr v0.5.1 h1:E3G4t2QbHTSNpPKBgMTln5KLkZHLOcU7r37J4pXBuIg
 github.com/alecthomas/repr v0.5.1/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
 github.com/aymanbagabas/go-udiff v0.4.1 h1:OEIrQ8maEeDBXQDoGCbbTTXYJMYRCRO1fnodZ12Gv5o=
 github.com/aymanbagabas/go-udiff v0.4.1/go.mod h1:0L9PGwj20lrtmEMeyw4WKJ/TMyDtvAoK9bf2u/mNo3w=
-github.com/branden-thompson/go-ionomaps v0.1.0-rc.3 h1:PBcXrppWQzbO1MTFkWCrF22jy+VNo/wjZrIHEyLXDM4=
-github.com/branden-thompson/go-ionomaps v0.1.0-rc.3/go.mod h1:XwJvZH1auKOSr1ohRW3FRO2tT7fLlkxEMZbqB+O7PlI=
+github.com/branden-thompson/go-ionomaps v0.1.0-rc.4 h1:BWtqZNQrv0LMlcdhPMqLiykmqKE/6N+SAEvXm6+Y09k=
+github.com/branden-thompson/go-ionomaps v0.1.0-rc.4/go.mod h1:XwJvZH1auKOSr1ohRW3FRO2tT7fLlkxEMZbqB+O7PlI=
 github.com/branden-thompson/go-tuimaps v0.3.0-rc.3 h1:5FQo6YJUUqHsPTZpPX5MqwzKpplKiEwxDZn2pX3namc=
 github.com/branden-thompson/go-tuimaps v0.3.0-rc.3/go.mod h1:MxLYM9fk3DFVUUBYClxyoCGT+5aLfTldCANq6hKHJzQ=
 github.com/charmbracelet/colorprofile v0.4.3 h1:QPa1IWkYI+AOB+fE+mg/5/4HRMZcaXex9t5KX76i20Q=

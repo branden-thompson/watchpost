@@ -34,7 +34,7 @@ func TestTheAnswerIsReadAsTheProductReadsIt(t *testing.T) {
 // station's reading outside the shipped build's or none in it, a file the
 // library could not read - fails the run.
 func TestAColumnFedOtherwiseFailsTheRun(t *testing.T) {
-	if replayFor(nil, climatology).grids || !replayFor(nil, background).grids || !replayFor(nil, shipped).grids {
+	if !replayOptions(climatology).WithoutGloTEC || replayOptions(background).WithoutGloTEC || replayOptions(shipped).WithoutGloTEC {
 		t.Error("the climatology's replay serves GloTEC, or another column's withholds it")
 	}
 	at := time.Date(2026, 9, 29, 0, 35, 0, 0, time.UTC)
