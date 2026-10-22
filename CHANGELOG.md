@@ -2,6 +2,13 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.18.2] — 2026-10-22
+
+### Security
+- **Built with Go 1.27.3,** whose certificate checks distrust compromised intermediate certificates
+  (GO-2026-6809, `crypto/x509`). Watchpost reaches those checks through the radio's TLS streams. No
+  other change: the module's floor stays Go 1.26.9.
+
 ## [0.18.1] — 2026-10-10
 
 ### Fixed
