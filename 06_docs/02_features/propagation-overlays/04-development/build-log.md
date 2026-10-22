@@ -724,3 +724,9 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Mutants:** m513 to m520 new, all killed. m514 first survived (a write dropped what it would have shown) and found a test gap, now closed; m516 and m518 first failed vet and were rewritten. m498 was re-pointed, its line having grown.
 - **Found at the gate's checks:** `withHour`, the old write path's, was left unused, which lint and the duplicate check both caught, so it is removed. P10-01 read the store's `Held` calling the memo's `Held` as recursion, so the store's method is `Memory` (D-215: a distinct name, not a guard).
 - **Go 1.27.3 (A-82, under D-152):** `make vuln` failed on a new standard-library advisory, GO-2026-6809 (`crypto/x509`), reached through the radio's TLS streams. CI and the release build move to go1.27.3, as do go-ionomaps' and go-tuiMaps' gates. The live 0.18.1, built with go1.27.2, is affected; whether it gets a 0.18.2 is the HUM LEAD's.
+
+## Batch 57 - REVIEW: the module floor, go 1.26.10 (D-244); 0.18.2 (D-243)
+
+- **D-243:** the live 0.18.1 is built with go1.27.2 and carries GO-2026-6809. 0.18.2 is cut from `main` on go1.27.3 alone, with its own gate, release branch, PR and tag. D-242's change waits for 0.19.0.
+- **D-244:** GO-2026-6809 is fixed in go1.26.10 too, and go-tuiMaps' gate scans the standard library at the module floor. Every built module's `go` directive in watchpost, go-ionomaps and go-tuiMaps is 1.26.10, as D-152 did for 1.26.9. The README says it.
+- **The libraries:** go-ionomaps' hosted gate is on go1.27.3 (`3be1667`, its A-28); its floor and go-tuiMaps' pins and floor follow, each on its own gate (go-ionomaps D-84, go-tuiMaps D-38 and A-17). watchpost needs no re-pin for them: a library's `go` directive is a minimum, and watchpost's is now the same.

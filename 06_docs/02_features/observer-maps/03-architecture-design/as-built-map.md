@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD exit
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — Batches 1–138, drawn against go-tuiMaps v0.2.0; and 0.19.0 batches 1–56, against go-ionomaps v0.1.0-rc.5 and go-tuiMaps v0.3.0-rc.3. Each release's build log says what each batch moved."
+status: "LIVE — Batches 1–138, drawn against go-tuiMaps v0.2.0; and 0.19.0 batches 1–57, against go-ionomaps v0.1.0-rc.5 and go-tuiMaps v0.3.0-rc.3. Each release's build log says what each batch moved."
 ---
 
 # As built: where the map lives
