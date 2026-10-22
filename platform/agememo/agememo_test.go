@@ -213,3 +213,44 @@ func TestDoRefusesWhatItCannotHonour(t *testing.T) {
 		t.Error("a StandIn shorter than Fresh was taken")
 	}
 }
+
+// TestAWeightBoundHoldsTheValues is D-242: a memo made with NewSized holds
+// its values within MaxBytes as well as Max, the least recently used out
+// first; a value that alone weighs more is held alone; a value replaced or
+// forgotten no longer weighs; and a memo with no MaxBytes is bounded by
+// count alone, as before.
+func TestAWeightBoundHoldsTheValues(t *testing.T) {
+	size := func(v string) int64 { return int64(len(v)) }
+	m := NewSized[string, string](Options{Fresh: time.Hour, Max: 10, MaxBytes: 10}, size)
+	m.Put("a", "1234")
+	m.Put("b", "1234")
+	if n, w := m.Held(); n != 2 || w != 8 {
+		t.Fatalf("two values of 4: %d held, weighing %d", n, w)
+	}
+	m.Put("c", "1234") // 12 > 10: a, the least recently used, out
+	if _, _, ok := m.Last("a"); ok {
+		t.Error("a is held past the weight bound")
+	}
+	if n, w := m.Held(); n != 2 || w != 8 {
+		t.Errorf("after c: %d held, weighing %d", n, w)
+	}
+	m.Put("b", "12") // replaced: its old weight goes
+	if _, w := m.Held(); w != 6 {
+		t.Errorf("b replaced by a value of 2: weighing %d, want 6", w)
+	}
+	m.Forget("c")
+	if n, w := m.Held(); n != 1 || w != 2 {
+		t.Errorf("c forgotten: %d held, weighing %d", n, w)
+	}
+	m.Put("big", "12345678901234") // 14 alone: held alone
+	if n, w := m.Held(); n != 1 || w != 14 {
+		t.Errorf("a value over the bound: %d held, weighing %d; want it alone", n, w)
+	}
+	plain := New[string, string](Options{Fresh: time.Hour, Max: 3})
+	for _, k := range []string{"a", "b", "c"} {
+		plain.Put(k, "a long value that no bound weighs")
+	}
+	if n, w := plain.Held(); n != 3 || w != 0 {
+		t.Errorf("a memo with no size: %d held, weighing %d", n, w)
+	}
+}

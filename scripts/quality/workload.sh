@@ -21,8 +21,10 @@
 # in its own HOME and on its own debug address. <outdir>/use opens the map and
 # its Propagation mode and, each cycle, pans, steps an hour and enters a
 # frequency; <outdir>/map opens the map in Forecast mode and pans on the same
-# cycle; <outdir>/idle never opens the map. Each is sampled every two minutes
-# and its counters read every ten; `go run ./tools/perfsum -g1 <outdir>`
+# cycle; <outdir>/idle never opens the map. Each is sampled every two minutes,
+# its counters read every ten and a post-GC heap profile kept every hour
+# (<arm>/heap-<utc>.pb.gz); each measures 5 minutes past the span asked, so its
+# last sample lands past it (D-241). `go run ./tools/perfsum -g1 <outdir>`
 # reads the differences against G1's targets.
 set -eu
 mode=${1:?session|cold|warm|g1}; variant=${2:?default|heavy}; out=${3:?outdir}; arg=${4:-}; arg2=${5:-}
@@ -102,7 +104,7 @@ g1)
     n=${a%%:*}; p=${a##*:}
     mkdir -p "$out/$n"; rm -f "$out/$n/pid"
     h=$(fresh_home); homes="$homes $h"
-    drive "$h" "g1-$n" "$mins" "127.0.0.1:$p" "$out/$n" "$cycle" &
+    drive "$h" "g1-$n" "$((mins + 5))" "127.0.0.1:$p" "$out/$n" "$cycle" & # past the span: samples come every 2 minutes (D-241)
     drivers="$drivers $!"
   done
   for a in $arms; do
@@ -110,7 +112,7 @@ g1)
     while [ ! -s "$out/$n/pid" ] && [ "$i" -lt 300 ]; do sleep 1; i=$((i + 1)); done
     [ -s "$out/$n/pid" ] || { echo "workload: the $n arm never started"; exit 1; }
   done
-  hours=$(( (mins + 59) / 60 + 1 ))
+  hours=$(( (mins + 5 + 59) / 60 + 1 ))
   samplers=
   for a in $arms; do
     n=${a%%:*}; p=${a##*:}
@@ -118,11 +120,16 @@ g1)
     samplers="$samplers $!"
   done
   running() { for d in $drivers; do kill -0 "$d" 2>/dev/null && return 0; done; return 1; }
+  tick=0
   while running; do
     for a in $arms; do
       n=${a%%:*}; p=${a##*:}
       curl -fs --max-time 10 "http://127.0.0.1:$p/debug/counters" >> "$out/$n/counters.jsonl" 2>/dev/null && echo >> "$out/$n/counters.jsonl" || true
+      # Every hour, a post-GC heap profile, kept in the run's folder: the
+      # scratch HOME, and the dumps the app keeps there, go at the end (D-242).
+      [ $((tick % 6)) -eq 0 ] && curl -fs --max-time 60 "http://127.0.0.1:$p/debug/pprof/heap?gc=1" -o "$out/$n/heap-$(date -u +%Y%m%dT%H%MZ).pb.gz" 2>/dev/null || true
     done
+    tick=$((tick + 1))
     sleep 600
   done
   for d in $drivers; do wait "$d" || echo "workload: an arm's driver failed - see $out/*/phases.log"; done

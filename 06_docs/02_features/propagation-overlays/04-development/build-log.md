@@ -703,3 +703,24 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **`tools/reachscore`:** recorded days hold no D-RAP and no scales, so the library now names them unread on every replayed hour. The instrument's fail-closed check counts every other file unread: a GloTEC grid or the solar file not read still fails the run.
 - **Tests:** `TestEverySnapshotsStateIsSaid` holds each state's words, and that they never claim "the last held" for a GloTEC outage nor "NOAA not reached" where NOAA answered; `TestOnlyAFileTheReplayServesFailsTheRun`. **Mutants:** m509 to m512 new, all killed. m509 first failed vet, its removal leaving an import unused, and was rewritten.
 - **Docs:** D-239; the as-built map; the required reading's library version.
+
+## Batch 56 - REVIEW: the heap growth found and bounded (D-242); the G1 harness (A-81)
+
+- **What G1's soak showed:** post-GC heap growing about 8 MB a day in every arm, the one with the map never opened among them. It rises through the US day and holds overnight, with no day's growth released.
+- **What it is:** three idle instances ran silent, the profiled instances muted at the HUM LEAD's ask: 0.18.1, and 0.19.0 with the timing instrument on and off. Each kept an hourly heap profile (`heap-step/`, outside the tree).
+  - All three grew alike, so the growth is in 0.18.1 too and is not the timing instrument.
+  - Profiles 24 hours apart name the steady holder: the history store's day cache, 0.5 MB to 3-5 MB. It held each hour's whole encoded document after recording it, though recording reads only each hour's issue time and only the map's replay reads the documents.
+  - It was bounded at 256 days by count, not bytes. It gains about 90 days a day, so it fills near day three, with one AirNow day 2.5 MB.
+  - The rest of the day's rise is HMS's daily file, which falls back with the day, and the HTTP client's bounded caches filling.
+  - The code survey's estimate (6-10 MB a day) was twice what the profiles measured.
+- **The fix (D-242):**
+  - **Recording keeps an index:** each hour and its issue time, so an idle instance holds no document. A write drops the day's documents held for readers, which are no longer its files.
+  - **The replay's day cache** is bounded at 8 MB as well as 256 days, through a weight bound in `platform/agememo` (`NewSized`, `Options.MaxBytes`) that leaves its other users unchanged.
+  - **Compaction and roll-up** read a finished day once and hold it for no one.
+  - **The gauges** `history.days` (with its weight) and `history.index` make both visible to every soak.
+- **PF-8 restated:** a day's 24 puts still read their day once. Reading the day back now reads it once more, and once only: the ruling's stated cost.
+- **The G1 harness (A-81):** each arm measures 5 minutes past the span asked, so its last sample lands past it, and keeps an hourly heap profile in its folder. D-241's question gave the short span the wrong cause; A-81 corrects it.
+- **Tests:** `TestAWeightBoundHoldsTheValues`, `TestRecordingHoldsNoDocument`, `TestTheHistoryStoresCachesAreGauged`; `TestAPutDoesNotReadItsDayAgain` and `TestADayIsCompactedWithoutLosingARecord` extended.
+- **Mutants:** m513 to m520 new, all killed. m514 first survived (a write dropped what it would have shown) and found a test gap, now closed; m516 and m518 first failed vet and were rewritten. m498 was re-pointed, its line having grown.
+- **Found at the gate's checks:** `withHour`, the old write path's, was left unused, which lint and the duplicate check both caught, so it is removed. P10-01 read the store's `Held` calling the memo's `Held` as recursion, so the store's method is `Memory` (D-215: a distinct name, not a guard).
+- **Go 1.27.3 (A-82, under D-152):** `make vuln` failed on a new standard-library advisory, GO-2026-6809 (`crypto/x509`), reached through the radio's TLS streams. CI and the release build move to go1.27.3, as do go-ionomaps' and go-tuiMaps' gates. The live 0.18.1, built with go1.27.2, is affected; whether it gets a 0.18.2 is the HUM LEAD's.

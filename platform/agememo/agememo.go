@@ -30,6 +30,11 @@ type Options struct {
 	// Max is how many keys are held, the least recently used out; one when
 	// unset.
 	Max int
+	// MaxBytes is how much the values held may weigh together, by the size a
+	// memo made with NewSized gives them, the least recently used out while
+	// they weigh more; zero, no bound by weight (D-242). A value that alone
+	// weighs more is held alone.
+	MaxBytes int64
 	// Now is the clock; the wall clock when nil.
 	Now func() time.Time
 }
@@ -37,16 +42,19 @@ type Options struct {
 // Memo keeps values by key for an age. It is safe for concurrent use.
 type Memo[K comparable, V any] struct {
 	o      Options
+	size   func(V) int64 // a value's weight, for MaxBytes; nil, every value weighs nothing
 	mu     sync.Mutex
 	tick   uint64
 	items  map[K]*entry[V]
 	flying map[K]*call[V]
+	weight int64 // what the values held weigh together
 }
 
 type entry[V any] struct {
-	val  V
-	at   time.Time
-	used uint64
+	val    V
+	at     time.Time
+	used   uint64
+	weight int64
 }
 
 // call is a fetch in flight: the callers that ask while it runs wait for it.
@@ -63,6 +71,21 @@ func New[K comparable, V any](o Options) *Memo[K, V] {
 		o.Now = time.Now
 	}
 	return &Memo[K, V]{o: o, items: map[K]*entry[V]{}, flying: map[K]*call[V]{}}
+}
+
+// NewSized builds a memo with the rules o whose values weigh what size says,
+// held within o.MaxBytes as well as o.Max (D-242).
+func NewSized[K comparable, V any](o Options, size func(V) int64) *Memo[K, V] {
+	m := New[K, V](o)
+	m.size = size
+	return m
+}
+
+// Held is how many keys the memo holds and what their values weigh.
+func (m *Memo[K, V]) Held() (keys int, weight int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.items), m.weight
 }
 
 // Get is k's value while it is fresh.
@@ -99,7 +122,7 @@ func (m *Memo[K, V]) Put(k K, v V) {
 func (m *Memo[K, V]) Forget(k K) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.items, k)
+	m.dropLocked(k)
 }
 
 // Do is k's value while it is fresh, else fetch's - one fetch a key at a
@@ -174,18 +197,40 @@ func (m *Memo[K, V]) freshLocked(k K) (*entry[V], bool) {
 }
 
 // storeLocked keeps v as k's value, dropping the least recently used key
-// when the memo is full.
+// when the memo is full, and then while the values weigh more than MaxBytes -
+// never the value just kept, which, weighing more alone, is held alone.
 func (m *Memo[K, V]) storeLocked(k K, v V) {
 	m.tick++
-	if _, ok := m.items[k]; !ok && len(m.items) >= m.o.Max {
+	_, had := m.items[k]
+	m.dropLocked(k)
+	if !had && len(m.items) >= m.o.Max {
 		m.evictLocked()
 	}
-	m.items[k] = &entry[V]{val: v, at: m.o.Now(), used: m.tick}
+	e := &entry[V]{val: v, at: m.o.Now(), used: m.tick}
+	if m.size != nil {
+		e.weight = m.size(v)
+	}
+	m.items[k], m.weight = e, m.weight+e.weight
 	// THE BOUND, CHECKED WHERE IT CAN BREAK: eviction is conditional on a new
 	// key, and the day that condition is wrong the memo grows without limit
 	// while every answer it gives stays right.
 	if err := invariant.Check(len(m.items) <= m.o.Max, "the memo holds at most Max keys"); err != nil {
 		m.evictLocked()
+	}
+	for range m.o.Max { // each pass drops one of at most Max keys (P10-02)
+		heavy := m.o.MaxBytes > 0 && m.weight > m.o.MaxBytes && len(m.items) > 1
+		if !heavy {
+			return
+		}
+		m.evictLocked() // the least recently used: never k, the most recent
+	}
+}
+
+// dropLocked forgets k's value and its weight.
+func (m *Memo[K, V]) dropLocked(k K) {
+	if e, ok := m.items[k]; ok {
+		m.weight -= e.weight
+		delete(m.items, k)
 	}
 }
 
@@ -199,6 +244,6 @@ func (m *Memo[K, V]) evictLocked() {
 		}
 	}
 	if found {
-		delete(m.items, victim)
+		m.dropLocked(victim)
 	}
 }

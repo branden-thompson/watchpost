@@ -34,7 +34,6 @@ package history
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -158,9 +157,15 @@ type Store struct {
 	now   func() time.Time
 	mu    sync.Mutex
 	stats Stats
-	// days keeps each day's hours as read, by the day's file, with what its
-	// files were when read: read again only when they change (W14 P-18).
+	// days keeps each day's hours as read for the store's readers, by the
+	// day's file, with what its files were when read: read again only when
+	// they change (W14 P-18), held within dayRules by count and by weight
+	// (D-242).
 	days *agememo.Memo[string, heldDay]
+	// index keeps each day's hours as recording reads them - each hour and
+	// when it was issued, never its document - so recording holds no
+	// document (D-242).
+	index *agememo.Memo[string, heldIndex]
 	// SIZE, KEPT AS IT GOES (PF-2): what each dataset's directory holds on
 	// disk, by its name ("" for a file at the root), and the oldest day held -
 	// walked once, at the first read or the first prune, then kept by every
@@ -184,6 +189,70 @@ type heldDay struct {
 	entries []hourEntry
 }
 
+// weight is what a held day keeps in memory, near enough to bound by: each
+// hour's document and values, and a little for each hour and field (D-242).
+func (h heldDay) weight() int64 {
+	w := int64(0)
+	for _, e := range h.entries { // a day's buckets (P10-02)
+		w += 96 + int64(len(e.Doc))
+		for k, v := range e.Values { // a dataset's fields (P10-02)
+			w += 48 + int64(len(k)) + 8*int64(len(v))
+		}
+	}
+	return w
+}
+
+// heldIndex is a day's hours as recording reads them - each hour and when it
+// was issued - and the day's files when they were read (D-242).
+type heldIndex struct {
+	files dayFiles
+	hours []hourMark
+}
+
+// hourMark is one hour recorded and when it was issued.
+type hourMark struct {
+	Hour, Issued time.Time
+}
+
+// marksOf are a day's hours as recording reads them.
+func marksOf(es []hourEntry) []hourMark {
+	out := make([]hourMark, 0, len(es))
+	for _, e := range es { // a day's buckets (P10-02)
+		out = append(out, hourMark{Hour: e.Hour, Issued: e.Issued})
+	}
+	return out
+}
+
+// issuedAt is when the day's hour was issued, as recorded; false for an
+// hour not recorded.
+func (x heldIndex) issuedAt(hour time.Time) (time.Time, bool) {
+	for _, m := range x.hours { // a day's buckets (P10-02)
+		if m.Hour.Equal(hour) {
+			return m.Issued, true
+		}
+	}
+	return time.Time{}, false
+}
+
+// withMark is a day's marks with m in its hour's place, in order: a new
+// slice, as the held one is shared.
+func withMark(ms []hourMark, m hourMark) []hourMark {
+	out := make([]hourMark, 0, len(ms)+1)
+	placed := false
+	for _, h := range ms { // a day's buckets (P10-02)
+		if !placed && !h.Hour.Before(m.Hour) {
+			out, placed = append(out, m), true
+		}
+		if !h.Hour.Equal(m.Hour) {
+			out = append(out, h)
+		}
+	}
+	if !placed {
+		out = append(out, m)
+	}
+	return out
+}
+
 // dayFiles is what a day's files are: the day's own document's time and
 // size, its bucket directory's time and how many it holds, and its buckets'
 // newest time and their bytes. Any write - this instance's by a rename,
@@ -198,8 +267,13 @@ type dayFiles struct {
 }
 
 // dayRules keep a day's hours for as long as its files stand - the files
-// decide, not the age - for the series and days a map replays.
-var dayRules = agememo.Options{Fresh: 24 * time.Hour, Max: 256}
+// decide, not the age - for the series and days a map replays: 256 days at
+// most, weighing 8 MB at most together (D-242), one AirNow day 2.5 MB.
+var dayRules = agememo.Options{Fresh: 24 * time.Hour, Max: 256, MaxBytes: 8 << 20}
+
+// indexRules keep a day's hours as recording reads them: an hour and its
+// issue, about 1 KB a day, for the days being written.
+var indexRules = agememo.Options{Fresh: 24 * time.Hour, Max: 512}
 
 // DefaultRoot is $XDG_DATA_HOME/watchpost/weather/history, by default
 // ~/.local/share/...; "" where neither resolves (the store then does
@@ -229,7 +303,8 @@ func Open(root string, now func() time.Time, sets ...Dataset) *Store {
 	if now == nil {
 		s.now = time.Now
 	}
-	s.days = agememo.New[string, heldDay](agememo.Options{Fresh: dayRules.Fresh, Max: dayRules.Max, Now: s.now})
+	s.days = agememo.NewSized[string, heldDay](agememo.Options{Fresh: dayRules.Fresh, Max: dayRules.Max, MaxBytes: dayRules.MaxBytes, Now: s.now}, heldDay.weight)
+	s.index = agememo.New[string, heldIndex](agememo.Options{Fresh: indexRules.Fresh, Max: indexRules.Max, Now: s.now})
 	for _, d := range sets { // a handful (P10-02)
 		s.sets[d.Name] = d
 	}
@@ -534,9 +609,9 @@ func (s *Store) Record(dataset string, r Record) bool {
 	at := r.At.UTC().Truncate(d.step())
 	entry := toEntry(d, r, at)
 	f := filesAt(dir, at)
-	held := s.heldDayOf(f, d, at)
-	have, seen := findHour(held.entries, at)
-	stale := seen && !have.Issued.Before(entry.Issued)
+	held := s.indexOf(f, d, at)
+	issued, seen := held.issuedAt(at)
+	stale := seen && !issued.Before(entry.Issued)
 	if stale {
 		return s.note(func(st *Stats) { st.Skipped++ }, true)
 	}
@@ -550,21 +625,24 @@ func (s *Store) Record(dataset string, r Record) bool {
 	return s.note(func(st *Stats) { st.Puts++ }, true)
 }
 
-// keepPut adds a record just written to its day as held, so the next Put of
+// keepPut adds a record just written to its day's index, so the next Put of
 // the day reads none of its files again (PF-8) - when the day's files are now
 // what they were with only that bucket written. Any other change - another
-// instance's bucket, a temp file, a compaction - has the day read again.
-func (s *Store) keepPut(f seriesFiles, held heldDay, e hourEntry, written fs.FileInfo, had int64) {
-	if s.days == nil || written == nil {
+// instance's bucket, a temp file, a compaction - has the day read again. The
+// day's documents, held for readers, are forgotten: they are no longer the
+// day's files (D-242).
+func (s *Store) keepPut(f seriesFiles, held heldIndex, e hourEntry, written fs.FileInfo, had int64) {
+	if s.index == nil || written == nil {
 		return
 	}
+	s.days.Forget(f.day)
 	if had < -1 { // a size, or -1 for none: anything else is no size this store wrote
-		s.days.Forget(f.day)
+		s.index.Forget(f.day)
 		return
 	}
 	newest := written.ModTime().After(held.files.newestBucket)
 	if !newest {
-		s.days.Forget(f.day)
+		s.index.Forget(f.day)
 		return
 	}
 	want := held.files
@@ -575,33 +653,11 @@ func (s *Store) keepPut(f seriesFiles, held heldDay, e hourEntry, written fs.Fil
 	}
 	now, _ := statDay(f)
 	want.bucketsMod = now.bucketsMod // a rename moves the directory's time
-	s.days.Forget(f.day)
+	s.index.Forget(f.day)
 	if now != want {
 		return
 	}
-	entries := withHour(held.entries, e)
-	_, _ = s.days.Do(context.Background(), f.day, func() (heldDay, error) {
-		return heldDay{files: now, entries: entries}, nil
-	})
-}
-
-// withHour is a day's entries with e in its bucket's place, in order: a new
-// slice, as the held one is shared with readers.
-func withHour(hs []hourEntry, e hourEntry) []hourEntry {
-	out := make([]hourEntry, 0, len(hs)+1)
-	placed := false
-	for _, h := range hs { // a day's buckets (P10-02)
-		if !placed && !h.Hour.Before(e.Hour) {
-			out, placed = append(out, e), true
-		}
-		if !h.Hour.Equal(e.Hour) {
-			out = append(out, h)
-		}
-	}
-	if !placed {
-		out = append(out, e)
-	}
-	return out
+	s.index.Put(f.day, heldIndex{files: now, hours: withMark(held.hours, hourMark{Hour: e.Hour, Issued: e.Issued})})
 }
 
 // validRecord reports whether a record is one d holds: a time; values only
@@ -683,6 +739,49 @@ func (s *Store) dayEntries(dir string, d Dataset, day time.Time) []hourEntry {
 		return nil
 	}
 	return s.heldDayOf(filesAt(dir, day), d, day).entries
+}
+
+// indexOf is a day's hours as recording reads them: the index held while the
+// day's files stand, else the day's documents held for readers, else the
+// day's files read - the index alone then kept (D-242).
+func (s *Store) indexOf(f seriesFiles, d Dataset, day time.Time) heldIndex {
+	if f.day == "" {
+		return heldIndex{}
+	}
+	now, entries := statDay(f)
+	if s.index == nil {
+		return heldIndex{files: now, hours: marksOf(s.readDay(f, d, day, entries))}
+	}
+	if held, _, ok := s.index.Last(f.day); ok && held.files == now {
+		return held
+	}
+	x := heldIndex{files: now}
+	if held, _, ok := s.days.Last(f.day); ok && held.files == now {
+		x.hours = marksOf(held.entries)
+	} else {
+		x.hours = marksOf(s.readDay(f, d, day, entries))
+	}
+	s.index.Put(f.day, x)
+	return x
+}
+
+// dayEntriesOnce is a day's hours for compaction and roll-up, which read a
+// finished day once and rewrite it: the day held for readers if its files
+// stand, else read and held by nothing, so a day being rewritten never
+// pushes out the days a map replays (D-242).
+func (s *Store) dayEntriesOnce(dir string, d Dataset, day time.Time) []hourEntry {
+	if dir == "" {
+		return nil
+	}
+	f := filesAt(dir, day)
+	if f.day == "" {
+		return nil
+	}
+	now, entries := statDay(f)
+	if held, _, ok := s.days.Last(f.day); ok && held.files == now {
+		return held.entries
+	}
+	return s.readDay(f, d, day, entries)
 }
 
 // heldDayOf is a day's hours and what its files were when they were read:
@@ -864,6 +963,17 @@ func addDays(byDate map[string]dayEntry, days []dayEntry) {
 			byDate[e.Date] = e
 		}
 	}
+}
+
+// Memory is what the store holds in memory (D-242): the days held for
+// readers and what they weigh, and the days indexed for recording.
+func (s *Store) Memory() (days int, dayBytes int64, indexed int) {
+	if s == nil || s.days == nil {
+		return 0, 0, 0
+	}
+	days, dayBytes = s.days.Held()
+	indexed, _ = s.index.Held()
+	return days, dayBytes, indexed
 }
 
 // Stats is a copy of what the store has done.
@@ -1666,7 +1776,7 @@ func (s *Store) compact(d Dataset, dir string, date time.Time) int {
 		return 0
 	}
 	defer func() { _ = os.Remove(claim) }() // the claim let go
-	entries := s.dayEntries(dir, d, date)
+	entries := s.dayEntriesOnce(dir, d, date)
 	if len(entries) == 0 {
 		return 0
 	}
@@ -1805,7 +1915,7 @@ func parseRollup(name string) (rollupName, bool) {
 // may its records go. A day of documents alone rolls up to nothing and is kept
 // until the days' retention passes too.
 func (s *Store) rollUp(d Dataset, dir string, date time.Time) bool {
-	entries := s.dayEntries(dir, d, date)
+	entries := s.dayEntriesOnce(dir, d, date)
 	if len(entries) == 0 {
 		return false
 	}

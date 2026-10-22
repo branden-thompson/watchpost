@@ -279,7 +279,11 @@ func TestADayIsCompactedWithoutLosingARecord(t *testing.T) {
 		}
 	}()
 	wg.Wait()
-	open(t, dir, &now).RollUpAndPrune() // the next pass takes what the first missed
+	last := open(t, dir, &now)
+	last.RollUpAndPrune() // the next pass takes what the first missed
+	if days, _, _ := last.Memory(); days != 0 {
+		t.Errorf("compaction left %d days held for readers: a day rewritten is read once and held by nothing (D-242)", days)
+	}
 	s := open(t, dir, &now)
 	got := s.Range(grid.Name, ndfd, day, day.Add(23*time.Hour), 100)
 	if len(got) != 24 {
