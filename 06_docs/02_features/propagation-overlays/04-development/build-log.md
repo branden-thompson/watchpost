@@ -730,3 +730,8 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **D-243:** the live 0.18.1 is built with go1.27.2 and carries GO-2026-6809. 0.18.2 is cut from `main` on go1.27.3 alone, with its own gate, release branch, PR and tag. D-242's change waits for 0.19.0.
 - **D-244:** GO-2026-6809 is fixed in go1.26.10 too, and go-tuiMaps' gate scans the standard library at the module floor. Every built module's `go` directive in watchpost, go-ionomaps and go-tuiMaps is 1.26.10, as D-152 did for 1.26.9. The README says it.
 - **The libraries:** go-ionomaps' hosted gate is on go1.27.3 (`3be1667`, its A-28); its floor and go-tuiMaps' pins and floor follow, each on its own gate (go-ionomaps D-84, go-tuiMaps D-38 and A-17). watchpost needs no re-pin for them: a library's `go` directive is a minimum, and watchpost's is now the same.
+
+## Docs after batch 57 - `main`'s 0.18.2 merged (D-243)
+
+- **0.18.2 shipped:** PR #30 squash-merged to `main` as `a7e77990`, CI on both systems green, tagged `v0.18.2`. The release workflow built every platform's binary, and the macOS arm64 binary checks as Go 1.27.3 from `a7e77990`. The release branch was pushed past the pre-push hook: the hook runs this branch's `tools/prepush`, which the 0.18 line does not have, and the full gate was green on the commit pushed.
+- **Merged here:** the workflows conflicted only on the actions' pins, and this branch's newer ones stand (F-216). The changelog carries 0.18.2's entry; 0.19.0's section now names the floor (go 1.26.10, D-244) rather than the toolchain 0.18.2 already ships, and says the memory growth is in 0.18.2 too.

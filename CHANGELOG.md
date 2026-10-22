@@ -25,13 +25,20 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 - Nothing is fetched for the Propagation mode until it is opened. GIRO is asked at most once an hour and
   its throttle is kept across restarts (`propagation-throttle.json`, times only); GIRO records the
   address it is asked from, and its data is for non-commercial use.
-- **Built with Go 1.27.3,** which distrusts compromised intermediate certificates in the standard
-  library's certificate checks (GO-2026-6809), reached through the radio's TLS streams.
+- **The module floor is Go 1.26.10**, the first on the Go 1.26 line with GO-2026-6809 fixed; 0.18.2 already
+  builds with Go 1.27.3.
 
 ### Fixed
 - **Memory no longer grows day by day.** The weather history held every hour's recorded document in
   memory, about 8 MB more each day for its first days of running; it now holds only what a map's replay
-  reads, within 8 MB. The same growth is in 0.18.1.
+  reads, within 8 MB. The same growth is in 0.18.1 and 0.18.2.
+
+## [0.18.2] — 2026-10-22
+
+### Security
+- **Built with Go 1.27.3,** whose certificate checks distrust compromised intermediate certificates
+  (GO-2026-6809, `crypto/x509`). Watchpost reaches those checks through the radio's TLS streams. No
+  other change: the module's floor stays Go 1.26.9.
 
 ## [0.18.1] — 2026-10-10
 
