@@ -259,8 +259,14 @@ func newTransport() *http.Transport {
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: time.Second,
 		ForceAttemptHTTP2:     true,
+		// A reply's headers are bounded as its body is (RI-4): every service
+		// read sends a few kilobytes; Go's default is about ten megabytes.
+		MaxResponseHeaderBytes: maxHeaderBytes,
 	}
 }
+
+// maxHeaderBytes bounds a reply's headers.
+const maxHeaderBytes = 64 << 10
 
 // Option tunes one request.
 type Option func(*reqOpts)

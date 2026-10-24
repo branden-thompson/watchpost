@@ -58,8 +58,9 @@ func (d Dashboard) propRefreshLabel() string {
 	return "Every 10 min"
 }
 
-// propRefreshNote is a choice's measured cost on the wire while the mode is
-// open (D-120, D-141), said under the row while it is chosen.
+// propRefreshNote is a choice's cost on the wire while the mode is open, said
+// under the row while it is chosen: D-141's ceilings, W0.0's measurement and
+// 25 % (D-120); G1's runs measured 13.94 and 2.66 MB an hour (A-83).
 func propRefreshNote(r propRefresh) string {
 	switch r {
 	case refreshHourly:

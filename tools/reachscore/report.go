@@ -39,6 +39,16 @@ const (
 	targetCeiling = 90.0
 )
 
+// blindSpots are what the figures above cannot see, said in the output
+// itself, not only in a document that quotes it (INST-5, RB-8).
+const blindSpots = `
+## What these figures cannot see
+
+- **WSPR alone is the reference** (D-226): RBN reports a signal's SNR without the transmitter's power, so it cannot be put on the reference circuit; a band WSPR's stations do not use is graded on few spots or none.
+- **The draw is balanced, not the air's own rate** (D-219): each stratum holds as many open as closed outcomes, so an agreement here is not how often an answer is right on an ordinary day; each band's base rate is beside it.
+- **A band every column answers alike scores 50 % by construction**: where the climatology, the background and the shipped build give the same answer for every scenario, agreement is half by the draw, whatever the answer is worth.
+`
+
 // report writes the table: the run's provenance, each metric's agreement
 // by band for every column with the base rate beside it (D-219), each kind
 // of outcome's agreement apart (D-218), and what fed each column.
@@ -56,6 +66,7 @@ func report(w io.Writer, r reportOf) error {
 		writeMetric(&b, m, r)
 	}
 	writeFeeds(&b, r.facts)
+	b.WriteString(blindSpots)
 	_, err := io.WriteString(w, b.String())
 	return err
 }
@@ -101,7 +112,12 @@ func writeMetric(b *strings.Builder, m metric, r reportOf) {
 	}
 	fmt.Fprintln(b)
 	n, ca := all[climatology].total()
-	_, sa := all[shipped].total()
+	nb, _ := all[background].total()
+	ns, sa := all[shipped].total()
+	if nb != n || ns != n {
+		fmt.Fprintf(b, "\nAgainst the target (D-99): no verdict - the columns answered different numbers of scenarios, so no figure stands (RC-9).\n")
+		return
+	}
 	fmt.Fprintf(b, "\nAgainst the target (D-99, judged on the point estimate, D-228): %s.\n", verdict(ca, sa, n))
 }
 

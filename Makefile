@@ -107,7 +107,10 @@ lint-plan-code:
 # macOS-only: on another OS the test skips, so CI runs this step on macOS alone,
 # and there a missing `say` fails it.
 test-say:
-	@WATCHPOST_SAY_LEG=1 go test -count=1 -timeout 3m -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth
+	@out="$$(WATCHPOST_SAY_LEG=1 go test -count=1 -v -timeout 3m -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth 2>&1)"; rc=$$?; \
+	printf '%s\n' "$$out" | grep -E -- '^(--- |ok |FAIL|\s+synth_test)' ; \
+	[ $$rc -eq 0 ] || exit $$rc; \
+	if printf '%s\n' "$$out" | grep -q -- 'NOT RUN: '; then echo "test-say: NOT RUN - this host's say renders no audio (declared mute: $$WATCHPOST_SAY_MUTE_HOST, D-254)"; fi
 
 # THE PUBLISHED TREE NAMES NO PERSON AND NO MACHINE. A home directory, an
 # agent-harness scratchpad path, an internal project tree or an email address
@@ -298,8 +301,10 @@ verify-gates: fmt vet vet-tags tidy vuln race test-say lint lint-imports lint-wa
 # verify. tools/docslane decides from the change itself and refuses any other
 # file, tracked or not, so the rule is held here rather than remembered. It
 # refuses an unchanged tree too: run it before committing. It is local only:
-# CI and every other change run verify.
+# CI and every other change run verify. A lane refused ran no leg, so it is
+# refused before runlog: the record holds runs, never refusals (RD-12).
 verify-docs:
+	@go run ./tools/docslane
 	@go run ./tools/treelock -name verify-docs -- go run ./tools/runlog -lane verify-docs -- $(MAKE) --no-print-directory verify-docs-gates
 
 verify-docs-gates:

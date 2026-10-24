@@ -47,12 +47,6 @@ type Dropped struct {
 	ID string
 }
 
-// Restored is the operator undoing a drop.
-type Restored struct {
-	isEvent
-	ID string
-}
-
 // Requested is the operator asking for a report, at a position (R3).
 //
 // THE CARD ARRIVES BUILT. The Director does not mint cards — D-40's whole split
@@ -130,48 +124,6 @@ func (d Director) onDropped(ev Dropped) (Director, []Effect) {
 		return d, nil
 	}
 	d.lineup = next.discard(gone)
-	return d.settle()
-}
-
-// onRestored puts a dropped card back, as a NEW card.
-//
-// NOT A REVIVAL, and the card model is explicit: "REFUSED, DONE and DISCARDED
-// lead nowhere: a card that could be revived is a card that can be read twice."
-// So this proposes afresh from what the pile kept — and deliberately WITHOUT
-// the old words, because they were composed against data that may since have
-// become untrue, which is the whole reason the staleness window exists.
-//
-// AND IT IS THE OPERATOR'S (FR-3.4). A human put this card back, and the card
-// says so: `Origin.FromOperator`.
-func (d Director) onRestored(ev Restored) (Director, []Effect) {
-	// NOTHING IS COMMITTED UNTIL ALL OF IT SUCCEEDS (F-74). Spending the pile
-	// entry on the line that takes it would have every refusal below return a
-	// Director that had ALREADY LOST IT — a restore the schedule would not
-	// accept would destroy the operator's one recovery and put nothing back,
-	// silently.
-	//
-	// IT IS REACHED THE ORDINARY WAY: ReadID is a pure function of the ref, so a
-	// location dropped and then re-queued by the rotation is holding the very
-	// identity the undo wants. `next` is therefore carried down as a LOCAL and
-	// assigned to the Director only at the end.
-	was, next, ok := d.lineup.takeDiscarded(ev.ID)
-	if !ok {
-		return d, nil
-	}
-	card, err := Propose(Card{ID: was.ID, Slot: was.Slot, Origin: FromOperator,
-		Subject: was.Subject, Headline: was.Headline, Refs: was.Refs})
-	if err != nil {
-		return d, nil // it cannot be re-proposed — a structural card, whose words the undo drops
-	}
-	admitted, err := card.To(Admitted)
-	if err != nil {
-		return d, nil
-	}
-	queued, err := next.Queue(trackFor(was.Slot), admitted)
-	if err != nil {
-		return d, nil // the schedule is already holding one under that identity
-	}
-	d.lineup = queued
 	return d.settle()
 }
 

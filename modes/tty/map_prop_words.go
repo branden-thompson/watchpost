@@ -253,14 +253,15 @@ func upperFirst(s string) string {
 
 // propStationWords say an answer's nearest reporting station (D-116,
 // D-198): its distance, and beyond the far distance, or with none, that the
-// answer is about as good as typical.
+// answer is about as good as typical here, or worse (D-129: the Pacific's
+// hybrid did worse than the climatology).
 func (d Dashboard) propStationWords(n ionomaps.Nearest) string {
 	var w string
 	switch {
 	case !n.Known:
-		w = "no reporting station, about as good as typical"
+		w = "no reporting station, about as good as typical here, or worse"
 	case n.Km >= propFarKm:
-		w = "nearest station " + d.roundDistance(float64(n.Km)) + " away, about as good as typical"
+		w = "nearest station " + d.roundDistance(float64(n.Km)) + " away, about as good as typical here, or worse"
 	default:
 		w = "nearest station " + d.roundDistance(float64(n.Km)) + " away"
 	}

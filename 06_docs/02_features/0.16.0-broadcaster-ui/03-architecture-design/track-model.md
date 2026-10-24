@@ -258,8 +258,8 @@ mutant visible at all.
 | Plant | Why it survived | The test that now exists |
 |---|---|---|
 | the on-air lock removed | `Next()` skips an on-air card either way, so the WALK cannot see it — and the harm is positional: the schedule describing a queue place for a card that has left the queue | asserts the card's POSITION, deliberately against the rule used everywhere else |
-| the undo leaves its pile entry | restoring twice is refused by the identity check anyway, so nothing broke — but the console keeps offering an undo for a card already back | `TestRestoringSpendsThePileEntry` |
-| every slot restores to the main track | **nothing restored a TAKEOVER** | `TestARestoredTakeoverGoesBackOnTheRail` — **FR-3.7's exit, in its own words: "asserted for an ACTIVE warning specifically, which is the case that matters"** |
+| the undo leaves its pile entry | restoring twice is refused by the identity check anyway, so nothing broke — but the console keeps offering an undo for a card already back | none now: the undo (`Event.Restored`) is deleted, never wired to the console in three releases (0.19.0 D-259); D-37's window writes it again with its tests (F-108) |
+| every slot restores to the main track | **nothing restored a TAKEOVER** | none now, as above; **FR-3.7's exit, in its own words: "asserted for an ACTIVE warning specifically, which is the case that matters"**, binds the undo F-108 builds |
 | an on-air card can be dropped | nothing tried | `TestTheCardOnTheAirCannotBeDropped` — a drop mid-read strands the band's callout, which is DR-24's original defect arriving through the operator's control |
 
 **The third is the one worth the batch.**  A restored warning going back to the programme instead of the

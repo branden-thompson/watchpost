@@ -185,3 +185,28 @@ func TestAnHourAheadIsLabelledByTheHourShown(t *testing.T) {
 		t.Errorf("a snapshot made at 08:40 labels its first hour ahead %q; the hour shown, 09:00", label)
 	}
 }
+
+// TestAnHourAheadOfARebuiltSnapshotIsDropped is the REVIEW red team's RC-4,
+// L-F3's class for the hours ahead: an hour ahead asked of a snapshot that
+// is rebuilt at the same moment before it is answered - another noise, the
+// correction - is the old snapshot's, and is dropped, never kept for the
+// new one.
+func TestAnHourAheadOfARebuiltSnapshotIsDropped(t *testing.T) {
+	d := chartDash(t)
+	m, _ := d.Update(mapKeyMsg(t, "shift+right"))
+	d = m.(Dashboard)
+	d.mapPane.propAheadAsked = 0
+	d, cmd := d.armPropAhead()
+	if cmd == nil {
+		t.Fatal("control: no hour ahead was asked")
+	}
+	rebuilt := *d.mapPane.propSnap
+	rebuilt.Noise = ionomaps.NoiseRural // the same moment, another noise: another snapshot (D-187)
+	m, _ = d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: rebuilt}, correct: d.mapPane.propSnapCorrect})
+	d = m.(Dashboard)
+	m, _ = d.Update(cmd())
+	d = m.(Dashboard)
+	if _, kept := d.mapPane.propAheadSnaps[1]; kept {
+		t.Error("the hour ahead of the snapshot before the rebuild was kept for the rebuilt one")
+	}
+}

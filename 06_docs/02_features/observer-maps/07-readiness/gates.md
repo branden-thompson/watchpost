@@ -4,7 +4,7 @@ date: 2026-09-29
 phase: BUILD exit
 sev: SEV-0
 authority: HUM LEAD
-status: "OPEN — grows per batch. BUILD-exit P10 recorded (2026-10-05); REVIEW-exit P10 to come."
+status: "CLOSED with 0.18.0. BUILD-exit P10 recorded here (2026-10-05); REVIEW-exit P10 recorded in `08-reports/review-report.md`."
 ---
 
 # Gate roster

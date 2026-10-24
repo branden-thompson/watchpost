@@ -2,6 +2,7 @@ package lineup
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 )
 
@@ -102,7 +103,7 @@ func TestTheLastCardFallsIntoTheDiscardPile(t *testing.T) {
 	}
 	// THE ONE THAT FELL IS RECOVERABLE, which is the whole of the ruling: the
 	// Producer can re-request it, and that is only true if it is on the pile.
-	if _, _, ok := out.takeDiscarded(lastBefore); !ok {
+	if !slices.ContainsFunc(out.Discarded(), func(c Card) bool { return c.ID == lastBefore }) {
 		t.Errorf("%q fell off the bottom and is not on the discard pile; it is simply gone", lastBefore)
 	}
 }

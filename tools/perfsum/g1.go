@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,6 +52,7 @@ type g1Arm struct {
 	wireMB    float64 // decimal MB read off the wire between the counters' first and last records in the span
 	wireHours float64 // the time between those records
 	wireRead  bool    // two counters records inside the span, an hour or more apart
+	warned    int     // the driver's cycles it could not confirm drawn, or its phases that failed (RC-1)
 }
 
 // g1Bases are the arms the use arm is compared with (A-79, A-80): the key
@@ -100,7 +102,7 @@ func summariseG1(dir, against string) (string, int, error) {
 	b.WriteString("## The arms\n\n| Arm | Hours | Samples | CPU % | RSS MB (median / max) | Footprint MB (median) | Heap MB (median) | Wire MB an hour | Wire MB a day |\n|---|---|---|---|---|---|---|---|---|\n")
 	row := func(name string, a g1Arm) {
 		r := a.res
-		fmt.Fprintf(&b, "| %s | %.1f | %d | %.2f | %.1f / %.1f | %.1f | %.1f | %s | %s |\n", name, a.hours, r.samples, r.cpuPct, r.rssMedMB, r.rssMaxMB, r.footMedMB, r.heapMedMB, a.perHour(1), a.perHour(24))
+		fmt.Fprintf(&b, "| %s | %.1f | %d | %.2f | %.1f / %.1f | %s | %s | %s | %s |\n", name, a.hours, r.samples, r.cpuPct, r.rssMedMB, r.rssMaxMB, gauge(r.footMedMB), gauge(r.heapMedMB), a.perHour(1), a.perHour(24))
 	}
 	row("the mode in use", use)
 	for _, base := range bases {
@@ -117,6 +119,8 @@ func summariseG1(dir, against string) (string, int, error) {
 		return "**missed**"
 	}
 	short := use.hours < 48
+	b.WriteString("\n## The run itself\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n")
+	fmt.Fprintf(&b, "| the driver's cycles not confirmed drawn, or its steps failed, in the mode in use | %d | none | %s |\n", use.warned, verdict(use.warned == 0, true))
 	b.WriteString("\n## The mode's downloads\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n")
 	fmt.Fprintf(&b, "| downloads on the wire while open, MB an hour | %s | at most %g | %s |\n", use.perHour(1), wireTarget, verdict(use.wireRead && use.wireMB/use.wireHours <= wireTarget, true))
 	for _, base := range bases {
@@ -130,13 +134,15 @@ func summariseG1(dir, against string) (string, int, error) {
 		fmt.Fprintf(&b, "| added mean CPU, %% of one core | %+.2f | at most %.0f | %s |\n", cpu, g1AddedCPUPct, verdict(cpu <= g1AddedCPUPct, counts))
 		fmt.Fprintf(&b, "| added RSS, MB (medians) | %+.1f | at most %.0f | %s |\n", rss, g1AddedRSSMB, verdict(rss <= g1AddedRSSMB, counts))
 		fmt.Fprintf(&b, "| downloads with the Propagation mode never opened, MB | %s | none | %s |\n", base.arm.total(), verdict(base.arm.wireRead && base.arm.wireMB == 0, counts))
+		fmt.Fprintf(&b, "| its driver's cycles not confirmed drawn, or its steps failed | %d | none | %s |\n", base.arm.warned, verdict(base.arm.warned == 0, counts))
 		short = short || base.arm.hours < 48
 	}
 	switch {
 	case hourly:
 		b.WriteString("\nThe hourly setting's own run (A-79, A-83): its downloads alone are judged; CPU and RSS are judged over G1's 48 hours at the default refresh.\n")
 	case short:
-		b.WriteString("\nThe run is shorter than G1's 48 hours: a dry run, not the measure.\n")
+		b.WriteString("\nThe run is shorter than G1's 48 hours: a dry run, not the measure, and it exits as one missed (RC-1).\n")
+		missed++
 	}
 	return b.String(), missed, nil
 }
@@ -149,6 +155,14 @@ func runVariant(head []byte) string {
 		return ""
 	}
 	return f[2]
+}
+
+// gauge is a median in MB, or "unread" where no sample's gauge read.
+func gauge(mb float64) string {
+	if math.IsNaN(mb) {
+		return "unread"
+	}
+	return fmt.Sprintf("%.1f", mb)
 }
 
 // perHour is the arm's downloads over hours of its span, or "unread".
@@ -187,11 +201,21 @@ func readG1Arm(dir string) (g1Arm, error) {
 	if err != nil {
 		return g1Arm{}, err
 	}
+	for _, s := range samples {
+		if !s.at.Before(from) && math.IsNaN(s.rssKB) {
+			return g1Arm{}, fmt.Errorf("samples.csv: a sample at %s has no RSS that reads: G1 is judged on RSS, so no figure from this arm stands (RC-1)", s.at.Format(time.RFC3339))
+		}
+	}
 	res, ok := resourcesIn(samples, from, time.Unix(1<<40, 0))
 	if !ok {
 		return g1Arm{}, fmt.Errorf("samples.csv: fewer than two samples after %s", from.Format(time.RFC3339))
 	}
 	a := g1Arm{res: res}
+	for _, p := range phases {
+		if strings.Contains(p.name, "WARN") || strings.Contains(p.name, "FAILED") {
+			a.warned++ // a cycle the driver could not confirm, or a step that failed: the run did not do what it says
+		}
+	}
 	for _, s := range samples {
 		if !s.at.Before(from) {
 			a.hours = s.at.Sub(from).Hours()

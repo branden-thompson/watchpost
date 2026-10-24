@@ -79,7 +79,7 @@ func TestEachRowShowsItsNearestStation(t *testing.T) {
 	}
 	words := d.close().describeLinesAll()
 	near, far := words[lineWith(words, propanswers.Continents[0].Name+": ")], words[lineWith(words, propanswers.Continents[1].Name+": ")]
-	if !strings.Contains(near, "nearest station ") || strings.Contains(near, "about as good as typical") || !strings.HasSuffix(far, "away, about as good as typical.") {
+	if !strings.Contains(near, "nearest station ") || strings.Contains(near, "about as good as typical") || !strings.HasSuffix(far, "away, about as good as typical here, or worse.") {
 		t.Errorf("the words do not say each row's nearest station:\n%s\n%s", near, far)
 	}
 }

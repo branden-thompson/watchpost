@@ -29,7 +29,7 @@ const propagationBodyBytes = 8 << 20
 // what go-ionomaps parses from its source (W0.2).
 func propagationClientConfig() httpx.PlainConfig {
 	caps := map[string]int64{}
-	for _, s := range propagationSources() {
+	for _, s := range ionomaps.Sources() {
 		for _, h := range s.Hosts {
 			caps[h] = int64(s.MaxBytes)
 		}
@@ -59,7 +59,10 @@ const settleBound = 2 * time.Second
 
 // settle waits at the app's end for an update in flight to keep its state
 // (D-213); a service never made has nothing to wait for. The once orders
-// this read after the service was made.
+// this read after the service was made - and spends the once, so a service
+// not made by now never is: a late Ask finds no service and answers so
+// (domains/propagation's Ask, its nil check). The app's end goes on whether
+// or not the wait was long enough; Settle says which for its tests.
 func (h *propagationHolder) settle(bound time.Duration) {
 	h.once.Do(func() {})
 	if h.svc != nil {
@@ -120,26 +123,11 @@ func (lp *livePipelines) propagationUpdate(ctx context.Context, opts ionomaps.Up
 	return out
 }
 
-// propagationHostList is every host go-ionomaps asks at run time, read from
-// the library's own list (D-113); a library made only to read it fetches
-// nothing.
-func propagationHostList() []string {
-	var hosts []string
-	for _, s := range propagationSources() {
-		hosts = append(hosts, s.Hosts...)
-	}
-	return hosts
-}
-
-// propagationSources are the library's sources, its hosts and terms, read
-// with no library made (C-5).
-func propagationSources() []ionomaps.Source { return ionomaps.Sources() }
-
 // propagationHosts are MAP STATUS's rows for the Propagation mode's hosts
 // (FR-4.3): each learns the IP address; none is sent the view or the place.
 func propagationHosts() []tty.MapSource {
 	var out []tty.MapSource
-	for _, s := range propagationSources() {
+	for _, s := range ionomaps.Sources() {
 		for _, h := range s.Hosts {
 			out = append(out, tty.MapSource{Name: s.Name, Host: h, Layers: "MUF, foF2",
 				Notes: []string{"Propagation sources asked only while the mode is open; learn this computer's IP, sent no place"}}) // said once under the hosts (D-172)

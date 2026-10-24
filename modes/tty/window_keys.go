@@ -89,7 +89,7 @@ func windowKeysOf(m modal) (windowKeys, bool) {
 	case modalPropFind:
 		return windowKeys{claim: claimAll, all: Dashboard.handlePropFindKey}, true // FR-1.10: typing owns the keys; Enter finds, Esc leaves it
 	case modalPropChart:
-		return windowKeys{claim: claimAll, all: Dashboard.handlePropChartKey}, true // D-176: Esc or B closes it; the arrows pick the row its day is drawn for
+		return windowKeys{claim: claimAll, all: Dashboard.handlePropChartKey}, true // D-176: Esc or B closes it; its own keys pick the row its day is drawn for, listed in the MAP group (D-256)
 	case modalRequest:
 		return windowKeys{claim: claimAll, all: Dashboard.handleRequestKey, nav: Dashboard.handleRequestNav}, true // R4: a form, walked field by field
 	case modalMap:

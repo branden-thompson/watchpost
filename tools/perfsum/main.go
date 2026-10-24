@@ -262,7 +262,15 @@ func readSamples(path string) ([]sample, error) {
 		if !ok {
 			continue
 		}
-		num := func(k string) float64 { v, _ := strconv.ParseFloat(rec[col[k]], 64); return v }
+		// A GAUGE THAT DOES NOT READ IS UNREAD, NEVER 0 (RC-1): NaN, left out
+		// of every median; G1, judged on RSS, refuses a run whose RSS is.
+		num := func(k string) float64 {
+			v, err := strconv.ParseFloat(rec[col[k]], 64)
+			if err != nil {
+				return math.NaN()
+			}
+			return v
+		}
 		out = append(out, sample{at: at, cpuS: cpu, rssKB: num("rss_kb"), footKB: num("footprint_kb"), heap: num("heap_alloc"), gor: num("goroutines"), thr: num("threads")})
 	}
 	return nil, fmt.Errorf("samples.csv: more than %d rows", maxRows)
@@ -307,7 +315,7 @@ func resourcesIn(samples []sample, from, to time.Time) (resources, bool) {
 	first, last := in[0], in[len(in)-1]
 	var rss, foot, heap, gor, thr []float64
 	for _, s := range in {
-		rss, foot, heap, gor, thr = append(rss, s.rssKB/1024), append(foot, s.footKB/1024), append(heap, s.heap/(1<<20)), append(gor, s.gor), append(thr, s.thr)
+		rss, foot, heap, gor, thr = read(rss, s.rssKB/1024), read(foot, s.footKB/1024), read(heap, s.heap/(1<<20)), read(gor, s.gor), read(thr, s.thr)
 	}
 	span := last.at.Sub(first.at).Seconds()
 	// CUMULATIVE CPU NEVER FALLS within one process: a fall is two processes'
@@ -427,6 +435,14 @@ func quantile(v []float64, q float64) float64 {
 	sort.Float64s(s)
 	i := int(math.Ceil(q*float64(len(s)))) - 1
 	return s[max(0, min(i, len(s)-1))]
+}
+
+// read appends a gauge's value that read; an unread one (NaN) is left out.
+func read(v []float64, x float64) []float64 {
+	if math.IsNaN(x) {
+		return v
+	}
+	return append(v, x)
 }
 
 func maxOf(v []float64) float64 {

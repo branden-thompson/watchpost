@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
+	"time"
 
 	"github.com/branden-thompson/watchpost/domains/locations/coverage"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -85,7 +87,14 @@ func (g *Geocoder) search(ctx context.Context, query string, world bool) (snapsh
 	}
 	r := payload.Results[0]
 	r.Name, r.Admin1, r.CountryCode = cleanField(r.Name), cleanField(r.Admin1), cleanField(r.CountryCode) // the provider's text reaches the terminal and the words
-	if !world && r.CountryCode != "" && !coverage.NWS(r.CountryCode) {                                    // the same answer as the offline index (round 2 N-2)
+	onGlobe := r.Latitude >= -90 && r.Latitude <= 90 && r.Longitude >= -180 && r.Longitude <= 180         // false for NaN too
+	if !onGlobe {
+		return snapshot.LocationRef{}, errors.New("the geocoder answered with a place off the globe - try another name, coordinates or a grid locator") // RI-2: never marked as found
+	}
+	if _, err := time.LoadLocation(r.Timezone); err != nil || r.Timezone == "" {
+		r.Timezone = "" // a zone Go does not know, or text that is no zone, is not kept (RI-2): the place's own clock is worked out without it
+	}
+	if !world && r.CountryCode != "" && !coverage.NWS(r.CountryCode) { // the same answer as the offline index (round 2 N-2)
 		return snapshot.LocationRef{}, errors.New(coverage.Outside(r.Name + ", " + r.CountryCode))
 	}
 	label := r.Name
@@ -98,6 +107,9 @@ func (g *Geocoder) search(ctx context.Context, query string, world bool) (snapsh
 	// Deterministic representative-zip rule (AI-8 §3): if the query itself is
 	// one of the place's zips, show that; else the lowest-numbered zip.
 	for _, p := range r.Postcodes {
+		if !postcodeShape(p, r.CountryCode) {
+			continue // the provider's text, drawn and kept in the config: only a postcode's own characters (RI-2)
+		}
 		if p == query {
 			zip = p
 			break
@@ -135,6 +147,21 @@ func abbrevState(name string) string {
 // escape sequence or control character a server could address the terminal
 // with, at most a field's length.
 func cleanField(s string) string { return plaintext.ClampField(plaintext.Line(s)) }
+
+// postcodeShape is whether a postcode is one: in the US five digits; else
+// letters, digits, spaces and hyphens, at most ten (RI-2).
+func postcodeShape(p, country string) bool {
+	if country == "US" {
+		return usZip.MatchString(p)
+	}
+	return anyPostcode.MatchString(p)
+}
+
+// The postcodes' shapes.
+var (
+	usZip       = regexp.MustCompile(`^[0-9]{5}$`)
+	anyPostcode = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 -]{0,9}$`)
+)
 
 // LookupFailed is a world lookup the geocoder did not answer: its words are
 // the listener's - what is found without it - and its cause, the transport's

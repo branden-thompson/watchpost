@@ -19,6 +19,7 @@ const propAheadMost = 24
 // with none of now's measurements - for the snapshot computed then.
 type propAheadMsg struct {
 	computed time.Time
+	built    uint64 // which snapshot it was worked from: one rebuilt at the same time is another (L-F3, RC-4)
 	k        int
 	snap     ionomaps.Snapshot
 	err      error
@@ -53,17 +54,18 @@ func (d Dashboard) armPropAhead() (Dashboard, tea.Cmd) {
 		return d, nil
 	}
 	d.mapPane.propAheadAsked = k
-	held := *snap
+	held, built := *snap, d.mapPane.propBuilt
 	return d, func() tea.Msg {
 		ahead, err := held.Ahead(k)
-		return propAheadMsg{computed: held.Computed, k: k, snap: ahead, err: err}
+		return propAheadMsg{computed: held.Computed, built: built, k: k, snap: ahead, err: err}
 	}
 }
 
 // applyPropAhead keeps an hour ahead of the snapshot held; one of an older
-// snapshot is dropped, and a refused one said in diagnostics (D-124).
+// snapshot, or of one since rebuilt at the same time, is dropped, and a
+// refused one said in diagnostics (D-124).
 func (d Dashboard) applyPropAhead(v propAheadMsg) Dashboard {
-	if d.mapPane.propSnap == nil || !v.computed.Equal(d.mapPane.propSnap.Computed) {
+	if d.mapPane.propSnap == nil || !v.computed.Equal(d.mapPane.propSnap.Computed) || v.built != d.mapPane.propBuilt {
 		return d
 	}
 	if v.k == d.mapPane.propAheadAsked {

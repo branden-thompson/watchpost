@@ -143,7 +143,7 @@ with L-5's two out of scope). Notes: `reviewer-notes/plan-round-2.md`.
 | Memory | persona N1, N2 | **D-131:** hours ahead share the climatology cache, one nearest-station table, no-data as a bitset (live about 7 MB, estimated); G1 judged on measured RSS |
 | Grading on the same week | LN2 | **D-132:** G10.4 scores at least 3 fresh days fetched in BUILD |
 | A screen reader in 0.19.0 | persona N6 | **D-133:** Help and the words say the focus limit (FR-3.7); RK-6 restated |
-| The typical error | LN6, DN-7, CN2 | **D-134:** by distance band from the test days (0.77 \| 2.91 to 1.36 \| 4.58 MHz); `week.py` section 11; G10.5 asserts |
+| The typical error | LN6, DN-7, CN2 | **D-134:** by distance band from the test days, re-measured under D-181 with readings of unknown score taken (0.77 \| 2.91 to 1.37 \| 4.73 MHz, go-ionomaps `ahead.go`'s `typicalError`); `week.py` section 11; G10.5 holds it in its table of constants |
 | The day's open hours | DN-6, LN7 | **D-135:** the climatology for every hour, labelled "typical day", beside the current hour; a disagreement said |
 | The words' order | persona N8 | **D-136:** a status block said once per open; one line per target; the order in FR-3.1 |
 | go-tuiMaps M5's case | DN-10 | **D-137:** the target includes the reach overlay |

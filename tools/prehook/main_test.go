@@ -16,7 +16,7 @@ func TestTheHookRunsOnlyItsOwnTree(t *testing.T) {
 		t.Fatalf("git init: %v %s", err, out)
 	}
 	t.Chdir(dir)
-	if err := run(); err == nil || !strings.Contains(err.Error(), "belongs to another clone") {
+	if err := run(); err == nil || !strings.Contains(err.Error(), "git push --no-verify") {
 		t.Errorf("in a tree with no tools/prepush the hook says %v", err)
 	}
 }

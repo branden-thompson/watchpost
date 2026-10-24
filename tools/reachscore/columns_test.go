@@ -90,9 +90,24 @@ func TestEachColumnIsFedAsItSays(t *testing.T) {
 	if err := report(&b, reportOf{flags: scoreFlags{seed: 1, k: 10, strata: strataBandHour}, days: []time.Time{testDay}, set: set, counts: d.counts, res: res, facts: facts, rev: "test"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"## M1", "## M4", "| 40m | 1 (1 / 0 / 0) |", "| 20m | 1 (0 / 0 / 1) |", "Against the target (D-99, judged on the point estimate", "## The replay"} {
+	for _, want := range []string{"## M1", "## M4", "| 40m | 1 (1 / 0 / 0) |", "| 20m | 1 (0 / 0 / 1) |", "Against the target (D-99, judged on the point estimate", "## The replay",
+		"## What these figures cannot see", "WSPR alone is the reference", "The draw is balanced", "scores 50 % by construction"} { // INST-5, RB-8: the blind spots in the output itself
 		if !strings.Contains(b.String(), want) {
 			t.Errorf("the table lacks %q:\n%s", want, b.String())
 		}
+	}
+	// RC-9: a metric whose columns answered different numbers of scenarios
+	// says no figure stands, and gives no verdict.
+	key := base{m4, ionomaps.Band20m}
+	short := res.tallies[key]
+	short[shipped] = tally{}
+	res.tallies[key] = short
+	b.Reset()
+	if err := report(&b, reportOf{flags: scoreFlags{seed: 1, k: 10, strata: strataBandHour}, days: []time.Time{testDay}, set: set, counts: d.counts, res: res, facts: facts, rev: "test"}); err != nil {
+		t.Fatal(err)
+	}
+	m4At := strings.Index(b.String(), "## M4")
+	if m4 := b.String()[m4At:]; !strings.Contains(m4, "no verdict") || strings.Contains(m4[:strings.Index(m4, "## The replay")], "judged on the point estimate") {
+		t.Errorf("M4's columns answered unevenly and a verdict is given:\n%s", m4)
 	}
 }

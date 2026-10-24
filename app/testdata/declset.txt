@@ -810,9 +810,7 @@ func pointShape
 func priorityTiers
 func profileNames
 func propagationClientConfig
-func propagationHostList
 func propagationHosts
-func propagationSources
 func proposeFrom
 func providerEndpoints
 func providerSources

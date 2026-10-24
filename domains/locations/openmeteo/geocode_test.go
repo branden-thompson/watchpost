@@ -146,4 +146,20 @@ func TestTheGeocodersTextIsCleaned(t *testing.T) {
 	if err != nil || strings.ContainsAny(ref.Label, "\x1b\x07\n") {
 		t.Errorf("the place found is labelled %q (%v); no escape or control character", ref.Label, err)
 	}
+	// RI-2: the postcode, the zone and the coordinates are the provider's too.
+	hostile := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"results":[{"name":"Springfield","admin1":"Illinois","latitude":39.8,"longitude":-89.6,"country_code":"US","timezone":"\u001b]52;c;aGk=\u0007","postcodes":["627\u001b[31m01","62701x","62704"]}]}`))
+	}))
+	defer hostile.Close()
+	ref, err = NewGeocoder(c, hostile.URL).Geocode(context.Background(), "Springfield")
+	if err != nil || ref.Zip != "62704" || ref.TZ != "" {
+		t.Errorf("a hostile reply: zip %q, zone %q (%v); want the one five-digit zip and no zone", ref.Zip, ref.TZ, err)
+	}
+	offGlobe := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"results":[{"name":"Nowhere","latitude":1e300,"longitude":-1e300,"country_code":"IS","timezone":"Atlantic/Reykjavik"}]}`))
+	}))
+	defer offGlobe.Close()
+	if _, err := NewGeocoder(c, offGlobe.URL).ResolveWorld(context.Background(), "Nowhere"); err == nil {
+		t.Error("a place off the globe was found")
+	}
 }

@@ -35,7 +35,7 @@ func run() error {
 	}
 	_, missing := os.Stat(filepath.Join(dir, "tools", "prepush"))
 	if missing != nil {
-		return errors.New("this tree has no tools/prepush, so the hook belongs to another clone: run make hooks in this one")
+		return errors.New("this tree has no tools/prepush: a branch from before the hook (main, or a 0.18 release branch) - push it, after its own gate is green, with git push --no-verify; or, in another clone, run make hooks there (RH-8, D-124)")
 	}
 	cmd := exec.Command("go", "run", "./tools/prepush")
 	cmd.Dir, cmd.Stdin, cmd.Stdout, cmd.Stderr = dir, os.Stdin, os.Stdout, os.Stderr

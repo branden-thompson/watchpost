@@ -134,10 +134,14 @@ g1)
     tick=$((tick + 1))
     sleep 600
   done
-  for d in $drivers; do wait "$d" || echo "workload: an arm's driver failed - see $out/*/phases.log"; done
+  failed=0
+  for d in $drivers; do wait "$d" || { echo "workload: an arm's driver failed - see $out/*/phases.log"; failed=1; }; done
   for s in $samplers; do kill "$s" 2>/dev/null || true; done
   wait 2>/dev/null || true
-  for h in $homes; do rm -rf "$h"; done ;;
+  for h in $homes; do rm -rf "$h"; done
+  # A DRIVER THAT FAILED IS A RUN THAT FAILED (RC-1): the run's own exit
+  # says so, never only a line in its output.
+  [ "$failed" = 0 ] || exit 1 ;;
 *) echo "workload: mode is session, cold, warm or g1"; exit 2 ;;
 esac
 echo "workload: $mode $variant done - $out"

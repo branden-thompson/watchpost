@@ -11,6 +11,7 @@ package propagation
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -22,6 +23,7 @@ import (
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/invariant"
 )
 
 // Getter is the propagation client: one ask, its reply as it came.
@@ -92,6 +94,12 @@ func NewService(get Getter, o Options) (*Service, error) {
 			f.hosts[h] = true
 		}
 	}
+	// A LIBRARY THAT NAMED NO HOST WOULD HAVE EVERY ASK REFUSED, in silence,
+	// as an address not on its list: the service is refused at its making.
+	listed := len(f.hosts)
+	if err := invariant.Check(listed > 0, "propagation: go-ionomaps names no host to ask, so every address would be refused"); err != nil {
+		return nil, err
+	}
 	deadline := o.Deadline
 	if deadline == 0 {
 		deadline = updateDeadline
@@ -122,7 +130,24 @@ func (s *Service) restoreState() {
 	if s.note == nil {
 		return
 	}
-	s.note("Propagation: GIRO's throttle state was not taken, so it starts as new - " + err.Error())
+	s.note("Propagation: GIRO's throttle state was not taken, so it starts as new - " + fileOnly(err))
+}
+
+// fileOnly is an error with any file's path cut to its name: the state's
+// path holds the listener's home, and diagnostics reach the dumps (RI-7).
+func fileOnly(err error) string {
+	if err == nil {
+		return "" // nothing failed: nothing to say
+	}
+	var pe *fs.PathError
+	if errors.As(err, &pe) {
+		return pe.Op + " " + filepath.Base(pe.Path) + ": " + pe.Err.Error()
+	}
+	var le *os.LinkError
+	if errors.As(err, &le) {
+		return le.Op + " " + filepath.Base(le.Old) + " to " + filepath.Base(le.New) + ": " + le.Err.Error()
+	}
+	return err.Error()
 }
 
 // keepState writes the throttle state after an update, through a file of
@@ -158,7 +183,7 @@ func (s *Service) keepState() {
 	if s.note == nil {
 		return
 	}
-	s.note("Propagation: GIRO's throttle state was not kept - " + err.Error())
+	s.note("Propagation: GIRO's throttle state was not kept - " + fileOnly(err))
 }
 
 // Ask runs an update with the caller's options and sends its result: its
@@ -245,9 +270,21 @@ func (f *fetcher) Fetch(ctx context.Context, rawURL string, v ionomaps.Validator
 	if !answered {
 		return ionomaps.Response{}, errNoStatus
 	}
-	return ionomaps.Response{Status: a.Status, Rate: f.rate(host, a.Header),
-		Validators: ionomaps.Validators{ETag: a.Header.Get("ETag"), LastModified: a.Header.Get("Last-Modified")}, Body: a.Body}, nil
+	// A validator past maxValidator is not kept (RI-4): the next ask asks
+	// whole, never echoing the service's bytes back.
+	kept := ionomaps.Validators{ETag: a.Header.Get("ETag"), LastModified: a.Header.Get("Last-Modified")}
+	if len(kept.ETag) > maxValidator {
+		kept.ETag = ""
+	}
+	if len(kept.LastModified) > maxValidator {
+		kept.LastModified = ""
+	}
+	return ionomaps.Response{Status: a.Status, Rate: f.rate(host, a.Header), Validators: kept, Body: a.Body}, nil
 }
+
+// maxValidator is the longest validator kept and sent back: an ETag or a
+// date runs to tens of bytes, and a longer one would be echoed on every ask.
+const maxValidator = 256
 
 // rate is a reply's rate-related headers, each noted by host and name the
 // first time it is seen (FR-4.5), never its value.

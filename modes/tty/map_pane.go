@@ -885,8 +885,10 @@ var mapRegionShort = []string{"US", "Alaska", "Hawaii", "Caribbean", "Samoa", "G
 // same order.
 var mapRegionLabels = []string{"Continental US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam & N. Marianas"}
 
-// mapActions is the map window's actions in the order Help lists them.
-var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapProp, actMapLayer, actMapRefresh, actMapChart, actMapFreq, actMapFind, actMapOverlays,
+// mapActions is the map window's actions in the order Help lists them, the
+// Bands chart's two among them: their scope is the chart's own, and Help says
+// them on the pan row (D-256).
+var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapProp, actMapLayer, actMapRefresh, actMapChart, actChartPrev, actChartNext, actMapFreq, actMapFind, actMapOverlays,
 	actMapPlay, actMapBack, actMapOn, actMapNewest, actMapHighLow}, mapRegionActs...)
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
@@ -927,13 +929,19 @@ func defaultMapKeyMap() term.KeyMap {
 // own scope, which is separate from the Observer's: its keys are the map's
 // only while the window is open.
 func mapKeysFrom(overrides term.KeyMap) (term.KeyMap, error) {
+	return scopeKeysFrom(defaultMapKeyMap(), overrides)
+}
+
+// scopeKeysFrom merges the [keys] entries that name a scope's own actions
+// into it; the rest are other scopes', never this one's error.
+func scopeKeysFrom(defaults, overrides term.KeyMap) (term.KeyMap, error) {
 	own := term.KeyMap{}
 	for act, b := range overrides {
-		if _, ok := defaultMapKeyMap()[act]; ok {
+		if _, ok := defaults[act]; ok {
 			own[act] = b
 		}
 	}
-	keys, _, err := term.Merge(defaultMapKeyMap(), own)
+	keys, _, err := term.Merge(defaults, own)
 	return keys, err
 }
 
@@ -1442,6 +1450,18 @@ func (d Dashboard) layerLabel(key string) string {
 // (AX-6).
 type mapHelpRow struct{ keys, help string }
 
+// panName is the pan row's words in Help, the Bands chart's own target keys
+// beside them (D-256): "Pan (Bands: up/down target)" - by default the same
+// arrows, in the chart's own scope - no row or group of its own, so Help
+// still fits its window and its columns.
+func panName(keys term.KeyMap) string {
+	prev, next := keys[actChartPrev].Keys, keys[actChartNext].Keys
+	if len(prev) == 0 || len(next) == 0 {
+		return "Pan"
+	}
+	return "Pan (Bands: " + prev[0] + "/" + next[0] + " target)"
+}
+
 // shiftArrows writes the shifted arrows short, so the radar's row fits Help's
 // column (D-86): as glyphs, or under --ascii as "S-left" and "S-right".
 func shiftArrows(keys string, ascii bool) string {
@@ -1470,7 +1490,7 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 		return mapHelpRow{help: strings.Join(out, ", ")}
 	}
 	rows := []mapHelpRow{
-		{strings.Join(slices.Concat(keys[actMapPanUp].Keys, keys[actMapPanDown].Keys, keys[actMapPanLeft].Keys, keys[actMapPanRight].Keys), ", "), "Pan"},
+		{strings.Join(slices.Concat(keys[actMapPanUp].Keys, keys[actMapPanDown].Keys, keys[actMapPanLeft].Keys, keys[actMapPanRight].Keys), ", "), panName(keys)},
 		pairs(named{actMapPrev, "Previous"}, named{actMapNext, "Next Location"}),
 		pairs(named{actMapZoomIn, "Zoom In"}, named{actMapZoomOut, "Out"}, named{actMapScrollUp, "Scroll Up"}, named{actMapScrollDown, "Down"}),
 		pairs(named{actMapAlerts, "Alerts"}, named{actMapOverlays, "Overlays"}, named{actMapChart, "Bands"}, named{actMapFreq, "Freq."}), // D-176, D-178

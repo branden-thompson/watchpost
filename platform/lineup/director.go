@@ -551,7 +551,7 @@ func (d Director) Step(ev Event) (Director, []Effect) {
 		return d.stepProducer(ev)
 	case Tuned, Programme, Ended, CutOver:
 		return d.stepBed(ev)
-	case Moved, Dropped, Restored, Requested:
+	case Moved, Dropped, Requested:
 		return d.stepOperator(ev)
 	}
 	// An event nothing handles changes nothing. The set is closed, so this is
@@ -611,8 +611,6 @@ func (d Director) stepOperator(ev Event) (Director, []Effect) {
 		return d.onRequested(e)
 	case Dropped:
 		return d.onDropped(e)
-	case Restored:
-		return d.onRestored(e)
 	}
 	return d, nil
 }

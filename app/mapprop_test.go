@@ -107,7 +107,10 @@ func TestMapStatusListsEveryPropagationHost(t *testing.T) {
 	for _, s := range mapSourceList() {
 		rows[s.Host] = s
 	}
-	hosts := propagationHostList()
+	var hosts []string
+	for _, s := range ionomaps.Sources() { // the library's own list, read with no library made (C-5)
+		hosts = append(hosts, s.Hosts...)
+	}
 	if len(hosts) < 2 {
 		t.Fatalf("go-ionomaps exports %d hosts; GIRO and NOAA are asked at run time", len(hosts))
 	}
@@ -163,7 +166,7 @@ func TestTheWindowsOptionsReachTheLibrary(t *testing.T) {
 // it - GIRO's bound, not NOAA's grid's.
 func TestEachPropagationSourceHasItsOwnCap(t *testing.T) {
 	caps := propagationClientConfig().MaxBodyByHost
-	for _, s := range propagationSources() {
+	for _, s := range ionomaps.Sources() {
 		for _, h := range s.Hosts {
 			if caps[h] != int64(s.MaxBytes) || caps[h] <= 0 {
 				t.Errorf("%s's cap is %d; the library's bound is %d", h, caps[h], s.MaxBytes)

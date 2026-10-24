@@ -513,7 +513,7 @@ falls back to `radio`.
 
 ## Building from source
 
-Go 1.26.10 is the floor (`go.mod`): the map library, go-tuiMaps, requires it (its D-28), because below it
+Go 1.26.10 is the floor (`go.mod`): the map library, go-tuiMaps, requires it (its D-38; watchpost D-244), because below it
 standard-library vulnerabilities its code reaches are unfixed, GO-2026-6809 the latest, and watchpost does too. CI and the releases build with 1.27.3. `make build` (binary in
 `./dist`, version stamped from `git describe`), `make verify` (fmt, vet, tidy, vulnerability, race,
 import-direction, watermark and control gates with positive controls), `make release-matrix` (all
@@ -521,8 +521,10 @@ targets, CGO off), `make install-test` (installer end to end against a local ser
 runs the tests reading the record, in seconds, from the tree; it refuses to replace a hook already set up, and says how to keep
 both). `make verify` runs from a clean
 clone; it needs the Go toolchain, git, python3, GNU make 3.82 or newer (macOS ships 3.81 — `brew install make`), and network access the first time, to fetch the pinned golangci-lint and govulncheck. `make quality` is the phase-exit set — today the Power-of-Ten
-gate `p10`, which needs the out-of-tree `a2dh` CLI and fails loud without it rather than skipping;
-it is run at BUILD and REVIEW exit and its result is recorded in the release's gate roster. The soak and
+gate `p10`, which needs the out-of-tree `a2dh` CLI and its two local files, `.a2dh.yml` and
+`.a2dh-p10-exemptions.yml` (git-ignored; the exemptions' rows are mirrored in `06_docs/p10-ledger.md`), and
+fails loud without them rather than skipping; it is run at every phase exit and its result is recorded in
+the release's gate roster (D-252). The soak and
 benchmark harness lives in `scripts/quality/` and `make quality-bench`. The terminal UI kit (`go-studs`,
 MIT, same author) is carried in-tree under `third_party/go-studs` (its LICENSE and NOTICE.md ride with
 it; import paths rewritten), so the tree builds anywhere with no private access.

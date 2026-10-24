@@ -713,8 +713,9 @@ type Dashboard struct {
 	mapRadarAhead   int            // the radar loop's hours ahead: 1, 3, 6 or 12 (D-114)
 	mapQuakeFeed    string         // the quakes drawn: USGS's feed by its name (D-122)
 	mapKeys         term.KeyMap
-	modal           modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode         string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	chartKeys       term.KeyMap // the Bands chart window's own scope (D-256)
+	modal           modal       // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode         string      // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
 	// search box, kept only while the window is serving the CONSOLE (D-129,
 	// D-130). On Observer it stays zero: the listener's lookup reaches anywhere
@@ -982,7 +983,11 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapPropNoise: propNoiseByKey(cfg.MapPropNoise), mapPropRefresh: propRefreshByKey(cfg.MapPropRefresh), mapPropCorrect: cfg.MapPropNoReadings == noReadingsCorrected, mapPropNoGIRO: cfg.MapPropStations == noStationsKey, mapDepth: mapDepthByKey(cfg.MapColourDepth), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	chartKeys, err := chartKeysFrom(cfg.KeyOverrides)
+	if err != nil {
+		return Dashboard{}, err
+	}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, chartKeys: chartKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapPropNoise: propNoiseByKey(cfg.MapPropNoise), mapPropRefresh: propRefreshByKey(cfg.MapPropRefresh), mapPropCorrect: cfg.MapPropNoReadings == noReadingsCorrected, mapPropNoGIRO: cfg.MapPropStations == noStationsKey, mapDepth: mapDepthByKey(cfg.MapColourDepth), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}

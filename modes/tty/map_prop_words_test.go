@@ -437,19 +437,19 @@ func TestTheBandsAreSaidOpenFirst(t *testing.T) {
 	}
 }
 
-// TestEachTargetSaysItsStation is D-116 and D-198: each target's line says
-// its nearest station's distance; with none, or beyond the far distance,
-// that the answer is about as good as typical; an unscored one, to verify
-// on air.
+// TestEachTargetSaysItsStation is D-116, D-129 and D-198: each target's line
+// says its nearest station's distance; with none, or beyond the far
+// distance, that the answer is about as good as typical here, or worse; an
+// unscored one, to verify on air.
 func TestEachTargetSaysItsStation(t *testing.T) {
 	d := chartDash(t)
 	for _, c := range []struct {
 		n    ionomaps.Nearest
 		want string
 	}{
-		{ionomaps.Nearest{}, "no reporting station, about as good as typical"},
+		{ionomaps.Nearest{}, "no reporting station, about as good as typical here, or worse"},
 		{ionomaps.Nearest{Known: true, Km: 300}, "nearest station " + d.roundDistance(300) + " away"},
-		{ionomaps.Nearest{Known: true, Km: propFarKm}, "nearest station " + d.roundDistance(propFarKm) + " away, about as good as typical"},
+		{ionomaps.Nearest{Known: true, Km: propFarKm}, "nearest station " + d.roundDistance(propFarKm) + " away, about as good as typical here, or worse"},
 		{ionomaps.Nearest{Known: true, Km: 300, Unscored: true}, "nearest station " + d.roundDistance(300) + " away, unscored: verify on air"},
 	} {
 		if got := d.propStationWords(c.n); got != c.want {

@@ -27,9 +27,8 @@ const logHead = "# Verify runs\n\n`tools/runlog` appends one line here per `make
 
 // The refusals.
 var (
-	errNoLane       = errors.New("usage: runlog -lane <verify|verify-docs> -- <command> [args...]") // a run with no lane or no command
-	errNoTree       = errors.New("runlog: git gave no tree for the working tree")
-	errNoGitCommand = errors.New("runlog: git asked with nothing to do")
+	errNoLane = errors.New("usage: runlog -lane <verify|verify-docs> -- <command> [args...]") // a run with no lane or no command
+	errNoTree = errors.New("runlog: git gave no tree for the working tree")
 )
 
 func main() {
@@ -39,20 +38,25 @@ func main() {
 		fmt.Fprintln(os.Stderr, errNoLane)
 		os.Exit(2)
 	}
+	// THE TREE THE RUN TESTS IS TAKEN BEFORE IT (RC-3): one taken after
+	// would say a tree edited during the run passed.
+	tested, err := testedTree(".")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "runlog: the tree to be tested could not be read ("+err.Error()+"): nothing is run, so nothing passes")
+		os.Exit(2)
+	}
 	started := time.Now()
 	rc := run(flag.Args())
-	if err := record(".", *lane, rc, time.Since(started), time.Now()); err != nil {
+	rc, err = record(".", *lane, rc, tested, time.Since(started), time.Now())
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "runlog: this run is not recorded in "+logFile+": "+err.Error()+" - the gates' result stands; fix the record and run again")
 	}
 	os.Exit(rc)
 }
 
 // run runs the lane's command, its output the terminal's, and is its exit
-// code; 1 for a command that could not start.
+// code; 1 for a command that could not start. main gives it a command.
 func run(args []string) int {
-	if len(args) == 0 {
-		return 2 // no command: nothing ran, so nothing passed
-	}
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	err := cmd.Run()
@@ -68,35 +72,37 @@ func run(args []string) int {
 }
 
 // record appends the run's line to the record in the repository at dir,
-// opening the record when there is none yet.
-func record(dir, lane string, rc int, took time.Duration, now time.Time) error {
-	if lane == "" {
-		return errNoLane
-	}
+// opening the record when there is none yet, and is the run's exit code: a
+// tree that changed during the run - not the tree the run tested at its end
+// - is no pass, whatever the gates said (RC-3). main gives it a lane.
+func record(dir, lane string, rc int, tested string, took time.Duration, now time.Time) (int, error) {
 	head, err := git(dir, nil, "rev-parse", "--short", "HEAD")
 	if err != nil {
-		return err
+		return rc, err
 	}
 	tree, err := testedTree(dir)
 	if err != nil {
-		return err
+		return rc, err
 	}
 	result := "green"
-	if rc != 0 {
+	switch {
+	case tree != tested:
+		result, rc = fmt.Sprintf("FAILED (the tree changed during the run: %s tested, %s at its end)", tested, tree), max(rc, 1)
+	case rc != 0:
 		result = fmt.Sprintf("FAILED (exit %d)", rc)
 	}
 	path := filepath.Join(dir, logFile)
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		if err := os.WriteFile(path, []byte(logHead), 0o644); err != nil {
-			return err
+			return rc, err
 		}
 	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		return err
+		return rc, err
 	}
-	_, err = fmt.Fprintf(f, "| %s | %s | %s | %s | %s | %d |\n", now.UTC().Format(time.RFC3339), head, tree, lane, result, int(took.Seconds()))
-	return errors.Join(err, f.Close())
+	_, err = fmt.Fprintf(f, "| %s | %s | %s | %s | %s | %d |\n", now.UTC().Format(time.RFC3339), head, tested, lane, result, int(took.Seconds()))
+	return rc, errors.Join(err, f.Close())
 }
 
 // testedTree is the git tree of the working tree as the run saw it - every
@@ -127,9 +133,6 @@ func testedTree(dir string) (string, error) {
 // git runs git in dir with the environment given beside the process's,
 // and is its output, trimmed.
 func git(dir string, env []string, args ...string) (string, error) {
-	if len(args) == 0 {
-		return "", errNoGitCommand
-	}
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
 	cmd.Env = append(os.Environ(), env...)
 	out, err := cmd.Output()

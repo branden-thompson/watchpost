@@ -33,11 +33,15 @@ func repo(t *testing.T) string {
 func TestEachRunIsRecorded(t *testing.T) {
 	dir := repo(t)
 	at := time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)
-	if err := record(dir, "verify", 0, 95*time.Second, at); err != nil {
+	tested, err := testedTree(dir)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := record(dir, "verify-docs", 2, 3*time.Second, at.Add(time.Hour)); err != nil {
-		t.Fatal(err)
+	if rc, err := record(dir, "verify", 0, tested, 95*time.Second, at); err != nil || rc != 0 {
+		t.Fatal(rc, err)
+	}
+	if rc, err := record(dir, "verify-docs", 2, tested, 3*time.Second, at.Add(time.Hour)); err != nil || rc != 2 {
+		t.Fatal(rc, err)
 	}
 	b, err := os.ReadFile(filepath.Join(dir, logFile))
 	if err != nil {
@@ -66,7 +70,7 @@ func TestTheTreeIsWhatTheRunSaw(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := record(dir, "verify", 0, time.Second, time.Now()); err != nil {
+	if _, err := record(dir, "verify", 0, before, time.Second, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	if after, _ := testedTree(dir); after != before {
@@ -81,13 +85,30 @@ func TestTheTreeIsWhatTheRunSaw(t *testing.T) {
 	if staged, _ := git(dir, nil, "diff", "--cached", "--name-only"); staged != "" {
 		t.Errorf("the repository's index was touched: %q", staged)
 	}
-	if err := record(dir, "", 0, 0, time.Now()); err == nil {
-		t.Error("a run with no lane was recorded")
+}
+
+// TestATreeChangedDuringTheRunIsNoPass is the REVIEW red team's RC-3: the
+// tree is taken before the run; a file changed while it ran makes the line
+// FAILED, both trees named, and the run's exit code not 0, whatever the
+// gates said - the commit chained to it does not happen.
+func TestATreeChangedDuringTheRunIsNoPass(t *testing.T) {
+	dir := repo(t)
+	tested, err := testedTree(dir)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if rc := run(nil); rc != 2 {
-		t.Errorf("a run with no command exited %d; nothing ran, so 2", rc)
+	if err := os.WriteFile(filepath.Join(dir, "work.go"), []byte("package edited\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := git(dir, nil); err == nil {
-		t.Error("git ran with nothing to do")
+	rc, err := record(dir, "verify", 0, tested, time.Second, time.Now())
+	if err != nil || rc == 0 {
+		t.Fatalf("a tree edited during a green run: exit %d, %v; want not 0", rc, err)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, logFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "| "+tested+" | verify | FAILED (the tree changed during the run: "+tested+" tested, ") {
+		t.Errorf("the record says:\n%s", b)
 	}
 }

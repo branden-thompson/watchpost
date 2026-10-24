@@ -280,13 +280,15 @@ func (d Dashboard) helpKeys() term.KeyMap {
 				out[act] = bind
 			}
 		}
+		maps.Copy(out, d.chartKeyMap()) // the Bands chart's own scope (D-256)
 		return out
 	}
 	out := term.KeyMap{}
 	for act, bind := range d.keys {
 		out[act] = bind
 	}
-	maps.Copy(out, d.mapKeys) // the map window's own scope, listed in its own group (D-61)
+	maps.Copy(out, d.mapKeys)       // the map window's own scope, listed in its own group (D-61)
+	maps.Copy(out, d.chartKeyMap()) // and the Bands chart's, a row of that group (D-256)
 	bc := d.consoleKeyMap()
 	for _, act := range []term.Action{actSwapObserver, actSwapBroadcaster} {
 		if bind, ok := bc[act]; ok {

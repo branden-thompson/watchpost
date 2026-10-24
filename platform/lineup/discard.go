@@ -20,10 +20,11 @@ package lineup
 // something takes them away, and nothing else would.
 //
 // WHAT IT HOLDS IS CONTENT, NOT CARDS AWAITING RESURRECTION. The card model
-// says "REFUSED, DONE and DISCARDED lead nowhere: a card that could be revived
-// is a card that can be read twice", so an undo MINTS A NEW CARD from what is
-// here — which is also the HUM LEAD's standing ruling that a live card's origin
-// never changes and a copy is how you reuse one.
+// says "DONE and DISCARDED lead nowhere: a card that could be revived is a
+// card that can be read twice", so the undo that reads it - D-37's window,
+// unbuilt (F-108, D-259) - will mint a new card from what is here, the HUM
+// LEAD's standing ruling that a live card's origin never changes and a copy
+// is how you reuse one.
 
 import "github.com/branden-thompson/watchpost/platform/invariant"
 
@@ -60,29 +61,13 @@ func (l Lineup) discard(c Card) Lineup {
 	return out
 }
 
-// Discarded is the pile, newest first — what the console offers as undo.
+// Discarded is the pile, newest first — what D-37's window will offer as
+// undo (F-108).
 //
 // A COPY, like Cards: a reader may hold it as long as it likes, and the
 // schedule's own pile cannot be edited through it.
 func (l Lineup) Discarded() []Card {
 	return append([]Card(nil), l.discarded...)
-}
-
-// takeDiscarded lifts one card off the pile, by identity.
-//
-// IT REMOVES IT. An undo that left the entry behind would let a second press
-// queue a second copy of the same card, which is the read-twice defect arriving
-// through the recovery control rather than through the schedule.
-func (l Lineup) takeDiscarded(id string) (Card, Lineup, bool) {
-	for i, c := range l.discarded { // bounded by the cap (P10-02)
-		if c.ID != id {
-			continue
-		}
-		out := l.clone()
-		out.discarded = append(out.discarded[:i], out.discarded[i+1:]...)
-		return c, out, true
-	}
-	return Card{}, l, false
 }
 
 // trackFor is the lane a slot belongs to, and it is the ONE owner of that rule.

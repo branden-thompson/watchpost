@@ -29,9 +29,10 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   builds with Go 1.27.3.
 
 ### Fixed
-- **Memory no longer grows day by day.** The weather history held every hour's recorded document in
-  memory, about 8 MB more each day for its first days of running; it now holds only what a map's replay
-  reads, within 8 MB. The same growth is in 0.18.1 and 0.18.2.
+- **The weather history holds less in memory.** It held every hour's recorded document, a growth of a
+  few megabytes a day for an instance's first days of running; it now holds each hour's issue time, and
+  the days a map's replay reads within 8 MB. The same growth is in 0.18.1 and 0.18.2. A side-by-side
+  run against 0.18.2 measures what this changes over days.
 
 ## [0.18.2] — 2026-10-22
 

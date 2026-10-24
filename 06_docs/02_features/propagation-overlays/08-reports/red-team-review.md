@@ -127,6 +127,29 @@ Against the clean tips. CONFIRMED: the cited lines do what the finding says. PLA
 | RH-9 | CONFIRMED | Nothing refuses a final tag on an `-rc` module (D-3). |
 | RH-11 | Fork 14 | |
 
+## D-252's list: the package rows whose code has grown past their reasons
+
+Put to the HUM LEAD in one batch, as D-252 rules: each row's reason then, its code now, and the figure
+pinned as a floor once ratified. Measured by `a2dh p10 check` on 2026-10-24, changed functions counted from
+each branch's merge base with `main`.
+
+| Repository · row | Its reason's figure | Now | Why it grew |
+|---|---|---|---|
+| watchpost · `modes/tty` | none: ratified by precedent 2026-09-08, for the Dashboard's renderers | 0.43 over 335 | the whole Propagation mode, its chart, its words and its keys |
+| watchpost · `app` | none: "the bubbletea model plumbing" | 0.61 over 49 | the propagation holder, its sources and its diagnostics |
+| go-ionomaps · root | 0.69 over 101 (D-74, pinned) | 0.70 over 112 | the remediation's `short`, `solarUsable`, the constants, the hours' lazy cells |
+| go-ionomaps · `internal/giro` | 1.44 over 16 | 1.21 over 19 | D-247's per-station failures, D-248's place check |
+| go-ionomaps · `internal/stations` | 1.50 over 12 | 1.33 over 15 | D-247's unreached stations, D-248's `At`, the clock's skew |
+| go-ionomaps · `internal/throttle` | 0.75 over 8 | 0.60 over 10 | D-247's day-long denial |
+| go-ionomaps · `ionomapstest` (A-26, D-80) | 0.68 over 19 | 0.64 over 22 | RL-12's answers and the two NOAA files it builds |
+| go-ionomaps · `tools/gm3` (A-26, D-80) | 0.83 over 18 | 0.95 over 20 | `-residuals` (D-248) |
+
+The rows ratified by precedent with no figure (watchpost's `domains/locations`, `domains/radio/synth`,
+`platform/httpx` and the like, go-ionomaps' `internal/climatology`, `internal/limits`, `internal/magcoords`)
+would each take their measured figure as a floor under the same ruling. Separately for the HUM LEAD: P10
+skips go-ionomaps' three nested modules (`tools/tables` and the evidence's two) unless `.a2dh.yml` declares
+each a root of its own, a change to that file only the HUM LEAD makes (RC-12).
+
 ## The rulings
 
 | Fork | Ruling |

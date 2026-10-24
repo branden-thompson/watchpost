@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"io"
 	"net/http"
@@ -169,6 +170,41 @@ func TestWAVPCMAndSafeJoin(t *testing.T) {
 	}
 }
 
+// muteHost ends the speech test on a host whose say renders nothing, where
+// the shell-safety property cannot be observed: a failure, unless the run
+// declares the host mute - WATCHPOST_SAY_MUTE_HOST, set with its reason only
+// in the hosted macOS job's step - when it is NOT RUN, which make test-say
+// prints (D-254). A host that should speak never passes in silence.
+func muteHost(t *testing.T, why string) {
+	t.Helper()
+	skip, msg := muteVerdict(why, os.Getenv("WATCHPOST_SAY_MUTE_HOST"))
+	if !skip {
+		t.Fatal(msg)
+	}
+	t.Skip(msg)
+}
+
+// muteVerdict is muteHost's decision: a skip said NOT RUN only for a host
+// declared mute, else a failure that says how to run it (D-254).
+func muteVerdict(why, declared string) (skip bool, msg string) {
+	if declared == "" {
+		return false, why + ": the shell-safety property cannot be observed here, and the host is not declared mute (WATCHPOST_SAY_MUTE_HOST, with its reason, D-254); run make test-say on a Mac that speaks"
+	}
+	return true, "NOT RUN: " + why + "; the host is declared mute: " + declared
+}
+
+// TestASilentHostFailsUnlessDeclaredMute is D-254 (RC-2): a host whose say
+// renders nothing fails the speech test, and is NOT RUN - said so, never a
+// silent pass - only when the run declares it mute with its reason.
+func TestASilentHostFailsUnlessDeclaredMute(t *testing.T) {
+	if skip, msg := muteVerdict("236 bytes", ""); skip || !strings.Contains(msg, "not declared mute") {
+		t.Errorf("an undeclared silent host: skip %v, %q; want a failure", skip, msg)
+	}
+	if skip, msg := muteVerdict("236 bytes", "hosted runner"); !skip || !strings.HasPrefix(msg, "NOT RUN: ") || !strings.Contains(msg, "hosted runner") {
+		t.Errorf("a declared mute host: skip %v, %q; want NOT RUN with its reason", skip, msg)
+	}
+}
+
 func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("macOS built-in voice")
@@ -213,7 +249,7 @@ func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 	// gate that fails for the environment teaches people to re-run it.
 	benign, err := SayVoice{}.Say(ctx, "One sentence of ordinary text.")
 	if err != nil || len(benign) < 22050 {
-		t.Skipf("say is present but not rendering audio on this host (%d bytes, err=%v): the shell-safety property cannot be observed here", len(benign), err)
+		muteHost(t, fmt.Sprintf("say is present but not rendering audio on this host (%d bytes, err=%v)", len(benign), err))
 	}
 
 	pcm, err := SayVoice{}.Say(ctx, "Test $(echo pwned) `id` ; rm -rf / ok.")
@@ -229,7 +265,7 @@ func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 		// failed; short now too, the property cannot be observed on this host.
 		again, err := SayVoice{}.Say(ctx, "One sentence of ordinary text.")
 		if err != nil || len(again) < 22050 {
-			t.Skipf("say stopped rendering on this host between renders (%d bytes, then %d, err=%v): the shell-safety property cannot be observed here", len(benign), len(again), err)
+			muteHost(t, fmt.Sprintf("say stopped rendering on this host between renders (%d bytes, then %d, err=%v)", len(benign), len(again), err))
 		}
 		t.Fatalf("hostile text rendered %d bytes against %d and %d for ordinary text — it was not narrated intact", len(pcm), len(benign), len(again))
 	}

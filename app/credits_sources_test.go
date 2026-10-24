@@ -3,6 +3,8 @@ package app
 import (
 	"strings"
 	"testing"
+
+	ionomaps "github.com/branden-thompson/go-ionomaps"
 )
 
 // creditPending are the propagation library's sources About does not credit
@@ -25,7 +27,7 @@ func TestEveryPropagationSourceIsCredited(t *testing.T) {
 			hosts[l.Host], badges[l.Badge] = true, true
 		}
 	}
-	sources := propagationSources()
+	sources := ionomaps.Sources()
 	if len(sources) == 0 {
 		t.Fatal("the library names no sources: this measures nothing")
 	}

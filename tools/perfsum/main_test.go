@@ -251,7 +251,7 @@ func TestAG1RunIsJudgedAgainstTheArmNamed(t *testing.T) {
 		t.Errorf("judged against the map arm, every target met, exit %d:\n%s", code, out.String())
 	}
 	for _, want := range []string{
-		"| the mode in use | 48.0 | 2 | 2.00 | 200.0 / 200.0 | 0.0 | 0.0 | 10.00 | 240.00 |",
+		"| the mode in use | 48.0 | 2 | 2.00 | 200.0 / 200.0 | unread | unread | 10.00 | 240.00 |",
 		"## The mode in use against the map open in Forecast mode: **judged** (-against map)\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n| added mean CPU, % of one core | +1.00 | at most 1 | met |\n| added RSS, MB (medians) | +10.0 | at most 25 | met |",
 		"## The mode in use against the map never opened: reported, not judged\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n| added mean CPU, % of one core | +1.50 | at most 1 | **missed** |\n| added RSS, MB (medians) | +80.0 | at most 25 | **missed** |",
 	} {
@@ -334,5 +334,52 @@ func TestTheHourlyRunIsJudgedOnItsDownloadsAlone(t *testing.T) {
 	out, code = sum("default", 18e6)
 	if code != 1 || !strings.Contains(out, "| 3.00 | at most 19 | met |") || !strings.Contains(out, "**judged** (-against map)") || !strings.Contains(out, "a dry run") {
 		t.Errorf("the same arms at the default refresh, judged, exit %d:\n%s", code, out)
+	}
+}
+
+// TestAG1RunThatCannotBeJudgedFails is the REVIEW red team's RC-1: G1's
+// summary fails closed - an arm with an RSS that does not read refuses the
+// run, a cycle the driver could not confirm counts as missed, and a default
+// run under 48 hours exits as missed even when every target is met.
+func TestAG1RunThatCannotBeJudgedFails(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const head = "utc,elapsed,rss_kb,footprint_kb,threads,pcpu,heap_alloc,heap_inuse,heap_objects,goroutines,fds,disk_files,disk_bytes,publishes_recent,cpu_time\n"
+	arm := func(name, rss, phases string, hours int) {
+		end := time.Date(2026, 10, 19, 0, 0, 0, 0, time.UTC).Add(time.Duration(hours) * time.Hour)
+		write(name+"/phases.log", "2026-10-19T00:00:00Z G measured\n"+phases)
+		write(name+"/samples.csv", head+"2026-10-19T00:00:00Z,,204800,,20,,,,,50,,,,,0:00.00\n"+end.Format(time.RFC3339)+",,"+rss+",,20,,,,,50,,,,,1:00.00\n")
+		write(name+"/counters.jsonl", "{\"at\":\"2026-10-19T00:00:00Z\",\"propagation_wire_bytes\":0}\n")
+		write(name+"/g1-end.json", "{\"at\":\""+end.Format(time.RFC3339)+"\",\"propagation_wire_bytes\":0}")
+	}
+	judge := func() (string, int) {
+		var out, errOut bytes.Buffer
+		code := run([]string{"-g1", dir}, &out, &errOut)
+		return out.String() + errOut.String(), code
+	}
+	arm("use", "204800", "", 49)
+	arm("map", "204800", "", 49)
+	if out, code := judge(); code != 0 {
+		t.Fatalf("control: a 49-hour run meeting every target exits %d:\n%s", code, out)
+	}
+	arm("use", "", "", 49)
+	if out, code := judge(); code != 2 || !strings.Contains(out, "no RSS that reads") {
+		t.Errorf("an RSS that does not read: exit %d:\n%s", code, out)
+	}
+	arm("use", "204800", "2026-10-19T03:00:00Z U3 WARN: the MUF not seen drawn\n", 49)
+	if out, code := judge(); code != 1 || !strings.Contains(out, "| the driver's cycles not confirmed drawn, or its steps failed, in the mode in use | 1 | none | **missed** |") {
+		t.Errorf("a cycle not confirmed drawn: exit %d:\n%s", code, out)
+	}
+	arm("use", "204800", "", 6)
+	arm("map", "204800", "", 6)
+	if out, code := judge(); code != 1 || !strings.Contains(out, "a dry run") {
+		t.Errorf("a 6-hour default run meeting every target: exit %d; want missed:\n%s", code, out)
 	}
 }

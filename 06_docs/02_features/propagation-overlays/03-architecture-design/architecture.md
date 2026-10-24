@@ -40,7 +40,7 @@ flowchart LR
     CRED["app/credits.go, the Status window"]
   end
   subgraph go-ionomaps
-    LIB["ionomaps.Library<br/>Update, Fields, Bands, Reach"]
+    LIB["ionomaps.Library<br/>Update, State, Restore;<br/>a Snapshot's Readings, Bands, Path, Reach, Ahead"]
     ASSIM["assimilation<br/>foF2 over GloTEC, M(3000)F2 over climatology (D-101)"]
     BG["background<br/>GloTEC foF2, climatology M(3000)F2"]
     CLIM["climatology<br/>PyIRI port, NRL refits behind a seam"]
@@ -130,7 +130,7 @@ where they went stale (BUILD red team D-F4). What watchpost relies on, by the ro
 | one library object per process, over the propagation client (FR-4.8) | `New(fetcher, Options)`; the fetcher asks only the hosts `Sources()` names (FR-4.7) |
 | GIRO's throttle across restarts (FR-4.12, D-213) | `(*Library).State()` after each update, `Restore(bytes)` at start; a refused state starts as new (`ErrBadState`) |
 | an update with the Settings' options (FR-4.10, FR-4.11) | `Update(ctx, UpdateOptions{Noise, CorrectNoReadings, NoStations})`; the snapshot's `Reason` says fresh, too soon, GIRO paused, offline, stations next or unfinished; `ErrNoField` when there is none |
-| the field drawn, its age and its inputs (FR-1.1 to FR-1.6, FR-5) | `Snapshot.Now` (its hour's MUF(3000) and foF2 fields), `Computed`, `Inputs` (with `Refused`, `GloTECFilled`, `NoStations`), `Background`, `Scales`, `Offset` |
+| the field drawn, its age and its inputs (FR-1.1 to FR-1.6, FR-5) | `Snapshot.Now` (its hour's MUF(3000) and foF2 fields), `Computed`, `Inputs` (with `Unread`, `GloTECFilled`, `NoStations`), `Background`, `Scales`, `Offset` |
 | the hours ahead (FR-1.13, D-109) | `Snapshot.Ahead(k)`: a snapshot of its own, typical, with none of now's disturbance or offset (L-F2) |
 | the answers (FR-1.9 to FR-1.16) | `Readings`, `Bands`, `Path`, `Reach` on a snapshot, each for its own hour; pure, never a fetch (FR-1.17) |
 | the hours ahead's typical error said (D-134) | `Snapshot.TypicalError.Basis`, in words a listener can be told; `Source` is the citation (AX-3) |

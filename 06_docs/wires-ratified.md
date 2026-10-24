@@ -28,8 +28,6 @@ the direction of silence**, and silence here means an unwired member nobody is t
 
 | Member | Why it is unwired | The writer it awaits | Batch |
 |---|---|---|---|
-| `Event.Restored` | the operator's undo.  Same half, same block | **the Operator, through the console** | **P4 (UI)** |
-| `State.Refused` | `Propose` returns an error instead, so nothing reaches the state | **the Director** — D-35's capped discard pile, per DR-1's one writer.  **Not a track**: `held()` counts tracks and a parked card would stop the fault window ever firing | **P4** |
 
 <!-- /wires:exemptions -->
 
@@ -51,7 +49,7 @@ every process and the pause it governs had never once happened.
 | `Effect.Duck` | the Director, at P5 | the track-model batch: `givingWay()` decides it from state the Director already holds, and `settle` emits the change |
 | `Effect.Restore` | the Director, at P5 | the same commit — the pair is closed by construction, edge-triggered, so a drain of several cards dips once (MVS-D-67) |
 | `Power.OffAir` | MasterControl, at P5 | **P4's keymap-and-standby slice.**  `mastercontrol.GoToStandby` declares it and carries it to the Director — the sentence 0.14.0's role model left open, *"it does NOT own ON AIR / STANDBY"*, closing.  **This row WAS RS-3 and F-72** |
-| `Origin.FromOperator` | the Operator through the Producer, at P4 | **P4's pure half**: `onRestored` proposes a NEW card from the pile and attributes it to the human who put it back (FR-3.4).  It had existed for two releases with nothing ever constructing it |
+| `Origin.FromOperator` | the Operator through the Producer, at P4 | **the operator's request** (`mastercontrol.RequestCard`, R3, FR-3.4) mints the card it asks for as the operator's. The undo that also carried it, `onRestored`, is deleted with `Event.Restored` (0.19.0 D-259) until D-37's window is built (F-108) |
 
 **`make wires` went red the moment they gained a writer**, named both rows as STALE EXEMPTIONS, and
 stayed red until they were deleted.  That is the whole mechanism working on its second day: the promise

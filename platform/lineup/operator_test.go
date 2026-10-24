@@ -143,103 +143,6 @@ func TestADroppedCardLeavesTheScheduleAndLandsOnThePile(t *testing.T) {
 	}
 }
 
-// FR-3.7's recovery half: "the undo carries NO TIMER — an expiring undo is a
-// hidden clock, and a hidden clock under pressure is a trap."
-func TestADroppedCardCanBeRestoredLongAfterwards(t *testing.T) {
-	d := threeQueued(t)
-	d, _ = d.Step(Dropped{ID: ReadID("two")})
-
-	// An hour later. Nothing about the undo may depend on how long it took the
-	// operator to decide.
-	d, _ = d.Step(Tick{Now: opBase().Add(time.Hour)})
-	d, _ = d.Step(Restored{ID: ReadID("two")})
-
-	found := false
-	for _, id := range order(d) {
-		if id == ReadID("two") {
-			found = true
-		}
-	}
-	if !found {
-		t.Error("a considered-but-wrong drop is recoverable, with no clock on it (FR-3.7)")
-	}
-}
-
-// FR-3.4: "an operator-placed card reports FromOperator." This pins the writer
-// of `Origin.FromOperator`.
-func TestARestoredCardIsAttributableToTheOperator(t *testing.T) {
-	d := threeQueued(t)
-	d, _ = d.Step(Dropped{ID: ReadID("two")})
-	d, _ = d.Step(Restored{ID: ReadID("two")})
-
-	for _, c := range d.lineup.Cards(MainTrack) {
-		if c.ID != ReadID("two") {
-			continue
-		}
-		if c.Origin != FromOperator {
-			t.Errorf("a human put this card back, and the card says so; got origin %v", c.Origin)
-		}
-		// A NEW CARD, NOT A REVIVED ONE. "REFUSED, DONE and DISCARDED lead
-		// nowhere: a card that could be revived is a card that can be read
-		// twice." So it re-enters the machine at the beginning, and its words
-		// materialise at standby again — the old ones may since have become
-		// untrue, which is the whole reason the staleness window exists.
-		if c.State != Admitted {
-			t.Errorf("it re-enters the schedule as a fresh admission; got state %v", c.State)
-		}
-		if !c.Script.Empty() {
-			t.Error("and with no words: they materialise at standby, against data fetched then")
-		}
-		return
-	}
-	t.Fatal("the restored card is not on the track")
-}
-
-// THE UNDO IS SPENT WHEN IT IS USED. An entry left on the pile is an undo the
-// console keeps offering for a card that is already back — and the second press
-// is refused by the schedule's identity check, so the operator sees a control
-// that does nothing.
-func TestRestoringSpendsThePileEntry(t *testing.T) {
-	d := threeQueued(t)
-	d, _ = d.Step(Dropped{ID: ReadID("two")})
-	d, _ = d.Step(Restored{ID: ReadID("two")})
-
-	if got := d.lineup.Discarded(); len(got) != 0 {
-		t.Errorf("the undo is spent; the pile still offers %v", got)
-	}
-}
-
-// FR-3.7's exit, in its own words: "asserted for an ACTIVE warning
-// specifically, which is the case that matters."
-//
-// AND IT IS THE CASE THAT DECIDES THE LANE. A restored takeover must go back on
-// the PRIORITY RAIL, not into the programme — a hazard rescheduled as ordinary
-// programming would read behind every weather report ahead of it.
-func TestARestoredTakeoverGoesBackOnTheRail(t *testing.T) {
-	d := New(Settings{Max: 5}, opBase())
-	d, _ = d.Step(Powered{To: Running})
-	d, _ = d.Step(Aired{To: AirProgramme})
-	d, _ = d.Step(Arrived{Arrivals: []Arrival{aTornado()}})
-	if len(d.lineup.Cards(AlertRail)) != 1 {
-		t.Fatal("the fixture needs a live warning on the rail")
-	}
-
-	d, _ = d.Step(Dropped{ID: BurstID("a1")})
-	if len(d.lineup.Cards(AlertRail)) != 0 {
-		t.Fatal("the operator dropped it")
-	}
-
-	d, _ = d.Step(Restored{ID: BurstID("a1")})
-
-	if got := len(d.lineup.Cards(AlertRail)); got != 1 {
-		t.Errorf("a restored warning goes back to the PRIORITY rail, or it reads behind every report "+
-			"ahead of it; the rail holds %d", got)
-	}
-	if got := len(d.lineup.Cards(MainTrack)); got != 0 {
-		t.Errorf("and not into the programme; the main track holds %d", got)
-	}
-}
-
 // A CARD BEING READ IS NOT DROPPABLE FROM THE RUNNING ORDER.
 //
 // Stopping a read in progress is a different act with a different sound, and it
@@ -266,47 +169,10 @@ func TestTheCardOnTheAirCannotBeDropped(t *testing.T) {
 	}
 }
 
-// AN UNDO THAT CANNOT BE PERFORMED MUST NOT CONSUME THE UNDO (F-74).
-//
-// A card taken off the pile BEFORE the proposal and the queue can fail, with
-// every failure path returning the Director already mutated, would let a
-// restore that cannot be completed destroy the pile entry and put nothing back
-// — the operator's one recovery, spent on nothing, with no way to tell it had
-// happened.
-//
-// IT IS REACHED THE ORDINARY WAY. ReadID is a pure function of the ref, so a
-// location dropped and then re-queued by the rotation is holding the identity
-// the undo wants. That is not an edge case; it is the rotation doing its job.
-func TestARestoreTheScheduleRefusesKeepsTheCardOnThePile(t *testing.T) {
-	base := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
-	d := New(Settings{Max: 5}, base)
-	d, _ = d.Step(Powered{To: Running})
-	d, _ = d.Step(Aired{To: AirProgramme})
-	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
-
-	d, _ = d.Step(Dropped{ID: ReadID("oceanside")})
-	if len(d.lineup.Discarded()) != 1 {
-		t.Fatalf("the drop must reach the pile; got %d", len(d.lineup.Discarded()))
-	}
-	// The rotation asks for that location again, and gets the same identity.
-	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
-
-	d, fx := d.Step(Restored{ID: ReadID("oceanside")})
-
-	if got := len(d.lineup.Discarded()); got != 1 {
-		t.Errorf("a refused restore must leave the undo intact; the pile holds %d", got)
-	}
-	if len(fx) != 0 {
-		t.Errorf("and it did nothing, so it reports nothing; got %d effects", len(fx))
-	}
-}
-
 // A DROPPED TRANSITION NEVER REACHES THE PILE (D-44). `onDropped` refuses a
 // structural card outright — the operator never saw it, so the drop cannot have
 // meant it — which makes that scenario unreachable rather than merely handled.
-// A refused restore keeping its card is pinned by
-// TestARestoreTheScheduleRefusesKeepsTheCardOnThePile above, and the refusal
-// itself by TestTheOperatorCannotAddressAStructuralCard.
+// The refusal itself is pinned by TestTheOperatorCannotAddressAStructuralCard.
 
 // D-42 (HUM LEAD, 2026-09-10): "transition cards are NEVER Origin.fromOperator."
 //

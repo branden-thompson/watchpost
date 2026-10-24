@@ -16,6 +16,39 @@ import (
 // actMapChart opens the reference chart over the map (D-176).
 const actMapChart term.Action = "map.chart"
 
+// The chart window's own actions (FR-1.14, D-256): moving between its
+// targets, rebindable in [keys] as every control in the mode is, in a scope
+// of the window's own - the map's arrows pan, and only while the chart is
+// open are they its rows.
+const (
+	actChartPrev term.Action = "chart.prev"
+	actChartNext term.Action = "chart.next"
+)
+
+// defaultChartKeyMap is the chart window's bindings: up and down, as every
+// open window owns its arrows (0.18.0 D-61, D-62).
+func defaultChartKeyMap() term.KeyMap {
+	return term.KeyMap{
+		actChartPrev: {Keys: []string{"up"}, Help: "Previous Target"},
+		actChartNext: {Keys: []string{"down"}, Help: "Next Target"},
+	}
+}
+
+// chartKeysFrom merges the [keys] entries that name the chart's actions
+// into its own scope, as mapKeysFrom does for the map's.
+func chartKeysFrom(overrides term.KeyMap) (term.KeyMap, error) {
+	return scopeKeysFrom(defaultChartKeyMap(), overrides)
+}
+
+// chartKeyMap is the chart's bindings as the listener has them; the
+// defaults for a hand-built dashboard.
+func (d Dashboard) chartKeyMap() term.KeyMap {
+	if d.chartKeys == nil {
+		return defaultChartKeyMap()
+	}
+	return d.chartKeys
+}
+
 // propChartKey is what the chart's answers are worked out from.
 type propChartKey struct {
 	computed, hour time.Time
@@ -329,7 +362,8 @@ func (d Dashboard) propChartControls(o render.Opts) string {
 }
 
 // The nearest reporting station's distances the shades break at (D-116,
-// D-198): beyond the far one an answer is about as good as typical.
+// D-198): beyond the far one an answer is about as good as typical, or
+// worse (D-129), the legend's "~typical".
 const (
 	propNearKm = 500
 	propFarKm  = 2000
@@ -465,18 +499,23 @@ func (d Dashboard) inPropagation() bool {
 }
 
 // handlePropChartKey is the chart window's keyboard: Esc or the chart's key
-// closes it, back to the map; the arrows move the target its day is drawn
-// for; the page keys scroll; every other key does nothing.
+// closes it, back to the map; its own previous and next target keys - the
+// arrows by default (D-256) - move the target its day is drawn for; the page
+// keys scroll; every other key does nothing.
 func (d Dashboard) handlePropChartKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	k := key.String()
 	if act, ok := d.mapKeys.Lookup(k); k == "esc" || (ok && act == actMapChart) {
 		return d.close(), nil
 	}
-	switch k {
-	case "up":
+	if act, ok := d.chartKeyMap().Lookup(k); ok && act == actChartPrev {
 		d.mapPane.propChartRow = max(d.mapPane.propChartRow-1, 0)
-	case "down":
+		return d, nil
+	}
+	if act, ok := d.chartKeyMap().Lookup(k); ok && act == actChartNext {
 		d.mapPane.propChartRow = min(d.mapPane.propChartRow+1, len(d.mapPane.propChart.key.targets()))
+		return d, nil
+	}
+	switch k {
 	case "pgup":
 		return d.handleModalNav("nav-up"), nil
 	case "pgdown":

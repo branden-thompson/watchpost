@@ -128,8 +128,9 @@ func writeRecord(dir string, pid, parent int, started time.Time) error {
 // behind (FR-9.2): a recorded process is ended only when it is the user's
 // own say, orphaned (its parent gone, it is the init process's), its
 // arguments name a watchpost-say- path, and it started when the record says
-// - read again just before it is ended, so a process ID reused between the
-// two is never ended. A record whose process is gone, or that was ended, is
+// - read again just before it is ended, so a process ID reused after the
+// first read is not ended; one reused in the moment between that second
+// read and the signal could be, which no read can close (RC-8). A record whose process is gone, or that was ended, is
 // let go; one that could not be ended is kept, so the next start tries again;
 // one whose watchpost still runs is kept for a day (I-3, I-4). It says how
 // many it ended, and how many it could not; now is the clock the records

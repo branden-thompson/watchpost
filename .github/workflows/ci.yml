@@ -53,6 +53,8 @@ jobs:
       - run: make vuln
       - run: make race
       - run: make test-say # the speech safety test, alone (F-176)
+        env: # GitHub's macOS runner has say and renders about 236 bytes a sentence: the property cannot be observed there, and the step says NOT RUN (F-52, D-254)
+          WATCHPOST_SAY_MUTE_HOST: ${{ runner.os == 'macOS' && 'GitHub macOS runner, say renders about 236 bytes a sentence (F-52)' || '' }}
         if: runner.os == 'macOS' # it drives macOS `say`; elsewhere it could only skip
       - run: make lint-imports
       - run: make lint-watermark

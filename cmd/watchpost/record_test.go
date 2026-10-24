@@ -71,7 +71,8 @@ func notInPlan(names []string, plan string) []string {
 }
 
 // notInCode are the names no test in the tree declares; a paired library's
-// test is checked in its own repository.
+// test is passed over: nothing here reads the library's tree, and neither
+// library checks the names watchpost's documents give it (RC-8).
 func notInCode(names []string, declared map[string]bool) []string {
 	var out []string
 	for _, n := range names {
@@ -155,8 +156,9 @@ func TestEveryRequirementsTestIsInAPlanTask(t *testing.T) {
 
 // TestEveryRequirementsTestExists is the BUILD red team's B-F4 (D-F2): every
 // test the requirements name is declared in the tree - a paired library's,
-// written "go-ionomaps `TestX`", in its own - so no requirement leans on a
-// test that was never written or has since been renamed.
+// written "go-ionomaps `TestX`", passed over, unchecked (RC-8) - so no
+// requirement leans on a test of watchpost's that was never written or has
+// since been renamed.
 func TestEveryRequirementsTestExists(t *testing.T) {
 	names := testsNamed(readRecord(t, "01-objectives/requirements.md"))
 	declared := declaredTests(t, filepath.Join("..", ".."))
@@ -242,8 +244,8 @@ func fieldNamed(s *ast.TypeSpec, name string) bool {
 // unresolvedCitations are the citations in a living document that do not
 // hold: a Go file cited by line - lines drift as the code moves, so a
 // living document cites the symbol - or by a symbol the file does not
-// declare, or a file not in the tree; a paired library's is checked in its
-// own repository.
+// declare, or a file not in the tree; a paired library's is passed over,
+// unchecked here or there (RC-8).
 func unresolvedCitations(doc, root string) []string {
 	var out []string
 	for _, m := range citedLine.FindAllStringSubmatch(doc, -1) {

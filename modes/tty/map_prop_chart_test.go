@@ -10,6 +10,7 @@ import (
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/term"
 )
 
 // chartDash is the map in the Propagation mode with a snapshot drawn and the
@@ -434,5 +435,38 @@ func TestEachBandIsFoundByItsName(t *testing.T) {
 	rows := d.propDayRows([]ionomaps.BandStatus{{Band: ionomaps.Band40m}, {Band: ionomaps.Band10m}})
 	if !strings.HasPrefix(rows[0], "40m") || !strings.HasPrefix(rows[1], "10m") {
 		t.Errorf("the typical day's rows are not named by their bands: %q", rows)
+	}
+}
+
+// TestTheChartsTargetKeysAreRebindable is FR-1.14 (D-256): moving between
+// the chart's targets is a keymap action of the chart window's own scope,
+// up and down by default, rebound in [keys] like every other control in
+// the mode, and Help lists the keys as bound.
+func TestTheChartsTargetKeysAreRebindable(t *testing.T) {
+	d := pressMap(t, chartDash(t), "B")
+	if d.modal != modalPropChart {
+		t.Fatalf("B opened window %v; want the chart", d.modal)
+	}
+	keys, err := chartKeysFrom(term.KeyMap{actChartNext: {Keys: []string{"j"}}, actChartPrev: {Keys: []string{"k"}}, actMapPanUp: {Keys: []string{"w"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.chartKeys = keys
+	press := func(key string) int {
+		m, _ := d.Update(mapKeyMsg(t, key))
+		d = m.(Dashboard)
+		return d.mapPane.propChartRow
+	}
+	if row := press("j"); row != 1 {
+		t.Errorf("j, rebound to the next target, left row %d; want 1", row)
+	}
+	if row := press("down"); row != 1 {
+		t.Errorf("down, no longer the chart's, moved the row to %d", row)
+	}
+	if row := press("k"); row != 0 {
+		t.Errorf("k, rebound to the previous target, left row %d; want 0", row)
+	}
+	if got := panName(keys); got != "Pan (Bands: k/j target)" {
+		t.Errorf("Help says %q; want the chart's rebound keys beside the pan row, Pan (Bands: k/j target)", got)
 	}
 }

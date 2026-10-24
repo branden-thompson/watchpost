@@ -20,6 +20,8 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: { go-version: "1.27.3" } # the toolchain the gates are proven on; setup-go pins GOTOOLCHAIN=local, so go.mod's go directive alone would run an older stdlib (quality pass Q1)
+      - name: a final tag ships on final libraries (D-3, RH-9)
+        run: go run ./tools/finaltag "$GITHUB_REF_NAME"
       - name: verify
         run: make verify
       - name: release matrix
