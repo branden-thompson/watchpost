@@ -742,3 +742,7 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **The summary:** `perfsum -g1` reads the variant from `run.txt`. An `hourly` run is held to D-141's 3.3 MB an hour on the wire; its CPU and RSS comparisons are reported, not judged, and it is not called a dry run. `TestTheHourlyRunIsJudgedOnItsDownloadsAlone`; mutants m521 to m523; m499 re-pointed to the target the run is held to.
 - **The run:** six hours, the three arms side by side, from 31610af6; its figures are cited from this commit's `perfsum` once committed (E-19).
 
+## Docs after batch 58 - G1's hourly-setting run measured
+
+- **G1's hourly target is met:** 2.66 MB an hour on the wire with the Propagation mode in use, against 3.3 (D-141), over 6.1 hours from 31610af6, summarised by `perfsum` at ec72037c built from a clean tree. With the mode never opened, none. CPU and RSS against the map open in Forecast mode, reported only: -0.10 % and -0.8 MB, as in the 48-hour run. The run and its summary are kept outside the tree, with G1's 48-hour run.
+
