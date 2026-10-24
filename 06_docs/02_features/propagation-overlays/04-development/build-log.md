@@ -746,3 +746,9 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 
 - **G1's hourly target is met:** 2.66 MB an hour on the wire with the Propagation mode in use, against 3.3 (D-141), over 6.1 hours from 31610af6, summarised by `perfsum` at ec72037c built from a clean tree. With the mode never opened, none. CPU and RSS against the map open in Forecast mode, reported only: -0.10 % and -0.8 MB, as in the 48-hour run. The run and its summary are kept outside the tree, with G1's 48-hour run.
 
+## Docs after batch 58 - REVIEW exit's red team, round 1, and its forks (D-245 to D-262)
+
+- **The round:** seven blind reviewers (D-245); four say do not exit, three exit, no Critical. The reports in full are `08-reports/reviewer-notes/review-round-1.md`; every finding checked against the clean tips is in `08-reports/red-team-review.md`.
+- **The forks, all ruled the same day:** D-246 (G1 stands, both readings recorded, a Broadcaster arm), D-247 (GIRO's failures), D-248 (GIRO's plausibility), D-249 (a held F10.7), D-250 (PS-1's accuracy), D-251 (P-6 stands), D-252 (the P10 roster and rows), D-253 (the refresh measured), D-254 (`test-say`'s mute host), D-255 (known limits), D-256 (target keys rebindable), D-257 (the read order), D-258 (one sun), D-259 (the owed wires members deleted), D-260 (NOAA's back-off floor), D-261 (M5's scope), D-262 (go-tuiMaps v0.2.2 and a go-ionomaps nightly).
+- **The agent's error, in the gate record:** a `make verify-docs` run at about 16:34:51 UTC, HEAD `0a8d578b`, FAILED on `TestEveryRulingNamingCodeCitesItsLine` (D-258 cited `platform/astro/turn.go` without its line). Before the run that passed, the agent restored `06_docs/verify-runs.md` from HEAD, which removed that run's FAILED row: the record is meant to keep every run. It is recorded here instead; the record is never restored again before a run.
+
