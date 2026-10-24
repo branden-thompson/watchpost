@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -115,7 +116,11 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 	if propHasField(v.res.Snapshot) {
 		snap := v.res.Snapshot
 		same := d.mapPane.propSnap != nil && sameSnapshot(*d.mapPane.propSnap, snap) && d.mapPane.propSnapCorrect == v.correct
+		newlyDenied := snap.Inputs.GIRO == ionomaps.GIRODenied && (d.mapPane.propSnap == nil || d.mapPane.propSnap.Inputs.GIRO != ionomaps.GIRODenied)
 		d.mapPane.propSnap, d.mapPane.propSnapCorrect = &snap, v.correct
+		if newlyDenied {
+			d.problem("Propagation: GIRO refused this host (a 401, 403 or 410): it is not asked again for a day") // D-247: named once, as it begins
+		}
 		if snap.Offset.Measured {
 			d.problem(propOffsetWords(snap.Offset)) // the diagnostics' record of each live offset (FR-5.4)
 		}
@@ -242,6 +247,29 @@ func (d Dashboard) propAge(s ionomaps.Snapshot) (words string, age time.Duration
 	return words, age, false
 }
 
+// giroWords say how GIRO's last burst ended, carried in every snapshot
+// until the next (D-247): empty when it answered.
+func giroWords(g ionomaps.GIROOutcome) string {
+	switch g {
+	case ionomaps.GIRODenied:
+		return "GIRO refused this host: not asked again for a day"
+	case ionomaps.GIROUnavailable:
+		return "GIRO unavailable this hour"
+	}
+	return ""
+}
+
+// daysWords is an age said in days past a day, else as spanWords.
+func daysWords(age time.Duration) string {
+	switch days := int(age.Hours() / 24); {
+	case days == 1:
+		return "1 day"
+	case days > 1:
+		return strconv.Itoa(days) + " days"
+	}
+	return spanWords(age)
+}
+
 // spanWords is a span to the minute, "25 min" or "2 h 5 min".
 func spanWords(span time.Duration) string {
 	m := int(span.Minutes())
@@ -300,12 +328,22 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	case ionomaps.StationsNext:
 		words = append(words, "asking GIRO's stations")
 	case ionomaps.GIROPaused:
-		words = append(words, "GIRO paused after a refusal or no answer: the readings it gave first")
+		w := giroWords(s.Inputs.GIRO)
+		if w == "" {
+			w = "GIRO paused after a refusal or no answer"
+		}
+		words = append(words, w+": the readings it gave first")
 	case ionomaps.Unfinished:
 		words = append(words, "the update stopped before every file came: built from what was held")
 	}
+	if w := giroWords(s.Inputs.GIRO); w != "" && s.Reason != ionomaps.GIROPaused {
+		words = append(words, w) // the last burst's end, said all hour (D-247)
+	}
 	if len(s.Inputs.Unread) > 0 { // a Partial snapshot's, or one GIRO's state said first (D-239)
 		words = append(words, "NOAA's "+strings.Join(s.Inputs.Unread, ", ")+" not read this update") // FR-5.2: what stands in is said below, the background by its source
+	}
+	if slices.Contains(s.Inputs.Unread, "solar") && s.Inputs.F107Age > 0 {
+		words = append(words, "the solar flux held from "+daysWords(s.Inputs.F107Age)+" ago") // D-249: the kept mean, its age said
 	}
 	switch {
 	case s.Inputs.Stations > 0:
@@ -314,6 +352,12 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 		words = append(words, "no stations by choice: the background alone") // D-214
 	case s.Reason != ionomaps.StationsNext:
 		words = append(words, "no station readings this hour: the background alone")
+	}
+	switch n := s.Inputs.StationsFailed; {
+	case n == 1:
+		words = append(words, "1 station did not answer") // D-247: a station's own failure, the burst going on
+	case n > 1:
+		words = append(words, fmt.Sprintf("%d stations did not answer", n))
 	}
 	switch s.Background.FoF2 {
 	case ionomaps.GloTEC:

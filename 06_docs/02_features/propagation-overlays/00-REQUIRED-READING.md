@@ -46,7 +46,7 @@ Its answers agree with what was heard on the air little better than the climatol
 - **2026-10-12 to 10-17** the fresh days fetched. M1 and M4 graded, both short of D-99's targets (batch 52); G-M3 met and D-75's floor held, the Pacific worse than the climatology (batch 53). The instruments share go-ionomaps' `internal/hybrid` and `ionomapstest` (D-237).
 - **2026-10-21** G1 met over its 48 hours against the map open in Forecast mode, -0.17 % CPU and -10.4 MB (D-236, D-241); against the map never opened, reported, both missed, +3.42 % and +40.0 MB, the open map's own cost (D-246). G1's hourly setting met on 2026-10-24, 2.66 MB an hour against 3.3 (A-83).
 - **2026-10-22** the heap growth the soak showed, in 0.18.1 too, found in the history store's day cache and bounded (D-242); the fixed build runs beside 0.18.2 to show it.
-- **2026-10-24** REVIEW exit's red team, round 1: seven blind reviewers (D-245), four do not exit, no Critical; its seventeen forks ruled (D-246 to D-262), the remediation under way (`08-reports/red-team-review.md`). The libraries are at go-ionomaps v0.1.0-rc.5 and go-tuiMaps v0.3.0-rc.3 until the remediation's release candidates.
+- **2026-10-24** REVIEW exit's red team, round 1: seven blind reviewers (D-245), four do not exit, no Critical; its seventeen forks ruled (D-246 to D-262), the remediation under way (`08-reports/red-team-review.md`). The remediation's release candidates are go-ionomaps v0.1.0-rc.6 and go-tuiMaps v0.3.0-rc.5 (D-263 added `DaylightAt`), watchpost on both from batch 60.
 
 ## The rules that cost something
 

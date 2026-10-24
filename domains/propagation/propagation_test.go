@@ -119,7 +119,7 @@ func TestOnlyRateHeadersAreRead(t *testing.T) {
 
 // TestTwoUpdatesAskNOAAOnce is FR-4.8 (A-30): updates asked at once run one
 // at a time in go-ionomaps - the second waits for the first and is answered
-// from what it fetched, so NOAA's index is asked once.
+// from what it fetched, so no address of NOAA's is asked twice.
 func TestTwoUpdatesAskNOAAOnce(t *testing.T) {
 	rec := &recorder{hold: make(chan struct{})}
 	s, err := NewService(rec, Options{Clock: fixedClock})
@@ -130,14 +130,17 @@ func TestTwoUpdatesAskNOAAOnce(t *testing.T) {
 	close(rec.hold)
 	<-a
 	<-b
-	index := 0
+	asked := map[string]int{}
 	for _, u := range rec.asked {
-		if strings.HasSuffix(u, "/geojson_2d_urt/") {
-			index++
-		}
+		asked[u]++
 	}
-	if index != 1 {
-		t.Errorf("two updates asked at once asked the index %d times: %v", index, rec.asked)
+	if len(asked) == 0 {
+		t.Fatal("nothing was asked: this measures nothing")
+	}
+	for u, n := range asked {
+		if n > 1 {
+			t.Errorf("two updates asked at once asked %s %d times: %v", u, n, rec.asked)
+		}
 	}
 }
 

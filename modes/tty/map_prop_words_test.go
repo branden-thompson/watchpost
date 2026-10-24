@@ -16,8 +16,8 @@ import (
 	"time"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 
-	"github.com/branden-thompson/watchpost/platform/astro"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -534,22 +534,33 @@ func TestAnHourIsSaidSingly(t *testing.T) {
 	}
 }
 
-// TestDayAndNightAreSaidAsTheLineIsDrawn is the BUILD red team's L-F9: the
-// words say day or night by the horizon the drawn terminator uses - the sun's
-// centre, no refraction - so a place just past the line on the night side is
-// said to be at night, where the sunrise convention's -0.833° said day.
+// TestDayAndNightAreSaidAsTheLineIsDrawn is the BUILD red team's L-F9 and
+// D-258, D-263: the words say day or night by go-tuiMaps' sun, the one the
+// night is drawn with, at the moment drawn - a minute before the drawn line
+// passes the place it is day there and a minute after it night, nine hours
+// ahead as now - and say nothing for no moment.
 func TestDayAndNightAreSaidAsTheLineIsDrawn(t *testing.T) {
 	d := chartDash(t)
-	at := time.Date(2026, 10, 12, 2, 30, 0, 0, time.UTC) // an hour after sunset at Oceanside
-	for e := astro.Elevation(33.2, -117.38, at); e < -0.4; e = astro.Elevation(33.2, -117.38, at) {
-		at = at.Add(-time.Minute) // back to the minute the sun's centre is 0.4° below the horizon
-	}
-	if e := astro.Elevation(33.2, -117.38, at); e > -0.2 || e < -0.6 {
-		t.Fatalf("control: the elevation found is %.2f°", e)
-	}
 	place := propPlace{at: ionomaps.LatLon{Lat: 33.2, Lon: -117.38}, name: "Oceanside", ok: true}
-	if w := d.propDayWords(place, at); !strings.HasPrefix(w, "It is night at Oceanside") {
-		t.Errorf("the sun's centre 0.4° below the horizon, past the drawn line, is said %q", w)
+	at := tuimaps.LonLat{Lon: -117.38, Lat: 33.2}
+	for _, from := range []time.Time{time.Date(2026, 10, 11, 20, 0, 0, 0, time.UTC), time.Date(2026, 10, 12, 5, 0, 0, 0, time.UTC)} {
+		turn := tuimaps.DaylightAt(at, from)
+		if turn.Turns.IsZero() || !turn.Turns.After(from) {
+			t.Fatalf("control: no turn after %v: %+v", from, turn)
+		}
+		before, after := "It is day at Oceanside", "It is night at Oceanside"
+		if !turn.Day {
+			before, after = after, before
+		}
+		if w := d.propDayWords(place, turn.Turns.Add(-time.Minute)); !strings.HasPrefix(w, before) {
+			t.Errorf("a minute before the line passes, from %v: %q; want %q", from, w, before)
+		}
+		if w := d.propDayWords(place, turn.Turns.Add(time.Minute)); !strings.HasPrefix(w, after) {
+			t.Errorf("a minute after the line passes, from %v: %q; want %q", from, w, after)
+		}
+	}
+	if w := d.propDayWords(place, time.Time{}); w != "" {
+		t.Errorf("no moment is said %q", w)
 	}
 }
 

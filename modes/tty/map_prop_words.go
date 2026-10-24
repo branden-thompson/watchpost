@@ -17,8 +17,7 @@ import (
 	"time"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
-
-	"github.com/branden-thompson/watchpost/platform/astro"
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 )
 
 // propFocusLimit is FR-3.7's statement (D-133): Help carries it, and the
@@ -110,22 +109,31 @@ func (d Dashboard) propOriginWords() []string {
 		return []string{upperFirst(spoken(origin.name + ", " + when + ": no data at the place."))}
 	}
 	answer := fmt.Sprintf("%s, %s: MUF(3000) %s MHz, foF2 %s MHz.", origin.name, when, propanswers.MHz(muf), propanswers.MHz(fo))
-	return []string{upperFirst(spoken(answer)), spoken(d.propDayWords(origin, shown.Now.At))} // a centre named by its coordinates, said as degrees (AX-1)
+	out := []string{upperFirst(spoken(answer))} // a centre named by its coordinates, said as degrees (AX-1)
+	if w := d.propDayWords(origin, shown.Now.At); w != "" {
+		out = append(out, spoken(w))
+	}
+	return out
 }
 
-// propDayWords say whether the sun is up at a place at a moment, and when
-// it next rises or sets there, by the window's clock.
+// propDayWords say whether the sun is up at a place at the moment shown, and
+// when it next rises or sets there, by the window's clock: go-tuiMaps' sun,
+// the one the night is drawn with for that moment, so the words and the
+// picture agree an hour ahead as now (D-258, D-263). Empty for no moment.
 func (d Dashboard) propDayWords(p propPlace, at time.Time) string {
+	day := tuimaps.DaylightAt(tuimaps.LonLat{Lon: p.at.Lon, Lat: p.at.Lat}, at)
+	if !day.Known {
+		return ""
+	}
 	side, turn := "night", "rises"
-	if astro.Up(p.at.Lat, p.at.Lon, at) {
+	if day.Day {
 		side, turn = "day", "sets"
 	}
 	words := "It is " + side + " at " + p.name
-	next, ok := astro.NextTurn(p.at.Lat, p.at.Lon, at)
-	if !ok {
+	if day.Turns.IsZero() {
 		return words + ", and the sun neither rises nor sets there today."
 	}
-	next = next.In(d.now().Location())
+	next := day.Turns.In(d.now().Location())
 	return words + "; the sun " + turn + " there at " + d.clockFmt.Time(next) + " " + next.Format("MST") + "."
 }
 
