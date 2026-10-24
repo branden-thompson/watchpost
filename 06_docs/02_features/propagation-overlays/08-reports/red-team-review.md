@@ -4,7 +4,7 @@ date: 2026-10-24
 phase: REVIEW exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1 REPORTED 2026-10-24: seven blind reviewers (D-245); every finding checked by the agent against the clean tips; the forks are put to the HUM LEAD one at a time, then the remediation batches"
+status: "ROUND 1 REPORTED 2026-10-24: seven blind reviewers (D-245); every finding checked by the agent against the clean tips; ALL 17 FORKS RULED 2026-10-24 (D-246 to D-262); the remediation batches follow"
 ---
 
 # REVIEW exit — red team, round 1
@@ -137,3 +137,14 @@ Against the clean tips. CONFIRMED: the cited lines do what the finding says. PLA
 | 4, no solar file | D-249: the last F10.7 mean kept in the saved state, used with its age up to 7 days; past that no field, said as the file unread |
 | 5, PS-1's accuracy | D-250: no accuracy floor, recorded; the PR claims answerability for PS-1 with M1's agreement beside it; M1's scope and the chart's agreement at VALIDATE |
 | 6, the hours ahead | D-251: P-6 stands, each snapshot owns its slices; D-131 amended; a heap pin over 24 hours ahead under 15 MB |
+| 7, the P10 ledger | D-252: the ledger stays local; P10 recorded per phase exit in a roster; the READMEs name the files; the grown package rows re-presented in one list, figures pinned |
+| 8, the default refresh | D-253: measured with gm3 on the fresh days (newest grid against one up to an hour old), the default ruled at VALIDATE |
+| 9, test-say's skip | D-254: a non-rendering host fails under the leg unless declared mute in the hosted macOS step, which prints NOT RUN; never silent |
+| 10, known limits | D-255: a known-limits list in the changelog, worded at VALIDATE's end; one VALIDATE agenda page meanwhile |
+| 11, moving between targets | D-256: previous and next target keymap actions (up and down by default in the chart window), rebindable and in Help, as FR-1.14 is written |
+| 12, the read order | D-257: three lines of what the release is open the REQUIRED-READING; the Phase cell a short dated list |
+| 13, one sun | D-258: the words take day/night and the next turn from go-tuiMaps' Report; watchpost's Up and NextTurn deleted; RC-14 fixed first |
+| 14, the owed wires rows | D-259: Event.Restored and State.Refused deleted with their rows; F-108 writes them again |
+| 15, NOAA's back-off | D-260: NOAA's back-off floored at its 10-minute cadence, then 15; a NOAA 5xx a refusal |
+| 16, M5's scope | D-261: M5 stays at 400x110; 800x220 recorded as a known limit and re-measured after RP-4's fixes and a structured benchmark |
+| 17, go-tuiMaps' main | D-262: go-tuiMaps v0.2.2 from main on go1.27.3, floor 1.26.10; a go-ionomaps nightly |
