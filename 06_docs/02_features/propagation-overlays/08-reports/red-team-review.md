@@ -131,3 +131,9 @@ Against the clean tips. CONFIRMED: the cited lines do what the finding says. PLA
 
 | Fork | Ruling |
 |---|---|
+| 1, G1's comparison | D-246: D-236 stands; both readings recorded and to VALIDATE; a 48-hour Broadcaster arm measured and reported; the map's own cost a follow-up |
+| 2, GIRO's failures | D-247: a station's failure its own; the burst stops on a 429 or three in a row; 401/403/410 a 24-hour pause, said; the failure carried all hour; the rotation moved |
+| 3, GIRO's plausibility | D-248: seeded stations keep their positions (over 50 km refused); a residual bound from the recorded days; G-M3 re-run; D-105's offset stands |
+| 4, no solar file | D-249: the last F10.7 mean kept in the saved state, used with its age up to 7 days; past that no field, said as the file unread |
+| 5, PS-1's accuracy | D-250: no accuracy floor, recorded; the PR claims answerability for PS-1 with M1's agreement beside it; M1's scope and the chart's agreement at VALIDATE |
+| 6, the hours ahead | D-251: P-6 stands, each snapshot owns its slices; D-131 amended; a heap pin over 24 hours ahead under 15 MB |
