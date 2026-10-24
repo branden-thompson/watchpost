@@ -735,3 +735,10 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 
 - **0.18.2 shipped:** PR #30 squash-merged to `main` as `a7e77990`, CI on both systems green, tagged `v0.18.2`. The release workflow built every platform's binary, and the macOS arm64 binary checks as Go 1.27.3 from `a7e77990`. The release branch was pushed past the pre-push hook: the hook runs this branch's `tools/prepush`, which the 0.18 line does not have, and the full gate was green on the commit pushed.
 - **Merged here:** the workflows conflicted only on the actions' pins, and this branch's newer ones stand (F-216). The changelog carries 0.18.2's entry; 0.19.0's section now names the floor (go 1.26.10, D-244) rather than the toolchain 0.18.2 already ships, and says the memory growth is in 0.18.2 too.
+
+## Batch 58 - REVIEW: G1's hourly-setting run (A-83)
+
+- **The workload:** `config-hourly.toml` is the default workload with the Propagation mode refreshing hourly, and silent. `workload.sh g1` takes it as its variant.
+- **The summary:** `perfsum -g1` reads the variant from `run.txt`. An `hourly` run is held to D-141's 3.3 MB an hour on the wire; its CPU and RSS comparisons are reported, not judged, and it is not called a dry run. `TestTheHourlyRunIsJudgedOnItsDownloadsAlone`; mutants m521 to m523; m499 re-pointed to the target the run is held to.
+- **The run:** six hours, the three arms side by side, from 31610af6; its figures are cited from this commit's `perfsum` once committed (E-19).
+

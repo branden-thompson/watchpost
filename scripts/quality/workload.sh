@@ -7,7 +7,7 @@
 #   scripts/quality/workload.sh session <default|heavy> <outdir> [phase_minutes=10]
 #   scripts/quality/workload.sh cold    <default|heavy> <outdir> [runs=5]
 #   scripts/quality/workload.sh warm    <default|heavy> <outdir> [runs=4]
-#   scripts/quality/workload.sh g1      <default|heavy> <outdir> [minutes=2880] [cycle_minutes=60]
+#   scripts/quality/workload.sh g1      <default|heavy|hourly> <outdir> [minutes=2880] [cycle_minutes=60]
 #
 # Runs ./dist/watchpost (make build first) under a SCRATCH HOME holding
 # 06_docs/perf/workload-v1/config-<variant>.toml, so the listener's own config
@@ -25,9 +25,11 @@
 # its counters read every ten and a post-GC heap profile kept every hour
 # (<arm>/heap-<utc>.pb.gz); each measures 5 minutes past the span asked, so its
 # last sample lands past it (D-241). `go run ./tools/perfsum -g1 <outdir>`
-# reads the differences against G1's targets.
+# reads the differences against G1's targets. The hourly variant is G1's
+# hourly-setting run (A-79, A-83): perfsum judges its downloads alone, at
+# 3.3 MB an hour.
 set -eu
-mode=${1:?session|cold|warm|g1}; variant=${2:?default|heavy}; out=${3:?outdir}; arg=${4:-}; arg2=${5:-}
+mode=${1:?session|cold|warm|g1}; variant=${2:?default|heavy|hourly}; out=${3:?outdir}; arg=${4:-}; arg2=${5:-}
 root=$(git rev-parse --show-toplevel)
 cfg=$root/06_docs/perf/workload-v1/config-$variant.toml
 bin=$root/dist/watchpost

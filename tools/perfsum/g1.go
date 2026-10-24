@@ -31,14 +31,17 @@ import (
 	"github.com/branden-thompson/watchpost/platform/invariant"
 )
 
-// G1's targets (0.19.0 problem-statement "Targets"; D-131, D-141). The run
-// is at the 10-minute default refresh: the hourly setting's 3.3 MB an hour
-// is its own run.
+// G1's targets (0.19.0 problem-statement "Targets"; D-131, D-141). A run
+// is at the 10-minute default refresh unless its workload is the hourly
+// variant: that run is its own (A-79), judged on its downloads alone, at
+// the hourly setting's target (A-83).
 const (
-	g1AddedCPUPct = 1.0  // added mean CPU, % of one core
-	g1AddedRSSMB  = 25.0 // added RSS, median over the run
-	g1WireMBHour  = 19.0 // downloads on the wire while open, decimal MB an hour
-	g1Measured    = "G measured"
+	g1AddedCPUPct  = 1.0  // added mean CPU, % of one core
+	g1AddedRSSMB   = 25.0 // added RSS, median over the run
+	g1WireMBHour   = 19.0 // downloads on the wire while open, decimal MB an hour
+	g1WireMBHourly = 3.3  // the same on the hourly setting
+	g1Measured     = "G measured"
+	g1Hourly       = "hourly" // the workload variant run.txt names
 )
 
 // g1Arm is one arm's measure over its span.
@@ -89,6 +92,11 @@ func summariseG1(dir, against string) (string, int, error) {
 	var b strings.Builder
 	head, _ := os.ReadFile(filepath.Join(dir, "run.txt"))
 	fmt.Fprintf(&b, "# %s\n\n", strings.TrimSpace(string(head)))
+	hourly := runVariant(head) == g1Hourly
+	wireTarget := g1WireMBHour
+	if hourly {
+		wireTarget = g1WireMBHourly
+	}
 	b.WriteString("## The arms\n\n| Arm | Hours | Samples | CPU % | RSS MB (median / max) | Footprint MB (median) | Heap MB (median) | Wire MB an hour | Wire MB a day |\n|---|---|---|---|---|---|---|---|---|\n")
 	row := func(name string, a g1Arm) {
 		r := a.res
@@ -110,9 +118,9 @@ func summariseG1(dir, against string) (string, int, error) {
 	}
 	short := use.hours < 48
 	b.WriteString("\n## The mode's downloads\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n")
-	fmt.Fprintf(&b, "| downloads on the wire while open, MB an hour | %s | at most %.0f | %s |\n", use.perHour(1), g1WireMBHour, verdict(use.wireRead && use.wireMB/use.wireHours <= g1WireMBHour, true))
+	fmt.Fprintf(&b, "| downloads on the wire while open, MB an hour | %s | at most %g | %s |\n", use.perHour(1), wireTarget, verdict(use.wireRead && use.wireMB/use.wireHours <= wireTarget, true))
 	for _, base := range bases {
-		counts := base.key == against
+		counts := base.key == against && !hourly
 		how := "reported, not judged"
 		if counts {
 			how = "**judged** (-against " + base.key + ")"
@@ -124,10 +132,23 @@ func summariseG1(dir, against string) (string, int, error) {
 		fmt.Fprintf(&b, "| downloads with the Propagation mode never opened, MB | %s | none | %s |\n", base.arm.total(), verdict(base.arm.wireRead && base.arm.wireMB == 0, counts))
 		short = short || base.arm.hours < 48
 	}
-	if short {
+	switch {
+	case hourly:
+		b.WriteString("\nThe hourly setting's own run (A-79, A-83): its downloads alone are judged; CPU and RSS are judged over G1's 48 hours at the default refresh.\n")
+	case short:
 		b.WriteString("\nThe run is shorter than G1's 48 hours: a dry run, not the measure.\n")
 	}
 	return b.String(), missed, nil
+}
+
+// runVariant is the workload variant run.txt's first line names
+// ("workload-v1 <mode> <variant> ..."), or "" when it names none.
+func runVariant(head []byte) string {
+	f := strings.Fields(string(head))
+	if len(f) < 3 {
+		return ""
+	}
+	return f[2]
 }
 
 // perHour is the arm's downloads over hours of its span, or "unread".

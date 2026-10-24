@@ -276,3 +276,63 @@ func TestAG1RunIsJudgedAgainstTheArmNamed(t *testing.T) {
 		t.Errorf("judged against a map arm the run lacks, exit %d", code)
 	}
 }
+
+// TestTheHourlyRunIsJudgedOnItsDownloadsAlone is A-79 and A-83: a run whose
+// workload is the hourly variant is held to the hourly setting's 3.3 MB an
+// hour, its CPU and RSS reported and never judged, and is not called a dry
+// run; the same arms under the default workload are held to 19 and judged.
+func TestTheHourlyRunIsJudgedOnItsDownloadsAlone(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const head = "utc,elapsed,rss_kb,footprint_kb,threads,pcpu,heap_alloc,heap_inuse,heap_objects,goroutines,fds,disk_files,disk_bytes,publishes_recent,cpu_time\n"
+	arm := func(name string, rssMB int, cpuEnd string, wire int64) {
+		write(name+"/phases.log", "2026-10-24T00:00:00Z G measured\n")
+		write(name+"/samples.csv", head+
+			fmt.Sprintf("2026-10-24T00:00:00Z,,%d,,20,,,,,50,,,,,0:00.00\n", rssMB*1024)+
+			fmt.Sprintf("2026-10-24T06:00:00Z,,%d,,20,,,,,50,,,,,%s\n", rssMB*1024, cpuEnd))
+		write(name+"/counters.jsonl", "{\"at\":\"2026-10-24T00:00:00Z\",\"propagation_wire_bytes\":0}\n")
+		write(name+"/g1-end.json", fmt.Sprintf("{\"at\":\"2026-10-24T06:00:00Z\",\"propagation_wire_bytes\":%d}", wire))
+	}
+	// Over 6 h the use arm spends 36 minutes of CPU (10 %) and holds 300 MB;
+	// the map arm 3.6 minutes (1 %) and 200 MB: judged, both would miss.
+	sum := func(variant string, useWire int64) (string, int) {
+		write("run.txt", "workload-v1 g1 "+variant+" commit=abc\n")
+		arm("use", 300, "36:00.00", useWire)
+		arm("map", 200, "3:36.00", 0)
+		var out, errOut bytes.Buffer
+		code := run([]string{"-g1", dir}, &out, &errOut)
+		if code == 2 {
+			t.Fatalf("exit 2: %s", errOut.String())
+		}
+		return out.String(), code
+	}
+	// 18 MB over 6 hours is 3 MB an hour.
+	out, code := sum("hourly", 18e6)
+	for _, want := range []string{
+		"| downloads on the wire while open, MB an hour | 3.00 | at most 3.3 | met |",
+		"## The mode in use against the map open in Forecast mode: reported, not judged",
+		"| added mean CPU, % of one core | +9.00 | at most 1 | **missed** |",
+		"The hourly setting's own run (A-79, A-83)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the hourly run's summary lacks %q:\n%s", want, out)
+		}
+	}
+	if code != 0 || strings.Contains(out, "**judged**") || strings.Contains(out, "a dry run") {
+		t.Errorf("an hourly run whose downloads met 3.3 MB an hour exits %d:\n%s", code, out)
+	}
+	if out, code := sum("hourly", 24e6); code != 1 || !strings.Contains(out, "| 4.00 | at most 3.3 | **missed** |") {
+		t.Errorf("4 MB an hour on the hourly setting exits %d:\n%s", code, out)
+	}
+	out, code = sum("default", 18e6)
+	if code != 1 || !strings.Contains(out, "| 3.00 | at most 19 | met |") || !strings.Contains(out, "**judged** (-against map)") || !strings.Contains(out, "a dry run") {
+		t.Errorf("the same arms at the default refresh, judged, exit %d:\n%s", code, out)
+	}
+}
