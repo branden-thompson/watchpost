@@ -8,6 +8,7 @@
 #   scripts/quality/workload.sh cold    <default|heavy> <outdir> [runs=5]
 #   scripts/quality/workload.sh warm    <default|heavy> <outdir> [runs=4]
 #   scripts/quality/workload.sh g1      <default|heavy|hourly> <outdir> [minutes=2880] [cycle_minutes=60]
+#   scripts/quality/workload.sh g1b     <default|heavy|hourly> <outdir> [minutes=2880] [cycle_minutes=60]
 #
 # Runs ./dist/watchpost (make build first) under a SCRATCH HOME holding
 # 06_docs/perf/workload-v1/config-<variant>.toml, so the listener's own config
@@ -28,8 +29,14 @@
 # reads the differences against G1's targets. The hourly variant is G1's
 # hourly-setting run (A-79, A-83): perfsum judges its downloads alone, at
 # 3.3 MB an hour.
+#
+# g1b is G1's Broadcaster arm (D-246), run alone on GIRO: two processes, each
+# swapped to the Broadcaster console. <outdir>/use opens the console's own map
+# on g, its Propagation mode open and driven on the use arm's cycle;
+# <outdir>/idle never opens the map. `go run ./tools/perfsum -g1 -against
+# idle <outdir>` reads the difference.
 set -eu
-mode=${1:?session|cold|warm|g1}; variant=${2:?default|heavy|hourly}; out=${3:?outdir}; arg=${4:-}; arg2=${5:-}
+mode=${1:?session|cold|warm|g1|g1b}; variant=${2:?default|heavy|hourly}; out=${3:?outdir}; arg=${4:-}; arg2=${5:-}
 root=$(git rev-parse --show-toplevel)
 cfg=$root/06_docs/perf/workload-v1/config-$variant.toml
 bin=$root/dist/watchpost
@@ -96,17 +103,18 @@ session)
   wait "$drv"
   kill "$smp" 2>/dev/null || true
   rm -rf "$h" ;;
-g1)
+g1|g1b)
   mins=${arg:-2880}; cycle=${arg2:-60}
   # Each arm: its name, its debug port; the drivers' and samplers' pids and
-  # the HOMEs in the same order.
+  # the HOMEs in the same order. The Broadcaster's run has no map arm (D-246).
   arms="use:6072 map:6074 idle:6073"
+  [ "$mode" = g1b ] && arms="use:6072 idle:6073"
   drivers=; homes=
   for a in $arms; do
     n=${a%%:*}; p=${a##*:}
     mkdir -p "$out/$n"; rm -f "$out/$n/pid"
     h=$(fresh_home); homes="$homes $h"
-    drive "$h" "g1-$n" "$((mins + 5))" "127.0.0.1:$p" "$out/$n" "$cycle" & # past the span: samples come every 2 minutes (D-241)
+    drive "$h" "$mode-$n" "$((mins + 5))" "127.0.0.1:$p" "$out/$n" "$cycle" & # past the span: samples come every 2 minutes (D-241)
     drivers="$drivers $!"
   done
   for a in $arms; do
@@ -142,6 +150,6 @@ g1)
   # A DRIVER THAT FAILED IS A RUN THAT FAILED (RC-1): the run's own exit
   # says so, never only a line in its output.
   [ "$failed" = 0 ] || exit 1 ;;
-*) echo "workload: mode is session, cold, warm or g1"; exit 2 ;;
+*) echo "workload: mode is session, cold, warm, g1 or g1b"; exit 2 ;;
 esac
 echo "workload: $mode $variant done - $out"

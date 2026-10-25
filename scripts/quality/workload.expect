@@ -8,8 +8,11 @@
 #   workload.expect g1-use  <outdir> <minutes>       <binary> <counters_url> <cycle_minutes>
 #   workload.expect g1-map  <outdir> <minutes>       <binary> <counters_url> <cycle_minutes>
 #   workload.expect g1-idle <outdir> <minutes>       <binary> <counters_url> <cycle_minutes>
+#   workload.expect g1b-use  <outdir> <minutes>      <binary> <counters_url> <cycle_minutes>
+#   workload.expect g1b-idle <outdir> <minutes>      <binary> <counters_url> <cycle_minutes>
 #
-# 149x38: the plan's M5 size (W2.9). Phase changes go to <outdir>/phases.log
+# 149x38: the plan's M5 size (W2.9); the Broadcaster's arms 150x46, as the
+# console draws nothing under 44 rows (0.16.0 D-50). Phase changes go to <outdir>/phases.log
 # as "<utc> <phase>"; the process id to <outdir>/pid, for the sampler.
 set timeout 5
 lassign $argv mode outdir arg binary counters cycle
@@ -29,20 +32,30 @@ proc counters {url file} { catch {exec curl -fs --max-time 10 $url > $file} }
 
 spawn $binary
 set pf [open "$outdir/pid" w]; puts $pf [exp_pid]; close $pf
-catch {exec stty rows 38 cols 149 < $spawn_out(slave,name)}
+set rows 38; set cols 149
+if {[string match "g1b-*" $mode]} { set rows 46; set cols 150 }
+catch {exec stty rows $rows cols $cols < $spawn_out(slave,name)}
 # A WAIT THAT TIMES OUT IS A FAILED RUN, never a phase begun late: the soak
 # scripts waited for U+00BA where the app draws U+00B0 (the degree sign) and
 # began every run on a silent timeout (found by this driver, W14).
 expect -timeout 30 "WATCHPOST" {} timeout { phase $lf "FAILED: no frame"; exit 1 }
 expect -timeout 180 -re "\\d+°F" {} timeout { phase $lf "FAILED: no data in 180 s"; exit 1 }
 phase $lf "L launched: first data"
+if {[string match "g1b-*" $mode]} {
+  # G1's Broadcaster arm (D-246): the console, swapped to on the Observer's
+  # first data, its station line drawn.
+  send "B"
+  expect -timeout 30 "STATION AIR:" {} timeout { phase $lf "FAILED: the Broadcaster console not drawn"; exit 1 }
+  phase $lf "B the Broadcaster console"
+}
 
-if {$mode eq "g1-use"} {
-  # 0.19.0 G1 (W10.2), the mode in use: the map opened at the place, the
-  # Propagation mode opened and its acknowledgement seen; then each cycle a
-  # pan (east, then back west, so the view stays near the place), an hour
-  # step ahead and back to now, and a frequency entered, alternating two so
-  # each entry asks a reach (D-227: G1 holds a frequency while panning).
+# useMode is the Propagation mode in use, G1's (W10.2): the map opened - on
+# the Observer at the place, on the Broadcaster its own on g, at the station
+# (D-195) - the mode opened and its acknowledgement seen; then each cycle a
+# pan (east, then back west, so the view stays near the place), an hour step
+# ahead and back to now, and a frequency entered, alternating two so each
+# entry asks a reach (D-227: G1 holds a frequency while panning).
+proc useMode {lf arg cycle counters outdir} {
   send "g"; hold 20 "" 0
   send "P"
   expect -timeout 30 "Enter" {} timeout { phase $lf "FAILED: no acknowledgement"; exit 1 }
@@ -67,6 +80,10 @@ if {$mode eq "g1-use"} {
     hold [expr {$next - [clock seconds]}] "" 0
   }
   counters $counters "$outdir/g1-end.json"
+}
+
+if {$mode eq "g1-use" || $mode eq "g1b-use"} {
+  useMode $lf $arg $cycle $counters $outdir
 } elseif {$mode eq "g1-map"} {
   # G1's arm with the map open and the Propagation mode never opened: the
   # map at the place in Forecast mode, panned on the use arm's cycle, so the
@@ -88,9 +105,10 @@ if {$mode eq "g1-use"} {
     hold [expr {$next - [clock seconds]}] "" 0
   }
   counters $counters "$outdir/g1-end.json"
-} elseif {$mode eq "g1-idle"} {
+} elseif {$mode eq "g1-idle" || $mode eq "g1b-idle"} {
   # G1's other arm: the same build and workload's config, the map never
-  # opened, so the Propagation mode never fetches (D-76).
+  # opened, so the Propagation mode never fetches (D-76); on the Broadcaster,
+  # the console idle.
   phase $lf "G measured: the mode never opened"
   hold [expr {$arg * 60}] "" 0
   counters $counters "$outdir/g1-end.json"
