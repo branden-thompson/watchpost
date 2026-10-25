@@ -807,3 +807,9 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Rulings recorded:** D-267, the REVIEW remediation's A-rows stand; D-268, go-ionomaps' `tools/tables` under every P10 leg (go-ionomaps D-93: its two input-bounded loops now bounded by lines).
 - **Mutant:** m542.
 
+## REVIEW exit red team, round 2 - filed and ruled (D-269 to D-282)
+
+- **Filed:** the seven reports verbatim in `08-reports/reviewer-notes/review-round-2.md`; the verdicts, the forks and the remediation list in `08-reports/red-team-review.md`, round 2. Five reviewers say exit and two do not (Docs: R2D-1, the committed scorer against D-241; the REVIEW lens: R2L-1 to R2L-3, go-ionomaps' failure handling, R2L-3 brought in by D-260).
+- **Ruled:** D-270 to D-282, each put singly with its evidence.
+- **Found during the pass:** go-tuiMaps' gate test `TestALegThatIgnoresTermIsStillStopped` kills `sleep 3607` machine-wide, so the reviewers' parallel gates failed each other (R2H-1); every run of a library's `scripts/gate` appends to its tracked `gate-runs.md`, so the reviewers' quick gates left rows in both libraries, kept as the record keeps every run.
+

@@ -1,10 +1,10 @@
 ---
-title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — REVIEW exit red team, round 1"
+title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — REVIEW exit red team, rounds 1 and 2"
 date: 2026-10-24
 phase: REVIEW exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1 REPORTED 2026-10-24: seven blind reviewers (D-245); every finding checked by the agent against the clean tips; ALL 17 FORKS RULED 2026-10-24 (D-246 to D-262); the remediation batches follow"
+status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); its remediation follows, then round 3"
 ---
 
 # REVIEW exit — red team, round 1
@@ -175,3 +175,57 @@ each a root of its own, a change to that file only the HUM LEAD makes (RC-12).
 | 15, NOAA's back-off | D-260: NOAA's back-off floored at its 10-minute cadence, then 15; a NOAA 5xx a refusal |
 | 16, M5's scope | D-261: M5 stays at 400x110; 800x220 recorded as a known limit and re-measured after RP-4's fixes and a structured benchmark |
 | 17, go-tuiMaps' main | D-262: go-tuiMaps v0.2.2 from main on go1.27.3, floor 1.26.10; a go-ionomaps nightly |
+
+## Round 2 (D-269)
+
+Seven fresh blind reviewers, the same lenses, given round 1's findings and the fix commits, each told to verify the fixes in code, hunt what round 1 missed and attack the code the remediation brought in. The reports in full: [review-round-2](reviewer-notes/review-round-2.md). The network dropped twice during the pass; each reviewer was resumed where it stopped.
+
+### The verdicts
+
+| Lens | Verdict | Fix first |
+|---|---|---|
+| Code Quality (R2C) | exit | R2C-1: the build counter the RC-4 fix rests on has no test of its own; m430's "Killed by" is stale |
+| Project Hygiene (R2H) | exit | R2H-1: go-tuiMaps' gate test kills `sleep 3607` across the machine, so overlapping gates fail falsely and kill each other's children |
+| Docs Quality (R2D) | **do not exit** | R2D-1: the committed `perfsum` refuses the G1 run the record calls met (47.97 hours against RC-1's 48) |
+| Business Quality (R2B) | exit, on R2B-1 | R2B-1: the Broadcaster arm misses G1 at hour 10.6, and nothing said what a miss means |
+| The REVIEW lens (R2L) | **do not exit** | R2L-3: since D-260 a 5xx on the solar file alone stops every GloTEC ask |
+| InfoSec (R2I) | exit | R2I-1: the solar file's line cap still truncates silently (RI-3's class) |
+| Performance (R2P) | exit | R2P-1: every answer opens all 24 typical hours, undoing D-251 |
+
+Round 1's findings, in the reviewers' words: most FIXED in code; PARTIAL - RC-3, RC-7, RC-9, RC-13, RH-1, RH-7, RH-14 (watchpost's headers), RD-1, RD-12, RI-2, RI-3, RL-1, RL-5, RL-9, RP-1, RP-2, RP-3; NOT FIXED - RP-5, never dispositioned. Each PARTIAL's remaining half is in the remediation below.
+
+### The forks, ruled
+
+| Fork | Ruling |
+|---|---|
+| R2L-3, the solar file's 5xx | D-270: only a 429 stops NOAA's round; a 5xx or no answer marks that file missed and the round goes on; the D-249 test asserts the grid was used |
+| R2L-1, three in a row | D-271: GIRO is down only while nothing in the burst has answered; after an answer each failure is the station's own |
+| R2L-2, unnamed statuses | D-272: an unnamed non-200 is the station's failure, named once; a 410 is the station's own, only 401 and 403 pause GIRO |
+| R2D-1, G1's span | D-273: `perfsum` takes a run as 48 hours within one sampling interval, stated in its output |
+| R2B-1, the Broadcaster's miss | D-274: G1 applies to the Broadcaster arm; a miss is a known limit and the map's cost a follow-up with a target |
+| R2P-3, a hung GIRO | D-275: GIRO's asks 15 s each, so three failures fit the 60-second update |
+| R2H-10, the say hang | D-276: one diagnosed retry inside the test, printed; a second hang fails |
+| R2H-7, R2C-4, floorless rows | D-277: a firing density row with no floor fails; its floor set at that day's figure, an A-row |
+| R2H-11, changes after a candidate | D-278: only code a host builds takes a candidate; tools, tests and docs are said in the build log |
+| RI-1's residual | D-279: a bound relative to the background, measured on the recorded days, beside the 8 MHz |
+| R2D-3, refusals | D-280: a lane that refuses before any leg logs nothing, in all three repositories |
+| R2D-4, IDs in public docs | D-281: no red-team or ruling IDs in exported doc comments; go-ionomaps A-29 (13) reversed |
+| RP-3, watchpost's bench | D-282: watchpost's benchmark pans each op over a structured field |
+
+### The agent's remediation, round 2
+
+- **go-ionomaps, a new candidate (v0.1.0-rc.7):** D-270, D-271, D-272, D-275 (the GIRO ask's 15 s), D-279 (the ratio, with `gm3 -residuals`), D-280, D-281; R2P-1 (typical hours opened as read) and R2P-2 (the pin from before `New`); RP-2 (the least recently used day evicted); RP-5 (`sunAt` and the year fraction worked once); R2C-3 (one freshness function each), R2C-5 (`Inputs.Unread`'s doc, the names exported), R2C-7 (the stale index's test), R2C-9 (`checkPlaces`), R2C-10 and R2L-5 (`Implausible` its own count); R2I-1 (the line cap fails closed), R2I-4 (the plausibility count's test); R2L-4 (a restore drops unknown codes and keeps the mean); RL-5 (the hand mutants of `answers.go`, `reach.go`, `lower*.go`, `internal/glotec`, `internal/limits` and `internal/climatology` in the harness); RC-13 (the mirror test fails, not skips, where it can check).
+- **go-tuiMaps, a new candidate (v0.3.0-rc.6):** R2H-1 (the leg's own process, never a machine-wide pattern); R2I-3 (reply headers capped); R2I-5 (`DaylightAt` refuses a place off the globe); R2C-6 (every look setter's re-check tested); D-280, D-281; R2H-2 (its tip's gate row committed); R2H-4 (its rulings' phase header); the gate's private workspace (R2D's note). **v0.2.2's nested modules tagged** (R2H-5).
+- **watchpost:** D-273, D-274 (the agenda and the follow-up row), D-276, D-277, D-282; R2C-1 (a rebuild-and-back test, m430's record), R2C-2 (`madeWith` tied to the options' fields), R2C-8 (one moment for the words and the night); R2I-2 (`Local` refused, stored postcodes drawn plain); R2H-3 (`finaltag` on the module graph, the release step pinned); R2H-4, R2H-8, R2H-9 (this section), R2D-2, R2D-5, R2D-6, R2D-7, R2B-2, R2B-3, R2B-4; RC-3 (a failed record fails the run), RC-7 (`hasKey`, `stillOrphan`), RC-9 (the build tags); the re-pin to rc.7 and rc.6 (D-206, D-278).
+
+### The agent's check of the Important findings
+
+| Finding | Verdict | What was checked |
+|---|---|---|
+| R2L-1 | CONFIRMED | go-ionomaps `internal/giro/asker.go:183-214`: `count` and `stops` end the burst on any three failures in a row, answered stations before them or not |
+| R2L-2 | CONFIRMED | `asker.go:229-235`: a status `ended` does not name reaches `Answered()` and returns answered |
+| R2L-3 | CONFIRMED | `update.go:129-139,256-258`: a 5xx or transport error on the solar file sets `refused`, which skips the grid, D-RAP and scales asks with a usable mean held |
+| R2D-1 | CONFIRMED (fact) | D-241's run is 47.97 hours an arm; `tools/perfsum/g1.go:143-145` fails a span under 48 hours; ruled D-273 |
+| R2B-1 | CONFIRMED (fact) | D-246 sets no rule for a miss; ruled D-274 |
+| R2C-1, R2P-1, R2H-1 | PLAUSIBLE | each reproduced by its reviewer; checked again by its fix's own test, which fails before the fix |
+
