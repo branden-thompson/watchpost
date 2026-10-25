@@ -67,3 +67,5 @@ says exactly what passed.
 | 2026-10-24T20:02:22Z | 4b4f1c58 | abe9c1488178 | verify | green | 2590 |
 | 2026-10-24T22:08:26Z | 2449ae00 | 10ca7110527c | verify | green | 2595 |
 | 2026-10-25T00:32:49Z | dd74f0a9 | 2888fca2924a | verify | green | 2592 |
+| 2026-10-25T00:54:54Z | 85f7046e | 803979dbd431 | verify | FAILED (exit 2) | 357 |
+| 2026-10-25T01:36:40Z | 85f7046e | 803979dbd431 | verify | green | 2458 |

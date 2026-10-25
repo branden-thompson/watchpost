@@ -99,53 +99,22 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 
 // armPropChart asks for the chart when what it is worked out from has
 // changed, once, in a command (FR-1.17): after every Update, as the map's
-// clock is armed.
-func (d Dashboard) armPropChart() (Dashboard, tea.Cmd) { return d.armAnswer(answerChart) }
-
-// propAnswer names one of the Propagation mode's answers worked out off the
-// UI goroutine. One body asks for all three: written out for each, the
-// chart's and the centre's are the same code, which the duplicate check
-// refuses (BUILD red team C-4, declined).
-type propAnswer uint8
-
-// The answers.
-const (
-	answerChart  propAnswer = iota // the chart (W5.1)
-	answerReach                    // the frequency's reach (W5.2)
-	answerCentre                   // the map centre's (W5.4)
-)
-
-// armAnswer asks for one answer when what it is worked out from has
-// changed, once, in a command (FR-1.17), from the snapshot on screen.
-func (d Dashboard) armAnswer(which propAnswer) (Dashboard, tea.Cmd) {
-	moving := d.mapPane.viewGen != d.mapPane.viewAsked
-	if moving && (which == answerCentre || which == answerReach || d.propRole().origin == propFromCentre) {
-		return d, nil // the view or the hour still moving: an answer from or to its centre, and the reach, are asked once it settles, not at every step (P-1, D-227)
+// clock is armed. A chart from the map's centre waits for the view to settle.
+func (d Dashboard) armPropChart() (Dashboard, tea.Cmd) {
+	if d.viewSettling() && d.propRole().origin == propFromCentre {
+		return d, nil
 	}
-	if which == answerReach && d.mapPane.propReachAsked != (propReachKey{}) && d.mapPane.propReachAsked != d.mapPane.propReach.key {
-		return d, nil // one reach at a time (D-227): the one asked is answered first, then the latest wanted is asked
-	}
-	var cmd tea.Cmd
-	switch which {
-	case answerChart:
-		key, ok := d.propChartWanted()
-		cmd = askAnswer(&d, key, ok, d.mapPane.propChart.key, &d.mapPane.propChartAsked, func(snap ionomaps.Snapshot, key propChartKey) tea.Msg {
-			return propChartMsg{chart: workPropChart(snap, key)}
-		})
-	case answerReach:
-		key, ok := d.propReachWanted()
-		cmd = askAnswer(&d, key, ok, d.mapPane.propReach.key, &d.mapPane.propReachAsked, func(snap ionomaps.Snapshot, key propReachKey) tea.Msg {
-			field, err := snap.Reach(key.origin, key.mhz)
-			return propReachMsg{reach: propReach{key: key, field: field, err: err}}
-		})
-	case answerCentre:
-		key, ok := d.propCentreWanted()
-		cmd = askAnswer(&d, key, ok, d.mapPane.propCentre.key, &d.mapPane.propCentreAsked, func(snap ionomaps.Snapshot, key propCentreKey) tea.Msg {
-			return propCentreMsg{centre: workPropCentre(snap, key)}
-		})
-	}
+	key, ok := d.propChartWanted()
+	cmd := askAnswer(&d, key, ok, d.mapPane.propChart.key, &d.mapPane.propChartAsked, func(snap ionomaps.Snapshot, key propChartKey) tea.Msg {
+		return propChartMsg{chart: workPropChart(snap, key)}
+	})
 	return d, cmd
 }
+
+// viewSettling is whether the view or the hour is still moving: an answer
+// from or to the map's centre, and the reach, are asked once it settles, not
+// at every step (P-1, D-227).
+func (d Dashboard) viewSettling() bool { return d.mapPane.viewGen != d.mapPane.viewAsked }
 
 // applyPropAnswer keeps an answer when it is to the ask made last - an older
 // ask's is dropped - and draws it; a reach is handed to the map as well.

@@ -12,7 +12,7 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 
 ## 1. Placement
 
-**`platform/history`** is a new package. It imports only the standard library, `platform/geo` and `platform/invariant`, and knows nothing of temperature, NDFD or Open-Meteo.
+**`platform/history`** is a new package. It imports only the standard library, `platform/agememo`, `platform/geo` and `platform/invariant`, and knows nothing of temperature, NDFD or Open-Meteo. Its files follow its concerns (0.19.0 RC-10): `history.go` the store, its records and reads; `cache.go` the day cache and recording's index; `docs.go` reading and writing the documents; `values.go` the numbers' encoding; `claim.go` an hour claimed by one instance; `prune.go` the pruning and the byte bound; `rollup.go` the roll-ups; `size.go` the store's age and size.
 
 **`app/history.go`** holds the app's adapter:
 

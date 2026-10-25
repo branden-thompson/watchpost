@@ -147,7 +147,7 @@ follow-up (D-85, F-211).
 
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
-| FR-6.5 *(first in BUILD)* | **The roll-up never erases a year (#27):** a failed read of the year's roll-up refuses the write; roll-ups are split so that no document passes the store's read cap, which is measured on the **decompressed** size (`platform/history/history.go:maxDocBytes`), the split sized from each dataset's bytes, not fixed by month; each dataset has a byte bound beside its time retention; values are stored compactly, not one allocation each | D-55; PF-F4, PF-F5; N-4 | `TestAFailedYearReadNeverRewritesTheYear`, `TestARollUpNeverPassesTheReadCap`; PLAN measures whether a shipped dataset can reach the cap (D-55) |
+| FR-6.5 *(first in BUILD)* | **The roll-up never erases a year (#27):** a failed read of the year's roll-up refuses the write; roll-ups are split so that no document passes the store's read cap, which is measured on the **decompressed** size (`platform/history/docs.go:maxDocBytes`), the split sized from each dataset's bytes, not fixed by month; each dataset has a byte bound beside its time retention; values are stored compactly, not one allocation each | D-55; PF-F4, PF-F5; N-4 | `TestAFailedYearReadNeverRewritesTheYear`, `TestARollUpNeverPassesTheReadCap`; PLAN measures whether a shipped dataset can reach the cap (D-55) |
 
 **Retired from FR-6 by D-78:** recording propagation grids and tower values, backfill, the store opening
 without NDFD, per-dataset retention, and the dataset terms field (FR-6.1 to FR-6.4, FR-6.6, FR-6.7).

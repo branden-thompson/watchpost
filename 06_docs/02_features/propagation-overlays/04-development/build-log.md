@@ -778,3 +778,10 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **go-ionomaps** holds its sixteen rows by its own test (D-91), on the hosted gate too.
 - **Mutants:** m537, m538.
 
+## Batch 62 - REVIEW: the centre's name, the history store's files, the answers' arms (RP-6, RC-10; A-88)
+
+- **The centre's name** (RP-6): naming the map's centre scanned the whole world table on the UI goroutine at every step, 0.91 ms; it now reads the band of latitude the fence can reach, 0.05 ms (`BenchmarkNearWorldPanning`), answering as the whole scan does - `TestAWorldScanAnswersAsTheTableDoes` now runs pole to pole at the app's fence and a 500-mile one, and `TestTheBandKeepsTheTablesOrder` holds the order ties rank by. A first attempt broke ties by a row's offset, until the table's order turned out to be the names', not the offsets'.
+- **The history store's files** (RC-10): `platform/history/history.go`, 2,349 lines, split into eight files along its concerns - the store, the caches, the documents, the numbers, claims, pruning, roll-ups, size. A pure move: `TestDeclarationSetUnchanged` (new, its golden captured before the move) and the moved lines, compared as a multiset, equal; sixteen mutants re-pointed and each killed in its new file. `history-store.md` names the files, and its import list now includes `agememo`.
+- **The answers' arms** (RC-10, cont.): the chart, the reach and the centre each have their own arm; the "still settling" check is one function. m434, m491 and m492 re-pointed and killed.
+- **Mutants:** m539, m540 new; m403 re-pointed.
+

@@ -73,7 +73,16 @@ func (d Dashboard) propCentreWanted() (propCentreKey, bool) {
 
 // armPropCentre asks for the centre's answer when the map has moved, or
 // what it is worked out from has changed.
-func (d Dashboard) armPropCentre() (Dashboard, tea.Cmd) { return d.armAnswer(answerCentre) }
+func (d Dashboard) armPropCentre() (Dashboard, tea.Cmd) {
+	if d.viewSettling() {
+		return d, nil
+	}
+	key, ok := d.propCentreWanted()
+	cmd := askAnswer(&d, key, ok, d.mapPane.propCentre.key, &d.mapPane.propCentreAsked, func(snap ionomaps.Snapshot, key propCentreKey) tea.Msg {
+		return propCentreMsg{centre: workPropCentre(snap, key)}
+	})
+	return d, cmd
+}
 
 // workPropCentre is the centre's answer off the UI goroutine: the answers
 // package's (D-212).

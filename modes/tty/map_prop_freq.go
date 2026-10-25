@@ -81,7 +81,20 @@ func (d Dashboard) propReachWanted() (propReachKey, bool) {
 
 // armPropReach asks for the reach when what it is worked out from has
 // changed (about 0.2 s, never in Update; D-227), one at a time.
-func (d Dashboard) armPropReach() (Dashboard, tea.Cmd) { return d.armAnswer(answerReach) }
+func (d Dashboard) armPropReach() (Dashboard, tea.Cmd) {
+	if d.viewSettling() {
+		return d, nil
+	}
+	if d.mapPane.propReachAsked != (propReachKey{}) && d.mapPane.propReachAsked != d.mapPane.propReach.key {
+		return d, nil // one reach at a time (D-227): the one asked is answered first, then the latest wanted is asked
+	}
+	key, ok := d.propReachWanted()
+	cmd := askAnswer(&d, key, ok, d.mapPane.propReach.key, &d.mapPane.propReachAsked, func(snap ionomaps.Snapshot, key propReachKey) tea.Msg {
+		field, err := snap.Reach(key.origin, key.mhz)
+		return propReachMsg{reach: propReach{key: key, field: field, err: err}}
+	})
+	return d, cmd
+}
 
 // propReachShown is the reach for what the window shows now; false while
 // none is held, or it is being worked out.

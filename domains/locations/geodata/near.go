@@ -27,6 +27,9 @@ package geodata
 // and held (W14): 2 ms a view rather than 31.
 
 import (
+	"cmp"
+	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -87,6 +90,7 @@ type placesCache struct {
 	places     []placed
 	worldOnce  sync.Once
 	world      []placed
+	byLat      []int32 // world's indexes, ascending by latitude (inBand)
 }
 
 // usCities is every US city row whose coordinates parse, in the table's order.
@@ -94,7 +98,17 @@ func (i *Index) usCities() []placed { return i.placedOnce(&i.placesOnce, &i.plac
 
 // worldCities is every city row whose coordinates parse, in the table's
 // order.
-func (i *Index) worldCities() []placed { return i.placedOnce(&i.worldOnce, &i.world, false) }
+func (i *Index) worldCities() []placed {
+	i.worldOnce.Do(func() {
+		i.world = i.placedRows(false)
+		i.byLat = make([]int32, len(i.world))
+		for n := range i.byLat { // bounded by the rows (P10-02)
+			i.byLat[n] = int32(n)
+		}
+		slices.SortStableFunc(i.byLat, func(a, b int32) int { return cmp.Compare(i.world[a].lat, i.world[b].lat) })
+	})
+	return i.world
+}
 
 // placedOnce parses the rows into held the first time it is asked.
 func (i *Index) placedOnce(once *sync.Once, held *[]placed, usOnly bool) []placed {
@@ -122,7 +136,36 @@ func (i *Index) placedRows(usOnly bool) []placed {
 // the fence, nearest first, at most limit of them - what names a point the
 // Propagation mode's centre rests on, anywhere on the globe.
 func (i *Index) NearWorld(lat, lon, radiusMi float64, limit int) []City {
-	return i.nearIn(i.worldCities(), lat, lon, radiusMi, limit)
+	if radiusMi <= 0 || limit <= 0 {
+		return nil
+	}
+	return i.nearIn(i.inBand(lat, radiusMi), lat, lon, radiusMi, limit)
+}
+
+// milesPerDegree is a degree of latitude along the globe HaversineKM measures.
+var milesPerDegree = units.MilesOf(geo.EarthRadiusKM * math.Pi / 180)
+
+// inBand is the world's rows whose latitude the fence can reach, in the
+// table's order (RP-6): a great circle is never shorter than its latitude's
+// part alone, so a row farther in latitude than the radius is outside the
+// fence, and the scan reads a band of the table, not the whole of it, on each
+// step the map's centre takes. The band is put back in the table's order, so
+// places at one distance rank as the whole scan ranks them.
+func (i *Index) inBand(lat, radiusMi float64) []placed {
+	rows, byLat := i.worldCities(), i.byLat
+	reach := radiusMi/milesPerDegree + 0.01 // a hundredth of a degree for the floating point
+	lo := sort.Search(len(byLat), func(n int) bool { return rows[byLat[n]].lat >= lat-reach })
+	hi := sort.Search(len(byLat), func(n int) bool { return rows[byLat[n]].lat > lat+reach })
+	if lo >= hi {
+		return nil
+	}
+	band := slices.Clone(byLat[lo:hi])
+	slices.Sort(band) // the table's order: the stable scan ranks ties by it
+	out := make([]placed, len(band))
+	for k, n := range band { // bounded by the band (P10-02)
+		out[k] = rows[n]
+	}
+	return out
 }
 
 // NearZips is the zip centroids inside the same fence, nearest first.
