@@ -268,3 +268,45 @@ func TestAPlaceAbroadIsSaidByItsCountry(t *testing.T) {
 		t.Errorf("a US place lost its state's code: %q", w)
 	}
 }
+
+// TestLeavingTheModeDropsAFindInFlight is D-27 and RC-5: a find still being
+// looked up when the Propagation mode's session ends - by whatever route -
+// is cancelled with it: its lookup stops and its answer, arriving late,
+// neither marks a place past the mode nor moves the map.
+func TestLeavingTheModeDropsAFindInFlight(t *testing.T) {
+	d := chartDash(t)
+	stopped := make(chan error, 1)
+	d.cfg.FindPlace = func(ctx context.Context, _ string) (snapshot.LocationRef, error) {
+		<-ctx.Done()
+		stopped <- ctx.Err()
+		return reykjavik, nil // an answer the lookup had in hand as it was stopped
+	}
+	before, _ := d.mapPane.m.Centre()
+	d = pressMap(t, d, "/")
+	for _, r := range "Reykjavik" {
+		m, _ := d.Update(mapKeyMsg(t, string(r)))
+		d = m.(Dashboard)
+	}
+	m, find := d.Update(mapKeyMsg(t, "enter"))
+	d = m.(Dashboard)
+	if find == nil {
+		t.Fatal("control: Enter asked nothing")
+	}
+	answer := make(chan any, 1)
+	go func() { answer <- find() }()
+	d = d.stopPropagation()
+	select {
+	case err := <-stopped:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("the find stopped with %v; want cancelled", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("leaving the mode left the find's lookup running")
+	}
+	m, _ = d.Update(<-answer)
+	d = m.(Dashboard)
+	after, _ := d.mapPane.m.Centre()
+	if d.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) || after != before {
+		t.Errorf("a find in flight as the mode was left still landed: %v, %v, centre %+v (was %+v)", d.mapPane.propFound, placeIDs(d), after, before)
+	}
+}

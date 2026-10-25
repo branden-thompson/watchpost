@@ -324,7 +324,7 @@ func TestARebuiltSnapshotIsAnsweredAgain(t *testing.T) {
 	rebuilt := propSnapAt(d.mapPane.propSnap.Computed, 25) // the same moment, other values
 	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: rebuilt}, correct: !d.mapPane.propSnapCorrect})
 	d = m.(Dashboard)
-	if !d.mapPane.propSnap.Computed.Equal(before.computed) {
+	if !d.mapPane.propSnap.Computed.Equal(before.made.computed) {
 		t.Fatal("control: the rebuilt snapshot is not of the same moment")
 	}
 	if d.propChartShown() {

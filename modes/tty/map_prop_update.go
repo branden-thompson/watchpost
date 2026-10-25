@@ -70,6 +70,30 @@ func (d Dashboard) propOptions() ionomaps.UpdateOptions {
 	return ionomaps.UpdateOptions{Noise: d.mapPropNoise, CorrectNoReadings: d.mapPropCorrect, NoStations: d.mapPropNoGIRO}
 }
 
+// propMade is the snapshot an answer is worked out from, as it was kept: its
+// moment, which snapshot kept - one rebuilt at the same moment is another
+// (L-F3) - and the options it was made with. Every answer's key carries it
+// and the options are compared in this one place, so a new option is added to
+// the update's options alone (RC-5).
+type propMade struct {
+	computed time.Time
+	built    uint64
+	opts     ionomaps.UpdateOptions
+}
+
+// madeWith is the options a snapshot was made with: its noise and stations
+// as it says them, and the no-readings correction it was asked with (D-105),
+// which it does not carry.
+func madeWith(s ionomaps.Snapshot, correct bool) ionomaps.UpdateOptions {
+	return ionomaps.UpdateOptions{Noise: s.Noise, CorrectNoReadings: correct, NoStations: s.Inputs.NoStations}
+}
+
+// propMadeOf is a snapshot as kept, from the one held: the hour shown ahead
+// is made from it, with its moment, build and options.
+func (d Dashboard) propMadeOf(s ionomaps.Snapshot) propMade {
+	return propMade{computed: s.Computed, built: d.mapPane.propBuilt, opts: madeWith(s, d.mapPane.propSnapCorrect)}
+}
+
 // armPropOptions asks for the mode's update when the snapshot shown was made
 // with other options than the Settings' - another noise (D-187), the
 // no-readings correction (D-105) or the stations (D-214) asked otherwise: go-ionomaps answers it
@@ -77,7 +101,7 @@ func (d Dashboard) propOptions() ionomaps.UpdateOptions {
 // as the map is.
 func (d Dashboard) armPropOptions() (Dashboard, tea.Cmd) {
 	snap := d.mapPane.propSnap
-	if snap == nil || (snap.Noise == d.mapPropNoise && d.mapPane.propSnapCorrect == d.mapPropCorrect && snap.Inputs.NoStations == d.mapPropNoGIRO) {
+	if snap == nil || madeWith(*snap, d.mapPane.propSnapCorrect) == d.propOptions() {
 		return d, nil
 	}
 	return d.askPropagation()
@@ -94,13 +118,14 @@ func (d Dashboard) armPropRefresh() (Dashboard, tea.Cmd) {
 	return d.nextPropTick()
 }
 
-// stopPropagation ends the mode's session: its update cancelled, a late
-// result or tick dropped. The last snapshot is kept to show at once when the
-// mode opens again.
+// stopPropagation ends the mode's session: its update and any find in
+// flight cancelled, a late result, answer or tick dropped. The last snapshot
+// is kept to show at once when the mode opens again.
 func (d Dashboard) stopPropagation() Dashboard {
 	if d.mapPane.propSess.cancel != nil {
 		d.mapPane.propSess.cancel()
 	}
+	d = d.dropFind() // a found place is not kept past the mode, nor one found after it (D-27)
 	d.mapPane.propSess = propSession{}
 	d.mapPane.propGen++
 	return d.markFound(nil) // a found place is not kept past the mode (D-27)
@@ -115,7 +140,7 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 	d.mapPane.gen++
 	if propHasField(v.res.Snapshot) {
 		snap := v.res.Snapshot
-		same := d.mapPane.propSnap != nil && sameSnapshot(*d.mapPane.propSnap, snap) && d.mapPane.propSnapCorrect == v.correct
+		same := d.mapPane.propSnap != nil && sameSnapshot(*d.mapPane.propSnap, d.mapPane.propSnapCorrect, snap, v.correct)
 		newlyDenied := snap.Inputs.GIRO == ionomaps.GIRODenied && (d.mapPane.propSnap == nil || d.mapPane.propSnap.Inputs.GIRO != ionomaps.GIRODenied)
 		d.mapPane.propSnap, d.mapPane.propSnapCorrect = &snap, v.correct
 		if newlyDenied {
@@ -149,8 +174,8 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 
 // sameSnapshot reports whether a snapshot is the one held: of the same moment
 // and made with the same options, as a refresh answered too soon is.
-func sameSnapshot(held, got ionomaps.Snapshot) bool {
-	return held.Computed.Equal(got.Computed) && held.Noise == got.Noise && held.Inputs.NoStations == got.Inputs.NoStations
+func sameSnapshot(held ionomaps.Snapshot, heldCorrect bool, got ionomaps.Snapshot, gotCorrect bool) bool {
+	return held.Computed.Equal(got.Computed) && madeWith(held, heldCorrect) == madeWith(got, gotCorrect)
 }
 
 // nextPropTick sets the session's next refresh tick by the Setting (FR-4.10,

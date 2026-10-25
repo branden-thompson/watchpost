@@ -126,7 +126,7 @@ func TestANewSnapshotMissesTheAnswerMemo(t *testing.T) {
 	d.mapPane.propAheadAsked = 0
 	d, cmd := d.armPropAhead()
 	m, _ = d.Update(cmd()) // the hour ahead lands; the Update asks for the chart of the new snapshot
-	if d = m.(Dashboard); d.mapPane.propChartAsked.computed != next.Computed {
+	if d = m.(Dashboard); d.mapPane.propChartAsked.made.computed != next.Computed {
 		t.Error("the chart was not asked again for the new snapshot")
 	}
 }

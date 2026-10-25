@@ -51,12 +51,11 @@ func (d Dashboard) chartKeyMap() term.KeyMap {
 
 // propChartKey is what the chart's answers are worked out from.
 type propChartKey struct {
-	computed, hour time.Time
-	built          uint64 // which snapshot kept: one rebuilt at the same time is another (L-F3)
-	origin         ionomaps.LatLon
-	radiusKm       float64
-	noise          ionomaps.Noise     // the snapshot's: a new noise rebuilds it at the same time (D-187)
-	found          propanswers.Target // the place found, a target beside the continents on the Observer (D-204); zero for none
+	made     propMade // the snapshot as kept: a rebuild, or a new noise, is another (L-F3, D-187)
+	hour     time.Time
+	origin   ionomaps.LatLon
+	radiusKm float64
+	found    propanswers.Target // the place found, a target beside the continents on the Observer (D-204); zero for none
 }
 
 // targets are the chart's targets: the continents, and the place found
@@ -90,7 +89,7 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 	if !ok || !d.mapShown() || !d.inPropagation() || !origin.ok {
 		return propChartKey{}, false
 	}
-	key := propChartKey{computed: shown.Computed, hour: shown.Now.At, built: d.mapPane.propBuilt, origin: origin.at, radiusKm: float64(d.propRadiusKm()), noise: shown.Noise}
+	key := propChartKey{made: d.propMadeOf(shown), hour: shown.Now.At, origin: origin.at, radiusKm: float64(d.propRadiusKm())}
 	if f := d.mapPane.propFound; f != nil && !d.propRole().target {
 		key.found = propanswers.Target{Name: f.Label, Short: "FOUND", At: ionomaps.LatLon{Lat: f.Lat, Lon: f.Lon}} // on the Observer a target row; on the Broadcaster the centre is the target (D-204)
 	}
@@ -271,7 +270,7 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 	if o := d.mapPane.propOrigin; o.ok {
 		name = strings.ToUpper(o.name)
 	}
-	out := []string{"From " + name + " · " + c.key.hour.UTC().Format("15:04 UTC") + " · 100 W, 0 dBi, +13 dB · " + strings.ToLower(propNoiseLabel(c.key.noise)) + " noise", ""}
+	out := []string{"From " + name + " · " + c.key.hour.UTC().Format("15:04 UTC") + " · 100 W, 0 dBi, +13 dB · " + strings.ToLower(propNoiseLabel(c.key.made.opts.Noise)) + " noise", ""}
 	if s := d.mapPane.propSnap; s != nil && propOffsetNote(s.Offset) != "" {
 		out[1] = propOffsetNote(s.Offset) // FR-5.4: the chart's status label, under its header
 	}

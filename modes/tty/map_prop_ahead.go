@@ -18,11 +18,10 @@ const propAheadMost = 24
 // propAheadMsg is an hour ahead worked out - a snapshot of its own, typical,
 // with none of now's measurements - for the snapshot computed then.
 type propAheadMsg struct {
-	computed time.Time
-	built    uint64 // which snapshot it was worked from: one rebuilt at the same time is another (L-F3, RC-4)
-	k        int
-	snap     ionomaps.Snapshot
-	err      error
+	made propMade // which snapshot it was worked from: one rebuilt at the same time is another (L-F3, RC-4)
+	k    int
+	snap ionomaps.Snapshot
+	err  error
 }
 
 // stepPropAhead is the hours' keys in the Propagation mode (FR-1.13, A-48):
@@ -54,10 +53,10 @@ func (d Dashboard) armPropAhead() (Dashboard, tea.Cmd) {
 		return d, nil
 	}
 	d.mapPane.propAheadAsked = k
-	held, built := *snap, d.mapPane.propBuilt
+	held, made := *snap, d.propMadeOf(*snap)
 	return d, func() tea.Msg {
 		ahead, err := held.Ahead(k)
-		return propAheadMsg{computed: held.Computed, built: built, k: k, snap: ahead, err: err}
+		return propAheadMsg{made: made, k: k, snap: ahead, err: err}
 	}
 }
 
@@ -65,7 +64,7 @@ func (d Dashboard) armPropAhead() (Dashboard, tea.Cmd) {
 // snapshot, or of one since rebuilt at the same time, is dropped, and a
 // refused one said in diagnostics (D-124).
 func (d Dashboard) applyPropAhead(v propAheadMsg) Dashboard {
-	if d.mapPane.propSnap == nil || !v.computed.Equal(d.mapPane.propSnap.Computed) || v.built != d.mapPane.propBuilt {
+	if d.mapPane.propSnap == nil || v.made != d.propMadeOf(*d.mapPane.propSnap) {
 		return d
 	}
 	if v.k == d.mapPane.propAheadAsked {

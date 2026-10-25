@@ -96,14 +96,7 @@ func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return propFoundMsg{seq: seq, ref: ref, err: err}
 		}
 	case "esc":
-		if d.mapPane.propFindBusy {
-			d.mapPane.propFindSeq++ // the find in flight cancelled: its answer is dropped (AX-11)
-			d.mapPane.propFindBusy = false
-			if d.mapPane.propFindCancel != nil {
-				d.mapPane.propFindCancel() // and its request with it: a query the listener took back is not sent on
-			}
-		}
-		return d.close(), nil
+		return d.dropFind().close(), nil
 	case "backspace":
 		if r := []rune(d.mapPane.propFindQuery); len(r) > 0 {
 			d.mapPane.propFindQuery = string(r[:len(r)-1])
@@ -115,6 +108,21 @@ func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	d.mapPane.propFindErr = ""
 	return d, nil
+}
+
+// dropFind cancels the find in flight, if one is: its answer is dropped
+// (AX-11) and its request stopped with it - a query the listener took back,
+// or one from a session since ended (D-27), is not sent on.
+func (d Dashboard) dropFind() Dashboard {
+	if !d.mapPane.propFindBusy {
+		return d
+	}
+	d.mapPane.propFindSeq++
+	d.mapPane.propFindBusy = false
+	if d.mapPane.propFindCancel != nil {
+		d.mapPane.propFindCancel()
+	}
+	return d
 }
 
 // applyPropFound takes a find's answer: a failure is said in the entry,

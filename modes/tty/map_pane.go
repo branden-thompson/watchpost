@@ -64,65 +64,82 @@ type mapPane struct {
 	outside string     // the place that is in no region, when it is not (FR-2.5)
 	prop    bool       // in the Propagation mode (D-153); never saved (D-154)
 
-	// The Propagation mode's session (W4.1): its update's context, whether
-	// one is in flight, the session's generation, and the last result.
-	propSess        propSession // the open mode's own state, dropped whole when it is left (C-3)
-	propGen         uint64
-	propTickSeq     uint64 // the latest refresh tick set: an earlier one asks nothing
+	// The Propagation mode's own session (W4.1, C-3): made as the mode opens and
+	// dropped whole when it is left; a late result, answer or tick of a left
+	// session is dropped by its generation.
+	propSess    propSession // the open mode's own state, dropped whole when it is left (C-3)
+	propGen     uint64
+	propTickSeq uint64 // the latest refresh tick set: an earlier one asks nothing
+
+	// The snapshot held and the answers worked out from it, kept across sessions
+	// until the map is released, so the mode shows them at once when it opens
+	// again; each answer's key carries the snapshot as kept (propMade, RC-5).
 	propSnap        *ionomaps.Snapshot
 	propErr         error
-	propLayer       int                        // MUF(3000) or foF2 (D-155), kept across sessions until the map is released
-	propGiven       map[string]tuimaps.Overlay // the Propagation overlays handed in
-	propSnapCorrect bool                       // the no-readings correction the snapshot shown was asked with (D-105)
-	propUpdatedAt   time.Time                  // when the last was applied, by the window's clock (FR-3.6)
-	zoneGiven       map[string]tuimaps.Overlay // the service area handed in (D-195)
-	tower           tuimaps.Place              // the tower's mark placed, or none
-	roleDrawn       Surface                    // the UI mode the place and marks were set for
-	propChart       propChart                  // the reference chart's answers (W5.1)
-	propChartAsked  propChartKey               // what the chart was last asked for: asked once
-	propChartRow    int                        // the chart's row its typical day is drawn for: 0 the near-vertical area
-	nightGiven      map[string]tuimaps.Overlay // the night handed in (D-199)
-	nightAt         time.Time                  // the moment the night handed in is for
-	propFreqMHz     float64                    // the frequency held (D-178), 0 for none
-	propFreqLabel   string                     // and as it is said: "14.200 MHz" or "40m"
-	propFreqQuery   string                     // what the entry holds as it is typed
-	propFreqErr     string                     // why the entry did not take it
-	propFindQuery   string                     // the place finder's query as it is typed (FR-1.10)
-	propFindErr     string                     // why it found none
-	propFindBusy    bool                       // a find in flight
-	propFindSeq     uint64                     // the latest find: an earlier one's answer is dropped
-	propFindCancel  context.CancelFunc         // cancels the find in flight, its request with it
-	propFound       *snapshot.LocationRef      // the place found and marked; never kept (D-27)
-	foundMarked     bool                       // its mark is on the map
-	wordsAt         wordsPlace                 // the reader's place in the words, kept until they scroll (D-211)
-	wordsAnchored   wordsAnchor                // what the words were laid out from when the place was last found
-	propBuilt       uint64                     // how many snapshots have been kept: the answers' keys carry it (L-F3)
-	propReach       propReach                  // the frequency's reach (W5.2)
-	propReachAsked  propReachKey               // what the reach was last asked for: asked once
-	propAhead       int                        // the hour shown ahead of the snapshot's, 0 for now (FR-1.13)
-	propAheadSnaps  map[int]ionomaps.Snapshot  // the hours ahead worked out from the snapshot held, each a snapshot of its own
-	propAheadAsked  int                        // the hour ahead last asked for: asked once
-	propCentre      propCentre                 // the map centre's answer (FR-1.11, D-180)
-	propCentreAsked propCentreKey              // what the centre was last asked for: asked once
-	propOrigin      propPlace                  // where the Propagation mode answers from, worked out in Update (D-193)
-	status          tuimaps.Status             // the last frame's: whole, or still sharpening
-	pending         bool                       // work was waiting when it was drawn
-	offline         bool                       // a tile failed since the picture was last whole
-	gen             uint64                     // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed          string                     // why the map could not be built or drawn, said in the window
-	diskOff         bool                       // a clear let the disk cache go; named again when the app answers (PF-4)
-	clearErr        error                      // what the live map refused in a clear, for the app's answer (IS-M5)
-	calls           *[]string                  // tests only: the library calls made, by name, in order
-	where           *[]callSite                // tests only: each call and the goroutine it ran on (W2.2)
-	workers         *mapWorkers                // the commands running for this map, joined on close (W2.6)
-	tickAt          time.Time                  // the tick outstanding, at the library's NextCall (W2.2)
-	alertsOn        bool                       // the Area Alerts box is open; it waits for A (D-87)
-	menuOn          bool                       // the Overlays menu is open (D-65)
-	menuAt          int                        // the menu's cursor
-	flash           term.Action                // the map key last pressed, blinking in the controls (U1-11)
-	edge            geo.Direction              // the edge whose chip is showing (D-81)
-	edgeShown       bool                       // a press held still at the edge: the next the same way crosses
-	flashEnd        time.Time                  // when its blink ends
+	propSnapCorrect bool                      // the no-readings correction the snapshot shown was asked with (D-105)
+	propUpdatedAt   time.Time                 // when the last was applied, by the window's clock (FR-3.6)
+	propBuilt       uint64                    // how many snapshots have been kept: the answers' keys carry it (L-F3)
+	propChart       propChart                 // the reference chart's answers (W5.1)
+	propChartAsked  propChartKey              // what the chart was last asked for: asked once
+	propReach       propReach                 // the frequency's reach (W5.2)
+	propReachAsked  propReachKey              // what the reach was last asked for: asked once
+	propCentre      propCentre                // the map centre's answer (FR-1.11, D-180)
+	propCentreAsked propCentreKey             // what the centre was last asked for: asked once
+	propAheadSnaps  map[int]ionomaps.Snapshot // the hours ahead worked out from the snapshot held, each a snapshot of its own
+	propAheadAsked  int                       // the hour ahead last asked for: asked once
+
+	// What the listener set in the mode, kept across sessions.
+	propLayer     int     // MUF(3000) or foF2 (D-155), kept across sessions until the map is released
+	propChartRow  int     // the chart's row its typical day is drawn for: 0 the near-vertical area
+	propFreqMHz   float64 // the frequency held (D-178), 0 for none
+	propFreqLabel string  // and as it is said: "14.200 MHz" or "40m"
+	propAhead     int     // the hour shown ahead of the snapshot's, 0 for now (FR-1.13)
+
+	// The mode's entries as they are typed; a find in flight ends with its
+	// session (dropFind, D-27).
+	propFreqQuery  string             // what the entry holds as it is typed
+	propFreqErr    string             // why the entry did not take it
+	propFindQuery  string             // the place finder's query as it is typed (FR-1.10)
+	propFindErr    string             // why it found none
+	propFindBusy   bool               // a find in flight
+	propFindSeq    uint64             // the latest find: an earlier one's answer is dropped
+	propFindCancel context.CancelFunc // cancels the find in flight, its request with it
+
+	// The place found, never kept past the mode (D-27).
+	propFound   *snapshot.LocationRef // the place found and marked; never kept (D-27)
+	foundMarked bool                  // its mark is on the map
+
+	// What is handed to the map, and where the mode answers from.
+	propGiven  map[string]tuimaps.Overlay // the Propagation overlays handed in
+	zoneGiven  map[string]tuimaps.Overlay // the service area handed in (D-195)
+	tower      tuimaps.Place              // the tower's mark placed, or none
+	roleDrawn  Surface                    // the UI mode the place and marks were set for
+	nightGiven map[string]tuimaps.Overlay // the night handed in (D-199)
+	nightAt    time.Time                  // the moment the night handed in is for
+	propOrigin propPlace                  // where the Propagation mode answers from, worked out in Update (D-193)
+
+	// The reader's place in the words (D-211).
+	wordsAt       wordsPlace  // the reader's place in the words, kept until they scroll (D-211)
+	wordsAnchored wordsAnchor // what the words were laid out from when the place was last found
+
+	status    tuimaps.Status // the last frame's: whole, or still sharpening
+	pending   bool           // work was waiting when it was drawn
+	offline   bool           // a tile failed since the picture was last whole
+	gen       uint64         // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed    string         // why the map could not be built or drawn, said in the window
+	diskOff   bool           // a clear let the disk cache go; named again when the app answers (PF-4)
+	clearErr  error          // what the live map refused in a clear, for the app's answer (IS-M5)
+	calls     *[]string      // tests only: the library calls made, by name, in order
+	where     *[]callSite    // tests only: each call and the goroutine it ran on (W2.2)
+	workers   *mapWorkers    // the commands running for this map, joined on close (W2.6)
+	tickAt    time.Time      // the tick outstanding, at the library's NextCall (W2.2)
+	alertsOn  bool           // the Area Alerts box is open; it waits for A (D-87)
+	menuOn    bool           // the Overlays menu is open (D-65)
+	menuAt    int            // the menu's cursor
+	flash     term.Action    // the map key last pressed, blinking in the controls (U1-11)
+	edge      geo.Direction  // the edge whose chip is showing (D-81)
+	edgeShown bool           // a press held still at the edge: the next the same way crosses
+	flashEnd  time.Time      // when its blink ends
 	// menuFlash is the Overlays menu's picker chip blinking at row
 	// menuFlashAt until menuFlashEnd: Settings' pickers' feedback (D-147).
 	menuFlash    pickerFlash

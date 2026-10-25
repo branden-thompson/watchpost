@@ -1,7 +1,7 @@
 import pathlib
-# 0.19.0 D-187: the chart's key carries the snapshot's noise.
+# 0.19.0 D-187: the chart's key carries the snapshot's options, its noise among them.
 # Killed by TestTheChartIsAskedAnewForANewNoise.
 p = pathlib.Path('modes/tty/map_prop_chart.go'); s = p.read_text()
-old = 'radiusKm: float64(d.propRadiusKm()), noise: shown.Noise}\n'
-assert old in s, 'm231'
-p.write_text(s.replace(old, 'radiusKm: float64(d.propRadiusKm())}\n'))
+old = 'made: d.propMadeOf(shown),'
+assert s.count(old) == 1, 'm231'
+p.write_text(s.replace(old, 'made: propMade{computed: shown.Computed, built: d.mapPane.propBuilt},', 1))

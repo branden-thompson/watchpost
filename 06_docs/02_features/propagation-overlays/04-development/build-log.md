@@ -784,4 +784,12 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **The history store's files** (RC-10): `platform/history/history.go`, 2,349 lines, split into eight files along its concerns - the store, the caches, the documents, the numbers, claims, pruning, roll-ups, size. A pure move: `TestDeclarationSetUnchanged` (new, its golden captured before the move) and the moved lines, compared as a multiset, equal; sixteen mutants re-pointed and each killed in its new file. `history-store.md` names the files, and its import list now includes `agememo`.
 - **The answers' arms** (RC-10, cont.): the chart, the reach and the centre each have their own arm; the "still settling" check is one function. m434, m491 and m492 re-pointed and killed.
 - **Mutants:** m539, m540 new; m403 re-pointed.
+- **Its first verify run failed** at `make test-say`: macOS `say` hung for 1 min 50 s and rendered nothing, which D-254's check refuses on a host not declared mute. A probe a minute later rendered 61 kB; the run again was green. Both rows are in `06_docs/verify-runs.md`.
+
+## Batch 63 - REVIEW: the Propagation mode's state by lifetime (RC-5; A-89)
+
+- **One key for the snapshot as kept** (RC-5): `propMade` - the snapshot's moment, which snapshot kept, and the options it was made with - is carried by the chart's, the reach's and the centre's keys and the hour ahead's message; `madeWith` writes a snapshot's options once, so the three ways "made with the same options" was written (`armPropOptions`, `sameSnapshot`, the correction's check) are one comparison, and the next option is added to the update's options alone. RC-4's class - an answer kept for a snapshot rebuilt at the same moment - has one place to go wrong now, not four.
+- **A find ends with its session** (D-27): leaving the mode left a find in flight running, its answer free to mark a place past the mode and, on the Broadcaster, move the map. Found while reading each field's lifetime; `TestLeavingTheModeDropsAFindInFlight` failed on the old code. `dropFind`, which Esc already did by hand, is called by Esc and by the session's end.
+- **The fields by lifetime:** `mapPane`'s thirty-nine Propagation fields are grouped and commented by how long each lives - the session's, the snapshot's and its answers', the listener's settings, the entries, the place found, what is handed to the map, the reader's place - with no field moved or renamed.
+- **Mutants:** m541 new; m195, m230, m231, m235, m289, m395, m454, m524, m420 and m482 re-pointed, each killed in its new place.
 

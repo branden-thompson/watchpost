@@ -51,10 +51,10 @@ func parsePropFreq(text string) (mhz float64, label string, ok bool) {
 
 // propReachKey is what a reach is worked out from.
 type propReachKey struct {
-	computed, hour time.Time
-	built          uint64 // which snapshot kept (L-F3)
-	origin         ionomaps.LatLon
-	mhz            float64
+	made   propMade // the snapshot as kept (L-F3)
+	hour   time.Time
+	origin ionomaps.LatLon
+	mhz    float64
 }
 
 // propReach is a frequency's reach from the origin (W5.2), or why there is
@@ -76,7 +76,7 @@ func (d Dashboard) propReachWanted() (propReachKey, bool) {
 	if !ok || d.mapPane.propFreqMHz == 0 {
 		return propReachKey{}, false
 	}
-	return propReachKey{computed: key.computed, hour: key.hour, built: key.built, origin: key.origin, mhz: d.mapPane.propFreqMHz}, true
+	return propReachKey{made: key.made, hour: key.hour, origin: key.origin, mhz: d.mapPane.propFreqMHz}, true
 }
 
 // armPropReach asks for the reach when what it is worked out from has

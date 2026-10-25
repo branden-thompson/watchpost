@@ -104,11 +104,11 @@ func TestTheChartIsAskedAnewForANewNoise(t *testing.T) {
 	snap.Noise = ionomaps.NoiseQuietRural
 	d.mapPane.propSnap = &snap
 	again, _ := d.propChartWanted()
-	if again == key || again.noise != ionomaps.NoiseQuietRural {
+	if again == key || again.made.opts.Noise != ionomaps.NoiseQuietRural {
 		t.Errorf("the chart's key %+v did not change with the noise", again)
 	}
 	d.surface = SurfaceBroadcaster // the centre is answered as a target on the Broadcaster (D-193)
-	if c, _ := d.propCentreWanted(); c.noise != ionomaps.NoiseQuietRural {
-		t.Errorf("the centre's key carries noise %v", c.noise)
+	if c, _ := d.propCentreWanted(); c.made.opts.Noise != ionomaps.NoiseQuietRural {
+		t.Errorf("the centre's key carries noise %v", c.made.opts.Noise)
 	}
 }
