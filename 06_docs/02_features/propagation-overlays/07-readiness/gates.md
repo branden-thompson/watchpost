@@ -28,6 +28,7 @@ reader finds a dated run.
 | `perfsum -g1` (W10.2, A-79, A-80, A-83) | G1's arms against its targets; the hourly variant at 3.3 MB an hour | Build log batches 51, 52 and 58; mutants m495 to m507, m521 to m523 |
 | `perfsum -g1`, failing closed (RC-1) | An RSS that does not read refuses the run; a cycle the driver could not confirm is a miss; a default run under 48 hours exits missed; `workload.sh` exits 1 when a driver failed | `TestAG1RunThatCannotBeJudgedFails`; its mutants (batch 59) |
 | `tools/finaltag`, in the release workflow (RH-9, D-3) | A final tag fails while `go.mod` requires a paired library's pre-release | `TestAFinalTagIsRefusedOnAReleaseCandidate`; run on the tree at batch 59, it refused v0.19.0 on rc.5 and rc.3 |
+| `tools/p10floor`, in `make p10` (D-264) | Each density row whose reason states `FLOOR x.xx` fails when its package measures under it; a figure that does not read fails closed | `TestARowUnderItsFloorFails`; its `--self-test` in `gate-controls`; mutants m537, m538 (batch 61); run on a copy of the report with `modes/tty` lowered to 0.42, it failed naming the row |
 | `make test-say`, a mute host (D-254) | A host whose `say` renders nothing fails under the leg, unless the run declares it mute, when the recipe prints NOT RUN | Its mutant (batch 59); the hosted macOS step's NOT RUN line |
 
 ## Phase-exit runs

@@ -132,6 +132,7 @@ gate-controls:
 	@./scripts/quality/ledger-ratified.sh --self-test
 	@./scripts/quality/lint-ledger.sh --self-test
 	@go run ./tools/dupes -self-test
+	@go run ./tools/p10floor --self-test
 	@./scripts/quality/mutant-anchors.sh --self-test
 
 # THE CHEAP HALF OF `mutant-check`, RUNNABLE BEFORE A COMMIT. It asks only
@@ -538,6 +539,7 @@ p10:
 	@mkdir -p $(DIST)
 	@$(A2DH) p10 check --json > $(P10_OUT) || { echo "p10: live findings — see $(P10_OUT)"; exit 1; }
 	@./scripts/quality/p10-unmatched.sh $(P10_OUT)
+	@go run ./tools/p10floor $(P10_OUT)
 	@./scripts/quality/ledger-ratified.sh
 	@python3 ./scripts/quality/p10-ledger-mirror.py
 	@./scripts/quality/lint-ledger.sh

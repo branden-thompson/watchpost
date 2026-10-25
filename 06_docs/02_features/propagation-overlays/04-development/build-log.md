@@ -770,3 +770,11 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **The real library's states** (RL-12): `TestTheLibrarysRealStatesAreSaid` drives go-ionomaps through `ionomapstest`'s replay into each state - fresh, GloTEC refused, GIRO refusing and denying, a station failing, the solar file unread two days on, a cold start with no field - and checks the words for each, never a snapshot built by hand.
 - **Mutants:** m532 to m536, each killed (m533 survived a first run: every state driven was `GIROPaused`, so the all-hour line had no case; an ask too soon after the denial gives it one); m339 re-pointed; m349, m350, m351 and m449 retired with the code they changed.
 
+## Batch 61 - REVIEW: every density row held to its floor (D-264; A-87)
+
+- **The floors** (D-264): the twenty-three density rows a2dh reports state their measured figure as a floor, `modes/tty` 0.43 over 339 and `app` 0.61 over 49 among them; the mirror is regenerated from the ledger.
+- **`tools/p10floor`**, in `make p10`: an exempted density row measuring under its floor fails, naming it; a figure that does not read fails closed. Run on a copy of the report with `modes/tty` lowered to 0.42, it failed; on the report itself it held all twenty-three. Its own guards are single returns through one closure, so P10 counts them; its `--self-test`, in `gate-controls`, proves it refuses a planted row under its floor in this tree.
+- **The REVIEW red team's record:** the D-252 list's figures re-measured at the tips before the batch was put (`modes/tty` had grown from 335 to 339 functions); its sentence on go-ionomaps' nested modules made exact - P10's analyzer legs skip them and its density count reaches them, as the spike's row already said.
+- **go-ionomaps** holds its sixteen rows by its own test (D-91), on the hosted gate too.
+- **Mutants:** m537, m538.
+

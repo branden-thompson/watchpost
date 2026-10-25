@@ -147,8 +147,8 @@ each branch's merge base with `main`.
 
 The rows ratified by precedent with no figure (watchpost's `domains/locations`, `domains/radio/synth`,
 `platform/httpx` and the like, go-ionomaps' `internal/climatology`, `internal/limits`, `internal/magcoords`)
-would each take their measured figure as a floor under the same ruling. Separately for the HUM LEAD: P10
-skips go-ionomaps' three nested modules (`tools/tables` and the evidence's two) unless `.a2dh.yml` declares
+would each take their measured figure as a floor under the same ruling (D-264 ratified all of them). Separately for the HUM LEAD: P10's
+analyzer legs skip go-ionomaps' three nested modules, and only its density count reaches them, (`tools/tables` and the evidence's two) unless `.a2dh.yml` declares
 each a root of its own, a change to that file only the HUM LEAD makes (RC-12).
 
 ## The rulings
@@ -169,6 +169,7 @@ each a root of its own, a change to that file only the HUM LEAD makes (RC-12).
 | 12, the read order | D-257: three lines of what the release is open the REQUIRED-READING; the Phase cell a short dated list |
 | 13, one sun | D-258: the words take day/night and the next turn from go-tuiMaps' Report; watchpost's Up and NextTurn deleted; RC-14 fixed first |
 | 13a, the sun ahead | D-263: go-tuiMaps exports `DaylightAt(place, moment)`, the sun its night is drawn with; the words take it for an hour ahead (v0.3.0-rc.5) |
+| 7a, D-252's list | D-264: every listed row re-ratified at today's figure as its floor, the precedent rows' figures too; a drop below a floor a live finding |
 | 14, the owed wires rows | D-259: Event.Restored and State.Refused deleted with their rows; F-108 writes them again |
 | 15, NOAA's back-off | D-260: NOAA's back-off floored at its 10-minute cadence, then 15; a NOAA 5xx a refusal |
 | 16, M5's scope | D-261: M5 stays at 400x110; 800x220 recorded as a known limit and re-measured after RP-4's fixes and a structured benchmark |
