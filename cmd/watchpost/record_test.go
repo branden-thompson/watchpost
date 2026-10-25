@@ -407,4 +407,7 @@ func TestTheSayLegIsBoundedAndDiagnosed(t *testing.T) {
 	if !strings.Contains(string(src), "defer diagnoseHang(t, ") {
 		t.Error("the say test does not sample a hang near its bound")
 	}
+	if !strings.Contains(string(src), `"-file", report`) {
+		t.Error("the hang's sample report is not written where the test reads it into the log (F-219): sample writes its report to a file, never to its output")
+	}
 }

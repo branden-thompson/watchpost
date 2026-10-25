@@ -801,3 +801,9 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **The grid's age** (D-253, D-265, D-266): the fresh days hold a grid every 3 hours, so D-253's hour-old grid does not exist in them - the agent's error in the fork's evidence. `gm3 -grid-age 3h` (go-ionomaps 14b38ff) scores the newest grid beside the one 3 hours older: mainland US foF2 RMS 0.46 against 1.21 MHz, worse than the climatology's 0.71; all stations 0.84 against 1.27. The gap met D-265's condition; the HUM LEAD authorised a day of 10-minute grids (D-266), fetched under D-39 outside the tree, to score 10, 30 and 60 minutes.
 - **M5 at 800 by 220** (D-261): after RP-4's fixes, with the structured field, 24.6 to 26.7 ms a pan frame (the reviewer's 32 to 42 before them); 400 by 110 at 6.8 to 7.3 ms against M5's 16. A known limit, recorded in the VALIDATE agenda.
 
+## Batch 65 - REVIEW: the say hang diagnosed, and the vetoes (D-267, D-268; F-219)
+
+- **The say hang, diagnosed:** batch 62's and batch 64's first verify runs failed at `make test-say`, `say` killed at its bound with nothing rendered, and the test's sample of the hung process logged nothing. `sample` writes its report to a file, never to its output: the two reports were in `/tmp`, written at the two failures. Each shows `say`'s main thread waiting in its run loop on a Mach message for the whole sample - the speech service never answered. The test now has `sample` write its report where the test reads it, and logs the main thread's call graph (`TestAHangsReportNamesItsMainThread`); `TestTheSayLegIsBoundedAndDiagnosed` holds that the report is read. The cause is macOS's: F-219.
+- **Rulings recorded:** D-267, the REVIEW remediation's A-rows stand; D-268, go-ionomaps' `tools/tables` under every P10 leg (go-ionomaps D-93: its two input-bounded loops now bounded by lines).
+- **Mutant:** m542.
+

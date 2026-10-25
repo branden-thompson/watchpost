@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -799,15 +800,52 @@ func TestTheConditionsSayTheListenersUnits(t *testing.T) {
 
 // diagnoseHang samples every say child still running when the bound is
 // near (0.19.0 FR-9.3, F-188): a hang is diagnosed - the hung process's
-// stacks, by macOS's sample - rather than retried blind. The stop it returns
-// takes the watch off.
+// stacks, by macOS's sample - rather than retried blind. sample writes its
+// report to a file, never to its output, so the report is written where the
+// test reads it and its main thread's call graph is logged (F-219). The stop
+// it returns takes the watch off.
 func diagnoseHang(t *testing.T, after time.Duration) (stop func()) {
 	t.Helper()
+	dir := t.TempDir()
 	timer := time.AfterFunc(after, func() {
 		for _, pid := range LiveChildren() {
-			out, err := exec.Command("sample", strconv.Itoa(pid), "2").CombinedOutput()
-			t.Logf("say %d is still running after %v; sampled (%v):\n%s", pid, after, err, out)
+			report := filepath.Join(dir, "say-"+strconv.Itoa(pid)+".sample.txt")
+			out, err := exec.Command("sample", strconv.Itoa(pid), "2", "-file", report).CombinedOutput()
+			b, _ := os.ReadFile(report)
+			t.Logf("say %d is still running after %v; sampled (%v) %s\nits main thread:\n%s", pid, after, err, out, mainThread(string(b)))
 		}
 	})
 	return func() { timer.Stop() }
+}
+
+// mainThread is a sample report's first thread under its call graph - the
+// main thread, where a say waiting on the speech service sits - or the
+// report's absence said.
+func mainThread(report string) string {
+	_, graph, ok := strings.Cut(report, "Call graph:\n")
+	if !ok {
+		return "(no call graph in the report)"
+	}
+	var lines []string
+	for i, l := range strings.Split(graph, "\n") {
+		if i > 0 && !strings.HasPrefix(l, "    +") {
+			break // the next thread, or the report's end
+		}
+		lines = append(lines, l)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// TestAHangsReportNamesItsMainThread is F-219: a hung say's sample report is
+// read for its main thread's call graph - where the hung say sits, waiting
+// on the speech service - and a report with no call graph says so.
+func TestAHangsReportNamesItsMainThread(t *testing.T) {
+	report := "Process: say [1]\n----\n\nCall graph:\n    1583 Thread_1   DispatchQueue_1: com.apple.main-thread  (serial)\n    + 1583 start  (in dyld)\n    +   1583 CFRunLoopRun  (in CoreFoundation)\n    +     1583 mach_msg  (in libsystem_kernel.dylib)\n    1583 Thread_2: caulk.messenger.shared:17\n    + 1583 thread_start\n"
+	got := mainThread(report)
+	if !strings.Contains(got, "com.apple.main-thread") || !strings.Contains(got, "mach_msg") || strings.Contains(got, "Thread_2") {
+		t.Errorf("the main thread read as:\n%s", got)
+	}
+	if got := mainThread("no graph here"); !strings.Contains(got, "no call graph") {
+		t.Errorf("a report with no call graph read as %q", got)
+	}
 }
