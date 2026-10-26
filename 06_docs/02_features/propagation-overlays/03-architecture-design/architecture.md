@@ -167,6 +167,11 @@ Internal packages: go-ionomaps' design (`03-architecture-design/design.md`, "Pac
 |---|---|---|
 | GIRO refuses (429) | the last good field, its age, "GIRO paused", back-off 60 s to 15 min | go-ionomaps R-5.3; FR-5.2 |
 | GIRO blocks for good | the GloTEC background alone, named | D-40, D-75; F-208 |
+| GIRO refuses this host (401, 403) | "GIRO refused this host: not asked again for a day", said all day and noted once | D-247; go-ionomaps R-5.3 |
+| a station's own failure (a 5xx, a 404, a 410, no answer) | the burst goes on; "N stations did not answer" | D-247, D-271, D-272; go-ionomaps R-5.3 |
+| GIRO hangs or stops answering | three asks run out in a row, or two as the update's end comes: "GIRO unavailable this hour", the readings it gave first, backed off | D-286, D-296; go-ionomaps R-5.3 |
+| GIRO slow, the burst cut short at the update's end | "GIRO's burst cut short: N stations asked first next hour", noted once; nothing backed off | D-295, D-297; go-ionomaps R-5.3 |
+| NOAA stalls on an ask | that round stops at the ask's 20 s, the files not read named, NOAA backed off; GIRO still asked | D-285; go-ionomaps R-5.3 |
 | GloTEC missing | the climatology fallback, named | FR-5.2 |
 | D-RAP missing | no "disturbed" state; said | R-2.6 |
 | scales missing | no level named, and the gap said; never shown as level 0 | FR-1.18 |

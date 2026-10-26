@@ -71,7 +71,7 @@ func TestTheStationsAreCreditedWhenTheyFedIt(t *testing.T) {
 	if got := strings.Join(d.propBadges(false), " "); strings.Contains(got, "GIRO") {
 		t.Errorf("no stations fed the snapshot and the badges are %q", got)
 	}
-	if w := snapshotWords(none, 0, false); !strings.Contains(w, "no station readings this hour: the background alone") {
+	if w := snapshotWords(none, 0); !strings.Contains(w, "no station readings this hour: the background alone") {
 		t.Errorf("a snapshot no station fed says %q", w)
 	}
 }
@@ -102,7 +102,7 @@ func TestEverySnapshotsStateIsSaid(t *testing.T) {
 		{offline, "nothing came back from NOAA: built from what is held", "NOAA not reached"},
 		{chosen, "no stations by choice: the background alone", "not read"},
 	} {
-		w := snapshotWords(c.s, 0, false)
+		w := snapshotWords(c.s, 0)
 		if !strings.Contains(w, c.want) || strings.Contains(w, c.never) {
 			t.Errorf("%v: %q does not say %q, or says %q", c.s.Reason, w, c.want, c.never)
 		}
@@ -175,47 +175,41 @@ func TestADeadlineIsSaidInWords(t *testing.T) {
 	}
 }
 
-// TestAStoppedBurstNamesGIRO is D-286: an update that stops while GIRO's
-// burst is its work is said as GIRO's burst stopping, not as NOAA's files;
-// the burst is the update watchpost asks after a StationsNext snapshot, and
-// an Unfinished update of NOAA's round keeps the files' words - among them
-// the first round after the mode was left with a burst in flight and opened
-// again, the burst's flag ending with its session (R4C-3).
-func TestAStoppedBurstNamesGIRO(t *testing.T) {
-	stopped := propSnapAt(drawnAt, 18)
-	stopped.Reason = ionomaps.Unfinished
-	if w := snapshotWords(stopped, 0, true); !strings.Contains(w, "GIRO's burst stopped before every station was asked") {
-		t.Errorf("a stopped burst said %q", w)
+// TestACutShortBurstIsSaid is D-297: a burst the update's deadline cut
+// short while GIRO answered is said with the stations not reached, asked
+// first next hour - one station said as one - in the status and once in the
+// diagnostics, again only when the count changes; a burst GIRO itself
+// stopped is said as GIRO's, not as cut short.
+func TestACutShortBurstIsSaid(t *testing.T) {
+	cut := propSnapAt(drawnAt, 18)
+	cut.Inputs.StationsNotReached = 9
+	if w := snapshotWords(cut, 0); !strings.Contains(w, "GIRO's burst cut short: 9 stations asked first next hour") {
+		t.Errorf("a burst cut short said %q", w)
 	}
-	if w := snapshotWords(stopped, 0, false); !strings.Contains(w, "the update stopped before every file came") {
-		t.Errorf("a stopped round of NOAA's said %q", w)
+	cut.Inputs.StationsNotReached = 1
+	if w := snapshotWords(cut, 0); !strings.Contains(w, "GIRO's burst cut short: 1 station asked first next hour") {
+		t.Errorf("one station not reached said %q", w)
 	}
-	d := chartDash(t)
-	next := propSnapAt(drawnAt.Add(10*time.Minute), 18)
-	next.Reason = ionomaps.StationsNext
-	m, cmd := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: next}, correct: d.mapPane.propSnapCorrect})
-	d = m.(Dashboard)
-	if cmd == nil || !d.mapPane.propSess.burst {
-		t.Fatalf("control: a StationsNext snapshot asked no burst (cmd %v, asked %v)", cmd != nil, d.mapPane.propSess.burst)
+	cut.Inputs.GIRO = ionomaps.GIROUnavailable
+	if w := snapshotWords(cut, 0); strings.Contains(w, "cut short") {
+		t.Errorf("a burst GIRO stopped said %q; want it said as GIRO's", w)
 	}
-	burst := propSnapAt(drawnAt.Add(11*time.Minute), 18)
-	burst.Reason = ionomaps.Unfinished
-	m, _ = d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: burst}, correct: d.mapPane.propSnapCorrect})
-	d = m.(Dashboard)
-	if w := d.propStatusWords(); !strings.Contains(w, "GIRO's burst stopped") || d.mapPane.propSess.burst {
-		t.Errorf("the burst stopped: %q, still asked %v; want GIRO named and the ask spent", w, d.mapPane.propSess.burst)
+	var noted []string
+	d := goldenDash(t, false)
+	d.cfg.MapProblem = func(p string) { noted = append(noted, p) }
+	for i, n := range []int{0, 7, 7, 7, 4} {
+		snap := propSnapAt(drawnAt.Add(time.Duration(10*i)*time.Minute), 18)
+		snap.Inputs.StationsNotReached = n
+		m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
+		d = m.(Dashboard)
 	}
-	m, cmd = d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: next}, correct: d.mapPane.propSnapCorrect})
-	d = m.(Dashboard)
-	if cmd == nil || !d.mapPane.propSess.burst {
-		t.Fatalf("control: the second StationsNext snapshot asked no burst (cmd %v)", cmd != nil)
+	cuts := 0
+	for _, p := range noted {
+		if strings.Contains(p, "cut short") {
+			cuts++
+		}
 	}
-	d = d.stopPropagation() // the mode left with the burst in flight, then opened again
-	round := propSnapAt(drawnAt.Add(12*time.Minute), 18)
-	round.Reason = ionomaps.Unfinished
-	m, _ = d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: round}, correct: d.mapPane.propSnapCorrect})
-	d = m.(Dashboard)
-	if w := d.propStatusWords(); strings.Contains(w, "GIRO's burst stopped") || !strings.Contains(w, "the update stopped before every file came") {
-		t.Errorf("NOAA's round stopped after the mode was left with a burst in flight: %q; want NOAA's files named, never GIRO's burst", w)
+	if text := strings.Join(noted, "\n"); cuts != 2 || !strings.Contains(text, "7 stations asked first next hour") || !strings.Contains(text, "4 stations asked first next hour") {
+		t.Errorf("counts 0, 7, 7, 7, 4 noted %d times:\n%s; want 7 and 4, once each", cuts, text)
 	}
 }

@@ -4,7 +4,7 @@ date: 2026-10-24
 phase: REVIEW exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); remediated in watchpost batch 67, go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7. ROUND 4 REPORTED 2026-10-26 (D-290): three reviewers, Docs exit once two Minors are fixed, the REVIEW lens and Code do not, one Important between them; three forks ruled (D-291 to D-293); remediated in watchpost batch 68, go-ionomaps v0.1.0-rc.9 and go-tuiMaps v0.3.0-rc.8. ROUND 5 REPORTED 2026-10-26 (D-294): three reviewers, Docs exits, the REVIEW lens and Code do not, two Importants both in D-291's deadline rule; five forks ruled (D-295 to D-299); its remediation follows"
+status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); remediated in watchpost batch 67, go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7. ROUND 4 REPORTED 2026-10-26 (D-290): three reviewers, Docs exit once two Minors are fixed, the REVIEW lens and Code do not, one Important between them; three forks ruled (D-291 to D-293); remediated in watchpost batch 68, go-ionomaps v0.1.0-rc.9 and go-tuiMaps v0.3.0-rc.8. ROUND 5 REPORTED 2026-10-26 (D-294): three reviewers, Docs exits, the REVIEW lens and Code do not, two Importants both in D-291's deadline rule; five forks ruled (D-295 to D-299); remediated in watchpost batch 69, go-ionomaps v0.1.0-rc.10 and go-tuiMaps v0.3.0-rc.9"
 ---
 
 # REVIEW exit — red team, rounds 1 to 5
@@ -546,4 +546,31 @@ Three fresh blind reviewers - Docs, the REVIEW lens, Code; their reports verbati
 - **go-ionomaps, a new candidate (v0.1.0-rc.10):** D-295 (the last asks get the time left; a shortened ask that runs out is not reached), D-296 (the call-down at the end: two full timeouts in a row), D-297 (`Inputs`' count of stations not reached), D-298 (no back-off for a round with no room; the no-room error and its minimum; no GIRO hour spent when nothing was asked); R5C-3 and R5L-3 (a test for each surviving mutant: the head at the end, the no-room back-off gone, the call-down count); R5C-4 (one room helper and one `isTimeout`; the burst's per-ask counts in one tally); R5C-5 and R5D-2 (the exported docs D-291 and D-298 change; the README's per-ask limits right for GIRO, in real time; "moves past past"; `endsAtTheDeadline` named for what it does); R5D-3 (the seed week's dates, one wording); R5D-7 (the ID scan's must-catch list widened, "general" made true or dropped); the nits (`reach.go`'s wrapped path, `update.go:133`, `noteStatus`'s doc).
 - **go-tuiMaps, a new candidate (v0.3.0-rc.9):** D-299 (the memory peak judged in the race-off leg); R5D-7 (the alias test fails below the count found, seventeen; the scan's must-catch list as go-ionomaps'); "upstream" defined where go doc says it.
 - **watchpost:** D-297 (the cut-short words, in place of D-286's stop words, `propSession.burst` and their tests and mutants); D-298 (a Deadline under 20 s refused); R5C-6 and R5L-5 (`TestAnUpdateHasItsOwnDeadline` reaching a source); R5D-4 (the chart window's fixed keys, the acknowledgement window in the README); R5D-5 (the required reading and the record's status through round 5); R5D-6 (the architecture's failure table: a station's own failure, GIRO hanging, a denial, a stalled NOAA, a burst cut short); R5D-8 (item 3's two blind spots: D-293 a reading of the diff, the run's network outage); R5D-7's residue (FR-4.12: the station codes and rotation positions the state also holds); the re-pin to rc.10 and rc.9.
+
+### Round 5, closed
+
+Each round 5 finding and the commit, tag or ruling that closed it, for the next round to check against the code.
+
+| Finding | Closed by |
+|---|---|
+| R5D-1 | D-298; go-ionomaps v0.1.0-rc.10 (no back-off for a round with no room; `MinDeadline`, `ErrNoRoom`; R-5.3, `Update`'s doc, the README and its example) |
+| R5D-2 | go-ionomaps v0.1.0-rc.10 (the README's per-ask limits: GIRO's timeouts its stations' own, real time) |
+| R5D-3 | go-ionomaps v0.1.0-rc.10 (the seed week, "the week of 2026-09-29 to 10-05" everywhere) |
+| R5D-4 | watchpost batch 69 (the chart window's fixed keys; the acknowledgement window in the README) |
+| R5D-5 | watchpost batch 69 (the required reading and the record through round 5) |
+| R5D-6 | watchpost batch 69 (the architecture's failure table) |
+| R5D-7 | go-ionomaps v0.1.0-rc.10 and go-tuiMaps v0.3.0-rc.9 (the scan takes every family the documents use; the alias test fails below seventeen) |
+| R5D-8 | watchpost batch 69 (item 3's two blind spots) |
+| R5D, nits | go-ionomaps v0.1.0-rc.10 (`Unasked`'s doc, the round's comment, `reach.go`'s path); go-tuiMaps v0.3.0-rc.9 ("upstream" defined); watchpost batch 69 (`noteStatus`'s doc; the state file's contents) |
+| R5L-1 | D-296; go-ionomaps v0.1.0-rc.10 (`timeoutsAtTheEnd`; one station hanging late, eight hours, never GIRO called down) |
+| R5L-2 | D-298; go-ionomaps v0.1.0-rc.10 (no hour spent, no back-off, the error naming the deadline); watchpost batch 69 (a Deadline under the least refused) |
+| R5L-3 | go-ionomaps v0.1.0-rc.10 (Me is m090; Mg's rule withdrawn by D-296; Ma's head move removed, A-34 (3)) |
+| R5L-4 | D-297; go-ionomaps v0.1.0-rc.10 (`Inputs.StationsNotReached`); watchpost batch 69 (the words, the dead D-286 words retired) |
+| R5L-5 | watchpost batch 69 (as R5C-6) |
+| R5C-1 | D-295, D-297; go-ionomaps v0.1.0-rc.10 (`askLimit`; a burst with one early hang asks every station) |
+| R5C-3 | as R5L-3; x4's `lastFailed` removed with the head move |
+| R5C-4 | go-ionomaps v0.1.0-rc.10 (`giro.TimeLeft` and `giro.IsTimeout`, once; the burst's `tally`) |
+| R5C-5 | go-ionomaps v0.1.0-rc.10 (`GIROUnavailable`, `Unavailable`, `Update`, `Unfinished`, `ask`'s doc; `endsAtTheDeadline` replaced by `endEarly`; the throttle restored when nothing was asked) |
+| R5C-6 | watchpost batch 69 (`TestAnUpdateHasItsOwnDeadline` at the least deadline) |
+| R5C-7 | D-299; go-tuiMaps v0.3.0-rc.9 (the peak judged with the race detector off) |
 

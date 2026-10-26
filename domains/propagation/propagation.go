@@ -11,6 +11,7 @@ package propagation
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -36,7 +37,7 @@ type Getter interface {
 // deadline, and where each rate header's first sighting is noted.
 type Options struct {
 	Clock     func() time.Time
-	Deadline  time.Duration // 0 is the architecture's 60 s
+	Deadline  time.Duration // 0 is the architecture's 60 s; under go-ionomaps' MinDeadline is refused (D-298)
 	Note      func(string)  // the diagnostics; nil notes nothing
 	StateFile string        // where GIRO's throttle state is kept across restarts (D-213); "" keeps none
 }
@@ -66,7 +67,7 @@ type Service struct {
 // The service's refusals.
 var (
 	errNoClient   = errors.New("propagation: no client to fetch with")
-	errNoDeadline = errors.New("propagation: an update's deadline cannot be negative")
+	errNoDeadline = fmt.Errorf("propagation: an update's deadline is 0, for the architecture's 60 s, or at least %s, one of NOAA's asks (D-298)", ionomaps.MinDeadline)
 	errNoService  = errors.New("propagation: the service was not made with New")
 	errNoStatus   = errors.New("propagation: the reply has no HTTP status")
 )
@@ -82,8 +83,8 @@ func NewService(get Getter, o Options) (*Service, error) {
 	if get == nil {
 		return nil, errNoClient
 	}
-	if o.Deadline < 0 {
-		return nil, errNoDeadline
+	if o.Deadline < 0 || o.Deadline > 0 && o.Deadline < ionomaps.MinDeadline {
+		return nil, errNoDeadline // too short for any ask: every update would ask nothing (D-298)
 	}
 	f := &fetcher{get: get, hosts: map[string]bool{}, note: o.Note, seen: map[string]bool{}}
 	lib, err := ionomaps.New(f, ionomaps.Options{Clock: o.Clock})
@@ -309,7 +310,7 @@ func (f *fetcher) Fetch(ctx context.Context, rawURL string, v ionomaps.Validator
 // failure, and is noted once (D-272).
 var namedStatus = map[int]bool{200: true, 304: true, 401: true, 403: true, 404: true, 410: true, 429: true}
 
-// noteStatus notes a status D-247 and D-260 do not name, by host and
+// noteStatus notes a status D-247, D-260 and D-272 do not name, by host and
 // status, the first time the host answers it, in words for either service.
 func (f *fetcher) noteStatus(host string, status int) {
 	if namedStatus[status] {

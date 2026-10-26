@@ -21,8 +21,8 @@ linter in `make verify` enforces the first; `term.Merge` plus its tests enforce 
    chart's window (an open window owns its keys, D-61); users override any of them via `[keys]` in
    config.toml by the action's name; `?` is reserved for help, which renders from the merged map so
    it is always truthful. The keys inside a window over the map - the arrows, space, enter and esc of
-   the Overlays menu and the find, frequency and acknowledgement windows - are fixed, not keymap
-   actions (D-292).
+   the Overlays menu and the find, frequency and acknowledgement windows, and the bands chart
+   window's esc, PgUp and PgDn - are fixed, not keymap actions (D-292).
 
 ---
 

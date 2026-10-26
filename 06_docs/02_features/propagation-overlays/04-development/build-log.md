@@ -857,3 +857,13 @@ On go-ionomaps v0.1.0-rc.9 (D-291: a burst reads the time left on the update and
 - **The re-pin** (D-206): go-ionomaps v0.1.0-rc.9 and go-tuiMaps v0.3.0-rc.8, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map redrawn (the named 410, the burst's flag on the session, the library's node at rc.9 with its ask limits) and the atlas regenerated. The first verify failed on the map not yet redrawn (the failed row kept in `verify-runs.md`).
 - **Mutants:** m570 to m572, each vetted applied and killed; m290 and m568 re-pointed. G1's shortfall is worked out in the row it prints in, not a helper of one guard, which held `tools/perfsum`'s density at its floor.
 
+## Batch 69 - REVIEW: the red team's round 5 remediation in watchpost (D-295 to D-299; A-94)
+
+On go-ionomaps v0.1.0-rc.10 (D-295 to D-298: GIRO's last asks get the time left, the call-down at the update's end on two full asks run out in a row, a burst's stations not reached counted, no back-off for a round with no room, `MinDeadline` and `ErrNoRoom`) and go-tuiMaps v0.3.0-rc.9 (D-299: the memory peak judged with the race detector off; the alias count held at seventeen; the doc scan widened); the libraries' halves are in their own build logs.
+
+- **A burst cut short is said** (D-297): "GIRO's burst cut short: N stations asked first next hour" in the status, and once in the diagnostics while the count holds (`TestACutShortBurstIsSaid`; m573, m574). D-286's stop words, `propSession.burst` and their test are gone with m568 and m572; m290 and m325 re-pointed.
+- **The least deadline** (D-298): a Deadline under go-ionomaps' `MinDeadline` is refused; `TestAnUpdateHasItsOwnDeadline` reads `ErrNoRoom` at the least deadline, said at once (R5C-6, R5L-5; m139 holds).
+- **Docs:** the bands chart window's `esc`, `PgUp` and `PgDn` are fixed, and the acknowledgement window is in the README's list (R5D-4); the required reading and the record through round 5 (R5D-5); the architecture's failure table gains a denial, a station's own failure, GIRO hanging, a burst cut short and a stalled NOAA (R5D-6); item 3's two blind spots beside its bound (R5D-8); the state file's contents (R5D-4's residue); FR-5.2 carries D-297, and plan task W4.3 its test; `noteStatus`'s doc names D-272.
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.10 and go-tuiMaps v0.3.0-rc.9, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map redrawn (the cut-short words, the refused short deadline, the library's node at rc.10 with its round 5 rules) and the atlas regenerated.
+- **Mutants:** m573 and m574, each vetted applied and killed; m568 and m572 retired; m290 and m325 re-pointed.
+

@@ -41,7 +41,6 @@ type propSession struct {
 	busy      bool               // an update asked and not yet answered
 	tickEvery time.Duration      // the refresh chain's wait; zero with none set (D-120)
 	applied   int                // snapshots applied, GIRO's following NOAA's at once not counted: past one, a refresh (FR-3.6)
-	burst     bool               // the update in flight is GIRO's burst, asked after a StationsNext snapshot (D-286)
 }
 
 // askPropagation asks for the mode's update (A-30):
@@ -149,7 +148,7 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		if d.mapPane.propSnap != nil {
 			was = d.mapPane.propSnap.Inputs
 		}
-		d.mapPane.propSnap, d.mapPane.propSnapCorrect, d.mapPane.propSnapBurst = &snap, v.correct, d.mapPane.propSess.burst
+		d.mapPane.propSnap, d.mapPane.propSnapCorrect = &snap, v.correct
 		if newlyDenied {
 			d.problem("Propagation: GIRO refused this host (a 401 or 403): it is not asked again for a day") // D-247, D-272: named once, as it begins
 		}
@@ -161,6 +160,9 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		}
 		if snap.Inputs.Implausible > 0 && snap.Inputs.Implausible != was.Implausible {
 			d.problem(fmt.Sprintf("Propagation: %d station readings were refused as implausible, their foF2 too far from the background to be believed (D-248, D-279)", snap.Inputs.Implausible))
+		}
+		if n := snap.Inputs.StationsNotReached; n > 0 && n != was.StationsNotReached && snap.Inputs.GIRO == ionomaps.GIROAnswered {
+			d.problem("Propagation: " + burstCutShortWords(n) + ", the update's deadline reached (D-297)")
 		}
 		if snap.Inputs.ImplausibleM > 0 && snap.Inputs.ImplausibleM != was.ImplausibleM {
 			d.problem(fmt.Sprintf("Propagation: %d station readings' M(3000)F2 was refused as implausible; their foF2 was used (D-248)", snap.Inputs.ImplausibleM))
@@ -174,11 +176,10 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		}
 		d.mapPane.propUpdatedAt = d.now()
 	}
-	d.mapPane.propErr, d.mapPane.propSess.burst = v.res.Err, false
+	d.mapPane.propErr = v.res.Err
 	if v.res.Err == nil && v.res.Snapshot.Reason == ionomaps.StationsNext {
 		nd, cmd := d.setProp().renderMap().askPropagation() // NOAA's field is shown; GIRO's stations at once (go-ionomaps D-63)
 		if cmd != nil {
-			nd.mapPane.propSess.burst = true // the update asked is GIRO's burst: an Unfinished one names GIRO (D-286)
 			return nd, cmd
 		}
 		return nd.nextPropTick()
@@ -231,7 +232,7 @@ func (d Dashboard) propStatusWords() string {
 	switch {
 	case snap != nil:
 		age, _, _ := d.propAge(*snap)
-		words := snapshotWords(*snap, d.mapPane.propLayer, d.mapPane.propSnapBurst) + " · " + age // FR-5.1, FR-5.2
+		words := snapshotWords(*snap, d.mapPane.propLayer) + " · " + age // FR-5.1, FR-5.2
 		if f := d.propFailedWords(); f != "" {
 			words = "Propagation · " + f + " · " + strings.TrimPrefix(words, "Propagation · ") // FR-5.2: a failed update first, over the field kept
 		}
@@ -298,6 +299,15 @@ func giroWords(g ionomaps.GIROOutcome) string {
 	return ""
 }
 
+// burstCutShortWords say a burst the update's deadline cut short while GIRO
+// answered: the stations not reached, asked first next hour (D-297).
+func burstCutShortWords(n int) string {
+	if n == 1 {
+		return "GIRO's burst cut short: 1 station asked first next hour"
+	}
+	return fmt.Sprintf("GIRO's burst cut short: %d stations asked first next hour", n)
+}
+
 // daysWords is an age said in days past a day, else as spanWords.
 func daysWords(age time.Duration) string {
 	switch days := int(age.Hours() / 24); {
@@ -358,7 +368,7 @@ func propOffsetWords(o ionomaps.Offset) string {
 // it is not new if it is not, then what it was made from (FR-5.1): the most
 // needed first, as a narrow window cuts the line's end. burst is whether the
 // snapshot came from GIRO's burst, whose stopping names GIRO (D-286).
-func snapshotWords(s ionomaps.Snapshot, layer int, burst bool) string {
+func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	words := []string{"Propagation", propLayerName(layer), "at " + s.Computed.UTC().Format("15:04 UTC")}
 	switch s.Reason {
 	case ionomaps.TooSoon:
@@ -374,11 +384,7 @@ func snapshotWords(s ionomaps.Snapshot, layer int, burst bool) string {
 		}
 		words = append(words, w+": the readings it gave first")
 	case ionomaps.Unfinished:
-		w := "the update stopped before every file came: built from what was held"
-		if burst {
-			w = "GIRO's burst stopped before every station was asked: built from the readings that came" // D-286
-		}
-		words = append(words, w)
+		words = append(words, "the update stopped before every file came: built from what was held")
 	}
 	if w := giroWords(s.Inputs.GIRO); w != "" && s.Reason != ionomaps.GIROPaused {
 		words = append(words, w) // the last burst's end, said all hour (D-247)
@@ -402,6 +408,9 @@ func snapshotWords(s ionomaps.Snapshot, layer int, burst bool) string {
 		words = append(words, "1 station did not answer") // D-247: a station's own failure, the burst going on
 	case n > 1:
 		words = append(words, fmt.Sprintf("%d stations did not answer", n))
+	}
+	if n := s.Inputs.StationsNotReached; n > 0 && s.Inputs.GIRO == ionomaps.GIROAnswered {
+		words = append(words, burstCutShortWords(n)) // D-297: the update's end, not GIRO's
 	}
 	switch s.Background.FoF2 {
 	case ionomaps.GloTEC:

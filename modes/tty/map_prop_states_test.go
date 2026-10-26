@@ -107,7 +107,7 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
-		w := snapshotWords(s, 0, false)
+		w := snapshotWords(s, 0)
 		for _, want := range c.want {
 			if !strings.Contains(w, want) {
 				t.Errorf("%s: %q does not say %q", c.name, w, want)
@@ -123,12 +123,12 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 		}
 		r.SetNow(at.Add(20 * time.Minute)) // within the hour: the denial is said still (D-247)
 		later, err := statesUpdate(lib)
-		if w := snapshotWords(later, 0, false); err != nil || !strings.Contains(w, "GIRO refused this host") {
+		if w := snapshotWords(later, 0); err != nil || !strings.Contains(w, "GIRO refused this host") {
 			t.Errorf("twenty minutes after the denial: %q (%v); want it said all hour", w, err)
 		}
 		r.SetNow(at.Add(25 * time.Minute)) // asked too soon: another reason, the denial said still
 		soon, err := statesUpdate(lib)
-		if w := snapshotWords(soon, 0, false); err != nil || soon.Reason == ionomaps.GIROPaused || !strings.Contains(w, "GIRO refused this host") {
+		if w := snapshotWords(soon, 0); err != nil || soon.Reason == ionomaps.GIROPaused || !strings.Contains(w, "GIRO refused this host") {
 			t.Errorf("five minutes on, said %v: %q (%v); want another reason and the denial said", soon.Reason, w, err)
 		}
 		var noted []string // the diagnostics name the denial once, as it begins
@@ -154,7 +154,7 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 	}
 	r.SetNow(at.Add(48 * time.Hour))
 	s, err := statesUpdate(kept)
-	if w := snapshotWords(s, 0, false); err != nil || !strings.Contains(w, "NOAA's solar") || !strings.Contains(w, "the solar flux held from 2 days ago") {
+	if w := snapshotWords(s, 0); err != nil || !strings.Contains(w, "NOAA's solar") || !strings.Contains(w, "the solar flux held from 2 days ago") {
 		t.Errorf("the solar file unread two days on: %q (%v); want the kept mean's age said", w, err)
 	}
 

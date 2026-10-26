@@ -229,18 +229,29 @@ func TestClosingTheModeCancelsTheUpdate(t *testing.T) {
 	}
 }
 
-// TestAnUpdateHasItsOwnDeadline is the architecture's 60 s: an update whose
-// sources never answer ends at its deadline, whatever the caller's context.
+// TestAnUpdateHasItsOwnDeadline is the architecture's 60 s, and D-298: the
+// service gives each update a deadline of its own, whatever the caller's
+// context - at go-ionomaps' least, the update has no room for an ask, asks
+// nothing and says so at once, which only the service's own deadline can
+// make it do; a deadline under that least is refused at the making. A
+// source that never answers is go-ionomaps' to bound, each ask in its time,
+// and its own tests hold it.
 func TestAnUpdateHasItsOwnDeadline(t *testing.T) {
 	rec := &recorder{hold: make(chan struct{})}
-	s, err := NewService(rec, Options{Clock: fixedClock, Deadline: 50 * time.Millisecond})
+	s, err := NewService(rec, Options{Clock: fixedClock, Deadline: ionomaps.MinDeadline})
 	if err != nil {
 		t.Fatal(err)
 	}
 	select {
-	case <-s.Ask(context.Background(), ionomaps.UpdateOptions{}):
+	case r := <-s.Ask(context.Background(), ionomaps.UpdateOptions{}):
+		if !errors.Is(r.Err, ionomaps.ErrNoRoom) || rec.count() != 0 {
+			t.Errorf("an update at the least deadline: %v, %d asked; want no room said and nothing asked", r.Err, rec.count())
+		}
 	case <-time.After(5 * time.Second):
-		t.Fatal("an update past its deadline never answered")
+		t.Fatal("an update at the least deadline never answered: it had no deadline of its own")
+	}
+	if _, err := NewService(rec, Options{Deadline: ionomaps.MinDeadline - time.Second}); !errors.Is(err, errNoDeadline) {
+		t.Errorf("a deadline under the least: %v", err)
 	}
 	if _, err := NewService(rec, Options{}); err != nil {
 		t.Errorf("the default options were refused: %v", err)
