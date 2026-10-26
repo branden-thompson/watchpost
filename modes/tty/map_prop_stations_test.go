@@ -178,7 +178,9 @@ func TestADeadlineIsSaidInWords(t *testing.T) {
 // TestAStoppedBurstNamesGIRO is D-286: an update that stops while GIRO's
 // burst is its work is said as GIRO's burst stopping, not as NOAA's files;
 // the burst is the update watchpost asks after a StationsNext snapshot, and
-// an Unfinished update of NOAA's round keeps the files' words.
+// an Unfinished update of NOAA's round keeps the files' words - among them
+// the first round after the mode was left with a burst in flight and opened
+// again, the burst's flag ending with its session (R4C-3).
 func TestAStoppedBurstNamesGIRO(t *testing.T) {
 	stopped := propSnapAt(drawnAt, 18)
 	stopped.Reason = ionomaps.Unfinished
@@ -193,14 +195,27 @@ func TestAStoppedBurstNamesGIRO(t *testing.T) {
 	next.Reason = ionomaps.StationsNext
 	m, cmd := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: next}, correct: d.mapPane.propSnapCorrect})
 	d = m.(Dashboard)
-	if cmd == nil || !d.mapPane.propBurstAsked {
-		t.Fatalf("control: a StationsNext snapshot asked no burst (cmd %v, asked %v)", cmd != nil, d.mapPane.propBurstAsked)
+	if cmd == nil || !d.mapPane.propSess.burst {
+		t.Fatalf("control: a StationsNext snapshot asked no burst (cmd %v, asked %v)", cmd != nil, d.mapPane.propSess.burst)
 	}
 	burst := propSnapAt(drawnAt.Add(11*time.Minute), 18)
 	burst.Reason = ionomaps.Unfinished
 	m, _ = d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: burst}, correct: d.mapPane.propSnapCorrect})
 	d = m.(Dashboard)
-	if w := d.propStatusWords(); !strings.Contains(w, "GIRO's burst stopped") || d.mapPane.propBurstAsked {
-		t.Errorf("the burst stopped: %q, still asked %v; want GIRO named and the ask spent", w, d.mapPane.propBurstAsked)
+	if w := d.propStatusWords(); !strings.Contains(w, "GIRO's burst stopped") || d.mapPane.propSess.burst {
+		t.Errorf("the burst stopped: %q, still asked %v; want GIRO named and the ask spent", w, d.mapPane.propSess.burst)
+	}
+	m, cmd = d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: next}, correct: d.mapPane.propSnapCorrect})
+	d = m.(Dashboard)
+	if cmd == nil || !d.mapPane.propSess.burst {
+		t.Fatalf("control: the second StationsNext snapshot asked no burst (cmd %v)", cmd != nil)
+	}
+	d = d.stopPropagation() // the mode left with the burst in flight, then opened again
+	round := propSnapAt(drawnAt.Add(12*time.Minute), 18)
+	round.Reason = ionomaps.Unfinished
+	m, _ = d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: round}, correct: d.mapPane.propSnapCorrect})
+	d = m.(Dashboard)
+	if w := d.propStatusWords(); strings.Contains(w, "GIRO's burst stopped") || !strings.Contains(w, "the update stopped before every file came") {
+		t.Errorf("NOAA's round stopped after the mode was left with a burst in flight: %q; want NOAA's files named, never GIRO's burst", w)
 	}
 }

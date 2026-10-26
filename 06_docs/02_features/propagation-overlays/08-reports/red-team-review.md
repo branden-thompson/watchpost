@@ -481,3 +481,34 @@ Three fresh blind reviewers - Docs, the REVIEW lens, Code; their reports verbati
 - **go-tuiMaps, a new candidate (v0.3.0-rc.8):** R4C-2 and R4L-5 (the parity and task IDs out of its exported docs; the scan widened), R4C-9 (every alias of an internal struct checked, found by its AST).
 - **watchpost:** D-292 (the docs on window keys), D-293 (the agenda names the build), R4D-3 and R4L-4 (a 410 named), R4D-4 (`perfsum` prints each arm's hours to three places and its margin, the step said nominal), R4D-5 and R4C-6 (the say leg's arithmetic), R4D-7 (the state file holds times and the flux mean), R4C-3 and R4L-2 (the burst flag in the session's state), the build log's mutant list and the roster's m544 (R4D); the re-pin to rc.9 and rc.8.
 
+### Round 4, closed
+
+Each round 4 finding and the commit, tag or ruling that closed it, for the next round to check against the code.
+
+| Finding | Closed by |
+|---|---|
+| R4D-1 | go-ionomaps v0.1.0-rc.9 (`(G5)` gone; the scan's pattern general, with an allowlist) |
+| R4D-2 | D-292; watchpost batch 68 (`docs/extending.md`, the README's table) |
+| R4D-3 | watchpost batch 68 (a 410 named; A-92 (1)) |
+| R4D-4 | watchpost batch 68 (`perfsum -g1`: hours to three places, the shortfall, the nominal step) |
+| R4D-5 | go-ionomaps v0.1.0-rc.9 (`update.go`'s round, `Burst`'s doc); watchpost batch 68 (the Makefile and A-92 (6): three renders and a retry) |
+| R4D-6 | go-ionomaps v0.1.0-rc.9 (the README and `Update`'s doc carry the per-ask limits) |
+| R4D-7 | watchpost batch 68 (the README, the changelog and FR-4.12: times and the flux mean) |
+| R4D, smaller | watchpost batch 68 (batch 67's mutant list; the roster's row 29 cites m544) |
+| R4L-1 | D-291; go-ionomaps v0.1.0-rc.9 (`roomForAnAsk`, `endsAtTheDeadline`; NOAA's round alike) |
+| R4L-2 | watchpost batch 68 (`propSession.burst`) |
+| R4L-3 | go-ionomaps v0.1.0-rc.9 (`isTimeout`; NOAA's 20 s pinned) |
+| R4L-4 | watchpost batch 68 (as R4D-3) |
+| R4L-5 | go-ionomaps v0.1.0-rc.9 and go-tuiMaps v0.3.0-rc.8 (as R4D-1 and R4C-2) |
+| R4L-6 | go-ionomaps v0.1.0-rc.9 (both parts refused, tested) |
+| R4L-7 | D-293; watchpost batch 68 (the agenda's item 3) |
+| R4C-1 | as R4L-1 |
+| R4C-2 | go-ionomaps v0.1.0-rc.9 and go-tuiMaps v0.3.0-rc.8 (the IDs stripped; the scan general in both) |
+| R4C-3 | as R4L-2 |
+| R4C-4 | go-ionomaps v0.1.0-rc.9 (`GIROUnavailable`, `Unavailable`, `Burst`, `askTimeout`, `ErrBadState`'s message) |
+| R4C-5 | go-ionomaps v0.1.0-rc.9 (`endsRound`) |
+| R4C-6 | watchpost batch 68 (as R4D-5) |
+| R4C-7 | go-ionomaps v0.1.0-rc.9 (`Unasked` takes one station; only a run of failures moves the head) |
+| R4C-8 | go-ionomaps v0.1.0-rc.9 (i2 to i5 and i8 each tested, with mutants) |
+| R4C-9 | go-tuiMaps v0.3.0-rc.8 (every struct alias found by type-checking) |
+

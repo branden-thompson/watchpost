@@ -188,7 +188,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## github.com/branden-thompson/go-ionomaps v0.1.0-rc.8
+## github.com/branden-thompson/go-ionomaps v0.1.0-rc.9
 
 ```
 MIT License
@@ -322,7 +322,7 @@ github.com/victoriyaforsythe/PyIRI, LICENSE:
    SOFTWARE.
 ```
 
-## github.com/branden-thompson/go-tuimaps v0.3.0-rc.7
+## github.com/branden-thompson/go-tuimaps v0.3.0-rc.8
 
 ```
 MIT License

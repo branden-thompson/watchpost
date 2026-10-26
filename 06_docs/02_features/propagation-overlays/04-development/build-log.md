@@ -844,5 +844,16 @@ On go-ionomaps v0.1.0-rc.8 (D-285 to D-288: a stalled NOAA host stops its round 
 - **The gates** (R3C-8, R3C-9, R3C-12): `runlog`'s end-of-run tree read and its line's write each fail the run when they fail (m565, m566); the say leg's 11 minutes are its renders' own and a hang needs an error; the run-selector check's `-race` branch is held (m567). The gate roster carries D-273's tolerance and batch 66's six gates (R3D-4).
 - **Smaller:** `ionomaps.UnreadSolar` for the literal (R3L-8, R3C-5); `madeFromHeld` (was `propMadeOf`) and `reachscore`'s check written once (round 2's unrecorded Minors); `docs/extending.md` names the four keymaps and the README the actions' form (R3D-8); G1's arms' spans and the 9-second margin beside "taken as 48" (R3D-9); F-220's figures say one run (R3D-11); F-221 carries D-289; the record's R2H-5 lines and its H1 corrected (R3D-5).
 - **The re-pin** (D-206): go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map redrawn (the restore's parts, the notes on change, a stopped burst) and the atlas regenerated.
-- **Mutants:** m563 to m569, each vetted applied and killed; m378, m534, m556, m558, m560, m561, m231 and m524 re-pointed.
+- **Mutants:** m563 to m569, each vetted applied and killed; m231, m290, m325, m378, m398, m524, m534, m556, m560 and m561 re-pointed.
+
+## Batch 68 - REVIEW: the red team's round 4 remediation in watchpost (D-291 to D-293; A-93)
+
+On go-ionomaps v0.1.0-rc.9 (D-291: a burst reads the time left on the update and ends before the deadline, GIRO called down when its asks were running out; a host client's own timeout counts as an ask run out; no NOAA ask starts without room; no IDs left in its public docs) and go-tuiMaps v0.3.0-rc.8 (no IDs in its public docs; every struct alias's fields held by a test); the libraries' halves are in their own build logs.
+
+- **A 410 is named** (R4D-3): a station or file gone, as D-247 and D-272 say, never noted as unknown; the note's test moves to a 418 and a 451 (m570).
+- **The burst's flag ends with its session** (R4C-3): `propSession.burst`; `TestAStoppedBurstNamesGIRO` leaves the mode with a burst in flight, opens it again, and NOAA's stopped round is said as NOAA's files (m572; m290 and m568 re-pointed).
+- **G1's scorer** (R4D-4): each arm's hours to three places and its shortfall from 48 hours, to the second; 2 minutes is the sampler's nominal step (m571). The gate roster's row 29 cites m544 and m571.
+- **Docs:** the windows' keys are fixed, the docs saying so (D-292); the Broadcaster arm names `a444b000` and its figures an upper bound for the tip (D-293); the state file holds times and the flux mean (R4D-7); the say leg's 11 minutes hold three renders and a retry (R4D-5); batch 67's re-pointed mutants listed as they were.
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.9 and go-tuiMaps v0.3.0-rc.8, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map redrawn (the named 410, the burst's flag on the session, the library's node at rc.9 with its ask limits) and the atlas regenerated. The first verify failed on the map not yet redrawn (the failed row kept in `verify-runs.md`).
+- **Mutants:** m570 to m572, each vetted applied and killed; m290 and m568 re-pointed. G1's shortfall is worked out in the row it prints in, not a helper of one guard, which held `tools/perfsum`'s density at its floor.
 

@@ -105,10 +105,13 @@ func summariseG1(dir, against string) (string, int, error) {
 	if hourly {
 		wireTarget = g1WireMBHourly
 	}
-	b.WriteString("## The arms\n\n| Arm | Hours | Samples | CPU % | RSS MB (median / max) | Footprint MB (median) | Heap MB (median) | Wire MB an hour | Wire MB a day |\n|---|---|---|---|---|---|---|---|---|\n")
+	b.WriteString("## The arms\n\n| Arm | Hours | Short of 48 hours | Samples | CPU % | RSS MB (median / max) | Footprint MB (median) | Heap MB (median) | Wire MB an hour | Wire MB a day |\n|---|---|---|---|---|---|---|---|---|---|\n")
 	row := func(name string, a g1Arm) {
-		r := a.res
-		fmt.Fprintf(&b, "| %s | %.1f | %d | %.2f | %.1f / %.1f | %s | %s | %s | %s |\n", name, a.hours, r.samples, r.cpuPct, r.rssMedMB, r.rssMaxMB, gauge(r.footMedMB), gauge(r.heapMedMB), a.perHour(1), a.perHour(24))
+		r, short := a.res, "none" // how far the arm falls short of G1's 48 hours, to the second
+		if a.hours < 48 {
+			short = time.Duration((48 - a.hours) * float64(time.Hour)).Round(time.Second).String()
+		}
+		fmt.Fprintf(&b, "| %s | %.3f | %s | %d | %.2f | %.1f / %.1f | %s | %s | %s | %s |\n", name, a.hours, short, r.samples, r.cpuPct, r.rssMedMB, r.rssMaxMB, gauge(r.footMedMB), gauge(r.heapMedMB), a.perHour(1), a.perHour(24))
 	}
 	row("the mode in use", use)
 	for _, base := range bases {
@@ -150,7 +153,7 @@ func summariseG1(dir, against string) (string, int, error) {
 		b.WriteString("\nThe run is shorter than G1's 48 hours: a dry run, not the measure, and it exits as one missed (RC-1).\n")
 		missed++
 	default:
-		b.WriteString("\nEach arm counts as G1's 48 hours when its span is within one sampling interval, 2 minutes, of it: the harness's own resolution (D-273).\n")
+		b.WriteString("\nEach arm counts as G1's 48 hours when it is short of them by no more than the sampler's nominal 2-minute step, the harness's own resolution; the measured step is a little longer (D-273).\n")
 	}
 	return b.String(), missed, nil
 }

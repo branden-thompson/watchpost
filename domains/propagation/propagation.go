@@ -302,12 +302,12 @@ func (f *fetcher) Fetch(ctx context.Context, rawURL string, v ionomaps.Validator
 	return ionomaps.Response{Status: a.Status, Rate: f.rate(host, a.Header), Validators: kept, Body: a.Body}, nil
 }
 
-// namedStatus are the single statuses D-247 and D-260 name: an answer, an
-// unchanged file's 304, a denial (401, 403), a station or file gone (404) and
-// a refusal (429); a failure on the server's side (5xx) is named as a class.
-// Any other is still a station's or a file's own failure, and is noted once
-// (D-272).
-var namedStatus = map[int]bool{200: true, 304: true, 401: true, 403: true, 404: true, 429: true}
+// namedStatus are the single statuses D-247, D-260 and D-272 name: an
+// answer, an unchanged file's 304, a denial (401, 403), a station or file
+// gone (404, 410) and a refusal (429); a failure on the server's side (5xx)
+// is named as a class. Any other is still a station's or a file's own
+// failure, and is noted once (D-272).
+var namedStatus = map[int]bool{200: true, 304: true, 401: true, 403: true, 404: true, 410: true, 429: true}
 
 // noteStatus notes a status D-247 and D-260 do not name, by host and
 // status, the first time the host answers it, in words for either service.

@@ -118,26 +118,27 @@ func TestOnlyRateHeadersAreRead(t *testing.T) {
 	}
 }
 
-// TestAnUnnamedStatusIsNotedOnce is D-272: a status D-247 and D-260 do not
-// name - a 410, a 418 - is noted in the diagnostics by host and status the
-// first time it comes, never again; a named one - an answer, a 304, a 401,
-// 403, 404 or 429, a server's 5xx - never (R3L-5, R3C-3).
+// TestAnUnnamedStatusIsNotedOnce is D-272: a status D-247, D-260 and D-272
+// do not name - a 418, a 451 - is noted in the diagnostics by host and
+// status the first time it comes, never again; a named one - an answer, a
+// 304, a 401, 403, 404, 410 or 429, a server's 5xx - never (R3L-5, R3C-3,
+// R4D-3).
 func TestAnUnnamedStatusIsNotedOnce(t *testing.T) {
-	status := 410
+	status := 418
 	rec := &recorder{answer: func(string) (httpx.Answer, error) { return httpx.Answer{Status: status, Header: http.Header{}}, nil }}
 	var notes []string
 	f, err := fetcherOf(rec, func(s string) { notes = append(notes, s) })
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, s := range []int{410, 410, 418, 200, 304, 401, 403, 404, 429, 500, 503, 418} {
+	for _, s := range []int{418, 418, 451, 200, 304, 401, 403, 404, 410, 429, 500, 503, 451} {
 		status = s
 		if r, err := f.Fetch(context.Background(), "https://lgdc.uml.edu/x", ionomaps.Validators{}); err != nil || r.Status != s {
 			t.Fatalf("status %d reached the library as %d, %v", s, r.Status, err)
 		}
 	}
-	if len(notes) != 2 || !strings.Contains(notes[0], "lgdc.uml.edu answered 410") || !strings.Contains(notes[1], "answered 418") {
-		t.Errorf("notes %q; want 410 and 418, each once, by host, and no named status", notes)
+	if len(notes) != 2 || !strings.Contains(notes[0], "lgdc.uml.edu answered 418") || !strings.Contains(notes[1], "answered 451") {
+		t.Errorf("notes %q; want 418 and 451, each once, by host, and no named status", notes)
 	}
 }
 

@@ -179,8 +179,8 @@ func TestAG1RunIsTheDifferenceOfItsArms(t *testing.T) {
 	// wire, counted from the first record inside the run, is 10 MB an hour.
 	out, code := sum("1:12:00", 486e6)
 	for _, want := range []string{
-		"| the mode in use | 48.0 | 3 | 2.15 | 210.0 / 220.0 |",
-		"| the map never opened | 48.0 | 3 | 1.39 | 110.0 / 120.0 |",
+		"| the mode in use | 48.000 | none | 3 | 2.15 | 210.0 / 220.0 |",
+		"| the map never opened | 48.000 | none | 3 | 1.39 | 110.0 / 120.0 |",
 		"## The mode in use against the map never opened: **judged** (-against idle)",
 		"| added mean CPU, % of one core | +0.76 | at most 1 | met |",
 		"| added RSS, MB (medians) | +100.0 | at most 25 | **missed** |",
@@ -251,7 +251,7 @@ func TestAG1RunIsJudgedAgainstTheArmNamed(t *testing.T) {
 		t.Errorf("judged against the map arm, every target met, exit %d:\n%s", code, out.String())
 	}
 	for _, want := range []string{
-		"| the mode in use | 48.0 | 2 | 2.00 | 200.0 / 200.0 | unread | unread | 10.00 | 240.00 |",
+		"| the mode in use | 48.000 | none | 2 | 2.00 | 200.0 / 200.0 | unread | unread | 10.00 | 240.00 |",
 		"## The mode in use against the map open in Forecast mode: **judged** (-against map)\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n| added mean CPU, % of one core | +1.00 | at most 1 | met |\n| added RSS, MB (medians) | +10.0 | at most 25 | met |",
 		"## The mode in use against the map never opened: reported, not judged\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n| added mean CPU, % of one core | +1.50 | at most 1 | **missed** |\n| added RSS, MB (medians) | +80.0 | at most 25 | **missed** |",
 	} {
@@ -342,7 +342,8 @@ func TestTheHourlyRunIsJudgedOnItsDownloadsAlone(t *testing.T) {
 // run, a cycle the driver could not confirm counts as missed, and a default
 // run under 48 hours exits as missed even when every target is met; one
 // short of 48 hours by no more than one 2-minute sample is taken as 48, and
-// says so (D-273).
+// says so, each arm's hours to three places and its shortfall beside them
+// (D-273, R4D-4).
 func TestAG1RunThatCannotBeJudgedFails(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, body string) {
@@ -386,7 +387,7 @@ func TestAG1RunThatCannotBeJudgedFails(t *testing.T) {
 	}
 	arm("use", "204800", "", 48*time.Hour-2*time.Minute)
 	arm("map", "204800", "", 48*time.Hour-2*time.Minute)
-	if out, code := judge(); code != 0 || !strings.Contains(out, "within one sampling interval, 2 minutes") {
+	if out, code := judge(); code != 0 || !strings.Contains(out, "nominal 2-minute step") || !strings.Contains(out, "| the mode in use | 47.967 | 2m0s |") {
 		t.Errorf("a run 47.97 hours an arm, one sample short: exit %d; want taken as 48, said:\n%s", code, out)
 	}
 	arm("use", "204800", "", 48*time.Hour-3*time.Minute)

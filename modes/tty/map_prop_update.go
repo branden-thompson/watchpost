@@ -41,6 +41,7 @@ type propSession struct {
 	busy      bool               // an update asked and not yet answered
 	tickEvery time.Duration      // the refresh chain's wait; zero with none set (D-120)
 	applied   int                // snapshots applied, GIRO's following NOAA's at once not counted: past one, a refresh (FR-3.6)
+	burst     bool               // the update in flight is GIRO's burst, asked after a StationsNext snapshot (D-286)
 }
 
 // askPropagation asks for the mode's update (A-30):
@@ -148,7 +149,7 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		if d.mapPane.propSnap != nil {
 			was = d.mapPane.propSnap.Inputs
 		}
-		d.mapPane.propSnap, d.mapPane.propSnapCorrect, d.mapPane.propSnapBurst = &snap, v.correct, d.mapPane.propBurstAsked
+		d.mapPane.propSnap, d.mapPane.propSnapCorrect, d.mapPane.propSnapBurst = &snap, v.correct, d.mapPane.propSess.burst
 		if newlyDenied {
 			d.problem("Propagation: GIRO refused this host (a 401 or 403): it is not asked again for a day") // D-247, D-272: named once, as it begins
 		}
@@ -173,11 +174,11 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		}
 		d.mapPane.propUpdatedAt = d.now()
 	}
-	d.mapPane.propErr, d.mapPane.propBurstAsked = v.res.Err, false
+	d.mapPane.propErr, d.mapPane.propSess.burst = v.res.Err, false
 	if v.res.Err == nil && v.res.Snapshot.Reason == ionomaps.StationsNext {
 		nd, cmd := d.setProp().renderMap().askPropagation() // NOAA's field is shown; GIRO's stations at once (go-ionomaps D-63)
 		if cmd != nil {
-			nd.mapPane.propBurstAsked = true // the update asked is GIRO's burst: an Unfinished one names GIRO (D-286)
+			nd.mapPane.propSess.burst = true // the update asked is GIRO's burst: an Unfinished one names GIRO (D-286)
 			return nd, cmd
 		}
 		return nd.nextPropTick()

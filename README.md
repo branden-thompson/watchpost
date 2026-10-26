@@ -201,14 +201,15 @@ picture or be switched off (Settings, *Description*).
 | `space` | play / stop the loop, or the forecast's steps |
 | `shift+←` `shift+→` · `n` | step back / on · back to now |
 | `<` `>` | Forecast mode: the days' highs or lows |
-| `A` · `O` | the Area Alerts box · the Overlays menu (`↑` `↓` move, `←` `→` change a choice, `space` switches, `esc` closes it) |
+| `A` · `O` | the Area Alerts box · the Overlays menu (`↑` `↓` move, `←` `→` change a choice, `space` switches, `esc` closes it; these keys inside the menu are fixed) |
 | `P` | the Propagation mode on / off |
 | `L` · `U` · `B` · `F` · `/` | Propagation mode: the layer (MUF or foF2) · refresh now · the bands chart · your frequency · find a place anywhere |
 | `↑` `↓` (the bands chart open) | the chart's previous / next target, in the chart's own scope (Help shows them beside Pan) |
 | `PgUp` `PgDn` | scroll the window when it is longer than the screen |
 
 While the map is open these keys are the map's. Any other key works as it does on the dashboard. Each
-one is a keymap action, so `[keys]` in `config.toml` can rebind it by the action's name: the map's begin
+command is a keymap action, so `[keys]` in `config.toml` can rebind it by the action's name; the keys
+inside a window over the map (the Overlays menu, find, your frequency) are fixed. The map's begin
 `map.` (`map.pan.left`, `map.zoom.in`, `map.propagation`, …) and the bands chart's are `chart.prev` and
 `chart.next`.
 
@@ -265,8 +266,8 @@ earthquake feeds. The map uses the record to draw past hours when a source does 
 clears the cities the map read. When several copies of watchpost run, each hour is fetched only once.
 The record is kept in `~/.local/share/watchpost/weather/history` (under `$XDG_DATA_HOME` when it is set);
 Open-Meteo's spent-quota mark (`quota.json`), the sea points Open-Meteo Marine has no answer for
-(`marine-land.json`) and GIRO's throttle across restarts (`propagation-throttle.json`, times only, no
-reading) are in `~/.local/state/watchpost` (under `$XDG_STATE_HOME`).
+(`marine-land.json`) and GIRO's throttle across restarts (`propagation-throttle.json`: times and NOAA's
+solar flux mean, never a GIRO reading) are in `~/.local/state/watchpost` (under `$XDG_STATE_HOME`).
 
 ## Radio
 
