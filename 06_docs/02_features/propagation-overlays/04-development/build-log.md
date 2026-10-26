@@ -817,7 +817,7 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 
 On go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6 (D-206, D-278); the libraries' halves are in their own build logs.
 
-- **G1's span** (D-273): `perfsum` takes an arm as 48 hours when its span is within one 2-minute sample of it, and says so; three minutes short is still a dry run. D-241's run, 47.97 hours an arm, now reads as the measure.
+- **G1's span** (D-273): `perfsum` takes an arm as 48 hours when its span is within one 2-minute sample of it, and says so; three minutes short is still a dry run. D-241's run now reads as the measure: its arms 47.995, 47.969 and 47.975 hours, the judged arm, the map open, inside the tolerance by 9 seconds (the sampler's measured step 2.11 minutes against its nominal 2; R3D-9, batch 67).
 - **The say leg** (D-276): each render has its own 2-minute bound; one killed at it has its main thread logged and is tried once more, the retry printed as `RETRY:` in the leg's output; a second hang fails. `TestAHungRenderIsTriedOnceMore` drives the rule with a render that hangs. The leg's timeout is 6 minutes.
 - **The floors** (D-277): `p10floor` fails on a firing density row whose reason states no floor, naming it with what it measures; none fires today.
 - **The benchmark** (D-282): `BenchmarkPropRenderMap` pans one step every op over a field shaped as a recorded MUF map, go-tuiMaps' own; the frame's allocation budget re-set from the shaped field (A-91 (2)). A pan frame at 133 by 44 is 1.20 to 1.29 ms, 557 allocations and 72 KB (five runs of 200, Apple M5 Pro; the evidence folder's `m5-frames/d282-prop-render-map.txt`), against 19.8 to 20.3 µs and 124 allocations for the unchanged view the benchmark used to redraw.
@@ -832,4 +832,17 @@ On go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6 (D-206, D-278); the librar
 - **The record** (R2H-4, R2H-9, R2D-2, R2D-5, R2D-6, R2D-7, R2B-2, R2B-3, R2B-4, D-274): the headers say REVIEW; round 1 closed finding by finding in `red-team-review.md`; G1's figures say one run, one machine, and the noise between arms; the agenda carries the Broadcaster arm's rule, Hourly's STALE minutes, D-255's three limits and M5's run count; F-219 records D-276; F-220, the open map's own cost, with a target; the README names the chart's target keys; the judging command is spelled `-g1 <run> -against idle`.
 - **The re-pin** (D-206): go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6; `THIRD_PARTY_LICENSES.md` regenerated; the tile transport's test now holds watchpost's header cap to the library's 64 KiB; the as-built map redrawn (the fetcher's notes, the refused readings) and the atlas regenerated; `app`'s declaration set re-captured for `tileMaxHeaderBytes`.
 - **Mutants:** m543 to m562, each vetted applied and killed by its test (the mutant runner); m378, m430 and m538 re-pointed; m427 deleted with the second read it broke.
+
+## Batch 67 - REVIEW: the red team's round 3 remediation in watchpost (D-285 to D-289; A-92)
+
+On go-ionomaps v0.1.0-rc.8 (D-285 to D-288: a stalled NOAA host stops its round at 20 s, three asks running out call GIRO down, a stop moves the failed stations behind, no IDs in its public docs; `Restore` names the part it refused) and go-tuiMaps v0.3.0-rc.7 (no IDs in its public docs; the aliases' fields held by a test); the libraries' halves are in their own build logs.
+
+- **The refused readings** (R3L-7): each count is noted when it changes from the snapshot held - one burst's counts, carried through the hour, noted once (`TestEveryRefusedReadingIsNoted` drives an hour; m564); the burst's count worded as what it counts.
+- **A stopped burst** (D-286): the update asked after a StationsNext snapshot is GIRO's burst; an Unfinished one says so (`TestAStoppedBurstNamesGIRO`; m568).
+- **The restore note** (R3L-6, R3C-2): the diagnostics name the part not taken - GIRO's throttle state, the kept solar flux, both, or the whole state - each on one line (m569); the architecture and FR-4.12 say each part is taken on its own.
+- **D-272's note** (R3L-5, R3C-3): the statuses D-247 and D-260 name - 404 and the 5xx class among them - are never noted; the words fit NOAA's hosts too (m563).
+- **The gates** (R3C-8, R3C-9, R3C-12): `runlog`'s end-of-run tree read and its line's write each fail the run when they fail (m565, m566); the say leg's 11 minutes are its renders' own and a hang needs an error; the run-selector check's `-race` branch is held (m567). The gate roster carries D-273's tolerance and batch 66's six gates (R3D-4).
+- **Smaller:** `ionomaps.UnreadSolar` for the literal (R3L-8, R3C-5); `madeFromHeld` (was `propMadeOf`) and `reachscore`'s check written once (round 2's unrecorded Minors); `docs/extending.md` names the four keymaps and the README the actions' form (R3D-8); G1's arms' spans and the 9-second margin beside "taken as 48" (R3D-9); F-220's figures say one run (R3D-11); F-221 carries D-289; the record's R2H-5 lines and its H1 corrected (R3D-5).
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map redrawn (the restore's parts, the notes on change, a stopped burst) and the atlas regenerated.
+- **Mutants:** m563 to m569, each vetted applied and killed; m378, m534, m556, m558, m560, m561, m231 and m524 re-pointed.
 

@@ -89,7 +89,7 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 	if !ok || !d.mapShown() || !d.inPropagation() || !origin.ok {
 		return propChartKey{}, false
 	}
-	key := propChartKey{made: d.propMadeOf(shown), hour: shown.Now.At, origin: origin.at, radiusKm: float64(d.propRadiusKm())}
+	key := propChartKey{made: d.madeFromHeld(shown), hour: shown.Now.At, origin: origin.at, radiusKm: float64(d.propRadiusKm())}
 	if f := d.mapPane.propFound; f != nil && !d.propRole().target {
 		key.found = propanswers.Target{Name: f.Label, Short: "FOUND", At: ionomaps.LatLon{Lat: f.Lat, Lon: f.Lon}} // on the Observer a target row; on the Broadcaster the centre is the target (D-204)
 	}

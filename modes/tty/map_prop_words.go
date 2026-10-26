@@ -144,7 +144,7 @@ func (d Dashboard) propDayWords(p propPlace, at time.Time) string {
 func (d Dashboard) propStatusBlock() string {
 	snap := *d.mapPane.propSnap
 	age, _, _ := d.propAge(snap)
-	made := strings.TrimPrefix(snapshotWords(snap, d.mapPane.propLayer), "Propagation · "+propLayerName(d.mapPane.propLayer)+" · ")
+	made := strings.TrimPrefix(snapshotWords(snap, d.mapPane.propLayer, d.mapPane.propSnapBurst), "Propagation · "+propLayerName(d.mapPane.propLayer)+" · ")
 	parts := []string{age, "computed " + made}
 	if sw := propScalesWords(snap.Scales); sw != "" {
 		parts = append(parts, sw) // FR-1.18

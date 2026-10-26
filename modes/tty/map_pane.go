@@ -77,6 +77,8 @@ type mapPane struct {
 	propSnap        *ionomaps.Snapshot
 	propErr         error
 	propSnapCorrect bool                      // the no-readings correction the snapshot shown was asked with (D-105)
+	propSnapBurst   bool                      // the snapshot shown came from GIRO's burst, the update asked after a StationsNext snapshot (D-286)
+	propBurstAsked  bool                      // the update in flight is GIRO's burst
 	propUpdatedAt   time.Time                 // when the last was applied, by the window's clock (FR-3.6)
 	propBuilt       uint64                    // how many snapshots have been kept: the answers' keys carry it (L-F3)
 	propChart       propChart                 // the reference chart's answers (W5.1)

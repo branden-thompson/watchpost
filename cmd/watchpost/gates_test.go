@@ -816,7 +816,11 @@ func TestTheRunSelectorGuardCatchesAnEmptySelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tests := map[string][]declaredTest{"x": {{name: "TestAllocBudgetOne"}}, "y": {{name: "TestOther"}}, "z": {{name: "TestTaggedOne", build: property}}}
+	race, err := constraint.Parse("//go:build race")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := map[string][]declaredTest{"x": {{name: "TestAllocBudgetOne"}}, "y": {{name: "TestOther"}}, "z": {{name: "TestTaggedOne", build: property}}, "r": {{name: "TestRaceOnly", build: race}}}
 	cases := []struct {
 		name   string
 		mk     func(string) string
@@ -833,6 +837,10 @@ func TestTheRunSelectorGuardCatchesAnEmptySelection(t *testing.T) {
 			gateoracle.Sub("-run 'AllocBudget' ./...", "-run 'TaggedOne' ./z"), true},
 		{"a tagged test the recipe builds with its tag",
 			gateoracle.Sub("-run 'AllocBudget' ./...", "-tags property -run 'TaggedOne' ./z"), false},
+		{"a race-only test the recipe runs without -race (R3C-12)",
+			gateoracle.Sub("-run 'AllocBudget' ./...", "-run 'RaceOnly' ./r"), true},
+		{"a race-only test the recipe runs with -race",
+			gateoracle.Sub("-run 'AllocBudget' ./...", "-race -run 'RaceOnly' ./r"), false},
 	}
 	for _, c := range cases { // bounded by the case table (P10-02)
 		t.Run(c.name, func(t *testing.T) {

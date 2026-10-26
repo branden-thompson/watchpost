@@ -2,6 +2,7 @@ package propagation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -117,10 +118,10 @@ func TestOnlyRateHeadersAreRead(t *testing.T) {
 	}
 }
 
-// TestAnUnnamedStatusIsNotedOnce is D-272: a status D-247 does not name -
-// a 410, a 500 - is noted in the diagnostics by host and status the first
-// time it comes, never again, and never a named one or an unchanged file's
-// 304.
+// TestAnUnnamedStatusIsNotedOnce is D-272: a status D-247 and D-260 do not
+// name - a 410, a 418 - is noted in the diagnostics by host and status the
+// first time it comes, never again; a named one - an answer, a 304, a 401,
+// 403, 404 or 429, a server's 5xx - never (R3L-5, R3C-3).
 func TestAnUnnamedStatusIsNotedOnce(t *testing.T) {
 	status := 410
 	rec := &recorder{answer: func(string) (httpx.Answer, error) { return httpx.Answer{Status: status, Header: http.Header{}}, nil }}
@@ -129,14 +130,14 @@ func TestAnUnnamedStatusIsNotedOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, s := range []int{410, 410, 500, 200, 304, 401, 403, 429, 500} {
+	for _, s := range []int{410, 410, 418, 200, 304, 401, 403, 404, 429, 500, 503, 418} {
 		status = s
 		if r, err := f.Fetch(context.Background(), "https://lgdc.uml.edu/x", ionomaps.Validators{}); err != nil || r.Status != s {
 			t.Fatalf("status %d reached the library as %d, %v", s, r.Status, err)
 		}
 	}
-	if len(notes) != 2 || !strings.Contains(notes[0], "lgdc.uml.edu answered 410") || !strings.Contains(notes[1], "answered 500") {
-		t.Errorf("notes %q; want 410 and 500, each once, by host", notes)
+	if len(notes) != 2 || !strings.Contains(notes[0], "lgdc.uml.edu answered 410") || !strings.Contains(notes[1], "answered 418") {
+		t.Errorf("notes %q; want 410 and 418, each once, by host, and no named status", notes)
 	}
 }
 
@@ -361,8 +362,40 @@ func TestTheThrottleStateOutlivesARestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	notes = nil
-	if _, err := NewService(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }}); err != nil || len(notes) != 1 || !strings.Contains(notes[0], "starts as new") {
+	if _, err := NewService(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }}); err != nil || len(notes) != 1 || !strings.Contains(notes[0], "the kept state was not taken") {
 		t.Errorf("a state that cannot be taken: %v, notes %v; want the service made and the refusal noted", err, notes)
+	}
+	// R3L-6: a part refused is named, the other said taken.
+	edit := func(key string, v any) []byte {
+		var m map[string]any
+		if err := json.Unmarshal(kept, &m); err != nil {
+			t.Fatal(err)
+		}
+		m[key] = v
+		out, _ := json.Marshal(m)
+		return out
+	}
+	for name, c := range map[string]struct {
+		state []byte
+		want  string
+	}{
+		"the mean refused": {edit("f107", 900), "the kept solar flux was not taken; GIRO's throttle state was"},
+		"GIRO's refused":   {edit("burst", fixedClock().Add(time.Hour).Unix()), "GIRO's throttle state was not taken, so GIRO starts as new; the kept solar flux was taken"},
+		"neither was taken": {func() []byte {
+			var m map[string]any
+			_ = json.Unmarshal(edit("f107", 900), &m)
+			m["burst"] = fixedClock().Add(time.Hour).Unix()
+			out, _ := json.Marshal(m)
+			return out
+		}(), "neither GIRO's throttle state nor the kept solar flux was taken"},
+	} {
+		if err := os.WriteFile(file, c.state, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		notes = nil
+		if _, err := NewService(rec, Options{Clock: fixedClock, StateFile: file, Note: func(n string) { notes = append(notes, n) }}); err != nil || len(notes) != 1 || !strings.Contains(notes[0], c.want) || strings.Contains(notes[0], "\n") {
+			t.Errorf("%s: %v, notes %q; want one line saying %q", name, err, notes, c.want)
+		}
 	}
 }
 

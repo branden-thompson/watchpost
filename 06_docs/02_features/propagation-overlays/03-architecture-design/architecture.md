@@ -128,7 +128,7 @@ where they went stale (BUILD red team D-F4). What watchpost relies on, by the ro
 | watchpost's need | go-ionomaps |
 |---|---|
 | one library object per process, over the propagation client (FR-4.8) | `New(fetcher, Options)`; the fetcher asks only the hosts `Sources()` names (FR-4.7) |
-| GIRO's throttle across restarts (FR-4.12, D-213) | `(*Library).State()` after each update, `Restore(bytes)` at start; a refused state starts as new (`ErrBadState`) |
+| GIRO's throttle across restarts (FR-4.12, D-213) | `(*Library).State()` after each update, `Restore(bytes)` at start; GIRO's throttle and the kept solar flux are taken each on its own, a part refused starting as new and named in the diagnostics (`ErrBadGIROState`, `ErrBadMean`), a state not the library's starting whole as new (`ErrBadState`) |
 | an update with the Settings' options (FR-4.10, FR-4.11) | `Update(ctx, UpdateOptions{Noise, CorrectNoReadings, NoStations})`; the snapshot's `Reason` says fresh, too soon, GIRO paused, offline, stations next or unfinished; `ErrNoField` when there is none |
 | the field drawn, its age and its inputs (FR-1.1 to FR-1.6, FR-5) | `Snapshot.Now` (its hour's MUF(3000) and foF2 fields), `Computed`, `Inputs` (with `Unread`, `GloTECFilled`, `NoStations`), `Background`, `Scales`, `Offset` |
 | the hours ahead (FR-1.13, D-109) | `Snapshot.Ahead(k)`: a snapshot of its own, typical, with none of now's disturbance or offset (L-F2) |

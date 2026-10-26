@@ -105,9 +105,10 @@ lint-plan-code:
 # the parallel suite skips it and this step runs it with nothing else. It must
 # pass with the listener's own watchpost open — the HUM LEAD's condition. It is
 # macOS-only: on another OS the test skips, so CI runs this step on macOS alone,
-# and there a missing `say` fails it.
+# and there a missing `say` fails it. Its 11 minutes are its renders' own:
+# at most four and one retry, two minutes each (D-276).
 test-say:
-	@out="$$(WATCHPOST_SAY_LEG=1 go test -count=1 -v -timeout 6m -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth 2>&1)"; rc=$$?; \
+	@out="$$(WATCHPOST_SAY_LEG=1 go test -count=1 -v -timeout 11m -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth 2>&1)"; rc=$$?; \
 	printf '%s\n' "$$out" | grep -E -- '^(--- |ok |FAIL|\s+synth_test)' ; \
 	[ $$rc -eq 0 ] || exit $$rc; \
 	if printf '%s\n' "$$out" | grep -q -- 'NOT RUN: '; then echo "test-say: NOT RUN - this host's say renders no audio (declared mute: $$WATCHPOST_SAY_MUTE_HOST, D-254)"; fi

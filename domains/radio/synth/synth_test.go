@@ -813,7 +813,7 @@ func renderOnceMore(t *testing.T, render func(context.Context, string) ([]byte, 
 		ctx, cancel := context.WithTimeout(context.Background(), bound)
 		stop := diagnoseHang(t, bound*11/12) // F-188: a hang near the bound is sampled, read rather than retried blind (FR-9.3)
 		pcm, err := render(ctx, text)
-		hung := ctx.Err() == context.DeadlineExceeded
+		hung := err != nil && ctx.Err() == context.DeadlineExceeded // audio that came back as the bound passed is kept (R3C-9)
 		stop()
 		cancel()
 		if !hung || *retried {

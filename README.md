@@ -208,7 +208,9 @@ picture or be switched off (Settings, *Description*).
 | `PgUp` `PgDn` | scroll the window when it is longer than the screen |
 
 While the map is open these keys are the map's. Any other key works as it does on the dashboard. Each
-one is a keymap action, so `[keys]` in `config.toml` can rebind it.
+one is a keymap action, so `[keys]` in `config.toml` can rebind it by the action's name: the map's begin
+`map.` (`map.pan.left`, `map.zoom.in`, `map.propagation`, …) and the bands chart's are `chart.prev` and
+`chart.next`.
 
 **Settings, Maps tab** (`s`, then `tab` to *Maps*):
 

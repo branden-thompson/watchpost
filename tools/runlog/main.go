@@ -22,6 +22,10 @@ import (
 // logFile is the record, from the repository's root.
 const logFile = "06_docs/verify-runs.md"
 
+// openLog opens the record to append to it; its tests hand back a file that
+// refuses the write.
+var openLog = os.OpenFile
+
 // logHead opens the record when the first run makes it.
 const logHead = "# Verify runs\n\n`tools/runlog` appends one line here per `make verify` or `make verify-docs` run; a line is\nwritten by the tool, never by hand. **Tree** is the git tree the run tested, this file left out, so a line\nsays exactly what passed.\n\n| When (UTC) | HEAD | Tree | Lane | Result | Seconds |\n|---|---|---|---|---|---|\n"
 
@@ -99,7 +103,7 @@ func record(dir, lane string, rc int, tested string, took time.Duration, now tim
 			return max(rc, 1), err
 		}
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+	f, err := openLog(path, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		return max(rc, 1), err
 	}

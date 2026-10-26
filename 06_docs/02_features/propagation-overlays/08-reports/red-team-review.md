@@ -4,7 +4,7 @@ date: 2026-10-24
 phase: REVIEW exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); its remediation follows"
+status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); remediated in watchpost batch 67, go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7"
 ---
 
 # REVIEW exit — red team, rounds 1 to 3
@@ -408,4 +408,44 @@ Three fresh blind reviewers, the two lenses that held REVIEW open in round 2 and
 - **go-ionomaps, a new candidate (v0.1.0-rc.8):** D-285, D-286, D-287, D-288; R3D-1 (the four requirement rows, their tests named), R3D-2 and R3L-6/R3C-2 (`Restore` names the part it refused, a sentinel for each; the docs say which part is taken), R3D-3 (the constants table's fold row; `Implausible`'s doc), R3C-6 (`nextAsk`'s parameter; `ask`'s doc), R3C-7 and R3L-4 (a two-update back-off test for an unanswered NOAA ask, with its mutant; a guard deadline in the hung-GIRO fake), R3C-11 (one shape for the freshness helpers).
 - **go-tuiMaps, a new candidate (v0.3.0-rc.7):** D-288; R3D-6 (the README's run log), R3D-7 (the release notes' rc.6 changes), R3C-10 (`made_work` deleted), the two ragged comments, the aliases' field lists held by a test (round 2's unrecorded Minor).
 - **watchpost:** R3D-2 and R3L-6/R3C-2 (the restore note names the part refused), R3D-4 (the gate roster), R3D-5 (this record), R3D-8 (`docs/extending.md`'s keymaps; the README's action names), R3D-9 (the arms' spans and the margin), R3D-11 (F-220's and the fold's limits), R3L-5/R3C-3 (the statuses D-247 names, 404 and 5xx among them; NOAA's words), R3L-7 (a refused count noted on change), R3L-8/R3C-5 (`ionomaps.UnreadSolar`), R3C-8 (runlog's two untested paths), R3C-9 (the say leg's budget; a hang only on an error), R3C-12 (the selector's `-race` branch), D-286's words, D-289's follow-up row; round 2's unrecorded Minors (reachscore's twice-written check, `propMadeOf`'s name); the re-pin to rc.8 and rc.7.
+
+### Round 3, closed
+
+Each round 3 finding and the commit, tag or ruling that closed it, for the next round to check against the code.
+
+| Finding | Closed by |
+|---|---|
+| R3D-1 | go-ionomaps v0.1.0-rc.8 (the four requirement rows) |
+| R3D-2 | go-ionomaps v0.1.0-rc.8 (docs, README, api-review); watchpost batch 67 (architecture, FR-4.12, the note) |
+| R3D-3 | go-ionomaps v0.1.0-rc.8 (the constants table's fold; `Implausible`'s doc) |
+| R3D-4 | watchpost batch 67 (the gate roster) |
+| R3D-5 | watchpost batch 67 (this record) |
+| R3D-6 | go-tuiMaps v0.3.0-rc.7 (the README) |
+| R3D-7 | go-tuiMaps v0.3.0-rc.7 (the release notes) |
+| R3D-8 | watchpost batch 67 (`docs/extending.md`; the README's action names) |
+| R3D-9 | watchpost batch 67 (the arms' spans, the margin; `perfsum`'s comment) |
+| R3D-10 | D-288; go-ionomaps v0.1.0-rc.8, go-tuiMaps v0.3.0-rc.7 |
+| R3D-11 | watchpost batch 67 (F-220); go-ionomaps v0.1.0-rc.8 (the fold's quiet days) |
+| R3L-1 | D-285; go-ionomaps v0.1.0-rc.8 |
+| R3L-2 | D-286; go-ionomaps v0.1.0-rc.8; watchpost batch 67 (the words) |
+| R3L-3 | D-287; go-ionomaps v0.1.0-rc.8 |
+| R3L-4 | go-ionomaps v0.1.0-rc.8 (the second back-off tested) |
+| R3L-5 | watchpost batch 67 |
+| R3L-6 | go-ionomaps v0.1.0-rc.8 (`ErrBadGIROState`, `ErrBadMean`); watchpost batch 67 (the note) |
+| R3L-7 | watchpost batch 67 |
+| R3L-8 | watchpost batch 67 |
+| R3C-1 | as R3L-2 |
+| R3C-2 | as R3L-6 |
+| R3C-3 | as R3L-5 |
+| R3C-4 | D-288; go-ionomaps v0.1.0-rc.8 |
+| R3C-5 | as R3L-8 |
+| R3C-6 | go-ionomaps v0.1.0-rc.8 |
+| R3C-7 | go-ionomaps v0.1.0-rc.8 (the back-off test; the guarded hang) |
+| R3C-8 | watchpost batch 67 |
+| R3C-9 | watchpost batch 67 |
+| R3C-10 | go-tuiMaps v0.3.0-rc.7 |
+| R3C-11 | go-ionomaps v0.1.0-rc.8 |
+| R3C-12 | watchpost batch 67 |
+| Round 2's unrecorded Minors | the alias field lists: go-tuiMaps v0.3.0-rc.7; `reachscore`'s check and `propMadeOf`'s name: watchpost batch 67 |
+| R3C's P10 recommendation | D-289; F-221 |
 

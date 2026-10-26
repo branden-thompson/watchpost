@@ -105,32 +105,34 @@ func writeMetric(b *strings.Builder, m metric, r reportOf) {
 		}
 		writeRow(b, wb.band.String(), *t, *c, r.intervals.byBand[k])
 	}
-	writeRow(b, "**All**", all, allCounts, r.intervals.all[m])
+	stands := writeRow(b, "**All**", all, allCounts, r.intervals.all[m])
 	fmt.Fprintf(b, "\nBy kind, the agreement on open / weak / unheard:\n\n| | Climatology | Background | Shipped |\n|---|---|---|---|\n| **All** |")
 	for col := range columns {
 		fmt.Fprintf(b, " %s / %s / %s |", pct(all[col].agree[open], all[col].n[open]), pct(all[col].agree[weak], all[col].n[weak]), pct(all[col].agree[unheard], all[col].n[unheard]))
 	}
 	fmt.Fprintln(b)
-	n, ca := all[climatology].total()
-	nb, _ := all[background].total()
-	ns, sa := all[shipped].total()
-	if nb != n || ns != n {
+	if !stands {
 		fmt.Fprintf(b, "\nAgainst the target (D-99): no verdict - the columns answered different numbers of scenarios, so no figure stands (RC-9).\n")
 		return
 	}
+	n, ca := all[climatology].total()
+	_, sa := all[shipped].total()
 	fmt.Fprintf(b, "\nAgainst the target (D-99, judged on the point estimate, D-228): %s.\n", verdict(ca, sa, n))
 }
 
 // writeRow writes one band's row, or the metric's total: each column's
-// agreement and the shipped build's lead, each with its interval.
-func writeRow(b *strings.Builder, name string, t [columns]tally, c [outcomes]int, iv bounds) {
+// agreement and the shipped build's lead, each with its interval; and
+// whether a figure stands, every column having answered as many scenarios -
+// the one place that is judged (RC-9).
+func writeRow(b *strings.Builder, name string, t [columns]tally, c [outcomes]int, iv bounds) (stands bool) {
 	n, _ := t[climatology].total()
 	nb, _ := t[background].total()
 	ns, _ := t[shipped].total()
 	if nb != n || ns != n {
 		fmt.Fprintf(b, "| %s | the columns answered different numbers of scenarios: no figure stands |\n", name)
-		return
+		return false
 	}
+	stands = true
 	pairs := c[open] + c[weak] + c[unheard]
 	fmt.Fprintf(b, "| %s | %d (%d / %d / %d) | %s |", name, n, t[climatology].n[open], t[climatology].n[weak], t[climatology].n[unheard], pct(c[open], pairs))
 	for col := range columns {
@@ -144,6 +146,7 @@ func writeRow(b *strings.Builder, name string, t [columns]tally, c [outcomes]int
 		return
 	}
 	fmt.Fprintf(b, " %+.1f [%+.1f, %+.1f] |\n", 100*float64(sa-ca)/float64(n), iv.lead.lo, iv.lead.hi)
+	return stands
 }
 
 // verdict is the shipped build's agreement against D-99's target.

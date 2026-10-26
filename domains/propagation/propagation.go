@@ -110,10 +110,11 @@ func NewService(get Getter, o Options) (*Service, error) {
 	return s, nil
 }
 
-// restoreState takes the throttle state the last run kept (D-213), so a
-// restart within the hour of a burst asks GIRO nothing new; one that cannot
-// be read or that go-ionomaps refuses is noted, and the library starts as
-// new - there is nothing for a listener to do (D-124).
+// restoreState takes the state the last run kept (D-213, D-249), so a
+// restart within the hour of a burst asks GIRO nothing new and the kept
+// solar flux builds a field; a part that cannot be read or that go-ionomaps
+// refuses is noted, naming the part, and starts as new - there is nothing
+// for a listener to do (D-124).
 func (s *Service) restoreState() {
 	if s.state == "" {
 		return
@@ -131,7 +132,24 @@ func (s *Service) restoreState() {
 	if s.note == nil {
 		return
 	}
-	s.note("Propagation: GIRO's throttle state was not taken, so it starts as new - " + fileOnly(err))
+	s.note("Propagation: " + restoreWords(err) + " - " + fileOnly(err))
+}
+
+// restoreWords say which part of the kept state was not taken: go-ionomaps
+// takes GIRO's throttle state and the solar flux each on its own, and names
+// the part it refused (R3L-6).
+func restoreWords(err error) string {
+	giro, mean := errors.Is(err, ionomaps.ErrBadGIROState), errors.Is(err, ionomaps.ErrBadMean)
+	if giro && mean {
+		return "neither GIRO's throttle state nor the kept solar flux was taken, so both start as new"
+	}
+	if giro {
+		return "GIRO's throttle state was not taken, so GIRO starts as new; the kept solar flux was taken"
+	}
+	if mean {
+		return "the kept solar flux was not taken; GIRO's throttle state was"
+	}
+	return "the kept state was not taken, so GIRO's throttle and the solar flux start as new"
 }
 
 // fileOnly is an error with any file's path cut to its name: the state's
@@ -284,16 +302,21 @@ func (f *fetcher) Fetch(ctx context.Context, rawURL string, v ionomaps.Validator
 	return ionomaps.Response{Status: a.Status, Rate: f.rate(host, a.Header), Validators: kept, Body: a.Body}, nil
 }
 
-// namedStatus are the statuses D-247 names, and an unchanged file's 304:
-// any other is a station's or a file's own failure, its status noted once
+// namedStatus are the single statuses D-247 and D-260 name: an answer, an
+// unchanged file's 304, a denial (401, 403), a station or file gone (404) and
+// a refusal (429); a failure on the server's side (5xx) is named as a class.
+// Any other is still a station's or a file's own failure, and is noted once
 // (D-272).
-var namedStatus = map[int]bool{200: true, 304: true, 401: true, 403: true, 429: true}
+var namedStatus = map[int]bool{200: true, 304: true, 401: true, 403: true, 404: true, 429: true}
 
-// noteStatus notes a status D-247 does not name, by host and status, the
-// first time the host answers it.
+// noteStatus notes a status D-247 and D-260 do not name, by host and
+// status, the first time the host answers it, in words for either service.
 func (f *fetcher) noteStatus(host string, status int) {
 	if namedStatus[status] {
 		return
+	}
+	if status >= 500 && status <= 599 {
+		return // a server's failure, which D-247 and D-260 name
 	}
 	if f.note == nil {
 		return // no diagnostics to note into
@@ -304,7 +327,7 @@ func (f *fetcher) noteStatus(host string, status int) {
 	f.seen[key] = true
 	f.mu.Unlock()
 	if first {
-		f.note("Propagation: " + host + " answered " + strconv.Itoa(status) + ", which it is not known to send; that ask is counted failed (D-272)")
+		f.note("Propagation: " + host + " answered " + strconv.Itoa(status) + ", a status it is not known to send: that ask's station or file is taken as missed (D-272)")
 	}
 }
 

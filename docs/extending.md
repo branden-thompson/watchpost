@@ -13,10 +13,13 @@ linter in `make verify` enforces the first; `term.Merge` plus its tests enforce 
 1. **Data flows one way:** domains write `platform/snapshot`; `modes/` (all rendering: TTY and
    `report`) read ONLY the snapshot — never a domain. Anything the dashboard needs from a domain
    arrives as an app-provided hook in `tty.Config` (radio, voices, hydrate, spectrum).
-2. **Keybindings are data** (D-15): a key is named in exactly two places — `defaultKeyMap()` in
-   `modes/tty/dashboard.go` for the Observer and `broadcasterKeyMap()` in `modes/tty/router.go` for
-   the console; users override any of them via `[keys]` in config.toml; `?` is reserved for help,
-   which renders from the merged map so it is always truthful.
+2. **Keybindings are data** (D-15): a key is named once, in the keymap of the scope that owns it —
+   `defaultKeyMap()` in `modes/tty/dashboard.go` for the Observer, `broadcasterKeyMap()` in
+   `modes/tty/router.go` for the console, `defaultMapKeyMap()` in `modes/tty/map_pane.go` for the
+   map while it is open, and `defaultChartKeyMap()` in `modes/tty/map_prop_chart.go` for the bands
+   chart's window (an open window owns its keys, D-61); users override any of them via `[keys]` in
+   config.toml by the action's name; `?` is reserved for help, which renders from the merged map so
+   it is always truthful.
 
 ---
 

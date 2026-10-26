@@ -2,6 +2,6 @@ import pathlib
 # 0.19.0 D-105: the snapshot shown keeps the correction it was asked with.
 # Killed by TestTheNoReadingsCorrectionIsASetting.
 p = pathlib.Path('modes/tty/map_prop_update.go'); s = p.read_text()
-old = 'd.mapPane.propSnapCorrect = &snap, v.correct'
+old = 'd.mapPane.propSnapCorrect, d.mapPane.propSnapBurst = &snap, v.correct, d.mapPane.propBurstAsked'
 assert old in s, 'm290'
-p.write_text(s.replace(old, 'd.mapPane.propSnapCorrect = &snap, false'))
+p.write_text(s.replace(old, 'd.mapPane.propSnapCorrect, d.mapPane.propSnapBurst = &snap, false, d.mapPane.propBurstAsked'))

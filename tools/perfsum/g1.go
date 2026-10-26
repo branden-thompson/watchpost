@@ -46,8 +46,9 @@ const (
 )
 
 // g1FullHours is the shortest span an arm is taken as G1's 48 hours over:
-// 48 hours less one sampling interval, the 2 minutes workload.sh samples at,
-// the harness's own resolution (D-273).
+// 48 hours less one sampling interval, the 2 minutes workload.sh asks of the
+// sampler - its nominal step; each sample's own work makes the measured one a
+// little longer, 2.11 minutes on D-241's run (D-273).
 const g1FullHours = 48 - 2.0/60
 
 // g1Arm is one arm's measure over its span.

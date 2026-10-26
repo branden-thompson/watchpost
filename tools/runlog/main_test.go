@@ -135,4 +135,33 @@ func TestARunWithNoRecordIsNoPass(t *testing.T) {
 	if rc, err := record(t.TempDir(), "verify", 0, tested, time.Second, time.Now()); err == nil || rc != 1 {
 		t.Errorf("a green run outside a repository: exit %d, %v; want 1 and the reason", rc, err)
 	}
+	// R3C-8: the tree read again at the run's end, and the line's write,
+	// each fail the run when they fail.
+	unreadable := repo(t)
+	before, err := testedTree(unreadable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	locked := filepath.Join(unreadable, "locked.go")
+	if err := os.WriteFile(locked, []byte("package x\n"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(locked, 0o644) }()
+	if rc, err := record(unreadable, "verify", 0, before, time.Second, time.Now()); err == nil || rc != 1 {
+		t.Errorf("a green run whose tree cannot be read at its end: exit %d, %v; want 1 and the reason", rc, err)
+	}
+	writable := repo(t)
+	tree, err := testedTree(writable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(writable, logFile), []byte(logHead), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	was := openLog
+	openLog = func(name string, _ int, _ os.FileMode) (*os.File, error) { return os.Open(name) } // read-only: the write fails
+	defer func() { openLog = was }()
+	if rc, err := record(writable, "verify", 0, tree, time.Second, time.Now()); err == nil || rc != 1 {
+		t.Errorf("a green run whose line cannot be written: exit %d, %v; want 1 and the reason", rc, err)
+	}
 }

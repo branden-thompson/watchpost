@@ -53,7 +53,7 @@ func (d Dashboard) armPropAhead() (Dashboard, tea.Cmd) {
 		return d, nil
 	}
 	d.mapPane.propAheadAsked = k
-	held, made := *snap, d.propMadeOf(*snap)
+	held, made := *snap, d.madeFromHeld(*snap)
 	return d, func() tea.Msg {
 		ahead, err := held.Ahead(k)
 		return propAheadMsg{made: made, k: k, snap: ahead, err: err}
@@ -64,7 +64,7 @@ func (d Dashboard) armPropAhead() (Dashboard, tea.Cmd) {
 // snapshot, or of one since rebuilt at the same time, is dropped, and a
 // refused one said in diagnostics (D-124).
 func (d Dashboard) applyPropAhead(v propAheadMsg) Dashboard {
-	if d.mapPane.propSnap == nil || v.made != d.propMadeOf(*d.mapPane.propSnap) {
+	if d.mapPane.propSnap == nil || v.made != d.madeFromHeld(*d.mapPane.propSnap) {
 		return d
 	}
 	if v.k == d.mapPane.propAheadAsked {

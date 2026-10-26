@@ -107,7 +107,7 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
-		w := snapshotWords(s, 0)
+		w := snapshotWords(s, 0, false)
 		for _, want := range c.want {
 			if !strings.Contains(w, want) {
 				t.Errorf("%s: %q does not say %q", c.name, w, want)
@@ -123,12 +123,12 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 		}
 		r.SetNow(at.Add(20 * time.Minute)) // within the hour: the denial is said still (D-247)
 		later, err := statesUpdate(lib)
-		if w := snapshotWords(later, 0); err != nil || !strings.Contains(w, "GIRO refused this host") {
+		if w := snapshotWords(later, 0, false); err != nil || !strings.Contains(w, "GIRO refused this host") {
 			t.Errorf("twenty minutes after the denial: %q (%v); want it said all hour", w, err)
 		}
 		r.SetNow(at.Add(25 * time.Minute)) // asked too soon: another reason, the denial said still
 		soon, err := statesUpdate(lib)
-		if w := snapshotWords(soon, 0); err != nil || soon.Reason == ionomaps.GIROPaused || !strings.Contains(w, "GIRO refused this host") {
+		if w := snapshotWords(soon, 0, false); err != nil || soon.Reason == ionomaps.GIROPaused || !strings.Contains(w, "GIRO refused this host") {
 			t.Errorf("five minutes on, said %v: %q (%v); want another reason and the denial said", soon.Reason, w, err)
 		}
 		var noted []string // the diagnostics name the denial once, as it begins
@@ -154,7 +154,7 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 	}
 	r.SetNow(at.Add(48 * time.Hour))
 	s, err := statesUpdate(kept)
-	if w := snapshotWords(s, 0); err != nil || !strings.Contains(w, "NOAA's solar") || !strings.Contains(w, "the solar flux held from 2 days ago") {
+	if w := snapshotWords(s, 0, false); err != nil || !strings.Contains(w, "NOAA's solar") || !strings.Contains(w, "the solar flux held from 2 days ago") {
 		t.Errorf("the solar file unread two days on: %q (%v); want the kept mean's age said", w, err)
 	}
 
@@ -173,29 +173,53 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 }
 
 // TestEveryRefusedReadingIsNoted is FR-5.2 with go-ionomaps' counts apart
-// (R2C-10, R2L-5): the burst's rows past the range checks, readings refused
+// (R2C-10, R2L-5): the burst's rows and replies refused, readings refused
 // whole as implausible, and readings whose M(3000)F2 alone was refused are
-// each noted in the diagnostics with their own words, and nothing is noted
-// for a snapshot that refused none.
+// each noted in the diagnostics with their own words - once, when a count
+// changes, never again for each snapshot of the hour that carries it
+// (R3L-7) - and nothing is noted for a snapshot that refused none.
 func TestEveryRefusedReadingIsNoted(t *testing.T) {
 	var noted []string
 	d := goldenDash(t, false)
 	d.cfg.MapProblem = func(p string) { noted = append(noted, p) }
-	snap := propSnapAt(drawnAt, 18)
-	m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
-	d = m.(Dashboard)
-	for _, n := range noted {
-		if strings.Contains(n, "refused") {
-			t.Fatalf("a snapshot that refused nothing noted %q", n)
+	apply := func(snap ionomaps.Snapshot) {
+		t.Helper()
+		m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
+		d = m.(Dashboard)
+	}
+	refusals := func() int {
+		n := 0
+		for _, p := range noted {
+			if strings.Contains(p, "refused") {
+				n++
+			}
 		}
+		return n
+	}
+	snap := propSnapAt(drawnAt, 18)
+	apply(snap)
+	if n := refusals(); n != 0 {
+		t.Fatalf("a snapshot that refused nothing noted %d refusals: %q", n, noted)
 	}
 	snap.Computed = drawnAt.Add(10 * time.Minute)
 	snap.Inputs.Rejected, snap.Inputs.Implausible, snap.Inputs.ImplausibleM = 2, 3, 4
-	_, _ = d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
+	apply(snap)
 	text := strings.Join(noted, "\n")
-	for _, want := range []string{"2 rows the range checks refused", "3 station readings were refused as implausible", "4 station readings' M(3000)F2 was refused as implausible; their foF2 was used"} {
+	for _, want := range []string{"2 rows or replies that were refused", "3 station readings were refused as implausible", "4 station readings' M(3000)F2 was refused as implausible; their foF2 was used"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the diagnostics lack %q:\n%s", want, text)
 		}
+	}
+	for i := range 5 { // the hour's other snapshots carry the same counts
+		snap.Computed = drawnAt.Add(time.Duration(20+10*i) * time.Minute)
+		apply(snap)
+	}
+	if n := refusals(); n != 3 {
+		t.Errorf("one burst's counts carried through the hour were noted %d times; want 3, once each", n)
+	}
+	snap.Inputs.Rejected = 5
+	apply(snap)
+	if n := refusals(); n != 4 {
+		t.Errorf("a changed count: %d refusals noted; want the change noted, 4", n)
 	}
 }

@@ -89,9 +89,10 @@ func madeWith(s ionomaps.Snapshot, correct bool) ionomaps.UpdateOptions {
 	return ionomaps.UpdateOptions{Noise: s.Noise, CorrectNoReadings: correct, NoStations: s.Inputs.NoStations}
 }
 
-// propMadeOf is a snapshot as kept, from the one held: the hour shown ahead
-// is made from it, with its moment, build and options.
-func (d Dashboard) propMadeOf(s ionomaps.Snapshot) propMade {
+// madeFromHeld is the key of answers worked out from s - the snapshot held,
+// or an hour ahead made from it: s's moment and noise, with the held
+// snapshot's build and its no-readings correction, which s does not carry.
+func (d Dashboard) madeFromHeld(s ionomaps.Snapshot) propMade {
 	return propMade{computed: s.Computed, built: d.mapPane.propBuilt, opts: madeWith(s, d.mapPane.propSnapCorrect)}
 }
 
@@ -143,20 +144,24 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		snap := v.res.Snapshot
 		same := d.mapPane.propSnap != nil && sameSnapshot(*d.mapPane.propSnap, d.mapPane.propSnapCorrect, snap, v.correct)
 		newlyDenied := snap.Inputs.GIRO == ionomaps.GIRODenied && (d.mapPane.propSnap == nil || d.mapPane.propSnap.Inputs.GIRO != ionomaps.GIRODenied)
-		d.mapPane.propSnap, d.mapPane.propSnapCorrect = &snap, v.correct
+		var was ionomaps.Inputs // the snapshot held's: a count is noted when it changes, never again for each snapshot of the hour (R3L-7)
+		if d.mapPane.propSnap != nil {
+			was = d.mapPane.propSnap.Inputs
+		}
+		d.mapPane.propSnap, d.mapPane.propSnapCorrect, d.mapPane.propSnapBurst = &snap, v.correct, d.mapPane.propBurstAsked
 		if newlyDenied {
 			d.problem("Propagation: GIRO refused this host (a 401 or 403): it is not asked again for a day") // D-247, D-272: named once, as it begins
 		}
 		if snap.Offset.Measured {
 			d.problem(propOffsetWords(snap.Offset)) // the diagnostics' record of each live offset (FR-5.4)
 		}
-		if snap.Inputs.Rejected > 0 {
-			d.problem(fmt.Sprintf("Propagation: GIRO's last burst sent %d rows the range checks refused", snap.Inputs.Rejected)) // counted, never on the field (FR-5.2)
+		if snap.Inputs.Rejected > 0 && snap.Inputs.Rejected != was.Rejected {
+			d.problem(fmt.Sprintf("Propagation: GIRO's last burst sent %d rows or replies that were refused: past the range checks, unreadable, or from a station placed far from where it is", snap.Inputs.Rejected)) // counted, never on the field (FR-5.2)
 		}
-		if snap.Inputs.Implausible > 0 {
+		if snap.Inputs.Implausible > 0 && snap.Inputs.Implausible != was.Implausible {
 			d.problem(fmt.Sprintf("Propagation: %d station readings were refused as implausible, their foF2 too far from the background to be believed (D-248, D-279)", snap.Inputs.Implausible))
 		}
-		if snap.Inputs.ImplausibleM > 0 {
+		if snap.Inputs.ImplausibleM > 0 && snap.Inputs.ImplausibleM != was.ImplausibleM {
 			d.problem(fmt.Sprintf("Propagation: %d station readings' M(3000)F2 was refused as implausible; their foF2 was used (D-248)", snap.Inputs.ImplausibleM))
 		}
 		if !same { // a refresh answered too soon is the snapshot held: its answers and hours ahead stand (P-4)
@@ -168,10 +173,11 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		}
 		d.mapPane.propUpdatedAt = d.now()
 	}
-	d.mapPane.propErr = v.res.Err
+	d.mapPane.propErr, d.mapPane.propBurstAsked = v.res.Err, false
 	if v.res.Err == nil && v.res.Snapshot.Reason == ionomaps.StationsNext {
 		nd, cmd := d.setProp().renderMap().askPropagation() // NOAA's field is shown; GIRO's stations at once (go-ionomaps D-63)
 		if cmd != nil {
+			nd.mapPane.propBurstAsked = true // the update asked is GIRO's burst: an Unfinished one names GIRO (D-286)
 			return nd, cmd
 		}
 		return nd.nextPropTick()
@@ -224,7 +230,7 @@ func (d Dashboard) propStatusWords() string {
 	switch {
 	case snap != nil:
 		age, _, _ := d.propAge(*snap)
-		words := snapshotWords(*snap, d.mapPane.propLayer) + " · " + age // FR-5.1, FR-5.2
+		words := snapshotWords(*snap, d.mapPane.propLayer, d.mapPane.propSnapBurst) + " · " + age // FR-5.1, FR-5.2
 		if f := d.propFailedWords(); f != "" {
 			words = "Propagation · " + f + " · " + strings.TrimPrefix(words, "Propagation · ") // FR-5.2: a failed update first, over the field kept
 		}
@@ -349,8 +355,9 @@ func propOffsetWords(o ionomaps.Offset) string {
 
 // snapshotWords say the layer drawn, when the snapshot was computed and why
 // it is not new if it is not, then what it was made from (FR-5.1): the most
-// needed first, as a narrow window cuts the line's end.
-func snapshotWords(s ionomaps.Snapshot, layer int) string {
+// needed first, as a narrow window cuts the line's end. burst is whether the
+// snapshot came from GIRO's burst, whose stopping names GIRO (D-286).
+func snapshotWords(s ionomaps.Snapshot, layer int, burst bool) string {
 	words := []string{"Propagation", propLayerName(layer), "at " + s.Computed.UTC().Format("15:04 UTC")}
 	switch s.Reason {
 	case ionomaps.TooSoon:
@@ -366,7 +373,11 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 		}
 		words = append(words, w+": the readings it gave first")
 	case ionomaps.Unfinished:
-		words = append(words, "the update stopped before every file came: built from what was held")
+		w := "the update stopped before every file came: built from what was held"
+		if burst {
+			w = "GIRO's burst stopped before every station was asked: built from the readings that came" // D-286
+		}
+		words = append(words, w)
 	}
 	if w := giroWords(s.Inputs.GIRO); w != "" && s.Reason != ionomaps.GIROPaused {
 		words = append(words, w) // the last burst's end, said all hour (D-247)
@@ -374,7 +385,7 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	if len(s.Inputs.Unread) > 0 { // a Partial snapshot's, or one GIRO's state said first (D-239)
 		words = append(words, "NOAA's "+strings.Join(s.Inputs.Unread, ", ")+" not read this update") // FR-5.2: what stands in is said below, the background by its source
 	}
-	if slices.Contains(s.Inputs.Unread, "solar") && s.Inputs.F107Age > 0 {
+	if slices.Contains(s.Inputs.Unread, ionomaps.UnreadSolar) && s.Inputs.F107Age > 0 {
 		words = append(words, "the solar flux held from "+daysWords(s.Inputs.F107Age)+" ago") // D-249: the kept mean, its age said
 	}
 	switch {
