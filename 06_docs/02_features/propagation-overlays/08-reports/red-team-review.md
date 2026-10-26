@@ -1,13 +1,15 @@
 ---
-title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — REVIEW exit red team, rounds 1 and 2"
+title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — REVIEW exit red team, rounds 1 to 3"
 date: 2026-10-24
 phase: REVIEW exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6; round 3 next"
+status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); its remediation follows"
 ---
 
-# REVIEW exit — red team, round 1
+# REVIEW exit — red team, rounds 1 to 3
+
+## Round 1 (D-245)
 
 Up: [rulings](../02-analysis/rulings.md) · [build log](../04-development/build-log.md) · the reports in full: [review-round-1](reviewer-notes/review-round-1.md)
 
@@ -229,7 +231,7 @@ Each round 1 finding, the commit, tag or ruling that closed it, round 2's verdic
 | RH-4 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
 | RH-5 | D-252 | RULED | - |
 | RH-6 | watchpost 2449ae00 (batch 59) | FIXED | - |
-| RH-7 | D-262; go-tuiMaps v0.2.2 | PARTIAL | R2H-5: the nested modules tagged |
+| RH-7 | D-262; go-tuiMaps v0.2.2 | PARTIAL | R2H-5: the nested modules pinned to v0.2.2 on `main` (PR #8, a23484f); their tags await the HUM LEAD |
 | RH-8 | watchpost 2449ae00 (batch 59) | FIXED | R2H-8: `make p10` names a missing `.a2dh.yml`, batch 66 |
 | RH-9 | watchpost 2449ae00 (batch 59) | FIXED, with gaps | R2H-3: `finaltag` on the go tool's parser, batch 66 |
 | RH-10 | the re-pin, dd74f0a9 (batch 60) | FIXED | - |
@@ -303,7 +305,7 @@ Round 1's findings, in the reviewers' words: most FIXED in code; PARTIAL - RC-3,
 ### The agent's remediation, round 2
 
 - **go-ionomaps, a new candidate (v0.1.0-rc.7):** D-270, D-271, D-272, D-275 (the GIRO ask's 15 s), D-279 (the ratio, with `gm3 -residuals`), D-280, D-281; R2P-1 (typical hours opened as read) and R2P-2 (the pin from before `New`); RP-2 (the least recently used day evicted); RP-5 (`sunAt` and the year fraction worked once); R2C-3 (one freshness function each), R2C-5 (`Inputs.Unread`'s doc, the names exported), R2C-7 (the stale index's test), R2C-9 (`checkPlaces`), R2C-10 and R2L-5 (`Implausible` its own count); R2I-1 (the line cap fails closed), R2I-4 (the plausibility count's test); R2L-4 (a restore drops unknown codes and keeps the mean); RL-5 (the hand mutants of `answers.go`, `reach.go`, `lower*.go`, `internal/glotec`, `internal/limits` and `internal/climatology` in the harness); RC-13 (the mirror test fails, not skips, where it can check).
-- **go-tuiMaps, a new candidate (v0.3.0-rc.6):** R2H-1 (the leg's own process, never a machine-wide pattern); R2I-3 (reply headers capped); R2I-5 (`DaylightAt` refuses a place off the globe); R2C-6 (every look setter's re-check tested); D-280, D-281; R2H-2 (its tip's gate row committed); R2H-4 (its rulings' phase header); the gate's private workspace (R2D's note). **v0.2.2's nested modules tagged** (R2H-5).
+- **go-tuiMaps, a new candidate (v0.3.0-rc.6):** R2H-1 (the leg's own process, never a machine-wide pattern); R2I-3 (reply headers capped); R2I-5 (`DaylightAt` refuses a place off the globe); R2C-6 (every look setter's re-check tested); D-280, D-281; R2H-2 (its tip's gate row committed); R2H-4 (its rulings' phase header); the gate's private workspace (R2D's note). **v0.2.2's nested modules** (R2H-5): pinned to v0.2.2 on `main` (PR #8, a23484f); their tags await the HUM LEAD.
 - **watchpost:** D-273, D-274 (the agenda and the follow-up row), D-276, D-277, D-282; R2C-1 (a rebuild-and-back test, m430's record), R2C-2 (`madeWith` tied to the options' fields), R2C-8 (one moment for the words and the night); R2I-2 (`Local` refused, stored postcodes drawn plain); R2H-3 (`finaltag` on the module graph, the release step pinned); R2H-4, R2H-8, R2H-9 (this section), R2D-2, R2D-5, R2D-6, R2D-7, R2B-2, R2B-3, R2B-4; RC-3 (a failed record fails the run), RC-7 (`hasKey`, `stillOrphan`), RC-9 (the build tags); the re-pin to rc.7 and rc.6 (D-206, D-278).
 
 ### The agent's check of the Important findings
@@ -350,7 +352,7 @@ Each round 2 finding and the commit, tag or ruling that closed it, for round 3 t
 | R2H-2 | go-tuiMaps v0.3.0-rc.6 (the rc.5 tip's row committed) |
 | R2H-3 | watchpost batch 66 |
 | R2H-4 | watchpost batch 66; go-tuiMaps v0.3.0-rc.6 |
-| R2H-5 | open: the nested modules pinned to v0.2.2 on a release branch, then tagged (D-262's process) |
+| R2H-5 | go-tuiMaps PR #8 (a23484f on `main`): the nested modules require v0.2.2; their six tags await the HUM LEAD, the tag push declined by the permission system |
 | R2H-6 | go-ionomaps e2103d7 (the build log says the nightly fires from the merge; each candidate's full gate dispatched) |
 | R2H-7 | D-277; watchpost batch 66 |
 | R2H-8 | watchpost batch 66; go-ionomaps v0.1.0-rc.7; go-tuiMaps 474797a |
@@ -369,3 +371,41 @@ Each round 2 finding and the commit, tag or ruling that closed it, for round 3 t
 | R2B-2 | watchpost batch 66 (the agenda) |
 | R2B-3 | watchpost batch 66 (F-220, the agenda's limits) |
 | R2B-4 | watchpost batch 66 |
+
+## Round 3 (D-284)
+
+Three fresh blind reviewers, the two lenses that held REVIEW open in round 2 and a Code reviewer over batch 66 and the candidates; their reports verbatim in [review-round-3](reviewer-notes/review-round-3.md). Tips: watchpost `03ad4e97`, go-ionomaps `e2103d7` (v0.1.0-rc.7 `57bd7ef`), go-tuiMaps `474797a` (v0.3.0-rc.6).
+
+### The verdicts
+
+| Reviewer | Verdict | Fix first |
+|---|---|---|
+| Docs Quality (R3D) | do not exit; no Critical, every fix a document | R3D-1: go-ionomaps' requirements R-5.3, R-5.8, R-3.3 and R-9.8 contradict round 2's code (Important); R3D-4: the gate roster false about the G1 scorer and missing batch 66's gates (Important) |
+| REVIEW lens (R3L) | do not exit; no Critical | R3L-1: a stalling NOAA host runs every update to its deadline, GIRO unasked and NOAA not backed off - a regression from D-270 (Important) |
+| Code Quality (R3C) | do not exit; no Critical | R3C-1: a GIRO that answers once and then hangs is never called down, D-275's goal undone by D-271 (Important; R3L-2, Minor, in the REVIEW lens) |
+
+### The agent's check of the Important findings
+
+| Finding | Verdict | What was checked |
+|---|---|---|
+| R3D-1 | CONFIRMED | go-ionomaps `requirements.md:75` (R-5.3) still says three failures in a row stop a burst and a 410 pauses GIRO; the file was last touched in `00ac871`, round 1 |
+| R3D-4 | CONFIRMED | `07-readiness/gates.md:29` says a default run under 48 hours exits missed; `tools/perfsum/g1.go`'s `g1FullHours` takes 48 hours less one sample |
+| R3L-1 | CONFIRMED | go-ionomaps `update.go:140-142` returns Unfinished before `nextAsk` (`:144`) and the GIRO switch (`:155`); two of watchpost's 30 s client timeouts (`platform/httpx/plain.go:80`) fill the 60 s update (`domains/propagation/propagation.go:47`) |
+| R3C-1 | CONFIRMED | go-ionomaps `internal/giro/asker.go:219`: `stops` ends a burst on failures in a row only while nothing has answered; 39 asks after an answer, 15 s each |
+
+### The forks, ruled
+
+| Finding | Ruling |
+|---|---|
+| R3L-1 | D-285: each NOAA ask has its own 20 s; a timeout stops NOAA's round as a 429 does and backs off; a 5xx still goes on |
+| R3C-1, R3L-2 | D-286: three timeouts in a row call GIRO down whatever answered; the Unfinished words name GIRO when the burst was the update |
+| R3L-3 | D-287: on a stop, the failed stations go behind the ones not reached and the next rotation's head |
+| R3D-10, R3C-4 | D-288: no IDs of any kind in either library's exported docs, a `go doc -all` scan test; A-30 (1) and A-19 (1) vetoed |
+| R3C's P10 recommendation | D-289: a follow-up row against the harness's density counter; D-264 and D-283 stand meanwhile |
+
+### The agent's remediation, round 3
+
+- **go-ionomaps, a new candidate (v0.1.0-rc.8):** D-285, D-286, D-287, D-288; R3D-1 (the four requirement rows, their tests named), R3D-2 and R3L-6/R3C-2 (`Restore` names the part it refused, a sentinel for each; the docs say which part is taken), R3D-3 (the constants table's fold row; `Implausible`'s doc), R3C-6 (`nextAsk`'s parameter; `ask`'s doc), R3C-7 and R3L-4 (a two-update back-off test for an unanswered NOAA ask, with its mutant; a guard deadline in the hung-GIRO fake), R3C-11 (one shape for the freshness helpers).
+- **go-tuiMaps, a new candidate (v0.3.0-rc.7):** D-288; R3D-6 (the README's run log), R3D-7 (the release notes' rc.6 changes), R3C-10 (`made_work` deleted), the two ragged comments, the aliases' field lists held by a test (round 2's unrecorded Minor).
+- **watchpost:** R3D-2 and R3L-6/R3C-2 (the restore note names the part refused), R3D-4 (the gate roster), R3D-5 (this record), R3D-8 (`docs/extending.md`'s keymaps; the README's action names), R3D-9 (the arms' spans and the margin), R3D-11 (F-220's and the fold's limits), R3L-5/R3C-3 (the statuses D-247 names, 404 and 5xx among them; NOAA's words), R3L-7 (a refused count noted on change), R3L-8/R3C-5 (`ionomaps.UnreadSolar`), R3C-8 (runlog's two untested paths), R3C-9 (the say leg's budget; a hang only on an error), R3C-12 (the selector's `-race` branch), D-286's words, D-289's follow-up row; round 2's unrecorded Minors (reachscore's twice-written check, `propMadeOf`'s name); the re-pin to rc.8 and rc.7.
+

@@ -78,3 +78,5 @@ says exactly what passed.
 | 2026-10-25T23:47:08Z | 27049f3b | 18af1d620483 | verify | FAILED (exit 2) | 0 |
 | 2026-10-25T23:51:54Z | 27049f3b | c0c6bbf3c6a3 | verify | FAILED (exit 2) | 240 |
 | 2026-10-26T00:37:25Z | 27049f3b | 43d2152cf292 | verify | green | 2680 |
+| 2026-10-26T02:04:11Z | 03ad4e97 | cfa0b48dfe68 | verify-docs | FAILED (exit 2) | 143 |
+| 2026-10-26T02:07:01Z | 03ad4e97 | e9f9aebf5a2c | verify-docs | green | 143 |
