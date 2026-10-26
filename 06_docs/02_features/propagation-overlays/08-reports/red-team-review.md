@@ -1,13 +1,13 @@
 ---
-title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — REVIEW exit red team, rounds 1 to 3"
+title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — REVIEW exit red team, rounds 1 to 4"
 date: 2026-10-24
 phase: REVIEW exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); remediated in watchpost batch 67, go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7"
+status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); remediated in watchpost batch 67, go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7. ROUND 4 REPORTED 2026-10-26 (D-290): three reviewers, Docs exit once two Minors are fixed, the REVIEW lens and Code do not, one Important between them; three forks ruled (D-291 to D-293); its remediation follows"
 ---
 
-# REVIEW exit — red team, rounds 1 to 3
+# REVIEW exit — red team, rounds 1 to 4
 
 ## Round 1 (D-245)
 
@@ -448,4 +448,36 @@ Each round 3 finding and the commit, tag or ruling that closed it, for the next 
 | R3C-12 | watchpost batch 67 |
 | Round 2's unrecorded Minors | the alias field lists: go-tuiMaps v0.3.0-rc.7; `reachscore`'s check and `propMadeOf`'s name: watchpost batch 67 |
 | R3C's P10 recommendation | D-289; F-221 |
+
+## Round 4 (D-290)
+
+Three fresh blind reviewers - Docs, the REVIEW lens, Code; their reports verbatim in [review-round-4](reviewer-notes/review-round-4.md). Tips: watchpost `d63f499e`, go-ionomaps `08f71ef` (v0.1.0-rc.8), go-tuiMaps `6dbfdf9` (v0.3.0-rc.7).
+
+### The verdicts
+
+| Reviewer | Verdict | Fix first |
+|---|---|---|
+| Docs Quality (R4D) | exit once R4D-1 and R4D-3 are fixed; no Critical or Important | R4D-1: D-288's scan misses a dotless plan ID, and `(G5)` survives |
+| REVIEW lens (R4L) | do not exit; no Critical | R4L-1: D-286 holds only for a hang in the first ~15 s of a burst (Important) |
+| Code Quality (R4C) | do not exit; no Critical | R4C-1: the same, found apart, D-287 putting hanging stations last (Important) |
+
+### The agent's check of the Important finding
+
+| Finding | Verdict | What was checked |
+|---|---|---|
+| R4L-1, R4C-1 | CONFIRMED | go-ionomaps `internal/giro/asker.go:182-189`: the host's context is read only before each ask, and `stops` calls GIRO down on three timeouts in a row; with about 0.9 s an answer, three 15 s timeouts after 16 answers end past 60 s |
+
+### The forks, ruled
+
+| Finding | Ruling |
+|---|---|
+| R4L-1, R4C-1 | D-291: the burst ends before the host's deadline, GIRO called down if its last ask timed out or three did |
+| R4D-2 | D-292: a window's keys stay fixed; the docs say so |
+| R4L-7 | D-293: the Broadcaster arm's build named, its figures an upper bound for the tip |
+
+### The agent's remediation, round 4
+
+- **go-ionomaps, a new candidate (v0.1.0-rc.9):** D-291; R4L-3 (any timeout error taken as one, the production timeouts pinned against a host's budget), R4C-7 (`Unasked` takes the one station whose failure stopped the burst, and only a run of failures moves the head), R4C-8 and R4L-6 (tests for the head past the last of four, timed-out stations behind, the timeout run reset, timeouts counted as failures, both parts of a state refused), R4C-5 (`refused` named for what it means, the round's stop), R4C-4 and R4D-5 (the docs D-285 and D-286 left stale; `ErrBadState`'s message), R4D-1, R4C-2 and R4L-5 (`(G5)`, `(P-6)` and the process words out of the exported docs; the scan widened to a general ID pattern with an allowlist of published work), R4D-6 (the per-ask limits in the README and `Update`'s doc).
+- **go-tuiMaps, a new candidate (v0.3.0-rc.8):** R4C-2 and R4L-5 (the parity and task IDs out of its exported docs; the scan widened), R4C-9 (every alias of an internal struct checked, found by its AST).
+- **watchpost:** D-292 (the docs on window keys), D-293 (the agenda names the build), R4D-3 and R4L-4 (a 410 named), R4D-4 (`perfsum` prints each arm's hours to three places and its margin, the step said nominal), R4D-5 and R4C-6 (the say leg's arithmetic), R4D-7 (the state file holds times and the flux mean), R4C-3 and R4L-2 (the burst flag in the session's state), the build log's mutant list and the roster's m544 (R4D); the re-pin to rc.9 and rc.8.
 
