@@ -152,8 +152,6 @@ func SweepOrphans(dir string, procs Procs, uid int, now time.Time) (ended, faile
 		switch {
 		case !alive || !ok:
 			_ = os.Remove(path) // gone, or a record that cannot be read
-		case orphanOf(p, uid, started) && !stillOrphan(procs, n, uid, started):
-			_ = os.Remove(path) // changed between the two reads: not provably watchpost's
 		case orphanOf(p, uid, started) && procs.End(n) == nil:
 			ended++
 			_ = os.Remove(path)
@@ -166,13 +164,6 @@ func SweepOrphans(dir string, procs Procs, uid int, now time.Time) (ended, faile
 		}
 	}
 	return ended, failed
-}
-
-// stillOrphan reads a process again just before it is ended: still the
-// orphan its record names.
-func stillOrphan(procs Procs, pid, uid int, started time.Time) bool {
-	p, alive := procs.Inspect(pid)
-	return alive && orphanOf(p, uid, started)
 }
 
 // recordedStart is when a record says its child started.

@@ -109,8 +109,8 @@ func (d Dashboard) propOriginWords() []string {
 		return []string{upperFirst(spoken(origin.name + ", " + when + ": no data at the place."))}
 	}
 	answer := fmt.Sprintf("%s, %s: MUF(3000) %s MHz, foF2 %s MHz.", origin.name, when, propanswers.MHz(muf), propanswers.MHz(fo))
-	out := []string{upperFirst(spoken(answer))} // a centre named by its coordinates, said as degrees (AX-1)
-	if w := d.propDayWords(origin, shown.Now.At); w != "" {
+	out := []string{upperFirst(spoken(answer))}                    // a centre named by its coordinates, said as degrees (AX-1)
+	if w := d.propDayWords(origin, d.propNightMoment()); w != "" { // the night's own moment: words and picture at one (R2C-8)
 		out = append(out, spoken(w))
 	}
 	return out

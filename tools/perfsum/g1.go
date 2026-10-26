@@ -45,6 +45,11 @@ const (
 	g1Hourly       = "hourly" // the workload variant run.txt names
 )
 
+// g1FullHours is the shortest span an arm is taken as G1's 48 hours over:
+// 48 hours less one sampling interval, the 2 minutes workload.sh samples at,
+// the harness's own resolution (D-273).
+const g1FullHours = 48 - 2.0/60
+
 // g1Arm is one arm's measure over its span.
 type g1Arm struct {
 	res       resources
@@ -118,7 +123,7 @@ func summariseG1(dir, against string) (string, int, error) {
 		}
 		return "**missed**"
 	}
-	short := use.hours < 48
+	short := use.hours < g1FullHours
 	b.WriteString("\n## The run itself\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n")
 	fmt.Fprintf(&b, "| the driver's cycles not confirmed drawn, or its steps failed, in the mode in use | %d | none | %s |\n", use.warned, verdict(use.warned == 0, true))
 	b.WriteString("\n## The mode's downloads\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n")
@@ -135,7 +140,7 @@ func summariseG1(dir, against string) (string, int, error) {
 		fmt.Fprintf(&b, "| added RSS, MB (medians) | %+.1f | at most %.0f | %s |\n", rss, g1AddedRSSMB, verdict(rss <= g1AddedRSSMB, counts))
 		fmt.Fprintf(&b, "| downloads with the Propagation mode never opened, MB | %s | none | %s |\n", base.arm.total(), verdict(base.arm.wireRead && base.arm.wireMB == 0, counts))
 		fmt.Fprintf(&b, "| its driver's cycles not confirmed drawn, or its steps failed | %d | none | %s |\n", base.arm.warned, verdict(base.arm.warned == 0, counts))
-		short = short || base.arm.hours < 48
+		short = short || base.arm.hours < g1FullHours
 	}
 	switch {
 	case hourly:
@@ -143,6 +148,8 @@ func summariseG1(dir, against string) (string, int, error) {
 	case short:
 		b.WriteString("\nThe run is shorter than G1's 48 hours: a dry run, not the measure, and it exits as one missed (RC-1).\n")
 		missed++
+	default:
+		b.WriteString("\nEach arm counts as G1's 48 hours when its span is within one sampling interval, 2 minutes, of it: the harness's own resolution (D-273).\n")
 	}
 	return b.String(), missed, nil
 }

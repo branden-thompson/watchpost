@@ -49,7 +49,7 @@ func main() {
 	rc := run(flag.Args())
 	rc, err = record(".", *lane, rc, tested, time.Since(started), time.Now())
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "runlog: this run is not recorded in "+logFile+": "+err.Error()+" - the gates' result stands; fix the record and run again")
+		fmt.Fprintln(os.Stderr, "runlog: this run is not recorded in "+logFile+": "+err.Error()+" - a run with no record is no pass (RC-3); fix the record and run again")
 	}
 	os.Exit(rc)
 }
@@ -74,15 +74,17 @@ func run(args []string) int {
 // record appends the run's line to the record in the repository at dir,
 // opening the record when there is none yet, and is the run's exit code: a
 // tree that changed during the run - not the tree the run tested at its end
-// - is no pass, whatever the gates said (RC-3). main gives it a lane.
+// - is no pass, whatever the gates said, and nor is a run whose line could
+// not be written or whose tree could not be read again at its end (RC-3):
+// every error returns an exit code of at least 1. main gives it a lane.
 func record(dir, lane string, rc int, tested string, took time.Duration, now time.Time) (int, error) {
 	head, err := git(dir, nil, "rev-parse", "--short", "HEAD")
 	if err != nil {
-		return rc, err
+		return max(rc, 1), err
 	}
 	tree, err := testedTree(dir)
 	if err != nil {
-		return rc, err
+		return max(rc, 1), err
 	}
 	result := "green"
 	switch {
@@ -94,15 +96,18 @@ func record(dir, lane string, rc int, tested string, took time.Duration, now tim
 	path := filepath.Join(dir, logFile)
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		if err := os.WriteFile(path, []byte(logHead), 0o644); err != nil {
-			return rc, err
+			return max(rc, 1), err
 		}
 	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		return rc, err
+		return max(rc, 1), err
 	}
 	_, err = fmt.Fprintf(f, "| %s | %s | %s | %s | %s | %d |\n", now.UTC().Format(time.RFC3339), head, tested, lane, result, int(took.Seconds()))
-	return rc, errors.Join(err, f.Close())
+	if err = errors.Join(err, f.Close()); err != nil {
+		return max(rc, 1), err
+	}
+	return rc, nil
 }
 
 // testedTree is the git tree of the working tree as the run saw it - every

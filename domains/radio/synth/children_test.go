@@ -25,20 +25,14 @@ func TestMain(m *testing.M) {
 }
 
 // fakeProcs is the process table a sweep sees, and what it ended; refuse
-// makes every end fail, and swap changes a process between its two reads.
+// makes every end fail.
 type fakeProcs struct {
 	procs  map[int]Proc
 	ended  []int
 	refuse bool
-	swap   map[int]Proc
-	reads  int
 }
 
 func (f *fakeProcs) Inspect(pid int) (Proc, bool) {
-	f.reads++
-	if q, ok := f.swap[pid]; ok && f.reads > 1 {
-		return q, true
-	}
 	p, ok := f.procs[pid]
 	return p, ok
 }
@@ -197,9 +191,9 @@ func TestSayIsTrackedWhileItRuns(t *testing.T) {
 
 // TestAnOrphanThatCannotBeEndedIsTriedAgain is the BUILD red team's I-3 and
 // I-4: an orphan whose end fails keeps its record, so the next start tries
-// again, and is counted; a process that changed between the sweep's read and
-// the end - its process ID reused - is never ended; a record a day old whose
-// process runs under another parent is let go.
+// again, and is counted; a process whose ID was reused - started after its
+// record says - is never ended; a record a day old whose process runs under
+// another parent is let go.
 func TestAnOrphanThatCannotBeEndedIsTriedAgain(t *testing.T) {
 	started := time.Date(2026, 10, 15, 9, 0, 0, 0, time.UTC)
 	orphan := Proc{UID: 501, PPID: 1, Started: started, Args: "/usr/bin/say -o /tmp/watchpost-say-9/out.wav"}
@@ -212,9 +206,9 @@ func TestAnOrphanThatCannotBeEndedIsTriedAgain(t *testing.T) {
 		t.Errorf("the record of an orphan not ended was let go: %v", left)
 	}
 	reused := Proc{UID: 501, PPID: 1, Started: started.Add(time.Hour), Args: orphan.Args}
-	procs := &fakeProcs{procs: map[int]Proc{4242: orphan}, swap: map[int]Proc{4242: reused}}
+	procs := &fakeProcs{procs: map[int]Proc{4242: reused}}
 	if ended, _ := SweepOrphans(dir, procs, 501, sweepNow); ended != 0 || len(procs.ended) != 0 {
-		t.Errorf("a process that changed before it was ended was ended: %v", procs.ended)
+		t.Errorf("a process whose ID was reused was ended: %v", procs.ended)
 	}
 	recordAt(t, dir, 5151, 4000, started)
 	running := Proc{UID: 501, PPID: 4000, Started: started, Args: orphan.Args}

@@ -9,6 +9,7 @@ package tty
 // after a refresh is found again once it is answered.
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -177,7 +178,7 @@ func (d Dashboard) keepWordsPlace(p wordsPlace) Dashboard {
 	}
 	for _, want := range append([]string{primary}, p.keys...) {
 		for i, s := range sentences {
-			if starts[i] < 0 || !hasKey(s.keys, want) {
+			if starts[i] < 0 || !slices.Contains(s.keys, want) {
 				continue
 			}
 			rows := sentenceRows(starts, i, len(lines))
@@ -186,14 +187,4 @@ func (d Dashboard) keepWordsPlace(p wordsPlace) Dashboard {
 		}
 	}
 	return d
-}
-
-// hasKey reports whether a sentence is of a kind.
-func hasKey(keys []string, want string) bool {
-	for _, k := range keys {
-		if k == want {
-			return true
-		}
-	}
-	return false
 }

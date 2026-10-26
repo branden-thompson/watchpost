@@ -18,7 +18,7 @@ one** (0.18.0 D-11).
 
 A **Propagation mode** on the map (`P`) draws the HF bands' upper limit, MUF(3000) or foF2, over the whole world, from NOAA's GloTEC grids and GIRO's ionosondes assimilated over a climatology; the **Best Bands chart** (`B`) gives each band's status from the place to the continents and the hours of the day each is typically open; a **frequency's reach** (`F`) is drawn from the place.
 The Observer's listener gets it on the map they have; the Broadcaster's operator gets a map of their own on `g`, centred on the station, with the same mode (D-195).
-Its answers agree with what was heard on the air little better than the climatology alone does, and the release says so; no accuracy floor rides on it (D-250).
+Its answers agree with what was heard on the air little better than the climatology alone does, and the release will say so - in the changelog's known limits and the PR, worded at VALIDATE (D-250, D-255); no accuracy floor rides on it.
 
 ## Where things are
 
@@ -44,10 +44,10 @@ Its answers agree with what was heard on the air little better than the climatol
 
 - **2026-10-12 to 10-17** the fresh days fetched. M1 and M4 graded, both short of D-99's targets (batch 52); G-M3 met and D-75's floor held, the Pacific worse than the climatology (batch 53). The instruments share go-ionomaps' `internal/hybrid` and `ionomapstest` (D-237).
 - **2026-10-18** BUILD exited on `e889e72a` (D-233): its full gate and hosted CI green on both systems, P10 clean, the BUILD report approved (`08-reports/build-report.md`; PLAN approved 2026-10-07, D-139; DISCOVER 2026-10-06, D-84). Beside REVIEW, verdicts before VALIDATE (D-208): G1's 48-hour run, G10.4's fresh-day fetch and G-M3, and M1/M4's graded run on the same fresh days (D-221, D-224, D-228, D-232).
-- **2026-10-21** G1 met over its 48 hours against the map open in Forecast mode, -0.17 % CPU and -10.4 MB (D-236, D-241); against the map never opened, reported, both missed, +3.42 % and +40.0 MB, the open map's own cost (D-246). G1's hourly setting met on 2026-10-24, 2.66 MB an hour against 3.3 (A-83).
+- **2026-10-21** G1 met over its 48 hours against the map open in Forecast mode, -0.17 % CPU and -10.4 MB, one run on one machine (Apple M5 Pro), the noise between arms at least that large (D-236, D-241, D-273; R2D-2); against the map never opened, reported, both missed, +3.42 % and +40.0 MB, the open map's own cost (D-246). G1's hourly setting met on 2026-10-24, 2.66 MB an hour against 3.3 (A-83).
 - **2026-10-22** the heap growth the soak showed, in 0.18.1 too, found in the history store's day cache and bounded (D-242); the fixed build runs beside 0.18.2 to show it.
 - **2026-10-24** REVIEW exit's red team, round 1: seven blind reviewers (D-245), four do not exit, no Critical; its seventeen forks ruled (D-246 to D-262), the remediation under way (`08-reports/red-team-review.md`). The remediation's release candidates are go-ionomaps v0.1.0-rc.6 and go-tuiMaps v0.3.0-rc.5 (D-263 added `DaylightAt`), watchpost on both from batch 60.
-- **2026-10-25** Round 1's remediation built and gated (watchpost batches 59 to 65; go-ionomaps v0.1.0-rc.6; go-tuiMaps v0.3.0-rc.5 and v0.2.2), its measurements recorded (D-248, D-261, D-265, D-266). Round 2, seven fresh reviewers (D-269): five exit, two do not; its thirteen forks ruled (D-270 to D-282), its remediation then round 3.
+- **2026-10-25** Round 1's remediation built and gated (watchpost batches 59 to 65; go-ionomaps v0.1.0-rc.6; go-tuiMaps v0.3.0-rc.5 and v0.2.2), its measurements recorded (D-248, D-261, D-265, D-266). Round 2, seven fresh reviewers (D-269): five exit, two do not; its thirteen forks ruled (D-270 to D-282). Its remediation built and gated the same day: go-ionomaps v0.1.0-rc.7 (the fold bound D-279 set from `gm3 -residuals`, G-M3 unchanged with it), go-tuiMaps v0.3.0-rc.6, watchpost batch 66 on both; round 1's record closed finding by finding. Round 3 next.
 
 ## The rules that cost something
 

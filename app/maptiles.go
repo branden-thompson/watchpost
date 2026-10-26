@@ -29,7 +29,8 @@ const (
 // libraryTransport is the transport the library would use by itself: the
 // environment's proxy, reached wherever it listens; every other connection
 // through the library's dialer, which refuses a private address (go-tuiMaps
-// L-10.3); TLS 1.2 and up; HTTP/2; the library's timeouts.
+// L-10.3); TLS 1.2 and up; HTTP/2; the library's timeouts; reply headers
+// capped at 64 KiB, as every client's are (R2I-3).
 // TestTheTileTransportMatchesTheLibrarys holds it to the library's source.
 func libraryTransport() http.RoundTripper { return libraryTransportVia(http.ProxyFromEnvironment) }
 
@@ -41,8 +42,12 @@ func libraryTransportVia(proxyOf func(*http.Request) (*url.URL, error)) *http.Tr
 	dial, proxy := tuimaps.CheckedDialerFor(proxyOf)
 	return &http.Transport{Proxy: proxy, DialContext: dial,
 		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12}, TLSHandshakeTimeout: tileFirstByte,
-		ResponseHeaderTimeout: tileFirstByte, IdleConnTimeout: tileIdle, ForceAttemptHTTP2: true}
+		ResponseHeaderTimeout: tileFirstByte, IdleConnTimeout: tileIdle, MaxResponseHeaderBytes: tileMaxHeaderBytes, ForceAttemptHTTP2: true}
 }
+
+// tileMaxHeaderBytes bounds a tile reply's headers: a tile server's run to a
+// kilobyte or two, and Go's own bound is about ten megabytes (R2I-3).
+const tileMaxHeaderBytes = 64 << 10
 
 // tileCounter is the tile fetches' counters, by host.
 type tileCounter struct {

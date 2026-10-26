@@ -138,7 +138,7 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 			m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
 			d = m.(Dashboard)
 		}
-		if n := strings.Count(strings.Join(noted, "\n"), "GIRO refused this host (a 401, 403 or 410)"); n != 1 {
+		if n := strings.Count(strings.Join(noted, "\n"), "GIRO refused this host (a 401 or 403)"); n != 1 {
 			t.Errorf("the diagnostics name the denial %d times over two snapshots: %q; want once", n, noted)
 		}
 	}
@@ -169,5 +169,33 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 	d.mapPane.propErr = err
 	if w := d.propStatusWords(); !strings.Contains(w, "solar data could not be read") || !strings.Contains(w, "refreshes now") {
 		t.Errorf("a cold start without the solar file says %q; want what is lacking and the key that asks again", w)
+	}
+}
+
+// TestEveryRefusedReadingIsNoted is FR-5.2 with go-ionomaps' counts apart
+// (R2C-10, R2L-5): the burst's rows past the range checks, readings refused
+// whole as implausible, and readings whose M(3000)F2 alone was refused are
+// each noted in the diagnostics with their own words, and nothing is noted
+// for a snapshot that refused none.
+func TestEveryRefusedReadingIsNoted(t *testing.T) {
+	var noted []string
+	d := goldenDash(t, false)
+	d.cfg.MapProblem = func(p string) { noted = append(noted, p) }
+	snap := propSnapAt(drawnAt, 18)
+	m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
+	d = m.(Dashboard)
+	for _, n := range noted {
+		if strings.Contains(n, "refused") {
+			t.Fatalf("a snapshot that refused nothing noted %q", n)
+		}
+	}
+	snap.Computed = drawnAt.Add(10 * time.Minute)
+	snap.Inputs.Rejected, snap.Inputs.Implausible, snap.Inputs.ImplausibleM = 2, 3, 4
+	_, _ = d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
+	text := strings.Join(noted, "\n")
+	for _, want := range []string{"2 rows the range checks refused", "3 station readings were refused as implausible", "4 station readings' M(3000)F2 was refused as implausible; their foF2 was used"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("the diagnostics lack %q:\n%s", want, text)
+		}
 	}
 }

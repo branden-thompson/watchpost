@@ -117,6 +117,29 @@ func TestOnlyRateHeadersAreRead(t *testing.T) {
 	}
 }
 
+// TestAnUnnamedStatusIsNotedOnce is D-272: a status D-247 does not name -
+// a 410, a 500 - is noted in the diagnostics by host and status the first
+// time it comes, never again, and never a named one or an unchanged file's
+// 304.
+func TestAnUnnamedStatusIsNotedOnce(t *testing.T) {
+	status := 410
+	rec := &recorder{answer: func(string) (httpx.Answer, error) { return httpx.Answer{Status: status, Header: http.Header{}}, nil }}
+	var notes []string
+	f, err := fetcherOf(rec, func(s string) { notes = append(notes, s) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []int{410, 410, 500, 200, 304, 401, 403, 429, 500} {
+		status = s
+		if r, err := f.Fetch(context.Background(), "https://lgdc.uml.edu/x", ionomaps.Validators{}); err != nil || r.Status != s {
+			t.Fatalf("status %d reached the library as %d, %v", s, r.Status, err)
+		}
+	}
+	if len(notes) != 2 || !strings.Contains(notes[0], "lgdc.uml.edu answered 410") || !strings.Contains(notes[1], "answered 500") {
+		t.Errorf("notes %q; want 410 and 500, each once, by host", notes)
+	}
+}
+
 // TestTwoUpdatesAskNOAAOnce is FR-4.8 (A-30): updates asked at once run one
 // at a time in go-ionomaps - the second waits for the first and is answered
 // from what it fetched, so no address of NOAA's is asked twice.

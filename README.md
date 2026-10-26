@@ -204,6 +204,7 @@ picture or be switched off (Settings, *Description*).
 | `A` · `O` | the Area Alerts box · the Overlays menu (`↑` `↓` move, `←` `→` change a choice, `space` switches, `esc` closes it) |
 | `P` | the Propagation mode on / off |
 | `L` · `U` · `B` · `F` · `/` | Propagation mode: the layer (MUF or foF2) · refresh now · the bands chart · your frequency · find a place anywhere |
+| `↑` `↓` (the bands chart open) | the chart's previous / next target, in the chart's own scope (Help shows them beside Pan) |
 | `PgUp` `PgDn` | scroll the window when it is longer than the screen |
 
 While the map is open these keys are the map's. Any other key works as it does on the dashboard. Each

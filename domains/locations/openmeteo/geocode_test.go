@@ -155,6 +155,13 @@ func TestTheGeocodersTextIsCleaned(t *testing.T) {
 	if err != nil || ref.Zip != "62704" || ref.TZ != "" {
 		t.Errorf("a hostile reply: zip %q, zone %q (%v); want the one five-digit zip and no zone", ref.Zip, ref.TZ, err)
 	}
+	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"results":[{"name":"Springfield","admin1":"Illinois","latitude":39.8,"longitude":-89.6,"country_code":"US","timezone":"Local","postcodes":["62704"]}]}`))
+	}))
+	defer local.Close()
+	if ref, err := NewGeocoder(c, local.URL).Geocode(context.Background(), "Springfield"); err != nil || ref.TZ != "" {
+		t.Errorf("a zone of \"Local\", the listener's own clock: zone %q (%v); want none kept (R2I-2)", ref.TZ, err)
+	}
 	offGlobe := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"results":[{"name":"Nowhere","latitude":1e300,"longitude":-1e300,"country_code":"IS","timezone":"Atlantic/Reykjavik"}]}`))
 	}))

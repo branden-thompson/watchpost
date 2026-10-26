@@ -115,6 +115,7 @@ const tideBytes
 const tideLabelMost
 const tileFirstByte
 const tileIdle
+const tileMaxHeaderBytes
 const timingsKept
 const titlePartKm
 const titlePlaceKm

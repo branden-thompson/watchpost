@@ -210,3 +210,37 @@ func TestAnHourAheadOfARebuiltSnapshotIsDropped(t *testing.T) {
 		t.Error("the hour ahead of the snapshot before the rebuild was kept for the rebuilt one")
 	}
 }
+
+// TestARebuildAndBackIsAnsweredAgain is the REVIEW red team's R2C-1: a
+// snapshot rebuilt with other options and then rebuilt back, at the same
+// moment, is a third snapshot - the moment and the options as they were, the
+// build not - so the chart worked out before is not shown for it, and an
+// hour ahead asked before the rebuilds is dropped when it lands.
+func TestARebuildAndBackIsAnsweredAgain(t *testing.T) {
+	d := chartDash(t)
+	if !d.propChartShown() {
+		t.Fatal("control: no chart shown before the rebuilds")
+	}
+	m, _ := d.Update(mapKeyMsg(t, "shift+right"))
+	d = m.(Dashboard)
+	d.mapPane.propAheadAsked = 0
+	d, cmd := d.armPropAhead()
+	if cmd == nil {
+		t.Fatal("control: no hour ahead was asked")
+	}
+	first := *d.mapPane.propSnap
+	other := first
+	other.Noise = ionomaps.NoiseRural // the same moment, another noise (D-187)
+	for _, s := range []ionomaps.Snapshot{other, first} {
+		m, _ = d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: s}, correct: d.mapPane.propSnapCorrect})
+		d = m.(Dashboard)
+	}
+	if d.propChartShown() {
+		t.Error("the chart worked out before the rebuilds is shown for the snapshot rebuilt back")
+	}
+	m, _ = d.Update(cmd())
+	d = m.(Dashboard)
+	if _, kept := d.mapPane.propAheadSnaps[1]; kept {
+		t.Error("the hour ahead asked before the rebuilds was kept for the snapshot rebuilt back")
+	}
+}

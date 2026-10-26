@@ -73,8 +73,9 @@ func (d Dashboard) propOptions() ionomaps.UpdateOptions {
 // propMade is the snapshot an answer is worked out from, as it was kept: its
 // moment, which snapshot kept - one rebuilt at the same moment is another
 // (L-F3) - and the options it was made with. Every answer's key carries it
-// and the options are compared in this one place, so a new option is added to
-// the update's options alone (RC-5).
+// and the options are compared in this one place (RC-5); a new option is
+// added to propOptions and to madeWith, which reads it back from the
+// snapshot, and TestEveryUpdateOptionIsMadeWith fails until it is (R2C-2).
 type propMade struct {
 	computed time.Time
 	built    uint64
@@ -144,13 +145,19 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		newlyDenied := snap.Inputs.GIRO == ionomaps.GIRODenied && (d.mapPane.propSnap == nil || d.mapPane.propSnap.Inputs.GIRO != ionomaps.GIRODenied)
 		d.mapPane.propSnap, d.mapPane.propSnapCorrect = &snap, v.correct
 		if newlyDenied {
-			d.problem("Propagation: GIRO refused this host (a 401, 403 or 410): it is not asked again for a day") // D-247: named once, as it begins
+			d.problem("Propagation: GIRO refused this host (a 401 or 403): it is not asked again for a day") // D-247, D-272: named once, as it begins
 		}
 		if snap.Offset.Measured {
 			d.problem(propOffsetWords(snap.Offset)) // the diagnostics' record of each live offset (FR-5.4)
 		}
 		if snap.Inputs.Rejected > 0 {
 			d.problem(fmt.Sprintf("Propagation: GIRO's last burst sent %d rows the range checks refused", snap.Inputs.Rejected)) // counted, never on the field (FR-5.2)
+		}
+		if snap.Inputs.Implausible > 0 {
+			d.problem(fmt.Sprintf("Propagation: %d station readings were refused as implausible, their foF2 too far from the background to be believed (D-248, D-279)", snap.Inputs.Implausible))
+		}
+		if snap.Inputs.ImplausibleM > 0 {
+			d.problem(fmt.Sprintf("Propagation: %d station readings' M(3000)F2 was refused as implausible; their foF2 was used (D-248)", snap.Inputs.ImplausibleM))
 		}
 		if !same { // a refresh answered too soon is the snapshot held: its answers and hours ahead stand (P-4)
 			d.mapPane.propBuilt++                                       // a snapshot rebuilt at the same moment - the correction, the stations - is another (L-F3)

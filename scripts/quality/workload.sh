@@ -33,8 +33,8 @@
 # g1b is G1's Broadcaster arm (D-246), run alone on GIRO: two processes, each
 # swapped to the Broadcaster console. <outdir>/use opens the console's own map
 # on g, its Propagation mode open and driven on the use arm's cycle;
-# <outdir>/idle never opens the map. `go run ./tools/perfsum -g1 -against
-# idle <outdir>` reads the difference.
+# <outdir>/idle never opens the map. `go run ./tools/perfsum -g1 <outdir>
+# -against idle` reads the difference: -g1 takes the run's directory (R2B-4).
 set -eu
 mode=${1:?session|cold|warm|g1|g1b}; variant=${2:?default|heavy|hourly}; out=${3:?outdir}; arg=${4:-}; arg2=${5:-}
 root=$(git rev-parse --show-toplevel)

@@ -7,6 +7,7 @@ package tty
 import (
 	"context"
 	"github.com/branden-thompson/watchpost/platform/propanswers"
+	"slices"
 
 	tea "charm.land/bubbletea/v2"
 	"errors"
@@ -275,7 +276,7 @@ func TestARefreshKeepsTheReadersPlace(t *testing.T) {
 		t.Errorf("once answered again, North America's sentence is at row %d and the scroll %d; at the top", rowOf(d, "North America: "), d.modalScroll)
 	}
 	m, _ = d.Update(mapKeyMsg(t, "pgup"))
-	if d = m.(Dashboard); d.mapPane.wordsAt.keys != nil && hasKey(d.mapPane.wordsAt.keys, "target:North America") && d.modalScroll > 0 {
+	if d = m.(Dashboard); d.mapPane.wordsAt.keys != nil && slices.Contains(d.mapPane.wordsAt.keys, "target:North America") && d.modalScroll > 0 {
 		t.Errorf("after the reader's own scroll the place kept is still %v", d.mapPane.wordsAt.keys)
 	}
 }
@@ -599,5 +600,33 @@ func TestAnHourAheadIsNotSaidBeforeItIsWorkedOut(t *testing.T) {
 	w := strings.Join(d.propOriginWords(), " ")
 	if !strings.Contains(w, "3 hours ahead: being worked out") || strings.Contains(w, "MUF(3000)") {
 		t.Errorf("an hour ahead not yet worked out is said %q", w)
+	}
+}
+
+// TestTheWordsAndTheNightShareAMoment is the REVIEW red team's R2C-8: the
+// night is drawn at the hour's moment to its 5-minute step, and the words
+// say day or night at that same moment - so in the minutes after the line
+// passes the place, before the next step draws it, they agree with the
+// picture, not with the clock.
+func TestTheWordsAndTheNightShareAMoment(t *testing.T) {
+	d := chartDash(t)
+	if !d.mapPane.propOrigin.ok {
+		t.Fatal("control: the chart's fixture has no origin")
+	}
+	place := tuimaps.LonLat{Lon: d.mapPane.propOrigin.at.Lon, Lat: d.mapPane.propOrigin.at.Lat}
+	turn := tuimaps.DaylightAt(place, d.mapPane.propSnap.Computed).Turns
+	at := turn.Add(10 * time.Second)
+	if turn.IsZero() || !at.Truncate(nightStep).Before(turn) {
+		t.Fatalf("control: the turn at %v falls on the night's step; the check needs one inside a step", turn)
+	}
+	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: propSnapAt(at, 18)}, correct: d.mapPane.propSnapCorrect})
+	d = m.(Dashboard)
+	drawn := tuimaps.DaylightAt(place, d.propNightMoment())
+	if drawn.Day == tuimaps.DaylightAt(place, at).Day {
+		t.Fatalf("control: the drawn moment %v and the hour's %v say the same", d.propNightMoment(), at)
+	}
+	want := map[bool]string{true: "It is day at ", false: "It is night at "}[drawn.Day]
+	if words := strings.Join(d.propOriginWords(), " "); !strings.Contains(words, want) {
+		t.Errorf("ten seconds after the line passed, the night drawn at %v: %q; want %q, as drawn", d.propNightMoment(), words, want)
 	}
 }

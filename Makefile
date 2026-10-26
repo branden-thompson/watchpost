@@ -107,7 +107,7 @@ lint-plan-code:
 # macOS-only: on another OS the test skips, so CI runs this step on macOS alone,
 # and there a missing `say` fails it.
 test-say:
-	@out="$$(WATCHPOST_SAY_LEG=1 go test -count=1 -v -timeout 3m -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth 2>&1)"; rc=$$?; \
+	@out="$$(WATCHPOST_SAY_LEG=1 go test -count=1 -v -timeout 6m -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth 2>&1)"; rc=$$?; \
 	printf '%s\n' "$$out" | grep -E -- '^(--- |ok |FAIL|\s+synth_test)' ; \
 	[ $$rc -eq 0 ] || exit $$rc; \
 	if printf '%s\n' "$$out" | grep -q -- 'NOT RUN: '; then echo "test-say: NOT RUN - this host's say renders no audio (declared mute: $$WATCHPOST_SAY_MUTE_HOST, D-254)"; fi
@@ -537,7 +537,7 @@ P10_OUT ?= $(DIST)/p10.json
 p10:
 	@command -v $(A2DH) >/dev/null 2>&1 || { echo "p10: '$(A2DH)' not found — this gate cannot be skipped; set A2DH=/path/to/a2dh"; exit 1; }
 	@mkdir -p $(DIST)
-	@$(A2DH) p10 check --json > $(P10_OUT) || { echo "p10: live findings — see $(P10_OUT)"; exit 1; }
+	@$(A2DH) p10 check --json > $(P10_OUT) || { [ -f .a2dh.yml ] || echo "p10: this tree has no .a2dh.yml, the harness's configuration - set the harness up (a2dh init) and run make p10 again"; echo "p10: the P10 check failed - its live findings, or the reason it could not run, are in $(P10_OUT); fix each and run make p10 again"; exit 1; }
 	@./scripts/quality/p10-unmatched.sh $(P10_OUT)
 	@go run ./tools/p10floor $(P10_OUT)
 	@./scripts/quality/ledger-ratified.sh

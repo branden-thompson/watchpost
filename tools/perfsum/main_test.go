@@ -340,7 +340,9 @@ func TestTheHourlyRunIsJudgedOnItsDownloadsAlone(t *testing.T) {
 // TestAG1RunThatCannotBeJudgedFails is the REVIEW red team's RC-1: G1's
 // summary fails closed - an arm with an RSS that does not read refuses the
 // run, a cycle the driver could not confirm counts as missed, and a default
-// run under 48 hours exits as missed even when every target is met.
+// run under 48 hours exits as missed even when every target is met; one
+// short of 48 hours by no more than one 2-minute sample is taken as 48, and
+// says so (D-273).
 func TestAG1RunThatCannotBeJudgedFails(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, body string) {
@@ -352,8 +354,8 @@ func TestAG1RunThatCannotBeJudgedFails(t *testing.T) {
 		}
 	}
 	const head = "utc,elapsed,rss_kb,footprint_kb,threads,pcpu,heap_alloc,heap_inuse,heap_objects,goroutines,fds,disk_files,disk_bytes,publishes_recent,cpu_time\n"
-	arm := func(name, rss, phases string, hours int) {
-		end := time.Date(2026, 10, 19, 0, 0, 0, 0, time.UTC).Add(time.Duration(hours) * time.Hour)
+	arm := func(name, rss, phases string, span time.Duration) {
+		end := time.Date(2026, 10, 19, 0, 0, 0, 0, time.UTC).Add(span)
 		write(name+"/phases.log", "2026-10-19T00:00:00Z G measured\n"+phases)
 		write(name+"/samples.csv", head+"2026-10-19T00:00:00Z,,204800,,20,,,,,50,,,,,0:00.00\n"+end.Format(time.RFC3339)+",,"+rss+",,20,,,,,50,,,,,1:00.00\n")
 		write(name+"/counters.jsonl", "{\"at\":\"2026-10-19T00:00:00Z\",\"propagation_wire_bytes\":0}\n")
@@ -364,22 +366,31 @@ func TestAG1RunThatCannotBeJudgedFails(t *testing.T) {
 		code := run([]string{"-g1", dir}, &out, &errOut)
 		return out.String() + errOut.String(), code
 	}
-	arm("use", "204800", "", 49)
-	arm("map", "204800", "", 49)
+	arm("use", "204800", "", 49*time.Hour)
+	arm("map", "204800", "", 49*time.Hour)
 	if out, code := judge(); code != 0 {
 		t.Fatalf("control: a 49-hour run meeting every target exits %d:\n%s", code, out)
 	}
-	arm("use", "", "", 49)
+	arm("use", "", "", 49*time.Hour)
 	if out, code := judge(); code != 2 || !strings.Contains(out, "no RSS that reads") {
 		t.Errorf("an RSS that does not read: exit %d:\n%s", code, out)
 	}
-	arm("use", "204800", "2026-10-19T03:00:00Z U3 WARN: the MUF not seen drawn\n", 49)
+	arm("use", "204800", "2026-10-19T03:00:00Z U3 WARN: the MUF not seen drawn\n", 49*time.Hour)
 	if out, code := judge(); code != 1 || !strings.Contains(out, "| the driver's cycles not confirmed drawn, or its steps failed, in the mode in use | 1 | none | **missed** |") {
 		t.Errorf("a cycle not confirmed drawn: exit %d:\n%s", code, out)
 	}
-	arm("use", "204800", "", 6)
-	arm("map", "204800", "", 6)
+	arm("use", "204800", "", 6*time.Hour)
+	arm("map", "204800", "", 6*time.Hour)
 	if out, code := judge(); code != 1 || !strings.Contains(out, "a dry run") {
 		t.Errorf("a 6-hour default run meeting every target: exit %d; want missed:\n%s", code, out)
+	}
+	arm("use", "204800", "", 48*time.Hour-2*time.Minute)
+	arm("map", "204800", "", 48*time.Hour-2*time.Minute)
+	if out, code := judge(); code != 0 || !strings.Contains(out, "within one sampling interval, 2 minutes") {
+		t.Errorf("a run 47.97 hours an arm, one sample short: exit %d; want taken as 48, said:\n%s", code, out)
+	}
+	arm("use", "204800", "", 48*time.Hour-3*time.Minute)
+	if out, code := judge(); code != 1 || !strings.Contains(out, "a dry run") {
+		t.Errorf("a run three minutes short: exit %d; want missed:\n%s", code, out)
 	}
 }

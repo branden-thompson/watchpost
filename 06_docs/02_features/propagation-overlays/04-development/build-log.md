@@ -1,10 +1,10 @@
 ---
 title: "0.19.0 — BUILD log"
 date: 2026-10-08
-phase: BUILD
+phase: REVIEW
 sev: SEV-0
 authority: HUM LEAD
-status: "IN PROGRESS — one entry per batch; the record moves before the gate (REFLECT L5)"
+status: "LIVE — one entry per batch, BUILD's and REVIEW's remediation; the record moves before the gate (REFLECT L5)"
 ---
 
 # BUILD log
@@ -796,7 +796,7 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 
 ## Batch 64 - REVIEW: the Broadcaster arm's harness, and the measurements (D-246, D-248, D-261, D-265, D-266; A-90)
 
-- **The Broadcaster arm** (D-246): `workload.sh g1b` runs two console arms side by side, the map on `g` with the Propagation mode on G1's use cycle against the console idle, at 150 by 46; `perfsum -g1 -against idle` judges it. A dry run of 8 minutes drew every cycle's frequency; the 48-hour run starts from this commit, alone on GIRO.
+- **The Broadcaster arm** (D-246): `workload.sh g1b` runs two console arms side by side, the map on `g` with the Propagation mode on G1's use cycle against the console idle, at 150 by 46; `perfsum -g1 <outdir> -against idle` judges it. A dry run of 8 minutes drew every cycle's frequency; the 48-hour run starts from this commit, alone on GIRO.
 - **G-M3 re-run** (D-248): the committed gm3 at go-ionomaps 3c2da5a gives every figure and verdict of the earlier run on the fresh days unchanged, so the seed-position check and the residual bound refuse no reading there; the largest residuals - fresh days foF2 6.09 MHz and M(3000)F2 1.24, PLAN's week 7.19 and 1.48 - lie under the bounds of 8 and 2.0.
 - **The grid's age** (D-253, D-265, D-266): the fresh days hold a grid every 3 hours, so D-253's hour-old grid does not exist in them - the agent's error in the fork's evidence. `gm3 -grid-age 3h` (go-ionomaps 14b38ff) scores the newest grid beside the one 3 hours older: mainland US foF2 RMS 0.46 against 1.21 MHz, worse than the climatology's 0.71; all stations 0.84 against 1.27. The gap met D-265's condition; the HUM LEAD authorised a day of 10-minute grids (D-266), fetched under D-39 outside the tree, to score 10, 30 and 60 minutes.
 - **M5 at 800 by 220** (D-261): after RP-4's fixes, with the structured field, 24.6 to 26.7 ms a pan frame (the reviewer's 32 to 42 before them); 400 by 110 at 6.8 to 7.3 ms against M5's 16. A known limit, recorded in the VALIDATE agenda.
@@ -812,4 +812,24 @@ The rest of the quality pass's watchpost findings outside the Propagation mode, 
 - **Filed:** the seven reports verbatim in `08-reports/reviewer-notes/review-round-2.md`; the verdicts, the forks and the remediation list in `08-reports/red-team-review.md`, round 2. Five reviewers say exit and two do not (Docs: R2D-1, the committed scorer against D-241; the REVIEW lens: R2L-1 to R2L-3, go-ionomaps' failure handling, R2L-3 brought in by D-260).
 - **Ruled:** D-270 to D-282, each put singly with its evidence.
 - **Found during the pass:** go-tuiMaps' gate test `TestALegThatIgnoresTermIsStillStopped` kills `sleep 3607` machine-wide, so the reviewers' parallel gates failed each other (R2H-1); every run of a library's `scripts/gate` appends to its tracked `gate-runs.md`, so the reviewers' quick gates left rows in both libraries, kept as the record keeps every run.
+
+## Batch 66 - REVIEW: the red team's round 2 remediation in watchpost (D-270 to D-282; A-91)
+
+On go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6 (D-206, D-278); the libraries' halves are in their own build logs.
+
+- **G1's span** (D-273): `perfsum` takes an arm as 48 hours when its span is within one 2-minute sample of it, and says so; three minutes short is still a dry run. D-241's run, 47.97 hours an arm, now reads as the measure.
+- **The say leg** (D-276): each render has its own 2-minute bound; one killed at it has its main thread logged and is tried once more, the retry printed as `RETRY:` in the leg's output; a second hang fails. `TestAHungRenderIsTriedOnceMore` drives the rule with a render that hangs. The leg's timeout is 6 minutes.
+- **The floors** (D-277): `p10floor` fails on a firing density row whose reason states no floor, naming it with what it measures; none fires today.
+- **The benchmark** (D-282): `BenchmarkPropRenderMap` pans one step every op over a field shaped as a recorded MUF map, go-tuiMaps' own; the frame's allocation budget re-set from the shaped field (A-91 (2)). A pan frame at 133 by 44 is 1.20 to 1.29 ms, 557 allocations and 72 KB (five runs of 200, Apple M5 Pro; the evidence folder's `m5-frames/d282-prop-render-map.txt`), against 19.8 to 20.3 µs and 124 allocations for the unchanged view the benchmark used to redraw.
+- **The rebuild and back** (R2C-1): `TestARebuildAndBackIsAnsweredAgain` rebuilds with other options and back at the same moment; the chart worked out before is not shown and an hour ahead asked before is dropped. Both m430 and `built: 0` (m547) survived every test before it; m430's "Killed by" named a test that flips the options.
+- **`madeWith`** (R2C-2): `TestEveryUpdateOptionIsMadeWith` sets each of go-ionomaps' options in turn by reflection and fails until `madeWith` carries a new one; the comment that said one place was enough is corrected.
+- **One moment** (R2C-8): the words take day or night at the night's own 5-minute step; `TestTheWordsAndTheNightShareAMoment` reads them ten seconds after the line passes.
+- **Stored text** (R2I-2, R2I-3): the geocoder's zone "Local" is not kept; Settings draws every place through `placeWithZip`, its postcode plain, and a place with no postcode, which drew `Reykjavik, IS ()`, without empty brackets; the tile transport caps reply headers at 64 KiB.
+- **The floors** (D-283): `modes/tty` measures 0.42 over 344 changed functions, under its 0.43: `hasKey`'s deletion took a function and its guard, and the postcode fix brought two pre-feature renderers into the changed set. The HUM LEAD renewed the floor at 0.42. `domains/propagation` held 2.00 once `noteStatus`'s missing-diagnostics case became its own guard; `tools/runlog`'s record stayed one function, 1.40.
+- **Release** (R2H-3): `finaltag` reads go.mod through `go mod edit -json` and refuses a replaced paired library; the release step is pinned by a test. Against today's go.mod it refuses v0.19.0, as it must.
+- **The refused readings** (R2C-10, R2L-5): the diagnostics note go-ionomaps' three counts apart - the burst's rows past the range checks, readings refused whole as implausible (D-248, D-279), readings whose M(3000)F2 alone was refused - `TestEveryRefusedReadingIsNoted` (m560, m561).
+- **Records** (RC-3, RC-7, RC-9, R2H-8, D-272): a run with no record fails; `hasKey` and `stillOrphan` deleted; the run-selector check reads build tags; `make p10` names a missing `.a2dh.yml`; a GIRO or NOAA status D-247 does not name is noted once by host, and the denial's words no longer name a 410.
+- **The record** (R2H-4, R2H-9, R2D-2, R2D-5, R2D-6, R2D-7, R2B-2, R2B-3, R2B-4, D-274): the headers say REVIEW; round 1 closed finding by finding in `red-team-review.md`; G1's figures say one run, one machine, and the noise between arms; the agenda carries the Broadcaster arm's rule, Hourly's STALE minutes, D-255's three limits and M5's run count; F-219 records D-276; F-220, the open map's own cost, with a target; the README names the chart's target keys; the judging command is spelled `-g1 <run> -against idle`.
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6; `THIRD_PARTY_LICENSES.md` regenerated; the tile transport's test now holds watchpost's header cap to the library's 64 KiB; the as-built map redrawn (the fetcher's notes, the refused readings) and the atlas regenerated; `app`'s declaration set re-captured for `tileMaxHeaderBytes`.
+- **Mutants:** m543 to m562, each vetted applied and killed by its test (the mutant runner); m378, m430 and m538 re-pointed; m427 deleted with the second read it broke.
 

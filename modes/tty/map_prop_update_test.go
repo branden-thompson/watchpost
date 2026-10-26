@@ -3,6 +3,7 @@ package tty
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -236,6 +237,35 @@ func runEvery(cmd tea.Cmd) {
 	if b, ok := cmd().(tea.BatchMsg); ok {
 		for _, c := range b {
 			go runEvery(c)
+		}
+	}
+}
+
+// TestEveryUpdateOptionIsMadeWith is the REVIEW red team's R2C-2: madeWith
+// names the options a snapshot was made with field by field, so each of
+// go-ionomaps' UpdateOptions is set in turn and must come back from it - a
+// field it leaves out would never compare equal to propOptions, and every arm
+// would ask again.
+func TestEveryUpdateOptionIsMadeWith(t *testing.T) {
+	typ := reflect.TypeOf(ionomaps.UpdateOptions{})
+	for i := range typ.NumField() {
+		f := typ.Field(i)
+		var o ionomaps.UpdateOptions
+		v := reflect.ValueOf(&o).Elem().Field(i)
+		switch v.Kind() {
+		case reflect.Bool:
+			v.SetBool(true)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			v.SetInt(1)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			v.SetUint(1)
+		default:
+			t.Fatalf("UpdateOptions.%s is a %s, which this test cannot set: teach it, and madeWith, the new option", f.Name, v.Kind())
+		}
+		s := ionomaps.Snapshot{Noise: o.Noise}
+		s.Inputs.NoStations = o.NoStations
+		if got := madeWith(s, o.CorrectNoReadings); got != o {
+			t.Errorf("UpdateOptions.%s set: madeWith gives %+v from the snapshot it makes; want %+v - madeWith, and this test's snapshot, must carry the option", f.Name, got, o)
 		}
 	}
 }

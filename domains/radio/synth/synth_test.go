@@ -239,21 +239,27 @@ func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 	// for a test that passes in isolation. A gate that fails for load teaches
 	// people to re-run it rather than read it, which is how a real failure gets
 	// waved through (the same argument as F-29).
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	defer diagnoseHang(t, 110*time.Second)() // F-188: a hang near the bound is sampled, read rather than retried blind (FR-9.3)
+	//
+	// EACH RENDER HAS ITS OWN BOUND, AND ONE HANG IS TRIED ONCE MORE (D-276):
+	// macOS's speech service now and then never answers say (F-219). A render
+	// killed at its bound has its main thread logged, then is tried again,
+	// once a run, the retry printed; a second hang fails the gate.
+	retried := false
+	say := func(text string) ([]byte, error) {
+		return renderOnceMore(t, SayVoice{}.Say, text, 2*time.Minute, &retried)
+	}
 
 	// A CONTROL RENDER FIRST, to tell "this box cannot speak" apart from "our
 	// input broke it". GitHub's macOS runner has /usr/bin/say and it produces
 	// about 236 bytes for a whole sentence — present and not functional. Failing
 	// there says nothing about the security property this test exists for, and a
 	// gate that fails for the environment teaches people to re-run it.
-	benign, err := SayVoice{}.Say(ctx, "One sentence of ordinary text.")
+	benign, err := say("One sentence of ordinary text.")
 	if err != nil || len(benign) < 22050 {
 		muteHost(t, fmt.Sprintf("say is present but not rendering audio on this host (%d bytes, err=%v)", len(benign), err))
 	}
 
-	pcm, err := SayVoice{}.Say(ctx, "Test $(echo pwned) `id` ; rm -rf / ok.")
+	pcm, err := say("Test $(echo pwned) `id` ; rm -rf / ok.")
 	if err != nil {
 		t.Fatalf("say did not render within the bound (or failed): %v", err)
 	}
@@ -264,7 +270,7 @@ func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 		// speaking" (GitHub's macOS runner: a full render, then 236 bytes for the
 		// next sentence, whatever it is). Still full, the hostile text is what
 		// failed; short now too, the property cannot be observed on this host.
-		again, err := SayVoice{}.Say(ctx, "One sentence of ordinary text.")
+		again, err := say("One sentence of ordinary text.")
 		if err != nil || len(again) < 22050 {
 			muteHost(t, fmt.Sprintf("say stopped rendering on this host between renders (%d bytes, then %d, err=%v)", len(benign), len(again), err))
 		}
@@ -795,6 +801,58 @@ func TestTheConditionsSayTheListenersUnits(t *testing.T) {
 		if got := std.conditions(loc, imperial); !strings.Contains(got, want) {
 			t.Errorf("imperial %v: %q; want it to say %q", imperial, got, want)
 		}
+	}
+}
+
+// renderOnceMore renders text within bound, its hang diagnosed near the
+// bound; a render killed at its bound is tried once more while *retried is
+// false, the retry printed, and a second hang returns its error (D-276).
+func renderOnceMore(t *testing.T, render func(context.Context, string) ([]byte, error), text string, bound time.Duration, retried *bool) ([]byte, error) {
+	t.Helper()
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), bound)
+		stop := diagnoseHang(t, bound*11/12) // F-188: a hang near the bound is sampled, read rather than retried blind (FR-9.3)
+		pcm, err := render(ctx, text)
+		hung := ctx.Err() == context.DeadlineExceeded
+		stop()
+		cancel()
+		if !hung || *retried {
+			return pcm, err
+		}
+		*retried = true
+		t.Logf("RETRY: say was killed at its %v bound (%v), its main thread logged above; trying once more, and a second hang fails (D-276)", bound, err)
+	}
+}
+
+// TestAHungRenderIsTriedOnceMore is D-276: a render killed at its bound is
+// tried once more and passes when the second answers; a second hang returns
+// its error; a render that answers is never tried again.
+func TestAHungRenderIsTriedOnceMore(t *testing.T) {
+	calls := 0
+	hangs := 0
+	render := func(ctx context.Context, _ string) ([]byte, error) {
+		calls++
+		if calls <= hangs {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}
+		return []byte("pcm"), nil
+	}
+	for _, c := range []struct {
+		hangs, calls int
+		ok           bool
+	}{{0, 1, true}, {1, 2, true}, {2, 2, false}} {
+		calls, hangs = 0, c.hangs
+		retried := false
+		pcm, err := renderOnceMore(t, render, "text", 20*time.Millisecond, &retried)
+		if calls != c.calls || (err == nil) != c.ok || (c.ok && string(pcm) != "pcm") {
+			t.Errorf("%d hang(s): %d render(s), %q, %v; want %d, passing %v", c.hangs, calls, pcm, err, c.calls, c.ok)
+		}
+	}
+	retried := true // a run's one retry already spent
+	calls, hangs = 0, 1
+	if _, err := renderOnceMore(t, render, "text", 20*time.Millisecond, &retried); err == nil || calls != 1 {
+		t.Errorf("a hang after the run's retry was spent: %d render(s), %v; want one, failing", calls, err)
 	}
 }
 

@@ -75,3 +75,6 @@ says exactly what passed.
 | 2026-10-25T05:29:20Z | 8092d107 | b2340162ed2d | verify | green | 2381 |
 | 2026-10-25T13:43:08Z | a444b000 | 8a657ba29ccf | verify | green | 2347 |
 | 2026-10-25T21:20:19Z | 5b71df2c | 31dd227a2e83 | verify-docs | green | 144 |
+| 2026-10-25T23:47:08Z | 27049f3b | 18af1d620483 | verify | FAILED (exit 2) | 0 |
+| 2026-10-25T23:51:54Z | 27049f3b | c0c6bbf3c6a3 | verify | FAILED (exit 2) | 240 |
+| 2026-10-26T00:37:25Z | 27049f3b | 43d2152cf292 | verify | green | 2680 |

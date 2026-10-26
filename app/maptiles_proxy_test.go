@@ -112,6 +112,10 @@ func TestTheTileTransportMatchesTheLibrarys(t *testing.T) {
 			if exprText(t, fset, kv.Value) != "true" || !got.Bool() {
 				t.Errorf("ForceAttemptHTTP2 differs")
 			}
+		case "MaxResponseHeaderBytes":
+			if want := exprText(t, fset, consts[exprText(t, fset, kv.Value)]); want != "64 << 10" || got.Int() != 64<<10 {
+				t.Errorf("reply headers capped at %d; the library at %s", got.Int(), want)
+			}
 		default:
 			want := durationOf(t, fset, consts, kv.Value)
 			if d := time.Duration(got.Int()); d != want {
@@ -199,4 +203,13 @@ func durationOf(t *testing.T, fset *token.FileSet, consts map[string]ast.Expr, e
 	}
 	t.Fatalf("cannot read a duration from %s", exprText(t, fset, e))
 	return 0
+}
+
+// TestTheTileTransportCapsItsHeaders is the REVIEW red team's R2I-3: the tile
+// transport bounds a reply's headers at 64 KiB, as every client's are, never
+// Go's ten megabytes.
+func TestTheTileTransportCapsItsHeaders(t *testing.T) {
+	if got := libraryTransportVia(http.ProxyFromEnvironment).MaxResponseHeaderBytes; got != 64<<10 {
+		t.Errorf("tile reply headers capped at %d bytes; want 64 KiB", got)
+	}
 }

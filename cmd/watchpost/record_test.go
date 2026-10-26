@@ -404,7 +404,7 @@ func TestTheSayLegIsBoundedAndDiagnosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(src), "defer diagnoseHang(t, ") {
+	if !strings.Contains(string(src), "stop := diagnoseHang(t, ") {
 		t.Error("the say test does not sample a hang near its bound")
 	}
 	if !strings.Contains(string(src), `"-file", report`) {

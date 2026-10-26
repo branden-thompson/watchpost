@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -240,7 +241,7 @@ type fetcher struct {
 	note  func(string)
 
 	mu   sync.Mutex
-	seen map[string]bool // host + header, once noted
+	seen map[string]bool // host + header, or host + status, once noted
 }
 
 var errUnlisted = errors.New("propagation: the address is not https on a host go-ionomaps exports")
@@ -270,6 +271,7 @@ func (f *fetcher) Fetch(ctx context.Context, rawURL string, v ionomaps.Validator
 	if !answered {
 		return ionomaps.Response{}, errNoStatus
 	}
+	f.noteStatus(host, a.Status)
 	// A validator past maxValidator is not kept (RI-4): the next ask asks
 	// whole, never echoing the service's bytes back.
 	kept := ionomaps.Validators{ETag: a.Header.Get("ETag"), LastModified: a.Header.Get("Last-Modified")}
@@ -280,6 +282,30 @@ func (f *fetcher) Fetch(ctx context.Context, rawURL string, v ionomaps.Validator
 		kept.LastModified = ""
 	}
 	return ionomaps.Response{Status: a.Status, Rate: f.rate(host, a.Header), Validators: kept, Body: a.Body}, nil
+}
+
+// namedStatus are the statuses D-247 names, and an unchanged file's 304:
+// any other is a station's or a file's own failure, its status noted once
+// (D-272).
+var namedStatus = map[int]bool{200: true, 304: true, 401: true, 403: true, 429: true}
+
+// noteStatus notes a status D-247 does not name, by host and status, the
+// first time the host answers it.
+func (f *fetcher) noteStatus(host string, status int) {
+	if namedStatus[status] {
+		return
+	}
+	if f.note == nil {
+		return // no diagnostics to note into
+	}
+	key := host + " status " + strconv.Itoa(status)
+	f.mu.Lock()
+	first := !f.seen[key]
+	f.seen[key] = true
+	f.mu.Unlock()
+	if first {
+		f.note("Propagation: " + host + " answered " + strconv.Itoa(status) + ", which it is not known to send; that ask is counted failed (D-272)")
+	}
 }
 
 // maxValidator is the longest validator kept and sent back: an ETag or a

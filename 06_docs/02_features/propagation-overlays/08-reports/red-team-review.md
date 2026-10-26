@@ -4,7 +4,7 @@ date: 2026-10-24
 phase: REVIEW exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); its remediation follows, then round 3"
+status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6; round 3 next"
 ---
 
 # REVIEW exit — red team, round 1
@@ -87,7 +87,7 @@ Against the clean tips. CONFIRMED: the cited lines do what the finding says. PLA
 | RB-10 | CONFIRMED (comment); fork 8 | `map_prop_settings.go:60` says "measured cost"; the notes are D-141's ceilings. |
 | RD-3 | CONFIRMED | `TestEveryConstantCarriesItsBasis` exists nowhere; G10.5 only in go-ionomaps `implementation-plan.md:134`. |
 | RD-4 | PLAUSIBLE; fork 11 | `map_prop_chart.go:476-479` literal up/down inside the chart window; D-61/D-62 give an open window its arrows. |
-| RD-6 | Not yet checked | |
+| RD-6 | Checked by round 2 | Its verdicts and where each gap closed: "Round 1, closed", below. |
 | RD-7 | CONFIRMED | `architecture.md:133` names `Refused`; `:43` names `Library` methods `Fields, Bands, Reach` it does not have. |
 | RD-8 | CONFIRMED | go-ionomaps `implementation-plan.md:134` against `ahead.go:61-63`. |
 | RD-9 | CONFIRMED | `problem-statement.md:64` "50 MB RSS"; `:98` "M1 and M4's baseline is not yet measured". |
@@ -96,7 +96,7 @@ Against the clean tips. CONFIRMED: the cited lines do what the finding says. PLA
 | RD-12 | CONFIRMED | `Makefile:302-303`: runlog wraps the lane that refuses. |
 | RD-13, RD-14 | Forks 12; A-row | |
 | RI-1 | CONFIRMED (mechanics); fork 3 | `internal/stations/stations.go:233-237` the reply's position overwrites the seed's; `internal/assimilate/assimilate.go:76` the fit centres on the mean residual. |
-| RI-2, RI-3, RI-4, RI-5, RI-7 | Not yet checked | Each reviewer's repro is in its report. |
+| RI-2, RI-3, RI-4, RI-5, RI-7 | Checked by round 2 | Its verdicts and where each gap closed: "Round 1, closed", below. |
 | RI-8, RL-10, RH-10 | CONFIRMED; the agent's error | D-206 (`rulings.md:227`): "each later library change takes a new release candidate and a re-pin"; `build-log.md:732`: "watchpost needs no re-pin". |
 | RL-1 | CONFIRMED | `internal/giro/asker.go:152` any status of 500 or more, or a transport error, stops the burst as GIRO's refusal; `internal/stations/stations.go:167` `pollAt += len(poll)`; `asker.go:157` a 403 resets the back-off. |
 | RL-2 | CONFIRMED (labelling); fork 4 | `update.go:139-140` a bare `Snapshot{Reason: Offline}`. |
@@ -109,15 +109,15 @@ Against the clean tips. CONFIRMED: the cited lines do what the finding says. PLA
 | RP-1 | CONFIRMED (code); fork 6 | `ahead.go:47` `s.clone()`; `update.go:446-451` copies what the hour ahead then replaces; `typical.go:67-69` all 24 hours' cells up front. |
 | RP-2 | CONFIRMED | `typical.go:57-58` a third day empties the cache. |
 | RP-3 | CONFIRMED (benchmarks' shape); fork 16 | |
-| RP-4, RP-5, RP-6 | Not yet checked | |
+| RP-4, RP-5, RP-6 | Checked by round 2 | Its verdicts and where each gap closed: "Round 1, closed", below. |
 | RC-1 | CONFIRMED | `tools/perfsum/main.go:265` an unparsable number is 0; `scripts/quality/workload.sh:137` a driver's failure exits 0. |
 | RC-2 | Fork 9 | |
 | RC-3 | CONFIRMED | `tools/runlog/main.go:43-44` the tree is read after the run. |
 | RC-4 | CONFIRMED | `map_prop_ahead.go:66` on `Computed` alone; the chart's key carries `built` (`map_prop_chart.go:22`). |
 | RC-5 | CONFIRMED (structure); remediated under D-237 | |
 | RC-6 | Fork 7 | |
-| RC-7, RC-8, RC-10 | Minor; checked as fixed | |
-| RC-9, RC-13, RC-15 | Not yet checked | |
+| RC-7, RC-8, RC-10 | Minor | RC-7 was recorded here as fixed while `hasKey` and `stillOrphan` stood; round 2 found them (R2C), deleted in batch 66. |
+| RC-9, RC-13, RC-15 | Checked by round 2 | Its verdicts and where each gap closed: "Round 1, closed", below. |
 | RC-12 | PLAUSIBLE | go-ionomaps `scripts/gate:80` takes `GOTOOLCHAIN` from the environment; whether hosted CI sets it is read from its log. |
 | RC-14 | PLAUSIBLE | go-tuiMaps `describe.go:74-88` keeps the report until a place's elevation crosses 0; a past turn needs the turn and the elevation to disagree near the horizon. |
 | RC-16 | Fork 13 | |
@@ -176,6 +176,94 @@ each a root of its own, a change to that file only the HUM LEAD makes (RC-12).
 | 16, M5's scope | D-261: M5 stays at 400x110; 800x220 recorded as a known limit and re-measured after RP-4's fixes and a structured benchmark |
 | 17, go-tuiMaps' main | D-262: go-tuiMaps v0.2.2 from main on go1.27.3, floor 1.26.10; a go-ionomaps nightly |
 
+## Round 1, closed (R2H-9)
+
+Each round 1 finding, the commit, tag or ruling that closed it, round 2's verdict on it, and where a gap round 2 found was closed. Batch 66 is watchpost's round 2 remediation; go-ionomaps rc.7 and go-tuiMaps rc.6 the libraries'.
+
+| Finding | Closed by | Round 2's verdict | What round 2 left open, and where it closed |
+|---|---|---|---|
+| RB-1 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RB-2 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RB-3 | D-250 | RULED | VALIDATE agenda item 1 |
+| RB-4 | D-246 | RULED, a gap | R2B-1: D-274 |
+| RB-5 | watchpost 2449ae00 (batch 59) | FIXED | R2D-2: the arms' spread said, batch 66 |
+| RB-6 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RB-7 | D-255 | RULED | R2B-3: the agenda's limits, batch 66 |
+| RB-8 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RB-9 | go-ionomaps README, rc.6 | FIXED | - |
+| RB-10 | watchpost 2449ae00 (batch 59); D-259 | FIXED | - |
+| RC-1 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RC-2 | D-254, built | RULED | - |
+| RC-3 | watchpost 2449ae00 (batch 59) | PARTIAL | a failed record fails the run, batch 66 |
+| RC-4 | watchpost 2449ae00 (batch 59); 8092d107 (batch 63) | FIXED in code | R2C-1: the rebuild-and-back test, batch 66 |
+| RC-5 | 8092d107 (batch 63); A-89 | RULED | R2C-2: `madeWith` tied to the options, batch 66 |
+| RC-6 | D-264; 85f7046e (batch 61) | RULED | R2C-4: D-277, batch 66 |
+| RC-7 | watchpost 2449ae00 (batch 59) | PARTIAL | `hasKey` and `stillOrphan` deleted, batch 66 |
+| RC-8 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RC-9 | watchpost 2449ae00 (batch 59) | PARTIAL | the run-selector check reads build tags, batch 66 |
+| RC-10 | 59ed3997 (batch 62) | FIXED | - |
+| RC-11 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RC-12 | go-ionomaps v0.1.0-rc.6 | FIXED / RULED | - |
+| RC-13 | go-ionomaps v0.1.0-rc.6 | PARTIAL | the mirror test fails where it can check, go-ionomaps rc.7 |
+| RC-14 | go-tuiMaps v0.3.0-rc.5 | FIXED | - |
+| RC-15 | go-tuiMaps v0.3.0-rc.5 | FIXED for depth | R2C-6: every setter tested, go-tuiMaps rc.6 |
+| RC-16 | D-258, D-263; go-tuiMaps v0.3.0-rc.5 | RULED | - |
+| RC-17 | go-tuiMaps v0.3.0-rc.5 | FIXED | - |
+| RD-1 | watchpost 2449ae00 (batch 59) | PARTIAL | R2D-2, batch 66 |
+| RD-2 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RD-3 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RD-4 | watchpost 2449ae00 (batch 59); D-256 | FIXED | R2D-7: the README names the keys, batch 66 |
+| RD-5 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RD-6 | go-tuiMaps v0.3.0-rc.5 | FIXED | R2D-4: D-281, go-tuiMaps rc.6 |
+| RD-7 | watchpost 2449ae00 (batch 59); go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RD-8 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RD-9 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RD-10 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RD-11 | go-tuiMaps v0.3.0-rc.5 | FIXED | - |
+| RD-12 | watchpost 2449ae00 (batch 59) | PARTIAL | R2D-3: D-280, all three repositories |
+| RD-13 | D-257 | FIXED | - |
+| RD-14 | A-29 (13), D-267 | RULED | reversed by D-281 |
+| RH-1 | watchpost 2449ae00 (batch 59); go-ionomaps v0.1.0-rc.6 | PARTIAL | go-tuiMaps' README, rc.6 |
+| RH-2 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RH-3 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RH-4 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RH-5 | D-252 | RULED | - |
+| RH-6 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RH-7 | D-262; go-tuiMaps v0.2.2 | PARTIAL | R2H-5: the nested modules tagged |
+| RH-8 | watchpost 2449ae00 (batch 59) | FIXED | R2H-8: `make p10` names a missing `.a2dh.yml`, batch 66 |
+| RH-9 | watchpost 2449ae00 (batch 59) | FIXED, with gaps | R2H-3: `finaltag` on the go tool's parser, batch 66 |
+| RH-10 | the re-pin, dd74f0a9 (batch 60) | FIXED | - |
+| RH-11 | D-259 | RULED | - |
+| RH-12 | go-ionomaps v0.1.0-rc.6; go-tuiMaps v0.3.0-rc.5 | FIXED | - |
+| RH-13 | go-ionomaps v0.1.0-rc.6 | FIXED (noted) | - |
+| RH-14 | go-ionomaps v0.1.0-rc.6 | PARTIAL | R2H-4: watchpost's headers, batch 66 |
+| RI-1 | D-248 | RULED, a residual | D-279: a relative bound, go-ionomaps rc.7 |
+| RI-2 | watchpost 2449ae00 (batch 59) | PARTIAL | R2I-2: `Local` refused, postcodes drawn plain, batch 66 |
+| RI-3 | go-ionomaps v0.1.0-rc.6 | PARTIAL | R2I-1: the line cap fails closed, go-ionomaps rc.7 |
+| RI-4 | watchpost 2449ae00 (batch 59) | FIXED | R2I-3: the tile clients' headers capped, batch 66 and go-tuiMaps rc.6 |
+| RI-5 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RI-6 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RI-7 | watchpost 2449ae00 (batch 59) | FIXED | - |
+| RI-8 | the re-pin, dd74f0a9 (batch 60) | FIXED | - |
+| RL-1 | D-247; go-ionomaps v0.1.0-rc.6 | PARTIAL | R2L-1, R2L-2: D-271, D-272, go-ionomaps rc.7 |
+| RL-2 | D-249; go-ionomaps v0.1.0-rc.6 | FIXED, a regression | R2L-3: D-270, go-ionomaps rc.7 |
+| RL-3 | D-246 | RULED | - |
+| RL-4 | D-250 | RULED | - |
+| RL-5 | go-ionomaps v0.1.0-rc.6 | PARTIAL | the hand mutants encoded, go-ionomaps rc.7 |
+| RL-6 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RL-7 | D-260; go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RL-8 | D-252 | RULED | - |
+| RL-9 | watchpost 2449ae00 (batch 59) | PARTIAL | D-255: the verdict at VALIDATE |
+| RL-10 | the re-pin, dd74f0a9 (batch 60) | FIXED | - |
+| RL-11 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
+| RL-12 | go-ionomaps v0.1.0-rc.6; dd74f0a9 (batch 60) | FIXED | - |
+| RP-1 | D-251; go-ionomaps v0.1.0-rc.6 | PARTIAL | R2P-1, R2P-2: go-ionomaps rc.7 |
+| RP-2 | go-ionomaps v0.1.0-rc.6 | PARTIAL | an older day served alone, go-ionomaps rc.7 |
+| RP-3 | D-261, a444b000 (batch 64) | PARTIAL | D-282: watchpost's benchmark, batch 66 |
+| RP-4 | go-tuiMaps v0.3.0-rc.5 | FIXED | - |
+| RP-5 | none | NOT FIXED | fixed, go-ionomaps rc.7 (A-30 (6)) |
+| RP-6 | 59ed3997 (batch 62) | FIXED | - |
+
 ## Round 2 (D-269)
 
 Seven fresh blind reviewers, the same lenses, given round 1's findings and the fix commits, each told to verify the fixes in code, hunt what round 1 missed and attack the code the remediation brought in. The reports in full: [review-round-2](reviewer-notes/review-round-2.md). The network dropped twice during the pass; each reviewer was resumed where it stopped.
@@ -229,3 +317,55 @@ Round 1's findings, in the reviewers' words: most FIXED in code; PARTIAL - RC-3,
 | R2B-1 | CONFIRMED (fact) | D-246 sets no rule for a miss; ruled D-274 |
 | R2C-1, R2P-1, R2H-1 | PLAUSIBLE | each reproduced by its reviewer; checked again by its fix's own test, which fails before the fix |
 
+### Round 2, closed
+
+Each round 2 finding and the commit, tag or ruling that closed it, for round 3 to check against the code.
+
+| Finding | Closed by |
+|---|---|
+| R2L-1 | D-271; go-ionomaps v0.1.0-rc.7 |
+| R2L-2 | D-272; go-ionomaps v0.1.0-rc.7 (counted, the station's own); watchpost batch 66 (noted once) |
+| R2L-3 | D-270; go-ionomaps v0.1.0-rc.7 |
+| R2L-4 | go-ionomaps v0.1.0-rc.7 (A-30 (3)) |
+| R2L-5 | go-ionomaps v0.1.0-rc.7 (`Implausible`, `ImplausibleM`); watchpost batch 66 (each noted) |
+| R2L-6 | as R2H-1 |
+| R2C-1 | watchpost batch 66 (`TestARebuildAndBackIsAnsweredAgain`, m547; m430 re-pointed) |
+| R2C-2 | watchpost batch 66 (`TestEveryUpdateOptionIsMadeWith`) |
+| R2C-3 | go-ionomaps v0.1.0-rc.7 |
+| R2C-4 | D-277; watchpost batch 66 |
+| R2C-5 | go-ionomaps v0.1.0-rc.7 (the `Unread` names exported) |
+| R2C-6 | go-tuiMaps v0.3.0-rc.6 |
+| R2C-7 | go-ionomaps v0.1.0-rc.7 (`TestAStaleIndexFetchesNoGrid`) |
+| R2C-8 | watchpost batch 66 |
+| R2C-9 | go-ionomaps v0.1.0-rc.7 |
+| R2C-10 | as R2L-5 |
+| R2D-1 | D-273; watchpost batch 66 |
+| R2D-2 | watchpost batch 66 |
+| R2D-3 | D-280; all three repositories |
+| R2D-4 | D-281; go-ionomaps v0.1.0-rc.7, go-tuiMaps v0.3.0-rc.6 |
+| R2D-5 | watchpost batch 66 |
+| R2D-6 | watchpost batch 66 |
+| R2D-7 | watchpost batch 66 |
+| R2H-1 | go-tuiMaps v0.3.0-rc.6 |
+| R2H-2 | go-tuiMaps v0.3.0-rc.6 (the rc.5 tip's row committed) |
+| R2H-3 | watchpost batch 66 |
+| R2H-4 | watchpost batch 66; go-tuiMaps v0.3.0-rc.6 |
+| R2H-5 | open: the nested modules pinned to v0.2.2 on a release branch, then tagged (D-262's process) |
+| R2H-6 | go-ionomaps e2103d7 (the build log says the nightly fires from the merge; each candidate's full gate dispatched) |
+| R2H-7 | D-277; watchpost batch 66 |
+| R2H-8 | watchpost batch 66; go-ionomaps v0.1.0-rc.7; go-tuiMaps 474797a |
+| R2H-9 | watchpost batch 66 ("Round 1, closed") |
+| R2H-10 | D-276; watchpost batch 66 |
+| R2H-11 | D-278 |
+| R2I-1 | go-ionomaps v0.1.0-rc.7 |
+| R2I-2 | watchpost batch 66 |
+| R2I-3 | go-tuiMaps v0.3.0-rc.6; watchpost batch 66 |
+| R2I-4 | go-ionomaps v0.1.0-rc.7 (`TestAnImplausibleReadingIsCounted`) |
+| R2I-5 | go-tuiMaps v0.3.0-rc.6 |
+| R2P-1 | go-ionomaps v0.1.0-rc.7 |
+| R2P-2 | go-ionomaps v0.1.0-rc.7 |
+| R2P-3 | D-275; go-ionomaps v0.1.0-rc.7 |
+| R2B-1 | D-274; F-220; the agenda |
+| R2B-2 | watchpost batch 66 (the agenda) |
+| R2B-3 | watchpost batch 66 (F-220, the agenda's limits) |
+| R2B-4 | watchpost batch 66 |

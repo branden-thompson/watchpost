@@ -773,3 +773,33 @@ func walkTo(t *testing.T, model tea.Model, id setupRowID) tea.Model {
 	t.Fatalf("row %v cannot be reached with ↓ from where the window opened", id)
 	return model
 }
+
+// TestAStoredPostcodeIsDrawnPlain is the REVIEW red team's R2I-2: a postcode
+// is cleaned where it is entered, but one saved before that, or written into
+// the config by hand, is drawn on every launch - so each place Settings draws
+// a postcode draws it plain, an escape sequence in it inert; a place with no
+// postcode draws no empty brackets.
+func TestAStoredPostcodeIsDrawnPlain(t *testing.T) {
+	d := setupGolden(t, 133, 44, false, rowLocation)
+	hostile := snapshot.LocationRef{Label: "Springfield", Zip: "627\x1b]52;c;aGk=\x0701"}
+	d.setup.ref, d.setup.txRef = &hostile, &hostile
+	d.setup.hints = []snapshot.LocationRef{hostile}
+	lines := append(d.setupLocationLines(render.Opts{}, ""), d.setupTransmitterLines(render.Opts{}, "")...)
+	drawn := 0
+	for _, l := range lines {
+		if strings.Contains(l, "\x1b]") || strings.ContainsRune(l, '\x07') {
+			t.Errorf("a stored postcode drawn raw: %q", l)
+		}
+		if strings.Contains(l, "Springfield (") {
+			drawn++
+		}
+	}
+	if drawn < 2 {
+		t.Fatalf("control: the postcode is drawn on %d lines; the check needs the location's and the transmitter's", drawn)
+	}
+	abroad := snapshot.LocationRef{Label: "Reykjavik, IS"}
+	d.setup.ref = &abroad
+	if head := d.setupLocationLines(render.Opts{}, "")[0]; strings.Contains(head, "()") || !strings.Contains(head, "Reykjavik, IS") {
+		t.Errorf("a place with no postcode drawn %q; want its name and no empty brackets", head)
+	}
+}

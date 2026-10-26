@@ -91,8 +91,8 @@ func (g *Geocoder) search(ctx context.Context, query string, world bool) (snapsh
 	if !onGlobe {
 		return snapshot.LocationRef{}, errors.New("the geocoder answered with a place off the globe - try another name, coordinates or a grid locator") // RI-2: never marked as found
 	}
-	if _, err := time.LoadLocation(r.Timezone); err != nil || r.Timezone == "" {
-		r.Timezone = "" // a zone Go does not know, or text that is no zone, is not kept (RI-2): the place's own clock is worked out without it
+	if _, err := time.LoadLocation(r.Timezone); err != nil || r.Timezone == "" || r.Timezone == "Local" {
+		r.Timezone = "" // a zone Go does not know, text that is no zone, or "Local" - the listener's own clock, not the place's (R2I-2) - is not kept (RI-2): the place's own clock is worked out without it
 	}
 	if !world && r.CountryCode != "" && !coverage.NWS(r.CountryCode) { // the same answer as the offline index (round 2 N-2)
 		return snapshot.LocationRef{}, errors.New(coverage.Outside(r.Name + ", " + r.CountryCode))

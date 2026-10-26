@@ -112,3 +112,27 @@ func TestATreeChangedDuringTheRunIsNoPass(t *testing.T) {
 		t.Errorf("the record says:\n%s", b)
 	}
 }
+
+// TestARunWithNoRecordIsNoPass is the REVIEW red team's RC-3: a green run
+// whose line cannot be written, or that runs outside a repository, exits
+// failing - a run with no record is no pass - and a failed run keeps its own
+// code.
+func TestARunWithNoRecordIsNoPass(t *testing.T) {
+	dir := repo(t)
+	tested, err := testedTree(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, logFile), 0o755); err != nil { // the record a directory: no line can be written
+		t.Fatal(err)
+	}
+	if rc, err := record(dir, "verify", 0, tested, time.Second, time.Now()); err == nil || rc != 1 {
+		t.Errorf("a green run whose line cannot be written: exit %d, %v; want 1 and the reason", rc, err)
+	}
+	if rc, err := record(dir, "verify", 2, tested, time.Second, time.Now()); err == nil || rc != 2 {
+		t.Errorf("a failed run whose line cannot be written: exit %d, %v; want its own 2", rc, err)
+	}
+	if rc, err := record(t.TempDir(), "verify", 0, tested, time.Second, time.Now()); err == nil || rc != 1 {
+		t.Errorf("a green run outside a repository: exit %d, %v; want 1 and the reason", rc, err)
+	}
+}
