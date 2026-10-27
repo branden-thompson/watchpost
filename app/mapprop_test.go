@@ -3,13 +3,14 @@ package app
 import (
 	"context"
 	ionomaps "github.com/branden-thompson/go-ionomaps"
+	"github.com/branden-thompson/go-ionomaps/ionomapstest"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -181,49 +182,151 @@ func TestEachPropagationSourceHasItsOwnCap(t *testing.T) {
 	}
 }
 
-// waitingGetter answers no ask until the ask's context ends: a host that
-// accepts and never answers. asked closes at its first ask.
-type waitingGetter struct {
-	once  sync.Once
-	asked chan struct{}
+// seededStations are the library's 39 seeded live stations at their
+// published places (go-ionomaps' seed), so a burst reads a full hour.
+var seededStations = []ionomapstest.Station{
+	{Code: "AL945", Lat: 45.1, Lon: -83.6, FoF2: 6, M3000: 3},
+	{Code: "AS00Q", Lat: -7.9, Lon: -14.4, FoF2: 6, M3000: 3},
+	{Code: "AT138", Lat: 38.0, Lon: 23.5, FoF2: 6, M3000: 3},
+	{Code: "BVJ03", Lat: 2.8, Lon: -60.7, FoF2: 6, M3000: 3},
+	{Code: "CAJ2M", Lat: -22.7, Lon: -45.0, FoF2: 6, M3000: 3},
+	{Code: "CB53N", Lat: -35.3, Lon: 149.0, FoF2: 6, M3000: 3},
+	{Code: "CGK21", Lat: -20.5, Lon: -55.0, FoF2: 6, M3000: 3},
+	{Code: "DB049", Lat: 50.1, Lon: 4.6, FoF2: 6, M3000: 3},
+	{Code: "DW41K", Lat: -12.4, Lon: 130.9, FoF2: 6, M3000: 3},
+	{Code: "EA036", Lat: 37.1, Lon: -6.7, FoF2: 6, M3000: 3},
+	{Code: "EA653", Lat: 52.7, Lon: -174.1, FoF2: 6, M3000: 3},
+	{Code: "EG931", Lat: 30.5, Lon: -86.5, FoF2: 6, M3000: 3},
+	{Code: "FF051", Lat: 51.7, Lon: -1.5, FoF2: 6, M3000: 3},
+	{Code: "GA762", Lat: 62.4, Lon: -145.0, FoF2: 6, M3000: 3},
+	{Code: "GM037", Lat: 37.9, Lon: 14.0, FoF2: 6, M3000: 3},
+	{Code: "GR13L", Lat: -33.3, Lon: 26.5, FoF2: 6, M3000: 3},
+	{Code: "GU513", Lat: 13.6, Lon: 144.9, FoF2: 6, M3000: 3},
+	{Code: "HE13N", Lat: -34.4, Lon: 19.2, FoF2: 6, M3000: 3},
+	{Code: "HO54K", Lat: -42.9, Lon: 147.3, FoF2: 6, M3000: 3},
+	{Code: "IF843", Lat: 43.8, Lon: -112.7, FoF2: 6, M3000: 3},
+	{Code: "JI91J", Lat: -12.0, Lon: -76.8, FoF2: 6, M3000: 3},
+	{Code: "JR055", Lat: 54.6, Lon: 13.4, FoF2: 6, M3000: 3},
+	{Code: "LL721", Lat: 21.4, Lon: -158.1, FoF2: 6, M3000: 3},
+	{Code: "LM42B", Lat: -21.8, Lon: 114.1, FoF2: 6, M3000: 3},
+	{Code: "MHJ45", Lat: 42.6, Lon: -71.5, FoF2: 6, M3000: 3},
+	{Code: "MZ152", Lat: 52.2, Lon: 21.1, FoF2: 6, M3000: 3},
+	{Code: "ND61R", Lat: -19.1, Lon: -169.9, FoF2: 6, M3000: 3},
+	{Code: "NI135", Lat: 35.0, Lon: 33.2, FoF2: 6, M3000: 3},
+	{Code: "PE43K", Lat: -32.0, Lon: 116.1, FoF2: 6, M3000: 3},
+	{Code: "PF765", Lat: 65.1, Lon: -147.4, FoF2: 6, M3000: 3},
+	{Code: "PQ052", Lat: 50.0, Lon: 14.6, FoF2: 6, M3000: 3},
+	{Code: "RM041", Lat: 41.8, Lon: 12.5, FoF2: 6, M3000: 3},
+	{Code: "RO041", Lat: 41.9, Lon: 12.5, FoF2: 6, M3000: 3},
+	{Code: "SO148", Lat: 47.6, Lon: 16.7, FoF2: 6, M3000: 3},
+	{Code: "THJ76", Lat: 76.5, Lon: -68.4, FoF2: 6, M3000: 3},
+	{Code: "TR169", Lat: 69.6, Lon: 19.2, FoF2: 6, M3000: 3},
+	{Code: "TV51R", Lat: -19.6, Lon: 146.9, FoF2: 6, M3000: 3},
+	{Code: "VT139", Lat: 40.6, Lon: 17.8, FoF2: 6, M3000: 3},
+	{Code: "WA619", Lat: 19.3, Lon: 166.6, FoF2: 6, M3000: 3},
 }
 
-func (g *waitingGetter) Get(ctx context.Context, _, _, _ string) (httpx.Answer, error) {
-	g.once.Do(func() { close(g.asked) })
-	<-ctx.Done()
-	return httpx.Answer{}, ctx.Err()
+// replayGetter answers the service's asks from a replay of synthetic days,
+// GIRO's held until the ask's context ends - a burst in flight - while hold
+// is set; asking closes at the first GIRO ask held, and giroAsked counts
+// GIRO's asks.
+type replayGetter struct {
+	replay    *ionomapstest.Replay
+	hold      atomic.Bool
+	giroAsked atomic.Int32
+	once      sync.Once
+	asking    chan struct{}
+}
+
+func (g *replayGetter) Get(ctx context.Context, rawURL, etag, lastModified string) (httpx.Answer, error) {
+	if strings.Contains(rawURL, "lgdc.uml.edu") {
+		g.giroAsked.Add(1)
+		if g.hold.Load() {
+			g.once.Do(func() { close(g.asking) })
+			<-ctx.Done()
+			return httpx.Answer{}, ctx.Err()
+		}
+	}
+	r, err := g.replay.Fetch(ctx, rawURL, ionomaps.Validators{ETag: etag, LastModified: lastModified})
+	if err != nil {
+		return httpx.Answer{}, err
+	}
+	return httpx.Answer{Status: r.Status, Header: http.Header{}, Body: r.Body}, nil
+}
+
+// twoUpdates is NOAA's round and then, when GIRO is due, its burst.
+func twoUpdates(lp *livePipelines) tty.PropagationResult {
+	r := <-lp.propagationUpdate(context.Background(), ionomaps.UpdateOptions{})
+	if r.Err == nil && r.Snapshot.Reason == ionomaps.StationsNext {
+		r = <-lp.propagationUpdate(context.Background(), ionomaps.UpdateOptions{})
+	}
+	return r
 }
 
 // TestTheAppsEndStopsAnUpdateAndKeepsItsState is D-213 with D-39 at a quit
-// (R6T-1): the app's end cancels its context before it waits, and an update
-// in flight - asked on a session the quit never cancelled - stops with it,
-// keeping GIRO's throttle state inside settleBound, so a restart within the
-// hour asks GIRO nothing new.
+// (R6T-1, R7T-3): the app's end cancels its context before it waits, and
+// GIRO's burst in flight - the hour before it read all 39 seeded stations,
+// so the field it builds as it stops is a full one - stops with it and
+// keeps GIRO's throttle state, the burst's hour spent, inside settleBound;
+// a restart within the hour asks GIRO nothing new.
 func TestTheAppsEndStopsAnUpdateAndKeepsItsState(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "propagation-throttle.json")
-	g := &waitingGetter{asked: make(chan struct{})}
-	svc, err := propagation.NewService(g, propagation.Options{StateFile: file})
+	dir, file := t.TempDir(), filepath.Join(t.TempDir(), "propagation-throttle.json")
+	day := time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC)
+	var readings []time.Time
+	for m := 0; m <= 120; m += 15 {
+		readings = append(readings, day.Add(time.Duration(m)*time.Minute))
+	}
+	solar, err := ionomapstest.Write(dir, ionomapstest.Synthetic{
+		Grids: []time.Time{day.Add(5 * time.Minute)}, GridFoF2: 6, F107: 100,
+		Stations: seededStations, Readings: readings})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec, err := ionomapstest.Open(dir, solar)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay := rec.Replay(ionomapstest.Options{})
+	replay.SetNow(day.Add(30 * time.Minute))
+	g := &replayGetter{replay: replay, asking: make(chan struct{})}
+	svc, err := propagation.NewService(g, propagation.Options{Clock: replay.Now, StateFile: file})
 	if err != nil {
 		t.Fatal(err)
 	}
 	appCtx, appEnd := context.WithCancel(context.Background())
 	lp := &livePipelines{ctx: appCtx}
 	lp.propagation.once.Do(func() { lp.propagation.svc = svc })
-	out := lp.propagationUpdate(context.Background(), ionomaps.UpdateOptions{}) // the session's context: a quit never cancels it
+	if r := twoUpdates(lp); r.Err != nil || r.Snapshot.Inputs.Stations < len(seededStations) {
+		t.Fatalf("control: the first hour: %v, %d stations read; want all %d", r.Err, r.Snapshot.Inputs.Stations, len(seededStations))
+	}
+	replay.SetNow(day.Add(90 * time.Minute))
+	g.hold.Store(true)
+	if r := <-lp.propagationUpdate(context.Background(), ionomaps.UpdateOptions{}); r.Err != nil || r.Snapshot.Reason != ionomaps.StationsNext {
+		t.Fatalf("control: the next hour's NOAA round: %v, %v; want GIRO due", r.Snapshot.Reason, r.Err)
+	}
+	out := lp.propagationUpdate(context.Background(), ionomaps.UpdateOptions{}) // the burst, on a session a quit never cancels
 	select {
-	case <-g.asked: // the update is in flight, asking
+	case <-g.asking: // GIRO's burst is in flight
 	case <-time.After(5 * time.Second):
-		t.Fatal("the update never asked")
+		t.Fatal("the burst never asked GIRO")
 	}
 	if svc.Settle(50 * time.Millisecond) {
-		t.Fatal("control: the update ended before the app's end")
+		t.Fatal("control: the burst ended before the app's end")
 	}
 	appEnd()
 	if !svc.Settle(settleBound) {
-		t.Fatalf("the update outlived the app's end by more than %v", settleBound)
-	}
-	if _, err := os.Stat(file); err != nil {
-		t.Errorf("the state was not kept at the app's end: %v", err)
+		t.Fatalf("the burst outlived the app's end by more than %v", settleBound)
 	}
 	<-out
+	again := &replayGetter{replay: replay, asking: make(chan struct{})}
+	restarted, err := propagation.NewService(again, propagation.Options{Clock: replay.Now, StateFile: file})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		<-restarted.Ask(context.Background(), ionomaps.UpdateOptions{})
+	}
+	if n := again.giroAsked.Load(); n != 0 {
+		t.Errorf("a restart within the hour asked GIRO %d times; want the burst's hour kept at the app's end", n)
+	}
 }

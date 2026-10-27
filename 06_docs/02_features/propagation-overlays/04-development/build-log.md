@@ -883,3 +883,12 @@ On go-ionomaps v0.1.0-rc.11 (D-301 to D-307: one room rule with a 1 s margin, `M
 - **The hosted gate's find:** go-ionomaps rc.11's full hosted gate failed its NaN fuzz target on amd64 - a path from a place to itself panicked in the sun track, a NaN turned to an index - which no arm64 gate could see; v0.1.0-rc.12 holds a path's crossings to it and refuses a place that is no number before stepping (go-ionomaps A-36). watchpost's Path asks are an origin and the continents' targets, so a path of no length needs the centre on a target; the re-pin closes it whatever the place.
 - **The re-pin** (D-206): go-ionomaps v0.1.0-rc.12, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map's library node at rc.12 and the atlas regenerated.
 
+## Batch 72 - REVIEW: the red team's round 7 remediation in watchpost, built to the timing model (D-309 to D-312; A-96)
+
+On go-ionomaps v0.1.0-rc.13, built to the update's timing model (D-312): a station known to hang stays last when a deadline left it (D-309), its running out again counts toward no run that calls GIRO down (D-310), and the clamp a helper with `internal/limits`' floor renewed (D-311); the library's half is in its own build log.
+
+- **A quit during GIRO's burst** (R7T-3, R7C-6): `TestTheAppsEndStopsAnUpdateAndKeepsItsState` reads the 39 seeded live stations in a first hour, then cancels the next hour's burst in flight, its field built from a full hour's readings as it stops - 60 ms, 405 ms under race - and a restart within the hour asks GIRO nothing; `settleBound` is pinned by it (m577, A-96). The first fixture, one station and no readings held, settled in 1.5 ms and let m577 survive.
+- **Docs:** the architecture says the app's end cancels the update too (R7D-4) and links the timing model; VALIDATE's item 7 and the changelog's known limits carry the model's section 8 (R7D-6).
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.13, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map's library node at rc.13 and the atlas regenerated.
+- **Mutants:** m577, vetted applied and killed.
+

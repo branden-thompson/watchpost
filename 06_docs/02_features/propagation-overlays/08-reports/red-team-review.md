@@ -675,6 +675,29 @@ Four fresh blind reviewers, each also running on amd64 - Docs, the REVIEW lens, 
 
 ### The agent's remediation, round 7, built to the model (D-312)
 
-- **go-ionomaps, a new candidate (v0.1.0-rc.13):** the model's section 3 (a station known to hang stays last, never put first by a deadline's cut, uncounted - D-309) and section 2 (its timeout counts toward no run and breaks one - D-310), with the test over eight hours and more under a deadline with two, three and four hanging stations and a hanging probe (R7D-5); the clamp a helper, `internal/limits`' floor renewed (D-311); the model's words where the docs differ - "until an ask of it ends any other way" (R7C-5), `NotReached`, `Inputs.StationsNotReached` and `Update`'s run conditions (R7D-3); the state's kept probe and known-to-hang list held by a restart test (R7C-2; R7L-2's MD, ME); `sunAt` refusing a place that is not finite (R7C-3); `TestARoundWithNoRoomNamesWhatItLacks` saying its run and asserting its exact Unread (R7C-4, R7L-3); a scaled test of GIRO called down at twice a full ask and its margin (R7C-7); `RanOut` only on a full ask run out, tested (R7L-2's MI); the no-room error's truncation tested (R7L-2's MG); the rotation's skipped case commented, `endOf` renamed; the README's known limits (model section 8).
+- **go-ionomaps, a new candidate (v0.1.0-rc.13):** the model's section 3 (a station known to hang stays last, never put first by a deadline's cut, uncounted - D-309) and section 2 (its timeout counts toward no run and breaks one - D-310), with the test over eight hours and more under a deadline with two, three and four hanging stations and a hanging probe (R7D-5); the clamp a helper, `internal/limits`' floor renewed (D-311); the model's words where the docs differ - "until an ask of it ends any other way" (R7C-5), `NotReached`, `Inputs.StationsNotReached` and `Update`'s run conditions (R7D-3); the state's kept probe and known-to-hang list held by a restart test (R7C-2; R7L-2's MD, ME); `sunAt` refusing a place that is not finite (R7C-3); `TestARoundWithNoRoomNamesWhatItLacks` saying its run and asserting its exact Unread (R7C-4, R7L-3); a scaled test of GIRO called down at twice a full ask and its margin (R7C-7); `RanOut` only on a full ask run out, tested (R7L-2's MI); the no-room error's truncation tested (R7L-2's MG); a kept probe now live asked once, tested (R7L-2's MC); the NaN fuzz target asking a path from the fuzzed place too (R7L's recommendation); the rotation's skipped case commented, `endOf` renamed; the README's known limits (model section 8).
 - **watchpost:** the app's-end test with a burst in flight and a field held, `settleBound` pinned (R7T-3, R7C-6); the architecture's update cancelled at the app's end too (R7D-4) and its link to the model; the model's section 8 in VALIDATE's item 7 and the changelog's known limits (R7D-6); the re-pin to rc.13.
+
+### Round 7, closed
+
+Each round 7 finding and the commit, tag or ruling that closed it, for the next round to check against the code and the timing model.
+
+| Finding | Closed by |
+|---|---|
+| R7D-1, R7L-1, R7C-1, R7T-1 | D-309, the model's section 3; go-ionomaps v0.1.0-rc.13 (a station known to hang stays last when a deadline left it, uncounted; `TestHangingStationsNeverCallAHealthyGIRODown`; m107, m109) |
+| R7D-2, R7T-2 | D-310, the model's section 2; go-ionomaps v0.1.0-rc.13 (`hungAgain`, its own failure, counting toward no run; m108) |
+| R7D-3 | go-ionomaps v0.1.0-rc.13 (`NotReached`, `Inputs.StationsNotReached` and `Update`'s run conditions in the model's words) |
+| R7D-4 | watchpost batch 72 (the architecture: the app's end cancels the update; the model linked) |
+| R7D-5 | go-ionomaps v0.1.0-rc.13 (D-307's outcome held under a deadline, ten hours, two to four hanging stations and a hanging probe) |
+| R7D-6 | watchpost batch 72 (VALIDATE's item 7 and the changelog's known limits); go-ionomaps v0.1.0-rc.13 (the README's known limits) |
+| R7L-2 | go-ionomaps v0.1.0-rc.13 (MC m117, MD m114, ME m115, MG m116, MI m111, each with its test) |
+| R7L-3, R7C-4 | go-ionomaps v0.1.0-rc.13 (the test says its run and asserts D-RAP alone) |
+| R7L, recommendation | go-ionomaps v0.1.0-rc.13 (the fuzz target asks a path from the fuzzed place too) |
+| R7C-2 | go-ionomaps v0.1.0-rc.13 (`TestTheKeptProbeAndTheStationsThatHangSurviveARestart`; m112 to m115) |
+| R7C-3 | go-ionomaps v0.1.0-rc.13 (`sunAt` refuses a place that is not finite; m110) |
+| R7C-5 | go-ionomaps v0.1.0-rc.13 ("until an ask of it ends any other way", everywhere) |
+| R7C-6, R7T-3 | watchpost batch 72 (a burst in flight with its field held; `settleBound` pinned, m577) |
+| R7C-7 | go-ionomaps v0.1.0-rc.13 (a hung GIRO called down at the least deadline, scaled) |
+| R7C, question 3 | D-311; go-ionomaps v0.1.0-rc.13 (`onPath` a helper; `internal/limits`' floor renewed) |
+| R7C, nit | go-ionomaps v0.1.0-rc.13 (`endOf` renamed `restore`) |
 

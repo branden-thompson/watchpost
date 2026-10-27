@@ -29,6 +29,13 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 - **The module floor is Go 1.26.10**, the first on the Go 1.26 line with GO-2026-6809 fixed; 0.18.2 already
   builds with Go 1.27.3.
 
+### Known
+- **GIRO's ionosondes are judged hour by hour**, and some edges are accepted: GIRO going quiet late in an
+  hourly burst is said unavailable the next hour, not that one; a GIRO alternating unanswered asks with
+  server errors is never said unavailable, each station's failure counted instead; and in the hour two
+  stations first stop answering, side by side, GIRO can be said unavailable once. A station that stops
+  answering is asked last until it answers again, so one that recovers is read later in its hour.
+
 ### Fixed
 - **The weather history holds less in memory.** It held every hour's recorded document, a growth of a
   few megabytes a day for an instance's first days of running; it now holds each hour's issue time, and
