@@ -701,3 +701,28 @@ Each round 7 finding and the commit, tag or ruling that closed it, for the next 
 | R7C, question 3 | D-311; go-ionomaps v0.1.0-rc.13 (`onPath` a helper; `internal/limits`' floor renewed) |
 | R7C, nit | go-ionomaps v0.1.0-rc.13 (`endOf` renamed `restore`) |
 
+## Round 8 (D-313)
+
+Four fresh blind reviewers, each also running on amd64, each judging the update's timing against the timing model (D-312) - Docs, the REVIEW lens, Code, and the timing lens; their reports verbatim in [review-round-8](reviewer-notes/review-round-8.md). Tips: watchpost `49c65df4`, go-ionomaps `59cb4a9` (v0.1.0-rc.13), go-tuiMaps `0c27321` (v0.3.0-rc.10). Every round 7 finding was found fixed in the code, R7D-5 and R7D-6 partly.
+
+### The verdicts
+
+| Reviewer | Verdict | Fix first |
+|---|---|---|
+| Docs Quality (R8D) | do not exit | R8D-1: with 40 or more live stations, a station known to hang is never asked again (Important) |
+| REVIEW lens (R8L) | do not exit | R8L-1: a GIRO hung for about 15 hours is never called down again (Important) |
+| Code Quality (R8C) | do not exit | R8C-1: the same (Important) |
+| Timing (R8T) | do not exit | R8T-1: the same (Important); the library's bounds hold everywhere |
+
+### The agent's check of the Important findings
+
+| Finding | Verdict | What was checked |
+|---|---|---|
+| R8C-1, R8T-1, R8L-1 | CONFIRMED, by three apart and by the agent's own probe (arm64): GIRO hung on every ask, called down in hours 0 to 14, then `Answered`, not paused, from hour 15, the known-to-hang list holding every live station | go-ionomaps `internal/giro/asker.go`: `RanOut` marks each station whose full ask ran out, the three that call GIRO down included; once every live station is known to hang, each timeout is `hungAgain` and counts toward no run (D-310). Kind (b): the model's sections 2, 3 and 8 combine to it |
+| R8D-1, R8L-3 (R8T-2) | CONFIRMED, by the reviewer's probe run on the tree: 41 live, the hanging station polled in 0 of 72 hours | `internal/stations/stations.go`: `rotation` puts stations known to hang after every other live station and `Plan` keeps the first 39, so with 39 or more others live it is always cut, and D-309 keeps it out of the head next hour; R8T-2 is the same with a slow GIRO's deadline. Kind (b) |
+| R8L-5 | CONFIRMED by the code | `Plan` puts a kept probe first with no known-to-hang exception |
+
+### The fork
+
+One whole change to the model, put to the HUM LEAD under D-311: M1 (before a burst's first answer a station known to hang counts), M2 (one station known to hang retried each burst with a short ask), M3 (a kept probe known to hang asked last), M4 (the model's words made true), with the Minors batched.
+
