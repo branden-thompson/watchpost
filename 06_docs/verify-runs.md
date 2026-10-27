@@ -96,3 +96,5 @@ says exactly what passed.
 | 2026-10-27T15:51:17Z | 1275b161 | f75482295472 | verify-docs | green | 146 |
 | 2026-10-27T16:43:24Z | 49c65df4 | b62e544c5057 | verify-docs | green | 143 |
 | 2026-10-27T18:35:36Z | e49260d0 | d9137c8d654b | verify | green | 2818 |
+| 2026-10-27T18:46:23Z | 6b85f268 | ceb223e4356e | verify | FAILED (exit 2) | 239 |
+| 2026-10-27T19:34:01Z | 6b85f268 | 8d58c160aa95 | verify | green | 2827 |

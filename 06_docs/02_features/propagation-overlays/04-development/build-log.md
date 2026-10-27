@@ -899,3 +899,9 @@ On go-ionomaps v0.1.0-rc.14: the model changed whole (D-314) - before a burst's 
 - **Docs:** the changelog's known limits as the model's section 8, all six (R8C-4, R8L-4, R8T-3); VALIDATE's item 7 the same, citing the model by repository and path; the required reading and the architecture cite it the same way (R8D-6); the as-built map's library nodes redrawn - rc.14's rules, go-tuiMaps at rc.10 (R8D-5); the Broadcaster figures' blind spots and unit (R8D-8); A-96's figures name their platform.
 - **The re-pin** (D-206): go-ionomaps v0.1.0-rc.14, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map and the atlas regenerated.
 
+## Batch 74 - REVIEW: the hosted gate's find after batch 72 (A-98)
+
+- **The find:** watchpost's hosted gate on `1275b161` failed on the Ubuntu runner's race leg: `TestTheAppsEndStopsAnUpdateAndKeepsItsState`'s cut burst took past `settleBound`, 2 s, under the race detector (405 ms under race here, 60 ms without). macOS passed.
+- **The fix:** under race the test holds the burst to `settleBound` times `raceSlowdown` (10, `app/race_test.go` and `app/norace_test.go`); the 2 s value stays pinned without race, where the mutants run. m577 killed without race, m575 killed under race, each vetted applied.
+- **A-96 corrected:** its "five times the race figure" is this machine's.
+

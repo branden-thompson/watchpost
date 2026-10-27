@@ -267,8 +267,9 @@ func twoUpdates(lp *livePipelines) tty.PropagationResult {
 // (R6T-1, R7T-3): the app's end cancels its context before it waits, and
 // GIRO's burst in flight - the hour before it read all 39 seeded stations,
 // so the field it builds as it stops is a full one - stops with it and
-// keeps GIRO's throttle state, the burst's hour spent, inside settleBound;
-// a restart within the hour asks GIRO nothing new.
+// keeps GIRO's throttle state, the burst's hour spent, inside settleBound -
+// under the race detector, inside settleBound times its slowdown; a restart
+// within the hour asks GIRO nothing new.
 func TestTheAppsEndStopsAnUpdateAndKeepsItsState(t *testing.T) {
 	dir, file := t.TempDir(), filepath.Join(t.TempDir(), "propagation-throttle.json")
 	day := time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC)
@@ -314,8 +315,8 @@ func TestTheAppsEndStopsAnUpdateAndKeepsItsState(t *testing.T) {
 		t.Fatal("control: the burst ended before the app's end")
 	}
 	appEnd()
-	if !svc.Settle(settleBound) {
-		t.Fatalf("the burst outlived the app's end by more than %v", settleBound)
+	if !svc.Settle(settleBound * raceSlowdown) {
+		t.Fatalf("the burst outlived the app's end by more than %v", settleBound*raceSlowdown)
 	}
 	<-out
 	again := &replayGetter{replay: replay, asking: make(chan struct{})}

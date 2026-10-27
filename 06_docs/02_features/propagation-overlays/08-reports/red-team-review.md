@@ -749,3 +749,7 @@ Four fresh blind reviewers, each also running on amd64, each judging the update'
 | R8D-8 | watchpost batch 73 (the figures' blind spots and unit; A-96's platform) |
 | R8C, nits | go-ionomaps v0.1.0-rc.14 (`State.Last`'s doc); `MinDeadline` written beside the giro constants stays, its reason pinned by R7C-7's test |
 
+### After round 8: the hosted gate's find
+
+watchpost's hosted gate on `1275b161` (batch 72's code) failed on the Ubuntu runner's race leg: the app's-end test's cut burst took past 2 s to keep its state under the race detector, which this machine's race leg (405 ms) never showed. The product bound is unchanged; the test holds the race build to the bound times the detector's slowdown, and the bound itself without race (watchpost batch 74, A-98), before round 9.
+
