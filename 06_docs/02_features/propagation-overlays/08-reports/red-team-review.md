@@ -753,3 +753,29 @@ Four fresh blind reviewers, each also running on amd64, each judging the update'
 
 watchpost's hosted gate on `1275b161` (batch 72's code) failed on the Ubuntu runner's race leg: the app's-end test's cut burst took past 2 s to keep its state under the race detector, which this machine's race leg (405 ms) never showed. The product bound is unchanged; the test holds the race build to the bound times the detector's slowdown, and the bound itself without race (watchpost batch 74, A-98), before round 9.
 
+## Round 9 (D-315)
+
+Four fresh blind reviewers, each also running on amd64, each judging against the timing model as D-314 changed it - Docs, the REVIEW lens, Code, and the timing lens; their reports verbatim in [review-round-9](reviewer-notes/review-round-9.md). Tips: watchpost `32324c39`, go-ionomaps `f60cc5c` (v0.1.0-rc.14), go-tuiMaps `91c3630` (v0.3.0-rc.10). Every round 8 finding was found fixed as ruled.
+
+### The verdicts
+
+| Reviewer | Verdict | Fix first |
+|---|---|---|
+| Docs Quality (R9D) | do not exit | R9D-1: M2's retry starves a recovered station that answers slower than 2 s (Important) |
+| REVIEW lens (R9L) | do not exit | R9L-1: a station list left for three days goes dark as a whole - one ask an hour, about 110 hours to read the 39 again, and an outage past three days never said (Important) |
+| Code Quality (R9C) | do not exit | R9C-1: the same as R9D-1 (Important) |
+| Timing (R9T) | do not exit | R9T-2: M3 with D-303's keep freezes the probe rotation (Important); R9T-1, the same as R9D-1 (Important); the bounds hold everywhere |
+
+### The agent's check of the Important findings
+
+| Finding | Verdict | What was checked |
+|---|---|---|
+| R9D-1, R9C-1, R9T-1 | CONFIRMED, by three apart and by the reviewer's probe run on the tree: a station answering in 3 s read in 0 of 24 hours with one or two known to hang | go-ionomaps `internal/stations/stations.go`: `Plan` takes the retry out of the order, so a lone station known to hang is never in the tail and gets only the 2 s ask. Kind (b): D-314's M2, a regression from rc.13 at PLAN's pace |
+| R9T-2 | CONFIRMED by the code | `Unasked` keeps the turn of a probe the burst did not reach (D-303), and M3 asks a kept probe known to hang last, where a slow hour cuts it again. Kind (b): D-314's M3 |
+| R9L-1 | CONFIRMED, by the reviewer's probe run on the tree: after four days away, one ask an hour, none live | `isLive` judges darkness by the wall clock, and a restored state keeps `Seeded` and `Heard`; with none live, `Plan` asks only the probe. Kind (b): predates round 8 (D-51 with D-213) |
+| R9D-2, R9C-2, R9L-2, R9T-3 | CONFIRMED by the code, all four apart | `roomToRetry` is read when the burst is planned, before the kept probe's full ask. Kind (a): a departure from section 1, fixed without a fork |
+
+### The fork
+
+One whole change to the model, put to the HUM LEAD under D-311.
+
