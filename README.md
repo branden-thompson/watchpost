@@ -268,7 +268,7 @@ clears the cities the map read. When several copies of watchpost run, each hour 
 The record is kept in `~/.local/share/watchpost/weather/history` (under `$XDG_DATA_HOME` when it is set);
 Open-Meteo's spent-quota mark (`quota.json`), the sea points Open-Meteo Marine has no answer for
 (`marine-land.json`) and GIRO's throttle across restarts (`propagation-throttle.json`: times, NOAA's
-solar flux mean and the stations' codes, never a GIRO reading) are in `~/.local/state/watchpost` (under `$XDG_STATE_HOME`).
+solar flux mean, the stations' codes and the rotation's place, never a GIRO reading) are in `~/.local/state/watchpost` (under `$XDG_STATE_HOME`).
 
 ## Radio
 

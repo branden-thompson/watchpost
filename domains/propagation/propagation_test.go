@@ -229,26 +229,36 @@ func TestClosingTheModeCancelsTheUpdate(t *testing.T) {
 	}
 }
 
-// TestAnUpdateHasItsOwnDeadline is the architecture's 60 s, and D-298: the
-// service gives each update a deadline of its own, whatever the caller's
-// context - at go-ionomaps' least, the update has no room for an ask, asks
-// nothing and says so at once, which only the service's own deadline can
-// make it do; a deadline under that least is refused at the making. A
-// source that never answers is go-ionomaps' to bound, each ask in its time,
-// and its own tests hold it.
+// TestAnUpdateHasItsOwnDeadline is the architecture's 60 s, and D-298 with
+// D-301: the service gives each update a deadline of its own, whatever the
+// caller's context - one set under go-ionomaps' least, past the service's
+// refusal, leaves the update no room for an ask, so it asks nothing and
+// says so at once, which only the service's own deadline can make it do; a
+// deadline of exactly that least asks; one under it is refused at the
+// making. A source that never answers is go-ionomaps' to bound, each ask in
+// its time, and its own tests hold it.
 func TestAnUpdateHasItsOwnDeadline(t *testing.T) {
 	rec := &recorder{hold: make(chan struct{})}
-	s, err := NewService(rec, Options{Clock: fixedClock, Deadline: ionomaps.MinDeadline})
+	s, err := NewService(rec, Options{Clock: fixedClock})
 	if err != nil {
 		t.Fatal(err)
 	}
+	s.deadline = 50 * time.Millisecond // under the least, as no Options can set it
 	select {
 	case r := <-s.Ask(context.Background(), ionomaps.UpdateOptions{}):
 		if !errors.Is(r.Err, ionomaps.ErrNoRoom) || rec.count() != 0 {
-			t.Errorf("an update at the least deadline: %v, %d asked; want no room said and nothing asked", r.Err, rec.count())
+			t.Errorf("an update with 50 ms of its own: %v, %d asked; want no room said and nothing asked", r.Err, rec.count())
 		}
 	case <-time.After(5 * time.Second):
-		t.Fatal("an update at the least deadline never answered: it had no deadline of its own")
+		t.Fatal("an update with 50 ms of its own never answered: it had no deadline of its own")
+	}
+	answering := &recorder{answer: func(string) (httpx.Answer, error) { return httpx.Answer{Status: 404}, nil }}
+	least, err := NewService(answering, Options{Clock: fixedClock, Deadline: ionomaps.MinDeadline})
+	if err != nil {
+		t.Fatalf("the least deadline was refused: %v", err)
+	}
+	if r := <-least.Ask(context.Background(), ionomaps.UpdateOptions{}); errors.Is(r.Err, ionomaps.ErrNoRoom) || answering.count() == 0 {
+		t.Errorf("an update at exactly the least deadline: %v, %d asked; want NOAA asked (D-301)", r.Err, answering.count())
 	}
 	if _, err := NewService(rec, Options{Deadline: ionomaps.MinDeadline - time.Second}); !errors.Is(err, errNoDeadline) {
 		t.Errorf("a deadline under the least: %v", err)
@@ -412,8 +422,9 @@ func TestTheThrottleStateOutlivesARestart(t *testing.T) {
 }
 
 // TestAnUpdateInFlightKeepsItsStateBeforeTheEnd is watchpost D-213 at the
-// app's end: Settle waits for an update still running - a burst the quit
-// cancelled - until it has kept the throttle state, within its bound.
+// app's end: Settle waits for an update still running until it has kept the
+// throttle state, within its bound - here a held ask released; the app's own
+// cancel, which stops the ask, is the app's test (R6T-1).
 func TestAnUpdateInFlightKeepsItsStateBeforeTheEnd(t *testing.T) {
 	release := make(chan struct{})
 	rec := &recorder{answer: func(url string) (httpx.Answer, error) {

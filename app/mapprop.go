@@ -54,7 +54,8 @@ type propagationHolder struct {
 }
 
 // settleBound is how long the app's end waits for an update in flight to
-// keep GIRO's throttle state: a cancelled burst stops at its next ask.
+// keep GIRO's throttle state: the app's cancel, which comes first, stops the
+// update's ask at once, and the update keeps its state as it ends.
 const settleBound = 2 * time.Second
 
 // settle waits at the app's end for an update in flight to keep its state
@@ -117,7 +118,12 @@ func (lp *livePipelines) propagationUpdate(ctx context.Context, opts ionomaps.Up
 		return out
 	}
 	go func() {
-		r := <-svc.Ask(ctx, opts)
+		ask, stop := context.WithCancel(ctx)
+		defer stop()
+		if lp.ctx != nil {
+			defer context.AfterFunc(lp.ctx, stop)() // the app's end stops the update, so it keeps GIRO's state inside settleBound (D-213, R6T-1)
+		}
+		r := <-svc.Ask(ask, opts)
 		out <- tty.PropagationResult{Snapshot: r.Snapshot, Err: r.Err}
 	}()
 	return out

@@ -179,7 +179,8 @@ func TestADeadlineIsSaidInWords(t *testing.T) {
 // short while GIRO answered is said with the stations not reached, asked
 // first next hour - one station said as one - in the status and once in the
 // diagnostics, again only when the count changes; a burst GIRO itself
-// stopped is said as GIRO's, not as cut short.
+// stopped is said as GIRO's, not as cut short, in the status or the
+// diagnostics (A-94 (1)).
 func TestACutShortBurstIsSaid(t *testing.T) {
 	cut := propSnapAt(drawnAt, 18)
 	cut.Inputs.StationsNotReached = 9
@@ -197,9 +198,12 @@ func TestACutShortBurstIsSaid(t *testing.T) {
 	var noted []string
 	d := goldenDash(t, false)
 	d.cfg.MapProblem = func(p string) { noted = append(noted, p) }
-	for i, n := range []int{0, 7, 7, 7, 4} {
+	for i, n := range []int{0, 7, 7, 7, 4, 6} {
 		snap := propSnapAt(drawnAt.Add(time.Duration(10*i)*time.Minute), 18)
 		snap.Inputs.StationsNotReached = n
+		if n == 6 {
+			snap.Inputs.GIRO = ionomaps.GIROUnavailable // GIRO itself stopped this one
+		}
 		m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
 		d = m.(Dashboard)
 	}

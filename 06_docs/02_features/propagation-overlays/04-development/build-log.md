@@ -863,7 +863,18 @@ On go-ionomaps v0.1.0-rc.10 (D-295 to D-298: GIRO's last asks get the time left,
 
 - **A burst cut short is said** (D-297): "GIRO's burst cut short: N stations asked first next hour" in the status, and once in the diagnostics while the count holds (`TestACutShortBurstIsSaid`; m573, m574). D-286's stop words, `propSession.burst` and their test are gone with m568 and m572; m290 and m325 re-pointed.
 - **The least deadline** (D-298): a Deadline under go-ionomaps' `MinDeadline` is refused; `TestAnUpdateHasItsOwnDeadline` reads `ErrNoRoom` at the least deadline, said at once (R5C-6, R5L-5; m139 holds).
-- **Docs:** the bands chart window's `esc`, `PgUp` and `PgDn` are fixed, and the acknowledgement window is in the README's list (R5D-4); the required reading and the record through round 5 (R5D-5); the architecture's failure table gains a denial, a station's own failure, GIRO hanging, a burst cut short and a stalled NOAA (R5D-6); item 3's two blind spots beside its bound (R5D-8); the state file's contents (R5D-4's residue); FR-5.2 carries D-297, and plan task W4.3 its test; `noteStatus`'s doc names D-272.
+- **Docs:** the bands chart window's `esc`, `PgUp` and `PgDn` are fixed, and the acknowledgement window is in the README's list (R5D-4); the required reading and the record through round 5 (R5D-5); the architecture's failure table gains a denial, a station's own failure, GIRO hanging, a burst cut short and a stalled NOAA (R5D-6); item 3's two blind spots beside its bound (R5D-8); the state file's contents (R4D-7's residue); FR-5.2 carries D-297, and plan task W4.3 its test; `noteStatus`'s doc names D-272.
 - **The re-pin** (D-206): go-ionomaps v0.1.0-rc.10 and go-tuiMaps v0.3.0-rc.9, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map redrawn (the cut-short words, the refused short deadline, the library's node at rc.10 with its round 5 rules) and the atlas regenerated.
 - **Mutants:** m573 and m574, each vetted applied and killed; m568 and m572 retired; m290 and m325 re-pointed.
+
+## Batch 70 - REVIEW: the red team's round 6 remediation in watchpost (D-301 to D-307; A-95)
+
+On go-ionomaps v0.1.0-rc.11 (D-301 to D-307: one room rule with a 1 s margin, `MinDeadline` 32 s which asks; the count of stations not reached at the update's end only; a probe not reached first next hour; Unread's lacks rule; a server error breaking the run; `internal/deadline` with its ratified row; a station that ran out asked last) and go-tuiMaps v0.3.0-rc.10 (the race flag checked against the build); the libraries' halves are in their own build logs.
+
+- **A quit stops GIRO's burst** (R6T-1): the update is tied to the app's context, cancelled before the app waits, so a quit during the burst keeps GIRO's throttle state inside `settleBound` and a restart within the hour asks nothing new (`TestTheAppsEndStopsAnUpdateAndKeepsItsState`; m575). `Settle`'s doc and its test say what they do.
+- **The least deadline** (D-301): `TestAnUpdateHasItsOwnDeadline` reads the service's own deadline set under the least, and an update at exactly `MinDeadline` asks NOAA (m139 holds).
+- **The diagnostics' guard** (R6T-6, R6L-4): a burst GIRO stopped is not noted as cut short (m576).
+- **Docs:** `snapshotWords`' stale sentence gone (R6D-3, R6C-5, R6L-7); the failure table's 429 and NOAA rows quote the words (R6D-4); the state file's contents alike everywhere; batch 69's "R5D-4's residue" is R4D-7's; item 3's "U9 to U12" explained; the record's round 5 line on the deadline test corrected (R6L).
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.11 and go-tuiMaps v0.3.0-rc.10, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map redrawn and the atlas regenerated.
+- **Mutants:** m575 and m576, each vetted applied and killed; m298 re-pointed onto the seam's tied context.
 

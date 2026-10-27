@@ -37,7 +37,7 @@ type Getter interface {
 // deadline, and where each rate header's first sighting is noted.
 type Options struct {
 	Clock     func() time.Time
-	Deadline  time.Duration // 0 is the architecture's 60 s; under go-ionomaps' MinDeadline is refused (D-298)
+	Deadline  time.Duration // 0 is the architecture's 60 s; under go-ionomaps' MinDeadline is refused, MinDeadline itself asks (D-298, D-301)
 	Note      func(string)  // the diagnostics; nil notes nothing
 	StateFile string        // where GIRO's throttle state is kept across restarts (D-213); "" keeps none
 }
@@ -67,7 +67,7 @@ type Service struct {
 // The service's refusals.
 var (
 	errNoClient   = errors.New("propagation: no client to fetch with")
-	errNoDeadline = fmt.Errorf("propagation: an update's deadline is 0, for the architecture's 60 s, or at least %s, one of NOAA's asks (D-298)", ionomaps.MinDeadline)
+	errNoDeadline = fmt.Errorf("propagation: an update's deadline is 0, for the architecture's 60 s, or at least %s, the least every rule of an update holds at (D-298, D-301)", ionomaps.MinDeadline)
 	errNoService  = errors.New("propagation: the service was not made with New")
 	errNoStatus   = errors.New("propagation: the reply has no HTTP status")
 )
@@ -84,7 +84,7 @@ func NewService(get Getter, o Options) (*Service, error) {
 		return nil, errNoClient
 	}
 	if o.Deadline < 0 || o.Deadline > 0 && o.Deadline < ionomaps.MinDeadline {
-		return nil, errNoDeadline // too short for any ask: every update would ask nothing (D-298)
+		return nil, errNoDeadline // too short for every rule of an update to hold (D-298, D-301)
 	}
 	f := &fetcher{get: get, hosts: map[string]bool{}, note: o.Note, seen: map[string]bool{}}
 	lib, err := ionomaps.New(f, ionomaps.Options{Clock: o.Clock})
@@ -232,8 +232,8 @@ func (s *Service) Ask(ctx context.Context, opts ionomaps.UpdateOptions) <-chan R
 
 // Settle waits up to a bound for the updates in flight to end and keep the
 // throttle state (D-213), so a listener who quits during GIRO's burst - the
-// mode's context cancelled, the burst stopping at its next ask - leaves the
-// hour it spent recorded; false when the bound passed first.
+// app's context cancelled first, the update's ask stopping at once - leaves
+// the hour it spent recorded; false when the bound passed first.
 func (s *Service) Settle(bound time.Duration) bool {
 	if s == nil {
 		return true

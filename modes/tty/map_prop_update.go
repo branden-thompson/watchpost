@@ -366,8 +366,7 @@ func propOffsetWords(o ionomaps.Offset) string {
 
 // snapshotWords say the layer drawn, when the snapshot was computed and why
 // it is not new if it is not, then what it was made from (FR-5.1): the most
-// needed first, as a narrow window cuts the line's end. burst is whether the
-// snapshot came from GIRO's burst, whose stopping names GIRO (D-286).
+// needed first, as a narrow window cuts the line's end.
 func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	words := []string{"Propagation", propLayerName(layer), "at " + s.Computed.UTC().Format("15:04 UTC")}
 	switch s.Reason {

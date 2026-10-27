@@ -6,7 +6,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -176,4 +179,51 @@ func TestEachPropagationSourceHasItsOwnCap(t *testing.T) {
 	if caps["lgdc.uml.edu"] >= caps["services.swpc.noaa.gov"] {
 		t.Errorf("GIRO's cap %d is not under NOAA's %d", caps["lgdc.uml.edu"], caps["services.swpc.noaa.gov"])
 	}
+}
+
+// waitingGetter answers no ask until the ask's context ends: a host that
+// accepts and never answers. asked closes at its first ask.
+type waitingGetter struct {
+	once  sync.Once
+	asked chan struct{}
+}
+
+func (g *waitingGetter) Get(ctx context.Context, _, _, _ string) (httpx.Answer, error) {
+	g.once.Do(func() { close(g.asked) })
+	<-ctx.Done()
+	return httpx.Answer{}, ctx.Err()
+}
+
+// TestTheAppsEndStopsAnUpdateAndKeepsItsState is D-213 with D-39 at a quit
+// (R6T-1): the app's end cancels its context before it waits, and an update
+// in flight - asked on a session the quit never cancelled - stops with it,
+// keeping GIRO's throttle state inside settleBound, so a restart within the
+// hour asks GIRO nothing new.
+func TestTheAppsEndStopsAnUpdateAndKeepsItsState(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "propagation-throttle.json")
+	g := &waitingGetter{asked: make(chan struct{})}
+	svc, err := propagation.NewService(g, propagation.Options{StateFile: file})
+	if err != nil {
+		t.Fatal(err)
+	}
+	appCtx, appEnd := context.WithCancel(context.Background())
+	lp := &livePipelines{ctx: appCtx}
+	lp.propagation.once.Do(func() { lp.propagation.svc = svc })
+	out := lp.propagationUpdate(context.Background(), ionomaps.UpdateOptions{}) // the session's context: a quit never cancels it
+	select {
+	case <-g.asked: // the update is in flight, asking
+	case <-time.After(5 * time.Second):
+		t.Fatal("the update never asked")
+	}
+	if svc.Settle(50 * time.Millisecond) {
+		t.Fatal("control: the update ended before the app's end")
+	}
+	appEnd()
+	if !svc.Settle(settleBound) {
+		t.Fatalf("the update outlived the app's end by more than %v", settleBound)
+	}
+	if _, err := os.Stat(file); err != nil {
+		t.Errorf("the state was not kept at the app's end: %v", err)
+	}
+	<-out
 }

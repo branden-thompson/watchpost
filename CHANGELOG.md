@@ -23,8 +23,8 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 - The map's library is go-tuiMaps v0.3.0: fields over water, the MUF and foF2 presets, the terminator,
   and a default colour depth that follows the terminal.
 - Nothing is fetched for the Propagation mode until it is opened. GIRO is asked at most once an hour and
-  its throttle is kept across restarts (`propagation-throttle.json`: times, NOAA's solar flux mean and
-  the stations' codes, never a GIRO reading); GIRO records the
+  its throttle is kept across restarts (`propagation-throttle.json`: times, NOAA's solar flux mean,
+  the stations' codes and the rotation's place, never a GIRO reading); GIRO records the
   address it is asked from, and its data is for non-commercial use.
 - **The module floor is Go 1.26.10**, the first on the Go 1.26 line with GO-2026-6809 fixed; 0.18.2 already
   builds with Go 1.27.3.
