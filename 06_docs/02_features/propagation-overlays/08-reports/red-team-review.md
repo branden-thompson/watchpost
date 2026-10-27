@@ -1,13 +1,13 @@
 ---
-title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — REVIEW exit red team, rounds 1 to 5"
+title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — REVIEW exit red team, rounds 1 to 6"
 date: 2026-10-24
 phase: REVIEW exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); remediated in watchpost batch 67, go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7. ROUND 4 REPORTED 2026-10-26 (D-290): three reviewers, Docs exit once two Minors are fixed, the REVIEW lens and Code do not, one Important between them; three forks ruled (D-291 to D-293); remediated in watchpost batch 68, go-ionomaps v0.1.0-rc.9 and go-tuiMaps v0.3.0-rc.8. ROUND 5 REPORTED 2026-10-26 (D-294): three reviewers, Docs exits, the REVIEW lens and Code do not, two Importants both in D-291's deadline rule; five forks ruled (D-295 to D-299); remediated in watchpost batch 69, go-ionomaps v0.1.0-rc.10 and go-tuiMaps v0.3.0-rc.9"
+status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); remediated in watchpost batch 67, go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7. ROUND 4 REPORTED 2026-10-26 (D-290): three reviewers, Docs exit once two Minors are fixed, the REVIEW lens and Code do not, one Important between them; three forks ruled (D-291 to D-293); remediated in watchpost batch 68, go-ionomaps v0.1.0-rc.9 and go-tuiMaps v0.3.0-rc.8. ROUND 5 REPORTED 2026-10-26 (D-294): three reviewers, Docs exits, the REVIEW lens and Code do not, two Importants both in D-291's deadline rule; five forks ruled (D-295 to D-299); remediated in watchpost batch 69, go-ionomaps v0.1.0-rc.10 and go-tuiMaps v0.3.0-rc.9. ROUND 6 REPORTED 2026-10-26 (D-300): four reviewers, the REVIEW lens and Code exit, Docs and the timing lens do not, two Importants confirmed - neither in the library's timing code, which held under every timing the timing lens built; seven forks ruled (D-301 to D-307); its remediation follows"
 ---
 
-# REVIEW exit — red team, rounds 1 to 5
+# REVIEW exit — red team, rounds 1 to 6
 
 ## Round 1 (D-245)
 
@@ -573,4 +573,44 @@ Each round 5 finding and the commit, tag or ruling that closed it, for the next 
 | R5C-5 | go-ionomaps v0.1.0-rc.10 (`GIROUnavailable`, `Unavailable`, `Update`, `Unfinished`, `ask`'s doc; `endsAtTheDeadline` replaced by `endEarly`; the throttle restored when nothing was asked) |
 | R5C-6 | watchpost batch 69 (`TestAnUpdateHasItsOwnDeadline` at the least deadline) |
 | R5C-7 | D-299; go-tuiMaps v0.3.0-rc.9 (the peak judged with the race detector off) |
+
+## Round 6 (D-300)
+
+Four fresh blind reviewers - Docs, the REVIEW lens, Code, and a timing lens; their reports verbatim in [review-round-6](reviewer-notes/review-round-6.md). Tips: watchpost `2ec275b5`, go-ionomaps `d5d4d6c` (v0.1.0-rc.10), go-tuiMaps `813b7b0` (v0.3.0-rc.9).
+
+### The verdicts
+
+| Reviewer | Verdict | Fix first |
+|---|---|---|
+| Docs Quality (R6D) | do not exit until R6D-1 is fixed | R6D-1: `MinDeadline` refuses an update given exactly it (Important) |
+| REVIEW lens (R6L) | exit; eight Minors | R6L-1: a cancelled burst later said as cut short by the deadline |
+| Code Quality (R6C) | exit; eight Minors | R6C-2: one room rule with a margin for NOAA and GIRO, which settles R6C-1 (R6D-1) too |
+| Timing (R6T) | do not exit | R6T-1: a quit during GIRO's burst does not stop it; the hour is not kept, and a restart bursts again (Important) |
+
+### The agent's check of the Important findings
+
+| Finding | Verdict | What was checked |
+|---|---|---|
+| R6T-1 | CONFIRMED, Important | watchpost `modes/tty/dashboard.go:1424-1425`: quit returns `tea.Quit` without `stopPropagation`; the session's context is `context.Background()`'s (`map_prop_update.go:56-57`), which the app's `cancel()` does not reach; `settleBound` is 2 s (`app/mapprop.go:58`) while an ask may take 15 s, so the state is not kept and D-213 with D-39 breaks on a quit within the burst |
+| R6D-1 (R6C-1, R6L-2, R6T-2) | CONFIRMED; Important by Docs, Minor by the other three | go-ionomaps `update.go:351`: an ask is refused with `left < noaaAskTimeout`, and `noaaAskTimeout` is `MinDeadline`, so a context of exactly `MinDeadline` always refuses; watchpost accepts that value (`propagation.go:86`) and batch 69's test pins the refusal - the agent's own error, the test built on the defect. No listener is affected (watchpost runs at 60 s). The same arithmetic gives R6T-5, a NOAA ask with no margin, and R6T-2, a hung GIRO not called down under 32 s |
+
+### The forks, ruled
+
+| Finding | Ruling |
+|---|---|
+| R6D-1, R6C-1, R6C-2, R6L-2, R6T-2, R6T-5 | D-301: one room rule, a 1 s margin for NOAA's asks and GIRO's; `MinDeadline` 32 s, which asks |
+| R6L-1, R6C-4, R6T-4, R6D-2 | D-302: the count holds only live stations the update's end left; a cancel or refusal counts none but puts its stations first, the interrupted one included |
+| R6T-3, R6L-5 | D-303: a probe not reached keeps its turn and goes first next hour, uncounted |
+| R6C-3 | D-304: Unread keeps D-239's lacks rule; D-298's docs reworded |
+| R6T-7 | D-305: a server error breaks the run, as built; D-296's words "one after another" |
+| R6C (question 3) | D-306: `internal/deadline`, its P10 row ratified |
+| R6C (recommendation) | D-307: a station whose full ask ran out goes last next hour |
+
+R6T-1 needs no fork: its fix restores what D-213 and D-39 rule.
+
+### The agent's remediation, round 6
+
+- **go-ionomaps, a new candidate (v0.1.0-rc.11):** D-301 (`internal/deadline`'s room rule with the 1 s margin for NOAA and GIRO; `MinDeadline` 32 s; a test that an update at exactly `MinDeadline` asks NOAA; the error stops rounding to the minimum; R6T-5's window closed), D-302 (the count set only at the update's end; a cancel through `endEarly` with the interrupted station first; a burst that asked nothing leaves the count; `NoRoom` reset at the top of `Burst`, R6L-6), D-303 (the probe kept and first after a cut), D-304 (the docs' "files not asked" reworded; the test holds a young file), D-305 (D-296's words; the alternating test's doc), D-306 (`internal/deadline` with its ratified row), D-307 (a station whose full ask ran out last next hour); R6L-3 and R6D-5 (the scaled fixture honours its context, the subtests re-run under race and load); R6C-8 (the end-of-update hang asserted full); R6T-6, R6L-4 and R6C-4 (tests for g2, g8, g13, g14 and yd); R6C-6 (`roomless`'s redundant branch); R6T-5's `Fetcher` doc (a Fetch returns once its context ends); the `tally.add` nit.
+- **go-tuiMaps, a new candidate (v0.3.0-rc.10):** R6C-7 and R6L-8 (`raceDetector` checked against the binary's build settings); R6D nits (the race-off leg's label and NFR-3's row say it judges the peak).
+- **watchpost:** R6T-1 (a quit cancels the Propagation session before the app's wait, and a test that a quit with a burst in flight ends the update and keeps the state inside `settleBound`; `Settle`'s doc and test made true); D-301 (the least deadline at the library's 32 s, the test asking at it; `errNoDeadline`'s words; A-94 (2) corrected); R6T-6's w3 and R6L-4's Mw (the diagnostics' GIRO-answered guard tested); R6D-3, R6C-5 and R6L-7 (`snapshotWords`' stale doc); R6D-4 (the failure table's 429 and NOAA rows quote the words); R6D nits (the state file's contents alike in FR-4.12, the README and the changelog; batch 69's "R5D-4's residue" is R4D-7's; "U9 to U12" explained); R6L's R5L-5 record line corrected; the re-pin to rc.11 and rc.10.
 
