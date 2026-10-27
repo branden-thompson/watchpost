@@ -722,7 +722,30 @@ Four fresh blind reviewers, each also running on amd64, each judging the update'
 | R8D-1, R8L-3 (R8T-2) | CONFIRMED, by the reviewer's probe run on the tree: 41 live, the hanging station polled in 0 of 72 hours | `internal/stations/stations.go`: `rotation` puts stations known to hang after every other live station and `Plan` keeps the first 39, so with 39 or more others live it is always cut, and D-309 keeps it out of the head next hour; R8T-2 is the same with a slow GIRO's deadline. Kind (b) |
 | R8L-5 | CONFIRMED by the code | `Plan` puts a kept probe first with no known-to-hang exception |
 
-### The fork
+### The fork, ruled
 
-One whole change to the model, put to the HUM LEAD under D-311: M1 (before a burst's first answer a station known to hang counts), M2 (one station known to hang retried each burst with a short ask), M3 (a kept probe known to hang asked last), M4 (the model's words made true), with the Minors batched.
+| Finding | Ruling |
+|---|---|
+| R8C-1, R8T-1, R8L-1; R8D-1, R8L-3, R8T-2; R8L-5; R8D-3, R8D-4, R8T-5, R8D-7, R8T-3 | D-314: the model changed whole - M1 (before a burst's first answer a station known to hang counts), M2 (one station known to hang retried each burst with a 2 s ask, in turn), M3 (a kept probe known to hang asked last), M4 (the model's words made true); the Minors batched |
+
+### The agent's remediation, round 8, to the model as D-314 changed it
+
+- **go-ionomaps, a new candidate (v0.1.0-rc.14):** the model's revision; M1 (`TestADeadGIROIsCalledDownEveryHour`, 24 hours); M2 (`Plan`'s retry inside the budget, its room 35 s; `TestEveryStationKnownToHangIsRetriedInTurn` with GIRO at 1.6 s an ask, `TestTheRetryTakesTheStationsKnownToHangInTurn` with 45 live); M3 (`TestAKeptProbeKnownToHangIsAskedLast`); the ten-hour test's hanging stations known from the start, its reads checked against every live station not hanging (R8C-3, R8D-2); `TestAStationKnownToHangBreaksARun` (R8T-4 X1 to X3, R8L-2 N1, N2, R8C-2 zK); the tail's order, a dark station never polled, a run of timeouts leaving the head (X5, X6, X9, R8L-2 N3, R8C-2 zF); the docs to the model (R8D-3's field, the README); the stations ledger row's veto wording (R8D-6); mutants m118 to m130.
+- **watchpost (batch 73):** the changelog's known limits and VALIDATE's item 7 as section 8 (R8C-4, R8L-4, R8T-3); the model cited by repository and path (R8D-6); the as-built map's nodes (R8D-5); the Broadcaster figures' blind spots (R8D-8); the re-pin to rc.14.
+
+### Round 8, closed
+
+| Finding | Closed by |
+|---|---|
+| R8C-1, R8T-1, R8L-1 | D-314 M1; go-ionomaps v0.1.0-rc.14 (m118) |
+| R8D-1, R8L-3, R8T-2 | D-314 M2; go-ionomaps v0.1.0-rc.14 (m119 to m122, m128) |
+| R8L-5 | D-314 M3; go-ionomaps v0.1.0-rc.14 (m123) |
+| R8D-3, R8D-4, R8T-5, R8D-7, R8T-3 | D-314 M4 (the model's sections 2, 4 and 8); go-ionomaps v0.1.0-rc.14 (`Inputs.StationsNotReached`) |
+| R8C-2, R8T-4, R8L-2 | go-ionomaps v0.1.0-rc.14 (m124 to m127, m129, m130; m108 re-pointed) |
+| R8C-3, R8D-2 | go-ionomaps v0.1.0-rc.14 (the ten-hour test) |
+| R8C-4, R8L-4 | watchpost batch 73 (the changelog's known limits) |
+| R8D-5 | watchpost batch 73 (the as-built map's nodes) |
+| R8D-6 | go-ionomaps v0.1.0-rc.14 (the README, the ledger row); watchpost batch 73 (item 7, the citations) |
+| R8D-8 | watchpost batch 73 (the figures' blind spots and unit; A-96's platform) |
+| R8C, nits | go-ionomaps v0.1.0-rc.14 (`State.Last`'s doc); `MinDeadline` written beside the giro constants stays, its reason pinned by R7C-7's test |
 

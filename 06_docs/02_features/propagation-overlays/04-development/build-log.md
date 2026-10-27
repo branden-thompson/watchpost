@@ -892,3 +892,10 @@ On go-ionomaps v0.1.0-rc.13, built to the update's timing model (D-312): a stati
 - **The re-pin** (D-206): go-ionomaps v0.1.0-rc.13, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map's library node at rc.13 and the atlas regenerated.
 - **Mutants:** m577, vetted applied and killed.
 
+## Batch 73 - REVIEW: the red team's round 8 remediation in watchpost, to the timing model as D-314 changed it (A-97)
+
+On go-ionomaps v0.1.0-rc.14: the model changed whole (D-314) - before a burst's first answer a station known to hang counts, so a dead GIRO is called down every hour (M1); one station known to hang retried at each burst's head with a 2 s ask, in turn (M2); a kept probe known to hang asked last (M3); the model's words made true (M4). The library's half is in its own build log.
+
+- **Docs:** the changelog's known limits as the model's section 8, all six (R8C-4, R8L-4, R8T-3); VALIDATE's item 7 the same, citing the model by repository and path; the required reading and the architecture cite it the same way (R8D-6); the as-built map's library nodes redrawn - rc.14's rules, go-tuiMaps at rc.10 (R8D-5); the Broadcaster figures' blind spots and unit (R8D-8); A-96's figures name their platform.
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.14, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map and the atlas regenerated.
+

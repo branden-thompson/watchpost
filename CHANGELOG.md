@@ -30,11 +30,20 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   builds with Go 1.27.3.
 
 ### Known
-- **GIRO's ionosondes are judged hour by hour**, and some edges are accepted: GIRO going quiet late in an
-  hourly burst is said unavailable the next hour, not that one; a GIRO alternating unanswered asks with
-  server errors is never said unavailable, each station's failure counted instead; and in the hour two
-  stations first stop answering, side by side, GIRO can be said unavailable once. A station that stops
-  answering is asked last until it answers again, so one that recovers is read later in its hour.
+- **GIRO's ionosondes are judged hour by hour**, and some edges are accepted:
+  - GIRO going quiet late in an hourly burst is said unavailable the next hour, not that one.
+  - A GIRO alternating unanswered asks with server errors is never said unavailable; each station's
+    failure is counted instead.
+  - In the hour stations first stop answering, three side by side, or two at the end of the hour's
+    asks, can have GIRO said unavailable once.
+  - GIRO going quiet after a station has answered, just as the hour reaches the stations that stop
+    answering, is said unavailable by the other stations, or the next hour.
+  - A station that stops answering is asked last, and one such station is tried briefly at the start of
+    each hour, in turn, until an ask of it ends any other way; so one that recovers is read within as
+    many hours as there are such stations, sooner when the hour has room. One answering slower than
+    2 seconds waits until the hour has room.
+  - A station that has never answered and is not yet known to stop can take a full ask at the start of
+    the next hour, and with a slow GIRO leave a few stations to the hour after.
 
 ### Fixed
 - **The weather history holds less in memory.** It held every hour's recorded document, a growth of a
