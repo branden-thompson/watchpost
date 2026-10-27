@@ -96,11 +96,11 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 		answers     map[string]ionomapstest.Answer
 		want, never []string
 	}{
-		{"every file served", served(), []string{"4 stations, oldest"}, []string{"GIRO", "not read", "did not answer"}},
+		{"every file served", served(), []string{"4 stations, oldest"}, []string{"GIRO", "not read", "BEST APPROXIMATION"}},
 		{"GloTEC refused", glotecRefused, []string{"NOAA's GloTEC", "not read this update", "foF2 from the climatology"}, []string{"GIRO"}}, // a 429 ends NOAA's round: D-RAP and the scales unread too
 		{"GIRO refusing", every(ionomapstest.Answer{Status: 429}), []string{"GIRO unavailable this hour"}, []string{"refused this host"}},
 		{"GIRO denying the host", every(ionomapstest.Answer{Status: 403}), []string{"GIRO refused this host: not asked again for a day"}, []string{"unavailable"}},
-		{"one station failing", oneFails, []string{"3 stations, oldest", "1 station did not answer"}, []string{"GIRO"}},
+		{"one station failing", oneFails, []string{"3 stations, oldest", "37 stations gave no data"}, []string{"GIRO"}},
 	} {
 		r, lib := open(c.answers)
 		s, err := statesUpdate(lib)

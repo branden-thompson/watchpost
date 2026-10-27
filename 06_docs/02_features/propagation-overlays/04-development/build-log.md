@@ -905,3 +905,12 @@ On go-ionomaps v0.1.0-rc.14: the model changed whole (D-314) - before a burst's 
 - **The fix:** under race the test holds the burst to `settleBound` times `raceSlowdown` (10, `app/race_test.go` and `app/norace_test.go`); the 2 s value stays pinned without race, where the mutants run. m577 killed without race, m575 killed under race, each vetted applied.
 - **A-96 corrected:** its "five times the race figure" is this machine's.
 
+## Batch 75 - REVIEW: the HUM LEAD's simpler model, watchpost's side (D-316 to D-319; A-99)
+
+On go-ionomaps v0.1.0-rc.15, the update's timing model replaced by the HUM LEAD's six points (D-316): stations asked in turn, a station with no data a miss and passed by, one missing three in a row flagged and asked every 6 hours (D-317), GIRO paused only for its own refusals (D-318), and the snapshot's count of stations reporting and how recently. The library's half is in its own build log.
+
+- **The notice** (D-319): `thinStationsWords` says the map is a best approximation, first on the status line, when fewer than half the stations holding a reading reported in 3 hours or the newest is older than that (`TestThinOrStaleStationsAreSaid`; m578, m579).
+- **Words:** "N stations gave no data"; one station said as one (R9L-3); the paused fallback "GIRO paused after a refusal"; the cut-short words and note removed, with m573, m574 and m576.
+- **Docs:** FR-5.2; the architecture's failure table; the changelog's known limits and VALIDATE's item 7 to the model's accepted limits; the as-built map's library node.
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.15, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map and the atlas regenerated.
+

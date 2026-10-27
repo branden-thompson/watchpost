@@ -95,7 +95,7 @@ func TestEverySnapshotsStateIsSaid(t *testing.T) {
 		s           ionomaps.Snapshot
 		want, never string
 	}{
-		{paused, "GIRO paused after a refusal or no answer", "NOAA not reached"},
+		{paused, "GIRO paused after a refusal", "NOAA not reached"},
 		{unfinished, "the update stopped before every file came", "NOAA not reached"},
 		{unread, "NOAA's GloTEC, D-RAP not read this update · no station readings this hour", "the last held"},
 		{unread, "foF2 from the climatology: no GloTEC grid", "the last held"},
@@ -175,45 +175,38 @@ func TestADeadlineIsSaidInWords(t *testing.T) {
 	}
 }
 
-// TestACutShortBurstIsSaid is D-297: a burst the update's deadline cut
-// short while GIRO answered is said with the stations not reached, asked
-// first next hour - one station said as one - in the status and once in the
-// diagnostics, again only when the count changes; a burst GIRO itself
-// stopped is said as GIRO's, not as cut short, in the status or the
-// diagnostics (A-94 (1)).
-func TestACutShortBurstIsSaid(t *testing.T) {
-	cut := propSnapAt(drawnAt, 18)
-	cut.Inputs.StationsNotReached = 9
-	if w := snapshotWords(cut, 0); !strings.Contains(w, "GIRO's burst cut short: 9 stations asked first next hour") {
-		t.Errorf("a burst cut short said %q", w)
+// TestThinOrStaleStationsAreSaid is D-316 and D-319: when fewer than half
+// the stations holding a reading gave one in the last 3 hours, or the
+// newest is older than that, the status says first that the map is a best
+// approximation, to be relied on warily, as kc2g's banner does; with enough
+// recent readings, none held, or no stations by choice, it says nothing of
+// it; one station is said as one.
+func TestThinOrStaleStationsAreSaid(t *testing.T) {
+	snap := propSnapAt(drawnAt, 18)
+	snap.Inputs.StationsHeld, snap.Inputs.StationsRecent, snap.Inputs.NewestReading = 40, 40, drawnAt.Add(-5*time.Minute)
+	if w := snapshotWords(snap, 0); strings.Contains(w, "BEST APPROXIMATION") {
+		t.Errorf("every station recent: %q; want no notice", w)
 	}
-	cut.Inputs.StationsNotReached = 1
-	if w := snapshotWords(cut, 0); !strings.Contains(w, "GIRO's burst cut short: 1 station asked first next hour") {
-		t.Errorf("one station not reached said %q", w)
+	snap.Inputs.StationsRecent = 15
+	if w := snapshotWords(snap, 0); !strings.Contains(w, "BEST APPROXIMATION: 15 of 40 stations reported in the last 3 hours; rely on this map warily") || strings.Index(w, "BEST") > strings.Index(w, "foF2") {
+		t.Errorf("15 of 40 recent: %q; want the notice, said first", w)
 	}
-	cut.Inputs.GIRO = ionomaps.GIROUnavailable
-	if w := snapshotWords(cut, 0); strings.Contains(w, "cut short") {
-		t.Errorf("a burst GIRO stopped said %q; want it said as GIRO's", w)
+	snap.Inputs.StationsRecent, snap.Inputs.NewestReading = 40, drawnAt.Add(-4*time.Hour)
+	if w := snapshotWords(snap, 0); !strings.Contains(w, "BEST APPROXIMATION: the newest station reading is") {
+		t.Errorf("the newest reading 4 hours old: %q; want the notice", w)
 	}
-	var noted []string
-	d := goldenDash(t, false)
-	d.cfg.MapProblem = func(p string) { noted = append(noted, p) }
-	for i, n := range []int{0, 7, 7, 7, 4, 6} {
-		snap := propSnapAt(drawnAt.Add(time.Duration(10*i)*time.Minute), 18)
-		snap.Inputs.StationsNotReached = n
-		if n == 6 {
-			snap.Inputs.GIRO = ionomaps.GIROUnavailable // GIRO itself stopped this one
-		}
-		m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
-		d = m.(Dashboard)
+	snap.Inputs.NewestReading = drawnAt.Add(-2 * time.Hour)
+	if w := snapshotWords(snap, 0); strings.Contains(w, "BEST APPROXIMATION") {
+		t.Errorf("the newest reading 2 hours old: %q; want no notice", w)
 	}
-	cuts := 0
-	for _, p := range noted {
-		if strings.Contains(p, "cut short") {
-			cuts++
+	for name, in := range map[string]ionomaps.Inputs{"none held": {}, "no stations by choice": {NoStations: true, StationsHeld: 40}} {
+		snap.Inputs = in
+		if w := snapshotWords(snap, 0); strings.Contains(w, "BEST APPROXIMATION") {
+			t.Errorf("%s: %q; want no notice", name, w)
 		}
 	}
-	if text := strings.Join(noted, "\n"); cuts != 2 || !strings.Contains(text, "7 stations asked first next hour") || !strings.Contains(text, "4 stations asked first next hour") {
-		t.Errorf("counts 0, 7, 7, 7, 4 noted %d times:\n%s; want 7 and 4, once each", cuts, text)
+	snap.Inputs = ionomaps.Inputs{Stations: 1, OldestReading: drawnAt.Add(-10 * time.Minute)}
+	if w := snapshotWords(snap, 0); !strings.Contains(w, "1 station, at") || strings.Contains(w, "1 stations") {
+		t.Errorf("one station: %q; want it said as one", w)
 	}
 }

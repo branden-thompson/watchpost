@@ -775,7 +775,22 @@ Four fresh blind reviewers, each also running on amd64, each judging against the
 | R9L-1 | CONFIRMED, by the reviewer's probe run on the tree: after four days away, one ask an hour, none live | `isLive` judges darkness by the wall clock, and a restored state keeps `Seeded` and `Heard`; with none live, `Plan` asks only the probe. Kind (b): predates round 8 (D-51 with D-213) |
 | R9D-2, R9C-2, R9L-2, R9T-3 | CONFIRMED by the code, all four apart | `roomToRetry` is read when the burst is planned, before the kept probe's full ask. Kind (a): a departure from section 1, fixed without a fork |
 
-### The fork
+### The fork, ruled
 
-One whole change to the model, put to the HUM LEAD under D-311.
+The HUM LEAD set the proposal aside and replaced the model (D-316 to D-319): the timing area had had an Important in every round from 3 to 9, rounds 7 to 9 each in the previous round's own fix.
+
+| Finding | Ruling |
+|---|---|
+| R9D-1, R9C-1, R9T-1; R9T-2; R9L-1 | D-316: the model replaced by six points; the retry, the kept probe and liveness's three days, where each arose, removed |
+| R9D-2, R9C-2, R9L-2, R9T-3 | D-316: the retry and its room removed |
+| R9D-3, R9D-4, R9C-3, R9C-4, R9T-4, R9D-5 | D-316: the limits, words and tests they named rewritten to the new model, or removed with the mechanics |
+| R9L-3 | watchpost batch 75: one station said as one |
+
+### Round 9, closed
+
+| Finding | Closed by |
+|---|---|
+| every R9 finding on the timing mechanics | D-316 to D-319; go-ionomaps v0.1.0-rc.15 (the model, the stations list and the burst rewritten; m131 to m143) |
+| R9L-3 | watchpost batch 75 |
+| R9D-5 | watchpost batch 74's hosted race leg: the record of its time to settle is A-98's; the factor stands as ruled |
 

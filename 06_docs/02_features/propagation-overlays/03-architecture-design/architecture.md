@@ -168,9 +168,9 @@ Internal packages: go-ionomaps' design (`03-architecture-design/design.md`, "Pac
 | GIRO refuses (429) | "GIRO unavailable this hour: the readings it gave first", the field's age beside it; GIRO backed off 60 s to 15 min | go-ionomaps R-5.3; FR-5.2 |
 | GIRO blocks for good | the GloTEC background alone, named | D-40, D-75; F-208 |
 | GIRO refuses this host (401, 403) | "GIRO refused this host: not asked again for a day", said all day and noted once | D-247; go-ionomaps R-5.3 |
-| a station's own failure (a 5xx, a 404, a 410, no answer) | the burst goes on; "N stations did not answer" | D-247, D-271, D-272; go-ionomaps R-5.3 |
-| GIRO hangs or stops answering | three asks run out in a row, or two as the update's end comes: "GIRO unavailable this hour", the readings it gave first, backed off | D-286, D-296; go-ionomaps R-5.3 |
-| GIRO slow, the burst cut short at the update's end | "GIRO's burst cut short: N stations asked first next hour", noted once; nothing backed off | D-295, D-297; go-ionomaps R-5.3 |
+| a station gives no data (a 5xx, a 404, a 410, no answer, a timeout, no reading) | the burst goes on; "N stations gave no data"; a station that misses three bursts running is asked every 6 hours until it returns | D-247, D-316, D-317; go-ionomaps R-5.3, R-5.5 |
+| GIRO hangs or stops answering | each hour's burst asks what its deadline holds and moves on, nothing called down; once the newest reading is 3 hours old, or fewer than half the stations reported in 3 hours: "BEST APPROXIMATION: ... rely on this map warily", said first | D-316, D-319; go-ionomaps R-5.3 |
+| GIRO slow, the burst stopped at the update's end | nothing said; the next hour carries on from where it stopped | D-316; go-ionomaps R-5.3 |
 | NOAA stalls on an ask | "NOAA's GloTEC not read this update" (or the file that stalled), what is held standing in, said with its age; the round stops at the ask's 20 s, NOAA is backed off and GIRO still asked | D-285; go-ionomaps R-5.3 |
 | GloTEC missing | the climatology fallback, named | FR-5.2 |
 | D-RAP missing | no "disturbed" state; said | R-2.6 |

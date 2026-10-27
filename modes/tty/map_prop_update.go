@@ -161,9 +161,6 @@ func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
 		if snap.Inputs.Implausible > 0 && snap.Inputs.Implausible != was.Implausible {
 			d.problem(fmt.Sprintf("Propagation: %d station readings were refused as implausible, their foF2 too far from the background to be believed (D-248, D-279)", snap.Inputs.Implausible))
 		}
-		if n := snap.Inputs.StationsNotReached; n > 0 && n != was.StationsNotReached && snap.Inputs.GIRO == ionomaps.GIROAnswered {
-			d.problem("Propagation: " + burstCutShortWords(n) + ", the update's deadline reached (D-297)")
-		}
 		if snap.Inputs.ImplausibleM > 0 && snap.Inputs.ImplausibleM != was.ImplausibleM {
 			d.problem(fmt.Sprintf("Propagation: %d station readings' M(3000)F2 was refused as implausible; their foF2 was used (D-248)", snap.Inputs.ImplausibleM))
 		}
@@ -299,13 +296,26 @@ func giroWords(g ionomaps.GIROOutcome) string {
 	return ""
 }
 
-// burstCutShortWords say a burst the update's deadline cut short while GIRO
-// answered: the stations not reached, asked first next hour (D-297).
-func burstCutShortWords(n int) string {
-	if n == 1 {
-		return "GIRO's burst cut short: 1 station asked first next hour"
+// stationsThinAfter is how old the newest station reading may be before the
+// map is said to rest on stale data (D-319).
+const stationsThinAfter = 3 * time.Hour
+
+// thinStationsWords say, as kc2g does with a banner, that the map is a best
+// approximation: fewer than half the stations holding a reading gave one in
+// the last 3 hours, or the newest is older than that; empty otherwise, and
+// when no reading is held, which the words below say as the background
+// alone (D-316, D-319).
+func thinStationsWords(in ionomaps.Inputs, at time.Time) string {
+	if in.NoStations || in.StationsHeld == 0 {
+		return ""
 	}
-	return fmt.Sprintf("GIRO's burst cut short: %d stations asked first next hour", n)
+	if age := at.Sub(in.NewestReading); age > stationsThinAfter {
+		return "BEST APPROXIMATION: the newest station reading is " + spanWords(age) + " old; rely on this map warily"
+	}
+	if in.StationsRecent*2 < in.StationsHeld {
+		return fmt.Sprintf("BEST APPROXIMATION: %d of %d stations reported in the last 3 hours; rely on this map warily", in.StationsRecent, in.StationsHeld)
+	}
+	return ""
 }
 
 // daysWords is an age said in days past a day, else as spanWords.
@@ -369,6 +379,9 @@ func propOffsetWords(o ionomaps.Offset) string {
 // needed first, as a narrow window cuts the line's end.
 func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	words := []string{"Propagation", propLayerName(layer), "at " + s.Computed.UTC().Format("15:04 UTC")}
+	if w := thinStationsWords(s.Inputs, s.Computed); w != "" {
+		words = append(words, w) // D-319: said first, as kc2g's banner is
+	}
 	switch s.Reason {
 	case ionomaps.TooSoon:
 		words = append(words, "asked too soon: the last field")
@@ -379,7 +392,7 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	case ionomaps.GIROPaused:
 		w := giroWords(s.Inputs.GIRO)
 		if w == "" {
-			w = "GIRO paused after a refusal or no answer"
+			w = "GIRO paused after a refusal"
 		}
 		words = append(words, w+": the readings it gave first")
 	case ionomaps.Unfinished:
@@ -395,7 +408,9 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 		words = append(words, "the solar flux held from "+daysWords(s.Inputs.F107Age)+" ago") // D-249: the kept mean, its age said
 	}
 	switch {
-	case s.Inputs.Stations > 0:
+	case s.Inputs.Stations == 1:
+		words = append(words, "1 station, at "+s.Inputs.OldestReading.UTC().Format("15:04 UTC")) // R9L-3
+	case s.Inputs.Stations > 1:
 		words = append(words, fmt.Sprintf("%d stations, oldest %s", s.Inputs.Stations, s.Inputs.OldestReading.UTC().Format("15:04 UTC")))
 	case s.Inputs.NoStations:
 		words = append(words, "no stations by choice: the background alone") // D-214
@@ -404,12 +419,9 @@ func snapshotWords(s ionomaps.Snapshot, layer int) string {
 	}
 	switch n := s.Inputs.StationsFailed; {
 	case n == 1:
-		words = append(words, "1 station did not answer") // D-247: a station's own failure, the burst going on
+		words = append(words, "1 station gave no data") // D-316: a station's miss, the burst going on
 	case n > 1:
-		words = append(words, fmt.Sprintf("%d stations did not answer", n))
-	}
-	if n := s.Inputs.StationsNotReached; n > 0 && s.Inputs.GIRO == ionomaps.GIROAnswered {
-		words = append(words, burstCutShortWords(n)) // D-297: the update's end, not GIRO's
+		words = append(words, fmt.Sprintf("%d stations gave no data", n))
 	}
 	switch s.Background.FoF2 {
 	case ionomaps.GloTEC:
