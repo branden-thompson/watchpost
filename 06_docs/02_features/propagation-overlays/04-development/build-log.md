@@ -878,3 +878,8 @@ On go-ionomaps v0.1.0-rc.11 (D-301 to D-307: one room rule with a 1 s margin, `M
 - **The re-pin** (D-206): go-ionomaps v0.1.0-rc.11 and go-tuiMaps v0.3.0-rc.10, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map redrawn and the atlas regenerated.
 - **Mutants:** m575 and m576, each vetted applied and killed; m298 re-pointed onto the seam's tied context.
 
+## Batch 71 - REVIEW: the re-pin to go-ionomaps v0.1.0-rc.12 (go-ionomaps A-36)
+
+- **The hosted gate's find:** go-ionomaps rc.11's full hosted gate failed its NaN fuzz target on amd64 - a path from a place to itself panicked in the sun track, a NaN turned to an index - which no arm64 gate could see; v0.1.0-rc.12 holds a path's crossings to it and refuses a place that is no number before stepping (go-ionomaps A-36). watchpost's Path asks are an origin and the continents' targets, so a path of no length needs the centre on a target; the re-pin closes it whatever the place.
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.12, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map's library node at rc.12 and the atlas regenerated.
+

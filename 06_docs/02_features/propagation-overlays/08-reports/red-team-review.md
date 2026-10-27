@@ -640,3 +640,7 @@ Each round 6 finding and the commit, tag or ruling that closed it, for the next 
 | R6T-1 | watchpost batch 70 (the update tied to the app's context; m575) |
 | R6T-7 | D-305; go-ionomaps v0.1.0-rc.11 (D-106's words) |
 
+### After round 6: the hosted gate's find
+
+go-ionomaps rc.11's full hosted gate (run 40428744932, amd64) failed `FuzzAnswersNeverReturnNaN`: a path from a place to itself panicked in the sun track. arm64 turns the NaN to step 0 and amd64 to the least int64, so no local gate saw it. Fixed in go-ionomaps v0.1.0-rc.12 (A-36), re-pinned in watchpost batch 71, before round 7.
+
