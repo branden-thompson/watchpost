@@ -1,13 +1,13 @@
 ---
-title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — REVIEW exit red team, rounds 1 to 6"
+title: "0.19.0 (with go-ionomaps and go-tuiMaps v0.3.0) — REVIEW exit red team, rounds 1 to 7"
 date: 2026-10-24
 phase: REVIEW exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); remediated in watchpost batch 67, go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7. ROUND 4 REPORTED 2026-10-26 (D-290): three reviewers, Docs exit once two Minors are fixed, the REVIEW lens and Code do not, one Important between them; three forks ruled (D-291 to D-293); remediated in watchpost batch 68, go-ionomaps v0.1.0-rc.9 and go-tuiMaps v0.3.0-rc.8. ROUND 5 REPORTED 2026-10-26 (D-294): three reviewers, Docs exits, the REVIEW lens and Code do not, two Importants both in D-291's deadline rule; five forks ruled (D-295 to D-299); remediated in watchpost batch 69, go-ionomaps v0.1.0-rc.10 and go-tuiMaps v0.3.0-rc.9. ROUND 6 REPORTED 2026-10-26 (D-300): four reviewers, the REVIEW lens and Code exit, Docs and the timing lens do not, two Importants confirmed - neither in the library's timing code, which held under every timing the timing lens built; seven forks ruled (D-301 to D-307); remediated in watchpost batch 70, go-ionomaps v0.1.0-rc.11 and go-tuiMaps v0.3.0-rc.10"
+status: "ROUND 1: seven blind reviewers (D-245), 17 forks ruled (D-246 to D-262), remediated in watchpost batches 59 to 65 and the libraries' candidates. ROUND 2 REPORTED 2026-10-25 (D-269): five exit, two do not; 13 forks ruled (D-270 to D-282); remediated in watchpost batch 66, go-ionomaps v0.1.0-rc.7 and go-tuiMaps v0.3.0-rc.6. ROUND 3 REPORTED 2026-10-26 (D-284): three reviewers, none exit, no Critical; five forks ruled (D-285 to D-289); remediated in watchpost batch 67, go-ionomaps v0.1.0-rc.8 and go-tuiMaps v0.3.0-rc.7. ROUND 4 REPORTED 2026-10-26 (D-290): three reviewers, Docs exit once two Minors are fixed, the REVIEW lens and Code do not, one Important between them; three forks ruled (D-291 to D-293); remediated in watchpost batch 68, go-ionomaps v0.1.0-rc.9 and go-tuiMaps v0.3.0-rc.8. ROUND 5 REPORTED 2026-10-26 (D-294): three reviewers, Docs exits, the REVIEW lens and Code do not, two Importants both in D-291's deadline rule; five forks ruled (D-295 to D-299); remediated in watchpost batch 69, go-ionomaps v0.1.0-rc.10 and go-tuiMaps v0.3.0-rc.9. ROUND 6 REPORTED 2026-10-26 (D-300): four reviewers, the REVIEW lens and Code exit, Docs and the timing lens do not, two Importants confirmed - neither in the library's timing code, which held under every timing the timing lens built; seven forks ruled (D-301 to D-307); remediated in watchpost batch 70, go-ionomaps v0.1.0-rc.11 and go-tuiMaps v0.3.0-rc.10; rc.11's hosted amd64 find fixed in rc.12 and batch 71. ROUND 7 REPORTED 2026-10-27 (D-308): four reviewers, each on amd64 too, none exit, one Important found by all four apart - D-302 and D-307 disagreeing for a station that ran out and was then not reached; three forks ruled (D-309 to D-311), the model made and approved (D-312); its remediation follows"
 ---
 
-# REVIEW exit — red team, rounds 1 to 6
+# REVIEW exit — red team, rounds 1 to 7
 
 ## Round 1 (D-245)
 
@@ -643,4 +643,38 @@ Each round 6 finding and the commit, tag or ruling that closed it, for the next 
 ### After round 6: the hosted gate's find
 
 go-ionomaps rc.11's full hosted gate (run 40428744932, amd64) failed `FuzzAnswersNeverReturnNaN`: a path from a place to itself panicked in the sun track. arm64 turns the NaN to step 0 and amd64 to the least int64, so no local gate saw it. Fixed in go-ionomaps v0.1.0-rc.12 (A-36), re-pinned in watchpost batch 71, before round 7.
+
+## Round 7 (D-308)
+
+Four fresh blind reviewers, each also running on amd64 - Docs, the REVIEW lens, Code, and the timing lens; their reports verbatim in [review-round-7](reviewer-notes/review-round-7.md). Tips: watchpost `b16e5411`, go-ionomaps `68f31f3` (v0.1.0-rc.12), go-tuiMaps `5f6bf07` (v0.3.0-rc.10).
+
+### The verdicts
+
+| Reviewer | Verdict | Fix first |
+|---|---|---|
+| Docs Quality (R7D) | do not exit | R7D-2, with R7D-1: D-307's tail, which a deadline cut moves to the head, and which calls a healthy GIRO down beside a hanging probe (Important) |
+| REVIEW lens (R7L) | do not exit | R7L-1: the same, three hanging stations calling GIRO down every other hour (Important) |
+| Code Quality (R7C) | do not exit | R7C-1: the same, the one-line order (Important) |
+| Timing (R7T) | do not exit | R7T-1: the same, a false outage every other hour for days at PLAN's pace (Important); the library's bounds hold everywhere |
+
+### The agent's check of the Important finding
+
+| Finding | Verdict | What was checked |
+|---|---|---|
+| R7D-1, R7L-1, R7C-1, R7T-1 | CONFIRMED, by all four apart; the agent's own implementation of D-307 | go-ionomaps `internal/stations/stations.go:243-254`: `rotation` puts the stations a burst did not reach (`leftOut`) first, before it puts the stations that ran out (`last`) last; D-307 gathers the hanging stations at the tail, the deadline cuts them, `Unasked` puts them first, and three side by side are D-286's three timeouts in a row - a healthy GIRO called down. `TestAStationThatRanOutIsAskedLast` sets no deadline, so the collision never ran |
+| R7D-2 (R7T-2) | CONFIRMED | `asker.go:199-202`: the probe is the last ask, after D-307's tail; two hanging stations and a hanging probe are three timeouts in a row, and two at the end trip D-296's call-down |
+
+### The forks, ruled
+
+| Finding | Ruling |
+|---|---|
+| R7D-1, R7L-1, R7C-1, R7T-1 | D-309: D-307 wins; a station that ran out stays last when the deadline left it, uncounted |
+| R7D-2, R7T-2 | D-310: an ask of a station already known to run out counts toward no GIRO-down run |
+| R7C (question 3) | D-311: the clamp a helper again, `internal/limits`' floor renewed; and the direction - one harmonised model, judged against, never a round reversing a round |
+| D-311's direction | D-312: the model approved - go-ionomaps `03-architecture-design/update-timing-model.md` |
+
+### The agent's remediation, round 7, built to the model (D-312)
+
+- **go-ionomaps, a new candidate (v0.1.0-rc.13):** the model's section 3 (a station known to hang stays last, never put first by a deadline's cut, uncounted - D-309) and section 2 (its timeout counts toward no run and breaks one - D-310), with the test over eight hours and more under a deadline with two, three and four hanging stations and a hanging probe (R7D-5); the clamp a helper, `internal/limits`' floor renewed (D-311); the model's words where the docs differ - "until an ask of it ends any other way" (R7C-5), `NotReached`, `Inputs.StationsNotReached` and `Update`'s run conditions (R7D-3); the state's kept probe and known-to-hang list held by a restart test (R7C-2; R7L-2's MD, ME); `sunAt` refusing a place that is not finite (R7C-3); `TestARoundWithNoRoomNamesWhatItLacks` saying its run and asserting its exact Unread (R7C-4, R7L-3); a scaled test of GIRO called down at twice a full ask and its margin (R7C-7); `RanOut` only on a full ask run out, tested (R7L-2's MI); the no-room error's truncation tested (R7L-2's MG); the rotation's skipped case commented, `endOf` renamed; the README's known limits (model section 8).
+- **watchpost:** the app's-end test with a burst in flight and a field held, `settleBound` pinned (R7T-3, R7C-6); the architecture's update cancelled at the app's end too (R7D-4) and its link to the model; the model's section 8 in VALIDATE's item 7 and the changelog's known limits (R7D-6); the re-pin to rc.13.
 
