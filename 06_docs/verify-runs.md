@@ -98,3 +98,4 @@ says exactly what passed.
 | 2026-10-27T18:35:36Z | e49260d0 | d9137c8d654b | verify | green | 2818 |
 | 2026-10-27T18:46:23Z | 6b85f268 | ceb223e4356e | verify | FAILED (exit 2) | 239 |
 | 2026-10-27T19:34:01Z | 6b85f268 | 8d58c160aa95 | verify | green | 2827 |
+| 2026-10-27T19:37:39Z | 61a326a4 | 926620d49548 | verify-docs | green | 148 |
