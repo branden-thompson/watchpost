@@ -4,7 +4,7 @@ date: 2026-10-07
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "APPROVED at the PLAN gate (watchpost D-139). The sitting is live (D-89)."
+status: "APPROVED at the PLAN gate (watchpost D-139). Not held for 0.19.0 (D-326): M2, M5 and M5b stand unmeasured by a sitting."
 ---
 
 # UAT protocol: M2, M5, M5b

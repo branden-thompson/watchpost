@@ -70,7 +70,7 @@ Both rounds are in `red-team-build.md`, with every finding by its ID; the review
 |---|---|---|
 | M1 (agreement with WSPR, the tower's served area) | **baseline measured, target missed on PLAN's week:** 53.4 % for both climatology and shipped (target 58.4 %); graded on fresh days beside REVIEW | D-99, D-118, D-221, D-224, D-228 |
 | M4 (the listener's paths) | **baseline measured, target missed on PLAN's week:** 64.2 % for the climatology, 66.9 % shipped, lead +2.6 [+1.2, +4.0] (target 69.2 %); graded on fresh days beside REVIEW | the same |
-| M2, M5, M5b (UAT) | the protocol is ready; the live sitting is VALIDATE's (D-89) | D-93 |
+| M2, M5, M5b (UAT) | the protocol is ready; the sitting is not held for 0.19.0 (D-326) | D-93 |
 | G1 (station cost) | **the harness was not built at BUILD exit**, though this report said it was; built in REVIEW (batch 51, A-79), its 48-hour run beside REVIEW, holding a frequency while panning (D-227) | D-208, D-227 |
 | go-ionomaps G-M2 (reproducible) | built: `TestAFieldIsReproducedFromItsInputs` holds the climatology's field to a golden both runners check (G10.1). The assimilated field is not in the golden; synthetic stations would flatten it | D-97, D-208 |
 | go-ionomaps G-M4 (faults said) | built: `TestEveryFaultIsReported` (G10.2), its GIRO cases passing only when the fault is reported | D-208 |
