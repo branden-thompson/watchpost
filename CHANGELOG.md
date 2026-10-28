@@ -40,6 +40,11 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   - A station that answers slower than 15 seconds is never read.
 
 ### Fixed
+- **A service that stops answering no longer holds the location list.** When NASA FIRMS's API accepted
+  requests and never answered, each request held a place among the requests in flight for 30 seconds,
+  and the RECENT/SEARCHED rows waited behind them, loading, for over a minute. A service that does not
+  answer in time is now passed over for 20 seconds, as one that refuses the connection already was, and
+  no one service holds more than half of the requests in flight. The same wait is in 0.18.2.
 - **The weather history holds less in memory.** It held every hour's recorded document, a growth of a
   few megabytes a day for an instance's first days of running; it now holds each hour's issue time, and
   the days a map's replay reads within 8 MB. The same growth is in 0.18.1 and 0.18.2. A side-by-side

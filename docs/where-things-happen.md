@@ -39,7 +39,8 @@ page cannot drift silently. The per-file headers say what a file holds; this pag
 | A provider fetches | `platform/sched/sched.go:runTier` (a fixed grid from start: start, +Every, +2·Every …) → `Provider.Fetch` (e.g. `domains/weather/nws/provider.go:Fetch`) → `platform/snapshot/assembler.go:Apply` |
 | A fire archive is parsed | once per body change through `platform/bodymemo/bodymemo.go:Parsed`, its errors kept (`NewKeepingErrors`) (HMS: `domains/fire/hms/hms.go:parseKMLReader`, a streaming walk; WFIGS: `domains/fire/wfigs/wfigs.go:decodeLayer`) |
 | A request is retried | `platform/httpx/httpx.go:attemptOnce` (one client retry, `Config.MaxRetries`) and `platform/sched/sched.go:fetchWithRetries` (10/20/40 s) — two layers, by design |
-| A host is avoided after failures | `platform/httpx/memo.go:noteFailure` arms; `platform/httpx/httpx.go:memoRefusal` consults (normal lane only) |
+| A host is avoided after failures | `platform/httpx/memo.go:noteFailure` arms, for a refused connection, an answer not in the client's time, or repeated 5xx; `platform/httpx/httpx.go:memoRefusal` consults (every lane but the priority lane) |
+| A host holds at most half a lane | `platform/httpx/httpx.go:acquire` takes the host's share before the lane's slot; `platform/httpx/httpx.go:share` |
 | A cache miss is revalidated | `platform/httpx/httpx.go:getOrRevalidate` — the stored validators go out as `If-Modified-Since` / `If-None-Match`; a 304 renews through `platform/httpx/cache.go:revalidated` |
 | A FIRMS request is made | per tile, never per location: `domains/fire/firms/tiles.go:tilesFor` → `domains/fire/firms/firms.go:hotspotsFor` (the parsed tile from the memo) |
 | A seismic request is made | two concentric queries per location: a per-location near-field query and a regional query snapped to a shared 4° grid, built by `domains/seismic/usgs/usgs.go:queries` from `domains/seismic/rules.go:QueryPlan`; the shared body is parsed once through `domains/seismic/usgs/boxmemo.go:features`, then `Keep`-filtered per location in `domains/seismic/usgs/usgs.go:stateFor` |
@@ -92,8 +93,8 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | modal | the one floating window that can be open (`type modal int`); `modalNone` is the dashboard alone | `modes/tty/dashboard.go` |
 | tick predicate | the rule for when the 300 ms animation tick runs at all | `modes/tty/dashboard.go:tickNeeded` |
 | the grid | a tier's fire times: start + n·Every, whatever a cycle took | `platform/sched/sched.go:runTier` |
-| lane | the client's two pacing queues: normal and priority; only the normal lane consults the failure memo | `platform/httpx/httpx.go:WithPriority` |
-| failure memo | the per-host "avoid for 20 s" state armed by transport errors or repeated 5xx | `platform/httpx/memo.go` |
+| lane | the client's three pacing queues and in-flight caps: normal (16), priority (8) and interactive (8); the priority lane alone skips the failure memo; a host holds at most half of each | `platform/httpx/httpx.go:WithPriority` |
+| failure memo | the per-host "avoid for 20 s" state armed by transport errors, a host not answering in the client's time, or repeated 5xx | `platform/httpx/memo.go` |
 | validators | `ETag` / `Last-Modified` stored with a cache entry so a conditional GET can renew it | `platform/httpx/cache.go` |
 | persistence floor | a body reaches disk only past a 5-minute caller TTL (or `Persist()`) | `platform/httpx/cache.go:put` |
 | sweep | the disk tier's allow-list deleter (launch and daily) | `platform/httpx/cache.go:sweep` |

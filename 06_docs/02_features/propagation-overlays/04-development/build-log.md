@@ -923,3 +923,11 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 - **The changelog** (R10-6, D-321).
 - **The re-pin** (D-206): go-ionomaps v0.1.0-rc.16, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map and the atlas regenerated.
 
+
+## Batch 77 - VALIDATE: UAT issue one, a host that hangs (D-324; A-101)
+
+- **The find:** the HUM LEAD's Observer session held the RECENT/SEARCHED rows loading for over 40 seconds. Its dump (SIGUSR1) showed FIRMS with 114 attempts and none answered, and 46 waits behind it; FIRMS's API was accepting requests and never answering. On a copy of the HUM LEAD's settings in a scratch HOME, a proxy that completes FIRMS's handshake and passes nothing on reproduces it: 27 rows loading at 60 s on the tip, and the same on 0.18.2.
+- **The fix** (`platform/httpx`): a client timeout arms the failure memo as a refused connection does, and only the caller's own context ending is excused (`noteFailure`); each host takes its share of the lane, half of it, before the lane's slot (`acquire`, `share`). Under the same hang every row fills by 20 s; with FIRMS answering, by 20 s as before.
+- **Tests:** `TestAHostThatNeverAnswersIsAvoided`, `TestTheCallersOwnDeadlineNeverMarksTheHost`, `TestAHungHostHoldsAtMostHalfALane` (each lane), `TestAHostsShareComesBackWithEachAnswer`, `TestAWaitThatEndsGivesTheShareBack`, `TestTheSharesAreBounded`; the first and third failed before the fix. m582 to m587, each vetted applied; m585 also hangs an earlier test in the whole package, as a share never returned would hang the app.
+- **Docs:** the changelog's Fixed; `docs/where-things-happen.md`'s lanes and memo; the CLI's caching page; the as-built map's batch line and the atlas.
+- **Seen beside it, not this batch:** three RECENT rows stay loading in every build, 0.18.2 included; put to the HUM LEAD.
