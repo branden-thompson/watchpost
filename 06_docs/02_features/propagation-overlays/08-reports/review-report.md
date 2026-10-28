@@ -60,9 +60,9 @@ UAT walks the [protocol](../07-readiness/uat-protocol.md), the best-approximatio
 - **A-39**: the build of the six points - one place in the 40 kept for a flagged station due; stations that reported before ahead of codes never heard; a reply with no reading a miss.
 - **A-99, A-100**: the notice's words and place - "BEST APPROXIMATION: … rely on this map warily", first on the status line - and "N stations gave no data".
 
-## Still the HUM LEAD's to do
+## The nested v0.2.2 tags
 
-- **go-tuiMaps' nested modules' v0.2.2 tags** (R2H-5): the push was refused to the agent and is the HUM LEAD's.
+- **go-tuiMaps' nested modules' v0.2.2 tags** (R2H-5): the push was refused to the agent; the HUM LEAD approved it after this report (D-323), and the six tags are at `a23484f`.
 
 ## What the release learned here (for REFLECT)
 

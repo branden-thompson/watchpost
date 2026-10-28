@@ -231,7 +231,7 @@ Each round 1 finding, the commit, tag or ruling that closed it, round 2's verdic
 | RH-4 | go-ionomaps v0.1.0-rc.6 | FIXED | - |
 | RH-5 | D-252 | RULED | - |
 | RH-6 | watchpost 2449ae00 (batch 59) | FIXED | - |
-| RH-7 | D-262; go-tuiMaps v0.2.2 | PARTIAL | R2H-5: the nested modules pinned to v0.2.2 on `main` (PR #8, a23484f); their tags await the HUM LEAD |
+| RH-7 | D-262; go-tuiMaps v0.2.2 | PARTIAL | R2H-5: the nested modules pinned to v0.2.2 on `main` (PR #8, a23484f) and tagged there (D-323) |
 | RH-8 | watchpost 2449ae00 (batch 59) | FIXED | R2H-8: `make p10` names a missing `.a2dh.yml`, batch 66 |
 | RH-9 | watchpost 2449ae00 (batch 59) | FIXED, with gaps | R2H-3: `finaltag` on the go tool's parser, batch 66 |
 | RH-10 | the re-pin, dd74f0a9 (batch 60) | FIXED | - |
@@ -352,7 +352,7 @@ Each round 2 finding and the commit, tag or ruling that closed it, for round 3 t
 | R2H-2 | go-tuiMaps v0.3.0-rc.6 (the rc.5 tip's row committed) |
 | R2H-3 | watchpost batch 66 |
 | R2H-4 | watchpost batch 66; go-tuiMaps v0.3.0-rc.6 |
-| R2H-5 | go-tuiMaps PR #8 (a23484f on `main`): the nested modules require v0.2.2; their six tags await the HUM LEAD, the tag push declined by the permission system |
+| R2H-5 | go-tuiMaps PR #8 (a23484f on `main`): the nested modules require v0.2.2; their six v0.2.2 tags at a23484f (D-323) |
 | R2H-6 | go-ionomaps e2103d7 (the build log says the nightly fires from the merge; each candidate's full gate dispatched) |
 | R2H-7 | D-277; watchpost batch 66 |
 | R2H-8 | watchpost batch 66; go-ionomaps v0.1.0-rc.7; go-tuiMaps 474797a |
