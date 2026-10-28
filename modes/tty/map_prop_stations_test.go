@@ -195,9 +195,20 @@ func TestThinOrStaleStationsAreSaid(t *testing.T) {
 	if w := snapshotWords(snap, 0); !strings.Contains(w, "BEST APPROXIMATION: the newest station reading is") {
 		t.Errorf("the newest reading 4 hours old: %q; want the notice", w)
 	}
-	snap.Inputs.NewestReading = drawnAt.Add(-2 * time.Hour)
-	if w := snapshotWords(snap, 0); strings.Contains(w, "BEST APPROXIMATION") {
-		t.Errorf("the newest reading 2 hours old: %q; want no notice", w)
+	for _, c := range []struct {
+		recent int
+		age    time.Duration
+		said   bool
+	}{
+		{20, time.Hour, false},                 // exactly half reporting
+		{19, time.Hour, true},                  // under half
+		{40, 3*time.Hour - time.Minute, false}, // the newest 2 h 59 m old
+		{40, 3*time.Hour + time.Minute, true},  // 3 h 01 m
+	} {
+		snap.Inputs.StationsRecent, snap.Inputs.NewestReading = c.recent, drawnAt.Add(-c.age)
+		if w := snapshotWords(snap, 0); strings.Contains(w, "BEST APPROXIMATION") != c.said {
+			t.Errorf("%d of 40 recent, the newest %v old: %q; want the notice %v", c.recent, c.age, w, c.said)
+		}
 	}
 	for name, in := range map[string]ionomaps.Inputs{"none held": {}, "no stations by choice": {NoStations: true, StationsHeld: 40}} {
 		snap.Inputs = in

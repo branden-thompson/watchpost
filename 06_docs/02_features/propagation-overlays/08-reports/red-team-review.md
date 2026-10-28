@@ -794,3 +794,23 @@ The HUM LEAD set the proposal aside and replaced the model (D-316 to D-319): the
 | R9L-3 | watchpost batch 75 |
 | R9D-5 | watchpost batch 74's hosted race leg: the record of its time to settle is A-98's; the factor stands as ruled |
 
+## Round 10 (D-320)
+
+One fresh reviewer over the HUM LEAD's simpler model alone - go-ionomaps `f60cc5c..5396d3f` (v0.1.0-rc.15) and watchpost `61a326a4..fdb4d35b` (batch 75) - weighing findings by what happens (D-316); the report verbatim in [review-round-10](reviewer-notes/review-round-10.md). **Verdict: exit REVIEW** - no Important, seven Minors. The PLAN week's 96 hours replayed through D-319's rule show the notice in none of them.
+
+### The ruling
+
+| Finding | Ruling |
+|---|---|
+| R10-2 | D-321: "N stations gave no data" counts only stations not flagged |
+
+### Round 10, closed
+
+| Finding | Closed by |
+|---|---|
+| R10-1, R10-3, R10-6 | go-ionomaps v0.1.0-rc.16 (rule 7 names `StationsHeld`; the kept place's reach a stated limit; "three asks in a row"); watchpost batch 76 (the changelog) |
+| R10-2 | D-321; go-ionomaps v0.1.0-rc.16 (m144) |
+| R10-4 | go-ionomaps v0.1.0-rc.16 (the 3-hour edge and the newest; m146, m147); watchpost batch 76 (exactly half, 2 h 59 m and 3 h 01 m; m580, m581) |
+| R10-5 | go-ionomaps v0.1.0-rc.16 (the state's keys) |
+| R10-7 | go-ionomaps v0.1.0-rc.16 (a refused reply a miss; m145) |
+

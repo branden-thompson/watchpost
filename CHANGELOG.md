@@ -31,7 +31,8 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ### Known
 - **GIRO's ionosondes are asked in turn each hour, and a station that gives no data is passed by.** One
-  that misses three hours running is asked every 6 hours until it returns. When fewer than half the
+  that misses three asks in a row is asked every 6 hours until it returns, and is no longer counted
+  among the stations that gave no data. When fewer than half the
   stations have reported in the last 3 hours, or the newest reading is older than that, the status says
   first that the map is a best approximation, to be relied on warily:
   - GIRO going quiet is said that way once its newest reading is 3 hours old; when it answers again,

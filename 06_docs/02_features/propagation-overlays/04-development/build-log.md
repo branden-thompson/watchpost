@@ -914,3 +914,12 @@ On go-ionomaps v0.1.0-rc.15, the update's timing model replaced by the HUM LEAD'
 - **Docs:** FR-5.2; the architecture's failure table; the changelog's known limits and VALIDATE's item 7 to the model's accepted limits; the as-built map's library node.
 - **The re-pin** (D-206): go-ionomaps v0.1.0-rc.15, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map and the atlas regenerated.
 
+## Batch 76 - REVIEW: round 10's light review (D-320, D-321; A-100)
+
+On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321), a refused reply a miss, rule 7 and the limits worded to the code. The library's half is in its own build log.
+
+- **One fresh reviewer: exit REVIEW**, no Important, seven Minors (record, Round 10).
+- **The notice's edges** (R10-4): exactly half, and 2 h 59 m against 3 h 01 m (`TestThinOrStaleStationsAreSaid`; m580, m581).
+- **The changelog** (R10-6, D-321).
+- **The re-pin** (D-206): go-ionomaps v0.1.0-rc.16, `THIRD_PARTY_LICENSES.md` regenerated; the as-built map and the atlas regenerated.
+
