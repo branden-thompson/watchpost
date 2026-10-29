@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
@@ -116,6 +117,25 @@ func TestTheDaysOpenHoursAreShown(t *testing.T) {
 	m, _ := d.Update(mapKeyMsg(t, "down"))
 	if got := m.(Dashboard).mapPane.propChartRow; got != 1 {
 		t.Errorf("down moved the chart's target to %d; want 1, the first continent", got)
+	}
+}
+
+// TestTheChartSaysItsMeasuredAgreement is D-330: the chart says how often its
+// answers agreed with what WSPR heard, the climatology's beside them, in
+// either glyph set and within the window's width.
+func TestTheChartSaysItsMeasuredAgreement(t *testing.T) {
+	for _, ascii := range []bool{false, true} {
+		d := pressMap(t, chartDash(t), "B")
+		d.cfg.ASCII = ascii
+		text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
+		for _, want := range []string{"agrees with WSPR reports", "Local 54%", "continents 68%", "typical alone 52%, 64%"} {
+			if !strings.Contains(text, want) {
+				t.Errorf("ascii %v: the chart does not say %q:\n%s", ascii, want, text)
+			}
+		}
+	}
+	if w, legend := utf8.RuneCountInString(propAgreementLine), utf8.RuneCountInString(propShadeLegend(false)); w > legend {
+		t.Errorf("the agreement line is %d columns, wider than the shade legend's %d, the widest line the window already holds", w, legend)
 	}
 }
 

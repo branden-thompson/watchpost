@@ -299,7 +299,8 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 	}
 	out = append(out, d.mark(propOpenGlyph)+" open   "+d.mark(propDisturbedGlyph)+" disturbed (D-RAP)   "+d.mark(propAbsorbedGlyph)+" absorbed   "+d.mark(propWeakGlyph)+" weak",
 		d.mark(propClosedGlyph)+" above the upper limit   blank: no data   figures in MHz",
-		propShadeLegend(o.ASCII)) // D-198
+		propShadeLegend(o.ASCII), // D-198
+		propAgreementLine)        // D-330
 	if f := d.propFreqLine(); f != "" {
 		out = append(out, f) // D-178: what is held
 	}
@@ -363,6 +364,13 @@ func propShadeLegend(ascii bool) string {
 	near, mid, far := propShade(ionomaps.Nearest{Known: true}, ascii), propShade(ionomaps.Nearest{Known: true, Km: propNearKm}, ascii), propShade(ionomaps.Nearest{}, ascii)
 	return "nearest station: " + near + " <500 km   " + mid + " 500-2000 km   " + far + " farther, ~typical   ? unscored"
 }
+
+// propAgreementLine is how often the chart's answers agreed with what WSPR
+// heard (D-330): the graded run on the fresh days (D-221, D-328), each band
+// drawn half open and half not, so a constant answer scores 50%. The Local
+// row is M1's scenario and the continents M4's; the climatology alone beside
+// them.
+const propAgreementLine = "agrees with WSPR reports: Local 54%, continents 68% (typical alone 52%, 64%)"
 
 // propNameW is the chart's name column: the longest row name and a space.
 const propNameW = 16

@@ -931,3 +931,9 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 - **Tests:** `TestAHostThatNeverAnswersIsAvoided`, `TestTheCallersOwnDeadlineNeverMarksTheHost`, `TestAHungHostHoldsAtMostHalfALane` (each lane), `TestAHostsShareComesBackWithEachAnswer`, `TestAWaitThatEndsGivesTheShareBack`, `TestTheSharesAreBounded`; the first and third failed before the fix. m582 to m587, each vetted applied; m585 also hangs an earlier test in the whole package, as a share never returned would hang the app.
 - **Docs:** the changelog's Fixed; `docs/where-things-happen.md`'s lanes and memo; the CLI's caching page; the as-built map's batch line and the atlas.
 - **Not a finding:** the scripted runs' terminal emulator kept three rows of an earlier frame on screen in every build; the HUM LEAD's terminal shows each place once.
+
+## Batch 78 - VALIDATE: the chart says its measured agreement (D-330; A-102)
+
+- **What:** the Best Bands chart window says, under its shade legend, how often its answers agreed with what WSPR heard on the fresh days' graded run (D-221, D-328): the Local row 54% and the continents 68%, the climatology alone 52% and 64%. One line, the same on both consoles and under `--ascii` (`propAgreementLine`, `modes/tty/map_prop_chart.go`).
+- **Tests:** `TestTheChartSaysItsMeasuredAgreement` (both glyph sets; no wider than the shade legend, the widest line the window already holds). m588 removes the line; vetted applied, killed.
+- **Docs:** FR-1.15 and the plan's W10.5; the changelog's Added; the as-built map's batch line and the atlas. m278, its anchor moved by the new line, re-pointed and vetted applied.

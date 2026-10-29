@@ -10,7 +10,8 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   GloTEC and GIRO's ionosondes over a climatology, computed by go-ionomaps v0.1.0. Beside the map, the
   bands usable near the place and on the path to each continent and to a place found (`/`); your
   frequency's reach (`F`), its skip zone and the limit that stops it; the hours ahead (`shift+→`), each
-  labelled typical; the bands chart (`B`); and words for every answer. Answers are for a 100 W voice
+  labelled typical; the bands chart (`B`), which says how often its answers agreed with what WSPR heard;
+  and words for every answer. Answers are for a 100 W voice
   circuit with simple antennas.
 - **The Broadcaster's own map** (`g` on the console): centred on the transmitter, the service radius
   drawn in every mode, with its own Propagation mode answering for the map's centre from the station.
