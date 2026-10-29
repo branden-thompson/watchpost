@@ -44,6 +44,22 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   machine, with the mode in use against the map never opened, it added 1.3 % of one core and 62 MB of
   memory (medians), against at most 1 % and 25 MB; its downloads, 13 MB an hour, are within the 19
   allowed.
+- **A screen reader cannot yet follow focus in the Propagation mode.** Help and the mode's words say so;
+  0.19.1 fixes it.
+- **The answers agree with what was heard on the air only a little better than a typical day alone.**
+  Graded against WSPR reports over six days, half open and half not: from a station to its own area 54%
+  against the typical day's 52% (57% against 55% on 160 m to 30 m; from 20 m up a station's own area is
+  never reached, and scores 50% either way); from a place to the continents 68% against 64%. Both fall
+  short of the aim of 5 points over a typical day; no accuracy floor rides on them. The bands chart says
+  the figures.
+- **Over the north-west tropical Pacific the map starts from a typical day, corrected by GIRO's
+  stations:** NOAA's GloTEC was measured worse there. Elsewhere far from any station, an answer is about
+  as good as typical, or worse, and says so.
+- **The map open costs about 3.5% of one core and 40 to 50 MB of memory over the map never opened**, in
+  any mode (one 48-hour run, one machine); the Propagation mode adds nothing measurable to the map open
+  in Forecast mode.
+- **Panning the globe at 800 by 220 takes 25 to 27 ms a frame**, against 16 ms at 400 by 110 (where it
+  takes 7 ms): on a very large terminal the map lags a frame or two while it pans.
 
 ### Fixed
 - **A service that stops answering no longer holds the location list.** When NASA FIRMS's API accepted
