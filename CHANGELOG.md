@@ -38,6 +38,10 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   - GIRO going quiet is said that way once its newest reading is 3 hours old; when it answers again,
     most stations are read that hour, the rest within 6 hours.
   - A station that answers slower than 15 seconds is never read.
+- **The Propagation mode in a Broadcaster's use costs more than its target.** Over 48 hours on one
+  machine, with the mode in use against the map never opened, it added 1.3 % of one core and 62 MB of
+  memory (medians), against at most 1 % and 25 MB; its downloads, 13 MB an hour, are within the 19
+  allowed.
 
 ### Fixed
 - **A service that stops answering no longer holds the location list.** When NASA FIRMS's API accepted
