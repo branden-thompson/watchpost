@@ -304,8 +304,9 @@ type Config struct {
 	// "quiet-rural"; empty is residential, the default.
 	MapPropagationNoise string `toml:"map_propagation_noise,omitempty"`
 	// MapPropagationRefresh is how often an open Propagation mode asks again:
-	// empty for each new GloTEC grid (the default), "hourly" or "on-demand"
-	// (0.19.0 D-120).
+	// empty for hourly (the default; "hourly" read the same),
+	// "every-10-min" for each new GloTEC grid, or "on-demand" (0.19.0 D-120,
+	// D-332).
 	MapPropagationRefresh string `toml:"map_propagation_refresh,omitempty"`
 	// MapPropagationNoReadings is what the Propagation mode draws while no
 	// station readings are held: empty for GloTEC as is (the default), or

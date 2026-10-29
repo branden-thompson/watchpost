@@ -198,24 +198,24 @@ func TestNoStationsIsASetting(t *testing.T) {
 	}
 }
 
-// TestTheRefreshSettingStatesItsCost is FR-4.10 (D-120, D-141): the Maps
-// tab's picker, every 10 minutes by default, hourly, or on demand on the
+// TestTheRefreshSettingStatesItsCost is FR-4.10 (D-120, D-141, D-332): the
+// Maps tab's picker, hourly by default, every 10 minutes, or on demand on the
 // refresh-now key, each with its measured cost; the open mode's tick follows
 // it, none on demand.
 func TestTheRefreshSettingStatesItsCost(t *testing.T) {
 	s := &seam{answer: PropagationResult{Snapshot: stationsSnap(0, ionomaps.Fresh)}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	if d.propRefreshLabel() != "Every 10 min" || d.mapPane.propSess.tickEvery != 10*time.Minute {
+	if d.propRefreshLabel() != "Hourly" || d.mapPane.propSess.tickEvery != time.Hour {
 		t.Fatalf("the Setting starts at %q, its tick %v", d.propRefreshLabel(), d.mapPane.propSess.tickEvery)
 	}
 	for _, want := range []struct {
 		label, note string
 		every       time.Duration
 	}{
-		{"Hourly", "up to 3.3 MB an hour", time.Hour},
-		{"On demand (U)", "about 2.6 MB each time", 0},
 		{"Every 10 min", "up to 19 MB an hour", 10 * time.Minute},
+		{"On demand (U)", "about 2.6 MB each time", 0},
+		{"Hourly", "up to 3.3 MB an hour", time.Hour},
 	} {
 		d = d.cyclePropRefresh(true)
 		var tick bool
@@ -226,8 +226,8 @@ func TestTheRefreshSettingStatesItsCost(t *testing.T) {
 			t.Errorf("%s: the row says %q, costs %q, ticks every %v (a tick set: %v)", want.label, d.propRefreshLabel(), propRefreshNote(d.mapPropRefresh), d.mapPane.propSess.tickEvery, tick)
 		}
 	}
-	if propRefreshByKey("hourly") != refreshHourly || propRefreshByKey("nonsense") != refreshEvery10 || propRefreshKey(refreshOnDemand) != "on-demand" || propRefreshKey(refreshEvery10) != "" {
-		t.Error("the file's names do not round-trip, or every 10 minutes is not the default")
+	if propRefreshByKey("every-10-min") != refreshEvery10 || propRefreshByKey("hourly") != refreshHourly || propRefreshByKey("nonsense") != refreshHourly || propRefreshKey(refreshOnDemand) != "on-demand" || propRefreshKey(refreshHourly) != "" {
+		t.Error("the file's names do not round-trip, or hourly is not the default")
 	}
 }
 
@@ -354,9 +354,10 @@ func TestTheFieldsAgeIsAlwaysSaid(t *testing.T) {
 	}
 }
 
-// TestAStaleFieldIsSaidStale is FR-5.2 (A-56): past an hour - go-ionomaps'
-// own currency for a grid and a reading - the field is said stale, in the
-// alert's tone, on screen and in the words.
+// TestAStaleFieldIsSaidStale is FR-5.2 (A-56, D-332): past an hour -
+// go-ionomaps' own currency for a grid and a reading - and the refresh's
+// wait, the field is said stale, in the alert's tone, on screen and in the
+// words.
 func TestAStaleFieldIsSaidStale(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
@@ -372,6 +373,32 @@ func TestAStaleFieldIsSaidStale(t *testing.T) {
 	}
 	if !strings.Contains(d.propStatusWords(), "STALE") {
 		t.Errorf("the words do not say it stale: %q", d.propStatusWords())
+	}
+}
+
+// TestStaleFollowsTheRefresh is D-332: the inputs age unrefreshed until the
+// next refresh, so STALE comes an hour past that wait - on Hourly a field
+// 1 h 55 min old is not stale, as the live run showed the age reaching every
+// hour; every 10 minutes it is; on demand, past the hour.
+func TestStaleFollowsTheRefresh(t *testing.T) {
+	d, _ := drawnDash(t)
+	for _, c := range []struct {
+		refresh propRefresh
+		age     time.Duration
+		stale   bool
+	}{
+		{refreshHourly, time.Hour + 55*time.Minute, false},
+		{refreshHourly, 2*time.Hour + time.Minute, true},
+		{refreshEvery10, time.Hour + 5*time.Minute, false},
+		{refreshEvery10, time.Hour + 15*time.Minute, true},
+		{refreshOnDemand, 55 * time.Minute, false},
+		{refreshOnDemand, time.Hour + 5*time.Minute, true},
+	} {
+		d.mapPropRefresh = c.refresh
+		snap := ageSnap(d.now(), c.age, 0)
+		if words, _, stale := d.propAge(snap); stale != c.stale {
+			t.Errorf("%s, data %v old: said %q (stale %v); want stale %v", d.propRefreshLabel(), c.age, words, stale, c.stale)
+		}
 	}
 }
 

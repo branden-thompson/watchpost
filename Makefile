@@ -185,13 +185,13 @@ mutant-check:
 # not reporting on the code, and it fails at random, which is the worst way for
 # it to be wrong.
 #
-# 120m: the corpus at 378 mutants ran 1,723 s on the developer's 18-core
-# machine (2026-10-03) and passed 40 minutes on a 4-core ubuntu-latest runner
-# without finishing, so 40m - once four times the slowest run - no longer is.
-# The corpus grows every release; when it approaches this, raise it and
-# re-record the measurement here rather than trimming the corpus to fit the
-# clock.
-	@go test -tags mutants -v -count=1 -timeout 120m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
+# 240m: the corpus at 835 mutants ran 93 minutes on a hosted ubuntu-24.04
+# runner (run 40908367003, 2026-10-29) and passed 120 minutes on the same
+# platform two hours later without finishing (run 40927225939), a 1.3x spread
+# on one platform; 240m is twice the cap it outgrew. The corpus grows every
+# release; when it approaches this, raise it and re-record the measurement
+# here rather than trimming the corpus to fit the clock.
+	@go test -tags mutants -v -count=1 -timeout 240m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
 	  cat $(DIST)/mutant-check.log; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$rc

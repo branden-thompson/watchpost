@@ -131,7 +131,7 @@ func TestRoundFourMarksStandOut(t *testing.T) {
 	for _, c := range []struct {
 		age  time.Duration
 		says string
-	}{{20 * time.Second, "(data 30 min old)"}, {9 * time.Minute, "(data 39 min old)"}, {75 * time.Minute, "(STALE: data 1 h 45 min old)"}} { // FR-5.1: the fixture's grid is valid 30 min before its snapshot
+	}{{20 * time.Second, "(data 30 min old)"}, {9 * time.Minute, "(data 39 min old)"}, {105 * time.Minute, "(STALE: data 2 h 15 min old)"}} { // FR-5.1: the fixture's grid is valid 30 min before its snapshot; past 2 h is stale on Hourly, the default
 		now := time.Now()
 		s := &seam{answer: PropagationResult{Snapshot: propSnapAt(now.Add(-c.age), 27)}}
 		held := propDash(t, s, true)
@@ -152,7 +152,7 @@ func TestRoundFourMarksStandOut(t *testing.T) {
 			t.Errorf("the mode line does not carry its layer's chip: %q", block[1])
 		}
 		tone := render.FreshnessTone(c.age + 30*time.Minute)
-		if c.age+30*time.Minute > propStaleAfter {
+		if c.age+30*time.Minute > refreshHourly.staleAfter() {
 			tone = render.AlertLabel // FR-5.2
 		}
 		if want := render.Tint(c.says, render.Tok(tone)); !strings.Contains(block[1], want) {

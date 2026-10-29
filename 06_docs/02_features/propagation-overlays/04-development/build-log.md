@@ -937,3 +937,12 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 - **What:** the Best Bands chart window says, under its shade legend, how often its answers agreed with what WSPR heard on the fresh days' graded run (D-221, D-328): the Local row 54% and the continents 68%, the climatology alone 52% and 64%. One line, the same on both consoles and under `--ascii` (`propAgreementLine`, `modes/tty/map_prop_chart.go`).
 - **Tests:** `TestTheChartSaysItsMeasuredAgreement` (both glyph sets; no wider than the shade legend, the widest line the window already holds). m588 removes the line; vetted applied, killed.
 - **Docs:** FR-1.15 and the plan's W10.5; the changelog's Added; the as-built map's batch line and the atlas. m278, its anchor moved by the new line, re-pointed and vetted applied.
+
+## Batch 79 - VALIDATE: Hourly the default, STALE by the refresh, go-ionomaps rc.17 (D-332, D-334; A-103)
+
+- **Hourly the default** (D-332): the refresh Setting's first choice and an empty file's; every 10 minutes is "every-10-min" in the file (`modes/tty/map_prop_settings.go`).
+- **STALE follows the refresh** (`staleAfter`): an hour past the refresh's wait. The live check D-332 asked for ran the 11a21a84 binary on Hourly in a scratch HOME for 100 minutes: the age read about 55 min the moment each refresh landed - the oldest GIRO reading assimilated - and STALE from five minutes on, every hour, under the old hour's bound.
+- **go-ionomaps v0.1.0-rc.17** (D-334): over the north-west tropical Pacific the background is the climatology; re-pinned, `go mod tidy`, the licences regenerated.
+- **Tests:** `TestStaleFollowsTheRefresh`; `TestTheRefreshSettingStatesItsCost` and `TestRoundFourMarksStandOut` to the new default; the Settings Maps tab's golden re-recorded, its one change the refresh row's "Hourly". m589 and m590, each vetted applied; m291 and m323, their anchors moved, re-pointed and vetted.
+- **The mutant corpus's hosted cap:** 5fd5f444's hosted Ubuntu run died in `mutant-check` at `go test`'s 120-minute timeout, 835 mutants compiled one by one, where the run before passed the step in 93 minutes - the Makefile's rule says raise the cap and re-record the measurement, so it is 240 minutes. The run's failure is the clock's, not the code's: 5fd5f444 changed Markdown alone.
+- **Docs:** FR-4.10, FR-5.2 and the plan's W10.6; the changelog's Settings; the config's comment; the as-built map's batch line and go-ionomaps' node, and the atlas.

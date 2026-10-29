@@ -16,7 +16,8 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 - **The Broadcaster's own map** (`g` on the console): centred on the transmitter, the service radius
   drawn in every mode, with its own Propagation mode answering for the map's centre from the station.
 - **Day and night on the map**, as a map detail: the night side shaded and the terminator dotted.
-- **Settings:** the near-vertical radius, the receiver's noise, how often the Propagation mode refreshes,
+- **Settings:** the near-vertical radius, the receiver's noise, how often the Propagation mode refreshes
+  (hourly by default),
   what it draws with no station readings, whether GIRO's stations are asked at all, and the map's colour
   depth (automatic by default).
 

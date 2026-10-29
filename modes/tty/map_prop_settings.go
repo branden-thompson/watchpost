@@ -3,23 +3,23 @@ package tty
 import "time"
 
 // propRefresh is how often an open Propagation mode asks again (FR-4.10,
-// D-120): each new GloTEC grid by default (D-94), hourly, or only on the
+// D-120): hourly by default (D-332), each new GloTEC grid, or only on the
 // refresh-now key.
 type propRefresh uint8
 
 // The choices, the default first.
 const (
-	refreshEvery10  propRefresh = iota // each new GloTEC grid, at most every 10 minutes (D-94)
-	refreshHourly                      // once an hour
+	refreshHourly   propRefresh = iota // once an hour (D-332)
+	refreshEvery10                     // each new GloTEC grid, at most every 10 minutes (D-94)
 	refreshOnDemand                    // only the refresh-now key (D-120)
 )
 
 // propRefreshChoices are the Setting's choices, in its order.
-var propRefreshChoices = []propRefresh{refreshEvery10, refreshHourly, refreshOnDemand}
+var propRefreshChoices = []propRefresh{refreshHourly, refreshEvery10, refreshOnDemand}
 
 // propRefreshKeys are the file's names for them; the default is written
 // empty.
-var propRefreshKeys = map[propRefresh]string{refreshEvery10: "", refreshHourly: "hourly", refreshOnDemand: "on-demand"}
+var propRefreshKeys = map[propRefresh]string{refreshHourly: "", refreshEvery10: "every-10-min", refreshOnDemand: "on-demand"}
 
 // propRefreshByKey reads the file's name; anything not offered is the
 // default.
@@ -29,7 +29,7 @@ func propRefreshByKey(key string) propRefresh {
 			return r
 		}
 	}
-	return refreshEvery10
+	return refreshHourly
 }
 
 // propRefreshKey is the file's name for a choice.
@@ -38,24 +38,31 @@ func propRefreshKey(r propRefresh) string { return propRefreshKeys[r] }
 // every is how long the refresh tick waits; zero on demand, when none is set.
 func (r propRefresh) every() time.Duration {
 	switch r {
-	case refreshHourly:
-		return time.Hour
+	case refreshEvery10:
+		return 10 * time.Minute
 	case refreshOnDemand:
 		return 0
 	}
-	return 10 * time.Minute
+	return time.Hour
 }
+
+// staleAfter is how old the oldest input may be before the field is said
+// stale (FR-5.2, D-332): an hour, go-ionomaps' own currency for a GloTEC grid
+// and a GIRO reading (D-184), and the wait until the next refresh, over which
+// the inputs age unrefreshed - so STALE says a refresh missed, never the
+// setting's own rhythm.
+func (r propRefresh) staleAfter() time.Duration { return time.Hour + r.every() }
 
 // propRefreshLabel is the choice as the Settings say it, the refresh-now key
 // named as bound.
 func (d Dashboard) propRefreshLabel() string {
 	switch d.mapPropRefresh {
-	case refreshHourly:
-		return "Hourly"
+	case refreshEvery10:
+		return "Every 10 min"
 	case refreshOnDemand:
 		return "On demand (" + d.firstKey(actMapRefresh) + ")"
 	}
-	return "Every 10 min"
+	return "Hourly"
 }
 
 // propRefreshNote is a choice's cost on the wire while the mode is open, said
@@ -63,12 +70,12 @@ func (d Dashboard) propRefreshLabel() string {
 // 25 % (D-120); G1's runs measured 13.94 and 2.66 MB an hour (A-83).
 func propRefreshNote(r propRefresh) string {
 	switch r {
-	case refreshHourly:
-		return "up to 3.3 MB an hour while the Propagation mode is open"
+	case refreshEvery10:
+		return "up to 19 MB an hour while the Propagation mode is open"
 	case refreshOnDemand:
 		return "about 2.6 MB each time it is refreshed"
 	}
-	return "up to 19 MB an hour while the Propagation mode is open"
+	return "up to 3.3 MB an hour while the Propagation mode is open"
 }
 
 // cyclePropRefresh moves the refresh picker, and round again; an open mode

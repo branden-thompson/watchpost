@@ -244,12 +244,6 @@ func (d Dashboard) propStatusWords() string {
 	return propagationStatus
 }
 
-// propStaleAfter is how old the oldest input may be before the field is
-// said stale (FR-5.2, A-56): an hour, go-ionomaps' own currency for a GloTEC
-// grid - past it the field falls to the climatology, named - and for a GIRO
-// reading (D-184).
-const propStaleAfter = time.Hour
-
 // propOldestInput is when the oldest input in use was valid (FR-5.1, A-30):
 // GloTEC's grid where it is the background, and the oldest GIRO reading
 // assimilated; false with neither - the climatology alone.
@@ -265,7 +259,8 @@ func propOldestInput(s ionomaps.Snapshot) (time.Time, bool) {
 }
 
 // propAge says the field's age (FR-5.1, FR-5.2): its oldest input's, "data
-// 25 min old", "data just in", or past an hour "STALE: data 2 h 5 min old";
+// 25 min old", "data just in", or past the refresh's bound (staleAfter)
+// "STALE: data 2 h 5 min old";
 // "climatology" with no measured input. The age is for the freshness tone,
 // zero for the climatology.
 func (d Dashboard) propAge(s ionomaps.Snapshot) (words string, age time.Duration, stale bool) {
@@ -278,7 +273,7 @@ func (d Dashboard) propAge(s ionomaps.Snapshot) (words string, age time.Duration
 	if age >= time.Minute {
 		words = "data " + spanWords(age) + " old"
 	}
-	if age > propStaleAfter {
+	if age > d.mapPropRefresh.staleAfter() {
 		return "STALE: " + words, age, true
 	}
 	return words, age, false
