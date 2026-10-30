@@ -4,7 +4,7 @@ date: 2026-10-30
 phase: VALIDATE exit
 sev: SEV-0
 authority: HUM LEAD
-status: "PRESENTED to the HUM LEAD for sign-off. Every agenda item ruled (D-325 to D-340); the exit red team's findings closed (batch 81); STANDARD VALIDATE's gates green. One check runs before SHIP: Hourly's STALE bound seen live on the shipped build (A-105 (8))."
+status: "SIGNED OFF by the HUM LEAD (D-341: \"Approve after the check\"); the check clean - VALIDATE exits, SHIP next."
 ---
 
 # VALIDATE report — 0.19.0, go-ionomaps v0.1.0, go-tuiMaps v0.3.0
@@ -74,7 +74,7 @@ A-101 (batch 77's choices), A-102 (the chart's line, shortened in batch 80), A-1
 
 ## Before SHIP
 
-- **Hourly's STALE bound seen live on the shipped build** (A-105 (8), the code reviewer's VC-3): running now, 150 minutes on `63104fe7`.
+- **Hourly's STALE bound seen live on the shipped build** (A-105 (8), the code reviewer's VC-3): done, and the condition of the sign-off (D-341) - 150 minutes on `63104fe7`, three hourly refreshes, the oldest input at most 1 h 47 min old against the 2 h bound, no STALE.
 - **The libraries' final tags**: go-ionomaps v0.1.0 and go-tuiMaps v0.3.0 cut from their candidates and pinned in watchpost (the changelog names the final versions).
 - **No screenshot of the map or the Propagation mode** in the README: a gap for the release, not an inaccuracy.
 
