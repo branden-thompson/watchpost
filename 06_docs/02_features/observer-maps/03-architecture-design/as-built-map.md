@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD exit
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — Batches 1–138, drawn against go-tuiMaps v0.2.0; and 0.19.0 batches 1–81, against go-ionomaps v0.1.0-rc.17 and go-tuiMaps v0.3.0-rc.10. Each release's build log says what each batch moved."
+status: "LIVE — Batches 1–138, drawn against go-tuiMaps v0.2.0; and 0.19.0 batches 1–82, against go-ionomaps v0.1.0-rc.17 and go-tuiMaps v0.3.0-rc.11. Each release's build log says what each batch moved."
 ---
 
 # As built: where the map lives
@@ -110,7 +110,7 @@ flowchart LR
     HX["httpx · DiskCacheBytes, with temperature's CacheBytes and the tiles' cap, the one stated total\nConfig.MemBytes / DiskBytes size a client's tiers; Cached reads the cache, never the network (D-217, D-219)\nClear map data empties the map clients' caches, memory and disk"]
   end
   IO["go-ionomaps v0.1.0-rc.17\nLibrary.Update: the solar file daily, GloTEC's newest grid through its index, D-RAP and NOAA's scales; GIRO's burst at most hourly, its readings assimilated (G9), or none by the host's choice (D-214); how it ended - answered, unavailable, denied for a day - carried until the next (D-247)\nthe last F10.7 mean kept for 7 days when the solar file cannot be read (D-249)\nD-39: NOAA asked every ten minutes, six grids an hour, a 429 or a 5xx backs off; each NOAA ask 20 s and each GIRO ask 15 s, whole or none, each keeping a 1 s margin (internal/deadline), an update's least deadline 32 s; GIRO's stations asked in turn, one that gives no data a miss and the burst moving on, one that misses three in a row flagged and asked every 6 hours until it returns, GIRO paused only for a 429 or a 401/403; the snapshot's count of stations reporting and how recently, for the best-approximation notice (D-298, D-301, D-316 to D-319: the update's timing model); the answers - bands, paths, reach, hours ahead - pure functions of a snapshot\nthe day's climatology cells kept, the hours ahead read from them (D-222); the reach's lower limit on a polar grid (D-227)"]
-  L["go-tuiMaps v0.3.0-rc.10\nSetBound · Source · Set/Remove · Work · Render · Warnings · DaylightAt"]
+  L["go-tuiMaps v0.3.0-rc.11\nSetBound · Source · Set/Remove · Work · Render · Warnings · DaylightAt"]
   MB -- "Config.NewMap(size)" --> MW
   MF -- "Config.MapFeed(ask: snap, place, view, part)\ntwo lanes: the alerts first and on their own, the layers after (D-268)\nuntil the alerts land: 'Alerts for the map are loading.' (D-266)\nan unchanged overlay is not handed in again; a refused one keeps its last (U1-28, D-257)" --> MW
   MF --> MG --> ZS

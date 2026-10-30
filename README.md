@@ -183,10 +183,24 @@ map runs in one of three modes:
   words for every answer. `B` opens the chart of the bands now and through a typical day. The answers
   are for a 100 W voice circuit with simple antennas.
 
+Real data, 0.19.0.
+
+![Radar mode over the contiguous US: MRMS radar, frame 24 of 36 at 07:42, the newest 2 minutes old, on a timeline from 05:47 observed to 10:30 forecast; rain over the West, the southern Plains and Iowa, the night side shaded west of the dotted terminator, and a chip at the map's edge naming Hawaii, the next region](docs/img/map-radar.png)
+
+![Zoomed to 500 km: the same frame over California, Nevada and Arizona, from San Francisco to the Gulf of California](docs/img/map-radar-west.png)
+
+![Propagation mode over North America: MUF(3000) in bands from 7 MHz over the night-side Pacific to 28 MHz over the Caribbean, the terminator dotted down the west coast; beneath the map, the band key, the sources (SWPC, PyIRI, IGRF-14, GIRO), when the field was computed and how old its data is, and the answer near Oro Valley, AZ: foF2 5.9 MHz, MUF(3000) 21.7 MHz, 160 m to 60 m within about 400 km, and 15 m the highest band open to North America](docs/img/propagation-muf.png)
+
+![Zoomed to 500 km over California, Nevada and Arizona: MUF(3000) from 14 to 24.89 MHz, each contour labelled with its band edge, and the answer for the map's centre at 37.0°N 117.5°W: MUF(3000) 18.3 MHz, 160 m and 80 m within about 400 km, 15 m to North America](docs/img/propagation-muf-west.png)
+
+![The foF2 layer (`L`) across the Atlantic: the daylit side over Africa and the Atlantic at the 30 m band's 10.1 MHz, Asia's night side far lower; the answer near Osuna, Spain: foF2 9.0 MHz, MUF(3000) 31.0 MHz, 160 m to 40 m within about 400 km, and 15 m to Europe](docs/img/propagation-fof2-atlantic.png)
+
 The layers are temperature, feels-like, wind, rain and snow, UV, air quality, waves, fire, earthquakes,
 buoys and tides. Switch them in the Overlays menu (`O`) or in Settings. Out of the box the radar, alert
 areas, fire, earthquakes, and rain and snow are on, and the rest are off. A badge above the map names
 each layer drawn and its source.
+
+![The Overlays menu (`O`) over the radar: one shaded overlay at a time (temperature, UV index, air quality or radio propagation); the data points (wind, waves, buoys, tides), the hazards (quakes, fire, hotspots) and the alert areas by kind, each group switched as a whole; and the map's detail (borders, lakes, rivers, place names, major roads, rail, parks, day and night), with the zoom at which rail and parks appear](docs/img/map-overlays.png)
 
 The **Area Alerts** box (`A`) describes the map in words. It says which alerts cover the place, which
 come near it, and every other alert in view, most severe first. The description can also replace the

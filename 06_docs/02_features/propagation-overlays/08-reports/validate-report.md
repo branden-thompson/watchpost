@@ -76,7 +76,7 @@ A-101 (batch 77's choices), A-102 (the chart's line, shortened in batch 80), A-1
 
 - **Hourly's STALE bound seen live on the shipped build** (A-105 (8), the code reviewer's VC-3): done, and the condition of the sign-off (D-341) - 150 minutes on `63104fe7`, three hourly refreshes, the oldest input at most 1 h 47 min old against the 2 h bound, no STALE.
 - **The libraries' final tags**: go-ionomaps v0.1.0 and go-tuiMaps v0.3.0 cut from their candidates and pinned in watchpost (the changelog names the final versions).
-- **No screenshot of the map or the Propagation mode** in the README: a gap for the release, not an inaccuracy.
+- **The README's screenshots of the map and the Propagation mode**: taken by the HUM LEAD on the 0.19.0 build; they showed a column of the wrong colour on 180°, a go-tuiMaps defect fixed before SHIP (D-343) - go-tuiMaps v0.3.0-rc.11, watchpost batch 82 - and the Pacific shot retaken on that build.
 
 ## What the release learned here (for REFLECT)
 

@@ -976,3 +976,10 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 - **VC-4's figures re-scored at rc.17** (gm3 at `37b7d42`, outside the tree): the 10-minute day and PLAN's week give the probe's figures exactly - the Pacific 1.39 (1.39) and 1.28 (1.32), all stations 0.91 and 0.84.
 - **Tests:** `TestTheModeRefreshesUnderAWindow`, `TestAFirstRunSaveRefusedKeepsThePick`, `TestRequestsQueuedOnAHungHostFailFast`; `TestEveryPropagationSourceIsCredited` and `TestTheFirstRunSetupsEscKeepsTheLocation` extended. m597 to m601, and m595 re-pointed, each vetted applied.
 - **Docs:** FR-4.1, FR-4.10 and the plan's W10.7; the changelog; the README; VALIDATE's agenda; the red team's record and the reports verbatim; the as-built map's batch line.
+
+## Batch 82 - SHIP's run-up: the antimeridian's column, go-tuiMaps rc.11 (D-343)
+
+- **Found** in the HUM LEAD's README screenshots on `8254bd68`: foF2 over the Pacific drew a column one cell wide on 180° in a warmer band than its neighbours. go-tuiMaps sampled a field's cell at the mean of its two dot columns' longitudes, about 0° for a cell either side of the antimeridian, so the column drew Greenwich's value (`internal/render/field.go:212` at rc.10); an image's dot footprint took the same arithmetic (`field.go:382`). A probe drew Greenwich's class over the Pacific from 8 of 20 centres between 178° and 182°. The arithmetic dates from go-tuiMaps v0.2.0, where a region's field reaching 180° would lose one column at its edge; none was seen.
+- **Fixed in go-tuiMaps v0.3.0-rc.11** (its D-47, plan task P9.4): a cell's place and a dot's footprint taken the short way round; `TestACellOnTheAntimeridianIsSampledThere`, `TestAFootprintAcrossTheAntimeridianIsADotWide`, its m095 to m097.
+- **Re-pinned** here: `go.mod`, the third-party licences, the as-built map's library line.
+- **The README** carries the map and the Propagation mode at last: radar, MUF(3000) wide and close, foF2 over the Pacific and the Atlantic, the Overlays menu (`docs/img/`, the HUM LEAD's, on the 0.19.0 build).
