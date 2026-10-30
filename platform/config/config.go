@@ -519,6 +519,12 @@ func Mutate(edit func(*Config) error) error {
 	if err := edit(&cfg); err != nil {
 		return err
 	}
+	// A LISTENER'S OWN CHANGE ENDS THE FIRST RUN (0.19.0 D-336). Mutate writes
+	// what the listener just did - a place looked up, a setting changed - so
+	// with no file yet it writes the first one rather than refusing: Setup still
+	// opens while no location is saved, which is len(Locations)'s to say
+	// (app/dashboard.go's openSetup), never FirstRun's.
+	cfg.FirstRun = false
 	return Save(cfg)
 }
 

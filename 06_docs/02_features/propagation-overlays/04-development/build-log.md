@@ -946,3 +946,16 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 - **Tests:** `TestStaleFollowsTheRefresh`; `TestTheRefreshSettingStatesItsCost` and `TestRoundFourMarksStandOut` to the new default; the Settings Maps tab's golden re-recorded, its one change the refresh row's "Hourly". m589 and m590, each vetted applied; m291 and m323, their anchors moved, re-pointed and vetted.
 - **The mutant corpus's hosted cap:** 5fd5f444's hosted Ubuntu run died in `mutant-check` at `go test`'s 120-minute timeout, 835 mutants compiled one by one, where the run before passed the step in 93 minutes - the Makefile's rule says raise the cap and re-record the measurement, so it is 240 minutes. The run's failure is the clock's, not the code's: 5fd5f444 changed Markdown alone.
 - **Docs:** FR-4.10, FR-5.2 and the plan's W10.6; the changelog's Settings; the config's comment; the as-built map's batch line and go-ionomaps' node, and the atlas.
+
+## Batch 80 - VALIDATE: the core journey brought current, W10.1, and what it found (D-336; A-104)
+
+- **The journey** (`make journey`, STANDARD VALIDATE's core tests) had not run since 2026-09-08, and W10.1 - its Propagation-mode steps - was never built. Run in VALIDATE it failed four steps, intermittently.
+- **What it found, and what was the script:**
+  - **A first-run defect, shipped in 0.18.2 too (D-336):** esc on the first-run Setup dropped the location chosen and wrote no config, and every later write failed with "invariant violated: refusing to persist a first-run config" - seen as Lookup failing. Reproduced 3 of 3 on both releases. Fixed: on the first run esc keeps the location, closing the window at once; a listener's change with no file yet is written (`config.Mutate`); a save landing closes the Setup window alone.
+  - **A chart deadlock (A-104 (4)):** a chart opened within 0.6 s of a pan or resize stayed "being worked out" until closed - its settle tick waits for the map to be in front, and the chart waits for the settle. Fixed in `armPropChart`.
+  - **The agreement line wrapped** "64%)" onto a line of its own; shortened to fit (A-102), and its test now measures the window's prose width rather than the shade legend's raw string.
+  - **The script:** steps that passed on text drawn elsewhere ("Search:" is also Settings' Data tab; "Vista" is also the typed query) now wait for each window's title; Status's headings and its severe row, below the fold, are current; every run keeps its whole transcript (`dist/journey-raw.log`) for replay.
+- **W10.1:** the Propagation mode's acknowledgement and MUF, the chart and its measured agreement, the swap to the console, the console's own map, and back.
+- **Runs:** 34 steps, all passing, in 3 runs of 3 on the fixed build.
+- **Tests:** `TestAChangeOnAFirstRunIsKept`, `TestTheFirstRunSetupsEscKeepsTheLocation`, `TestAChartOpenedAsTheViewMovesIsWorkedOut`; `TestTheChartSaysItsMeasuredAgreement` to the window's width; `TestTheJourneyWaitsForWordsTheAppStillSays`' exemptions name the windows the new steps wait in, none with a golden. m591 to m596, each vetted applied.
+- **Docs:** the changelog's Fixed; VALIDATE's agenda item 10; the plan's W10.1; the as-built map's batch line.

@@ -257,6 +257,7 @@ type Config struct {
 	Suggest                            func(query string, limit int) []snapshot.LocationRef  // type-ahead hints for the Setup window (embedded index only; nil = enter resolves)
 	Setup                              func(def snapshot.LocationRef, firmsKey string) error // persist the default location (+ the FIRMS key when given) — the Setup window's finish (UAT 100)
 	OpenSetup                          bool                                                  // open the Setup window at launch (first run, no locations, or `watchpost setup`)
+	FirstRun                           bool                                                  // no config file at launch: until Setup saves, its esc keeps a location chosen as enter does (0.19.0 D-336)
 	FIRMSKey                           func() string                                         // the stored FIRMS key's tail ("cdef"), "" when none — the Setup window shows it is there (UAT 111)
 	Stats                              func() Stats                                          // request/publish/dump counters for the [S] modal (quality pass Q0); nil = the rows are omitted
 	ASCII                              bool                                                  // --ascii: the row marks and legend in their ASCII forms (A11-10; quality pass Q3)
@@ -1861,13 +1862,16 @@ func (d Dashboard) applyCommitted(v committedMsg) Dashboard {
 			return d.settled()
 		}
 		if v.saved {
+			d.cfg.FirstRun = false // a file now exists: the first run is over (D-336)
 			// The saved cast becomes the config the window opens with, so a
 			// re-open shows what is on disk rather than what was there at
 			// launch. The file is the source of truth; this keeps the view
 			// agreeing with it without a reload.
 			d.cfg.Cast, d.cfg.Tones = v.cast, v.tones
 		}
-		d = d.close()
+		if d.modal == modalSetup { // the Setup window alone: one the listener opened since stays open (D-336)
+			d = d.close()
+		}
 		d.setup, d.selected = setupState{}, 0
 		return d
 	}

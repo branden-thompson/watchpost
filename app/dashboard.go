@@ -366,6 +366,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		Suggest:        suggestHook(resolver),
 		Setup:          lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
 		OpenSetup:      openSetup,
+		FirstRun:       cfg.FirstRun,      // the first-run Setup's esc keeps the location chosen (0.19.0 D-336)
 		FIRMSKey:       firmsProv.KeyHint, // the Setup window shows a stored key is there (UAT 111)
 		Commit:         lp.commit,         // persist watchlist + reconcile both pipelines (UAT 26/69)
 		SetTheme:       setThemeHook,

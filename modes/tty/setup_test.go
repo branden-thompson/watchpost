@@ -124,6 +124,50 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	}
 }
 
+// TestTheFirstRunSetupsEscKeepsTheLocation is 0.19.0 D-336: on a first run
+// esc keeps the location the listener chose, as enter does, the window gone at
+// once and a window opened before the save lands left open; once a file
+// exists, esc on the location row discards an unsaved pick as Settings always
+// has.
+func TestTheFirstRunSetupsEscKeepsTheLocation(t *testing.T) {
+	h := &setupHarness{}
+	cfg := h.config()
+	cfg.FirstRun = true
+	m, err := NewDashboard(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+	model = typeText(model, "oce")
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // the pick, shown as the default
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if d := model.(Dashboard); d.modal == modalSetup {
+		t.Fatal("esc on a first run left the window open until the save lands; a key pressed meanwhile would be the window's")
+	}
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'w', Text: "w"}) // a window opened before the save lands
+	model = drain(t, model, cmd)
+	if d := model.(Dashboard); d.modal != modalSevere {
+		t.Fatalf("the save landing closed window %v, opened after esc; it closes the Setup window alone", d.modal)
+	}
+	if d := model.(Dashboard); h.setups != 1 || h.def == nil || h.def.Zip != "92057" || d.cfg.FirstRun {
+		t.Fatalf("esc on a first run: Setup hook %d times with %+v, first run %v; want once with Oceanside, over", h.setups, h.def, d.cfg.FirstRun)
+	}
+	later := &setupHarness{}
+	m2, _ := NewDashboard(later.config()) // a file exists: not a first run
+	var lm tea.Model = m2
+	lm, _ = lm.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	lm, _ = lm.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+	lm = typeText(lm, "oce")
+	lm, _ = lm.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	lm, cmd = lm.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	_ = drain(t, lm, cmd)
+	if later.setups != 0 {
+		t.Fatalf("esc outside a first run saved the location pick (%d Setup calls); it discards the typed data rows", later.setups)
+	}
+}
+
 func TestSetupAlertPreferenceTogglesAndPersists(t *testing.T) {
 	h := &setupHarness{}
 	m, err := NewDashboard(h.config())

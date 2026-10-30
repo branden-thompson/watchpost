@@ -122,20 +122,43 @@ func TestTheDaysOpenHoursAreShown(t *testing.T) {
 
 // TestTheChartSaysItsMeasuredAgreement is D-330: the chart says how often its
 // answers agreed with what WSPR heard, the climatology's beside them, in
-// either glyph set and within the window's width.
+// either glyph set, on one line of the window's prose width.
 func TestTheChartSaysItsMeasuredAgreement(t *testing.T) {
 	for _, ascii := range []bool{false, true} {
 		d := pressMap(t, chartDash(t), "B")
 		d.cfg.ASCII = ascii
 		text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
-		for _, want := range []string{"agrees with WSPR reports", "Local 54%", "continents 68%", "typical alone 52%, 64%"} {
+		for _, want := range []string{"agrees with WSPR:", "Local 54%", "continents 68%", "typical alone 52%, 64%"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("ascii %v: the chart does not say %q:\n%s", ascii, want, text)
 			}
 		}
 	}
-	if w, legend := utf8.RuneCountInString(propAgreementLine), utf8.RuneCountInString(propShadeLegend(false)); w > legend {
-		t.Errorf("the agreement line is %d columns, wider than the shade legend's %d, the widest line the window already holds", w, legend)
+	d, _ := drawnDash(t)
+	if w, prose := utf8.RuneCountInString(propAgreementLine), debugProseWidth(d.opts(), propChartWidth); w > prose {
+		t.Errorf("the agreement line is %d columns; the window lays its prose %d wide, so it wraps", w, prose)
+	}
+}
+
+// TestAChartOpenedAsTheViewMovesIsWorkedOut: the chart opened before a pan's
+// settle tick lands is asked at once. The settle waits for the map to be in
+// front again, and the chart's window is in front of it, so waiting for it
+// left the chart "being worked out" until it was closed (found by the
+// VALIDATE journey, batch 80).
+func TestAChartOpenedAsTheViewMovesIsWorkedOut(t *testing.T) {
+	d, _ := drawnDash(t)
+	d = settled(t, d)
+	d, _ = keyCmd(t, d, "left") // the view moves; its settle tick not yet landed
+	if !d.viewSettling() {
+		t.Fatal("control: a pan leaves the view settling")
+	}
+	d, _ = keyCmd(t, d, "B")
+	if d.modal != modalPropChart {
+		t.Fatalf("B opened window %v; want the chart", d.modal)
+	}
+	d.mapPane.propChartAsked = propChartKey{}
+	if _, cmd := d.armPropChart(); cmd == nil {
+		t.Fatal("the chart's own window open over a settling view: the chart is never asked")
 	}
 }
 

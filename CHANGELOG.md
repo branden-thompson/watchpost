@@ -62,6 +62,9 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   takes 7 ms): on a very large terminal the map lags a frame or two while it pans.
 
 ### Fixed
+- **A first run keeps the default location chosen in Setup when it is closed with esc.** The choice was
+  dropped and nothing saved, and every later change - a place looked up, a setting - then failed with an
+  internal error. Any change made before a location is saved is now kept too.
 - **A service that stops answering no longer holds the location list.** When NASA FIRMS's API accepted
   requests and never answered, each request held a place among the requests in flight for 30 seconds,
   and the RECENT/SEARCHED rows waited behind them, loading, for over a minute. A service that does not

@@ -98,9 +98,12 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 
 // armPropChart asks for the chart when what it is worked out from has
 // changed, once, in a command (FR-1.17): after every Update, as the map's
-// clock is armed. A chart from the map's centre waits for the view to settle.
+// clock is armed. A chart from the map's centre waits for the view to settle -
+// unless the chart's own window is open: it holds the keys, so the view cannot
+// move under it, and the settle it would wait for waits in turn for the map to
+// be in front again (applyViewSettled), so the chart would never be asked.
 func (d Dashboard) armPropChart() (Dashboard, tea.Cmd) {
-	if d.viewSettling() && d.propRole().origin == propFromCentre {
+	if d.viewSettling() && d.propRole().origin == propFromCentre && d.modal != modalPropChart {
 		return d, nil
 	}
 	key, ok := d.propChartWanted()
@@ -370,7 +373,7 @@ func propShadeLegend(ascii bool) string {
 // drawn half open and half not, so a constant answer scores 50%. The Local
 // row is M1's scenario and the continents M4's; the climatology alone beside
 // them.
-const propAgreementLine = "agrees with WSPR reports: Local 54%, continents 68% (typical alone 52%, 64%)"
+const propAgreementLine = "agrees with WSPR: Local 54%, continents 68% (typical alone 52%, 64%)"
 
 // propNameW is the chart's name column: the longest row name and a space.
 const propNameW = 16
