@@ -983,3 +983,9 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 - **Fixed in go-tuiMaps v0.3.0-rc.11** (its D-47, plan task P9.4): a cell's place and a dot's footprint taken the short way round; `TestACellOnTheAntimeridianIsSampledThere`, `TestAFootprintAcrossTheAntimeridianIsADotWide`, its m095 to m097.
 - **Re-pinned** here: `go.mod`, the third-party licences, the as-built map's library line.
 - **The README** carries the map and the Propagation mode at last: radar, MUF(3000) wide and close, foF2 over the Pacific and the Atlantic, the Overlays menu (`docs/img/`, the HUM LEAD's, on the 0.19.0 build).
+
+## SHIP's run-up: the README's screenshots completed (D-343; A-106)
+
+- **The Pacific retaken** on batch 82's build: foF2 with 180° in view, no column on it.
+- **The radar loop** is five of the HUM LEAD's frames - 08:39, 09:04, 09:29, 09:49 and HRRR's 10:30 - aligned on the map's title line and the maps row (each frame within 10 pixels of the first, matched exactly) and joined as `docs/img/map-radar.gif`, replacing the still.
+- **Two more views**: MUF(3000) across the Atlantic and foF2 from the Atlantic to the western Pacific.

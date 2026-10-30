@@ -185,7 +185,7 @@ map runs in one of three modes:
 
 Real data, 0.19.0.
 
-![Radar mode over the contiguous US: MRMS radar, frame 24 of 36 at 07:42, the newest 2 minutes old, on a timeline from 05:47 observed to 10:30 forecast; rain over the West, the southern Plains and Iowa, the night side shaded west of the dotted terminator, and a chip at the map's edge naming Hawaii, the next region](docs/img/map-radar.png)
+![Radar mode over the contiguous US, the loop playing: MRMS's observed frames at 08:39, 09:04 and 09:29, the newest at 09:49, then HRRR's forecast for 10:30, the badge changing from MRMS to HRRR; the timeline runs from 07:54 observed to 12:45 forecast, the rain moving over the West, the southern Plains and Iowa](docs/img/map-radar.gif)
 
 ![Zoomed to 500 km: the same frame over California, Nevada and Arizona, from San Francisco to the Gulf of California](docs/img/map-radar-west.png)
 
@@ -193,7 +193,13 @@ Real data, 0.19.0.
 
 ![Zoomed to 500 km over California, Nevada and Arizona: MUF(3000) from 14 to 24.89 MHz, each contour labelled with its band edge, and the answer for the map's centre at 37.0°N 117.5°W: MUF(3000) 18.3 MHz, 160 m and 80 m within about 400 km, 15 m to North America](docs/img/propagation-muf-west.png)
 
+![MUF(3000) across the Atlantic at 5000 km: 28 MHz over the daylit ocean, the Americas and Africa, lower beyond the terminator on each side, over Europe and over the Gulf of Alaska; the answer for the map's centre at 40.5°N 54.0°W: MUF(3000) 25.1 MHz, 160 m to 40 m within about 400 km](docs/img/propagation-muf-atlantic.png)
+
+![The foF2 layer across the Pacific and North America, 180° in view: the North Pacific's night under 3.5 MHz, rising across North America to 7 MHz and to 10.1 MHz over South America's day; the answer for the map's centre at 40.5°N 110.5°W: foF2 7.3 MHz, MUF(3000) 25.1 MHz, 160 m to 40 m within about 400 km, and 15 m to North America](docs/img/propagation-fof2-pacific.png)
+
 ![The foF2 layer (`L`) across the Atlantic: the daylit side over Africa and the Atlantic at the 30 m band's 10.1 MHz, Asia's night side far lower; the answer near Osuna, Spain: foF2 9.0 MHz, MUF(3000) 31.0 MHz, 160 m to 40 m within about 400 km, and 15 m to Europe](docs/img/propagation-fof2-atlantic.png)
+
+![foF2 from the Atlantic to the western Pacific, centred at 40.5°N 58.5°E: Africa and the Atlantic in the day at 10.1 MHz, Europe and Asia in the night at 3.5 MHz and below; the answer there: foF2 2.9 MHz, MUF(3000) 8.6 MHz, and only 160 m within about 400 km](docs/img/propagation-fof2-asia.png)
 
 The layers are temperature, feels-like, wind, rain and snow, UV, air quality, waves, fire, earthquakes,
 buoys and tides. Switch them in the Overlays menu (`O`) or in Settings. Out of the box the radar, alert
