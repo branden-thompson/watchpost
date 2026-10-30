@@ -959,3 +959,10 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 - **Runs:** 34 steps, all passing, in 3 runs of 3 on the fixed build.
 - **Tests:** `TestAChangeOnAFirstRunIsKept`, `TestTheFirstRunSetupsEscKeepsTheLocation`, `TestAChartOpenedAsTheViewMovesIsWorkedOut`; `TestTheChartSaysItsMeasuredAgreement` to the window's width; `TestTheJourneyWaitsForWordsTheAppStillSays`' exemptions name the windows the new steps wait in, none with a golden. m591 to m596, each vetted applied.
 - **Docs:** the changelog's Fixed; VALIDATE's agenda item 10; the plan's W10.1; the as-built map's batch line.
+
+## VALIDATE: the README content audit (the phase's exit gate)
+
+- **Read for accuracy, not stats**, by a fresh reviewer against the code at 3df12963: every key, Settings label, config key, linked path and make target checked; the libraries' examples compiled.
+- **watchpost's README, fixed:** the 0.19.0 sources in "Data and credits" (SWPC GloTEC, D-RAP and solar indices; the Lowell GIRO Data Center, CC BY-NC-SA, non-commercial; PyIRI, IGRF-14, ITUHFProp, ITU-R P.372), as the About window credits them (`app/credits.go`); the HF refresh's default and choices; the Propagation mode's six config keys in "For tinkerers"; *Day / night* in the map's detail; the Maps tab's notices; weather coverage US-only with the Propagation mode worldwide; `test-alert/` among the report scripts; a garbled sentence on the map's action names; four places that said "you" for a place, named.
+- **Left as it is:** no screenshot of the map or the Propagation mode - a gap for the release, not an inaccuracy.
+- **go-ionomaps and go-tuiMaps:** in their own repositories, the same day.

@@ -21,15 +21,15 @@ watchpost
 
 Windows: download `watchpost-windows-amd64.exe` from the
 [Releases](https://github.com/branden-thompson/watchpost/releases) page and run it. On the first run
-the Settings window asks for your location and you are on the air. Details, requirements and the by-hand
+the Settings window asks for a default location and the station is on the air. Details, requirements and the by-hand
 install are under [Get it running](#get-it-running).
 
 ## What it is
 
 Your places on one screen — what it is like there
-right now, today and the week ahead, every active alert, the tide and the sea if you are near the coast,
+right now, today and the week ahead, every active alert, the tide and the sea for a place on the coast,
 wildfire and earthquakes in reach — with NOAA Weather Radio playing the real broadcast where a
-transmitter is streamed, and a correspondent reading your location's own forecast aloud where it is
+transmitter is streamed, and a correspondent reading each location's own forecast aloud where it is
 not. Up top, a ticker scrolls the world's largest active hazards, and a breaking one is read over the
 radio. Press `w` and every active warning, watch, advisory, quake and storm is one window away.
 
@@ -55,7 +55,7 @@ Real data, 133×44, the default theme unless noted (0.14.0).
 
 ![The radio on air in Synth mode: the station lead, then the forecast read line by line in the marquee band, the visualizer inside it](docs/img/radio.gif)
 
-![The Settings window: settings grouped by concern, with the Alert Notification Preference — all severe events, or filtered to within N miles of your location](docs/img/setup.png)
+![The Settings window: settings grouped by concern, with the Alert Notification Preference — all severe events, or filtered to within N miles of the default location](docs/img/setup.png)
 
 ![Settings' theme picker cycling twelve of the thirteen built-in palettes live — Watchpost Light, Catppuccin, Everforest, Gruvbox, High Contrast, Kanagawa, Monochrome, Nord, Osaka Jade, Solarized Night, Synthwave '84, Tokyo Night — the whole frame repainting on each; add your own as a JSON file](docs/img/themes.gif)
 
@@ -88,10 +88,10 @@ watchpost
 ```
 
 On the first run the Settings window opens over the dashboard and asks three things, all on one screen:
-your default location (start typing a city or ZIP; the list narrows as you type), an optional NASA
+the default location (start typing a city or ZIP; the list narrows as you type), an optional NASA
 FIRMS key for satellite fire detections minutes old (leave it empty — the built-in fire sources need
 no key), and whether the radio should announce every severe event nationwide or only those within a
-distance of you. `tab` moves between the questions, `enter` saves. Press `s` to come back to it any time.
+distance of the default location. `tab` moves between the questions, `enter` saves. Press `s` to come back to it any time.
 
 **Your correspondents.** Settings' *Watchpost Radio — Correspondents* group gives the station a cast: a
 row for each thing you hear — the alerts and takeovers, the location report, the marine report, the fires,
@@ -210,7 +210,7 @@ picture or be switched off (Settings, *Description*).
 While the map is open these keys are the map's. Any other key works as it does on the dashboard. Each
 command is a keymap action, so `[keys]` in `config.toml` can rebind it by the action's name; the keys
 inside a window over the map (the Overlays menu, find, your frequency, the acknowledgement, and the
-bands chart's `esc`, `PgUp` and `PgDn`) are fixed. The map's begin
+bands chart's `esc`, `PgUp` and `PgDn`) are fixed. The map's action names begin
 `map.` (`map.pan.left`, `map.zoom.in`, `map.propagation`, …) and the bands chart's are `chart.prev` and
 `chart.next`.
 
@@ -221,15 +221,16 @@ bands chart's `esc`, `PgUp` and `PgDn`) are fixed. The map's begin
   hours of radar ahead; which earthquakes (a USGS feed); the temperature source (NDFD or Open-Meteo);
   how dense the rain is from day 4; how many cities show UV; and for the Propagation mode, the
   near-vertical radius (*NVIS radius*), the receiver's noise (*RX noise*), how often it refreshes
-  (*HF refresh*), what it draws while no station readings are held (*No readings*), whether GIRO's
+  (*HF refresh*: Hourly by default, Every 10 min, or On demand), what it draws while no station readings are held (*No readings*), whether GIRO's
   stations are asked at all (*HF stations*), and the map's *Colours* (automatic, or a depth chosen).
 - **MAP - LAYERS:** each layer on or off.
 - **MAP - DETAIL:** the basemap's detail (borders, lakes, rivers, place names, major roads, rail and
-  parks) and *Map data*, which clears what the map keeps on disk.
+  parks), *Day / night* (the night side shaded and its edge dotted; always drawn in the Propagation
+  mode) and *Map data*, which clears what the map keeps on disk.
 
-The foot of the tab warns when a choice costs a lot. That happens when Open-Meteo is chosen, because it
-bills per location, and when the layers you switched on would fetch more than 3 MB or 25 requests in
-one refresh.
+The foot of the tab warns when a choice costs a lot: when Open-Meteo is chosen, because it bills per
+location, and when the layers switched on would fetch more than 3 MB or 25 requests in one refresh. It
+also states the HF refresh's cost on the wire and GIRO's terms beside the rows they concern.
 
 **A font without braille.** The picture is drawn in braille characters. If your terminal's font has
 none, the map shows empty boxes. Run `watchpost --ascii` and the window gives the map's description
@@ -255,7 +256,7 @@ is sent:
 | `data.epa.gov` (EPA) | UV | the names of the largest cities in view |
 | `www.ndbc.noaa.gov`, `api.tidesandcurrents.noaa.gov` | buoys, tides | nothing for buoys (a national file); the tide stations in view |
 | `earthquake.usgs.gov` | earthquakes | nothing: the national feed chosen in Settings |
-| `services.swpc.noaa.gov` (NOAA SWPC) | Propagation mode | nothing: GloTEC's newest grid, the daily solar indices, D-RAP and the space-weather scales, at most every ten minutes |
+| `services.swpc.noaa.gov` (NOAA SWPC) | Propagation mode | nothing: GloTEC's newest grid, the daily solar indices, D-RAP and the space-weather scales: hourly by default, at most every ten minutes |
 | `lgdc.uml.edu` (GIRO) | Propagation mode, unless *HF stations* is off | the stations' codes and a time window, at most one burst an hour; GIRO records the address it is asked from, and its data is for non-commercial use |
 
 **The history recorder runs whatever the maps setting.** While watchpost runs, in any mode, it records
@@ -372,8 +373,9 @@ is printed as they wrote them; punctuation inside an alert's own title travels w
 ## Good to know
 
 **Not a substitute for official warnings.** Everything here is fetched on a schedule and can lag;
-for life safety use NOAA Weather Radio and Wireless Emergency Alerts. Coverage is US-only (the
-National Weather Service); places outside the US resolve but carry no weather data yet.
+for life safety use NOAA Weather Radio and Wireless Emergency Alerts. Weather coverage is US-only (the
+National Weather Service); places outside the US resolve but carry no weather data yet. The
+Propagation mode alone covers the whole world.
 
 **Data and credits.** Watchpost reads public sources and shows their credits in the About window
 (`a`), a group a provider, each source once: NOAA - the National Weather Service, NDBC buoys, CO-OPS
@@ -384,8 +386,11 @@ credited to LANCE FIRMS); NIFC WFIGS incidents; the NWR audio relays of wxradio.
 data, not fully verified) and EPA Envirofacts UV; the USGS earthquake feed; the Iowa Environmental
 Mesonet's radar; Open-Meteo's geocoding and forecasts and GeoNames' places (CC BY 4.0,
 <https://creativecommons.org/licenses/by/4.0/>; Open-Meteo's grids are interpolated); OpenFreeMap's
-basemap (© OpenMapTiles, © OpenStreetMap contributors, ODbL); and the Piper voices
-(rhasspy/piper-voices, MIT). Watchpost is not affiliated with NOAA, NIFC, the USGS, the EPA or NASA.
+basemap (© OpenMapTiles, © OpenStreetMap contributors, ODbL); for the Propagation mode, NOAA SWPC's
+GloTEC, D-RAP and solar indices (public domain), the Lowell GIRO Data Center's ionosonde stations
+(CC BY-NC-SA 4.0, non-commercial use only; Reinisch & Galkin 2011), the PyIRI ionosphere climatology
+(MIT, ported), IGRF-14's magnetic coordinates, ITUHFProp's P.533 absorption factors and ITU-R P.372's
+noise levels; and the Piper voices (rhasspy/piper-voices, MIT). Watchpost is not affiliated with NOAA, NIFC, the USGS, the EPA or NASA.
 
 **What it talks to, and when.** Watchpost fetches only from the providers above, on the schedule the
 dashboard shows, and sends each only what its answer needs: the places you watch, for the station, and
@@ -425,6 +430,17 @@ key = "your-32-character-map-key"   # or paste it in Settings
 units         = "imperial"   # imperial (°F/mi) | metric (°C/km)
 clock         = "12h"        # 12h | 24h | mil — how times are written AND spoken
 update_check  = false        # true asks GitHub ONCE at startup whether a newer release exists
+```
+
+**The Propagation mode and the map's colours** (`config.toml`; each is a row on the Maps tab):
+
+```toml
+map_propagation_refresh     = ""   # "" hourly | "every-10-min" each new GloTEC grid | "on-demand" the refresh key alone
+map_propagation_radius_km   = 0    # 0 is 400 | 200 | 600: the near-vertical radius
+map_propagation_noise       = ""   # "" residential | "city" | "rural" | "quiet-rural"
+map_propagation_no_readings = ""   # "" GloTEC as is | "corrected" by the typical offset
+map_propagation_stations    = ""   # "" ask GIRO | "none" NOAA and the climatology alone
+map_colour_depth            = ""   # "" automatic | "truecolor" | "256" | "16" | "none"
 ```
 
 **The radio's own keys** (`[radio]`). Most are Settings rows, so you never have to write them by
@@ -484,7 +500,8 @@ it appears in the picker. Every colour has a token, the tables' included (`table
 data), plus `scripts/global/head.txt` and `tail.txt`, which any report inherits when it has none of its
 own. Today: `weather-radio/` (the broadcast's lead, conditions, alerts, sign-off), `fire-report/`,
 `seismic-report/` and `marine-report/`, `event-report/` (the `space` read), `breaking/` (the takeover),
-`handover/` (one correspondent passing to another) and `voice-preview/`. There is also
+`handover/` (one correspondent passing to another), `test-alert/` (the diagnostics window's injected
+test event) and `voice-preview/`. There is also
 `transition/`, written and pinned but **not yet on air** — it is the line between a takeover and the
 programme resuming, and it arrives with the wiring in a later release.
 To re-word a phrase, put the same `<report>/<part>.txt` under `~/.config/watchpost/scripts/`; it
