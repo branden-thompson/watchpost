@@ -10,23 +10,25 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
 // hungServer holds every request until the test ends, counting those in
-// flight and the most at once.
+// flight, the most at once and every one that arrived.
 type hungServer struct {
 	*httptest.Server
-	inflight, most atomic.Int32
-	release        chan struct{}
+	inflight, most, seen atomic.Int32
+	release              chan struct{}
 }
 
 func newHungServer(t *testing.T) *hungServer {
 	t.Helper()
 	hs := &hungServer{release: make(chan struct{})}
 	hs.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hs.seen.Add(1)
 		n := hs.inflight.Add(1)
 		defer hs.inflight.Add(-1)
 		for m := hs.most.Load(); n > m && !hs.most.CompareAndSwap(m, n); m = hs.most.Load() {
@@ -51,6 +53,26 @@ func TestAHostThatNeverAnswersIsAvoided(t *testing.T) {
 	}
 	if _, err := c.GetJSON(context.Background(), hs.URL+"/b", nil, NoCache()); err == nil || !strings.Contains(err.Error(), "being avoided") {
 		t.Fatalf("the next request to it must fail fast, got %v", err)
+	}
+}
+
+// TestRequestsQueuedOnAHungHostFailFast is D-324's other half (the VALIDATE
+// red team's VC-2): requests waiting for a host's share when the memo arms
+// are refused once they hold it, not sent to wait out their own timeout.
+func TestRequestsQueuedOnAHungHostFailFast(t *testing.T) {
+	hs := newHungServer(t)
+	c := mustNew(t, Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, RetryBase: time.Millisecond, Timeout: 300 * time.Millisecond})
+	var wg sync.WaitGroup
+	for i := range 40 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = c.GetJSON(context.Background(), fmt.Sprintf("%s/q/%d", hs.URL, i), nil, NoCache())
+		}()
+	}
+	wg.Wait()
+	if n, share := hs.seen.Load(), int32(maxInflight/2); n > share {
+		t.Fatalf("%d requests reached the hung host; the first wave of its share (%d) times out and arms the memo, and those queued behind it fail fast", n, share)
 	}
 }
 

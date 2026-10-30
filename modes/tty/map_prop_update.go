@@ -44,12 +44,13 @@ type propSession struct {
 }
 
 // askPropagation asks for the mode's update (A-30):
-// only in the Propagation mode, with the map the window shown and its
+// only in the Propagation mode, with the map open - in front or under
+// another window, as the bands chart opened over it (D-339) - and its
 // acknowledgement closed (FR-4.2, D-81), and one at a time. The seam is
 // called in the command, never on the UI goroutine (FR-4.8).
 func (d Dashboard) askPropagation() (Dashboard, tea.Cmd) {
 	seam := d.cfg.PropagationUpdate
-	ready := seam != nil && !d.mapPane.propSess.busy && d.modal == modalMap && d.mapMode() == modePropagation
+	ready := seam != nil && !d.mapPane.propSess.busy && d.mapShown() && d.modal != modalPropAck && d.mapMode() == modePropagation
 	if !ready {
 		return d, nil
 	}
@@ -205,8 +206,8 @@ func (d Dashboard) nextPropTick() (Dashboard, tea.Cmd) {
 	return d, tea.Tick(every, func(time.Time) tea.Msg { return tick })
 }
 
-// applyPropTick asks again on the refresh tick; with another window over the
-// map it waits for the next.
+// applyPropTick asks again on the refresh tick, a window over the map or not
+// (D-339): a chart left open refreshes with the map under it.
 func (d Dashboard) applyPropTick(v propTickMsg) (tea.Model, tea.Cmd) {
 	if v.gen != d.mapPane.propGen {
 		return d, nil

@@ -115,6 +115,7 @@ this plan's "UAT" section.
 | W10.4 | The UAT prompter: shows each question, records the times on a key press, captures watchpost's words as the scored key (D-89, D-92), writes `uat-results.md` redacted (D-115). **Not built: the sittings are not held for 0.19.0 (D-326)** | a scripted run over the protocol's questions on a recorded build |
 | W10.5 | VALIDATE's ruling on the chart's words (D-330; batch 78, A-102): the Best Bands chart says how often its answers agreed with what WSPR heard, from W10.3's graded run, the climatology's beside them | `TestTheChartSaysItsMeasuredAgreement` |
 | W10.6 | VALIDATE's ruling on the default refresh (D-332; batch 79, A-103): Hourly the default, and STALE an hour past the refresh's wait | `TestStaleFollowsTheRefresh` |
+| W10.7 | VALIDATE's exit red team (D-338 to D-340; batch 81, A-105): the refresh under a window, each station's provider credited, the first run's chip and refused save, a queued request on a host since avoided | `TestTheModeRefreshesUnderAWindow`, `TestEveryPropagationSourceIsCredited`, `TestAFirstRunSaveRefusedKeepsThePick`, `TestRequestsQueuedOnAHungHostFailFast` |
 
 ## UAT-1, the early slice (D-151)
 

@@ -142,6 +142,9 @@ func TestTheFirstRunSetupsEscKeepsTheLocation(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	model = typeText(model, "oce")
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // the pick, shown as the default
+	if v := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(v, "[esc] Save") && !strings.Contains(v, "esc Save") {
+		t.Fatalf("the first-run window with a pick says esc does something else:\n%s", v)
+	}
 	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if d := model.(Dashboard); d.modal == modalSetup {
 		t.Fatal("esc on a first run left the window open until the save lands; a key pressed meanwhile would be the window's")
@@ -165,6 +168,35 @@ func TestTheFirstRunSetupsEscKeepsTheLocation(t *testing.T) {
 	_ = drain(t, lm, cmd)
 	if later.setups != 0 {
 		t.Fatalf("esc outside a first run saved the location pick (%d Setup calls); it discards the typed data rows", later.setups)
+	}
+}
+
+// TestAFirstRunSaveRefusedKeepsThePick is D-336 with a mistyped FIRMS key
+// (the VALIDATE red team's VC-1): the save is refused, and the window reopens
+// with the location and the key still in it.
+func TestAFirstRunSaveRefusedKeepsThePick(t *testing.T) {
+	h := &setupHarness{}
+	cfg := h.config()
+	cfg.FirstRun = true
+	cfg.Setup = func(def snapshot.LocationRef, key string) error {
+		h.setups++
+		return fmt.Errorf("a FIRMS MAP_KEY is 32 hex characters")
+	}
+	m, err := NewDashboard(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+	model = typeText(model, "oce")
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // the pick; focus on the key row
+	model = typeText(model, "abc123")
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	model = drain(t, model, cmd)
+	d := model.(Dashboard)
+	if h.setups != 1 || d.modal != modalSetup || d.setup.ref == nil || d.setup.ref.Zip != "92057" || d.setup.key != "abc123" {
+		t.Fatalf("a refused first-run save: %d tries, window open %v, pick %+v, key %q; want the window back with Oceanside and the key", h.setups, d.modal == modalSetup, d.setup.ref, d.setup.key)
 	}
 }
 

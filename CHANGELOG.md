@@ -24,10 +24,13 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 ### Changed
 - The map's library is go-tuiMaps v0.3.0: fields over water, the MUF and foF2 presets, the terminator,
   and a default colour depth that follows the terminal.
-- Nothing is fetched for the Propagation mode until it is opened. GIRO is asked at most once an hour and
-  its throttle is kept across restarts (`propagation-throttle.json`: times, NOAA's solar flux mean,
+- Nothing is fetched for the Propagation mode until it is opened. GIRO is asked in one burst an hour at
+  most and its throttle is kept across restarts (`propagation-throttle.json`: times, NOAA's solar flux mean,
   the stations' codes and the rotation's place, never a GIRO reading); GIRO records the
   address it is asked from, and its data is for non-commercial use.
+- **With the map open, `B`, `L`, `U`, `F` and `/` are the map's keys** (the bands chart, the layer,
+  refresh now, a frequency, find): `B` no longer swaps to the Broadcaster console from the map, and
+  outside the Propagation mode it does nothing there. `ctrl+b` still swaps.
 - **The module floor is Go 1.26.10**, the first on the Go 1.26 line with GO-2026-6809 fixed; 0.18.2 already
   builds with Go 1.27.3.
 
@@ -40,10 +43,13 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   - GIRO going quiet is said that way once its newest reading is 3 hours old; when it answers again,
     most stations are read that hour, the rest within 6 hours.
   - A station that answers slower than 15 seconds is never read.
+  - With 39 or more stations not flagged - the normal state - a flagged station comes back one an hour.
+  - A reply carrying only an old reading counts as data; the notice says its age.
 - **The Propagation mode in a Broadcaster's use costs more than its target.** Over 48 hours on one
-  machine, with the mode in use against the map never opened, it added 1.3 % of one core and 62 MB of
+  machine, with the mode in use against the map never opened, it added 1.3 % of one core and 62.5 MB of
   memory (medians), against at most 1 % and 25 MB; its downloads, 13 MB an hour, are within the 19
-  allowed.
+  allowed. Measured on an earlier build of this release at the every-10-minutes refresh, then the
+  default (Hourly measured 2.66 MB an hour against 3.3), with other work on the machine at times.
 - **A screen reader cannot yet follow focus in the Propagation mode.** Help and the mode's words say so;
   0.19.1 fixes it.
 - **The answers agree with what was heard on the air only a little better than a typical day alone.**
@@ -51,7 +57,8 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   against the typical day's 52% (57% against 55% on 160 m to 30 m; from 20 m up a station's own area is
   never reached, and scores 50% either way); from a place to the continents 68% against 64%. Both fall
   short of the aim of 5 points over a typical day; no accuracy floor rides on them. The bands chart says
-  the figures.
+  the figures. Scored on six quiet days (solar flux 105 to 109, no geomagnetic storm), before the
+  north-west Pacific's change below.
 - **Over the north-west tropical Pacific the map starts from a typical day, corrected by GIRO's
   stations:** NOAA's GloTEC was measured worse there. Elsewhere far from any station, an answer is about
   as good as typical, or worse, and says so.
@@ -72,8 +79,8 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   no one service holds more than half of the requests in flight. The same wait is in 0.18.2.
 - **The weather history holds less in memory.** It held every hour's recorded document, a growth of a
   few megabytes a day for an instance's first days of running; it now holds each hour's issue time, and
-  the days a map's replay reads within 8 MB. The same growth is in 0.18.1 and 0.18.2. A side-by-side
-  run against 0.18.2 measures what this changes over days.
+  the days a map's replay reads within 8 MB. The same growth is in 0.18.1 and 0.18.2. Run beside 0.18.2 for 3
+  days, idle, the fixed build's held flat - at most 0.7 MB a day, against 0.18.2's 8 to 9.
 
 ## [0.18.2] — 2026-10-22
 

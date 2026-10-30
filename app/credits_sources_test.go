@@ -44,6 +44,17 @@ func TestEveryPropagationSourceIsCredited(t *testing.T) {
 			t.Errorf("%s is credited and still listed as pending (%s)", s.Name, why)
 		}
 	}
+	// EACH STATION'S DATA PROVIDER IS ACKNOWLEDGED (D-41, D-340), by GIRO's list
+	// for each ionosonde: a badge and a host alone would pass with GIRO's line.
+	provider := false
+	for _, g := range creditGroups() {
+		for _, l := range g.Lines {
+			provider = provider || (l.Badge == "GIRO" && strings.Contains(l.What, "Data Provider"))
+		}
+	}
+	if !provider {
+		t.Error("About credits GIRO but not each station's data provider (D-41, D-340)")
+	}
 }
 
 // TestEveryStatusSourceIsGroupedAndCredited is D-170 (A-43): every station

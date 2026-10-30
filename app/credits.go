@@ -59,13 +59,14 @@ func creditGroups() []tty.CreditGroup {
 			{Badge: "O-METEO", What: "Rain and Snow Total Forecasts", Host: "api.open-meteo.com", Note: "Interpolated"},
 		}},
 		{Name: "OPENFREEMAP", Lines: []tty.CreditLine{
-			{Badge: "OFM", What: "Basemap Tiles", Host: "openfreemap.org", Note: "© OpenMapTiles, © OpenStreetMap contributors (ODbL)"},
+			{Badge: "OFM", What: "Basemap Tiles", Host: "openfreemap.org", Note: "© OpenMapTiles, © OpenStreetMap contributors (ODbL), openstreetmap.org/copyright"},
 		}},
 		{Name: "GEONAMES (CC BY 4.0)", Lines: []tty.CreditLine{
 			{Badge: "GEONAMES", What: "Cities & Postal Codes", Host: "geonames.org", Note: "The offline place index"},
 		}},
 		{Name: "LOWELL GIRO DATA CENTER (CC BY-NC-SA 4.0)", Lines: []tty.CreditLine{
 			{Badge: "GIRO", What: "Ionosonde Stations", Host: "lgdc.uml.edu", Note: "Non-commercial use only; Reinisch & Galkin 2011"},
+			{Badge: "GIRO", What: "Each Station's Data Provider", Host: "giro.uml.edu", Note: "Acknowledged as GIRO lists them for each ionosonde"}, // D-41, D-340
 		}},
 		{Name: "IONOSPHERE MODELS", Lines: []tty.CreditLine{
 			{Badge: "PYIRI", What: "Ionosphere Climatology (MIT)", Note: "© 2023 victoriyaforsythe; Forsythe et al. 2024, ported"},

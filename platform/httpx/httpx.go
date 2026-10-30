@@ -736,6 +736,13 @@ func (c *Client) do(ctx context.Context, rawURL string, cond conditional) ([]byt
 		return nil, nil, fmt.Errorf("request cancelled: %s: %w", req.safe, err)
 	}
 	defer release()
+	// THE MEMO AGAIN ONCE THE SLOT IS HELD: a wait for the host's share can
+	// outlast the host, and a request queued behind one that has since stopped
+	// answering fails fast rather than waiting out its own timeout (D-324).
+	if err := c.memoRefusal(req); err != nil {
+		c.stats.add(req.host, func(h *HostStats) { h.FastFail++; h.LastFail = time.Now() })
+		return nil, nil, err
+	}
 	var last outcome
 	// Bounded per P10-02: at most 1 + MaxRetries attempts. A retry on the
 	// normal lane re-reads the memo: a 429 Retry-After or a transport error

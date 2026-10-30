@@ -204,6 +204,23 @@ func TestTheModeRefreshesWhileOpen(t *testing.T) {
 	}
 }
 
+// TestTheModeRefreshesUnderAWindow is D-339: the refresh tick asks with the
+// bands chart open over the map, so a chart left open refreshes too; under
+// the acknowledgement nothing is asked.
+func TestTheModeRefreshesUnderAWindow(t *testing.T) {
+	s := &seam{answer: PropagationResult{Err: errors.New("offline")}}
+	d, cmd := keyCmd(t, propDash(t, s, true), "P")
+	d = runProp(t, d, cmd)
+	d, _ = keyCmd(t, d, "B")
+	if d.modal != modalPropChart {
+		t.Fatalf("B opened window %v; want the chart over the map", d.modal)
+	}
+	m, cmd := d.Update(propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq})
+	if runProp(t, m.(Dashboard), cmd); s.count() != 2 {
+		t.Fatalf("the refresh tick under the chart asked %d times in all; want twice", s.count())
+	}
+}
+
 // TestLeavingTheModeCancelsItsUpdate is FR-4.2: leaving the Propagation mode
 // ends the update it started; a key press inside the mode does not.
 func TestLeavingTheModeCancelsItsUpdate(t *testing.T) {

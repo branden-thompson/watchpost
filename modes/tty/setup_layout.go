@@ -514,6 +514,9 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI || g == groupMap || g == groupLayers || g == groupMapLayers {
 		closeLabel = "Close"
 	}
+	if d.cfg.FirstRun && d.setup.ref != nil {
+		closeLabel = "Save" // the first run's esc keeps the location chosen (D-336)
+	}
 	segs = append(segs, o.KeyCap("esc")+" "+closeLabel)
 	inner := min(o.Width, d.modalWidth()) - 7 - 2 // wrapModal's rail allowance, then the 2-cell inset
 	out := []string{""}

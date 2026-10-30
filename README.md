@@ -91,7 +91,8 @@ On the first run the Settings window opens over the dashboard and asks three thi
 the default location (start typing a city or ZIP; the list narrows as you type), an optional NASA
 FIRMS key for satellite fire detections minutes old (leave it empty — the built-in fire sources need
 no key), and whether the radio should announce every severe event nationwide or only those within a
-distance of the default location. `tab` moves between the questions, `enter` saves. Press `s` to come back to it any time.
+distance of the default location. `↑↓` move between the questions and `tab` between the window's tabs;
+`enter` saves, and on the first run `esc` keeps a location chosen too. Press `s` to come back to it any time.
 
 **Your correspondents.** Settings' *Watchpost Radio — Correspondents* group gives the station a cast: a
 row for each thing you hear — the alerts and takeovers, the location report, the marine report, the fires,
@@ -388,7 +389,8 @@ Mesonet's radar; Open-Meteo's geocoding and forecasts and GeoNames' places (CC B
 <https://creativecommons.org/licenses/by/4.0/>; Open-Meteo's grids are interpolated); OpenFreeMap's
 basemap (© OpenMapTiles, © OpenStreetMap contributors, ODbL); for the Propagation mode, NOAA SWPC's
 GloTEC, D-RAP and solar indices (public domain), the Lowell GIRO Data Center's ionosonde stations
-(CC BY-NC-SA 4.0, non-commercial use only; Reinisch & Galkin 2011), the PyIRI ionosphere climatology
+(CC BY-NC-SA 4.0, non-commercial use only; Reinisch & Galkin 2011) and each station's data provider, as
+GIRO lists them, the PyIRI ionosphere climatology
 (MIT, ported), IGRF-14's magnetic coordinates, ITUHFProp's P.533 absorption factors and ITU-R P.372's
 noise levels; and the Piper voices (rhasspy/piper-voices, MIT). Watchpost is not affiliated with NOAA, NIFC, the USGS, the EPA or NASA.
 

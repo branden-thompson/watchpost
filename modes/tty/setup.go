@@ -245,12 +245,12 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// with nothing saved yet, a listener who picked a place and pressed esc
 		// would otherwise run on Watchpost's default, the choice gone. The
 		// window goes at once, as esc's always does, and the save lands behind
-		// it: a key pressed meanwhile is the dashboard's, not the window's.
+		// it: a key pressed meanwhile is the dashboard's, not the window's. The
+		// form is kept until the save's answer: a refusal - a mistyped FIRMS key
+		// - reopens the window with the pick and the key still in it.
 		if d.cfg.FirstRun && d.setup.ref != nil {
 			m, save := d.setupSave()
-			next := m.(Dashboard).close()
-			next.setup = setupState{}
-			return next, save
+			return m.(Dashboard).close(), save
 		}
 		// Closing APPLIES what was recorded. esc is not a cancel for the cast
 		// and tone groups — the chip says Close rather than Cancel over them —
