@@ -989,3 +989,9 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 - **The Pacific retaken** on batch 82's build: foF2 with 180° in view, no column on it.
 - **The radar loop** is five of the HUM LEAD's frames - 08:39, 09:04, 09:29, 09:49 and HRRR's 10:30 - aligned on the map's title line and the maps row (each frame within 10 pixels of the first, matched exactly) and joined as `docs/img/map-radar.gif`, replacing the still.
 - **Two more views**: MUF(3000) across the Atlantic and foF2 from the Atlantic to the western Pacific.
+
+## Batch 83 - SHIP: the libraries' finals pinned (D-349, D-351)
+
+- **Re-pinned** to go-ionomaps v0.1.0 (from rc.17) and go-tuiMaps v0.3.0 (from rc.11): neither library's code changed between candidate and final (`git diff` of their non-test Go files is empty) - go-ionomaps added G10.3's release step and record, go-tuiMaps P7.1's, each in tests, scripts and docs. `go.mod`, the third-party licences, the as-built map's library line and nodes.
+- **Released first:** go-ionomaps v0.1.0 (PR #1, D-349) and go-tuiMaps v0.3.0 (PR #9, D-351), each squash-merged on green with its hosted full gate, tagged on the merge and published as its GitHub Release; go-tuiMaps' nested modules follow on their own PR.
+
