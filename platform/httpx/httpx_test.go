@@ -466,7 +466,7 @@ func TestTheInteractiveLaneAnswersTheListenerFirst(t *testing.T) {
 	for range maxInflight {
 		c.inflight[laneNormal] <- struct{}{}
 	}
-	release, err := c.acquire(WithInteractive(ctx))
+	release, err := c.acquire(WithInteractive(ctx), "example.com")
 	if err != nil {
 		t.Fatalf("an interactive request found no slot of its own: %v", err)
 	}

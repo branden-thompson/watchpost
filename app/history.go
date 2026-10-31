@@ -52,8 +52,9 @@ var ndfdHourly = history.Dataset{
 		{Name: "gust", Label: "Gusts", Unit: "km/h", Decimals: 1},
 		{Name: "wind_from", Label: "Wind from", Unit: "°", Decimals: 0},
 	},
-	Hours: 72 * time.Hour,
-	Days:  30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
+	MaxBytes: largeHistoryBound,
 }
 
 // omUVHourly is Open-Meteo's UV index over each field box, each hour it
@@ -63,8 +64,9 @@ var omUVHourly = history.Dataset{
 	Title:       "Open-Meteo, the UV index",
 	Description: "Open-Meteo's UV index over each field box of a region, each hour it answered.",
 	Fields:      []history.Field{{Name: "uv", Label: "UV index", Unit: "index", Decimals: 1}},
-	Hours:       72 * time.Hour,
-	Days:        30 * 24 * time.Hour,
+	Hours:       historyHours,
+	Days:        historyDays,
+	MaxBytes:    historyBound,
 }
 
 // omRainDays is Open-Meteo's rain and snow over each field box, each day it
@@ -79,8 +81,9 @@ var omRainDays = history.Dataset{
 		{Name: "rain", Label: "Rain", Unit: "mm", Decimals: 1},
 		{Name: "snow", Label: "Snow", Unit: "cm", Decimals: 1},
 	},
-	Hours: 72 * time.Hour,
-	Days:  30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
+	MaxBytes: historyBound,
 }
 
 // ndfdWaves is NDFD's significant wave height over each field box, an hour a
@@ -91,8 +94,9 @@ var ndfdWaves = history.Dataset{
 	Title:       "NDFD, wave height",
 	Description: "The National Weather Service's significant wave height over each field box's sea, an hour a record.",
 	Fields:      []history.Field{{Name: "waves", Label: "Wave height", Unit: "m", Decimals: 1}},
-	Hours:       72 * time.Hour,
-	Days:        30 * 24 * time.Hour,
+	Hours:       historyHours,
+	Days:        historyDays,
+	MaxBytes:    historyBound,
 }
 
 // epaUVCities is EPA's UV forecast for each city the map has read, an hour a
@@ -104,8 +108,9 @@ var epaUVCities = history.Dataset{
 	Title:       "EPA, the UV index by city",
 	Description: "The EPA's hourly UV index forecast for each city the map has read, an hour a record.",
 	Fields:      []history.Field{{Name: "uv", Label: "UV index", Unit: "index", Decimals: 0}},
-	Hours:       72 * time.Hour,
-	Days:        30 * 24 * time.Hour,
+	Hours:       historyHours,
+	Days:        historyDays,
+	MaxBytes:    historyBound,
 }
 
 // ndfdRainDays is NDFD's rain and snow over each field box, each day it gave:
@@ -118,9 +123,29 @@ var ndfdRainDays = history.Dataset{
 		{Name: "rain", Label: "Rain", Unit: "mm", Decimals: 1},
 		{Name: "snow", Label: "Snow", Unit: "cm", Decimals: 1},
 	},
-	Hours: 72 * time.Hour,
-	Days:  30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
+	MaxBytes: historyBound,
 }
+
+// The datasets' byte bounds (D-143): each past what the longest retention - a
+// year of hourly detail, five years of trends, which a document dataset keeps
+// whole - holds at the rates measured (0.19.0 build log, W1.2), so none is cut
+// short at those rates; the bound is the backstop for a rate nobody measured.
+// The two largest, NDFD's current hour and AirNow's national file, have the
+// larger.
+const (
+	largeHistoryBound = 4 << 30
+	historyBound      = 512 << 20
+)
+
+// Every dataset's retention until the Data tab's is applied: its hours of
+// detail and its days of roll-ups. The Data tab's retention applies to every
+// dataset alike (D-175, D-231).
+const (
+	historyHours = 72 * time.Hour
+	historyDays  = 30 * 24 * time.Hour
+)
 
 // historyDatasets are every dataset the history holds: the Data tab's
 // retention is theirs alike (D-175).
@@ -248,9 +273,9 @@ func (h *historian) record(ctx context.Context, lat temperature.Lattice, now tim
 			rec.Values["feels"] = v["feels"] // kept for this hour an hour ago (D-188)
 		}
 	}
-	h.store.Put(ndfdHourly.Name, rec)
+	h.store.Record(ndfdHourly.Name, rec)
 	if next, ok := nextFeels(s, rec); ok {
-		h.store.Put(ndfdHourly.Name, next)
+		h.store.Record(ndfdHourly.Name, next)
 	}
 	h.recordWaves(ctx, temperature.LatticeFor(lat.Name, lat.Box), now)
 }
@@ -271,7 +296,7 @@ func (h *historian) recordWaves(ctx context.Context, lat temperature.Lattice, no
 	if !ok || allMissing(vals) {
 		return
 	}
-	h.store.Put(ndfdWaves.Name, history.Record{Key: history.Key{Source: "ndfd", Place: lat.Name}, At: next, IssuedAt: now, Shape: shapeOf(lat), Values: map[string][]float64{"waves": vals}})
+	h.store.Record(ndfdWaves.Name, history.Record{Key: history.Key{Source: "ndfd", Place: lat.Name}, At: next, IssuedAt: now, Shape: shapeOf(lat), Values: map[string][]float64{"waves": vals}})
 }
 
 // historyQuakeFeed is the USGS feed the historian keeps: every quake of
@@ -295,7 +320,7 @@ func (h *historian) recordTotals(ctx context.Context, lat temperature.Lattice, n
 		if allMissing(t.QPF[k]) && allMissing(t.Snow[k]) {
 			continue
 		}
-		h.store.Put(ndfdRainDays.Name, history.Record{Key: key, At: dayStart(local, k), IssuedAt: now.Truncate(time.Hour), Shape: shapeOf(lat),
+		h.store.Record(ndfdRainDays.Name, history.Record{Key: key, At: dayStart(local, k), IssuedAt: now.Truncate(time.Hour), Shape: shapeOf(lat),
 			Values: map[string][]float64{"rain": t.QPF[k], "snow": t.Snow[k]}})
 	}
 }
@@ -569,7 +594,22 @@ func (lp *livePipelines) readHistoryUsage() string {
 	if home, err := os.UserHomeDir(); err == nil && strings.HasPrefix(root, home) {
 		root = "~" + strings.TrimPrefix(root, home)
 	}
-	return "Holds " + sizeWords(store.Bytes()) + ", in " + root
+	return "Holds " + sizeWords(store.Bytes()) + ", in " + root + boundWords(store)
+}
+
+// boundWords names each dataset its byte bound has cut short of the chosen
+// retention (D-143), its oldest records removed first; "" when none.
+func boundWords(store *history.Store) string {
+	var cut []string
+	for _, d := range historyDatasets { // the datasets kept (P10-02)
+		if store.Bounded(d.Name) {
+			cut = append(cut, d.Title)
+		}
+	}
+	if len(cut) == 0 {
+		return ""
+	}
+	return ". Kept shorter than chosen, at its size limit, oldest first: " + strings.Join(cut, "; ") + "."
 }
 
 // historyCost says what keeping a longer window would take, for the Data tab's
@@ -630,7 +670,7 @@ func recordUV(store *history.Store, box string, s temperature.Series, anchor tim
 		if h.After(anchor) || i >= len(s.UV) || allMissing(s.UV[i]) {
 			continue
 		}
-		store.Put(omUVHourly.Name, history.Record{Key: history.Key{Source: "openmeteo", Place: box}, At: h, IssuedAt: h, Shape: shape, Values: map[string][]float64{"uv": s.UV[i]}})
+		store.Record(omUVHourly.Name, history.Record{Key: history.Key{Source: "openmeteo", Place: box}, At: h, IssuedAt: h, Shape: shape, Values: map[string][]float64{"uv": s.UV[i]}})
 	}
 }
 

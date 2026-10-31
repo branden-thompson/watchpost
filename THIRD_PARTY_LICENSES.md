@@ -188,7 +188,141 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## github.com/branden-thompson/go-tuimaps v0.2.1
+## github.com/branden-thompson/go-ionomaps v0.1.0
+
+```
+MIT License
+
+Copyright (c) 2026 Branden Thompson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+Its NOTICE:
+
+```
+go-ionomaps
+Copyright (c) 2026 Branden Thompson. The code is licensed under the MIT licence (LICENSE).
+The MIT licence covers this repository's code only. It does not relicense any data.
+
+Sources the library reads, or is built from, and their terms:
+
+1. GIRO, the Global Ionospheric Radio Observatory (Lowell GIRO Data Center, UMass Lowell)
+   Station readings (foF2, M(3000)F2), fetched by the host at run time; never stored in this
+   repository. Licence: CC BY-NC-SA 4.0. Access is offered "only for educational and non-commercial
+   research purposes" (giro.uml.edu/didbase/RulesOfTheRoad.html).
+   Cite: Reinisch, B. W., and I. A. Galkin, Global ionospheric radio observatory (GIRO),
+   Earth, Planets and Space, 63, 377-381, doi:10.5047/eps.2011.03.001, 2011.
+   Acknowledge each station's data provider.
+   A field computed from these readings is treated as a substantially derivative product, which GIRO's
+   rules leave unrestricted. That reading is this project's own and has not been confirmed by GIRO.
+   The stations' codes, and the positions GIRO states for the live ones, are shipped as the live-station
+   list's seed (watchpost D-51); station metadata, never readings:
+     internal/stations/seed.txt
+
+2. NOAA Space Weather Prediction Center: GloTEC (NmF2), D-RAP (D-region absorption)
+   the space-weather scales (R, S, G) and the daily solar indices (F10.7)
+   Public domain (weather.gov/disclaimer). No endorsement by NOAA or the NWS is implied.
+
+3. PyIRI (NASA / U.S. Naval Research Laboratory), MIT licence, Copyright (c) 2023 victoriyaforsythe.
+   The climatology is a Go port of PyIRI's method. The spherical-harmonic coefficient tables shipped are
+   NRL's refits from PyIRI 0.1.7 (the CCIR foF2 refit and M(3000)F2), reaching the tree as a one-time
+   plain-text export with the source files' checksums (watchpost D-114):
+     tools/tables/export/foF2_CCIR.txt, tools/tables/export/M3000F2.txt (the export)
+     internal/climatology/tables/fof2_ccir.bin, internal/climatology/tables/m3000f2.bin (converted)
+   PyIRI's own values at fixed inputs are kept as the climatology's test oracle:
+     tools/tables/export/golden.txt, internal/climatology/testdata/pyiri-golden.txt,
+     tools/tables/export/golden-day.txt, internal/climatology/testdata/pyiri-golden-day.txt
+   A sample of PyIRI's Apex coordinates is kept as a test oracle only (watchpost D-107):
+     tools/tables/apex/apex-sample.txt, internal/magcoords/testdata/apex-sample.txt
+   The refits were
+   fitted to the CCIR and URSI foF2 and M(3000)F2 maps, whose own provenance is CCIR/ITU and URSI; the
+   raw CCIR/URSI tables are not shipped.
+   Cite: Forsythe, V. V., et al. (2024), PyIRI: whole-globe approach to the International Reference
+   Ionosphere modeling implemented in Python, Space Weather, 22, doi:10.1029/2023SW003739.
+
+4. IGRF-14, the International Geomagnetic Reference Field (IAGA, Working Group V-MOD): its published
+   coefficients generate the library's magnetic-coordinate table (watchpost D-107). Freely available from
+   IAGA. Committed as published, and the field values of ppigrf 2.1.0 (MIT) at fixed places and dates,
+   kept as the evaluation's test oracle:
+     tools/tables/igrf/igrf14coeffs.txt (IAGA's coefficient file, as fetched 2026-10-09)
+     tools/tables/igrf/golden-igrf.txt (ppigrf's values)
+   The library's own quasi-dipole coordinates, the gyrofrequency at 300 km, and the gyrofrequency and
+   dip at 100 km are generated from it at build time:
+     internal/magcoords/coords.bin
+     internal/magcoords/gyro.bin
+     internal/magcoords/field100.bin
+   Cite: IAGA Working Group V-MOD, the International Geomagnetic Reference Field, 14th generation.
+
+5. ITU-R P.533, P.1239, P.372 and P.371: methods implemented from the published recommendations; no
+   recommendation text is reproduced. The tables shipped are P.533-14's Tables 2, 3 and 5, listed with
+   their sources in 6, and P.372-18 Table 1's man-made noise constants c and d for the four categories
+   the library offers (watchpost D-187), in:
+     internal/limits/budget.go
+   P.371-9's relation between the sunspot number and the 10.7 cm flux (its eq. (4)) is used inverted;
+   P.1239-4's foE is used as an equation.
+
+6. ITUHFProp (ITU-R Study Group 3, github.com/ITU-R-Study-Group-3/ITU-R-HF), ITU's reference
+   implementation of ITU-R P.533. Its README: it "may be used by implementers in their implementation of
+   the Recommendation as well as in revisions of the specific original Recommendation and in other ITU
+   Recommendations, free from any copyright assertions", provided "as is" with no warranty.
+   P.533-14's absorption factors - ATnoon (Fig. 1), the penetration factor phi (Fig. 2) and the diurnal
+   exponent p (Fig. 3), ITUHFProp's AbsorptionFactor, AbsorptionLayerPenetrationFactor and
+   DiurnalAbsorptionExponent, themselves from NTIA's REC533 - are ported into the library (watchpost
+   D-186):
+     internal/limits/absorption.go
+   P.533-14 Table 2, the auroral and other signal losses Lh, as ITUHFProp's FindLh holds it (checked value
+   for value against the recommendation's own table), is ported too (watchpost D-189):
+     internal/limits/auroral.go
+   P.533-14 Tables 3 (W, X, Y) and 5 (the winter anomaly), for paths past 7000 km, are ported as the
+   recommendation prints them, which ITUHFProp holds too but for one cell (watchpost D-191):
+     internal/limits/longpath.go
+   ITUHFProp's own values of those factors at fixed inputs are kept as their test oracle:
+     internal/limits/testdata/itu-absorption-golden.txt
+
+PyIRI's licence, in full, as MIT asks it to accompany every copy (3; watchpost F-215), from
+github.com/victoriyaforsythe/PyIRI, LICENSE:
+
+   MIT License
+
+   Copyright (c) 2023 victoriyaforsythe
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+```
+
+## github.com/branden-thompson/go-tuimaps v0.3.0
 
 ```
 MIT License

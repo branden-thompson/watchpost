@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -250,5 +251,34 @@ func TestADumpCarriesNoCoordinates(t *testing.T) {
 				t.Errorf("%s carries %q — a dump must not name where the operator is (FR-9.4)", e.Name(), word)
 			}
 		}
+	}
+}
+
+// TestTheHistoryStoresCachesAreGauged is 0.19.0 D-242: the counters carry the
+// days the history store holds for readers, with their weight, and the days
+// it indexes for recording, so a soak sees them; with no store, neither.
+func TestTheHistoryStoresCachesAreGauged(t *testing.T) {
+	gauge := func(gs []Gauge, name string) (Gauge, bool) {
+		for _, g := range gs {
+			if g.Name == name {
+				return g, true
+			}
+		}
+		return Gauge{}, false
+	}
+	none := (&livePipelines{}).sources().gauges()
+	if _, ok := gauge(none, "history.days"); ok {
+		t.Error("no store, yet a history gauge")
+	}
+	lp := &livePipelines{history: history.Open(t.TempDir(), time.Now, ndfdHourly)}
+	at := time.Now().UTC().Truncate(time.Hour)
+	if !lp.history.Record(ndfdHourly.Name, history.Record{Key: history.Key{Source: "ndfd", Place: "us-a"}, At: at, IssuedAt: at, Doc: []byte(`{"t":1}`)}) {
+		t.Fatal("not recorded")
+	}
+	gs := lp.sources().gauges()
+	days, okD := gauge(gs, "history.days")
+	index, okI := gauge(gs, "history.index")
+	if !okD || !okI || days.Len != 0 || index.Len != 1 {
+		t.Errorf("after one record: days %+v (%v), index %+v (%v); want none held for readers, one indexed", days, okD, index, okI)
 	}
 }

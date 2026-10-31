@@ -13,6 +13,7 @@ package tty
 import (
 	"context"
 	"fmt"
+	ionomaps "github.com/branden-thompson/go-ionomaps"
 	"sort"
 	"time"
 	"unicode"
@@ -109,6 +110,26 @@ type Config struct {
 	// MapUVCities is the file's count of cities UV asks EPA for: 8, 24 or
 	// 48; anything else is 24, the default (D-202).
 	MapUVCities int
+	// MapPropRadius is the file's near-vertical radius for the Propagation
+	// mode, km: 200, 400 or 600; anything else is 400, the default (D-100).
+	MapPropRadius int
+	// MapPropNoise is the file's noise environment for the Propagation
+	// mode's reference circuit; anything not offered is residential (D-187).
+	MapPropNoise string
+	// MapPropRefresh is the file's refresh for an open Propagation mode:
+	// "hourly", "on-demand", or each new grid (D-120).
+	MapPropRefresh string
+	// MapPropNoReadings is the file's choice for while no station readings
+	// are held: "corrected" by the typical offset, or GloTEC as is (D-105).
+	MapPropNoReadings string
+	// MapPropStations is the file's choice of stations: "none" for NOAA and
+	// the climatology alone, or GIRO asked (D-214).
+	MapPropStations string
+	// MapColourDepth is the file's colour depth for the map: "truecolor",
+	// "256", "16", "none", or Automatic (D-207); NoColor is NO_COLOR set,
+	// which means none whatever is chosen.
+	MapColourDepth string
+	NoColor        bool
 	// MapTemperature is the temperature the map draws (W10): every hour's or
 	// step's grids, each with its span, asked off the UI goroutine.
 	MapTemperature func(ctx context.Context, ask MapAsk) MapTemperature
@@ -134,9 +155,18 @@ type Config struct {
 	MapDetailChoice map[string]bool
 	MapDetailLevel  string // D-67: the file's word for the detail level; Weather by default
 	MapAreaName     func(centre tuimaps.LonLat, widthKm float64) string
-	Resolve         func(query string) (snapshot.LocationRef, error)
-	Commit          func(watch, recent []snapshot.LocationRef) error
-	SetTheme        func(name string) error // live theme switch + persist (UAT 53)
+	// PlaceNear names a point anywhere on the globe by the town nearest it
+	// (0.19.0 AX-1), "" where none is near: the Propagation mode's centre;
+	// country is the town's ISO 3166 code, which the words say a place
+	// abroad by (D-231).
+	PlaceNear func(lat, lon float64) (label, country string)
+	Resolve   func(query string) (snapshot.LocationRef, error)
+	// FindPlace finds a place anywhere on the globe for the Propagation mode
+	// (0.19.0 FR-1.10): locally first, and only on a miss online, uncached;
+	// the context is cancelled when the listener cancels the find.
+	FindPlace func(ctx context.Context, query string) (snapshot.LocationRef, error)
+	Commit    func(watch, recent []snapshot.LocationRef) error
+	SetTheme  func(name string) error // live theme switch + persist (UAT 53)
 
 	// 0.14.0 — the WATCHPOST UI group's three display preferences, written
 	// together when Settings closes. One hook rather than three: they are one
@@ -203,6 +233,18 @@ type Config struct {
 	SaveRadio     func(RadioPrefs) error         // keeps the radio panel's choices (D-214); nil keeps nothing
 	FireBoldMW    float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
 
+	// PropagationAck is the acknowledgement's wording last seen (A-9), and
+	// SavePropagationAck keeps it once closed; nil keeps nothing (0.19.0 W2.5).
+	PropagationAck     int
+	SavePropagationAck func(int) error
+
+	// PropagationUpdate runs the Propagation mode's update, with the
+	// Settings' options - the reference circuit's noise (D-187), the
+	// no-readings correction (D-105) and the stations (D-214) - and sends
+	// its own result (0.19.0 W4.1, A-30, C-2). ctx is the mode's: leaving the mode
+	// ends it. nil fetches nothing.
+	PropagationUpdate func(ctx context.Context, opts ionomaps.UpdateOptions) <-chan PropagationResult
+
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
 	// reports against, and they are TWO because the data is two things: the
 	// ring is satellite hotspots, and named incidents are admitted from a wider
@@ -215,6 +257,7 @@ type Config struct {
 	Suggest                            func(query string, limit int) []snapshot.LocationRef  // type-ahead hints for the Setup window (embedded index only; nil = enter resolves)
 	Setup                              func(def snapshot.LocationRef, firmsKey string) error // persist the default location (+ the FIRMS key when given) — the Setup window's finish (UAT 100)
 	OpenSetup                          bool                                                  // open the Setup window at launch (first run, no locations, or `watchpost setup`)
+	FirstRun                           bool                                                  // no config file at launch: until Setup saves, its esc keeps a location chosen as enter does (0.19.0 D-336)
 	FIRMSKey                           func() string                                         // the stored FIRMS key's tail ("cdef"), "" when none — the Setup window shows it is there (UAT 111)
 	Stats                              func() Stats                                          // request/publish/dump counters for the [S] modal (quality pass Q0); nil = the rows are omitted
 	ASCII                              bool                                                  // --ascii: the row marks and legend in their ASCII forms (A11-10; quality pass Q3)
@@ -390,28 +433,40 @@ type Stats struct {
 	// request counters are per host, so a host has exactly one set of them and
 	// a provider does not.
 	Endpoints map[string][]string
+	// ProviderSources are what each provider serves and its badge, by its id;
+	// HostSources the same of a host no provider claims - the ticker's feeds,
+	// the geocoder - by host. The window groups and names its hosts by them
+	// (0.19.0 D-170).
+	ProviderSources map[string]StatusSource
+	HostSources     map[string]StatusSource
 }
 
 // UIPrefs is the WATCHPOST UI group's answer, as config words. Strings, not
 // render types, because this crosses the app seam and the app is what writes
 // them to the file.
 type UIPrefs struct {
-	Theme          string
-	Units          string
-	Clock          string
-	Maps           string // "on" (the default) or "off" (0.18.0)
-	MapDescription string // "with" (the default), "instead" or "off"
-	MapScale       string // "state" (the default), "county" or "region"
-	MapNearbyKm    int
-	MapRadarSource string          // "iem", or MRMS by default (D-83)
-	MapTempSource  string          // "open-meteo", or NDFD by default (D-190)
-	MapRainDetail  string          // "full", or coarse by default (D-192)
-	MapUVCities    int             // UV's EPA cities: 8, 24 or 48; 0 is the default, 24 (D-202)
-	MapRadarAhead  int             // the radar loop's hours ahead (D-114)
-	MapQuakeFeed   string          // the quakes drawn, USGS's feed by its name (D-122)
-	MapLayers      map[string]bool // the layers switched from their defaults
-	MapDetail      map[string]bool // the map's detail switched from its defaults (D-65)
-	MapDetailLevel string          // "essential", "weather" (the default), "standard" or "full" (D-67)
+	Theme             string
+	Units             string
+	Clock             string
+	Maps              string // "on" (the default) or "off" (0.18.0)
+	MapDescription    string // "with" (the default), "instead" or "off"
+	MapScale          string // "state" (the default), "county" or "region"
+	MapNearbyKm       int
+	MapRadarSource    string          // "iem", or MRMS by default (D-83)
+	MapTempSource     string          // "open-meteo", or NDFD by default (D-190)
+	MapRainDetail     string          // "full", or coarse by default (D-192)
+	MapUVCities       int             // UV's EPA cities: 8, 24 or 48; 0 is the default, 24 (D-202)
+	MapPropRadius     int             // the Propagation mode's near-vertical radius, km: 200, 400 or 600; 0 is the default, 400 (D-100)
+	MapPropNoise      string          // the reference circuit's noise: "city", "rural", "quiet-rural"; empty is residential (D-187)
+	MapPropRefresh    string          // the open mode's refresh: "hourly", "on-demand"; empty is each new grid (D-120)
+	MapPropNoReadings string          // while no station readings are held: "corrected"; empty is GloTEC as is (D-105)
+	MapPropStations   string          // the stations: "none" for no GIRO; empty asks GIRO (D-214)
+	MapColourDepth    string          // the map's colour depth: "truecolor", "256", "16", "none"; empty is Automatic (D-207)
+	MapRadarAhead     int             // the radar loop's hours ahead (D-114)
+	MapQuakeFeed      string          // the quakes drawn, USGS's feed by its name (D-122)
+	MapLayers         map[string]bool // the layers switched from their defaults
+	MapDetail         map[string]bool // the map's detail switched from its defaults (D-65)
+	MapDetailLevel    string          // "essential", "weather" (the default), "standard" or "full" (D-67)
 }
 
 // PipelineStats counts one pipeline's publishes and the triggers its
@@ -650,11 +705,18 @@ type Dashboard struct {
 	mapTempNDFD     bool           // NDFD for the map's temperature, both modes, else Open-Meteo (D-93, D-190)
 	mapRainFull     bool           // Open-Meteo's full density for the rain past NDFD's reach (D-192)
 	mapUVCities     int            // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
+	mapPropRadiusKm int            // the Propagation mode's near-vertical radius: 200, 400 or 600 km (D-100)
+	mapPropNoise    ionomaps.Noise // the reference circuit's noise environment (D-187)
+	mapPropRefresh  propRefresh    // how often an open mode asks again (D-120)
+	mapPropCorrect  bool           // GloTEC corrected by the typical offset while no readings are held (D-105)
+	mapPropNoGIRO   bool           // GIRO not asked: NOAA's and the climatology's field alone (D-214)
+	mapDepth        mapDepth       // the map's colour depth (D-207)
 	mapRadarAhead   int            // the radar loop's hours ahead: 1, 3, 6 or 12 (D-114)
 	mapQuakeFeed    string         // the quakes drawn: USGS's feed by its name (D-122)
 	mapKeys         term.KeyMap
-	modal           modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode         string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	chartKeys       term.KeyMap // the Bands chart window's own scope (D-256)
+	modal           modal       // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode         string      // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
 	// search box, kept only while the window is serving the CONSOLE (D-129,
 	// D-130). On Observer it stays zero: the listener's lookup reaches anywhere
@@ -922,7 +984,11 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	chartKeys, err := chartKeysFrom(cfg.KeyOverrides)
+	if err != nil {
+		return Dashboard{}, err
+	}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, chartKeys: chartKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapPropNoise: propNoiseByKey(cfg.MapPropNoise), mapPropRefresh: propRefreshByKey(cfg.MapPropRefresh), mapPropCorrect: cfg.MapPropNoReadings == noReadingsCorrected, mapPropNoGIRO: cfg.MapPropStations == noStationsKey, mapDepth: mapDepthByKey(cfg.MapColourDepth), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -1004,6 +1070,8 @@ func (d Dashboard) tickNeeded() bool {
 		return true
 	case d.modal == modalStatus || d.modal == modalDetails: // [S] ages; Details "N min ago" labels and LoadingDots
 		return true
+	case d.propAgeShown(): // the Propagation snapshot's "N min ago" (D-166)
+		return true
 	// ITS CLOCK RUNS DOWN ON ITS OWN AND ACTS AT ZERO (MVS-D-76). Without this
 	// the window opens with no tick armed, so stepRelayFault is never called:
 	// the countdown sits at <10> for ever, the fall-through never fires, and the
@@ -1068,10 +1136,17 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if err := invariant.Check(ok, "dispatch must return the dashboard model"); err != nil {
 		return m, cmd
 	}
-	next, resumeCmd := next.resume()  // D-107: a window returned to picks up where it was
-	next = next.mapPanicked()         // QA-11: a panic a map call or command stopped marks the map failed
-	next, mapCmd := next.armMapTick() // 0.18.0 W2.2: the map's clock, armed after every Update
-	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd))
+	next, resumeCmd := next.resume()          // D-107: a window returned to picks up where it was
+	next = next.mapPanicked()                 // QA-11: a panic a map call or command stopped marks the map failed
+	next, mapCmd := next.armMapTick()         // 0.18.0 W2.2: the map's clock, armed after every Update
+	next = next.followNight()                 // go-tuiMaps P4, D-199: the night moves with the moment shown
+	next, chartCmd := next.armPropChart()     // W5.1: the chart's answers, asked when what they come from changes
+	next, reachCmd := next.armPropReach()     // W5.2: and the frequency's reach
+	next, aheadCmd := next.armPropAhead()     // W5.4: and the hour ahead shown
+	next, centreCmd := next.armPropCentre()   // and the map centre's answer
+	next, optsCmd := next.armPropOptions()    // D-187, D-105: a snapshot made with other options than the Settings' asked again
+	next, refreshCmd := next.armPropRefresh() // D-120: the refresh tick follows its Setting
+	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd, aheadCmd, centreCmd, optsCmd, refreshCmd))
 }
 
 // handleTicker applies one global-event-ticker message and re-arms the frame
@@ -1096,8 +1171,19 @@ func (d Dashboard) handleTicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return d.armTick(nil)
 }
 
-// dispatch routes one message to its handler.
+// dispatch routes one message to its handler, keeping a reader's place in
+// the Propagation mode's words across whatever it changes (D-211).
 func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
+	place, keep := d.wordsPlaceNow(msg)
+	m, cmd := d.route(msg)
+	if next, ok := m.(Dashboard); ok {
+		m = next.followReader(msg, place, keep)
+	}
+	return m, cmd
+}
+
+// route sends one message to its handler.
+func (d Dashboard) route(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch v := msg.(type) {
 	case tea.WindowSizeMsg:
 		d.width, d.height = v.Width, v.Height
@@ -1142,31 +1228,57 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.vizFrame()
 	case historyClearedMsg:
 		return d.applyHistoryCleared(v), nil
-	case mapClearedMsg:
-		return d.applyMapCleared(v), nil // 0.18.0 W3.8: Settings says what went
-	case mapFeedMsg:
-		return d.applyMapFeed(v) // 0.18.0: the alerts, set and drawn in Update (D-41)
-	case mapRadarMsg:
-		return d.applyMapRadar(v) // W8: the radar, set and drawn in Update (D-41)
-	case mapRadarAgainMsg:
-		return d.applyRadarAgain(v) // D-204: the hours ahead owed
-	case mapTempMsg:
-		return d.applyMapTemp(v) // W10: the temperature, set and drawn in Update (D-41)
-	case forecastTickMsg:
-		return d.applyForecastTick(v) // D-94: Forecast mode's playback
-	case mapWorkedMsg:
-		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
-	case mapTickMsg:
-		return d.applyMapTick(v), nil // 0.18.0 W2.2: the library asked to be drawn now
-	case mapReleaseMsg:
-		return d.applyMapRelease(v), nil // D-221: the map closed a while is let go
-	case mapViewSettledMsg:
-		return d.applyViewSettled(v) // 0.18.0 D-66: the view stood still - its alerts are asked
 	case tea.KeyPressMsg:
 		return d.handleKeyPress(v)
 	}
+	if m, cmd, ok := d.routeMap(msg); ok {
+		return m, cmd
+	}
 	return d, nil
 }
+
+// routeMap sends the map's messages to their handlers - its feeds, its
+// clock, the Propagation mode's update and answers - each set and drawn in
+// Update (D-41); false for a message that is none of them.
+func (d Dashboard) routeMap(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
+	switch v := msg.(type) {
+	case mapClearedMsg:
+		return d.applyMapCleared(v), nil, true // 0.18.0 W3.8: Settings says what went
+	case mapFeedMsg:
+		return routed(d.applyMapFeed(v)) // 0.18.0: the alerts, set and drawn in Update (D-41)
+	case mapRadarMsg:
+		return routed(d.applyMapRadar(v)) // W8: the radar, set and drawn in Update (D-41)
+	case mapRadarAgainMsg:
+		return routed(d.applyRadarAgain(v)) // D-204: the hours ahead owed
+	case mapTempMsg:
+		return routed(d.applyMapTemp(v)) // W10: the temperature, set and drawn in Update (D-41)
+	case forecastTickMsg:
+		return routed(d.applyForecastTick(v)) // D-94: Forecast mode's playback
+	case propChartMsg, propReachMsg, propCentreMsg:
+		return d.applyPropAnswer(v), nil, true // W5: the chart, the reach, the centre
+	case propAheadMsg:
+		return d.applyPropAhead(v), nil, true
+	case propFoundMsg:
+		return routed(d.applyPropFound(v)) // FR-1.10: a find's answer, kept in Update
+	case propUpdatedMsg:
+		return routed(d.applyPropUpdated(v)) // W4.1: the Propagation mode's update, kept in Update
+	case propTickMsg:
+		return routed(d.applyPropTick(v)) // FR-4.10: its refresh
+	case mapWorkedMsg:
+		return routed(d.applyMapWorked(v)) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
+	case mapTickMsg:
+		return d.applyMapTick(v), nil, true // 0.18.0 W2.2: the library asked to be drawn now
+	case mapReleaseMsg:
+		return d.applyMapRelease(v), nil, true // D-221: the map closed a while is let go
+	case mapViewSettledMsg:
+		return routed(d.applyViewSettled(v)) // 0.18.0 D-66: the view stood still - its alerts are asked
+	default:
+		return d, nil, false
+	}
+}
+
+// routed is a handler's answer as routeMap gives it: answered.
+func routed(m tea.Model, cmd tea.Cmd) (tea.Model, tea.Cmd, bool) { return m, cmd, true }
 
 // handleSettingsSaved applies one apply-on-close outcome from the Settings
 // window — the cast and tones, or the display preferences.
@@ -1438,6 +1550,10 @@ const (
 
 	// modalMap is the map window (0.18.0 W1.1).
 	modalMap
+	modalPropAck   // the Propagation mode's acknowledgement, over the map (D-46, D-81)
+	modalPropChart // B: the Propagation mode's reference chart, over the map (D-176)
+	modalPropFreq  // F: the Propagation mode's frequency entry, over the map (D-178)
+	modalPropFind  // /: the Propagation mode's place finder, over the map (FR-1.10)
 
 	// numModals bounds the set; it is not itself a modal. It exists so the
 	// memo-completeness guard can DERIVE the list of windows rather than carry
@@ -1525,6 +1641,7 @@ func (d Dashboard) tellMapClosed(was bool) Dashboard {
 	if d.cfg.MapClosed != nil {
 		d.cfg.MapClosed()
 	}
+	d = d.stopPropagation() // nothing is fetched for a map no longer shown (FR-4.2)
 	d.mapCloses++
 	gen := d.mapCloses
 	return d.withCmd(tea.Batch(d.pendingCmd, tea.Tick(d.mapReleaseAfter, func(time.Time) tea.Msg { return mapReleaseMsg{gen: gen} })))
@@ -1745,13 +1862,16 @@ func (d Dashboard) applyCommitted(v committedMsg) Dashboard {
 			return d.settled()
 		}
 		if v.saved {
+			d.cfg.FirstRun = false // a file now exists: the first run is over (D-336)
 			// The saved cast becomes the config the window opens with, so a
 			// re-open shows what is on disk rather than what was there at
 			// launch. The file is the source of truth; this keeps the view
 			// agreeing with it without a reload.
 			d.cfg.Cast, d.cfg.Tones = v.cast, v.tones
 		}
-		d = d.close()
+		if d.modal == modalSetup { // the Setup window alone: one the listener opened since stays open (D-336)
+			d = d.close()
+		}
 		d.setup, d.selected = setupState{}, 0
 		return d
 	}

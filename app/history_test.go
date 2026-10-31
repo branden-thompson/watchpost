@@ -154,7 +154,7 @@ func TestAPastHourIsReplayedFromTheHistory(t *testing.T) {
 		s, _ := f.hour(context.Background(), lat, anchor.Add(-back))
 		s.Hourly[0][0] = 10 + float64(back/time.Hour) // each hour its own value
 		rec, ok := ndfdRecord(s, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-back))
-		if !ok || !store.Put(ndfdHourly.Name, rec) {
+		if !ok || !store.Record(ndfdHourly.Name, rec) {
 			t.Fatal("could not seed the history")
 		}
 	}
@@ -186,7 +186,7 @@ func TestAPastHourIsReplayedFromTheHistory(t *testing.T) {
 	moved.W -= 1
 	other := temperature.Lattice{Name: box.Name, Box: moved, Cols: lat.Cols, Rows: lat.Rows}
 	oddSeries, _ := f.hour(context.Background(), other, anchor.Add(-time.Hour))
-	if rec, ok := ndfdRecord(oddSeries, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-time.Hour)); !ok || !odd.Put(ndfdHourly.Name, rec) {
+	if rec, ok := ndfdRecord(oddSeries, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-time.Hour)); !ok || !odd.Record(ndfdHourly.Name, rec) {
 		t.Fatal("could not seed the odd record")
 	}
 	if _, n := withRecorded(temperature.Series{Lattice: lat}, recordedHour(odd), box.Name, anchor); n != 0 {
@@ -220,7 +220,7 @@ func TestRadarModeOnNDFDDrawsItsPastHoursFromTheHistory(t *testing.T) {
 	for _, back := range []time.Duration{2 * time.Hour, time.Hour} {
 		s, _ := f.hour(context.Background(), lat, anchor.Add(-back))
 		rec, ok := ndfdRecord(s, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-back))
-		if !ok || !store.Put(ndfdHourly.Name, rec) {
+		if !ok || !store.Record(ndfdHourly.Name, rec) {
 			t.Fatal("could not seed the history")
 		}
 	}
@@ -358,7 +358,7 @@ func TestForecastModeOnNDFDDrawsTodayFromTheHistory(t *testing.T) {
 				rec := history.Record{Key: history.Key{Source: "ndfd", Place: box.Name}, At: h, IssuedAt: h,
 					Shape:  history.Shape{Box: lat.Box, Cols: lat.Cols, Rows: lat.Rows},
 					Values: map[string][]float64{"temp": all(temp), "feels": all(temp - 5), "wind": all(10), "wind_from": all(180), "gust": all(20)}}
-				if !store.Put(ndfdHourly.Name, rec) {
+				if !store.Record(ndfdHourly.Name, rec) {
 					t.Fatal("could not seed the history")
 				}
 			}
@@ -435,7 +435,7 @@ func TestTheDataTabsChoicesReachTheStore(t *testing.T) {
 	f := &fakeHour{}
 	s, _ := f.hour(context.Background(), temperature.LatticeFor("us-a", geo.Box{W: -120, S: 32, E: -115, N: 36}), now)
 	rec, _ := ndfdRecord(s, history.Key{Source: "ndfd", Place: "us-a"}, now)
-	lp.history.Put(ndfdHourly.Name, rec)
+	lp.history.Record(ndfdHourly.Name, rec)
 	if usage := lp.historyUsage(); !strings.Contains(usage, "KB") && !strings.Contains(usage, "MB") {
 		t.Errorf("the usage says %q; want its size", usage)
 	}
@@ -472,5 +472,36 @@ func TestTheHistorysSizeIsNotReadEveryFrame(t *testing.T) {
 	}
 	if cleared := lp.historyUsage(); strings.Contains(cleared, "MB") {
 		t.Errorf("after Clear history the size is %q; want it read again, the store emptied", cleared)
+	}
+}
+
+// EVERY DATASET HAS A BYTE BOUND (D-143, FR-6.5): beside its retention, the
+// most it holds on disk.
+func TestEveryDatasetHasAByteBound(t *testing.T) {
+	for _, d := range historyDatasets {
+		if d.MaxBytes <= 0 {
+			t.Errorf("%s has no byte bound", d.Name)
+		}
+	}
+}
+
+// THE DATA TAB SAYS WHICH DATASET ITS BOUND CUT SHORT (D-143): the retention
+// chosen is not what it keeps, so the tab names it, by its title.
+func TestTheDataTabSaysWhichDatasetItsBoundCutShort(t *testing.T) {
+	now := time.Date(2026, 9, 30, 15, 0, 0, 0, time.UTC)
+	tight := ndfdHourly
+	tight.MaxBytes = 1
+	store := history.Open(t.TempDir(), func() time.Time { return now }, tight)
+	if words := boundWords(store); words != "" {
+		t.Errorf("with nothing cut short the tab says %q", words)
+	}
+	yesterday := now.AddDate(0, 0, -1)
+	if !store.Record(tight.Name, history.Record{Key: history.Key{Source: "ndfd", Place: "us-a"}, At: yesterday, IssuedAt: yesterday,
+		Shape: history.Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"temp": {20}}}) {
+		t.Fatal("yesterday's record was not written")
+	}
+	store.RollUpAndPrune()
+	if words := boundWords(store); !strings.Contains(words, ndfdHourly.Title) || !strings.Contains(words, "size limit") {
+		t.Errorf("the bound cut %s short and the tab says %q", ndfdHourly.Title, words)
 	}
 }

@@ -14,7 +14,7 @@ import (
 )
 
 // mapKeyMsg is a key the map window binds, as the terminal sends it.
-func mapKeyMsg(t *testing.T, key string) tea.KeyPressMsg {
+func mapKeyMsg(t testing.TB, key string) tea.KeyPressMsg {
 	t.Helper()
 	named := map[string]tea.KeyPressMsg{
 		"up": {Code: tea.KeyUp}, "down": {Code: tea.KeyDown}, "left": {Code: tea.KeyLeft}, "right": {Code: tea.KeyRight},
@@ -79,19 +79,20 @@ const (
 	boxIsWords  = "no picture: the Area Alerts box is the description in a box, and the description is on screen whole already"
 	playUnseen  = "no picture: the step it plays shows at the next step, in the badge, and the play state is the timeline's, which is drawn under a picture"
 	regionNamed = "no picture: the region it shows is the one the description already names"
+	propOnly    = "the Propagation mode's alone (D-155, D-156, D-176, D-178): in the weather mode the screen opens in, it acts on nothing"
 )
 
 // invisibleKeys are the window's keys whose effect is not on screen in a
 // mode, each with why that is right.
 var invisibleKeys = map[string]map[string]string{
-	"with": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits},
-	"off":  {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits},
+	"with": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly, "/": propOnly},
+	"off":  {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly, "/": propOnly},
 	"instead": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits,
 		"up": viewUnseen, "down": viewUnseen, "left": viewUnseen, "right": viewUnseen, "+": viewUnseen, "=": viewUnseen, "-": viewUnseen,
-		"A": boxIsWords, "space": playUnseen, "1": regionNamed},
+		"A": boxIsWords, "space": playUnseen, "1": regionNamed, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly, "/": propOnly},
 	"ascii": {"[": onePlace, "]": onePlace, "pgup": bodyFits, "pgdown": bodyFits,
 		"up": viewUnseen, "down": viewUnseen, "left": viewUnseen, "right": viewUnseen, "+": viewUnseen, "=": viewUnseen, "-": viewUnseen,
-		"A": boxIsWords, "space": playUnseen, "1": regionNamed},
+		"A": boxIsWords, "space": playUnseen, "1": regionNamed, "L": propOnly, "U": propOnly, "B": propOnly, "F": propOnly, "/": propOnly},
 }
 
 // TestTheMenusFocusStaysOnScreenWithoutAPicture is D-267: the menu drawn as
@@ -100,12 +101,12 @@ var invisibleKeys = map[string]map[string]string{
 func TestTheMenusFocusStaysOnScreenWithoutAPicture(t *testing.T) {
 	m, _ := screenDash(t, "with", true).Update(tea.WindowSizeMsg{Width: 133, Height: 30})
 	d := m.(Dashboard)
-	for _, k := range []string{"O", "up"} { // up from the first row is the last: Parks
+	for _, k := range []string{"O", "up"} { // up from the first row is the last: Day / night (D-199)
 		m, _ := d.Update(mapKeyMsg(t, k))
 		d = m.(Dashboard)
 	}
-	if text := stripANSITest(d.View().Content); !strings.Contains(text, "> [ ] Parks") {
-		t.Errorf("the focused row, Parks, is not on screen:\n%s", text)
+	if text := stripANSITest(d.View().Content); !strings.Contains(text, "> [ ] Day / night") {
+		t.Errorf("the focused row, Day / night, is not on screen:\n%s", text)
 	}
 	m, _ = d.Update(mapKeyMsg(t, "down")) // and round to the first
 	if text := stripANSITest(m.(Dashboard).View().Content); !strings.Contains(text, "> * Temperature") {

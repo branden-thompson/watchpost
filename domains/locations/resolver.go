@@ -9,11 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/branden-thompson/watchpost/domains/locations/coverage"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/locations/openmeteo"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -25,7 +27,14 @@ var zipRe = regexp.MustCompile(`^\d{5}$`)
 
 // Fallback is the online resolver interface (openmeteo.Geocoder in prod).
 type Fallback interface {
-	Resolve(ctx context.Context, query string) (snapshot.LocationRef, error)
+	Geocode(ctx context.Context, query string) (snapshot.LocationRef, error)
+}
+
+// WorldFallback is the online resolver's answer anywhere, uncached (0.19.0
+// FR-1.10): the Propagation mode's lookup, which the weather's coverage does
+// not bound.
+type WorldFallback interface {
+	ResolveWorld(ctx context.Context, query string) (snapshot.LocationRef, error)
 }
 
 // Resolver combines the embedded index with the online fallback.
@@ -54,6 +63,12 @@ func (r *Resolver) TypeAhead(query string, limit int) []Suggestion {
 	q := strings.TrimSpace(query)
 	if q == "" {
 		return nil
+	}
+	if ref, typed, err := typedPlace(q, false); typed {
+		if err != nil {
+			return nil
+		}
+		return []Suggestion{{Display: ref.Label, Ref: ref}} // read here, never looked up (FR-4.9)
 	}
 	if zipRe.MatchString(q) {
 		if z, ok := r.idx.Zip(q); ok {
@@ -92,6 +107,9 @@ func (r *Resolver) Resolve(ctx context.Context, query string) (ref snapshot.Loca
 	if err := invariant.Check(q != "", "cannot resolve an empty location query"); err != nil {
 		return snapshot.LocationRef{}, false, err
 	}
+	if ref, typed, err := typedPlace(q, false); typed {
+		return ref, false, err // coordinates and locators are read here and never go online (FR-4.9)
+	}
 	if zipRe.MatchString(q) {
 		if z, ok := r.idx.Zip(q); ok {
 			return r.zipToRef(z, q), false, nil
@@ -105,13 +123,110 @@ func (r *Resolver) Resolve(ctx context.Context, query string) (ref snapshot.Loca
 		}
 	}
 	if r.fallback == nil {
-		return snapshot.LocationRef{}, false, fmt.Errorf("no match for %q in the offline index and no network fallback — try 'City, ST' or a 5-digit zip", q)
+		return snapshot.LocationRef{}, false, errors.New("no match in the offline index and no network fallback — try 'City, ST' or a 5-digit zip") // never the query (FR-4.9)
 	}
-	ref, err = r.fallback.Resolve(ctx, q)
+	ref, err = r.fallback.Geocode(ctx, q)
 	if err != nil {
 		return snapshot.LocationRef{}, false, err
 	}
 	return ref, true, nil
+}
+
+// ResolveAnywhere is Resolve for the Propagation mode (0.19.0 FR-1.10, the
+// mode-aware coverage gate): coordinates and locators anywhere on the globe,
+// a ZIP, and the embedded index's cities in any country, all answered here
+// and sending nothing; only when nothing local matches does the online
+// geocoder answer, uncached. fellBack reports that it did.
+func (r *Resolver) ResolveAnywhere(ctx context.Context, query string) (ref snapshot.LocationRef, fellBack bool, err error) {
+	q := strings.TrimSpace(query)
+	if err := invariant.Check(q != "", "cannot resolve an empty location query"); err != nil {
+		return snapshot.LocationRef{}, false, err
+	}
+	if ref, typed, err := typedPlace(q, true); typed {
+		return ref, false, err
+	}
+	if zipRe.MatchString(q) {
+		if z, ok := r.idx.Zip(q); ok {
+			return r.zipToRef(z, q), false, nil
+		}
+	} else if hits := r.idx.PrefixSearch(cityPart(q), 8); len(hits) > 0 {
+		if c, ok := pickCity(hits, q); ok {
+			return cityToRef(r.idx, c), false, nil
+		}
+	}
+	world, ok := r.fallback.(WorldFallback)
+	if !ok {
+		return snapshot.LocationRef{}, false, errors.New("no match in the offline index - try a city, coordinates or a grid locator") // never the query (FR-4.9)
+	}
+	ref, err = world.ResolveWorld(ctx, q)
+	if err != nil {
+		return snapshot.LocationRef{}, false, err
+	}
+	return ref, true, nil
+}
+
+// typedPlace reads a place typed as coordinates ("33.2, -117.38") or a
+// Maidenhead locator ("DM13af"), locally (FR-4.9, FR-1.10): typed is false
+// for any other query. A pair of numbers that is not on the globe is refused
+// here, offline; so is a place in no region the weather covers, unless
+// anywhere - the Propagation mode's lookup.
+func typedPlace(q string, anywhere bool) (ref snapshot.LocationRef, typed bool, err error) {
+	at, label := geo.LatLon{}, ""
+	if p, ok := geo.ParseCoordinates(q); ok {
+		at, label = p, fmt.Sprintf("%.4f, %.4f", p.Lat, p.Lon)
+	} else if p, ok := geo.ParseLocator(q); ok {
+		at, label = p, geo.LocatorLabel(q)
+	} else if numberPair(q) {
+		return snapshot.LocationRef{}, true, errors.New("coordinates are two numbers: latitude from -90 to 90, then longitude from -180 to 180")
+	} else if positionShaped(q) {
+		return snapshot.LocationRef{}, true, errors.New("that reads as a position in a form not read here: write coordinates as two decimal numbers, latitude then longitude (33.2, -117.38), or a grid locator of 4, 6 or 8 characters") // refused here, never sent (FR-4.9, I-2)
+	} else {
+		return snapshot.LocationRef{}, false, nil
+	}
+	if _, in := geo.RegionOf(at.Lat, at.Lon); !in && !anywhere {
+		return snapshot.LocationRef{}, true, errors.New(coverage.Outside(label))
+	}
+	return snapshot.LocationRef{Label: label, Lat: at.Lat, Lon: at.Lon}, true, nil
+}
+
+// numberGroup is a run of figures, in any script's digits; locatorShape a
+// query shaped like a grid locator, its letters and figures in a locator's
+// places; zipPlusFour a ZIP with its four, which is a place, not a position.
+var (
+	numberGroup  = regexp.MustCompile(`\p{Nd}+`)
+	locatorShape = regexp.MustCompile(`^[A-Za-z]{2}[0-9]{2}([A-Za-z]{2}([0-9]{2}([A-Za-z]{2})?)?)?$`)
+	zipPlusFour  = regexp.MustCompile(`^[0-9]{5}-[0-9]{4}$`)
+)
+
+// positionShaped reports whether a query the parsers did not read may still
+// be a position, so it is refused here, never sent online (FR-4.9): a
+// locator of ten characters or one with a letter out of its range, or any
+// query holding two runs of figures - "33.2N 117.4W", "33°12′N", "lat 33.2
+// lon -117.38", "geo:33.2,-117.38" - whatever marks or words are around
+// them, a ZIP with its four excepted. A place's name has one run of figures
+// at most ("29 Palms"); the rule closes the gap by its shape, not by a list
+// of spellings.
+func positionShaped(q string) bool {
+	if locatorShape.MatchString(q) {
+		return true
+	}
+	return !zipPlusFour.MatchString(q) && len(numberGroup.FindAllString(q, 2)) >= 2
+}
+
+// numberPair reports whether a query is written as two numbers - which
+// strconv would read, "NaN" and "Inf" among them - so that coordinates the
+// parser refuses are refused, never looked up online (FR-4.9).
+func numberPair(q string) bool {
+	parts := strings.FieldsFunc(q, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' })
+	if len(parts) != 2 {
+		return false
+	}
+	for _, p := range parts {
+		if _, err := strconv.ParseFloat(p, 64); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 // cityPart strips a trailing ", ST" qualifier.
@@ -158,6 +273,7 @@ func cityToRefWith(zip func(geodata.City) string, c geodata.City) snapshot.Locat
 		// THE INDEX'S OWN FIGURE (D-98). The pool's table draws it;
 		// nothing else reads it, and nothing else has to.
 		Population: c.Population,
+		Country:    c.Country,
 	}
 }
 
@@ -206,4 +322,7 @@ func (r *Resolver) zipToRef(z geodata.ZipRow, zip string) snapshot.LocationRef {
 	return snapshot.LocationRef{Label: label, Zip: zip, Lat: z.Lat, Lon: z.Lon, TZ: tz}
 }
 
-var _ Fallback = (*openmeteo.Geocoder)(nil) // compile-time interface pin
+var (
+	_ Fallback      = (*openmeteo.Geocoder)(nil) // compile-time interface pins
+	_ WorldFallback = (*openmeteo.Geocoder)(nil)
+)

@@ -1,6 +1,7 @@
 package synth
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -110,8 +111,15 @@ func (v SayVoice) Say(ctx context.Context, text string) ([]byte, error) {
 		args = append([]string{"-v", v.Voice}, args...)
 	}
 	cmd := exec.CommandContext(ctx, "say", args...)
-	if b, err := cmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("say: %w: %s", err, strings.TrimSpace(string(b)))
+	var b bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &b, &b
+	if err := startTracked(cmd); err != nil { // held and recorded, so none outlives watchpost (FR-9.1, FR-9.2)
+		return nil, fmt.Errorf("say: %w", err)
+	}
+	err = cmd.Wait()
+	untrack(cmd.Process.Pid)
+	if err != nil {
+		return nil, fmt.Errorf("say: %w: %s", err, strings.TrimSpace(b.String()))
 	}
 	raw, err := os.ReadFile(out)
 	if err != nil {

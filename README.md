@@ -21,15 +21,15 @@ watchpost
 
 Windows: download `watchpost-windows-amd64.exe` from the
 [Releases](https://github.com/branden-thompson/watchpost/releases) page and run it. On the first run
-the Settings window asks for your location and you are on the air. Details, requirements and the by-hand
+the Settings window asks for a default location and the station is on the air. Details, requirements and the by-hand
 install are under [Get it running](#get-it-running).
 
 ## What it is
 
 Your places on one screen — what it is like there
-right now, today and the week ahead, every active alert, the tide and the sea if you are near the coast,
+right now, today and the week ahead, every active alert, the tide and the sea for a place on the coast,
 wildfire and earthquakes in reach — with NOAA Weather Radio playing the real broadcast where a
-transmitter is streamed, and a correspondent reading your location's own forecast aloud where it is
+transmitter is streamed, and a correspondent reading each location's own forecast aloud where it is
 not. Up top, a ticker scrolls the world's largest active hazards, and a breaking one is read over the
 radio. Press `w` and every active warning, watch, advisory, quake and storm is one window away.
 
@@ -55,7 +55,7 @@ Real data, 133×44, the default theme unless noted (0.14.0).
 
 ![The radio on air in Synth mode: the station lead, then the forecast read line by line in the marquee band, the visualizer inside it](docs/img/radio.gif)
 
-![The Settings window: settings grouped by concern, with the Alert Notification Preference — all severe events, or filtered to within N miles of your location](docs/img/setup.png)
+![The Settings window: settings grouped by concern, with the Alert Notification Preference — all severe events, or filtered to within N miles of the default location](docs/img/setup.png)
 
 ![Settings' theme picker cycling twelve of the thirteen built-in palettes live — Watchpost Light, Catppuccin, Everforest, Gruvbox, High Contrast, Kanagawa, Monochrome, Nord, Osaka Jade, Solarized Night, Synthwave '84, Tokyo Night — the whole frame repainting on each; add your own as a JSON file](docs/img/themes.gif)
 
@@ -88,10 +88,11 @@ watchpost
 ```
 
 On the first run the Settings window opens over the dashboard and asks three things, all on one screen:
-your default location (start typing a city or ZIP; the list narrows as you type), an optional NASA
+the default location (start typing a city or ZIP; the list narrows as you type), an optional NASA
 FIRMS key for satellite fire detections minutes old (leave it empty — the built-in fire sources need
 no key), and whether the radio should announce every severe event nationwide or only those within a
-distance of you. `tab` moves between the questions, `enter` saves. Press `s` to come back to it any time.
+distance of the default location. `↑↓` move between the questions and `tab` between the window's tabs;
+`enter` saves, and on the first run `esc` keeps a location chosen too. Press `s` to come back to it any time.
 
 **Your correspondents.** Settings' *Watchpost Radio — Correspondents* group gives the station a cast: a
 row for each thing you hear — the alerts and takeovers, the location report, the marine report, the fires,
@@ -163,21 +164,49 @@ unavailable") — never a silently empty list.
 
 ## Map
 
-`g` opens the map of the focused location's region, and `g` or `esc` closes it. The map never shows
-more than one region: the contiguous US, Alaska, Hawaii, the US Caribbean, American Samoa, or Guam and
-the Northern Marianas. A place outside all of them gets a sentence saying so, and no map.
+`g` opens the map of the focused location's region, and `g` or `esc` closes it. Its weather modes never
+show more than one region: the contiguous US, Alaska, Hawaii, the US Caribbean, American Samoa, or Guam
+and the Northern Marianas. A place outside all of them gets a sentence saying so, and no weather map;
+the Propagation mode, below, opens there, since it draws the whole world.
 
 **What it shows.** A basemap with the alert areas in view, coloured by severity. On top of that, the
-map runs in one of two modes:
+map runs in one of three modes:
 
 - **Radar mode** (the default) plays the last two hours of radar as a loop. It can add the hours ahead
   from the HRRR model.
 - **Forecast mode** (`R` switches) steps through now and the days ahead.
+- **Propagation mode** (`P`) draws HF radio conditions over the whole world: the highest usable
+  frequency over 3,000 km (MUF(3000)) or the F2 layer's critical frequency (foF2), from NOAA's GloTEC
+  and GIRO's ionosondes over a climatology (go-ionomaps). Beside the map: the bands usable near the
+  place and on the path to each continent, and to a place found with `/`; your frequency's reach (`F`),
+  with its skip zone and the limit that stops it; the hours ahead, each labelled typical; and the
+  words for every answer. `B` opens the chart of the bands now and through a typical day. The answers
+  are for a 100 W voice circuit with simple antennas.
+
+Real data, 0.19.0.
+
+![Radar mode over the contiguous US, the loop playing: MRMS's observed frames at 08:39, 09:04 and 09:29, the newest at 09:49, then HRRR's forecast for 10:30, the badge changing from MRMS to HRRR; the timeline runs from 07:54 observed to 12:45 forecast, the rain moving over the West, the southern Plains and Iowa](docs/img/map-radar.gif)
+
+![Zoomed to 500 km: the same frame over California, Nevada and Arizona, from San Francisco to the Gulf of California](docs/img/map-radar-west.png)
+
+![Propagation mode over North America: MUF(3000) in bands from 7 MHz over the night-side Pacific to 28 MHz over the Caribbean, the terminator dotted down the west coast; beneath the map, the band key, the sources (SWPC, PyIRI, IGRF-14, GIRO), when the field was computed and how old its data is, and the answer near Oro Valley, AZ: foF2 5.9 MHz, MUF(3000) 21.7 MHz, 160 m to 60 m within about 400 km, and 15 m the highest band open to North America](docs/img/propagation-muf.png)
+
+![Zoomed to 500 km over California, Nevada and Arizona: MUF(3000) from 14 to 24.89 MHz, each contour labelled with its band edge, and the answer for the map's centre at 37.0°N 117.5°W: MUF(3000) 18.3 MHz, 160 m and 80 m within about 400 km, 15 m to North America](docs/img/propagation-muf-west.png)
+
+![MUF(3000) across the Atlantic at 5000 km: 28 MHz over the daylit ocean, the Americas and Africa, lower beyond the terminator on each side, over Europe and over the Gulf of Alaska; the answer for the map's centre at 40.5°N 54.0°W: MUF(3000) 25.1 MHz, 160 m to 40 m within about 400 km](docs/img/propagation-muf-atlantic.png)
+
+![The foF2 layer across the Pacific and North America, 180° in view: the North Pacific's night under 3.5 MHz, rising across North America to 7 MHz and to 10.1 MHz over South America's day; the answer for the map's centre at 40.5°N 110.5°W: foF2 7.3 MHz, MUF(3000) 25.1 MHz, 160 m to 40 m within about 400 km, and 15 m to North America](docs/img/propagation-fof2-pacific.png)
+
+![The foF2 layer (`L`) across the Atlantic: the daylit side over Africa and the Atlantic at the 30 m band's 10.1 MHz, Asia's night side far lower; the answer near Osuna, Spain: foF2 9.0 MHz, MUF(3000) 31.0 MHz, 160 m to 40 m within about 400 km, and 15 m to Europe](docs/img/propagation-fof2-atlantic.png)
+
+![foF2 from the Atlantic to the western Pacific, centred at 40.5°N 58.5°E: Africa and the Atlantic in the day at 10.1 MHz, Europe and Asia in the night at 3.5 MHz and below; the answer there: foF2 2.9 MHz, MUF(3000) 8.6 MHz, and only 160 m within about 400 km](docs/img/propagation-fof2-asia.png)
 
 The layers are temperature, feels-like, wind, rain and snow, UV, air quality, waves, fire, earthquakes,
 buoys and tides. Switch them in the Overlays menu (`O`) or in Settings. Out of the box the radar, alert
 areas, fire, earthquakes, and rain and snow are on, and the rest are off. A badge above the map names
 each layer drawn and its source.
+
+![The Overlays menu (`O`) over the radar: one shaded overlay at a time (temperature, UV index, air quality or radio propagation); the data points (wind, waves, buoys, tides), the hazards (quakes, fire, hotspots) and the alert areas by kind, each group switched as a whole; and the map's detail (borders, lakes, rivers, place names, major roads, rail, parks, day and night), with the zoom at which rail and parks appear](docs/img/map-overlays.png)
 
 The **Area Alerts** box (`A`) describes the map in words. It says which alerts cover the place, which
 come near it, and every other alert in view, most severe first. The description can also replace the
@@ -193,25 +222,36 @@ picture or be switched off (Settings, *Description*).
 | `space` | play / stop the loop, or the forecast's steps |
 | `shift+←` `shift+→` · `n` | step back / on · back to now |
 | `<` `>` | Forecast mode: the days' highs or lows |
-| `A` · `O` | the Area Alerts box · the Overlays menu (`↑` `↓` move, `←` `→` change a choice, `space` switches, `esc` closes it) |
-| `PgUp` `PgDn` | scroll the window when it is longer than the screen |
+| `A` · `O` | the Area Alerts box · the Overlays menu (`↑` `↓` move, `←` `→` change a choice, `space` switches, `esc` closes it; these keys inside the menu are fixed) |
+| `P` | the Propagation mode on / off |
+| `L` · `U` · `B` · `F` · `/` | Propagation mode: the layer (MUF or foF2) · refresh now · the bands chart · your frequency · find a place anywhere |
+| `↑` `↓` (the bands chart open) | the chart's previous / next target, in the chart's own scope (Help shows them beside Pan) |
+| `PgUp` `PgDn` | scroll the window when it is longer than the screen (in the bands chart window, fixed) |
 
 While the map is open these keys are the map's. Any other key works as it does on the dashboard. Each
-one is a keymap action, so `[keys]` in `config.toml` can rebind it.
+command is a keymap action, so `[keys]` in `config.toml` can rebind it by the action's name; the keys
+inside a window over the map (the Overlays menu, find, your frequency, the acknowledgement, and the
+bands chart's `esc`, `PgUp` and `PgDn`) are fixed. The map's action names begin
+`map.` (`map.pan.left`, `map.zoom.in`, `map.propagation`, …) and the bands chart's are `chart.prev` and
+`chart.next`.
 
 **Settings, Maps tab** (`s`, then `tab` to *Maps*):
 
 - **MAP:** maps on or off; where the description goes; the scale the map opens at (State, County or
   Region); the distance that counts as nearby; the radar source (MRMS, or IEM for the lower 48); the
   hours of radar ahead; which earthquakes (a USGS feed); the temperature source (NDFD or Open-Meteo);
-  how dense the rain is from day 4; and how many cities show UV.
+  how dense the rain is from day 4; how many cities show UV; and for the Propagation mode, the
+  near-vertical radius (*NVIS radius*), the receiver's noise (*RX noise*), how often it refreshes
+  (*HF refresh*: Hourly by default, Every 10 min, or On demand), what it draws while no station readings are held (*No readings*), whether GIRO's
+  stations are asked at all (*HF stations*), and the map's *Colours* (automatic, or a depth chosen).
 - **MAP - LAYERS:** each layer on or off.
 - **MAP - DETAIL:** the basemap's detail (borders, lakes, rivers, place names, major roads, rail and
-  parks) and *Map data*, which clears what the map keeps on disk.
+  parks), *Day / night* (the night side shaded and its edge dotted; always drawn in the Propagation
+  mode) and *Map data*, which clears what the map keeps on disk.
 
-The foot of the tab warns when a choice costs a lot. That happens when Open-Meteo is chosen, because it
-bills per location, and when the layers you switched on would fetch more than 3 MB or 25 requests in
-one refresh.
+The foot of the tab warns when a choice costs a lot: when Open-Meteo is chosen, because it bills per
+location, and when the layers switched on would fetch more than 3 MB or 25 requests in one refresh. It
+also states the HF refresh's cost on the wire and GIRO's terms beside the rows they concern.
 
 **A font without braille.** The picture is drawn in braille characters. If your terminal's font has
 none, the map shows empty boxes. Run `watchpost --ascii` and the window gives the map's description
@@ -220,8 +260,10 @@ in words in place of the picture.
 The window needs room for a map 69 columns by 12 rows. In a smaller terminal it says what size it
 needs, then gives the description.
 
-**What the map contacts.** Nothing is fetched for the map until you press `g`. The Status window (`S`)
-lists every host the map can contact under MAP STATUS, with whether each is answering. What each one
+**What the map contacts.** Nothing is fetched for the map until you press `g`, and nothing for the
+Propagation mode until you open it. The Status window (`S`)
+lists every host the app contacts, grouped by what it serves - common data, weather, adverse events,
+map drawing - each named by its source's badge, with whether it is answering. What each map host
 is sent:
 
 | Host | For | Sent |
@@ -235,6 +277,8 @@ is sent:
 | `data.epa.gov` (EPA) | UV | the names of the largest cities in view |
 | `www.ndbc.noaa.gov`, `api.tidesandcurrents.noaa.gov` | buoys, tides | nothing for buoys (a national file); the tide stations in view |
 | `earthquake.usgs.gov` | earthquakes | nothing: the national feed chosen in Settings |
+| `services.swpc.noaa.gov` (NOAA SWPC) | Propagation mode | nothing: GloTEC's newest grid, the daily solar indices, D-RAP and the space-weather scales: hourly by default, at most every ten minutes |
+| `lgdc.uml.edu` (GIRO) | Propagation mode, unless *HF stations* is off | the stations' codes and a time window, at most one burst an hour; GIRO records the address it is asked from, and its data is for non-commercial use |
 
 **The history recorder runs whatever the maps setting.** While watchpost runs, in any mode, it records
 the station's region every hour: NDFD's forecast for the region, AirNow's national file and the USGS
@@ -244,8 +288,9 @@ earthquake feeds. The map uses the record to draw past hours when a source does 
 *Data* tab sets how long the record is kept, shows its size, and clears it; *Clear map data* also
 clears the cities the map read. When several copies of watchpost run, each hour is fetched only once.
 The record is kept in `~/.local/share/watchpost/weather/history` (under `$XDG_DATA_HOME` when it is set);
-Open-Meteo's spent-quota mark (`quota.json`) and the sea points Open-Meteo Marine has no answer for
-(`marine-land.json`) are in `~/.local/state/watchpost` (under `$XDG_STATE_HOME`).
+Open-Meteo's spent-quota mark (`quota.json`), the sea points Open-Meteo Marine has no answer for
+(`marine-land.json`) and GIRO's throttle across restarts (`propagation-throttle.json`: times, NOAA's
+solar flux mean, the stations' codes and the rotation's place, never a GIRO reading) are in `~/.local/state/watchpost` (under `$XDG_STATE_HOME`).
 
 ## Radio
 
@@ -296,6 +341,7 @@ to the Observer, and is refused while the station is ON AIR.
 | `0`-`9` / `A` | open a card by its handle (the first ten; the running order scrolls to the rest) / the takeover's card |
 | `r` | **Line-Up Request** — ask for a place inside the radius, by name |
 | `l` | look up any city or ZIP |
+| `g` | the station's own map: centred on the transmitter, the service radius drawn in red in every mode; `P` its Propagation mode, the box over the map answering for the map's centre from the station |
 | `b` / `shift+←` `shift+→` | cut the main track over to the **bed** (the live relay) / previous and next relay |
 | `+` `=` `-` | gain up and down — one level, mirrored with the Observer's volume |
 | `ctrl+d` | Diagnostics — **send a test alert** to check your station's alerting end to end, as a radio station tests its own: it asks ARE YOU SURE?, reads "This is a test of the Watchpost alert events system" before and after, is marked TEST EVENT on the ticker and in the severe window, and is gone in two minutes |
@@ -348,8 +394,9 @@ is printed as they wrote them; punctuation inside an alert's own title travels w
 ## Good to know
 
 **Not a substitute for official warnings.** Everything here is fetched on a schedule and can lag;
-for life safety use NOAA Weather Radio and Wireless Emergency Alerts. Coverage is US-only (the
-National Weather Service); places outside the US resolve but carry no weather data yet.
+for life safety use NOAA Weather Radio and Wireless Emergency Alerts. Weather coverage is US-only (the
+National Weather Service); places outside the US resolve but carry no weather data yet. The
+Propagation mode alone covers the whole world.
 
 **Data and credits.** Watchpost reads public sources and shows their credits in the About window
 (`a`), a group a provider, each source once: NOAA - the National Weather Service, NDBC buoys, CO-OPS
@@ -360,8 +407,12 @@ credited to LANCE FIRMS); NIFC WFIGS incidents; the NWR audio relays of wxradio.
 data, not fully verified) and EPA Envirofacts UV; the USGS earthquake feed; the Iowa Environmental
 Mesonet's radar; Open-Meteo's geocoding and forecasts and GeoNames' places (CC BY 4.0,
 <https://creativecommons.org/licenses/by/4.0/>; Open-Meteo's grids are interpolated); OpenFreeMap's
-basemap (© OpenMapTiles, © OpenStreetMap contributors, ODbL); and the Piper voices
-(rhasspy/piper-voices, MIT). Watchpost is not affiliated with NOAA, NIFC, the USGS, the EPA or NASA.
+basemap (© OpenMapTiles, © OpenStreetMap contributors, ODbL); for the Propagation mode, NOAA SWPC's
+GloTEC, D-RAP and solar indices (public domain), the Lowell GIRO Data Center's ionosonde stations
+(CC BY-NC-SA 4.0, non-commercial use only; Reinisch & Galkin 2011) and each station's data provider, as
+GIRO lists them, the PyIRI ionosphere climatology
+(MIT, ported), IGRF-14's magnetic coordinates, ITUHFProp's P.533 absorption factors and ITU-R P.372's
+noise levels; and the Piper voices (rhasspy/piper-voices, MIT). Watchpost is not affiliated with NOAA, NIFC, the USGS, the EPA or NASA.
 
 **What it talks to, and when.** Watchpost fetches only from the providers above, on the schedule the
 dashboard shows, and sends each only what its answer needs: the places you watch, for the station, and
@@ -401,6 +452,17 @@ key = "your-32-character-map-key"   # or paste it in Settings
 units         = "imperial"   # imperial (°F/mi) | metric (°C/km)
 clock         = "12h"        # 12h | 24h | mil — how times are written AND spoken
 update_check  = false        # true asks GitHub ONCE at startup whether a newer release exists
+```
+
+**The Propagation mode and the map's colours** (`config.toml`; each is a row on the Maps tab):
+
+```toml
+map_propagation_refresh     = ""   # "" hourly | "every-10-min" each new GloTEC grid | "on-demand" the refresh key alone
+map_propagation_radius_km   = 0    # 0 is 400 | 200 | 600: the near-vertical radius
+map_propagation_noise       = ""   # "" residential | "city" | "rural" | "quiet-rural"
+map_propagation_no_readings = ""   # "" GloTEC as is | "corrected" by the typical offset
+map_propagation_stations    = ""   # "" ask GIRO | "none" NOAA and the climatology alone
+map_colour_depth            = ""   # "" automatic | "truecolor" | "256" | "16" | "none"
 ```
 
 **The radio's own keys** (`[radio]`). Most are Settings rows, so you never have to write them by
@@ -460,7 +522,8 @@ it appears in the picker. Every colour has a token, the tables' included (`table
 data), plus `scripts/global/head.txt` and `tail.txt`, which any report inherits when it has none of its
 own. Today: `weather-radio/` (the broadcast's lead, conditions, alerts, sign-off), `fire-report/`,
 `seismic-report/` and `marine-report/`, `event-report/` (the `space` read), `breaking/` (the takeover),
-`handover/` (one correspondent passing to another) and `voice-preview/`. There is also
+`handover/` (one correspondent passing to another), `test-alert/` (the diagnostics window's injected
+test event) and `voice-preview/`. There is also
 `transition/`, written and pinned but **not yet on air** — it is the line between a takeover and the
 programme resuming, and it arrives with the wiring in a later release.
 To re-word a phrase, put the same `<report>/<part>.txt` under `~/.config/watchpost/scripts/`; it
@@ -494,14 +557,18 @@ falls back to `radio`.
 
 ## Building from source
 
-Go 1.25.13 is the floor (`go.mod`). At 1.25.0, 28 standard-library vulnerabilities are reachable,
-so the map library, go-tuiMaps v0.2.0, requires 1.25.13 (its D-133), and watchpost does too. CI and the releases build with 1.27. `make build` (binary in
+Go 1.26.10 is the floor (`go.mod`): the map library, go-tuiMaps, requires it (its D-38; watchpost D-244), because below it
+standard-library vulnerabilities its code reaches are unfixed, GO-2026-6809 the latest, and watchpost does too. CI and the releases build with 1.27.3. `make build` (binary in
 `./dist`, version stamped from `git describe`), `make verify` (fmt, vet, tidy, vulnerability, race,
 import-direction, watermark and control gates with positive controls), `make release-matrix` (all
-targets, CGO off), `make install-test` (installer end to end against a local server). `make verify` runs from a clean
+targets, CGO off), `make install-test` (installer end to end against a local server), `make hooks` (a pre-push hook that
+runs the tests reading the record, in seconds, from the tree; it refuses to replace a hook already set up, and says how to keep
+both). `make verify` runs from a clean
 clone; it needs the Go toolchain, git, python3, GNU make 3.82 or newer (macOS ships 3.81 — `brew install make`), and network access the first time, to fetch the pinned golangci-lint and govulncheck. `make quality` is the phase-exit set — today the Power-of-Ten
-gate `p10`, which needs the out-of-tree `a2dh` CLI and fails loud without it rather than skipping;
-it is run at BUILD and REVIEW exit and its result is recorded in the release's gate roster. The soak and
+gate `p10`, which needs the out-of-tree `a2dh` CLI and its two local files, `.a2dh.yml` and
+`.a2dh-p10-exemptions.yml` (git-ignored; the exemptions' rows are mirrored in `06_docs/p10-ledger.md`), and
+fails loud without them rather than skipping; it is run at every phase exit and its result is recorded in
+the release's gate roster (D-252). The soak and
 benchmark harness lives in `scripts/quality/` and `make quality-bench`. The terminal UI kit (`go-studs`,
 MIT, same author) is carried in-tree under `third_party/go-studs` (its LICENSE and NOTICE.md ride with
 it; import paths rewritten), so the tree builds anywhere with no private access.

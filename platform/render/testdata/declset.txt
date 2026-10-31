@@ -39,6 +39,13 @@ const FireMark
 const FocusCell
 const FocusName
 const FocusPointer
+const Fresh15
+const Fresh30
+const Fresh45
+const Fresh5
+const Fresh60
+const FreshNow
+const FreshOld
 const GradEnd
 const GradMid
 const GradStart
@@ -58,8 +65,13 @@ const MapChipAirNowBG
 const MapChipCOOPSBG
 const MapChipEPABG
 const MapChipFIRMSBG
+const MapChipFoF2BG
+const MapChipGIROBG
 const MapChipGeoNamesBG
 const MapChipHMSBG
+const MapChipIGRFBG
+const MapChipITUBG
+const MapChipMUFBG
 const MapChipNDBCBG
 const MapChipNDFDBG
 const MapChipNHCBG
@@ -69,10 +81,13 @@ const MapChipNWSBG
 const MapChipOFMBG
 const MapChipOMeteoBG
 const MapChipPiperBG
+const MapChipPyIRIBG
 const MapChipRecordedBG
 const MapChipRelaysBG
+const MapChipSWPCBG
 const MapChipUSGSBG
 const MapNoticeQuotaBG
+const MapPropPlace
 const MapRadarIEMBG
 const MapRadarMRMSBG
 const MapRadarModelBG
@@ -142,6 +157,8 @@ const extCellW
 const extDayW
 const extMaxDays
 const extSpacerW
+const freshGreenYellow
+const freshLightGreen
 const marksW
 const minFullW
 const minNoTmrwW
@@ -253,6 +270,7 @@ func DisplayCondition
 func FgSGR
 func FirstFit
 func FirstOf
+func FreshnessTone
 func HeavyBox
 func HumanBytes
 func Italic
@@ -263,6 +281,7 @@ func ModalTone
 func NextTide
 func NoticeGrounds
 func Overlay
+func OverlayAt
 func PadBetween
 func PadTo
 func Plain
@@ -321,6 +340,7 @@ func bgRGB
 func bgTruecolor
 func blend
 func boldFg
+func borrowUnnamed
 func boxGlyphs
 func boxRule
 func bracketTitle
@@ -401,6 +421,7 @@ func truncate
 func withAA
 func withAgeLadder
 func withDerived
+func withFreshLadder
 func without
 func xterm256RGB
 type AlertRow
@@ -421,6 +442,7 @@ type Token
 type Units
 type aaPair
 type baseCol
+type borrowed
 type colGeom
 type groupSpec
 type layout

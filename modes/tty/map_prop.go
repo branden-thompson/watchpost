@@ -1,0 +1,155 @@
+package tty
+
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/term"
+)
+
+// actMapProp enters and leaves the Propagation mode (D-153).
+const actMapProp term.Action = "map.propagation"
+
+// The Propagation mode's words while it has nothing to draw: its badge, its
+// line in the radar's place, and its sentence in the description.
+const (
+	propagationLabel  = "RADIO FREQ. PROPAGATION" // D-167
+	propagationStatus = "Propagation · whole world · no propagation data drawn yet"
+	propagationWords  = "The Propagation mode, over the whole world: no propagation data is drawn yet."
+)
+
+// togglePropagation enters the Propagation mode, or leaves it for the mode it
+// came from (D-153). It is never saved (D-154). Entering it takes every
+// weather layer off and the region's bound away (D-21); leaving it asks the
+// weather mode's data again, as R does.
+func (d Dashboard) togglePropagation() (Dashboard, tea.Cmd) {
+	d.mapPane.prop = !d.mapPane.prop
+	d, cmd := d.enterMode()
+	if d.mapMode() == modePropagation && d.propAckDue() {
+		return d.openPropAck(), cmd // before anything of the mode's is fetched (D-81): closing it asks
+	}
+	d, update := d.askPropagation()
+	return d, tea.Batch(cmd, update)
+}
+
+// cursorAt is where the terminal cursor stands in a frame: on the
+// acknowledgement's first line while it is shown (D-81); false elsewhere,
+// where focus is still drawn and not placed (D-110, F-205).
+func (d Dashboard) cursorAt(frame string) (x, y int, ok bool) {
+	if d.modal != modalPropAck {
+		return 0, 0, false
+	}
+	return propAckCursor(frame)
+}
+
+// enterMode sets the map up for the mode it is now in: its bound, its layers
+// and its playback, and asks what the mode draws.
+func (d Dashboard) enterMode() (Dashboard, tea.Cmd) {
+	d = d.resetPlayback()
+	d.mapPane.gen++
+	d = d.ensureMainOverlay()
+	d = d.followSelection().setTemp().setProp()
+	d = d.refreshMapCost().showStep().retimeDrawn().requestFeed()
+	d, feed := d.askFeed()
+	d, radar := d.askRadar()
+	switch d.mapMode() {
+	case modePropagation:
+		return d, tea.Batch(feed, radar, d.mapWorkCmd()) // nothing of the weather's is asked for
+	case modeRadar, modeForecast:
+		d = d.stopPropagation() // the Propagation mode's update ends with it (FR-4.2)
+	}
+	d, temp := d.askTemp()
+	return d, tea.Batch(feed, radar, temp, d.mapWorkCmd())
+}
+
+// propagationBadge is the Propagation mode's badge in the radar badge's place.
+func (d Dashboard) propagationBadge() string {
+	return mapBadge(render.Tint(propagationLabel, render.Tok(render.ModalTitle)), "", "")
+}
+
+// propChipWords are the P chip's words: whether the Propagation mode is on.
+func (d Dashboard) propChipWords() string {
+	switch d.mapMode() {
+	case modePropagation:
+		return "Propagation On"
+	case modeRadar, modeForecast:
+	}
+	return "Propagation Off"
+}
+
+// outsideText is the window's words for a place in no region: no weather map
+// is drawn for it, and the key that opens the Propagation mode, as bound,
+// which covers the whole world (D-21).
+func (d Dashboard) outsideText() string {
+	text := d.mapPane.outside + " is outside every region the weather map covers - the contiguous United States, Alaska, Hawaii, Puerto Rico and the Virgin Islands, Guam and the Northern Marianas, and American Samoa - so no weather map is drawn for it."
+	if keys := d.mapKeys[actMapProp].Keys; len(keys) > 0 {
+		text += " Press " + keys[0] + " for the Propagation mode, which covers the whole world."
+	}
+	return text
+}
+
+// outsideStated reports whether the window states the place is outside every
+// region in place of the map: in a weather mode, for a place in no region.
+func (d Dashboard) outsideStated() bool {
+	if d.mapPane.outside == "" {
+		return false
+	}
+	switch d.mapMode() {
+	case modeRadar, modeForecast:
+		return true
+	case modePropagation:
+	}
+	return false
+}
+
+// The Overlays menu's row for the Propagation mode (D-158, A-37).
+const (
+	propagationRowKey   = "propagation"
+	propagationRowLabel = "Radio Propagation"
+)
+
+// radioChangesMode is space or enter on a tint that moves between the modes
+// (D-158): the Propagation row is P - into the mode, or, chosen, back out to
+// the weather mode it came from; a weather tint chosen in the Propagation
+// mode returns to that weather mode with the tint drawn. false for any other
+// key or row, which the menu handles as before.
+func (d Dashboard) radioChangesMode(key string) (Dashboard, tea.Cmd, bool) {
+	rows := d.overlayRows()
+	if len(rows) == 0 || (key != "space" && key != "enter") {
+		return d, nil, false
+	}
+	r := rows[d.mapPane.menuAt%len(rows)]
+	if r.kind != menuRadio {
+		return d, nil, false
+	}
+	at := d.mapPane.menuAt
+	switch {
+	case r.key == propagationRowKey:
+		nd, cmd := d.togglePropagation()
+		nd.mapPane.menuAt = at // the tints lead the menu in both modes: the cursor stays on its row
+		return nd.followMenuFocus(), cmd, true
+	case d.mapMode() == modePropagation:
+		nd := d.chooseTint(r.key) // chosen while this mode draws none of it: leaving draws and asks for it, once
+		nd, cmd := nd.timeFrom("overlay").togglePropagation()
+		nd.mapPane.menuAt = at
+		save := nd.uiApplyCmd()
+		nd.setup.uiDirty = false
+		return nd.followMenuFocus(), tea.Batch(cmd, save), true
+	}
+	return d, nil, false
+}
+
+// chooseTint draws a weather tint: chosen, the others not; never cleared,
+// as space on a chosen tint would clear it (D-142).
+func (d Dashboard) chooseTint(key string) Dashboard {
+	if key == TemperatureLayer && d.pickFeels() {
+		key = FeelsLayer
+	}
+	d.mapPane.tempAuto = false
+	return d.withChoice(func(c map[string]bool) {
+		for _, t := range oneTint {
+			c[t] = false
+		}
+		c[key] = true
+	})
+}

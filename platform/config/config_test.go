@@ -155,6 +155,24 @@ func TestSaveRefusesFirstRun(t *testing.T) {
 	}
 }
 
+// TestAChangeOnAFirstRunIsKept is 0.19.0 D-336: with no file yet, a
+// listener's own change - here the recent list a lookup writes - is saved, the
+// first file written, rather than refused as a first-run config.
+func TestAChangeOnAFirstRunIsKept(t *testing.T) {
+	testDir(t)
+	err := Mutate(func(cfg *Config) error {
+		cfg.Recent = []Location{{Label: "Vista, CA", Zip: "92081", Lat: 33.2, Lon: -117.24, TZ: "America/Los_Angeles"}}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("a change on a first run was refused: %v", err)
+	}
+	got, err := Load()
+	if err != nil || got.FirstRun || len(got.Recent) != 1 || got.Recent[0].Zip != "92081" {
+		t.Fatalf("the change was not kept: first run %v, recent %+v, %v", got.FirstRun, got.Recent, err)
+	}
+}
+
 func TestLoadCorruptFileFailsActionably(t *testing.T) {
 	testDir(t)
 	p, _ := Path()

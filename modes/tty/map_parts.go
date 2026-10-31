@@ -26,15 +26,23 @@ var chipGrounds = map[string]render.Token{
 	"NWS": render.MapChipNWSBG, "NDFD": render.MapChipNDFDBG, "O-METEO": render.MapChipOMeteoBG,
 	"USGS": render.MapChipUSGSBG, "NIFC": render.MapChipNIFCBG, "HMS": render.MapChipHMSBG,
 	"NDBC": render.MapChipNDBCBG, "CO-OPS": render.MapChipCOOPSBG, "AIRNOW": render.MapChipAirNowBG,
-	"EPA":      render.MapChipEPABG, // UV's cold start (D-167)
-	"NHC":      render.MapChipNHCBG, // the credits' sources without a map layer yet (D-235)
-	"NWR":      render.MapChipNWRBG,
-	"FIRMS":    render.MapChipFIRMSBG,
-	"RELAYS":   render.MapChipRelaysBG,
-	"GEONAMES": render.MapChipGeoNamesBG,
-	"OFM":      render.MapChipOFMBG,
-	"PIPER":    render.MapChipPiperBG,
-	"RECORDED": render.MapChipRecordedBG, // not a source: the history, appended after one (D-173, D-178)
+	"EPA":       render.MapChipEPABG, // UV's cold start (D-167)
+	"NHC":       render.MapChipNHCBG, // the credits' sources without a map layer yet (D-235)
+	"NWR":       render.MapChipNWRBG,
+	"FIRMS":     render.MapChipFIRMSBG,
+	"RELAYS":    render.MapChipRelaysBG,
+	"GEONAMES":  render.MapChipGeoNamesBG,
+	"OFM":       render.MapChipOFMBG,
+	"PIPER":     render.MapChipPiperBG,
+	"SWPC":      render.MapChipSWPCBG, // the Propagation mode's sources (0.19.0 FR-4.1)
+	"PYIRI":     render.MapChipPyIRIBG,
+	"IGRF-14":   render.MapChipIGRFBG,
+	"GIRO":      render.MapChipGIROBG,
+	"ITUHFPROP": render.MapChipITUBG,
+	"P.372":     render.MapChipITUBG, // ITU's blue, as ITUHFProp's: the noise constants (go-ionomaps NOTICE 5)
+	"MUF(3000)": render.MapChipMUFBG, // the Propagation mode's fields (D-165)
+	"foF2":      render.MapChipFoF2BG,
+	"RECORDED":  render.MapChipRecordedBG, // not a source: the history, appended after one (D-173, D-178)
 }
 
 // ChipKnown reports whether a source has a chip of its own, so the app can
@@ -53,6 +61,14 @@ func chipFace(face string) string {
 		return "  " + face + "  "
 	}
 	return render.TintRaw("  "+face+"  ", render.ChipTones(ground))
+}
+
+// chipDimmed is a chip whose source fed nothing shown: its words in the
+// muted tone the app dims with (D-143), on no ground (D-168), and in
+// brackets, the width of a lit chip, so it reads dimmed without colour too
+// (AX-12).
+func chipDimmed(face string) string {
+	return render.Tint(" ("+face+") ", render.Tok(render.TableMuted))
 }
 
 // mapBadge is the badge's words, in either mode (D-92, U2-19), on one line

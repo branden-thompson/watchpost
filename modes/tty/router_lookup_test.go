@@ -194,8 +194,15 @@ func typeOfMsg(t *testing.T, name string) reflect.Type {
 		"forecastTickMsg":   forecastTickMsg{},  // D-94: Forecast mode's playback is owed to the map window
 		"mapClearedMsg":     mapClearedMsg{},
 		"historyClearedMsg": historyClearedMsg{},
-		"mapReleaseMsg":     mapReleaseMsg{}, // D-221: the map's release is owed to its window, whichever surface is shown
-		"mapPanicMsg":       mapPanicMsg{},   // QA-11: a map command stopped a panic, and its window is marked failed
+		"mapReleaseMsg":     mapReleaseMsg{},  // D-221: the map's release is owed to its window, whichever surface is shown
+		"propUpdatedMsg":    propUpdatedMsg{}, // 0.19.0 W4.1: the Propagation mode's update is owed to the map window
+		"propTickMsg":       propTickMsg{},    // and its refresh tick
+		"propChartMsg":      propChartMsg{},   // W5.1: the chart's answers, owed to the map and its chart window
+		"propReachMsg":      propReachMsg{},   // W5.2: the frequency's reach, owed to the map
+		"propFoundMsg":      propFoundMsg{},   // FR-1.10: a find's answer, owed to the map and its finder
+		"propAheadMsg":      propAheadMsg{},   // W5.4: the hour ahead, owed to the map
+		"propCentreMsg":     propCentreMsg{},  // W5.4: the centre's answer, owed to the map
+		"mapPanicMsg":       mapPanicMsg{},    // QA-11: a map command stopped a panic, and its window is marked failed
 	}
 	v, ok := known[name]
 	if !ok {

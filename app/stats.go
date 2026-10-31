@@ -21,6 +21,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/seismic/usgs"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/tz"
@@ -49,7 +50,9 @@ type diagSources struct {
 	priorityPub *publisher
 	recentPub   *publisher
 	deck        *radioDeck
-	timings     *timingLog // the timing instrument's intervals (W14), nil unless switched on
+	timings     *timingLog         // the timing instrument's intervals (W14), nil unless switched on
+	propagation *propagationHolder // the propagation client's wire bytes (0.19.0 G1), nil when not wired
+	history     *history.Store     // the days the history store holds in memory (0.19.0 D-242), nil when not running
 	// The three directories the disk gauges size ("" = skipped): the HTTP
 	// cache (flat), the profiles dir and the voices dir (nested).
 	cacheDir, profilesDir, voicesDir string
@@ -104,6 +107,10 @@ func (d diagSources) gauges() []Gauge {
 		out = append(out, Gauge{Name: "synth.pcm.cache", Len: n, Bytes: int64(b)})
 	}
 	out = append(out, Gauge{Name: "tz.cache", Len: tz.Cached()})
+	if d.history != nil { // bound: dayRules, by count and weight; indexRules (0.19.0 D-242)
+		days, bytes, indexed := d.history.Memory()
+		out = append(out, Gauge{Name: "history.days", Len: days, Bytes: bytes}, Gauge{Name: "history.index", Len: indexed})
+	}
 	out = append(out,
 		dirGauge("disk.cache", d.cacheDir, false),
 		dirGauge("disk.profiles", d.profilesDir, true),
@@ -174,7 +181,7 @@ func runtimeCounts() (goroutines, threads, fds int) {
 func (lp *livePipelines) ttyStats() tty.Stats {
 	src := lp.sources()
 	st := tty.Stats{Requests: requestStats(src.clients)}
-	st.MapRequests = httpx.MergeRequestStats(requestStats(lp.mapClients), lp.tiles.stats()) // D-150: the radar's, the temperature's and the tiles'
+	st.MapRequests = httpx.MergeRequestStats(requestStats(lp.mapClients), lp.tiles.stats(), lp.propagation.requestStats()) // D-150: the radar's, the temperature's and the tiles'; D-169: the propagation client's
 	for i, pub := range [...]*publisher{src.priorityPub, src.recentPub} {
 		if pub != nil {
 			st.Pipelines[i] = pub.stats()
@@ -188,6 +195,7 @@ func (lp *livePipelines) ttyStats() tty.Stats {
 		st.ZoneShapes = tty.ZoneShapeStats{Fetched: z.Fetched, Failed: z.Failed, Served: z.Served, Held: z.Held}
 	}
 	st.Endpoints = providerEndpoints()
+	st.ProviderSources, st.HostSources = providerSources(), hostSources() // D-170: the Status window's groups
 	st.MapProblems = lp.problems.last()
 	st.Uptime = time.Since(lp.started)
 	if lp.release != nil {
@@ -200,7 +208,7 @@ func (lp *livePipelines) ttyStats() tty.Stats {
 // sources gathers the live diagnostic sources (the pipelines are wired
 // after lp is built, so this is read on demand, never cached).
 func (lp *livePipelines) sources() diagSources {
-	src := diagSources{clients: lp.clients, weather: lp.weather, tides: lp.tides, deck: lp.deck, timings: lp.timings,
+	src := diagSources{clients: lp.clients, weather: lp.weather, tides: lp.tides, deck: lp.deck, timings: lp.timings, propagation: &lp.propagation, history: lp.historyStore(),
 		cacheDir: cacheDir(), profilesDir: userCacheSubdir("profiles"), voicesDir: voiceDir()}
 	for _, pr := range lp.fire {
 		if h, ok := pr.(*hms.Provider); ok {

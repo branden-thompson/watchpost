@@ -227,9 +227,8 @@ func (m *mastercontrol) DropCard(id string) { m.tell(lineup.Dropped{ID: id}) }
 // Director chooses, so the app mints and admits it and the event says only WHERE.
 // A console that built cards would be a surface deciding what may go on the air.
 //
-// IT IS THE OPERATOR'S (FR-3.4), so `FromOperator` — the same origin a restore
-// carries, and the reason the running order can tell a human's card from the
-// rotation's.
+// IT IS THE OPERATOR'S (FR-3.4), so `FromOperator` — the reason the running
+// order can tell a human's card from the rotation's.
 func (m *mastercontrol) RequestCard(ref snapshot.LocationRef, kinds report.Set, at int) {
 	key := string(snapshot.Key(ref))
 	card, err := lineup.Propose(lineup.Card{

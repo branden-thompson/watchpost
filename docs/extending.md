@@ -13,10 +13,16 @@ linter in `make verify` enforces the first; `term.Merge` plus its tests enforce 
 1. **Data flows one way:** domains write `platform/snapshot`; `modes/` (all rendering: TTY and
    `report`) read ONLY the snapshot — never a domain. Anything the dashboard needs from a domain
    arrives as an app-provided hook in `tty.Config` (radio, voices, hydrate, spectrum).
-2. **Keybindings are data** (D-15): a key is named in exactly two places — `defaultKeyMap()` in
-   `modes/tty/dashboard.go` for the Observer and `broadcasterKeyMap()` in `modes/tty/router.go` for
-   the console; users override any of them via `[keys]` in config.toml; `?` is reserved for help,
-   which renders from the merged map so it is always truthful.
+2. **Keybindings are data** (D-15): every scope's commands are named once, in the keymap of the
+   scope that owns them —
+   `defaultKeyMap()` in `modes/tty/dashboard.go` for the Observer, `broadcasterKeyMap()` in
+   `modes/tty/router.go` for the console, `defaultMapKeyMap()` in `modes/tty/map_pane.go` for the
+   map while it is open, and `defaultChartKeyMap()` in `modes/tty/map_prop_chart.go` for the bands
+   chart's window (an open window owns its keys, D-61); users override any of them via `[keys]` in
+   config.toml by the action's name; `?` is reserved for help, which renders from the merged map so
+   it is always truthful. The keys inside a window over the map - the arrows, space, enter and esc of
+   the Overlays menu and the find, frequency and acknowledgement windows, and the bands chart
+   window's esc, PgUp and PgDn - are fixed, not keymap actions (D-292).
 
 ---
 
@@ -129,7 +135,7 @@ layer edits none of them. The earthquakes (`app/mapquakes.go`) are the smallest 
 | 2 | `app/map<layer>.go` | In the file's `init`, `registerMapLayer(mapLayer{key, label, on, cost, chips})`: the words Settings shows, whether it is on by default, its cost function, and the badge's source names when they never change. A key registered twice panics. The new row appears in Settings and in the Overlays menu's *Data Points* group with no further edit. |
 | 3 | the same file | The cost function: what one refresh would fetch if nothing were held, as bytes and requests. `refreshCost` sums it over the layers switched on; above 3,000,000 bytes or 25 requests, the window and Settings warn. |
 | 4 | `modes/tty/map_prefs.go`, `app/maplayers.go`, `app/mapfeed.go` | The data. A flag on `MapAsk`, set from `layerOn` in `mapAsk`, so it is fetched only while on. A field on `mapInputs`, filled in `fetchInputs` (one goroutine an input, all joined before the feed reads any). Its overlays added in `mapFeedWith` (`addNow` for one drawn as now). Fetch in `app/` or a domain, never in `modes/`, and over fixed boxes or national files, never the view, unless the Status window's disclosure says so. A gridded field rides `mapTemperature` instead. |
-| 5 | `app/map<layer>.go`, `app/maps.go` | Its hosts: a `<layer>Hosts()` returning `[]tty.MapSource`, appended in `mapSourceList`, so the Status window's MAP STATUS lists them. A new host must be on FR-3.8's closed list. |
+| 5 | `app/map<layer>.go`, `app/maps.go` | Its hosts: a `<layer>Hosts()` returning `[]tty.MapSource`, appended in `mapSourceList`, with its badge in `mapBadges` (`app/endpoints.go`), so the Status window lists them under MAP DRAWING DATA, or COMMON DATA where the station uses the host too. A new host must be on FR-3.8's closed list. |
 | 6 | `app/credits.go` | Its credit in `creditGroups`, with what the source's terms ask. |
 | 7 | Tests | Add the key to `TestAFakeLayerPlugsInWithoutEditingTheOthers`' list and the host to `TestEveryRegisteredSourceIsOnTheClosedList`' closed list (both in `app/maplayers_test.go`), so a layer or host cannot arrive unnoticed. Then a cost test, and a feed test over a recorded answer showing the overlays arrive with the layer's key. |
 

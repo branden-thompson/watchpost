@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -131,5 +132,266 @@ func TestARunThatLostItsMapFails(t *testing.T) {
 	out.Reset()
 	if code := run([]string{"-in", dir}, &out, &bytes.Buffer{}); code == 0 || !strings.Contains(out.String(), "| C map open | 2 |") {
 		t.Errorf("a run that lost its map twice in C: exit %d\n%s", code, out.String())
+	}
+}
+
+// TestAG1RunIsTheDifferenceOfItsArms is 0.19.0 W10.2: each arm measured from
+// its "G measured" phase, the use arm's added CPU and RSS over the idle
+// arm's, its downloads from the counters' wire bytes, each against G1's
+// target; a target missed is a failed run.
+func TestAG1RunIsTheDifferenceOfItsArms(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const head = "utc,elapsed,rss_kb,footprint_kb,threads,pcpu,heap_alloc,heap_inuse,heap_objects,goroutines,fds,disk_files,disk_bytes,publishes_recent,cpu_time\n"
+	arm := func(name string, rssKB [3]int, cpu [3]string, wire [3]int64) {
+		write(name+"/phases.log", "2026-10-19T00:00:00Z L launched: first data\n2026-10-19T01:00:00Z G measured\n")
+		// The sample before the measure is the open's: never counted.
+		write(name+"/samples.csv", head+
+			"2026-10-19T00:30:00Z,,999999,,20,,,,,50,,,,,0:01.00\n"+
+			fmt.Sprintf("2026-10-19T01:00:00Z,,%d,,20,,,,,50,,,,,%s\n", rssKB[0], cpu[0])+
+			fmt.Sprintf("2026-10-20T01:00:00Z,,%d,,20,,,,,50,,,,,%s\n", rssKB[1], cpu[1])+
+			fmt.Sprintf("2026-10-21T01:00:00Z,,%d,,20,,,,,50,,,,,%s\n", rssKB[2], cpu[2]))
+		var recs strings.Builder
+		for i, at := range []string{"2026-10-19T00:30:00Z", "2026-10-19T01:00:00Z", "2026-10-21T01:00:00Z"} {
+			fmt.Fprintf(&recs, "{\"at\":%q,\"propagation_wire_bytes\":%d}\n", at, wire[i])
+		}
+		write(name+"/counters.jsonl", recs.String())
+	}
+	sum := func(useCPU string, useWire int64) (string, int) {
+		arm("use", [3]int{204800, 215040, 225280}, [3]string{"10:00.00", "40:00.00", useCPU}, [3]int64{5e6, 6e6, useWire})
+		arm("idle", [3]int{102400, 112640, 122880}, [3]string{"10:00.00", "30:00.00", "50:00.00"}, [3]int64{0, 0, 0})
+		var out, errOut bytes.Buffer
+		code := run([]string{"-g1", dir, "-against", "idle"}, &out, &errOut)
+		if code == 2 {
+			t.Fatalf("exit 2: %s", errOut.String())
+		}
+		return out.String(), code
+	}
+	// Over 48 h the use arm spends 62 minutes of CPU (2.15 %), the idle arm
+	// 40 (1.39 %): +0.76; RSS medians 210 and 110 MB; 6 MB to 486 MB on the
+	// wire, counted from the first record inside the run, is 10 MB an hour.
+	out, code := sum("1:12:00", 486e6)
+	for _, want := range []string{
+		"| the mode in use | 48.000 | none | 3 | 2.15 | 210.0 / 220.0 |",
+		"| the map never opened | 48.000 | none | 3 | 1.39 | 110.0 / 120.0 |",
+		"## The mode in use against the map never opened: **judged** (-against idle)",
+		"| added mean CPU, % of one core | +0.76 | at most 1 | met |",
+		"| added RSS, MB (medians) | +100.0 | at most 25 | **missed** |",
+		"| downloads on the wire while open, MB an hour | 10.00 | at most 19 | met |",
+		"| downloads with the Propagation mode never opened, MB | 0.00 | none | met |",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the summary lacks %q:\n%s", want, out)
+		}
+	}
+	if code != 1 || strings.Contains(out, "a dry run") || strings.Contains(out, "Forecast mode") {
+		t.Errorf("a 48-hour run of two arms missing a target exits %d:\n%s", code, out)
+	}
+	if out, _ := sum("2:00:00", 1e9); !strings.Contains(out, "| 20.71 | at most 19 | **missed** |") || !strings.Contains(out, "| +2.43 | at most 1 | **missed** |") {
+		t.Errorf("1 GB and 110 minutes of CPU over 48 hours are not misses:\n%s", out)
+	}
+	write("use/counters.jsonl", "{\"at\":\"2026-10-20T01:00:00Z\",\"propagation_wire_bytes\":5}\n{\"at\":\"2026-10-20T01:30:00Z\",\"propagation_wire_bytes\":9}\n")
+	var u bytes.Buffer
+	if run([]string{"-g1", dir, "-against", "idle"}, &u, &bytes.Buffer{}); !strings.Contains(u.String(), "| unread | at most 19 | **missed** |") {
+		t.Errorf("records half an hour apart are read as a rate:\n%s", u.String())
+	}
+	write("idle/counters.jsonl", "{\"at\":\"2026-10-20T01:00:00Z\",\"propagation_wire_bytes\":5}\n{\"at\":\"2026-10-21T01:00:00Z\",\"propagation_wire_bytes\":9}\n")
+	var b bytes.Buffer
+	if run([]string{"-g1", dir, "-against", "idle"}, &b, &bytes.Buffer{}); !strings.Contains(b.String(), "| 0.00 | none | **missed** |") {
+		t.Errorf("an idle arm that read the wire is not a miss:\n%s", b.String())
+	}
+	write("idle/phases.log", "2026-10-19T00:00:00Z L launched: first data\n")
+	if code := run([]string{"-g1", dir, "-against", "idle"}, &bytes.Buffer{}, &bytes.Buffer{}); code != 2 {
+		t.Errorf("an arm that never reached its measure exits %d", code)
+	}
+	if code := run([]string{"-g1", dir, "-in", dir}, &bytes.Buffer{}, &bytes.Buffer{}); code != 2 {
+		t.Errorf("both flags exit %d", code)
+	}
+}
+
+// TestAG1RunIsJudgedAgainstTheArmNamed is A-80 and D-236: with the map arm
+// beside the idle arm, both comparisons are shown and only the one -against
+// names counts towards the exit, the map open by default; the driver's
+// end-of-run record counts as the last.
+func TestAG1RunIsJudgedAgainstTheArmNamed(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const head = "utc,elapsed,rss_kb,footprint_kb,threads,pcpu,heap_alloc,heap_inuse,heap_objects,goroutines,fds,disk_files,disk_bytes,publishes_recent,cpu_time\n"
+	arm := func(name string, rssMB int, cpuEnd string, wire int64) {
+		write(name+"/phases.log", "2026-10-19T00:00:00Z G measured\n")
+		write(name+"/samples.csv", head+
+			fmt.Sprintf("2026-10-19T00:00:00Z,,%d,,20,,,,,50,,,,,0:00.00\n", rssMB*1024)+
+			fmt.Sprintf("2026-10-21T00:00:00Z,,%d,,20,,,,,50,,,,,%s\n", rssMB*1024, cpuEnd))
+		// The poller's one record is the start's; the driver's end record closes the span.
+		write(name+"/counters.jsonl", "{\"at\":\"2026-10-19T00:00:00Z\",\"propagation_wire_bytes\":0}\n")
+		write(name+"/g1-end.json", fmt.Sprintf("{\"at\":\"2026-10-21T00:00:00Z\",\"propagation_wire_bytes\":%d}", wire))
+	}
+	// Over 48 h: the use arm 200 MB and 57:36 of CPU (2 %); the map arm 190 MB
+	// and 1 %; the idle arm 120 MB and 0.5 %. Against the map arm the mode adds
+	// 10 MB and 1 % (met); against the idle arm 80 MB and 1.5 % (missed).
+	arm("use", 200, "57:36.00", 480e6)
+	arm("map", 190, "28:48.00", 0)
+	arm("idle", 120, "14:24.00", 0)
+	var out bytes.Buffer
+	if code := run([]string{"-g1", dir, "-against", "map"}, &out, &bytes.Buffer{}); code != 0 {
+		t.Errorf("judged against the map arm, every target met, exit %d:\n%s", code, out.String())
+	}
+	for _, want := range []string{
+		"| the mode in use | 48.000 | none | 2 | 2.00 | 200.0 / 200.0 | unread | unread | 10.00 | 240.00 |",
+		"## The mode in use against the map open in Forecast mode: **judged** (-against map)\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n| added mean CPU, % of one core | +1.00 | at most 1 | met |\n| added RSS, MB (medians) | +10.0 | at most 25 | met |",
+		"## The mode in use against the map never opened: reported, not judged\n\n| Measure | Measured | Target | Verdict |\n|---|---|---|---|\n| added mean CPU, % of one core | +1.50 | at most 1 | **missed** |\n| added RSS, MB (medians) | +80.0 | at most 25 | **missed** |",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("the summary lacks %q:\n%s", want, out.String())
+		}
+	}
+	if code := run([]string{"-g1", dir, "-against", "idle"}, &bytes.Buffer{}, &bytes.Buffer{}); code != 1 {
+		t.Errorf("judged against the idle arm, two targets missed, exit %d", code)
+	}
+	var byDefault bytes.Buffer
+	if code := run([]string{"-g1", dir}, &byDefault, &bytes.Buffer{}); code != 0 || !strings.Contains(byDefault.String(), "**judged** (-against map)") {
+		t.Errorf("by default (D-236) G1 is judged against the map open; exit %d:\n%s", code, byDefault.String())
+	}
+	if code := run([]string{"-g1", dir, "-against", "radar"}, &bytes.Buffer{}, &bytes.Buffer{}); code != 2 {
+		t.Errorf("an arm that is not one exits %d", code)
+	}
+	if err := os.RemoveAll(filepath.Join(dir, "map")); err != nil {
+		t.Fatal(err)
+	}
+	if code := run([]string{"-g1", dir, "-against", "map"}, &bytes.Buffer{}, &bytes.Buffer{}); code != 2 {
+		t.Errorf("judged against a map arm the run lacks, exit %d", code)
+	}
+}
+
+// TestTheHourlyRunIsJudgedOnItsDownloadsAlone is A-79 and A-83: a run whose
+// workload is the hourly variant is held to the hourly setting's 3.3 MB an
+// hour, its CPU and RSS reported and never judged, and is not called a dry
+// run; the same arms under the default workload are held to 19 and judged.
+func TestTheHourlyRunIsJudgedOnItsDownloadsAlone(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const head = "utc,elapsed,rss_kb,footprint_kb,threads,pcpu,heap_alloc,heap_inuse,heap_objects,goroutines,fds,disk_files,disk_bytes,publishes_recent,cpu_time\n"
+	arm := func(name string, rssMB int, cpuEnd string, wire int64) {
+		write(name+"/phases.log", "2026-10-24T00:00:00Z G measured\n")
+		write(name+"/samples.csv", head+
+			fmt.Sprintf("2026-10-24T00:00:00Z,,%d,,20,,,,,50,,,,,0:00.00\n", rssMB*1024)+
+			fmt.Sprintf("2026-10-24T06:00:00Z,,%d,,20,,,,,50,,,,,%s\n", rssMB*1024, cpuEnd))
+		write(name+"/counters.jsonl", "{\"at\":\"2026-10-24T00:00:00Z\",\"propagation_wire_bytes\":0}\n")
+		write(name+"/g1-end.json", fmt.Sprintf("{\"at\":\"2026-10-24T06:00:00Z\",\"propagation_wire_bytes\":%d}", wire))
+	}
+	// Over 6 h the use arm spends 36 minutes of CPU (10 %) and holds 300 MB;
+	// the map arm 3.6 minutes (1 %) and 200 MB: judged, both would miss.
+	sum := func(variant string, useWire int64) (string, int) {
+		write("run.txt", "workload-v1 g1 "+variant+" commit=abc\n")
+		arm("use", 300, "36:00.00", useWire)
+		arm("map", 200, "3:36.00", 0)
+		var out, errOut bytes.Buffer
+		code := run([]string{"-g1", dir}, &out, &errOut)
+		if code == 2 {
+			t.Fatalf("exit 2: %s", errOut.String())
+		}
+		return out.String(), code
+	}
+	// 18 MB over 6 hours is 3 MB an hour.
+	out, code := sum("hourly", 18e6)
+	for _, want := range []string{
+		"| downloads on the wire while open, MB an hour | 3.00 | at most 3.3 | met |",
+		"## The mode in use against the map open in Forecast mode: reported, not judged",
+		"| added mean CPU, % of one core | +9.00 | at most 1 | **missed** |",
+		"The hourly setting's own run (A-79, A-83)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the hourly run's summary lacks %q:\n%s", want, out)
+		}
+	}
+	if code != 0 || strings.Contains(out, "**judged**") || strings.Contains(out, "a dry run") {
+		t.Errorf("an hourly run whose downloads met 3.3 MB an hour exits %d:\n%s", code, out)
+	}
+	if out, code := sum("hourly", 24e6); code != 1 || !strings.Contains(out, "| 4.00 | at most 3.3 | **missed** |") {
+		t.Errorf("4 MB an hour on the hourly setting exits %d:\n%s", code, out)
+	}
+	out, code = sum("default", 18e6)
+	if code != 1 || !strings.Contains(out, "| 3.00 | at most 19 | met |") || !strings.Contains(out, "**judged** (-against map)") || !strings.Contains(out, "a dry run") {
+		t.Errorf("the same arms at the default refresh, judged, exit %d:\n%s", code, out)
+	}
+}
+
+// TestAG1RunThatCannotBeJudgedFails is the REVIEW red team's RC-1: G1's
+// summary fails closed - an arm with an RSS that does not read refuses the
+// run, a cycle the driver could not confirm counts as missed, and a default
+// run under 48 hours exits as missed even when every target is met; one
+// short of 48 hours by no more than one 2-minute sample is taken as 48, and
+// says so, each arm's hours to three places and its shortfall beside them
+// (D-273, R4D-4).
+func TestAG1RunThatCannotBeJudgedFails(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const head = "utc,elapsed,rss_kb,footprint_kb,threads,pcpu,heap_alloc,heap_inuse,heap_objects,goroutines,fds,disk_files,disk_bytes,publishes_recent,cpu_time\n"
+	arm := func(name, rss, phases string, span time.Duration) {
+		end := time.Date(2026, 10, 19, 0, 0, 0, 0, time.UTC).Add(span)
+		write(name+"/phases.log", "2026-10-19T00:00:00Z G measured\n"+phases)
+		write(name+"/samples.csv", head+"2026-10-19T00:00:00Z,,204800,,20,,,,,50,,,,,0:00.00\n"+end.Format(time.RFC3339)+",,"+rss+",,20,,,,,50,,,,,1:00.00\n")
+		write(name+"/counters.jsonl", "{\"at\":\"2026-10-19T00:00:00Z\",\"propagation_wire_bytes\":0}\n")
+		write(name+"/g1-end.json", "{\"at\":\""+end.Format(time.RFC3339)+"\",\"propagation_wire_bytes\":0}")
+	}
+	judge := func() (string, int) {
+		var out, errOut bytes.Buffer
+		code := run([]string{"-g1", dir}, &out, &errOut)
+		return out.String() + errOut.String(), code
+	}
+	arm("use", "204800", "", 49*time.Hour)
+	arm("map", "204800", "", 49*time.Hour)
+	if out, code := judge(); code != 0 {
+		t.Fatalf("control: a 49-hour run meeting every target exits %d:\n%s", code, out)
+	}
+	arm("use", "", "", 49*time.Hour)
+	if out, code := judge(); code != 2 || !strings.Contains(out, "no RSS that reads") {
+		t.Errorf("an RSS that does not read: exit %d:\n%s", code, out)
+	}
+	arm("use", "204800", "2026-10-19T03:00:00Z U3 WARN: the MUF not seen drawn\n", 49*time.Hour)
+	if out, code := judge(); code != 1 || !strings.Contains(out, "| the driver's cycles not confirmed drawn, or its steps failed, in the mode in use | 1 | none | **missed** |") {
+		t.Errorf("a cycle not confirmed drawn: exit %d:\n%s", code, out)
+	}
+	arm("use", "204800", "", 6*time.Hour)
+	arm("map", "204800", "", 6*time.Hour)
+	if out, code := judge(); code != 1 || !strings.Contains(out, "a dry run") {
+		t.Errorf("a 6-hour default run meeting every target: exit %d; want missed:\n%s", code, out)
+	}
+	arm("use", "204800", "", 48*time.Hour-2*time.Minute)
+	arm("map", "204800", "", 48*time.Hour-2*time.Minute)
+	if out, code := judge(); code != 0 || !strings.Contains(out, "nominal 2-minute step") || !strings.Contains(out, "| the mode in use | 47.967 | 2m0s |") {
+		t.Errorf("a run 47.97 hours an arm, one sample short: exit %d; want taken as 48, said:\n%s", code, out)
+	}
+	arm("use", "204800", "", 48*time.Hour-3*time.Minute)
+	if out, code := judge(); code != 1 || !strings.Contains(out, "a dry run") {
+		t.Errorf("a run three minutes short: exit %d; want missed:\n%s", code, out)
 	}
 }

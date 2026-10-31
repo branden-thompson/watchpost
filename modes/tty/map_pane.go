@@ -19,6 +19,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	ionomaps "github.com/branden-thompson/go-ionomaps"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
@@ -55,12 +56,72 @@ const mapWorkLimit = 30 * time.Second
 // mapPane is what the Dashboard holds of the map: the library's map, the
 // lines last drawn, and the counters they were drawn at (FR-8.4, D-45).
 type mapPane struct {
-	m         *tuimaps.Map
-	lines     []string
-	changed   uint64
-	ticks     uint64
-	region    geo.Region     // the region the map is held inside (FR-2.1)
-	outside   string         // the place that is in no region, when it is not (FR-2.5)
+	m       *tuimaps.Map
+	lines   []string
+	changed uint64
+	ticks   uint64
+	region  geo.Region // the region the map is held inside (FR-2.1)
+	outside string     // the place that is in no region, when it is not (FR-2.5)
+	prop    bool       // in the Propagation mode (D-153); never saved (D-154)
+
+	// The Propagation mode's own session (W4.1, C-3): made as the mode opens and
+	// dropped whole when it is left; a late result, answer or tick of a left
+	// session is dropped by its generation.
+	propSess    propSession // the open mode's own state, dropped whole when it is left (C-3)
+	propGen     uint64
+	propTickSeq uint64 // the latest refresh tick set: an earlier one asks nothing
+
+	// The snapshot held and the answers worked out from it, kept across sessions
+	// until the map is released, so the mode shows them at once when it opens
+	// again; each answer's key carries the snapshot as kept (propMade, RC-5).
+	propSnap        *ionomaps.Snapshot
+	propErr         error
+	propSnapCorrect bool                      // the no-readings correction the snapshot shown was asked with (D-105)
+	propUpdatedAt   time.Time                 // when the last was applied, by the window's clock (FR-3.6)
+	propBuilt       uint64                    // how many snapshots have been kept: the answers' keys carry it (L-F3)
+	propChart       propChart                 // the reference chart's answers (W5.1)
+	propChartAsked  propChartKey              // what the chart was last asked for: asked once
+	propReach       propReach                 // the frequency's reach (W5.2)
+	propReachAsked  propReachKey              // what the reach was last asked for: asked once
+	propCentre      propCentre                // the map centre's answer (FR-1.11, D-180)
+	propCentreAsked propCentreKey             // what the centre was last asked for: asked once
+	propAheadSnaps  map[int]ionomaps.Snapshot // the hours ahead worked out from the snapshot held, each a snapshot of its own
+	propAheadAsked  int                       // the hour ahead last asked for: asked once
+
+	// What the listener set in the mode, kept across sessions.
+	propLayer     int     // MUF(3000) or foF2 (D-155), kept across sessions until the map is released
+	propChartRow  int     // the chart's row its typical day is drawn for: 0 the near-vertical area
+	propFreqMHz   float64 // the frequency held (D-178), 0 for none
+	propFreqLabel string  // and as it is said: "14.200 MHz" or "40m"
+	propAhead     int     // the hour shown ahead of the snapshot's, 0 for now (FR-1.13)
+
+	// The mode's entries as they are typed; a find in flight ends with its
+	// session (dropFind, D-27).
+	propFreqQuery  string             // what the entry holds as it is typed
+	propFreqErr    string             // why the entry did not take it
+	propFindQuery  string             // the place finder's query as it is typed (FR-1.10)
+	propFindErr    string             // why it found none
+	propFindBusy   bool               // a find in flight
+	propFindSeq    uint64             // the latest find: an earlier one's answer is dropped
+	propFindCancel context.CancelFunc // cancels the find in flight, its request with it
+
+	// The place found, never kept past the mode (D-27).
+	propFound   *snapshot.LocationRef // the place found and marked; never kept (D-27)
+	foundMarked bool                  // its mark is on the map
+
+	// What is handed to the map, and where the mode answers from.
+	propGiven  map[string]tuimaps.Overlay // the Propagation overlays handed in
+	zoneGiven  map[string]tuimaps.Overlay // the service area handed in (D-195)
+	tower      tuimaps.Place              // the tower's mark placed, or none
+	roleDrawn  Surface                    // the UI mode the place and marks were set for
+	nightGiven map[string]tuimaps.Overlay // the night handed in (D-199)
+	nightAt    time.Time                  // the moment the night handed in is for
+	propOrigin propPlace                  // where the Propagation mode answers from, worked out in Update (D-193)
+
+	// The reader's place in the words (D-211).
+	wordsAt       wordsPlace  // the reader's place in the words, kept until they scroll (D-211)
+	wordsAnchored wordsAnchor // what the words were laid out from when the place was last found
+
 	status    tuimaps.Status // the last frame's: whole, or still sharpening
 	pending   bool           // work was waiting when it was drawn
 	offline   bool           // a tile failed since the picture was last whole
@@ -126,6 +187,7 @@ type mapPane struct {
 	tempAt, tempAnchor  time.Time
 	temp                MapTemperature
 	tempGiven           map[string]tuimaps.Overlay
+	tempHanded          bool // the last setTemp handed the library a changed grid: its work then draws the map (D-85)
 	// Forecast mode (D-94): the step shown, high or low, and its playback.
 	fcStep, fcHeld   int
 	fcLow, fcPlaying bool
@@ -140,7 +202,8 @@ type mapView struct {
 	centre tuimaps.LonLat
 	zoom   float64
 	size   tuimaps.Size
-	region geo.Region // the region the frame was bound to (D-28, D-77)
+	region geo.Region // the region the frame was bound to (D-28, D-77); none in the Propagation mode
+	mode   mapMode
 }
 
 // MapFeed is what the map draws from the station's data (0.18.0 W5): an
@@ -239,7 +302,7 @@ func (d Dashboard) toggleMap() Dashboard {
 		return d.close()
 	}
 	d = d.open(modalMap).timeFrom("open")
-	loc := d.selectedLocation()
+	loc := d.mapPlace()
 	if loc == nil || d.mapsOff {
 		return d // FR-1.3, FR-1.6: the window says so; nothing is built for it
 	}
@@ -260,11 +323,12 @@ func (d Dashboard) toggleMap() Dashboard {
 	m, scale, km := d.mapPane.m, d.mapScale.zoom(), float64(d.mapNearbyKm)
 	d.mapPane.call("Zoom", func() { _ = m.Zoom(scale) })        // every open is at the chosen scale (W4.3); the bound holds it
 	d.mapPane.call("SetNearby", func() { _ = m.SetNearby(km) }) // the description's "near" as chosen (W9.2)
-	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false            // Forecast mode opens on Now, stopped (D-94)
-	d.mapPane.fcGen++
-	d.mapPane.tempAuto, d.mapPane.modeChip = false, false
+	d = d.resetPlayback()                                       // Forecast mode opens on Now, stopped (D-94)
+	d.mapPane.modeChip = false
+	d.mapPane.prop = false // every open is a weather mode: the Propagation mode is never kept (D-154)
+	d = d.stopPropagation().setProp()
 	d = d.ensureMainOverlay() // D-103: a map opened in Forecast mode is never blank
-	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().requestFeed()
+	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().setZone().requestFeed()
 	d.mapPane.viewAsked = d.mapPane.viewGen // the open asks for its view: a move's tick dropped while closed is answered here (W14)
 	d = d.renderMap()
 	d, feed := d.askFeed()
@@ -281,16 +345,51 @@ func (d Dashboard) toggleMap() Dashboard {
 // tiles, a braille cell two dots wide and four high.
 func (d Dashboard) boundMap() Dashboard {
 	m, r := d.mapPane.m, d.mapPane.region
-	if m == nil || r.Name == "" {
+	if m == nil {
 		return d
 	}
-	least := regionFitZoom(r, d.mapBodySize())
+	var b tuimaps.Bound // the Propagation mode's: none, the whole world (D-21)
+	name := "the whole world"
+	switch d.mapMode() {
+	case modeRadar, modeForecast:
+		if r.Name == "" {
+			return d
+		}
+		b, name = tuimaps.Bound{MinZoom: regionFitZoom(r, d.mapBodySize()), W: r.W, S: r.S, E: r.E, N: r.N}, r.Name
+	case modePropagation:
+	}
 	var err error
 	d.mapPane.call("SetBound", func() {
-		err = m.SetBound(tuimaps.Bound{MinZoom: least, W: r.W, S: r.S, E: r.E, N: r.N})
+		err = m.SetBound(b)
 	})
 	if err != nil {
-		d.problem("Map bound: " + r.Name + " refused - " + err.Error()) // ours to fix, never the listener's (D-124)
+		d.problem("Map bound: " + name + " refused - " + err.Error()) // ours to fix, never the listener's (D-124)
+	}
+	return d.holdWorld()
+}
+
+// worldLatitude is as far north and south as the map draws.
+const worldLatitude = 85.0511
+
+// worldZoom is the Propagation mode's least zoom: the whole world fills the
+// map one way or the other.
+func worldZoom(size tuimaps.Size) float64 {
+	return regionFitZoom(geo.Region{W: -180, S: -worldLatitude, E: 180, N: worldLatitude}, size)
+}
+
+// holdWorld keeps the Propagation mode's view at worldZoom or nearer. Its map
+// has no bound, so that a view may cross any meridian, and the library would
+// otherwise zoom out past the world; the weather modes are held by theirs.
+func (d Dashboard) holdWorld() Dashboard {
+	m := d.mapPane.m
+	if m == nil {
+		return d
+	}
+	if d.mapMode() == modePropagation {
+		least := worldZoom(d.mapBodySize())
+		if _, z := m.Centre(); z < least {
+			d.mapPane.call("Zoom", func() { _ = m.Zoom(least) })
+		}
 	}
 	return d
 }
@@ -316,8 +415,8 @@ func mercatorY(lat float64) float64 {
 // mapBodySize is the map's size in cells: the window's body, which the
 // window's frame and wrapping leave as they are.
 func (d Dashboard) mapBodySize() tuimaps.Size {
-	cols := d.mapCols()                                                     // border to border (U1-27)
-	avail := d.modalMax() - d.mapChromeRows(len(d.noteLines(d.mapTextW()))) // under the map its notes, the status and the chips, and the radar's held rows (D-86, D-89); the description is a box over it (D-63)
+	cols := d.mapCols()                                                   // border to border (U1-27)
+	avail := d.modalMax() - d.mapChromeRows(d.noteRowCount(d.mapTextW())) // under the map its notes, the status and the chips, and the radar's held rows (D-86, D-89); the description is a box over it (D-63)
 	return tuimaps.Size{Cols: cols, Rows: max(min(avail, d.modalMax()), 1)}
 }
 
@@ -345,15 +444,18 @@ func (d Dashboard) descBlock(width int) []string {
 
 // renderMap draws the map into the pane. It is called from Update only.
 func (d Dashboard) renderMap() Dashboard {
+	d = d.followRole() // a swap of UI modes with the map open: its place and marks follow (D-195)
 	m := d.mapPane.m
-	if m == nil || d.mapPane.outside != "" {
+	if m == nil || d.outsideStated() {
 		return d // FR-2.5: nothing wider is drawn in its place
 	}
 	var frame tuimaps.Frame
 	var err error
 	miles := d.units == render.UnitF
 	d.mapPane.call("Units", func() { m.Units(miles, miles) }) // the description's distances and temperatures in the station's units
-	d = d.reportPlace()                                       // first: the description's length decides the map's size
+	depth := d.mapDepthHint()
+	d.mapPane.call("ColourDepth", func() { m.ColourDepth(depth) }) // the Setting's depth, or the terminal's (D-207); the same hint again changes nothing
+	d = d.reportPlace()                                            // first: the description's length decides the map's size
 	if !d.mapFits() {
 		d.mapPane.lines = nil
 		d.mapPane.gen++
@@ -369,7 +471,7 @@ func (d Dashboard) renderMap() Dashboard {
 	d.mapPane.lines, d.mapPane.failed = insetLines(frame.Lines), ""
 	if d.mapPane.views != nil {
 		c, z := m.Centre()
-		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize(), region: d.mapPane.region})
+		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize(), region: d.mapPane.region, mode: d.mapMode()})
 	}
 	d.mapPane.status = frame.Status
 	d.mapPane.call("Legend", func() { d.mapPane.legend = m.Legend() })
@@ -390,6 +492,9 @@ func (d Dashboard) renderMap() Dashboard {
 		d.mapPane.offline = false
 	}
 	d.mapPane.title = d.mapTitleAt(d.mapBodySize())
+	if d.inPropagation() {
+		d.mapPane.propOrigin = d.propOriginNow() // read here, in Update, as the title is; the frame only prints it (D-41, D-193)
+	}
 	d.mapPane.radarLine = d.radarStatus()                 // read from the library here, in Update; the frame only prints it (D-41)
 	d.mapPane.radarTimeline = d.radarTimeline(d.scrubW()) // beside the controls (D-103)
 	d.mapPane.fcTimeline = d.forecastTimeline(d.scrubW())
@@ -457,7 +562,7 @@ func (d Dashboard) mapTitle() string {
 	if d.mapPane.title != "" && d.modal == modalMap && d.mapPane.m != nil {
 		return "Map " + d.opts().Glyphs().Dot + " " + d.mapPane.title // D-64: what is in view
 	}
-	if loc := d.selectedLocation(); loc != nil {
+	if loc := d.mapPlace(); loc != nil {
 		return "Map " + d.opts().Glyphs().Dot + " " + loc.Label
 	}
 	return "Map"
@@ -466,12 +571,12 @@ func (d Dashboard) mapTitle() string {
 // mapBodyLines is what the window shows: the map, or a stated reason why not.
 func (d Dashboard) mapBodyLines() []string {
 	switch {
-	case d.selectedLocation() == nil:
+	case d.mapPlace() == nil:
 		return []string{noSelectionText}
 	case d.mapsOff:
 		return []string{mapsOffText}
-	case d.mapPane.outside != "":
-		return []string{d.mapPane.outside + " is outside every region the map covers - the contiguous United States, Alaska, Hawaii, Puerto Rico and the Virgin Islands, Guam and the Northern Marianas, and American Samoa - so no map is drawn for it."}
+	case d.outsideStated():
+		return []string{d.outsideText()}
 	case d.mapPane.failed != "":
 		return []string{d.mapPane.failed}
 	}
@@ -485,20 +590,14 @@ func (d Dashboard) mapBodyLines() []string {
 		out = append(render.WrapText(belowFloorText(d.mapBodySize()), width), "") // FR-1.4: the notice carries the description
 	}
 	if !picture {
-		block := d.descBlock(width)
-		if d.mapPane.menuOn {
-			block = d.overlaysText() // D-267: the open menu owns the keys, so it is drawn where the picture would be
+		text := d.textInstead(out, width)
+		if len(text) > d.modalMax() {
+			text = d.textInstead(out, width-modalRailCols) // it will scroll: wrapped clear of the rail, so the window need not wrap it again into stubs (D-211)
 		}
-		for _, l := range block {
-			out = append(out, " "+l)
-		}
-		for _, l := range d.noteLines(width) {
-			out = append(out, " "+l)
-		}
-		return out
+		return text
 	}
 	size := d.mapBodySize()
-	out = append(out, d.withModeChip(d.withEdgeChip(d.withControls(d.withQuotaNotice(d.withOverlays(d.withAreaAlerts(d.mapPane.lines, size)), size), size), size), size)...) // the notice under every control (D-181)
+	out = append(out, d.withModeChip(d.withEdgeChip(d.withControls(d.withQuotaNotice(d.withOverlays(d.withPropCentre(d.withAreaAlerts(d.mapPane.lines, size), size)), size), size), size), size)...) // the notice under every control (D-181)
 	if !d.radarTimelineOn() {
 		for _, l := range d.noteLines(width) {
 			out = append(out, " "+l)
@@ -509,6 +608,28 @@ func (d Dashboard) mapBodyLines() []string {
 		return out
 	}
 	return append(out, d.scrubRows(width)...) // D-103: the rows under the map, in either mode
+}
+
+// modalRailCols are the columns a scrolling window's rail takes from its
+// text (wrapModalAt).
+const modalRailCols = 3
+
+// textInstead is the window's text in place of the picture, after its
+// leading lines: the description, or the open menu, and the notes, wrapped
+// to a width.
+func (d Dashboard) textInstead(lead []string, width int) []string {
+	out := slices.Clone(lead)
+	block := d.descBlock(width)
+	if d.mapPane.menuOn {
+		block = d.overlaysText() // D-267: the open menu owns the keys, so it is drawn where the picture would be
+	}
+	for _, l := range block {
+		out = append(out, " "+l)
+	}
+	for _, l := range d.noteLines(width) {
+		out = append(out, " "+l)
+	}
+	return out
 }
 
 // mapPicture reports whether the window draws the picture: not under
@@ -543,7 +664,7 @@ func (d Dashboard) followMenuFocus() Dashboard {
 // reportPlace keeps the library's answers for the selected place, which the
 // description reads. It needs no Work and no frame.
 func (d Dashboard) reportPlace() Dashboard {
-	m, loc := d.mapPane.m, d.selectedLocation()
+	m, loc := d.mapPane.m, d.mapPlace()
 	d.mapPane.report = tuimaps.PlaceReport{}
 	if m == nil || loc == nil {
 		return d
@@ -562,6 +683,12 @@ func (d Dashboard) reportPlace() Dashboard {
 // (D-133), then the notes that come and go, each only while it applies
 // (D-132), then the cost warning; wrapped to the map's width.
 func (d Dashboard) noteLines(width int) []string {
+	if d.mapMode() == modePropagation { // its badges and words are in its block (D-157); its one note, the legend's MHz (D-160)
+		if !d.propNoteShown() {
+			return nil
+		}
+		return []string{d.propLegendRows(width)[1]}
+	}
 	out := d.badgeRows(width)
 	if d.notesYield(width) {
 		out = append(out, render.WrapText(notesYieldLine(len(d.mapNotesNow())), width)...) // D-159: the map keeps its floor
@@ -572,6 +699,26 @@ func (d Dashboard) noteLines(width int) []string {
 	}
 	out = append(out, mapCostLine(d.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words laid out as D-89
 	return out
+}
+
+// propNoteShown reports whether the Propagation mode's note line, its
+// legend's MHz, is shown: not where no picture is meant (not mapPicture: its
+// fit counts this line).
+func (d Dashboard) propNoteShown() bool {
+	return !d.cfg.ASCII && d.mapDesc != mapDescInstead
+}
+
+// noteRowCount is how many rows noteLines gives at a width, counted without
+// drawing the Propagation mode's legend: the map's size asks it many times a
+// frame.
+func (d Dashboard) noteRowCount(width int) int {
+	if d.mapMode() == modePropagation {
+		if !d.propNoteShown() {
+			return 0
+		}
+		return 1
+	}
+	return len(d.noteLines(width))
 }
 
 // mapNotesNow is the map's notes as they stand: the feed's, the radar's
@@ -598,16 +745,20 @@ func notesYieldLine(n int) string {
 // and chips, the notes, and the radar timeline while it is held.
 func (d Dashboard) mapChromeRows(noteRows int) int {
 	rows := mapStatusRows + noteRows
-	if d.radarTimelineOn() {
-		rows += radarRows + radarExtraRows
+	if !d.radarTimelineOn() {
+		return rows
+	}
+	rows += radarRows + radarExtraRows
+	if d.mapMode() == modePropagation {
+		rows += propBlockRows - scrubBoxRows // its block's blank row before the place (D-163)
 	}
 	return rows
 }
 
 // notesYield reports whether the notes must collapse to one line (D-159):
-// only where even the window's ceiling - the terminal's height minus 8 -
-// cannot hold the map at its floor with every note line shown, and one line
-// would. Growing the window comes first.
+// only where even the window's ceiling (D-194) cannot hold the map at its
+// floor with every note line shown, and one line would. Growing the window
+// comes first.
 func (d Dashboard) notesYield(width int) bool {
 	notes := d.mapNotesNow()
 	if len(notes) < 2 {
@@ -617,8 +768,7 @@ func (d Dashboard) notesYield(width int) bool {
 	for _, n := range notes {
 		full += len(render.WrapText(n, width))
 	}
-	ceiling := d.height - 8
-	return mapMinBody.Rows+d.mapChromeRows(full) > ceiling
+	return mapMinBody.Rows+d.mapChromeRows(full) > d.mapCeiling()
 }
 
 // mapStatusLine says what the picture is while it is not whole, and names
@@ -627,8 +777,14 @@ func (d Dashboard) mapStatusLine() string {
 	// D-89's order: the radar's line, the estimate after a slash, then what
 	// the picture's status says - W8.8's loop and its age always first.
 	lead := d.mapPane.radarLine
-	if !d.radarMode() && d.cfg.MapRadar != nil {
-		lead = d.forecastStatus() // D-94: Forecast mode's line in the radar's place
+	switch d.mapMode() {
+	case modeForecast:
+		if d.cfg.MapRadar != nil {
+			lead = d.forecastStatus() // D-94: Forecast mode's line in the radar's place
+		}
+	case modePropagation:
+		lead = d.propStatusWords()
+	case modeRadar:
 	}
 	if est := costEstimate(d.mapCost); est != "" {
 		lead = strings.TrimPrefix(lead+" / "+est, " / ")
@@ -650,11 +806,19 @@ func (d Dashboard) mapStatusLine() string {
 // Area Alerts, the mode, Overlays (D-63, D-65, D-94; no legend chip,
 // D-103).
 func (d Dashboard) mapChips() []string {
-	var chips []string
-	for _, c := range []struct {
+	type chip struct {
 		act  term.Action
 		name string
-	}{{actMapAlerts, "Area Alerts"}, {actMapRadar, d.radarChipWords()}, {actMapOverlays, "Overlays"}} {
+	}
+	var controls []chip
+	switch d.mapMode() {
+	case modeRadar, modeForecast:
+		controls = []chip{{actMapAlerts, "Area Alerts"}, {actMapRadar, d.radarChipWords()}}
+	case modePropagation: // the mode's own controls in the weather's place (D-155, D-156)
+		controls = []chip{{actMapLayer, propLayerName(d.mapPane.propLayer)}, {actMapRefresh, "Refresh Now"}}
+	}
+	var chips []string
+	for _, c := range append(controls, chip{actMapProp, d.propChipWords()}, chip{actMapOverlays, "Overlays"}) {
 		if keys := d.mapKeys[c.act].Keys; len(keys) > 0 {
 			chips = append(chips, d.opts().KeyCap(keys[0])+" "+c.name)
 		}
@@ -696,7 +860,8 @@ func (d Dashboard) releaseMap() Dashboard {
 		}
 	}
 	d.mapPane = mapPane{calls: p.calls, where: p.where, views: p.views, clock: p.clock, changed: p.changed, ticks: p.ticks,
-		gen: p.gen + 1, viewGen: p.viewGen, viewAsked: p.viewAsked, feedGen: p.feedGen, lanes: keptSeqs(p.lanes), fcGen: p.fcGen}
+		gen: p.gen + 1, viewGen: p.viewGen, viewAsked: p.viewAsked, feedGen: p.feedGen, lanes: keptSeqs(p.lanes), fcGen: p.fcGen,
+		propGen: p.propGen, propTickSeq: p.propTickSeq}
 	return d
 }
 
@@ -737,8 +902,10 @@ var mapRegionShort = []string{"US", "Alaska", "Hawaii", "Caribbean", "Samoa", "G
 // same order.
 var mapRegionLabels = []string{"Continental US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam & N. Marianas"}
 
-// mapActions is the map window's actions in the order Help lists them.
-var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapOverlays,
+// mapActions is the map window's actions in the order Help lists them, the
+// Bands chart's two among them: their scope is the chart's own, and Help says
+// them on the pan row (D-256).
+var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapProp, actMapLayer, actMapRefresh, actMapChart, actChartPrev, actChartNext, actMapFreq, actMapFind, actMapOverlays,
 	actMapPlay, actMapBack, actMapOn, actMapNewest, actMapHighLow}, mapRegionActs...)
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
@@ -754,11 +921,17 @@ func defaultMapKeyMap() term.KeyMap {
 		actMapZoomOut:    {Keys: []string{"-"}, Help: "Zoom Out"},
 		actMapScrollUp:   {Keys: []string{"pgup"}, Help: "Scroll Up"},
 		actMapScrollDown: {Keys: []string{"pgdown"}, Help: "Scroll Down"},
-		actMapAlerts:     {Keys: []string{"A"}, Help: "Area Alerts"},        // D-63: over the upper left, as the legend is the upper right
-		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},           // D-65: the weather layers and the map's detail
-		actMapRadar:      {Keys: []string{"R"}, Help: "Radar On / Off"},     // D-94: Radar mode, else Forecast mode
-		actMapPlay:       {Keys: []string{"space"}, Help: "Play / Stop"},    // D-61: the playback keys, radar's or the forecast's
-		actMapBack:       {Keys: []string{"shift+left"}, Help: "Step Back"}, // D-86: at the timeline's ends
+		actMapAlerts:     {Keys: []string{"A"}, Help: "Area Alerts"},          // D-63: over the upper left, as the legend is the upper right
+		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},             // D-65: the weather layers and the map's detail
+		actMapRadar:      {Keys: []string{"R"}, Help: "Radar On / Off"},       // D-94: Radar mode, else Forecast mode
+		actMapProp:       {Keys: []string{"P"}, Help: "Propagation On / Off"}, // D-153: the Propagation mode, and back
+		actMapLayer:      {Keys: []string{"L"}, Help: "Layer: MUF / foF2"},    // D-155: the Propagation mode's layer
+		actMapRefresh:    {Keys: []string{"U"}, Help: "Refresh Now"},          // D-156: its update now, under D-39
+		actMapChart:      {Keys: []string{"B"}, Help: "Best Bands Chart"},     // D-176: the reference chart over the map
+		actMapFreq:       {Keys: []string{"F"}, Help: "Your Frequency"},       // D-178: its reach drawn over the field
+		actMapFind:       {Keys: []string{"/"}, Help: "Find a Place"},         // FR-1.10: anywhere, never kept
+		actMapPlay:       {Keys: []string{"space"}, Help: "Play / Stop"},      // D-61: the playback keys, radar's or the forecast's
+		actMapBack:       {Keys: []string{"shift+left"}, Help: "Step Back"},   // D-86: at the timeline's ends
 		actMapOn:         {Keys: []string{"shift+right"}, Help: "Step On"},
 		actMapNewest:     {Keys: []string{"n"}, Help: "Now"},
 		actMapHighLow:    {Keys: []string{"<", ">"}, Help: "High / Low"}, // D-97: Forecast mode's days
@@ -773,13 +946,19 @@ func defaultMapKeyMap() term.KeyMap {
 // own scope, which is separate from the Observer's: its keys are the map's
 // only while the window is open.
 func mapKeysFrom(overrides term.KeyMap) (term.KeyMap, error) {
+	return scopeKeysFrom(defaultMapKeyMap(), overrides)
+}
+
+// scopeKeysFrom merges the [keys] entries that name a scope's own actions
+// into it; the rest are other scopes', never this one's error.
+func scopeKeysFrom(defaults, overrides term.KeyMap) (term.KeyMap, error) {
 	own := term.KeyMap{}
 	for act, b := range overrides {
-		if _, ok := defaultMapKeyMap()[act]; ok {
+		if _, ok := defaults[act]; ok {
 			own[act] = b
 		}
 	}
-	keys, _, err := term.Merge(defaultMapKeyMap(), own)
+	keys, _, err := term.Merge(defaults, own)
 	return keys, err
 }
 
@@ -810,16 +989,38 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	case actMapRadar: // D-94: Radar mode on and off
 		nd, cmd := d.flashMapKey(act).switchMode()
 		return nd, cmd, true
+	case actMapProp: // D-153: the Propagation mode, and back
+		nd, cmd := d.flashMapKey(act).togglePropagation()
+		return nd, cmd, true
+	case actMapLayer: // D-155: MUF(3000) or foF2
+		return d.flashMapKey(act).flipPropLayer(), d.mapWorkCmd(), true
+	case actMapRefresh: // D-156: an update now
+		nd, cmd := d.flashMapKey(act).refreshProp()
+		return nd, cmd, true
+	case actMapChart: // D-176: the reference chart
+		return d.flashMapKey(act).openPropChart(), nil, true
+	case actMapFreq: // D-178: your frequency
+		return d.flashMapKey(act).openPropFreq(), nil, true
+	case actMapFind: // FR-1.10: find a place
+		return d.flashMapKey(act).openPropFind(), nil, true
 	case actMapHighLow: // D-97: the days' high or low
 		return d.flashMapKey(act).flipHighLow(), d.mapWorkCmd(), true
 	}
 	d = d.flashMapKey(act) // U1-11: the controls' chip blinks
-	if !d.radarMode() {    // Forecast mode: the host steps (D-94)
+	switch d.mapMode() {
+	case modeForecast: // the host steps (D-94)
 		if nd, cmd, ok := d.handleForecastPlayback(act); ok {
 			return nd, tea.Batch(cmd, nd.mapWorkCmd()), true
 		}
-	} else if nd, ok := d.handlePlayback(act); ok {
-		return nd, nd.mapWorkCmd(), true
+	case modeRadar:
+		if nd, ok := d.handlePlayback(act); ok {
+			return nd, nd.mapWorkCmd(), true
+		}
+	case modePropagation: // the hours ahead (FR-1.13)
+		if nd, ok := d.stepPropAhead(act); ok {
+			nd, settle := nd.viewMoved() // an hour step settles as a pan does: the reach is asked once the hour stands (D-227)
+			return nd, tea.Batch(nd.mapWorkCmd(), settle), true
+		}
 	}
 	return d.moveMapView(act)
 }
@@ -827,6 +1028,9 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 // overlaysMenuKey is a key while the Overlays menu is open; false when the
 // menu does not take it.
 func (d Dashboard) overlaysMenuKey(key string) (Dashboard, tea.Cmd, bool) {
+	if nd, cmd, ok := d.radioChangesMode(key); ok {
+		return nd, cmd, true
+	}
 	nd, ok := d.handleOverlaysKey(key)
 	if !ok {
 		return d, nil, false
@@ -837,17 +1041,24 @@ func (d Dashboard) overlaysMenuKey(key string) (Dashboard, tea.Cmd, bool) {
 	if nd.mapLayerChoice == d.mapLayerChoice && nd.mapDetailChoice == d.mapDetailChoice && nd.mapDetailLevel == d.mapDetailLevel {
 		return nd.followMenuFocus(), nil, true
 	}
-	nd = nd.timeFrom("overlay")
-	nd, _ = nd.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
+	return nd.menuApplied(d)
+}
+
+// menuApplied puts a switch made in the menu on the map, d the window before
+// it: the temperature drawn or taken off at once, UV and air quality asked
+// only while on, the choice saved, the feed asked again.
+func (d Dashboard) menuApplied(before Dashboard) (Dashboard, tea.Cmd, bool) {
+	d = d.timeFrom("overlay")
+	d = d.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
 	var temp tea.Cmd
-	if (nd.layerOn(UVLayer) && !d.layerOn(UVLayer)) || (nd.layerOn(AirLayer) && !d.layerOn(AirLayer)) {
-		nd, temp = nd.askTemp() // UV and air quality are asked only while on (D-137, D-139)
+	if (d.layerOn(UVLayer) && !before.layerOn(UVLayer)) || (d.layerOn(AirLayer) && !before.layerOn(AirLayer)) {
+		d, temp = d.askTemp() // UV and air quality are asked only while on (D-137, D-139)
 	}
-	nd = nd.renderMap()
-	save := nd.uiApplyCmd()
-	nd.setup.uiDirty = false
-	nd, feed := nd.askFeed()
-	return nd.followMenuFocus(), tea.Batch(save, nd.mapWorkCmd(), feed, temp), true // radar is R's, not the menu's (D-94)
+	d = d.renderMap()
+	save := d.uiApplyCmd()
+	d.setup.uiDirty = false
+	d, feed := d.askFeed()
+	return d.followMenuFocus(), tea.Batch(save, d.mapWorkCmd(), feed, temp), true // radar is R's, not the menu's (D-94)
 }
 
 // mapWindowKey is a key that works on the window itself, with a map or
@@ -892,10 +1103,14 @@ func (d Dashboard) moveMapView(act term.Action) (tea.Model, tea.Cmd, bool) {
 		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(1) })
 	case actMapZoomOut:
 		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(-1) })
-	case actMapPrev:
-		d = d.handleNav("nav-up").followSelection().requestFeed() // the notes speak of the place
-	case actMapNext:
-		d = d.handleNav("nav-down").followSelection().requestFeed()
+	case actMapPrev, actMapNext:
+		nav := term.Action("nav-down")
+		if act == actMapPrev {
+			nav = "nav-up"
+		}
+		if d.mapRole().placeKeys { // D-195: the Broadcaster's map stays on its station
+			d = d.handleNav(nav).followSelection().requestFeed() // the notes speak of the place
+		}
 	default:
 		if n := slices.Index(mapRegionActs, act); n >= 0 {
 			if r, ok := geo.RegionNumbered(n + 1); ok {
@@ -903,6 +1118,7 @@ func (d Dashboard) moveMapView(act term.Action) (tea.Model, tea.Cmd, bool) {
 			}
 		}
 	}
+	d = d.holdWorld()
 	d, settle := d.viewMoved() // marked moved before it is drawn: its view is not in until its settle tick asks (W14's instrument)
 	d = d.renderMap()
 	return d, tea.Batch(d.mapWorkCmd(), settle), true // the alerts are the settle tick's to ask: never on every key (D-66, W14's P-2)
@@ -917,14 +1133,14 @@ func (d Dashboard) panOrCross(dx, dy int, dir geo.Direction, armed bool) Dashboa
 	before, _ := m.Centre()
 	d.mapPane.call("PanCells", func() { _ = m.PanCells(dx, dy) })
 	after, _ := m.Centre()
-	if math.Abs(after.Lat-before.Lat) > 1e-9 || math.Abs(after.Lon-before.Lon) > 1e-9 {
-		return d
+	if math.Abs(after.Lat-before.Lat) > 1e-9 || math.Abs(after.Lon-before.Lon) > 1e-9 || d.mapMode() == modePropagation {
+		return d // moved, or at the world's edge in the Propagation mode: no region lies beyond
 	}
-	if _, ok := geo.Neighbour(d.mapPane.region.Name, dir); !ok {
+	next, ok := geo.Neighbour(d.mapPane.region.Name, dir)
+	if !ok {
 		return d
 	}
 	if armed && d.mapPane.edge == dir {
-		next, _ := geo.Neighbour(d.mapPane.region.Name, dir)
 		return d.showRegion(next)
 	}
 	d.mapPane.edge, d.mapPane.edgeShown = dir, true
@@ -949,17 +1165,22 @@ func (d Dashboard) showRegion(r geo.Region) Dashboard {
 // inside the region that location is in (FR-2.1). A location in no region
 // draws nothing wider in its place: the window says so (FR-2.5).
 func (d Dashboard) followSelection() Dashboard {
-	loc, m := d.selectedLocation(), d.mapPane.m
+	loc, m := d.mapPlace(), d.mapPane.m
 	if loc == nil || m == nil {
 		return d
 	}
 	region, ok := geo.RegionOf(loc.Lat, loc.Lon)
+	d.mapPane.outside = ""
 	if !ok {
 		d.mapPane.outside = loc.Label
+	}
+	if ok {
+		d.mapPane.region = region
+	}
+	if d.outsideStated() {
 		return d
 	}
-	d.mapPane.outside, d.mapPane.region = "", region
-	d = d.boundMap()
+	d = d.boundMap() // the region's, or in the Propagation mode none
 	d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}) })
 	return d
 }
@@ -974,7 +1195,7 @@ func (d Dashboard) requestFeed() Dashboard {
 // feedKey is the place and view an ask made now would be for.
 func (d Dashboard) feedKey() feedKey {
 	k := feedKey{view: d.mapPane.viewGen}
-	if loc := d.selectedLocation(); loc != nil {
+	if loc := d.mapPlace(); loc != nil {
 		k.place = snapshot.Key(refOf(*loc))
 	}
 	return k
@@ -993,7 +1214,7 @@ func keptSeqs(lanes [feedLanes]feedLane) [feedLanes]feedLane {
 // askFeed asks the app for the map's feed, each lane apart (D-268): the
 // alerts and the other layers, so a slow layer never holds the alerts back.
 func (d Dashboard) askFeed() (Dashboard, tea.Cmd) {
-	if d.cfg.MapFeed == nil || d.mapPane.m == nil || d.modal != modalMap || d.selectedLocation() == nil {
+	if d.cfg.MapFeed == nil || d.mapPane.m == nil || d.modal != modalMap || d.mapPlace() == nil {
 		return d, nil
 	}
 	cmds := make([]tea.Cmd, 0, feedLanes)
@@ -1029,7 +1250,7 @@ func (d Dashboard) askLane(lane int) (Dashboard, tea.Cmd) {
 // mapFeedCmd is a lane's ask in flight's command, off the UI goroutine (the
 // zones the alerts name may be fetched), cancelled with it.
 func (d Dashboard) mapFeedCmd(lane int) tea.Cmd {
-	feed, loc := d.cfg.MapFeed, d.selectedLocation()
+	feed, loc := d.cfg.MapFeed, d.mapPlace()
 	if feed == nil || d.mapPane.m == nil || d.modal != modalMap || loc == nil {
 		return nil
 	}
@@ -1240,7 +1461,23 @@ func (d Dashboard) layerLabel(key string) string {
 
 // mapHelpRow is one row of Help's MAP group: several actions that are one
 // idea, listed on one line so the group fits (D-61's ten keys in four rows).
+// A row of several actions is written as pairs, each key beside its name,
+// with no keys column: a screen reader reads a row in order, so keys listed
+// apart from their names are matched by position, which it cannot do
+// (AX-6).
 type mapHelpRow struct{ keys, help string }
+
+// panName is the pan row's words in Help, the Bands chart's own target keys
+// beside them (D-256): "Pan (Bands: up/down target)" - by default the same
+// arrows, in the chart's own scope - no row or group of its own, so Help
+// still fits its window and its columns.
+func panName(keys term.KeyMap) string {
+	prev, next := keys[actChartPrev].Keys, keys[actChartNext].Keys
+	if len(prev) == 0 || len(next) == 0 {
+		return "Pan"
+	}
+	return "Pan (Bands: " + prev[0] + "/" + next[0] + " target)"
+}
 
 // shiftArrows writes the shifted arrows short, so the radar's row fits Help's
 // column (D-86): as glyphs, or under --ascii as "S-left" and "S-right".
@@ -1252,35 +1489,45 @@ func shiftArrows(keys string, ascii bool) string {
 }
 
 // mapHelpRows are the MAP group's rows, read from the merged keys so a
-// [keys] rebind shows.
+// [keys] rebind shows: a row of one action's keys in the keys column, a row
+// of several as key-name pairs (AX-6), and the hours' keys as the
+// Propagation mode uses them (FR-1.14).
 func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
-	keys0 := func(act term.Action) []string { return keys[act].Keys }
-	join := func(acts ...term.Action) string {
-		var all []string
-		for _, a := range acts {
-			all = append(all, keys[a].Keys...)
+	type named struct {
+		act  term.Action
+		name string
+	}
+	pairs := func(ns ...named) mapHelpRow {
+		var out []string
+		for _, n := range ns {
+			if ks := keys[n.act].Keys; len(ks) > 0 {
+				out = append(out, shiftArrows(strings.Join(ks, "/"), ascii)+" "+n.name) // one action's keys together: "+/= Zoom In"
+			}
 		}
-		return strings.Join(all, ", ")
+		return mapHelpRow{help: strings.Join(out, ", ")}
 	}
 	rows := []mapHelpRow{
-		{join(actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight), "Pan"},
-		{join(actMapPrev, actMapNext), "Previous / Next Location"},
-		{join(actMapZoomIn, actMapZoomOut), "Zoom In / Out"},
-		{join(actMapScrollUp, actMapScrollDown), "Scroll"},
-		{join(actMapAlerts, actMapOverlays), "Area Alerts / Overlays"},
-		{shiftArrows(join(actMapPlay, actMapBack, actMapOn, actMapNewest), ascii), "Play / Back / On / Now"},
-		{join(actMapRadar, actMapHighLow), "Radar Mode / Forecast Hi-Lo"}, // D-94, D-97
+		{strings.Join(slices.Concat(keys[actMapPanUp].Keys, keys[actMapPanDown].Keys, keys[actMapPanLeft].Keys, keys[actMapPanRight].Keys), ", "), panName(keys)},
+		pairs(named{actMapPrev, "Previous"}, named{actMapNext, "Next Location"}),
+		pairs(named{actMapZoomIn, "Zoom In"}, named{actMapZoomOut, "Out"}, named{actMapScrollUp, "Scroll Up"}, named{actMapScrollDown, "Down"}),
+		pairs(named{actMapAlerts, "Alerts"}, named{actMapOverlays, "Overlays"}, named{actMapChart, "Bands"}, named{actMapFreq, "Freq."}), // D-176, D-178
+		pairs(named{actMapBack, "Back"}, named{actMapOn, "On (an hour in Propagation)"}, named{actMapNewest, "Now"}),                     // FR-1.14: a frame, a day, or in Propagation an hour
+		pairs(named{actMapRadar, "Radar Mode"}, named{actMapPlay, "Play"}, named{actMapHighLow, "Forecast Hi-Lo"}),                       // D-94, D-97
+		pairs(named{actMapProp, "Propagation"}, named{actMapLayer, "Layer"}, named{actMapRefresh, "Refresh"}, named{actMapFind, "Find"}), // D-153, D-155, D-156; FR-1.10
 	}
-	// D-77: the region keys in two rows of three, each number's region named
-	// in order - six rows push Help past its window.
+	// D-77: the region keys in two rows of three, each key beside its region.
 	for _, half := range [][]int{{0, 1, 2}, {3, 4, 5}} {
-		var keys, names []string
+		var ns []named
 		for _, i := range half {
-			keys, names = append(keys, keys0(mapRegionActs[i])...), append(names, mapRegionShort[i])
+			ns = append(ns, named{mapRegionActs[i], mapRegionShort[i]})
 		}
-		rows = append(rows, mapHelpRow{strings.Join(keys, ", "), "Region: " + strings.Join(names, ", ")})
+		r := pairs(ns...)
+		if r.help != "" {
+			r.help = "Region " + r.help
+		}
+		rows = append(rows, r)
 	}
-	return rows
+	return slices.DeleteFunc(rows, func(r mapHelpRow) bool { return r.keys == "" && r.help == "" }) // a key the UI mode does not bind is not listed (D-195)
 }
 
 // mapStatusText is what the status line says of the picture while it is not
@@ -1315,10 +1562,19 @@ func (d Dashboard) viewMoved() (Dashboard, tea.Cmd) {
 }
 
 // applyViewSettled asks the feed again once the view has stood still: the map
-// draws every alert in view (D-66, D-76). A superseded tick is dropped.
+// draws every alert in view (D-66, D-76). A superseded tick is dropped; one
+// that lands while a window is over the map waits for the map to be in
+// front again, so the view's asks - the alerts and the Propagation mode's
+// answers (P-1) - are never left waiting for another move.
 func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
-	if d.modal != modalMap || v.gen != d.mapPane.viewGen {
+	if v.gen != d.mapPane.viewGen {
 		return d, nil
+	}
+	if d.modal != modalMap && d.mapShown() {
+		return d, tea.Tick(mapSettleDelay, func(time.Time) tea.Msg { return v })
+	}
+	if d.modal != modalMap {
+		return d, nil // the map closed: its open asks for its view
 	}
 	d.mapPane.viewAsked = v.gen
 	d, feed := d.requestFeed().askFeed()

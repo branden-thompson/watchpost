@@ -124,6 +124,82 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	}
 }
 
+// TestTheFirstRunSetupsEscKeepsTheLocation is 0.19.0 D-336: on a first run
+// esc keeps the location the listener chose, as enter does, the window gone at
+// once and a window opened before the save lands left open; once a file
+// exists, esc on the location row discards an unsaved pick as Settings always
+// has.
+func TestTheFirstRunSetupsEscKeepsTheLocation(t *testing.T) {
+	h := &setupHarness{}
+	cfg := h.config()
+	cfg.FirstRun = true
+	m, err := NewDashboard(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+	model = typeText(model, "oce")
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // the pick, shown as the default
+	if v := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(v, "[esc] Save") && !strings.Contains(v, "esc Save") {
+		t.Fatalf("the first-run window with a pick says esc does something else:\n%s", v)
+	}
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if d := model.(Dashboard); d.modal == modalSetup {
+		t.Fatal("esc on a first run left the window open until the save lands; a key pressed meanwhile would be the window's")
+	}
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'w', Text: "w"}) // a window opened before the save lands
+	model = drain(t, model, cmd)
+	if d := model.(Dashboard); d.modal != modalSevere {
+		t.Fatalf("the save landing closed window %v, opened after esc; it closes the Setup window alone", d.modal)
+	}
+	if d := model.(Dashboard); h.setups != 1 || h.def == nil || h.def.Zip != "92057" || d.cfg.FirstRun {
+		t.Fatalf("esc on a first run: Setup hook %d times with %+v, first run %v; want once with Oceanside, over", h.setups, h.def, d.cfg.FirstRun)
+	}
+	later := &setupHarness{}
+	m2, _ := NewDashboard(later.config()) // a file exists: not a first run
+	var lm tea.Model = m2
+	lm, _ = lm.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	lm, _ = lm.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+	lm = typeText(lm, "oce")
+	lm, _ = lm.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	lm, cmd = lm.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	_ = drain(t, lm, cmd)
+	if later.setups != 0 {
+		t.Fatalf("esc outside a first run saved the location pick (%d Setup calls); it discards the typed data rows", later.setups)
+	}
+}
+
+// TestAFirstRunSaveRefusedKeepsThePick is D-336 with a mistyped FIRMS key
+// (the VALIDATE red team's VC-1): the save is refused, and the window reopens
+// with the location and the key still in it.
+func TestAFirstRunSaveRefusedKeepsThePick(t *testing.T) {
+	h := &setupHarness{}
+	cfg := h.config()
+	cfg.FirstRun = true
+	cfg.Setup = func(def snapshot.LocationRef, key string) error {
+		h.setups++
+		return fmt.Errorf("a FIRMS MAP_KEY is 32 hex characters")
+	}
+	m, err := NewDashboard(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+	model = typeText(model, "oce")
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // the pick; focus on the key row
+	model = typeText(model, "abc123")
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	model = drain(t, model, cmd)
+	d := model.(Dashboard)
+	if h.setups != 1 || d.modal != modalSetup || d.setup.ref == nil || d.setup.ref.Zip != "92057" || d.setup.key != "abc123" {
+		t.Fatalf("a refused first-run save: %d tries, window open %v, pick %+v, key %q; want the window back with Oceanside and the key", h.setups, d.modal == modalSetup, d.setup.ref, d.setup.key)
+	}
+}
+
 func TestSetupAlertPreferenceTogglesAndPersists(t *testing.T) {
 	h := &setupHarness{}
 	m, err := NewDashboard(h.config())
@@ -772,4 +848,34 @@ func walkTo(t *testing.T, model tea.Model, id setupRowID) tea.Model {
 	}
 	t.Fatalf("row %v cannot be reached with ↓ from where the window opened", id)
 	return model
+}
+
+// TestAStoredPostcodeIsDrawnPlain is the REVIEW red team's R2I-2: a postcode
+// is cleaned where it is entered, but one saved before that, or written into
+// the config by hand, is drawn on every launch - so each place Settings draws
+// a postcode draws it plain, an escape sequence in it inert; a place with no
+// postcode draws no empty brackets.
+func TestAStoredPostcodeIsDrawnPlain(t *testing.T) {
+	d := setupGolden(t, 133, 44, false, rowLocation)
+	hostile := snapshot.LocationRef{Label: "Springfield", Zip: "627\x1b]52;c;aGk=\x0701"}
+	d.setup.ref, d.setup.txRef = &hostile, &hostile
+	d.setup.hints = []snapshot.LocationRef{hostile}
+	lines := append(d.setupLocationLines(render.Opts{}, ""), d.setupTransmitterLines(render.Opts{}, "")...)
+	drawn := 0
+	for _, l := range lines {
+		if strings.Contains(l, "\x1b]") || strings.ContainsRune(l, '\x07') {
+			t.Errorf("a stored postcode drawn raw: %q", l)
+		}
+		if strings.Contains(l, "Springfield (") {
+			drawn++
+		}
+	}
+	if drawn < 2 {
+		t.Fatalf("control: the postcode is drawn on %d lines; the check needs the location's and the transmitter's", drawn)
+	}
+	abroad := snapshot.LocationRef{Label: "Reykjavik, IS"}
+	d.setup.ref = &abroad
+	if head := d.setupLocationLines(render.Opts{}, "")[0]; strings.Contains(head, "()") || !strings.Contains(head, "Reykjavik, IS") {
+		t.Errorf("a place with no postcode drawn %q; want its name and no empty brackets", head)
+	}
 }

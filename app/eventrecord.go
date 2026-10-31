@@ -23,7 +23,8 @@ var hmsHotspots = history.Dataset{
 	Name: "hms-hotspots", Version: 1, Step: time.Hour,
 	Title:       "HMS, the hotspots",
 	Description: "NOAA HMS's satellite fire detections near each location, the list at the feed's time.",
-	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
+	Hours:       historyHours,
+	MaxBytes:    historyBound,
 }
 
 // firmsHotspots is FIRMS's detections near each location, the list at the
@@ -32,7 +33,8 @@ var firmsHotspots = history.Dataset{
 	Name: "firms-hotspots", Version: 1, Step: time.Hour,
 	Title:       "FIRMS, the hotspots",
 	Description: "NASA FIRMS's fire detections near each location, the list at the feed's time.",
-	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
+	Hours:       historyHours,
+	MaxBytes:    historyBound,
 }
 
 // wfigsIncidents is each WFIGS incident the station's locations are near,
@@ -45,8 +47,9 @@ var wfigsIncidents = history.Dataset{
 		{Name: "acres", Label: "Acres", Unit: "acres", Decimals: 0},
 		{Name: "contained", Label: "Contained", Unit: "%", Decimals: 0},
 	},
-	Hours: 72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
-	Days:  30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
+	MaxBytes: historyBound,
 }
 
 // usgsQuakes is the USGS feed's earthquakes, an hour a record: each record the
@@ -56,7 +59,8 @@ var usgsQuakes = history.Dataset{
 	Name: "usgs-quakes", Version: 1, Step: time.Hour,
 	Title:       "USGS, the earthquakes",
 	Description: "The USGS feed's earthquakes of magnitude 1.0 and up, each hour's by their origin time.",
-	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
+	Hours:       historyHours,
+	MaxBytes:    historyBound,
 }
 
 // airnowHourly is AirNow's national file, an hour a record: every reporting
@@ -66,7 +70,8 @@ var airnowHourly = history.Dataset{
 	Name: "airnow-hourly", Version: 1, Step: time.Hour,
 	Title:       "AirNow, the national file",
 	Description: "U.S. EPA AirNow's reporting areas (preliminary data, not fully verified), the national file an hour: each area's AQI and its forecasts for today and tomorrow.",
-	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
+	Hours:       historyHours,
+	MaxBytes:    largeHistoryBound,
 }
 
 // quakeDoc is a quake as the history keeps it, whichever feed told of it.
@@ -115,7 +120,7 @@ func (r stationRecorder) hotspots(ref snapshot.LocationRef, f *snapshot.FireStat
 	if provider == "firms" {
 		set = firmsHotspots
 	}
-	r.store.Put(set.Name, history.Record{Key: history.Key{Source: provider, Place: historyPlace(ref.Label)}, At: f.AsOf, IssuedAt: f.AsOf, Doc: doc})
+	r.store.Record(set.Name, history.Record{Key: history.Key{Source: provider, Place: historyPlace(ref.Label)}, At: f.AsOf, IssuedAt: f.AsOf, Doc: doc})
 }
 
 // incident keeps an incident's size and containment at the fetch's hour.
@@ -124,7 +129,7 @@ func (r stationRecorder) incident(inc snapshot.Incident, at time.Time) {
 	if err != nil || at.IsZero() || inc.Name == "" {
 		return
 	}
-	r.store.Put(wfigsIncidents.Name, history.Record{Key: incidentKey(inc), At: at, IssuedAt: at, Shape: pointShape(inc.Lat, inc.Lon),
+	r.store.Record(wfigsIncidents.Name, history.Record{Key: incidentKey(inc), At: at, IssuedAt: at, Shape: pointShape(inc.Lat, inc.Lon),
 		Values: map[string][]float64{"acres": reading(inc.Acres), "contained": reading(inc.PercentContained)}, Doc: doc})
 }
 
@@ -145,7 +150,7 @@ func quakeHours(store *history.Store, events []globalfeed.Event, now time.Time) 
 		if err != nil {
 			continue
 		}
-		store.Put(usgsQuakes.Name, history.Record{Key: quakeSeries, At: h, IssuedAt: now, Doc: doc})
+		store.Record(usgsQuakes.Name, history.Record{Key: quakeSeries, At: h, IssuedAt: now, Doc: doc})
 	}
 }
 
@@ -209,7 +214,7 @@ func airNational(store *history.Store, areas []airquality.Area, hour time.Time) 
 	if err != nil {
 		return
 	}
-	store.Put(airnowHourly.Name, history.Record{Key: airSeries, At: hour, IssuedAt: hour, Doc: doc})
+	store.Record(airnowHourly.Name, history.Record{Key: airSeries, At: hour, IssuedAt: hour, Doc: doc})
 }
 
 // airAt is the national file as the history holds it for an hour, and

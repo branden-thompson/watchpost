@@ -57,7 +57,7 @@ func TestTheMenuIsTheHUMLEADsLayout(t *testing.T) {
 	for _, r := range d.overlayRows() {
 		got = append(got, r.key)
 	}
-	want := "temperature uv air group:points wind waves buoys tides rain group:hazards quake fire alert alert-emergency alert-warnings alert-watches alert-advisories alert-statements alert-marine level borders water rivers names roads rail parks"
+	want := "temperature uv air group:points wind waves buoys tides rain group:hazards quake fire alert alert-emergency alert-warnings alert-watches alert-advisories alert-statements alert-marine level borders water rivers names roads rail parks night"
 	if strings.Join(got, " ") != want {
 		t.Errorf("the rows are\n%s\nwant\n%s", strings.Join(got, " "), want)
 	}
@@ -218,7 +218,7 @@ func TestEveryBoxIsDrawnOnce(t *testing.T) {
 		}
 		boxes++
 		on := d.detailOn(r.key)
-		if r.weather {
+		if r.overlay {
 			on = d.ticked(r.key)
 		}
 		cell := regexp.MustCompile(regexp.QuoteMeta(stripANSITest(checkMark(d.opts(), on))+" "+r.label) + `( |$)`)

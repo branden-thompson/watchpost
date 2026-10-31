@@ -34,8 +34,9 @@ var nwsObservations = history.Dataset{
 		{Name: "precip_1h", Label: "Precipitation, the hour", Unit: "mm", Decimals: 1},
 		{Name: "visibility", Label: "Visibility", Unit: "m", Decimals: 0},
 	},
-	Hours: 72 * time.Hour,
-	Days:  30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
+	MaxBytes: historyBound,
 }
 
 // nwsAlerts is each NWS alert the station's locations were sent, its own
@@ -44,7 +45,8 @@ var nwsAlerts = history.Dataset{
 	Name: "nws-alerts", Version: 1, Step: time.Hour,
 	Title:       "NWS, the alerts",
 	Description: "Each National Weather Service alert the station's locations were sent, its document as sent, at the hour it was sent.",
-	Hours:       72 * time.Hour, // the Data tab's retention applies to every dataset alike (D-175, D-231)
+	Hours:       historyHours,
+	MaxBytes:    historyBound,
 }
 
 // ndbcBuoys is each NDBC buoy's readings, an hour a record (D-231).
@@ -62,8 +64,9 @@ var ndbcBuoys = history.Dataset{
 		{Name: "gust", Label: "Gusts", Unit: "m/s", Decimals: 1},
 		{Name: "water_temp", Label: "Water temperature", Unit: "°C", Decimals: 1},
 	},
-	Hours: 72 * time.Hour,
-	Days:  30 * 24 * time.Hour,
+	Hours:    historyHours,
+	Days:     historyDays,
+	MaxBytes: historyBound,
 }
 
 // coopsTides is each CO-OPS tide station's observed level, an hour a record
@@ -73,8 +76,9 @@ var coopsTides = history.Dataset{
 	Title:       "CO-OPS, the tide level",
 	Description: "NOAA CO-OPS's observed water level at each tide station the station's locations are near, above MLLW, an hour a record.",
 	Fields:      []history.Field{{Name: "tide_level", Label: "Tide level", Unit: "m", Decimals: 2}},
-	Hours:       72 * time.Hour,
-	Days:        30 * 24 * time.Hour,
+	Hours:       historyHours,
+	Days:        historyDays,
+	MaxBytes:    historyBound,
 }
 
 // recordFragment keeps what a fetch the scheduler applied holds, in the
@@ -119,7 +123,7 @@ func (r stationRecorder) observation(ref snapshot.LocationRef, c *snapshot.Condi
 	if c == nil || c.ObservedAt.IsZero() {
 		return
 	}
-	r.store.Put(nwsObservations.Name, history.Record{Key: history.Key{Source: "nws", Place: historyPlace(ref.Label)}, At: c.ObservedAt, IssuedAt: c.ObservedAt,
+	r.store.Record(nwsObservations.Name, history.Record{Key: history.Key{Source: "nws", Place: historyPlace(ref.Label)}, At: c.ObservedAt, IssuedAt: c.ObservedAt,
 		Shape: pointShape(ref.Lat, ref.Lon), Values: map[string][]float64{
 			"temp": reading(c.Temp), "feels": reading(c.Feels), "dewpoint": reading(c.Dewpoint), "humidity": reading(c.HumidityPct),
 			"pressure": reading(c.Pressure), "wind": reading(c.Wind), "wind_from": reading(c.WindDirDeg), "gust": reading(c.WindGust),
@@ -133,7 +137,7 @@ func (r stationRecorder) alerts(alerts []snapshot.Alert) {
 		if err != nil || a.ID == "" || a.Sent.IsZero() {
 			continue
 		}
-		r.store.Put(nwsAlerts.Name, history.Record{Key: alertKey(a.ID), At: a.Sent, IssuedAt: a.Sent, Doc: doc})
+		r.store.Record(nwsAlerts.Name, history.Record{Key: alertKey(a.ID), At: a.Sent, IssuedAt: a.Sent, Doc: doc})
 	}
 }
 
@@ -142,7 +146,7 @@ func (r stationRecorder) buoy(ref snapshot.LocationRef, m *snapshot.Marine) {
 	if m == nil || m.Buoy == "" || m.ObservedAt.IsZero() {
 		return
 	}
-	r.store.Put(ndbcBuoys.Name, history.Record{Key: history.Key{Source: "ndbc", Place: historyPlace(m.Buoy)}, At: m.ObservedAt, IssuedAt: m.ObservedAt,
+	r.store.Record(ndbcBuoys.Name, history.Record{Key: history.Key{Source: "ndbc", Place: historyPlace(m.Buoy)}, At: m.ObservedAt, IssuedAt: m.ObservedAt,
 		Shape: pointShape(ref.Lat, ref.Lon), Values: map[string][]float64{
 			"wave_height": reading(m.WaveHeight), "wave_period": reading(m.WavePeriod), "swell_height": reading(m.SwellHeight),
 			"swell_from": reading(m.SwellDirDeg), "wind_wave_height": reading(m.WindWaveHeight), "wind": reading(m.WindSpeed),
@@ -155,7 +159,7 @@ func (r stationRecorder) tide(ref snapshot.LocationRef, m *snapshot.Marine, at t
 	if m == nil || m.TideStation == "" || m.TideLevel == nil || at.IsZero() {
 		return
 	}
-	r.store.Put(coopsTides.Name, history.Record{Key: history.Key{Source: "coops", Place: historyPlace(m.TideStation)}, At: at, IssuedAt: at,
+	r.store.Record(coopsTides.Name, history.Record{Key: history.Key{Source: "coops", Place: historyPlace(m.TideStation)}, At: at, IssuedAt: at,
 		Shape: pointShape(ref.Lat, ref.Lon), Values: map[string][]float64{"tide_level": {*m.TideLevel}}})
 }
 

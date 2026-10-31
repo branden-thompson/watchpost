@@ -11,15 +11,17 @@ permissions:
   contents: write
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 120  # derived, twice the measurement rounded up: the Linux CI job that runs these same gates (verify, release-matrix, install-test) took 45-58 min on feature/map-drawing, slowest 58.2 min (2026-10-04 and 2026-10-05, runs 37189409412, 37298568637, 37280073875, 37192677750, 37155951302); publish adds a minute. A cap under the job leaves a tag with no release behind it.
     steps:
       # Actions pinned by commit (red-team 0.9.0 S-F9): the release job has
       # contents: write, so a moved tag must not be able to swap the code.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { fetch-depth: 0 }
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: { go-version: "1.27.3" } # the toolchain the gates are proven on; setup-go pins GOTOOLCHAIN=local, so go.mod's go directive alone would run an older stdlib (quality pass Q1)
+      - name: a final tag ships on final libraries (D-3, RH-9)
+        run: go run ./tools/finaltag "$GITHUB_REF_NAME"
       - name: verify
         run: make verify
       - name: release matrix
@@ -27,7 +29,7 @@ jobs:
       - name: installer smoke test
         run: make install-test VERSION="${GITHUB_REF_NAME#v}"
       - name: publish
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           fail_on_unmatched_files: true # an empty release must never publish (REVIEW R5)
           generate_release_notes: true

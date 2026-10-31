@@ -8,9 +8,10 @@ package geodata
 // against a console that draws ten slots (F-81, F-82).
 //
 // NO PROVIDER CALL, AND NO NEW DATA. Both answers are already embedded in this
-// package: 34,106 US cities with population and 41,490 zip centroids. That is
-// also why "major locations first" needs no ranking rule — the city table is
-// population-filtered, so ordering by DISTANCE is ordering by major-first, and
+// package: 34,106 cities worldwide with population, 3,407 of them in the US,
+// and 41,490 zip centroids. That is also why "major locations first" needs no
+// ranking rule — the city table is population-filtered, so ordering by
+// DISTANCE is ordering by major-first, and
 // the HUM LEAD's own example (Fallbrook, Vista, Oceanside, Temecula) falls
 // straight out of it.
 //
@@ -26,6 +27,9 @@ package geodata
 // and held (W14): 2 ms a view rather than 31.
 
 import (
+	"cmp"
+	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -51,9 +55,14 @@ func MilesBetween(lat1, lon1, lat2, lon2 float64) float64 {
 // no fence set is not asking for a region, and the safe reading of an unset
 // number is "nothing" rather than "everywhere".
 func (i *Index) Near(lat, lon, radiusMi float64, limit int) []City {
-	us := i.usCities()
-	offs := i.nearOffsets(lat, lon, radiusMi, limit, len(us), func(n int) (int32, float64, float64, bool) {
-		return us[n].off, us[n].lat, us[n].lon, true
+	return i.nearIn(i.usCities(), lat, lon, radiusMi, limit)
+}
+
+// nearIn is the cities among rows inside the fence, nearest first, at most
+// limit of them.
+func (i *Index) nearIn(rows []placed, lat, lon, radiusMi float64, limit int) []City {
+	offs := i.nearOffsets(lat, lon, radiusMi, limit, len(rows), func(n int) (int32, float64, float64, bool) {
+		return rows[n].off, rows[n].lat, rows[n].lon, true
 	})
 	out := make([]City, 0, len(offs))
 	for _, o := range offs { // bounded by the limit (P10-02)
@@ -68,7 +77,8 @@ type placed struct {
 	lat, lon float64
 }
 
-// placesCache is the US city rows with their coordinates, parsed once.
+// placesCache is the city rows with their coordinates, parsed once: the US
+// rows, and every row for the Propagation mode, whose map is the world's.
 //
 // PARSED ONCE, BECAUSE THE MAP SCANS ON ITS UI GOROUTINE (W14). The line-up
 // scans on a settings change; the map's estimate reads the state under
@@ -78,23 +88,84 @@ type placed struct {
 type placesCache struct {
 	placesOnce sync.Once
 	places     []placed
+	worldOnce  sync.Once
+	world      []placed
+	byLat      []int32 // world's indexes, ascending by latitude (inBand)
 }
 
 // usCities is every US city row whose coordinates parse, in the table's order.
-func (i *Index) usCities() []placed {
-	i.placesOnce.Do(func() {
-		for _, off := range i.cityOffs { // bounded by the index (P10-02)
-			if field(i.cities, off, 3) != "US" {
-				continue
-			}
-			lat, err1 := strconv.ParseFloat(field(i.cities, off, 4), 64)
-			lon, err2 := strconv.ParseFloat(field(i.cities, off, 5), 64)
-			if err1 == nil && err2 == nil {
-				i.places = append(i.places, placed{off, lat, lon})
-			}
+func (i *Index) usCities() []placed { return i.placedOnce(&i.placesOnce, &i.places, true) }
+
+// worldCities is every city row whose coordinates parse, in the table's
+// order.
+func (i *Index) worldCities() []placed {
+	i.worldOnce.Do(func() {
+		i.world = i.placedRows(false)
+		i.byLat = make([]int32, len(i.world))
+		for n := range i.byLat { // bounded by the rows (P10-02)
+			i.byLat[n] = int32(n)
 		}
+		slices.SortStableFunc(i.byLat, func(a, b int32) int { return cmp.Compare(i.world[a].lat, i.world[b].lat) })
 	})
-	return i.places
+	return i.world
+}
+
+// placedOnce parses the rows into held the first time it is asked.
+func (i *Index) placedOnce(once *sync.Once, held *[]placed, usOnly bool) []placed {
+	once.Do(func() { *held = i.placedRows(usOnly) })
+	return *held
+}
+
+// placedRows parses the city rows' coordinates: the US rows alone, or all.
+func (i *Index) placedRows(usOnly bool) []placed {
+	var out []placed
+	for _, off := range i.cityOffs { // bounded by the index (P10-02)
+		if usOnly && field(i.cities, off, 3) != "US" {
+			continue
+		}
+		lat, err1 := strconv.ParseFloat(field(i.cities, off, 4), 64)
+		lon, err2 := strconv.ParseFloat(field(i.cities, off, 5), 64)
+		if err1 == nil && err2 == nil {
+			out = append(out, placed{off, lat, lon})
+		}
+	}
+	return out
+}
+
+// NearWorld is Near over the whole table: the cities of any country inside
+// the fence, nearest first, at most limit of them - what names a point the
+// Propagation mode's centre rests on, anywhere on the globe.
+func (i *Index) NearWorld(lat, lon, radiusMi float64, limit int) []City {
+	if radiusMi <= 0 || limit <= 0 {
+		return nil
+	}
+	return i.nearIn(i.inBand(lat, radiusMi), lat, lon, radiusMi, limit)
+}
+
+// milesPerDegree is a degree of latitude along the globe HaversineKM measures.
+var milesPerDegree = units.MilesOf(geo.EarthRadiusKM * math.Pi / 180)
+
+// inBand is the world's rows whose latitude the fence can reach, in the
+// table's order (RP-6): a great circle is never shorter than its latitude's
+// part alone, so a row farther in latitude than the radius is outside the
+// fence, and the scan reads a band of the table, not the whole of it, on each
+// step the map's centre takes. The band is put back in the table's order, so
+// places at one distance rank as the whole scan ranks them.
+func (i *Index) inBand(lat, radiusMi float64) []placed {
+	rows, byLat := i.worldCities(), i.byLat
+	reach := radiusMi/milesPerDegree + 0.01 // a hundredth of a degree for the floating point
+	lo := sort.Search(len(byLat), func(n int) bool { return rows[byLat[n]].lat >= lat-reach })
+	hi := sort.Search(len(byLat), func(n int) bool { return rows[byLat[n]].lat > lat+reach })
+	if lo >= hi {
+		return nil
+	}
+	band := slices.Clone(byLat[lo:hi])
+	slices.Sort(band) // the table's order: the stable scan ranks ties by it
+	out := make([]placed, len(band))
+	for k, n := range band { // bounded by the band (P10-02)
+		out[k] = rows[n]
+	}
+	return out
 }
 
 // NearZips is the zip centroids inside the same fence, nearest first.

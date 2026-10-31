@@ -55,7 +55,7 @@ func TestEveryObservedFrameDrawsTheTemperature(t *testing.T) {
 		for _, back := range seed {
 			s, _ := f.hour(context.Background(), lat, anchor.Add(-back))
 			rec, ok := ndfdRecord(s, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-back))
-			if !ok || !store.Put(ndfdHourly.Name, rec) {
+			if !ok || !store.Record(ndfdHourly.Name, rec) {
 				t.Fatal("could not seed the history")
 			}
 		}
@@ -77,7 +77,7 @@ func TestAnHourRecordedOnTheOldLatticeIsReplayed(t *testing.T) {
 	f := &fakeHour{}
 	s, _ := f.hour(context.Background(), old, anchor.Add(-time.Hour))
 	rec, ok := ndfdRecord(s, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-time.Hour))
-	if !ok || !store.Put(ndfdHourly.Name, rec) {
+	if !ok || !store.Record(ndfdHourly.Name, rec) {
 		t.Fatal("could not seed the history")
 	}
 	got := buildTemperature(context.Background(), &nowOnly{}, &fakeTemp{name: "Open-Meteo", now: now}, tempAsk(false), now, &fallback{past: recordedHour(store)})

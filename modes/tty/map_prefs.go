@@ -1,11 +1,12 @@
 package tty
 
-// map_prefs.go — the Maps tab's other Settings (0.18.0 batch 9): the scale
-// the map opens at (W1.11, W4.3, FR-2.3), how near an alert's edge must be to
-// be called near (W9.2, FR-7.4), the layers the app's registry names (W1.11,
-// W1.13, R-9.2) and the warning when they would cost a lot (W1.14, FR-9.2).
+// map_prefs.go — the Maps tab's other Settings: the scale the map opens at
+// (W1.11, W4.3, FR-2.3), how near an alert's edge must be to be called near
+// (W9.2, FR-7.4), the layers the app's registry names (W1.11, W1.13, R-9.2)
+// and the warning when they would cost a lot (W1.14, FR-9.2).
 
 import (
+	ionomaps "github.com/branden-thompson/go-ionomaps"
 	"math"
 	"slices"
 	"sort"
@@ -243,6 +244,80 @@ func (d Dashboard) cycleNearby(forward bool) Dashboard {
 	return d.uiTouched()
 }
 
+// propRadiusChoices are the Propagation mode's near-vertical radii, km
+// (D-100, A-18).
+var propRadiusChoices = []int{200, 400, 600}
+
+// propRadiusDefaultKm is the near-vertical radius by default (D-100).
+const propRadiusDefaultKm = 400
+
+// propRadiusByKm reads the file's number; anything not offered is the
+// default.
+func propRadiusByKm(km int) int {
+	for _, c := range propRadiusChoices {
+		if c == km {
+			return km
+		}
+	}
+	return propRadiusDefaultKm
+}
+
+// cyclePropRadius moves the near-vertical radius picker, and round again.
+func (d Dashboard) cyclePropRadius(forward bool) Dashboard {
+	d.mapPropRadiusKm = cycleIn(propRadiusChoices, itself, d.mapPropRadiusKm, forward)
+	return d.uiTouched()
+}
+
+// propNoiseChoices are the reference circuit's noise environments, quietest
+// last, the default first (D-187): P.372's man-made noise categories.
+var propNoiseChoices = []ionomaps.Noise{ionomaps.NoiseResidential, ionomaps.NoiseCity, ionomaps.NoiseRural, ionomaps.NoiseQuietRural}
+
+// propNoiseKeys are the file's names for them.
+var propNoiseKeys = map[ionomaps.Noise]string{ionomaps.NoiseResidential: "residential", ionomaps.NoiseCity: "city", ionomaps.NoiseRural: "rural", ionomaps.NoiseQuietRural: "quiet-rural"}
+
+// propNoiseByKey reads the file's name; anything not offered is residential.
+func propNoiseByKey(key string) ionomaps.Noise {
+	for n, k := range propNoiseKeys {
+		if k == key {
+			return n
+		}
+	}
+	return ionomaps.NoiseResidential
+}
+
+// propNoiseKey is the file's name for an environment; residential, the
+// default, is written empty.
+func propNoiseKey(n ionomaps.Noise) string {
+	if n == ionomaps.NoiseResidential {
+		return ""
+	}
+	return propNoiseKeys[n]
+}
+
+// propNoiseLabel is an environment as the Settings and the chart say it.
+func propNoiseLabel(n ionomaps.Noise) string {
+	switch n {
+	case ionomaps.NoiseCity:
+		return "City"
+	case ionomaps.NoiseRural:
+		return "Rural"
+	case ionomaps.NoiseQuietRural:
+		return "Quiet rural"
+	}
+	return "Residential"
+}
+
+// cyclePropNoise moves the noise picker, and round again; the mode, if
+// open, asks for its snapshot with the new noise, which go-ionomaps answers
+// without a request (D-187).
+func (d Dashboard) cyclePropNoise(forward bool) Dashboard {
+	d.mapPropNoise = cycleIn(propNoiseChoices, itself, d.mapPropNoise, forward)
+	return d.uiTouched()
+}
+
+// propRadiusLabel is the radius in the units the description speaks.
+func (d Dashboard) propRadiusLabel() string { return d.distanceLabel(d.mapPropRadiusKm) }
+
 // toggleRadarSource switches the lower 48's radar between MRMS and IEM (D-83).
 func (d Dashboard) toggleRadarSource() Dashboard {
 	d.mapRadarIEM = !d.mapRadarIEM
@@ -354,26 +429,35 @@ func (d Dashboard) radarSourceLabel() string {
 }
 
 // nearbyLabel is the distance in the units the description speaks.
-func (d Dashboard) nearbyLabel() string {
-	km := strconv.Itoa(d.mapNearbyKm) + " km"
+func (d Dashboard) nearbyLabel() string { return d.distanceLabel(d.mapNearbyKm) }
+
+// distanceLabel is a distance in kilometres as the description speaks it:
+// kilometres, or miles with the kilometres beside them.
+func (d Dashboard) distanceLabel(km int) string {
+	metric := strconv.Itoa(km) + " km"
 	if d.units != render.UnitF {
-		return km
+		return metric
 	}
-	return strconv.Itoa(int(math.Round(units.MilesOf(float64(d.mapNearbyKm))))) + " miles (" + km + ")"
+	return strconv.Itoa(int(math.Round(units.MilesOf(float64(km))))) + " miles (" + metric + ")"
 }
 
 // layerOn reports whether a layer is drawn: the listener's choice, or the
-// builders' default. A key the registry does not name is drawn.
+// builders' default. A key the registry does not name is drawn. In the
+// Propagation mode no weather layer is (D-21, FR-1.4); the choices are kept
+// for the weather modes.
 func (d Dashboard) layerOn(key string) bool {
-	if key == TemperatureLayer && d.mapPane.tempAuto && !d.radarMode() {
+	if d.mapMode() == modePropagation {
+		return false
+	}
+	if key == TemperatureLayer && d.mapPane.tempAuto && d.mapMode() == modeForecast {
 		return true // Forecast mode turned it on (D-103), its alone (D-104)
 	}
 	return d.chosen(key)
 }
 
 // chosen is a layer as the listener chose it: its tick, inside its group.
-// radarMode reads the radar through it rather than through layerOn, which
-// would ask radarMode again - a cycle P10 forbids (W14, S-3); the radar is
+// mapMode reads the radar through it rather than through layerOn, which
+// would ask mapMode again - a cycle P10 forbids (W14, S-3); the radar is
 // never Forecast mode's own, so the answer is the same.
 func (d Dashboard) chosen(key string) bool {
 	if g, ok := layerGroup[key]; ok && !d.groupOn(g) {
@@ -417,7 +501,7 @@ var fireModes = []string{FireAll, FireNamed, FireHotspots}
 // fireMode is the Fire row's choice, All until another is chosen.
 func (d Dashboard) fireMode() string {
 	for _, m := range fireModes[1:] {
-		if on, _ := choiceOf(d.mapLayerChoice, "fire:"+m); on {
+		if chosenOn(d.mapLayerChoice, "fire:"+m) {
 			return m
 		}
 	}
@@ -520,7 +604,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapColours || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapPropRadius || id == rowMapPropNoise || id == rowMapPropRefresh || id == rowMapPropReadings || id == rowMapPropStations || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -528,6 +612,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 	switch d.setup.focus {
 	case rowMapScale:
 		return d.cycleMapScale(forward), true
+	case rowMapColours:
+		return d.cycleMapDepth(forward), true
 	case rowMapNearby:
 		return d.cycleNearby(forward), true
 	case rowMapRadarSource:
@@ -538,6 +624,16 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.toggleRainDetail(), true
 	case rowMapUVCities:
 		return d.cycleUVCities(forward), true
+	case rowMapPropRadius:
+		return d.cyclePropRadius(forward), true
+	case rowMapPropNoise:
+		return d.cyclePropNoise(forward), true
+	case rowMapPropRefresh:
+		return d.cyclePropRefresh(forward), true
+	case rowMapPropReadings:
+		return d.togglePropCorrect(), true
+	case rowMapPropStations:
+		return d.togglePropStations(), true
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(forward), true
 	case rowMapQuakes:
@@ -619,7 +715,7 @@ const (
 // drawn (UAT-1 U1-14). The watchlist's snapshot is shared, so the selected
 // place joins a copy.
 func (d Dashboard) mapAsk() MapAsk {
-	place := d.selectedLocation()
+	place := d.mapPlace()
 	snap := d.snap
 	if place != nil && d.selected >= d.numPriority() {
 		joined := snapshot.Snapshot{}
@@ -630,13 +726,13 @@ func (d Dashboard) mapAsk() MapAsk {
 		snap = &joined
 	}
 	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
-		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RainFull: d.mapRainFull, UVCities: d.mapUVCities, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fire: d.layerOn(FireLayer), Quakes: d.layerOn(QuakeLayer), AlertsOff: !d.layerOn(AlertLayer), AlertCategoriesOff: d.alertCategoriesOff(), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
+		Forecast: d.mapMode() == modeForecast, TempNDFD: d.mapTempNDFD, RainFull: d.mapRainFull, UVCities: d.mapUVCities, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fire: d.layerOn(FireLayer), Quakes: d.layerOn(QuakeLayer), AlertsOff: !d.layerOn(AlertLayer), AlertCategoriesOff: d.alertCategoriesOff(), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the
 // row is one (UAT-1 U1-35: a row each, in mapDetailLayers' order).
 func detailRowLayer(id setupRowID) (mapDetailLayer, bool) {
-	if id < rowMapDetailBorders || id > rowMapDetailParks {
+	if id < rowMapDetailBorders || id > rowMapDetailNight {
 		return mapDetailLayer{}, false
 	}
 	return mapDetailLayers()[id-rowMapDetailBorders], true

@@ -2,6 +2,7 @@ package locations
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -34,7 +35,7 @@ func testResolver(t *testing.T, fb Fallback) *Resolver {
 
 type fakeFallback struct{ called bool }
 
-func (f *fakeFallback) Resolve(_ context.Context, q string) (snapshot.LocationRef, error) {
+func (f *fakeFallback) Geocode(_ context.Context, q string) (snapshot.LocationRef, error) {
 	f.called = true
 	return snapshot.LocationRef{Label: "Fallback City", Lat: 1, Lon: 2}, nil
 }
@@ -142,5 +143,121 @@ func TestTypeAheadSingleCallBudget(t *testing.T) {
 		if el := time.Since(start); el > budget {
 			t.Fatalf("TypeAhead(%q) took %v (>%v budget)", q, el, budget)
 		}
+	}
+}
+
+// offlineOnly is a fallback that fails the test when asked: nothing typed as
+// coordinates or a locator may go online (FR-4.9).
+type offlineOnly struct{ t *testing.T }
+
+func (o offlineOnly) Geocode(_ context.Context, q string) (snapshot.LocationRef, error) {
+	o.t.Errorf("%q went to the online geocoder", q)
+	return snapshot.LocationRef{}, errors.New("asked")
+}
+
+// TestEveryResolverParsesCoordinatesLocally is FR-4.9 (W0.3): the one
+// resolver every lookup goes through - the Observer's, the console's,
+// `watchpost report` - reads coordinates itself, offers them as you type and
+// never sends them online; a pair that is not two finite numbers on the
+// globe is refused, offline, saying what one is.
+func TestEveryResolverParsesCoordinatesLocally(t *testing.T) {
+	r := testResolver(t, offlineOnly{t})
+	ref, fell, err := r.Resolve(context.Background(), " 33.2 , -117.38 ")
+	if err != nil || fell || ref.Lat != 33.2 || ref.Lon != -117.38 || ref.Label != "33.2000, -117.3800" {
+		t.Fatalf("coordinates resolved to %+v (fell back %v): %v", ref, fell, err)
+	}
+	if s := r.TypeAhead("33.2,-117.38", 5); len(s) != 1 || s[0].Ref != ref {
+		t.Errorf("the type-ahead offers %+v for coordinates", s)
+	}
+	for _, q := range []string{"NaN,NaN", "Inf, 0", "33.2, 400", "1e3,2"} {
+		if _, _, err := r.Resolve(context.Background(), q); err == nil || !strings.Contains(err.Error(), "latitude") {
+			t.Errorf("%q: %v; refused, saying what a coordinate pair is", q, err)
+		}
+	}
+}
+
+// TestCoordinatesAndLocatorsNeverGoOnline is FR-4.9 and FR-1.10 (W0.3): a
+// Maidenhead locator is read locally to the centre of its square; a place
+// typed either way in no region the weather covers is refused, offline, as a
+// city there is.
+func TestCoordinatesAndLocatorsNeverGoOnline(t *testing.T) {
+	r := testResolver(t, offlineOnly{t})
+	ref, fell, err := r.Resolve(context.Background(), "dm13AF")
+	if err != nil || fell || ref.Label != "DM13af" || ref.Lat < 33 || ref.Lat > 33.25 || ref.Lon < -118 || ref.Lon > -117.9 {
+		t.Fatalf("the locator resolved to %+v (fell back %v): %v", ref, fell, err)
+	}
+	for _, q := range []string{"51.5,-0.12", "IO91wm"} { // London
+		if _, _, err := r.Resolve(context.Background(), q); err == nil || !strings.Contains(err.Error(), "outside") {
+			t.Errorf("%q, outside every region: %v", q, err)
+		}
+	}
+}
+
+// TestNoLookupErrorQuotesTheQuery is FR-4.9 (W0.3): a place not found is
+// said without quoting what was typed.
+func TestNoLookupErrorQuotesTheQuery(t *testing.T) {
+	const typed = "Zzqxj Private Lane"
+	_, _, err := testResolver(t, nil).Resolve(context.Background(), typed)
+	if err == nil || strings.Contains(err.Error(), "Zzqxj") {
+		t.Errorf("offline, no match: %v", err)
+	}
+}
+
+// worldFallback counts the online asks the Propagation mode's lookup makes.
+type worldFallback struct {
+	fakeFallback
+	world int
+}
+
+func (w *worldFallback) ResolveWorld(_ context.Context, q string) (snapshot.LocationRef, error) {
+	w.world++
+	return snapshot.LocationRef{Label: "Online Place, XX", Lat: 10, Lon: 20}, nil
+}
+
+// TestALocalMatchSendsNothing is 0.19.0 FR-1.10 (D-61, the mode-aware
+// coverage gate): the Propagation mode's lookup answers a world city from
+// the embedded index, and coordinates and a locator anywhere on the globe,
+// sending nothing; only a query nothing local matches goes online - where
+// the weather's lookup refuses what it does not cover.
+func TestALocalMatchSendsNothing(t *testing.T) {
+	fb := &worldFallback{}
+	r := testResolver(t, fb)
+	for q, wantLat := range map[string]float64{"London": 51.5, "64.1466, -21.9426": 64.1466, "IO91wm": 51.5} {
+		ref, fellBack, err := r.ResolveAnywhere(context.Background(), q)
+		if err != nil || fellBack || ref.Lat < wantLat-0.5 || ref.Lat > wantLat+0.5 {
+			t.Errorf("%q: %+v, fell back %v, %v", q, ref, fellBack, err)
+		}
+	}
+	if fb.world != 0 || fb.called {
+		t.Errorf("local matches went online: %d world asks, weather's %v", fb.world, fb.called)
+	}
+	if _, _, err := r.Resolve(context.Background(), "64.1466, -21.9426"); err == nil {
+		t.Error("control: the weather's lookup took coordinates it does not cover")
+	}
+	if ref, fellBack, err := r.ResolveAnywhere(context.Background(), "Zzyzxville Nowhere"); err != nil || !fellBack || fb.world != 1 || ref.Label != "Online Place, XX" {
+		t.Errorf("a query nothing local matches: %+v, fell back %v, %d asks, %v", ref, fellBack, fb.world, err)
+	}
+	offline := testResolver(t, nil)
+	if _, _, err := offline.ResolveAnywhere(context.Background(), "Zzyzxville Nowhere"); err == nil {
+		t.Error("with no fallback, a miss was answered")
+	}
+}
+
+// TestAPositionInAnotherFormNeverGoesOnline is the BUILD red team's I-2
+// (FR-4.9): a position written in a form the parsers do not read is refused
+// here, with how to write it, by every lookup - never sent to the geocoder;
+// a ZIP with its four, a place and not a position, is not refused as one.
+func TestAPositionInAnotherFormNeverGoesOnline(t *testing.T) {
+	r := testResolver(t, offlineOnly{t})
+	for _, q := range []string{"33.2N 117.4W", "33°12'N 117°23'W", "33.2;-117.38", "33.2, -117.38, 10", "DM13af45xy", "DZ13", "33 12 117 23",
+		"33°12′N 117°23′W", "33º12'N", "33.2, −117.38", "(33.2, -117.38)", "lat 33.2 lon -117.38", "geo:33.2,-117.38", "３３.２ １１７.３８"} { // round 2 PN2-4: the forms a list of spellings missed
+		for name, resolve := range map[string]func(context.Context, string) (snapshot.LocationRef, bool, error){"the weather's": r.Resolve, "the Propagation mode's": r.ResolveAnywhere} {
+			if _, fell, err := resolve(context.Background(), q); err == nil || fell || !strings.Contains(err.Error(), "latitude then longitude") {
+				t.Errorf("%s lookup of %q: fell back %v, %v", name, q, fell, err)
+			}
+		}
+	}
+	if positionShaped("92003-1234") || positionShaped("29 Palms") || positionShaped("92003") || positionShaped("Area 51") {
+		t.Error("a ZIP, a ZIP with its four or a town with a figure in its name reads as a position")
 	}
 }

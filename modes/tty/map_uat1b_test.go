@@ -12,7 +12,7 @@ import (
 
 // TestWhatTheMapContactsIsInTheStatusWindow is D-69, D-75 and D-151: neither
 // the map nor Settings carries words about what the map sends; the Status
-// window's MAP STATUS names each host the map contacts, and one line says
+// window names each host the map contacts, and one line says
 // what it is sent.
 func TestWhatTheMapContactsIsInTheStatusWindow(t *testing.T) {
 	sources := []MapSource{{Name: "OpenFreeMap", Host: "tiles.openfreemap.org", Layers: "basemap", Sent: "tiles"},
@@ -31,7 +31,7 @@ func TestWhatTheMapContactsIsInTheStatusWindow(t *testing.T) {
 	}
 	s.cfg.MapSources = sources
 	status := strings.Join(strings.Fields(stripANSITest(strings.Join(s.statusLines(), "\n"))), " ") // wrapped to the table (D-151): read as one text
-	for _, want := range []string{"MAP STATUS", "tiles.openfreemap.org", "api.weather.gov", "National Weather Service (states, alert zones, marine areas)"} {
+	for _, want := range []string{"MAP DRAWING DATA", "tiles.openfreemap.org", "api.weather.gov", "National Weather Service (states, alert zones, marine areas)"} {
 		if !strings.Contains(status, want) {
 			t.Errorf("the Status window does not name %q:\n%s", want, status)
 		}

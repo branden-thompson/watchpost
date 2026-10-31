@@ -66,7 +66,7 @@ func TestEverySeriesPastRetentionIsPruned(t *testing.T) {
 	s := Open(dir, func() time.Time { return now }, brief)
 	const n = 600
 	for i := range n {
-		if !s.Put(brief.Name, briefRec(i, t0)) {
+		if !s.Record(brief.Name, briefRec(i, t0)) {
 			t.Fatal("not written")
 		}
 	}
@@ -100,7 +100,7 @@ func TestAPruneSoakStaysBounded(t *testing.T) {
 	for h := range hours {
 		now = t0.Add(time.Duration(h) * time.Hour)
 		for range perHour {
-			if !s.Put(brief.Name, briefRec(next%n, now)) {
+			if !s.Record(brief.Name, briefRec(next%n, now)) {
 				t.Fatal("not written")
 			}
 			next++
@@ -121,16 +121,17 @@ func TestAPruneSoakStaysBounded(t *testing.T) {
 	t.Logf("the soak took %v (bounded by its counts: under 10 s on an idle machine, with -race)", time.Since(start))
 }
 
-// A PUT DOES NOT READ ITS DAY AGAIN (PF-8): the day it was read for is held,
-// and the record written is added to it - a day's 24 puts read its files once,
-// and every hour is read back as it was put. A record another instance puts
-// in the same day is still seen.
+// A PUT DOES NOT READ ITS DAY AGAIN (PF-8): the day's hours as recording reads
+// them are held, and the record written is added - a day's 24 puts read its
+// files once. Recording holds no document (D-242), so reading the day back
+// reads it once more, and once only: every hour reads back as it was put. A
+// record another instance puts in the same day is still seen.
 func TestAPutDoesNotReadItsDayAgain(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	a, b := open(t, dir, &now), open(t, dir, &now)
 	day := t0.Truncate(24 * time.Hour)
 	for h := range 24 {
-		if !a.Put(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0)) {
+		if !a.Record(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0)) {
 			t.Fatal("not written")
 		}
 	}
@@ -143,16 +144,19 @@ func TestAPutDoesNotReadItsDayAgain(t *testing.T) {
 			t.Errorf("hour %d reads back as %v (%v)", h, r.Values["temp"], ok)
 		}
 	}
-	if reads := a.Stats().DayReads; reads != 1 {
-		t.Errorf("reading the day back read its files again (%d reads)", reads)
+	if reads := a.Stats().DayReads; reads != 2 {
+		t.Errorf("reading the day's 24 hours back: %d reads in all; want the puts' one and one more", reads)
 	}
-	if !a.Put(grid.Name, rec(day.Add(5*time.Hour), time.Minute, 50, 0, 0, 0)) {
+	if days, bytes, indexed := a.Memory(); days != 1 || bytes <= 0 || indexed != 1 {
+		t.Errorf("held: %d days weighing %d, %d indexed; want the day once for readers and once for recording", days, bytes, indexed)
+	}
+	if !a.Record(grid.Name, rec(day.Add(5*time.Hour), time.Minute, 50, 0, 0, 0)) {
 		t.Fatal("a newer issue was not written")
 	}
 	if r, _ := a.Get(grid.Name, ndfd, day.Add(5*time.Hour)); r.Values["temp"][0] != 50 {
 		t.Errorf("a newer issue reads back as %v", r.Values["temp"][0])
 	}
-	if !b.Put(grid.Name, rec(day.Add(6*time.Hour), time.Hour, 60, 0, 0, 0)) {
+	if !b.Record(grid.Name, rec(day.Add(6*time.Hour), time.Hour, 60, 0, 0, 0)) {
 		t.Fatal("not written")
 	}
 	if r, _ := a.Get(grid.Name, ndfd, day.Add(6*time.Hour)); r.Values["temp"][0] != 60 {
@@ -173,10 +177,10 @@ func TestTheStoreKeepsItsSizeAsItGoes(t *testing.T) {
 	}
 	day := t0.Truncate(24 * time.Hour)
 	for h := range 6 {
-		s.Put(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0))
-		s.Put(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), time.Minute, float64(h), 1, 0, 0)) // a newer issue replaces its bucket
+		s.Record(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0))
+		s.Record(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), time.Minute, float64(h), 1, 0, 0)) // a newer issue replaces its bucket
 	}
-	s.Put(muf.Name, Record{Key: Key{Source: "giro", Place: "pa836"}, At: day.Add(-48 * time.Hour), IssuedAt: day, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {12}}})
+	s.Record(muf.Name, Record{Key: Key{Source: "giro", Place: "pa836"}, At: day.Add(-48 * time.Hour), IssuedAt: day, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {12}}})
 	check := func(when string, since bool) {
 		t.Helper()
 		if got, want := s.Bytes(), treeBytes(dir); got != want {
@@ -226,11 +230,11 @@ func TestTheStoreKeepsItsSizeAsItGoes(t *testing.T) {
 func TestOneDatasetIsForgotten(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := open(t, dir, &now)
-	s.Put(grid.Name, rec(t0, 0, 1, 1, 1, 1))
+	s.Record(grid.Name, rec(t0, 0, 1, 1, 1, 1))
 	st := Key{Source: "giro", Place: "pa836"}
 	for q := range 3 {
 		at := t0.Add(time.Duration(q) * 15 * time.Minute)
-		s.Put(muf.Name, Record{Key: st, At: at, IssuedAt: at, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {12}}})
+		s.Record(muf.Name, Record{Key: st, At: at, IssuedAt: at, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {12}}})
 	}
 	n, err := s.ForgetDataset(muf.Name)
 	if err != nil || n != 3 {
@@ -245,7 +249,7 @@ func TestOneDatasetIsForgotten(t *testing.T) {
 	if s.BytesOf(muf.Name) != treeBytes(filepath.Join(dir, muf.Name)) || s.Bytes() != treeBytes(dir) {
 		t.Errorf("the size is not kept: %d against %d", s.Bytes(), treeBytes(dir))
 	}
-	if !s.Put(muf.Name, Record{Key: st, At: t0, IssuedAt: t0, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {13}}}) {
+	if !s.Record(muf.Name, Record{Key: st, At: t0, IssuedAt: t0, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {13}}}) {
 		t.Error("the dataset does not record after it was forgotten")
 	}
 	if n, err := s.ForgetDataset("not-held"); n != 0 || err != nil {
@@ -261,5 +265,65 @@ func TestADatasetsSizeIsNeverBelowNothing(t *testing.T) {
 	s.grow(filepath.Join(s.root, "ds", "x.gz"), -25)
 	if got := s.sizes["ds"]; got != 0 {
 		t.Errorf("the size is %d after removing more than was counted; want 0", got)
+	}
+}
+
+// RECORDING HOLDS NO DOCUMENT, AND THE DAYS HELD FOR READERS ARE WEIGHED
+// (D-242): a day of puts is indexed for recording, its hours and their issue
+// times alone, and no day is held for readers until one is read; the days held
+// for readers stay within dayRules' weight, the least recently read out.
+func TestRecordingHoldsNoDocument(t *testing.T) {
+	dir, now := t.TempDir(), t0
+	s := open(t, dir, &now)
+	day := t0.Truncate(24 * time.Hour)
+	for h := range 24 {
+		if !s.Record(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0)) {
+			t.Fatal("not written")
+		}
+	}
+	if days, bytes, indexed := s.Memory(); days != 0 || bytes != 0 || indexed != 1 {
+		t.Errorf("after a day of puts: %d days held for readers weighing %d, %d indexed; want none held, one indexed", days, bytes, indexed)
+	}
+	if !s.Record(grid.Name, rec(day.Add(3*time.Hour), 0, 99, 0, 0, 0)) {
+		t.Fatal("an equal issue was not skipped quietly")
+	}
+	if r, _ := s.Get(grid.Name, ndfd, day.Add(3*time.Hour)); r.Values["temp"][0] != 3 {
+		t.Errorf("an equal issue replaced the hour: %v", r.Values["temp"][0])
+	}
+	if days, _, _ := s.Memory(); days != 1 {
+		t.Fatalf("a read holds %d days for readers; want the one read", days)
+	}
+	// A store that must read the day to record, and then skips the record as
+	// stale, holds the day for no reader.
+	fresh := open(t, dir, &now)
+	if !fresh.Record(grid.Name, rec(day.Add(3*time.Hour), 0, 77, 0, 0, 0)) {
+		t.Fatal("an equal issue was not skipped quietly")
+	}
+	if days, _, indexed := fresh.Memory(); days != 0 || indexed != 1 {
+		t.Errorf("a store that read the day to record holds %d days for readers, %d indexed; want none, one", days, indexed)
+	}
+	if !s.Record(grid.Name, rec(day.Add(4*time.Hour), time.Minute, 44, 0, 0, 0)) {
+		t.Fatal("a newer issue was not written")
+	}
+	if days, bytes, _ := s.Memory(); days != 0 || bytes != 0 {
+		t.Errorf("a write after a read leaves %d days weighing %d held for readers: the day's documents are no longer its files", days, bytes)
+	}
+	// Another instance's newer issue is seen by recording: this instance's
+	// older issue of that hour is then skipped.
+	other := open(t, dir, &now)
+	if !other.Record(grid.Name, rec(day.Add(6*time.Hour), time.Hour, 60, 0, 0, 0)) {
+		t.Fatal("not written")
+	}
+	if !s.Record(grid.Name, rec(day.Add(6*time.Hour), 30*time.Minute, 30, 0, 0, 0)) {
+		t.Fatal("an older issue was not skipped quietly")
+	}
+	if r, _ := s.Get(grid.Name, ndfd, day.Add(6*time.Hour)); r.Values["temp"][0] != 60 {
+		t.Errorf("an older issue replaced another instance's newer one: %v", r.Values["temp"][0])
+	}
+	big := heldDay{entries: []hourEntry{{Doc: make([]byte, dayRules.MaxBytes/2+1)}}}
+	s.days.Put("a", big)
+	s.days.Put("b", big)
+	if n, w := s.days.Held(); n != 1 || w != big.weight() {
+		t.Errorf("two days of over half the bound each: %d held, weighing %d", n, w)
 	}
 }

@@ -43,7 +43,7 @@ type consoleKey struct {
 	fireBoldMW float64
 	// selected drives BOTH the focused row and the pool's scroll window — the
 	// window is derived from the selection (poolSpan), not stored beside it.
-	selected int
+	selected int // position: a slot of the line-up and a row of the pool, which lineupGen, areaGen and the snapshots carry (#12)
 	// recent and priority are the weather behind both tables: the pool's places
 	// from the recent snapshot (D-99), a watched place's from the priority one
 	// (D-208). POINTERS, as Observer keys them: a publish hands over a whole new

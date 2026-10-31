@@ -45,12 +45,12 @@ func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
 	case "radio-vol-up":
 		d.radioVolume = min(100, d.radioVolume+5)
 		d.volFlash, d.volFlashEnd = "+", time.Now().Add(350*time.Millisecond) // green blink (UAT 41)
-		d, _ = d.radioVolumeCmd()
+		d = d.radioVolumeCmd()
 		return d.saveRadioCmd(), true
 	case "radio-vol-dn":
 		d.radioVolume = max(0, d.radioVolume-5)
 		d.volFlash, d.volFlashEnd = "-", time.Now().Add(350*time.Millisecond) // red blink
-		d, _ = d.radioVolumeCmd()
+		d = d.radioVolumeCmd()
 		return d.saveRadioCmd(), true
 	default:
 		return d, false
@@ -219,7 +219,7 @@ func (d Dashboard) radioCompactRows(inner int, p radioParts) []string {
 func (d Dashboard) vizRows(inner, rows int) []string {
 	lines := render.Spectrum(d.vizBands, max(0, inner-2), rows)
 	for i, l := range lines {
-		lines[i] = trackLine(l, inner) // inside the player's track, under the marquee (UAT 2026-08-28)
+		lines[i] = d.trackLine(l, inner) // inside the player's track, under the marquee (UAT 2026-08-28)
 	}
 	return lines
 }
@@ -231,9 +231,11 @@ func (d Dashboard) vizRows(inner, rows int) []string {
 // trackIdle is the marquee band's idle fill — through Glyphs (░, or . under --ascii).
 func trackIdle(o render.Opts) string { return o.Glyphs().Fill }
 
-// trackLine frames one row of content between the track's rails.
-func trackLine(content string, inner int) string {
-	return "│" + render.PadTo(content, max(0, inner-2)) + "│"
+// trackLine frames one row of content between the track's rails - │, or |
+// under --ascii.
+func (d Dashboard) trackLine(content string, inner int) string {
+	rail := d.opts().Glyphs().Rail
+	return rail + render.PadTo(content, max(0, inner-2)) + rail
 }
 
 // marqueeTrack is the marquee row: LIVE RADIO centred on a relay, the
@@ -258,9 +260,9 @@ func (d Dashboard) marqueeTrack(inner int) string {
 	}
 	band := func(content string) string {
 		if !render.ColorOn() {
-			return trackLine(content, inner)
+			return d.trackLine(content, inner)
 		}
-		return trackLine(render.TintRaw(content, render.Tok(render.GroupText)+";"+render.Tok(render.GroupSectionBG)), inner)
+		return d.trackLine(render.TintRaw(content, render.Tok(render.GroupText)+";"+render.Tok(render.GroupSectionBG)), inner)
 	}
 	switch {
 	case d.radioLive && d.radioState == "playing": // UAT 79: a relay has no timeline — say what it is
@@ -323,7 +325,7 @@ func (d Dashboard) radioMaxRows(o render.Opts, inner int, p radioParts) []string
 	// The head keeps its title as long as it can: the VOL bar gives first
 	// (the wide bar, then 20 cells, then 10 — the mock's widths), the title
 	// only after that.
-	head := p.title + " • " + d.station()
+	head := p.title + " " + o.Glyphs().Bullet + " " + d.station() // "*" under --ascii
 	tail := p.vol + "   " + p.state
 	room := inner - 2 - render.Width(tail)
 	for _, bar := range []int{20, 10} {
@@ -466,12 +468,12 @@ func sameRefs(a, b []snapshot.LocationRef) bool {
 }
 
 // radioVolumeCmd pushes the volume to the player (no-op when unwired).
-func (d Dashboard) radioVolumeCmd() (Dashboard, bool) {
+func (d Dashboard) radioVolumeCmd() Dashboard {
 	if d.cfg.Radio == nil {
-		return d, true
+		return d
 	}
 	radio, pct := d.cfg.Radio, d.radioVolume
-	return d.withCmd(func() tea.Msg { radio.SetVolume(pct); return nil }), true
+	return d.withCmd(func() tea.Msg { radio.SetVolume(pct); return nil })
 }
 
 // radioControlLines wraps the player controls to the module width (UAT

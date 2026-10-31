@@ -36,7 +36,6 @@ type State int
 const (
 	Proposed State = iota
 	Admitted
-	Refused
 	Standby
 	OnAir
 	Done
@@ -57,13 +56,13 @@ type stateRow struct {
 // states is the registry, indexed by State. A function rather than a package
 // variable (P10-06), and the only description of the card's life.
 //
-// REFUSED, DONE and DISCARDED lead nowhere: a card that could be revived is a
-// card that can be read twice.
+// DONE and DISCARDED lead nowhere: a card that could be revived is a card
+// that can be read twice. A card the schedule will not take is never made:
+// Propose refuses it with an error, so no state holds it (D-259).
 func states() [numStates]stateRow {
 	return [numStates]stateRow{
-		Proposed: {name: "PROPOSED", next: []State{Admitted, Refused}},
+		Proposed: {name: "PROPOSED", next: []State{Admitted}},
 		Admitted: {name: "ADMITTED", next: []State{Standby, Discarded}},
-		Refused:  {name: "REFUSED"},
 		Standby:  {name: "STANDBY", next: []State{OnAir, Discarded}},
 		// BOTH EXITS FROM THE AIR ARE REAL (DR-24). Read in full is DONE;
 		// discarded, superseded, cancelled and context-ended are all the same

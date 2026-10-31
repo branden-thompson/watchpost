@@ -261,7 +261,7 @@ func TestTheWavesAreNDFDsFirstAndOpenMeteoOnlyPastItsReach(t *testing.T) {
 	all[n-2], all[n-1] = math.NaN(), math.NaN() // the history is NDFD's: nothing past its reach
 	for back := pastHours; back >= 0; back-- {
 		h := anchor.Add(-time.Duration(back) * time.Hour)
-		if !store.Put(ndfdWaves.Name, history.Record{Key: history.Key{Source: "ndfd", Place: box.Name}, At: h, IssuedAt: h.Add(-time.Hour), Shape: shapeOf(lat), Values: map[string][]float64{"waves": all}}) {
+		if !store.Record(ndfdWaves.Name, history.Record{Key: history.Key{Source: "ndfd", Place: box.Name}, At: h, IssuedAt: h.Add(-time.Hour), Shape: shapeOf(lat), Values: map[string][]float64{"waves": all}}) {
 			t.Fatal("could not seed the history")
 		}
 	}

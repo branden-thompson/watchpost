@@ -3,6 +3,12 @@
 // comparison reads: each phase's resources, and each timing's spread.
 //
 //	perfsum -in <run dir>
+//	perfsum -g1 <run dir> [-against map|idle]
+//
+// -g1 reads a G1 run instead (0.19.0 W10.2; workload.sh g1): the Propagation
+// mode in use against the map open and against the map never opened, each
+// difference against G1's targets, the one -against names judged: the map
+// open by default, as D-236 ruled (g1.go).
 //
 // Resources, per phase of phases.log, from samples.csv (soak.sh):
 //   - CPU % is the change in cumulative CPU time over the phase's span, from
@@ -51,14 +57,21 @@ func run(args []string, out, errOut io.Writer) int {
 	fs := flag.NewFlagSet("perfsum", flag.ContinueOnError)
 	fs.SetOutput(errOut)
 	in := fs.String("in", "", "the run's directory")
+	g1 := fs.String("g1", "", "a G1 run's directory: its use, map and idle arms")
+	against := fs.String("against", "map", "-g1: the arm G1 is judged against, map (D-236) or idle")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	if *in == "" {
-		_, _ = fmt.Fprintln(errOut, "perfsum: -in is required")
+	if (*in == "") == (*g1 == "") {
+		_, _ = fmt.Fprintln(errOut, "perfsum: one of -in or -g1 is required")
 		return 2
 	}
-	s, lost, err := summarise(*in)
+	sum := summarise
+	if *g1 != "" {
+		sum = func(dir string) (string, int, error) { return summariseG1(dir, *against) }
+		*in = *g1
+	}
+	s, lost, err := sum(*in)
 	if err != nil {
 		_, _ = fmt.Fprintln(errOut, "perfsum:", err)
 		return 2
@@ -67,7 +80,7 @@ func run(args []string, out, errOut io.Writer) int {
 		return 2
 	}
 	if lost > 0 {
-		return 1 // the render check failed: a run that lost its map passes for nothing
+		return 1 // the render check failed, or a G1 target was missed: a run that lost its map passes for nothing
 	}
 	return 0
 }
@@ -83,6 +96,7 @@ type phase struct {
 type resources struct {
 	cpuPct                          float64
 	footMedMB, footMaxMB, heapMedMB float64
+	rssMedMB, rssMaxMB              float64
 	goroutinesMed                   float64
 	threadsMax                      float64
 	samples                         int
@@ -206,8 +220,8 @@ func readPhases(path string) ([]phase, error) {
 
 // sample is one soak.sh row, the columns perfsum reads.
 type sample struct {
-	at                           time.Time
-	cpuS, footKB, heap, gor, thr float64
+	at                                  time.Time
+	cpuS, rssKB, footKB, heap, gor, thr float64
 }
 
 func readSamples(path string) ([]sample, error) {
@@ -226,7 +240,7 @@ func readSamples(path string) ([]sample, error) {
 	for i, h := range head {
 		col[h] = i
 	}
-	for _, need := range []string{"utc", "cpu_time", "footprint_kb", "heap_alloc", "goroutines", "threads"} {
+	for _, need := range []string{"utc", "cpu_time", "rss_kb", "footprint_kb", "heap_alloc", "goroutines", "threads"} {
 		if _, ok := col[need]; !ok {
 			return nil, fmt.Errorf("samples.csv: no %q column (soak.sh from before W14?)", need)
 		}
@@ -248,8 +262,16 @@ func readSamples(path string) ([]sample, error) {
 		if !ok {
 			continue
 		}
-		num := func(k string) float64 { v, _ := strconv.ParseFloat(rec[col[k]], 64); return v }
-		out = append(out, sample{at: at, cpuS: cpu, footKB: num("footprint_kb"), heap: num("heap_alloc"), gor: num("goroutines"), thr: num("threads")})
+		// A GAUGE THAT DOES NOT READ IS UNREAD, NEVER 0 (RC-1): NaN, left out
+		// of every median; G1, judged on RSS, refuses a run whose RSS is.
+		num := func(k string) float64 {
+			v, err := strconv.ParseFloat(rec[col[k]], 64)
+			if err != nil {
+				return math.NaN()
+			}
+			return v
+		}
+		out = append(out, sample{at: at, cpuS: cpu, rssKB: num("rss_kb"), footKB: num("footprint_kb"), heap: num("heap_alloc"), gor: num("goroutines"), thr: num("threads")})
 	}
 	return nil, fmt.Errorf("samples.csv: more than %d rows", maxRows)
 }
@@ -291,9 +313,9 @@ func resourcesIn(samples []sample, from, to time.Time) (resources, bool) {
 		return resources{}, false
 	}
 	first, last := in[0], in[len(in)-1]
-	var foot, heap, gor, thr []float64
+	var rss, foot, heap, gor, thr []float64
 	for _, s := range in {
-		foot, heap, gor, thr = append(foot, s.footKB/1024), append(heap, s.heap/(1<<20)), append(gor, s.gor), append(thr, s.thr)
+		rss, foot, heap, gor, thr = read(rss, s.rssKB/1024), read(foot, s.footKB/1024), read(heap, s.heap/(1<<20)), read(gor, s.gor), read(thr, s.thr)
 	}
 	span := last.at.Sub(first.at).Seconds()
 	// CUMULATIVE CPU NEVER FALLS within one process: a fall is two processes'
@@ -301,7 +323,7 @@ func resourcesIn(samples []sample, from, to time.Time) (resources, bool) {
 	if invariant.Check(last.cpuS >= first.cpuS, "samples.csv: cumulative CPU time fell inside a phase") != nil {
 		return resources{}, false
 	}
-	r := resources{samples: len(in), footMedMB: quantile(foot, 0.5), footMaxMB: maxOf(foot), heapMedMB: quantile(heap, 0.5), goroutinesMed: quantile(gor, 0.5), threadsMax: maxOf(thr)}
+	r := resources{samples: len(in), rssMedMB: quantile(rss, 0.5), rssMaxMB: maxOf(rss), footMedMB: quantile(foot, 0.5), footMaxMB: maxOf(foot), heapMedMB: quantile(heap, 0.5), goroutinesMed: quantile(gor, 0.5), threadsMax: maxOf(thr)}
 	if span > 0 {
 		r.cpuPct = (last.cpuS - first.cpuS) / span * 100
 	}
@@ -413,6 +435,14 @@ func quantile(v []float64, q float64) float64 {
 	sort.Float64s(s)
 	i := int(math.Ceil(q*float64(len(s)))) - 1
 	return s[max(0, min(i, len(s)-1))]
+}
+
+// read appends a gauge's value that read; an unread one (NaN) is left out.
+func read(v []float64, x float64) []float64 {
+	if math.IsNaN(x) {
+		return v
+	}
+	return append(v, x)
 }
 
 func maxOf(v []float64) float64 {

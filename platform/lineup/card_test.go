@@ -57,11 +57,10 @@ func at(t *testing.T, c Card, path ...State) Card {
 // mutants are what prove the assertion can fail at all.
 func TestTheCardStatesAdvanceOnlyAlongTheDeclaredPath(t *testing.T) {
 	legal := map[State][]State{
-		Proposed:  {Admitted, Refused},
+		Proposed:  {Admitted},
 		Admitted:  {Standby, Discarded},
 		Standby:   {OnAir, Discarded},
 		OnAir:     {Done, Discarded},
-		Refused:   nil,
 		Done:      nil,
 		Discarded: nil,
 	}
@@ -104,10 +103,10 @@ func TestEveryExitFromOnAirIsReachable(t *testing.T) {
 	}
 }
 
-// TestATerminalStateIsTheEndOfTheCard: nothing leaves REFUSED, DONE or
-// DISCARDED. A card that could be revived is a card that can be read twice.
+// TestATerminalStateIsTheEndOfTheCard: nothing leaves DONE or DISCARDED. A
+// card that could be revived is a card that can be read twice.
 func TestATerminalStateIsTheEndOfTheCard(t *testing.T) {
-	for _, from := range []State{Refused, Done, Discarded} {
+	for _, from := range []State{Done, Discarded} {
 		for to := State(0); to < numStates; to++ {
 			if from.CanBecome(to) {
 				t.Errorf("%v.CanBecome(%v) = true; %v is terminal", from, to, from)

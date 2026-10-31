@@ -216,12 +216,17 @@ func mapSourceList() []tty.MapSource {
 		out = append(out, tty.MapSource{Name: s.name, Host: hostOf(s.address), Layers: "basemap", Sent: "tiles"})
 	}
 	out = append(out, tty.MapSource{Name: "National Weather Service", Host: hostOf(zones.DefaultBase), Layers: "alert areas", Sent: "states, alert zones, marine areas"})
-	out = append(out, radarHosts()...)                                                             // W8: the radar's two sources
-	out = append(out, tempHosts()...)                                                              // W10: the temperature's two
-	out = append(out, fireHosts()...)                                                              // D-121: the fire's two
-	out = append(out, marineHosts()...)                                                            // D-127, D-128: the sea's stations
-	out = append(out, airHosts()...)                                                               // D-138: AirNow
-	return append(out, tty.MapSource{Name: "USGS", Host: hostOf(quakeFeedBase), Layers: "quakes"}) // D-122
+	out = append(out, radarHosts()...)                                                            // W8: the radar's two sources
+	out = append(out, tempHosts()...)                                                             // W10: the temperature's two
+	out = append(out, fireHosts()...)                                                             // D-121: the fire's two
+	out = append(out, marineHosts()...)                                                           // D-127, D-128: the sea's stations
+	out = append(out, airHosts()...)                                                              // D-138: AirNow
+	out = append(out, propagationHosts()...)                                                      // 0.19.0 FR-4.3: GIRO and NOAA SWPC
+	out = append(out, tty.MapSource{Name: "USGS", Host: hostOf(quakeFeedBase), Layers: "quakes"}) // D-122
+	for i := range out {                                                                          // bounded by the list above (P10-02)
+		out[i].Badge = mapBadges[out[i].Name] // the Status window names each by its badge (D-170)
+	}
+	return out
 }
 
 // radarImageBudget is the memory the library may hold the radar's pictures

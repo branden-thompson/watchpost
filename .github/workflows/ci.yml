@@ -20,11 +20,11 @@ jobs:
   # run is one word in the repository rather than a workflow edit
   # (HUM LEAD, 2026-09-08).
   policy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       mutants: ${{ steps.read.outputs.mutants }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: read
         run: echo "mutants=$(make -s mutant-policy)" >> "$GITHUB_OUTPUT"
 
@@ -33,11 +33,11 @@ jobs:
     strategy:
       fail-fast: false # a red gate on one OS must not hide the other OS's result
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: { go-version: "1.27.3" } # the toolchain the gates are proven on; setup-go pins GOTOOLCHAIN=local, so go.mod's go directive alone would run an older stdlib (quality pass Q1)
       # The gate oracle needs GNU Make >= 3.82 and refuses older by name; Apple's
       # /usr/bin/make is 3.81, so the macOS runner installs make and puts gnubin first.
@@ -53,6 +53,8 @@ jobs:
       - run: make vuln
       - run: make race
       - run: make test-say # the speech safety test, alone (F-176)
+        env: # GitHub's macOS runner has say and renders about 236 bytes a sentence: the property cannot be observed there, and the step says NOT RUN (F-52, D-254)
+          WATCHPOST_SAY_MUTE_HOST: ${{ runner.os == 'macOS' && 'GitHub macOS runner, say renders about 236 bytes a sentence (F-52)' || '' }}
         if: runner.os == 'macOS' # it drives macOS `say`; elsewhere it could only skip
       - run: make lint-imports
       - run: make lint-watermark
@@ -65,7 +67,7 @@ jobs:
       - run: make treelock-selftest
       - run: make gate-controls
       - run: make alloc-budget # malloc pins run outside the race detector (quality pass §0.1)
-      - run: make property # the map's guard 3 at its full 10,000 sequences, once, outside the race detector (0.18.0 W2.4)
+      - run: make property # the map's guard 3 at its full 10,000 sequences, and ninety days of a global grid in the history store, once each, outside the race detector (0.18.0 W2.4, 0.19.0 W1.2)
       - run: make dupes # metric D: no duplicate operation without a RATIFIED reason
       - run: make wires # every closed-set member names a production writer and reader, or is RATIFIED as owed
       - run: make dupes-selftest # and the duplicate check itself can still fire: both positive controls

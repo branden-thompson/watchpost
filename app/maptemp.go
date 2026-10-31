@@ -155,7 +155,7 @@ func tempChips(source string, filled bool) map[string][]string {
 }
 
 // tempFrameNote is what Radar mode says of its temperature (D-96).
-const tempFrameNote = "Each radar frame draws its own hour's temperature."
+const tempFrameNote = "Temperature drawn per radar frame's hour"
 
 // mapTemperature is the window's temperature for the mode, every grid built
 // with its span. Where the chosen source has nothing for a day, Open-Meteo
@@ -835,7 +835,10 @@ func windHourGrids(s temperature.Series, box string, anchor, horizon time.Time, 
 func windForecastGrids(out *tty.MapTemperature, s temperature.Series, box string, anchor time.Time, mph bool) {
 	nowStep, days := forecastDays(anchor)
 	if speed, from, _, ok := s.WindAt(anchor); ok {
-		gust, _ := s.GustAt(anchor)
+		gust, hasGust := s.GustAt(anchor)
+		if !hasGust {
+			gust = nil // the series carries no gusts this hour: the wind is drawn without them
+		}
 		if o, ok := windGrid(tty.WindLayer+"/"+box+"/now", s.Lattice, speed, from, gust, mph, anchor, anchor); ok {
 			o.During = nowStep.Span
 			out.Wind = append(out.Wind, o)

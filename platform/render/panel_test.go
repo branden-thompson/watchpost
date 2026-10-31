@@ -121,3 +121,28 @@ func TestAScrollingPanelIsASCIIUnderASCII(t *testing.T) {
 		t.Errorf("the rail is not drawn in its ASCII glyphs:\n%s", out)
 	}
 }
+
+// TestOverlayAtPlacesTheWindowsTopRow is D-194: a window given a row has its
+// top there, centred across the terminal; given none, it is centred down the
+// base too, as Overlay places every window but the Map.
+func TestOverlayAtPlacesTheWindowsTopRow(t *testing.T) {
+	base := strings.TrimSuffix(strings.Repeat(strings.Repeat(".", 20)+"\n", 12), "\n")
+	modal := "+--+\n|  |\n+--+"
+	top := func(s string) int {
+		for i, r := range strings.Split(s, "\n") {
+			if strings.Contains(r, "+--+") {
+				return i
+			}
+		}
+		return -1
+	}
+	if got := top(OverlayAt(base, modal, 20, 2)); got != 2 {
+		t.Errorf("given row 2, the window's top is row %d", got)
+	}
+	if got, want := top(OverlayAt(base, modal, 20, -1)), (12-3)/2; got != want || top(Overlay(base, modal, 20)) != want {
+		t.Errorf("given no row, the window's top is row %d; centred, %d", got, want)
+	}
+	if r := strings.Split(OverlayAt(base, modal, 20, 2), "\n")[2]; strings.Index(r, "+") != (20-4)/2 {
+		t.Errorf("the window is not centred across the terminal: %q", r)
+	}
+}

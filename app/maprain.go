@@ -236,7 +236,7 @@ func (rr *rainRescue) record(box string, lat temperature.Lattice, r temperature.
 		if allMissing(r.Peak[k]) {
 			continue
 		}
-		rr.store.Put(omRainDays.Name, history.Record{Key: history.Key{Source: "openmeteo", Place: box}, At: dayStart(anchor, k), IssuedAt: now.Truncate(time.Hour),
+		rr.store.Record(omRainDays.Name, history.Record{Key: history.Key{Source: "openmeteo", Place: box}, At: dayStart(anchor, k), IssuedAt: now.Truncate(time.Hour),
 			Shape: shape, Values: map[string][]float64{"peak": r.Peak[k], "rain": r.RainSum[k], "snow": r.SnowSum[k]}})
 	}
 }

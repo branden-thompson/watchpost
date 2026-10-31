@@ -16,13 +16,16 @@ package main
 // every list and silenced in the workflow.
 
 import (
+	"fmt"
 	"go/ast"
+	"go/build/constraint"
 	"go/parser"
 	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -77,6 +80,8 @@ var unlisted = exempt(&exemptionTable{
 		"mutant-verdicts":   "the corpus SWEEP — hours, and its verdicts are promoted into the release record by hand; mutant-anchors and mutant-check are the per-push halves",
 		"tree-free":         "it ASKS whether a gate run is in flight and reports; it asserts nothing about the code",
 		"lint-update":       "it REWRITES the golangci baseline; it is the opposite of a gate, and running it on a gate path would erase the ratchet",
+		"hooks":             "it INSTALLS the pre-push hook (git config core.hooksPath); it asserts nothing, and the hook's tests all run under race on every gate path (0.19.0 W0.1)",
+		"verify-docs":       "the docs lane's entry (RD-12): tools/docslane refuses before runlog starts, so a refused lane is never logged, then verify-docs-gates runs under treelock and runlog; local only, as verify-docs-gates",
 		"verify-docs-gates": "the docs lane (go-tuiMaps v0.2.0 D-15, watchpost 0.18.0 D-38): a local SUBSET of verify for a change that is Markdown alone, refused by tools/docslane for any other file; CI and every other change run verify, which runs every gate this does",
 	},
 	exists: func(t *testing.T, g string) bool { return loadBuildModel(t).targets[g] != nil },
@@ -377,7 +382,7 @@ func assertEveryBuildTrimmed(t reporter, m *buildModel) {
 
 // THE ALLOC PINS ARE ALL REACHED. TestEveryRunSelectorSelectsATest fails a
 // selector that reaches nothing; alloc-budget's pins are a set, so this also
-// counts them, and a rename that drops some of the eight fails here.
+// counts them, and a rename that drops some of the nine fails here.
 func TestTheAllocBudgetSelectsItsPins(t *testing.T) {
 	m := loadBuildModel(t)
 	m.mustRun(t)
@@ -391,8 +396,8 @@ func TestTheAllocBudgetSelectsItsPins(t *testing.T) {
 			}
 		}
 	}
-	if pins < 8 {
-		t.Errorf("alloc-budget's pattern %q selects %d pin(s); there were eight. A selector that "+
+	if pins < 9 {
+		t.Errorf("alloc-budget's pattern %q selects %d pin(s); there were nine. A selector that "+
 			"reaches nothing exits 0 and reports a budget nobody measured.", pattern, pins)
 	}
 }
@@ -588,6 +593,39 @@ type runSelector struct {
 	target, pattern string
 	pkgs            []string
 	bench           bool
+	tags            []string // the recipe's -tags
+	race            bool     // the recipe's -race, which sets the race tag
+}
+
+// tagsFlag is `-tags` with its list, comma-separated.
+var tagsFlag = regexp.MustCompile(`-tags[= ]+(\S+)`)
+
+// declaredTest is a test function and its file's build constraint; nil for
+// a file with none.
+type declaredTest struct {
+	name  string
+	build constraint.Expr
+}
+
+// platformTag says whether a build tag is one a recipe meets wherever it
+// runs: a test constrained to the platforms the gates run on is built by them.
+func platformTag(tag string) bool {
+	switch tag {
+	case "darwin", "linux", "unix", "amd64", "arm64":
+		return true
+	}
+	return false
+}
+
+// builds says whether a test's file is built by the selector's command: its
+// constraint met by the recipe's -tags, -race, and the platform (RC-9).
+func (sel runSelector) builds(test declaredTest) bool {
+	if test.build == nil {
+		return true // no constraint: always built
+	}
+	return test.build.Eval(func(tag string) bool {
+		return slices.Contains(sel.tags, tag) || (tag == "race" && sel.race) || platformTag(tag)
+	})
 }
 
 // runFlag is `-run` with its pattern quoted either way or bare.
@@ -621,6 +659,10 @@ func (m *buildModel) runSelectors() []runSelector {
 				target:  name,
 				pattern: strings.ReplaceAll(mm[1]+mm[2]+mm[3], "$$", "$"), // make's $$ is the shell's $
 				bench:   strings.Contains(c.text, "-bench"),
+				race:    strings.Contains(c.text, " -race"),
+			}
+			if tm := tagsFlag.FindStringSubmatch(c.text); tm != nil {
+				sel.tags = strings.Split(strings.Trim(tm[1], `'"`), ",")
 			}
 			for _, f := range strings.Fields(strings.SplitN(c.text, "|", 2)[0]) { // bounded by the command (P10-02)
 				if strings.HasPrefix(f, "./") {
@@ -661,14 +703,15 @@ func inPackages(dir string, pkgs []string) bool {
 }
 
 // assertEveryRunSelectsATest: every `-run` in a recipe selects at least one
-// test in the packages that recipe names. tests maps a package directory to
-// the test functions declared in it.
+// test in the packages that recipe names and builds. tests maps a package
+// directory to the test functions declared in it, each with its file's build
+// constraint: a test the recipe's tags do not build is not selected (RC-9).
 //
 // A -run THAT SELECTS NOTHING EXITS 0. Rename the test, or move it to another
 // package, and the gate runs zero tests and reports green (FR-11.3). Only the
 // top level of the pattern is matched, as go matches it against a test name;
 // `^$` beside -bench selects no test by design and is not a gate's selector.
-func assertEveryRunSelectsATest(t reporter, m *buildModel, tests map[string][]string) {
+func assertEveryRunSelectsATest(t reporter, m *buildModel, tests map[string][]declaredTest) {
 	t.Helper()
 	sels := m.runSelectors()
 	if len(sels) == 0 {
@@ -695,14 +738,14 @@ func assertEveryRunSelectsATest(t reporter, m *buildModel, tests map[string][]st
 				continue
 			}
 			for _, n := range names { // bounded by the package (P10-02)
-				if re.MatchString(n) {
+				if re.MatchString(n.name) && sel.builds(n) {
 					matched++
 				}
 			}
 		}
 		if matched == 0 {
-			t.Errorf("%s: -run %q selects no test in %v. A selector that reaches nothing runs zero "+
-				"tests and exits 0, so the gate passes by asking nothing.", sel.target, sel.pattern, sel.pkgs)
+			t.Errorf("%s: -run %q selects no test its build tags %v build in %v. A selector that reaches nothing runs zero "+
+				"tests and exits 0, so the gate passes by asking nothing.", sel.target, sel.pattern, sel.tags, sel.pkgs)
 		}
 	}
 }
@@ -715,12 +758,13 @@ func TestEveryRunSelectorSelectsATest(t *testing.T) {
 }
 
 // testsByDir maps each package directory under root, relative and
-// slash-separated, to the test functions its _test.go files declare. Build
-// tags are not consulted: a tagged test is still the test its gate selects.
-func testsByDir(t *testing.T, root string) map[string][]string {
+// slash-separated, to the test functions its _test.go files declare, each
+// with its file's build constraint (RC-9).
+func testsByDir(t *testing.T, root string) map[string][]declaredTest {
 	t.Helper()
 	re := regexp.MustCompile(`(?m)^func (Test[A-Za-z0-9_]+)\(`)
-	out := map[string][]string{}
+	buildLine := regexp.MustCompile(`(?m)^//go:build .*$`)
+	out := map[string][]declaredTest{}
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -743,8 +787,14 @@ func testsByDir(t *testing.T, root string) map[string][]string {
 			return err
 		}
 		dir := filepath.ToSlash(rel)
+		var build constraint.Expr
+		if line := buildLine.FindString(string(src)); line != "" {
+			if build, err = constraint.Parse(line); err != nil {
+				return fmt.Errorf("%s: its build constraint does not read: %w", p, err)
+			}
+		}
 		for _, mm := range re.FindAllStringSubmatch(string(src), -1) { // bounded by the file (P10-02)
-			out[dir] = append(out[dir], mm[1])
+			out[dir] = append(out[dir], declaredTest{name: mm[1], build: build})
 		}
 		return nil
 	})
@@ -762,7 +812,15 @@ func testsByDir(t *testing.T, root string) map[string][]string {
 // across ./...; quality-bench's `^$` beside -bench is a benchmark run that
 // selects no test by design.
 func TestTheRunSelectorGuardCatchesAnEmptySelection(t *testing.T) {
-	tests := map[string][]string{"x": {"TestAllocBudgetOne"}, "y": {"TestOther"}}
+	property, err := constraint.Parse("//go:build property")
+	if err != nil {
+		t.Fatal(err)
+	}
+	race, err := constraint.Parse("//go:build race")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := map[string][]declaredTest{"x": {{name: "TestAllocBudgetOne"}}, "y": {{name: "TestOther"}}, "z": {{name: "TestTaggedOne", build: property}}, "r": {{name: "TestRaceOnly", build: race}}}
 	cases := []struct {
 		name   string
 		mk     func(string) string
@@ -775,6 +833,14 @@ func TestTheRunSelectorGuardCatchesAnEmptySelection(t *testing.T) {
 			gateoracle.Sub("-run 'AllocBudget' ./...", "-run 'AllocBudget' ./y"), true},
 		{"an anchored pattern with make's doubled dollar",
 			gateoracle.Sub("-run 'AllocBudget' ./...", "-run '^TestAllocBudgetOne$$' ./x"), false},
+		{"a tagged test the recipe builds without its tag (RC-9)",
+			gateoracle.Sub("-run 'AllocBudget' ./...", "-run 'TaggedOne' ./z"), true},
+		{"a tagged test the recipe builds with its tag",
+			gateoracle.Sub("-run 'AllocBudget' ./...", "-tags property -run 'TaggedOne' ./z"), false},
+		{"a race-only test the recipe runs without -race (R3C-12)",
+			gateoracle.Sub("-run 'AllocBudget' ./...", "-run 'RaceOnly' ./r"), true},
+		{"a race-only test the recipe runs with -race",
+			gateoracle.Sub("-run 'AllocBudget' ./...", "-race -run 'RaceOnly' ./r"), false},
 	}
 	for _, c := range cases { // bounded by the case table (P10-02)
 		t.Run(c.name, func(t *testing.T) {

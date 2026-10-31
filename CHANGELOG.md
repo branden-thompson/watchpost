@@ -2,6 +2,86 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.19.0] — 2026-10-31
+
+### Added
+- **The Propagation mode** (`P` on the map): HF radio conditions over the whole world - the highest
+  usable frequency over 3,000 km (MUF(3000)) or the F2 layer's critical frequency (foF2), from NOAA's
+  GloTEC and GIRO's ionosondes over a climatology, computed by go-ionomaps v0.1.0. Beside the map, the
+  bands usable near the place and on the path to each continent and to a place found (`/`); your
+  frequency's reach (`F`), its skip zone and the limit that stops it; the hours ahead (`shift+→`), each
+  labelled typical; the bands chart (`B`), which says how often its answers agreed with what WSPR heard;
+  and words for every answer. Answers are for a 100 W voice
+  circuit with simple antennas.
+- **The Broadcaster's own map** (`g` on the console): centred on the transmitter, the service radius
+  drawn in every mode, with its own Propagation mode answering for the map's centre from the station.
+- **Day and night on the map**, as a map detail: the night side shaded and the terminator dotted.
+- **Settings:** the near-vertical radius, the receiver's noise, how often the Propagation mode refreshes
+  (hourly by default),
+  what it draws with no station readings, whether GIRO's stations are asked at all, and the map's colour
+  depth (automatic by default).
+
+### Changed
+- The map's library is go-tuiMaps v0.3.0: fields over water, the MUF and foF2 presets, the terminator,
+  and a default colour depth that follows the terminal.
+- Nothing is fetched for the Propagation mode until it is opened. GIRO is asked in one burst an hour at
+  most and its throttle is kept across restarts (`propagation-throttle.json`: times, NOAA's solar flux mean,
+  the stations' codes and the rotation's place, never a GIRO reading); GIRO records the
+  address it is asked from, and its data is for non-commercial use.
+- **With the map open, `B`, `L`, `U`, `F` and `/` are the map's keys** (the bands chart, the layer,
+  refresh now, a frequency, find): `B` no longer swaps to the Broadcaster console from the map, and
+  outside the Propagation mode it does nothing there. `ctrl+b` still swaps.
+- **The module floor is Go 1.26.10**, the first on the Go 1.26 line with GO-2026-6809 fixed; 0.18.2 already
+  builds with Go 1.27.3.
+
+### Known
+- **GIRO's ionosondes are asked in turn each hour, and a station that gives no data is passed by.** One
+  that misses three asks in a row is asked every 6 hours until it returns, and is no longer counted
+  among the stations that gave no data. When fewer than half the
+  stations have reported in the last 3 hours, or the newest reading is older than that, the status says
+  first that the map is a best approximation, to be relied on warily:
+  - GIRO going quiet is said that way once its newest reading is 3 hours old; when it answers again,
+    most stations are read that hour, the rest within 6 hours.
+  - A station that answers slower than 15 seconds is never read.
+  - With 39 or more stations not flagged - the normal state - a flagged station comes back one an hour.
+  - A reply carrying only an old reading counts as data; the notice says its age.
+- **The Propagation mode in a Broadcaster's use costs more than its target.** Over 48 hours on one
+  machine, with the mode in use against the map never opened, it added 1.3 % of one core and 62.5 MB of
+  memory (medians), against at most 1 % and 25 MB; its downloads, 13 MB an hour, are within the 19
+  allowed. Measured on an earlier build of this release at the every-10-minutes refresh, then the
+  default (Hourly measured 2.66 MB an hour against 3.3), with other work on the machine at times.
+- **A screen reader cannot yet follow focus in the Propagation mode.** Help and the mode's words say so;
+  0.19.1 fixes it.
+- **The answers agree with what was heard on the air only a little better than a typical day alone.**
+  Graded against WSPR reports over six days, half open and half not: from a station to its own area 54%
+  against the typical day's 52% (57% against 55% on 160 m to 30 m; from 20 m up a station's own area is
+  never reached, and scores 50% either way); from a place to the continents 68% against 64%. Both fall
+  short of the aim of 5 points over a typical day; no accuracy floor rides on them. The bands chart says
+  the figures. Scored on six quiet days (solar flux 105 to 109, no geomagnetic storm), before the
+  north-west Pacific's change below.
+- **Over the north-west tropical Pacific the map starts from a typical day, corrected by GIRO's
+  stations:** NOAA's GloTEC was measured worse there. Elsewhere far from any station, an answer is about
+  as good as typical, or worse, and says so.
+- **The map open costs about 3.5% of one core and 40 to 50 MB of memory over the map never opened**, in
+  any mode (one 48-hour run, one machine); the Propagation mode adds nothing measurable to the map open
+  in Forecast mode.
+- **Panning the globe at 800 by 220 takes 25 to 27 ms a frame**, against 16 ms at 400 by 110 (where it
+  takes 7 ms): on a very large terminal the map lags a frame or two while it pans.
+
+### Fixed
+- **A first run keeps the default location chosen in Setup when it is closed with esc.** The choice was
+  dropped and nothing saved, and every later change - a place looked up, a setting - then failed with an
+  internal error. Any change made before a location is saved is now kept too.
+- **A service that stops answering no longer holds the location list.** When NASA FIRMS's API accepted
+  requests and never answered, each request held a place among the requests in flight for 30 seconds,
+  and the RECENT/SEARCHED rows waited behind them, loading, for over a minute. A service that does not
+  answer in time is now passed over for 20 seconds, as one that refuses the connection already was, and
+  no one service holds more than half of the requests in flight. The same wait is in 0.18.2.
+- **The weather history holds less in memory.** It held every hour's recorded document, a growth of a
+  few megabytes a day for an instance's first days of running; it now holds each hour's issue time, and
+  the days a map's replay reads within 8 MB. The same growth is in 0.18.1 and 0.18.2. Run beside 0.18.2 for 3
+  days, idle, the fixed build's held flat - at most 0.7 MB a day, against 0.18.2's 8 to 9.
+
 ## [0.18.2] — 2026-10-22
 
 ### Security

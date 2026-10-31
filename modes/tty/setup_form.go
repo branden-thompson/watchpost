@@ -45,12 +45,12 @@ func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 	// the Default, never used silently".
 	switch cur := d.currentDefault(); {
 	case st.ref != nil:
-		head += render.Plain(st.ref.Label) + " (" + st.ref.Zip + ")"
+		head += placeWithZip(*st.ref)
 	case cur != nil:
-		head += render.Plain(cur.Label) + " (" + cur.Zip + ")"
+		head += placeWithZip(*cur)
 	default:
 		origin := snapshot.DefaultOrigin()
-		head += render.Plain(origin.Label) + " (" + origin.Zip + ")"
+		head += placeWithZip(origin)
 		unset = true
 	}
 	// Questions read white, support grey (UAT 111.5) — so the note that this is
@@ -74,7 +74,7 @@ func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 		for i, h := range st.hints { // bounded by the suggestion list (P10-02)
 			focused := i == st.idx
 			lines = append(lines, supportIndent+o.ListMark(focused)+
-				render.ListLabel(render.Plain(h.Label)+" ("+h.Zip+")", focused))
+				render.ListLabel(placeWithZip(h), focused))
 		}
 	}
 	if st.err != "" && st.focus == rowLocation {
@@ -223,9 +223,9 @@ func (d Dashboard) setupTransmitterLines(o render.Opts, mark string) []string {
 	var borrowed []string
 	switch cur := d.currentTransmitter(); {
 	case st.txRef != nil:
-		head += render.Plain(st.txRef.Label) + " (" + st.txRef.Zip + ")"
+		head += placeWithZip(*st.txRef)
 	case cur != nil:
-		head += render.Plain(cur.Label) + " (" + cur.Zip + ")"
+		head += placeWithZip(*cur)
 		if d.cfg.Transmitter == nil {
 			borrowed = []string{supportIndent + settingSupport("(following your default location)")}
 		}
@@ -245,7 +245,7 @@ func (d Dashboard) setupTransmitterLines(o render.Opts, mark string) []string {
 		for i, h := range st.hints { // bounded by the suggestion list (P10-02)
 			focused := i == st.idx
 			lines = append(lines, supportIndent+o.ListMark(focused)+
-				render.ListLabel(render.Plain(h.Label)+" ("+h.Zip+")", focused))
+				render.ListLabel(placeWithZip(h), focused))
 		}
 	}
 	if st.err != "" && st.focus == rowTransmitter {
@@ -268,4 +268,15 @@ func (d Dashboard) setupServiceLines(o render.Opts, mark string) []string {
 	lo, hi, _ := d.serviceBounds()
 	return []string{head, supportIndent + "how far the station's line-up reaches " +
 		o.Glyphs().Dash + " " + strconv.Itoa(lo) + " to " + strconv.Itoa(hi) + " miles"}
+}
+
+// placeWithZip is a place as Settings draws it: its label, and its postcode
+// in brackets after it when it has one, both drawn plain - stored text is
+// never trusted at the draw (R2I-2). A place abroad, or one found by its
+// coordinates, has no postcode, and no empty brackets.
+func placeWithZip(ref snapshot.LocationRef) string {
+	if ref.Zip == "" {
+		return render.Plain(ref.Label)
+	}
+	return render.Plain(ref.Label) + " (" + render.Plain(ref.Zip) + ")"
 }

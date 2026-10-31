@@ -41,7 +41,7 @@ func openMeteoRefresh(t *testing.T, ask tty.MapAsk, warm bool) (total float64, b
 			for h := day; !h.After(ask.Anchor); h = h.Add(time.Hour) {
 				rec := history.Record{Key: history.Key{Source: "ndfd", Place: b.Name}, At: h, IssuedAt: h, Shape: shapeOf(lat),
 					Values: map[string][]float64{"temp": vals, "feels": vals, "wind": vals}}
-				if !lp.history.Put(ndfdHourly.Name, rec) {
+				if !lp.history.Record(ndfdHourly.Name, rec) {
 					t.Fatal("could not seed the history")
 				}
 			}

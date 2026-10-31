@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -129,18 +130,7 @@ func NewSharedQuotaGate(get Getter, now func() time.Time, state string) *QuotaGa
 
 // DefaultQuotaState is $XDG_STATE_HOME/watchpost/quota.json, by default
 // ~/.local/state/...; "" where neither resolves.
-func DefaultQuotaState() string {
-	base := os.Getenv("XDG_STATE_HOME")
-	abs := filepath.IsAbs(base)
-	if abs {
-		return filepath.Join(base, "watchpost", "quota.json")
-	}
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".local", "state", "watchpost", "quota.json")
-}
+func DefaultQuotaState() string { return config.StatePath("quota.json") }
 
 // heldHost is a spent host's quota and when it is next asked.
 type heldHost struct {
@@ -226,15 +216,16 @@ func (g *QuotaGate) claimProbeLocked(host string, now time.Time) bool {
 	if g.state == "" {
 		return true
 	}
-	holds, _ := readQuotaState(g.state)
-	if s, ok := holds[host]; ok && now.Before(s.Probe) {
-		return false // another instance has moved it: its probe
-	}
+	if holds, read := readQuotaState(g.state); read {
+		if s, ok := holds[host]; ok && now.Before(s.Probe) {
+			return false // another instance has moved it: its probe
+		}
+	} // no state to read: no other instance's probe to defer to
 	if !g.writeState(host, g.token) {
 		return true // the state cannot be written: probe by the gate's own memory
 	}
-	holds, _ = readQuotaState(g.state)
-	return holds[host].Prober == g.token
+	holds, read := readQuotaState(g.state)
+	return read && holds[host].Prober == g.token // unreadable after the write: not proven ours
 }
 
 // saveLocked writes the gate's holds to the shared state.

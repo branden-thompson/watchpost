@@ -282,12 +282,15 @@ var setupAllocBudget = map[string]float64{
 	// tab, so a frame lays each tab's groups out to measure it, and it is held to
 	// 80% of the terminal, so more of the dashboard is drawn around it - the
 	// dashboard in sight is what U1-36 asks for.
-	"133x44-hit": 3_046 * 1.05, "133x44-miss": 4_699 * 1.05,
+	// The Maps tab's RX noise picker row (D-187), a row with its arrow chips,
+	// measures 4,942 on a miss.
+	"133x44-hit": 3_046 * 1.05, "133x44-miss": 4_942 * 1.05,
 	// 80x24 (D-67, D-70, D-71, D-202): every tab is laid out for the window's
 	// width, so a row on any tab - the RELAY REPLAY group's second row, the map's
 	// eight detail picker rows with their arrow chips, the Maps tab's UV cities
-	// row - costs every Settings frame.
-	"80x24-hit": 1_604 * 1.05, "80x24-miss": 3_491 * 1.05,
+	// row - costs every Settings frame. With the Maps tab's HF stations row
+	// (D-214) a frame measures 1,641 on a hit and 3,667 on a miss.
+	"80x24-hit": 1_641 * 1.05, "80x24-miss": 3_667 * 1.05,
 }
 
 // OVERLAY COSTS WHAT IT DOES NOT COVER. A dashboard row the modal sits over is
@@ -426,8 +429,9 @@ func BenchmarkConsoleFrame_Miss(b *testing.B) {
 
 // settingsTabPressAllocBudget is a Tab press in Settings - the key moving to
 // the next tab and the frame drawn - into its costliest tab, with the app's
-// layers registered (MAP - LAYERS) (U2-48).
-const settingsTabPressAllocBudget = 3_700
+// layers registered (MAP - LAYERS) (U2-48). 0.19.0 D-120 and D-105 add two
+// Maps rows: 3,740 measured, × 1.05 is 3,927.
+const settingsTabPressAllocBudget = 3_927
 
 // A SETTINGS TAB PRESS STAYS CRISP (U2-48, HUM LEAD: "key responses should be
 // very crisp and feel almost instant"): every tab, the layers registered as

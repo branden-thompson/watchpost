@@ -296,6 +296,30 @@ type Config struct {
 	// MapUVCities is how many cities UV asks EPA for (D-202): 8, 24 or 48;
 	// empty is 24, the default. Each city is one keyless ask an hour.
 	MapUVCities int `toml:"map_uv_cities,omitempty"`
+	// MapPropagationRadiusKm is the Propagation mode's near-vertical area
+	// (0.19.0 D-100, A-18): 200, 400 or 600 km; empty is 400, the default.
+	MapPropagationRadiusKm int `toml:"map_propagation_radius_km,omitempty"`
+	// MapPropagationNoise is the man-made noise the Propagation mode's
+	// reference circuit hears (0.19.0 D-187): "city", "rural" or
+	// "quiet-rural"; empty is residential, the default.
+	MapPropagationNoise string `toml:"map_propagation_noise,omitempty"`
+	// MapPropagationRefresh is how often an open Propagation mode asks again:
+	// empty for hourly (the default; "hourly" read the same),
+	// "every-10-min" for each new GloTEC grid, or "on-demand" (0.19.0 D-120,
+	// D-332).
+	MapPropagationRefresh string `toml:"map_propagation_refresh,omitempty"`
+	// MapPropagationNoReadings is what the Propagation mode draws while no
+	// station readings are held: empty for GloTEC as is (the default), or
+	// "corrected" by the typical offset (0.19.0 D-105).
+	MapPropagationNoReadings string `toml:"map_propagation_no_readings,omitempty"`
+	// MapPropagationStations is whether the Propagation mode asks GIRO for
+	// its stations: empty to ask (the default), or "none" for NOAA and the
+	// climatology alone (0.19.0 D-214).
+	MapPropagationStations string `toml:"map_propagation_stations,omitempty"`
+	// MapColourDepth is the map's colour depth: empty for Automatic, following
+	// the terminal (the default), or "truecolor", "256", "16" or "none"
+	// (0.19.0 D-207).
+	MapColourDepth string `toml:"map_colour_depth,omitempty"`
 
 	// HistoryHours and HistoryTrends are the local history's retention, the
 	// Data tab's presets (W18, D-175): "72h", "7d", "30d", "1y" and "30d",
@@ -310,6 +334,9 @@ type Config struct {
 	// 2.5_day, 1.0_week or 1.0_day.
 	MapQuakeFeed string          `toml:"map_quake_feed,omitempty"`
 	MapLayers    map[string]bool `toml:"map_layers,omitempty"` // layer key -> on
+	// PropagationAck is the version of the Propagation mode's acknowledgement
+	// last seen (0.19.0 A-9, D-81): a newer wording is shown once more.
+	PropagationAck int `toml:"propagation_ack,omitempty"`
 	// MapAlertScope is RETIRED (0.18.0 D-76): the map draws every alert in
 	// view, so there is no scope to choose. It is still read, so a file that
 	// has it is not reported as holding an unknown key, and it is written
@@ -492,6 +519,12 @@ func Mutate(edit func(*Config) error) error {
 	if err := edit(&cfg); err != nil {
 		return err
 	}
+	// A LISTENER'S OWN CHANGE ENDS THE FIRST RUN (0.19.0 D-336). Mutate writes
+	// what the listener just did - a place looked up, a setting changed - so
+	// with no file yet it writes the first one rather than refusing: Setup still
+	// opens while no location is saved, which is len(Locations)'s to say
+	// (app/dashboard.go's openSetup), never FirstRun's.
+	cfg.FirstRun = false
 	return Save(cfg)
 }
 
@@ -548,4 +581,19 @@ func Save(cfg Config) error {
 		return fmt.Errorf("cannot activate new config: %w", err)
 	}
 	return nil
+}
+
+// StatePath is a file of watchpost's state by its name:
+// $XDG_STATE_HOME/watchpost/<name>, by default ~/.local/state/watchpost/;
+// "" where neither resolves.
+func StatePath(name string) string {
+	base := os.Getenv("XDG_STATE_HOME")
+	if filepath.IsAbs(base) {
+		return filepath.Join(base, "watchpost", name)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".local", "state", "watchpost", name)
 }

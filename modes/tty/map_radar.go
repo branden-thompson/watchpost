@@ -276,8 +276,14 @@ func (d Dashboard) atForecast() bool {
 // Forecast mode's in its place. The library draws no stamp while the badge
 // says the moment (go-tuiMaps D-87).
 func (d Dashboard) mapBadgeWords() string {
-	if !d.radarMode() && d.cfg.MapRadar != nil {
-		return d.forecastBadge()
+	switch d.mapMode() {
+	case modePropagation:
+		return d.propagationBadge()
+	case modeForecast:
+		if d.cfg.MapRadar != nil {
+			return d.forecastBadge()
+		}
+	case modeRadar:
 	}
 	return d.radarBadge()
 }
@@ -391,13 +397,7 @@ func (d Dashboard) radarLegendRow(width int) string {
 
 // rainRow is radar's colours as a row under a head of its own.
 func (d Dashboard) rainRow(head, preset string, width int) string {
-	var classes []tuimaps.Class
-	for _, e := range d.mapPane.legend {
-		if e.Preset == preset {
-			classes = e.Classes
-			break
-		}
-	}
+	classes := d.legendClasses(preset)
 	lighter, heavier := "LIGHTER ", " HEAVIER"
 	room := width - render.Width(head+lighter+heavier)
 	if len(classes) == 0 || room < len(classes)*3 {
@@ -446,8 +446,10 @@ func (d Dashboard) radarTimelineOn() bool { return d.cfg.MapRadar != nil }
 
 // radarChipWords are the R chip's words: the mode the key switches (D-94).
 func (d Dashboard) radarChipWords() string {
-	if d.radarMode() {
+	switch d.mapMode() {
+	case modeRadar:
 		return "Radar On"
+	case modeForecast, modePropagation:
 	}
 	return "Radar Off"
 }

@@ -44,7 +44,7 @@ func rec(at time.Time, issued time.Duration, temps ...float64) Record {
 func TestARecordIsReadBackByAnotherStore(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	a, b := open(t, dir, &now), open(t, dir, &now)
-	if !a.Put(grid.Name, rec(t0.Add(20*time.Minute), 0, 21.04, math.NaN(), -3.96, 10)) {
+	if !a.Record(grid.Name, rec(t0.Add(20*time.Minute), 0, 21.04, math.NaN(), -3.96, 10)) {
 		t.Fatal("not written")
 	}
 	got, ok := b.Get(grid.Name, ndfd, t0.Add(59*time.Minute))
@@ -61,12 +61,12 @@ func TestARecordIsReadBackByAnotherStore(t *testing.T) {
 func TestTheNewestIssueStands(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := open(t, dir, &now)
-	s.Put(grid.Name, rec(t0, 10*time.Minute, 1, 1, 1, 1))
-	s.Put(grid.Name, rec(t0, 5*time.Minute, 2, 2, 2, 2))
+	s.Record(grid.Name, rec(t0, 10*time.Minute, 1, 1, 1, 1))
+	s.Record(grid.Name, rec(t0, 5*time.Minute, 2, 2, 2, 2))
 	if got, _ := s.Get(grid.Name, ndfd, t0); got.Values["temp"][0] != 1 {
 		t.Errorf("an older issue replaced a newer: %v", got.Values["temp"])
 	}
-	s.Put(grid.Name, rec(t0, 20*time.Minute, 3, 3, 3, 3))
+	s.Record(grid.Name, rec(t0, 20*time.Minute, 3, 3, 3, 3))
 	if got, _ := s.Get(grid.Name, ndfd, t0); got.Values["temp"][0] != 3 {
 		t.Errorf("a newer issue did not replace: %v", got.Values["temp"])
 	}
@@ -81,7 +81,7 @@ func TestSeveralWritersOfOneDayLoseNoHour(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			open(t, dir, &now).Put(grid.Name, rec(t0.Truncate(24*time.Hour).Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0))
+			open(t, dir, &now).Record(grid.Name, rec(t0.Truncate(24*time.Hour).Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0))
 		}()
 	}
 	wg.Wait()
@@ -104,7 +104,7 @@ func TestAQuarterHourSeriesIsItsOwnStep(t *testing.T) {
 	st := Key{Source: "giro", Place: "pa836"}
 	for q := range 8 {
 		at := t0.Add(time.Duration(q) * 15 * time.Minute)
-		s.Put(muf.Name, Record{Key: st, At: at.Add(3 * time.Minute), IssuedAt: at, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {12 + float64(q)}}})
+		s.Record(muf.Name, Record{Key: st, At: at.Add(3 * time.Minute), IssuedAt: at, Shape: Shape{Cols: 1, Rows: 1}, Values: map[string][]float64{"muf": {12 + float64(q)}}})
 	}
 	got := s.Range(muf.Name, st, t0, t0.Add(2*time.Hour), 100)
 	if len(got) != 8 || !got[1].At.Equal(t0.Add(15*time.Minute)) {
@@ -123,14 +123,14 @@ func TestADocumentIsRecorded(t *testing.T) {
 	s := open(t, dir, &now)
 	k := Key{Source: "nws", Place: "ca"}
 	doc := json.RawMessage(`{"alerts":[{"id":"urn:1","event":"Heat Advisory"}]}`)
-	if !s.Put(alerts.Name, Record{Key: k, At: t0, IssuedAt: t0, Doc: doc}) {
+	if !s.Record(alerts.Name, Record{Key: k, At: t0, IssuedAt: t0, Doc: doc}) {
 		t.Fatal("a document was not recorded")
 	}
 	got, ok := s.Get(alerts.Name, k, t0)
 	if !ok || string(got.Doc) != string(doc) {
 		t.Errorf("read back %s", got.Doc)
 	}
-	if s.Put(alerts.Name, Record{Key: k, At: t0, IssuedAt: t0.Add(time.Minute), Doc: json.RawMessage(`{not json`)}) {
+	if s.Record(alerts.Name, Record{Key: k, At: t0, IssuedAt: t0.Add(time.Minute), Doc: json.RawMessage(`{not json`)}) {
 		t.Error("a document that is not JSON was recorded")
 	}
 }
@@ -147,14 +147,14 @@ func TestAnHourIsClaimedOnce(t *testing.T) {
 	if !b.Claim(grid.Name, ndfd, t0) {
 		t.Error("a stale claim was not taken over")
 	}
-	a.Put(grid.Name, rec(t0.Add(time.Hour), 0, 1, 1, 1, 1))
+	a.Record(grid.Name, rec(t0.Add(time.Hour), 0, 1, 1, 1, 1))
 	if a.Claim(grid.Name, ndfd, t0.Add(time.Hour)) {
 		t.Error("a recorded hour was claimed")
 	}
 	// A RECORD KEPT AHEAD OF ITS HOUR IS NOT THE HOUR RECORDED (W19.1, D-188):
 	// issued before the hour began - NDFD's next-hour feels-like - the hour is
 	// still to fetch.
-	a.Put(grid.Name, rec(t0.Add(2*time.Hour), -time.Hour, 1, 1, 1, 1))
+	a.Record(grid.Name, rec(t0.Add(2*time.Hour), -time.Hour, 1, 1, 1, 1))
 	if !a.Claim(grid.Name, ndfd, t0.Add(2*time.Hour)) {
 		t.Error("an hour holding only a record kept ahead of it was not claimed")
 	}
@@ -166,8 +166,8 @@ func TestADayIsRolledUpThenPruned(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := open(t, dir, &now)
 	day := t0.Truncate(24 * time.Hour)
-	s.Put(grid.Name, rec(day.Add(1*time.Hour), 0, 10, math.NaN(), 0, 0))
-	s.Put(grid.Name, rec(day.Add(2*time.Hour), 0, 20, math.NaN(), 0, 0))
+	s.Record(grid.Name, rec(day.Add(1*time.Hour), 0, 10, math.NaN(), 0, 0))
+	s.Record(grid.Name, rec(day.Add(2*time.Hour), 0, 20, math.NaN(), 0, 0))
 	now = day.Add(4 * 24 * time.Hour) // past 72 hours
 	s.RollUpAndPrune()
 	if _, ok := s.Get(grid.Name, ndfd, day.Add(time.Hour)); ok {
@@ -192,7 +192,7 @@ func TestADayIsRolledUpThenPruned(t *testing.T) {
 func TestABrokenFileReadsAsAbsent(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := open(t, dir, &now)
-	s.Put(grid.Name, rec(t0, 0, 1, 1, 1, 1))
+	s.Record(grid.Name, rec(t0, 0, 1, 1, 1, 1))
 	path := filesAt(filepath.Join(dir, grid.Name, "v1", "ndfd", "us-a"), t0).bucket // where an hour lives until its day is compacted
 	if err := os.WriteFile(path, []byte("not gzip"), 0o600); err != nil {
 		t.Fatal(err)
@@ -215,7 +215,7 @@ func TestAKeyCannotLeaveTheStore(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := open(t, dir, &now)
 	for _, k := range []Key{{"..", "x"}, {"ndfd", "../../etc"}, {"NDFD", "x"}, {"", "x"}} {
-		if s.Put(grid.Name, Record{Key: k, At: t0, IssuedAt: t0, Shape: box, Values: map[string][]float64{"temp": {1, 2, 3, 4}}}) {
+		if s.Record(grid.Name, Record{Key: k, At: t0, IssuedAt: t0, Shape: box, Values: map[string][]float64{"temp": {1, 2, 3, 4}}}) {
 			t.Errorf("key %+v was written", k)
 		}
 	}
@@ -226,7 +226,7 @@ func TestAKeyCannotLeaveTheStore(t *testing.T) {
 // not register; a dataset's series and each one's extent are listed.
 func TestWhatIsRecordedCanBeBrowsed(t *testing.T) {
 	dir, now := t.TempDir(), t0
-	open(t, dir, &now).Put(grid.Name, rec(t0, 0, 1, 1, 1, 1))
+	open(t, dir, &now).Record(grid.Name, rec(t0, 0, 1, 1, 1, 1))
 	Open(dir, func() time.Time { return now }, Dataset{Name: "later", Title: "Written by another version", Version: 3})
 	reader := Open(dir, func() time.Time { return now }, grid)
 	titles := map[string]bool{}
@@ -248,7 +248,7 @@ func TestWhatIsRecordedCanBeBrowsed(t *testing.T) {
 func TestAStoreWithNoRootDoesNothing(t *testing.T) {
 	now := t0
 	s := Open("", func() time.Time { return now }, grid)
-	if s.Put(grid.Name, rec(t0, 0, 1, 1, 1, 1)) || len(s.Catalog()) != 0 {
+	if s.Record(grid.Name, rec(t0, 0, 1, 1, 1, 1)) || len(s.Catalog()) != 0 {
 		t.Error("a store with no root recorded")
 	}
 	s.RollUpAndPrune()
@@ -263,7 +263,7 @@ func TestADayIsCompactedWithoutLosingARecord(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	day := t0.Truncate(24 * time.Hour)
 	for h := range 20 {
-		open(t, dir, &now).Put(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0))
+		open(t, dir, &now).Record(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0))
 	}
 	now = day.Add(25 * time.Hour) // the day is done; its hours are well within 72
 	var wg sync.WaitGroup
@@ -275,11 +275,15 @@ func TestADayIsCompactedWithoutLosingARecord(t *testing.T) {
 	go func() { // late: the day's last hours, issued as the compactions run
 		defer wg.Done()
 		for h := 20; h < 24; h++ {
-			open(t, dir, &now).Put(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0))
+			open(t, dir, &now).Record(grid.Name, rec(day.Add(time.Duration(h)*time.Hour), 0, float64(h), 0, 0, 0))
 		}
 	}()
 	wg.Wait()
-	open(t, dir, &now).RollUpAndPrune() // the next pass takes what the first missed
+	last := open(t, dir, &now)
+	last.RollUpAndPrune() // the next pass takes what the first missed
+	if days, _, _ := last.Memory(); days != 0 {
+		t.Errorf("compaction left %d days held for readers: a day rewritten is read once and held by nothing (D-242)", days)
+	}
 	s := open(t, dir, &now)
 	got := s.Range(grid.Name, ndfd, day, day.Add(23*time.Hour), 100)
 	if len(got) != 24 {
@@ -314,7 +318,7 @@ func TestAStepIsHeldAndValuesNeedAShape(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := open(t, dir, &now)
 	for _, values := range []map[string][]float64{{"temp": {1}}, {"undeclared": {1}}} {
-		if s.Put(grid.Name, Record{Key: ndfd, At: t0, IssuedAt: t0, Values: values}) {
+		if s.Record(grid.Name, Record{Key: ndfd, At: t0, IssuedAt: t0, Values: values}) {
 			t.Errorf("values %v over no shape were recorded", values)
 		}
 	}
@@ -327,7 +331,7 @@ func TestRetentionChangesWhileRunning(t *testing.T) {
 	dir, now := t.TempDir(), t0
 	s := open(t, dir, &now)
 	day := t0.Truncate(24 * time.Hour)
-	s.Put(grid.Name, rec(day.Add(time.Hour), 0, 1, 1, 1, 1))
+	s.Record(grid.Name, rec(day.Add(time.Hour), 0, 1, 1, 1, 1))
 	if !s.Retain(grid.Name, 7*24*time.Hour, 90*24*time.Hour) {
 		t.Fatal("the retention was not taken")
 	}
@@ -360,7 +364,7 @@ func TestTheStoreIsSizedAndCleared(t *testing.T) {
 	if s.Bytes() != 0 && s.Bytes() > 4096 {
 		t.Errorf("an empty store holds %d bytes", s.Bytes())
 	}
-	s.Put(grid.Name, rec(t0, 0, 1, 1, 1, 1))
+	s.Record(grid.Name, rec(t0, 0, 1, 1, 1, 1))
 	if s.Bytes() <= 0 {
 		t.Error("a store with a record says it holds nothing")
 	}
@@ -373,7 +377,7 @@ func TestTheStoreIsSizedAndCleared(t *testing.T) {
 	if _, err := os.Stat(beside); err != nil {
 		t.Errorf("Clear removed what lay beside the store: %v", err)
 	}
-	if !s.Put(grid.Name, rec(t0.Add(time.Hour), 0, 2, 2, 2, 2)) {
+	if !s.Record(grid.Name, rec(t0.Add(time.Hour), 0, 2, 2, 2, 2)) {
 		t.Error("the store does not record after Clear")
 	}
 }

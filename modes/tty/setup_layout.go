@@ -443,6 +443,30 @@ const (
 	castNoteIndent = castRowIndent + "  "
 )
 
+// pickerChipWords name what ←→ change on each picker row that is not a
+// voice's (OP-1); a voice's picker names ←→ and its preview key.
+var pickerChipWords = map[setupRowID]string{
+	rowTheme:           "Theme (live)",
+	rowMapDesc:         "Description", // 0.18.0: nothing to preview
+	rowMapScale:        "Scale",
+	rowMapColours:      "Colours",
+	rowMapNearby:       "Distance",
+	rowMapRadarSource:  "Source",
+	rowMapTempSource:   "Source",
+	rowMapRainDetail:   "Density",
+	rowMapUVCities:     "Cities",
+	rowMapPropRadius:   "Radius",
+	rowMapPropNoise:    "Noise",
+	rowMapPropRefresh:  "Refresh",
+	rowMapPropReadings: "Switch",
+	rowMapPropStations: "Switch",
+	rowMapRadarAhead:   "Hours",
+	rowMapQuakes:       "Quakes",
+	rowHistoryHours:    "Keep",
+	rowHistoryTrends:   "Keep",
+	rowMapDetailLevel:  "Detail",
+}
+
 // setupChips is the footer: the keys, as the mock draws them, PINNED under the
 // scroll window rather than scrolling away with the body (OP-5) — at 80x24 a
 // scrolling chip row would be invisible exactly when a lost listener needs it.
@@ -474,30 +498,9 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 		// The THEME picker names no preview key, because ←→ already preview it:
 		// the whole app repaints as the picker moves. Offering `p Preview` there
 		// would name a key for something that has already happened.
-		switch d.setup.focus {
-		case rowTheme:
-			segs = append(segs, o.KeyCap("←→")+" Theme (live)")
-		case rowMapDesc:
-			segs = append(segs, o.KeyCap("←→")+" Description") // 0.18.0: nothing to preview
-		case rowMapScale:
-			segs = append(segs, o.KeyCap("←→")+" Scale")
-		case rowMapNearby:
-			segs = append(segs, o.KeyCap("←→")+" Distance")
-		case rowMapRadarSource, rowMapTempSource:
-			segs = append(segs, o.KeyCap("←→")+" Source")
-		case rowMapRainDetail:
-			segs = append(segs, o.KeyCap("←→")+" Density")
-		case rowMapUVCities:
-			segs = append(segs, o.KeyCap("←→")+" Cities")
-		case rowMapRadarAhead:
-			segs = append(segs, o.KeyCap("←→")+" Hours")
-		case rowMapQuakes:
-			segs = append(segs, o.KeyCap("←→")+" Quakes")
-		case rowHistoryHours, rowHistoryTrends:
-			segs = append(segs, o.KeyCap("←→")+" Keep")
-		case rowMapDetailLevel:
-			segs = append(segs, o.KeyCap("←→")+" Detail")
-		default:
+		if word, ok := pickerChipWords[d.setup.focus]; ok {
+			segs = append(segs, o.KeyCap("←→")+" "+word)
+		} else {
 			segs = append(segs, o.KeyCap("←→")+" Voice", o.KeyCap("p")+" Preview")
 		}
 	}
@@ -510,6 +513,9 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 	closeLabel := "Cancel"
 	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI || g == groupMap || g == groupLayers || g == groupMapLayers {
 		closeLabel = "Close"
+	}
+	if d.cfg.FirstRun && d.setup.ref != nil {
+		closeLabel = "Save" // the first run's esc keeps the location chosen (D-336)
 	}
 	segs = append(segs, o.KeyCap("esc")+" "+closeLabel)
 	inner := min(o.Width, d.modalWidth()) - 7 - 2 // wrapModal's rail allowance, then the 2-cell inset

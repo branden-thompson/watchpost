@@ -25,7 +25,7 @@ func TestABoxTheFillDrawsReplaysNothingRecorded(t *testing.T) {
 	for _, back := range []time.Duration{2 * time.Hour, time.Hour} {
 		s, _ := f.hour(context.Background(), lat, anchor.Add(-back))
 		rec, ok := ndfdRecord(s, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-back))
-		if !ok || !store.Put(ndfdHourly.Name, rec) {
+		if !ok || !store.Record(ndfdHourly.Name, rec) {
 			t.Fatal("could not seed the history")
 		}
 	}

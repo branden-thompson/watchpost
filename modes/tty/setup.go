@@ -241,6 +241,17 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	switch key.String() {
 	case "esc":
+		// ON A FIRST RUN ESC KEEPS THE LOCATION CHOSEN, as enter does (D-336):
+		// with nothing saved yet, a listener who picked a place and pressed esc
+		// would otherwise run on Watchpost's default, the choice gone. The
+		// window goes at once, as esc's always does, and the save lands behind
+		// it: a key pressed meanwhile is the dashboard's, not the window's. The
+		// form is kept until the save's answer: a refusal - a mistyped FIRMS key
+		// - reopens the window with the pick and the key still in it.
+		if d.cfg.FirstRun && d.setup.ref != nil {
+			m, save := d.setupSave()
+			return m.(Dashboard).close(), save
+		}
 		// Closing APPLIES what was recorded. esc is not a cancel for the cast
 		// and tone groups — the chip says Close rather than Cancel over them —
 		// while the typed DATA rows are still enter-to-save and still
@@ -492,6 +503,9 @@ func (d Dashboard) rowVisible(id setupRowID) bool {
 
 // setupSpace operates the focused control: select a radio, toggle a checkbox.
 func (d Dashboard) setupSpace() Dashboard {
+	if nd, ok := d.mapPrefArrow(true); ok {
+		return nd // the map's pickers and switches: space is their → (one owner, mapPrefArrow)
+	}
 	switch id := d.setup.focus; id {
 	case rowEventsAll:
 		d.setup.filtered = false
@@ -512,30 +526,6 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.uiTouched()
 	case rowMapDesc:
 		return d.cycleMapDesc(true)
-	case rowMapScale:
-		return d.cycleMapScale(true)
-	case rowMapNearby:
-		return d.cycleNearby(true)
-	case rowMapRadarSource:
-		return d.toggleRadarSource()
-	case rowMapTempSource:
-		return d.toggleTempSource()
-	case rowMapRainDetail:
-		return d.toggleRainDetail()
-	case rowMapUVCities:
-		return d.cycleUVCities(true)
-	case rowMapRadarAhead:
-		return d.cycleRadarAhead(true)
-	case rowMapQuakes:
-		return d.cycleQuakeFeed(true)
-	case rowMapDetailLevel:
-		return d.cycleDetailLevel(true).uiTouched()
-	case rowMapLayers:
-		return d.toggleLayer()
-	case rowMapDetailBorders, rowMapDetailWater, rowMapDetailRivers, rowMapDetailNames,
-		rowMapDetailRoads, rowMapDetailRail, rowMapDetailParks:
-		nd, _ := d.toggleDetailRow(id)
-		return nd
 	default:
 		switch setupTable()[id].kind {
 		case rowToggle:
@@ -608,12 +598,18 @@ func (d Dashboard) commitToModel() Dashboard {
 	// the OLD epicentre and the operator would reasonably read the save as failed.
 	// The guards match the ApplyCmds' exactly; if they drift, the model and the
 	// file disagree about what is in force.
+	moved := false // the station's place or reach changed: an open map follows it (D-195)
 	if d.cfg.SetTransmitter != nil && d.setup.txRef != nil {
 		ref := *d.setup.txRef
+		moved = d.cfg.Transmitter == nil || *d.cfg.Transmitter != ref
 		d.cfg.Transmitter = &ref
 	}
 	if v := d.setup.serviceRadiusChoice(); d.cfg.SetServiceRadius != nil && d.inServiceRange(v) {
+		moved = moved || d.cfg.ServiceRadiusMi != v
 		d.cfg.ServiceRadiusMi = v
+	}
+	if moved && d.mapPane.m != nil && d.mapRole().zone {
+		d = d.followSelection().setZone()
 	}
 	if d.cfg.SetRelayLang != nil && d.setup.relayLang != "" {
 		d.cfg.RelayLang = d.setup.relayLang

@@ -106,7 +106,9 @@ func TestTheMapKeysAreActionsHelpShows(t *testing.T) {
 		}
 	}
 	for _, act := range mapActions {
-		if _, ok := d.mapKeys[act]; !ok {
+		_, inMap := d.mapKeys[act]
+		_, inChart := d.chartKeyMap()[act] // the Bands chart's own scope, listed in the MAP group (D-256)
+		if !inMap && !inChart {
 			t.Errorf("the map's action %s has no binding", act)
 		}
 	}

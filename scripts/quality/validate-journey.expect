@@ -18,6 +18,11 @@ set timeout 10
 match_max 4000000
 lassign $argv logfile
 log_user 0
+# THE WHOLE TRANSCRIPT IS KEPT, every run, beside the step log
+# (dist/journey-raw.log): a FAIL's screen line is the tail of expect's buffer,
+# which is tape rather than a screen, and a step that fails at random needs the
+# frames around it to say why. Replay it through a terminal emulator.
+log_file -a -noappend "[file rootname $logfile]-raw.log"
 set lf [open $logfile a]
 set fails 0
 proc step {name ok} { global lf fails expect_out; puts $lf "[clock format [clock seconds] -format %Y-%m-%dT%H:%M:%SZ -gmt 1] [expr {$ok ? "PASS" : "FAIL"}] $name"; if {!$ok} { incr fails; catch { set b $expect_out(buffer); regsub -all {\x1b\[[0-9;?]*[A-Za-z]} $b "" b; puts $lf "  screen: [string range $b end-900 end]" } }; flush $lf }
@@ -112,6 +117,17 @@ proc seeAfter {key pat name {secs 5}} {
 	for {set i 0} {$i < 4} {incr i} {
 		repaint
 		expect -timeout $secs -re $pat { step $name 1; return } timeout { }
+	}
+	step $name 0
+}
+
+# scrollTo moves an open window down until pat is drawn: a row below the
+# window's fold is reached the way a listener reaches it.
+proc scrollTo {pat name} {
+	for {set i 0} {$i < 12} {incr i} {
+		repaint
+		expect -timeout 2 -re $pat { step $name 1; return } timeout { }
+		for {set j 0} {$j < 5} {incr j} { send "\x1b\[B"; sleep 0.1 }
 	}
 	step $name 0
 }
@@ -283,16 +299,22 @@ seeAfter "" "Total Category Events" "P1 esc backs out of the record and the wind
 readableTab "P0 a category with an event, focused and ready to read"
 seeAfter " " "EVENT · |PLAYING|Reading" "P1 space reads the focused event over the radio (the panel shows EVENT ·)"
 send "\x1b"; sleep 1; send "\x1b"; repaint
+# THIS STEP PROVES LITTLE ALONE: "R E C E N T" stays drawn beside an open
+# window. The next step looks for Lookup's own title.
 seeAfter "" "R E C E N T" "P0 esc esc closes the window"
 send "l"; sleep 1
-seeAfter "" "Search:" "P0 l opens Lookup"
+# THE WINDOW'S TITLE, NOT "Search:": the Settings window's Data tab draws a
+# "Search:" field too, and that is the screen two failing runs ended on.
+seeAfter "" "Lookup Location" "P0 l opens Lookup"
 send "Vista, CA"; sleep 2; send "\r"
 # THROUGH seeAfter, LIKE THE OTHER LIVE-DATA STEPS. This waited once for the
 # label and burned its timeout on 2026-09-06 while the very NEXT step — Details
 # filling with data — passed, which proves the window had opened and only the
 # transient frame carrying the name was missed. The lookup also has to RESOLVE
 # first, so how long it takes is the network's business, not the app's.
-seeAfter "" "Vista" "P0 Lookup opens Details on Vista from the first frame" 25
+# THE DETAILS TITLE, ZIP AND ALL: "Vista" alone is also the text typed into
+# the search field.
+seeAfter "" "Vista, CA 9" "P0 Lookup opens Details on Vista from the first frame" 25
 expect -timeout 120 -re "Hourly|HOURLY|Extended|EXTENDED|Marine|FIRE" { step "P1 Details fills with data" 1 } timeout { step "P1 Details fills with data" 0 }
 send "\x1b"; sleep 1; repaint
 send "A"; repaint
@@ -304,8 +326,12 @@ send "\x1b\[B"; sleep 0.5; send "\r"; sleep 0.5; send "\x1b"; repaint
 seeAfter "" "Setup|Theme" "P1 Watchpost Light applies live (the frame re-renders)"
 
 send "S"; repaint
-seeAfter "" "PROVIDERS|REQUESTS" "P1 S opens Status"
-seeAfter "" "SEVERE INDEX" "P1 Status gauges the severe index"
+# THE TITLE AND THE TABLE'S OWN HEADING: the window says DATA SOURCES and
+# ENDPOINT where it once said PROVIDERS and REQUESTS.
+seeAfter "" "Watchpost Status" "P1 S opens Status"
+seeAfter "" "DATA SOURCES" "P1 Status lists its data sources"
+# THE SEVERE INDEX IS BELOW THE FOLD at 133x44, in PIPELINES: scrolled to.
+scrollTo "SEVERE INDEX" "P1 Status gauges the severe index"
 
 # --- 0.14.0: assign a correspondent, and confirm it sticks ---
 #
@@ -349,6 +375,27 @@ seeAfter "" "Alerts / Takeovers" "P1 the correspondents group survives the round
 send "\x1b"; sleep 1; repaint
 send "?"; repaint
 seeAfter "" "NAVIGATE" "P1 ? opens Help"
+
+# --- 0.19.0 W10.1: the Propagation mode, its chart, and the console's map ---
+#
+# ON LIVE DATA, as the rest is: the mode asks NOAA and GIRO only once opened
+# (D-76), under the feature's throttle (D-39). The acknowledgement is asked once
+# per install, so the console's map opens the mode without it.
+send "\x1b"; sleep 1; repaint
+send "g"; sleep 5
+seeAfter "P" "Enter" "P1 P asks for the Propagation mode's acknowledgement" 10
+send "\r"
+seeAfter "" "MUF" "P1 the Propagation mode draws MUF" 30
+# THROUGH seeAfter, repaints and all: a resize moves the view just before B,
+# which is the case that once left the chart "being worked out" for good.
+seeAfter "B" "agrees with WSPR:" "P1 B opens the bands chart, its measured agreement said" 30
+send "\x1b"; sleep 1
+send "\x1b"; sleep 1; repaint
+seeAfter "B" "STATION AIR:" "P1 B swaps to the Broadcaster console" 10
+send "g"; sleep 5
+seeAfter "P" "MUF" "P1 the console's own map opens the Propagation mode" 30
+send "\x1b"; sleep 1; repaint
+seeAfter "O" "R E C E N T" "P1 O swaps back to the Observer" 10
 send "\x1b"; sleep 1; send "t"; repaint; send "\x1b\[A"; sleep 0.5; send "\r"; sleep 1
 send "\x1b"; sleep 0.5; send "\x1b"; sleep 0.5; send "q"
 expect -timeout 20 eof { step "P0 q quits cleanly" 1 } timeout { step "P0 q quits cleanly" 0 }

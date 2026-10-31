@@ -440,6 +440,12 @@ type LocationRef struct {
 	// population that changed between census releases must not make a location
 	// into a different one.
 	Population int
+
+	// Country is the place's ISO 3166 alpha-2 code when the lookup that made
+	// the ref knew it, "" otherwise: the words say a place abroad by its
+	// country's name (0.19.0 D-231), and a label's two letters alone are a
+	// state's or a country's. Not part of the key.
+	Country string
 }
 
 // LocationKey is the normalized identity: "lat,lon" at 4 decimal places.

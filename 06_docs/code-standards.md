@@ -130,6 +130,26 @@ is genuinely necessary, stop and bring the lines and the reason to the HUM LEAD;
 row to the shell ledger (`cmd/watchpost/shell_test.go`), which is the same path every existing
 `scripts/*.sh` is on — each row is a port candidate.
 
+## `AP-OK-01` — a value's bool is checked, not thrown away
+
+**Rule.** A call to one of the module's functions or methods that returns a value and a `bool` never
+assigns the bool to `_`: `v, _ := f()` and `v, _ = x.f()` are findings. Handle the bool (`if v, ok :=
+f(); ok { … }`), or give the callers that need only the value a function that returns only the value
+(`NormalizeKey` beside `NormalizeID`; `chosenOn` beside `choiceOf`). A map lookup, a type assertion and
+an `error` discard (P10-07's, `errcheck`) are not this rule's. Test files are not judged.
+
+**Why.** #27 (0.19.0 D-142): `year, _ := readAs(...)` carried on with an empty year when the read
+failed, and wrote it over a year of real roll-ups. P10-07 checks `error` returns only and treats `_` as
+deliberate, so it cannot see a discarded bool. The zero value a failed call returns is a value the
+code then trusts.
+
+**A syntax tree has no types,** so the callee is known by name, and a name some declaration returns
+otherwise is left alone rather than guessed at. The self-test plants both directions, including the
+ambiguous name.
+
+**No exemption marker,** for AP-SHELL-01's reason: a bool that truly does not matter to a caller is a
+sign the caller wants a different function.
+
 ## The other gates
 
 | Command | What it holds |

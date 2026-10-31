@@ -51,6 +51,8 @@ func isSecretParam(name string) bool {
 		return true
 	case "bbox": // not a secret, but where the map is looking (0.18.0 W8.14a, D-47): never in an error's text
 		return true
+	case "name": // the geocoder's typed place: what was looked up is never in an error's text (0.19.0 FR-4.9)
+		return true
 	}
 	return false
 }
@@ -83,8 +85,9 @@ type Client struct {
 	sf       singleflight.Group   // one in-flight request per URL
 	inflight [lanes]chan struct{} // per-lane cap on requests in flight (UAT 73)
 
-	mu   sync.Mutex
-	next [lanes]time.Time // earliest start per lane (lazy token pacing): normal, priority, interactive
+	mu     sync.Mutex
+	next   [lanes]time.Time                 // earliest start per lane (lazy token pacing): normal, priority, interactive
+	shares map[string]*[lanes]chan struct{} // each host's half of every lane (D-324); at most maxShareHosts named, then OtherHost's
 }
 
 // Resource ceilings (B3 UAT 73 — the adversarial perf pass). An unbounded
@@ -97,6 +100,7 @@ const (
 	maxInflightPriority = 8  // favourites' lane
 	maxInflightInteract = 8  // the listener's lane (D-156): a map ask's fetches, a lookup
 	maxConnsPerHost     = 8
+	maxShareHosts       = 16               // hosts with a share of their own; the rest share OtherHost's (P10-03)
 	idleConnTimeout     = 11 * time.Minute // keeps a warm connection across the 10-minute tiers (Q5, L4-F13): at 90 s the counters show a TLS handshake per tick per host
 )
 
@@ -257,8 +261,14 @@ func newTransport() *http.Transport {
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: time.Second,
 		ForceAttemptHTTP2:     true,
+		// A reply's headers are bounded as its body is (RI-4): every service
+		// read sends a few kilobytes; Go's default is about ten megabytes.
+		MaxResponseHeaderBytes: maxHeaderBytes,
 	}
 }
+
+// maxHeaderBytes bounds a reply's headers.
+const maxHeaderBytes = 64 << 10
 
 // Option tunes one request.
 type Option func(*reqOpts)
@@ -425,18 +435,50 @@ func New(cfg Config) (*Client, error) {
 	// sleeps outside it.
 	transport := clientTransport(cfg, http.ProxyFromEnvironment)
 	return &Client{cfg: cfg, http: &http.Client{Timeout: cfg.Timeout, Transport: transport, CheckRedirect: SameOriginRedirect}, cache: newCacheSized(cfg.CacheDir, cmp.Or(cfg.DiskBytes, maxDiskBytes), cmp.Or(cfg.MemBytes, maxMemBytes)), stats: newReqStats(), memo: newFailureMemo(),
-		inflight: [lanes]chan struct{}{make(chan struct{}, maxInflight), make(chan struct{}, maxInflightPriority), make(chan struct{}, maxInflightInteract)}}, nil
+		inflight: [lanes]chan struct{}{make(chan struct{}, maxInflight), make(chan struct{}, maxInflightPriority), make(chan struct{}, maxInflightInteract)}, shares: map[string]*[lanes]chan struct{}{}}, nil
 }
 
-// acquire takes an in-flight slot on the request's lane (or fails on ctx).
-func (c *Client) acquire(ctx context.Context) (func(), error) {
-	slot := c.inflight[lane(ctx)]
+// acquire takes an in-flight slot on the request's lane (or fails on ctx),
+// the host's share of the lane first: no host holds more than half a lane,
+// so one that hangs leaves the other half to the rest (D-324).
+func (c *Client) acquire(ctx context.Context, host string) (func(), error) {
+	l := lane(ctx)
+	share := c.share(host)[l]
 	select {
-	case slot <- struct{}{}:
-		return func() { <-slot }, nil
+	case share <- struct{}{}:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+	slot := c.inflight[l]
+	select {
+	case slot <- struct{}{}:
+		return func() { <-slot; <-share }, nil
+	case <-ctx.Done():
+		<-share
+		return nil, ctx.Err()
+	}
+}
+
+// share is host's half of every lane, made on its first request; once
+// maxShareHosts hosts have their own, any further host shares OtherHost's.
+func (c *Client) share(host string) *[lanes]chan struct{} {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if s, ok := c.shares[host]; ok {
+		return s
+	}
+	if len(c.shares) >= maxShareHosts {
+		host = OtherHost
+		if s, ok := c.shares[host]; ok {
+			return s
+		}
+	}
+	s := &[lanes]chan struct{}{}
+	for l := range s {
+		s[l] = make(chan struct{}, cap(c.inflight[l])/2)
+	}
+	c.shares[host] = s
+	return s
 }
 
 // reserve blocks until this request's pacing slot arrives (or ctx ends).
@@ -689,11 +731,18 @@ func (c *Client) do(ctx context.Context, rawURL string, cond conditional) ([]byt
 		c.stats.add(req.host, func(h *HostStats) { h.FastFail++; h.LastFail = time.Now() })
 		return nil, nil, err
 	}
-	release, err := c.acquire(ctx)
+	release, err := c.acquire(ctx, req.host)
 	if err != nil {
 		return nil, nil, fmt.Errorf("request cancelled: %s: %w", req.safe, err)
 	}
 	defer release()
+	// THE MEMO AGAIN ONCE THE SLOT IS HELD: a wait for the host's share can
+	// outlast the host, and a request queued behind one that has since stopped
+	// answering fails fast rather than waiting out its own timeout (D-324).
+	if err := c.memoRefusal(req); err != nil {
+		c.stats.add(req.host, func(h *HostStats) { h.FastFail++; h.LastFail = time.Now() })
+		return nil, nil, err
+	}
 	var last outcome
 	// Bounded per P10-02: at most 1 + MaxRetries attempts. A retry on the
 	// normal lane re-reads the memo: a 429 Retry-After or a transport error
@@ -785,7 +834,7 @@ func (c *Client) attemptOnce(ctx context.Context, req request, attempt int) outc
 		out.err, out.final = redactErr(err), true // our own policy, not the host's fault: no retry, no memo
 	default:
 		c.stats.add(req.host, func(h *HostStats) { h.LastFail = time.Now() }) // how it is doing now (D-150)
-		c.noteFailure(req.host, req.rawURL, res, err)
+		c.noteFailure(ctx, req.host, req.rawURL, res, err)
 		out.err, out.status, out.reason = err, res.status, res.reason
 	}
 	return out
@@ -850,11 +899,11 @@ func (c *Client) doAttempt(ctx context.Context, r request) (attemptResult, error
 	if c.cfg.MaxBodyBytes > 0 {
 		limit = c.cfg.MaxBodyBytes
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
+	body, whole, err := readCapped(resp.Body, limit)
 	if err != nil {
 		return res, fmt.Errorf("bad response body from %s: %w", safe, redactErr(err))
 	}
-	if int64(len(body)) > limit {
+	if !whole {
 		// Refused AS IT READS, and final: the caller has an error and nothing
 		// reaches the cache, which is written only after a success (FR-5.7).
 		res.status = http.StatusRequestEntityTooLarge
@@ -925,6 +974,16 @@ func reasonOf(r io.Reader) string {
 
 func retryable(status int) bool {
 	return status == http.StatusTooManyRequests || status >= 500
+}
+
+// readCapped reads a body up to limit bytes; whole is false when it runs
+// past, read only as far as one byte more than the cap.
+func readCapped(r io.Reader, limit int64) (body []byte, whole bool, err error) {
+	body, err = io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, false, err
+	}
+	return body, int64(len(body)) <= limit, nil
 }
 
 // redactErr rewrites any URL embedded in a transport error so secrets in query

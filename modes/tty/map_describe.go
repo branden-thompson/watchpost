@@ -55,13 +55,16 @@ func (d Dashboard) describeLinesAll() []string { return d.describeUpTo(0) }
 // zero, at most that many alerts are said, and the last line says how many
 // more there are.
 func (d Dashboard) describeUpTo(most int) []string {
-	loc := d.selectedLocation()
+	loc := d.mapPlace()
 	if loc == nil {
-		return nil
+		return d.layerWords() // no place to say: what the layers draw is still said (FR-3.3)
 	}
 	v := d.viewBox(d.mapBodySize())
 	here := d.mapPane.m == nil || v.Contains(loc.Lat, loc.Lon)
-	out := []string{d.viewHeading(*loc, here)}
+	out := append([]string{d.viewHeading(*loc, here)}, d.layerWords()...) // before the alerts' early returns (FR-3.3)
+	if d.mapMode() == modePropagation {
+		return append(d.propWords(loc.Lat, loc.Lon), spokenAll(out)...) // no alert is drawn in it (D-21); the mode and its answers before the place's weather and the night (D-210)
+	}
 	if !d.layerOn(AlertLayer) {
 		return append(out, alertLayerOffText) // off is said, never "nothing is there"
 	}
@@ -105,6 +108,23 @@ func (d Dashboard) describeUpTo(most int) []string {
 	return append(out, said...)
 }
 
+// mapLayerSentences are the layers that add a sentence to the description
+// (FR-3.3, AX-C): the service area's circle (D-195) and the night (D-199);
+// a layer added later adds its own here, said in every case the alerts'
+// words return early from.
+var mapLayerSentences = []func(Dashboard) string{Dashboard.zoneWords, Dashboard.nightWords}
+
+// layerWords are the sentences the layers drawn add, in order.
+func (d Dashboard) layerWords() []string {
+	var out []string
+	for _, say := range mapLayerSentences {
+		if w := say(d); w != "" {
+			out = append(out, w)
+		}
+	}
+	return out
+}
+
 // viewHeading is the description's first line: the place and how it is now
 // while it is in view, and the view's name when it is not.
 func (d Dashboard) viewHeading(loc snapshot.Location, here bool) string {
@@ -116,7 +136,8 @@ func (d Dashboard) viewHeading(loc snapshot.Location, here bool) string {
 }
 
 // viewName is what the view is called: the namer's name for its centre and
-// width, or the region it is in.
+// width; in the Propagation mode, away from every region, its centre's name
+// (AX-1); else the region it is in.
 func (d Dashboard) viewName() string {
 	size := d.mapBodySize()
 	if d.cfg.MapAreaName != nil && d.mapPane.m != nil {
@@ -126,6 +147,9 @@ func (d Dashboard) viewName() string {
 		if name := d.cfg.MapAreaName(centre, widthKm); name != "" {
 			return name
 		}
+	}
+	if c, ok := d.propCentreAt(); ok && d.mapMode() == modePropagation {
+		return d.propCentreName(c) // the world's map: the region last drawn is not where it looks
 	}
 	if d.mapPane.region.Name != "" {
 		return d.mapPane.region.Name

@@ -34,26 +34,9 @@ func (d Dashboard) scrubW() int {
 // box's bottom edge.
 const scrubBoxRows = 1 + radarRows + 1
 
-// scrubRows are the rows under the map while the timeline is held (D-103).
-func (d Dashboard) scrubRows(width int) []string {
-	var out []string
-	switch {
-	case d.radarMode():
-		out = append(out, " "+d.radarLegendRow(width))
-	case d.rainOn():
-		head, preset := d.rainKey()
-		out = append(out, " "+d.rainRow(head, preset, width)) // D-117: radar's colours, said to be a model's; D-184: NDFD's totals in their own
-	default:
-		out = append(out, " "+d.tempLegendRow(width)) // W10.10: the bands' colours, as radar's are
-	}
-	for _, l := range d.noteLines(width) {
-		out = append(out, " "+l)
-	}
-	out = append(out, " "+render.TruncateCells(d.pictureStatus(), width)) // blank when whole: the map's size never waits on it
-	tl := d.mapPane.radarTimeline
-	if !d.radarMode() {
-		tl = d.mapPane.fcTimeline // D-94: Forecast mode's steps
-	}
+// timelineBlock is a weather mode's rows beside the controls: the loop's
+// row, the timeline's rows, and the cost estimate under its right end.
+func (d Dashboard) timelineBlock(tl []string) []string {
 	block := []string{d.loopRow(d.scrubW())}
 	for i := range radarRows {
 		l := ""
@@ -63,7 +46,40 @@ func (d Dashboard) scrubRows(width int) []string {
 		block = append(block, l)
 	}
 	est := costEstimate(d.mapCost) // under the timeline's right end, as the HUM LEAD drew it (D-133)
-	block = append(block, strings.Repeat(" ", max(d.scrubW()-render.Width(est), 0))+est)
+	return append(block, strings.Repeat(" ", max(d.scrubW()-render.Width(est), 0))+est)
+}
+
+// scrubRows are the rows under the map while the timeline is held (D-103).
+func (d Dashboard) scrubRows(width int) []string {
+	var out, notes []string
+	switch {
+	case d.mapMode() == modeRadar:
+		out, notes = append(out, " "+d.radarLegendRow(width)), d.noteLines(width)
+	case d.mapMode() == modeForecast && d.rainOn():
+		head, preset := d.rainKey()
+		out, notes = append(out, " "+d.rainRow(head, preset, width)), d.noteLines(width) // D-117: radar's colours, said to be a model's; D-184: NDFD's totals in their own
+	case d.mapMode() == modeForecast:
+		out, notes = append(out, " "+d.tempLegendRow(width)), d.noteLines(width) // W10.10: the bands' colours, as radar's are
+	case d.mapMode() == modePropagation:
+		legend := d.propLegendRows(width) // drawn once: its bands on their colours, then their MHz, its note line (D-160)
+		out = append(out, " "+legend[0])
+		if d.propNoteShown() {
+			notes = legend[1:]
+		}
+	}
+	for _, l := range notes {
+		out = append(out, " "+l)
+	}
+	out = append(out, " "+render.TruncateCells(d.pictureStatus(), width)) // blank when whole: the map's size never waits on it
+	var block []string
+	switch d.mapMode() {
+	case modeRadar:
+		block = d.timelineBlock(d.mapPane.radarTimeline)
+	case modeForecast:
+		block = d.timelineBlock(d.mapPane.fcTimeline) // D-94: Forecast mode's steps
+	case modePropagation:
+		block = d.propBlock(d.scrubW()) // D-157: the same rows, its own answer
+	}
 	if d.scrubBoxFits() {
 		box := d.scrubControls()
 		for i := range block {
@@ -110,7 +126,7 @@ func (d Dashboard) badgeRows(width int) []string {
 func (d Dashboard) badges() []string {
 	var out []string
 	for _, l := range d.cfg.MapLayers {
-		if l.Key == RadarLayer || (l.Key == RainLayer && d.radarMode()) || !d.layerOn(l.Key) {
+		if l.Key == RadarLayer || d.rainIsRadar(l.Key) || !d.layerOn(l.Key) {
 			continue
 		}
 		chips := l.Chips
@@ -213,7 +229,7 @@ func (d Dashboard) loopRow(width int) string {
 		}
 		return item(render.Tint("STOPPED", render.Tok(render.ListPointer)))
 	}
-	if !d.radarMode() {
+	if d.mapMode() == modeForecast {
 		steps := d.forecastSteps()
 		at := min(d.mapPane.fcStep, len(steps)-1)
 		lead := "FORECAST"
@@ -247,7 +263,7 @@ func (d Dashboard) scrubControls() []string {
 	return boxed("Controls", []string{
 		"    " + cap(actMapPanUp, "↑") + "     " + cap(actMapZoomIn, "+"),
 		" " + cap(actMapPanLeft, "←") + cap(actMapPanDown, "↓") + cap(actMapPanRight, "→") + "  " + cap(actMapZoomOut, "-"),
-		" " + cap(actMapPrev, "[") + cap(actMapNext, "]") + " place",
+		d.placeRow(),
 	}, controlsInner)[:scrubBoxRows]
 }
 

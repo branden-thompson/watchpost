@@ -165,7 +165,7 @@ func (rs *radarSources) sourceFor(region string, iem bool) radar.Source {
 // radarNotes are the words beside the loop: MRMS's approximate colours
 // (W8.15a), and a region no radar covers (D-83).
 const (
-	mrmsNote    = "MRMS radar's colours are approximate: its scale is read from its legend."
+	mrmsNote    = "MRMS colors approximate; scale read from legend" // the HUM LEAD's words (D-173)
 	noRadarNote = "No radar covers "
 )
 

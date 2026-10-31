@@ -543,7 +543,7 @@ func dropSuperseded(snap *snapshot.Snapshot) {
 	for i := range snap.Locations {
 		kept := snap.Locations[i].Alerts[:0]
 		for _, a := range snap.Locations[i].Alerts {
-			if key, _ := severe.NormalizeID(a.ID); !superseded[key] {
+			if !superseded[severe.NormalizeKey(a.ID)] {
 				kept = append(kept, a)
 			}
 		}

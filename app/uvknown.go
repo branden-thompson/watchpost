@@ -63,7 +63,7 @@ func (k *knownUVCities) record(store *history.Store, c geodata.City, readings []
 	}
 	key, shape := uvCityKey(c), pointShape(c.Lat, c.Lon)
 	for _, r := range readings { // a day's hours (P10-02)
-		store.Put(epaUVCities.Name, history.Record{Key: key, At: r.At, IssuedAt: r.At, Shape: shape, Values: map[string][]float64{"uv": {r.Index}}, Doc: doc})
+		store.Record(epaUVCities.Name, history.Record{Key: key, At: r.At, IssuedAt: r.At, Shape: shape, Values: map[string][]float64{"uv": {r.Index}}, Doc: doc})
 	}
 	k.mu.Lock()
 	defer k.mu.Unlock()

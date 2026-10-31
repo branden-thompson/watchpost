@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: lint-plan-code test-say quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test
+.PHONY: hooks lint-plan-code test-say quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test
 
 BINARY := watchpost
 DIST   := dist
@@ -27,7 +27,14 @@ test:
 	go test ./...
 
 race:
-	go test -race -count=1 ./...
+# -timeout, measured, as mutant-check's below: under -race, modes/tty, the
+# slowest package, ran 226 s on the developer's machine and 290 to 489 s on
+# the hosted runners (2026-10-18 and 19), then past go test's default 10
+# minutes on macos-latest (2026-10-19), with nothing in it changed. 30m is
+# three times the slowest finished run, so the clock reports a hang, not a
+# slow runner. When the package nears it, raise it and re-record the
+# measurement here.
+	go test -race -count=1 -timeout 30m ./...
 
 fmt:
 # GOFMT'S OWN STATUS IS READ. `test -z "$$(gofmt -l …)"` is true when gofmt prints
@@ -48,7 +55,7 @@ vet:
 # team, I-3). The injector itself is untagged since 0.18.0 D-152, and its tests
 # run with every other.
 vet-tags:
-	go vet -tags property ./modes/tty
+	go vet -tags property ./modes/tty ./platform/history
 
 # Dependency hygiene (quality pass Q0, red-team PH-1/IS-9): go.mod must be tidy,
 # the module cache must match go.sum, and no known vulnerability may be reachable.
@@ -98,9 +105,14 @@ lint-plan-code:
 # the parallel suite skips it and this step runs it with nothing else. It must
 # pass with the listener's own watchpost open — the HUM LEAD's condition. It is
 # macOS-only: on another OS the test skips, so CI runs this step on macOS alone,
-# and there a missing `say` fails it.
+# and there a missing `say` fails it. Its 11 minutes hold its renders: at most
+# three and one retry, two minutes each, eight in all, the rest the build's
+# margin (D-276).
 test-say:
-	@WATCHPOST_SAY_LEG=1 go test -count=1 -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth
+	@out="$$(WATCHPOST_SAY_LEG=1 go test -count=1 -v -timeout 11m -run '^TestSayVoiceOnDarwinNarratesHostileTextSafely$$' ./domains/radio/synth 2>&1)"; rc=$$?; \
+	printf '%s\n' "$$out" | grep -E -- '^(--- |ok |FAIL|\s+synth_test)' ; \
+	[ $$rc -eq 0 ] || exit $$rc; \
+	if printf '%s\n' "$$out" | grep -q -- 'NOT RUN: '; then echo "test-say: NOT RUN - this host's say renders no audio (declared mute: $$WATCHPOST_SAY_MUTE_HOST, D-254)"; fi
 
 # THE PUBLISHED TREE NAMES NO PERSON AND NO MACHINE. A home directory, an
 # agent-harness scratchpad path, an internal project tree or an email address
@@ -122,6 +134,7 @@ gate-controls:
 	@./scripts/quality/ledger-ratified.sh --self-test
 	@./scripts/quality/lint-ledger.sh --self-test
 	@go run ./tools/dupes -self-test
+	@go run ./tools/p10floor --self-test
 	@./scripts/quality/mutant-anchors.sh --self-test
 
 # THE CHEAP HALF OF `mutant-check`, RUNNABLE BEFORE A COMMIT. It asks only
@@ -172,13 +185,13 @@ mutant-check:
 # not reporting on the code, and it fails at random, which is the worst way for
 # it to be wrong.
 #
-# 120m: the corpus at 378 mutants ran 1,723 s on the developer's 18-core
-# machine (2026-10-03) and passed 40 minutes on a 4-core ubuntu-latest runner
-# without finishing, so 40m - once four times the slowest run - no longer is.
-# The corpus grows every release; when it approaches this, raise it and
-# re-record the measurement here rather than trimming the corpus to fit the
-# clock.
-	@go test -tags mutants -v -count=1 -timeout 120m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
+# 240m: the corpus at 835 mutants ran 93 minutes on a hosted ubuntu-24.04
+# runner (run 40908367003, 2026-10-29) and passed 120 minutes on the same
+# platform two hours later without finishing (run 40927225939), a 1.3x spread
+# on one platform; 240m is twice the cap it outgrew. The corpus grows every
+# release; when it approaches this, raise it and re-record the measurement
+# here rather than trimming the corpus to fit the clock.
+	@go test -tags mutants -v -count=1 -timeout 240m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
 	  cat $(DIST)/mutant-check.log; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$rc
@@ -280,7 +293,7 @@ cache-clean:
 # they are wrong, and a caller that waited would hide that from whoever started
 # the second one.
 verify:
-	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
+	@go run ./tools/treelock -name verify -- go run ./tools/runlog -lane verify -- $(MAKE) --no-print-directory verify-gates
 
 verify-gates: fmt vet vet-tags tidy vuln race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
@@ -291,9 +304,11 @@ verify-gates: fmt vet vet-tags tidy vuln race test-say lint lint-imports lint-wa
 # verify. tools/docslane decides from the change itself and refuses any other
 # file, tracked or not, so the rule is held here rather than remembered. It
 # refuses an unchanged tree too: run it before committing. It is local only:
-# CI and every other change run verify.
+# CI and every other change run verify. A lane refused ran no leg, so it is
+# refused before runlog: the record holds runs, never refusals (RD-12).
 verify-docs:
-	@go run ./tools/treelock -name verify-docs -- $(MAKE) --no-print-directory verify-docs-gates
+	@go run ./tools/docslane
+	@go run ./tools/treelock -name verify-docs -- go run ./tools/runlog -lane verify-docs -- $(MAKE) --no-print-directory verify-docs-gates
 
 verify-docs-gates:
 	@go run ./tools/docslane
@@ -494,9 +509,11 @@ alloc-budget:
 # The map's guard 3 at its full count (0.18.0 W2.4): 10,000 random sequences,
 # each printed map compared with a fresh render. Every `go test` runs 200; the
 # ten thousand take about two minutes, so they run once, here, not under the
-# race detector and not in every mutant's run.
+# race detector and not in every mutant's run. Then the history's 90-day
+# global-grid soak (0.19.0 W1.2), about 45 seconds and half a gigabyte written.
 property:
 	go test -tags property -count=1 -run 'TestThePrintedMapIsAFreshRender' ./modes/tty
+	go test -tags property -count=1 -run 'TestNinetyDaysOfAGlobalGridStayReadable' ./platform/history
 
 # Wall-clock benchmarks: recorded, never gated (quality pass §0.1). Local, HUM LEAD.
 # Needs benchstat: go install golang.org/x/perf/cmd/benchstat@latest
@@ -522,8 +539,9 @@ P10_OUT ?= $(DIST)/p10.json
 p10:
 	@command -v $(A2DH) >/dev/null 2>&1 || { echo "p10: '$(A2DH)' not found — this gate cannot be skipped; set A2DH=/path/to/a2dh"; exit 1; }
 	@mkdir -p $(DIST)
-	@$(A2DH) p10 check --json > $(P10_OUT) || { echo "p10: live findings — see $(P10_OUT)"; exit 1; }
+	@$(A2DH) p10 check --json > $(P10_OUT) || { [ -f .a2dh.yml ] || echo "p10: this tree has no .a2dh.yml, the harness's configuration - set the harness up (a2dh init) and run make p10 again"; echo "p10: the P10 check failed - its live findings, or the reason it could not run, are in $(P10_OUT); fix each and run make p10 again"; exit 1; }
 	@./scripts/quality/p10-unmatched.sh $(P10_OUT)
+	@go run ./tools/p10floor $(P10_OUT)
 	@./scripts/quality/ledger-ratified.sh
 	@python3 ./scripts/quality/p10-ledger-mirror.py
 	@./scripts/quality/lint-ledger.sh
@@ -543,6 +561,14 @@ release-matrix:
 # sha256sum red alone and release-matrix stayed green.
 	@cd $(DIST) && if command -v sha256sum >/dev/null; then sha256sum $(BINARY)-* > checksums.txt; else shasum -a 256 $(BINARY)-* > checksums.txt; fi
 	@echo "release-matrix: OK ($(VERSION))"
+
+# hooks installs the pre-push hook into this clone's git folder and points
+# git at it: it runs the tests that read the record, in seconds (0.19.0 W0.1,
+# FR-10.2). It refuses where it would silence a hook already in place
+# (tools/prepush -install). Local to the clone; `git config --unset
+# core.hooksPath` takes it off.
+hooks:
+	@go run ./tools/prepush -install
 
 # Installer smoke test: serve the release matrix locally and run scripts/install.sh
 # against it (no GitHub involved), then check the installed binary reports the version.

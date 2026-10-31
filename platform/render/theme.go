@@ -165,6 +165,18 @@ const (
 	MapChipGeoNamesBG Token = "map.chip.geonames.bg"
 	MapChipOFMBG      Token = "map.chip.ofm.bg"
 	MapChipPiperBG    Token = "map.chip.piper.bg"
+	// The Propagation mode's sources (0.19.0 FR-4.1), each its own chip.
+	MapChipSWPCBG  Token = "map.chip.swpc.bg"
+	MapChipPyIRIBG Token = "map.chip.pyiri.bg"
+	MapChipIGRFBG  Token = "map.chip.igrf.bg"
+	MapChipGIROBG  Token = "map.chip.giro.bg"
+	MapChipITUBG   Token = "map.chip.itu.bg"
+	// The Propagation mode's two fields, chips of their own (0.19.0 D-165).
+	MapChipMUFBG  Token = "map.chip.muf.bg"
+	MapChipFoF2BG Token = "map.chip.fof2.bg"
+	// MapPropPlace is the place's name under the Propagation map: the
+	// window title's bold bright text (0.19.0 D-164), derived per theme.
+	MapPropPlace Token = "map.prop.place"
 	// MapNoticeQuotaBG is the ground of the map's notice that a source's
 	// quota is spent (W18.1, D-165): dark orange, its words ChipTones'.
 	MapNoticeQuotaBG Token = "map.notice.quota.bg"
@@ -281,13 +293,22 @@ const (
 // per-theme entry — and without lifting the tokens it borrows FROM, which stay
 // registered only against the grounds they are actually painted on.
 func withAgeLadder(t map[Token]string, named map[Token]string) map[Token]string {
-	for _, f := range []struct{ dst, src Token }{
+	return borrowUnnamed(t, named, []borrowed{
 		{DataNew, FocusCell},     // the theme's own light blue
 		{DataFresh, ProviderOK},  // the green it already calls "healthy"
 		{DataUsable, AlertLabel}, // the yellow it already calls "caution"
 		{DataAged, FireMark},     // the orange it already calls "hot"
 		{DataStale, FireMark},    // the same orange TODAY: the ruling promises no red rung
-	} {
+	})
+}
+
+// borrowed is a token a ladder fills, and the theme's token it borrows from.
+type borrowed struct{ dst, src Token }
+
+// borrowUnnamed gives each ladder token its source's colour, where the theme
+// has not named the token itself.
+func borrowUnnamed(t map[Token]string, named map[Token]string, pairs []borrowed) map[Token]string {
+	for _, f := range pairs {
 		// "DID THIS THEME NAME IT", NOT "IS IT EMPTY". A registered theme starts
 		// from a COPY OF THE DEFAULT, so by the time this runs the slot is
 		// already full of the default's blue — and an emptiness test would leave
@@ -305,7 +326,7 @@ func withAgeLadder(t map[Token]string, named map[Token]string) map[Token]string 
 // registered theme copies from this one (quality pass Q1, L3-F17 — no
 // package-level map to guard).
 func defaultTheme() map[Token]string {
-	return withAA(withDerived(withAgeLadder(map[Token]string{
+	return withAA(withDerived(withFreshLadder(withAgeLadder(map[Token]string{
 		TextBase:   "250",
 		TextBright: "97",
 
@@ -398,6 +419,13 @@ func defaultTheme() map[Token]string {
 		MapChipGeoNamesBG: "48;2;161;98;7",   // #A16207, amber
 		MapChipOFMBG:      "48;2;126;34;206", // #7E22CE, purple
 		MapChipPiperBG:    "48;2;15;23;42",   // #0F172A, ink
+		MapChipSWPCBG:     "48;2;192;38;211", // #C026D3, fuchsia (0.19.0 FR-4.1)
+		MapChipPyIRIBG:    "48;2;67;56;202",  // #4338CA, indigo
+		MapChipIGRFBG:     "48;2;14;116;144", // #0E7490, deep cyan
+		MapChipGIROBG:     "48;2;21;128;61",  // #15803D, green: GIRO's stations (0.19.0 G5)
+		MapChipITUBG:      "48;2;0;156;219",  // #009CDB, ITU's blue: ITUHFProp's absorption factors (D-186)
+		MapChipMUFBG:      "48;2;124;32;80",  // #7C2050, plum: the MUF ramp's middle (D-165)
+		MapChipFoF2BG:     "48;2;174;93;45",  // #AE5D2D, rust: the ramp's colour at foF2's band edges
 		MapNoticeQuotaBG:  "48;2;194;65;12",  // #C2410C, dark orange (D-165)
 		MapChipRecordedBG: "48;2;91;75;138",  // #5B4B8A, muted violet (D-178)
 		// Emergency Orders take THE red (MVS-D-62).
@@ -453,7 +481,7 @@ func defaultTheme() map[Token]string {
 		// 208 is this palette's own orange — what TempHi and FireMark already
 		// use — so the masthead borrows rather than introduces a colour.
 		TitleEditionBroadcaster: "1;208",
-	}, nil)))
+	}, nil), nil)))
 }
 
 // withDerived sets the tokens that take another token's value in every theme
@@ -462,6 +490,7 @@ func defaultTheme() map[Token]string {
 // focused rows (D-233).
 func withDerived(t map[Token]string) map[Token]string {
 	t[AboutHost] = t[FocusCell]
+	t[MapPropPlace] = t[ModalTitle] // the window title's weight and tone: bold white on a dark window (D-164)
 	t[AboutNote] = shadeBack(t[ModalFG], bgOf(t, ModalBGDark))
 	return t
 }

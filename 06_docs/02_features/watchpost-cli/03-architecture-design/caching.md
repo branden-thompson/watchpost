@@ -83,12 +83,13 @@ is the number to compare.
   (`provider_error` warning, status degraded). That is resilience, not caching.
 - **Pacing, lanes and the failure memo** — the token bucket (30 req/s NWS/NDBC, 5 req/s CO-OPS),
   the priority lane for the favourites, one retry per request, and the per-host failure memo
-  (transport errors and repeated 5xx make the *background* lane fail fast for 20 s; the priority
-  lane always tries and heals it) are politeness and resilience controls; they decide *when*,
+  (transport errors, a host not answering in the client's 30 s, and repeated 5xx make the other
+  lanes fail fast for 20 s; the priority lane always tries and heals it) are politeness and resilience controls; they decide *when*,
   the cache decides *whether*.
 - **Redirects** — every client follows at most three, same scheme and host only.
 - **Resource ceilings** (UAT 73) — 16 requests in flight per client on the normal lane, 8 on the
-  priority lane, 8 connections per host, a pure-Go DNS resolver, and (Q5) an idle-connection
+  priority lane and 8 on the interactive lane, no host more than half of any lane (0.19.0 D-324),
+  8 connections per host, a pure-Go DNS resolver, and (Q5) an idle-connection
   timeout of 11 minutes so a session outlives a 10-minute tier — one `httpx.NewTransport()` policy
   for the data clients, the ICY stream reader and the voice-model downloader. These bound OS threads
   and sockets during the launch burst; they are not caching either.

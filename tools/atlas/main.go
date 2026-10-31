@@ -60,9 +60,48 @@ func main() {
 }
 
 func run() error {
+	out, n, err := render(".")
+	if err != nil {
+		return err
+	}
+	dest := filepath.Join("06_docs", "architecture-atlas.html")
+	if err := os.WriteFile(dest, []byte(out), 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("%d diagrams -> %s\n", n, dest)
+	return nil
+}
+
+// render is the atlas page built from the documents under a repository
+// root, and how many diagrams it holds.
+func render(repo string) (string, int, error) {
+	found, err := collect(repo)
+	if err != nil {
+		return "", 0, err
+	}
+	if len(found) == 0 {
+		return "", 0, fmt.Errorf("no mermaid blocks found")
+	}
+	var nav, body strings.Builder
+	for _, a := range areasOf(found) {
+		writeArea(&nav, &body, a, found)
+	}
+	out := strings.NewReplacer(
+		"<!--NAV-->", nav.String(),
+		"<!--BODY-->", body.String(),
+		"<!--COUNT-->", fmt.Sprint(len(found)),
+	).Replace(page)
+	return out, len(found), nil
+}
+
+// area is a part of the atlas: a feature's directory and its title.
+type area struct{ dir, title string }
+
+// collect is every mermaid diagram in the documents, by file.
+func collect(repo string) ([]diagram, error) {
 	var found []diagram
 	for _, root := range []string{"06_docs", "docs"} {
-		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		err := filepath.Walk(filepath.Join(repo, root), func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() || !strings.HasSuffix(path, ".md") {
 				return err
 			}
@@ -70,22 +109,28 @@ func run() error {
 			if err != nil {
 				return err
 			}
-			found = append(found, read(path, string(raw))...)
+			rel, err := filepath.Rel(repo, path)
+			if err != nil {
+				return err
+			}
+			found = append(found, read(rel, string(raw))...)
 			return nil
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	if len(found) == 0 {
-		return fmt.Errorf("no mermaid blocks found")
-	}
 	sort.SliceStable(found, func(i, j int) bool { return found[i].file < found[j].file })
+	return found, nil
+}
 
+// areasOf are the atlas's areas: the ordered ones first, then every other
+// feature with a diagram, by name.
+func areasOf(found []diagram) []area {
 	seen := map[string]bool{}
-	var areas []struct{ dir, title string }
+	var areas []area
 	for _, o := range order {
-		areas = append(areas, o)
+		areas = append(areas, area{o.dir, o.title})
 		seen[o.dir] = true
 	}
 	var rest []string
@@ -97,46 +142,36 @@ func run() error {
 	}
 	sort.Strings(rest)
 	for _, r := range rest {
-		areas = append(areas, struct{ dir, title string }{r, strings.ReplaceAll(r, "-", " ")})
+		areas = append(areas, area{r, strings.ReplaceAll(r, "-", " ")})
 	}
+	return areas
+}
 
-	var nav, body strings.Builder
-	for _, a := range areas {
-		var mine []diagram
-		for _, d := range found {
-			if d.feature == a.dir {
-				mine = append(mine, d)
-			}
+// writeArea writes an area's entry in the navigation and its section of
+// diagrams; nothing for an area with none.
+func writeArea(nav, body *strings.Builder, a area, found []diagram) {
+	var mine []diagram
+	for _, d := range found {
+		if d.feature == a.dir {
+			mine = append(mine, d)
 		}
-		if len(mine) == 0 {
-			continue
-		}
-		fmt.Fprintf(&nav, `<li><a href="#%s">%s<span class="n">%d</span></a></li>`, a.dir, html.EscapeString(a.title), len(mine))
-		fmt.Fprintf(&body, `<section class="level" id="%s"><header class="lvl"><h2>%s</h2></header>`, a.dir, html.EscapeString(a.title))
-		for i, d := range mine {
-			lead := ""
-			if d.lead != "" {
-				lead = `<p class="lead">` + d.lead + `</p>`
-			}
-			fmt.Fprintf(&body, `<article class="dia" id="%s-%d"><div class="meta"><h3>%s</h3>`+
-				`<p class="file"><code>%s</code></p>%s</div>`+
-				`<div class="canvas"><pre class="mermaid">%s</pre></div></article>`,
-				a.dir, i, html.EscapeString(d.title), html.EscapeString(d.file), lead, html.EscapeString(d.src))
-		}
-		body.WriteString("</section>")
 	}
-
-	out := strings.NewReplacer(
-		"<!--NAV-->", nav.String(),
-		"<!--BODY-->", body.String(),
-		"<!--COUNT-->", fmt.Sprint(len(found)),
-	).Replace(page)
-	dest := filepath.Join("06_docs", "architecture-atlas.html")
-	if err := os.WriteFile(dest, []byte(out), 0o644); err != nil {
-		return err
+	if len(mine) == 0 {
+		return
 	}
-	fmt.Printf("%d diagrams -> %s\n", len(found), dest)
-	return nil
+	fmt.Fprintf(nav, `<li><a href="#%s">%s<span class="n">%d</span></a></li>`, a.dir, html.EscapeString(a.title), len(mine))
+	fmt.Fprintf(body, `<section class="level" id="%s"><header class="lvl"><h2>%s</h2></header>`, a.dir, html.EscapeString(a.title))
+	for i, d := range mine {
+		lead := ""
+		if d.lead != "" {
+			lead = `<p class="lead">` + d.lead + `</p>`
+		}
+		fmt.Fprintf(body, `<article class="dia" id="%s-%d"><div class="meta"><h3>%s</h3>`+
+			`<p class="file"><code>%s</code></p>%s</div>`+
+			`<div class="canvas"><pre class="mermaid">%s</pre></div></article>`,
+			a.dir, i, html.EscapeString(d.title), html.EscapeString(d.file), lead, html.EscapeString(d.src))
+	}
+	body.WriteString("</section>")
 }
 
 // read pulls every diagram out of one document.

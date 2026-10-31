@@ -132,8 +132,9 @@ func (m *failureMemo) retryAfter(host string, d time.Duration, now time.Time) {
 }
 
 // noteFailure classifies one failed attempt for the memo and the pacing
-// hold. A cancelled context is the caller's decision, not the host's fault.
-func (c *Client) noteFailure(host, rawURL string, res attemptResult, err error) {
+// hold. The caller's context ending is the caller's decision, not the host's
+// fault; the client's own timeout is the host not answering (D-324).
+func (c *Client) noteFailure(ctx context.Context, host, rawURL string, res attemptResult, err error) {
 	now := time.Now()
 	if res.retryAfter > 0 {
 		c.holdPacing(res.retryAfter, now)
@@ -141,7 +142,7 @@ func (c *Client) noteFailure(host, rawURL string, res attemptResult, err error) 
 	}
 	switch {
 	case err != nil && res.status == 0:
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		if ctx.Err() != nil {
 			return
 		}
 		c.memo.transportFailure(host, now)

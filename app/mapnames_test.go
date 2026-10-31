@@ -76,6 +76,12 @@ func TestTheDetailAndTheNamerReachTheWindow(t *testing.T) {
 	if cfg.MapAreaName == nil || cfg.MapAreaName(tuimaps.LonLat{Lon: -117.38, Lat: 33.2}, 400) != "Southern California" {
 		t.Error("the window is not handed the station's namer")
 	}
+	if cfg.PlaceNear == nil {
+		t.Fatal("the window is not handed the world's namer")
+	}
+	if name, country := cfg.PlaceNear(35.5, 139.5); name == "" || country == "" {
+		t.Error("the window is not handed the world's namer")
+	}
 	withConfigFile(t)
 	if err := setUIHook(tty.UIPrefs{Units: "metric", MapDetail: map[string]bool{"parks": true}, MapDetailLevel: "full"}); err != nil {
 		t.Fatal(err)
@@ -94,5 +100,39 @@ func TestAHamletAtTheCentreNamesTheTown(t *testing.T) {
 	}
 	if got := placeInView(near[:1]); got.Name != "Hamlet" {
 		t.Errorf("with no town, named %q", got.Name)
+	}
+}
+
+// TestAPointIsNamedAnywhere is BUILD red team AX-1: the Propagation mode's
+// centre, a point anywhere on the globe, is named by the town nearest it in
+// any country; with none within placeNearKm, nothing, and the window says the
+// coordinates. The town's country comes with it, a US town's "US" - the two
+// letters ending its label a state's (D-231). Asked again at the same point,
+// the name is the one kept.
+func TestAPointIsNamedAnywhere(t *testing.T) {
+	idx, err := geodata.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := placeNamer(idx)
+	for _, c := range []struct {
+		lat, lon        float64
+		suffix, country string
+	}{{35.5, 139.5, ", JP", "JP"}, {51.5, 0, ", GB", "GB"}, {-34, 151, ", AU", "AU"}, {33, -117, ", CA", "US"}} {
+		got, country := name(c.lat, c.lon)
+		if len(got) <= len(c.suffix) || got[len(got)-len(c.suffix):] != c.suffix || country != c.country {
+			t.Errorf("(%.1f, %.1f) is named %q in %q; a town ending %q, in %q", c.lat, c.lon, got, country, c.suffix, c.country)
+		}
+	}
+	if got, _ := name(-40, -140); got != "" {
+		t.Errorf("the open South Pacific is named %q; nothing", got)
+	}
+	if got, _ := placeNamer(nil)(35.5, 139.5); got != "" {
+		t.Errorf("with no index, %q; nothing", got)
+	}
+	name(35.5, 139.5)
+	allocs := testing.AllocsPerRun(20, func() { name(35.5, 139.5) }) // a point with towns: a scan would parse them
+	if allocs != 0 {
+		t.Errorf("the same point asked again cost %.0f allocations; the name kept costs none", allocs)
 	}
 }

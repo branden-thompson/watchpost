@@ -31,7 +31,13 @@ func newResolver(client *httpx.Client, idx *geodata.Index, loadErr error) (*loca
 // launch burst held the geocoder's request behind it on the normal lane, so
 // a lookup in the first seconds could spend its whole limit queued (D-156).
 func lookupContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(httpx.WithInteractive(context.Background()), 5*time.Second)
+	return lookupContextUnder(context.Background())
+}
+
+// lookupContextUnder is lookupContext under a caller's context, so the
+// caller's cancel stops the lookup too.
+func lookupContextUnder(parent context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(httpx.WithInteractive(parent), 5*time.Second)
 }
 
 // resolveHook turns a typed query into a ref; a resolver that failed to
@@ -51,5 +57,21 @@ func resolveHook(r *locations.Resolver, buildErr error) func(string) (snapshot.L
 			ref.Tag = deriveTag(ref.Label)
 		}
 		return ref, nil
+	}
+}
+
+// findHook is the Propagation mode's place finder (0.19.0 FR-1.10): the
+// resolver's lookup anywhere on the globe - local first, online only on a
+// miss, uncached - under the lookup's own deadline. Its answer is never
+// kept: nothing here saves it.
+func findHook(r *locations.Resolver, buildErr error) func(context.Context, string) (snapshot.LocationRef, error) {
+	if buildErr != nil {
+		return func(context.Context, string) (snapshot.LocationRef, error) { return snapshot.LocationRef{}, buildErr }
+	}
+	return func(ctx context.Context, query string) (snapshot.LocationRef, error) {
+		rctx, done := lookupContextUnder(ctx) // the listener's cancel stops the lookup
+		defer done()
+		ref, _, err := r.ResolveAnywhere(rctx, query)
+		return ref, err
 	}
 }

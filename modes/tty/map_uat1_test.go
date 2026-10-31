@@ -20,7 +20,7 @@ import (
 )
 
 // openMap is the window open at a size with one alert over Oceanside.
-func openMap(t *testing.T, cfg Config, w, h int) Dashboard {
+func openMap(t testing.TB, cfg Config, w, h int) Dashboard {
 	t.Helper()
 	if cfg.MapFeed == nil {
 		cfg.MapFeed = boxFeed(-117.6, -117.1, false)
@@ -33,16 +33,17 @@ func openMap(t *testing.T, cfg Config, w, h int) Dashboard {
 
 func bodyText(d Dashboard) string { return stripANSITest(strings.Join(d.mapBodyLines(), "\n")) }
 
-// TestTheMapWindowLeavesTheDashboardInSight is U1-13: on a large terminal the
-// window is about 80% of it each way, so the dashboard shows around it; on a
-// small one it still leaves the 69×12 map room (FR-1.4).
+// TestTheMapWindowLeavesTheDashboardInSight is U1-13 as D-194 widens it: on
+// a large terminal the window is 85% of its width, so the dashboard shows
+// either side, and inside the insets top and bottom; on a small one it still
+// leaves the 69×12 map room (FR-1.4).
 func TestTheMapWindowLeavesTheDashboardInSight(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
-	if w := d.modalWidth(); w < 133*75/100 || w > 133*82/100 {
-		t.Errorf("at 133 columns the window is %d wide; want about 80%%", w)
+	if w := d.modalWidth(); w != 133*85/100 {
+		t.Errorf("at 133 columns the window is %d wide; want 85%%, %d", w, 133*85/100)
 	}
-	if rows := len(strings.Split(stripANSITest(d.renderModal(d.opts())), "\n")); rows > 44*82/100 {
-		t.Errorf("at 44 rows the window is %d tall; want about 80%%", rows)
+	if rows := len(strings.Split(stripANSITest(d.renderModal(d.opts())), "\n")); rows > 44-topInset-bottomInset {
+		t.Errorf("at 44 rows the window is %d tall; past the insets' %d", rows, 44-topInset-bottomInset)
 	}
 	small := openMap(t, Config{MapDescription: "off"}, 80, 24)
 	if !small.mapFits() {

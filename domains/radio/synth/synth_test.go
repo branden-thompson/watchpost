@@ -5,12 +5,16 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -167,6 +171,41 @@ func TestWAVPCMAndSafeJoin(t *testing.T) {
 	}
 }
 
+// muteHost ends the speech test on a host whose say renders nothing, where
+// the shell-safety property cannot be observed: a failure, unless the run
+// declares the host mute - WATCHPOST_SAY_MUTE_HOST, set with its reason only
+// in the hosted macOS job's step - when it is NOT RUN, which make test-say
+// prints (D-254). A host that should speak never passes in silence.
+func muteHost(t *testing.T, why string) {
+	t.Helper()
+	skip, msg := muteVerdict(why, os.Getenv("WATCHPOST_SAY_MUTE_HOST"))
+	if !skip {
+		t.Fatal(msg)
+	}
+	t.Skip(msg)
+}
+
+// muteVerdict is muteHost's decision: a skip said NOT RUN only for a host
+// declared mute, else a failure that says how to run it (D-254).
+func muteVerdict(why, declared string) (skip bool, msg string) {
+	if declared == "" {
+		return false, why + ": the shell-safety property cannot be observed here, and the host is not declared mute (WATCHPOST_SAY_MUTE_HOST, with its reason, D-254); run make test-say on a Mac that speaks"
+	}
+	return true, "NOT RUN: " + why + "; the host is declared mute: " + declared
+}
+
+// TestASilentHostFailsUnlessDeclaredMute is D-254 (RC-2): a host whose say
+// renders nothing fails the speech test, and is NOT RUN - said so, never a
+// silent pass - only when the run declares it mute with its reason.
+func TestASilentHostFailsUnlessDeclaredMute(t *testing.T) {
+	if skip, msg := muteVerdict("236 bytes", ""); skip || !strings.Contains(msg, "not declared mute") {
+		t.Errorf("an undeclared silent host: skip %v, %q; want a failure", skip, msg)
+	}
+	if skip, msg := muteVerdict("236 bytes", "hosted runner"); !skip || !strings.HasPrefix(msg, "NOT RUN: ") || !strings.Contains(msg, "hosted runner") {
+		t.Errorf("a declared mute host: skip %v, %q; want NOT RUN with its reason", skip, msg)
+	}
+}
+
 func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("macOS built-in voice")
@@ -200,20 +239,27 @@ func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 	// for a test that passes in isolation. A gate that fails for load teaches
 	// people to re-run it rather than read it, which is how a real failure gets
 	// waved through (the same argument as F-29).
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
+	//
+	// EACH RENDER HAS ITS OWN BOUND, AND ONE HANG IS TRIED ONCE MORE (D-276):
+	// macOS's speech service now and then never answers say (F-219). A render
+	// killed at its bound has its main thread logged, then is tried again,
+	// once a run, the retry printed; a second hang fails the gate.
+	retried := false
+	say := func(text string) ([]byte, error) {
+		return renderOnceMore(t, SayVoice{}.Say, text, 2*time.Minute, &retried)
+	}
 
 	// A CONTROL RENDER FIRST, to tell "this box cannot speak" apart from "our
 	// input broke it". GitHub's macOS runner has /usr/bin/say and it produces
 	// about 236 bytes for a whole sentence — present and not functional. Failing
 	// there says nothing about the security property this test exists for, and a
 	// gate that fails for the environment teaches people to re-run it.
-	benign, err := SayVoice{}.Say(ctx, "One sentence of ordinary text.")
+	benign, err := say("One sentence of ordinary text.")
 	if err != nil || len(benign) < 22050 {
-		t.Skipf("say is present but not rendering audio on this host (%d bytes, err=%v): the shell-safety property cannot be observed here", len(benign), err)
+		muteHost(t, fmt.Sprintf("say is present but not rendering audio on this host (%d bytes, err=%v)", len(benign), err))
 	}
 
-	pcm, err := SayVoice{}.Say(ctx, "Test $(echo pwned) `id` ; rm -rf / ok.")
+	pcm, err := say("Test $(echo pwned) `id` ; rm -rf / ok.")
 	if err != nil {
 		t.Fatalf("say did not render within the bound (or failed): %v", err)
 	}
@@ -224,9 +270,9 @@ func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 		// speaking" (GitHub's macOS runner: a full render, then 236 bytes for the
 		// next sentence, whatever it is). Still full, the hostile text is what
 		// failed; short now too, the property cannot be observed on this host.
-		again, err := SayVoice{}.Say(ctx, "One sentence of ordinary text.")
+		again, err := say("One sentence of ordinary text.")
 		if err != nil || len(again) < 22050 {
-			t.Skipf("say stopped rendering on this host between renders (%d bytes, then %d, err=%v): the shell-safety property cannot be observed here", len(benign), len(again), err)
+			muteHost(t, fmt.Sprintf("say stopped rendering on this host between renders (%d bytes, then %d, err=%v)", len(benign), len(again), err))
 		}
 		t.Fatalf("hostile text rendered %d bytes against %d and %d for ordinary text — it was not narrated intact", len(pcm), len(benign), len(again))
 	}
@@ -755,5 +801,109 @@ func TestTheConditionsSayTheListenersUnits(t *testing.T) {
 		if got := std.conditions(loc, imperial); !strings.Contains(got, want) {
 			t.Errorf("imperial %v: %q; want it to say %q", imperial, got, want)
 		}
+	}
+}
+
+// renderOnceMore renders text within bound, its hang diagnosed near the
+// bound; a render killed at its bound is tried once more while *retried is
+// false, the retry printed, and a second hang returns its error (D-276).
+func renderOnceMore(t *testing.T, render func(context.Context, string) ([]byte, error), text string, bound time.Duration, retried *bool) ([]byte, error) {
+	t.Helper()
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), bound)
+		stop := diagnoseHang(t, bound*11/12) // F-188: a hang near the bound is sampled, read rather than retried blind (FR-9.3)
+		pcm, err := render(ctx, text)
+		hung := err != nil && ctx.Err() == context.DeadlineExceeded // audio that came back as the bound passed is kept (R3C-9)
+		stop()
+		cancel()
+		if !hung || *retried {
+			return pcm, err
+		}
+		*retried = true
+		t.Logf("RETRY: say was killed at its %v bound (%v), its main thread logged above; trying once more, and a second hang fails (D-276)", bound, err)
+	}
+}
+
+// TestAHungRenderIsTriedOnceMore is D-276: a render killed at its bound is
+// tried once more and passes when the second answers; a second hang returns
+// its error; a render that answers is never tried again.
+func TestAHungRenderIsTriedOnceMore(t *testing.T) {
+	calls := 0
+	hangs := 0
+	render := func(ctx context.Context, _ string) ([]byte, error) {
+		calls++
+		if calls <= hangs {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}
+		return []byte("pcm"), nil
+	}
+	for _, c := range []struct {
+		hangs, calls int
+		ok           bool
+	}{{0, 1, true}, {1, 2, true}, {2, 2, false}} {
+		calls, hangs = 0, c.hangs
+		retried := false
+		pcm, err := renderOnceMore(t, render, "text", 20*time.Millisecond, &retried)
+		if calls != c.calls || (err == nil) != c.ok || (c.ok && string(pcm) != "pcm") {
+			t.Errorf("%d hang(s): %d render(s), %q, %v; want %d, passing %v", c.hangs, calls, pcm, err, c.calls, c.ok)
+		}
+	}
+	retried := true // a run's one retry already spent
+	calls, hangs = 0, 1
+	if _, err := renderOnceMore(t, render, "text", 20*time.Millisecond, &retried); err == nil || calls != 1 {
+		t.Errorf("a hang after the run's retry was spent: %d render(s), %v; want one, failing", calls, err)
+	}
+}
+
+// diagnoseHang samples every say child still running when the bound is
+// near (0.19.0 FR-9.3, F-188): a hang is diagnosed - the hung process's
+// stacks, by macOS's sample - rather than retried blind. sample writes its
+// report to a file, never to its output, so the report is written where the
+// test reads it and its main thread's call graph is logged (F-219). The stop
+// it returns takes the watch off.
+func diagnoseHang(t *testing.T, after time.Duration) (stop func()) {
+	t.Helper()
+	dir := t.TempDir()
+	timer := time.AfterFunc(after, func() {
+		for _, pid := range LiveChildren() {
+			report := filepath.Join(dir, "say-"+strconv.Itoa(pid)+".sample.txt")
+			out, err := exec.Command("sample", strconv.Itoa(pid), "2", "-file", report).CombinedOutput()
+			b, _ := os.ReadFile(report)
+			t.Logf("say %d is still running after %v; sampled (%v) %s\nits main thread:\n%s", pid, after, err, out, mainThread(string(b)))
+		}
+	})
+	return func() { timer.Stop() }
+}
+
+// mainThread is a sample report's first thread under its call graph - the
+// main thread, where a say waiting on the speech service sits - or the
+// report's absence said.
+func mainThread(report string) string {
+	_, graph, ok := strings.Cut(report, "Call graph:\n")
+	if !ok {
+		return "(no call graph in the report)"
+	}
+	var lines []string
+	for i, l := range strings.Split(graph, "\n") {
+		if i > 0 && !strings.HasPrefix(l, "    +") {
+			break // the next thread, or the report's end
+		}
+		lines = append(lines, l)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// TestAHangsReportNamesItsMainThread is F-219: a hung say's sample report is
+// read for its main thread's call graph - where the hung say sits, waiting
+// on the speech service - and a report with no call graph says so.
+func TestAHangsReportNamesItsMainThread(t *testing.T) {
+	report := "Process: say [1]\n----\n\nCall graph:\n    1583 Thread_1   DispatchQueue_1: com.apple.main-thread  (serial)\n    + 1583 start  (in dyld)\n    +   1583 CFRunLoopRun  (in CoreFoundation)\n    +     1583 mach_msg  (in libsystem_kernel.dylib)\n    1583 Thread_2: caulk.messenger.shared:17\n    + 1583 thread_start\n"
+	got := mainThread(report)
+	if !strings.Contains(got, "com.apple.main-thread") || !strings.Contains(got, "mach_msg") || strings.Contains(got, "Thread_2") {
+		t.Errorf("the main thread read as:\n%s", got)
+	}
+	if got := mainThread("no graph here"); !strings.Contains(got, "no call graph") {
+		t.Errorf("a report with no call graph read as %q", got)
 	}
 }

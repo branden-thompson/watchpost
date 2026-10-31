@@ -21,13 +21,19 @@ func (d Dashboard) View() tea.View {
 	o := fl.o
 	var b strings.Builder
 	b.Grow(len(priority) + len(recent) + 8192) // one buffer for the frame, no growth copies (Q3)
-	b.WriteString("\n\n")                      // top padding: 2 blank lines (UAT 10.3)
+	for range topInset {                       // top padding: 2 blank lines (UAT 10.3), written without allocating
+		b.WriteByte('\n')
+	}
 	b.WriteString(d.header(o))
 	b.WriteString("\n")                                            // 0.12.0: the ticker band's top row is the header/ticker separator
 	d.writeBody(&b, fl, priority, recent)                          // UAT 57: no footer - every control lives where it acts
 	content := frameText(b.String(), viewPadLeft, render.TextBase) // UAT 4.10: base grey; no stray trailing row (UAT 58)
 	if overlay := d.modalView(o); overlay != "" {
-		content = render.Overlay(content, overlay, d.width) // the one open window (UAT 8.3: lipgloss compositing)
+		y := -1 // centred (UAT 8.3: lipgloss compositing)
+		if d.modal == modalMap {
+			y = topInset // the Map window alone runs from the top inset to the bottom one (D-194)
+		}
+		content = render.OverlayAt(content, overlay, d.width, y) // the one open window
 	}
 	// AND THE CONFIRMATION OVER THAT (HUM LEAD mock, 2026-09-07). A second
 	// layer rather than a swapped body: the mock shows the red box ON TOP of
@@ -39,6 +45,9 @@ func (d Dashboard) View() tea.View {
 		content = render.Overlay(content, box, d.width)
 	}
 	v := tea.NewView(content)
+	if x, y, ok := d.cursorAt(content); ok {
+		v.Cursor = tea.NewCursor(x, y) // D-81: on the acknowledgement's first line; nowhere else yet (F-205)
+	}
 	v.AltScreen = true
 	v.BackgroundColor = render.WindowBG(d.darkBG) // UAT 10.2: blue-grey window
 	return v
@@ -103,6 +112,14 @@ func (d Dashboard) renderModal(o render.Opts) string {
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines(o)) // UAT 68
 	case modalMap:
 		return d.mapWindow(o)
+	case modalPropAck:
+		return d.floatModal(o, d.modalWidth(), "Propagation", d.propAckLines(o)) // D-46, D-81
+	case modalPropChart:
+		return d.floatModal(o, d.modalWidth(), "Best Bands", d.propChartLines(o)) // D-176
+	case modalPropFreq:
+		return d.floatModal(o, d.modalWidth(), "Your Frequency", d.propFreqLines(o)) // D-178
+	case modalPropFind:
+		return d.floatModal(o, d.modalWidth(), "Find a Place", d.propFindLines(o)) // FR-1.10
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
 	case modalCard:
@@ -127,13 +144,7 @@ func (d Dashboard) renderModal(o render.Opts) string {
 // terminals, window + rail on short ones).
 func (d Dashboard) modalMax() int {
 	if d.modal == modalMap {
-		// U1-13: about 80% of the terminal, so the dashboard shows round it.
-		// D-159: never less than the map needs to keep its 69x12 floor under
-		// its own status, notes and radar timeline, up to the terminal's height
-		// minus 8.
-		base := max(d.height*80/100-5, mapMinBody.Rows+1)
-		need := mapMinBody.Rows + d.mapChromeRows(len(d.noteLines(d.mapTextW())))
-		return max(5, min(d.height-8, max(base, need)))
+		return d.mapCeiling() // D-194: the Map window runs from the top inset to the bottom one
 	}
 	return max(5, d.height-12)
 }
@@ -162,6 +173,14 @@ func (d Dashboard) modalWidth() int {
 		return w
 	case modalMap:
 		return d.mapWindowCols()
+	case modalPropAck:
+		return propAckWidth
+	case modalPropChart:
+		return propChartWidth
+	case modalPropFreq:
+		return propFreqWidth
+	case modalPropFind:
+		return propFindWidth
 	case modalHelp:
 		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
 	case modalCard:
@@ -176,13 +195,24 @@ func (d Dashboard) modalWidth() int {
 	return 56 // help, add/lookup, remove, theme
 }
 
-// mapWindowCols is the map window's width: U1-13's about 80% of the terminal,
-// at least a 69-column map and its borders (FR-1.4, U1-27), never past the
-// frame. Its own function, so the map's sizing reads it without the switch
-// above - whose Help arm leads back to the window's height, a cycle P10
-// forbids (W14, D-159).
+// mapWindowCols is the map window's width: 85% of the terminal (D-194, from
+// U1-13's 80%), at least a 69-column map and its borders (FR-1.4, U1-27),
+// never past the frame. Its own function, so the map's sizing reads it
+// without the switch above - whose Help arm leads back to the window's
+// height, a cycle P10 forbids (W14, D-159).
 func (d Dashboard) mapWindowCols() int {
-	return max(min(d.width-2, max(d.width*80/100, mapMinBody.Cols+2)), 10)
+	return max(min(d.width-2, max(d.width*mapWindowPct/100, mapMinBody.Cols+2)), 10)
+}
+
+// mapWindowPct is the Map window's share of the terminal's width (D-194).
+const mapWindowPct = 85
+
+// mapCeiling is the Map window's body budget (D-194): every row between the
+// frame's top and bottom insets but its two borders; never fewer than five.
+// The window's height, the map's rows and the notes' collapse (D-159) all
+// read it.
+func (d Dashboard) mapCeiling() int {
+	return max(5, d.height-topInset-bottomInset-2)
 }
 
 // modalLines is the open modal's full body, wrapped exactly as the
@@ -214,6 +244,14 @@ func (d Dashboard) modalLines() []string {
 		raw = d.aboutLines(o)
 	case modalMap:
 		raw, o.Width = d.mapBodyLines(), w // measured at the width the map window is drawn at, not the dashboard's
+	case modalPropAck:
+		raw = d.propAckLines(o)
+	case modalPropChart:
+		raw = d.propChartLines(o)
+	case modalPropFreq:
+		raw = d.propFreqLines(o)
+	case modalPropFind:
+		raw = d.propFindLines(o)
 	case modalSevere:
 		raw = d.severeDetailLines(o) // only the record scrolls; the table windows itself
 	case modalCard:
@@ -252,7 +290,7 @@ func (d Dashboard) wrapModalAt(lines []string, w int) ([]string, int) {
 	if full := render.WrapLines(lines, w-used); len(full) <= d.modalMax() {
 		return full, w - used
 	}
-	return render.WrapLines(lines, w-used-3), w - used - 3
+	return render.WrapLines(lines, w-used-modalRailCols), w - used - modalRailCols
 }
 
 // footerModalScrollMax is how far a pinned-footer window scrolls: its wrapped

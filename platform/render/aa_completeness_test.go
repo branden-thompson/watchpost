@@ -88,6 +88,14 @@ var unmeasurable = map[Token]string{
 	MapChipGeoNamesBG: "a chip ground (D-235)",
 	MapChipOFMBG:      "a chip ground (D-235)",
 	MapChipPiperBG:    "a chip ground (D-235)",
+	MapChipSWPCBG:     "a chip ground (0.19.0 FR-4.1)",
+	MapChipPyIRIBG:    "a chip ground (0.19.0 FR-4.1)",
+	MapChipIGRFBG:     "a chip ground (0.19.0 FR-4.1)",
+	MapChipGIROBG:     "a chip ground (0.19.0 G5)",
+	MapChipITUBG:      "a chip ground (0.19.0 D-186)",
+	MapChipMUFBG:      "a chip ground (0.19.0 D-165)",
+	MapChipFoF2BG:     "a chip ground (0.19.0 D-165)",
+	MapPropPlace:      "the window title's tone, derived (0.19.0 D-164): ModalTitle is measured",
 }
 
 func TestEveryTokenIsMeasuredOrExcused(t *testing.T) {

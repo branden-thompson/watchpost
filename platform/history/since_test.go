@@ -21,11 +21,11 @@ func TestTheStoreSaysSinceWhenAndHowMuch(t *testing.T) {
 	shape := Shape{Box: geo.Box{W: 1, S: 1, E: 1, N: 1}, Cols: 1, Rows: 1}
 	early := time.Date(2026, 9, 28, 6, 0, 0, 0, time.UTC)
 	for _, at := range []time.Time{early.AddDate(0, 0, 1), early, now.Add(-time.Hour)} { // two days of one month: the earlier is its first
-		if !s.Put("vals", Record{Key: Key{Source: "a", Place: "b"}, At: at, IssuedAt: at, Shape: shape, Values: map[string][]float64{"v": {1}}}) {
+		if !s.Record("vals", Record{Key: Key{Source: "a", Place: "b"}, At: at, IssuedAt: at, Shape: shape, Values: map[string][]float64{"v": {1}}}) {
 			t.Fatal("put failed")
 		}
 	}
-	s.Put("docs", Record{Key: Key{Source: "a", Place: "c"}, At: now, IssuedAt: now, Doc: []byte(`{"x":1}`)})
+	s.Record("docs", Record{Key: Key{Source: "a", Place: "c"}, At: now, IssuedAt: now, Doc: []byte(`{"x":1}`)})
 	since, ok := s.Since()
 	if !ok || !since.Equal(time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)) {
 		t.Errorf("since %v, %v; want 28 September", since, ok)

@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
@@ -52,8 +53,15 @@ func skipDir(base string) bool {
 }
 
 func scan(root string) ([]Finding, int, error) {
-	var out []Finding
-	files := 0
+	// TWO PASSES: AP-OK-01 judges a call by every declaration of its callee in
+	// the module, so the whole tree is parsed before any file is judged.
+	type parsed struct {
+		fset *token.FileSet
+		f    *ast.File
+		rel  string
+	}
+	var all []parsed
+	fns := newOKFuncs()
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
@@ -68,18 +76,19 @@ func scan(root string) ([]Finding, int, error) {
 			return nil
 		}
 		fset := token.NewFileSet()
-		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments|parser.SkipObjectResolution) // no check reads resolved names
 		if err != nil {
 			return nil // unparseable: not this tool's complaint
 		}
-		files++
-		rel := strings.TrimPrefix(strings.TrimPrefix(path, root), "/")
-		out = append(out, checkHistory(fset, f, rel)...)
-		out = append(out, checkBlankKeepAlive(fset, f, rel)...)
-		out = append(out, checkDocAttached(fset, f, rel)...)
-		out = append(out, checkShell(fset, f, rel)...)
+		all = append(all, parsed{fset, f, strings.TrimPrefix(strings.TrimPrefix(path, root), "/")})
+		fns.add(f)
 		return nil
 	})
+	var out []Finding
+	for _, p := range all { // bounded by the tree's files (P10-02)
+		out = append(out, checkFile(p.fset, p.f, p.rel, fns)...)
+	}
+	files := len(all)
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].File != out[j].File {
 			return out[i].File < out[j].File
@@ -157,7 +166,18 @@ func main() {
 	fmt.Printf("authoring: OK — %d Go file(s), no findings\n", files)
 	fmt.Println("  scope: every Go file under the tree, skipping any directory named .git, third_party,")
 	fmt.Println("  mutants, dist or node_modules by its basename, wherever it sits; the count is of files judged.")
-	fmt.Println("  It decides three rules a syntax tree can decide. It cannot see a comment that is")
+	fmt.Println("  It decides the rules a syntax tree can decide. It cannot see a comment that is")
 	fmt.Println("  merely WRONG — the larger class, which still needs a reader.")
 	fmt.Println("  The rules are written out in 06_docs/code-standards.md.")
+}
+
+// checkFile is every rule run over one file: the one list the scan and the
+// self-test share, so a rule cannot be added to one and not the other.
+func checkFile(fset *token.FileSet, f *ast.File, rel string, fns okFuncs) []Finding {
+	var out []Finding
+	out = append(out, checkHistory(fset, f, rel)...)
+	out = append(out, checkBlankKeepAlive(fset, f, rel)...)
+	out = append(out, checkDocAttached(fset, f, rel)...)
+	out = append(out, checkShell(fset, f, rel)...)
+	return append(out, checkDiscardedOK(fset, f, rel, fns)...)
 }
