@@ -12,7 +12,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120  # derived, twice the measurement rounded up: the Linux CI job that runs these same gates (verify, release-matrix, install-test) took 45-58 min on feature/map-drawing, slowest 58.2 min (2026-10-04 and 2026-10-05, runs 37189409412, 37298568637, 37280073875, 37192677750, 37155951302); publish adds a minute. A cap under the job leaves a tag with no release behind it.
+    timeout-minutes: 300  # derived, twice the measurement rounded up, under the hosted runner's 360: the Linux CI job that runs these same gates took 94.9 and 137.0 min on release/0.19.0 (2026-10-31, runs 41175561213 and 41175576529), make verify's mutant check most of it; release-matrix, install-test and publish add minutes. A cap under the job leaves a tag with no release behind it (v0.19.0's first run, 41184991852, stopped at 120 min inside make verify; D-353).
     steps:
       # Actions pinned by commit (red-team 0.9.0 S-F9): the release job has
       # contents: write, so a moved tag must not be able to swap the code.
