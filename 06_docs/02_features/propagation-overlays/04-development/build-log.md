@@ -995,3 +995,9 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 - **Re-pinned** to go-ionomaps v0.1.0 (from rc.17) and go-tuiMaps v0.3.0 (from rc.11): neither library's code changed between candidate and final (`git diff` of their non-test Go files is empty) - go-ionomaps added G10.3's release step and record, go-tuiMaps P7.1's, each in tests, scripts and docs. `go.mod`, the third-party licences, the as-built map's library line and nodes.
 - **Released first:** go-ionomaps v0.1.0 (PR #1, D-349) and go-tuiMaps v0.3.0 (PR #9, D-351), each squash-merged on green with its hosted full gate, tagged on the merge and published as its GitHub Release; go-tuiMaps' nested modules follow on their own PR.
 
+
+## SHIP: the release job's cap (D-352, D-353)
+
+- **Released to `main`:** PR #31 squash-merged on hosted green (`eb80e63d`), its tree `release/0.19.0`'s exactly; `v0.19.0` tagged on it.
+- **The release job stopped:** `release.yml` (run 41184991852) was cancelled at its 120-minute cap inside `make verify`, before the matrix; nothing was published. The cap was derived from 0.18.0's CI, 45-58 min; 0.19.0's Linux verify took 94.9 and 137.0 min on the release branch, the mutant check most of it.
+- **Fixed (D-353):** the cap is 300 minutes, twice the slowest run rounded up and under the hosted runner's 360, its measurement recorded beside it; the tag is re-created on this fix's merge commit, where `release.yml` runs with the new cap.
