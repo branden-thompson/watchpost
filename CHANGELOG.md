@@ -2,7 +2,7 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
-## [Unreleased] — 0.19.0
+## [0.19.0] — 2026-10-31
 
 ### Added
 - **The Propagation mode** (`P` on the map): HF radio conditions over the whole world - the highest
