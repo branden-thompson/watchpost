@@ -322,7 +322,7 @@ github.com/victoriyaforsythe/PyIRI, LICENSE:
    SOFTWARE.
 ```
 
-## github.com/branden-thompson/go-tuimaps v0.3.1
+## github.com/branden-thompson/go-tuimaps v0.3.2
 
 ```
 MIT License

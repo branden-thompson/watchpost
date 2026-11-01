@@ -2,6 +2,15 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.19.2] — 2026-11-01
+
+### Changed
+- **The Propagation mode's whole-world map pans faster,** about 40 % less work a frame: go-tuiMaps
+  v0.3.2 draws a frame at 400 × 110 in 13 ms on a 4-core x86 machine, where v0.3.1 took 21, so a pan
+  keeps up with a 60 Hz terminal there. What is drawn is unchanged.
+- **The screen reader's focus in the Propagation mode is now promised for 0.19.3,** not 0.19.2: this
+  release carries the faster map alone. Help and the mode's words say 0.19.3.
+
 ## [0.19.1] — 2026-11-01
 
 ### Fixed
@@ -66,7 +75,7 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   allowed. Measured on an earlier build of this release at the every-10-minutes refresh, then the
   default (Hourly measured 2.66 MB an hour against 3.3), with other work on the machine at times.
 - **A screen reader cannot yet follow focus in the Propagation mode.** Help and the mode's words say so;
-  0.19.2 fixes it.
+  0.19.3 fixes it.
 - **The answers agree with what was heard on the air only a little better than a typical day alone.**
   Graded against WSPR reports over six days, half open and half not: from a station to its own area 54%
   against the typical day's 52% (57% against 55% on 160 m to 30 m; from 20 m up a station's own area is

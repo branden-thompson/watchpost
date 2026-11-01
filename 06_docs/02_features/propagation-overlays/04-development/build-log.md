@@ -1009,3 +1009,11 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 - **Tests:** `TestAnAbandonedTileIsNotAFailure`, `TestATileTheMapGivesUpIsNotAFailure` (through the library: the view moved while a tile is held), `TestATransportGivingNothingBackIsRefused`, `TestAnAbandonedAskIsNotAFailure`, `TestAnAbandonedPlainAskIsNotAFailure`; m602 to m606, each applied by hand and killed.
 - **O2 is 0.19.2 (D-355):** the focus-limit words in the app and the changelog say 0.19.2; the requirements' FR-7 and the plan's W8 are relabelled.
 - **go-tuiMaps v0.3.1 pinned (D-356):** the probe also showed every cold open reading OpenFreeMap's TileJSON four times, one read a work loop - go-tuiMaps' own. Fixed there (its D-51: one job reads it, the others wait, a waiter whose reader got none reads it itself) and released as v0.3.1; re-pinned here with `go mod tidy`, the third-party licences, the as-built map's library line and node. The changelog's date moves to 2026-11-01, the day it ships.
+
+## 0.19.2 - go-tuiMaps v0.3.2, M5's frame on a hosted runner (D-357 to D-359)
+
+- **Ruled after 0.19.1's release (the HUM LEAD, "Proceed with all fixes"):** go-tuiMaps A-24 stands (D-357); M5's frame, a known limit on a hosted linux/amd64 runner (17.8 ms at 400 × 110, run 41144474835; 20.8 ms on an AMD EPYC 7763, run 41317857118), fixed now as go-tuiMaps v0.3.2 (D-358); the pin released as 0.19.2, O2 moving to 0.19.3 (D-359).
+- **go-tuiMaps v0.3.2** (its D-53, PR #13): a field's grid placed under the frame's dots once a frame, each contour dot classified once, each cell's centre worked out once a frame, the pen holding the last cell's colours; 12.9 and 13.4 ms at 400 × 110 on the hosted AMD EPYC 7763 (runs 41321663184, 41321788908), 5.1 ms on the reference machine, from 7.9; what is drawn unchanged.
+- **O2 is 0.19.3 (D-359):** the focus-limit words in the app and the changelog say 0.19.3; FR-3.7, FR-7, RK-5, RK-6 and the plan's W8 relabelled.
+- **go-tuiMaps v0.3.2 pinned:** `go.mod` and `go.sum`, `go mod tidy`, the third-party licences; the as-built map's library node and the atlas.
+
