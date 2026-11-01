@@ -22,7 +22,7 @@ import (
 
 // propFocusLimit is FR-3.7's statement (D-133): Help carries it, and the
 // words say it on opening.
-const propFocusLimit = "A screen reader cannot yet follow focus in the Propagation mode; watchpost 0.19.2 fixes that."
+const propFocusLimit = "A screen reader cannot yet follow focus in the Propagation mode; watchpost 0.19.3 fixes that."
 
 // propTerms are the short names the words use, said in full on opening the
 // mode, as the focus limit is (AX-8).
