@@ -2,7 +2,7 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
-## [0.19.1] — 2026-10-31
+## [0.19.1] — 2026-11-01
 
 ### Fixed
 - **Status no longer says a source failed when watchpost gave up the request itself.** The basemap's
@@ -10,6 +10,8 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   map cancels the tiles a view no longer needs, and each cancel was counted as the host failing. A
   request watchpost gives up - a view moved on, a newer ask, a window closed - now counts as a try and
   nothing more, on every row; one that runs out of time is still a failure. In watchpost since 0.18.0.
+- **The map asks for the basemap's TileJSON once when it opens,** not four times. go-tuiMaps v0.3.1
+  reads a source's TileJSON in one of the map's work loops while the others wait for its answer.
 
 ### Changed
 - **The screen reader's focus in the Propagation mode is now promised for 0.19.2,** not 0.19.1: this
