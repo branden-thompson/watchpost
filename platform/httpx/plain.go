@@ -145,7 +145,9 @@ func (p *Plain) Get(ctx context.Context, rawURL, etag, lastModified string) (Ans
 	p.stats.add(host, func(h *HostStats) { h.Attempts++ })
 	resp, err := p.http.Do(req)
 	if err != nil {
-		p.stats.add(host, failed)
+		if !Abandoned(ctx) {
+			p.stats.add(host, failed)
+		}
 		return Answer{}, &ReachError{URL: safe, Attempts: 1, Err: redactErr(err)}
 	}
 	defer func() { _ = resp.Body.Close() }() // read in full below; a failed close loses nothing
@@ -155,7 +157,9 @@ func (p *Plain) Get(ctx context.Context, rawURL, etag, lastModified string) (Ans
 	}
 	body, whole, err := readCapped(resp.Body, limit)
 	if err != nil {
-		p.stats.add(host, failed)
+		if !Abandoned(ctx) {
+			p.stats.add(host, failed)
+		}
 		return Answer{}, fmt.Errorf("bad response body from %s: %w", safe, redactErr(err))
 	}
 	if !whole {

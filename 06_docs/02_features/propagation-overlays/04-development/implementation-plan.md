@@ -43,7 +43,7 @@ this plan's "UAT" section.
 | W5 | The reference chart: best bands, your frequency, the centre, hours ahead, finding a place | FR-1.7 to FR-1.11, FR-1.13, FR-1.15 to FR-1.18 | W3, W4 | O1 |
 | W6 | Words without the picture | FR-3.1, FR-3.2, FR-3.5 | W5 | O1 (ships with the layer, D-9) |
 | W7 | The Broadcaster: its own map (D-195, D-196) - the key, the station, the service area, the mode's answers from the station; the shared-device statement | FR-2.1 to FR-2.4 | W5; go-tuiMaps P9 | O1 |
-| W8 | Accessibility carry-over, gated before SHIP — **0.19.1 (D-122)** | FR-7.1 to FR-7.5 | — | 0.19.1 |
+| W8 | Accessibility carry-over, gated before SHIP — **0.19.2 (D-122, D-355)** | FR-7.1 to FR-7.5 | — | 0.19.2 |
 | W9 | Memo keys and the `say` fixes | FR-8, FR-9 | — | O3 (FR-9 earlier if a flaky gate blocks O1) |
 | W10 | Instruments: the journey, the G1 harness, the code-quality brief, the M1/M4 instrument, the UAT prompter | FR-10.3, NFR-1; M1, M4, M2, M5, M5b | W5 | the M1/M4 baseline inside BUILD; the long runs beside REVIEW, their verdicts before VALIDATE (D-208) |
 
@@ -103,7 +103,7 @@ this plan's "UAT" section.
 
 | # | Task | Test first |
 |---|---|---|
-| W8.1 | **0.19.1 (D-122):** F-191 to F-194, F-196 to F-198, F-180, F-205, each as its follow-up row states; each row names its test before 0.19.1's BUILD opens (C-E8) | each row's named test |
+| W8.1 | **0.19.2 (D-122, D-355):** F-191 to F-194, F-196 to F-198, F-180, F-205, each as its follow-up row states; each row names its test before 0.19.2's BUILD opens (C-E8) | each row's named test |
 | W8.2 | The SHIP gate over FR-7's rows | the check fails while a row lacks a passing test |
 | W9.1 | #12's audit table (`03-architecture-design/memo-key-audit.md`); every position field becomes an identity or carries its reason; the app-side keys guarded (batch 33, A-61) | `TestEveryPositionFieldHasAReason`, `TestAPositionWithoutAReasonIsCaught`, `TestTheAppMemoKeysCoverTheirInputs` |
 | W9.2 | `say`: no orphan on an orderly exit; orphans ended at start, only when proven watchpost's (I-4); `make test-say` bounded and diagnosed (batch 33, A-61) | `TestNoSayOutlivesAnOrderlyExit`, `TestSayIsTrackedWhileItRuns`, `TestAnOrphanedSayIsEndedAtStart`, `TestAnUnrelatedSayIsNeverEnded`, `TestPSIsReadWhole`, `TestTheRunSweepsOrphansAndEndsItsChildren`, `TestTheSayLegIsBoundedAndDiagnosed` |

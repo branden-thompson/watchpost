@@ -114,7 +114,7 @@ follow-up (D-85, F-211).
 | FR-3.3 *(O1)* | The description gains a seam a layer adds its sentence to, reached **before** the alert-only early returns (`modes/tty/map_describe.go:describeUpTo`); the alert sentences are unchanged | AX-C; N-9 | `TestALayerAddsItsSentence` (four cases: alerts off, alerts never asked, the selected place out of view, no selected place), `TestTheMemoKeyCoversEverythingTheFrameShows` (extended) |
 | FR-3.5 *(O1)* | Without the picture, the mode's status (loading, offline, a coarse picture, the data's age, the fallback in use) is still said | AX-D | `TestTheStatusIsSaidWithoutThePicture` |
 | FR-3.6 *(O1)* | **A refresh keeps the reader's place (D-127, D-211):** the window remembers the sentence at its top by its kind - a target's name, the status block, the frequency held, the centre - and keeps it at the top after a refresh, an hour step or an answer landing, wherever it moved, until the reader scrolls; a target being worked out again is found again once answered; the menu's focus is kept; text that will scroll is wrapped clear of the scroll rail, so the window does not wrap it again; the words say once that they were updated, and when | D-127, D-211; A-10; AX-5 | `TestARefreshKeepsTheReadersPlace`, `TestARefreshIsSaidOnce` |
-| FR-3.7 *(O1)* | **The focus limit is said (D-133):** Help and the Propagation mode's words state that a screen reader cannot yet follow focus in this mode, and that 0.19.1 fixes it (F-205) | D-133; persona N6 | `TestTheFocusLimitIsSaid` |
+| FR-3.7 *(O1)* | **The focus limit is said (D-133):** Help and the Propagation mode's words state that a screen reader cannot yet follow focus in this mode, and that 0.19.2 fixes it (F-205; D-355) | D-133; persona N6 | `TestTheFocusLimitIsSaid` |
 
 ## FR-4 — Sources, terms, credit and egress (R-3; D-2, D-22, D-39, D-41, D-43, D-69, D-76, D-81, D-83)
 
@@ -152,16 +152,16 @@ follow-up (D-85, F-211).
 **Retired from FR-6 by D-78:** recording propagation grids and tower values, backfill, the store opening
 without NDFD, per-dataset retention, and the dataset terms field (FR-6.1 to FR-6.4, FR-6.6, FR-6.7).
 
-## FR-7 — Accessibility carry-over (R-6; D-4, D-63, D-122)
+## FR-7 — Accessibility carry-over (R-6; D-4, D-63, D-122, D-355)
 
-**Moved to 0.19.1 (D-122)**, the very next release; these rows are its requirements, and D-63's SHIP gate applies to 0.19.1's SHIP.
+**Moved to 0.19.2 (D-122, D-355)**, the release after 0.19.1's patch (D-354); these rows are its requirements, and D-63's SHIP gate applies to 0.19.2's SHIP.
 
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
-| FR-7.1 *(0.19.1)* | F-191 (FR-1.8): the window says its picture is braille and names the remedy | 0.18.0 D-244 | as F-191 |
-| FR-7.2 *(0.19.1)* | F-192, F-193, F-194, F-180: radar's motion Setting with reduce motion; the loop's rates and hold; the playback speed Setting | 0.18.0 D-245, D-255 | as each row |
-| FR-7.3 *(0.19.1)* | F-196, F-197, F-198: the Monochrome theme hint; the colour-literal guard; the `CheckRamp` matrix | 0.18.0 D-247 | as each row |
-| FR-7.4 *(0.19.1)* | F-205: the cursor placed for a screen reader; the description beyond alerts; the edge warning without a picture; the state words; the Maps tab; the outline key; "With the map" | 0.18.0 D-273 | as F-205's findings (AX-3 to AX-9) |
+| FR-7.1 *(0.19.2)* | F-191 (FR-1.8): the window says its picture is braille and names the remedy | 0.18.0 D-244 | as F-191 |
+| FR-7.2 *(0.19.2)* | F-192, F-193, F-194, F-180: radar's motion Setting with reduce motion; the loop's rates and hold; the playback speed Setting | 0.18.0 D-245, D-255 | as each row |
+| FR-7.3 *(0.19.2)* | F-196, F-197, F-198: the Monochrome theme hint; the colour-literal guard; the `CheckRamp` matrix | 0.18.0 D-247 | as each row |
+| FR-7.4 *(0.19.2)* | F-205: the cursor placed for a screen reader; the description beyond alerts; the edge warning without a picture; the state words; the Maps tab; the outline key; "With the map" | 0.18.0 D-273 | as F-205's findings (AX-3 to AX-9) |
 | FR-7.5 | **SHIP is blocked while any FR-7 row lacks its passing test**; dropping a row takes a ruling | D-63 | a SHIP-gate check over FR-7's rows |
 
 ## FR-8 — Memo keys carry identity (R-7; #12, D-14)
@@ -216,8 +216,8 @@ without NDFD, per-dataset retention, and the dataset terms field (FR-6.1 to FR-6
 | RK-2 | **GIRO's load and terms:** an update asks GIRO about 39 times; GIRO offers access "only for educational and non-commercial research purposes"; contact was ruled out (D-41) | medium | high | fetches only when the mode is opened (D-76); D-39's throttle in one object per process; the seed and rotation (D-51); the fallback background if GIRO refuses (D-40, D-75); fleet scenarios in the DISCOVER report; F-208 | HUM LEAD (D-41) |
 | RK-3 | **The chosen field is not accurate enough.** PLAN's week (held out, test days): the hybrid's foF2 RMS 0.96 MHz overall and 0.66 in the mainland US against the climatology's 1.14 and 0.82; within 500 km of a reporting station 0.33; in the Pacific worse than the climatology (MUF 5.17 against 5.09; D-129) | medium | high | the hybrid (D-101); confidence said by distance (D-116); G-M3's targets (D-108) and their route on a miss (D-118) | agent |
 | RK-4 | Compute or memory too heavy for a terminal app | low | medium | G1 over 48 hours; G-G1; 2° default; answers off the UI goroutine (FR-1.17, FR-4.8) | agent |
-| RK-5 | Three paired releases at SEV-0 cost time: about 70 batches across the three, scaled from 0.18.0's measured 0.8 batches a task (round 2, LN8) | high | medium | D-13 (minor rulings batched); scope cut at D-76 to D-78; O2 moved to 0.19.1 (D-122) | HUM LEAD, agent |
-| RK-6 | Accessibility last again (D-4 order): O2 moved to 0.19.1 (D-122), so 0.19.0 ships a mode a screen reader cannot follow by focus | high | high | M5b and FR-3 ship words with the layer; the limit is said in Help and the words (FR-3.7, D-133); FR-7's SHIP gate applies to 0.19.1 (D-122) | HUM LEAD |
+| RK-5 | Three paired releases at SEV-0 cost time: about 70 batches across the three, scaled from 0.18.0's measured 0.8 batches a task (round 2, LN8) | high | medium | D-13 (minor rulings batched); scope cut at D-76 to D-78; O2 moved to 0.19.2 (D-122, D-355) | HUM LEAD, agent |
+| RK-6 | Accessibility last again (D-4 order): O2 moved to 0.19.2 (D-122, D-355), so 0.19.0 ships a mode a screen reader cannot follow by focus | high | high | M5b and FR-3 ship words with the layer; the limit is said in Help and the words (FR-3.7, D-133); FR-7's SHIP gate applies to 0.19.1 (D-122) | HUM LEAD |
 | RK-7 | Two bounds in one window let a weather frame go global | low | high | FR-1.2's tests over every frame | agent |
 | RK-9 | #27's fix changes a store 0.18.0's datasets rely on | medium | medium | existing history tests; the split and byte bound tested per dataset | agent |
 | RK-10 | The library's label move (D-34) shifts every existing layer's labels | high | low | specimens redrawn in the same batch (`diagrams-move-with-code`) | agent |

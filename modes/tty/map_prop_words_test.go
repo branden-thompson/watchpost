@@ -307,7 +307,7 @@ func TestARefreshIsSaidOnce(t *testing.T) {
 }
 
 // TestTheFocusLimitIsSaid is FR-3.7 (D-133): Help says a screen reader
-// cannot yet follow focus in the Propagation mode, and that 0.19.1 fixes
+// cannot yet follow focus in the Propagation mode, and that 0.19.2 fixes
 // it; the words say it on opening, and not again after a refresh.
 func TestTheFocusLimitIsSaid(t *testing.T) {
 	d, _ := drawnDash(t)
@@ -330,7 +330,7 @@ func TestTheFocusLimitIsSaid(t *testing.T) {
 	if d = runProp(t, d, cmd); lineWith(propWordsFrom(t, d), propFocusLimit) < 0 {
 		t.Errorf("the focus limit is not said on opening the mode again")
 	}
-	if !strings.Contains(propFocusLimit, "0.19.1") {
+	if !strings.Contains(propFocusLimit, "0.19.2") { // D-355
 		t.Errorf("the focus limit does not say what fixes it: %q", propFocusLimit)
 	}
 }

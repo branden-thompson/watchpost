@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func hostStats(t *testing.T, st RequestStats, host string) HostStats {
@@ -185,5 +186,51 @@ func TestAHostSaysWhenItLastAnsweredAndFailed(t *testing.T) {
 	merged := MergeRequestStats(RequestStats{Hosts: []HostStats{{Host: "h", LastOK: ok.LastOK}}}, RequestStats{Hosts: []HostStats{{Host: "h", LastFail: down.LastFail}}})
 	if m := merged.Hosts[0]; !m.LastOK.Equal(ok.LastOK) || !m.LastFail.Equal(down.LastFail) {
 		t.Errorf("merged: %+v; want the later of each", m)
+	}
+}
+
+// neverAnswers is a server that takes every request and answers none, saying
+// when each arrives.
+func neverAnswers(t *testing.T) (*httptest.Server, chan struct{}) {
+	t.Helper()
+	asked := make(chan struct{}, 4)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked <- struct{}{}
+		<-r.Context().Done()
+	}))
+	t.Cleanup(srv.Close)
+	return srv, asked
+}
+
+// TestAnAbandonedAskIsNotAFailure is 0.19.1 D-354: an ask its caller
+// cancelled - a newer ask, a region left, the map closed - is a try and not
+// the host failing, so the Status window's row keeps its word; an ask past
+// its deadline is the host not answering, a failure.
+func TestAnAbandonedAskIsNotAFailure(t *testing.T) {
+	srv, asked := neverAnswers(t)
+	ask := func(ctx context.Context) HostStats {
+		c, err := New(Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, RetryBase: 1, MaxRetries: 0})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.GetJSON(ctx, srv.URL+"/radar", nil); err == nil {
+			t.Fatal("a server that never answers answered")
+		}
+		return hostStats(t, c.RequestStats(), "127.0.0.1")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { <-asked; cancel() }()
+	if h := ask(ctx); h.Attempts != 1 || !h.LastFail.IsZero() {
+		t.Errorf("a cancelled ask counted as %+v; want a try and no failure", h)
+	}
+	ctx, cancel = context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	go func() { <-asked }()
+	if h := ask(ctx); h.Attempts != 1 || h.LastFail.IsZero() {
+		t.Errorf("an ask past its deadline counted as %+v; want a failure", h)
+	}
+	var none context.Context
+	if Abandoned(none) || Abandoned(context.Background()) {
+		t.Error("an ask with no context, or one never ended, reads as abandoned")
 	}
 }

@@ -283,3 +283,28 @@ func TestThePropagationClientCountsItsWireBytes(t *testing.T) {
 		t.Errorf("two asks read %d bytes, the first alone %d", two, one)
 	}
 }
+
+// TestAnAbandonedPlainAskIsNotAFailure is D-354 for the propagation client:
+// an ask its caller cancelled is a try and not the host failing; one past its
+// deadline is a failure.
+func TestAnAbandonedPlainAskIsNotAFailure(t *testing.T) {
+	srv, asked := neverAnswers(t)
+	ask := func(ctx context.Context) HostStats {
+		p := plainFor(t, 1024)
+		if _, err := p.Get(ctx, srv.URL, "", ""); err == nil {
+			t.Fatal("a server that never answers answered")
+		}
+		return hostStats(t, p.RequestStats(), statHost(srv.URL))
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { <-asked; cancel() }()
+	if h := ask(ctx); h.Attempts != 1 || !h.LastFail.IsZero() {
+		t.Errorf("a cancelled ask counted as %+v; want a try and no failure", h)
+	}
+	ctx, cancel = context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	go func() { <-asked }()
+	if h := ask(ctx); h.Attempts != 1 || h.LastFail.IsZero() {
+		t.Errorf("an ask past its deadline counted as %+v; want a failure", h)
+	}
+}
