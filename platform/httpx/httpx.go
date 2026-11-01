@@ -833,7 +833,9 @@ func (c *Client) attemptOnce(ctx context.Context, req request, attempt int) outc
 	case errors.Is(err, errRedirectRefused):
 		out.err, out.final = redactErr(err), true // our own policy, not the host's fault: no retry, no memo
 	default:
-		c.stats.add(req.host, func(h *HostStats) { h.LastFail = time.Now() }) // how it is doing now (D-150)
+		if !Abandoned(ctx) {
+			c.stats.add(req.host, func(h *HostStats) { h.LastFail = time.Now() }) // how it is doing now (D-150)
+		}
 		c.noteFailure(ctx, req.host, req.rawURL, res, err)
 		out.err, out.status, out.reason = err, res.status, res.reason
 	}

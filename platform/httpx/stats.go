@@ -9,6 +9,8 @@ package httpx
 // fields under one mutex, as a Client member, never package state (P10-06).
 
 import (
+	"context"
+	"errors"
 	"net/url"
 	"sort"
 	"sync"
@@ -39,8 +41,19 @@ type HostStats struct {
 	TLSHandshakes int64 // full TLS handshakes (a resumed session does not count)
 	// LastOK and LastFail are when the host last answered, and last failed
 	// - an error, a refusal, a fast-fail (0.18.0 D-150): whichever is later
-	// says how it is doing now.
+	// says how it is doing now. An ask its caller abandoned is neither.
 	LastOK, LastFail time.Time
+}
+
+// Abandoned reports whether an ask's context was cancelled: its caller gave
+// it up - a newer ask, a view moved on, a window closed - so its error is
+// neither the host's answer nor its failure (0.19.1 D-354). A deadline is
+// the host not answering in time, and stays a failure.
+func Abandoned(ctx context.Context) bool {
+	if ctx == nil {
+		return false // no context, so nobody gave it up
+	}
+	return errors.Is(ctx.Err(), context.Canceled)
 }
 
 // RequestStats is a point-in-time copy of every host row, busiest first,

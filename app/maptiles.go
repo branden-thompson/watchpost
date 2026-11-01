@@ -4,7 +4,7 @@ package app
 // library fetches its own tiles, so the Status window's MAP STATUS could say
 // nothing of them. watchpost hands the library its transport - the library's
 // own, rebuilt - wrapped to count each host's tries, answers, bytes, and
-// when it last answered and failed.
+// when it last answered and failed; a tile the map gave up is a try alone.
 
 import (
 	"crypto/tls"
@@ -17,6 +17,7 @@ import (
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/invariant"
 )
 
 // tileFirstByte is the library's own wait for a connection and a tile's
@@ -106,8 +107,13 @@ func (t countingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	host := req.URL.Hostname()
 	t.count.add(host, func(h *httpx.HostStats) { h.Attempts++ })
 	res, err := forward(t.base, req)
+	if bad := invariant.Check(res != nil || err != nil, "maptiles: the transport gave neither a reply nor an error"); bad != nil {
+		return nil, bad
+	}
 	now := time.Now()
 	switch {
+	case err != nil && httpx.Abandoned(req.Context()):
+		// the map gave the tile up (D-354): a try, and nothing more
 	case err != nil || res.StatusCode >= 400:
 		t.count.add(host, func(h *httpx.HostStats) { h.LastFail = now })
 	case res.StatusCode == http.StatusNotModified:
