@@ -2,6 +2,19 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [Unreleased]
+
+### Added
+- **Help says the map is drawn in braille,** and what to do if the font has none: choose one that has
+  braille, or run with `--ascii`. Help also keys the digit along an alert's outline, and a badge under
+  the map keys each digit drawn.
+
+### Changed
+- **The map's words are the Description,** wherever they are named: its box, its chip (which says
+  On or Off), Help and Settings. A description too long for its box ends by naming where the whole text
+  is; the region row says which region is shown.
+- **Under the Monochrome theme the map draws without colour** when its colour depth is Automatic.
+
 ## [0.19.2] — 2026-11-01
 
 ### Changed

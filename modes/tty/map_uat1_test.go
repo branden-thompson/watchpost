@@ -1,7 +1,7 @@
 package tty
 
 // map_uat1_test.go — 0.18.0 UAT-1's first findings: the window at about 80%
-// of the terminal (U1-13), the [A] Area Alerts box (U1-7, D-63), the controls
+// of the terminal (U1-13), the [A] Description box (U1-7, D-63), the controls
 // box with its blinking chips (U1-11), the title that follows the view
 // (U1-12, D-64) and the [O] Overlays menu with the map's detail (U1-9, U1-10,
 // D-65).
@@ -51,19 +51,19 @@ func TestTheMapWindowLeavesTheDashboardInSight(t *testing.T) {
 	}
 }
 
-// TestTheAreaAlertsBoxWaitsForA is U1-7 and D-63 as D-87 amends it (UAT-2
+// TestTheDescriptionBoxWaitsForA is U1-7 and D-63 as D-87 amends it (UAT-2
 // U2-4): the box is closed when the map opens; A opens it, a box over the
 // map's upper left with its words in the window's first rows and the map
 // around it; A closes it; the next open is closed again.
-func TestTheAreaAlertsBoxWaitsForA(t *testing.T) {
+func TestTheDescriptionBoxWaitsForA(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
 	if strings.Contains(bodyText(d), "Oceanside, CA - Currently:") {
 		t.Fatal("the box is open on opening (D-87: it waits for A)")
 	}
 	d = pressCode(d, 'A', "A")
 	lines := strings.Split(bodyText(d), "\n")
-	if !strings.Contains(lines[0], "Area Alerts") {
-		t.Fatalf("the first row is %q, not the Area Alerts box", lines[0])
+	if !strings.Contains(lines[0], "Description") {
+		t.Fatalf("the first row is %q, not the Description box", lines[0])
 	}
 	first := -1
 	for i, l := range lines {
@@ -78,8 +78,8 @@ func TestTheAreaAlertsBoxWaitsForA(t *testing.T) {
 	if !strings.ContainsFunc(lines[first], func(r rune) bool { return r >= 0x2800 && r <= 0x28ff }) {
 		t.Errorf("the box's row carries no map beside it: %q", lines[first])
 	}
-	if !strings.Contains(stripANSITest(d.mapStatusLine()), "Area Alerts") {
-		t.Error("the status line has no Area Alerts chip")
+	if !strings.Contains(stripANSITest(d.mapStatusLine()), "Description") {
+		t.Error("the status line has no Description chip")
 	}
 	d = pressCode(d, 'A', "A")
 	if strings.Contains(bodyText(d), "Oceanside, CA - Currently:") {
@@ -92,7 +92,7 @@ func TestTheAreaAlertsBoxWaitsForA(t *testing.T) {
 		t.Error("the next open opened the box (D-87: closed on every open)")
 	}
 	instead := openMap(t, Config{MapDescription: "instead"}, 133, 44)
-	if strings.Contains(bodyText(instead), "Area Alerts") || !strings.Contains(bodyText(instead), "Oceanside, CA - Currently:") {
+	if strings.Contains(bodyText(instead), "┌─ Description") || !strings.Contains(bodyText(instead), "Oceanside, CA - Currently:") {
 		t.Error("instead of the picture, the words are not the full text")
 	}
 }

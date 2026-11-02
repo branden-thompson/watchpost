@@ -9,6 +9,9 @@ import (
 	"strconv"
 	"strings"
 
+	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -142,7 +145,48 @@ func (d Dashboard) badges() []string {
 		}
 		out = append(out, badgeLabel(l)+" "+strings.Join(faces, "")) // each chip its ground alone, side by side: no brackets (D-174)
 	}
+	if key := d.outlineKey(); key != "" {
+		out = append(out, key)
+	}
 	return out
+}
+
+// outlineKeyLabel heads the badge that keys the outline digits (AX-8).
+const outlineKeyLabel = "OUTLINES"
+
+// outlineSeverities are the severities an outline's digit stands for, most
+// severe first.
+var outlineSeverities = []tuimaps.Severity{tuimaps.SeverityExtreme, tuimaps.SeveritySevere, tuimaps.SeverityModerate, tuimaps.SeverityMinor, tuimaps.SeverityUnknown}
+
+// outlineDigit is one severity's digit and word: "3 severe".
+func outlineDigit(s tuimaps.Severity) string { return s.Digit() + " " + strings.ToLower(s.Word()) }
+
+// outlineKey is the badge keying each digit the picture draws on an alert's
+// outline to its severity, "" while none is drawn or no picture is meant
+// (not mapPicture: the map's fit counts this badge).
+func (d Dashboard) outlineKey() string {
+	if d.cfg.ASCII || d.mapDesc == mapDescInstead || d.mapMode() == modePropagation {
+		return ""
+	}
+	var keyed []string
+	for _, s := range outlineSeverities {
+		if d.mapPane.drawnSev[strings.ToLower(s.Word())] {
+			keyed = append(keyed, outlineDigit(s))
+		}
+	}
+	if len(keyed) == 0 {
+		return ""
+	}
+	return outlineKeyLabel + " " + strings.Join(keyed, " · ")
+}
+
+// outlineKeyHelp is Help's line keying every outline digit (AX-8).
+func outlineKeyHelp() string {
+	keyed := make([]string, len(outlineSeverities))
+	for i, s := range outlineSeverities {
+		keyed[i] = outlineDigit(s)
+	}
+	return "The digit along an alert's outline is its severity: " + strings.Join(keyed, ", ") + "."
 }
 
 // badgeLabel is a layer's word on its badge, as the HUM LEAD wrote them.
@@ -271,7 +315,8 @@ func (d Dashboard) scrubControls() []string {
 var mapRegionNames = []string{"CONT. US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam / N. Marianas"}
 
 // regionsRow is the region keys as a row of their own (D-103): MAPS: and
-// each number's region, shorter names where the full ones do not fit.
+// each number's region, shorter names where the full ones do not fit, the
+// region the map is bound to said shown (AX-6).
 func (d Dashboard) regionsRow(width int) string {
 	build := func(names []string) string {
 		parts := []string{"MAPS:"}
@@ -280,7 +325,11 @@ func (d Dashboard) regionsRow(width int) string {
 			if key == "" {
 				continue
 			}
-			parts = append(parts, d.controlCap(act, key)+" "+names[i])
+			name := names[i]
+			if r, ok := geo.RegionNumbered(i + 1); ok && d.mapPane.region.Name != "" && r.Name == d.mapPane.region.Name {
+				name += " (shown)"
+			}
+			parts = append(parts, d.controlCap(act, key)+" "+name)
 		}
 		return strings.Join(parts, "   ")
 	}
@@ -291,7 +340,7 @@ func (d Dashboard) regionsRow(width int) string {
 	return render.TruncateCells(row, width)
 }
 
-// chipsRow is the window's keys as chips: Area Alerts, the mode, Overlays
+// chipsRow is the window's keys as chips: Description, the mode, Overlays
 // (D-63, D-65, D-94; no legend chip, D-103).
 func (d Dashboard) chipsRow(width int) string {
 	return render.TruncateCells(strings.Join(d.mapChips(), "   "), width)

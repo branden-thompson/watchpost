@@ -17,6 +17,10 @@ import (
 // DefaultThemeName is the palette the B3 UAT sessions directed.
 const DefaultThemeName = "Watchpost"
 
+// MonochromeThemeName is the theme without colour: the map draws without it
+// too (F-196).
+const MonochromeThemeName = "Monochrome"
+
 // themeValue is the shape of a token value: SGR parameters ("1;38;5;220",
 // "48;2;66;94;122") or a #RRGGBB hex for the window/gradient tokens.
 var themeValue = regexp.MustCompile(`^(\d+(;\d+)*|#[0-9A-Fa-f]{6})$`)

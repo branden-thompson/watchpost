@@ -3,9 +3,13 @@ package tty
 // map_depth.go — the map's colour depth, a Map Setting (0.19.0 D-207):
 // Automatic by default, following the terminal as go-tuiMaps reads it
 // (its L-7.2: COLORTERM and TERM), or a depth chosen; NO_COLOR still means
-// none whatever is chosen.
+// none whatever is chosen, and under the Monochrome theme Automatic is none.
 
-import tuimaps "github.com/branden-thompson/go-tuimaps"
+import (
+	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/platform/render"
+)
 
 // mapDepth is the Setting's choice.
 type mapDepth uint8
@@ -62,7 +66,8 @@ func (d Dashboard) cycleMapDepth(forward bool) Dashboard {
 
 // mapDepthHint is the depth the map is hinted: the choice, or with NO_COLOR
 // set or Automatic chosen, go-tuiMaps' own reading of the terminal, which
-// honours NO_COLOR (D-207).
+// honours NO_COLOR (D-207); under the Monochrome theme Automatic is no colour,
+// so the hatch and the digits carry what colour would (F-196).
 func (d Dashboard) mapDepthHint() tuimaps.Depth {
 	if d.cfg.NoColor {
 		return tuimaps.TerminalDepth
@@ -75,6 +80,9 @@ func (d Dashboard) mapDepthHint() tuimaps.Depth {
 	case depth16:
 		return tuimaps.Colours16
 	case depthNone:
+		return tuimaps.NoColour
+	}
+	if render.ThemeName() == render.MonochromeThemeName {
 		return tuimaps.NoColour
 	}
 	return tuimaps.TerminalDepth

@@ -70,7 +70,7 @@ func TestMapsOffSaysSoAndBuildsNothing(t *testing.T) {
 
 // TestTheDescriptionComesFirstWithThePicture is W1.6 (D-55) as D-63 and D-87
 // keep it: with the description's mode "with the picture", the description
-// is in the Area Alerts box on the window's first rows once A opens it, the
+// is in the Description box on the window's first rows once A opens it, the
 // map around it; "instead" shows no braille; "off" shows no description.
 func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 	for _, c := range []struct {

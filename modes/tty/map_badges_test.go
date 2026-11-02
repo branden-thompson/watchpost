@@ -52,6 +52,7 @@ func TestTheBadgeRowCreditsEachLayerDrawn(t *testing.T) {
 	want := "ALERTS   NWS      FIRE   NIFC    HMS      TEMP   O-METEO      WAVES   NDFD    O-METEO  " // each chip "  NAME  " on its ground, no brackets, side by side (D-134, D-174)
 	found := false
 	for _, r := range rows {
+		r = strings.Replace(r, d.outlineKey(), "", 1)        // the outline digits' key follows the credits (AX-8)
 		if strings.TrimSpace(r) == strings.TrimSpace(want) { // the last chip's padding ends the row
 			found = true
 		}

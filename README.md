@@ -208,7 +208,7 @@ each layer drawn and its source.
 
 ![The Overlays menu (`O`) over the radar: one shaded overlay at a time (temperature, UV index, air quality or radio propagation); the data points (wind, waves, buoys, tides), the hazards (quakes, fire, hotspots) and the alert areas by kind, each group switched as a whole; and the map's detail (borders, lakes, rivers, place names, major roads, rail, parks, day and night), with the zoom at which rail and parks appear](docs/img/map-overlays.png)
 
-The **Area Alerts** box (`A`) describes the map in words. It says which alerts cover the place, which
+The **Description** box (`A`) describes the map in words. It says which alerts cover the place, which
 come near it, and every other alert in view, most severe first. The description can also replace the
 picture or be switched off (Settings, *Description*).
 
@@ -222,7 +222,7 @@ picture or be switched off (Settings, *Description*).
 | `space` | play / stop the loop, or the forecast's steps |
 | `shift+←` `shift+→` · `n` | step back / on · back to now |
 | `<` `>` | Forecast mode: the days' highs or lows |
-| `A` · `O` | the Area Alerts box · the Overlays menu (`↑` `↓` move, `←` `→` change a choice, `space` switches, `esc` closes it; these keys inside the menu are fixed) |
+| `A` · `O` | the Description box · the Overlays menu (`↑` `↓` move, `←` `→` change a choice, `space` switches, `esc` closes it; these keys inside the menu are fixed) |
 | `P` | the Propagation mode on / off |
 | `L` · `U` · `B` · `F` · `/` | Propagation mode: the layer (MUF or foF2) · refresh now · the bands chart · your frequency · find a place anywhere |
 | `↑` `↓` (the bands chart open) | the chart's previous / next target, in the chart's own scope (Help shows them beside Pan) |

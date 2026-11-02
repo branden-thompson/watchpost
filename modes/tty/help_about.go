@@ -128,11 +128,26 @@ func (d Dashboard) helpLines(o render.Opts) []string {
 		}
 	}
 	lines = append(lines, d.helpLegend(o), "", " "+propFocusLimit) // FR-3.7, D-133
+	lines = append(lines, d.mapHelpNotes(o)...)
 	if d.surface == SurfaceBroadcaster {
 		lines = append(lines, "", " "+sharedDeviceNote) // FR-2.2, D-85
 	}
 	lines = append(lines, d.helpWithheld()...)
 	return append(lines, "", "  "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll"))) // chips like every other modal (UAT 68.2)
+}
+
+// mapHelpNotes are Help's lines on the map's picture: the outline digits
+// keyed (AX-8) and, outside --ascii, that the picture is braille and the
+// remedy for a font without it (F-191); none with the map off.
+func (d Dashboard) mapHelpNotes(o render.Opts) []string {
+	if d.mapsOff {
+		return nil
+	}
+	notes := []string{"", " " + outlineKeyHelp()}
+	if o.ASCII {
+		return notes
+	}
+	return append(notes, "", " "+mapBrailleNote)
 }
 
 // sharedDeviceNote is FR-2.2's statement (D-80, D-85): the broadcast and a

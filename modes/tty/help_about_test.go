@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/branden-thompson/watchpost/platform/term"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -248,8 +249,9 @@ func TestHelpGroupsBindingsByFeature(t *testing.T) {
 	if strings.Contains(text, "OTHER") {
 		t.Fatal("every default binding has a group")
 	}
-	if !strings.HasPrefix(lines[len(lines)-5], " Row marks:") || lines[len(lines)-3] != " "+propFocusLimit { // the mock's one-space inset; then the focus limit (FR-3.7)
-		t.Fatalf("the legend and the focus limit follow the groups: %q, %q", lines[len(lines)-5], lines[len(lines)-3])
+	legend := slices.IndexFunc(lines, func(l string) bool { return strings.HasPrefix(l, " Row marks:") }) // the mock's one-space inset
+	if legend < 0 || legend+2 >= len(lines) || lines[legend+2] != " "+propFocusLimit {                    // then the focus limit (FR-3.7)
+		t.Fatalf("the legend and the focus limit follow the groups:\n%s", strings.Join(lines, "\n"))
 	}
 }
 
@@ -360,5 +362,31 @@ func TestAboutWindowsMarks(t *testing.T) {
 	}
 	if last < 0 || last+2 >= len(lines) || stripANSITest(lines[last+1]) != "" || !strings.Contains(lines[last+2], creditsNotice) {
 		t.Errorf("under the last warning come %q and %q; want a blank row, then the terms", lines[last+1], lines[last+2])
+	}
+}
+
+// TestTheMapHelpSaysThePictureIsBraille is F-191 (FR-7.1, A-107 (3)): with
+// the map on and outside --ascii, Help says the picture is braille and names
+// the remedy for a font without it; under --ascii the picture is words
+// already, and with the map off there is no picture to explain.
+func TestTheMapHelpSaysThePictureIsBraille(t *testing.T) {
+	help := func(cfg Config) string {
+		d := mapDash(t, cfg)
+		return strings.Join(d.helpLines(render.Opts{Width: 200, ASCII: cfg.ASCII}), "\n")
+	}
+	got := help(Config{})
+	if !strings.Contains(got, mapBrailleNote) {
+		t.Fatalf("Help does not say the picture is braille:\n%s", got)
+	}
+	for _, word := range []string{"braille", "font", "--ascii"} {
+		if !strings.Contains(mapBrailleNote, word) {
+			t.Errorf("the note does not name %q: %q", word, mapBrailleNote)
+		}
+	}
+	if strings.Contains(help(Config{ASCII: true}), mapBrailleNote) {
+		t.Error("under --ascii Help still says the picture is braille")
+	}
+	if strings.Contains(help(Config{Maps: "off"}), mapBrailleNote) {
+		t.Error("with the map off Help still says the picture is braille")
 	}
 }

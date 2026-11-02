@@ -1,6 +1,6 @@
 package tty
 
-// map_follows_test.go — 0.18.0 D-78 (UAT-1 U1-41): the Area Alerts box follows
+// map_follows_test.go — 0.18.0 D-78 (UAT-1 U1-41): the Description box follows
 // the view. While the selected place is in view the box begins with its
 // conditions; once the view leaves it, the box names the view instead and
 // says nothing of the place - "No information is better than incorrect or
@@ -44,9 +44,9 @@ func viewFeed(_ context.Context, _ MapAsk) MapFeed {
 	}
 }
 
-// boxText is the Area Alerts box's words as one run.
+// boxText is the Description box's words as one run.
 func boxText(d Dashboard) string {
-	return unwrapped(stripANSITest(strings.Join(d.areaAlertsBox(d.mapBodySize()), "\n")))
+	return unwrapped(stripANSITest(strings.Join(d.descriptionBox(d.mapBodySize()), "\n")))
 }
 
 func TestTheBoxListsTheAlertsInViewMostSevereFirst(t *testing.T) {

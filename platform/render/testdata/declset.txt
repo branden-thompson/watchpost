@@ -95,6 +95,7 @@ const ModalBGDark
 const ModalBGLight
 const ModalFG
 const ModalTitle
+const MonochromeThemeName
 const NameAdvisory
 const NameWarning
 const ProviderDown

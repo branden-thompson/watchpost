@@ -76,7 +76,7 @@ func (m mapDescMode) Label() string {
 	case mapDescOff:
 		return "Off"
 	}
-	return "With the map"
+	return "With the map, on A" // the box waits for A (D-87, D-365)
 }
 
 func mapsKey(off bool) string {
