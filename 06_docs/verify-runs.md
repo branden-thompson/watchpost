@@ -141,3 +141,6 @@ says exactly what passed.
 | 2026-11-01T17:37:24Z | 19c8d421 | c350f4c52e21 | verify | green | 1961 |
 | 2026-11-02T02:44:18Z | 09e8bd75 | 594ad0ef6118 | verify-docs | green | 147 |
 | 2026-11-02T03:40:52Z | b26137d8 | ed75c18c61e8 | verify | green | 1840 |
+| 2026-11-02T04:20:01Z | 1ab7bbd7 | 1da3542ffcf7 | verify | FAILED (exit 2) | 257 |
+| 2026-11-02T04:28:36Z | 1ab7bbd7 | 8ed63756b309 | verify | FAILED (exit 2) | 394 |
+| 2026-11-02T05:01:26Z | 1ab7bbd7 | a64b07a3c449 | verify | green | 1876 |

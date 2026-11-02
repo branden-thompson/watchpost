@@ -114,6 +114,8 @@ func (d Dashboard) tabNoticeSlots() []noticeSlot {
 	switch d.setupTab() {
 	case tabMaps:
 		slots = d.mapNoticeSlots()
+	case tabMapLayers:
+		slots = d.mapLayersNoticeSlots()
 	case tabData:
 		slots = []noticeSlot{d.historyNoticeSlot()}
 	case tabRadio:
@@ -142,18 +144,25 @@ func slotOf(n settingsNotice, shown bool, could ...string) noticeSlot {
 	return s
 }
 
-// mapNoticeSlots are the Maps tab's: what Open-Meteo bills, the UV cities'
-// asks while the row is chosen, the layers' cost, and how long the map keeps
-// its data - or what clearing it did.
+// mapNoticeSlots are the Maps tab's: what Open-Meteo bills, Rain Day 4+, and
+// while their rows are chosen the UV cities' asks and the HF refresh and
+// stations.
 func (d Dashboard) mapNoticeSlots() []noticeSlot {
-	head, detail := costWarningParts(d.mapCost)
-	worstHead, worstDetail := costWarningParts(worstMapCost)
 	return []noticeSlot{
 		slotOf(settingsNotice{"Temperature", meteredNote, noticeWarn}, !d.mapTempNDFD),
 		slotOf(settingsNotice{"Rain Day 4+", rainFullNote, noticeWarn}, d.mapRainFull),
 		slotOf(settingsNotice{"UV cities", uvCitiesNote(d.mapUVCities), noticeInfo}, d.setup.focus == rowMapUVCities, uvCitiesNote(uvCityChoices[len(uvCityChoices)-1])),
 		slotOf(settingsNotice{"HF refresh", propRefreshNote(d.mapPropRefresh), noticeInfo}, d.setup.focus == rowMapPropRefresh, propRefreshNote(refreshEvery10)),
 		slotOf(settingsNotice{"HF stations", stationsNote(d.mapPropNoGIRO), noticeInfo}, d.setup.focus == rowMapPropStations, stationsNote(false)),
+	}
+}
+
+// mapLayersNoticeSlots are the Map Layers tab's (D-364): what the layers
+// cost, and what the map keeps or what clearing it did.
+func (d Dashboard) mapLayersNoticeSlots() []noticeSlot {
+	head, detail := costWarningParts(d.mapCost)
+	worstHead, worstDetail := costWarningParts(worstMapCost)
+	return []noticeSlot{
 		slotOf(settingsNotice{"Map layers", strings.TrimSpace(head + " " + detail), noticeWarn}, true, worstHead+" "+worstDetail),
 		d.outcomeSlot("Map data", d.cfg.MapRetention, rowMapClear, mapClearedNote(MapCleared{Files: 99999, Zones: 99999})),
 	}

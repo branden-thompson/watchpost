@@ -262,14 +262,18 @@ func spread(items []placed, from, to int) string {
 }
 
 // loopRow is the loop's row over the timeline (D-105): RADAR and its source,
-// the frame, the newest frame's age (stale marked), and STOPPED in yellow or
-// PLAYING in green; in Forecast mode FORECAST, the step and the same state.
+// the frame, the newest frame's age (stale marked), and STOPPED in yellow -
+// REDUCE MOTION while that holds it still - or PLAYING in green; in Forecast
+// mode FORECAST, the step and the same state.
 // Where there is no loop yet, what the radar says of itself.
 func (d Dashboard) loopRow(width int) string {
 	from, to := d.scrubLead(), width-d.scrubLead()+1
 	state := func(playing bool) placed {
-		if playing {
+		switch {
+		case playing:
 			return item(render.Tint("PLAYING", render.Tok(render.ProviderOK)))
+		case d.reduceMotion: // why space plays nothing (D-360)
+			return item(render.Tint("REDUCE MOTION", render.Tok(render.ListPointer)))
 		}
 		return item(render.Tint("STOPPED", render.Tok(render.ListPointer)))
 	}

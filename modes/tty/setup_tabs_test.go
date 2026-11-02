@@ -16,11 +16,11 @@ func TestTheShownTabIsInTheFocusColour(t *testing.T) {
 	defer rendering.SetColorEnabledForTest(false)
 	d := setupGolden(t, 133, 44, false, rowMapTempSource)
 	o := d.opts()
-	row := d.setupTabRow(o, 200)
+	row := strings.Join(d.setupTabRows(o, 200), "\n")
 	if want := render.ListLabel("[ "+o.Glyphs().Pointer+" Maps ]", true); !strings.Contains(row, want) {
 		t.Errorf("the Maps tab is not in the focus colour:\n%q\nwant it to hold %q", row, want)
 	}
-	if narrow := d.setupTabRow(o, 70); !strings.Contains(narrow, render.ListLabel("["+o.Glyphs().Pointer+"Maps]", true)) {
+	if narrow := strings.Join(d.setupTabRows(o, 70), "\n"); !strings.Contains(narrow, render.ListLabel("["+o.Glyphs().Pointer+"Maps]", true)) {
 		t.Errorf("the narrow row's Maps tab is not in the focus colour:\n%q", narrow)
 	}
 	if focus := render.ListLabel("[ Data ]", true); strings.Contains(row, focus) {

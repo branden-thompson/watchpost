@@ -88,6 +88,7 @@ func setUIHook(p tty.UIPrefs) error {
 			cfg.Theme = p.Theme
 		}
 		cfg.Units, cfg.Clock = p.Units, p.Clock
+		cfg.ReduceMotion = p.ReduceMotion                       // 0.19.0 D-360
 		cfg.Maps, cfg.MapDescription = p.Maps, p.MapDescription // 0.18.0: the map's Settings, written with the group
 		cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayers = p.MapScale, p.MapNearbyKm, p.MapLayers
 		cfg.MapRadarSource = p.MapRadarSource              // D-83
@@ -100,6 +101,7 @@ func setUIHook(p tty.UIPrefs) error {
 		cfg.MapPropagationNoReadings = p.MapPropNoReadings // 0.19.0 D-105
 		cfg.MapPropagationStations = p.MapPropStations     // 0.19.0 D-214
 		cfg.MapColourDepth = p.MapColourDepth              // 0.19.0 D-207
+		cfg.MapPlaybackMs = p.MapPlaybackMs                // 0.19.0 D-361
 		cfg.MapRadarAheadHours = p.MapRadarAhead           // D-114
 		cfg.MapQuakeFeed = p.MapQuakeFeed                  // D-122
 		cfg.MapAlertScope = ""                             // retired (D-76): the next save lets the key go

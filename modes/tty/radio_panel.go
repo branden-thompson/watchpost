@@ -44,12 +44,12 @@ func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
 		return d.saveRadioCmd(), true
 	case "radio-vol-up":
 		d.radioVolume = min(100, d.radioVolume+5)
-		d.volFlash, d.volFlashEnd = "+", time.Now().Add(350*time.Millisecond) // green blink (UAT 41)
+		d.volFlash, d.volFlashEnd = "+", d.markEnds() // green blink (UAT 41), steady under Reduce motion
 		d = d.radioVolumeCmd()
 		return d.saveRadioCmd(), true
 	case "radio-vol-dn":
 		d.radioVolume = max(0, d.radioVolume-5)
-		d.volFlash, d.volFlashEnd = "-", time.Now().Add(350*time.Millisecond) // red blink
+		d.volFlash, d.volFlashEnd = "-", d.markEnds() // red blink
 		d = d.radioVolumeCmd()
 		return d.saveRadioCmd(), true
 	default:
@@ -269,6 +269,9 @@ func (d Dashboard) marqueeTrack(inner int) string {
 		return band(fill(" LIVE RADIO "))
 	case d.radioPlaying && d.radioDetail != "" && w >= 8:
 		text := marquee(d.radioDetail, w, d.marqueeProgress(time.Now()))
+		if d.reduceMotion {
+			text = cutToWidth(d.opts(), d.radioDetail, w) // cut, not slid (D-360)
+		}
 		if render.Width(text) <= w-2 { // air either side only when both fit — a w-1 line padded to w+1 breaks the box (round 4, B-02)
 			text = " " + text + " "
 		}
@@ -278,9 +281,10 @@ func (d Dashboard) marqueeTrack(inner int) string {
 }
 
 // vizActive: the visualizer has something to draw — Viz is on, the app
-// feeds levels, and the player plays or the bars are still settling.
+// feeds levels, Reduce motion is off, and the player plays or the bars are
+// still settling.
 func (d Dashboard) vizActive() bool {
-	if !d.radioViz || d.cfg.Spectrum == nil {
+	if !d.radioViz || d.cfg.Spectrum == nil || d.reduceMotion { // under Reduce motion the bars are not drawn (D-360)
 		return false
 	}
 	if d.radioPlaying {

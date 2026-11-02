@@ -169,7 +169,7 @@ func TestALayersRowIsAPickerAndTheArrowsWalkThem(t *testing.T) {
 	d.cfg.MapLayers = append(append([]MapLayer(nil), alertLayers...), MapLayer{Key: "quake", Label: "Quakes"})
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	one := m.(Dashboard)
-	if one.setupTab() != tabMaps || one.layerOn("alert") {
+	if one.setupTab() != tabMapLayers || one.layerOn("alert") {
 		t.Fatalf("→ on Alert areas: tab %s, alert on %v; want it switched off, here", one.setupTab().Label(), one.layerOn("alert"))
 	}
 	m, _ = one.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
@@ -203,7 +203,7 @@ func TestALayersRowIsAPickerAndTheArrowsWalkThem(t *testing.T) {
 	single, _ := uiDash(t, rowMapLayers)
 	single.cfg.MapLayers = alertLayers
 	m, _, _ = single.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	if got := m.(Dashboard); got.setupTab() != tabMaps || got.layerOn("alert") {
+	if got := m.(Dashboard); got.setupTab() != tabMapLayers || got.layerOn("alert") {
 		t.Error("with one layer → did not switch it, here")
 	}
 	single.cfg.MapLayers = nil

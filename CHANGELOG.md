@@ -9,7 +9,18 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   braille, or run with `--ascii`. Help also keys the digit along an alert's outline, and a badge under
   the map keys each digit drawn.
 
+- **Reduce motion,** one switch in Settings (*Watchpost UI*) that stills everything moving on its own:
+  the map's loops and the forecast do not play, the ticker shows one item at a time, the visualiser's
+  bars are not drawn, the loading dots and the radio line hold still, and a pressed chip stays marked
+  until the next key.
+- **The map's playback speed** is a Setting: 1000 to 200 ms a frame for the radar's loop and the
+  forecast's steps, 500 by default; the two fastest say they pass the flash limit.
+
 ### Changed
+- **Settings is one column on every tab,** so a screen reader or line reader hears one setting a line;
+  the map's settings are two tabs, Maps and Map Layers.
+- **The radar's loop plays at 500 ms a frame by default,** where it played at one second; the Playback
+  speed row sets it.
 - **The map's words are the Description,** wherever they are named: its box, its chip (which says
   On or Off), Help and Settings. A description too long for its box ends by naming where the whole text
   is; the region row says which region is shown.

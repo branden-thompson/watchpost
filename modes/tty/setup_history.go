@@ -66,9 +66,8 @@ func (d Dashboard) historyLines(o render.Opts) ([]string, int) {
 	var lines []string
 	at := 0
 	focus := d.setup.focus
-	// AS NARROW AS THEIR VALUES: a picker as wide as the map's would not let the
-	// Data tab's two columns fit beside each other in ASCII, and the whole
-	// window would narrow to one column (every tab's width is the widest's).
+	// AS NARROW AS THEIR VALUES: the group's own widths, so a picker as wide as
+	// the map's does not widen the Data tab.
 	lines, at = d.mapRowW(o, lines, at, rowHistoryHours, "Hourly detail -", d.mapPickerW(o, rowHistoryHours, historyHourChoices[historyAt(historyHourChoices, d.setup.history.Hours)].label, historyValueW), historyLabelW)
 	lines, at = d.mapRowW(o, lines, at, rowHistoryTrends, "Trends -", d.mapPickerW(o, rowHistoryTrends, historyTrendChoices[historyAt(historyTrendChoices, d.setup.history.Trends)].label, historyValueW), historyLabelW)
 	if focus == rowHistoryClear {

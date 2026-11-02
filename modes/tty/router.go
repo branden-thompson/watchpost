@@ -451,6 +451,9 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// station is.
 	if out, ok := m.(Router); ok {
 		out.broadcaster.gain = out.observer.radioVolume
+		if out.observer.reduceMotion { // AND REDUCE MOTION, one switch for both (D-360): the console's dots hold their first phase
+			out.broadcaster.frame = 0
+		}
 		// AND WHICH SURFACE IS ACTIVE, on the same cadence and for the same
 		// reason (D-92): the Settings window is forwarded to Observer from the
 		// console, and D-18 rules that some of its rows belong to one surface

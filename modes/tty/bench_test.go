@@ -274,23 +274,26 @@ func TestSevereFrameAllocBudget(t *testing.T) {
 // CORRESPONDENTS group focused. A miss beyond TWICE the pre-feature window's
 // (3,476 at 133×44) means the builders are fixed rather than the pin raised.
 //
-// 80×24 costs most on a miss because that is where the window STACKS: it builds
-// both columns and then lays them one after the other, so a miss there does the
-// two-column work and the stacking.
+// Every tab is one column (D-364), so a miss lays the open tab's groups end to
+// end at every size.
 var setupAllocBudget = map[string]float64{
 	// 133x44 (D-62, U1-35/U1-36): the window is as wide as its widest tab on every
 	// tab, so a frame lays each tab's groups out to measure it, and it is held to
 	// 80% of the terminal, so more of the dashboard is drawn around it - the
 	// dashboard in sight is what U1-36 asks for.
-	// The Maps tab's RX noise picker row (D-187), a row with its arrow chips,
-	// measures 4,942 on a miss.
-	"133x44-hit": 3_046 * 1.05, "133x44-miss": 4_942 * 1.05,
+	// One column (D-364) with the window as wide as its tab row: 2,849 on a
+	// hit, the dashboard around it no longer split by a second column's width,
+	// and 5,119 on a miss, the Reduce motion and Playback speed rows with them
+	// (D-360, D-361).
+	"133x44-hit": 2_849 * 1.05, "133x44-miss": 5_119 * 1.05,
 	// 80x24 (D-67, D-70, D-71, D-202): every tab is laid out for the window's
 	// width, so a row on any tab - the RELAY REPLAY group's second row, the map's
 	// eight detail picker rows with their arrow chips, the Maps tab's UV cities
 	// row - costs every Settings frame. With the Maps tab's HF stations row
-	// (D-214) a frame measures 1,641 on a hit and 3,667 on a miss.
-	"80x24-hit": 1_641 * 1.05, "80x24-miss": 3_667 * 1.05,
+	// (D-214), the Reduce motion and Playback speed rows (D-360, D-361) and a
+	// tab row that may try its short names (A-107 (11)), a frame measures 1,641
+	// on a hit and 3,882 on a miss.
+	"80x24-hit": 1_641 * 1.05, "80x24-miss": 3_882 * 1.05,
 }
 
 // OVERLAY COSTS WHAT IT DOES NOT COVER. A dashboard row the modal sits over is
@@ -299,21 +302,11 @@ var setupAllocBudget = map[string]float64{
 // uncovers more of the dashboard, so it costs more to composite: render.Overlay
 // is most of this window's hit-path allocations, and no amount of trimming the
 // window's own content touches it. That is a job for the performance pass.
-//
-// The split search costs nothing (see columnPlan and setupBlock.w); a search
-// that re-measures every block for every candidate split costs about half again
-// on the 80×24 rebuild path.
 
 // WHAT THIS WINDOW COSTS PER FRAME AND WHAT IT COSTS TO REBUILD are different
 // questions with different answers. A miss builds the whole body, so a group
 // added to the body grows the miss; the header is rebuilt whether or not the
 // modal memo hits, so a chip in the masthead costs the hit path on every frame.
-
-// THIS WINDOW'S FRAME COST IS NOT A MONOTONE FUNCTION OF HOW MUCH IT DRAWS.
-// A left column narrow enough lets the window lay its groups side by side, as
-// the mock draws them, and a two-column body is short enough to need no scroll
-// rail or wrapped lines. A middling width where neither the two-column body nor
-// the rail-free body applies costs more on the hit path than a wider window.
 
 // THE MISS PATH IS SPENDING ITS HEADROOM under the twice-the-baseline rule, so
 // the next addition should look at the builders first.
@@ -331,7 +324,7 @@ var setupAllocBudget = map[string]float64{
 
 // setupBench is the Setup window open over the fixture dashboard at w×h, with
 // the CORRESPONDENTS group focused — the heaviest state: the pickers draw, the
-// focused row's note is built and wrapped, and the two-column decision runs.
+// focused row's note is built and wrapped.
 func setupBench(tb testing.TB, w, h int) Dashboard {
 	tb.Helper()
 	d := benchDash(tb, w, h).(Dashboard)

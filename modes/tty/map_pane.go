@@ -460,6 +460,7 @@ func (d Dashboard) renderMap() Dashboard {
 	d.mapPane.call("Units", func() { m.Units(miles, miles) }) // the description's distances and temperatures in the station's units
 	depth := d.mapDepthHint()
 	d.mapPane.call("ColourDepth", func() { m.ColourDepth(depth) }) // the Setting's depth, or the terminal's (D-207); the same hint again changes nothing
+	d = d.applyMotion()                                            // Reduce motion (D-360), likewise
 	d = d.reportPlace()                                            // first: the description's length decides the map's size
 	if !d.mapFits() {
 		d.mapPane.lines = nil

@@ -154,37 +154,73 @@ func TestClockAndUnitsRoundTripTheirConfigWords(t *testing.T) {
 	}
 }
 
-// The two columns BALANCE THEMSELVES.
-//
-// Assigning the groups to columns by hand gets worse with every group added —
-// four against one leaves the right column a dozen rows short and the window a
-// dozen rows taller than it needs to be. The point of computing the split is that
-// adding the NEXT group needs no tweak, so that is what this asserts: a property,
-// not today's arrangement.
-func TestSettingsColumnsBalanceThemselves(t *testing.T) {
-	d := setupGolden(t, 133, 44, false, rowCastAlerts)
-	o := d.opts()
-	blocks := d.setupBlocks(o)
-	plan, ok := d.columnPlan(blocks, o)
-	if !ok {
-		t.Fatal("at 133x44 the groups fit side by side")
-	}
-	left, right := blockHeight(blocks[:plan.split]), blockHeight(blocks[plan.split:])
-	// No OTHER split point may be more even. This is the whole rule, and it
-	// holds whatever the groups happen to be.
-	best := abs(left - right)
-	for k := 1; k < len(blocks); k++ {
-		if got := abs(blockHeight(blocks[:k]) - blockHeight(blocks[k:])); got < best {
-			// A more even split is allowed to lose only by not FITTING.
-			lw, rw := widestBlock(blocks[:k]), widestBlock(blocks[k:])
-			if twoColumnsWidth(lw, rw, panelChromeFor(blockHeight(blocks[:k])+4, d.modalMax())) <= o.Width {
-				t.Errorf("split at %d is off by %d lines; a split at %d is off by %d and fits", plan.split, best, k, got)
+// TestEveryTabIsOneColumn is F-205 AX-7 (D-364): every tab, on both
+// surfaces and at every size, lays its groups end to end, so no line holds
+// two settings for a line reader to hear together.
+func TestEveryTabIsOneColumn(t *testing.T) {
+	for _, size := range [][2]int{{133, 44}, {200, 60}, {80, 24}} {
+		for _, surface := range []Surface{SurfaceObserver, SurfaceBroadcaster} {
+			base := setupGolden(t, size[0], size[1], false, rowCastAlerts)
+			base.surface = surface
+			for _, tab := range base.tabsShown() {
+				d := base
+				d.setup.focus, _ = base.firstRowOfTab(tab)
+				lines, _, _ := d.setupPage(d.opts())
+				for _, l := range lines {
+					plain := stripANSITest(l)
+					if strings.Count(plain, "←") > 1 || strings.Count(plain, "●")+strings.Count(plain, "○") > 1 {
+						t.Errorf("%dx%d surface %v tab %s: a line holds two settings: %q", size[0], size[1], surface, tab.Label(), plain)
+					}
+				}
 			}
 		}
 	}
-	// Reading order survives it: groups fill the left column, then the right.
-	if plan.split < 1 || plan.split >= len(blocks) {
-		t.Errorf("both columns carry at least one group, split=%d of %d", plan.split, len(blocks))
+}
+
+// TestTheMapLayersTabHoldsDetailAndLayers is D-364: MAP is the Maps tab's,
+// MAP - DETAIL and MAP - LAYERS the Map Layers tab's, each one page.
+func TestTheMapLayersTabHoldsDetailAndLayers(t *testing.T) {
+	if tabOfGroup(groupMap) != tabMaps || tabOfGroup(groupLayers) != tabMapLayers || tabOfGroup(groupMapLayers) != tabMapLayers {
+		t.Fatal("the map's groups are not split between Maps and Map Layers")
+	}
+	d := setupGolden(t, 133, 44, false, rowCastAlerts)
+	page := func(tab setupTab) string {
+		on := d
+		on.setup.focus, _ = d.firstRowOfTab(tab)
+		lines, _, _ := on.setupPage(on.opts())
+		return stripANSITest(strings.Join(lines, "\n"))
+	}
+	maps, layers := page(tabMaps), page(tabMapLayers)
+	if !strings.Contains(maps, "MAP") || strings.Contains(maps, "MAP - DETAIL") || strings.Contains(maps, "MAP - LAYERS") {
+		t.Errorf("the Maps tab is not MAP alone:\n%s", maps)
+	}
+	if !strings.Contains(layers, "MAP - DETAIL") || !strings.Contains(layers, "MAP - LAYERS") {
+		t.Errorf("the Map Layers tab lacks DETAIL or LAYERS:\n%s", layers)
+	}
+}
+
+// TestTheTabRowFitsTheNarrowWindow is A-107 (11): the tab row fits its
+// window in one line, short names where the full ones do not fit, every name
+// whole and every line within the window.
+func TestTheTabRowFitsTheNarrowWindow(t *testing.T) {
+	for _, size := range [][2]int{{80, 24}, {133, 44}} {
+		d := setupGolden(t, size[0], size[1], false, rowCastAlerts)
+		o := d.opts()
+		rows := d.setupTabRows(o, o.Width-4)
+		all := stripANSITest(strings.Join(rows, "\n"))
+		if len(rows) != 1 {
+			t.Errorf("%dx%d: the tab row takes %d lines", size[0], size[1], len(rows))
+		}
+		for _, r := range rows {
+			if w := render.Width(r); w > o.Width-4 {
+				t.Errorf("%dx%d: a tab row is %d wide, over %d: %q", size[0], size[1], w, o.Width-4, stripANSITest(r))
+			}
+		}
+		for _, tab := range d.tabsShown() {
+			if !strings.Contains(all, tab.Label()) && !strings.Contains(all, tab.Short()) {
+				t.Errorf("%dx%d: the tab row cuts %q:\n%s", size[0], size[1], tab.Label(), all)
+			}
+		}
 	}
 }
 

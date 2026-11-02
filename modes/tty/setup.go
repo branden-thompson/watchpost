@@ -387,13 +387,21 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 		if m, ok := d.mapPrefArrow(key.String() == "right"); ok {
 			return m, nil, true
 		}
+		if d.setup.focus == rowReduceMotion {
+			d = d.cycleReduceMotion(key.String() == "right")
+			d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
+			if key.String() == "right" {
+				d.setup.flash = flashRight
+			}
+			return d.settled(), nil, true
+		}
 		if setupTable()[d.setup.focus].kind == rowToggle {
 			// A two-state control: ←→ and space all do the same thing, because
 			// there is nothing to cycle THROUGH — there are two states and
 			// either key means "the other one".
 			forward := key.String() == "right"
 			d = d.toggleClass(d.setup.focus)
-			d.setup.flash, d.setup.flashEnd = flashLeft, time.Now().Add(pickerFlashDur)
+			d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
 			if forward {
 				d.setup.flash = flashRight
 			}
@@ -406,7 +414,7 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 			} else {
 				d = d.cyclePicker(d.setup.focus, forward)
 			}
-			d.setup.flash, d.setup.flashEnd = flashLeft, time.Now().Add(pickerFlashDur)
+			d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
 			if forward {
 				d.setup.flash = flashRight
 			}

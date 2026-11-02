@@ -235,7 +235,7 @@ bands chart's `esc`, `PgUp` and `PgDn`) are fixed. The map's action names begin
 `map.` (`map.pan.left`, `map.zoom.in`, `map.propagation`, …) and the bands chart's are `chart.prev` and
 `chart.next`.
 
-**Settings, Maps tab** (`s`, then `tab` to *Maps*):
+**Settings, Maps and Map Layers tabs** (`s`, then `tab` to *Maps*; each tab is one column):
 
 - **MAP:** maps on or off; where the description goes; the scale the map opens at (State, County or
   Region); the distance that counts as nearby; the radar source (MRMS, or IEM for the lower 48); the
@@ -243,9 +243,11 @@ bands chart's `esc`, `PgUp` and `PgDn`) are fixed. The map's action names begin
   how dense the rain is from day 4; how many cities show UV; and for the Propagation mode, the
   near-vertical radius (*NVIS radius*), the receiver's noise (*RX noise*), how often it refreshes
   (*HF refresh*: Hourly by default, Every 10 min, or On demand), what it draws while no station readings are held (*No readings*), whether GIRO's
-  stations are asked at all (*HF stations*), and the map's *Colours* (automatic, or a depth chosen).
-- **MAP - LAYERS:** each layer on or off.
-- **MAP - DETAIL:** the basemap's detail (borders, lakes, rivers, place names, major roads, rail and
+  stations are asked at all (*HF stations*), the map's *Colours* (automatic, or a depth chosen; none
+  under the Monochrome theme while automatic), and the *Playback speed* of the radar's loop and the
+  forecast's steps (1000 to 200 ms a frame, 500 by default; the two fastest say they pass the flash limit).
+- **MAP - LAYERS** (on *Map Layers*): each layer on or off.
+- **MAP - DETAIL** (on *Map Layers*): the basemap's detail (borders, lakes, rivers, place names, major roads, rail and
   parks), *Day / night* (the night side shaded and its edge dotted; always drawn in the Propagation
   mode) and *Map data*, which clears what the map keeps on disk.
 
@@ -454,7 +456,7 @@ clock         = "12h"        # 12h | 24h | mil — how times are written AND spo
 update_check  = false        # true asks GitHub ONCE at startup whether a newer release exists
 ```
 
-**The Propagation mode and the map's colours** (`config.toml`; each is a row on the Maps tab):
+**The Propagation mode, the map's colours and its playback** (`config.toml`; each is a row on the Maps tab):
 
 ```toml
 map_propagation_refresh     = ""   # "" hourly | "every-10-min" each new GloTEC grid | "on-demand" the refresh key alone
@@ -463,7 +465,13 @@ map_propagation_noise       = ""   # "" residential | "city" | "rural" | "quiet-
 map_propagation_no_readings = ""   # "" GloTEC as is | "corrected" by the typical offset
 map_propagation_stations    = ""   # "" ask GIRO | "none" NOAA and the climatology alone
 map_colour_depth            = ""   # "" automatic | "truecolor" | "256" | "16" | "none"
+map_playback_ms             = 0    # 0 is 500 | 1000 | 750 | 400 | 300 | 200: ms a frame
 ```
+
+**Reduce motion** (Settings, *Watchpost UI*; `reduce_motion = true` in `config.toml`) stills everything
+that moves on its own: the map's loops and the forecast do not play, the ticker shows one item at a time,
+the visualiser's bars are not drawn, the loading dots and the radio line hold still, and a pressed key's
+chip stays marked until the next key rather than blinking.
 
 **The radio's own keys** (`[radio]`). Most are Settings rows, so you never have to write them by
 hand — **four are not, deliberately**; see below the block.

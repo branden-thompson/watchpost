@@ -73,8 +73,7 @@ func TestEachDetailLayerIsAnEnabledRow(t *testing.T) {
 
 // TestSettingsIsNoWiderThanFourFifths is U1-36: at every size the window is
 // no wider than 80% of the terminal, or the one-column floor on a terminal
-// too small for that; at 133 columns every tab that was laid in two columns
-// still is, the Maps tab among them.
+// too small for that.
 func TestSettingsIsNoWiderThanFourFifths(t *testing.T) {
 	for _, size := range [][2]int{{133, 44}, {160, 50}, {100, 30}, {80, 24}} {
 		d, _ := uiDash(t, rowMapsOn)
@@ -88,16 +87,6 @@ func TestSettingsIsNoWiderThanFourFifths(t *testing.T) {
 			if w, most := on.modalWidth(), max(setupOneColWidth, size[0]*80/100); w > most {
 				t.Errorf("%dx%d tab %d: the window is %d wide, over %d", size[0], size[1], tab, w, most)
 			}
-		}
-	}
-	d, _ := uiDash(t, rowMapsOn)
-	for _, tab := range []setupTab{tabData, tabRadio, tabMaps} {
-		on := d
-		if id, ok := d.firstRowOfTab(tab); ok {
-			on.setup.focus = id
-		}
-		if _, two := on.columnPlan(on.setupBlocks(on.opts()), on.opts()); !two {
-			t.Errorf("at 133 columns tab %d is stacked; its two columns no longer fit", tab)
 		}
 	}
 }

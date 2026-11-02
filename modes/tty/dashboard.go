@@ -130,6 +130,9 @@ type Config struct {
 	// which means none whatever is chosen.
 	MapColourDepth string
 	NoColor        bool
+	// MapPlaybackMs is the file's playback speed, ms a frame; 0 is the
+	// default, 500 (D-361).
+	MapPlaybackMs int
 	// MapTemperature is the temperature the map draws (W10): every hour's or
 	// step's grids, each with its span, asked off the UI goroutine.
 	MapTemperature func(ctx context.Context, ask MapAsk) MapTemperature
@@ -175,6 +178,7 @@ type Config struct {
 	SetUI        func(UIPrefs) error
 	Units        string                  // "imperial" (default) | "metric" — the units at launch
 	Clock        string                  // "12h" (default) | "24h" | "mil" — the clock at launch
+	ReduceMotion bool                    // nothing moves on its own clock (D-360)
 	Voices       func() []string         // available correspondent voices (UAT 84)
 	SetVoice     func(name string) error // choose + persist the ROOT voice (UAT 84)
 	PreviewVoice func(name string)       // speak the sample line in a voice (UAT 86)
@@ -448,6 +452,7 @@ type UIPrefs struct {
 	Theme             string
 	Units             string
 	Clock             string
+	ReduceMotion      bool   // nothing moves on its own clock (D-360)
 	Maps              string // "on" (the default) or "off" (0.18.0)
 	MapDescription    string // "with" (the default), "instead" or "off"
 	MapScale          string // "state" (the default), "county" or "region"
@@ -462,6 +467,7 @@ type UIPrefs struct {
 	MapPropNoReadings string          // while no station readings are held: "corrected"; empty is GloTEC as is (D-105)
 	MapPropStations   string          // the stations: "none" for no GIRO; empty asks GIRO (D-214)
 	MapColourDepth    string          // the map's colour depth: "truecolor", "256", "16", "none"; empty is Automatic (D-207)
+	MapPlaybackMs     int             // the playback speed, ms a frame; 0 is the default, 500 (D-361)
 	MapRadarAhead     int             // the radar loop's hours ahead (D-114)
 	MapQuakeFeed      string          // the quakes drawn, USGS's feed by its name (D-122)
 	MapLayers         map[string]bool // the layers switched from their defaults
@@ -711,6 +717,8 @@ type Dashboard struct {
 	mapPropCorrect  bool           // GloTEC corrected by the typical offset while no readings are held (D-105)
 	mapPropNoGIRO   bool           // GIRO not asked: NOAA's and the climatology's field alone (D-214)
 	mapDepth        mapDepth       // the map's colour depth (D-207)
+	mapPlayback     time.Duration  // how long each frame of the map's playback shows (D-361)
+	reduceMotion    bool           // nothing moves on its own clock (D-360)
 	mapRadarAhead   int            // the radar loop's hours ahead: 1, 3, 6 or 12 (D-114)
 	mapQuakeFeed    string         // the quakes drawn: USGS's feed by its name (D-122)
 	mapKeys         term.KeyMap
@@ -988,7 +996,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, chartKeys: chartKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapPropNoise: propNoiseByKey(cfg.MapPropNoise), mapPropRefresh: propRefreshByKey(cfg.MapPropRefresh), mapPropCorrect: cfg.MapPropNoReadings == noReadingsCorrected, mapPropNoGIRO: cfg.MapPropStations == noStationsKey, mapDepth: mapDepthByKey(cfg.MapColourDepth), mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, chartKeys: chartKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapPropNoise: propNoiseByKey(cfg.MapPropNoise), mapPropRefresh: propRefreshByKey(cfg.MapPropRefresh), mapPropCorrect: cfg.MapPropNoReadings == noReadingsCorrected, mapPropNoGIRO: cfg.MapPropStations == noStationsKey, mapDepth: mapDepthByKey(cfg.MapColourDepth), mapPlayback: playbackByKey(cfg.MapPlaybackMs), reduceMotion: cfg.ReduceMotion, mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -1315,6 +1323,7 @@ func (d Dashboard) handleSevere(msg tea.Msg) Dashboard {
 // apart (on a pty, esc then `a` does not open About). No binding uses alt, so
 // the only reading is the user's: esc, then the key (0.13.0 red-team, PTY).
 func (d Dashboard) handleKeyPress(v tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	d = d.keyClearsMarks()
 	esc, key, fused := splitEscFusion(v)
 	if !fused {
 		return d.handleKey(v)
@@ -1371,7 +1380,7 @@ func (d Dashboard) applyRecent(v RecentSnapshotMsg) Dashboard {
 // blink; armTick re-arms the tick only while the predicate holds.
 func (d Dashboard) applyTick() Dashboard {
 	d.tickArmed = false
-	d.frame++
+	d = d.shimmerStep()
 	d.advanceTicker() // 0.12.0: the ticker scrolls on the wall clock
 	if d.volFlash != "" && !time.Now().Before(d.volFlashEnd) {
 		d.volFlash = "" // the blink clears on the first tick after it expires (UAT 41)

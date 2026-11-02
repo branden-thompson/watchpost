@@ -261,6 +261,7 @@ func TestTheDaysFlipBetweenHighAndLow(t *testing.T) {
 func TestForecastPlaybackStepsAndHoldsTheLastDay(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
+	d.mapPlayback = time.Second // at 1 s a frame the last day's 2 s hold is two steps (D-361)
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = m.(Dashboard)
 	if !d.mapPane.fcPlaying || cmd == nil {

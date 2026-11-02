@@ -332,7 +332,7 @@ func (d Dashboard) withQuotaNotice(lines []string, size tuimaps.Size) []string {
 
 // flashMapKey marks a map key pressed, for the controls box to blink.
 func (d Dashboard) flashMapKey(act term.Action) Dashboard {
-	d.mapPane.flash, d.mapPane.flashEnd = act, time.Now().Add(pickerFlashDur)
+	d.mapPane.flash, d.mapPane.flashEnd = act, d.markEnds()
 	return d
 }
 
@@ -879,7 +879,7 @@ func (d Dashboard) handleOverlaysKey(key string) (Dashboard, bool) {
 		d.mapPane.menuAt = (d.mapPane.menuAt + 1) % len(rows)
 	case "left", "right":
 		if hasChoice(r) { // the chip pressed blinks, as Settings' pickers do (D-147)
-			d.mapPane.menuFlash, d.mapPane.menuFlashAt, d.mapPane.menuFlashEnd = flashLeft, d.mapPane.menuAt, time.Now().Add(pickerFlashDur)
+			d.mapPane.menuFlash, d.mapPane.menuFlashAt, d.mapPane.menuFlashEnd = flashLeft, d.mapPane.menuAt, d.markEnds()
 			if key == "right" {
 				d.mapPane.menuFlash = flashRight
 			}

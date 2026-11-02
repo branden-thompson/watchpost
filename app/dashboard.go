@@ -373,6 +373,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		SetUI:          setUI,
 		Units:          cfg.Units,
 		Clock:          cfg.Clock,
+		ReduceMotion:   cfg.ReduceMotion,              // 0.19.0 D-360
 		Hydrate:        lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
 		CreditGroups:   creditGroups(),                // About's data sets, a group a provider, each source once (W21)
 		AboutWarnings:  aboutWarnings(),               // About's warnings, the life-safety pointer last (W21, D-229)
@@ -443,6 +444,7 @@ func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
 	c.MapPropNoReadings = cfg.MapPropagationNoReadings                 // 0.19.0 D-105: while no station readings are held
 	c.MapPropStations = cfg.MapPropagationStations                     // 0.19.0 D-214: whether GIRO is asked for stations
 	c.MapColourDepth = cfg.MapColourDepth                              // 0.19.0 D-207: the map's colour depth
+	c.MapPlaybackMs = cfg.MapPlaybackMs                                // 0.19.0 D-361: the playback speed
 	c.NoColor = os.Getenv("NO_COLOR") != ""                            // and NO_COLOR, which means none whatever is chosen
 	c.MapRadarAhead = cfg.MapRadarAheadHours                           // D-114: the radar loop's hours ahead
 	c.MapQuakeFeed = cfg.MapQuakeFeed                                  // D-122: the quakes the map draws
