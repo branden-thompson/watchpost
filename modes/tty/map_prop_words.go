@@ -20,10 +20,6 @@ import (
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 )
 
-// propFocusLimit is FR-3.7's statement (D-133): Help carries it, and the
-// words say it on opening.
-const propFocusLimit = "A screen reader cannot yet follow focus in the Propagation mode; watchpost 0.19.3 fixes that."
-
 // propTerms are the short names the words use, said in full on opening the
 // mode, as the focus limit is (AX-8).
 const propTerms = "The words' short names: MUF, the maximum usable frequency; foF2, the F2 layer's critical frequency; LUF, the lowest usable frequency; M(3000)F2, the factor from foF2 to MUF(3000); D-RAP, NOAA's forecast of the D layer's absorption; GloTEC, NOAA's map of the ionosphere's electrons."
@@ -58,7 +54,7 @@ func said(key, text string) wordSentence { return wordSentence{keys: []string{ke
 // propSentences are the Propagation mode's words, each with its kind.
 func (d Dashboard) propSentences(lat, lon float64) []wordSentence {
 	if d.mapPane.propSnap == nil {
-		return []wordSentence{said("mode", propagationWords), said("status", "Status: "+spoken(strings.TrimPrefix(d.propStatusWords(), "Propagation · "))+"."), said("focus", propFocusLimit)}
+		return []wordSentence{said("mode", propagationWords), said("status", "Status: "+spoken(strings.TrimPrefix(d.propStatusWords(), "Propagation · "))+".")}
 	}
 	out := []wordSentence{said("mode", "The Propagation mode, over the whole world: "+propLayerFull[d.mapPane.propLayer]+", "+propLayerName(d.mapPane.propLayer)+", is drawn, in megahertz.")}
 	if a := d.propAheadWords(lat, lon); a != "" {
@@ -75,7 +71,7 @@ func (d Dashboard) propSentences(lat, lon float64) []wordSentence {
 	}
 	out = append(out, said("status", d.propStatusBlock()))
 	if d.mapPane.propSess.applied < 2 {
-		out = append(out, said("focus", propFocusLimit), said("terms", propTerms)) // on opening, not after a refresh (FR-3.7, D-136, AX-8)
+		out = append(out, said("terms", propTerms)) // on opening, not after a refresh (D-136, AX-8)
 	}
 	out = append(out, d.propTargetWords()...)
 	if d.mapPane.propFreqMHz != 0 {

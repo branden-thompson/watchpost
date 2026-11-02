@@ -118,8 +118,8 @@ func TestAChangedAcknowledgementShowsAgain(t *testing.T) {
 }
 
 // TestTheCursorIsPlacedOnTheAcknowledgement is W2.5 (FR-11.4, D-81): the
-// terminal cursor stands at the start of its first line, and nowhere once
-// it closes.
+// terminal cursor stands at the start of its first line, steady; once it
+// closes the cursor leaves it for the map's words (D-362).
 func TestTheCursorIsPlacedOnTheAcknowledgement(t *testing.T) {
 	var saved []int
 	d := ackPress(t, ackDash(t, 0, false, &saved), "P")
@@ -136,8 +136,12 @@ func TestTheCursorIsPlacedOnTheAcknowledgement(t *testing.T) {
 	if v.Cursor.X+len(first) > len(row) || string(row[v.Cursor.X:v.Cursor.X+len(first)]) != string(first) {
 		t.Errorf("the cursor is at %d,%d on %q; want the start of %q", v.Cursor.X, v.Cursor.Y, string(row), propAckText[0])
 	}
-	if c := ackPress(t, d, "enter").View().Cursor; c != nil {
-		t.Errorf("the cursor stayed at %v after the acknowledgement closed", c)
+	if v.Cursor.Blink {
+		t.Error("the cursor blinks")
+	}
+	on := *v.Cursor // the frame's cursor is set in place: keep this one's value
+	if c := ackPress(t, d, "enter").View().Cursor; c == nil || (c.X == on.X && c.Y == on.Y) {
+		t.Errorf("after the acknowledgement closed the cursor is %v; want it on the map's words", c)
 	}
 }
 

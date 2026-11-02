@@ -522,8 +522,12 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // activate and drain.
 func (r Router) View() tea.View {
 	v := r.surface().View()
-	if r.active == SurfaceBroadcaster && r.observer.ModalOpen() {
-		v.Content = r.observer.OverlayWindow(v.Content, r.broadcaster.width)
+	if r.active == SurfaceBroadcaster { // the cursor at the console's focus, or the window's over it (D-362)
+		v.Cursor = r.broadcaster.consoleCursor(v.Content)
+		if r.observer.ModalOpen() {
+			v.Cursor = r.observer.OverlayCursor(v.Content, r.broadcaster.width)
+			v.Content = r.observer.OverlayWindow(v.Content, r.broadcaster.width)
+		}
 	}
 	r.frameDrawn()
 	return v

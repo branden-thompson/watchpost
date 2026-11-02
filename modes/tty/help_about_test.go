@@ -249,9 +249,8 @@ func TestHelpGroupsBindingsByFeature(t *testing.T) {
 	if strings.Contains(text, "OTHER") {
 		t.Fatal("every default binding has a group")
 	}
-	legend := slices.IndexFunc(lines, func(l string) bool { return strings.HasPrefix(l, " Row marks:") }) // the mock's one-space inset
-	if legend < 0 || legend+2 >= len(lines) || lines[legend+2] != " "+propFocusLimit {                    // then the focus limit (FR-3.7)
-		t.Fatalf("the legend and the focus limit follow the groups:\n%s", strings.Join(lines, "\n"))
+	if !slices.ContainsFunc(lines, func(l string) bool { return strings.HasPrefix(l, " Row marks:") }) { // the mock's one-space inset
+		t.Fatalf("the legend does not follow the groups:\n%s", strings.Join(lines, "\n"))
 	}
 }
 

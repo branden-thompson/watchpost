@@ -283,6 +283,7 @@ func NextTide
 func NoticeGrounds
 func Overlay
 func OverlayAt
+func OverlayOrigin
 func PadBetween
 func PadTo
 func Plain
