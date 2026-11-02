@@ -176,15 +176,16 @@ type mapPane struct {
 	radarAt                           time.Time
 	radarGiven                        map[string]tuimaps.Overlay
 	radarSource, radarNote, radarLine string
-	radarAhead                        string                // the source of the loop's hours ahead, "HRRR" (D-113), or none
-	radarTimeline                     []string              // the loop's timeline (D-86), drawn in Update
-	radarBadgeTime                    string                // the badge's time row (D-92), drawn in Update
-	fcTimeline                        []string              // Forecast mode's steps (D-94), drawn in Update
-	report                            tuimaps.PlaceReport   // the library's answers for the selected place, as last drawn
-	legend                            []tuimaps.LegendEntry // what the map draws now, for the legend (W1.17)
-	drawnSev                          map[string]bool       // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
-	feedGen                           uint64                // the feed last asked for; an older answer is dropped
-	feed                              *MapFeed              // the feed as last answered, layers applied: set again with each mode's spans (D-98)
+	radarAhead                        string                 // the source of the loop's hours ahead, "HRRR" (D-113), or none
+	radarTimeline                     []string               // the loop's timeline (D-86), drawn in Update
+	radarBadgeTime                    string                 // the badge's time row (D-92), drawn in Update
+	fcTimeline                        []string               // Forecast mode's steps (D-94), drawn in Update
+	report                            tuimaps.PlaceReport    // the library's answers for the selected place, as last drawn
+	motion                            []tuimaps.MotionReport // the radar's observed motion near it (D-363)
+	legend                            []tuimaps.LegendEntry  // what the map draws now, for the legend (W1.17)
+	drawnSev                          map[string]bool        // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
+	feedGen                           uint64                 // the feed last asked for; an older answer is dropped
+	feed                              *MapFeed               // the feed as last answered, layers applied: set again with each mode's spans (D-98)
 
 	// The temperature (W10): one request at a time as the radar's, the answer
 	// held, the grids handed in by id, and the anchor it was built at.
@@ -621,8 +622,9 @@ func (d Dashboard) mapBodyLines() []string {
 const modalRailCols = 3
 
 // textInstead is the window's text in place of the picture, after its
-// leading lines: the description, or the open menu, and the notes, wrapped
-// to a width.
+// leading lines: the description, or the open menu; what the picture's rows
+// say - the region beyond an edge, the status, the loop's line (AX-5); and
+// the notes, wrapped to a width.
 func (d Dashboard) textInstead(lead []string, width int) []string {
 	out := slices.Clone(lead)
 	block := d.descBlock(width)
@@ -631,6 +633,20 @@ func (d Dashboard) textInstead(lead []string, width int) []string {
 	}
 	for _, l := range block {
 		out = append(out, " "+l)
+	}
+	for _, said := range []string{d.edgeWords(), d.mapStatusText()} {
+		for _, l := range render.WrapText(said, width-1) {
+			out = append(out, " "+l)
+		}
+	}
+	switch d.mapMode() {
+	case modeRadar, modeForecast:
+		if d.radarTimelineOn() {
+			for _, l := range render.WrapText(d.loopWords(), width-1) {
+				out = append(out, " "+l)
+			}
+		}
+	case modePropagation: // its own words carry its hours
 	}
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
@@ -671,7 +687,7 @@ func (d Dashboard) followMenuFocus() Dashboard {
 // description reads. It needs no Work and no frame.
 func (d Dashboard) reportPlace() Dashboard {
 	m, loc := d.mapPane.m, d.mapPlace()
-	d.mapPane.report = tuimaps.PlaceReport{}
+	d.mapPane.report, d.mapPane.motion = tuimaps.PlaceReport{}, nil
 	if m == nil || loc == nil {
 		return d
 	}
@@ -682,6 +698,7 @@ func (d Dashboard) reportPlace() Dashboard {
 	if len(rep.Places) > 0 {
 		d.mapPane.report = rep.Places[0]
 	}
+	d.mapPane.motion = rep.Motion
 	return d
 }
 

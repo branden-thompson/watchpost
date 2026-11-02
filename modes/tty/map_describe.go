@@ -65,11 +65,15 @@ func (d Dashboard) describeUpTo(most int) []string {
 	if d.mapMode() == modePropagation {
 		return append(d.propWords(loc.Lat, loc.Lon), spokenAll(out)...) // no alert is drawn in it (D-21); the mode and its answers before the place's weather and the night (D-210)
 	}
+	var layers []string // after the alerts, what each layer drawn says of the place (D-363)
+	if here {
+		layers = d.layerAnswerWords(*loc)
+	}
 	if !d.layerOn(AlertLayer) {
-		return append(out, alertLayerOffText) // off is said, never "nothing is there"
+		return append(append(out, alertLayerOffText), layers...) // off is said, never "nothing is there"
 	}
 	if !d.alertsLanded() {
-		return append(out, mapAlertsLoadingText) // not in yet: never "no alert covers" (D-266)
+		return append(append(out, mapAlertsLoadingText), layers...) // not in yet: never "no alert covers" (D-266)
 	}
 	failed := d.mapPane.feed != nil && d.mapPane.feed.AlertsFailed
 	var said []string
@@ -105,7 +109,7 @@ func (d Dashboard) describeUpTo(most int) []string {
 	if most > 0 && len(said) > most {
 		said = append(said[:most-1], "And "+strconv.Itoa(len(said)-most+1)+" more in view.")
 	}
-	return append(out, said...)
+	return append(append(out, said...), layers...)
 }
 
 // mapLayerSentences are the layers that add a sentence to the description

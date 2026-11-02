@@ -268,6 +268,30 @@ func spread(items []placed, from, to int) string {
 // Where there is no loop yet, what the radar says of itself.
 func (d Dashboard) loopRow(width int) string {
 	from, to := d.scrubLead(), width-d.scrubLead()+1
+	items, ok := d.loopItems()
+	if !ok {
+		return render.PadTo("", from) + render.TruncateCells(d.mapPane.radarLine, max(width-from, 1))
+	}
+	return spread(items, from, to)
+}
+
+// loopWords are the loop's row as a line of text, its items in order, for a
+// window without the picture (AX-5); where there is no loop yet, what the
+// radar says of itself.
+func (d Dashboard) loopWords() string {
+	items, ok := d.loopItems()
+	if !ok {
+		return d.mapPane.radarLine
+	}
+	words := make([]string, len(items))
+	for i, it := range items {
+		words[i] = it.text
+	}
+	return strings.Join(words, " · ")
+}
+
+// loopItems are the loop's row's items, false where there is no loop yet.
+func (d Dashboard) loopItems() ([]placed, bool) {
 	state := func(playing bool) placed {
 		switch {
 		case playing:
@@ -284,11 +308,11 @@ func (d Dashboard) loopRow(width int) string {
 		if d.tempOn() {
 			lead += " " + chipFace(d.tempFace())
 		}
-		return spread([]placed{item(lead), item("STEP " + strconv.Itoa(at+1) + " / " + strconv.Itoa(len(steps))), state(d.mapPane.fcPlaying)}, from, to)
+		return []placed{item(lead), item("STEP " + strconv.Itoa(at+1) + " / " + strconv.Itoa(len(steps))), state(d.mapPane.fcPlaying)}, true
 	}
 	m := d.mapPane.m
 	if m == nil || d.mapPane.radarSource == "" || m.Loop().Count == 0 {
-		return render.PadTo("", from) + render.TruncateCells(d.mapPane.radarLine, max(width-from, 1))
+		return nil, false
 	}
 	st := m.Loop()
 	age := d.now().Sub(newestObserved(st))
@@ -300,8 +324,8 @@ func (d Dashboard) loopRow(width int) string {
 	if st.Forecast && d.mapPane.radarAhead != "" { // the hours ahead: a model's, said so (D-113)
 		lead = item("FORECAST " + chipFace(d.aheadName()))
 	}
-	return spread([]placed{lead, item("FRAME " + strconv.Itoa(st.Index+1) + " / " + strconv.Itoa(st.Count)),
-		item(newest), state(st.Playing)}, from, to)
+	return []placed{lead, item("FRAME " + strconv.Itoa(st.Index+1) + " / " + strconv.Itoa(st.Count)),
+		item(newest), state(st.Playing)}, true
 }
 
 // scrubControls is the controls box beside the timeline (D-103): the arrows

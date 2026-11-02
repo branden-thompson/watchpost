@@ -190,6 +190,28 @@ func (d Dashboard) edgeChipText() string {
 	return name + " →"
 }
 
+// edgeWords are the edge chip as a sentence, for a window without the
+// picture (AX-5): which edge, and the region the next press crosses to.
+func (d Dashboard) edgeWords() string {
+	if !d.mapPane.edgeShown {
+		return ""
+	}
+	next, ok := geo.Neighbour(d.mapPane.region.Name, d.mapPane.edge)
+	if !ok {
+		return ""
+	}
+	side := "east"
+	switch d.mapPane.edge {
+	case geo.West:
+		side = "west"
+	case geo.North:
+		side = "north"
+	case geo.South:
+		side = "south"
+	}
+	return "At the " + side + " edge: press again to cross to " + mapRegionLabels[geo.NumberOf(next.Name)-1] + "."
+}
+
 // withEdgeChip lays the chip at the edge it names while it shows: east and
 // west at the middle of that side, north at the top's middle, south above the
 // credit row (FR-14, never covered).

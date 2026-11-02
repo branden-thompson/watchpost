@@ -21,6 +21,10 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   the map's settings are two tabs, Maps and Map Layers.
 - **The radar's loop plays at 500 ms a frame by default,** where it played at one second; the Playback
   speed row sets it.
+- **The Description says what each layer drawn shows at the place,** after the alerts: the
+  temperature there, the radar's echo and the nearest heavier one, which way the heavier rain moves,
+  the nearest quake or fire. Without the picture, the loop's line, the status and the region beyond an
+  edge are said as text too.
 - **The map's words are the Description,** wherever they are named: its box, its chip (which says
   On or Off), Help and Settings. A description too long for its box ends by naming where the whole text
   is; the region row says which region is shown.

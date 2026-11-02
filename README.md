@@ -209,8 +209,10 @@ each layer drawn and its source.
 ![The Overlays menu (`O`) over the radar: one shaded overlay at a time (temperature, UV index, air quality or radio propagation); the data points (wind, waves, buoys, tides), the hazards (quakes, fire, hotspots) and the alert areas by kind, each group switched as a whole; and the map's detail (borders, lakes, rivers, place names, major roads, rail, parks, day and night), with the zoom at which rail and parks appear](docs/img/map-overlays.png)
 
 The **Description** box (`A`) describes the map in words. It says which alerts cover the place, which
-come near it, and every other alert in view, most severe first. The description can also replace the
-picture or be switched off (Settings, *Description*).
+come near it, and every other alert in view, most severe first; then what each layer drawn shows there -
+the temperature, the radar and which way its heavier rain moves, the nearest quake or fire - in the
+Overlays menu's order. The description can also replace the picture, where the loop's line, the status
+and the region beyond an edge are said as text too, or be switched off (Settings, *Description*).
 
 | Key (map open) | Does |
 |-----|------|
