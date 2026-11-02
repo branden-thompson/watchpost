@@ -7,7 +7,9 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 ### Fixed
 - **A screen reader can follow focus everywhere,** the Propagation mode among it: the terminal cursor
   stands on the focused row, a field's caret, or a window's first words, on both surfaces, as a steady
-  block that does not blink, in the colour of what it covers, so a yellow pointer stays yellow under it.
+  mark that does not blink. While the terminal has focus, the cell it stands on is lightly tinted with the
+  colour of what is drawn there, which keeps its colour; while it does not, the cursor is a block in that
+  colour.
   Help and the mode's words no longer say it cannot.
 
 ### Added

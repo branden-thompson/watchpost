@@ -1,8 +1,10 @@
 package render
 
-// ink.go — the colour a line draws one of its cells in, read from the line's
-// own SGR sequences: the terminal cursor wears it, so the glyph it covers
-// keeps its colour (D-366).
+// ink.go — the colours a line draws one of its cells in, read from the
+// line's own SGR sequences, and that cell painted: the terminal cursor wears
+// the glyph's colour while the terminal is not focused (D-366), and while it
+// is, the cell takes a tint of it over its own background, the glyph keeping
+// its colour (D-367).
 
 import (
 	"image/color"
@@ -11,13 +13,21 @@ import (
 	"unicode/utf8"
 )
 
-// InkAt is the foreground a line leaves set when it reaches one of its
-// cells; false where the cell takes the terminal's own (none set, a reset,
-// or past the line's end). It reads in place: the cursor asks it of every
-// frame drawn.
-func InkAt(line string, cell int) (color.RGBA, bool) {
-	var ink color.RGBA
-	inked, at, i := false, 0, 0
+// Cell is what a line draws one of its cells in: its foreground (Ink) and
+// background (Paper), each false where the terminal's own stands, and where
+// its glyph's bytes lie in the line.
+type Cell struct {
+	Ink, Paper     color.RGBA
+	Inked, Papered bool
+	start, end     int
+}
+
+// CellAt is the cell of a line at a column, the colours its SGR sequences
+// leave set when they reach it; false past the line's end. It reads in
+// place: the cursor asks it of every frame drawn.
+func CellAt(line string, cell int) (Cell, bool) {
+	var pen Cell
+	at, i := 0, 0
 	for range len(line) { // every pass consumes at least one byte (P10-02)
 		if i >= len(line) {
 			break
@@ -25,26 +35,34 @@ func InkAt(line string, cell int) (color.RGBA, bool) {
 		if line[i] == 0x1b {
 			end := strings.IndexByte(line[i:], 'm')
 			if end < 2 {
-				return color.RGBA{}, false
+				return Cell{}, false
 			}
-			ink, inked = sgrInk(line[i+2:i+end], ink, inked)
+			pen = pen.apply(line[i+2 : i+end])
 			i += end + 1
 			continue
 		}
 		r, size := utf8.DecodeRuneInString(line[i:])
 		w := RuneCells(r)
 		if cell < at+w {
-			return ink, inked
+			pen.start, pen.end = i, i+size
+			return pen, true
 		}
 		at, i = at+w, i+size
 	}
-	return color.RGBA{}, false
+	return Cell{}, false
 }
 
-// sgrInk is the foreground one SGR sequence's parameters leave, from the one
-// set before it: a reset or 39 clears it, a basic, 256 or truecolor code sets
-// it, and a background's values are passed over.
-func sgrInk(params string, ink color.RGBA, inked bool) (color.RGBA, bool) {
+// InkAt is the foreground a line leaves set at one of its cells; false where
+// the terminal's own stands or past the line's end.
+func InkAt(line string, cell int) (color.RGBA, bool) {
+	c, ok := CellAt(line, cell)
+	return c.Ink, ok && c.Inked
+}
+
+// apply is the pen one SGR sequence's parameters leave, from the one before:
+// a reset clears both colours, 39 and 49 each one, and a basic, 256 or
+// truecolor code sets one; an underline's colour is passed over.
+func (pen Cell) apply(params string) Cell {
 	p := sgrParams{rest: params}
 	for range len(params) + 1 { // a parameter a pass, never more than the bytes (P10-02)
 		n, ok := p.next()
@@ -52,19 +70,29 @@ func sgrInk(params string, ink color.RGBA, inked bool) (color.RGBA, bool) {
 			break
 		}
 		switch {
-		case n == 0 || n == 39:
-			ink, inked = color.RGBA{}, false
+		case n == 0:
+			pen = Cell{}
+		case n == 39:
+			pen.Ink, pen.Inked = color.RGBA{}, false
+		case n == 49:
+			pen.Paper, pen.Papered = color.RGBA{}, false
 		case n >= 30 && n <= 37:
-			ink, inked = paletteInk(n-30), true
+			pen.Ink, pen.Inked = paletteInk(n-30), true
 		case n >= 90 && n <= 97:
-			ink, inked = paletteInk(n-90+8), true
+			pen.Ink, pen.Inked = paletteInk(n-90+8), true
+		case n >= 40 && n <= 47:
+			pen.Paper, pen.Papered = paletteInk(n-40), true
+		case n >= 100 && n <= 107:
+			pen.Paper, pen.Papered = paletteInk(n-100+8), true
 		case n == 38:
-			ink, inked = p.extended(ink, inked)
-		case n == 48 || n == 58:
-			p.extended(ink, inked)
+			pen.Ink, pen.Inked = p.extended(pen.Ink, pen.Inked)
+		case n == 48:
+			pen.Paper, pen.Papered = p.extended(pen.Paper, pen.Papered)
+		case n == 58:
+			p.extended(color.RGBA{}, false)
 		}
 	}
-	return ink, inked
+	return pen
 }
 
 // sgrParams walks an SGR sequence's parameters in place.
@@ -91,9 +119,9 @@ func (p *sgrParams) next() (int, bool) {
 	return n, true
 }
 
-// extended reads a 38 (or 48, 58) code's colour: 5 and a 256 index, or 2 and
-// red, green and blue; anything else leaves the ink as it was.
-func (p *sgrParams) extended(ink color.RGBA, inked bool) (color.RGBA, bool) {
+// extended reads a 38, 48 or 58 code's colour: 5 and a 256 index, or 2 and
+// red, green and blue; anything else leaves the colour as it was.
+func (p *sgrParams) extended(was color.RGBA, set bool) (color.RGBA, bool) {
 	switch kind, _ := p.next(); kind {
 	case 5:
 		if n, _ := p.next(); n >= 0 && n <= 255 {
@@ -105,7 +133,7 @@ func (p *sgrParams) extended(ink color.RGBA, inked bool) (color.RGBA, bool) {
 		b, _ := p.next()
 		return color.RGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: 0xff}, true
 	}
-	return ink, inked
+	return was, set
 }
 
 // paletteInk is a 256-colour index as the xterm palette draws it; the basic
@@ -113,4 +141,42 @@ func (p *sgrParams) extended(ink color.RGBA, inked bool) (color.RGBA, bool) {
 func paletteInk(n int) color.RGBA {
 	r, g, b := xterm256RGB(n)
 	return color.RGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: 0xff}
+}
+
+// Blend is one colour laid over another at a share of it, 0 to 1.
+func Blend(top, under color.RGBA, share float64) color.RGBA {
+	mix := func(t, u uint8) uint8 { return uint8(float64(u) + (float64(t)-float64(u))*share + 0.5) }
+	return color.RGBA{R: mix(top.R, under.R), G: mix(top.G, under.G), B: mix(top.B, under.B), A: 0xff}
+}
+
+// RGBAOf is a colour as red, green and blue; false for none.
+func RGBAOf(c color.Color) (color.RGBA, bool) {
+	if c == nil {
+		return color.RGBA{}, false
+	}
+	r, g, b, _ := c.RGBA()
+	return color.RGBA{R: uint8(r >> 8), G: uint8(g >> 8), B: uint8(b >> 8), A: 0xff}, true
+}
+
+// PaintCell is a text with one cell's background set to a colour - the cell
+// as CellAt found it on the line starting at byte from - and the background
+// it had set back after it; its glyph and foreground are untouched.
+func PaintCell(text string, from int, c Cell, paper color.RGBA) string {
+	back := "\x1b[49m"
+	if c.Papered {
+		back = paperSGR(c.Paper)
+	}
+	var b strings.Builder
+	b.Grow(len(text) + 2*len("\x1b[48;2;255;255;255m"))
+	b.WriteString(text[:from+c.start])
+	b.WriteString(paperSGR(paper))
+	b.WriteString(text[from+c.start : from+c.end])
+	b.WriteString(back)
+	b.WriteString(text[from+c.end:])
+	return b.String()
+}
+
+// paperSGR is the SGR sequence setting a truecolor background.
+func paperSGR(p color.RGBA) string {
+	return "\x1b[48;2;" + strconv.Itoa(int(p.R)) + ";" + strconv.Itoa(int(p.G)) + ";" + strconv.Itoa(int(p.B)) + "m"
 }

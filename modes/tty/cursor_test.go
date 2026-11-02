@@ -5,7 +5,6 @@ package tty
 // frame as drawn.
 
 import (
-	"image/color"
 	"strings"
 	"testing"
 
@@ -149,59 +148,143 @@ func TestTheConsolePlacesTheCursor(t *testing.T) {
 	}
 }
 
-// TestTheCursorIsSteady is D-362: the cursor is a block that does not blink,
-// so it adds no motion, Reduce motion or not.
+// TestTheCursorIsSteady is D-362: the cursor does not blink, so it adds no
+// motion, Reduce motion or not - a bar while the terminal is focused, a
+// block while it is not (D-367).
 func TestTheCursorIsSteady(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
 	for _, reduce := range []bool{false, true} {
-		d := mapDash(t, Config{ReduceMotion: reduce})
-		m, _ := d.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
-		v := m.(Dashboard).openSetupAt(rowTheme).View()
-		if v.Cursor == nil || v.Cursor.Blink || v.Cursor.Shape != tea.CursorBlock {
-			t.Errorf("Reduce motion %v: the cursor is %+v; want a steady block", reduce, v.Cursor)
+		for _, blur := range []bool{false, true} {
+			d := mapDash(t, Config{ReduceMotion: reduce})
+			m, _ := d.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+			m = m.(Dashboard).openSetupAt(rowTheme)
+			shape := tea.CursorBar
+			if blur {
+				m, shape = blurred(m), tea.CursorBlock
+			}
+			if v := m.View(); v.Cursor == nil || v.Cursor.Blink || v.Cursor.Shape != shape {
+				t.Errorf("Reduce motion %v, blurred %v: the cursor is %+v; want a steady %v", reduce, blur, v.Cursor, shape)
+			}
 		}
 	}
 }
 
-// inkUnder is the colour the frame draws the cell under its cursor in.
-func inkUnder(v tea.View) (color.Color, bool) {
+// cellUnder is the cell under a frame's cursor, as the frame draws it.
+func cellUnder(t *testing.T, v tea.View) render.Cell {
+	t.Helper()
 	lines := strings.Split(v.Content, "\n")
 	if v.Cursor == nil || v.Cursor.Y < 0 || v.Cursor.Y >= len(lines) {
-		return nil, false
+		t.Fatalf("no cursor on the frame's rows: %+v", v.Cursor)
 	}
-	ink, inked := render.InkAt(lines[v.Cursor.Y], v.Cursor.X)
-	return ink, inked
+	c, ok := render.CellAt(lines[v.Cursor.Y], v.Cursor.X)
+	if !ok {
+		t.Fatalf("the cursor is past its row: %+v", v.Cursor)
+	}
+	return c
 }
 
-// TestTheCursorWearsTheColourItCovers is D-366: the cursor takes the colour
-// the frame draws its cell in, so Settings' yellow pointer stays yellow under
-// it - the dashboard's row, Settings' row and the console's too - and with
+// blurred is a model told the terminal lost focus.
+func blurred(m tea.Model) tea.Model {
+	m, _ = m.Update(tea.BlurMsg{})
+	return m
+}
+
+// cursorScenes are the three focus points the cursor's look is held on, each
+// a model of its own: the window memo is shared by copies.
+func cursorScenes(t *testing.T) map[string]func() tea.Model {
+	sized := func() tea.Model {
+		m, _ := mapDash(t, Config{}).Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+		return m
+	}
+	return map[string]func() tea.Model{
+		"Settings":      func() tea.Model { return sized().(Dashboard).openSetupAt(rowTheme) },
+		"the dashboard": sized,
+		"the console":   func() tea.Model { return consoleRouter(t) },
+	}
+}
+
+// TestTheCursorWearsTheColourItCovers is D-366: while the terminal is not
+// focused the cursor is a block in the colour the frame draws its cell in -
+// Settings' yellow pointer, the dashboard's row, the console's - and with
 // colour off it takes the terminal's own.
 func TestTheCursorWearsTheColourItCovers(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
-	m, _ := mapDash(t, Config{}).Update(tea.WindowSizeMsg{Width: 133, Height: 44})
-	settings := m.(Dashboard).openSetupAt(rowTheme).View()
 	yellow, _ := render.InkAt(render.Tint(">", render.Tok(render.ListPointer)), 0)
-	if settings.Cursor == nil || settings.Cursor.Color != yellow {
-		t.Errorf("on Settings' focused row the cursor is %+v; want the pointer's %v", settings.Cursor, yellow)
-	}
-	m, _ = mapDash(t, Config{}).Update(tea.WindowSizeMsg{Width: 133, Height: 44})
-	for name, v := range map[string]tea.View{"Settings": settings, "the dashboard": m.(Dashboard).View(), "the console": consoleRouter(t).View()} {
-		ink, inked := inkUnder(v)
-		if !inked || v.Cursor.Color != ink {
-			t.Errorf("on %s the cursor is %+v; want the colour of its cell, %v", name, v.Cursor, ink)
+	for name, scene := range cursorScenes(t) {
+		v := blurred(scene()).View()
+		c := cellUnder(t, v)
+		if !c.Inked || v.Cursor.Color != c.Ink || v.Cursor.Shape != tea.CursorBlock {
+			t.Errorf("on %s the cursor is %+v; want a block in its cell's colour, %v", name, v.Cursor, c.Ink)
+		}
+		if name == "Settings" && c.Ink != yellow {
+			t.Errorf("on Settings the cursor's cell is drawn in %v; want the pointer's %v", c.Ink, yellow)
 		}
 	}
 	rendering.SetColorEnabledForTest(false)
-	if v := m.(Dashboard).openSetupAt(rowTheme).View(); v.Cursor == nil || v.Cursor.Color != nil {
-		t.Errorf("with colour off the cursor is %+v; want the terminal's own colour", v.Cursor)
+	for _, v := range []tea.View{blurred(cursorScenes(t)["Settings"]()).View(), cursorScenes(t)["Settings"]().View()} {
+		if v.Cursor == nil || v.Cursor.Color != nil || v.Cursor.Shape != tea.CursorBlock {
+			t.Errorf("with colour off the cursor is %+v; want a block in the terminal's own colour, focused or not", v.Cursor)
+		}
+	}
+}
+
+// TestAFocusedTerminalTintsTheCellUnderTheCursor is D-367: while the terminal
+// is focused the cell under the cursor takes 15 % of its glyph's colour over
+// the background it had - its own, else the frame's - the glyph keeps its
+// colour, and the cursor is a steady bar in the tint, on every theme; told
+// the terminal lost focus and regained it, the tint returns.
+func TestAFocusedTerminalTintsTheCellUnderTheCursor(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	was := render.ThemeName()
+	defer render.SetTheme(was)
+	for _, theme := range render.ThemeNames() {
+		render.SetTheme(theme)
+		for name, scene := range cursorScenes(t) {
+			before := cellUnder(t, blurred(scene()).View())
+			v := scene().View()
+			under, ok := before.Paper, before.Papered
+			if !ok {
+				under, ok = render.RGBAOf(v.BackgroundColor)
+			}
+			if !before.Inked || !ok {
+				t.Errorf("%s, %s: the cell has no colour to tint (%+v)", theme, name, before)
+				continue
+			}
+			tint := render.Blend(before.Ink, under, 0.15)
+			if c := cellUnder(t, v); c.Ink != before.Ink || !c.Papered || c.Paper != tint {
+				t.Errorf("%s, %s: the cell is drawn %v on %v; want %v on %v", theme, name, c.Ink, c.Paper, before.Ink, tint)
+			}
+			if v.Cursor.Color != tint || v.Cursor.Shape != tea.CursorBar || v.Cursor.Blink {
+				t.Errorf("%s, %s: the cursor is %+v; want a steady bar in %v", theme, name, v.Cursor, tint)
+			}
+			back, _ := blurred(scene()).Update(tea.FocusMsg{})
+			if again := back.View(); cellUnder(t, again).Paper != tint || again.Cursor.Shape != tea.CursorBar {
+				t.Errorf("%s, %s: focus regained and the cursor is %+v; want the tint back", theme, name, again.Cursor)
+			}
+		}
+	}
+}
+
+// TestTheRouterAsksForFocusReports is D-367: the terminal is asked to say
+// when it gains and loses focus, on both surfaces.
+func TestTheRouterAsksForFocusReports(t *testing.T) {
+	r := consoleRouter(t)
+	if !r.View().ReportFocus {
+		t.Error("the console's frame does not ask for focus reports")
+	}
+	r.active = SurfaceObserver
+	if !r.View().ReportFocus {
+		t.Error("the Observer's frame does not ask for focus reports")
 	}
 }
 
 // TestACursorHandedOutIsNeverChanged is D-366: Bubble Tea compares a frame's
 // cursor with the last one's, its colour above all, so a cursor already
-// handed out keeps its place and colour when the focus moves, and a frame
-// where nothing moved hands out the same one.
+// handed out keeps its place and look when the focus moves, and a frame
+// drawn again as it was hands out the same one.
 func TestACursorHandedOutIsNeverChanged(t *testing.T) {
 	m, _ := mapDash(t, Config{}).Update(tea.WindowSizeMsg{Width: 133, Height: 44})
 	d := m.(Dashboard).openSetupAt(rowTheme)
@@ -214,6 +297,6 @@ func TestACursorHandedOutIsNeverChanged(t *testing.T) {
 		t.Errorf("the focus moved and the first cursor became %+v (was %+v); want it unchanged and a new one", *first, was)
 	}
 	if again := moved.View().Cursor; again != second {
-		t.Error("a frame where nothing moved made a new cursor; want the one held")
+		t.Error("a frame drawn again as it was made a new cursor; want the one held")
 	}
 }

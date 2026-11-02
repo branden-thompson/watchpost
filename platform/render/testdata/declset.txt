@@ -187,6 +187,7 @@ const unitsKeyMetric
 func (*layout).fitName
 func (*sgrParams).extended
 func (*sgrParams).next
+func (Cell).apply
 func (Clock).DateTime
 func (Clock).DateTimeZone
 func (Clock).Key
@@ -257,9 +258,11 @@ func AlertIsWarning
 func AlertTone
 func BGVisible
 func Band
+func Blend
 func Bold
 func BoxHeight
 func CategoryTone
+func CellAt
 func ChipGrounds
 func ChipTones
 func ClockByKey
@@ -289,8 +292,10 @@ func OverlayAt
 func OverlayOrigin
 func PadBetween
 func PadTo
+func PaintCell
 func Plain
 func PlainLine
+func RGBAOf
 func RadioBlockTone
 func RailGlyphsFor
 func Railify
@@ -391,6 +396,7 @@ func mixToward
 func ones
 func padLeft
 func paletteInk
+func paperSGR
 func passesAll
 func phonetic
 func qhex
@@ -406,7 +412,6 @@ func severeHeader
 func severeHeaderFG
 func severeHeaderLine
 func severeMarks
-func sgrInk
 func sgrRaw
 func shadeBack
 func shrinkToFit
@@ -433,6 +438,7 @@ func without
 func xterm256RGB
 type AlertRow
 type BoxGlyphs
+type Cell
 type Clock
 type Control
 type DayCell

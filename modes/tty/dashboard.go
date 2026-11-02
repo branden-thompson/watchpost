@@ -813,6 +813,7 @@ type Dashboard struct {
 	// no [M] Mute/Unmute label is drawn (MVS-D-48).
 	tickerMuted  bool
 	darkBG       bool                 // terminal mode (bubbletea BackgroundColorMsg)
+	blurred      bool                 // the terminal has said it lost focus: the cursor's look (D-367)
 	frame        int                  // animation phase (loading shimmer, UAT 18.2b)
 	radioPlaying bool                 // [space] Play|Pause (UAT 39) — true while connecting/playing (B4)
 	radioState   string               // B4: last RadioStatusMsg state ("" = never tuned)
@@ -1217,6 +1218,9 @@ func (d Dashboard) route(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.handleSevere(msg), nil // 0.13.0: the severe window's messages, one owner
 	case tea.BackgroundColorMsg:
 		d.darkBG = v.IsDark()
+		return d, nil
+	case tea.FocusMsg, tea.BlurMsg:
+		_, d.blurred = msg.(tea.BlurMsg)
 		return d, nil
 	case resolvedMsg:
 		return d.handleResolved(v)

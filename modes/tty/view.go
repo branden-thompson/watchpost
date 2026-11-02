@@ -46,10 +46,11 @@ func (d Dashboard) View() tea.View {
 	if box != "" {
 		content = render.Overlay(content, box, d.width)
 	}
-	v := tea.NewView(content)
-	v.Cursor = d.frameCursor(o, base, overlay, y, box, d.width) // at every focus point, steady (D-362)
-	v.AltScreen = true
+	v := tea.NewView("")
 	v.BackgroundColor = render.WindowBG(d.darkBG) // UAT 10.2: blue-grey window
+	cx, cy, at := d.frameCursor(o, base, overlay, y, box, d.width)
+	v.Content, v.Cursor = d.heldCursor().finish(content, cx, cy, at, d.blurred, v.BackgroundColor) // at every focus point, steady (D-362, D-367)
+	v.AltScreen = true
 	return v
 }
 

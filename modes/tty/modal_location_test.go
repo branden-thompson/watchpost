@@ -45,7 +45,7 @@ func TestRemoveFlowConfirmAndCancel(t *testing.T) {
 	m := dashWithHooks(t, h)
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModShift})
 	v := m.View().Content
-	if !strings.Contains(v, "Remove Oceanside, CA from the watchlist?") || !strings.Contains(v, "48;2;79;12;12") {
+	if !strings.Contains(stripANSITest(v), "Remove Oceanside, CA from the watchlist?") || !strings.Contains(v, "48;2;79;12;12") { // the words as read: the cursor's cell is painted (D-367)
 		t.Fatalf("confirmation modal on the confirm tile missing:\n%s", v)
 	}
 	mCancel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})

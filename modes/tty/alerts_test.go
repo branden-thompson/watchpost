@@ -152,7 +152,7 @@ func TestAKeyOpensAlertDetailsModal(t *testing.T) {
 		"Starts", "Ends", "(~30h0m0s)",
 		"San Diego County", "Dangerously hot", "Instructions: Drink plenty",
 	} {
-		if !strings.Contains(v, want) {
+		if !strings.Contains(stripANSITest(v), want) { // the words as read: the cursor's cell is painted (D-367)
 			t.Fatalf("alert modal missing %q:\n%s", want, v)
 		}
 	}
@@ -179,12 +179,12 @@ func TestAlertModalPagesWithTonedTiles(t *testing.T) {
 	m2, _ := m.Update(SnapshotMsg{Snap: s2}) // sorts: warning first
 	m2, _ = m2.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
 	v := m2.View().Content
-	if !strings.Contains(v, "ALERT 1 / 2") || !strings.Contains(v, "48;2;40;0;0") {
+	if !strings.Contains(stripANSITest(v), "ALERT 1 / 2") || !strings.Contains(v, "48;2;40;0;0") {
 		t.Fatalf("page 1 must be the warning on the red tile:\n%s", v)
 	}
 	m2, _ = m2.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	v = m2.View().Content
-	if !strings.Contains(v, "ALERT 2 / 2") || !strings.Contains(v, "48;2;32;28;0") || !strings.Contains(v, "HEAT ADVISORY") {
+	if plain := stripANSITest(v); !strings.Contains(plain, "ALERT 2 / 2") || !strings.Contains(v, "48;2;32;28;0") || !strings.Contains(plain, "HEAT ADVISORY") {
 		t.Fatalf("page 2 must be the advisory on the yellow tile:\n%s", v)
 	}
 	if !strings.Contains(v, "48;2;43;43;43") {
