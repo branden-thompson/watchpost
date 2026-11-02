@@ -5,12 +5,14 @@ package tty
 // frame as drawn.
 
 import (
+	"image/color"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 // cursorCell is the character under a frame's cursor and its row, the
@@ -157,5 +159,61 @@ func TestTheCursorIsSteady(t *testing.T) {
 		if v.Cursor == nil || v.Cursor.Blink || v.Cursor.Shape != tea.CursorBlock {
 			t.Errorf("Reduce motion %v: the cursor is %+v; want a steady block", reduce, v.Cursor)
 		}
+	}
+}
+
+// inkUnder is the colour the frame draws the cell under its cursor in.
+func inkUnder(v tea.View) (color.Color, bool) {
+	lines := strings.Split(v.Content, "\n")
+	if v.Cursor == nil || v.Cursor.Y < 0 || v.Cursor.Y >= len(lines) {
+		return nil, false
+	}
+	ink, inked := render.InkAt(lines[v.Cursor.Y], v.Cursor.X)
+	return ink, inked
+}
+
+// TestTheCursorWearsTheColourItCovers is D-366: the cursor takes the colour
+// the frame draws its cell in, so Settings' yellow pointer stays yellow under
+// it - the dashboard's row, Settings' row and the console's too - and with
+// colour off it takes the terminal's own.
+func TestTheCursorWearsTheColourItCovers(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	m, _ := mapDash(t, Config{}).Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	settings := m.(Dashboard).openSetupAt(rowTheme).View()
+	yellow, _ := render.InkAt(render.Tint(">", render.Tok(render.ListPointer)), 0)
+	if settings.Cursor == nil || settings.Cursor.Color != yellow {
+		t.Errorf("on Settings' focused row the cursor is %+v; want the pointer's %v", settings.Cursor, yellow)
+	}
+	m, _ = mapDash(t, Config{}).Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	for name, v := range map[string]tea.View{"Settings": settings, "the dashboard": m.(Dashboard).View(), "the console": consoleRouter(t).View()} {
+		ink, inked := inkUnder(v)
+		if !inked || v.Cursor.Color != ink {
+			t.Errorf("on %s the cursor is %+v; want the colour of its cell, %v", name, v.Cursor, ink)
+		}
+	}
+	rendering.SetColorEnabledForTest(false)
+	if v := m.(Dashboard).openSetupAt(rowTheme).View(); v.Cursor == nil || v.Cursor.Color != nil {
+		t.Errorf("with colour off the cursor is %+v; want the terminal's own colour", v.Cursor)
+	}
+}
+
+// TestACursorHandedOutIsNeverChanged is D-366: Bubble Tea compares a frame's
+// cursor with the last one's, its colour above all, so a cursor already
+// handed out keeps its place and colour when the focus moves, and a frame
+// where nothing moved hands out the same one.
+func TestACursorHandedOutIsNeverChanged(t *testing.T) {
+	m, _ := mapDash(t, Config{}).Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	d := m.(Dashboard).openSetupAt(rowTheme)
+	first := d.View().Cursor
+	was := *first
+	next, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	moved := next.(Dashboard)
+	second := moved.View().Cursor
+	if *first != was || second == first {
+		t.Errorf("the focus moved and the first cursor became %+v (was %+v); want it unchanged and a new one", *first, was)
+	}
+	if again := moved.View().Cursor; again != second {
+		t.Error("a frame where nothing moved made a new cursor; want the one held")
 	}
 }

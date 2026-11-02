@@ -60,6 +60,7 @@ Its answers agree with what was heard on the air little better than the climatol
 - **2026-10-31** **0.19.0 released** (D-352): PR #31 squash-merged; its release job stopped at its own 120-minute cap inside `make verify`, so the cap was raised from 0.19.0's runs and the tag re-created on that fix's merge (D-353, PR #32). Every work branch in the three repositories deleted. After release, Status read the basemap FAIL while the map drew: the map's own cancels counted as the host failing, since 0.18.0 - fixed in the 0.19.1 patch (D-354); O2 moves to 0.19.2 (D-355).
 - **2026-11-01** **0.19.1 released** (PR #33, `51410d01`), pinning go-tuiMaps v0.3.1 (D-356). go-tuiMaps A-24 stands (D-357); M5's frame is fixed for a hosted runner as go-tuiMaps v0.3.2 (D-358), pinned by 0.19.2; O2 moves to 0.19.3 (D-359).
 - **2026-11-01** **0.19.2 released** (PR #34, `09e8bd75`). 0.19.3, O2, opened: one Reduce motion switch for the whole app (D-360); the map's playback speed, 500 ms by default (D-361); the cursor at every focus point, steady (D-362); the description a sentence a layer (D-363); Settings in one column, Maps split in two (D-364); "Description" its one name, behind A (D-365); the agent's choices A-107.
+- **2026-11-02** UAT of the 0.19.3 build: the cursor hid the yellow pointer it stood on. It now wears the colour of the cell it covers, the glyph drawn dark inside it; if UAT finds that short, the cursor is unwound (D-366, batch 5).
 
 ## The rules that cost something
 

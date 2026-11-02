@@ -18,8 +18,6 @@ package tty
 // A MEMO MAY MISS. IT MUST NEVER WRONGLY HIT. Every choice here takes the miss.
 
 import (
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -69,7 +67,7 @@ type consoleMemo struct {
 	ok          bool
 	key         consoleKey
 	sched, pool scrollSpan
-	cursor      tea.Cursor // the console's cursor, set in place each frame by the Router (D-362)
+	cursor      cursorSlot // the console's cursor, kept for the Router (D-362)
 }
 
 // consoleKeyFor derives the key from the model and this frame's position.

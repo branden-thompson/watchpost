@@ -17,8 +17,6 @@ import (
 	"sync"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
-
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -86,10 +84,9 @@ type bodyMemo struct {
 	ok               bool
 	key              bodyKey
 	priority, recent string
-	// cursor is the frame's cursor, kept here and set in place each frame, so
-	// the hit path allocates nothing for it (D-362): a View holds it only until
-	// the next is drawn.
-	cursor tea.Cursor
+	// cursor is the frame's cursor, kept here so the hit path allocates
+	// nothing for it (D-362, cursorSlot).
+	cursor cursorSlot
 }
 
 // bodyKeyFor derives the key from the model and this frame's layout.

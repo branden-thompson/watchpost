@@ -393,8 +393,8 @@ legend and those headers — **not** the weather text itself, which is the forec
 is printed as they wrote them; punctuation inside an alert's own title travels with it. With
 `NO_COLOR` set, every state still reads in text — the meaning never rides on colour alone. The
 terminal's cursor stands on whatever has focus — the focused row, a field being typed into, a window's
-first words, the map's words — as a steady block, so a screen reader that follows the cursor follows the
-app; Settings is one column a tab, and *Reduce motion* stills everything that moves on its own.
+first words, the map's words — as a steady block in the colour of what it covers (a terminal that keeps
+its own cursor colour draws its own), so a screen reader that follows the cursor follows the app; Settings is one column a tab, and *Reduce motion* stills everything that moves on its own.
 
 ![Watchpost Light: the dashboard with Location Details open, then the severe window — every ground light, every colour pair checked for contrast](docs/img/light.gif)
 

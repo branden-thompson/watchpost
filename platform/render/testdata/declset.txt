@@ -185,6 +185,8 @@ const tableHeaderDip
 const unitsKeyImperial
 const unitsKeyMetric
 func (*layout).fitName
+func (*sgrParams).extended
+func (*sgrParams).next
 func (Clock).DateTime
 func (Clock).DateTimeZone
 func (Clock).Key
@@ -274,6 +276,7 @@ func FirstOf
 func FreshnessTone
 func HeavyBox
 func HumanBytes
+func InkAt
 func Italic
 func LiftToAA
 func LightBox
@@ -387,6 +390,7 @@ func mixBG
 func mixToward
 func ones
 func padLeft
+func paletteInk
 func passesAll
 func phonetic
 func qhex
@@ -402,6 +406,7 @@ func severeHeader
 func severeHeaderFG
 func severeHeaderLine
 func severeMarks
+func sgrInk
 func sgrRaw
 func shadeBack
 func shrinkToFit
@@ -450,6 +455,7 @@ type groupSpec
 type layout
 type quattroPalette
 type severeCol
+type sgrParams
 var asciiMarks
 var themeGen
 var themeMu

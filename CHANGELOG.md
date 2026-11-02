@@ -7,7 +7,8 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 ### Fixed
 - **A screen reader can follow focus everywhere,** the Propagation mode among it: the terminal cursor
   stands on the focused row, a field's caret, or a window's first words, on both surfaces, as a steady
-  block that does not blink. Help and the mode's words no longer say it cannot.
+  block that does not blink, in the colour of what it covers, so a yellow pointer stays yellow under it.
+  Help and the mode's words no longer say it cannot.
 
 ### Added
 - **Help says the map is drawn in braille,** and what to do if the font has none: choose one that has
