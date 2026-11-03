@@ -1076,3 +1076,7 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 
 - **UAT:** batch 6's cursor accepted, and 0.19.3's UAT passed (D-368).
 - **Batch 6's hosted Ubuntu race leg failed** in `TestFastInputNeverLeavesTwoReadsRunning`, "timed out waiting for the second read to pause". The test waited for the bed to be ducked before pressing pause on the second read; the first read, cancelled while on the air, can leave the bed ducked before the second is queued, and a press then finds no live read to pause. Reproduced with a probe that held the first read on the air past its cancel and queued the second late: the old wait failed the same way, the new one passed. The test now also waits for a live read on the air. The app is unchanged: such a press is pressed again.
+
+## 0.19.3 SHIP - the release branch
+
+- `release/0.19.3` from `feature/o2-accessibility` at batch 7. The follow-ups O2 built are closed, their rows deleted: F-180, F-191 to F-194, F-196 to F-198 and F-205. The CHANGELOG's 0.19.3 section is dated, and the required reading names the branch.

@@ -2,7 +2,7 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
-## [Unreleased]
+## [0.19.3] — 2026-11-03
 
 ### Fixed
 - **A screen reader can follow focus everywhere,** the Propagation mode among it: the terminal cursor
