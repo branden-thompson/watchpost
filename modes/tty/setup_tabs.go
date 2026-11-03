@@ -22,24 +22,21 @@ const (
 	tabRadio
 	tabBroadcaster
 	tabMaps
+	tabMapLayers // D-364: the map's detail and layers, so each tab is one page in one column
 )
 
 // setupTabs is every tab, in the order the tab row draws them.
-func setupTabs() []setupTab { return []setupTab{tabData, tabUI, tabRadio, tabBroadcaster, tabMaps} }
+func setupTabs() []setupTab {
+	return []setupTab{tabData, tabUI, tabRadio, tabBroadcaster, tabMaps, tabMapLayers}
+}
 
-// Label is the tab's name on the tab row.
+// Label is the tab's name on the tab row, in the tabs' declared order.
 func (t setupTab) Label() string {
-	switch t {
-	case tabRadio:
-		return "Watchpost Radio"
-	case tabBroadcaster:
-		return "Broadcaster"
-	case tabMaps:
-		return "Maps"
-	case tabUI:
-		return "Watchpost UI"
+	names := [...]string{tabData: "Data", tabUI: "Watchpost UI", tabRadio: "Watchpost Radio", tabBroadcaster: "Broadcaster", tabMaps: "Maps", tabMapLayers: "Map Layers"}
+	if t < 0 || int(t) >= len(names) {
+		return names[tabData]
 	}
-	return "Data"
+	return names[t]
 }
 
 // tabOfGroup is where a group lives (D-62).
@@ -49,8 +46,10 @@ func tabOfGroup(g setupGroupID) setupTab {
 		return tabRadio
 	case groupStation:
 		return tabBroadcaster
-	case groupMap, groupLayers, groupMapLayers:
+	case groupMap:
 		return tabMaps
+	case groupLayers, groupMapLayers:
+		return tabMapLayers
 	case groupUI:
 		return tabUI
 	}
@@ -118,33 +117,67 @@ func (d Dashboard) rowTakesLeftRight() bool {
 	return row.picker || row.kind == rowToggle || row.kind == rowPicker
 }
 
-// setupTabRow is the tab row, [w]'s shape: the open tab marked with the
-// pointer and in the focus colour (U2-49), in the widest form that fits.
-func (d Dashboard) setupTabRow(o render.Opts, width int) string {
-	if row := d.tabRowAt(o, " ", "  "); render.Width(row) <= width {
-		return row
+// setupTabRows are the tab row, [w]'s shape: the open tab marked with the
+// pointer and in the focus colour (U2-49), in the widest form that fits - then
+// the narrow, then with the short names, as the map's region row shortens its
+// own; where none fits, it wraps to a second line, every name whole
+// (A-107 (11)).
+func (d Dashboard) setupTabRows(o render.Opts, width int) []string {
+	tabs := d.tabsShown()
+	if row := d.tabRowAt(o, tabs, " ", "  "); render.Width(row) <= width {
+		return []string{row}
 	}
-	return render.TruncateCells(d.tabRowAt(o, "", " "), width) // the narrow form, built only when wanted
+	if row := d.tabRowAt(o, tabs, "", " "); render.Width(row) <= width { // the narrow form, built only when wanted
+		return []string{row}
+	}
+	if row := d.tabRowNamed(o, tabs, setupTab.Short); render.Width(row) <= width {
+		return []string{row}
+	}
+	half := (len(tabs) + 1) / 2
+	return []string{d.tabRowAt(o, tabs[:half], "", " "), d.tabRowAt(o, tabs[half:], "", " ")}
+}
+
+// Short is the tab's name where the tab row is too narrow for the full ones.
+func (t setupTab) Short() string {
+	switch t {
+	case tabUI:
+		return "UI"
+	case tabRadio:
+		return "Radio"
+	case tabMapLayers:
+		return "Layers"
+	}
+	return t.Label()
 }
 
 // tabRowAt is the tab row with pad inside each tab's brackets and gap between
 // tabs. THE TAB SHOWN IS IN THE FOCUS COLOUR (UAT-2 U2-49) - its pointer, name
 // and brackets the yellow a focused row's are - tinted in one piece, the row
 // built once: it is drawn on every Settings frame (U2-48's budget).
-func (d Dashboard) tabRowAt(o render.Opts, pad, gap string) string {
+func (d Dashboard) tabRowAt(o render.Opts, tabs []setupTab, pad, gap string) string {
+	return d.tabRowFormed(o, tabs, pad, gap, setupTab.Label)
+}
+
+// tabRowNamed is the narrow tab row with names of another form.
+func (d Dashboard) tabRowNamed(o render.Opts, tabs []setupTab, name func(setupTab) string) string {
+	return d.tabRowFormed(o, tabs, "", " ", name)
+}
+
+// tabRowFormed is the tab row with its padding, gap and names given.
+func (d Dashboard) tabRowFormed(o render.Opts, tabs []setupTab, pad, gap string, name func(setupTab) string) string {
 	shown := d.setupTab()
 	var b strings.Builder
 	b.Grow(128)
 	b.WriteString("  ")
-	for i, t := range d.tabsShown() {
+	for i, t := range tabs {
 		if i > 0 {
 			b.WriteString(gap)
 		}
 		if t == shown {
-			b.WriteString(render.ListLabel("["+pad+o.Glyphs().Pointer+pad+t.Label()+pad+"]", true))
+			b.WriteString(render.ListLabel("["+pad+o.Glyphs().Pointer+pad+name(t)+pad+"]", true))
 			continue
 		}
-		b.WriteString("[" + pad + t.Label() + pad + "]")
+		b.WriteString("[" + pad + name(t) + pad + "]")
 	}
 	return b.String()
 }

@@ -70,7 +70,7 @@ func TestMapsOffSaysSoAndBuildsNothing(t *testing.T) {
 
 // TestTheDescriptionComesFirstWithThePicture is W1.6 (D-55) as D-63 and D-87
 // keep it: with the description's mode "with the picture", the description
-// is in the Area Alerts box on the window's first rows once A opens it, the
+// is in the Description box on the window's first rows once A opens it, the
 // map around it; "instead" shows no braille; "off" shows no description.
 func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 	for _, c := range []struct {
@@ -198,8 +198,8 @@ func TestTheArrowsSwitchTabsUnlessTheRowTakesThem(t *testing.T) {
 	}
 	d.setup.focus = firstOfGroup(groupData)
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.(Dashboard).setupTab(); got != tabMaps && d.rowTakesLeftRight() == false {
-		t.Errorf("← on Data went to %s, want Maps (wrapping)", got.Label())
+	if got := m.(Dashboard).setupTab(); got != tabMapLayers && d.rowTakesLeftRight() == false {
+		t.Errorf("← on Data went to %s, want Map Layers (wrapping)", got.Label())
 	}
 	p, _ := uiDash(t, rowTheme) // a picker keeps the arrows
 	m, _, _ = p.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
@@ -216,7 +216,7 @@ func TestTheArrowsSwitchTabsUnlessTheRowTakesThem(t *testing.T) {
 // surface shows every tab - Data, Watchpost UI, Watchpost Radio, Broadcaster,
 // Maps - "the same across ALL UI modes".
 func TestEachSurfaceHasItsTabs(t *testing.T) {
-	all := []setupTab{tabData, tabUI, tabRadio, tabBroadcaster, tabMaps}
+	all := []setupTab{tabData, tabUI, tabRadio, tabBroadcaster, tabMaps, tabMapLayers}
 	for surface, want := range map[Surface][]setupTab{SurfaceObserver: all, SurfaceBroadcaster: all} {
 		d, _ := uiDash(t, rowTheme)
 		d.surface = surface

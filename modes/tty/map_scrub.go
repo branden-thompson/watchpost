@@ -9,6 +9,9 @@ import (
 	"strconv"
 	"strings"
 
+	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -142,7 +145,48 @@ func (d Dashboard) badges() []string {
 		}
 		out = append(out, badgeLabel(l)+" "+strings.Join(faces, "")) // each chip its ground alone, side by side: no brackets (D-174)
 	}
+	if key := d.outlineKey(); key != "" {
+		out = append(out, key)
+	}
 	return out
+}
+
+// outlineKeyLabel heads the badge that keys the outline digits (AX-8).
+const outlineKeyLabel = "OUTLINES"
+
+// outlineSeverities are the severities an outline's digit stands for, most
+// severe first.
+var outlineSeverities = []tuimaps.Severity{tuimaps.SeverityExtreme, tuimaps.SeveritySevere, tuimaps.SeverityModerate, tuimaps.SeverityMinor, tuimaps.SeverityUnknown}
+
+// outlineDigit is one severity's digit and word: "3 severe".
+func outlineDigit(s tuimaps.Severity) string { return s.Digit() + " " + strings.ToLower(s.Word()) }
+
+// outlineKey is the badge keying each digit the picture draws on an alert's
+// outline to its severity, "" while none is drawn or no picture is meant
+// (not mapPicture: the map's fit counts this badge).
+func (d Dashboard) outlineKey() string {
+	if d.cfg.ASCII || d.mapDesc == mapDescInstead || d.mapMode() == modePropagation {
+		return ""
+	}
+	var keyed []string
+	for _, s := range outlineSeverities {
+		if d.mapPane.drawnSev[strings.ToLower(s.Word())] {
+			keyed = append(keyed, outlineDigit(s))
+		}
+	}
+	if len(keyed) == 0 {
+		return ""
+	}
+	return outlineKeyLabel + " " + strings.Join(keyed, " · ")
+}
+
+// outlineKeyHelp is Help's line keying every outline digit (AX-8).
+func outlineKeyHelp() string {
+	keyed := make([]string, len(outlineSeverities))
+	for i, s := range outlineSeverities {
+		keyed[i] = outlineDigit(s)
+	}
+	return "The digit along an alert's outline is its severity: " + strings.Join(keyed, ", ") + "."
 }
 
 // badgeLabel is a layer's word on its badge, as the HUM LEAD wrote them.
@@ -218,14 +262,42 @@ func spread(items []placed, from, to int) string {
 }
 
 // loopRow is the loop's row over the timeline (D-105): RADAR and its source,
-// the frame, the newest frame's age (stale marked), and STOPPED in yellow or
-// PLAYING in green; in Forecast mode FORECAST, the step and the same state.
+// the frame, the newest frame's age (stale marked), and STOPPED in yellow -
+// REDUCE MOTION while that holds it still - or PLAYING in green; in Forecast
+// mode FORECAST, the step and the same state.
 // Where there is no loop yet, what the radar says of itself.
 func (d Dashboard) loopRow(width int) string {
 	from, to := d.scrubLead(), width-d.scrubLead()+1
+	items, ok := d.loopItems()
+	if !ok {
+		return render.PadTo("", from) + render.TruncateCells(d.mapPane.radarLine, max(width-from, 1))
+	}
+	return spread(items, from, to)
+}
+
+// loopWords are the loop's row as a line of text, its items in order, for a
+// window without the picture (AX-5); where there is no loop yet, what the
+// radar says of itself.
+func (d Dashboard) loopWords() string {
+	items, ok := d.loopItems()
+	if !ok {
+		return d.mapPane.radarLine
+	}
+	words := make([]string, len(items))
+	for i, it := range items {
+		words[i] = it.text
+	}
+	return strings.Join(words, " · ")
+}
+
+// loopItems are the loop's row's items, false where there is no loop yet.
+func (d Dashboard) loopItems() ([]placed, bool) {
 	state := func(playing bool) placed {
-		if playing {
+		switch {
+		case playing:
 			return item(render.Tint("PLAYING", render.Tok(render.ProviderOK)))
+		case d.reduceMotion: // why space plays nothing (D-360)
+			return item(render.Tint("REDUCE MOTION", render.Tok(render.ListPointer)))
 		}
 		return item(render.Tint("STOPPED", render.Tok(render.ListPointer)))
 	}
@@ -236,11 +308,11 @@ func (d Dashboard) loopRow(width int) string {
 		if d.tempOn() {
 			lead += " " + chipFace(d.tempFace())
 		}
-		return spread([]placed{item(lead), item("STEP " + strconv.Itoa(at+1) + " / " + strconv.Itoa(len(steps))), state(d.mapPane.fcPlaying)}, from, to)
+		return []placed{item(lead), item("STEP " + strconv.Itoa(at+1) + " / " + strconv.Itoa(len(steps))), state(d.mapPane.fcPlaying)}, true
 	}
 	m := d.mapPane.m
 	if m == nil || d.mapPane.radarSource == "" || m.Loop().Count == 0 {
-		return render.PadTo("", from) + render.TruncateCells(d.mapPane.radarLine, max(width-from, 1))
+		return nil, false
 	}
 	st := m.Loop()
 	age := d.now().Sub(newestObserved(st))
@@ -252,8 +324,8 @@ func (d Dashboard) loopRow(width int) string {
 	if st.Forecast && d.mapPane.radarAhead != "" { // the hours ahead: a model's, said so (D-113)
 		lead = item("FORECAST " + chipFace(d.aheadName()))
 	}
-	return spread([]placed{lead, item("FRAME " + strconv.Itoa(st.Index+1) + " / " + strconv.Itoa(st.Count)),
-		item(newest), state(st.Playing)}, from, to)
+	return []placed{lead, item("FRAME " + strconv.Itoa(st.Index+1) + " / " + strconv.Itoa(st.Count)),
+		item(newest), state(st.Playing)}, true
 }
 
 // scrubControls is the controls box beside the timeline (D-103): the arrows
@@ -271,7 +343,8 @@ func (d Dashboard) scrubControls() []string {
 var mapRegionNames = []string{"CONT. US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam / N. Marianas"}
 
 // regionsRow is the region keys as a row of their own (D-103): MAPS: and
-// each number's region, shorter names where the full ones do not fit.
+// each number's region, shorter names where the full ones do not fit, the
+// region the map is bound to said shown (AX-6).
 func (d Dashboard) regionsRow(width int) string {
 	build := func(names []string) string {
 		parts := []string{"MAPS:"}
@@ -280,7 +353,11 @@ func (d Dashboard) regionsRow(width int) string {
 			if key == "" {
 				continue
 			}
-			parts = append(parts, d.controlCap(act, key)+" "+names[i])
+			name := names[i]
+			if r, ok := geo.RegionNumbered(i + 1); ok && d.mapPane.region.Name != "" && r.Name == d.mapPane.region.Name {
+				name += " (shown)"
+			}
+			parts = append(parts, d.controlCap(act, key)+" "+name)
 		}
 		return strings.Join(parts, "   ")
 	}
@@ -291,7 +368,7 @@ func (d Dashboard) regionsRow(width int) string {
 	return render.TruncateCells(row, width)
 }
 
-// chipsRow is the window's keys as chips: Area Alerts, the mode, Overlays
+// chipsRow is the window's keys as chips: Description, the mode, Overlays
 // (D-63, D-65, D-94; no legend chip, D-103).
 func (d Dashboard) chipsRow(width int) string {
 	return render.TruncateCells(strings.Join(d.mapChips(), "   "), width)

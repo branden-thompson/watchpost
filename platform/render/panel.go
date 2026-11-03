@@ -276,9 +276,23 @@ func Overlay(base, modal string, termWidth int) string {
 func OverlayAt(base, modal string, termWidth, y int) string {
 	// v2.0.2 note: Layer.Draw ignores X/Y (positioning lives in the
 	// Compositor) and Layer.Width/Height are unset fields - measure with
-	// lipgloss.Width/Height and composite through the Compositor. Centering
-	// uses the TERMINAL width (UAT 35.4): the base's widest line is not the
-	// viewport, so a long row must never shove the modal off-center.
+	// lipgloss.Width/Height and composite through the Compositor.
+	x, y := OverlayOrigin(base, modal, termWidth, y)
+	return lipgloss.NewCompositor(
+		lipgloss.NewLayer(base),
+		lipgloss.NewLayer(modal).X(x).Y(y).Z(1),
+	).Render()
+}
+
+// OverlayOrigin is the cell OverlayAt puts a window's top-left corner on:
+// centred across the terminal's width, its top at row y, or centred down the
+// base where y is below zero. Centering uses the TERMINAL width (UAT 35.4):
+// the base's widest line is not the viewport, so a long row must never shove
+// the modal off-center. The cursor is placed by it too (0.19.0 D-362).
+func OverlayOrigin(base, modal string, termWidth, y int) (int, int) {
+	if modal == "" {
+		return 0, 0 // nothing to lay: it has no place, and draws nothing wherever it goes
+	}
 	if termWidth <= 0 {
 		termWidth = lipgloss.Width(base)
 	}
@@ -286,10 +300,7 @@ func OverlayAt(base, modal string, termWidth, y int) string {
 	if y < 0 {
 		y = max(0, (lipgloss.Height(base)-lipgloss.Height(modal))/2)
 	}
-	return lipgloss.NewCompositor(
-		lipgloss.NewLayer(base),
-		lipgloss.NewLayer(modal).X(x).Y(y).Z(1),
-	).Render()
+	return x, y
 }
 
 // BoxGlyphs is one box's border marks.

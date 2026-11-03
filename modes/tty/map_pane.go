@@ -35,6 +35,11 @@ const actMap term.Action = "map.toggle"
 // the picture is braille, which --ascii never prints, and the remedy.
 const asciiMapText = "The map is drawn in braille, which --ascii mode does not print. Run Watchpost without --ascii to see it."
 
+// mapBrailleNote is Help's line on the picture outside --ascii (F-191,
+// FR-7.1): the terminal cannot be asked whether its font has braille, so the
+// words say what a font without it shows and name the remedy.
+const mapBrailleNote = "The map is drawn in braille. If it shows boxes or question marks, the font has none: choose one that has braille, or run Watchpost with --ascii for the words alone."
+
 // The window's last line says what the picture is while it is not whole
 // (FR-3.4, W1.15's loading indicator). A whole picture leaves it blank.
 const (
@@ -133,7 +138,7 @@ type mapPane struct {
 	where     *[]callSite    // tests only: each call and the goroutine it ran on (W2.2)
 	workers   *mapWorkers    // the commands running for this map, joined on close (W2.6)
 	tickAt    time.Time      // the tick outstanding, at the library's NextCall (W2.2)
-	alertsOn  bool           // the Area Alerts box is open; it waits for A (D-87)
+	alertsOn  bool           // the Description box is open; it waits for A (D-87)
 	menuOn    bool           // the Overlays menu is open (D-65)
 	menuAt    int            // the menu's cursor
 	flash     term.Action    // the map key last pressed, blinking in the controls (U1-11)
@@ -171,15 +176,16 @@ type mapPane struct {
 	radarAt                           time.Time
 	radarGiven                        map[string]tuimaps.Overlay
 	radarSource, radarNote, radarLine string
-	radarAhead                        string                // the source of the loop's hours ahead, "HRRR" (D-113), or none
-	radarTimeline                     []string              // the loop's timeline (D-86), drawn in Update
-	radarBadgeTime                    string                // the badge's time row (D-92), drawn in Update
-	fcTimeline                        []string              // Forecast mode's steps (D-94), drawn in Update
-	report                            tuimaps.PlaceReport   // the library's answers for the selected place, as last drawn
-	legend                            []tuimaps.LegendEntry // what the map draws now, for the legend (W1.17)
-	drawnSev                          map[string]bool       // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
-	feedGen                           uint64                // the feed last asked for; an older answer is dropped
-	feed                              *MapFeed              // the feed as last answered, layers applied: set again with each mode's spans (D-98)
+	radarAhead                        string                 // the source of the loop's hours ahead, "HRRR" (D-113), or none
+	radarTimeline                     []string               // the loop's timeline (D-86), drawn in Update
+	radarBadgeTime                    string                 // the badge's time row (D-92), drawn in Update
+	fcTimeline                        []string               // Forecast mode's steps (D-94), drawn in Update
+	report                            tuimaps.PlaceReport    // the library's answers for the selected place, as last drawn
+	motion                            []tuimaps.MotionReport // the radar's observed motion near it (D-363)
+	legend                            []tuimaps.LegendEntry  // what the map draws now, for the legend (W1.17)
+	drawnSev                          map[string]bool        // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
+	feedGen                           uint64                 // the feed last asked for; an older answer is dropped
+	feed                              *MapFeed               // the feed as last answered, layers applied: set again with each mode's spans (D-98)
 
 	// The temperature (W10): one request at a time as the radar's, the answer
 	// held, the grids handed in by id, and the anchor it was built at.
@@ -319,7 +325,7 @@ func (d Dashboard) toggleMap() Dashboard {
 		}
 		d.mapPane.m, d.mapPane.failed, d.mapPane.workers = m, "", newMapWorkers()
 	}
-	d.mapPane.alertsOn, d.mapPane.menuOn = false, false // D-87: the Area Alerts box waits for A
+	d.mapPane.alertsOn, d.mapPane.menuOn = false, false // D-87: the Description box waits for A
 	m, scale, km := d.mapPane.m, d.mapScale.zoom(), float64(d.mapNearbyKm)
 	d.mapPane.call("Zoom", func() { _ = m.Zoom(scale) })        // every open is at the chosen scale (W4.3); the bound holds it
 	d.mapPane.call("SetNearby", func() { _ = m.SetNearby(km) }) // the description's "near" as chosen (W9.2)
@@ -455,6 +461,7 @@ func (d Dashboard) renderMap() Dashboard {
 	d.mapPane.call("Units", func() { m.Units(miles, miles) }) // the description's distances and temperatures in the station's units
 	depth := d.mapDepthHint()
 	d.mapPane.call("ColourDepth", func() { m.ColourDepth(depth) }) // the Setting's depth, or the terminal's (D-207); the same hint again changes nothing
+	d = d.applyMotion()                                            // Reduce motion (D-360), likewise
 	d = d.reportPlace()                                            // first: the description's length decides the map's size
 	if !d.mapFits() {
 		d.mapPane.lines = nil
@@ -597,7 +604,7 @@ func (d Dashboard) mapBodyLines() []string {
 		return text
 	}
 	size := d.mapBodySize()
-	out = append(out, d.withModeChip(d.withEdgeChip(d.withControls(d.withQuotaNotice(d.withOverlays(d.withPropCentre(d.withAreaAlerts(d.mapPane.lines, size), size)), size), size), size), size)...) // the notice under every control (D-181)
+	out = append(out, d.withModeChip(d.withEdgeChip(d.withControls(d.withQuotaNotice(d.withOverlays(d.withPropCentre(d.withDescriptionBox(d.mapPane.lines, size), size)), size), size), size), size)...) // the notice under every control (D-181)
 	if !d.radarTimelineOn() {
 		for _, l := range d.noteLines(width) {
 			out = append(out, " "+l)
@@ -615,8 +622,9 @@ func (d Dashboard) mapBodyLines() []string {
 const modalRailCols = 3
 
 // textInstead is the window's text in place of the picture, after its
-// leading lines: the description, or the open menu, and the notes, wrapped
-// to a width.
+// leading lines: the description, or the open menu; what the picture's rows
+// say - the region beyond an edge, the status, the loop's line (AX-5); and
+// the notes, wrapped to a width.
 func (d Dashboard) textInstead(lead []string, width int) []string {
 	out := slices.Clone(lead)
 	block := d.descBlock(width)
@@ -625,6 +633,20 @@ func (d Dashboard) textInstead(lead []string, width int) []string {
 	}
 	for _, l := range block {
 		out = append(out, " "+l)
+	}
+	for _, said := range []string{d.edgeWords(), d.mapStatusText()} {
+		for _, l := range render.WrapText(said, width-1) {
+			out = append(out, " "+l)
+		}
+	}
+	switch d.mapMode() {
+	case modeRadar, modeForecast:
+		if d.radarTimelineOn() {
+			for _, l := range render.WrapText(d.loopWords(), width-1) {
+				out = append(out, " "+l)
+			}
+		}
+	case modePropagation: // its own words carry its hours
 	}
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
@@ -665,7 +687,7 @@ func (d Dashboard) followMenuFocus() Dashboard {
 // description reads. It needs no Work and no frame.
 func (d Dashboard) reportPlace() Dashboard {
 	m, loc := d.mapPane.m, d.mapPlace()
-	d.mapPane.report = tuimaps.PlaceReport{}
+	d.mapPane.report, d.mapPane.motion = tuimaps.PlaceReport{}, nil
 	if m == nil || loc == nil {
 		return d
 	}
@@ -676,6 +698,7 @@ func (d Dashboard) reportPlace() Dashboard {
 	if len(rep.Places) > 0 {
 		d.mapPane.report = rep.Places[0]
 	}
+	d.mapPane.motion = rep.Motion
 	return d
 }
 
@@ -802,9 +825,9 @@ func (d Dashboard) mapStatusLine() string {
 	return render.TruncateCells(status, width) + "\n" + render.TruncateCells(strings.Join(chips, "  "), width)
 }
 
-// mapChips are the window's keys as chips, each naming its key as bound:
-// Area Alerts, the mode, Overlays (D-63, D-65, D-94; no legend chip,
-// D-103).
+// mapChips are the window's keys as chips, each naming its key as bound and
+// saying its state: the Description box, the mode, Overlays (D-63, D-65,
+// D-94; no legend chip, D-103; AX-6, D-365).
 func (d Dashboard) mapChips() []string {
 	type chip struct {
 		act  term.Action
@@ -813,12 +836,16 @@ func (d Dashboard) mapChips() []string {
 	var controls []chip
 	switch d.mapMode() {
 	case modeRadar, modeForecast:
-		controls = []chip{{actMapAlerts, "Area Alerts"}, {actMapRadar, d.radarChipWords()}}
+		description := "Description Off"
+		if d.mapPane.alertsOn {
+			description = "Description On"
+		}
+		controls = []chip{{actMapAlerts, description}, {actMapRadar, d.radarChipWords()}}
 	case modePropagation: // the mode's own controls in the weather's place (D-155, D-156)
 		controls = []chip{{actMapLayer, propLayerName(d.mapPane.propLayer)}, {actMapRefresh, "Refresh Now"}}
 	}
 	var chips []string
-	for _, c := range append(controls, chip{actMapProp, d.propChipWords()}, chip{actMapOverlays, "Overlays"}) {
+	for _, c := range append(controls, chip{actMapProp, d.propChipWords()}, chip{actMapOverlays, "Overlays"}) { // the menu open says itself, the cursor on its row (D-362)
 		if keys := d.mapKeys[c.act].Keys; len(keys) > 0 {
 			chips = append(chips, d.opts().KeyCap(keys[0])+" "+c.name)
 		}
@@ -921,7 +948,7 @@ func defaultMapKeyMap() term.KeyMap {
 		actMapZoomOut:    {Keys: []string{"-"}, Help: "Zoom Out"},
 		actMapScrollUp:   {Keys: []string{"pgup"}, Help: "Scroll Up"},
 		actMapScrollDown: {Keys: []string{"pgdown"}, Help: "Scroll Down"},
-		actMapAlerts:     {Keys: []string{"A"}, Help: "Area Alerts"},          // D-63: over the upper left, as the legend is the upper right
+		actMapAlerts:     {Keys: []string{"A"}, Help: "Description"},          // D-63, D-365: the words over the upper left
 		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},             // D-65: the weather layers and the map's detail
 		actMapRadar:      {Keys: []string{"R"}, Help: "Radar On / Off"},       // D-94: Radar mode, else Forecast mode
 		actMapProp:       {Keys: []string{"P"}, Help: "Propagation On / Off"}, // D-153: the Propagation mode, and back
@@ -1510,10 +1537,10 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 		{strings.Join(slices.Concat(keys[actMapPanUp].Keys, keys[actMapPanDown].Keys, keys[actMapPanLeft].Keys, keys[actMapPanRight].Keys), ", "), panName(keys)},
 		pairs(named{actMapPrev, "Previous"}, named{actMapNext, "Next Location"}),
 		pairs(named{actMapZoomIn, "Zoom In"}, named{actMapZoomOut, "Out"}, named{actMapScrollUp, "Scroll Up"}, named{actMapScrollDown, "Down"}),
-		pairs(named{actMapAlerts, "Alerts"}, named{actMapOverlays, "Overlays"}, named{actMapChart, "Bands"}, named{actMapFreq, "Freq."}), // D-176, D-178
-		pairs(named{actMapBack, "Back"}, named{actMapOn, "On (an hour in Propagation)"}, named{actMapNewest, "Now"}),                     // FR-1.14: a frame, a day, or in Propagation an hour
-		pairs(named{actMapRadar, "Radar Mode"}, named{actMapPlay, "Play"}, named{actMapHighLow, "Forecast Hi-Lo"}),                       // D-94, D-97
-		pairs(named{actMapProp, "Propagation"}, named{actMapLayer, "Layer"}, named{actMapRefresh, "Refresh"}, named{actMapFind, "Find"}), // D-153, D-155, D-156; FR-1.10
+		pairs(named{actMapAlerts, "Description"}, named{actMapOverlays, "Overlays"}, named{actMapChart, "Bands"}, named{actMapFreq, "Freq."}), // D-176, D-178
+		pairs(named{actMapBack, "Back"}, named{actMapOn, "On (an hour in Propagation)"}, named{actMapNewest, "Now"}),                          // FR-1.14: a frame, a day, or in Propagation an hour
+		pairs(named{actMapRadar, "Radar Mode"}, named{actMapPlay, "Play"}, named{actMapHighLow, "Forecast Hi-Lo"}),                            // D-94, D-97
+		pairs(named{actMapProp, "Propagation"}, named{actMapLayer, "Layer"}, named{actMapRefresh, "Refresh"}, named{actMapFind, "Find"}),      // D-153, D-155, D-156; FR-1.10
 	}
 	// D-77: the region keys in two rows of three, each key beside its region.
 	for _, half := range [][]int{{0, 1, 2}, {3, 4, 5}} {

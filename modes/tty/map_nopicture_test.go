@@ -76,7 +76,7 @@ const (
 	onePlace    = "the fixture's list holds one place: there is no other to go to"
 	bodyFits    = "the window's body fits it: there is nothing to scroll"
 	viewUnseen  = "no picture: the view it moves is drawn nowhere, and the words name the place, which it leaves where it is"
-	boxIsWords  = "no picture: the Area Alerts box is the description in a box, and the description is on screen whole already"
+	boxIsWords  = "no picture: the Description box is the description in a box, and the description is on screen whole already"
 	playUnseen  = "no picture: the step it plays shows at the next step, in the badge, and the play state is the timeline's, which is drawn under a picture"
 	regionNamed = "no picture: the region it shows is the one the description already names"
 	propOnly    = "the Propagation mode's alone (D-155, D-156, D-176, D-178): in the weather mode the screen opens in, it acts on nothing"

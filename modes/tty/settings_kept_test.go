@@ -22,12 +22,12 @@ func otherThan[T comparable](choices []T, def T) T {
 // keptPrefs is every display preference at a value other than its default:
 // what a listener who has chosen everything has on file.
 func keptPrefs() UIPrefs {
-	return UIPrefs{Units: "metric", Clock: "mil", Maps: "off", MapDescription: "instead", MapScale: "county",
+	return UIPrefs{Units: "metric", Clock: "mil", ReduceMotion: true, Maps: "off", MapDescription: "instead", MapScale: "county",
 		MapNearbyKm: otherThan(mapNearbyChoices, mapNearbyDefaultKm), MapRadarSource: "iem", MapTempSource: "open-meteo",
 		MapRainDetail: "full", MapUVCities: 48, MapRadarAhead: otherThan(radarAheadChoices, radarAheadDefault),
 		MapPropRadius: otherThan(propRadiusChoices, propRadiusDefaultKm), MapPropNoise: "quiet-rural",
 		MapPropRefresh: "on-demand", MapPropNoReadings: "corrected", MapPropStations: "none", MapColourDepth: "256",
-		MapQuakeFeed: otherThan(quakeFeeds, quakeFeedDefault), MapLayers: map[string]bool{RadarLayer: false},
+		MapPlaybackMs: playbackKey(otherThan(playbackChoices, defaultPlayback)), MapQuakeFeed: otherThan(quakeFeeds, quakeFeedDefault), MapLayers: map[string]bool{RadarLayer: false},
 		MapDetail: map[string]bool{"parks": true}, MapDetailLevel: "full"}
 }
 
@@ -53,11 +53,11 @@ func TestASettingIsSavedAsItIsWhateverSavesIt(t *testing.T) {
 			t.Fatalf("UIPrefs.%s has no value other than its default here: the guard cannot see it kept", f.Name)
 		}
 	}
-	cfg := Config{Units: want.Units, Clock: want.Clock, Maps: want.Maps, MapDescription: want.MapDescription, MapScale: want.MapScale,
+	cfg := Config{Units: want.Units, Clock: want.Clock, ReduceMotion: want.ReduceMotion, Maps: want.Maps, MapDescription: want.MapDescription, MapScale: want.MapScale,
 		MapNearbyKm: want.MapNearbyKm, MapRadarSource: want.MapRadarSource, MapTempSource: want.MapTempSource,
 		MapRainDetail: want.MapRainDetail, MapUVCities: want.MapUVCities, MapRadarAhead: want.MapRadarAhead, MapPropRadius: want.MapPropRadius, MapPropNoise: want.MapPropNoise,
 		MapPropRefresh: want.MapPropRefresh, MapPropNoReadings: want.MapPropNoReadings, MapPropStations: want.MapPropStations, MapColourDepth: want.MapColourDepth,
-		MapQuakeFeed: want.MapQuakeFeed, MapLayers: []MapLayer{{Key: RadarLayer, Label: "Radar", On: true}},
+		MapPlaybackMs: want.MapPlaybackMs, MapQuakeFeed: want.MapQuakeFeed, MapLayers: []MapLayer{{Key: RadarLayer, Label: "Radar", On: true}},
 		MapLayerChoice: want.MapLayers, MapDetailChoice: want.MapDetail, MapDetailLevel: want.MapDetailLevel}
 	var saved *UIPrefs
 	cfg.SetUI = func(p UIPrefs) error { saved = &p; return nil }

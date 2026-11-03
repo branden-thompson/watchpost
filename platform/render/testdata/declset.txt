@@ -95,6 +95,7 @@ const ModalBGDark
 const ModalBGLight
 const ModalFG
 const ModalTitle
+const MonochromeThemeName
 const NameAdvisory
 const NameWarning
 const ProviderDown
@@ -184,6 +185,9 @@ const tableHeaderDip
 const unitsKeyImperial
 const unitsKeyMetric
 func (*layout).fitName
+func (*sgrParams).extended
+func (*sgrParams).next
+func (Cell).apply
 func (Clock).DateTime
 func (Clock).DateTimeZone
 func (Clock).Key
@@ -254,9 +258,11 @@ func AlertIsWarning
 func AlertTone
 func BGVisible
 func Band
+func Blend
 func Bold
 func BoxHeight
 func CategoryTone
+func CellAt
 func ChipGrounds
 func ChipTones
 func ClockByKey
@@ -273,6 +279,7 @@ func FirstOf
 func FreshnessTone
 func HeavyBox
 func HumanBytes
+func InkAt
 func Italic
 func LiftToAA
 func LightBox
@@ -282,10 +289,13 @@ func NextTide
 func NoticeGrounds
 func Overlay
 func OverlayAt
+func OverlayOrigin
 func PadBetween
 func PadTo
+func PaintCell
 func Plain
 func PlainLine
+func RGBAOf
 func RadioBlockTone
 func RailGlyphsFor
 func Railify
@@ -385,6 +395,8 @@ func mixBG
 func mixToward
 func ones
 func padLeft
+func paletteInk
+func paperSGR
 func passesAll
 func phonetic
 func qhex
@@ -426,6 +438,7 @@ func without
 func xterm256RGB
 type AlertRow
 type BoxGlyphs
+type Cell
 type Clock
 type Control
 type DayCell
@@ -448,6 +461,7 @@ type groupSpec
 type layout
 type quattroPalette
 type severeCol
+type sgrParams
 var asciiMarks
 var themeGen
 var themeMu

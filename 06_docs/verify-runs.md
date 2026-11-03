@@ -139,3 +139,14 @@ says exactly what passed.
 | 2026-11-01T03:25:55Z | a909868c | 48096cadac81 | verify | green | 1892 |
 | 2026-11-01T15:41:13Z | 51410d01 | 838b690a5d42 | verify-docs | green | 150 |
 | 2026-11-01T17:37:24Z | 19c8d421 | c350f4c52e21 | verify | green | 1961 |
+| 2026-11-02T02:44:18Z | 09e8bd75 | 594ad0ef6118 | verify-docs | green | 147 |
+| 2026-11-02T03:40:52Z | b26137d8 | ed75c18c61e8 | verify | green | 1840 |
+| 2026-11-02T04:20:01Z | 1ab7bbd7 | 1da3542ffcf7 | verify | FAILED (exit 2) | 257 |
+| 2026-11-02T04:28:36Z | 1ab7bbd7 | 8ed63756b309 | verify | FAILED (exit 2) | 394 |
+| 2026-11-02T05:01:26Z | 1ab7bbd7 | a64b07a3c449 | verify | green | 1876 |
+| 2026-11-02T05:49:17Z | 73d792ae | d50d7e63c263 | verify | green | 1857 |
+| 2026-11-02T06:47:16Z | be8e7b62 | 37ba1542406a | verify | green | 1880 |
+| 2026-11-02T16:13:58Z | ca9de883 | 53621ec6d257 | verify | green | 2036 |
+| 2026-11-02T17:14:56Z | 34c4b91d | a0ba6274232c | verify | green | 2030 |
+| 2026-11-03T20:08:10Z | 98c4f1b5 | e2e5ddd117c2 | verify | green | 2056 |
+| 2026-11-03T20:12:18Z | b730059c | 3d93a305fb1f | verify-docs | green | 146 |

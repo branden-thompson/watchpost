@@ -28,8 +28,9 @@ func (d Dashboard) View() tea.View {
 	b.WriteString("\n")                                            // 0.12.0: the ticker band's top row is the header/ticker separator
 	d.writeBody(&b, fl, priority, recent)                          // UAT 57: no footer - every control lives where it acts
 	content := frameText(b.String(), viewPadLeft, render.TextBase) // UAT 4.10: base grey; no stray trailing row (UAT 58)
-	if overlay := d.modalView(o); overlay != "" {
-		y := -1 // centred (UAT 8.3: lipgloss compositing)
+	base := content
+	overlay, y := d.modalView(o), -1 // centred (UAT 8.3: lipgloss compositing)
+	if overlay != "" {
 		if d.modal == modalMap {
 			y = topInset // the Map window alone runs from the top inset to the bottom one (D-194)
 		}
@@ -41,15 +42,15 @@ func (d Dashboard) View() tea.View {
 	// also why it stays outside the modal memo. It is composited here, on the
 	// terminal's own centre, because a box taller than the window it covers
 	// would hang off the bottom of a composite centred on the window.
-	if box := d.confirmOverlay(o); box != "" {
+	box := d.confirmOverlay(o)
+	if box != "" {
 		content = render.Overlay(content, box, d.width)
 	}
-	v := tea.NewView(content)
-	if x, y, ok := d.cursorAt(content); ok {
-		v.Cursor = tea.NewCursor(x, y) // D-81: on the acknowledgement's first line; nowhere else yet (F-205)
-	}
-	v.AltScreen = true
+	v := tea.NewView("")
 	v.BackgroundColor = render.WindowBG(d.darkBG) // UAT 10.2: blue-grey window
+	cx, cy, at := d.frameCursor(o, base, overlay, y, box, d.width)
+	v.Content, v.Cursor = d.heldCursor().finish(content, cx, cy, at, d.blurred, v.BackgroundColor) // at every focus point, steady (D-362, D-367)
+	v.AltScreen = true
 	return v
 }
 

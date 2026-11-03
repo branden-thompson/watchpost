@@ -5,6 +5,10 @@ package tty
 import (
 	"strings"
 	"testing"
+
+	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/platform/render"
 )
 
 // TestTheColourDepthIsASetting is D-207: Automatic by default, the map
@@ -43,5 +47,35 @@ func TestTheColourDepthIsASetting(t *testing.T) {
 	}
 	if mapDepthByKey("bogus") != depthAuto {
 		t.Error("a word not offered is not Automatic")
+	}
+}
+
+// TestTheMonochromeThemeDrawsTheMapWithoutColour is F-196 (FR-7.3, A-107
+// (4)): under the Monochrome theme, Automatic hints the map no colour, so its
+// hatch and digits carry what colour would; a depth the listener chose wins,
+// and every other theme leaves Automatic the terminal's.
+func TestTheMonochromeThemeDrawsTheMapWithoutColour(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("COLORTERM", "")
+	t.Setenv("TERM", "xterm-256color")
+	was := render.ThemeName()
+	t.Cleanup(func() { render.SetTheme(was) })
+	d := openMap(t, Config{}, 133, 44)
+	frame := func(d Dashboard) string { return strings.Join(d.renderMap().mapPane.lines, "\n") }
+	truecolor, palette := "38;2;", "38;5;"
+	if !render.SetTheme(render.MonochromeThemeName) {
+		t.Fatal("no Monochrome theme")
+	}
+	if f := frame(d); d.mapDepthHint() != tuimaps.NoColour || strings.Contains(f, truecolor) || strings.Contains(f, palette) {
+		t.Errorf("under Monochrome, Automatic hints %v and the map draws colour", d.mapDepthHint())
+	}
+	d.mapDepth = depthTruecolor
+	if !strings.Contains(frame(d), truecolor) {
+		t.Error("under Monochrome, Truecolor chosen, the map is not drawn truecolor")
+	}
+	d.mapDepth = depthAuto
+	render.SetTheme(render.DefaultThemeName)
+	if f := frame(d); d.mapDepthHint() != tuimaps.TerminalDepth || !strings.Contains(f, palette) {
+		t.Errorf("under the default theme, Automatic hints %v and not the terminal's colours", d.mapDepthHint())
 	}
 }

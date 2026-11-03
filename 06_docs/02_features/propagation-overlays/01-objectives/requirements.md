@@ -114,7 +114,7 @@ follow-up (D-85, F-211).
 | FR-3.3 *(O1)* | The description gains a seam a layer adds its sentence to, reached **before** the alert-only early returns (`modes/tty/map_describe.go:describeUpTo`); the alert sentences are unchanged | AX-C; N-9 | `TestALayerAddsItsSentence` (four cases: alerts off, alerts never asked, the selected place out of view, no selected place), `TestTheMemoKeyCoversEverythingTheFrameShows` (extended) |
 | FR-3.5 *(O1)* | Without the picture, the mode's status (loading, offline, a coarse picture, the data's age, the fallback in use) is still said | AX-D | `TestTheStatusIsSaidWithoutThePicture` |
 | FR-3.6 *(O1)* | **A refresh keeps the reader's place (D-127, D-211):** the window remembers the sentence at its top by its kind - a target's name, the status block, the frequency held, the centre - and keeps it at the top after a refresh, an hour step or an answer landing, wherever it moved, until the reader scrolls; a target being worked out again is found again once answered; the menu's focus is kept; text that will scroll is wrapped clear of the scroll rail, so the window does not wrap it again; the words say once that they were updated, and when | D-127, D-211; A-10; AX-5 | `TestARefreshKeepsTheReadersPlace`, `TestARefreshIsSaidOnce` |
-| FR-3.7 *(O1)* | **The focus limit is said (D-133):** Help and the Propagation mode's words state that a screen reader cannot yet follow focus in this mode, and that 0.19.3 fixes it (F-205; D-355, D-359) | D-133; persona N6 | `TestTheFocusLimitIsSaid` |
+| FR-3.7 *(O1)* | **A screen reader follows focus in the Propagation mode:** 0.19.0 to 0.19.2 said in Help and the mode's words that it could not yet (D-133, D-355, D-359); 0.19.3 places the cursor at the mode's focus points, as at every other (D-362), and the sentence is gone | D-133, D-362; persona N6 | `TestThePropagationModesFocusPointsPlaceTheCursor` |
 
 ## FR-4 — Sources, terms, credit and egress (R-3; D-2, D-22, D-39, D-41, D-43, D-69, D-76, D-81, D-83)
 
@@ -152,17 +152,17 @@ follow-up (D-85, F-211).
 **Retired from FR-6 by D-78:** recording propagation grids and tower values, backfill, the store opening
 without NDFD, per-dataset retention, and the dataset terms field (FR-6.1 to FR-6.4, FR-6.6, FR-6.7).
 
-## FR-7 — Accessibility carry-over (R-6; D-4, D-63, D-122, D-355, D-359)
+## FR-7 — Accessibility carry-over (R-6; D-4, D-63, D-122, D-355, D-359, D-360 to D-365)
 
-**Moved to 0.19.3 (D-122, D-355, D-359)**, the release after 0.19.1's and 0.19.2's patches (D-354, D-359); these rows are its requirements, and D-63's SHIP gate applies to 0.19.3's SHIP.
+**Moved to 0.19.3 (D-122, D-355, D-359)**, the release after 0.19.1's and 0.19.2's patches (D-354, D-359); these rows are its requirements, as D-360 to D-365 and A-107 rule them, and D-63's SHIP gate applies to 0.19.3's SHIP. Each row's tests are named in the plan (W8.1a to W8.1m) and here once built.
 
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
-| FR-7.1 *(0.19.3)* | F-191 (FR-1.8): the window says its picture is braille and names the remedy | 0.18.0 D-244 | as F-191 |
-| FR-7.2 *(0.19.3)* | F-192, F-193, F-194, F-180: radar's motion Setting with reduce motion; the loop's rates and hold; the playback speed Setting | 0.18.0 D-245, D-255 | as each row |
-| FR-7.3 *(0.19.3)* | F-196, F-197, F-198: the Monochrome theme hint; the colour-literal guard; the `CheckRamp` matrix | 0.18.0 D-247 | as each row |
-| FR-7.4 *(0.19.3)* | F-205: the cursor placed for a screen reader; the description beyond alerts; the edge warning without a picture; the state words; the Maps tab; the outline key; "With the map" | 0.18.0 D-273 | as F-205's findings (AX-3 to AX-9) |
-| FR-7.5 | **SHIP is blocked while any FR-7 row lacks its passing test**; dropping a row takes a ruling | D-63 | a SHIP-gate check over FR-7's rows |
+| FR-7.1 *(0.19.3)* | F-191 (FR-1.8): the window says its picture is braille and names the remedy | 0.18.0 D-244 | `TestTheMapHelpSaysThePictureIsBraille` |
+| FR-7.2 *(0.19.3)* | F-192, F-193, F-194, F-180: one "Reduce motion" switch for the whole app, off by default (D-360); the map's "Playback speed", 200 to 1000 ms a frame, 500 by default, the flash limit said below 400 ms, the newest frame held 2 s - 0.18.0's FR-5.8 and FR-5.9 amended to it (D-361) | 0.18.0 D-245, D-255; D-360, D-361 | `TestReduceMotionIsASettingOffByDefault`, `TestReduceMotionStillsTheMap`, `TestReduceMotionStepsTheTicker`, `TestReduceMotionStillsTheVisualiserAndTheDots`, `TestReduceMotionCutsTheRadioLine`, `TestReduceMotionMakesTheBlinksSteady`, `TestTheConsoleFollowsReduceMotion`, `TestPlaybackSpeedIsASettingOf500ByDefault`, `TestThePlaybackSpeedReachesTheLoop`, `TestTheFastSpeedsSayTheFlashLimit`, `TestForecastStepsAtThePlaybackSpeed` |
+| FR-7.3 *(0.19.3)* | F-196, F-197, F-198: the Monochrome theme hint; the colour-literal guard; the `CheckRamp` matrix | 0.18.0 D-247 | `TestTheMonochromeThemeDrawsTheMapWithoutColour`, `TestTheMapsFilesHoldNoColourLiteral`, `TestEveryRampTheMapDrawsPassesTheVisionCheck` |
+| FR-7.4 *(0.19.3)* | F-205: the cursor at every focus point, steady: while the terminal is focused its cell on 15 % of the glyph's colour over its background, the glyph keeping its colour, under a bar in the tint; while it is not, a block in the glyph's colour (D-362, D-366, D-367); a sentence for each layer drawn (D-363); the edge warning without a picture; the state words; Settings in one column, Maps split in two (D-364); the outline key; "Description" its one name and the overflow line's remedy (D-365) | 0.18.0 D-273; D-362 to D-367 | `TestEveryMapControlSaysItsState`, `TestTheOutlineDigitsAreKeyed`, `TestTheDescriptionHasOneName`, `TestTheOverflowLineNamesItsRemedy`, `TestEveryTabIsOneColumn`, `TestTheMapLayersTabHoldsDetailAndLayers`, `TestTheTabRowFitsTheNarrowWindow`, `TestEachLayerDrawnAddsItsSentence`, `TestTheRadarSaysItsMotion`, `TestWithoutThePictureTheStatusAndTimelineAreText`, `TestWithoutThePictureTheEdgeIsSaid`, `TestEveryFocusPointPlacesTheCursor`, `TestThePropagationModesFocusPointsPlaceTheCursor`, `TestTheMapPlacesTheCursorOnItsWords`, `TestTheConsolePlacesTheCursor`, `TestTheCursorIsSteady`, `TestTheCursorWearsTheColourItCovers`, `TestACursorHandedOutIsNeverChanged`, `TestInkAtReadsTheCellsForeground`, `TestAFocusedTerminalTintsTheCellUnderTheCursor`, `TestTheRouterAsksForFocusReports`, `TestCellAtReadsTheCellsBackground`, `TestBlendLaysAShareOfOneColourOverAnother`, `TestPaintCellSetsOnlyThatCellsBackground` |
+| FR-7.5 | **SHIP is blocked while any FR-7 row lacks its passing test**; dropping a row takes a ruling | D-63 | `TestEveryFR7RowNamesItsTest` |
 
 ## FR-8 — Memo keys carry identity (R-7; #12, D-14)
 

@@ -32,16 +32,6 @@ func (d Dashboard) togglePropagation() (Dashboard, tea.Cmd) {
 	return d, tea.Batch(cmd, update)
 }
 
-// cursorAt is where the terminal cursor stands in a frame: on the
-// acknowledgement's first line while it is shown (D-81); false elsewhere,
-// where focus is still drawn and not placed (D-110, F-205).
-func (d Dashboard) cursorAt(frame string) (x, y int, ok bool) {
-	if d.modal != modalPropAck {
-		return 0, 0, false
-	}
-	return propAckCursor(frame)
-}
-
 // enterMode sets the map up for the mode it is now in: its bound, its layers
 // and its playback, and asks what the mode draws.
 func (d Dashboard) enterMode() (Dashboard, tea.Cmd) {

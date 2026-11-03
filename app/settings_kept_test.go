@@ -17,9 +17,9 @@ import (
 // DERIVED, NOT LISTED: every field of UIPrefs carries a value here other than
 // its zero, and each is compared by the name the window's Config gives it.
 func TestASavedSettingIsTheSettingAfterARestart(t *testing.T) {
-	want := tty.UIPrefs{Theme: render.ThemeNames()[len(render.ThemeNames())-1], Units: "metric", Clock: "mil", Maps: "off", MapDescription: "instead", MapScale: "county",
+	want := tty.UIPrefs{Theme: render.ThemeNames()[len(render.ThemeNames())-1], Units: "metric", Clock: "mil", ReduceMotion: true, Maps: "off", MapDescription: "instead", MapScale: "county",
 		MapNearbyKm: 25, MapRadarSource: "iem", MapTempSource: "open-meteo", MapRainDetail: "full", MapUVCities: 48, MapPropRadius: 600, MapPropNoise: "quiet-rural",
-		MapPropRefresh: "hourly", MapPropNoReadings: "corrected", MapPropStations: "none", MapColourDepth: "16",
+		MapPropRefresh: "hourly", MapPropNoReadings: "corrected", MapPropStations: "none", MapColourDepth: "16", MapPlaybackMs: 750,
 		MapRadarAhead: 6, MapQuakeFeed: "1.0_day", MapLayers: map[string]bool{"radar": false},
 		MapDetail: map[string]bool{"parks": true}, MapDetailLevel: "full"}
 	v := reflect.ValueOf(want)
@@ -40,11 +40,11 @@ func TestASavedSettingIsTheSettingAfterARestart(t *testing.T) {
 	}
 	lp := &livePipelines{}
 	got := lp.ttyConfig("t", Options{}, false, cfg, nil, nil, nil, nil, nil, nil)
-	back := map[string]any{"Theme": cfg.Theme, "Units": got.Units, "Clock": got.Clock, "Maps": got.Maps, "MapDescription": got.MapDescription,
+	back := map[string]any{"Theme": cfg.Theme, "Units": got.Units, "Clock": got.Clock, "ReduceMotion": got.ReduceMotion, "Maps": got.Maps, "MapDescription": got.MapDescription,
 		"MapScale": got.MapScale, "MapNearbyKm": got.MapNearbyKm, "MapRadarSource": got.MapRadarSource,
 		"MapTempSource": got.MapTempSource, "MapRainDetail": got.MapRainDetail, "MapUVCities": got.MapUVCities, "MapPropRadius": got.MapPropRadius, "MapPropNoise": got.MapPropNoise,
 		"MapPropRefresh": got.MapPropRefresh, "MapPropNoReadings": got.MapPropNoReadings, "MapPropStations": got.MapPropStations, "MapColourDepth": got.MapColourDepth,
-		"MapRadarAhead": got.MapRadarAhead, "MapQuakeFeed": got.MapQuakeFeed, "MapLayers": got.MapLayerChoice,
+		"MapPlaybackMs": got.MapPlaybackMs, "MapRadarAhead": got.MapRadarAhead, "MapQuakeFeed": got.MapQuakeFeed, "MapLayers": got.MapLayerChoice,
 		"MapDetail": got.MapDetailChoice, "MapDetailLevel": got.MapDetailLevel}
 	for i := range v.NumField() {
 		name := v.Type().Field(i).Name

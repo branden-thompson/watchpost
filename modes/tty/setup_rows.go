@@ -85,6 +85,7 @@ const (
 	rowClock12
 	rowClock24
 	rowClockMil
+	rowReduceMotion // nothing moves on its own clock (D-360)
 
 	// ALERTS - EVENTS
 	rowEventsAll
@@ -131,7 +132,8 @@ const (
 	rowMapsOn
 	rowMapDesc
 	rowMapScale
-	rowMapColours // the map's colour depth: Automatic, Truecolor, 256, 16 or None (D-207)
+	rowMapColours  // the map's colour depth: Automatic, Truecolor, 256, 16 or None (D-207)
+	rowMapPlayback // the playback speed, 1000 to 200 ms a frame (D-361)
 	rowMapNearby
 	// IN THE ORDER THEY ARE DRAWN: focus walks this order, and a row declared out
 	// of drawn order is one ↓ skips (HUM LEAD, 2026-09-30).
@@ -158,7 +160,7 @@ const (
 	rowMapDetailParks
 	rowMapDetailNight // Day / night (D-199): last of the detail, its row in mapDetailLayers' order
 	rowMapClear
-	rowMapLayers // MAP - LAYERS, drawn after MAP - DETAIL: the two columns balance so
+	rowMapLayers // MAP - LAYERS, drawn after MAP - DETAIL on the Map Layers tab (D-364)
 
 	setupRowCount
 )
@@ -258,13 +260,15 @@ func setupTable() [setupRowCount]setupRow {
 		rowClock12:       {rowClock12, groupUI, scopeShared, rowRadio, false, "", ""},
 		rowClock24:       {rowClock24, groupUI, scopeShared, rowRadio, false, "", ""},
 		rowClockMil:      {rowClockMil, groupUI, scopeShared, rowRadio, false, "", ""},
+		rowReduceMotion:  {rowReduceMotion, groupUI, scopeShared, rowPicker, false, "", ""}, // both surfaces move (D-360)
 
 		// THE MAP IS THE LISTENER'S (0.18.0): Observer draws it, the console does not.
 		// ONE LINE EACH: the WATCHPOST UI group must still fit the window unscrolled.
 		rowMapsOn:          {rowMapsOn, groupMap, scopeObserver, rowToggle, false, "", ""},
 		rowMapDesc:         {rowMapDesc, groupMap, scopeShared, rowPicker, true, "", ""}, // "Instead of the map" is one Setting for both UI modes (D-121)
 		rowMapScale:        {rowMapScale, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapColours:      {rowMapColours, groupMap, scopeShared, rowPicker, true, "", ""}, // both UI modes draw a map (D-195)
+		rowMapColours:      {rowMapColours, groupMap, scopeShared, rowPicker, true, "", ""},  // both UI modes draw a map (D-195)
+		rowMapPlayback:     {rowMapPlayback, groupMap, scopeShared, rowPicker, true, "", ""}, // both UI modes play the map (D-195)
 		rowMapNearby:       {rowMapNearby, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapRadarSource:  {rowMapRadarSource, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapTempSource:   {rowMapTempSource, groupMap, scopeObserver, rowPicker, true, "", ""},
@@ -421,8 +425,8 @@ func setupGroups() []setupGroupID {
 // nextRow is ↓ and prevRow is ↑. Both WRAP: ↓ on the last row returns to the
 // first, ↑ on the first goes to the last.
 //
-// A carousel, because the window is a ring of twenty rows over two columns and
-// there is nothing below the last one to reach. Stopping dead at an end reads
+// A carousel, because the window is a ring of rows over its tabs and there is
+// nothing below the last one to reach. Stopping dead at an end reads
 // as a stuck key — the listener presses again, nothing moves, and they have no
 // way to tell that from a hung app.
 //

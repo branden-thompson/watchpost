@@ -128,7 +128,7 @@ func TestThePropagationWordsAnswerWithoutThePicture(t *testing.T) {
 // "MHz", no "40m", no "~" or "km"; megahertz and metres written out, and
 // the layer's full name said once.
 func TestPropagationWordsCarryUnitsForSpeech(t *testing.T) {
-	words := strings.ReplaceAll(strings.Join(propWordsFrom(t, heldDash(t)), "\n"), propFocusLimit, "") // its release number is no figure
+	words := strings.Join(propWordsFrom(t, heldDash(t)), "\n")
 	for _, bad := range []*regexp.Regexp{
 		regexp.MustCompile(`MHz`), regexp.MustCompile(`\b\d+m\b`), regexp.MustCompile(`~`),
 		regexp.MustCompile(`\bkm\b`), regexp.MustCompile(`%`), regexp.MustCompile(`°`),
@@ -303,35 +303,6 @@ func TestARefreshIsSaidOnce(t *testing.T) {
 	}
 	if w := strings.Join(propWordsFrom(t, first), "\n"); strings.Contains(w, "updated at") {
 		t.Errorf("GIRO's stations following NOAA's field at once are said as a refresh:\n%s", w)
-	}
-}
-
-// TestTheFocusLimitIsSaid is FR-3.7 (D-133): Help says a screen reader
-// cannot yet follow focus in the Propagation mode, and that 0.19.3 fixes
-// it; the words say it on opening, and not again after a refresh.
-func TestTheFocusLimitIsSaid(t *testing.T) {
-	d, _ := drawnDash(t)
-	if lineWith(propWordsFrom(t, d), propFocusLimit) < 0 {
-		t.Errorf("the words on opening do not say the focus limit")
-	}
-	for _, s := range []Surface{SurfaceObserver, SurfaceBroadcaster} {
-		d.surface = s
-		if help := strings.Join(d.helpLines(render.Opts{Width: 200}), "\n"); !strings.Contains(help, propFocusLimit) {
-			t.Errorf("Help on surface %v does not say the focus limit", s)
-		}
-	}
-	d.surface = SurfaceObserver
-	d = refreshed(t, d)
-	if lineWith(propWordsFrom(t, d), propFocusLimit) >= 0 {
-		t.Errorf("the focus limit is said again after a refresh")
-	}
-	d, _ = keyCmd(t, d, "P") // left, and opened again
-	d, cmd := keyCmd(t, d, "P")
-	if d = runProp(t, d, cmd); lineWith(propWordsFrom(t, d), propFocusLimit) < 0 {
-		t.Errorf("the focus limit is not said on opening the mode again")
-	}
-	if !strings.Contains(propFocusLimit, "0.19.3") { // D-359
-		t.Errorf("the focus limit does not say what fixes it: %q", propFocusLimit)
 	}
 }
 

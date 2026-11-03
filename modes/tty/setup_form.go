@@ -33,9 +33,8 @@ const supportIndent = "       "
 func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 	st := d.setup
 	unset := false
-	// The mock's wording (OP-2): a label and the value on one line, so the
-	// group is narrow enough for two columns. The hint moves to the support
-	// line under it, where the other groups keep theirs.
+	// The mock's wording (OP-2): a label and the value on one line. The hint
+	// moves to the support line under it, where the other groups keep theirs.
 	head := "  " + mark + settingLabel("Default location: ", st.focus == rowLocation)
 	// THE APPLICATION'S DEFAULT IS SHOWN, AND SAID TO BE ONE (T4.2, R-4). With
 	// no watchlist and nothing chosen, a bare "Default location: " and then

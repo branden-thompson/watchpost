@@ -1,6 +1,6 @@
 package tty
 
-// map_boxes.go — what sits over the map (0.18.0, UAT-1): the [A] Area Alerts
+// map_boxes.go — what sits over the map (0.18.0, UAT-1): the [A] Description
 // box over its upper left (U1-7, D-63), the controls over its lower right
 // with the pressed chip blinking (U1-11), the [O] Overlays menu of the
 // weather layers and the map's own detail (U1-9, U1-10, D-65), and the title
@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	actMapAlerts   term.Action = "map.alerts"   // U1-7: the Area Alerts box
+	actMapAlerts   term.Action = "map.alerts"   // U1-7: the Description box (D-365)
 	actMapOverlays term.Action = "map.overlays" // U1-9: the Overlays menu
 )
 
@@ -53,19 +53,23 @@ func boxed(title string, content []string, inner int) []string {
 	return append(out, "└"+strings.Repeat("─", inner)+"┘")
 }
 
-// areaAlertsInner is the Area Alerts box's inner width for a map this wide:
+// descriptionBoxInner is the Description box's inner width for a map this wide:
 // about two fifths of it, never under 26 cells or over 46.
-func areaAlertsInner(cols int) int { return min(max(cols*2/5, 26), 46, max(cols-4, 1)) }
+func descriptionBoxInner(cols int) int { return min(max(cols*2/5, 26), 46, max(cols-4, 1)) }
 
 // boxAlerts is how many alerts the box says at a map's height: about two
 // lines each in two thirds of the map, the place's line and the frame aside;
 // the last says how many more there are (D-78).
 func boxAlerts(size tuimaps.Size) int { return max((size.Rows*2/3-4)/2, 2) }
 
-// areaAlertsBox is the description in a box (D-63). Longer than two thirds of the map,
+// mapDescOverflow ends a description too long for its box: where the whole
+// text is (D-365).
+const mapDescOverflow = "… the rest: Settings, Maps, Description, Instead of the map"
+
+// descriptionBox is the description in a box (D-63). Longer than two thirds of the map,
 // it ends with a line saying where the whole text is.
-func (d Dashboard) areaAlertsBox(size tuimaps.Size) []string {
-	inner := areaAlertsInner(size.Cols)
+func (d Dashboard) descriptionBox(size tuimaps.Size) []string {
+	inner := descriptionBoxInner(size.Cols)
 	var content []string
 	for _, l := range d.describeUpTo(boxAlerts(size)) {
 		content = append(content, render.WrapText(l, inner-2)...)
@@ -74,17 +78,21 @@ func (d Dashboard) areaAlertsBox(size tuimaps.Size) []string {
 		content[i] = " " + content[i]
 	}
 	if most := max(size.Rows*2/3-2, 2); len(content) > most {
-		content = append(content[:most-1], " … the rest: see Settings")
+		var tail []string // D-365: the remedy named, whole, in the rows it needs
+		for _, l := range render.WrapText(mapDescOverflow, inner-2) {
+			tail = append(tail, " "+l)
+		}
+		content = append(content[:max(most-len(tail), 1)], tail...)
 	}
-	return boxed("Area Alerts", content, inner)
+	return boxed("Description", content, inner)
 }
 
-// withAreaAlerts lays the box over the map's upper left while it is open.
-func (d Dashboard) withAreaAlerts(lines []string, size tuimaps.Size) []string {
+// withDescriptionBox lays the box over the map's upper left while it is open.
+func (d Dashboard) withDescriptionBox(lines []string, size tuimaps.Size) []string {
 	if !d.mapPane.alertsOn || d.mapPane.menuOn || len(lines) == 0 {
 		return lines // the menu takes the corner while it is open
 	}
-	return spliceBox(lines, d.areaAlertsBox(size), 0, insetCols)
+	return spliceBox(lines, d.descriptionBox(size), 0, insetCols)
 }
 
 // insetCols is where the map's first cell is in a drawn line: the first
@@ -180,6 +188,28 @@ func (d Dashboard) edgeChipText() string {
 		return "↓ " + name
 	}
 	return name + " →"
+}
+
+// edgeWords are the edge chip as a sentence, for a window without the
+// picture (AX-5): which edge, and the region the next press crosses to.
+func (d Dashboard) edgeWords() string {
+	if !d.mapPane.edgeShown {
+		return ""
+	}
+	next, ok := geo.Neighbour(d.mapPane.region.Name, d.mapPane.edge)
+	if !ok {
+		return ""
+	}
+	side := "east"
+	switch d.mapPane.edge {
+	case geo.West:
+		side = "west"
+	case geo.North:
+		side = "north"
+	case geo.South:
+		side = "south"
+	}
+	return "At the " + side + " edge: press again to cross to " + mapRegionLabels[geo.NumberOf(next.Name)-1] + "."
 }
 
 // withEdgeChip lays the chip at the edge it names while it shows: east and
@@ -324,7 +354,7 @@ func (d Dashboard) withQuotaNotice(lines []string, size tuimaps.Size) []string {
 
 // flashMapKey marks a map key pressed, for the controls box to blink.
 func (d Dashboard) flashMapKey(act term.Action) Dashboard {
-	d.mapPane.flash, d.mapPane.flashEnd = act, time.Now().Add(pickerFlashDur)
+	d.mapPane.flash, d.mapPane.flashEnd = act, d.markEnds()
 	return d
 }
 
@@ -871,7 +901,7 @@ func (d Dashboard) handleOverlaysKey(key string) (Dashboard, bool) {
 		d.mapPane.menuAt = (d.mapPane.menuAt + 1) % len(rows)
 	case "left", "right":
 		if hasChoice(r) { // the chip pressed blinks, as Settings' pickers do (D-147)
-			d.mapPane.menuFlash, d.mapPane.menuFlashAt, d.mapPane.menuFlashEnd = flashLeft, d.mapPane.menuAt, time.Now().Add(pickerFlashDur)
+			d.mapPane.menuFlash, d.mapPane.menuFlashAt, d.mapPane.menuFlashEnd = flashLeft, d.mapPane.menuAt, d.markEnds()
 			if key == "right" {
 				d.mapPane.menuFlash = flashRight
 			}

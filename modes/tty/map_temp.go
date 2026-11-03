@@ -547,14 +547,10 @@ func (d Dashboard) flipHighLow() Dashboard {
 // forecastTickMsg is Forecast mode's playback step, to the play it belongs to.
 type forecastTickMsg struct{ gen uint64 }
 
-// forecastHold is how many steps the last day is held before the loop runs
-// again: two seconds at one a second, as the radar's last frame is (FR-5.9).
-const forecastHold = 2
-
 // forecastTick is the next step's tick.
 func (d Dashboard) forecastTick() tea.Cmd {
 	gen := d.mapPane.fcGen
-	return tea.Tick(radarFrameEvery, func(time.Time) tea.Msg { return forecastTickMsg{gen: gen} })
+	return tea.Tick(d.mapPlayback, func(time.Time) tea.Msg { return forecastTickMsg{gen: gen} }) // at the speed chosen (D-361)
 }
 
 // handleForecastPlayback is the playback keys in Forecast mode: the host
@@ -564,6 +560,9 @@ func (d Dashboard) handleForecastPlayback(act term.Action) (Dashboard, tea.Cmd, 
 	var cmd tea.Cmd
 	switch act {
 	case actMapPlay:
+		if d.reduceMotion { // nothing plays under Reduce motion; the timeline says so (D-360)
+			return d.showStep(), nil, true
+		}
 		d.mapPane.fcPlaying = !d.mapPane.fcPlaying
 		d.mapPane.fcGen++
 		if d.mapPane.fcPlaying {
@@ -592,7 +591,7 @@ func (d Dashboard) applyForecastTick(v forecastTickMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case d.mapPane.fcStep < last:
 		d.mapPane.fcStep++
-	case d.mapPane.fcHeld < forecastHold-1:
+	case d.mapPane.fcHeld < forecastHoldSteps(d.mapPlayback)-1: // 2 s, whatever the speed (D-361)
 		d.mapPane.fcHeld++
 		return d, d.forecastTick()
 	default:

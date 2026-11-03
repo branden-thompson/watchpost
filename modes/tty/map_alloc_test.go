@@ -18,7 +18,7 @@ import (
 // The hit is above the severe window's (1,740): the map's braille lines carry
 // their colour spans, and the overlay compositor walks every one. Measured and
 // recorded, not optimised yet (D-53: function before performance). Re-pinned
-// with UAT-1's boxes (U1-7, U1-11): the Area Alerts box and the controls'
+// with UAT-1's boxes (U1-7, U1-11): the Description box and the controls'
 // key caps are more spans for the compositor to walk (2,508 / 2,919 before).
 var mapAllocBudget = map[string]float64{"hit": 3_541 * 1.05, "miss": 4_011 * 1.05}
 

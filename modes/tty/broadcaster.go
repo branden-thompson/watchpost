@@ -128,6 +128,7 @@ const MainTrackSlots = lineup.MainTrackCap
 type Broadcaster struct {
 	width, height int
 	darkBG        bool
+	blurred       bool // the terminal has said it lost focus: the cursor's look (D-367)
 
 	// ascii is the --ascii mode: box-drawing and symbol glyphs give way to
 	// forms a terminal without them can draw.
@@ -512,6 +513,10 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 		b.width, b.height = v.Width, v.Height
 	case tea.BackgroundColorMsg:
 		b.darkBG = v.IsDark()
+	case tea.FocusMsg:
+		b.blurred = false
+	case tea.BlurMsg:
+		b.blurred = true
 	case LineupMsg:
 		// THE COUNTER MOVES WITH THE VALUE, on the same line that replaces it.
 		// The memo's key carries the generation because a Lineup cannot be

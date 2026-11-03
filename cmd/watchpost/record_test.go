@@ -411,3 +411,55 @@ func TestTheSayLegIsBoundedAndDiagnosed(t *testing.T) {
 		t.Error("the hang's sample report is not written where the test reads it into the log (F-219): sample writes its report to a file, never to its output")
 	}
 }
+
+// fr7Row is a requirement row of FR-7's, by its number.
+var fr7Row = regexp.MustCompile(`^\| FR-7\.(\d) `)
+
+// fr7PlanRow is one of the plan's W8.1 rows naming the FR-7 row it builds.
+var fr7PlanRow = regexp.MustCompile(`^\| W8\.1[a-z] \|.*\(FR-7\.(\d)`)
+
+// fr7Gaps are, for each FR-7 row the plan builds, the tests its W8.1 rows
+// name that the requirement row does not - and an FR-7 row of 1 to 4 that
+// names no test at all.
+func fr7Gaps(requirements, plan string) []string {
+	named := map[string][]string{}
+	for _, line := range strings.Split(requirements, "\n") {
+		if m := fr7Row.FindStringSubmatch(line); m != nil {
+			named[m[1]] = testsNamed(line)
+		}
+	}
+	var out []string
+	for _, n := range []string{"1", "2", "3", "4"} {
+		if len(named[n]) == 0 {
+			out = append(out, "FR-7."+n+" names no test")
+		}
+	}
+	for _, line := range strings.Split(plan, "\n") {
+		m := fr7PlanRow.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		for _, t := range testName.FindAllStringSubmatch(line, -1) {
+			if !slices.Contains(named[m[1]], t[2]) {
+				out = append(out, "FR-7."+m[1]+" lacks "+t[2])
+			}
+		}
+	}
+	return out
+}
+
+// TestEveryFR7RowNamesItsTest is W8.2, D-63's SHIP gate: each of FR-7.1 to
+// FR-7.4 names every test its plan rows (W8.1a to W8.1m) name, so
+// TestEveryRequirementsTestExists holds each to the tree and make verify runs
+// it; a planted gap is reported.
+func TestEveryFR7RowNamesItsTest(t *testing.T) {
+	if gaps := fr7Gaps(readRecord(t, "01-objectives/requirements.md"), readRecord(t, "04-development/implementation-plan.md")); len(gaps) > 0 {
+		t.Errorf("FR-7's rows do not name their tests: %v", gaps)
+	}
+	req := "| FR-7.1 *(0.19.3)* | a | D-1 | `TestA` |\n| FR-7.2 *(0.19.3)* | b | D-2 | `TestB` |\n| FR-7.3 *(0.19.3)* | c | D-3 | `TestC` |\n| FR-7.4 *(0.19.3)* | d | D-4 | as before |\n"
+	plan := "| W8.1a | x (FR-7.1) | `TestA`, `TestZ` |\n| W8.1b | y (FR-7.2; D-9) | `TestB` |\n"
+	want := []string{"FR-7.4 names no test", "FR-7.1 lacks TestZ"}
+	if got := fr7Gaps(req, plan); !slices.Equal(got, want) {
+		t.Errorf("the planted gaps gave %v; want %v", got, want)
+	}
+}

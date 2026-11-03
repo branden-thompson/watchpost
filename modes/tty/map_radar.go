@@ -320,12 +320,8 @@ func (d Dashboard) handlePlayback(act term.Action) (Dashboard, bool) {
 	return d.renderMap(), true
 }
 
-// radarFrameEvery is the slow rate, one frame a second, the default (FR-5.9,
-// D-52); the motion Setting that offers off and normal joins with W8.9.
-const radarFrameEvery = time.Second
-
-// applyPlayback turns the library's playback on at the slow rate: the map
-// opens stopped on the newest frame, and space plays (W8.9a).
+// applyPlayback turns the library's playback on at the speed chosen (D-361):
+// the map opens stopped on the newest frame, and space plays (W8.9a).
 func (d Dashboard) applyPlayback() Dashboard {
 	m := d.mapPane.m
 	if m == nil {
@@ -333,7 +329,8 @@ func (d Dashboard) applyPlayback() Dashboard {
 	}
 	d.mapPane.call("SetPlayback", func() { _ = m.SetPlayback(tuimaps.PlaybackOn) })
 	d.mapPane.call("ShowStamp:false", func() { m.ShowStamp(false) }) // the badge and the timeline say the moment and its age (D-92)
-	d.mapPane.call("SetPlaybackStep", func() { _ = m.SetPlaybackStep(radarFrameEvery) })
+	step := d.mapPlayback
+	d.mapPane.call("SetPlaybackStep", func() { _ = m.SetPlaybackStep(step) })
 	return d
 }
 

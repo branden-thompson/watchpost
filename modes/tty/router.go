@@ -324,10 +324,11 @@ func (r Router) Init() tea.Cmd { return r.surface().Init() }
 // not of our code, and there is no type here to walk. It is written down the
 // way a threshold is, and the guard beside it states what it cannot see.
 //
-// THE LAST FIVE ARE F-67: focus, blur, suspend, resume, colour-profile, which
-// no surface handles yet. Fanning them costs nothing while nobody handles
-// them, and the surface that eventually does will RECEIVE them rather than
-// discover they were dropped at a seam.
+// THE LAST FIVE ARE F-67: focus, blur, suspend, resume, colour-profile. Both
+// surfaces take focus and blur for the cursor's look (D-367); the rest no
+// surface handles yet, and fanning them costs nothing while nobody does, so
+// the surface that eventually does will RECEIVE them rather than discover
+// they were dropped at a seam.
 func programScoped(msg tea.Msg) bool {
 	switch msg.(type) {
 	case tea.WindowSizeMsg, tea.BackgroundColorMsg,
@@ -451,6 +452,9 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// station is.
 	if out, ok := m.(Router); ok {
 		out.broadcaster.gain = out.observer.radioVolume
+		if out.observer.reduceMotion { // AND REDUCE MOTION, one switch for both (D-360): the console's dots hold their first phase
+			out.broadcaster.frame = 0
+		}
 		// AND WHICH SURFACE IS ACTIVE, on the same cadence and for the same
 		// reason (D-92): the Settings window is forwarded to Observer from the
 		// console, and D-18 rules that some of its rows belong to one surface
@@ -519,9 +523,15 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // activate and drain.
 func (r Router) View() tea.View {
 	v := r.surface().View()
-	if r.active == SurfaceBroadcaster && r.observer.ModalOpen() {
-		v.Content = r.observer.OverlayWindow(v.Content, r.broadcaster.width)
+	if r.active == SurfaceBroadcaster { // the cursor at the console's focus, or the window's over it (D-362)
+		x, y, ok := r.broadcaster.consoleCursor(v.Content)
+		if r.observer.ModalOpen() {
+			x, y, ok = r.observer.OverlayCursor(v.Content, r.broadcaster.width)
+			v.Content = r.observer.OverlayWindow(v.Content, r.broadcaster.width)
+		}
+		v.Content, v.Cursor = r.broadcaster.heldCursor().finish(v.Content, x, y, ok, r.broadcaster.blurred, v.BackgroundColor)
 	}
+	v.ReportFocus = true // the terminal says when it gains and loses focus, for the cursor's look (D-367)
 	r.frameDrawn()
 	return v
 }

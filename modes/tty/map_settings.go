@@ -76,7 +76,7 @@ func (m mapDescMode) Label() string {
 	case mapDescOff:
 		return "Off"
 	}
-	return "With the map"
+	return "With the map, on A" // the box waits for A (D-87, D-365)
 }
 
 func mapsKey(off bool) string {
@@ -86,14 +86,12 @@ func mapsKey(off bool) string {
 	return "on"
 }
 
-// The Maps tab's two columns line up (UAT-1 U1-24): every label padded to
-// the widest, every picker's value to the longest, so the arrows stand in two
-// columns as the other tabs' do. THE WORDS ARE CUT TO FIT (U1-36): the two
-// columns sit side by side inside 80% of a 133-column terminal, so a label is
-// at most "Description -" and a value at most "Instead of the map".
+// The MAP group's pickers line up (UAT-1 U1-24): every label padded to the
+// widest, "Playback speed -", every picker's value to the longest, a fast
+// speed's, so the arrows stand in one column as the other groups' do.
 var (
-	mapLabelW = len("Description -")
-	mapValueW = len("Instead of the map")
+	mapLabelW = len("Playback speed -")
+	mapValueW = render.Width(playbackLabel(playbackChoices[len(playbackChoices)-1]))
 )
 
 // mapDetailValueW is the second column's value width: its longest value,
@@ -142,7 +140,8 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	lines, at = d.mapRow(o, lines, at, rowMapsOn, "Maps -", d.mapPicker(o, rowMapsOn, state)) // what it contacts is the Status window's (D-75)
 	lines, at = d.mapRow(o, lines, at, rowMapDesc, "Description -", d.mapPicker(o, rowMapDesc, d.mapDesc.Label()))
 	lines, at = d.mapRow(o, lines, at, rowMapScale, "Opens at -", d.mapPicker(o, rowMapScale, d.mapScale.Label()))
-	lines, at = d.mapRow(o, lines, at, rowMapColours, "Colours -", d.mapPicker(o, rowMapColours, mapDepthLabel(d.mapDepth))) // D-207
+	lines, at = d.mapRow(o, lines, at, rowMapColours, "Colours -", d.mapPicker(o, rowMapColours, mapDepthLabel(d.mapDepth)))             // D-207
+	lines, at = d.mapRow(o, lines, at, rowMapPlayback, "Playback speed -", d.mapPicker(o, rowMapPlayback, playbackLabel(d.mapPlayback))) // D-361
 	// NO ALERTS SCOPE (D-76): the map draws every alert in view, and what it
 	// draws is switched at the map, in the Overlays menu.
 	lines, at = d.mapRow(o, lines, at, rowMapNearby, "Nearby -", d.mapPicker(o, rowMapNearby, d.nearbyLabel()))

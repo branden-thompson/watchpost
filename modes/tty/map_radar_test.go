@@ -386,7 +386,7 @@ func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 		t.Fatalf("no row says %q:\n%s", want, strings.Join(plain, "\n"))
 		return -1
 	}
-	legend, warn, est, loop, bar, maps, chips := at("RADAR LEGEND"), at("Map may experience"), at("Est. 2.3MB / 197 Requests"), at("FRAME"), at("shift+"), at("MAPS:"), at("Area Alerts")
+	legend, warn, est, loop, bar, maps, chips := at("RADAR LEGEND"), at("Map may experience"), at("Est. 2.3MB / 197 Requests"), at("FRAME"), at("shift+"), at("MAPS:"), at("Description Off")
 	order := []int{legend, warn, loop, bar, est, maps, chips} // the estimate under the timeline (D-133)
 	for i := 1; i < len(order); i++ {
 		if order[i] <= order[i-1] {

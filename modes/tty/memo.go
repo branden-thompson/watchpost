@@ -84,6 +84,9 @@ type bodyMemo struct {
 	ok               bool
 	key              bodyKey
 	priority, recent string
+	// cursor is the frame's cursor, kept here so the hit path allocates
+	// nothing for it (D-362, cursorSlot).
+	cursor cursorSlot
 }
 
 // bodyKeyFor derives the key from the model and this frame's layout.

@@ -84,11 +84,11 @@ func TestJourneyMapOnTheRealBinary(t *testing.T) {
 	j.step("g opens the map on the place", "g",
 		matches(`Map · [^·\n]+ · Oak Ridge, TN`), has("MAPS:"), has("O  Overlays"), scaleShown)
 
-	j.step("A opens Area Alerts: the recorded warning is in force at the place", "A",
-		has("┌─ Area Alerts"), has("Flash Flood Warning in effect for this"))
+	j.step("A opens the Description: the recorded warning is in force at the place", "A",
+		has("┌─ Description"), has("Flash Flood Warning in effect for this"))
 
-	atPlace := j.step("A closes Area Alerts", "A",
-		lacks("┌─ Area Alerts"), matches(`Map · [^·\n]+ · Oak Ridge, TN`), scaleShown)
+	atPlace := j.step("A closes the Description", "A",
+		lacks("┌─ Description"), matches(`Map · [^·\n]+ · Oak Ridge, TN`), scaleShown)
 	scale0 := mapScale(atPlace)
 
 	j.step("→ pans the map east: the picture moves west", "\x1b[C",

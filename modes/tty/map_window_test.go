@@ -172,7 +172,7 @@ func TestTheMapIsDrawnInUpdate(t *testing.T) {
 		if c == "Work" {
 			continue
 		}
-		if !strings.HasPrefix(c, "Render") && c != "Pending" && c != "NextCall" && c != "Warnings" && c != "Report" && c != "Units" && c != "ColourDepth" && c != "Legend" { // the Setting's hint each frame, as the units (D-207)
+		if !strings.HasPrefix(c, "Render") && c != "Pending" && c != "NextCall" && c != "Warnings" && c != "Report" && c != "Units" && c != "ColourDepth" && c != "ReduceMotion" && c != "Legend" { // the Settings' hints each frame, as the units (D-207, D-360)
 			t.Errorf("an unexpected library call: %s", c)
 		}
 	}

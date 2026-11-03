@@ -566,8 +566,15 @@ func TestFastInputNeverLeavesTwoReadsRunning(t *testing.T) {
 
 	// ON AIR, not merely launched: `busy` is set when the goroutine starts, and
 	// the job still has to take the air from the cancelled one. Toggling before
-	// then asks the arbiter to pause something that is not playing.
-	waitUntil(t, "the second read to take the air", func() bool { return nar.mc.givenWay() })
+	// then asks the arbiter to pause something that is not playing. The dip
+	// alone does not say it: the cancelled read can leave the bed down before
+	// the second is queued, so the live read on the air is asked as well.
+	waitUntil(t, "the second read to take the air", func() bool {
+		nar.mu.Lock()
+		reading := live(nar.onAir) && nar.onAir.class == narrateRead
+		nar.mu.Unlock()
+		return reading && nar.mc.givenWay()
+	})
 
 	// And a further press is a PAUSE of that read, never a third read.
 	r.Toggle("k2")

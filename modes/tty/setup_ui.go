@@ -17,6 +17,10 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
+// uiLabelW is the group's picker labels' width: padded to the widest, so
+// its pickers line up (HUM LEAD, 2026-09-30).
+var uiLabelW = len("Reduce motion -")
+
 // uiLines draws the group, and returns the line the focused row is DRAWN on.
 //
 // Recorded as it builds rather than tabulated afterwards. The group's two
@@ -27,7 +31,7 @@ import (
 func (d Dashboard) uiLines(o render.Opts) ([]string, int) {
 	focus, at := d.setup.focus, 0
 	lines := []string{
-		"  " + setupMark(o, focus == rowTheme) + settingLabel("Theme -", focus == rowTheme) + "  " +
+		"  " + setupMark(o, focus == rowTheme) + settingLabel(render.PadTo("Theme -", uiLabelW), focus == rowTheme) + "  " +
 			pickerCell(d.themeName(), newArrowChips(o), d.pickerFlashFor(rowTheme)),
 		"    Add yours: ~/.config/watchpost/themes/<name>.json",
 		"",
@@ -54,6 +58,11 @@ func (d Dashboard) uiLines(o render.Opts) ([]string, int) {
 		lines = append(lines, "  "+setupMark(o, focus == id)+
 			radioMark(d.setup.clock == c, o.ASCII)+" "+settingLabel(c.Label(), focus == id))
 	}
+	if focus == rowReduceMotion {
+		at = len(lines) + 1
+	}
+	lines = append(lines, "", "  "+setupMark(o, focus == rowReduceMotion)+settingLabel(render.PadTo("Reduce motion -", uiLabelW), focus == rowReduceMotion)+"  "+
+		pickerCell(reduceMotionLabel(d.reduceMotion), newArrowChips(o), d.pickerFlashFor(rowReduceMotion))) // D-360
 	return lines, at
 }
 
@@ -137,8 +146,8 @@ func (d Dashboard) uiTouched() Dashboard {
 // saves them (Settings on close, the map's Overlays menu) writes what the
 // listener chose (U2-61).
 func (d Dashboard) uiForSave() UIPrefs {
-	return UIPrefs{Theme: render.ThemeName(), Units: d.units.Key(), Clock: d.clockFmt.Key(), Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key(),
-		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempNDFD), MapRainDetail: rainDetailKey(d.mapRainFull), MapUVCities: d.mapUVCities, MapPropRadius: d.mapPropRadiusKm, MapPropNoise: propNoiseKey(d.mapPropNoise), MapPropRefresh: propRefreshKey(d.mapPropRefresh), MapPropNoReadings: noReadingsKey(d.mapPropCorrect), MapPropStations: stationsKey(d.mapPropNoGIRO), MapColourDepth: mapDepthKey(d.mapDepth), MapRadarAhead: d.mapRadarAhead, MapQuakeFeed: d.mapQuakeFeed, MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
+	return UIPrefs{Theme: render.ThemeName(), Units: d.units.Key(), Clock: d.clockFmt.Key(), ReduceMotion: d.reduceMotion, Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key(),
+		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempNDFD), MapRainDetail: rainDetailKey(d.mapRainFull), MapUVCities: d.mapUVCities, MapPropRadius: d.mapPropRadiusKm, MapPropNoise: propNoiseKey(d.mapPropNoise), MapPropRefresh: propRefreshKey(d.mapPropRefresh), MapPropNoReadings: noReadingsKey(d.mapPropCorrect), MapPropStations: stationsKey(d.mapPropNoGIRO), MapColourDepth: mapDepthKey(d.mapDepth), MapPlaybackMs: playbackKey(d.mapPlayback), MapRadarAhead: d.mapRadarAhead, MapQuakeFeed: d.mapQuakeFeed, MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
 }
 
 // uiApplyCmd writes the display preferences — and nothing else, for the same
@@ -172,7 +181,7 @@ func (d Dashboard) applyUISaved(v uiSavedMsg) Dashboard {
 	d.cfg.MapQuakeFeed, d.cfg.MapRainDetail, d.cfg.MapUVCities = v.prefs.MapQuakeFeed, v.prefs.MapRainDetail, v.prefs.MapUVCities
 	d.cfg.MapPropRadius, d.cfg.MapPropNoise = v.prefs.MapPropRadius, v.prefs.MapPropNoise
 	d.cfg.MapPropRefresh, d.cfg.MapPropNoReadings, d.cfg.MapPropStations = v.prefs.MapPropRefresh, v.prefs.MapPropNoReadings, v.prefs.MapPropStations
-	d.cfg.MapColourDepth = v.prefs.MapColourDepth
+	d.cfg.MapColourDepth, d.cfg.MapPlaybackMs, d.cfg.ReduceMotion = v.prefs.MapColourDepth, v.prefs.MapPlaybackMs, v.prefs.ReduceMotion
 	d.cfg.MapDetailChoice, d.cfg.MapDetailLevel = v.prefs.MapDetail, v.prefs.MapDetailLevel
 	return d
 }

@@ -173,6 +173,9 @@ func (d Dashboard) tickerMarquee(o render.Opts) string {
 		win := max(1, width-render.Width(left)-right)
 		tape := strings.Join(items, tickerBullet(o))
 		mid = left + scrollWindow(tape, d.tickerScroll, win, tickerBullet(o))
+		if d.reduceMotion { // an item at a time, whole, not a scrolling tape (D-360)
+			mid = left + render.PadTo(cutToWidth(o, d.stillTickerItem(items), win), win)
+		}
 		bg, fg = tickerCatBG(cur), render.TickerFG
 	}
 	tones := render.Tok(bg) + ";" + render.Tok(fg)
@@ -278,8 +281,8 @@ func scrollWindow(text string, offset, width int, gap string) string {
 // advanceTicker steps the tape one cell; the offset is kept bounded to the
 // current lane's loop length so it never overflows.
 func (d *Dashboard) advanceTicker() {
-	if len(d.ticker) == 0 || d.breaking != nil {
-		return // a breaking takeover overrides the tape — freeze the scroll so normal rotation resumes where it left off (P4 F5)
+	if len(d.ticker) == 0 || d.breaking != nil || d.reduceMotion {
+		return // a breaking takeover overrides the tape, and Reduce motion stills it — freeze the scroll so normal rotation resumes where it left off (P4 F5)
 	}
 	d.tickerScroll++
 	if n := d.tickerLoopLen(); n > 0 {

@@ -2,6 +2,42 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.19.3] — 2026-11-03
+
+### Fixed
+- **A screen reader can follow focus everywhere,** the Propagation mode among it: the terminal cursor
+  stands on the focused row, a field's caret, or a window's first words, on both surfaces, as a steady
+  mark that does not blink. While the terminal has focus, the cell it stands on is lightly tinted with the
+  colour of what is drawn there, which keeps its colour; while it does not, the cursor is a block in that
+  colour.
+  Help and the mode's words no longer say it cannot.
+
+### Added
+- **Help says the map is drawn in braille,** and what to do if the font has none: choose one that has
+  braille, or run with `--ascii`. Help also keys the digit along an alert's outline, and a badge under
+  the map keys each digit drawn.
+
+- **Reduce motion,** one switch in Settings (*Watchpost UI*) that stills everything moving on its own:
+  the map's loops and the forecast do not play, the ticker shows one item at a time, the visualiser's
+  bars are not drawn, the loading dots and the radio line hold still, and a pressed chip stays marked
+  until the next key.
+- **The map's playback speed** is a Setting: 1000 to 200 ms a frame for the radar's loop and the
+  forecast's steps, 500 by default; the two fastest say they pass the flash limit.
+
+### Changed
+- **Settings is one column on every tab,** so a screen reader or line reader hears one setting a line;
+  the map's settings are two tabs, Maps and Map Layers.
+- **The radar's loop plays at 500 ms a frame by default,** where it played at one second; the Playback
+  speed row sets it.
+- **The Description says what each layer drawn shows at the place,** after the alerts: the
+  temperature there, the radar's echo and the nearest heavier one, which way the heavier rain moves,
+  the nearest quake or fire. Without the picture, the loop's line, the status and the region beyond an
+  edge are said as text too.
+- **The map's words are the Description,** wherever they are named: its box, its chip (which says
+  On or Off), Help and Settings. A description too long for its box ends by naming where the whole text
+  is; the region row says which region is shown.
+- **Under the Monochrome theme the map draws without colour** when its colour depth is Automatic.
+
 ## [0.19.2] — 2026-11-01
 
 ### Changed

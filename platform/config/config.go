@@ -270,6 +270,9 @@ type Config struct {
 	// start over.
 	Units string `toml:"units,omitempty"` // "imperial" (default) | "metric"
 	Clock string `toml:"clock,omitempty"` // "12h" (default) | "24h" | "mil"
+	// ReduceMotion stills everything that moves on its own clock, the map's
+	// loops, the ticker, the visualiser, the dots and the blinks (0.19.0 D-360).
+	ReduceMotion bool `toml:"reduce_motion,omitempty"`
 
 	// The map's two Settings (0.18.0 W1.10, FR-9.1), written with the display
 	// preferences. Empty means the default: maps on, the description with the
@@ -320,6 +323,9 @@ type Config struct {
 	// the terminal (the default), or "truecolor", "256", "16" or "none"
 	// (0.19.0 D-207).
 	MapColourDepth string `toml:"map_colour_depth,omitempty"`
+	// MapPlaybackMs is how long each frame of the map's playback shows:
+	// 1000, 750, 400, 300 or 200; empty for the default, 500 (0.19.0 D-361).
+	MapPlaybackMs int `toml:"map_playback_ms,omitempty"`
 
 	// HistoryHours and HistoryTrends are the local history's retention, the
 	// Data tab's presets (W18, D-175): "72h", "7d", "30d", "1y" and "30d",

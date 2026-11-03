@@ -99,7 +99,7 @@ func padCells(line string, n int) string {
 
 // TestMapWindowGoldens pins the window at each width the plan names, with
 // one alert on the map, every piece of work landed, and the boxes over it as
-// they open (UAT-1: Area Alerts, the controls).
+// they open (UAT-1: the Description box, the controls).
 func TestMapWindowGoldens(t *testing.T) {
 	for _, size := range []struct{ w, h int }{{80, 24}, {120, 40}, {133, 44}} {
 		t.Run(strconv.Itoa(size.w), func(t *testing.T) {

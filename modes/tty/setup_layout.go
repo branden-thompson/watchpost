@@ -1,8 +1,8 @@
 package tty
 
 // setup_layout.go — HOW the Settings window is arranged: a group becomes a
-// block, blocks become one or two columns, and the body scrolls to keep the
-// focused row on screen.
+// block, the open tab's blocks one column (D-364), and the body scrolls to keep
+// the focused row on screen.
 //
 // It owns geometry and nothing else. What a group SAYS is in the file named for
 // it (setup_cast.go, setup_ui.go, setup_relay.go, setup_tones.go, and
@@ -25,13 +25,13 @@ func setupGroup(text string) string {
 	return "  " + render.Tint(text, render.Tok(render.ModalTitle))
 }
 
-// setupWidth is the window's width: wide enough for two columns when the
-// terminal allows, the one-column floor when it does not — the Help modal's
-// rule, applied to the mock's layout (Task 4.4).
+// setupWidth is the window's width: as wide as the open tab's groups and its
+// tab row want, within the terminal, the one-column floor at least (Task 4.4,
+// D-364).
 //
 // Setup needs its own width for the same reason Help does: its content decides
 // how wide it wants to be, and a fixed width would either waste a wide terminal
-// or force a stack on one that could hold both columns.
+// or cut the tab row on a narrow one.
 //
 // ONE WIDTH FOR EVERY TAB (D-62): the widest tab's. A window that changed width
 // as the listener moved between tabs would be the layout not knowing its own
@@ -53,8 +53,7 @@ func (d Dashboard) setupWidth() int {
 }
 
 // setupMaxWidth is the widest the window may be: 80% of the terminal (U1-36),
-// or the one-column floor on a terminal too small for that. The column plan
-// fits against it, so two columns are laid only where they fit inside it.
+// or the one-column floor on a terminal too small for that.
 //
 // THE TERMINAL'S WIDTH, d.width: o.Width is the dashboard's, already less the
 // frame, and 80% of that is not the 80% the listener sees.
@@ -62,42 +61,39 @@ func (d Dashboard) setupMaxWidth(o render.Opts) int {
 	return min(o.Width, max(setupOneColWidth, d.width*80/100))
 }
 
-// tabWidth is the width the open tab's groups want.
+// tabWidth is the width the open tab's groups want, and the tab row in its
+// wide form where the window has room for it, so the row does not wrap
+// where it need not (D-364).
 func (d Dashboard) tabWidth() int {
 	o := d.opts()
 	blocks := d.setupBlocks(o)
-	if plan, ok := d.columnPlan(blocks, o); ok {
-		return plan.width
-	}
-	return max(setupOneColWidth, min(d.setupMaxWidth(o), widestBlock(blocks)+panelFrame+panelRail+columnMargin))
+	want := max(widestBlock(blocks), render.Width(d.tabRowAt(o, d.tabsShown(), " ", "  ")))
+	return max(setupOneColWidth, min(d.setupMaxWidth(o), want+panelFrame+panelRail+columnMargin))
 }
 
-// setupOneColWidth is the stacked layout's floor: the one-column window width,
-// which the DATA group's lines were written for.
+// setupOneColWidth is the window's floor, which the DATA group's lines were
+// written for.
 const setupOneColWidth = 78
 
-// setupLines is the Setup window body: the groups, laid in two BALANCED columns
-// when they fit and stacked when they do not.
+// setupLines is the Setup window body: the open tab's groups, in one column
+// (D-364).
 func (d Dashboard) setupLines(o render.Opts) []string {
 	lines, _, _ := d.setupBody(o)
 	return lines // the chips are a pinned footer, drawn by floatModalFooter
 }
 
 // setupBlock is one group's lines, and where the focus sits inside them when it
-// is in this group. Height and width travel with the lines because the column
-// balance needs both.
+// is in this group. Its width travels with the lines, measured once, because the
+// window's width asks for it on every frame.
 type setupBlock struct {
 	lines   []string
-	w       int // the widest line, measured ONCE — see columnPlan
+	w       int // the widest line, measured ONCE — see tabWidth
 	at, end int // the focused row's span within lines
 	focused bool
 }
 
-// setupBlocks builds every group, in draw order.
-//
-// One block per group, rather than two hard-coded columns, is what makes the
-// balance possible: the layout can put any group in either column because no
-// group knows which one it is in.
+// setupBlocks builds the open tab's groups, in draw order, one block each:
+// no group knows where it is drawn.
 func (d Dashboard) setupBlocks(o render.Opts) []setupBlock {
 	groups := setupGroups()
 	out := make([]setupBlock, 0, len(groups))
@@ -225,73 +221,14 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 		b.at, b.end = 0, 0
 	}
 	b.end = max(b.end, b.at)
-	// Measured HERE and carried, because the split search asks for it once per
-	// candidate: re-measuring would make the 80x24 rebuild allocate half again as
-	// much. render.Width walks the escapes in
-	// a styled line, and a block is measured against every split that could put
-	// it in a column.
+	// Measured HERE and carried: render.Width walks the escapes in a styled
+	// line, and the window's width asks for every block's on every frame.
 	b.w = widest(b.lines)
 	return b
 }
 
-// columns is a two-column layout: where the groups were cut, and what the
-// window must be to hold them.
-type columns struct {
-	split        int // blocks[:split] left, blocks[split:] right
-	leftW, width int
-}
-
-// columnPlan picks the split, and reports whether two columns fit at all.
-//
-// THE SPLIT IS COMPUTED, not written down. A hand assignment of groups to
-// columns gets worse with every group added: four groups against one leaves the
-// right column a dozen rows short and the window a dozen rows taller than it
-// needs to be — which buys a scroll rail nobody wanted and pays for those rows
-// on every frame that draws them.
-//
-// The rule is the SPLIT POINT that leaves the two columns most nearly equal in
-// height, reading order preserved: groups fill the left column top to bottom,
-// then the right. Order matters more than perfect balance — a listener walking
-// ↓ through the window must not find the groups shuffled — so this chooses where
-// to cut the sequence rather than which groups to pair up.
-//
-// Every split is costed and the most balanced one that FITS wins, rather than
-// the most balanced one full stop: the widest group in a column sets that
-// column's width, so where the cut falls changes the total width as well as the
-// heights, and a narrower pairing can fit a terminal the best-balanced one
-// cannot.
-func (d Dashboard) columnPlan(blocks []setupBlock, o render.Opts) (columns, bool) {
-	best, bestImbalance, found := columns{}, 0, false
-	total := blockHeight(blocks)
-	left, leftW := 0, 0
-	for split := 1; split < len(blocks); split++ {
-		left, leftW = left+blockHeight(blocks[split-1:split]), max(leftW, blocks[split-1].w)
-		imbalance := abs(2*left - total)
-		if found && imbalance >= bestImbalance {
-			continue // a worse balance than one that already fits
-		}
-		w := twoColumnsWidth(leftW, widestBlock(blocks[split:]), panelChromeFor(left+4, d.modalMax()))
-		if w > d.setupMaxWidth(o) {
-			continue
-		}
-		best, bestImbalance, found = columns{split: split, leftW: leftW, width: w}, imbalance, true
-	}
-	return best, found
-}
-
-// blockHeight is the total lines a run of blocks draws; widestBlock the widest
-// line among them, from the widths they measured when they were built.
-
-// blockHeight is the lines a run of blocks draws: the height the split is
-// planned against.
-func blockHeight(blocks []setupBlock) int {
-	n := 0
-	for _, b := range blocks {
-		n += len(b.lines)
-	}
-	return n
-}
-
+// widestBlock is the widest line among a run of blocks, from the widths they
+// measured when they were built.
 func widestBlock(blocks []setupBlock) int {
 	w := 0
 	for _, b := range blocks {
@@ -325,10 +262,11 @@ func (d Dashboard) setupBody(o render.Opts) (lines []string, focusAt, focusEnd i
 	// tab still fits the window with it; on a window too short for that - 80x24,
 	// where every line is below a fold - the tab row takes the first group's
 	// opening blank.
-	head := []string{d.setupTabRow(o, o.Width-4)}
+	head := d.setupTabRows(o, o.Width-4)
 	opens := len(lines) > 0 && strings.TrimSpace(lines[0]) == ""
 	if opens && len(lines)+len(head) > d.modalMax()-setupChipRows {
-		return append(head, lines[1:]...), focusAt, focusEnd
+		shift := len(head) - 1 // the head takes the opening blank's place; a wrapped tab row has a second line
+		return append(head, lines[1:]...), focusAt + shift, focusEnd + shift
 	}
 	if !opens {
 		head = append(head, "")
@@ -341,30 +279,10 @@ func (d Dashboard) setupBody(o render.Opts) (lines []string, focusAt, focusEnd i
 // without drawing the chips to count them.
 const setupChipRows = 2
 
-// setupPage is the open tab's groups, in one or two columns.
+// setupPage is the open tab's groups in one column, so a line reader hears
+// one setting a line (F-205 AX-7, D-364).
 func (d Dashboard) setupPage(o render.Opts) (lines []string, focusAt, focusEnd int) {
-	blocks := d.setupBlocks(o)
-	// NOT modalWidth: that asks this function how wide it wants to be.
-	if plan, ok := d.columnPlan(blocks, o); ok {
-		left, leftAt, leftEnd := joinBlocks(blocks[:plan.split])
-		right, rightAt, rightEnd := joinBlocks(blocks[plan.split:])
-		lines = sideBySide(left, right, plan.leftW)
-		if anyFocused(blocks[plan.split:]) {
-			return lines, rightAt, rightEnd
-		}
-		return lines, leftAt, leftEnd
-	}
-	return joinBlocks(blocks)
-}
-
-// anyFocused reports whether the focused row is in this run of blocks.
-func anyFocused(blocks []setupBlock) bool {
-	for _, b := range blocks {
-		if b.focused {
-			return true
-		}
-	}
-	return false
+	return joinBlocks(d.setupBlocks(o))
 }
 
 // focusBody is the OPEN WINDOW's lines and the span its focused row occupies.
@@ -450,6 +368,8 @@ var pickerChipWords = map[setupRowID]string{
 	rowMapDesc:         "Description", // 0.18.0: nothing to preview
 	rowMapScale:        "Scale",
 	rowMapColours:      "Colours",
+	rowMapPlayback:     "Speed",
+	rowReduceMotion:    "Motion",
 	rowMapNearby:       "Distance",
 	rowMapRadarSource:  "Source",
 	rowMapTempSource:   "Source",
