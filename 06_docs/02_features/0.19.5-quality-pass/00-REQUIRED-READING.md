@@ -21,7 +21,7 @@ maintainer can follow. The pass before it was 0.9.5 (`../watchpost-performance-q
 | | |
 |---|---|
 | Branch | `feature/quality-pass`, cut from `main` (`4c803d99`, 0.19.3) (A-1) |
-| Phase | **DISCOVER**, ready to exit (`08-reports/discover-report.md`): the brief approved (D-4), every fork ruled (D-5 to D-18), A-1 to A-11 for veto |
+| Phase | **PLAN**: DISCOVER exited (D-19, `08-reports/discover-report.md`); the plan is `04-development/implementation-plan.md` (Q1 to Q9), before its red team and the PLAN gate |
 | Brief | `01-objectives/project-brief.md`, APPROVED (D-4): M1 no regression, M2 at most 80 / 90 / 140 KB a beat (idle, radio, console), M3 consolidation, M4 docs current, M5 a junior can find their way |
 | Findings | `02-analysis/discover-findings.md`: what was checked, the five defects, the streams A to F |
 | Scope | all of watchpost; a library finding becomes a library patch, pinned (D-2) |
