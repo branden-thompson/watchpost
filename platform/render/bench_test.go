@@ -28,7 +28,7 @@ func benchRows(n int) []LocationRow {
 
 func fp(v float64) *float64 { return &v }
 
-func colourOn(b *testing.B) {
+func colourOn(b testing.TB) {
 	b.Helper()
 	rendering.SetColorEnabledForTest(true)
 	b.Cleanup(rendering.ResetColorEnabledForTest)

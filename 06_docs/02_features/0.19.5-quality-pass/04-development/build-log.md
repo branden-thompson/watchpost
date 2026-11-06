@@ -262,3 +262,52 @@ one is hand-vetted and killed.
   this release has changed there, against its floor of 0.42. The functions this batch changed are bounded
   loops and one-pass writers with nothing further to check, so no check was added for the count. The
   figure goes to the HUM LEAD at REVIEW exit.
+
+## 0.19.5 batch 7 — the width measure (plan Q3.2, PF-2)
+
+Mutants m730 to m733, each hand-vetted and killed.
+
+- **`render.Width` sums the plain runs** between SGR sequences instead of measuring a stripped copy. The
+  runs are substrings, so a styled row of the location table measures with no allocation, down from
+  one allocation and 416 B, and in 286 ns instead of 360.
+- **`plaintext` exports `SGRLen`,** so the stripper and the measure share one owner for what a sequence is.
+- **Where it measures the stripped string whole, as before:**
+  - **A rune touching a sequence that could join a cluster across it.** The lens listed the runes that
+    join; this batch turns the list around. `standsAlone` names the ranges the frames draw from whose runes
+    never join, and anything else beside a sequence falls back:
+    - the ranges: ESC, printable Latin without the soft hyphen, punctuation without the joiners, arrows,
+      technical symbols, enclosed alphanumerics, box drawing, blocks, shapes, symbols, dingbats, CJK
+      ideographs;
+    - why it is turned around: a rune missing from a list of joiners would be measured wrong, while a
+      rune missing from this list is only measured slowly.
+  - **ESC stands alone** because it is the next sequence's first byte: a cluster always breaks at a
+    control, and that sequence checks the rune after it. Without it every row of sequences side by side
+    fell back. m733 is that mutant, and `TestWidthAllocBudget` kills it.
+  - **A string that is not valid UTF-8.** The first random run found this: runewidth measures an invalid
+    byte by what follows it, so `"\xe2m"` measures 1 alone and 2 before a CJK ideograph. That difference
+    holds with plain ASCII on both sides of the sequence.
+- **The pins (RR-17):**
+  - `TestWidthMatchesStripThenMeasure` covers a corpus of clusters split by a sequence, chains of
+    sequences and invalid bytes, and 200,000 random strings on a fixed seed. The strings are drawn from
+    the pieces of a sequence, whole and broken, every kind of joining rune and the runes the frames draw.
+  - `FuzzWidthMatchesStripThenMeasure` is the same rule for the fuzzer. It ran 57.8 million inputs over
+    five minutes, and three more minutes after ESC was admitted, with no difference. The random test
+    also ran on ten further seeds, two million strings each, with no difference.
+  - `TestWidthAllocBudget` holds the styled row at no allocation. `platform/render` gains the race flag
+    that the allocation pins skip on.
+  - The bench helper `colourOn` takes a `testing.TB`, and the declaration set is re-captured for
+    `mayJoinAcross`, `standsAlone` and `plaintextEsc`.
+- **The beat pins, lowered to what landed** (each × 1.05):
+
+  | Beat | Before (allocs / bytes) | Now (allocs / bytes) |
+  |---|---|---|
+  | Idle Observer | 456 / 113,562 | 401 / 104,843 |
+  | Radio playing | 692 / 126,823 | 626 / 112,447 |
+  | Console at 160x74 | 703 / 231,193 | 537 / 183,812 |
+  | A no-change publish's frame | 5,711 / 408,378 | 5,595 / 388,674 |
+
+  M2 stands at 105 / 112 / 184 KB against 80 / 90 / 140. The memos (Q4) and the radio's split (Q3.3) are
+  the rest.
+- **The test's literals:** the invisible and combining runes in the test are written as `\u` escapes, as
+  staticcheck's ST1018 asks. The first lint run caught the raw characters.
+- **P10 (D-27):** `modes/tty` is unchanged at 0.33 over 54 changed functions; recorded for REVIEW.

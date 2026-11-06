@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"strings"
+	"unicode/utf8"
 
 	runewidth "github.com/mattn/go-runewidth"
 )
@@ -406,8 +407,79 @@ func RuneCells(r rune) int { return runewidth.RuneWidth(r) }
 // PlainLine is Plain for a field that must stay on ONE line (plaintext.Line).
 func PlainLine(s string) string { return plaintext.Line(s) }
 
-// displayWidth measures terminal cells (runewidth; AI-9 glyph policy).
-func displayWidth(s string) int { return runewidth.StringWidth(stripANSI(s)) }
+// displayWidth measures terminal cells (runewidth; AI-9 glyph policy), with
+// the SGR sequences counting none.
+//
+// It sums the plain runs between the sequences, which are substrings of s, so
+// measuring a styled row allocates nothing (0.19.5 PF-2). That is the width of
+// the stripped string only while no grapheme cluster spans a sequence, so where
+// a rune touching one could join a cluster across it, s is stripped and
+// measured whole. So is s when it is not valid UTF-8, because an invalid byte
+// is measured by what follows it, not by itself. TestWidthMatchesStripThenMeasure
+// and its fuzz target hold the two answers equal.
+func displayWidth(s string) int {
+	from := strings.IndexByte(s, plaintextEsc)
+	if from < 0 {
+		return runewidth.StringWidth(s)
+	}
+	if !utf8.ValidString(s) {
+		return runewidth.StringWidth(stripANSI(s))
+	}
+	w, start := 0, 0
+	for range len(s) { // each pass passes at least one byte (P10-02)
+		k := strings.IndexByte(s[from:], plaintextEsc)
+		if k < 0 {
+			break
+		}
+		at := from + k
+		n := plaintext.SGRLen(s[at:])
+		if n == 0 {
+			from = at + 1 // an escape that is not a whole SGR sequence is measured where it is
+			continue
+		}
+		if mayJoinAcross(s[:at], s[at+n:]) {
+			return runewidth.StringWidth(stripANSI(s))
+		}
+		w += runewidth.StringWidth(s[start:at])
+		start, from = at+n, at+n
+	}
+	return w + runewidth.StringWidth(s[start:])
+}
+
+// plaintextEsc is ESC, the byte every SGR sequence starts with.
+const plaintextEsc = 0x1b
+
+// mayJoinAcross reports whether the runes either side of a sequence could join
+// one grapheme cluster once it is stripped. Each must be a rune that never
+// joins one, so a combining mark, a joiner, a regional indicator, Hangul or a
+// Prepend letter beside a sequence answers true. Nothing on one side counts as
+// a rune that never joins. The string is valid UTF-8 here.
+func mayJoinAcross(before, after string) bool {
+	a, _ := utf8.DecodeLastRuneInString(before)
+	b, _ := utf8.DecodeRuneInString(after)
+	return (before != "" && !standsAlone(a)) || (after != "" && !standsAlone(b))
+}
+
+// standsAlone reports whether r is in a range the frames draw from whose runes
+// never join a grapheme cluster with a neighbour: ESC, printable Latin, punctuation,
+// arrows and technical symbols, box drawing, blocks, shapes, dingbats and
+// CJK ideographs. Combining marks, joiners, regional indicators, emoji
+// modifiers and Hangul are outside every range.
+func standsAlone(r rune) bool {
+	switch {
+	case r == plaintextEsc:
+		return true // the next sequence's first byte: a cluster always breaks at a control, and that sequence checks the rune after it
+	case r >= 0x20 && r < 0x7f, r >= 0xa0 && r < 0x300 && r != 0xad:
+		return true // printable Latin, with the soft hyphen out
+	case r >= 0x2010 && r <= 0x2027, r >= 0x2030 && r <= 0x205e:
+		return true // punctuation, with the joiners and invisible marks out
+	case r >= 0x2190 && r <= 0x23ff, r >= 0x2460 && r <= 0x27bf, r >= 0x2b00 && r <= 0x2bff:
+		return true // arrows, technical, enclosed, box drawing, blocks, shapes, symbols, dingbats
+	case r >= 0x4e00 && r <= 0x9fff:
+		return true // CJK ideographs
+	}
+	return false
+}
 
 // truncate hard-limits a line to the given display width.
 func truncate(s string, w int) string {

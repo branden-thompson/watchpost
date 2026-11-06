@@ -43,7 +43,7 @@ func StripSGR(s string) string {
 		if i >= len(s) {
 			break
 		}
-		if n := sgrLen(s[i:]); n > 0 {
+		if n := SGRLen(s[i:]); n > 0 {
 			i += n
 			continue
 		}
@@ -63,9 +63,10 @@ func StripSGR(s string) string {
 // escByte is ESC, the byte every sequence starts with.
 const escByte = 0x1b
 
-// sgrLen is the length of the SGR sequence at the head of s, or 0 when there is
-// not a complete one there.
-func sgrLen(s string) int {
+// SGRLen is the length of the SGR sequence at the head of s, or 0 when there is
+// not a complete one there. StripSGR removes what it measures, and render.Width
+// steps over it, so the two agree on what a sequence is.
+func SGRLen(s string) int {
 	if len(s) < 3 || s[0] != escByte || s[1] != '[' {
 		return 0 // the shortest possible sequence is ESC [ m
 	}
