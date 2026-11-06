@@ -131,8 +131,14 @@ func TestLayoutOncePerViewAndKey(t *testing.T) {
 	_ = d.View().Content
 	perView := testing.AllocsPerRun(20, func() { _ = d.View().Content })
 	perLayout := testing.AllocsPerRun(20, func() { _ = d.layout() })
-	if perView > 2*perLayout+100 { // the header's own tints ride the hit path; a second layout() would add a whole layout
-		t.Fatalf("one layout per frame on the memo hit path: frame %.0f allocs vs layout %.0f — a second layout() call would show here", perView, perLayout)
+	// The hit path's own work beside its one layout, the header's tints among
+	// it, measured at 195 allocs and pinned × 1.10. A second layout() adds a
+	// whole layout (93) on top. The bound is absolute because the frame's own
+	// work is twice a layout now, so no multiple of a layout can tell one call
+	// from two.
+	const ownWork = 195 * 1.10
+	if perView-perLayout > ownWork {
+		t.Fatalf("one layout per frame on the memo hit path: frame %.0f allocs, layout %.0f, leaving %.0f against %.0f — a second layout() call would show here", perView, perLayout, perView-perLayout, ownWork)
 	}
 	perKey := testing.AllocsPerRun(20, func() { _, _ = d.Update(tea.KeyPressMsg{Code: tea.KeyDown}) })
 	if perKey > 2*perLayout+50 {

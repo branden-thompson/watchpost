@@ -311,3 +311,50 @@ Mutants m730 to m733, each hand-vetted and killed.
 - **The test's literals:** the invisible and combining runes in the test are written as `\u` escapes, as
   staticcheck's ST1018 asks. The first lint run caught the raw characters.
 - **P10 (D-27):** `modes/tty` is unchanged at 0.33 over 54 changed functions; recorded for REVIEW.
+
+## 0.19.5 batch 8 — the radio player is planned, then drawn once (plan Q3.3, PF-3)
+
+Mutants m734 to m737, each hand-vetted and killed.
+
+- **What changed:**
+  - **The plan.** `radioPlan` is the first half of the player: the parts both players share (title,
+    state, controls) and every decision the height follows from (the narrow breakpoint, the VOL ladder,
+    whether the head takes its short form). It draws no marquee and no visualiser.
+  - **The heights.** `radioPlan.rows(compact, viz)` counts either player's rows. `layoutWith` reads both
+    heights from it, so `layoutRows` carries the plan rather than two rendered players.
+  - **The render.** `layout` renders only the player of the mode in force, once, after the bands have
+    given way. Before, it rendered the full and the compact player every frame and drew one of them.
+  - **The two builders.** `radioRender` draws the player a plan describes. `radioMaxRows` reads its head,
+    tail and room from the plan instead of laddering again. `radioLines` is plan then render, for the
+    tests that call it.
+  - **The plan's two steps in one.** Building the compact rows only when compact (step 1) is the case
+    where the frame is compact: it falls out of the render.
+- **The pins:**
+  - **`TestTheRadiosPlannedHeightIsItsRows`.** It covers 15 widths from 40 to 220 columns, across both
+    breakpoint edges, playing a voice with a long station name or stopped, the visualiser on and off.
+    In each case the plan's count equals the rows drawn, compact and full. At 24, 44 and 70 rows the
+    frame's player is the rows of the mode in force. m734, m735 and m736 are killed by it.
+  - **The radio goldens (Q2.10) and every layout suite.** They hold unchanged.
+- **`TestLayoutOncePerViewAndKey`'s bound restated.** It allowed a frame up to twice a layout plus 100
+  allocations.
+  - What broke it: the layout fell from 127 allocations to 93, while the frame's own work beside its
+    layout stayed at 195. The frame (288) then crossed the old bound (286) with no second layout.
+  - The new bound is absolute: the frame minus one layout is at most 195 × 1.10. A second `layout()`
+    adds a whole layout on top. m737 adds one to `View` and is killed.
+- **The beat pins, lowered to what landed** (each × 1.05):
+
+  | Beat | Before (allocs / bytes) | Now (allocs / bytes) |
+  |---|---|---|
+  | Idle Observer | 401 / 104,843 | 367 / 102,508 |
+  | Radio playing | 626 / 112,447 | 463 / 104,634 |
+  | Console at 160x74 | 537 / 183,812 | 537 / 183,813 |
+  | A no-change publish's frame | 5,595 / 388,674 | 5,561 / 385,203 |
+
+- **The frame, setup, map, Propagation, console, Tab and tick budgets** are lowered in one pass when Q3
+  closes, after the handler batch. Their comments quote the figures they were measured at, and re-pinning
+  them once per batch would rewrite those comments each time. Until then the beat pin carries the paths
+  they watch.
+- **M2** stands at 103 / 105 / 184 KB against 80 / 90 / 140.
+- **P10 (D-27):** `modes/tty` measures 0.32 over the functions this release has changed there, against its
+  floor of 0.42. `rows` and `radioRender` are decisions over a plan that hold no state to guard. Recorded
+  for REVIEW.

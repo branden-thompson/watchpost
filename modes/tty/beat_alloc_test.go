@@ -50,9 +50,9 @@ func beatCost(tb testing.TB, b beat) (allocs, bytes int64) {
 // one allocation each and many kilobytes (0.19.5 PF-6). The batches that cut a
 // beat lower its pin to what lands; M2's targets are 80, 90 and 140 KB.
 var beatBudget = map[string]struct{ allocs, bytes float64 }{
-	"idle Observer 133x44": {401 * 1.05, 104_843 * 1.05},
-	"radio playing 133x44": {626 * 1.05, 112_447 * 1.05},
-	"console 160x74":       {537 * 1.05, 183_812 * 1.05},
+	"idle Observer 133x44": {367 * 1.05, 102_508 * 1.05},
+	"radio playing 133x44": {463 * 1.05, 104_634 * 1.05},
+	"console 160x74":       {537 * 1.05, 183_813 * 1.05},
 }
 
 // TestBeatAllocBudget is 0.19.5 Q2.12 (PF-6): what a beat costs, the message
@@ -92,7 +92,7 @@ func TestPublishAllocBudget(t *testing.T) {
 			_ = m.View().Content
 		}
 	})
-	const allocs, bytes = 5_595 * 1.05, 388_674 * 1.05
+	const allocs, bytes = 5_561 * 1.05, 385_203 * 1.05
 	t.Logf("a no-change publish's frame: %d allocs (budget %.0f), %d bytes (budget %.0f)", r.AllocsPerOp(), allocs, r.AllocedBytesPerOp(), bytes)
 	if float64(r.AllocsPerOp()) > allocs || float64(r.AllocedBytesPerOp()) > bytes {
 		t.Errorf("a no-change publish's frame costs %d allocations and %d bytes; its budget is %.0f and %.0f", r.AllocsPerOp(), r.AllocedBytesPerOp(), allocs, bytes)

@@ -32,10 +32,10 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ### Performance
 - **Each beat of the interface allocates about a third less memory:** an idle Observer frame from about
-  157 KB to 105 KB, the radio playing from 169 KB to 112 KB, and the console from 310 KB to 184 KB. The
+  157 KB to 103 KB, the radio playing from 169 KB to 105 KB, and the console from 310 KB to 184 KB. The
   ticker's marquee and the console's frame are no longer copied whole each frame, a message is no longer
-  copied into an interface on its way through, and measuring styled text no longer copies it. What is
-  drawn is byte for byte the same.
+  copied into an interface on its way through, measuring styled text no longer copies it, and the radio
+  player is drawn only in the layout shown. What is drawn is byte for byte the same.
 
 ## [0.19.3] — 2026-11-03
 
