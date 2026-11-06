@@ -144,3 +144,28 @@ killed.
 - **DEF-8 (D-28), found by the 80x24 goldens:** with a full watchlist the Observer's frame is 31 rows on a
   24-row terminal, and the alt screen shows only the first 24. The goldens capture today's frame; B4
   fixes it and they change by that alone.
+
+## 0.19.5 batch 4 — the frame fits the terminal (DEF-8: D-28, D-30) and the card stamps' clock (D-29)
+
+B4 carries the two behaviour changes the HUM LEAD ruled after B3. The rest of the plan's B4 (Q2.11 to
+Q2.13) moves to B5, and each later batch's number moves up one.
+
+- **DEF-8 (D-28, D-30).** The layout gave way only in the RECENT window, so with ten favourites its fixed
+  rows came to 30 (measured at 80x24, 80x30 and 100x30) and the frame needed 31.
+  - `fitPriority` is now the last thing to give, after the compact player and the thin bands: the
+    priority table shows as many favourites as fit, at least three. Its window is derived from the focus
+    (`priorityLo`), so it holds no state of its own, and it draws RECENT's rail (`priorityRail`).
+  - Writing the pin found a second shortfall: the empty watchlist's message is three to five rows, which
+    the layout counted as none (`priorityHeight`).
+  - Pin: `TestTheFrameNeverExceedsTheTerminal`, over five sizes, watchlists of none, three and ten, and
+    every focus.
+  - The twelve 80x24 goldens change from 31 rows to 24. Their diffs were read line by line: the priority
+    table shows three favourites with the rail, RECENT one row, and the window overlays recentre on the
+    shorter frame. No golden at another size moved.
+- **D-29: the card manifests' stamps follow the clock Setting**, in the window and on the card. Pin:
+  `TestTheCardStampsFollowTheClock`. Two tests that read the stamp under the default 12-hour clock now
+  expect its 12-hour form.
+- Mutants m708 to m712, each hand-vetted and killed.
+- **mAD5 re-pointed** at the card stamp's new line (D-29) and re-vetted: it is killed by
+  `TestTheCardStampsFollowTheClock`. 0.16.0's `gates.md` records `TestTheUpNextCardFollowsTheReferencesOrder` as its
+  killer then; that record stays as shipped.

@@ -64,7 +64,8 @@ is checked line by line to differ by that alone.
 ## Batch map
 
 Fifteen full-gate batches (A-12). The risky changes ride alone, and the Markdown-only work rides
-separately on the docs lane.
+separately on the docs lane. After B3, DEF-8 (D-28, D-30) and D-29 were built as B4 on their own, and each batch below from B4
+on is one number later in the build log (B4 here is the build log's B5).
 
 | Batch | Tasks | Why it stands alone, or with what |
 |---|---|---|

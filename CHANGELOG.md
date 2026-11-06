@@ -11,8 +11,13 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   switches between PRIORITIZE and a numbered slot, and still types a space into the location; tab moves
   to the next field from any report row instead of staying on the reports.
 - **The Broadcaster console wears the units and clock Settings,** as Observer does: the location pool's
-  temperatures and distances follow °F/°C, and the masthead's "Updated:" time follows the 12-hour,
-  24-hour or military clock. A change made with the console up shows at once.
+  temperatures and distances follow °F/°C, and the masthead's "Updated:" time and every card's
+  "DATA PULLED" time follow the 12-hour, 24-hour or military clock. A change made with the console up
+  shows at once.
+- **Observer fits the terminal down to 80×24.** With a full watchlist on a short terminal, the bottom
+  rows (the footer's keys among them) fell off the screen. The priority table now shows as many
+  favourites as fit, at least three, and scrolls with the focus beside the same scroll marks RECENT
+  uses. An empty watchlist's message is counted in the height too.
 
 ### Changed
 - **Every spoken temperature names Celsius under metric.** The marine report's water temperature said a

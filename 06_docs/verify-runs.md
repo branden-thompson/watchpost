@@ -159,3 +159,6 @@ says exactly what passed.
 | 2026-11-06T17:10:15Z | 54a280f6 | 229ada2f56a9 | verify | green | 2283 |
 | 2026-11-06T17:57:07Z | 06b17a2f | 14ffb8674939 | verify | green | 2238 |
 | 2026-11-06T18:00:18Z | 0772e32f | 7852c422940e | verify-docs | green | 150 |
+| 2026-11-06T18:15:01Z | e7187001 | 2f083f9d31cd | verify | FAILED (exit 2) | 0 |
+| 2026-11-06T18:17:45Z | e7187001 | 3863b936781a | verify | FAILED (exit 2) | 0 |
+| 2026-11-06T18:57:11Z | e7187001 | 0bdbc28d713a | verify | green | 2335 |

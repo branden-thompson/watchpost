@@ -184,11 +184,47 @@ func (d Dashboard) priorityTable(fl frameLayout) string {
 	if d.snap == nil || len(d.snap.Locations) == 0 {
 		return emptyState(o.TableRowLen(fl.days), watchlistEmpty, "") // the empty state stands where the table will
 	}
-	rows := make([]render.LocationRow, 0, len(d.snap.Locations))
-	for i := range d.snap.Locations {
-		rows = append(rows, d.row(i, &d.snap.Locations[i], d.selected < d.numPriority() && i == d.selected))
+	n, shown := len(d.snap.Locations), len(d.snap.Locations)
+	if fl.priorityRows > 0 && fl.priorityRows < n {
+		shown = fl.priorityRows // a short terminal's window (D-30); zero is a layout that measured nothing, so all
 	}
-	return o.LocationTable(rows, fl.days)
+	lo := d.priorityLo(n, shown)
+	rows := make([]render.LocationRow, 0, shown)
+	for i := lo; i < lo+shown; i++ {
+		rows = append(rows, d.row(i, &d.snap.Locations[i], d.selected < n && i == d.selected))
+	}
+	table := o.LocationTable(rows, fl.days)
+	if shown == n {
+		return table
+	}
+	return priorityRail(table, o.TableRowLen(fl.days)+2, o.BandHeight()+1, lo, n, shown, render.RailGlyphsFor(o.ASCII))
+}
+
+// priorityLo is the first favourite a scrolled priority table shows (D-30):
+// the window that ends at the focused favourite, or the last favourites,
+// beside RECENT, while the focus is below them. Derived from the focus, so
+// the table holds no scroll of its own.
+func (d Dashboard) priorityLo(n, shown int) int {
+	if d.selected >= n {
+		return n - shown
+	}
+	return max(0, d.selected-shown+1)
+}
+
+// priorityRail draws RECENT's scroll rail beside a scrolled priority table:
+// ▲ on the column header (the last of its head lines), the bar and the thumb
+// on the rows, ▼ on the last row shown.
+func priorityRail(table string, width, head, lo, total, window int, g render.RailGlyphs) string {
+	lines := strings.Split(table, "\n")
+	if len(lines) <= head {
+		return table
+	}
+	lines[head-1] = render.PadTo(lines[head-1], width-1) + g.Up
+	rows := lines[head:]
+	last := len(rows) - 1
+	copy(rows, render.Railify(rows[:last], width, lo, total-1, window-1, g))
+	rows[last] = render.PadTo(rows[last], width-1) + g.Down
+	return strings.Join(lines, "\n")
 }
 
 // controlRow is the watchlist's control line (UAT 56; reworded HUM LEAD

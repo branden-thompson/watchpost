@@ -24,8 +24,12 @@ type frameLayout struct {
 	controlRow  string   // the watchlist control line (wrapped on narrow terminals)
 	controlRows int      // its line count
 	window      int      // RECENT rows visible
-	days        int      // EXTENDED columns shared by both tables
-	chrome      int      // every fixed line around the RECENT window
+	// priorityRows is how many favourites the priority table shows: all of
+	// them while the frame has room, fewer on a short terminal, which then
+	// scrolls with the focus (0.19.5 D-30).
+	priorityRows int
+	days         int // EXTENDED columns shared by both tables
+	chrome       int // every fixed line around the RECENT window
 }
 
 // layout resolves the frame's geometry from the model. The compact
@@ -45,7 +49,48 @@ func (d Dashboard) layout() frameLayout {
 		o.ThinBands = true
 		fl = d.layoutWith(o, rows)
 	}
+	return d.fitPriority(fl)
+}
+
+// minPriorityRows is the fewest favourites a short terminal shows (D-30).
+const minPriorityRows = 3
+
+// fitPriority is the last thing to give on a short terminal, after the
+// compact player and the thin bands (0.19.5 D-30): when even one RECENT row
+// would push the frame past the terminal's bottom, the priority table shows
+// fewer favourites, never fewer than minPriorityRows, and scrolls with the
+// focus. The frame then never exceeds the terminal down to 80x24.
+func (d Dashboard) fitPriority(fl frameLayout) frameLayout {
+	over := fl.chrome + 1 - d.height
+	if over <= 0 || d.numPriority() == 0 || fl.priorityRows <= minPriorityRows {
+		return fl
+	}
+	shown := max(minPriorityRows, fl.priorityRows-over)
+	fl.chrome -= fl.priorityRows - shown
+	fl.priorityRows = shown
+	fl.window = fitWindow(fl.chrome, d.height)
 	return fl
+}
+
+// priorityHeight is the rows the priority table's body takes: one a
+// favourite, or the empty state's block when there are none, which the frame
+// has to count as surely as rows.
+func (d Dashboard) priorityHeight(o render.Opts, days int) int {
+	if n := d.numPriority(); n > 0 {
+		return n
+	}
+	return strings.Count(emptyState(o.TableRowLen(days), watchlistEmpty, ""), "\n") + 1
+}
+
+// fitWindow is how many RECENT rows fit under chrome fixed rows: as many as
+// the terminal holds above the bottom inset, at least recentWindow, and on a
+// terminal too short for that, the inset gives way first, then the window.
+func fitWindow(chrome, height int) int {
+	window := max(recentWindow, height-chrome-bottomInset)
+	if chrome+window > height {
+		window = max(1, height-chrome)
+	}
+	return window
 }
 
 // layoutRows are the rendered rows a layout measures: the player in both
@@ -80,11 +125,9 @@ func (d Dashboard) layoutWith(o render.Opts, built layoutRows) frameLayout {
 	fl.radioH = render.BoxHeight(len(fl.radioRows))
 	// UAT 46.1/58: the window expands to fill tall terminals; the content
 	// ends exactly bottomInset rows above the bottom.
-	fl.chrome = chromeLines + bandExtra + (fl.controlRows - 1) + 1 + fl.radioH + 1 + fl.alertH + 1 + d.numPriority()
-	fl.window = max(recentWindow, d.height-fl.chrome-bottomInset)
-	if fl.chrome+fl.window > d.height { // the floor: the inset goes first, then the window shrinks to what fits — the frame never exceeds the terminal (round 4, B-07)
-		fl.window = max(1, d.height-fl.chrome)
-	}
+	fl.priorityRows = d.numPriority()
+	fl.chrome = chromeLines + bandExtra + (fl.controlRows - 1) + 1 + fl.radioH + 1 + fl.alertH + 1 + d.priorityHeight(o, fl.days)
+	fl.window = fitWindow(fl.chrome, d.height)
 	return fl
 }
 

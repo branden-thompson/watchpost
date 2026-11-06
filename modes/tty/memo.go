@@ -39,6 +39,7 @@ type bodyKey struct {
 	radioH, alertH int
 	controlRows    int
 	window, days   int
+	priorityRows   int // favourites shown: fewer on a short terminal (D-30)
 	snap, recent   *snapshot.Snapshot
 	selected       int // position: the row it marks indexes the rows snap, recent and lookup key by identity (#12)
 	recentOff      int // position: the scroll into the recent rows, which recent keys by identity (#12)
@@ -93,7 +94,7 @@ type bodyMemo struct {
 func (d Dashboard) bodyKeyFor(fl frameLayout) bodyKey {
 	k := bodyKey{
 		width: fl.o.Width, height: d.height, compact: fl.compact, radioH: fl.radioH, alertH: fl.alertH,
-		controlRows: fl.controlRows, window: fl.window, days: fl.days,
+		controlRows: fl.controlRows, window: fl.window, days: fl.days, priorityRows: fl.priorityRows,
 		snap: d.snap, recent: d.recent, selected: d.selected, recentOff: d.recentOff, lookup: d.lookupKey(),
 		units: d.units, ascii: fl.o.ASCII, thinBands: fl.o.ThinBands,
 		radioKey: d.radioKey, radioPlaying: d.radioPlaying, radioRepeat: d.radioRepeat,

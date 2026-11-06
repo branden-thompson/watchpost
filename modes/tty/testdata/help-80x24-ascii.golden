@@ -3,29 +3,22 @@
    +-- WATCHPOST Observer  vbench --  Updated: 08/24/2026 1:00:00 AM UTC --+  
    |   [s] Settings  [S] Status  [?] Help  [q] Quit     OK2 !!0 XX0 /  2   |  
    +-----------------------------------------------------------------------+  
-                                                                              
-     Warnings  30 !  Severe Thunderstorm Warning | Benchmark County 00,       
-                                                                              
-   +--------+-- Watchpost Help ------------------------------------+-------+  
-   |   WWRAD|                                                    ^ |PPED   |  
-   |     [sp|   SURFACES                                         # |       |  
+            +-- Watchpost Help ------------------------------------+          
+     Warning|                                                    ^ |00,       
+            |   SURFACES                                         # |          
    +--------|     ctrl+o, O    - Observer                        | |-------+  
-   01/01  ! |     ctrl+b, B    - Broadcaster                     | | [right]  
-            |                                                    | |          
-   [l] Looku|   NAVIGATE                                         | |          
-   [shift+de|     up           - Navigate                        | |          
-   [        |     down         - Navigate                        | |Y      ]  
-   [        |     enter        - Location Details                | |  NOW  ]  
-   >    o   |     A            - Alert Details                   | | 73°F     
-        o   |     w, W, ctrl+s - Severe Weather / Disaster       | | 75°F     
-        o   |     Events                                         v | 77°F     
-        o   +------------------------------------------------------+ 78°F     
-        o       005. Benchmark City 05        90004   P.CLOUDY       80°F     
-        o       006. Benchmark City 06        90005   P.CLOUDY       82°F     
-        o    1! 007. Benchmark City 07        90006   P.CLOUDY       84°F     
-        o       008. Benchmark City 08        90007   P.CLOUDY       73°F     
-        o       009. Benchmark City 09        90008   P.CLOUDY       75°F     
-        o    1! 010. Benchmark City 10        90009   P.CLOUDY       77°F     
+   |   WWRAD|     ctrl+b, B    - Broadcaster                     | |PPED   |  
+   |     [sp|                                                    | |       |  
+   +--------|   NAVIGATE                                         | |-------+  
+   01/01  ! |     up           - Navigate                        | | [right]  
+            |     down         - Navigate                        | |          
+   [l] Looku|     enter        - Location Details                | |          
+   [shift+de|     A            - Alert Details                   | |          
+   [        |     w, W, ctrl+s - Severe Weather / Disaster       | |Y      ]  
+   [        |     Events                                         v |  NOW  ] ^
+   >    o   +------------------------------------------------------+ 73°F    #
+        o       002. Benchmark City 02        90001   P.CLOUDY       75°F    |
+        o       003. Benchmark City 03        90002   P.CLOUDY       77°F    v
    [                   R E C E N T   /   S E A R C H E D                   ] ^
         o    1! 011. Benchmark City 101       90100   P.CLOUDY       77°F    #
                                                 Showing 1-1 of 50 locations  v
