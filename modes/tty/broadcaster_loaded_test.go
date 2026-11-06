@@ -29,6 +29,13 @@ const loadedPoolSize = 25
 // path the app never takes.
 func loadedConsole(t testing.TB, n int) Broadcaster {
 	t.Helper()
+	return loadedConsoleAt(t, n, time.Now())
+}
+
+// loadedConsoleAt is loadedConsole with its weather observed at a given time,
+// so a golden frame of it is the same on every run.
+func loadedConsoleAt(t testing.TB, n int, observed time.Time) Broadcaster {
+	t.Helper()
 	pool := make([]snapshot.LocationRef, 0, n)
 	locs := make([]snapshot.Location, 0, n)
 	now, hi, lo := 20.0, 31.0, 12.0
@@ -42,7 +49,7 @@ func loadedConsole(t testing.TB, n int) Broadcaster {
 				Condition: "CLEAR", TempMax: &hi, TempMin: &lo})
 		}
 		locs = append(locs, snapshot.Location{Label: ref.Label, Zip: ref.Zip, Lat: ref.Lat, Lon: ref.Lon,
-			WeatherAsOf: time.Now(),
+			WeatherAsOf: observed,
 			Harmonized: snapshot.Conditions{Condition: "CLEAR", Temp: &now,
 				Source: snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KOKB"}},
 			Daily: daily})

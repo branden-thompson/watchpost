@@ -1,0 +1,74 @@
+                                                                                                                                                                
+                                                                                                                                                                
+   ┏━━ WATCHPOST Broadcaster  v ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  awaiting first data... ━━┓  
+   ┃   [s] Settings  [a] About  [S] Status  [ctrl+o] Observer  [?] Help  [q] Quit                                                       API: ✔0 ⚠0 ✘0 /  0   ┃  
+   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  
+                                                                                                                                                                
+      STATION AIR:         STOPPED                                                                           GAIN  [-]░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░[+]   0     
+      BROADCASTING FROM:   Bonsall, CA    TOWER GPS:  33.280000, -117.230000    SERVICE RADIUS: 100 Miles                      ( SHIFT + ENTER  →  ON AIR )     
+      ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓     
+      ┃  ○ LIVE NOW    ┃   NO REPORTS READ OR ACTIVE IN STANDBY MODE                                                                                      ┃     
+      ┣━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫     
+      ┃  ○ RELAY BED   ┃   [⇧←]  (no relay tuned)  [⇧→]                                                                          INACTIVE   [space] [b]   ┃     
+      ┗━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛     
+                                                                                                                                                                
+                                                                                                                                                                
+   ┏━━━━━━━━━━━━━━┳━━━ LOCATION REPORT • Place 00, CA ━━━━━━━━━━━━━━━━━━━━━━━━ • STANDARD • ━━━┓   ┏━━━ ! ALERT ! - TAKEOVER ━━━━━━━━━━━━━━━ • PRIORITY • ━━━┓  
+   ┃              ┃                                                                            ┃   ┃                                                         ┃  
+   ┃              ┃   STATUS: Scheduled; Awaiting Data                                         ┃   ┃   ##. ALERT TYPE                          LOCATION      ┃  
+   ┃              ┃   DATA PULL: —                                                             ┃   ┃   01. TORNADO WARNING                     Bonsall, CA   ┃  
+   ┃              ┃                                                                            ┃   ┃   02. FLASH FLOOD WARNING                 Bonsall, CA   ┃  
+   ┃              ┃                               READ MANIFEST                                ┃   ┃   03.                                                   ┃  
+   ┃              ┃   ##. NAME                                 RANGE / INCIDENTS               ┃   ┃   04.                                                   ┃  
+   ┃   UP  NEXT   ┃                                                                            ┃   ┃   05.                                                   ┃  
+   ┃              ┃                                                                            ┃   ┃   06.                                                   ┃  
+   ┃              ┃                                                                            ┃   ┃   07.                                                   ┃  
+   ┃              ┃                                                                            ┃   ┃   08.                                                   ┃  
+   ┃              ┃                                                                            ┃   ┃   09.                                                   ┃  
+   ┃              ┃                                                                            ┃   ┃                                                         ┃  
+   ┃              ┃    [1]  Read / Manage                                                      ┃   ┃    [A]  Details / Full Read / Manage                    ┃  
+   ┗━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  
+                                                                                                                                                                
+   [l] Lookup Location from Pool   [enter] Details / Manage Slot   [r] Request for Line-Up                                                     [↑↓] Navigate    
+                                                                                                                                                                
+                                                              S C H E D U L E D    L I N E - U P                                                                
+                                                                                                                                                                
+   [                                                                                              ][                                ][                     ]    
+   [                                      R E A D   O U T S                                       ][       D I R E C T I O N        ][  C U R R E N T L Y  ]    
+   [                                                                                              ][                                ][                     ]    
+   [           ]##.  [       REPORT TYPE       ][          LOCATION           ][  ZIP  ][  DIST   ][ PRIORITY ][    REQUESTED BY    ][ CONDITIONS ][  NOW  ]    
+   ›            02.  Location Report             Place 01, CA                    92001     4 mi     Standard    Producer              CLEAR          68°F       
+                03.  Location Report             Fallbrook, CA                                      Standard    Station Operator                      n/a       
+                04.  Location Report             Place 02, CA                    92002     3 mi     Standard    Producer              CLEAR          68°F       
+                05.  Location Report             Place 03, CA                    92003     2 mi     Standard    Producer              CLEAR          68°F       
+                06.  Location Report             Place 04, CA                    92004     2 mi     Standard    Producer              CLEAR          68°F       
+                07.  Location Report             Place 05, CA                    92005     2 mi     Standard    Producer              CLEAR          68°F       
+                08.  Location Report             Place 06, CA                    92006     3 mi     Standard    Producer              CLEAR          68°F       
+                09.  Location Report             Place 07, CA                    92007     4 mi     Standard    Producer              CLEAR          68°F       
+                10.  Location Report             Place 08, CA                    92008     6 mi     Standard    Producer              CLEAR          68°F       
+                11.  Location Report             Place 09, CA                    92009     7 mi     Standard    Producer              CLEAR          68°F       
+                12.  Location Report             Place 10, CA                    92010     8 mi     Standard    Producer              CLEAR          68°F       
+                13.  Location Report             Place 11, CA                    92011    10 mi     Standard    Producer              CLEAR          68°F       
+                14.  Location Report             Place 12, CA                    92012    11 mi     Standard    Producer              CLEAR          68°F       
+                15.  Location Report             Place 13, CA                    92013    13 mi     Standard    Producer              CLEAR          68°F       
+                                                                                                                                                                
+   [                                                                              ][                                         ][                            ]    
+   [                         L O C A T I O N     P O O L                          ][                T O D A Y                ][      T O M O R R O W       ]    
+   [                                                                              ][                                         ][                            ]    
+   [           ]##.  [       NAME       ][WX STN][ DIST ][  ZIP  ][  POPULATION   ][ CONDITIONS ][  NOW   ][ HI  ][   LOW    ][ CONDITIONS ][  HI  ][ LOW  ] ▲  
+                001. Place 00, CA          KOKB     6 mi   92000          1,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   █  
+                002. Place 01, CA          KOKB     4 mi   92001          2,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                003. Place 02, CA          KOKB     3 mi   92002          3,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                004. Place 03, CA          KOKB     2 mi   92003          4,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                005. Place 04, CA          KOKB     2 mi   92004          5,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                006. Place 05, CA          KOKB     2 mi   92005          6,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                007. Place 06, CA          KOKB     3 mi   92006          7,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                008. Place 07, CA          KOKB     4 mi   92007          8,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                009. Place 08, CA          KOKB     6 mi   92008          9,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                010. Place 09, CA          KOKB     7 mi   92009         10,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                011. Place 10, CA          KOKB     8 mi   92010         11,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                012. Place 11, CA          KOKB    10 mi   92011         12,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                013. Place 12, CA          KOKB    11 mi   92012         13,000     CLEAR          68°F      88°F   54°F       CLEAR          88°F    54°F   │  
+                                                                                       Showing 1 - 13 of 25 Location Pool Locations · 25 in reach at 100 mi  ▼  
+                                                                                                                                                                
+                                                                                                                                                                

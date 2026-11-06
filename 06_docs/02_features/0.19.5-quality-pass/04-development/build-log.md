@@ -128,3 +128,19 @@ killed.
   whole process, so `TestEveryArrowRowChangesSomething` left a different theme for the tests after it,
   and two layout tests failed (`TestModuleBlocksAlignWithTables`, `TestTomorrowAndExtendedBandsTouch`).
   The test now puts back the theme it found, as the other theme-changing tests do.
+
+## 0.19.5 batch 3 — whole-frame goldens (Q2.9, Q2.10)
+
+- **36 goldens for the surfaces that had none** (`modes/tty/golden_surfaces_test.go`), each checked to repeat
+  across runs and to show what its name says:
+  - **the console** on standby and on the air, at 100x44, 133x44 and 160x74, plain and colour. Its
+    running order holds an operator's card and its rail a two-alert takeover.
+    `loadedConsoleAt` pins the weather's age, so the fixture is the same on every run.
+  - **Details, Help, About, Status and Diagnostics** at 133x44 and 80x24, plain and `--ascii`, with the
+    Go version in About masked as `<go>`;
+  - **the radio playing** with the visualiser on, compact at 133x44 and full at 133x70, plain and colour.
+- **A golden that drifts names its first differing line** (`firstDiffLine`), with the want and got, instead
+  of printing the whole frame (JM-14).
+- **DEF-8 (D-28), found by the 80x24 goldens:** with a full watchlist the Observer's frame is 31 rows on a
+  24-row terminal, and the alt screen shows only the first 24. The goldens capture today's frame; B4
+  fixes it and they change by that alone.
