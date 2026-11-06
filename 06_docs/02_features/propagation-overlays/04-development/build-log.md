@@ -1080,3 +1080,4 @@ On go-ionomaps v0.1.0-rc.16: a flagged station's miss no longer counted (D-321),
 ## 0.19.3 SHIP - the release branch
 
 - `release/0.19.3` from `feature/o2-accessibility` at batch 7. The follow-ups O2 built are closed, their rows deleted: F-180, F-191 to F-194, F-196 to F-198 and F-205. The CHANGELOG's 0.19.3 section is dated, and the required reading names the branch.
+- **Released** 2026-11-04: PR #35 squash-merged as `4c803d99`, tagged `v0.19.3`; the release job published the five binaries with their checksums, and the darwin-arm64 binary's checksum and `--version` were checked. Both branches deleted.
