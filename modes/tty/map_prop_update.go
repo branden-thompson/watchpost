@@ -203,7 +203,7 @@ func (d Dashboard) nextPropTick() (Dashboard, tea.Cmd) {
 		return d, nil
 	}
 	tick := propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq}
-	return d, tea.Tick(every, func(time.Time) tea.Msg { return tick })
+	return d, d.after(every, tick)
 }
 
 // applyPropTick asks again on the refresh tick, a window over the map or not

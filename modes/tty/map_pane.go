@@ -1585,7 +1585,7 @@ type mapViewSettledMsg struct{ gen uint64 }
 func (d Dashboard) viewMoved() (Dashboard, tea.Cmd) {
 	d.mapPane.viewGen++
 	gen := d.mapPane.viewGen
-	return d, tea.Tick(mapSettleDelay, func(time.Time) tea.Msg { return mapViewSettledMsg{gen: gen} })
+	return d, d.after(mapSettleDelay, mapViewSettledMsg{gen: gen})
 }
 
 // applyViewSettled asks the feed again once the view has stood still: the map
@@ -1598,7 +1598,7 @@ func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
 		return d, nil
 	}
 	if d.modal != modalMap && d.mapShown() {
-		return d, tea.Tick(mapSettleDelay, func(time.Time) tea.Msg { return v })
+		return d, d.after(mapSettleDelay, v)
 	}
 	if d.modal != modalMap {
 		return d, nil // the map closed: its open asks for its view

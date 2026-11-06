@@ -305,7 +305,7 @@ func (d Dashboard) armViz() Dashboard {
 		return d
 	}
 	d.vizTicking = true
-	return d.withCmd(tea.Batch(d.pendingCmd, vizTick()))
+	return d.withCmd(tea.Batch(d.pendingCmd, d.after(50*time.Millisecond, vizTickMsg{})))
 }
 
 // vizFrame pulls the next frame of levels and re-arms while there is work.

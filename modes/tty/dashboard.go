@@ -837,7 +837,12 @@ type Dashboard struct {
 	tickArmed   bool             // a shimmer tick is in flight — never two (Q3: armed only while something animates)
 	now         func() time.Time // the clock the header's "ago" reads (tests pin it)
 	memo        *bodyMemo        // the body memo's single slot (Q3); allocated at construction, shared by every copy of the model
-	mmemo       *modalMemo       // the modal memo's single slot (0.13.0, FR-10): the open window renders once per input change
+	// ticks makes the timed messages: tickEvery when nil, which is production.
+	// A test sets it to answer at once with a tick it can recognise, so it can
+	// tell "a tick was armed" from "an answer came" without waiting on a clock
+	// (0.19.5 Q2.11, RN-9).
+	ticks func(time.Duration, tea.Msg) tea.Cmd
+	mmemo *modalMemo // the modal memo's single slot (0.13.0, FR-10): the open window renders once per input change
 	// 0.13.0: the Severe Weather / Disaster Events window (severe.go)
 	severe          SevereMsg
 	severeByTab     [severeNumTabs][]int // row indices per tab, in the app's sort
@@ -1060,6 +1065,15 @@ func tickEvery(d time.Duration, m tea.Msg) tea.Cmd {
 
 func tick() tea.Cmd { return tickEvery(300*time.Millisecond, tickMsg{}) }
 
+// after is a timed message on the Observer: m after d, made by the model's
+// tick maker when a test set one.
+func (d Dashboard) after(dur time.Duration, m tea.Msg) tea.Cmd {
+	if d.ticks != nil {
+		return d.ticks(dur, m)
+	}
+	return tickEvery(dur, m)
+}
+
 // tickNeeded is the predicate (PF-2, R2-23): true while a frame would
 // differ from the last one without any message arriving.
 // ACCEPTED COST — see docs/accepted-costs.md §2. `len(d.ticker) > 0` is true
@@ -1103,28 +1117,26 @@ func (d Dashboard) tickNeeded() bool {
 // still waiting on the Director. Those are two questions with one answer about
 // what to do with the answer — so the question stays with each surface and this
 // is called with it.
-func armShimmer(armed, needed bool, cmd tea.Cmd) (bool, tea.Cmd) {
+func armShimmer(armed, needed bool, cmd, next tea.Cmd) (bool, tea.Cmd) {
 	if armed || !needed {
 		return armed, cmd
 	}
 	if cmd == nil {
-		return true, tick()
+		return true, next
 	}
-	return true, tea.Batch(cmd, tick())
+	return true, tea.Batch(cmd, next)
 }
 
 // armTick starts the shimmer tick when the frame needs one and none is in
 // flight — the shimmer twin of armViz. Called after every Update.
 func (d Dashboard) armTick(cmd tea.Cmd) (tea.Model, tea.Cmd) {
-	d.tickArmed, cmd = armShimmer(d.tickArmed, d.tickNeeded(), cmd)
+	d.tickArmed, cmd = armShimmer(d.tickArmed, d.tickNeeded(), cmd, d.after(300*time.Millisecond, tickMsg{}))
 	return d, cmd
 }
 
 // vizTickMsg drives the visualizer (UAT 92): 20 frames a second, only while
 // there is something to draw — the shimmer tick is far too slow for bars.
 type vizTickMsg struct{}
-
-func vizTick() tea.Cmd { return tickEvery(50*time.Millisecond, vizTickMsg{}) }
 
 // Init implements tea.Model — asks the terminal for its background color
 // so the window tint tracks light/dark mode (UAT 10.2). The animation tick
@@ -1657,7 +1669,7 @@ func (d Dashboard) tellMapClosed(was bool) Dashboard {
 	d = d.stopPropagation() // nothing is fetched for a map no longer shown (FR-4.2)
 	d.mapCloses++
 	gen := d.mapCloses
-	return d.withCmd(tea.Batch(d.pendingCmd, tea.Tick(d.mapReleaseAfter, func(time.Time) tea.Msg { return mapReleaseMsg{gen: gen} })))
+	return d.withCmd(tea.Batch(d.pendingCmd, d.after(d.mapReleaseAfter, mapReleaseMsg{gen: gen})))
 }
 
 // closeWindow is close's work: back to the window under it, or to none.

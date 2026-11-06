@@ -169,3 +169,44 @@ Q2.13) moves to B5, and each later batch's number moves up one.
 - **mAD5 re-pointed** at the card stamp's new line (D-29) and re-vetted: it is killed by
   `TestTheCardStampsFollowTheClock`. 0.16.0's `gates.md` records `TestTheUpNextCardFollowsTheReferencesOrder` as its
   killer then; that record stays as shipped.
+
+## 0.19.5 batch 5 — the declared seams, the beat pin, RN's minor list (plan Q2.11 to Q2.13)
+
+Mutants m713 to m724, each hand-vetted and killed.
+
+- **The beat pin (Q2.12, PF-6):** `TestBeatAllocBudget`, named so `make alloc-budget` selects it; the plan
+  called it `TestABeatCostsWhatItCosts`.
+  - It runs a message through the Router and draws the frame for the three beats M2 measures: idle
+    Observer 462 allocations and 156,520 B, radio 693 and 168,720 B, console at 160x74 782 and
+    310,457 B. Each is pinned at its measurement × 1.05, bytes as well as allocations.
+  - m713, a tape rune slice copied twice, keeps the count under budget and is killed on bytes alone.
+    That is the case PF-6 named.
+  - Beside it: `TestPublishAllocBudget` (a no-change publish's frame, 5,708 allocations and 423,847 B)
+    and `platform/snapshot`'s `TestAssemblerPublishAllocBudget` (336 and 998,625 B). The package gains
+    the race flag the pins skip on.
+- **The four declared seams (Q2.11), each pinned first and run `-race -count=20`:**
+  - **The publisher's clock.** The publisher has its own `now` and `after`, so `sched.Clock`'s interface
+    does not change (a narrower shape than the plan's). `TestFirstPublishIsImmediateAndLaunchFillsProgressively`
+    now steps a `windowClock` instead of sleeping. `TestPublisherWindowFoldsAWave` held across the change.
+  - **The Observer's ticks.**
+    - Every timed message the Observer arms goes through `Dashboard.after`, made by the model's
+      unexported `ticks` maker when a test sets one. `armShimmer` takes the tick to arm, so each
+      surface passes its own, and the unused `vizTick` is gone.
+    - The Propagation tests' fixture answers ticks at once as a `heldTick`. So `propMsgs` tells an armed
+      tick from an answer by type, and a command that still blocks fails loudly after 10 s, naming the
+      fix.
+    - With the waits gone, `modes/tty` runs in 62 s, down from 84.
+  - **The history sweep** judges a temp file's age, and an unreadable claim's, by the store's clock,
+    as it already judged a readable claim.
+  - **The favourites note** names `WatchCap`.
+- **RN's minor list (Q2.13):**
+  - the console's ↑/↓ signs and Diagnostics' scroll bounds;
+  - the player tests' `waitFor` raised to the 10 s the other packages use;
+  - the duck test's wait also asks that the new player never played;
+  - Diagnostics finds each fire and quake provider;
+  - a preview is refused while the station holds the air.
+
+  Not done:
+  - The alert replay's 5 ms sleep stays. Waiting for every woken tier to wait again was tried and was
+    not enough, because the alert renders after that. Filed as F-223.
+  - The console prompts' duplicated `centre` closure is a consolidation, so it goes with plan Q5.

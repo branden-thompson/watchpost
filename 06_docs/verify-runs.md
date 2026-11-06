@@ -162,3 +162,5 @@ says exactly what passed.
 | 2026-11-06T18:15:01Z | e7187001 | 2f083f9d31cd | verify | FAILED (exit 2) | 0 |
 | 2026-11-06T18:17:45Z | e7187001 | 3863b936781a | verify | FAILED (exit 2) | 0 |
 | 2026-11-06T18:57:11Z | e7187001 | 0bdbc28d713a | verify | green | 2335 |
+| 2026-11-06T19:20:54Z | 310e1af5 | c9895ba2395f | verify | FAILED (exit 2) | 239 |
+| 2026-11-06T20:02:38Z | 310e1af5 | 45643f79c4bf | verify | green | 2393 |

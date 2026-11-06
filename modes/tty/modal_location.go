@@ -297,7 +297,7 @@ func (d Dashboard) addLines(o render.Opts) []string {
 	lines := []string{""}
 	if d.addMode == "add" && d.watchlistFull() {
 		// UAT 26.3: cap note leads the modal when the watchlist is full.
-		lines = append(lines, "  Only 10 locations are allowed in the priority list", "  for performance reasons.", "")
+		lines = append(lines, fmt.Sprintf("  Only %d locations are allowed in the priority list", WatchCap), "  for performance reasons.", "")
 	}
 	lines = append(lines, "  Search: "+d.addQuery+o.Glyphs().Cursor, "")
 	if d.addErr != "" {

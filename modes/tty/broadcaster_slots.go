@@ -93,7 +93,7 @@ func (b Broadcaster) tickNeeded() bool {
 // armTick starts the shimmer when the frame needs one and none is in flight —
 // the console's own twin of the Dashboard's.
 func (b Broadcaster) armTick(cmd tea.Cmd) (Broadcaster, tea.Cmd) {
-	b.tickArmed, cmd = armShimmer(b.tickArmed, b.tickNeeded(), cmd)
+	b.tickArmed, cmd = armShimmer(b.tickArmed, b.tickNeeded(), cmd, tick())
 	return b, cmd
 }
 

@@ -36,6 +36,13 @@ type publisher struct {
 	launchWindow time.Duration
 	launchUntil  time.Time
 
+	// now and after are the clock and the timer the windows run on: the wall
+	// clock and time.AfterFunc when nil, which is production; a test sets both
+	// so a window is measured by its clock, not by sleeping past it (0.19.5
+	// Q2.11, F-51).
+	now   func() time.Time
+	after func(time.Duration, func())
+
 	// Counters (quality pass Q0, red-team R2-7): how often this pipeline
 	// publishes and how many triggers the window folded — the numbers §1's
 	// allocation target and the C3 threshold read. The last snapshot is kept
@@ -82,6 +89,10 @@ func (pb *publisher) Trigger() {
 	if pb.count.Load() == 0 && pb.folded.Load() == 0 {
 		window = 0 // the first publish: at once
 	}
+	if pb.after != nil {
+		pb.after(window, pb.fire)
+		return
+	}
 	time.AfterFunc(window, pb.fire)
 }
 
@@ -99,7 +110,11 @@ func (pb *publisher) fire() {
 // windowNow is the window in force: the launch window until launchUntil,
 // then the steady-state one (caller holds mu).
 func (pb *publisher) windowNow() time.Duration {
-	if pb.launchWindow > 0 && time.Now().Before(pb.launchUntil) {
+	now := time.Now
+	if pb.now != nil {
+		now = pb.now
+	}
+	if pb.launchWindow > 0 && now().Before(pb.launchUntil) {
 		return pb.launchWindow
 	}
 	if pb.window == 0 {

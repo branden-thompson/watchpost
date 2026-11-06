@@ -158,33 +158,72 @@ func TestPublisherWindowFoldsAWave(t *testing.T) {
 // appearing all at once after the steady-state window.
 func TestFirstPublishIsImmediateAndLaunchFillsProgressively(t *testing.T) {
 	var runs atomic.Int32
-	pb := &publisher{window: 400 * time.Millisecond, launchWindow: 40 * time.Millisecond, launchUntil: time.Now().Add(300 * time.Millisecond),
-		run: func() *snapshot.Snapshot { runs.Add(1); return nil }}
-	start := time.Now()
+	clock := &windowClock{at: time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)}
+	pb := &publisher{window: 400 * time.Millisecond, launchWindow: 40 * time.Millisecond, launchUntil: clock.at.Add(300 * time.Millisecond),
+		run: func() *snapshot.Snapshot { runs.Add(1); return nil }, now: clock.Now, after: clock.After}
 	pb.Trigger()
-	deadline := time.Now().Add(100 * time.Millisecond)
-	for runs.Load() == 0 && time.Now().Before(deadline) {
-		time.Sleep(2 * time.Millisecond)
-	}
-	if runs.Load() != 1 || time.Since(start) > 100*time.Millisecond {
-		t.Fatalf("the first publish is immediate: runs=%d after %v", runs.Load(), time.Since(start))
+	clock.Advance(0)
+	if runs.Load() != 1 {
+		t.Fatalf("the first publish is immediate: runs=%d", runs.Load())
 	}
 	pb.Trigger() // inside the launch phase: the short window
-	time.Sleep(120 * time.Millisecond)
-	if runs.Load() != 2 {
-		t.Fatalf("a launch-phase trigger publishes within the launch window: runs=%d", runs.Load())
+	clock.Advance(39 * time.Millisecond)
+	if runs.Load() != 1 {
+		t.Fatalf("a launch-phase trigger published before its window: runs=%d", runs.Load())
 	}
-	time.Sleep(250 * time.Millisecond) // past launchUntil
+	clock.Advance(time.Millisecond)
+	if runs.Load() != 2 {
+		t.Fatalf("a launch-phase trigger publishes when the launch window elapses: runs=%d", runs.Load())
+	}
+	clock.Advance(300 * time.Millisecond) // past launchUntil
 	pb.Trigger()
-	time.Sleep(120 * time.Millisecond)
+	clock.Advance(399 * time.Millisecond)
 	if runs.Load() != 2 {
 		t.Fatalf("after the launch phase the steady-state window holds: runs=%d", runs.Load())
 	}
-	time.Sleep(400 * time.Millisecond)
+	clock.Advance(time.Millisecond)
 	if runs.Load() != 3 {
 		t.Fatalf("…and publishes when it elapses: runs=%d", runs.Load())
 	}
 	if recentLaunchWindow >= time.Second || recentLaunchPhase < 30*time.Second {
 		t.Fatalf("the RECENT launch window is sub-second for the whole launch burst: %v for %v", recentLaunchWindow, recentLaunchPhase)
+	}
+}
+
+// windowClock is a clock and a timer that move only when the test moves them,
+// so a publish window is measured exactly (0.19.5 Q2.11, F-51): a timer fires
+// on the Advance that reaches it, on the test's goroutine.
+type windowClock struct {
+	at     time.Time
+	timers []windowTimer
+}
+
+type windowTimer struct {
+	due time.Time
+	f   func()
+}
+
+func (c *windowClock) Now() time.Time { return c.at }
+
+func (c *windowClock) After(d time.Duration, f func()) {
+	c.timers = append(c.timers, windowTimer{due: c.at.Add(d), f: f})
+}
+
+// Advance moves the clock on and fires every timer it reaches, in due order.
+func (c *windowClock) Advance(d time.Duration) {
+	c.at = c.at.Add(d)
+	for {
+		next := -1
+		for i, tm := range c.timers {
+			if !tm.due.After(c.at) && (next < 0 || tm.due.Before(c.timers[next].due)) {
+				next = i
+			}
+		}
+		if next < 0 {
+			return
+		}
+		f := c.timers[next].f
+		c.timers = append(c.timers[:next], c.timers[next+1:]...)
+		f()
 	}
 }

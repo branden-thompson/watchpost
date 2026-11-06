@@ -550,7 +550,7 @@ type forecastTickMsg struct{ gen uint64 }
 // forecastTick is the next step's tick.
 func (d Dashboard) forecastTick() tea.Cmd {
 	gen := d.mapPane.fcGen
-	return tea.Tick(d.mapPlayback, func(time.Time) tea.Msg { return forecastTickMsg{gen: gen} }) // at the speed chosen (D-361)
+	return d.after(d.mapPlayback, forecastTickMsg{gen: gen}) // at the speed chosen (D-361)
 }
 
 // handleForecastPlayback is the playback keys in Forecast mode: the host

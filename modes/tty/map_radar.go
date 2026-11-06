@@ -142,7 +142,7 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, again)
 	}
 	if wait, region := v.radar.AheadIn, v.region; wait > 0 { // the hours ahead still owed (D-204)
-		cmds = append(cmds, tea.Tick(wait, func(time.Time) tea.Msg { return mapRadarAgainMsg{region: region} }))
+		cmds = append(cmds, d.after(wait, mapRadarAgainMsg{region: region}))
 	}
 	return d, tea.Batch(cmds...)
 }

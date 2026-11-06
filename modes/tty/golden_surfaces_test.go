@@ -107,7 +107,7 @@ func TestRadioPlayingGoldens(t *testing.T) {
 
 // playingDash is the bench dashboard with the radio playing a relay and the
 // visualiser drawing fixed bars, at the golden instant.
-func playingDash(t *testing.T, w, h int) Dashboard {
+func playingDash(t testing.TB, w, h int) Dashboard {
 	t.Helper()
 	d := benchDash(t, w, h).(Dashboard)
 	bands := make([]float64, 32)
