@@ -139,3 +139,38 @@ func TestTideHeightsShareOneColumn(t *testing.T) {
 		t.Fatalf("mock order starts with Observed:\n%s", got)
 	}
 }
+
+// TestTheMarineSectionDrawsEverySwellAndTheBuoysWind is 0.19.5 Q2.8 (RN-13):
+// the second swell, the wind waves and the buoy's wind with its gusts each
+// have a row, in the listener's units.
+func TestTheMarineSectionDrawsEverySwellAndTheBuoysWind(t *testing.T) {
+	m := &snapshot.Marine{
+		SwellHeight: new(1.2), SwellDirDeg: new(270.0),
+		SecondarySwellHeight: new(0.6), SecondarySwellDirDeg: new(200.0),
+		WindWaveHeight: new(0.3), WindSpeed: new(5.0), WindGust: new(9.0),
+	}
+	for _, c := range []struct {
+		units render.Units
+		wind  string
+		gust  string
+	}{
+		{render.UnitF, "11 mph", "(gusts 20 mph)"},
+		{render.UnitC, "18 km/h", "(gusts 32 km/h)"},
+	} {
+		rows := map[string]marineCell{}
+		for _, r := range swellRows(render.Opts{Units: c.units}, m) {
+			rows[r.label] = r
+		}
+		for _, label := range []string{"Swell", "Swell 2", "Wind Waves", "Buoy Wind"} {
+			if _, ok := rows[label]; !ok {
+				t.Errorf("units %v: the marine section has no %q row", c.units, label)
+			}
+		}
+		if w := rows["Buoy Wind"]; w.value != c.wind || w.note != c.gust {
+			t.Errorf("units %v: the buoy wind reads %q %q; want %q %q", c.units, w.value, w.note, c.wind, c.gust)
+		}
+		if !strings.Contains(rows["Swell 2"].value, "SW") {
+			t.Errorf("units %v: the second swell's direction is missing: %q", c.units, rows["Swell 2"].value)
+		}
+	}
+}

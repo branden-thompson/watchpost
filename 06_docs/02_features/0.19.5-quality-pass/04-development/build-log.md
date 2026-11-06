@@ -82,3 +82,49 @@ Every task's pin failed on the shipped code before its fix, and each fix has han
   0.19.0's 344. Ten of the 16 are the backspace sites, one line each. No check was added for the count.
   `platform/config`'s `Validate` gained a real guard: the source mode's closed set is now the
   `radioModes` table its comment names, which holds that package at its floor of 1.00.
+
+## 0.19.5 batch 2 — the regression net, tests only (Q2.1 to Q2.8)
+
+No production code changed. Every new pin was seen to fail on a hand-applied mutant (m675 to m707), all
+killed.
+
+- **Q2.1 (RN-1), the radio deck's voice and relay-fault side** (`app/deck_voice_test.go`), on a real
+  engine over an output that plays each clip to its end, and a headless program whose messages the test
+  reads, with no new seam (A-14). The pins:
+  - a muted class sounds no tone, and a tone never feeds the bars;
+  - a viz line feeds the bars and a takeover's does not;
+  - a line that cannot be read says why on the detail line;
+  - a spent clip is said only while a read was on the air;
+  - the relay-fault window offers the other stations in order, and a pick's mounts are tried first;
+  - [m] saves the pick whatever holds the air. The re-tune's refusal while the console holds the air was
+    already pinned by `air_boundary_test.go`.
+
+  Not pinned: the "no voice for …" words. They need a host with no voice at all, and on Linux reaching
+  that path starts a real Piper download.
+- **Q2.2 (RN-2):** enabling one class under an empty mute keeps the others muted; enabling the last
+  muted class turns mute mode off.
+- **Q2.3 (RN-3):** both stores' caps keep the newest entries, reached by the cap rather than the window.
+- **Q2.4 (RN-5):**
+  - the marine report reads tides in the location's zone;
+  - a seismic state is unknown until the feed answers;
+  - a composed broadcast orders maritime, fire, seismic and the sign-off, each report opening after
+    two seconds, and the marine report carries its manifest line.
+- **Q2.5 (RN-6):**
+  - the operator's card is minted as the operator's, with their reports, admitted at their position;
+  - a card says who asked for it in the operator's words;
+  - Change Position says its range and its error.
+- **Q2.6 (RN-7):** a shared host shows its worst feed and its oldest fetch, in either order.
+- **Q2.7 (RN-8):** the watchlist stops at `WatchCap`: the note, the inert enter, the refusal, the
+  unavailable chip.
+- **Q2.8:**
+  - RN-12: a layer says its best answer whichever came first. The fixture's radar answer is itself
+    no-data, so the pin sets one, and it checks that each answer says different words.
+  - RN-13: the marine section's second swell, wind waves and buoy wind, in both unit systems.
+  - JM-8: `TestEveryArrowRowChangesSomething` presses ← and → on every toggle and picker row and requires
+    the window to change, which catches a row whose branch in `setupRowKey`'s chain is never reached
+    (m706, m707).
+- `new(v)` replaces a pointer helper only for a float literal: `new(270)` is an `*int` (noted for A-5).
+- **A leak the batch's race run found:** pressing an arrow on the Theme row applies the theme to the
+  whole process, so `TestEveryArrowRowChangesSomething` left a different theme for the tests after it,
+  and two layout tests failed (`TestModuleBlocksAlignWithTables`, `TestTomorrowAndExtendedBandsTouch`).
+  The test now puts back the theme it found, as the other theme-changing tests do.
