@@ -303,6 +303,9 @@ func NewRouter(o Dashboard) Router {
 	// means 50" rule, and a console that re-derived it would be a second carrier
 	// of that rule.
 	b.fireBoldMW = o.fireBoldMW()
+	// And the same units and clock (0.16.0 FR-6.2), mirrored again on every
+	// update (0.19.5 D-21).
+	b.units, b.clockFmt = o.units, o.clockFmt
 	// AND THE STATION IT IS A CONSOLE FOR (D-72). The area MOVES, so changes
 	// arrive as a message; this is the value it opens with.
 	b.area, b.areaGen = o.cfg.StationArea, b.areaGen+1
@@ -452,6 +455,9 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// station is.
 	if out, ok := m.(Router); ok {
 		out.broadcaster.gain = out.observer.radioVolume
+		// And the units and clock, which are shared Settings (0.16.0 FR-6.2,
+		// 0.19.5 D-21): changed from either surface, both draw the change.
+		out.broadcaster.units, out.broadcaster.clockFmt = out.observer.units, out.observer.clockFmt
 		if out.observer.reduceMotion { // AND REDUCE MOTION, one switch for both (D-360): the console's dots hold their first phase
 			out.broadcaster.frame = 0
 		}
@@ -1164,9 +1170,7 @@ func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
 		r.observer = r.observer.close()
 		r.observer.cardAct, r.observer.cardMoveTo = cardActionNone, ""
 	case "backspace":
-		if d := []rune(r.observer.cardMoveTo); len(d) > 0 {
-			r.observer.cardMoveTo = string(d[:len(d)-1])
-		}
+		r.observer.cardMoveTo = eraseRune(r.observer.cardMoveTo)
 		r.observer.cardErr = ""
 	default:
 		// THE KEY'S OWN NAME, NOT ITS `Text`. A terminal fills `Text` for a

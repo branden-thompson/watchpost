@@ -248,9 +248,7 @@ func (d Dashboard) handlePropFreqKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return d.close(), nil
 	case "backspace":
-		if r := []rune(d.mapPane.propFreqQuery); len(r) > 0 {
-			d.mapPane.propFreqQuery = string(r[:len(r)-1])
-		}
+		d.mapPane.propFreqQuery = eraseRune(d.mapPane.propFreqQuery)
 	default:
 		if key.Text != "" && len([]rune(d.mapPane.propFreqQuery)) < 16 {
 			d.mapPane.propFreqQuery += key.Text

@@ -250,20 +250,6 @@ func TestCastChangedIsANoOpInP1(t *testing.T) {
 	}
 }
 
-func TestSpokenNameDropsTheLanguageSuffixAndTheSentinel(t *testing.T) {
-	for _, tc := range []struct{ in, want string }{
-		{"Samantha", "Samantha"},
-		{"Eddy (English (US))", "Eddy"},
-		{"Aman (English (India))", "Aman"},
-		{systemVoice, ""}, // "your correspondent" — the sentinel has no name (UAT 88)
-		{"", ""},
-	} {
-		if got := spokenName(tc.in); got != tc.want {
-			t.Errorf("spokenName(%q) = %q, want %q", tc.in, got, tc.want)
-		}
-	}
-}
-
 // --- Task 1.13: every voice the deck hands out is limited ---
 
 func TestTheDeckHandsOutOnlyLimitedVoices(t *testing.T) {

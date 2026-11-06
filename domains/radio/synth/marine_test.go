@@ -107,6 +107,28 @@ func TestMarineReadsTheListenersUnitsButCurrentsInKnots(t *testing.T) {
 	}
 }
 
+// TestTheWaterTemperatureSaysTheListenersUnit is 0.19.5 D-6 (DEF-3): the water
+// temperature is worded as current conditions word the air, so under metric it
+// says "Celsius" and under imperial it says a bare "degrees".
+func TestTheWaterTemperatureSaysTheListenersUnit(t *testing.T) {
+	now := time.Date(2026, 8, 30, 15, 0, 0, 0, time.UTC)
+	for _, c := range []struct {
+		imperial bool
+		want     string
+	}{
+		{false, "23 degrees Celsius"},
+		{true, "74 degrees"},
+	} {
+		got := joinSegs(std.MarineSegments("Oceanside, CA", marineFixture(now), c.imperial, now))
+		if !strings.Contains(got, "Water temperature "+c.want+".") {
+			t.Errorf("imperial=%v: want %q in the water line:\n%s", c.imperial, c.want, got)
+		}
+		if want := degrees(23.3, c.imperial); !strings.Contains(got, want) {
+			t.Errorf("imperial=%v: the water says otherwise than the air would, %q", c.imperial, want)
+		}
+	}
+}
+
 // No tides and no currents is a STATED absence, not silence: the listener needs
 // to know the station is out of range rather than wonder if the app broke.
 func TestMarineStatesTheAbsenceOfTidesAndCurrents(t *testing.T) {

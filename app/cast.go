@@ -6,7 +6,6 @@ import (
 	"maps"
 	"os/exec"
 	"runtime"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -296,19 +295,6 @@ func (d *radioDeck) castChanged() {
 		v, _, err := d.resolveVoice(role)
 		return v, err
 	})
-}
-
-// spokenName is the name the identity lines use for a resolved voice: the
-// sentinel has no name a listener would recognise, so it introduces itself as
-// "your correspondent" (UAT 88).
-func spokenName(resolved string) string {
-	if resolved == "" || resolved == systemVoice {
-		return ""
-	}
-	if i := strings.Index(resolved, " ("); i > 0 {
-		return resolved[:i] // "Eddy (English (US))" reads as "Eddy"
-	}
-	return resolved
 }
 
 // --- Task 2.7: the deck resolves by role ---

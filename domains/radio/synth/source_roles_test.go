@@ -247,6 +247,31 @@ func TestSpokenNameIsPlainBoundedAndNamesTheUnnamed(t *testing.T) {
 	}
 }
 
+// TestAHandOffSaysTheVoicesNameWithoutItsLanguage is 0.19.5 D-7: a curated
+// macOS voice is named "Eddy (English (US))", and the identity lines say and
+// show "Eddy". The full name still tells two engines apart: two voices that
+// share a first name are two correspondents, with hand-offs of their own.
+func TestAHandOffSaysTheVoicesNameWithoutItsLanguage(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{"Eddy (English (US))", "Eddy"},
+		{"Aman (English (India))", "Aman"},
+		{"Samantha", "Samantha"},
+	} {
+		if got := spokenName(&castVoice{name: tc.in}); got != tc.want {
+			t.Errorf("spokenName(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+	us, india := &castVoice{name: "Eddy (English (US))"}, &castVoice{name: "Eddy (English (India))"}
+	if handoffKey(us, india, "x") == handoffKey(india, us, "x") {
+		t.Error("two voices sharing a first name share their hand-off audio")
+	}
+	src := &Source{}
+	src.changingVoice(us)
+	if !src.changingVoice(india) {
+		t.Error("a change between two voices sharing a first name is not a change of correspondent")
+	}
+}
+
 // --- Task 2.3: the hand-over, rendered ahead ---
 
 func TestOneHandOverPerVoiceChangeSpokenByTheIncomingVoice(t *testing.T) {

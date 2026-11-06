@@ -797,9 +797,7 @@ func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "down":
 		d.setup.idx = min(max(0, len(d.setup.hints)-1), d.setup.idx+1)
 	case "backspace":
-		if r := []rune(d.setup.query); len(r) > 0 {
-			d.setup.query = string(r[:len(r)-1])
-		}
+		d.setup.query = eraseRune(d.setup.query)
 		d = d.setupSuggest()
 	default:
 		if key.Text != "" {
@@ -829,9 +827,7 @@ func (d Dashboard) setupServiceKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return d.setupAdvance()
 	case "backspace":
 		d.setup.serviceSeeded = false
-		if r := []rune(d.setup.serviceMi); len(r) > 0 {
-			d.setup.serviceMi = string(r[:len(r)-1])
-		}
+		d.setup.serviceMi = eraseRune(d.setup.serviceMi)
 	default:
 		if r := key.Text; r >= "0" && r <= "9" {
 			if d.setup.serviceSeeded {
@@ -853,9 +849,7 @@ func (d Dashboard) setupKeyKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		return d.setupAdvance() // the key row ends DATA: this saves
 	case "backspace":
-		if r := []rune(d.setup.key); len(r) > 0 {
-			d.setup.key = string(r[:len(r)-1])
-		}
+		d.setup.key = eraseRune(d.setup.key)
 	default:
 		if key.Text != "" {
 			d.setup.key += key.Text
@@ -877,9 +871,7 @@ func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// Editing is taking the field over as surely as typing is: after a
 		// backspace the buffer is the listener's, so the next digit appends.
 		d.setup.radiusSeeded = false
-		if r := []rune(d.setup.radiusMi); len(r) > 0 {
-			d.setup.radiusMi = string(r[:len(r)-1])
-		}
+		d.setup.radiusMi = eraseRune(d.setup.radiusMi)
 	default:
 		if r := key.Text; r >= "0" && r <= "9" {
 			// A KEY THAT CHANGES NOTHING SELECTS NOTHING (VALIDATE red team,

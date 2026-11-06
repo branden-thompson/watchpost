@@ -65,9 +65,7 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		d = d.close()
 		d.addQuery, d.addErr, d.addLocate = "", "", locateState{}
 	case "backspace":
-		if r := []rune(d.addQuery); len(r) > 0 {
-			d.addQuery = string(r[:len(r)-1])
-		}
+		d.addQuery = eraseRune(d.addQuery)
 		return d.afterLookupEdit()
 	default:
 		if key.Text != "" {

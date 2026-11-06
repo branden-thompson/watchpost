@@ -346,6 +346,21 @@ func (st requestState) next() requestState {
 	return st
 }
 
+// nextField is the first line of the next field, whichever line of this one
+// the pointer is on: what tab does.
+func (st requestState) nextField() requestState {
+	switch st.field {
+	case requestLocation:
+		st.field = requestReports
+	case requestReports:
+		st.field = requestPosition
+	case requestPosition:
+		st.field = requestLocation
+	}
+	st.at = 0
+	return st
+}
+
 // prev is one step up.
 func (st requestState) prev() requestState {
 	switch st.field {
@@ -365,13 +380,13 @@ func (st requestState) prev() requestState {
 
 // handleRequestKey owns the keyboard while the request window is open.
 //
-// A WINDOW ON TOP OWNS THE KEYS (D-58), and a form owns them twice over: a
+// A window on top owns the keys (D-58), and a form owns them twice over: a
 // digit typed into the slot field must not reach the running order, and a
 // letter typed into the location must not be a console control.
 //
-// ESC CANCELS AND LOSES THE FORM, deliberately. A half-filled request kept
-// across a close is a window that reopens saying something the operator did not
-// mean to still be asking for.
+// Esc cancels and loses the form, deliberately: a half-filled request kept
+// across a close is a window that reopens asking for something the operator
+// no longer means.
 func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
 	case "esc":
@@ -384,16 +399,16 @@ func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "down":
 		return d.handleRequestNav("nav-down"), nil
 	case "tab":
-		// TAB IS THE FIELD, ↓ IS THE LINE. One walks the form, the other walks
-		// whatever the focused field contains — the same split Settings uses.
-		// TAB IS `next` WITHOUT THE ROWS: it moves to the next FIELD, where ↓
-		// walks whatever the focused field contains. One order, not two.
-		d.request.field, d.request.at = d.request.next().field, 0
-		if d.request.field == requestReports && d.request.at != 0 {
-			d.request.at = 0
-		}
+		// Tab walks the fields and ↓ walks the lines inside one, the split
+		// Settings uses (0.19.5 D-26).
+		d.request = d.request.nextField()
 		return d, nil
-	case " ":
+	case "space":
+		// Bubble Tea names this key "space", never " " (0.19.5 D-26). In the
+		// location it is a letter of the place's name; elsewhere it toggles.
+		if d.request.field == requestLocation {
+			return d.requestType(" ")
+		}
 		return d.requestToggle(), nil
 	case "backspace":
 		return d.requestErase()
@@ -445,14 +460,10 @@ func (d Dashboard) requestType(r string) (Dashboard, tea.Cmd) {
 func (d Dashboard) requestErase() (Dashboard, tea.Cmd) {
 	switch d.request.field {
 	case requestLocation:
-		if n := len(d.request.query); n > 0 {
-			d.request.query = d.request.query[:n-1]
-		}
+		d.request.query = eraseRune(d.request.query)
 		return d.afterRequestEdit()
 	case requestPosition:
-		if n := len(d.request.slot); n > 0 {
-			d.request.slot = d.request.slot[:n-1]
-		}
+		d.request.slot = eraseRune(d.request.slot)
 	}
 	return d, nil
 }

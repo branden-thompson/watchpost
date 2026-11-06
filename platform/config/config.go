@@ -116,30 +116,38 @@ type Tones struct {
 }
 
 // radioModes, castModes and toneModes are the closed sets Validate checks. They
-// are the SHAPE half of the split with domains/radio/cast: which words are
+// are the shape half of the split with domains/radio/cast: which words are
 // legal here, never what a role or a class means.
 const (
+	radioModeSynth = "synth"
+	radioModeRelay = "relay"
 	castModeSingle = ""
 	castModeOn     = "cast"
 	toneModeOn     = ""
 	toneModeMute   = "mute"
 )
 
+// radioModes is the source mode's closed set; "" is a config that never
+// pressed [m], which reads as Synth.
+var radioModes = map[string]bool{"": true, radioModeSynth: true, radioModeRelay: true}
+
 // Validate checks the [radio] tables the way Load reports every other config
 // fault — at load, naming the key.
 //
-// It checks TABLE SHAPES AND CLOSED WORD SETS ONLY. Whether an assigned voice
+// It checks table shapes and closed word sets only. Whether an assigned voice
 // can actually speak on this host, and which tone-class keys exist, are
 // domains/radio/cast's (cast.Validate, P1 Task 1.5): this package must not
 // import a domain, and duplicating the rule is how the loader, the screen and
 // the deck drift apart.
 //
-// Note the asymmetry with Fire.Validate: a bad [fire] radius is an ERROR that
-// stops the load, because acting on it would attach the wrong hotspots. A bad
-// cast mode is reported and read as the default instead, because refusing to
-// start over a typo in a voice preference would be worse than reading it
-// conservatively — and cast.Validate surfaces it in [S] either way.
+// A word outside its set stops the load, as a bad [fire] radius does, and the
+// error names the key, its legal words and what was found, so the listener can
+// fix the line (Load adds the file and the way out). An unknown tone-class key
+// is not a word set: cast.Validate reports it in [S] and the load goes on.
 func (r Radio) Validate() error {
+	if !radioModes[r.Mode] {
+		return fmt.Errorf("[radio] mode must be %q or %q (got %q)", radioModeSynth, radioModeRelay, r.Mode)
+	}
 	switch r.Cast {
 	case castModeSingle, castModeOn:
 	default:

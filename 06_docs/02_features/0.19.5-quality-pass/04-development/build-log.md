@@ -38,3 +38,47 @@ the beat does not measure.
 tape memo, keyed on a generation that only `setTicker` bumps, went on drawing the unmarked tape. That is
 the stale-frame risk A-15 guards against. Q4.3 makes the ticker change only through `setTicker`, and its
 guard perturbs the inputs. Every other test in `modes/tty` passed on the prototype copy.
+
+## 0.19.5 batch 1 — the ruled behaviour changes (Q1, Q7.7)
+
+Every task's pin failed on the shipped code before its fix, and each fix has hand-vetted mutants
+(m655 to m674), all killed.
+
+- **DEF-1 (D-5, RN-4): backspace erases a letter in every text field.** One `eraseRune` (`modes/tty/textfield.go`)
+  serves the ten erase sites; each keeps its own side effect (Settings' suggestions, the seeded radii,
+  Change Position's error line). Pin: `TestBackspaceErasesALetterInEveryField`.
+- **DEF-6 and DEF-7 (D-26), found by the Request window's new pin:** Bubble Tea names the space key
+  "space", never " ", so the window's toggle never fired; and tab reused the row-walking `next()`, so
+  it never left the reports. Space now toggles a report and flips PRIORITIZE, and still types a space
+  into the location; tab moves by field (`requestState.nextField`). Pin:
+  `TestTheRequestWindowsKeysDoWhatTheyClaim`. A grep found no other handler matching a bare " ".
+- **DEF-2 (D-5) and D-21: the console wears the units and clock Settings.** The Router mirrors both
+  into the Broadcaster on every update, as it does the gain; `Broadcaster.opts()` carries them, and the
+  console's memo key holds them. Pins: `TestTheConsolesPoolWearsTheListenersUnits`,
+  `TestTheConsolesMastheadWearsTheListenersClock`, `TestAUnitsChangeRedrawsTheConsolesPool`. The card
+  manifest's stamps (`broadcaster_manifest.go:99`, `:129`) keep the 24-hour form the 0.16.0 reference
+  mock draws (`mock-broadcaster-v2.txt`); they are put to the HUM LEAD at the batch's report.
+- **DEF-3 (D-6): every metric spoken temperature says "degrees Celsius".** `tempWords` takes the
+  conditions' `degrees`. Pin: `TestTheWaterTemperatureSaysTheListenersUnit`.
+- **D-7: the identity lines drop the language suffix.** `synth.spokenName` strips " (…)"; the hand-off
+  cache key and the "a different correspondent" checks use the full name (`voiceID`), so two voices
+  sharing a first name keep their own hand-offs (RR-15). The dead `app.spokenName` and its test are
+  gone, and `app`'s declaration set re-captured. No golden carried a suffix. Pin:
+  `TestAHandOffSaysTheVoicesNameWithoutItsLanguage`.
+- **D-8: Setup decides "the same place" by `snapshot.PlaceID`.** Pins: `TestSetupKeepsTwoPlacesThatShareCoordinatesButNotAZip`,
+  `TestSetupKeepsAZiplessEntryBesideTheNewDefault`, `TestSetupKeepsAZippedEntryBesideAZiplessDefault`,
+  `TestSetupFoldsCoordinatesEqualToFourDecimals`.
+- **D-9: an unknown `[radio] mode` is refused at load.** `Radio.Validate` checks the closed set the
+  comment already named. Its doc said a bad cast mode "is reported and read as the default"; `Load`
+  refuses it, so the doc now says what the code does. Pins: `TestAnUnknownRadioModeIsRefusedNamingTheKey`,
+  `TestTheRadioModesWordsLoad`.
+- **D-16 (DEF-4, Q7.7): the Makefile's release paths are derived.** `LAST_TAG` is the newest release
+  tag; `HYGIENE_KEEP` keeps its binary, and `VERDICTS_RECORD` is
+  `06_docs/mutants/verdicts/since-v<LAST_TAG>.log`, which `promote-verdicts` refuses to write in a clone
+  with no tags. 0.16.0's record is left as shipped. `gateoracle.RequireMake` is exported so the new test
+  shares its make check. Pin: `TestTheReleasePathsAreDerivedFromTheLastTag`.
+- **P10 (D-27):** `make p10` reports no live finding. One density row is under its floor: `modes/tty`
+  measures 0.25 over the 16 functions this release has changed there, against 0.42 ratified over
+  0.19.0's 344. Ten of the 16 are the backspace sites, one line each. No check was added for the count.
+  `platform/config`'s `Validate` gained a real guard: the source mode's closed set is now the
+  `radioModes` table its comment names, which holds that package at its floor of 1.00.

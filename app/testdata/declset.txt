@@ -912,7 +912,6 @@ func sharesAnOutput
 func sizeWords
 func sleepCtx
 func snapshotBytes
-func spokenName
 func spokenWhen
 func spokenWindow
 func spreadInView

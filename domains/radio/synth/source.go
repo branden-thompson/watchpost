@@ -214,21 +214,26 @@ const (
 	// unnamedCorrespondent is what a voice with no name calls itself — the
 	// macOS System Voice, which modern macOS will not name (UAT 88).
 	unnamedCorrespondent = "your correspondent"
-	// maxSpokenName bounds a name that will be spoken and drawn. Long enough
-	// for "Aman (English (India))", short enough that a hostile name cannot
-	// push a marquee row off the screen.
+	// maxSpokenName bounds a name that will be spoken and drawn: long enough
+	// for any curated voice, short enough that a hostile name cannot push a
+	// marquee row off the screen.
 	maxSpokenName = 48
 )
 
-// spokenName is the ONE owner of a voice's name as it will be spoken or shown
+// spokenName is the one owner of a voice's name as it will be spoken or shown
 // (RS-18). A voice name reaches a synthesiser's stdin and a terminal frame, and
 // it can come from a hand-edited config, so it is made plain here rather than
-// at each of those seams.
+// at each of those seams. A curated macOS voice says its first name only:
+// "Eddy (English (US))" is "Eddy" (0.19.5 D-7). Telling two engines apart is
+// voiceID's job, not this one's.
 func spokenName(v Voice) string {
 	if v == nil {
 		return unnamedCorrespondent
 	}
 	name := plaintext.Line(v.Name())
+	if i := strings.Index(name, " ("); i > 0 {
+		name = name[:i]
+	}
 	if name == "" {
 		return unnamedCorrespondent
 	}
@@ -359,7 +364,7 @@ func (s *Source) renderAhead(ctx context.Context, seg Segment, lastVoice Voice) 
 	// The listener still hears the change of voice AND is told whose it is —
 	// the segment does both, which is why the introduction is redundant rather
 	// than merely repetitive.
-	if lastVoice != nil && !seg.SelfIntro && spokenName(lastVoice) != spokenName(v) {
+	if lastVoice != nil && !seg.SelfIntro && voiceID(lastVoice) != voiceID(v) {
 		r.handoffText = s.handoffLine(spokenName(lastVoice), spokenName(v))
 		// Rendered HERE, ahead of the air, and cached per (from → to, line) so
 		// a cycle that crosses the same boundary twice renders it once.
@@ -376,7 +381,17 @@ func (s *Source) renderAhead(ctx context.Context, seg Segment, lastVoice Voice) 
 // handoffKey identifies one hand-over in the cache: who to whom, and the exact
 // words, so a reworded override never reuses the old line's audio.
 func handoffKey(from, to Voice, line string) string {
-	return "handoff:" + spokenName(from) + "\x00" + spokenName(to) + "\x00" + line
+	return "handoff:" + voiceID(from) + "\x00" + voiceID(to) + "\x00" + line
+}
+
+// voiceID is a voice's full name, which tells two engines apart where their
+// spoken names agree: two voices called Eddy are two correspondents (0.19.5
+// D-7).
+func voiceID(v Voice) string {
+	if v == nil {
+		return ""
+	}
+	return v.Name()
 }
 
 // play streams one rendered segment to the pipe in 100 ms chunks, then the
@@ -440,7 +455,7 @@ func (s *Source) play(ctx context.Context, pw *io.PipeWriter, r renderedSeg) boo
 func (s *Source) changingVoice(v Voice) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	changed := s.onAir != nil && spokenName(s.onAir) != spokenName(v)
+	changed := s.onAir != nil && voiceID(s.onAir) != voiceID(v)
 	s.onAir = v
 	return changed
 }

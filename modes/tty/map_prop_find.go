@@ -98,9 +98,7 @@ func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return d.dropFind().close(), nil
 	case "backspace":
-		if r := []rune(d.mapPane.propFindQuery); len(r) > 0 {
-			d.mapPane.propFindQuery = string(r[:len(r)-1])
-		}
+		d.mapPane.propFindQuery = eraseRune(d.mapPane.propFindQuery)
 	default:
 		if key.Text != "" && len([]rune(d.mapPane.propFindQuery)) < propFindMost {
 			d.mapPane.propFindQuery += key.Text

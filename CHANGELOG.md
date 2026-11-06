@@ -2,6 +2,29 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [Unreleased]
+
+### Fixed
+- **Backspace erases a whole letter in the Line-Up Request window,** as in every other text field:
+  erasing after a letter such as "ñ" left half of it behind.
+- **Space and tab work in the Line-Up Request window.** Space ticks or unticks the focused report and
+  switches between PRIORITIZE and a numbered slot, and still types a space into the location; tab moves
+  to the next field from any report row instead of staying on the reports.
+- **The Broadcaster console wears the units and clock Settings,** as Observer does: the location pool's
+  temperatures and distances follow °F/°C, and the masthead's "Updated:" time follows the 12-hour,
+  24-hour or military clock. A change made with the console up shows at once.
+
+### Changed
+- **Every spoken temperature names Celsius under metric.** The marine report's water temperature said a
+  bare "degrees" where current conditions said "degrees Celsius"; both say "degrees Celsius" now, and a
+  bare "degrees" under imperial.
+- **A correspondent introduces itself by its first name:** a macOS voice listed as "Eddy (English (US))"
+  says "This is Eddy" and shows "Eddy" on the marquee.
+- **Re-running Setup keeps a place unless it is the same place by the app's one rule** — the same ZIP,
+  or for a place without one the same coordinates to four decimals — as the watchlist and RECENT decide.
+- **An unknown `[radio] mode` stops Watchpost at start** and names the key and its two words, as `cast`
+  and the tones' `mode` already did, instead of being read as Synth.
+
 ## [0.19.3] — 2026-11-03
 
 ### Fixed

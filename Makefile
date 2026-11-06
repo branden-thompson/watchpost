@@ -11,6 +11,11 @@ PLATFORMS := darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64
 # before a release's squash merge finds that release's tag on main, not here.
 # Override: make VERSION=0.9.0
 VERSION ?= $(shell git describe --tags --match 'v*' --always --dirty 2>/dev/null | sed 's/^v//')
+# LAST_TAG is the newest release tag the tree builds on, without its "v": the
+# release the next one is measured against, and the name of this cycle's sweep
+# record (0.19.5 D-16). Empty in a clone without tags.
+# Override: make LAST_TAG=0.19.3
+LAST_TAG ?= $(shell git describe --tags --match 'v*' --abbrev=0 2>/dev/null | sed 's/^v//')
 # -trimpath: the build path is not shipped (FR-7.5, HUM LEAD 2026-09-08).
 # Without it every binary embeds the absolute directory it was compiled from —
 # 473 occurrences in watchpost-darwin-arm64, 485 in linux-amd64 — which names
@@ -238,7 +243,8 @@ test-platforms:
 # what the HUM LEAD runs for UAT, and the previous release is what the M3 ear
 # test and perf-protocol §4 measure against — so the pinned comparator moves up
 # with each release, and the one before it goes (its assets stay on the tag). Everything else in dist that is
-# executable is a build variant and goes.
+# executable is a build variant and goes. The comparator is the newest release
+# tag's binary, derived from git, so nothing moves by hand (0.19.5 D-16).
 #
 # RECORDS are not deleted here, but dist is NOT durable: it is the directory
 # this target empties. A run's record belongs in the feature's 06_docs tree, on
@@ -253,7 +259,7 @@ test-platforms:
 # short. It is regenerable from any run, so it does not belong in the
 # repository's history; it is also the one thing in dist whose deletion costs
 # something, so it is named here rather than left to luck.
-HYGIENE_KEEP := watchpost watchpost-0.14.1 mutant-verdicts.timings
+HYGIENE_KEEP := watchpost watchpost-$(LAST_TAG) mutant-verdicts.timings
 
 hygiene:
 	@test -n "$(RESULTS)" || { echo "hygiene: RESULTS must name the run's record; refusing to delete"; exit 1; }
@@ -374,12 +380,12 @@ journey: build
 #
 # NOT IN `verify`: tens of minutes, one mutant at a time. Same standing as
 # `journey`. HUM LEAD approved it as a standing obligation 2026-09-13.
-# VERDICTS_RECORD is where the sweep's RECORD lives once it is durable.
-#
-# IT MOVES WITH THE RELEASE, exactly as HYGIENE_KEEP's pinned comparator does:
-# a sweep is evidence about the corpus as it stood for one release, and filing
-# them all in one place would make the newest silently overwrite the last.
-VERDICTS_RECORD := 06_docs/02_features/0.16.0-broadcaster-ui/07-readiness/mutant-verdicts.log
+# VERDICTS_RECORD is where the sweep's record lives once it is durable: one
+# file for the tree since the newest release tag, named from LAST_TAG (0.19.5
+# D-16). A sweep is evidence about the corpus as it stood for one release, so a
+# cycle's newest sweep replaces that cycle's last, and a shipped release's
+# record is never written again: the next tag names the next file.
+VERDICTS_RECORD := 06_docs/mutants/verdicts/since-v$(LAST_TAG).log
 
 # promote-verdicts is the protocol's THIRD AND FOURTH STEPS for this target —
 # put the results somewhere durable, then VERIFY they are there — and it runs
@@ -399,6 +405,7 @@ VERDICTS_RECORD := 06_docs/02_features/0.16.0-broadcaster-ui/07-readiness/mutant
 # this session's 3-hour sweep log, recoverable only because the run's stdout
 # happened to survive elsewhere. To see what a target would do, read it.
 promote-verdicts:
+	@test -n "$(LAST_TAG)" || { echo "promote-verdicts: this clone has no release tag, so the record has no name; fetch the tags (git fetch --tags) and promote again"; exit 1; }
 	@test -s "$(DIST)/mutant-verdicts.log" || { echo "promote-verdicts: $(DIST)/mutant-verdicts.log is missing or empty — the sweep left no record, so NOTHING is promoted"; exit 1; }
 	@mkdir -p $(dir $(VERDICTS_RECORD))
 	@{ echo "commit: $$(git rev-parse HEAD) — $$(date -u +%Y-%m-%dT%H:%MZ)"; cat "$(DIST)/mutant-verdicts.log"; } > "$(VERDICTS_RECORD)"

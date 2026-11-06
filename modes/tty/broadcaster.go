@@ -170,6 +170,13 @@ type Broadcaster struct {
 	// an exact identity for the value — the memo's reason for them.
 	lineupGen, areaGen uint64
 
+	// units and clockFmt are the listener's units and clock Settings, which the
+	// two surfaces share (0.16.0 FR-6.2). The Router mirrors them from the
+	// Observer on every update, so a change made with the console up redraws
+	// it at once (0.19.5 D-21).
+	units    render.Units
+	clockFmt render.Clock
+
 	// memo is the two tables' slot. A POINTER, because View() is a value
 	// receiver and every Update copies the console (P10-06) — the cache has to
 	// outlive the copy that filled it. Nil is legal and means no memo: a console
@@ -575,7 +582,7 @@ func (b Broadcaster) View() tea.View {
 // opts is the console's render options — one owner, so a glyph decision is
 // made in one place rather than at every call site.
 func (b Broadcaster) opts() render.Opts {
-	return render.Opts{Width: b.frameWidth(), ASCII: b.ascii, Frame: b.frame}
+	return render.Opts{Width: b.frameWidth(), Units: b.units, Clock: b.clockFmt, ASCII: b.ascii, Frame: b.frame}
 }
 
 // frameWidth is how much room the console's own content has: the terminal, less

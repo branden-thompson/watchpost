@@ -496,6 +496,9 @@ mode  = ""                # "" every class sounds | "mute" silence the classes b
 muted = ["warning"]       # class keys; EMPTY under mute means every class
 ```
 
+A word outside its list — `mode`, `cast` or the tones' `mode` — stops Watchpost at start, and the error
+names the key and the words it takes.
+
 **The station's own keys** (`[broadcaster]`; the transmitter and the service radius are rows in the console's Settings, the bed radius is config-only):
 
 ```toml

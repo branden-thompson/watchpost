@@ -58,9 +58,12 @@ func applySetup(def snapshot.LocationRef, firmsKey string) error {
 		if loc.Tag == "" {
 			loc.Tag = deriveTag(def.Label)
 		}
+		// "The same place" is snapshot.PlaceID's, the one definition the lists
+		// use (0.19.5 D-8); the old default, first in the list, always goes.
+		same := snapshot.PlaceID(def)
 		locs := []config.Location{loc}
 		for i, l := range cfg.Locations {
-			if i == 0 || (l.Zip == loc.Zip && l.Zip != "") || (l.Lat == loc.Lat && l.Lon == loc.Lon) {
+			if i == 0 || snapshot.PlaceID(snapshot.LocationRef{Zip: l.Zip, Lat: l.Lat, Lon: l.Lon}) == same {
 				continue
 			}
 			locs = append(locs, l)

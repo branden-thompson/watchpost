@@ -55,6 +55,10 @@ type consoleKey struct {
 	areaGen   uint64
 	// theme is render.ThemeGeneration: every Tok() tint in every cell.
 	theme uint64
+	// units and clock are the Settings the pool's cells are written in
+	// (0.19.5 D-21).
+	units render.Units
+	clock render.Clock
 	// shimmer is the LoadingDots phase, and ONLY while something is loading —
 	// carried unconditionally it would miss on every tick for the whole life of
 	// the console, which is every frame this exists to save.
@@ -76,7 +80,7 @@ func (b Broadcaster) consoleKeyFor(used int) consoleKey {
 		width: b.width, height: b.height, used: used, ascii: b.ascii,
 		power: b.power, fireBoldMW: b.fireBold(), selected: b.selected,
 		recent: b.pool, priority: b.snap, lineupGen: b.lineupGen, areaGen: b.areaGen,
-		theme: render.ThemeGeneration(),
+		theme: render.ThemeGeneration(), units: b.units, clock: b.clockFmt,
 	}
 	if b.anyLoading() {
 		k.shimmer = ((b.frame % 4) + 4) % 4 // the LoadingDots phase (render/units.go)

@@ -150,17 +150,14 @@ func heightWords(m *float64, imperial bool) string {
 	return decimalWords(*m, "metre", "metres")
 }
 
-// tempWords is "74 degrees" — the unit is the listener's and is not spoken,
-// exactly as the location forecast reads temperatures.
+// tempWords is the water temperature, worded as current conditions word the
+// air ("74 degrees", "23 degrees Celsius"): one wording for every spoken
+// temperature (0.19.5 D-6).
 func tempWords(c *float64, imperial bool) string {
 	if c == nil {
 		return ""
 	}
-	v := *c
-	if imperial {
-		v = units.FahrenheitOf(v)
-	}
-	return fmt.Sprintf("%.0f degrees", v)
+	return degrees(*c, imperial)
 }
 
 // windWords is "13 miles per hour" / "21 kilometers per hour", spelled out
