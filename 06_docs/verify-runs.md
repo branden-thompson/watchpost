@@ -164,3 +164,5 @@ says exactly what passed.
 | 2026-11-06T18:57:11Z | e7187001 | 0bdbc28d713a | verify | green | 2335 |
 | 2026-11-06T19:20:54Z | 310e1af5 | c9895ba2395f | verify | FAILED (exit 2) | 239 |
 | 2026-11-06T20:02:38Z | 310e1af5 | 45643f79c4bf | verify | green | 2393 |
+| 2026-11-06T20:21:35Z | d1bc668b | 6b94737e0586 | verify | FAILED (exit 2) | 396 |
+| 2026-11-06T21:02:36Z | d1bc668b | 236a10151b0d | verify | green | 2356 |

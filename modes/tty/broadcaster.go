@@ -678,86 +678,101 @@ func (b Broadcaster) tooSmall() bool {
 	return b.height < r
 }
 
-// clamp cuts the frame to the terminal, in BOTH directions.
+// clamp cuts the frame to the terminal, in both directions.
 //
-// SILENT OVERFLOW IS A DEFECT, NOT A DEGRADATION (FR-7.3). Unclamped, a
+// Silent overflow is a defect, not a degradation (FR-7.3): unclamped, a
 // surface renders 57 cells into a 20-cell terminal with no notice (F-55). It
-// applies to the NOTICE as well as to the lanes — a notice that overflows
-// would let a sweep report zero overflows, which is the anti-solution M5
+// applies to the notice as well as to the lanes, since a notice that
+// overflowed would let a sweep report zero overflows, the anti-solution M5
 // names.
 func (b Broadcaster) clamp(lines []string) string {
 	if b.height > 0 && len(lines) > b.height {
 		lines = lines[:b.height]
 	}
-	// AND IT FILLS THE TERMINAL IT WAS GIVEN. A frame shorter than the screen
-	// looks identical in the alt-screen — the rest is simply blank — until
-	// something is COMPOSITED over it.
-	//
-	// `render.Overlay` centres vertically on the BASE's height, so a ten-line
+	// The frame fills the terminal it was given. A frame shorter than the
+	// screen looks the same in the alt-screen until something is composited
+	// over it: `render.Overlay` centres on the base's height, so a ten-line
 	// frame in a seventy-four-line terminal would pin every window to the top
-	// rail (UAT, 2026-09-10). The frame is the viewport, and it has to say so.
-	// THE BOUND IS IN THE SHAPE (P10-02). The frame pads to the viewport's
-	// height, and that count is knowable before the loop rather than re-asked
-	// on every pass.
+	// rail (UAT, 2026-09-10). The pad's count is known before the loop, so the
+	// bound is in its shape (P10-02).
 	if b.height > 0 {
 		for range max(0, b.height-len(lines)) {
 			lines = append(lines, "")
 		}
 	}
-	// AND CUT TO IT, AS THE WIDTH IS (D-102): "the frame IS the viewport, in
-	// both dimensions". A height padded and never truncated lets a region that
-	// mis-budgets by a row draw past the bottom of the terminal.
-	//
-	// IT IS A BACKSTOP, NOT THE BUDGET. Each region still windows itself
-	// (scheduledLines, poolLines), and this is what makes a mistake there a
-	// missing row rather than a broken frame.
+	// And it is cut to the terminal's height, as rows are cut to its width
+	// (D-102): "the frame IS the viewport, in both dimensions". This is a
+	// backstop, not the budget: each region still windows itself
+	// (`scheduledSpan`, `poolSpan`), and the cut makes a mistake there a missing
+	// row rather than a frame past the terminal's bottom.
 	if b.height > 0 && len(lines) > b.height {
 		lines = lines[:b.height]
 	}
-	if b.width > 0 {
-		for i, l := range lines {
-			// TRUNCATED *AND* PADDED: the frame IS the viewport, in both
-			// dimensions. Truncating alone leaves a ragged frame whose widest
-			// line is whatever the longest lane happens to be — and
-			// `render.Overlay` composites against that, so a window centred on
-			// the TERMINAL lands past the frame's right edge and the composite
-			// grows sideways instead of stacking (UAT, 2026-09-10).
-			// AND INSET FROM THE LEFT, HERE AND NOWHERE ELSE (D-96). Observer
-			// insets EVERY row by three — masthead, radio panel, ticker, controls
-			// and table alike — and the console matches it, so the operator's
-			// eye finds the same left edge on both surfaces.
-			//
-			// ONE APPLICATION POINT, because an inset applied per region is an
-			// inset each new region has to remember. The layout is built at
-			// `frameWidth` and the frame adds the margin once.
-			lines[i] = render.PadTo(bcLeftInset+render.TruncateCells(l, b.frameWidth()), b.width)
+	// Each row is truncated and padded to the terminal's width. Truncating
+	// alone leaves a ragged frame whose widest line is the longest lane's, and
+	// `render.Overlay` composites against that, so a window centred on the
+	// terminal would land past the frame's right edge (UAT, 2026-09-10). Each
+	// row is inset from the left here and nowhere else (D-96), as Observer
+	// insets every row by three, so a region never has to remember the margin.
+	//
+	// And the theme's foreground is armed for the whole frame (D-108): text the
+	// console draws without a tint of its own would otherwise take the
+	// terminal's default foreground, white on a dark terminal whatever the theme
+	// (HUM LEAD, UAT 2026-09-12: "Watchpost Light has white lines and text when
+	// it should be inverted appropriately"). It is armed at the top and re-armed
+	// after every inner reset, as Observer's `frameText` does and as
+	// `render.TintKeeping` would over the joined frame, so tinted spans keep
+	// their colours. Through `FgSGR`, because the Light theme's `TextBase` is
+	// truecolor.
+	//
+	// The frame is written in one pass, with no joined copy and no copy for
+	// the tint (0.19.5 PF-4): an inner reset never spans a row, so re-arming row
+	// by row is the same bytes.
+	const reset = "\x1b[0m"
+	base := ""
+	if params := render.FgSGR(render.Tok(render.TextBase)); render.ColorOn() && params != "" {
+		base = "\x1b[0;" + params + "m"
+	}
+	size := len(base) + len(reset)
+	for _, l := range lines { // bounded by the frame's rows (P10-02)
+		size += len(l) + max(b.width, 0) + 1 + len(base)*strings.Count(l, reset)
+	}
+	var out strings.Builder
+	out.Grow(size)
+	out.WriteString(base)
+	for i, l := range lines { // bounded by the frame's rows (P10-02)
+		if i > 0 {
+			out.WriteByte('\n')
+		}
+		if b.width > 0 {
+			l = bcLeftInset + render.TruncateCells(l, b.frameWidth())
+		}
+		writeArmed(&out, l, base)
+		for range max(0, b.width-render.Width(l)) { // the pad to the viewport's width (P10-02)
+			out.WriteByte(' ')
 		}
 	}
-	// AND THE THEME'S FOREGROUND IS ARMED FOR THE WHOLE FRAME (D-108).
-	//
-	// HUM LEAD, UAT 2026-09-12: "Some of the Broadcaster UIs are not using
-	// themeable token values for colors - particularly in the 'UP NEXT' section -
-	// Watchpost Light has white lines and text when it should be inverted
-	// appropriately."
-	//
-	// UNARMED, UNTINTED TEXT IS PAINTED BY NOBODY — every character this console
-	// draws without an explicit tint takes the TERMINAL's default foreground,
-	// which on a dark terminal is white whatever theme the app is wearing. On
-	// the dark themes that happens to look right, which is what hides it.
-	//
-	// OBSERVER DOES THE SAME, in `frameText`: it arms `TextBase` at the top
-	// of the frame and re-arms it after every inner reset, so tinted spans keep
-	// their colours and everything else is the theme's. This is that rule, applied
-	// where the console finishes its frame — one place, like the inset above it.
-	//
-	// THROUGH `FgSGR`, NOT `TintDefault`. That helper hard-codes a `38;5;` prefix
-	// and the Light theme's `TextBase` is TRUECOLOR — through that helper the
-	// Light theme would come out as a palette index.
-	out := strings.Join(lines, "\n")
-	if render.ColorOn() {
-		out = render.TintKeeping(out, render.FgSGR(render.Tok(render.TextBase)))
+	if base != "" {
+		out.WriteString(reset)
 	}
-	return out
+	return out.String()
+}
+
+// writeArmed writes a row with every reset in it re-arming base, so text after
+// a tinted span returns to the frame's foreground, not the terminal's. With no
+// base the row is written as it is.
+func writeArmed(out *strings.Builder, row, base string) {
+	const reset = "\x1b[0m"
+	if base == "" {
+		out.WriteString(row)
+		return
+	}
+	for k := strings.Index(row, reset); k >= 0; k = strings.Index(row, reset) { // each reset is passed once (P10-02)
+		out.WriteString(row[:k])
+		out.WriteString(base)
+		row = row[k+len(reset):]
+	}
+	out.WriteString(row)
 }
 
 // notice is what the operator sees below the floor.

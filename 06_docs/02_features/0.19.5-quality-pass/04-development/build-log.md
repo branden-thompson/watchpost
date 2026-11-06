@@ -210,3 +210,55 @@ Mutants m713 to m724, each hand-vetted and killed.
   - The alert replay's 5 ms sleep stays. Waiting for every woken tier to wait again was tried and was
     not enough, because the alert renders after that. Filed as F-223.
   - The console prompts' duplicated `centre` closure is a consolidation, so it goes with plan Q5.
+
+## 0.19.5 batch 6 — the small fixes that are byte-identical (plan Q3.1 first step, Q3.4 to Q3.6)
+
+Each change is held to the code it replaces by an old-against-new test, with the shipped function kept in
+the test as the reference. Mutants m725 to m729 are new; m713, m642, mAC8, mAC9, mRT2, mSC1 and mSC2 are re-pointed. Every
+one is hand-vetted and killed.
+
+- **The marquee (Q3.5, PF-5):** `scrollWindow` walks the tape's text and gap in place with a `tapeCursor`
+  instead of copying the tape into a rune slice every frame. `TestTheMarqueeWindowIsByteIdentical`
+  compares it with the shipped function at every offset from -3 to 259, at widths 0 to 120, with three
+  gaps, wide runes and invalid UTF-8.
+- **The console's finisher (Q3.4, PF-4):** `Broadcaster.clamp` writes the frame in one pass, truncating,
+  insetting, padding and re-arming the theme's foreground row by row, through `writeArmed`. The shipped
+  finisher joined the rows and then copied the frame again for the tint.
+  - `TestTheConsolesFinisherIsByteIdentical` runs at 100x44, 133x44, 160x74 and 220x60, with width 0 and
+    height 0. It covers colour off and on, the default and Watchpost Light themes, and an input taller
+    than the terminal whose first row is wider than the frame.
+  - mAC8 and mAC9 are re-pointed to the new place the foreground is chosen, and are still killed by
+    `TestTheConsoleArmsTheThemesForeground`.
+  - The comments over `clamp` are brought to D-11's rule, and name the two windowing functions as they
+    are now called (`scheduledSpan`, `poolSpan`).
+- **The router and dispatch (Q3.1 first step, PF-1):**
+  - The five fall-through returns that answer "not handled" return no model, instead of boxing the
+    Router into a `tea.Model` nobody reads.
+  - `Router.View` draws the active surface through its own type, not through `surfaceView`. `Init` and
+    `View` both ask `onBroadcaster`, so they still cannot disagree.
+  - `Dashboard.dispatch` returns the Dashboard itself, so `Update` does not unbox it again.
+  - The Router suites pin the router change. `TestARefreshKeepsTheReadersPlace` pins dispatch, and kills
+    m729.
+- **The window over the console (Q3.6, PF-11):** `Dashboard.overlay` works out the Observer's layout once
+  for both the window and its cursor. `OverlayCursor` is gone, and `OverlayWindow` is the overlay
+  without the cursor. `TestTheConsolesWindowIsTheSameLaidOnce` compares it with the shipped pair for
+  Settings, Diagnostics, Diagnostics' confirmation and no window at all.
+- **The pins, lowered to what landed** (each × 1.05):
+
+  | Beat | Allocations before | Allocations now | Bytes before | Bytes now |
+  |---|---|---|---|---|
+  | Idle Observer | 462 | 456 | 156,520 | 113,562 |
+  | Radio playing | 693 | 692 | 168,720 | 126,823 |
+  | Console at 160x74 | 782 | 703 | 310,457 | 231,193 |
+  | A no-change publish's frame | 5,708 | 5,711 | 423,847 | 408,378 |
+
+  - The publish frame's three extra allocations sit inside the 5 % margin, and its bytes fell. It is
+    pinned at what it measures now.
+  - m713 is re-pointed: the marquee's builder reserving 64 KB is fewer allocations and is killed on bytes
+    alone.
+  - M2 is not met yet (114 / 127 / 231 KB against 80 / 90 / 140). The width measure (plan B6) and the
+    memos (Q4) are the rest of what the prototypes measured.
+- **P10 (D-27):** `make p10` reports no live finding. `modes/tty` measures 0.33 over the 54 functions
+  this release has changed there, against its floor of 0.42. The functions this batch changed are bounded
+  loops and one-pass writers with nothing further to check, so no check was added for the count. The
+  figure goes to the HUM LEAD at REVIEW exit.

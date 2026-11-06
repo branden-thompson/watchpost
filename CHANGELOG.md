@@ -30,6 +30,12 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 - **An unknown `[radio] mode` stops Watchpost at start** and names the key and its two words, as `cast`
   and the tones' `mode` already did, instead of being read as Synth.
 
+### Performance
+- **Each beat of the interface allocates about a quarter less memory:** an idle Observer frame from about
+  157 KB to 114 KB, the radio playing from 169 KB to 127 KB, and the console from 310 KB to 231 KB. The
+  ticker's marquee and the console's frame are no longer copied whole each frame, and a message is no
+  longer copied into an interface on its way through. What is drawn is byte for byte the same.
+
 ## [0.19.3] — 2026-11-03
 
 ### Fixed

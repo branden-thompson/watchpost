@@ -4,6 +4,6 @@ import pathlib
 # a palette index and the theme the finding was reported against is the one theme
 # it does not serve (D-108).
 p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
-old = """		out = render.TintKeeping(out, render.FgSGR(render.Tok(render.TextBase)))"""
+old = """	if params := render.FgSGR(render.Tok(render.TextBase)); render.ColorOn() && params != "" {"""
 assert old in s, "mAC9"
-p.write_text(s.replace(old, """		out = render.TintDefault(out)""", 1))
+p.write_text(s.replace(old, """	if params := "38;5;" + render.Tok(render.TextBase); render.ColorOn() && params != "" {""", 1))

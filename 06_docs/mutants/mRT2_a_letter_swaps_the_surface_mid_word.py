@@ -5,11 +5,11 @@ import pathlib
 # LEAD's own station and the hyper-local case D-130 was ruled for.
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
 old = """	if r.typingInAWindow(k) {
-		return r, nil, false
+		return nil, nil, false
 	}
 	to := SurfaceObserver"""
 new = """	if false {
-		return r, nil, false
+		return nil, nil, false
 	}
 	to := SurfaceObserver"""
 assert old in s, "mRT2"

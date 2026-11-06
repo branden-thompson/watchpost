@@ -6,7 +6,7 @@ import pathlib
 # before the keymap is ever consulted.
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
 old = """	// NOT SCOPED TO ANYONE IN PARTICULAR: the key paths get their turn.
-	return r, nil, false"""
+	return nil, nil, false"""
 new = """	// NOT SCOPED TO ANYONE IN PARTICULAR: the key paths get their turn.
 	return r, nil, true"""
 assert old in s, "mSC1"

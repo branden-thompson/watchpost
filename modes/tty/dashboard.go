@@ -1152,8 +1152,7 @@ func (d Dashboard) Init() tea.Cmd {
 // Update implements tea.Model: dispatch the message, then arm the shimmer
 // tick if the resulting frame animates (Q3 tick predicate).
 func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m, cmd := d.dispatch(msg)
-	next, ok := m.(Dashboard)
+	next, m, cmd, ok := d.dispatch(msg)
 	if err := invariant.Check(ok, "dispatch must return the dashboard model"); err != nil {
 		return m, cmd
 	}
@@ -1193,14 +1192,17 @@ func (d Dashboard) handleTicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // dispatch routes one message to its handler, keeping a reader's place in
-// the Propagation mode's words across whatever it changes (D-211).
-func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
+// the Propagation mode's words across whatever it changes (D-211). It returns
+// the Dashboard itself, so Update does not unbox it again (0.19.5 PF-1); ok is
+// false, with the model the handler returned, if a handler returned another
+// model.
+func (d Dashboard) dispatch(msg tea.Msg) (next Dashboard, m tea.Model, cmd tea.Cmd, ok bool) {
 	place, keep := d.wordsPlaceNow(msg)
-	m, cmd := d.route(msg)
-	if next, ok := m.(Dashboard); ok {
-		m = next.followReader(msg, place, keep)
+	m, cmd = d.route(msg)
+	if next, ok = m.(Dashboard); !ok {
+		return d, m, cmd, false
 	}
-	return m, cmd
+	return next.followReader(msg, place, keep), nil, cmd, true
 }
 
 // route sends one message to its handler.

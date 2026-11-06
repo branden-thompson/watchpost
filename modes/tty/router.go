@@ -528,12 +528,18 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // window from here: the operator injects an alert and WATCHES the takeover
 // activate and drain.
 func (r Router) View() tea.View {
-	v := r.surface().View()
-	if r.active == SurfaceBroadcaster { // the cursor at the console's focus, or the window's over it (D-362)
+	// The surface is drawn through its own type, not through surfaceView: the
+	// interface would box the whole model on every frame (0.19.5 PF-1).
+	var v tea.View
+	if r.onBroadcaster() {
+		v = r.broadcaster.View()
+	} else {
+		v = r.observer.View()
+	}
+	if r.onBroadcaster() { // the cursor at the console's focus, or the window's over it (D-362)
 		x, y, ok := r.broadcaster.consoleCursor(v.Content)
 		if r.observer.ModalOpen() {
-			x, y, ok = r.observer.OverlayCursor(v.Content, r.broadcaster.width)
-			v.Content = r.observer.OverlayWindow(v.Content, r.broadcaster.width)
+			v.Content, x, y, ok = r.observer.overlay(v.Content, r.broadcaster.width)
 		}
 		v.Content, v.Cursor = r.broadcaster.heldCursor().finish(v.Content, x, y, ok, r.broadcaster.blurred, v.BackgroundColor)
 	}
@@ -600,7 +606,7 @@ func (r Router) scopedMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		return r, tea.Batch(oc, bc), true
 	}
 	// NOT SCOPED TO ANYONE IN PARTICULAR: the key paths get their turn.
-	return r, nil, false
+	return nil, nil, false
 }
 
 // routeKey decides WHO OWNS THIS KEY, in the one order that order matters in.
@@ -678,7 +684,7 @@ func (r Router) routeKey(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		}
 	}
 	// NO KEY RULE CLAIMED IT: the active surface gets it.
-	return r, nil, false
+	return nil, nil, false
 }
 
 // keyAction answers ONE bound key, and says whether it answered at all.
@@ -770,7 +776,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 		return out, cmd, true
 	}
 	// NOT ANSWERED. The key falls past the switch to the active surface.
-	return r, nil, false
+	return nil, nil, false
 }
 
 // swapKey says whether the swap was answered: false - not answered, carry on -
@@ -797,7 +803,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 // nothing open, the letters swap.
 func (r Router) swapKey(k tea.KeyPressMsg, a term.Action) (tea.Model, tea.Cmd, bool) {
 	if r.typingInAWindow(k) {
-		return r, nil, false
+		return nil, nil, false
 	}
 	to := SurfaceObserver
 	if a == actSwapBroadcaster {
@@ -850,7 +856,7 @@ func (r Router) queueOpenKey() (tea.Model, tea.Cmd, bool) {
 			return out, nil, true
 		}
 	}
-	return r, nil, false
+	return nil, nil, false
 }
 
 // throughToObserver hands a message to the surface that owns the diagnostics
@@ -868,8 +874,7 @@ func (r Router) throughToObserver(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return r, cmd
 }
 
-// surfaceView is the part of a surface the Router needs in order to start it
-// and to draw it.
+// surfaceView is the part of a surface the Router needs in order to start it.
 //
 // DELIBERATELY NARROWER THAN tea.Model. Update is routed explicitly, with
 // concrete types, so Broadcaster can return a Broadcaster rather than a
@@ -881,14 +886,18 @@ type surfaceView interface {
 	View() tea.View
 }
 
-// surface is the active surface. It exists so Init and View cannot disagree
-// about which one is on screen — one accessor, not two switches.
+// surface is the active surface, for Init. View draws the same one without the
+// interface, and both ask onBroadcaster, so they cannot disagree about which
+// surface is on screen.
 func (r Router) surface() surfaceView {
-	if r.active == SurfaceBroadcaster {
+	if r.onBroadcaster() {
 		return r.broadcaster
 	}
 	return r.observer
 }
+
+// onBroadcaster reports whether the console is the surface on screen.
+func (r Router) onBroadcaster() bool { return r.active == SurfaceBroadcaster }
 
 // swapTo moves to the surface if the gate permits, and records the refusal
 // for the operator when it does not.

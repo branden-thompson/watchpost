@@ -14,6 +14,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/category"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -258,16 +259,21 @@ func scrollWindow(text string, offset, width int, gap string) string {
 	if render.Width(text) <= width {
 		return render.PadTo(text, width)
 	}
-	loop := []rune(text + gap)
-	n := len(loop)
-	off := ((offset % n) + n) % n
+	// The tape is text then gap, looping, walked in place a rune at a time:
+	// it is a whole lane, and copying it into a rune slice every frame was most
+	// of the frame's bytes (0.19.5 PF-5).
+	n := utf8.RuneCountInString(text) + utf8.RuneCountInString(gap)
+	tape := tapeCursor{parts: [2]string{text, gap}}
+	for range ((offset % n) + n) % n { // bounded by the loop's length (P10-02)
+		tape.next()
+	}
 	// The window is width CELLS, not runes: a wide-rune place name would
 	// otherwise run to twice the terminal (REVIEW R5-C-01). Bounded by n
 	// runes per pass (P10-02).
 	var b strings.Builder
 	cells := 0
 	for i := 0; i < n && cells < width; i++ {
-		r := loop[(off+i)%n]
+		r := tape.next()
 		w := render.RuneCells(r)
 		if cells+w > width {
 			break
@@ -276,6 +282,26 @@ func scrollWindow(text string, offset, width int, gap string) string {
 		cells += w
 	}
 	return render.PadTo(b.String(), width)
+}
+
+// tapeCursor walks a tape's two parts, its text and its gap, as one loop.
+type tapeCursor struct {
+	parts   [2]string
+	seg, at int
+}
+
+// next is the tape's next rune, wrapping from the text to the gap and back; an
+// empty part is stepped over. The text is never empty where it is walked.
+func (c *tapeCursor) next() rune {
+	for range 2 { // two parts, so at most two steps to one that has a rune (P10-02)
+		if c.at < len(c.parts[c.seg]) {
+			break
+		}
+		c.seg, c.at = (c.seg+1)%2, 0
+	}
+	r, size := utf8.DecodeRuneInString(c.parts[c.seg][c.at:])
+	c.at += size
+	return r
 }
 
 // advanceTicker steps the tape one cell; the offset is kept bounded to the
