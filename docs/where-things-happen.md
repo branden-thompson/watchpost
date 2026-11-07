@@ -137,7 +137,7 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | Qn | a quality-pass batch | `06_docs/02_features/watchpost-performance-quality-pass/03-architecture-design/quality-pass-plan.md` |
 | L{1..5}-Fn, LR-n | DISCOVER lens findings | `…/02-analysis/` |
 | JD/CQ/PA/PR/A11/BQ/IS/PH/DQ/SC/PF/RT/R2-n | red-team findings | `…/08-reports/red-team-plan.md` |
-| P10-nn | safety-critical rules (`make p10`, the harness CLI's check) | the harness's P10 skill (outside the public tree) |
+| P10-nn | safety-critical rules (`make p10`, the harness CLI's check) | each rule, its threshold and its accepted forms: `06_docs/code-standards.md`, "P10 — the safety-critical rules"; the checker and its ledger are the harness's, outside the public tree |
 | C1–C5, OQ-n, D1/D2 | decisions, open questions, defects of the quality pass | `…/08-reports/discover-report.md`, `project-brief.md` |
 
 ## Rules, and where they are stated

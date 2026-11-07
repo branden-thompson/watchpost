@@ -283,3 +283,47 @@ fails if they disagree.
 published without what it cannot see is a number that lies by omission. `dupes` says it is a floor;
 `tools/authoring` says it cannot see a comment that is merely wrong, which is the larger class and
 still needs a reader.
+
+---
+
+## P10 — the safety-critical rules
+
+A comment that cites `P10-02` or `P10-05` is citing one of these. They are Holzmann's "Power of Ten"
+rules for safety-critical code, as the A2DH harness applies them to Go. **The checker and its
+exemptions ledger live in the harness, outside this public tree.** So the thresholds below are the
+checker's own, taken from its pinned configuration, and this section is where the tree states them
+(0.19.5 A-2).
+
+**Who runs it.** `make p10` runs the harness's `a2dh p10 check`. It is not part of `make verify` or CI,
+whose runners have no harness; it fails loud rather than skipping when the CLI is absent. It runs at
+each batch and at BUILD and REVIEW exit, under `make quality`, and its figures go in the build log.
+**An exemption is ratified by the HUM LEAD, never self-issued.** `make p10` regenerates the ledger's
+public mirror, `06_docs/p10-ledger.md`, and fails when the committed one is stale.
+
+**What it judges.** Production code only: tests and `testdata` are out of scope. P10-05 counts only
+the functions a branch changed since its merge-base with `main`.
+
+| Rule | It limits | Threshold | The accepted forms |
+|---|---|---|---|
+| `P10-00` build coverage | a changed `.go` file the analysed build configuration excludes | none may be unanalysed | run the check under the file's `GOOS`/`GOARCH` (`app/dump_windows.go` is checked on Windows), or a ratified exemption |
+| `P10-01` control flow | `goto`, `panic`, recursion | none | an error return; a loop with a bound in place of recursion. Recursion is found by **bare name** across the package, so a `New` calling `other.New` reads as recursion; call a package-level constructor value instead |
+| `P10-02` bounded loops | a loop with no visible bound | `for {}` and `for cond {}` are flagged | `range`, or a three-clause counter. This tree's convention adds `// bounded by <what> (P10-02)` to say the bound to a reader; the checker does not read it |
+| `P10-03` dynamic memory | (allocation after start-up, in C) | not applicable to Go | ruled out by the harness, with its rationale |
+| `P10-04` small functions | a function's length and branching | at most 60 lines and 40 statements; cyclomatic complexity under 15 | split into named steps. Comment lines are not counted against the 60, as the specimen below shows |
+| `P10-05` invariant density | checks per changed function, per package | 2.0, or a floor the HUM LEAD ratified for the package (`FLOOR x.xx`, held by `tools/p10floor`) | `invariant.Check(ok, …)` whose arguments make no call (`len` and `cap` aside), so `ok := !t.Before(x)` comes first; and a guard, `if <call-free condition> { return … }`. A check is added where it protects a real state, never for the count (0.19.5 D-27) |
+| `P10-06` minimal scope | package-level variables, and stores never read | none | a constructor function returning the value (`setupTable`, below); a variable declared where it is used |
+| `P10-07` checked returns | an ignored error, an unused parameter or result | none | handle the error, or discard it explicitly with `_ =` and a reason on the line |
+| `P10-08` directives | `//go:linkname` and cgo; `//go:build` and `//go:generate` | the first two banned; the second two listed | a ratified exemption per build or generate directive |
+| `P10-09` pointer discipline | `unsafe`; `reflect`; dereference depth | `unsafe` banned, `reflect` banned unless justified, depth at most 1 | a value or a single pointer |
+| `P10-10` zero warnings | any other analyser's warning | none | rewrite the code until the tool has nothing to say |
+
+**A specimen: `setupTable` (`modes/tty/setup_rows.go`).**
+- **P10-06.** It is a function returning the Settings table, not a package variable. A
+  package-level table would be state any code could reassign, and each caller wants its own copy.
+- **P10-04.** Its body is one statement, a keyed composite literal of 57 rows, one per line (0.19.5
+  Q6.4). It runs 101 lines: 59 of code and 34 of comments. P10 reports nothing on it, although
+  batch 19 changed it, so the comments are not counted against the 60 (measured 2026-11-07). A
+  few more rows reach the limit.
+- **The route at the limit.** Split the table by Settings group into named builders, or ask the HUM
+  LEAD to ratify the literal as one table. Moving rows into a package variable is not a route: it
+  trades P10-04 for P10-06.
