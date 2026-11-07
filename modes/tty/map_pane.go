@@ -540,7 +540,7 @@ func (d Dashboard) mapWorkCmd() tea.Cmd {
 
 // applyMapWorked draws what a Work command landed, and asks for the next. A
 // loop that was not started asks for nothing: the loops in Work do (PF-3).
-func (d Dashboard) applyMapWorked(v mapWorkedMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyMapWorked(v mapWorkedMsg) (Dashboard, tea.Cmd) {
 	if v.skipped {
 		return d, nil
 	}
@@ -991,7 +991,7 @@ func scopeKeysFrom(defaults, overrides term.KeyMap) (term.KeyMap, error) {
 
 // handleMapKey is the open map window's keyboard (D-61): a key the map binds
 // is the map's; any other key goes on to the Observer's handling.
-func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
+func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 	act, bound := d.mapKeys.Lookup(key.String())
 	if d.mapPane.modeChip { // any key takes the mode's chip away (D-103), as the edge chip's
 		d.mapPane.modeChip = false
@@ -1110,7 +1110,7 @@ func (d Dashboard) mapWindowKey(act term.Action) (Dashboard, bool) {
 
 // moveMapView is a key that moves the view: a pan, a zoom, the next place or
 // a region.
-func (d Dashboard) moveMapView(act term.Action) (tea.Model, tea.Cmd, bool) {
+func (d Dashboard) moveMapView(act term.Action) (Dashboard, tea.Cmd, bool) {
 	size, m := d.mapBodySize(), d.mapPane.m
 	stepX, stepY := max(size.Cols/4, 1), max(size.Rows/4, 1) // a quarter of the view a press
 	// ANY KEY TAKES THE EDGE'S CHIP AWAY (D-81); a press the same way again
@@ -1355,7 +1355,7 @@ func mergedFeed(lanes [feedLanes]feedLane) MapFeed {
 
 // applyMapFeed sets the feed's overlays, takes off the ones it no longer
 // has, keeps its notes, and draws.
-func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyMapFeed(v mapFeedMsg) (Dashboard, tea.Cmd) {
 	m := d.mapPane.m
 	if m == nil || v.lane < 0 || v.lane >= feedLanes || v.seq != d.mapPane.lanes[v.lane].seq {
 		return d, nil // a cancelled ask's answer: the ask in flight is newer
@@ -1385,7 +1385,7 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 
 // feedAgainCmd is after a lane's answer: the one fresh ask new data wanted
 // while it ran, if any (D-157), beside cmd.
-func (d Dashboard) feedAgainCmd(lane int, cmd tea.Cmd) (tea.Model, tea.Cmd) {
+func (d Dashboard) feedAgainCmd(lane int, cmd tea.Cmd) (Dashboard, tea.Cmd) {
 	if !d.mapPane.lanes[lane].again {
 		return d, cmd
 	}
@@ -1593,7 +1593,7 @@ func (d Dashboard) viewMoved() (Dashboard, tea.Cmd) {
 // that lands while a window is over the map waits for the map to be in
 // front again, so the view's asks - the alerts and the Propagation mode's
 // answers (P-1) - are never left waiting for another move.
-func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (Dashboard, tea.Cmd) {
 	if v.gen != d.mapPane.viewGen {
 		return d, nil
 	}

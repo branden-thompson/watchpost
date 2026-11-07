@@ -30,7 +30,7 @@ func TestEachLayerDrawnAddsItsSentence(t *testing.T) {
 	}
 	now := words[temp]
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if next := m.(Dashboard).describeLinesAll(); slices.Contains(next, now) {
+	if next := m.describeLinesAll(); slices.Contains(next, now) {
 		t.Errorf("a step on, the temperature still says Now's: %q", now)
 	}
 	var asked []string

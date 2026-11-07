@@ -48,7 +48,7 @@ func TestEachDetailLayerIsAnEnabledRow(t *testing.T) {
 		}
 		for _, key := range []tea.KeyPressMsg{{Code: tea.KeyRight}, {Code: tea.KeyLeft}} {
 			m, _, _ := d.setupRowKey(key)
-			if m.(Dashboard).detailOn(l.key) == was {
+			if m.detailOn(l.key) == was {
 				t.Errorf("%s: %s left it as it was", l.key, key.String())
 			}
 		}
@@ -60,7 +60,7 @@ func TestEachDetailLayerIsAnEnabledRow(t *testing.T) {
 		if !strings.Contains(stripANSITest(strings.Join(body, "\n")), words[!was]) {
 			t.Errorf("%s: switched, the row does not say %s", l.key, words[!was])
 		}
-		if m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight}); m.(Dashboard).detailOn(l.key) != was {
+		if m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight}); m.detailOn(l.key) != was {
 			t.Errorf("%s: → did not switch it back", l.key)
 		}
 		m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -144,7 +144,7 @@ func TestTheAlertCategoriesSwitchTheirAlerts(t *testing.T) {
 		t.Fatalf("the menu has no Advisories row: %v", keys)
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	d = feedAndSettle(t, m.(Dashboard))
+	d = feedAndSettle(t, m)
 	if _, ok := d.mapPane.given["alert/advisories/a"]; ok {
 		t.Error("the advisory is still drawn with Advisories off")
 	}

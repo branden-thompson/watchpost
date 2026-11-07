@@ -481,7 +481,7 @@ func (d Dashboard) inPropagation() bool {
 // closes it, back to the map; its own previous and next target keys - the
 // arrows by default (D-256) - move the target its day is drawn for; the page
 // keys scroll; every other key does nothing.
-func (d Dashboard) handlePropChartKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handlePropChartKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	k := key.String()
 	if act, ok := d.mapKeys.Lookup(k); k == "esc" || (ok && act == actMapChart) {
 		return d.close(), nil

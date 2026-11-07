@@ -221,19 +221,18 @@ bound and its gauge there.
 
 ---
 
-## The console's frame costs 520 allocations, and a loaded console 9,760 (0.16.0 P4, re-based D-120)
+## The console's frame costs 439 allocations, and a loaded console 9,694 (0.16.0 P4, re-based D-120)
 
-**The numbers, as pinned.** `bcFrameAllocs = 520` and `bcFrameMissAllocs = 9760`
+**The numbers, as pinned.** `bcFrameAllocs = 439` and `bcFrameMissAllocs = 9694`
 (`modes/tty/broadcaster_alloc_test.go`). The first is a frame on a console with a pool and a snapshot
-where every row's weather is already joined (the memo hit); the second is the miss — two tables
-joining forty rows — measured at 9,296 and pinned at ×1.05. **An earlier version of this entry
-published ~266 per frame; that figure measured a console with NO POOL AND NO SNAPSHOT** (`locIndex`
-nil, no row ever joined its weather), which is why D-120 re-based the budget: the number went up because
-the measurement got honest, not because anything got slower.
+where every row's weather is already joined (the memo hit), measured at 422 and pinned at ×1.04; the
+second is the miss — two tables joining forty rows — measured at 9,232 and pinned at ×1.05. The
+fixture is a loaded console (D-120): a console with no pool and no snapshot joins no weather, and a
+figure taken there guards only the cheap path.
 
 **The blind spot, stated with the number** (the test's own words): the pin guards the path the fixture
 walks; a cache that helps one path and not another shows up as the difference between the two pins,
-and a regression smaller than the pin's slack (26 allocations at 520) is invisible to it.
+and a regression smaller than the pin's slack (17 allocations at 439) is invisible to it.
 
 **Why it stands.** The card row is a **go-studs `data_table_row`**, and two standing rules decide this
 rather than a judgement call: *any table is a go-studs table*, and *a dependency is never re-implemented

@@ -28,7 +28,7 @@ const (
 	//	bcFrameAllocs      the HIT: the operator is watching, nothing has changed
 	//	bcFrameMissAllocs  the MISS: every input moved, both tables rebuild
 	//
-	// Measured 501 and 9296 on the loaded fixture. The miss is pinned at x1.05,
+	// Measured 422 and 9,232 on the loaded fixture. The miss is pinned at x1.05,
 	// the same rule as every other number here.
 	//
 	// THE HIT'S MARGIN IS DELIBERATELY NARROW — 4%, where the miss carries 5% of
@@ -57,8 +57,8 @@ const (
 	// comes first — measure it, record it, surface the number, keep building. A
 	// re-pin is DELIBERATE, with the reason in the commit, the way the goldens are
 	// re-recorded. A budget nobody re-pins is a budget nobody reads.
-	bcFrameAllocs     = 520
-	bcFrameMissAllocs = 9760
+	bcFrameAllocs     = 439
+	bcFrameMissAllocs = 9694
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

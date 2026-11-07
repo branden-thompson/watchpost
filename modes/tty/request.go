@@ -387,7 +387,7 @@ func (st requestState) prev() requestState {
 // Esc cancels and loses the form, deliberately: a half-filled request kept
 // across a close is a window that reopens asking for something the operator
 // no longer means.
-func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "esc":
 		d.request = requestState{}
@@ -485,7 +485,7 @@ func (d Dashboard) afterRequestEdit() (Dashboard, tea.Cmd) {
 // shown as taken unless the schedule took it" — and a window that closed on an
 // invalid form would be exactly that: the operator would believe they had
 // scheduled something.
-func (d Dashboard) requestSchedule() (tea.Model, tea.Cmd) {
+func (d Dashboard) requestSchedule() (Dashboard, tea.Cmd) {
 	if d.cfg.RequestCard == nil {
 		return d, nil
 	}

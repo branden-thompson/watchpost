@@ -20,12 +20,12 @@ func TestTheHistorysRetentionIsChosenOnTheDataTab(t *testing.T) {
 	}
 	d.cfg.HistoryCost = func(bool, string, string) string { return "About 10 MB more." }
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	m, _ = m.(Dashboard).handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter}) // a longer window: kept (D-231)
-	d = m.(Dashboard)
+	m, _ = m.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter}) // a longer window: kept (D-231)
+	d = m
 	d.setup.focus = rowHistoryTrends
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft}) // 30 days wraps to 5 years: longer too
-	m, _ = m.(Dashboard).handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	d = m.(Dashboard)
+	m, _ = m.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	d = m
 	if body := settingsText(d); !strings.Contains(body, "7 days") || !strings.Contains(body, "5 years") {
 		t.Errorf("the pickers do not show 7 days and 5 years:\n%s", body)
 	}
@@ -34,7 +34,7 @@ func TestTheHistorysRetentionIsChosenOnTheDataTab(t *testing.T) {
 	if len(got) != 1 || got[0] != (HistoryRetention{Hours: "7d", Trends: "5y"}) {
 		t.Errorf("closing wrote %+v; want one write of 7 days and 5 years", got)
 	}
-	if next := m.(Dashboard).cfg.History; next != (HistoryRetention{Hours: "7d", Trends: "5y"}) {
+	if next := m.cfg.History; next != (HistoryRetention{Hours: "7d", Trends: "5y"}) {
 		t.Errorf("the next open would show %+v", next)
 	}
 }
@@ -47,32 +47,32 @@ func TestClearingTheHistoryAsksFirst(t *testing.T) {
 	cleared := 0
 	d.cfg.ClearHistory = func() error { cleared++; return nil }
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: ' ', Text: " "})
-	d = m.(Dashboard)
+	d = m
 	if !d.setup.confirmClear || !strings.Contains(stripANSITest(d.confirmOverlay(d.opts())), "ARE YOU SURE?") {
 		t.Fatal("space on Clear history did not ask ARE YOU SURE")
 	}
 	m, _ = d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
-	if m.(Dashboard).setup.focus != rowHistoryClear || !m.(Dashboard).setup.confirmClear {
+	if m.setup.focus != rowHistoryClear || !m.setup.confirmClear {
 		t.Error("a key the question does not take moved the focus under it")
 	}
 	m, _ = d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
-	d = m.(Dashboard)
+	d = m
 	if d.setup.confirmClear || cleared != 0 {
 		t.Fatalf("esc did not cancel (cleared %d)", cleared)
 	}
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m, cmd := m.(Dashboard).handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m, cmd := m.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("enter did not clear")
 	}
-	m, _ = m.(Dashboard).Update(cmd())
-	if cleared != 1 || !strings.Contains(m.(Dashboard).setup.note, "Cleared: recording") {
-		t.Errorf("cleared %d times, the note %q", cleared, m.(Dashboard).setup.note)
+	m, _ = m.update(cmd())
+	if cleared != 1 || !strings.Contains(m.setup.note, "Cleared: recording") {
+		t.Errorf("cleared %d times, the note %q", cleared, m.setup.note)
 	}
 	var problems []string
 	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
-	m, _ = d.Update(historyClearedMsg{err: errors.Join(errors.New("remove /home/someone/x: permission denied"), errors.New("remove /home/someone/y: busy"))})
-	if note := m.(Dashboard).setup.note; !strings.Contains(note, "Partly cleared: 2 could not be removed") || strings.Contains(note, "/home/") {
+	m, _ = d.update(historyClearedMsg{err: errors.Join(errors.New("remove /home/someone/x: permission denied"), errors.New("remove /home/someone/y: busy"))})
+	if note := m.setup.note; !strings.Contains(note, "Partly cleared: 2 could not be removed") || strings.Contains(note, "/home/") {
 		t.Errorf("a failed clear says %q; want a count and where the detail is, never a path (IS-M8)", note)
 	}
 	if len(problems) != 2 || !strings.HasPrefix(problems[0], "Clear history: ") {
@@ -108,7 +108,7 @@ func TestRaisingARetentionSaysWhatItCosts(t *testing.T) {
 		return "About 120 MB more on disk, an estimate."
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	body := stripANSITest(d.confirmOverlay(d.opts()))
 	if d.setup.raise == nil || !strings.Contains(body, "About 120 MB more") || !strings.Contains(body, "cannot be fetched back") || !strings.Contains(body, "7 days") {
 		t.Fatalf("raising 72 hours to 7 days did not ask, or the question lacks its cost or its warning:\n%s", body)
@@ -118,22 +118,22 @@ func TestRaisingARetentionSaysWhatItCosts(t *testing.T) {
 		t.Errorf("the cost was asked for %v; want 72h>7d", asked)
 	}
 	m, _ = d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
-	if d2 := m.(Dashboard); d2.setup.raise == nil || d2.setup.focus != rowHistoryHours {
+	if d2 := m; d2.setup.raise == nil || d2.setup.focus != rowHistoryHours {
 		t.Error("a key the question does not take moved the focus under it")
 	}
 	m, _ = d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
-	d = m.(Dashboard)
+	d = m
 	if d.setup.raise != nil || historyLabel(historyHourChoices, d.setup.history.Hours) != "72 hours" {
 		t.Fatalf("esc left the window open, or kept %q; want 72 hours back", d.setup.history.Hours)
 	}
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	m, _ = m.(Dashboard).handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	d = m.(Dashboard)
+	m, _ = m.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	d = m
 	if d.setup.raise != nil || d.setup.history.Hours != "7d" {
 		t.Fatalf("enter did not keep 7 days (%q)", d.setup.history.Hours)
 	}
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if d = m.(Dashboard); d.setup.raise != nil || historyLabel(historyHourChoices, d.setup.history.Hours) != "72 hours" {
+	if d = m; d.setup.raise != nil || historyLabel(historyHourChoices, d.setup.history.Hours) != "72 hours" {
 		t.Error("a shorter window asked, or was not taken")
 	}
 }

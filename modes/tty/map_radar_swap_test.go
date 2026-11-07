@@ -72,7 +72,7 @@ func TestAZoomAcrossTheBoxesKeepsTheRadar(t *testing.T) {
 	budgetForOne(t, d, r.Overlays[0])
 
 	m, cmd := d.applyMapRadar(mapRadarMsg{radar: r, region: d.mapPane.region.Name})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if _, ok := d.mapPane.radarGiven[RadarLayer+"/us-b"]; !ok || len(d.mapPane.radarGiven) != 1 {
 		t.Errorf("the radar holds %v; want the closer box's loop alone", d.radarGivenIDs())
 	}
@@ -104,7 +104,7 @@ func TestARefusedSwapKeepsTheLoopsItHad(t *testing.T) {
 	big := renamed(feed, "us-b", 3) // three times the frames: over the budget alone
 
 	m, cmd := d.applyMapRadar(mapRadarMsg{radar: big, region: d.mapPane.region.Name})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if _, ok := d.mapPane.radarGiven[RadarLayer+"/us-a"]; !ok || len(d.mapPane.radarGiven) != 1 {
 		t.Errorf("the radar holds %v; want the loop it had, put back", d.radarGivenIDs())
 	}

@@ -84,7 +84,7 @@ func (d Dashboard) historyApplyCmd() tea.Cmd {
 
 // askClearHistory opens the ARE YOU SURE over Settings (D-177): clearing the
 // history cannot be taken back.
-func (d Dashboard) askClearHistory() (tea.Model, tea.Cmd) {
+func (d Dashboard) askClearHistory() (Dashboard, tea.Cmd) {
 	if d.cfg.ClearHistory == nil {
 		return d.settled(), nil
 	}
@@ -97,7 +97,7 @@ type historyClearedMsg struct{ err error }
 
 // confirmClearHistory answers the ARE YOU SURE: enter clears, off the UI
 // goroutine; esc cancels; every other key waits.
-func (d Dashboard) confirmClearHistory(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) confirmClearHistory(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "esc":
 		d.setup.confirmClear = false
@@ -158,7 +158,7 @@ func (d Dashboard) askIfLonger(trends bool, choices []historyChoice, from, to st
 
 // confirmRaise answers the question: enter keeps the longer window, esc puts
 // the shorter back; every other key waits.
-func (d Dashboard) confirmRaise(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) confirmRaise(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "esc":
 		if d.setup.raise.trends {

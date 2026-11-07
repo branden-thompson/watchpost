@@ -16,7 +16,7 @@ import (
 
 // handleAddKey owns keys while the add-location modal is open: printable
 // keys build the query, so table/global bindings never fire mid-typing.
-func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		if d.addMode == "add" && d.watchlistFull() {
@@ -81,7 +81,7 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // EVERY EDIT RESETS IT, which is the rule the HUM LEAD asked for: "Everytime
 // the human user presses an alpha-numeric key in the text field, we can infer
 // they're still typing, and we can reset that timer."
-func (d Dashboard) afterLookupEdit() (tea.Model, tea.Cmd) {
+func (d Dashboard) afterLookupEdit() (Dashboard, tea.Cmd) {
 	if !d.lookupIsScoped() {
 		return d, nil
 	}
@@ -127,7 +127,7 @@ func (d Dashboard) resolveCmd(query, mode string) tea.Cmd {
 }
 
 // handleResolved routes a resolved location into its flow (UAT 26.3/26.4).
-func (d Dashboard) handleResolved(v resolvedMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleResolved(v resolvedMsg) (Dashboard, tea.Cmd) {
 	if v.err != nil {
 		d.addErr = v.err.Error()
 		return d, nil
@@ -205,7 +205,7 @@ func (d Dashboard) commitCmd(watch, recent []snapshot.LocationRef, what string) 
 }
 
 // handleRemoveKey owns the confirmation modal (UAT 26.2).
-func (d Dashboard) handleRemoveKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleRemoveKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		d = d.close()

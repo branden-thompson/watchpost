@@ -99,7 +99,7 @@ func (d Dashboard) refreshRadar() (Dashboard, tea.Cmd) {
 // has. A loop handed in is drawn once the library has prepared it - the
 // work's answer draws it - so the map is not redrawn in between, where the
 // radar would blink out (D-85). A want kept while this ran is asked now.
-func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyMapRadar(v mapRadarMsg) (Dashboard, tea.Cmd) {
 	d.mapPane.radarBusy = false
 	if d.mapPane.radarStop != nil {
 		d.mapPane.radarStop() // its context let go
@@ -204,7 +204,7 @@ type mapRadarAgainMsg struct{ region string }
 
 // applyRadarAgain asks the radar again for the hours ahead, while the map is
 // open on the region they were owed for and the radar is on.
-func (d Dashboard) applyRadarAgain(v mapRadarAgainMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyRadarAgain(v mapRadarAgainMsg) (Dashboard, tea.Cmd) {
 	if d.modal != modalMap || d.mapPane.m == nil || v.region != d.mapPane.region.Name || !d.layerOn(RadarLayer) {
 		return d, nil
 	}

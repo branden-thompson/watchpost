@@ -1129,7 +1129,7 @@ func armShimmer(armed, needed bool, cmd, next tea.Cmd) (bool, tea.Cmd) {
 
 // armTick starts the shimmer tick when the frame needs one and none is in
 // flight — the shimmer twin of armViz. Called after every Update.
-func (d Dashboard) armTick(cmd tea.Cmd) (tea.Model, tea.Cmd) {
+func (d Dashboard) armTick(cmd tea.Cmd) (Dashboard, tea.Cmd) {
 	d.tickArmed, cmd = armShimmer(d.tickArmed, d.tickNeeded(), cmd, d.after(300*time.Millisecond, tickMsg{}))
 	return d, cmd
 }
@@ -1149,13 +1149,15 @@ func (d Dashboard) Init() tea.Cmd {
 	return tea.Batch(tea.RequestBackgroundColor, func() tea.Msg { radio.SetRepeat(mode, nil); return nil })
 }
 
-// Update implements tea.Model: dispatch the message, then arm the shimmer
-// tick if the resulting frame animates (Q3 tick predicate).
-func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	next, m, cmd, ok := d.dispatch(msg)
-	if err := invariant.Check(ok, "dispatch must return the dashboard model"); err != nil {
-		return m, cmd
-	}
+// Update implements tea.Model. The logic is update's, which returns the
+// Dashboard itself; this is the one place it becomes a tea.Model.
+func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return d.update(msg) }
+
+// update dispatches the message, then arms the shimmer tick if the resulting
+// frame animates (Q3 tick predicate). Every handler returns the Dashboard
+// itself, so nothing here copies the model into an interface (0.19.5 PF-1).
+func (d Dashboard) update(msg tea.Msg) (Dashboard, tea.Cmd) {
+	next, cmd := d.dispatch(msg)
 	next, resumeCmd := next.resume()          // D-107: a window returned to picks up where it was
 	next = next.mapPanicked()                 // QA-11: a panic a map call or command stopped marks the map failed
 	next, mapCmd := next.armMapTick()         // 0.18.0 W2.2: the map's clock, armed after every Update
@@ -1172,7 +1174,7 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleTicker applies one global-event-ticker message and re-arms the frame
 // tick (0.12.0): the stack, the 90 s lane rotation, and the breaking-news
 // takeover in/out. Split from dispatch to keep its complexity in budget.
-func (d Dashboard) handleTicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleTicker(msg tea.Msg) (Dashboard, tea.Cmd) {
 	switch v := msg.(type) {
 	case TickerMsg:
 		d.setTicker(v.Items) // the active alerts, grouped into lanes
@@ -1192,21 +1194,15 @@ func (d Dashboard) handleTicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // dispatch routes one message to its handler, keeping a reader's place in
-// the Propagation mode's words across whatever it changes (D-211). It returns
-// the Dashboard itself, so Update does not unbox it again (0.19.5 PF-1); ok is
-// false, with the model the handler returned, if a handler returned another
-// model.
-func (d Dashboard) dispatch(msg tea.Msg) (next Dashboard, m tea.Model, cmd tea.Cmd, ok bool) {
+// the Propagation mode's words across whatever it changes (D-211).
+func (d Dashboard) dispatch(msg tea.Msg) (Dashboard, tea.Cmd) {
 	place, keep := d.wordsPlaceNow(msg)
-	m, cmd = d.route(msg)
-	if next, ok = m.(Dashboard); !ok {
-		return d, m, cmd, false
-	}
-	return next.followReader(msg, place, keep), nil, cmd, true
+	next, cmd := d.route(msg)
+	return next.followReader(msg, place, keep), cmd
 }
 
 // route sends one message to its handler.
-func (d Dashboard) route(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (d Dashboard) route(msg tea.Msg) (Dashboard, tea.Cmd) {
 	switch v := msg.(type) {
 	case tea.WindowSizeMsg:
 		d.width, d.height = v.Width, v.Height
@@ -1216,14 +1212,14 @@ func (d Dashboard) route(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return d, nil
 	case SnapshotMsg:
-		m, cmd := d.applySnapshot(v)
-		if next, ok := m.(Dashboard); ok && next.modal == modalMap {
+		next, cmd := d.applySnapshot(v)
+		if next.modal == modalMap {
 			next, feed := next.requestFeed().askFeed() // 0.18.0: new data, so the map's alerts are asked again (D-45's data row) - one ask in flight (D-157)
 			next, radar := next.refreshRadar()         // and the radar, once its loop has stood two minutes (D-85)
 			next, temp := next.refreshTemp()           // and the temperature, as it stands or the hour turns (W10)
 			return next, tea.Batch(cmd, feed, radar, temp)
 		}
-		return m, cmd
+		return next, cmd
 	case RecentSnapshotMsg:
 		return d.applyRecent(v), nil
 	case TickerMsg, TickerAdvanceMsg, TickerBreakingMsg, TickerBreakingDoneMsg:
@@ -1257,8 +1253,8 @@ func (d Dashboard) route(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		return d.handleKeyPress(v)
 	}
-	if m, cmd, ok := d.routeMap(msg); ok {
-		return m, cmd
+	if next, cmd, ok := d.routeMap(msg); ok {
+		return next, cmd
 	}
 	return d, nil
 }
@@ -1266,7 +1262,7 @@ func (d Dashboard) route(msg tea.Msg) (tea.Model, tea.Cmd) {
 // routeMap sends the map's messages to their handlers - its feeds, its
 // clock, the Propagation mode's update and answers - each set and drawn in
 // Update (D-41); false for a message that is none of them.
-func (d Dashboard) routeMap(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
+func (d Dashboard) routeMap(msg tea.Msg) (Dashboard, tea.Cmd, bool) {
 	switch v := msg.(type) {
 	case mapClearedMsg:
 		return d.applyMapCleared(v), nil, true // 0.18.0 W3.8: Settings says what went
@@ -1304,7 +1300,7 @@ func (d Dashboard) routeMap(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 }
 
 // routed is a handler's answer as routeMap gives it: answered.
-func routed(m tea.Model, cmd tea.Cmd) (tea.Model, tea.Cmd, bool) { return m, cmd, true }
+func routed(d Dashboard, cmd tea.Cmd) (Dashboard, tea.Cmd, bool) { return d, cmd, true }
 
 // handleSettingsSaved applies one apply-on-close outcome from the Settings
 // window — the cast and tones, or the display preferences.
@@ -1340,15 +1336,15 @@ func (d Dashboard) handleSevere(msg tea.Msg) Dashboard {
 // ESC then the byte, and the input layer has no ESC timeout to tell them
 // apart (on a pty, esc then `a` does not open About). No binding uses alt, so
 // the only reading is the user's: esc, then the key (0.13.0 red-team, PTY).
-func (d Dashboard) handleKeyPress(v tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleKeyPress(v tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	d = d.keyClearsMarks()
 	esc, key, fused := splitEscFusion(v)
 	if !fused {
 		return d.handleKey(v)
 	}
-	m, c1 := d.handleKey(esc)
-	m, c2 := m.(Dashboard).handleKey(key)
-	return m, tea.Batch(c1, c2)
+	d, c1 := d.handleKey(esc)
+	d, c2 := d.handleKey(key)
+	return d, tea.Batch(c1, c2)
 }
 
 // splitEscFusion recognises an alt+key that can only be a lone esc fused
@@ -1400,17 +1396,17 @@ func (d Dashboard) applyTick() Dashboard {
 	d.tickArmed = false
 	d = d.shimmerStep()
 	d.advanceTicker() // 0.12.0: the ticker scrolls on the wall clock
-	if d.volFlash != "" && !time.Now().Before(d.volFlashEnd) {
+	if d.volFlash != "" && !d.clock().Before(d.volFlashEnd) {
 		d.volFlash = "" // the blink clears on the first tick after it expires (UAT 41)
 	}
-	if d.mapPane.flash != "" && !time.Now().Before(d.mapPane.flashEnd) {
+	if d.mapPane.flash != "" && !d.clock().Before(d.mapPane.flashEnd) {
 		d.mapPane.flash = "" // U1-11: the controls' blink ends on the tick after it expires
 	}
-	if d.mapPane.menuFlash != flashNone && !time.Now().Before(d.mapPane.menuFlashEnd) {
+	if d.mapPane.menuFlash != flashNone && !d.clock().Before(d.mapPane.menuFlashEnd) {
 		d.mapPane.menuFlash = flashNone // the menu's picker blink ends as Settings' does (D-147)
 		d.mapPane.gen++
 	}
-	if d.setup.flash != flashNone && !time.Now().Before(d.setup.flashEnd) {
+	if d.setup.flash != flashNone && !d.clock().Before(d.setup.flashEnd) {
 		// Without this the blink stays lit until something ELSE happens to
 		// redraw the window ("it stays green for an extended period"). A blink
 		// needs a tick to end it, not only one to start it.
@@ -1423,7 +1419,7 @@ func (d Dashboard) applyTick() Dashboard {
 // applySnapshot takes a published watchlist snapshot (split from Update,
 // P10-04): alerts sorted, the focus kept in range, and — under Repeat:
 // Watchlist — the player's queue re-sent when the list changed (UAT 93).
-func (d Dashboard) applySnapshot(v SnapshotMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applySnapshot(v SnapshotMsg) (Dashboard, tea.Cmd) {
 	if err := invariant.Check(v.Snap != nil, "nil snapshot published to the dashboard"); err != nil {
 		return d, nil
 	}
@@ -1440,7 +1436,7 @@ func (d Dashboard) applySnapshot(v SnapshotMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleKey routes through the merged KeyMap (D-15: keys are data).
-func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	if m, cmd, ok := d.routeWindowKey(key); ok {
 		return m, cmd // F-184: the window shown takes what it declares it owns
 	}
@@ -1477,8 +1473,8 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return toggled.armViz().takeCmd() // [v] on / [space] play may start the visualizer (UAT 92)
 		}
 		if toggled, ok := d.toggleModal(act); ok {
-			m, cmd := toggled.takeCmd()
-			return m, tea.Batch(cmd, m.(Dashboard).hydrateCmd())
+			next, cmd := toggled.takeCmd()
+			return next, tea.Batch(cmd, next.hydrateCmd())
 		}
 		d = d.handleNav(act)
 	}
@@ -1487,7 +1483,7 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 // addFocused appends the viewed location to the watchlist from the detail
 // view (inert when full or already watched - the chip mutes to match).
-func (d Dashboard) addFocused() (tea.Model, tea.Cmd) {
+func (d Dashboard) addFocused() (Dashboard, tea.Cmd) {
 	if !d.canAddFocused() {
 		return d, nil
 	}
@@ -1711,7 +1707,7 @@ func (d Dashboard) resume() (Dashboard, tea.Cmd) {
 // (MVS-D-76). Grouped the way the ticker's and the severe window's messages
 // already are — one owner per source rather than a case each, which is also
 // what keeps dispatch under the P10 complexity bound.
-func (d Dashboard) handleRadio(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleRadio(msg tea.Msg) (Dashboard, tea.Cmd) {
 	switch v := msg.(type) {
 	case RadioStatusMsg:
 		return d.applyRadioStatus(v).armViz().takeCmd()
@@ -1738,7 +1734,7 @@ func (d Dashboard) handleRadio(msg tea.Msg) (tea.Model, tea.Cmd) {
 // THE COUNTDOWN RIDES THIS TICK rather than starting a timer of its own — one
 // clock in the model, and a window that cannot outlive the loop that draws it.
 // Split out of dispatch to keep it within the P10 complexity bound.
-func (d Dashboard) onTick() (tea.Model, tea.Cmd) {
+func (d Dashboard) onTick() (Dashboard, tea.Cmd) {
 	// THE MODEL'S OWN CLOCK, not time.Now(). d.now is the clock every other
 	// wall-clock element of the frame reads and the one tests pin; calling
 	// time.Now() here would make this the one moving part of the frame a test
@@ -1942,7 +1938,7 @@ func (d Dashboard) withCmd(cmd tea.Cmd) Dashboard {
 }
 
 // takeCmd returns the model and any queued command, clearing it.
-func (d Dashboard) takeCmd() (tea.Model, tea.Cmd) {
+func (d Dashboard) takeCmd() (Dashboard, tea.Cmd) {
 	cmd := d.pendingCmd
 	d.pendingCmd = nil
 	return d, cmd

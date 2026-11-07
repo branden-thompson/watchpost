@@ -34,7 +34,7 @@ func consoleLookupTyping(t *testing.T, resolved *int) Dashboard {
 		return snapshot.LocationRef{Label: "Lone Pine, CA"}, nil
 	}
 	m, _ := d.afterLookupEdit()
-	return m.(Dashboard).open(modalAdd)
+	return m.open(modalAdd)
 }
 
 func TestEnterBeforeTheAnswerDoesNotEscapeTheScope(t *testing.T) {
@@ -47,14 +47,14 @@ func TestEnterBeforeTheAnswerDoesNotEscapeTheScope(t *testing.T) {
 	m, cmd := d.handleAddKey(enterKey())
 	if cmd != nil {
 		if msg := cmd(); msg != nil {
-			m, _ = m.(Dashboard).Update(msg)
+			m, _ = m.update(msg)
 		}
 	}
 	if resolved != 0 {
 		t.Errorf("enter reached the unscoped resolver %d time(s): the console's scope is "+
 			"escapable by pressing enter before the debounce settles", resolved)
 	}
-	if out := m.(Dashboard); out.modal != modalAdd {
+	if out := m; out.modal != modalAdd {
 		t.Errorf("the window left the search box (modal %v) on a location the station cannot reach", out.modal)
 	}
 }
@@ -92,7 +92,7 @@ func TestAnEnterHeldOverAReachableAnswerStillOpens(t *testing.T) {
 		return snapshot.LocationRef{Label: "Vista, CA", Zip: "92084"}, true, true, true
 	}
 	m0, _ := d.afterLookupEdit()
-	d = m0.(Dashboard).open(modalAdd)
+	d = m0.open(modalAdd)
 
 	var m tea.Model = d
 	_, cmd := m.(Dashboard).handleAddKey(enterKey())
@@ -126,7 +126,7 @@ func TestALookupThatCouldNotBeMadeSaysSoAndStaysRetryable(t *testing.T) {
 		return snapshot.LocationRef{}, false, false, false // the question could not be put
 	}
 	m0, _ := d.afterLookupEdit()
-	d = m0.(Dashboard).open(modalAdd)
+	d = m0.open(modalAdd)
 	d.addLocate = d.addLocate.apply(locateVerdictMsg{
 		field: locateLookup, seq: d.addLocate.gate.Seq(), query: "Rainbow, CA", asked: false,
 	})

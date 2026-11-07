@@ -135,7 +135,7 @@ func (d Dashboard) stopPropagation() Dashboard {
 }
 
 // applyPropUpdated keeps an update's result and sets the next refresh tick.
-func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (Dashboard, tea.Cmd) {
 	if v.gen != d.mapPane.propGen {
 		return d, nil // a left session's
 	}
@@ -208,7 +208,7 @@ func (d Dashboard) nextPropTick() (Dashboard, tea.Cmd) {
 
 // applyPropTick asks again on the refresh tick, a window over the map or not
 // (D-339): a chart left open refreshes with the map under it.
-func (d Dashboard) applyPropTick(v propTickMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyPropTick(v propTickMsg) (Dashboard, tea.Cmd) {
 	if v.gen != d.mapPane.propGen {
 		return d, nil
 	}

@@ -35,10 +35,10 @@ import (
 // about 10 % under the real cost, and it is the hit path that the band keeps
 // drawing around the clock.
 var frameAllocBudget = map[string]float64{
-	"133x44": 5_608 * 1.05,
-	"133x70": 11_477 * 1.05,
-	"200x60": 14_477 * 1.05,
-	"80x24":  2_188 * 1.05,
+	"133x44": 5_520 * 1.05,
+	"133x70": 11_319 * 1.05,
+	"200x60": 14_231 * 1.05,
+	"80x24":  1_133 * 1.05,
 }
 
 // frameAllocBudgetHit pins the memo-hit frame — THE PIN THAT MATTERS.
@@ -51,10 +51,10 @@ var frameAllocBudget = map[string]float64{
 // is FULL — the state that costs the most per frame; a tape spread thin across
 // six lanes measures less.
 var frameAllocBudgetHit = map[string]float64{
-	"133x44": 365 * 1.05,
-	"133x70": 383 * 1.05,
-	"200x60": 386 * 1.05,
-	"80x24":  377 * 1.05,
+	"133x44": 288 * 1.05,
+	"133x70": 282 * 1.05,
+	"200x60": 285 * 1.05,
+	"80x24":  289 * 1.05,
 }
 
 func benchLoc(i int, days int, alert bool) snapshot.Location {
@@ -201,10 +201,10 @@ func BenchmarkFrame_133x44_Miss(b *testing.B) {
 
 // severeAllocBudget pins the window's frame: the modal-memo HIT (every tick
 // while it is open — the number the radio-on target reads) and the MISS (a
-// publish, a key). Measured at P3-9 and set at × 1.05 like the frame pins.
+// publish, a key), measured and set at × 1.05 like the frame pins.
 // The hit path here is dominated by render.Overlay's compositor, which is an
 // accepted cost — docs/accepted-costs.md §1 states why and what would re-open it.
-var severeAllocBudget = map[string]float64{"hit": 1_740 * 1.05, "miss": 5_248 * 1.05}
+var severeAllocBudget = map[string]float64{"hit": 1_723 * 1.05, "miss": 5_202 * 1.05}
 
 // severeBench is the window open over the 133×44 fixture with a 60-row
 // Warnings index (a busy outbreak day, not the 9-row mock).
@@ -281,19 +281,18 @@ var setupAllocBudget = map[string]float64{
 	// tab, so a frame lays each tab's groups out to measure it, and it is held to
 	// 80% of the terminal, so more of the dashboard is drawn around it - the
 	// dashboard in sight is what U1-36 asks for.
-	// One column (D-364) with the window as wide as its tab row: 2,849 on a
-	// hit, the dashboard around it no longer split by a second column's width,
-	// and 5,119 on a miss, the Reduce motion and Playback speed rows with them
-	// (D-360, D-361).
-	"133x44-hit": 2_849 * 1.05, "133x44-miss": 5_119 * 1.05,
+	// One column (D-364) with the window as wide as its tab row, the Reduce
+	// motion and Playback speed rows among them (D-360, D-361): 2,761 on a hit
+	// and 4,759 on a miss.
+	"133x44-hit": 2_761 * 1.05, "133x44-miss": 4_759 * 1.05,
 	// 80x24 (D-67, D-70, D-71, D-202): every tab is laid out for the window's
 	// width, so a row on any tab - the RELAY REPLAY group's second row, the map's
 	// eight detail picker rows with their arrow chips, the Maps tab's UV cities
 	// row - costs every Settings frame. With the Maps tab's HF stations row
 	// (D-214), the Reduce motion and Playback speed rows (D-360, D-361) and a
-	// tab row that may try its short names (A-107 (11)), a frame measures 1,641
-	// on a hit and 3,882 on a miss.
-	"80x24-hit": 1_641 * 1.05, "80x24-miss": 3_882 * 1.05,
+	// tab row that may try its short names (A-107 (11)), a frame measures 1,212
+	// on a hit and 3,183 on a miss.
+	"80x24-hit": 1_212 * 1.05, "80x24-miss": 3_183 * 1.05,
 }
 
 // OVERLAY COSTS WHAT IT DOES NOT COVER. A dashboard row the modal sits over is
@@ -422,9 +421,9 @@ func BenchmarkConsoleFrame_Miss(b *testing.B) {
 
 // settingsTabPressAllocBudget is a Tab press in Settings - the key moving to
 // the next tab and the frame drawn - into its costliest tab, with the app's
-// layers registered (MAP - LAYERS) (U2-48). 0.19.0 D-120 and D-105 add two
-// Maps rows: 3,740 measured, × 1.05 is 3,927.
-const settingsTabPressAllocBudget = 3_927
+// layers registered (MAP - LAYERS) (U2-48), with 0.19.0 D-120's and D-105's
+// two Maps rows: 3,152 measured, × 1.05 is 3,310.
+const settingsTabPressAllocBudget = 3_310
 
 // A SETTINGS TAB PRESS STAYS CRISP (U2-48, HUM LEAD: "key responses should be
 // very crisp and feel almost instant"): every tab, the layers registered as

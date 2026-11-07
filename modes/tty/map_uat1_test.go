@@ -297,7 +297,7 @@ func TestADetailSwitchChangesThePictureAndIsSaved(t *testing.T) {
 	if !ok {
 		t.Fatal("space in the menu was not handled")
 	}
-	d = settleMap(t, m.(Dashboard))
+	d = settleMap(t, m)
 	if strings.Join(d.mapPane.lines, "\n") == before {
 		t.Error("switching the borders off left the picture as it was")
 	}

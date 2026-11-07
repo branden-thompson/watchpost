@@ -39,11 +39,11 @@ func TestTheWatchlistStopsAtItsCap(t *testing.T) {
 		t.Errorf("a full watchlist's Lookup window does not lead with the cap's note:\n%s", lines)
 	}
 	m, cmd := d.handleAddKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if cmd != nil || m.(Dashboard).addErr != "" {
+	if cmd != nil || m.addErr != "" {
 		t.Error("enter acted on a full watchlist; it is inert")
 	}
 	m, _ = d.handleResolved(resolvedMsg{mode: "add", ref: snapshot.LocationRef{Label: "Eleventh, CA", Zip: "92099"}})
-	if got := m.(Dashboard).addErr; got != "the priority list is full ("+limit+" locations)" {
+	if got := m.addErr; got != "the priority list is full ("+limit+" locations)" {
 		t.Errorf("a place resolved into a full watchlist is refused with %q", got)
 	}
 	if d.canAddFocused() {

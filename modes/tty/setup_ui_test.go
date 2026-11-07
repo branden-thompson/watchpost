@@ -35,7 +35,7 @@ func TestThemePickerPreviewsLive(t *testing.T) {
 	if render.ThemeName() == before {
 		t.Errorf("→ applies the next theme live, still on %q", before)
 	}
-	if name := m.(Dashboard).themeName(); name != render.ThemeName() {
+	if name := m.themeName(); name != render.ThemeName() {
 		t.Errorf("the picker shows the theme in force: picker %q, applied %q", name, render.ThemeName())
 	}
 }

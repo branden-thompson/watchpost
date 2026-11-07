@@ -34,10 +34,10 @@ func chooseFeels(t *testing.T, d Dashboard) Dashboard {
 		}
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if !d.tintChosen(TemperatureLayer) {
 		m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-		d = settleRadar(t, m.(Dashboard), cmd)
+		d = settleRadar(t, m, cmd)
 	}
 	return pressCode(d, 'O', "O")
 }
@@ -71,7 +71,7 @@ func TestFeelsLikeInForecastModeIsSaid(t *testing.T) {
 	var asks []MapAsk
 	d := chooseFeels(t, openTempMapWith(t, true, false, &asks))
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if d.mapPane.tempAuto || d.layerOn(TemperatureLayer) {
 		t.Error("feels-like was on, and Forecast mode turned temperature on as if nothing were")
 	}

@@ -219,7 +219,7 @@ func (st locateState) onSubmit() submitAnswer {
 
 // handleLocatePause is the pause expiring: ask, but only if this is still the
 // pause that follows the LAST keystroke.
-func (d Dashboard) handleLocatePause(v locatePauseMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleLocatePause(v locatePauseMsg) (Dashboard, tea.Cmd) {
 	switch v.field {
 	case locateLookup:
 		if !d.addLocate.gate.Admits(v.seq) {
@@ -236,7 +236,7 @@ func (d Dashboard) handleLocatePause(v locatePauseMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleLocateVerdict files an answer against the field that asked for it.
-func (d Dashboard) handleLocateVerdict(v locateVerdictMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleLocateVerdict(v locateVerdictMsg) (Dashboard, tea.Cmd) {
 	switch v.field {
 	case locateLookup:
 		held := d.addLocate.submitted

@@ -29,7 +29,7 @@ func TestTheDetailLevelIsASettingAndReachesTheMap(t *testing.T) {
 		}
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	if d.mapDetailLevel.String() != "full" {
 		t.Errorf("→ went to %v, want full - All (D-144)", d.mapDetailLevel)
 	}
@@ -62,8 +62,8 @@ func TestTheMenusDetailRowStepsTheLevel(t *testing.T) {
 	d.mapPane.menuAt = indexOf(keys, detailLevelKey)
 	*calls = nil
 	m, _, ok := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	if !ok || m.(Dashboard).mapDetailLevel.String() != "full" {
-		t.Fatalf("space on the level row: handled %v, level %v", ok, m.(Dashboard).mapDetailLevel)
+	if !ok || m.mapDetailLevel.String() != "full" {
+		t.Fatalf("space on the level row: handled %v, level %v", ok, m.mapDetailLevel)
 	}
 	if !strings.Contains(strings.Join(*calls, " "), "Layers:rail:on") || !strings.Contains(strings.Join(*calls, " "), "Layers:parks:on") {
 		t.Errorf("the level's preset did not reach the library's switches (D-79): %v", *calls)

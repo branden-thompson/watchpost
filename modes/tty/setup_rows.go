@@ -595,7 +595,7 @@ const (
 // pickerFlashFor is the blink state of one row's picker: only the FOCUSED row
 // can blink, and only while its window is open.
 func (d Dashboard) pickerFlashFor(id setupRowID) pickerFlash {
-	if d.setup.focus != id || d.setup.flash == flashNone || !time.Now().Before(d.setup.flashEnd) {
+	if d.setup.focus != id || d.setup.flash == flashNone || !d.clock().Before(d.setup.flashEnd) {
 		return flashNone
 	}
 	return d.setup.flash

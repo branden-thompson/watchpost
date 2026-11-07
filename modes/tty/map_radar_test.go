@@ -118,7 +118,7 @@ func TestSwitchingRadarOffTakesItAway(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"}) // D-94: R is the mode; the Overlays menu does not list radar
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if len(d.mapPane.radarGiven) != 0 || d.radarChipText() != "" {
 		t.Errorf("radar off left %v and the chip %q", d.mapPane.radarGiven, d.radarChipText())
 	}
@@ -164,11 +164,11 @@ func TestTheLower48sRadarSourceIsASetting(t *testing.T) {
 		t.Fatalf("the Maps tab has no radar row at MRMS:\n%s", text)
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	if !d.mapRadarIEM || d.radarSourceLabel() != "IEM (lower 48)" || !d.mapAsk().RadarIEM {
 		t.Errorf("→ gave %q; want IEM for the lower 48, in the ask", d.radarSourceLabel())
 	}
-	if back, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft}); back.(Dashboard).mapRadarIEM {
+	if back, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft}); back.mapRadarIEM {
 		t.Error("← did not go back to MRMS")
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -219,7 +219,7 @@ func TestEveryPlaybackEventDrawsTheFrame(t *testing.T) {
 			r := radarFeed(t, "IEM", &asked)(context.Background(), d.mapAsk())
 			r.Overlays[0].Image.Frames = r.Overlays[0].Image.Frames[1:] // a refresh: the loop changed
 			m, cmd := d.applyMapRadar(mapRadarMsg{radar: r, region: d.mapPane.region.Name})
-			return settleRadar(t, m.(Dashboard), cmd)
+			return settleRadar(t, m, cmd)
 		},
 	} {
 		d := openRadarMap(t, "IEM", &asked)
@@ -345,7 +345,7 @@ func TestARefusedLoopIsSaidNotLoading(t *testing.T) {
 	r.Overlays[0].ID = RadarLayer + "/us-b" // a new box: it must fit the budget whole
 	d.mapPane.radarGiven = nil
 	m, cmd := d.applyMapRadar(mapRadarMsg{radar: r, region: d.mapPane.region.Name})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	line := stripANSITest(d.mapStatusLine())
 	if strings.Contains(line, "loading") || strings.Contains(line, "could not") || d.radarChipText() != "" {
 		t.Errorf("a refused loop reads %q with the chip %q", line, d.radarChipText())
@@ -583,7 +583,7 @@ func TestTheHoursAheadAreASetting(t *testing.T) {
 		t.Fatalf("the Maps tab has no hours-ahead row at 3 hours:\n%s", text)
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	if d.mapRadarAhead != 6 || d.mapAsk().RadarAhead != 6 {
 		t.Errorf("→ gave %d; want 6, in the ask", d.mapRadarAhead)
 	}

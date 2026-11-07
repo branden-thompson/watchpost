@@ -40,7 +40,7 @@ func switchLayer(t *testing.T, d Dashboard, key string) Dashboard {
 		}
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	return pressCode(settleRadar(t, m.(Dashboard), cmd), 'O', "O")
+	return pressCode(settleRadar(t, m, cmd), 'O', "O")
 }
 
 // rainGiven counts the rain grids handed in.
@@ -74,7 +74,7 @@ func TestRainIsForecastModesRow(t *testing.T) {
 		t.Fatalf("Radar mode lists the rain row (%v) or draws %d rain grids; the radar is its rain", menuHas(d, RainLayer), rainGiven(d))
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if !menuHas(d, RainLayer) || !d.layerOn(RainLayer) {
 		t.Fatal("Forecast mode's menu has no rain and snow row, on")
 	}
@@ -85,7 +85,7 @@ func TestRainIsForecastModesRow(t *testing.T) {
 		t.Error("with rain on, Forecast mode did not turn temperature on as the tint under it (D-104, D-117)")
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"}) // back to Radar mode, Forecast mode's answer still held
-	if n := rainGiven(m.(Dashboard)); n != 0 {
+	if n := rainGiven(m); n != 0 {
 		t.Errorf("back in Radar mode, %d of Forecast mode's rain grids stayed drawn over the radar", n)
 	}
 }

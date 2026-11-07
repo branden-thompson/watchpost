@@ -136,7 +136,7 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 		d.cfg.MapProblem = func(p string) { noted = append(noted, p) }
 		for _, snap := range []ionomaps.Snapshot{s, later} {
 			m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
-			d = m.(Dashboard)
+			d = m
 		}
 		if n := strings.Count(strings.Join(noted, "\n"), "GIRO refused this host (a 401 or 403)"); n != 1 {
 			t.Errorf("the diagnostics name the denial %d times over two snapshots: %q; want once", n, noted)
@@ -185,7 +185,7 @@ func TestEveryRefusedReadingIsNoted(t *testing.T) {
 	apply := func(snap ionomaps.Snapshot) {
 		t.Helper()
 		m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
-		d = m.(Dashboard)
+		d = m
 	}
 	refusals := func() int {
 		n := 0

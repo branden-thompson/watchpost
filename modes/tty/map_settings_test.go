@@ -18,7 +18,7 @@ import (
 func TestTheMapRowsSaveWithTheDisplayPreferences(t *testing.T) {
 	d, got := uiDash(t, rowMapDesc)
 	m0, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m0.(Dashboard)
+	d = m0
 	if d.mapDesc != mapDescInstead {
 		t.Errorf("→ on the description's picker did not move it on: %v", d.mapDesc)
 	}
@@ -178,7 +178,7 @@ func TestEverySizeShowsAStatedStateAndNeverOverflows(t *testing.T) {
 func TestTheDescriptionPickerGoesBothWays(t *testing.T) {
 	d, _ := uiDash(t, rowMapDesc)
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.(Dashboard).mapDesc; got != mapDescOff {
+	if got := m.mapDesc; got != mapDescOff {
 		t.Errorf("← from with the picture went to %v, want off", got)
 	}
 }
@@ -189,25 +189,25 @@ func TestTheDescriptionPickerGoesBothWays(t *testing.T) {
 func TestTheArrowsSwitchTabsUnlessTheRowTakesThem(t *testing.T) {
 	d, _ := uiDash(t, rowUnitsImperial) // a radio row, on Watchpost UI (D-71)
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	if got := m.(Dashboard).setupTab(); got != tabRadio {
+	if got := m.setupTab(); got != tabRadio {
 		t.Errorf("→ on a radio row went to %s, want Watchpost Radio", got.Label())
 	}
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.(Dashboard).setupTab(); got != tabData {
+	if got := m.setupTab(); got != tabData {
 		t.Errorf("← on Watchpost UI went to %s, want Data", got.Label())
 	}
 	d.setup.focus = firstOfGroup(groupData)
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.(Dashboard).setupTab(); got != tabMapLayers && d.rowTakesLeftRight() == false {
+	if got := m.setupTab(); got != tabMapLayers && d.rowTakesLeftRight() == false {
 		t.Errorf("← on Data went to %s, want Map Layers (wrapping)", got.Label())
 	}
 	p, _ := uiDash(t, rowTheme) // a picker keeps the arrows
 	m, _, _ = p.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	if got := m.(Dashboard).setupTab(); got != tabUI {
+	if got := m.setupTab(); got != tabUI {
 		t.Errorf("→ on the theme picker left for %s", got.Label())
 	}
 	m, _ = p.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyTab})
-	if got := m.(Dashboard).setupTab(); got != tabRadio {
+	if got := m.setupTab(); got != tabRadio {
 		t.Errorf("tab on the theme picker went to %s, want Watchpost Radio", got.Label())
 	}
 }

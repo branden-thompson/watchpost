@@ -28,13 +28,13 @@ func TestTheQuakesAreASetting(t *testing.T) {
 	}
 	for _, want := range []string{"2.5_day", "1.0_week", "1.0_day", "2.5_week"} {
 		m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-		d = m.(Dashboard)
+		d = m
 		if d.mapQuakeFeed != want || d.mapAsk().QuakeFeed != want {
 			t.Errorf("→ gave %q (asked %q); want %q", d.mapQuakeFeed, d.mapAsk().QuakeFeed, want)
 		}
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	drain(t, m, cmd)
 	if got.MapQuakeFeed != "2.5_day" {
@@ -83,9 +83,9 @@ func TestTheAppsProblemsReachTheDiagnostics(t *testing.T) {
 	d := openTempMap(t, true, &asks)
 	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
 	m, _ := d.applyMapTemp(mapTempMsg{temp: MapTemperature{Problems: []string{"Temperature: Open-Meteo did not answer"}}, anchor: d.tempAnchor()})
-	d = m.(Dashboard)
+	d = m
 	m, _ = d.applyMapRadar(mapRadarMsg{radar: MapRadar{Problems: []string{"Radar ahead: HRRR did not answer"}}, region: d.mapPane.region.Name})
-	d = m.(Dashboard)
+	d = m
 	if strings.Join(problems, "|") != "Temperature: Open-Meteo did not answer|Radar ahead: HRRR did not answer" {
 		t.Errorf("the diagnostics were told %q", problems)
 	}

@@ -101,13 +101,13 @@ func TestTheTransmitterRowResolvesLikeTheDefaultLocation(t *testing.T) {
 	}
 	for _, r := range "bons" {
 		m, _ := d.setupRowText(tea.KeyPressMsg{Code: r, Text: string(r)})
-		d = m.(Dashboard)
+		d = m
 	}
 	if len(d.setup.hints) == 0 {
 		t.Fatal("typing produced no suggestions")
 	}
 	m, _ := d.setupRowText(tea.KeyPressMsg{Code: tea.KeyEnter})
-	d = m.(Dashboard)
+	d = m
 
 	if d.setup.txRef == nil || d.setup.txRef.Label != "Bonsall, CA" {
 		t.Fatalf("enter chose %v, want Bonsall, CA", d.setup.txRef)
@@ -137,7 +137,7 @@ func TestTheServiceRadiusTakesDigitsAndReplacesTheStoredOne(t *testing.T) {
 	}
 	for _, r := range "50" {
 		m, _ := d.setupRowText(tea.KeyPressMsg{Code: r, Text: string(r)})
-		d = m.(Dashboard)
+		d = m
 	}
 	// 50, NOT 2550 — the rule the alert radius keeps too (UAT 2026-09-08).
 	if d.setup.serviceMi != "50" {

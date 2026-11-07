@@ -157,7 +157,7 @@ func TestRSwitchesBetweenRadarAndForecastModes(t *testing.T) {
 		}
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if d.mapMode() == modeRadar || len(d.mapPane.radarGiven) != 0 {
 		t.Fatalf("R left Radar mode on (%v) or its loops (%d)", d.mapMode() == modeRadar, len(d.mapPane.radarGiven))
 	}
@@ -175,7 +175,7 @@ func TestRSwitchesBetweenRadarAndForecastModes(t *testing.T) {
 		t.Error("the temperature was not asked again for Forecast mode")
 	}
 	m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	if d = settleRadar(t, m.(Dashboard), cmd); d.mapMode() != modeRadar || len(d.mapPane.radarGiven) == 0 {
+	if d = settleRadar(t, m, cmd); d.mapMode() != modeRadar || len(d.mapPane.radarGiven) == 0 {
 		t.Error("R again did not bring Radar mode and its loop back")
 	}
 }
@@ -187,7 +187,7 @@ func TestEveryGridIsHandedInUpFrontWithItsSpan(t *testing.T) {
 		t.Fatalf("Radar mode handed in %d grids; want both hours at once (L-15.1)", n)
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if n := len(d.mapPane.tempGiven); n != 1+forecastDays {
 		t.Fatalf("Forecast mode handed in %d grids; want Now and every day's high", n)
 	}
@@ -206,7 +206,7 @@ func TestEveryGridIsHandedInUpFrontWithItsSpan(t *testing.T) {
 		mod  tea.KeyMod
 	}{{tea.KeyRight, tea.ModShift}, {tea.KeyRight, tea.ModShift}, {tea.KeyLeft, tea.ModShift}} {
 		m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: key.code, Mod: key.mod})
-		d = m.(Dashboard)
+		d = m
 	}
 	for _, c := range calls {
 		if c == "Set" || c == "Remove" {
@@ -219,11 +219,11 @@ func TestEveryGridIsHandedInUpFrontWithItsSpan(t *testing.T) {
 	// THE STEP IS WHAT IS DRAWN: Now's 61 F and Tomorrow's high of 80 F are
 	// different frames, the library choosing by the moment the step set.
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'n', Text: "n"})
-	d = m.(Dashboard)
+	d = m
 	now := strings.Join(d.mapPane.lines, "\n")
 	for range 2 {
 		m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-		d = m.(Dashboard)
+		d = m
 	}
 	if strings.Join(d.mapPane.lines, "\n") == now {
 		t.Error("Tomorrow drew Now's frame: the step did not move the library's moment")
@@ -234,12 +234,12 @@ func TestTheDaysFlipBetweenHighAndLow(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	d = m.(Dashboard)
+	d = m
 	if got := d.stepWords(); !strings.HasSuffix(got, " high") {
 		t.Errorf("Today says %q; a day draws its high by default (D-97)", got)
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: '>', Text: ">"})
-	d = m.(Dashboard)
+	d = m
 	lows := 0
 	for id := range d.mapPane.tempGiven {
 		if strings.HasSuffix(id, "/high") {
@@ -253,7 +253,7 @@ func TestTheDaysFlipBetweenHighAndLow(t *testing.T) {
 		t.Errorf("> gave %d lows and %q", lows, d.stepWords())
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift})
-	if got := m.(Dashboard).stepWords(); got != "Now" {
+	if got := m.stepWords(); got != "Now" {
 		t.Errorf("Now says %q; the switch does not touch Now", got)
 	}
 }
@@ -263,7 +263,7 @@ func TestForecastPlaybackStepsAndHoldsTheLastDay(t *testing.T) {
 	d := openTempMap(t, false, &asks)
 	d.mapPlayback = time.Second // at 1 s a frame the last day's 2 s hold is two steps (D-361)
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	d = m.(Dashboard)
+	d = m
 	if !d.mapPane.fcPlaying || cmd == nil {
 		t.Fatal("space did not play the forecast")
 	}
@@ -288,7 +288,7 @@ func TestForecastPlaybackStepsAndHoldsTheLastDay(t *testing.T) {
 	}
 	stale := d.mapPane.fcGen
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	d = m.(Dashboard)
+	d = m
 	mm, _ := d.Update(forecastTickMsg{gen: stale})
 	if d = mm.(Dashboard); d.mapPane.fcPlaying || d.mapPane.fcStep != 0 {
 		t.Error("a tick of a stopped play moved the step")
@@ -320,7 +320,7 @@ func TestAnAlertInEffectIsAlwaysOnNowsFrame(t *testing.T) {
 		t.Errorf("in Radar mode a quake ends at %v; want open", sp.Until)
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if sp := d.spanFor(quake); !sp.Until.Equal(d.tempAnchor()) {
 		t.Errorf("in Forecast mode a quake ends at %v; want Now alone (D-98)", sp.Until)
 	}
@@ -357,7 +357,7 @@ func switchTemp(t *testing.T, d Dashboard) Dashboard {
 		}
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	return pressCode(d, 'O', "O")
 }
 
@@ -381,7 +381,7 @@ func TestMovingThroughTheMenuAsksNothing(t *testing.T) {
 	temps, radars := len(asks), len(radarAsks)
 	for range 40 {
 		m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyDown})
-		d = settleRadar(t, m.(Dashboard), cmd)
+		d = settleRadar(t, m, cmd)
 	}
 	if len(asks) != temps || len(radarAsks) != radars {
 		t.Errorf("40 arrows asked the temperature %d times and the radar %d", len(asks)-temps, len(radarAsks)-radars)
@@ -408,7 +408,7 @@ func TestARefusedLoopKeepsTheOneDrawn(t *testing.T) {
 	}
 	bad.Source = "MRMS"
 	m, _ := d.applyMapRadar(mapRadarMsg{radar: bad, region: d.mapPane.region.Name})
-	d = m.(Dashboard)
+	d = m
 	if len(d.mapPane.radarGiven) != held || len(d.mapPane.m.Overlays()) == 0 {
 		t.Errorf("a refused loop took the drawn one away: %d held", len(d.mapPane.radarGiven))
 	}
@@ -428,7 +428,7 @@ func TestTheTemperatureSourceIsASetting(t *testing.T) {
 		t.Fatalf("the Maps tab has no temperature row at NDFD, the default (D-190):\n%s", text)
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	if d.mapTempNDFD || d.tempSourceLabel() != "Open-Meteo" || d.mapAsk().TempNDFD {
 		t.Errorf("→ gave %q; want Open-Meteo, in the ask", d.tempSourceLabel())
 	}
@@ -453,16 +453,16 @@ func TestAFilledStepNamesOpenMeteo(t *testing.T) {
 	d.mapPane.temp.Filled = map[string]bool{"0/high": true}
 	badge := func() string { return stripANSITest(d.forecastBadge()) }
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if d = m.(Dashboard); !strings.Contains(badge(), "O-METEO") {
+	if d = m; !strings.Contains(badge(), "O-METEO") {
 		t.Errorf("Today, filled from Open-Meteo, has the badge %q", badge())
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if d = m.(Dashboard); !strings.Contains(badge(), "NDFD") {
+	if d = m; !strings.Contains(badge(), "NDFD") {
 		t.Errorf("Tomorrow, NDFD's own, has the badge %q", badge())
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: '<', Text: "<"})
-	m, _, _ = m.(Dashboard).handleMapKey(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift})
-	if d = m.(Dashboard); !strings.Contains(badge(), "NDFD") {
+	m, _, _ = m.handleMapKey(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift})
+	if d = m; !strings.Contains(badge(), "NDFD") {
 		t.Errorf("Today's low, NDFD's own, has the badge %q", badge())
 	}
 }
@@ -481,16 +481,16 @@ func TestTheForecastBadgeIsTheHUMLEADsLayout(t *testing.T) {
 	}
 	want(" FORECAST    NDFD    NOW ")
 	m0, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	d = m0.(Dashboard)
+	d = m0
 	want(" FORECAST    NDFD    TODAY HIGHS ")
 	for range forecastDays - 1 {
 		m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-		d = m.(Dashboard)
+		d = m
 	}
 	day := strings.ToUpper(d.forecastSteps()[forecastDays].Span.From.Format("Mon"))
 	want(" FORECAST    NDFD    " + day + " HIGHS ")
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: '>', Text: ">"})
-	d = m.(Dashboard)
+	d = m
 	d.mapPane.temp.Source = "Open-Meteo"
 	want(" FORECAST    O-METEO    " + day + " LOWS ")
 }
@@ -519,7 +519,7 @@ func TestForecastModeTurnsTemperatureOnForItself(t *testing.T) {
 	d := openTempMapWith(t, true, false, &asks)
 	saved := d.mapLayerChoice
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if !d.layerOn(TemperatureLayer) || len(d.mapPane.tempGiven) == 0 {
 		t.Fatal("Forecast mode with temperature off drew no temperature: a blank map")
 	}
@@ -531,11 +531,11 @@ func TestForecastModeTurnsTemperatureOnForItself(t *testing.T) {
 		t.Error("no chip says temperature was turned on")
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if d = m.(Dashboard); d.mapPane.modeChip {
+	if d = m; d.mapPane.modeChip {
 		t.Error("a key left the chip up")
 	}
 	m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if d.layerOn(TemperatureLayer) || len(d.mapPane.tempGiven) != 0 {
 		t.Error("back in Radar mode, the temperature Forecast mode turned on stayed on")
 	}
@@ -543,7 +543,7 @@ func TestForecastModeTurnsTemperatureOnForItself(t *testing.T) {
 		t.Errorf("the choice changed: %q", d.mapLayerChoice)
 	}
 	m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	if d = settleRadar(t, m.(Dashboard), cmd); !d.mapPane.modeChip {
+	if d = settleRadar(t, m, cmd); !d.mapPane.modeChip {
 		t.Error("into Forecast mode again, the chip did not say it turned temperature on")
 	}
 }
@@ -603,7 +603,7 @@ func TestTheLoopRowInForecastMode(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	d = m.(Dashboard)
+	d = m
 	row := d.loopRow(d.scrubW())
 	plain := stripANSITest(row)
 	if !strings.Contains(plain, "FORECAST") || !strings.Contains(plain, "STEP 1 / 8") || !strings.Contains(plain, "PLAYING") {
@@ -647,12 +647,12 @@ func TestWindIsForecastModesMainOverlayToo(t *testing.T) {
 	var asks []MapAsk
 	d := openFieldsMap(t, true, false, true, &asks)
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if d.mapPane.tempAuto || d.mapPane.modeChip || d.layerOn(TemperatureLayer) {
 		t.Error("wind was on, and Forecast mode turned temperature on as if nothing were")
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	d = m.(Dashboard)
+	d = m
 	if got := d.badgeStep(); got != "TODAY PEAK" {
 		t.Errorf("the badge's step is %q; want TODAY PEAK, the day's peak wind (D-108)", got)
 	}
@@ -684,7 +684,7 @@ func TestAForecastStepIsDrawnOnce(t *testing.T) {
 	if n := renders(*calls); n != 1 {
 		t.Errorf("the switch to Forecast mode drew %d times; want once", n)
 	}
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	for _, fed := range []bool{true, false} {
 		if !fed {
 			d.mapPane.feed = nil // no feed landed yet: the step must still be drawn
@@ -697,7 +697,7 @@ func TestAForecastStepIsDrawnOnce(t *testing.T) {
 		d.mapPane.fcPlaying = true
 		*calls = nil
 		next, _ := d.applyForecastTick(forecastTickMsg{gen: d.mapPane.fcGen})
-		d = next.(Dashboard)
+		d = next
 		if n := renders(*calls); n != 1 {
 			t.Errorf("a playback tick (feed in: %v) drew %d times; want once", fed, n)
 		}
@@ -729,14 +729,14 @@ func TestTheRadarAndTemperatureAreReconciled(t *testing.T) {
 	}
 	same.Source, moved.Source = d.mapPane.radarSource, d.mapPane.radarSource
 	m, _ := d.applyMapRadar(mapRadarMsg{radar: same, region: d.mapPane.region.Name})
-	d = m.(Dashboard)
+	d = m
 	if slices.Contains(*calls, "Set") {
 		t.Errorf("an unchanged loop was handed in again: %v", *calls)
 	}
 	*calls = nil
 	d.mapPane.feed = nil // no feed yet: retime draws nothing, so the landing's own rule is what draws
 	m, _ = d.applyMapRadar(mapRadarMsg{radar: moved, region: d.mapPane.region.Name})
-	d = m.(Dashboard)
+	d = m
 	if !slices.Contains(*calls, "Set") || !slices.Contains(*calls, "Remove") {
 		t.Fatalf("a moved loop was not handed in and the old taken off: %v", *calls)
 	}
@@ -858,7 +858,7 @@ func TestTheRainDensityIsASetting(t *testing.T) {
 		t.Fatalf("the Maps tab has no rain density row at Coarse, the default (D-192):\n%s", text)
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	if !d.mapRainFull || !d.mapAsk().RainFull {
 		t.Error("→ did not choose the full density, in the ask")
 	}
@@ -889,12 +889,12 @@ func TestUVsCityCountIsASetting(t *testing.T) {
 		t.Errorf("nothing says what the count costs (D-23, a notice by D-237):\n%s", notes)
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	if d.mapAsk().UVCities != 48 {
 		t.Errorf("→ from 24 asks for %d cities; want 48", d.mapAsk().UVCities)
 	}
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	if d.mapAsk().UVCities != 8 {
 		t.Errorf("→ from 48 asks for %d cities; want 8, round again", d.mapAsk().UVCities)
 	}

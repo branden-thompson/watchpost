@@ -128,7 +128,7 @@ func (d Dashboard) placeRow() string {
 // key blinks all six chips' - the one pressed among them.
 func (d Dashboard) controlCap(act term.Action, face string) string {
 	o := d.opts()
-	if d.mapPane.flash == act && time.Now().Before(d.mapPane.flashEnd) {
+	if d.mapPane.flash == act && d.clock().Before(d.mapPane.flashEnd) {
 		return o.KeyCapInverted(face)
 	}
 	return o.KeyCap(face)
@@ -851,7 +851,7 @@ const menuChoiceW = 10
 // menuFlashFor is the blink of a menu row's picker: only the row pressed,
 // only while its window is open - Settings' pickers' rule (D-147).
 func (d Dashboard) menuFlashFor(row int) pickerFlash {
-	if row != d.mapPane.menuFlashAt || d.mapPane.menuFlash == flashNone || !time.Now().Before(d.mapPane.menuFlashEnd) {
+	if row != d.mapPane.menuFlashAt || d.mapPane.menuFlash == flashNone || !d.clock().Before(d.mapPane.menuFlashEnd) {
 		return flashNone
 	}
 	return d.mapPane.menuFlash

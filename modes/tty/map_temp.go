@@ -287,7 +287,7 @@ func (d Dashboard) refreshTemp() (Dashboard, tea.Cmd) {
 }
 
 // applyMapTemp keeps the answer and hands its grids in.
-func (d Dashboard) applyMapTemp(v mapTempMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyMapTemp(v mapTempMsg) (Dashboard, tea.Cmd) {
 	d.mapPane.tempBusy = false
 	if d.mapPane.m == nil || d.modal != modalMap {
 		return d, nil
@@ -582,7 +582,7 @@ func (d Dashboard) handleForecastPlayback(act term.Action) (Dashboard, tea.Cmd, 
 }
 
 // applyForecastTick advances a playing forecast one step, holding the last.
-func (d Dashboard) applyForecastTick(v forecastTickMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyForecastTick(v forecastTickMsg) (Dashboard, tea.Cmd) {
 	playing := v.gen == d.mapPane.fcGen && d.mapPane.fcPlaying && d.modal == modalMap && d.mapMode() == modeForecast
 	if !playing {
 		return d, nil

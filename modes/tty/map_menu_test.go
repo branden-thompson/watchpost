@@ -62,7 +62,7 @@ func TestTheMenuIsTheHUMLEADsLayout(t *testing.T) {
 		t.Errorf("the rows are\n%s\nwant\n%s", strings.Join(got, " "), want)
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	if menuHas(settleRadar(t, m.(Dashboard), cmd), RainLayer) {
+	if menuHas(settleRadar(t, m, cmd), RainLayer) {
 		t.Error("Radar mode lists Rain & snow: the radar is its rain (D-117)")
 	}
 	quiet := stripANSITest(strings.Join(d.overlaysBox(), "\n"))

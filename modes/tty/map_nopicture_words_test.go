@@ -25,7 +25,7 @@ func TestWithoutThePictureTheStatusAndTimelineAreText(t *testing.T) {
 		}
 	}
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	if got := bodyText(m.(Dashboard)); !strings.Contains(got, "PLAYING") {
+	if got := bodyText(m); !strings.Contains(got, "PLAYING") {
 		t.Errorf("play is not said at once without the picture:\n%s", got)
 	}
 	loading := mapDash(t, Config{NewMap: offlineMap, MapDescription: "instead"})

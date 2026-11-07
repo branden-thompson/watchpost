@@ -36,7 +36,7 @@ func TestBackspaceErasesALetterInEveryField(t *testing.T) {
 			d := base.openRequest()
 			d.request.field, d.request.query = requestLocation, s
 			m, _ := d.handleRequestKey(backspace)
-			out := m.(Dashboard)
+			out := m
 			if out.request.locate.query != out.request.query {
 				return out.request.query, "the locate pause was not restarted on the new query"
 			}
@@ -46,19 +46,19 @@ func TestBackspaceErasesALetterInEveryField(t *testing.T) {
 			d := base.openRequest()
 			d.request.field, d.request.slot = requestPosition, s
 			m, _ := d.handleRequestKey(backspace)
-			return m.(Dashboard).request.slot, ""
+			return m.request.slot, ""
 		}, "12", "1"},
 		{"the Lookup window", func(s string) (string, string) {
 			d := base
 			d.addQuery = s
 			m, _ := d.handleAddKey(backspace)
-			return m.(Dashboard).addQuery, ""
+			return m.addQuery, ""
 		}, "Peñ", "Pe"},
 		{"Settings' place", func(s string) (string, string) {
 			d := base
 			d.setup.query, asked = s, nil
 			m, _ := d.setupLocationKey(backspace)
-			out := m.(Dashboard)
+			out := m
 			if len(asked) != 1 || asked[0] != out.setup.query {
 				return out.setup.query, "the suggestions were not asked again for the shorter query"
 			}
@@ -68,7 +68,7 @@ func TestBackspaceErasesALetterInEveryField(t *testing.T) {
 			d := base
 			d.setup.serviceMi, d.setup.serviceSeeded = s, true
 			m, _ := d.setupServiceKey(backspace)
-			out := m.(Dashboard)
+			out := m
 			if out.setup.serviceSeeded {
 				return out.setup.serviceMi, "the radius is still marked as the stored one"
 			}
@@ -78,13 +78,13 @@ func TestBackspaceErasesALetterInEveryField(t *testing.T) {
 			d := base
 			d.setup.key = s
 			m, _ := d.setupKeyKey(backspace)
-			return m.(Dashboard).setup.key, ""
+			return m.setup.key, ""
 		}, "Peñ", "Pe"},
 		{"Settings' alert radius", func(s string) (string, string) {
 			d := base
 			d.setup.radiusMi, d.setup.radiusSeeded = s, true
 			m, _ := d.setupAlertKey(backspace)
-			out := m.(Dashboard)
+			out := m
 			if out.setup.radiusSeeded {
 				return out.setup.radiusMi, "the radius is still marked as the stored one"
 			}
@@ -94,13 +94,13 @@ func TestBackspaceErasesALetterInEveryField(t *testing.T) {
 			d := base
 			d.mapPane.propFindQuery = s
 			m, _ := d.handlePropFindKey(backspace)
-			return m.(Dashboard).mapPane.propFindQuery, ""
+			return m.mapPane.propFindQuery, ""
 		}, "Peñ", "Pe"},
 		{"the frequency's field", func(s string) (string, string) {
 			d := base
 			d.mapPane.propFreqQuery = s
 			m, _ := d.handlePropFreqKey(backspace)
-			return m.(Dashboard).mapPane.propFreqQuery, ""
+			return m.mapPane.propFreqQuery, ""
 		}, "14.07ñ", "14.07"},
 		{"the card's new position", func(s string) (string, string) {
 			r := NewRouter(base)
@@ -132,7 +132,7 @@ func TestTheRequestWindowsKeysDoWhatTheyClaim(t *testing.T) {
 	step := func(d Dashboard, k tea.KeyPressMsg) Dashboard {
 		t.Helper()
 		m, _ := d.handleRequestKey(k)
-		return m.(Dashboard)
+		return m
 	}
 
 	if up := step(d, tea.KeyPressMsg{Code: tea.KeyUp}); up.request.field != requestPosition {

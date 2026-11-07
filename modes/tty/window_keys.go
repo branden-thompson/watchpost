@@ -42,11 +42,11 @@ const (
 type windowKeys struct {
 	claim keyClaim
 	// all takes every key (claimAll).
-	all func(Dashboard, tea.KeyPressMsg) (tea.Model, tea.Cmd)
+	all func(Dashboard, tea.KeyPressMsg) (Dashboard, tea.Cmd)
 	// bound are the keys it binds, and onKey takes one of them (claimBound);
 	// onKey says false for a key it does not own.
 	bound func(Dashboard) term.KeyMap
-	onKey func(Dashboard, tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
+	onKey func(Dashboard, tea.KeyPressMsg) (Dashboard, tea.Cmd, bool)
 	// nav is what the Observer's selection and paging actions do while it is
 	// shown: its scroll, its rows, its fields. Nil walks the table - which is
 	// only right for a window that leaves the arrows to it on purpose.
@@ -102,7 +102,7 @@ func windowKeysOf(m modal) (windowKeys, bool) {
 // routeWindowKey offers a key to the window shown (F-184): all of them to a
 // window that claims every key, its own to a window that binds some. False
 // when the key goes on to the Observer's bindings.
-func (d Dashboard) routeWindowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
+func (d Dashboard) routeWindowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 	w, ok := windowKeysOf(d.modal)
 	if !ok {
 		return d, nil, false // no window of its own shown: the key goes on to the Observer's bindings

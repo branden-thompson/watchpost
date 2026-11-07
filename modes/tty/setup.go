@@ -232,7 +232,7 @@ func (d Dashboard) openSetup() Dashboard {
 // build the focused answer, so table/global bindings never fire mid-typing.
 // tab / shift+tab move between the questions; enter accepts the focused
 // one (and saves on the last); esc closes without saving.
-func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	if d.setup.raise != nil {
 		return d.confirmRaise(key) // the question owns the keys (D-61)
 	}
@@ -249,8 +249,8 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// form is kept until the save's answer: a refusal - a mistyped FIRMS key
 		// - reopens the window with the pick and the key still in it.
 		if d.cfg.FirstRun && d.setup.ref != nil {
-			m, save := d.setupSave()
-			return m.(Dashboard).close(), save
+			next, save := d.setupSave()
+			return next.close(), save
 		}
 		// Closing APPLIES what was recorded. esc is not a cancel for the cast
 		// and tone groups — the chip says Close rather than Cancel over them —
@@ -299,16 +299,13 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// typing, it is a keyboard that does not work. Trusting every writer to
 	// remember is the wrong shape: one that forgets leaves the window not
 	// showing what is typed into it. One place cannot forget.
-	m, cmd := d.setupRowText(key)
-	if next, ok := m.(Dashboard); ok {
-		return next.settled(), cmd
-	}
-	return m, cmd
+	next, cmd := d.setupRowText(key)
+	return next.settled(), cmd
 }
 
 // setupRowText is the focused row's own handling of a key the window-level
 // rules did not take.
-func (d Dashboard) setupRowText(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) setupRowText(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch d.setup.focus {
 	case rowLocation, rowTransmitter:
 		// ONE TYPE-AHEAD, TWO SETTINGS (D-115). They are never both on screen —
@@ -335,7 +332,7 @@ func (d Dashboard) setupRowText(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // Split out of handleSetupKey to keep both inside the safety gate's decision
 // ceiling (P10-04) — and because "which keys move the focus" and "what this
 // particular row does with text" are two different questions.
-func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
+func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 	picker := setupTable()[d.setup.focus].picker
 	if d.setup.focus == rowMapClear && (key.String() == "space" || key.String() == "enter") {
 		m, cmd := d.clearMapData()
@@ -545,7 +542,7 @@ func (d Dashboard) setupSpace() Dashboard {
 
 // setupAdvance is enter on a row that does not handle it itself: move to the
 // next row, or SAVE on the last.
-func (d Dashboard) setupAdvance() (tea.Model, tea.Cmd) {
+func (d Dashboard) setupAdvance() (Dashboard, tea.Cmd) {
 	if enterSaves(d.setup.focus) {
 		return d.setupSave()
 	}
@@ -555,7 +552,7 @@ func (d Dashboard) setupAdvance() (tea.Model, tea.Cmd) {
 
 // setupSave owns the save rules for EVERY group's last row — one owner, so the
 // bounce when no location is chosen cannot differ between them.
-func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
+func (d Dashboard) setupSave() (Dashboard, tea.Cmd) {
 	if d.setup.ref == nil {
 		if cur := d.currentDefault(); cur != nil {
 			d.setup.ref = cur
@@ -744,7 +741,7 @@ func sequenceWrites(cmds ...tea.Cmd) tea.Cmd {
 // setupPreview is `p` on a picker: hear the voice this row will use. The first
 // press on an uninstalled voice OFFERS the download; the second proceeds
 // (FR-4's "asks once") — a preview must not quietly pull 63 MB.
-func (d Dashboard) setupPreview() (tea.Model, tea.Cmd) {
+func (d Dashboard) setupPreview() (Dashboard, tea.Cmd) {
 	next, go_ := d.previewOffer(d.setup.focus)
 	d = next.settled()
 	if !go_ {
@@ -761,7 +758,7 @@ func (d Dashboard) setupPreview() (tea.Model, tea.Cmd) {
 // setupLocationKey is question 1: type → hints; ↑↓ pick; enter takes the
 // pick, keeps the current default when nothing was typed, or resolves the
 // typed text when nothing matched offline — then moves to question 2.
-func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	// WHICH SETTING THIS TYPE-AHEAD IS FILLING (D-115). The station's transmitter
 	// and the listener's default location are the same CONTROL and different
 	// FACTS (D-72), so the keys are shared and the destination is not.
@@ -821,7 +818,7 @@ func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // THE BOUNDS ARE CHECKED AT THE SAVE, NOT AT THE KEYSTROKE. Typing "1" on the way
 // to "100" would otherwise be refused as below the floor, which is a field that
 // fights the operator over a number they have not finished writing.
-func (d Dashboard) setupServiceKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) setupServiceKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		return d.setupAdvance()
@@ -844,7 +841,7 @@ func (d Dashboard) setupServiceKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // setupKeyKey is question 2: the FIRMS key line — type to paste, ctrl+r
 // reveals, enter moves on to question 3 (the alert preference), keeping the
 // typed key in state for the final save.
-func (d Dashboard) setupKeyKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) setupKeyKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		return d.setupAdvance() // the key row ends DATA: this saves
@@ -861,7 +858,7 @@ func (d Dashboard) setupKeyKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // setupAlertKey is question 3: the Alert Notification Preference — ↑↓ picks All
 // vs Filtered; a digit selects Filtered and builds the miles; enter saves the
 // whole form. An empty or zero radius under "Filtered" reverts to All.
-func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		return d.setupAdvance()

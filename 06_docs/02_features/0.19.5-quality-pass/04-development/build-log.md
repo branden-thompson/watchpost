@@ -358,3 +358,88 @@ Mutants m734 to m737, each hand-vetted and killed.
 - **P10 (D-27):** `modes/tty` measures 0.32 over the functions this release has changed there, against its
   floor of 0.42. `rows` and `radioRender` are decisions over a plan that hold no state to guard. Recorded
   for REVIEW.
+
+## 0.19.5 batch 9 — the handlers return their own types; Q3 closes (plan Q3.1 second step, the budget sweep)
+
+Mutants m738 to m740 are new; m142, m595, m600, m620, m622, m664, m729, mRT2, mSC1 and mSC2 are
+re-pointed. Every one is hand-vetted and killed.
+
+- **The trace, recorded first.** `TestRouterUpdateIsTheSameUnderRandomMessages` (RR-8) runs three seeded
+  sequences of 300 messages through a Router built by `NewRouter` over the bench dashboard.
+  - The messages: navigation, the windows, the player, the swaps, digits, typing, three sizes, and the
+    shimmer, visualiser and ticker ticks.
+  - After each one it records the surface on screen, whether a command came back, and a SHA-256 of the
+    frame. The 900 steps hold 455 distinct frames, 296 of them on the console.
+  - It was recorded on the tree before any handler changed (`testdata/router-trace.golden`) and is
+    unchanged after.
+  - **It made the blinks deterministic first.** Its first run under the race detector differed at step
+    340: Settings' picker blink had expired. The pressed-chip blinks were set and ended on the wall
+    clock, so a slow run outlived the 350 ms. They are now set and ended on the model's clock
+    (`d.clock()`): `markEnds`, the tick that ends them, and the four places that draw them. The model's
+    clock is `time.Now` in the app (`NewDashboard`), so nothing changes for a listener.
+  - `TestABlinkEndsOnTheModelsClock` pins that seam, killing m738 and m739. The trace then held under
+    race, under another time zone and on one CPU.
+- **The Observer.**
+  - All 47 handlers that returned `(tea.Model, tea.Cmd)` return `(Dashboard, tea.Cmd)`, and the 5 that
+    returned `(tea.Model, tea.Cmd, bool)` return `(Dashboard, tea.Cmd, bool)`.
+  - `Update` is now one line that returns `update`, the one place the Dashboard becomes a `tea.Model`.
+  - `dispatch` returns the Dashboard and its command. The invariant that the handler answered with a
+    Dashboard is gone, because the compiler now guarantees it.
+  - `windowKeys`' two handler fields and `routed` follow.
+  - Four places that unboxed a handler's answer read it directly: the fused-esc key, the window toggle,
+    the first-run save, and the typed-row settle.
+- **The Router.**
+  - Its seven internal methods return `Router`, and `Update` is the one place it becomes a `tea.Model`.
+    The mirror block after `update` no longer type-switches.
+  - The three places that reached Observer through its boxed `Update` call `update`.
+  - The five not-handled returns hand back the router value itself, which costs nothing now that it is
+    concrete; mRT2, mSC1 and mSC2 move back to that line. m740 drops the Observer's answer and is
+    killed by the trace.
+- **The tests:** 135 call sites that unboxed a handler's answer or re-assigned a Dashboard from `Update`
+  are edited mechanically, by `.(Dashboard)` removed and `Update` read as `update`. `Update` is `update`
+  boxed, so each test runs what it ran before.
+- **The docs:**
+  - The `surfaceView` comment and the `Update` comment say what each call returns.
+  - where-things-happen's "A key is pressed" row names `update` as the routing and `Update` as the
+    wrapper (JM-15).
+  - The ledger rows for `Router.Update` and `Router.update` (P10-01) were re-read against the new shape.
+    They still match their findings, and their claim holds: the cycle is a name match, and `Dashboard`
+    holds no `Router`. But their proof names `r.surface()`, which only `Init` reaches now. The
+    re-wording goes to the HUM LEAD at REVIEW with D-27's density figures, since the ledger changes only
+    on ratification.
+- **The budget sweep**, deferred from batch 8. Every allocation pin is lowered to the highest of three
+  measurements on this tree, at its own rule:
+
+  | Pin | Before | Now (measured) |
+  |---|---|---|
+  | Beat: idle / radio / console, bytes | 102,508 / 104,634 / 183,813 | 80,707 / 82,830 / 175,591 |
+  | Beat: idle / radio / console, allocs | 367 / 463 / 537 | 364 / 460 / 536 |
+  | A no-change publish's frame | 5,561 / 385,203 B | 5,560 / 378,756 B |
+  | Frame hit, 133x44 / 133x70 / 200x60 / 80x24 | 365 / 383 / 386 / 377 | 288 / 282 / 285 / 289 |
+  | Frame miss, the same sizes | 5,608 / 11,477 / 14,477 / 2,188 | 5,520 / 11,319 / 14,231 / 1,133 |
+  | Severe window, hit / miss | 1,740 / 5,248 | 1,723 / 5,202 |
+  | Settings 133x44, hit / miss | 2,849 / 5,119 | 2,761 / 4,759 |
+  | Settings 80x24, hit / miss | 1,641 / 3,882 | 1,212 / 3,183 |
+  | A Settings Tab press | 3,740 | 3,152 |
+  | Map window, hit / miss | 3,541 / 4,011 | 3,228 / 3,787 |
+  | Propagation window, hit / miss / colour hit / colour miss | 1,280 / 1,742 / 1,762 / 3,415 | 1,252 / 1,716 / 1,650 / 3,262 |
+  | Console frame, hit / miss | 501 / 9,296 | 422 / 9,232 |
+
+  - The console's hit keeps its narrow 4 % (439), so a `locIndex` back outside the memo (29 allocations)
+    still fails it. Its miss is 9,694 at 1.05.
+  - The ticker's step (68) did not move.
+  - `docs/accepted-costs.md`'s console entry states the new pins and their slack.
+- **The gate's first run** stopped on two things:
+  - mSC3, a tripwire mutant that converted `keyAction`'s returned model back to a `Router`. That no longer
+    compiles once the model is a `Router`. It is re-pointed to take the value directly, and still
+    survives by design.
+  - `platform/plaintext`'s density row, which stated no floor. Its floor is written at the measured
+    1.50 over 2 changed functions (A-19, for the HUM LEAD's veto).
+- **P10 (D-27):** `modes/tty` measures 0.43 over 110 changed functions, at its floor of 0.42 again. The
+  handlers whose signatures changed carry the guards they always had, so they now count among the
+  changed functions. All seven firing density rows are at or over their floors.
+- **M2 after Q3:** idle 80.7 KB against 80, radio 82.8 against 90, console 175.6 against 140.
+  - The radio is met.
+  - Idle is 0.7 KB over.
+  - The console is 36 KB over. D-22's console work, the masthead memo and the Projection cache, is plan
+    Q4.

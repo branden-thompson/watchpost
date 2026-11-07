@@ -66,7 +66,7 @@ func (d Dashboard) volControl(o render.Opts, width int) string {
 	// UAT 42.2: at the floor/ceiling the inert chip mutes like every other
 	// control; a live press blinks (the blink outranks the resting state).
 	minus, plus := o.KeyCapIf("-", d.radioVolume > 0), o.KeyCapIf("+", d.radioVolume < 100)
-	if d.volFlash != "" && time.Now().Before(d.volFlashEnd) {
+	if d.volFlash != "" && d.clock().Before(d.volFlashEnd) {
 		if d.volFlash == "+" {
 			plus = o.KeyCapWith("+", render.ChipFlashUp)
 		} else {
@@ -370,7 +370,7 @@ func (d Dashboard) armViz() Dashboard {
 }
 
 // vizFrame pulls the next frame of levels and re-arms while there is work.
-func (d Dashboard) vizFrame() (tea.Model, tea.Cmd) {
+func (d Dashboard) vizFrame() (Dashboard, tea.Cmd) {
 	d.vizTicking = false
 	if !d.vizActive() {
 		d.vizBands = nil

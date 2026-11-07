@@ -12,15 +12,15 @@ import (
 
 // mapAllocBudget pins the map window over the 133×44 fixture: the modal-memo
 // HIT (every frame between events - the marquee's ticks keep drawing it) and
-// the MISS (a draw, a key). Measured at W2.7 and set at × 1.05, as the other
-// pins are.
+// the MISS (a draw, a key), measured and set at × 1.05, as the other pins
+// are.
 //
-// The hit is above the severe window's (1,740): the map's braille lines carry
+// The hit is above the severe window's (1,723): the map's braille lines carry
 // their colour spans, and the overlay compositor walks every one. Measured and
-// recorded, not optimised yet (D-53: function before performance). Re-pinned
-// with UAT-1's boxes (U1-7, U1-11): the Description box and the controls'
-// key caps are more spans for the compositor to walk (2,508 / 2,919 before).
-var mapAllocBudget = map[string]float64{"hit": 3_541 * 1.05, "miss": 4_011 * 1.05}
+// recorded, not optimised (D-53: function before performance). UAT-1's
+// boxes (U1-7, U1-11), the Description box and the controls' key caps, are
+// more spans for the compositor to walk.
+var mapAllocBudget = map[string]float64{"hit": 3_228 * 1.05, "miss": 3_787 * 1.05}
 
 // mapBench is the map window open over the benchmark fixture, one alert on
 // the map, every piece of work landed.

@@ -50,7 +50,7 @@ func TestAnIncompleteRequestIsNotScheduledAndTheWindowStaysOpen(t *testing.T) {
 	// NO LOCATION YET. Everything else is filled by default — the whole report,
 	// and a position — so the location is the only thing missing.
 	m, _ := d.handleRequestKey(keyPress(t, "enter"))
-	out := m.(Dashboard)
+	out := m
 	if sent != 0 {
 		t.Errorf("an incomplete request was scheduled %d times", sent)
 	}
@@ -118,7 +118,7 @@ func TestACompleteRequestIsScheduledAndTheWindowCloses(t *testing.T) {
 	if sent != 1 {
 		t.Errorf("a complete request was scheduled %d times, want 1", sent)
 	}
-	if out := m.(Dashboard); out.modal == modalRequest {
+	if out := m; out.modal == modalRequest {
 		t.Error("the window stayed open after the schedule was told")
 	}
 }

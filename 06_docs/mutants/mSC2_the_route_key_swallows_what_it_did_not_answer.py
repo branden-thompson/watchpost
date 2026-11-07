@@ -5,7 +5,7 @@ import pathlib
 # control — simply stop working.
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
 old = """	// NO KEY RULE CLAIMED IT: the active surface gets it.
-	return nil, nil, false"""
+	return r, nil, false"""
 new = """	// NO KEY RULE CLAIMED IT: the active surface gets it.
 	return r, nil, true"""
 assert old in s, "mSC2"
