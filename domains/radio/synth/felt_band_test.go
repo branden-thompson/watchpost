@@ -22,7 +22,7 @@ func TestTheSpokenLikelihoodAtEveryBoundary(t *testing.T) {
 	}
 }
 
-// TestEveryFeltBandHasSpokenWords is JM-15 for the radio's likelihoods.
+// TestEveryFeltBandHasSpokenWords is 0.19.5 JM-15 for the radio's likelihoods.
 func TestEveryFeltBandHasSpokenWords(t *testing.T) {
 	if len(feltLikelihoods) != render.FeltBands {
 		t.Errorf("feltLikelihoods has %d entries for %d felt bands", len(feltLikelihoods), render.FeltBands)

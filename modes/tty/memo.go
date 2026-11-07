@@ -40,7 +40,7 @@ type bodyKey struct {
 	radioH, alertH int
 	controlRows    int
 	window, days   int
-	priorityRows   int // favourites shown: fewer on a short terminal (D-30)
+	priorityRows   int // favourites shown: fewer on a short terminal (0.19.5 D-30)
 	snap, recent   *snapshot.Snapshot
 	selected       int // position: the row it marks indexes the rows snap, recent and lookup key by identity (#12)
 	recentOff      int // position: the scroll into the recent rows, which recent keys by identity (#12)

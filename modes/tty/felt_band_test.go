@@ -22,7 +22,7 @@ func TestTheSeismicLabelAtEveryBoundary(t *testing.T) {
 	}
 }
 
-// TestEveryFeltBandHasALabel is JM-15 for the Details section's labels.
+// TestEveryFeltBandHasALabel is 0.19.5 JM-15 for the Details section's labels.
 func TestEveryFeltBandHasALabel(t *testing.T) {
 	if len(feltLabels) != render.FeltBands {
 		t.Errorf("feltLabels has %d entries for %d felt bands", len(feltLabels), render.FeltBands)

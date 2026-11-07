@@ -53,7 +53,7 @@ func skipDir(base string) bool {
 	return false
 }
 
-func scan(root string) (found []Finding, goFiles, hashFiles int, err error) {
+func scan(root string, base citedAt) (found []Finding, goFiles, hashFiles int, err error) {
 	// TWO PASSES: AP-OK-01 judges a call by every declaration of its callee in
 	// the module, so the whole tree is parsed before any file is judged.
 	type parsed struct {
@@ -98,6 +98,7 @@ func scan(root string) (found []Finding, goFiles, hashFiles int, err error) {
 	docs := map[string][]packageDoc{}
 	for _, p := range all { // bounded by the tree's files (P10-02)
 		out = append(out, checkFile(p.fset, p.f, p.rel, fns)...)
+		out = append(out, checkCitations(p.fset, p.f, p.rel, base)...)
 		if d, ok := packageDocOf(p.f, p.rel); ok {
 			docs[d.pkg] = append(docs[d.pkg], d)
 		}
@@ -153,13 +154,28 @@ func main() {
 	asJSON := flag.Bool("json", false, "machine-readable output")
 	selfTest := flag.Bool("self-test", false, "prove the instrument can fail, then exit")
 	limit := flag.Int("limit", 15, "findings printed per rule before summarising")
+	baseRev := flag.String("base", "", `judge new citations (AP-CITE-01) against this commit; "auto" is the merge-base with main, and "" leaves them unjudged`)
 	flag.Parse()
 
 	if *selfTest {
 		os.Exit(runSelfTest())
 	}
 
-	found, files, hashed, err := scan(*root)
+	var base citedAt
+	if *baseRev != "" {
+		rev, err := *baseRev, error(nil)
+		if rev == "auto" {
+			rev, err = mergeBase(*root)
+		}
+		if err == nil {
+			base, err = baseCitations(*root, rev)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "authoring: %v\n", err)
+			os.Exit(2)
+		}
+	}
+	found, files, hashed, err := scan(*root, base)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "authoring: %v\n", err)
 		os.Exit(2)

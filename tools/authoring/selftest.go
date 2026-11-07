@@ -260,6 +260,26 @@ func hashControls() int {
 	return 0
 }
 
+// citeControls proves AP-CITE-01 in both directions: an ID the package did
+// not carry at the base is reported, and one it carried, one after a release
+// number and one with a release's prefix are not. It returns the number wrong.
+func citeControls() int {
+	src := "package p\n\n// a new rule (D-9), an old one (D-4), 0.19.5 D-12 and MVS-D-80.\nfunc f() {}\n"
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "p/f.go", src, parser.ParseComments)
+	if err != nil {
+		fmt.Printf("  BROKEN SPECIMEN  citations: %v\n", err)
+		return 1
+	}
+	got := checkCitations(fset, f, "p/f.go", citedAt{"p": {"D-4": true}})
+	if len(got) != 1 || !strings.HasPrefix(got[0].Text, "D-9 ") {
+		fmt.Printf("  %-15s a new bare citation, and none that is old or qualified\n      got %v\n", "MISSED", got)
+		return 1
+	}
+	fmt.Printf("  ok              a new bare citation, and none that is old or qualified\n")
+	return 0
+}
+
 func runSelfTest() int {
 	bad := 0
 	for _, s := range specimens() { // bounded by the table (P10-02)
@@ -296,6 +316,7 @@ func runSelfTest() int {
 	}
 	bad += packageDocControls()
 	bad += hashControls()
+	bad += citeControls()
 	if bad > 0 {
 		fmt.Printf("\nauthoring self-test: %d specimen(s) wrong — the instrument does not discriminate\n", bad)
 		return 1

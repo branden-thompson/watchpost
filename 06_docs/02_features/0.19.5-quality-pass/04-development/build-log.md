@@ -1168,3 +1168,52 @@ Mutants m788 to m790 are new, each hand-vetted and killed.
     now names the constant.
 - **The banner** names the test that holds its claim. `06_docs/code-standards.md`'s checks list gives
   its command (JM-15).
+
+## 0.19.5 batch 25 — every ID resolvable, every new citation dated (plan Q7.6, D-11, A-13, A-21)
+
+Mutants m791 and m792, hand-vetted and killed.
+
+- **`06_docs/ids.md`, generated** (`tools/ids`; `go run ./tools/ids -write`).
+  - It lists, for every ID the record defines, each feature's row: its release where the record states
+    one (in the folder's name or its brief's title), the file, and its subject.
+  - A row defines an ID when the ID is the whole of its first cell, and so does a heading that opens
+    with one. 0.16.0 rules in headings, and without them its `D-55` was missing.
+  - The families live in `tools/ids/idset`, the one list the index and the citation rule share.
+  - `D-124` shows both its rows, 0.18.0's and 0.19.0's, which is D-11's example.
+  - **How it is checked.** `TestTheIndexIsCurrent` regenerates the index and compares it, like the P10
+    mirror. It runs in the docs lane too, since a docs change is what moves it.
+    `TestARowDefinesAnIDByItsFirstCell` pins what is read: a definition, a heading, a later reference,
+    a mention and a date.
+- **AP-CITE-01** (`tools/authoring/cite.go`). `make lint-authoring` passes `-base auto`.
+  - It flags a bare ID in a comment that the package's Go files did not carry at the merge-base with
+    `main`. One `git grep` reads the base's IDs for the whole tree.
+  - A release number qualifies every ID after it to the end of its sentence, across a comment's lines,
+    and a release's prefix (`MVS-D-80`) qualifies too.
+  - The self-test's control covers both directions. m791 stops a release qualifying anything.
+  - `ci.yml`'s verify job checks out with `fetch-depth: 0`, so the base exists on the hosted runners
+    (A-13). The release workflow already did.
+- **Run over the branch first.**
+  - By file, as A-13 first worded it, 127 citations were new. Most were in comments moved within a
+    package, a file renamed (`director.go`), or the second line of a sentence that names its release.
+  - A-21 records the rule as built: package scope and sentence scope. It is the agent's choice,
+    for veto.
+  - That left 25, each qualified with its release:
+    - 0.19.5's `D-17`, `D-30`, `A-17`, `JM-13`, `JM-15` and `RR-17`;
+    - 0.18.0's `D-248`, from the 0.18.0 commit that wrote it into `domains/airquality`;
+    - 0.18.0's follow-up `F-190`;
+    - 0.16.0's `D-55` and `D-87` in `render.CardRow`, which moved from `modes/tty` in batch 16.
+  - 0.16.0 has no row that defines `D-87`, only plans that refer to it. The citation still names its
+    release, and the index cannot list it.
+  - The idset package's own doc names families, not IDs.
+- **The scheme, written down.** `docs/where-things-happen.md`'s Record IDs section says how to read an
+  old citation (the index, then the file's history) and how to write a new one. `06_docs/code-standards.md`
+  gains AP-CITE-01, and its checks list names both commands.
+- **The gate.**
+  - `make verify` was green at first run. P10 reported two live P10-05 findings, both for the two
+    new packages, which have no ledger row.
+  - `tools/ids/idset`'s one function, a hand-written `strings.Join`, is now that call, so the
+    package has no function to measure.
+  - `tools/ids` measures 0.88 across 8 functions. No check is added for the count (D-27). A new
+    package's row is the HUM LEAD's to ratify, so it goes to REVIEW with the density rows under their
+    floors. The gate ran again on the tree as committed.
+

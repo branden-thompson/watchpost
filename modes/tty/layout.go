@@ -56,7 +56,7 @@ func (d Dashboard) layout() frameLayout {
 	return d.fitPriority(fl)
 }
 
-// minPriorityRows is the fewest favourites a short terminal shows (D-30).
+// minPriorityRows is the fewest favourites a short terminal shows (0.19.5 D-30).
 const minPriorityRows = 3
 
 // fitPriority is the last thing to give on a short terminal, after the

@@ -124,7 +124,7 @@ func (o *recordingOutput) overlayVol() (float64, bool) {
 
 func waitFor(t *testing.T, what string, cond func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(10 * time.Second) // the bound app and platform/sched use, after F-190 found 2 s short on a loaded runner
+	deadline := time.Now().Add(10 * time.Second) // the bound app and platform/sched use, after 0.18.0 F-190 found 2 s short on a loaded runner
 	for time.Now().Before(deadline) {
 		if cond() {
 			return

@@ -19,7 +19,7 @@ import (
 type CardRow struct {
 	plain *studs.DataTableRow
 	// marked is the same row with a leading, NON-TRUNCATABLE column for the
-	// mark (D-55). TWO ROWS RATHER THAN ONE, because a fixed column present on
+	// mark (0.16.0 D-55). TWO ROWS RATHER THAN ONE, because a fixed column present on
 	// every card would reserve its width on every card — the real hazards would
 	// all sit 14 cells off-centre to make room for a label they never carry.
 	//
@@ -39,7 +39,7 @@ func NewCardRow(width, inset, markWidth int, ellipsis string) CardRow {
 	headline := studs.ColumnDefinition{
 		Name: "headline",
 		Fill: true,
-		// LEFT, FROM THE v2 REFERENCE (D-87). A centred title floats between
+		// LEFT, FROM THE v2 REFERENCE (0.16.0 D-87). A centred title floats between
 		// the badge and the border while every other row of the card begins at
 		// the same inset — so the one line naming the card would be the one line
 		// that does not line up with it.

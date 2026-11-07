@@ -16,7 +16,8 @@ trustworthy. So the IDs stay, and their meanings live here.
 ## Running the checks
 
 ```
-make lint-authoring          # the rules below, over the whole tree (SN-02 and SN-03 included)
+make lint-authoring          # the rules below, over the whole tree (SN-02 and SN-03 included), and new citations since the merge-base with main (AP-CITE-01)
+go run ./tools/ids -write    # regenerate 06_docs/ids.md after a change to a rulings table; TestTheIndexIsCurrent fails while it is stale
 go run ./tools/authoring     # the same, directly
 go run ./tools/authoring -self-test    # prove the checker can fail
 go run ./tools/authoring -json         # machine-readable
@@ -185,6 +186,32 @@ were bugs in exactly that shell. A stub is a small Go program built at test time
 is genuinely necessary, stop and bring the lines and the reason to the HUM LEAD; a ruling adds a
 row to the shell ledger (`cmd/watchpost/shell_test.go`), which is the same path every existing
 `scripts/*.sh` is on — each row is a port candidate.
+
+## `AP-CITE-01` — a new citation names its release
+
+Every release numbers its rulings, requirements and findings from 1, so a bare `D-30` names a
+different row in each release that used it. A comment written now says which one it means.
+
+```go
+// no — which release's D-30?
+priorityRows int // favourites shown: fewer on a short terminal (D-30)
+
+// yes
+priorityRows int // favourites shown: fewer on a short terminal (0.19.5 D-30)
+```
+
+- **What counts as qualified.** A release number earlier in the same sentence qualifies every ID
+  after it, across the lines of one comment, as in "is 0.19.5 Q7.4 (JM-3, DC-14)". A full stop ends
+  the sentence. A release's own prefix (`MVS-D-80`) is qualified too.
+- **What counts as new.** An ID the package's Go files did not carry at the merge-base with `main`,
+  so a comment moved between files of one package keeps its citations. Older bare citations stay as
+  they are; `06_docs/ids.md` resolves them.
+- **Families.** They are `tools/ids/idset`'s list, the one `06_docs/ids.md` is built from.
+
+**Why it needs a tool:** the reader of a citation is the one who pays for a missing release, often
+releases later, and the author never sees the ambiguity, because to them the number is obvious.
+
+---
 
 ## `AP-OK-01` — a value's bool is checked, not thrown away
 

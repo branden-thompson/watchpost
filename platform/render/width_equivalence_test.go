@@ -66,7 +66,7 @@ func TestWidthMatchesStripThenMeasure(t *testing.T) {
 }
 
 // FuzzWidthMatchesStripThenMeasure is TestWidthMatchesStripThenMeasure's rule
-// for the fuzzer (RR-17).
+// for the fuzzer (0.19.5 RR-17).
 func FuzzWidthMatchesStripThenMeasure(f *testing.F) {
 	for _, s := range []string{"e\x1b[1m\u0301", "\U0001f1fa\x1b[0m\U0001f1f8", "\xe2\x1b[m\x94\x80", "\x1b[1mbold\x1b[0m ─▲"} {
 		f.Add(s)

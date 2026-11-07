@@ -225,7 +225,7 @@ func (ix goIndex) membersOf(typ string, chain []string) bool {
 
 // architectureCite is an "architecture §n" citation, and architecturePath the
 // file it must name on the same line: there are several architecture.md
-// files, so a citation without one names none of them (JM-13).
+// files, so a citation without one names none of them (0.19.5 JM-13).
 var (
 	architectureCite = regexp.MustCompile("(?i)architecture(?:\\.md)?`?\\s*§")
 	architecturePath = regexp.MustCompile(`[\w-]+/architecture\.md`)

@@ -38,11 +38,11 @@ func TestCompass16MatchesTheTablesItReplaces(t *testing.T) {
 	}
 }
 
-// TestCompassIndexNormalisesANegativeBearing is D-17 (DR-7a): a bearing below
+// TestCompassIndexNormalisesANegativeBearing is 0.19.5 D-17 (DR-7a): a bearing below
 // zero, or a whole turn and more, names the point it is on the rose. A
 // negative exact half-sector (-11.25°) is where synth's rounding half away
 // from zero named the point before it; no feed sends one (NDBC's directions
-// are 0 to 360), so the edge is recorded rather than kept (A-17).
+// are 0 to 360), so the edge is recorded rather than kept (0.19.5 A-17).
 func TestCompassIndexNormalisesANegativeBearing(t *testing.T) {
 	for _, c := range []struct {
 		deg  float64

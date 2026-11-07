@@ -41,7 +41,7 @@ func sliceHostShipped(rawURL string) string {
 // a query, a port or a tile template), it names what each copy named. The
 // copies differed only where no caller goes: a URL with no host (app said "",
 // the quota the URL), one that does not parse, and userinfo, which the slicing
-// form kept (A-17).
+// form kept (0.19.5 A-17).
 func TestHostOfNamesTheHostEveryCopyNamed(t *testing.T) {
 	for _, raw := range []string{
 		"https://api.weather.gov/alerts/active?area=CA",

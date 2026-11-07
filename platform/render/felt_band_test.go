@@ -16,7 +16,7 @@ func TestTheSeismicLevelAtEveryBoundary(t *testing.T) {
 	}
 }
 
-// TestEveryFeltBandHasAGlyphLevel is JM-15: a table indexed by the felt band
+// TestEveryFeltBandHasAGlyphLevel is 0.19.5 JM-15: a table indexed by the felt band
 // has one entry per band, so a band added to FeltBand cannot index past it or
 // read an empty entry.
 func TestEveryFeltBandHasAGlyphLevel(t *testing.T) {

@@ -203,7 +203,7 @@ func (d Dashboard) priorityTable(fl frameLayout) string {
 	}
 	n, shown := len(d.snap.Locations), len(d.snap.Locations)
 	if fl.priorityRows > 0 && fl.priorityRows < n {
-		shown = fl.priorityRows // a short terminal's window (D-30); zero is a layout that measured nothing, so all
+		shown = fl.priorityRows // a short terminal's window (0.19.5 D-30); zero is a layout that measured nothing, so all
 	}
 	lo := d.priorityLo(n, shown)
 	rows := make([]render.LocationRow, 0, shown)
@@ -217,7 +217,7 @@ func (d Dashboard) priorityTable(fl frameLayout) string {
 	return priorityRail(table, o.TableRowLen(fl.days)+2, o.BandHeight()+1, lo, n, shown, render.RailGlyphsFor(o.ASCII))
 }
 
-// priorityLo is the first favourite a scrolled priority table shows (D-30):
+// priorityLo is the first favourite a scrolled priority table shows (0.19.5 D-30):
 // the window that ends at the focused favourite, or the last favourites,
 // beside RECENT, while the focus is below them. Derived from the focus, so
 // the table holds no scroll of its own.

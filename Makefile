@@ -92,7 +92,7 @@ lint-imports:
 # to authorship is a check that can be silenced by narrowing it.
 lint-authoring:
 	@go run ./tools/authoring -self-test
-	@go run ./tools/authoring
+	@go run ./tools/authoring -base auto
 
 # Human-Accountability Attribution gate: no AI watermarks in tracked files or commit messages.
 lint-watermark:
