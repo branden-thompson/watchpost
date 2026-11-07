@@ -1119,3 +1119,6 @@ Mutant m787, hand-vetted and killed.
 - **The rule's text.** `06_docs/code-standards.md`'s AP-HIST-01 says it covers the gates' `#` comments,
   what the tool decides there and what still needs a reader. `06_docs/tooling-backlog.md`'s row names
   the `#` pass.
+- **The gate.** Green at first run. P10 reports no live finding. `tools/authoring/main.go`'s density is
+  0.26, against its floor of 0.50. The new walk adds lines without checks, and the file's row
+  stays for REVIEW (D-27).
