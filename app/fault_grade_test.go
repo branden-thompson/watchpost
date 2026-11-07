@@ -24,7 +24,7 @@ import (
 // The composition is tested end to end here: the pieces live in three files,
 // and a harness that stubs the escalation with an empty body never joins them.
 func TestADeliberateDeclineDoesNotRaiseTheFaultWindow(t *testing.T) {
-	nar := testDirector(&scriptVoice{}, nil)
+	nar := testArbiter(&scriptVoice{}, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 	muted := &atomic.Bool{}
 	deck := &tickerDeck{send: func(tea.Msg) {}, muted: muted, voice: nar, seen: loadSeen(t.TempDir(), time.Hour)}
@@ -53,7 +53,7 @@ func TestADeliberateDeclineDoesNotRaiseTheFaultWindow(t *testing.T) {
 // keep them apart. An Escalate run through the REAL executors must reach a
 // person, carrying the reason the producer gave.
 func TestAnEscalationReachesAPersonWithItsReason(t *testing.T) {
-	nar := testDirector(&scriptVoice{}, nil)
+	nar := testArbiter(&scriptVoice{}, nil)
 	deck := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: nar, seen: loadSeen(t.TempDir(), time.Hour)}
 	st := newStation(t, deck)
 	st.x.run(context.Background(), lineup.Escalate{ID: "burst:a", Run: 1, Reason: "the schedule stopped"})

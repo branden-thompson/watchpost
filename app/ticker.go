@@ -114,7 +114,7 @@ type tickerDeck struct {
 	rescope chan struct{}
 
 	clockPref *atomic.Int32   // how times are written (render.Clock) — Settings changes it live
-	voice     *director       // the narration arbiter (app/director.go); a silent one when there is no audio
+	voice     *arbiter        // the narration arbiter (app/arbiter.go); a silent one when there is no audio
 	mc        *mastercontrol  // the band's and the bed's ONE owner, shared with the arbiter (T2.3)
 	inject    injectQueue     // F-21b: a real queue in a debug build, an empty struct in a release one
 	scripts   *script.Library // the spoken lines (domains/radio/script); nil = the built-in scripts
@@ -159,16 +159,16 @@ func (t *tickerDeck) clock() render.Clock {
 // implements it; nil = no audio (the visual takeover still runs on a fixed
 // hold).
 // startTicker launches the ticker loop; it stops with ctx. nar (nil = a
-// silent director) sounds the tone + narration for a genuinely new event
-// through the director, so a takeover pre-empts an event read and never
-// overlaps one (app/director.go).
-func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx *geodata.Index, watch func() []snapshot.LocationRef, prefs tickerPrefs, nar *director, scripts *script.Library, severe *severeDeck) *tickerDeck {
+// silent arbiter) sounds the tone + narration for a genuinely new event
+// through the arbiter, so a takeover pre-empts an event read and never
+// overlaps one (app/arbiter.go).
+func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx *geodata.Index, watch func() []snapshot.LocationRef, prefs tickerPrefs, nar *arbiter, scripts *script.Library, severe *severeDeck) *tickerDeck {
 	// ONE INSTANCE, AND NONE BUILT TO BE THROWN AWAY. The arbiter's effector
 	// IS the band's owner, so none is constructed when an arbiter is supplied —
 	// which is every production path. The fallback exists only so a nil arbiter
 	// cannot take the ticker down, and it builds the one instance too.
 	if nar == nil {
-		nar = newDirector(nil, newMastercontrol(nil, p.Send))
+		nar = newArbiter(nil, newMastercontrol(nil, p.Send))
 	}
 	mc := nar.mc
 	t := &tickerDeck{

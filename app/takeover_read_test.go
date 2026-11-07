@@ -27,7 +27,7 @@ import (
 // causes of an overlap.
 func TestATakeoversToneNeverSoundsOverALiveRead(t *testing.T) {
 	v := &scriptVoice{}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	readGate := make(chan struct{})
 	var sleeps atomic.Int32
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool {

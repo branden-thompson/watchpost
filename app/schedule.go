@@ -89,7 +89,7 @@ type bedSeams struct {
 	selected func() string
 }
 
-func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, resolvable, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg), bed bedSeams) *schedule {
+func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, resolvable, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg), bed bedSeams) *schedule {
 	if nar == nil {
 		return nil // no arbiter, no schedule: there is nothing to perform through
 	}

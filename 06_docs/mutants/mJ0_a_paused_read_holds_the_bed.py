@@ -7,7 +7,7 @@ import pathlib
 # RE-ANCHORED (round 3): the take-back guard now asks first() rather than
 # counting the queue, and mL1 carries that half. This one deletes the SUSPENDED
 # half — the filter that excludes a paused job from the resumable set.
-p = pathlib.Path("app/director.go"); s = p.read_text()
+p = pathlib.Path("app/arbiter.go"); s = p.read_text()
 old = "	if d.first() == nil && d.innermostResumable() == nil {"
 new = "	if d.first() == nil && len(d.suspended) == 0 {"
 assert old in s, "mJ0"

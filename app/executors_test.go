@@ -39,7 +39,7 @@ func tornado() globalfeed.Event {
 type bench struct {
 	x         *executors
 	voice     *scriptVoice
-	nar       *director
+	nar       *arbiter
 	mu        sync.Mutex
 	msgs      []tea.Msg
 	reports   []string
@@ -73,9 +73,9 @@ func newBench(t *testing.T, v *scriptVoice) *bench {
 	// the capture the test reads must be the one it was built with.
 	band := func(m tea.Msg) { b.mu.Lock(); b.msgs = append(b.msgs, m); b.mu.Unlock() }
 	if v == nil {
-		b.nar = testDirector(nil, band) // no audio at all: the visuals still run
+		b.nar = testArbiter(nil, band) // no audio at all: the visuals still run
 	} else {
-		b.nar = testDirector(v, band)
+		b.nar = testArbiter(v, band)
 	}
 	b.nar.sleep = func(_ context.Context, d time.Duration) bool {
 		b.mu.Lock()
@@ -650,7 +650,7 @@ func TestTheBandRecordIsBounded(t *testing.T) {
 func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 	whole := func() executors {
 		return executors{
-			voice: testDirector(nil, nil), clock: func() render.Clock { return render.Clock12 },
+			voice: testArbiter(nil, nil), clock: func() render.Clock { return render.Clock12 },
 			now: func() time.Time { return execNow }, mc: newMastercontrol(nil, func(tea.Msg) {}),
 			audible: func() bool { return true }, muted: func() bool { return false },
 			alert:     func(string) (globalfeed.Event, bool) { return globalfeed.Event{}, false },

@@ -95,7 +95,7 @@ func TestARepeatedRequestIsRememberedOnce(t *testing.T) {
 func TestRequestCardRemembersWhatItAsksFor(t *testing.T) {
 	rainbow := snapshot.LocationRef{Label: "Rainbow, CA", Tag: "RAINBOW", Lat: 33.41031, Lon: -117.14781}
 	lp := &livePipelines{}
-	lp.requestCard(rainbow, report.Everything(), 3) // no director: the remembering must not depend on one
+	lp.requestCard(rainbow, report.Everything(), 3) // no arbiter: the remembering must not depend on one
 
 	if _, ok := refFor(lp.resolvable, string(snapshot.Key(rainbow))); !ok {
 		t.Error("requestCard did not record the ref it asked the Director to schedule")
@@ -124,7 +124,7 @@ func TestTheSchedulesComposerResolvesARequestedLocation(t *testing.T) {
 	defer cancel()
 	deck, _ := offlineDeck(t)
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
-	s := startSchedule(ctx, testDirector(nil, func(tea.Msg) {}), nil,
+	s := startSchedule(ctx, testArbiter(nil, func(tea.Msg) {}), nil,
 		func() render.Clock { return render.Clock12 }, deck,
 		lp.producer(), lp.resolvable, lp.currentWatch, tick, func(tea.Msg) {}, bedSeams{})
 	if s == nil {

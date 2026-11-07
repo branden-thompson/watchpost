@@ -26,7 +26,7 @@ import (
 // burst sound three tones in silence and report nothing.
 func TestASoundedToneIsFollowedByWords(t *testing.T) {
 	v := &classVoice{}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 	seen := loadSeen(t.TempDir(), time.Hour)
 	deck := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: nar, seen: seen}
@@ -70,7 +70,7 @@ func TestGivingUpAfterTheToneIsTraced(t *testing.T) {
 	log := radioDebugTo(t, "1")
 
 	v := &tonedVoice{dur: 300 * time.Millisecond}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	// The sequence ends DURING the tone's hold — the window F-43 names, and the
 	// only one in which a tone is sounded and nothing follows it.
@@ -111,7 +111,7 @@ func TestGivingUpAfterTheToneIsTraced(t *testing.T) {
 // (HUM LEAD, 2026-09-08).
 func TestAToneWithNoWordsIsReported(t *testing.T) {
 	v := &silentAfterToneVoice{}
-	d := testDirector(v, nil)
+	d := testArbiter(v, nil)
 	d.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 
 	d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {
@@ -132,7 +132,7 @@ func TestAToneWithNoWordsIsReported(t *testing.T) {
 // past both.
 func TestAToneFollowedByWordsIsNotReported(t *testing.T) {
 	v := &speakingToneVoice{}
-	d := testDirector(v, nil)
+	d := testArbiter(v, nil)
 	d.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 
 	d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {
@@ -153,7 +153,7 @@ func TestAToneFollowedByWordsIsNotReported(t *testing.T) {
 // when no alert tone did.
 func TestACardWithNoToneIsNotReported(t *testing.T) {
 	v := &silentAfterToneVoice{}
-	d := testDirector(v, nil)
+	d := testArbiter(v, nil)
 	d.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 
 	d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {

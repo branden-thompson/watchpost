@@ -3,7 +3,7 @@ package app
 // severe_read.go — [space] in the Severe Weather / Disaster Events window
 // reads the FOCUSED EVENT over the radio (HUM LEAD UAT 2026-08-28, option
 // B): the event's own script — the alert itself, no conditions or forecast —
-// spoken through the director as a narrateRead sequence: it ducks the
+// spoken through the arbiter as a narrateRead sequence: it ducks the
 // broadcast, waits behind a breaking takeover, is PAUSED by one and resumes
 // after it, and the radio panel shows the event while it plays, returning
 // to whatever was on afterwards. A second [space] while one is reading is
@@ -51,7 +51,7 @@ type eventReader struct {
 	// [space] launches a third read and the window no longer knows which one to
 	// pause.
 	gen     uint64
-	nar     *director                                                 // the voice arbiter (app/director.go)
+	nar     *arbiter                                                  // the voice arbiter (app/arbiter.go)
 	ctx     context.Context                                           // the app's: shutdown ends a read (A-08)
 	cancel  context.CancelFunc                                        // the read in progress, under mu
 	done    chan struct{}                                             // closed when the read in progress ends
@@ -64,7 +64,7 @@ type eventReader struct {
 
 // newEventReader builds the reader; every read runs under ctx (the app's —
 // shutdown ends a read in progress, red-team round 4 A-08).
-func newEventReader(ctx context.Context, nar *director, scripts *script.Library, row func(string) (tty.SevereRow, bool), send func(tea.Msg)) *eventReader {
+func newEventReader(ctx context.Context, nar *arbiter, scripts *script.Library, row func(string) (tty.SevereRow, bool), send func(tea.Msg)) *eventReader {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -216,7 +216,7 @@ func (r *eventReader) free() {
 func (r *eventReader) current(gen uint64) bool { return r.gen == gen }
 
 // End stops a read in progress and WAITS for it to finish (bounded: the
-// director's release is immediate once the context ends). Shutdown wants this;
+// arbiter's release is immediate once the context ends). Shutdown wants this;
 // a keypress wants Cancel. Inert with none in progress.
 func (r *eventReader) End() {
 	r.mu.Lock()

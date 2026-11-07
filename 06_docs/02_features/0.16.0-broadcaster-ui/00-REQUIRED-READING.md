@@ -36,6 +36,9 @@ that it **dissolves**: *"its decision half — who gets the air, what suspends w
 the Director's step … `app/director.go` dissolves."*  **That is still unfinished**, and the wrong duck
 decision was made in the half that never moved.
 
+*2026-11-07 (0.19.5 D-13, D-23): the file is now `app/arbiter.go` and its type `arbiter`; the quotations
+above keep the name they were written with.*
+
 ---
 
 ## The audio dispositions — READ BEFORE MOVING ANY AUDIO

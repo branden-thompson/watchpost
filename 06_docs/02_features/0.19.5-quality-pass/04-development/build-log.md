@@ -883,3 +883,43 @@ Mutant m780 is new; mAL5 is re-pointed. Both are hand-vetted and killed.
 - **The gate's first run** failed render's declaration-set pin, `boxRule` having become `TitledRule`. It
   is re-captured.
 - **P10 (D-27):** `platform/render` measures 0.10 against 0.11, for REVIEW, beside batch 15's seven rows.
+
+## 0.19.5 batch 18 — the arbiter is named for what it is (plan Q6.3, D-13, D-23)
+
+No new mutants. The 11 that cite the file are re-pointed and each re-vetted, killed by its own test.
+
+- **The file and the type.** `app/director.go` is `app/arbiter.go` and its test `app/arbiter_test.go`. The
+  type `director` is `arbiter`, with `newArbiter`, `buildArbiter` and the test helper `testArbiter`.
+- **The identifiers, renamed by a `go/ast` pass.** It renamed by exact name only, never in comments or
+  strings: 140 identifiers in 40 files. Every one outside the arbiter's own file was read and is the
+  arbiter, among them the pipelines' field `lp.arbiter`, the decks' `voice`, and the schedule's and
+  reader's `nar`. Lower-case `director` in `app` code always meant the arbiter, and the role is written
+  `Director`.
+- **The tests that test the arbiter** take its name: the five `TestDirector…` in its test file, and
+  `TestReadCancelledWhileSuspendedDoesNotWedgeTheArbiter`. Tests that name the lineup's Director stay,
+  such as `TestAPumpRefusesADirectorThatWasNeverBuilt`, and so does `director_pins_test.go`, which pins
+  the Director's deck facts.
+- **The prose, sorted by hand (D-23 c).** 24 lines in `app` say "arbiter" where they meant it,
+  `app/arbiter.go` where they named the file, and the header says what the arbiter is not. Kept as they
+  are:
+  - the design documents' file names (`director-build-plan.md`, `director-charter.md`);
+  - `executors.go`'s `director.go:842`, which is the lineup's file;
+  - the pump's debug-log tags, which name the Director's events and are read by a test.
+- **The records (D-23 a, b).**
+  - The P10 ledger row `awaitAir` is re-keyed to `app/arbiter.go`, its text unchanged but for a
+    re-key note citing D-13 and D-23. It matches its finding.
+  - A dated note under the 0.16.0 required reading's arbiter paragraph says the file's name now. Its
+    quotations keep the name they were written with, as do 0.16.0's rulings and findings, the spike
+    result and the 0.14.0 build log, which are records.
+  - The 0.16.0 as-built page and its diagrams name no arbiter file, so nothing in them moves. The atlas
+    regenerates unchanged, since it lists diagram documents, not code files.
+- **The map.** where-things-happen's four references name `app/arbiter.go`, and its vocabulary gains
+  "the arbiter": what it is, that it is not one of the five roles nor the Director, and that 0.14.0
+  ruled it dissolves into the Director's step. `quality-observations.md` and open follow-up F-158 name
+  the file and the renamed test as they are now.
+- **The declaration set** in app is re-captured for the rename alone.
+- **The gate's first run** found the ledger's mirror, `06_docs/p10-ledger.md`, still keyed on the old
+  file, so `TestEveryRatifiedP10RowNamesCodeThatExists` refused it. `make p10` regenerates the mirror
+  but was run before the re-key. The mirror is regenerated now.
+- **P10 (D-27):** `app`'s row measures 0.52 against 0.61 (the file the checker anchors it at moved to
+  `airscope.go`), with batch 15's other rows and render's 0.10, for REVIEW.

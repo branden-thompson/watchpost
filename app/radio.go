@@ -179,7 +179,7 @@ func (d *radioDeck) Spectrum() []float64 {
 // being read gets the station they asked for, ducked, and hears it come up when
 // the alert finishes — which is the same thing the broadcast does.
 //
-// The duck has exactly ONE owner, the director, which ducks when a sequence
+// The duck has exactly ONE owner, the arbiter, which ducks when a sequence
 // takes the air and restores when nothing is waiting or suspended. Nothing else
 // touches it but a user STOP, where there is no broadcast left to duck.
 //
@@ -892,8 +892,8 @@ func (d *radioDeck) stopStation() {
 // SetVolume implements tty.Radio.
 func (d *radioDeck) SetVolume(pct int) { d.engine.Volume(pct) }
 
-// The radioDeck is the director's voice (0.13.0; app/director.go): duck, tone,
-// render, play, pause, resume, discard, restore — the director decides who
+// The radioDeck is the arbiter's voice (0.13.0; app/arbiter.go): duck, tone,
+// render, play, pause, resume, discard, restore — the arbiter decides who
 // speaks and when.
 
 // duck puts an alert on the air over the broadcast.
@@ -959,7 +959,7 @@ func (d *radioDeck) fault(why string) {
 func (d *radioDeck) discard() { d.engine.DropHeld() }
 
 // render turns a narration line into audio (say/piper blocks ~1 s per
-// line, longer for an event read — the director's sequences run on their
+// line, longer for an event read — the arbiter's sequences run on their
 // own goroutines, off the UI loop); play puts a rendered line on the air
 // over the ducked radio. Split so a line rendered while its sequence is
 // suspended never starts under a takeover.

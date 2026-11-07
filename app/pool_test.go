@@ -131,7 +131,7 @@ func TestTheStationsPoolFillsTheConsolesWindow(t *testing.T) {
 			mu.Unlock()
 		}
 	}
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil,
 		lp.producer(), lp.resolvable, lp.currentWatch, tick, publish, bedSeams{})
@@ -202,7 +202,7 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 	deck, _ := offlineDeck(t)
 	deck.pref = tty.ModeSynth
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
-	s := startSchedule(ctx, testDirector(nil, func(tea.Msg) {}), nil,
+	s := startSchedule(ctx, testArbiter(nil, func(tea.Msg) {}), nil,
 		func() render.Clock { return render.Clock12 }, deck, pool, pool, watch, tick, func(tea.Msg) {}, bedSeams{})
 	if s == nil {
 		t.Fatal("the schedule refused to start")
@@ -265,7 +265,7 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 // the defect, not the fix.
 func TestMovingTheStationsRegionTellsTheDirectorTheNewFence(t *testing.T) {
 	var told []lineup.Event
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	nar.mc.mu.Lock()
 	nar.mc.carry = func(ev lineup.Event) { told = append(told, ev) }
 	// THE DECK'S OWN TRANSLATION, stubbed to the radius the region now has.
@@ -274,7 +274,7 @@ func TestMovingTheStationsRegionTellsTheDirectorTheNewFence(t *testing.T) {
 	}
 	nar.mc.mu.Unlock()
 
-	lp := &livePipelines{director: nar}
+	lp := &livePipelines{arbiter: nar}
 	lp.restationTo(stationArea{radiusMi: 25})
 
 	var refenced *lineup.Refenced

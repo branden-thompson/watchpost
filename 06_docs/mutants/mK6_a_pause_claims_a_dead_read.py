@@ -6,7 +6,7 @@ import pathlib
 #
 # RE-ANCHORED (round 4) to the shared `live()` carrier: this deletes the
 # SUSPENDED asker's use of it.
-p = pathlib.Path("app/director.go"); s = p.read_text()
+p = pathlib.Path("app/arbiter.go"); s = p.read_text()
 old = "		if j := d.suspended[i]; live(j) && j.class == narrateRead {"
 new = "		if j := d.suspended[i]; j.class == narrateRead {"
 assert old in s, "mK6"

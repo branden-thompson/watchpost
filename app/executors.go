@@ -40,7 +40,7 @@ type executors struct {
 	// voice is the narration arbiter. Speak runs THROUGH it rather than over
 	// render and play directly, so the duck keeps its one owner (RD-2): the
 	// arbiter ducks when a sequence takes the air and restores when it leaves.
-	voice   *director
+	voice   *arbiter
 	scripts *script.Library // the spoken lines; nil = the built-in tree
 	clock   func() render.Clock
 	now     func() time.Time // injected (DR-20): a line composes "at Four Fifty PM" against it
@@ -317,7 +317,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		// (hold dips and claims together: F-D5). RELEASING is
 		// not mastercontrol's decision to make: the arbiter takes d.mu and then
 		// mc.mu, so a release that took mc.mu and then asked the arbiter would
-		// invert the lock order and deadlock. director.releaseBed unholds and
+		// invert the lock order and deadlock. arbiter.releaseBed unholds and
 		// re-settles under d.mu, which is why the pair reads as two owners and
 		// is in fact one owner per lock.
 		x.voice.releaseBed()

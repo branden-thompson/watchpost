@@ -165,7 +165,7 @@ func (r *reader) readPart(sc lineup.Script, i int, p lineup.Part) bool {
 	// silence.
 	//
 	// It cannot help the common case. `prepare` also refuses when the job is
-	// inaudible or the director silent (a muted takeover), and when the text is
+	// inaudible or the arbiter silent (a muted takeover), and when the text is
 	// empty; re-asking with the same text satisfies neither. The look-ahead
 	// renders have no retry — a failure there falls to the fixed hold, which is
 	// what keeps this from becoming a render loop.

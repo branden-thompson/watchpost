@@ -285,10 +285,10 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	recentRefs := withPool(restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), lp.poolRefs, refs)
 	lp.recent = startRecent(ctx, p, lp.providers(), recentRefs, func(snap *snapshot.Snapshot) { lp.severe.SetLocations(1, snap) }) // the tty owns the caps (Q6, L3-F11)
 	lp.mu.Unlock()
-	lp.markFIRMS()                         // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
-	lp.setWatch(refs)                      // seed the live watchlist the ticker ties events to
-	lp.director = lp.buildDirector(p.Send) // 0.13.0: one owner of the voice — the ticker's takeovers and the window's event reads
-	lp.scripts = script.New(scriptsDir())  // the spoken lines, by file name; the user's config dir may override them
+	lp.markFIRMS()                        // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
+	lp.setWatch(refs)                     // seed the live watchlist the ticker ties events to
+	lp.arbiter = lp.buildArbiter(p.Send)  // 0.13.0: one owner of the voice — the ticker's takeovers and the window's event reads
+	lp.scripts = script.New(scriptsDir()) // the spoken lines, by file name; the user's config dir may override them
 	if lp.deck != nil {
 		lp.deck.composer = synth.Composer{Scripts: lp.scripts} // the broadcast, the fire and seismic reports and the voice preview speak from the same tree
 	}
@@ -298,11 +298,11 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// it to open.
 	go lp.rebed(ctx)
 	lp.startHistory(ctx, tty.HistoryRetention{Hours: cfg.HistoryHours, Trends: cfg.HistoryTrends}) // W18.3b: recorded whenever watchpost runs, in any mode (D-172), kept as the Data tab chose (D-175)
-	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send)                // a read ends with the app (A-08)
+	lp.reader = newEventReader(ctx, lp.arbiter, lp.scripts, lp.severe.Row, p.Send)                 // a read ends with the app (A-08)
 	if lp.deck != nil {
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
 	}
-	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, prefs, lp.director, lp.scripts, lp.severe)
+	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, prefs, lp.arbiter, lp.scripts, lp.severe)
 	// AND THE RAIL LEARNS WHAT IT IS SCOPED TO (D-73). Wired after the deck so
 	// the closure can close over the deck's own radius — one function, asked by
 	// both the fence and the feed's filter.
@@ -332,7 +332,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// against; the LISTENER's watchlist is what the monitor's rotation moves
 	// through: the station's seams read the pool, and the cut-over belongs to
 	// the monitor.
-	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.resolvable, lp.currentWatch, lp.ticker, p.Send,
+	lp.schedule = startSchedule(ctx, lp.arbiter, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.resolvable, lp.currentWatch, lp.ticker, p.Send,
 		bedSeams{note: lp.noteBedCarrying, selected: lp.selectedRelay})
 	lp.wireDeckWarnings()
 	return firstFullNanos
@@ -551,11 +551,11 @@ func scriptsDir() string {
 // buildDirector builds the voice arbiter over the radio deck (a silent one
 // without audio: the typed-nil deck must become a nil interface), and the
 // effector it performs through.
-func (lp *livePipelines) buildDirector(send func(tea.Msg)) *director {
+func (lp *livePipelines) buildArbiter(send func(tea.Msg)) *arbiter {
 	if lp.deck == nil {
-		return newDirector(nil, newMastercontrol(nil, send))
+		return newArbiter(nil, newMastercontrol(nil, send))
 	}
-	nar := newDirector(lp.deck, newMastercontrol(lp.deck, send))
+	nar := newArbiter(lp.deck, newMastercontrol(lp.deck, send))
 	// THE DECK CAN END A READ, and this is the only place both exist: the deck
 	// is built first and the Director takes it as its voice (FR-9).
 	lp.deck.abandonRead = nar.abandonOnAir
@@ -846,7 +846,7 @@ type livePipelines struct {
 	problems      mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
 	propagation   propagationHolder    // 0.19.0 W4.1: the one go-ionomaps object, made on the first update
 	timings       *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
-	director      *director            // 0.13.0: the voice arbiter (app/director.go)
+	arbiter       *arbiter             // 0.13.0: the voice arbiter (app/arbiter.go)
 	scripts       *script.Library      // 0.13.0: the spoken lines (domains/radio/script)
 	reader        *eventReader         // 0.13.0: [space] in the window
 	schedule      *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump

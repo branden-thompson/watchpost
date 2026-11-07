@@ -86,17 +86,17 @@ func (lp *livePipelines) setStation(s stationArea) {
 // bed's one owner already (T2.3), and a second path into the Director would be a
 // second answer to who may change the running order.
 func (lp *livePipelines) moveCard(id string, to int) {
-	if lp == nil || lp.director == nil {
+	if lp == nil || lp.arbiter == nil {
 		return
 	}
-	lp.director.mc.MoveCard(id, to)
+	lp.arbiter.mc.MoveCard(id, to)
 }
 
 func (lp *livePipelines) dropCard(id string) {
-	if lp == nil || lp.director == nil {
+	if lp == nil || lp.arbiter == nil {
 		return
 	}
-	lp.director.mc.DropCard(id)
+	lp.arbiter.mc.DropCard(id)
 }
 
 // rebed re-resolves the station's relays, through a seam a test can hold.
@@ -485,10 +485,10 @@ func (lp *livePipelines) requestCard(ref snapshot.LocationRef, kinds report.Set,
 		return
 	}
 	lp.rememberRequested(ref)
-	if lp.director == nil {
+	if lp.arbiter == nil {
 		return
 	}
-	lp.director.mc.RequestCard(ref, kinds, at)
+	lp.arbiter.mc.RequestCard(ref, kinds, at)
 }
 
 // requestedCap bounds what the operator's requests may cost in memory.

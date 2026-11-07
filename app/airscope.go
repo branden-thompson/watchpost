@@ -149,10 +149,10 @@ func (lp *livePipelines) takeTheAir(s tty.Surface) tea.Cmd {
 
 // masterControl is the effector, or nil in the modes that have no audio.
 func (lp *livePipelines) masterControl() *mastercontrol {
-	if lp == nil || lp.director == nil {
+	if lp == nil || lp.arbiter == nil {
 		return nil
 	}
-	return lp.director.mc
+	return lp.arbiter.mc
 }
 
 // silenceMonitor stops the audio the OPERATOR was listening to, without

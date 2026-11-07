@@ -31,7 +31,7 @@ func quakeAt(id string, mag float64, at [2]float64, when time.Time) globalfeed.E
 
 func reachDeck(t *testing.T, radiusMi int64) *tickerDeck {
 	t.Helper()
-	nar := testDirector(&scriptVoice{}, nil)
+	nar := testArbiter(&scriptVoice{}, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 	r := &atomic.Int64{}
 	r.Store(radiusMi)

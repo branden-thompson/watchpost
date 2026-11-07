@@ -397,7 +397,7 @@ func (m *mastercontrol) hold() {
 // the lift would have the bed restored out from under it, which is the broadcast
 // surging to full volume over a read in progress. The caller decides under its
 // own lock; see
-// director.releaseBed.
+// arbiter.releaseBed.
 func (m *mastercontrol) unhold() {
 	if m == nil {
 		return

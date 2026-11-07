@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// scriptVoice records the director's calls in order.
+// scriptVoice records the arbiter's calls in order.
 type scriptVoice struct {
 	mu    sync.Mutex
 	calls []string
@@ -64,9 +64,9 @@ func (v *scriptVoice) got() string {
 }
 
 // A single sequence: duck once, its lines, restore once.
-func TestDirectorDucksOnceAndRestoresOnce(t *testing.T) {
+func TestArbiterDucksOnceAndRestoresOnce(t *testing.T) {
 	v := &scriptVoice{dur: time.Second}
-	n := testDirector(v, nil)
+	n := testArbiter(v, nil)
 	n.sleep = func(context.Context, time.Duration) bool { return true }
 	ok := n.Run(context.Background(), narrateBreaking, cast.Breaking, true, func(ctx context.Context, s *speaker) {
 		s.hold(s.attention(cast.ClassWarning))
@@ -82,9 +82,9 @@ func TestDirectorDucksOnceAndRestoresOnce(t *testing.T) {
 // stops counting, breaking runs, the read resumes where it stopped and
 // finishes; the broadcast is restored once at the very end (HUM LEAD UAT:
 // never a collision, and the read carries on).
-func TestDirectorBreakingSuspendsAndResumesARead(t *testing.T) {
+func TestArbiterBreakingSuspendsAndResumesARead(t *testing.T) {
 	v := &scriptVoice{}
-	n := testDirector(v, nil)
+	n := testArbiter(v, nil)
 	n.sleep = sleepCtx
 	readStarted, readDone := make(chan struct{}), make(chan bool, 1)
 	go n.Run(context.Background(), narrateRead, cast.SevereRead, true, func(ctx context.Context, s *speaker) {
@@ -120,9 +120,9 @@ func TestDirectorBreakingSuspendsAndResumesARead(t *testing.T) {
 
 // A line still rendering when the takeover lands never starts under it: it
 // waits for the air (the UAT collision).
-func TestDirectorALineRenderedUnderSuspensionWaitsForTheAir(t *testing.T) {
+func TestArbiterALineRenderedUnderSuspensionWaitsForTheAir(t *testing.T) {
 	v := &scriptVoice{}
-	n := testDirector(v, nil)
+	n := testArbiter(v, nil)
 	n.sleep = sleepCtx
 	rendering, release := make(chan struct{}), make(chan struct{})
 	slow := &slowVoice{scriptVoice: v, rendering: rendering, release: release}
@@ -164,9 +164,9 @@ func (v *slowVoice) render(_ context.Context, _ cast.Role, t string) (clip, bool
 }
 
 // A read submitted during a takeover waits for it; equal classes go in order.
-func TestDirectorQueuesBehindAHigherClassAndInOrder(t *testing.T) {
+func TestArbiterQueuesBehindAHigherClassAndInOrder(t *testing.T) {
 	v := &scriptVoice{}
-	n := testDirector(v, nil)
+	n := testArbiter(v, nil)
 	n.sleep = sleepCtx
 	inBreaking := make(chan struct{})
 	release := make(chan struct{})
@@ -207,23 +207,23 @@ func TestDirectorQueuesBehindAHigherClassAndInOrder(t *testing.T) {
 }
 
 // Muted or silent sequences run their visuals and never touch the broadcast.
-func TestDirectorMutedAndSilentNeverDuck(t *testing.T) {
+func TestArbiterMutedAndSilentNeverDuck(t *testing.T) {
 	v := &scriptVoice{}
-	n := testDirector(v, nil)
+	n := testArbiter(v, nil)
 	n.sleep = func(context.Context, time.Duration) bool { return true }
 	ran := 0
 	n.Run(context.Background(), narrateBreaking, cast.Breaking, false, func(ctx context.Context, s *speaker) { ran++; s.hold(s.line("x")) })
 	if v.got() != "" || ran != 1 {
 		t.Fatalf("muted: calls=%q ran=%d", v.got(), ran)
 	}
-	silent := testDirector(nil, nil)
+	silent := testArbiter(nil, nil)
 	silent.sleep = func(context.Context, time.Duration) bool { return true }
 	if !silent.Run(context.Background(), narrateRead, cast.SevereRead, true, func(ctx context.Context, s *speaker) { ran++; s.hold(s.line("x")) }) || ran != 2 {
 		t.Fatal("silent: the visual sequence still runs")
 	}
-	var nilN *director
+	var nilN *arbiter
 	if !nilN.Run(context.Background(), narrateRead, cast.SevereRead, true, func(ctx context.Context, s *speaker) { ran++ }) || ran != 3 {
-		t.Fatal("a nil director runs the sequence")
+		t.Fatal("a nil arbiter runs the sequence")
 	}
 }
 
@@ -237,9 +237,9 @@ func TestVizFollowsEveryNarrationButATakeover(t *testing.T) {
 // A read cancelled while SUSPENDED under a takeover leaves the stack and
 // its held line is discarded; the takeover keeps the air, and the next read
 // is admitted after it (red-team round 4, A-02 — the wedge).
-func TestReadCancelledWhileSuspendedDoesNotWedgeTheDirector(t *testing.T) {
+func TestReadCancelledWhileSuspendedDoesNotWedgeTheArbiter(t *testing.T) {
 	v := &scriptVoice{dur: 50 * time.Millisecond}
-	n := testDirector(v, nil)
+	n := testArbiter(v, nil)
 	n.sleep = sleepCtx
 	ctx, cancel := context.WithCancel(context.Background())
 	readDone := make(chan bool, 1)
@@ -294,7 +294,7 @@ func TestReadCancelledWhileSuspendedDoesNotWedgeTheDirector(t *testing.T) {
 func TestALineNeverStartsUnderATakeover(t *testing.T) {
 	var mu sync.Mutex
 	collisions := 0
-	n := testDirector(nil, nil)
+	n := testArbiter(nil, nil)
 	v := &probeVoice{onPlay: func(c clip) {
 		if c.viz && n.onAir != nil && n.onAir.class == narrateBreaking { // called under n.mu
 			mu.Lock()
@@ -331,7 +331,7 @@ func TestALineNeverStartsUnderATakeover(t *testing.T) {
 	}
 }
 
-// probeVoice is a narrationVoice whose play hook sees the director's state.
+// probeVoice is a narrationVoice whose play hook sees the arbiter's state.
 type probeVoice struct{ onPlay func(clip) }
 
 func (p *probeVoice) duck()                         {}
@@ -376,7 +376,7 @@ func waitUntil(t *testing.T, what string, cond func() bool) {
 // resume it).
 func TestReadCancelledWhileParkedSuspendedReturnsAtOnce(t *testing.T) {
 	v := &scriptVoice{dur: 50 * time.Millisecond}
-	n := testDirector(v, nil)
+	n := testArbiter(v, nil)
 	gate := make(chan struct{})
 	var sleeps atomic.Int32
 	n.sleep = func(ctx context.Context, _ time.Duration) bool {
@@ -421,11 +421,11 @@ func TestReadCancelledWhileParkedSuspendedReturnsAtOnce(t *testing.T) {
 // else in a test — one owner of the band and the bed, which is the property
 // T2.3 exists to create. A deck that built its own second effector would put
 // the duck back under two owners, which is the shape this task removes.
-func testDirector(v narrationVoice, band func(tea.Msg)) *director {
+func testArbiter(v narrationVoice, band func(tea.Msg)) *arbiter {
 	if band == nil {
 		band = func(tea.Msg) {}
 	}
-	return newDirector(v, newMastercontrol(v, band))
+	return newArbiter(v, newMastercontrol(v, band))
 }
 
 // A READ THAT STOPS MAKING PROGRESS IS ENDED, NOT LEFT RUNNING (FR-9).
@@ -442,7 +442,7 @@ func testDirector(v narrationVoice, band func(tea.Msg)) *director {
 // restore() runs. Stopping the audio alone would leave the sequence running and
 // it would simply speak the next line.
 func TestAbandoningTheReadOnAirUnwindsIt(t *testing.T) {
-	d := testDirector(&scriptVoice{}, nil)
+	d := testArbiter(&scriptVoice{}, nil)
 	started, ended := make(chan struct{}), make(chan bool, 1)
 	go func() {
 		ok := d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {

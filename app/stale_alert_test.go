@@ -19,7 +19,7 @@ import (
 // that lapses in between is spoken as current — with its own "until" time in
 // the sentence, which is a station saying something false with confidence.
 func TestAnAlertThatExpiredBeforeItAiredIsNotSpoken(t *testing.T) {
-	nar := testDirector(&scriptVoice{}, nil)
+	nar := testArbiter(&scriptVoice{}, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 	deck := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: nar, seen: loadSeen(t.TempDir(), time.Hour)}
 	st := newStation(t, deck)
@@ -55,7 +55,7 @@ func TestALiveAlertAndAnAlertWithNoExpiryStillRead(t *testing.T) {
 		{"no expiry at all", time.Time{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			nar := testDirector(&scriptVoice{}, nil)
+			nar := testArbiter(&scriptVoice{}, nil)
 			nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 			deck := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: nar, seen: loadSeen(t.TempDir(), time.Hour)}
 			ev := globalfeed.Event{

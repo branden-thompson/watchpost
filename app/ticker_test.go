@@ -115,7 +115,7 @@ func TestBreakingBurstIsOneSequentialScriptNoOverlap(t *testing.T) {
 	// ONE BAND, WIRED ONCE. The takeover cues through the arbiter's effector, so
 	// a deck whose arbiter writes elsewhere observes nothing and proves nothing.
 	band := func(m tea.Msg) { mu.Lock(); msgs = append(msgs, m); mu.Unlock() }
-	nar := testDirector(audio, band)
+	nar := testArbiter(audio, band)
 	d := &tickerDeck{
 		send:  band,
 		mc:    nar.mc,
@@ -539,7 +539,7 @@ func TestTheCentredTakeoverLandsWithTheToneNotAfterTheWords(t *testing.T) {
 			mu.Unlock()
 		}
 	}
-	nar := testDirector(audio, band)
+	nar := testArbiter(audio, band)
 	d := &tickerDeck{
 		send:  band,
 		mc:    nar.mc,
@@ -629,7 +629,7 @@ func breakingDeckWith(t *testing.T, evs []globalfeed.Event, audio narrationVoice
 			mu.Unlock()
 		}
 	}
-	nar := testDirector(audio, band)
+	nar := testArbiter(audio, band)
 	d := &tickerDeck{
 		send:    band,
 		sources: []globalfeed.Source{fakeSource{name: "stub", evs: evs}},
@@ -700,7 +700,7 @@ func TestTheTickerCuesThroughTheOneOwnerNotItsOwnSend(t *testing.T) {
 			mu.Unlock()
 		}
 	}
-	nar := testDirector(audio, owner)
+	nar := testArbiter(audio, owner)
 	d := &tickerDeck{
 		send: func(m tea.Msg) {
 			if v, ok := m.(tty.TickerBreakingMsg); ok {
@@ -753,7 +753,7 @@ func TestNoAdmittedAlertIsDroppedUnread(t *testing.T) {
 		}
 		return evs
 	}
-	// Virtual time: narration REPORTS a realistic length while the director's
+	// Virtual time: narration REPORTS a realistic length while the arbiter's
 	// sleep returns at once, so a budget binds without the test taking as long
 	// as the broadcast would.
 	readWith := func(dur time.Duration) []string {
@@ -905,7 +905,7 @@ func TestMutingAToneClassDoesNotSilenceTheStationAtTheNextLaunch(t *testing.T) {
 
 	// AND THE WORDS REACH THE AIR. The seam above is the cause; this is what
 	// the listener actually loses.
-	nar := testDirector(&scriptVoice{}, nil)
+	nar := testArbiter(&scriptVoice{}, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 	seen := loadSeen(t.TempDir(), time.Hour)
 	deck := &tickerDeck{send: func(tea.Msg) {}, muted: prefs.muted, voice: nar, seen: seen}
@@ -935,7 +935,7 @@ func TestMutingHoldsABurstRatherThanSpendingIt(t *testing.T) {
 	// DETERMINISTIC AIR. A fake clip has no duration, so the reader falls back
 	// to breakingHold (5 s) per part and the unmuted half below would race the
 	// test's own deadline rather than measure anything.
-	nar := testDirector(&scriptVoice{}, nil)
+	nar := testArbiter(&scriptVoice{}, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 
 	var mu sync.Mutex

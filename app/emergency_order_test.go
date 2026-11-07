@@ -24,7 +24,7 @@ import (
 // by hand; every one of them stayed green while no arrival in the running app
 // could carry it.
 func TestAnEvacuationOrderLeadsTheReadAndIsSpokenAloud(t *testing.T) {
-	nar := testDirector(&scriptVoice{}, nil)
+	nar := testArbiter(&scriptVoice{}, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 	seen := loadSeen(t.TempDir(), time.Hour)
 	deck := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: nar, seen: seen}

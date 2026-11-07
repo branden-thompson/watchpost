@@ -541,7 +541,7 @@ func (v *classVoice) seen() ([]cast.Class, []cast.Role) {
 // can parse — and the class must be the worst thing coming, not the first.
 func TestABurstSoundsOneToneForItsHighestSeverityEvent(t *testing.T) {
 	v := &classVoice{}
-	d := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: testDirector(v, nil), seen: loadSeen(t.TempDir(), time.Hour)}
+	d := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: testArbiter(v, nil), seen: loadSeen(t.TempDir(), time.Hour)}
 	// RECENT, and that is load-bearing. With no fence in force a Disaster must be
 	// FRESH to keep its rung (bandOf, DisasterFreshWindow); a fixed date in the
 	// past demotes the quake below the warning and the two orders coincide again,
@@ -585,7 +585,7 @@ func TestABurstSoundsOneToneForItsHighestSeverityEvent(t *testing.T) {
 // ticker rather than only in the classifier's own unit test.
 func TestABreakingStormSoundsTheStormClass(t *testing.T) {
 	v := &classVoice{}
-	d := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: testDirector(v, nil), seen: loadSeen(t.TempDir(), time.Hour)}
+	d := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: testArbiter(v, nil), seen: loadSeen(t.TempDir(), time.Hour)}
 	newStation(t, d).takeover(context.Background(), []globalfeed.Event{
 		{ID: "h", Class: globalfeed.ClassTropical, Type: "Hurricane Warning", Severity: globalfeed.SevRed, At: time.Now()},
 	})

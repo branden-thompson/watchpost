@@ -154,7 +154,7 @@ func TestT01TheDeckReportsTheFactsTheDirectorDecidesOn(t *testing.T) {
 // An advance that lifted the alert duck would bring the next location's report
 // up at full volume over a breaking alert that is still reading. Both spellings
 // of tune leave the duck alone, and the duck has exactly one owner — the
-// director.
+// arbiter.
 func TestT02AnAutomaticAdvanceDoesNotTakeAnAlertOffTheAir(t *testing.T) {
 	d, out := offlineDeck(t)
 	a, b := pinRef("A", 33.19, -117.37), pinRef("B", 32.71, -117.16)
@@ -318,7 +318,7 @@ func cueDeckWith(t *testing.T, log *cueLog, v narrationVoice) *tickerDeck {
 			log.add("release")
 		}
 	}
-	nar := testDirector(v, band)
+	nar := testArbiter(v, band)
 	// Holds are instant: this pins ORDER, not pacing, and a real hold would
 	// spend the burst's full air time proving nothing about the ordering.
 	//

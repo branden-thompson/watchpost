@@ -139,12 +139,12 @@ func TestGoingBackToObserverDoesNotResumeTheMonitor(t *testing.T) {
 	// goes on playing while the Director still believes the console holds the
 	// air — and the watchlist never advances again. Two carriers of one fact,
 	// so both are asserted.
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	var declared []lineup.Event
 	nar.mc.mu.Lock()
 	nar.mc.carry = func(ev lineup.Event) { declared = append(declared, ev) }
 	nar.mc.mu.Unlock()
-	back := &livePipelines{director: nar, deck: deck, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
+	back := &livePipelines{arbiter: nar, deck: deck, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
 	back.owner.set(tty.SurfaceBroadcaster)
 	if cmd := back.takeTheAir(tty.SurfaceObserver); cmd != nil {
 		cmd()
@@ -212,12 +212,12 @@ func TestATuneWhileTheConsoleHasTheAirIsSilentButStillReports(t *testing.T) {
 // different caller make this false", and a pathless build is that caller.
 func TestTakingTheAirStopsTheRotationEvenWithNoAudio(t *testing.T) {
 	var told []lineup.Event
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	nar.mc.mu.Lock()
 	nar.mc.carry = func(ev lineup.Event) { told = append(told, ev) }
 	nar.mc.mu.Unlock()
 
-	lp := &livePipelines{director: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}} // no deck
+	lp := &livePipelines{arbiter: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}} // no deck
 	if cmd := lp.takeTheAir(tty.SurfaceBroadcaster); cmd != nil {
 		cmd()
 	}
@@ -243,7 +243,7 @@ func TestTakingTheAirStopsTheRotationEvenWithNoAudio(t *testing.T) {
 // cannot be two different readings of one setting.
 func TestTheAirCarriesTheFenceTheRailIsScopedTo(t *testing.T) {
 	var told []lineup.Event
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	nar.mc.mu.Lock()
 	nar.mc.carry = func(ev lineup.Event) { told = append(told, ev) }
 	nar.mc.fence = func() lineup.Fence {
@@ -251,7 +251,7 @@ func TestTheAirCarriesTheFenceTheRailIsScopedTo(t *testing.T) {
 	}
 	nar.mc.mu.Unlock()
 
-	lp := &livePipelines{director: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
+	lp := &livePipelines{arbiter: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
 	if cmd := lp.takeTheAir(tty.SurfaceBroadcaster); cmd != nil {
 		cmd()
 	}

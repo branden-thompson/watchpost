@@ -58,7 +58,7 @@ func TestEventReaderDucksSpeaksRestoresAndOverlaysThePanel(t *testing.T) {
 	var overlay []string
 	restored := 0
 	v := &scriptVoice{dur: 3 * time.Second}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	var slept time.Duration
 	// Deterministic air: the read's FIRST hold step blocks on readGate, so the
 	// second Read below is provably made WHILE the first read is in progress.
@@ -124,7 +124,7 @@ func TestEventReaderDucksSpeaksRestoresAndOverlaysThePanel(t *testing.T) {
 // the broadcast is restored once.
 func TestEventReadIsSuspendedByABreakingTakeover(t *testing.T) {
 	v := &scriptVoice{}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	// Deterministic air: the read's FIRST hold step blocks on readGate (the
 	// takeover has not started, so the first sleep is the read's); every
 	// later step — the takeover's hold, the read's remaining steps — returns
@@ -199,7 +199,7 @@ func TestEventScriptHonoursAnOverrideDirectory(t *testing.T) {
 // Without a voice the overlay still shows for a reading-length hold — the
 // panel says what is being "read" even in silence (round 4, C-11b).
 func TestEventReadWithoutAVoiceHoldsTheOverlay(t *testing.T) {
-	nar := testDirector(nil, nil) // silent: no voice at all
+	nar := testArbiter(nil, nil) // silent: no voice at all
 	nar.sleep = func(context.Context, time.Duration) bool { return true }
 	var held time.Duration
 	var mu sync.Mutex
@@ -227,7 +227,7 @@ func TestEventReadWithoutAVoiceHoldsTheOverlay(t *testing.T) {
 // for it; inert with none in progress.
 func TestEventReadEndsWithTheApp(t *testing.T) {
 	v := &scriptVoice{dur: time.Minute} // a long read
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	nar.sleep = sleepCtx
 	var mu sync.Mutex
 	var sent []tea.Msg
@@ -286,7 +286,7 @@ func TestASpaceReadSoundsNoTone(t *testing.T) {
 	// tone were still sounded, the read would take four seconds and this test
 	// would notice by timing out as well as by the sequence.
 	v := &scriptVoice{dur: time.Millisecond, toneDur: 4 * time.Second}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	r := newEventReader(context.Background(), nar, nil, func(string) (tty.SevereRow, bool) {
 		return tornadoRow(), true
 	}, func(tea.Msg) {})
@@ -317,7 +317,7 @@ func TestASpaceReadSoundsNoTone(t *testing.T) {
 // for as long as a listener left the read paused, with nobody speaking over it.
 func TestAPausedReadReleasesTheBedAndResumesOnRequest(t *testing.T) {
 	v := &scriptVoice{dur: time.Hour} // long enough that the read is still on air
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	onAir := make(chan struct{})
 	go nar.Run(context.Background(), narrateRead, cast.SevereRead, true, func(_ context.Context, s *speaker) {
 		close(onAir)
@@ -357,7 +357,7 @@ func TestAPausedReadReleasesTheBedAndResumesOnRequest(t *testing.T) {
 // undone by an unrelated event.
 func TestATakeoverEndingDoesNotResumeAPausedRead(t *testing.T) {
 	v := &scriptVoice{dur: time.Hour}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	onAir := make(chan struct{})
 	go nar.Run(context.Background(), narrateRead, cast.SevereRead, true, func(_ context.Context, s *speaker) {
 		close(onAir)
@@ -396,7 +396,7 @@ func TestATakeoverEndingDoesNotResumeAPausedRead(t *testing.T) {
 func TestClosingTheWindowStopsTheReadWithoutWaitingForIt(t *testing.T) {
 	release := make(chan struct{})
 	v := &scriptVoice{dur: time.Millisecond}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	// The read parks until the test lets it go, so "still running" is a fact
 	// rather than a race with a fast fake.
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool {
@@ -437,7 +437,7 @@ func TestClosingTheWindowStopsTheReadWithoutWaitingForIt(t *testing.T) {
 func TestShutdownWaitsForTheReadItEnds(t *testing.T) {
 	release := make(chan struct{})
 	v := &scriptVoice{dur: time.Millisecond}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool {
 		select {
 		case <-release:
@@ -475,7 +475,7 @@ func TestTheWindowsCloseHookDoesNotWaitForTheRead(t *testing.T) {
 	release := make(chan struct{})
 	defer close(release)
 	v := &scriptVoice{dur: time.Millisecond}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool {
 		select {
 		case <-release:
@@ -521,7 +521,7 @@ func TestFastInputNeverLeavesTwoReadsRunning(t *testing.T) {
 	var mu sync.Mutex
 	var marks []string
 	v := &scriptVoice{dur: time.Millisecond}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	// Every read parks, so each one is still in flight when the next arrives —
 	// which is the whole scenario. A fake that finished instantly would never
 	// overlap and the pin would prove nothing.
@@ -611,7 +611,7 @@ func TestTheClosePathNeverSendsAndSoCannotSoftlock(t *testing.T) {
 	stuck := make(chan struct{})
 	defer close(stuck)
 	v := &scriptVoice{dur: time.Millisecond}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	r := newEventReader(context.Background(), nar, nil,
 		func(string) (tty.SevereRow, bool) { return tornadoRow(), true },
 		// A send that never returns — but only for the CLEAR, which is the message
@@ -664,7 +664,7 @@ func lpFor(r *eventReader) *livePipelines { return &livePipelines{reader: r} }
 // for minutes.
 func TestAReadCanBePausedWhileATakeoverIsSpeaking(t *testing.T) {
 	v := &scriptVoice{dur: time.Hour}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	readOn := make(chan struct{})
 	go nar.Run(context.Background(), narrateRead, cast.SevereRead, true, func(_ context.Context, s *speaker) {
 		close(readOn)
@@ -723,7 +723,7 @@ func TestConcurrentPressesNeverMarkARowThatIsNotReading(t *testing.T) {
 	var mu sync.Mutex
 	var bad []string
 	v := &scriptVoice{dur: time.Millisecond}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	nar.sleep = func(context.Context, time.Duration) bool { return true }
 	r := newEventReader(context.Background(), nar, nil,
 		func(string) (tty.SevereRow, bool) { return tornadoRow(), true },
@@ -794,7 +794,7 @@ func TestConcurrentPressesNeverMarkARowThatIsNotReading(t *testing.T) {
 func TestAReadForAMissingRowLeavesNoMark(t *testing.T) {
 	var mu sync.Mutex
 	var marks []tty.SevereReadingMsg
-	nar := testDirector(&scriptVoice{dur: time.Millisecond}, nil)
+	nar := testArbiter(&scriptVoice{dur: time.Millisecond}, nil)
 	r := newEventReader(context.Background(), nar, nil,
 		func(string) (tty.SevereRow, bool) { return tty.SevereRow{}, false }, // the row has gone
 		func(m tea.Msg) {
@@ -831,7 +831,7 @@ func TestAReadForAMissingRowLeavesNoMark(t *testing.T) {
 // do nothing, and the read would start on its own when the alert ended: a
 // listener who pressed [space] twice would get a read they had told to wait.
 func TestAQueuedReadCanBePausedBeforeItTakesTheAir(t *testing.T) {
-	nar := testDirector(&scriptVoice{dur: time.Hour}, nil)
+	nar := testArbiter(&scriptVoice{dur: time.Hour}, nil)
 	release := make(chan struct{})
 	onAir := make(chan struct{})
 	go nar.Run(context.Background(), narrateBreaking, cast.Breaking, true, func(context.Context, *speaker) {
@@ -884,7 +884,7 @@ func TestAQueuedReadCanBePausedBeforeItTakesTheAir(t *testing.T) {
 // the goroutine unwinding: such a pin stays green against the defect about half
 // the time, which is a pin that reports clean on broken code.
 func TestAPauseNeverClaimsACancelledRead(t *testing.T) {
-	nar := testDirector(&scriptVoice{dur: time.Millisecond}, nil)
+	nar := testArbiter(&scriptVoice{dur: time.Millisecond}, nil)
 	dead, killed := context.WithCancel(context.Background())
 	killed()
 	live := context.Background()
@@ -954,7 +954,7 @@ func TestThePauseAndTheReportNeverDisagree(t *testing.T) {
 			wantHeld: true, wantResume: true},
 	} {
 		t.Run(tc.what, func(t *testing.T) {
-			nar := testDirector(&scriptVoice{dur: time.Millisecond}, nil)
+			nar := testArbiter(&scriptVoice{dur: time.Millisecond}, nil)
 			nar.mu.Lock()
 			nar.onAir, nar.suspended, nar.waiting = tc.onAir, tc.suspended, tc.waiting
 			nar.mu.Unlock()
@@ -1000,7 +1000,7 @@ func TestThePauseAndTheReportNeverDisagree(t *testing.T) {
 // read the listener has paused, for as long as they leave it — with nobody
 // speaking over it, which is what the guard's own comment forbids.
 func TestAPausedQueuedReadGivesTheBedBack(t *testing.T) {
-	nar := testDirector(&scriptVoice{dur: time.Hour}, nil)
+	nar := testArbiter(&scriptVoice{dur: time.Hour}, nil)
 	release, onAir := make(chan struct{}), make(chan struct{})
 	go nar.Run(context.Background(), narrateBreaking, cast.Breaking, true, func(context.Context, *speaker) {
 		close(onAir)
@@ -1033,7 +1033,7 @@ func TestAPausedQueuedReadGivesTheBedBack(t *testing.T) {
 // nobody is going to hear — the same corpse window the pause guards against,
 // at the other half of the same guard.
 func TestADeadWaitingReadDoesNotHoldTheBed(t *testing.T) {
-	nar := testDirector(&scriptVoice{dur: time.Millisecond}, nil)
+	nar := testArbiter(&scriptVoice{dur: time.Millisecond}, nil)
 	dead, kill := context.WithCancel(context.Background())
 	kill()
 
@@ -1064,7 +1064,7 @@ func TestADeadWaitingReadDoesNotHoldTheBed(t *testing.T) {
 // ones.
 func TestClosingTheWindowStopsTheReadsAudioNotJustItsSequence(t *testing.T) {
 	v := &scriptVoice{}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	// THE READ MUST STILL BE READING WHEN IT IS CANCELLED. A sleep that returns
 	// at once makes the read FINISH immediately whatever its clip's length, and
 	// a finished read is correctly never stopped — so the assertion below would
@@ -1114,7 +1114,7 @@ func TestClosingTheWindowStopsTheReadsAudioNotJustItsSequence(t *testing.T) {
 // the audio drains — closing then would clip the tail of every read.
 func TestAReadThatFinishesIsNeverCutOff(t *testing.T) {
 	v := &scriptVoice{}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 
 	ok := nar.Run(context.Background(), narrateRead, cast.SevereRead, true, func(ctx context.Context, s *speaker) {
@@ -1147,7 +1147,7 @@ func TestAReadThatFinishesIsNeverCutOff(t *testing.T) {
 // tests the gate's actual contract — the decision is serialised — rather than
 // hoping to observe the symptom.
 func TestTwoPressesCannotRaceTheSameReader(t *testing.T) {
-	r := &eventReader{nar: &director{}, ctx: context.Background()}
+	r := &eventReader{nar: &arbiter{}, ctx: context.Background()}
 	// THE SAME-ROW BRANCH: a press on the row already reading is a play/pause,
 	// and it reaches `mark` without starting a narration — the shortest path
 	// through the decision that still holds the gate.
