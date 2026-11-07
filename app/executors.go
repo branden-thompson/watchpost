@@ -268,7 +268,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		if x.publish != nil {
 			x.publish(tty.LineupMsg{Lineup: v.Lineup})
 			x.publish(tty.StationMsg{Power: v.Power})
-			// AND WHAT IT IS RIDING ON (F-79, closed at D-78). The third fact
+			// What it is riding on (F-79, closed at D-78). The third fact
 			// D-62 consolidated into one region, published with the other two so
 			// the console cannot hold a torn set.
 			x.publish(tty.BedMsg{Relay: x.describeBed(v.Bed), Carrying: v.Bed.Carrying})
@@ -279,7 +279,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 				x.noteBed(v.Bed.Carrying)
 			}
 		}
-		// AND THE PRODUCER IS ASKED TO TOP THE LINE-UP OFF (D-40). No new
+		// The Producer is asked to top the line-up off (D-40). No new
 		// effect: `run` already returns what an effect learned, and a publish is
 		// the moment the schedule has SETTLED — which is exactly when the
 		// producer can see what the line-up still needs.

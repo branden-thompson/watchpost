@@ -56,7 +56,7 @@ type tonedVoice struct {
 
 func (v *tonedVoice) tone(cast.Class) time.Duration { return v.dur }
 
-// AND WHEN THE READ DOES GIVE UP AFTER THE TONE, IT SAYS SO.
+// When the read does give up after the tone, it says so.
 //
 // The cut-short is Routed (I-2), so it raises no window — correctly, because
 // pressing esc must not claim the relay is dead. The cost is that this failure
@@ -121,7 +121,7 @@ func TestAToneWithNoWordsIsReported(t *testing.T) {
 	}
 }
 
-// AND A READ THAT SPOKE IS NOT REPORTED, however it ended afterwards. A read
+// A read that spoke is not reported, however it ended afterwards. A read
 // that got a line out and then lost the rest is a different failure with a
 // different shape, and calling it this one would train the operator to read
 // past both.
@@ -140,7 +140,7 @@ func TestAToneFollowedByWordsIsNotReported(t *testing.T) {
 	}
 }
 
-// AND A CARD WITH NO TONE IS NOT REPORTED, however little it says.
+// A card with no tone is not reported, however little it says.
 //
 // This fault is about a PROMISE — the attention tone — being broken. A card
 // that never sounded one and rendered nothing is a different failure, and

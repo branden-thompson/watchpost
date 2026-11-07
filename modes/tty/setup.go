@@ -771,7 +771,7 @@ func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 		if len(d.setup.hints) > 0 {
 			ref := d.setup.hints[min(d.setup.idx, len(d.setup.hints)-1)]
 			*into, d.setup.focus, d.setup.err = &ref, next, ""
-			// AND THE QUERY IS SPENT. It is shared with the other row, so leaving
+			// The query is spent. It is shared with the other row, so leaving
 			// it behind would show one setting's search under the other's label
 			// the next time the window opened on the other surface.
 			d.setup.query, d.setup.hints, d.setup.idx = "", nil, 0

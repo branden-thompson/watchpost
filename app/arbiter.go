@@ -522,7 +522,7 @@ func (d *arbiter) pauseRead() bool {
 	// holdLine — so it is not held twice. A waiting job has never been on the
 	// air and holds nothing at all.
 	//
-	// AND NEVER A DEAD ONE. A read Cancel has killed is still on the stack until
+	// It never claims a dead one. A read Cancel has killed is still on the stack until
 	// its goroutine unwinds, and claiming that corpse would report success while
 	// the live read carries on: the chip would say Paused and nothing would be.
 	for _, j := range d.reads() { // bounded by reads (P10-02)

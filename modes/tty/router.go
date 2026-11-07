@@ -295,18 +295,19 @@ func NewRouter(o Dashboard) Router {
 	// would be one setting with two carriers.
 	b := NewBroadcaster()
 	b.ascii = o.cfg.ASCII
-	// AND THE SAME BUILD. The masthead names the version on both surfaces, and
-	// two surfaces disagreeing about which build this is would be the same
+	// The console carries the same build: the masthead names the version on
+	// both surfaces, and two surfaces disagreeing about which build this is would be the same
 	// two-carriers defect one field along.
 	b.version = o.cfg.Version
-	// AND THE SAME FIRE THRESHOLD. RESOLVED, not raw: Observer owns the "unset
+	// The console takes the same fire threshold, RESOLVED rather than raw:
+	// Observer owns the "unset
 	// means 50" rule, and a console that re-derived it would be a second carrier
 	// of that rule.
 	b.fireBoldMW = o.fireBoldMW()
 	// And the same units and clock (0.16.0 FR-6.2), mirrored again on every
 	// update (0.19.5 D-21).
 	b.units, b.clockFmt = o.units, o.clockFmt
-	// AND THE STATION IT IS A CONSOLE FOR (D-72). The area MOVES, so changes
+	// The console opens on the station it serves (D-72). The area MOVES, so changes
 	// arrive as a message; this is the value it opens with.
 	b.area, b.areaGen = o.cfg.StationArea, b.areaGen+1
 	return Router{observer: o, broadcaster: b, active: SurfaceObserver,
@@ -457,16 +458,16 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// And the units and clock, which are shared Settings (0.16.0 FR-6.2,
 	// 0.19.5 D-21): changed from either surface, both draw the change.
 	out.broadcaster.units, out.broadcaster.clockFmt = out.observer.units, out.observer.clockFmt
-	if out.observer.reduceMotion { // AND REDUCE MOTION, one switch for both (D-360): the console's dots hold their first phase
+	if out.observer.reduceMotion { // Reduce motion is one switch for both surfaces (D-360): the console's dots hold their first phase
 		out.broadcaster.frame = 0
 	}
-	// AND WHICH SURFACE IS ACTIVE, on the same cadence and for the same
-	// reason (D-92): the Settings window is forwarded to Observer from the
+	// Observer is told which surface is active, on the same cadence and for
+	// the same reason (D-92): the Settings window is forwarded to Observer from the
 	// console, and D-18 rules that some of its rows belong to one surface
 	// only. A window that could not tell them apart would show the listener's
 	// settings to the operator of a station.
 	out.observer.surface = out.active
-	// AND THE REFUSAL IS CARRIED TO THE SURFACE THAT WAS REFUSED. A refusal
+	// The refusal is carried to the surface that was refused. A refusal
 	// recorded and drawn nowhere is indistinguishable from a broken control —
 	// it reads as "ctrl+o will soft lock randomly" (HUM LEAD, UAT 2026-09-10).
 	//
@@ -477,7 +478,7 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		out.refusal = ""
 	}
 	out.broadcaster.statusNote = out.refusal
-	// AND THE OPEN CARD WINDOW IS RE-HANDED, for the same reason and on the
+	// The open card window is re-handed, for the same reason and on the
 	// same cadence (D-88). A card the operator is reading can re-hydrate
 	// under them — RefreshAfter is half of StaleAfter — and a window still
 	// showing its first frame while the report changes is the F-30 freeze
@@ -495,7 +496,7 @@ func (r Router) update(msg tea.Msg) (Router, tea.Cmd) {
 	if m, cmd, handled := r.scopedMessage(msg); handled {
 		return m, cmd
 	}
-	// AND THEN WHO OWNS THE KEY (D-159).
+	// Only then is a key routed to whoever owns it (D-159).
 	if m, cmd, handled := r.routeKey(msg); handled {
 		return m, cmd
 	}
@@ -581,7 +582,7 @@ func (r Router) scopedMessage(msg tea.Msg) (Router, tea.Cmd, bool) {
 		r.broadcaster, cmd = r.broadcaster.Update(msg)
 		return r, cmd, true
 	}
-	// AND THE ANSWER GOES BACK TO WHOEVER ASKED, wherever the operator is
+	// The answer goes back to whoever asked, wherever the operator is
 	// looking. Unconditional rather than gated on an open window: when Observer
 	// is the active surface the switch below already delivers these, so the gate
 	// would only be a second place for the two paths to disagree.
@@ -617,7 +618,7 @@ func (r Router) routeKey(msg tea.Msg) (Router, tea.Cmd, bool) {
 	// D-121). They belong to the CONSOLE — Observer has no line-up to reorder and
 	// nothing to drop from one.
 	//
-	// AND AN OPEN QUESTION OWNS THE KEYBOARD, which is the rule D-118 states and
+	// An open question owns the keyboard, which is the rule D-118 states and
 	// which this position enforces. Below the keymap it cannot: `enter` is bound
 	// to `actQueueOpen`, that case closes the card window, and the move is never
 	// sent — the operator types a position, presses enter, both windows close and
@@ -726,7 +727,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (Router
 	// switch to the active surface, which is exactly what an unbound key
 	// does.
 	case actBedCut, actBedPrev, actBedNext, actBedPlay:
-		// AND ONLY WHEN THE STATION HAS A RELAY TO CARRY (D-117). Cutting
+		// The bed's keys act only when the station has a relay to carry (D-117). Cutting
 		// to a bed nothing streams is dead air on the transmitter, which
 		// is the one outcome this control must not have — so the key is
 		// refused where the chip says it is unavailable.
@@ -1162,7 +1163,7 @@ func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
 			// operator asked, silently, on the surface's normal state.
 			move(r.observer.cardID, r.broadcaster.indexForSlot(to))
 		}
-		// AND THE CARD WINDOW CLOSES WITH IT. The card the operator was reading is
+		// The card window closes with it. The card the operator was reading is
 		// no longer at the position they opened it from, so leaving it up would
 		// show a window whose own title has moved.
 		r.observer = r.observer.close()

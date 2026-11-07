@@ -83,7 +83,7 @@ func TestEnterBeforeTheAnswerAsksTheScopedHookAtOnce(t *testing.T) {
 	}
 }
 
-// AND A REACHABLE LOCATION STILL OPENS when the answer arrives after an enter —
+// A reachable location still opens when the answer arrives after an enter —
 // the press must not be swallowed, or the operator has to press it twice.
 func TestAnEnterHeldOverAReachableAnswerStillOpens(t *testing.T) {
 	d := goldenDash(t, false)
@@ -138,7 +138,7 @@ func TestALookupThatCouldNotBeMadeSaysSoAndStaysRetryable(t *testing.T) {
 	if fact == "" || aside == "" {
 		t.Errorf("the operator is told nothing: %q / %q", fact, aside)
 	}
-	// AND ENTER MUST STILL WORK — it is the retry.
+	// Enter must still work — it is the retry.
 	if _, cmd := d.handleAddKey(enterKey()); cmd == nil {
 		t.Error("enter is inert after a failed check: the operator has a real location they " +
 			"cannot request and no way to ask again")

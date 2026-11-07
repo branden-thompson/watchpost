@@ -903,7 +903,7 @@ func TestMutingAToneClassDoesNotSilenceTheStationAtTheNextLaunch(t *testing.T) {
 			"saying 'do not speak to me', and nothing in 0.14.0 can clear this flag once it is set")
 	}
 
-	// AND THE WORDS REACH THE AIR. The seam above is the cause; this is what
+	// The words reach the air. The seam above is the cause; this is what
 	// the listener actually loses.
 	nar := testArbiter(&scriptVoice{}, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
@@ -967,7 +967,7 @@ func TestMutingHoldsABurstRatherThanSpendingIt(t *testing.T) {
 			t.Errorf("%s was marked read while muted: a hazard consumed in silence", e.ID)
 		}
 	}
-	// AND THE BAND WAS NEVER CUED. A callout for a read that never happens is
+	// The band was never cued. A callout for a read that never happens is
 	// the stale-band defect from the other direction.
 	mu.Lock()
 	held := append([]tea.Msg(nil), sent...)
@@ -977,7 +977,7 @@ func TestMutingHoldsABurstRatherThanSpendingIt(t *testing.T) {
 			t.Error("a muted takeover must not cue the band for a read it will not perform")
 		}
 	}
-	// AND NOTHING WAS ADMITTED. Under the Director a queued card is a PROMISE to
+	// Nothing was admitted. Under the Director a queued card is a PROMISE to
 	// read (DR-3), so a muted burst must not reach the schedule at all — held on
 	// the rail it would sit there until the listener came back, and read from
 	// there it would be consumed. Neither is what "standby holds it" means.

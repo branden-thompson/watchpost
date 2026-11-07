@@ -297,7 +297,7 @@ func (d Dashboard) overlay(base string, termWidth int) (out string, x, y int, ok
 	if win != "" {
 		base = render.Overlay(base, win, termWidth)
 	}
-	// AND THE CONFIRMATION OVER THAT — a second layer rather than a swapped
+	// The confirmation is drawn over that window — a second layer rather than a swapped
 	// body, which is the HUM LEAD's own mock: the red box sits ON TOP of the
 	// diagnostics window and the window underneath is unchanged.
 	if box != "" {

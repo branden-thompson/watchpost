@@ -721,7 +721,7 @@ func TestAHazardsWordsDoNotQueueBehindAReportThatIsReading(t *testing.T) {
 	close(reading)
 }
 
-// AND THE RAIL'S OWN ORDER IS UNTOUCHED. Two hazards still ride the lane in the
+// The rail's own order is untouched. Two hazards still ride the lane in the
 // order the Director described them: the release of the card leaving the air
 // must reach the band before the cue of the one taking it (DR-24), and that is
 // exactly what the lane is for. Freeing the PROGRAMME from the lane must not

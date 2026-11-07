@@ -1217,3 +1217,49 @@ Mutants m791 and m792, hand-vetted and killed.
     package's row is the HUM LEAD's to ratify, so it goes to REVIEW with the density rows under their
     floors. The gate ran again on the tree as committed.
 
+
+## 0.19.5 batch 26 — a capitals headline is for a contract (plan Q7.6, D-12, A-13)
+
+Mutant m793, hand-vetted and killed.
+
+- **The rule** (`06_docs/code-standards.md`, AP-CAPS-01). An all-caps headline is kept for a contract a
+  caller must obey; rationale is written in sentence case; and no paragraph opens with an all-caps AND,
+  BUT or SO. "Touched" is A-13's: a declaration the branch changed, its doc included, plus the whole of
+  a file a task rewrites.
+- **The soft warning** (`tools/authoring/caps.go`).
+  - `-base auto` reads the branch's changed lines from one `git diff -U0`. A caps continuation that
+    opens a paragraph inside a declaration touching one is reported.
+  - It is printed under "soft warnings", which never fail the gate (`soft`, `split`). JM-11 counted
+    147 standing hits over the whole tree.
+  - The self-test's control covers a changed declaration, an unchanged one, a sentence-case "And" and a
+    contract headline. m793 stops a paragraph's opening line being seen.
+- **Applied to what 0.19.5 has touched, so Q9.8 only verifies.**
+  - Run over the branch, it reported 76 caps continuations in changed declarations, 29 files from
+    `app/` to `tools/dupes`. Each is rewritten in sentence case, its leading AND, BUT or SO dropped.
+  - A first scripted pass was read line by line before it stood. Its allowlist kept "ON", "AIR" and
+    "GOES" in capitals, and it carried a caps run past the end of its sentence. Both were fixed, and
+    the files were restored from HEAD and the pass run again.
+  - Role names (Director, MasterControl), state names (ON AIR, STANDBY), the RECENT and PRIORITY
+    pipelines and IDs keep their form.
+  - **Fragments rewritten whole.** Twelve paragraphs had made sense only as a list's next item, and
+    each is now a whole sentence:
+    - in the Router: "The console carries the same build", "The console takes the same fire
+      threshold", "The console opens on the station it serves", "Observer is told which surface is
+      active", "Only then is a key routed to whoever owns it", and the bed keys;
+    - "Reduce motion is one switch for both surfaces";
+    - `arbiter`'s claim;
+    - the debug window's confirmation;
+    - the console's RECENT snapshot and pool;
+    - two test docs, which now open with their tests' names.
+  - Labels on a struct field or a call ("What to call it on the console") read as a description of the
+    line below them, and stay as labels.
+  - Whether each remaining capitals headline is a contract is a reader's judgement. Q9.8 verifies it
+    over touched code.
+- **The gate.**
+  - Its first run failed `mutant-anchors`: m622 anchored on the Reduce motion line's trailing comment
+    in `router.go`, which the rewrite changed. The corpus was not grepped before the comments
+    moved, which the anchors checklist asks. m622 follows the line, and is re-vetted and killed by
+    `TestTheConsoleFollowsReduceMotion`.
+  - Every other anchor holds (1,039 mutants).
+  - P10 is unchanged: `tools/ids` only, for REVIEW.
+

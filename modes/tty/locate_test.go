@@ -83,7 +83,7 @@ func TestOnlyTheLastPauseAsks(t *testing.T) {
 	}
 }
 
-// AND AN ANSWER THAT ARRIVES AFTER THE NEXT KEYSTROKE IS DROPPED. The resolve
+// An answer that arrives after the next keystroke is dropped. The resolve
 // is already in flight and cannot be called back, so it has to be refused on
 // arrival — otherwise the window draws a verdict about text that is gone.
 func TestALateAnswerAboutOldTextIsDropped(t *testing.T) {

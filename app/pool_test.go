@@ -104,7 +104,7 @@ func indexForTest(t *testing.T) *geodata.Index {
 	return idx
 }
 
-// AND THE POOL FILLS THE CONSOLE'S WINDOW, END TO END.
+// The pool fills the console's window, end to end.
 //
 // THE PROPERTY IS F-82's, MEASURED: `ReadID` is a pure function of the ref and
 // the lineup refuses a duplicate identity, so the schedule can never be deeper
@@ -190,7 +190,7 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 		t.Fatal("the monitor's rotation resolves a watched location against the WATCHLIST")
 	}
 
-	// AND THE WIRING USES THE RIGHT ONE, driven through `startSchedule` itself.
+	// The wiring uses the right one, driven through `startSchedule` itself.
 	//
 	// THE ASSERTIONS ABOVE ARE NOT ENOUGH. They compare the two lists and prove
 	// nothing about which one `cutTo` is built from — so swapping the wiring to the
@@ -252,7 +252,7 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 	}
 }
 
-// AND MOVING THE STATION'S REGION RE-SCOPES THE RAIL (D-154).
+// Moving the station's region re-scopes the rail (D-154).
 //
 // THE TRIGGER `Aired` DOES NOT SERVE. The fence travels with the air, but that
 // is not the whole of it: the operator who narrows the service radius in
@@ -289,7 +289,7 @@ func TestMovingTheStationsRegionTellsTheDirectorTheNewFence(t *testing.T) {
 	if !refenced.Fence.InForce() || refenced.Fence.RadiusMi != 25 {
 		t.Errorf("the rail was re-scoped to %+v, want the region's own 25-mile fence", refenced.Fence)
 	}
-	// AND THE AIR IS NOT TOUCHED. Routing this through `HandAir` would work and
+	// The air is not touched. Routing this through `HandAir` would work and
 	// would also SILENCE THE PROGRAMME on the way past — a card cut off
 	// mid-sentence because the operator changed a setting.
 	for i := range told {

@@ -53,7 +53,7 @@ func skipDir(base string) bool {
 	return false
 }
 
-func scan(root string, base citedAt) (found []Finding, goFiles, hashFiles int, err error) {
+func scan(root string, base citedAt, changed changedLines) (found []Finding, goFiles, hashFiles int, err error) {
 	// TWO PASSES: AP-OK-01 judges a call by every declaration of its callee in
 	// the module, so the whole tree is parsed before any file is judged.
 	type parsed struct {
@@ -99,6 +99,7 @@ func scan(root string, base citedAt) (found []Finding, goFiles, hashFiles int, e
 	for _, p := range all { // bounded by the tree's files (P10-02)
 		out = append(out, checkFile(p.fset, p.f, p.rel, fns)...)
 		out = append(out, checkCitations(p.fset, p.f, p.rel, base)...)
+		out = append(out, checkCapsContinuation(p.fset, p.f, p.rel, changed)...)
 		if d, ok := packageDocOf(p.f, p.rel); ok {
 			docs[d.pkg] = append(docs[d.pkg], d)
 		}
@@ -162,6 +163,7 @@ func main() {
 	}
 
 	var base citedAt
+	var changed changedLines
 	if *baseRev != "" {
 		rev, err := *baseRev, error(nil)
 		if rev == "auto" {
@@ -170,12 +172,16 @@ func main() {
 		if err == nil {
 			base, err = baseCitations(*root, rev)
 		}
+		if err == nil {
+			changed, err = branchChanges(*root, rev)
+		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "authoring: %v\n", err)
 			os.Exit(2)
 		}
 	}
-	found, files, hashed, err := scan(*root, base)
+	found, files, hashed, err := scan(*root, base, changed)
+	found, warnings := split(found)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "authoring: %v\n", err)
 		os.Exit(2)
@@ -189,6 +195,10 @@ func main() {
 	}
 
 	report(found, *limit)
+	if len(warnings) > 0 {
+		fmt.Println("authoring: soft warnings, which do not fail the gate:")
+		report(warnings, *limit)
+	}
 
 	if len(found) > 0 {
 		fmt.Fprintf(os.Stderr, "\nauthoring: %d finding(s) across %d Go file(s).\n", len(found), files)
@@ -202,6 +212,23 @@ func main() {
 	fmt.Println("  It decides the rules a syntax tree can decide. It cannot see a comment that is")
 	fmt.Println("  merely WRONG — the larger class, which still needs a reader.")
 	fmt.Println("  The rules are written out in 06_docs/code-standards.md.")
+}
+
+// soft are the rules that warn rather than fail: their standing hits in code
+// the branch did not change are many, and a gate that fired on each would be
+// ignored (0.19.5 D-12).
+var soft = map[string]bool{"AP-CAPS-01": true}
+
+// split separates the findings that fail the gate from the soft warnings.
+func split(all []Finding) (findings, warnings []Finding) {
+	for _, f := range all { // bounded by the findings (P10-02)
+		if soft[f.Rule] {
+			warnings = append(warnings, f)
+			continue
+		}
+		findings = append(findings, f)
+	}
+	return findings, warnings
 }
 
 // checkFile is every rule run over one file: the one list the scan and the

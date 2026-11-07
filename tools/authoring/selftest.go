@@ -280,6 +280,27 @@ func citeControls() int {
 	return 0
 }
 
+// capsControls proves AP-CAPS-01 in both directions: a paragraph opening
+// with an all-caps AND in a changed declaration warns, and the same paragraph
+// in an unchanged one, a sentence-case "And" and a caps headline that is no
+// continuation do not. It returns the number wrong.
+func capsControls() int {
+	src := "package p\n\n// f is changed.\nfunc f() {\n\t// AND THE RAIL IS TOLD.\n\t// And the units too.\n\t//\n\t// IT BLOCKS UNTIL THE READ ENDS.\n}\n\n// g is not.\nfunc g() {\n\t// AND THE RAIL IS TOLD.\n}\n"
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "p/f.go", src, parser.ParseComments)
+	if err != nil {
+		fmt.Printf("  BROKEN SPECIMEN  caps: %v\n", err)
+		return 1
+	}
+	got := checkCapsContinuation(fset, f, "p/f.go", changedLines{"p/f.go": {4: true}})
+	if len(got) != 1 || got[0].Line != 5 {
+		fmt.Printf("  %-15s a caps AND opening a paragraph in a changed declaration, and none elsewhere\n      got %v\n", "MISSED", got)
+		return 1
+	}
+	fmt.Printf("  ok              a caps AND opening a paragraph in a changed declaration, and none elsewhere\n")
+	return 0
+}
+
 func runSelfTest() int {
 	bad := 0
 	for _, s := range specimens() { // bounded by the table (P10-02)
@@ -317,6 +338,7 @@ func runSelfTest() int {
 	bad += packageDocControls()
 	bad += hashControls()
 	bad += citeControls()
+	bad += capsControls()
 	if bad > 0 {
 		fmt.Printf("\nauthoring self-test: %d specimen(s) wrong — the instrument does not discriminate\n", bad)
 		return 1

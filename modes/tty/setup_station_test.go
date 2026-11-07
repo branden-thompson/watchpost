@@ -112,13 +112,13 @@ func TestTheTransmitterRowResolvesLikeTheDefaultLocation(t *testing.T) {
 	if d.setup.txRef == nil || d.setup.txRef.Label != "Bonsall, CA" {
 		t.Fatalf("enter chose %v, want Bonsall, CA", d.setup.txRef)
 	}
-	// AND IT DID NOT WRITE THE LISTENER'S DEFAULT LOCATION, which is the leak the
+	// It did not write the listener's default location, which is the leak the
 	// shared type-ahead makes possible: one control, two settings, and only one
 	// of them is the station's.
 	if d.setup.ref != nil {
 		t.Errorf("choosing the station's transmitter also set the listener's default to %v", d.setup.ref)
 	}
-	// AND THE FOCUS MOVES TO THE RADIUS, the next of the station's two.
+	// The focus moves to the radius, the next of the station's two.
 	if d.setup.focus != rowServiceRadius {
 		t.Errorf("enter left the focus on %v, not the service radius", d.setup.focus)
 	}

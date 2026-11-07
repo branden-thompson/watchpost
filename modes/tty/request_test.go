@@ -58,7 +58,7 @@ func TestAnIncompleteRequestIsNotScheduledAndTheWindowStaysOpen(t *testing.T) {
 		t.Error("the window closed on a form it could not schedule; the operator would " +
 			"believe the report was scheduled")
 	}
-	// AND THE CHIP SAYS WHICH THING IS MISSING rather than going quiet.
+	// The chip says which thing is missing rather than going quiet.
 	//
 	// THIS ASSERTION ALONE CANNOT SEE A CONSTANT FUNCTION: a `blocker()` that
 	// returned this string unconditionally would pass it. The discrimination is
@@ -97,12 +97,13 @@ func typeLocation(t *testing.T, d Dashboard, text string) Dashboard {
 	return m.(Dashboard)
 }
 
-// AND A COMPLETE ONE IS SENT ONCE, AND CLOSES.
+// TestACompleteRequestIsScheduledAndTheWindowCloses: a complete request is
+// sent once, and the window closes.
 func TestACompleteRequestIsScheduledAndTheWindowCloses(t *testing.T) {
 	var sent int
 	d := requestDash(t, &sent)
 	d = typeLocation(t, d, "vista")
-	// AND A POSITION, WHICH IS NOT DEFAULTED. The operator came here to schedule
+	// The position is not defaulted. The operator came here to schedule
 	// something and must say WHERE — putting it at the front unless they choose
 	// otherwise would make the most disruptive act the one they get by not
 	// deciding.

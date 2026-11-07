@@ -35,7 +35,8 @@ func TestTickAdvanceAllocBudget(t *testing.T) {
 	}
 }
 
-// AND WITH A TEST EVENT ON THE TAPE (FR-4.4), against the same budget.
+// TestTickAdvanceAllocBudgetWithATestEventOnTheTape is the pin above with a
+// test event on the tape (FR-4.4), against the same budget.
 //
 // THE PIN ABOVE CANNOT SEE THE MARKING. benchDash's marquee holds no
 // fabricated events, so the marking's cost — the per-lane scan and the banner

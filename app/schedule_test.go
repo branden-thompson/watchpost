@@ -109,7 +109,7 @@ func TestNoArbiterMeansNoSchedule(t *testing.T) {
 	if s := startSchedule(context.Background(), nil, nil, func() render.Clock { return render.Clock12 }, nil, nil, nil, nil, tick, nil, bedSeams{}); s != nil {
 		t.Error("a schedule was built with nothing to perform through")
 	}
-	// AND NO PRODUCER MEANS NO SCHEDULE EITHER. The rail would have nothing to
+	// No Producer means no schedule either. The rail would have nothing to
 	// read, and a schedule that cannot receive an arrival is a station that
 	// silently never sounds a hazard.
 	nar := testArbiter(nil, func(tea.Msg) {})
@@ -274,7 +274,7 @@ func TestTheProducersReachTheSchedule(t *testing.T) {
 		t.Error("the deck has nowhere to report the bed; the Watchlist advance would silently stop")
 	}
 
-	// AND AN ARRIVAL ACTUALLY REACHES THE READ.
+	// An arrival actually reaches the read.
 	//
 	// ASSERTING ONLY THAT emit IS NON-NIL IS NOT ENOUGH: `schedule.carry`'s body
 	// could be replaced with `_ = ev` — every producer event dropped, the rail
@@ -378,7 +378,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 			got, tty.MainTrackSlots)
 	}
 
-	// AND IT NEVER GOES PAST IT. The chain is Publish -> Offered -> fill ->
+	// It never goes past it. The chain is Publish -> Offered -> fill ->
 	// Publish, so a depth that never satisfies would spin for ever and the
 	// line-up would run away.
 	//

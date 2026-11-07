@@ -191,7 +191,7 @@ func TestT02AnAutomaticAdvanceDoesNotTakeAnAlertOffTheAir(t *testing.T) {
 		t.Errorf("an automatic advance must not lift the alert duck; the stream played %d time(s) over it", n)
 	}
 
-	// AND THE POSITIVE HALF — without it this passes on an engine that never
+	// The positive half — without it this passes on an engine that never
 	// plays anything, and a held stream and a broken one are indistinguishable.
 	d.engine.Restore()
 	deadline := time.Now().Add(2 * time.Second)
@@ -322,7 +322,7 @@ func cueDeckWith(t *testing.T, log *cueLog, v narrationVoice) *tickerDeck {
 	// Holds are instant: this pins ORDER, not pacing, and a real hold would
 	// spend the burst's full air time proving nothing about the ordering.
 	//
-	// BUT THE HOLDS ARE LOGGED, because without them a render moved from during
+	// The holds are logged, because without them a render moved from during
 	// a line to after it is INVISIBLE. Both arrangements log the render in the
 	// same place relative to the words — the difference is whether the hold for
 	// those words has already been spent, and a log with no holds in it cannot

@@ -424,7 +424,7 @@ func beta(ys []int) int {
 		return 1
 	}
 
-	// AND A NEGATIVE CONTROL: two functions that merely share a shape must not
+	// A negative control: two functions that merely share a shape must not
 	// be called duplicates once the floor is applied. A detector that fires on
 	// everything is a detector that gets ignored.
 	solo := `package p
@@ -439,7 +439,7 @@ func alsoOne(b int) int { return b + 2 }
 		fmt.Fprintf(os.Stderr, "dupes SELF-TEST FAILED: trivial functions were reported as duplicates (%d groups)\n", len(neg))
 		return 1
 	}
-	// AND A STALE ROW IS NAMED: a fingerprint the scan does not find is
+	// A stale row is named: a fingerprint the scan does not find is
 	// reported, and the twins' own is not.
 	twins := got[0].Fingerprint
 	if s := staleRows(map[string][]string{"0123456789ab": {"gone"}, twins: nil}, got); len(s) != 1 || s[0] != "0123456789ab" {

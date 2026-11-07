@@ -133,7 +133,7 @@ func TestGoingBackToObserverDoesNotResumeTheMonitor(t *testing.T) {
 	if !deck.monitorHasTheAir() {
 		t.Error("the monitor never got the air back; the operator's play would be inert")
 	}
-	// AND THE DIRECTOR IS TOLD, which is the half that keeps the ROTATION alive.
+	// The Director is told, which is the half that keeps the ROTATION alive.
 	//
 	// THE DECK READS THE ROUTER'S OWN OWNER, so without `HandAir(AirMonitor)` it
 	// goes on playing while the Director still believes the console holds the
@@ -200,7 +200,7 @@ func TestATuneWhileTheConsoleHasTheAirIsSilentButStillReports(t *testing.T) {
 	}
 }
 
-// AND A STATION WITH NO AUDIO AT ALL STILL STOPS ITS ROTATION.
+// A station with no audio at all still stops its rotation.
 //
 // WITH A DECK PRESENT, `deck.Stop()` reports `Monitored{false}` too, so it and
 // `mc.StopMonitor()` are indistinguishable there, and only a deckless station
@@ -268,7 +268,7 @@ func TestTheAirCarriesTheFenceTheRailIsScopedTo(t *testing.T) {
 	if !handed.Fence.InForce() || handed.Fence.RadiusMi != 25 {
 		t.Errorf("the air carried %+v, want the station's own 25-mile fence", handed.Fence)
 	}
-	// AND A DECK WITH NO RAIL IS "ALL", never a panic — tests that build no rail
+	// A deck with no rail is "ALL", never a panic — tests that build no rail
 	// and the pathless build, the same rule `fence()` itself states.
 	bare := &mastercontrol{}
 	if bare.railFence().InForce() {

@@ -293,7 +293,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	if lp.deck != nil {
 		lp.deck.composer = synth.Composer{Scripts: lp.scripts} // the broadcast, the fire and seismic reports and the voice preview speak from the same tree
 	}
-	// AND THE BED LEARNS WHAT ACTUALLY STREAMS NEAR THE STATION (D-117). After
+	// The bed learns what actually streams near the station (D-117). After
 	// the deck, because it is the deck that holds the resolver; on its own
 	// goroutine, because it is network work and the dashboard must not wait for
 	// it to open.
@@ -304,7 +304,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
 	}
 	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, prefs, lp.arbiter, lp.scripts, lp.severe)
-	// AND THE RAIL LEARNS WHAT IT IS SCOPED TO (D-73). Wired after the deck so
+	// The rail learns what it is scoped to (D-73). Wired after the deck so
 	// the closure can close over the deck's own radius — one function, asked by
 	// both the fence and the feed's filter.
 	// AND THE EFFECTOR LEARNS WHAT THE RAIL IS SCOPED TO (D-75), so the fence
@@ -314,7 +314,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	if mc := lp.masterControl(); mc != nil {
 		mc.mu.Lock()
 		mc.fence = lp.ticker.fence
-		// AND HOW TO SILENCE THE PROGRAMME (F-91). The deck owns the broadcast
+		// How to silence the programme (F-91). The deck owns the broadcast
 		// engine; MasterControl owns whether the station is broadcasting at all,
 		// and standby has to reach the words that are already going out.
 		if lp.deck != nil {

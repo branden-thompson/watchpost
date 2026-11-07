@@ -102,7 +102,7 @@ func TestRequestCardRemembersWhatItAsksFor(t *testing.T) {
 	}
 }
 
-// AND THE SCHEDULE'S OWN COMPOSER USES IT — the wiring, not just the set.
+// The schedule's own Composer uses it — the wiring, not just the set.
 //
 // THE TESTS ABOVE EXERCISE `resolvable` DIRECTLY and never ask what the
 // schedule is handed, so reverting `compose: composeFor(deck, resolvable)` back

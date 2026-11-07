@@ -241,7 +241,7 @@ func (d Dashboard) handleLocateVerdict(v locateVerdictMsg) (Dashboard, tea.Cmd) 
 	case locateLookup:
 		held := d.addLocate.submitted
 		d.addLocate = d.addLocate.apply(v)
-		// AND A PRESS THAT WAS WAITING ON THIS ANSWER IS HONOURED (D-141), so
+		// A press that was waiting on this answer is honoured (D-141), so
 		// the operator never has to press enter twice. A refusal simply leaves
 		// the window open with its reason showing.
 		if held && d.addLocate.reachable() {

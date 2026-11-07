@@ -124,10 +124,10 @@ func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, c
 		// (D-76). It is `advanceBed` that emits this, and `advanceBed` is the
 		// operator's own listening — not the station's.
 		cutTo: tuneTo(deck, watch),
-		// AND WHAT TO CALL IT ON THE CONSOLE (F-79). The same list the cut-over
+		// What to call it on the console (F-79). The same list the cut-over
 		// resolves against, so the row cannot name a place the tune did not go.
 		bedLabel: bedLabelOf(watch),
-		// AND WHAT THE OPERATOR CHOSE, which is what the row's own arrows set
+		// What the operator chose, which is what the row's own arrows set
 		// (F-98, D-90).
 		selected: bed.selected,
 		noteBed:  bed.note,
@@ -143,7 +143,7 @@ func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, c
 		// than the capped pool — so resolving against the pool alone would fail
 		// to build exactly the cards the widening was ruled for, silently.
 		compose: composeFor(deck, resolvable),
-		// AND WHAT PERFORMS THEM (F-91, BD-9). The rail reads through the
+		// What performs them (F-91, BD-9). The rail reads through the
 		// arbiter above; the programme is a source swap on the broadcast
 		// engine, and this is the deck that owns it. Nil with no deck, which is
 		// every pathless build — the executor declines the card by name rather
@@ -196,7 +196,7 @@ func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, c
 		deck.emit = s.carry
 		deck.mu.Unlock()
 	}
-	// AND MASTERCONTROL DECLARES ON AIR / STANDBY (MVS-D-78, FR-5.4). It is the
+	// MasterControl declares ON AIR / STANDBY (MVS-D-78, FR-5.4). It is the
 	// third thing that speaks to the Director and the only one that speaks for
 	// the OPERATOR — the ticker reports arrivals, the deck reports the bed, and
 	// this carries a decision a human made.
@@ -204,7 +204,7 @@ func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, c
 		nar.mc.mu.Lock()
 		nar.mc.carry = s.carry
 		nar.mc.mu.Unlock()
-		// AND THE CONSOLE IS HANDED THE CONTROL (FR-5.4). Without this the
+		// The console is handed the control (FR-5.4). Without this the
 		// operator's ON AIR / STANDBY key reaches a nil seam and does nothing,
 		// which is the console being a surface with no controls — the trap
 		// F-72 recorded, arriving by a different route.

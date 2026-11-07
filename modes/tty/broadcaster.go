@@ -503,7 +503,7 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 		b.snap = v.Snap
 		return b.armTick(nil)
 	}
-	// AND THE RECENT ONE, WHICH IS WHERE THE POOL'S WEATHER LIVES (D-99). Kept
+	// The RECENT snapshot is where the pool's weather lives (D-99). Kept
 	// apart from `snap` deliberately: the masthead's stamp and the API summary are
 	// the PRIORITY pipeline's, and merging the two would make the console report a
 	// freshness it does not have.
@@ -838,7 +838,7 @@ func (b Broadcaster) lanes() []string {
 	// box (D-95) and the SCHEDULED slots are the table (D-94), so what is drawn
 	// here is two boxes side by side that the reference draws at the same height.
 	out = append(out, b.chrome(b.readPair(), false, 0)...)
-	// AND THE POOL BELOW IT (D-98) — the candidates the operator promotes FROM,
+	// The pool goes below it (D-98) — the candidates the operator promotes FROM,
 	// with enough weather to decide on them.
 	//
 	// ONE SCROLL CONTROL, AND IT BELONGS TO WHAT SCROLLS (D-106, HUM LEAD
@@ -850,7 +850,7 @@ func (b Broadcaster) lanes() []string {
 	// THE WEATHER IS INDEXED ONCE FOR THE WHOLE FRAME (D-120). Both tables join
 	// against it — forty lookups rather than forty linear scans.
 	out = append(out, b.tableRows(len(out))...)
-	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES, as the reference draws it:
+	// The frame ends where the running order does, as the reference draws it:
 	// the frame closes under the scroll rail's ▼ and the rest of the screen is
 	// empty, rather than carrying walled blank rows to the bottom of the
 	// terminal. `clamp` still pads the view to the terminal's height, so
@@ -1421,7 +1421,7 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	// inside it would say the same thing twice on a box whose whole job is to be
 	// read at a glance. What the row still carries is the badge and the handle.
 	if c.Slot == lineup.BreakingAlert {
-		// AND ITS HANDLE IS AT THE BOTTOM (D-103), where the reference draws it:
+		// Its handle is at the bottom (D-103), where the reference draws it:
 		// "A  Details / Full Read / Manage". A chip in the title row as well would
 		// be the same key offered twice on one box.
 		headline = ""
@@ -1640,7 +1640,7 @@ func boxRule(mark, title, badge string, inner int) string {
 	if title != "" {
 		title = render.Tint(title, render.Tok(render.ModalTitle))
 	}
-	// AND THE BADGE RIDES THE SAME RULE, at the right (D-110). The reference
+	// The badge rides the same rule, at the right (D-110). The reference
 	// draws both boxes that way — `┏━━ LOCATION REPORT • Oceanside, CA 92057 ━━━
 	// • STANDARD • ━━┓` — so what the card IS and how it is GRADED are read off
 	// the frame, and the manifest has the row instead.

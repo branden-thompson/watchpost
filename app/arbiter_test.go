@@ -468,7 +468,7 @@ func TestAbandoningTheReadOnAirUnwindsIt(t *testing.T) {
 		t.Fatal("the read did not unwind: the arbiter stays occupied and the bed stays ducked")
 	}
 
-	// AND THE CALLER'S CONTEXT IS UNTOUCHED — the cancel is a child, so
+	// The caller's context is untouched — the cancel is a child, so
 	// abandoning one read does not end whatever asked for it.
 	if d.abandonOnAir("again") {
 		t.Error("a second abandon found a read on the air after the first unwound it")

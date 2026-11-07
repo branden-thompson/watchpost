@@ -310,7 +310,7 @@ func (d Dashboard) addLines(o render.Opts) []string {
 		lines = append(lines, poolNoteLines(o, fact, aside, modalHelperWidth(d.modalWidth()))...)
 		lines = append(lines, "")
 	} else if d.lookupIsScoped() && d.addLocate.reachable() {
-		// AND IT SAYS WHAT IT MATCHED. A prefix match means "Vis" is already a
+		// It says what it matched. A prefix match means "Vis" is already a
 		// hit, so without the name the operator cannot tell WHICH pooled place
 		// enter is about to open — the request window names it for the same
 		// reason.
@@ -322,7 +322,7 @@ func (d Dashboard) addLines(o render.Opts) []string {
 	if d.addMode == "lookup" {
 		verb = "Lookup"
 	}
-	// AND THE CHIP SAYS SO. CtlIf draws an unavailable control as unavailable,
+	// The chip says so. CtlIf draws an unavailable control as unavailable,
 	// which is the only honest state for a key the window will refuse.
 	if d.lookupIsScoped() {
 		// UNKNOWN READS AS AVAILABLE. The field is only briefly unsettled, and

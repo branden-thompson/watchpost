@@ -201,3 +201,5 @@ says exactly what passed.
 | 2026-11-07T20:56:11Z | 1b2bb612 | 68846fe0f86f | verify | green | 2402 |
 | 2026-11-07T21:46:19Z | 1a6286c0 | a38070d6c160 | verify | green | 2427 |
 | 2026-11-07T22:28:51Z | 1a6286c0 | 407c283b0aaf | verify | green | 2467 |
+| 2026-11-07T22:40:41Z | 071cc770 | 7a077d9b615e | verify | FAILED (exit 2) | 411 |
+| 2026-11-07T23:21:36Z | 071cc770 | 71327f1fabe5 | verify | green | 2410 |

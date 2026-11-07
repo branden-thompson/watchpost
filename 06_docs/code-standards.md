@@ -213,6 +213,37 @@ releases later, and the author never sees the ambiguity, because to them the num
 
 ---
 
+## `AP-CAPS-01` — an all-caps headline is for a contract
+
+An all-caps sentence opening a paragraph is a headline, and it is kept for **a contract a caller must
+obey**. Examples are blocking, locking, never calling from render, and what nil means. Rationale,
+history of a choice and the reason a thing is not something else are written in sentence case.
+**No paragraph opens with an all-caps AND, BUT or SO:** such a paragraph means something only after
+the one above it, and loses its sense when either moves.
+
+```go
+// no — a continuation, and a reason dressed as a contract
+// AND THE REFUSAL IS CARRIED TO THE SURFACE THAT WAS REFUSED. A refusal
+// recorded and drawn nowhere is indistinguishable from a broken control.
+
+// yes — a contract as the headline, the reason in sentence case
+// IT BLOCKS FOR THE LENGTH OF THE READ. The Speak effect comes home Finished
+// when the card has actually been said.
+//
+// The refusal is carried to the surface that was refused: a refusal recorded
+// and drawn nowhere is indistinguishable from a broken control.
+```
+
+- **What is judged, and when.** The rule is brought to code as it is edited (0.19.5 D-12). "Touched"
+  means a declaration the branch changed, its doc included, plus the whole of a file a task rewrites.
+- **What the tool decides.** `tools/authoring` reports a caps continuation in a changed declaration
+  as a **soft warning**, printed and never failing the gate. Over the whole tree it has many standing
+  hits, and a gate that fired on each would be ignored.
+- **What it leaves to a reader.** Whether a headline is a contract. A sentence-case "And" that
+  continues a sequence in the same function is allowed.
+
+---
+
 ## `AP-OK-01` — a value's bool is checked, not thrown away
 
 **Rule.** A call to one of the module's functions or methods that returns a value and a `bool` never

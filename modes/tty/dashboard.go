@@ -951,8 +951,8 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("key bindings invalid: %w", err)
 	}
-	// AND THE CONSOLE'S BINDINGS TAKE THE SAME OVERRIDES (FR-1.5, D-158),
-	// SCOPED SO ONE SURFACE'S REBIND CANNOT BREAK THE OTHER (F-114, HUM LEAD
+	// The console's bindings take the same overrides (FR-1.5, D-158),
+	// scoped so one surface's rebind cannot break the other (F-114, HUM LEAD
 	// 2026-09-16: collisions are reconciled, and a binding functions as expected).
 	//
 	// FR-1.5's exit is "an override in the user's key table changes the chord" —
@@ -960,7 +960,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	// that finds only that the swap ACTIONS ARE IN THE MAP is satisfied
 	// perfectly by a map no override can reach.
 	//
-	// AND APPLYING OVERRIDES TO BOTH SCOPES CAN BREAK AN UPGRADE. FIVE actions
+	// Applying overrides to both scopes can break an upgrade. FIVE actions
 	// live in both scopes — lookup, about, status, help and quit — so a key free
 	// on Observer may already be taken on the console. Settings, diagnostics and
 	// the gain pair LOOK shared and are not: each surface names its own, so an
@@ -970,8 +970,8 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	// own doc names that outcome: "losing a binding is a nuisance; refusing to
 	// launch over one is a broken upgrade".
 	//
-	// SO AN OVERRIDE IS APPLIED WHERE IT FITS AND WITHHELD WHERE IT WOULD
-	// COLLIDE. The listener's `b` binds lookup on Observer; the console keeps `b`
+	// An override is applied where it fits and withheld where it would
+	// collide. The listener's `b` binds lookup on Observer; the console keeps `b`
 	// for the bed and `l` for lookup, and both surfaces do what the operator
 	// expects. Nothing is silently lost — the withheld entries are reported, and
 	// a genuine conflict INSIDE one scope is still a build error (D-15).
@@ -1725,7 +1725,7 @@ func (d Dashboard) handleRadio(msg tea.Msg) (Dashboard, tea.Cmd) {
 		// be silent while it worked and silent when it failed. castNote renders
 		// exactly this ("the deck's own words: progress, or why it failed").
 		//
-		// AND IT TOUCHES THE GENERATION. The modal memo keys Settings on
+		// It touches the generation. The modal memo keys Settings on
 		// setup.gen, so a note stored without a touch would be written and never
 		// drawn — the still-picture defect (F-30).
 		d.setup.note = v.Text

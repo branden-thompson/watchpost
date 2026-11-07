@@ -428,7 +428,7 @@ func TestClosingTheWindowStopsTheReadWithoutWaitingForIt(t *testing.T) {
 	close(release)
 }
 
-// AND THE SHUTDOWN PATH DOES WAIT — the distinction the split exists for.
+// The shutdown path does wait — the distinction the split exists for.
 //
 // A SEPARATE READ, because Cancel FREES the reader: asking End afterwards would
 // find nothing left to wait for and return at once, which looks exactly like a
@@ -466,7 +466,7 @@ func TestShutdownWaitsForTheReadItEnds(t *testing.T) {
 	}
 }
 
-// AND THE WINDOW'S HOOK IS WIRED TO THE ONE THAT DOES NOT WAIT.
+// The window's hook is wired to the one that does not wait.
 //
 // The test above pins `Cancel`'s behaviour and cannot see which of the two the
 // window actually calls — swapping the hook to `End` leaves it green. This
@@ -979,7 +979,7 @@ func TestThePauseAndTheReportNeverDisagree(t *testing.T) {
 				}
 			}
 
-			// AND THE REPORT AGREES WITH BOTH.
+			// The report agrees with both.
 			nar.mu.Lock()
 			nar.onAir, nar.suspended, nar.waiting = tc.onAir, tc.suspended, tc.waiting
 			nar.mu.Unlock()
@@ -1109,7 +1109,7 @@ func TestClosingTheWindowStopsTheReadsAudioNotJustItsSequence(t *testing.T) {
 	t.Errorf("a read cut short must stop its line, or it plays on under whatever resumes: %s", v.got())
 }
 
-// AND A READ THAT FINISHES ON ITS OWN IS NEVER STOPPED. A part's hold is its
+// A read that finishes on its own is never stopped. A part's hold is its
 // own length LESS the work already done, so the sequence can end a hair before
 // the audio drains — closing then would clip the tail of every read.
 func TestAReadThatFinishesIsNeverCutOff(t *testing.T) {
