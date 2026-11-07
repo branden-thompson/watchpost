@@ -88,6 +88,11 @@ type bodyMemo struct {
 	// cursor is the frame's cursor, kept here so the hit path allocates
 	// nothing for it (D-362, cursorSlot).
 	cursor cursorSlot
+	// tape is the ticker's current lane as the frame and the scroll read it
+	// (0.19.5 PF-8, tapeOf).
+	tape tapeSlot
+	// head is the masthead (0.19.5 PF-7, mastheadSlot).
+	head mastheadSlot
 }
 
 // bodyKeyFor derives the key from the model and this frame's layout.

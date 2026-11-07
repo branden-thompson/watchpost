@@ -71,7 +71,8 @@ type consoleMemo struct {
 	ok          bool
 	key         consoleKey
 	sched, pool scrollSpan
-	cursor      cursorSlot // the console's cursor, kept for the Router (D-362)
+	cursor      cursorSlot   // the console's cursor, kept for the Router (D-362)
+	head        mastheadSlot // the masthead (0.19.5 D-22, mastheadSlot)
 }
 
 // consoleKeyFor derives the key from the model and this frame's position.

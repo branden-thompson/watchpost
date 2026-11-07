@@ -443,3 +443,92 @@ re-pointed. Every one is hand-vetted and killed.
   - Idle is 0.7 KB over.
   - The console is 36 KB over. D-22's console work, the masthead memo and the Projection cache, is plan
     Q4.
+
+## 0.19.5 batch 10 — the memos and copies (plan Q4.1, Q4.2, Q4.3, Q4.6)
+
+Mutants m741 to m750, each hand-vetted and killed.
+
+- **The tape memo (Q4.3, PF-8, F-32 closed).**
+  - The pin came first. `TestTheTapeTurnsOverAtMidnight` gives an alert's time as a time of day before
+    midnight and as a date and time after it, with nothing else changing.
+  - `tapeOf` is a lane's items, its tape as the band draws it, and its loop length as the scroll counts
+    it. The frame and every tick read it from one slot in the body memo.
+  - **The key.** `tapeKeyFor`: a process-wide ticker generation, the lane, `--ascii`, the clock format,
+    and the year and day of the model's own clock, as `Clock.Since` compares them. The generation is
+    `tickerGens`, bumped by `setTicker`, so two copies of the model holding different tapes never share
+    a key (RR-17).
+  - **The contract.** "The ticker changes only through `setTicker`" is stated on the field. The tick
+    pin and the map menu's blink test write through it, where they wrote into the ticker directly.
+  - **The loop length** is counted from the items as the shipped code counted it, with the dot bullet.
+    The prototype joined with the frame's bullet instead, but the two bullets are the same seven runes,
+    so either counts the same.
+  - **The guard (A-15).** `TestTheTapeKeyCoversEverythingTheTapeShows` runs the reflection walk over the
+    Dashboard, plus by name the three inputs it cannot reach: the ticker's contents through `setTicker`,
+    the clock a day on, and the other lane. A failure names `tapeKeyFor` and `tickerGen`.
+  - **A flaw the vetting found.** m741, the day dropped from the key, first survived the midnight pin.
+    `setTicker` measures the tape, so the slot had been filled under the real clock, which already dates
+    the alert. The pin now sets its clock before the ticker, and checks the band before midnight too.
+  - **The tick budget pin.** `TestTickAdvanceAllocBudgetWithATestEventOnTheTape` resets every memo for
+    its miss, through `missEveryMemo` (RR-17).
+  - **What it saved.** A tick falls from 68 allocations to 3. The tick pin's header now says what the
+    tick costs and why. F-32 is struck in `follow-ups.md`, and F-16's parked offsets are untouched.
+- **The masthead memo (Q4.2, PF-7, D-22).** One `mastheadSlot` type serves both surfaces: the Observer's
+  in `bodyMemo`, the console's in `consoleMemo`.
+  - **The key.** `mastheadKeyOf` holds what each masthead is drawn from, as values: the options without
+    the animation phase, the edition and version, the data's as-of instant, the providers' counts, the
+    age words and staleness, the theme generation and the colour switch. The controls inside the box are
+    fixed for each edition.
+  - **Not the snapshot pointer.** The prototype keyed on it. The values let a snapshot changed in place
+    still miss, and they leave out the header row the prototype's key did not cover.
+  - **The shared counter.** `countProviders` is the counting both the key and `apiSummaryOf` use.
+  - **The guard.** `TestTheMastheadKeyCoversEverythingTheMastheadShows` runs the walk over both models,
+    plus six named inputs on both surfaces: the clock two minutes on, the clock past `staleAfter`, a
+    provider's health, a provider fetched later, the theme and the colour switch.
+  - **A flaw the vetting found.** m747 (the colour switch) first survived. Undoing the theme input calls
+    `SetTheme`, which moves the generation, so every later input differed by the theme alone. Each named
+    input now takes its own baseline.
+- **The hours shared (Q4.1, PF-10).**
+  - `Assembler.Snapshot` and `harmonize` share each section's hours instead of copying them twice. The
+    rule "Apply replaces a section's hours and never writes into them" is stated at the copy site.
+    `TestAPublishedForecastIsNeverWrittenAfterwards` pins it: a snapshot published before a new forecast
+    keeps its hours. m748 writes the new hours into the old slice and is killed.
+  - Every write to `Hourly` in the tree is a replacement, checked by search. The days are still copied,
+    because harmonize fills them in place.
+  - The assembler's publish falls from 336 allocations and 998,625 B to 259 and 75,594 B.
+- **Q4.6, PF's minor list.**
+  - **The seen store is written only when it has changed.** It loads dirty, so the first save of a
+    session still writes and tightens the file's mode (R3-D-01). A failed write stays dirty.
+    `TestTheSeenStoreWritesOnlyWhatChanged` pins it.
+  - **What stays, as PF measured it:**
+    - `cfg` stays a value, since the `With*` builders assign into it and a pointer would alias every copy;
+    - `radioLines` is subsumed by batch 8;
+    - `mapModalKey`, `statsFingerprint` and the engine poll are small.
+- **The pins, lowered to what landed.** Each is the highest of three runs, × 1.05, with the console hit at
+  × 1.04:
+
+  | Pin | Before | Now |
+  |---|---|---|
+  | Beat: idle / radio / console, bytes | 80,707 / 82,830 / 175,591 | 59,557 / 68,476 / 166,744 |
+  | Beat: idle / radio / console, allocs | 364 / 460 / 536 | 166 / 327 / 475 |
+  | A no-change publish's frame | 5,560 / 378,756 B | 5,426 / 362,318 B |
+  | Frame hit, 133x44 / 133x70 / 200x60 / 80x24 | 288 / 282 / 285 / 289 | 155 / 149 / 152 / 141 |
+  | Frame miss, the same sizes | 5,520 / 11,319 / 14,231 / 1,133 | 5,387 / 11,186 / 14,098 / 985 |
+  | Severe, Settings 133x44 and 80x24, hit / miss | 1,723 / 5,202; 2,761 / 4,759; 1,212 / 3,183 | 1,590 / 5,069; 2,628 / 4,626; 1,064 / 3,035 |
+  | Tab press; map hit / miss | 3,152; 3,228 / 3,787 | 3,019; 3,095 / 3,654 |
+  | Propagation hit / miss / colour hit / colour miss | 1,252 / 1,716 / 1,650 / 3,262 | 1,210 / 1,674 / 1,581 / 3,194 |
+  | Console hit / miss | 422 / 9,232 | 388 / 9,198 |
+  | A ticker step | 68 | 3 |
+  | The assembler's publish | 336 / 998,625 B | 259 / 75,594 B |
+
+  - `TestLayoutOncePerViewAndKey`'s own-work bound is re-pinned at 62 × 1.10. The frame's own work fell
+    from 195, and at the old figure a second layout would have fit under it. m737 is killed again.
+  - `docs/accepted-costs.md` states the hit pins and the console's pins.
+  - The quality baseline's bounds table names the two new memos.
+- **The gate's first run** stopped on m714, anchored on the hourly copy this batch removed. It is
+  re-pointed to bring that copy back, and `TestAssemblerPublishAllocBudget` kills it.
+- **P10 (D-27):** `modes/tty` measures 0.41 against 0.42. `app/pipelines.go`'s row measures 0.50 against
+  0.61, from the publisher's clock seam (batch 5) and the seen store's flag. Neither adds a check for the
+  count; both go to the HUM LEAD at REVIEW.
+- **M2 now:** idle 59.6 KB against 80 (met), radio 68.5 against 90 (met), console 166.7 against 140. The
+  console's `Projection` cache (Q4.5) is plan batch 10, and M2's first verdict follows batch 11's content
+  generation (plan B9).

@@ -29,11 +29,17 @@ func (d Dashboard) header(o render.Opts) string {
 	// THE LADDERS ARE SHARED WITH THE CONSOLE (D-59, masthead.go), so the two
 	// surfaces cannot come to draw different mastheads. This is their only
 	// behavioural home.
-	rule := o.BoxRuleWidth()
-	title := mastheadTitle(render.EditionObserver, d.cfg.Version, rule)
-	stamp := mastheadStamp(o, title, d.snap, d.clock(), rule)
-	// no tone of its own: the frame's base grey paints it (round 4, B-01)
-	return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "")
+	var slot *mastheadSlot
+	if d.memo != nil {
+		slot = &d.memo.head
+	}
+	return slot.get(mastheadKeyOf(o, render.EditionObserver, d.cfg.Version, d.snap, d.clock()), func() string {
+		rule := o.BoxRuleWidth()
+		title := mastheadTitle(render.EditionObserver, d.cfg.Version, rule)
+		stamp := mastheadStamp(o, title, d.snap, d.clock(), rule)
+		// no tone of its own: the frame's base grey paints it (round 4, B-01)
+		return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "")
+	})
 }
 
 // headerRow is the masthead's inner row: the controls at the left, the API
@@ -121,22 +127,8 @@ func agoWords(age time.Duration) string {
 // called by both surfaces (D-59). Two counts of one snapshot could disagree, and
 // the number is a health claim.
 func apiSummaryOf(o render.Opts, snap *snapshot.Snapshot) string {
-	ok, stale, down, total := 0, 0, 0, 0
-	for _, p := range providersOf(snap) {
-		switch {
-		case p.Status == snapshot.ProviderOff:
-			continue
-		case p.Status == snapshot.ProviderOK && p.FetchedAt.IsZero():
-			// registered, not yet answered (the first frames): in the total, not yet ✔ (REVIEW C5)
-		case p.Status == snapshot.ProviderOK:
-			ok++
-		case p.FetchedAt.IsZero():
-			down++
-		default:
-			stale++
-		}
-		total++
-	}
+	c := countProviders(snap)
+	ok, stale, down, total := c.ok, c.stale, c.down, c.total
 	g := o.Glyphs()
 	gOK, gStale, gDown := g.OK, g.Alert, g.Fail // one owner for every mark (R5-C-13)
 	if o.ASCII {
@@ -146,6 +138,31 @@ func apiSummaryOf(o render.Opts, snap *snapshot.Snapshot) string {
 		render.Tint(gOK+strconv.Itoa(ok), render.Tok(render.ProviderOK)),
 		render.Tint(gStale, render.Tok(render.AlertLabel)), stale,
 		render.Tint(gDown, render.Tok(render.ProviderDown)), down, total)
+}
+
+// providerCounts are the providers counted by health, as apiSummaryOf says them.
+type providerCounts struct{ ok, stale, down, total int }
+
+// countProviders counts a snapshot's providers by health: the summary's numbers,
+// and the masthead memo's key for them.
+func countProviders(snap *snapshot.Snapshot) providerCounts {
+	var c providerCounts
+	for _, p := range providersOf(snap) { // bounded by the providers (P10-02)
+		switch {
+		case p.Status == snapshot.ProviderOff:
+			continue
+		case p.Status == snapshot.ProviderOK && p.FetchedAt.IsZero():
+			// registered, not yet answered (the first frames): in the total, not yet ✔ (REVIEW C5)
+		case p.Status == snapshot.ProviderOK:
+			c.ok++
+		case p.FetchedAt.IsZero():
+			c.down++
+		default:
+			c.stale++
+		}
+		c.total++
+	}
+	return c
 }
 
 // apiSummary is the Dashboard's own reading of it.

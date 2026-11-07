@@ -8,21 +8,14 @@ import (
 // P-1 — THE TICK PATH HAS A BUDGET.
 //
 // TestFrameAllocBudget measures View() only, so this measures the one per-300ms
-// cost in the app: advanceTicker rebuilds the CURRENT LANE'S ENTIRE TAPE —
-// every tapeLine, joined, converted to runes — to obtain a single integer, the
-// loop length for `d.tickerScroll %= n`. It then throws the tape away, and the
-// renderer builds it again.
-//
-// THE FIX IS NOT MADE HERE, deliberately. The obvious levers both carry risk
-// this gate should not hide: a cached length needs invalidation over items,
-// width, units and ascii, and a wrong one wraps the marquee in the wrong place;
-// moving the clamp to render time changes what parkScroll stores, which is
-// F-16's ruled parked-offset behaviour and a HUM LEAD call. See follow-ups.md
-// F-32. What this pin does is stop it getting worse, and make the improvement
-// measurable when it is made.
+// cost in the app: advanceTicker, which keeps the scroll inside the current
+// lane's loop length. The length comes from the tape memo (tapeOf), which the
+// frame shares, so a tick builds no tape while the ticker, the lane, the glyph
+// set, the clock format and the day stand still (0.19.5 PF-8, F-32). A tick
+// that rebuilt the tape would cost about seventy allocations.
 //
 // The budget is the measurement × 1.05, the same rule as every other pin here.
-const tickAllocBudget = 68 * 1.05
+const tickAllocBudget = 3 * 1.05
 
 func TestTickAdvanceAllocBudget(t *testing.T) {
 	if raceEnabled {
@@ -56,13 +49,15 @@ func TestTickAdvanceAllocBudgetWithATestEventOnTheTape(t *testing.T) {
 	if len(d.ticker) == 0 {
 		t.Fatal("the bench dashboard has no marquee; this would measure advanceTicker's early return")
 	}
-	d.ticker[0].Test = true
+	marked := append([]TickerItem(nil), d.ticker...)
+	marked[0].Test = true
+	d.setTicker(marked)  // through its one writer, so the tape memo sees the change (0.19.5 PF-8)
 	_ = d.View().Content // warm the theme and the kit's probes
 	if !strings.Contains(stripANSITest(d.View().Content), testEventMark) {
 		t.Fatal("the fixture's test event is not reaching the band; this measures the unmarked path")
 	}
 	tick := testing.AllocsPerRun(50, func() { d.advanceTicker() })
-	frame := testing.AllocsPerRun(20, func() { d.memo.ok = false; _ = d.View().Content })
+	frame := testing.AllocsPerRun(20, func() { missEveryMemo(d); _ = d.View().Content })
 	t.Logf("with a test event: advanceTicker %.0f (budget %.0f) · frame miss %.0f (budget %.0f)",
 		tick, tickAllocBudget, frame, frameAllocBudget["133x44"])
 	if tick > tickAllocBudget {

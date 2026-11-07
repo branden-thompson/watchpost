@@ -97,7 +97,7 @@ func harmonize(loc *Location, providerOrder []string) {
 			continue
 		}
 		if loc.Hourly == nil && len(sec.Hourly) > 0 {
-			loc.Hourly = append([]Hourly(nil), sec.Hourly...)
+			loc.Hourly = sec.Hourly // shared with the section, which is never written into (Assembler.Snapshot)
 		}
 		if loc.Daily == nil && len(sec.Daily) > 0 {
 			loc.Daily = append([]Daily(nil), sec.Daily...)

@@ -35,10 +35,10 @@ import (
 // about 10 % under the real cost, and it is the hit path that the band keeps
 // drawing around the clock.
 var frameAllocBudget = map[string]float64{
-	"133x44": 5_520 * 1.05,
-	"133x70": 11_319 * 1.05,
-	"200x60": 14_231 * 1.05,
-	"80x24":  1_133 * 1.05,
+	"133x44": 5_387 * 1.05,
+	"133x70": 11_186 * 1.05,
+	"200x60": 14_098 * 1.05,
+	"80x24":  985 * 1.05,
 }
 
 // frameAllocBudgetHit pins the memo-hit frame — THE PIN THAT MATTERS.
@@ -51,10 +51,10 @@ var frameAllocBudget = map[string]float64{
 // is FULL — the state that costs the most per frame; a tape spread thin across
 // six lanes measures less.
 var frameAllocBudgetHit = map[string]float64{
-	"133x44": 288 * 1.05,
-	"133x70": 282 * 1.05,
-	"200x60": 285 * 1.05,
-	"80x24":  289 * 1.05,
+	"133x44": 155 * 1.05,
+	"133x70": 149 * 1.05,
+	"200x60": 152 * 1.05,
+	"80x24":  141 * 1.05,
 }
 
 func benchLoc(i int, days int, alert bool) snapshot.Location {
@@ -204,7 +204,7 @@ func BenchmarkFrame_133x44_Miss(b *testing.B) {
 // publish, a key), measured and set at × 1.05 like the frame pins.
 // The hit path here is dominated by render.Overlay's compositor, which is an
 // accepted cost — docs/accepted-costs.md §1 states why and what would re-open it.
-var severeAllocBudget = map[string]float64{"hit": 1_723 * 1.05, "miss": 5_202 * 1.05}
+var severeAllocBudget = map[string]float64{"hit": 1_590 * 1.05, "miss": 5_069 * 1.05}
 
 // severeBench is the window open over the 133×44 fixture with a 60-row
 // Warnings index (a busy outbreak day, not the 9-row mock).
@@ -282,17 +282,17 @@ var setupAllocBudget = map[string]float64{
 	// 80% of the terminal, so more of the dashboard is drawn around it - the
 	// dashboard in sight is what U1-36 asks for.
 	// One column (D-364) with the window as wide as its tab row, the Reduce
-	// motion and Playback speed rows among them (D-360, D-361): 2,761 on a hit
-	// and 4,759 on a miss.
-	"133x44-hit": 2_761 * 1.05, "133x44-miss": 4_759 * 1.05,
+	// motion and Playback speed rows among them (D-360, D-361): 2,628 on a hit
+	// and 4,626 on a miss.
+	"133x44-hit": 2_628 * 1.05, "133x44-miss": 4_626 * 1.05,
 	// 80x24 (D-67, D-70, D-71, D-202): every tab is laid out for the window's
 	// width, so a row on any tab - the RELAY REPLAY group's second row, the map's
 	// eight detail picker rows with their arrow chips, the Maps tab's UV cities
 	// row - costs every Settings frame. With the Maps tab's HF stations row
 	// (D-214), the Reduce motion and Playback speed rows (D-360, D-361) and a
-	// tab row that may try its short names (A-107 (11)), a frame measures 1,212
-	// on a hit and 3,183 on a miss.
-	"80x24-hit": 1_212 * 1.05, "80x24-miss": 3_183 * 1.05,
+	// tab row that may try its short names (A-107 (11)), a frame measures 1,064
+	// on a hit and 3,035 on a miss.
+	"80x24-hit": 1_064 * 1.05, "80x24-miss": 3_035 * 1.05,
 }
 
 // OVERLAY COSTS WHAT IT DOES NOT COVER. A dashboard row the modal sits over is
@@ -422,8 +422,8 @@ func BenchmarkConsoleFrame_Miss(b *testing.B) {
 // settingsTabPressAllocBudget is a Tab press in Settings - the key moving to
 // the next tab and the frame drawn - into its costliest tab, with the app's
 // layers registered (MAP - LAYERS) (U2-48), with 0.19.0 D-120's and D-105's
-// two Maps rows: 3,152 measured, × 1.05 is 3,310.
-const settingsTabPressAllocBudget = 3_310
+// two Maps rows: 3,019 measured, × 1.05 is 3,170.
+const settingsTabPressAllocBudget = 3_170
 
 // A SETTINGS TAB PRESS STAYS CRISP (U2-48, HUM LEAD: "key responses should be
 // very crisp and feel almost instant"): every tab, the layers registered as

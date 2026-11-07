@@ -474,7 +474,13 @@ func (a *Assembler) Snapshot() *Snapshot {
 				c := *sec.Current
 				cp.Current = &c
 			}
-			cp.Hourly = append([]Hourly(nil), sec.Hourly...)
+			// THE HOURS ARE SHARED, not copied (0.19.5 PF-10). Apply replaces a
+			// section's hours with a slice of its own and never writes into
+			// them, and nothing writes into a published snapshot, so every
+			// snapshot holding these hours keeps them as they were published.
+			// TestAPublishedForecastIsNeverWrittenAfterwards pins it. The days
+			// are copied: harmonize fills them in place.
+			cp.Hourly = sec.Hourly
 			cp.Daily = append([]Daily(nil), sec.Daily...)
 			cp.Marine = sec.Marine.Clone()
 			loc.ByProvider[pid] = cp

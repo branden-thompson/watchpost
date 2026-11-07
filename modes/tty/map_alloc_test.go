@@ -15,12 +15,12 @@ import (
 // the MISS (a draw, a key), measured and set at × 1.05, as the other pins
 // are.
 //
-// The hit is above the severe window's (1,723): the map's braille lines carry
+// The hit is above the severe window's (1,590): the map's braille lines carry
 // their colour spans, and the overlay compositor walks every one. Measured and
 // recorded, not optimised (D-53: function before performance). UAT-1's
 // boxes (U1-7, U1-11), the Description box and the controls' key caps, are
 // more spans for the compositor to walk.
-var mapAllocBudget = map[string]float64{"hit": 3_228 * 1.05, "miss": 3_787 * 1.05}
+var mapAllocBudget = map[string]float64{"hit": 3_095 * 1.05, "miss": 3_654 * 1.05}
 
 // mapBench is the map window open over the benchmark fixture, one alert on
 // the map, every piece of work landed.

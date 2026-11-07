@@ -60,7 +60,7 @@ func TestAssemblerPublishAllocBudget(t *testing.T) {
 			_ = a.Snapshot()
 		}
 	})
-	const allocs, bytes = 336 * 1.05, 998_625 * 1.05
+	const allocs, bytes = 259 * 1.05, 75_594 * 1.05
 	t.Logf("a publish of 25 locations: %d allocs (budget %.0f), %d bytes (budget %.0f)", r.AllocsPerOp(), allocs, r.AllocedBytesPerOp(), bytes)
 	if float64(r.AllocsPerOp()) > allocs || float64(r.AllocedBytesPerOp()) > bytes {
 		t.Errorf("a publish costs %d allocations and %d bytes; its budget is %.0f and %.0f", r.AllocsPerOp(), r.AllocedBytesPerOp(), allocs, bytes)

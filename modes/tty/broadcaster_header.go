@@ -23,10 +23,16 @@ import (
 // header is the masthead block: the framed title row, the controls, and the
 // station's own identity.
 func (b Broadcaster) header(o render.Opts) string {
-	rule := o.BoxRuleWidth()
-	title := mastheadTitle(render.EditionBroadcaster, b.version, rule)
-	stamp := mastheadStamp(o, title, b.snap, b.clock(), rule)
-	return o.BoxTitled(b.headerRows(o), title, stamp, "", "")
+	var slot *mastheadSlot
+	if b.memo != nil {
+		slot = &b.memo.head
+	}
+	return slot.get(mastheadKeyOf(o, render.EditionBroadcaster, b.version, b.snap, b.clock()), func() string {
+		rule := o.BoxRuleWidth()
+		title := mastheadTitle(render.EditionBroadcaster, b.version, rule)
+		stamp := mastheadStamp(o, title, b.snap, b.clock(), rule)
+		return o.BoxTitled(b.headerRows(o), title, stamp, "", "")
+	})
 }
 
 // headerRows is what rides inside the masthead: the controls the operator has,

@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -169,10 +170,9 @@ func (d Dashboard) tickerMarquee(o render.Opts) string {
 	bg, fg := render.GroupSectionBG, render.TickerMutedFG // the muted band matches the RECENT/SEARCHED group header
 	if cats := d.tickerCategories(); len(cats) > 0 {
 		cur := cats[d.tickerCatIdx%len(cats)]
-		items := d.tickerLane(o, cur)
+		items, tape, _ := d.tapeOf(o, cur)
 		left := fmt.Sprintf("  %s  %d %s  ", cur.Label(), len(items), o.Glyphs().Alert)
 		win := max(1, width-render.Width(left)-right)
-		tape := strings.Join(items, tickerBullet(o))
 		mid = left + scrollWindow(tape, d.tickerScroll, win, tickerBullet(o))
 		if d.reduceMotion { // an item at a time, whole, not a scrolling tape (D-360)
 			mid = left + render.PadTo(cutToWidth(o, d.stillTickerItem(items), win), win)
@@ -322,8 +322,76 @@ func (d Dashboard) tickerLoopLen() int {
 	if len(cats) == 0 {
 		return 0
 	}
-	tape := strings.Join(d.tickerLane(d.opts(), cats[d.tickerCatIdx%len(cats)]), tickerBulletDot)
-	return len([]rune(tape)) + len([]rune(tickerBulletDot))
+	_, _, loop := d.tapeOf(d.opts(), cats[d.tickerCatIdx%len(cats)])
+	return loop
+}
+
+// tickerGens counts the ticker's contents across every copy of the model
+// (Dashboard.tickerGen).
+var tickerGens atomic.Uint64
+
+// tapeKey is everything a lane's tape is drawn from: the ticker's contents,
+// the lane, the glyph set and clock format its words take, and the day, since
+// an alert's time reads as a date and time once its day has passed (Since).
+// The day is the model clock's own, as Since compares it.
+type tapeKey struct {
+	gen   uint64
+	lane  TickerCategory
+	ascii bool
+	clock render.Clock
+	year  int
+	day   int
+}
+
+// tapeKeyFor is the key the tape memo files a lane's tape under.
+func (d Dashboard) tapeKeyFor(o render.Opts, lane TickerCategory) tapeKey {
+	now := d.clock()
+	return tapeKey{gen: d.tickerGen, lane: lane, ascii: o.ASCII, clock: o.Clock, year: now.Year(), day: now.YearDay()}
+}
+
+// tapeSlot is the one lane the frame and the scroll last read.
+type tapeSlot struct {
+	ok    bool
+	key   tapeKey
+	items []string
+	tape  string
+	loop  int
+}
+
+// tapeOf is a lane's items, its tape as the band draws it (the items joined by
+// the bullet), and the tape's loop length as the scroll counts it (the items
+// joined by the dot bullet, and one more for the wrap). The frame and every
+// tick read it, so it is built once per change to what it is drawn from
+// (0.19.5 PF-8). Without a memo, or before setTicker has named the contents,
+// it is built every time.
+func (d Dashboard) tapeOf(o render.Opts, lane TickerCategory) (items []string, tape string, loop int) {
+	build := func() ([]string, string, int) {
+		items := d.tickerLane(o, lane)
+		return items, strings.Join(items, tickerBullet(o)), tapeLoop(items)
+	}
+	if d.memo == nil || d.tickerGen == 0 {
+		return build()
+	}
+	k := d.tapeKeyFor(o, lane)
+	s := &d.memo.tape
+	if !s.ok || s.key != k {
+		s.items, s.tape, s.loop = build()
+		s.ok, s.key = true, k
+	}
+	return s.items, s.tape, s.loop
+}
+
+// tapeLoop is the runes in the items joined by the dot bullet, and one more
+// bullet for the wrap: the length the scroll keeps its offset within.
+func tapeLoop(items []string) int {
+	n := utf8.RuneCountInString(tickerBulletDot)
+	for i, it := range items { // bounded by the lane (P10-02)
+		if i > 0 {
+			n += utf8.RuneCountInString(tickerBulletDot)
+		}
+		n += utf8.RuneCountInString(it)
+	}
+	return n
 }
 
 // advanceTickerCategory rotates to the next non-empty lane (the 90 s switch,
@@ -410,7 +478,7 @@ func laneAfter(cats []TickerCategory, want TickerCategory) int {
 // quiet advances the rotation instead of resetting it.
 func (d *Dashboard) setTicker(items []TickerItem) {
 	was, showing := d.showingLane()
-	d.ticker = items
+	d.ticker, d.tickerGen = items, tickerGens.Add(1)
 	cats := d.tickerCategories()
 	switch {
 	case len(cats) == 0:

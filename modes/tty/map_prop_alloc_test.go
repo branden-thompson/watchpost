@@ -20,7 +20,7 @@ import (
 // at × 1.05, as the other pins are. D-194's window, inset to inset and 85%
 // wide, draws more map rows than U1-13's, and every row costs its
 // allocations.
-var propAllocBudget = map[string]float64{"hit": 1_252 * 1.05, "miss": 1_716 * 1.05, "hit colour": 1_650 * 1.05, "miss colour": 3_262 * 1.05}
+var propAllocBudget = map[string]float64{"hit": 1_210 * 1.05, "miss": 1_674 * 1.05, "hit colour": 1_581 * 1.05, "miss colour": 3_194 * 1.05}
 
 // propShaped is propSnapAt's snapshot with its MUF(3000) shaped as a
 // recorded map is, go-tuiMaps' benchmark field (D-261, D-282): highest on the

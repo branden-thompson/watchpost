@@ -801,6 +801,12 @@ type Dashboard struct {
 	ticker       []TickerItem // 0.12.0: the active global alerts (grouped into lanes by Category)
 	tickerCatIdx int          // which non-empty lane is showing (rotates every 90s)
 	tickerScroll int          // tape scroll offset within the current lane
+	// tickerGen names the ticker's contents for the tape memo: a process-wide
+	// count, bumped by setTicker, so two copies of the model holding different
+	// tapes never share a key (0.19.5 PF-8, RR-17). THE CONTRACT: the ticker
+	// changes only through setTicker; a write that bypassed it would leave the
+	// memo serving the old tape.
+	tickerGen uint64
 	// tickerScrolls holds each lane's tape offset across rotations, so a lane
 	// resumes rather than restarts and no alert is unreachable. Shared by
 	// reference across the model's copies, like the memos.

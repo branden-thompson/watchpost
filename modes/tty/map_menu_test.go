@@ -196,7 +196,7 @@ func TestTheMenusPickersAreTheAppsPickers(t *testing.T) {
 func TestTheMenuBlinkKeepsATickUntilItEnds(t *testing.T) {
 	d := mapDash(t, Config{})
 	d, _ = pressKey(d, "g")
-	d.ticker = nil
+	d.setTicker(nil)
 	if d.tickNeeded() {
 		t.Fatal("control: something else keeps a tick armed here, so this test proves nothing")
 	}

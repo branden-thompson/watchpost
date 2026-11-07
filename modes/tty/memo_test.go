@@ -131,12 +131,11 @@ func TestLayoutOncePerViewAndKey(t *testing.T) {
 	_ = d.View().Content
 	perView := testing.AllocsPerRun(20, func() { _ = d.View().Content })
 	perLayout := testing.AllocsPerRun(20, func() { _ = d.layout() })
-	// The hit path's own work beside its one layout, the header's tints among
-	// it, measured at 195 allocs and pinned × 1.10. A second layout() adds a
-	// whole layout (93) on top. The bound is absolute because the frame's own
-	// work is twice a layout now, so no multiple of a layout can tell one call
-	// from two.
-	const ownWork = 195 * 1.10
+	// The hit path's own work beside its one layout, measured at 62 allocs and
+	// pinned × 1.10. A second layout() adds a whole layout (93) on top. The
+	// bound is absolute, not a multiple of a layout, so it holds whichever of
+	// the two a batch makes cheaper.
+	const ownWork = 62 * 1.10
 	if perView-perLayout > ownWork {
 		t.Fatalf("one layout per frame on the memo hit path: frame %.0f allocs, layout %.0f, leaving %.0f against %.0f — a second layout() call would show here", perView, perLayout, perView-perLayout, ownWork)
 	}

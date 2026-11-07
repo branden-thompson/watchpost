@@ -65,3 +65,53 @@ func mastheadStamp(o render.Opts, title string, snap *snapshot.Snapshot, now tim
 	}
 	return ""
 }
+
+// mastheadKey is everything a masthead is drawn from: the options (all but the
+// animation phase, which no masthead reads), the edition and its version, the
+// data's as-of instant, the providers' counts the API summary gives, the age
+// words and staleness the stamp says, and the theme and colour switch every
+// tint reads. The controls inside the box are fixed for each edition.
+type mastheadKey struct {
+	o                render.Opts
+	edition, version string
+	asOf             int64
+	hasData          bool
+	counts           providerCounts
+	ago              string
+	stale            bool
+	theme            uint64
+	colour           bool
+}
+
+// mastheadKeyOf derives the key for a masthead drawn at now.
+func mastheadKeyOf(o render.Opts, edition, version string, snap *snapshot.Snapshot, now time.Time) mastheadKey {
+	o.Frame = 0
+	k := mastheadKey{o: o, edition: edition, version: version, counts: countProviders(snap),
+		theme: render.ThemeGeneration(), colour: render.ColorOn()}
+	if snap != nil {
+		at := dataAsOf(snap)
+		k.hasData, k.asOf, k.ago, k.stale = true, at.UnixNano(), agoWords(now.Sub(at)), now.Sub(at) > staleAfter
+	}
+	return k
+}
+
+// mastheadSlot is one surface's masthead memo, a single entry: the masthead
+// is drawn on every frame and changes when its data or its age words do, so
+// the frames between redraw it from here (0.19.5 PF-7, D-22). A nil slot (a
+// model without a memo) builds every time.
+type mastheadSlot struct {
+	ok  bool
+	key mastheadKey
+	out string
+}
+
+// get is the masthead for k, built only when k is not the one held.
+func (s *mastheadSlot) get(k mastheadKey, build func() string) string {
+	if s == nil {
+		return build()
+	}
+	if !s.ok || s.key != k {
+		s.ok, s.key, s.out = true, k, build()
+	}
+	return s.out
+}
