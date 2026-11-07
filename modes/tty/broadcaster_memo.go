@@ -21,6 +21,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"sync/atomic"
 )
 
 // consoleKey is every input the running order and the pool read.
@@ -71,8 +72,40 @@ type consoleMemo struct {
 	ok          bool
 	key         consoleKey
 	sched, pool scrollSpan
+	rows        []string     // the tables railed, as the frame draws them (railTables)
 	cursor      cursorSlot   // the console's cursor, kept for the Router (D-362)
 	head        mastheadSlot // the masthead (0.19.5 D-22, mastheadSlot)
+	proj        projSlot     // the line-up as the operator sees it (0.19.5 D-22, projection)
+}
+
+// lineupGens counts the line-ups the console has been handed, across every
+// copy of it (Broadcaster.lineupGen).
+var lineupGens atomic.Uint64
+
+// projSlot holds both tracks' projections of one line-up.
+type projSlot struct {
+	ok    bool
+	gen   uint64
+	cards [2][]lineup.Card
+}
+
+// projection is the line-up as the operator sees it, one track of it
+// (lineup.Projection), worked out once per line-up the console is handed
+// instead of at every one of the frame's eight readers (0.19.5 D-22). The
+// line-up is replaced whole and never edited (lineupGen), so its generation
+// names it exactly. THE CARDS ARE SHARED by every reader of one line-up, and
+// no reader writes into them, as none wrote into Projection's own copy.
+func (b Broadcaster) projection(t lineup.Track) []lineup.Card {
+	if b.memo == nil || b.lineupGen == 0 {
+		return b.lineup.Projection(t)
+	}
+	s := &b.memo.proj
+	if !s.ok || s.gen != b.lineupGen {
+		s.ok, s.gen = true, b.lineupGen
+		s.cards[lineup.MainTrack] = b.lineup.Projection(lineup.MainTrack)
+		s.cards[lineup.AlertRail] = b.lineup.Projection(lineup.AlertRail)
+	}
+	return s.cards[t]
 }
 
 // consoleKeyFor derives the key from the model and this frame's position.
@@ -89,29 +122,49 @@ func (b Broadcaster) consoleKeyFor(used int) consoleKey {
 	return k
 }
 
-// spans builds the running order and the pool, or returns the memoised pair.
+// tableRows builds the running order and the pool and rails them, or returns
+// the memoised rows.
 //
 // IT OWNS THE INDEX TOO, and that is deliberate. `locIndex` builds a map over the
 // whole pool so the forty joins are not forty linear scans (D-120) — real work,
 // and pointless on a hit. Taking it inside means a hit costs the key comparison
 // and nothing else; leaving it outside would pay for the index on every frame to
 // save the tables on most of them.
-func (b Broadcaster) spans(used int) (sched, pool scrollSpan) {
+func (b Broadcaster) tableRows(used int) []string {
 	m := b.memo
 	if m == nil {
-		return b.buildSpans(used)
+		return b.railTables(b.buildSpans(used))
 	}
 	key := b.consoleKeyFor(used)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.ok && m.key == key {
 		m.hits++
-		return m.sched, m.pool
+		return m.rows
 	}
-	sched, pool = b.buildSpans(used)
-	m.ok, m.key, m.sched, m.pool = true, key, sched, pool
+	sched, pool := b.buildSpans(used)
+	m.ok, m.key, m.sched, m.pool, m.rows = true, key, sched, pool, b.railTables(sched, pool)
 	m.misses++
-	return sched, pool
+	return m.rows
+}
+
+// railTables is the two tables' rows with the right-hand column added, as the
+// frame draws them. The rows are kept in the memo with the spans: the rail
+// reads only the spans, the width and the glyph set, all of them the key's, so
+// a frame the key does not change draws no row again (0.19.5 D-22).
+func (b Broadcaster) railTables(sched, pool scrollSpan) []string {
+	// THE FIRST REGION THAT SCROLLS OWNS THE CONTROL, and each region is asked
+	// rather than assumed. Reading only the pool's answer would make the running
+	// order's `from` a field nothing consults — so a region could claim a scroll
+	// and the frame would not draw it.
+	from := -1
+	switch {
+	case sched.from >= 0:
+		from = sched.from
+	case pool.from >= 0:
+		from = len(sched.lines) + pool.from
+	}
+	return b.chromeAt(joinSpans(sched, pool), from, pool.off, pool.total)
 }
 
 // buildSpans is the miss path: the index, then both tables against it.

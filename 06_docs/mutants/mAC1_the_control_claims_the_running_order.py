@@ -2,7 +2,7 @@ import pathlib
 # The scroll control goes back to spanning both tables — claiming a scroll the
 # running order never does, and putting the pool's own headings inside the window
 # it draws, so they vanish the moment the operator moves down the list (D-106).
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/broadcaster_memo.go"); s = p.read_text()
 old = """	from := -1
 	switch {
 	case sched.from >= 0:

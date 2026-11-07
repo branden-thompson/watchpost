@@ -589,3 +589,56 @@ Mutants m751 to m753, each hand-vetted and killed.
   - D-22 counts the `Projection` cache (plan Q4.5, about 14 KB) toward it, and it is the next batch.
     The console's other costs are the railed boxes, about 33 KB in D-22's profile. A miss after Q4.5
     goes to the HUM LEAD with the figures, as D-22 rules.
+
+## 0.19.5 batch 12 — the console's line-up and tables, kept (plan Q4.5, D-22, A-20)
+
+Mutants m754 to m756 are new; mAR3 is re-pointed. Each is hand-vetted and killed.
+
+The plan's batch 10 paired Q4.5 with Q5. Q5 is its own batch (13): it touches eight unrelated places,
+and the console's M2 figure was owed first.
+
+- **The `Projection` cache (Q4.5, D-22).**
+  - `Broadcaster.projection` works the line-up out once per line-up the console is handed. Before, the
+    frame's eight readers each called `lineup.Projection`, so it was worked out eight times.
+  - One slot in `consoleMemo` holds both tracks, keyed on `lineupGen`. `lineupGen` is now a
+    process-wide count (`lineupGens`), so two copies of the console sharing one memo never share a
+    generation. That is RR-17's point about per-copy counters, applied here; mAR3 moves to the new
+    assignment.
+  - The cards are shared by every reader of one line-up. No reader writes into them, checked at all
+    eight sites and in `slotCard` and `scheduledSpan`.
+  - `TestTheConsolesProjectionFollowsItsLineup` interleaves reads between two sibling copies handed
+    different line-ups. It kills m754 (a per-copy count) and m755 (the generation ignored).
+  - The console beat falls from 166.7 KB to 152.1, which is D-22's estimate of about 14 KB, and is still
+    12 KB short of 140.
+- **The railed rows (A-20).**
+  - Profiled at 152 KB, the console beat's bytes split three ways:
+    - finishing the frame, 41 %, most of it the frame string itself;
+    - `railed`, 22 %;
+    - the station section, 14 %.
+  - `railed` rebuilt every row of both tables with its rail mark on every frame, from the spans, the
+    width and the glyph set, all of them the console key's. `tableRows` now keeps the railed rows in
+    the memo beside the spans. `railTables` is the rail half, so `spans` is gone.
+  - `TestTheConsolesTableRowsAreTheRowsItWouldDraw` runs the reflection walk over the console. With the
+    memo filled for the unchanged console first, every changed copy reads the rows it would draw itself.
+    It kills m756.
+  - The console beat falls to 122.5 KB.
+- **The pins.**
+  - The console beat is 383 allocations and 122,527 B, × 1.05.
+  - The console frame's hit is 297, pinned at its narrow × 1.04 (309); its miss is 9,195 (9,655).
+  - `docs/accepted-costs.md`'s console entry states them.
+  - The other pins did not move.
+- **The gate's first run** found mAC1, mAR5 and mAR6 drifted. They were anchored on the scroll owner and
+  the memo's store, which moved into `railTables` and `tableRows`. The rule is to search the mutants
+  before moving code, and that search was not run here. All three are re-pointed, unchanged in what they
+  break, and killed by their tests (`TestThePointerWalksAndTheWindowFollows`,
+  `TestConsoleFrameAllocBudget`).
+- **P10 (D-27):** `app/pipelines.go`'s row is unchanged at 0.50 against 0.61, for REVIEW.
+- **M2, after Q4:**
+
+  | Beat | Target (D-4) | First pinned (batch 5) | Now | Verdict |
+  |---|---|---|---|---|
+  | Idle Observer, 133x44 | 80 KB | 156.5 KB | 59.6 KB | met |
+  | Radio playing, 133x44 | 90 KB | 168.7 KB | 68.5 KB | met |
+  | Console, 160x74 | 140 KB | 310.5 KB | 122.5 KB | met |
+
+  The second verdict follows Q6.4, as the plan says.

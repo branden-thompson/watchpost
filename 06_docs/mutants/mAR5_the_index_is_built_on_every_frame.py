@@ -4,9 +4,9 @@ import pathlib
 # be thrown away on every hit. Silent: the frame is correct, it just costs what
 # the memo was added to stop costing.
 p = pathlib.Path("modes/tty/broadcaster_memo.go"); s = p.read_text()
-old = """func (b Broadcaster) spans(used int) (sched, pool scrollSpan) {
+old = """func (b Broadcaster) tableRows(used int) []string {
 	m := b.memo"""
-new = """func (b Broadcaster) spans(used int) (sched, pool scrollSpan) {
+new = """func (b Broadcaster) tableRows(used int) []string {
 	_ = b.locIndex()
 	m := b.memo"""
 assert old in s, "mAR5"

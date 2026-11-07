@@ -33,10 +33,11 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 ### Performance
 - **Each beat of the interface allocates about half the memory it did, or less:** an idle Observer
   frame from about 157 KB to 60 KB, the radio playing from 169 KB to 68 KB, and the console from 310 KB
-  to 167 KB. The ticker's marquee and the console's frame are no longer copied whole each frame, the
+  to 123 KB. The ticker's marquee and the console's frame are no longer copied whole each frame, the
   app's model is no longer copied into an interface at each step a message takes, measuring styled text
-  no longer copies it, the radio player is drawn only in the layout shown, and the ticker's tape and both
-  mastheads are drawn again only when what they show changes. A ticker step allocates 3 times instead of
+  no longer copies it, the radio player is drawn only in the layout shown, and the ticker's tape, both
+  mastheads, the console's running order and its railed tables are worked out again only when what they
+  show changes. A ticker step allocates 3 times instead of
   68. What is drawn is byte for byte the same.
 - **A weather update that changed nothing shown no longer redraws the tables:** the frame after it costs
   about 72 KB, from about 362 KB.

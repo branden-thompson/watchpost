@@ -185,7 +185,7 @@ func (b Broadcaster) alertBox(rows int) []string {
 	// box draws the one that would interrupt the programme next — written as an
 	// index rather than a loop that always returns, which staticcheck rightly
 	// reads as a loop that is not one.
-	rail := b.lineup.Projection(lineup.AlertRail)
+	rail := b.projection(lineup.AlertRail)
 	if len(rail) == 0 {
 		return b.emptyAlertBox(lane, rows)
 	}

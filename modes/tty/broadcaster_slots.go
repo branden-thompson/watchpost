@@ -87,7 +87,7 @@ func (b Broadcaster) waiting(o render.Opts) string {
 // kept firing would redraw a console nobody is watching change — the same
 // discipline Observer's own `tickNeeded` applies.
 func (b Broadcaster) tickNeeded() bool {
-	return len(b.lineup.Projection(lineup.MainTrack)) < MainTrackSlots
+	return len(b.projection(lineup.MainTrack)) < MainTrackSlots
 }
 
 // armTick starts the shimmer when the frame needs one and none is in flight —

@@ -52,7 +52,7 @@ func beatCost(tb testing.TB, b beat) (allocs, bytes int64) {
 var beatBudget = map[string]struct{ allocs, bytes float64 }{
 	"idle Observer 133x44": {166 * 1.05, 59_557 * 1.05},
 	"radio playing 133x44": {327 * 1.05, 68_476 * 1.05},
-	"console 160x74":       {475 * 1.05, 166_744 * 1.05},
+	"console 160x74":       {383 * 1.05, 122_527 * 1.05},
 }
 
 // TestBeatAllocBudget is 0.19.5 Q2.12 (PF-6): what a beat costs, the message

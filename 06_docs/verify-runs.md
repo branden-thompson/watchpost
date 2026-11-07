@@ -176,3 +176,5 @@ says exactly what passed.
 | 2026-11-07T02:53:14Z | 22f5d3fe | 08efb07d4558 | verify-docs | green | 149 |
 | 2026-11-07T03:07:53Z | f9fc9fce | d490a7c9603a | verify | FAILED (exit 2) | 246 |
 | 2026-11-07T03:49:01Z | f9fc9fce | ac3abf9076d5 | verify | green | 2431 |
+| 2026-11-07T04:05:14Z | af1edd4e | 7c202299e4f8 | verify | FAILED (exit 2) | 400 |
+| 2026-11-07T04:44:59Z | af1edd4e | 985cc4735fcc | verify | green | 2339 |

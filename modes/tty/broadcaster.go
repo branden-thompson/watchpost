@@ -167,7 +167,10 @@ type Broadcaster struct {
 	// inputs that are not `==` types (a Lineup holds an array of slices, a
 	// StationAreaMsg holds one). The app replaces both from a message and never
 	// edits either in place, so a counter bumped where the assignment happens is
-	// an exact identity for the value — the memo's reason for them.
+	// an exact identity for the value — the memo's reason for them. lineupGen
+	// is process-wide (lineupGens), so two copies of the console holding
+	// different line-ups never share it: the projection's cache reads it too
+	// (0.19.5 D-22).
 	lineupGen, areaGen uint64
 
 	// units and clockFmt are the listener's units and clock Settings, which the
@@ -313,7 +316,7 @@ func (b Broadcaster) heldNotice() []string {
 	// the band and the box cannot disagree about whether anything is being
 	// withheld.
 	var held int
-	for _, c := range b.lineup.Projection(lineup.AlertRail) { // bounded by the rail (P10-02)
+	for _, c := range b.projection(lineup.AlertRail) { // bounded by the rail (P10-02)
 		if n := len(c.From); n > 0 {
 			held += n
 			continue
@@ -528,7 +531,7 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 		// THE COUNTER MOVES WITH THE VALUE, on the same line that replaces it.
 		// The memo's key carries the generation because a Lineup cannot be
 		// compared; a bump left behind here is a table that stops redrawing.
-		b.lineup, b.lineupGen = v.Lineup, b.lineupGen+1
+		b.lineup, b.lineupGen = v.Lineup, lineupGens.Add(1)
 	case StationAreaMsg:
 		b.area, b.areaGen = v, b.areaGen+1
 	case BedMsg:
@@ -848,19 +851,7 @@ func (b Broadcaster) lanes() []string {
 	// shape.
 	// THE WEATHER IS INDEXED ONCE FOR THE WHOLE FRAME (D-120). Both tables join
 	// against it — forty lookups rather than forty linear scans.
-	sched, pool := b.spans(len(out))
-	// THE FIRST REGION THAT SCROLLS OWNS THE CONTROL, and each region is asked
-	// rather than assumed. Reading only the pool's answer would make the running
-	// order's `from` a field nothing consults — so a region could claim a scroll
-	// and the frame would not draw it.
-	from := -1
-	switch {
-	case sched.from >= 0:
-		from = sched.from
-	case pool.from >= 0:
-		from = len(sched.lines) + pool.from
-	}
-	out = append(out, b.chromeAt(joinSpans(sched, pool), from, pool.off, pool.total)...)
+	out = append(out, b.tableRows(len(out))...)
 	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES, as the reference draws it:
 	// the frame closes under the scroll rail's ▼ and the rest of the screen is
 	// empty, rather than carrying walled blank rows to the bottom of the
