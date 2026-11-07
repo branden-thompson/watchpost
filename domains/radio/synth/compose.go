@@ -11,7 +11,6 @@ import (
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
-	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // Segment is one narrated unit; Key identifies its content so rendered
@@ -271,23 +270,12 @@ func (c Composer) conditions(loc snapshot.Location, imperial bool) string {
 		parts = append(parts, fmt.Sprintf("humidity %.0f percent", *h.HumidityPct))
 	}
 	if h.Wind != nil {
-		if imperial {
-			parts = append(parts, fmt.Sprintf("wind %s at %.0f miles per hour", compass(h.WindDirDeg), units.MphOf(*h.Wind)))
-		} else {
-			parts = append(parts, fmt.Sprintf("wind %s at %.0f kilometers per hour", compass(h.WindDirDeg), units.KmhOf(*h.Wind)))
-		}
+		parts = append(parts, "wind "+compass(h.WindDirDeg)+" at "+windWords(h.Wind, imperial))
 	}
 	if len(parts) == 0 {
 		return ""
 	}
 	return c.say("weather-radio", "conditions", map[string]string{"Items": strings.Join(parts, ", ")})
-}
-
-func degrees(c float64, imperial bool) string {
-	if imperial {
-		return fmt.Sprintf("%.0f degrees", units.FahrenheitOf(c))
-	}
-	return fmt.Sprintf("%.0f degrees Celsius", c)
 }
 
 func compass(deg *float64) string {

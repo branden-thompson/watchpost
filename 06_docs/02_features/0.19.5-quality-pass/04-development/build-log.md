@@ -642,3 +642,82 @@ and the console's M2 figure was owed first.
   | Console, 160x74 | 140 KB | 310.5 KB | 122.5 KB | met |
 
   The second verdict follows Q6.4, as the plan says.
+
+## 0.19.5 batch 13 — consolidation, first half (plan Q5.1 to Q5.5)
+
+Mutants m757 to m767 are new; m665 is re-pointed. Each is hand-vetted and killed. Each task's copies were
+pinned before they merged, with the shipped function kept in the test as the reference where the copies
+are replaced. Q5.6 and Q5.7 follow as batch 14.
+
+- **Q5.1, the felt bands (DR-1, JM-15).**
+  - **Pinned first,** either side of 3.5, 4.5 and 5.0, with the shipped code:
+    - `render.SeismicLevel` (`TestTheSeismicLevelAtEveryBoundary`);
+    - the Details label (`TestTheSeismicLabelAtEveryBoundary`);
+    - the radio's likelihood (`TestTheSpokenLikelihoodAtEveryBoundary`).
+  - **One owner.** `render.FeltBand` holds the boundaries, with each band's meaning written beside it,
+    and `render.FeltBands` is the count.
+  - **The words stay with each surface,** as tables indexed by band: `seismicLevels` (render),
+    `feltLabels` (tty), `feltLikelihoods` (synth).
+  - **The table lengths.** A test in each package holds its table's length to the band count, since a
+    `[N]string` literal one short would still compile, with a blank entry.
+  - **Mutants.** m757 moves a boundary in the owner, and the Details label test catches it in another
+    package. m758 is killed by the render pin.
+- **Q5.2, the severe clock (DR-5).**
+  - `TestTheSevereRowsTimesReadInThePlacesZone` pins the row's declared and expiry times, which were
+    unpinned: in the place's zone, the zone named, blank with no clock.
+  - `severe.Stamp` is exported and the row calls it.
+  - The one edge where the two copies differed is a nil zone: `Stamp` reads local time, where the app's
+    copy would have panicked. It is unreachable, because `rowClock` always returns a zone (A-17). m759
+    and m760 are killed.
+- **Q5.3, the alert window as a value (DR-6, A-4, RR-7).**
+  - `TestTheAlertWindowIsSpokenAsTheRecordShowsIt` was written first and passed on the shipped code. It
+    drives a domain row through `toSevereRow` and the spoken read for each case:
+    - no window;
+    - 29 s, still "0 minutes", as it was;
+    - 30 s;
+    - 59 m 30 s;
+    - 1 h 30 m;
+    - 1 d 12 h ("1 day");
+    - an onset after the issue time.
+  - **The window travels as a value.** `timing` returns the window beside the line. `Record.Window` and
+    `SevereRecord.Window` carry it, and `spokenWindow` words that duration instead of parsing "(~…)"
+    out of the display text.
+  - **One owner for the rounding.** `severe.WindowParts` rounds to the minute and keeps whole days alone.
+    `shortDur` writes its shorthand from it, and `spokenWindow` says it from it, so the two cannot round
+    apart.
+  - **What changed in the tests.** The old string-parsing cases in `TestEventScriptReadsTheAlertItself`
+    take durations, and its fixture carries its window. No spoken output changed (A-4). m761 to m763
+    are killed.
+- **Q5.4, the compass (DR-7, D-17, DV-7).**
+  - `geo.Compass16` is the one table of the 16 abbreviations. usgs's `bearing`, synth's `compassPoint`
+    and tty's `compass` call it, and synth's own rounding is gone.
+  - `TestCompass16MatchesTheTablesItReplaces` checks it against both shipped forms at every hundredth of
+    a degree from 0 to 360.
+  - **Negatives (D-17).** `CompassIndex` takes a negative or over-a-turn bearing round the rose first,
+    pinned by `TestCompassIndexNormalisesANegativeBearing`.
+  - **The one edge that changes.** An exact negative half-sector, such as -11.25°, is where synth's
+    rounding half away from zero named the previous point. It is recorded as unreachable: NDBC sends 0
+    to 360 (A-17).
+  - **The storm heading.** severe's 8-point `compass` goes through `CompassIndex`.
+    `TestTheTropicalHeadingMatchesTheShippedForm` holds it to the integer form for every whole degree
+    from -720 to 720.
+  - m764 and m765 are killed.
+- **Q5.5, the spoken units (DR-2's remainder).**
+  - `conditions` says the wind through `windWords`, pinned in both units by
+    `TestTheConditionsSayTheListenersUnits`. `depthWords` is `distanceWords(km, false)`, pinned first by
+    `TestADepthIsSaidInWholeKilometres`.
+  - The ten spoken-quantity helpers live in `domains/radio/synth/spoken_units.go`: `degrees`,
+    `heightWords`, `tempWords`, `windWords`, `knotWords`, `decimalWords`, `depthWords`, `distanceWords`,
+    `ringWords` and `durationWords`. Each keeps its comment. m665 follows `tempWords` there.
+  - m766 and m767 are killed.
+- **The gate's first run** failed the declaration-set pins in two packages. Both changes were the
+  batch's own, and both sets are re-captured:
+  - render added `FeltBand`, `FeltBands` and `seismicLevels`;
+  - app swapped `durationUnits` for `countWord`.
+- **P10 (D-27):** three rows measure under their floors, for REVIEW:
+  - `platform/geo` 0.50 against 1.17, from `Compass16` and the normalising lines;
+  - `domains/severe` 0.22 against 0.50, from `Stamp`, `WindowParts` and `timing`'s second answer;
+  - `app/pipelines.go` 0.40 against 0.61.
+
+  Each changed function is a pure mapping with nothing further to guard, so no check was added for the
+  count.

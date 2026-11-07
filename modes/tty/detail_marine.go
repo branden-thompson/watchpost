@@ -237,11 +237,11 @@ func period(s *float64) string {
 // fixedAgeTrim is fixedAge without the alignment padding.
 func fixedAgeTrim(d time.Duration) string { return strings.TrimSpace(fixedAge(d)) }
 
-// compass maps degrees true to a 16-point heading.
+// compass maps degrees true to a 16-point heading (geo.Compass16), or "--"
+// for none.
 func compass(deg *float64) string {
 	if deg == nil {
 		return "--"
 	}
-	pts := []string{"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"}
-	return pts[geo.CompassIndex(*deg, 16)]
+	return geo.Compass16(*deg)
 }

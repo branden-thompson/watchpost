@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -22,12 +23,17 @@ type Record struct {
 	Title  string
 	Meta   string
 	Timing string
+	// Window is how long the alert is in effect, the span the timing line's
+	// "(~…)" shows; zero for none. The spoken read words it (WindowParts).
+	Window time.Duration
 	Area   string
 	Paras  []string
 }
 
-// stamp is the record's clock: "08/28 08:45 CDT" in the given zone.
-func stamp(t time.Time, in *time.Location) string {
+// Stamp is the severe window's clock, for its rows and their records alike:
+// "08/28 08:45 CDT" in the given zone (local time for none), and blank for a
+// zero time, never "01/01 00:00" (R3-A-06).
+func Stamp(t time.Time, in *time.Location) string {
 	if t.IsZero() {
 		return ""
 	}
@@ -40,7 +46,7 @@ func stamp(t time.Time, in *time.Location) string {
 // compass names a direction in degrees ("W", "NE").
 func compass(deg int) string {
 	names := []string{"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
-	return names[(((deg%360)+360)%360+22)/45%8]
+	return names[geo.CompassIndex(float64(deg), 8)] // the one owner of the arithmetic
 }
 
 func title(s string) string { return strings.ToUpper(render.Plain(s)) }
@@ -70,35 +76,47 @@ func RecordOf(r Row, in *time.Location) Record {
 	case r.Detail.Tropical != nil:
 		return tropicalRecord(r, in)
 	}
-	return Record{Title: title(r.Product), Timing: "Declared " + stamp(r.At, in), Area: "Area: " + render.Plain(r.Location)}
+	return Record{Title: title(r.Product), Timing: "Declared " + Stamp(r.At, in), Area: "Area: " + render.Plain(r.Location)}
 }
 
 // timing is the record's clock line: "Declared <issued>   Starts <onset>
 // Expires <until>   (~window)" — Starts only when the hazard begins after the
 // declaration (an advisory issued in the morning for the evening), the window
-// measured from the start.
-func timing(verb string, at, onset, until time.Time, in *time.Location) string {
-	s := verb + " " + stamp(at, in)
+// measured from the start — and the window itself, zero when the alert
+// expires as it starts.
+func timing(verb string, at, onset, until time.Time, in *time.Location) (string, time.Duration) {
+	s := verb + " " + Stamp(at, in)
 	from := at
 	if onset.After(at) {
-		s += "   Starts " + stamp(onset, in)
+		s += "   Starts " + Stamp(onset, in)
 		from = onset
 	}
-	if until.After(from) {
-		s += "   Expires " + stamp(until, in) + "   (~" + shortDur(until.Sub(from)) + ")"
+	if !until.After(from) {
+		return s, 0
 	}
-	return s
+	window := until.Sub(from)
+	return s + "   Expires " + Stamp(until, in) + "   (~" + shortDur(window) + ")", window
+}
+
+// WindowParts is a window as the record says it: rounded to the minute, and
+// whole days alone from a day on (a day and a half is one day), else hours
+// and minutes. The record's shorthand and the spoken read both word these, so
+// the two cannot round apart.
+func WindowParts(d time.Duration) (days, hours, minutes int) {
+	d = d.Round(time.Minute)
+	if d >= 24*time.Hour {
+		return int(d.Hours()) / 24, 0, 0
+	}
+	return 0, int(d.Hours()), int(d.Minutes()) % 60
 }
 
 // shortDur renders a window as "15m", "2h", "1h30m", "3d" — never "15m0s"
 // (time.Duration's String keeps the zero seconds).
 func shortDur(d time.Duration) string {
-	d = d.Round(time.Minute)
-	if d >= 24*time.Hour {
-		return fmt.Sprintf("%dd", int(d.Hours())/24)
-	}
-	h, m := int(d.Hours()), int(d.Minutes())%60
+	days, h, m := WindowParts(d)
 	switch {
+	case days > 0:
+		return fmt.Sprintf("%dd", days)
 	case h > 0 && m > 0:
 		return fmt.Sprintf("%dh%dm", h, m)
 	case h > 0:
@@ -137,10 +155,10 @@ func capExtras(d *globalfeed.SevereDetail) string {
 func alertRecord(r Row, in *time.Location) Record {
 	a := r.Detail.Alert
 	rec := Record{
-		Title:  title(a.Event),
-		Meta:   "[" + cap1(a.Severity) + " · " + cap1(a.Urgency) + " · " + cap1(a.Certainty) + "]",
-		Timing: timing("Declared", r.At, onsetOf(a.Onset), r.Until, in),
+		Title: title(a.Event),
+		Meta:  "[" + cap1(a.Severity) + " · " + cap1(a.Urgency) + " · " + cap1(a.Certainty) + "]",
 	}
+	rec.Timing, rec.Window = timing("Declared", r.At, onsetOf(a.Onset), r.Until, in)
 	area := render.Plain(a.AreaDesc)
 	if a.SenderName != "" {
 		area += " · " + render.Plain(a.SenderName)
@@ -156,10 +174,10 @@ func alertRecord(r Row, in *time.Location) Record {
 func severeRecord(r Row, in *time.Location) Record {
 	d := r.Detail.Severe
 	rec := Record{
-		Title:  title(r.Product),
-		Meta:   "[" + cap1(d.Severity) + " · " + cap1(d.Urgency) + " · " + cap1(d.Certainty) + "]",
-		Timing: timing("Declared", r.At, d.Onset, r.Until, in),
+		Title: title(r.Product),
+		Meta:  "[" + cap1(d.Severity) + " · " + cap1(d.Urgency) + " · " + cap1(d.Certainty) + "]",
 	}
+	rec.Timing, rec.Window = timing("Declared", r.At, d.Onset, r.Until, in)
 	area := render.Plain(r.Location)
 	if d.SenderName != "" {
 		area += " · " + render.Plain(d.SenderName)
@@ -193,9 +211,9 @@ func quakeRecord(r Row, in *time.Location) Record {
 	} else {
 		meta = append(meta, "Tsunami no")
 	}
-	rec := Record{Title: mag + " " + title(r.Product), Meta: "[" + strings.Join(meta, " · ") + "]", Timing: "Recorded " + stamp(r.At, in)}
+	rec := Record{Title: mag + " " + title(r.Product), Meta: "[" + strings.Join(meta, " · ") + "]", Timing: "Recorded " + Stamp(r.At, in)}
 	if !q.UpdatedAt.IsZero() {
-		rec.Timing += "   Updated " + stamp(q.UpdatedAt, in)
+		rec.Timing += "   Updated " + Stamp(q.UpdatedAt, in)
 	}
 	rec.Area = "Location: " + render.Plain(r.Location)
 	if r.HasPoint {
@@ -242,11 +260,11 @@ func tropicalRecord(r Row, in *time.Location) Record {
 	if d.MoveSpeedKt > 0 {
 		meta = append(meta, fmt.Sprintf("Moving %s at %d kt", compass(d.MoveDirDeg), d.MoveSpeedKt))
 	}
-	rec := Record{Title: head, Meta: "[" + strings.Join(meta, " · ") + "]", Timing: "Reported " + stamp(r.At, in)}
+	rec := Record{Title: head, Meta: "[" + strings.Join(meta, " · ") + "]", Timing: "Reported " + Stamp(r.At, in)}
 	if d.AdvisoryNum != "" {
 		rec.Timing += "   Advisory " + render.Plain(d.AdvisoryNum)
 		if !d.AdvisoryAt.IsZero() {
-			rec.Timing += " issued " + stamp(d.AdvisoryAt, in)
+			rec.Timing += " issued " + Stamp(d.AdvisoryAt, in)
 		}
 	}
 	pos := "Position: " + render.Plain(d.LatText) + " " + render.Plain(d.LonText)

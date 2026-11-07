@@ -645,6 +645,7 @@ func contentsFromSegments
 func contourGrid
 func convertIf
 func coopsClientConfig
+func countWord
 func countedBody
 func creditGroups
 func dataClientConfig
@@ -664,7 +665,6 @@ func discoveredIn
 func dropSuperseded
 func dumpHint
 func dumpHint
-func durationUnits
 func echoes
 func endOnHangUp
 func envWatchlistDwell

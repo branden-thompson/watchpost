@@ -20,7 +20,7 @@ import (
 func tornadoRow() tty.SevereRow {
 	return tty.SevereRow{Key: "k1", Tab: tty.SevereWarnings, Product: "Tornado Warning", Location: "Olathe, KS",
 		Record: tty.SevereRecord{Title: "TORNADO WARNING", Meta: "[Extreme · Immediate · Observed]",
-			Timing: "Declared 08/28 08:45 CDT   Expires 08/28 09:30 CDT   (~45m)", Area: "Area: Johnson County, KS · NWS Kansas City",
+			Timing: "Declared 08/28 08:45 CDT   Expires 08/28 09:30 CDT   (~45m)", Window: 45 * time.Minute, Area: "Area: Johnson County, KS · NWS Kansas City",
 			Paras: []string{"Wind gusts to 70 mph · Hail to 1.00 in", "At 845 AM CDT, a severe thunderstorm capable of producing a tornado was located near Olathe, moving northeast at 30 mph. HAZARD: Damaging tornado and quarter size hail. SOURCE: Radar indicated rotation.", "Instructions: TAKE COVER NOW! Move to a basement or an interior room on the lowest floor of a sturdy building."}}}
 }
 
@@ -44,10 +44,10 @@ func TestEventScriptReadsTheAlertItself(t *testing.T) {
 	if got := eventScript(nil, long); strings.Count(got, "A sentence of prose.") != 80 || strings.Count(got, "Do this.") != 40 {
 		t.Errorf("the whole record is spoken, nothing clipped (UAT 2026-08-28):\n%s", got)
 	}
-	if got := spokenWindow("Declared x   Expires y   (~1h30m)"); got != "1 hour 30 minutes" {
+	if got := spokenWindow(90 * time.Minute); got != "1 hour 30 minutes" {
 		t.Errorf("window: %q", got)
 	}
-	if got := spokenWindow("Recorded 08/28 10:00 UTC"); got != "" {
+	if got := spokenWindow(0); got != "" {
 		t.Errorf("no window: %q", got)
 	}
 }

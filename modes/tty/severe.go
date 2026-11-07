@@ -95,7 +95,10 @@ type SevereRow struct {
 // SevereRecord is the [A]-shaped record of one row.
 type SevereRecord struct {
 	Title, Meta, Timing, Area string
-	Paras                     []string
+	// Window is how long the alert is in effect, the span Timing's "(~…)"
+	// shows; zero for none. The spoken read words it.
+	Window time.Duration
+	Paras  []string
 }
 
 // severeTabs is the window's view of the registry, in tab order. The rows are

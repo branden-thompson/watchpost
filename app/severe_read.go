@@ -12,10 +12,10 @@ package app
 import (
 	"context"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -302,7 +302,7 @@ func eventScript(lib *script.Library, row tty.SevereRow) string {
 	if meta := strings.Trim(render.PlainLine(row.Record.Meta), "[]"); meta != "" {
 		parts = append(parts, say("meta", map[string]string{"Items": strings.Join(strings.Split(meta, " · "), ", ")}))
 	}
-	if window := spokenWindow(row.Record.Timing); window != "" {
+	if window := spokenWindow(row.Record.Window); window != "" {
 		parts = append(parts, say("window", map[string]string{"Window": window}))
 	}
 	for _, p := range row.Record.Paras {
@@ -327,37 +327,29 @@ func eventScript(lib *script.Library, row tty.SevereRow) string {
 	return strings.Join(kept, " ")
 }
 
-// spokenWindow reads the "(~15m)" window the record's timing line carries
-// and words it: "15 minutes", "2 hours", "1 hour 30 minutes", "3 days".
-func spokenWindow(timing string) string {
-	i := strings.LastIndex(timing, "(~")
-	j := strings.LastIndex(timing, ")")
-	if i < 0 || j < i {
+// spokenWindow words how long an alert is in effect: "15 minutes", "2 hours",
+// "1 hour 30 minutes", "3 days", from the parts the record's "(~…)" shorthand
+// is written from (severe.WindowParts), or "" for no window.
+func spokenWindow(window time.Duration) string {
+	if window <= 0 {
 		return ""
 	}
-	var out []string
-	num := ""
-	for _, r := range timing[i+2 : j] {
-		switch {
-		case unicode.IsDigit(r):
-			num += string(r)
-		case num == "":
-			continue
-		default:
-			unit := durationUnits()[r]
-			if unit == "" {
-				return ""
-			}
-			if num != "1" {
-				unit += "s"
-			}
-			out = append(out, num+" "+unit)
-			num = ""
-		}
+	days, hours, minutes := severe.WindowParts(window)
+	switch {
+	case days > 0:
+		return countWord(days, "day")
+	case hours > 0 && minutes > 0:
+		return countWord(hours, "hour") + " " + countWord(minutes, "minute")
+	case hours > 0:
+		return countWord(hours, "hour")
 	}
-	return strings.Join(out, " ")
+	return countWord(minutes, "minute")
 }
 
-// durationUnits spell the shorthand a Starts/Ends span uses (spokenWindow).
-// A function, not a global (P10-06).
-func durationUnits() map[rune]string { return map[rune]string{'d': "day", 'h': "hour", 'm': "minute"} }
+// countWord is n and its unit, the unit plural unless n is one.
+func countWord(n int, unit string) string {
+	if n != 1 {
+		unit += "s"
+	}
+	return strconv.Itoa(n) + " " + unit
+}

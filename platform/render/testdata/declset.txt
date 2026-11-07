@@ -35,6 +35,7 @@ const EventCatMarineBG
 const EventCatStmtBG
 const EventCatWarningBG
 const EventCatWatchBG
+const FeltBands
 const FireMark
 const FocusCell
 const FocusName
@@ -274,6 +275,7 @@ func Ctl
 func CtlIf
 func CurrentPhase
 func DisplayCondition
+func FeltBand
 func FgSGR
 func FirstFit
 func FirstOf
@@ -466,6 +468,7 @@ type quattroPalette
 type severeCol
 type sgrParams
 var asciiMarks
+var seismicLevels
 var themeGen
 var themeMu
 var themeName
