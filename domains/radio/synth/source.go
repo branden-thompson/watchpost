@@ -237,9 +237,7 @@ func spokenName(v Voice) string {
 	if name == "" {
 		return unnamedCorrespondent
 	}
-	if r := []rune(name); len(r) > maxSpokenName {
-		name = string(r[:maxSpokenName])
-	}
+	name = plaintext.ClampRunes(name, maxSpokenName)
 	return name
 }
 

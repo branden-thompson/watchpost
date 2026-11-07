@@ -7,6 +7,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -238,17 +239,15 @@ func stationName(name string) string {
 	if i := strings.Index(name, " ("); i > 0 {
 		name = name[:i]
 	}
-	return capName(render.PlainLine(name))
+	return capName(plaintext.Line(name))
 }
 
-// capName bounds a station name that will be spoken and shown (NFR-6).
-func capName(s string) string {
-	const cap = 48
-	if r := []rune(s); len(r) > cap {
-		return string(r[:cap])
-	}
-	return s
-}
+// maxStationNameRunes bounds a station name that will be spoken and shown (NFR-6).
+const maxStationNameRunes = 48
+
+// capName bounds a station name to maxStationNameRunes, in runes
+// (plaintext.ClampRunes).
+func capName(s string) string { return plaintext.ClampRunes(s, maxStationNameRunes) }
 
 func deref(v *float64) float64 {
 	if v == nil {

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/locations/coverage"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/plaintext"
@@ -87,8 +88,7 @@ func (g *Geocoder) search(ctx context.Context, query string, world bool) (snapsh
 	}
 	r := payload.Results[0]
 	r.Name, r.Admin1, r.CountryCode = cleanField(r.Name), cleanField(r.Admin1), cleanField(r.CountryCode) // the provider's text reaches the terminal and the words
-	onGlobe := r.Latitude >= -90 && r.Latitude <= 90 && r.Longitude >= -180 && r.Longitude <= 180         // false for NaN too
-	if !onGlobe {
+	if !geo.OnEarth(r.Latitude, r.Longitude) {                                                            // NaN is refused too
 		return snapshot.LocationRef{}, errors.New("the geocoder answered with a place off the globe - try another name, coordinates or a grid locator") // RI-2: never marked as found
 	}
 	if _, err := time.LoadLocation(r.Timezone); err != nil || r.Timezone == "" || r.Timezone == "Local" {

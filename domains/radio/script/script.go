@@ -37,7 +37,7 @@ import (
 	"text/template"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
-	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
 //go:embed scripts
@@ -107,7 +107,7 @@ func (l *Library) Say(report, part string, data any) string {
 	if err != nil {
 		return ""
 	}
-	return render.Plain(s)
+	return plaintext.Text(s)
 }
 
 // Has reports whether a (report, part) resolves — the report's own file or

@@ -1011,8 +1011,7 @@ func (d Dashboard) mapTitleAt(size tuimaps.Size) string {
 	var name string
 	if d.cfg.MapAreaName != nil {
 		centre, _ := m.Centre()
-		widthKm := (v.E - v.W) * 111.32 * math.Cos(centre.Lat*math.Pi/180) // across the view at its centre
-		name = d.cfg.MapAreaName(centre, widthKm)
+		name = d.cfg.MapAreaName(centre, viewWidthKm(v, centre.Lat))
 	}
 	if name == "" || name == loc.Label {
 		return loc.Label
@@ -1023,6 +1022,13 @@ func (d Dashboard) mapTitleAt(size tuimaps.Size) string {
 // MapView is the box of the map in view, in degrees (0.18.0 D-66): what
 // "Alerts in view" asks the app about, and what the title names.
 type MapView = geo.Box
+
+// viewWidthKm is how wide a view is, in kilometres, across its centre's
+// latitude: the width the area namer names it by, for the title and the
+// spoken description alike (0.19.5 DR-10), so the two name one area.
+func viewWidthKm(v MapView, centreLat float64) float64 {
+	return (v.E - v.W) * 111.32 * math.Cos(centreLat*math.Pi/180)
+}
 
 // viewBox is the map's view at a size, from the library's centre and zoom
 // and its published scale (256-dot tiles, a braille cell two dots wide and

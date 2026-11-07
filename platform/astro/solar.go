@@ -8,6 +8,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 )
 
@@ -19,7 +20,8 @@ func SunTimes(lat, lon float64, date time.Time, loc *time.Location) (rise, set t
 	}
 	// Out-of-range coordinates would still produce plausible-looking times —
 	// refuse them outright (an inland-zip resolve bug would otherwise hide).
-	if err := invariant.Check(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180, "astro: coordinates out of range"); err != nil {
+	onEarth := geo.OnEarth(lat, lon)
+	if err := invariant.Check(onEarth, "astro: coordinates out of range"); err != nil {
 		return time.Time{}, time.Time{}, false
 	}
 	if err := invariant.Check(!date.IsZero(), "astro: zero date"); err != nil {

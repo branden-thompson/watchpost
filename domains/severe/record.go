@@ -1,7 +1,7 @@
 package severe
 
 // record.go — RecordOf: the ONE place the per-class switch happens (AX-2 A,
-// red-team C-18). Every field a feed supplied passes through render.Plain here,
+// red-team C-18). Every field a feed supplied passes through plaintext.Text here,
 // so no renderer can reintroduce an unstripped path (NFR-6, red-team S1).
 
 import (
@@ -14,7 +14,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/invariant"
-	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
 // Record is the [A]-shaped presentation of one row: a title, a bracketed meta
@@ -49,10 +49,10 @@ func compass(deg int) string {
 	return names[geo.CompassIndex(float64(deg), 8)] // the one owner of the arithmetic
 }
 
-func title(s string) string { return strings.ToUpper(render.Plain(s)) }
+func title(s string) string { return strings.ToUpper(plaintext.Text(s)) }
 
 func cap1(s string) string {
-	s = render.Plain(strings.TrimSpace(s))
+	s = plaintext.Text(strings.TrimSpace(s))
 	if s == "" {
 		return ""
 	}
@@ -76,7 +76,7 @@ func RecordOf(r Row, in *time.Location) Record {
 	case r.Detail.Tropical != nil:
 		return tropicalRecord(r, in)
 	}
-	return Record{Title: title(r.Product), Timing: "Declared " + Stamp(r.At, in), Area: "Area: " + render.Plain(r.Location)}
+	return Record{Title: title(r.Product), Timing: "Declared " + Stamp(r.At, in), Area: "Area: " + plaintext.Text(r.Location)}
 }
 
 // timing is the record's clock line: "Declared <issued>   Starts <onset>
@@ -141,13 +141,13 @@ func capExtras(d *globalfeed.SevereDetail) string {
 	}
 	var extra []string
 	if d.MaxWindGust != "" {
-		extra = append(extra, "Wind gusts to "+render.Plain(d.MaxWindGust))
+		extra = append(extra, "Wind gusts to "+plaintext.Text(d.MaxWindGust))
 	}
 	if d.MaxHailSize != "" {
-		extra = append(extra, "Hail to "+render.Plain(d.MaxHailSize))
+		extra = append(extra, "Hail to "+plaintext.Text(d.MaxHailSize))
 	}
 	if d.EventMotion != "" {
-		extra = append(extra, render.Plain(d.EventMotion))
+		extra = append(extra, plaintext.Text(d.EventMotion))
 	}
 	return strings.Join(extra, " · ")
 }
@@ -159,9 +159,9 @@ func alertRecord(r Row, in *time.Location) Record {
 		Meta:  "[" + cap1(a.Severity) + " · " + cap1(a.Urgency) + " · " + cap1(a.Certainty) + "]",
 	}
 	rec.Timing, rec.Window = timing("Declared", r.At, onsetOf(a.Onset), r.Until, in)
-	area := render.Plain(a.AreaDesc)
+	area := plaintext.Text(a.AreaDesc)
 	if a.SenderName != "" {
-		area += " · " + render.Plain(a.SenderName)
+		area += " · " + plaintext.Text(a.SenderName)
 	}
 	rec.Area = "Area: " + area
 	rec.Paras = paragraphs(a.Description, a.Instruction)
@@ -178,9 +178,9 @@ func severeRecord(r Row, in *time.Location) Record {
 		Meta:  "[" + cap1(d.Severity) + " · " + cap1(d.Urgency) + " · " + cap1(d.Certainty) + "]",
 	}
 	rec.Timing, rec.Window = timing("Declared", r.At, d.Onset, r.Until, in)
-	area := render.Plain(r.Location)
+	area := plaintext.Text(r.Location)
 	if d.SenderName != "" {
-		area += " · " + render.Plain(d.SenderName)
+		area += " · " + plaintext.Text(d.SenderName)
 	}
 	rec.Area = "Area: " + area
 	rec.Paras = paragraphs(d.Description, d.Instruction)
@@ -198,7 +198,7 @@ func quakeRecord(r Row, in *time.Location) Record {
 	}
 	var meta []string
 	if q.Mag != nil {
-		meta = append(meta, strings.TrimSpace(fmt.Sprintf("Magnitude %.1f %s", *q.Mag, render.Plain(q.MagType))))
+		meta = append(meta, strings.TrimSpace(fmt.Sprintf("Magnitude %.1f %s", *q.Mag, plaintext.Text(q.MagType))))
 	}
 	if q.DepthKm > 0 {
 		meta = append(meta, fmt.Sprintf("Depth %.0f km", q.DepthKm))
@@ -215,7 +215,7 @@ func quakeRecord(r Row, in *time.Location) Record {
 	if !q.UpdatedAt.IsZero() {
 		rec.Timing += "   Updated " + Stamp(q.UpdatedAt, in)
 	}
-	rec.Area = "Location: " + render.Plain(r.Location)
+	rec.Area = "Location: " + plaintext.Text(r.Location)
 	if r.HasPoint {
 		rec.Area += fmt.Sprintf(" (%.2f %s, %.2f %s)", abs(r.Lat), ns(r.Lat), abs(r.Lon), ew(r.Lon))
 	}
@@ -262,25 +262,25 @@ func tropicalRecord(r Row, in *time.Location) Record {
 	}
 	rec := Record{Title: head, Meta: "[" + strings.Join(meta, " · ") + "]", Timing: "Reported " + Stamp(r.At, in)}
 	if d.AdvisoryNum != "" {
-		rec.Timing += "   Advisory " + render.Plain(d.AdvisoryNum)
+		rec.Timing += "   Advisory " + plaintext.Text(d.AdvisoryNum)
 		if !d.AdvisoryAt.IsZero() {
 			rec.Timing += " issued " + Stamp(d.AdvisoryAt, in)
 		}
 	}
-	pos := "Position: " + render.Plain(d.LatText) + " " + render.Plain(d.LonText)
+	pos := "Position: " + plaintext.Text(d.LatText) + " " + plaintext.Text(d.LonText)
 	if d.Basin != "" {
-		pos += " · " + render.Plain(d.Basin) + " basin"
+		pos += " · " + plaintext.Text(d.Basin) + " basin"
 	}
 	rec.Area = pos
 	var adv []string
 	if d.AdvisoryNum != "" {
-		adv = append(adv, "public "+render.Plain(d.AdvisoryNum))
+		adv = append(adv, "public "+plaintext.Text(d.AdvisoryNum))
 	}
 	if d.ForecastNum != "" {
-		adv = append(adv, "forecast "+render.Plain(d.ForecastNum))
+		adv = append(adv, "forecast "+plaintext.Text(d.ForecastNum))
 	}
 	if d.DiscussionNum != "" {
-		adv = append(adv, "discussion "+render.Plain(d.DiscussionNum))
+		adv = append(adv, "discussion "+plaintext.Text(d.DiscussionNum))
 	}
 	if len(adv) > 0 {
 		rec.Paras = []string{"Advisories: " + strings.Join(adv, ", ") + " (nhc.noaa.gov)"} // named, never linked (S6)
@@ -292,12 +292,12 @@ func tropicalRecord(r Row, in *time.Location) Record {
 // with the instruction as a final "Instructions: …" paragraph.
 func paragraphs(description, instruction string) []string {
 	var out []string
-	for _, p := range strings.Split(render.Plain(description), "\n\n") {
+	for _, p := range strings.Split(plaintext.Text(description), "\n\n") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
 		}
 	}
-	if s := strings.TrimSpace(render.Plain(instruction)); s != "" {
+	if s := strings.TrimSpace(plaintext.Text(instruction)); s != "" {
 		out = append(out, "Instructions: "+s)
 	}
 	return out

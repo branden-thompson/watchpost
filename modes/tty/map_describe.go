@@ -147,8 +147,7 @@ func (d Dashboard) viewName() string {
 	if d.cfg.MapAreaName != nil && d.mapPane.m != nil {
 		centre, _ := d.mapPane.m.Centre()
 		v := d.viewBox(size)
-		widthKm := (v.E - v.W) * 111.32 * math.Cos(centre.Lat*math.Pi/180)
-		if name := d.cfg.MapAreaName(centre, widthKm); name != "" {
+		if name := d.cfg.MapAreaName(centre, viewWidthKm(v, centre.Lat)); name != "" {
 			return name
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/bodymemo"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -127,13 +128,6 @@ func (p *Provider) Areas(ctx context.Context, now time.Time) ([]Area, error) {
 	return p.memo.Parsed(now.UTC().Truncate(time.Hour).Unix(), body, parseAt) // read-only to its callers: shared by the hour's asks
 }
 
-// onEarth reports whether coordinates name a place: the file's numbers are
-// read with ParseFloat, which takes "NaN" and "Inf" (D-248). NaN fails every
-// comparison, so it is refused here too.
-func onEarth(lat, lon float64) bool {
-	return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
-}
-
 // zoneHours are the file's zone words as hours from UTC: an area's today is
 // its own. AirNow writes "ADT" for Alaska's daylight time (Anchorage's rows
 // carry it), not Atlantic Daylight's -3, so it is Alaska's -8 here; Puerto
@@ -174,7 +168,7 @@ func parse(body string, now time.Time) []Area {
 		}
 		lat, err1 := strconv.ParseFloat(f[9], 64)
 		lon, err2 := strconv.ParseFloat(f[10], 64)
-		if err1 != nil || err2 != nil || !onEarth(lat, lon) {
+		if err1 != nil || err2 != nil || !geo.OnEarth(lat, lon) { // the file's numbers are read with ParseFloat, which takes "NaN" and "Inf" (D-248)
 			continue
 		}
 		key := f[7] + "|" + f[8]

@@ -212,7 +212,7 @@ func (w *walker) endPosition() error {
 		return fmt.Errorf("%w: a position of %d numbers", ErrGeometry, len(w.nums))
 	}
 	p := Point{Lon: w.nums[0], Lat: w.nums[1]}
-	if p.Lon < -180 || p.Lon > 180 || p.Lat < -90 || p.Lat > 90 {
+	if !OnEarth(p.Lat, p.Lon) {
 		return fmt.Errorf("%w: %v is not a place on the world", ErrGeometry, p)
 	}
 	w.ring = append(w.ring, p)

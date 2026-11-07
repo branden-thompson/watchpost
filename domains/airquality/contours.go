@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -160,7 +161,7 @@ func ring(coords string) []Point {
 		}
 		lon, err1 := strconv.ParseFloat(parts[0], 64)
 		lat, err2 := strconv.ParseFloat(parts[1], 64)
-		if err1 == nil && err2 == nil && onEarth(lat, lon) {
+		if err1 == nil && err2 == nil && geo.OnEarth(lat, lon) {
 			out = append(out, Point{Lon: lon, Lat: lat})
 		}
 	}

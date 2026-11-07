@@ -721,3 +721,46 @@ are replaced. Q5.6 and Q5.7 follow as batch 14.
 
   Each changed function is a pure mapping with nothing further to guard, so no check was added for the
   count.
+
+## 0.19.5 batch 14 — consolidation, second half, part one (plan Q5.6: DR-8, DR-9, DR-10, A-8)
+
+Mutants m768 to m772 are new; m313 is re-pointed. Each is hand-vetted and killed. The mutant anchors were
+searched before the gate this time.
+
+- **DR-8, the rune clamp.**
+  - Pinned first: `TestAnIDIsBoundedInRunes` and `TestAStationNameIsBoundedInRunes`. The lens found
+    both bounds unpinned for length.
+  - `clampProse`, `clampID` and `capName` stay as one-line names for what each bounds, and each calls
+    `plaintext.ClampRunes`. Synth's inline copy in `spokenName` calls it too.
+  - `capName`'s literal 48 is the named `maxStationNameRunes`.
+  - m768 and m769 are killed.
+- **DR-9, a place on Earth.**
+  - `geo.OnEarth` is the one test, written so NaN fails it. `TestOnEarthRefusesWhatIsNoPlace` pins the
+    edges, NaN and infinities.
+  - The callers are AirNow's rows and contours, WFIGS's perimeters and the Open-Meteo geocoder, each
+    deleting its copy, plus `ParseCoordinates`, the GeoJSON walker, the solar times, and reachscore's
+    `onGlobe`.
+  - **Astro.** Its `invariant.Check` takes the result through a local, so P10 still counts the check.
+  - **The fuzz tests.** AirNow's and WFIGS's fuzz targets call `geo.OnEarth`.
+  - **The one edge that changes.** `ParseCoordinates` and the GeoJSON walker used the negative form,
+    which accepts NaN, and now refuse it. That is unreachable, because `ParseCoordinates` rejects NaN
+    before the bound and the JSON decoder cannot produce one (A-17).
+  - **What stays.** `propanswers.Target.Near` stays latitude-only (RR-13, A-17).
+  - m313 follows the latitude bound into `ParseCoordinates`' call. m770, the negative form, and m771,
+    the poles, are killed.
+- **DR-10, the view width.**
+  - `viewWidthKm` is the one width the map's title and its spoken description hand the area namer, at
+    111.32 km a degree as before.
+  - `TestTheTitleAndTheDescriptionNameOneArea` holds the two to the same width, and m772, the
+    description measured at the equator, is killed.
+- **A-8 (DR-11).** The four domain files that imported `render` only to sanitise text call `plaintext`
+  directly. They are the radio script, synth's marine words, and severe's record and detection. severe
+  no longer imports `render`, and its package comment names `plaintext.Text`. `render.Plain` and
+  `render.PlainLine` stay as the modes' spelling.
+- **P10 (D-27):** four rows measure under their floors, for REVIEW:
+  - `tools/reachscore` 0.00 against 1.29: its one changed function, `onGlobe`, now delegates;
+  - `platform/geo` 0.80 against 1.17;
+  - `domains/severe` 0.31 against 0.50;
+  - `app/pipelines.go` 0.40 against 0.61.
+
+  No check was added for the count.

@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/geo"
 )
 
 // recorded is a recorded file, whole, and its first lines alone: a seed the
@@ -50,7 +52,7 @@ func FuzzParse(f *testing.F) {
 	f.Add(string(head))
 	f.Fuzz(func(t *testing.T, body string) {
 		for _, a := range parse(body, captured) {
-			if !onEarth(a.Lat, a.Lon) {
+			if !geo.OnEarth(a.Lat, a.Lon) {
 				t.Fatalf("%s, %s kept at %v, %v: not on Earth", a.Name, a.State, a.Lat, a.Lon)
 			}
 			if a.Now != nil {
@@ -87,7 +89,7 @@ func FuzzParseContours(f *testing.F) {
 			}
 			for _, r := range a.Rings {
 				for _, p := range r {
-					if !onEarth(p.Lat, p.Lon) {
+					if !geo.OnEarth(p.Lat, p.Lon) {
 						t.Fatalf("a vertex at %v, %v: not on Earth", p.Lat, p.Lon)
 					}
 				}

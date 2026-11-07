@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/geo"
 )
 
 // finite reports whether every number is neither NaN nor infinite.
@@ -34,7 +36,7 @@ func FuzzDecodeLayer(f *testing.F) {
 			if in.name == "" {
 				t.Fatal("an incident with no name kept")
 			}
-			if !finite(in.lat, in.lon) || !onEarth(in.lat, in.lon) {
+			if !finite(in.lat, in.lon) || !geo.OnEarth(in.lat, in.lon) {
 				t.Fatalf("%s kept at %v, %v", in.name, in.lat, in.lon)
 			}
 		}
@@ -59,7 +61,7 @@ func FuzzDecodePerimeters(f *testing.F) {
 			for _, area := range p.Areas {
 				for _, ring := range area {
 					for _, v := range ring {
-						if !finite(v[0], v[1]) || !onEarth(v[1], v[0]) {
+						if !finite(v[0], v[1]) || !geo.OnEarth(v[1], v[0]) {
 							t.Fatalf("%s kept with a vertex at %v", p.Name, v)
 						}
 					}

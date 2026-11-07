@@ -35,8 +35,16 @@ func ParseCoordinates(s string) (LatLon, bool) {
 		}
 		v[i] = x
 	}
-	if v[0] < -90 || v[0] > 90 || v[1] < -180 || v[1] > 180 {
+	if !OnEarth(v[0], v[1]) {
 		return LatLon{}, false
 	}
 	return LatLon{Lat: v[0], Lon: v[1]}, true
+}
+
+// OnEarth reports whether a latitude and longitude name a place on Earth:
+// within -90 to 90 and -180 to 180, the edges included. Written so that NaN,
+// which fails every comparison, is refused too, as an infinity is (D-248). The
+// one test of it for every feed and parser (0.19.5 DR-9).
+func OnEarth(lat, lon float64) bool {
+	return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
 }

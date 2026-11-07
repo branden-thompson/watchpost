@@ -1,7 +1,9 @@
 package synth
 
 import (
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -35,5 +37,18 @@ func TestADepthIsSaidInWholeKilometres(t *testing.T) {
 		if got := depthWords(km); got != want {
 			t.Errorf("depthWords(%v) = %q; want %q", km, got, want)
 		}
+	}
+}
+
+// TestAStationNameIsBoundedInRunes is 0.19.5 Q5.6's pin (DR-8), written before
+// the name bound uses the platform's clamp: a spoken station name is cut at 48
+// runes, never mid-rune, and a short one is left as it is.
+func TestAStationNameIsBoundedInRunes(t *testing.T) {
+	long := strings.Repeat("ñ", 60)
+	if got := capName(long); utf8.RuneCountInString(got) != 48 || !utf8.ValidString(got) {
+		t.Errorf("a 60-rune name is cut to %d runes (valid %v); want 48", utf8.RuneCountInString(got), utf8.ValidString(got))
+	}
+	if got := capName("Station 46254"); got != "Station 46254" {
+		t.Errorf("a short name became %q", got)
 	}
 }
