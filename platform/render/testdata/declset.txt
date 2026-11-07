@@ -189,6 +189,8 @@ const unitsKeyMetric
 func (*layout).fitName
 func (*sgrParams).extended
 func (*sgrParams).next
+func (CardRow).Ready
+func (CardRow).Render
 func (Cell).apply
 func (Clock).DateTime
 func (Clock).DateTimeZone
@@ -288,6 +290,7 @@ func LiftToAA
 func LightBox
 func ListLabel
 func ModalTone
+func NewCardRow
 func NextTide
 func NoticeGrounds
 func Overlay
@@ -443,6 +446,7 @@ func without
 func xterm256RGB
 type AlertRow
 type BoxGlyphs
+type CardRow
 type Cell
 type Clock
 type Control

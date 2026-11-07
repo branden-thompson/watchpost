@@ -22,7 +22,6 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/term"
-	"github.com/branden-thompson/watchpost/third_party/go-studs/components"
 )
 
 // LineupMsg carries the schedule the Director PUBLISHED.
@@ -1391,22 +1390,11 @@ type cardLane struct {
 	// text wearing brackets (HUM LEAD, 2026-09-10).
 	o render.Opts
 
-	row *components.DataTableRow
-	// marked is the same row with a leading, NON-TRUNCATABLE column for the
-	// fabricated-event mark (D-55). TWO ROWS RATHER THAN ONE, because a fixed
-	// column present on every card would reserve its width on every card — the
-	// real hazards would all sit 14 cells off-centre to make room for a label
-	// they never carry.
-	//
-	// IT IS A COLUMN AND NOT `SetPrefix` BECAUSE THE COMPONENT DOES NOT RENDER
-	// ONE ON DATA ROWS. `SetPrefix` is accounted for in the width calculation
-	// (`prefixWidth`, data_table_row.go:521) and written only by `RenderHeader`
-	// — so a prefix set here reserves its space and prints nothing. The gap is
-	// an M6 upstream candidate rather than patched locally: the dependency is
-	// not re-implemented.
-	marked *components.DataTableRow
-	lane   int
-	g      render.Glyphs
+	// row is the title row on the table kit (render.CardRow): the inset or
+	// the fabricated-event mark, the headline, the badge and handle.
+	row  render.CardRow
+	lane int
+	g    render.Glyphs
 }
 
 // newCardLane prepares the renderer for a lane of the given width.
@@ -1414,51 +1402,18 @@ func newCardLane(lane int, g render.Glyphs) cardLane {
 	if lane <= 0 {
 		return cardLane{lane: 0, g: g}
 	}
-	headline := components.ColumnDefinition{
-		Name: "headline",
-		Fill: true,
-		// LEFT, FROM THE v2 REFERENCE (D-87). A centred title floats between
-		// the badge and the border while every other row of the card begins at
-		// the same inset — so the one line naming the card would be the one line
-		// that does not line up with it.
-		Alignment:         "left",
-		Truncatable:       true,
-		TruncatedMinWidth: 8,
-		TruncationTail:    g.Ellipsis,
-	}
-	// THE CARD'S OWN INSET, AS A COLUMN (D-87). Every row of a card's interior
-	// begins three cells in, the title row included, so the one line naming the
-	// card lines up with the rest of it.
-	//
-	// A COLUMN RATHER THAN A PREFIX, because the badge is right-anchored to the
-	// ROW: prefixing would push the row three cells wide and take the handle
-	// with it.
-	inset := components.ColumnDefinition{Name: "inset", Width: len(bcCardInset)}
-	mark := components.ColumnDefinition{
-		Name:  "mark",
-		Width: render.Width(testEventMark),
-		// NEVER TRUNCATABLE. A half-eaten mark is worse than none: "**TEST EV…"
-		// beside a tornado warning reads as damage rather than as a label.
-		//
-		// FALSE IS THE ZERO VALUE, so this line is documentation with syntax and
-		// its mutant SURVIVES BY DESIGN — the component never needs to shrink
-		// this column at any width the row can be built at, because the fill
-		// column absorbs the squeeze first. It is stated because the guarantee
-		// belongs to a dependency whose sizing this package does not own, and
-		// the backstop below is what actually enforces the rule.
-		Truncatable: false,
-	}
+	// THE CARD'S OWN INSET (D-87): every row of a card's interior begins three
+	// cells in, the title row included, so the one line naming the card lines up
+	// with the rest of it. The mark's width is the fabricated-event mark's.
 	return cardLane{
 		lane: lane, g: g, o: render.Opts{ASCII: g.Rule == "-"},
-		row:    components.NewDataTableRow(lane, []components.ColumnDefinition{inset, headline}),
-		marked: components.NewDataTableRow(lane, []components.ColumnDefinition{mark, headline}),
+		row: render.NewCardRow(lane, len(bcCardInset), render.Width(testEventMark), g.Ellipsis),
 	}
 }
 
 // render is one card as the operator reads it.
 func (l cardLane) render(c lineup.Card, handle, badge string) string {
-	// Both rows are built together, so one guard answers for both.
-	if l.row == nil || l.marked == nil {
+	if !l.row.Ready() {
 		return ""
 	}
 	// THE HEADLINE, NOT THE SUBJECT. The headline is what the card is ABOUT in
@@ -1474,16 +1429,15 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 		headline = ""
 		handle = ""
 	}
-	data := map[string]string{"headline": headline}
-	row := l.row
+	mark := ""
 	if c.Test {
 		// A FABRICATED TAKEOVER SAYS SO, AND SAYS IT FIRST (FR-4.4, D-55).
 		//
 		// THE SAME MARK THE BAND AND THE SEVERE WINDOW USE — one constant, so
 		// the three surfaces cannot come to say different things about one
-		// event. It is its own NON-TRUNCATABLE column (see newCardLane), so the
+		// event. It is its own NON-TRUNCATABLE column (render.CardRow), so the
 		// headline's truncation can never eat it.
-		row, data["mark"] = l.marked, testEventMark
+		mark = testEventMark
 	}
 	// THE BADGE AND THE HANDLE TRAVEL AS ONE right-anchored unit, which is how
 	// the reference draws them: two cells apart, the handle outermost. Every
@@ -1508,8 +1462,7 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	if handle != "" {
 		chip += "  " + l.o.KeyCap(handle)
 	}
-	row.SetBadge(chip+" ", 2)
-	out := render.PadTo(render.TruncateCells(row.RenderRow(data), l.lane), l.lane)
+	out := render.PadTo(render.TruncateCells(l.row.Render(headline, mark, chip+" "), l.lane), l.lane)
 	// A CARD THAT CANNOT BE LABELLED HONESTLY IS NOT DRAWN AT ALL (D-55).
 	//
 	// THE CLAMP ABOVE RUNS AT EVERY WIDTH, INCLUDING BELOW THE FLOOR, where it

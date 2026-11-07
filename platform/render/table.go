@@ -1,6 +1,6 @@
 package render
 
-// table.go — the location table on go-studs DataTable — the ONLY go-studs consumer in the app (column spec, layout, row data, marks, styles, group headers).
+// table.go — the location table on go-studs DataTable (column spec, layout, row data, marks, styles, group headers). platform/render is the only package that imports go-studs, so the table kit can be swapped in one place; the line-up, the Status tables and the console's card row are its other consumers here (0.19.5 D-10).
 
 import (
 	"fmt"

@@ -831,3 +831,27 @@ finding is landed or recorded (M3).
   - `tools/reachscore` 0.00 against 1.29.
 
   At REVIEW exit each goes to the HUM LEAD for re-ratification with its figure.
+
+## 0.19.5 batch 16 — go-studs stays behind render (plan Q6.1, D-10)
+
+Mutant m779, hand-vetted and killed.
+
+- **The card's title row is a render type.**
+  - `render.CardRow` holds the two go-studs rows, plain and marked. `NewCardRow` builds the inset or
+    mark column, the left-aligned truncating headline and the right-anchored badge. `Render` draws a
+    row, with the mark in place of the inset when there is one.
+  - The component's comments move with it: why two rows, why a column and not `SetPrefix`, why the
+    mark never truncates.
+  - The card lane keeps what a card means: the takeover's empty title row, the chip and its handle,
+    and the refusal to draw a mark it cannot show whole.
+  - `modes/tty` no longer imports go-studs, so `platform/render` is the only package that does, as
+    `render.go`, where-things-happen and extending.md already said.
+- **`table.go`'s line** no longer calls the location table the only go-studs consumer (DC-4, DV-7). It
+  names the package as the one importer, and its four consumers.
+- **The pins:**
+  - Every console golden holds unchanged.
+  - The console's allocation pins hold: the beat at 383 allocations, the frame hit at 297, the miss at
+    9,170 (from 9,195), the line-up rows at 260.
+  - m779 drops the mark in the render type, and `TestAFabricatedCardIsMarkedInTheLineUp` kills it.
+  - The render declaration set is re-captured for `CardRow`.
+- **The check that refuses a go-studs import elsewhere** is Q7.5's, as planned.
