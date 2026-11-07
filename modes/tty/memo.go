@@ -13,6 +13,7 @@ package tty
 import (
 	"crypto/sha256"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -95,12 +96,44 @@ type bodyMemo struct {
 	head mastheadSlot
 }
 
+// sameContent is a snapshot's stand-in in the tables' memo key (0.19.5 D-31).
+// The tables draw only from a snapshot's Locations, and a publish whose
+// locations are the ones before it changes nothing they show: the masthead's
+// stamp, which reads the providers, has its own memo. So when a snapshot
+// arrives with the same locations as the one it replaces, the key goes on
+// holding the one that first drew them, and the tables are not drawn again.
+type sameContent struct {
+	// seen is the snapshot that last arrived, and rep the one the key holds
+	// for it: itself, or the earlier snapshot whose locations it repeats.
+	seen, rep *snapshot.Snapshot
+}
+
+// arrive records next replacing old: the same locations keep the stand-in old
+// had, and anything else stands for itself. It runs after sortAlerts, so both
+// sides compare in the order they are drawn.
+func (c sameContent) arrive(old, next *snapshot.Snapshot) sameContent {
+	if old != nil && next != nil && reflect.DeepEqual(old.Locations, next.Locations) {
+		return sameContent{seen: next, rep: c.keyFor(old)}
+	}
+	return sameContent{seen: next, rep: next}
+}
+
+// keyFor is the key's stand-in for s. A snapshot that did not arrive through
+// arrive, written straight onto the model, stands for itself: a fresh miss,
+// never a stale hit.
+func (c sameContent) keyFor(s *snapshot.Snapshot) *snapshot.Snapshot {
+	if s != nil && s == c.seen {
+		return c.rep
+	}
+	return s
+}
+
 // bodyKeyFor derives the key from the model and this frame's layout.
 func (d Dashboard) bodyKeyFor(fl frameLayout) bodyKey {
 	k := bodyKey{
 		width: fl.o.Width, height: d.height, compact: fl.compact, radioH: fl.radioH, alertH: fl.alertH,
 		controlRows: fl.controlRows, window: fl.window, days: fl.days, priorityRows: fl.priorityRows,
-		snap: d.snap, recent: d.recent, selected: d.selected, recentOff: d.recentOff, lookup: d.lookupKey(),
+		snap: d.snapSame.keyFor(d.snap), recent: d.recentSame.keyFor(d.recent), selected: d.selected, recentOff: d.recentOff, lookup: d.lookupKey(),
 		units: d.units, ascii: fl.o.ASCII, thinBands: fl.o.ThinBands,
 		radioKey: d.radioKey, radioPlaying: d.radioPlaying, radioRepeat: d.radioRepeat,
 		theme: render.ThemeGeneration(), fireBoldMW: d.fireBoldMW(),

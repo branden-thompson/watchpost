@@ -76,8 +76,9 @@ func TestBeatAllocBudget(t *testing.T) {
 }
 
 // TestPublishAllocBudget is 0.19.5 Q2.12 (A-15, DV-11): the frame after a
-// publish that changes nothing shown, which today re-renders both tables. PF-9's
-// content generation is measured against it.
+// publish that changes nothing shown. The publish is a fresh snapshot over a
+// fresh copy of the locations, as the assembler makes one, so the measurement
+// carries the comparison that keeps the tables from being drawn again (D-31).
 func TestPublishAllocBudget(t *testing.T) {
 	if raceEnabled {
 		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
@@ -87,12 +88,11 @@ func TestPublishAllocBudget(t *testing.T) {
 	r := testing.Benchmark(func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			same := *d.snap
-			m, _ := d.Update(SnapshotMsg{Snap: &same})
+			m, _ := d.Update(SnapshotMsg{Snap: republished(d.snap, nil)})
 			_ = m.View().Content
 		}
 	})
-	const allocs, bytes = 5_426 * 1.05, 362_318 * 1.05
+	const allocs, bytes = 201 * 1.05, 72_317 * 1.05
 	t.Logf("a no-change publish's frame: %d allocs (budget %.0f), %d bytes (budget %.0f)", r.AllocsPerOp(), allocs, r.AllocedBytesPerOp(), bytes)
 	if float64(r.AllocsPerOp()) > allocs || float64(r.AllocedBytesPerOp()) > bytes {
 		t.Errorf("a no-change publish's frame costs %d allocations and %d bytes; its budget is %.0f and %.0f", r.AllocsPerOp(), r.AllocedBytesPerOp(), allocs, bytes)

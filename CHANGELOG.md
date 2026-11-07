@@ -38,6 +38,8 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   no longer copies it, the radio player is drawn only in the layout shown, and the ticker's tape and both
   mastheads are drawn again only when what they show changes. A ticker step allocates 3 times instead of
   68. What is drawn is byte for byte the same.
+- **A weather update that changed nothing shown no longer redraws the tables:** the frame after it costs
+  about 72 KB, from about 362 KB.
 - **A weather publish copies a tenth of what it did:** the snapshot shares each forecast's hours instead
   of copying them twice, about 76 KB a publish of 25 locations, from about 1 MB.
 - **The ticker's seen store is written only when it has changed,** instead of every two minutes.

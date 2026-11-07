@@ -648,17 +648,20 @@ func defaultKeyMap() term.KeyMap {
 
 // Dashboard is the root TTY model.
 type Dashboard struct {
-	cfg       Config
-	keys      term.KeyMap
-	snap      *snapshot.Snapshot
-	recent    *snapshot.Snapshot
-	width     int
-	height    int
-	units     render.Units
-	clockFmt  render.Clock // how times of day are written (render/clock.go); `clock()` is the wall clock
-	selected  int
-	alertIdx  int
-	recentOff int // scroll offset (interaction lands with tab section nav)
+	cfg    Config
+	keys   term.KeyMap
+	snap   *snapshot.Snapshot
+	recent *snapshot.Snapshot
+	// snapSame and recentSame let the tables' memo see a publish that changed
+	// none of the locations as the snapshot it replaced (0.19.5 D-31).
+	snapSame, recentSame sameContent
+	width                int
+	height               int
+	units                render.Units
+	clockFmt             render.Clock // how times of day are written (render/clock.go); `clock()` is the wall clock
+	selected             int
+	alertIdx             int
+	recentOff            int // scroll offset (interaction lands with tab section nav)
 	// consoleKeys is the console's bindings with the user's [keys] overrides
 	// folded in (FR-1.5, D-158). Merged here because this is where the merge
 	// error is already actionable; the Router and the help view both read it, so
@@ -1388,8 +1391,10 @@ func (d Dashboard) applyRecent(v RecentSnapshotMsg) Dashboard {
 	if err := invariant.Check(v.Snap != nil, "nil recent snapshot published to the dashboard"); err != nil {
 		return d
 	}
+	old := d.recent
 	d.recent = v.Snap
 	sortAlerts(d.recent)
+	d.recentSame = d.recentSame.arrive(old, d.recent)
 	if i := d.lookupIndex(); i >= 0 {
 		d.selected, d.lookupRef = d.numPriority()+i, nil // the looked-up location's data arrived: the focus follows it, Details reads it from here on
 	}
@@ -1430,8 +1435,10 @@ func (d Dashboard) applySnapshot(v SnapshotMsg) (Dashboard, tea.Cmd) {
 		return d, nil
 	}
 	changed := !sameRefs(refsOf(d.snap), refsOf(v.Snap))
+	old := d.snap
 	d.snap = v.Snap
-	sortAlerts(d.snap)                                                     // UAT 16.2: most severe first, everywhere
+	sortAlerts(d.snap) // UAT 16.2: most severe first, everywhere
+	d.snapSame = d.snapSame.arrive(old, d.snap)
 	if d.selected >= d.numPriority()+d.numRecent() && d.lookupRef == nil { // a pending lookup keeps its focus (R5-C-02)
 		d.selected = 0
 	}

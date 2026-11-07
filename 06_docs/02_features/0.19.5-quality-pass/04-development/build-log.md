@@ -532,3 +532,60 @@ Mutants m741 to m750, each hand-vetted and killed.
 - **M2 now:** idle 59.6 KB against 80 (met), radio 68.5 against 90 (met), console 166.7 against 140. The
   console's `Projection` cache (Q4.5) is plan batch 10, and M2's first verdict follows batch 11's content
   generation (plan B9).
+
+## 0.19.5 batch 11 — a publish that changed nothing draws no table (plan Q4.4, D-31); M2's first verdict
+
+Mutants m751 to m753, each hand-vetted and killed.
+
+- **The ruling.** The plan's mechanism was an Assembler content generation bumped by every mutator. Two
+  things against it were found first:
+  - RR-6's mutators outside `Apply` (`SetLocations`, `SetInactive`).
+  - `finalize`, which re-derives each location from the forecast at publish time (`harmonize.go:15-17`),
+    so a location can change with no mutator at all.
+
+  The tables draw only from the two snapshots' `Locations` and fields the key already holds, so the
+  HUM LEAD ruled the comparison on arrival instead (D-31). The plan's generation and its JSON-keys pin
+  are not built.
+- **What changed.**
+  - `applySnapshot` and `applyRecent` compare the arriving snapshot's locations with the ones it
+    replaces, after `sortAlerts`, so both sides are in drawn order.
+  - The body key holds `sameContent.keyFor`'s stand-in instead of the pointer: the earliest snapshot
+    with the same locations, or the snapshot itself.
+  - A snapshot written straight onto the model, as fixtures do, stands for itself, so it is a fresh
+    miss and never a stale hit.
+  - The comparison costs 22 allocations and 72 µs a publish on the bench fixture, measured before the
+    ruling.
+- **The pins (RR-6):**
+  - `TestANoChangePublishRedrawsNoTable` runs three repeated publishes, the watchlist's and RECENT's. It
+    kills m752.
+  - `TestAChangedPublishRedrawsTheTables` covers a changed reading, a place removed (#11) and a place
+    renamed (#12), each looked for by its table row. It kills m751.
+    - The rename stands in for the plan's retag, because a tag is not drawn at 133 columns.
+    - The row is looked for by its number, because the radio's station line, which is not memoised,
+      names the focused place too. The first version matched that line and would have passed with a
+      stale table.
+  - `TestAWrittenSnapshotStandsForItself` kills m753.
+  - The body completeness guard holds unchanged.
+- **The publish pin.** It now publishes a fresh copy of the locations, as the assembler does, where it
+  shared the slice and let the comparison short-circuit. A no-change publish's frame falls from 5,426
+  allocations and 362,318 B to 201 and 72,317 B, pinned × 1.05.
+- **The docs:**
+  - where-things-happen's "A snapshot arrives" and "body memo" rows say how a repeat publish is seen.
+  - The CHANGELOG has the line.
+- **The gate's first run** failed where-things-happen's symbol check, which resolves functions and
+  methods, on the type `sameContent`. The row names its method `arrive` instead.
+- **P10 (D-27):** `app/pipelines.go`'s row is still 0.50 against 0.61, for REVIEW. `modes/tty` is back
+  over its floor.
+- **M2's first verdict** (plan, after Q4.4). Measured by `TestBeatAllocBudget` on this tree, the bytes of
+  one beat, the message through the Router and its frame:
+
+  | Beat | Target (D-4) | First pinned (batch 5) | Now | Verdict |
+  |---|---|---|---|---|
+  | Idle Observer, 133x44 | 80 KB | 156.5 KB | 59.6 KB | met |
+  | Radio playing, 133x44 | 90 KB | 168.7 KB | 68.5 KB | met |
+  | Console, 160x74 | 140 KB | 310.5 KB | 166.7 KB | not yet |
+
+  - The console has 26.7 KB to go.
+  - D-22 counts the `Projection` cache (plan Q4.5, about 14 KB) toward it, and it is the next batch.
+    The console's other costs are the railed boxes, about 33 KB in D-22's profile. A miss after Q4.5
+    goes to the HUM LEAD with the figures, as D-22 rules.
