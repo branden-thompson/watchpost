@@ -116,20 +116,51 @@ func main() {
 			drift = append(drift, g.Fingerprint+": "+why)
 		}
 	}
+	stale := staleRows(ratified, groups)
 	if *asJSON {
 		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"groups": groups, "unratified": unratified, "min_nodes": *min,
+			"groups": groups, "unratified": unratified, "stale": stale, "min_nodes": *min,
 		})
 	} else {
 		reportText(groups, unratified, drift, *min, *withTests)
 	}
+	failed := false
 	if len(unratified) > 0 {
 		fmt.Fprintf(os.Stderr, "\ndupes: %d duplicate group(s) carry no ratified reason.\n"+
 			"Collapse them, or present them to the HUM LEAD and record the reason in %s.\n"+
 			"A reason is RATIFIED, never self-issued (metric D hardening, project brief).\n",
 			len(unratified), *ledgerPath)
+		failed = true
+	}
+	// A RATIFIED ROW THAT MATCHES NOTHING IS A RATIFICATION OF NOTHING, and it
+	// waits to admit whatever next takes its fingerprint (0.19.5 DC-12; the same
+	// failure tools/wires has).
+	for _, fp := range stale {
+		fmt.Fprintf(os.Stderr, "dupes: the ratified row %s (%s) matches no duplicate group any more: "+
+			"its copies were collapsed or changed. Delete the row from %s.\n",
+			fp, strings.Join(ratified[fp], " · "), *ledgerPath)
+		failed = true
+	}
+	if failed {
 		os.Exit(1)
 	}
+}
+
+// staleRows are the ratified rows whose fingerprint no group found has, in
+// order.
+func staleRows(ratified map[string][]string, groups []group) []string {
+	found := map[string]bool{}
+	for _, g := range groups { // bounded by the groups (P10-02)
+		found[g.Fingerprint] = true
+	}
+	var stale []string
+	for fp := range ratified { // bounded by the ledger (P10-02)
+		if !found[fp] {
+			stale = append(stale, fp)
+		}
+	}
+	sort.Strings(stale)
+	return stale
 }
 
 // fingerprintBody reduces a body to its token STRUCTURE: every identifier and
@@ -408,6 +439,13 @@ func alsoOne(b int) int { return b + 2 }
 		fmt.Fprintf(os.Stderr, "dupes SELF-TEST FAILED: trivial functions were reported as duplicates (%d groups)\n", len(neg))
 		return 1
 	}
-	fmt.Println("dupes self-test: both controls fired (OK)")
+	// AND A STALE ROW IS NAMED: a fingerprint the scan does not find is
+	// reported, and the twins' own is not.
+	twins := got[0].Fingerprint
+	if s := staleRows(map[string][]string{"0123456789ab": {"gone"}, twins: nil}, got); len(s) != 1 || s[0] != "0123456789ab" {
+		fmt.Fprintf(os.Stderr, "dupes SELF-TEST FAILED: the stale row was not named alone (%v)\n", s)
+		return 1
+	}
+	fmt.Println("dupes self-test: all three controls fired (OK)")
 	return 0
 }

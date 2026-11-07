@@ -976,3 +976,22 @@ Mutants m781 and m782 are new; m297, mAI1 and mM4 are re-pointed. Each is hand-v
     and vuln tools could not be fetched. On the re-run everything passed.
   - P10 reports no live finding; `NewDashboard`, keyed one field per line, is inside P10-04's length.
   - The density rows under their floors are batch 15's and render's, unchanged, for REVIEW (D-27).
+
+## 0.19.5 batch 20 — a ratification of nothing fails (plan Q7.2, DC-12)
+
+Mutant m783, hand-vetted and killed.
+
+- **`tools/dupes` fails on a stale ratified row.** `staleRows` names each row whose fingerprint matches no
+  duplicate group the scan finds, with its sites, and `make dupes` fails on it, as `tools/wires` fails on
+  its own stale rows. Its self-test gains a third control, a dead fingerprint named alone beside one that
+  still matches. `TestAStaleRowIsNamed` pins it as a unit test, so m783 can be vetted.
+- **The tree's one stale row goes.** Run over the tree first, it named row `7dbf0b6d0c66`
+  (`Director.stepBed` · `Director.stepOperator`), whose two dispatch tables no longer share a shape.
+  The row is deleted, as the plan (approved at D-25) says.
+- **`06_docs/duplicates-ratified.md`:**
+  - It says a stale row fails the gate.
+  - Its test-duplication figure is today's: 38 unexplained across 40 groups, dated. Its "17 across 18"
+    had doubled, as DC-12 found.
+  - It names today's largest group, and points at the command that prints the figure.
+- **The "Running the checks" list** in `06_docs/code-standards.md` names `make dupes` and what fails it
+  (JM-15).

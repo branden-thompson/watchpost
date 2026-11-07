@@ -15,18 +15,20 @@ So there are two numbers, and only the first is metric D:
 | | Scope | Today | Standing |
 |---|---|---|---|
 | **Metric D — success** | production code | **0 unexplained** | target 0, gated in `verify` and CI |
-| Test duplication — internal | `-tests` | **17 unexplained** across 18 groups | worked down over time; NOT gated, NOT a release criterion |
+| Test duplication — internal | `-tests` | **38 unexplained** across 40 groups (2026-11-07) | worked down over time; NOT gated, NOT a release criterion |
 
-`go run ./tools/dupes -tests` re-runs the sweep with test files INCLUDED (the flag adds them; it does not scan them alone), which is why its groups still contain production symbols. Its largest group is
-five copies of `TestDeclarationSetUnchanged`, which is per-package by necessity — a reminder that the
-test number needs judgement before it needs work.
+`go run ./tools/dupes -tests` re-runs the sweep with test files INCLUDED (the flag adds them; it does not scan them alone), which is why its groups still contain production symbols, and prints today's figure,
+which the table's moves with. Its largest group is seven copies of a test recorder's accessor
+(`cueLog.all` and its kin), and the per-package `TestDeclarationSetUnchanged` copies are necessary — a
+reminder that the test number needs judgement before it needs work.
 
 A row here is an exemption, and it works exactly like a P10 exemption: **the reason is RATIFIED by the
 HUM LEAD, never self-issued.** That is the metric's own hardening in the project brief — otherwise D
 could be satisfied by writing a justification for every duplicate.
 
-The gate is `make dupes` (`tools/dupes`). A duplicate group not listed here fails it. A row without
-the word `RATIFIED` does not count, on the same rule the P10 ledger gate enforces.
+The gate is `make dupes` (`tools/dupes`). A duplicate group not listed here fails it, and so does a
+listed row that matches no group any more: a ratification of nothing is deleted, not kept (0.19.5). A
+row without the word `RATIFIED` does not count, on the same rule the P10 ledger gate enforces.
 
 **Fingerprints are structural**: two functions share one when their bodies have the same AST shape
 with identifiers and literals ignored, so a renamed copy fingerprints identically. A fingerprint
@@ -40,7 +42,6 @@ group fails rather than inheriting its exemption. A row without the word `RATIFI
 | Fingerprint | Sites | Reason |
 |---|---|---|
 | `3462cd9e225c` | `livePipelines.bedRelays` · `mastercontrol.givenWay` | **RATIFIED by the HUM LEAD 2026-09-13.** Unrelated types, unrelated mutexes, unrelated fields, different return types (`[]stream.Station` vs `bool`) and different zeroes. The only thing in common is Go's nil-guarded mutex-read accessor idiom, which a structural fingerprint cannot tell from shared logic. Collapsing needs a generic `read[T](mu, *T) T` that routes two independent locks through one platform function, hands each type's mutex to a stranger, and makes both call sites harder to read — and it would collapse 2 of an unknown N, since the 25-node floor cannot see the smaller accessors at all. **The detector is right about the shape and wrong about the subject.** |
-| `7dbf0b6d0c66` | `Director.stepBed` · `Director.stepOperator` | **RATIFIED by the HUM LEAD 2026-09-14** — *"exemption approved - keep them separate."*  Two dispatch tables over DIFFERENT event sets, routing to DIFFERENT handlers, in the groups D-40's roles define; the file states the design above them ("EACH GROUP KEEPS THE SAFE DEFAULT").  What they share is Go's type switch, which has exactly one shape — and they became identical only when `Requested` made the operator's switch a fourth case.  Collapsing them merges two ROLES into one switch to save four lines, and the Director is organised around that split.  **The detector is right about the shape and wrong about the subject** — the third time, after `Opts.Distance`/`TideHeight` and `bedRelays`/`givenWay`. |
 | `bb46a41bc37f` | `main` · `main` | **RATIFIED by the HUM LEAD 2026-09-21 (D-127).** `tools/alertrec/main.go:21` and `tools/atlas/main.go:55`. Go's entry-point idiom and nothing else: `if err := run(); err != nil { fmt.Fprintln(os.Stderr, "<name>:", err); os.Exit(1) }`, which has one shape because `main` cannot return an error. The `run` bodies share nothing — one walks markdown gathering mermaid blocks, the other polls a weather feed and writes JSONL. Collapsing means a package existing only to hold a five-line wrapper, coupling two unrelated tools so that neither can change how it reports a failure without the other. **The detector is right about the shape and wrong about the subject** — the fourth time, and the first where the shape is a language requirement rather than a chosen idiom. |
 
 ## Collapsed rather than ratified (2026-09-08)

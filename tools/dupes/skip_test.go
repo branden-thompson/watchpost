@@ -18,3 +18,14 @@ func TestTheToolSkipsWhatIsNotOurs(t *testing.T) {
 		}
 	}
 }
+
+// TestAStaleRowIsNamed is 0.19.5 Q7.2 (DC-12): a ratified row whose fingerprint
+// matches no duplicate group is named, alone, and a row that still matches is
+// not.
+func TestAStaleRowIsNamed(t *testing.T) {
+	groups := []group{{Fingerprint: "aaaaaaaaaaaa"}}
+	got := staleRows(map[string][]string{"aaaaaaaaaaaa": {"a · b"}, "bbbbbbbbbbbb": {"gone"}}, groups)
+	if len(got) != 1 || got[0] != "bbbbbbbbbbbb" {
+		t.Errorf("the stale rows are %v; want the one row that matches nothing", got)
+	}
+}
