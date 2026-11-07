@@ -971,3 +971,8 @@ Mutants m781 and m782 are new; m297, mAI1 and mM4 are re-pointed. Each is hand-v
   | Idle Observer, 133x44 | 80 KB | 156.5 KB | 59.6 KB | met |
   | Radio playing, 133x44 | 90 KB | 168.7 KB | 68.5 KB | met |
   | Console, 160x74 | 140 KB | 310.5 KB | 122.4 KB | met |
+- **The gate.**
+  - Its first run lost the network part-way: `proxy.golang.org` did not resolve, so the pinned lint, P10
+    and vuln tools could not be fetched. On the re-run everything passed.
+  - P10 reports no live finding; `NewDashboard`, keyed one field per line, is inside P10-04's length.
+  - The density rows under their floors are batch 15's and render's, unchanged, for REVIEW (D-27).

@@ -190,3 +190,4 @@ says exactly what passed.
 | 2026-11-07T15:39:18Z | 899c3eab | 89b9bb725b47 | verify | green | 2551 |
 | 2026-11-07T15:55:49Z | 494d1922 | 6065dae5f45a | verify | FAILED (exit 2) | 3 |
 | 2026-11-07T16:41:05Z | 494d1922 | 6065dae5f45a | verify | green | 2597 |
+| 2026-11-07T16:44:09Z | 360e84f6 | 206013b6bc4b | verify-docs | green | 155 |
