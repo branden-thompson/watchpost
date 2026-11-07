@@ -173,3 +173,4 @@ says exactly what passed.
 | 2026-11-07T00:40:25Z | 7965e919 | 63dcb5981972 | verify | green | 2599 |
 | 2026-11-07T01:08:27Z | 6f6a8968 | 87e137fe075a | verify | FAILED (exit 2) | 413 |
 | 2026-11-07T01:53:02Z | 6f6a8968 | 996425859e10 | verify | green | 2640 |
+| 2026-11-07T02:53:14Z | 22f5d3fe | 08efb07d4558 | verify-docs | green | 149 |
