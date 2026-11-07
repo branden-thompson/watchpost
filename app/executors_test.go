@@ -941,6 +941,13 @@ func TestTheRailNeverLiftsTheBedOverALiveRead(t *testing.T) {
 	}
 }
 
+// probeRounds is sized from the MEASURED hit rate, not guessed. At 300 rounds
+// the probe catches the defective code in four runs out of five — a test that
+// misses a real defect one time in five is a coin toss, not a gate. The
+// per-round rate that implies is ~0.5 %, so 5000 rounds miss with probability
+// ~1e-12, and the whole loop still costs well under a second.
+const probeRounds = 5000
+
 // TestTheBedIsNeverLiftedBetweenTheDipAndTheClaim is F-D5, and it is the
 // ACQUIRE side of the defect mE6 pinned on the release side.
 //
@@ -960,13 +967,6 @@ func TestTheRailNeverLiftsTheBedOverALiveRead(t *testing.T) {
 //
 // When the dip and the claim are one critical section, no takeBack can run
 // between them and the bed stays down. When they are two, one gets in.
-// probeRounds is sized from the MEASURED hit rate, not guessed. At 300 rounds
-// the probe catches the defective code in four runs out of five — a test that
-// misses a real defect one time in five is a coin toss, not a gate. The
-// per-round rate that implies is ~0.5 %, so 5000 rounds miss with probability
-// ~1e-12, and the whole loop still costs well under a second.
-const probeRounds = 5000
-
 func TestTheBedIsNeverLiftedBetweenTheDipAndTheClaim(t *testing.T) {
 	// IT SETS ITS OWN PARALLELISM, and the spin below is deliberately TIGHT.
 	// Both facts were measured rather than chosen. Given one P the probe cannot

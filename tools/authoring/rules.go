@@ -12,7 +12,9 @@ package main
 import (
 	"go/ast"
 	"go/token"
+	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -179,27 +181,164 @@ var histOther = regexp.MustCompile(`(?i)` + strings.Join([]string{
 // one opener — the helper's — with the parent's prose stacked above it.
 func checkDocAttached(fset *token.FileSet, f *ast.File, path string) []Finding {
 	var out []Finding
-	for _, d := range f.Decls { // bounded by the file's declarations (P10-02)
-		fn, ok := d.(*ast.FuncDecl)
-		if !ok || fn.Doc == nil || len(fn.Doc.List) < 2 {
-			continue
+	for _, d := range docSubjects(f) { // bounded by the file's declarations (P10-02)
+		first, again := ownOpeners(d)
+		switch {
+		case first > 0:
+			out = append(out, Finding{
+				Rule: "SN-02", File: path, Line: fset.Position(d.doc.Pos()).Line,
+				Text: d.name + "'s doc begins " + itoa(first) + " line(s) in",
+				Why:  "the lines above it are another declaration's doc, fused for want of a blank line — separate them so each binds to its own declaration",
+			})
+		case again > 0:
+			out = append(out, Finding{
+				Rule: "SN-02", File: path, Line: fset.Position(d.doc.Pos()).Line,
+				Text: d.name + "'s doc opens twice, again " + itoa(again) + " line(s) in",
+				Why:  "two docs for one declaration, and a reader cannot tell which is true — keep the one that matches the code and delete the other",
+			})
 		}
-		at := -1
-		for n, c := range fn.Doc.List { // bounded by the block (P10-02)
-			m := godocOpener.FindStringSubmatch(c.Text)
-			if m != nil && m[1] == fn.Name.Name {
-				at = n
-				break
+	}
+	return out
+}
+
+// docSubject is a declaration and the doc comment Go binds to it.
+type docSubject struct {
+	name string
+	doc  *ast.CommentGroup
+}
+
+// docSubjects are the file's documented declarations: functions, types,
+// constants and variables, and the fields of its struct types. A GenDecl's
+// doc belongs to its spec when the GenDecl holds just one.
+func docSubjects(f *ast.File) []docSubject {
+	var out []docSubject
+	add := func(names []*ast.Ident, doc *ast.CommentGroup) {
+		if doc != nil && len(doc.List) >= 2 && len(names) > 0 {
+			out = append(out, docSubject{name: names[0].Name, doc: doc})
+		}
+	}
+	for _, d := range f.Decls { // bounded by the file's declarations (P10-02)
+		switch x := d.(type) {
+		case *ast.FuncDecl:
+			add([]*ast.Ident{x.Name}, x.Doc)
+		case *ast.GenDecl:
+			for _, sp := range x.Specs { // bounded by the declaration's specs (P10-02)
+				add(specNames(sp), specDoc(sp, x))
 			}
 		}
-		if at <= 0 {
-			continue // opens with its own name, or never names itself: not this rule
+	}
+	ast.Inspect(f, func(n ast.Node) bool {
+		if st, ok := n.(*ast.StructType); ok {
+			for _, fl := range st.Fields.List { // bounded by the struct's fields (P10-02)
+				add(fl.Names, fl.Doc)
+			}
 		}
-		out = append(out, Finding{
-			Rule: "SN-02", File: path, Line: fset.Position(fn.Doc.Pos()).Line,
-			Text: fn.Name.Name + "'s doc begins " + itoa(at) + " line(s) in",
-			Why:  "the lines above it are another declaration's doc, fused for want of a blank line — separate them so each binds to its own declaration",
-		})
+		return true
+	})
+	return out
+}
+
+// specNames are the names a type or value spec declares.
+func specNames(sp ast.Spec) []*ast.Ident {
+	switch x := sp.(type) {
+	case *ast.TypeSpec:
+		return []*ast.Ident{x.Name}
+	case *ast.ValueSpec:
+		return x.Names
+	}
+	return nil
+}
+
+// specDoc is the doc Go binds to a spec: its own, or its GenDecl's when the
+// GenDecl holds only it.
+func specDoc(sp ast.Spec, g *ast.GenDecl) *ast.CommentGroup {
+	var own *ast.CommentGroup
+	switch x := sp.(type) {
+	case *ast.TypeSpec:
+		own = x.Doc
+	case *ast.ValueSpec:
+		own = x.Doc
+	}
+	if own == nil && len(g.Specs) == 1 {
+		return g.Doc
+	}
+	return own
+}
+
+// ownOpeners finds where a doc names its own subject in godoc's opening
+// form after line 0: first when line 0 does not, again when it does. -1 means
+// none.
+//
+// A LINE THAT STARTS WITH THE NAME IS NOT ALWAYS AN OPENER. Prose wraps, so
+// "a nil" can end one line and "frameChecks checks every frame" begin the
+// next; and a new paragraph may open with the name, as godoc's own examples
+// do. A later line counts when the one above it ends a sentence and is not a
+// paragraph break, or when the block opens by naming another declaration,
+// which is a fused doc whatever follows.
+func ownOpeners(d docSubject) (first, again int) {
+	first, again = -1, -1
+	lines := d.doc.List
+	m := godocOpener.FindStringSubmatch(lines[0].Text)
+	own := m != nil && m[1] == d.name
+	foreign := m != nil && !own
+	for n := 1; n < len(lines); n++ { // bounded by the block (P10-02)
+		m := godocOpener.FindStringSubmatch(lines[n].Text)
+		if m == nil || m[1] != d.name || !foreign && !endsSentence(lines[n-1].Text) {
+			continue
+		}
+		if own {
+			return -1, n
+		}
+		return n, -1
+	}
+	return first, again
+}
+
+// endsSentence reports whether a comment line ends a sentence: it carries
+// words, and its last one ends in a full stop, a colon, or a question or
+// exclamation mark.
+func endsSentence(line string) bool {
+	t := strings.TrimSpace(strings.TrimPrefix(line, "//"))
+	return t != "" && strings.ContainsAny(t[len(t)-1:], ".:!?")
+}
+
+// packageDoc is a non-test file's package comment: the package it is in
+// (its directory and name) and the file.
+type packageDoc struct {
+	pkg, file string
+}
+
+// packageDocOf is the file's package comment, if it has one. A test file's
+// does not count: go doc reads only the package's own files.
+func packageDocOf(f *ast.File, rel string) (packageDoc, bool) {
+	if f.Doc == nil || strings.HasSuffix(rel, "_test.go") {
+		return packageDoc{}, false
+	}
+	return packageDoc{pkg: path.Dir(rel) + " " + f.Name.Name, file: rel}, true
+}
+
+// checkPackageDocs reports a package with more than one package comment
+// (SN-03). go doc joins them all, in file order, so a package's front door
+// reads as whatever fragments its files carry; the one doc belongs in one
+// file, and the rest become file headers, a blank line above `package`.
+func checkPackageDocs(docs map[string][]packageDoc) []Finding {
+	var out []Finding
+	for _, ds := range docs { // bounded by the tree's packages (P10-02)
+		if len(ds) < 2 {
+			continue
+		}
+		files := make([]string, 0, len(ds))
+		for _, d := range ds { // bounded by the package's files (P10-02)
+			files = append(files, path.Base(d.file))
+		}
+		sort.Strings(files)
+		for _, d := range ds { // bounded by the package's files (P10-02)
+			out = append(out, Finding{
+				Rule: "SN-03", File: d.file, Line: 1,
+				Text: "one of " + itoa(len(ds)) + " package comments in " + path.Dir(d.file) + " (" + strings.Join(files, ", ") + ")",
+				Why:  "go doc joins every package comment into one — keep the package's doc in one file and make the others file headers, with a blank line above `package`",
+			})
+		}
 	}
 	return out
 }
@@ -208,8 +347,8 @@ func checkDocAttached(fset *token.FileSet, f *ast.File, path string) []Finding {
 func itoa(n int) string { return strconv.Itoa(n) }
 
 // godocOpener matches the convention a doc comment opens with: the subject's own
-// name, then a verb.
-var godocOpener = regexp.MustCompile(`^//\s+([A-Za-z]\w*) (?:is|are|does|reports|returns|builds|draws|takes|copies|names|decides|holds|walks|turns|gives|answers|removes|routes|hands|puts|says|sets|tells|wraps|adds|counts)\b`)
+// name, then a present-tense verb ("is", "has", or any word ending in s).
+var godocOpener = regexp.MustCompile(`^//\s+([A-Za-z_]\w*) (?:is|are|has|does|[a-z]+s)\b`)
 
 // trailingComment reports whether a comment sits on the same line as pos — the
 // author's reason, written where the rule asks for it.

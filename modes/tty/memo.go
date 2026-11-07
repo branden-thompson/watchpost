@@ -59,8 +59,6 @@ type bodyKey struct {
 	lookup snapshot.LocationKey
 }
 
-// bodyMemo is the single slot. hits/misses are read by the tests and the
-// diagnostic dump; they are not policy.
 // memoStats is the counter half every memo slot carries. ONE OWNER (metric D,
 // 2026-09-08): bodyMemo and modalMemo embed it rather than each carrying its own
 // nil-check-lock-return accessor, so the next memo inherits `counts()` instead
@@ -81,6 +79,8 @@ func (m *memoStats) counts() (hits, misses int) {
 	return m.hits, m.misses
 }
 
+// bodyMemo is the single slot. hits/misses are read by the tests and the
+// diagnostic dump; they are not policy.
 type bodyMemo struct {
 	memoStats
 	ok               bool

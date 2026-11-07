@@ -396,10 +396,6 @@ func (o Opts) temp5Or(c *float64, loading bool) string {
 	return o.temp5(c)
 }
 
-// rowMarks builds the 6-cell prefix: pointer, play mark, and the alert
-// badge — count beside the glyph ('›  2⚠'), both toned by the most severe
-// alert (yellow advisory-grade, red warning-grade; UAT 20.2/20.3). Split
-// from rowData (P10-04).
 // Marks is the prefix block a table row wears — the pointer, the play mark, the
 // seismic glyph, the fire count and the alert count.
 //

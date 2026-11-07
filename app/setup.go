@@ -4,6 +4,7 @@
 // Re-runs never destroy customizations (B2 red-team #2): the existing config
 // is loaded and only what setup owns is touched — the default location and,
 // when given, the FIRMS key.
+
 package app
 
 import (

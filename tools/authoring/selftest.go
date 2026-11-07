@@ -168,6 +168,41 @@ func Alpha() {}
 
 // Beta does the second thing.
 func Beta() {}`, nil},
+		// THE SAME FUSION ON A TYPE, A VALUE AND A FIELD, with a verb no list
+		// would name.
+		{"a type carrying a deleted function's doc", `package p
+
+// render draws the frame.
+// Frame keeps one screen's rows.
+type Frame struct{}`, []string{"SN-02"}},
+		{"a constant carrying a type's doc", `package p
+
+// Provider implements the feed.
+// maxGrids caps the memo.
+const maxGrids = 240`, []string{"SN-02"}},
+		{"a field documented twice", `package p
+
+type T struct {
+	// read returns whether the words ran out.
+	// read installs the card and returns its error.
+	read func() error
+}`, []string{"SN-02"}},
+		{"a block that opens with another name, mid-sentence", `package p
+
+// TestTheAir is D-139: the model's AQI from
+// contours answers the fixture.
+type contours struct{}`, []string{"SN-02"}},
+		{"a wrapped line that starts with the name is prose", `package p
+
+// frameChecks keeps each frame's check. A nil
+// frameChecks checks every frame.
+type frameChecks struct{}`, nil},
+		{"a new paragraph may open with the name", `package p
+
+// Role is a node of the registry.
+//
+// Role is a plain int and crosses package boundaries.
+type Role int`, nil},
 		{"an unexported function needs no doc", `package p
 
 // Alpha does the first thing.
@@ -175,6 +210,40 @@ func Alpha() {}
 
 func beta() {}`, nil},
 	}
+}
+
+// packageDocControls proves SN-03 in both directions: two package comments
+// in one package are both reported, and a file header detached by a blank
+// line, or a test file's package comment, is not. It returns the number wrong.
+func packageDocControls() int {
+	files := map[string]string{
+		"p/a.go":      "// Package p does one thing.\npackage p\n",
+		"p/b.go":      "// B's fragment.\npackage p\n",
+		"q/a.go":      "// Package q does one thing.\npackage q\n",
+		"q/b.go":      "// A file header.\n\npackage q\n",
+		"q/a_test.go": "// Package q's tests.\npackage q\n",
+	}
+	docs := map[string][]packageDoc{}
+	for name, src := range files { // bounded by the table (P10-02)
+		f, err := parser.ParseFile(token.NewFileSet(), name, src, parser.ParseComments|parser.PackageClauseOnly)
+		if err != nil {
+			fmt.Printf("  BROKEN SPECIMEN  %s: %v\n", name, err)
+			return 1
+		}
+		if d, ok := packageDocOf(f, name); ok {
+			docs[d.pkg] = append(docs[d.pkg], d)
+		}
+	}
+	got := map[string]bool{}
+	for _, fd := range checkPackageDocs(docs) { // bounded by the findings (P10-02)
+		got[fd.File] = true
+	}
+	if len(got) != 2 || !got["p/a.go"] || !got["p/b.go"] {
+		fmt.Printf("  %-15s two package comments in one package, and none elsewhere\n      got %v\n", "MISSED", got)
+		return 1
+	}
+	fmt.Printf("  ok              two package comments in one package, and none elsewhere\n")
+	return 0
 }
 
 func runSelfTest() int {
@@ -211,6 +280,7 @@ func runSelfTest() int {
 		}
 		fmt.Printf("  ok              %s\n", s.name)
 	}
+	bad += packageDocControls()
 	if bad > 0 {
 		fmt.Printf("\nauthoring self-test: %d specimen(s) wrong — the instrument does not discriminate\n", bad)
 		return 1

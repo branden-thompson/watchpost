@@ -1017,3 +1017,62 @@ Mutant m783, hand-vetted and killed.
 - **The rule's text.** `06_docs/code-standards.md`'s checks list names `make lint-imports` and both rules
   it holds (JM-15). `render.go`, where-things-happen's "the seam" row and extending.md already state the
   rule.
+
+## 0.19.5 batch 22 — a doc comment belongs to one declaration, and a package has one (plan Q7.1, DC-1, JR-2, JM-10)
+
+Mutants m784 to m786 are new, each hand-vetted and killed.
+
+- **SN-02 widened** (`tools/authoring/rules.go`).
+  - **What it judges.** `docSubjects` is every function, type, constant, variable and struct field with
+    a doc. A GenDecl's doc counts for its spec when it holds only one.
+  - **The opener.** The subject's name, then `is`, `has` or any word ending in `s`. The fixed list of
+    25 verbs had no "renders", "fetches", "keeps", "lifts" or "installs".
+  - **Two failures.** A doc that names its subject only after line 0 is fused. One that opens with
+    the subject and opens again later is doubled.
+  - **Prose that starts with the name.** The first run over the tree reported 40, and six were prose:
+    wrapped lines such as "A nil / frameChecks checks every frame", and new paragraphs opening with the
+    name, as godoc's do. So a later line counts only when the line above it ends a sentence and is not
+    a paragraph break, or when the block opens by naming another declaration. That brought it to 32,
+    and every one was read and found real.
+- **The 32 sites, and JR-2's two the rule cannot see.** All are comment-only changes.
+  - Thirteen blocks moved to their own declarations, which had no doc of their own: `readCard`,
+    `startSchedule`, `usgsFeed`, `EnsurePiper`, `capExtras`, `Provider`, `RadioStatusMsg`, `Stats`,
+    `bodyMemo`, `Glyphs`, `FireState`, and two tests' docs. `TestPublisherWindowFoldsAWave`'s now
+    opens with its name. `go doc` shows `FireState`, `EnsurePiper` and `startSchedule` their contracts
+    again.
+  - Ten docs of deleted or already-documented declarations were deleted:
+    - `tickerAudio`, `verifyOnly`, two `keepOr` and `cardRow` are gone from the code;
+    - the cut-off first line of a deleted test;
+    - `rowMarks`' stale copy, `TestGivingUpAfterTheToneIsTraced`'s duplicate, and the first lines of
+      `fakeClock` and `restore`.
+  - Seven doubled docs became one: `executors.read`, `render`, `Lane`, `Tail`, `heldEscalation`,
+    `railAt` and `TickerCategory`. `executors.read` keeps the half that matches its `error` return,
+    so the bool its first half described is gone (DC-1, JR-2).
+  - `setupKeyLines` and `severeWindowName` were one doc in two halves that agree, and each half became
+    a paragraph.
+  - `cast.Class` now opens with its name. The `Transmitter` paragraph moved down 48 lines to the fields
+    it explains: it had been fused onto `MoveCard`'s doc.
+- **SN-03, one package comment per package (JM-10).** `go doc` joins every package comment in a
+  package. `checkPackageDocs` reports a package with more than one among its non-test files.
+  - The tree had two such packages, `app` and `platform/render`. The fragments in `app/dashboard.go`,
+    `app/setup.go` and `platform/render/theme.go` became file headers, detached by a blank line.
+  - `modes/tty` has one, the stale one, and Q9.1's `doc.go` replaces it.
+- **Proof.**
+  - The self-test gains six specimens: a type, a constant and a field fused or doubled; a block that
+    opens with another name and wraps onto its own; and the two prose forms that pass. It also gains
+    SN-03's controls, in both directions.
+  - `TestTheSelfTestDiscriminates` runs it all as a unit test, so a rule's mutant is killed by
+    `go test`. m784 judges functions only again, m785 lets two package docs pass, and m786 counts a
+    wrapped name as an opener.
+- **The rule text.** `06_docs/code-standards.md`'s SN-02 says what it judges and how prose passes,
+  with a field specimen. SN-03 is new, and the checks list names both. `06_docs/tooling-backlog.md`
+  says what the detector decides and what still needs a reader.
+- **The gate.**
+  - Its first run failed lint on staticcheck's QF1001 in `ownOpeners`' condition. The condition is
+    written out by De Morgan now, and the mutants were re-vetted on it.
+  - P10 reports no live finding. `tools/authoring/main.go`'s density rose from 0.00 to 0.38, against
+    its floor of 0.50. It joins batch 15's rows for REVIEW (D-27).
+  - Its second `make verify` failed in `lint-authoring`. The cause was a process failure of mine:
+    Q7.3's next change to the authoring tool was written while that gate ran, so `verify` ran a tool
+    that was not this batch's. The FAILED row stays in the gate record. This batch's tree was put
+    back exactly and gated again, with nothing edited while it ran.

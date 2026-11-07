@@ -47,7 +47,6 @@ var ciOnly = exempt(&exemptionTable{
 	stillNeeded: func(t *testing.T, g string) bool { return !contains(loadBuildModel(t).verifyGates(), g) },
 })
 
-// verifyOnly are gates a local `make verify` runs that CI does not.
 // phaseExit are required gates that run at BUILD and REVIEW exit under `make
 // quality`, by the HUM LEAD, and are recorded in the roster — not on every
 // `make verify` and not in CI. The release workflow runs `make verify` on a

@@ -2,6 +2,7 @@
 // → tiered scheduler → published snapshots streamed into the TTY dashboard.
 // M1 instrumentation: the time from start to the first fully-populated
 // snapshot is logged to stderr on exit when WATCHPOST_DEBUG_TIMING=1.
+
 package app
 
 import (

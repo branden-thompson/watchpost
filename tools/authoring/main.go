@@ -86,9 +86,14 @@ func scan(root string) ([]Finding, int, error) {
 		return nil
 	})
 	var out []Finding
+	docs := map[string][]packageDoc{}
 	for _, p := range all { // bounded by the tree's files (P10-02)
 		out = append(out, checkFile(p.fset, p.f, p.rel, fns)...)
+		if d, ok := packageDocOf(p.f, p.rel); ok {
+			docs[d.pkg] = append(docs[d.pkg], d)
+		}
 	}
+	out = append(out, checkPackageDocs(docs)...)
 	files := len(all)
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].File != out[j].File {

@@ -102,9 +102,6 @@ func TestReportTimingIsOptInAndNamesTheMeasurement(t *testing.T) {
 	}
 }
 
-// Quality pass Q3 (plan §2.4, PF-9): the RECENT publisher's window folds a
-// tier tick's wave of triggers into one publish; the priority window is
-// the 50 ms one.
 // awaitRuns waits for the publish count to REACH n. It is a failure bound: it
 // costs nothing when the publish is prompt and only fires if it never happens.
 //
@@ -124,6 +121,9 @@ func awaitRuns(t *testing.T, runs *atomic.Int32, n int32) {
 	t.Fatalf("publishes never reached %d (got %d)", n, runs.Load())
 }
 
+// TestPublisherWindowFoldsAWave is quality pass Q3 (plan §2.4, PF-9): the
+// RECENT publisher's window folds a tier tick's wave of triggers into one
+// publish; the priority window is the 50 ms one.
 func TestPublisherWindowFoldsAWave(t *testing.T) {
 	var runs atomic.Int32
 	// THE WINDOW IS GENEROUS ON PURPOSE. Twenty triggers spaced a millisecond

@@ -55,7 +55,7 @@ way `dupes` and `wires` already do.
 | `P10-05` invariant density | **Gameable by padding guard clauses. A metric that rewards ritual is worse than none.** Exemptions for `tools/authoring` and `tools/treelock` were RATIFIED by the HUM LEAD 2026-09-16 rather than the ratio satisfied, and the ledger rows say so |
 | `AP-ASSUME-01` | Process, not code. Mechanising it yields ritual spike files |
 | `P10-07`, parameter-validation half | Not decidable |
-| `SN-02`, general form | Not decidable. The shipped detector handles the narrow case (a declaration whose own name arrives late in its doc) and admits the rest |
+| `SN-02`, general form | Not decidable. The shipped detector judges every function, type, value and field doc for its own name arriving late, or twice, after a sentence ends; a fused block that never names its subject in the opening form, and a doc that is merely about something else, still need a reader. `SN-03` (one package comment per package) is decided in full |
 | business-quality axis, whole | Not decidable. Stays a review lens |
 | `P10-03` | N/A in Go; the allocation pins cover the declared hot paths |
 | `P10-10` | **Half-done, and the fix is config not code:** `.golangci.yml` enables only the DEFAULT linter set, which is not "the most pedantic setting". Widen it behind the ratchet |

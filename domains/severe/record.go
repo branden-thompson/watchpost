@@ -126,8 +126,6 @@ func shortDur(d time.Duration) string {
 	return fmt.Sprintf("%dm", m)
 }
 
-// capExtras renders the allowlisted CAP parameters as one line ("Wind gusts
-// to 60 mph · Hail to 1.00 in"), "" when none.
 // onsetOf reads the location record's optional onset.
 func onsetOf(t *time.Time) time.Time {
 	if t == nil {
@@ -136,6 +134,8 @@ func onsetOf(t *time.Time) time.Time {
 	return *t
 }
 
+// capExtras renders the allowlisted CAP parameters as one line ("Wind gusts
+// to 60 mph · Hail to 1.00 in"), "" when none.
 func capExtras(d *globalfeed.SevereDetail) string {
 	if d == nil {
 		return ""

@@ -461,13 +461,12 @@ func emphasiseHeld(line, count string) string {
 	return line
 }
 
-// heldEscalation is the ladder, LONGEST FIRST so the walk returns the most
-// severe rung that has been reached.
+// heldEscalation is the notice's ladder: how long a hazard has been held, the
+// mark that rung wears, and what it says, LONGEST FIRST so the walk returns the
+// most severe rung that has been reached.
 //
 // The rungs are a PARAMETER, written down the way a threshold is meant to be
 // (INST-1 scopes its rule to the SET being iterated, not to the numbers).
-// heldEscalation is the notice's ladder: how long a hazard has been held, the
-// mark that rung wears, and what it says.
 //
 // A FUNCTION RATHER THAN A PACKAGE VARIABLE (P10-06), which is the convention
 // `report.all` states in as many words. The reason a map here would stay a var
@@ -1357,7 +1356,6 @@ const (
 	bcNoRelaysHere = "no relays reach this station"
 )
 
-// cardRow is one lane row: what it is, and the handle that addresses it.
 // cardLane renders every card in one lane, at that lane's width (D-52).
 //
 // IT IS BUILT ONCE PER FRAME, NOT ONCE PER CARD, and that is not a

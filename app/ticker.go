@@ -152,12 +152,6 @@ func (t *tickerDeck) clock() render.Clock {
 	return clockFrom(t.clockPref)
 }
 
-// tickerAudio is the breaking-news sound the ticker drives (0.12.0): duck the
-// radio and sound the tone at the start (returning the tone's length), speak a
-// line and return how long it will take (so the marquee holds the event until
-// its narration finishes — no overlap), restore at the end. The radio deck
-// implements it; nil = no audio (the visual takeover still runs on a fixed
-// hold).
 // startTicker launches the ticker loop; it stops with ctx. nar (nil = a
 // silent arbiter) sounds the tone + narration for a genuinely new event
 // through the arbiter, so a takeover pre-empts an event read and never

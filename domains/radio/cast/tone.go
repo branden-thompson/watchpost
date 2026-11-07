@@ -7,8 +7,8 @@ import (
 	"github.com/branden-thompson/watchpost/platform/category"
 )
 
-// The alert tone's class: what a listener hears BEFORE the words, saying which
-// kind of alert is coming (FR-11, tones.md §2). Six classes over five presets —
+// Class is the alert tone's class: what a listener hears BEFORE the words,
+// saying which kind of alert is coming (FR-11, tones.md §2). Six classes over five presets —
 // disaster and warning share the loudest, because there is no useful moment in
 // which a listener needs to tell those two apart by ear before the words.
 //

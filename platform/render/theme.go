@@ -4,6 +4,7 @@
 // never change. Values are SGR parameter lists (256-palette codes ride
 // go-studs ColorSequence; truecolor entries are pre-expanded 38;2/48;2
 // params for the raw-SGR path; window/gradient entries are #RRGGBB hex).
+
 package render
 
 import "strings"

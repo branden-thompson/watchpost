@@ -522,7 +522,9 @@ func TestThePointerWalksAndTheWindowFollows(t *testing.T) {
 // helper (D-101).
 var lineupRowNum = regexp.MustCompile(`^[\s>\x{203a}]+(\d\d)\.\s`)
 
-// railAt is the column the scroll rail sits in, on the FINISHED frame.
+// railAt is the terminal column the scroll rail sits in, on the FINISHED frame:
+// the LAST column of the frame, with the two-column right margin outside it
+// (D-104).
 //
 // THE FRAME'S LAST COLUMN, NOT THE TERMINAL'S. An absolute column such as
 // `b.width-2` is a measurement the frame's right margin (D-100) invalidates;
@@ -530,8 +532,6 @@ var lineupRowNum = regexp.MustCompile(`^[\s>\x{203a}]+(\d\d)\.\s`)
 //
 // MINUS TWO, NOT ONE: `railed` pads a row to `frameWidth-2` and appends the mark,
 // so the mark IS the last cell of a row that is one short of the frame.
-// railAt is the terminal column the scroll control lives in: the LAST column of
-// the frame, with the two-column right margin outside it (D-104).
 func railAt(b Broadcaster) int { return len(bcLeftInset) + b.frameWidth() - 1 }
 
 // slots is the running order's rows, by the `##.` column that addresses them.

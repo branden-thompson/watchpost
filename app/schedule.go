@@ -51,6 +51,23 @@ type schedule struct {
 	x *executors
 }
 
+// bedSeams is what the schedule needs from the console's bed row, and it is ONE
+// parameter because it is ONE concern (F-98, D-90).
+//
+// BOTH HALVES EXIST FOR THE SAME REASON: the row has two publishers — the
+// operator's selector and the settle — and each half is how one of them learns
+// what the other knows. `note` records the Director's `Carrying` so the selector
+// does not guess it; `selected` reports the operator's relay so the settle does
+// not overwrite it. Passed separately they would be an eleventh and twelfth
+// argument to a function that already has ten, and nothing would say they
+// belong together.
+type bedSeams struct {
+	// note records what the Director says about the bed carrying the programme.
+	note func(carrying bool)
+	// selected is the relay the operator chose, "" until they choose one.
+	selected func() string
+}
+
 // startSchedule builds the Director, its executors and the pump, and starts
 // both goroutines.
 //
@@ -72,23 +89,6 @@ type schedule struct {
 // the listener's own watchlist. Resolved against the pool, a watched location
 // outside it would stop resolving and the tune would die as
 // `schedule:tune-unknown`, silently.
-// bedSeams is what the schedule needs from the console's bed row, and it is ONE
-// parameter because it is ONE concern (F-98, D-90).
-//
-// BOTH HALVES EXIST FOR THE SAME REASON: the row has two publishers — the
-// operator's selector and the settle — and each half is how one of them learns
-// what the other knows. `note` records the Director's `Carrying` so the selector
-// does not guess it; `selected` reports the operator's relay so the settle does
-// not overwrite it. Passed separately they would be an eleventh and twelfth
-// argument to a function that already has ten, and nothing would say they
-// belong together.
-type bedSeams struct {
-	// note records what the Director says about the bed carrying the programme.
-	note func(carrying bool)
-	// selected is the relay the operator chose, "" until they choose one.
-	selected func() string
-}
-
 func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, resolvable, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg), bed bedSeams) *schedule {
 	if nar == nil {
 		return nil // no arbiter, no schedule: there is nothing to perform through

@@ -242,8 +242,8 @@ func (c Composer) LeadParts(location string, station Station, now time.Time, clo
 	return notice, span
 }
 
-// Tail is the broadcast sign-off (UAT 79, HUM LEAD script).
-// Tail names the correspondent who reaches the sign-off.
+// Tail is the broadcast sign-off (UAT 79, HUM LEAD script), naming the
+// correspondent who reaches it.
 //
 // Tail has no empty-name branch: spokenName (source.go) is the one owner of
 // "your correspondent", so the substitution happens once, where the name is

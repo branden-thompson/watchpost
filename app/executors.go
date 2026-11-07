@@ -54,8 +54,11 @@ type executors struct {
 	// nothing about how a report is assembled.
 	compose func(ctx context.Context, ref string, want report.Set) ([]synth.Segment, error)
 
-	// read performs a MAIN-TRACK card — the programme — and returns whether the
-	// words ran out on their own (F-91, BD-9).
+	// read puts a main-track card — the programme — on the air and returns nil
+	// when its words ran out, errReadStopped when something deliberate ended it
+	// early (the operator went to standby, the pump is stopping), and any other
+	// error when the station could not perform — a voice that would not render,
+	// a player that failed (F-91, BD-9, F-150, REVIEW 2026-09-17).
 	//
 	// A SECOND PERFORMER, AND THAT IS THE RULING RATHER THAN A CHOICE. The rail
 	// reads through the arbiter because an alert speaks OVER whatever is on;
@@ -68,11 +71,6 @@ type executors struct {
 	//
 	// Nil is a station with no broadcast engine — the pathless build and the
 	// tests that wire no deck — and the executor declines by name.
-	// read puts a main-track card on the air and returns nil when its words
-	// ran out, errReadStopped when something deliberate ended it early (the
-	// operator went to standby, the pump is stopping), and any other error
-	// when the station could not perform — a voice that would not render, a
-	// player that failed (F-150, REVIEW 2026-09-17).
 	read func(ctx context.Context, v lineup.Speak) error
 
 	// propose asks the Producer what cards COULD exist, so the Director can top

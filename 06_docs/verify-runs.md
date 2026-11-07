@@ -193,3 +193,6 @@ says exactly what passed.
 | 2026-11-07T16:44:09Z | 360e84f6 | 206013b6bc4b | verify-docs | green | 155 |
 | 2026-11-07T17:29:28Z | 5878f75c | 8accece37a4e | verify | green | 2573 |
 | 2026-11-07T18:12:42Z | a5b3a4b1 | f4f226bef7cd | verify | green | 2504 |
+| 2026-11-07T18:25:22Z | e9e95302 | a09f8cefb7ce | verify | FAILED (exit 2) | 261 |
+| 2026-11-07T18:30:19Z | e9e95302 | 468fd176ed7d | verify | FAILED (the tree changed during the run: 468fd176ed7d tested, 7546b154f962 at its end) | 246 |
+| 2026-11-07T19:16:30Z | e9e95302 | 86e7752b90f3 | verify | green | 2721 |

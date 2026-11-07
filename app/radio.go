@@ -958,14 +958,14 @@ func (d *radioDeck) fault(why string) {
 // discard drops a held line whose sequence ended while it waited.
 func (d *radioDeck) discard() { d.engine.DropHeld() }
 
-// render turns a narration line into audio (say/piper blocks ~1 s per
-// line, longer for an event read — the arbiter's sequences run on their
-// own goroutines, off the UI loop); play puts a rendered line on the air
-// over the ducked radio. Split so a line rendered while its sequence is
-// suspended never starts under a takeover.
 // render turns a narration line into audio IN THE ROLE'S VOICE, and records on
 // the player's detail line WHY it failed when it did — a silent takeover must
 // never be unexplained.
+//
+// It blocks (say/piper ~1 s per line, longer for an event read), so the
+// arbiter's sequences run on their own goroutines, off the UI loop. play puts
+// a rendered line on the air over the ducked radio; the two are split so a
+// line rendered while its sequence is suspended never starts under a takeover.
 func (d *radioDeck) render(ctx context.Context, role cast.Role, text string) (clip, bool) {
 	v, res, err := d.resolveVoice(role)
 	if err != nil {
@@ -988,7 +988,6 @@ func (d *radioDeck) play(c clip) {
 	_ = d.engine.PreviewAside(c.rate, bytes.NewReader(c.pcm)) // a takeover: aside, the bars keep to the broadcast
 }
 
-// restore lifts the duck — the radio returns after the sequence.
 // restore lifts BOTH — a hold and a duck — because the mode can change while a
 // sequence is on air and the one that was taken is not always the one that is
 // given back.

@@ -16,7 +16,7 @@ trustworthy. So the IDs stay, and their meanings live here.
 ## Running the checks
 
 ```
-make lint-authoring          # the rules below, over the whole tree
+make lint-authoring          # the rules below, over the whole tree (SN-02 and SN-03 included)
 go run ./tools/authoring     # the same, directly
 go run ./tools/authoring -self-test    # prove the checker can fail
 go run ./tools/authoring -json         # machine-readable
@@ -111,6 +111,51 @@ func Beta() {}
 **Why it needs a tool:** both comments are present and both read well, so review does not catch it
 and neither does any line-based check. The signal is structural — a declaration whose own name
 arrives partway down its doc has lines above it belonging to something else.
+
+**What it judges:** the doc of every function, type, constant, variable and struct field. An opener
+is the subject's name followed by a present-tense verb (`is`, `has`, or any word ending in `s`).
+- **Fused:** the subject's opener arrives after line 0.
+- **Doubled:** the doc opens with the subject's opener and has a second one. A reader cannot tell
+  which half is true, so keep the one that matches the code and delete the other.
+
+A line that merely starts with the name is not always an opener. A later line counts when the line
+above it ends a sentence and is not a paragraph break, or when the block opens by naming another
+declaration. So prose that wraps onto the name (`… A nil` / `frameChecks checks every frame.`) passes,
+and so does a new paragraph that opens with it, as godoc's own examples do.
+
+```go
+// no — two docs for one field, and they disagree about its return
+// read returns whether the words ran out.
+// read installs the card and returns its error.
+read func() error
+
+// yes — one doc; a later paragraph may open with the name
+// read installs the card and returns its error.
+//
+// read blocks for the length of the read.
+read func() error
+```
+
+---
+
+## `SN-03` — one package comment per package
+
+`go doc` joins every package comment in a package's files into one, in file order. A fragment above
+`package` in a second file is printed as part of the package's front door.
+
+```go
+// no — in app/setup.go, beside app.go's "Package app is …"
+// Setup: the first-run questions live in a …
+package app
+
+// yes — a file header, detached by a blank line
+// Setup: the first-run questions live in a …
+
+package app
+```
+
+**Why it needs a tool:** each fragment reads well in its own file, and nobody reads all of them
+together except `go doc`. A test file's package comment does not count; `go doc` does not read it.
 
 ---
 

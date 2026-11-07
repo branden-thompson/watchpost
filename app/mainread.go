@@ -146,17 +146,17 @@ func noteRead(r *readSession, st player.Status, ended bool) {
 	}
 }
 
+// errReadStopped is a read that something DELIBERATE ended early — standby,
+// the pump stopping, the air handed back — as opposed to one the station could
+// not perform. The executor grades the two differently (F-150).
+var errReadStopped = errors.New("the read was stopped")
+
 // readCard puts one card's words on the air and waits for them to run out.
 //
 // IT BLOCKS, DELIBERATELY. `executors.run` is documented to block for as long
 // as the work takes — it runs on a worker, never the pump — and a Speak that
 // returned before the words did would let the Director step the next card onto
 // an engine still carrying this one.
-// errReadStopped is a read that something DELIBERATE ended early — standby,
-// the pump stopping, the air handed back — as opposed to one the station could
-// not perform. The executor grades the two differently (F-150).
-var errReadStopped = errors.New("the read was stopped")
-
 func (d *radioDeck) readCard(ctx context.Context, label string, segs []synth.Segment) error {
 	if d == nil || len(segs) == 0 {
 		return errors.New("nothing to say") // the executor's empty-script check already refused this

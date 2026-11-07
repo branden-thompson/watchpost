@@ -204,13 +204,13 @@ type Alert struct {
 	Source      SourceInfo `json:"source"`
 }
 
-// FireState holds hotspots and incidents (B5).
 // MaxHotspots caps the hotspots a location carries (nearest first): a
 // mega-fire clusters into hundreds of GOES positions per day (941 near
 // Mineral Wells, TX on 2026-08-25), and three rows plus a count are all the
 // modal shows. At the cap the count reads "300+".
 const MaxHotspots = 300
 
+// FireState holds hotspots and incidents (B5).
 type FireState struct {
 	AsOf      time.Time  `json:"as_of"` // when a fire feed last answered for this location; zero = no feed has yet (never "no hotspots" — red-team B5 P3)
 	Hotspots  []Hotspot  `json:"hotspots"`

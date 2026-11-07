@@ -30,10 +30,10 @@ const (
 	TickerRed
 )
 
-// TickerCategory is the marquee lane an event belongs to; the band rotates
-// through the non-empty lanes in this declared order (HUM LEAD 2026-08-27).
-// TickerCategory is a lane on the band — the same thing as a window tab, named
-// for where it is shown. An alias, so the two cannot drift.
+// TickerCategory is the marquee lane an event belongs to — the same thing as a
+// window tab, named for where it is shown, and an alias so the two cannot
+// drift. The band rotates through the non-empty lanes in this declared order
+// (HUM LEAD 2026-08-27).
 type TickerCategory = category.Category
 
 const (

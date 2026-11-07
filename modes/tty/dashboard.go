@@ -271,17 +271,6 @@ type Config struct {
 	AlertRadiusMi  int       // 0.12.0: the Alert Notification Preference at launch — 0 = All (global), >0 = only alerts within N mi of the default location
 	SetAlertRadius func(int) // 0.12.0: persist the radius and tell the ticker pipeline to re-scope; nil in tests
 
-	// THE STATION'S OWN TWO (D-115, F-87). Where it transmits from and how far it
-	// serves — the settings the console's whole line-up is derived from, written
-	// from the window rather than only by editing the config file.
-	//
-	// `Transmitter` IS A POINTER because "not set" is a real and DIFFERENT state
-	// from "set to somewhere": a station with none borrows the listener's default
-	// location, and the window says so rather than showing a choice nobody made.
-	//
-	// The setters persist AND re-derive the pool — a radius the operator changes
-	// is a region the Producer must offer from on the very next cycle, which is
-	// the re-derivation the HUM LEAD asked to be able to UAT.
 	// THE OPERATOR'S TWO ACTS ON A SCHEDULED CARD (D-118). The schedule owns
 	// both — `lineup.Moved` and `lineup.Dropped` model them — and FR-3.3 is why
 	// they are events rather than setters: "an action must never be shown as
@@ -319,6 +308,17 @@ type Config struct {
 	// The console does not mint cards.
 	RequestCard func(ref snapshot.LocationRef, kinds report.Set, at int)
 
+	// THE STATION'S OWN TWO (D-115, F-87). Where it transmits from and how far it
+	// serves — the settings the console's whole line-up is derived from, written
+	// from the window rather than only by editing the config file.
+	//
+	// `Transmitter` IS A POINTER because "not set" is a real and DIFFERENT state
+	// from "set to somewhere": a station with none borrows the listener's default
+	// location, and the window says so rather than showing a choice nobody made.
+	//
+	// The setters persist AND re-derive the pool — a radius the operator changes
+	// is a region the Producer must offer from on the very next cycle, which is
+	// the re-derivation the HUM LEAD asked to be able to UAT.
 	Transmitter      *snapshot.LocationRef
 	SetTransmitter   func(snapshot.LocationRef) // nil in tests
 	ServiceRadiusMi  int
@@ -384,9 +384,6 @@ type Config struct {
 	DebugScenarios []DebugScenario
 }
 
-// Stats is what the app hands the [S] modal beyond the snapshots (quality
-// pass Q0, plan §2.1): request counters merged across the app's clients,
-// publish counters per pipeline, and the last diagnostic dump's outcome.
 // ZoneShapeStats is the zone-outline store's own tally, carried as numbers.
 type ZoneShapeStats struct {
 	Fetched int64 // asked of the service
@@ -395,6 +392,9 @@ type ZoneShapeStats struct {
 	Held    int   // shapes in hand now
 }
 
+// Stats is what the app hands the [S] modal beyond the snapshots (quality
+// pass Q0, plan §2.1): request counters merged across the app's clients,
+// publish counters per pipeline, and the last diagnostic dump's outcome.
 type Stats struct {
 	Requests httpx.RequestStats
 	// MapRequests are the map's own clients' counters (0.18.0 D-150): the
@@ -581,7 +581,6 @@ func ParseRepeatMode(s string) RepeatMode {
 // next is the [r] cycle: Off → One → Watchlist → Off.
 func (m RepeatMode) next() RepeatMode { return (m + 1) % 3 }
 
-// RadioStatusMsg reports the player's condition (B4).
 // VoiceNoteMsg is the radio deck's word about a voice (UAT 119): what is
 // happening between a preview or pick and the first sound — a download with its
 // progress, the model loading — so a ten-second wait on Linux never reads as
@@ -596,6 +595,7 @@ func (m RepeatMode) next() RepeatMode { return (m + 1) % 3 }
 // serves the Settings cast rows rather than any retired window.
 type VoiceNoteMsg struct{ Text string }
 
+// RadioStatusMsg reports the player's condition (B4).
 type RadioStatusMsg struct {
 	State    string // stopped | connecting | playing | reconnecting | failed
 	Station  string // "KEC49 Monterey CA 162.550 MHz · 78 mi (nearest relayed)"

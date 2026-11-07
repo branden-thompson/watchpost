@@ -121,9 +121,6 @@ type Glyphs struct {
 	Rule, Minus, Heart string
 }
 
-// Glyphs resolves the mark set for these options. Under --ascii the play
-// mark is its own form (`*`), never the pointer's `>` (HUM LEAD ruling
-// 2026-08-29, B-08b).
 // HeadlineJoin is how a hazard's TITLE and its PLACE are joined into the one
 // line the ticker has room for: `SEVERE THUNDERSTORM WARNING · HARPER, KS`.
 //
@@ -136,6 +133,9 @@ type Glyphs struct {
 // would work until one of them changed.
 const HeadlineJoin = " · "
 
+// Glyphs resolves the mark set for these options. Under --ascii the play
+// mark is its own form (`*`), never the pointer's `>` (HUM LEAD ruling
+// 2026-08-29, B-08b).
 func (o Opts) Glyphs() Glyphs {
 	if o.ASCII {
 		return Glyphs{Pointer: ">", Play: "*", Pause: "=", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},

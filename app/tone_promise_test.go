@@ -46,11 +46,6 @@ func TestASoundedToneIsFollowedByWords(t *testing.T) {
 	}
 }
 
-// AND WHEN THE READ DOES GIVE UP AFTER THE TONE, IT SAYS SO.
-//
-// The cut-short is Routed (I-2), so it raises no window — correctly, because
-// pressing esc must not claim the relay is dead. The cost is that this failure
-// is otherwise silent, so the timeline carries the line.
 // tonedVoice sounds a tone with REAL duration, so the hold that follows it is a
 // hold and not an instant return. classVoice returns 0, which sends holdRest
 // down its awaitAir branch and never poses the window F-43 is about.

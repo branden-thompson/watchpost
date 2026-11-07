@@ -14,7 +14,6 @@ import (
 // interface so the replay harness (M2/M3) can drive time; publish-on-change;
 // tier cadence is THE freshness authority.
 
-// fakeClock drives time deterministically.
 // fakeClock drives the scheduler's time. IT SYNCHRONISES; IT DOES NOT GUESS
 // (F-29, 2026-09-06).
 //

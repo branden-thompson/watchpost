@@ -232,6 +232,7 @@ func (d Dashboard) handleSevereNav(act term.Action) Dashboard {
 
 // severeWindowName is the title; in the record it keeps the name and adds the
 // crumb (plan §5.6 M-6): "NOTABLE EVENTS AND FORECASTS ─── Warnings · 2 / 9".
+//
 // severeWindowName covers weather, non-weather hazards (a landslide is not
 // weather) and products that are not warnings at all — a forecast or an
 // outlook is notable without being bad news (MVS-D-59).

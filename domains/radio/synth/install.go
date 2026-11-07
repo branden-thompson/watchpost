@@ -159,11 +159,11 @@ func FindPiperVoice(dir string, v VoiceSpec) (Install, bool) {
 	return Install{Binary: bin, Model: model, SampleRate: v.Rate, Voice: v.Name}, true
 }
 
-// EnsurePiper installs Piper and the voice under dir when missing,
-// verifying every artifact against the manifest; progress may be nil.
 // installMu serializes EnsurePiper (one download at a time, C-9).
 var installMu sync.Mutex
 
+// EnsurePiper installs Piper and the voice under dir when missing,
+// verifying every artifact against the manifest; progress may be nil.
 func EnsurePiper(ctx context.Context, dir, userAgent string, progress Progress) (Install, error) {
 	return EnsureVoice(ctx, dir, DefaultVoice(), userAgent, progress)
 }

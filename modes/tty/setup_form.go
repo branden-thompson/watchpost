@@ -84,6 +84,7 @@ func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 
 // setupKeyLines is question 2 of the form: the FIRMS key, with a stored
 // key's tail and health when there is one (UAT 111).
+//
 // setupKeyLines takes Opts because its marks come from the SET, not from
 // literals (red team, 2026-09-08): the ellipsis, the dash, the bullet and the
 // warning here must all honour --ascii, in a window the scan renders only in a

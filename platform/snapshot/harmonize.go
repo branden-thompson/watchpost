@@ -106,8 +106,6 @@ func harmonize(loc *Location, providerOrder []string) {
 	harmonizeMarine(loc, order)
 }
 
-// keepOr returns have when set, else a copy of the fallback (single-deref
-// value helper, P10-09 pointer discipline).
 // KeepOr keeps the value a provider gave, else adopts the fallback by VALUE —
 // never by sharing the pointer, so a later write to one cannot reach the other.
 //
