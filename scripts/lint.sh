@@ -32,7 +32,7 @@ trap 'rm -f "$tmp" "$tmp.now"' EXIT
 # THE EXIT CODE IS READ, NOT DISCARDED (F-118). 0 is clean and 1 is "issues
 # found", which the ratchet below judges; anything else (3 = a package failed
 # to load, 4 = timeout, 7 = bad config) means the run did not happen, and a run
-# that did not happen reports no findings — which used to read as clean.
+# that did not happen reports no findings, which must not read as clean.
 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 \
   run --output.json.path "$tmp" ./... >/dev/null 2>&1
 lint_rc=$?

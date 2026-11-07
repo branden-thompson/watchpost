@@ -196,3 +196,4 @@ says exactly what passed.
 | 2026-11-07T18:25:22Z | e9e95302 | a09f8cefb7ce | verify | FAILED (exit 2) | 261 |
 | 2026-11-07T18:30:19Z | e9e95302 | 468fd176ed7d | verify | FAILED (the tree changed during the run: 468fd176ed7d tested, 7546b154f962 at its end) | 246 |
 | 2026-11-07T19:16:30Z | e9e95302 | 86e7752b90f3 | verify | green | 2721 |
+| 2026-11-07T20:05:34Z | a628be00 | 42d33644bee2 | verify | green | 2748 |

@@ -53,7 +53,7 @@ func skipDir(base string) bool {
 	return false
 }
 
-func scan(root string) ([]Finding, int, error) {
+func scan(root string) (found []Finding, goFiles, hashFiles int, err error) {
 	// TWO PASSES: AP-OK-01 judges a call by every declaration of its callee in
 	// the module, so the whole tree is parsed before any file is judged.
 	type parsed struct {
@@ -62,14 +62,23 @@ func scan(root string) ([]Finding, int, error) {
 		rel  string
 	}
 	var all []parsed
+	var hashFound []Finding
+	hashed := 0
 	fns := newOKFuncs()
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
 		if info.IsDir() {
 			if skipDir(filepath.Base(path)) {
 				return filepath.SkipDir
+			}
+			return nil
+		}
+		if hashCommented(path) {
+			hashed++
+			if b, err := os.ReadFile(path); err == nil {
+				hashFound = append(hashFound, checkHashHistory(string(b), strings.TrimPrefix(strings.TrimPrefix(path, root), "/"))...)
 			}
 			return nil
 		}
@@ -94,6 +103,7 @@ func scan(root string) ([]Finding, int, error) {
 		}
 	}
 	out = append(out, checkPackageDocs(docs)...)
+	out = append(out, hashFound...)
 	files := len(all)
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].File != out[j].File {
@@ -101,7 +111,7 @@ func scan(root string) ([]Finding, int, error) {
 		}
 		return out[i].Line < out[j].Line
 	})
-	return out, files, err
+	return out, files, hashed, err
 }
 
 // report prints the findings grouped by rule, rule IDs in alphabetical order.
@@ -149,7 +159,7 @@ func main() {
 		os.Exit(runSelfTest())
 	}
 
-	found, files, err := scan(*root)
+	found, files, hashed, err := scan(*root)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "authoring: %v\n", err)
 		os.Exit(2)
@@ -169,9 +179,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, "  Each rule, with examples of the accepted form, is in 06_docs/code-standards.md.")
 		os.Exit(1)
 	}
-	fmt.Printf("authoring: OK — %d Go file(s), no findings\n", files)
-	fmt.Println("  scope: every Go file under the tree, skipping any directory named .git, third_party,")
-	fmt.Println("  mutants, dist or node_modules by its basename, wherever it sits; the count is of files judged.")
+	fmt.Printf("authoring: OK — %d Go file(s) and %d Makefile, shell or .gitignore file(s), no findings\n", files, hashed)
+	fmt.Println("  scope: every Go file under the tree, and AP-HIST-01 over the # comments of every Makefile,")
+	fmt.Println("  .sh and .gitignore, skipping any directory named .git, third_party, mutants, dist or")
+	fmt.Println("  node_modules by its basename, wherever it sits; the counts are of files judged.")
 	fmt.Println("  It decides the rules a syntax tree can decide. It cannot see a comment that is")
 	fmt.Println("  merely WRONG — the larger class, which still needs a reader.")
 	fmt.Println("  The rules are written out in 06_docs/code-standards.md.")

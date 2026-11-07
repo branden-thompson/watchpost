@@ -1076,3 +1076,46 @@ Mutants m784 to m786 are new, each hand-vetted and killed.
     Q7.3's next change to the authoring tool was written while that gate ran, so `verify` ran a tool
     that was not this batch's. The FAILED row stays in the gate record. This batch's tree was put
     back exactly and gated again, with nothing edited while it ran.
+
+## 0.19.5 batch 23 — the gates explain what they guarantee, not how they came to (plan Q7.3, DC-8, DC-9, DV-8)
+
+Mutant m787, hand-vetted and killed.
+
+- **AP-HIST-01 over `#` comments.**
+  - `tools/authoring` now reads every `Makefile`, `.sh` and `.gitignore` in the tree (22 files) and
+    checks their `#` comment lines with the phrase test the Go rule uses. `narrates` is that one
+    predicate, shared by both passes.
+  - A script's shebang and a recipe's commands are not judged.
+  - Its self-test gains a control in both directions, run by `TestTheSelfTestDiscriminates`. m787
+    inverts the predicate for `#` lines.
+  - Run over the tree first, it found the two "used to" lines DC-9 named: `Makefile`'s schema target
+    and `scripts/lint.sh`.
+- **The reader pass (DC-9).** About thirty more lines narrated dated incidents that no phrase list
+  decides. Each is restated as what the target or script guarantees now, and its reason is kept.
+  - In the Makefile: `property`'s tag, `mutant-check` (its shell history, its log rule, its timeout),
+    `hygiene` (the full disk, the `*.log` rule, the sweep's timings), `journey`, `mutant-verdicts`,
+    `promote-verdicts`' `make -n` warning, the sweep's own clean-up, `wires`, `alloc-budget` and the
+    schema.
+  - In the scripts: `lint.sh`, `lint-imports.sh` and `p10-unmatched_test.sh` (the unknown-flag rule),
+    `ledger-ratified.sh`, `mutant-verdicts.sh` (five sites), `mutant-anchors.sh` (three) and
+    `workload.sh`; and `.gitignore`.
+  - The incidents themselves stay in git, in the commits that wrote them.
+  - Rulings and measurements keep their dates as evidence.
+- **The Makefile's comment work, in one place (DV-8, DC-8).**
+  - The attribution-gate line headed `lint-authoring`; it now heads `lint-watermark`.
+    `lint-authoring`'s own line says "a syntax tree can decide", not "a grep", and names the `#` pass.
+  - The allocation-pin paragraph headed `pty-severe`; it now heads `alloc-budget`, joined with that
+    target's own block.
+  - **The mutant timings are reconciled to one measured set.** The comments had "~140s", "about 400s",
+    "seven minutes" and "261 s on twelve cores" for the same gate. They now give this batch's own
+    measurement: 2,253 s for 1,032 mutants on the developer's 18 cores, from batch 22's gate
+    (2026-11-07). The hosted run's 93 minutes for 835 mutants (2026-10-29) is kept beside it. The
+    two cheaper gates say "seconds" and point at the Makefile for the figure.
+  - The `wires` paragraph said five rows were "RATIFIED AS OWED". The ledger holds none, and it now
+    says so.
+  - `pty-severe` and `journey` join `.PHONY`.
+  - `HYGIENE_KEEP` and `VERDICTS_RECORD` moved with the release in batch 1 (Q7.7, D-16), and their
+    text already says so.
+- **The rule's text.** `06_docs/code-standards.md`'s AP-HIST-01 says it covers the gates' `#` comments,
+  what the tool decides there and what still needs a reader. `06_docs/tooling-backlog.md`'s row names
+  the `#` pass.

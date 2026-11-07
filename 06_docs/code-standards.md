@@ -74,6 +74,14 @@ the correction is what the author has in mind. Commit-message prose migrates int
 check to run before finishing such a pass: *read this comment as someone who has never seen the
 previous version — is any sentence about a state of the code they will never encounter?*
 
+**It covers every comment that explains a gate, not only Go's.** `tools/authoring` checks the `#`
+comments of every `Makefile`, `.sh` script and `.gitignore` for the same phrases. In those files the
+reader is learning what each gate guarantees, and an account of the session that added it tells them
+nothing about that. The tool decides only the phrases. A dated incident such as *"it had no target
+until 2026-09-06"* still needs a reader, and its present form says what the target guarantees: *"it
+is a target, not a command in a document"*. A ruling or a measurement keeps its date: it is the
+evidence, not the story.
+
 ---
 
 ## `AP-DEAD-01` — delete dead code rather than suppressing the compiler

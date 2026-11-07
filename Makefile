@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: hooks lint-plan-code test-say quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test
+.PHONY: hooks lint-plan-code test-say quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
 
 BINARY := watchpost
 DIST   := dist
@@ -56,9 +56,8 @@ vet:
 
 # THE BUILD-TAGGED SOURCE IS SOURCE, and `go vet ./...` never sees it. The
 # property tests live behind `property`; a tag with no gate is a tag that rots
-# (the injector's tagged seam test stayed dark once, found by hand at a red
-# team, I-3). The injector itself is untagged since 0.18.0 D-152, and its tests
-# run with every other.
+# (I-3). The injector itself is untagged (0.18.0 D-152), and its tests run with
+# every other.
 vet-tags:
 	go vet -tags property ./modes/tty ./platform/history
 
@@ -82,8 +81,9 @@ vuln:
 lint-imports:
 	@./scripts/lint-imports.sh
 
-# Human-Accountability Attribution gate: no AI watermarks in tracked files or commit messages.
-# The A2DH code-authoring rules a grep can decide, over the WHOLE TREE.
+# The A2DH code-authoring rules a syntax tree can decide, over the WHOLE TREE:
+# every Go file, and AP-HIST-01 over the `#` comments of the Makefile, the
+# shell scripts and .gitignore.
 #
 # SCOPED TO THE ARTEFACT, NEVER TO THE SESSION (HUM LEAD, 2026-09-16). An
 # anti-pattern is not excused by predating the change that finds it: a
@@ -94,6 +94,7 @@ lint-authoring:
 	@go run ./tools/authoring -self-test
 	@go run ./tools/authoring
 
+# Human-Accountability Attribution gate: no AI watermarks in tracked files or commit messages.
 lint-watermark:
 	@./scripts/lint-watermark.sh
 
@@ -143,24 +144,23 @@ gate-controls:
 	@./scripts/quality/mutant-anchors.sh --self-test
 
 # THE CHEAP HALF OF `mutant-check`, RUNNABLE BEFORE A COMMIT. It asks only
-# whether every mutant still FINDS its line — three tenths of a second against
-# 400 for the full gate, which also compiles each mutation and is the reason that
+# whether every mutant still FINDS its line, in seconds; the full gate also
+# compiles each mutation (its timing is under `mutant-check`), which is why that
 # one cannot be run casually.
 #
 # IT SITS BEFORE `mutant-check` IN `verify` so the corpus's cheapest failure is
-# also its fastest: a drifted anchor is found in a moment rather than seven
-# minutes in. It does not replace it — compiling every mutation is the other half
+# also its fastest: a drifted anchor is found in a moment rather than minutes
+# in. It does not replace it — compiling every mutation is the other half
 # of the question and only the slow gate answers it.
 mutant-anchors:
 	@./scripts/quality/mutant-anchors.sh
 
 # The mutation corpus and the harness that reads it (06_docs/mutants, Go, behind
-# the `mutants` build tag so its ~140s does not land in `go test ./...` and thus
+# the `mutants` build tag so its minutes do not land in `go test ./...` and thus
 # in `make race`). Every mutant still applies to the tip, still compiles with its
 # tests, and is not inert; the harness still reports each verdict with the right
 # exit code, still refuses a red baseline and a dirty tree, and still calls a
-# crash CAUGHT. All of that was shell until 2026-09-03, and 17 of one session's
-# 34 defects were in that shell.
+# crash CAUGHT. It is Go, as AP-SHELL-01 asks.
 mutant-check:
 	@mkdir -p $(DIST)
 # -v ON PURPOSE. Without it the durable record is one line — "ok ... 241s" — which
@@ -174,28 +174,23 @@ mutant-check:
 # 07-readiness folder deliberately at release time — so it is evidence for one
 # run, not a kept record. It calls cache-clean, NOT hygiene: hygiene certifies a
 # durable record before deleting, and a gate that runs on every verify has no
-# durable record to certify. Claiming otherwise here cost a silently skipped
-# clean-up inside a 900-line log while verify still reported green (0.14.2), and
-# then a 730-line file rewritten on every verify when that was "fixed" wrong.
+# durable record to certify: certifying here would either skip a clean-up
+# inside a long log while verify reports green, or rewrite a durable file on
+# every verify.
 # -timeout IS NOT DECORATION HERE, and the numbers are the argument. go test
-# defaults to 10 minutes. This corpus takes about 400s on the
-# developer's machine and ran 396s, 486s and 602s across three ubuntu-latest
-# jobs on 2026-09-09 — a 1.5x spread on the SAME commit and platform. The
-# margin is invisible locally because local has more cores.
-#
-# What that spread does to a 10-minute default: the same commit passed in the
-# pull_request run and died in the push run with "panic: test timed out after
-# 10m0s", and a later run came in at 602s — TWO SECONDS under the default it
-# would have been measured against. A gate whose failure mode is the clock is
-# not reporting on the code, and it fails at random, which is the worst way for
-# it to be wrong.
+# defaults to 10 minutes, and the corpus's time on one commit and one platform
+# spreads by a third or more. A gate whose failure mode is the clock is not
+# reporting on the code, and it fails at random, which is the worst way for it
+# to be wrong. Locally the margin is invisible, because the developer's machine
+# has more cores than a hosted runner.
 #
 # 240m: the corpus at 835 mutants ran 93 minutes on a hosted ubuntu-24.04
 # runner (run 40908367003, 2026-10-29) and passed 120 minutes on the same
-# platform two hours later without finishing (run 40927225939), a 1.3x spread
-# on one platform; 240m is twice the cap it outgrew. The corpus grows every
-# release; when it approaches this, raise it and re-record the measurement
-# here rather than trimming the corpus to fit the clock.
+# platform two hours later without finishing (run 40927225939); 240m is twice
+# that. At 1032 mutants it ran 2253 s on the developer's 18 cores (2026-11-07). The
+# corpus grows every release; when it approaches the cap, raise it and
+# re-record the measurement here rather than trimming the corpus to fit the
+# clock.
 	@go test -tags mutants -v -count=1 -timeout 240m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
 	  cat $(DIST)/mutant-check.log; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
@@ -220,13 +215,12 @@ test-platforms:
 
 # --- hygiene: clean up after ourselves, every time, without doing arithmetic ---
 #
-# ON 2026-09-06 THE VOLUME REACHED 1.2 GiB FREE OF 926 GiB, and 274 GB of that
-# was the Go build cache. A mutation run compiles the tree once per mutant, and
-# every variant is a cache entry that will never be reused again, so the cache
-# grows without bound and nothing trims it. This is not untidiness: the gates
-# were flaky, journey steps that need the network failed, and a 14.2 s radio
-# read was measured on a machine with no disk left. A FULL DISK IS A VECTOR FOR
-# BAD RESULTS, not only for no space.
+# A MUTATION RUN FILLS THE DISK if nothing trims it. It compiles the tree once
+# per mutant, and every variant is a cache entry that will never be reused, so
+# the Go build cache grows without bound: one sweep's has reached hundreds of
+# gigabytes. This is not untidiness. On a full disk the gates go flaky, journey
+# steps that need the network fail, and a timing measures the disk. A FULL DISK
+# IS A VECTOR FOR BAD RESULTS, not only for no space.
 #
 # The protocol is deterministic and consults the size of nothing, because a
 # threshold means the cleanup only runs once the damage is already done:
@@ -248,15 +242,13 @@ test-platforms:
 #
 # RECORDS are not deleted here, but dist is NOT durable: it is the directory
 # this target empties. A run's record belongs in the feature's 06_docs tree, on
-# a TRACKED path — filed is not the same as committed, and until 0.14.1 eight
-# records under 06_docs were ignored by `*.log` and only looked filed.
-# `.gitignore` now re-includes `06_docs/**/*.log`; the check below is what
-# proves it for any path you pass. hygiene also names any record still sitting
+# a TRACKED path — filed is not the same as committed. `*.log` is ignored, so
+# `.gitignore` re-includes `06_docs/**/*.log`, and the check below proves a
+# record is tracked for any path passed to it. hygiene also names any record still sitting
 # in dist, so it gets promoted rather than lost on the next run.
-# AND THE SWEEP'S TIMINGS (2026-09-15). `mutant-verdicts.timings` is NOT a
-# record — it is the stopwatch the NEXT sweep reads to print a MEASURED eta
-# instead of a guessed one, which is what stopped an estimate coming in 4x
-# short. It is regenerable from any run, so it does not belong in the
+# AND THE SWEEP'S TIMINGS. `mutant-verdicts.timings` is NOT a record — it is
+# the stopwatch the NEXT sweep reads to print a MEASURED eta instead of a
+# guessed one. It is regenerable from any run, so it does not belong in the
 # repository's history; it is also the one thing in dist whose deletion costs
 # something, so it is named here rather than left to luck.
 HYGIENE_KEEP := watchpost watchpost-$(LAST_TAG) mutant-verdicts.timings
@@ -346,9 +338,6 @@ treelock-selftest:
 tree-free:
 	@go run ./tools/treelock -check
 
-# Deterministic allocation pins (quality pass §1). They count mallocs, which the race
-# detector distorts, so they run in their own non-race step (red-team R2-8); under
-# `make race` they skip themselves via the raceEnabled build tag.
 # pty-severe machine-verifies the Severe Weather / Disaster Events window on a real pty (0.13.0).
 pty-severe: build
 	expect scripts/quality/severe-modal.expect
@@ -357,10 +346,9 @@ pty-severe: build
 # first run). Its exit code is the count of FAILs, and the M2 step measures the
 # keypresses from the dashboard to "role X speaks in voice Y".
 #
-# IT HAD NO TARGET UNTIL 2026-09-06, and gates.md documented it as a command you
-# type. So it went red at the Setup -> Settings rename — it waited for a label
-# that no longer existed — and stayed red, unnoticed, exactly as the severe-window
-# pty smoke had (F-D3). A gate nothing runs is not a gate.
+# IT IS A TARGET, NOT A COMMAND IN A DOCUMENT. A journey typed by hand from a
+# page goes red the first time a label it waits for is renamed, and stays red
+# with nothing to notice it (F-D3). A gate nothing runs is not a gate.
 #
 # Not in `verify`: it needs the network and a few minutes. Local, before SHIP.
 journey: build
@@ -374,12 +362,11 @@ journey: build
 #
 # `mutant-anchors` proves each mutant still finds its line; `mutant-check` proves
 # each still compiles. NEITHER ASKS WHETHER ANYTHING STILL FAILS WHEN IT IS
-# APPLIED. On 2026-09-13 a sweep of the release's 82 newest mutants found a live
-# coverage hole (mAA2, a rule pinned by a tautology) and a mutant guarding a rule
-# the product had retired (mAB1) — neither visible to any other gate.
+# APPLIED. Only this sweep sees a rule pinned by a tautology, or a mutant
+# guarding a rule the product has retired.
 #
 # NOT IN `verify`: tens of minutes, one mutant at a time. Same standing as
-# `journey`. HUM LEAD approved it as a standing obligation 2026-09-13.
+# `journey`: a standing obligation (HUM LEAD, 2026-09-13).
 # VERDICTS_RECORD is where the sweep's record lives once it is durable: one
 # file for the tree since the newest release tag, named from LAST_TAG (0.19.5
 # D-16). A sweep is evidence about the corpus as it stood for one release, so a
@@ -398,12 +385,11 @@ VERDICTS_RECORD := 06_docs/mutants/verdicts/since-v$(LAST_TAG).log
 # IT REFUSES RATHER THAN OVERWRITES A GOOD RECORD WITH A BAD ONE. An empty or
 # missing log means the sweep died before it said anything, and copying that
 # over the last real one would destroy the evidence this step exists to keep.
-# DO NOT `make -n` THIS TARGET OR `mutant-verdicts` (learned the hard way,
-# 2026-09-15). GNU make EXECUTES a recipe line containing $(MAKE) even under
-# -n, so a "dry run" of `mutant-verdicts` runs the sweep script — which opens
-# its log with `: >` and truncates the record of the last real run. It cost
-# this session's 3-hour sweep log, recoverable only because the run's stdout
-# happened to survive elsewhere. To see what a target would do, read it.
+# DO NOT `make -n` THIS TARGET OR `mutant-verdicts`. GNU make EXECUTES a
+# recipe line containing $(MAKE) even under -n, so a "dry run" of
+# `mutant-verdicts` runs the sweep script — which opens its log with `: >` and
+# truncates the record of the last real run. To see what a target would do,
+# read it.
 promote-verdicts:
 	@test -n "$(LAST_TAG)" || { echo "promote-verdicts: this clone has no release tag, so the record has no name; fetch the tags (git fetch --tags) and promote again"; exit 1; }
 	@test -s "$(DIST)/mutant-verdicts.log" || { echo "promote-verdicts: $(DIST)/mutant-verdicts.log is missing or empty — the sweep left no record, so NOTHING is promoted"; exit 1; }
@@ -415,14 +401,10 @@ promote-verdicts:
 
 # AND IT CLEANS UP AFTER ITSELF, exactly as `mutant-check` does (HUM LEAD,
 # 2026-09-15). This target is the LARGEST producer of build variants in the
-# repo — one full-tree compile per mutant across ~3 hours — and it was the one
-# path calling neither `cache-clean` nor `hygiene`. The 2026-09-06 incident was
-# 274 GB of Go build cache from exactly this shape of run.
-#
-# IT WAS MASKED BY LUCK, WHICH IS WHY IT SURVIVED A WHOLE SESSION UNNOTICED:
-# every `make verify` afterwards runs `mutant-check`, whose own `cache-clean`
-# swept up the sweep's leavings. A gate that is only clean because a different
-# gate ran is not clean.
+# repo — one full-tree compile per mutant across hours — so it cleans its own.
+# A later `make verify` would sweep them too, through `mutant-check`'s own
+# `cache-clean`, but a gate that is only clean because a different gate ran is
+# not clean.
 #
 # THE CLEAN RUNS ON FAILURE TOO, and the verdict is preserved across it — a
 # sweep that exits non-zero because something SURVIVED is the run most likely
@@ -442,8 +424,8 @@ mutant-verdicts:
 # another. cmd/watchpost/gates_test.go fails if that stops being true.
 #
 #   push     every push and pull request. Correct on the merits and the
-#            slowest: 261 s on twelve cores locally, so roughly fifteen to
-#            twenty minutes on a four-core runner, every time.
+#            slowest: 2253 s on 18 cores locally (2026-11-07) and about
+#            93 minutes on a hosted runner (2026-10-29), every time.
 #   nightly  the scheduled run only, plus every release tag (the release
 #            workflow runs `make verify`, which includes it). Fast pull
 #            requests, and a window in which a survived mutant can be merged
@@ -469,16 +451,13 @@ dupes:
 dupes-selftest:
 	@go run ./tools/dupes -self-test
 
-# THE PRODUCER/CONSUMER COMPLETENESS CHECK over the closed sets. Proposed at
-# 0.14.0's round-3 red team, named in that release's debrief as "the single
-# highest-value thing 0.15.0 could inherit", and unbuilt until 0.16.0 P3 shipped
-# another instance of the shape it was designed to catch.
+# THE PRODUCER/CONSUMER COMPLETENESS CHECK over the closed sets: every member
+# has a writer and a reader, or a ratified row saying why not. 0.14.0's debrief
+# named it "the single highest-value thing 0.15.0 could inherit".
 #
-# IN `verify` (HUM LEAD, 2026-09-09). The first run reported eight unwired
-# members; three were resolved rather than exempted — one deleted, one a bug in
-# this tool, one a code fix — and the five that remain are RATIFIED AS OWED in
-# 06_docs/wires-ratified.md, each naming the writer it awaits and the batch that
-# owes it.
+# IN `verify` (HUM LEAD, 2026-09-09). 06_docs/wires-ratified.md holds no
+# exemption today; a member left unwired needs a ratified row there, naming the
+# writer it awaits and the batch that owes it.
 #
 # THE LEDGER EXPIRES ITSELF. A row whose member is no longer unwired, or whose
 # member no longer exists, is a STALE EXEMPTION and fails. So wiring the member
@@ -499,12 +478,14 @@ lint:
 lint-update:
 	@scripts/lint.sh --update
 
-# THE PATTERN IS NOT ANCHORED, and that is a fix rather than sloppiness.
-# `AllocBudget$$` selected seven of the eight pins: the eighth is
-# TestTickAdvanceAllocBudgetWithATestEventOnTheTape, whose name says what its
-# fixture carries AFTER the budget it measures, so the anchor excluded it. Its
-# own doc reads "the existing pin cannot see this change" — and the new pin was
-# the one nothing ran.
+# Deterministic allocation pins (quality pass §1). They count mallocs, which the race
+# detector distorts, so they run in their own non-race step (red-team R2-8); under
+# `make race` they skip themselves via the raceEnabled build tag.
+#
+# THE PATTERN IS NOT ANCHORED, on purpose. A pin's name may say what its
+# fixture carries after the budget it measures, as
+# TestTickAdvanceAllocBudgetWithATestEventOnTheTape does, and `AllocBudget$$`
+# would never select it.
 #
 # An anchor makes the gate depend on a naming convention nothing enforces, and
 # the failure is silent in the worst direction: the test passes locally, is
@@ -587,9 +568,9 @@ clean:
 
 # Regenerate the checked-in JSON Schema (TestPublishedSchemaMatchesGenerator keeps it honest).
 # The published file is named for the version it carries, and the version is
-# read from the one place that defines it. It used to be written here by hand,
-# so a bump wrote new content into the old file's name and the test - which
-# derives the name - then looked for a file that did not exist (0.17.0).
+# read from the one place that defines it, so a version bump cannot write new
+# content under the old file's name while the test, which derives the name,
+# looks for a file that does not exist.
 SCHEMA_VERSION := $(shell sed -n 's/.*SchemaVersion = "\(.*\)".*/\1/p' platform/snapshot/types.go)
 schema:
 	go run ./cmd/watchpost schema > pkg/schema/watchpost-report.v$(SCHEMA_VERSION).schema.json

@@ -1,8 +1,7 @@
 #!/usr/bin/env sh
 # workload.sh — W14's standard workload v1 (0.18.0 D-154): the one defined
-# workload every before-and-after number is taken on. perf-measurement.md says
-# why: the missing piece was never a tool, it was that two runs on different
-# workloads could not be compared.
+# workload every before-and-after number is taken on, because two runs on
+# different workloads cannot be compared (perf-measurement.md).
 #
 #   scripts/quality/workload.sh session <default|heavy> <outdir> [phase_minutes=10]
 #   scripts/quality/workload.sh cold    <default|heavy> <outdir> [runs=5]

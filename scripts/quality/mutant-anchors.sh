@@ -1,18 +1,16 @@
 #!/usr/bin/env sh
 # Mutant anchor gate: every mutant in the corpus must still MATCH the tip.
 #
-# WHY THIS EXISTS WHEN `mutant-check` ALREADY ANSWERS IT. It answers it in ~400
-# seconds, because it also COMPILES every mutation — which is the other half of
-# the question and the expensive half. This asks only "does the anchor still
-# find its line", takes about three seconds, and is meant to be run BEFORE a
-# commit rather than after one.
+# WHY THIS EXISTS WHEN `mutant-check` ALREADY ANSWERS IT. That one takes
+# minutes (the Makefile records its timing), because it also COMPILES every
+# mutation — the other half of the question and the expensive half. This asks
+# only "does the anchor still find its line", takes seconds, and is meant to be
+# run BEFORE a commit rather than after one.
 #
 # THE COST IT IS PAYING BACK. A mutant is coupled to the LITERAL TEXT of the rule
-# it guards, so refactoring that line disarms it silently. Four drifted in one
-# session on 2026-09-13 — mAF1 twice, m85, mAN1 — every one found by the slow
-# gate, after the commit that broke it. The rules were never unmeasured for long,
-# but "my new mutants pass" was repeatedly mistaken for "the corpus still
-# measures what it did", and those are different sentences.
+# it guards, so refactoring that line disarms it silently, and the slow gate
+# finds it only after the commit that broke it. "My new mutants pass" and "the
+# corpus still measures what it did" are different sentences.
 #
 # A DRIFTED MUTANT IS NOT A PASSING MUTANT. It is an UNMEASURED rule, which is
 # why this fails rather than warns: the mutation would apply to nothing, the
@@ -22,10 +20,9 @@
 # IT RUNS EACH MUTANT'S OWN ASSERTION, and that is the whole design. The obvious
 # implementation reads `old = "..."` out of the file with a regex and looks for
 # that string — a SECOND parser for the corpus, which can disagree with the
-# harness that actually applies these. It already did: the first draft of this
-# check decoded anchors with `unicode_escape` and reported a false drift on the
-# one mutant whose anchor contains a `◆`, because that codec reads UTF-8 bytes as
-# latin-1. Four mutants also COMPUTE their anchor rather than writing it as a
+# harness that actually applies these. One that decodes anchors with
+# `unicode_escape`, for instance, reads UTF-8 bytes as latin-1 and reports a
+# false drift on an anchor holding a `◆`. Some mutants also COMPUTE their anchor rather than writing it as a
 # literal, and no regex sees those at all.
 #
 # So the mutant is EXECUTED with `write_text` neutered. The `assert old in s` it
@@ -144,8 +141,8 @@ set -- $count
 total=${1:-0}
 bad=${2:-0}
 # A DRIVER THAT DIED LEAVES NO COUNT, and a run that measured nothing is not a
-# pass (REVIEW 2026-09-17): a mutant raising SystemExit took the whole driver
-# down and this printed "0 mutant(s), every anchor still matches".
+# pass (REVIEW 2026-09-17): a mutant raising SystemExit takes the whole driver
+# down, and a count of zero must not print "every anchor still matches".
 if [ -z "$count" ] || [ "$total" -eq 0 ]; then
   echo "mutant-anchors: the driver reported no count — the run measured nothing and does not pass" >&2
   exit 1

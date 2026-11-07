@@ -8,17 +8,14 @@
 # IT IS APPLIED**, and that is the only question that makes a corpus evidence
 # rather than decoration.
 #
-# WHAT THAT BLIND SPOT COST, MEASURED 2026-09-13. A one-off sweep of the release's
-# 82 newest mutants found two that passed every gate and measured nothing:
+# WHAT THAT BLIND SPOT HIDES: a mutant that passes every other gate and measures
+# nothing.
 #
-#   mAA2  a LIVE COVERAGE HOLE. The rule was pinned by a tautology — the test
-#         helper re-derived production's own predicate and then asserted on it,
-#         so deleting the guard changed nothing the test could see. On the
-#         console two settings groups are empty; without that guard the operator
-#         gets two headings announcing categories and showing none of them.
-#   mAB1  A RULE THE PRODUCT RETIRED. It guarded D-104; D-106 replaced that rule
-#         and deleted its detector. The anchor still matched, the mutation still
-#         compiled, and it defended an abandoned design. Retired by the HUM LEAD.
+#   a LIVE COVERAGE HOLE. The rule is pinned by a tautology — the test helper
+#         re-derives production's own predicate and asserts on it, so deleting
+#         the guard changes nothing the test can see.
+#   A RULE THE PRODUCT RETIRED. Its anchor still matches and its mutation still
+#         compiles, and it defends an abandoned design.
 #
 # Neither shape is visible to anything else in the toolchain.
 #
@@ -29,24 +26,22 @@
 # A SURVIVOR IS ESCALATED BEFORE IT IS BELIEVED. Each mutant runs against the
 # package it EDITS, because that is fast; a mutant caught by a test in another
 # package would read as SURVIVED against that narrow set. So anything that
-# survives is re-run against `./...` and only then reported. On 2026-09-13 that
-# step turned two of four apparent survivors into CAUGHT (mCA, mDC) — which is
-# the control this sweep is watched by: without escalation it reports false
-# survivors, and it was seen doing so.
+# survives is re-run against `./...` and only then reported. Without escalation
+# the sweep reports false survivors.
 set -eu
 
 out=${1:-dist/mutant-verdicts.log}
 mkdir -p "$(dirname "$out")"
 : > "$out"
 
-# THE TIMINGS DO NOT FOLLOW THE LOG, and after 2026-09-15 that matters: the log
+# THE TIMINGS DO NOT FOLLOW THE LOG, and that matters: the log
 # is PROMOTED out of dist into the release's readiness tree, because it is the
 # run's record and the hygiene protocol requires a record to be durable and
 # tracked. The timings are neither.
 #
 # THEY ARE AN OPERATIONAL INPUT, NOT A RECORD. The next run reads them to
 # compute a MEASURED eta rather than a guessed one — which is the whole reason
-# they exist, after an estimate came in 4x short. They are regenerable from any
+# they exist. They are regenerable from any
 # run, so committing them would put a machine-specific stopwatch into the
 # repository's history for no reader. They stay in dist, and `HYGIENE_KEEP`
 # names them so the cleanup spares them.
@@ -60,12 +55,10 @@ pkgof() { sed -n 's/.*pathlib\.Path("\([^"]*\)").*/\1/p' "$1" | head -1 | xargs 
 
 # THE ETA IS MEASURED, NOT GUESSED, and that is the whole of this block.
 #
-# A HUMAN ESTIMATE OF THIS WAS WRONG BY 4x (2026-09-13: "~95 minutes", actual
-# 6.5 hours). It was extrapolated from a sample of 18 mutants chosen for being
-# RECENT rather than representative — their detectors fail early, so `go test`
-# exits early — while a single direct measurement taken minutes earlier said 201 s
-# and was discarded for disagreeing. So the estimate stops being a judgement call:
-# every run records seconds-per-mutant per package, and the next run reads them.
+# AN ESTIMATE BY HAND IS WRONG BY MULTIPLES. A sample of RECENT mutants is not
+# representative — their detectors fail early, so `go test` exits early. So the
+# estimate is not a judgement call: every run records seconds-per-mutant per
+# package, and the next run reads them.
 #
 # NO HISTORY MEANS NO ESTIMATE, said out loud. A made-up number is what this
 # exists to stop.
@@ -128,13 +121,11 @@ for m in $list; do
 		# pay for it.
 		#
 		# ./... because a mutant run against the package it EDITS reads as
-		# SURVIVED when its detector lives elsewhere — that turned two of four
-		# apparent survivors into CAUGHT on 2026-09-13.
+		# SURVIVED when its detector lives elsewhere.
 		#
 		# AND THEN -race, because some detectors only work under it. The press
-		# gate's own test measures 20/20 with it and ~81/100 without, so this
-		# sweep reported that rule as unmeasured and an hour went into finding
-		# out why. A survivor that needs the race detector is not a survivor.
+		# gate's own test measures 20/20 with it and ~81/100 without. A survivor
+		# that needs the race detector is not a survivor.
 		v=$(MUTANT_BASELINE=assumed ./06_docs/mutants/run.sh "$m" ./... 2>&1 | tail -1)
 		case "$v" in
 		SURVIVED*)

@@ -13,6 +13,7 @@ import (
 	"go/ast"
 	"go/token"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -92,10 +93,7 @@ func checkHistory(fset *token.FileSet, f *ast.File, path string) []Finding {
 	var out []Finding
 	for _, g := range f.Comments { // bounded by the file's comments (P10-02)
 		for _, c := range g.List { // bounded by the group (P10-02)
-			if histExempt.MatchString(c.Text) || !histPhrases.MatchString(c.Text) {
-				continue
-			}
-			if histEmployed.MatchString(c.Text) && !otherHistPhrase(c.Text) {
+			if !narrates(c.Text) {
 				continue
 			}
 			out = append(out, Finding{
@@ -104,6 +102,42 @@ func checkHistory(fset *token.FileSet, f *ast.File, path string) []Finding {
 				Why:  "state what the code does and why NOW; the change is already in git log and the record documents",
 			})
 		}
+	}
+	return out
+}
+
+// narrates reports whether a comment narrates the past: it carries one of the
+// catalogue's phrases, and is neither a deprecation nor "used to" in its
+// employed sense.
+func narrates(text string) bool {
+	if histExempt.MatchString(text) || !histPhrases.MatchString(text) {
+		return false
+	}
+	return !histEmployed.MatchString(text) || otherHistPhrase(text)
+}
+
+// hashCommented reports whether a file's comments are `#` lines: the
+// Makefile, shell scripts and .gitignore, where the gates and their reasons
+// are written.
+func hashCommented(path string) bool {
+	base := filepath.Base(path)
+	return base == "Makefile" || base == ".gitignore" || strings.HasSuffix(base, ".sh")
+}
+
+// checkHashHistory is AP-HIST-01 over a `#`-commented file: each line whose
+// first character past the indent is `#`, a script's shebang aside.
+func checkHashHistory(src, path string) []Finding {
+	var out []Finding
+	for n, line := range strings.Split(src, "\n") { // bounded by the file's lines (P10-02)
+		t := strings.TrimSpace(line)
+		if !strings.HasPrefix(t, "#") || (n == 0 && strings.HasPrefix(t, "#!")) || !narrates(t) {
+			continue
+		}
+		out = append(out, Finding{
+			Rule: "AP-HIST-01", File: path, Line: n + 1,
+			Text: t,
+			Why:  "state what the target or script does and why NOW; the change is already in git log and the record documents",
+		})
 	}
 	return out
 }

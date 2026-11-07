@@ -246,6 +246,20 @@ func packageDocControls() int {
 	return 0
 }
 
+// hashControls proves AP-HIST-01 over `#` comments in both directions: a
+// narrating comment in a Makefile is reported, and a present-tense one, a
+// recipe line and a script's shebang are not. It returns the number wrong.
+func hashControls() int {
+	bad := checkHashHistory("# The schema used to be written here by hand.\nschema:\n\t@go run ./tools/schema\n", "Makefile")
+	good := checkHashHistory("#!/usr/bin/env sh\n# The version is read from the one place that defines it.\nschema:\n\techo used to\n", "Makefile")
+	if len(bad) != 1 || len(good) != 0 || !hashCommented("scripts/x.sh") || hashCommented("x.go") {
+		fmt.Printf("  %-15s a narrating # comment, and none in its present-tense form\n      got %d and %d\n", "MISSED", len(bad), len(good))
+		return 1
+	}
+	fmt.Printf("  ok              a narrating # comment, and none in its present-tense form\n")
+	return 0
+}
+
 func runSelfTest() int {
 	bad := 0
 	for _, s := range specimens() { // bounded by the table (P10-02)
@@ -281,6 +295,7 @@ func runSelfTest() int {
 		fmt.Printf("  ok              %s\n", s.name)
 	}
 	bad += packageDocControls()
+	bad += hashControls()
 	if bad > 0 {
 		fmt.Printf("\nauthoring self-test: %d specimen(s) wrong — the instrument does not discriminate\n", bad)
 		return 1
