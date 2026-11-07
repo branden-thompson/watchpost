@@ -820,3 +820,14 @@ finding is landed or recorded (M3).
     are `slices` and `maps` calls.
   - The per-package fixtures stay.
 - **The declaration set** in app is re-captured for `hostOf` and `missingValues` gone.
+- **P10 (D-27):** seven rows measure under their floors, for REVIEW. This batch's changed functions are
+  one-line delegations and table edits with nothing to guard:
+  - `app` (`mapfire.go`'s row) 0.33 against 0.61;
+  - `domains/severe` 0.36 against 0.50;
+  - `domains/temperature` 0.17 against 0.50;
+  - `platform/geo` 0.80 against 1.17;
+  - `platform/httpx` 0.33 against 0.64;
+  - `tools/authoring` 0.00 against 0.50;
+  - `tools/reachscore` 0.00 against 1.29.
+
+  At REVIEW exit each goes to the HUM LEAD for re-ratification with its figure.
