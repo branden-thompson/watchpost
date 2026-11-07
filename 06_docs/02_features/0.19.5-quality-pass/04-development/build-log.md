@@ -1122,3 +1122,49 @@ Mutant m787, hand-vetted and killed.
 - **The gate.** Green at first run. P10 reports no live finding. `tools/authoring/main.go`'s density is
   0.26, against its floor of 0.50. The new walk adds lines without checks, and the file's row
   stays for REVIEW (D-27).
+
+## 0.19.5 batch 24 — extending.md names what exists (plan Q7.4, JM-3, JM-13, DC-14, JR-9)
+
+Mutants m788 to m790 are new, each hand-vetted and killed.
+
+- **The check** (`cmd/watchpost/extending_symbols_test.go`). JM-3 found that where-things-happen's
+  pattern matches none of extending.md's spans, so this one indexes the tree instead.
+  - **The index.** Every Go file is parsed, tests included, because the page names the tests to
+    extend. go-studs is included too, because the page names its table API. The index holds each
+    package's top-level names, each type's methods and fields (embedded ones by their type), and
+    every file path.
+  - **What must resolve.** A backticked span shaped like a Go symbol: `pkg.Symbol` in that package,
+    `Type.Member` on that type, a field first (`Harmonized.UVIndex`) through declared names,
+    `platform/geo.ReadGeometry` in that directory, a bare `Symbol` anywhere, and a call such as
+    `httpx.TTL(d)` by its name.
+  - **What must exist.** A span naming a `.go` file, by path or by name, and any path to another kind
+    of file.
+  - **What is left to the reader,** each class named in `checkable`: lowercase words and snake_case,
+    which are config keys and JSON fields; ALL-CAPS environment variables; dotted keys like
+    `table.header` that start with neither a package nor a type; and bare non-Go file names, such as
+    the `CCL.js` a command downloads.
+  - **JM-13.** An "architecture §n" citation must name its `architecture.md` on the same line, since
+    the tree has several.
+  - **The floor.** It checks 183 spans, and fails under 150, so a narrowed matcher cannot pass by
+    checking a handful.
+  - **Its own control.** `TestTheSymbolCheckRefusesWhatIsNotDeclared` runs the same index over spans
+    that must be refused and spans that must pass. They include `Conditions.CheckKey`, a real name that
+    is not a member of that type. It also checks that the words it skips stay skipped and that
+    citations are told apart.
+  - m788 lets a package name anything, m789 lets a type have every member, and m790 lets an unpathed
+    citation pass.
+- **The page's drift, fixed.** Run first, the check also caught the unpathed citations.
+  - Walkthrough 2 (DC-14): the provider's attribution reaches the report's provider lines, not About.
+    The credit goes in `creditGroups` (`app/credits.go`), and About draws it as `CreditLine` rows. No
+    52-cell bound exists. The tiers are `priorityTiers` and `recentTiers`, the one owner of both lists;
+    `startPriority` and the RECENT pipeline only read them.
+  - Walkthrough 3 (JR-9): `withCmd` and `takeCmd` are the Dashboard's methods, not the deck's.
+  - Walkthrough 4: `want.Has(report.X)` is quoted as the `if` it is.
+  - Five unpathed architecture citations (§10.1, §10.3, §1.1 twice, and "PD/§10.10.5") now link to
+    `06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md`, whose §10.10 item 5 is
+    the on-demand rule. The 29 unpathed citations in Go comments are Q8.5's (JM-13).
+  - The schema note names `snapshot.SchemaVersion` rather than a version that drifts.
+  - `modes/report`'s package comment said "schema v1.0-rc" against the constant's 1.1.0-rc (JR-9). It
+    now names the constant.
+- **The banner** names the test that holds its claim. `06_docs/code-standards.md`'s checks list gives
+  its command (JM-15).

@@ -22,6 +22,7 @@ go run ./tools/authoring -self-test    # prove the checker can fail
 go run ./tools/authoring -json         # machine-readable
 make dupes                   # metric D: a duplicate with no ratified row fails, and so does a ratified row that matches nothing
 make lint-imports            # modes/ and platform/ import no domain, and only platform/render imports go-studs (D-10)
+go test -run Extending ./cmd/watchpost   # every symbol and path docs/extending.md names exists, and its architecture citations name their file
 ```
 
 **Every instrument here can prove it works.** `-self-test` runs planted specimens — the bad forms

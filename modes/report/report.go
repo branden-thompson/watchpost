@@ -1,5 +1,5 @@
 // Package report renders Snapshots for stdout: --json (machine, schema
-// v1.0-rc) and --report-only (line-oriented plain text — also the documented
+// snapshot.SchemaVersion) and --report-only (line-oriented plain text — also the documented
 // screen-reader surface, R-12d/G-9a). It imports ONLY platform packages —
 // never a domain (M5 structural rule; lint-enforced).
 //
