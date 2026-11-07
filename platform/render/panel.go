@@ -119,7 +119,7 @@ func (o Opts) BoxTitled(lines []string, title, stamp, fg, bg string) string {
 	tl, tr, bl, br, hz, vt := bx.TL, bx.TR, bx.BL, bx.BR, bx.Rule, bx.Rail
 	inset := strings.Repeat(" ", boxInset)
 	out := make([]string, 0, len(lines)+2)
-	out = append(out, tl+boxRule(hz, title, stamp, w-2)+tr)
+	out = append(out, tl+TitledRule(hz, title, stamp, w-2)+tr)
 	for _, l := range lines {
 		out = append(out, vt+inset+PadTo(truncate(l, o.BoxInnerWidth()), o.BoxInnerWidth())+inset+vt) // a row too wide is cut, never the corner (round 4, B-10)
 	}
@@ -127,10 +127,13 @@ func (o Opts) BoxTitled(lines []string, title, stamp, fg, bg string) string {
 	return o.Block(strings.Join(out, "\n"), fg, bg)
 }
 
-// boxRule fills w cells of a box's top rule around a title and a stamp:
+// TitledRule fills w cells of a box's top rule around a title and a stamp:
 // two rule cells, a space, the title, a space, the fill, two spaces, the
-// stamp, a space, two rule cells — or the plain rule when both are empty.
-func boxRule(hz, title, stamp string, w int) string {
+// stamp, a space, two rule cells — or the plain rule when both are empty. A
+// rule too narrow for both drops the stamp, then the title, so the corners
+// always land. The masthead's boxes and the console's cards draw their top
+// rule with it (0.19.5 D-18); either may pass a tinted title or stamp.
+func TitledRule(hz, title, stamp string, w int) string {
 	left, right := "", ""
 	if title != "" {
 		left = hz + hz + " " + title + " "

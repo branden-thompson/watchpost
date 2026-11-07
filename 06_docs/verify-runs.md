@@ -184,3 +184,5 @@ says exactly what passed.
 | 2026-11-07T07:32:49Z | 41884faf | dd26d6537a12 | verify | green | 2431 |
 | 2026-11-07T07:36:17Z | 68d8763d | 5beb66c61aa0 | verify-docs | green | 153 |
 | 2026-11-07T08:25:26Z | a7dd263a | a36743c7ba74 | verify | green | 2460 |
+| 2026-11-07T13:56:36Z | 3f3fa969 | 0dbaba07b38e | verify | FAILED (exit 2) | 247 |
+| 2026-11-07T14:38:15Z | 3f3fa969 | 8f14e6637062 | verify | green | 2477 |

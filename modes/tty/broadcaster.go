@@ -1623,15 +1623,11 @@ func cardBoxTitle(c lineup.Card, g render.Glyphs) string {
 // bcTakeoverTitle is the takeover box's own name, from the v2 reference.
 const bcTakeoverTitle = "! ALERT ! - TAKEOVER"
 
-// boxRule is a top border carrying a title at its left, in the masthead's shape.
-//
-// THE CORNERS ALWAYS LAND. A title wider than the rule is dropped rather than
-// pushing a corner off the row — the same rule `render.BoxTitled` states, which
-// is where this shape comes from.
+// boxRule is a card's top border: its title at the left and its grade badge at
+// the right, drawn with the masthead's own rule (render.TitledRule, 0.19.5
+// D-18), so a card's frame and the masthead's are one shape. The corners
+// always land: a rule too narrow for both drops the badge, then the title.
 func boxRule(mark, title, badge string, inner int) string {
-	if title == "" || inner < render.Width(title)+6 {
-		return strings.Repeat(mark, inner)
-	}
 	// THE TITLE READS AS A MODAL'S DOES (D-118, HUM LEAD 2026-09-13: "Let's make
 	// the Title 'LOCATION REPORT * <location>' Bold and White like the Modals").
 	//
@@ -1643,19 +1639,17 @@ func boxRule(mark, title, badge string, inner int) string {
 	//
 	// THE RULE'S MARKS KEEP THE GROUND'S TONE. What is being picked out is the
 	// NAME, not the border it sits in.
-	head := strings.Repeat(mark, 3) + " " + render.Tint(title, render.Tok(render.ModalTitle)) + " "
+	if title != "" {
+		title = render.Tint(title, render.Tok(render.ModalTitle))
+	}
 	// AND THE BADGE RIDES THE SAME RULE, at the right (D-110). The reference
 	// draws both boxes that way — `┏━━ LOCATION REPORT • Oceanside, CA 92057 ━━━
-	// • STANDARD • ━━━┓` — so what the card IS and how it is GRADED are read off
+	// • STANDARD • ━━┓` — so what the card IS and how it is GRADED are read off
 	// the frame, and the manifest has the row instead.
 	//
 	// IT GIVES WAY FIRST, because the title says WHICH card and the badge only
 	// says what kind: a box too narrow for both keeps the one that identifies it.
-	tail := ""
-	if badge != "" && inner-render.Width(head) >= render.Width(badge)+6 {
-		tail = " " + badge + " " + strings.Repeat(mark, 3)
-	}
-	return head + strings.Repeat(mark, inner-render.Width(head)-render.Width(tail)) + tail
+	return render.TitledRule(mark, title, badge, inner)
 }
 
 // cardTone is the ground a card is painted on, and the empty string for a slot

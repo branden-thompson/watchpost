@@ -72,7 +72,7 @@ func TestACardHasBordersOnEveryEdge(t *testing.T) {
 // THE BADGE RIDES THE RULE, at its right (D-110).
 //
 // THE HANDLE IS NOT ON THIS ROW. The reference puts the badge in the border —
-// `━━━ • STANDARD • ━━━` — and the handle in the footer beside the presenter, so
+// `━━ • STANDARD • ━━` — and the handle in the footer beside the presenter, so
 // no row carries them both. The box says what GRADE the card is without
 // spending a line.
 func TestTheBoxsRuleCarriesTheGrade(t *testing.T) {
@@ -81,7 +81,7 @@ func TestTheBoxsRuleCarriesTheGrade(t *testing.T) {
 		t.Errorf("the box's rule does not grade the card: %q", rule)
 	}
 	// AT THE RIGHT, and with the rule's own marks still closing the corner.
-	if !strings.HasSuffix(rule, "---+") {
+	if !strings.HasSuffix(rule, " --+") {
 		t.Errorf("the badge pushed the corner off the rule: %q", rule)
 	}
 	if at := strings.Index(rule, "STANDARD"); at < len([]rune(rule))/2 {
@@ -130,9 +130,11 @@ func TestARealCardHasNoCorners(t *testing.T) {
 // THE REFERENCE'S OWN RULE, at the reference's own card width (D-110): the LINE
 // UP card of `mock-broadcaster-v1.txt` is 132 cells.
 //
-// What the v3 reference fixes is the RULE: the card's name three marks in from
-// the corner, the grade three marks in from the other, and the corners landing
-// whatever the title's length.
+// What the reference fixes is the RULE: the card's name two marks in from the
+// corner, the grade two marks in from the other, and the corners landing
+// whatever the title's length. TWO, as the masthead's rule draws them: the
+// cards draw their rule with it (0.19.5 D-18, which the v3 reference's three
+// marks gave way to).
 //
 // MEASURED IN RUNES, because the badge's bullets are three bytes each and a
 // byte offset here reads as a plausible wrong number.
@@ -141,11 +143,11 @@ func TestTheBoxsRuleMatchesTheReferenceGeometry(t *testing.T) {
 	if got := len(rule); got != 132 {
 		t.Fatalf("the reference's card is 132 cells; got %d", got)
 	}
-	if got := string(rule[:5]); got != "+--- " {
-		t.Errorf("the reference opens the rule with three marks and a space; got %q", got)
+	if got := string(rule[:4]); got != "+-- " {
+		t.Errorf("the rule opens with two marks and a space, as the masthead's does; got %q", got)
 	}
-	if got := string(rule[len(rule)-5:]); got != " ---+" {
-		t.Errorf("and closes it with three; got %q", got)
+	if got := string(rule[len(rule)-4:]); got != " --+" {
+		t.Errorf("and closes with two; got %q", got)
 	}
 }
 

@@ -330,6 +330,7 @@ func TintDefault
 func TintKeeping
 func TintRaw
 func TitleGradient
+func TitledRule
 func Tok
 func TruncateCells
 func UnitsByKey
@@ -358,7 +359,6 @@ func blend
 func boldFg
 func borrowUnnamed
 func boxGlyphs
-func boxRule
 func bracketTitle
 func builtinOverrides
 func categoryTints

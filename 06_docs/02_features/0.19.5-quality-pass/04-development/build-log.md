@@ -855,3 +855,31 @@ Mutant m779, hand-vetted and killed.
   - m779 drops the mark in the render type, and `TestAFabricatedCardIsMarkedInTheLineUp` kills it.
   - The render declaration set is re-captured for `CardRow`.
 - **The check that refuses a go-studs import elsewhere** is Q7.5's, as planned.
+
+## 0.19.5 batch 17 — the cards draw the masthead's rule (plan Q6.2, D-18, D-32)
+
+Mutant m780 is new; mAL5 is re-pointed. Both are hand-vetted and killed.
+
+- **What changed.** render exports its titled rule as `TitledRule`. `BoxTitled` draws with it, and so does
+  the console's `boxRule`, which keeps only what is the card's own:
+  - the title's modal tint (D-118);
+  - the badge's place at the right, which gives way first (D-110).
+
+  The card's rule now has two marks where it had three, two spaces before the badge and two marks
+  after it, and render's exact-fit give-way: the badge goes first, then the title.
+- **The UAT look (A-12, D-32).** The changed lines were shown to the HUM LEAD before commit, and ruled to
+  ship as shown:
+  - the wide console's rules at 160x74;
+  - the narrow ones at 100x44;
+  - a scratch comparison of the give-way at inner widths 33 to 56. A narrow card now keeps its title,
+    and then its badge, where the old rule dropped them. At the exact fit the two sit three spaces
+    apart, as the masthead's stamp does.
+- **The goldens.** Only the twelve console goldens changed, by the rule alone, and are re-recorded. The
+  router trace's digests are re-recorded with them, since it draws the console.
+- **The tests.** `TestTheBoxsRuleCarriesTheGrade` and `TestTheBoxsRuleMatchesTheReferenceGeometry`
+  pinned the v3 reference's three marks, and now pin D-18's two, with their comments saying so.
+- **The mutants.** mAL5 follows the title's tint into its new line. m780 drops the badge and is killed.
+- **The CHANGELOG** says what an operator sees.
+- **The gate's first run** failed render's declaration-set pin, `boxRule` having become `TitledRule`. It
+  is re-captured.
+- **P10 (D-27):** `platform/render` measures 0.10 against 0.11, for REVIEW, beside batch 15's seven rows.

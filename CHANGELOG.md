@@ -27,6 +27,9 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   says "This is Eddy" and shows "Eddy" on the marquee.
 - **Re-running Setup keeps a place unless it is the same place by the app's one rule** — the same ZIP,
   or for a place without one the same coordinates to four decimals — as the watchlist and RECENT decide.
+- **The Broadcaster console's card boxes draw their top border as the masthead does:** two rule marks
+  before the card's name and after its grade badge, and on a narrow card the name and then the badge
+  stay in the border for as long as they fit, where they used to give way early.
 - **An unknown `[radio] mode` stops Watchpost at start** and names the key and its two words, as `cast`
   and the tones' `mode` already did, instead of being read as Synth.
 
