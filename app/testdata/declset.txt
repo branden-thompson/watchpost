@@ -702,7 +702,6 @@ func historyDurations
 func historyExtra
 func historyPlace
 func holdRest
-func hostOf
 func hostSources
 func hostsFor
 func hourGrids
@@ -762,7 +761,6 @@ func marineReportOf
 func matchesQuery
 func measureGrids
 func missingRow
-func missingValues
 func narrateDebug
 func ndfdRecord
 func nearestMetro

@@ -4,6 +4,7 @@ package app
 // layers and sources, and W1.14's estimate (FR-9.2) read from it.
 
 import (
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"slices"
 	"strings"
 	"testing"
@@ -76,17 +77,17 @@ func TestEveryRegisteredSourceIsOnTheClosedList(t *testing.T) {
 		t.Fatal("no source registered")
 	}
 	for _, s := range mapSources {
-		if !closed[hostOf(s.address)] {
+		if !closed[httpx.HostOf(s.address)] {
 			t.Errorf("%s (%s) registered and is not on the closed list", s.name, s.address)
 		}
 	}
 	for name, base := range radar.Hosts() { // W8: the radar's sources, held to the same table
-		if !closed[hostOf(base)] || !strings.HasPrefix(base, "https://") {
+		if !closed[httpx.HostOf(base)] || !strings.HasPrefix(base, "https://") {
 			t.Errorf("%s (%s) is not on the closed list, over https", name, base)
 		}
 	}
 	for name, base := range temperature.Hosts() { // W10: the temperature's, held to it too
-		if !closed[hostOf(base)] || !strings.HasPrefix(base, "https://") {
+		if !closed[httpx.HostOf(base)] || !strings.HasPrefix(base, "https://") {
 			t.Errorf("%s (%s) is not on the closed list, over https", name, base)
 		}
 	}

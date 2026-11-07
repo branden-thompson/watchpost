@@ -624,22 +624,9 @@ func TestAMutedReadIsDeclinedAndNothingIsConsumed(t *testing.T) {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !equalStrings(c.marked, []string{"a1"}) {
+	if !slices.Equal(c.marked, []string{"a1"}) {
 		t.Errorf("unmuted, the read marked %v, want the alert it said", c.marked)
 	}
-}
-
-// equalStrings is a small helper: two string slices, same order.
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // TestTheBandRecordIsBounded. It is a diagnostic ring, not a log: it keeps the

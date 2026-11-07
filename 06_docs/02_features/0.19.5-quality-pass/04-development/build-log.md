@@ -764,3 +764,59 @@ searched before the gate this time.
   - `app/pipelines.go` 0.40 against 0.61.
 
   No check was added for the count.
+
+## 0.19.5 batch 15 — consolidation, the rest (plan Q5.6: DR-12, DR-13, DR-14, DR-16; Q5.7)
+
+Mutants m773 to m778 are new; m425 is re-pointed. Each is hand-vetted and killed. With this batch every DR
+finding is landed or recorded (M3).
+
+- **DR-12, the missing row.**
+  - `missingValues` is gone, and the temperature map calls `missingRow`.
+  - No test held the row to NaN, so a row of zeros (a real 0 °C) would have passed.
+    `TestAMissingRowIsAllMissing` pins it, and m773 is killed.
+- **DR-13, the hour index.**
+  - `hourRow` takes its rows variadically, so the temperature series passes its six measures and
+    shares the rain's and the waves' one rule.
+  - `TestAnHourGoesInItsPlace` holds, and kills m774, which gives a new hour one measure only.
+- **DR-14, the class fallback.**
+  - `cast.Class.row` is the one fallback to ClassWarning, and `ToneRank`, `Key`, `String` and `ToneName`
+    read their field of it. `ToneRepeats` keeps its own rule.
+  - The existing pin checks every accessor's out-of-range answer, and kills m775.
+- **DR-16, the host of a URL.**
+  - `httpx.HostOf` is the one answer, in the `url.Parse` form, returning the URL itself where it has
+    no host. Every caller calls it directly: the failure columns, the Status window's map sources (app)
+    and the temperature quota.
+  - `TestHostOfNamesTheHostEveryCopyNamed` holds it to all three shipped copies on every URL those
+    callers pass.
+  - **The edges that differed are recorded as unreachable (A-17):**
+    - app's "" for a URL with no host;
+    - a URL that does not parse;
+    - userinfo, which the slicing form kept and the Status column no longer would.
+  - m776 and m777 are killed.
+- **Q5.7, DR's minor list.**
+  - **Landed:**
+    - `speedWords` calls `units.MilesOf`.
+    - The console's pool reads kilometres from `kmFromTower`, instead of converting miles back. The
+      line-up keeps `milesFromTower`, and both read `towerKm`, so each allocates only its own answer;
+      the line-up rows' allocation pin held them to it.
+    - severe's `abs` is `math.Abs`. They differ at -0 only, which no feed sends.
+    - The uncalled `fire.Age` is gone.
+    - The hour, day and fall-back counts use `plural`.
+    - Four membership loops are `slices.Contains`.
+    - `tools/dupes` and `tools/authoring` skip `.claude`, so an agent worktree is not read as a second
+      copy of the tree. Each skip list is pinned (`TestTheToolSkipsWhatIsNotOurs`), and m778 is killed.
+  - **Kept, with the reason:**
+    - `radarAheadLabel` and `hoursWords` stay two, now sharing `plural`. One is a Settings label that may
+      shorten, the other is prose.
+    - `notesYieldLine` keeps its singular, since its verb changes with the count.
+    - `mapDepthByKey` and `propRefreshByKey` are reverse map lookups, not membership.
+    - The sleep idiom, as the lens advised.
+    - The age wording, a UX ruling rather than a consolidation.
+    - The stale ledger row belongs to Q7.2.
+- **A-5, the test helpers.**
+  - The twelve pointer helpers (`f64`, `fx`, `pf`, `fp`, `f64ptr`) are `new(v)`. Each untyped integer
+    constant is `new(float64(n))`: the compiler named all 108 sites, and none was left as an integer.
+  - `indexOf`, `indexIn`, `containsExact`, `equalStrings`, the category `same` and the gate's `keys`
+    are `slices` and `maps` calls.
+  - The per-package fixtures stay.
+- **The declaration set** in app is re-captured for `hostOf` and `missingValues` gone.

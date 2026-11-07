@@ -183,9 +183,4 @@ func (d Dashboard) propAheadWords(lat, lon float64) string {
 }
 
 // hoursWords is a count of hours said: "1 hour", "3 hours".
-func hoursWords(k int) string {
-	if k == 1 {
-		return "1 hour"
-	}
-	return strconv.Itoa(k) + " hours"
-}
+func hoursWords(k int) string { return strconv.Itoa(k) + " hour" + plural(k) }

@@ -291,11 +291,7 @@ func (d Dashboard) quotaNoticeText() string {
 	if fallbacks == 0 {
 		return head + "Resets " + when
 	}
-	plural := "s"
-	if fallbacks == 1 {
-		plural = ""
-	}
-	return head + "Resets " + when + " // " + strconv.Itoa(fallbacks) + " Fall-back" + plural + " active"
+	return head + "Resets " + when + " // " + strconv.Itoa(fallbacks) + " Fall-back" + plural(fallbacks) + " active"
 }
 
 // quotaLayers counts the Open-Meteo overlays on by their state, from the

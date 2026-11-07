@@ -7,23 +7,21 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-func f64(v float64) *float64 { return &v }
-
 func TestRulesKeepAndBold(t *testing.T) {
 	r := DefaultRules()
 	if err := r.Valid(); err != nil {
 		t.Fatal(err)
 	}
-	if r.Keep("low", f64(20)) {
+	if r.Keep("low", new(float64(20))) {
 		t.Fatal("low confidence is below nominal")
 	}
-	if !r.Keep("nominal", f64(5)) || !r.Keep("high", f64(100)) || !r.Keep("analyst", nil) {
+	if !r.Keep("nominal", new(float64(5))) || !r.Keep("high", new(float64(100))) || !r.Keep("analyst", nil) {
 		t.Fatal("nominal+, FRP ≥ 5 or unknown FRP pass")
 	}
-	if r.Keep("high", f64(2)) {
+	if r.Keep("high", new(float64(2))) {
 		t.Fatal("a 2 MW detection is below the floor")
 	}
-	if !r.Bold(snapshot.Hotspot{FRPMW: f64(60)}) || r.Bold(snapshot.Hotspot{FRPMW: f64(10)}) || r.Bold(snapshot.Hotspot{}) {
+	if !r.Bold(snapshot.Hotspot{FRPMW: new(float64(60))}) || r.Bold(snapshot.Hotspot{FRPMW: new(float64(10))}) || r.Bold(snapshot.Hotspot{}) {
 		t.Fatal("bold at ≥ 50 MW only")
 	}
 	if (Rules{RadiusKm: 0}).Valid() == nil || (Rules{RadiusKm: 1, IncidentRadiusKm: 1, MinConfidence: "maybe"}).Valid() == nil {
@@ -48,10 +46,10 @@ func TestNearAndBounds(t *testing.T) {
 func TestClusterMergesPassesAndSortsNearest(t *testing.T) {
 	day := time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
 	hs := []snapshot.Hotspot{
-		{Lat: 33.500, Lon: -117.200, DetectedAt: day, FRPMW: f64(12), DistanceKm: f64(30)},
-		{Lat: 33.501, Lon: -117.201, DetectedAt: day.Add(time.Hour), FRPMW: f64(40), DistanceKm: f64(30)},       // same fire, later pass, stronger
-		{Lat: 33.300, Lon: -117.300, DetectedAt: day, FRPMW: f64(8), DistanceKm: f64(5)},                        // a different, nearer fire
-		{Lat: 33.500, Lon: -117.200, DetectedAt: day.Add(-30 * time.Hour), FRPMW: f64(90), DistanceKm: f64(30)}, // yesterday: its own cluster
+		{Lat: 33.500, Lon: -117.200, DetectedAt: day, FRPMW: new(float64(12)), DistanceKm: new(float64(30))},
+		{Lat: 33.501, Lon: -117.201, DetectedAt: day.Add(time.Hour), FRPMW: new(float64(40)), DistanceKm: new(float64(30))},       // same fire, later pass, stronger
+		{Lat: 33.300, Lon: -117.300, DetectedAt: day, FRPMW: new(float64(8)), DistanceKm: new(float64(5))},                        // a different, nearer fire
+		{Lat: 33.500, Lon: -117.200, DetectedAt: day.Add(-30 * time.Hour), FRPMW: new(float64(90)), DistanceKm: new(float64(30))}, // yesterday: its own cluster
 	}
 	got := Cluster(hs)
 	if len(got) != 3 {
@@ -74,7 +72,7 @@ func TestClusterMergesPassesAndSortsNearest(t *testing.T) {
 func TestAnalystPointsOutrankEveryThreshold(t *testing.T) {
 	r := DefaultRules()
 	r.MinConfidence = "high"
-	if r.Keep("nominal", f64(50)) || !r.Keep("high", f64(50)) || !r.Keep("analyst", f64(50)) {
+	if r.Keep("nominal", new(float64(50))) || !r.Keep("high", new(float64(50))) || !r.Keep("analyst", new(float64(50))) {
 		t.Fatal("at high: nominal drops, high and analyst-curated (HMS) pass")
 	}
 }

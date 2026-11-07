@@ -200,10 +200,11 @@ func funcName(fn *ast.FuncDecl) string {
 //
 // third_party is vendored and not ours to collapse; 06_docs/mutants holds
 // deliberately mutated copies of real code, which is the ONE place in this
-// repository where duplication is the point.
+// repository where duplication is the point; .claude holds agent worktrees,
+// each a whole second copy of the tree, which would double every function.
 func skipDir(base string) bool {
 	switch base {
-	case ".git", "third_party", "mutants", "dist":
+	case ".git", ".claude", "third_party", "mutants", "dist":
 		return true
 	}
 	return false

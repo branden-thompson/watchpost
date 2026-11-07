@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -382,7 +383,7 @@ func TestT03TheCuePrecedesTheWordsForEveryEvent(t *testing.T) {
 	// never cued and never spoke would satisfy every ordering claim below by
 	// vacuity.
 	for _, ev := range []string{":norfolk", ":raleigh"} {
-		cue, say := indexOf(seq, "cue"+ev), indexOf(seq, "say"+ev)
+		cue, say := slices.Index(seq, "cue"+ev), slices.Index(seq, "say"+ev)
 		if cue < 0 {
 			t.Fatalf("no cue for %s — the burst must cue the band once per event: %v", ev, seq)
 		}
@@ -452,15 +453,6 @@ func count(seq []string, prefix string) int {
 	return n
 }
 
-func indexOf(seq []string, want string) int {
-	for i, s := range seq {
-		if s == want {
-			return i
-		}
-	}
-	return -1
-}
-
 // count is how many players the fake output has handed out so far.
 func (o *heldOutput) count() int {
 	o.mu.Lock()
@@ -490,7 +482,7 @@ func TestNoRenderSitsBetweenACueAndItsWords(t *testing.T) {
 
 	seq := log.all()
 	for _, ev := range []string{":norfolk", ":raleigh"} {
-		render, cue, say := indexOf(seq, "render"+ev), indexOf(seq, "cue"+ev), indexOf(seq, "say"+ev)
+		render, cue, say := slices.Index(seq, "render"+ev), slices.Index(seq, "cue"+ev), slices.Index(seq, "say"+ev)
 		// THE FIXTURE FIRST: all three must exist, or the ordering below holds
 		// by vacuity.
 		if render < 0 || cue < 0 || say < 0 {
@@ -506,8 +498,8 @@ func TestNoRenderSitsBetweenACueAndItsWords(t *testing.T) {
 	// while the FIRST ALERT is rendered only when the read loop starts — after the
 	// head has been spoken and its pause already held. Every per-event check above
 	// passes while the listener waits a full render on that one boundary.
-	head := indexOf(seq, "say:structural")
-	first := indexOf(seq, "render:norfolk")
+	head := slices.Index(seq, "say:structural")
+	first := slices.Index(seq, "render:norfolk")
 	if head < 0 {
 		t.Fatalf("the fixture produced no burst head, so this boundary is untested: %v", seq)
 	}
@@ -579,7 +571,7 @@ func TestASequenceThatEndedDuringAnOverlappedRenderCuesNothing(t *testing.T) {
 
 	seq := log.all()
 	// THE FIXTURE MUST HAVE REACHED A RENDER, or "no cue" is true by vacuity.
-	if indexOf(seq, "render:norfolk") < 0 {
+	if slices.Index(seq, "render:norfolk") < 0 {
 		t.Fatalf("nothing was rendered, so this proves nothing about ending mid-render: %v", seq)
 	}
 	for _, step := range seq {

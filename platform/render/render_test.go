@@ -10,8 +10,6 @@ import (
 // offsets, UAT-2D responsive breakpoints, D-19 (f/c live units), R-12a
 // (severity/health never color-only).
 
-func f64(v float64) *float64 { return &v }
-
 // runeIdx is strings.Index in display columns (the header's ♪ and the rows'
 // ° are multibyte - byte offsets lie).
 func runeIdx(s, tok string) int {
@@ -25,8 +23,8 @@ func runeIdx(s, tok string) int {
 func testRow() LocationRow {
 	return LocationRow{
 		Index: 1, Name: "Oceanside, CA", Tag: "OSIDE", Zip: "92057",
-		Conditions: "CLEAR", Now: f64(22.8), Hi: f64(23.9), Lo: f64(17.2), Trend: "up",
-		TomorrowConditions: "RAIN", TomorrowHi: f64(25.0), TomorrowLo: f64(18.0),
+		Conditions: "CLEAR", Now: new(22.8), Hi: new(23.9), Lo: new(17.2), Trend: "up",
+		TomorrowConditions: "RAIN", TomorrowHi: new(25.0), TomorrowLo: new(18.0),
 		HasAlert: true, Selected: true, Playing: true,
 	}
 }

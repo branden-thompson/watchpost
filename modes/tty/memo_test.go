@@ -54,7 +54,7 @@ func TestBodyMemoInvalidatesOnEveryInput(t *testing.T) {
 		}},
 		{"[v]: the visualizer rows change the window", func(d Dashboard) Dashboard { d.radioViz = true; return d }},
 		{"Setup: the bold-◆ rule", func(d Dashboard) Dashboard {
-			d.snap.Locations[0].Fire.Hotspots = []snapshot.Hotspot{{Lat: 33, Lon: -117, FRPMW: f64(80)}}
+			d.snap.Locations[0].Fire.Hotspots = []snapshot.Hotspot{{Lat: 33, Lon: -117, FRPMW: new(float64(80))}}
 			d.cfg.FireBoldMW = 100
 			return d
 		}},

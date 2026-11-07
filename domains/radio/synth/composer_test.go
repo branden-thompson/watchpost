@@ -20,7 +20,7 @@ var std = Composer{}
 // exactly what 0.13.0 composed. Every later batch is measured against this.
 func TestComposeWithZeroReportsIsTodaysBroadcast(t *testing.T) {
 	loc := snapshot.Location{Label: "Oceanside, CA", Harmonized: snapshot.Conditions{
-		Condition: "partly_cloudy", Temp: f64(22.8), HumidityPct: f64(66),
+		Condition: "partly_cloudy", Temp: new(22.8), HumidityPct: new(float64(66)),
 		Source: snapshot.SourceInfo{Provider: "nws"}},
 		Alerts: []snapshot.Alert{{ID: "a1", Headline: "Heat Advisory", Description: "* WHAT...Hot."}}}
 	now := time.Date(2026, 8, 24, 16, 5, 0, 0, time.UTC)

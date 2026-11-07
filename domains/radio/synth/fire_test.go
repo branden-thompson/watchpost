@@ -22,12 +22,12 @@ func TestFireSegmentsReadTheScript(t *testing.T) {
 		State: snapshot.FireState{
 			AsOf: now,
 			Hotspots: []snapshot.Hotspot{
-				{Lat: 33.33, Lon: -117.29, DetectedAt: now.Add(-2 * time.Hour), FRPMW: f64(62), DistanceKm: f64(10), Source: snapshot.SourceInfo{ModelOrStation: "GOES-WEST"}},
-				{Lat: 33.24, Lon: -117.10, DetectedAt: now.Add(-40 * time.Minute), FRPMW: f64(8), DistanceKm: f64(18)},
+				{Lat: 33.33, Lon: -117.29, DetectedAt: now.Add(-2 * time.Hour), FRPMW: new(float64(62)), DistanceKm: new(float64(10)), Source: snapshot.SourceInfo{ModelOrStation: "GOES-WEST"}},
+				{Lat: 33.24, Lon: -117.10, DetectedAt: now.Add(-40 * time.Minute), FRPMW: new(float64(8)), DistanceKm: new(float64(18))},
 			},
 			Incidents: []snapshot.Incident{
-				{Name: "Timber", Lat: 33.24, Lon: -117.09, Acres: f64(12915), PercentContained: f64(26), Discovered: now.Add(-76 * time.Hour), Source: snapshot.SourceInfo{DistanceKm: f64(19)}},
-				{Name: "Convoy", Discovered: now.Add(-3 * time.Hour), Source: snapshot.SourceInfo{DistanceKm: f64(47)}}, // no size, no containment, no point yet
+				{Name: "Timber", Lat: 33.24, Lon: -117.09, Acres: new(float64(12915)), PercentContained: new(float64(26)), Discovered: now.Add(-76 * time.Hour), Source: snapshot.SourceInfo{DistanceKm: new(float64(19))}},
+				{Name: "Convoy", Discovered: now.Add(-3 * time.Hour), Source: snapshot.SourceInfo{DistanceKm: new(float64(47))}}, // no size, no containment, no point yet
 			},
 		},
 	}

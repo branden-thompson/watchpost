@@ -6,6 +6,7 @@ package severe
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 	"unicode"
@@ -217,7 +218,7 @@ func quakeRecord(r Row, in *time.Location) Record {
 	}
 	rec.Area = "Location: " + plaintext.Text(r.Location)
 	if r.HasPoint {
-		rec.Area += fmt.Sprintf(" (%.2f %s, %.2f %s)", abs(r.Lat), ns(r.Lat), abs(r.Lon), ew(r.Lon))
+		rec.Area += fmt.Sprintf(" (%.2f %s, %.2f %s)", math.Abs(r.Lat), ns(r.Lat), math.Abs(r.Lon), ew(r.Lon))
 	}
 	var facts []string
 	if q.Felt > 0 {
@@ -301,13 +302,6 @@ func paragraphs(description, instruction string) []string {
 		out = append(out, "Instructions: "+s)
 	}
 	return out
-}
-
-func abs(f float64) float64 {
-	if f < 0 {
-		return -f
-	}
-	return f
 }
 
 func ns(lat float64) string {

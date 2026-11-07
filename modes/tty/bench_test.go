@@ -61,11 +61,11 @@ func benchLoc(i int, days int, alert bool) snapshot.Location {
 	loc := snapshot.Location{
 		Label: fmt.Sprintf("Benchmark City %02d", i+1), Zip: fmt.Sprintf("9%04d", i),
 		Lat: 33.0 + float64(i)/10, Lon: -117.0 - float64(i)/10,
-		Harmonized: snapshot.Conditions{Temp: f64(22.8 + float64(i%7)), Condition: "partly_cloudy",
-			Source: snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KCRQ", DistanceKm: f64(12.5)}},
+		Harmonized: snapshot.Conditions{Temp: new(22.8 + float64(i%7)), Condition: "partly_cloudy",
+			Source: snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KCRQ", DistanceKm: new(12.5)}},
 	}
 	for d := range days {
-		loc.Daily = append(loc.Daily, snapshot.Daily{Date: fmt.Sprintf("2026-08-%02d", 24+d), TempMax: f64(23.9 + float64(d)), TempMin: f64(17.2), Condition: "clear"})
+		loc.Daily = append(loc.Daily, snapshot.Daily{Date: fmt.Sprintf("2026-08-%02d", 24+d), TempMax: new(23.9 + float64(d)), TempMin: new(17.2), Condition: "clear"})
 	}
 	if alert {
 		loc.Alerts = []snapshot.Alert{{Event: "Extreme Heat Watch", Severity: "severe", Headline: "until Friday"}}

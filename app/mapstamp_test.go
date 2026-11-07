@@ -36,12 +36,12 @@ func TestAnUnchangedOverlayIsTheSameOverlay(t *testing.T) {
 			}
 		}
 	}
-	obs := []ndbc.Obs{{ID: "46025", Lat: 33.765, Lon: -119.077, At: t1.Add(-10 * time.Minute), WaveM: f64(1.2), WaterC: f64(22.6)}}
+	obs := []ndbc.Obs{{ID: "46025", Lat: 33.765, Lon: -119.077, At: t1.Add(-10 * time.Minute), WaveM: new(1.2), WaterC: new(22.6)}}
 	b1, _ := buoyOverlay(obs, view, t1, true)
 	b2, _ := buoyOverlay(obs, view, t2, true)
 	same("buoys", []tuimaps.Overlay{b1}, []tuimaps.Overlay{b2})
 	changed := []ndbc.Obs{obs[0]}
-	changed[0].WaveM = f64(2.4)
+	changed[0].WaveM = new(2.4)
 	if b3, _ := buoyOverlay(changed, view, t2, true); tty.SameOverlay(b1, b3) {
 		t.Error("control: a changed reading compared the same - the check would pass anything")
 	}

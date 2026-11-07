@@ -23,8 +23,6 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-func pf(v float64) *float64 { return &v }
-
 // fireView is a view over southern California.
 var fireView = tty.MapView{W: -121, S: 32, E: -114, N: 36}
 
@@ -34,11 +32,11 @@ func someFire() fireInView {
 	outline := [][2]float64{{-117.2, 33.4}, {-117.0, 33.4}, {-117.0, 33.6}, {-117.2, 33.6}, {-117.2, 33.4}}
 	hole := [][2]float64{{-117.15, 33.45}, {-117.1, 33.45}, {-117.1, 33.5}, {-117.15, 33.45}}
 	return fireInView{
-		perimeters: []wfigs.Perimeter{{Name: "Timber", Acres: pf(12915), Contained: pf(26), Areas: [][][][2]float64{{outline, hole}}}},
-		incidents: []snapshot.Incident{{Name: "Timber", Lat: 33.5, Lon: -117.1, Acres: pf(12915), PercentContained: pf(26)},
-			{Name: "Bug", Lat: 39.72, Lon: -120.03, Acres: pf(93733)}},
-		hotspots: []hms.Point{{Lat: 33.5, Lon: -117.05, FRPMW: pf(80)}, {Lat: 33.52, Lon: -117.06, FRPMW: pf(12)},
-			{Lat: 33.53, Lon: -117.07, FRPMW: pf(2)}, {Lat: 33.54, Lon: -117.08}},
+		perimeters: []wfigs.Perimeter{{Name: "Timber", Acres: new(float64(12915)), Contained: new(float64(26)), Areas: [][][][2]float64{{outline, hole}}}},
+		incidents: []snapshot.Incident{{Name: "Timber", Lat: 33.5, Lon: -117.1, Acres: new(float64(12915)), PercentContained: new(float64(26))},
+			{Name: "Bug", Lat: 39.72, Lon: -120.03, Acres: new(float64(93733))}},
+		hotspots: []hms.Point{{Lat: 33.5, Lon: -117.05, FRPMW: new(float64(80))}, {Lat: 33.52, Lon: -117.06, FRPMW: new(float64(12))},
+			{Lat: 33.53, Lon: -117.07, FRPMW: new(float64(2))}, {Lat: 33.54, Lon: -117.08}},
 	}
 }
 

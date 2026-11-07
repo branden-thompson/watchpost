@@ -144,41 +144,31 @@ func ToneRepeats(c Class) int {
 // because Warning and Disaster share the dual-tone — the accidental coupling
 // MVS-D-73 exists to remove, reintroduced in the fallback. Two answers for one
 // question, agreeing by accident, is the shape D-1 is about.
-func (c Class) ToneRank() int {
-	if !c.valid() {
-		return classes[ClassWarning].toneRank
-	}
-	return classes[c].toneRank
-}
+func (c Class) ToneRank() int { return c.row().toneRank }
 
 func (c Class) valid() bool { return c >= 0 && c < numClasses }
 
+// row is c's row of the registry, and the loud default's, ClassWarning, for a
+// class out of range: the one fallback every accessor reads, so no accessor can
+// pick another (0.19.5 DR-14, the shape lineup's Slot.row has).
+func (c Class) row() class {
+	if !c.valid() {
+		return classes[ClassWarning]
+	}
+	return classes[c]
+}
+
 // Key is the config word for c. An out-of-range class reads as the loud
 // default's key, so a corrupt value is still nameable.
-func (c Class) Key() string {
-	if !c.valid() {
-		return classes[ClassWarning].key
-	}
-	return classes[c].key
-}
+func (c Class) Key() string { return c.row().key }
 
 // String is the Setup label for c (MVS-D-28 as drawn; the storm class keeps the
 // mock's word "Maritime" — MVS-D-33).
-func (c Class) String() string {
-	if !c.valid() {
-		return classes[ClassWarning].label
-	}
-	return classes[c].label
-}
+func (c Class) String() string { return c.row().label }
 
 // ToneName is the preset c always sounds. Out of range returns the loudest,
 // never a panic and never silence.
-func ToneName(c Class) string {
-	if !c.valid() {
-		return classes[ClassWarning].preset
-	}
-	return classes[c].preset
-}
+func ToneName(c Class) string { return c.row().preset }
 
 // ClassKeys is the one owner of the config words, in the order Setup draws the
 // checkboxes and [S] lists them. A fresh slice: the registry is not writable

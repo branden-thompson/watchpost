@@ -19,19 +19,17 @@ import (
 // defaults; f/c live unit toggle) + R-12a. The dashboard reads ONLY the
 // Snapshot (import lint).
 
-func f64(v float64) *float64 { return &v }
-
 func snap() *snapshot.Snapshot {
 	obs := time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC)
 	return &snapshot.Snapshot{
 		SchemaVersion: snapshot.SchemaVersion, GeneratedAt: obs,
 		Locations: []snapshot.Location{{
 			Label: "Oceanside, CA", Zip: "92057",
-			Harmonized: snapshot.Conditions{Temp: f64(22.8), Condition: "clear",
+			Harmonized: snapshot.Conditions{Temp: new(22.8), Condition: "clear",
 				Source: snapshot.SourceInfo{Provider: "nws"}},
 			Daily: []snapshot.Daily{
-				{Date: "2026-08-24", TempMax: f64(23.9), TempMin: f64(17.2), Condition: "clear"},
-				{Date: "2026-08-25", TempMax: f64(25.0), TempMin: f64(18.0), Condition: "rain"},
+				{Date: "2026-08-24", TempMax: new(23.9), TempMin: new(17.2), Condition: "clear"},
+				{Date: "2026-08-25", TempMax: new(25.0), TempMin: new(18.0), Condition: "rain"},
 			},
 			Alerts: []snapshot.Alert{{Event: "Extreme Heat Watch", Severity: "severe", Headline: "until Friday"}},
 		}},

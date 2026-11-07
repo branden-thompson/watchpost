@@ -83,8 +83,8 @@ func TestDetailHiLoColumnAlignsAndPads(t *testing.T) {
 	m := dash(t)
 	s2 := snap()
 	s2.Locations[0].Daily = []snapshot.Daily{
-		{Date: "2026-08-24", TempMax: f64(36.7), TempMin: f64(36.7), Condition: "clear"}, // 98°F / 98°F
-		{Date: "2026-08-25", TempMax: f64(42.2), TempMin: f64(37.8), Condition: "rain"},  // 108°F / 100°F
+		{Date: "2026-08-24", TempMax: new(36.7), TempMin: new(36.7), Condition: "clear"}, // 98°F / 98°F
+		{Date: "2026-08-25", TempMax: new(42.2), TempMin: new(37.8), Condition: "rain"},  // 108°F / 100°F
 	}
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
@@ -111,8 +111,8 @@ func TestDetailGridAlignsCurrentlyWithForecast(t *testing.T) {
 	// humidity sits on the HIGH/LOW column.
 	m := dash(t)
 	s2 := snap()
-	s2.Locations[0].Harmonized.Feels = f64(24.4)
-	s2.Locations[0].Harmonized.HumidityPct = f64(65)
+	s2.Locations[0].Harmonized.Feels = new(24.4)
+	s2.Locations[0].Harmonized.HumidityPct = new(float64(65))
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
 	d.modal = modalDetails
@@ -183,7 +183,7 @@ func TestDetailShowsStationAndDistance(t *testing.T) {
 	// drill-in away, on the CURRENTLY grid (label / col 14 / col 37).
 	m := dash(t)
 	s2 := snap()
-	s2.Locations[0].Harmonized.Source = snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KCRQ", DistanceKm: f64(5.7)}
+	s2.Locations[0].Harmonized.Source = snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KCRQ", DistanceKm: new(5.7)}
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
 	d.modal = modalDetails
@@ -303,7 +303,7 @@ func TestTheCardSaysWhenTheNumberIsFromTheGridForecast(t *testing.T) {
 			d := dash(t).(Dashboard)
 			d.width, d.height = 133, 44
 			loc := &snapshot.Location{Label: "Lone Pine, CA"}
-			loc.Harmonized.Temp = f64ptr(15)
+			loc.Harmonized.Temp = new(float64(15))
 			loc.Harmonized.Source = snapshot.SourceInfo{Provider: "nws", ModelOrStation: tc.station, DistanceKm: tc.km}
 			got := stripANSITest(strings.Join(d.currentlyRows(d.opts(), loc, 65), "\n"))
 			if has := strings.Contains(got, gridNote); has != tc.wantGrid {
@@ -315,8 +315,6 @@ func TestTheCardSaysWhenTheNumberIsFromTheGridForecast(t *testing.T) {
 		})
 	}
 }
-
-func f64ptr(v float64) *float64 { return &v }
 
 // THE HOURLY WINDOW IS A ROLLING TWELVE (HUM LEAD, 2026-09-07).
 //

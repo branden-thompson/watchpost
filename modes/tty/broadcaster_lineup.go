@@ -175,16 +175,35 @@ func requestedByOf(c lineup.Card) string {
 	return ""
 }
 
-// milesFromTower is how far a pool entry sits from the transmitter.
-//
-// NIL WHEN THERE IS NO TOWER, so the column is blank rather than reading a
-// distance measured from the equator.
-func (b Broadcaster) milesFromTower(ref snapshot.LocationRef) *float64 {
+// towerKm is how far a place sits from the transmitter, and false when there
+// is no tower, so a column is blank rather than reading a distance measured
+// from the equator.
+func (b Broadcaster) towerKm(ref snapshot.LocationRef) (float64, bool) {
 	tx := b.area.Transmitter
 	if tx.Lat == 0 && tx.Lon == 0 {
+		return 0, false
+	}
+	return geo.HaversineKM(tx.Lat, tx.Lon, ref.Lat, ref.Lon), true
+}
+
+// kmFromTower is towerKm for the pool's column, whose formatter takes
+// kilometres; nil when there is no tower.
+func (b Broadcaster) kmFromTower(ref snapshot.LocationRef) *float64 {
+	km, ok := b.towerKm(ref)
+	if !ok {
 		return nil
 	}
-	mi := units.MilesOf(geo.HaversineKM(tx.Lat, tx.Lon, ref.Lat, ref.Lon))
+	return &km
+}
+
+// milesFromTower is towerKm in miles, for the line-up's column; nil when
+// there is no tower.
+func (b Broadcaster) milesFromTower(ref snapshot.LocationRef) *float64 {
+	km, ok := b.towerKm(ref)
+	if !ok {
+		return nil
+	}
+	mi := units.MilesOf(km)
 	return &mi
 }
 

@@ -9,7 +9,6 @@ package fire
 import (
 	"math"
 	"sort"
-	"time"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/invariant"
@@ -101,9 +100,6 @@ func Cluster(hs []snapshot.Hotspot) []snapshot.Hotspot {
 	}
 	return out
 }
-
-// Age is a hotspot's age at now, for the views ("2 h ago").
-func Age(h snapshot.Hotspot, now time.Time) time.Duration { return now.Sub(h.DetectedAt) }
 
 // Bounds is the bounding box radiusKm around a point, in degrees — the
 // shape the FIRMS area API and the incident search take.

@@ -22,6 +22,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -646,7 +647,7 @@ func selectorOf(t *testing.T, m *buildModel, target string) string {
 // runSelectors is every `go test -run` in the Makefile, in target order.
 func (m *buildModel) runSelectors() []runSelector {
 	var out []runSelector
-	for _, name := range sorted(keys(m.targets)) { // bounded by the Makefile (P10-02)
+	for _, name := range sorted(slices.Collect(maps.Keys(m.targets))) { // bounded by the Makefile (P10-02)
 		for _, c := range m.targets[name].cmds { // bounded by the recipe (P10-02)
 			if !c.isGoTest() {
 				continue
@@ -671,14 +672,6 @@ func (m *buildModel) runSelectors() []runSelector {
 			}
 			out = append(out, sel)
 		}
-	}
-	return out
-}
-
-func keys(m map[string]*target) []string {
-	out := make([]string, 0, len(m))
-	for k := range m { // bounded by the map (P10-02)
-		out = append(out, k)
 	}
 	return out
 }

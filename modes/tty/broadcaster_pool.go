@@ -18,7 +18,6 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
-	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // poolRows is the published pool, as table rows.
@@ -46,11 +45,10 @@ func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 		// `weatherRow` fills `StationKM` with how far the WX STN is from the place;
 		// this column answers a different question — how far the PLACE is from the
 		// tower — which is what an operator sizing up a candidate is asking.
-		if mi := b.milesFromTower(ref); mi != nil {
-			// THE TABLE'S OWN FORMATTER TAKES KILOMETRES, and `StationDistance` is
-			// the one owner of how a distance reads in the operator's units.
-			km := units.KmOf(*mi)
-			row.StationKM = &km
+		// THE TABLE'S OWN FORMATTER TAKES KILOMETRES, and `StationDistance` is
+		// the one owner of how a distance reads in the operator's units.
+		if km := b.kmFromTower(ref); km != nil {
+			row.StationKM = km
 		}
 		out = append(out, row)
 	}

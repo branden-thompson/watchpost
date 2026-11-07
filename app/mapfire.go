@@ -18,6 +18,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/fire/hms"
 	"github.com/branden-thompson/watchpost/domains/fire/wfigs"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -174,8 +175,8 @@ func incidentLabel(in snapshot.Incident) string {
 // fireHosts are fire's entries for the Status window's MAP block.
 func fireHosts() []tty.MapSource {
 	return []tty.MapSource{
-		{Name: "NIFC WFIGS", Host: hostOf(wfigs.New(nil, "", fire.DefaultRules()).PerimetersBase()), Layers: "fire"},
-		{Name: "NOAA HMS", Host: hostOf(hms.DefaultURL), Layers: "fire"},
+		{Name: "NIFC WFIGS", Host: httpx.HostOf(wfigs.New(nil, "", fire.DefaultRules()).PerimetersBase()), Layers: "fire"},
+		{Name: "NOAA HMS", Host: httpx.HostOf(hms.DefaultURL), Layers: "fire"},
 	}
 }
 

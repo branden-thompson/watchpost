@@ -19,8 +19,8 @@ func TestHarmonizeNWSWinsOutright(t *testing.T) {
 	ref := LocationRef{Label: "A", Lat: 1, Lon: 2}
 	a := NewAssembler([]LocationRef{ref}, []string{"open-meteo", "nws"})
 	k := Key(ref)
-	apply(a, "open-meteo", k, &Conditions{Temp: f64(30.0), UVIndex: f64(7), Source: SourceInfo{Provider: "open-meteo"}})
-	apply(a, "nws", k, &Conditions{Temp: f64(22.8), Source: SourceInfo{Provider: "nws", ModelOrStation: "KOKB"}})
+	apply(a, "open-meteo", k, &Conditions{Temp: new(30.0), UVIndex: new(float64(7)), Source: SourceInfo{Provider: "open-meteo"}})
+	apply(a, "nws", k, &Conditions{Temp: new(22.8), Source: SourceInfo{Provider: "nws", ModelOrStation: "KOKB"}})
 
 	h := a.Snapshot().Locations[0].Harmonized
 	if h.Source.Provider != "nws" {
@@ -44,7 +44,7 @@ func TestHarmonizeSecondaryOnlyWhenNWSAbsent(t *testing.T) {
 	ref := LocationRef{Label: "B", Lat: 3, Lon: 4}
 	a := NewAssembler([]LocationRef{ref}, []string{"nws", "open-meteo"})
 	k := Key(ref)
-	apply(a, "open-meteo", k, &Conditions{Temp: f64(18.1), Source: SourceInfo{Provider: "open-meteo"}})
+	apply(a, "open-meteo", k, &Conditions{Temp: new(18.1), Source: SourceInfo{Provider: "open-meteo"}})
 	h := a.Snapshot().Locations[0].Harmonized
 	if h.Source.Provider != "open-meteo" || *h.Temp != 18.1 {
 		t.Fatalf("with no NWS data the secondary must seed harmonized: %+v", h.Source)
@@ -56,9 +56,9 @@ func TestHarmonizeSeriesNeverSplice(t *testing.T) {
 	a := NewAssembler([]LocationRef{ref}, []string{"nws", "open-meteo"})
 	k := Key(ref)
 	a.Apply(Fragment{Provider: "open-meteo", Kind: KindForecast, FetchedAt: time.Now(),
-		PerLocation: map[LocationKey]PartialData{k: {Hourly: []Hourly{{Temp: f64(9.9)}, {Temp: f64(9.8)}}}}}, nil)
+		PerLocation: map[LocationKey]PartialData{k: {Hourly: []Hourly{{Temp: new(9.9)}, {Temp: new(9.8)}}}}}, nil)
 	a.Apply(Fragment{Provider: "nws", Kind: KindForecast, FetchedAt: time.Now(),
-		PerLocation: map[LocationKey]PartialData{k: {Hourly: []Hourly{{Temp: f64(1.1)}}}}}, nil)
+		PerLocation: map[LocationKey]PartialData{k: {Hourly: []Hourly{{Temp: new(1.1)}}}}}, nil)
 	loc := a.Snapshot().Locations[0]
 	if len(loc.Hourly) != 1 || *loc.Hourly[0].Temp != 1.1 {
 		t.Fatalf("hourly must come wholesale from nws (first in order), never spliced: %+v", loc.Hourly)
@@ -73,9 +73,9 @@ func TestRehydrateSparseObsFromForecast(t *testing.T) {
 	l := &Location{
 		Harmonized: Conditions{Condition: "unknown", Source: SourceInfo{Provider: "nws", ModelOrStation: "CBDSD"}},
 		Hourly: []Hourly{
-			{Time: now.Add(-90 * time.Minute), Temp: f64(20), Condition: "cloudy"},
-			{Time: now.Add(-30 * time.Minute), Temp: f64(24), Condition: "clear"},
-			{Time: now.Add(30 * time.Minute), Temp: f64(26), Condition: "rain"},
+			{Time: now.Add(-90 * time.Minute), Temp: new(float64(20)), Condition: "cloudy"},
+			{Time: now.Add(-30 * time.Minute), Temp: new(float64(24)), Condition: "clear"},
+			{Time: now.Add(30 * time.Minute), Temp: new(float64(26)), Condition: "rain"},
 		},
 	}
 	rehydrateFromForecast(l, now)
@@ -90,19 +90,19 @@ func TestRehydrateSparseObsFromForecast(t *testing.T) {
 	}
 
 	// Observed values are never replaced; a stale forecast never fills.
-	obs := &Location{Harmonized: Conditions{Temp: f64(18), Condition: "fog", Source: SourceInfo{Provider: "nws"}},
-		Hourly: []Hourly{{Time: now.Add(-30 * time.Minute), Temp: f64(24), Condition: "clear"}}}
+	obs := &Location{Harmonized: Conditions{Temp: new(float64(18)), Condition: "fog", Source: SourceInfo{Provider: "nws"}},
+		Hourly: []Hourly{{Time: now.Add(-30 * time.Minute), Temp: new(float64(24)), Condition: "clear"}}}
 	rehydrateFromForecast(obs, now)
 	if *obs.Harmonized.Temp != 18 || obs.Harmonized.Condition != "fog" || obs.Harmonized.Source.FillFrom != nil {
 		t.Fatalf("observed values must stand: %+v", obs.Harmonized)
 	}
 	stale := &Location{Harmonized: Conditions{Source: SourceInfo{Provider: "nws"}},
-		Hourly: []Hourly{{Time: now.Add(-3 * time.Hour), Temp: f64(24), Condition: "clear"}}}
+		Hourly: []Hourly{{Time: now.Add(-3 * time.Hour), Temp: new(float64(24)), Condition: "clear"}}}
 	rehydrateFromForecast(stale, now)
 	if stale.Harmonized.Temp != nil {
 		t.Fatal("a forecast hour that does not cover now must not fill")
 	}
-	none := &Location{Hourly: []Hourly{{Time: now, Temp: f64(24)}}}
+	none := &Location{Hourly: []Hourly{{Time: now, Temp: new(float64(24))}}}
 	rehydrateFromForecast(none, now)
 	if none.Harmonized.Temp != nil {
 		t.Fatal("no observation at all is a loading state, not a rehydration case")
@@ -128,8 +128,8 @@ func TestAnObservationWithNoStationIsFilledFromTheForecast(t *testing.T) {
 		// no station, no values.
 		Harmonized: Conditions{Source: SourceInfo{Provider: "nws"}},
 		Hourly: []Hourly{
-			{Time: now.Add(-30 * time.Minute), Temp: f64(15), Condition: "clear"},
-			{Time: now.Add(30 * time.Minute), Temp: f64(18), Condition: "clear"},
+			{Time: now.Add(-30 * time.Minute), Temp: new(float64(15)), Condition: "clear"},
+			{Time: now.Add(30 * time.Minute), Temp: new(float64(18)), Condition: "clear"},
 		},
 	}
 	rehydrateFromForecast(l, now)

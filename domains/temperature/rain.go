@@ -156,13 +156,15 @@ func rainSum(rain, showers []*float64, k int) float64 {
 
 // hourIndex is the index of an hour, adding it in order.
 func (r *Rain) hourIndex(t time.Time) int {
-	return hourRow(&r.Hours, &r.Hourly, r.Lattice.Cols*r.Lattice.Rows, t)
+	return hourRow(&r.Hours, r.Lattice.Cols*r.Lattice.Rows, t, &r.Hourly)
 }
 
-// hourRow is the index of an hour among hours kept in order, a row of n
-// values beside each: the hour and a row of missing values are added in
-// their place when it is not there.
-func hourRow(hours *[]time.Time, rows *[][]float64, n int, t time.Time) int {
+// hourRow is the index of an hour among hours kept in order, with a row of n
+// values beside each hour in each of rows: when the hour is not there it is
+// added in its place, and a row of missing values beside it in every one of
+// rows. The rain, the waves and the temperature series' six measures all keep
+// their hours this way (0.19.5 DR-13).
+func hourRow(hours *[]time.Time, n int, t time.Time, rows ...*[][]float64) int {
 	t = t.UTC().Truncate(time.Hour)
 	at := len(*hours)
 	for i, h := range *hours { // the first hour not before t (P10-02)
@@ -175,6 +177,8 @@ func hourRow(hours *[]time.Time, rows *[][]float64, n int, t time.Time) int {
 		return at
 	}
 	*hours = append((*hours)[:at], append([]time.Time{t}, (*hours)[at:]...)...)
-	*rows = append((*rows)[:at], append([][]float64{missing(n)}, (*rows)[at:]...)...)
+	for _, r := range rows { // bounded by the measures (P10-02)
+		*r = append((*r)[:at], append([][]float64{missing(n)}, (*r)[at:]...)...)
+	}
 	return at
 }

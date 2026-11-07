@@ -25,10 +25,10 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	loc.Fire = snapshot.FireState{
 		AsOf: now,
 		Hotspots: []snapshot.Hotspot{
-			{Lat: loc.Lat + 0.09, Lon: loc.Lon, DetectedAt: now.Add(-2 * time.Hour), FRPMW: f64(62), DistanceKm: f64(10), Source: snapshot.SourceInfo{Provider: "hms", ModelOrStation: "GOES-WEST"}},
-			{Lat: loc.Lat, Lon: loc.Lon + 0.2, DetectedAt: now.Add(-40 * time.Minute), FRPMW: f64(8), DistanceKm: f64(18), Source: snapshot.SourceInfo{Provider: "hms", ModelOrStation: "NOAA-20"}},
+			{Lat: loc.Lat + 0.09, Lon: loc.Lon, DetectedAt: now.Add(-2 * time.Hour), FRPMW: new(float64(62)), DistanceKm: new(float64(10)), Source: snapshot.SourceInfo{Provider: "hms", ModelOrStation: "GOES-WEST"}},
+			{Lat: loc.Lat, Lon: loc.Lon + 0.2, DetectedAt: now.Add(-40 * time.Minute), FRPMW: new(float64(8)), DistanceKm: new(float64(18)), Source: snapshot.SourceInfo{Provider: "hms", ModelOrStation: "NOAA-20"}},
 		},
-		Incidents: []snapshot.Incident{{Name: "Timber", Acres: f64(12915), PercentContained: f64(26), Discovered: now.Add(-72 * time.Hour), Source: snapshot.SourceInfo{Provider: "wfigs", DistanceKm: f64(30)}}},
+		Incidents: []snapshot.Incident{{Name: "Timber", Acres: new(float64(12915)), PercentContained: new(float64(26)), Discovered: now.Add(-72 * time.Hour), Source: snapshot.SourceInfo{Provider: "wfigs", DistanceKm: new(float64(30))}}},
 	}
 	loc.Alerts = append(loc.Alerts, snapshot.Alert{ID: "rfw", Event: "Red Flag Warning", Severity: "severe", Expires: now.Add(6 * time.Hour)})
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})

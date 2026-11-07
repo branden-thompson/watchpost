@@ -37,10 +37,11 @@ import (
 //
 // `third_party` IS VENDORED AND NOT OURS TO REWRITE; its gaps go upstream.
 // `06_docs/mutants` holds deliberate defects, and a mutant's whole purpose is to
-// describe what the code would do if it were wrong.
+// describe what the code would do if it were wrong. `.claude` holds agent
+// worktrees, whole second copies of the tree, judged where they came from.
 func skipDir(base string) bool {
 	switch base {
-	case ".git", "third_party", "mutants", "dist", "node_modules":
+	case ".git", ".claude", "third_party", "mutants", "dist", "node_modules":
 		return true
 	// THIS TOOL'S OWN SOURCE holds the anti-specimens as data — the phrase table
 	// and the self-test's planted comments. A detector that flagged its own

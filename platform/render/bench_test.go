@@ -15,18 +15,16 @@ import (
 func benchRows(n int) []LocationRow {
 	rows := make([]LocationRow, 0, n)
 	for i := range n {
-		r := LocationRow{Index: i + 1, Name: fmt.Sprintf("Benchmark City %02d", i), Zip: "92057", Station: "KCRQ", StationKM: fp(12.5),
-			Conditions: "partly_cloudy", Now: fp(22.8), Hi: fp(30), Lo: fp(17), Trend: "up",
-			TomorrowConditions: "clear", TomorrowHi: fp(31), TomorrowLo: fp(18), Selected: i == 2, HasAlert: i%3 == 0, WarnAlert: i%6 == 0, Fire: i % 4}
+		r := LocationRow{Index: i + 1, Name: fmt.Sprintf("Benchmark City %02d", i), Zip: "92057", Station: "KCRQ", StationKM: new(12.5),
+			Conditions: "partly_cloudy", Now: new(22.8), Hi: new(float64(30)), Lo: new(float64(17)), Trend: "up",
+			TomorrowConditions: "clear", TomorrowHi: new(float64(31)), TomorrowLo: new(float64(18)), Selected: i == 2, HasAlert: i%3 == 0, WarnAlert: i%6 == 0, Fire: i % 4}
 		for d := range 5 {
-			r.Extended = append(r.Extended, DayCell{Date: fmt.Sprintf("08/%02d", 26+d), Hi: fp(30 + float64(d)), Lo: fp(18)})
+			r.Extended = append(r.Extended, DayCell{Date: fmt.Sprintf("08/%02d", 26+d), Hi: new(30 + float64(d)), Lo: new(float64(18))})
 		}
 		rows = append(rows, r)
 	}
 	return rows
 }
-
-func fp(v float64) *float64 { return &v }
 
 func colourOn(b testing.TB) {
 	b.Helper()

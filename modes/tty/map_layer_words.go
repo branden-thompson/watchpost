@@ -9,6 +9,7 @@ package tty
 // Forecast mode's other days among them.
 
 import (
+	"github.com/branden-thompson/watchpost/platform/units"
 	"math"
 	"strconv"
 	"strings"
@@ -209,7 +210,7 @@ func (d Dashboard) motionWords(place string) []string {
 // speedWords is a speed in the station's units.
 func (d Dashboard) speedWords(kmh float64) string {
 	if d.units == render.UnitF {
-		return roundWords(kmh/1.609344) + " miles an hour"
+		return roundWords(units.MilesOf(kmh)) + " miles an hour" // km to miles, the same per hour
 	}
 	return roundWords(kmh) + " kilometres an hour"
 }

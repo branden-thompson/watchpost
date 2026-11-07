@@ -48,7 +48,7 @@ func newWaves(l Lattice) Measure {
 
 // hourIndex is the index of an hour, adding it in order.
 func (w *Measure) hourIndex(t time.Time) int {
-	return hourRow(&w.Hours, &w.Hourly, w.Lattice.Cols*w.Lattice.Rows, t)
+	return hourRow(&w.Hours, w.Lattice.Cols*w.Lattice.Rows, t, &w.Hourly)
 }
 
 // SetHour puts an hour's values in, where the source gave none for it -

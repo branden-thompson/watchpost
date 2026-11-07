@@ -6,6 +6,7 @@ package tty
 // that would.
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -59,7 +60,7 @@ func TestTheMenusDetailRowStepsTheLevel(t *testing.T) {
 	for _, r := range d.overlayRows() {
 		keys = append(keys, r.key)
 	}
-	d.mapPane.menuAt = indexOf(keys, detailLevelKey)
+	d.mapPane.menuAt = slices.Index(keys, detailLevelKey)
 	*calls = nil
 	m, _, ok := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	if !ok || m.mapDetailLevel.String() != "full" {

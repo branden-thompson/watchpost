@@ -30,7 +30,7 @@ func TestColorPassStyling(t *testing.T) {
 		t.Fatalf("keycap must be bold white on #565656: %q", chip)
 	}
 	r := testRow()
-	r.Extended = []DayCell{{Date: "08/26", Hi: f64(30.0), Lo: f64(20.0)}}
+	r.Extended = []DayCell{{Date: "08/26", Hi: new(30.0), Lo: new(20.0)}}
 	out := (Opts{ThinBands: true, Width: 220, Units: UnitF}).LocationTable([]LocationRow{r}, 1)
 	lines := strings.Split(out, "\n")
 	for _, code := range []string{"48;2;97;97;97", "48;2;66;94;122", "48;2;66;122;122", "48;2;94;94;122"} {

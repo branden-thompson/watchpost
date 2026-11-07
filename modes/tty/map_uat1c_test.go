@@ -7,6 +7,7 @@ package tty
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -139,7 +140,7 @@ func TestTheAlertCategoriesSwitchTheirAlerts(t *testing.T) {
 	for _, r := range d.overlayRows() {
 		keys = append(keys, r.key)
 	}
-	d.mapPane.menuAt = indexOf(keys, AlertCategorySwitch("advisories"))
+	d.mapPane.menuAt = slices.Index(keys, AlertCategorySwitch("advisories"))
 	if d.mapPane.menuAt < 0 {
 		t.Fatalf("the menu has no Advisories row: %v", keys)
 	}
