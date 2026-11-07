@@ -188,3 +188,5 @@ says exactly what passed.
 | 2026-11-07T14:38:15Z | 3f3fa969 | 8f14e6637062 | verify | green | 2477 |
 | 2026-11-07T14:56:11Z | 899c3eab | 9108c5082807 | verify | FAILED (exit 2) | 243 |
 | 2026-11-07T15:39:18Z | 899c3eab | 89b9bb725b47 | verify | green | 2551 |
+| 2026-11-07T15:55:49Z | 494d1922 | 6065dae5f45a | verify | FAILED (exit 2) | 3 |
+| 2026-11-07T16:41:05Z | 494d1922 | 6065dae5f45a | verify | green | 2597 |

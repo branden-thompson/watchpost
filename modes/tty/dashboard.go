@@ -657,8 +657,6 @@ type Dashboard struct {
 	snapSame, recentSame sameContent
 	width                int
 	height               int
-	units                render.Units
-	clockFmt             render.Clock // how times of day are written (render/clock.go); `clock()` is the wall clock
 	selected             int
 	alertIdx             int
 	recentOff            int // scroll offset (interaction lands with tab section nav)
@@ -699,35 +697,19 @@ type Dashboard struct {
 	mapCloses uint64
 	// mapReleaseAfter is how long the map stays closed before it is let go.
 	mapReleaseAfter time.Duration
-	mapsOff         bool        // 0.18.0: the Setting; g says so and builds nothing (W1.8)
-	mapDesc         mapDescMode // 0.18.0: the description with the picture, instead of it, or off (W1.10)
-	// The Maps tab's others (0.18.0 batch 9): the scale the map opens at, the
-	// nearby distance, the layer choices as one comparable word, and the last
-	// estimate of a refresh's cost, asked in Update and read by the frame.
-	mapScale        mapScaleMode
-	mapNearbyKm     int
-	mapLayerChoice  string
-	mapCost         MapCost
-	mapDetailChoice string         // the map's detail choices as one comparable word (D-65)
-	mapDetailLevel  tuimaps.Detail // how much of the basemap is drawn (D-67, go-tuiMaps D-82)
-	mapRadarIEM     bool           // IEM for the lower 48's radar, else MRMS (D-83)
-	mapTempNDFD     bool           // NDFD for the map's temperature, both modes, else Open-Meteo (D-93, D-190)
-	mapRainFull     bool           // Open-Meteo's full density for the rain past NDFD's reach (D-192)
-	mapUVCities     int            // how many cities UV asks EPA for: 8, 24 or 48 (D-202)
-	mapPropRadiusKm int            // the Propagation mode's near-vertical radius: 200, 400 or 600 km (D-100)
-	mapPropNoise    ionomaps.Noise // the reference circuit's noise environment (D-187)
-	mapPropRefresh  propRefresh    // how often an open mode asks again (D-120)
-	mapPropCorrect  bool           // GloTEC corrected by the typical offset while no readings are held (D-105)
-	mapPropNoGIRO   bool           // GIRO not asked: NOAA's and the climatology's field alone (D-214)
-	mapDepth        mapDepth       // the map's colour depth (D-207)
-	mapPlayback     time.Duration  // how long each frame of the map's playback shows (D-361)
-	reduceMotion    bool           // nothing moves on its own clock (D-360)
-	mapRadarAhead   int            // the radar loop's hours ahead: 1, 3, 6 or 12 (D-114)
-	mapQuakeFeed    string         // the quakes drawn: USGS's feed by its name (D-122)
-	mapKeys         term.KeyMap
-	chartKeys       term.KeyMap // the Bands chart window's own scope (D-256)
-	modal           modal       // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode         string      // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	// The Settings, in three groups, each built from the Config by its own
+	// keyed literal (0.19.5 D-14, A-16): the map's, the UI's and the radio's.
+	// Embedded, so d.mapDesc and the rest read as they always have.
+	mapChoices
+	uiChoices
+	radioChoices
+	// mapCost is the last estimate of a refresh's cost, asked in Update and read
+	// by the frame (0.18.0 batch 9).
+	mapCost   MapCost
+	mapKeys   term.KeyMap
+	chartKeys term.KeyMap // the Bands chart window's own scope (D-256)
+	modal     modal       // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode   string      // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
 	// search box, kept only while the window is serving the CONSOLE (D-129,
 	// D-130). On Observer it stays zero: the listener's lookup reaches anywhere
@@ -743,7 +725,6 @@ type Dashboard struct {
 	debug       debugState
 	voiceIdx    int
 	voiceList   []string        // snapshot of the hook's list, taken when the chooser opens (UAT 85: never from View)
-	radioVoice  string          // the chosen correspondent (chip label)
 	addQuery    string          // add-location search buffer
 	modalScroll int             // shared scroll for floating modals (UAT 10.4)
 	under       []stackedWindow // the windows under the one shown, nearest last (D-107)
@@ -835,12 +816,8 @@ type Dashboard struct {
 	radioSpoken  time.Duration        // UAT 83: spoken length of radioDetail
 	radioSince   time.Time            // UAT 83: when radioDetail started
 
-	radioVolume int    // 0-100 (D-19); [+]/[-] step 5, bar cells step at the 10s (UAT 41)
 	volFlash    string // "+" | "-" while the press acknowledgement blinks
 	volFlashEnd time.Time
-	radioRepeat RepeatMode // [r] Off | One | Watchlist (UAT 93)
-	radioMode   RadioMode  // [m] Synth | Nearest Relay (UAT 97)
-	radioViz    bool
 	vizBands    []float64        // the visualizer's latest frame (UAT 92); nil = blank rows
 	vizTicking  bool             // a vizTick is in flight — never two
 	tickArmed   bool             // a shimmer tick is in flight — never two (Q3: armed only while something animates)
@@ -1011,7 +988,25 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, chartKeys: chartKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource != tempSourceOpenMeteo, mapRainFull: cfg.MapRainDetail == rainDetailFull, mapUVCities: UVCitiesByCount(cfg.MapUVCities), mapPropRadiusKm: propRadiusByKm(cfg.MapPropRadius), mapPropNoise: propNoiseByKey(cfg.MapPropNoise), mapPropRefresh: propRefreshByKey(cfg.MapPropRefresh), mapPropCorrect: cfg.MapPropNoReadings == noReadingsCorrected, mapPropNoGIRO: cfg.MapPropStations == noStationsKey, mapDepth: mapDepthByKey(cfg.MapColourDepth), mapPlayback: playbackByKey(cfg.MapPlaybackMs), reduceMotion: cfg.ReduceMotion, mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapQuakeFeed: quakeFeedByKey(cfg.MapQuakeFeed), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, mapReleaseAfter: mapReleaseAfter, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{
+		cfg:             cfg,
+		keys:            keys,
+		mapKeys:         mapKeys,
+		chartKeys:       chartKeys,
+		mapChoices:      mapChoicesOf(cfg),
+		uiChoices:       uiChoicesOf(cfg),
+		radioChoices:    radioChoicesOf(cfg),
+		consoleKeys:     console,
+		keysWithheld:    withheld,
+		width:           80,
+		height:          24,
+		darkBG:          true,
+		mapReleaseAfter: mapReleaseAfter,
+		memo:            &bodyMemo{},
+		mmemo:           &modalMemo{},
+		tickerScrolls:   map[TickerCategory]int{},
+		now:             time.Now,
+	}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}

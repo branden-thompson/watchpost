@@ -5,10 +5,12 @@ import pathlib
 #
 # Re-pointed 2026-09-25 (0.18.0 D-62): the rows moved from DATA to STATION, the
 # Broadcaster tab's one group.
+# Killed by TestTheStationRowsAreRuledTheConsoles (0.19.5: the scope is the
+# ruling's record since D-70, and an allocation count caught this only by chance).
 p = pathlib.Path("modes/tty/setup_rows.go"); s = p.read_text()
-old = """		rowTransmitter:   {rowTransmitter, groupStation, scopeBroadcaster, rowInput, false, "", ""},
-		rowServiceRadius: {rowServiceRadius, groupStation, scopeBroadcaster, rowInput, false, "", ""},"""
+old = """		rowTransmitter:   {id: rowTransmitter, group: groupStation, scope: scopeBroadcaster, kind: rowInput},
+		rowServiceRadius: {id: rowServiceRadius, group: groupStation, scope: scopeBroadcaster, kind: rowInput},"""
 assert old in s, "mAI1"
-new = """		rowTransmitter:   {rowTransmitter, groupStation, scopeShared, rowInput, false, "", ""},
-		rowServiceRadius: {rowServiceRadius, groupStation, scopeShared, rowInput, false, "", ""},"""
+new = """		rowTransmitter:   {id: rowTransmitter, group: groupStation, scope: scopeShared, kind: rowInput},
+		rowServiceRadius: {id: rowServiceRadius, group: groupStation, scope: scopeShared, kind: rowInput},"""
 p.write_text(s.replace(old, new, 1))

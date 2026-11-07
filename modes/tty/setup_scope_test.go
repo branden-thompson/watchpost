@@ -174,3 +174,17 @@ func TestTheKeyboardNeverFocusesAHiddenRow(t *testing.T) {
 	m = press(t, m, tea.KeyPressMsg{Code: tea.KeyTab}, groups, "tab")
 	_ = press(t, m, tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}, groups, "shift+tab")
 }
+
+// TestTheStationRowsAreRuledTheConsoles is D-115's record of D-18's ruling: the
+// transmitter and the service radius are the station's, a fact about the
+// console a listener does not have. Every row is drawn on every surface since
+// D-70, so the scope is the ruling's record rather than a rule the frame
+// applies, and this test is what holds it.
+func TestTheStationRowsAreRuledTheConsoles(t *testing.T) {
+	table := setupTable()
+	for _, id := range []setupRowID{rowTransmitter, rowServiceRadius} {
+		if table[id].scope != scopeBroadcaster {
+			t.Errorf("row %d is ruled %d; D-115 rules the station's rows the console's", id, table[id].scope)
+		}
+	}
+}

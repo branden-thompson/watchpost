@@ -149,14 +149,28 @@ func apply[T any](d *T, set func(*T)) (ok bool) {
 // structs (relayFault, debug and setup all hold their state that way).
 func walk[T any](t *testing.T, typ reflect.Type, prefix string, excuse map[string]string, writer func(string, *T), emit func(string, func(*T))) {
 	t.Helper()
+	walkAt(t, typ, nil, prefix, excuse, writer, emit)
+}
+
+// walkAt is walk at an index path into the model. AN EMBEDDED STRUCT IS
+// WALKED AS THE MODEL ITSELF (0.19.5 D-14): its fields are promoted, read as
+// the model's own (d.mapDesc), and keep their own names here, so a writer or an
+// excuse keyed on a field's name still finds it after the field moved into a
+// group.
+func walkAt[T any](t *testing.T, typ reflect.Type, at []int, prefix string, excuse map[string]string, writer func(string, *T), emit func(string, func(*T))) {
+	t.Helper()
 	for i := range typ.NumField() {
 		f := typ.Field(i)
 		path := prefix + f.Name
+		index := append(append([]int(nil), at...), i)
+		if f.Anonymous && f.Type.Kind() == reflect.Struct {
+			walkAt(t, f.Type, index, prefix, excuse, writer, emit)
+			continue
+		}
 		switch f.Type.Kind() {
 		case reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64, reflect.String, reflect.Pointer:
-			idx := i
 			emit(path, func(d *T) {
-				bump(fieldAt(d, idx))
+				bump(fieldAtPath(d, index))
 				if writer != nil {
 					writer(path, d) // a field with a paired writer (dashboardWriter)
 				}
@@ -169,14 +183,14 @@ func walk[T any](t *testing.T, typ reflect.Type, prefix string, excuse map[strin
 			// the same shape as the hand-written memo key it checks, and would
 			// miss a new window in exactly the same way.
 			if prefix == "" && excuse[path] == "" {
-				walkNested(t, f, i, excuse, writer, emit)
+				walkNested(t, f, index, excuse, writer, emit)
 			}
 		}
 	}
 }
 
 // walkNested is walk for the fields of one nested struct.
-func walkNested[T any](t *testing.T, f reflect.StructField, outer int, excuse map[string]string, writer func(string, *T), emit func(string, func(*T))) {
+func walkNested[T any](t *testing.T, f reflect.StructField, outer []int, excuse map[string]string, writer func(string, *T), emit func(string, func(*T))) {
 	t.Helper()
 	for j := range f.Type.NumField() {
 		inner := f.Type.Field(j)
@@ -188,7 +202,7 @@ func walkNested[T any](t *testing.T, f reflect.StructField, outer int, excuse ma
 				continue
 			}
 			emit(name+"."+inner.Name, func(d *T) {
-				v := reflect.ValueOf(d).Elem().Field(outer).Field(jdx)
+				v := reflect.ValueOf(d).Elem().FieldByIndex(append(append([]int(nil), outer...), jdx))
 				bump(reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).Elem())
 				if writer != nil {
 					writer(name, d)
@@ -216,9 +230,10 @@ var nestedExcuse = map[string]string{
 	"cfg.Version": "written once at construction; the app has no path that changes it while running",
 }
 
-// fieldAt is one addressable field of d, by index, at the top level.
-func fieldAt[T any](d *T, i int) reflect.Value {
-	v := reflect.ValueOf(d).Elem().Field(i)
+// fieldAtPath is one addressable field of d, by its index path: the top level,
+// or a field of an embedded struct.
+func fieldAtPath[T any](d *T, index []int) reflect.Value {
+	v := reflect.ValueOf(d).Elem().FieldByIndex(index)
 	return reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).Elem()
 }
 

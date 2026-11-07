@@ -11,7 +11,7 @@ import pathlib
 # RE-ANCHORED 2026-09-12 (D-92): the row gained a `scope` field between its group
 # and its kind.  The rule it guards is unchanged.
 p = pathlib.Path("modes/tty/setup_rows.go"); s = p.read_text()
-old = "rowRelayDwell: {rowRelayDwell, groupRelay, scopeObserver, rowPicker, true,"
-new = "rowRelayDwell: {rowRelayDwell, groupRelay, scopeObserver, rowPicker, false,"
+old = "rowRelayDwell: {id: rowRelayDwell, group: groupRelay, scope: scopeObserver, kind: rowPicker, picker: true}"
+new = "rowRelayDwell: {id: rowRelayDwell, group: groupRelay, scope: scopeObserver, kind: rowPicker}"
 assert old in s, "mM4"
 p.write_text(s.replace(old, new, 1))

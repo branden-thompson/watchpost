@@ -142,6 +142,22 @@ layer edits none of them. The earthquakes (`app/mapquakes.go`) are the smallest 
 **Fetch only while on.** The estimate counts only the layers switched on, so a layer that fetches while
 off spends what the warning never shows.
 
+## Walkthrough 6 — add a Setting
+
+A Setting is read from the config file at launch, carried into the model, drawn as a Settings row, and
+written back when the window closes. The quakes the map draws (`map_quake_feed`, D-122) is a small
+complete example: search for `MapQuakeFeed` and `mapQuakeFeed`.
+
+| Step | File | What you do |
+|---|---|---|
+| 1 | `platform/config/config.go` | The file's key, a field with its `toml:"…,omitempty"` tag and a comment saying what its words mean and which is the default. |
+| 2 | `modes/tty/dashboard.go` | The field on `Config` (what the model is built with) and on `UIPrefs` (what a window saves). |
+| 3 | `app/dashboard.go`, `app/themes.go` | The app hands the file's value to `Config` when it builds the dashboard, and writes `UIPrefs`' value back to the file in the save. |
+| 4 | `modes/tty/dashboard_choices.go` | The model's field in its group's struct, `mapChoices`, `uiChoices` or `radioChoices`, with its comment, and one line in that group's builder (`mapChoicesOf` and the others) that reads it from `Config`. A word the file does not offer reads as the default. Embedded, the field reads as `d.<name>` everywhere. |
+| 5 | `modes/tty/setup_ui.go` | One line in `uiForSave`, the value the model draws by written as the file's word, and the field applied in the save's answer. |
+| 6 | `modes/tty/setup_rows.go`, `modes/tty/setup_layout.go` | A row id in the `setupRowID` list, its row in `setupTable` (its group, which surface it belongs to, its kind), and its label. A map picker also joins `mapPickerRow` and the arrows in `mapPrefArrow` (`modes/tty/map_prefs.go`), and is drawn in `modes/tty/map_settings.go`. |
+| 7 | Tests | Add the Setting to `everySettingChanged` in `modes/tty/config_reach_test.go`, set away from its default, and re-record `TestEveryConfigFieldReachesTheModel`'s and `TestThePrefsSavedAreTheSettingsInEffect`'s goldens, so the new field is seen read and saved. The memo guards walk the model, the groups included, and need nothing. |
+
 ## Rules you inherit for free
 
 - **A network call is not automatically a provider, and Walkthrough 2 is not the only shape.** A

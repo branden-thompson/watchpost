@@ -591,7 +591,27 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapColours || id == rowMapPlayback || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapPropRadius || id == rowMapPropNoise || id == rowMapPropRefresh || id == rowMapPropReadings || id == rowMapPropStations || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
+	switch id {
+	case rowMapDesc,
+		rowMapScale,
+		rowMapColours,
+		rowMapPlayback,
+		rowMapNearby,
+		rowMapRadarSource,
+		rowMapTempSource,
+		rowMapRainDetail,
+		rowMapUVCities,
+		rowMapPropRadius,
+		rowMapPropNoise,
+		rowMapPropRefresh,
+		rowMapPropReadings,
+		rowMapPropStations,
+		rowMapRadarAhead,
+		rowMapQuakes,
+		rowMapDetailLevel:
+		return true
+	}
+	return false
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.

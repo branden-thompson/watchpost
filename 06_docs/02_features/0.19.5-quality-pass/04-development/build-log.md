@@ -923,3 +923,51 @@ No new mutants. The 11 that cite the file are re-pointed and each re-vetted, kil
   but was run before the re-key. The mirror is regenerated now.
 - **P10 (D-27):** `app`'s row measures 0.52 against 0.61 (the file the checker anchors it at moved to
   `airscope.go`), with batch 15's other rows and render's 0.10, for REVIEW.
+
+## 0.19.5 batch 19 — the Settings in three groups (plan Q6.4, D-14, A-16); M2's second verdict
+
+Mutants m781 and m782 are new; m297, mAI1 and mM4 are re-pointed. Each is hand-vetted and killed.
+
+- **The pins, first.**
+  - `TestEveryConfigFieldReachesTheModel` builds the model from the zero `Config` and from one with every
+    Setting changed (`everySettingChanged`). It flattens the model's own fields into a golden, through any
+    embedded struct and under their promoted names, so moving a field changes no line. Recorded on the
+    shipped constructor, it showed all 24 Settings reaching a model field.
+  - `TestThePrefsSavedAreTheSettingsInEffect` records what `uiForSave` writes for both configs.
+  - Both goldens are unchanged after the move. m781 drops the quake feed from its builder and m782 from
+    the save, and each is killed.
+- **The move (A-16).**
+  - The 28 Settings fields left `Dashboard` for three embedded, unexported structs in
+    `modes/tty/dashboard_choices.go`, each with its comments. The map's twenty are `mapChoices`; the
+    UI's three (units, clock, Reduce motion) are `uiChoices`; the radio's five (the correspondent, the
+    volume, repeat, mode, the visualiser) are `radioChoices`.
+  - Each group has a builder, `mapChoicesOf`, `uiChoicesOf` and `radioChoicesOf`, returning a keyed
+    literal one field per line. `d.mapDesc` and the rest read as before through promotion.
+  - `NewDashboard`'s literal is keyed, one field per line.
+  - `mapCost` is no Setting and stays on the model. The comment it shared with three Settings is split
+    between the two places.
+- **Keyed, as A-16 asks.**
+  - `uiForSave` is one field per line.
+  - `mapPickerRow` is a switch, one row per line.
+  - `setupTable`'s 57 rows are keyed literals with zero fields omitted. The table and the picker rows'
+    answers were captured before and after the rewrite, and compare byte for byte.
+- **The memo guard walks embedded structs (A-16).** `walk` reaches a field by its index path, and walks an
+  embedded struct as the model itself, so its fields keep their own names. All 206 perturbations carry
+  their promoted names, and a writer or excuse keyed on a field's name (`mapTempNDFD`, `mapRainFull`)
+  still finds it.
+- **The walkthrough (D-14).** `docs/extending.md` gains "add a Setting": the file's key, `Config` and
+  `UIPrefs`, the app's hand-off and save, the group's struct and builder, `uiForSave`, the Settings row,
+  and the two pins to extend.
+- **Mutants.**
+  - m297, mAI1 and mM4 anchored on `setupTable`'s positional rows, and follow them into the keyed form.
+  - mAI1 then survived the whole package. Since D-70 every row is drawn on every surface, and nothing in
+    the app reads a row's scope; the scope is D-18's ruling's record. Its old kill came from an
+    allocation count that moved by chance. `TestTheStationRowsAreRuledTheConsoles` pins the ruled value
+    (D-115) and kills it.
+- **M2's second verdict** (plan, after Q6.4), measured by `TestBeatAllocBudget` three times:
+
+  | Beat | Target (D-4) | First pinned (batch 5) | Now | Verdict |
+  |---|---|---|---|---|
+  | Idle Observer, 133x44 | 80 KB | 156.5 KB | 59.6 KB | met |
+  | Radio playing, 133x44 | 90 KB | 168.7 KB | 68.5 KB | met |
+  | Console, 160x74 | 140 KB | 310.5 KB | 122.4 KB | met |
