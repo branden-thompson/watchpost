@@ -995,3 +995,25 @@ Mutant m783, hand-vetted and killed.
   - It names today's largest group, and points at the command that prints the figure.
 - **The "Running the checks" list** in `06_docs/code-standards.md` names `make dupes` and what fails it
   (JM-15).
+
+## 0.19.5 batch 21 — go-studs stays behind render, enforced (plan Q7.5, D-10)
+
+- **The check.**
+  - `scripts/lint-imports.sh` gains `check_studs`: a non-test file outside `platform/render` that
+    imports go-studs fails `make lint-imports`. go-studs' own tree in `third_party`, `dist` and the
+    agents' worktrees under `.claude` are not judged.
+  - The refusal names the route: add a render function that does what the file needs, and call it.
+  - Tests may import go-studs; dozens in `modes/tty` use its colour switch, and the rule is over non-test
+    files, as the plan says.
+- **The sites.** Run over the tree first, the rule found none: batch 16 moved the console's card row
+  behind `render.CardRow`, which was the only non-test import outside render.
+- **The self-test** gains two controls, four in all. A mode's file importing go-studs is refused, while
+  render's file and a mode's test are not. `make gate-controls` runs them inside `verify`. The
+  script's first form filtered with `\|`, which BSD grep's basic regex reads as a literal, so the
+  good-specimen control refused the tests. That is how the control was seen to fire before it was
+  trusted, and the filter is an extended regex now.
+- **No mutant.** The script is run by the self-test that `gate-controls` runs, not by a Go test, so the
+  mutant harness has no test to name. Its four controls are the proof.
+- **The rule's text.** `06_docs/code-standards.md`'s checks list names `make lint-imports` and both rules
+  it holds (JM-15). `render.go`, where-things-happen's "the seam" row and extending.md already state the
+  rule.
