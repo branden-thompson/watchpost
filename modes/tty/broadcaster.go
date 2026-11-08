@@ -679,56 +679,42 @@ func (b Broadcaster) tooSmall() bool {
 	return b.height < r
 }
 
-// clamp cuts the frame to the terminal, in both directions.
+// clamp cuts the frame to the terminal, in both directions, and writes it in
+// one pass.
 //
-// Silent overflow is a defect, not a degradation (FR-7.3): unclamped, a
-// surface renders 57 cells into a 20-cell terminal with no notice (F-55). It
-// applies to the notice as well as to the lanes, since a notice that
-// overflowed would let a sweep report zero overflows, the anti-solution M5
-// names.
+// Why:
+//   - Silent overflow is a defect, not a degradation (FR-7.3): unclamped, a
+//     surface renders 57 cells into a 20-cell terminal with no notice (F-55).
+//     It applies to the notice too, or a sweep could report zero overflows, the
+//     anti-solution M5 names.
+//   - The frame fills the terminal's height: render.Overlay centres on the
+//     base's height, so a short frame would pin every window to the top (UAT,
+//     2026-09-10). The pad's count is known before the loop, so its bound is
+//     in its shape (P10-02).
+//   - The cut to the height is a backstop, not the budget (D-102): each region
+//     still windows itself (scheduledSpan, poolSpan), and the cut makes a
+//     mistake there a missing row rather than a frame past the bottom.
+//   - Every row is truncated and padded to the width, so a window centred on
+//     the terminal lands inside the frame (UAT, 2026-09-10), and inset from the
+//     left here and nowhere else (D-96), as Observer insets every row.
+//   - The theme's foreground is armed for the whole frame (D-108), at the top
+//     and after every inner reset, so untinted text takes the theme, not the
+//     terminal's default (HUM LEAD, UAT 2026-09-12: Watchpost Light's white
+//     lines). Through FgSGR, because the Light theme's TextBase is truecolor.
+//   - One pass, with no joined copy and no copy for the tint (0.19.5 PF-4): an
+//     inner reset never spans a row, so re-arming row by row is the same bytes.
 func (b Broadcaster) clamp(lines []string) string {
 	if b.height > 0 && len(lines) > b.height {
 		lines = lines[:b.height]
 	}
-	// The frame fills the terminal it was given. A frame shorter than the
-	// screen looks the same in the alt-screen until something is composited
-	// over it: `render.Overlay` centres on the base's height, so a ten-line
-	// frame in a seventy-four-line terminal would pin every window to the top
-	// rail (UAT, 2026-09-10). The pad's count is known before the loop, so the
-	// bound is in its shape (P10-02).
-	if b.height > 0 {
+	if b.height > 0 { // fill the terminal's height
 		for range max(0, b.height-len(lines)) {
 			lines = append(lines, "")
 		}
 	}
-	// And it is cut to the terminal's height, as rows are cut to its width
-	// (D-102): "the frame IS the viewport, in both dimensions". This is a
-	// backstop, not the budget: each region still windows itself
-	// (`scheduledSpan`, `poolSpan`), and the cut makes a mistake there a missing
-	// row rather than a frame past the terminal's bottom.
-	if b.height > 0 && len(lines) > b.height {
+	if b.height > 0 && len(lines) > b.height { // the backstop cut to the height
 		lines = lines[:b.height]
 	}
-	// Each row is truncated and padded to the terminal's width. Truncating
-	// alone leaves a ragged frame whose widest line is the longest lane's, and
-	// `render.Overlay` composites against that, so a window centred on the
-	// terminal would land past the frame's right edge (UAT, 2026-09-10). Each
-	// row is inset from the left here and nowhere else (D-96), as Observer
-	// insets every row by three, so a region never has to remember the margin.
-	//
-	// And the theme's foreground is armed for the whole frame (D-108): text the
-	// console draws without a tint of its own would otherwise take the
-	// terminal's default foreground, white on a dark terminal whatever the theme
-	// (HUM LEAD, UAT 2026-09-12: "Watchpost Light has white lines and text when
-	// it should be inverted appropriately"). It is armed at the top and re-armed
-	// after every inner reset, as Observer's `frameText` does and as
-	// `render.TintKeeping` would over the joined frame, so tinted spans keep
-	// their colours. Through `FgSGR`, because the Light theme's `TextBase` is
-	// truecolor.
-	//
-	// The frame is written in one pass, with no joined copy and no copy for
-	// the tint (0.19.5 PF-4): an inner reset never spans a row, so re-arming row
-	// by row is the same bytes.
 	const reset = "\x1b[0m"
 	base := ""
 	if params := render.FgSGR(render.Tok(render.TextBase)); render.ColorOn() && params != "" {
@@ -787,75 +773,42 @@ func (b Broadcaster) notice() []string {
 	}
 }
 
-// lanes builds the three lanes from the last published schedule.
+// lanes builds the console's frame from the last published schedule: the
+// masthead, the station section and its notices, then UP NEXT beside the
+// takeover, then the running order and the pool.
+//
+// Why it is laid out this way:
+//   - It opens and closes with two blank rows, as Observer's frame does (D-68,
+//     the HUM LEAD's "universal 2 line inset like Observer").
+//   - The station bar is one section painted by one call (stationSection), so
+//     its colour is a token rather than a sweep, and the air box rides inside
+//     it (D-107). The section owns the air around it: a second blank row here
+//     would read as a rendering fault (HUM LEAD, UAT 2026-09-10).
+//   - A bare row, with no walls, separates the station section from the
+//     running order (the HUM LEAD: "this is intentional"): two closed boxes,
+//     and the air between them belongs to neither.
+//   - The PRIORITY track is invisible until it holds a card (D-61), so the
+//     main track has the width in normal operation; a "(clear)" row would spend
+//     the running order's room saying nothing is happening. When it holds one,
+//     it is drawn first, because it drains first.
+//   - UP NEXT and the takeover sit level, side by side (D-97): LIVE is in the
+//     air box (D-95) and the scheduled slots are the table (D-94).
+//   - The pool goes below the running order (D-98), and the one scroll control
+//     belongs to the pool, which is what scrolls (D-106); the weather both
+//     tables read is indexed once for the frame (D-120).
+//   - The frame ends where the running order does; clamp pads the view to the
+//     terminal's height, so the frame is still the viewport (D-63).
 func (b Broadcaster) lanes() []string {
-	// THE FRAME OPENS WITH TWO BLANK ROWS, AS OBSERVER'S DOES (D-68). The HUM
-	// LEAD, annotating his own mock: "Universal 2 line inset like Observer."
-	// Without them the masthead sits hard against the top of the terminal, the
-	// one place in the app that would not breathe.
 	out := b.inset()
 	out = append(out, strings.Split(b.header(b.opts()), "\n")...)
-	// THE STATION BAR IS A SECTION (see stationSection): one region, painted by
-	// one call, so the colour pass is a token rather than a sweep.
 	fg, bg := b.stationTone()
 	out = append(out, strings.Split(b.stationSection(b.opts(), fg, bg), "\n")...)
 	out = append(out, b.heldNotice()...)
 	out = append(out, b.faultNotice()...)
 	out = append(out, b.muteNotice()...)
-	// THE AIR BOX IS INSIDE THE STATION SECTION (D-107), so nothing is drawn
-	// here: `stationSection` carries it, painted with the section's own ground.
-	// A BARE BLANK ROW SEPARATES THE STATION SECTION FROM THE RUNNING ORDER, and
-	// the HUM LEAD annotated it twice: "Notice the blank line and how it
-	// separates the rail — this is intentional." It carries NO walls, because
-	// the station section is one closed box and the running order is another;
-	// the air between them belongs to neither.
-	out = append(out, "")
-	// THE LANE NAMES ITSELF ON A BARE ROW (HUM LEAD, UAT 2026-09-10): "this line
-	// … should have no pipes / lines." It is a caption over the running order,
-	// not a row of it — so it is written before the frame's own columns are
-	// added rather than inside them.
-	// NO SEPARATOR HERE. THE SECTION OWNS ITS OWN SPACING — `stationSection`
-	// carries a breathing row above and below, and a second blank appended out
-	// here would make a DOUBLE gap that reads as a rendering fault (HUM LEAD, UAT
-	// 2026-09-10). One owner for the air around a region, like everything else.
-
-	// THE PRIORITY TRACK IS INVISIBLE UNTIL IT HAS SOMETHING (D-61, HUM LEAD
-	// 2026-09-10): "the PRIORITY rail label ONLY shows up when a priority card
-	// sits on top of the main rail — this gives the operator more space to
-	// view/manage the main rail during normal operation."
-	//
-	// A "(clear)" ROW IS NOT NOTHING. It would spend two rows of the running order
-	// saying that a hazard is not happening, which is the state the station is
-	// in almost all of the time — and the track's own design is that it is
-	// "normally INVISIBLE to the operator, so the main track takes the full
-	// width of the UI."
-	//
-	// IT IS STILL DRAWN FIRST when it has something, because it DRAINS first in
-	// every state: putting the lane that interrupts everything below the lane it
-	// interrupts would say the wrong thing about which is which.
-
-	// UP NEXT AND THE TAKEOVER, LEVEL WITH EACH OTHER (D-97). LIVE is in the air
-	// box (D-95) and the SCHEDULED slots are the table (D-94), so what is drawn
-	// here is two boxes side by side that the reference draws at the same height.
+	out = append(out, "") // the bare row between the station section and the running order
 	out = append(out, b.chrome(b.readPair(), false, 0)...)
-	// The pool goes below it (D-98) — the candidates the operator promotes FROM,
-	// with enough weather to decide on them.
-	//
-	// ONE SCROLL CONTROL, AND IT BELONGS TO WHAT SCROLLS (D-106, HUM LEAD
-	// 2026-09-12: "Location Pool Scrolls, Line-up doesnt"). The running order does
-	// not actually move, so a control spanning both tables would claim a scroll
-	// that never happens and put the pool's headers inside the window it draws.
-	// ▲ on the pool's column titles, ▼ on its "Showing" line — Observer's own
-	// shape.
-	// THE WEATHER IS INDEXED ONCE FOR THE WHOLE FRAME (D-120). Both tables join
-	// against it — forty lookups rather than forty linear scans.
 	out = append(out, b.tableRows(len(out))...)
-	// The frame ends where the running order does, as the reference draws it:
-	// the frame closes under the scroll rail's ▼ and the rest of the screen is
-	// empty, rather than carrying walled blank rows to the bottom of the
-	// terminal. `clamp` still pads the view to the terminal's height, so
-	// D-63's rule holds: the frame is the viewport, and `render.Overlay` still
-	// composites against a full-height base.
 	return append(out, b.inset()...)
 }
 
@@ -1137,120 +1090,57 @@ func bcAirBoundaries() []string {
 	}
 }
 
-// stationLine is the station's state, Variant C (D-21): a labelled field with
-// the transition named in parentheses.
+// stationLine is the station's state band, Variant C (D-21): the state in
+// words with its transition named, the gain, the transmitter, FR-5.5's
+// boundary while the station is on the air, and a notice when there is one.
 //
-// THE WORDS CARRY THE STATE, NOT THE COLOUR (FR-5.3). A background treatment
-// makes it legible at a glance and is the HUM LEAD's own pass — but a colour
-// alone fails --ascii and any terminal without one, so a reader who sees no
-// colour still reads the state.
-//
-// The band also says what "ON AIR" means (FR-5.5). Watchpost has no radio path: it
-// produces audio, and a transmitter it cannot observe puts that over the air.
-// An operator who reads a confident ON AIR and infers their antenna is
-// radiating has been misled by us, so the boundary is stated HERE, where they
-// read it — not only in a design document.
+// Why it is drawn this way:
+//   - The words carry the state, not the colour (FR-5.3): a colour alone fails
+//     --ascii and any terminal without one.
+//   - ON AIR is bold white on the section's red (HUM LEAD, 2026-09-15), in the
+//     section's own text token, AlertModalText, so no shared token's ground set
+//     widens (aaPairs); weight is not contrast, so no AA answer changes.
+//   - Every label shares one value column (D-62), padded by render.PadTo, which
+//     counts cells, not the bytes of the bed chip's escapes (D-56).
+//   - The gain rides the state's row, as the reference draws it, and the state
+//     yields to it: a level the operator cannot see is a station they cannot set.
+//   - The transmitter is named here, not in the masthead (D-71): it is a fact
+//     about the station, and the masthead is what both surfaces share.
+//   - FR-5.5's boundary, that watchpost produces audio and cannot observe a
+//     transmitter, has a line of its own while running (F-109, D-153, D-160).
+//     On the state's row it would fit only from 160 cells, and beside "(no
+//     transmitter set)" it would read as a setup step. It is said whole or not
+//     at all, the longest rung of bcAirBoundaries that fits, because a safety
+//     sentence cut short is a different claim. STOPPED and STANDBY assert
+//     nothing about a transmitter, so they carry no such line.
+//   - The bed has no row here (D-107): the LIVE NOW / RELAY BED box is its one
+//     place.
+//   - A notice (statusNote) is the only prose: it answers a key the operator
+//     just pressed. A sentence describing the state would repeat the row above.
+//   - The band is the terminal less its inset on both sides (D-80), not a region
+//     inside the frame's walls, which this band does not have (D-70).
 func (b Broadcaster) stationLine() []string {
-	// THE SEPARATOR COMES FROM THE GLYPH SET, not a literal, so --ascii holds
-	// in every power state — STOPPED's line carries no separator, so only a
-	// sweep of every state proves it.
 	o := b.opts()
-	g := o.Glyphs()
+	g := o.Glyphs() // the separator comes from the glyph set, so --ascii holds in every state
 	state, to := "STOPPED", "ON AIR"
 	switch b.power {
 	case lineup.Running:
-		// BOLD WHITE ON THE SECTION'S RED (HUM LEAD, 2026-09-15): "When
-		// Broadcaster is Actively broadcasting, let's make this string *** ON
-		// AIR · BROADCASTING *** BOLD WHITE."
-		//
-		// THE SECTION'S OWN TEXT TOKEN, NOT A NEW WHITE. `stationTone` already
-		// paints this band `AlertModalText` on `TickerEmergencyBG`, and
-		// AlertModalText IS white — so this states the tone the row already
-		// wears and adds the WEIGHT. Registering TextBright against the
-		// emergency ground instead would lift TextBright everywhere it
-		// is painted, which `aaPairs` warns about in as many words: "widening a
-		// shared token's ground set changes it everywhere".
-		//
-		// WEIGHT IS NOT CONTRAST, so this changes no AA answer: the pair is
-		// already in production and is unchanged.
 		state = render.Bold(render.Tint("*** ON AIR "+g.Dot+" BROADCASTING ***", render.Tok(render.AlertModalText)))
 		to = "STANDBY"
 	case lineup.OffAir:
 		state = "STANDBY (DEAD AIR)"
 	}
-	// A NOTICE IS THE ONLY PROSE THIS ROW CARRIES. A refusal describes something
-	// the operator JUST DID, and the row they are looking at has to answer the key
-	// they just pressed; a sentence describing the state instead says what the row
-	// above it already names.
-	// THE BAND'S TEXT COLUMN: the terminal, less the inset on BOTH sides (D-80).
-	// Not the width of a region inside the frame's walls,
-	// which this band does not have because colour is its edge (D-70) — or
-	// every row comes out three cells too wide and the right-hand inset has
-	// nowhere to go.
 	width := b.bandWidth()
-	// THE LABELS SHARE A VALUE COLUMN (D-62). "STATION:" and the bed's label are
-	// different lengths, and a section whose two values began in different
-	// columns would read as two unrelated rows rather than as one region saying
-	// one thing.
-	//
-	// PADDED THROUGH `render.PadTo`, WHICH IS ALREADY ANSI-AWARE — "right-pads
-	// a line to exactly width DISPLAY CELLS". That is how Observer handles the
-	// same problem, and a hand-rolled version here would be the second copy D-56
-	// exists to prevent. The bed's label opens with a CHIP, so its escape codes are
-	// bytes that are not cells, and the ONE function that knows that should be
-	// the only one that has to.
-	label := func(s string) string { return render.PadTo(s, bcLabelCells) }
+	label := func(s string) string { return render.PadTo(s, bcLabelCells) } // one value column for every label
 	hint := "( SHIFT + ENTER  " + g.Arrow + "  " + to + " )"
 	gain := levelControl(o, "GAIN  ", b.gain,
 		o.KeyCapIf("-", b.gain > 0), o.KeyCapIf("+", b.gain < 100), bcGainCells)
-	// THE CONTROL SURVIVES AND THE PROSE YIELDS, the same rule as the card's
-	// handle: the operator ACTS on the bar, and a level they cannot see is a
-	// station they cannot set.
-	room := width - render.Width(gain) - 2
-	// THE BED'S STATE READS AS A SENTENCE AND SITS AT THE RIGHT, where the
-	// station's own transition hint sits — the two facts an operator checks
-	// without reading the row are both in the same column (D-71).
-	// THE BED SAYS WHAT IT IS ACTUALLY DOING (F-79), from the published answer
-	// rather than a constant INACTIVE.
+	room := width - render.Width(gain) - 2 // the gain keeps its room; the state yields
 	rows := []string{
-		// THE GAIN RIDES THE STATE'S OWN ROW, where the reference draws it: how
-		// loud the station is and whether it is on the air are one question asked
-		// twice, and the operator checks them together.
 		render.PadBetween(render.TruncateCells(label("STATION AIR:")+state, max(0, room)), gain, width),
-		// THE TRANSMITTER'S IDENTITY IS HERE, NOT IN THE MASTHEAD (D-71). It is
-		// a fact about the STATION; the masthead is what both surfaces share.
 		render.PadBetween(label("BROADCASTING FROM:")+b.transmitterRow(max(0, width-bcLabelCells-render.Width(hint)-2)), hint, width),
 	}
-	// FR-5.5'S BOUNDARY GETS A LINE OF ITS OWN (F-109, HUM LEAD 2026-09-16:
-	// "Give F109C its own line in the section area then if it creates new
-	// defects").
-	//
-	// NOT ON THE STATION AIR ROW, WHICH FAILS IT TWICE. Measured on the real
-	// frame, the row's spare space beside the state and the gain control is 35
-	// cells at 144 — the console's own reference width — so a shortened sentence
-	// there renders only at 160 and above, leaving FR-5.5 dead at every width
-	// the console is actually used at (D-153). And a wording that fits there sits
-	// two rows above "(no transmitter set)", so the operator reads a permanent
-	// property of the product as a setup step they missed, and concludes that
-	// choosing a transmitter clears it — the requirement inverted.
-	//
-	// A LINE OF ITS OWN HAS ROOM TO SAY IT PROPERLY: the full sentence names
-	// what IS happening (audio is leaving this program) before what cannot be
-	// known (whether a transmitter carries it), and the boundary appears whole
-	// at every width.
-	//
-	// ONLY WHILE RUNNING, because that is the claim that can mislead. STOPPED and
-	// STANDBY assert nothing about a transmitter, and a standing line there would
-	// be prose explaining a state the row above already names (D-107). The band
-	// is one row taller ON AIR, which is the state that already changes the
-	// band's colour entire.
-	if b.power == lineup.Running {
-		// WHOLE OR NOT AT ALL, RUNG BY RUNG. A safety sentence cut mid-word is a
-		// different claim, not a shorter one: cut short, it can render as
-		// "· audio on" — complete, reassuring, and the opposite of the sentence
-		// it comes from. Each rung is taken only if it
-		// fits ENTIRE, longest first, and the shortest fits any width this
-		// console draws at.
+	if b.power == lineup.Running { // FR-5.5's boundary: the longest rung that fits whole
 		for _, words := range bcAirBoundaries() { // bounded by the ladder (P10-02)
 			if render.Width(words) <= width {
 				rows = append(rows, render.PadTo(render.Tint(words, render.Tok(render.AlertModalText)), width))
@@ -1258,18 +1148,6 @@ func (b Broadcaster) stationLine() []string {
 			}
 		}
 	}
-	// THE BED HAS NO ROW OF ITS OWN HERE (D-107). The LIVE NOW / RELAY BED box
-	// below is its one place: "this data is also tied DIRECTLY to the ON AIR
-	// state - so it should all be in 1 section".
-
-	// NO STANDING PROSE. A sentence like "the programme is stopped; hazards still
-	// read" explains a state the row above already names, and the reference has
-	// no line for it. A NOTICE STILL GETS ONE, because a refusal answers a key the
-	// operator just pressed and has to be somewhere they are looking.
-	//
-	// THIS ROW IS DRAWN ONLY WHEN A `statusNote` EXISTS, so it carries no
-	// per-state sentence — the note would always replace it. FR-5.5's boundary
-	// renders on a line of its own above (D-153, F-109, D-160).
 	if b.statusNote != "" {
 		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, width)))
 	}

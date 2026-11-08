@@ -68,27 +68,44 @@ type bedSeams struct {
 	selected func() string
 }
 
-// startSchedule builds the Director, its executors and the pump, and starts
-// both goroutines.
+// startSchedule builds the Director, its executors and the pump, starts both
+// goroutines, and wires the producers and MasterControl into it.
 //
-// THE ARBITER AND THE EFFECTOR ARE THE ONES ALREADY RUNNING, not new ones. The
-// executors perform through `nar` and `nar.mc`, which is the same pair the
-// ticker's takeovers use — building a second effector here would put the band
-// and the duck back under two owners, which T2.3 rules out and this file would
-// be the easiest place to break.
-// THE LISTS ARE NOT ONE LIST (D-76, D-140). `pool` is the
-// STATION's candidates — what its Producer may OFFER. `resolvable` is what its
-// Composer may RESOLVE, which is the pool plus whatever the operator has
-// requested: D-130 lets them request anywhere inside the service radius, so the
-// two are not interchangeable. `watch` is the LISTENER's, and the
-// bed's cut-over is the MONITOR's rotation moving through it.
-//
-// `cutTo` DOES NOT RESOLVE AGAINST THE POOL. A Director scheduling a location
-// its own Composer cannot resolve gets it benched by D-67's cool-off — true of
-// `propose` and `compose`, and NOT of `cutTo`, which serves a rotation through
-// the listener's own watchlist. Resolved against the pool, a watched location
-// outside it would stop resolving and the tune would die as
-// `schedule:tune-unknown`, silently.
+// Why it is wired this way:
+//   - The arbiter and the effector are the ones already running (T2.3): the
+//     executors perform through nar and nar.mc, the pair the ticker's
+//     takeovers use, so the band and the duck keep one owner each.
+//   - The three lists are not one list (D-76, D-140). pool is the station's
+//     candidates, what its Producer may offer. resolvable is what its Composer
+//     may resolve: the pool plus whatever the operator requested anywhere in
+//     the service radius (D-130), which is wider than the capped pool. watch is
+//     the listener's, and the bed's cut-over is the monitor's rotation through
+//     it, so cutTo resolves against watch, not the pool: resolved against the
+//     pool, a watched place outside it would die silently as
+//     schedule:tune-unknown.
+//   - The console is told, never reads the Director (0.16.0 P2): publish is its
+//     only source, called when the schedule settles.
+//   - The producer is the ticker (T3.10b): it holds what an alert is and the
+//     store of what was read aloud, asked both ways (I-7), and [M] reaches the
+//     schedule so a muted read is never consumed in silence.
+//   - A card's report kinds travel on the effect (R4b), so compose looks
+//     nothing up from the published line-up, which would race the dispatch.
+//   - The programme is a source swap on the broadcast engine (F-91, BD-9), read
+//     by the deck; a pathless build has no deck, and the executor declines the
+//     card by name rather than holding it on the air in silence.
+//   - The line-up's depth is the console's slot count (D-40), from the console,
+//     so the station never holds cards the operator cannot address.
+//   - The spoken transitions' seam is left empty (D-163): ProgrammeReturn and
+//     Announcement name no script, so the Director arranges none. To add them,
+//     set ProgrammeReturn to transition/resume.txt, rendered by scriptText.
+//   - The producers report into the schedule here (T3.10b), not at the caller:
+//     left to the caller, the ticker's wiring is one line from being forgotten
+//     and no hazard is ever read while every test stays green (D-12's shape).
+//   - MasterControl declares ON AIR / STANDBY (MVS-D-78, FR-5.4), the one voice
+//     for the operator, and the console is handed the control. Its send runs on
+//     its own goroutine because this runs before the program's loop does: a
+//     synchronous send would block until the loop reads it, and hangs
+//     TestRunWithoutArgsStartsTheDashboard.
 func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, resolvable, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg), bed bedSeams) *schedule {
 	if nar == nil {
 		return nil // no arbiter, no schedule: there is nothing to perform through
@@ -97,79 +114,32 @@ func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, c
 		return nil // no producer, no arrivals: the rail would have nothing to read
 	}
 	x := newExecutors(executors{
-		voice: nar,
-		// THE CONSOLE'S ONLY SOURCE (0.16.0 P2). It never reads the Director
-		// directly — it is told, at the moment the schedule settles.
-		publish: publish,
-		scripts: scripts,
-		clock:   clock,
-		now:     time.Now,
-		mc:      nar.mc,
-		audible: func() bool { return !nar.silent() },
-		// MUTE REACHES THE SCHEDULE (T3.10b). `[M]` is the listener's "do not
-		// speak to me"; a read that ignored it would consume a hazard in silence.
-		muted: tick.muted.Load,
-		// THE PRODUCER IS THE TICKER (T3.10b). It holds what an alert IS and the
-		// store of what has been read aloud; the card carries only the ids.
-		alert: tick.alerts.get,
-		mark:  func(id string) { tick.seen.mark([]globalfeed.Event{{ID: id}}, time.Now()) },
-		// THE SAME STORE, ASKED THE OTHER WAY (I-7): two bursts with different
-		// leads can carry the same alert, and neither the producer's filter nor
-		// the Director's ID check can see the overlap.
-		readAloud: tick.seen.has,
+		voice:     nar,
+		publish:   publish, // the console's only source
+		scripts:   scripts,
+		clock:     clock,
+		now:       time.Now,
+		mc:        nar.mc,
+		audible:   func() bool { return !nar.silent() },
+		muted:     tick.muted.Load, // [M] reaches the schedule
+		alert:     tick.alerts.get, // the producer holds what an alert is
+		mark:      func(id string) { tick.seen.mark([]globalfeed.Event{{ID: id}}, time.Now()) },
+		readAloud: tick.seen.has, // the same store, asked the other way (I-7)
 		report: func(f lineup.Effect, why string) {
 			radioDebugLog("schedule:declined:" + lineup.Describe(f) + ":" + why)
 		},
-		// THE MONITOR'S ROTATION MOVES THROUGH THE LISTENER'S OWN WATCHLIST
-		// (D-76). It is `advanceBed` that emits this, and `advanceBed` is the
-		// operator's own listening — not the station's.
-		cutTo: tuneTo(deck, watch),
-		// What to call it on the console (F-79). The same list the cut-over
-		// resolves against, so the row cannot name a place the tune did not go.
-		bedLabel: bedLabelOf(watch),
-		// What the operator chose, which is what the row's own arrows set
-		// (F-98, D-90).
-		selected: bed.selected,
+		cutTo:    tuneTo(deck, watch), // the monitor's rotation, through the listener's watchlist
+		bedLabel: bedLabelOf(watch),   // what the console calls it, from the same list (F-79)
+		selected: bed.selected,        // what the operator chose (F-98, D-90)
 		noteBed:  bed.note,
-		// THE MAIN TRACK'S WORDS (0.16.0 P3). Required from P3(d): a station
-		// whose rotation is owned by the schedule and has no composer wired
-		// would queue every report and read none.
-		// THE SET TRAVELS ON THE EFFECT, so there is no lookup here (R4b).
-		// `BuildCard` carries it for the same reason it carries the slot and the
-		// refs — looking it up from the published lineup would race the dispatch.
-		// AND IT RESOLVES AGAINST MORE THAN THE POOL (D-140). A card carries a
-		// KEY; the Composer turns it back into a location. The operator may
-		// request anywhere inside the SERVICE RADIUS (D-130), which is wider
-		// than the capped pool — so resolving against the pool alone would fail
-		// to build exactly the cards the widening was ruled for, silently.
-		compose: composeFor(deck, resolvable),
-		// What performs them (F-91, BD-9). The rail reads through the
-		// arbiter above; the programme is a source swap on the broadcast
-		// engine, and this is the deck that owns it. Nil with no deck, which is
-		// every pathless build — the executor declines the card by name rather
-		// than holding it on the air in silence.
-		read: readerFor(deck),
-		// WHAT THE PRODUCER HAS TO OFFER (0.16.0 P4, D-40). The Director asks
-		// on every publish and takes only what the line-up still needs.
-		propose: proposeFrom(pool),
+		compose:  composeFor(deck, resolvable), // the main track's words, against the pool and the requests (D-140)
+		read:     readerFor(deck),              // the programme's reader (F-91, BD-9)
+		propose:  proposeFrom(pool),            // what the Producer has to offer (D-40)
 	})
 	if x == nil {
 		return nil // a seam was nil; newExecutors has already said which
 	}
 	run, cancel := context.WithCancel(ctx)
-	// THE DEPTH IS THE CONSOLE'S SLOT COUNT, FROM THE CONSOLE (D-40). A second
-	// constant here would agree with it today and drift silently: the station
-	// would hold cards the operator cannot address, or leave slots empty for
-	// ever, and neither reads as a bug from either side.
-	//
-	// THE SEAM FOR THE SPOKEN TRANSITIONS (D-163). ProgrammeReturn and
-	// Announcement are left empty, so the Director arranges no transition:
-	// F-27's "Watchpost Radio now returns to its regularly scheduled
-	// programming" has no composer. The transitions are the Director's only
-	// additive act - it alone knows two adjacent cards came from different
-	// places - and the line-up's machinery for them is tested. To add them, set
-	// ProgrammeReturn here to transition/resume.txt, rendered by scriptText with
-	// its InProgress.
 	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax, Depth: tty.MainTrackSlots}, time.Now()), x.run,
 		func(f lineup.Effect, v any) { radioDebugLog("schedule:fault:" + lineup.Describe(f)) })
 	if p == nil {
@@ -179,15 +149,6 @@ func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, c
 	s := &schedule{pump: p, ctx: run, cancel: cancel, ticks: make(chan struct{}), x: x}
 	go p.loop(run)
 	go s.tick(run)
-	// THE PRODUCERS REPORT INTO IT, WIRED HERE (T3.10b).
-	//
-	// Left to the caller, the ticker's wiring is one line away from being
-	// forgotten: without it the rail receives nothing and NO HAZARD IS EVER
-	// READ, while every test stays green because each wires its own schedule.
-	// That is the shape of D-12 — three tests passing over an inert Settings row
-	// because they called the cycle function instead of pressing the key — so
-	// the wiring lives with the thing that needs it and a test can assert it.
-	// Both are parameters.
 	tick.mu.Lock()
 	tick.emit = s.carry
 	tick.mu.Unlock()
@@ -196,32 +157,12 @@ func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, c
 		deck.emit = s.carry
 		deck.mu.Unlock()
 	}
-	// MasterControl declares ON AIR / STANDBY (MVS-D-78, FR-5.4). It is the
-	// third thing that speaks to the Director and the only one that speaks for
-	// the OPERATOR — the ticker reports arrivals, the deck reports the bed, and
-	// this carries a decision a human made.
 	if nar != nil && nar.mc != nil {
 		nar.mc.mu.Lock()
 		nar.mc.carry = s.carry
 		nar.mc.mu.Unlock()
-		// The console is handed the control (FR-5.4). Without this the
-		// operator's ON AIR / STANDBY key reaches a nil seam and does nothing,
-		// which is the console being a surface with no controls — the trap
-		// F-72 recorded, arriving by a different route.
-		//
-		// ON ITS OWN GOROUTINE, AND THAT IS NOT STYLE. `publish` is the
-		// program's Send, and THIS RUNS BEFORE THE PROGRAM'S LOOP DOES: a
-		// synchronous send here blocks until something reads it, and nothing
-		// will, because the reader is the loop this function returns to start.
-		// A synchronous send hangs `TestRunWithoutArgsStartsTheDashboard` for the
-		// full ten-minute test timeout.
-		//
-		// It is the shape every other startup-time sender already has —
-		// severeDeck publishes from its own goroutine for the same reason — and
-		// `Send` selects on the program's context, so a program that never
-		// starts unblocks it at shutdown rather than leaking.
 		if publish != nil {
-			go publish(tty.StationControlMsg{Control: nar.mc})
+			go publish(tty.StationControlMsg{Control: nar.mc}) // on its own goroutine: the program's loop has not started (see Why)
 		}
 	}
 	return s

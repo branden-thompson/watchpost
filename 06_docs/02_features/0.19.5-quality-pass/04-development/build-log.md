@@ -1640,3 +1640,43 @@ Mutants m797 to m799, hand-vetted and killed.
   flag is named. Say why in the build log.
 - **Walkthrough 2 (JM-15)** gives a provider its host in `providerEndpoints`, held by
   `TestEveryProviderHasAnEndpoint`.
+
+## 0.19.5 batch 37 — seven essays moved into "Why" lists (plan Q9.4, JR-8, D-34)
+
+This batch changes comments only. mE3 and mC9 follow their lines and are re-vetted.
+
+- **The sample, owed at B2.** The plan put the `stationLine` sample in front of the HUM LEAD during
+  B2, and the record holds no sign that it was. It was rewritten and shown now. D-34 approved the
+  shape: the rationale moves into the function's doc as a short "Why" list with its IDs, the body
+  keeps one-line WHAT comments, and no code changes.
+- **The seven,** as JR-8 named them. Each body's lines are given before and after, with the
+  in-body comment lines first:
+
+  | Function | Before | After |
+  |---|---|---|
+  | `Broadcaster.stationLine` | 90 of 125 | 0 of 32 |
+  | `Broadcaster.lanes` | 55 of 68 | 0 of 11 |
+  | `executors.speak` | 61 of 86 | 0 of 25 |
+  | `Broadcaster.clamp` | 31 of 70 | 0 of 39 |
+  | `Router.Update` | 46 of 63 | 0 of 17 |
+  | `executors.run` | 58 of 96 | 0 of 38 |
+  | `startSchedule` | 76 of 135 | 0 of 59 |
+
+  Trailing one-line comments stay at the statements that need them. That includes the contracts a
+  maintainer might otherwise "tidy" away: Restore's release through the arbiter for the lock order,
+  and the control's send on its own goroutine.
+- **The code is unchanged.** A comparison of each file against HEAD, with comments stripped, is
+  empty. `startSchedule` differs only in gofmt's field alignment, which the moved comments had been
+  breaking.
+- **Corrected in the move.**
+  - `speak`'s doc said it came home "with nothing" when a read ended early. It comes home a routed
+    `Failed` (DR-24), which its own body explained, and the doc now says so.
+  - `Router.Update` told Observer the active surface "so Settings can keep one surface's rows from
+    the other". Since D-70 every row is drawn on both. What reads it now is Help, About and the map,
+    and the Why list says that.
+  - `run`'s line citations (`bed.go:392`, `director.go:842`) are symbols now.
+  - `stationLine`'s duplicated "a notice is the only prose" paragraph is gone. It was JR-8's drifted
+    comment, 90 lines from its code.
+- **Mutants.** mE3 (`x.mc.hold()`) and mC9 (the rail's class) anchored on lines that now carry their
+  one-line comments, and follow them. mE3 is killed by `TestTheDuckAndItsRestoreReachTheEffector`,
+  and mC9 by `TestSpeakReadsThroughTheNarratorAndComesHomeFinished`.

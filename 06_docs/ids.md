@@ -1027,6 +1027,7 @@ cell; a later table that mentions it is not listed.
 | D-33 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Round 2, two reviewers' fix-first: remediation moved work across the D-12 macro-phase boundary without a ruli… |
 | D-33 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-2, colouring a MUF or foF2 field: (A) muf/fof2 presets, (B) FR-15's generic host ramp, or both. A host-typ… |
 | D-34 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | THE RETURN TRANSITION NAMES THE RELAY, AND ITS ANCHOR DIFFERS BY SURFACE |
+| D-34 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Q9.4 (JR-8): the plan's stationLine sample, owed at B2, had never been shown. Rewritten as the sample: 125 li… |
 | D-34 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Round 2 business: D-20 (--ascii shows a notice; the description replaces it in phase 2) was superseded by D-2… |
 | D-34 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-3 and the words, for go-tuiMaps v0.3.0: contour labels are bare numbers placed only on east-west crossings… |
 | D-35 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | THE DISCARD PILE: A CAPPED STACK WITH A TRAPDOOR |

@@ -416,74 +416,49 @@ func observerScoped(msg tea.Msg) bool {
 	return false
 }
 
-// Update routes the message and keeps the Router as the program's model.
+// Update routes the message and keeps the Router as the program's model,
+// then mirrors onto both surfaces what they must agree on.
 //
-// PROGRAM-SCOPED MESSAGES GO TO BOTH SURFACES; everything else goes to the
-// active one. An inactive surface holding a stale size renders wrong the
-// instant it is swapped to, and the operator would meet a broken frame at
-// exactly the moment they asked for it.
+// Why:
+//   - Program-scoped messages go to both surfaces and the rest to the active
+//     one: an inactive surface holding a stale size would render wrong the
+//     instant it is swapped to.
+//   - The console's line-up offset is carried to Observer BEFORE the dispatch
+//     (D-156), on every path, because a handler reads it while the message is
+//     processed. A Line-Up Request opened on the console can be submitted with
+//     Observer active (ctrl+o still swaps out of a window), and read as zero
+//     there the card would land a row below the slot typed (D-119).
+//     TestARequestSubmittedFromObserverStillLandsInTheTypedSlot drives this.
+//   - The gain is mirrored on every update, never owned twice (D-56): the
+//     Dashboard holds it, and the console draws the same number, so it cannot
+//     lag the control just pressed.
+//   - The units and clock are shared Settings (0.16.0 FR-6.2, 0.19.5 D-21), and
+//     Reduce motion is one switch for both surfaces (D-360).
+//   - Observer is told which surface is active (D-92): the windows it draws for
+//     the console, Help and About and the map, answer for the surface they are
+//     open on.
+//   - A refusal is carried to the surface that was refused, and dies with its
+//     reason: a refusal drawn nowhere reads as a broken control (HUM LEAD, UAT
+//     2026-09-10), and once the station is not ON AIR its sentence is false.
+//   - The open card window is re-handed on the same cadence (D-88), so a card
+//     that re-hydrates under the operator is not a stale read; showCard bumps
+//     its generation only when the content differs.
 func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// HOW FAR THE CONSOLE'S LINE-UP SITS BELOW ITS LIVE SLOT, CARRIED BEFORE THE
-	// MESSAGE IS DISPATCHED (D-156) — on every path, not only `throughToObserver`
-	// (the path the console uses to reach a window it does not own) but also the
-	// one taken when Observer is the ACTIVE surface, where `update` calls
-	// `r.observer.update` directly.
-	//
-	// THE WINDOW OUTLIVES THE SURFACE THAT OPENED IT. `ctrl+o` deliberately still
-	// swaps out of an open window — the escape hatch an operator needs — so a
-	// Line-Up Request opened with `r` on the console can be filled in and
-	// submitted with Observer active. Read as ZERO there, the RUNNING station's
-	// answer, the offset is wrong by one on STANDBY: the card lands a row below
-	// the slot the operator typed, with the window's own confirmation naming the
-	// slot they asked for (D-119).
-	//
-	// BEFORE THE DISPATCH, NOT AFTER. The gain and the surface below are mirrored
-	// on the way OUT because they are DRAWN; this is READ by a handler while the
-	// message is being processed, so a value written afterwards is a value the
-	// handler never saw. `TestARequestSubmittedFromObserverStillLandsInTheTypedSlot`
-	// drives the Router rather than calling `requestSchedule`, which is what makes
-	// the ordering observable.
 	r.observer.liveOffset = r.broadcaster.liveOffset()
 	if _, ok := msg.(tea.KeyPressMsg); ok {
 		r.keyArrived() // M6: a key's time to its frame (timing.go)
 	}
 	out, cmd := r.update(msg)
-	// THE LEVEL IS MIRRORED, NEVER OWNED TWICE (D-56). The Dashboard holds it —
-	// it has the engine call, the step and the chip flash — and the console
-	// draws the same number under its own word for it. Mirrored on EVERY update
-	// rather than on a message, so the console cannot lag the control the
-	// operator just pressed, and there is exactly one answer to how loud the
-	// station is.
 	out.broadcaster.gain = out.observer.radioVolume
-	// And the units and clock, which are shared Settings (0.16.0 FR-6.2,
-	// 0.19.5 D-21): changed from either surface, both draw the change.
 	out.broadcaster.units, out.broadcaster.clockFmt = out.observer.units, out.observer.clockFmt
 	if out.observer.reduceMotion { // Reduce motion is one switch for both surfaces (D-360): the console's dots hold their first phase
 		out.broadcaster.frame = 0
 	}
-	// Observer is told which surface is active, on the same cadence and for
-	// the same reason (D-92): the Settings window is forwarded to Observer from the
-	// console, and D-18 rules that some of its rows belong to one surface
-	// only. A window that could not tell them apart would show the listener's
-	// settings to the operator of a station.
 	out.observer.surface = out.active
-	// The refusal is carried to the surface that was refused. A refusal
-	// recorded and drawn nowhere is indistinguishable from a broken control —
-	// it reads as "ctrl+o will soft lock randomly" (HUM LEAD, UAT 2026-09-10).
-	//
-	// IT DIES WITH ITS REASON. The only refusal there is says the station
-	// is ON AIR; once it is not, the sentence is false and must go, or the
-	// operator is left reading about a state they have already left.
 	if !out.stationIsLive() || (out.refusal == bedRefusal && out.broadcaster.bed.Carrying) {
 		out.refusal = ""
 	}
 	out.broadcaster.statusNote = out.refusal
-	// The open card window is re-handed, for the same reason and on the
-	// same cadence (D-88). A card the operator is reading can re-hydrate
-	// under them — RefreshAfter is half of StaleAfter — and a window still
-	// showing its first frame while the report changes is the F-30 freeze
-	// with a stale READ in it. showCard bumps its generation only when the
-	// content actually differs, so this costs a comparison and not a redraw.
 	out = out.refreshCardWindow()
 	return out, cmd
 }

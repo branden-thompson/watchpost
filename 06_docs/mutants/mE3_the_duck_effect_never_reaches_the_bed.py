@@ -6,6 +6,6 @@ import pathlib
 # RE-ANCHORED: the Duck effect HOLDS the bed now rather than only dipping it,
 # because a per-sequence take-back would otherwise lift it between cards.
 p = pathlib.Path("app/executors.go"); s = p.read_text()
-old = "\t\tx.mc.hold()\n"
+old = "\t\tx.mc.hold() // idempotent at the owner\n"
 assert old in s, "mE3"
 p.write_text(s.replace(old, "", 1))
