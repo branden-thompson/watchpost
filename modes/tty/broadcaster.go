@@ -1187,7 +1187,7 @@ func (b Broadcaster) stationLine() []string {
 	// which this band does not have because colour is its edge (D-70) — or
 	// every row comes out three cells too wide and the right-hand inset has
 	// nowhere to go.
-	lane := b.bandWidth()
+	width := b.bandWidth()
 	// THE LABELS SHARE A VALUE COLUMN (D-62). "STATION:" and the bed's label are
 	// different lengths, and a section whose two values began in different
 	// columns would read as two unrelated rows rather than as one region saying
@@ -1206,7 +1206,7 @@ func (b Broadcaster) stationLine() []string {
 	// THE CONTROL SURVIVES AND THE PROSE YIELDS, the same rule as the card's
 	// handle: the operator ACTS on the bar, and a level they cannot see is a
 	// station they cannot set.
-	room := lane - render.Width(gain) - 2
+	room := width - render.Width(gain) - 2
 	// THE BED'S STATE READS AS A SENTENCE AND SITS AT THE RIGHT, where the
 	// station's own transition hint sits — the two facts an operator checks
 	// without reading the row are both in the same column (D-71).
@@ -1216,10 +1216,10 @@ func (b Broadcaster) stationLine() []string {
 		// THE GAIN RIDES THE STATE'S OWN ROW, where the reference draws it: how
 		// loud the station is and whether it is on the air are one question asked
 		// twice, and the operator checks them together.
-		render.PadBetween(render.TruncateCells(label("STATION AIR:")+state, max(0, room)), gain, lane),
+		render.PadBetween(render.TruncateCells(label("STATION AIR:")+state, max(0, room)), gain, width),
 		// THE TRANSMITTER'S IDENTITY IS HERE, NOT IN THE MASTHEAD (D-71). It is
 		// a fact about the STATION; the masthead is what both surfaces share.
-		render.PadBetween(label("BROADCASTING FROM:")+b.transmitterRow(max(0, lane-bcLabelCells-render.Width(hint)-2)), hint, lane),
+		render.PadBetween(label("BROADCASTING FROM:")+b.transmitterRow(max(0, width-bcLabelCells-render.Width(hint)-2)), hint, width),
 	}
 	// FR-5.5'S BOUNDARY GETS A LINE OF ITS OWN (F-109, HUM LEAD 2026-09-16:
 	// "Give F109C its own line in the section area then if it creates new
@@ -1252,8 +1252,8 @@ func (b Broadcaster) stationLine() []string {
 		// fits ENTIRE, longest first, and the shortest fits any width this
 		// console draws at.
 		for _, words := range bcAirBoundaries() { // bounded by the ladder (P10-02)
-			if render.Width(words) <= lane {
-				rows = append(rows, render.PadTo(render.Tint(words, render.Tok(render.AlertModalText)), lane))
+			if render.Width(words) <= width {
+				rows = append(rows, render.PadTo(render.Tint(words, render.Tok(render.AlertModalText)), width))
 				break
 			}
 		}
@@ -1271,7 +1271,7 @@ func (b Broadcaster) stationLine() []string {
 	// per-state sentence — the note would always replace it. FR-5.5's boundary
 	// renders on a line of its own above (D-153, F-109, D-160).
 	if b.statusNote != "" {
-		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, lane)))
+		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, width)))
 	}
 	return rows
 }

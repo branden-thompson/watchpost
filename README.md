@@ -599,9 +599,18 @@ benchmark harness lives in `scripts/quality/` and `make quality-bench`. The term
 MIT, same author) is carried in-tree under `third_party/go-studs` (its LICENSE and NOTICE.md ride with
 it; import paths rewritten), so the tree builds anywhere with no private access.
 
-**The program's shape as built** — what feeds it, its layers, and a map of the packages — is
-[`docs/architecture.md`](docs/architecture.md); where a particular thing happens is
-[`docs/where-things-happen.md`](docs/where-things-happen.md).
+**Start here**, reading the code for the first time:
+1. [`docs/architecture.md`](docs/architecture.md) — the program's shape as built: what feeds it, its
+   layers, and a map of the packages. The [architecture atlas](06_docs/architecture-atlas.html)
+   draws it with the as-built maps.
+2. [`docs/where-things-happen.md`](docs/where-things-happen.md) — where each thing happens, and the
+   vocabulary (the five roles, duck, burst, pool, lane and the rest).
+3. [`docs/extending.md`](docs/extending.md) — how to add a provider, a radio control, a report kind,
+   a map layer or a Setting.
+4. [`06_docs/code-standards.md`](06_docs/code-standards.md) — the rules, and which gate holds each.
+5. Before touching the Broadcaster:
+   [`06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md`](06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md),
+   the rulings the code cannot tell you.
 
 **The code standards are written down and machine-checked**, in
 [`06_docs/code-standards.md`](06_docs/code-standards.md) — what comments are for, when a discard needs

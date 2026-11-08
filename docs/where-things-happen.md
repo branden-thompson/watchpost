@@ -94,7 +94,7 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | modal | the one floating window that can be open (`type modal int`); `modalNone` is the dashboard alone | `modes/tty/dashboard.go` |
 | tick predicate | the rule for when the 300 ms animation tick runs at all | `modes/tty/dashboard.go:tickNeeded` |
 | the grid | a tier's fire times: start + n·Every, whatever a cycle took | `platform/sched/sched.go:runTier` |
-| lane | the client's three pacing queues and in-flight caps: normal (16), priority (8) and interactive (8); the priority lane alone skips the failure memo; a host holds at most half of each | `platform/httpx/httpx.go:WithPriority` |
+| lane | the client's three pacing queues and in-flight caps: normal (16), priority (8) and interactive (8); the priority lane alone skips the failure memo; a host holds at most half of each **The word is overloaded:** it also names a ticker category's band (`platform/category`), the console's columns (`Broadcaster.lanes`) and a gate lane (`make verify-docs`); this row is the HTTP one. | `platform/httpx/httpx.go:WithPriority` |
 | failure memo | the per-host "avoid for 20 s" state armed by transport errors, a host not answering in the client's time, or repeated 5xx | `platform/httpx/memo.go` |
 | validators | `ETag` / `Last-Modified` stored with a cache entry so a conditional GET can renew it | `platform/httpx/cache.go` |
 | persistence floor | a body reaches disk only past a 5-minute caller TTL (or `Persist()`) | `platform/httpx/cache.go:put` |
@@ -112,6 +112,24 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | the seam | `platform/render` — the only non-test package that imports go-studs (`table.go` is the table seam) | `platform/render/table.go` |
 | the Director | the pure state machine that owns the schedule: Events in, Effects out; the executors perform the Effects | `platform/lineup/director.go`, `app/executors.go` |
 | the arbiter | the narration arbiter: who gets the voice when the air frees, by class (a takeover over a read), ducking the broadcast once per run. Not one of the five roles, and not the Director; 0.14.0 ruled it dissolves into the Director's step (0.19.5 D-13 renamed it from `director`) | `app/arbiter.go` |
+| the five roles | the card pipeline's split, each owning one thing: the **Producer** what cards should exist and when, the **Composer** what a card says, the **Director** their order, the **Reader** performing the live card, **MasterControl** the air itself (0.16.0's required reading, `06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md`) | the rows below, and the Director's above |
+| the Producer | proposes cards, several, cheap and name-only, with no words: the ticker for alerts, the schedule's offer for reports | `app/ticker.go:startTicker`, `app/executors.go:offer` |
+| the Composer | writes what a card says, at standby, from data fetched then rather than when it was proposed | `app/schedule.go:composeFor`, `app/compose_takeover.go` |
+| the Reader | performs the live card: its tone, its words and its pauses | `app/read_script.go:readScript` |
+| MasterControl | the effector: declares ON AIR and STANDBY, ducks the broadcast under a narration and gates the deck from the air | `app/mastercontrol.go:dip` |
+| duck | lowering the broadcast under a narration so its words are heard: a relay dips, a rendered report holds | `app/mastercontrol.go:dip`, `app/mastercontrol.go:giveWay` |
+| burst | one takeover card carrying several hazards, read in order behind one tone | `app/burst_words.go:breakingLine`, `app/compose_takeover.go` |
+| programme | what the station reads on its main track: what a takeover interrupts and a transition returns to | `platform/lineup/lineup.go` |
+| segment | one spoken line of a synthesized broadcast, with its role and pause | `domains/radio/synth/compose.go` |
+| settle | two functions with one name. The Director's settles the schedule after an event: it takes the air, starts the next card's build and publishes. The arbiter's decides who has the voice when the air frees | `platform/lineup/director.go:settle`, `app/arbiter.go:settle` |
+| pool | the station's candidate places: what its Producer may offer, inside the service radius | `app/pool.go`, `domains/locations/pool.go` |
+| correspondent, cast | the correspondent is the voice that reads a role; the cast is who speaks for what, each role inheriting its voice from the level above | `domains/radio/cast` |
+| Observer | the listener's surface: in code the `Dashboard` type. "The dashboard" alone also means that screen with no window open | `modes/tty/dashboard.go:NewDashboard` |
+| the Broadcaster, the console | the station operator's surface | `modes/tty/broadcaster.go:NewBroadcaster` |
+| surface | one of the two screens the Router holds, Observer or the Broadcaster; the Router swaps them and mirrors what both must agree on | `modes/tty/router.go:NewRouter` |
+| Settings | the window users call Settings is `setup*` in code: `modalSetup`, `d.setup`, the `watchpost setup` command | `modes/tty/setup_rows.go:setupTable` |
+| report | two packages: `platform/report` is what a location report can be made of (its kinds); `modes/report` renders a snapshot to stdout (`--json`, `--report-only`) | `platform/report`, `modes/report` |
+| HUM LEAD | the project's human lead, whose rulings the record cites verbatim and who alone ratifies an exemption | `06_docs/02_features/0.19.5-quality-pass/02-analysis/rulings.md` and each release's |
 | a card | one scheduled read, from proposed to on-air to done | `platform/lineup/card.go` |
 | the line-up | the schedule the Director publishes: the main track and the alert rail | `platform/lineup/lineup.go` |
 | the main track / the rail | the rotation of ordinary reads (sixteen cards: the one on the air, UP NEXT, and fourteen behind them) / the priority queue for severe-weather takeovers, which always drains first | `platform/lineup/lineup.go` |

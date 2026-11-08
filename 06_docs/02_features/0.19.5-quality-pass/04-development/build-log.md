@@ -1568,3 +1568,28 @@ This batch changes comments, plus one test. Mutant m796 is hand-vetted and kille
   each package matches a row's name or prefix, and that every row names a file that exists. A file
   added without a row fails, and so does a row left after its files go. m796 drops a file from the
   map.
+
+## 0.19.5 batch 35 — the words a newcomer meets, defined where they look (plan Q9.2, JR-5, JR-6, JM-15)
+
+Three mutants are re-pointed, each re-vetted and killed. One local is renamed; the rest is docs.
+
+- **The vocabulary.** `docs/where-things-happen.md` gains eighteen rows, each with a code owner in its
+  "Defined in" column; the symbol test holds every `file.go:Func`.
+  - The five roles, as a row of their own linking 0.16.0's required reading, and then one row each for
+    the Producer (`startTicker`, `executors.offer`), the Composer (`composeFor`,
+    `compose_takeover.go`), the Reader (`readScript`) and MasterControl (`dip`). The Director already
+    had its row.
+  - duck, burst, programme, segment, pool, and correspondent and cast.
+  - settle, said as two functions with one name: the Director's and the arbiter's.
+  - Observer as the `Dashboard` type, the Broadcaster, surface, and Settings as `setup*`.
+  - The two report packages, and HUM LEAD.
+- **"lane" is marked overloaded** in its own row: the HTTP lanes, a ticker category's band, the
+  console's columns, and a gate lane.
+- **The width local.** `stationLine`'s `lane := b.bandWidth()` is now `width`: a text width, not a
+  lane (JR-5(b)). mAC5, mFR55 and mFR56 anchored on the old name and follow it. They are killed by
+  `TestTheBedIsDrawnOnceInsideTheStationSection`, `TestTheBedRidesInTheStationSection` and
+  `TestTheGainControlReflows`, among others.
+- **README's "Start here"** (JR-6) is a five-step reading order for someone new to the code:
+  architecture.md and the atlas, where-things-happen and its vocabulary, extending.md,
+  code-standards, and, before the Broadcaster, 0.16.0's required reading. It replaces the two-line
+  pointer batch 32 added.

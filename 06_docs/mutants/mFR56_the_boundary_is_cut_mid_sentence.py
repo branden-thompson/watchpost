@@ -5,13 +5,13 @@ import pathlib
 # cells: complete, reassuring, and the opposite of the sentence it came from.
 p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
 old = """		for _, words := range bcAirBoundaries() { // bounded by the ladder (P10-02)
-			if render.Width(words) <= lane {
-				rows = append(rows, render.PadTo(render.Tint(words, render.Tok(render.AlertModalText)), lane))
+			if render.Width(words) <= width {
+				rows = append(rows, render.PadTo(render.Tint(words, render.Tok(render.AlertModalText)), width))
 				break
 			}
 		}"""
 new = """		for _, words := range bcAirBoundaries() { // bounded by the ladder (P10-02)
-			rows = append(rows, render.TruncateCells(render.Tint(words, render.Tok(render.AlertModalText)), lane))
+			rows = append(rows, render.TruncateCells(render.Tint(words, render.Tok(render.AlertModalText)), width))
 			break
 		}"""
 assert old in s, "mFR56"
