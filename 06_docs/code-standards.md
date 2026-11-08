@@ -2,7 +2,7 @@
 
 **Every rule below is checked by a tool in this repository, to that tool's ceiling, and every tool
 runs without anything outside it.** The ceiling is stated with each rule: `AP-HIST-01` is a phrase
-list, and the ~123 history-narrating lines it cannot see are F-137's, deferred to 0.16.5. `go run ./tools/authoring` needs only the Go toolchain — no plugin, no CLI, no
+list, and the history-narrating lines it cannot see are F-137's, and 0.19.5's reader pass (Q8.6) takes them. `go run ./tools/authoring` needs only the Go toolchain — no plugin, no CLI, no
 configuration. If you can build Watchpost you can run its checks.
 
 **Why this file exists.** The rules originate in a design harness that is deliberately NOT part of

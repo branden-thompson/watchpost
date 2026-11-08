@@ -199,14 +199,13 @@ in 200 ms because it left the machine.
 provide and that the request window's own helper text points the operator toward.  It is not the
 trade the performance ruling was written for.
 
-### Carried to 0.16.5
+### Carried as follow-ups
 
-- **Warm the geocoder connection at start-up.** The first lookup of a session pays 939 ms against a
-  200 ms steady state; the ~700 ms delta is one handshake, and it lands on the operator's first
-  search rather than on anything they can see coming.
-- **Decide whether a partial name may resolve from the pool.** It is the only change that removes the
-  round trip rather than hiding it, and it is a behaviour ruling, not an optimisation — see the fork
-  recorded for the HUM LEAD.
+- **Warm the geocoder connection at start-up** (`F-224`). The first lookup of a session pays 939 ms
+  against a 200 ms steady state; the ~700 ms delta is one handshake, and it lands on the operator's
+  first search rather than on anything they can see coming.
+- **Decide whether a partial name may resolve from the pool** (`F-225`). It is the only change that
+  removes the round trip rather than hiding it, and it is a behaviour ruling, not an optimisation.
 
 ---
 

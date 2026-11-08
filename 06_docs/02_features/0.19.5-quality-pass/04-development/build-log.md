@@ -1339,3 +1339,49 @@ This batch changes comments only. mAG4 follows its line, and is re-vetted.
   edits changed, and each is rewritten to stand alone. The soft warning is clear.
 - **mAG4** anchors on the RECENT seismic tier's comment, and follows it. It is killed by
   `TestTheRecentTiersFetchWhatTheMarksAreDrawnFrom` and `TestCadenceTableIsTheDoc`.
+
+## 0.19.5 batch 29 — follow-ups.md carries only open work (plan Q8.2, DC-3, DC-10, A-6)
+
+Markdown only, through the docs lane.
+
+- **Fewer rows.** The file goes from 442 lines to about 210. The rows that remain are open, each saying
+  what is left.
+- **Deleted, per the file's own rule** ("close a row by deleting it in the commit that does the work"):
+  - the rows marked CLOSED, FIXED, ANSWERED, RULED or DISPOSITIONED with nothing left owed;
+  - the twelve the DC lens found done in the code: F-1, F-2, F-3, F-15, F-18, F-35, F-36, F-80, F-87,
+    F-89, F-100 and F-173;
+  - F-47 and F-64, whose remainders are done. The Makefile's timeout comment records the mutant
+    timing and says where it is re-checked;
+  - two sections that held nothing open, the 0.16.0 final round's and "Closed at 0.14.0".
+  - Their text is in git.
+- **Moved, because it is a release's record and not a follow-up.** The 0.16.0 gate layer's red-team
+  rounds two to nine and its BUILD-exit paragraph were held only here. They move verbatim to
+  `06_docs/02_features/0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md`, ceilings and
+  dispositions included. Their open rows come back to the Open table: F-156 to F-162.
+- **Cut to what remains:**
+  - F-44 (the `space` read's 11.4 s and two journey gaps);
+  - F-48 (the published 0.13.0 image, a HUM LEAD call);
+  - F-55 (Observer's half of the size contract);
+  - F-67 (three program messages no surface handles);
+  - F-68 (Observer's own breakpoints);
+  - F-73 (the paused main track);
+  - F-90 (`verify` drives no console pty; `journey` does);
+  - F-107 (`SpliceCells` has a caller; its wide-rune contract is unmeasured since);
+  - F-138 (one `t.Skip` left).
+- **Rewritten.** F-94 describes the console as built, the manifest and the detail window, with
+  `scriptWindow` gone. F-105's three dropped fields fold into F-108(a), the restore path that would
+  write them again.
+- **Citations name symbols, not lines that move:** F-62 (`setupAlertLines`), F-103 (`Projection`,
+  `scheduleIndex`, `visible`), F-104 (`Director.refreshStandby`), and F-211 (`release-matrix`'s
+  `CGO_ENABLED=0`, oto v3.5.0-alpha.11 as `go.mod` pins it).
+- **DC-10: work deferred to 0.16.5**, a release that was never cut.
+  - In this file: F-121, F-133, F-137, F-139 and F-157 to F-162 say so, and each names what makes it
+    due instead.
+  - The two perf items `perf-measurement.md` carried there become F-224 and F-225.
+  - `code-standards.md` sends F-137's sites to Q8.6.
+  - `tooling-backlog.md`'s two deferred rows and its `mutant-check` cost are restated. The cost is
+    now the Makefile's measured figures.
+  - The 0.16.0 reports, the CHANGELOG and the 0.16.0 handoff are records, and keep the words they
+    were written with.
+- **The checks.** `TestFollowUpsCiteTestsThatExist` still finds its floor of citations, and every one
+  exists. `06_docs/ids.md` is regenerated, since F-rows are IDs.
