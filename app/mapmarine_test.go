@@ -116,7 +116,7 @@ func TestTheSeasStationsAreAskedOnlyWhileOn(t *testing.T) {
 	}))
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
-	lp := &livePipelines{marine: []snapshot.Provider{ndbc.New(c, srv.URL), coops.New(c, srv.URL)}}
+	lp := &livePipelines{providerFamilies: providerFamilies{marine: []snapshot.Provider{ndbc.New(c, srv.URL), coops.New(c, srv.URL)}}}
 	ask := tty.MapAsk{Snap: &snapshot.Snapshot{}, Region: geo.RegionContiguous, View: marineView}
 	if in := lp.mapInputsFetching(context.Background(), ask); len(paths) != 0 || len(in.buoys) != 0 || len(in.tides) != 0 {
 		t.Fatalf("with both rows off the map asked %v", paths)
@@ -200,7 +200,7 @@ func TestTheTidesEstimateCountsTheStationsInView(t *testing.T) {
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	tides := coops.New(c, srv.URL)
-	lp := &livePipelines{marine: []snapshot.Provider{tides}}
+	lp := &livePipelines{providerFamilies: providerFamilies{marine: []snapshot.Provider{tides}}}
 	// A view that holds some of the fixture's stations and not others, so a
 	// count of every station held cannot pass for the count in view.
 	view := tty.MapView{W: -117.5, S: 32, E: -117, N: 34.5}
@@ -244,7 +244,7 @@ func TestTheSeasStationsThatDidNotAnswerGoToTheDiagnostics(t *testing.T) {
 	}))
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
-	lp := &livePipelines{marine: []snapshot.Provider{ndbc.New(c, srv.URL), coops.New(c, srv.URL)}}
+	lp := &livePipelines{providerFamilies: providerFamilies{marine: []snapshot.Provider{ndbc.New(c, srv.URL), coops.New(c, srv.URL)}}}
 	ask := tty.MapAsk{Snap: &snapshot.Snapshot{}, Region: geo.RegionContiguous, View: marineView, Buoys: true, Tides: true}
 	if in := lp.mapInputsFetching(context.Background(), ask); len(in.buoys) != 0 || len(in.tides) != 0 {
 		t.Fatalf("sources that did not answer drew %d buoys, %d tide stations", len(in.buoys), len(in.tides))

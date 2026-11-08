@@ -69,7 +69,9 @@ flowchart TB
   A surface that needs a table or a row asks for a render function.
 - **One deck, one air.** Both surfaces read through the same radio deck in `app`. The Director
   (`platform/lineup`) orders what is read, and MasterControl gates the deck from the air. The
-  Broadcaster always has the air while it is on screen. The as-built picture is
+  Broadcaster always has the air while it is on screen. Its five roles, the Card Producer, the Card
+  Composer, the Director, the Reader and MasterControl, are defined in `docs/where-things-happen.md`'s
+  vocabulary. The as-built picture is
   `06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md`.
 - **The snapshot is immutable once published.** A frame reads one snapshot, and a newer one replaces
   it whole.
@@ -101,4 +103,5 @@ the terminal and the CLI (§6), the schema policy (§10.3) and config (§10.11).
 release's design; this page is the program as it stands.
 
 Where a particular thing happens, step by step, is `docs/where-things-happen.md`. How to add a
-detail row, a provider, a radio control, a report kind, a map layer or a Setting is `docs/extending.md`.
+detail row, a provider, a radio control, a report kind, a map layer, a Setting or a spoken phrase is
+`docs/extending.md`.

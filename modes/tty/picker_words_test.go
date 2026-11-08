@@ -115,3 +115,28 @@ func TestOnlyAVoiceRowPreviews(t *testing.T) {
 		t.Errorf("checked %d voice rows and %d others; the table holds more, so the selection has narrowed", voices, others)
 	}
 }
+
+// TestEveryChipWordIsRead is the reverse (0.19.5 D-36): the chip row reads
+// pickerChipWords only on a row marked picker, so a word for any other row
+// is never drawn, and the row's arrows go unnamed.
+func TestEveryChipWordIsRead(t *testing.T) {
+	for id := range pickerChipWords {
+		if !setupTable()[id].picker {
+			t.Errorf("pickerChipWords has %q for row %d, which is not a picker: the chip row never reads it", pickerChipWords[id], id)
+		}
+	}
+}
+
+// TestReduceMotionsChipsNameIt draws Settings with the focus on Reduce
+// motion: the chip row names what its arrows change (0.19.5 D-36).
+func TestReduceMotionsChipsNameIt(t *testing.T) {
+	d, err := NewDashboard(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.width, d.height = 160, 60
+	got := stripANSITest(d.openSetupAt(rowReduceMotion).View().Content)
+	if !strings.Contains(got, "[←→] Motion") {
+		t.Error(`with the focus on Reduce motion, the chip row does not say "[←→] Motion"`)
+	}
+}

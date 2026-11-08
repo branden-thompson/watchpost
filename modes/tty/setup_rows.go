@@ -250,7 +250,7 @@ func setupTable() [setupRowCount]setupRow {
 		rowClock12:       {id: rowClock12, group: groupUI, scope: scopeShared, kind: rowRadio},
 		rowClock24:       {id: rowClock24, group: groupUI, scope: scopeShared, kind: rowRadio},
 		rowClockMil:      {id: rowClockMil, group: groupUI, scope: scopeShared, kind: rowRadio},
-		rowReduceMotion:  {id: rowReduceMotion, group: groupUI, scope: scopeShared, kind: rowPicker}, // both surfaces move (D-360)
+		rowReduceMotion:  {id: rowReduceMotion, group: groupUI, scope: scopeShared, kind: rowPicker, picker: true}, // both surfaces move (D-360)
 
 		// THE MAP IS THE LISTENER'S (0.18.0): Observer draws it, the console does not.
 		// ONE LINE EACH: the WATCHPOST UI group must still fit the window unscrolled.

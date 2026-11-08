@@ -1031,9 +1031,11 @@ cell; a later table that mentions it is not listed.
 | D-34 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Round 2 business: D-20 (--ascii shows a notice; the description replaces it in phase 2) was superseded by D-2… |
 | D-34 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-3 and the words, for go-tuiMaps v0.3.0: contour labels are bare numbers placed only on east-west crossings… |
 | D-35 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | THE DISCARD PILE: A CAPPED STACK WITH A TRAPDOOR |
+| D-35 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | M5 answer key (D-24): two key-builders found that the multi-voice release's rulings do not resolve through 06… |
 | D-35 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Round 3 found D-27's ratified motion row (off / slow / normal, plus a rate ceiling) narrowed in place to a bo… |
 | D-35 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-4 (terminator) and HR-5 (value-coloured station points) for go-tuiMaps v0.3.0. No terminator or night code… |
 | D-36 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | [space] BECOMES AN OPERATOR-INITIATED PROMOTE |
+| D-36 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | M5 answer key (the toggle Setting): Settings → Watchpost UI → Reduce motion takes ←→, but its row is not mark… |
 | D-36 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | M1b — the description scored with the picture hidden — was added at round-2 remediation on a reviewer's findi… |
 | D-36 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A go-tuiMaps defect from wave 1: SafeRamps covers only the tokens from AlertExtremeOutline to High (internal/… |
 | D-37 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the discard pile is a modal, [shift+U], patterned on the [w] window — and reached from the base UI only. UNBU… |
@@ -1986,6 +1988,7 @@ cell; a later table that mentions it is not listed.
 | F-29 |  | `quality-observations.md` | the flake was never where it was recorded (2026-09-06) |
 | F-31 |  | `follow-ups.md` | ALERTS - READ ORDER — the listener-facing setting, DEFERRED to post-Broadcaster (MVS-D-79, HUM LEAD 2026-09-0… |
 | F-33 |  | `follow-ups.md` | RULED 2026-09-08 (HUM LEAD), and the ruling reframes the row rather than answering it. A relay fault is the O… |
+| F-34 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t3-console-card-line.md` | 00-REQUIRED-READING.md:235 |
 | F-37 |  | `follow-ups.md` | Non-ASCII furniture survives --ascii in four windows that have no --ascii scan. │ ×10 and ─ ×98 in Location D… |
 | F-38 |  | `follow-ups.md` | Nothing verifies at the ARTIFACT level that the injector is absent. app/inject_test.go asserts on the text of… |
 | F-41 |  | `multi-voice-support/08-reports/review-report.md` | Previewing a voice in Settings gave no sign it was working — p sent the deck's progress, and its reason on fa… |
@@ -2036,6 +2039,8 @@ cell; a later table that mentions it is not listed.
 | F-108 |  | `follow-ups.md` | Three surfaces say something the code does not do. (a) modes/tty/broadcaster_manage.go:79 tells the operator … |
 | F-110 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | A lapsed hazard suppressed its live siblings: the composer declined the whole burst if any ref had lapsed |
 | F-110 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-build.md` | (found by the fix) |
+| F-111 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t3-console-card-line.md` | extending.md:94 |
+| F-111 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t4-spoken-phrase.md` | docs/extending.md:94 |
 | F-115 |  | `follow-ups.md` | FullLabel is 21 cells and REPORT TYPE's declared width is 20. The label on the most common row in the running… |
 | F-116 |  | `follow-ups.md` | castRowOrder() and castLabel are hand-written and derive from nothing. A new report kind with a correspondent… |
 | F-119 |  | `follow-ups.md` | lint-watermark.sh's positive control tests a different code path than the gate runs. scan() exists only for t… |
@@ -2054,6 +2059,7 @@ cell; a later table that mentions it is not listed.
 | F-160 |  | `follow-ups.md` | FR-9.2 is not pinned as written: the tower's coordinate pair as a typed value with one owner (platform/config… |
 | F-161 |  | `follow-ups.md` | FR-3.6 is open: a card dropped at the fifteen-minute staleness bound tells the listener (dropStale → readInst… |
 | F-162 |  | `follow-ups.md` | FR-8.8 is open: the console shows one data-pull stamp per card; the per-kind last arrival that moves when dat… |
+| F-164 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t3-console-card-line.md` | 00-REQUIRED-READING.md:206 |
 | F-170 |  | `follow-ups.md` | A gate that renders the architecture diagrams. Five diagrams in three releases' documents did not parse - unq… |
 | F-171 |  | `follow-ups.md` | MaxVertices and MaxRings are derived from a sample, not a census. Eighty of roughly three thousand forecast z… |
 | F-172 |  | `follow-ups.md` | A shape's winding is never read, so a hole is a hole only by position. platform/geo takes the first ring of a… |
@@ -2091,3 +2097,98 @@ cell; a later table that mentions it is not listed.
 | F-224 |  | `follow-ups.md` | Warm the geocoder connection at start-up. The first lookup of a session pays 939 ms against a 200 ms steady s… |
 | F-225 |  | `follow-ups.md` | Whether a partial name may resolve from the pool. It is the only change that removes the lookup's round trip … |
 | F-226 |  | `follow-ups.md` | The INST rules' review, due at 0.17.0, has no record. 06_docs/quality-plan.md admits each INST rule on a name… |
+
+## MVS-D
+
+The multi-voice release ruled in conversation and cited its rulings as MVS-D-n, but never put them
+in a table, so each one here points at its first mention instead (0.19.5 D-35): its own file's
+heading where it has one, else its earliest line in `multi-voice-support/`, else its earliest
+line elsewhere in the record. The subject is that line, which is where its context is.
+
+| ID | Release | Where | Subject |
+|---|---|---|---|
+| MVS-D-1 |  | `multi-voice-support/08-reports/project-brief.md:12` | problem statement A |
+| MVS-D-2 |  | `multi-voice-support/08-reports/project-brief.md:12` | Rulings MVS-D-1 problem statement A · MVS-D-2 0.14.0 · MVS-D-3 assignment lives in Setup; the [V] chooser and… |
+| MVS-D-3 |  | `multi-voice-support/08-reports/project-brief.md:12` | assignment lives in Setup; the [V] chooser and the player's Voice: System Voice control are removed and the R… |
+| MVS-D-4 |  | `multi-voice-support/08-reports/project-brief.md:12` | full maritime report (buoy observations + tides + currents) |
+| MVS-D-5 |  | `multi-voice-support/08-reports/project-brief.md:12` | per-product tones in scope |
+| MVS-D-6 |  | `multi-voice-support/01-objectives/objectives.md:43` | FR-5 Identity lines name the speaking voice. (Hand-over mechanics per red-team B-3: the hand-over is decided … |
+| MVS-D-7 |  | `multi-voice-support/08-reports/project-brief.md:12` | the two-voice minimum dropped |
+| MVS-D-8 |  | `multi-voice-support/08-reports/project-brief.md:12` | fresh install = one voice everywhere, roles opt-in |
+| MVS-D-9 |  | `multi-voice-support/08-reports/project-brief.md:12` | tones: every category is configurable to either share the Warnings / Disasters tone or use one specific to th… |
+| MVS-D-10 |  | `multi-voice-support/08-reports/project-brief.md:12` | the Radio UI / Setup mocks come from the HUM LEAD when PLAN is ready for them |
+| MVS-D-11 |  | `multi-voice-support/08-reports/project-brief.md:12` | tone presets ratified — Dual-tone (EAS-style 853+960 Hz) for Warnings & significant disasters (tornado warnin… |
+| MVS-D-12 |  | `multi-voice-support/08-reports/project-brief.md:12` | a burst mixing classes sounds ONE tone, by its highest-severity event |
+| MVS-D-13 |  | `multi-voice-support/08-reports/project-brief.md:12` | a Station role for the lead and the sign-off; the lead is always "This is the <report> for Watchpost Radio." … |
+| MVS-D-14 |  | `multi-voice-support/08-reports/project-brief.md:12` | the coastal-waters forecast is IN scope bounded to what the existing plumbing gives for free (coastal cities … |
+| MVS-D-15 |  | `multi-voice-support/08-reports/project-brief.md:12` | storm class wins over warning/watch; Winter Weather Advisory stays advisory |
+| MVS-D-16 |  | `multi-voice-support/08-reports/project-brief.md:12` | a Setup preview ducks the live broadcast, the arbiter owning the duck — and the arbiter is renamed the Statio… |
+| MVS-D-17 |  | `multi-voice-support/08-reports/project-brief.md:12` | the resident-Piper decision is deferred; HUM LEAD measures RSS at UAT on a real build (Linux has so far out-p… |
+| MVS-D-18 |  | `multi-voice-support/08-reports/project-brief.md:282` | maritime order: products → maritime → fire → seismic → tail |
+| MVS-D-19 |  | `multi-voice-support/08-reports/project-brief.md:282` | the voice action stays, default V, opens Setup at Correspondents |
+| MVS-D-20 |  | `multi-voice-support/08-reports/project-brief.md:282` | Setup's save may drop hand-written comments in 0.14.0 (keys preserved), documented |
+| MVS-D-21 |  | `multi-voice-support/08-reports/project-brief.md:282` | maritime wording as recommended for now; future preferences noted for the backlog: 12/24-hour time for displa… |
+| MVS-D-22 |  | `multi-voice-support/08-reports/project-brief.md:282` | the downgrade wording accepted — may be revisited on catastrophic issues (fewer than four humans use pre-1.0 … |
+| MVS-D-23 |  | `multi-voice-support/08-reports/project-brief.md:288` | AX-1…AX-8 ratified as recommended ("AX-all approved"); RAT-4 hand-over wording OK; the Radio panel mock suppl… |
+| MVS-D-24 |  | `multi-voice-support/08-reports/project-brief.md:289` | the on-air correspondent is dropped from the Radio panel for now (FR-10 → the [S] cast table only); the volum… |
+| MVS-D-25 |  | `multi-voice-support/08-reports/project-brief.md:290` | Single Voice ↔ Correspondent Cast is a mode ([radio] cast), assignments kept when switching |
+| MVS-D-26 |  | `multi-voice-support/08-reports/project-brief.md:290` | the tone section is a per-class mute; the "share the Warnings tone" switch (MVS-D-9) is dropped — every class… |
+| MVS-D-27 |  | `multi-voice-support/08-reports/project-brief.md:290` | a p Preview chip appears when the focus is on a voice picker |
+| MVS-D-28 |  | `multi-voice-support/08-reports/project-brief.md:290` | the classes as drawn: Significant Quakes & Disasters and Warnings separately mutable (both the dual-tone), Ma… |
+| MVS-D-29 |  | `multi-voice-support/08-reports/project-brief.md:305` | AX-1 "build the seam for all three backends" — the resident-Piper path is cut from 0.14.0, confirmed. The sea… |
+| MVS-D-30 |  | `multi-voice-support/08-reports/project-brief.md:306` | scope open for cutting — (a) the whole plan ships. Each batch is UAT-able alone, so the (b) maritime / (c) pe… |
+| MVS-D-31 |  | `multi-voice-support/08-reports/project-brief.md:307` | objectives 0 / AM-9 claimed the tones are the "default-on answer" — Candidate A stands as the locked problem;… |
+| MVS-D-32 |  | `multi-voice-support/08-reports/project-brief.md:308` | - — MVS-D-8 stands: a fresh install has one voice. No default alert voice is installed unasked (macOS free, L… |
+| MVS-D-33 |  | `multi-voice-support/07-readiness/goldens-vs-mocks.md:28` | the storm class keeps the mock's word, and it is a different thing from the |
+| MVS-D-34 |  | `multi-voice-support/08-reports/project-brief.md:310` | [M]'s meaning changes silently for a 0.13.0 listener — (a) accept, with a CHANGELOG line. Someone who muted a… |
+| MVS-D-35 |  | `multi-voice-support/04-development/implementation-plan.md:11` | (MVS-D-34) · RAT-3/5/6 ratified (MVS-D-35/36/37) · AX-7 is (B) only — no zone geometry is built (MVS-D-38) · |
+| MVS-D-36 |  | `multi-voice-support/04-development/p3-maritime-tones.md:75` | by MVS-D-21. RAT-5 is ratified as written (MVS-D-36): the wording ships as recorded; the HUM LEAD may still |
+| MVS-D-37 |  | `multi-voice-support/04-development/p3-build-log.md:34` | Three periods (SpokenPeriodsCap, RAT-6/MVS-D-37), and the cut happens on the raw text before normalisation |
+| MVS-D-38 |  | `multi-voice-support/08-reports/project-brief.md:312` | AX-7 open between (A) nearest-zone-by-geometry and (B) first nearshore block — (B) only for 0.14.0. MVS-D-14 … |
+| MVS-D-39 |  | `multi-voice-support/04-development/implementation-plan.md:12` | M3/M2/M5/M4 and AX-4's second reserved slot ratified (MVS-D-39…43) · background installs are capped at two per |
+| MVS-D-40 |  | `multi-voice-support/04-development/p4-build-log.md:113` | 2. The journey's cast step counts its own keypresses and fails above 11 (AM-18/MVS-D-40). It runs on a |
+| MVS-D-41 |  | `multi-voice-support/07-readiness/gates.md:47` | M5 FALL — every fallback row of the matrix explicit, never silent except the one legitimately silent row (AM-… |
+| MVS-D-42 |  | `multi-voice-support/08-reports/project-brief.md:304` | M4: one instrument, ambiguous between a code-path measure and a wall-clock one — two parts, one instrument: B… |
+| MVS-D-43 |  | `multi-voice-support/08-reports/project-brief.md:314` | AX-4: N ordinary slots, one reserved — two reserved slots ratified (D-R3-1): a Station Director job must neve… |
+| MVS-D-44 |  | `multi-voice-support/08-reports/project-brief.md:315` | ensureRoleVoices installs every named-and-missing Piper voice on launch, unasked — (b) a per-session cap: two… |
+| MVS-D-45 |  | `multi-voice-support/08-reports/project-brief.md:316` | NFR-7 promised golangci-lint run ./... and staticcheck ./... "at every exit" — NFR-7 is amended to the gates … |
+| MVS-D-46 |  | `multi-voice-support/08-reports/project-brief.md:317` | five open points on the Setup mock — as written in p4-ui.md - the standing mock-fidelity default. Like MVS-D-… |
+| MVS-D-47 |  | `multi-voice-support/04-development/p5-build-log.md:62` | FR-7, FR-10, FR-13, FR-14, NFR-5 and the M5 evidence row in gates.md §2 — The [S] cast table is deleted (UAT … |
+| MVS-D-48 |  | `multi-voice-support/04-development/p5-build-log.md:63` | MVS-D-26 ([M] toggles All Tones On ↔ Mute) — [M] opens Settings at the tone rows instead of toggling. A one-k… |
+| MVS-D-49 |  | `multi-voice-support/04-development/p5-build-log.md:64` | MVS-D-21 (a 12/24-hour preference is BACKLOG) — The backlog item is overturned: units and clock ship in 0.14.… |
+| MVS-D-50 |  | `multi-voice-support/04-development/p5-build-log.md:65` | NFR-8 (no trace of [V] or [T]) — [T] and the min player are gone as required. V survives as a deep-link into … |
+| MVS-D-51 |  | `multi-voice-support/04-development/p5-build-log.md:66` | The 0.9.0 deferral of R-12(b) --no-animation — The 0.9.0 rationale — "no animation exists to disable beyond t… |
+| MVS-D-52 |  | `multi-voice-support/04-development/p5-build-log.md:67` | — (new) — The hourly release check is opt-in (update_check, default off), disclosed in the README, and render… |
+| MVS-D-53 |  | `multi-voice-support/04-development/p5-build-log.md:68` | 0.13.0's decision that ticker_radius_mi scopes the tape only — The preference scopes the [w] window too. A de… |
+| MVS-D-54 |  | `multi-voice-support/01-objectives/read-order-design.md:171` | the interim ruling that a burst is read most-severe-first with a derived time bound. |
+| MVS-D-55 |  | `multi-voice-support/04-development/p5-build-log.md:69` | MVS-D-51 (--no-animation and no_animation ship) — The flag is withdrawn before it ever shipped. Frozen, the b… |
+| MVS-D-56 |  | `multi-voice-support/04-development/p5-build-log.md:70` | MVS-D-54, and the 0.14.0 release scope — 0.14.0 holds for the read-lineup redesign (01-objectives/read-order-… |
+| MVS-D-57 |  | `multi-voice-support/04-development/p5-build-log.md:71` | SAM-D-10's six-tab taxonomy, on the products it left unplaced — Any product naming Warning, Watch or Advisory… |
+| MVS-D-58 |  | `multi-voice-support/04-development/p5-build-log.md:72` | SAM-D-10 / objectives §5, which declared the Air Quality Alert not shown — An Air Quality Alert is an Advisor… |
+| MVS-D-59 |  | `multi-voice-support/04-development/p5-build-log.md:73` | SAM-D-10's six-tab taxonomy; the window's own name — A seventh category: Forecasts and Outlooks, worn as Fore… |
+| MVS-D-60 |  | `multi-voice-support/04-development/p5-build-log.md:74` | SAM-D-10, and MVS-D-57's remaining gap — The civil-emergency family is routed. A red team's sweep of the live… |
+| MVS-D-61 |  | `multi-voice-support/04-development/p5-build-log.md:75` | MVS-D-60; SAM-D-10's tab set — Emergency Orders is an eighth category and an eighth ticker lane, carrying Eva… |
+| MVS-D-62 |  | `multi-voice-support/04-development/p5-build-log.md:76` | MVS-D-61's placeholder; the 0.12.0 lane palette — Emergency Orders takes THE RED; Disasters takes purple. The… |
+| MVS-D-63 |  | `multi-voice-support/04-development/p5-build-log.md:77` | MVS-D-61's tab position; the window's category heading — Emergency leads the tab bar, left of Warnings — the … |
+| MVS-D-64 |  | `multi-voice-support/04-development/p5-build-log.md:78` | MVS-D-56; F-17 — DISCOVER APPROVED for the Station Director & the Lineup — a LEVEL-1 / SEV-0 major sub-featur… |
+| MVS-D-65 |  | `multi-voice-support/04-development/director-build-log.md:1567` | Q-D1 (T2.2); MVS-D-12's one-tone-per-burst — The tone is not the Director's, and the closed effect set does n… |
+| MVS-D-66 |  | `multi-voice-support/04-development/director-build-log.md:1568` | Q-D2 (T2.2); breakingGap — The pause between the events of a burst is ONE SECOND, and it belongs to the burst… |
+| MVS-D-67 |  | `multi-voice-support/04-development/director-build-log.md:1569` | Q-D3 (T2.2); the T2.3 / T3.1 order — One duck per RAIL DRAIN, never per card. "Duck across a burst — stays at… |
+| MVS-D-68 |  | `multi-voice-support/04-development/director-build-log.md:1570` | Q-D4 (T2.2) — Not an architectural gap: the executor marks the read, at the moment it mints Finished. "The au… |
+| MVS-D-69 |  | `multi-voice-support/04-development/director-build-log.md:1152` | No tone on a [space] read. "<tone> is used for ticker notification to grab the users attention. When a user p… |
+| MVS-D-70 |  | `multi-voice-support/04-development/director-build-log.md:1153` | The bed dips to 15 %, from 25 %. "still loud enough to be distracting, now loud enough for me to know it's st… |
+| MVS-D-71 |  | `multi-voice-support/04-development/director-build-log.md:1536` | the per-lane floor is retired on the merits, not by omission |
+| MVS-D-72 |  | `multi-voice-support/04-development/director-build-log.md:1486` | the burst's pause structure, and T3.3's pre-build pulled forward |
+| MVS-D-73 |  | `multi-voice-support/04-development/director-build-log.md:1455` | a severity tie is broken by the louder tone |
+| MVS-D-74 |  | `multi-voice-support/04-development/director-build-log.md:1332` | [space] on the reading row pauses and resumes it. A different row ends the running read and starts that one —… |
+| MVS-D-75 |  | `multi-voice-support/04-development/director-build-log.md:1333` | Closing the window stops the read, and a read cut short is not marked as read, because it was not heard |
+| MVS-D-76 |  | `multi-voice-support/04-development/director-build-log.md:2213` | the relay-fault window |
+| MVS-D-77 |  | `multi-voice-support/03-architecture-design/director-architecture.md:3` | CORRECTED BY role-model.md (MVS-D-77, HUM LEAD 2026-09-04). Three things below are |
+| MVS-D-78 |  | `multi-voice-support/03-architecture-design/role-model.md:147` | STANDBY — MVS-D-78 |
+| MVS-D-79 |  | `multi-voice-support/01-objectives/README-director-handoff.md:7` | 0.14.0 held for it under MVS-D-56; MVS-D-79 (HUM LEAD 2026-09-05) DEFERS THE SETTING to post-Broadcaster and … |
+| MVS-D-80 |  | `multi-voice-support/04-development/director-build-log.md:2225` | the inter-card transition rule |
+| MVS-D-88 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d88.md:1` | the card's own window |
+| MVS-D-89 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d89.md:1` | the LIVE slot's empty state |
+| MVS-D-90 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d90.md:1` | the operator's relay choice is the row's one owner |
+| MVS-D-91 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d91.md:1` | nothing from Observer reaches the air on the console |
+| MVS-D-92 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d92.md:1` | a settings row belongs to a surface |

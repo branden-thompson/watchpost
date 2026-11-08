@@ -1,8 +1,10 @@
 package main
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -48,5 +50,82 @@ func TestARowDefinesAnIDByItsFirstCell(t *testing.T) {
 	}
 	if r := got[1]; r.family != "FR" || r.num != "3" || r.suffix != ".2" {
 		t.Errorf("FR-3.2 read as %+v", r)
+	}
+}
+
+// TestAnMVSRulingIsIndexedByItsBestMention pins 0.19.5 D-35's order: an
+// ID's own heading, then a bold statement of what it ruled in the
+// multi-voice docs, then one elsewhere, then any line in the multi-voice
+// docs, then any line elsewhere. A bold ID inside a citation is a mention,
+// and a bold ID in a table row with nothing after it takes the row's later
+// cells.
+func TestAnMVSRulingIsIndexedByItsBestMention(t *testing.T) {
+	mvs := map[string]mention{}
+	mentionsOf("see MVS-D-1 and MVS-D-2 here\n(as ruled, **MVS-D-3**) and so on\n", "02_features/0.16.0-broadcaster-ui/notes.md", mvs)
+	mentionsOf("MVS-D-2 cited in the release\n**MVS-D-4** full maritime report · **MVS-D-5** (E-1)\n| AM-1 | **MVS-D-6** (E-2) | the question | the answer |\n", "02_features/multi-voice-support/brief.md", mvs)
+	mentionsOf("# MVS-D-4 — the report's own file\n", "02_features/0.16.0-broadcaster-ui/rulings-d4.md", mvs)
+	want := map[string]struct {
+		rank    int
+		file    string
+		subject string
+	}{
+		"1": {rankCited, "notes.md", "see MVS-D-1 and MVS-D-2 here"},
+		"2": {rankCitedHere, "brief.md", "MVS-D-2 cited in the release"},
+		"3": {rankCited, "notes.md", "(as ruled, MVS-D-3) and so on"},
+		"4": {rankHeading, "rulings-d4.md", "the report's own file"},
+		"5": {rankCitedHere, "brief.md", "MVS-D-4 full maritime report · MVS-D-5 (E-1)"},
+		"6": {rankRuledHere, "brief.md", "the question — the answer"},
+	}
+	for num, w := range want {
+		got, ok := mvs[num]
+		if !ok {
+			t.Errorf("MVS-D-%s is not indexed", num)
+			continue
+		}
+		if got.rank != w.rank || got.row.file != w.file || got.row.subject != w.subject {
+			t.Errorf("MVS-D-%s = rank %d, %s, %q; want rank %d, %s, %q", num, got.rank, got.row.file, got.row.subject, w.rank, w.file, w.subject)
+		}
+	}
+}
+
+// TestEveryMVSRulingTheCodeCitesIsIndexed holds 0.19.5 D-35 to the code: an
+// MVS-D ID in a Go comment that 06_docs/ids.md has no row for is a citation a
+// junior cannot look up.
+func TestEveryMVSRulingTheCodeCitesIsIndexed(t *testing.T) {
+	root := filepath.Join("..", "..")
+	index, err := build(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cited := map[string]string{}
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && (d.Name() == ".git" || d.Name() == "third_party" || d.Name() == "dist" || d.Name() == ".claude") {
+			return filepath.SkipDir
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		for _, m := range mvsCite.FindAllStringSubmatch(string(b), -1) {
+			cited[m[1]] = path
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cited) < 40 {
+		t.Fatalf("found %d MVS-D IDs in the Go files; the walk is not reading the tree", len(cited))
+	}
+	for num, path := range cited {
+		if !strings.Contains(index, "| MVS-D-"+num+" |") {
+			t.Errorf("%s cites MVS-D-%s, which 06_docs/ids.md does not index", path, num)
+		}
 	}
 }

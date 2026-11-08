@@ -208,12 +208,12 @@
 1.207 tea.KeyPressMsgv surface=0 cmd=false frame=c10253ed7f1c316ce89fe3454a4f3874cc572bbda2aff3052b1d0bde7197f3ee
 1.208 tea.KeyPressMsgspace surface=0 cmd=false frame=ca7df0ec5b923d8ee511d064035bca8e5f1f1bcc52803c37a45fc181e5959f12
 1.209 tea.KeyPressMsgtab surface=0 cmd=false frame=f4a4e15541b86b5d74408758c1f0bf77719cd47d83fb1ff3776b249c488a52b4
-1.210 tea.KeyPressMsgup surface=0 cmd=false frame=04f3ade1f9158cb0d6057dcb4fbfbef72ca670f0c4e848be051d10fdae9fe5b6
-1.211 tea.KeyPressMsgm surface=0 cmd=false frame=04f3ade1f9158cb0d6057dcb4fbfbef72ca670f0c4e848be051d10fdae9fe5b6
-1.212 tea.WindowSizeMsg{133 44} surface=0 cmd=false frame=1c6b6150c4f7f5a2bbef34ca51be36cc36897f2ebcfc2dfa887bbb07fb6c9c69
-1.213 tea.KeyPressMsgspace surface=0 cmd=false frame=1c6b6150c4f7f5a2bbef34ca51be36cc36897f2ebcfc2dfa887bbb07fb6c9c69
-1.214 tea.KeyPressMsgB surface=0 cmd=false frame=1c6b6150c4f7f5a2bbef34ca51be36cc36897f2ebcfc2dfa887bbb07fb6c9c69
-1.215 tea.WindowSizeMsg{80 24} surface=0 cmd=false frame=04f3ade1f9158cb0d6057dcb4fbfbef72ca670f0c4e848be051d10fdae9fe5b6
+1.210 tea.KeyPressMsgup surface=0 cmd=false frame=dca68a6b29a18864bff231d678cf2e63591d29200e4b9ed6e46e4d36409eb4b7
+1.211 tea.KeyPressMsgm surface=0 cmd=false frame=dca68a6b29a18864bff231d678cf2e63591d29200e4b9ed6e46e4d36409eb4b7
+1.212 tea.WindowSizeMsg{133 44} surface=0 cmd=false frame=ce19fabe816feedc740b0952efd12c60b4f82ad1f7bacdd3a574c6652b8530fe
+1.213 tea.KeyPressMsgspace surface=0 cmd=false frame=ce19fabe816feedc740b0952efd12c60b4f82ad1f7bacdd3a574c6652b8530fe
+1.214 tea.KeyPressMsgB surface=0 cmd=false frame=ce19fabe816feedc740b0952efd12c60b4f82ad1f7bacdd3a574c6652b8530fe
+1.215 tea.WindowSizeMsg{80 24} surface=0 cmd=false frame=dca68a6b29a18864bff231d678cf2e63591d29200e4b9ed6e46e4d36409eb4b7
 1.216 tea.KeyPressMsgtab surface=0 cmd=false frame=251a9f01bcfc3a539c9ac2870d32da2af367e8badddb2fea5d6fc752d9cd1372
 1.217 tea.KeyPressMsgg surface=0 cmd=false frame=251a9f01bcfc3a539c9ac2870d32da2af367e8badddb2fea5d6fc752d9cd1372
 1.218 tea.KeyPressMsgg surface=0 cmd=false frame=251a9f01bcfc3a539c9ac2870d32da2af367e8badddb2fea5d6fc752d9cd1372

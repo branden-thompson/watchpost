@@ -545,6 +545,7 @@ own. Today: `weather-radio/` (the broadcast's lead, conditions, alerts, sign-off
 test event) and `voice-preview/`. There is also
 `transition/`, written and pinned but **not yet on air** — it is the line between a takeover and the
 programme resuming, and it arrives with the wiring in a later release.
+A new part is spoken only where the code asks for it by name ([`docs/extending.md`](docs/extending.md), Walkthrough 7).
 To re-word a phrase, put the same `<report>/<part>.txt` under `~/.config/watchpost/scripts/`; it
 replaces that phrase alone. How the correspondent *pronounces* things is data too:
 `domains/radio/pronounce/rules/<table>.txt` — `zones` (PDT → "Pacific Daylight Time"), `states`,
@@ -626,8 +627,9 @@ roster (D-252). `06_docs/code-standards.md` lists its rules.
    draws it with the as-built maps.
 2. [`docs/where-things-happen.md`](docs/where-things-happen.md) — where each thing happens, and the
    vocabulary (the five roles, duck, burst, pool, lane and the rest).
-3. [`docs/extending.md`](docs/extending.md) — how to add a provider, a radio control, a report kind,
-   a map layer or a Setting.
+3. [`docs/extending.md`](docs/extending.md) — how to add a detail row, a provider, a radio control, a
+   report kind, a map layer, a Setting or a spoken phrase, site by site, with what fails when one is
+   missed.
 4. [`06_docs/code-standards.md`](06_docs/code-standards.md) — the rules, and which gate holds each.
 5. Before touching the Broadcaster:
    [`06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md`](06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md),

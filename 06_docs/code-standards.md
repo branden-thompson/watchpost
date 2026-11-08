@@ -1,7 +1,7 @@
 # Code standards this repository enforces
 
 **Every rule below is checked by a tool in this repository, to that tool's ceiling, and every tool
-runs without anything outside it.** The ceiling is stated with each rule: `AP-HIST-01` is a phrase
+runs without anything outside it, except the P10 checker, which is out of tree (see "P10").** The ceiling is stated with each rule: `AP-HIST-01` is a phrase
 list, and a narrating line none of its phrases match needs a reader. `go run ./tools/authoring` needs only the Go toolchain — no plugin, no CLI, no
 configuration. If you can build Watchpost you can run its checks.
 

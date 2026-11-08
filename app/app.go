@@ -13,7 +13,6 @@ import (
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/locations/openmeteo"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
-	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -77,8 +76,7 @@ func reportFetch(ctx context.Context, client *httpx.Client, provider *nws.Provid
 		return nil, err
 	}
 	fireProvs, firmsProv := fireProviders(client, cfg)
-	providers := append([]snapshot.Provider{provider, nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, fireProvs...)
-	providers = append(providers, seismicProviders(client, cfg)...)
+	providers := newProviderFamilies(client, provider, tides, fireProvs, cfg).all(provider)
 	asm := newAssembler([]snapshot.LocationRef{ref}, providers)
 	_ = asm.SetInactive(firmsProv.ID(), !firmsProv.Enabled()) // unkeyed FIRMS reads "off", not "ok" (UAT 100)
 	if fellBack {

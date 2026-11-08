@@ -567,6 +567,7 @@ func (mainTrackStage).String
 func (mainTrackStage).reports
 func (mapInputs).drawable
 func (mapInputs).withInView
+func (providerFamilies).all
 func (stationRecorder).alerts
 func (stationRecorder).buoy
 func (stationRecorder).fires
@@ -780,6 +781,7 @@ func newMapBuilder
 func newMapQuakes
 func newMastercontrol
 func newProductionMapBuilder
+func newProviderFamilies
 func newPump
 func newRadioDeck
 func newReleaseWatch
@@ -1060,6 +1062,7 @@ type narrationJob
 type narrationVoice
 type pipeline
 type propagationHolder
+type providerFamilies
 type publishView
 type publisher
 type pump

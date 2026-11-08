@@ -8,7 +8,8 @@
 // A ROW DEFINES AN ID when the ID is the whole of its first cell, and so does a
 // heading that opens with it, the form 0.16.0 rules in ("# D-55 — THE
 // INJECTOR SHIPS"). A table or a paragraph that mentions an ID refers to it, and is
-// not read. The index is
+// not read. The multi-voice release's rulings were never tabled, so an MVS-D
+// ID is indexed by its first mention instead (0.19.5 D-35). The index is
 // checked like the P10 ledger mirror: TestTheIndexIsCurrent regenerates it and
 // compares, in the docs lane as well as in verify, because a docs change is
 // what moves it.
@@ -24,6 +25,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/branden-thompson/watchpost/tools/ids/idset"
 )
@@ -32,6 +34,7 @@ import (
 type row struct {
 	family, num, suffix string
 	feature, file       string // the feature folder (or "" for 06_docs itself), and the file within it
+	line                int    // the mention's line, for an MVS-D row; 0 for a defining row
 	subject             string
 }
 
@@ -58,6 +61,7 @@ func main() {
 func build(root string) (string, error) {
 	docs := filepath.Join(root, "06_docs")
 	var rows []row
+	mvs := map[string]mention{}
 	err := filepath.WalkDir(docs, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -74,13 +78,169 @@ func build(root string) (string, error) {
 		}
 		rel, _ := filepath.Rel(docs, path)
 		rows = append(rows, rowsOf(string(b), filepath.ToSlash(rel))...)
+		mentionsOf(string(b), filepath.ToSlash(rel), mvs)
 		return nil
 	})
 	if err != nil {
 		return "", err
 	}
-	return render(rows, releases(docs)), nil
+	return render(rows, releases(docs)) + renderMVS(mvs, releases(docs)), nil
 }
+
+// mvsFeature is the multi-voice release's folder, where its rulings are
+// first mentioned.
+const mvsFeature = "multi-voice-support"
+
+// mvsCite is an MVS-D ID wherever it stands in a line.
+var mvsCite = regexp.MustCompile(`\bMVS-D-(\d+)\b`)
+
+// mvsHeading is a heading that opens with an MVS-D ID, and its title: the
+// form MVS-D-88 to 92 have, one file each.
+var mvsHeading = regexp.MustCompile(`^#{1,4}\s+MVS-D-(\d+)\s*[—:–-]\s*(.*)$`)
+
+// mvsBold is an MVS-D ID in bold and what it ruled, the form of the project
+// brief's Rulings row ("**MVS-D-4** full maritime report · …") and of a
+// build log's "**MVS-D-80 — the inter-card transition rule**": the title
+// inside the bold, else the words after it up to the next "·" or cell.
+var mvsBold = regexp.MustCompile(`\*\*MVS-D-(\d+)(?:\s*[—:–-]\s*([^*]+))?\*\*([^·|]*)`)
+
+// aside is a lead parenthesis such as "(E-1)" or "(2026-08-29)", which names
+// a source or a date, not what was ruled.
+var aside = regexp.MustCompile(`^\s*\([^)]*\)`)
+
+// The ranks of an MVS-D mention, best first.
+const (
+	rankHeading   = iota // its own file's heading
+	rankRuledHere        // a bold statement of what it ruled, in the multi-voice docs
+	rankRuled            // a bold statement elsewhere in the record
+	rankCitedHere        // any line in the multi-voice docs
+	rankCited            // any line elsewhere
+)
+
+// mention is one MVS-D ID's best mention so far, and its rank.
+type mention struct {
+	rank int
+	row  row
+}
+
+// mentionsOf records, for each MVS-D ID in one file, its mention when it
+// outranks the one held. The walk is in path order and a file is read top
+// down, so among equal ranks the first one met stays.
+func mentionsOf(src, rel string, into map[string]mention) {
+	feature, file := "", rel
+	if f, rest, ok := strings.Cut(rel, "/"); ok && f == "02_features" {
+		feature, file, _ = strings.Cut(rest, "/")
+	}
+	ruled, cited := rankRuled, rankCited
+	if feature == mvsFeature {
+		ruled, cited = rankRuledHere, rankCitedHere
+	}
+	at := func(num string, rank, line int, subject string) {
+		keep(into, num, mention{rank: rank, row: row{family: "MVS-D", num: num, feature: feature, file: file, line: line, subject: subjectOf([]string{subject})}})
+	}
+	for i, line := range strings.Split(src, "\n") { // bounded by the file (P10-02)
+		if h := mvsHeading.FindStringSubmatch(line); h != nil {
+			at(h[1], rankHeading, i+1, plain(h[2]))
+			continue
+		}
+		for _, b := range mvsBold.FindAllStringSubmatch(line, -1) { // bounded by the line (P10-02)
+			if what := statement(b, line); what != "" {
+				at(b[1], ruled, i+1, what)
+			}
+		}
+		for _, m := range mvsCite.FindAllStringSubmatch(line, -1) { // bounded by the line (P10-02)
+			at(m[1], cited, i+1, plain(line))
+		}
+	}
+}
+
+// statement is what a bold MVS-D says it ruled: the title inside the bold,
+// else the words after it, a lead "(E-1)" aside; in a table row with nothing
+// after the ID, the row's later cells. It is "" when none of those says
+// anything, which leaves the line a mention. Words that open with ")", ","
+// or ";" continue a sentence the ID was cited in, so they are not a statement.
+func statement(b []string, line string) string {
+	if t := plain(b[2]); t != "" {
+		return t
+	}
+	after := strings.TrimSpace(b[3])
+	if strings.HasPrefix(after, ")") || strings.HasPrefix(after, ",") || strings.HasPrefix(after, ";") {
+		return ""
+	}
+	if t := plain(aside.ReplaceAllString(strings.TrimLeft(after, ":—–- "), "")); says(t) {
+		return t
+	}
+	cells := cellsOf(line)
+	for k, c := range cells { // bounded by the row (P10-02)
+		if strings.Contains(c, "MVS-D-"+b[1]) && k+1 < len(cells) {
+			return strings.Join(cells[k+1:], " — ")
+		}
+	}
+	return ""
+}
+
+// says reports whether t has three words or more with a letter in them.
+func says(t string) bool {
+	n := 0
+	for _, w := range strings.Fields(t) { // bounded by the text (P10-02)
+		if strings.IndexFunc(w, unicode.IsLetter) >= 0 {
+			n++
+		}
+	}
+	return n >= 3
+}
+
+// keep holds m for its ID unless a mention of the same or a better rank is
+// already held.
+func keep(into map[string]mention, num string, m mention) {
+	if held, ok := into[num]; ok && held.rank <= m.rank {
+		return
+	}
+	into[num] = m
+}
+
+// plain is a Markdown line as words: its heading marks, table bars, emphasis
+// and code marks removed.
+func plain(line string) string {
+	s := strings.NewReplacer("**", "", "`", "", "*", "", "|", " ").Replace(line)
+	return strings.TrimLeft(strings.TrimSpace(s), "#> -")
+}
+
+// renderMVS writes the MVS-D section: each ID by number, where it is first
+// mentioned, and the sentence there.
+func renderMVS(mvs map[string]mention, rel map[string]string) string {
+	if len(mvs) == 0 {
+		return ""
+	}
+	nums := make([]string, 0, len(mvs))
+	for n := range mvs { // bounded by the IDs (P10-02)
+		nums = append(nums, n)
+	}
+	sort.Slice(nums, func(i, j int) bool { return atoi(nums[i]) < atoi(nums[j]) })
+	var sb strings.Builder
+	sb.WriteString(mvsHeader)
+	for _, n := range nums { // bounded by the IDs (P10-02)
+		r := mvs[n].row
+		where := r.file
+		if r.feature != "" {
+			where = r.feature + "/" + r.file
+		}
+		fmt.Fprintf(&sb, "| MVS-D-%s | %s | `%s:%d` | %s |\n", r.num, rel[r.feature], where, r.line, strings.ReplaceAll(r.subject, "|", "\\|"))
+	}
+	return sb.String()
+}
+
+const mvsHeader = `
+## MVS-D
+
+The multi-voice release ruled in conversation and cited its rulings as MVS-D-n, but never put them
+in a table, so each one here points at its first mention instead (0.19.5 D-35): its own file's
+heading where it has one, else its earliest line in ` + "`multi-voice-support/`" + `, else its earliest
+line elsewhere in the record. The subject is that line, which is where its context is.
+
+| ID | Release | Where | Subject |
+|---|---|---|---|
+`
 
 // definingCell is a first cell that is an ID and nothing else, emphasis aside.
 var definingCell = regexp.MustCompile(`^(?:` + strings.Join(idset.Families, "|") + `)-\d+(?:\.\d+)*[a-z]?$`)

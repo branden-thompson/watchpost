@@ -16,10 +16,10 @@ import (
 // the Diagnostics window reads each fire and quake provider by its type, and a
 // provider the switch dropped would blank its line there.
 func TestDiagnosticsFindsEachFireAndQuakeSource(t *testing.T) {
-	lp := &livePipelines{
+	lp := &livePipelines{providerFamilies: providerFamilies{
 		fire:    []snapshot.Provider{hms.New(nil, "", fire.Rules{}), wfigs.New(nil, "", fire.Rules{}), firms.New(nil, "", "", fire.Rules{})},
 		seismic: []snapshot.Provider{usgs.New(nil, "", seismic.Rules{})},
-	}
+	}}
 	src := lp.sources()
 	for name, found := range map[string]bool{"HMS": src.hms != nil, "WFIGS": src.wfigs != nil, "FIRMS": src.firms != nil, "USGS": src.usgs != nil} {
 		if !found {

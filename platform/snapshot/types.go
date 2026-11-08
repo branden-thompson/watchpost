@@ -417,7 +417,7 @@ const (
 	KindMarine         // coastal-waters forecast: NWS gridpoint swell/wave, CO-OPS tide/current predictions (B3 UAT 29/61)
 	KindMarineObs      // coastal-waters observations: NDBC buoy files, CO-OPS water level — the fast marine tier (UAT 72)
 	KindForecastHourly // NWS hourly forecast — its own tier so the RECENT list can skip its 162 KB (UAT 72)
-	KindSeismic        // USGS earthquakes near the location (0.11.0)
+	KindSeismic        // USGS earthquakes near the location
 )
 
 // LocationRef identifies a location for fetching (Zip/TZ carried through to

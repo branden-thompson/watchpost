@@ -102,9 +102,12 @@ func TestTheFeedsInputsAreAskedTogether(t *testing.T) {
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	lp := &livePipelines{idx: idx,
 		areaAlerts: func(context.Context, []string) ([]snapshot.Alert, error) { o.ask("alerts"); return nil, nil },
-		fire:       []snapshot.Provider{wfigs.New(c, srv.URL+"/fire/query", fire.DefaultRules())}, rules: fire.DefaultRules(),
+		providerFamilies: providerFamilies{
+			fire:   []snapshot.Provider{wfigs.New(c, srv.URL+"/fire/query", fire.DefaultRules())},
+			marine: []snapshot.Provider{ndbc.New(c, srv.URL+"/buoys"), coops.New(c, srv.URL+"/tides")},
+		},
+		rules:     fire.DefaultRules(),
 		mapQuakes: newMapQuakes(c, srv.URL+"/quakes/"),
-		marine:    []snapshot.Provider{ndbc.New(c, srv.URL+"/buoys"), coops.New(c, srv.URL+"/tides")},
 		airnow:    airquality.New(heldGet{o, "airnow"}, ""),
 	}
 	ask := tty.MapAsk{Snap: &snapshot.Snapshot{}, View: tty.MapView{W: -118.6, S: 32.5, E: -116.4, N: 34.1},

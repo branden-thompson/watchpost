@@ -3,7 +3,7 @@
 // (HUM LEAD 2026-08-28: "configurable, extendable, editable; picked up by
 // file name, not wired").
 //
-// Convention — the tree IS the wiring:
+// Convention — a phrase is found by its place in the tree:
 //
 //	scripts/<report>/<part>.txt   one phrase of one report
 //	scripts/global/<part>.txt     the phrase any report inherits when it has none of its own (head, tail)
@@ -12,8 +12,10 @@
 // fields are documented in each file's first comment line, "{{/* … */}}").
 // The app asks for text by (report, part) — Library.Text("event-report",
 // "head", data) — and never names a file: the report's own file is used,
-// else global's, else the part is not spoken. Adding a phrase is adding a
-// file; adding a report is adding a folder.
+// else global's, else the part is not spoken. Re-wording a phrase is editing
+// its file. A new part is spoken only where the app asks for it, so it is a
+// file and a call site; a file no caller asks for is never read, and nothing
+// fails (docs/extending.md, Walkthrough 7).
 //
 // Overrides: the same tree under the user's config dir, scripts/ — a file
 // there replaces the built-in one, phrase by phrase, the same names and the
@@ -93,9 +95,10 @@ func (l *Library) Text(report, part string, data any) (string, error) {
 
 // Say is Text for the air: the rendered part with any terminal escapes
 // stripped (provider prose never addresses the terminal — NFR-6), or "" when
-// the part is missing or broken — a sentence of silence rather than a crash;
-// the built-in tree is pinned by this package's tests, so that only happens
-// with a broken override. A nil Library speaks from the built-in tree (a
+// the part is missing or broken — a sentence of silence rather than a crash.
+// This package's tests render every built-in file and check the parts the app
+// is known to ask for, so with the built-in tree it happens only for a part
+// that list leaves out, or with a broken override. A nil Library speaks from the built-in tree (a
 // fresh loader — the deck and the ticker hold a real one; nil is the tests'
 // and a memo would be a package global, P10-06). The one owner of "missing
 // script = silence".
@@ -225,8 +228,8 @@ func (l *Library) files() []string {
 	return slices.Sorted(maps.Keys(seen))
 }
 
-// BuiltinFiles lists the built-in script files as "<report>/<part>.txt"
-// (the convention's test and the README's listing).
+// BuiltinFiles lists the built-in script files as "<report>/<part>.txt",
+// for the convention's test. README's listing of them is written by hand.
 func BuiltinFiles() []string {
 	var out []string
 	_ = fs.WalkDir(builtin, root, func(p string, d fs.DirEntry, err error) error {

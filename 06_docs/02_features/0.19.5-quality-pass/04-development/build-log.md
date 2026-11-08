@@ -1795,3 +1795,88 @@ Markdown only, through the docs lane.
     platform/snapshot/assembler.go and modes/tty/map_prop_chart.go. Each header's claims were checked
     against its declarations, and three were corrected before the gate.
   - "Option C" in app.go was already gone.
+
+## 0.19.5 batch 42 — the M5 answer key, and what it found (D-24, D-35, D-36)
+
+- **The key (D-24).**
+  - Four tasks were done on scratch copies of batch 41, one site left out at a time, each omission
+    run against the touched packages whole. The tasks were a toggle Setting, a keyless provider, a
+    line on a console card and a spoken phrase.
+  - The keys are in `08-reports/m5-key/`, which the blind reviewer may not read. They give each
+    task's sites, the guard that fails when one is missed (or NO GUARD), the docs' wrong routes and
+    the IDs that did not resolve.
+  - Site counts: the toggle 32, the provider 47 (16 NO GUARD), the card line 7 plus 3 sub-sites,
+    the phrase 9.
+- **IDs (D-35).**
+  - The multi-voice release's rulings were never tabled. 85 MVS-D IDs are cited and none resolved.
+  - `tools/ids` now indexes each by its best mention, in this rank order: its own file's heading;
+    a bold statement of what it ruled in the multi-voice docs (the project brief's Rulings row and
+    amendment table give 1 to 46); one elsewhere; any line in the multi-voice docs; any line elsewhere.
+  - A bold ID inside a citation is a mention, not a statement.
+  - `TestAnMVSRulingIsIndexedByItsBestMention` pins the order (m802), and
+    `TestEveryMVSRulingTheCodeCitesIsIndexed` holds every MVS-D in a Go file to a row (m803).
+  - The other IDs the M5 inputs cite that did not resolve are restated:
+    - F-111, whose row batch 29 retired, now names its guard, `TestEveryReportKindReachesTheComposer`.
+    - "0.15.0 FR-7.1": 0.15.0 has no requirements file in the tree. It is now MVS-D-52 and the HUM
+      LEAD's 2026-09-08 ruling.
+    - R3-A-01 now names its file.
+  - A script over the M5 inputs (README, `docs/`, code-standards) now finds no ID the index lacks.
+- **The provider's silent sites, two of them now guarded.**
+  - `domainFor` decides whether any tier asks a provider, and a kind with no case was fetched
+    nowhere, silently. `TestEveryFetchKindHasADomain` (platform/sched) reads the kinds from
+    snapshot's const block and fails one with no domain and no reason in `onDemand` (m804). In
+    `platform/sched` alone, m804 is caught only by it.
+  - The live pipelines, the one-shot report and `TestEveryProviderHasAnEndpoint` each built the
+    provider families by hand. The test claimed "the PRODUCTION construction" and was not using it.
+    They are now one constructor, `newProviderFamilies`, with `providerFamilies.all` the one order,
+    embedded in `livePipelines` so `lp.marine` and the rest still read.
+  - `TestAllAsksEveryFamily` reads the struct's fields by reflection and fails a family `all` leaves
+    out (m805).
+  - Eight test literals name the embedded struct, because go.mod's 1.26 refuses a promoted field in
+    a literal.
+  - `app`'s declaration set gains exactly `type providerFamilies`, `func newProviderFamilies` and
+    `func (providerFamilies).all`.
+  - The rest of the provider's silent sites are routed, not guarded: `reportFetch`'s kinds, the
+    attribution case, `ChipGrounds`, the assembler's four sites, and `detailLines`. Walkthrough 2's
+    steps 3, 4, 4a and 4b now name every one, and say plainly where nothing fails.
+- **Reduce motion's chips (D-36).**
+  - Its row was not a picker, so the chip row never said what its arrows change, and its chip words
+    were never read. It is now `picker: true`, and the chip row says "[←→] Motion".
+  - Two goldens moved: `setup-arrows` (row 10's two frames, the same flash and save marks) and
+    `router-trace` (the six frames with the focus on Reduce motion).
+  - New: `TestEveryChipWordIsRead` fails a word for a row that is not a picker, and
+    `TestReduceMotionsChipsNameIt` reads the drawn chip row. Both are killed by m806.
+- **The docs.**
+  - extending.md:
+    - The intro no longer says "one folder plus one wiring line".
+    - Walkthrough 2 is complete, from the provider key.
+    - Walkthrough 4's script step no longer says no gate reads the tree.
+    - Walkthrough 6 is corrected from the toggle key: `rowToggle` is the tone rows' kind;
+      `ttyConfig` and `setUIHook` are named; the real guard on the builder line; focus order and
+      the `setupTable` P10 limit; `uiLines`, `at` and `uiLabelW`; `.flashed`; two lines per
+      settings-kept fixture; the five goldens.
+    - New Walkthrough 7, add a spoken phrase, from the phrase key.
+    - The golden flag before the path is shown as what it is: `go test` reads the path as the
+      flag's value and fails with "no Go files", not a refusal.
+  - where-things-happen:
+    - `Pronounce` runs in `Source.say`, not the library's `Say`.
+    - `Compose` asks for the cycle's phrases.
+    - `domainFor` decides what a tier fetches.
+    - `mergeLocationLocked` stores the state.
+    - The air box and `lanes` are each placed in their file.
+    - A row for the UP NEXT card's body (`upNextBox` → `readBody`).
+  - architecture.md names the five roles and the spoken-phrase walkthrough. README's "Start here"
+    lists every walkthrough.
+  - code-standards' first sentence names the out-of-tree P10 checker.
+  - script.go's package doc no longer says "the tree IS the wiring" or that adding a phrase is adding
+    a file.
+  - The 0.16.0 required reading puts `cardBoxWidth` in `broadcaster_rail.go`, and says F-34 was
+    answered.
+  - The watchpost-cli design's stale cadence copy is a pointer to the generated table, plus the
+    notes it does not carry.
+- **The doc-symbol check** now indexes file names under `testdata/` (their Go is not parsed), so a
+  doc can name a golden by its path.
+- **The console's `--ascii` sweep** now draws the floor width too, with a long second label. The card
+  key's "the console is missing from the scan" was only half right: the console has its own sweep,
+  which drew only the wide layout. A probe showed the long label is not cut with an ellipsis at the
+  floor, so the sweep's comment claims only what it covers.

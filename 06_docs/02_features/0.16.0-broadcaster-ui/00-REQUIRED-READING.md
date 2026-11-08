@@ -201,7 +201,7 @@ rebuilt its context from the code would re-derive the WRONG answer for every one
 | **D-48** | the Director remembers **one timestamp per slot**, and nothing else | read history ruled out by name.  `WeighLastRead` is the operator's switch, and every degraded path answers the same for everything |
 | **D-49** | a transition is a property of the **KIND**, not the origin — `announced` / `handsBack` rows | **MVS-D-80 ruled the trigger in 2026-09-05 and the scripts are pinned.**  Does NOT fire location-to-location.  The words come from the script library through Settings, never from the Director |
 | **D-50** | breakpoints **100 / 120 / 150**, floor 25 rows; below 100 the console REFUSES to draw | replaces `platform/term`'s 40/60/80/120 — broadcaster was its only caller.  `bcMinRows` stays 44 (MEASURED); the ruling's "25" was inside an example of the message |
-| **D-51** | above 150 is a **right rail**, a LATER release — a SEAM is owed now, not a layout | the seam is `cardBoxWidth` (`modes/tty/broadcaster.go`), which carries the right-rail number. `laneWidth()` was the seam when the frame was one lane and is GONE (D-80): the layout has three owners now, each measuring its own thing |
+| **D-51** | above 150 is a **right rail**, a LATER release — a SEAM is owed now, not a layout | the seam is `cardBoxWidth` (`modes/tty/broadcaster_rail.go`), which carries the right-rail number. `laneWidth()` was the seam when the frame was one lane and is GONE (D-80): the layout has three owners now, each measuring its own thing |
 | **D-53** | **product first, optimisation second** — a working baseline is the reason | measure it, record it, surface the number, then KEEP BUILDING.  Optimising before behaviour settles has nothing to prove it did not change behaviour |
 | **D-159** | a relay that falls through to synth under the operator's cut-over **releases the cut-over** and the main track resumes (VALIDATE 2026-09-18, F-164 ruled (a): "as it is today") | `carries` is relay-only from birth (D-33); holding it left a station silent with the programme paused until the operator acted — the alternative a blind reviewer constructed and the HUM LEAD declined |
 | **D-54** | the Producer is wired through the **`Publish` executor's return**, no new effect | the chain is self-limiting by the DEPTH: a full line-up admits nothing, so `onOffered` emits nothing, so there is no next publish |
@@ -232,5 +232,6 @@ width is half a card.
 8. `multi-voice-support/08-reports/debrief.md` — *"the wire is not pinned"*, nine instances, and the
    **producer/consumer completeness check that is still unbuilt.**
 9. This release's own `01-objectives/` — the brief and `requirements.md`, whose **Glossary** and
-   **Risk register** are sections of it, not documents (**RS-3** is live there; **F-34** lives in
-   `06_docs/follow-ups.md`).
+   **Risk register** are sections of it, not documents (**RS-3** is live there). **F-34** was answered in 0.15.0 B2 by measurement, with no lock: the three
+   calls touch no mutable MasterControl state. `06_docs/follow-ups.md` holds open work only, and git
+   keeps the row.

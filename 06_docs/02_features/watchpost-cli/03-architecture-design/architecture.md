@@ -395,28 +395,25 @@ Two pipelines share one HTTP client (30 req/s NWS/NDBC lane) plus a separately p
 client (5 req/s). The favourites' pipeline runs on the client's **priority lane** so its
 requests never queue behind the seed list's launch burst.
 
-The cadences below are owned by `app/pipelines.go` (`priorityTiers`, `recentTiers`) and pinned by
-`app/testdata/cadences.md` (`TestCadenceTableIsTheDoc`); edit there, then copy.
+The cadences are owned by `app/pipelines.go` (`priorityTiers`, `recentTiers`). The table of them as
+they run is `app/testdata/cadences.md`, which `TestCadenceTableIsTheDoc` regenerates and compares, so
+read it there; a copy here would go stale. What the table does not say:
 
-| Pipeline | Locations | Tier | Cadence | Notes |
-|---|---|---|---|---|
-| Priority | ≤ 10 favourites, one batched scheduler | alerts | 20 s | one `/alerts/active?zone=` call for all zones |
-| | | observations | 90 s | server `max-age` 300 s coalesces this in the cache (confirmed live by the quality pass, C2) |
-| | | marine observations | 10 min | NDBC `5day2` buoy files, CO-OPS water level |
-| | | forecast (daily) | 30 min | HIGH/LOW holes filled from the gridpoint |
-| | | forecast (hourly) | 30 min | fires with the daily tier |
-| | | marine (predictions) | 30 min | NWS gridpoint swell/wave (inland grids remembered for a day), CO-OPS tides + currents |
-| Recent | ≤ 50 seeds / lookups | alerts | 2 min | **one batched call for the whole list** |
-| | one scheduler per location for: | observations | 10 min | |
-| | | marine observations | 10 min | |
-| | | forecast (daily) | 1 h | |
-| | | marine (predictions) | 1 h | |
-| | | forecast (hourly) | on demand | fetched when Details opens on the row, or when the row is a fresh lookup |
+- **Alerts** are one batched call: `/alerts/active?zone=` for every priority zone, and one call for
+  the whole RECENT list.
+- **Observations**: the server's `max-age` of 300 s coalesces the priority tier's 90 s in the cache
+  (confirmed live by the quality pass, C2).
+- **Marine observations** are NDBC `5day2` buoy files and CO-OPS water level; **the marine forecast**
+  is the NWS gridpoint's swell and wave (inland grids remembered for a day) and CO-OPS tides and
+  currents.
+- **The daily forecast** fills its HIGH/LOW holes from the gridpoint, and **the hourly forecast** fires
+  with it for a favourite. For a RECENT row it is fetched on demand: when Details opens on the row, or
+  when the row is a fresh lookup.
 
-Fetch kinds: `KindAlerts`, `KindObs`, `KindForecast`, `KindForecastHourly`, `KindMarine`,
-`KindMarineObs` (+ `KindFire`, `KindProducts`, `KindGeocode` reserved). Providers declare
-domains (`weather`, `alerts`, `marine`, `marine-obs`); `sched.Serves` maps kinds to domains —
-discovered, never enumerated.
+Fetch kinds are `snapshot.FetchKind`. A provider declares its domains, and `sched.Serves` asks
+`domainFor` which domain serves a kind, so the kinds a provider answers are discovered, never
+enumerated. `TestEveryFetchKindHasADomain` holds every kind to a domain, or to a stated reason it has
+none (`KindGeocode` is resolved on demand).
 
 ### 11.2 Scheduler behaviours added in UAT
 

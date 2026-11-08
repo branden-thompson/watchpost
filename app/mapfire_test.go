@@ -120,7 +120,7 @@ func TestTheFeedCarriesTheFire(t *testing.T) {
 	}))
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
-	lp := &livePipelines{fire: []snapshot.Provider{wfigs.New(c, srv.URL+"/query", fire.DefaultRules())}, rules: fire.DefaultRules()}
+	lp := &livePipelines{providerFamilies: providerFamilies{fire: []snapshot.Provider{wfigs.New(c, srv.URL+"/query", fire.DefaultRules())}}, rules: fire.DefaultRules()}
 	ask := tty.MapAsk{Snap: &snapshot.Snapshot{}, Region: geo.RegionContiguous, View: tty.MapView{W: -125, S: 42, E: -116, N: 49}, Fire: true}
 	feed := lp.mapFeedWith(context.Background(), lp.mapInputsFetching(context.Background(), ask), func(snapshot.Location) []string { return nil })
 	n := 0
@@ -168,7 +168,7 @@ func TestAPerimeterInTwoBoxesIsDrawnOnce(t *testing.T) {
 	}))
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
-	lp := &livePipelines{fire: []snapshot.Provider{wfigs.New(c, srv.URL+"/query", fire.DefaultRules())}}
+	lp := &livePipelines{providerFamilies: providerFamilies{fire: []snapshot.Provider{wfigs.New(c, srv.URL+"/query", fire.DefaultRules())}}}
 	ask := tty.MapAsk{Region: geo.RegionAlaska}
 	if n := len(fieldBoxes(ask.Region, ask.View)); n != 2 {
 		t.Fatalf("Alaska is %d field boxes; the test needs its two", n)

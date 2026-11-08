@@ -119,12 +119,17 @@ func TestTheConsoleCarriesNoNonASCIIUnderASCII(t *testing.T) {
 	// DERIVED, not listed (INST-1): Power.String() returns "" for a value
 	// outside the declared set, so the walk asks the type where it ends
 	// rather than naming three constants that go stale when a fourth lands.
+	//
+	// At the floor width as well as the wide one, and with a second card whose
+	// label is longer than its cell: the narrow layout draws its own rows.
 	for p := lineup.Power(0); p.String() != ""; p++ {
-		b := bcWith(t, card(t, "a", "OCEANSIDE"))
-		b.width, b.height = 150, 74
-		b.ascii = true
-		b, _ = b.Update(StationMsg{Power: p})
-		assertASCIIOnly(t, b.View().Content, p)
+		for _, w := range []int{bcMinCols, 150} {
+			b := bcWith(t, card(t, "a", "OCEANSIDE"), card(t, "b", "SAN JUAN CAPISTRANO NORTHWEST HILLS RESERVE AND OPEN SPACE"))
+			b.width, b.height = w, 74
+			b.ascii = true
+			b, _ = b.Update(StationMsg{Power: p})
+			assertASCIIOnly(t, b.View().Content, p)
+		}
 	}
 }
 

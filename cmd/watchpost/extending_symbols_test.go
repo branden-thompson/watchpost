@@ -44,15 +44,15 @@ func indexModule(t *testing.T, root string) goIndex {
 		}
 		if d.IsDir() {
 			switch d.Name() {
-			case ".git", ".claude", "mutants", "dist", "testdata", "node_modules":
+			case ".git", ".claude", "mutants", "dist", "node_modules":
 				return filepath.SkipDir
 			}
 			return nil
 		}
 		rel, _ := filepath.Rel(root, path)
 		ix.files[filepath.ToSlash(rel)] = true
-		if !strings.HasSuffix(path, ".go") {
-			return nil
+		if !strings.HasSuffix(path, ".go") || strings.Contains(filepath.ToSlash(rel), "testdata/") {
+			return nil // a golden or fixture can be named; testdata's Go is fixture, not the module's code
 		}
 		ix.files[filepath.Base(path)] = true
 		f, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.SkipObjectResolution)

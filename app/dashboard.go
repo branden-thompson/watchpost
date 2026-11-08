@@ -62,9 +62,8 @@ func newLivePipelines(ctx context.Context, cfg config.Config, client *httpx.Clie
 	// watched places are known.
 	zoneShapes := zones.New(client, "")
 	lp := &livePipelines{ctx: ctx, provider: provider, timings: newTimingLog(),
-		marine: []snapshot.Provider{nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, // UAT 29 / 61 / 72
-		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
-		seismic: seismicProviders(client, cfg),
+		providerFamilies: newProviderFamilies(client, provider, tides, fireProvs, cfg),
+		firms:            firmsProv, rules: fireRules(cfg.Fire),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
 		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas, // 0.18.0 D-66
 		mapQuakes: newMapQuakes(client, ""),   // 0.18.0 D-122: the map's own quake feeds
@@ -828,26 +827,24 @@ type livePipelines struct {
 	maps          *mapBuilder // builds the window's maps; nil builds none
 	program       *tea.Program
 	provider      snapshot.Provider
-	marine        []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61)
-	fire          []snapshot.Provider // hms + wfigs + firms (B5)
-	firms         *firms.Provider     // the keyed one, so the Setup window can turn it on without a relaunch (UAT 100)
-	seismic       []snapshot.Provider // usgs (0.11.0)
-	rules         fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
-	priority      *pipeline
-	recent        *recentPipeline
-	ticker        *tickerDeck          // waited at shutdown so its cache writes settle before teardown
-	severe        *severeDeck          // the severe-events index the window lists
-	mapQuakes     *mapQuakes           // 0.18.0 D-122: the map's quake feeds, the listener's choice
-	airnow        *airquality.Provider // 0.18.0 D-138: AirNow's reporting areas, for the map's air quality
-	mapClients    []*httpx.Client      // 0.18.0 D-150: the radar's and the temperature's, counted for MAP STATUS
-	tiles         *tileCounter         // 0.18.0 D-150: the basemap's tile fetches, counted
-	problems      mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
-	propagation   propagationHolder    // 0.19.0 W4.1: the one go-ionomaps object, made on the first update
-	timings       *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
-	arbiter       *arbiter             // the voice arbiter (app/arbiter.go)
-	scripts       *script.Library      // the spoken lines (domains/radio/script)
-	reader        *eventReader         // [space] in the window
-	schedule      *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump
+	providerFamilies
+	firms       *firms.Provider // the keyed one, so the Setup window can turn it on without a relaunch (UAT 100)
+	rules       fire.Rules      // the [fire] rings, for the broadcast's fire report (UAT 114)
+	priority    *pipeline
+	recent      *recentPipeline
+	ticker      *tickerDeck          // waited at shutdown so its cache writes settle before teardown
+	severe      *severeDeck          // the severe-events index the window lists
+	mapQuakes   *mapQuakes           // 0.18.0 D-122: the map's quake feeds, the listener's choice
+	airnow      *airquality.Provider // 0.18.0 D-138: AirNow's reporting areas, for the map's air quality
+	mapClients  []*httpx.Client      // 0.18.0 D-150: the radar's and the temperature's, counted for MAP STATUS
+	tiles       *tileCounter         // 0.18.0 D-150: the basemap's tile fetches, counted
+	problems    mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
+	propagation propagationHolder    // 0.19.0 W4.1: the one go-ionomaps object, made on the first update
+	timings     *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
+	arbiter     *arbiter             // the voice arbiter (app/arbiter.go)
+	scripts     *script.Library      // the spoken lines (domains/radio/script)
+	reader      *eventReader         // [space] in the window
+	schedule    *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump
 
 	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit
 
@@ -991,9 +988,37 @@ func (lp *livePipelines) setup(def snapshot.LocationRef, firmsKey string) error 
 // providers is the full provider set: weather reference + marine, fire and
 // seismic secondaries.
 func (lp *livePipelines) providers() []snapshot.Provider {
-	out := append([]snapshot.Provider{lp.provider}, lp.marine...)
-	out = append(out, lp.fire...)
-	return append(out, lp.seismic...)
+	return lp.all(lp.provider) // the families' one order, shared with the one-shot report
+}
+
+// providerFamilies is every data provider the station fetches from besides
+// the weather provider, by family. newProviderFamilies is the one place they
+// are built: the live pipelines and the one-shot report both take theirs from
+// it, and so does TestEveryProviderHasAnEndpoint, so a provider added there is
+// fetched by both and held to an endpoint. A family added here also needs its
+// line in all.
+type providerFamilies struct {
+	marine  []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61 / 72)
+	fire    []snapshot.Provider // hms + wfigs + firms (B5)
+	seismic []snapshot.Provider // usgs
+}
+
+// newProviderFamilies builds every family on the data client. fire is
+// fireProviders' answer, which the caller keeps for its FIRMS handle.
+func newProviderFamilies(client *httpx.Client, provider *nws.Provider, tides *coops.Provider, fire []snapshot.Provider, cfg config.Config) providerFamilies {
+	return providerFamilies{
+		marine:  []snapshot.Provider{nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)},
+		fire:    fire,
+		seismic: seismicProviders(client, cfg),
+	}
+}
+
+// all is the weather provider and then every family, in the order both
+// fetch paths ask them.
+func (f providerFamilies) all(weather snapshot.Provider) []snapshot.Provider {
+	out := append([]snapshot.Provider{weather}, f.marine...)
+	out = append(out, f.fire...)
+	return append(out, f.seismic...)
 }
 
 func (lp *livePipelines) stopAll() {
