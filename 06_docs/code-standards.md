@@ -2,7 +2,7 @@
 
 **Every rule below is checked by a tool in this repository, to that tool's ceiling, and every tool
 runs without anything outside it.** The ceiling is stated with each rule: `AP-HIST-01` is a phrase
-list, and the history-narrating lines it cannot see are F-137's, and 0.19.5's reader pass (Q8.6) takes them. `go run ./tools/authoring` needs only the Go toolchain — no plugin, no CLI, no
+list, and a narrating line none of its phrases match needs a reader. `go run ./tools/authoring` needs only the Go toolchain — no plugin, no CLI, no
 configuration. If you can build Watchpost you can run its checks.
 
 **Why this file exists.** The rules originate in a design harness that is deliberately NOT part of
@@ -10,6 +10,26 @@ this repository — it is a private toolchain, and `.gitignore` keeps it out. Th
 harness and wrong for the rules: a contributor who reads `AP-HIST-01` in a failure message needs
 somewhere to look it up, and a reference they cannot reach makes every other reference less
 trustworthy. So the IDs stay, and their meanings live here.
+
+---
+
+## What a comment is for
+
+These four hold for every comment, Go or `#`. The rules below check what a syntax tree can; the rest is
+a reader's, and a reviewer judges a comment against all four.
+
+1. **It describes the code as it is now.** No history: the story of a change is in `git log` and the
+   build logs (`AP-HIST-01`).
+2. **It is not mechanical.** It does not restate what the line plainly does ("loop over the rows",
+   "this is a switch"). The code says that already.
+3. **It is about the problem the code solves.** It explains why the code is shaped this way: the
+   requirement, the failure it prevents, the ruling it carries, cited by ID (`AP-CITE-01`).
+4. **It warns about what is not obvious.** It names the caveats and gotchas a junior engineer would
+   not see from the code: a lock order, a call that blocks, what nil means, a line that looks
+   tidy-able and is not. A contract a caller must obey may lead in capitals (`AP-CAPS-01`).
+
+A long rationale goes in the doc as a short "Why" list, with its IDs, and the body keeps one-line
+comments only where a statement needs its own (0.19.5 D-34; `Broadcaster.stationLine` is the model).
 
 ---
 

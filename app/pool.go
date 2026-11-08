@@ -338,15 +338,12 @@ func withPool(recent, pool, watch []snapshot.LocationRef) []snapshot.LocationRef
 	return out
 }
 
-// lookInPool answers what the operator typed into the request window.
-//
-// THREE ANSWERS, NOT TWO (ruling 2). `found` is whether the place exists at all;
-// `inPool` is whether the station can broadcast about it. A location outside the
-// service radius is NOT a lookup failure — it is a real place the window names
-// and points at Observer for, which is only possible if the two are kept apart.
-//
-// THE POOL AND NOTHING ELSE, which is what makes it safe to run on a keystroke.
-func (lp *livePipelines) lookInPool(query string) (snapshot.LocationRef, bool, bool) {
+// lookInPool answers what the operator typed into the request window from the
+// station's pool and nothing else, which is what makes it safe to run on a
+// keystroke. It answers the place, whether it was found, and whether it is in
+// the pool (ruling 2): a place outside the pool is not a lookup failure, and
+// the window names it and points at Observer, which needs the two kept apart.
+func (lp *livePipelines) lookInPool(query string) (ref snapshot.LocationRef, found, inPool bool) {
 	if lp == nil {
 		return snapshot.LocationRef{}, false, false
 	}
@@ -376,7 +373,7 @@ const radiusLookupBudget = 5 * time.Second
 // accept any value WITHIN the service radius, not just the 25 slot location
 // pool."
 //
-// AND THE OFFLINE DATA CANNOT ANSWER IT ALONE. Measured 2026-09-14: the
+// The offline data cannot answer it alone. Measured 2026-09-14: the
 // embedded index holds 34,106 cities and 41,490 zips, and Rainbow, CA is in
 // NEITHER — it is an unincorporated community with no postal code of its own.
 // The geocoder places it 14.7 miles from Oceanside, inside a 25-mile radius.
@@ -389,7 +386,7 @@ const radiusLookupBudget = 5 * time.Second
 // it. This function is therefore SLOW BY CONTRACT and must never be called from
 // a render path or a key handler.
 //
-// AND THE HYPER-LOCAL CASE IS THE POINT, NOT AN EDGE (HUM LEAD, ratified
+// The hyper-local case is the point, not an edge (HUM LEAD, ratified
 // 2026-09-14): "the human operator should be able to lookup any valid location
 // within their service radius, even if the initial sorting didn't include it
 // into the default location pool. That value here again is exactly the
@@ -404,13 +401,15 @@ const radiusLookupBudget = 5 * time.Second
 //
 // THE CONSOLE SAYS HOW MANY PLACES ARE IN REACH (REVIEW 2026-09-17, ruling 8), so
 // a three-mile station reads "1 in reach at 3 mi" rather than looking like a
-// fifty-mile one that is slow; the tiering itself is F-157, for 0.16.5.
+// fifty-mile one that is slow; the tiering itself is F-157.
 //
-// THREE ANSWERS, NOT TWO. `within` distinguishes a real place the station
-// cannot reach from a name that means nothing — the first points the operator
-// at Observer, the second asks them to try again.
-func (lp *livePipelines) locateInRadius(r *locations.Resolver) func(string) (snapshot.LocationRef, bool, bool, bool) {
-	return func(query string) (snapshot.LocationRef, bool, bool, bool) {
+// It answers Config.LocateInRadius's four values, in that order: the place,
+// whether it is within the service radius, whether it was found at all, and
+// whether the question could be asked. within tells a real place the station
+// cannot reach, which points the operator at Observer, from a name that means
+// nothing, which asks them to try again.
+func (lp *livePipelines) locateInRadius(r *locations.Resolver) func(string) (ref snapshot.LocationRef, within, found, asked bool) {
+	return func(query string) (ref snapshot.LocationRef, within, found, asked bool) {
 		if lp == nil {
 			return snapshot.LocationRef{}, false, false, true
 		}
@@ -440,14 +439,14 @@ func (lp *livePipelines) locateInRadius(r *locations.Resolver) func(string) (sna
 		if ref.Tag == "" {
 			ref.Tag = deriveTag(ref.Label) // the same backfill Resolve does; a card names one
 		}
-		// AND THEN THE FENCE. A station with nowhere to transmit from reaches
+		// Then the fence. A station with nowhere to transmit from reaches
 		// nothing, which is the same reading `locations.Pool` and `lineup.Fence`
 		// both take of an unset epicentre.
 		s := lp.currentStation()
 		if s.transmitter.Lat == 0 && s.transmitter.Lon == 0 {
 			return ref, false, true, true
 		}
-		within := globalfeed.WithinMiles(s.transmitter.Lat, s.transmitter.Lon, ref.Lat, ref.Lon, s.radiusMi)
+		within = globalfeed.WithinMiles(s.transmitter.Lat, s.transmitter.Lon, ref.Lat, ref.Lon, s.radiusMi)
 		return ref, within, true, true
 	}
 }

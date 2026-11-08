@@ -274,25 +274,23 @@ type Config struct {
 	DropCard func(id string)
 
 	// LocateInRadius resolves what the operator typed into a location field and
-	// says whether the station can broadcast about it (R4, D-130).
+	// says whether the station can broadcast about it (R4, D-130). It answers the
+	// place; within, whether it is inside the station's service radius (D-130);
+	// found, whether it exists at all; and asked, whether the question could be
+	// put (D-151).
 	//
-	// THREE ANSWERS, NOT TWO. `found` is whether the place exists at all;
-	// `within` is whether it is inside the station's SERVICE RADIUS — not
-	// whether it is one of the 25 the pool happens to hold, which is the
-	// distinction D-130 was filed for. A location outside is NOT a lookup
-	// failure — HUM LEAD, 2026-09-14: it gets helper text saying "Observer
-	// supports location lookup outside Broadcast Radius", which is only
-	// possible if the two answers are kept apart.
+	// within is the service radius, not the 25 places the pool holds, and a
+	// place outside it is not a lookup failure: it gets helper text saying
+	// "Observer supports location lookup outside Broadcast Radius" (HUM LEAD,
+	// 2026-09-14), which needs found and within kept apart. asked is false for
+	// a timeout, a DNS blip or a cancelled context, which are not "no such
+	// place": reported as one, they would tell the operator a real place does
+	// not exist and disable the key that would retry it.
 	//
-	// IT MAY REACH THE NETWORK, and therefore it is called ONLY from a command,
-	// behind platform/debounce — never from a key handler or a render. The
-	// embedded index does not hold the small places (Rainbow, CA is in neither
-	// the city nor the zip table), so for them the geocoder is the only
-	// authority there is.
-	// FOUR ANSWERS, NOT THREE (D-151). `asked` is whether the question could be
-	// PUT AT ALL: a 5-second timeout, a DNS blip or a cancelled context is not
-	// the same as "no such place", and reporting it as one tells the operator a
-	// real location does not exist AND disables the key that would retry it.
+	// IT MAY REACH THE NETWORK, so it is called ONLY from a command, behind
+	// platform/debounce, never from a key handler or a render. The embedded
+	// index does not hold the small places (Rainbow, CA is in neither table), so
+	// for them the geocoder is the only authority.
 	LocateInRadius func(query string) (ref snapshot.LocationRef, within, found, asked bool)
 
 	// RequestCard is the operator asking for a report at a position (R4).

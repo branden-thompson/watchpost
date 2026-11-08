@@ -1680,3 +1680,27 @@ This batch changes comments only. mE3 and mC9 follow their lines and are re-vett
 - **Mutants.** mE3 (`x.mc.hold()`) and mC9 (the rail's class) anchored on lines that now carry their
   one-line comments, and follow them. mE3 is killed by `TestTheDuckAndItsRestoreReachTheEffector`,
   and mC9 by `TestSpeakReadsThroughTheNarratorAndComesHomeFinished`.
+
+## 0.19.5 batch 38 — the pool lookups name their answers, and what a comment is for (plan Q9.5, JR-9)
+
+mCC2 follows its line and is re-vetted.
+
+- **Named results (JR-9).**
+  - `locateInRadius`'s closure returns `(ref, within, found, asked)`, the names
+    `Config.LocateInRadius` already gives them. `lookInPool` returns `(ref, found, inPool)`.
+  - JR-9's risk is gone: a junior returning `ref, true, true, true` had to find the order in a field
+    type 300 lines away, in another package, and a swap of `found` and `asked` compiled.
+  - Naming `within` made its `:=` an assignment, and mCC2 follows that line. It is killed by
+    `TestARealPlaceOutsideTheRadiusIsNamedButNotWithin`. The lookups' own tests pass unchanged.
+- **One line, not two headings.**
+  - `Config.LocateInRadius`'s doc had "THREE ANSWERS, NOT TWO" and then "FOUR ANSWERS, NOT THREE".
+    It now opens with one sentence naming the four values in order, and gives their reasons in
+    sentence case.
+  - `locateInRadius` and `lookInPool` say what they answer the same way.
+  - `locateInRadius`'s doc also loses "for 0.16.5", since F-157 is re-targeted.
+  - Its three caps continuations, in a touched declaration, are sentence case (AP-CAPS-01).
+- **What a comment is for (HUM LEAD, 2026-11-08).** Approving the sample, the HUM LEAD restated the
+  four rules every comment holds to: it describes the current code; it is not mechanical; it is about
+  the problem the code solves; it warns about the gotchas a junior would not see. `06_docs/code-standards.md`
+  stated only the first (AP-HIST-01). It now opens with "What a comment is for", giving all four and
+  D-34's Why-list shape, and says which rules a tool checks and which are a reader's.
