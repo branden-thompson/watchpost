@@ -1593,3 +1593,50 @@ Three mutants are re-pointed, each re-vetted and killed. One local is renamed; t
   architecture.md and the atlas, where-things-happen and its vocabulary, extending.md,
   code-standards, and, before the Broadcaster, 0.16.0's required reading. It replaces the two-line
   pointer batch 32 added.
+
+## 0.19.5 batch 36 — "add a Setting", proven step by step (plan Q9.3, JR-7, JM-8, JM-14, JM-15, D-33, A-22)
+
+Mutants m797 to m799, hand-vetted and killed.
+
+- **The proof JM-8 asked for.** A throwaway Setting of each kind went onto a scratch worktree, outside
+  the tree: a Watchpost UI on/off, drawn as a two-value picker as Reduce motion is, and a map picker.
+  With each complete and green, every step that compiles when forgotten was left out alone, and
+  `modes/tty`, `app` and `platform/config` were run whole.
+  - **Caught where the walkthrough said:**
+    - the app's hand-off and save: `TestASavedSettingIsTheSettingAfterARestart`;
+    - the builder line: the two config goldens and the save test;
+    - `uiForSave`: the prefs golden and the save test;
+    - the table row: `TestEverySettingsRowIsRuledForItsSurface`;
+    - the drawing: `TestEveryArrowRowChangesSomething` and the Settings goldens;
+    - the arrow branch or case: `TestEveryArrowRowChangesSomething`.
+  - **Two steps the walkthrough was missing,** each caught when skipped, and now in it: the new field
+    in both `settings_kept_test.go` fixtures, and `uiTouched` at the end of a change.
+  - **Three steps that nothing caught,** each answered:
+    - **The chip words** (`pickerChipWords`). A picker without them offers "←→ Voice  p Preview".
+      Two shipped rows did: the relay replay's rotation and language. They now name their own
+      change (A-22), and `TestEveryPickerNamesWhatItsArrowsChange` holds every non-voice picker.
+    - **`uiTouched`.** A change that returns without it is drawn, at best, and lost when the window
+      closes. The UI throwaway was built that way and passed every test. Now
+      `TestAnArrowOnASavedSettingMarksItForSaving` holds every row of the groups Settings saves on
+      close, and m798 drops the quake picker's call.
+    - **The `d.cfg` mirror in `applyUISaved`.** Nothing reads `d.cfg` for a Setting after launch,
+      so skipping it changes nothing anyone can see. The walkthrough says so rather than naming a
+      guard that does not exist.
+  - **A fourth, found by the map run: `mapPickerRow`.** It was the hand-kept list of map pickers that
+    `p` must not preview on, and leaving a row off it failed nothing. The probe that followed found
+    `p` previewing the default voice on five shipped rows that are not voices: Theme, the two HISTORY
+    pickers, and the relay replay's two. Ruled **D-33: `p` previews only on a voice row.**
+    - `TestOnlyAVoiceRowPreviews` was written first and seen failing on exactly those five.
+    - The condition is now "a cast row", and `mapPickerRow`, which only it read, is deleted.
+    - m799 restores the old condition.
+- **Walkthrough 6, rewritten (`docs/extending.md`).**
+  - It opens with "Settings, not flags".
+  - Its ten steps each name what fails when they are skipped, from the proof, for both kinds: the
+    UI's drawing and branch in `setup_ui.go` and `setup.go`, and the map's `mapRow` and
+    `mapPrefArrow` case.
+  - It says a change ends in `uiTouched`.
+- **"When a golden or a declset fails" (JM-14).** Read the diff first. Re-capture with the package's
+  flag, given after the package path: the proof met `go test` refusing it before, so each package's
+  flag is named. Say why in the build log.
+- **Walkthrough 2 (JM-15)** gives a provider its host in `providerEndpoints`, held by
+  `TestEveryProviderHasAnEndpoint`.

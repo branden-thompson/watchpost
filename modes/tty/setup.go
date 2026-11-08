@@ -415,7 +415,7 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 			return d.settled(), nil, true
 		}
 	case "p":
-		if picker && !mapPickerRow(d.setup.focus) { // the map's pickers have nothing to preview
+		if picker && setupTable()[d.setup.focus].group == groupCast { // only a voice previews (0.19.5 D-33)
 			m, cmd := d.setupPreview()
 			return m, cmd, true
 		}

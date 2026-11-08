@@ -1023,6 +1023,7 @@ cell; a later table that mentions it is not listed.
 | D-32 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Red-team docs D4 (a fork, not a finding): the record has no designer-facing artifact for a release whose outp… |
 | D-32 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-1, fields over water in go-tuiMaps v0.3.0: per overlay or map-wide. render.Input.FieldsOverWater has no pu… |
 | D-33 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | A CHOSEN READ REPLACES THE BED; IT DOES NOT PLAY OVER IT |
+| D-33 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Q9.3's proof (JM-8): in Settings, p plays the default voice's preview on five rows that are not voices — Them… |
 | D-33 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Round 2, two reviewers' fix-first: remediation moved work across the D-12 macro-phase boundary without a ruli… |
 | D-33 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-2, colouring a MUF or foF2 field: (A) muf/fof2 presets, (B) FR-15's generic host ramp, or both. A host-typ… |
 | D-34 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | THE RETURN TRANSITION NAMES THE RELAY, AND ITS ANCHOR DIFFERS BY SURFACE |
@@ -1841,6 +1842,7 @@ cell; a later table that mentions it is not listed.
 | A-21 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | D-11 as built (A-13 refined): a citation is new when its package carried no such ID at the merge-base with ma… |
 | A-21 |  | `multi-voice-support/08-reports/red-team-discover.md` | Low |
 | A-21 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-74's schedule of routine closures lives in the reference chart (FR-1.15: the hours today each band is expec… |
+| A-22 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The relay replay's chips name their own change (Q9.3, JM-8): the walkthrough's proof found that a picker miss… |
 | A-22 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | F-190, closed on 2026-10-04 but left under Open, is deleted, as the follow-ups file's own rule asks |
 | A-23 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The intake briefs (watchpost and go-ionomaps) are kept as written, with a banner that requirements.md is curr… |
 | A-24 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PLAN's mermaid diagrams are committed on the docs lane as they are written; 06_docs/architecture-atlas.html i… |

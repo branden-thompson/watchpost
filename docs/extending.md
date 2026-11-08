@@ -48,7 +48,7 @@ Goal: a new source that needs a user key. `domains/fire/firms` is the worked exa
 |---|---|---|
 | 1 | `domains/<domain>/<name>/<name>.go` | Implement `snapshot.Provider`: `ID()`, `Domains()` (`["fire"]`, `["weather"]`, …) and `Fetch(ctx, req)` returning a `Fragment` with `PerLocation`. Use `platform/httpx` for every request — a 32-hex path segment or a `key`/`api_key` query value is redacted from every error and log line; cache with `httpx.TTL(d)` where the server sends no cache headers. |
 | 2 | Key wiring | Take the key in the constructor **and** behind a lock with `SetKey` / `Enabled()` (`firms.go`): the Setup window keys a provider while the dashboard runs. Validate the key's shape before it is stored or used (`firms.CheckKey`) so the redaction never depends on a well-formed paste, and scrub it from transport errors yourself (`redactKey`). Users store it in the Setup window (`s`) or `[providers.<name>]\nkey = "…"` in config.toml (0600); `app` reads `cfg.Providers["<name>"].Key`. Keys never appear in output: the no-secret golden asserts it. |
-| 3 | `app/fire.go` (or a sibling) + `app/dashboard.go` | Build the provider in one place (`fireProviders`), add it to the pipeline's provider set (`livePipelines.fire` / `marine` / `providers()`), give `newAssembler` its attribution case (the report's provider lines print it), and give it a credit in `creditGroups` (`app/credits.go`), which About draws as `CreditLine` rows. Register it **always**; mark it `off` while unkeyed with `Assembler.SetInactive` (`livePipelines.markFIRMS`) so the API status never says "ok" for a feed that contributes nothing. |
+| 3 | `app/fire.go` (or a sibling) + `app/dashboard.go` | Build the provider in one place (`fireProviders`), add it to the pipeline's provider set (`livePipelines.fire` / `marine` / `providers()`), give `newAssembler` its attribution case (the report's provider lines print it), and give it a credit in `creditGroups` (`app/credits.go`), which About draws as `CreditLine` rows. Give `providerEndpoints` (`app/endpoints.go`) the host it talks to, for the Status window; `TestEveryProviderHasAnEndpoint` fails a provider with none. Register it **always**; mark it `off` while unkeyed with `Assembler.SetInactive` (`livePipelines.markFIRMS`) so the API status never says "ok" for a feed that contributes nothing. |
 | 4 | Scheduler | Cadence is per-**kind**: an existing kind (weather, obs, marine) rides its tier for free; a **new** kind needs a `snapshot.FetchKind`, a tier line in `priorityTiers` and one in `recentTiers` (`app/pipelines.go`, the one owner of both lists; the pipelines only read them), and `Domains()` on the provider — B5 added `KindFire` at 10 / 15 minutes. |
 | 5 | Tests | A fixture-backed `Fetch` test (httptest, recorded body) that also asserts the request shape; a key test (stored trimmed, malformed refused without echo); and, for a new kind, the assembler merge test. |
 
@@ -146,19 +146,48 @@ off spends what the warning never shows.
 
 ## Walkthrough 6 — add a Setting
 
-A Setting is read from the config file at launch, carried into the model, drawn as a Settings row, and
-written back when the window closes. The quakes the map draws (`map_quake_feed`, D-122) is a small
-complete example: search for `MapQuakeFeed` and `mapQuakeFeed`.
+**Settings, not flags.** A choice a listener makes while watchpost runs is a Setting: a row in the
+Settings window, saved to `config.toml`. A command-line flag belongs to a one-shot command (`watchpost
+report`) and never to the live program.
 
-| Step | File | What you do |
-|---|---|---|
-| 1 | `platform/config/config.go` | The file's key, a field with its `toml:"…,omitempty"` tag and a comment saying what its words mean and which is the default. |
-| 2 | `modes/tty/dashboard.go` | The field on `Config` (what the model is built with) and on `UIPrefs` (what a window saves). |
-| 3 | `app/dashboard.go`, `app/themes.go` | The app hands the file's value to `Config` when it builds the dashboard, and writes `UIPrefs`' value back to the file in the save. |
-| 4 | `modes/tty/dashboard_choices.go` | The model's field in its group's struct, `mapChoices`, `uiChoices` or `radioChoices`, with its comment, and one line in that group's builder (`mapChoicesOf` and the others) that reads it from `Config`. A word the file does not offer reads as the default. Embedded, the field reads as `d.<name>` everywhere. |
-| 5 | `modes/tty/setup_ui.go` | One line in `uiForSave`, the value the model draws by written as the file's word, and the field applied in the save's answer. |
-| 6 | `modes/tty/setup_rows.go`, `modes/tty/setup_layout.go` | A row id in the `setupRowID` list, its row in `setupTable` (its group, which surface it belongs to, its kind), and its label. A map picker also joins `mapPickerRow` and the arrows in `mapPrefArrow` (`modes/tty/map_prefs.go`), and is drawn in `modes/tty/map_settings.go`. |
-| 7 | Tests | Add the Setting to `everySettingChanged` in `modes/tty/config_reach_test.go`, set away from its default, and re-record `TestEveryConfigFieldReachesTheModel`'s and `TestThePrefsSavedAreTheSettingsInEffect`'s goldens, so the new field is seen read and saved. The memo guards walk the model, the groups included, and need nothing. |
+A Setting is read from the config file at launch, carried into the model, drawn as a row, moved by its
+arrows, and written back when the window closes. Two complete examples are worth reading side by side:
+- **Reduce motion**, an on/off Setting of the Watchpost UI tab. On/off Settings are drawn as two-value
+  pickers here. Search for `ReduceMotion`, `reduceMotion` and `rowReduceMotion`.
+- **The map's quake feed**, a map picker. Search for `MapQuakeFeed`, `mapQuakeFeed` and `rowMapQuakes`.
+
+The last column says what fails if the step is skipped. Each step was proven by adding a throwaway
+Setting of each kind on a scratch copy and leaving out one step at a time (0.19.5 batch 36).
+
+| Step | File | What you do | Skipped, this fails |
+|---|---|---|---|
+| 1 | `platform/config/config.go` | The file's key: a field with its `toml:"…,omitempty"` tag, and a comment saying what its words mean and which is the default. | the compiler, at step 3 |
+| 2 | `modes/tty/dashboard.go` | The field on `Config` (what the model is built with) and on `UIPrefs` (what Settings saves). | the compiler |
+| 3 | `app/dashboard.go`, `app/themes.go` | The app hands the file's value to `Config` when it builds the dashboard, and writes `UIPrefs`' value back to the file in the save. | `TestASavedSettingIsTheSettingAfterARestart` |
+| 4 | `modes/tty/dashboard_choices.go` | The model's field in its group's struct (`mapChoices`, `uiChoices` or `radioChoices`), and one line in that group's builder (`mapChoicesOf` and the others) reading it from `Config`. A word the file does not offer reads as the default. Embedded, the field reads as `d.<name>` everywhere. | the builder line: `TestEveryConfigFieldReachesTheModel`, `TestThePrefsSavedAreTheSettingsInEffect` |
+| 5 | `modes/tty/setup_ui.go` | One line in `uiForSave`, the value the model draws by written as the file's word; and the value mirrored into `d.cfg` in `applyUISaved`, beside its neighbours. | `uiForSave`: `TestASettingIsSavedAsItIsWhateverSavesIt`. The mirror: nothing, because nothing reads `d.cfg` for a Setting after launch; keep it with its neighbours |
+| 6 | `modes/tty/setup_rows.go` | A row id in the `setupRowID` list and its row in `setupTable`: its group, the surface it belongs to, its kind, and `picker: true` for a picker. | `TestEverySettingsRowIsRuledForItsSurface` |
+| 7 | `modes/tty/setup_layout.go` | The picker's words in `pickerChipWords`, what its arrows change ("Theme (live)", "Quakes"). | `TestEveryPickerNamesWhatItsArrowsChange`: without them the chips would offer a voice |
+| 8 | the group's drawing | Draw the row. A UI Setting is drawn in `modes/tty/setup_ui.go`, beside Reduce motion; a map Setting is a `mapRow` in `modes/tty/map_settings.go`, in the order the tab shows it. | `TestEveryArrowRowChangesSomething`, `TestSetupGoldenEveryTab` |
+| 9 | the arrows | A UI Setting gets a branch in `setupRowKey` (`modes/tty/setup.go`), beside Reduce motion's; a map Setting gets a case in `mapPrefArrow` (`modes/tty/map_prefs.go`) calling its own `cycle…`. **The change ends with `d.uiTouched()`**: it marks the window for saving on close, and redraws it. | the branch: `TestEveryArrowRowChangesSomething`. `uiTouched`: `TestAnArrowOnASavedSettingMarksItForSaving` |
+| 10 | Tests | Add the Setting, set away from its default, to `everySettingChanged` (`modes/tty/config_reach_test.go`) and to both `settings_kept_test.go` fixtures (`app` and `modes/tty`). Then re-record the goldens the new row changes (below). | `everySettingChanged`: the two config goldens. The fixtures: the two settings-kept tests, which name the field |
+
+`p` previews a voice on a voice row only (0.19.5 D-33), so a new picker needs nothing to stay silent.
+
+### When a golden or a declset fails
+
+A golden holds a rendered frame, a trace or a table byte for byte. A declset holds a package's
+declarations by file. Either fails when the thing it holds changes, which is right when the change was
+meant, and the failure prints the first line that differs. To accept a change:
+
+- **Read the diff first.** A golden that moved where the change did not mean it to is the defect the
+  golden exists to catch.
+- **Re-capture with the package's flag, after the package path**: `go test ./modes/tty -update-golden`.
+  Before the path, `go test` refuses a flag it does not know. The flags are `-update-golden`
+  (`modes/tty`, `modes/report`, `domains/radio/synth`), `-update-declset` (`app`,
+  `domains/weather/nws`, `platform/history`, `platform/render`, `platform/snapshot`), `-update-plan`
+  (`platform/lineup`) and `-update-cadences` (`app`).
+- **Say why** in the batch's build log: which goldens moved, and that each move is the change.
 
 ## Rules you inherit for free
 

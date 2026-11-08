@@ -589,31 +589,6 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 	return out // the feed's times are not passed on: its overlays are drawn on every frame of both modes (D-275)
 }
 
-// mapPickerRow reports the map's pickers, which have nothing to preview.
-func mapPickerRow(id setupRowID) bool {
-	switch id {
-	case rowMapDesc,
-		rowMapScale,
-		rowMapColours,
-		rowMapPlayback,
-		rowMapNearby,
-		rowMapRadarSource,
-		rowMapTempSource,
-		rowMapRainDetail,
-		rowMapUVCities,
-		rowMapPropRadius,
-		rowMapPropNoise,
-		rowMapPropRefresh,
-		rowMapPropReadings,
-		rowMapPropStations,
-		rowMapRadarAhead,
-		rowMapQuakes,
-		rowMapDetailLevel:
-		return true
-	}
-	return false
-}
-
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
 func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 	switch d.setup.focus {

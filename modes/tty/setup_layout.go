@@ -364,6 +364,8 @@ const (
 // pickerChipWords name what ←→ change on each picker row that is not a
 // voice's (OP-1); a voice's picker names ←→ and its preview key.
 var pickerChipWords = map[setupRowID]string{
+	rowRelayDwell:      "Rotation",
+	rowRelayLang:       "Language",
 	rowTheme:           "Theme (live)",
 	rowMapDesc:         "Description", // 0.18.0: nothing to preview
 	rowMapScale:        "Scale",
