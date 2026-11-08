@@ -1403,3 +1403,25 @@ Markdown only, through the docs lane.
 - **The images are the HUM LEAD's** (A-9). `docs/img/setup.png`, `broadcaster-settings.png` and
   `help.png` predate the tabs and the `g` and swap keys. The agent does not run the live app, so they
   are retaken before SHIP, and the captions above describe what the new ones will show.
+
+## 0.19.5 batch 31 — the as-built maps match the code (plan Q8.4, DC-6)
+
+Documents and the atlas only. The atlas is regenerated in the same commit (59 diagrams).
+
+- **The air-and-deck map** (`0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md`):
+  - **The guard boundary's counts are dropped,** where they had drifted. It said 53 seams (48 and 5)
+    and airNone 34, while `TestEverySurfaceSeamIsClassifiedForTheAir` derives 59 and 40. The page now
+    names the test that holds each class's count, and its six edges carry the class alone.
+  - **The state subgraph** was titled "what MasterControl holds". It is the Director's state (power,
+    monitor, air); MasterControl declares ON AIR / STANDBY. The title now says that, which is the
+    five-role split the page exists to keep.
+- **The map's as-built** (`observer-maps/03-architecture-design/as-built-map.md`):
+  - The map's quakes come from `lp.mapQuakes.fetch`, the feed the map chose (D-122), not a
+    `severeDeck.feedCopy` that does not exist.
+  - Settings' map tabs are two, Maps and Map Layers, each one column (0.19.3 D-364). One "side by
+    side" tab was drawn before.
+  - `limitsOf` is `propanswers.LimitsOf`.
+  - The window stack's "forty-three places", now 83, is said without a count.
+  - The status line names 0.19.3 and 0.19.5.
+- **map-ready-geometry's as-built** named a `platform/tuimap` that never existed. The drawer is the
+  external go-tuimaps module.

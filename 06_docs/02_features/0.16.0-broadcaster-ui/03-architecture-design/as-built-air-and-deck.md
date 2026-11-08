@@ -61,7 +61,7 @@ patches it.  That is why anything mixed into the output on the console *goes out
 
 ```mermaid
 flowchart LR
-  subgraph state["what MasterControl holds"]
+  subgraph state["what the Director holds; MasterControl declares ON AIR / STANDBY"]
     P["power<br/>Stopped | Running | OffAir<br/><i>the STATION's</i>"]
     M["monitor<br/>running or not<br/><i>the OPERATOR's</i>"]
     A["air<br/>AirMonitor | AirProgramme<br/><i>declared by the SURFACE</i>"]
@@ -121,20 +121,21 @@ re-fetching products (D-74).
 
 ## 4. The guard boundary — D-91
 
-**53 seams** between a surface and `app`: 48 `tty.Config` func fields and 5 `tty.Radio` methods.
-The classification is a closed set, derived by reflection, ratcheting both ways
-(`app/air_boundary_test.go`).
+**The seams** between a surface and `app` are every `tty.Config` func field and every `tty.Radio`
+method. The classification is a closed set, derived by reflection, ratcheting both ways
+(`TestEverySurfaceSeamIsClassifiedForTheAir`, `app/air_boundary_test.go`), so the test, not this
+page, holds the count in each class.
 
 ```mermaid
 flowchart TB
   SURF["a surface calls in"] --> CLS{"what can it do<br/>to the air?"}
 
-  CLS -->|airNone · 34| NONE["settings, queries, lookups, the map's feeds,<br/>the bed selector<br/><i>no guard owed</i>"]
-  CLS -->|airMonitor · 10| MON{"monitorHasTheAir()"}
-  CLS -->|airProgramme · 5| PROG["ToggleBedRelay · TuneRelay<br/>RequestCard · MoveCard · DropCard<br/><i>the console's own</i>"]
-  CLS -->|airShared · 2| SHR["SetVolume — one volume for the app<br/>InjectAlert — feeds the exempt RAIL"]
-  CLS -->|airGatedDownstream · 1| GD["ReadReport → needsRead<br/><i>already asks</i>"]
-  CLS -->|airDeclares · 1| DEC["OnSurface — it MOVES the air"]
+  CLS -->|airNone| NONE["settings, queries, lookups, the map's feeds,<br/>the bed selector<br/><i>no guard owed</i>"]
+  CLS -->|airMonitor| MON{"monitorHasTheAir()"}
+  CLS -->|airProgramme| PROG["ToggleBedRelay · TuneRelay<br/>RequestCard · MoveCard · DropCard<br/><i>the console's own</i>"]
+  CLS -->|airShared| SHR["SetVolume — one volume for the app<br/>InjectAlert — feeds the exempt RAIL"]
+  CLS -->|airGatedDownstream| GD["ReadReport → needsRead<br/><i>already asks</i>"]
+  CLS -->|airDeclares| DEC["OnSurface — it MOVES the air"]
 
   MON -->|"true — Observer has it"| DO["reaches the engine"]
   MON -->|"false — the console has it"| REF["<b>refused</b><br/>the SETTING still applies;<br/>only the disturbance stops"]
