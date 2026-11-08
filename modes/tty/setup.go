@@ -371,48 +371,8 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 			d.setup.focus, d.setup.err = d.stepTab(step), ""
 			return d.settled(), nil, true
 		}
-		if d.setup.focus == rowMapsOn {
-			d.mapsOff = !d.mapsOff // 0.18.0: two states, so either arrow is "the other one"
-			return d.uiTouched(), nil, true
-		}
-		if d.setup.focus == rowMapDesc {
-			return d.cycleMapDesc(key.String() == "right"), nil, true
-		}
-		if m, ok := d.mapPrefArrow(key.String() == "right"); ok {
+		if m, ok := d.cycleFocused(key.String() == "right"); ok {
 			return m, nil, true
-		}
-		if d.setup.focus == rowReduceMotion {
-			d = d.cycleReduceMotion(key.String() == "right")
-			d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
-			if key.String() == "right" {
-				d.setup.flash = flashRight
-			}
-			return d.settled(), nil, true
-		}
-		if setupTable()[d.setup.focus].kind == rowToggle {
-			// A two-state control: ←→ and space all do the same thing, because
-			// there is nothing to cycle THROUGH — there are two states and
-			// either key means "the other one".
-			forward := key.String() == "right"
-			d = d.toggleClass(d.setup.focus)
-			d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
-			if forward {
-				d.setup.flash = flashRight
-			}
-			return d.settled(), nil, true
-		}
-		if picker {
-			forward := key.String() == "right"
-			if d.setup.focus == rowTheme {
-				d = d.cycleTheme(forward) // auto-preview: the theme is applied as the picker moves
-			} else {
-				d = d.cyclePicker(d.setup.focus, forward)
-			}
-			d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
-			if forward {
-				d.setup.flash = flashRight
-			}
-			return d.settled(), nil, true
 		}
 	case "p":
 		if picker && setupTable()[d.setup.focus].group == groupCast { // only a voice previews (0.19.5 D-33)
@@ -421,6 +381,53 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 		}
 	}
 	return d, nil, false
+}
+
+// cycleFocused moves the focused row on ← or →, and reports whether the row
+// takes the arrows.
+//
+// THE ORDER IS THE DISPATCH: a row with its own cycle comes before the kind it
+// also is. Reduce motion is a two-value picker with a cycle of its own, and a
+// map preference is a picker mapPrefArrow owns, so either one placed after the
+// generic toggle or picker case would never be reached, and nothing else would
+// say so. TestEveryArrowRowsOutcomeIsPinned holds the order row by row.
+func (d Dashboard) cycleFocused(forward bool) (Dashboard, bool) {
+	switch d.setup.focus {
+	case rowMapsOn:
+		d.mapsOff = !d.mapsOff // two states, so either arrow is "the other one"
+		return d.uiTouched(), true
+	case rowMapDesc:
+		return d.cycleMapDesc(forward), true
+	}
+	if m, ok := d.mapPrefArrow(forward); ok {
+		return m, true
+	}
+	row := setupTable()[d.setup.focus]
+	switch {
+	case d.setup.focus == rowReduceMotion:
+		return d.cycleReduceMotion(forward).flashed(forward), true
+	case row.kind == rowToggle: // two states: ←, → and space all mean "the other one"
+		return d.toggleClass(d.setup.focus).flashed(forward), true
+	case !row.picker:
+		return d, false
+	case d.setup.focus == rowTheme:
+		return d.cycleTheme(forward).flashed(forward), true // the theme is applied as the picker moves
+	case d.setup.focus == rowRelayLang || d.setup.focus == rowRelayDwell:
+		return d.cycleRelayRow(d.setup.focus, forward).flashed(forward), true
+	case d.setup.focus == rowHistoryHours || d.setup.focus == rowHistoryTrends:
+		return d.cycleHistoryRow(d.setup.focus, forward).flashed(forward), true
+	}
+	return d.cyclePicker(d.setup.focus, forward).flashed(forward), true
+}
+
+// flashed lights the arrow that was pressed on the focused picker, until
+// markEnds says, and settles the window.
+func (d Dashboard) flashed(forward bool) Dashboard {
+	d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
+	if forward {
+		d.setup.flash = flashRight
+	}
+	return d.settled()
 }
 
 // castTouched marks the cast or tone state changed. Every writer of either

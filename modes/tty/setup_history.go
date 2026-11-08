@@ -198,3 +198,16 @@ func (d Dashboard) raiseLines(o render.Opts) []string {
 func historyLabel(choices []historyChoice, key string) string {
 	return choices[historyAt(choices, key)].label
 }
+
+// cycleHistoryRow moves one of the HISTORY pickers through D-175's presets,
+// and asks before a longer keep than the one held.
+func (d Dashboard) cycleHistoryRow(id setupRowID, forward bool) Dashboard {
+	if id == rowHistoryTrends {
+		was := d.setup.history.Trends
+		d.setup.history.Trends = cycleHistory(historyTrendChoices, was, forward)
+		return d.askIfLonger(true, historyTrendChoices, was, d.setup.history.Trends)
+	}
+	was := d.setup.history.Hours
+	d.setup.history.Hours = cycleHistory(historyHourChoices, was, forward)
+	return d.askIfLonger(false, historyHourChoices, was, d.setup.history.Hours)
+}

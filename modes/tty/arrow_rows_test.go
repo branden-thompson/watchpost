@@ -1,6 +1,9 @@
 package tty
 
 import (
+	"crypto/sha256"
+	"fmt"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -43,4 +46,34 @@ func TestEveryArrowRowChangesSomething(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestEveryArrowRowsOutcomeIsPinned records, for every toggle and picker row,
+// on ← and on →, which way the picker flashes, which save marks the window
+// carries, and the Settings window as drawn, hashed (0.19.5 RR-12).
+// cycleFocused's order is its dispatch, so a row that reaches a different
+// case, or a flash that turns the other way, changes a line of the golden.
+func TestEveryArrowRowsOutcomeIsPinned(t *testing.T) {
+	d, err := NewDashboard(Config{Voices: func() []string { return []string{"Samantha", "Daniel", "Karen"} }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.width, d.height = 160, 60
+	was := render.ThemeName()
+	t.Cleanup(func() { render.SetTheme(was) })
+	var out strings.Builder
+	for _, row := range setupTable() {
+		if row.kind != rowToggle && row.kind != rowPicker {
+			continue
+		}
+		for _, k := range []tea.KeyPressMsg{{Code: tea.KeyLeft}, {Code: tea.KeyRight}} {
+			render.SetTheme(was)
+			m, _ := d.openSetupAt(row.id).Update(k)
+			got := m.(Dashboard)
+			sum := sha256.Sum256([]byte(stripANSITest(got.View().Content)))
+			fmt.Fprintf(&out, "row %2d %-5s flash=%d ui=%v cast=%v frame=%x\n",
+				row.id, k.String(), got.setup.flash, got.setup.uiDirty, got.setup.castDirty, sum[:8])
+		}
+	}
+	checkGolden(t, "setup-arrows.golden", out.String())
 }

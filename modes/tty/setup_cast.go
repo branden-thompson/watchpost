@@ -154,7 +154,7 @@ func (d Dashboard) pickerList(setupRowID) []string {
 	return append([]string{inheritEntry}, d.voices()...)
 }
 
-// cyclePicker moves a picker one entry left or right.
+// cyclePicker moves a voice picker one entry left or right.
 //
 // It cycles BY THE ENTRY THE PICKER HOLDS, not by the name it displays: a row
 // showing an inherited name sits on the inherit entry, so → assigns the first
@@ -162,28 +162,6 @@ func (d Dashboard) pickerList(setupRowID) []string {
 // wherever the inherited voice happens to sit in the list, which is not where
 // the listener is looking.
 func (d Dashboard) cyclePicker(id setupRowID, forward bool) Dashboard {
-	// THE RELAY ROW IS A PICKER WITHOUT A ROLE. Everything below cycles a voice
-	// against the cast; this one cycles a duration against nothing, so it is
-	// answered here rather than by giving the rotation a fake role to satisfy a
-	// shape it does not have.
-	if id == rowRelayLang {
-		d.setup.relayLang = cycleRelayLang(d.setup.relayLang, forward)
-		return d
-	}
-	if id == rowRelayDwell {
-		d.setup.relayDwell = cycleRelayDwell(d.setup.relayDwell, forward)
-		return d
-	}
-	if id == rowHistoryHours { // D-175's presets
-		was := d.setup.history.Hours
-		d.setup.history.Hours = cycleHistory(historyHourChoices, was, forward)
-		return d.askIfLonger(false, historyHourChoices, was, d.setup.history.Hours)
-	}
-	if id == rowHistoryTrends {
-		was := d.setup.history.Trends
-		d.setup.history.Trends = cycleHistory(historyTrendChoices, was, forward)
-		return d.askIfLonger(true, historyTrendChoices, was, d.setup.history.Trends)
-	}
 	list := d.pickerList(id)
 	if len(list) == 0 {
 		return d

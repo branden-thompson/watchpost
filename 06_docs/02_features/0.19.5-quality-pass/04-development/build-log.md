@@ -1727,3 +1727,30 @@ Markdown only, through the docs lane.
   `release-matrix`, `install-test`, `quality-bench`, and `quality`'s P10 gate.
 - **No `make help`.** It was optional in JR-11. The four steps name the targets a newcomer needs, and a
   new target would also need an exemption in the gates test.
+
+## 0.19.5 batch 40 — the Settings arrows, one ordered dispatch (plan Q9.7, JR-13, RR-12)
+
+- **Pinned first (RR-12).**
+  - `TestEveryArrowRowsOutcomeIsPinned` (`modes/tty/arrow_rows_test.go`, golden
+    `testdata/setup-arrows.golden`) was written and recorded before any code moved. For each of the
+    43 toggle and picker rows, on ← and on →, it records the flash side, the two save marks and a hash
+    of the window as drawn: 86 lines, stable over three runs.
+  - RR-12's unrun branches are in it: maps-on, reduce motion, the toggle rows. The `p` preview was
+    already pinned by `TestOnlyAVoiceRowPreviews` (batch 36).
+  - After the move the golden matched unchanged.
+- **The move (JR-13).**
+  - `setupRowKey`'s ←→ arm is one call to `cycleFocused(forward) (Dashboard, bool)`. Its doc says
+    the order is the dispatch, and why: Reduce motion and the map preferences each have their own
+    cycle, and would never be reached after the generic case.
+  - The three copies of the flash idiom are one `flashed(forward)`.
+  - `cyclePicker` cycles voices only. The relay pickers go to `cycleRelayRow` in `setup_relay.go`
+    and the HISTORY pickers to `cycleHistoryRow` in `setup_history.go`, dispatched by row id, not by
+    group, so a new row in either group is not cycled as one of them by accident.
+  - `setupRowKey` is 53 lines, from 93.
+- **Mutants.**
+  - m706 and m707 follow their lines into `cycleFocused`. Both are killed by
+    `TestEveryArrowRowChangesSomething` and the pin.
+  - New: m800, the flash turns the other way, is killed by the pin alone. m801, Theme falls to the
+    voice cycle, is killed by both.
+- **Docs.** extending.md step 9 names `cycleFocused`, its order and the pin's golden.
+  where-things-happen says `cyclePicker` moves a voice picker.

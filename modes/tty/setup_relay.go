@@ -155,3 +155,15 @@ func (d Dashboard) relayLines(o render.Opts) []string {
 		castNoteIndent + "Used when two relays share a transmitter site.",
 	}
 }
+
+// cycleRelayRow moves one of the relay replay's two pickers. They cycle a
+// language and a duration, not a voice against the cast, so they are answered
+// here rather than by giving the rotation a role it does not have.
+func (d Dashboard) cycleRelayRow(id setupRowID, forward bool) Dashboard {
+	if id == rowRelayLang {
+		d.setup.relayLang = cycleRelayLang(d.setup.relayLang, forward)
+		return d
+	}
+	d.setup.relayDwell = cycleRelayDwell(d.setup.relayDwell, forward)
+	return d
+}
