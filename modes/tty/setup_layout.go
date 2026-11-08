@@ -367,7 +367,7 @@ var pickerChipWords = map[setupRowID]string{
 	rowRelayDwell:      "Rotation",
 	rowRelayLang:       "Language",
 	rowTheme:           "Theme (live)",
-	rowMapDesc:         "Description", // 0.18.0: nothing to preview
+	rowMapDesc:         "Description", // nothing to preview
 	rowMapScale:        "Scale",
 	rowMapColours:      "Colours",
 	rowMapPlayback:     "Speed",

@@ -1845,6 +1845,7 @@ cell; a later table that mentions it is not listed.
 | A-21 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-74's schedule of routine closures lives in the reference chart (FR-1.15: the hours today each band is expec… |
 | A-22 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The relay replay's chips name their own change (Q9.3, JM-8): the walkthrough's proof found that a picker miss… |
 | A-22 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | F-190, closed on 2026-10-04 but left under Open, is deleted, as the follow-ups file's own rule asks |
+| A-23 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The one-letter fields get words (Q9.9, JR minor): livePipelines.p and radioDeck.p become program; arbiter.v a… |
 | A-23 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The intake briefs (watchpost and go-ionomaps) are kept as written, with a banner that requirements.md is curr… |
 | A-24 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PLAN's mermaid diagrams are committed on the docs lane as they are written; 06_docs/architecture-atlas.html i… |
 | A-25 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | M5b gets its own ten scenarios, drawn the same way as M5's, rather than "the same ten" (the implementation pl… |

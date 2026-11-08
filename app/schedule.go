@@ -39,16 +39,15 @@ type schedule struct {
 	cancel context.CancelFunc
 	ticks  chan struct{} // closed by the tick goroutine when it returns
 
-	// x is what this schedule actually wired, KEPT SO THE WIRING CAN BE DRIVEN
-	// (D-140). It is the same remedy `producer()` carries in pool.go, for the
-	// same stated reason: "A FUNCTION RATHER THAN A CALL SITE, deliberately …
-	// a call site cannot be asserted; this can, and a test does."
+	// executors is what this schedule actually wired, KEPT SO THE WIRING CAN BE
+	// DRIVEN (D-140): a call site cannot be asserted, and a field a test reads
+	// can. livePipelines.producer is the same remedy for the same reason.
 	//
 	// A TEST OF THE SET IS NOT A TEST OF THE WIRING: the Composer could resolve
 	// against the pool while the operator requests a wider set, and every test that
 	// exercises the SET directly would pass without asking what the schedule had
 	// been handed.
-	x *executors
+	executors *executors
 }
 
 // bedSeams is what the schedule needs from the console's bed row, and it is ONE
@@ -146,7 +145,7 @@ func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, c
 		cancel()
 		return nil
 	}
-	s := &schedule{pump: p, ctx: run, cancel: cancel, ticks: make(chan struct{}), x: x}
+	s := &schedule{pump: p, ctx: run, cancel: cancel, ticks: make(chan struct{}), executors: x}
 	go p.loop(run)
 	go s.tick(run)
 	tick.mu.Lock()

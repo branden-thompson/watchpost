@@ -186,12 +186,12 @@ func (lp *livePipelines) setServiceRadius(mi int) {
 func (lp *livePipelines) restationTo(s stationArea) {
 	lp.setStation(s)
 	lp.mu.Lock()
-	p, pool, ctx := lp.p, lp.poolRefs, lp.ctx
+	p, pool, ctx := lp.program, lp.poolRefs, lp.ctx
 	lp.mu.Unlock()
 	if p != nil {
 		publishArea(p.Send, s, pool)
 	}
-	// AND THE RAIL IS RE-TESTED AGAINST THE NEW FENCE (D-154). The station's
+	// The rail is re-tested against the new fence (D-154). The station's
 	// service area IS the rail's fence on the console, so moving the region
 	// moves the fence — and everything already admitted was admitted under the
 	// old one. Without this a narrowing from 100 miles to 25 leaves a 100-mile
@@ -207,7 +207,7 @@ func (lp *livePipelines) restationTo(s stationArea) {
 	if mc := lp.masterControl(); mc != nil {
 		mc.Refence()
 	}
-	// AND THE BED RE-RESOLVES WITH IT (D-117). Which relays actually stream is a
+	// The bed re-resolves with the region (D-117). Which relays actually stream is a
 	// fact about the station's REGION, so moving the region asks the question
 	// again — otherwise the selector goes on offering the relays of the place the
 	// station has left.
@@ -341,7 +341,7 @@ func withPool(recent, pool, watch []snapshot.LocationRef) []snapshot.LocationRef
 // lookInPool answers what the operator typed into the request window from the
 // station's pool and nothing else, which is what makes it safe to run on a
 // keystroke. It answers the place, whether it was found, and whether it is in
-// the pool (ruling 2): a place outside the pool is not a lookup failure, and
+// the pool (0.16.0 report-requests ruling 2): a place outside the pool is not a lookup failure, and
 // the window names it and points at Observer, which needs the two kept apart.
 func (lp *livePipelines) lookInPool(query string) (ref snapshot.LocationRef, found, inPool bool) {
 	if lp == nil {

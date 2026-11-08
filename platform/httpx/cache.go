@@ -1,3 +1,7 @@
+// cache.go — the HTTP response cache: a small and a large memory tier, an
+// optional disk tier under a byte cap that keeps a relaunch warm, negative
+// entries for misses, the validators a 304 renews an entry by, and Stats.
+
 package httpx
 
 import (

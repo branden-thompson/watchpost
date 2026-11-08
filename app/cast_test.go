@@ -772,12 +772,12 @@ func TestAnUnwiredDeckCannotInstall(t *testing.T) {
 	if (&radioDeck{engine: &player.Engine{}}).canInstall() {
 		t.Error("a deck with no program reports it can install")
 	}
-	if (&radioDeck{p: &tea.Program{}}).canInstall() {
+	if (&radioDeck{program: &tea.Program{}}).canInstall() {
 		t.Error("a deck with no engine reports it can install")
 	}
 	// CONTROL: with both, it can — so the predicate is reading them and is not
 	// simply always false.
-	if !(&radioDeck{engine: &player.Engine{}, p: &tea.Program{}}).canInstall() {
+	if !(&radioDeck{engine: &player.Engine{}, program: &tea.Program{}}).canInstall() {
 		t.Error("control: a fully wired deck reports it cannot install; the predicate is always false")
 	}
 }

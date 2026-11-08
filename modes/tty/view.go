@@ -25,7 +25,7 @@ func (d Dashboard) View() tea.View {
 		b.WriteByte('\n')
 	}
 	b.WriteString(d.header(o))
-	b.WriteString("\n")                                            // 0.12.0: the ticker band's top row is the header/ticker separator
+	b.WriteString("\n")                                            // the ticker band's top row is the header/ticker separator
 	d.writeBody(&b, fl, priority, recent)                          // UAT 57: no footer - every control lives where it acts
 	content := frameText(b.String(), viewPadLeft, render.TextBase) // UAT 4.10: base grey; no stray trailing row (UAT 58)
 	base := content
@@ -36,7 +36,7 @@ func (d Dashboard) View() tea.View {
 		}
 		content = render.OverlayAt(content, overlay, d.width, y) // the one open window
 	}
-	// AND THE CONFIRMATION OVER THAT (HUM LEAD mock, 2026-09-07). A second
+	// The confirmation goes over the open window (HUM LEAD mock, 2026-09-07). A second
 	// layer rather than a swapped body: the mock shows the red box ON TOP of
 	// the diagnostics window, and the window underneath is unchanged — which is
 	// also why it stays outside the modal memo. It is composited here, on the

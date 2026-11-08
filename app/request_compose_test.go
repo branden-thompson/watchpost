@@ -131,7 +131,7 @@ func TestTheSchedulesComposerResolvesARequestedLocation(t *testing.T) {
 		t.Fatal("the schedule refused to start")
 	}
 
-	_, err := s.x.compose(ctx, string(snapshot.Key(rainbow)), report.Everything())
+	_, err := s.executors.compose(ctx, string(snapshot.Key(rainbow)), report.Everything())
 	if err != nil && strings.Contains(err.Error(), "no watched location") {
 		t.Errorf("the schedule's composer cannot resolve a requested location: %v — "+
 			"the card builds to nothing, the decline is routed, and the operator is shown "+

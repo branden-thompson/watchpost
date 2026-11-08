@@ -1,3 +1,7 @@
+// director.go — the Director: the Events it is told, the Effects it asks for,
+// and Step, the pure function that decides what airs next from the Lineup it
+// alone writes.
+
 package lineup
 
 import (

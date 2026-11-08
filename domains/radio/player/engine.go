@@ -1,3 +1,7 @@
+// engine.go — the Engine that plays one NOAA Weather Radio station: it tries
+// the mounts in order, reconnects with backoff when a stream stalls, and
+// reports its Status through a callback.
+
 package player
 
 import (

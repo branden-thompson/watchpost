@@ -108,7 +108,7 @@ type Glyphs struct {
 	// means FELT INTENSITY, and reusing it here would give one glyph two
 	// meanings.
 	Idle, Live string
-	// 0.14.0: the Setup window's marks. Down is a picker's dropdown arrow;
+	// the Setup window's marks. Down is a picker's dropdown arrow;
 	// Rail and RailCar draw the scroll rail; Ellipsis and Bullet are used where
 	// text is cut or listed. All go through the glyph set so --ascii needs no
 	// special case anywhere (Task 4.9's glyph parity).

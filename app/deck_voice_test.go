@@ -69,7 +69,7 @@ func voiceDeck(t *testing.T) (*radioDeck, *drainingOutput, *statusLog, *sent) {
 	t.Cleanup(eng.Halt)
 	msgs := &sent{}
 	d := &radioDeck{engine: eng, limiter: synth.NewLimiter(2, synth.ReservedSlots), voiceDir: t.TempDir()}
-	d.p = msgs.program(t)
+	d.program = msgs.program(t)
 	return d, out, log, msgs
 }
 

@@ -11,10 +11,10 @@
 # executor at T3.10 — so the rule this guards has one home instead of two.
 import pathlib
 p = pathlib.Path("app/read_script.go"); s = p.read_text()
-old = """	if !r.s.awaitAir(nil) {
+old = """	if !r.speaker.awaitAir(nil) {
 		return false
 	}
-	if p.Ref != "" && r.h.cue != nil {"""
-new = """	if p.Ref != "" && r.h.cue != nil {"""
+	if p.Ref != "" && r.hooks.cue != nil {"""
+new = """	if p.Ref != "" && r.hooks.cue != nil {"""
 assert old in s, "mH2"
 p.write_text(s.replace(old, new, 1))

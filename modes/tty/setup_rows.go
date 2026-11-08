@@ -194,21 +194,11 @@ const (
 	scopeSplit
 )
 
-// NO `numSetupScopes` SENTINEL, and that is a decision rather than an omission.
-//
-// `wires` enrols a closed set by its bound and then asks every member to name a
-// production WRITER — and `noteComposite` counts a member listed in a table
-// literal as a READ, deliberately: "a set written out as a literal … is naming it
-// as one of the things to consider."  A STATIC CLASSIFICATION therefore never has
-// a writer, because nothing in production ever decides to produce one; the table
-// simply states it.
-//
-// The two closest analogues are in this very file — `setupRowKind` and
-// `setupGroupID`, both static classifications, both without a sentinel — so this
-// matches the convention rather than dodging the gate.  What the gate would
-// buy is a range check on values that can only come from the table below;
-// what the completeness check actually needs is `scopeUnruled`, and
-// TestEverySettingsRowIsRuledForItsSurface asks for that directly.
+// setupScope has no count sentinel. Its values come only from the table
+// below, and the completeness that matters, that no row is scopeUnruled, is
+// TestEverySettingsRowIsRuledForItsSurface's. A sentinel would also enrol the
+// type in the wires gate, which asks every member for a production writer that
+// a static classification never has; setupRowKind and setupGroupID are the same.
 
 // setupRow describes one focusable row.
 type setupRow struct {

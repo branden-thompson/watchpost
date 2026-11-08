@@ -369,7 +369,7 @@ type Config struct {
 	UpdateCheck bool `toml:"update_check,omitempty"`
 
 	TickerMuted    bool `toml:"ticker_muted,omitempty"`     // [M]: the global event ticker's tone/narration muted (0.12.0)
-	TickerRadiusMi int  `toml:"ticker_radius_mi,omitempty"` // 0.12.0: the alert-notification radius — 0 = All (global), >0 = only alerts within N miles of the default location
+	TickerRadiusMi int  `toml:"ticker_radius_mi,omitempty"` // the alert-notification radius — 0 = All (global), >0 = only alerts within N miles of the default location
 
 	FirstRun bool `toml:"-"`
 

@@ -19,8 +19,8 @@ import (
 // map opens at, its nearby distance and its layer and detail choices as
 // comparable words (0.18.0 batch 9) are among them.
 type mapChoices struct {
-	mapsOff         bool        // 0.18.0: the Setting; g says so and builds nothing (W1.8)
-	mapDesc         mapDescMode // 0.18.0: the description with the picture, instead of it, or off (W1.10)
+	mapsOff         bool        // the Setting; g says so and builds nothing (W1.8)
+	mapDesc         mapDescMode // the description with the picture, instead of it, or off (W1.10)
 	mapScale        mapScaleMode
 	mapNearbyKm     int
 	mapLayerChoice  string

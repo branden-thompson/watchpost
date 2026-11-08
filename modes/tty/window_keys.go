@@ -71,7 +71,7 @@ func windowKeysOf(m modal) (windowKeys, bool) {
 	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout, modalCard:
 		return windowKeys{claim: claimActions, nav: scrolls}, true
 	case modalSevere:
-		return windowKeys{claim: claimActions, nav: Dashboard.handleSevereNav}, true // 0.13.0: tabs and rows, or the record's scroll
+		return windowKeys{claim: claimActions, nav: Dashboard.handleSevereNav}, true // tabs and rows, or the record's scroll
 	case modalRelayFault:
 		return windowKeys{claim: claimActions, nav: Dashboard.handleRelayFaultNav}, true // MVS-D-76: the three ways out of a dead relay
 	case modalDebug:

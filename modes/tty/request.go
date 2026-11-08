@@ -107,7 +107,7 @@ func (st requestState) positionOK() bool {
 // position is the running-order index the request asks for.
 //
 // PRIORITIZE IS ZERO — the front of the running order, which is UP NEXT and
-// never LIVE (ruling 3): the card on the air is not in the running order at
+// never LIVE (0.16.0 report-requests ruling 3): the card on the air is not in the running order at
 // all, so there is no index that could name it.
 //
 // THE TYPED NUMBER IS A SLOT AND THIS RETURNS AN INDEX (D-119). `Requested.To`
@@ -146,7 +146,7 @@ func (st requestState) position(liveOffset int) int {
 // note is the helper text under the location field, "" when there is
 // nothing to say.
 //
-// THE SHAPE OBSERVER'S LOOKUP USES (ruling 2): the fact, then what the operator
+// THE SHAPE OBSERVER'S LOOKUP USES (0.16.0 report-requests ruling 2): the fact, then what the operator
 // can do about it. A location outside the service radius is NOT an error — it is
 // a real place the station cannot broadcast about, and Observer can show it.
 func (st requestState) note() (string, string) {

@@ -126,7 +126,7 @@ func TestArbiterALineRenderedUnderSuspensionWaitsForTheAir(t *testing.T) {
 	n.sleep = sleepCtx
 	rendering, release := make(chan struct{}), make(chan struct{})
 	slow := &slowVoice{scriptVoice: v, rendering: rendering, release: release}
-	n.v = slow
+	n.voice = slow
 	go n.Run(context.Background(), narrateRead, cast.SevereRead, true, func(ctx context.Context, s *speaker) { s.line("read-line") })
 	<-rendering // the read is rendering its (long) script
 	breakingDone := make(chan struct{})
@@ -302,7 +302,7 @@ func TestALineNeverStartsUnderATakeover(t *testing.T) {
 			mu.Unlock()
 		}
 	}}
-	n.v = v
+	n.voice = v
 	n.sleep = sleepCtx
 	stop := make(chan struct{})
 	var wg sync.WaitGroup

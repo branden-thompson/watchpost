@@ -119,7 +119,7 @@ type tickerDeck struct {
 	inject    injectQueue     // F-21b: a real queue in a debug build, an empty struct in a release one
 	scripts   *script.Library // the spoken lines (domains/radio/script); nil = the built-in scripts
 	done      chan struct{}   // closed when run returns, so stopAll can drain the ticker before teardown
-	severe    *severeDeck     // 0.13.0: the severe-events index (nil = no window, as in tests that build a bare deck)
+	severe    *severeDeck     // the severe-events index (nil = no window, as in tests that build a bare deck)
 
 	// alerts is the producer's record of what each arrival IS, asked for by the
 	// executors when they compose, cue and mark (T3.10b). The card carries only

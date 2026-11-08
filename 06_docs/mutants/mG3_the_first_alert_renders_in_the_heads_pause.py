@@ -10,7 +10,7 @@ import pathlib
 p = pathlib.Path("app/read_script.go"); s = p.read_text()
 old = """	if i+1 < len(sc.Parts) { // render the NEXT while this one sounds
 		n := sc.Parts[i+1]
-		r.next, r.haveNext = timeRender(n.Kind.String(), func() (clip, bool) { return r.s.prepare(n.Text) })
+		r.next, r.haveNext = timeRender(n.Kind.String(), func() (clip, bool) { return r.speaker.prepare(n.Text) })
 	}
 """
 assert old in s, "mG3"

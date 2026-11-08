@@ -265,7 +265,7 @@ func (x *executors) offer() []lineup.Event {
 //     and then mc.mu, so a release taking mc.mu first would invert the lock
 //     order and deadlock. arbiter.releaseBed unholds and re-settles under d.mu.
 //   - Escalate is graded by the Director already; it is said in the station's
-//     own band (NFR-7, HUM LEAD ruling 5) through the seam the clear uses, so no
+//     own band (0.16.0 NFR-7) through the seam the clear uses, so no
 //     build can deliver one without the other, and logged for a build with no
 //     console.
 //   - An effect with no executor is reported, never dropped: the set is closed,

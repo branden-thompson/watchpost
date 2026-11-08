@@ -38,7 +38,7 @@ type LocationRow struct {
 	HasAlert           bool
 	WarnAlert          bool // true = warning/alert-grade; false = advisory (UAT 14.1)
 	AlertCount         int  // active alerts: rendered beside the ⚠ (UAT 20.2)
-	Seismic            int  // 0.11.0: the strongest recent quake's felt-band level (0 none · 1 ○ · 2 ● · 3 ◉) — the row wears one glyph, no count
+	Seismic            int  // the strongest recent quake's felt-band level (0 none · 1 ○ · 2 ● · 3 ◉) — the row wears one glyph, no count
 	Loading            bool // data not yet arrived: temps shimmer, not "n/a" (UAT 18.2)
 	Playing            bool
 	Selected           bool
@@ -448,7 +448,7 @@ func markCells(r Marks, g Glyphs) [marksW]string {
 			marks[3] = Tint(g.Repeat, Tok(StatePlaying)) // UAT 83: ∞ on repeat
 		}
 	}
-	if r.Seismic > 0 { // 0.11.0: the strongest recent quake's felt-band glyph — one mark, no count (HUM LEAD)
+	if r.Seismic > 0 { // the strongest recent quake's felt-band glyph — one mark, no count (HUM LEAD)
 		marks[5] = Tint(g.Seismic[r.Seismic-1], Tok(SeismicMark))
 	}
 	if r.Fire > 0 { // B5 / UAT 110: fire is another alert kind — orange ◆ with its count (bold when a hotspot burns hard)

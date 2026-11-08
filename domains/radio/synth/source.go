@@ -1,3 +1,8 @@
+// source.go — the synthesized broadcast as a PCM stream: Source narrates a
+// cycle's segments, renders the next one while the current one plays, caches
+// the audio by what was said and by whom, and asks for the next cycle when it
+// repeats.
+
 package synth
 
 import (

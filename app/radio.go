@@ -1,3 +1,8 @@
+// radio.go — the radio deck: it tunes a location to the NOAA Weather Radio
+// stream that carries it, tells the schedule when no live stream does so the
+// station reads it instead, and carries the player's status, the bed's duck
+// and restore, and the radio debug log back to the dashboard.
+
 package app
 
 import (
@@ -33,7 +38,7 @@ import (
 // streams status back to the UI. Everything here runs on tea cmd
 // goroutines — never the update loop.
 type radioDeck struct {
-	p        *tea.Program
+	program  *tea.Program
 	nws      *nws.Provider
 	resolver *stream.Resolver
 	engine   *player.Engine
@@ -144,7 +149,7 @@ func newRadioDeck(p *tea.Program, client *httpx.Client, provider *nws.Provider, 
 	if err != nil {
 		return nil
 	}
-	d := &radioDeck{p: p, nws: provider, resolver: r, units: units, products: synth.NewProducts(client, ""), voiceDir: voiceDir(), limiter: synth.NewLimiter(renderSlots(), synth.ReservedSlots)}
+	d := &radioDeck{program: p, nws: provider, resolver: r, units: units, products: synth.NewProducts(client, ""), voiceDir: voiceDir(), limiter: synth.NewLimiter(renderSlots(), synth.ReservedSlots)}
 	d.engine, err = player.New(&player.OtoOutput{}, UserAgent, d.onStatus)
 	if err != nil {
 		return nil
@@ -457,10 +462,10 @@ func (d *radioDeck) followMount(mount string) {
 // drivable at all — and P-1 is that a seam a test cannot drive is not a covered
 // seam.
 func (d *radioDeck) send(msg tea.Msg) {
-	if d.p == nil {
+	if d.program == nil {
 		return
 	}
-	d.p.Send(msg)
+	d.program.Send(msg)
 }
 
 // epoch reports whether gen is still the current tune (no Stop or newer

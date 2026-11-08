@@ -7,7 +7,7 @@ p = pathlib.Path("app/mastercontrol.go"); s = p.read_text()
 old = """\tif m.ducked {
 \t\treturn
 \t}
-\tm.v.duck()"""
-new = """\tm.v.duck()"""
+\tm.voice.duck()"""
+new = """\tm.voice.duck()"""
 assert old in s, "mE0"
 p.write_text(s.replace(old, new, 1))

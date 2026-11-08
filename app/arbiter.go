@@ -116,7 +116,7 @@ type narrationJob struct {
 type arbiter struct {
 	mu        sync.Mutex
 	turn      *sync.Cond
-	v         narrationVoice
+	voice     narrationVoice
 	mc        *mastercontrol // the effector: the one owner of the duck and the band (T2.3)
 	onAir     *narrationJob
 	suspended []*narrationJob // the jobs a higher class took the air from, innermost last
@@ -131,23 +131,23 @@ type arbiter struct {
 // ticker writes the band through the same instance, and a second instance would
 // be a second owner of the duck — the exact shape this task exists to remove.
 func newArbiter(v narrationVoice, mc *mastercontrol) *arbiter {
-	d := &arbiter{v: v, mc: mc, sleep: sleepCtx}
+	d := &arbiter{voice: v, mc: mc, sleep: sleepCtx}
 	d.turn = sync.NewCond(&d.mu)
 	return d
 }
 
 // silent reports whether there is no voice at all.
-func (d *arbiter) silent() bool { return d == nil || d.v == nil }
+func (d *arbiter) silent() bool { return d == nil || d.voice == nil }
 
 // speaker is what a running sequence speaks through: every call honours
 // the job's context (an ended sequence hears 0 and false), its suspension
 // (a line waits, a hold stops counting) and the audible flag (a muted
 // sequence runs its visuals only, and never ducks).
 type speaker struct {
-	d     *arbiter // nil for a nil arbiter: the sequence runs silently
-	job   *narrationJob
-	ctx   context.Context
-	sleep func(ctx context.Context, d time.Duration) bool
+	arbiter *arbiter // nil for a nil arbiter: the sequence runs silently
+	job     *narrationJob
+	ctx     context.Context
+	sleep   func(ctx context.Context, d time.Duration) bool
 }
 
 // holdStep is how often a hold checks for suspension or an ended context.
@@ -163,7 +163,7 @@ func (s *speaker) attention(class cast.Class) time.Duration {
 	if !s.live() {
 		return 0
 	}
-	return s.d.v.tone(class)
+	return s.arbiter.voice.tone(class)
 }
 
 // line renders and plays one line, returning how long it plays; 0 when
@@ -191,7 +191,7 @@ func (s *speaker) prepare(text string) (clip, bool) {
 	if !s.live() || text == "" {
 		return clip{}, false
 	}
-	c, ok := s.d.v.render(s.ctx, s.role(), text)
+	c, ok := s.arbiter.voice.render(s.ctx, s.role(), text)
 	if !ok {
 		return clip{}, false
 	}
@@ -203,7 +203,7 @@ func (s *speaker) deliver(c clip) time.Duration {
 	if !s.live() {
 		return 0
 	}
-	if !s.awaitAir(func() { s.d.v.play(c) }) {
+	if !s.awaitAir(func() { s.arbiter.voice.play(c) }) {
 		return 0
 	}
 	return c.dur
@@ -230,15 +230,15 @@ func (s *speaker) hold(d time.Duration) bool {
 // while the arbiter's lock is still held — nothing can be admitted between
 // the check and the start of a line; false when the context ended.
 func (s *speaker) awaitAir(then func()) bool {
-	if s.d == nil || s.job == nil {
+	if s.arbiter == nil || s.job == nil {
 		return s.ctx.Err() == nil
 	}
-	s.d.mu.Lock()
-	defer s.d.mu.Unlock()
+	s.arbiter.mu.Lock()
+	defer s.arbiter.mu.Unlock()
 	// A condition-variable wait: one Wait per iteration, ended by the resume
 	// or the context ending (the P10-02 ledger row for admit covers the shape).
 	for s.job.suspended && s.ctx.Err() == nil {
-		s.d.turn.Wait()
+		s.arbiter.turn.Wait()
 	}
 	if s.ctx.Err() != nil {
 		return false
@@ -259,7 +259,7 @@ func (s *speaker) role() cast.Role {
 }
 
 func (s *speaker) live() bool {
-	return s.job != nil && s.job.audible && !s.d.silent() && s.ctx.Err() == nil
+	return s.job != nil && s.job.audible && !s.arbiter.silent() && s.ctx.Err() == nil
 }
 
 // Run runs seq as a narration of this class: it waits for its turn (a
@@ -302,7 +302,7 @@ func (d *arbiter) Run(ctx context.Context, class narrationClass, role cast.Role,
 	if !d.admit(job) {
 		return false
 	}
-	seq(ctx, &speaker{d: d, job: job, ctx: ctx, sleep: d.sleep})
+	seq(ctx, &speaker{arbiter: d, job: job, ctx: ctx, sleep: d.sleep})
 	d.release(job)
 	return ctx.Err() == nil
 }
@@ -317,7 +317,7 @@ func (d *arbiter) admit(job *narrationJob) bool {
 		on.suspended = true // its line pauses, its holds stop counting, a line it is rendering waits
 		d.suspended = append(d.suspended, on)
 		d.onAir = nil
-		if d.v != nil && on.audible {
+		if d.voice != nil && on.audible {
 			d.mc.holdLine()
 		}
 		narrateDebug("suspend", on)
@@ -370,14 +370,14 @@ func (d *arbiter) release(job *narrationJob) {
 		// sequence can end a hair before the audio finishes draining, and an
 		// unconditional close would clip the tail of every read.
 		if radioDebugOn() {
-			radioDebugLog(fmt.Sprintf("release:onair cancelled=%v voice=%v audible=%v", job.ctx.Err() != nil, d.v != nil, job.audible))
+			radioDebugLog(fmt.Sprintf("release:onair cancelled=%v voice=%v audible=%v", job.ctx.Err() != nil, d.voice != nil, job.audible))
 		}
-		if job.ctx.Err() != nil && d.v != nil && job.audible {
+		if job.ctx.Err() != nil && d.voice != nil && job.audible {
 			d.mc.stopLine()
 		}
 	} else if job.suspended {
 		d.unsuspend(job)
-		if d.v != nil && job.audible {
+		if d.voice != nil && job.audible {
 			d.mc.dropHeld()
 		}
 	} else {
@@ -435,14 +435,14 @@ func (d *arbiter) settle() {
 	// clause reaches it too, which is the part that would otherwise drift.
 	for s := d.innermostSuspended(); s != nil && !live(s); s = d.innermostSuspended() {
 		d.unsuspend(s)
-		if d.v != nil && s.audible {
+		if d.voice != nil && s.audible {
 			d.mc.dropHeld()
 		}
 	}
 	if s := d.innermostResumable(); s != nil && (d.first() == nil || d.first().class <= s.class) {
 		d.unsuspend(s)
 		d.onAir = s
-		if d.v != nil && s.audible {
+		if d.voice != nil && s.audible {
 			// THE BED MAY HAVE COME BACK WHILE IT WAITED, and only a listener's
 			// pause does that — a job suspended by a takeover keeps the dip, so
 			// this is a no-op there (giveWay is idempotent). Without it a resumed
@@ -538,7 +538,7 @@ func (d *arbiter) pauseRead() bool {
 			j.suspended = true
 			d.suspended = append(d.suspended, j)
 			d.onAir = nil
-			if d.v != nil && j.audible {
+			if d.voice != nil && j.audible {
 				d.mc.holdLine()
 			}
 		}

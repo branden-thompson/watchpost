@@ -11,8 +11,8 @@
 # executor at T3.10 — so the rule this guards has one home instead of two.
 import pathlib
 p = pathlib.Path("app/read_script.go"); s = p.read_text()
-old = """	if p.Ref != "" && r.h.mark != nil {
-		r.h.mark(p.Ref)
+old = """	if p.Ref != "" && r.hooks.mark != nil {
+		r.hooks.mark(p.Ref)
 	}
 """
 assert old in s, "m22"

@@ -1,3 +1,7 @@
+// cast.go — the voice cast: the roles read from the config and reconciled
+// with the voices this machine has, Piper installs for a role on demand, and
+// the views Settings edits and saves.
+
 package app
 
 import (
@@ -382,7 +386,7 @@ func (d *radioDeck) buildVoice(name string) (synth.Voice, error) {
 // the source's resolver (radio.go:458), which is set during a tune — long after
 // attachRadio assigns the program. A unit test that downloads 63 MB is a defect
 // whatever it dereferences.
-func (d *radioDeck) canInstall() bool { return d.engine != nil && d.p != nil }
+func (d *radioDeck) canInstall() bool { return d.engine != nil && d.program != nil }
 
 func (d *radioDeck) startBackgroundInstall(key string) {
 	d.mu.Lock()

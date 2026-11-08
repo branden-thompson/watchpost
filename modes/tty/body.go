@@ -180,7 +180,7 @@ func (d Dashboard) body(fl frameLayout) string {
 // writeBody writes the body into the frame's own buffer (Q3: no
 // intermediate string).
 func (d Dashboard) writeBody(b *strings.Builder, fl frameLayout, priority, recent string) {
-	b.WriteString(d.tickerMarquee(fl.o)) // 0.12.0: the 3-row global event ticker band, above the radio module
+	b.WriteString(d.tickerMarquee(fl.o)) // the 3-row global event ticker band, above the radio module
 	b.WriteString("\n")                  // the band's bottom row is the ticker/radio separator
 	b.WriteString(d.radioPanel(fl))      // UAT 8.1: radio module first
 	b.WriteString("\n")                  // the boxes separate themselves — no blank between
@@ -410,7 +410,7 @@ func weatherRow(loc *snapshot.Location, fireBoldMW float64, extDays int) render.
 		AlertCount: len(loc.Alerts),                        // ⚠ badge (UAT 20.2)
 		Fire:       fireCount(loc.Fire),                    // B5 / UAT 110: n◆
 		FireHot:    fireHot(loc.Fire.Hotspots, fireBoldMW), // B5
-		Seismic:    seismicRowLevel(loc.Seismic),           // 0.11.0: the strongest quake's felt-band glyph
+		Seismic:    seismicRowLevel(loc.Seismic),           // the strongest quake's felt-band glyph
 		// UAT 18.2: shimmer until this location's data lands (obs or daily
 		// still pending); post-load nils stay honest "n/a".
 		Loading: rowLoading(loc),

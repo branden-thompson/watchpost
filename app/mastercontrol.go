@@ -37,9 +37,9 @@ import (
 type mastercontrol struct {
 	mu sync.Mutex
 
-	// v is the voice — the radio deck in production, a fake in tests, and nil
+	// voice is the voice — the radio deck in production, a fake in tests, and nil
 	// when there is no audio at all, in which case the visual half still runs.
-	v narrationVoice
+	voice narrationVoice
 
 	// send writes to the band. Never nil: a mastercontrol with nowhere to put a
 	// callout is refused at construction, because the failure would otherwise
@@ -108,7 +108,7 @@ func newMastercontrol(v narrationVoice, send func(tea.Msg)) *mastercontrol {
 	if err := invariant.Check(send != nil, "mastercontrol is built with a band to write to"); err != nil {
 		return nil
 	}
-	return &mastercontrol{v: v, send: send}
+	return &mastercontrol{voice: v, send: send}
 }
 
 // GoOnAir and GoToStandby are the operator's control (FR-5.4), and they are
@@ -308,7 +308,7 @@ func (m *mastercontrol) declare(p lineup.Power) {
 }
 
 // silent reports whether there is no voice to perform with.
-func (m *mastercontrol) silent() bool { return m == nil || m.v == nil }
+func (m *mastercontrol) silent() bool { return m == nil || m.voice == nil }
 
 // giveWay dips the broadcast for something that is about to be read.
 //
@@ -339,7 +339,7 @@ func (m *mastercontrol) dip() {
 	if m.ducked {
 		return
 	}
-	m.v.duck()
+	m.voice.duck()
 	m.ducked = true
 }
 
@@ -358,7 +358,7 @@ func (m *mastercontrol) takeBack() {
 	if !m.ducked {
 		return
 	}
-	m.v.restore()
+	m.voice.restore()
 	m.ducked = false
 }
 
@@ -425,14 +425,14 @@ func (m *mastercontrol) holdLine() {
 		return
 	}
 	radioDebugLog("mc:holdLine")
-	m.v.pause()
+	m.voice.pause()
 }
 
 func (m *mastercontrol) resumeLine() {
 	if m.silent() {
 		return
 	}
-	m.v.resume()
+	m.voice.resume()
 }
 
 // stopLine ends the line in flight — a read cut short, not one that finished.
@@ -446,14 +446,14 @@ func (m *mastercontrol) stopLine() {
 		return
 	}
 	radioDebugLog("mc:stopLine")
-	m.v.stop()
+	m.voice.stop()
 }
 
 func (m *mastercontrol) dropHeld() {
 	if m.silent() {
 		return
 	}
-	m.v.discard()
+	m.voice.discard()
 }
 
 // cue shows the band the callout for the card taking the air (DR-18).

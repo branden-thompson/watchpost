@@ -1754,3 +1754,44 @@ Markdown only, through the docs lane.
     voice cycle, is killed by both.
 - **Docs.** extending.md step 9 names `cycleFocused`, its order and the pin's golden.
   where-things-happen says `cyclePicker` moves a voice picker.
+
+## 0.19.5 batch 41 — words for the one-letter fields, the release stamps gone, JR's minors (plan Q9.8, Q9.9)
+
+- **Q9.8, the all-caps rule, verified.**
+  - `go run ./tools/authoring -base <merge-base with main>` reports no AP-CAPS-01 finding, so every
+    declaration the release changed is clean.
+  - This batch's own edits touched eight more declarations with an "AND …" continuation. Each now
+    says in sentence case what it adds.
+- **The one-letter fields (A-23).**
+  - The renames are `livePipelines.p` and `radioDeck.p` → `program`, `arbiter.v` and
+    `mastercontrol.v` → `voice`, `speaker.d` → `arbiter`, `reader.s` → `speaker`, `reader.h` →
+    `hooks`, and `schedule.x` → `executors`.
+  - They were renamed by type with gopls (v0.20.0, installed outside the tree), so every use site
+    follows and no comment or string changed.
+  - Eight mutants follow the new names: m22, m48, m49, mE0, mE1, mG2, mG3, mH2. Each was applied,
+    vetted and killed against the whole `app` package, then restored by copy.
+- **The release stamps.**
+  - 54 "0.x.y:" stamps on 53 lines were removed from Go comments: `// 0.x.y: `, `; 0.x.y: ` and
+    `(0.x.y: `. JR counted 59 with a looser pattern that also caught IP addresses.
+  - The script asserted its own count, and the assertion caught the `(` form it had been told to
+    expect at 52.
+  - Three restated lines read wrong without their stamp and were rewritten: theme.go's lane tokens, a
+    "; and" join, and cast.go's zero value ("is 0.13.0:" now "is one voice").
+  - mAG1's anchor carried one, and follows.
+- **JR's minor list, the rest of it.**
+  - "ruling 2" and "ruling 3" name their source: 0.16.0's `report-requests-plan.md` rows 2 and 3.
+  - "HUM LEAD ruling 5", beside NFR-7 in executors.go, resolves to no recorded ruling, so the comment
+    cites 0.16.0 NFR-7 alone. Nothing is lost: the reason is in the sentence.
+  - schedule.go's `executors` doc no longer quotes pool.go's comment; it says the remedy and names
+    `livePipelines.producer`.
+  - `recentOff` describes the window it keeps, not the work it once waited on.
+  - setup.go names setupLines' file.
+  - setup_rows.go's 20-line note on why `setupScope` has no sentinel is now five lines: the reason
+    and the test.
+  - The ten files over 500 lines that had no header now have one, so where-things-happen's "the
+    per-file headers say what a file holds" is true. The ten: app/radio.go, app/cast.go,
+    platform/lineup/director.go and plan.go, platform/httpx/cache.go,
+    domains/radio/player/engine.go, domains/radio/synth/source.go, domains/temperature/sources.go,
+    platform/snapshot/assembler.go and modes/tty/map_prop_chart.go. Each header's claims were checked
+    against its declarations, and three were corrected before the gate.
+  - "Option C" in app.go was already gone.

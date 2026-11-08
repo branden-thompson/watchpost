@@ -1,3 +1,7 @@
+// plan.go — Plan, the burst: the ladder of bands, where each arrival lands on
+// it, and the pure function that orders a lineup from the arrivals, the
+// listener's settings and the clock (DR-2).
+
 package lineup
 
 import (

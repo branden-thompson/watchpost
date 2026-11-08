@@ -1,3 +1,7 @@
+// map_prop_chart.go — the map's propagation chart (W5.1): its keys, the work
+// that computes each continent's bands off the UI goroutine, and the shaded
+// rows and legend it draws.
+
 package tty
 
 import (
