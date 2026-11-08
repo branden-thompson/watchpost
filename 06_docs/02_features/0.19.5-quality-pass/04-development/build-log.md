@@ -1385,3 +1385,21 @@ Markdown only, through the docs lane.
     were written with.
 - **The checks.** `TestFollowUpsCiteTestsThatExist` still finds its floor of citations, and every one
   exists. `06_docs/ids.md` is regenerated, since F-rows are IDs.
+
+## 0.19.5 batch 30 — the README's Settings as built (plan Q8.3, DC-5, A-9)
+
+Markdown only, through the docs lane.
+
+- **The FIRMS key.** The README's step said "press `s`, `tab` to the key line". `tab` moves between
+  Settings' tabs (`setup.go`), so it moves away from the key, which sits on the Data tab
+  (`setup_rows.go`, `rowFIRMSKey`, group Data). The step now reads "`↓` to the key line on the Data
+  tab", matching what the README says of the keys further up.
+- **Two captions describe the window as built.** Settings has its tabs across the top, and the open
+  tab in one column (0.19.3 D-364). The console's Settings has the station's two rows beside the tabs
+  it shares. The old captions described two columns and a right-hand half.
+- **where-things-happen's Settings row** described "two columns when they fit". It now names the tab
+  row (`setupTabRows`) and the one-column page (`setupPage`, through `setupBody`). The symbol test
+  holds all three names.
+- **The images are the HUM LEAD's** (A-9). `docs/img/setup.png`, `broadcaster-settings.png` and
+  `help.png` predate the tabs and the `g` and swap keys. The agent does not run the live app, so they
+  are retaken before SHIP, and the captions above describe what the new ones will show.

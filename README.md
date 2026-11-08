@@ -55,7 +55,7 @@ Real data, 133×44, the default theme unless noted (0.14.0).
 
 ![The radio on air in Synth mode: the station lead, then the forecast read line by line in the marquee band, the visualizer inside it](docs/img/radio.gif)
 
-![The Settings window: settings grouped by concern, with the Alert Notification Preference — all severe events, or filtered to within N miles of the default location](docs/img/setup.png)
+![The Settings window: its tabs across the top, and the open tab in one column — here the Data tab, with the default location, the NASA FIRMS key and the Alert Notification Preference (all severe events, or within N miles of the default location)](docs/img/setup.png)
 
 ![Settings' theme picker cycling twelve of the thirteen built-in palettes live — Watchpost Light, Catppuccin, Everforest, Gruvbox, High Contrast, Kanagawa, Monochrome, Nord, Osaka Jade, Solarized Night, Synthwave '84, Tokyo Night — the whole frame repainting on each; add your own as a JSON file](docs/img/themes.gif)
 
@@ -336,7 +336,7 @@ to the Observer, and is refused while the station is ON AIR.
 
 ![Managing a slot: the Carlsbad card's window with Change Position open — move it to any position from 2 to 15 and everything below shifts down — and the keys to close, scroll, change position or drop it from the line-up](docs/img/broadcaster-manage.png)
 
-![The console's own Settings: the transmitter (following the default location until you set one) with the sentence that its position never leaves this machine, the service radius from 2 to 100 miles, the NASA FIRMS key, the theme and units, and on the right the alert tones and the correspondents — every row the console shares with the Observer](docs/img/broadcaster-settings.png)
+![The console's own Settings: the station's transmitter (following the default location until you set one) with the sentence that its position never leaves this machine, and its service radius from 2 to 100 miles, beside the tabs the console shares with the Observer](docs/img/broadcaster-settings.png)
 
 | Key | Does |
 |-----|------|
@@ -372,8 +372,8 @@ Weather alert when one is active. Two sources need no key: NOAA's Hazard Mapping
 
 **NASA FIRMS (optional, free key).** FIRMS adds detections minutes old, straight from the satellites,
 before an analyst has looked at them. Get a MAP_KEY at
-<https://firms.modaps.eosdis.nasa.gov/api/map_key/> (it arrives by email at once), press `s`, `tab` to
-the key line and paste it — it is masked, `ctrl+r` shows it, and the window tells you whether FIRMS
+<https://firms.modaps.eosdis.nasa.gov/api/map_key/> (it arrives by email at once), press `s`, `↓` to
+the key line on the Data tab and paste it — it is masked, `ctrl+r` shows it, and the window tells you whether FIRMS
 accepts it. The key takes effect at once and only ever travels to NASA's FIRMS servers; without one,
 FIRMS simply reads `off` in the status window and the other two sources carry the default.
 
