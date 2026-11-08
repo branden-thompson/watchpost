@@ -215,3 +215,5 @@ says exactly what passed.
 | 2026-11-08T13:38:48Z | 333ea511 | 467871be32ea | verify | green | 2345 |
 | 2026-11-08T14:50:24Z | 7f285e99 | a0100b92880f | verify | green | 2430 |
 | 2026-11-08T15:34:43Z | 704bb99b | c51105f3df8c | verify | green | 2342 |
+| 2026-11-08T15:38:43Z | 37c4b35b | 2417af1d62a5 | verify-docs | green | 152 |
+| 2026-11-08T15:43:15Z | 37c4b35b | 46a4aae41c6a | verify-docs | green | 260 |

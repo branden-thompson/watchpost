@@ -1704,3 +1704,26 @@ mCC2 follows its line and is re-vetted.
   the problem the code solves; it warns about the gotchas a junior would not see. `06_docs/code-standards.md`
   stated only the first (AP-HIST-01). It now opens with "What a comment is for", giving all four and
   D-34's Why-list shape, and says which rules a tool checks and which are a reader's.
+
+## 0.19.5 batch 39 — building from source, in four steps (plan Q9.6, JR-11)
+
+Markdown only, through the docs lane.
+
+- **README's "Building from source"** was one paragraph holding the toolchain floor, every target and
+  the prerequisites. It is now four steps: what you need, the inner loop, before a pull request, and a
+  Markdown-only change. The other targets follow.
+- **What JR-11 found missing, now said:**
+  - how long `make verify` takes. That is measured, not estimated: about 40 minutes, from the last
+    eight green runs in `06_docs/verify-runs.md`, 2,342 to 2,481 s. JR-11's 31 to 34 minutes is older,
+    from a smaller corpus;
+  - that it appends to that tracked file, and that a FAILED line is never removed;
+  - that a second run is refused, not queued, and `make tree-free` says so;
+  - that `go test ./<package>` is the inner loop, and `modes/tty` is about three and a half minutes
+    under `-race` (214 s, batch 36's run);
+  - that `make verify-docs` is the lane for a Markdown-only change, at about two and a half minutes
+    (146 to 162 s);
+  - that macOS needs GNU make's `gnubin` first on the `PATH`, with the line to do it.
+- **Kept from the old paragraph:** the toolchain floor and its reason, the vendored go-studs, `hooks`,
+  `release-matrix`, `install-test`, `quality-bench`, and `quality`'s P10 gate.
+- **No `make help`.** It was optional in JR-11. The four steps name the targets a newcomer needs, and a
+  new target would also need an exemption in the gates test.

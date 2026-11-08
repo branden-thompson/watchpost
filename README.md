@@ -583,21 +583,42 @@ rotation; any other value, and the default, is off (F-158).
 
 ## Building from source
 
-Go 1.26.10 is the floor (`go.mod`): the map library, go-tuiMaps, requires it (its D-38; watchpost D-244), because below it
-standard-library vulnerabilities its code reaches are unfixed, GO-2026-6809 the latest, and watchpost does too. CI and the releases build with 1.27.3. `make build` (binary in
-`./dist`, version stamped from `git describe`), `make verify` (fmt, vet, tidy, vulnerability, race,
-import-direction, watermark and control gates with positive controls), `make release-matrix` (all
-targets, CGO off), `make install-test` (installer end to end against a local server), `make hooks` (a pre-push hook that
-runs the tests reading the record, in seconds, from the tree; it refuses to replace a hook already set up, and says how to keep
-both). `make verify` runs from a clean
-clone; it needs the Go toolchain, git, python3, GNU make 3.82 or newer (macOS ships 3.81 — `brew install make`), and network access the first time, to fetch the pinned golangci-lint and govulncheck. `make quality` is the phase-exit set — today the Power-of-Ten
-gate `p10`, which needs the out-of-tree `a2dh` CLI and its two local files, `.a2dh.yml` and
-`.a2dh-p10-exemptions.yml` (git-ignored; the exemptions' rows are mirrored in `06_docs/p10-ledger.md`), and
-fails loud without them rather than skipping; it is run at every phase exit and its result is recorded in
-the release's gate roster (D-252). The soak and
-benchmark harness lives in `scripts/quality/` and `make quality-bench`. The terminal UI kit (`go-studs`,
-MIT, same author) is carried in-tree under `third_party/go-studs` (its LICENSE and NOTICE.md ride with
-it; import paths rewritten), so the tree builds anywhere with no private access.
+**1. What you need.** Go 1.26.10 or newer (`go.mod`). The map library, go-tuiMaps, requires it (its
+D-38; watchpost D-244), because below it the standard library carries vulnerabilities its code reaches,
+GO-2026-6809 the latest. CI and the releases build with 1.27.3. You also need git, python3 and GNU make
+3.82 or newer. macOS ships 3.81, so `brew install make` and put its `gnubin` first on your `PATH`
+(`export PATH="$(brew --prefix)/opt/make/libexec/gnubin:$PATH"`). The first `make verify` needs the
+network, to fetch the pinned golangci-lint and govulncheck. The terminal UI kit (`go-studs`, MIT, same
+author) is carried in the tree under `third_party/go-studs`, with its LICENSE and NOTICE.md and its
+import paths rewritten, so the tree builds anywhere with no private access.
+
+**2. The inner loop.** Run `go test ./<package>` for what you are changing, and `make build` for the
+binary (in `./dist`, its version stamped from `git describe`). `modes/tty` is the slowest package:
+about three and a half minutes under `-race`.
+
+**3. Before a pull request: `make verify`.**
+- It runs every gate: fmt, vet, tidy, vulnerabilities, race, lint, the import and authoring rules, the
+  watermark check, the gates' own controls and the mutant corpus. It runs from a clean clone.
+- It takes about **40 minutes** on the developer's machine, most of it the mutant check. The last eight
+  green runs took 2,342 to 2,481 s.
+- **It appends a line to the tracked `06_docs/verify-runs.md`**, so the tree is changed afterwards.
+  Commit that line with the change it verified, and never remove a FAILED one.
+- **A second `make verify` while one runs is refused, not queued.** `make tree-free` says whether one
+  is running.
+- `make hooks` installs a pre-push hook that runs the tests reading the record, in seconds, from the
+  tree. It refuses to replace a hook already set up, and says how to keep both.
+
+**4. A Markdown-only change: `make verify-docs`.** It runs every test that reads a document and the
+document lints, in about two and a half minutes. It refuses a change that holds any file that is not
+Markdown.
+
+**The other targets.** `make release-matrix` builds every target, CGO off. `make install-test` runs
+the installer end to end against a local server. `make quality-bench` is the soak and benchmark harness
+in `scripts/quality/`. `make quality` is the phase-exit set: today the Power-of-Ten gate `p10`, which
+needs the out-of-tree `a2dh` CLI and its two local files, `.a2dh.yml` and `.a2dh-p10-exemptions.yml`.
+Both are git-ignored, and the exemptions' rows are mirrored in `06_docs/p10-ledger.md`. It fails loud
+without them rather than skipping, runs at every phase exit, and its result goes in the release's gate
+roster (D-252). `06_docs/code-standards.md` lists its rules.
 
 **Start here**, reading the code for the first time:
 1. [`docs/architecture.md`](docs/architecture.md) — the program's shape as built: what feeds it, its
