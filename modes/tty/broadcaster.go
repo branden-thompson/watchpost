@@ -203,11 +203,11 @@ type Broadcaster struct {
 	gain int
 
 	// THE POINTER MOVES AND THE WINDOW FOLLOWS IT at render time, where the room
-	// is known (scheduledSpan, D-101). An offset held on the MODEL cannot know
+	// is known (scheduledSpan). An offset held on the MODEL cannot know
 	// how many rows fit, which is why the window is derived rather than stored.
 
 	// selected is the focused row, indexed across BOTH tables — the running order
-	// first, the pool after it (D-101).
+	// first, the pool after it.
 	//
 	// ONE POINTER OVER TWO TABLES, which is Observer's own shape: `d.selected`
 	// spans the watchlist and RECENT through `numPriority`, and the operator
@@ -587,7 +587,7 @@ func (b Broadcaster) opts() render.Opts {
 }
 
 // frameWidth is how much room the console's own content has: the terminal, less
-// the margin on BOTH sides (D-96, D-100).
+// the margin on BOTH sides (D-100).
 //
 // THREE COLUMNS EACH SIDE (HUM LEAD: "3 col right inset not respected by the
 // tables"). Inset on the left alone, every table runs to the terminal's edge
@@ -691,12 +691,12 @@ func (b Broadcaster) tooSmall() bool {
 //     base's height, so a short frame would pin every window to the top (UAT,
 //     2026-09-10). The pad's count is known before the loop, so its bound is
 //     in its shape (P10-02).
-//   - The cut to the height is a backstop, not the budget (D-102): each region
+//   - The cut to the height is a backstop, not the budget: each region
 //     still windows itself (scheduledSpan, poolSpan), and the cut makes a
 //     mistake there a missing row rather than a frame past the bottom.
 //   - Every row is truncated and padded to the width, so a window centred on
 //     the terminal lands inside the frame (UAT, 2026-09-10), and inset from the
-//     left here and nowhere else (D-96), as Observer insets every row.
+//     left here and nowhere else, as Observer insets every row.
 //   - The theme's foreground is armed for the whole frame (D-108), at the top
 //     and after every inner reset, so untinted text takes the theme, not the
 //     terminal's default (HUM LEAD, UAT 2026-09-12: Watchpost Light's white
@@ -791,7 +791,7 @@ func (b Broadcaster) notice() []string {
 //     main track has the width in normal operation; a "(clear)" row would spend
 //     the running order's room saying nothing is happening. When it holds one,
 //     it is drawn first, because it drains first.
-//   - UP NEXT and the takeover sit level, side by side (D-97): LIVE is in the
+//   - UP NEXT and the takeover sit level, side by side: LIVE is in the
 //     air box (D-95) and the scheduled slots are the table (D-94).
 //   - The pool goes below the running order (D-98), and the one scroll control
 //     belongs to the pool, which is what scrolls (D-106); the weather both
@@ -822,7 +822,7 @@ func (b Broadcaster) lanes() []string {
 // scrolling past it would leave the operator looking at air with the rail saying
 // there is more.
 func (b Broadcaster) scrollQueue(by int) Broadcaster {
-	// THE ARROWS MOVE THE POINTER AND THE WINDOW FOLLOWS (D-101), which is what
+	// THE ARROWS MOVE THE POINTER AND THE WINDOW FOLLOWS, which is what
 	// the reference's own footer says they do — "[↑↓] Navigate" — and what
 	// Observer does. Moving the WINDOW alone would let the operator scroll a list
 	// they have no position in.
@@ -893,8 +893,7 @@ const bcInsetRows = 2
 // Observer's table, through Observer's own machinery, named by a heading above
 // it.
 
-// burstBody is what a takeover box lists: the hazards it would read, as a table
-// (D-103).
+// burstBody is what a takeover box lists: the hazards it would read, as a table.
 //
 // A TABLE, NOT PROSE (UAT 2026-09-12). Alerts wrapped over two lines read as a
 // paragraph, and what the operator is doing is SCANNING a list to decide whether
@@ -926,7 +925,7 @@ func (b Broadcaster) burstBody(c lineup.Card, w, list int) []string {
 	for _, l := range strings.Split(b.opts().AlertTable(rows, room), "\n") { // bounded (P10-02)
 		out = append(out, bcCardInset+l)
 	}
-	// AND THE WAY IN, AT THE BOTTOM, where the reference puts it and where the
+	// The way in is at the bottom, where the reference puts it and where the
 	// UP NEXT card already puts its own.
 	return append(out, "", bcCardInset+" "+b.opts().KeyCap("A")+"  Details / Full Read / Manage")
 }
@@ -955,8 +954,8 @@ func hazardOf(a lineup.Arrival) string {
 // the air above the table, the table's own header, the air below, and the control
 // row. There is no TITLE ROW (D-110) — the box names itself in its rule.
 //
-// THE LIST IS WHAT IS LEFT, so the box is exactly as tall as the card beside it
-// (D-103). The reference draws ten rows because its UP NEXT card is that tall; a
+// THE LIST IS WHAT IS LEFT, so the box is exactly as tall as the card beside it.
+// The reference draws ten rows because its UP NEXT card is that tall; a
 // constant here would make the two boxes disagree about their own height and cut
 // whichever loses.
 const bcAlertChrome = 6
@@ -1195,7 +1194,7 @@ func (b Broadcaster) bedSelector(o render.Opts) string {
 	if !b.bedAvailable() {
 		return bcNoRelaysHere
 	}
-	// SHIFTED (D-111). The bare arrows belong to the card's PRESENTER, and a
+	// SHIFTED. The bare arrows belong to the card's PRESENTER, and a
 	// chip here that read `←` would name a key that steps a different control —
 	// which is worse than no chip, because the operator would try it.
 	return o.KeyCap("⇧←") + "  " + relay + "  " + o.KeyCap("⇧→")
@@ -1299,7 +1298,7 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	// inside it would say the same thing twice on a box whose whole job is to be
 	// read at a glance. What the row still carries is the badge and the handle.
 	if c.Slot == lineup.BreakingAlert {
-		// Its handle is at the bottom (D-103), where the reference draws it:
+		// Its handle is at the bottom, where the reference draws it:
 		// "A  Details / Full Read / Manage". A chip in the title row as well would
 		// be the same key offered twice on one box.
 		headline = ""
@@ -1333,7 +1332,7 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	// AND A CARD WITH NO HANDLE WEARS NO CHIP. An empty `KeyCap` paints an empty
 	// chip — "[]" without colour — which is a control offering no key: worse than
 	// the absent one it stands for. The takeover's way in is the row at the BOTTOM
-	// of its box (D-103), so its title row has no handle to show.
+	// of its box, so its title row has no handle to show.
 	chip := l.g.Bullet + badge + l.g.Bullet
 	if handle != "" {
 		chip += "  " + l.o.KeyCap(handle)
@@ -1367,9 +1366,9 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 // merely deciding the ORDER of needs its name and its handle.
 //
 // boxOf is a card as a BOX: the borders name it, and the body is whatever the
-// caller puts inside (D-110).
+// caller puts inside.
 //
-// THERE IS NO TITLE ROW (D-110). The reference puts the headline and the badge in
+// THERE IS NO TITLE ROW. The reference puts the headline and the badge in
 // the RULE and the handle at the BOTTOM beside the presenter, so a row carrying
 // all three would say what the frame and the footer say, and cost
 // the manifest a line to do it.
@@ -1412,7 +1411,7 @@ func (l cardLane) shell(boxTitle, boxBadge string, body []string, ground string)
 		return nil
 	}
 	inner := l.inner()
-	// THE MASTHEAD'S BOX (D-85, HUM LEAD 2026-09-11): "Remove the rounded
+	// THE MASTHEAD'S BOX (HUM LEAD 2026-09-11): "Remove the rounded
 	// corners -> straight corners … All Main track cards should have BOLD lines
 	// (like the masthead)." That is `render.HeavyBox`, which the masthead
 	// draws — shared rather than copied, so the console and the
@@ -1452,9 +1451,9 @@ func cardTitle(c lineup.Card, g render.Glyphs) string {
 }
 
 // cardRuleTitle is what a box's rule NAMES: the card, with a fabricated event
-// saying so before anything else (D-110).
+// saying so before anything else.
 //
-// THE MARK IS IN THE RULE, WITH THE TITLE (D-110), and it is non-truncatable so
+// THE MARK IS IN THE RULE, WITH THE TITLE, and it is non-truncatable so
 // the headline can never eat it. Drawn anywhere the title is not, the mark would
 // simply be absent, which is the screenshot hazard FR-4.4 exists
 // to prevent: a test event that looks exactly like a real one.
@@ -1485,13 +1484,13 @@ func cardBoxTitle(c lineup.Card, g render.Glyphs) string {
 	if c.Slot == lineup.BreakingAlert {
 		// A TAKEOVER NAMES WHAT IT IS, NOT WHICH ONE. It interrupts the programme,
 		// and what the operator needs off the frame is that something has — the
-		// hazards themselves are the list inside it (D-103).
+		// hazards themselves are the list inside it.
 		if c.Test {
 			return testEventMark + " " + bcTakeoverTitle
 		}
 		return bcTakeoverTitle
 	}
-	// EVERY OTHER CARD NAMES ITSELF IN THE RULE (D-110): the reference puts
+	// EVERY OTHER CARD NAMES ITSELF IN THE RULE: the reference puts
 	// `LOCATION REPORT • Oceanside, CA 92057` in the border.
 	return cardRuleTitle(c, g)
 }
@@ -1518,7 +1517,7 @@ func boxRule(mark, title, badge string, inner int) string {
 	if title != "" {
 		title = render.Tint(title, render.Tok(render.ModalTitle))
 	}
-	// The badge rides the same rule, at the right (D-110). The reference
+	// The badge rides the same rule, at the right. The reference
 	// draws both boxes that way — `┏━━ LOCATION REPORT • Oceanside, CA 92057 ━━━
 	// • STANDARD • ━━┓` — so what the card IS and how it is GRADED are read off
 	// the frame, and the manifest has the row instead.

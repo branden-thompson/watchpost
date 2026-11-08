@@ -56,7 +56,7 @@ func TestCadenceTableIsTheDoc(t *testing.T) {
 		t.Fatalf("no golden yet: run with -update-cadences (%v)", err)
 	}
 	if got != string(want) {
-		t.Fatalf("a cadence changed — record its freshness argument (plan §0.3) and re-run with -update-cadences:\n%s", got)
+		t.Fatalf("a cadence changed — say in the build log why the new cadence is fresh enough for what it fetches, and re-run with -update-cadences:\n%s", got)
 	}
 	_ = time.Second
 }

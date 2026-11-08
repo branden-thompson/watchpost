@@ -1,6 +1,6 @@
 package render
 
-// stencil_header_test.go — `##.` hangs its numbers (D-103).
+// stencil_header_test.go — `##.` hangs its numbers.
 //
 // HUM LEAD, UAT 2026-09-12: "'##.' column head misaligned."
 

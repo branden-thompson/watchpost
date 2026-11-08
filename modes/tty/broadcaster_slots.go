@@ -132,7 +132,7 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 		// AN EMPTY SLOT HAS NOTHING TO MANIFEST, and drawing the headings over
 		// nothing would promise contents that are not coming.
 		//
-		// IT STILL CARRIES ITS HANDLE, WHICH IS F-97 (D-110). The way in is in the
+		// IT STILL CARRIES ITS HANDLE, WHICH IS F-97. The way in is in the
 		// FOOTER, and an undecided slot gets one: a footer drawn only for a decided
 		// card puts the slot out of reach.
 		rows := make([]string, bcReadCardRows-1)
@@ -142,7 +142,7 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 		return append(rows, b.cardControls(o, handle))
 	}
 	room := lane.inner() - 2*len(bcCardInset)
-	// THE REFERENCE'S OWN ORDER (D-110): air, what it is doing and how fresh it
+	// THE REFERENCE'S OWN ORDER: air, what it is doing and how fresh it
 	// is, air, the manifest under a centred caption, and the way in at the bottom.
 	//
 	// THE AIR IS PART OF IT. The card is the one thing on this console an operator
@@ -172,7 +172,7 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 
 // bcManifestCaption is what the reference calls the contents table.
 //
-// "READ MANIFEST", NOT "READ CONTENTS" (D-110). The word is the HUM LEAD's own
+// "READ MANIFEST", NOT "READ CONTENTS". The word is the HUM LEAD's own
 // from D-87 — "a SUMMARY of what the report contains *before* it goes on air" —
 // and a manifest is exactly that: a list of what is aboard, not the cargo.
 const bcManifestCaption = "READ MANIFEST"

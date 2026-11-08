@@ -87,7 +87,7 @@ func TestTheRailIsWalledOnBothSides(t *testing.T) {
 	}
 }
 
-// THE PAIR LANDS ON THE REFERENCE'S COLUMNS (D-103).
+// THE PAIR LANDS ON THE REFERENCE'S COLUMNS.
 //
 // READ OFF THE MOCK, NOT COPIED OUT OF IT. The numbers live in
 // `mock-broadcaster-v3.txt` and this test finds them there, so the reference and
@@ -97,7 +97,7 @@ func TestTheRailIsWalledOnBothSides(t *testing.T) {
 // mock's row that carries both borders is read for both, so this test says
 // which box is which rather than calling them "left" and "right".
 //
-// AND THE ALERT BOX IS TWO CELLS WIDER THAN THE MOCK'S, deliberately. The mock
+// The alert box is two cells wider than the mock's, deliberately. The mock
 // insets its table by two; every card box on this console insets by three
 // (`bcCardInset`), and two sibling boxes on one row with different insets would
 // read as a rendering fault. What the reference actually FIXES is the TABLE — the
@@ -120,7 +120,7 @@ func TestThePairLandsOnTheReferencesColumns(t *testing.T) {
 	if got, want := b.priorityWidth()-2-2*len(bcCardInset), mockAlertTableCells; got != want {
 		t.Errorf("the takeover gives its table %d cells; the reference's table is %d", got, want)
 	}
-	// AND THE PAIR SPANS THE FRAME, so nothing is left over on the right.
+	// The pair spans the frame, so nothing is left over on the right.
 	if got, want := b.upNextWidth()+bcColumnGap+b.priorityWidth(), b.frameWidth(); got != want {
 		t.Errorf("the pair spans %d of the frame's %d cells", got, want)
 	}
@@ -294,7 +294,7 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 		if belowTheCards {
 			break
 		}
-		// THE CARD REGION ENDS AT THE CONTROLS ROW (D-102), which is the first
+		// THE CARD REGION ENDS AT THE CONTROLS ROW, which is the first
 		// thing drawn below the pair. Anchoring on the HEADING would let the
 		// controls row itself be scanned, and in the no-colour form it opens with
 		// `[l]` — so the test would read a keycap as a table and report the frame
@@ -310,9 +310,9 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 		if len(r) < main+b.cardBoxWidth() || strings.TrimSpace(string(r[main:main+b.cardBoxWidth()])) == "" {
 			continue
 		}
-		// AT THE INSET, NOT AT COLUMN ZERO (D-96): the frame carries Observer's
+		// AT THE INSET, NOT AT COLUMN ZERO: the frame carries Observer's
 		// three-column left margin, so its own edge begins there.
-		// AN EDGE, NOT SPECIFICALLY A WALL (D-97). The air box and the UP NEXT /
+		// AN EDGE, NOT SPECIFICALLY A WALL. The air box and the UP NEXT /
 		// ALERT pair draw their OWN borders, and in the v3 layout those borders ARE
 		// the frame's left edge — the reference draws no outer wall around them. So
 		// the question is whether the row opens on the frame at all: a rail, or a
@@ -340,7 +340,7 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	// THE GUTTER IS MEASURED FROM THE FRAME, NOT THE TERMINAL (D-96): `railed`
+	// THE GUTTER IS MEASURED FROM THE FRAME, NOT THE TERMINAL: `railed`
 	// builds at `frameWidth` and the margin is added afterwards, in `clamp`.
 	// A PLAIN BODY AT THE FRAME'S CONTENT WIDTH. The alert box sits BESIDE the
 	// card rather than in a column zipped with it (D-97), and what this test is
@@ -378,7 +378,7 @@ func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 	}
 }
 
-// THE MARK COLUMN BELONGS TO THE SCROLL RAIL, AND ONLY TO IT (D-85, HUM LEAD
+// THE MARK COLUMN BELONGS TO THE SCROLL RAIL, AND ONLY TO IT (HUM LEAD
 // 2026-09-11): "We need to remove the extra lines on the right side of the UI
 // next to LIVE and UP NEXT."
 //
@@ -400,7 +400,7 @@ func TestTheReadRegionsDrawNoScrollRailBesideThem(t *testing.T) {
 		}
 	}
 
-	// AND THE SCROLLING REGION STILL HAS ONE, which is what makes the absence
+	// The scrolling region still has a rail, which is what makes the absence
 	// above mean something.
 	scrolled := b.chrome([]string{"a", "b", "c"}, true, 10)
 	if !strings.Contains(scrolled[0], render.RailGlyphsFor(false).Up) {
@@ -463,7 +463,7 @@ func TestEachRegionsRailCarriesItsOwnGround(t *testing.T) {
 	}
 }
 
-// THE POINTER WALKS AND THE WINDOW FOLLOWS IT (D-101, HUM LEAD 2026-09-12: "the
+// THE POINTER WALKS AND THE WINDOW FOLLOWS IT (HUM LEAD 2026-09-12: "the
 // pointer for the tables is missing — this is needed because it directs which row
 // <enter> works on").
 //
@@ -489,7 +489,7 @@ func TestThePointerWalksAndTheWindowFollows(t *testing.T) {
 			slots(base)[0], slots(one)[0])
 	}
 
-	// AND THE BOTTOM IS REACHABLE, which is the whole point: the last slot must be
+	// The bottom is reachable, which is the whole point: the last slot must be
 	// drawable or the operator cannot manage it.
 	end := base
 	for range 40 {
@@ -499,11 +499,11 @@ func TestThePointerWalksAndTheWindowFollows(t *testing.T) {
 	if got := slots(end); !slices.Contains(got, last) {
 		t.Errorf("the last slot (%s) is unreachable; the bottom of the queue shows %v", last, got)
 	}
-	// AND THE POINTER IS ON IT.
+	// The pointer is on the last slot.
 	if end.lineupSelection() != MainTrackSlots-bcScheduledFrom-1 {
 		t.Errorf("the pointer stopped at %d, short of the last slot", end.lineupSelection())
 	}
-	// AND THE RUNNING ORDER CARRIES NO THUMB (D-106). It does not scroll — fifteen
+	// The running order carries no thumb (D-106). It does not scroll — fifteen
 	// slots is the whole list — so the control belongs to the pool, and a thumb
 	// beside a list that does not move would say it does.
 	// `TestTheScrollControlIsThePoolsAlone` holds where the control actually is.
@@ -519,7 +519,7 @@ func TestThePointerWalksAndTheWindowFollows(t *testing.T) {
 // silently drop whichever row the pointer is on — which reads as "the last slot
 // is unreachable" when the row is there all along and the helper cannot see it.
 // A test helper that filters out exactly the row under test is worse than no
-// helper (D-101).
+// helper.
 var lineupRowNum = regexp.MustCompile(`^[\s>\x{203a}]+(\d\d)\.\s`)
 
 // railAt is the terminal column the scroll rail sits in, on the FINISHED frame:

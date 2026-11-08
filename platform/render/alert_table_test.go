@@ -1,6 +1,6 @@
 package render
 
-// alert_table_test.go — the takeover's table against the reference (D-103).
+// alert_table_test.go — the takeover's table against the reference.
 
 import (
 	"strings"

@@ -292,7 +292,7 @@ func TestTheStationBandIsEvenlyInset(t *testing.T) {
 		}
 	}
 	for i, r := range rows {
-		// AT THE FRAME'S WIDTH, NOT THE TERMINAL'S (D-96): the band is painted
+		// AT THE FRAME'S WIDTH, NOT THE TERMINAL'S: the band is painted
 		// before `clamp` adds the three-column left margin, and a rectangle is a
 		// rectangle in the space it is drawn in.
 		if got := render.Width(r); got != b.frameWidth() {
@@ -369,7 +369,7 @@ func openAModal(t *testing.T, d Dashboard) Dashboard {
 	return d
 }
 
-// THE HEADING NAMES THE TABLE, NOT THE PAIR (D-97).
+// THE HEADING NAMES THE TABLE, NOT THE PAIR.
 //
 // The running order is not a column of cards with a caption over it: LIVE is
 // in the air box (D-95), the SCHEDULED slots are the table (D-94), and UP NEXT
@@ -395,7 +395,7 @@ func TestTheScheduledHeadingNamesTheTable(t *testing.T) {
 	if strings.Count(strings.TrimSpace(rows[at]), "  ") == 0 {
 		t.Errorf("the heading shares its row with something else:\n%q", rows[at])
 	}
-	// AND THE TABLE IS BELOW IT.
+	// The table is below the heading.
 	found := false
 	for _, r := range rows[at:] {
 		if strings.Contains(r, "REPORT TYPE") {

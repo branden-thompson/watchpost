@@ -166,7 +166,7 @@ func (d Dashboard) handleResolved(v resolvedMsg) (Dashboard, tea.Cmd) {
 	return d, d.commitCmd(watch, recent, v.mode)
 }
 
-// showLocation opens Details for a location the CONSOLE pointed at (D-113).
+// showLocation opens Details for a location the CONSOLE pointed at.
 //
 // HUM LEAD, UAT 2026-09-12: "make it so <enter> on a location pool row opens the
 // location details (like observer)."

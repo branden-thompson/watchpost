@@ -55,7 +55,7 @@ const (
 	actQueuePrev term.Action = "queue-prev"
 	actQueueNext term.Action = "queue-next"
 
-	// actQueueOpen is the pointer's own way in (D-105, HUM LEAD 2026-09-12):
+	// actQueueOpen is the pointer's own way in (HUM LEAD 2026-09-12):
 	// "hitting <enter> on the row should be the equivalent of what happened when
 	// we pressed [0-9] - this is more important now for positions [10-14]".
 	//
@@ -188,7 +188,7 @@ func broadcasterKeyMap() term.KeyMap {
 		// takes `b` and the reference's `[ B ]` chip becomes `[ b ]`. Stated
 		// rather than quietly re-bound: the mock is the record.
 		actBedCut: {Keys: []string{"b"}, Help: "Bed"},
-		// THE BED'S ARROWS ARE SHIFTED (D-111, HUM LEAD 2026-09-12).
+		// THE BED'S ARROWS ARE SHIFTED (HUM LEAD 2026-09-12).
 		//
 		// THE REFERENCE DRAWS ARROWS ON TWO CONTROLS — the bed's relay selector and
 		// the card's PRESENTER — and one surface has one pair of arrow keys. The
@@ -1189,7 +1189,7 @@ func (r Router) cardInWindow() lineup.Card {
 
 // openPointedCard opens the card the running order's pointer is on.
 //
-// THE POINTER IS THE ADDRESS, NOT A DIGIT (D-105). `openCardWindow` reads a slot
+// THE POINTER IS THE ADDRESS, NOT A DIGIT. `openCardWindow` reads a slot
 // number off the key, which tops out at nine; the running order runs to fifteen.
 // This asks the console where its pointer IS and opens THAT — so every row the
 // operator can reach is a row they can open, at any length of list.
@@ -1198,7 +1198,7 @@ func (r Router) cardInWindow() lineup.Card {
 // window, so the row the pointer opens and the row a chip opens cannot come to
 // show different things about one report.
 func (r Router) openPointedCard() (Router, bool) {
-	// THE POOL'S ROWS OPEN THE LOCATION'S DETAILS (D-113, HUM LEAD 2026-09-12:
+	// THE POOL'S ROWS OPEN THE LOCATION'S DETAILS (HUM LEAD 2026-09-12:
 	// "make it so <enter> on a location pool row opens the location details (like
 	// observer)"). The pointer walks the two tables as one list, so one key opens
 	// whatever it is on — a card above, a place below.
@@ -1245,8 +1245,8 @@ func (r Router) refreshCardWindow() Router {
 			return r
 		}
 	}
-	// AND THE TAKEOVER BOX'S CARD, which the main-track walk above cannot reach:
-	// `[A]` opens a card on the ALERT RAIL (D-126), and a window that never
+	// The takeover box's card refreshes too, which the main-track walk above cannot reach:
+	// `[A]` opens a card on the ALERT RAIL, and a window that never
 	// refreshes goes stale exactly where staleness matters most — a burst gains
 	// hazards while the operator is reading it.
 	if id, rows, ok := r.broadcaster.alertDetail(); ok && id == r.observer.cardID {

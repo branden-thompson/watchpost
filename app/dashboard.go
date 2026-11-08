@@ -1097,7 +1097,7 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 	// with a transmitter of its own does not move because the listener changed
 	// what they are watching — that is the split.
 	//
-	// IT MOVES BEFORE THE PIPELINE IS RECONCILED (D-112), because the pipeline's
+	// IT MOVES BEFORE THE PIPELINE IS RECONCILED, because the pipeline's
 	// list is the recent locations AND the pool: reconciling first would fetch the
 	// old station's candidates and then evict them a line later.
 	if restation {

@@ -341,7 +341,8 @@ the functions a branch changed since its merge-base with `main`.
 - **P10-06.** It is a function returning the Settings table, not a package variable. A
   package-level table would be state any code could reassign, and each caller wants its own copy.
 - **P10-04.** Its body is one statement, a keyed composite literal of 57 rows, one per line (0.19.5
-  Q6.4). It runs 101 lines: 59 of code and 34 of comments. P10 reports nothing on it, although
+  Q6.4). Its body runs 101 lines (103 with its signature and closing brace): 59 of code and 34 of
+  comments. P10 reports nothing on it, although
   batch 19 changed it, so the comments are not counted against the 60 (measured 2026-11-07). A
   few more rows reach the limit.
 - **The route at the limit.** Split the table by Settings group into named builders, or ask the HUM

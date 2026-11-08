@@ -61,10 +61,10 @@ func (b Broadcaster) lineupRowOf(row render.LineupRow, c lineup.Card, idx locInd
 	if ref, ok := b.poolEntry(c.Subject); ok {
 		row.Zip = ref.Zip
 		row.DistMi = b.milesFromTower(ref)
-		// AND THE WEATHER WHERE THE BEAT IS ABOUT (D-116). The join is FREE:
+		// The row also carries the weather where the beat is about. The join is FREE:
 		// `producer()` may only offer locations from the station's pool, so every
 		// card on this track is about a place the pool already holds — and the
-		// pool's weather is already fetched (D-112). No new call, no new cadence.
+		// pool's weather is already fetched. No new call, no new cadence.
 		//
 		// HUM LEAD, 2026-09-13, choosing this over wiring the correspondents:
 		// "Useful information and doesn't require the correspondents wiring work."
@@ -74,7 +74,7 @@ func (b Broadcaster) lineupRowOf(row render.LineupRow, c lineup.Card, idx locInd
 			// nothing on this console reads (D-120).
 			w := weatherRow(loc, b.fireBold(), 0)
 			row.Conditions, row.Now, row.Trend, row.Loading = w.Conditions, w.Now, w.Trend, w.Loading
-			// AND THE PREFIX MARKS ARE THE PLACE'S (HUM LEAD: "Relevant Prefix
+			// The prefix marks are the place's (HUM LEAD: "Relevant Prefix
 			// Alerts"). A report about a town with a warning, a fire and a quake
 			// near it should say so where the operator is choosing what to read —
 			// which is the same three marks the pool below draws for that town.
@@ -228,7 +228,7 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int, idx locIndex) 
 		return scrollSpan{}
 	}
 	slots := b.lineupRows(cards, idx)
-	// THE CONTROLS SIT ABOVE THE HEADING, WHERE OBSERVER PUTS THEM (D-102, HUM
+	// THE CONTROLS SIT ABOVE THE HEADING, WHERE OBSERVER PUTS THEM (HUM
 	// LEAD 2026-09-12): "control hints missing at the top of the table which
 	// should be right above 'SCHEDULED LINE UP' (just like in Observer)".
 	//
@@ -241,7 +241,7 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int, idx locIndex) 
 	// terminal and a row measures short of the frame's width. Two symptoms, one
 	// cause.
 	lines = append(lines, strings.Split(b.consoleControls(w), "\n")...)
-	// THE HEADING IS A BAND, IN OBSERVER'S OWN TONE (D-102, HUM LEAD 2026-09-12):
+	// THE HEADING IS A BAND, IN OBSERVER'S OWN TONE (HUM LEAD 2026-09-12):
 	// "let's make the 'SCHEDULE LINE UP' 3 rows have the same background color as
 	// Observer's 'RECENT / SEARCHED LOCATIONS' row (so it can be themed)".
 	//
@@ -270,7 +270,7 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int, idx locIndex) 
 		room = 0
 	}
 	if room < len(lines) {
-		// THE WINDOW FOLLOWS THE POINTER, AND IT IS COMPUTED HERE (D-101) because
+		// THE WINDOW FOLLOWS THE POINTER, AND IT IS COMPUTED HERE because
 		// only the frame knows how much room the table has — the same argument the
 		// offset is clamped here for. A `queueOff` moved at the keystroke cannot know
 		// the room, so it would scroll one way and never come back.

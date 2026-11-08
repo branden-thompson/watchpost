@@ -62,6 +62,7 @@ func build(root string) (string, error) {
 	docs := filepath.Join(root, "06_docs")
 	var rows []row
 	mvs := map[string]mention{}
+	untabled := map[string]string{} // the untabledFeature folder's files, by path, read after every row is known
 	err := filepath.WalkDir(docs, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -79,12 +80,88 @@ func build(root string) (string, error) {
 		rel, _ := filepath.Rel(docs, path)
 		rows = append(rows, rowsOf(string(b), filepath.ToSlash(rel))...)
 		mentionsOf(string(b), filepath.ToSlash(rel), mvs)
+		if strings.HasPrefix(filepath.ToSlash(rel), "02_features/"+untabledFeature+"/") {
+			untabled[filepath.ToSlash(rel)] = string(b)
+		}
 		return nil
 	})
 	if err != nil {
 		return "", err
 	}
+	rows = append(rows, untabledRows(rows, untabled)...)
 	return render(rows, releases(docs)) + renderMVS(mvs, releases(docs)), nil
+}
+
+// untabledFeature is the release whose later rulings were never tabled:
+// its D-IDs past its tables are cited in code and mentioned in its docs
+// (0.19.5 D-37).
+const untabledFeature = "0.16.0-broadcaster-ui"
+
+// dCite is a D-ID where it stands in a line; dBold is one in bold.
+var (
+	dCite = regexp.MustCompile(`\bD-(\d+)\b`)
+	dBold = regexp.MustCompile(`\*\*D-(\d+)\*\*`)
+)
+
+// untabledRows is a row for each D-ID the untabled release's docs mention
+// and its tables do not define, at its best mention there: the first line
+// that states it in bold, else the first that names it. A mention another
+// release qualifies ("MVS-D-80", "0.18.0 D-97", "watchpost-cli D-124") is that
+// release's, not this one's. The subject says it is a mention.
+func untabledRows(rows []row, files map[string]string) []row {
+	defined := map[string]bool{}
+	for _, r := range rows { // bounded by the rows (P10-02)
+		if r.feature == untabledFeature && r.family == "D" {
+			defined[r.num] = true
+		}
+	}
+	paths := make([]string, 0, len(files))
+	for p := range files { // bounded by the folder (P10-02)
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	best := map[string]mention{}
+	for _, p := range paths { // bounded by the folder (P10-02)
+		_, rest, _ := strings.Cut(p, "/")
+		_, file, _ := strings.Cut(rest, "/")
+		for i, line := range strings.Split(files[p], "\n") { // bounded by the file (P10-02)
+			bold := map[string]bool{}
+			for _, b := range dBold.FindAllStringSubmatch(line, -1) { // bounded by the line (P10-02)
+				bold[b[1]] = true
+			}
+			for _, m := range dCite.FindAllStringSubmatchIndex(line, -1) { // bounded by the line (P10-02)
+				num := line[m[2]:m[3]]
+				if defined[num] || qualified(line[:m[0]]) {
+					continue
+				}
+				rank := rankCited
+				if bold[num] {
+					rank = rankRuled
+				}
+				keep(best, num, mention{rank: rank, row: row{family: "D", num: num, feature: untabledFeature, file: file, line: i + 1, subject: subjectOf([]string{"Mentioned: " + plain(line)})}})
+			}
+		}
+	}
+	out := make([]row, 0, len(best))
+	for _, m := range best { // bounded by the IDs (P10-02)
+		out = append(out, m.row)
+	}
+	return out
+}
+
+// qualified reports whether the text before an ID names another release:
+// a prefix, a version or the CLI's rulings.
+func qualified(before string) bool {
+	t := strings.TrimRight(before, " *`(")
+	return strings.HasSuffix(before, "MVS-") || strings.HasSuffix(t, "watchpost-cli") || strings.HasSuffix(t, "cli") || versionIn.MatchString(lastWord(t))
+}
+
+// lastWord is t's last space-separated word.
+func lastWord(t string) string {
+	if i := strings.LastIndexByte(t, ' '); i >= 0 {
+		return t[i+1:]
+	}
+	return t
 }
 
 // mvsFeature is the multi-voice release's folder, where its rulings are
@@ -242,8 +319,10 @@ line elsewhere in the record. The subject is that line, which is where its conte
 |---|---|---|---|
 `
 
-// definingCell is a first cell that is an ID and nothing else, emphasis aside.
-var definingCell = regexp.MustCompile(`^(?:` + strings.Join(idset.Families, "|") + `)-\d+(?:\.\d+)*[a-z]?$`)
+// definingCell is a first cell that is an ID and nothing else, emphasis
+// aside, or an ID and one parenthesis, as a requirement carries its priority
+// (0.18.0 FR-3.8 is written "(P1)" after its ID).
+var definingCell = regexp.MustCompile(`^(?:` + strings.Join(idset.Families, "|") + `)-\d+(?:\.\d+)*[a-z]?(?:\s*\([^)]*\))?$`)
 
 // definingHeading is a heading that opens with an ID, and its title.
 var definingHeading = regexp.MustCompile(`^#{1,4}\s+(?:\*\*)?((?:` + strings.Join(idset.Families, "|") + `)-\d+(?:\.\d+)*[a-z]?)(?:\*\*)?(?:\s*[—:–-]\s*|\s+|$)(.*)$`)
@@ -289,21 +368,34 @@ func cellsOf(line string) []string {
 // date is a cell that is a date and nothing else.
 var date = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
-// subjectOf is a row's subject: its first cell after the ID that says
-// something, not a date, cut to a line.
+// subjectOf is a row's subject: its first cell after the ID with a word in
+// it, cut to a line. A cell of references only ("W1.13, W3.7") or a date
+// says nothing; when no cell has a word, the first that is not empty or a
+// date stands.
 func subjectOf(cells []string) string {
+	pick := ""
 	for _, c := range cells { // bounded by the row (P10-02)
 		if c == "" || date.MatchString(c) {
 			continue
 		}
-		r := []rune(strings.Join(strings.Fields(c), " "))
-		if len(r) > 110 {
-			return string(r[:109]) + "…"
+		if pick == "" {
+			pick = c
 		}
-		return string(r)
+		if word.MatchString(c) {
+			pick = c
+			break
+		}
 	}
-	return ""
+	r := []rune(strings.Join(strings.Fields(pick), " "))
+	if len(r) > 110 {
+		return string(r[:109]) + "…"
+	}
+	return string(r)
 }
+
+// word is three lower-case letters together, which a reference such as
+// "W1.13" or "0.19.5 D-4" never has.
+var word = regexp.MustCompile(`\p{Ll}{3}`)
 
 // versionIn finds a release number such as 0.19.5.
 var versionIn = regexp.MustCompile(`\b\d+\.\d+\.\d+\b`)
@@ -362,10 +454,14 @@ func render(rows []row, rel map[string]string) string {
 			family = r.family
 			fmt.Fprintf(&sb, "\n## %s\n\n| ID | Release | Where | Subject |\n|---|---|---|---|\n", family)
 		}
-		where := "`" + r.file + "`"
+		where := r.file
 		if r.feature != "" {
-			where = "`" + r.feature + "/" + r.file + "`"
+			where = r.feature + "/" + r.file
 		}
+		if r.line > 0 {
+			where += ":" + strconv.Itoa(r.line)
+		}
+		where = "`" + where + "`"
 		fmt.Fprintf(&sb, "| %s-%s%s | %s | %s | %s |\n", r.family, r.num, r.suffix, rel[r.feature], where, strings.ReplaceAll(r.subject, "|", "\\|"))
 	}
 	return sb.String()

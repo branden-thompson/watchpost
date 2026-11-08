@@ -16,7 +16,7 @@ package lineup
 // instant: `Suppress` is inert when nothing is playing, and the engine re-reads
 // the source kind every tick so "how to yield" follows the audio. The Director
 // says an alert is on the air; the engine decides dip-or-hold. Asking the
-// deck's mode here would fix "an answer the audio could outlive" (radio.go).
+// deck's mode here would fix an answer the audio could outlive.
 
 import (
 	"testing"

@@ -154,7 +154,7 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 |---|---|---|
 | UAT n | a fit-and-finish session of the 0.9.x pass | `06_docs/02_features/watchpost-cli/05-debugging/` |
 | B0–B5 | the 0.9.x build batches | `06_docs/02_features/watchpost-cli/04-development/` |
-| Qn | a quality-pass batch | `06_docs/02_features/watchpost-performance-quality-pass/03-architecture-design/quality-pass-plan.md` |
+| Qn | a quality-pass batch | bare, the first pass's: `06_docs/02_features/watchpost-performance-quality-pass/03-architecture-design/quality-pass-plan.md`. With a release, its plan's task: "0.19.5 Q6.4" is `06_docs/02_features/0.19.5-quality-pass/04-development/implementation-plan.md` |
 | L{1..5}-Fn, LR-n | DISCOVER lens findings | `…/02-analysis/` |
 | JD/CQ/PA/PR/A11/BQ/IS/PH/DQ/SC/PF/RT/R2-n | red-team findings | `…/08-reports/red-team-plan.md` |
 | P10-nn | safety-critical rules (`make p10`, the harness CLI's check) | each rule, its threshold and its accepted forms: `06_docs/code-standards.md`, "P10 — the safety-critical rules"; the checker and its ledger are the harness's, outside the public tree |

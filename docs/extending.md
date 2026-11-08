@@ -9,7 +9,9 @@
 
 watchpost is organized so you can find a feature by its name (`domains/…`) and extend it in that
 feature's folder plus the wiring each walkthrough below lists, site by site, with the check that
-fails when a site is missed, or a plain "nothing fails" where none does. Two invariants keep everything honest — the import
+fails when a site is missed, or a plain "nothing fails" where none does. A test named here is in the
+package of the step's file unless the step names its file; `go test ./<package> -run '^TestName$' -v`
+runs it alone. Two invariants keep everything honest — the import
 linter in `make verify` enforces the first; `term.Merge` plus its tests enforce the second:
 
 1. **Data flows one way:** domains write `platform/snapshot`; `modes/` (all rendering: TTY and
@@ -52,7 +54,7 @@ Goal: a new source that needs a user key. `domains/fire/firms` is the worked exa
 | 3 | `app/<family>.go` + `app/dashboard.go` | Build the family in one place (`fireProviders`, `seismicProviders`), then give it a field in `providerFamilies` and a line in `newProviderFamilies` and in `providerFamilies.all` (`app/dashboard.go`). That one constructor is what the live pipelines **and** the one-shot report (`app/app.go:reportFetch`) fetch from, so a provider there is fetched by both; `TestAllAsksEveryFamily` fails a family `all` leaves out. Give `providerEndpoints` (`app/endpoints.go`) the host it talks to and `providerSources` its feature and badge, for the Status window: `TestEveryProviderHasAnEndpoint` and `TestEveryStatusSourceIsGroupedAndCredited` fail a provider with none. Give it a credit in `creditGroups` (`app/credits.go`), which About draws as `CreditLine` rows; its badge needs a chip (below). Give `newAssembler` its attribution case (`app/dashboard.go`) so the report's provider line names the source; **nothing fails without it**, the line just reads `ok ()`. Register a keyed provider **always**, and mark it `off` while unkeyed with `Assembler.SetInactive` (`livePipelines.markFIRMS`) so the API status never says "ok" for a feed that contributes nothing. |
 | 4 | Scheduler | Cadence is per-**kind**: an existing kind (weather, obs, marine) rides its tier for free. A **new** kind needs: a `snapshot.FetchKind` (`platform/snapshot/types.go`); its domain in `platform/sched/sched.go:domainFor`, which `sched.Serves` reads to decide whether a tier asks a provider at all (`TestEveryFetchKindHasADomain` fails a kind with neither a case nor a reason in its `onDemand`); a tier line in `priorityTiers` and one in `recentTiers` (`app/pipelines.go`, the one owner of both lists); its name in `kindName` (`app/cadence_test.go`) and the cadence golden re-captured (`go test ./app -args -update-cadences`), which `TestCadenceTableIsTheDoc` holds; and `Domains()` on the provider. **The one-shot report asks its own list of kinds**, `kinds` in `app/app.go:reportFetch`: add the kind there too, or `watchpost report` never asks for it, and **nothing fails**. B5 added `KindFire` at 10 / 15 minutes. |
 | 4a | A new block in the snapshot | A kind whose data is a new block (`fire`, `seismic`) also needs, in `platform/snapshot`: the state type and its field on `Location` and on `PartialData` (`types.go`); the assembler's map, made in `newAssembler`, stored in `mergeLocationLocked`, deleted in `SetLocations` and deep-copied out in `Snapshot` (`assembler.go`), with the copy in its own `merge_<kind>.go` (`merge_seismic.go` is the model). **Only the merge test in step 5 catches a missed one of those**: a map never made panics on the first fragment, and a store or copy left out publishes nothing. Then the published schema, regenerated with `make schema` and held by `TestPublishedSchemaMatchesGenerator` (`pkg/schema`), and the declaration-set goldens (`go test ./platform/snapshot ./app -args -update-declset`). |
-| 4b | Where it shows | The plain report's line in `modes/report/report.go:RenderPlain`, with a sentinel value in `report_test.go`'s fixture and the golden re-captured (`go test ./modes/report -args -update-golden`); a Location Details section in `modes/tty/detail_<kind>.go`, wired into `detailLines` (`modes/tty/detail.go`). **Nothing fails if `detailLines` never calls it** except the section's own test. A credit badge's chip: `chipGrounds` (`modes/tty/map_parts.go`), whose `TestEverySourceIsCreditedOnce` fails a badge with none; a `MapChip…BG` token in `platform/render/theme.go`, with its colour in `defaultTheme`, `lightOverrides` and the Monochrome overrides (`themes.go`), each held by a theme test; and the token in `ChipGrounds` (`platform/render/contrast.go`), where **nothing fails if it is missing** but the chip is then never checked for contrast or uniqueness. |
+| 4b | Where it shows | The plain report's line in `modes/report/report.go:RenderPlain`, with a sentinel value in `report_test.go`'s fixture and the golden re-captured (`go test ./modes/report -args -update-golden`); a Location Details section in `modes/tty/detail_<kind>.go`, wired into `detailLines` (`modes/tty/detail.go`). **Nothing fails if `detailLines` never calls it** except the section's own test. A credit badge's chip: `chipGrounds` (`modes/tty/map_parts.go`), whose `TestEverySourceIsCreditedOnce` fails a badge with none; a `MapChip…BG` token in `platform/render/theme.go`, with its colour in `defaultTheme` (the same file), in `lightOverrides` and in the `"Monochrome"` entry of `builtinOverrides` (both `themes.go`), each held by a theme test; and the token in `ChipGrounds` (`platform/render/contrast.go`), where **nothing fails if it is missing** but the chip is then never checked for contrast or uniqueness. |
 | 5 | Tests | A fixture-backed `Fetch` test (httptest, recorded body) that also asserts the request shape; a key test (stored trimmed, malformed refused without echo); for a new block, the assembler merge test, which is the only guard on step 4a's assembler sites; and a test of the detail section. |
 
 Geometry note: a hazard's shape lives in `platform/geo` (`Point`, `Ring`, `Polygon`, `Shape`, `Area`) because both a
@@ -69,10 +71,17 @@ already honours the lifetime a server declares and revalidates rather than disca
 
 Schema note: `by_provider` is additive — a new provider id needs no schema version bump (schema
 `snapshot.SchemaVersion` policy, [architecture §10.3](../06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md)). A new top-level block (like `fire`) is a schema change and
-lands with its `modes/report` lines and parity fixtures.
+lands with its `modes/report` lines and parity fixtures. While `SchemaVersion` is a release candidate
+(`-rc`), a new block rides it, as `seismic` did: `make schema` rewrites the current `-rc` file. Whether
+a block moves the version is the HUM LEAD's call; ask.
 
-**Second worked example — a keyless hazard with its own detail section (`seismic`, 0.11.0):** the same
-five steps, minus the key (step 2). Its shape adds two ideas worth copying. (a) *Shared canonicalised
+A station provider joins no host list but `providerEndpoints`: FR-3.8's closed list is the map's
+sources (Walkthrough 5). The model for step 5's merge test is `TestAssemblerMergesSeismicAndIsolates`
+(`platform/snapshot/snapshot_test.go`).
+
+**Second worked example — a keyless hazard with its own detail section (`seismic`):** the same
+steps, minus the key (step 2), with two of step 3 and 4b not modelled: seismic has no attribution case
+in `newAssembler` and no line in `RenderPlain`, so for those copy fire's. Its shape adds two ideas worth copying. (a) *Shared canonicalised
 requests* when a domain is regional: `domains/seismic/usgs` snaps each location's wide query to a fixed
 grid so nearby locations share one request (the FIRMS-tile precedent), with a bounded, gauged parse memo
 (`boxmemo.go`) — see `docs/where-things-happen.md` "A seismic request is made". (b) *A one-provider
@@ -181,6 +190,16 @@ Setting of each kind on a scratch copy and leaving out one step at a time (0.19.
 
 `p` previews a voice on a voice row only (0.19.5 D-33), so a new picker needs nothing to stay silent.
 
+Three things the table does not cover, because the Setting decides whether they apply:
+- **Its surface is ruled, not chosen.** Observer, the Broadcaster, both with one value, or both with
+  their own: `TestEverySettingsRowIsRuledForItsSurface` fails a row nobody ruled, and the HUM LEAD
+  rules it. Ask.
+- **A Setting both surfaces read** reaches the console through `Router.Update`
+  (`modes/tty/router.go`), which carries Observer's value onto the Broadcaster as it does Reduce
+  motion's.
+- **A Setting a memoised region is drawn from** belongs in that memo's key, or the memo keeps
+  serving the old frame: the masthead's is `mastheadKey` (`modes/tty/masthead.go`).
+
 ## Walkthrough 7 — add a spoken phrase
 
 **Re-wording a line the station already says** is a text edit: change its
@@ -195,8 +214,8 @@ alone is never read, and every test still passes.
 |---|---|---|
 | 1 | `domains/radio/script/scripts/<report>/<part>.txt` | The phrase. Its first line is a `{{/* <report>/<part>: … */}}` comment naming its data; nothing checks the comment. It must not render empty or end in a newline, which `TestBuiltinScriptsFollowTheConvention` holds. A data field needs its entry in that test's `data` map, and **the map is every script's fields together**: a name another script already uses passes even when this caller never supplies it, and the line is then dropped when it runs. |
 | 2 | The code that speaks it | `Composer.Compose` (`domains/radio/synth/compose.go`) for the broadcast cycle, `eventScript` (`app/severe_read.go`) for an event read, `breakingLine` (`app/burst_words.go`) for a takeover. Ask the library for the part (`Composer.say`), make a `Segment` with its `Key` and its cast `Role` (an untagged segment is read by the root voice), and leave it out when the text renders empty, which an override of only a comment does. |
-| 3 | Its place | A segment in a different voice from the one before it is introduced by a hand-over line. The sign-off is the one `SelfIntro` segment: a Station line placed before it hands over into the station, and the sign-off then introduces the same speaker again. A closing line goes after the sign-off. |
-| 4 | Tests and goldens | Re-capture `cycle.golden` (`go test ./domains/radio/synth -args -update-golden`). Update the tests that pin the segment list: `TestComposeWithZeroReportsIsTodaysBroadcast`, `TestComposeReadsLikeNWR`, `TestReportsAreSeparatedByAir`. Add the part to `TestTheAppsPartsExist`'s list, which is hand-written, so **nothing fails without it**. Write a test of the new segment's place, role and empty override. |
+| 3 | Its place | A segment in a different voice from the one before it is introduced by a hand-over line. The sign-off is the one `SelfIntro` segment: a Station line placed before it hands over into the station, and the sign-off then introduces the same speaker again. A closing line goes after the sign-off. The broadcast cycle's `Compose` also composes each Broadcaster card's script (`composeFor`, `app/schedule.go`), so a line at the cycle's end ends every card too. |
+| 4 | Tests and goldens | Re-capture `cycle.golden` (`go test ./domains/radio/synth -args -update-golden`). Update the tests that pin the segment list: `TestComposeWithZeroReportsIsTodaysBroadcast`, `TestComposeReadsLikeNWR`, `TestReportsAreSeparatedByAir`. Add the part to `TestTheAppsPartsExist`'s list (`domains/radio/script/script_test.go`), which is hand-written, so **nothing fails without it**. Write a test of the new segment's place, role and empty override. |
 | 5 | `README.md`, "What the correspondent says" | The list of parts. It is hand-written, and nothing reads it. |
 
 **Spoken words.** A quantity is worded by `domains/radio/synth/spoken_units.go`, the one owner of
@@ -204,6 +223,26 @@ spoken units, in the listener's units. A place name goes through `ExpandStates`,
 the location. An abbreviation needs nothing in the script: `Pronounce` runs on every rendered
 segment, reading `domains/radio/pronounce/rules/`, and a new spelling is a row in `domains/radio/pronounce/rules/words.txt`.
 The library's own `Say` only strips terminal escapes from what it renders.
+
+## Walkthrough 8 — add a line to a Broadcaster card
+
+The console's cards are drawn by `modes/tty`, from the `lineup.Card` the Director holds, so a line that
+shows something the card already carries changes nothing in `app` or `platform`. The UP NEXT card is the
+one with lines: LIVE NOW is a row of the air box, not a card.
+
+| Step | File | What you do |
+|---|---|---|
+| 1 | `modes/tty/broadcaster_slots.go` | The UP NEXT card's body is `readBody`, called from `upNextBox` (`modes/tty/broadcaster_upnext.go`). Add the row to its `rows` literal, after the row it follows, led by `bcCardInset`. **The card's height is fixed** (`bcReadCardRows`): `readBody` pads its rows to it, and a new line takes one of the blank rows the padding left. Raising `bcReadCardRows` instead makes every read card taller and moves the console's minimum height. |
+| 2 | `modes/tty/broadcaster_manifest.go` | The line's words, in a helper beside `cardPulledShort`. Use the words the console already uses for the same thing: `reportTypeOf` names a card's reports as the running order does, and an empty set, which is every card the Director makes, is the whole report. `report.Set.Describe` alone says nothing for an empty set. |
+| 3 | its width | Give the helper `lane.inner()-len(bcCardInset)`, the card's cell less its inset (`cardLane`, `modes/tty/broadcaster.go`). The console's floor is 100 columns (`bcMinCols`), where the UP NEXT cell is 36 cells. `render.TruncateCells` cuts with no ellipsis, so a line that can be cut adds the glyph set's own, `o.Glyphs().Ellipsis`: a literal "…" breaks `--ascii`. |
+| 4 | Goldens | The console's frames are `TestConsoleGoldens` (`modes/tty/golden_surfaces_test.go`): 12 goldens, three sizes by two states by colour on and off. Re-record them (`go test ./modes/tty -args -update-golden`) and read each diff first: the new line, and nothing else moving. |
+| 5 | Tests | Write the line's own tests in `modes/tty/broadcaster_upnext_test.go`: its words for an empty set, a subset and the full set; its place among the rows; the card's height unchanged; the ellipsis under `--ascii`; and the longest value it can hold at the floor width. **Without them only the goldens fail**, and they fail only if they were recorded with the line right. |
+| 6 | The frame's budget | The console's frame allocations are pinned (`bcFrameAllocs`, `modes/tty/broadcaster_alloc_test.go`) and checked by `make alloc-budget`, which `-race` skips. A line that allocates more than the budget's headroom fails it there. |
+
+What the console must not do is in `06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md`,
+and its five roles are in `docs/where-things-happen.md`'s vocabulary. Whether a new line is how the
+console draws a card or part of what the card says, which the Card Composer in `app` decides, is not
+ruled for a general case: ask before adding one the Composer might own.
 
 ## When a golden or a declset fails
 

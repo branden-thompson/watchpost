@@ -1,7 +1,7 @@
 package app
 
 // pool_pipeline_test.go — the station's pool stays in the pipeline that fetches
-// it (D-112).
+// it.
 
 import (
 	"testing"

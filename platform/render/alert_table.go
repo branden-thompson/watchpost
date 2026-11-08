@@ -1,6 +1,6 @@
 package render
 
-// alert_table.go — the takeover's contents, as a table (D-103).
+// alert_table.go — the takeover's contents, as a table.
 //
 // HUM LEAD, UAT 2026-09-12: the alert box matches the mock when alerts are
 // present — "a go studs table".

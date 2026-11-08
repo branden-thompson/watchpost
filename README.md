@@ -628,8 +628,8 @@ roster (D-252). `06_docs/code-standards.md` lists its rules.
 2. [`docs/where-things-happen.md`](docs/where-things-happen.md) — where each thing happens, and the
    vocabulary (the five roles, duck, burst, pool, lane and the rest).
 3. [`docs/extending.md`](docs/extending.md) — how to add a detail row, a provider, a radio control, a
-   report kind, a map layer, a Setting or a spoken phrase, site by site, with what fails when one is
-   missed.
+   report kind, a map layer, a Setting, a spoken phrase or a line on a Broadcaster card, site by
+   site, with what fails when one is missed.
 4. [`06_docs/code-standards.md`](06_docs/code-standards.md) — the rules, and which gate holds each.
 5. Before touching the Broadcaster:
    [`06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md`](06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md),

@@ -1,7 +1,6 @@
 package tty
 
-// broadcaster_upnext_test.go — the UP NEXT card in the reference's own shape
-// (D-110).
+// broadcaster_upnext_test.go — the UP NEXT card in the reference's own shape.
 //
 // HUM LEAD, UAT 2026-09-12, handing back the mock section: "notice where the
 // location for Up Next is".

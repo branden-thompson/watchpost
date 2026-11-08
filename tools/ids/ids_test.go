@@ -129,3 +129,44 @@ func TestEveryMVSRulingTheCodeCitesIsIndexed(t *testing.T) {
 		}
 	}
 }
+
+// TestAnUntabledRulingIsIndexedByItsMention pins 0.19.5 D-37's rule for the
+// release that never tabled its later rulings: a D-ID its tables do not
+// define is indexed at its first bold statement in the release's folder, else
+// its first mention; one its tables define is left to them, and one another
+// release qualifies is not this release's.
+func TestAnUntabledRulingIsIndexedByItsMention(t *testing.T) {
+	rows := []row{{family: "D", num: "5", feature: untabledFeature, file: "rulings.md"}}
+	files := map[string]string{
+		"02_features/" + untabledFeature + "/a-log.md":  "we built D-7 first\nD-5 again\nper MVS-D-9 and 0.18.0 D-8\n",
+		"02_features/" + untabledFeature + "/b-plan.md": "**D-7** the card has one window\n",
+	}
+	got := map[string]row{}
+	for _, r := range untabledRows(rows, files) {
+		got[r.num] = r
+	}
+	if len(got) != 1 {
+		t.Fatalf("indexed %v; want only D-7 (D-5 is tabled, MVS-D-9 and 0.18.0 D-8 are another release's)", got)
+	}
+	if r := got["7"]; r.file != "b-plan.md" || r.line != 1 || r.subject != "Mentioned: D-7 the card has one window" {
+		t.Errorf("D-7 = %s:%d %q; want its bold statement in b-plan.md:1", r.file, r.line, r.subject)
+	}
+}
+
+// TestAPriorityStillDefinesAndAReferenceIsNoSubject pins two reading rules
+// the blind M5 review found (0.19.5 D-37): a requirement whose first cell
+// carries its priority ("FR-3.8 (P1)") still defines it, and a cell of
+// references only is passed over for the first cell with a word in it.
+func TestAPriorityStillDefinesAndAReferenceIsNoSubject(t *testing.T) {
+	src := "| FR-3.8 *(P1)* | Tile sources are a closed list |\n| D-2 | W1.13, W3.7 | the plan's own task |\n"
+	got := rowsOf(src, "02_features/observer-maps/01-objectives/requirements.md")
+	if len(got) != 2 {
+		t.Fatalf("got %d rows, want FR-3.8 and D-2: %+v", len(got), got)
+	}
+	if r := got[0]; r.family != "FR" || r.num != "3" || r.suffix != ".8" || r.subject != "Tile sources are a closed list" {
+		t.Errorf("FR-3.8 read as %+v", r)
+	}
+	if r := got[1]; r.subject != "the plan's own task" {
+		t.Errorf("D-2's subject is %q; want the cell with a word, not its references", r.subject)
+	}
+}

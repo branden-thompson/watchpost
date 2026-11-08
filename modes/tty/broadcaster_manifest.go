@@ -116,7 +116,7 @@ func cardPulled(o render.Opts, c lineup.Card, now func() time.Time, room int) st
 // (10 MIN AGO)`, from the reference, its time in the clock Setting (0.19.5
 // D-29).
 //
-// THE CARD GETS THE SHORT FORM AND THE WINDOW THE LONG ONE (D-110). The card is
+// THE CARD GETS THE SHORT FORM AND THE WINDOW THE LONG ONE. The card is
 // glanced at beside a dozen other rows and the window is read; "Saturday
 // September 12, 2026 @ 16:02:45" is forty-two cells of a card that has about
 // sixty, and every one of them says something the operator already knows.

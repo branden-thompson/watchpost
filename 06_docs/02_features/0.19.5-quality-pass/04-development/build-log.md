@@ -1892,3 +1892,63 @@ Markdown only, through the docs lane.
 - **The fix.** Those cells read "F-111 (cited)" and so on, and the index has no `m5-key/` row.
 - **The check.** The M5-input ID scan was re-run on the corrected index and still finds none
   unresolved. F-111 is no longer cited there: Walkthrough 4 names its guard instead.
+
+## 0.19.5 batch 44 — the blind M5 review, and its fixes (D-24, D-37)
+
+- **The review.** A blind reviewer with D-24's persona traced the four tasks from README's "Start
+  here". It worked on a copy of batch 43 with this release's folder deleted, reading only what the
+  docs name. It is graded against the keys in `08-reports/m5-blind-review.md`.
+  - T1, T2 and T4 pass, with notes.
+  - **T3, a line on a console card, fails.** Seven of its ten sites had neither a route from the
+    docs nor a guard: the words, the width, the ellipsis and the goldens' test. The card's 0.16.0
+    rulings resolved to other releases' rows.
+- **T3's fix.**
+  - extending.md gains Walkthrough 8, add a line to a Broadcaster card, from the card key. It covers:
+    - `readBody` and the card's fixed height;
+    - the words through `reportTypeOf`;
+    - the width `lane.inner()-len(bcCardInset)`, and the glyph set's ellipsis;
+    - `TestConsoleGoldens` and its 12 goldens;
+    - the line's own tests;
+    - `bcFrameAllocs` and `make alloc-budget`.
+  - It says that whether a line is drawing or what the card says is not ruled, so ask.
+  - A second blind trace of T3 alone, after this batch's gate, checks the fix routes.
+- **D-37, 0.16.0's untabled rulings.**
+  - The HUM LEAD was first asked with "extend D-35 and read git" recommended, and answered so. The
+    agent then found the commit-only rulings are on the pre-squash feature branches, not in main's
+    history, so the hosted run cannot see them, and asked again with that corrected. The second
+    answer, "Mentions only", stands.
+  - `tools/ids` indexes each D-ID that 0.16.0's docs mention and its tables do not define, at its
+    best mention there, marked "Mentioned:": 35 rows. A mention another release qualifies is that
+    release's (`TestAnUntabledRulingIsIndexedByItsMention`, m807).
+  - The 13 commit-only rulings (D-85 to D-126) are restated without the ID. That is 78 comment lines,
+    each attributed to its release by the commit that wrote it: 72 were 0.16.0's, and 6 were console
+    lines rewritten this release. The map and propagation code's citations of 0.18.0 and 0.19.0
+    rulings with the same numbers are left alone.
+  - Every restated sentence already said what was ruled, so the tag was all that came off. One line
+    that began with its tag (`// (D-103). The reference …`) needed its full stop moved by hand.
+  - The 24 "AND …" continuations in the declarations this touched are sentence case (AP-CAPS-01).
+- **ids.md reads two more forms.**
+  - A first cell that carries a priority ("FR-3.8 (P1)") defines its ID. 0.18.0's requirements now
+    resolve to what they require, not to their traceability rows (m809).
+  - A row's subject is its first cell with a word in it, not a cell of references only ("W1.13,
+    W3.7"), m808.
+  - Both are in `TestAPriorityStillDefinesAndAReferenceIsNoSubject`. 207 lines of the index changed.
+- **The other routes.**
+  - Walkthrough 2:
+    - `defaultTheme` is in `theme.go`, and Monochrome is an entry of `builtinOverrides`;
+    - seismic models neither the attribution case nor the report line, so copy fire's;
+    - a new block rides an `-rc` schema version, and moving it is the HUM LEAD's call;
+    - a station provider joins no host list but `providerEndpoints`;
+    - the merge test's model is named.
+  - Walkthrough 6 gains three notes: a row's surface is ruled; a Setting both surfaces read goes
+    through `Router.Update`; a memoised region's Setting belongs in its memo's key.
+  - Walkthrough 7 names `TestTheAppsPartsExist`'s file, and notes that `Compose` also composes every
+    console card.
+  - extending.md's intro says how to run a named test alone.
+  - where-things-happen's Qn row says a release-qualified Q is that release's plan task.
+  - code-standards' `setupTable` count says it is the body's.
+  - The 0.16.0 required reading's two quotation sources are current: the duck reasoning now in
+    `platform/lineup/duck_test.go`, and `app/arbiter.go`'s header. `duck_test.go` no longer credits
+    radio.go.
+  - The cadence test's failure asks for the freshness reason in the build log, not in a plan section
+    no reader can find.

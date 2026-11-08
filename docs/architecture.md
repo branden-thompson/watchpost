@@ -103,5 +103,5 @@ the terminal and the CLI (§6), the schema policy (§10.3) and config (§10.11).
 release's design; this page is the program as it stands.
 
 Where a particular thing happens, step by step, is `docs/where-things-happen.md`. How to add a
-detail row, a provider, a radio control, a report kind, a map layer, a Setting or a spoken phrase is
+detail row, a provider, a radio control, a report kind, a map layer, a Setting, a spoken phrase or a line on a Broadcaster card is
 `docs/extending.md`.
