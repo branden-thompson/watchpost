@@ -63,6 +63,7 @@ func build(root string) (string, error) {
 	var rows []row
 	mvs := map[string]mention{}
 	untabled := map[string]string{} // the untabledFeature folder's files, by path, read after every row is known
+	all := map[string]string{}      // every file, by path, for the follow-ups only mentioned
 	err := filepath.WalkDir(docs, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -83,12 +84,14 @@ func build(root string) (string, error) {
 		if strings.HasPrefix(filepath.ToSlash(rel), "02_features/"+untabledFeature+"/") {
 			untabled[filepath.ToSlash(rel)] = string(b)
 		}
+		all[filepath.ToSlash(rel)] = string(b)
 		return nil
 	})
 	if err != nil {
 		return "", err
 	}
 	rows = append(rows, untabledRows(rows, untabled)...)
+	rows = append(rows, followUpRows(rows, all)...)
 	return render(rows, releases(docs)) + renderMVS(mvs, releases(docs)), nil
 }
 
@@ -115,30 +118,66 @@ func untabledRows(rows []row, files map[string]string) []row {
 			defined[r.num] = true
 		}
 	}
+	return mentionRows(files, "D", dCite, dBold, defined)
+}
+
+// fCite is an F-ID where it stands in a line; fBold is one in bold.
+var (
+	fCite = regexp.MustCompile(`\bF-(\d+)\b`)
+	fBold = regexp.MustCompile(`\*\*F-(\d+)\*\*`)
+)
+
+// followUpRows is a row for each follow-up the record mentions and no table
+// defines, at its best mention (0.19.5 D-38). Follow-ups are numbered once
+// for the whole project, so an F-ID any row defines, a closed one in
+// follow-ups-closed.md included, is defined. The M5 reports are left out:
+// they list the IDs a reviewer could not resolve.
+func followUpRows(rows []row, files map[string]string) []row {
+	defined := map[string]bool{}
+	for _, r := range rows { // bounded by the rows (P10-02)
+		if r.family == "F" {
+			defined[r.num] = true
+		}
+	}
+	read := map[string]string{}
+	for p, src := range files { // bounded by the record (P10-02)
+		if !strings.Contains(p, "/08-reports/m5-") {
+			read[p] = src
+		}
+	}
+	return mentionRows(read, "F", fCite, fBold, defined)
+}
+
+// mentionRows is the best mention of each ID of a family that defined does
+// not hold, over files by path: a line that states it in bold, else the
+// first line that names it, in path order.
+func mentionRows(files map[string]string, family string, cite, bold *regexp.Regexp, defined map[string]bool) []row {
 	paths := make([]string, 0, len(files))
-	for p := range files { // bounded by the folder (P10-02)
+	for p := range files { // bounded by the files (P10-02)
 		paths = append(paths, p)
 	}
 	sort.Strings(paths)
 	best := map[string]mention{}
-	for _, p := range paths { // bounded by the folder (P10-02)
-		_, rest, _ := strings.Cut(p, "/")
-		_, file, _ := strings.Cut(rest, "/")
+	for _, p := range paths { // bounded by the files (P10-02)
+		feature, file := "", p
+		if f, rest, ok := strings.Cut(p, "/"); ok && f == "02_features" {
+			feature, file, _ = strings.Cut(rest, "/")
+		}
 		for i, line := range strings.Split(files[p], "\n") { // bounded by the file (P10-02)
-			bold := map[string]bool{}
-			for _, b := range dBold.FindAllStringSubmatch(line, -1) { // bounded by the line (P10-02)
-				bold[b[1]] = true
+			bolded := map[string]bool{}
+			for _, b := range bold.FindAllStringSubmatch(line, -1) { // bounded by the line (P10-02)
+				bolded[b[1]] = true
 			}
-			for _, m := range dCite.FindAllStringSubmatchIndex(line, -1) { // bounded by the line (P10-02)
+			for _, m := range cite.FindAllStringSubmatchIndex(line, -1) { // bounded by the line (P10-02)
 				num := line[m[2]:m[3]]
 				if defined[num] || qualified(line[:m[0]]) {
 					continue
 				}
 				rank := rankCited
-				if bold[num] {
+				if bolded[num] {
 					rank = rankRuled
 				}
-				keep(best, num, mention{rank: rank, row: row{family: "D", num: num, feature: untabledFeature, file: file, line: i + 1, subject: subjectOf([]string{"Mentioned: " + plain(line)})}})
+				keep(best, num, mention{rank: rank, row: row{family: family, num: num, feature: feature, file: file, line: i + 1, subject: subjectOf([]string{"Mentioned: " + plain(line)})}})
 			}
 		}
 	}
@@ -487,5 +526,8 @@ the record's tables define, each release's row and its subject. Where says the f
 file's ` + "`git log`" + ` says which release wrote the comment. **A new citation names its release**
 (` + "`0.19.5 D-4`" + `, or a release's own prefix such as ` + "`MVS-D-80`" + `), which ` + "`tools/authoring`" + ` holds
 over the lines a branch adds (` + "`AP-CITE-01`" + `). A row defines an ID when the ID is the whole of its first
-cell; a later table that mentions it is not listed.
+cell; a later table that mentions it is not listed. Where no table defines an ID, its row is its
+best mention, marked "Mentioned:", or the MVS-D section below: 0.16.0's later rulings and the
+follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code cites resolves to
+` + "`06_docs/follow-ups-closed.md`" + `, its row as it was when it closed.
 `

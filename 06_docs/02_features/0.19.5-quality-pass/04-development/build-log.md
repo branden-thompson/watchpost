@@ -1966,3 +1966,33 @@ Markdown only, through the docs lane.
   - New: `TestAReportAboutIDsDefinesNone` fails any index row from an M5 key.
 - **The check.** The M5-input ID scan, re-run with no key rows in the index, finds none unresolved.
   FR-3.8 still resolves to its requirement.
+
+## 0.19.5 batch 46 — the T3 re-trace passes; closed follow-ups resolve (D-38)
+
+- **The T3 re-trace.** A second blind reviewer traced T3 alone on a copy after batch 45, and it
+  passes. Walkthrough 8 routed every site the key has. The one site it missed, `CHANGELOG.md`, has
+  no guard and is now step 7. Its other findings are in `08-reports/m5-blind-review.md` with their
+  answers here.
+- **D-38, the closed follow-ups.**
+  - 48 F-IDs the code cites had no row. 40 were `follow-ups.md` rows closed and deleted, 14 of them
+    by batch 29.
+  - New `06_docs/follow-ups-closed.md` holds each of those 40. Each is copied exactly as the last
+    `follow-ups.md` on main that held it, under that version's header, in five groups by commit.
+    `follow-ups.md`'s close rule now says where a cited closed row goes.
+  - The 8 that were only ever mentioned are indexed at their best mention by `followUpRows`. It
+    shares one pass, `mentionRows`, with D-37's `untabledRows`, and it skips the M5 reports, whose
+    lists of unresolvable IDs would otherwise define them.
+  - New tests:
+    - `TestAFollowUpNoTableDefinesIsIndexedByItsMention`, which m810 kills;
+    - `TestEveryFollowUpTheCodeCitesIsIndexed`, which m811 kills.
+
+    All 81 cited F-IDs now resolve.
+  - The index's header says what a "Mentioned:" row and the closed archive are.
+- **The re-trace's other findings.**
+  - Walkthrough 8:
+    - step 1 says `readBody`'s one caller;
+    - step 2 says `reportTypeOf` gives the slot's name for an empty set, and that other words are a
+      choice to ask about;
+    - step 3 says why its width is the safe side.
+  - `platform/report/report.go`'s `Describe` doc no longer says "there is no card in that state".
+  - extending.md's intro says to run `make mutant-anchors` before moving or re-wording code.

@@ -11,7 +11,8 @@ watchpost is organized so you can find a feature by its name (`domains/…`) and
 feature's folder plus the wiring each walkthrough below lists, site by site, with the check that
 fails when a site is missed, or a plain "nothing fails" where none does. A test named here is in the
 package of the step's file unless the step names its file; `go test ./<package> -run '^TestName$' -v`
-runs it alone. Two invariants keep everything honest — the import
+runs it alone. Before moving or re-wording code, `make mutant-anchors` says whether a mutant in
+`06_docs/mutants/` anchors on it. Two invariants keep everything honest — the import
 linter in `make verify` enforces the first; `term.Merge` plus its tests enforce the second:
 
 1. **Data flows one way:** domains write `platform/snapshot`; `modes/` (all rendering: TTY and
@@ -232,12 +233,13 @@ one with lines: LIVE NOW is a row of the air box, not a card.
 
 | Step | File | What you do |
 |---|---|---|
-| 1 | `modes/tty/broadcaster_slots.go` | The UP NEXT card's body is `readBody`, called from `upNextBox` (`modes/tty/broadcaster_upnext.go`). Add the row to its `rows` literal, after the row it follows, led by `bcCardInset`. **The card's height is fixed** (`bcReadCardRows`): `readBody` pads its rows to it, and a new line takes one of the blank rows the padding left. Raising `bcReadCardRows` instead makes every read card taller and moves the console's minimum height. |
-| 2 | `modes/tty/broadcaster_manifest.go` | The line's words, in a helper beside `cardPulledShort`. Use the words the console already uses for the same thing: `reportTypeOf` names a card's reports as the running order does, and an empty set, which is every card the Director makes, is the whole report. `report.Set.Describe` alone says nothing for an empty set. |
-| 3 | its width | Give the helper `lane.inner()-len(bcCardInset)`, the card's cell less its inset (`cardLane`, `modes/tty/broadcaster.go`). The console's floor is 100 columns (`bcMinCols`), where the UP NEXT cell is 36 cells. `render.TruncateCells` cuts with no ellipsis, so a line that can be cut adds the glyph set's own, `o.Glyphs().Ellipsis`: a literal "…" breaks `--ascii`. |
+| 1 | `modes/tty/broadcaster_slots.go` | The UP NEXT card's body is `readBody`, called only from `upNextBox` (`modes/tty/broadcaster_upnext.go`), so a row there is on that card alone. Add the row to its `rows` literal, after the row it follows, led by `bcCardInset`. **The card's height is fixed** (`bcReadCardRows`): `readBody` pads its rows to it, and a new line takes one of the blank rows the padding left. Raising `bcReadCardRows` instead makes every read card taller and moves the console's minimum height. |
+| 2 | `modes/tty/broadcaster_manifest.go` | The line's words, in a helper beside `cardPulledShort`. Use the words the console already uses for the same thing: `reportTypeOf` names a card's reports as the running order does, `report.Set.Describe` for a set ("NWS, FIRE") and the slot's own name ("Location Report") for an empty one. An empty set, which is every card the Director makes, is the whole report, and `Describe` alone says nothing for it. Words other than the running order's for that case are a choice to ask about. |
+| 3 | its width | Give the helper `lane.inner()-len(bcCardInset)`: the `cardLane` `readBody` is given (`modes/tty/broadcaster.go`), less the two cells `inner` keeps for rails, less one inset. The UP NEXT lane has no rails, so the line gets two cells fewer than the cell leaves after its inset, which is the safe side. The manifest's rows use a narrower `room`, too narrow for a longer line. The console's floor is 100 columns (`bcMinCols`), where the UP NEXT cell is 36 cells. `render.TruncateCells` cuts with no ellipsis, so a line that can be cut adds the glyph set's own, `o.Glyphs().Ellipsis`: a literal "…" breaks `--ascii`. |
 | 4 | Goldens | The console's frames are `TestConsoleGoldens` (`modes/tty/golden_surfaces_test.go`): 12 goldens, three sizes by two states by colour on and off. Re-record them (`go test ./modes/tty -args -update-golden`) and read each diff first: the new line, and nothing else moving. |
 | 5 | Tests | Write the line's own tests in `modes/tty/broadcaster_upnext_test.go`: its words for an empty set, a subset and the full set; its place among the rows; the card's height unchanged; the ellipsis under `--ascii`; and the longest value it can hold at the floor width. **Without them only the goldens fail**, and they fail only if they were recorded with the line right. |
 | 6 | The frame's budget | The console's frame allocations are pinned (`bcFrameAllocs`, `modes/tty/broadcaster_alloc_test.go`) and checked by `make alloc-budget`, which `-race` skips. A line that allocates more than the budget's headroom fails it there. |
+| 7 | `CHANGELOG.md` | An entry under `[Unreleased]`: a change the operator can see is written there. Nothing fails without it. |
 
 What the console must not do is in `06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md`,
 and its five roles are in `docs/where-things-happen.md`'s vocabulary. Whether a new line is how the

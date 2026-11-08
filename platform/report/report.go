@@ -169,9 +169,10 @@ const FullLabel = "Location Report, Full"
 // simply a one-element list. A special case for one would be a second naming
 // rule to keep in step with the first.
 //
-// AN EMPTY SET DESCRIBES ITSELF AS NOTHING, and the caller decides what to draw:
-// there is no card in that state, and inventing a word for it here would put a
-// sentence on a screen for a state the schedule cannot hold.
+// AN EMPTY SET DESCRIBES ITSELF AS NOTHING, and the caller decides what to draw.
+// An empty set is the whole report (lineup.Card.Reports: every card the
+// Director makes carries one), and each surface has its own words for that:
+// the running order's reportTypeOf names the slot.
 func (s Set) Describe() string {
 	if s.Empty() {
 		return ""

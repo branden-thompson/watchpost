@@ -4,7 +4,8 @@ Work that is deliberately not done yet, with enough context to pick it up cold. 
 record** — a follow-up that lives only in a chat log, an agent's memory or a commit body is not
 carried, it is forgotten. Each row names what, why it waits, and what would make it due.
 
-Close a row by deleting it in the commit that does the work.
+Close a row by deleting it in the commit that does the work. A closed row the code still cites is
+kept, as it was, in `06_docs/follow-ups-closed.md` (0.19.5 D-38), so its ID still resolves.
 
 **Director / ticker redesign?** Start at
 `02_features/multi-voice-support/01-objectives/README-director-handoff.md` — it names what not to

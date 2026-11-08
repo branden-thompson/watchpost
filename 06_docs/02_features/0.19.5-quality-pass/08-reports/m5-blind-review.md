@@ -27,8 +27,41 @@
 | T3, a console card line | 7 plus 3 sub-sites | 3 of 10. Not reached, and with no guard: the words (`reportTypeOf`, since `Describe` says nothing for an empty set), the width (`lane.inner()-len(bcCardInset)`), the glyph-set ellipsis, the goldens' test | 3: the required reading's two stale quotation sources; `ids.md` sending the card's 0.16.0 rulings to 0.18.0 and 0.19.0 rows | D-87, D-97, D-110, D-114 and D-119 wrong; F-84 and F-97 absent | **FAIL** | Walkthrough 8, add a line to a Broadcaster card; D-37 (0.16.0's untabled rulings indexed by mention, the 13 commit-only ones restated without the ID); the two quotation sources |
 | T4, a spoken phrase | 9 | all 9 | none | all resolved | **pass**, with notes | `TestTheAppsPartsExist`'s file named; `composeFor` noted, since a cycle-end line also ends every console card |
 
-**T3 failed and is fixed in batch 44.** D-24 says a fail is fixed before SHIP. A second blind trace of
-T3 alone, on a copy of the tree after batch 44, is the check that the fix routes.
+**T3 failed and is fixed in batch 44.** D-24 says a fail is fixed before SHIP.
+
+## The T3 re-trace, after batch 45
+
+A second blind reviewer traced T3 alone, with the same persona and limits, on a copy of the tree after
+batch 45.
+
+**Result: pass.** Walkthrough 8 routed every site the key has, and every symbol it names exists:
+- the row in `readBody`, with the fixed height left alone;
+- the helper beside `cardPulledShort`;
+- the width, derived to 31 cells at the floor;
+- the glyph set's ellipsis;
+- `TestConsoleGoldens` and its 12 goldens;
+- the line's own tests, with the cases the key has;
+- the allocation budget.
+
+The one site it did not reach, `CHANGELOG.md`, has no guard, and Walkthrough 8 now has it as step 7.
+
+**What it still found, and batch 46's answer:**
+- Walkthrough 8 implied `reportTypeOf` gives "whole report" words for an empty set. It gives the
+  slot's name, the running order's words. Step 2 now says so, and says other words are a choice
+  to ask about.
+- The width's description did not match its formula. The formula is the safe side, and step 3 now
+  says why.
+- `platform/report/report.go` said "there is no card in that state" of an empty set; every card the
+  Director makes carries one. Restated.
+- Closed follow-ups cited in code (F-84, F-97 and others) resolved nowhere. D-38: the closed rows
+  are kept in `06_docs/follow-ups-closed.md`, and the follow-ups only ever mentioned are indexed by
+  mention. All 81 F-IDs the code cites now resolve, which `TestEveryFollowUpTheCodeCitesIsIndexed`
+  holds.
+- `readBody`'s callers: one, the UP NEXT card. Step 1 says so.
+- Mutant anchors: the intro says how to check them before moving code.
+- Still open, as judgements the walkthrough says to ask about: the empty set's words; whether a
+  fourth line is wanted beside the reference's three questions; a transition card's line; the
+  reference mock, which is not in the tree.
 
 **Found by the review and not owed by M5's criteria**, recorded so they are not lost:
 - T1: no doc names where the masthead is drawn.

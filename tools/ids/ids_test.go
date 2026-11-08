@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -186,3 +187,70 @@ func TestAReportAboutIDsDefinesNone(t *testing.T) {
 		}
 	}
 }
+
+// TestAFollowUpNoTableDefinesIsIndexedByItsMention pins 0.19.5 D-38's rule
+// for the follow-ups only ever mentioned: one any row defines is left to it,
+// the M5 reports' lists of what could not be resolved are not read, and the
+// rest are indexed at their first bold statement, else their first mention.
+func TestAFollowUpNoTableDefinesIsIndexedByItsMention(t *testing.T) {
+	rows := []row{{family: "F", num: "84", file: "follow-ups-closed.md"}}
+	files := map[string]string{
+		"02_features/a/log.md": "this closes F-97 and F-84\n",
+		"02_features/0.19.5-quality-pass/08-reports/m5-key/k.md": "| F-98 (cited) | No row. |\n",
+	}
+	got := map[string]row{}
+	for _, r := range followUpRows(rows, files) {
+		got[r.num] = r
+	}
+	if len(got) != 1 {
+		t.Fatalf("indexed %v; want only F-97 (F-84 has a row, and an M5 key defines nothing)", got)
+	}
+	if r := got["97"]; r.feature != "a" || r.file != "log.md" || r.line != 1 {
+		t.Errorf("F-97 = %+v; want its mention in a/log.md:1", r)
+	}
+}
+
+// TestEveryFollowUpTheCodeCitesIsIndexed holds 0.19.5 D-38 to the code: an
+// F-ID in a Go comment that 06_docs/ids.md has no row for is a citation a
+// junior cannot look up.
+func TestEveryFollowUpTheCodeCitesIsIndexed(t *testing.T) {
+	root := filepath.Join("..", "..")
+	index, err := build(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cited := map[string]string{}
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && (d.Name() == ".git" || d.Name() == "third_party" || d.Name() == "dist" || d.Name() == ".claude") {
+			return filepath.SkipDir
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		for _, m := range goFollowUp.FindAllStringSubmatch(string(b), -1) {
+			cited[m[1]] = path
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cited) < 40 {
+		t.Fatalf("found %d F-IDs in the Go files; the walk is not reading the tree", len(cited))
+	}
+	for num, path := range cited {
+		if !strings.Contains(index, "| F-"+num+" |") {
+			t.Errorf("%s cites F-%s, which 06_docs/ids.md does not index", path, num)
+		}
+	}
+}
+
+// goFollowUp is an F-ID in Go source that is not part of a longer name.
+var goFollowUp = regexp.MustCompile(`(?:^|[^\w.-])F-(\d+)\b`)

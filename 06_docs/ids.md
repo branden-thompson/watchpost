@@ -12,7 +12,10 @@ the record's tables define, each release's row and its subject. Where says the f
 file's `git log` says which release wrote the comment. **A new citation names its release**
 (`0.19.5 D-4`, or a release's own prefix such as `MVS-D-80`), which `tools/authoring` holds
 over the lines a branch adds (`AP-CITE-01`). A row defines an ID when the ID is the whole of its first
-cell; a later table that mentions it is not listed.
+cell; a later table that mentions it is not listed. Where no table defines an ID, its row is its
+best mention, marked "Mentioned:", or the MVS-D section below: 0.16.0's later rulings and the
+follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code cites resolves to
+`06_docs/follow-ups-closed.md`, its row as it was when it closed.
 
 ## NFR
 
@@ -1166,6 +1169,7 @@ cell; a later table that mentions it is not listed.
 | D-37 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | FR-1.11: does the Propagation mode answer for the map's centre as the listener pans? Offered in D-25's option… |
 | D-38 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | four elevations: base → priority overlay → detail/action → confirm/destructive |
 | D-38 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | FOUR LEVELS OF ELEVATION, AND THREE ALREADY EXIST |
+| D-38 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The T3 re-trace (D-24) found that closed follow-ups cited in code (F-84, F-97 and others) resolve nowhere. 48… |
 | D-38 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | A full make verify costs 20 to 40 minutes and has never changed its result for a Markdown-only commit; ruled … |
 | D-38 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Is D-18's budget a host limit? (It is self-imposed; neither GIRO nor NOAA publishes a limit; GIRO has throttl… |
 | D-39 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the card detail modal is a centred overlay like the location-details one — scroll, sticky controls |
@@ -2097,6 +2101,7 @@ cell; a later table that mentions it is not listed.
 |---|---|---|---|
 | F-1 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/red-team-discover.md` | Says "four siblings"; the report proved five and did not correct the row |
 | F-1 |  | `multi-voice-support/08-reports/red-team-build-round2.md` | Still 6 Save owners over config.toml. Unchanged. |
+| F-01 |  | `severe-alerts-modals/08-reports/red-team-build.md:33` | Mentioned: R3-F-01..06 — Test gaps (zone index 1; poke test blind; no content-change control; no guard-vs-fee… |
 | F-1 |  | `watchpost-cli/08-reports/red-team-build.md` | Business |
 | F-1 |  | `watchpost-performance-quality-pass/04-development/follow-ups.md` | The RECENT / SEARCHED table "loads slower, and all at once": the empty state shows for a few seconds before t… |
 | F-2 |  | `multi-voice-support/08-reports/red-team-build-round2.md` | Still 3 classifiers over the same product strings. Its user-visible half is fixed (MVS-D-57); the architectur… |
@@ -2107,6 +2112,7 @@ cell; a later table that mentions it is not listed.
 | F-4 |  | `follow-ups.md` | The [S] window builds its tables 3–4× per render (modalWidth → statusWidth → statusBlocks, then again for the… |
 | F-4 |  | `multi-voice-support/08-reports/red-team-build-round2.md` | Allocation pins exist for the frame, the severe window and Setup — none for [S], the most expensive window. U… |
 | F-4 |  | `watchpost-cli/08-reports/red-team-build.md` | Business |
+| F-05 |  | `severe-alerts-modals/08-reports/red-team-build.md:33` | Mentioned: R3-F-01..06 — Test gaps (zone index 1; poke test blind; no content-change control; no guard-vs-fee… |
 | F-5 |  | `watchpost-cli/08-reports/red-team-build.md` | Business |
 | F-6 |  | `watchpost-cli/08-reports/red-team-build.md` | Code Quality |
 | F-7 |  | `follow-ups.md` | plaintext.Text is not length-bounded. globalfeed caps its own fields at 120 runes; the boundary itself has no… |
@@ -2139,19 +2145,35 @@ cell; a later table that mentions it is not listed.
 | F-22 |  | `follow-ups.md` | The band's "one owner" rule is structural and nothing enforces it. D-1/T2.3 hold that only mastercontrol writ… |
 | F-23 |  | `follow-ups.md` | A listener's own weather station as an observation source. The Lone Pine defect is the business case: a locat… |
 | F-24 |  | `follow-ups.md` | A MASTHEAD to cover the resumption gap. Coming back ON AIR from standby, the first card has to be composed an… |
+| F-25 |  | `multi-voice-support/04-development/director-build-log.md:2024` | Mentioned: F-25 WAS A DUPLICATE OF F-14, found when the race gate hit it a third time. The output is captured… |
 | F-26 |  | `follow-ups.md` | A "STOP ALL" control — return Observer to no active reads or relays. Raised by the HUM LEAD while ruling the … |
 | F-27 |  | `follow-ups.md` | Inter-card transitions. SCRIPTS WRITTEN AND PINNED (transition/resume, transition/masthead, a3c495b); the WIR… |
 | F-28 |  | `quality-observations.md` | closed by a test, not a session — and the first version of it proved nothing (2026-09-06) |
 | F-29 |  | `quality-observations.md` | the flake was never where it was recorded (2026-09-06) |
+| F-30 |  | `follow-ups-closed.md` | CLOSED 2026-09-07 (0.15.0 B4, FR-3.3). Both mechanisms the row named are gone: an unfixtured window is now a … |
 | F-31 |  | `follow-ups.md` | ALERTS - READ ORDER — the listener-facing setting, DEFERRED to post-Broadcaster (MVS-D-79, HUM LEAD 2026-09-0… |
+| F-32 |  | `follow-ups-closed.md` | advanceTicker rebuilds the current lane's whole tape every 300 ms to obtain one integer. tickerLoopLen calls … |
 | F-33 |  | `follow-ups.md` | RULED 2026-09-08 (HUM LEAD), and the ruling reframes the row rather than answering it. A relay fault is the O… |
+| F-34 |  | `follow-ups-closed.md` | ANSWERED 2026-09-07 (0.15.0 B2, FR-1.4) — BY MEASUREMENT, AND THE ANSWER IS NO LOCK. The row is accurate and … |
+| F-35 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/discover-report.md:235` | Mentioned: 80. A hard-wrapped string is being re-wrapped. F-35 describes this as an 80-column problem; it |
+| F-36 |  | `multi-voice-support/04-development/director-build-log.md:2222` | Mentioned: (the window is entirely inaudible) and F-36 (the ten seconds is a hard timeout on the app's only |
 | F-37 |  | `follow-ups.md` | Non-ASCII furniture survives --ascii in four windows that have no --ascii scan. │ ×10 and ─ ×98 in Location D… |
 | F-38 |  | `follow-ups.md` | Nothing verifies at the ARTIFACT level that the injector is absent. app/inject_test.go asserts on the text of… |
+| F-40 |  | `multi-voice-support/07-readiness/pr-body.md:82` | Mentioned: 3. F-40 — a real evacuation order and its fire were both invisible during UAT. That is a data/feed |
 | F-41 |  | `multi-voice-support/08-reports/review-report.md` | Previewing a voice in Settings gave no sign it was working — p sent the deck's progress, and its reason on fa… |
 | F-42 |  | `multi-voice-support/08-reports/review-report.md` | Details opened from a lookup was titled Location for a frame or more after enter |
+| F-43 |  | `multi-voice-support/07-readiness/pr-body.md:74` | Mentioned: 1. F-43 — a listener heard three tones with no words, once, on a live burst. Not reproduced since, |
 | F-44 |  | `follow-ups.md` | The space read from the severe window takes 11.4 s from admit to first clip (re-measured on a clean disk, 202… |
 | F-44 |  | `multi-voice-support/08-reports/review-report.md` | The journey's whole severe-window block could not fail |
+| F-45 |  | `multi-voice-support/04-development/director-build-log.md:2272` | Mentioned: it is ticked against. The 23 are carried as F-45 and are NOT swept into a 0.14.0 ratification: |
+| F-46 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/04-development/implementation-plan.md:360` | Mentioned: ~~FR-6.1, 6.2, 6.3 landed.~~ MET. 6.2 needed no code — F-46 was closed as NOT A DEFECT |
+| F-47 |  | `follow-ups-closed.md` | --ascii survivors in the radio panel: ▶, ■, █ and ░ are hardcoded instead of taken from the glyph set. radio_… |
 | F-48 |  | `follow-ups.md` | The 0.13.0 docs/img/status.png showing an account name stays in the published history. The path is fixed at t… |
+| F-49 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/build-report.md:37` | Mentioned: FR-7.2 (F-49) The cache stays at os.UserCacheDir(), ruled on a property: a cache must be disposabl… |
+| F-50 |  | `follow-ups-closed.md` | TestSourceStopsFastWhileMidSegment failed once under a full make verify, then passed 9/9 in isolation (6 plai… |
+| F-51 |  | `follow-ups-closed.md` | TestPublisherWindowFoldsAWave failed on one macOS CI leg while the OTHER leg passed on the same commit. app/p… |
+| F-52 |  | `multi-voice-support/08-reports/debrief.md:110` | Mentioned: Closed at SHIP: F-47, F-50, F-51, F-52 — three flaky or environment-bound tests, all fixed by |
+| F-53 |  | `follow-ups-closed.md` | CLOSED 2026-09-07 (0.15.0 B4). platform/bodymemo is the one implementation: a bounded, hash-revalidated parse… |
 | F-54 |  | `follow-ups.md` | The Code Quality red-team lens does not ask whether an operation is implemented more than once. Ten lenses ac… |
 | F-55 |  | `follow-ups.md` | Observer has no size contract below its floor: it overflows silently. At 20x5 the frame renders 57 cells wide… |
 | F-55 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/review-report.md` | Below the minimum terminal size the frame overflows silently; the contract lands with Broadcaster UI |
@@ -2174,38 +2196,93 @@ cell; a later table that mentions it is not listed.
 | F-62 |  | `follow-ups.md` | The radius field renders "Within [0] mi" while 0 MEANS "All locations". setupAlertLines (modes/tty/setup_form… |
 | F-62 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/validate-report.md` | The radius field renders "Within [0] mi" while 0 means All locations. Errs toward MORE alerts, never fewer |
 | F-63 |  | `follow-ups.md` | Nothing in the phase-exit sequence reads the branch's CI state, so a RED run sat unexamined across two review… |
+| F-64 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/debrief.md:107` | Mentioned: where 0 means All · F-63 no exit reads CI state · F-64 the corpus has no runtime budget. |
+| F-66 |  | `follow-ups-closed.md` | CLOSED 2026-09-09 (D-10) — ruled and applied before the branch ever reached origin, which was the point of fi… |
 | F-67 |  | `follow-ups.md` | Three program-scoped Bubble Tea messages reach both surfaces and no surface handles them: SuspendMsg, ResumeM… |
 | F-68 |  | `follow-ups.md` | Observer keeps its own breakpoint scale. The Broadcaster's breakpoints are the platform vocabulary, redefined… |
+| F-69 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-discover.md:63` | Mentioned: RT-21 Code app/executors.go:195-196 says the Broadcaster consumer "is 0.15.0's" — stale, since 0.1… |
 | F-70 |  | `follow-ups.md` | The safety-critical persona has no instrument on a document-only diff, and said so itself. At the 0.16.0 DISC… |
 | F-71 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d82.md` | closes as a consequence |
+| F-72 |  | `follow-ups-closed.md` | CLOSED 2026-09-09 — the keymap and the control landed in ONE change, which is what the row asked for. Router.… |
 | F-73 |  | `follow-ups.md` | A paused main track is a state the Power enum does not express (FR-5.6, 0.16.0-broadcaster-ui/02-analysis/rul… |
+| F-74 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md:166` | Mentioned: And verifying it found a live defect — F-74, fixed the same day. See the follow-ups. |
 | F-75 |  | `follow-ups.md` | Transition cards have no association with the card they bookend, and the Director has no mechanism to create … |
+| F-76 |  | `follow-ups-closed.md` | CLOSED 2026-09-10 (D-48) — one timestamp per slot, bounded by the registry, and the read history was ruled ou… |
+| F-77 |  | `follow-ups-closed.md` | ANSWERED 2026-09-10 (D-62) — the BED moves INTO the broadcast section, selector and all. The HUM LEAD ruled t… |
 | F-78 |  | `follow-ups.md` | A TAKEOVER IS NOT A FOUR-ROW CARD, AND THE CONSOLE DRAWS IT AS ONE. The reference's priority overlay is a TAL… |
+| F-79 |  | `follow-ups-closed.md` | CLOSED 2026-09-11 (D-78). Publish carries the bed beside the line-up and the power — one effect, because D-62… |
+| F-80 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md:190` | Mentioned: THE DEEPER QUESTION IS STILL OPEN AND IT IS F-80's. Observer's playback and the console's ON AIR |
+| F-81 |  | `follow-ups-closed.md` | CLOSED 2026-09-10 (D-72) — and the answer was already in the tree. domains/locations/geodata embeds 34,106 US… |
+| F-82 |  | `follow-ups-closed.md` | CLOSED 2026-09-10 (D-72), and measured closed. The cap was never the lineup's refusal of a duplicate identity… |
 | F-83 |  | `follow-ups.md` | A SLOT CAN NOW BE EMPTY FOR THREE DIFFERENT REASONS AND SAYS THE SAME THING ABOUT ALL OF THEM. The console dr… |
+| F-84 |  | `follow-ups-closed.md` | CLOSED 2026-09-11 (D-83), and the row's premise was HALF WRONG. ~~Card carries Subject and Headline and no wo… |
+| F-85 |  | `follow-ups-closed.md` | CLOSED 2026-09-10 (D-71), by the defect it predicted. render.SpliceCells now lands on display columns, keeps … |
 | F-86 |  | `follow-ups.md` | A CONTROL THE MASTHEAD ADVERTISES CAN BE HELD BY SOMETHING ELSE, AND NOTHING SAYS SO. The HUM LEAD reported q… |
+| F-87 |  | `follow-ups-closed.md` | THE OPERATOR CANNOT EDIT THE STATION'S SETTINGS FROM THE APP. [broadcaster] transmitter and service_radius_mi… |
+| F-88 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d73.md:83` | Mentioned: line-up — with the owner deciding which is true. Filed as F-88 rather than half-built. |
+| F-89 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d78.md:3` | Mentioned: Closes F-79 (the bed's state is not published) and the control half of F-89. |
 | F-90 |  | `follow-ups.md` | verify drives no console key on a real pty. journey now drives the console's keys (validate-journey.expect), … |
+| F-91 |  | `follow-ups-closed.md` | CLOSED 2026-09-11 (D-81). The main track's reader is built: speak forks on the card's LANE — the rail through… |
 | F-92 |  | `follow-ups.md` | THE ROTATION'S ROLES AND PAUSES DO NOT SURVIVE THE CARD (G-7). A synth.Segment carries Key, Text, Role, SelfI… |
+| F-93 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d82.md:125` | Mentioned: F-93 closes. |
 | F-94 |  | `follow-ups.md` | The console shows the live card's manifest and its detail window, not where in the read the voice is. Nothing… |
+| F-95 |  | `follow-ups-closed.md` | CLOSED 2026-09-11 — AND IT WAS MINE, FROM D-81. StartSource halts whatever it is replacing BEFORE arming the … |
+| F-97 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d88.md:3` | Mentioned: Status: BUILT, 2026-09-11. Closes F-97. |
+| F-98 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d90.md:3` | Mentioned: Status: BUILT, 2026-09-11. Closes F-98. Files F-99. |
+| F-99 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d90.md:3` | Mentioned: Status: BUILT, 2026-09-11. Closes F-98. Files F-99. |
+| F-100 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d91.md:3` | Mentioned: Status: stage A BUILT, 2026-09-12. Closes F-100. |
+| F-101 |  | `follow-ups-closed.md` | go test -tags watchpost_debug ./app failed once, unexplained, and passed on every run since. 2026-09-13, duri… |
 | F-102 |  | `follow-ups.md` | A test's t.TempDir() cleanup failed once: TempDir RemoveAll cleanup: unlinkat /var/.../TestACardThatNamesNoSe… |
 | F-102 | 0.16.0 | `0.16.0-broadcaster-ui/04-development/p7-build-log.md` | re-verified at the HUM LEAD's request — not present |
 | F-103 |  | `follow-ups.md` | scheduleIndex and visible()/lastVisible() filter only structural; Projection filters structural AND OutOfFenc… |
 | F-104 |  | `follow-ups.md` | refreshStandby returns early whenever the rail holds anything (Director.refreshStandby, platform/lineup/stale… |
+| F-105 | 0.19.5 | `0.19.5-quality-pass/02-analysis/lens-DC-docs-comments.md:131` | Mentioned: F-105 cites onRestored (deleted, as F-108 itself says). |
 | F-106 |  | `follow-ups.md` | TruncateCells returns its input UNCUT when given a non-SGR escape (platform/render/text.go): the scanner term… |
 | F-107 |  | `follow-ups.md` | SpliceCells has a caller now (modes/tty/map_boxes.go), and its doc says it never changes the row's width, whi… |
 | F-108 |  | `follow-ups.md` | Three surfaces say something the code does not do. (a) modes/tty/broadcaster_manage.go:79 tells the operator … |
+| F-109 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-build.md:56` | Mentioned: I3 docs Three reconciliation successors do not carry the property; one hid a real hole FIXED for t… |
 | F-110 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | A lapsed hazard suppressed its live siblings: the composer declined the whole burst if any ref had lapsed |
 | F-110 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-build.md` | (found by the fix) |
+| F-111 |  | `follow-ups-closed.md` | report.Kind is a closed set the operator now picks from (FR-3.4), and nothing noticed a fifth. A new kind wou… |
+| F-112 |  | `follow-ups-closed.md` | lineupColumnDefs' doc claimed "giving the two widest columns the slack" while exactly ONE column fills. Wheth… |
+| F-113 |  | `follow-ups-closed.md` | asciiMarks derives the ASCII glyph pairing by reflection so a forgotten glyph cannot slip through — and its s… |
+| F-114 |  | `follow-ups-closed.md` | A [keys] config that 0.15.0 accepted can now refuse to launch. This release is the first to apply overrides t… |
 | F-115 |  | `follow-ups.md` | FullLabel is 21 cells and REPORT TYPE's declared width is 20. The label on the most common row in the running… |
 | F-116 |  | `follow-ups.md` | castRowOrder() and castLabel are hand-written and derive from nothing. A new report kind with a correspondent… |
+| F-117 |  | `handoff-0.16.0.md:129` | Mentioned: F-117 was closed three times. Each time a real attack was constructed and really did fail the |
+| F-118 |  | `follow-ups-closed.md` | scripts/lint.sh does not fail closed. It discards golangci-lint's exit code with |
 | F-119 |  | `follow-ups.md` | lint-watermark.sh's positive control tests a different code path than the gate runs. scan() exists only for t… |
 | F-120 |  | `follow-ups.md` | mutant-anchors.sh claims a wider sandbox than it implements. It neuters Path.write_text only; open(p,'w'), un… |
 | F-121 |  | `follow-ups.md` | mutant-check costs ~400 s per push and cannot fail on a survived mutant. It asserts the corpus applies and co… |
+| F-122 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-validate.md:92` | Mentioned: Follow-ups (10 CLOSED this week): F-118, F-122, F-125 (A20 gatemodel_test.go:83), F-127 (A5/A37), … |
+| F-123 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:164` | Mentioned: (records): F-143, F-136, F-145, F-146, F-147, F-123, F-144, F-141, F-148. Deferred to 0.16.5 with a |
 | F-124 |  | `follow-ups.md` | Fifteen catalogue rules ranked for mechanisation, an explicit do-not-build list, a shell-versus-Go split, the… |
+| F-125 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-validate.md:92` | Mentioned: Follow-ups (10 CLOSED this week): F-118, F-122, F-125 (A20 gatemodel_test.go:83), F-127 (A5/A37), … |
+| F-127 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-validate.md:92` | Mentioned: Follow-ups (10 CLOSED this week): F-118, F-122, F-125 (A20 gatemodel_test.go:83), F-127 (A5/A37), … |
+| F-128 |  | `handoff-0.16.0.md:108` | Mentioned: a hole the pre-fix version had caught (F-128). |
+| F-129 |  | `gate-attack-list.md:88` | Mentioned: app/segments_completeness_test.go (F-129, the := shadow) is an AST gate over a different |
+| F-131 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-validate.md:92` | Mentioned: Follow-ups (10 CLOSED this week): F-118, F-122, F-125 (A20 gatemodel_test.go:83), F-127 (A5/A37), … |
 | F-133 |  | `follow-ups.md` | lint-ledger.sh --self-test carries a private copy of its own rule list — six probes against six rules, nothin… |
+| F-136 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:164` | Mentioned: (records): F-143, F-136, F-145, F-146, F-147, F-123, F-144, F-141, F-148. Deferred to 0.16.5 with a |
 | F-137 |  | `follow-ups.md` | AP-HIST-01 by the rule, not the phrase list. ~123 lines of production comment narrate a past the reader will … |
 | F-138 |  | `follow-ups.md` | One verifier passes on an unconfirmed proof point: modes/tty/broadcaster_uat_test.go skips when its fixture o… |
 | F-139 |  | `follow-ups.md` | A P10 gate arm that cannot fail on any platform CI runs, printing skipped (checked on windows) while the matr… |
+| F-140 |  | `follow-ups-closed.md` | A ratified P10 exemption names a symbol that does not exist — app/radio_queue.go · stopDwell. The narrowing s… |
+| F-141 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:164` | Mentioned: (records): F-143, F-136, F-145, F-146, F-147, F-123, F-144, F-141, F-148. Deferred to 0.16.5 with a |
 | F-142 | 0.16.0 | `0.16.0-broadcaster-ui/07-readiness/gates.md` | closed: the roster names tests that exist, and every gate names a failure it watched (2026-09-17) |
+| F-143 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:164` | Mentioned: (records): F-143, F-136, F-145, F-146, F-147, F-123, F-144, F-141, F-148. Deferred to 0.16.5 with a |
+| F-144 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:164` | Mentioned: (records): F-143, F-136, F-145, F-146, F-147, F-123, F-144, F-141, F-148. Deferred to 0.16.5 with a |
+| F-145 | 0.16.0 | `0.16.0-broadcaster-ui/07-readiness/exposure-statement.md:20` | Mentioned: from the tree as it now stands. Re-derived again at BUILD exit, 2026-09-17 (red team F-145: the |
+| F-146 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:164` | Mentioned: (records): F-143, F-136, F-145, F-146, F-147, F-123, F-144, F-141, F-148. Deferred to 0.16.5 with a |
+| F-147 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:164` | Mentioned: (records): F-143, F-136, F-145, F-146, F-147, F-123, F-144, F-141, F-148. Deferred to 0.16.5 with a |
+| F-148 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md:285` | Mentioned: defended (F-148). What follows is the whole set, derived. |
+| F-149 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:162` | Mentioned: Batch A (product): F-149, F-150, F-151 — three tests with watched reds. F-142: the roster names te… |
+| F-150 |  | `follow-ups-closed.md` | A declined main-track card leaves no operator cue, no default log and no escalation. decline() always returns… |
+| F-151 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:162` | Mentioned: Batch A (product): F-149, F-150, F-151 — three tests with watched reds. F-142: the roster names te… |
+| F-152 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:25` | Mentioned: F-152 (new, found by the oracle) make fmt passed with gofmt unable to run CLOSED — the recipe read… |
+| F-153 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:26` | Mentioned: F-153 The oracle's verdict depends on the local make; GNU Make 3.81 cannot express .SHELLFLAGS CLO… |
+| F-154 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:40` | Mentioned: F-154 (new) The adversary's K-ok row was wrong in the LIST: a; b discards a's status and the oracl… |
+| F-155 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:52` | Mentioned: F-155 (process) Three reviewers left zz_review_test.go in a shared scratch directory, breaking the… |
 | F-156 |  | `follow-ups.md` | Port the non-Go sources under scripts/ to tools/. Each has a ratified row in the shell ledger (cmd/watchpost/… |
 | F-157 |  | `follow-ups.md` | Tier three never reaches a slot. Measured around the real index: 3 mi gives a pool of one place, 10 mi 7, 50 … |
 | F-158 |  | `follow-ups.md` | The P3(d) ruling is owed: app/maintrack.go is the merge's switch (WATCHPOST_MAINTRACK, default off), so relay… |
@@ -2213,26 +2290,44 @@ cell; a later table that mentions it is not listed.
 | F-160 |  | `follow-ups.md` | FR-9.2 is not pinned as written: the tower's coordinate pair as a typed value with one owner (platform/config… |
 | F-161 |  | `follow-ups.md` | FR-3.6 is open: a card dropped at the fifteen-minute staleness bound tells the listener (dropStale → readInst… |
 | F-162 |  | `follow-ups.md` | FR-8.8 is open: the console shows one data-pull stamp per card; the per-kind last arrival that moves when dat… |
+| F-163 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/debrief.md:130` | Mentioned: round. Ruled and closed at exit: F-163 (a Run: 0 escalation shown by its reason; a decline does |
+| F-164 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/debrief.md:131` | Mentioned: not break a run) and F-164 (D-159: a fall-through to synth releases the cut-over). Owed to the |
 | F-170 |  | `follow-ups.md` | A gate that renders the architecture diagrams. Five diagrams in three releases' documents did not parse - unq… |
 | F-171 |  | `follow-ups.md` | MaxVertices and MaxRings are derived from a sample, not a census. Eighty of roughly three thousand forecast z… |
 | F-172 |  | `follow-ups.md` | A shape's winding is never read, so a hole is a hole only by position. platform/geo takes the first ring of a… |
+| F-173 | 0.19.5 | `0.19.5-quality-pass/02-analysis/lens-DC-docs-comments.md:122` | Mentioned: F-173: ci.yml:15-17 concurrency group. |
 | F-174 |  | `follow-ups.md` | The Broadcaster gets one map, and it is not the Observer's. (0.18.0's record, and what a cold session must re… |
 | F-175 |  | `follow-ups.md` | Spot reports may one day carry a map, and --no-map belongs to them alone. The one-shot CLI reports (modes/rep… |
+| F-176 | 0.18.0 | `observer-maps/02-analysis/rulings.md:69` | Mentioned: D-53 2026-09-23 PLAN red team P-9 (cross-repo, go-tuiMaps D-71): M1b declared "green" on Report wi… |
 | F-177 |  | `follow-ups.md` | The ledger self-test probes the static half of the internal-tree rule and nothing else. Its eight probes (scr… |
 | F-178 |  | `follow-ups.md` | Two smaller findings from the same round, both about claims wider than their evidence. (a) tools/internaltree… |
 | F-179 |  | `follow-ups.md` | The identity gate cannot see a file that is about to be committed. It scans git ls-files (cmd/watchpost/ident… |
+| F-180 |  | `follow-ups-closed.md` | A motion setting that reaches only the map. FR-5.8's Settings row, and reduce motion wired to the map library… |
 | F-181 |  | `follow-ups.md` | One voice pass: speak the map's description, and fix the voice bugs the HUM LEAD has found. 0.18.0's descript… |
 | F-182 |  | `follow-ups.md` | Forecast alert products on the map. The map's forecast overlays are built in 0.18.0: temperature and its days… |
 | F-183 |  | `follow-ups.md` | Radar's memory and speed. The image budget is 24 MiB (D-88) to make radar work; a view across four boxes fetc… |
+| F-184 |  | `follow-ups-closed.md` | Closed 2026-09-27, observer-maps batch 30: window_keys.go - one declaration a window; routing, the windows' n… |
 | F-185 |  | `follow-ups.md` | The bed fence's reach, said. app/bedfence.go counts the NWR relays a bed fence reaches and words what that me… |
+| F-186 | 0.18.0 | `observer-maps/02-analysis/rulings.md:226` | Mentioned: D-210 2026-10-02 F-186 (history in comments, AP-HIST-01): 215 comment lines hit the history phrase… |
+| F-187 |  | `follow-ups-closed.md` | An orphaned say outlives watchpost. exec.CommandContext kills say when its read is cancelled, but a watchpost… |
+| F-188 |  | `follow-ups-closed.md` | make test-say hangs now and then, with no orphan to blame. On 2026-10-03 the real /usr/bin/say hung until its… |
 | F-189 |  | `follow-ups.md` | MUF, foF2 and eSSN overlays and the Broadcaster's frequency planner (0.18.0 D-238), as 0.19.0 left them. 0.19… |
+| F-190 |  | `follow-ups-closed.md` | CLOSED 2026-10-04: the shared poll helpers wait ten seconds (platform/sched's waitFor, app's waitUntil throug… |
+| F-191 |  | `follow-ups-closed.md` | FR-1.8: the map window says its picture is braille, and names the remedy. A line in the map window's help, ou… |
+| F-192 |  | `follow-ups-closed.md` | FR-5.8: radar's motion Setting - off, slow, normal - and reduce motion. The library's ReduceMotion behind the… |
+| F-193 | 0.19.0 | `propagation-overlays/01-objectives/requirements.md:162` | Mentioned: FR-7.2 (0.19.3) F-192, F-193, F-194, F-180: one "Reduce motion" switch for the whole app, off by d… |
+| F-194 |  | `follow-ups-closed.md` | FR-9.6: the loop's playback speed a Setting - 200 to 1000 ms a frame, 500 ms by default, the flash-ceiling no… |
 | F-195 |  | `follow-ups.md` | FR-9.5: the radar step a Setting beside the map source, through FR-9.2's cost warning. 0.18.0 keeps the five-… |
+| F-196 |  | `follow-ups-closed.md` | FR-7.1: the Monochrome theme hints the map library to draw without colour. The library honours NO_COLOR itsel… |
+| F-197 |  | `follow-ups-closed.md` | FR-7.2: a guard refusing colour literals in the map's packages. |
+| F-198 |  | `follow-ups-closed.md` | FR-7.5: a CheckRamp matrix of palette, theme ground and depth in watchpost's tests - the vision check RK-12 n… |
 | F-199 |  | `follow-ups.md` | temperature.Series as one measure a field. Six parallel by-hour slices, each inserted into by name in hourInd… |
 | F-200 |  | `follow-ups.md` | The zone store on platform/agememo. zones.Store keeps its own aged cache: two asks for the same missing id bo… |
 | F-201 |  | `follow-ups.md` | domains/temperature holds more than temperature - rain, waves, wind, UV and Open-Meteo's quota gate. A name s… |
 | F-202 |  | `follow-ups.md` | A view-bounds method from go-tuiMaps. watchpost's viewBox works the view's box out from the library's publish… |
 | F-203 |  | `follow-ups.md` | The feed's time-based reveal. D-98 drew each alert, quake, fire and station only while the mode's moment meet… |
 | F-204 |  | `follow-ups.md` | The temperature's other layers asked beside its boxes. The boxes are fetched together (REVIEW PF-5); the rain… |
+| F-205 |  | `follow-ups-closed.md` | What a listener without the picture is told (D-273). The cursor is never placed for a screen reader (AX-3, ol… |
 | F-206 |  | `follow-ups.md` | Fallback coefficient tables of our own, with less of the CCIR/URSI lineage. go-ionomaps' climatology (M(3000)… |
 | F-207 |  | `follow-ups.md` | Observed spots beside the modelled fields. WSPR reception reports (wspr.live) answer PS-2's question directly… |
 | F-208 |  | `follow-ups.md` | If GIRO refuses watchpost. While the Propagation mode is open, an update asks GIRO about 39 times an hour (0.… |
@@ -2242,6 +2337,10 @@ cell; a later table that mentions it is not listed.
 | F-212 |  | `follow-ups.md` | Storm modelling. 0.19.0 names NOAA's space-weather scales but does not model a storm's effects (D-88): a stor… |
 | F-213 |  | `follow-ups.md` | The idle redraw. Today's watchpost uses about 3% of one core offline, sitting on the dashboard (G1's dry run,… |
 | F-214 |  | `follow-ups.md` | A bound with a least zoom and no box, from go-tuiMaps. The Propagation mode (0.19.0 W2.2) needs the whole wor… |
+| F-215 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md:222` | Mentioned: D-201 2026-10-16 Asked "are we ready to begin the build-exit process?", two surveys of the three p… |
+| F-216 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
+| F-217 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md:243` | Mentioned: D-222 2026-10-18 F-217, a quality floor (BUILD red team P-4): go-ionomaps' R-8.1 asks it to recomp… |
+| F-218 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md:252` | Mentioned: D-231 2026-10-18 BUILD report ruling 2 (F-218, round 2 PN2-8): a place abroad is said "near Tokyo,… |
 | F-219 |  | `follow-ups.md` | macOS's speech service now and then leaves say unanswered, so make test-say fails at its bound: two of six ma… |
 | F-220 |  | `follow-ups.md` | The open map's own cost. The map open in Forecast mode costs about 3.6 % of a core and 50 MB of RSS over the … |
 | F-221 |  | `follow-ups.md` | P10's density counter counts a branch's touched functions, not a package's. modes/tty's floor fell from 0.43 … |
