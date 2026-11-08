@@ -51,7 +51,18 @@ mkdir -p "$(dirname "$timings")"
 list=$(ls 06_docs/mutants/m*.py)
 total=$(echo "$list" | wc -l | tr -d ' ')
 
-pkgof() { sed -n 's/.*pathlib\.Path("\([^"]*\)").*/\1/p' "$1" | head -1 | xargs dirname; }
+# pkgof is the package a mutant edits, from its first pathlib.Path literal in
+# either quote, or ./... when the target is not a Go file (a Makefile or a
+# workflow, whose detectors live anywhere), or nothing when it finds no target,
+# which the loop refuses rather than testing the repository root.
+pkgof() {
+	t=$(sed -n "s/.*pathlib\.Path([\"']\([^\"']*\)[\"']).*/\1/p" "$1" | head -1)
+	[ -n "$t" ] || return 0
+	case "$t" in
+	*.go) dirname "$t" ;;
+	*) echo "..." ;;
+	esac
+}
 
 # THE ETA IS MEASURED, NOT GUESSED, and that is the whole of this block.
 #
@@ -111,7 +122,11 @@ n=0 caught=0 survived=0 noevidence=0
 for m in $list; do
 	n=$((n + 1))
 	pk=$(pkgof "$m")
-	pkg="./$pk/"
+	case "$pk" in
+	"") echo "mutant-verdicts: $m names no target this script can read" | tee -a "$out"; exit 2 ;;
+	...) pkg="./..." ;;
+	*) pkg="./$pk/" ;;
+	esac
 	ensure_baseline "$pkg"
 	start=$(date +%s)
 	v=$(MUTANT_BASELINE=assumed ./06_docs/mutants/run.sh "$m" "$pkg" 2>&1 | tail -1)

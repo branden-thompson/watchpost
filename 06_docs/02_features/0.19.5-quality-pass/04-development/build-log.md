@@ -1996,3 +1996,31 @@ Markdown only, through the docs lane.
     - step 3 says why its width is the safe side.
   - `platform/report/report.go`'s `Describe` doc no longer says "there is no card in that state".
   - extending.md's intro says to run `make mutant-anchors` before moving or re-wording code.
+
+## 0.19.5 batch 47 — the mutant instruments read both of Python's quotes
+
+- **Found by the verdict sweep.**
+  - `make mutant-verdicts` stopped at mutant 33 of 1,057 with "baseline .// ... RED — the unmutated
+    tree is not green". That mutant, m133, is written `pathlib.Path('modes/tty/…')`.
+  - The sweep's `pkgof` read only `Path("…")`, so its package came out empty, and the sweep tested
+    the repository root, which holds no Go.
+  - **647 of the corpus's 1,057 mutants use single quotes**, most of those written since 0.19.0.
+    So the sweep could not have completed over them.
+- **The same gap in `make verify`, failing open.**
+  - `06_docs/mutants/mutants_test.go`'s `targetRE` read only double quotes too.
+  - `TestEveryMutantAppliesAndCompiles` still ran `go build ./...` on every mutant. But it skipped
+    `go vet`, which compiles the test files, for each of the 647.
+  - So a mutant that broke a test file's compile would have passed as "applies". Code-quality
+    question 9, a verifier that cannot verify must fail, is the class.
+- **The fix.**
+  - Both read either quote.
+  - The sweep runs a mutant whose target is not Go (the Makefile, a workflow: four of them)
+    against `./...`, rather than the root.
+  - It stops by name on a mutant with no readable target, rather than testing the root.
+  - New: `TestEveryMutantNamesItsTarget` fails a mutant `targetRE` cannot read. Run against the old
+    pattern it fails all 647, so it discriminates. It has no mutant of its own, because the corpus
+    test builds only under the `mutants` tag, which the sweep does not pass.
+- **What this gate now measures for the first time.** `go vet` over the packages of the 647 mutants.
+  This batch's gate ran it: all 1,057 mutants apply, build and vet, so the gap hid no broken mutant.
+- **The failed sweep's partial record** (43 lines, the 32 mutants it judged, all CAUGHT) is not
+  committed. The re-run writes the record whole.
