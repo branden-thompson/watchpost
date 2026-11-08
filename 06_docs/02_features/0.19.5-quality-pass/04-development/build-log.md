@@ -1952,3 +1952,17 @@ Markdown only, through the docs lane.
     radio.go.
   - The cadence test's failure asks for the freshness reason in the build log, not in a plan section
     no reader can find.
+
+## 0.19.5 batch 45 — a note that cites an ID is not its row (D-37)
+
+- **Found how.** Batch 44 let a defining cell carry any one parenthesis, which re-admitted the M5
+  keys' "F-111 (cited)" rows that batch 43 had kept out. Building the T3 re-trace's copy turned up
+  five index rows pointing into `m5-key/`. Batch 44's "none unresolved" scan had passed on them.
+- **The fix.** The parenthesis may hold only a code: a priority or tier (P1, O1, O3) or a release.
+  Those are the forms the record uses after a defining ID; words, such as "cited", make the cell a
+  note about the ID.
+  - `TestAPriorityStillDefinesAndAReferenceIsNoSubject` now holds "F-111 (cited)" to defining nothing.
+  - m809 follows the narrower pattern and is re-vetted.
+  - New: `TestAReportAboutIDsDefinesNone` fails any index row from an M5 key.
+- **The check.** The M5-input ID scan, re-run with no key rows in the index, finds none unresolved.
+  FR-3.8 still resolves to its requirement.

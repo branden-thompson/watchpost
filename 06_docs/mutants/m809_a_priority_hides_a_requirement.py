@@ -3,6 +3,6 @@ import pathlib
 # defines its ID, so the requirement resolves only to a traceability row.
 # Killed by TestAPriorityStillDefinesAndAReferenceIsNoSubject.
 p = pathlib.Path('tools/ids/main.go'); s = p.read_text()
-old = '[a-z]?(?:\\s*\\([^)]*\\))?$`)'
+old = '[a-z]?(?:\\s*\\((?:[A-Z]\\d+|\\d+\\.\\d+\\.\\d+)\\))?$`)'
 assert s.count(old) == 1, 'm809'
 p.write_text(s.replace(old, '[a-z]?$`)', 1))

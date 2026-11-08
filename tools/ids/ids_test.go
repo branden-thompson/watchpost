@@ -158,15 +158,31 @@ func TestAnUntabledRulingIsIndexedByItsMention(t *testing.T) {
 // carries its priority ("FR-3.8 (P1)") still defines it, and a cell of
 // references only is passed over for the first cell with a word in it.
 func TestAPriorityStillDefinesAndAReferenceIsNoSubject(t *testing.T) {
-	src := "| FR-3.8 *(P1)* | Tile sources are a closed list |\n| D-2 | W1.13, W3.7 | the plan's own task |\n"
+	src := "| FR-3.8 *(P1)* | Tile sources are a closed list |\n| D-2 | W1.13, W3.7 | the plan's own task |\n| F-111 (cited) | extending.md:94 | No row. |\n"
 	got := rowsOf(src, "02_features/observer-maps/01-objectives/requirements.md")
 	if len(got) != 2 {
-		t.Fatalf("got %d rows, want FR-3.8 and D-2: %+v", len(got), got)
+		t.Fatalf("got %d rows, want FR-3.8 and D-2 (a note that cites F-111 defines nothing): %+v", len(got), got)
 	}
 	if r := got[0]; r.family != "FR" || r.num != "3" || r.suffix != ".8" || r.subject != "Tile sources are a closed list" {
 		t.Errorf("FR-3.8 read as %+v", r)
 	}
 	if r := got[1]; r.subject != "the plan's own task" {
 		t.Errorf("D-2's subject is %q; want the cell with a word, not its references", r.subject)
+	}
+}
+
+// TestAReportAboutIDsDefinesNone holds 0.19.5's M5 answer keys out of the
+// index: they list the IDs a reviewer could not resolve, in tables led by
+// the ID, and twice a reading rule let those rows define what they reported
+// as missing.
+func TestAReportAboutIDsDefinesNone(t *testing.T) {
+	index, err := build(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(index, "\n") {
+		if strings.Contains(line, "/08-reports/m5-key/") {
+			t.Errorf("ids.md has a row from an M5 key, which reports IDs and defines none: %s", line)
+		}
 	}
 }

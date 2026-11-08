@@ -320,9 +320,10 @@ line elsewhere in the record. The subject is that line, which is where its conte
 `
 
 // definingCell is a first cell that is an ID and nothing else, emphasis
-// aside, or an ID and one parenthesis, as a requirement carries its priority
-// (0.18.0 FR-3.8 is written "(P1)" after its ID).
-var definingCell = regexp.MustCompile(`^(?:` + strings.Join(idset.Families, "|") + `)-\d+(?:\.\d+)*[a-z]?(?:\s*\([^)]*\))?$`)
+// aside, or an ID and a code in parentheses: a requirement's priority or tier
+// (0.18.0 FR-3.8 is written "(P1)" after its ID) or a release. Words in the
+// parentheses ("cited") make the cell a note about the ID, not its row.
+var definingCell = regexp.MustCompile(`^(?:` + strings.Join(idset.Families, "|") + `)-\d+(?:\.\d+)*[a-z]?(?:\s*\((?:[A-Z]\d+|\d+\.\d+\.\d+)\))?$`)
 
 // definingHeading is a heading that opens with an ID, and its title.
 var definingHeading = regexp.MustCompile(`^#{1,4}\s+(?:\*\*)?((?:` + strings.Join(idset.Families, "|") + `)-\d+(?:\.\d+)*[a-z]?)(?:\*\*)?(?:\s*[—:–-]\s*|\s+|$)(.*)$`)

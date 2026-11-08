@@ -276,7 +276,6 @@ cell; a later table that mentions it is not listed.
 | FR-6 | 0.19.0 | `propagation-overlays/01-objectives/requirements.md` | Storage (D-55, D-78) |
 | FR-6 |  | `severe-alerts-modals/01-objectives/objectives.md` | Category colours standard + theme-independent hue, tinted on the active modal substrate, monochrome greys (R-… |
 | FR-6 |  | `severe-alerts-modals/08-reports/discover-report.md` | Category colours, fixed hue, themed substrate (R-6; SAM-D-7) |
-| FR-6.1 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/build-report.md` | A location the feed cannot serve stops reading as "loading". Needed a new snapshot field, Location.WeatherAsOf |
 | FR-6.1 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | Broadcaster has its own settings modal, editing only its own or shared fields |
 | FR-6.1 | 0.18.0 | `observer-maps/01-objectives/requirements.md` | Hotspots, incidents and quakes drawn as static points, each a layer the listener can switch |
 | FR-6.2 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/build-report.md` | No code — F-46 was already closed as not a defect; the requirement was answered by ruling it out |
@@ -287,8 +286,6 @@ cell; a later table that mentions it is not listed.
 | FR-6.4 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | broadcaster.tower is a single table, never an array of tables, because the unknown-key |
 | FR-6.5 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md` | B5 (PD-7) |
 | FR-6.5 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | WITHDRAWN by D-20. There is no rename and no unification: Observer's alert radius |
-| FR-6.5 | 0.19.0 | `propagation-overlays/01-objectives/requirements.md` | The roll-up never erases a year (#27): a failed read of the year's roll-up refuses the write; roll-ups are sp… |
-| FR-6.6 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/build-report.md` | Closed unexplained on the HUM LEAD's ruling — one sighting, many UAT sessions since. The trap stays armed; re… |
 | FR-6.6 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | Key-binding overrides gain per-surface scoping before their sharing question is |
 | FR-7 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/discover-report.md` | Rulings, not migrations *(brief R6 — one item grew a precondition)* |
 | FR-7 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/requirements.md` | Layout and the minimum size |
@@ -298,20 +295,15 @@ cell; a later table that mentions it is not listed.
 | FR-7 | 0.19.0 | `propagation-overlays/01-objectives/requirements.md` | Accessibility carry-over (R-6; D-4, D-63, D-122, D-355, D-359, D-360 to D-365) |
 | FR-7 |  | `severe-alerts-modals/01-objectives/objectives.md` | Tone / inset / rail / chips match [A] (R-7) |
 | FR-7 |  | `severe-alerts-modals/08-reports/discover-report.md` | Same modal language as [A] (R-7) |
-| FR-7.1 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/build-report.md` | app/release.go ruled OUT of the provider seam as a named exception, and bounded to one check at startup |
 | FR-7.1 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | Broadcaster uses the platform breakpoint vocabulary, whose boundaries are redefined |
-| FR-7.1 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t3-console-card-line.md` | where-things-happen.md:68 |
 | FR-7.1 | 0.18.0 | `observer-maps/01-objectives/requirements.md` | Under NO_COLOR and the Monochrome and Light themes the map is readable: meaning never by colour alone. Watchp… |
 | FR-7.1 | 0.19.0 | `propagation-overlays/01-objectives/requirements.md` | F-191 (FR-1.8): the window says its picture is braille and names the remedy |
-| FR-7.2 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/build-report.md` | The cache stays at os.UserCacheDir(), ruled on a property: a cache must be disposable and OS-reclaimable |
 | FR-7.2 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | The console renders correctly at every supported class, decomposing as ruled — the |
 | FR-7.2 | 0.18.0 | `observer-maps/01-objectives/requirements.md` | Colours come from theme tokens |
 | FR-7.2 | 0.19.0 | `propagation-overlays/01-objectives/requirements.md` | F-192, F-193, F-194, F-180: one "Reduce motion" switch for the whole app, off by default (D-360); the map's "… |
-| FR-7.3 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/build-report.md` | The ledger gate F-45 asked for — and it found five more unratified exemptions, then 127 with no structured fi… |
 | FR-7.3 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | Below the minimum, the console shows a clear notice and does not render past the |
 | FR-7.3 | 0.18.0 | `observer-maps/01-objectives/requirements.md` | Coordinates are never spoken, and the FR-7.4 description is held to the same guard — it is written to be read… |
 | FR-7.3 | 0.19.0 | `propagation-overlays/01-objectives/requirements.md` | F-196, F-197, F-198: the Monochrome theme hint; the colour-literal guard; the CheckRamp matrix |
-| FR-7.4 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/build-report.md` | Ruled the other way: the attribution stamps STAY. They are citations into a live UAT log, 94% resolving, not … |
 | FR-7.4 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | Fixed chrome + one readable card within the ruled floor |
 | FR-7.4 | 0.18.0 | `observer-maps/01-objectives/requirements.md` | A text description ships in this release (macro phase 1): where the picture cannot be drawn or read — --ascii… |
 | FR-7.4 | 0.19.0 | `propagation-overlays/01-objectives/requirements.md` | F-205: the cursor at every focus point, steady: while the terminal is focused its cell on 15 % of the glyph's… |
@@ -371,7 +363,6 @@ cell; a later table that mentions it is not listed.
 | FR-9.6 | 0.18.0 | `observer-maps/01-objectives/requirements.md` | The loop's playback speed is a Setting: 200 ms to 1000 ms a frame, 500 ms by default (go-tuiMaps D-76). The c… |
 | FR-10 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/02-analysis/fr10-hazard-coverage.md` | hazard coverage, and the boundary (bounded investigation, 2026-09-08) |
 | FR-10 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/04-development/implementation-plan.md` | · Feed investigation |
-| FR-10 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/build-report.md` | Dispositioned. Both halves conclude "cannot be fixed here" — the fix owed downstream is a SOURCE, not code |
 | FR-10 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/discover-report.md` | Hazard coverage is known, and its boundary is stated *(F-40 — ROLLED IN, HUM LEAD 2026-09-07)* |
 | FR-10 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md` | Genuinely unsized. It is an investigation against external feeds. It gets a timebox at B1 entry and a written… |
 | FR-10 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/requirements.md` | Gain |
@@ -603,7 +594,6 @@ cell; a later table that mentions it is not listed.
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| DV-1 | 0.19.5 | `0.19.5-quality-pass/08-reports/red-team-plan.md` | D-22 |
 | DV-1 | 0.19.5 | `0.19.5-quality-pass/08-reports/reviewer-notes/plan-DV-delivery.md` | [Important]: M2's console target (140 KB) is out of reach of every task in the plan; the idle and radio targe… |
 | DV-2 | 0.19.5 | `0.19.5-quality-pass/08-reports/reviewer-notes/plan-DV-delivery.md` | [Important]: The plan has no batch map; as written, the gates run once per task |
 | DV-3 | 0.19.5 | `0.19.5-quality-pass/08-reports/reviewer-notes/plan-DV-delivery.md` | [Important]: The D-11 and D-12 rules arrive after the code they govern, so Q9.8 re-touches everything Q1 to Q… |
@@ -628,7 +618,6 @@ cell; a later table that mentions it is not listed.
 | JM-6 | 0.19.5 | `0.19.5-quality-pass/08-reports/reviewer-notes/plan-JM-junior-maintainer.md` | [Important]: The junior's map is not in the per-task "record moves with the code" step, so Q3 to Q6 leave it … |
 | JM-7 | 0.19.5 | `0.19.5-quality-pass/08-reports/reviewer-notes/plan-JM-junior-maintainer.md` | [Important]: The Q4 memo guards are specified "over the key", which cannot catch the junior's likely mistake,… |
 | JM-8 | 0.19.5 | `0.19.5-quality-pass/08-reports/reviewer-notes/plan-JM-junior-maintainer.md` | [Important]: Walkthrough 6 is not checked against a real Setting, and the one miss with no guard stays unguar… |
-| JM-9 | 0.19.5 | `0.19.5-quality-pass/08-reports/red-team-plan.md` | D-24 |
 | JM-9 | 0.19.5 | `0.19.5-quality-pass/08-reports/reviewer-notes/plan-JM-junior-maintainer.md` | [Important]: M5's REVIEW verdict has no pass criteria |
 | JM-10 | 0.19.5 | `0.19.5-quality-pass/08-reports/reviewer-notes/plan-JM-junior-maintainer.md` | [Minor]: Q9.1's doc.go will be concatenated with the stale fragments it replaces, and nothing keeps it current |
 | JM-11 | 0.19.5 | `0.19.5-quality-pass/08-reports/reviewer-notes/plan-JM-junior-maintainer.md` | [Minor]: D-12's "touched code" is undefined, its rule text lands after its check, and the files on task 4's p… |
@@ -796,9 +785,7 @@ cell; a later table that mentions it is not listed.
 | RS-17 |  | `multi-voice-support/02-analysis/risk-register.md` | macOS voice identity is unstable — duplicate Aman/Tara engines; Enhanced/Premium under the same name |
 | RS-17 |  | `severe-alerts-modals/01-objectives/objectives.md` | Feed prose reaching the terminal unstripped on the reused [A] path |
 | RS-17 |  | `severe-alerts-modals/08-reports/discover-report.md` | Feed prose reaching the terminal unstripped (pre-existing) |
-| RS-17 |  | `watchpost-cli/03-architecture-design/risk-register-pxi.md` | TTS exec-path fragility (PowerShell latency, macOS voice availability, Linux fragmentation) |
 | RS-18 |  | `multi-voice-support/02-analysis/risk-register.md` | Untrusted names reach the frame and the voice — a config-supplied voice name (13 fields in 0.14.0) is display… |
-| RS-18 |  | `watchpost-cli/03-architecture-design/risk-register-pxi.md` | bubbletea-latest churn (v2 API instability) invalidates v1-derived designs |
 | RS-19 |  | `multi-voice-support/02-analysis/risk-register.md` | Setup overflows at 80×24 today — modalMax = 12 rows, the form ≥ 19, no scroll for modalSetup, the focus mark … |
 | RS-19 |  | `watchpost-cli/03-architecture-design/architecture.md` | charm.land vanity-domain outage breaks builds |
 | RS-20 |  | `multi-voice-support/02-analysis/risk-register.md` | The hand-over inherits "broken script = silence" — an override typo turns the hand-over into the splice FR-5 … |
@@ -872,26 +859,18 @@ cell; a later table that mentions it is not listed.
 | OQ-13 |  | `multi-voice-support/08-reports/project-brief.md` | A burst mixing classes |
 | OQ-13 |  | `severe-alerts-modals/01-objectives/objectives.md` | Long NWS prose |
 | OQ-13 |  | `severe-alerts-modals/08-reports/discover-report.md` | Long NWS prose |
-| OQ-13 |  | `watchpost-cli/02-analysis/tier1-synthesis.md` | Acknowledge OQ-3 reinterpretation: go-studs needs no charm bump; watchpost adopts bubbletea v1 directly? |
-| OQ-13 |  | `watchpost-cli/02-analysis/tier2-synthesis.md` | "Acknowledge" — watchpost adopts current bubbletea directly; go-studs unchanged for v0.1. |
 | OQ-14 |  | `multi-voice-support/01-objectives/objectives.md` | Lead and sign-off |
 | OQ-14 |  | `multi-voice-support/08-reports/project-brief.md` | Lead and sign-off |
 | OQ-14 |  | `severe-alerts-modals/01-objectives/objectives.md` | ctrl+s XOFF exposure |
 | OQ-14 |  | `severe-alerts-modals/08-reports/discover-report.md` | ctrl+s exposure |
-| OQ-14 |  | `watchpost-cli/02-analysis/tier1-synthesis.md` | Contact wxradio.org operator for third-party-client permission before v0.1 release? |
-| OQ-14 |  | `watchpost-cli/02-analysis/tier2-synthesis.md` | "Defer" — no operator contact for now; revisit at SHIP readiness. |
 | OQ-15 |  | `multi-voice-support/01-objectives/objectives.md` | Spoken coastal-waters forecast |
 | OQ-15 |  | `multi-voice-support/08-reports/project-brief.md` | Spoken coastal-waters forecast |
 | OQ-15 |  | `severe-alerts-modals/01-objectives/objectives.md` | Storm names in narration too |
 | OQ-15 |  | `severe-alerts-modals/08-reports/discover-report.md` | Names in narration |
-| OQ-15 |  | `watchpost-cli/02-analysis/tier1-synthesis.md` | Accept GeoNames CC-BY attribution + Open-Meteo CC-BY attribution line in footer/--about? (Required by licence… |
-| OQ-15 |  | `watchpost-cli/02-analysis/tier2-synthesis.md` | "Accept in About frame/modal, not footer" — attribution (Open-Meteo, GeoNames, NASA FIRMS, NOAA/NWS) lives in… |
 | OQ-16 |  | `multi-voice-support/01-objectives/objectives.md` | Two-class products |
 | OQ-16 |  | `multi-voice-support/08-reports/project-brief.md` | Two-class products |
 | OQ-16 |  | `severe-alerts-modals/01-objectives/objectives.md` | Per-class detail structs vs flat Event |
 | OQ-16 |  | `severe-alerts-modals/08-reports/discover-report.md` | Per-class vs flat detail |
-| OQ-16 |  | `watchpost-cli/02-analysis/tier1-synthesis.md` | Bundle cities15000 (≈26k cities, 3.3 MB) or cities5000 (+2 MB) for offline type-ahead? Recommend 15000 + onli… |
-| OQ-16 |  | `watchpost-cli/02-analysis/tier2-synthesis.md` | "Yes + online fallback" — embed cities15000 + Open-Meteo online fallback. |
 | OQ-17 |  | `multi-voice-support/01-objectives/objectives.md` | Preview while on air |
 | OQ-17 |  | `multi-voice-support/08-reports/project-brief.md` | Preview while on air |
 | OQ-17 |  | `severe-alerts-modals/01-objectives/objectives.md` | Retained-set cap + wording |
@@ -920,7 +899,6 @@ cell; a later table that mentions it is not listed.
 | D-1 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | (OQ-1) — Mode-switch safety |
 | D-1 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Which version the pass ships as. watchpost is at 0.19.3; the last such pass was 0.9.5, straight after 0.9.4. … |
 | D-1 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | 0.19.5; 0.19.4 left free for a hotfix |
-| D-1 |  | `multi-voice-support/02-analysis/director-risks.md` | Open, and needs a count from the live feed rather than an estimate. It interacts with DR-13's fence. |
 | D-1 |  | `multi-voice-support/08-reports/red-team-discover.md` | Critical |
 | D-1 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Fold the identity-guard commit 17e40d4 into 0.18.0 or ship alone |
 | D-1 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | 'watchpost-0.19.0' + 'go-giro-data' / LEVEL-1; SEV-0; FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL … |
@@ -1108,19 +1086,16 @@ cell; a later table that mentions it is not listed.
 | D-21 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | A way to turn maps off; when the map touches the network |
 | D-21 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How propagation meets the region limit (OQ-7). Evidence: 0.18.0 D-8/D-28 held by TestNoFrameIsWiderThanTheReg… |
 | D-21 |  | `watchpost-cli/08-reports/project-brief.md` | Live UAT with HUM LEAD required for all view/mock implementations (B3+) |
-| D-22 | 0.16.0 | `0.16.0-broadcaster-ui/03-architecture-design/implementation-plan.md` | A1 — the full wire. This release is the MVP. |
 | D-22 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | A1 — the full wire. "This release IS the MVP." The audio merge is in scope |
 | D-22 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Plan red team fork 2 (DV-1), the agent's error at D-4: the console's stretch target of 140 KB a beat was set … |
 | D-22 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Do spot reports draw maps in 0.18.0? |
 | D-22 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The reference for M1 and M4 (OQ-1): WSPR via wspr.live, the Reverse Beacon Network, PSKReporter (wave1-findin… |
 | D-22 |  | `watchpost-cli/08-reports/project-brief.md` | B2 gate rulings R-1/R-2 |
-| D-23 | 0.16.0 | `0.16.0-broadcaster-ui/03-architecture-design/implementation-plan.md` | B1 approved — one placement event. Open: how it serves an operator doing several things |
 | D-23 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | B1 — one placement event, so the console names an intent and the Director owns the order |
 | D-23 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Plan red team fork 3 (JM-5, DV-5, RR-10), carrying out D-13: (a) the HUM LEAD's ratified P10 ledger row app/d… |
 | D-23 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Which alerts the map draws |
 | D-23 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The baseline for M1 and M4's targets, KC2G being off limits (D-18): (A) IRI climatology, (B) the HUM LEAD wri… |
 | D-23 |  | `watchpost-cli/08-reports/build-report.md` | Repository public |
-| D-24 | 0.16.0 | `0.16.0-broadcaster-ui/03-architecture-design/implementation-plan.md` | The medium decides. Duck the bed; pause the rotation, drain the rail, insert a transition, resume at full vol… |
 | D-24 | 0.16.0 | `0.16.0-broadcaster-ui/03-architecture-design/implementation-plan.md` | CORRECTED. Half of it is the code. The half this release needs is NOT. |
 | D-24 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | The medium decides. Duck the relay because it cannot be paused; pause the rendered read, drain the rail, inse… |
 | D-24 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Plan red team fork 4 (JM-9): M5 has no pass criteria. Proposed: a persona (knows Go and the Bubble Tea README… |
@@ -2126,23 +2101,18 @@ cell; a later table that mentions it is not listed.
 | F-1 |  | `watchpost-performance-quality-pass/04-development/follow-ups.md` | The RECENT / SEARCHED table "loads slower, and all at once": the empty state shows for a few seconds before t… |
 | F-2 |  | `multi-voice-support/08-reports/red-team-build-round2.md` | Still 3 classifiers over the same product strings. Its user-visible half is fixed (MVS-D-57); the architectur… |
 | F-2 |  | `watchpost-cli/08-reports/red-team-build.md` | Business |
-| F-2 |  | `watchpost-cli/08-reports/red-team-plan.md` | §10.2 |
 | F-2 |  | `watchpost-performance-quality-pass/04-development/follow-ups.md` | Some locations "no longer default to a Nearest Relay" (Carlsbad, Vista, Lone Pine, Coachella, then Temecula, … |
 | F-3 |  | `multi-voice-support/08-reports/red-team-build-round2.md` | app/release.go still declares no snapshot.Provider. Unchanged. |
 | F-3 |  | `watchpost-cli/08-reports/red-team-build.md` | Business |
-| F-3 |  | `watchpost-cli/08-reports/red-team-plan.md` | §10.1 merge rule + §10.2 taxonomy landed in round 1; round 2 caught the ledger omission and the two unclosed … |
 | F-4 |  | `follow-ups.md` | The [S] window builds its tables 3–4× per render (modalWidth → statusWidth → statusBlocks, then again for the… |
 | F-4 |  | `multi-voice-support/08-reports/red-team-build-round2.md` | Allocation pins exist for the frame, the severe window and Setup — none for [S], the most expensive window. U… |
 | F-4 |  | `watchpost-cli/08-reports/red-team-build.md` | Business |
 | F-5 |  | `watchpost-cli/08-reports/red-team-build.md` | Business |
 | F-6 |  | `watchpost-cli/08-reports/red-team-build.md` | Code Quality |
-| F-6 |  | `watchpost-cli/08-reports/red-team-plan.md` | Split B1a/B1b |
 | F-7 |  | `follow-ups.md` | plaintext.Text is not length-bounded. globalfeed caps its own fields at 120 runes; the boundary itself has no… |
 | F-7 |  | `watchpost-cli/08-reports/red-team-build.md` | Business |
-| F-7 |  | `watchpost-cli/08-reports/red-team-plan.md` | §10.3: v1.0-rc at B1a; v1.0 ratified at B5 exit (HUM LEAD gate item) |
 | F-8 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/red-team-discover.md` | Already fixed. httpx/memo.go:213 compares host and port |
 | F-8 |  | `watchpost-cli/08-reports/red-team-build.md` | Code Quality |
-| F-8 |  | `watchpost-cli/08-reports/red-team-plan.md` | RS-19/20/21 added in §10.9 with P×I ratings; pxi register carries a pointer (single source, no duplication — … |
 | F-9 |  | `watchpost-cli/08-reports/red-team-build.md` | Business |
 | F-10 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/red-team-discover.md` | Fixed in 0.14.0 (1abf27d), carried open through two releases |
 | F-10 |  | `watchpost-cli/08-reports/red-team-build.md` | Business |
@@ -2175,7 +2145,6 @@ cell; a later table that mentions it is not listed.
 | F-29 |  | `quality-observations.md` | the flake was never where it was recorded (2026-09-06) |
 | F-31 |  | `follow-ups.md` | ALERTS - READ ORDER — the listener-facing setting, DEFERRED to post-Broadcaster (MVS-D-79, HUM LEAD 2026-09-0… |
 | F-33 |  | `follow-ups.md` | RULED 2026-09-08 (HUM LEAD), and the ruling reframes the row rather than answering it. A relay fault is the O… |
-| F-34 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t3-console-card-line.md` | No row, and not in follow-ups.md where the doc says it is. |
 | F-37 |  | `follow-ups.md` | Non-ASCII furniture survives --ascii in four windows that have no --ascii scan. │ ×10 and ─ ×98 in Location D… |
 | F-38 |  | `follow-ups.md` | Nothing verifies at the ARTIFACT level that the injector is absent. app/inject_test.go asserts on the text of… |
 | F-41 |  | `multi-voice-support/08-reports/review-report.md` | Previewing a voice in Settings gave no sign it was working — p sent the deck's progress, and its reason on fa… |
@@ -2226,8 +2195,6 @@ cell; a later table that mentions it is not listed.
 | F-108 |  | `follow-ups.md` | Three surfaces say something the code does not do. (a) modes/tty/broadcaster_manage.go:79 tells the operator … |
 | F-110 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | A lapsed hazard suppressed its live siblings: the composer declined the whole burst if any ref had lapsed |
 | F-110 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-build.md` | (found by the fix) |
-| F-111 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t3-console-card-line.md` | extending.md:94 |
-| F-111 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t4-spoken-phrase.md` | docs/extending.md:94 |
 | F-115 |  | `follow-ups.md` | FullLabel is 21 cells and REPORT TYPE's declared width is 20. The label on the most common row in the running… |
 | F-116 |  | `follow-ups.md` | castRowOrder() and castLabel are hand-written and derive from nothing. A new report kind with a correspondent… |
 | F-119 |  | `follow-ups.md` | lint-watermark.sh's positive control tests a different code path than the gate runs. scan() exists only for t… |
@@ -2246,7 +2213,6 @@ cell; a later table that mentions it is not listed.
 | F-160 |  | `follow-ups.md` | FR-9.2 is not pinned as written: the tower's coordinate pair as a typed value with one owner (platform/config… |
 | F-161 |  | `follow-ups.md` | FR-3.6 is open: a card dropped at the fifteen-minute staleness bound tells the listener (dropStale → readInst… |
 | F-162 |  | `follow-ups.md` | FR-8.8 is open: the console shows one data-pull stamp per card; the per-kind last arrival that moves when dat… |
-| F-164 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t3-console-card-line.md` | No row. |
 | F-170 |  | `follow-ups.md` | A gate that renders the architecture diagrams. Five diagrams in three releases' documents did not parse - unq… |
 | F-171 |  | `follow-ups.md` | MaxVertices and MaxRings are derived from a sample, not a census. Eighty of roughly three thousand forecast z… |
 | F-172 |  | `follow-ups.md` | A shape's winding is never read, so a hole is a hole only by position. platform/geo takes the first ring of a… |
