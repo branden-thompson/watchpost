@@ -343,3 +343,56 @@ func TestAMethodRowNamesItsReceiver(t *testing.T) {
 		}
 	}
 }
+
+// TestEveryFileIsInItsPackagesMap is 0.19.5 Q9.1 (JM-10): modes/tty's and
+// app's doc.go each map their files by what they own, and a map that is not
+// held goes stale. Every non-test file matches a row's name or prefix, and
+// every row names at least one file that exists.
+func TestEveryFileIsInItsPackagesMap(t *testing.T) {
+	root := filepath.Join("..", "..")
+	for _, pkg := range []string{"modes/tty", "app"} {
+		doc, err := os.ReadFile(filepath.Join(root, pkg, "doc.go"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var patterns []string
+		for _, line := range strings.Split(string(doc), "\n") {
+			if strings.HasPrefix(line, "//\t") {
+				for _, m := range mapEntry.FindAllStringSubmatch(line, -1) {
+					patterns = append(patterns, m[1])
+				}
+			}
+		}
+		if len(patterns) < 10 {
+			t.Fatalf("%s/doc.go maps %d names; its table has narrowed or moved", pkg, len(patterns))
+		}
+		entries, err := os.ReadDir(filepath.Join(root, pkg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		used := map[string]bool{}
+		for _, e := range entries {
+			name := e.Name()
+			if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || name == "doc.go" {
+				continue
+			}
+			matched := false
+			for _, p := range patterns {
+				if p == name || strings.HasSuffix(p, "*") && strings.HasPrefix(name, strings.TrimSuffix(p, "*")) {
+					matched, used[p] = true, true
+				}
+			}
+			if !matched {
+				t.Errorf("%s/%s is in no row of %s/doc.go: add it to the row that owns what it does", pkg, name, pkg)
+			}
+		}
+		for _, p := range patterns {
+			if !used[p] {
+				t.Errorf("%s/doc.go names `%s`, which matches no file: the map has gone stale", pkg, p)
+			}
+		}
+	}
+}
+
+// mapEntry is a backticked file name or prefix in a doc.go's map.
+var mapEntry = regexp.MustCompile("`([a-z0-9_]+(?:\\.go|\\*))`")

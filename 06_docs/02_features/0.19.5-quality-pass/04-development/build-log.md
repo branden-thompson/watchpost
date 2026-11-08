@@ -1534,3 +1534,37 @@ Mutant m795, hand-vetted and killed. mAG4's anchor was untouched, and all 1,040 
 - **Not changed, and why.** `pkg/schema`'s v1.0.0-rc file is kept deliberately (CHANGELOG). The local
   `watchpost/CLAUDE.md` still names 0.19.0 as the release in flight. It is git-ignored and protected:
   changing it is the HUM LEAD's call.
+
+## 0.19.5 batch 34 — the two big packages have a front door (plan Q9.1, JR-3, JR-4, DC-11, JM-10)
+
+This batch changes comments, plus one test. Mutant m796 is hand-vetted and killed.
+
+- **`modes/tty/doc.go`** says what the package is now:
+  - the Router (`router.go`), the program's model, which owns the program's keys and swaps two
+    surfaces;
+  - the Observer, which is the `Dashboard` type;
+  - the Broadcaster console;
+  - the import rule as it stands (no domain; go-studs only through render), where JR-3 found
+    "reads ONLY platform/snapshot".
+
+  It also maps the package's files by what they own, in twelve rows, and points at
+  where-things-happen and the architecture page. The old package comment, "the B3 build of mock
+  rev2", is now a file header for `dashboard.go` that says what that file holds.
+- **`Dashboard`'s type doc** called it "the root TTY model". It is the Observer surface, one of the
+  two the Router holds.
+- **`app/doc.go`** gives the composition root's job in plain words and what it builds:
+  - the two pipelines;
+  - the ticker as the producer;
+  - the one deck;
+  - the arbiter and MasterControl;
+  - the schedule, its executors and the pump;
+  - the maps;
+  - the history recorder.
+
+  It also maps the package's files in ten rows. `app.go`, `dashboard.go` and `setup.go` keep file
+  headers. Those say what each file holds; the build-era labels (B3, M1, "B2 red-team #2") are gone.
+  SN-03 holds both packages to one package comment.
+- **The maps are held (JM-10).** `TestEveryFileIsInItsPackagesMap` checks that every non-test file in
+  each package matches a row's name or prefix, and that every row names a file that exists. A file
+  added without a row fails, and so does a row left after its files go. m796 drops a file from the
+  map.

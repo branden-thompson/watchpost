@@ -1,7 +1,7 @@
-// RunDashboard wires the live pipeline (B3): config locations → NWS provider
-// → tiered scheduler → published snapshots streamed into the TTY dashboard.
-// M1 instrumentation: the time from start to the first fully-populated
-// snapshot is logged to stderr on exit when WATCHPOST_DEBUG_TIMING=1.
+// dashboard.go — RunDashboard wires the live program: config locations →
+// providers → the tiered scheduler → published snapshots, streamed into the
+// terminal program. With WATCHPOST_DEBUG_TIMING=1 the time from start to the
+// first fully populated snapshot is logged to stderr on exit.
 
 package app
 

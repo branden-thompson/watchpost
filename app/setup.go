@@ -1,7 +1,7 @@
 // Setup (UAT 100, HUM LEAD 2026-08-25): the first-run questions live in a
 // window over the dashboard like every other modal (modes/tty setupLines);
 // this file is the app side — the type-ahead hook and the persist step.
-// Re-runs never destroy customizations (B2 red-team #2): the existing config
+// Re-runs never destroy customizations: the existing config
 // is loaded and only what setup owns is touched — the default location and,
 // when given, the FIRMS key.
 

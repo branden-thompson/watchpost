@@ -1,13 +1,7 @@
-// Package tty hosts the live TUI program (modes/ — reads ONLY
-// platform/snapshot per the import lint; M5 is structural).
-//
-// Dashboard is the B3 build of mock rev2 (125-col): header, conditional
-// alert module, radio player frame (static until B4), priority table,
-// seeded RECENT/SEARCHED table, chip-styled footer. The viewport carries a
-// 4-col padding all around and auto-resizes: the table drops column groups
-// as the terminal narrows and grows EXTENDED FORECAST columns beyond 125
-// (UAT session 2 B/C/D/E). All bindings are D-15 data — only '?' is locked
-// (R-3); defaults per D-19: a/A/ctrl+a, f/c units, q quit.
+// dashboard.go — the Observer's model: the messages it takes, its Config, the
+// Dashboard type and its keymap. All bindings are data (D-15); only '?' is
+// fixed (R-3).
+
 package tty
 
 import (
@@ -646,7 +640,8 @@ func defaultKeyMap() term.KeyMap {
 	}
 }
 
-// Dashboard is the root TTY model.
+// Dashboard is the Observer surface: the listener's dashboard, one of the two
+// surfaces the Router holds.
 type Dashboard struct {
 	cfg    Config
 	keys   term.KeyMap

@@ -1,8 +1,6 @@
-// Package app is the composition root (Option C): the one place that wires
-// domains, platform and the live surfaces together. cmd/watchpost stays thin:
-// it parses the command line and calls in here, and imports only the one-shot
-// report's renderer (modes/report) and the schema generator (pkg/schema)
-// itself.
+// app.go — the one-shot report (ReportOnce) and the User-Agent every request
+// carries. The package's map is doc.go.
+
 package app
 
 import (
