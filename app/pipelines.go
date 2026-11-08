@@ -132,7 +132,7 @@ func (pb *publisher) stats() tty.PipelineStats {
 func (pb *publisher) lastSnapshot() *snapshot.Snapshot { return pb.last.Load() }
 
 // The cadence tables — the one owner (L3-F14). TestCadenceTableIsTheDoc
-// prints them as the markdown table architecture.md §11.1 carries, so the
+// prints them as the markdown table watchpost-cli architecture §11.1 carries, so the
 // document is generated from these, never re-typed. Every cadence change
 // needs a §0.3 freshness row in the batch's build log.
 

@@ -1,6 +1,6 @@
 // Package config owns the watchpost user configuration file.
 //
-// Contract (architecture.md §10.11, C-3′): TOML at
+// Contract (watchpost-cli architecture §10.11, C-3′): TOML at
 // $XDG_CONFIG_HOME/watchpost/config.toml (fallback ~/.config), file mode 0600,
 // dir 0700, atomic writes (temp + rename). Holds locations, per-provider keys,
 // key bindings, radio and playlist settings. Never prompts a keychain; never

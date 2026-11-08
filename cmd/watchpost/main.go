@@ -1,6 +1,6 @@
 // Command watchpost is the terminal-native live weather station.
 //
-// Invocation surface (architecture.md §6, T-L):
+// Invocation surface (watchpost-cli architecture §6, T-L):
 //
 //	watchpost                 live TTY dashboard (B3)
 //	watchpost <location>      location detail (B3)

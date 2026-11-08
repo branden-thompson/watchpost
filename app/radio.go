@@ -27,7 +27,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// radioDeck is the dashboard's Radio hook (B4, architecture §5): resolves
+// radioDeck is the dashboard's Radio hook (B4, watchpost-cli architecture §5): resolves
 // a location to its NWR transmitter (county SAME from the cached NWS point
 // → vendored table → relay directories), tunes the pure-Go player, and
 // streams status back to the UI. Everything here runs on tea cmd
@@ -662,7 +662,7 @@ func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) 
 	d.startSynth(ref, why, gen)
 }
 
-// startSynth voices the location's NWS products (architecture §5 Synth):
+// startSynth voices the location's NWS products (watchpost-cli architecture §5 Synth):
 // the voice is the built-in `say` on macOS, Piper elsewhere — installed on
 // first use with progress shown in the player (HUM LEAD: first-run install).
 func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64) {

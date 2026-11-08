@@ -12,7 +12,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// Spec: architecture §10.2 (exit codes), §10.11 (null↔n/a parity), AI-10
+// Spec: watchpost-cli architecture §10.2 (exit codes), §10.11 (null↔n/a parity), AI-10
 // (envelope), M5 (bidirectional parity — every JSON data leaf's formatted form
 // appears in the plain render and vice versa). Fixture uses pairwise-distinct
 // sentinel values (red-team PLAN #3) so substring matches cannot alias.

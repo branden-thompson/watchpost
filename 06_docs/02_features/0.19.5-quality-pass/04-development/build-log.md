@@ -1425,3 +1425,40 @@ Documents and the atlas only. The atlas is regenerated in the same commit (59 di
   - The status line names 0.19.3 and 0.19.5.
 - **map-ready-geometry's as-built** named a `platform/tuimap` that never existed. The drawer is the
   external go-tuimaps module.
+
+## 0.19.5 batch 32 — the program's shape as built, and an atlas of the code (plan Q8.5, D-15, A-3, JM-13)
+
+Mutant m794, hand-vetted and killed.
+
+- **`docs/architecture.md`, new (A-3).** It has the program's shape as a diagram:
+  - the external sources, as About credits them;
+  - `domains/`, `platform/` and `modes/`, with the one enforced arrow;
+  - `app` as the composition root;
+  - the libraries: go-tuimaps, go-ionomaps, Bubble Tea, oto, and `say` or Piper.
+
+  Beside it are the rules the shape keeps (no domain imports; render alone imports go-studs; one deck,
+  one air; the immutable snapshot) and a map of the packages.
+  - Each claim was read from the package docs: the global feed's three sources; propagation's own
+    client, not `httpx`; and the scheduler asking the location providers only.
+  - README's build section and where-things-happen link to it.
+- **The atlas draws the code as built (D-15).** `tools/atlas` reads `docs/` and each feature's
+  `as-built*.md`, so it has 14 diagrams, down from 59. It opens with the new shape. A plan's or a
+  report's diagram stays readable in its own document. The page's own framing says so.
+  - `TestOnlyTheAsBuiltDiagramsAreDrawn` pins the selection. `TestAChangedDiagramChangesTheAtlas`'s
+    fixture is now an as-built map, since that is what the atlas reads.
+  - The old watchpost-cli shape names espeak-ng and System.Speech. It stays, unchanged, as the
+    approved design it was.
+- **`docs/architecture.md` is held like `docs/extending.md`.** `TestArchitectureNamesRealSymbols`
+  runs the same resolver over it, with a floor of 25 against the 32 spans it checks.
+  - Both pages now also check that a named directory exists, such as `platform/snapshot`. A span
+    counts as a directory only when its first segment is one of the tree's top-level directories, so
+    `n/a` stays a word.
+  - The control test gains the directory case.
+  - On its first run the check refused this page's own citation, whose path sat on the next line, and
+    then a path written relative to `02_features`. Both are fixed.
+- **Every unpathed "architecture §n" names its file (JM-13).**
+  - The 32 Go comments citing the original design now read "watchpost-cli architecture §n". Every
+    cited section (§1 to §11.1) was checked to exist there.
+  - `docs/architecture.md` says once which file that is, and which contracts its sections hold.
+  - extending.md's five were done in batch 24.
+- **AP-CAPS-01 on what this batch touched:** one continuation in `release_test.go`, rewritten.

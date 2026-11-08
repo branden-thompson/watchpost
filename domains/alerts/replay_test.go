@@ -1,4 +1,4 @@
-// Package alerts_test hosts the M2/M3 replay harness (architecture §7/§10.8):
+// Package alerts_test hosts the M2/M3 replay harness (watchpost-cli architecture §7/§10.8):
 // recorded alert-feed states replayed through the real scheduler+assembler
 // with a fake clock, asserting 100% coverage (M3) and issuance→render ≤60s
 // (M2). Fixtures: testdata/replays/*.jsonl (tools/alertrec records real feeds).

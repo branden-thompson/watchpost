@@ -203,7 +203,7 @@ func ClampList(s []string) []string {
 //
 // It lives in plaintext because that is the package both sides already depend
 // on for text they are about to say, and because `modes/` may not import
-// `domains/` (architecture §1), so the shared home has to be under platform/.
+// `domains/` (watchpost-cli architecture §1), so the shared home has to be under platform/.
 func SpokenList(names []string) string {
 	switch len(names) {
 	case 0:

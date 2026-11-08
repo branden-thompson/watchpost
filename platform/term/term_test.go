@@ -2,7 +2,7 @@ package term
 
 import "testing"
 
-// Spec: architecture.md §4/§6/§10 — report mode resolves width ONCE from this
+// Spec: watchpost-cli architecture §4/§6/§10 — report mode resolves width ONCE from this
 // package (never from render); breakpoints 40/60/80/120 (PD-4: height <12 =
 // compact); color gate honors NO_COLOR then TTY-ness; KeyMap is layered data
 // with conflict detection at merge AND swap (D-15).

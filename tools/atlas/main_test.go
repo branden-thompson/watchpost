@@ -30,7 +30,7 @@ func TestTheAtlasMatchesAFreshRender(t *testing.T) {
 // it.
 func TestAChangedDiagramChangesTheAtlas(t *testing.T) {
 	repo := t.TempDir()
-	doc := filepath.Join(repo, "06_docs", "02_features", "x", "a.md")
+	doc := filepath.Join(repo, "06_docs", "02_features", "x", "as-built.md")
 	for _, dir := range []string{filepath.Dir(doc), filepath.Join(repo, "docs")} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -50,5 +50,35 @@ func TestAChangedDiagramChangesTheAtlas(t *testing.T) {
 	before, after := write("flowchart LR\n  a --> b"), write("flowchart LR\n  a --> c")
 	if before == after || !strings.Contains(after, "a --&gt; c") {
 		t.Error("an edited diagram renders the same page")
+	}
+}
+
+// TestOnlyTheAsBuiltDiagramsAreDrawn is 0.19.5 D-15: a plan's diagram stays in
+// its own document, and the atlas draws docs/ and the as-built maps alone.
+func TestOnlyTheAsBuiltDiagramsAreDrawn(t *testing.T) {
+	repo := t.TempDir()
+	diagram := "# A map\n\nIts lead.\n\n```mermaid\nflowchart LR\n  a --> b\n```\n"
+	for _, p := range []string{
+		filepath.Join("06_docs", "02_features", "x", "03-architecture-design", "as-built-x.md"),
+		filepath.Join("06_docs", "02_features", "x", "04-development", "plan.md"),
+		filepath.Join("docs", "architecture.md"),
+	} {
+		if err := os.MkdirAll(filepath.Join(repo, filepath.Dir(p)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(repo, p), []byte(diagram), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	found, err := collect(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var files []string
+	for _, d := range found {
+		files = append(files, filepath.ToSlash(d.file))
+	}
+	if len(found) != 2 || strings.Contains(strings.Join(files, " "), "plan.md") {
+		t.Errorf("the atlas drew %v; want the as-built map and docs/ alone", files)
 	}
 }

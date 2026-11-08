@@ -169,6 +169,17 @@ func (ix goIndex) checkable(path, sym string) bool {
 // goFile is a span naming a Go file, by its path or by its name.
 var goFile = regexp.MustCompile(`^[a-z0-9_/]*[a-z0-9_]+\.go$`)
 
+// dirPath is a span shaped like a directory of the tree, `platform/snapshot`
+// or `06_docs/02_features/`. It is one when its first segment is one of the
+// tree's top-level directories (so `n/a` is a word), and then it must exist.
+var dirPath = regexp.MustCompile(`^[a-z0-9_]+(?:/[a-z0-9_.-]+)+/?$`)
+
+// isDir reports whether path is a directory.
+func isDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
 // otherFile is a span naming another kind of file. With a path it must exist;
 // a bare name (`ci.yml`, a file a command downloads) is left to the reader.
 var otherFile = regexp.MustCompile(`^[\w./-]+\.(?:md|ya?ml|jsonl?|csv|js|toml|txt|sh|py|golden|expect)$`)
@@ -236,8 +247,22 @@ var (
 // it. Every symbol-shaped span on the page resolves to a declaration in the
 // module's own code.
 func TestExtendingNamesRealSymbols(t *testing.T) {
+	pageNamesRealSymbols(t, "extending.md", 150)
+}
+
+// TestArchitectureNamesRealSymbols holds docs/architecture.md, the program's
+// shape as built (0.19.5 A-3), to the same check.
+func TestArchitectureNamesRealSymbols(t *testing.T) {
+	pageNamesRealSymbols(t, "architecture.md", 25)
+}
+
+// pageNamesRealSymbols checks one page under docs/: every symbol-shaped span
+// resolves, every file path exists, at least floor spans are checked, and an
+// architecture citation names its file.
+func pageNamesRealSymbols(t *testing.T, page string, floor int) {
+	t.Helper()
 	root := filepath.Join("..", "..")
-	raw, err := os.ReadFile(filepath.Join(root, "docs", "extending.md"))
+	raw, err := os.ReadFile(filepath.Join(root, "docs", page))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +272,7 @@ func TestExtendingNamesRealSymbols(t *testing.T) {
 		if goFile.MatchString(m[1]) {
 			checked++
 			if !ix.files[m[1]] {
-				t.Errorf("docs/extending.md names the file `%s`, which does not exist", m[1])
+				t.Errorf("docs/%s names the file `%s`, which does not exist", page, m[1])
 			}
 			continue
 		}
@@ -255,8 +280,15 @@ func TestExtendingNamesRealSymbols(t *testing.T) {
 			if strings.Contains(m[1], "/") {
 				checked++
 				if !ix.files[m[1]] {
-					t.Errorf("docs/extending.md names the file `%s`, which does not exist", m[1])
+					t.Errorf("docs/%s names the file `%s`, which does not exist", page, m[1])
 				}
+			}
+			continue
+		}
+		if top, _, _ := strings.Cut(m[1], "/"); dirPath.MatchString(m[1]) && !strings.Contains(m[1], ".") && isDir(filepath.Join(root, top)) {
+			checked++
+			if !isDir(filepath.Join(root, m[1])) {
+				t.Errorf("docs/%s names the directory `%s`, which does not exist", page, m[1])
 			}
 			continue
 		}
@@ -266,18 +298,18 @@ func TestExtendingNamesRealSymbols(t *testing.T) {
 		}
 		checked++
 		if !ix.resolves(s[1], s[2]) {
-			t.Errorf("docs/extending.md names `%s`, which the module's code does not declare", m[1])
+			t.Errorf("docs/%s names `%s`, which the module's code does not declare", page, m[1])
 		}
 	}
+	t.Logf("checked %d spans on docs/%s", checked, page)
 	// THE MATCHER IS ITSELF PINNED. Narrowed by accident, it would check a
-	// handful of spans and pass, and the banner would be untrue again.
-	t.Logf("checked %d spans on docs/extending.md", checked)
-	if checked < 150 {
-		t.Errorf("only %d symbol spans were checked; the page names far more, so the matcher has narrowed", checked)
+	// handful of spans and pass, and the page would claim what nothing holds.
+	if checked < floor {
+		t.Errorf("only %d symbol spans were checked on docs/%s; the page names more, so the matcher has narrowed", checked, page)
 	}
 	for n, line := range strings.Split(string(raw), "\n") {
 		if architectureCite.MatchString(line) && !architecturePath.MatchString(line) {
-			t.Errorf("docs/extending.md:%d cites an architecture section with no file; name the architecture.md it means", n+1)
+			t.Errorf("docs/%s:%d cites an architecture section with no file; name the architecture.md it means", page, n+1)
 		}
 	}
 }
@@ -313,6 +345,10 @@ func TestTheSymbolCheckRefusesWhatIsNotDeclared(t *testing.T) {
 		if s := symbolShaped.FindStringSubmatch(word); s != nil && ix.checkable(s[1], s[2]) {
 			t.Errorf("`%s` is a word or a key, and was checked as a symbol", word)
 		}
+	}
+	root := filepath.Join("..", "..")
+	if !isDir(filepath.Join(root, "platform/snapshot")) || isDir(filepath.Join(root, "platform/no_such")) || isDir(filepath.Join(root, "n")) {
+		t.Error("the directory check does not tell a directory that exists from one that does not, or a word from a path")
 	}
 	if !ix.files["app/credits.go"] || ix.files["app/no_such.go"] || !ix.files["credits.go"] {
 		t.Error("the file index does not tell a file that exists from one that does not")

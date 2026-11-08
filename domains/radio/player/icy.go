@@ -1,4 +1,4 @@
-// Package player plays NOAA Weather Radio relays (B4, architecture §5/§10.4,
+// Package player plays NOAA Weather Radio relays (B4, watchpost-cli architecture §5/§10.4,
 // AI-5): Icecast HTTP → ICY metadata strip → go-mp3 → resample → oto. Pure
 // Go, no C toolchain; one oto context per process, created lazily on the
 // first tune-in and never closed. Everything blocking runs on the engine's

@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Spec: architecture.md §3/§10 — single client: mandatory User-Agent (AI-1: empty
+// Spec: watchpost-cli architecture §3/§10 — single client: mandatory User-Agent (AI-1: empty
 // UA = 403 from NWS), token bucket ~5 req/s, jittered backoff on 429/5xx,
 // last-good semantics live in sched; secrets never appear in errors or logs
 // (IS-1/§10.5: keys ride query strings for some providers).

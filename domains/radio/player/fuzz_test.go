@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// RS-16 (architecture §10.4/§10.9): the relay decode path takes bytes from
+// RS-16 (watchpost-cli architecture §10.4/§10.9): the relay decode path takes bytes from
 // the network. These fuzzers pin that hostile input can only produce an
 // error, never a panic or unbounded memory — for the ICY metadata stripper,
 // the preroll buffer and the resampler. `go test -fuzz=FuzzICYReader

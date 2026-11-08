@@ -1,7 +1,7 @@
 // Command nwrtable turns the NWS county-coverage list (CCL.js — the
 // public-domain JS arrays behind weather.gov/nwr/county_coverage) into the
 // vendored transmitter table domains/radio/stream/transmitters.csv
-// (architecture §10.6, B4). One row per transmitter: callsign, site,
+// (watchpost-cli architecture §10.6, B4). One row per transmitter: callsign, site,
 // state, frequency, lat, lon, power (W), status, and the SAME codes it
 // covers ("|"-joined). Refresh per release:
 //

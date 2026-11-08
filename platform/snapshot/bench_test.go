@@ -32,7 +32,7 @@ func assembler25(tb testing.TB) *Assembler {
 	return a
 }
 
-// BenchmarkAssembler25Locations is the RS-20 evidence (architecture §10.8):
+// BenchmarkAssembler25Locations is the RS-20 evidence (watchpost-cli architecture §10.8):
 // whole-snapshot rebuild cost at the M4 target scale. Run with -benchmem.
 func BenchmarkAssembler25Locations(b *testing.B) {
 	a := assembler25(b)

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Spec: architecture.md §2, §10.1, §10.11 — immutable snapshots published by a
+// Spec: watchpost-cli architecture §2, §10.1, §10.11 — immutable snapshots published by a
 // single assembler; last-write-wins per (provider, location, domain-section);
 // failed fragments never overwrite (prior data stands + Warning appended;
 // ProviderStatus degrades on Err only — obs_stale never degrades Status);
@@ -154,7 +154,7 @@ func TestConcurrentApplyAndReadIsRaceFree(t *testing.T) {
 }
 
 func TestEveryExportedFieldHasJSONTag(t *testing.T) {
-	// M5 reflection gate (architecture §2): every exported field of every
+	// M5 reflection gate (watchpost-cli architecture §2): every exported field of every
 	// contract type carries a json tag (or explicit "-").
 	types := []any{Snapshot{}, Location{}, Conditions{}, SourceInfo{}, Hourly{}, Daily{},
 		Alert{}, FireState{}, Hotspot{}, Incident{}, RadioState{}, ProviderStatus{}, Warning{}}

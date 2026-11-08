@@ -1,6 +1,6 @@
 // Package httpx is watchpost's single outbound HTTP client.
 //
-// Contract (architecture.md §3, §10; AI-1; IS-1): every request carries the
+// Contract (watchpost-cli architecture §3, §10; AI-1; IS-1): every request carries the
 // configured User-Agent (NWS 403s without one); requests flow through a token
 // bucket (~5 req/s default) with jittered exponential backoff on 429/5xx; and
 // no secret ever appears in an error, log line, or debug string — URLs are

@@ -1,5 +1,5 @@
 // Package synth is the synthesized NOAA-Weather-Radio-style broadcast (B4
-// step 2, architecture §5 "Synth", AI-13): when no relay carries a
+// step 2, watchpost-cli architecture §5 "Synth", AI-13): when no relay carries a
 // location's transmitter — 89 % of them — the NWS text products the real
 // broadcast reads from are fetched, normalized into spoken English, and
 // voiced locally. The narration never enters an argv element (§10.5).

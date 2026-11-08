@@ -590,6 +590,10 @@ benchmark harness lives in `scripts/quality/` and `make quality-bench`. The term
 MIT, same author) is carried in-tree under `third_party/go-studs` (its LICENSE and NOTICE.md ride with
 it; import paths rewritten), so the tree builds anywhere with no private access.
 
+**The program's shape as built** — what feeds it, its layers, and a map of the packages — is
+[`docs/architecture.md`](docs/architecture.md); where a particular thing happens is
+[`docs/where-things-happen.md`](docs/where-things-happen.md).
+
 **The code standards are written down and machine-checked**, in
 [`06_docs/code-standards.md`](06_docs/code-standards.md) — what comments are for, when a discard needs
 a reason, how a doc comment binds to its declaration, and which gates hold what. Every check runs with

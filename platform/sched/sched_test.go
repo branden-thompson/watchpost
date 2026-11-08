@@ -10,7 +10,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// Spec: architecture §3 + §10.8 — tiered cadence through one scheduler; Clock
+// Spec: watchpost-cli architecture §3 + §10.8 — tiered cadence through one scheduler; Clock
 // interface so the replay harness (M2/M3) can drive time; publish-on-change;
 // tier cadence is THE freshness authority.
 

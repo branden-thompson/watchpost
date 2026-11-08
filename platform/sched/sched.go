@@ -1,4 +1,4 @@
-// Package sched is the tiered fetch scheduler (architecture §3, §10.8) — THE
+// Package sched is the tiered fetch scheduler (watchpost-cli architecture §3, §10.8) — THE
 // single freshness authority. Each Tier names a FetchKind and its cadence; the
 // scheduler fans each due tier out to the providers that serve it, applies
 // Fragments to the Assembler, and publishes a fresh Snapshot after every

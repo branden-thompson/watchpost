@@ -1,7 +1,7 @@
 // Package schema generates the published JSON Schema (draft 2020-12) for the
 // watchpost report envelope, by reflection over platform/snapshot types — the
 // struct IS the source of truth, so schema drift is impossible by
-// construction (M5; architecture §10.3). additionalProperties is false on
+// construction (M5; watchpost-cli architecture §10.3). additionalProperties is false on
 // every object (PLAN red-team #8). Pointer fields are nullable
 // (["<type>","null"] — the null-parity rule).
 package schema

@@ -4,7 +4,8 @@ A flow map for someone reading the code for the first time: the event on the lef
 that handles it on the right. Every symbol named here — in a file (**file.go:Func**) or in a package
 (**pkg:Func**) — is checked by `cmd/watchpost`'s `TestWhereThingsHappenNamesRealSymbols`, so this
 page cannot drift silently. The per-file headers say what a file holds; this page says where a
-*thing* happens.
+*thing* happens. The program's shape as a whole — its sources, its layers and the rule between
+them — is [`docs/architecture.md`](architecture.md).
 
 | Event | Where |
 |---|---|

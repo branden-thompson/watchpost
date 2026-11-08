@@ -1,4 +1,4 @@
-// Package snapshot is THE data contract (architecture.md §2, §10.1, §10.11).
+// Package snapshot is THE data contract (watchpost-cli architecture §2, §10.1, §10.11).
 //
 // Providers fetch Fragments; the single Assembler merges them into immutable
 // Snapshot values. Renderers (modes/tty, modes/report) read Snapshots and may
@@ -18,7 +18,7 @@ import (
 )
 
 // SchemaVersion is the published JSON contract version. The -rc suffix says
-// it is not ratified (B5, architecture §10.3): a candidate may still change
+// it is not ratified (B5, watchpost-cli architecture §10.3): a candidate may still change
 // shape.
 const SchemaVersion = "1.1.0-rc"
 
