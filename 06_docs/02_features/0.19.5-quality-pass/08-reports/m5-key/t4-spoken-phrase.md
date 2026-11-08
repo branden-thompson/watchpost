@@ -133,7 +133,7 @@ docs/architecture.md, 06_docs/code-standards.md. The ID shape and families come 
 
 | ID | Where cited | Why |
 |---|---|---|
-| `F-111` | docs/extending.md:94 | No row in ids.md. It appears only inside cells of `0.16.0-broadcaster-ui/08-reports/red-team-build.md:87` and `p10-ledger.md:143`, never as a defining first cell. |
+| `F-111` (cited) | docs/extending.md:94 | No row in ids.md. It appears only inside cells of `0.16.0-broadcaster-ui/08-reports/red-team-build.md:87` and `p10-ledger.md:143`, never as a defining first cell. |
 | `0.15.0 FR-7.1` | docs/where-things-happen.md:68 | ids.md has FR-7.1 only for 0.16.0 ("Broadcaster uses the platform breakpoint vocabulary"), an unrelated row. No 0.15.0 FR-7.1. |
 | `MVS-D-3`, `MVS-D-15` | where-things-happen.md:54, :60 | The `MVS-D-n` prefix is not indexed. The bare `D-3`/`D-15` multi-voice rows in ids.md are red-team findings ("Important"/"Minor"), not these rulings. |
 | `MVS-D-80` | code-standards.md:225, where-things-happen.md:147 | Not indexed. There is no D-80 multi-voice row. |

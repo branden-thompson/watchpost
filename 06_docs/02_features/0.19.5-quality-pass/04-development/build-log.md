@@ -1880,3 +1880,15 @@ Markdown only, through the docs lane.
   key's "the console is missing from the scan" was only half right: the console has its own sweep,
   which drew only the wide layout. A probe showed the long label is not cut with an ellipsis at the
   floor, so the sweep's comment claims only what it covers.
+
+## 0.19.5 batch 43 — the keys stop defining the IDs they report (docs lane)
+
+- **The problem.** `tools/ids` reads a table row whose first cell is an ID, and nothing else, as that
+  ID's definition. The card and phrase keys each list the IDs that did not resolve in a table led by
+  the ID. So the index gained rows for F-111, F-164 and F-34 that point at a report saying they have
+  no row.
+- **Found how.** The blind reviewer's copy was checked for any path into `m5-key/`, and `ids.md` had
+  four.
+- **The fix.** Those cells read "F-111 (cited)" and so on, and the index has no `m5-key/` row.
+- **The check.** The M5-input ID scan was re-run on the corrected index and still finds none
+  unresolved. F-111 is no longer cited there: Walkthrough 4 names its guard instead.

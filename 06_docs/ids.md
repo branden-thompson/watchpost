@@ -1988,7 +1988,6 @@ cell; a later table that mentions it is not listed.
 | F-29 |  | `quality-observations.md` | the flake was never where it was recorded (2026-09-06) |
 | F-31 |  | `follow-ups.md` | ALERTS - READ ORDER — the listener-facing setting, DEFERRED to post-Broadcaster (MVS-D-79, HUM LEAD 2026-09-0… |
 | F-33 |  | `follow-ups.md` | RULED 2026-09-08 (HUM LEAD), and the ruling reframes the row rather than answering it. A relay fault is the O… |
-| F-34 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t3-console-card-line.md` | 00-REQUIRED-READING.md:235 |
 | F-37 |  | `follow-ups.md` | Non-ASCII furniture survives --ascii in four windows that have no --ascii scan. │ ×10 and ─ ×98 in Location D… |
 | F-38 |  | `follow-ups.md` | Nothing verifies at the ARTIFACT level that the injector is absent. app/inject_test.go asserts on the text of… |
 | F-41 |  | `multi-voice-support/08-reports/review-report.md` | Previewing a voice in Settings gave no sign it was working — p sent the deck's progress, and its reason on fa… |
@@ -2039,8 +2038,6 @@ cell; a later table that mentions it is not listed.
 | F-108 |  | `follow-ups.md` | Three surfaces say something the code does not do. (a) modes/tty/broadcaster_manage.go:79 tells the operator … |
 | F-110 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/build-report.md` | A lapsed hazard suppressed its live siblings: the composer declined the whole burst if any ref had lapsed |
 | F-110 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-build.md` | (found by the fix) |
-| F-111 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t3-console-card-line.md` | extending.md:94 |
-| F-111 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t4-spoken-phrase.md` | docs/extending.md:94 |
 | F-115 |  | `follow-ups.md` | FullLabel is 21 cells and REPORT TYPE's declared width is 20. The label on the most common row in the running… |
 | F-116 |  | `follow-ups.md` | castRowOrder() and castLabel are hand-written and derive from nothing. A new report kind with a correspondent… |
 | F-119 |  | `follow-ups.md` | lint-watermark.sh's positive control tests a different code path than the gate runs. scan() exists only for t… |
@@ -2059,7 +2056,6 @@ cell; a later table that mentions it is not listed.
 | F-160 |  | `follow-ups.md` | FR-9.2 is not pinned as written: the tower's coordinate pair as a typed value with one owner (platform/config… |
 | F-161 |  | `follow-ups.md` | FR-3.6 is open: a card dropped at the fifteen-minute staleness bound tells the listener (dropStale → readInst… |
 | F-162 |  | `follow-ups.md` | FR-8.8 is open: the console shows one data-pull stamp per card; the per-kind last arrival that moves when dat… |
-| F-164 | 0.19.5 | `0.19.5-quality-pass/08-reports/m5-key/t3-console-card-line.md` | 00-REQUIRED-READING.md:206 |
 | F-170 |  | `follow-ups.md` | A gate that renders the architecture diagrams. Five diagrams in three releases' documents did not parse - unq… |
 | F-171 |  | `follow-ups.md` | MaxVertices and MaxRings are derived from a sample, not a census. Eighty of roughly three thousand forecast z… |
 | F-172 |  | `follow-ups.md` | A shape's winding is never read, so a hole is a hole only by position. platform/geo takes the first ring of a… |

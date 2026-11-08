@@ -162,14 +162,14 @@ they name.
 | MVS-D-3 | `where-things-happen.md:54` | No MVS-prefixed row. ids.md never indexes multi-voice-support's D rulings by prefix. |
 | MVS-D-15 | `where-things-happen.md:60` | same |
 | MVS-D-80 | `where-things-happen.md:147`, `code-standards.md:225`, `00-REQUIRED-READING.md:202` | Defined only as a paragraph in `multi-voice-support/04-development/director-build-log.md:2225`. ids.md's own header (`ids.md:13`) uses it as its example. |
-| F-111 | `extending.md:94` | No row. It appears in `0.16.0-broadcaster-ui/03-architecture-design/report-requests-plan.md` and `08-reports/red-team-build.md`, not in a table's first cell. |
+| F-111 (cited) | `extending.md:94` | No row. It appears in `0.16.0-broadcaster-ui/03-architecture-design/report-requests-plan.md` and `08-reports/red-team-build.md`, not in a table's first cell. |
 | R3-A-01 | `where-things-happen.md:34` | No row. |
 | AP-HIST-01, AP-DEAD-01, AP-SHELL-01, AP-CITE-01, AP-CAPS-01, AP-OK-01 | `code-standards.md:4, 109, 192, 210, 29/236, 267`; `where-things-happen.md:150` | Not ids.md families. Defined in `code-standards.md` itself (its `:8-12` says so). |
 | SN-02, SN-03 | `code-standards.md:39, 124, 171` | same: defined in code-standards.md |
 | P10-00 … P10-10 | `code-standards.md:311-338` | same: defined in code-standards.md's P10 table |
 | BD-9 | `00-REQUIRED-READING.md:54` | No row. Cited to `director-build-log.md:809`. |
-| F-164 | `00-REQUIRED-READING.md:206` | No row. |
-| F-34 | `00-REQUIRED-READING.md:235` | No row, and not in follow-ups.md where the doc says it is. |
+| F-164 (cited) | `00-REQUIRED-READING.md:206` | No row. |
+| F-34 (cited) | `00-REQUIRED-READING.md:235` | No row, and not in follow-ups.md where the doc says it is. |
 | P-1, P-6, P-8, P-9, P-10 | `00-REQUIRED-READING.md:171-178` | No rows. Cited to `04-development/p3-flip-postmortem.md`. |
 | PD-3 | `00-REQUIRED-READING.md:231` | No row (also cited in code, `cardPulled`'s doc). |
 | S-4, S-5, T-1, T-5 | `00-REQUIRED-READING.md:90, 228` | No rows (lineup-model.md's own labels). |
