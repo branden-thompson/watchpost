@@ -37,13 +37,13 @@ func (d Dashboard) header(o render.Opts) string {
 		rule := o.BoxRuleWidth()
 		title := mastheadTitle(render.EditionObserver, d.cfg.Version, rule)
 		stamp := mastheadStamp(o, title, d.snap, d.clock(), rule)
-		// no tone of its own: the frame's base grey paints it (round 4, B-01)
+		// no tone of its own: the frame's base grey paints it
 		return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "")
 	})
 }
 
 // headerRow is the masthead's inner row: the controls at the left, the API
-// summary at the right. The ladder (round 4, B-14): About drops, the summary
+// summary at the right. The ladder: About drops, the summary
 // loses its "API: " label, then the chips stand alone, then the summary leaves
 // — the row never exceeds the box's inner width.
 //

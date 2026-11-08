@@ -1,5 +1,8 @@
-// Package app is the composition root (Option C): the ONLY place that wires
-// domains, platform, and modes together. cmd/watchpost stays thin.
+// Package app is the composition root (Option C): the one place that wires
+// domains, platform and the live surfaces together. cmd/watchpost stays thin:
+// it parses the command line and calls in here, and imports only the one-shot
+// report's renderer (modes/report) and the schema generator (pkg/schema)
+// itself.
 package app
 
 import (
@@ -26,13 +29,14 @@ import (
 // personal address rides here.
 //
 // NO VERSION. A version in the header is a fact about this machine that no
-// provider asks for, and one more thing to keep in step with the build — it
-// read 0.9 for five releases. The project URL is the contact NWS wants.
+// provider asks for, and one more thing to keep in step with the build. The
+// project URL is the contact NWS wants.
 const UserAgent = "watchpost (+https://github.com/branden-thompson/watchpost)"
 
 // ReportOnce runs the one-shot fetch pipeline for `watchpost report <query>`:
 // resolve the location, fetch obs+forecast+alerts from NWS, and return the
-// published snapshot (B1a scope; scheduler-driven live mode arrives B1b/B3).
+// published snapshot, once; the live dashboard runs the scheduled pipelines
+// instead (RunDashboard).
 func ReportOnce(ctx context.Context, query string) (*snapshot.Snapshot, error) {
 	snap, _, err := ReportOnceWithStats(ctx, query)
 	return snap, err

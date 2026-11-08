@@ -8,7 +8,7 @@ import (
 
 // contrast.go — WCAG contrast as a render-time fact, not only a test's: the
 // alert tones are LIFTED to AA against their tints when a theme registers
-// (HUM LEAD 2026-08-28, red-team round 4 B-05). A lift keeps the hue —
+// (HUM LEAD 2026-08-28). A lift keeps the hue —
 // the colour is mixed toward white (or toward black on a light tint) only as
 // far as 4.5:1 needs — so a theme's intention survives while every pair
 // reads.

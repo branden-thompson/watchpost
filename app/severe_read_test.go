@@ -197,7 +197,7 @@ func TestEventScriptHonoursAnOverrideDirectory(t *testing.T) {
 }
 
 // Without a voice the overlay still shows for a reading-length hold — the
-// panel says what is being "read" even in silence (round 4, C-11b).
+// panel says what is being "read" even in silence.
 func TestEventReadWithoutAVoiceHoldsTheOverlay(t *testing.T) {
 	nar := testArbiter(nil, nil) // silent: no voice at all
 	nar.sleep = func(context.Context, time.Duration) bool { return true }
@@ -222,7 +222,7 @@ func TestEventReadWithoutAVoiceHoldsTheOverlay(t *testing.T) {
 	t.Fatal("the overlay never showed")
 }
 
-// A read in progress ends with the app (round 4, A-08): End cancels it —
+// A read in progress ends with the app: End cancels it —
 // its hold ends, its mark clears, the broadcast is restored — and waits
 // for it; inert with none in progress.
 func TestEventReadEndsWithTheApp(t *testing.T) {

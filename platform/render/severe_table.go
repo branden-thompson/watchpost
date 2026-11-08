@@ -76,7 +76,7 @@ const severeHeaderLift = 0.2
 func SevereHeaderTone(hue Token) string {
 	r, g, b, ok := bgRGB(Tok(hue))
 	if !ok {
-		return Tok(hue) // not truecolor (a theme's 256-index hue): the band is the hue itself, never a white slab (round 4, B-17)
+		return Tok(hue) // not truecolor (a theme's 256-index hue): the band is the hue itself, never a white slab
 	}
 	if 0.2126*float64(r)+0.7152*float64(g)+0.0722*float64(b) > 96 { // a light hue (perceived brightness past ~37 %)
 		return mixBG("48;2;0;0;0", Tok(hue), severeHeaderLift)

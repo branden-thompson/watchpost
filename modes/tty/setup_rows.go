@@ -1,8 +1,8 @@
 package tty
 
-// setup_rows.go — the Setup window's row table (0.14.0 P4 Task 4.4).
+// setup_rows.go — the Settings window's row table (0.14.0 P4 Task 4.4).
 //
-// Twenty rows across four groups cannot be driven by a focus enum that is a
+// The rows, in their groups, cannot be driven by a focus enum that is a
 // small state machine, each key handler knowing which question it is in and
 // what comes next — the keyboard rule, the focus order, the › mark and the
 // scroll would each end up with their own idea of the order, and they would
@@ -54,7 +54,7 @@ const (
 )
 
 // setupRowID names each row. The ORDER OF THESE CONSTANTS IS THE FOCUS ORDER:
-// ↑↓ walk them, tab jumps to the next group's first row. Nothing else defines
+// ↑↓ walk them, and tab moves between the tabs. Nothing else defines
 // the order, so nothing else can disagree about it.
 type setupRowID int
 
@@ -235,7 +235,7 @@ type setupRow struct {
 
 // setupTable is the table. It is built rather than declared as a package var
 // because a package-level table would be mutable process-wide state (P10-06)
-// and every caller wants its own copy anyway — it is twenty small structs.
+// and every caller wants its own copy anyway; it is a table of small structs.
 func setupTable() [setupRowCount]setupRow {
 	return [setupRowCount]setupRow{
 		// THE DEFAULT LOCATION IS THE LISTENER'S (D-18 row 1). The station's

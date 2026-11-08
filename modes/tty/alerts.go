@@ -284,7 +284,7 @@ func (d Dashboard) alertArea(fl frameLayout) string {
 // alertLine is the module's row: count · TITLE (the glyph and EVENT bold
 // in the alert's modal tone — the same dress as the record's title inside
 // [A] — the place bold white) · the severity token when colour is off or
-// under --ascii (R-12a: the class in text, not tint alone — round 4, B-04)
+// under --ascii (R-12a: the class in text, not tint alone)
 // · issued · expires, the chips right-aligned. Progressive degrade (UAT 35):
 // expires, then issued, then the chip labels, then the title itself
 // shortens — the row never exceeds the module width. UAT 21.1: paging

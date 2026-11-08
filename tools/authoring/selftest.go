@@ -16,7 +16,7 @@ package main
 // delete their reasoning.
 //
 // THE ANTI-SPECIMENS ARE THE CATALOGUE'S OWN, taken verbatim from
-// `code-authoring-standards.md` where it quotes them, so this tool and the
+// `06_docs/code-standards.md` where it quotes them, so this tool and the
 // written rule cannot drift apart.
 
 import (
@@ -70,6 +70,8 @@ func shellSpecimens() []specimen {
 // histSpecimens covers AP-HIST-01 in both directions.
 func histSpecimens() []specimen {
 	return []specimen{
+		{"a review round's finding as the reason", "package p\n\n// f fits (round 4, B-07: a wrapped row would push it).\nfunc f() {}\n", []string{"AP-HIST-01"}},
+		{"the reason alone, the round dropped", "package p\n\n// f fits: a wrapped row would push it.\nfunc f() {}\n", nil},
 		{"catalogue: used-to on a trailing comment", `package p
 func f() { g() // used to throw away extra output
 }`, []string{"AP-HIST-01"}},

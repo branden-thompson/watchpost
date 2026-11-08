@@ -267,7 +267,7 @@ func TestABuildForACardTheProducerDoesNotKnowFailsTheCard(t *testing.T) {
 // executor fails it, loudly, instead of handing the schedule a blank.
 func TestAScriptThatRendersNothingFailsTheCardRatherThanBuildingSilence(t *testing.T) {
 	// The built-in tree always says something, so silence takes a broken
-	// override — which is the one way Say renders "" (round 4, A-13).
+	// override — which is the one way Say renders "".
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "breaking"), 0o700); err != nil {
 		t.Fatal(err)

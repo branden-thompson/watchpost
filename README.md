@@ -87,7 +87,8 @@ Then:
 watchpost
 ```
 
-On the first run the Settings window opens over the dashboard and asks three things, all on one screen:
+On the first run the Settings window opens over the dashboard on its Data tab, which asks three things
+(and holds the HISTORY rows below them):
 the default location (start typing a city or ZIP; the list narrows as you type), an optional NASA
 FIRMS key for satellite fire detections minutes old (leave it empty — the built-in fire sources need
 no key), and whether the radio should announce every severe event nationwide or only those within a
@@ -346,7 +347,7 @@ to the Observer, and is refused while the station is ON AIR.
 | `r` | **Line-Up Request** — ask for a place inside the radius, by name |
 | `l` | look up any city or ZIP |
 | `g` | the station's own map: centred on the transmitter, the service radius drawn in red in every mode; `P` its Propagation mode, the box over the map answering for the map's centre from the station |
-| `b` / `shift+←` `shift+→` | cut the main track over to the **bed** (the live relay) / previous and next relay |
+| `b` / `shift+←` `shift+→` / `space` | cut the main track over to the **bed** (the live relay) / previous and next relay / play or pause the bed's relay |
 | `+` `=` `-` | gain up and down — one level, mirrored with the Observer's volume |
 | `ctrl+d` | Diagnostics — **send a test alert** to check your station's alerting end to end, as a radio station tests its own: it asks ARE YOU SURE?, reads "This is a test of the Watchpost alert events system" before and after, is marked TEST EVENT on the ticker and in the severe window, and is gone in two minutes |
 | `s` `a` `S` `?` `q` | Settings · About · the status of every data source · help · quit |
@@ -381,11 +382,12 @@ FIRMS simply reads `off` in the status window and the other two sources carry th
 
 `t` opens Settings at the theme picker: Watchpost, Watchpost Light (for a light terminal), High Contrast,
 Monochrome and nine more, applied live and remembered. Every colour pair the themes paint TEXT with is held to
-the WCAG AA contrast level, in every theme, by a gate that fails the build. Eleven tokens sit outside
-it, listed with their reason in `06_docs/follow-ups.md` (F-57): the radio ground is the terminal's own
-default with no colour to measure, the key chips carry foreground and background together, the title
-gradient is large display text held to 3:1, and the visualizer bars are decorative and repeat what the
-play mark already says. `watchpost --ascii` draws every mark with plain characters
+the WCAG AA contrast level, in every theme, by a gate that fails the build. The tokens outside
+it are listed, each with its reason, in `platform/render/aa_completeness_test.go`: the radio ground is
+the terminal's own default with no colour to measure, the key chips carry foreground and background
+together, the title gradient is large display text held to 3:1, the visualizer bars are decorative and
+repeat what the play mark already says (F-57), and the map's source badges choose black or white words
+for each ground and are measured by their own test. `watchpost --ascii` draws every mark with plain characters
 (`>` pointer, `*` playing, `R` on repeat, `n*` fires, `n!` alerts, `.`/`o`/`O` quakes, `+ - |` box
 rules, arrow keys named in words) and spells out headers a screen reader would read letter by letter,
 for terminals or screen readers that mishandle the glyphs. It covers the marks, the box rules, the
@@ -564,13 +566,20 @@ against its 500-row cap. A running dashboard writes a diagnostic dump — heap, 
 threadcreate profiles with `counters.json` — under the cache directory's `profiles/` on
 `kill -USR1 <pid>` (macOS/Linux; on Windows use `curl -X POST .../debug/dump`); dumps are at least a minute apart and
 the newest twelve are kept. `watchpost report <loc> --verbose` appends one request-counter line per
-host. `WATCHPOST_DEBUG_RADIO=1` writes one line per radio engine state change, one per
+host, then the cast and tone answers the `S` window gives. `WATCHPOST_DEBUG_RADIO=1` writes one line per radio engine state change, one per
 synthesized segment as it reaches the air, one when a cycle ends (the voice's error, if that is why),
 and one when a read is ended for not finishing — the first thing to send when a relay "plays nothing"
 or a broadcast ends before its sign-off. It lands at `<cache>/watchpost/debug/radio.log`, mode 0600,
 rotated once past 8 MiB. **The variable names the LOG, not a path**: set it to a lower-case name
 (`WATCHPOST_DEBUG_RADIO=soak`) to keep a run's log beside the others, and anything that is not a name
 falls back to `radio`.
+`WATCHPOST_DEBUG_MAPFRAMES=<file>` appends one JSON record per map frame drawn to that file (mode 0600),
+and `WATCHPOST_DEBUG_MAPFRAMES_TEXT=1` keeps each frame's text in it too.
+`WATCHPOST_WATCHLIST_DWELL=<duration>` (Go's form, `90s`, `10m`) sets how long the watchlist's relay
+rotation stays on each place; the default is five minutes, and a value that does not parse is ignored
+and logged under `WATCHPOST_DEBUG_RADIO`. `WATCHPOST_MAINTRACK=dark` composes the console's main-track
+cards and publishes them without putting them on the air, for comparing the schedule with the live
+rotation; any other value, and the default, is off (F-158).
 
 ## Building from source
 

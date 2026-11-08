@@ -63,7 +63,7 @@ type eventReader struct {
 }
 
 // newEventReader builds the reader; every read runs under ctx (the app's —
-// shutdown ends a read in progress, red-team round 4 A-08).
+// shutdown ends a read in progress).
 func newEventReader(ctx context.Context, nar *arbiter, scripts *script.Library, row func(string) (tty.SevereRow, bool), send func(tea.Msg)) *eventReader {
 	if ctx == nil {
 		ctx = context.Background()

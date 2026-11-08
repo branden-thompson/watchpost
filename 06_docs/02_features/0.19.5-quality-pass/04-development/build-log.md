@@ -1462,3 +1462,75 @@ Mutant m794, hand-vetted and killed.
   - `docs/architecture.md` says once which file that is, and which contracts its sections hold.
   - extending.md's five were done in batch 24.
 - **AP-CAPS-01 on what this batch touched:** one continuation in `release_test.go`, rewritten.
+
+## 0.19.5 batch 33 — what is left of the docs (plan Q8.6, DC-11, DC-13, DC-15, DC-16, DC's minor list)
+
+Mutant m795, hand-vetted and killed. mAG4's anchor was untouched, and all 1,040 anchors hold.
+
+- **DC-16, F-137's class: a review round's finding cited as the reason.**
+  - 55 comment lines cited "(round 4, B-07)" and the like, from the 0.9.0 and 0.19.0 review rounds.
+    41 lost the citation mechanically: each sentence already gave the reason, and every changed line
+    was read. 14 were rewritten by hand, where the citation carried the reason after a colon or
+    across a wrap. One line, broken by the first pass, was caught in the read.
+  - `record_test.go`'s doc names the findings that define its test, which is authority. It keeps
+    them, with their release.
+  - **The class stays gone mechanically.** AP-HIST-01's phrase list gains `round N, X-n`, with a
+    specimen each way. Its first run found a capital-R "Round 2 N-1" the hand sweep had missed.
+  - **The other narrations DC-16 named,** restated as what holds now:
+    - `app.go`'s "read 0.9 for five releases";
+    - `KeepOr`'s "held a byte-identical copy";
+    - the map key that "waits for W1.16" (it is `defaultMapKeyMap`'s);
+    - `scratch_test.go`'s batch number;
+    - the held band's "first draft shipped";
+    - three "found by a plant that survived" notes, each now the reason the assertion exists;
+    - `maintrack.go`'s "live IS GONE".
+  - F-137's Go sites are done with this batch.
+- **DC-11.** `app`'s package doc names the two packages `cmd/watchpost` imports itself. `ReportOnce`
+  loses its build-era scope note. `coverage.go`'s package doc loses its bug story. The `modes/tty`
+  package doc is Q9.1's (DV-8).
+- **DC-13: the gate documents name today's tests.**
+  - `tooling-backlog.md`: `TestEveryControlIsReached`, `TestNoRequiredGatesCIStepIsSilenced` and no
+    `makeLines`. `lint.sh`'s closed `|| true` and the deleted `declset_test.go` are gone, and "the four
+    ways" becomes a pointer to `gate-attack-list.md`. Both rule lists name all eight authoring rules.
+  - `required-gates.txt`'s header is in the present tense, naming `TestTheThreeGateListsAgree`.
+  - `red-team-brief.md` says which parts of questions 6 and 9 a tool decides, and that question 5's
+    SN-01 has none.
+  - The authoring tool's own doc says "most of the rules". Its specimens are
+    `06_docs/code-standards.md`'s, not a private harness file. `gate-attack-list.md` drops its stale
+    specimen count. F-124 no longer narrates its first version.
+- **DC-15: the Settings code describes the window as built.**
+  - `setupState`'s doc was the two-question form, fused with a `setupFocus` that does not exist. It
+    is now the table, its groups, the tabs and the focus index.
+  - `setup_rows.go` loses "twenty rows across four groups", and "tab jumps to the next group".
+  - `setupTable`'s doc loses "twenty small structs".
+  - `map_settings.go` loses "the map's two Settings".
+  - No count is hard-coded in their place.
+- **DC's minor list.**
+  - accepted-costs names `RecentCap` by symbol. Its check, `TestAcceptedCostsNamesRealSymbols`, now
+    resolves any top-level declaration by parsing the file (`declaredIn`), not only functions. m795
+    pins it.
+  - README:
+    - `--verbose` prints the cast and tone answers too;
+    - the first run opens on the Data tab, with its HISTORY rows;
+    - the AA exemptions are the test's list, not "eleven" (it holds 40, the map's badge grounds
+      among them);
+    - the console's `space` plays or pauses the bed's relay;
+    - `WATCHPOST_DEBUG_MAPFRAMES` (and `_TEXT`), `WATCHPOST_WATCHLIST_DWELL` and
+      `WATCHPOST_MAINTRACK` are documented from their code.
+  - extending.md: two steps need the network.
+  - perf-measurement.md:
+    - names `g1b`;
+    - lists `answered:layers`, `frames100` and `below-floor` beside the events it had;
+    - drops the soak's column count, which is 15;
+    - paths `perf-protocol.md`.
+  - `Timing.Event`'s comment points there rather than listing events that drift.
+  - quality-plan.md:
+    - dates the D-9 row's line counts (as of 2026-09-08);
+    - paths `build-methodology.md`;
+    - says the INST review due at 0.17.0 has no record, which is now F-226.
+  - The backlog drops F-156's stale "23".
+  - The map as-built's MAP rows follow `map_settings.go`'s order, with "RX noise". The atlas and
+    `ids.md` are regenerated.
+- **Not changed, and why.** `pkg/schema`'s v1.0.0-rc file is kept deliberately (CHANGELOG). The local
+  `watchpost/CLAUDE.md` still names 0.19.0 as the release in flight. It is git-ignored and protected:
+  changing it is the HUM LEAD's call.

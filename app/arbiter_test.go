@@ -236,7 +236,7 @@ func TestVizFollowsEveryNarrationButATakeover(t *testing.T) {
 
 // A read cancelled while SUSPENDED under a takeover leaves the stack and
 // its held line is discarded; the takeover keeps the air, and the next read
-// is admitted after it (red-team round 4, A-02 — the wedge).
+// is admitted after it.
 func TestReadCancelledWhileSuspendedDoesNotWedgeTheArbiter(t *testing.T) {
 	v := &scriptVoice{dur: 50 * time.Millisecond}
 	n := testArbiter(v, nil)
@@ -290,7 +290,7 @@ func TestReadCancelledWhileSuspendedDoesNotWedgeTheArbiter(t *testing.T) {
 
 // A line never starts under a takeover: the start happens under the
 // arbiter's lock, so a takeover admitted meanwhile finds it in flight and
-// pauses it (red-team round 4, A-04).
+// pauses it.
 func TestALineNeverStartsUnderATakeover(t *testing.T) {
 	var mu sync.Mutex
 	collisions := 0

@@ -2,8 +2,7 @@
 // the National Weather Service serve this place? Both the offline index
 // (domains/locations) and the online geocoder (domains/locations/openmeteo)
 // need the same answer, and neither may import the other — so it lives
-// here (red-team 0.9.0 round 2 N-2: the offline path refused Puerto Rico
-// while the online path accepted Paris).
+// here, and the two paths cannot disagree about a place.
 package coverage
 
 // NWS reports whether NWS forecasts a GeoNames country code: the states

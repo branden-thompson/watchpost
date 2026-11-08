@@ -333,7 +333,7 @@ func (d Dashboard) marqueeTrack(inner int) string {
 		if d.reduceMotion {
 			text = cutToWidth(d.opts(), d.radioDetail, w) // cut, not slid (D-360)
 		}
-		if render.Width(text) <= w-2 { // air either side only when both fit — a w-1 line padded to w+1 breaks the box (round 4, B-02)
+		if render.Width(text) <= w-2 { // air either side only when both fit — a w-1 line padded to w+1 breaks the box
 			text = " " + text + " "
 		}
 		return band(fill(text))
@@ -575,8 +575,8 @@ func (d Dashboard) radioControlLines(o render.Opts, inner int, bp radioBP) []str
 
 // narrowHead is the player's head without the title: the station (or the
 // failure reason), then its short form, then whichever of those was chosen
-// shortened with an ellipsis (round 4, B-09: the short form shortens, the
-// failure text stays a failure), and the mark alone when even that will not
+// shortened with an ellipsis (the short form shortens; the failure text
+// stays a failure), and the mark alone when even that will not
 // fit (B-10).
 func (d Dashboard) narrowHead(room int) string {
 	head := d.station()

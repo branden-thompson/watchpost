@@ -1,8 +1,8 @@
 // Command authoring checks the A2DH code-authoring rules that a machine can
 // decide, over the whole tree.
 //
-// WHY IT IS A TOOL AND NOT A GREP. Two of the three rules here are questions
-// about the SYNTAX TREE: whether a match is in a comment or a string literal,
+// WHY IT IS A TOOL AND NOT A GREP. Most of the rules here are questions about
+// the SYNTAX TREE: whether a match is in a comment or a string literal,
 // and which declaration a comment block binds to. The second cannot be asked of
 // text at all — a doc comment that fuses with its neighbour's reads as two
 // healthy comments to every line-based checker, while the function above it has

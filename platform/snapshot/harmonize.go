@@ -109,9 +109,9 @@ func harmonize(loc *Location, providerOrder []string) {
 // KeepOr keeps the value a provider gave, else adopts the fallback by VALUE —
 // never by sharing the pointer, so a later write to one cannot reach the other.
 //
-// Exported because domains/marine/ndbc held a byte-identical copy. It is a
-// merge policy, and a merge policy with two owners is one that will be changed
-// in one of them (issue #7's shape).
+// Exported so domains/marine/ndbc uses this one rather than a copy of its own.
+// It is a merge policy, and a merge policy with two owners is one that will be
+// changed in one of them (issue #7's shape).
 func KeepOr(have, fallback *float64) *float64 {
 	if have != nil || fallback == nil {
 		return have

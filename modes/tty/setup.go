@@ -29,22 +29,19 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// Setup window (UAT 100, HUM LEAD 2026-08-25): "goes to the dashboard,
-// immediately opens a setup modal like all the others, asks the questions;
-// no → default data set, no key; [s] Setup at any time". One form, both
-// questions on screen (UAT 111.3): the default location (type-ahead over
-// the embedded index, or a full resolve on enter; a bare enter keeps the
-// current default) and the optional NASA FIRMS key (masked; empty keeps a
-// stored key, or means the keyless default set). Saving hands the answers to the
-// app's Setup hook (persist) and then the watchlist to Commit (the default
-// location on top, the rest kept) in ONE command, so the two writes never
-// race. esc closes without saving — the dashboard simply has no rows until
-// a location is chosen, and [s] reopens the window.
-// setupFocus names the question the keys go to (UAT 111.3: every question
-// is on screen at once; tab / shift+tab move between them).
-// The focus is an INDEX INTO setupTable (setup_rows.go), not a state
-// machine over the questions. Twenty rows across four groups cannot be
-// enumerated by hand in four places without drifting.
+// setupState is the Settings window's state: the focused row, the typed
+// buffers and the answers it saves. The window opens over the dashboard on
+// the first run and on [s] (UAT 100), and shows the rows of setupTable
+// (setup_rows.go) in their groups, one tab at a time, in one column.
+//
+// The focus is an INDEX INTO setupTable, not a state machine over the
+// questions: ↑↓ walk the rows and tab moves between the tabs, and the table
+// is the one place their order is written, so nothing can enumerate it by hand
+// and drift.
+//
+// Saving hands the answers to the app's Setup hook (persist) and then the
+// watchlist to Commit (the default location on top, the rest kept) in ONE
+// command, so the two writes never race.
 type setupState struct {
 	focus setupRowID
 

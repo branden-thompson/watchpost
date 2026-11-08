@@ -562,7 +562,7 @@ func TestAKeptPlaceLaysOutNoWordsWhileNothingChanges(t *testing.T) {
 	}
 }
 
-// TestAnHourAheadIsNotSaidBeforeItIsWorkedOut is FR-3.1 (round 2 PN2-10):
+// TestAnHourAheadIsNotSaidBeforeItIsWorkedOut is FR-3.1:
 // while an hour ahead is being worked out the words say so, never now's
 // figures under that hour's name.
 func TestAnHourAheadIsNotSaidBeforeItIsWorkedOut(t *testing.T) {

@@ -2037,7 +2037,7 @@ cell; a later table that mentions it is not listed.
 | F-119 |  | `follow-ups.md` | lint-watermark.sh's positive control tests a different code path than the gate runs. scan() exists only for t… |
 | F-120 |  | `follow-ups.md` | mutant-anchors.sh claims a wider sandbox than it implements. It neuters Path.write_text only; open(p,'w'), un… |
 | F-121 |  | `follow-ups.md` | mutant-check costs ~400 s per push and cannot fail on a survived mutant. It asserts the corpus applies and co… |
-| F-124 |  | `follow-ups.md` | Fifteen catalogue rules ranked for mechanisation, an explicit do-not-build list, a shell-versus-Go split, two… |
+| F-124 |  | `follow-ups.md` | Fifteen catalogue rules ranked for mechanisation, an explicit do-not-build list, a shell-versus-Go split, the… |
 | F-133 |  | `follow-ups.md` | lint-ledger.sh --self-test carries a private copy of its own rule list — six probes against six rules, nothin… |
 | F-137 |  | `follow-ups.md` | AP-HIST-01 by the rule, not the phrase list. ~123 lines of production comment narrate a past the reader will … |
 | F-138 |  | `follow-ups.md` | One verifier passes on an unconfirmed proof point: modes/tty/broadcaster_uat_test.go skips when its fixture o… |
@@ -2086,3 +2086,4 @@ cell; a later table that mentions it is not listed.
 | F-223 |  | `follow-ups.md` | The alert replay waits on a sleep. domains/alerts/replay_test.go advanceTo ends each step with time.Sleep(5ms… |
 | F-224 |  | `follow-ups.md` | Warm the geocoder connection at start-up. The first lookup of a session pays 939 ms against a 200 ms steady s… |
 | F-225 |  | `follow-ups.md` | Whether a partial name may resolve from the pool. It is the only change that removes the lookup's round trip … |
+| F-226 |  | `follow-ups.md` | The INST rules' review, due at 0.17.0, has no record. 06_docs/quality-plan.md admits each INST rule on a name… |

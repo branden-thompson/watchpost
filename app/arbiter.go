@@ -170,7 +170,7 @@ func (s *speaker) attention(class cast.Class) time.Duration {
 // silent, muted or ended (the caller keeps its visual hold). A line rendered
 // while the job is suspended waits for the air before it starts, and starts
 // under the arbiter's lock: a takeover admitted meanwhile finds it in flight
-// and pauses it, never plays over it (red-team round 4, A-04).
+// and pauses it, never plays over it.
 func (s *speaker) line(text string) time.Duration {
 	c, ok := s.prepare(text)
 	if !ok {
@@ -349,7 +349,7 @@ func (d *arbiter) admit(job *narrationJob) bool {
 
 // release ends a job: the one on air leaves it; one that ended while
 // SUSPENDED (its context ran out under a takeover) leaves the suspended
-// stack and its held line is discarded, the air untouched (round 4, A-02).
+// stack and its held line is discarded, the air untouched.
 // Then the arbiter settles.
 func (d *arbiter) release(job *narrationJob) {
 	d.mu.Lock()

@@ -134,11 +134,10 @@ func boldedAt(s, text string) bool {
 
 // THE MESSAGE IS NEVER CLIPPED, and the band grows instead.
 //
-// CENTRING ALONE CLIPS, which is how the first draft shipped: the !!! rung's
-// sentence is ~149 cells against a 127-cell band at the HUM LEAD's width, and
-// the most severe notice on the console lost its ending — "may be drop". The
-// single line it replaced wrapped in the terminal, so this would have been a
-// REGRESSION introduced by making the notice prettier.
+// CENTRING ALONE CLIPS: the !!! rung's sentence is ~149 cells against a
+// 127-cell band at the HUM LEAD's width, and a centred line cut to the band
+// would lose the most severe notice's ending ("may be drop"). A single line
+// left to wrap in the terminal keeps it, so the band must keep it too.
 func TestTheSeverestRungIsNeverTruncated(t *testing.T) {
 	for _, w := range []int{100, 133, 150, 200} {
 		b := bcStandby(t, true, 20*time.Minute)

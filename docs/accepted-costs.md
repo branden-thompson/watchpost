@@ -103,7 +103,7 @@ got a different answer.
 **Why it surfaced now, and why it is not a leak.** The HUM LEAD saw ~170 MB after a session of heavy
 radio switching, alert reads and stream toggling, against 90–120 MB before. A scheduler is created
 per RECENT location TOUCHED, so the cost is paid per *distinct location visited* rather than per
-minute — an idle app never reaches it. It is **bounded by `RecentCap = 50`** (`modes/tty/modal_location.go:49`),
+minute — an idle app never reaches it. It is **bounded by `RecentCap = 50`** (`modes/tty/modal_location.go:RecentCap`),
 so it plateaus rather than climbing. Measured across 24 switch-read-toggle cycles: goroutines
 377 → 413, `stack_inuse` flat at ~4 MB, footprint 92.5 → 79.1 → 88.6 MB — a band, not a ramp.
 

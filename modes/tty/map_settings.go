@@ -1,6 +1,6 @@
 package tty
 
-// map_settings.go — the map's two Settings (0.18.0 W1.8, W1.10, FR-9.1) and
+// map_settings.go — the map's Settings rows (0.18.0 W1.8, W1.10, FR-9.1) and
 // the one owner of the map's size floor (W1.5, FR-1.4).
 
 import (

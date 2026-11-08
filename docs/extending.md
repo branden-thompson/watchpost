@@ -215,8 +215,8 @@ complete example: search for `MapQuakeFeed` and `mapQuakeFeed`.
   has no `.SHELLFLAGS`, so a Makefile silenced that way would pass here and fail on CI. `make verify`
   refuses to run the oracle under 3.81 and says so by name. On macOS: `brew install make`, then put
   `/opt/homebrew/opt/make/libexec/gnubin` at the front of `PATH` so `make` resolves to 4.x.
-- `vuln` is `govulncheck`, which downloads the tool on each run — the one step that needs the
-  network. `make tree-free` says whether a gate run is already in flight; do not edit the tree while
+- `vuln` is `govulncheck`, which downloads the tool on each run, and `lint` fetches the pinned
+  golangci-lint the first time — the two steps that need the network. `make tree-free` says whether a gate run is already in flight; do not edit the tree while
   one is.
 - New render primitives are built **on demand** — add them when a view needs them, never
   speculatively ([architecture §10.10](../06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md), item 5).

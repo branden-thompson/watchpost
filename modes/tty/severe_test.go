@@ -631,7 +631,7 @@ func TestLoneEscThenKeyIsNotLost(t *testing.T) {
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	// ESC CR / ESC HT / ESC ESC read as esc then the key itself — never ctrl+m /
-	// ctrl+i (round 4, B-08: a ctrl-byte rule would swallow Enter).
+	// ctrl+i (a ctrl-byte rule would swallow Enter).
 	for _, code := range []rune{tea.KeyEnter, tea.KeyTab, tea.KeyEscape, tea.KeyUp, tea.KeyDown, tea.KeyBackspace, tea.KeyDelete, 'é'} { // R5-C-08: arrows and the rest un-fuse too
 		first, second, ok := splitEscFusion(tea.KeyPressMsg{Code: code, Mod: tea.ModAlt})
 		if !ok || first.Code != tea.KeyEscape || second.Code != code || second.Mod != 0 {
@@ -719,8 +719,8 @@ func TestSpaceInTheWindowReadsTheFocusedEvent(t *testing.T) {
 	}
 }
 
-// The chip row holds ONE line at the 80-col --ascii floor (round 4, B-03:
-// a [space] chip that re-flows the row would leave the golden wrapped).
+// The chip row holds ONE line at the 80-col --ascii floor: a [space] chip
+// that re-flows the row would leave the golden wrapped.
 func TestSevereChipsHoldOneLineAtTheASCIIFloor(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d.cfg.NarrateEvent = func(string) {}

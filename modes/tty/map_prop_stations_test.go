@@ -77,7 +77,7 @@ func TestTheStationsAreCreditedWhenTheyFedIt(t *testing.T) {
 }
 
 // TestEverySnapshotsStateIsSaid is FR-5.2 and the BUILD red team's L-F5,
-// L-F6 (round 2 BL2-3, CN2-5): a snapshot the stations' burst left paused,
+// L-F6: a snapshot the stations' burst left paused,
 // one an update left unfinished, NOAA's files not read, and no stations by
 // the listener's choice (D-214) are each said - never read as a fresh field.
 // D-239: no word says more than happened - a GloTEC outage with no grid

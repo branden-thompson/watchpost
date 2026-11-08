@@ -72,7 +72,7 @@ a person remembering.
 | ~~D-4~~ | **WITHDRAWN 2026-09-03.** Never mutate an assertion is TRUE and not mechanisable: three static predicates each flagged legitimate mutants, the last being one that drops half a conjunction inside an invariant, which is a real rule deletion and is caught. Weakening an invariant is legitimate when the code under it can violate the weakened form and vacuous when it cannot, and that is semantic. Its decidable form is a triage rule at sweep time — a mutant that SURVIVES while editing only an invariant's condition means an unpinned rule or a vacuous check, and both need a person. | No, as it turned out | 1 |
 | **D-5** | **Every ordering guarantee names its SCOPE and is tested at that boundary.** "A before B" means nothing without "within what". | No | 2, both serious |
 | **D-11** | **A pin is not evidence until it has been seen failing on its own defect**, in every environment the gate runs it in. A pin for an interleaving fixes its own `GOMAXPROCS` rather than inheriting it. | Partly — a mutant run to CAUGHT is this observation mechanised | The two T2.3 pins that were green while the defect was live |
-| **D-9** | **Verification logic lives in the project's typed, tested language — and shell that DOES decide must have Go tests that drive it.** *(Restated 2026-09-08, then corrected the same day. The absolute form contradicted the tree: `06_docs/mutants/run.sh` is 115 lines and is the entire verdict engine. **Only that one has a Go driver** — `harness_test.go` builds a probe repo and asserts all five verdicts with their exit codes. `p10-unmatched.sh` (131) and `ledger-ratified.sh` (115) decide things too and are covered by SHELL self-tests through `gate-controls`, not Go; `exposure-scan.py` (228) has neither. So the rule is **aspirational for three of the four**, and the restatement's own "~220 more" undercounted: it is 246, plus 228 of Python it omitted entirely. Named here rather than left as a rule the tree quietly fails.)* | Partly | 17 |
+| **D-9** | **Verification logic lives in the project's typed, tested language — and shell that DOES decide must have Go tests that drive it.** *(Restated 2026-09-08, then corrected the same day. The absolute form contradicted the tree (line counts as of 2026-09-08): `06_docs/mutants/run.sh` is 115 lines and is the entire verdict engine. **Only that one has a Go driver** — `harness_test.go` builds a probe repo and asserts all five verdicts with their exit codes. `p10-unmatched.sh` (131) and `ledger-ratified.sh` (115) decide things too and are covered by SHELL self-tests through `gate-controls`, not Go; `exposure-scan.py` (228) has neither. So the rule is **aspirational for three of the four**, and the restatement's own "~220 more" undercounted: it is 246, plus 228 of Python it omitted entirely. Named here rather than left as a rule the tree quietly fails.)* | Partly | 17 |
 
 Not adopted, and why: **D-6** folds into D-2. **D-7** (tests assert the requirement, not the observed
 behaviour) is a good habit but the list is kept short deliberately. **D-8** (no number without a
@@ -159,7 +159,7 @@ because a rule you cannot check you have followed is a rule nobody follows.
    plant survives, **suspect the plant first**: check it compiled, applied, and
    was reachable in the state the gate renders. **Done when** you have watched it
    fail for the right reason — an assertion with a message, never a compile
-   error (see `build-methodology.md` item 1).
+   error (see `02_features/0.15.0-pre-broadcaster-ui-improvements/04-development/build-methodology.md` item 1).
 4. **Before quoting a number from it — INST-4.** Run it against a case whose
    answer you already know. **Done when** the known case comes out right. Forty
    seconds of this falsified a finding already written down (F-58).
@@ -192,9 +192,9 @@ judgement or habit. That needs answering rather than leaving as a contradiction
 
 **The admission price was paid: every INST rule carries a named catch from this
 release, and none is speculative.** The shrink rule's own test is "has not
-prevented anything in two releases" — so these are due for review at **0.17.0**,
-and any that has not caught something by then should be retired the way `D-4`
-was. That is the deal, written down where the rules are, not asserted afterwards.
+prevented anything in two releases" — so these were due for review at **0.17.0**,
+and any that had not caught something by then retired the way `D-4` was. No
+record of that review exists, so it is owed (F-226). That is the deal, written down where the rules are, not asserted afterwards.
 
 ### Two limits recorded rather than built around (red team, 2026-09-08)
 

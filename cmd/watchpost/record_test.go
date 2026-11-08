@@ -261,8 +261,8 @@ func unresolvedCitations(doc, root string) []string {
 	return out
 }
 
-// TestEveryCodeCitationResolves is the BUILD red team's C-10 and D-F5 and
-// round 2's CN2-7 and DN2-8: the documents that state the release as it is
+// TestEveryCodeCitationResolves is 0.19.0's C-10, D-F5, CN2-7 and DN2-8: the
+// documents that state the release as it is
 // cite code by the symbol their claim is about, and each file declares it -
 // a line number moves with the code and only proved the line was there. A
 // ruling's citation is its moment's, the tree it cited in git, so the

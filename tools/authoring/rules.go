@@ -69,6 +69,9 @@ var histPhrases = regexp.MustCompile(`(?i)` + strings.Join([]string{
 	`\btook half a minute\b`,
 	`\bbefore the upgrade\b`,
 	`\bbatch \d+('s)? (made|replaced|changed|removed|denser)`,
+	// A REVIEW ROUND'S FINDING CITED AS THE REASON: "(round 4, B-07)" means
+	// nothing without that round's file, and the sentence states the reason.
+	`\bround \d+('s)?,? [A-Z]+\d*-\d+`,
 	`\b(was|were) made (denser|twice|coarser)`,
 }, "|"))
 

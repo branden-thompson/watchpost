@@ -32,8 +32,7 @@ var builtin embed.FS
 const root = "rules"
 
 // Table returns a rule table by name: KEY → spoken form, parsed on each call
-// (microseconds; a memo would be a package global, which P10-06 forbids —
-// red-team round 4, A-11 declined on that ground). An unknown table is empty
+// (microseconds; a memo would be a package global, which P10-06 forbids). An unknown table is empty
 // (the tests pin the names the code asks for). A duplicated key is a
 // maintainer's slip: the first rule wins and the table is still served.
 func Table(name string) map[string]string {

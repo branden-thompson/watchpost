@@ -36,9 +36,8 @@ type Provider struct {
 	Key string `toml:"key,omitempty"`
 }
 
-// Radio holds tuner settings. Only what the app reads lives here (red-team
-// round 2 R2-21): the `--tts-cmd` argv template and a stream override are
-// 1.0 items and arrive with their code, not before it.
+// Radio holds tuner settings. Only what the app reads lives here: a setting
+// arrives with the code that reads it, not before it.
 //
 // The correspondent cast and the alert tones are ADDITIVE, and their zero
 // value is one voice and every tone: an absent [radio.voices] table means

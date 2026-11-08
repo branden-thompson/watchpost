@@ -327,7 +327,7 @@ func TestPreviewAsideLeavesTheTapAlone(t *testing.T) {
 	}
 	time.Sleep(150 * time.Millisecond)
 	dst := make([]float64, 1024)
-	if n := e.Samples(dst); n != 0 { // nothing at all reached the tap — not merely quiet frames (round 4, A-16d)
+	if n := e.Samples(dst); n != 0 { // nothing at all reached the tap — not merely quiet frames
 		t.Fatalf("an aside preview must not reach the visualizer: %d frames", n)
 	}
 }

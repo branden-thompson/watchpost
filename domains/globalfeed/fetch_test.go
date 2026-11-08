@@ -151,7 +151,7 @@ func sevName(s Severity) string {
 // Declared is the ISSUE time on the feed path too (HUM LEAD UAT
 // 2026-08-28): a warning sent at 20:00 for an onset at 22:00 is declared at
 // 20:00 — the fixture's sent and onset differ, so a revert to the onset fails
-// here (red-team round 4, C-10).
+// here.
 func TestNWSDeclaredIsTheSentTimeOnTheFeedPath(t *testing.T) {
 	body := `{"features":[
 	  {"id":"urn:oid:hw1","properties":{"event":"High Wind Warning","areaDesc":"Laramie County, WY","senderName":"NWS Cheyenne WY","sent":"2026-08-27T20:00:00+00:00","effective":"2026-08-27T20:00:00+00:00","onset":"2026-08-27T22:00:00+00:00"}}

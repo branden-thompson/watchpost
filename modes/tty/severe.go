@@ -343,7 +343,7 @@ func (d Dashboard) severeChips(o render.Opts, hasRows bool, width int) string {
 	ud, lr := "↑↓", "←→" // KeyCap names them in words under --ascii (R5-C-13)
 	canRead := hasRows && d.cfg.NarrateEvent != nil
 	// Each form is built only when the wider one did not fit (the window's
-	// frame budget); the floor — the 80-col --ascii chips, round 4 B-03 —
+	// frame budget); the floor — the 80-col --ascii chips —
 	// leaves the arrows unlabelled.
 	// A STATE-DRIVEN LABEL, the same as the radio panel's (UAT 37,
 	// radio_panel.go): the chip says what the key will DO next rather than

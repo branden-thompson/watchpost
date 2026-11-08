@@ -1,6 +1,6 @@
 package main
 
-// scratch_test.go — no scratch test reaches the tree (0.18.0 batch 16).
+// scratch_test.go — no scratch test reaches the tree.
 //
 // A throwaway test that prints what a window draws is how a layout gets looked
 // at while it is built, and one - a `zz_peek_test.go` with `TestZZPeek` - is

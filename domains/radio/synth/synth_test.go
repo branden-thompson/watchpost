@@ -426,8 +426,8 @@ func TestSourceEndsAfterOneCycleUnlessRepeating(t *testing.T) {
 }
 
 func TestStateCodeAtTheStartDoesNotPanic(t *testing.T) {
-	// Round 2 N-1 (FuzzNormalize): a block starting with a bare state code
-	// must not slice runes[-1:-1]. A code with nothing before it is not
+	// A block starting with a bare state code, a shape FuzzNormalize
+	// generates, must not slice runes[-1:-1]. A code with nothing before it is not
 	// a place; the rest of the rules still apply.
 	for _, in := range []string{"CA", "CA ", "NY\nmore", "TX. Sunny.", "IN EFFECT"} {
 		_ = Normalize(in)

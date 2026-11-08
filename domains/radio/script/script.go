@@ -88,7 +88,7 @@ func (l *Library) Text(report, part string, data any) (string, error) {
 	if err := t.Execute(&b, data); err != nil {
 		return "", fmt.Errorf("script %s/%s: %w", report, part, err)
 	}
-	return strings.TrimSpace(b.String()), nil // data is never re-parsed: "{{" in provider prose is prose (round 4, A-09)
+	return strings.TrimSpace(b.String()), nil // data is never re-parsed: "{{" in provider prose is prose
 }
 
 // Say is Text for the air: the rendered part with any terminal escapes
@@ -98,7 +98,7 @@ func (l *Library) Text(report, part string, data any) (string, error) {
 // with a broken override. A nil Library speaks from the built-in tree (a
 // fresh loader — the deck and the ticker hold a real one; nil is the tests'
 // and a memo would be a package global, P10-06). The one owner of "missing
-// script = silence" (round 4, A-13).
+// script = silence".
 func (l *Library) Say(report, part string, data any) string {
 	if l == nil {
 		l = New("")
@@ -180,7 +180,7 @@ func (l *Library) read(name string) ([]byte, error) {
 	if l.override != "" {
 		path := filepath.Join(l.override, filepath.FromSlash(name))
 		// A regular file in the override tree only: a symlink could read any
-		// file the user can into the voice (round 4, A-10).
+		// file the user can into the voice.
 		if fi, err := os.Lstat(path); err == nil && fi.Mode().IsRegular() {
 			if fi.Size() > maxOverrideBytes { // a phrase, not a file dump: a 20 MB tail would be a 20 MB spoken line (R5-C-15)
 				return nil, fmt.Errorf("script %s: override exceeds %d bytes", name, maxOverrideBytes)

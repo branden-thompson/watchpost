@@ -326,7 +326,7 @@ func (e *Engine) PreviewAside(rate int, pcm io.Reader) error {
 // path, so the bars follow it), after the resampler so the tap reads
 // OutputRate. The clip becomes the line in flight; a HELD line
 // (PausePreview) is not displaced by it — a takeover's tone and lines play
-// while the read waits (red-team round 4, A-01).
+// while the read waits.
 func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error {
 	src := io.Reader(newResampler(pcm, rate))
 	if tapped {
@@ -377,7 +377,7 @@ func (e *Engine) watchClip(p Player, n int) {
 		e.mu.Lock()
 		held := e.held[p]
 		if !held {
-			p.SetVolume(e.volume) // the knob follows a minutes-long read (round 4, A-07)
+			p.SetVolume(e.volume) // the knob follows a minutes-long read
 		}
 		e.mu.Unlock()
 		if !held && !p.IsPlaying() {

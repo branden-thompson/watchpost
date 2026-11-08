@@ -296,7 +296,7 @@ func (rp *recentPipeline) stop() {
 	for _, s := range rp.scheds {
 		scheds = append(scheds, s)
 	}
-	rp.mu.Unlock() // a commit still in flight at quit must not race the map (round 2 N-6)
+	rp.mu.Unlock() // a commit still in flight at quit must not race the map
 	for _, s := range scheds {
 		s.Stop()
 	}

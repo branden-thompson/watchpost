@@ -642,7 +642,7 @@ func defaultKeyMap() term.KeyMap {
 		"alert-prev":   {Keys: []string{"left"}, Help: "Previous Alert"},
 		"alert-next":   {Keys: []string{"right"}, Help: "Next Alert"},
 		"close":        {Keys: []string{"esc"}, Help: "Close"},
-		actMap:         {Keys: []string{"g"}, Help: "Map"}, // 0.18.0 FR-1.1; the map's other keys wait for W1.16's one ruling
+		actMap:         {Keys: []string{"g"}, Help: "Map"}, // 0.18.0 FR-1.1; the map's own keys are defaultMapKeyMap's
 	}
 }
 
@@ -1041,7 +1041,7 @@ type resolvedMsg struct {
 // committedMsg returns from the app Commit hook.
 type committedMsg struct {
 	err  error
-	what string // "add" | "lookup" | "remove" | "setup": names the action in the error line (round 2 N-7)
+	what string // "add" | "lookup" | "remove" | "setup": names the action in the error line
 
 	// What a Setup save actually WROTE. The window is seeded from cfg when it
 	// opens, and cfg is captured once when the app is built — so without this
@@ -1360,7 +1360,7 @@ func splitEscFusion(k tea.KeyPressMsg) (esc, key tea.KeyPressMsg, fused bool) {
 	key = k
 	key.Mod &^= tea.ModAlt
 	switch {
-	case k.Code == tea.KeyEnter || k.Code == tea.KeyTab || k.Code == tea.KeyEscape: // ESC CR / ESC HT / ESC ESC: the key itself (round 4, B-08)
+	case k.Code == tea.KeyEnter || k.Code == tea.KeyTab || k.Code == tea.KeyEscape: // ESC CR / ESC HT / ESC ESC: the key itself
 	case k.Code >= 0x01 && k.Code <= 0x1a: // a raw control byte after the esc (ESC ^S): ctrl+letter
 		key.Code, key.Mod = k.Code+0x60, key.Mod|tea.ModCtrl
 	}
@@ -1927,7 +1927,7 @@ func (d Dashboard) applyRadioStatus(v RadioStatusMsg) Dashboard {
 		d.radioSince = time.Now() // a new line starts its own marquee clock (UAT 83)
 	}
 	// Every field crosses the boundary here, once: a station name, a product's
-	// short form or a spoken line never addresses the terminal (NFR-6, round 4 A-06).
+	// short form or a spoken line never addresses the terminal (NFR-6).
 	d.radioState, d.radioStation, d.radioShort, d.radioDetail, d.radioLive, d.radioSpoken = v.State, render.PlainLine(v.Station), render.PlainLine(v.Short), render.PlainLine(v.Detail), v.Live, v.Spoken
 	d.radioPlaying = v.State == "playing" || v.State == "connecting" || v.State == "reconnecting"
 	if v.Location != "" {

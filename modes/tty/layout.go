@@ -39,7 +39,7 @@ type frameLayout struct {
 func (d Dashboard) layout() frameLayout {
 	o := d.opts()
 	// What the geometry measures is built ONCE per frame and handed to both
-	// resolutions (round 4, B-06): the player's plan, which gives both
+	// resolutions: the player's plan, which gives both
 	// players' heights, and the control row. Only the player drawn is
 	// rendered (0.19.5 PF-3).
 	plan, drawn := d.planRadio(o), o

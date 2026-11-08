@@ -97,7 +97,7 @@ type radioDeck struct {
 	limiter *synth.Limiter
 
 	// tuneMu makes "check the epoch, then start the engine" one step, and
-	// Stop's "bump the epoch, then halt" another (round 2 N-3): without it a
+	// Stop's "bump the epoch, then halt" another: without it a
 	// Stop landing between the check and engine.Start leaves audio playing.
 	// Held only around those tails — never across resolving or a voice install.
 	tuneMu sync.Mutex

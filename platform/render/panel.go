@@ -121,7 +121,7 @@ func (o Opts) BoxTitled(lines []string, title, stamp, fg, bg string) string {
 	out := make([]string, 0, len(lines)+2)
 	out = append(out, tl+TitledRule(hz, title, stamp, w-2)+tr)
 	for _, l := range lines {
-		out = append(out, vt+inset+PadTo(truncate(l, o.BoxInnerWidth()), o.BoxInnerWidth())+inset+vt) // a row too wide is cut, never the corner (round 4, B-10)
+		out = append(out, vt+inset+PadTo(truncate(l, o.BoxInnerWidth()), o.BoxInnerWidth())+inset+vt) // a row too wide is cut, never the corner
 	}
 	out = append(out, bl+strings.Repeat(hz, w-2)+br)
 	return o.Block(strings.Join(out, "\n"), fg, bg)
@@ -177,7 +177,7 @@ func (o Opts) Block(content, fg, bg string) string {
 		}
 		return strings.Join(lines, "\n")
 	}
-	if fg == "" && !BGVisible(bg) { // no tone of its own (the frame's base tone paints it): padded, no SGR — nothing for the compositor to style (round 4, B-01)
+	if fg == "" && !BGVisible(bg) { // no tone of its own (the frame's base tone paints it): padded, no SGR — nothing for the compositor to style
 		for i, line := range lines {
 			lines[i] = PadTo(line, o.Width)
 		}

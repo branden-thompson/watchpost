@@ -756,7 +756,7 @@ func savePreference(edit func(cfg *config.Config)) error {
 func cacheDir() string { return userCacheSubdir("http") }
 
 // userCacheSubdir is <OS cache dir>/watchpost/<name> — the one builder for
-// the HTTP cache and the voice install (round 2 R2-23); "" when the OS has
+// the HTTP cache and the voice install; "" when the OS has
 // no cache directory (the callers degrade: memory only, no voice).
 func userCacheSubdir(name string) string {
 	base, err := os.UserCacheDir()
