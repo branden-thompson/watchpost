@@ -119,7 +119,7 @@ func relayFaultInsetLines(text string, content int) []string {
 // occupies goes with it, so the window can be SCROLLED to its own focus.
 func (d Dashboard) relayFaultLines(o render.Opts) (out []string, focusAt, focusEnd int) {
 	// THE PANEL INSETS BY TWO, so every offset here is the mock's less two.
-	// relayFaultInset is that inset named once rather than subtracted at four
+	// relayFaultPad is that inset named once rather than subtracted at four
 	// call sites — the mock is the specification and the arithmetic between it
 	// and the string is the part that goes wrong silently.
 	content := relayFaultContentFor(o)

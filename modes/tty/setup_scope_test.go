@@ -24,7 +24,7 @@ import (
 // TestEverySettingsRowIsRuledForItsSurface is the closed set.
 //
 // THE ZERO VALUE IS UNRULED, so a row added without a decision fails here rather
-// than inheriting one.  It still RENDERS at runtime (setupScope.shownOn) — a
+// than inheriting one.  It still RENDERS at runtime (`Dashboard.shownOnSurface`) — a
 // settings row that vanishes silently is worse than one that appears where it
 // should not, because the first is invisible and the second is reportable.
 func TestEverySettingsRowIsRuledForItsSurface(t *testing.T) {
@@ -141,7 +141,7 @@ func TestTheWindowOpensOnARowThisSurfaceDraws(t *testing.T) {
 // THE KEYBOARD NEVER LANDS ON A ROW NOBODY CAN SEE — not on ↓, not on ↑, not on
 // tab. A focus on a hidden row is a window whose keys appear dead.
 //
-// EVERY KEY IS PRESSED, NOT CALLED. Walking `stepGroup` directly lets a mutant
+// EVERY KEY IS PRESSED, NOT CALLED. Walking `stepRow` directly lets a mutant
 // that breaks the CALL SITE survive — the helper can be right and the wiring not,
 // which is a distinction only the real key can make. And `openSetup` on an
 // already-open window TOGGLES it shut, after which the keys reach no modal and

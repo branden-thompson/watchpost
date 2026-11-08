@@ -211,7 +211,7 @@ func (b Broadcaster) milesFromTower(ref snapshot.LocationRef) *float64 {
 // cards the operator reads from (D-68), and they keep their own shape.
 const bcScheduledFrom = 2
 
-// scheduledLines is the SCHEDULED LINE-UP heading and its table, windowed to
+// scheduledSpan is the SCHEDULED LINE-UP heading and its table, windowed to
 // whatever height the frame has left (D-94).
 //
 // THE HEADING REPLACES THE RAIL. What the vertical rail spelled down the side in

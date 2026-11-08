@@ -49,7 +49,7 @@ const bcDetailRoom = 77
 // and whether that slot holds a card at all.
 //
 // AN EMPTY SLOT OPENS NOTHING. The handle is drawn on an undecided slot because
-// the slot is addressable (slotRows), but there is no report to inspect — and a
+// the slot is addressable (slotCard), but there is no report to inspect — and a
 // window that opened onto "waiting for the line-up" would be a way of asking the
 // operator to read the absence of a card.
 func (b Broadcaster) cardDetail(handle int) (string, func(render.Opts) (string, []string), bool) {

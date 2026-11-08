@@ -170,8 +170,6 @@ func tideEvent(o render.Opts, e *snapshot.TideEvent, tz *time.Location) string {
 	return marinePair(o.Clock.Time(e.Time.In(tz)), o.TideHeight(&e.Height))
 }
 
-// tideTrend reads the direction from whichever extreme comes next.
-
 // currentRow: the phase in force (last predicted extreme before now, with
 // its max speed) and the next predicted event as the note.
 func currentRow(o render.Opts, events []snapshot.CurrentEvent, tz *time.Location, now time.Time) (marineCell, bool) {

@@ -86,7 +86,7 @@ func requestOpen() requestState {
 	}
 }
 
-// requestValid reports whether the window can be scheduled.
+// valid reports whether the window can be scheduled.
 //
 // THREE THINGS MUST BE TRUE and each has its own helper text, so a refused
 // `enter` never leaves the operator guessing which one.
@@ -143,7 +143,7 @@ func (st requestState) position(liveOffset int) int {
 	return n
 }
 
-// requestNote is the helper text under the location field, "" when there is
+// note is the helper text under the location field, "" when there is
 // nothing to say.
 //
 // THE SHAPE OBSERVER'S LOOKUP USES (ruling 2): the fact, then what the operator

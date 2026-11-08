@@ -1303,3 +1303,39 @@ Mutant m793, hand-vetted and killed.
   | `tools/reachscore/spots` | 1.29 | 0.00 |
 
   `tools/ids` is new and has no row; it measures 0.88 across 8 functions.
+
+## 0.19.5 batch 28 — the comments name what exists (plan Q8.1, DC-2, DC-17)
+
+This batch changes comments only. mAG4 follows its line, and is re-vetted.
+
+- **DC-2: names that do not exist.** Each was grepped again against today's tree, and re-pointed or
+  restated.
+  - **Re-pointed.** Each now names its current owner:
+    - `bedReach.Line`, `tapeHead` (twice), `bedSelector` and `scheduledSpan` (with its two
+      references in `broadcaster.go`);
+    - `requestState.valid` and `.note`, `Card.WithScript`, `bcRailForms`, `Lineup.Next` (twice),
+      `Dashboard.shownOnSurface` and `stepRow`;
+    - `relayFaultPad`, `whenTail` (twice), `slotCard`.
+  - **Moved since 0.14.0.** `readBreaking` became `readScript`, and its retry is `reader.readPart`.
+    Three test docs now name them; the fourth says the counterfactual without a name.
+  - **The layout's widths.** The comment names `tableWidth` where it named `orderWidth`, and no
+    longer counts three owners where the code has seven.
+  - **`writeNarration`'s doc** said what a test value guards. It now says what the function does, and
+    names the §10.5 contract's file (JM-13).
+  - **Said in words.** `sectionWidth()` has no successor, so its two sites describe the region in
+    words. The `armDwell` counterfactual reads as one.
+  - **`stopDwell` and its ledger row are gone.** `Cancel`'s reason is restated without them.
+  - **Facts corrected.**
+    - The bed's key is `[b]` (four sites); `B` is the door to the Broadcaster.
+    - `maintrack` has two stages, not three.
+    - Seismic polls twice as often as fire in PRIORITY, and a third as often in RECENT.
+    - What draws the zone outlines is the go-tuimaps library.
+    - The platform test points at `make test-platforms`.
+  - `platform/config/config.go:118` needed nothing. `radioModes` and its check now exist, so the
+    comment is true.
+- **DC-17: orphans.** The fragments of the deleted `severeArrows`, `tickerAlert` and `tideTrend` are
+  gone.
+- **AP-CAPS-01 on what this batch touched.** Eight caps continuations sat in the declarations these
+  edits changed, and each is rewritten to stand alone. The soft warning is clear.
+- **mAG4** anchors on the RECENT seismic tier's comment, and follows it. It is killed by
+  `TestTheRecentTiersFetchWhatTheMarksAreDrawnFrom` and `TestCadenceTableIsTheDoc`.

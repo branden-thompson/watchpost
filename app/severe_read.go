@@ -151,10 +151,8 @@ func (r *eventReader) Read(key string) {
 // Cancel ends a read in progress WITHOUT waiting for it, and returns at once.
 //
 // NAMED Cancel, NOT Stop, and the reason is the tool rather than the code: P10
-// resolves methods by NAME, so an eventReader.Stop collides with radioDeck.Stop
-// — which genuinely participates in a stopDwell cycle and carries its own
-// ratified exemption — and the collision reports this function as recursion it
-// has no part in. A distinct name is cheaper and more honest than an exemption
+// resolves methods by NAME, so an eventReader.Stop collides with radioDeck.Stop,
+// and the collision reports this function as recursion it has no part in. A distinct name is cheaper and more honest than an exemption
 // for something that is not recursive.
 //
 // IT IS THE ONE A KEYPRESS CALLS. `End` waits for the read's goroutine, which is

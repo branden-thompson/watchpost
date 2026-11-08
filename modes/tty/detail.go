@@ -324,7 +324,7 @@ func hiLo(o render.Opts, day snapshot.Daily) string {
 }
 
 // forecastRows: up to 10 upcoming days with precip probability, through the
-// same table the hours above are drawn with (whenCols).
+// same columns the hours above are drawn with (whenTail, under hourCols and dayCols).
 func (d Dashboard) forecastRows(o render.Opts, loc *snapshot.Location, cw int) []string {
 	var rows []render.StatusRow
 	for i, day := range loc.Daily { // bounded at ten days below (P10-02)

@@ -64,7 +64,7 @@ func stageNames() [numMainTrackStages]string {
 }
 
 // String names the stage for the dark run's log. An undeclared stage names
-// itself as such rather than as one of the three, because a diagnostic that
+// itself as such rather than as one of the two, because a diagnostic that
 // silently reports "off" for a corrupt value is worse than one that says it
 // does not know.
 func (s mainTrackStage) String() string {

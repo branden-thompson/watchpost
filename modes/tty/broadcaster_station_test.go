@@ -58,7 +58,7 @@ func TestTheTransitionHintIsAnchoredToTheRightEdge(t *testing.T) {
 		b.power = lineup.Running
 		got := b.stationLine()[1]
 		// IT FILLS THE BAND'S TEXT COLUMN — the terminal less the inset it keeps
-		// on EACH side (D-80). `sectionWidth()` is the width of a region inside
+		// on EACH side (D-80). The width of a region inside
 		// the frame's WALLS, and this band has colour for its edge (D-70): sized
 		// by that, it is three cells too wide, and the right-hand inset has
 		// nowhere to go.

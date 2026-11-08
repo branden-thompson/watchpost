@@ -366,8 +366,8 @@ func TestTheHourlyWindowRollsTwelveHoursFromNow(t *testing.T) {
 	}
 }
 
-// AND THE HOURS LINE UP WITH THE DAYS BELOW THEM. Both are drawn from one
-// column spec (whenCols), so this holds by construction rather than by two
+// The hours line up with the days below them. Both are drawn from one column
+// spec (whenTail), so this holds by construction rather than by two
 // functions agreeing about a number.
 func TestTheHourlyRowsShareTheForecastColumns(t *testing.T) {
 	tz := time.Local

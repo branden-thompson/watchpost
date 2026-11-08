@@ -203,7 +203,7 @@ type Broadcaster struct {
 	gain int
 
 	// THE POINTER MOVES AND THE WINDOW FOLLOWS IT at render time, where the room
-	// is known (scheduledLines, D-101). An offset held on the MODEL cannot know
+	// is known (scheduledSpan, D-101). An offset held on the MODEL cannot know
 	// how many rows fit, which is why the window is derived rather than stored.
 
 	// selected is the focused row, indexed across BOTH tables — the running order
@@ -655,11 +655,11 @@ const (
 	bcMinCols = 100
 )
 
-// THE LAYOUT HAS THREE WIDTH OWNERS (D-80), each of which knows what it is
-// measuring — `cardBoxWidth` for a card (which carries D-51's right-rail seam),
-// `orderWidth` for a row of the running order, `bandWidth` for the station's
-// painted text. A fourth number that agreed with all three only by coincidence
-// would put the band three cells too wide.
+// Each of the layout's widths has one owner (D-80), which knows what it is
+// measuring: `cardBoxWidth` for a card (which carries D-51's right-rail seam),
+// `tableWidth` for a railed table such as the running order, `bandWidth` for
+// the station's painted text. A number that agreed with one of them only by
+// coincidence would put the band three cells too wide.
 
 // tooSmall reports whether the terminal is below the floor.
 func (b Broadcaster) tooSmall() bool {
@@ -879,7 +879,7 @@ func (b Broadcaster) scrollQueue(by int) Broadcaster {
 	}
 	b.selected = max(0, min(n-1, b.selected+by))
 	// THE WINDOW IS NOT MOVED HERE. It follows the pointer at RENDER time, where
-	// the room is known (scheduledLines) — a offset chosen at the keystroke cannot
+	// the room is known (scheduledSpan) — a offset chosen at the keystroke cannot
 	// know how many rows fit.
 	return b
 }
@@ -1145,7 +1145,7 @@ func bcAirBoundaries() []string {
 // alone fails --ascii and any terminal without one, so a reader who sees no
 // colour still reads the state.
 //
-// AND IT SAYS WHAT "ON AIR" MEANS (FR-5.5). Watchpost has no radio path: it
+// The band also says what "ON AIR" means (FR-5.5). Watchpost has no radio path: it
 // produces audio, and a transmitter it cannot observe puts that over the air.
 // An operator who reads a confident ON AIR and infers their antenna is
 // radiating has been misled by us, so the boundary is stated HERE, where they
@@ -1183,7 +1183,7 @@ func (b Broadcaster) stationLine() []string {
 	// they just pressed; a sentence describing the state instead says what the row
 	// above it already names.
 	// THE BAND'S TEXT COLUMN: the terminal, less the inset on BOTH sides (D-80).
-	// Not `sectionWidth()` — the width of a region inside the frame's walls,
+	// Not the width of a region inside the frame's walls,
 	// which this band does not have because colour is its edge (D-70) — or
 	// every row comes out three cells too wide and the right-hand inset has
 	// nowhere to go.
@@ -1288,7 +1288,7 @@ func (b Broadcaster) stationLine() []string {
 // work — which reads as a broken button rather than as a pending answer.
 func (b Broadcaster) bedAvailable() bool { return !b.bedRelaysTold || b.bedRelays > 0 }
 
-// bedRow is the bed's selector and its own state (D-62).
+// bedSelector is the bed's selector and its own state (D-62).
 //
 // THE BED IS THE THIRD CARRIER OF THE AIR STATE, and consolidating the three is
 // the whole ruling: "the bed was yet another conveyer of the AIR STATE and we
@@ -1311,7 +1311,7 @@ func (b Broadcaster) bedSelector(o render.Opts) string {
 	if relay == "" {
 		relay = bcNoRelay
 	}
-	// AND A STATION WITH NOTHING TO TUNE OFFERS NO SELECTOR (D-117). Arrows over
+	// A station with nothing to tune offers no selector (D-117). Arrows over
 	// an empty list are a control that cannot act, and the row has something
 	// truer to say with the cells.
 	if !b.bedAvailable() {

@@ -1094,8 +1094,8 @@ func (d *radioDeck) onStatus(st player.Status) {
 	if st.State == player.Failed && mode == "live" {
 		go d.needsRead(ref, "relay unavailable — "+st.Err, gen)
 	}
-	// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b). A time.AfterFunc here —
-	// armDwell setting a five-minute timer, advanceQueue firing on it — would put
+	// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b). A time.AfterFunc here — a
+	// five-minute timer the deck arms, and a queue it advances when it fires — would put
 	// the decision in the deck. These are two facts the deck is the only thing able to
 	// observe: that a synthesised cycle ran to its end, and where the bed landed
 	// and when it actually started playing. Whether either moves the rotation on

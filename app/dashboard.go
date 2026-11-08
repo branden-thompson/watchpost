@@ -535,9 +535,6 @@ func (lp *livePipelines) setWatch(refs []snapshot.LocationRef) {
 	lp.mu.Unlock()
 }
 
-// tickerAlert is the ticker's breaking-news audio — the radio deck, or nil when
-// there is no audio (a nil deck: tests, no device).
-
 // scriptsDir is where the user's script overrides live: <config dir>/scripts
 // — the same directory as config.toml, a scripts/ folder beside it. "" when
 // the config dir cannot resolve (built-in scripts only).

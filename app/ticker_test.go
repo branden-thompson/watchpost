@@ -524,7 +524,7 @@ func TestASingleEventHasNoBurstHead(t *testing.T) {
 // between alert tone, the ticker showing the centered takeover and the
 // readout").
 //
-// Sent from readBreaking — after the burst head is rendered AND spoken — the
+// Sent after the burst head is rendered AND spoken, the
 // band would lag the sound by a render and a whole sentence. The tone is the
 // cue; the frame that answers it must be the
 // next thing that happens, before any words are rendered.

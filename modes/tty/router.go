@@ -42,7 +42,7 @@ const (
 	actDiagnostics   term.Action = "diagnostics"
 	actStationToggle term.Action = "station-toggle"
 
-	// THE BED'S OWN CONTROLS (D-78). `[B]` cuts the programme between the
+	// THE BED'S OWN CONTROLS (D-78). `[b]` cuts the programme between the
 	// station's line-up and its bed; the arrows move through the relays the
 	// station's fence reaches. The reference mock draws all three, so all three
 	// are bound.
@@ -139,7 +139,7 @@ type Station interface {
 	GoToStandby()
 
 	// CutBed moves the programme between the station's line-up and its bed
-	// (D-78) — `[B]`, the production caller of `lineup.CutOver`.
+	// (D-78) — `[b]`, the production caller of `lineup.CutOver`.
 	//
 	// TO THE BED IS THE ARGUMENT, not a toggle, for the reason the power's two
 	// controls are two methods: a toggle asks the caller to know the current
@@ -179,7 +179,7 @@ func broadcasterKeyMap() term.KeyMap {
 		actHelp:          {Keys: []string{"?"}, Help: "Help"},
 		actQuit:          {Keys: []string{"q"}, Help: "Quit"},
 		actStationToggle: {Keys: []string{"shift+enter"}, Help: "ON AIR / STANDBY"},
-		// THE BED'S OWN CONTROLS (D-78). `[B]` cuts the programme to the bed and
+		// THE BED'S OWN CONTROLS (D-78). `[b]` cuts the programme to the bed and
 		// back; the arrows move through the relays the station's fence reaches.
 		// LOWERCASE, BECAUSE `B` IS ALREADY A DOOR. FR-1.6 requires every action
 		// to carry a non-chord key, and `B` is the Broadcaster swap's — an
@@ -217,7 +217,7 @@ func broadcasterKeyMap() term.KeyMap {
 		// surface (D-56).
 		actQueuePrev: {Keys: []string{"up"}, Help: "Scroll Up"},
 		actQueueNext: {Keys: []string{"down"}, Help: "Scroll Down"},
-		// AND IT FALLS THROUGH LIKE THEY DO: `enter` opens a location's Details on
+		// `enter` falls through as the arrows do: it opens a location's Details on
 		// Observer, and the console's own row is a different thing at the same key.
 		actQueueOpen: {Keys: []string{"enter"}, Help: "Details / Manage Slot"},
 	}

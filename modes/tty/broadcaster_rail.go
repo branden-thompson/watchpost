@@ -74,7 +74,7 @@ func railColumnToned(label string, rows int, g render.Glyphs, bg string) []strin
 // KEYED ON THE LABEL, which is what the rail already is: `section` is handed a
 // name and draws it, and the region table is the one place those names are
 // declared. A parallel table keyed on the region's INDEX would be a second list
-// to keep in step with `bcRegions`.
+// to keep in step with `bcRailForms`.
 //
 // SCHEDULED AND LINE UP SHARE ONE GROUND, because they are one stack of cards
 // the rail happens to name in two halves — the same reason no break is drawn

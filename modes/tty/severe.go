@@ -228,8 +228,6 @@ func (d Dashboard) handleSevereNav(act term.Action) Dashboard {
 
 // --- rendering ---
 
-// severeArrows are the chip labels per --ascii: the words, not the
-
 // severeWindowName is the title; in the record it keeps the name and adds the
 // crumb (plan §5.6 M-6): "NOTABLE EVENTS AND FORECASTS ─── Warnings · 2 / 9".
 //

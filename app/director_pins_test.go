@@ -370,7 +370,7 @@ func twoBreaking() []globalfeed.Event {
 // T0.3 — THE BAND IS TOLD BEFORE THE WORDS ARE SPOKEN, FOR EVERY EVENT.
 //
 // This is the "3 … 2 … 1" cue, which the charter describes as a deliberate
-// lead and DR-18 makes a contract: readBreaking sends the marquee message before
+// lead and DR-18 makes a contract: readScript cues the band before
 // the event's words are spoken.
 func TestT03TheCuePrecedesTheWordsForEveryEvent(t *testing.T) {
 	log := &cueLog{}
@@ -583,7 +583,7 @@ func TestASequenceThatEndedDuringAnOverlappedRenderCuesNothing(t *testing.T) {
 }
 
 // refuseThenEndVoice refuses its first render outright — a live render failure,
-// which is the one case `readBreaking`'s retry exists for — and then ends the
+// which is the one case `reader.readPart`'s retry exists for — and then ends the
 // sequence during the retry.
 type refuseThenEndVoice struct {
 	log    *cueLog
@@ -622,7 +622,7 @@ func (v *refuseThenEndVoice) restore()    {}
 //
 // `holdRest` asks the air when a hold has nothing left to wait, which covers the
 // paths that reach a cue through a hold. The RETRY does not: when the first
-// render fails on its own, `readBreaking` renders a second time and goes
+// render fails on its own, `reader.readPart` renders a second time and goes
 // straight to the cue with no hold between them. A sequence that ends during
 // that second render must not put a breaking headline on the band for a read
 // that never happens — the same defect as the one pinned above, through a

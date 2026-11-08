@@ -146,7 +146,7 @@ func priorityTiers() []sched.Tier {
 		{Kind: snapshot.KindForecastHourly, Every: 30 * time.Minute}, // fires with the daily tier (UAT 72)
 		{Kind: snapshot.KindMarine, Every: 30 * time.Minute},         // coastal waters (UAT 29); one gridpoint download serves it and the daily fill
 		{Kind: snapshot.KindFire, Every: 10 * time.Minute},           // HMS archive refresh + FIRMS cadence (B5, AI-3)
-		{Kind: snapshot.KindSeismic, Every: 5 * time.Minute},         // USGS max-age=60; "did my area shake" needs no sub-minute latency — the fire cadence, regional like it (seismic P2 §0.3)
+		{Kind: snapshot.KindSeismic, Every: 5 * time.Minute},         // USGS max-age=60; "did my area shake" needs no sub-minute latency — twice as often as fire, and regional like it (seismic P2 §0.3)
 	}
 }
 
@@ -159,7 +159,7 @@ func recentTiers() []sched.Tier {
 		{Kind: snapshot.KindForecast, Every: time.Hour},
 		{Kind: snapshot.KindMarine, Every: time.Hour},
 		{Kind: snapshot.KindFire, Every: 15 * time.Minute},    // the archive is shared through the client cache (B5)
-		{Kind: snapshot.KindSeismic, Every: 15 * time.Minute}, // the regional box is shared through the client cache; RECENT half the priority cadence (seismic P2 §0.3)
+		{Kind: snapshot.KindSeismic, Every: 15 * time.Minute}, // the regional box is shared through the client cache; RECENT a third as often as priority (seismic P2 §0.3)
 	}
 }
 

@@ -26,7 +26,8 @@ import (
 const (
 	// bcUpNextLabelW is the label cell's width, from the reference.
 	bcUpNextLabelW = 14
-	// bcUpNextLabel and bcAlertLabel are what the two boxes call themselves.
+	// bcUpNextLabel is what the UP NEXT box calls itself; the other box's label
+	// is the literal "PRIORITY".
 	bcUpNextLabel = "UP  NEXT"
 )
 
