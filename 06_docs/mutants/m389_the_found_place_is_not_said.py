@@ -1,6 +1,6 @@
 import pathlib
-# 0.19.0 FR-1.10: the place found is said.
-# Killed by TestAFoundPlaceIsAnsweredAndNotKept.
+# 0.19.0 FR-1.10: the place found is said; on the Broadcaster, at the map's centre.
+# Killed by TestTheBroadcasterAnswersAFoundPlaceAsItsTarget.
 p = pathlib.Path('modes/tty/map_prop_find.go'); s = p.read_text()
 old = '\treturn "Found " + f.Label + ": marked at the map\'s centre, and not kept."\n'
 assert old in s, 'm389'

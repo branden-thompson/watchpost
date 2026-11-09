@@ -1174,10 +1174,12 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-38 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Is D-18's budget a host limit? (It is self-imposed; neither GIRO nor NOAA publishes a limit; GIRO has throttl… |
 | D-39 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the card detail modal is a centred overlay like the location-details one — scroll, sticky controls |
 | D-39 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE CARD DETAIL MODAL IS A CENTRED OVERLAY |
+| D-39 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The second full make mutant-verdicts sweep, the first to place all 1,057 mutants, ran 19 hours 36 minutes aga… |
 | D-39 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Whether watchpost 0.18.0's PLAN, paused since D-37, opens now that go-tuiMaps v0.2.0's DISCOVER has closed (g… |
 | D-39 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Replace D-18's courtesy budget with throttle behaviour built into the feature, sized from D-38's measurement … |
 | D-40 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the Producer proposes — several, cheap, name-only — and the DIRECTOR chooses |
 | D-40 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE PRODUCER PROPOSES, THE DIRECTOR CHOOSES |
+| D-40 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Asked with D-39: the size of app (20,185 lines) and modes/tty (31,342 lines), whose whole suites every mutant… |
 | D-40 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN entry item 5 (discover report): the bound, the metric set and the phase boundary are each stated in thre… |
 | D-40 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | go-giro-data's path (D-20), from the leave-one-station-out scores on 2026-10-05 (wave2-findings.md; 566 pairs… |
 | D-41 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | a card the Operator CHOSE is FromOperator, and that origin outranks |
@@ -2010,6 +2012,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-22 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | F-190, closed on 2026-10-04 but left under Open, is deleted, as the follow-ups file's own rule asks |
 | A-23 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The one-letter fields get words (Q9.9, JR minor): livePipelines.p and radioDeck.p become program; arbiter.v a… |
 | A-23 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The intake briefs (watchpost and go-ionomaps) are kept as written, with a banner that requirements.md is curr… |
+| A-24 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | mAA3 and mAA4 are kept as equivalent mutants, as 0.16.0 kept m16 and m43. 0.18.0 D-70 draws every Settings ro… |
 | A-24 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PLAN's mermaid diagrams are committed on the docs lane as they are written; 06_docs/architecture-atlas.html i… |
 | A-25 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | M5b gets its own ten scenarios, drawn the same way as M5's, rather than "the same ten" (the implementation pl… |
 | A-26 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | (ratified by D-120) D-94's 10 minutes is the default of a Setting (Maps tab): every 10 minutes, hourly, or on… |

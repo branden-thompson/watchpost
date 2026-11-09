@@ -61,6 +61,17 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	if !strings.HasPrefix(short[3], "KXYZ   NOW · ") || strings.Index(short[4], "Local") != at || strings.Index(short[5], "Up to:") != at {
 		t.Errorf("under a short name the answers do not stand under NOW (%d):\n%s", at, strings.Join(short, "\n"))
 	}
+	lg := st // a name wider than its column: the answers at the short indent, the block's rows unchanged (A-51)
+	long := "Big Bear Lake Relay Station West"
+	if len(long) <= propPlaceColMax {
+		t.Fatalf("%q fits the place's column, so this measures nothing", long)
+	}
+	lg.cfg.Transmitter = &snapshot.LocationRef{Label: long, Lat: 34.2, Lon: -116.9}
+	lg = workChart(t, lg.renderMap())
+	wide := lg.propBlock(lg.scrubW())
+	if !strings.HasPrefix(wide[3], strings.ToUpper(long)+"   NOW · ") || cellIndex(wide[4], "Local") != propLongIndent || cellIndex(wide[5], "Up to:") != propLongIndent {
+		t.Errorf("under a long name the answers are not at the short indent (%d):\n%s", propLongIndent, strings.Join(wide, "\n"))
+	}
 	if lines, holds := len(d.mapBodyLines()), d.modalMax(); lines != holds {
 		t.Errorf("the window's body is %d lines and the window holds %d: the rows under the map and the map's size disagree", lines, holds)
 	}

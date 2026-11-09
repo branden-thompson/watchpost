@@ -365,8 +365,10 @@ journey: build
 # APPLIED. Only this sweep sees a rule pinned by a tautology, or a mutant
 # guarding a rule the product has retired.
 #
-# NOT IN `verify`: tens of minutes, one mutant at a time. Same standing as
-# `journey`: a standing obligation (HUM LEAD, 2026-09-13).
+# NOT IN `verify`: it runs every mutant's tests. Same standing as `journey`: a
+# standing obligation (HUM LEAD, 2026-09-13). It judges HEAD in worktrees of
+# its own, MUTANT_JOBS at a time, so the working tree stays free to edit; each
+# mutant runs the test that caught it in the record first (0.19.5 D-39).
 # VERDICTS_RECORD is where the sweep's record lives once it is durable: one
 # file for the tree since the newest release tag, named from LAST_TAG (0.19.5
 # D-16). A sweep is evidence about the corpus as it stood for one release, so a
@@ -385,6 +387,9 @@ VERDICTS_RECORD := 06_docs/mutants/verdicts/since-v$(LAST_TAG).log
 # IT REFUSES RATHER THAN OVERWRITES A GOOD RECORD WITH A BAD ONE. An empty or
 # missing log means the sweep died before it said anything, and copying that
 # over the last real one would destroy the evidence this step exists to keep.
+# THE COMMIT IS THE ONE THE SWEEP JUDGED, read from its log's first line, not
+# HEAD now: the working tree, and HEAD with it, can move while a sweep runs.
+#
 # DO NOT `make -n` THIS TARGET OR `mutant-verdicts`. GNU make EXECUTES a
 # recipe line containing $(MAKE) even under -n, so a "dry run" of
 # `mutant-verdicts` runs the sweep script — which opens its log with `: >` and
@@ -394,7 +399,9 @@ promote-verdicts:
 	@test -n "$(LAST_TAG)" || { echo "promote-verdicts: this clone has no release tag, so the record has no name; fetch the tags (git fetch --tags) and promote again"; exit 1; }
 	@test -s "$(DIST)/mutant-verdicts.log" || { echo "promote-verdicts: $(DIST)/mutant-verdicts.log is missing or empty — the sweep left no record, so NOTHING is promoted"; exit 1; }
 	@mkdir -p $(dir $(VERDICTS_RECORD))
-	@{ echo "commit: $$(git rev-parse HEAD) — $$(date -u +%Y-%m-%dT%H:%MZ)"; cat "$(DIST)/mutant-verdicts.log"; } > "$(VERDICTS_RECORD)"
+	@c=$$(sed -n '1s/.*, commit \([0-9a-f]*\),.*/\1/p' "$(DIST)/mutant-verdicts.log"); \
+	  test -n "$$c" || { echo "promote-verdicts: the log does not name the commit it judged, so NOTHING is promoted"; exit 1; }; \
+	  { echo "commit: $$c — $$(date -u +%Y-%m-%dT%H:%MZ)"; cat "$(DIST)/mutant-verdicts.log"; } > "$(VERDICTS_RECORD)"
 	@test -s "$(VERDICTS_RECORD)" || { echo "promote-verdicts: the copy to $(VERDICTS_RECORD) did not land; refusing to report it durable"; exit 1; }
 	@! git check-ignore -q "$(VERDICTS_RECORD)" || { echo "promote-verdicts: $(VERDICTS_RECORD) is git-ignored — filed is not committed; fix .gitignore or choose a tracked path"; exit 1; }
 	@echo "promote-verdicts: record durable in $(VERDICTS_RECORD) ($$(wc -l < $(VERDICTS_RECORD) | tr -d ' ') lines, tracked path)"
@@ -411,7 +418,7 @@ promote-verdicts:
 # to be followed by triage, editing and re-running, which is when the disk is
 # under most pressure.
 mutant-verdicts:
-	@./scripts/quality/mutant-verdicts.sh $(DIST)/mutant-verdicts.log; rc=$$?; \
+	@MUTANT_KILLERS=$(VERDICTS_RECORD) ./scripts/quality/mutant-verdicts.sh $(DIST)/mutant-verdicts.log; rc=$$?; \
 	  $(MAKE) --no-print-directory promote-verdicts || exit 1; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$rc

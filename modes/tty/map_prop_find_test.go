@@ -135,13 +135,28 @@ func TestFocusReturnsAfterAFind(t *testing.T) {
 
 // TestTheBroadcasterAnswersAFoundPlaceAsItsTarget is FR-1.10 with D-193:
 // on the Broadcaster, which answers from its station, the place found is
-// the map's centre and so the target its answer is for.
+// the map's centre and so the target its answer is for, and the words say
+// so; panned away, they say it is marked on the map, since the centre is
+// now another place (AX-1). Observer says neither: there the place found is
+// a target row (D-204).
 func TestTheBroadcasterAnswersAFoundPlaceAsItsTarget(t *testing.T) {
 	d := stationDash(t)
 	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	d = typeFind(t, d, "Reykjavik")
 	if words := workCentre(t, d).propCentreWords(); !strings.Contains(words, "64.") {
 		t.Errorf("the centre's answer is not for the place found: %q", words)
+	}
+	centred := "Found Reykjavik, IS: marked at the map's centre, and not kept."
+	if words := strings.Join(propWordsFrom(t, d), "\n"); !strings.Contains(words, centred) {
+		t.Errorf("the words do not say the place found is at the centre:\n%s", words)
+	}
+	if err := d.mapPane.m.Recentre(tuimaps.LonLat{Lon: 139.7, Lat: 35.7}); err != nil {
+		t.Fatal(err)
+	}
+	d = d.renderMap()
+	words := strings.Join(propWordsFrom(t, d), "\n")
+	if !strings.Contains(words, "Found Reykjavik, IS: marked on the map, and not kept.") || strings.Contains(words, centred) {
+		t.Errorf("panned away, the words do not say the place found is marked on the map:\n%s", words)
 	}
 }
 

@@ -30,9 +30,16 @@ pkgs=${*:-./...}
 # test measures 20/20 with it and ~81/100 without — so a sweep that never sets it
 # reports those rules as UNMEASURED. It is for ESCALATING A SURVIVOR, not for
 # every mutant: -race makes a suite several times slower.
+#
+# MUTANT_RUN=<pattern> runs only the tests it names on the mutated tree: the
+# sweep passes the test that caught this mutant last time. A catch is checked
+# exactly as an unscoped one is. A SURVIVED under a scope only says the named
+# test no longer catches it, so the sweep runs the whole package next.
 baseline=${MUTANT_BASELINE:-run}
 raceflag=""
 [ "${MUTANT_RACE:-0}" = "1" ] && raceflag="-race"
+scope=""
+[ -n "${MUTANT_RUN:-}" ] && scope="-run ${MUTANT_RUN}"
 root=$(git rev-parse --show-toplevel)
 cd "$root" || exit 2
 
@@ -81,7 +88,9 @@ if ! go build ./... 2>/dev/null || ! go vet $pkgs >/dev/null 2>&1; then
 	exit 2
 fi
 
-out=$(go test $raceflag $pkgs -count=1 2>&1); code=$?
+# -failfast: the first failing test is the verdict, so the rest of the suite
+# would only cost time.
+out=$(go test $raceflag $scope -failfast $pkgs -count=1 2>&1); code=$?
 if echo "$out" | grep -q "build failed"; then
 	echo "INVALID  $mutant — test build failed"
 	exit 2

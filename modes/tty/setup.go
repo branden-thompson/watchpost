@@ -180,10 +180,11 @@ func (d Dashboard) openSetup() Dashboard {
 		units:     d.units,
 		clock:     d.clockFmt,
 	}
-	// THE WINDOW OPENS ON A ROW THIS SURFACE ACTUALLY DRAWS (D-92). `setupState{}`
-	// focuses row zero, which is the default LOCATION — the listener's, and hidden
-	// on the console. Opening focused on a row nobody can see is a window whose
-	// first keystroke appears to do nothing.
+	// The window opens on a row it draws. `setupState{}` focuses row zero, the
+	// Location row, which every surface draws (0.18.0 D-70), so today this never
+	// moves the focus. It stays because `rowVisible` can hide a row (the map
+	// layers, with none registered): a window opened on a hidden row would
+	// swallow the first keystroke.
 	if !d.rowVisible(d.setup.focus) {
 		d.setup.focus = nextRow(d.setup.focus, d.rowVisible)
 	}

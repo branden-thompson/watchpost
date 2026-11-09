@@ -420,3 +420,42 @@ func TestAnAssumedBaselineStillReachesAVerdict(t *testing.T) {
 		t.Errorf("with the baseline assumed the harness said %q, want CAUGHT", strings.TrimSpace(string(out)))
 	}
 }
+
+// A scoped run decides by the tests it names. The sweep runs each mutant's
+// last killer first, so a scope that names the detector must read CAUGHT and
+// one that names only a test blind to the mutation must read SURVIVED, which
+// sends the sweep on to the whole package. A scope that was ignored, or that
+// ran nothing and reported a catch, would make both answers the same.
+func TestAScopedRunDecidesByTheTestsItNames(t *testing.T) {
+	t.Parallel()
+	dir := probeRepo(t)
+	blind := `package harnessprobe
+
+import "testing"
+
+func TestAllowedAcceptsPositives(t *testing.T) {
+	if !Allowed(1) {
+		t.Fatal("a positive was refused")
+	}
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "blind_test.go"), []byte(blind), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "m.py"), []byte(patch("return x > 0", "return true")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	commitAll(t, dir, "a blind test and the mutant")
+	for _, c := range []struct{ scope, want string }{
+		{"^TestAllowedRefusesNegatives$", "CAUGHT"},
+		{"^TestAllowedAcceptsPositives$", "SURVIVED"},
+	} {
+		run := exec.Command("./run.sh", "m.py", "./...")
+		run.Dir = dir
+		run.Env = append(os.Environ(), "MUTANT_BASELINE=assumed", "MUTANT_RUN="+c.scope)
+		out, _ := run.CombinedOutput()
+		if !strings.HasPrefix(strings.TrimSpace(string(out)), c.want) {
+			t.Errorf("scoped to %s the harness said %q, want %s", c.scope, strings.TrimSpace(string(out)), c.want)
+		}
+	}
+}

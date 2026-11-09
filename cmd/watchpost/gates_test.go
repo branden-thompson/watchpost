@@ -77,7 +77,7 @@ var unlisted = exempt(&exemptionTable{
 		"journey":           "the VALIDATE journey against LIVE feeds; its exit code is a FAIL count, run deliberately at release",
 		"test":              "`go test ./...` without the race detector; `race` supersedes it on every gate path, and running both would double the suite for no extra property",
 		"test-platforms":    "it re-runs the app suite under WATCHPOST_TEST_GOOS for two other platforms; release-matrix is the cross-platform gate and this is the manual probe behind it",
-		"mutant-verdicts":   "the corpus SWEEP — hours, and its verdicts are promoted into the release record by hand; mutant-anchors and mutant-check are the per-push halves",
+		"mutant-verdicts":   "the corpus SWEEP — it runs every mutant's tests, at release, and promotes its log as the release's record; mutant-anchors and mutant-check are the per-push halves",
 		"tree-free":         "it ASKS whether a gate run is in flight and reports; it asserts nothing about the code",
 		"lint-update":       "it REWRITES the golangci baseline; it is the opposite of a gate, and running it on a gate path would erase the ratchet",
 		"hooks":             "it INSTALLS the pre-push hook (git config core.hooksPath); it asserts nothing, and the hook's tests all run under race on every gate path (0.19.0 W0.1)",

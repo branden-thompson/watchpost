@@ -225,3 +225,5 @@ says exactly what passed.
 | 2026-11-08T21:55:02Z | f12584b1 | c6c5d8d9b62f | verify | green | 2492 |
 | 2026-11-08T22:43:31Z | 5a449f72 | 9b7473933cb0 | verify | green | 2507 |
 | 2026-11-08T23:53:36Z | 0fb1afdc | dfc1b0897dca | verify | green | 2164 |
+| 2026-11-09T20:04:48Z | a7b797de | fa7e7b095b6b | verify | FAILED (exit 2) | 245 |
+| 2026-11-09T21:12:19Z | a7b797de | 9f2a9936bbfb | verify | green | 4003 |

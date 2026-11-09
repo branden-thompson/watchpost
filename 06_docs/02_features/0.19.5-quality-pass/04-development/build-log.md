@@ -2024,3 +2024,46 @@ Markdown only, through the docs lane.
   This batch's gate ran it: all 1,057 mutants apply, build and vet, so the gap hid no broken mutant.
 - **The failed sweep's partial record** (43 lines, the 32 mutants it judged, all CAUGHT) is not
   committed. The re-run writes the record whole.
+
+## 0.19.5 batch 48 — the sweep's survivors answered; the sweep runs killer-first and in parallel (D-39, A-24)
+
+- **The sweep's verdict, on `a7b797de`.** `make mutant-verdicts` judged all 1,057 mutants for the
+  first time: **1,046 CAUGHT, 11 SURVIVED, 0 NO EVIDENCE**, in 19 hours 36 minutes. The record is
+  `06_docs/mutants/verdicts/since-v0.19.3.log`.
+  - The last full sweep on record before it is 0.16.0's (2026-09-15, 380 mutants). None is recorded
+    for 0.18.0, 0.19.0 or 0.19.3, and from 0.19.0 a sweep could not finish over the single-quoted
+    mutants (batch 47).
+- **The eleven survivors.**
+  - **Five kept equivalents, unchanged since 0.16.0** (`0.16.0-broadcaster-ui/07-readiness/gates.md`,
+    the survivor dispositions): m16, m43, mBM1, mBM2, mSC3. Nothing is owed.
+  - **Two made equivalent by 0.18.0 D-70**, which draws every Settings row on every surface: mAA3
+    (`openSetup`'s visible-row check) and mAA4 (`firstRowOfTab`'s `shownOnSurface`). Both guards can
+    no longer change what is focused. A-24 keeps them as equivalents, and their comments, the two
+    tests' comments and the mutants' own now say so instead of "hidden on the console".
+  - **Four lost kills**, each now pinned, and each vetted by applying it and running the test:
+    - m334, a reopened mode keeps its count. Its test, `TestTheFocusLimitIsSaid`, went with the
+      focus limit in 0.19.3, and the reset still decides that a reopened mode says the short names
+      again. `TestTheShortNamesAreSaidInFull` now leaves the mode and opens it again. m329 and m330
+      name that test too, and the "as the focus limit is" comment is restated.
+    - m389 and m402, the found place's words at the centre and panned away. Since 0.19.0 D-204
+      Observer says the place found as a target row, so only the Broadcaster says either sentence,
+      and no test drove it there. `TestTheBroadcasterAnswersAFoundPlaceAsItsTarget` now asserts both.
+    - m250, a long name keeps the wide indent. `TestThePropagationRowsFollowTheMock` took the long
+      name's branch only when the fixture's view name passed 24 characters, and it no longer does.
+      A long transmitter name is now its own case, beside the short one.
+- **D-39: the sweep, faster with no evidence lost.**
+  - **The last killer first.** Each mutant runs, alone, the test the previous record says caught
+    it, in whichever package defines that test. Only when that test does not catch it does the
+    package run whole, then `./...`, then `-race`, as before. A catch at any step keeps `run.sh`'s
+    attribution check. `run.sh` takes the test as `MUTANT_RUN` and runs with `-failfast`, and
+    `TestAScopedRunDecidesByTheTestsItNames` holds that a scope naming a blind test reads SURVIVED
+    (vetted: with the scope ignored, it fails).
+  - **Parallel workers.** `MUTANT_JOBS` worktrees of HEAD, default 4, outside the repository, take
+    mutants from one queue. One baseline over `./...` answers for all of them. The working tree is
+    free while a sweep runs, and the log says when it holds changes the sweep does not judge.
+    `promote-verdicts` takes the commit from the log's first line, since HEAD can move meanwhile.
+  - **A trial on 24 mutants** (12 in `app`, 10 in `modes/tty`, two survivors among them) gave the
+    same 24 verdicts as the long sweep, in 15 minutes with the baseline and the survivors'
+    escalations. The full sweep's figure is batch 49's.
+  - C and D, the cuts that would leave a window before SHIP, are not ruled. They are in
+    `06_docs/tooling-backlog.md`.

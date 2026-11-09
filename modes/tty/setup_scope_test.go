@@ -122,9 +122,10 @@ func TestNoSettingsGroupIsDrawnEmpty(t *testing.T) {
 
 // THE KEYBOARD NEVER LANDS ON A ROW NOBODY CAN SEE — not on open, not on ↓, not
 // on tab.  A focus on a hidden row is a window whose keys appear dead.
-// THE WINDOW OPENS ON A ROW THIS SURFACE DRAWS. `setupState{}` focuses row zero,
-// which is the listener's default LOCATION — hidden on the console. A window whose
-// focus starts off screen is a window whose first keystroke appears to do nothing.
+// The window opens on a row this surface draws. A window whose focus starts
+// off screen swallows its first keystroke. Every surface draws every row today
+// (0.18.0 D-70), so this cannot fail until a row is hidden again: mAA3 survives
+// as an equivalent mutant (0.19.5 A-24) and becomes catchable then.
 func TestTheWindowOpensOnARowThisSurfaceDraws(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d.surface = SurfaceBroadcaster
@@ -139,7 +140,9 @@ func TestTheWindowOpensOnARowThisSurfaceDraws(t *testing.T) {
 }
 
 // THE KEYBOARD NEVER LANDS ON A ROW NOBODY CAN SEE — not on ↓, not on ↑, not on
-// tab. A focus on a hidden row is a window whose keys appear dead.
+// tab. A focus on a hidden row is a window whose keys appear dead. Tab's own
+// surface check cannot fail while every surface draws every row (0.18.0 D-70):
+// mAA4 survives as an equivalent mutant (0.19.5 A-24).
 //
 // EVERY KEY IS PRESSED, NOT CALLED. Walking `stepRow` directly lets a mutant
 // that breaks the CALL SITE survive — the helper can be right and the wiring not,
