@@ -2067,3 +2067,22 @@ Markdown only, through the docs lane.
     escalations. The full sweep's figure is batch 49's.
   - C and D, the cuts that would leave a window before SHIP, are not ruled. They are in
     `06_docs/tooling-backlog.md`.
+
+## 0.19.5 batch 49 — the full sweep, killer-first on four workers (D-39)
+
+- **The verdict, on `e073cac3`.** `make mutant-verdicts` judged all 1,057 mutants: **1,050 CAUGHT,
+  7 SURVIVED, 0 NO EVIDENCE**. The seven are the kept equivalents and nothing else: m16, m43, mBM1,
+  mBM2 and mSC3 (0.16.0's dispositions), and mAA3 and mAA4 (A-24). Batch 48's four lost kills are
+  caught by the tests it wrote. The record is `06_docs/mutants/verdicts/since-v0.19.3.log`.
+- **The time: 57 minutes** (3,421 s: the baseline 144 s, the mutants 3,277 s on four workers),
+  against 19 hours 36 minutes for the serial sweep. The log's estimate read 288 minutes, from the
+  serial run's per-package rates. This run's timings replace them, so the next estimate is read from
+  killer-first runs.
+- **No "caught only against `./...`" lines.** The serial sweep marked 24. Each of those mutants is
+  caught by the same test as before, now run in the package that defines it. The marker is kept for
+  a catch the last killer misses and `./...` makes.
+- **The record named this machine.** Batch 48's sweep printed the log's and the timings' paths
+  absolute, since its workers run in other directories, and the promoted record carried both.
+  `TestThePublishedTreeNamesNoPersonOrMachine` failed this batch's first gate on it. The sweep now
+  prints every path relative to the repository (`shown`), and the record's two lines are restated to
+  match; no verdict changes. Vetted on one mutant: the log names `dist/` only.

@@ -60,6 +60,11 @@ mkdir -p "$(dirname "$out")"
 : > "$out"
 root=$(git rev-parse --show-toplevel)
 case "$out" in /*) ;; *) out="$root/$out" ;; esac
+# The paths are absolute because the workers run in other directories, but
+# the log is promoted into a tracked record, and an absolute path there names
+# this machine's home directory (TestThePublishedTreeNamesNoPersonOrMachine
+# fails on it). Every path the log prints goes through `shown`.
+shown() { case "$1" in "$root"/*) echo "${1#"$root"/}" ;; *) echo "$1" ;; esac; }
 jobs=${MUTANT_JOBS:-4}
 killers=${MUTANT_KILLERS:-}
 only=${MUTANT_ONLY:-}
@@ -164,7 +169,7 @@ echo "mutant-verdicts: $total mutant(s), commit $head, $jobs workers" | tee -a "
 if [ -n "$(git -C "$root" status --porcelain)" ]; then
 	echo "  the working tree has uncommitted changes; they are not in this sweep" | tee -a "$out"
 fi
-echo "  log: $out  (watch this file; the run streams into it)" | tee -a "$out"
+echo "  log: $(shown "$out")  (watch this file; the run streams into it)" | tee -a "$out"
 say_eta | tee -a "$out"
 echo "  every line carries its position, so any read of this file says where the run is" | tee -a "$out"
 echo "" | tee -a "$out"
@@ -300,7 +305,7 @@ echo "" | tee -a "$out"
 echo "mutant-verdicts: $total mutant(s) — $caught CAUGHT, $survived SURVIVED, $noevidence NO EVIDENCE" | tee -a "$out"
 echo "  took $((t2 - t0)) s: the baseline $((t1 - t0)) s, the mutants $((t2 - t1)) s on $jobs workers" | tee -a "$out"
 if [ -z "$only" ]; then
-	echo "  per-mutant timings recorded in $timings; the next run estimates from them" | tee -a "$out"
+	echo "  per-mutant timings recorded in $(shown "$timings"); the next run estimates from them" | tee -a "$out"
 fi
 if [ "$noevidence" -ne 0 ]; then
 	echo "NO EVIDENCE is not a pass. $noevidence mutant(s) were never measured —" | tee -a "$out"

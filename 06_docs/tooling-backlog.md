@@ -80,7 +80,7 @@ The project moved from shell to Go after defects in the shell. The reviewer's sp
   - The sweep per batch: only the mutants whose package, or whose last killer's package, changed since the last record; the full sweep at SHIP.
   - The same selection for `mutant-check` in `verify`.
 
-  Both leave a window, between a batch and SHIP, in which a change elsewhere can weaken a mutant's detector unseen. The full sweep at SHIP closes it. 0.19.5 built the cuts that lose nothing: the last killer first, and parallel workers.
+  Both leave a window, between a batch and SHIP, in which a change elsewhere can weaken a mutant's detector unseen. The full sweep at SHIP closes it. 0.19.5 built the cuts that lose nothing: the last killer first, and parallel workers. With them the full sweep takes 57 minutes on four workers (0.19.5 batch 49).
 
 ## Defeating the three-list rule
 
