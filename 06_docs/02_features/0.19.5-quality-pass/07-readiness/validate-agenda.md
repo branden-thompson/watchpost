@@ -40,3 +40,5 @@ at start, naming the key and its two words (D-9).
 ## For veto at the same sitting
 
 A-18 (its 0.00 floor, GT M-6), A-24 to A-30. The minor rows are listed in `02-analysis/rulings.md`.
+
+None was vetoed (D-46).

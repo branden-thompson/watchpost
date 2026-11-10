@@ -1210,6 +1210,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-45 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PM-P1: does PS-1 rest on a use US amateur rules forbid? 47 CFR §97.113(b) bans amateur broadcasting and one-w… |
 | D-46 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | [shift+N] makes a request order, not a card — the Producer turns it into a proposal |
 | D-46 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE PROACTIVE REQUEST: [shift+N], AND IT IS A REQUEST ORDER, NOT A CARD |
+| D-46 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE: the minor rows put for veto at the UAT sitting (07-readiness/validate-agenda.md): A-18 (its 0.00 fl… |
 | D-46 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-2: M5's 2.0 s (D-43) cannot be met on the cold path W3.2 creates — zone geometry now resolves… |
 | D-46 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-45's disclaimer: when it appears and where it is kept (proposed: gate the first propagation view and the fe… |
 | D-47 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | origin is a term in the ranking, not a trump; insistence is the escalation |
