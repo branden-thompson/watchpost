@@ -100,16 +100,21 @@ if echo "$out" | grep -qE "^--- FAIL"; then
 	name=${line%% *}  # drop the "(0.00s)"
 	top=${name%%/*}   # a subtest's parent is what -run needs
 
-	# A CATCH MUST REPEAT, ALONE (0.19.5 A-27). A test that failed beside the
-	# rest of its suite, on a loaded machine, can have failed for its own
-	# reasons: the sweep runs four of these at once. So the same test runs
-	# again, by itself, on the mutated tree, and must fail again. A genuine
-	# catch does. A timing test that lost a race under load, or a test that
-	# fails only after another one has run, mostly does not.
-	if go test $raceflag $pkgs -count=1 -run "^${top}$" >/dev/null 2>&1; then
-		echo "INVALID  $mutant — $name failed beside the suite and passes alone on the mutated tree; the failure is not attributable to this mutation"
+	# A CATCH MUST REPEAT (0.19.5 A-27, A-29). On a loaded machine a test can fail
+	# for its own reasons, and the sweep runs four of these at once. So the
+	# same run goes again on the mutated tree and must fail again, and the
+	# test it names is the one judged below. A genuine catch repeats, one seen
+	# only after another test has run included, since the same tests run
+	# before it again. A timing test that lost a race under load mostly does
+	# not.
+	again=$(go test $raceflag $scope -failfast $pkgs -count=1 2>&1)
+	if ! echo "$again" | grep -qE "^--- FAIL"; then
+		echo "INVALID  $mutant — $name failed once and not again on the mutated tree; the failure is not attributable to this mutation"
 		exit 2
 	fi
+	line=$(echo "$again" | grep -E '^--- FAIL' | head -1 | sed 's/^--- FAIL: //')
+	name=${line%% *}
+	top=${name%%/*}
 
 	# ATTRIBUTION: THE FAILURE MUST BE THE MUTATION'S (2026-09-06).
 	#

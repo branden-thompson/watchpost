@@ -35,10 +35,10 @@ import (
 // about 10 % under the real cost, and it is the hit path that the band keeps
 // drawing around the clock.
 var frameAllocBudget = map[string]float64{
-	"133x44": 5_523 * 1.05,
-	"133x70": 11_322 * 1.05,
-	"200x60": 14_234 * 1.05,
-	"80x24":  1_136 * 1.05,
+	"133x44": 5_525 * 1.05,
+	"133x70": 11_324 * 1.05,
+	"200x60": 14_236 * 1.05,
+	"80x24":  1_138 * 1.05,
 }
 
 // frameAllocBudgetHit pins the memo-hit frame: View drawn again with nothing

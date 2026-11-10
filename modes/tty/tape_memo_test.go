@@ -40,7 +40,7 @@ func TestTheTapeTurnsOverAtMidnight(t *testing.T) {
 // missEveryMemo empties every memo the frame reads, so an allocation count
 // taken after it is the whole frame's cost (0.19.5 RR-17).
 func missEveryMemo(d Dashboard) {
-	d.memo.ok, d.memo.tape.ok, d.memo.head.ok = false, false, false
+	d.memo.ok, d.memo.tape.ok, d.memo.head.ok, d.memo.cursor.primed = false, false, false, false
 }
 
 // TestTheTapeKeyCoversEverythingTheTapeShows is the tape memo's completeness

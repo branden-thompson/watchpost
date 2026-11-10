@@ -75,7 +75,7 @@ The project moved from shell to Go after defects in the shell. The reviewer's sp
 
 ## Cost — what to stop paying for
 
-- **`mutant-check` on every push** costs 3,310 s locally and 131 minutes on a hosted runner at 1,057 mutants (the Makefile records both), and asserts the corpus applies and compiles. It **cannot fail on a survived mutant**. The drift half already comes from `mutant-anchors` in 0.3 s. `MUTANT_POLICY` is one word: move it to nightly and spend the recovered time on `mutant-verdicts`, the only gate that measures the corpus's actual claim. (`F-121`, a ruling at a release's PLAN)
+- **`mutant-check` on every push** costs 1,907 to 3,512 s locally and 131 minutes on a hosted runner at 1,057 mutants (the Makefile records both), and asserts the corpus applies and compiles. It **cannot fail on a survived mutant**. The drift half already comes from `mutant-anchors` in 0.3 s. `MUTANT_POLICY` is one word: move it to nightly and spend the recovered time on `mutant-verdicts`, the only gate that measures the corpus's actual claim. (`F-121`, a ruling at a release's PLAN)
 - **Two cuts not yet ruled (0.19.5 D-39).**
   - The sweep per batch: only the mutants whose package, or whose last killer's package, changed since the last record; the full sweep at SHIP.
   - The same selection for `mutant-check` in `verify`.

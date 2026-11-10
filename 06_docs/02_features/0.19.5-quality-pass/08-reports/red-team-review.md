@@ -61,3 +61,30 @@ promote an interrupted log, and its comment claimed load could not turn a surviv
 | RG O-1 | recorded: two configured voices sharing a first name in two locales would announce each other by the same name; the curated list has none, and D-7 accepts it |
 | RG O-3 | recorded: below about 22 rows the Observer frame still runs past the terminal (25 rows at 60x20, from 32), outside D-28's 80x24 |
 | DC, outside scope | the untracked local `CLAUDE.md` names 0.19.0 as the release in flight; the HUM LEAD's file |
+
+# Round 2 (D-41)
+
+One fresh blind reviewer on batch 50's diff, `ef9b9c27..55b10c57`, gates, tooling and measurement.
+Report: `reviewer-notes/review-round-2-GT-batch-50.md`. **Verdict: EXIT**, no Critical or Important,
+10 Minor. It reproduced the pins, the v0.19.3 figures (radio aside, below) and the interrupt handling
+on macOS.
+
+| Finding | Disposition |
+|---|---|
+| 1, the repeat reads a catch seen after another test as INVALID | fixed, A-29: the repeat is the same run; both shapes have a probe, each seen to fail on the other design |
+| 2, a signal to the script alone does not stop `make` | fixed, A-29: the recipe stops on an exit of 128 or more |
+| 3, `go-build` directories left after an interrupt | fixed, A-29: `GOTMPDIR` inside the run's directory |
+| 4, a TERM during the baseline waits for the baseline | fixed, A-29: the baseline runs in the background; a TERM to the script alone now takes 1.9 s |
+| 5, `missEveryMemo` leaves the cursor memo | fixed, A-29: re-pinned |
+| 6, 7, the gate's and `mutant-check`'s times | fixed, A-29: stated as their measured ranges |
+| 8, v0.19.3's radio beat | recorded: the agent measured 169,733 B, the reviewer 168,744 B; the port reads the wall clock, so the radio player's time string varies. The CHANGELOG's "about 170 KB" stands |
+| 9, the promote test's cover | fixed, A-29: a commit-less summary, and the last real sweep's log as the script wrote it |
+| 10, the repeat costs a step-1 run | kept, A-29: a lone test can lose a race under load; the SHIP sweep measures the cost |
+
+**Found while checking the fixes:** the sweep's baseline read RED in batch 50's own interrupt checks.
+`platform/sched`'s `TestRetriesAreBounded` advanced the fake clock as soon as a fetch was counted,
+before the scheduler armed its retry wait, and under the baseline's load the advance was lost. With a
+50 ms pause put before the retry wait, it fails every time; waiting for the wait before each advance,
+it passes. Fixed in batch 51 (A-29). Of the interrupt checks, a TERM to the script alone during its
+baseline passed (1.9 s; `make` stopped at 143, nothing promoted or left behind); the check among
+the workers runs on batch 51's commit, whose baseline the fix makes reliable.

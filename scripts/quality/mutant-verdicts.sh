@@ -88,6 +88,10 @@ case "$timings" in /*) ;; *) timings="$root/$timings" ;; esac
 mkdir -p "$(dirname "$timings")"
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/watchpost-sweep.XXXXXX")
+# go's own work directories go inside the run's, so a `go test` stopped part
+# way leaves no linked test binary behind once the run's directory goes.
+export GOTMPDIR="$work/gotmp"
+mkdir -p "$GOTMPDIR"
 # The worktrees are removed however the run ends, an interrupt included, and
 # the workers are stopped first, with everything they started: a script's
 # background jobs ignore the terminal's interrupt, so a worker's `go test`
@@ -110,9 +114,11 @@ cleanup() {
 }
 trap cleanup EXIT
 # AN INTERRUPT ENDS THE RUN AS AN INTERRUPT. The script cleans up and raises
-# the signal again, so the shell that started it sees a death by signal and
-# stops too. Caught and turned into an exit code, it would let
-# `make mutant-verdicts` go on to promote the interrupted log.
+# the signal again. A terminal's Ctrl-C interrupts the whole process group, so
+# the shell that started the script sees a death by signal and stops too. A
+# signal sent to the script alone leaves that shell running, so
+# `make mutant-verdicts` also stops on an exit of 128 or more, before it
+# promotes anything.
 for sig in INT TERM; do
 	trap "trap - $sig EXIT; cleanup; kill -$sig \$\$" "$sig"
 done
@@ -201,11 +207,16 @@ done
 # against a green tree, and every worktree is the same commit, so one run
 # answers for all of them and for every step's package.
 t0=$(date +%s)
+# It runs in the background, so an interrupt is answered at once, not when
+# the baseline ends, and the cleanup stops it with the workers.
 printf 'baseline ./... ... ' | tee -a "$out"
-if ! (cd "$work/w1" && go test ./... -count=1 >/dev/null 2>&1); then
+(cd "$work/w1" && go test ./... -count=1 >/dev/null 2>&1) &
+pids=$!
+if ! wait "$pids"; then
 	echo "RED — the unmutated tree is not green; fix that first" | tee -a "$out"
 	exit 2
 fi
+pids=""
 echo "green" | tee -a "$out"
 t1=$(date +%s)
 

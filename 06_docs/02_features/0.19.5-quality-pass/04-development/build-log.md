@@ -2140,3 +2140,37 @@ The four reviewers, their reports and each finding's disposition are in
     plan's batch numbering and beat test; DISCOVER's status; the 0.16.0 quotation; the package map's
     `platform/report`; `perf-measurement.md`; the red-team brief's AP-CITE-01; the tape comment's
     tense; the Makefile's note on where verdicts come from.
+
+## 0.19.5 batch 51 — REVIEW round 2's Minors (D-41, A-29)
+
+The reviewer's report and each finding's disposition are in `08-reports/red-team-review.md`, round 2.
+
+- **A catch repeats the same run (A-27 as built).** Batch 50 repeated the failing test alone, which
+  reads a catch seen only after another test has run as INVALID: a `Reset` that does nothing is seen
+  by the next test, never by the one that called it. `run.sh` now runs the same scope again on the
+  mutated tree and attributes the test the repeat names.
+  - `TestACatchMustRepeat`: a test that fails once and then passes, beside an unpinned mutant, reads
+    INVALID. Vetted: with no repeat, it reads CAUGHT.
+  - `TestACatchSeenAfterAnotherTestIsCaught`: the `Reset` mutant reads CAUGHT. Vetted: under batch
+    50's repeat-alone, it reads INVALID.
+  - The repeat stays on a step-1 run scoped to one test, which can lose a race under load as well.
+    The SHIP sweep measures its cost against the 57 minutes.
+- **The sweep's interrupts (A-26 as built).** `make mutant-verdicts` stops on an exit of 128 or more,
+  so a signal sent to the script alone promotes nothing; the baseline runs in the background and in
+  the cleanup's reach; `GOTMPDIR` is inside the run's directory. A TERM to the script alone during
+  its baseline took 1.9 s, `make` stopped at 143, and the record and `$TMPDIR` were left as they were.
+- **The promote test** adds a summary with no commit named and the last real sweep's log, as the
+  script wrote it. Vetted: with the summary unread, both good logs are refused and the test fails.
+- **`missEveryMemo` empties the cursor memo too.** The miss pins rise 2 allocations each: 5,525,
+  11,324, 14,236 and 1,138.
+- **Times as their measured ranges:** README's gate, 40 to 65 minutes (the last three green runs,
+  2,386 to 4,003 s); `mutant-check`, 1,907 to 3,512 s locally (the Makefile, F-121 and its heading,
+  the backlog).
+- **`TestRetriesAreBounded`'s race (F-190's cause).** The sweep's baseline read RED in this batch's
+  own interrupt checks. The test advanced the fake clock as soon as a fetch was counted, before the
+  scheduler armed its retry wait, and an advance that finds nothing due is lost. It now waits for the
+  wait (`awaitWaiters(1)`) before each advance. Vetted: with a 50 ms pause put before the scheduler's
+  retry wait, the old test fails with the baseline's error and the new one passes. F-190 raised the
+  poll to ten seconds, which made the race rarer but not gone. `TestStopIsIdempotentAndHalts` takes
+  ten seconds for a different reason, an advance after `Stop` that waits out the fake clock's wedge
+  bound, and passes; it is left as it is.

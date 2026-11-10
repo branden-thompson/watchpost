@@ -1184,6 +1184,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-40 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | go-giro-data's path (D-20), from the leave-one-station-out scores on 2026-10-05 (wave2-findings.md; 566 pairs… |
 | D-41 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | a card the Operator CHOSE is FromOperator, and that origin outranks |
 | D-41 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | Origin.FromOperator OUTRANKS |
+| D-41 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW round 1 answered (08-reports/red-team-review.md): four blind reviewers, no Critical, six Important, al… |
 | D-41 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN approach 1 (03-architecture-design/approach-1-render-placement.md): where the map is drawn. In Update, o… |
 | D-41 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A field computed from GIRO readings under GIRO's terms (OQ-G2): "Shared, modified, or annotated data retain t… |
 | D-42 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | a transition is never FromOperator — it is the Director's one additive act |
@@ -2022,6 +2023,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-27 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | FR-1.17 is met by its first branch: every answer runs off the UI goroutine (architecture, "Off the UI gorouti… |
 | A-28 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW's Minors, fixed as the reviewers gave them (PF P-4, C-1; DC I-1 to I-3, M-1 to M-11, M-13 to M-16). Br… |
 | A-28 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The climatology ships NRL's CCIR refit, not the URSI refit (both are D-43's refits); the scorer pins it as th… |
+| A-29 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW round 2's Minors, fixed (D-41; 08-reports/reviewer-notes/review-round-2-GT-batch-50.md). A-27 as built… |
 | A-29 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team's fix batch, its design choices: (1) the go-ionomaps shape completed (a Response with rate … |
 | A-30 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team round 2's fix batch, its design choices: (1) two seams, PropagationUpdate (the update's one… |
 | A-31 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W1.2's design choices (FR-6.5, D-143): (1) roll-ups are written in size-driven monthly parts, rollup/<YYYY-MM… |
@@ -2260,7 +2262,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | F-118 |  | `follow-ups-closed.md` | scripts/lint.sh does not fail closed. It discards golangci-lint's exit code with |
 | F-119 |  | `follow-ups.md` | lint-watermark.sh's positive control tests a different code path than the gate runs. scan() exists only for t… |
 | F-120 |  | `follow-ups.md` | mutant-anchors.sh claims a wider sandbox than it implements. It neuters Path.write_text only; open(p,'w'), un… |
-| F-121 |  | `follow-ups.md` | mutant-check costs ~400 s per push and cannot fail on a survived mutant. It asserts the corpus applies and co… |
+| F-121 |  | `follow-ups.md` | mutant-check costs half an hour or more per push and cannot fail on a survived mutant. It asserts the corpus … |
 | F-122 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/red-team-validate.md:92` | Mentioned: Follow-ups (10 CLOSED this week): F-118, F-122, F-125 (A20 gatemodel_test.go:83), F-127 (A5/A37), … |
 | F-123 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:164` | Mentioned: (records): F-143, F-136, F-145, F-146, F-147, F-123, F-144, F-141, F-148. Deferred to 0.16.5 with a |
 | F-124 |  | `follow-ups.md` | Fifteen catalogue rules ranked for mechanisation, an explicit do-not-build list, a shell-versus-Go split, the… |

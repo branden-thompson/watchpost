@@ -64,16 +64,31 @@ func TestPromoteRefusesASweepThatDidNotFinish(t *testing.T) {
 	summary := func(n int) string {
 		return fmt.Sprintf("\nmutant-verdicts: %d mutant(s) — %d CAUGHT, 0 SURVIVED, 0 NO EVIDENCE\n", n, n)
 	}
-	for _, c := range []struct {
-		name, log string
-		promoted  bool
-	}{
-		{"an empty log", "", false},
-		{"an interrupted sweep", header(all), false},
-		{"a red baseline", fmt.Sprintf("mutant-verdicts: %d mutant(s), commit %s, 4 workers\n\nbaseline ./... ... RED — the unmutated tree is not green; fix that first\n", all, commit), false},
-		{"a MUTANT_ONLY run", header(1) + "[1/1] CAUGHT   06_docs/mutants/m1.py — TestX (0.00s)\n" + summary(1), false},
-		{"a whole sweep", header(all) + summary(all), true},
-	} {
+	type sweep struct {
+		name, log, commit string // commit is the one the record should name, when promoted
+		promoted          bool
+	}
+	cases := []sweep{
+		{"an empty log", "", "", false},
+		{"an interrupted sweep", header(all), "", false},
+		{"a red baseline", fmt.Sprintf("mutant-verdicts: %d mutant(s), commit %s, 4 workers\n\nbaseline ./... ... RED — the unmutated tree is not green; fix that first\n", all, commit), "", false},
+		{"a MUTANT_ONLY run", header(1) + "[1/1] CAUGHT   06_docs/mutants/m1.py — TestX (0.00s)\n" + summary(1), "", false},
+		{"a summary with no commit named", fmt.Sprintf("mutant-verdicts: %d mutant(s)\n", all) + summary(all), "", false},
+		{"a whole sweep", header(all) + summary(all), commit, true},
+	}
+	// The last real sweep's log, as the script wrote it, so a change to the
+	// script's summary that promote no longer reads fails here too.
+	records, _ := filepath.Glob(filepath.Join(root, "06_docs", "mutants", "verdicts", "since-v*.log"))
+	if len(records) > 0 {
+		b, err := os.ReadFile(records[len(records)-1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		first, log, _ := strings.Cut(string(b), "\n")
+		judged := strings.Fields(strings.TrimPrefix(first, "commit: "))[0]
+		cases = append(cases, sweep{"the last real sweep's log", log, judged, true})
+	}
+	for _, c := range cases {
 		dir := t.TempDir()
 		record := filepath.Join(dir, "record.log")
 		const before = "the last real record\n"
@@ -89,7 +104,7 @@ func TestPromoteRefusesASweepThatDidNotFinish(t *testing.T) {
 		out, err := promote.CombinedOutput()
 		got, _ := os.ReadFile(record)
 		switch {
-		case c.promoted && (err != nil || !strings.HasPrefix(string(got), "commit: "+commit)):
+		case c.promoted && (err != nil || !strings.HasPrefix(string(got), "commit: "+c.commit)):
 			t.Errorf("%s was not promoted (%v):\n%s", c.name, err, out)
 		case !c.promoted && (err == nil || string(got) != before):
 			t.Errorf("%s was promoted over the record (%v):\n%s", c.name, err, out)

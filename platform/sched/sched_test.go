@@ -368,10 +368,15 @@ func TestRetriesAreBounded(t *testing.T) {
 	s.Start(ctx)
 	defer s.Stop()
 	waitFor(t, func() bool { return p.n.Load() == 1 }, "initial fetch")
+	// Each advance waits for the scheduler's next wait to be armed: a fetch is
+	// counted before its retry wait is, and an advance that comes between the
+	// two finds nothing due and is lost.
 	for i := range maxRetries {
+		clk.awaitWaiters(1)
 		clk.Advance(retryBase << i)
 		waitFor(t, func() bool { return p.n.Load() == int32(i+2) }, "bounded retry")
 	}
+	clk.awaitWaiters(1)
 	clk.Advance(30 * time.Minute)
 	time.Sleep(10 * time.Millisecond)
 	if p.n.Load() != int32(maxRetries+1) {

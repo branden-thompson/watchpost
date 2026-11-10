@@ -188,8 +188,8 @@ mutant-check:
 # 240m: at 835 mutants the corpus ran 93 minutes on a hosted ubuntu-24.04
 # runner (run 40908367003, 2026-10-29) and did not finish in 120 minutes on the
 # same platform two hours later (run 40927225939). At 1,057 mutants it ran 131
-# minutes there (run 42700377465, 2026-11-09) and 3,310 s on the developer's 18
-# cores. The corpus grows every release; when it approaches the cap, raise it
+# minutes there (run 42700377465, 2026-11-09) and 1,907 to 3,512 s on the
+# developer's 18 cores. The corpus grows every release; when it approaches the cap, raise it
 # and re-record the measurement here rather than trimming the corpus to fit
 # the clock.
 	@go test -tags mutants -v -count=1 -timeout 240m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
@@ -396,7 +396,8 @@ VERDICTS_RECORD := 06_docs/mutants/verdicts/since-v$(LAST_TAG).log
 # - end in the sweep's summary, which an interrupted run or a red baseline
 #   never writes;
 # - have judged every mutant at that commit, which a MUTANT_ONLY run has not.
-# TestPromoteRefusesASweepThatDidNotFinish holds all four.
+# TestPromoteRefusesASweepThatDidNotFinish holds all four, and promotes the
+# last real sweep's log as the script wrote it.
 #
 # DO NOT `make -n` THIS TARGET OR `mutant-verdicts`. GNU make EXECUTES a
 # recipe line containing $(MAKE) even under -n, so a "dry run" of
@@ -428,9 +429,12 @@ promote-verdicts:
 # THE CLEAN RUNS ON FAILURE TOO, and the verdict is preserved across it — a
 # sweep that exits non-zero because something SURVIVED is the run most likely
 # to be followed by triage, editing and re-running, which is when the disk is
-# under most pressure.
+# under most pressure. A sweep ended by a signal (an exit of 128 or more) is
+# not a failure but an interrupted run: the recipe stops there, promoting
+# nothing.
 mutant-verdicts:
 	@MUTANT_KILLERS=$(VERDICTS_RECORD) ./scripts/quality/mutant-verdicts.sh $(DIST)/mutant-verdicts.log; rc=$$?; \
+	  [ $$rc -lt 128 ] || exit $$rc; \
 	  $(MAKE) --no-print-directory promote-verdicts || exit 1; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$rc
@@ -443,8 +447,8 @@ mutant-verdicts:
 # another. cmd/watchpost/gates_test.go fails if that stops being true.
 #
 #   push     every push and pull request. Correct on the merits and the
-#            slowest: 3,310 s on 18 cores locally and 131 minutes on a
-#            hosted runner at 1,057 mutants (2026-11-09), every time.
+#            slowest: 1,907 to 3,512 s on 18 cores locally and 131 minutes
+#            on a hosted runner at 1,057 mutants (2026-11-09), every time.
 #   nightly  the scheduled run only, plus every release tag (the release
 #            workflow runs `make verify`, which includes it). Fast pull
 #            requests, and a window in which a survived mutant can be merged
