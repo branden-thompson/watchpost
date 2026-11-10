@@ -73,7 +73,7 @@ on macOS.
 |---|---|
 | 1, the repeat reads a catch seen after another test as INVALID | fixed, A-29: the repeat is the same run; both shapes have a probe, each seen to fail on the other design |
 | 2, a signal to the script alone does not stop `make` | fixed, A-29: the recipe stops on an exit of 128 or more |
-| 3, `go-build` directories left after an interrupt | fixed, A-29: `GOTMPDIR` inside the run's directory |
+| 3, `go-build` directories left after an interrupt | kept: `GOTMPDIR` inside the run's directory also moved the tests' temporary directories, and tests in three packages failed under it (batch 51's build log); an interrupt leaves one directory a worker |
 | 4, a TERM during the baseline waits for the baseline | fixed, A-29: the baseline runs in the background; a TERM to the script alone now takes 1.9 s |
 | 5, `missEveryMemo` leaves the cursor memo | fixed, A-29: re-pinned |
 | 6, 7, the gate's and `mutant-check`'s times | fixed, A-29: stated as their measured ranges |
@@ -86,5 +86,8 @@ on macOS.
 before the scheduler armed its retry wait, and under the baseline's load the advance was lost. With a
 50 ms pause put before the retry wait, it fails every time; waiting for the wait before each advance,
 it passes. Fixed in batch 51 (A-29). Of the interrupt checks, a TERM to the script alone during its
-baseline passed (1.9 s; `make` stopped at 143, nothing promoted or left behind); the check among
-the workers runs on batch 51's commit, whose baseline the fix makes reliable.
+baseline passed (1.9 s; `make` stopped at 143, nothing promoted or left behind). Among the workers,
+on batch 51's commit, the baseline read RED again: batch 51's `GOTMPDIR` had moved the tests' own
+temporary directories, and three packages' tests failed under it. With it taken out, a SIGINT to the
+script alone took 1.5 s, `make` stopped at 130, and nothing was promoted or left behind but the
+`go-build` directories.

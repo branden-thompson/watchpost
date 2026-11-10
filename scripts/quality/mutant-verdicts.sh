@@ -88,10 +88,11 @@ case "$timings" in /*) ;; *) timings="$root/$timings" ;; esac
 mkdir -p "$(dirname "$timings")"
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/watchpost-sweep.XXXXXX")
-# go's own work directories go inside the run's, so a `go test` stopped part
-# way leaves no linked test binary behind once the run's directory goes.
-export GOTMPDIR="$work/gotmp"
-mkdir -p "$GOTMPDIR"
+# GOTMPDIR IS LEFT ALONE. A `go test` stopped part way leaves its work
+# directory in $TMPDIR, a linked test binary in it. Pointing GOTMPDIR at the
+# run's directory would take them with it, but go hands the same directory to
+# the tests as their own temporary one, and tests in app, synth and
+# singleowner fail under it: the baseline would no longer be the gate's.
 # The worktrees are removed however the run ends, an interrupt included, and
 # the workers are stopped first, with everything they started: a script's
 # background jobs ignore the terminal's interrupt, so a worker's `go test`

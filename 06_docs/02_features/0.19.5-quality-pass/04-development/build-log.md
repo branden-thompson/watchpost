@@ -2157,8 +2157,14 @@ The reviewer's report and each finding's disposition are in `08-reports/red-team
     The SHIP sweep measures its cost against the 57 minutes.
 - **The sweep's interrupts (A-26 as built).** `make mutant-verdicts` stops on an exit of 128 or more,
   so a signal sent to the script alone promotes nothing; the baseline runs in the background and in
-  the cleanup's reach; `GOTMPDIR` is inside the run's directory. A TERM to the script alone during
-  its baseline took 1.9 s, `make` stopped at 143, and the record and `$TMPDIR` were left as they were.
+  the cleanup's reach. A TERM to the script alone during its baseline took 1.9 s and `make` stopped at
+  143; a SIGINT to it among its workers took 1.5 s and `make` stopped at 130. Both times the record
+  was as it was, and no process, worktree or sweep directory was left.
+  - **The `go-build` directories stay.** Batch 51 first set `GOTMPDIR` inside the run's directory, to
+    take a killed `go test`'s work directory with it. go hands that directory to the tests as their
+    temporary one too, and tests in `app`, `synth` and `singleowner` failed under it, so every sweep's
+    baseline read RED; the gate does not run the sweep and could not see it. `GOTMPDIR` is left alone,
+    and an interrupted sweep leaves one `go-build` directory a worker in `$TMPDIR`.
 - **The promote test** adds a summary with no commit named and the last real sweep's log, as the
   script wrote it. Vetted: with the summary unread, both good logs are refused and the test fails.
 - **`missEveryMemo` empties the cursor memo too.** The miss pins rise 2 allocations each: 5,525,
@@ -2174,3 +2180,16 @@ The reviewer's report and each finding's disposition are in `08-reports/red-team
   poll to ten seconds, which made the race rarer but not gone. `TestStopIsIdempotentAndHalts` takes
   ten seconds for a different reason, an advance after `Stop` that waits out the fake clock's wedge
   bound, and passes; it is left as it is.
+
+## 0.19.5 batch 52 — the sweep's baseline in the gate's environment (A-29)
+
+- **`GOTMPDIR` out of the sweep.** Batch 51 set it inside the run's directory; go hands it to the
+  test binaries as their temporary directory, and under it `TestTheTemperatureClientKeepsItsAnswersOnDisk`
+  (`app`), `TestVoiceCatalogAndInstalledLookup` (`synth`) and two `singleowner` tests failed, so the
+  sweep's baseline read RED on batch 51's commit. `make verify` does not run the sweep, which is why
+  its gate was green. The comment where it was says why it is left alone; batch 51's entry above says
+  what an interrupt leaves.
+- **The repeat, checked on the corpus.** A partial sweep through batch 51's `run.sh` judged 173
+  mutants (m1xx, the one- and two-digit mutants, and the seven kept equivalents): every verdict and
+  every named killer is the record's. It took 1,700 s, the baseline 142 s; the seven survivors'
+  escalations are most of it.
