@@ -1189,19 +1189,23 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-41 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A field computed from GIRO readings under GIRO's terms (OQ-G2): "Shared, modified, or annotated data retain t… |
 | D-42 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | a transition is never FromOperator — it is the Director's one additive act |
 | D-42 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | A TRANSITION IS NEVER THE OPERATOR'S |
+| D-42 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW round 2 (D-41) returned EXIT: no Critical or Important, 10 Minors, nine fixed in batches 51 and 52 and… |
 | D-42 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN entry item 2: how a partial alert area is shown (FR-4.4, M4), ruled with a drawing on screen — go-tuiMap… |
 | D-42 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | A partial area is drawn as found, labelled, and its missing zones named |
 | D-42 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How a host drives go-giro-data (OQ-G3): pull with the throttle inside, pull with the throttle in the host, or… |
 | D-43 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | transitions bookend their card and move with it on promote/quash |
 | D-43 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | TRANSITIONS ARE SOFT-ASSOCIATED, AND THEY MOVE WITH THEIR CARD |
+| D-43 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | P10 re-ratification, item 1 of 2: make p10's one live finding is tools/ids (new in 0.19.5, D-11), invariant d… |
 | D-43 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN entry items 3 and 4 (discover report): M5's target, and the three rows marked NO INSTRUMENT YET — propos… |
 | D-43 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The fallback climatology's coefficients (go-giro-data R-4.3): A, NRL's spherical-harmonic refits from PyIRI (… |
 | D-44 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the line-up is a PROJECTION of the schedule — ruled 2026-09-05, built 2026-09-10 |
 | D-44 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE LINE-UP IS A PROJECTION OF THE SCHEDULE, AND IT IS OLDER THAN THIS RELEASE |
+| D-44 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | P10 re-ratification, item 2: make p10 stops on a dead ledger entry, app/arbiter.go (awaitAir) P10-02-BOUNDED-… |
 | D-44 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Cross-repo, from go-tuiMaps D-65: severity without colour is a digit on each alert's outline, which needs a k… |
 | D-44 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | DISCOVER-exit red team: which personas join the four axes and the DISCOVER lens (Accessibility, InfoSec, Perf… |
 | D-45 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | ON AIR is locked; only GO TO STANDBY or catastrophe changes it |
 | D-45 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | ON AIR IS LOCKED, AND ONLY STANDBY OR CATASTROPHE CHANGES IT |
+| D-45 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | P10 re-ratification, item 3: make p10's floor check reports seven rows under floors set at 0.19.0's REVIEW (D… |
 | D-45 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-1 (cross-repo, go-tuiMaps D-66): in go-tuiMaps v0.1.0 Changed() is raised only inside Render … |
 | D-45 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PM-P1: does PS-1 rest on a use US amateur rules forbid? 47 CFR §97.113(b) bans amateur broadcasting and one-w… |
 | D-46 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | [shift+N] makes a request order, not a card — the Producer turns it into a proposal |
@@ -2025,6 +2029,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-28 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The climatology ships NRL's CCIR refit, not the URSI refit (both are D-43's refits); the scorer pins it as th… |
 | A-29 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW round 2's Minors, fixed (D-41; 08-reports/reviewer-notes/review-round-2-GT-batch-50.md). A-27 as built… |
 | A-29 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team's fix batch, its design choices: (1) the go-ionomaps shape completed (a Response with rate … |
+| A-30 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Seven P10 density floors written by 0.19.0 D-277's procedure. make p10's floor check, once D-45 had re-floore… |
 | A-30 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team round 2's fix batch, its design choices: (1) two seams, PropagationUpdate (the update's one… |
 | A-31 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W1.2's design choices (FR-6.5, D-143): (1) roll-ups are written in size-driven monthly parts, rollup/<YYYY-MM… |
 | A-32 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The linter is pinned at golangci-lint v2.14.0 (was v2.13.1), scripts/lint.sh: under go1.27.2 (D-152) v2.13.1 … |

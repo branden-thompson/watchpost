@@ -236,7 +236,7 @@ func (s *speaker) awaitAir(then func()) bool {
 	s.arbiter.mu.Lock()
 	defer s.arbiter.mu.Unlock()
 	// A condition-variable wait: one Wait per iteration, ended by the resume
-	// or the context ending (the P10-02 ledger row for admit covers the shape).
+	// or the context ending.
 	for s.job.suspended && s.ctx.Err() == nil {
 		s.arbiter.turn.Wait()
 	}
