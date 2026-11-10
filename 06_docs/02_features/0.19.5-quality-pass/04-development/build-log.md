@@ -2086,3 +2086,57 @@ Markdown only, through the docs lane.
   `TestThePublishedTreeNamesNoPersonOrMachine` failed this batch's first gate on it. The sweep now
   prints every path relative to the repository (`shown`), and the record's two lines are restated to
   match; no verdict changes. Vetted on one mutant: the log names `dist/` only.
+
+## 0.19.5 batch 50 — REVIEW's red team answered (A-25 to A-28)
+
+The four reviewers, their reports and each finding's disposition are in
+`08-reports/red-team-review.md`.
+
+- **The pins measure what the program does (A-25).**
+  - `beatCost` feeds each beat's model back in, so a tick draws the frame after the one before. The
+    idle beat now counts the cursor cell painted on every new frame, 16 KB.
+  - `missEveryMemo` empties the masthead too, and `TestFrameAllocBudget` and
+    `BenchmarkFrame_133x44_Miss` use it.
+  - `republished` copies the locations through gob, checked equal, so `reflect.DeepEqual` reads every
+    map. The publish pin builds the copy once and publishes a new snapshot each time.
+  - Re-pinned at what each measures:
+
+    | Pin | Was | Now |
+    |---|---|---|
+    | idle beat | 166 allocs, 59,557 B | 168, 75,990 |
+    | radio beat | 327, 68,476 | 327, 68,475 |
+    | console beat | 383, 122,527 | 377, 122,387 |
+    | no-change publish | 201, 72,317 | 203, 82,322 |
+    | frame miss 133x44 / 133x70 / 200x60 / 80x24 | 5,387 / 11,186 / 14,098 / 985 | 5,523 / 11,322 / 14,234 / 1,136 |
+
+  - **M2, measured this way: all met.** Idle 76.0 KB against 80, radio 68.5 against 90, console
+    122.4 against 140. M2's verdicts in batches 11, 12 and 19 were taken by the unthreaded pin, so
+    their idle figure, 59.6 KB, is low: the idle beat's headroom is 5 %, not 25 %.
+  - v0.19.3 by the same method: idle 172,954 B, radio 169,733, console 310,454, the no-change publish
+    423,842 (it redraws the tables). The CHANGELOG's figures are restated from these.
+  - D-31's comparison, measured on a deep copy, is part of the 82,322 B publish; its "22 allocations
+    and 72 µs" were measured on a shallow one.
+- **A sweep's log is promoted only whole (A-26).** `promote-verdicts` refuses a log with no summary
+  or with fewer mutants than its commit has. `TestPromoteRefusesASweepThatDidNotFinish` covers an empty
+  log, an interrupt, a red baseline, a `MUTANT_ONLY` run and a whole sweep; vetted with the two new
+  checks taken out, it fails on the three bad logs. `mutant-verdicts.sh` raises an interrupt again
+  after its cleanup, and the cleanup stops each worker's process tree and ignores its own failures.
+  Interrupted for real, through `make` during the baseline and directly with four workers running,
+  the record stayed as it was and nothing was left behind.
+- **A catch must repeat, alone (A-27).** `run.sh` runs a failing test again by itself on the mutated
+  tree before the attribution check. `TestACatchMustRepeatAlone`: a test that fails only after another
+  has run, and a mutation nothing pins. Vetted: with the repeat taken out, the harness reads CAUGHT.
+- **The Minors (A-28).**
+  - `render.Width` sums coloured braille without stripping it: `TestWidthAllocBudget` measures a
+    braille row at no allocations, and m812 removes the range (vetted: 1 allocation).
+  - `plaintext.Esc` is the one ESC constant (m733 re-pointed and vetted); `idset.Release` is the one
+    release-number pattern; `everyCitationIsIndexed` is the two citation-index tests' one body.
+  - The CHANGELOG gains `p` on voice rows only (D-33), Reduce motion's chips (D-36) and the relay
+    replay's chips (A-22).
+  - Timings re-recorded: README's gate at about 65 minutes; the Makefile, F-121 and the tooling
+    backlog with `mutant-check` at 3,310 s locally and 131 minutes hosted (run 42700377465).
+  - Docs and comments restated: the required reading's phase row; Walkthrough 2's credits test;
+    `app/doc.go`'s imports; `rowToggle`'s keys; `watchlistDwell`'s own doc; "0.19.0 D-364"; the
+    plan's batch numbering and beat test; DISCOVER's status; the 0.16.0 quotation; the package map's
+    `platform/report`; `perf-measurement.md`; the red-team brief's AP-CITE-01; the tape comment's
+    tense; the Makefile's note on where verdicts come from.

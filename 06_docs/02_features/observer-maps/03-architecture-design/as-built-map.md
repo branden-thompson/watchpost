@@ -43,8 +43,8 @@ flowchart LR
     UI["Watchpost UI (D-71)\nWATCHPOST UI"]
     R["Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY"]
     B["Broadcaster\nSTATION: transmitter · service radius"]
-    M["Maps (0.19.3 D-364)\nMAP"]
-    ML["Map Layers (0.19.3 D-364)\nMAP - LAYERS · MAP - DETAIL, in one column"]
+    M["Maps (0.19.0 D-364)\nMAP"]
+    ML["Map Layers (0.19.0 D-364)\nMAP - LAYERS · MAP - DETAIL, in one column"]
     NA["setup_notices.go · the notice area (D-237)\nat the foot of every tab, over the controls: ! label - words, wrapped under the words\nthe mark's colour its kind: a cost, an outcome, a failure, a fact\nas tall as the most the tab can say; the held room gives way to the body (fitFooter)"]
   end
   O(["Observer"]) --> DA & UI & R & B & M & ML

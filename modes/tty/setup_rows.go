@@ -48,8 +48,11 @@ const (
 	rowCheck
 	// rowPicker cycles a list with ←→ and previews with p.
 	rowPicker
-	// rowToggle is a two-state control shown as its STATE, not as a box:
-	// ←→ or space flip it, and the row says which state it is in.
+	// rowToggle is a two-state control shown as its STATE, not as a box, and
+	// the row says which state it is in. ←, → and space all flip it, through
+	// the row's owner: mapPrefArrow for a map row, else toggleClass, which
+	// answers only the tone rows. A new rowToggle row is answered by neither
+	// until one of them knows it.
 	rowToggle
 )
 

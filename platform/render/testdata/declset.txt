@@ -166,7 +166,6 @@ const minFullW
 const minNoTmrwW
 const minStationW
 const nameMinW
-const plaintextEsc
 const popW
 const severeDetectW
 const severeEventFloor

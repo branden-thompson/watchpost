@@ -459,3 +459,42 @@ func TestAllowedAcceptsPositives(t *testing.T) {
 		}
 	}
 }
+
+// A catch must repeat, alone. Under the sweep's parallel workers a test can
+// fail for its own reasons, beside the rest of its suite, and pass by itself
+// with or without the mutation. The probe models that deterministically: a
+// test that fails only after another test has run, and a mutation nothing
+// pins. Re-run alone on the unmutated tree, as the attribution check does,
+// the test passes, so without the repeat the harness reads CAUGHT.
+func TestACatchMustRepeatAlone(t *testing.T) {
+	t.Parallel()
+	dir := probeRepo(t)
+	loaded := `package harnessprobe
+
+import "testing"
+
+var loaded bool
+
+func TestALoadsTheMachine(t *testing.T) { loaded = true }
+
+func TestBFailsOnlyAfterAnother(t *testing.T) {
+	if loaded {
+		t.Fatal("lost a race the machine's load set, nothing to do with any mutation")
+	}
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "loaded_test.go"), []byte(loaded), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "m.py"), []byte(patch("return x > 0", "return x > 0 || x == -7")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	commitAll(t, dir, "a test that fails only beside another, and an unpinned mutant")
+	run := exec.Command("./run.sh", "m.py", "./...")
+	run.Dir = dir
+	run.Env = append(os.Environ(), "MUTANT_BASELINE=assumed") // the full suite is red by design, as a loaded sweep's can be
+	out, _ := run.CombinedOutput()
+	if got := strings.TrimSpace(string(out)); !strings.HasPrefix(got, "INVALID") {
+		t.Errorf("a failure that does not repeat alone read %q; want INVALID, since nothing pins the mutation", got)
+	}
+}

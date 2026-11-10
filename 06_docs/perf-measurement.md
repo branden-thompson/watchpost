@@ -20,7 +20,7 @@ next session than silence, and the reasons are the part that will still be true 
 | Trend analysis at SHORT horizons | **Exists** | `slope` has `-window` and `-warmup`. The "8 buckets" floor is STATISTICAL, not a duration — 3 h at `-window 20m` clears it |
 | Long term (days–weeks, live stations) | **Not built, deliberately** | See below |
 
-`soak.sh` already records, per sample, — `rss_kb`, `footprint_kb`, `threads`, `pcpu`,
+`soak.sh` already records, per sample, `rss_kb`, `footprint_kb`, `threads`, `pcpu`,
 `heap_alloc`, `heap_inuse`, `heap_objects`, `goroutines`, `fds`, the disk gauges and
 `publishes_recent` — and `/debug/dump` carries `runtime.ReadMemStats` including `NumGC` on demand.
 **There is no instrument the standard Go toolchain offers that this repo is not already using.**

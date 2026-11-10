@@ -29,7 +29,7 @@ import (
 // a truncated sequence at the end of the string, an OSC hyperlink, a CSI with
 // another final byte — is left exactly where it is.
 func StripSGR(s string) string {
-	i := strings.IndexByte(s, escByte)
+	i := strings.IndexByte(s, Esc)
 	if i < 0 {
 		return s // the overwhelmingly common case: no escape, no copy
 	}
@@ -60,14 +60,14 @@ func StripSGR(s string) string {
 	return b.String()
 }
 
-// escByte is ESC, the byte every sequence starts with.
-const escByte = 0x1b
+// Esc is ESC, the byte every sequence starts with.
+const Esc = 0x1b
 
 // SGRLen is the length of the SGR sequence at the head of s, or 0 when there is
 // not a complete one there. StripSGR removes what it measures, and render.Width
 // steps over it, so the two agree on what a sequence is.
 func SGRLen(s string) int {
-	if len(s) < 3 || s[0] != escByte || s[1] != '[' {
+	if len(s) < 3 || s[0] != Esc || s[1] != '[' {
 		return 0 // the shortest possible sequence is ESC [ m
 	}
 	for i := 2; i < len(s); i++ { // bounded by the string (P10-02)

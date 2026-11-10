@@ -260,8 +260,8 @@ func scrollWindow(text string, offset, width int, gap string) string {
 		return render.PadTo(text, width)
 	}
 	// The tape is text then gap, looping, walked in place a rune at a time:
-	// it is a whole lane, and copying it into a rune slice every frame was most
-	// of the frame's bytes (0.19.5 PF-5).
+	// it is a whole lane, and copying it into a rune slice every frame would be
+	// most of the frame's bytes (0.19.5 PF-5).
 	n := utf8.RuneCountInString(text) + utf8.RuneCountInString(gap)
 	tape := tapeCursor{parts: [2]string{text, gap}}
 	for range ((offset % n) + n) % n { // bounded by the loop's length (P10-02)

@@ -192,7 +192,7 @@ func mentionRows(files map[string]string, family string, cite, bold *regexp.Rege
 // a prefix, a version or the CLI's rulings.
 func qualified(before string) bool {
 	t := strings.TrimRight(before, " *`(")
-	return strings.HasSuffix(before, "MVS-") || strings.HasSuffix(t, "watchpost-cli") || strings.HasSuffix(t, "cli") || versionIn.MatchString(lastWord(t))
+	return strings.HasSuffix(before, "MVS-") || strings.HasSuffix(t, "watchpost-cli") || strings.HasSuffix(t, "cli") || idset.Release.MatchString(lastWord(t))
 }
 
 // lastWord is t's last space-separated word.
@@ -437,16 +437,13 @@ func subjectOf(cells []string) string {
 // "W1.13" or "0.19.5 D-4" never has.
 var word = regexp.MustCompile(`\p{Ll}{3}`)
 
-// versionIn finds a release number such as 0.19.5.
-var versionIn = regexp.MustCompile(`\b\d+\.\d+\.\d+\b`)
-
 // releases is each feature folder's release, where the record states one: in
 // the folder's name, else in its project brief's title.
 func releases(docs string) map[string]string {
 	out := map[string]string{}
 	entries, _ := os.ReadDir(filepath.Join(docs, "02_features"))
 	for _, e := range entries { // bounded by the features (P10-02)
-		if v := versionIn.FindString(e.Name()); v != "" && strings.HasPrefix(e.Name(), v) {
+		if v := idset.Release.FindString(e.Name()); v != "" && strings.HasPrefix(e.Name(), v) {
 			out[e.Name()] = v
 			continue
 		}
@@ -456,7 +453,7 @@ func releases(docs string) map[string]string {
 		}
 		for _, line := range strings.SplitN(string(b), "\n", 12) { // the front matter (P10-02)
 			if strings.HasPrefix(line, "title:") {
-				out[e.Name()] = versionIn.FindString(line)
+				out[e.Name()] = idset.Release.FindString(line)
 			}
 		}
 	}

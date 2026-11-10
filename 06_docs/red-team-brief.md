@@ -77,8 +77,8 @@ you are hostile to code that exists without justification.
    cannot verify must FAIL, not pass.
 
 **Parts of questions 6 and 9 are mechanically checkable here.** `make lint-authoring` decides
-`AP-HIST-01`, `AP-DEAD-01`, `SN-02`, `SN-03`, `AP-SHELL-01`, `AP-OK-01` and `AP-CITE-01` over the whole
-tree, and warns on `AP-CAPS-01`; `06_docs/code-standards.md` writes the rules out. Question 5's
+`AP-HIST-01`, `AP-DEAD-01`, `SN-02`, `SN-03`, `AP-SHELL-01` and `AP-OK-01` over the whole tree,
+`AP-CITE-01` over the citations the branch adds, and warns on `AP-CAPS-01`; `06_docs/code-standards.md` writes the rules out. Question 5's
 `SN-01` (names) has no tool: it is a reader's.
 A reviewer who reports one of those is reporting a lint failure, which means the lint is off — say
 so. **The rest of each rule is still theirs**: the tool cannot see a comment that is merely WRONG,

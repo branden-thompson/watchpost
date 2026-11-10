@@ -93,6 +93,14 @@ func TestAnMVSRulingIsIndexedByItsBestMention(t *testing.T) {
 // MVS-D ID in a Go comment that 06_docs/ids.md has no row for is a citation a
 // junior cannot look up.
 func TestEveryMVSRulingTheCodeCitesIsIndexed(t *testing.T) {
+	everyCitationIsIndexed(t, mvsCite, "MVS-D-")
+}
+
+// everyCitationIsIndexed walks the tree's Go files for the IDs re captures,
+// whose number is its first group, and fails on each that 06_docs/ids.md has
+// no row for. prefix is the ID before its number, as the index writes it.
+func everyCitationIsIndexed(t *testing.T, re *regexp.Regexp, prefix string) {
+	t.Helper()
 	root := filepath.Join("..", "..")
 	index, err := build(root)
 	if err != nil {
@@ -113,7 +121,7 @@ func TestEveryMVSRulingTheCodeCitesIsIndexed(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		for _, m := range mvsCite.FindAllStringSubmatch(string(b), -1) {
+		for _, m := range re.FindAllStringSubmatch(string(b), -1) {
 			cited[m[1]] = path
 		}
 		return nil
@@ -122,11 +130,11 @@ func TestEveryMVSRulingTheCodeCitesIsIndexed(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(cited) < 40 {
-		t.Fatalf("found %d MVS-D IDs in the Go files; the walk is not reading the tree", len(cited))
+		t.Fatalf("found %d %s IDs in the Go files; the walk is not reading the tree", len(cited), strings.TrimSuffix(prefix, "-"))
 	}
 	for num, path := range cited {
-		if !strings.Contains(index, "| MVS-D-"+num+" |") {
-			t.Errorf("%s cites MVS-D-%s, which 06_docs/ids.md does not index", path, num)
+		if !strings.Contains(index, "| "+prefix+num+" |") {
+			t.Errorf("%s cites %s%s, which 06_docs/ids.md does not index", path, prefix, num)
 		}
 	}
 }
@@ -214,42 +222,7 @@ func TestAFollowUpNoTableDefinesIsIndexedByItsMention(t *testing.T) {
 // F-ID in a Go comment that 06_docs/ids.md has no row for is a citation a
 // junior cannot look up.
 func TestEveryFollowUpTheCodeCitesIsIndexed(t *testing.T) {
-	root := filepath.Join("..", "..")
-	index, err := build(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cited := map[string]string{}
-	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() && (d.Name() == ".git" || d.Name() == "third_party" || d.Name() == "dist" || d.Name() == ".claude") {
-			return filepath.SkipDir
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".go") {
-			return nil
-		}
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		for _, m := range goFollowUp.FindAllStringSubmatch(string(b), -1) {
-			cited[m[1]] = path
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(cited) < 40 {
-		t.Fatalf("found %d F-IDs in the Go files; the walk is not reading the tree", len(cited))
-	}
-	for num, path := range cited {
-		if !strings.Contains(index, "| F-"+num+" |") {
-			t.Errorf("%s cites F-%s, which 06_docs/ids.md does not index", path, num)
-		}
-	}
+	everyCitationIsIndexed(t, goFollowUp, "F-")
 }
 
 // goFollowUp is an F-ID in Go source that is not part of a longer name.

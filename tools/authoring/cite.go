@@ -66,10 +66,6 @@ func mergeBase(root string) (string, error) {
 	return "", fmt.Errorf("no merge-base with main: the citation rule needs the branch's history (CI checks out with fetch-depth 0)")
 }
 
-// releaseNamed is a release number, which qualifies every ID after it to the
-// end of its sentence: "0.19.5 Q7.4 (JM-3, DC-14)".
-var releaseNamed = regexp.MustCompile(`\b\d+\.\d+\.\d+\b`)
-
 // sentenceEnd is a full stop that ends a sentence: followed by a space or the
 // end of the line, so a release number's own dots are not one.
 var sentenceEnd = regexp.MustCompile(`\.(?:\s|$)`)
@@ -118,7 +114,9 @@ func bareIDs(line string, qualified bool) ([]string, bool) {
 		end  int
 	}
 	var marks []mark
-	for _, l := range releaseNamed.FindAllStringIndex(line, -1) { // bounded by the line (P10-02)
+	// A release number qualifies every ID after it to the end of its
+	// sentence: "0.19.5 Q7.4 (JM-3, DC-14)".
+	for _, l := range idset.Release.FindAllStringIndex(line, -1) { // bounded by the line (P10-02)
 		marks = append(marks, mark{l[0], 'r', l[1]})
 	}
 	for _, l := range sentenceEnd.FindAllStringIndex(line, -1) { // bounded by the line (P10-02)

@@ -75,12 +75,17 @@ The project moved from shell to Go after defects in the shell. The reviewer's sp
 
 ## Cost — what to stop paying for
 
-- **`mutant-check` on every push** costs 2,253 s locally and about 93 minutes on a hosted runner (the Makefile records both), and asserts the corpus applies and compiles. It **cannot fail on a survived mutant**. The drift half already comes from `mutant-anchors` in 0.3 s. `MUTANT_POLICY` is one word: move it to nightly and spend the recovered time on `mutant-verdicts`, the only gate that measures the corpus's actual claim. (`F-121`, a ruling at a release's PLAN)
+- **`mutant-check` on every push** costs 3,310 s locally and 131 minutes on a hosted runner at 1,057 mutants (the Makefile records both), and asserts the corpus applies and compiles. It **cannot fail on a survived mutant**. The drift half already comes from `mutant-anchors` in 0.3 s. `MUTANT_POLICY` is one word: move it to nightly and spend the recovered time on `mutant-verdicts`, the only gate that measures the corpus's actual claim. (`F-121`, a ruling at a release's PLAN)
 - **Two cuts not yet ruled (0.19.5 D-39).**
   - The sweep per batch: only the mutants whose package, or whose last killer's package, changed since the last record; the full sweep at SHIP.
   - The same selection for `mutant-check` in `verify`.
 
   Both leave a window, between a batch and SHIP, in which a change elsewhere can weaken a mutant's detector unseen. The full sweep at SHIP closes it. 0.19.5 built the cuts that lose nothing: the last killer first, and parallel workers. With them the full sweep takes 57 minutes on four workers (0.19.5 batch 49).
+- **The sweep's record, held to the corpus (0.19.5 REVIEW, GT M-2, M-3, M-4, M-7).**
+  - Nothing checks that the record names the commit and the mutant count at HEAD, so a stale record can ship unseen. A release check could compare them.
+  - The sweep exits 1 on every run while the seven kept equivalents survive, so a new survivor changes nothing in the exit code. A ratified-equivalents file the sweep subtracts, failing on a row that matches nothing (as `tools/dupes` does), would let it pass.
+  - `scripts/quality/mutant-verdicts.sh` has no test of its own beyond the promote refusals (`TestPromoteRefusesASweepThatDidNotFinish`); its queue, worktrees and killer parsing are exercised only by a run. It is a port candidate (F-156).
+  - Step 1 vets only the last killer's package, so a mutant that breaks vet in its own package reads CAUGHT there where an unscoped run reads INVALID. `TestEveryMutantAppliesAndCompiles` in `mutant-check` holds the compile half.
 
 ## Defeating the three-list rule
 

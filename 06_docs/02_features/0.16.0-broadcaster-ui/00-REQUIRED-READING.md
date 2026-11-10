@@ -72,7 +72,7 @@ Absorb, Instruct, or Leave alone, and it is written to be **honoured or overturn
 **A give-way keyed on which RAIL is chosen was rejected, in a comment that records what it cost**
 (it was in `app/radio.go`; the reasoning is now `platform/lineup/duck_test.go`'s header):
 
-> *"Asking the deck's mode here fixed an answer the audio could outlive."*
+> *"Asking the deck's mode here would fix an answer the audio could outlive."*
 
 **`app/arbiter.go`'s header** (the file was `app/director.go`):
 

@@ -31,14 +31,20 @@ func beats() []beat {
 }
 
 // beatCost is a beat's allocations and bytes, from testing.Benchmark.
+//
+// Each beat's model is fed back in, as Bubble Tea does, so every beat draws
+// the frame after the one before. Measured on one model over and over, each
+// beat would draw the same frame, and the work that runs only on a changed
+// frame would go uncounted: the marquee moves on every tick, and the cursor's
+// cell is painted again on every new frame (16 KB at 133x44).
 func beatCost(tb testing.TB, b beat) (allocs, bytes int64) {
 	m := b.model(tb)
 	_ = m.View().Content // warm the memos and the theme
 	r := testing.Benchmark(func(bb *testing.B) {
 		bb.ReportAllocs()
 		for bb.Loop() {
-			next, _ := m.Update(b.msg)
-			_ = next.View().Content
+			m, _ = m.Update(b.msg)
+			_ = m.View().Content
 		}
 	})
 	return r.AllocsPerOp(), r.AllocedBytesPerOp()
@@ -50,9 +56,9 @@ func beatCost(tb testing.TB, b beat) (allocs, bytes int64) {
 // one allocation each and many kilobytes (0.19.5 PF-6). The batches that cut a
 // beat lower its pin to what lands; M2's targets are 80, 90 and 140 KB.
 var beatBudget = map[string]struct{ allocs, bytes float64 }{
-	"idle Observer 133x44": {166 * 1.05, 59_557 * 1.05},
-	"radio playing 133x44": {327 * 1.05, 68_476 * 1.05},
-	"console 160x74":       {383 * 1.05, 122_527 * 1.05},
+	"idle Observer 133x44": {168 * 1.05, 75_990 * 1.05},
+	"radio playing 133x44": {327 * 1.05, 68_475 * 1.05},
+	"console 160x74":       {377 * 1.05, 122_387 * 1.05},
 }
 
 // TestBeatAllocBudget is 0.19.5 Q2.12 (PF-6): what a beat costs, the message
@@ -85,14 +91,19 @@ func TestPublishAllocBudget(t *testing.T) {
 	}
 	d := benchDash(t, 133, 44).(Dashboard)
 	_ = d.View().Content
+	// The copy is built once, so its cost is not counted as the publish's.
+	// Each publish is still a snapshot of its own, as the assembler sends: a
+	// memo that answered by pointer would hit on a snapshot it had seen.
+	again := republished(t, d.snap, nil)
 	r := testing.Benchmark(func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			m, _ := d.Update(SnapshotMsg{Snap: republished(d.snap, nil)})
+			publish := *again
+			m, _ := d.Update(SnapshotMsg{Snap: &publish})
 			_ = m.View().Content
 		}
 	})
-	const allocs, bytes = 201 * 1.05, 72_317 * 1.05
+	const allocs, bytes = 203 * 1.05, 82_322 * 1.05
 	t.Logf("a no-change publish's frame: %d allocs (budget %.0f), %d bytes (budget %.0f)", r.AllocsPerOp(), allocs, r.AllocedBytesPerOp(), bytes)
 	if float64(r.AllocsPerOp()) > allocs || float64(r.AllocedBytesPerOp()) > bytes {
 		t.Errorf("a no-change publish's frame costs %d allocations and %d bytes; its budget is %.0f and %.0f", r.AllocsPerOp(), r.AllocedBytesPerOp(), allocs, bytes)

@@ -4,6 +4,6 @@ import pathlib
 # summed and not stripped.
 # Killed by TestWidthAllocBudget.
 p = pathlib.Path('platform/render/text.go'); s = p.read_text()
-old = '\tcase r == plaintextEsc:\n'
+old = '\tcase r == plaintext.Esc:\n'
 assert s.count(old) == 1, 'm733'
-p.write_text(s.replace(old, '\tcase r == plaintextEsc && false:\n', 1))
+p.write_text(s.replace(old, '\tcase r == plaintext.Esc && false:\n', 1))

@@ -524,18 +524,16 @@ func (d *radioDeck) SetMode(mode tty.RadioMode) {
 // and the Director keeps the deadline.
 const liveDwell = 5 * time.Minute
 
-// WATCHPOST_WATCHLIST_DWELL overrides it, for testing the rotation without
-// waiting five minutes a station (HUM LEAD, UAT 2026-09-04).
+// watchlistDwell is how long the watchlist rotation stays on a station: the
+// Settings window's choice when the listener made one this run, else
+// WATCHPOST_WATCHLIST_DWELL, else liveDwell.
 //
-// AN ENVIRONMENT VARIABLE IS THE HALF THAT IS NOT A UI DECISION. Where the row
-// belongs in Settings, what it is called and what values it offers are the HUM
-// LEAD's to specify; making the duration a value rather than a constant is not,
-// and it is what makes the rotation testable in thirty seconds. The Settings row
-// reads this same function when it arrives.
+// The environment variable is for testing the rotation without waiting five
+// minutes a station (HUM LEAD, UAT 2026-09-04). It takes a Go duration ("30s",
+// "2m"). Anything unparseable or non-positive is the default rather than an
+// error: a mistyped variable should not silently stop the rotation, which is
+// exactly the failure this exists to help find.
 //
-// It takes a Go duration ("30s", "2m"). Anything unparseable or non-positive is
-// the default rather than an error: a mistyped variable should not silently stop
-// the rotation, which is exactly the failure this exists to help find.
 // The Settings window's choice lives ON THE DECK (d.relayDwell), not in a
 // package variable. A package-level override is the same setting reachable from
 // every test in the package at once, and its own pin would have to save and

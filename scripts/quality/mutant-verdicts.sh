@@ -38,21 +38,24 @@
 #   4. the package under `-race`, because some detectors only work under it.
 #
 # Only a mutant that survives all four is SURVIVED. A catch at any step has
-# run.sh's attribution check: the failing test must pass with the mutation put
-# back, or the verdict is INVALID.
+# run.sh's two checks: the failing test fails again, alone, on the mutated
+# tree, and passes with the mutation put back. Either miss reads INVALID, and
+# the run reports it as NO EVIDENCE.
 #
-# PARALLEL WORKERS LOAD THE MACHINE, and that cannot turn a survivor into a
-# catch: a test that fails under load and passes alone fails the attribution
-# check. Load can only make the run slower. MUTANT_JOBS sets the workers.
+# PARALLEL WORKERS LOAD THE MACHINE. A test that fails only under load is what
+# the first check is for: it must fail twice, the second time alone, to count.
+# A mutant that crashes the test binary has neither check (run.sh says why),
+# so a crash under load can still read CAUGHT. MUTANT_JOBS sets the workers.
 #
 #   MUTANT_JOBS=<n>       workers, default 4
 #   MUTANT_KILLERS=<log>  the record step 1 reads; with none, every mutant
 #                         starts at step 2
 #   MUTANT_ONLY=<regex>   judge only the mutants whose file names match. For
 #                         checking a few by hand: call this script with a log
-#                         path of your own, since `make mutant-verdicts`
-#                         promotes its log as the release's record. A partial
-#                         run records no timings.
+#                         path of your own. `make mutant-verdicts` refuses to
+#                         promote a partial run as the release's record, so it
+#                         would only fail there. A partial run records no
+#                         timings.
 set -eu
 
 out=${1:-dist/mutant-verdicts.log}
@@ -86,19 +89,33 @@ mkdir -p "$(dirname "$timings")"
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/watchpost-sweep.XXXXXX")
 # The worktrees are removed however the run ends, an interrupt included, and
-# the workers stopped first; `git worktree prune` drops what a killed run left
+# the workers are stopped first, with everything they started: a script's
+# background jobs ignore the terminal's interrupt, so a worker's `go test`
+# would otherwise run on after the script has gone. No step's failure stops
+# the cleanup part way. `git worktree prune` drops what a killed run left
 # registered.
 pids=""
+treeof() {
+	echo "$1"
+	for c in $(pgrep -P "$1" 2>/dev/null); do treeof "$c"; done
+}
 cleanup() {
-	[ -n "$pids" ] && kill $pids 2>/dev/null
+	tree=$(for p in $pids; do treeof "$p"; done)
+	if [ -n "$tree" ]; then kill $tree 2>/dev/null || true; fi
 	for wt in "$work"/w*; do
-		[ -d "$wt" ] && git -C "$root" worktree remove --force "$wt" >/dev/null 2>&1
+		if [ -d "$wt" ]; then git -C "$root" worktree remove --force "$wt" >/dev/null 2>&1 || true; fi
 	done
-	git -C "$root" worktree prune >/dev/null 2>&1
-	rm -rf "$work"
+	git -C "$root" worktree prune >/dev/null 2>&1 || true
+	rm -rf "$work" || true
 }
 trap cleanup EXIT
-trap 'exit 130' INT TERM
+# AN INTERRUPT ENDS THE RUN AS AN INTERRUPT. The script cleans up and raises
+# the signal again, so the shell that started it sees a death by signal and
+# stops too. Caught and turned into an exit code, it would let
+# `make mutant-verdicts` go on to promote the interrupted log.
+for sig in INT TERM; do
+	trap "trap - $sig EXIT; cleanup; kill -$sig \$\$" "$sig"
+done
 
 head=$(git -C "$root" rev-parse HEAD)
 git -C "$root" ls-tree --name-only HEAD 06_docs/mutants/ | grep '/m[^/]*\.py$' | sort > "$work/all"

@@ -3,7 +3,7 @@ title: "0.19.5 DISCOVER — what the five lenses found, checked"
 date: 2026-11-06
 phase: DISCOVER
 sev: SEV-0
-status: "DRAFT for the HUM LEAD; the rulings it asks for are put one at a time"
+status: "DISCOVER exited (D-19); every ruling it asked for is in rulings.md"
 ---
 
 # What the five lenses found

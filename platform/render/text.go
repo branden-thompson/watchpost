@@ -418,7 +418,7 @@ func PlainLine(s string) string { return plaintext.Line(s) }
 // is measured by what follows it, not by itself. TestWidthMatchesStripThenMeasure
 // and its fuzz target hold the two answers equal.
 func displayWidth(s string) int {
-	from := strings.IndexByte(s, plaintextEsc)
+	from := strings.IndexByte(s, plaintext.Esc)
 	if from < 0 {
 		return runewidth.StringWidth(s)
 	}
@@ -427,7 +427,7 @@ func displayWidth(s string) int {
 	}
 	w, start := 0, 0
 	for range len(s) { // each pass passes at least one byte (P10-02)
-		k := strings.IndexByte(s[from:], plaintextEsc)
+		k := strings.IndexByte(s[from:], plaintext.Esc)
 		if k < 0 {
 			break
 		}
@@ -446,9 +446,6 @@ func displayWidth(s string) int {
 	return w + runewidth.StringWidth(s[start:])
 }
 
-// plaintextEsc is ESC, the byte every SGR sequence starts with.
-const plaintextEsc = 0x1b
-
 // mayJoinAcross reports whether the runes either side of a sequence could join
 // one grapheme cluster once it is stripped. Each must be a rune that never
 // joins one, so a combining mark, a joiner, a regional indicator, Hangul or a
@@ -462,12 +459,12 @@ func mayJoinAcross(before, after string) bool {
 
 // standsAlone reports whether r is in a range the frames draw from whose runes
 // never join a grapheme cluster with a neighbour: ESC, printable Latin, punctuation,
-// arrows and technical symbols, box drawing, blocks, shapes, dingbats and
-// CJK ideographs. Combining marks, joiners, regional indicators, emoji
+// arrows and technical symbols, box drawing, blocks, shapes, dingbats, braille
+// (the map's dots) and CJK ideographs. Combining marks, joiners, regional indicators, emoji
 // modifiers and Hangul are outside every range.
 func standsAlone(r rune) bool {
 	switch {
-	case r == plaintextEsc:
+	case r == plaintext.Esc:
 		return true // the next sequence's first byte: a cluster always breaks at a control, and that sequence checks the rune after it
 	case r >= 0x20 && r < 0x7f, r >= 0xa0 && r < 0x300 && r != 0xad:
 		return true // printable Latin, with the soft hyphen out
@@ -475,6 +472,8 @@ func standsAlone(r rune) bool {
 		return true // punctuation, with the joiners and invisible marks out
 	case r >= 0x2190 && r <= 0x23ff, r >= 0x2460 && r <= 0x27bf, r >= 0x2b00 && r <= 0x2bff:
 		return true // arrows, technical, enclosed, box drawing, blocks, shapes, symbols, dingbats
+	case r >= 0x2800 && r <= 0x28ff:
+		return true // braille patterns, which the map draws in colour
 	case r >= 0x4e00 && r <= 0x9fff:
 		return true // CJK ideographs
 	}

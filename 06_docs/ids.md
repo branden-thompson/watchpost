@@ -2014,9 +2014,13 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-23 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The intake briefs (watchpost and go-ionomaps) are kept as written, with a banner that requirements.md is curr… |
 | A-24 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | mAA3 and mAA4 are kept as equivalent mutants, as 0.16.0 kept m16 and m43. 0.18.0 D-70 draws every Settings ro… |
 | A-24 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PLAN's mermaid diagrams are committed on the docs lane as they are written; 06_docs/architecture-atlas.html i… |
+| A-25 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The beat, frame and publish pins measure what the program does (REVIEW PF P-1 to P-3). beatCost feeds each be… |
 | A-25 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | M5b gets its own ten scenarios, drawn the same way as M5's, rather than "the same ten" (the implementation pl… |
+| A-26 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | A sweep's log is promoted only whole (REVIEW GT I-1, M-1). promote-verdicts also refuses a log with no summar… |
 | A-26 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | (ratified by D-120) D-94's 10 minutes is the default of a Setting (Maps tab): every 10 minutes, hourly, or on… |
+| A-27 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | A catch must repeat, alone (REVIEW GT I-2). On a test failure, run.sh runs the same test again by itself on t… |
 | A-27 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | FR-1.17 is met by its first branch: every answer runs off the UI goroutine (architecture, "Off the UI gorouti… |
+| A-28 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW's Minors, fixed as the reviewers gave them (PF P-4, C-1; DC I-1 to I-3, M-1 to M-11, M-13 to M-16). Br… |
 | A-28 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The climatology ships NRL's CCIR refit, not the URSI refit (both are D-43's refits); the scorer pins it as th… |
 | A-29 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team's fix batch, its design choices: (1) the go-ionomaps shape completed (a Response with rate … |
 | A-30 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team round 2's fix batch, its design choices: (1) two seams, PropagationUpdate (the update's one… |

@@ -600,8 +600,8 @@ about three and a half minutes under `-race`.
 **3. Before a pull request: `make verify`.**
 - It runs every gate: fmt, vet, tidy, vulnerabilities, race, lint, the import and authoring rules, the
   watermark check, the gates' own controls and the mutant corpus. It runs from a clean clone.
-- It takes about **40 minutes** on the developer's machine, most of it the mutant check. The last eight
-  green runs took 2,342 to 2,481 s.
+- It takes about **65 minutes** on the developer's machine, most of it the mutant check. The last two
+  green runs, at 1,057 mutants, took 3,812 and 4,003 s.
 - **It appends a line to the tracked `06_docs/verify-runs.md`**, so the tree is changed afterwards.
   Commit that line with the change it verified, and never remove a FAILED one.
 - **A second `make verify` while one runs is refused, not queued.** `make tree-free` says whether one

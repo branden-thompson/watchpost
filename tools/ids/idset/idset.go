@@ -22,3 +22,7 @@ var Families = []string{"NFR", "DEF", "FR", "DR", "PF", "RN", "DC", "JR", "DV", 
 // decimal (0.18.0 FR-3.2) or letter (0.19.5 DR-7a). It does not look at what comes before,
 // which is the caller's to judge: `MVS-D-80` and `0.19.5 D-4` are qualified.
 var ID = regexp.MustCompile(`\b(` + strings.Join(Families, "|") + `)-(\d+)((?:\.\d+)*[a-z]?)\b`)
+
+// Release matches a release number such as 0.19.5, which qualifies the IDs
+// cited after it.
+var Release = regexp.MustCompile(`\b\d+\.\d+\.\d+\b`)

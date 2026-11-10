@@ -32,18 +32,24 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   stay in the border for as long as they fit, where they used to give way early.
 - **An unknown `[radio] mode` stops Watchpost at start** and names the key and its two words, as `cast`
   and the tones' `mode` already did, instead of being read as Synth.
+- **In Settings, `p` previews a voice only on a voice row.** It used to play the default voice on Theme,
+  the two HISTORY pickers and the two RELAY REPLAY rows, where nothing on screen offered it.
+- **Settings → Watchpost UI → Reduce motion names its arrows:** its chips read "←→ Motion", as every
+  other picker's say what its arrows change.
+- **The two RELAY REPLAY rows' chips name their own change,** "←→ Rotation" and "←→ Language", where
+  they offered "←→ Voice  p Preview", a voice and a preview neither row has.
 
 ### Performance
 - **Each beat of the interface allocates about half the memory it did, or less:** an idle Observer
-  frame from about 157 KB to 60 KB, the radio playing from 169 KB to 68 KB, and the console from 310 KB
-  to 123 KB. The ticker's marquee and the console's frame are no longer copied whole each frame, the
+  frame from about 173 KB to 76 KB, the radio playing from 170 KB to 68 KB, and the console from 310 KB
+  to 122 KB. The ticker's marquee and the console's frame are no longer copied whole each frame, the
   app's model is no longer copied into an interface at each step a message takes, measuring styled text
   no longer copies it, the radio player is drawn only in the layout shown, and the ticker's tape, both
   mastheads, the console's running order and its railed tables are worked out again only when what they
   show changes. A ticker step allocates 3 times instead of
   68. What is drawn is byte for byte the same.
 - **A weather update that changed nothing shown no longer redraws the tables:** the frame after it costs
-  about 72 KB, from about 362 KB.
+  about 82 KB, from about 424 KB.
 - **A weather publish copies a tenth of what it did:** the snapshot shares each forecast's hours instead
   of copying them twice, about 76 KB a publish of 25 locations, from about 1 MB.
 - **The ticker's seen store is written only when it has changed,** instead of every two minutes.

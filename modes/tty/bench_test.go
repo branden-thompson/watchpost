@@ -35,19 +35,21 @@ import (
 // about 10 % under the real cost, and it is the hit path that the band keeps
 // drawing around the clock.
 var frameAllocBudget = map[string]float64{
-	"133x44": 5_387 * 1.05,
-	"133x70": 11_186 * 1.05,
-	"200x60": 14_098 * 1.05,
-	"80x24":  985 * 1.05,
+	"133x44": 5_523 * 1.05,
+	"133x70": 11_322 * 1.05,
+	"200x60": 14_234 * 1.05,
+	"80x24":  1_136 * 1.05,
 }
 
-// frameAllocBudgetHit pins the memo-hit frame — THE PIN THAT MATTERS.
+// frameAllocBudgetHit pins the memo-hit frame: View drawn again with nothing
+// changed.
 //
 // The marquee scrolls on every tick, so tickNeeded holds whenever there are
-// active events, which is nearly always: this frame is drawn about three times
-// a second for as long as the app is up, and every allocation on it is a
+// active events, which is nearly always: a frame is drawn about three times a
+// second for as long as the app is up, and every allocation on it is a
 // permanent cost. Treat a failure here as a regression to fix, not a budget to
-// raise. Measured at x1.05 against benchDash's live marquee, whose showing lane
+// raise. A tick's whole cost, its message and the changed frame after it, is
+// TestBeatAllocBudget's. Measured at x1.05 against benchDash's live marquee, whose showing lane
 // is FULL — the state that costs the most per frame; a tape spread thin across
 // six lanes measures less.
 var frameAllocBudgetHit = map[string]float64{
@@ -175,7 +177,7 @@ func TestFrameAllocBudget(t *testing.T) {
 		d := benchDash(t, w, h).(Dashboard)
 		_ = d.View().Content // warm the kit's probes and the theme
 		hit := testing.AllocsPerRun(20, func() { _ = d.View().Content })
-		miss := testing.AllocsPerRun(20, func() { d.memo.ok = false; _ = d.View().Content })
+		miss := testing.AllocsPerRun(20, func() { missEveryMemo(d); _ = d.View().Content })
 		t.Logf("frame %s: hit %.0f allocs (budget %.0f) · miss %.0f allocs (budget %.0f)", size, hit, frameAllocBudgetHit[size], miss, budget)
 		if hit > frameAllocBudgetHit[size] {
 			t.Errorf("frame %s (memo hit) allocates %.0f per View(), budget %.0f — a render regression (plan §1)", size, hit, frameAllocBudgetHit[size])
@@ -187,12 +189,12 @@ func TestFrameAllocBudget(t *testing.T) {
 }
 
 // BenchmarkFrame_133x44_Miss is the table re-render path (a snapshot, a
-// key, a resize): the memo slot is invalidated before every frame.
+// key, a resize): every memo the frame reads is emptied before every frame.
 func BenchmarkFrame_133x44_Miss(b *testing.B) {
 	d := benchDash(b, 133, 44).(Dashboard)
 	b.ReportAllocs()
 	for b.Loop() {
-		d.memo.ok = false
+		missEveryMemo(d)
 		_ = d.View().Content
 	}
 }

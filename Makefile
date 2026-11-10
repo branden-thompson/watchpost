@@ -167,8 +167,9 @@ mutant-check:
 # proves the gate ran and nothing else, and a verify step that accepts that is a
 # verify step in name only. With it the log names every property of the mutation
 # harness that held, which IS this gate's result. (The per-mutant CAUGHT/SURVIVED
-# verdicts come from run.sh, invoked one mutant at a time, and are recorded by
-# hand in the batch build logs; this gate guards the harness, not the corpus.)
+# verdicts come from `make mutant-verdicts`, which judges every mutant and
+# promotes its log to 06_docs/mutants/verdicts/ (0.19.5 D-16); this gate
+# guards the harness, not the corpus.)
 # THIS GATE'S LOG IS TRANSIENT, AND SAYING SO IS THE POINT. It is printed to
 # stdout in the same breath it is written, and it is promoted into the feature's
 # 07-readiness folder deliberately at release time — so it is evidence for one
@@ -184,13 +185,13 @@ mutant-check:
 # to be wrong. Locally the margin is invisible, because the developer's machine
 # has more cores than a hosted runner.
 #
-# 240m: the corpus at 835 mutants ran 93 minutes on a hosted ubuntu-24.04
-# runner (run 40908367003, 2026-10-29) and passed 120 minutes on the same
-# platform two hours later without finishing (run 40927225939); 240m is twice
-# that. At 1032 mutants it ran 2253 s on the developer's 18 cores (2026-11-07). The
-# corpus grows every release; when it approaches the cap, raise it and
-# re-record the measurement here rather than trimming the corpus to fit the
-# clock.
+# 240m: at 835 mutants the corpus ran 93 minutes on a hosted ubuntu-24.04
+# runner (run 40908367003, 2026-10-29) and did not finish in 120 minutes on the
+# same platform two hours later (run 40927225939). At 1,057 mutants it ran 131
+# minutes there (run 42700377465, 2026-11-09) and 3,310 s on the developer's 18
+# cores. The corpus grows every release; when it approaches the cap, raise it
+# and re-record the measurement here rather than trimming the corpus to fit
+# the clock.
 	@go test -tags mutants -v -count=1 -timeout 240m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
 	  cat $(DIST)/mutant-check.log; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
@@ -384,11 +385,18 @@ VERDICTS_RECORD := 06_docs/mutants/verdicts/since-v$(LAST_TAG).log
 # the verify step "this target is `rm` with a comment, and the first time a run
 # dies early it would delete the artefacts and the evidence together".
 #
-# IT REFUSES RATHER THAN OVERWRITES A GOOD RECORD WITH A BAD ONE. An empty or
-# missing log means the sweep died before it said anything, and copying that
-# over the last real one would destroy the evidence this step exists to keep.
-# THE COMMIT IS THE ONE THE SWEEP JUDGED, read from its log's first line, not
-# HEAD now: the working tree, and HEAD with it, can move while a sweep runs.
+# IT REFUSES RATHER THAN OVERWRITES A GOOD RECORD WITH A BAD ONE. Copying a
+# bad log over the last real one would destroy the evidence this step exists
+# to keep, and the next sweep reads its killers from the record. So the log
+# must:
+# - exist and not be empty;
+# - name the commit it judged on its first line, which is the record's
+#   commit rather than HEAD now, since the working tree, and HEAD with it, can
+#   move while a sweep runs;
+# - end in the sweep's summary, which an interrupted run or a red baseline
+#   never writes;
+# - have judged every mutant at that commit, which a MUTANT_ONLY run has not.
+# TestPromoteRefusesASweepThatDidNotFinish holds all four.
 #
 # DO NOT `make -n` THIS TARGET OR `mutant-verdicts`. GNU make EXECUTES a
 # recipe line containing $(MAKE) even under -n, so a "dry run" of
@@ -401,6 +409,10 @@ promote-verdicts:
 	@mkdir -p $(dir $(VERDICTS_RECORD))
 	@c=$$(sed -n '1s/.*, commit \([0-9a-f]*\),.*/\1/p' "$(DIST)/mutant-verdicts.log"); \
 	  test -n "$$c" || { echo "promote-verdicts: the log does not name the commit it judged, so NOTHING is promoted"; exit 1; }; \
+	  n=$$(sed -n 's/^mutant-verdicts: \([0-9]*\) mutant(s) .* CAUGHT, .*/\1/p' "$(DIST)/mutant-verdicts.log" | tail -1); \
+	  test -n "$$n" || { echo "promote-verdicts: the log has no summary, so the sweep did not finish (an interrupt, or a red baseline); NOTHING is promoted"; exit 1; }; \
+	  all=$$(git ls-tree --name-only "$$c" 06_docs/mutants/ | grep -c '/m[^/]*\.py$$'); \
+	  test "$$n" = "$$all" || { echo "promote-verdicts: the sweep judged $$n of the $$all mutants at $$c (a MUTANT_ONLY run?), so NOTHING is promoted"; exit 1; }; \
 	  { echo "commit: $$c — $$(date -u +%Y-%m-%dT%H:%MZ)"; cat "$(DIST)/mutant-verdicts.log"; } > "$(VERDICTS_RECORD)"
 	@test -s "$(VERDICTS_RECORD)" || { echo "promote-verdicts: the copy to $(VERDICTS_RECORD) did not land; refusing to report it durable"; exit 1; }
 	@! git check-ignore -q "$(VERDICTS_RECORD)" || { echo "promote-verdicts: $(VERDICTS_RECORD) is git-ignored — filed is not committed; fix .gitignore or choose a tracked path"; exit 1; }
@@ -431,8 +443,8 @@ mutant-verdicts:
 # another. cmd/watchpost/gates_test.go fails if that stops being true.
 #
 #   push     every push and pull request. Correct on the merits and the
-#            slowest: 2253 s on 18 cores locally (2026-11-07) and about
-#            93 minutes on a hosted runner (2026-10-29), every time.
+#            slowest: 3,310 s on 18 cores locally and 131 minutes on a
+#            hosted runner at 1,057 mutants (2026-11-09), every time.
 #   nightly  the scheduled run only, plus every release tag (the release
 #            workflow runs `make verify`, which includes it). Fast pull
 #            requests, and a window in which a survived mutant can be merged
