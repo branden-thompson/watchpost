@@ -2,7 +2,7 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
-## [Unreleased]
+## [0.19.5] — 2026-11-10
 
 ### Fixed
 - **Backspace erases a whole letter in the Line-Up Request window,** as in every other text field:

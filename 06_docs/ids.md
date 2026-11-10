@@ -1253,6 +1253,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-53 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The traceability protocol D-1 deferred (PM-K1, BQ-F8); 0.18.0's research read arodland/prop through the GitHu… |
 | D-54 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the Producer is wired through the Publish executor's return, no new effect |
 | D-54 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE PRODUCER IS WIRED, AND THE LEDGER ROW DISCHARGED ITSELF |
+| D-54 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, the rest of 07-readiness/validate-agenda.md: UAT items 2 (a correspondent's first name, D-7), 6 (Se… |
 | D-54 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Confirming two of the coordinator's readings: D-44's legend phase, and D-47's "region" |
 | D-54 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The library's name (CQ-S3): two of its three inputs are not GIRO; it publishes a derived field; a rename is c… |
 | D-55 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE INJECTOR SHIPS, AND THE CARD LEARNS TO SAY "TEST" |

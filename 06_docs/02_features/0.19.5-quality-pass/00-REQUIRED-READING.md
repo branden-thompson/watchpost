@@ -21,7 +21,7 @@ maintainer can follow. The pass before it was 0.9.5 (`../watchpost-performance-q
 | | |
 |---|---|
 | Branch | `feature/quality-pass`, cut from `main` (`4c803d99`, 0.19.3) (A-1) |
-| Phase | **REVIEW**. BUILD built the plan's Q1 to Q9 (`04-development/implementation-plan.md`) in 49 batches; what each built is in `04-development/build-log.md`. The sweep judged all 1,057 mutants: 1,050 CAUGHT, and the seven kept equivalents SURVIVED (batch 49, D-39). REVIEW's red team is `08-reports/red-team-review.md`, M5's grade `08-reports/m5-blind-review.md`. Then P10's re-ratification, VALIDATE's UAT and SHIP; 0.19.6, the re-architecting, opens right after SHIP (D-40) |
+| Phase | **SHIP**. BUILD built the plan's Q1 to Q9 (`04-development/implementation-plan.md`) in 53 batches; what each built is in `04-development/build-log.md`. REVIEW exited on `b11a2f40` (D-42): its red team is `08-reports/red-team-review.md`, M5's grade `08-reports/m5-blind-review.md`. P10 was re-ratified (D-43 to D-45). VALIDATE's UAT passed every item (D-46 to D-54, `07-readiness/validate-agenda.md`). SHIP runs the full sweep, the gate, `release/0.19.5`, the tag and the release job; 0.19.6, the re-architecting, opens right after SHIP (D-40) |
 | Brief | `01-objectives/project-brief.md`, APPROVED (D-4): M1 no regression, M2 at most 80 / 90 / 140 KB a beat (idle, radio, console), M3 consolidation, M4 docs current, M5 a junior can find their way |
 | Findings | `02-analysis/discover-findings.md`: what was checked, the five defects, the streams A to F |
 | Scope | all of watchpost; a library finding becomes a library patch, pinned (D-2) |
