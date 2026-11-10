@@ -3,7 +3,7 @@ title: "0.19.5 VALIDATE — the UAT agenda"
 date: 2026-11-10
 phase: VALIDATE
 sev: SEV-0
-status: "Ready for the HUM LEAD's UAT on 77776225"
+status: "UAT on 77776225: items 1, 3, 4, 5, 7, 8 pass and 10 is kept as it was (D-47 to D-53); items 2, 6, 9 open"
 ---
 
 # 0.19.5 VALIDATE: what the UAT looks at
@@ -42,3 +42,18 @@ at start, naming the key and its two words (D-9).
 A-18 (its 0.00 floor, GT M-6), A-24 to A-30. The minor rows are listed in `02-analysis/rulings.md`.
 
 None was vetoed (D-46).
+
+## Verdicts
+
+| # | Verdict | Row |
+|---|---|---|
+| 1 | pass | D-47 |
+| 2 | open | |
+| 3 | pass | D-48 |
+| 4 | pass | D-49 |
+| 5 | pass; the narrow 12-hour cut stands | D-50 |
+| 6 | open | |
+| 7 | pass | D-51 |
+| 8 | pass | D-52 |
+| 9 | open | |
+| 10 | the 0.16.0 screenshots kept; the retake carried as F-227 | D-53, A-31 |

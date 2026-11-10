@@ -1215,32 +1215,39 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-46 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-45's disclaimer: when it appears and where it is kept (proposed: gate the first propagation view and the fe… |
 | D-47 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | origin is a term in the ranking, not a trump; insistence is the escalation |
 | D-47 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | ORIGIN IS A TERM IN THE RANKING, NOT A TRUMP — AND THAT IS WHAT "IN DOUBT" MEANS |
+| D-47 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 1 of 07-readiness/validate-agenda.md: the console's card boxes (D-18, D-32), at a wide and… |
 | D-47 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-3 (InfoSec): every radar request sends the exact on-screen rectangle, centred on the selected… |
 | D-47 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Band status has no lower limit (PM-R1, BQ-F1, DQ-F16, CQ-T2): daytime D-layer absorption closes 160 m and 80 … |
 | D-48 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the Director remembers one timestamp per slot, and nothing else |
 | D-48 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | WHAT THE DIRECTOR REMEMBERS, AND HOW LITTLE |
+| D-48 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 3 of 07-readiness/validate-agenda.md: water temperature under metric (D-6): a coastal plac… |
 | D-48 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-4 (cross-repo, go-tuiMaps D-67): playback semantics were unstated — phase origin, stepping wh… |
 | D-48 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | M3 ("told when it closes", proposed ≤ 20 min) against hourly updates (D-29, D-39) and GloTEC's 18-29 min publ… |
 | D-49 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | a transition is a property of the KIND, not the origin — announced / handsBack rows |
 | D-49 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE TRANSITION RULE IS A PROPERTY OF THE KIND, AND MVS-D-80 ALREADY RULED IT |
+| D-49 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 4 of 07-readiness/validate-agenda.md: the console honours units and clock (DEF-2 under D-5… |
 | D-49 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Follow-up to D-48: its item (6) — pan and zoom, with data rehydrating and a loading indicator — sits in D-33'… |
 | D-49 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Unset metric targets (BQ-F3, DQ-F4, CQ-V4, PF-F9, HY-F4): D-8, D-9 and D-12 put them in DISCOVER; only M1/M4 … |
 | D-50 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | breakpoints 100 / 120 / 150, floor 25 rows; below 100 the console REFUSES to draw |
 | D-50 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE BREAKPOINTS, AND THE FLOOR BELOW WHICH WE DO NOT DRAW |
+| D-50 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 5 of 07-readiness/validate-agenda.md: card manifest stamps follow the clock (D-29) under 1… |
 | D-50 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-5 (cross-repo, go-tuiMaps D-68): the radar loop's shape against the library's image budget, a… |
 | D-50 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | Two hours of radar; the map source and radar step as Settings, so a listener can opt into more or back off |
 | D-50 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | 0.18.0 D-238's "all of it" (hours ahead, station dots, eSSN chart, P.533 planner; F-189) cut without a ruling… |
 | D-51 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | above 150 is a right rail, a LATER release — a SEAM is owed now, not a layout |
 | D-51 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE RIGHT RAIL IS A SEAM NOW AND A LAYOUT LATER |
+| D-51 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 7 of 07-readiness/validate-agenda.md: the Observer fits the terminal (D-28, D-30) at 80x24… |
 | D-51 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-6 (cross-repo, go-tuiMaps D-69): P1-b waited on the final v0.2.0 tag, so integration defects … |
 | D-51 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | P1-b builds on release candidates; ships on the final tag |
 | D-51 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How go-giro-data learns which GIRO stations are live (PF-F3, HY-F2, CQ-E6): probing all 118 exceeds D-39's ca… |
 | D-52 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE CARD TYPES, v2 |
+| D-52 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 8 of 07-readiness/validate-agenda.md: Setup keeps a place by the app's one rule (D-8): a p… |
 | D-52 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-8 (A11y): (a) FR-7.4 says the description is what "the existing voice can speak", and no task… |
 | D-52 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | The description is text in 0.18.0; speaking it joins one voice pass with the other voice bugs (F-181); motion… |
 | D-52 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | G-M3's second reference, KC2G's grid, cannot be fetched (D-18, D-39) |
 | D-53 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | product first, optimisation second — a working baseline is the reason |
 | D-53 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | PRODUCT FIRST, OPTIMISATION SECOND, AND THE BASELINE IS THE REASON |
+| D-53 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 10 of 07-readiness/validate-agenda.md: the screenshots (A-9): docs/img/setup.png, broadcas… |
 | D-53 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-9 (cross-repo, go-tuiMaps D-71): M1b declared "green" on Report with no re-score and no machi… |
 | D-53 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | M1b re-scored on the description that ships; M6 measures ticks and key latency; timings recorded at SHIP |
 | D-53 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The traceability protocol D-1 deferred (PM-K1, BQ-F8); 0.18.0's research read arodland/prop through the GitHu… |
@@ -2032,6 +2039,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-29 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team's fix batch, its design choices: (1) the go-ionomaps shape completed (a Response with rate … |
 | A-30 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Seven P10 density floors written by 0.19.0 D-277's procedure. make p10's floor check, once D-45 had re-floore… |
 | A-30 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team round 2's fix batch, its design choices: (1) two seams, PropagationUpdate (the update's one… |
+| A-31 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The README's alt text follows the screenshots kept by D-53. setup.png and broadcaster-settings.png show Setti… |
 | A-31 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W1.2's design choices (FR-6.5, D-143): (1) roll-ups are written in size-driven monthly parts, rollup/<YYYY-MM… |
 | A-32 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The linter is pinned at golangci-lint v2.14.0 (was v2.13.1), scripts/lint.sh: under go1.27.2 (D-152) v2.13.1 … |
 | A-33 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.1 to W2.3's choices: (1) a chip [P] Propagation On / Off between R's and O's under the map, as R's says it… |
@@ -2364,6 +2372,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | F-224 |  | `follow-ups.md` | Warm the geocoder connection at start-up. The first lookup of a session pays 939 ms against a 200 ms steady s… |
 | F-225 |  | `follow-ups.md` | Whether a partial name may resolve from the pool. It is the only change that removes the lookup's round trip … |
 | F-226 |  | `follow-ups.md` | The INST rules' review, due at 0.17.0, has no record. 06_docs/quality-plan.md admits each INST rule on a name… |
+| F-227 |  | `follow-ups.md` | Retake the three Settings-era screenshots. docs/img/setup.png, broadcaster-settings.png and help.png date fro… |
 
 ## MVS-D
 

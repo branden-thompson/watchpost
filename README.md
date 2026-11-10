@@ -55,7 +55,7 @@ Real data, 133×44, the default theme unless noted (0.14.0).
 
 ![The radio on air in Synth mode: the station lead, then the forecast read line by line in the marquee band, the visualizer inside it](docs/img/radio.gif)
 
-![The Settings window: its tabs across the top, and the open tab in one column — here the Data tab, with the default location, the NASA FIRMS key and the Alert Notification Preference (all severe events, or within N miles of the default location)](docs/img/setup.png)
+![The Settings window, shown as one window before Settings had tabs: the default location, the NASA FIRMS key, theme, units, the radio's clock and the Alert Notification Preference (all severe events, or within N miles of the default location) in one column, beside the alert tones, the radio's correspondents and RELAY REPLAY](docs/img/setup.png)
 
 ![Settings' theme picker cycling twelve of the thirteen built-in palettes live — Watchpost Light, Catppuccin, Everforest, Gruvbox, High Contrast, Kanagawa, Monochrome, Nord, Osaka Jade, Solarized Night, Synthwave '84, Tokyo Night — the whole frame repainting on each; add your own as a JSON file](docs/img/themes.gif)
 
@@ -337,7 +337,7 @@ to the Observer, and is refused while the station is ON AIR.
 
 ![Managing a slot: the Carlsbad card's window with Change Position open — move it to any position from 2 to 15 and everything below shifts down — and the keys to close, scroll, change position or drop it from the line-up](docs/img/broadcaster-manage.png)
 
-![The console's own Settings: the station's transmitter (following the default location until you set one) with the sentence that its position never leaves this machine, and its service radius from 2 to 100 miles, beside the tabs the console shares with the Observer](docs/img/broadcaster-settings.png)
+![The console's own Settings: the station's transmitter (following the default location until you set one) with the sentence that its position never leaves this machine, and its service radius from 2 to 100 miles, shown as one window before Settings had tabs, above the theme, units, clock, alert tones and correspondents the console shares with the Observer](docs/img/broadcaster-settings.png)
 
 | Key | Does |
 |-----|------|
