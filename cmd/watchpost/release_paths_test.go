@@ -77,16 +77,31 @@ func TestPromoteRefusesASweepThatDidNotFinish(t *testing.T) {
 		{"a whole sweep", header(all) + summary(all), commit, true},
 	}
 	// The last real sweep's log, as the script wrote it, so a change to the
-	// script's summary that promote no longer reads fails here too.
+	// script's summary that promote no longer reads fails here too. The commit
+	// it judged is usually gone once its branch is squash-merged and deleted,
+	// so the log names the commit that recorded it instead: that commit holds
+	// the same mutants, and every clone with the record has it.
 	records, _ := filepath.Glob(filepath.Join(root, "06_docs", "mutants", "verdicts", "since-v*.log"))
 	if len(records) > 0 {
-		b, err := os.ReadFile(records[len(records)-1])
+		last := records[len(records)-1]
+		b, err := os.ReadFile(last)
 		if err != nil {
 			t.Fatal(err)
 		}
+		rel, err := filepath.Rel(root, last)
+		if err != nil {
+			t.Fatal(err)
+		}
+		at, err := exec.Command("git", "-C", root, "log", "-1", "--format=%H", "--", rel).Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		recorded := strings.TrimSpace(string(at))
 		first, log, _ := strings.Cut(string(b), "\n")
 		judged := strings.Fields(strings.TrimPrefix(first, "commit: "))[0]
-		cases = append(cases, sweep{"the last real sweep's log", log, judged, true})
+		if recorded != "" { // a record promoted and not yet committed has no recording commit
+			cases = append(cases, sweep{"the last real sweep's log", strings.ReplaceAll(log, judged, recorded), recorded, true})
+		}
 	}
 	for _, c := range cases {
 		dir := t.TempDir()
