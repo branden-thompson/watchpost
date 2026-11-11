@@ -330,11 +330,7 @@ func (p *Provider) stateFor(ref snapshot.LocationRef, feats []feature, asOf time
 	return &snapshot.SeismicState{AsOf: asOf, Quakes: quakes}
 }
 
-// bearing names a direction on the 16-point compass (the consumers keep their
-// own word tables — Q6 L3-F9; the arithmetic is geo.CompassIndex). The table is
-// a local per the codebase's compass-table convention (P10-06); this runs once
-// per quake per fetch (cold path, 10-min TTL).
-func bearing(deg float64) string {
-	pts := []string{"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"}
-	return pts[geo.CompassIndex(deg, 16)]
-}
+// bearing names a direction on the 16-point compass (geo.Compass16, the one
+// table of the abbreviations); this runs once per quake per fetch (cold path,
+// 10-min TTL).
+func bearing(deg float64) string { return geo.Compass16(deg) }

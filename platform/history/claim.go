@@ -77,5 +77,5 @@ func (s *Store) claimStale(path string, now time.Time) bool {
 	if err != nil {
 		return false
 	}
-	return time.Since(info.ModTime()) > claimStale
+	return now.Sub(info.ModTime()) > claimStale
 }

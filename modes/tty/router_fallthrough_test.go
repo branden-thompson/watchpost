@@ -30,7 +30,7 @@ func TestTheConsolesKeysFallThroughOnObserver(t *testing.T) {
 	}
 	for _, a := range []term.Action{
 		// The bed's controls and the queue's arrows: on Observer these walk the
-		// listener's table (D-79, D-111).
+		// listener's table (D-79).
 		actBedCut, actBedPrev, actBedNext,
 		actQueuePrev, actQueueNext,
 		// `r` is the listener's REPEAT before it is the console's request

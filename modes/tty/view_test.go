@@ -229,7 +229,7 @@ func TestViewFillsToBottomInset(t *testing.T) {
 
 // The 80x24 floor (NFR-2): the frame never exceeds the terminal — the
 // inset gives first, then the window shrinks below its 3-row floor to what
-// fits (round 4, B-07: a wrapped control row would push it to 25 lines) —
+// fits (a wrapped control row would push it to 25 lines) —
 // and every line fits the width.
 func TestTheFloorFrameAt80x24(t *testing.T) {
 	m := dash(t)

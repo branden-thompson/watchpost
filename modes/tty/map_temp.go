@@ -287,7 +287,7 @@ func (d Dashboard) refreshTemp() (Dashboard, tea.Cmd) {
 }
 
 // applyMapTemp keeps the answer and hands its grids in.
-func (d Dashboard) applyMapTemp(v mapTempMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyMapTemp(v mapTempMsg) (Dashboard, tea.Cmd) {
 	d.mapPane.tempBusy = false
 	if d.mapPane.m == nil || d.modal != modalMap {
 		return d, nil
@@ -550,7 +550,7 @@ type forecastTickMsg struct{ gen uint64 }
 // forecastTick is the next step's tick.
 func (d Dashboard) forecastTick() tea.Cmd {
 	gen := d.mapPane.fcGen
-	return tea.Tick(d.mapPlayback, func(time.Time) tea.Msg { return forecastTickMsg{gen: gen} }) // at the speed chosen (D-361)
+	return d.after(d.mapPlayback, forecastTickMsg{gen: gen}) // at the speed chosen (D-361)
 }
 
 // handleForecastPlayback is the playback keys in Forecast mode: the host
@@ -582,7 +582,7 @@ func (d Dashboard) handleForecastPlayback(act term.Action) (Dashboard, tea.Cmd, 
 }
 
 // applyForecastTick advances a playing forecast one step, holding the last.
-func (d Dashboard) applyForecastTick(v forecastTickMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyForecastTick(v forecastTickMsg) (Dashboard, tea.Cmd) {
 	playing := v.gen == d.mapPane.fcGen && d.mapPane.fcPlaying && d.modal == modalMap && d.mapMode() == modeForecast
 	if !playing {
 		return d, nil

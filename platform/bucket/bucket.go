@@ -4,7 +4,7 @@
 // `severe.ByTab` and `tty.bucketSevere` are the same walk — same guard, same
 // order-preserving append — over different payloads. They live in packages that
 // CANNOT share code directly: `modes/` may not import `domains/`
-// (architecture §1, gated by lint-imports), so the shared owner has to be here.
+// (watchpost-cli architecture §1, gated by lint-imports), so the shared owner has to be here.
 package bucket
 
 // ByIndex returns, for each bucket, the indices of the items that fall in it,

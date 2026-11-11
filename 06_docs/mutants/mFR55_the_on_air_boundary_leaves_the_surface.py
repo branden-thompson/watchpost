@@ -9,7 +9,7 @@ import pathlib
 # fitted only at 160 cells and above; the line of its own covers every drawable
 # width.
 p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
-old = "\t\t\tif render.Width(words) <= lane {"
+old = "\t\t\tif render.Width(words) <= width {"
 new = "\t\t\tif false {"
 assert old in s, "mFR55"
 p.write_text(s.replace(old, new, 1))

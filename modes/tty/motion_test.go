@@ -47,7 +47,7 @@ func TestReduceMotionStillsTheMap(t *testing.T) {
 	d := openRadarMap(t, "MRMS", &asked).cycleReduceMotion(true)
 	d = d.renderMap()
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	d = m.(Dashboard)
+	d = m
 	if st := d.mapPane.m.Loop(); st.Playing || st.Off != tuimaps.OffReduceMotion {
 		t.Errorf("space under Reduce motion left the loop %+v", st)
 	}
@@ -56,7 +56,7 @@ func TestReduceMotionStillsTheMap(t *testing.T) {
 	}
 	var asks []MapAsk
 	f := openTempMap(t, false, &asks).cycleReduceMotion(true)
-	if m, cmd, _ := f.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}); m.(Dashboard).mapPane.fcPlaying || cmd != nil {
+	if m, cmd, _ := f.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}); m.mapPane.fcPlaying || cmd != nil {
 		t.Error("space under Reduce motion played the forecast")
 	}
 }

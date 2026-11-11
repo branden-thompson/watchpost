@@ -513,16 +513,11 @@ func toSevereRow(r severe.Row) tty.SevereRow {
 		// since F-21, so there is no cast that could be wrong.
 		Key: r.Key, Tab: r.Tab, Product: r.Product, Location: r.Location, Detection: severe.Detection(r),
 		Severity: tty.TickerSeverity(r.Severity), Test: r.Test,
-		Record: tty.SevereRecord{Title: rec.Title, Meta: rec.Meta, Timing: rec.Timing, Area: rec.Area, Paras: rec.Paras},
+		Record: tty.SevereRecord{Title: rec.Title, Meta: rec.Meta, Timing: rec.Timing, Window: rec.Window, Area: rec.Area, Paras: rec.Paras},
 	}
-	if !r.At.IsZero() { // a zero clock reads blank, as the record's stamp does — never "01/01 00:00" (R3-A-06)
-		row.Declared = r.At.In(in).Format("01/02 15:04 MST")
-	}
+	row.Declared, row.Expires = severe.Stamp(r.At, in), severe.Stamp(r.Until, in) // the record's clock, so a row and its record read one time
 	if r.Name != "" {
 		row.Product = r.Product + " " + r.Name
-	}
-	if !r.Until.IsZero() {
-		row.Expires = r.Until.In(in).Format("01/02 15:04 MST")
 	}
 	return row
 }

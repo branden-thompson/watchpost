@@ -39,7 +39,7 @@ func tornado() globalfeed.Event {
 type bench struct {
 	x         *executors
 	voice     *scriptVoice
-	nar       *director
+	nar       *arbiter
 	mu        sync.Mutex
 	msgs      []tea.Msg
 	reports   []string
@@ -73,9 +73,9 @@ func newBench(t *testing.T, v *scriptVoice) *bench {
 	// the capture the test reads must be the one it was built with.
 	band := func(m tea.Msg) { b.mu.Lock(); b.msgs = append(b.msgs, m); b.mu.Unlock() }
 	if v == nil {
-		b.nar = testDirector(nil, band) // no audio at all: the visuals still run
+		b.nar = testArbiter(nil, band) // no audio at all: the visuals still run
 	} else {
-		b.nar = testDirector(v, band)
+		b.nar = testArbiter(v, band)
 	}
 	b.nar.sleep = func(_ context.Context, d time.Duration) bool {
 		b.mu.Lock()
@@ -267,7 +267,7 @@ func TestABuildForACardTheProducerDoesNotKnowFailsTheCard(t *testing.T) {
 // executor fails it, loudly, instead of handing the schedule a blank.
 func TestAScriptThatRendersNothingFailsTheCardRatherThanBuildingSilence(t *testing.T) {
 	// The built-in tree always says something, so silence takes a broken
-	// override — which is the one way Say renders "" (round 4, A-13).
+	// override — which is the one way Say renders "".
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "breaking"), 0o700); err != nil {
 		t.Fatal(err)
@@ -624,22 +624,9 @@ func TestAMutedReadIsDeclinedAndNothingIsConsumed(t *testing.T) {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !equalStrings(c.marked, []string{"a1"}) {
+	if !slices.Equal(c.marked, []string{"a1"}) {
 		t.Errorf("unmuted, the read marked %v, want the alert it said", c.marked)
 	}
-}
-
-// equalStrings is a small helper: two string slices, same order.
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // TestTheBandRecordIsBounded. It is a diagnostic ring, not a log: it keeps the
@@ -663,7 +650,7 @@ func TestTheBandRecordIsBounded(t *testing.T) {
 func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 	whole := func() executors {
 		return executors{
-			voice: testDirector(nil, nil), clock: func() render.Clock { return render.Clock12 },
+			voice: testArbiter(nil, nil), clock: func() render.Clock { return render.Clock12 },
 			now: func() time.Time { return execNow }, mc: newMastercontrol(nil, func(tea.Msg) {}),
 			audible: func() bool { return true }, muted: func() bool { return false },
 			alert:     func(string) (globalfeed.Event, bool) { return globalfeed.Event{}, false },
@@ -954,6 +941,13 @@ func TestTheRailNeverLiftsTheBedOverALiveRead(t *testing.T) {
 	}
 }
 
+// probeRounds is sized from the MEASURED hit rate, not guessed. At 300 rounds
+// the probe catches the defective code in four runs out of five — a test that
+// misses a real defect one time in five is a coin toss, not a gate. The
+// per-round rate that implies is ~0.5 %, so 5000 rounds miss with probability
+// ~1e-12, and the whole loop still costs well under a second.
+const probeRounds = 5000
+
 // TestTheBedIsNeverLiftedBetweenTheDipAndTheClaim is F-D5, and it is the
 // ACQUIRE side of the defect mE6 pinned on the release side.
 //
@@ -973,13 +967,6 @@ func TestTheRailNeverLiftsTheBedOverALiveRead(t *testing.T) {
 //
 // When the dip and the claim are one critical section, no takeBack can run
 // between them and the bed stays down. When they are two, one gets in.
-// probeRounds is sized from the MEASURED hit rate, not guessed. At 300 rounds
-// the probe catches the defective code in four runs out of five — a test that
-// misses a real defect one time in five is a coin toss, not a gate. The
-// per-round rate that implies is ~0.5 %, so 5000 rounds miss with probability
-// ~1e-12, and the whole loop still costs well under a second.
-const probeRounds = 5000
-
 func TestTheBedIsNeverLiftedBetweenTheDipAndTheClaim(t *testing.T) {
 	// IT SETS ITS OWN PARALLELISM, and the spin below is deliberately TIGHT.
 	// Both facts were measured rather than chosen. Given one P the probe cannot

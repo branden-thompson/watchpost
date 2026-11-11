@@ -41,7 +41,7 @@ func TestACardCarryingAnAlreadyReadAlertIsDeclined(t *testing.T) {
 
 	build := func(t *testing.T, alreadyRead bool) []lineup.Event {
 		t.Helper()
-		nar := testDirector(&scriptVoice{}, nil)
+		nar := testArbiter(&scriptVoice{}, nil)
 		nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 		deck := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: nar, seen: loadSeen(t.TempDir(), time.Hour)}
 		deck.alerts = newAlertStore()

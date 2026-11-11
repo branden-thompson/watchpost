@@ -18,6 +18,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/fire"
 	"github.com/branden-thompson/watchpost/platform/bodymemo"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -245,7 +246,7 @@ func decodeLayer(raw []byte) ([]incident, error) {
 	}
 	out := make([]incident, 0, len(fc.Features))
 	for _, f := range fc.Features {
-		if len(f.Geometry.Coordinates) < 2 || f.Properties.Name == "" || !onEarth(f.Geometry.Coordinates[1], f.Geometry.Coordinates[0]) {
+		if len(f.Geometry.Coordinates) < 2 || f.Properties.Name == "" || !geo.OnEarth(f.Geometry.Coordinates[1], f.Geometry.Coordinates[0]) {
 			continue
 		}
 		in := incident{lon: f.Geometry.Coordinates[0], lat: f.Geometry.Coordinates[1], name: f.Properties.Name, state: f.Properties.State,
@@ -302,19 +303,13 @@ func decodePerimeters(raw []byte) ([]Perimeter, error) {
 	return out, nil
 }
 
-// onEarth reports whether coordinates name a place: NaN fails every
-// comparison, so it is refused too (REVIEW IS-M2).
-func onEarth(lat, lon float64) bool {
-	return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
-}
-
 // allOnEarth reports whether every vertex of a perimeter's areas names a
 // place; one that does not is a geometry no map can draw.
 func allOnEarth(areas [][][][2]float64) bool {
 	for _, area := range areas { // its polygons (P10-02)
 		for _, ring := range area { // their rings (P10-02)
 			for _, v := range ring { // their vertices, lon then lat (P10-02)
-				if !onEarth(v[1], v[0]) {
+				if !geo.OnEarth(v[1], v[0]) {
 					return false
 				}
 			}

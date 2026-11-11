@@ -11,8 +11,8 @@ import (
 // resolveAlertAreas works out what each alert covers.
 //
 // **It lives here because this is the only place that may name both sides.**
-// The zone store is a domain and the thing that will draw is under `platform/`,
-// and neither `modes/` nor `platform/` may import a domain
+// The zone store is a domain and what draws it is the go-tuimaps library,
+// reached through `modes/`, and neither `modes/` nor `platform/` may import a domain
 // (`scripts/lint-imports.sh`). So the domain fetches, this wires, and whatever
 // draws is handed plain shapes it can name (MG-3).
 //

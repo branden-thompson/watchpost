@@ -74,7 +74,7 @@ func railColumnToned(label string, rows int, g render.Glyphs, bg string) []strin
 // KEYED ON THE LABEL, which is what the rail already is: `section` is handed a
 // name and draws it, and the region table is the one place those names are
 // declared. A parallel table keyed on the region's INDEX would be a second list
-// to keep in step with `bcRegions`.
+// to keep in step with `bcRailForms`.
 //
 // SCHEDULED AND LINE UP SHARE ONE GROUND, because they are one stack of cards
 // the rail happens to name in two halves — the same reason no break is drawn
@@ -115,7 +115,7 @@ const (
 	// bcPriorityWidth is the alert column's box, and it is DERIVED FROM WHAT IT
 	// MUST HOLD rather than from a share of the frame.
 	//
-	// WHAT IT MUST HOLD IS THE TABLE (D-103): `##.` and its cell, ALERT TYPE at
+	// WHAT IT MUST HOLD IS THE TABLE: `##.` and its cell, ALERT TYPE at
 	// twenty-five, and a place name at twenty-two — fifty-one cells, plus the
 	// card's own inset on both sides and the box's two rails. Fifty-nine.
 	//
@@ -302,7 +302,7 @@ func (b Broadcaster) railed(body []string, from, lo, total int) []string {
 	// and it stays the one owner of where the thumb lands (HUM LEAD, UAT
 	// 2026-09-10: "the vertical control should start and end where the mock
 	// says").
-	// THE MARK COLUMN BELONGS TO THE SCROLL RAIL, AND ONLY TO IT (D-85, HUM
+	// THE MARK COLUMN BELONGS TO THE SCROLL RAIL, AND ONLY TO IT (HUM
 	// LEAD 2026-09-11): "We need to remove the extra lines on the right side of
 	// the UI next to LIVE and UP NEXT."
 	//
@@ -347,7 +347,7 @@ func (b Broadcaster) railed(body []string, from, lo, total int) []string {
 		// A BREAK DOES NOT BREAK THE RAIL (HUM LEAD, UAT 2026-09-10: "the blank
 		// row in between sections needs to be completely blank"). That ruling is
 		// about the CARD regions' walls, and the rail does not run beside them
-		// (D-95, D-97), so the only blank rows
+		// (D-95), so the only blank rows
 		// under a rail are INSIDE one scrolling region — and a rail with a hole in
 		// it reads as two rails, which is the thing D-104 exists to stop being.
 		// A region with no rail carries no mark at all, one line above.

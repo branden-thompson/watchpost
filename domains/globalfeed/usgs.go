@@ -42,9 +42,6 @@ func NewUSGS(client *httpx.Client, base string) *USGS {
 
 func (u *USGS) Name() string { return "USGS" }
 
-// usgsFeed is the slice of the summary GeoJSON the ticker and the severe
-// window read (the render list of data-shape.md §4; the network/telemetry tail
-// is not decoded in v1 — SAM-D-24 E-2).
 // usgsFeature is one entry of the feed.
 type usgsFeature struct {
 	ID         string `json:"id"`
@@ -71,6 +68,9 @@ type usgsFeature struct {
 	} `json:"geometry"`
 }
 
+// usgsFeed is the slice of the summary GeoJSON the ticker and the severe
+// window read (the render list of data-shape.md §4; the network/telemetry tail
+// is not decoded in v1 — SAM-D-24 E-2).
 type usgsFeed struct {
 	Features []json.RawMessage `json:"features"` // decoded one by one: a malformed value skips ITS entry, never the source (REVIEW R5-C-12)
 }

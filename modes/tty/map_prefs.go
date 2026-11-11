@@ -230,10 +230,8 @@ const mapNearbyDefaultKm = 15
 
 // mapNearbyByKm reads the file's number; anything not offered is the default.
 func mapNearbyByKm(km int) int {
-	for _, c := range mapNearbyChoices {
-		if c == km {
-			return km
-		}
+	if slices.Contains(mapNearbyChoices, km) {
+		return km
 	}
 	return mapNearbyDefaultKm
 }
@@ -254,10 +252,8 @@ const propRadiusDefaultKm = 400
 // propRadiusByKm reads the file's number; anything not offered is the
 // default.
 func propRadiusByKm(km int) int {
-	for _, c := range propRadiusChoices {
-		if c == km {
-			return km
-		}
+	if slices.Contains(propRadiusChoices, km) {
+		return km
 	}
 	return propRadiusDefaultKm
 }
@@ -333,21 +329,14 @@ const radarAheadDefault = 3
 // radarAheadByHours reads the file's number; anything not offered is the
 // default.
 func radarAheadByHours(h int) int {
-	for _, c := range radarAheadChoices {
-		if c == h {
-			return h
-		}
+	if slices.Contains(radarAheadChoices, h) {
+		return h
 	}
 	return radarAheadDefault
 }
 
 // radarAheadLabel is the row's words.
-func radarAheadLabel(h int) string {
-	if h == 1 {
-		return "1 hour"
-	}
-	return strconv.Itoa(h) + " hours"
-}
+func radarAheadLabel(h int) string { return strconv.Itoa(h) + " hour" + plural(h) }
 
 // quakeFeeds are the quakes the map draws (D-122), USGS's summary feeds by
 // their own names, the default first: M2.5+ the past week or the past day,
@@ -359,10 +348,8 @@ const quakeFeedDefault = "2.5_week"
 
 // quakeFeedByKey reads the file's word; anything not offered is the default.
 func quakeFeedByKey(k string) string {
-	for _, f := range quakeFeeds {
-		if f == k {
-			return k
-		}
+	if slices.Contains(quakeFeeds, k) {
+		return k
 	}
 	return quakeFeedDefault
 }
@@ -600,11 +587,6 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 		out.Notes, out.Undrawn, out.InMissing, out.InView, out.AlertsFailed = f.Notes, f.Undrawn, f.InMissing, f.InView, f.AlertsFailed
 	}
 	return out // the feed's times are not passed on: its overlays are drawn on every frame of both modes (D-275)
-}
-
-// mapPickerRow reports the map's pickers, which have nothing to preview.
-func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapColours || id == rowMapPlayback || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRainDetail || id == rowMapUVCities || id == rowMapPropRadius || id == rowMapPropNoise || id == rowMapPropRefresh || id == rowMapPropReadings || id == rowMapPropStations || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.

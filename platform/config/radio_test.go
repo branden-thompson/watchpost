@@ -214,6 +214,39 @@ func TestRadioValidateChecksClosedSetsOnly(t *testing.T) {
 	}
 }
 
+// TestAnUnknownRadioModeIsRefusedNamingTheKey is 0.19.5 D-9: the source mode
+// is a closed word like cast and tones.mode, so a typo is refused at load with
+// the key and its legal words named, not read silently as Synth.
+func TestAnUnknownRadioModeIsRefusedNamingTheKey(t *testing.T) {
+	err := (Radio{Mode: "realy"}).Validate()
+	if err == nil {
+		t.Fatal("an unknown [radio] mode loads")
+	}
+	for _, want := range []string{"[radio] mode", "synth", "relay", "realy"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal %q does not name %q", err, want)
+		}
+	}
+}
+
+// TestTheRadioModesWordsLoad is 0.19.5 D-9's other half: every word the app
+// writes still loads, the empty one too, which every config that never
+// pressed [m] carries, and so does every shipped config shape in testdata.
+func TestTheRadioModesWordsLoad(t *testing.T) {
+	for _, mode := range []string{"", "synth", "relay"} {
+		if err := (Radio{Mode: mode}).Validate(); err != nil {
+			t.Errorf("[radio] mode %q is refused: %v", mode, err)
+		}
+	}
+	for _, name := range []string{"0.13.0-only.toml", "0.14.0-both-os.toml", "0.14.0-macos-only.toml",
+		"0.14.0-piper-only.toml", "0.15.0-full.toml", "unknown-key.toml"} {
+		withFixture(t, name)
+		if _, err := Load(); err != nil {
+			t.Errorf("%s no longer loads: %v", name, err)
+		}
+	}
+}
+
 // --- Task 1.9: Save preserves keys this build does not know ---
 
 func TestSavePreservesKeysFromAFutureBuild(t *testing.T) {

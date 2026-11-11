@@ -26,15 +26,14 @@ esac
 
 # check reads a ledger file and prints the rows that carry no RATIFICATION FIELD.
 #
-# IT NO LONGER READS PROSE, and that is the whole of this rewrite (red team,
-# 2026-09-08). The first version scored a row "waiting" if it contained
-# "ratify at" and "done" if it contained any of six substrings — so a fixture of
-# four exemptions, every one of them in force and unapproved, returned OK:
+# IT DOES NOT READ PROSE. A check that scores a row "waiting" when it contains
+# "ratify at" and "done" when it contains an approving substring returns OK for
+# four exemptions like these, every one of them in force and unapproved:
 #
-#   "Ratify at the B1a gate. NOT ratified by anyone yet."  matched `ratified by`
-#   "Pending HUM LEAD sign-off at REVIEW."                 matched nothing
-#   "To be approved at the B1a gate."                      matched nothing
-#   "Awaiting ratification at the B1a gate."               matched nothing
+#   "Ratify at the B1a gate. NOT ratified by anyone yet."  contains `ratified by`
+#   "Pending HUM LEAD sign-off at REVIEW."                 contains neither
+#   "To be approved at the B1a gate."                      contains neither
+#   "Awaiting ratification at the B1a gate."               contains neither
 #
 # A gate that reads phrasing cannot be sound: it must guess every way a human
 # might write approval, and it scores the NEGATION of its own pattern as a match.

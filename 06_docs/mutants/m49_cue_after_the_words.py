@@ -10,16 +10,16 @@
 # executor at T3.10 — so the rule this guards has one home instead of two.
 import pathlib
 p = pathlib.Path("app/read_script.go"); s = p.read_text()
-old = """	if p.Ref != "" && r.h.cue != nil {
-		r.h.cue(p.Ref)
+old = """	if p.Ref != "" && r.hooks.cue != nil {
+		r.hooks.cue(p.Ref)
 	}
 	cur, have := r.next, r.haveNext"""
 new = """	cur, have := r.next, r.haveNext"""
 assert old in s, "m49"
 s = s.replace(old, new, 1)
-tail = """	if p.Ref != "" && r.h.mark != nil {"""
+tail = """	if p.Ref != "" && r.hooks.mark != nil {"""
 assert tail in s, "m49 tail"
-p.write_text(s.replace(tail, """	if p.Ref != "" && r.h.cue != nil {
-		r.h.cue(p.Ref)
+p.write_text(s.replace(tail, """	if p.Ref != "" && r.hooks.cue != nil {
+		r.hooks.cue(p.Ref)
 	}
 """ + tail, 1))

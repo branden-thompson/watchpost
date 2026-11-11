@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -75,7 +76,7 @@ func awaitContains(t *testing.T, r *recorder, want string) []string {
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		got := r.log()
-		if containsExact(got, want) {
+		if slices.Contains(got, want) {
 			return got
 		}
 		time.Sleep(time.Millisecond)
@@ -201,13 +202,13 @@ func TestTheWordsCannotStartUntilTheCueReturns(t *testing.T) {
 	// It is a bound on how long a wrong pump gets to look right, not a wait for
 	// something expected to happen — the assertion is the ABSENCE below.
 	time.Sleep(50 * time.Millisecond)
-	if seen := r.log(); containsExact(seen, fx("speak", "a1")) {
+	if seen := r.log(); slices.Contains(seen, fx("speak", "a1")) {
 		t.Fatalf("the pump saw %v; the words were asked for while the cue was still going", seen)
 	}
 
 	close(held)
 	seen := awaitContains(t, r, fx("speak", "a1"))
-	cue, speak := indexIn(seen, fx("cue", "a1")), indexIn(seen, fx("speak", "a1"))
+	cue, speak := slices.Index(seen, fx("cue", "a1")), slices.Index(seen, fx("speak", "a1"))
 	if cue < 0 || cue > speak {
 		t.Errorf("the pump saw %v; the cue did not precede the words", seen)
 	}
@@ -233,10 +234,10 @@ func TestEffectsAboutDifferentCardsRunAtOnce(t *testing.T) {
 
 	// a1 is speaking (and stuck). b1's build must go ahead regardless.
 	seen := awaitContains(t, r, fx("build", "b1"))
-	if !containsExact(seen, fx("build", "b1")) {
+	if !slices.Contains(seen, fx("build", "b1")) {
 		t.Errorf("the pump saw %v; the next card's build waited behind a read", seen)
 	}
-	if containsExact(seen, fx("speak", "a1")) {
+	if slices.Contains(seen, fx("speak", "a1")) {
 		t.Fatal("the held read completed; the test is not exercising what it claims")
 	}
 	close(held)
@@ -272,7 +273,7 @@ func TestAPanickingExecutorDoesNotKillThePump(t *testing.T) {
 	// built — which is the whole claim, and it is about what happens AFTER the
 	// panic, not merely that nothing crashed.
 	seen := awaitContains(t, r, fx("release", "a1"))
-	if !containsExact(seen, fx("build", "b1")) {
+	if !slices.Contains(seen, fx("build", "b1")) {
 		t.Errorf("the pump saw %v; the schedule stopped at the panic", seen)
 	}
 
@@ -302,12 +303,12 @@ func TestAPanicInAnEffectThatNamesNoCardFailsNothing(t *testing.T) {
 	}
 	// The build for the same step still ran, and the schedule is untouched.
 	seen := awaitLog(t, r, 2, "the build alongside the failed publish")
-	if !containsExact(seen, fx("build", "a1")) {
+	if !slices.Contains(seen, fx("build", "a1")) {
 		t.Errorf("the pump saw %v; a failed publish took the build with it", seen)
 	}
 	p.send(ctx, lineup.Built{ID: lineup.BurstID("a1"), Script: lineup.Say("words")})
 	after := awaitLog(t, r, 4, "the cue and the words after a failed publish")
-	if !containsExact(after, fx("speak", "a1")) {
+	if !slices.Contains(after, fx("speak", "a1")) {
 		t.Errorf("the pump saw %v; a card was failed by a fault that never touched it", after)
 	}
 }
@@ -499,15 +500,6 @@ func TestAPumpWithNothingToRunIsRefused(t *testing.T) {
 	}
 }
 
-func containsExact(got []string, want string) bool {
-	for _, g := range got {
-		if g == want {
-			return true
-		}
-	}
-	return false
-}
-
 func containsPrefix(got []string, prefix string) bool {
 	for _, g := range got {
 		if strings.HasPrefix(g, prefix) {
@@ -525,15 +517,6 @@ func countPrefix(got []string, prefix string) int {
 		}
 	}
 	return n
-}
-
-func indexIn(got []string, want string) int {
-	for i, g := range got {
-		if g == want {
-			return i
-		}
-	}
-	return -1
 }
 
 // TestTheBandIsReleasedBeforeTheNextCardIsCued — F-D2, and the reason the
@@ -570,12 +553,12 @@ func TestTheBandIsReleasedBeforeTheNextCardIsCued(t *testing.T) {
 	// The assertion is the ABSENCE: b1's callout must not reach the band while
 	// the release of a1's is still in flight.
 	time.Sleep(50 * time.Millisecond)
-	if seen := r.log(); containsExact(seen, fx("cue", "b1")) {
+	if seen := r.log(); slices.Contains(seen, fx("cue", "b1")) {
 		t.Fatalf("the pump saw %v; the next card was cued while the band was still being released", seen)
 	}
 	close(held)
 	seen := awaitContains(t, r, fx("cue", "b1"))
-	if rel, cue := indexIn(seen, fx("release", "a1")), indexIn(seen, fx("cue", "b1")); rel < 0 || rel > cue {
+	if rel, cue := slices.Index(seen, fx("release", "a1")), slices.Index(seen, fx("cue", "b1")); rel < 0 || rel > cue {
 		t.Errorf("the pump saw %v; the release did not precede the next cue", seen)
 	}
 }
@@ -609,12 +592,12 @@ func TestTheBandKeepsItsOrderAcrossSteps(t *testing.T) {
 
 	// Long enough that a cue dispatched on its own goroutine would have landed.
 	time.Sleep(50 * time.Millisecond)
-	if seen := r.log(); containsExact(seen, fx("cue", "b1")) {
+	if seen := r.log(); slices.Contains(seen, fx("cue", "b1")) {
 		t.Fatalf("the pump saw %v; b1 was cued while a1's release was still in flight — the release will clear that callout", seen)
 	}
 	close(held)
 	seen := awaitContains(t, r, fx("cue", "b1"))
-	if rel, cue := indexIn(seen, fx("release", "a1")), indexIn(seen, fx("cue", "b1")); rel < 0 || rel > cue {
+	if rel, cue := slices.Index(seen, fx("release", "a1")), slices.Index(seen, fx("cue", "b1")); rel < 0 || rel > cue {
 		t.Errorf("the pump saw %v; the band was written out of order across steps", seen)
 	}
 }
@@ -660,12 +643,12 @@ func TestTheDuckIsNotOvertakenByTheReadItBrackets(t *testing.T) {
 
 	// Long enough that a separately-dispatched read would have been asked for.
 	time.Sleep(50 * time.Millisecond)
-	if seen := r.log(); containsExact(seen, "speak(a1)") || containsExact(seen, "restore()") {
+	if seen := r.log(); slices.Contains(seen, "speak(a1)") || slices.Contains(seen, "restore()") {
 		t.Fatalf("the pump saw %v; the read began over a bed that was still being ducked", seen)
 	}
 	close(held)
 	seen := awaitContains(t, r, "restore()")
-	duck, speak, restore := indexIn(seen, "duck()"), indexIn(seen, "speak(a1)"), indexIn(seen, "restore()")
+	duck, speak, restore := slices.Index(seen, "duck()"), slices.Index(seen, "speak(a1)"), slices.Index(seen, "restore()")
 	if duck < 0 || duck > speak || speak > restore {
 		t.Errorf("the pump saw %v; want the duck, then the words, then the restore", seen)
 	}
@@ -738,7 +721,7 @@ func TestAHazardsWordsDoNotQueueBehindAReportThatIsReading(t *testing.T) {
 	close(reading)
 }
 
-// AND THE RAIL'S OWN ORDER IS UNTOUCHED. Two hazards still ride the lane in the
+// The rail's own order is untouched. Two hazards still ride the lane in the
 // order the Director described them: the release of the card leaving the air
 // must reach the band before the cue of the one taking it (DR-24), and that is
 // exactly what the lane is for. Freeing the PROGRAMME from the lane must not
@@ -761,12 +744,12 @@ func TestTwoHazardsStillKeepTheirOrderOnTheLane(t *testing.T) {
 	})
 
 	time.Sleep(50 * time.Millisecond)
-	if seen := r.log(); containsExact(seen, "speak(a2)") {
+	if seen := r.log(); slices.Contains(seen, "speak(a2)") {
 		t.Fatalf("the pump saw %v; the second hazard spoke over the first", seen)
 	}
 	close(first)
 	seen := awaitContains(t, r, "speak(a2)")
-	if rel, cue := indexIn(seen, "release(a1)"), indexIn(seen, "cue(a2)"); rel < 0 || rel > cue {
+	if rel, cue := slices.Index(seen, "release(a1)"), slices.Index(seen, "cue(a2)"); rel < 0 || rel > cue {
 		t.Errorf("the pump saw %v; the release must reach the band before the next cue (DR-24)", seen)
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -46,7 +47,6 @@ var ciOnly = exempt(&exemptionTable{
 	stillNeeded: func(t *testing.T, g string) bool { return !contains(loadBuildModel(t).verifyGates(), g) },
 })
 
-// verifyOnly are gates a local `make verify` runs that CI does not.
 // phaseExit are required gates that run at BUILD and REVIEW exit under `make
 // quality`, by the HUM LEAD, and are recorded in the roster — not on every
 // `make verify` and not in CI. The release workflow runs `make verify` on a
@@ -77,7 +77,7 @@ var unlisted = exempt(&exemptionTable{
 		"journey":           "the VALIDATE journey against LIVE feeds; its exit code is a FAIL count, run deliberately at release",
 		"test":              "`go test ./...` without the race detector; `race` supersedes it on every gate path, and running both would double the suite for no extra property",
 		"test-platforms":    "it re-runs the app suite under WATCHPOST_TEST_GOOS for two other platforms; release-matrix is the cross-platform gate and this is the manual probe behind it",
-		"mutant-verdicts":   "the corpus SWEEP — hours, and its verdicts are promoted into the release record by hand; mutant-anchors and mutant-check are the per-push halves",
+		"mutant-verdicts":   "the corpus SWEEP — it runs every mutant's tests, at release, and promotes its log as the release's record; mutant-anchors and mutant-check are the per-push halves",
 		"tree-free":         "it ASKS whether a gate run is in flight and reports; it asserts nothing about the code",
 		"lint-update":       "it REWRITES the golangci baseline; it is the opposite of a gate, and running it on a gate path would erase the ratchet",
 		"hooks":             "it INSTALLS the pre-push hook (git config core.hooksPath); it asserts nothing, and the hook's tests all run under race on every gate path (0.19.0 W0.1)",
@@ -646,7 +646,7 @@ func selectorOf(t *testing.T, m *buildModel, target string) string {
 // runSelectors is every `go test -run` in the Makefile, in target order.
 func (m *buildModel) runSelectors() []runSelector {
 	var out []runSelector
-	for _, name := range sorted(keys(m.targets)) { // bounded by the Makefile (P10-02)
+	for _, name := range sorted(slices.Collect(maps.Keys(m.targets))) { // bounded by the Makefile (P10-02)
 		for _, c := range m.targets[name].cmds { // bounded by the recipe (P10-02)
 			if !c.isGoTest() {
 				continue
@@ -671,14 +671,6 @@ func (m *buildModel) runSelectors() []runSelector {
 			}
 			out = append(out, sel)
 		}
-	}
-	return out
-}
-
-func keys(m map[string]*target) []string {
-	out := make([]string, 0, len(m))
-	for k := range m { // bounded by the map (P10-02)
-		out = append(out, k)
 	}
 	return out
 }

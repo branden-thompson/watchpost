@@ -327,3 +327,33 @@ func TestRecordingHoldsNoDocument(t *testing.T) {
 		t.Errorf("two days of over half the bound each: %d held, weighing %d", n, w)
 	}
 }
+
+// TestTheSweepJudgesAgeByTheStoresClock is 0.19.5 Q2.11 (RN's minor list): a
+// crashed writer's temp file, or a claim whose body cannot be read, is
+// abandoned when it is older than claimStale by the store's clock, as the claim
+// path already judges, so a test's clock can drive it.
+func TestTheSweepJudgesAgeByTheStoresClock(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{".tmp-crashed", ".claim-unreadable"} {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte("not a time"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := Open(t.TempDir(), time.Now)
+	later := time.Now().Add(claimStale + time.Minute)
+	for _, e := range entries {
+		s.sweep(filepath.Join(dir, e.Name()), e, later)
+	}
+	if left, _ := os.ReadDir(dir); len(left) != 0 {
+		names := make([]string, 0, len(left))
+		for _, e := range left {
+			names = append(names, e.Name())
+		}
+		t.Errorf("by the store's clock these are %v old and abandoned, and the sweep kept %v", claimStale+time.Minute, names)
+	}
+}

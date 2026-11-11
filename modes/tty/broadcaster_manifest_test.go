@@ -73,7 +73,7 @@ func TestACardSaysHowFreshItsDataIs(t *testing.T) {
 	o := render.Opts{ASCII: true}
 
 	got := cardPulled(o, c, func() time.Time { return now }, 70)
-	if !strings.Contains(got, "23:57:59") {
+	if !strings.Contains(got, "11:57:59 PM") { // the default 12-hour clock (0.19.5 D-29)
 		t.Errorf("the stamp is missing from %q", got)
 	}
 	if !strings.Contains(got, "(2 MIN AGO)") {
@@ -205,5 +205,29 @@ func TestTheConsolesStampAlwaysCarriesAnAge(t *testing.T) {
 	}
 	if !strings.Contains(stamp, "AGO)") {
 		t.Errorf("the stamp is %q; without an age the operator cannot tell whether to trust it", stamp)
+	}
+}
+
+// TestTheCardStampsFollowTheClock is 0.19.5 D-29: a card's "DATA PULLED"
+// stamp, in the window and on the card, is written in the clock Setting, as
+// the masthead is.
+func TestTheCardStampsFollowTheClock(t *testing.T) {
+	built := time.Date(2026, 9, 12, 16, 2, 45, 0, time.UTC)
+	c := lineup.Card{ID: "c", BuiltAt: built}
+	for _, k := range []struct {
+		clock render.Clock
+		time  string
+	}{
+		{render.Clock12, "4:02:45 PM"},
+		{render.Clock24, "16:02:45"},
+		{render.ClockMil, "1602:45"},
+	} {
+		o := render.Opts{Clock: k.clock}
+		if got, want := cardPulled(o, c, nil, bcDetailRoom), "DATA PULLED:  Saturday September 12, 2026 @ "+k.time; got != want {
+			t.Errorf("clock %v: the window's stamp is %q; want %q", k.clock, got, want)
+		}
+		if got, want := cardPulledShort(o, c, nil), "09/12/26  "+k.time; got != want {
+			t.Errorf("clock %v: the card's stamp is %q; want %q", k.clock, got, want)
+		}
 	}
 }

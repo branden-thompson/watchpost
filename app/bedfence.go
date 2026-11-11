@@ -71,7 +71,7 @@ func bedAdvice(relays int, radiusMi float64) string {
 // learns to ignore.
 const bedFenceFarMi = 125
 
-// bedReachLine is the one-line form both surfaces show: the count, and the
+// Line is the one-line form both surfaces show: the count, and the
 // advice when there is any.
 func (b bedReach) Line() string {
 	s := strconv.Itoa(b.Relays) + " relay"

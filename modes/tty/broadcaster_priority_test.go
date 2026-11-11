@@ -22,7 +22,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
-// D-61 IS SUPERSEDED: THE ALERT BOX IS ALWAYS DRAWN (D-97).
+// D-61 IS SUPERSEDED: THE ALERT BOX IS ALWAYS DRAWN.
 //
 // HUM LEAD, 2026-09-12: "Up Next and Alert are always present — if there are no
 // active alerts taking over, then the box is simply empty."
@@ -42,7 +42,7 @@ func TestAClearRailStillDrawsTheAlertBox(t *testing.T) {
 	if !strings.Contains(got, bcTakeoverTitle) {
 		t.Error("the alert box is missing while the rail is clear; it is ALWAYS present, and empty")
 	}
-	// AND IT IS EMPTY: a box with a hazard in it names one.
+	// The box is empty: a box with a hazard in it names one.
 	if strings.Contains(got, "ALERT TYPE") {
 		t.Error("the alert box lists something while the rail is clear")
 	}
@@ -86,8 +86,7 @@ func TestTheTwoTracksNeverShareACell(t *testing.T) {
 	}
 }
 
-// THE BOX IS AS TALL AS THE CARD BESIDE IT, AND ITS LIST TAKES WHAT IS LEFT
-// (D-103).
+// THE BOX IS AS TALL AS THE CARD BESIDE IT, AND ITS LIST TAKES WHAT IS LEFT.
 //
 // THE OPPOSITE RULING DOES NOT APPLY HERE. "The alert box should be tall enough
 // to fit the data, but doesn't need to 'fill' vertical space just because" (HUM
@@ -95,7 +94,7 @@ func TestTheTwoTracksNeverShareACell(t *testing.T) {
 // no such column: UP NEXT and the takeover are level, so a box that followed its
 // burst would close on a different row than the card next to it.
 //
-// AND THE LIST FOLLOWING THE HEIGHT IS WHAT KEEPS THE CONTROL ROW ON. A constant
+// The list following the height is what keeps the control row on. A constant
 // ten rows overflows the pair by one, the pair truncates the overflow, and what
 // comes off the bottom is the one thing in the box the operator presses.
 func TestTheTakeoverBoxCloseslevelWithUpNext(t *testing.T) {

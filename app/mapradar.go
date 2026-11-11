@@ -595,7 +595,7 @@ func withChips(chips map[string][]string, layer string, names ...string) map[str
 func hostsFor(hosts, layers map[string]string, notes map[string][]string) []tty.MapSource {
 	var out []tty.MapSource
 	for name, base := range hosts {
-		out = append(out, tty.MapSource{Name: name, Host: hostOf(base), Layers: layers[name], Notes: notes[name]})
+		out = append(out, tty.MapSource{Name: name, Host: httpx.HostOf(base), Layers: layers[name], Notes: notes[name]})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out

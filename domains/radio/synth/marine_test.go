@@ -9,8 +9,6 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-func fx(v float64) *float64 { return &v }
-
 // marineFixture is a coastal location with everything: a buoy, a swell, tides
 // and currents.
 func marineFixture(now time.Time) MarineReport {
@@ -18,10 +16,10 @@ func marineFixture(now time.Time) MarineReport {
 		Known: true,
 		TZ:    time.UTC,
 		State: snapshot.Marine{
-			Buoy: "46086", BuoyDistanceKM: fx(9.7), ObservedAt: now.Add(-39 * time.Minute),
-			WaveHeight: fx(0.9), SwellHeight: fx(0.6), SwellDirDeg: fx(270), WavePeriod: fx(14),
-			WaterTemp: fx(23.3), WindSpeed: fx(5.7), WindGust: fx(8.2),
-			TideLevel: fx(1.13), TideStation: "La Jolla (9410230)", TideStationKM: fx(38.6),
+			Buoy: "46086", BuoyDistanceKM: new(9.7), ObservedAt: now.Add(-39 * time.Minute),
+			WaveHeight: new(0.9), SwellHeight: new(0.6), SwellDirDeg: new(float64(270)), WavePeriod: new(float64(14)),
+			WaterTemp: new(23.3), WindSpeed: new(5.7), WindGust: new(8.2),
+			TideLevel: new(1.13), TideStation: "La Jolla (9410230)", TideStationKM: new(38.6),
 			Tides: []snapshot.TideEvent{
 				{Type: "H", Time: now.Add(2 * time.Hour), Height: 1.74},
 				{Type: "L", Time: now.Add(9 * time.Hour), Height: -0.03},
@@ -107,11 +105,33 @@ func TestMarineReadsTheListenersUnitsButCurrentsInKnots(t *testing.T) {
 	}
 }
 
+// TestTheWaterTemperatureSaysTheListenersUnit is 0.19.5 D-6 (DEF-3): the water
+// temperature is worded as current conditions word the air, so under metric it
+// says "Celsius" and under imperial it says a bare "degrees".
+func TestTheWaterTemperatureSaysTheListenersUnit(t *testing.T) {
+	now := time.Date(2026, 8, 30, 15, 0, 0, 0, time.UTC)
+	for _, c := range []struct {
+		imperial bool
+		want     string
+	}{
+		{false, "23 degrees Celsius"},
+		{true, "74 degrees"},
+	} {
+		got := joinSegs(std.MarineSegments("Oceanside, CA", marineFixture(now), c.imperial, now))
+		if !strings.Contains(got, "Water temperature "+c.want+".") {
+			t.Errorf("imperial=%v: want %q in the water line:\n%s", c.imperial, c.want, got)
+		}
+		if want := degrees(23.3, c.imperial); !strings.Contains(got, want) {
+			t.Errorf("imperial=%v: the water says otherwise than the air would, %q", c.imperial, want)
+		}
+	}
+}
+
 // No tides and no currents is a STATED absence, not silence: the listener needs
 // to know the station is out of range rather than wonder if the app broke.
 func TestMarineStatesTheAbsenceOfTidesAndCurrents(t *testing.T) {
 	now := time.Now()
-	mr := MarineReport{Known: true, State: snapshot.Marine{Buoy: "1", ObservedAt: now, WaveHeight: fx(0.4)}}
+	mr := MarineReport{Known: true, State: snapshot.Marine{Buoy: "1", ObservedAt: now, WaveHeight: new(0.4)}}
 	got := joinSegs(std.MarineSegments("Somewhere, CA", mr, true, now))
 	if !strings.Contains(got, "no tide or current predictions") {
 		t.Errorf("want the absence line:\n%s", got)

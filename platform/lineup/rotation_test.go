@@ -39,8 +39,8 @@ func TestASynthesisedReadBecomesAMainTrackCard(t *testing.T) {
 	}
 	// THE STEP MUST ALSO SET THE CARD MOVING. Queueing it and stopping leaves a
 	// card the schedule holds and nothing ever composes — the station shows a
-	// lineup and plays silence. Found by a plant that survived: nothing here
-	// asked for the effects, so skipping the settle changed no assertion.
+	// lineup and plays silence. Without this, nothing here asks for the
+	// effects, and skipping the settle would change no assertion.
 	var built *BuildCard
 	published := false
 	for _, e := range fx {
@@ -125,8 +125,7 @@ func TestARotationCardIsNamedAfterItsLocationAndNothingElse(t *testing.T) {
 		// across the two passes let a counter-based mutant through: with three
 		// refs and a counter taken modulo three, every ref got the same suffix
 		// on both passes and the id looked pure. Two adjacent calls differ
-		// under ANY per-call variation, whatever its period. Found by the plant
-		// that survived the first rewrite of this test.
+		// under ANY per-call variation, whatever its period.
 		again, andAgain := ReadID(r), ReadID(r)
 		if again != andAgain || again != first[i] {
 			t.Errorf("%q named %q, then %q, then %q — the same location must name the same card, "+

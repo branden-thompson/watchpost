@@ -535,7 +535,7 @@ func (c Card) To(next State) (Card, error) {
 	return c, nil
 }
 
-// WithText fills in the script. This is DR-7's moment: the card is at standby,
+// WithScript fills in the script. This is DR-7's moment: the card is at standby,
 // its data was fetched just now, and what it will say is decided from that
 // rather than from whatever was true when it was queued.
 func (c Card) WithScript(script Script, contents []Content, builtAt time.Time) (Card, error) {

@@ -159,11 +159,11 @@ func FindPiperVoice(dir string, v VoiceSpec) (Install, bool) {
 	return Install{Binary: bin, Model: model, SampleRate: v.Rate, Voice: v.Name}, true
 }
 
-// EnsurePiper installs Piper and the voice under dir when missing,
-// verifying every artifact against the manifest; progress may be nil.
 // installMu serializes EnsurePiper (one download at a time, C-9).
 var installMu sync.Mutex
 
+// EnsurePiper installs Piper and the voice under dir when missing,
+// verifying every artifact against the manifest; progress may be nil.
 func EnsurePiper(ctx context.Context, dir, userAgent string, progress Progress) (Install, error) {
 	return EnsureVoice(ctx, dir, DefaultVoice(), userAgent, progress)
 }
@@ -174,7 +174,7 @@ func EnsurePiper(ctx context.Context, dir, userAgent string, progress Progress) 
 // time, C-9).
 func EnsureVoice(ctx context.Context, dir string, v VoiceSpec, userAgent string, progress Progress) (Install, error) {
 	if dir == "" || !filepath.IsAbs(dir) {
-		return Install{}, fmt.Errorf("synth: no cache directory for the voice (set XDG_CACHE_HOME or HOME to an absolute path)") // round 2 N-5: never download into a relative dir FindPiper will refuse
+		return Install{}, fmt.Errorf("synth: no cache directory for the voice (set XDG_CACHE_HOME or HOME to an absolute path)") // never download into a relative dir FindPiper will refuse
 	}
 	if inst, ok := FindPiperVoice(dir, v); ok {
 		return inst, nil
@@ -286,7 +286,7 @@ func download(ctx context.Context, a Asset, userAgent, dest, what string, progre
 		err = cerr
 	}
 	if err == nil && a.Size > 0 && n < a.Size {
-		err = fmt.Errorf("%s: download incomplete (got %d of %d bytes) — check the connection and retry", what, n, a.Size) // round 2 N-8: not "tampered"
+		err = fmt.Errorf("%s: download incomplete (got %d of %d bytes) — check the connection and retry", what, n, a.Size) // incomplete, not "tampered"
 	}
 	if err != nil {
 		_ = os.Remove(tmp)

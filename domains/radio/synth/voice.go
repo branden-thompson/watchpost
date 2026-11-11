@@ -28,8 +28,11 @@ type Voice interface {
 // ErrNoVoice reports that no engine is available on this host.
 var ErrNoVoice = errors.New("synth: no voice engine available")
 
-// hostileText guards the §10.5 contract in tests and at the boundary: the
-// narration is never placed in argv, so these characters are inert.
+// writeNarration writes the narration to a private temporary file under dir
+// and returns its path. The narration is never placed in argv, so no character
+// in it can act as an argument (the TTS and exec safety contract,
+// 06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md
+// §10.5).
 func writeNarration(dir, text string) (string, error) {
 	f, err := os.CreateTemp(dir, "watchpost-narration-*.txt")
 	if err != nil {

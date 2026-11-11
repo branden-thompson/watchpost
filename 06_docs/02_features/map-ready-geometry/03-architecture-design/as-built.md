@@ -35,7 +35,7 @@ flowchart TB
     end
 
     APP["<b>app/mapgeometry.go:resolveAlertAreas</b><br/>its own polygon, or its zones' outlines — the same thing either way<br/>the only place that may name a domain AND what draws"]
-    NEXT["platform/tuimap — <b>0.18.0</b>, not in this release"]
+    NEXT["go-tuimaps, the external map module — <b>0.18.0</b>, not in this release"]
 
     API --> AL --> SNAP
     API --> ZN

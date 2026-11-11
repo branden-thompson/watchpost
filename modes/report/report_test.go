@@ -12,12 +12,10 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// Spec: architecture §10.2 (exit codes), §10.11 (null↔n/a parity), AI-10
+// Spec: watchpost-cli architecture §10.2 (exit codes), §10.11 (null↔n/a parity), AI-10
 // (envelope), M5 (bidirectional parity — every JSON data leaf's formatted form
 // appears in the plain render and vice versa). Fixture uses pairwise-distinct
 // sentinel values (red-team PLAN #3) so substring matches cannot alias.
-
-func f64(v float64) *float64 { return &v }
 
 // fixtureSnapshot carries pairwise-distinct sentinels in every populated field.
 func fixtureSnapshot() *snapshot.Snapshot {
@@ -30,10 +28,10 @@ func fixtureSnapshot() *snapshot.Snapshot {
 			Label: "Oceanside, CA", Zip: "92057", Lat: 33.2405, Lon: -117.2912, TZ: "America/Los_Angeles",
 			Harmonized: snapshot.Conditions{
 				ObservedAt: obs,
-				Temp:       f64(22.8), Feels: f64(24.1), Dewpoint: f64(16.3),
-				HumidityPct: f64(66.5), Pressure: f64(1014.2),
-				Wind: f64(4.6), WindDirDeg: f64(250), // WindGust nil on purpose (n/a path)
-				Visibility: f64(16090), Condition: "partly_cloudy",
+				Temp:       new(22.8), Feels: new(24.1), Dewpoint: new(16.3),
+				HumidityPct: new(66.5), Pressure: new(1014.2),
+				Wind: new(4.6), WindDirDeg: new(float64(250)), // WindGust nil on purpose (n/a path)
+				Visibility: new(float64(16090)), Condition: "partly_cloudy",
 				Source: snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KOKB", IssuedAt: obs},
 			},
 			ByProvider: map[string]snapshot.Section{"nws": {}},
@@ -48,11 +46,11 @@ func fixtureSnapshot() *snapshot.Snapshot {
 			}},
 			Fire: snapshot.FireState{
 				AsOf:      obs,
-				Hotspots:  []snapshot.Hotspot{{Lat: 33.3, Lon: -117.3, DetectedAt: obs, Confidence: "analyst", FRPMW: f64(62.4), DistanceKm: f64(8.2), Source: snapshot.SourceInfo{Provider: "hms", ModelOrStation: "GOES-WEST", IssuedAt: obs}}},
-				Incidents: []snapshot.Incident{{Name: "Timber", Discovered: obs.Add(-72 * time.Hour), PercentContained: f64(26), Acres: f64(12915), State: "CA", Source: snapshot.SourceInfo{Provider: "wfigs", DistanceKm: f64(30.5)}}},
+				Hotspots:  []snapshot.Hotspot{{Lat: 33.3, Lon: -117.3, DetectedAt: obs, Confidence: "analyst", FRPMW: new(62.4), DistanceKm: new(8.2), Source: snapshot.SourceInfo{Provider: "hms", ModelOrStation: "GOES-WEST", IssuedAt: obs}}},
+				Incidents: []snapshot.Incident{{Name: "Timber", Discovered: obs.Add(-72 * time.Hour), PercentContained: new(float64(26)), Acres: new(float64(12915)), State: "CA", Source: snapshot.SourceInfo{Provider: "wfigs", DistanceKm: new(30.5)}}},
 			},
-			Hourly: []snapshot.Hourly{{Time: obs.Add(time.Hour), Temp: f64(23.4), PrecipProb: f64(15), Wind: f64(4.0), Condition: "partly_cloudy"}},
-			Daily:  []snapshot.Daily{{Date: "2026-08-23", TempMax: f64(23.9), TempMin: f64(17.2), PrecipProb: f64(20), Condition: "partly_cloudy"}},
+			Hourly: []snapshot.Hourly{{Time: obs.Add(time.Hour), Temp: new(23.4), PrecipProb: new(float64(15)), Wind: new(4.0), Condition: "partly_cloudy"}},
+			Daily:  []snapshot.Daily{{Date: "2026-08-23", TempMax: new(23.9), TempMin: new(17.2), PrecipProb: new(float64(20)), Condition: "partly_cloudy"}},
 		}},
 		Providers: []snapshot.ProviderStatus{{ID: "nws", Role: "reference", Status: snapshot.ProviderOK, FetchedAt: obs, Attribution: "NOAA/NWS"}},
 		Warnings:  []snapshot.Warning{},

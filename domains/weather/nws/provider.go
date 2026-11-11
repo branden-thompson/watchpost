@@ -42,12 +42,12 @@ const stationCandidates = 4
 // stops one slow station from serializing the whole batch.
 const fetchConcurrency = 6
 
-// Provider implements snapshot.Provider for api.weather.gov.
 // maxGrids is the grid memo's ceiling. Retain prunes it by LIVENESS every
 // cycle, so this is a backstop rather than the bound that does the work: it
 // turns a leak in Retain from unbounded growth into 240 entries.
 const maxGrids = 240
 
+// Provider implements snapshot.Provider for api.weather.gov.
 type Provider struct {
 	client *httpx.Client
 	base   string // e.g. https://api.weather.gov (test servers override)

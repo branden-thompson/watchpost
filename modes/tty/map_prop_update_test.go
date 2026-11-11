@@ -52,7 +52,21 @@ func propDash(t *testing.T, s *seam, seen bool) Dashboard {
 	if seen {
 		ack = propAckVersion
 	}
-	return openMap(t, Config{PropagationUpdate: s.update, PropagationAck: ack, SavePropagationAck: func(int) error { return nil }}, 133, 44)
+	d := openMap(t, Config{PropagationUpdate: s.update, PropagationAck: ack, SavePropagationAck: func(int) error { return nil }}, 133, 44)
+	d.ticks = heldTicks
+	return d
+}
+
+// heldTick is a timed message a test's model armed: the command answers at
+// once with this, so a test reads that a tick was armed without waiting it out.
+type heldTick struct {
+	after time.Duration
+	msg   tea.Msg
+}
+
+// heldTicks is the tick maker the Propagation tests give the model.
+func heldTicks(d time.Duration, m tea.Msg) tea.Cmd {
+	return func() tea.Msg { return heldTick{after: d, msg: m} }
 }
 
 // keyCmd presses a key and returns the model and the command it asked for,
@@ -74,27 +88,32 @@ func runProp(t testing.TB, d Dashboard, cmd tea.Cmd) Dashboard {
 	return d
 }
 
-// propMsgs runs a command's batch, keeping only the Propagation results; a
-// command that would wait (a tick) is never run.
+// propMsgs runs a command's batch, keeping only the Propagation results. A
+// tick the model armed answers at once as a heldTick and is left unrun, so
+// "an answer came" and "a tick was armed" are told apart by type, never by a
+// clock (0.19.5 Q2.11, RN-9). A command that blocks anyway is named, not
+// waited on silently.
 func propMsgs(cmd tea.Cmd) []tea.Msg {
 	if cmd == nil {
 		return nil
 	}
 	done := make(chan tea.Msg, 1)
 	go func() { done <- cmd() }()
+	var msg tea.Msg
 	select {
-	case msg := <-done:
-		if b, ok := msg.(tea.BatchMsg); ok {
-			var out []tea.Msg
-			for _, c := range b {
-				out = append(out, propMsgs(c)...)
-			}
-			return out
+	case msg = <-done:
+	case <-time.After(10 * time.Second):
+		panic("propMsgs: a command blocked for 10 s; route its tick through Dashboard.after")
+	}
+	switch v := msg.(type) {
+	case tea.BatchMsg:
+		var out []tea.Msg
+		for _, c := range v {
+			out = append(out, propMsgs(c)...)
 		}
-		if _, ok := msg.(propUpdatedMsg); ok {
-			return []tea.Msg{msg}
-		}
-	case <-time.After(200 * time.Millisecond): // a tick, or a wait on the network: not this test's
+		return out
+	case propUpdatedMsg:
+		return []tea.Msg{msg}
 	}
 	return nil
 }

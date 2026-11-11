@@ -1,6 +1,6 @@
 package app
 
-// pool_marks_test.go — the pool's alert, fire and seismic marks (D-113).
+// pool_marks_test.go — the pool's alert, fire and seismic marks.
 //
 // HUM LEAD, UAT 2026-09-12: "fix this issues so seismic / fire / alerts show up
 // in the location pool as expected."

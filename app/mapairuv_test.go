@@ -79,7 +79,6 @@ func TestUVIsItsGridsInEachMode(t *testing.T) {
 	}
 }
 
-// TestTheAirIsTheModelsGridsAskedWhileOn is D-139: the model's US AQI from
 // contoursFile answers AirNow's contours from their fixture, counting asks.
 type contoursFile struct{ asked []string }
 

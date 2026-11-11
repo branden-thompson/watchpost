@@ -3,7 +3,7 @@ import pathlib
 # already skips paused jobs. A read the listener paused while it waited behind an
 # alert then keeps the broadcast dipped for as long as the pause lasts, with
 # nobody speaking over it — the exact failure the guard's own comment forbids.
-p = pathlib.Path("app/director.go"); s = p.read_text()
+p = pathlib.Path("app/arbiter.go"); s = p.read_text()
 old = "	if d.first() == nil && d.innermostResumable() == nil {"
 new = "	if len(d.waiting) == 0 && d.innermostResumable() == nil {"
 assert old in s, "mL1"

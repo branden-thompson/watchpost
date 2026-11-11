@@ -142,11 +142,11 @@ func TestExtendedColumnsBeyond125(t *testing.T) {
 	// layout; the NAME fill absorbs the remainder so rows stay flush.
 	r := testRow()
 	r.Extended = []DayCell{
-		{Date: "08/26", Hi: f64(30.0), Lo: f64(20.0)},
-		{Date: "08/27", Hi: f64(31.0), Lo: f64(21.0)},
-		{Date: "08/28", Hi: f64(32.0), Lo: f64(22.0)},
-		{Date: "08/29", Hi: f64(33.0), Lo: f64(23.0)},
-		{Date: "08/30", Hi: f64(34.0), Lo: f64(24.0)},
+		{Date: "08/26", Hi: new(30.0), Lo: new(20.0)},
+		{Date: "08/27", Hi: new(31.0), Lo: new(21.0)},
+		{Date: "08/28", Hi: new(32.0), Lo: new(22.0)},
+		{Date: "08/29", Hi: new(33.0), Lo: new(23.0)},
+		{Date: "08/30", Hi: new(34.0), Lo: new(24.0)},
 	}
 	// 240: WX STN + DIST take the first 16 cells beyond the minimal full
 	// layout (UAT 60); the five day columns claim the width beyond that.
@@ -288,7 +288,7 @@ func TestExtendedBandShortLabelWhenNarrow(t *testing.T) {
 	// UAT 16.1: a one-day EXTENDED band degrades to "E X T E N D E D",
 	// never a truncated "EXTENDEDFORECA…".
 	r := testRow()
-	r.Extended = []DayCell{{Date: "08/26", Hi: f64(30.0), Lo: f64(20.0)}}
+	r.Extended = []DayCell{{Date: "08/26", Hi: new(30.0), Lo: new(20.0)}}
 	out := stripANSI((Opts{ThinBands: true, Width: 150, Units: UnitF}).LocationTable([]LocationRow{r}, 1))
 	band := strings.Split(out, "\n")[0]
 	if strings.Contains(band, "…") || strings.Contains(band, "EXTENDEDF") {
@@ -361,7 +361,7 @@ func TestStationColumnsUAT60(t *testing.T) {
 	// its 10-cell floor). "WX" keeps the header apart from the NOAA radio
 	// transmitter callsign the player will carry.
 	r := testRow()
-	r.Station, r.StationKM = "KCRQ", f64(5.5)
+	r.Station, r.StationKM = "KCRQ", new(5.5)
 	at := func(w int, u Units) []string {
 		return strings.Split(stripANSI((Opts{ThinBands: true, Width: w, Units: u}).LocationTable([]LocationRow{r}, 0)), "\n")
 	}

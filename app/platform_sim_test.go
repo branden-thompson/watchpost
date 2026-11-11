@@ -15,7 +15,7 @@ import (
 // that branches on the real OS while the code under test uses the seam. Neither
 // is visible on the machine it was written on, because there the two agree.
 //
-//	WATCHPOST_TEST_GOOS=linux go test ./app     (or `make test-linux`)
+//	WATCHPOST_TEST_GOOS=linux go test ./app     (or `make test-platforms`, which runs the suite as both)
 //
 // This is TEST-ONLY: production still initialises the seam from runtime.GOOS,
 // and nothing here is compiled into the binary. It simulates the SEAM, not the

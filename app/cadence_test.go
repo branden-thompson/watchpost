@@ -1,7 +1,7 @@
 package app
 
 // Quality pass Q2 (L3-F14): the cadence tables have one owner (pipelines.go)
-// and this test renders them as the markdown architecture.md §11.1 carries,
+// and this test renders them as the markdown watchpost-cli architecture §11.1 carries,
 // pinned by testdata/cadences.md. A cadence change fails here first, and the
 // doc is copied from the golden — never re-typed.
 
@@ -56,7 +56,7 @@ func TestCadenceTableIsTheDoc(t *testing.T) {
 		t.Fatalf("no golden yet: run with -update-cadences (%v)", err)
 	}
 	if got != string(want) {
-		t.Fatalf("a cadence changed — record its freshness argument (plan §0.3) and re-run with -update-cadences:\n%s", got)
+		t.Fatalf("a cadence changed — say in the build log why the new cadence is fresh enough for what it fetches, and re-run with -update-cadences:\n%s", got)
 	}
 	_ = time.Second
 }

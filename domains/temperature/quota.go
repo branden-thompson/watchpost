@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -66,7 +65,7 @@ func QuotaOf(err error, now time.Time) (Quota, bool) {
 	}
 	for _, p := range quotaPeriods { // four (P10-02)
 		if strings.Contains(se.Reason, p+" API request limit exceeded") {
-			return Quota{Host: hostOf(se.URL), Period: p, Resets: periodEnd(p, now)}, true
+			return Quota{Host: httpx.HostOf(se.URL), Period: p, Resets: periodEnd(p, now)}, true
 		}
 	}
 	return Quota{}, false
@@ -84,15 +83,6 @@ func periodEnd(period string, now time.Time) time.Time {
 		return time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, time.UTC)
 	}
 	return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.UTC)
-}
-
-// hostOf is a URL's host, or the URL where it has none.
-func hostOf(raw string) string {
-	u, err := url.Parse(raw)
-	if err != nil || u.Host == "" {
-		return raw
-	}
-	return u.Host
 }
 
 // QuotaGate is a Getter that holds a host whose quota is spent until its
@@ -158,7 +148,7 @@ func NewQuotaGate(get Getter, now func() time.Time) *QuotaGate {
 // refused until the probe is due; otherwise asked, a spent quota holding the
 // host and an answer from the network freeing it.
 func (g *QuotaGate) GetText(ctx context.Context, rawURL string, opts ...httpx.Option) ([]byte, error) {
-	host, now := hostOf(rawURL), g.now()
+	host, now := httpx.HostOf(rawURL), g.now()
 	g.mu.Lock()
 	g.syncLocked(now)
 	h, held := g.spent[host]

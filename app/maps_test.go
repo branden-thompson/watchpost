@@ -3,6 +3,7 @@ package app
 import (
 	tea "charm.land/bubbletea/v2"
 	"context"
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -121,8 +122,8 @@ func TestTheMapsSourcesAndRetentionAreNamed(t *testing.T) {
 		return tty.MapSource{}, false
 	}
 	for _, s := range mapSources {
-		if _, ok := named(s.name, hostOf(s.address)); !ok {
-			t.Errorf("the Status window is not handed %s at %s: %+v", s.name, hostOf(s.address), cfg.MapSources)
+		if _, ok := named(s.name, httpx.HostOf(s.address)); !ok {
+			t.Errorf("the Status window is not handed %s at %s: %+v", s.name, httpx.HostOf(s.address), cfg.MapSources)
 		}
 	}
 	nws, ok := named("National Weather Service", "api.weather.gov")

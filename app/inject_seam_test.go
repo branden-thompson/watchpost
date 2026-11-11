@@ -113,7 +113,7 @@ type pipelineRig struct {
 func newPipelineRig(t *testing.T) *pipelineRig {
 	t.Helper()
 	r := &pipelineRig{voice: &scriptVoice{}}
-	nar := testDirector(r.voice, nil)
+	nar := testArbiter(r.voice, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 	r.sev = newSevereDeck(func(tea.Msg) {})
 	r.deck = &tickerDeck{

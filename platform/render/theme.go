@@ -4,6 +4,7 @@
 // never change. Values are SGR parameter lists (256-palette codes ride
 // go-studs ColorSequence; truecolor entries are pre-expanded 38;2/48;2
 // params for the raw-SGR path; window/gradient entries are #RRGGBB hex).
+
 package render
 
 import "strings"
@@ -128,8 +129,8 @@ const (
 	TickerDisasterBG Token = "ticker.disaster.bg"
 	TickerWarningBG  Token = "ticker.warning.bg"
 	TickerWatchBG    Token = "ticker.watch.bg"
-	TickerMarineBG   Token = "ticker.marine.bg" // 0.12.0: the Tropical Cyclones lane (HUM LEAD colour pass)
-	// 0.14.0: the lanes that give every severe category one.
+	TickerMarineBG   Token = "ticker.marine.bg" // the Tropical Cyclones lane (HUM LEAD colour pass)
+	// The tokens below give every severe category a lane of its own.
 	// They are LANE tokens, not category tints borrowed from the [w] window: a
 	// band is painted under bold white at full strength, a tint sits behind a
 	// row, and the AA register checks the two differently (HUM LEAD, UAT

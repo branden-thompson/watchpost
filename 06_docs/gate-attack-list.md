@@ -8,7 +8,7 @@ think of, and each was defeated by a cheaper spelling within hours. The order th
 **Every row below must become an executable specimen.** A row that is only prose is a row that gets
 verified against itself. The model under test therefore parses **strings, not paths** — production
 gates hand it the real files, and the specimen table hands it synthetic ones — which is the same
-shape `tools/authoring`'s 17-specimen self-test already uses and the reason that detector has never
+shape `tools/authoring`'s self-test already uses, its specimens judged in both directions, and the reason that detector has never
 been defeated.
 
 **The control direction is half the table.** A gate that flags everything passes every attack here

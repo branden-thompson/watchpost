@@ -114,9 +114,9 @@ func TestTheCardWindowCarriesWhatTheCardDefersTo(t *testing.T) {
 	}
 	text := strings.Join(body, "\n")
 	for _, want := range []string{
-		"Ready for Read-Out",                // the card's own status, same function
-		"Friday September 11, 2026 @ 17:45", // the stamp
-		"(2 MIN AGO)",                       // and the age, which is what it is trusted on
+		"Ready for Read-Out",                     // the card's own status, same function
+		"Friday September 11, 2026 @ 5:45:00 PM", // the stamp, in the default 12-hour clock (0.19.5 D-29)
+		"(2 MIN AGO)",                            // and the age, which is what it is trusted on
 		"READ CONTENTS",
 		"Watchpost Air Quality Report", // THE FIFTH ROW — the card cannot show it
 		"FULL READ",

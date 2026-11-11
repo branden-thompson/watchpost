@@ -43,9 +43,8 @@ const (
 // AN UNRECOGNISED VALUE IS OFF: a typo in a shell profile must not silently
 // change what a station does.
 //
-// "live" IS GONE (D-33, 2026-09-09). It meant "the card is read through the
-// arbiter", and the arbiter does not read the programme — a chosen read
-// REPLACES the bed. The stage that expressed the wrong design went with it.
+// There is no "live" stage, reading the card through the arbiter: the arbiter
+// does not read the programme, because a chosen read REPLACES the bed (D-33).
 func mainTrack() mainTrackStage {
 	switch os.Getenv("WATCHPOST_MAINTRACK") {
 	case "dark":
@@ -64,7 +63,7 @@ func stageNames() [numMainTrackStages]string {
 }
 
 // String names the stage for the dark run's log. An undeclared stage names
-// itself as such rather than as one of the three, because a diagnostic that
+// itself as such rather than as one of the two, because a diagnostic that
 // silently reports "off" for a corrupt value is worse than one that says it
 // does not know.
 func (s mainTrackStage) String() string {

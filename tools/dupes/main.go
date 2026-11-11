@@ -116,20 +116,51 @@ func main() {
 			drift = append(drift, g.Fingerprint+": "+why)
 		}
 	}
+	stale := staleRows(ratified, groups)
 	if *asJSON {
 		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"groups": groups, "unratified": unratified, "min_nodes": *min,
+			"groups": groups, "unratified": unratified, "stale": stale, "min_nodes": *min,
 		})
 	} else {
 		reportText(groups, unratified, drift, *min, *withTests)
 	}
+	failed := false
 	if len(unratified) > 0 {
 		fmt.Fprintf(os.Stderr, "\ndupes: %d duplicate group(s) carry no ratified reason.\n"+
 			"Collapse them, or present them to the HUM LEAD and record the reason in %s.\n"+
 			"A reason is RATIFIED, never self-issued (metric D hardening, project brief).\n",
 			len(unratified), *ledgerPath)
+		failed = true
+	}
+	// A RATIFIED ROW THAT MATCHES NOTHING IS A RATIFICATION OF NOTHING, and it
+	// waits to admit whatever next takes its fingerprint (0.19.5 DC-12; the same
+	// failure tools/wires has).
+	for _, fp := range stale {
+		fmt.Fprintf(os.Stderr, "dupes: the ratified row %s (%s) matches no duplicate group any more: "+
+			"its copies were collapsed or changed. Delete the row from %s.\n",
+			fp, strings.Join(ratified[fp], " · "), *ledgerPath)
+		failed = true
+	}
+	if failed {
 		os.Exit(1)
 	}
+}
+
+// staleRows are the ratified rows whose fingerprint no group found has, in
+// order.
+func staleRows(ratified map[string][]string, groups []group) []string {
+	found := map[string]bool{}
+	for _, g := range groups { // bounded by the groups (P10-02)
+		found[g.Fingerprint] = true
+	}
+	var stale []string
+	for fp := range ratified { // bounded by the ledger (P10-02)
+		if !found[fp] {
+			stale = append(stale, fp)
+		}
+	}
+	sort.Strings(stale)
+	return stale
 }
 
 // fingerprintBody reduces a body to its token STRUCTURE: every identifier and
@@ -200,10 +231,11 @@ func funcName(fn *ast.FuncDecl) string {
 //
 // third_party is vendored and not ours to collapse; 06_docs/mutants holds
 // deliberately mutated copies of real code, which is the ONE place in this
-// repository where duplication is the point.
+// repository where duplication is the point; .claude holds agent worktrees,
+// each a whole second copy of the tree, which would double every function.
 func skipDir(base string) bool {
 	switch base {
-	case ".git", "third_party", "mutants", "dist":
+	case ".git", ".claude", "third_party", "mutants", "dist":
 		return true
 	}
 	return false
@@ -392,7 +424,7 @@ func beta(ys []int) int {
 		return 1
 	}
 
-	// AND A NEGATIVE CONTROL: two functions that merely share a shape must not
+	// A negative control: two functions that merely share a shape must not
 	// be called duplicates once the floor is applied. A detector that fires on
 	// everything is a detector that gets ignored.
 	solo := `package p
@@ -407,6 +439,13 @@ func alsoOne(b int) int { return b + 2 }
 		fmt.Fprintf(os.Stderr, "dupes SELF-TEST FAILED: trivial functions were reported as duplicates (%d groups)\n", len(neg))
 		return 1
 	}
-	fmt.Println("dupes self-test: both controls fired (OK)")
+	// A stale row is named: a fingerprint the scan does not find is
+	// reported, and the twins' own is not.
+	twins := got[0].Fingerprint
+	if s := staleRows(map[string][]string{"0123456789ab": {"gone"}, twins: nil}, got); len(s) != 1 || s[0] != "0123456789ab" {
+		fmt.Fprintf(os.Stderr, "dupes SELF-TEST FAILED: the stale row was not named alone (%v)\n", s)
+		return 1
+	}
+	fmt.Println("dupes self-test: all three controls fired (OK)")
 	return 0
 }

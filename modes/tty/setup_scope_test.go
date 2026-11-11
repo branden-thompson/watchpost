@@ -24,7 +24,7 @@ import (
 // TestEverySettingsRowIsRuledForItsSurface is the closed set.
 //
 // THE ZERO VALUE IS UNRULED, so a row added without a decision fails here rather
-// than inheriting one.  It still RENDERS at runtime (setupScope.shownOn) — a
+// than inheriting one.  It still RENDERS at runtime (`Dashboard.shownOnSurface`) — a
 // settings row that vanishes silently is worse than one that appears where it
 // should not, because the first is invisible and the second is reportable.
 func TestEverySettingsRowIsRuledForItsSurface(t *testing.T) {
@@ -122,9 +122,10 @@ func TestNoSettingsGroupIsDrawnEmpty(t *testing.T) {
 
 // THE KEYBOARD NEVER LANDS ON A ROW NOBODY CAN SEE — not on open, not on ↓, not
 // on tab.  A focus on a hidden row is a window whose keys appear dead.
-// THE WINDOW OPENS ON A ROW THIS SURFACE DRAWS. `setupState{}` focuses row zero,
-// which is the listener's default LOCATION — hidden on the console. A window whose
-// focus starts off screen is a window whose first keystroke appears to do nothing.
+// The window opens on a row this surface draws. A window whose focus starts
+// off screen swallows its first keystroke. Every surface draws every row today
+// (0.18.0 D-70), so this cannot fail until a row is hidden again: mAA3 survives
+// as an equivalent mutant (0.19.5 A-24) and becomes catchable then.
 func TestTheWindowOpensOnARowThisSurfaceDraws(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d.surface = SurfaceBroadcaster
@@ -139,9 +140,11 @@ func TestTheWindowOpensOnARowThisSurfaceDraws(t *testing.T) {
 }
 
 // THE KEYBOARD NEVER LANDS ON A ROW NOBODY CAN SEE — not on ↓, not on ↑, not on
-// tab. A focus on a hidden row is a window whose keys appear dead.
+// tab. A focus on a hidden row is a window whose keys appear dead. Tab's own
+// surface check cannot fail while every surface draws every row (0.18.0 D-70):
+// mAA4 survives as an equivalent mutant (0.19.5 A-24).
 //
-// EVERY KEY IS PRESSED, NOT CALLED. Walking `stepGroup` directly lets a mutant
+// EVERY KEY IS PRESSED, NOT CALLED. Walking `stepRow` directly lets a mutant
 // that breaks the CALL SITE survive — the helper can be right and the wiring not,
 // which is a distinction only the real key can make. And `openSetup` on an
 // already-open window TOGGLES it shut, after which the keys reach no modal and
@@ -173,4 +176,18 @@ func TestTheKeyboardNeverFocusesAHiddenRow(t *testing.T) {
 	m = press(t, m, tea.KeyPressMsg{Code: tea.KeyUp}, rows, "up")
 	m = press(t, m, tea.KeyPressMsg{Code: tea.KeyTab}, groups, "tab")
 	_ = press(t, m, tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}, groups, "shift+tab")
+}
+
+// TestTheStationRowsAreRuledTheConsoles is D-115's record of D-18's ruling: the
+// transmitter and the service radius are the station's, a fact about the
+// console a listener does not have. Every row is drawn on every surface since
+// D-70, so the scope is the ruling's record rather than a rule the frame
+// applies, and this test is what holds it.
+func TestTheStationRowsAreRuledTheConsoles(t *testing.T) {
+	table := setupTable()
+	for _, id := range []setupRowID{rowTransmitter, rowServiceRadius} {
+		if table[id].scope != scopeBroadcaster {
+			t.Errorf("row %d is ruled %d; D-115 rules the station's rows the console's", id, table[id].scope)
+		}
+	}
 }

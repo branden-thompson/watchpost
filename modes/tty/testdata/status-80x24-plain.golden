@@ -1,0 +1,24 @@
+                                                                              
+                                                                              
+   ┏━━ WATCHPOST Observer  vbench ━━  Updated: 08/24/2026 1:00:00 AM UTC ━━┓  
+   ┃   [s] Settings  [S] Status  [?] Help  [q] Quit   API: ✔2 ⚠0 ✘0 /  2   ┃  
+   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  
+     ┌── Watchpost Status ───────────────────────────────────────────────┐    
+     │     UPTIME - just started                                     v ▲ │    
+     │                                                                 █ │    
+   ┏━│   DATA SOURCES  (2 hosts in 1 group)                            │ │━┓  
+   ┃ │       ENDPOINT                      SOURCES    STATUS   FETCHED │ │ ┃  
+   ┃ │   OTHER DATA                                                    │ │ ┃  
+   ┗━│     ✔ nws                             NWS      2ND OK    2m  0s │ │━┛  
+   01│     ✔ firms                           FIRMS    2ND OK    2m  0s │ │→]  
+     │                                                                 │ │    
+   [l│   PIPELINES                                                     │ │    
+   [s│     NAME                SNAPSHOT  LOCATIONS  PUBLISHES     ROWS │ │    
+   [ │     PRIORITY          1:00:00 AM         10          0        - │ │ ]  
+   [ │     RECENT            1:00:00 AM         50          0        - ▼ │ ] ▲
+   › └───────────────────────────────────────────────────────────────────┘   █
+        ●       002. Benchmark City 02        90001   P.CLOUDY       75°F    │
+        ●       003. Benchmark City 03        90002   P.CLOUDY       77°F    ▼
+   [                   R E C E N T   /   S E A R C H E D                   ] ▲
+        ●    1⚠ 011. Benchmark City 101       90100   P.CLOUDY       77°F    █
+                                                Showing 1-1 of 50 locations  ▼

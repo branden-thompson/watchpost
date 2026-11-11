@@ -8,10 +8,10 @@ import (
 )
 
 func TestFormatTempUnits(t *testing.T) {
-	if got := (Opts{ThinBands: true, Units: UnitF}).Temp(f64(22.8)); got != "73°F" {
+	if got := (Opts{ThinBands: true, Units: UnitF}).Temp(new(22.8)); got != "73°F" {
 		t.Fatalf("F: %q", got)
 	}
-	if got := (Opts{ThinBands: true, Units: UnitC}).Temp(f64(22.8)); got != "23°C" {
+	if got := (Opts{ThinBands: true, Units: UnitC}).Temp(new(22.8)); got != "23°C" {
 		t.Fatalf("C: %q", got)
 	}
 	if got := (Opts{ThinBands: true, Units: UnitF}).Temp(nil); got != "n/a" {
@@ -76,7 +76,7 @@ func TestLoadingShimmerNotNA(t *testing.T) {
 		}
 	}
 	// Post-load nil stays honest.
-	loaded := stripANSI((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{{Index: 1, Name: "X", Zip: "1", Now: f64(20)}}, 0))
+	loaded := stripANSI((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{{Index: 1, Name: "X", Zip: "1", Now: new(float64(20))}}, 0))
 	if !strings.Contains(loaded, "n/a") {
 		t.Fatalf("post-load missing values must read n/a:\n%s", loaded)
 	}

@@ -104,7 +104,7 @@ func indexForTest(t *testing.T) *geodata.Index {
 	return idx
 }
 
-// AND THE POOL FILLS THE CONSOLE'S WINDOW, END TO END.
+// The pool fills the console's window, end to end.
 //
 // THE PROPERTY IS F-82's, MEASURED: `ReadID` is a pure function of the ref and
 // the lineup refuses a duplicate identity, so the schedule can never be deeper
@@ -131,7 +131,7 @@ func TestTheStationsPoolFillsTheConsolesWindow(t *testing.T) {
 			mu.Unlock()
 		}
 	}
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil,
 		lp.producer(), lp.resolvable, lp.currentWatch, tick, publish, bedSeams{})
@@ -190,7 +190,7 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 		t.Fatal("the monitor's rotation resolves a watched location against the WATCHLIST")
 	}
 
-	// AND THE WIRING USES THE RIGHT ONE, driven through `startSchedule` itself.
+	// The wiring uses the right one, driven through `startSchedule` itself.
 	//
 	// THE ASSERTIONS ABOVE ARE NOT ENOUGH. They compare the two lists and prove
 	// nothing about which one `cutTo` is built from — so swapping the wiring to the
@@ -202,7 +202,7 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 	deck, _ := offlineDeck(t)
 	deck.pref = tty.ModeSynth
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
-	s := startSchedule(ctx, testDirector(nil, func(tea.Msg) {}), nil,
+	s := startSchedule(ctx, testArbiter(nil, func(tea.Msg) {}), nil,
 		func() render.Clock { return render.Clock12 }, deck, pool, pool, watch, tick, func(tea.Msg) {}, bedSeams{})
 	if s == nil {
 		t.Fatal("the schedule refused to start")
@@ -252,7 +252,7 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 	}
 }
 
-// AND MOVING THE STATION'S REGION RE-SCOPES THE RAIL (D-154).
+// Moving the station's region re-scopes the rail (D-154).
 //
 // THE TRIGGER `Aired` DOES NOT SERVE. The fence travels with the air, but that
 // is not the whole of it: the operator who narrows the service radius in
@@ -265,7 +265,7 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 // the defect, not the fix.
 func TestMovingTheStationsRegionTellsTheDirectorTheNewFence(t *testing.T) {
 	var told []lineup.Event
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	nar.mc.mu.Lock()
 	nar.mc.carry = func(ev lineup.Event) { told = append(told, ev) }
 	// THE DECK'S OWN TRANSLATION, stubbed to the radius the region now has.
@@ -274,7 +274,7 @@ func TestMovingTheStationsRegionTellsTheDirectorTheNewFence(t *testing.T) {
 	}
 	nar.mc.mu.Unlock()
 
-	lp := &livePipelines{director: nar}
+	lp := &livePipelines{arbiter: nar}
 	lp.restationTo(stationArea{radiusMi: 25})
 
 	var refenced *lineup.Refenced
@@ -289,7 +289,7 @@ func TestMovingTheStationsRegionTellsTheDirectorTheNewFence(t *testing.T) {
 	if !refenced.Fence.InForce() || refenced.Fence.RadiusMi != 25 {
 		t.Errorf("the rail was re-scoped to %+v, want the region's own 25-mile fence", refenced.Fence)
 	}
-	// AND THE AIR IS NOT TOUCHED. Routing this through `HandAir` would work and
+	// The air is not touched. Routing this through `HandAir` would work and
 	// would also SILENCE THE PROGRAMME on the way past — a card cut off
 	// mid-sentence because the operator changed a setting.
 	for i := range told {

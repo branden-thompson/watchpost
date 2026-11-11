@@ -3,7 +3,7 @@ package app
 // severe_read.go — [space] in the Severe Weather / Disaster Events window
 // reads the FOCUSED EVENT over the radio (HUM LEAD UAT 2026-08-28, option
 // B): the event's own script — the alert itself, no conditions or forecast —
-// spoken through the director as a narrateRead sequence: it ducks the
+// spoken through the arbiter as a narrateRead sequence: it ducks the
 // broadcast, waits behind a breaking takeover, is PAUSED by one and resumes
 // after it, and the radio panel shows the event while it plays, returning
 // to whatever was on afterwards. A second [space] while one is reading is
@@ -12,10 +12,10 @@ package app
 import (
 	"context"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -51,7 +51,7 @@ type eventReader struct {
 	// [space] launches a third read and the window no longer knows which one to
 	// pause.
 	gen     uint64
-	nar     *director                                                 // the voice arbiter (app/director.go)
+	nar     *arbiter                                                  // the voice arbiter (app/arbiter.go)
 	ctx     context.Context                                           // the app's: shutdown ends a read (A-08)
 	cancel  context.CancelFunc                                        // the read in progress, under mu
 	done    chan struct{}                                             // closed when the read in progress ends
@@ -63,8 +63,8 @@ type eventReader struct {
 }
 
 // newEventReader builds the reader; every read runs under ctx (the app's —
-// shutdown ends a read in progress, red-team round 4 A-08).
-func newEventReader(ctx context.Context, nar *director, scripts *script.Library, row func(string) (tty.SevereRow, bool), send func(tea.Msg)) *eventReader {
+// shutdown ends a read in progress).
+func newEventReader(ctx context.Context, nar *arbiter, scripts *script.Library, row func(string) (tty.SevereRow, bool), send func(tea.Msg)) *eventReader {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -151,10 +151,8 @@ func (r *eventReader) Read(key string) {
 // Cancel ends a read in progress WITHOUT waiting for it, and returns at once.
 //
 // NAMED Cancel, NOT Stop, and the reason is the tool rather than the code: P10
-// resolves methods by NAME, so an eventReader.Stop collides with radioDeck.Stop
-// — which genuinely participates in a stopDwell cycle and carries its own
-// ratified exemption — and the collision reports this function as recursion it
-// has no part in. A distinct name is cheaper and more honest than an exemption
+// resolves methods by NAME, so an eventReader.Stop collides with radioDeck.Stop,
+// and the collision reports this function as recursion it has no part in. A distinct name is cheaper and more honest than an exemption
 // for something that is not recursive.
 //
 // IT IS THE ONE A KEYPRESS CALLS. `End` waits for the read's goroutine, which is
@@ -216,7 +214,7 @@ func (r *eventReader) free() {
 func (r *eventReader) current(gen uint64) bool { return r.gen == gen }
 
 // End stops a read in progress and WAITS for it to finish (bounded: the
-// director's release is immediate once the context ends). Shutdown wants this;
+// arbiter's release is immediate once the context ends). Shutdown wants this;
 // a keypress wants Cancel. Inert with none in progress.
 func (r *eventReader) End() {
 	r.mu.Lock()
@@ -302,7 +300,7 @@ func eventScript(lib *script.Library, row tty.SevereRow) string {
 	if meta := strings.Trim(render.PlainLine(row.Record.Meta), "[]"); meta != "" {
 		parts = append(parts, say("meta", map[string]string{"Items": strings.Join(strings.Split(meta, " · "), ", ")}))
 	}
-	if window := spokenWindow(row.Record.Timing); window != "" {
+	if window := spokenWindow(row.Record.Window); window != "" {
 		parts = append(parts, say("window", map[string]string{"Window": window}))
 	}
 	for _, p := range row.Record.Paras {
@@ -327,37 +325,29 @@ func eventScript(lib *script.Library, row tty.SevereRow) string {
 	return strings.Join(kept, " ")
 }
 
-// spokenWindow reads the "(~15m)" window the record's timing line carries
-// and words it: "15 minutes", "2 hours", "1 hour 30 minutes", "3 days".
-func spokenWindow(timing string) string {
-	i := strings.LastIndex(timing, "(~")
-	j := strings.LastIndex(timing, ")")
-	if i < 0 || j < i {
+// spokenWindow words how long an alert is in effect: "15 minutes", "2 hours",
+// "1 hour 30 minutes", "3 days", from the parts the record's "(~…)" shorthand
+// is written from (severe.WindowParts), or "" for no window.
+func spokenWindow(window time.Duration) string {
+	if window <= 0 {
 		return ""
 	}
-	var out []string
-	num := ""
-	for _, r := range timing[i+2 : j] {
-		switch {
-		case unicode.IsDigit(r):
-			num += string(r)
-		case num == "":
-			continue
-		default:
-			unit := durationUnits()[r]
-			if unit == "" {
-				return ""
-			}
-			if num != "1" {
-				unit += "s"
-			}
-			out = append(out, num+" "+unit)
-			num = ""
-		}
+	days, hours, minutes := severe.WindowParts(window)
+	switch {
+	case days > 0:
+		return countWord(days, "day")
+	case hours > 0 && minutes > 0:
+		return countWord(hours, "hour") + " " + countWord(minutes, "minute")
+	case hours > 0:
+		return countWord(hours, "hour")
 	}
-	return strings.Join(out, " ")
+	return countWord(minutes, "minute")
 }
 
-// durationUnits spell the shorthand a Starts/Ends span uses (spokenWindow).
-// A function, not a global (P10-06).
-func durationUnits() map[rune]string { return map[rune]string{'d': "day", 'h': "hour", 'm': "minute"} }
+// countWord is n and its unit, the unit plural unless n is one.
+func countWord(n int, unit string) string {
+	if n != 1 {
+		unit += "s"
+	}
+	return strconv.Itoa(n) + " " + unit
+}

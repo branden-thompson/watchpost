@@ -40,7 +40,7 @@ func TestBlockPaintsFullWidthAndRearms(t *testing.T) {
 		t.Fatalf("block must paint the full width, got %d", w)
 	}
 	afg, abg := "38;5;220", "49"
-	// No tone of its own (round 4, B-01): padded, and not one escape added -
+	// No tone of its own: padded, and not one escape added -
 	// never an invalid "\x1b[250;49m".
 	if none := o.Block("a \x1b[1mb\x1b[0m c", "", ""); displayWidth(none) != 40 || strings.Count(none, "\x1b[") != 2 || !strings.HasPrefix(none, "a \x1b[1mb\x1b[0m c ") {
 		t.Fatalf("an untoned block adds no SGR: %q", none)

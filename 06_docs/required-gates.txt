@@ -1,9 +1,8 @@
 # THE GATES THIS RELEASE REQUIRES — the third list (red team, 2026-09-08).
 #
-# TestCIAndVerifyRunTheSameGates compared `verify` against ci.yml and nothing
-# else, so it proved the two AGREE and not that either is complete: deleting
-# alloc-budget from BOTH passed, silently removing the repository's only
-# allocation gate — the exact loss that test's own header warns about.
+# `verify` and ci.yml can agree by both being wrong: a gate deleted from both
+# leaves them agreeing, and the repository without it. TestTheThreeGateListsAgree
+# holds the three lists together.
 #
 # Two lists can agree by both being wrong. This is the third, so a gate can only
 # disappear if someone edits all three, and the third edit is this file, whose

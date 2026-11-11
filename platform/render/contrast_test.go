@@ -6,8 +6,7 @@ import (
 )
 
 // Every theme's alert tones read at AA on their tints — lifted at
-// registration when the theme's own value does not (HUM LEAD 2026-08-28,
-// round 4 B-05). The lift keeps the hue: the default's warning red stays a
+// registration when the theme's own value does not (HUM LEAD 2026-08-28). The lift keeps the hue: the default's warning red stays a
 // red, brighter.
 func TestAlertTonesReadAAInEveryTheme(t *testing.T) {
 	t.Cleanup(func() { SetTheme(DefaultThemeName) })

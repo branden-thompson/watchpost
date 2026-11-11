@@ -3,6 +3,7 @@ package player
 import (
 	"context"
 	"io"
+	"slices"
 	"testing"
 )
 
@@ -147,7 +148,7 @@ func TestStoppingALinePausesBeforeClosing(t *testing.T) {
 	e.StopPreview()
 
 	acts := p.actions()
-	iPause, iClose := indexOf(acts, "pause"), indexOf(acts, "close")
+	iPause, iClose := slices.Index(acts, "pause"), slices.Index(acts, "close")
 	if iPause < 0 {
 		t.Fatalf("a stopped line must be PAUSED, or its buffered audio plays on: %v", acts)
 	}
@@ -161,13 +162,4 @@ func TestStoppingALinePausesBeforeClosing(t *testing.T) {
 	if p.IsPlaying() {
 		t.Error("a stopped line is not playing")
 	}
-}
-
-func indexOf(ss []string, want string) int {
-	for i, s := range ss {
-		if s == want {
-			return i
-		}
-	}
-	return -1
 }

@@ -143,7 +143,7 @@ func TestOnlyParsedVersionNumbersReachTheUpdateRow(t *testing.T) {
 //
 // It is also the ruling's evidence in the code: a provider is asked repeatedly
 // as the snapshot refreshes; this is asked once and is then done, which is what
-// makes it not a provider (architecture §1).
+// makes it not a provider (watchpost-cli architecture §1).
 func TestTheReleaseCheckAsksExactlyOnceAndOptingOutAsksNever(t *testing.T) {
 	var hits atomic.Int64
 	srv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
@@ -166,7 +166,7 @@ func TestTheReleaseCheckAsksExactlyOnceAndOptingOutAsksNever(t *testing.T) {
 		t.Fatalf("the answer did not land: latest %q behind %v", latest, behind)
 	}
 
-	// AND START — THE THING ACTUALLY BEING BOUNDED — ASKS ONCE.
+	// `start`, the thing actually being bounded, asks once too.
 	//
 	// Calling checkAt and then claiming something about start would pass
 	// against a restored poller and against a deleted opt-out guard. start is

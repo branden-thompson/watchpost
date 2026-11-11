@@ -1,6 +1,6 @@
 // Package httpx is watchpost's single outbound HTTP client.
 //
-// Contract (architecture.md §3, §10; AI-1; IS-1): every request carries the
+// Contract (watchpost-cli architecture §3, §10; AI-1; IS-1): every request carries the
 // configured User-Agent (NWS 403s without one); requests flow through a token
 // bucket (~5 req/s default) with jittered exponential backoff on 429/5xx; and
 // no secret ever appears in an error, log line, or debug string — URLs are
@@ -332,20 +332,20 @@ func (e *StatusError) Error() string {
 func (e *StatusError) HTTPStatus() int { return e.Status }
 
 // Endpoint is the HOST the failure was against, for a column that must fit.
-func (e *StatusError) Endpoint() string { return hostOf(e.URL) }
+func (e *StatusError) Endpoint() string { return HostOf(e.URL) }
 
-// hostOf is the bare host of a URL. Shared by both failure types rather than
-// one calling the other's method — two methods of the same name calling each
-// other is recursion to a reader and to the safety gate, whatever the receivers.
-func hostOf(rawURL string) string {
-	u := rawURL
-	if i := strings.Index(u, "://"); i >= 0 {
-		u = u[i+3:]
+// HostOf is a URL's host, with its port when it names one, or the URL itself
+// where it has no host: the one answer for the failure columns, the Status
+// window's map sources and the temperature quota (0.19.5 DR-16). A function
+// both failure types call, rather than one calling the other's method: two
+// methods of the same name calling each other is recursion to a reader and to
+// the safety gate, whatever the receivers.
+func HostOf(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Host == "" {
+		return rawURL
 	}
-	if i := strings.IndexAny(u, "/?"); i >= 0 {
-		u = u[:i]
-	}
-	return u
+	return u.Host
 }
 
 // ReachError is a failure with NO HTTP STATUS: DNS, a refused connection, a
@@ -364,7 +364,7 @@ func (e *ReachError) Error() string {
 }
 func (e *ReachError) Unwrap() error    { return e.Err }
 func (e *ReachError) HTTPStatus() int  { return 0 }
-func (e *ReachError) Endpoint() string { return hostOf(e.URL) }
+func (e *ReachError) Endpoint() string { return HostOf(e.URL) }
 
 // Priority lane (B3 UAT 64): the favourites' pipeline must never queue
 // behind the 50-location seed pipeline's launch burst on a shared client.

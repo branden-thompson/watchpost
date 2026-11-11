@@ -448,8 +448,8 @@ func TestTheNightIsSaidAsItIsDrawn(t *testing.T) {
 }
 
 // TestTheShortNamesAreSaidInFull is BUILD red team AX-8: the short names the
-// words use are said in full on opening the mode, and not again after a
-// refresh, as the focus limit is.
+// words use are said in full on opening the mode, not again after a refresh,
+// and in full again when the mode is left and opened again (FR-3.7).
 func TestTheShortNamesAreSaidInFull(t *testing.T) {
 	d, _ := drawnDash(t)
 	words := propWordsFrom(t, d)
@@ -461,8 +461,14 @@ func TestTheShortNamesAreSaidInFull(t *testing.T) {
 			t.Errorf("%s is not said in full", short)
 		}
 	}
-	if lineWith(propWordsFrom(t, refreshed(t, d)), propTerms) >= 0 {
+	d = refreshed(t, d)
+	if lineWith(propWordsFrom(t, d), propTerms) >= 0 {
 		t.Error("the short names are said again after a refresh")
+	}
+	d, _ = keyCmd(t, d, "P") // left, and opened again: a new session, so its first answer is an opening
+	d, cmd := keyCmd(t, d, "P")
+	if d = runProp(t, d, cmd); lineWith(propWordsFrom(t, d), propTerms) < 0 {
+		t.Error("the short names are not said on opening the mode again")
 	}
 }
 
@@ -562,7 +568,7 @@ func TestAKeptPlaceLaysOutNoWordsWhileNothingChanges(t *testing.T) {
 	}
 }
 
-// TestAnHourAheadIsNotSaidBeforeItIsWorkedOut is FR-3.1 (round 2 PN2-10):
+// TestAnHourAheadIsNotSaidBeforeItIsWorkedOut is FR-3.1:
 // while an hour ahead is being worked out the words say so, never now's
 // figures under that hour's name.
 func TestAnHourAheadIsNotSaidBeforeItIsWorkedOut(t *testing.T) {

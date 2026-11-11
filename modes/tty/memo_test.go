@@ -54,7 +54,7 @@ func TestBodyMemoInvalidatesOnEveryInput(t *testing.T) {
 		}},
 		{"[v]: the visualizer rows change the window", func(d Dashboard) Dashboard { d.radioViz = true; return d }},
 		{"Setup: the bold-◆ rule", func(d Dashboard) Dashboard {
-			d.snap.Locations[0].Fire.Hotspots = []snapshot.Hotspot{{Lat: 33, Lon: -117, FRPMW: f64(80)}}
+			d.snap.Locations[0].Fire.Hotspots = []snapshot.Hotspot{{Lat: 33, Lon: -117, FRPMW: new(float64(80))}}
 			d.cfg.FireBoldMW = 100
 			return d
 		}},
@@ -131,8 +131,13 @@ func TestLayoutOncePerViewAndKey(t *testing.T) {
 	_ = d.View().Content
 	perView := testing.AllocsPerRun(20, func() { _ = d.View().Content })
 	perLayout := testing.AllocsPerRun(20, func() { _ = d.layout() })
-	if perView > 2*perLayout+100 { // the header's own tints ride the hit path; a second layout() would add a whole layout
-		t.Fatalf("one layout per frame on the memo hit path: frame %.0f allocs vs layout %.0f — a second layout() call would show here", perView, perLayout)
+	// The hit path's own work beside its one layout, measured at 62 allocs and
+	// pinned × 1.10. A second layout() adds a whole layout (93) on top. The
+	// bound is absolute, not a multiple of a layout, so it holds whichever of
+	// the two a batch makes cheaper.
+	const ownWork = 62 * 1.10
+	if perView-perLayout > ownWork {
+		t.Fatalf("one layout per frame on the memo hit path: frame %.0f allocs, layout %.0f, leaving %.0f against %.0f — a second layout() call would show here", perView, perLayout, perView-perLayout, ownWork)
 	}
 	perKey := testing.AllocsPerRun(20, func() { _, _ = d.Update(tea.KeyPressMsg{Code: tea.KeyDown}) })
 	if perKey > 2*perLayout+50 {

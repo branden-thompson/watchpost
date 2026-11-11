@@ -27,8 +27,6 @@ import (
 // marineView is off Southern California.
 var marineView = tty.MapView{W: -121, S: 32, E: -117, N: 34.5}
 
-func f64(v float64) *float64 { return &v }
-
 // TestBuoysAreDrawnWithTheirReadings is D-127: each station that read in the
 // last two hours and is in view, a marker in the buoy's role labelled with its
 // waves and water - "4ft 73°" - or its wind where it has no waves - "12kt" -
@@ -36,10 +34,10 @@ func f64(v float64) *float64 { return &v }
 func TestBuoysAreDrawnWithTheirReadings(t *testing.T) {
 	now := time.Date(2026, 9, 28, 14, 0, 0, 0, time.UTC)
 	obs := []ndbc.Obs{
-		{ID: "46025", Lat: 33.765, Lon: -119.077, At: now.Add(-10 * time.Minute), WaveM: f64(1.2), WaterC: f64(22.6), WindMS: f64(4)},
-		{ID: "46086", Lat: 32.504, Lon: -118.029, At: now.Add(-10 * time.Minute), WindMS: f64(6)},
-		{ID: "stale", Lat: 33, Lon: -118, At: now.Add(-3 * time.Hour), WaveM: f64(1)},
-		{ID: "far", Lat: 45, Lon: -125, At: now, WaveM: f64(1)},
+		{ID: "46025", Lat: 33.765, Lon: -119.077, At: now.Add(-10 * time.Minute), WaveM: new(1.2), WaterC: new(22.6), WindMS: new(float64(4))},
+		{ID: "46086", Lat: 32.504, Lon: -118.029, At: now.Add(-10 * time.Minute), WindMS: new(float64(6))},
+		{ID: "stale", Lat: 33, Lon: -118, At: now.Add(-3 * time.Hour), WaveM: new(float64(1))},
+		{ID: "far", Lat: 45, Lon: -125, At: now, WaveM: new(float64(1))},
 		{ID: "silent", Lat: 33.1, Lon: -118.1, At: now},
 	}
 	labels := func(imperial bool) map[string]string {
@@ -118,7 +116,7 @@ func TestTheSeasStationsAreAskedOnlyWhileOn(t *testing.T) {
 	}))
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
-	lp := &livePipelines{marine: []snapshot.Provider{ndbc.New(c, srv.URL), coops.New(c, srv.URL)}}
+	lp := &livePipelines{providerFamilies: providerFamilies{marine: []snapshot.Provider{ndbc.New(c, srv.URL), coops.New(c, srv.URL)}}}
 	ask := tty.MapAsk{Snap: &snapshot.Snapshot{}, Region: geo.RegionContiguous, View: marineView}
 	if in := lp.mapInputsFetching(context.Background(), ask); len(paths) != 0 || len(in.buoys) != 0 || len(in.tides) != 0 {
 		t.Fatalf("with both rows off the map asked %v", paths)
@@ -202,7 +200,7 @@ func TestTheTidesEstimateCountsTheStationsInView(t *testing.T) {
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	tides := coops.New(c, srv.URL)
-	lp := &livePipelines{marine: []snapshot.Provider{tides}}
+	lp := &livePipelines{providerFamilies: providerFamilies{marine: []snapshot.Provider{tides}}}
 	// A view that holds some of the fixture's stations and not others, so a
 	// count of every station held cannot pass for the count in view.
 	view := tty.MapView{W: -117.5, S: 32, E: -117, N: 34.5}
@@ -246,7 +244,7 @@ func TestTheSeasStationsThatDidNotAnswerGoToTheDiagnostics(t *testing.T) {
 	}))
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
-	lp := &livePipelines{marine: []snapshot.Provider{ndbc.New(c, srv.URL), coops.New(c, srv.URL)}}
+	lp := &livePipelines{providerFamilies: providerFamilies{marine: []snapshot.Provider{ndbc.New(c, srv.URL), coops.New(c, srv.URL)}}}
 	ask := tty.MapAsk{Snap: &snapshot.Snapshot{}, Region: geo.RegionContiguous, View: marineView, Buoys: true, Tides: true}
 	if in := lp.mapInputsFetching(context.Background(), ask); len(in.buoys) != 0 || len(in.tides) != 0 {
 		t.Fatalf("sources that did not answer drew %d buoys, %d tide stations", len(in.buoys), len(in.tides))

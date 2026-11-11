@@ -1,7 +1,7 @@
 package tty
 
 // broadcaster_upnext.go — the beat that is next, and the hazard that would
-// interrupt it, side by side (D-97).
+// interrupt it, side by side.
 //
 // THE v3 MOCK PUTS THEM LEVEL. UP NEXT carries its manifest (D-87) and a label
 // cell of its own; the takeover sits beside it at the same height.
@@ -26,7 +26,8 @@ import (
 const (
 	// bcUpNextLabelW is the label cell's width, from the reference.
 	bcUpNextLabelW = 14
-	// bcUpNextLabel and bcAlertLabel are what the two boxes call themselves.
+	// bcUpNextLabel is what the UP NEXT box calls itself; the other box's label
+	// is the literal "PRIORITY".
 	bcUpNextLabel = "UP  NEXT"
 )
 
@@ -94,12 +95,12 @@ func (b Broadcaster) upNextBox() []string {
 	if !decided {
 		c = lineup.Card{Headline: b.waiting(o)}
 	}
-	// THE CARD NAMES ITSELF IN ITS OWN BORDER (D-110), which is where the
+	// THE CARD NAMES ITSELF IN ITS OWN BORDER, which is where the
 	// reference puts it: `┏━━ LOCATION REPORT • Oceanside, CA 92057 ━━━ • STANDARD
 	// • ━━━┓`. A ROW inside the box costs the manifest a line to say what the frame
 	// around it says for free.
 	//
-	// AND THE HANDLE IS NOT IN THE TITLE. The reference puts the way in at the
+	// The handle is not in the title. The reference puts the way in at the
 	// BOTTOM — one row for what the operator DOES with this card, rather than a
 	// key in the caption.
 	rows := b.readBody(o, lane, c, "1", decided)
@@ -185,7 +186,7 @@ func (b Broadcaster) alertBox(rows int) []string {
 	// box draws the one that would interrupt the programme next — written as an
 	// index rather than a loop that always returns, which staticcheck rightly
 	// reads as a loop that is not one.
-	rail := b.lineup.Projection(lineup.AlertRail)
+	rail := b.projection(lineup.AlertRail)
 	if len(rail) == 0 {
 		return b.emptyAlertBox(lane, rows)
 	}

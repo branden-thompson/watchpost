@@ -30,9 +30,16 @@ pkgs=${*:-./...}
 # test measures 20/20 with it and ~81/100 without — so a sweep that never sets it
 # reports those rules as UNMEASURED. It is for ESCALATING A SURVIVOR, not for
 # every mutant: -race makes a suite several times slower.
+#
+# MUTANT_RUN=<pattern> runs only the tests it names on the mutated tree: the
+# sweep passes the test that caught this mutant last time. A catch is checked
+# exactly as an unscoped one is. A SURVIVED under a scope only says the named
+# test no longer catches it, so the sweep runs the whole package next.
 baseline=${MUTANT_BASELINE:-run}
 raceflag=""
 [ "${MUTANT_RACE:-0}" = "1" ] && raceflag="-race"
+scope=""
+[ -n "${MUTANT_RUN:-}" ] && scope="-run ${MUTANT_RUN}"
 root=$(git rev-parse --show-toplevel)
 cd "$root" || exit 2
 
@@ -81,7 +88,9 @@ if ! go build ./... 2>/dev/null || ! go vet $pkgs >/dev/null 2>&1; then
 	exit 2
 fi
 
-out=$(go test $raceflag $pkgs -count=1 2>&1); code=$?
+# -failfast: the first failing test is the verdict, so the rest of the suite
+# would only cost time.
+out=$(go test $raceflag $scope -failfast $pkgs -count=1 2>&1); code=$?
 if echo "$out" | grep -q "build failed"; then
 	echo "INVALID  $mutant — test build failed"
 	exit 2
@@ -90,6 +99,22 @@ if echo "$out" | grep -qE "^--- FAIL"; then
 	line=$(echo "$out" | grep -E '^--- FAIL' | head -1 | sed 's/^--- FAIL: //')
 	name=${line%% *}  # drop the "(0.00s)"
 	top=${name%%/*}   # a subtest's parent is what -run needs
+
+	# A CATCH MUST REPEAT (0.19.5 A-27, A-29). On a loaded machine a test can fail
+	# for its own reasons, and the sweep runs four of these at once. So the
+	# same run goes again on the mutated tree and must fail again, and the
+	# test it names is the one judged below. A genuine catch repeats, one seen
+	# only after another test has run included, since the same tests run
+	# before it again. A timing test that lost a race under load mostly does
+	# not.
+	again=$(go test $raceflag $scope -failfast $pkgs -count=1 2>&1)
+	if ! echo "$again" | grep -qE "^--- FAIL"; then
+		echo "INVALID  $mutant — $name failed once and not again on the mutated tree; the failure is not attributable to this mutation"
+		exit 2
+	fi
+	line=$(echo "$again" | grep -E '^--- FAIL' | head -1 | sed 's/^--- FAIL: //')
+	name=${line%% *}
+	top=${name%%/*}
 
 	# ATTRIBUTION: THE FAILURE MUST BE THE MUTATION'S (2026-09-06).
 	#

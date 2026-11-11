@@ -5,7 +5,7 @@ import pathlib
 # the three places a read can be.
 #
 # RE-ANCHORED (round 3) to reads(), the one enumeration four callers ask.
-p = pathlib.Path("app/director.go"); s = p.read_text()
+p = pathlib.Path("app/arbiter.go"); s = p.read_text()
 old = """	for _, j := range d.waiting { // bounded by the queue (P10-02)
 		if live(j) && j.class == narrateRead {
 			out = append(out, j)

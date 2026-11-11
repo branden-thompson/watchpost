@@ -63,12 +63,12 @@ func TestClearMapDataEmptiesTheLiveMapAndAsksTheApp(t *testing.T) {
 	if !handled || cmd == nil {
 		t.Fatal("space on Clear map data did nothing")
 	}
-	d = m.(Dashboard)
+	d = m
 	if !strings.Contains(strings.Join(*calls, " "), "Purge") {
 		t.Errorf("the live map was not purged: %v", *calls)
 	}
-	m, _ = d.Update(cmd())
-	d = m.(Dashboard)
+	m, _ = d.update(cmd())
+	d = m
 	if asked != 1 {
 		t.Errorf("the app was asked %d times", asked)
 	}

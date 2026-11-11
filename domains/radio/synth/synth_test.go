@@ -26,11 +26,9 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-func f64(v float64) *float64 { return &v }
-
 func TestComposeReadsLikeNWR(t *testing.T) {
 	loc := snapshot.Location{Label: "Oceanside, CA", Harmonized: snapshot.Conditions{
-		Condition: "partly_cloudy", Temp: f64(22.8), HumidityPct: f64(66), Wind: f64(4), WindDirDeg: f64(250),
+		Condition: "partly_cloudy", Temp: new(22.8), HumidityPct: new(float64(66)), Wind: new(float64(4)), WindDirDeg: new(float64(250)),
 		Source: snapshot.SourceInfo{Provider: "nws"}},
 		Alerts: []snapshot.Alert{{ID: "a1", Headline: "Heat Advisory issued August 24 at 208PM PDT until 8 PM PDT Friday by NWS San Diego CA", Description: "* WHAT...Hot.\n\n* WHERE...Coast."}}}
 	now := time.Date(2026, 8, 24, 16, 5, 0, 0, time.UTC)
@@ -428,8 +426,8 @@ func TestSourceEndsAfterOneCycleUnlessRepeating(t *testing.T) {
 }
 
 func TestStateCodeAtTheStartDoesNotPanic(t *testing.T) {
-	// Round 2 N-1 (FuzzNormalize): a block starting with a bare state code
-	// must not slice runes[-1:-1]. A code with nothing before it is not
+	// A block starting with a bare state code, a shape FuzzNormalize
+	// generates, must not slice runes[-1:-1]. A code with nothing before it is not
 	// a place; the rest of the rules still apply.
 	for _, in := range []string{"CA", "CA ", "NY\nmore", "TX. Sunny.", "IN EFFECT"} {
 		_ = Normalize(in)
@@ -793,7 +791,7 @@ func TestReportsAreSeparatedByAir(t *testing.T) {
 // spoken distance - and imperial Fahrenheit and miles per hour.
 func TestTheConditionsSayTheListenersUnits(t *testing.T) {
 	loc := snapshot.Location{Label: "Oceanside, CA", Harmonized: snapshot.Conditions{
-		Condition: "partly_cloudy", Temp: f64(22.8), Wind: f64(4), WindDirDeg: f64(250), Source: snapshot.SourceInfo{Provider: "nws"}}}
+		Condition: "partly_cloudy", Temp: new(22.8), Wind: new(float64(4)), WindDirDeg: new(float64(250)), Source: snapshot.SourceInfo{Provider: "nws"}}}
 	for imperial, want := range map[bool]string{
 		true:  "temperature 73 degrees, wind west at 9 miles per hour",
 		false: "wind west at 14 kilometers per hour",

@@ -2,6 +2,58 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.19.5] — 2026-11-10
+
+### Fixed
+- **Backspace erases a whole letter in the Line-Up Request window,** as in every other text field:
+  erasing after a letter such as "ñ" left half of it behind.
+- **Space and tab work in the Line-Up Request window.** Space ticks or unticks the focused report and
+  switches between PRIORITIZE and a numbered slot, and still types a space into the location; tab moves
+  to the next field from any report row instead of staying on the reports.
+- **The Broadcaster console wears the units and clock Settings,** as Observer does: the location pool's
+  temperatures and distances follow °F/°C, and the masthead's "Updated:" time and every card's
+  "DATA PULLED" time follow the 12-hour, 24-hour or military clock. A change made with the console up
+  shows at once.
+- **Observer fits the terminal down to 80×24.** With a full watchlist on a short terminal, the bottom
+  rows (the footer's keys among them) fell off the screen. The priority table now shows as many
+  favourites as fit, at least three, and scrolls with the focus beside the same scroll marks RECENT
+  uses. An empty watchlist's message is counted in the height too.
+
+### Changed
+- **Every spoken temperature names Celsius under metric.** The marine report's water temperature said a
+  bare "degrees" where current conditions said "degrees Celsius"; both say "degrees Celsius" now, and a
+  bare "degrees" under imperial.
+- **A correspondent introduces itself by its first name:** a macOS voice listed as "Eddy (English (US))"
+  says "This is Eddy" and shows "Eddy" on the marquee.
+- **Re-running Setup keeps a place unless it is the same place by the app's one rule** — the same ZIP,
+  or for a place without one the same coordinates to four decimals — as the watchlist and RECENT decide.
+- **The Broadcaster console's card boxes draw their top border as the masthead does:** two rule marks
+  before the card's name and after its grade badge, and on a narrow card the name and then the badge
+  stay in the border for as long as they fit, where they used to give way early.
+- **An unknown `[radio] mode` stops Watchpost at start** and names the key and its two words, as `cast`
+  and the tones' `mode` already did, instead of being read as Synth.
+- **In Settings, `p` previews a voice only on a voice row.** It used to play the default voice on Theme,
+  the two HISTORY pickers and the two RELAY REPLAY rows, where nothing on screen offered it.
+- **Settings → Watchpost UI → Reduce motion names its arrows:** its chips read "←→ Motion", as every
+  other picker's say what its arrows change.
+- **The two RELAY REPLAY rows' chips name their own change,** "←→ Rotation" and "←→ Language", where
+  they offered "←→ Voice  p Preview", a voice and a preview neither row has.
+
+### Performance
+- **Each beat of the interface allocates about half the memory it did, or less:** an idle Observer
+  frame from about 173 KB to 76 KB, the radio playing from 170 KB to 68 KB, and the console from 310 KB
+  to 122 KB. The ticker's marquee and the console's frame are no longer copied whole each frame, the
+  app's model is no longer copied into an interface at each step a message takes, measuring styled text
+  no longer copies it, the radio player is drawn only in the layout shown, and the ticker's tape, both
+  mastheads, the console's running order and its railed tables are worked out again only when what they
+  show changes. A ticker step allocates 3 times instead of
+  68. What is drawn is byte for byte the same.
+- **A weather update that changed nothing shown no longer redraws the tables:** the frame after it costs
+  about 82 KB, from about 424 KB.
+- **A weather publish copies a tenth of what it did:** the snapshot shares each forecast's hours instead
+  of copying them twice, about 76 KB a publish of 25 locations, from about 1 MB.
+- **The ticker's seen store is written only when it has changed,** instead of every two minutes.
+
 ## [0.19.3] — 2026-11-03
 
 ### Fixed

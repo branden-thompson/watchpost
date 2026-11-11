@@ -1,6 +1,6 @@
 # Performance measurement — the standing method, and what we deliberately did NOT build
 
-**Repo-level and release-spanning.** `perf-protocol.md` lives inside a feature folder and records one
+**Repo-level and release-spanning.** `perf-protocol.md` (`02_features/multi-voice-support/07-readiness/`) lives inside a feature folder and records one
 release's measurements; this file records how measurement is DONE here and which decisions have
 already been made, so a new session does not re-litigate them.
 
@@ -20,7 +20,7 @@ next session than silence, and the reasons are the part that will still be true 
 | Trend analysis at SHORT horizons | **Exists** | `slope` has `-window` and `-warmup`. The "8 buckets" floor is STATISTICAL, not a duration — 3 h at `-window 20m` clears it |
 | Long term (days–weeks, live stations) | **Not built, deliberately** | See below |
 
-`soak.sh` already records 14 columns per sample — `rss_kb`, `footprint_kb`, `threads`, `pcpu`,
+`soak.sh` already records, per sample, `rss_kb`, `footprint_kb`, `threads`, `pcpu`,
 `heap_alloc`, `heap_inuse`, `heap_objects`, `goroutines`, `fds`, the disk gauges and
 `publishes_recent` — and `/debug/dump` carries `runtime.ReadMemStats` including `NumGC` on demand.
 **There is no instrument the standard Go toolchain offers that this repo is not already using.**
@@ -199,14 +199,13 @@ in 200 ms because it left the machine.
 provide and that the request window's own helper text points the operator toward.  It is not the
 trade the performance ruling was written for.
 
-### Carried to 0.16.5
+### Carried as follow-ups
 
-- **Warm the geocoder connection at start-up.** The first lookup of a session pays 939 ms against a
-  200 ms steady state; the ~700 ms delta is one handshake, and it lands on the operator's first
-  search rather than on anything they can see coming.
-- **Decide whether a partial name may resolve from the pool.** It is the only change that removes the
-  round trip rather than hiding it, and it is a behaviour ruling, not an optimisation — see the fork
-  recorded for the HUM LEAD.
+- **Warm the geocoder connection at start-up** (`F-224`). The first lookup of a session pays 939 ms
+  against a 200 ms steady state; the ~700 ms delta is one handshake, and it lands on the operator's
+  first search rather than on anything they can see coming.
+- **Decide whether a partial name may resolve from the pool** (`F-225`). It is the only change that
+  removes the round trip rather than hiding it, and it is a behaviour ruling, not an optimisation.
 
 ---
 
@@ -219,7 +218,7 @@ workload". Built at W14's opening, with the rule that the pass measures before i
 |---|---|---|
 | Configs | `06_docs/perf/workload-v1/config-{default,heavy,hourly}.toml` | Ten fixed, spread places; synth radio. `default` is a new listener's map; `heavy` turns every overlay on — Air quality the tint (the heaviest at a national view, D-149), every alert category, fire All, detail All; `hourly` is `default` with the Propagation mode refreshing hourly, for G1's hourly target (A-83), and silent: the ticker, the alert tones and the radio muted. **Versioned: change a byte and it is v2** |
 | Driver | `scripts/quality/workload.expect` | A real binary on a **149×38** pty (the plan's M5 size, W2.9). `session`: phases of N minutes — A idle, B radio on, C the map at the place (a pan every 15 s), D national with the loop playing, E zoomed three steps (a pan every 15 s), F map closed — then five warm opens. `cold`: one fresh launch and `g`. `g1-use`, `g1-map`, `g1-idle`: 0.19.0 G1's arms (W10.2, A-79, A-80), the Propagation mode in use with a pan, an hour step and a frequency each cycle, the map open in Forecast mode panned on the same cycle, and the map never opened. A wait that times out fails the run |
-| Runner | `scripts/quality/workload.sh session\|cold\|warm\|g1 <variant> <outdir> [N] [cycle]` | A **scratch HOME** holding the config alone (the listener's own file and caches are never touched), `WATCHPOST_DEBUG_TIMING=1` and `WATCHPOST_DEBUG_PPROF=1`, `soak.sh` beside the driver every 20 s, the counters read every minute. `g1` runs its three arms side by side for N minutes (2880 by default) and 5 more, so the last two-minute sample lands past N (0.19.0 D-241), each in its own HOME and on its own debug address, sampled every two minutes, the counters read every ten, a post-GC heap profile kept every hour in the arm's folder (D-242) |
+| Runner | `scripts/quality/workload.sh session\|cold\|warm\|g1\|g1b <variant> <outdir> [N] [cycle]` | A **scratch HOME** holding the config alone (the listener's own file and caches are never touched), `WATCHPOST_DEBUG_TIMING=1` and `WATCHPOST_DEBUG_PPROF=1`, `soak.sh` beside the driver every 20 s, the counters read every minute. `g1` runs its three arms side by side for N minutes (2880 by default) and 5 more, so the last two-minute sample lands past N (0.19.0 D-241), each in its own HOME and on its own debug address, sampled every two minutes, the counters read every ten, a post-GC heap profile kept every hour in the arm's folder (D-242) |
 | Instrument | `modes/tty/timing.go`, `app/timing.go` | In the host, off unless `WATCHPOST_DEBUG_TIMING=1`; its records on `/debug/counters` as `timings` |
 | Summary | `go run ./tools/perfsum -in <outdir>`; `-g1 <outdir> [-against map\|idle]` for G1 | G1: each arm from its measure, the use arm's added CPU and RSS against each other arm, its downloads on the wire, the comparison `-against` names judged (the map open by default, D-236); a run of the `hourly` workload is judged on its downloads alone, at 3.3 MB an hour, its CPU and RSS reported (A-83). Per phase: CPU % from the **cumulative** CPU time (`soak.sh`'s `cpu_time`; `pcpu` is a decaying average), footprint median and max, heap, goroutines, threads. Per phase, trigger and event: n, median, p90, max — nearest rank, so every figure is a run that happened |
 
@@ -228,12 +227,14 @@ workload". Built at W14's opening, with the rule that the pass measures before i
 
 | Event | Means |
 |---|---|
-| `answered:feed\|radar\|temp` | That answer landed: the network and the app's assembly |
+| `answered:feed\|layers\|radar\|temp` | That answer landed: the network and the app's assembly (`layers` is the feed's other lanes) |
 | `complete` | The library's first `Complete` frame — **the basemap whole, not M5** |
 | `m5` | **M5 as D-46 defines it**: the first complete frame holding every alert's area — complete, the view still (its settle tick has asked, D-66), no work waiting, and the alerts asked since the ask drawn |
 | `settled` | Nothing left to come: `m5`'s conditions and no radar or temperature in flight |
 | `tick` | M6: how late the map's clock landed against the moment the library asked for |
 | `key` | M6: a key's arrival to the frame it produced |
+| `frames100` | every hundredth frame: how long the hundred took, the frame rate |
+| `below-floor` | a draw fell under the map's floor and showed the notice instead; no interval |
 
 **Rules for a run that counts.**
 - **Nothing else runs on the machine** — no gate, no build, no test. A compile beside a run is in its

@@ -161,7 +161,7 @@ func TestTheStationToggleDoesNothingFromObserver(t *testing.T) {
 
 // THE BED'S CONTROLS REACH THE STATION (D-78).
 //
-// `[B]` IS THE PRODUCTION CALLER OF `lineup.CutOver`. The Director models the
+// `[b]` IS THE PRODUCTION CALLER OF `lineup.CutOver`. The Director models the
 // cut-over (FR-4.2, D-11, D-32); with nothing emitting it, `bed.carries` is
 // false for the life of every process and the pause it governs never happens.
 //
@@ -181,7 +181,7 @@ func TestTheBedsControlsReachTheStation(t *testing.T) {
 	if len(s.bed) != 1 || !s.bed[0] {
 		t.Fatalf("[b] cuts the programme TO the bed; asked %v", s.bed)
 	}
-	// AND IT IS A DIRECTION, NOT A TOGGLE THE CONSOLE DECIDES. Told the bed is
+	// `[b]` is a direction, not a toggle the console decides: told the bed is
 	// carrying, the next press asks for the other way.
 	m, _ = m.Update(BedMsg{Carrying: true}) // D-117: a carrying bed has a relay to carry
 	m, _ = m.Update(BedRelaysMsg{Count: 3})
@@ -198,13 +198,13 @@ func TestTheBedsControlsReachTheStation(t *testing.T) {
 	if len(stepped) != 2 || stepped[0] != 1 || stepped[1] != -1 {
 		t.Errorf("the arrows step the relay selection; got %v", stepped)
 	}
-	// AND A BARE ARROW DOES NOT, which is what makes them specific.
+	// A bare arrow does not step the relays, which is what makes the keys specific.
 	m, _ = m.Update(keyPress(t, "right"))
 	if len(stepped) != 2 {
 		t.Errorf("a bare arrow stepped the relay; got %v", stepped)
 	}
 
-	// AND NONE OF THEM ACTS FROM OBSERVER, where the bed is not drawn.
+	// None of the bed's keys acts from Observer, where the bed is not drawn.
 	r := m.(Router)
 	r.active = SurfaceObserver
 	before, steps := len(s.bed), len(stepped)

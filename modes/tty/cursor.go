@@ -331,16 +331,6 @@ func (d Dashboard) heldCursor() *cursorSlot {
 	return &d.memo.cursor
 }
 
-// OverlayCursor is where the cursor stands in the window OverlayWindow lays
-// over another surface's frame - the console's - as it lays it, centred.
-func (d Dashboard) OverlayCursor(base string, termWidth int) (x, y int, ok bool) {
-	if !d.ModalOpen() {
-		return 0, 0, false
-	}
-	o := d.layout().o
-	return d.frameCursor(o, base, d.modalView(o), -1, d.confirmOverlay(o), termWidth)
-}
-
 // consoleCursor is where the console's cursor stands: on its focused row's
 // pointer, the line-up's or the pool's.
 func (b Broadcaster) consoleCursor(frame string) (x, y int, ok bool) {

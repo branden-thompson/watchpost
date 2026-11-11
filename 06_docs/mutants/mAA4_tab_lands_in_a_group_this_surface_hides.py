@@ -7,6 +7,10 @@ import pathlib
 # Re-pointed 2026-09-25 (0.18.0 D-62): tab now walks TABS, and the same defect is
 # a tab's first row chosen without asking the surface - the console would land
 # on the Maps tab, and Observer on the Broadcaster tab, whose rows it never draws.
+#
+# AN EQUIVALENT MUTANT since D-70 (0.19.5 A-24): `shownOnSurface` is true for
+# every row, so it survives. Kept, not retired: if a surface hides a row again,
+# TestTheKeyboardNeverFocusesAHiddenRow can catch it.
 p = pathlib.Path("modes/tty/setup_tabs.go"); s = p.read_text()
 old = "if tabOfGroup(setupTable()[id].group) == t && d.shownOnSurface(id) {"
 new = "if tabOfGroup(setupTable()[id].group) == t {"

@@ -77,7 +77,7 @@ func TestForecastStepsAtThePlaybackSpeed(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	d = m.(Dashboard)
+	d = m
 	last := len(d.forecastSteps()) - 1
 	for range last {
 		mm, _ := d.Update(forecastTickMsg{gen: d.mapPane.fcGen})

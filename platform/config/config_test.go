@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Spec: architecture.md §10.11 — TOML at $XDG_CONFIG_HOME/watchpost/config.toml,
+// Spec: watchpost-cli architecture §10.11 — TOML at $XDG_CONFIG_HOME/watchpost/config.toml,
 // 0600 file / 0700 dir, atomic write, tables [locations] [providers.<id>] [keys]
 // [radio] [playlist]. C-3′: no keychain prompts, no secrets beyond this file.
 

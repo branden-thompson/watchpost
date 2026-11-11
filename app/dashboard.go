@@ -1,7 +1,8 @@
-// RunDashboard wires the live pipeline (B3): config locations → NWS provider
-// → tiered scheduler → published snapshots streamed into the TTY dashboard.
-// M1 instrumentation: the time from start to the first fully-populated
-// snapshot is logged to stderr on exit when WATCHPOST_DEBUG_TIMING=1.
+// dashboard.go — RunDashboard wires the live program: config locations →
+// providers → the tiered scheduler → published snapshots, streamed into the
+// terminal program. With WATCHPOST_DEBUG_TIMING=1 the time from start to the
+// first fully populated snapshot is logged to stderr on exit.
+
 package app
 
 import (
@@ -61,9 +62,8 @@ func newLivePipelines(ctx context.Context, cfg config.Config, client *httpx.Clie
 	// watched places are known.
 	zoneShapes := zones.New(client, "")
 	lp := &livePipelines{ctx: ctx, provider: provider, timings: newTimingLog(),
-		marine: []snapshot.Provider{nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, // UAT 29 / 61 / 72
-		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
-		seismic: seismicProviders(client, cfg),
+		providerFamilies: newProviderFamilies(client, provider, tides, fireProvs, cfg),
+		firms:            firmsProv, rules: fireRules(cfg.Fire),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
 		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas, // 0.18.0 D-66
 		mapQuakes: newMapQuakes(client, ""),   // 0.18.0 D-122: the map's own quake feeds
@@ -114,7 +114,7 @@ func RunDashboard(version string, opt Options) error {
 	}
 	lp.attachMaps(ctx, version, start)
 	idx, resolver, resolverErr := loadGeodata(client)
-	prefs, setRadius := tickerState(cfg) // 0.12.0: the shared mute + alert-radius state and the radius persist hook
+	prefs, setRadius := tickerState(cfg) // the shared mute + alert-radius state and the radius persist hook
 	lp.giveItAStation(cfg, idx)
 	lp.wireUVCities()
 	model, err := tty.NewDashboard(lp.ttyConfig(version, opt, openSetup, cfg, keyOverrides, resolver, resolverErr, firmsProv, setRadius, uiHook(prefs.clock)))
@@ -266,8 +266,8 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	firstFullNanos := &atomic.Int64{} // written by concurrent tier publishes, so atomic
 	// The favourites ride the client's priority lane (UAT 64): their
 	// requests never queue behind the seed pipeline's launch burst.
-	lp.severe = newSevereDeck(p.Send) // 0.13.0: the window's index — fed by the ticker cycle and by both publishers' hooks (the snapshot each is about to send)
-	lp.severe.radius = prefs.radius   // 0.14.0: ALERTS - EVENTS scopes the WINDOW too, not only the tape
+	lp.severe = newSevereDeck(p.Send) // the window's index — fed by the ticker cycle and by both publishers' hooks (the snapshot each is about to send)
+	lp.severe.radius = prefs.radius   // ALERTS - EVENTS scopes the WINDOW too, not only the tape
 	lp.mu.Lock()
 	lp.priority = startPriority(httpx.WithPriority(ctx), p, lp.providers(), refs, func(snap *snapshot.Snapshot) {
 		// M1: CAS records only the first fully-populated publish.
@@ -285,25 +285,25 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	recentRefs := withPool(restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), lp.poolRefs, refs)
 	lp.recent = startRecent(ctx, p, lp.providers(), recentRefs, func(snap *snapshot.Snapshot) { lp.severe.SetLocations(1, snap) }) // the tty owns the caps (Q6, L3-F11)
 	lp.mu.Unlock()
-	lp.markFIRMS()                         // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
-	lp.setWatch(refs)                      // seed the live watchlist the ticker ties events to
-	lp.director = lp.buildDirector(p.Send) // 0.13.0: one owner of the voice — the ticker's takeovers and the window's event reads
-	lp.scripts = script.New(scriptsDir())  // the spoken lines, by file name; the user's config dir may override them
+	lp.markFIRMS()                        // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
+	lp.setWatch(refs)                     // seed the live watchlist the ticker ties events to
+	lp.arbiter = lp.buildArbiter(p.Send)  // one owner of the voice — the ticker's takeovers and the window's event reads
+	lp.scripts = script.New(scriptsDir()) // the spoken lines, by file name; the user's config dir may override them
 	if lp.deck != nil {
 		lp.deck.composer = synth.Composer{Scripts: lp.scripts} // the broadcast, the fire and seismic reports and the voice preview speak from the same tree
 	}
-	// AND THE BED LEARNS WHAT ACTUALLY STREAMS NEAR THE STATION (D-117). After
+	// The bed learns what actually streams near the station (D-117). After
 	// the deck, because it is the deck that holds the resolver; on its own
 	// goroutine, because it is network work and the dashboard must not wait for
 	// it to open.
 	go lp.rebed(ctx)
 	lp.startHistory(ctx, tty.HistoryRetention{Hours: cfg.HistoryHours, Trends: cfg.HistoryTrends}) // W18.3b: recorded whenever watchpost runs, in any mode (D-172), kept as the Data tab chose (D-175)
-	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send)                // a read ends with the app (A-08)
+	lp.reader = newEventReader(ctx, lp.arbiter, lp.scripts, lp.severe.Row, p.Send)                 // a read ends with the app (A-08)
 	if lp.deck != nil {
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
 	}
-	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, prefs, lp.director, lp.scripts, lp.severe)
-	// AND THE RAIL LEARNS WHAT IT IS SCOPED TO (D-73). Wired after the deck so
+	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, prefs, lp.arbiter, lp.scripts, lp.severe)
+	// The rail learns what it is scoped to (D-73). Wired after the deck so
 	// the closure can close over the deck's own radius — one function, asked by
 	// both the fence and the feed's filter.
 	// AND THE EFFECTOR LEARNS WHAT THE RAIL IS SCOPED TO (D-75), so the fence
@@ -313,7 +313,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	if mc := lp.masterControl(); mc != nil {
 		mc.mu.Lock()
 		mc.fence = lp.ticker.fence
-		// AND HOW TO SILENCE THE PROGRAMME (F-91). The deck owns the broadcast
+		// How to silence the programme (F-91). The deck owns the broadcast
 		// engine; MasterControl owns whether the station is broadcasting at all,
 		// and standby has to reach the words that are already going out.
 		if lp.deck != nil {
@@ -324,7 +324,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	}
 	lp.ticker.setScope(func() airScope {
 		return scopeFor(&lp.owner, func() airScope { return listenerScope(prefs.radius, lp.currentWatch) }, lp.currentStation)
-	}) // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
+	}) // the ticker ties events to the LIVE watchlist (re-homed on every Commit), and feeds the severe index
 	// The schedule runs from here, over the SAME arbiter and effector the ticker
 	// is given above, and it drives the live alert rail.
 	// TWO LISTS, BECAUSE THERE ARE TWO PROGRAMMES (D-72, D-76). The
@@ -332,7 +332,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// against; the LISTENER's watchlist is what the monitor's rotation moves
 	// through: the station's seams read the pool, and the cut-over belongs to
 	// the monitor.
-	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.resolvable, lp.currentWatch, lp.ticker, p.Send,
+	lp.schedule = startSchedule(ctx, lp.arbiter, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.resolvable, lp.currentWatch, lp.ticker, p.Send,
 		bedSeams{note: lp.noteBedCarrying, selected: lp.selectedRelay})
 	lp.wireDeckWarnings()
 	return firstFullNanos
@@ -344,9 +344,9 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 	c := tty.Config{
 		Version: version, KeyOverrides: keyOverrides, ASCII: opt.ASCII,
 		Stats:          lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
-		NarrateEvent:   lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
+		NarrateEvent:   lp.narrateEvent(),  // [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
 		EndEventRead:   lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
-		AlertRadiusMi:  cfg.TickerRadiusMi, // 0.12.0: the Setup window's Alert Notification Preference
+		AlertRadiusMi:  cfg.TickerRadiusMi, // the Setup window's Alert Notification Preference
 		SetAlertRadius: setRadius,
 		RelayDwell:     lp.relayDwell(),
 		SetRelayDwell:  lp.setRelayDwell(),
@@ -383,7 +383,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		// either looked.
 		FireRadiusKm:         fireRules(cfg.Fire).RadiusKm,
 		FireIncidentRadiusKm: fireRules(cfg.Fire).IncidentRadiusKm,
-		SeismicDays:          seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
+		SeismicDays:          seismicRules(cfg.Seismic).LookbackDays, // one owner for the lookback window — the [seismic] rules
 	}
 	lp.stationConfig(&c, cfg, resolver)
 	lp.mapConfig(&c, cfg)
@@ -422,8 +422,8 @@ func (lp *livePipelines) stationConfig(c *tty.Config, cfg config.Config, resolve
 
 // mapConfig is the map window's hooks and Settings (0.18.0).
 func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
-	c.NewMap = lp.newMap()                                             // 0.18.0: the map window builds it on the first g (FR-3.2)
-	c.MapFeed = lp.mapFeed                                             // 0.18.0: the alerts it draws (FR-4.1)
+	c.NewMap = lp.newMap()                                             // the map window builds it on the first g (FR-3.2)
+	c.MapFeed = lp.mapFeed                                             // the alerts it draws (FR-4.1)
 	c.MapRadar = lp.mapRadar                                           // 0.18.0 W8: the radar it draws
 	c.MapTemperature = lp.mapTemperature                               // 0.18.0 W10: the temperature it draws
 	c.ClearMapData = lp.clearMapData                                   // 0.18.0 W3.8: Settings' Clear map data
@@ -497,14 +497,14 @@ func (lp *livePipelines) wireUVCities() {
 // it can be wired — and because RunDashboard is at the safety gate's statement
 // ceiling and each of these on its own line is a line it does not have.
 func (lp *livePipelines) attachDeck(ctx context.Context, p *tea.Program, deck *radioDeck, client *httpx.Client, prefs tickerPrefs, version string, start time.Time) {
-	lp.p, lp.deck = p, deck
+	lp.program, lp.deck = p, deck
 	lp.started, lp.release = start, newReleaseWatch(version, prefs.updateCheck)
 	lp.release.start(ctx, client)
 	if deck == nil {
 		return // no deck could be built (attachRadio): nothing to tell it
 	}
 	deck.clockPref = prefs.clock // one preference, one holder: the tape and the broadcast read the same value
-	// AND THE DECK LEARNS WHO HAS THE AIR (D-74). Wired HERE because the deck
+	// The deck learns who has the air (D-74). Wired HERE because the deck
 	// exists from here — and from the owner the Router already maintains, so the
 	// question has one answer and the deck keeps no flag of its own.
 	deck.air = func() bool { return lp.owner.get() != tty.SurfaceBroadcaster }
@@ -534,9 +534,6 @@ func (lp *livePipelines) setWatch(refs []snapshot.LocationRef) {
 	lp.mu.Unlock()
 }
 
-// tickerAlert is the ticker's breaking-news audio — the radio deck, or nil when
-// there is no audio (a nil deck: tests, no device).
-
 // scriptsDir is where the user's script overrides live: <config dir>/scripts
 // — the same directory as config.toml, a scripts/ folder beside it. "" when
 // the config dir cannot resolve (built-in scripts only).
@@ -551,11 +548,11 @@ func scriptsDir() string {
 // buildDirector builds the voice arbiter over the radio deck (a silent one
 // without audio: the typed-nil deck must become a nil interface), and the
 // effector it performs through.
-func (lp *livePipelines) buildDirector(send func(tea.Msg)) *director {
+func (lp *livePipelines) buildArbiter(send func(tea.Msg)) *arbiter {
 	if lp.deck == nil {
-		return newDirector(nil, newMastercontrol(nil, send))
+		return newArbiter(nil, newMastercontrol(nil, send))
 	}
-	nar := newDirector(lp.deck, newMastercontrol(lp.deck, send))
+	nar := newArbiter(lp.deck, newMastercontrol(lp.deck, send))
 	// THE DECK CAN END A READ, and this is the only place both exist: the deck
 	// is built first and the Director takes it as its voice (FR-9).
 	lp.deck.abandonRead = nar.abandonOnAir
@@ -636,7 +633,7 @@ func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provid
 		func(t tty.ToneState) error { return saveTones(deck, toneFromView(t)) },
 		deck.Installed)
 	p := tea.NewProgram(tty.NewRouter(model))
-	deck.p = p
+	deck.program = p
 	return p, deck, deck.Stop
 }
 
@@ -758,7 +755,7 @@ func savePreference(edit func(cfg *config.Config)) error {
 func cacheDir() string { return userCacheSubdir("http") }
 
 // userCacheSubdir is <OS cache dir>/watchpost/<name> — the one builder for
-// the HTTP cache and the voice install (round 2 R2-23); "" when the OS has
+// the HTTP cache and the voice install; "" when the OS has
 // no cache directory (the callers degrade: memory only, no voice).
 func userCacheSubdir(name string) string {
 	base, err := os.UserCacheDir()
@@ -827,29 +824,27 @@ type livePipelines struct {
 	// lastMapRegion is the region the map last asked temperature for: the
 	// history records it beside the station's (D-172).
 	lastMapRegion atomic.Value
-	maps          *mapBuilder // 0.18.0: builds the window's maps; nil builds none
-	p             *tea.Program
+	maps          *mapBuilder // builds the window's maps; nil builds none
+	program       *tea.Program
 	provider      snapshot.Provider
-	marine        []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61)
-	fire          []snapshot.Provider // hms + wfigs + firms (B5)
-	firms         *firms.Provider     // the keyed one, so the Setup window can turn it on without a relaunch (UAT 100)
-	seismic       []snapshot.Provider // usgs (0.11.0)
-	rules         fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
-	priority      *pipeline
-	recent        *recentPipeline
-	ticker        *tickerDeck          // 0.12.0: waited at shutdown so its cache writes settle before teardown
-	severe        *severeDeck          // 0.13.0: the severe-events index the window lists
-	mapQuakes     *mapQuakes           // 0.18.0 D-122: the map's quake feeds, the listener's choice
-	airnow        *airquality.Provider // 0.18.0 D-138: AirNow's reporting areas, for the map's air quality
-	mapClients    []*httpx.Client      // 0.18.0 D-150: the radar's and the temperature's, counted for MAP STATUS
-	tiles         *tileCounter         // 0.18.0 D-150: the basemap's tile fetches, counted
-	problems      mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
-	propagation   propagationHolder    // 0.19.0 W4.1: the one go-ionomaps object, made on the first update
-	timings       *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
-	director      *director            // 0.13.0: the voice arbiter (app/director.go)
-	scripts       *script.Library      // 0.13.0: the spoken lines (domains/radio/script)
-	reader        *eventReader         // 0.13.0: [space] in the window
-	schedule      *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump
+	providerFamilies
+	firms       *firms.Provider // the keyed one, so the Setup window can turn it on without a relaunch (UAT 100)
+	rules       fire.Rules      // the [fire] rings, for the broadcast's fire report (UAT 114)
+	priority    *pipeline
+	recent      *recentPipeline
+	ticker      *tickerDeck          // waited at shutdown so its cache writes settle before teardown
+	severe      *severeDeck          // the severe-events index the window lists
+	mapQuakes   *mapQuakes           // 0.18.0 D-122: the map's quake feeds, the listener's choice
+	airnow      *airquality.Provider // 0.18.0 D-138: AirNow's reporting areas, for the map's air quality
+	mapClients  []*httpx.Client      // 0.18.0 D-150: the radar's and the temperature's, counted for MAP STATUS
+	tiles       *tileCounter         // 0.18.0 D-150: the basemap's tile fetches, counted
+	problems    mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
+	propagation propagationHolder    // 0.19.0 W4.1: the one go-ionomaps object, made on the first update
+	timings     *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
+	arbiter     *arbiter             // the voice arbiter (app/arbiter.go)
+	scripts     *script.Library      // the spoken lines (domains/radio/script)
+	reader      *eventReader         // [space] in the window
+	schedule    *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump
 
 	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit
 
@@ -993,9 +988,37 @@ func (lp *livePipelines) setup(def snapshot.LocationRef, firmsKey string) error 
 // providers is the full provider set: weather reference + marine, fire and
 // seismic secondaries.
 func (lp *livePipelines) providers() []snapshot.Provider {
-	out := append([]snapshot.Provider{lp.provider}, lp.marine...)
-	out = append(out, lp.fire...)
-	return append(out, lp.seismic...)
+	return lp.all(lp.provider) // the families' one order, shared with the one-shot report
+}
+
+// providerFamilies is every data provider the station fetches from besides
+// the weather provider, by family. newProviderFamilies is the one place they
+// are built: the live pipelines and the one-shot report both take theirs from
+// it, and so does TestEveryProviderHasAnEndpoint, so a provider added there is
+// fetched by both and held to an endpoint. A family added here also needs its
+// line in all.
+type providerFamilies struct {
+	marine  []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61 / 72)
+	fire    []snapshot.Provider // hms + wfigs + firms (B5)
+	seismic []snapshot.Provider // usgs
+}
+
+// newProviderFamilies builds every family on the data client. fire is
+// fireProviders' answer, which the caller keeps for its FIRMS handle.
+func newProviderFamilies(client *httpx.Client, provider *nws.Provider, tides *coops.Provider, fire []snapshot.Provider, cfg config.Config) providerFamilies {
+	return providerFamilies{
+		marine:  []snapshot.Provider{nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)},
+		fire:    fire,
+		seismic: seismicProviders(client, cfg),
+	}
+}
+
+// all is the weather provider and then every family, in the order both
+// fetch paths ask them.
+func (f providerFamilies) all(weather snapshot.Provider) []snapshot.Provider {
+	out := append([]snapshot.Provider{weather}, f.marine...)
+	out = append(out, f.fire...)
+	return append(out, f.seismic...)
 }
 
 func (lp *livePipelines) stopAll() {
@@ -1070,11 +1093,11 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 		lp.priority.update(watch)
 	}
 	lp.watchRefs = append([]snapshot.LocationRef(nil), watch...) // re-home the ticker's tie to the new watchlist (under lp.mu, already held)
-	// AND THE STATION FOLLOWS, BUT ONLY IF IT WAS BORROWING (D-72). A station
+	// The station follows only if it was borrowing (D-72). A station
 	// with a transmitter of its own does not move because the listener changed
 	// what they are watching — that is the split.
 	//
-	// IT MOVES BEFORE THE PIPELINE IS RECONCILED (D-112), because the pipeline's
+	// IT MOVES BEFORE THE PIPELINE IS RECONCILED, because the pipeline's
 	// list is the recent locations AND the pool: reconciling first would fetch the
 	// old station's candidates and then evict them a line later.
 	if restation {
@@ -1082,7 +1105,7 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 		// TOLD, NOT LEFT TO BE NOTICED. The console draws the transmitter and
 		// the radius and holds neither; a pool that moved without saying so
 		// would leave it naming the region the station just left.
-		told = lp.p // read under the lock; sent above, after it
+		told = lp.program // read under the lock; sent above, after it
 	}
 	// THE POOL IS PART OF THE LIST ON EVERY COMMIT, NOT JUST AT THE SEED
 	// (D-112): reconciled against the listener's list alone, `SetLocations`

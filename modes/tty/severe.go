@@ -95,7 +95,10 @@ type SevereRow struct {
 // SevereRecord is the [A]-shaped record of one row.
 type SevereRecord struct {
 	Title, Meta, Timing, Area string
-	Paras                     []string
+	// Window is how long the alert is in effect, the span Timing's "(~…)"
+	// shows; zero for none. The spoken read words it.
+	Window time.Duration
+	Paras  []string
 }
 
 // severeTabs is the window's view of the registry, in tab order. The rows are
@@ -225,10 +228,9 @@ func (d Dashboard) handleSevereNav(act term.Action) Dashboard {
 
 // --- rendering ---
 
-// severeArrows are the chip labels per --ascii: the words, not the
-
 // severeWindowName is the title; in the record it keeps the name and adds the
 // crumb (plan §5.6 M-6): "NOTABLE EVENTS AND FORECASTS ─── Warnings · 2 / 9".
+//
 // severeWindowName covers weather, non-weather hazards (a landslide is not
 // weather) and products that are not warnings at all — a forecast or an
 // outlook is notable without being bad news (MVS-D-59).
@@ -341,7 +343,7 @@ func (d Dashboard) severeChips(o render.Opts, hasRows bool, width int) string {
 	ud, lr := "↑↓", "←→" // KeyCap names them in words under --ascii (R5-C-13)
 	canRead := hasRows && d.cfg.NarrateEvent != nil
 	// Each form is built only when the wider one did not fit (the window's
-	// frame budget); the floor — the 80-col --ascii chips, round 4 B-03 —
+	// frame budget); the floor — the 80-col --ascii chips —
 	// leaves the arrows unlabelled.
 	// A STATE-DRIVEN LABEL, the same as the radio panel's (UAT 37,
 	// radio_panel.go): the chip says what the key will DO next rather than

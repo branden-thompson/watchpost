@@ -127,7 +127,7 @@ func (b Broadcaster) withControl(line, control string) string {
 // and the table — and a second `Projection(...)[:MainTrackSlots]` would be a
 // second answer to how far the window reaches.
 func (b Broadcaster) mainTrack() []lineup.Card {
-	main := b.lineup.Projection(lineup.MainTrack)
+	main := b.projection(lineup.MainTrack)
 	if len(main) > MainTrackSlots {
 		main = main[:MainTrackSlots]
 	}

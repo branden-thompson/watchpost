@@ -199,7 +199,7 @@ func (d Dashboard) armMapTick() (Dashboard, tea.Cmd) {
 		return d, nil
 	}
 	d.mapPane.tickAt = at
-	return d, tea.Tick(max(at.Sub(now), mapTickFloor), func(time.Time) tea.Msg { return mapTickMsg{at: at} })
+	return d, d.after(max(at.Sub(now), mapTickFloor), mapTickMsg{at: at})
 }
 
 // applyMapTick draws for the tick outstanding; one for a time no longer

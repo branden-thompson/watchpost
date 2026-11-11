@@ -16,7 +16,7 @@ import (
 )
 
 // Spec: AI-1 (endpoint map, units, batched zone alerts, UA mandate) +
-// architecture §10.1 (Fragment shapes). Fixtures recorded from the live-probe
+// watchpost-cli architecture §10.1 (Fragment shapes). Fixtures recorded from the live-probe
 // shapes in 02-analysis/research/AI-1-nws-api.md.
 
 func fixture(t *testing.T, name string) []byte {

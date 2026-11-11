@@ -7,7 +7,7 @@ import pathlib
 # RE-ANCHORED (round 4): the liveness rule has one carrier, `live()`, and this
 # deletes the ON-AIR asker's use of it. mK6 does the suspended clause, mL2
 # innermostResumable, mL3 first().
-p = pathlib.Path("app/director.go"); s = p.read_text()
+p = pathlib.Path("app/arbiter.go"); s = p.read_text()
 old = "	if j := d.onAir; live(j) && j.class == narrateRead {"
 new = "	if j := d.onAir; j != nil && j.class == narrateRead {"
 assert old in s, "mL0"

@@ -123,19 +123,12 @@ func seismicRowLevel(ss *snapshot.SeismicState) int {
 // table mark and this section cannot disagree); the label carries the finer
 // four-way felt wording the section shows (objectives §4).
 func seismicBand(o render.Opts, mag float64) (glyph, label string) {
-	glyph = o.Glyphs().Seismic[render.SeismicLevel(mag)-1]
-	switch {
-	case mag >= 5.0:
-		label = "Significant"
-	case mag >= 4.5:
-		label = "Almost certainly felt"
-	case mag >= 3.5:
-		label = "Might feel it"
-	default:
-		label = "Below feeling"
-	}
-	return glyph, label
+	return o.Glyphs().Seismic[render.SeismicLevel(mag)-1], feltLabels[render.FeltBand(mag)]
 }
+
+// feltLabels are the Details section's words for each felt band
+// (render.FeltBand).
+var feltLabels = [...]string{"Below feeling", "Might feel it", "Almost certainly felt", "Significant"}
 
 // seismicAlertSevere reports a PAGER alert level that warrants the warning
 // tone (USGS levels green/yellow/orange/red — orange and red are the

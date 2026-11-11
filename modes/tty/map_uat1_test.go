@@ -9,6 +9,7 @@ package tty
 import (
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -190,7 +191,7 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 	for i := range d.overlayRows() {
 		rows = append(rows, d.overlayRows()[i].key)
 	}
-	for range indexOf(rows, "roads") {
+	for range slices.Index(rows, "roads") {
 		m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 		d = m.(Dashboard)
 	}
@@ -210,15 +211,6 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 	if strings.Contains(bodyText(d), "Parks from") {
 		t.Error("O did not close the menu")
 	}
-}
-
-func indexOf(xs []string, x string) int {
-	for i, v := range xs {
-		if v == x {
-			return i
-		}
-	}
-	return -1
 }
 
 // msgsOf runs a command, and a batch's commands, and returns what they say.
@@ -292,12 +284,12 @@ func TestADetailSwitchChangesThePictureAndIsSaved(t *testing.T) {
 	for _, r := range d.overlayRows() {
 		keys = append(keys, r.key)
 	}
-	d.mapPane.menuAt = indexOf(keys, "borders")
+	d.mapPane.menuAt = slices.Index(keys, "borders")
 	m, cmd, ok := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	if !ok {
 		t.Fatal("space in the menu was not handled")
 	}
-	d = settleMap(t, m.(Dashboard))
+	d = settleMap(t, m)
 	if strings.Join(d.mapPane.lines, "\n") == before {
 		t.Error("switching the borders off left the picture as it was")
 	}

@@ -13,6 +13,7 @@ package tty
 import (
 	"crypto/sha256"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +40,7 @@ type bodyKey struct {
 	radioH, alertH int
 	controlRows    int
 	window, days   int
+	priorityRows   int // favourites shown: fewer on a short terminal (0.19.5 D-30)
 	snap, recent   *snapshot.Snapshot
 	selected       int // position: the row it marks indexes the rows snap, recent and lookup key by identity (#12)
 	recentOff      int // position: the scroll into the recent rows, which recent keys by identity (#12)
@@ -57,8 +59,6 @@ type bodyKey struct {
 	lookup snapshot.LocationKey
 }
 
-// bodyMemo is the single slot. hits/misses are read by the tests and the
-// diagnostic dump; they are not policy.
 // memoStats is the counter half every memo slot carries. ONE OWNER (metric D,
 // 2026-09-08): bodyMemo and modalMemo embed it rather than each carrying its own
 // nil-check-lock-return accessor, so the next memo inherits `counts()` instead
@@ -79,6 +79,8 @@ func (m *memoStats) counts() (hits, misses int) {
 	return m.hits, m.misses
 }
 
+// bodyMemo is the single slot. hits/misses are read by the tests and the
+// diagnostic dump; they are not policy.
 type bodyMemo struct {
 	memoStats
 	ok               bool
@@ -87,14 +89,51 @@ type bodyMemo struct {
 	// cursor is the frame's cursor, kept here so the hit path allocates
 	// nothing for it (D-362, cursorSlot).
 	cursor cursorSlot
+	// tape is the ticker's current lane as the frame and the scroll read it
+	// (0.19.5 PF-8, tapeOf).
+	tape tapeSlot
+	// head is the masthead (0.19.5 PF-7, mastheadSlot).
+	head mastheadSlot
+}
+
+// sameContent is a snapshot's stand-in in the tables' memo key (0.19.5 D-31).
+// The tables draw only from a snapshot's Locations, and a publish whose
+// locations are the ones before it changes nothing they show: the masthead's
+// stamp, which reads the providers, has its own memo. So when a snapshot
+// arrives with the same locations as the one it replaces, the key goes on
+// holding the one that first drew them, and the tables are not drawn again.
+type sameContent struct {
+	// seen is the snapshot that last arrived, and rep the one the key holds
+	// for it: itself, or the earlier snapshot whose locations it repeats.
+	seen, rep *snapshot.Snapshot
+}
+
+// arrive records next replacing old: the same locations keep the stand-in old
+// had, and anything else stands for itself. It runs after sortAlerts, so both
+// sides compare in the order they are drawn.
+func (c sameContent) arrive(old, next *snapshot.Snapshot) sameContent {
+	if old != nil && next != nil && reflect.DeepEqual(old.Locations, next.Locations) {
+		return sameContent{seen: next, rep: c.keyFor(old)}
+	}
+	return sameContent{seen: next, rep: next}
+}
+
+// keyFor is the key's stand-in for s. A snapshot that did not arrive through
+// arrive, written straight onto the model, stands for itself: a fresh miss,
+// never a stale hit.
+func (c sameContent) keyFor(s *snapshot.Snapshot) *snapshot.Snapshot {
+	if s != nil && s == c.seen {
+		return c.rep
+	}
+	return s
 }
 
 // bodyKeyFor derives the key from the model and this frame's layout.
 func (d Dashboard) bodyKeyFor(fl frameLayout) bodyKey {
 	k := bodyKey{
 		width: fl.o.Width, height: d.height, compact: fl.compact, radioH: fl.radioH, alertH: fl.alertH,
-		controlRows: fl.controlRows, window: fl.window, days: fl.days,
-		snap: d.snap, recent: d.recent, selected: d.selected, recentOff: d.recentOff, lookup: d.lookupKey(),
+		controlRows: fl.controlRows, window: fl.window, days: fl.days, priorityRows: fl.priorityRows,
+		snap: d.snapSame.keyFor(d.snap), recent: d.recentSame.keyFor(d.recent), selected: d.selected, recentOff: d.recentOff, lookup: d.lookupKey(),
 		units: d.units, ascii: fl.o.ASCII, thinBands: fl.o.ThinBands,
 		radioKey: d.radioKey, radioPlaying: d.radioPlaying, radioRepeat: d.radioRepeat,
 		theme: render.ThemeGeneration(), fireBoldMW: d.fireBoldMW(),
@@ -234,7 +273,7 @@ type modalKey struct {
 	setupGen uint64   // Setup's state, by generation while it is open
 	stats    [32]byte // the [S] stats, fingerprinted while it is open
 	darkBG   bool
-	mapsOff  bool   // 0.18.0: the map's Settings, drawn by Settings and by the map window
+	mapsOff  bool   // the map's Settings, drawn by Settings and by the map window
 	mapWords string // the map's disclosure and retention words, drawn by Settings and the map window
 	mapDesc  mapDescMode
 	// The Maps tab's others and the estimate: Settings draws

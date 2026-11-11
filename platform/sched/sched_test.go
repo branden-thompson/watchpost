@@ -10,11 +10,10 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// Spec: architecture §3 + §10.8 — tiered cadence through one scheduler; Clock
+// Spec: watchpost-cli architecture §3 + §10.8 — tiered cadence through one scheduler; Clock
 // interface so the replay harness (M2/M3) can drive time; publish-on-change;
 // tier cadence is THE freshness authority.
 
-// fakeClock drives time deterministically.
 // fakeClock drives the scheduler's time. IT SYNCHRONISES; IT DOES NOT GUESS
 // (F-29, 2026-09-06).
 //
@@ -369,10 +368,15 @@ func TestRetriesAreBounded(t *testing.T) {
 	s.Start(ctx)
 	defer s.Stop()
 	waitFor(t, func() bool { return p.n.Load() == 1 }, "initial fetch")
+	// Each advance waits for the scheduler's next wait to be armed: a fetch is
+	// counted before its retry wait is, and an advance that comes between the
+	// two finds nothing due and is lost.
 	for i := range maxRetries {
+		clk.awaitWaiters(1)
 		clk.Advance(retryBase << i)
 		waitFor(t, func() bool { return p.n.Load() == int32(i+2) }, "bounded retry")
 	}
+	clk.awaitWaiters(1)
 	clk.Advance(30 * time.Minute)
 	time.Sleep(10 * time.Millisecond)
 	if p.n.Load() != int32(maxRetries+1) {

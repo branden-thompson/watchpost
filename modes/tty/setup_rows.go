@@ -1,8 +1,8 @@
 package tty
 
-// setup_rows.go — the Setup window's row table (0.14.0 P4 Task 4.4).
+// setup_rows.go — the Settings window's row table (0.14.0 P4 Task 4.4).
 //
-// Twenty rows across four groups cannot be driven by a focus enum that is a
+// The rows, in their groups, cannot be driven by a focus enum that is a
 // small state machine, each key handler knowing which question it is in and
 // what comes next — the keyboard rule, the focus order, the › mark and the
 // scroll would each end up with their own idea of the order, and they would
@@ -48,13 +48,16 @@ const (
 	rowCheck
 	// rowPicker cycles a list with ←→ and previews with p.
 	rowPicker
-	// rowToggle is a two-state control shown as its STATE, not as a box:
-	// ←→ or space flip it, and the row says which state it is in.
+	// rowToggle is a two-state control shown as its STATE, not as a box, and
+	// the row says which state it is in. ←, → and space all flip it, through
+	// the row's owner: mapPrefArrow for a map row, else toggleClass, which
+	// answers only the tone rows. A new rowToggle row is answered by neither
+	// until one of them knows it.
 	rowToggle
 )
 
 // setupRowID names each row. The ORDER OF THESE CONSTANTS IS THE FOCUS ORDER:
-// ↑↓ walk them, tab jumps to the next group's first row. Nothing else defines
+// ↑↓ walk them, and tab moves between the tabs. Nothing else defines
 // the order, so nothing else can disagree about it.
 type setupRowID int
 
@@ -194,21 +197,11 @@ const (
 	scopeSplit
 )
 
-// NO `numSetupScopes` SENTINEL, and that is a decision rather than an omission.
-//
-// `wires` enrols a closed set by its bound and then asks every member to name a
-// production WRITER — and `noteComposite` counts a member listed in a table
-// literal as a READ, deliberately: "a set written out as a literal … is naming it
-// as one of the things to consider."  A STATIC CLASSIFICATION therefore never has
-// a writer, because nothing in production ever decides to produce one; the table
-// simply states it.
-//
-// The two closest analogues are in this very file — `setupRowKind` and
-// `setupGroupID`, both static classifications, both without a sentinel — so this
-// matches the convention rather than dodging the gate.  What the gate would
-// buy is a range check on values that can only come from the table below;
-// what the completeness check actually needs is `scopeUnruled`, and
-// TestEverySettingsRowIsRuledForItsSurface asks for that directly.
+// setupScope has no count sentinel. Its values come only from the table
+// below, and the completeness that matters, that no row is scopeUnruled, is
+// TestEverySettingsRowIsRuledForItsSurface's. A sentinel would also enrol the
+// type in the wires gate, which asks every member for a production writer that
+// a static classification never has; setupRowKind and setupGroupID are the same.
 
 // setupRow describes one focusable row.
 type setupRow struct {
@@ -235,12 +228,12 @@ type setupRow struct {
 
 // setupTable is the table. It is built rather than declared as a package var
 // because a package-level table would be mutable process-wide state (P10-06)
-// and every caller wants its own copy anyway — it is twenty small structs.
+// and every caller wants its own copy anyway; it is a table of small structs.
 func setupTable() [setupRowCount]setupRow {
 	return [setupRowCount]setupRow{
 		// THE DEFAULT LOCATION IS THE LISTENER'S (D-18 row 1). The station's
 		// epicentre is a different fact with a different owner — D-72 split them.
-		rowLocation: {rowLocation, groupData, scopeObserver, rowInput, false, "", ""},
+		rowLocation: {id: rowLocation, group: groupData, scope: scopeObserver, kind: rowInput},
 
 		// THE STATION'S EPICENTRE AND ITS REACH (D-115). Broadcaster-only: a
 		// listener has no transmitter, and Observer's own default location is the
@@ -248,82 +241,82 @@ func setupTable() [setupRowCount]setupRow {
 		// to "function like the Default location setting for Observer" and the
 		// radius "like the Service alerts radius filter option in Settings just
 		// without the 'all alerts' option (so no radio button)".
-		rowTransmitter:   {rowTransmitter, groupStation, scopeBroadcaster, rowInput, false, "", ""},
-		rowServiceRadius: {rowServiceRadius, groupStation, scopeBroadcaster, rowInput, false, "", ""},
+		rowTransmitter:   {id: rowTransmitter, group: groupStation, scope: scopeBroadcaster, kind: rowInput},
+		rowServiceRadius: {id: rowServiceRadius, group: groupStation, scope: scopeBroadcaster, kind: rowInput},
 
-		rowFIRMSKey: {rowFIRMSKey, groupData, scopeShared, rowInput, false, "", ""},
+		rowFIRMSKey: {id: rowFIRMSKey, group: groupData, scope: scopeShared, kind: rowInput},
 
 		// DISPLAY PREFERENCES ARE ONE APP'S (D-18 rows 19, 21, 22).
-		rowTheme:         {rowTheme, groupUI, scopeShared, rowPicker, true, "", ""},
-		rowUnitsImperial: {rowUnitsImperial, groupUI, scopeShared, rowRadio, false, "", ""},
-		rowUnitsMetric:   {rowUnitsMetric, groupUI, scopeShared, rowRadio, false, "", ""},
-		rowClock12:       {rowClock12, groupUI, scopeShared, rowRadio, false, "", ""},
-		rowClock24:       {rowClock24, groupUI, scopeShared, rowRadio, false, "", ""},
-		rowClockMil:      {rowClockMil, groupUI, scopeShared, rowRadio, false, "", ""},
-		rowReduceMotion:  {rowReduceMotion, groupUI, scopeShared, rowPicker, false, "", ""}, // both surfaces move (D-360)
+		rowTheme:         {id: rowTheme, group: groupUI, scope: scopeShared, kind: rowPicker, picker: true},
+		rowUnitsImperial: {id: rowUnitsImperial, group: groupUI, scope: scopeShared, kind: rowRadio},
+		rowUnitsMetric:   {id: rowUnitsMetric, group: groupUI, scope: scopeShared, kind: rowRadio},
+		rowClock12:       {id: rowClock12, group: groupUI, scope: scopeShared, kind: rowRadio},
+		rowClock24:       {id: rowClock24, group: groupUI, scope: scopeShared, kind: rowRadio},
+		rowClockMil:      {id: rowClockMil, group: groupUI, scope: scopeShared, kind: rowRadio},
+		rowReduceMotion:  {id: rowReduceMotion, group: groupUI, scope: scopeShared, kind: rowPicker, picker: true}, // both surfaces move (D-360)
 
 		// THE MAP IS THE LISTENER'S (0.18.0): Observer draws it, the console does not.
 		// ONE LINE EACH: the WATCHPOST UI group must still fit the window unscrolled.
-		rowMapsOn:          {rowMapsOn, groupMap, scopeObserver, rowToggle, false, "", ""},
-		rowMapDesc:         {rowMapDesc, groupMap, scopeShared, rowPicker, true, "", ""}, // "Instead of the map" is one Setting for both UI modes (D-121)
-		rowMapScale:        {rowMapScale, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapColours:      {rowMapColours, groupMap, scopeShared, rowPicker, true, "", ""},  // both UI modes draw a map (D-195)
-		rowMapPlayback:     {rowMapPlayback, groupMap, scopeShared, rowPicker, true, "", ""}, // both UI modes play the map (D-195)
-		rowMapNearby:       {rowMapNearby, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapRadarSource:  {rowMapRadarSource, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapTempSource:   {rowMapTempSource, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapRainDetail:   {rowMapRainDetail, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapUVCities:     {rowMapUVCities, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapPropRadius:   {rowMapPropRadius, groupMap, scopeObserver, rowPicker, true, "", ""}, // the Broadcaster keeps its service radius (D-121)
-		rowMapPropNoise:    {rowMapPropNoise, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapPropRefresh:  {rowMapPropRefresh, groupMap, scopeShared, rowPicker, true, "", ""},  // one Setting for both UI modes (D-121)
-		rowMapPropReadings: {rowMapPropReadings, groupMap, scopeShared, rowPicker, true, "", ""}, // one Setting for both UI modes (D-121)
-		rowMapPropStations: {rowMapPropStations, groupMap, scopeShared, rowPicker, true, "", ""}, // one Setting for both UI modes (D-121)
-		rowMapRadarAhead:   {rowMapRadarAhead, groupMap, scopeObserver, rowPicker, true, "", ""},
-		rowMapQuakes:       {rowMapQuakes, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapsOn:          {id: rowMapsOn, group: groupMap, scope: scopeObserver, kind: rowToggle},
+		rowMapDesc:         {id: rowMapDesc, group: groupMap, scope: scopeShared, kind: rowPicker, picker: true}, // "Instead of the map" is one Setting for both UI modes (D-121)
+		rowMapScale:        {id: rowMapScale, group: groupMap, scope: scopeObserver, kind: rowPicker, picker: true},
+		rowMapColours:      {id: rowMapColours, group: groupMap, scope: scopeShared, kind: rowPicker, picker: true},  // both UI modes draw a map (D-195)
+		rowMapPlayback:     {id: rowMapPlayback, group: groupMap, scope: scopeShared, kind: rowPicker, picker: true}, // both UI modes play the map (D-195)
+		rowMapNearby:       {id: rowMapNearby, group: groupMap, scope: scopeObserver, kind: rowPicker, picker: true},
+		rowMapRadarSource:  {id: rowMapRadarSource, group: groupMap, scope: scopeObserver, kind: rowPicker, picker: true},
+		rowMapTempSource:   {id: rowMapTempSource, group: groupMap, scope: scopeObserver, kind: rowPicker, picker: true},
+		rowMapRainDetail:   {id: rowMapRainDetail, group: groupMap, scope: scopeObserver, kind: rowPicker, picker: true},
+		rowMapUVCities:     {id: rowMapUVCities, group: groupMap, scope: scopeObserver, kind: rowPicker, picker: true},
+		rowMapPropRadius:   {id: rowMapPropRadius, group: groupMap, scope: scopeObserver, kind: rowPicker, picker: true}, // the Broadcaster keeps its service radius (D-121)
+		rowMapPropNoise:    {id: rowMapPropNoise, group: groupMap, scope: scopeObserver, kind: rowPicker, picker: true},
+		rowMapPropRefresh:  {id: rowMapPropRefresh, group: groupMap, scope: scopeShared, kind: rowPicker, picker: true},  // one Setting for both UI modes (D-121)
+		rowMapPropReadings: {id: rowMapPropReadings, group: groupMap, scope: scopeShared, kind: rowPicker, picker: true}, // one Setting for both UI modes (D-121)
+		rowMapPropStations: {id: rowMapPropStations, group: groupMap, scope: scopeShared, kind: rowPicker, picker: true}, // one Setting for both UI modes (D-121)
+		rowMapRadarAhead:   {id: rowMapRadarAhead, group: groupMap, scope: scopeObserver, kind: rowPicker, picker: true},
+		rowMapQuakes:       {id: rowMapQuakes, group: groupMap, scope: scopeObserver, kind: rowPicker, picker: true},
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one
 		// under the cursor; ←→ move it when there is more than one.
-		rowMapLayers: {rowMapLayers, groupLayers, scopeObserver, rowCheck, false, "", ""},
+		rowMapLayers: {id: rowMapLayers, group: groupLayers, scope: scopeObserver, kind: rowCheck},
 		// THE MAP'S OWN DETAIL (D-65): the library's basemap layers, weather-first.
-		rowMapDetailLevel:   {rowMapDetailLevel, groupMapLayers, scopeObserver, rowPicker, true, "", ""}, // go-tuiMaps D-82, D-67
-		rowMapDetailBorders: {rowMapDetailBorders, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailWater:   {rowMapDetailWater, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailRivers:  {rowMapDetailRivers, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailNames:   {rowMapDetailNames, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailRoads:   {rowMapDetailRoads, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailRail:    {rowMapDetailRail, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailParks:   {rowMapDetailParks, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailNight:   {rowMapDetailNight, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailLevel:   {id: rowMapDetailLevel, group: groupMapLayers, scope: scopeObserver, kind: rowPicker, picker: true}, // go-tuiMaps D-82, D-67
+		rowMapDetailBorders: {id: rowMapDetailBorders, group: groupMapLayers, scope: scopeObserver, kind: rowToggle},
+		rowMapDetailWater:   {id: rowMapDetailWater, group: groupMapLayers, scope: scopeObserver, kind: rowToggle},
+		rowMapDetailRivers:  {id: rowMapDetailRivers, group: groupMapLayers, scope: scopeObserver, kind: rowToggle},
+		rowMapDetailNames:   {id: rowMapDetailNames, group: groupMapLayers, scope: scopeObserver, kind: rowToggle},
+		rowMapDetailRoads:   {id: rowMapDetailRoads, group: groupMapLayers, scope: scopeObserver, kind: rowToggle},
+		rowMapDetailRail:    {id: rowMapDetailRail, group: groupMapLayers, scope: scopeObserver, kind: rowToggle},
+		rowMapDetailParks:   {id: rowMapDetailParks, group: groupMapLayers, scope: scopeObserver, kind: rowToggle},
+		rowMapDetailNight:   {id: rowMapDetailNight, group: groupMapLayers, scope: scopeObserver, kind: rowToggle},
 		// AN ACTION, operated by space: it empties the map's data (W3.8).
-		rowMapClear: {rowMapClear, groupMapLayers, scopeObserver, rowCheck, false, "", ""},
+		rowMapClear: {id: rowMapClear, group: groupMapLayers, scope: scopeObserver, kind: rowCheck},
 
 		// OBSERVER'S ALERT RADIUS (D-18 row 25, per D-20): it bounds ARRIVALS over
 		// an unbounded location set. The station's service radius is a HARD bound
 		// on LOOKUPS and a separate setting — two radii, not one.
-		rowEventsAll:     {rowEventsAll, groupEvents, scopeObserver, rowRadio, false, "", ""},
-		rowHistoryHours:  {rowHistoryHours, groupHistory, scopeShared, rowPicker, true, "", ""},
-		rowHistoryTrends: {rowHistoryTrends, groupHistory, scopeShared, rowPicker, true, "", ""},
-		rowHistoryClear:  {rowHistoryClear, groupHistory, scopeShared, rowCheck, false, "", ""}, // an action, as Map data's (space)
-		rowEventsWithin:  {rowEventsWithin, groupEvents, scopeObserver, rowRadio, false, "", ""},
+		rowEventsAll:     {id: rowEventsAll, group: groupEvents, scope: scopeObserver, kind: rowRadio},
+		rowHistoryHours:  {id: rowHistoryHours, group: groupHistory, scope: scopeShared, kind: rowPicker, picker: true},
+		rowHistoryTrends: {id: rowHistoryTrends, group: groupHistory, scope: scopeShared, kind: rowPicker, picker: true},
+		rowHistoryClear:  {id: rowHistoryClear, group: groupHistory, scope: scopeShared, kind: rowCheck}, // an action, as Map data's (space)
+		rowEventsWithin:  {id: rowEventsWithin, group: groupEvents, scope: scopeObserver, kind: rowRadio},
 
 		// TONES ARE SPLIT (D-18 rows 8, 9): both surfaces have them, with
 		// INDEPENDENT values. They render on both today; the separate storage is
 		// D-18's own additive migration and is not built yet.
-		rowClassDisaster:  {rowClassDisaster, groupTone, scopeSplit, rowToggle, false, "", "disaster"},
-		rowClassWarning:   {rowClassWarning, groupTone, scopeSplit, rowToggle, false, "", "warning"},
-		rowClassWatch:     {rowClassWatch, groupTone, scopeSplit, rowToggle, false, "", "watch"},
-		rowClassAdvisory:  {rowClassAdvisory, groupTone, scopeSplit, rowToggle, false, "", "advisory"},
-		rowClassStatement: {rowClassStatement, groupTone, scopeSplit, rowToggle, false, "", "statement"},
-		rowClassStorm:     {rowClassStorm, groupTone, scopeSplit, rowToggle, false, "", "storm"},
+		rowClassDisaster:  {id: rowClassDisaster, group: groupTone, scope: scopeSplit, kind: rowToggle, class: "disaster"},
+		rowClassWarning:   {id: rowClassWarning, group: groupTone, scope: scopeSplit, kind: rowToggle, class: "warning"},
+		rowClassWatch:     {id: rowClassWatch, group: groupTone, scope: scopeSplit, kind: rowToggle, class: "watch"},
+		rowClassAdvisory:  {id: rowClassAdvisory, group: groupTone, scope: scopeSplit, kind: rowToggle, class: "advisory"},
+		rowClassStatement: {id: rowClassStatement, group: groupTone, scope: scopeSplit, kind: rowToggle, class: "statement"},
+		rowClassStorm:     {id: rowClassStorm, group: groupTone, scope: scopeSplit, kind: rowToggle, class: "storm"},
 
 		// ONE STATION, ONE SOUND (D-18 rows 6, 7, settled by D-11): the main track
 		// is the rotation, so Broadcaster drives the same reads through the same
 		// voices. The cast is SHARED.
-		rowCastAlerts:   {rowCastAlerts, groupCast, scopeShared, rowPicker, true, roleAlerts, ""},
-		rowCastWeather:  {rowCastWeather, groupCast, scopeShared, rowPicker, true, roleWeather, ""},
-		rowCastMaritime: {rowCastMaritime, groupCast, scopeShared, rowPicker, true, roleMaritime, ""},
-		rowCastFire:     {rowCastFire, groupCast, scopeShared, rowPicker, true, roleFire, ""},
-		rowCastSeismic:  {rowCastSeismic, groupCast, scopeShared, rowPicker, true, roleSeismic, ""},
+		rowCastAlerts:   {id: rowCastAlerts, group: groupCast, scope: scopeShared, kind: rowPicker, picker: true, role: roleAlerts},
+		rowCastWeather:  {id: rowCastWeather, group: groupCast, scope: scopeShared, kind: rowPicker, picker: true, role: roleWeather},
+		rowCastMaritime: {id: rowCastMaritime, group: groupCast, scope: scopeShared, kind: rowPicker, picker: true, role: roleMaritime},
+		rowCastFire:     {id: rowCastFire, group: groupCast, scope: scopeShared, kind: rowPicker, picker: true, role: roleFire},
+		rowCastSeismic:  {id: rowCastSeismic, group: groupCast, scope: scopeShared, kind: rowPicker, picker: true, role: roleSeismic},
 
 		// THE WATCHLIST ROTATION'S PACING IS THE MONITOR'S. Not in D-18's table
 		// because neither is persisted — they live on the deck — but the rotation
@@ -335,8 +328,8 @@ func setupTable() [setupRowCount]setupRow {
 		// "voice picker", but setup.go gates the arrow keys on it for EVERY
 		// picker — the theme row sets it for the same reason. False here draws a
 		// perfect, inert control.
-		rowRelayDwell: {rowRelayDwell, groupRelay, scopeObserver, rowPicker, true, "", ""},
-		rowRelayLang:  {rowRelayLang, groupRelay, scopeObserver, rowPicker, true, "", ""},
+		rowRelayDwell: {id: rowRelayDwell, group: groupRelay, scope: scopeObserver, kind: rowPicker, picker: true},
+		rowRelayLang:  {id: rowRelayLang, group: groupRelay, scope: scopeObserver, kind: rowPicker, picker: true},
 	}
 }
 
@@ -595,7 +588,7 @@ const (
 // pickerFlashFor is the blink state of one row's picker: only the FOCUSED row
 // can blink, and only while its window is open.
 func (d Dashboard) pickerFlashFor(id setupRowID) pickerFlash {
-	if d.setup.focus != id || d.setup.flash == flashNone || !time.Now().Before(d.setup.flashEnd) {
+	if d.setup.focus != id || d.setup.flash == flashNone || !d.clock().Before(d.setup.flashEnd) {
 		return flashNone
 	}
 	return d.setup.flash

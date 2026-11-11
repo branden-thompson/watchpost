@@ -50,7 +50,7 @@ func (d Dashboard) openPropAck() Dashboard { return d.open(modalPropAck) }
 // handlePropAckKey is the acknowledgement's keyboard: Enter or Esc closes it
 // and records it seen (D-46, D-81); the Observer's scroll keys read it at
 // the floor; every other key does nothing.
-func (d Dashboard) handlePropAckKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handlePropAckKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter", "esc":
 	default:

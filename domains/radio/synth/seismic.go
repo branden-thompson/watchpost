@@ -3,9 +3,9 @@ package synth
 import (
 	"fmt"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
-	"math"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -79,32 +79,16 @@ func (c Composer) quakeSentence(q snapshot.Quake, imperial bool, now time.Time) 
 	return c.say("seismic-report", "quake", data)
 }
 
-// feltLikelihood is the magnitude's general felt-likelihood — keyed to the
-// felt bands the detail section labels (not the glyph energy ramp, which tops
-// out at "significant" ≥ 5.0): low below 3.5 ("below feeling"), moderate 3.5–4.5
-// ("might feel it"), strong at 4.5 and up ("almost certainly felt" and
-// "significant"). This keeps the spoken likelihood consistent with the screen's
-// label for the same quake. It speaks of the magnitude in general ("when it
-// occurs"), not of whether this event was felt at this distance.
-func feltLikelihood(mag float64) string {
-	switch {
-	case mag >= 4.5:
-		return "strong"
-	case mag >= 3.5:
-		return "moderate"
-	default:
-		return "low"
-	}
-}
+// feltLikelihood is the magnitude's general felt-likelihood, read from the
+// felt bands the Details section labels (render.FeltBand, their one owner, so
+// the spoken likelihood and the screen's label cannot disagree for a quake):
+// low below feeling, moderate where it might be felt, strong where it is almost
+// certainly felt or significant. It speaks of the magnitude in general ("when
+// it occurs"), not of whether this event was felt at this distance.
+func feltLikelihood(mag float64) string { return feltLikelihoods[render.FeltBand(mag)] }
 
-// depthWords: "9 kilometers" / "1 kilometer" (whole units).
-func depthWords(km float64) string {
-	k := int(math.Round(km))
-	if k == 1 {
-		return "1 kilometer"
-	}
-	return fmt.Sprintf("%d kilometers", k)
-}
+// feltLikelihoods are the radio's words for each felt band.
+var feltLikelihoods = [...]string{"low", "moderate", "strong", "strong"}
 
 // bearingLong turns a 16-point compass abbreviation (the form each Quake
 // carries) into its spoken word ("NNW" → "north-northwest"). The table is a

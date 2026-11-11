@@ -74,7 +74,7 @@ func (d Dashboard) propFindLines(o render.Opts) []string {
 // typed, so no binding fires mid-typing; Enter finds it - off the UI
 // goroutine, the lookup may go online - or with nothing typed takes the
 // mark off; Esc leaves everything as it was.
-func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		q := strings.TrimSpace(d.mapPane.propFindQuery)
@@ -98,9 +98,7 @@ func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return d.dropFind().close(), nil
 	case "backspace":
-		if r := []rune(d.mapPane.propFindQuery); len(r) > 0 {
-			d.mapPane.propFindQuery = string(r[:len(r)-1])
-		}
+		d.mapPane.propFindQuery = eraseRune(d.mapPane.propFindQuery)
 	default:
 		if key.Text != "" && len([]rune(d.mapPane.propFindQuery)) < propFindMost {
 			d.mapPane.propFindQuery += key.Text
@@ -129,7 +127,7 @@ func (d Dashboard) dropFind() Dashboard {
 // which stays open to change what was typed; a place is marked, and centred
 // on the Broadcaster alone (D-204); the entry closes and the map has the
 // focus again.
-func (d Dashboard) applyPropFound(v propFoundMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) applyPropFound(v propFoundMsg) (Dashboard, tea.Cmd) {
 	if v.seq != d.mapPane.propFindSeq {
 		return d, nil // a later find's answer is the one wanted
 	}

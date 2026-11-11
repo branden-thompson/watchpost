@@ -50,13 +50,13 @@ func TestTheDefaultScaleOpensTheMapAsChosen(t *testing.T) {
 func TestTheScaleAndNearbyRowsSave(t *testing.T) {
 	d, got := uiDash(t, rowMapScale)
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	if d.mapScale != mapScaleCounty {
 		t.Errorf("→ from the state scale went to %v, want county", d.mapScale)
 	}
 	d.setup.focus = rowMapNearby
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
+	d = m
 	if d.mapNearbyKm != 25 {
 		t.Errorf("→ from 15 km went to %d, want 25", d.mapNearbyKm)
 	}
@@ -168,42 +168,42 @@ func TestALayersRowIsAPickerAndTheArrowsWalkThem(t *testing.T) {
 	d, _ := uiDash(t, rowMapLayers)
 	d.cfg.MapLayers = append(append([]MapLayer(nil), alertLayers...), MapLayer{Key: "quake", Label: "Quakes"})
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	one := m.(Dashboard)
+	one := m
 	if one.setupTab() != tabMapLayers || one.layerOn("alert") {
 		t.Fatalf("→ on Alert areas: tab %s, alert on %v; want it switched off, here", one.setupTab().Label(), one.layerOn("alert"))
 	}
 	m, _ = one.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
-	two := m.(Dashboard)
+	two := m
 	if two.setup.focus != rowMapLayers || two.setup.layerAt != 1 {
 		t.Fatalf("↓ went to row %d, layer %d; want the next layer", two.setup.focus, two.setup.layerAt)
 	}
 	m, _, _ = two.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if !m.(Dashboard).layerOn("quake") || m.(Dashboard).layerOn("alert") {
+	if !m.layerOn("quake") || m.layerOn("alert") {
 		t.Error("← did not switch on the layer under the cursor alone")
 	}
 	m, _ = two.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
-	below := m.(Dashboard)
+	below := m
 	if below.setup.focus == rowMapLayers {
 		t.Fatal("↓ past the last layer stayed in the group")
 	}
 	m, _ = below.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyUp})
-	if back := m.(Dashboard); back.setup.focus != rowMapLayers || back.setup.layerAt != 1 {
+	if back := m; back.setup.focus != rowMapLayers || back.setup.layerAt != 1 {
 		t.Errorf("↑ from below came to row %d, layer %d; want the last layer", back.setup.focus, back.setup.layerAt)
 	}
 	m, _ = one.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyUp})
-	if m.(Dashboard).setup.focus == rowMapLayers {
+	if m.setup.focus == rowMapLayers {
 		t.Error("↑ from the first layer stayed in the group")
 	}
-	above := m.(Dashboard)
+	above := m
 	above.setup.layerAt = 1
 	m, _ = above.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
-	if into := m.(Dashboard); into.setup.focus != rowMapLayers || into.setup.layerAt != 0 {
+	if into := m; into.setup.focus != rowMapLayers || into.setup.layerAt != 0 {
 		t.Errorf("↓ from above came to row %d, layer %d; want the first layer", into.setup.focus, into.setup.layerAt)
 	}
 	single, _ := uiDash(t, rowMapLayers)
 	single.cfg.MapLayers = alertLayers
 	m, _, _ = single.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	if got := m.(Dashboard); got.setupTab() != tabMapLayers || got.layerOn("alert") {
+	if got := m; got.setupTab() != tabMapLayers || got.layerOn("alert") {
 		t.Error("with one layer → did not switch it, here")
 	}
 	single.cfg.MapLayers = nil
@@ -269,12 +269,12 @@ func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 func TestThePickersGoBackToo(t *testing.T) {
 	d, _ := uiDash(t, rowMapScale)
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.(Dashboard).mapScale; got != mapScaleRegion {
+	if got := m.mapScale; got != mapScaleRegion {
 		t.Errorf("← from the state scale went to %v, want the region", got)
 	}
 	d.setup.focus = rowMapNearby
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.(Dashboard).mapNearbyKm; got != 10 {
+	if got := m.mapNearbyKm; got != 10 {
 		t.Errorf("← from 15 km went to %d, want 10", got)
 	}
 }

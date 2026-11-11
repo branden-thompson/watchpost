@@ -1,5 +1,5 @@
 // Command alertrec records live NWS alert-feed states as replay fixtures
-// (architecture §10.8): it polls /alerts/active for the given zones on a
+// (watchpost-cli architecture §10.8): it polls /alerts/active for the given zones on a
 // cadence and appends one JSONL feed-state line per poll — replayable by the
 // domains/alerts harness (M2/M3).
 //

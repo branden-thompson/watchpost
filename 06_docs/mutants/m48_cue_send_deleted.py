@@ -8,8 +8,8 @@
 # executor at T3.10 — so the rule this guards has one home instead of two.
 import pathlib
 p = pathlib.Path("app/read_script.go"); s = p.read_text()
-old = """	if p.Ref != "" && r.h.cue != nil {
-		r.h.cue(p.Ref)
+old = """	if p.Ref != "" && r.hooks.cue != nil {
+		r.hooks.cue(p.Ref)
 	}
 """
 assert old in s, "m48"

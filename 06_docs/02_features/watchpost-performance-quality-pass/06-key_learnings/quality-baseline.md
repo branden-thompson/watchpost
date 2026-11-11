@@ -66,6 +66,8 @@ The pass's soaks on `v0.10.x` run at RSS 80–140 MB, 23–25 threads. Record:
 | negative cache | `httpx.cache` | 1,024, soonest-expiring out | `httpx.neg.entries` | Q1 |
 | failure memo | `httpx.memo` | 16 hosts, 20 s; Retry-After ≤ 5 min | — | Q1 |
 | body memo | `tty.bodyMemo` | one slot | — | Q3 memo tests |
+| tape memo | `tty.tapeSlot` (in `bodyMemo`) | one lane's tape | — | 0.19.5 `TestTheTapeKeyCoversEverythingTheTapeShows`, `TestTheTapeTurnsOverAtMidnight` |
+| masthead memo | `tty.mastheadSlot` (in `bodyMemo` and `consoleMemo`) | one masthead per surface | — | 0.19.5 `TestTheMastheadKeyCoversEverythingTheMastheadShows` |
 | tick | `tty.tickNeeded` | runs only while animating | — | Q3 tick tests |
 | HMS / WFIGS parse memo | `fire.Memo` | one body each | `hms.memo.points/parses`, `wfigs.memo.incidents/parses` | Q3 |
 | FIRMS tile memo | `firms.tileMemo` | 240 tiles, LRU | `firms.memo.tiles/parses` | Q5 |

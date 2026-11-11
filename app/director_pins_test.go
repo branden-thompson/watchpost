@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -153,7 +154,7 @@ func TestT01TheDeckReportsTheFactsTheDirectorDecidesOn(t *testing.T) {
 // An advance that lifted the alert duck would bring the next location's report
 // up at full volume over a breaking alert that is still reading. Both spellings
 // of tune leave the duck alone, and the duck has exactly one owner — the
-// director.
+// arbiter.
 func TestT02AnAutomaticAdvanceDoesNotTakeAnAlertOffTheAir(t *testing.T) {
 	d, out := offlineDeck(t)
 	a, b := pinRef("A", 33.19, -117.37), pinRef("B", 32.71, -117.16)
@@ -190,7 +191,7 @@ func TestT02AnAutomaticAdvanceDoesNotTakeAnAlertOffTheAir(t *testing.T) {
 		t.Errorf("an automatic advance must not lift the alert duck; the stream played %d time(s) over it", n)
 	}
 
-	// AND THE POSITIVE HALF — without it this passes on an engine that never
+	// The positive half — without it this passes on an engine that never
 	// plays anything, and a held stream and a broken one are indistinguishable.
 	d.engine.Restore()
 	deadline := time.Now().Add(2 * time.Second)
@@ -317,11 +318,11 @@ func cueDeckWith(t *testing.T, log *cueLog, v narrationVoice) *tickerDeck {
 			log.add("release")
 		}
 	}
-	nar := testDirector(v, band)
+	nar := testArbiter(v, band)
 	// Holds are instant: this pins ORDER, not pacing, and a real hold would
 	// spend the burst's full air time proving nothing about the ordering.
 	//
-	// BUT THE HOLDS ARE LOGGED, because without them a render moved from during
+	// The holds are logged, because without them a render moved from during
 	// a line to after it is INVISIBLE. Both arrangements log the render in the
 	// same place relative to the words — the difference is whether the hold for
 	// those words has already been spent, and a log with no holds in it cannot
@@ -369,7 +370,7 @@ func twoBreaking() []globalfeed.Event {
 // T0.3 — THE BAND IS TOLD BEFORE THE WORDS ARE SPOKEN, FOR EVERY EVENT.
 //
 // This is the "3 … 2 … 1" cue, which the charter describes as a deliberate
-// lead and DR-18 makes a contract: readBreaking sends the marquee message before
+// lead and DR-18 makes a contract: readScript cues the band before
 // the event's words are spoken.
 func TestT03TheCuePrecedesTheWordsForEveryEvent(t *testing.T) {
 	log := &cueLog{}
@@ -382,7 +383,7 @@ func TestT03TheCuePrecedesTheWordsForEveryEvent(t *testing.T) {
 	// never cued and never spoke would satisfy every ordering claim below by
 	// vacuity.
 	for _, ev := range []string{":norfolk", ":raleigh"} {
-		cue, say := indexOf(seq, "cue"+ev), indexOf(seq, "say"+ev)
+		cue, say := slices.Index(seq, "cue"+ev), slices.Index(seq, "say"+ev)
 		if cue < 0 {
 			t.Fatalf("no cue for %s — the burst must cue the band once per event: %v", ev, seq)
 		}
@@ -452,15 +453,6 @@ func count(seq []string, prefix string) int {
 	return n
 }
 
-func indexOf(seq []string, want string) int {
-	for i, s := range seq {
-		if s == want {
-			return i
-		}
-	}
-	return -1
-}
-
 // count is how many players the fake output has handed out so far.
 func (o *heldOutput) count() int {
 	o.mu.Lock()
@@ -490,7 +482,7 @@ func TestNoRenderSitsBetweenACueAndItsWords(t *testing.T) {
 
 	seq := log.all()
 	for _, ev := range []string{":norfolk", ":raleigh"} {
-		render, cue, say := indexOf(seq, "render"+ev), indexOf(seq, "cue"+ev), indexOf(seq, "say"+ev)
+		render, cue, say := slices.Index(seq, "render"+ev), slices.Index(seq, "cue"+ev), slices.Index(seq, "say"+ev)
 		// THE FIXTURE FIRST: all three must exist, or the ordering below holds
 		// by vacuity.
 		if render < 0 || cue < 0 || say < 0 {
@@ -506,8 +498,8 @@ func TestNoRenderSitsBetweenACueAndItsWords(t *testing.T) {
 	// while the FIRST ALERT is rendered only when the read loop starts — after the
 	// head has been spoken and its pause already held. Every per-event check above
 	// passes while the listener waits a full render on that one boundary.
-	head := indexOf(seq, "say:structural")
-	first := indexOf(seq, "render:norfolk")
+	head := slices.Index(seq, "say:structural")
+	first := slices.Index(seq, "render:norfolk")
 	if head < 0 {
 		t.Fatalf("the fixture produced no burst head, so this boundary is untested: %v", seq)
 	}
@@ -579,7 +571,7 @@ func TestASequenceThatEndedDuringAnOverlappedRenderCuesNothing(t *testing.T) {
 
 	seq := log.all()
 	// THE FIXTURE MUST HAVE REACHED A RENDER, or "no cue" is true by vacuity.
-	if indexOf(seq, "render:norfolk") < 0 {
+	if slices.Index(seq, "render:norfolk") < 0 {
 		t.Fatalf("nothing was rendered, so this proves nothing about ending mid-render: %v", seq)
 	}
 	for _, step := range seq {
@@ -591,7 +583,7 @@ func TestASequenceThatEndedDuringAnOverlappedRenderCuesNothing(t *testing.T) {
 }
 
 // refuseThenEndVoice refuses its first render outright — a live render failure,
-// which is the one case `readBreaking`'s retry exists for — and then ends the
+// which is the one case `reader.readPart`'s retry exists for — and then ends the
 // sequence during the retry.
 type refuseThenEndVoice struct {
 	log    *cueLog
@@ -630,7 +622,7 @@ func (v *refuseThenEndVoice) restore()    {}
 //
 // `holdRest` asks the air when a hold has nothing left to wait, which covers the
 // paths that reach a cue through a hold. The RETRY does not: when the first
-// render fails on its own, `readBreaking` renders a second time and goes
+// render fails on its own, `reader.readPart` renders a second time and goes
 // straight to the cue with no hold between them. A sequence that ends during
 // that second render must not put a breaking headline on the band for a read
 // that never happens — the same defect as the one pinned above, through a

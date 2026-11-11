@@ -152,8 +152,8 @@ const (
 )
 
 // Config is the whole station's assignment, as the config file carries it and
-// as the deck holds it. The ZERO VALUE is 0.13.0: single-voice, no pairs, no
-// tone mutes — everything inherits the root (FR-2).
+// as the deck holds it. The ZERO VALUE is one voice: no pairs, no tone mutes,
+// everything inherits the root (FR-2).
 type Config struct {
 	// Root is the 0.13.0 `voice` key: a single string, not a pair, for
 	// compatibility (AM-11). On macOS it is a `say -v` name; elsewhere a Piper

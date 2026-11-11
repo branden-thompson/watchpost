@@ -6,6 +6,7 @@ package globalfeed
 // platform/plaintext, prose to maxProseRunes, numbers to their physical ranges.
 
 import (
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
@@ -78,14 +79,8 @@ type SevereDetail struct {
 	VTEC          string
 }
 
-// clampProse bounds prose to maxProseRunes (rune-safe).
-func clampProse(s string) string {
-	r := []rune(s)
-	if len(r) <= maxProseRunes {
-		return s
-	}
-	return string(r[:maxProseRunes])
-}
+// clampProse bounds prose to maxProseRunes, in runes (plaintext.ClampRunes).
+func clampProse(s string) string { return plaintext.ClampRunes(s, maxProseRunes) }
 
 // clampNonNeg bounds a count or physical quantity to [0, hi].
 func clampNonNeg(n, hi int) int {

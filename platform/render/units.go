@@ -108,7 +108,7 @@ type Glyphs struct {
 	// means FELT INTENSITY, and reusing it here would give one glyph two
 	// meanings.
 	Idle, Live string
-	// 0.14.0: the Setup window's marks. Down is a picker's dropdown arrow;
+	// the Setup window's marks. Down is a picker's dropdown arrow;
 	// Rail and RailCar draw the scroll rail; Ellipsis and Bullet are used where
 	// text is cut or listed. All go through the glyph set so --ascii needs no
 	// special case anywhere (Task 4.9's glyph parity).
@@ -121,9 +121,6 @@ type Glyphs struct {
 	Rule, Minus, Heart string
 }
 
-// Glyphs resolves the mark set for these options. Under --ascii the play
-// mark is its own form (`*`), never the pointer's `>` (HUM LEAD ruling
-// 2026-08-29, B-08b).
 // HeadlineJoin is how a hazard's TITLE and its PLACE are joined into the one
 // line the ticker has room for: `SEVERE THUNDERSTORM WARNING · HARPER, KS`.
 //
@@ -136,6 +133,9 @@ type Glyphs struct {
 // would work until one of them changed.
 const HeadlineJoin = " · "
 
+// Glyphs resolves the mark set for these options. Under --ascii the play
+// mark is its own form (`*`), never the pointer's `>` (HUM LEAD ruling
+// 2026-08-29, B-08b).
 func (o Opts) Glyphs() Glyphs {
 	if o.ASCII {
 		return Glyphs{Pointer: ">", Play: "*", Pause: "=", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},
@@ -160,7 +160,7 @@ func asciiKey(key string) string {
 	case "→":
 		return "right"
 	// SHIFTED ARROWS NAME THE MODIFIER TOO. The bed's relay selector lives on
-	// shift+←/shift+→ (D-111), and a chip that read "left" there would name a key
+	// shift+←/shift+→, and a chip that read "left" there would name a key
 	// that steps a different control.
 	case "⇧←":
 		return "shift+left"
@@ -174,20 +174,40 @@ func asciiKey(key string) string {
 	return key
 }
 
+// FeltBands is how many felt bands there are: the answers FeltBand gives, and
+// the length of every table indexed by one.
+const FeltBands = 4
+
+// FeltBand is the felt band a magnitude falls in, the one owner of the
+// boundaries the table's mark, the Details section and the radio share
+// (0.19.5 DR-1). Each surface keeps its own words for the bands.
+//
+//	0  below feeling          under 3.5
+//	1  might feel it          3.5 to 4.5
+//	2  almost certainly felt  4.5 to 5.0
+//	3  significant            5.0 and up
+func FeltBand(mag float64) int {
+	switch {
+	case mag >= 5.0:
+		return 3
+	case mag >= 4.5:
+		return 2
+	case mag >= 3.5:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// seismicLevels is the glyph ramp's level for each felt band: the two felt
+// bands share the one felt glyph.
+var seismicLevels = [...]int{1, 2, 2, 3}
+
 // SeismicLevel maps a magnitude to the felt-band glyph-ramp level — the single
 // owner the table row mark and the detail section share (0.11.0): 1 = below
 // feeling (○), 2 = felt (●), 3 = significant (◉). Only the strongest quake at a
 // location wears the mark, so the caller passes that magnitude; 0 means none.
-func SeismicLevel(mag float64) int {
-	switch {
-	case mag >= 5.0:
-		return 3
-	case mag >= 3.5:
-		return 2
-	default:
-		return 1
-	}
-}
+func SeismicLevel(mag float64) int { return seismicLevels[FeltBand(mag)] }
 
 // LoadingDots is the loading shimmer (UAT 18.2b): a 4-phase dot sweep shown
 // where data has not arrived yet — "n/a" is reserved for data that is truly

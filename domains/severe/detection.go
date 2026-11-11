@@ -3,7 +3,7 @@ package severe
 import (
 	"strings"
 
-	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
 // Detection is the window's DETECTION column (HUM LEAD UAT 2026-08-28):
@@ -48,7 +48,7 @@ func detectionOf(certainty, description string) string {
 // sourceKind reads NWS's "SOURCE: …" sentence into a short kind. The
 // sentences are free text; these are the forms the offices use.
 func sourceKind(description string) string {
-	u := strings.ToUpper(render.Plain(description)) // search and slice the SAME string: upper-casing can change byte lengths (round 4, A-05)
+	u := strings.ToUpper(plaintext.Text(description)) // search and slice the SAME string: upper-casing can change byte lengths
 	i := strings.Index(u, "SOURCE:")
 	if i < 0 {
 		return ""

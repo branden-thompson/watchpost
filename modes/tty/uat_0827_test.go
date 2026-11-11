@@ -111,7 +111,7 @@ func TestAlertModuleIsOneBoxedRow(t *testing.T) {
 		}
 	}
 	// Colour off (and --ascii): the class is text, so a warning and an
-	// advisory never read the same (R-12a; round 4 B-04).
+	// advisory never read the same (R-12a).
 	d.snap.Locations[0].Alerts = []snapshot.Alert{{Event: "Extreme Heat Watch", Severity: "severe", Headline: "h"}}
 	warn := stripANSITest(d.alertArea(d.layout()))
 	d.snap.Locations[0].Alerts = []snapshot.Alert{{Event: "Extreme Heat Watch", Severity: "minor", Headline: "h"}}
@@ -233,7 +233,7 @@ func TestFavoriteChipEnabledOnRecentRowsOnly(t *testing.T) {
 	}
 }
 
-// The header's inner ladder (round 4, C-11a): as the row narrows About drops,
+// The header's inner ladder: as the row narrows About drops,
 // then the API summary loses its label, then the chips stand alone, then the
 // summary leaves — in that order, the row never wider than the box.
 //

@@ -107,7 +107,7 @@ func TestThePropagationModesFocusPointsPlaceTheCursor(t *testing.T) {
 		}
 	}
 	ahead, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if cell, row := cursorCell(t, ahead.(Dashboard).View()); strings.TrimSpace(cell) == "" || strings.ContainsFunc(row, isBraille) {
+	if cell, row := cursorCell(t, ahead.View()); strings.TrimSpace(cell) == "" || strings.ContainsFunc(row, isBraille) {
 		t.Errorf("an hour ahead, the cursor is on %q of %q; want the map's words", cell, row)
 	}
 }

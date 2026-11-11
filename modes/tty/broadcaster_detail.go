@@ -49,11 +49,11 @@ const bcDetailRoom = 77
 // and whether that slot holds a card at all.
 //
 // AN EMPTY SLOT OPENS NOTHING. The handle is drawn on an undecided slot because
-// the slot is addressable (slotRows), but there is no report to inspect — and a
+// the slot is addressable (slotCard), but there is no report to inspect — and a
 // window that opened onto "waiting for the line-up" would be a way of asking the
 // operator to read the absence of a card.
 func (b Broadcaster) cardDetail(handle int) (string, func(render.Opts) (string, []string), bool) {
-	main := b.lineup.Projection(lineup.MainTrack)
+	main := b.projection(lineup.MainTrack)
 	if len(main) > MainTrackSlots { // the rolling window, as the frame draws it (FR-3.1)
 		main = main[:MainTrackSlots]
 	}
@@ -80,7 +80,7 @@ func (b Broadcaster) cardDetail(handle int) (string, func(render.Opts) (string, 
 // what a card looks like — which is the defect that would follow from giving the
 // hazard window a builder of its own.
 func (b Broadcaster) alertDetail() (string, func(render.Opts) (string, []string), bool) {
-	rail := b.lineup.Projection(lineup.AlertRail)
+	rail := b.projection(lineup.AlertRail)
 	if len(rail) == 0 {
 		return "", nil, false
 	}
@@ -102,7 +102,7 @@ func (b Broadcaster) cardWindowFor(c lineup.Card) (string, func(render.Opts) (st
 // the standard modal tone. Asked separately from the builder so the two doors
 // (a digit, and `[A]`) cannot hand over a body and a ground that disagree.
 func (b Broadcaster) cardWindowGroundFor(handle int) string {
-	main := b.lineup.Projection(lineup.MainTrack)
+	main := b.projection(lineup.MainTrack)
 	if len(main) > MainTrackSlots {
 		main = main[:MainTrackSlots]
 	}
@@ -115,7 +115,7 @@ func (b Broadcaster) cardWindowGroundFor(handle int) string {
 
 // alertWindowGround is the same answer for the takeover box's card.
 func (b Broadcaster) alertWindowGround() string {
-	rail := b.lineup.Projection(lineup.AlertRail)
+	rail := b.projection(lineup.AlertRail)
 	if len(rail) == 0 {
 		return ""
 	}

@@ -1,3 +1,8 @@
+// radio.go — the radio deck: it tunes a location to the NOAA Weather Radio
+// stream that carries it, tells the schedule when no live stream does so the
+// station reads it instead, and carries the player's status, the bed's duck
+// and restore, and the radio debug log back to the dashboard.
+
 package app
 
 import (
@@ -27,13 +32,13 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// radioDeck is the dashboard's Radio hook (B4, architecture §5): resolves
+// radioDeck is the dashboard's Radio hook (B4, watchpost-cli architecture §5): resolves
 // a location to its NWR transmitter (county SAME from the cached NWS point
 // → vendored table → relay directories), tunes the pure-Go player, and
 // streams status back to the UI. Everything here runs on tea cmd
 // goroutines — never the update loop.
 type radioDeck struct {
-	p        *tea.Program
+	program  *tea.Program
 	nws      *nws.Provider
 	resolver *stream.Resolver
 	engine   *player.Engine
@@ -97,7 +102,7 @@ type radioDeck struct {
 	limiter *synth.Limiter
 
 	// tuneMu makes "check the epoch, then start the engine" one step, and
-	// Stop's "bump the epoch, then halt" another (round 2 N-3): without it a
+	// Stop's "bump the epoch, then halt" another: without it a
 	// Stop landing between the check and engine.Start leaves audio playing.
 	// Held only around those tails — never across resolving or a voice install.
 	tuneMu sync.Mutex
@@ -144,7 +149,7 @@ func newRadioDeck(p *tea.Program, client *httpx.Client, provider *nws.Provider, 
 	if err != nil {
 		return nil
 	}
-	d := &radioDeck{p: p, nws: provider, resolver: r, units: units, products: synth.NewProducts(client, ""), voiceDir: voiceDir(), limiter: synth.NewLimiter(renderSlots(), synth.ReservedSlots)}
+	d := &radioDeck{program: p, nws: provider, resolver: r, units: units, products: synth.NewProducts(client, ""), voiceDir: voiceDir(), limiter: synth.NewLimiter(renderSlots(), synth.ReservedSlots)}
 	d.engine, err = player.New(&player.OtoOutput{}, UserAgent, d.onStatus)
 	if err != nil {
 		return nil
@@ -179,7 +184,7 @@ func (d *radioDeck) Spectrum() []float64 {
 // being read gets the station they asked for, ducked, and hears it come up when
 // the alert finishes — which is the same thing the broadcast does.
 //
-// The duck has exactly ONE owner, the director, which ducks when a sequence
+// The duck has exactly ONE owner, the arbiter, which ducks when a sequence
 // takes the air and restores when nothing is waiting or suspended. Nothing else
 // touches it but a user STOP, where there is no broadcast left to duck.
 //
@@ -457,10 +462,10 @@ func (d *radioDeck) followMount(mount string) {
 // drivable at all — and P-1 is that a seam a test cannot drive is not a covered
 // seam.
 func (d *radioDeck) send(msg tea.Msg) {
-	if d.p == nil {
+	if d.program == nil {
 		return
 	}
-	d.p.Send(msg)
+	d.program.Send(msg)
 }
 
 // epoch reports whether gen is still the current tune (no Stop or newer
@@ -519,18 +524,16 @@ func (d *radioDeck) SetMode(mode tty.RadioMode) {
 // and the Director keeps the deadline.
 const liveDwell = 5 * time.Minute
 
-// WATCHPOST_WATCHLIST_DWELL overrides it, for testing the rotation without
-// waiting five minutes a station (HUM LEAD, UAT 2026-09-04).
+// watchlistDwell is how long the watchlist rotation stays on a station: the
+// Settings window's choice when the listener made one this run, else
+// WATCHPOST_WATCHLIST_DWELL, else liveDwell.
 //
-// AN ENVIRONMENT VARIABLE IS THE HALF THAT IS NOT A UI DECISION. Where the row
-// belongs in Settings, what it is called and what values it offers are the HUM
-// LEAD's to specify; making the duration a value rather than a constant is not,
-// and it is what makes the rotation testable in thirty seconds. The Settings row
-// reads this same function when it arrives.
+// The environment variable is for testing the rotation without waiting five
+// minutes a station (HUM LEAD, UAT 2026-09-04). It takes a Go duration ("30s",
+// "2m"). Anything unparseable or non-positive is the default rather than an
+// error: a mistyped variable should not silently stop the rotation, which is
+// exactly the failure this exists to help find.
 //
-// It takes a Go duration ("30s", "2m"). Anything unparseable or non-positive is
-// the default rather than an error: a mistyped variable should not silently stop
-// the rotation, which is exactly the failure this exists to help find.
 // The Settings window's choice lives ON THE DECK (d.relayDwell), not in a
 // package variable. A package-level override is the same setting reachable from
 // every test in the package at once, and its own pin would have to save and
@@ -662,7 +665,7 @@ func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) 
 	d.startSynth(ref, why, gen)
 }
 
-// startSynth voices the location's NWS products (architecture §5 Synth):
+// startSynth voices the location's NWS products (watchpost-cli architecture §5 Synth):
 // the voice is the built-in `say` on macOS, Piper elsewhere — installed on
 // first use with progress shown in the player (HUM LEAD: first-run install).
 func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64) {
@@ -892,8 +895,8 @@ func (d *radioDeck) stopStation() {
 // SetVolume implements tty.Radio.
 func (d *radioDeck) SetVolume(pct int) { d.engine.Volume(pct) }
 
-// The radioDeck is the director's voice (0.13.0; app/director.go): duck, tone,
-// render, play, pause, resume, discard, restore — the director decides who
+// The radioDeck is the arbiter's voice (0.13.0; app/arbiter.go): duck, tone,
+// render, play, pause, resume, discard, restore — the arbiter decides who
 // speaks and when.
 
 // duck puts an alert on the air over the broadcast.
@@ -958,14 +961,14 @@ func (d *radioDeck) fault(why string) {
 // discard drops a held line whose sequence ended while it waited.
 func (d *radioDeck) discard() { d.engine.DropHeld() }
 
-// render turns a narration line into audio (say/piper blocks ~1 s per
-// line, longer for an event read — the director's sequences run on their
-// own goroutines, off the UI loop); play puts a rendered line on the air
-// over the ducked radio. Split so a line rendered while its sequence is
-// suspended never starts under a takeover.
 // render turns a narration line into audio IN THE ROLE'S VOICE, and records on
 // the player's detail line WHY it failed when it did — a silent takeover must
 // never be unexplained.
+//
+// It blocks (say/piper ~1 s per line, longer for an event read), so the
+// arbiter's sequences run on their own goroutines, off the UI loop. play puts
+// a rendered line on the air over the ducked radio; the two are split so a
+// line rendered while its sequence is suspended never starts under a takeover.
 func (d *radioDeck) render(ctx context.Context, role cast.Role, text string) (clip, bool) {
 	v, res, err := d.resolveVoice(role)
 	if err != nil {
@@ -988,7 +991,6 @@ func (d *radioDeck) play(c clip) {
 	_ = d.engine.PreviewAside(c.rate, bytes.NewReader(c.pcm)) // a takeover: aside, the bars keep to the broadcast
 }
 
-// restore lifts the duck — the radio returns after the sequence.
 // restore lifts BOTH — a hold and a duck — because the mode can change while a
 // sequence is on air and the one that was taken is not always the one that is
 // given back.
@@ -1095,8 +1097,8 @@ func (d *radioDeck) onStatus(st player.Status) {
 	if st.State == player.Failed && mode == "live" {
 		go d.needsRead(ref, "relay unavailable — "+st.Err, gen)
 	}
-	// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b). A time.AfterFunc here —
-	// armDwell setting a five-minute timer, advanceQueue firing on it — would put
+	// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b). A time.AfterFunc here — a
+	// five-minute timer the deck arms, and a queue it advances when it fires — would put
 	// the decision in the deck. These are two facts the deck is the only thing able to
 	// observe: that a synthesised cycle ran to its end, and where the bed landed
 	// and when it actually started playing. Whether either moves the rotation on

@@ -1,5 +1,6 @@
-// Package app is the composition root (Option C): the ONLY place that wires
-// domains, platform, and modes together. cmd/watchpost stays thin.
+// app.go — the one-shot report (ReportOnce) and the User-Agent every request
+// carries. The package's map is doc.go.
+
 package app
 
 import (
@@ -12,7 +13,6 @@ import (
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/locations/openmeteo"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
-	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -26,13 +26,14 @@ import (
 // personal address rides here.
 //
 // NO VERSION. A version in the header is a fact about this machine that no
-// provider asks for, and one more thing to keep in step with the build — it
-// read 0.9 for five releases. The project URL is the contact NWS wants.
+// provider asks for, and one more thing to keep in step with the build. The
+// project URL is the contact NWS wants.
 const UserAgent = "watchpost (+https://github.com/branden-thompson/watchpost)"
 
 // ReportOnce runs the one-shot fetch pipeline for `watchpost report <query>`:
 // resolve the location, fetch obs+forecast+alerts from NWS, and return the
-// published snapshot (B1a scope; scheduler-driven live mode arrives B1b/B3).
+// published snapshot, once; the live dashboard runs the scheduled pipelines
+// instead (RunDashboard).
 func ReportOnce(ctx context.Context, query string) (*snapshot.Snapshot, error) {
 	snap, _, err := ReportOnceWithStats(ctx, query)
 	return snap, err
@@ -75,8 +76,7 @@ func reportFetch(ctx context.Context, client *httpx.Client, provider *nws.Provid
 		return nil, err
 	}
 	fireProvs, firmsProv := fireProviders(client, cfg)
-	providers := append([]snapshot.Provider{provider, nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, fireProvs...)
-	providers = append(providers, seismicProviders(client, cfg)...)
+	providers := newProviderFamilies(client, provider, tides, fireProvs, cfg).all(provider)
 	asm := newAssembler([]snapshot.LocationRef{ref}, providers)
 	_ = asm.SetInactive(firmsProv.ID(), !firmsProv.Enabled()) // unkeyed FIRMS reads "off", not "ok" (UAT 100)
 	if fellBack {

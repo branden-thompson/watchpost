@@ -72,14 +72,14 @@ func TestAZoomAcrossTheBoxesKeepsTheRadar(t *testing.T) {
 	budgetForOne(t, d, r.Overlays[0])
 
 	m, cmd := d.applyMapRadar(mapRadarMsg{radar: r, region: d.mapPane.region.Name})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if _, ok := d.mapPane.radarGiven[RadarLayer+"/us-b"]; !ok || len(d.mapPane.radarGiven) != 1 {
 		t.Errorf("the radar holds %v; want the closer box's loop alone", d.radarGivenIDs())
 	}
 	if st := d.mapPane.m.Loop(); st.Count == 0 {
 		t.Error("the map draws no loop after the zoom")
 	}
-	// AND THE RECORDER SAYS WHICH BOXES A FRAME WAS DRAWN FROM, which is how
+	// The recorder says which boxes a frame was drawn from, which is how
 	// U2-59 is seen in a live run.
 	if len(frames) == 0 || strings.Join(frames[len(frames)-1].Radar, ",") != RadarLayer+"/us-b" {
 		t.Errorf("the last frame recorded is drawn from %v; want the closer box's loop", lastRadar(frames))
@@ -104,7 +104,7 @@ func TestARefusedSwapKeepsTheLoopsItHad(t *testing.T) {
 	big := renamed(feed, "us-b", 3) // three times the frames: over the budget alone
 
 	m, cmd := d.applyMapRadar(mapRadarMsg{radar: big, region: d.mapPane.region.Name})
-	d = settleRadar(t, m.(Dashboard), cmd)
+	d = settleRadar(t, m, cmd)
 	if _, ok := d.mapPane.radarGiven[RadarLayer+"/us-a"]; !ok || len(d.mapPane.radarGiven) != 1 {
 		t.Errorf("the radar holds %v; want the loop it had, put back", d.radarGivenIDs())
 	}
@@ -117,7 +117,7 @@ func TestARefusedSwapKeepsTheLoopsItHad(t *testing.T) {
 	if len(problems) != 1 || !strings.HasPrefix(problems[0], "Radar") {
 		t.Errorf("the diagnostics were told %q; want the one refusal", problems)
 	}
-	// AND THE RECORDER KEEPS THE REFUSAL between the frames it fell between,
+	// The recorder keeps the refusal between the frames it fell between,
 	// and each loop's frames and gaps, which is how a live run tells a
 	// refused loop from a cancelled one (U2-59, U2-60).
 	said, counts := false, map[string]string(nil)

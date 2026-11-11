@@ -71,11 +71,11 @@ func TestARunningStationRaisesNoStandbyNotice(t *testing.T) {
 
 // A REPEATED StationMsg MUST NOT RESTART THE CLOCK.
 //
-// Found by a plant that SURVIVED: changing the transition test to `if true`
-// made every StationMsg restart the standby clock, and nothing failed —
-// because every fixture above sends exactly one. A station silent for an hour
-// would have looked freshly quiet the moment any other message arrived, and
-// the escalation would never have climbed past its first rung.
+// Every fixture above sends exactly one StationMsg, so a transition test
+// written `if true` would restart the standby clock on every message and pass
+// them all. A station silent for an hour would look freshly quiet the moment
+// any other message arrived, and the escalation would never climb past its
+// first rung.
 func TestARepeatedStationMessageDoesNotRestartTheStandbyClock(t *testing.T) {
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	b := NewBroadcaster()

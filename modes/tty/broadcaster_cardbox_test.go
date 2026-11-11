@@ -37,7 +37,7 @@ func TestACardFillsItsBoxAtEveryWidth(t *testing.T) {
 	c := aCard(t, "OCEANSIDE, CA 92057")
 	for _, box := range []int{82, 112, 132} {
 		rows := boxOf(t, box, c, "6", "STANDARD")
-		// TWO ROWS WITH AN EMPTY BODY (D-110): a card is its BORDERS and whatever
+		// TWO ROWS WITH AN EMPTY BODY: a card is its BORDERS and whatever
 		// is put between them. The title is in the top border, where the reference
 		// draws it.
 		if len(rows) < 2 {
@@ -69,10 +69,10 @@ func TestACardHasBordersOnEveryEdge(t *testing.T) {
 	}
 }
 
-// THE BADGE RIDES THE RULE, at its right (D-110).
+// THE BADGE RIDES THE RULE, at its right.
 //
 // THE HANDLE IS NOT ON THIS ROW. The reference puts the badge in the border —
-// `━━━ • STANDARD • ━━━` — and the handle in the footer beside the presenter, so
+// `━━ • STANDARD • ━━` — and the handle in the footer beside the presenter, so
 // no row carries them both. The box says what GRADE the card is without
 // spending a line.
 func TestTheBoxsRuleCarriesTheGrade(t *testing.T) {
@@ -81,7 +81,7 @@ func TestTheBoxsRuleCarriesTheGrade(t *testing.T) {
 		t.Errorf("the box's rule does not grade the card: %q", rule)
 	}
 	// AT THE RIGHT, and with the rule's own marks still closing the corner.
-	if !strings.HasSuffix(rule, "---+") {
+	if !strings.HasSuffix(rule, " --+") {
 		t.Errorf("the badge pushed the corner off the rule: %q", rule)
 	}
 	if at := strings.Index(rule, "STANDARD"); at < len([]rune(rule))/2 {
@@ -127,12 +127,14 @@ func TestARealCardHasNoCorners(t *testing.T) {
 	}
 }
 
-// THE REFERENCE'S OWN RULE, at the reference's own card width (D-110): the LINE
+// THE REFERENCE'S OWN RULE, at the reference's own card width: the LINE
 // UP card of `mock-broadcaster-v1.txt` is 132 cells.
 //
-// What the v3 reference fixes is the RULE: the card's name three marks in from
-// the corner, the grade three marks in from the other, and the corners landing
-// whatever the title's length.
+// What the reference fixes is the RULE: the card's name two marks in from the
+// corner, the grade two marks in from the other, and the corners landing
+// whatever the title's length. TWO, as the masthead's rule draws them: the
+// cards draw their rule with it (0.19.5 D-18, which the v3 reference's three
+// marks gave way to).
 //
 // MEASURED IN RUNES, because the badge's bullets are three bytes each and a
 // byte offset here reads as a plausible wrong number.
@@ -141,15 +143,15 @@ func TestTheBoxsRuleMatchesTheReferenceGeometry(t *testing.T) {
 	if got := len(rule); got != 132 {
 		t.Fatalf("the reference's card is 132 cells; got %d", got)
 	}
-	if got := string(rule[:5]); got != "+--- " {
-		t.Errorf("the reference opens the rule with three marks and a space; got %q", got)
+	if got := string(rule[:4]); got != "+-- " {
+		t.Errorf("the rule opens with two marks and a space, as the masthead's does; got %q", got)
 	}
-	if got := string(rule[len(rule)-5:]); got != " ---+" {
-		t.Errorf("and closes it with three; got %q", got)
+	if got := string(rule[len(rule)-4:]); got != " --+" {
+		t.Errorf("and closes with two; got %q", got)
 	}
 }
 
-// THE CARD DRAWS THE MASTHEAD'S BOX (D-85, HUM LEAD 2026-09-11): "Remove the
+// THE CARD DRAWS THE MASTHEAD'S BOX (HUM LEAD 2026-09-11): "Remove the
 // rounded corners -> straight corners … All Main track cards should have BOLD
 // lines (like the masthead)."
 //
@@ -175,7 +177,7 @@ func TestACardIsDrawnInTheMastheadsBox(t *testing.T) {
 			t.Errorf("interior row %d is %q; want the masthead's rail %q on both edges", i, r, bx.Rail)
 		}
 	}
-	// AND NOT THE ROUNDED ONES, which is the half the HUM LEAD asked for by
+	// Not the rounded corners, which is the half the HUM LEAD asked for by
 	// name. They are not in the glyph set.
 	for _, round := range []string{"╭", "╮", "╰", "╯"} {
 		if strings.Contains(strings.Join(rows, ""), round) {

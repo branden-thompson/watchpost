@@ -6,7 +6,7 @@ import pathlib
 # RE-ANCHORED: the decision moved under the arbiter\'s lock, because asking
 # outside it and acting on the answer was the defect a fresh review found. This
 # now deletes the deferral to settle, which is where the decision lives.
-p = pathlib.Path("app/director.go"); s = p.read_text()
+p = pathlib.Path("app/arbiter.go"); s = p.read_text()
 old = """\td.mc.unhold()
 \td.settle()"""
 new = """\td.mc.unhold()

@@ -16,7 +16,7 @@ package main
 // delete their reasoning.
 //
 // THE ANTI-SPECIMENS ARE THE CATALOGUE'S OWN, taken verbatim from
-// `code-authoring-standards.md` where it quotes them, so this tool and the
+// `06_docs/code-standards.md` where it quotes them, so this tool and the
 // written rule cannot drift apart.
 
 import (
@@ -70,6 +70,8 @@ func shellSpecimens() []specimen {
 // histSpecimens covers AP-HIST-01 in both directions.
 func histSpecimens() []specimen {
 	return []specimen{
+		{"a review round's finding as the reason", "package p\n\n// f fits (round 4, B-07: a wrapped row would push it).\nfunc f() {}\n", []string{"AP-HIST-01"}},
+		{"the reason alone, the round dropped", "package p\n\n// f fits: a wrapped row would push it.\nfunc f() {}\n", nil},
 		{"catalogue: used-to on a trailing comment", `package p
 func f() { g() // used to throw away extra output
 }`, []string{"AP-HIST-01"}},
@@ -168,6 +170,41 @@ func Alpha() {}
 
 // Beta does the second thing.
 func Beta() {}`, nil},
+		// THE SAME FUSION ON A TYPE, A VALUE AND A FIELD, with a verb no list
+		// would name.
+		{"a type carrying a deleted function's doc", `package p
+
+// render draws the frame.
+// Frame keeps one screen's rows.
+type Frame struct{}`, []string{"SN-02"}},
+		{"a constant carrying a type's doc", `package p
+
+// Provider implements the feed.
+// maxGrids caps the memo.
+const maxGrids = 240`, []string{"SN-02"}},
+		{"a field documented twice", `package p
+
+type T struct {
+	// read returns whether the words ran out.
+	// read installs the card and returns its error.
+	read func() error
+}`, []string{"SN-02"}},
+		{"a block that opens with another name, mid-sentence", `package p
+
+// TestTheAir is D-139: the model's AQI from
+// contours answers the fixture.
+type contours struct{}`, []string{"SN-02"}},
+		{"a wrapped line that starts with the name is prose", `package p
+
+// frameChecks keeps each frame's check. A nil
+// frameChecks checks every frame.
+type frameChecks struct{}`, nil},
+		{"a new paragraph may open with the name", `package p
+
+// Role is a node of the registry.
+//
+// Role is a plain int and crosses package boundaries.
+type Role int`, nil},
 		{"an unexported function needs no doc", `package p
 
 // Alpha does the first thing.
@@ -175,6 +212,95 @@ func Alpha() {}
 
 func beta() {}`, nil},
 	}
+}
+
+// packageDocControls proves SN-03 in both directions: two package comments
+// in one package are both reported, and a file header detached by a blank
+// line, or a test file's package comment, is not. It returns the number wrong.
+func packageDocControls() int {
+	files := map[string]string{
+		"p/a.go":      "// Package p does one thing.\npackage p\n",
+		"p/b.go":      "// B's fragment.\npackage p\n",
+		"q/a.go":      "// Package q does one thing.\npackage q\n",
+		"q/b.go":      "// A file header.\n\npackage q\n",
+		"q/a_test.go": "// Package q's tests.\npackage q\n",
+	}
+	docs := map[string][]packageDoc{}
+	for name, src := range files { // bounded by the table (P10-02)
+		f, err := parser.ParseFile(token.NewFileSet(), name, src, parser.ParseComments|parser.PackageClauseOnly)
+		if err != nil {
+			fmt.Printf("  BROKEN SPECIMEN  %s: %v\n", name, err)
+			return 1
+		}
+		if d, ok := packageDocOf(f, name); ok {
+			docs[d.pkg] = append(docs[d.pkg], d)
+		}
+	}
+	got := map[string]bool{}
+	for _, fd := range checkPackageDocs(docs) { // bounded by the findings (P10-02)
+		got[fd.File] = true
+	}
+	if len(got) != 2 || !got["p/a.go"] || !got["p/b.go"] {
+		fmt.Printf("  %-15s two package comments in one package, and none elsewhere\n      got %v\n", "MISSED", got)
+		return 1
+	}
+	fmt.Printf("  ok              two package comments in one package, and none elsewhere\n")
+	return 0
+}
+
+// hashControls proves AP-HIST-01 over `#` comments in both directions: a
+// narrating comment in a Makefile is reported, and a present-tense one, a
+// recipe line and a script's shebang are not. It returns the number wrong.
+func hashControls() int {
+	bad := checkHashHistory("# The schema used to be written here by hand.\nschema:\n\t@go run ./tools/schema\n", "Makefile")
+	good := checkHashHistory("#!/usr/bin/env sh\n# The version is read from the one place that defines it.\nschema:\n\techo used to\n", "Makefile")
+	if len(bad) != 1 || len(good) != 0 || !hashCommented("scripts/x.sh") || hashCommented("x.go") {
+		fmt.Printf("  %-15s a narrating # comment, and none in its present-tense form\n      got %d and %d\n", "MISSED", len(bad), len(good))
+		return 1
+	}
+	fmt.Printf("  ok              a narrating # comment, and none in its present-tense form\n")
+	return 0
+}
+
+// citeControls proves AP-CITE-01 in both directions: an ID the package did
+// not carry at the base is reported, and one it carried, one after a release
+// number and one with a release's prefix are not. It returns the number wrong.
+func citeControls() int {
+	src := "package p\n\n// a new rule (D-9), an old one (D-4), 0.19.5 D-12 and MVS-D-80.\nfunc f() {}\n"
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "p/f.go", src, parser.ParseComments)
+	if err != nil {
+		fmt.Printf("  BROKEN SPECIMEN  citations: %v\n", err)
+		return 1
+	}
+	got := checkCitations(fset, f, "p/f.go", citedAt{"p": {"D-4": true}})
+	if len(got) != 1 || !strings.HasPrefix(got[0].Text, "D-9 ") {
+		fmt.Printf("  %-15s a new bare citation, and none that is old or qualified\n      got %v\n", "MISSED", got)
+		return 1
+	}
+	fmt.Printf("  ok              a new bare citation, and none that is old or qualified\n")
+	return 0
+}
+
+// capsControls proves AP-CAPS-01 in both directions: a paragraph opening
+// with an all-caps AND in a changed declaration warns, and the same paragraph
+// in an unchanged one, a sentence-case "And" and a caps headline that is no
+// continuation do not. It returns the number wrong.
+func capsControls() int {
+	src := "package p\n\n// f is changed.\nfunc f() {\n\t// AND THE RAIL IS TOLD.\n\t// And the units too.\n\t//\n\t// IT BLOCKS UNTIL THE READ ENDS.\n}\n\n// g is not.\nfunc g() {\n\t// AND THE RAIL IS TOLD.\n}\n"
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "p/f.go", src, parser.ParseComments)
+	if err != nil {
+		fmt.Printf("  BROKEN SPECIMEN  caps: %v\n", err)
+		return 1
+	}
+	got := checkCapsContinuation(fset, f, "p/f.go", changedLines{"p/f.go": {4: true}})
+	if len(got) != 1 || got[0].Line != 5 {
+		fmt.Printf("  %-15s a caps AND opening a paragraph in a changed declaration, and none elsewhere\n      got %v\n", "MISSED", got)
+		return 1
+	}
+	fmt.Printf("  ok              a caps AND opening a paragraph in a changed declaration, and none elsewhere\n")
+	return 0
 }
 
 func runSelfTest() int {
@@ -211,6 +337,10 @@ func runSelfTest() int {
 		}
 		fmt.Printf("  ok              %s\n", s.name)
 	}
+	bad += packageDocControls()
+	bad += hashControls()
+	bad += citeControls()
+	bad += capsControls()
 	if bad > 0 {
 		fmt.Printf("\nauthoring self-test: %d specimen(s) wrong — the instrument does not discriminate\n", bad)
 		return 1

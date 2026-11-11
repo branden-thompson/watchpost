@@ -55,7 +55,7 @@ Real data, 133×44, the default theme unless noted (0.14.0).
 
 ![The radio on air in Synth mode: the station lead, then the forecast read line by line in the marquee band, the visualizer inside it](docs/img/radio.gif)
 
-![The Settings window: settings grouped by concern, with the Alert Notification Preference — all severe events, or filtered to within N miles of the default location](docs/img/setup.png)
+![The Settings window, shown as one window before Settings had tabs: the default location, the NASA FIRMS key, theme, units, the radio's clock and the Alert Notification Preference (all severe events, or within N miles of the default location) in one column, beside the alert tones, the radio's correspondents and RELAY REPLAY](docs/img/setup.png)
 
 ![Settings' theme picker cycling twelve of the thirteen built-in palettes live — Watchpost Light, Catppuccin, Everforest, Gruvbox, High Contrast, Kanagawa, Monochrome, Nord, Osaka Jade, Solarized Night, Synthwave '84, Tokyo Night — the whole frame repainting on each; add your own as a JSON file](docs/img/themes.gif)
 
@@ -87,7 +87,8 @@ Then:
 watchpost
 ```
 
-On the first run the Settings window opens over the dashboard and asks three things, all on one screen:
+On the first run the Settings window opens over the dashboard on its Data tab, which asks three things
+(and holds the HISTORY rows below them):
 the default location (start typing a city or ZIP; the list narrows as you type), an optional NASA
 FIRMS key for satellite fire detections minutes old (leave it empty — the built-in fire sources need
 no key), and whether the radio should announce every severe event nationwide or only those within a
@@ -336,7 +337,7 @@ to the Observer, and is refused while the station is ON AIR.
 
 ![Managing a slot: the Carlsbad card's window with Change Position open — move it to any position from 2 to 15 and everything below shifts down — and the keys to close, scroll, change position or drop it from the line-up](docs/img/broadcaster-manage.png)
 
-![The console's own Settings: the transmitter (following the default location until you set one) with the sentence that its position never leaves this machine, the service radius from 2 to 100 miles, the NASA FIRMS key, the theme and units, and on the right the alert tones and the correspondents — every row the console shares with the Observer](docs/img/broadcaster-settings.png)
+![The console's own Settings: the station's transmitter (following the default location until you set one) with the sentence that its position never leaves this machine, and its service radius from 2 to 100 miles, shown as one window before Settings had tabs, above the theme, units, clock, alert tones and correspondents the console shares with the Observer](docs/img/broadcaster-settings.png)
 
 | Key | Does |
 |-----|------|
@@ -346,7 +347,7 @@ to the Observer, and is refused while the station is ON AIR.
 | `r` | **Line-Up Request** — ask for a place inside the radius, by name |
 | `l` | look up any city or ZIP |
 | `g` | the station's own map: centred on the transmitter, the service radius drawn in red in every mode; `P` its Propagation mode, the box over the map answering for the map's centre from the station |
-| `b` / `shift+←` `shift+→` | cut the main track over to the **bed** (the live relay) / previous and next relay |
+| `b` / `shift+←` `shift+→` / `space` | cut the main track over to the **bed** (the live relay) / previous and next relay / play or pause the bed's relay |
 | `+` `=` `-` | gain up and down — one level, mirrored with the Observer's volume |
 | `ctrl+d` | Diagnostics — **send a test alert** to check your station's alerting end to end, as a radio station tests its own: it asks ARE YOU SURE?, reads "This is a test of the Watchpost alert events system" before and after, is marked TEST EVENT on the ticker and in the severe window, and is gone in two minutes |
 | `s` `a` `S` `?` `q` | Settings · About · the status of every data source · help · quit |
@@ -372,8 +373,8 @@ Weather alert when one is active. Two sources need no key: NOAA's Hazard Mapping
 
 **NASA FIRMS (optional, free key).** FIRMS adds detections minutes old, straight from the satellites,
 before an analyst has looked at them. Get a MAP_KEY at
-<https://firms.modaps.eosdis.nasa.gov/api/map_key/> (it arrives by email at once), press `s`, `tab` to
-the key line and paste it — it is masked, `ctrl+r` shows it, and the window tells you whether FIRMS
+<https://firms.modaps.eosdis.nasa.gov/api/map_key/> (it arrives by email at once), press `s`, `↓` to
+the key line on the Data tab and paste it — it is masked, `ctrl+r` shows it, and the window tells you whether FIRMS
 accepts it. The key takes effect at once and only ever travels to NASA's FIRMS servers; without one,
 FIRMS simply reads `off` in the status window and the other two sources carry the default.
 
@@ -381,11 +382,12 @@ FIRMS simply reads `off` in the status window and the other two sources carry th
 
 `t` opens Settings at the theme picker: Watchpost, Watchpost Light (for a light terminal), High Contrast,
 Monochrome and nine more, applied live and remembered. Every colour pair the themes paint TEXT with is held to
-the WCAG AA contrast level, in every theme, by a gate that fails the build. Eleven tokens sit outside
-it, listed with their reason in `06_docs/follow-ups.md` (F-57): the radio ground is the terminal's own
-default with no colour to measure, the key chips carry foreground and background together, the title
-gradient is large display text held to 3:1, and the visualizer bars are decorative and repeat what the
-play mark already says. `watchpost --ascii` draws every mark with plain characters
+the WCAG AA contrast level, in every theme, by a gate that fails the build. The tokens outside
+it are listed, each with its reason, in `platform/render/aa_completeness_test.go`: the radio ground is
+the terminal's own default with no colour to measure, the key chips carry foreground and background
+together, the title gradient is large display text held to 3:1, the visualizer bars are decorative and
+repeat what the play mark already says (F-57), and the map's source badges choose black or white words
+for each ground and are measured by their own test. `watchpost --ascii` draws every mark with plain characters
 (`>` pointer, `*` playing, `R` on repeat, `n*` fires, `n!` alerts, `.`/`o`/`O` quakes, `+ - |` box
 rules, arrow keys named in words) and spells out headers a screen reader would read letter by letter,
 for terminals or screen readers that mishandle the glyphs. It covers the marks, the box rules, the
@@ -496,6 +498,9 @@ mode  = ""                # "" every class sounds | "mute" silence the classes b
 muted = ["warning"]       # class keys; EMPTY under mute means every class
 ```
 
+A word outside its list — `mode`, `cast` or the tones' `mode` — stops Watchpost at start, and the error
+names the key and the words it takes.
+
 **The station's own keys** (`[broadcaster]`; the transmitter and the service radius are rows in the console's Settings, the bed radius is config-only):
 
 ```toml
@@ -540,6 +545,7 @@ own. Today: `weather-radio/` (the broadcast's lead, conditions, alerts, sign-off
 test event) and `voice-preview/`. There is also
 `transition/`, written and pinned but **not yet on air** — it is the line between a takeover and the
 programme resuming, and it arrives with the wiring in a later release.
+A new part is spoken only where the code asks for it by name ([`docs/extending.md`](docs/extending.md), Walkthrough 7).
 To re-word a phrase, put the same `<report>/<part>.txt` under `~/.config/watchpost/scripts/`; it
 replaces that phrase alone. How the correspondent *pronounces* things is data too:
 `domains/radio/pronounce/rules/<table>.txt` — `zones` (PDT → "Pacific Daylight Time"), `states`,
@@ -561,31 +567,73 @@ against its 500-row cap. A running dashboard writes a diagnostic dump — heap, 
 threadcreate profiles with `counters.json` — under the cache directory's `profiles/` on
 `kill -USR1 <pid>` (macOS/Linux; on Windows use `curl -X POST .../debug/dump`); dumps are at least a minute apart and
 the newest twelve are kept. `watchpost report <loc> --verbose` appends one request-counter line per
-host. `WATCHPOST_DEBUG_RADIO=1` writes one line per radio engine state change, one per
+host, then the cast and tone answers the `S` window gives. `WATCHPOST_DEBUG_RADIO=1` writes one line per radio engine state change, one per
 synthesized segment as it reaches the air, one when a cycle ends (the voice's error, if that is why),
 and one when a read is ended for not finishing — the first thing to send when a relay "plays nothing"
 or a broadcast ends before its sign-off. It lands at `<cache>/watchpost/debug/radio.log`, mode 0600,
 rotated once past 8 MiB. **The variable names the LOG, not a path**: set it to a lower-case name
 (`WATCHPOST_DEBUG_RADIO=soak`) to keep a run's log beside the others, and anything that is not a name
 falls back to `radio`.
+`WATCHPOST_DEBUG_MAPFRAMES=<file>` appends one JSON record per map frame drawn to that file (mode 0600),
+and `WATCHPOST_DEBUG_MAPFRAMES_TEXT=1` keeps each frame's text in it too.
+`WATCHPOST_WATCHLIST_DWELL=<duration>` (Go's form, `90s`, `10m`) sets how long the watchlist's relay
+rotation stays on each place; the default is five minutes, and a value that does not parse is ignored
+and logged under `WATCHPOST_DEBUG_RADIO`. `WATCHPOST_MAINTRACK=dark` composes the console's main-track
+cards and publishes them without putting them on the air, for comparing the schedule with the live
+rotation; any other value, and the default, is off (F-158).
 
 ## Building from source
 
-Go 1.26.10 is the floor (`go.mod`): the map library, go-tuiMaps, requires it (its D-38; watchpost D-244), because below it
-standard-library vulnerabilities its code reaches are unfixed, GO-2026-6809 the latest, and watchpost does too. CI and the releases build with 1.27.3. `make build` (binary in
-`./dist`, version stamped from `git describe`), `make verify` (fmt, vet, tidy, vulnerability, race,
-import-direction, watermark and control gates with positive controls), `make release-matrix` (all
-targets, CGO off), `make install-test` (installer end to end against a local server), `make hooks` (a pre-push hook that
-runs the tests reading the record, in seconds, from the tree; it refuses to replace a hook already set up, and says how to keep
-both). `make verify` runs from a clean
-clone; it needs the Go toolchain, git, python3, GNU make 3.82 or newer (macOS ships 3.81 — `brew install make`), and network access the first time, to fetch the pinned golangci-lint and govulncheck. `make quality` is the phase-exit set — today the Power-of-Ten
-gate `p10`, which needs the out-of-tree `a2dh` CLI and its two local files, `.a2dh.yml` and
-`.a2dh-p10-exemptions.yml` (git-ignored; the exemptions' rows are mirrored in `06_docs/p10-ledger.md`), and
-fails loud without them rather than skipping; it is run at every phase exit and its result is recorded in
-the release's gate roster (D-252). The soak and
-benchmark harness lives in `scripts/quality/` and `make quality-bench`. The terminal UI kit (`go-studs`,
-MIT, same author) is carried in-tree under `third_party/go-studs` (its LICENSE and NOTICE.md ride with
-it; import paths rewritten), so the tree builds anywhere with no private access.
+**1. What you need.** Go 1.26.10 or newer (`go.mod`). The map library, go-tuiMaps, requires it (its
+D-38; watchpost D-244), because below it the standard library carries vulnerabilities its code reaches,
+GO-2026-6809 the latest. CI and the releases build with 1.27.3. You also need git, python3 and GNU make
+3.82 or newer. macOS ships 3.81, so `brew install make` and put its `gnubin` first on your `PATH`
+(`export PATH="$(brew --prefix)/opt/make/libexec/gnubin:$PATH"`). The first `make verify` needs the
+network, to fetch the pinned golangci-lint and govulncheck. The terminal UI kit (`go-studs`, MIT, same
+author) is carried in the tree under `third_party/go-studs`, with its LICENSE and NOTICE.md and its
+import paths rewritten, so the tree builds anywhere with no private access.
+
+**2. The inner loop.** Run `go test ./<package>` for what you are changing, and `make build` for the
+binary (in `./dist`, its version stamped from `git describe`). `modes/tty` is the slowest package:
+about three and a half minutes under `-race`.
+
+**3. Before a pull request: `make verify`.**
+- It runs every gate: fmt, vet, tidy, vulnerabilities, race, lint, the import and authoring rules, the
+  watermark check, the gates' own controls and the mutant corpus. It runs from a clean clone.
+- It takes **40 to 65 minutes** on the developer's machine, most of it the mutant check. The last three
+  green runs, at 1,057 mutants, took 2,386 to 4,003 s; `06_docs/verify-runs.md` has every run.
+- **It appends a line to the tracked `06_docs/verify-runs.md`**, so the tree is changed afterwards.
+  Commit that line with the change it verified, and never remove a FAILED one.
+- **A second `make verify` while one runs is refused, not queued.** `make tree-free` says whether one
+  is running.
+- `make hooks` installs a pre-push hook that runs the tests reading the record, in seconds, from the
+  tree. It refuses to replace a hook already set up, and says how to keep both.
+
+**4. A Markdown-only change: `make verify-docs`.** It runs every test that reads a document and the
+document lints, in about two and a half minutes. It refuses a change that holds any file that is not
+Markdown.
+
+**The other targets.** `make release-matrix` builds every target, CGO off. `make install-test` runs
+the installer end to end against a local server. `make quality-bench` is the soak and benchmark harness
+in `scripts/quality/`. `make quality` is the phase-exit set: today the Power-of-Ten gate `p10`, which
+needs the out-of-tree `a2dh` CLI and its two local files, `.a2dh.yml` and `.a2dh-p10-exemptions.yml`.
+Both are git-ignored, and the exemptions' rows are mirrored in `06_docs/p10-ledger.md`. It fails loud
+without them rather than skipping, runs at every phase exit, and its result goes in the release's gate
+roster (D-252). `06_docs/code-standards.md` lists its rules.
+
+**Start here**, reading the code for the first time:
+1. [`docs/architecture.md`](docs/architecture.md) — the program's shape as built: what feeds it, its
+   layers, and a map of the packages. The [architecture atlas](06_docs/architecture-atlas.html)
+   draws it with the as-built maps.
+2. [`docs/where-things-happen.md`](docs/where-things-happen.md) — where each thing happens, and the
+   vocabulary (the five roles, duck, burst, pool, lane and the rest).
+3. [`docs/extending.md`](docs/extending.md) — how to add a detail row, a provider, a radio control, a
+   report kind, a map layer, a Setting, a spoken phrase or a line on a Broadcaster card, site by
+   site, with what fails when one is missed.
+4. [`06_docs/code-standards.md`](06_docs/code-standards.md) — the rules, and which gate holds each.
+5. Before touching the Broadcaster:
+   [`06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md`](06_docs/02_features/0.16.0-broadcaster-ui/00-REQUIRED-READING.md),
+   the rulings the code cannot tell you.
 
 **The code standards are written down and machine-checked**, in
 [`06_docs/code-standards.md`](06_docs/code-standards.md) — what comments are for, when a discard needs

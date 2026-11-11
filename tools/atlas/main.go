@@ -1,9 +1,12 @@
 // Command atlas builds the architecture atlas from the tracked documents.
 //
 // **The documents are the source of truth and the page is generated from
-// them.** It reads every fenced mermaid block under 06_docs/ and docs/, takes
-// the heading above each as its title and the paragraph between as its lead,
-// and groups them by the feature they belong to.
+// them.** It reads the fenced mermaid blocks of the documents that describe
+// the code as built — every page under docs/, and each feature's as-built
+// maps (`as-built*.md`) — takes the heading above each as its title and the
+// paragraph between as its lead, and groups them by the feature they belong
+// to. A plan's or a report's diagram is design history and stays in its own
+// document (0.19.5 D-15).
 //
 // Two things worth knowing before editing a diagram and wondering why the page
 // did not change: only fenced mermaid blocks are read, so **a change written in
@@ -30,15 +33,10 @@ var page string
 
 // order is what a reader should meet first, not alphabetical.
 var order = []struct{ dir, title string }{
-	{"watchpost-cli", "The shape of the program"},
-	{"map-ready-geometry", "Map-ready geometry (0.17.0)"},
-	{"severe-alerts-modals", "Severe weather"},
-	{"seismic-data", "Earthquakes"},
-	{"global-ticker", "The national feed"},
-	{"multi-voice-support", "The Director and the voices"},
-	{"0.16.0-broadcaster-ui", "The Broadcaster console"},
-	{"0.15.0-pre-broadcaster-ui-improvements", "Before the console"},
-	{"watchpost-performance-quality-pass", "The quality pass"},
+	{"docs", "The shape of the program"},
+	{"0.16.0-broadcaster-ui", "The Broadcaster: the air and the deck"},
+	{"map-ready-geometry", "Map-ready geometry"},
+	{"observer-maps", "The maps"},
 }
 
 var (
@@ -102,7 +100,7 @@ func collect(repo string) ([]diagram, error) {
 	var found []diagram
 	for _, root := range []string{"06_docs", "docs"} {
 		err := filepath.Walk(filepath.Join(repo, root), func(path string, info os.FileInfo, err error) error {
-			if err != nil || info.IsDir() || !strings.HasSuffix(path, ".md") {
+			if err != nil || info.IsDir() || !asBuilt(root, path) {
 				return err
 			}
 			raw, err := os.ReadFile(path)
@@ -198,6 +196,15 @@ func read(path, text string) []diagram {
 		})
 	}
 	return out
+}
+
+// asBuilt reports whether a document describes the code as built: any page
+// under docs/, and an as-built map under 06_docs/.
+func asBuilt(root, path string) bool {
+	if !strings.HasSuffix(path, ".md") {
+		return false
+	}
+	return root == "docs" || strings.HasPrefix(filepath.Base(path), "as-built")
 }
 
 // featureOf is the area a document belongs to.

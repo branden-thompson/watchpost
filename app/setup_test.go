@@ -115,3 +115,73 @@ func TestApplySetupStoresAWellFormedFIRMSKeyOnly(t *testing.T) {
 		t.Fatal("setup without a location must fail the invariant")
 	}
 }
+
+// setupOver saves a config holding these locations, runs Setup with def as the
+// new default, and returns the saved list's labels in order.
+func setupOver(t *testing.T, def snapshot.LocationRef, locs ...config.Location) string {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	if err := config.Save(config.Config{Locations: locs}); err != nil {
+		t.Fatal(err)
+	}
+	if err := applySetup(def, ""); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	labels := make([]string, 0, len(cfg.Locations))
+	for _, l := range cfg.Locations {
+		labels = append(labels, l.Label)
+	}
+	return strings.Join(labels, "|")
+}
+
+// oldDefault is the first entry, which Setup always replaces.
+var oldDefault = config.Location{Label: "El Cajon, CA", Zip: "92020", Lat: 32.79, Lon: -116.96}
+
+// The four tests below are 0.19.5 D-8: Setup decides "the same place" by
+// snapshot.PlaceID, the ZIP when a place has one, else its coordinates to four
+// decimals, as the watchlist and RECENT do.
+
+// TestSetupKeepsTwoPlacesThatShareCoordinatesButNotAZip: two ZIPs are two places.
+func TestSetupKeepsTwoPlacesThatShareCoordinatesButNotAZip(t *testing.T) {
+	got := setupOver(t, oceanside(), oldDefault,
+		config.Location{Label: "Camp Pendleton, CA", Zip: "92055", Lat: 33.24, Lon: -117.29})
+	if got != "Oceanside, CA|Camp Pendleton, CA" {
+		t.Errorf("a place with its own ZIP at the default's coordinates was dropped: %s", got)
+	}
+}
+
+// TestSetupKeepsAZiplessEntryBesideTheNewDefault: a ZIP-less place is keyed by
+// its coordinates, the new default by its ZIP, so they are two places.
+func TestSetupKeepsAZiplessEntryBesideTheNewDefault(t *testing.T) {
+	got := setupOver(t, oceanside(), oldDefault,
+		config.Location{Label: "The Pier", Lat: 33.24, Lon: -117.29})
+	if got != "Oceanside, CA|The Pier" {
+		t.Errorf("a ZIP-less place at the default's coordinates was dropped: %s", got)
+	}
+}
+
+// TestSetupKeepsAZippedEntryBesideAZiplessDefault is the mirror case.
+func TestSetupKeepsAZippedEntryBesideAZiplessDefault(t *testing.T) {
+	pier := snapshot.LocationRef{Label: "The Pier", Lat: 33.24, Lon: -117.29}
+	got := setupOver(t, pier, oldDefault,
+		config.Location{Label: "Oceanside, CA", Zip: "92057", Lat: 33.24, Lon: -117.29})
+	if got != "The Pier|Oceanside, CA" {
+		t.Errorf("a place with a ZIP at a ZIP-less default's coordinates was dropped: %s", got)
+	}
+}
+
+// TestSetupFoldsCoordinatesEqualToFourDecimals: two ZIP-less places equal to
+// four decimals are one place, and the old default always goes.
+func TestSetupFoldsCoordinatesEqualToFourDecimals(t *testing.T) {
+	pier := snapshot.LocationRef{Label: "The Pier", Lat: 33.2, Lon: -117.29}
+	got := setupOver(t, pier, oldDefault,
+		config.Location{Label: "Pier, again", Lat: 33.20001, Lon: -117.29},
+		config.Location{Label: "Oceanside, CA", Zip: "92057", Lat: 33.24, Lon: -117.29})
+	if got != "The Pier|Oceanside, CA" {
+		t.Errorf("want the old default replaced and the same place folded: %s", got)
+	}
+}

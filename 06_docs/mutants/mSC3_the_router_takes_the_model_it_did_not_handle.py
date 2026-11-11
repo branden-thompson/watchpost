@@ -14,8 +14,6 @@ new = """			m, cmd, handled := r.keyAction(msg, k, a)
 			if handled {
 				return m, cmd, true
 			}
-			if rr, ok := m.(Router); ok {
-				r = rr
-			}"""
+			r = m"""
 assert old in s, "mSC3"
 p.write_text(s.replace(old, new, 1))

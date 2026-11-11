@@ -5,7 +5,7 @@
 // truncation, and gutters are the component's job; this seam only assembles
 // the column spec for the current width (UAT-2D responsive drops + the
 // ultra-wide EXTENDED FORECAST columns) and formats watchpost values.
-// Rules baked in (architecture §4): severity and health are NEVER color-only
+// Rules baked in (watchpost-cli architecture §4): severity and health are NEVER color-only
 // (text glyphs/labels always present — R-12a); --ascii swaps glyphs without
 // dropping signals (RS-14); widths are always explicit; units convert here
 // and only here (D-19: f/c live toggle; SI internal).

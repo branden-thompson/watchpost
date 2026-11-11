@@ -170,8 +170,6 @@ func tideEvent(o render.Opts, e *snapshot.TideEvent, tz *time.Location) string {
 	return marinePair(o.Clock.Time(e.Time.In(tz)), o.TideHeight(&e.Height))
 }
 
-// tideTrend reads the direction from whichever extreme comes next.
-
 // currentRow: the phase in force (last predicted extreme before now, with
 // its max speed) and the next predicted event as the note.
 func currentRow(o render.Opts, events []snapshot.CurrentEvent, tz *time.Location, now time.Time) (marineCell, bool) {
@@ -237,11 +235,11 @@ func period(s *float64) string {
 // fixedAgeTrim is fixedAge without the alignment padding.
 func fixedAgeTrim(d time.Duration) string { return strings.TrimSpace(fixedAge(d)) }
 
-// compass maps degrees true to a 16-point heading.
+// compass maps degrees true to a 16-point heading (geo.Compass16), or "--"
+// for none.
 func compass(deg *float64) string {
 	if deg == nil {
 		return "--"
 	}
-	pts := []string{"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"}
-	return pts[geo.CompassIndex(*deg, 16)]
+	return geo.Compass16(*deg)
 }

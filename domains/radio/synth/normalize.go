@@ -84,7 +84,7 @@ func stateContext(runes []rune, i int, ambiguous bool) bool {
 		return true
 	}
 	if ambiguous || i < 2 {
-		return false // nothing can precede a code at the start (round 2 N-1: "CA" at index 0 sliced runes[-1:-1]); "CA-…" was handled above
+		return false // nothing can precede a code at the start, and a slice before it would underflow; "CA-…" is handled above
 	}
 	// Preceded by a Title-case word: "San Diego CA".
 	j := i - 2                                                  // skip the space before the token

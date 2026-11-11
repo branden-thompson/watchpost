@@ -59,7 +59,7 @@ func TestTheLineupTableDrawsItsColumnsAndGroups(t *testing.T) {
 		"R E A D   O U T S", "D I R E C T I O N", "C U R R E N T L Y",
 		"REPORT TYPE", "LOCATION", "ZIP", "DIST", "PRIORITY", "REQUESTED BY", "CONDITIONS", "NOW",
 		"02.", "Fallbrook, CA", "92028", "Station Operator",
-		// AND THE WEATHER WHERE THE BEAT IS (D-116), in the location table's own
+		// The row carries the weather where the beat is, in the location table's own
 		// vocabulary: "THUNDERSTORM" through `DisplayCondition`, the temperature
 		// through `temp5`.
 		"THUNDERSTORM", "88",
@@ -91,7 +91,7 @@ func TestBothTablesDrawTheirHeadersThroughTheSameFunction(t *testing.T) {
 	}
 }
 
-// THE FOCUSED ROW IS PAINTED, NOT MERELY POINTED AT (D-105).
+// THE FOCUSED ROW IS PAINTED, NOT MERELY POINTED AT.
 //
 // HUM LEAD, UAT 2026-09-12: "Rows in the Scheduled Line up should highlight just
 // like the location pool table." The pool's focused row reads light blue with its
@@ -122,7 +122,7 @@ func TestTheFocusedSlotIsPaintedLikeTheFocusedLocation(t *testing.T) {
 	if focused[typ] != Tok(FocusCell) {
 		t.Errorf("the focused row's cells read %q, not the focus cell tone", focused[typ])
 	}
-	// AND AN UNFOCUSED ROW IS UNTOUCHED, which is what makes the tint mean
+	// An unfocused row is untouched, which is what makes the tint mean
 	// something.
 	if plain[loc] == Tok(FocusName) || plain[typ] == Tok(FocusCell) {
 		t.Error("an unfocused row is painted as the focused one")

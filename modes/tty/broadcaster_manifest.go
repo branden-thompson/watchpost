@@ -96,7 +96,7 @@ func cardPulled(o render.Opts, c lineup.Card, now func() time.Time, room int) st
 		return "DATA PULLED:  " + o.Glyphs().Dash
 	}
 	at := c.BuiltAt
-	stamp := "DATA PULLED:  " + at.Format("Monday January 2, 2006 @ 15:04:05")
+	stamp := "DATA PULLED:  " + at.Format("Monday January 2, 2006 @ ") + o.Clock.TimeSec(at) // in the clock Setting (0.19.5 D-29)
 	if now == nil {
 		return stamp
 	}
@@ -113,9 +113,10 @@ func cardPulled(o render.Opts, c lineup.Card, now func() time.Time, room int) st
 }
 
 // cardPulledShort is the card's own form of the stamp: `mm/dd/yy  23:59:59
-// (10 MIN AGO)`, from the reference.
+// (10 MIN AGO)`, from the reference, its time in the clock Setting (0.19.5
+// D-29).
 //
-// THE CARD GETS THE SHORT FORM AND THE WINDOW THE LONG ONE (D-110). The card is
+// THE CARD GETS THE SHORT FORM AND THE WINDOW THE LONG ONE. The card is
 // glanced at beside a dozen other rows and the window is read; "Saturday
 // September 12, 2026 @ 16:02:45" is forty-two cells of a card that has about
 // sixty, and every one of them says something the operator already knows.
@@ -126,7 +127,7 @@ func cardPulledShort(o render.Opts, c lineup.Card, now func() time.Time) string 
 	if c.BuiltAt.IsZero() {
 		return o.Glyphs().Dash
 	}
-	out := c.BuiltAt.Format("01/02/06  15:04:05")
+	out := c.BuiltAt.Format("01/02/06  ") + o.Clock.TimeSec(c.BuiltAt)
 	if now == nil {
 		return out
 	}

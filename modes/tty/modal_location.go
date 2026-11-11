@@ -16,7 +16,7 @@ import (
 
 // handleAddKey owns keys while the add-location modal is open: printable
 // keys build the query, so table/global bindings never fire mid-typing.
-func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		if d.addMode == "add" && d.watchlistFull() {
@@ -65,9 +65,7 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		d = d.close()
 		d.addQuery, d.addErr, d.addLocate = "", "", locateState{}
 	case "backspace":
-		if r := []rune(d.addQuery); len(r) > 0 {
-			d.addQuery = string(r[:len(r)-1])
-		}
+		d.addQuery = eraseRune(d.addQuery)
 		return d.afterLookupEdit()
 	default:
 		if key.Text != "" {
@@ -83,7 +81,7 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // EVERY EDIT RESETS IT, which is the rule the HUM LEAD asked for: "Everytime
 // the human user presses an alpha-numeric key in the text field, we can infer
 // they're still typing, and we can reset that timer."
-func (d Dashboard) afterLookupEdit() (tea.Model, tea.Cmd) {
+func (d Dashboard) afterLookupEdit() (Dashboard, tea.Cmd) {
 	if !d.lookupIsScoped() {
 		return d, nil
 	}
@@ -129,7 +127,7 @@ func (d Dashboard) resolveCmd(query, mode string) tea.Cmd {
 }
 
 // handleResolved routes a resolved location into its flow (UAT 26.3/26.4).
-func (d Dashboard) handleResolved(v resolvedMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleResolved(v resolvedMsg) (Dashboard, tea.Cmd) {
 	if v.err != nil {
 		d.addErr = v.err.Error()
 		return d, nil
@@ -168,7 +166,7 @@ func (d Dashboard) handleResolved(v resolvedMsg) (tea.Model, tea.Cmd) {
 	return d, d.commitCmd(watch, recent, v.mode)
 }
 
-// showLocation opens Details for a location the CONSOLE pointed at (D-113).
+// showLocation opens Details for a location the CONSOLE pointed at.
 //
 // HUM LEAD, UAT 2026-09-12: "make it so <enter> on a location pool row opens the
 // location details (like observer)."
@@ -207,7 +205,7 @@ func (d Dashboard) commitCmd(watch, recent []snapshot.LocationRef, what string) 
 }
 
 // handleRemoveKey owns the confirmation modal (UAT 26.2).
-func (d Dashboard) handleRemoveKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleRemoveKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		d = d.close()
@@ -299,7 +297,7 @@ func (d Dashboard) addLines(o render.Opts) []string {
 	lines := []string{""}
 	if d.addMode == "add" && d.watchlistFull() {
 		// UAT 26.3: cap note leads the modal when the watchlist is full.
-		lines = append(lines, "  Only 10 locations are allowed in the priority list", "  for performance reasons.", "")
+		lines = append(lines, fmt.Sprintf("  Only %d locations are allowed in the priority list", WatchCap), "  for performance reasons.", "")
 	}
 	lines = append(lines, "  Search: "+d.addQuery+o.Glyphs().Cursor, "")
 	if d.addErr != "" {
@@ -312,7 +310,7 @@ func (d Dashboard) addLines(o render.Opts) []string {
 		lines = append(lines, poolNoteLines(o, fact, aside, modalHelperWidth(d.modalWidth()))...)
 		lines = append(lines, "")
 	} else if d.lookupIsScoped() && d.addLocate.reachable() {
-		// AND IT SAYS WHAT IT MATCHED. A prefix match means "Vis" is already a
+		// It says what it matched. A prefix match means "Vis" is already a
 		// hit, so without the name the operator cannot tell WHICH pooled place
 		// enter is about to open — the request window names it for the same
 		// reason.
@@ -324,7 +322,7 @@ func (d Dashboard) addLines(o render.Opts) []string {
 	if d.addMode == "lookup" {
 		verb = "Lookup"
 	}
-	// AND THE CHIP SAYS SO. CtlIf draws an unavailable control as unavailable,
+	// The chip says so. CtlIf draws an unavailable control as unavailable,
 	// which is the only honest state for a key the window will refuse.
 	if d.lookupIsScoped() {
 		// UNKNOWN READS AS AVAILABLE. The field is only briefly unsettled, and

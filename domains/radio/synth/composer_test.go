@@ -20,7 +20,7 @@ var std = Composer{}
 // exactly what 0.13.0 composed. Every later batch is measured against this.
 func TestComposeWithZeroReportsIsTodaysBroadcast(t *testing.T) {
 	loc := snapshot.Location{Label: "Oceanside, CA", Harmonized: snapshot.Conditions{
-		Condition: "partly_cloudy", Temp: f64(22.8), HumidityPct: f64(66),
+		Condition: "partly_cloudy", Temp: new(22.8), HumidityPct: new(float64(66)),
 		Source: snapshot.SourceInfo{Provider: "nws"}},
 		Alerts: []snapshot.Alert{{ID: "a1", Headline: "Heat Advisory", Description: "* WHAT...Hot."}}}
 	now := time.Date(2026, 8, 24, 16, 5, 0, 0, time.UTC)
@@ -93,6 +93,45 @@ func TestComposeStillPlacesTheReportsCarriedInReports(t *testing.T) {
 	}
 	if got := segs[seismicAt-1].Pause; got != reportPause {
 		t.Errorf("the segment before the seismic report pauses %v, want the report pause %v (UAT 115)", got, reportPause)
+	}
+}
+
+// TestComposeOrdersMarineFireAndSeismic is 0.19.5 Q2.4 (RN-5): the ruled order
+// (MVS-D-18) is products, maritime, fire, seismic, then the sign-off; each
+// report opens after two seconds of air, and the marine report's first
+// segment carries its manifest line.
+func TestComposeOrdersMarineFireAndSeismic(t *testing.T) {
+	now := time.Date(2026, 8, 30, 15, 0, 0, 0, time.UTC)
+	mr := marineFixture(now)
+	fr := FireReport{Known: true, HotspotsKnown: true, IncidentsKnown: true, RadiusKm: 25, IncidentRadiusKm: 50,
+		Sources: []string{"NOAA's Hazard Mapping System"}, State: snapshot.FireState{AsOf: now, HotspotsAsOf: now, IncidentsAsOf: now}}
+	sr := SeismicReport{Known: true, Lat: 33.2, Lon: -117.3, State: snapshot.SeismicState{AsOf: now, Quakes: []snapshot.Quake{
+		quake(4.2, 30, 8, "NE", 2*time.Hour, now),
+	}}}
+	segs := std.Compose(snapshot.Location{Label: "Oceanside, CA"}, nil, now, true, "Samantha", Station{},
+		Reports{Maritime: mr, Fire: fr, Seismic: sr}, render.Clock12)
+	first := func(prefix string) int {
+		for i, s := range segs {
+			if strings.HasPrefix(s.Key, prefix) {
+				return i
+			}
+		}
+		t.Fatalf("no %q segment was composed", prefix)
+		return -1
+	}
+	order := []int{first("maritime"), first("fire"), first("seismic"), first("tail:")}
+	for i := 1; i < len(order); i++ {
+		if order[i-1] >= order[i] {
+			t.Fatalf("the reports are out of the ruled order (maritime, fire, seismic, sign-off): %v", order)
+		}
+	}
+	for _, at := range order[:3] {
+		if got := segs[at-1].Pause; got != reportPause {
+			t.Errorf("the segment before %q pauses %v; want the report pause %v", segs[at].Key, got, reportPause)
+		}
+	}
+	if m := segs[order[0]]; m.Source != marineSource || m.Detail != marineSpan(mr, now) {
+		t.Errorf("the marine report opens with manifest %q / %q; want %q / %q", m.Source, m.Detail, marineSource, marineSpan(mr, now))
 	}
 }
 

@@ -1,3 +1,7 @@
+// cast.go — the voice cast: the roles read from the config and reconciled
+// with the voices this machine has, Piper installs for a role on demand, and
+// the views Settings edits and saves.
+
 package app
 
 import (
@@ -6,7 +10,6 @@ import (
 	"maps"
 	"os/exec"
 	"runtime"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -298,19 +301,6 @@ func (d *radioDeck) castChanged() {
 	})
 }
 
-// spokenName is the name the identity lines use for a resolved voice: the
-// sentinel has no name a listener would recognise, so it introduces itself as
-// "your correspondent" (UAT 88).
-func spokenName(resolved string) string {
-	if resolved == "" || resolved == systemVoice {
-		return ""
-	}
-	if i := strings.Index(resolved, " ("); i > 0 {
-		return resolved[:i] // "Eddy (English (US))" reads as "Eddy"
-	}
-	return resolved
-}
-
 // --- Task 2.7: the deck resolves by role ---
 
 // maxUnattendedInstalls is how many Piper voices this session will fetch in the
@@ -396,7 +386,7 @@ func (d *radioDeck) buildVoice(name string) (synth.Voice, error) {
 // the source's resolver (radio.go:458), which is set during a tune — long after
 // attachRadio assigns the program. A unit test that downloads 63 MB is a defect
 // whatever it dereferences.
-func (d *radioDeck) canInstall() bool { return d.engine != nil && d.p != nil }
+func (d *radioDeck) canInstall() bool { return d.engine != nil && d.program != nil }
 
 func (d *radioDeck) startBackgroundInstall(key string) {
 	d.mu.Lock()

@@ -139,7 +139,7 @@ func worstOf(evs []globalfeed.Event) globalfeed.Event {
 	return worst
 }
 
-// tapeText is one alert on the ticker tape: the specific type and tied
+// tapeHead is one alert on the ticker tape: the specific type and tied
 // location, when it happened (the class verb — declared/recorded/reported), and
 // its active window's end when it has one (HUM LEAD 2026-08-27, #1). The lane
 // label already names the category, so the line names the specific alert.
@@ -157,7 +157,7 @@ func tapeHead(e globalfeed.Event) string {
 // eventNarration is one event's spoken line: the sentence, when it happened,
 // and (for an alert with a window) until when — no tail (HUM LEAD script).
 // Through render.Plain: a provider-supplied storm NAME reaches the
-// synthesiser, and the tape already strips at tapeText — the speech
+// synthesiser, and the tape already strips at tapeHead — the speech
 // path must too (S-F6). ExpandStates in AlertNarration reads "VA" as "Virginia".
 func eventNarration(e globalfeed.Event, c render.Clock, now time.Time) string {
 	s := e.Sentence() + " " + spokenWhen(c, e.At, now)

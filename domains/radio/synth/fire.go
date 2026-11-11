@@ -14,7 +14,6 @@ import (
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
-	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // FireReport is what the broadcast's fire segment reads from (UAT 114,
@@ -224,63 +223,12 @@ func (c Composer) incidentSentence(fr FireReport, in snapshot.Incident, imperial
 	return c.say("fire-report", "incident", data)
 }
 
-// distanceWords: "15 miles" / "25 kilometers" (whole units; "1 mile").
-func distanceWords(km float64, imperial bool) string {
-	if imperial {
-		mi := int(math.Round(units.MilesOf(km)))
-		if mi == 1 {
-			return "1 mile"
-		}
-		return fmt.Sprintf("%d miles", mi)
-	}
-	k := int(math.Round(km))
-	if k == 1 {
-		return "1 kilometer"
-	}
-	return fmt.Sprintf("%d kilometers", k)
-}
-
-// ringWords is the ring's size as an adjective ("16 mile", "25 kilometer").
-func ringWords(km float64, imperial bool) string {
-	if imperial {
-		return fmt.Sprintf("%d mile", int(math.Round(units.MilesOf(km))))
-	}
-	return fmt.Sprintf("%d kilometer", int(math.Round(km)))
-}
-
 // bearingWords names the direction from the location to a point in words
 // ("north", "west-northwest") on the 16-point compass.
 func bearingWords(lat1, lon1, lat2, lon2 float64) string {
 	pts := []string{"north", "north-northeast", "northeast", "east-northeast", "east", "east-southeast", "southeast", "south-southeast",
 		"south", "south-southwest", "southwest", "west-southwest", "west", "west-northwest", "northwest", "north-northwest"}
 	return pts[geo.CompassIndex(geo.BearingDeg(lat1, lon1, lat2, lon2), 16)]
-}
-
-// durationWords: "5 hours and 35 minutes", "3 days and 4 hours", "12 minutes".
-func durationWords(d time.Duration) string {
-	if d < 0 {
-		d = 0
-	}
-	days := int(d.Hours()) / 24
-	hours := int(d.Hours()) % 24
-	mins := int(d.Minutes()) % 60
-	plural := func(n int, unit string) string {
-		if n == 1 {
-			return "1 " + unit
-		}
-		return fmt.Sprintf("%d %ss", n, unit)
-	}
-	switch {
-	case days > 0 && hours > 0:
-		return plural(days, "day") + " and " + plural(hours, "hour")
-	case days > 0:
-		return plural(days, "day")
-	case hours > 0 && mins > 0:
-		return plural(hours, "hour") + " and " + plural(mins, "minute")
-	case hours > 0:
-		return plural(hours, "hour")
-	}
-	return plural(mins, "minute")
 }
 
 // satelliteWords says a satellite the way the feeds name it ("GOES-West").

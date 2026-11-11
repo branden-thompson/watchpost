@@ -420,3 +420,131 @@ func TestAnAssumedBaselineStillReachesAVerdict(t *testing.T) {
 		t.Errorf("with the baseline assumed the harness said %q, want CAUGHT", strings.TrimSpace(string(out)))
 	}
 }
+
+// A scoped run decides by the tests it names. The sweep runs each mutant's
+// last killer first, so a scope that names the detector must read CAUGHT and
+// one that names only a test blind to the mutation must read SURVIVED, which
+// sends the sweep on to the whole package. A scope that was ignored, or that
+// ran nothing and reported a catch, would make both answers the same.
+func TestAScopedRunDecidesByTheTestsItNames(t *testing.T) {
+	t.Parallel()
+	dir := probeRepo(t)
+	blind := `package harnessprobe
+
+import "testing"
+
+func TestAllowedAcceptsPositives(t *testing.T) {
+	if !Allowed(1) {
+		t.Fatal("a positive was refused")
+	}
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "blind_test.go"), []byte(blind), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "m.py"), []byte(patch("return x > 0", "return true")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	commitAll(t, dir, "a blind test and the mutant")
+	for _, c := range []struct{ scope, want string }{
+		{"^TestAllowedRefusesNegatives$", "CAUGHT"},
+		{"^TestAllowedAcceptsPositives$", "SURVIVED"},
+	} {
+		run := exec.Command("./run.sh", "m.py", "./...")
+		run.Dir = dir
+		run.Env = append(os.Environ(), "MUTANT_BASELINE=assumed", "MUTANT_RUN="+c.scope)
+		out, _ := run.CombinedOutput()
+		if !strings.HasPrefix(strings.TrimSpace(string(out)), c.want) {
+			t.Errorf("scoped to %s the harness said %q, want %s", c.scope, strings.TrimSpace(string(out)), c.want)
+		}
+	}
+}
+
+// A catch must repeat. Under the sweep's parallel workers a test can fail
+// for its own reasons and pass the next time, with or without the mutation.
+// The probe models that deterministically: a test that fails the first time
+// it runs and passes after, beside a mutation nothing pins. The attribution
+// check alone would read CAUGHT, since the test passes on the unmutated tree.
+func TestACatchMustRepeat(t *testing.T) {
+	t.Parallel()
+	dir := probeRepo(t)
+	once := `package harnessprobe
+
+import (
+	"os"
+	"testing"
+)
+
+// TestFailsOnce fails the first time it runs in this tree and passes after,
+// which is what a timing test that lost one race looks like.
+func TestFailsOnce(t *testing.T) {
+	const mark = "failed.once"
+	if _, err := os.Stat(mark); err != nil {
+		if err := os.WriteFile(mark, nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Fatal("lost a race the machine's load set, nothing to do with any mutation")
+	}
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "once_test.go"), []byte(once), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("failed.once\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "m.py"), []byte(patch("return x > 0", "return x > 0 || x == -7")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	commitAll(t, dir, "a test that fails once, and an unpinned mutant")
+	run := exec.Command("./run.sh", "m.py", "./...")
+	run.Dir = dir
+	run.Env = append(os.Environ(), "MUTANT_BASELINE=assumed") // so the mutated run is the test's first
+	out, _ := run.CombinedOutput()
+	if got := strings.TrimSpace(string(out)); !strings.HasPrefix(got, "INVALID") {
+		t.Errorf("a failure that does not repeat read %q; want INVALID, since nothing pins the mutation", got)
+	}
+}
+
+// A catch seen only after another test has run is still a catch: the
+// mutation leaks state that a later test sees, and the same run, repeated,
+// sees it again. The probe's mutation makes Reset do nothing; TestAPuts
+// cleans up with it and TestBStartsEmpty sees what was left. Alone, either
+// test passes on either tree.
+func TestACatchSeenAfterAnotherTestIsCaught(t *testing.T) {
+	t.Parallel()
+	dir := probeRepo(t)
+	if err := os.WriteFile(filepath.Join(dir, "cache.go"), []byte(`package harnessprobe
+
+var cache = map[string]int{}
+
+// Reset empties the cache.
+func Reset() { clear(cache) }
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "cache_test.go"), []byte(`package harnessprobe
+
+import "testing"
+
+func TestAPuts(t *testing.T) {
+	t.Cleanup(Reset)
+	cache["k"] = 1
+}
+
+func TestBStartsEmpty(t *testing.T) {
+	if len(cache) != 0 {
+		t.Fatalf("the cache holds %v", cache)
+	}
+}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mutant := "import pathlib\np = pathlib.Path(\"cache.go\"); s = p.read_text()\nold = " + quote("func Reset() { clear(cache) }") +
+		"\nassert old in s, \"probe\"\np.write_text(s.replace(old, \"func Reset() {}\", 1))\n"
+	commitAll(t, dir, "a cache and its tests")
+	got, _ := ask(t, dir, mutant)
+	if got != "CAUGHT" {
+		t.Errorf("a mutation a later test sees read %s; want CAUGHT", got)
+	}
+}

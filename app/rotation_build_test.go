@@ -22,7 +22,7 @@ import (
 func buildDeps(t *testing.T, segs []synth.Segment, err error) *executors {
 	t.Helper()
 	x := newExecutors(executors{
-		voice: testDirector(nil, nil), clock: func() render.Clock { return render.Clock12 },
+		voice: testArbiter(nil, nil), clock: func() render.Clock { return render.Clock12 },
 		now: func() time.Time { return execNow }, mc: newMastercontrol(nil, func(tea.Msg) {}),
 		audible: func() bool { return true }, muted: func() bool { return false },
 		alert:     func(string) (globalfeed.Event, bool) { return globalfeed.Event{}, false },

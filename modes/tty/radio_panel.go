@@ -66,7 +66,7 @@ func (d Dashboard) volControl(o render.Opts, width int) string {
 	// UAT 42.2: at the floor/ceiling the inert chip mutes like every other
 	// control; a live press blinks (the blink outranks the resting state).
 	minus, plus := o.KeyCapIf("-", d.radioVolume > 0), o.KeyCapIf("+", d.radioVolume < 100)
-	if d.volFlash != "" && time.Now().Before(d.volFlashEnd) {
+	if d.volFlash != "" && d.clock().Before(d.volFlashEnd) {
 		if d.volFlash == "+" {
 			plus = o.KeyCapWith("+", render.ChipFlashUp)
 		} else {
@@ -103,9 +103,34 @@ func (d Dashboard) radioPanel(fl frameLayout) string {
 
 // radioLines builds the player rows for a layout mode (UAT 35: width-
 // responsive — the control rows wrap and centre, the VOL bar scales, the
-// head shortens). ONE builder feeds both rendering and the height budget,
-// so what is measured is what is drawn.
+// head shortens).
 func (d Dashboard) radioLines(o render.Opts, compactMode bool) []string {
+	return d.radioRender(o, d.planRadio(o), compactMode)
+}
+
+// radioPlan is the first half of building the player: its shared parts and
+// every decision its height follows from, made without drawing the marquee or
+// the visualiser. The layout reads the height of both players from it and
+// renders only the one it draws (0.19.5 PF-3). One plan feeds both the height
+// and the rows, so what is measured is what is drawn;
+// TestTheRadiosPlannedHeightIsItsRows holds the two equal.
+type radioPlan struct {
+	inner int
+	parts radioParts // the title, the state and the controls; the VOL bar is each player's own
+	// twoRow is the narrow breakpoint, where the full player is the two-row one.
+	twoRow bool
+	// The full player's head and tail after the VOL ladder, the room the head
+	// has, and whether even the narrowest bar left it too little, so the head
+	// takes its short form and the visualiser one row.
+	head, tail string
+	room       int
+	narrow     bool
+}
+
+// planRadio makes the plan: the parts, and for the full player the head's
+// ladder (the VOL bar gives first, the wide bar, then 20 cells, then 10, the
+// mock's widths; the title only after that).
+func (d Dashboard) planRadio(o render.Opts) radioPlan {
 	inner := o.BoxInnerWidth() // the box's rows: borders and the 3-cell insets off
 	// Two different questions, and conflating them is a regression:
 	//
@@ -119,18 +144,54 @@ func (d Dashboard) radioLines(o render.Opts, compactMode bool) []string {
 	// frame is short would lose the labels a listener reads without gaining a
 	// row. d.width, not o.Width — the mock's numbers are OUTER columns.
 	bp := radioBreakpoint(d.width, false)
-	parts := radioParts{
+	p := radioPlan{inner: inner, twoRow: bp == radioNarrow, parts: radioParts{
 		title:    render.Tint("WATCHPOST WEATHER RADIO", render.Tok(render.RadioAccent)), // the facelift's capitals (HUM LEAD UAT 2026-08-28)
 		clock:    "",                                                                     // the max player lays the marquee itself (UAT 90)
 		state:    d.radioStateLabel(),
 		controls: d.radioControlLines(o, inner, bp),
+	}}
+	if p.twoRow {
+		return p
 	}
-	if compactMode || bp == radioNarrow {
+	p.head = p.parts.title + " " + o.Glyphs().Bullet + " " + d.station()        // "*" under --ascii
+	p.tail = d.volControl(o, max(10, min(30, inner/5))) + "   " + p.parts.state // scaled in the full player
+	p.room = inner - 2 - render.Width(p.tail)
+	for _, bar := range []int{20, 10} {
+		if render.Width(p.head) <= p.room {
+			break
+		}
+		p.tail = d.volControl(o, bar) + "   " + p.parts.state
+		p.room = inner - 2 - render.Width(p.tail)
+	}
+	p.narrow = render.Width(p.head) > p.room
+	return p
+}
+
+// rows is how many rows the player the plan describes takes, compact or full,
+// with the visualiser on or off.
+func (p radioPlan) rows(compact, viz bool) int {
+	n := 1 // the two-row player's status row
+	if !compact && !p.twoRow {
+		n = 2 // the full player's head and marquee track
+	}
+	switch {
+	case !viz:
+	case compact || p.twoRow || p.narrow:
+		n++ // UAT 51.B: one visualiser row
+	default:
+		n += 3 // UAT 54: three rows in the full player
+	}
+	return n + len(p.parts.controls)
+}
+
+// radioRender draws the player the plan describes, compact or full.
+func (d Dashboard) radioRender(o render.Opts, p radioPlan, compact bool) []string {
+	if compact || p.twoRow {
+		parts := p.parts
 		parts.vol = d.volControl(o, 10) // UAT 41.1: fixed 10 cells so the scrub bar gets the room
-		return d.radioCompactRows(inner, parts)
+		return d.radioCompactRows(p.inner, parts)
 	}
-	parts.vol = d.volControl(o, max(10, min(30, inner/5))) // scaled in the full player
-	return d.radioMaxRows(o, inner, parts)
+	return d.radioMaxRows(p)
 }
 
 // radioBP is one of the three fixed layouts (MVS-D-23).
@@ -272,7 +333,7 @@ func (d Dashboard) marqueeTrack(inner int) string {
 		if d.reduceMotion {
 			text = cutToWidth(d.opts(), d.radioDetail, w) // cut, not slid (D-360)
 		}
-		if render.Width(text) <= w-2 { // air either side only when both fit — a w-1 line padded to w+1 breaks the box (round 4, B-02)
+		if render.Width(text) <= w-2 { // air either side only when both fit — a w-1 line padded to w+1 breaks the box
 			text = " " + text + " "
 		}
 		return band(fill(text))
@@ -305,11 +366,11 @@ func (d Dashboard) armViz() Dashboard {
 		return d
 	}
 	d.vizTicking = true
-	return d.withCmd(tea.Batch(d.pendingCmd, vizTick()))
+	return d.withCmd(tea.Batch(d.pendingCmd, d.after(50*time.Millisecond, vizTickMsg{})))
 }
 
 // vizFrame pulls the next frame of levels and re-arms while there is work.
-func (d Dashboard) vizFrame() (tea.Model, tea.Cmd) {
+func (d Dashboard) vizFrame() (Dashboard, tea.Cmd) {
 	d.vizTicking = false
 	if !d.vizActive() {
 		d.vizBands = nil
@@ -324,34 +385,21 @@ func (d Dashboard) vizFrame() (tea.Model, tea.Cmd) {
 // marquee track, the visualizer rows inside the track when it is on (three
 // wide, one narrow), then the controls. No play line: there is no
 // timeline to scrub. Narrow: the title goes first, then the station reads
-// its short form, then it shortens.
-func (d Dashboard) radioMaxRows(o render.Opts, inner int, p radioParts) []string {
-	// The head keeps its title as long as it can: the VOL bar gives first
-	// (the wide bar, then 20 cells, then 10 — the mock's widths), the title
-	// only after that.
-	head := p.title + " " + o.Glyphs().Bullet + " " + d.station() // "*" under --ascii
-	tail := p.vol + "   " + p.state
-	room := inner - 2 - render.Width(tail)
-	for _, bar := range []int{20, 10} {
-		if render.Width(head) <= room {
-			break
-		}
-		tail = d.volControl(o, bar) + "   " + p.state
-		room = inner - 2 - render.Width(tail)
+// its short form, then it shortens. The head's ladder is the plan's.
+func (d Dashboard) radioMaxRows(p radioPlan) []string {
+	head := p.head
+	if p.narrow {
+		head = d.narrowHead(p.room)
 	}
-	narrow := render.Width(head) > room
-	if narrow {
-		head = d.narrowHead(room)
-	}
-	lines := []string{" " + render.PadBetween(head, tail, inner-1), d.marqueeTrack(inner)} // the head one cell in, the track flush with the inset (the mock)
+	lines := []string{" " + render.PadBetween(head, p.tail, p.inner-1), d.marqueeTrack(p.inner)} // the head one cell in, the track flush with the inset (the mock)
 	if d.radioViz {
 		rows := 3 // UAT 54: three rows in the full player
-		if narrow {
+		if p.narrow {
 			rows = 1
 		}
-		lines = append(lines, d.vizRows(inner, rows)...)
+		lines = append(lines, d.vizRows(p.inner, rows)...)
 	}
-	return append(lines, p.controls...)
+	return append(lines, p.parts.controls...)
 }
 
 // stationText is the station line's plain text (for shortening).
@@ -527,8 +575,8 @@ func (d Dashboard) radioControlLines(o render.Opts, inner int, bp radioBP) []str
 
 // narrowHead is the player's head without the title: the station (or the
 // failure reason), then its short form, then whichever of those was chosen
-// shortened with an ellipsis (round 4, B-09: the short form shortens, the
-// failure text stays a failure), and the mark alone when even that will not
+// shortened with an ellipsis (the short form shortens; the failure text
+// stays a failure), and the mark alone when even that will not
 // fit (B-10).
 func (d Dashboard) narrowHead(room int) string {
 	head := d.station()

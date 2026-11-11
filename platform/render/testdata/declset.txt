@@ -35,6 +35,7 @@ const EventCatMarineBG
 const EventCatStmtBG
 const EventCatWarningBG
 const EventCatWatchBG
+const FeltBands
 const FireMark
 const FocusCell
 const FocusName
@@ -187,6 +188,8 @@ const unitsKeyMetric
 func (*layout).fitName
 func (*sgrParams).extended
 func (*sgrParams).next
+func (CardRow).Ready
+func (CardRow).Render
 func (Cell).apply
 func (Clock).DateTime
 func (Clock).DateTimeZone
@@ -273,6 +276,7 @@ func Ctl
 func CtlIf
 func CurrentPhase
 func DisplayCondition
+func FeltBand
 func FgSGR
 func FirstFit
 func FirstOf
@@ -285,6 +289,7 @@ func LiftToAA
 func LightBox
 func ListLabel
 func ModalTone
+func NewCardRow
 func NextTide
 func NoticeGrounds
 func Overlay
@@ -324,6 +329,7 @@ func TintDefault
 func TintKeeping
 func TintRaw
 func TitleGradient
+func TitledRule
 func Tok
 func TruncateCells
 func UnitsByKey
@@ -352,7 +358,6 @@ func blend
 func boldFg
 func borrowUnnamed
 func boxGlyphs
-func boxRule
 func bracketTitle
 func builtinOverrides
 func categoryTints
@@ -388,6 +393,7 @@ func lineupNaturalWidth
 func lineupRowStyles
 func luminance
 func markCells
+func mayJoinAcross
 func milHourWords
 func minuteWords
 func mix
@@ -418,6 +424,7 @@ func shrinkToFit
 func spaceCategories
 func spectrumTier
 func splitCells
+func standsAlone
 func statusCols
 func statusGutters
 func stencilHeader
@@ -438,6 +445,7 @@ func without
 func xterm256RGB
 type AlertRow
 type BoxGlyphs
+type CardRow
 type Cell
 type Clock
 type Control
@@ -463,6 +471,7 @@ type quattroPalette
 type severeCol
 type sgrParams
 var asciiMarks
+var seismicLevels
 var themeGen
 var themeMu
 var themeName

@@ -146,8 +146,32 @@ func (d Dashboard) uiTouched() Dashboard {
 // saves them (Settings on close, the map's Overlays menu) writes what the
 // listener chose (U2-61).
 func (d Dashboard) uiForSave() UIPrefs {
-	return UIPrefs{Theme: render.ThemeName(), Units: d.units.Key(), Clock: d.clockFmt.Key(), ReduceMotion: d.reduceMotion, Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key(),
-		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempNDFD), MapRainDetail: rainDetailKey(d.mapRainFull), MapUVCities: d.mapUVCities, MapPropRadius: d.mapPropRadiusKm, MapPropNoise: propNoiseKey(d.mapPropNoise), MapPropRefresh: propRefreshKey(d.mapPropRefresh), MapPropNoReadings: noReadingsKey(d.mapPropCorrect), MapPropStations: stationsKey(d.mapPropNoGIRO), MapColourDepth: mapDepthKey(d.mapDepth), MapPlaybackMs: playbackKey(d.mapPlayback), MapRadarAhead: d.mapRadarAhead, MapQuakeFeed: d.mapQuakeFeed, MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
+	return UIPrefs{
+		Theme:             render.ThemeName(),
+		Units:             d.units.Key(),
+		Clock:             d.clockFmt.Key(),
+		ReduceMotion:      d.reduceMotion,
+		Maps:              mapsKey(d.mapsOff),
+		MapDescription:    d.mapDesc.Key(),
+		MapScale:          d.mapScale.Key(),
+		MapNearbyKm:       d.mapNearbyKm,
+		MapRadarSource:    radarSourceKey(d.mapRadarIEM),
+		MapTempSource:     tempSourceKey(d.mapTempNDFD),
+		MapRainDetail:     rainDetailKey(d.mapRainFull),
+		MapUVCities:       d.mapUVCities,
+		MapPropRadius:     d.mapPropRadiusKm,
+		MapPropNoise:      propNoiseKey(d.mapPropNoise),
+		MapPropRefresh:    propRefreshKey(d.mapPropRefresh),
+		MapPropNoReadings: noReadingsKey(d.mapPropCorrect),
+		MapPropStations:   stationsKey(d.mapPropNoGIRO),
+		MapColourDepth:    mapDepthKey(d.mapDepth),
+		MapPlaybackMs:     playbackKey(d.mapPlayback),
+		MapRadarAhead:     d.mapRadarAhead,
+		MapQuakeFeed:      d.mapQuakeFeed,
+		MapLayers:         d.layerChoices(),
+		MapDetail:         choicesOf(d.mapDetailChoice),
+		MapDetailLevel:    d.mapDetailLevel.String(),
+	}
 }
 
 // uiApplyCmd writes the display preferences — and nothing else, for the same

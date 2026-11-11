@@ -21,7 +21,7 @@ import (
 // and how long that took.
 type Timing struct {
 	Trigger string // "open", a map action's name, "overlay", "tick", "key"
-	Event   string // "answered:feed|radar|temp", "complete", "settled", "tick", "key"
+	Event   string // what it reached: "answered:<lane>", "complete", "m5", "settled", "tick", "key" and the rest perf-measurement.md lists
 	After   time.Duration
 }
 

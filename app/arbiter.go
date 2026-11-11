@@ -1,14 +1,13 @@
 package app
 
-// director.go — the narration arbiter: the one owner of the correspondent's voice.
+// arbiter.go — the narration arbiter: the one owner of the correspondent's voice.
 //
-// NAMED FOR WHAT IT ARBITRATES, not for the release's Director. platform/lineup
-// holds THAT one; this decides who gets the AIR when it frees. The two collide
-// in the word and in the file name, and both have a `settle` (red team
-// 2026-09-05, R-7/Junior-Dev 5)
-// (HUM LEAD 2026-08-28, "build it robust, build it right"). Every spoken
+// NAMED FOR WHAT IT ARBITRATES (0.19.5 D-13). It is not the Director, the role
+// platform/lineup holds, which orders the schedule; this decides who gets the
+// AIR when it frees. Both have a `settle` (red team 2026-09-05, R-7/Junior-Dev
+// 5) (HUM LEAD 2026-08-28, "build it robust, build it right"). Every spoken
 // sequence — a breaking takeover, an event read, whatever comes next — runs
-// through Run with a class; the director serialises them, ducks the
+// through Run with a class; the arbiter serialises them, ducks the
 // broadcast once for the whole run and restores it once at the end, and lets
 // a higher class take the air from a lower one: the lower sequence is
 // SUSPENDED — its line in flight pauses, its holds stop counting, a line it
@@ -52,7 +51,7 @@ const (
 )
 
 // clip is one rendered line: the audio and how long it plays; viz says
-// whether the visualizer follows it (set by the director from the class —
+// whether the visualizer follows it (set by the arbiter from the class —
 // vizFor). text rides along for fakes and diagnostics.
 type clip struct {
 	text string
@@ -113,11 +112,11 @@ type narrationJob struct {
 	paused bool
 }
 
-// director arbitrates the voice.
-type director struct {
+// arbiter arbitrates the voice.
+type arbiter struct {
 	mu        sync.Mutex
 	turn      *sync.Cond
-	v         narrationVoice
+	voice     narrationVoice
 	mc        *mastercontrol // the effector: the one owner of the duck and the band (T2.3)
 	onAir     *narrationJob
 	suspended []*narrationJob // the jobs a higher class took the air from, innermost last
@@ -131,24 +130,24 @@ type director struct {
 // The effector is passed in rather than built here because it is shared: the
 // ticker writes the band through the same instance, and a second instance would
 // be a second owner of the duck — the exact shape this task exists to remove.
-func newDirector(v narrationVoice, mc *mastercontrol) *director {
-	d := &director{v: v, mc: mc, sleep: sleepCtx}
+func newArbiter(v narrationVoice, mc *mastercontrol) *arbiter {
+	d := &arbiter{voice: v, mc: mc, sleep: sleepCtx}
 	d.turn = sync.NewCond(&d.mu)
 	return d
 }
 
 // silent reports whether there is no voice at all.
-func (d *director) silent() bool { return d == nil || d.v == nil }
+func (d *arbiter) silent() bool { return d == nil || d.voice == nil }
 
 // speaker is what a running sequence speaks through: every call honours
 // the job's context (an ended sequence hears 0 and false), its suspension
 // (a line waits, a hold stops counting) and the audible flag (a muted
 // sequence runs its visuals only, and never ducks).
 type speaker struct {
-	d     *director // nil for a nil director: the sequence runs silently
-	job   *narrationJob
-	ctx   context.Context
-	sleep func(ctx context.Context, d time.Duration) bool
+	arbiter *arbiter // nil for a nil arbiter: the sequence runs silently
+	job     *narrationJob
+	ctx     context.Context
+	sleep   func(ctx context.Context, d time.Duration) bool
 }
 
 // holdStep is how often a hold checks for suspension or an ended context.
@@ -164,14 +163,14 @@ func (s *speaker) attention(class cast.Class) time.Duration {
 	if !s.live() {
 		return 0
 	}
-	return s.d.v.tone(class)
+	return s.arbiter.voice.tone(class)
 }
 
 // line renders and plays one line, returning how long it plays; 0 when
 // silent, muted or ended (the caller keeps its visual hold). A line rendered
 // while the job is suspended waits for the air before it starts, and starts
 // under the arbiter's lock: a takeover admitted meanwhile finds it in flight
-// and pauses it, never plays over it (red-team round 4, A-04).
+// and pauses it, never plays over it.
 func (s *speaker) line(text string) time.Duration {
 	c, ok := s.prepare(text)
 	if !ok {
@@ -192,7 +191,7 @@ func (s *speaker) prepare(text string) (clip, bool) {
 	if !s.live() || text == "" {
 		return clip{}, false
 	}
-	c, ok := s.d.v.render(s.ctx, s.role(), text)
+	c, ok := s.arbiter.voice.render(s.ctx, s.role(), text)
 	if !ok {
 		return clip{}, false
 	}
@@ -204,7 +203,7 @@ func (s *speaker) deliver(c clip) time.Duration {
 	if !s.live() {
 		return 0
 	}
-	if !s.awaitAir(func() { s.d.v.play(c) }) {
+	if !s.awaitAir(func() { s.arbiter.voice.play(c) }) {
 		return 0
 	}
 	return c.dur
@@ -231,15 +230,15 @@ func (s *speaker) hold(d time.Duration) bool {
 // while the arbiter's lock is still held — nothing can be admitted between
 // the check and the start of a line; false when the context ended.
 func (s *speaker) awaitAir(then func()) bool {
-	if s.d == nil || s.job == nil {
+	if s.arbiter == nil || s.job == nil {
 		return s.ctx.Err() == nil
 	}
-	s.d.mu.Lock()
-	defer s.d.mu.Unlock()
+	s.arbiter.mu.Lock()
+	defer s.arbiter.mu.Unlock()
 	// A condition-variable wait: one Wait per iteration, ended by the resume
-	// or the context ending (the P10-02 ledger row for admit covers the shape).
+	// or the context ending.
 	for s.job.suspended && s.ctx.Err() == nil {
-		s.d.turn.Wait()
+		s.arbiter.turn.Wait()
 	}
 	if s.ctx.Err() != nil {
 		return false
@@ -260,7 +259,7 @@ func (s *speaker) role() cast.Role {
 }
 
 func (s *speaker) live() bool {
-	return s.job != nil && s.job.audible && !s.d.silent() && s.ctx.Err() == nil
+	return s.job != nil && s.job.audible && !s.arbiter.silent() && s.ctx.Err() == nil
 }
 
 // Run runs seq as a narration of this class: it waits for its turn (a
@@ -271,13 +270,13 @@ func (s *speaker) live() bool {
 // role is whose voice reads the sequence (FR-3); the tone's class travels
 // separately, on the speaker's attention call, because only the caller can
 // classify the event it is about to read.
-func (d *director) Run(ctx context.Context, class narrationClass, role cast.Role, audible bool, seq func(ctx context.Context, s *speaker)) bool {
+func (d *arbiter) Run(ctx context.Context, class narrationClass, role cast.Role, audible bool, seq func(ctx context.Context, s *speaker)) bool {
 	// EVERY Director job is priority work (D-R3-1, MVS-D-43): the listener is
 	// waiting on it, so it may take one of the two reserved render slots rather
 	// than queue behind the broadcast's read-ahead.
 	ctx = synth.WithPriority(ctx)
 	if d == nil {
-		seq(ctx, &speaker{ctx: ctx, sleep: sleepCtx}) // no director at all: run the visuals, in real time
+		seq(ctx, &speaker{ctx: ctx, sleep: sleepCtx}) // no arbiter at all: run the visuals, in real time
 		return ctx.Err() == nil
 	}
 	// THE JOB GETS ITS OWN CANCEL (FR-9), a child of the caller's context.
@@ -303,13 +302,13 @@ func (d *director) Run(ctx context.Context, class narrationClass, role cast.Role
 	if !d.admit(job) {
 		return false
 	}
-	seq(ctx, &speaker{d: d, job: job, ctx: ctx, sleep: d.sleep})
+	seq(ctx, &speaker{arbiter: d, job: job, ctx: ctx, sleep: d.sleep})
 	d.release(job)
 	return ctx.Err() == nil
 }
 
 // admit queues the job, suspends a lower class on air, and waits for the turn.
-func (d *director) admit(job *narrationJob) bool {
+func (d *arbiter) admit(job *narrationJob) bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.next++
@@ -318,7 +317,7 @@ func (d *director) admit(job *narrationJob) bool {
 		on.suspended = true // its line pauses, its holds stop counting, a line it is rendering waits
 		d.suspended = append(d.suspended, on)
 		d.onAir = nil
-		if d.v != nil && on.audible {
+		if d.voice != nil && on.audible {
 			d.mc.holdLine()
 		}
 		narrateDebug("suspend", on)
@@ -327,7 +326,7 @@ func (d *director) admit(job *narrationJob) bool {
 	d.waiting = append(d.waiting, job)
 	// A condition-variable wait: one Wait per iteration, ended by the turn
 	// arriving or the job's context ending (checked on every wake) — the
-	// scheduler tier loops' shape (P10-02 ledger row, app/director.go admit).
+	// scheduler tier loops' shape (P10-02 ledger row, app/arbiter.go admit).
 	for d.onAir != nil || d.first() != job {
 		if job.ctx.Err() != nil { // cancelled while waiting: whoever it outranked may resume
 			d.remove(job)
@@ -350,9 +349,9 @@ func (d *director) admit(job *narrationJob) bool {
 
 // release ends a job: the one on air leaves it; one that ended while
 // SUSPENDED (its context ran out under a takeover) leaves the suspended
-// stack and its held line is discarded, the air untouched (round 4, A-02).
-// Then the director settles.
-func (d *director) release(job *narrationJob) {
+// stack and its held line is discarded, the air untouched.
+// Then the arbiter settles.
+func (d *arbiter) release(job *narrationJob) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.onAir == job {
@@ -371,14 +370,14 @@ func (d *director) release(job *narrationJob) {
 		// sequence can end a hair before the audio finishes draining, and an
 		// unconditional close would clip the tail of every read.
 		if radioDebugOn() {
-			radioDebugLog(fmt.Sprintf("release:onair cancelled=%v voice=%v audible=%v", job.ctx.Err() != nil, d.v != nil, job.audible))
+			radioDebugLog(fmt.Sprintf("release:onair cancelled=%v voice=%v audible=%v", job.ctx.Err() != nil, d.voice != nil, job.audible))
 		}
-		if job.ctx.Err() != nil && d.v != nil && job.audible {
+		if job.ctx.Err() != nil && d.voice != nil && job.audible {
 			d.mc.stopLine()
 		}
 	} else if job.suspended {
 		d.unsuspend(job)
-		if d.v != nil && job.audible {
+		if d.voice != nil && job.audible {
 			d.mc.dropHeld()
 		}
 	} else {
@@ -394,7 +393,7 @@ func (d *director) release(job *narrationJob) {
 // running and it would simply speak the next line; cancelling unwinds it onto
 // the one path a cut-short read already takes, which the arbiter, the schedule
 // and the bed all already understand.
-func (d *director) abandonOnAir(why string) bool {
+func (d *arbiter) abandonOnAir(why string) bool {
 	if d == nil {
 		return false
 	}
@@ -413,7 +412,7 @@ func (d *director) abandonOnAir(why string) bool {
 // a waiting job of a class above the innermost suspended one goes first,
 // else the suspended job resumes where it stopped; the broadcast is restored
 // only when nothing waits or is suspended. Callers hold d.mu.
-func (d *director) settle() {
+func (d *arbiter) settle() {
 	defer d.turn.Broadcast()
 	if d.onAir != nil {
 		return
@@ -436,14 +435,14 @@ func (d *director) settle() {
 	// clause reaches it too, which is the part that would otherwise drift.
 	for s := d.innermostSuspended(); s != nil && !live(s); s = d.innermostSuspended() {
 		d.unsuspend(s)
-		if d.v != nil && s.audible {
+		if d.voice != nil && s.audible {
 			d.mc.dropHeld()
 		}
 	}
 	if s := d.innermostResumable(); s != nil && (d.first() == nil || d.first().class <= s.class) {
 		d.unsuspend(s)
 		d.onAir = s
-		if d.v != nil && s.audible {
+		if d.voice != nil && s.audible {
 			// THE BED MAY HAVE COME BACK WHILE IT WAITED, and only a listener's
 			// pause does that — a job suspended by a takeover keeps the dip, so
 			// this is a no-op there (giveWay is idempotent). Without it a resumed
@@ -469,7 +468,7 @@ func (d *director) settle() {
 }
 
 // unsuspend takes job off the suspended stack. Callers hold d.mu.
-func (d *director) unsuspend(job *narrationJob) {
+func (d *arbiter) unsuspend(job *narrationJob) {
 	job.suspended = false
 	narrateDebug("resume", job)
 	for i, j := range d.suspended {
@@ -480,7 +479,7 @@ func (d *director) unsuspend(job *narrationJob) {
 	}
 }
 
-func (d *director) innermostSuspended() *narrationJob {
+func (d *arbiter) innermostSuspended() *narrationJob {
 	if len(d.suspended) == 0 {
 		return nil
 	}
@@ -489,7 +488,7 @@ func (d *director) innermostSuspended() *narrationJob {
 
 // innermostResumable is the innermost suspended job that would resume ON ITS
 // OWN — so, not one a listener has paused. Callers hold d.mu.
-func (d *director) innermostResumable() *narrationJob {
+func (d *arbiter) innermostResumable() *narrationJob {
 	for i := len(d.suspended) - 1; i >= 0; i-- { // bounded by the stack (P10-02)
 		// A DEAD JOB IS NOT RESUMABLE. Promoting one puts a cancelled read back on
 		// the air with the bed ducked under it, while the chip says Paused — and
@@ -508,7 +507,7 @@ func (d *director) innermostResumable() *narrationJob {
 // It goes on the suspended stack, so a takeover arriving meanwhile behaves
 // exactly as it would have — but marked paused, so settle never promotes it
 // back and the bed is not held down waiting for a person.
-func (d *director) pauseRead() bool {
+func (d *arbiter) pauseRead() bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -523,7 +522,7 @@ func (d *director) pauseRead() bool {
 	// holdLine — so it is not held twice. A waiting job has never been on the
 	// air and holds nothing at all.
 	//
-	// AND NEVER A DEAD ONE. A read Cancel has killed is still on the stack until
+	// It never claims a dead one. A read Cancel has killed is still on the stack until
 	// its goroutine unwinds, and claiming that corpse would report success while
 	// the live read carries on: the chip would say Paused and nothing would be.
 	for _, j := range d.reads() { // bounded by reads (P10-02)
@@ -539,7 +538,7 @@ func (d *director) pauseRead() bool {
 			j.suspended = true
 			d.suspended = append(d.suspended, j)
 			d.onAir = nil
-			if d.v != nil && j.audible {
+			if d.voice != nil && j.audible {
 				d.mc.holdLine()
 			}
 		}
@@ -581,7 +580,7 @@ func live(j *narrationJob) bool { return j != nil && j.ctx.Err() == nil }
 // goroutine unwinds, and counting it misleads every asker differently — the
 // pause would claim the corpse and report success, the report would say a corpse
 // is held, and the window would show Paused over a read that is playing.
-func (d *director) reads() []*narrationJob {
+func (d *arbiter) reads() []*narrationJob {
 	var out []*narrationJob
 	if j := d.onAir; live(j) && j.class == narrateRead {
 		out = append(out, j)
@@ -600,7 +599,7 @@ func (d *director) reads() []*narrationJob {
 }
 
 // heldRead is the read a listener has paused, or nil. Callers hold d.mu.
-func (d *director) heldRead() *narrationJob {
+func (d *arbiter) heldRead() *narrationJob {
 	for _, j := range d.reads() { // bounded by reads (P10-02)
 		if j.paused {
 			return j
@@ -615,7 +614,7 @@ func (d *director) heldRead() *narrationJob {
 // It only clears the flag: settle decides WHEN, exactly as it does for a job
 // suspended by a takeover, so a resume pressed while an alert is reading waits
 // its turn instead of speaking over it.
-func (d *director) resumeRead() bool {
+func (d *arbiter) resumeRead() bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	job := d.heldRead()
@@ -628,7 +627,7 @@ func (d *director) resumeRead() bool {
 }
 
 // readPaused reports whether a listener has a read paused.
-func (d *director) readPaused() bool {
+func (d *arbiter) readPaused() bool {
 	if d == nil {
 		return false
 	}
@@ -638,7 +637,7 @@ func (d *director) readPaused() bool {
 }
 
 // first is the waiting job that goes next: the highest class, then arrival.
-func (d *director) first() *narrationJob {
+func (d *arbiter) first() *narrationJob {
 	var best *narrationJob
 	for _, j := range d.waiting {
 		if j.paused || !live(j) {
@@ -651,7 +650,7 @@ func (d *director) first() *narrationJob {
 	return best
 }
 
-func (d *director) remove(job *narrationJob) {
+func (d *arbiter) remove(job *narrationJob) {
 	for i, j := range d.waiting {
 		if j == job {
 			d.waiting = append(d.waiting[:i], d.waiting[i+1:]...)
@@ -673,7 +672,7 @@ func (d *director) remove(job *narrationJob) {
 // volume over a read in progress. Holding the effector's lock across the
 // question instead would invert the lock order every other path takes — settle
 // calls into the effector while holding this lock — and deadlock.
-func (d *director) releaseBed() {
+func (d *arbiter) releaseBed() {
 	if d == nil {
 		return
 	}

@@ -22,7 +22,7 @@ func TestDashboardRendersMockAnatomy(t *testing.T) {
 		"Oceanside, CA", "92057", // location row with zip
 		"73°F",                               // F default (D-19)
 		"EXTREME HEAT WATCH - Oceanside, CA", // the one-row alert module (the body lives behind [A]: the 2026-08-28 facelift)
-		"[severe]",                           // the class in text with colour off (R-12a; round 4 B-04)
+		"[severe]",                           // the class in text with colour off (R-12a)
 		"WATCHPOST WEATHER RADIO",            // radio panel frame (UAT-3.3, static until B4)
 		"R E C E N T   /   S E A R C H E D",  // section band (UAT 43)
 		"[?] Help",                           // footer line 2; '?' is the locked binding
@@ -81,7 +81,7 @@ func TestModuleBlocksAlignWithTables(t *testing.T) {
 			radioLines = append(radioLines, l)
 		}
 	}
-	if len(radioLines) != 5 { // the player box: 2 rules + head, the marquee track, controls (viz off); the header box carries no tone of its own (round 4, B-01)
+	if len(radioLines) != 5 { // the player box: 2 rules + head, the marquee track, controls (viz off); the header box carries no tone of its own
 		t.Fatalf("hidden-bg radio module must be 5 flush lines (the box and its three rows; UAT 19.1b/54), got %d", len(radioLines))
 	}
 	for _, l := range radioLines {

@@ -1,7 +1,6 @@
 package tty
 
-// broadcaster_pooldata_test.go — the pool's weather is Observer's weather
-// (D-112).
+// broadcaster_pooldata_test.go — the pool's weather is Observer's weather.
 
 import (
 	"strings"
@@ -123,7 +122,7 @@ func poolLoc() *snapshot.Location {
 	}
 }
 
-// THE MARKS REACH THE ROW, ALL THREE OF THEM (D-113).
+// THE MARKS REACH THE ROW, ALL THREE OF THEM.
 //
 // HUM LEAD, UAT 2026-09-12: "fix this issues so seismic / fire / alerts show up
 // in the location pool as expected."
@@ -157,7 +156,7 @@ func TestThePoolRowCarriesEveryMark(t *testing.T) {
 	if row.Seismic == 0 {
 		t.Error("the seismic mark is missing")
 	}
-	// AND THEY ARE DRAWN, which is a different claim from being on the row: the
+	// The marks are drawn, which is a different claim from being on the row: the
 	// marks block is thirteen cells the table can silently leave blank.
 	drawn := stripANSITest(strings.Split(b.opts().PoolTable(b.poolRows(b.locIndex()), 143), "\n")[4])
 	g := b.opts().Glyphs()
@@ -168,7 +167,7 @@ func TestThePoolRowCarriesEveryMark(t *testing.T) {
 	}
 }
 
-// THE RUNNING ORDER SHOWS THE WEATHER WHERE EACH BEAT IS (D-116).
+// THE RUNNING ORDER SHOWS THE WEATHER WHERE EACH BEAT IS.
 //
 // HUM LEAD, 2026-09-13, choosing this over wiring the correspondents: "I think
 // we change P R E S E N T A T I O N / CORRESPONDENT to C U R R E N T L Y /
@@ -216,13 +215,13 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 		t.Errorf("the row says %q/%v; the shared converter says %q/%v",
 			got.Conditions, got.Now, want.Conditions, want.Now)
 	}
-	// AND THE PREFIX MARKS ARE THE PLACE'S (HUM LEAD: "Relevant Prefix Alerts").
+	// The prefix marks are the place's (HUM LEAD: "Relevant Prefix Alerts").
 	if got.Marks.AlertCount != want.AlertCount || got.Marks.Fire != want.Fire || got.Marks.Seismic != want.Seismic {
 		t.Errorf("the row's marks are alerts=%d fire=%d seismic=%d; the place has %d/%d/%d",
 			got.Marks.AlertCount, got.Marks.Fire, got.Marks.Seismic,
 			want.AlertCount, want.Fire, want.Seismic)
 	}
-	// AND THERE IS NO CORRESPONDENT COLUMN, and no `N/A` in its place.
+	// There is no correspondent column, and no `N/A` in its place.
 	drawn := stripANSITest(b.opts().LineupTable(rows, 143))
 	if strings.Contains(drawn, "CORRESPONDENT") || strings.Contains(drawn, "N/A") {
 		t.Errorf("the running order still carries the correspondent column:\n%s", drawn)

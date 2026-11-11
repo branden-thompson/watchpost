@@ -6,6 +6,7 @@
 package globalfeed
 
 import (
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"strings"
 	"time"
 )
@@ -83,13 +84,8 @@ func (e Event) Verb() string {
 
 const maxIDRunes = 200
 
-// clampID bounds an id.
-func clampID(s string) string {
-	if r := []rune(s); len(r) > maxIDRunes {
-		return string(r[:maxIDRunes])
-	}
-	return s
-}
+// clampID bounds an id to maxIDRunes, in runes (plaintext.ClampRunes).
+func clampID(s string) string { return plaintext.ClampRunes(s, maxIDRunes) }
 
 // Sentence is the event's lead line, shared by the marquee and the spoken
 // narration (single owner): "A(n) <Type> has been <verb> for <Location>" — or,

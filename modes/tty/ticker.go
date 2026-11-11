@@ -13,7 +13,9 @@ import (
 	"fmt"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"strings"
+	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -28,10 +30,10 @@ const (
 	TickerRed
 )
 
-// TickerCategory is the marquee lane an event belongs to; the band rotates
-// through the non-empty lanes in this declared order (HUM LEAD 2026-08-27).
-// TickerCategory is a lane on the band — the same thing as a window tab, named
-// for where it is shown. An alias, so the two cannot drift.
+// TickerCategory is the marquee lane an event belongs to — the same thing as a
+// window tab, named for where it is shown, and an alias so the two cannot
+// drift. The band rotates through the non-empty lanes in this declared order
+// (HUM LEAD 2026-08-27).
 type TickerCategory = category.Category
 
 const (
@@ -168,10 +170,9 @@ func (d Dashboard) tickerMarquee(o render.Opts) string {
 	bg, fg := render.GroupSectionBG, render.TickerMutedFG // the muted band matches the RECENT/SEARCHED group header
 	if cats := d.tickerCategories(); len(cats) > 0 {
 		cur := cats[d.tickerCatIdx%len(cats)]
-		items := d.tickerLane(o, cur)
+		items, tape, _ := d.tapeOf(o, cur)
 		left := fmt.Sprintf("  %s  %d %s  ", cur.Label(), len(items), o.Glyphs().Alert)
 		win := max(1, width-render.Width(left)-right)
-		tape := strings.Join(items, tickerBullet(o))
 		mid = left + scrollWindow(tape, d.tickerScroll, win, tickerBullet(o))
 		if d.reduceMotion { // an item at a time, whole, not a scrolling tape (D-360)
 			mid = left + render.PadTo(cutToWidth(o, d.stillTickerItem(items), win), win)
@@ -258,16 +259,21 @@ func scrollWindow(text string, offset, width int, gap string) string {
 	if render.Width(text) <= width {
 		return render.PadTo(text, width)
 	}
-	loop := []rune(text + gap)
-	n := len(loop)
-	off := ((offset % n) + n) % n
+	// The tape is text then gap, looping, walked in place a rune at a time:
+	// it is a whole lane, and copying it into a rune slice every frame would be
+	// most of the frame's bytes (0.19.5 PF-5).
+	n := utf8.RuneCountInString(text) + utf8.RuneCountInString(gap)
+	tape := tapeCursor{parts: [2]string{text, gap}}
+	for range ((offset % n) + n) % n { // bounded by the loop's length (P10-02)
+		tape.next()
+	}
 	// The window is width CELLS, not runes: a wide-rune place name would
 	// otherwise run to twice the terminal (REVIEW R5-C-01). Bounded by n
 	// runes per pass (P10-02).
 	var b strings.Builder
 	cells := 0
 	for i := 0; i < n && cells < width; i++ {
-		r := loop[(off+i)%n]
+		r := tape.next()
 		w := render.RuneCells(r)
 		if cells+w > width {
 			break
@@ -276,6 +282,26 @@ func scrollWindow(text string, offset, width int, gap string) string {
 		cells += w
 	}
 	return render.PadTo(b.String(), width)
+}
+
+// tapeCursor walks a tape's two parts, its text and its gap, as one loop.
+type tapeCursor struct {
+	parts   [2]string
+	seg, at int
+}
+
+// next is the tape's next rune, wrapping from the text to the gap and back; an
+// empty part is stepped over. The text is never empty where it is walked.
+func (c *tapeCursor) next() rune {
+	for range 2 { // two parts, so at most two steps to one that has a rune (P10-02)
+		if c.at < len(c.parts[c.seg]) {
+			break
+		}
+		c.seg, c.at = (c.seg+1)%2, 0
+	}
+	r, size := utf8.DecodeRuneInString(c.parts[c.seg][c.at:])
+	c.at += size
+	return r
 }
 
 // advanceTicker steps the tape one cell; the offset is kept bounded to the
@@ -296,8 +322,76 @@ func (d Dashboard) tickerLoopLen() int {
 	if len(cats) == 0 {
 		return 0
 	}
-	tape := strings.Join(d.tickerLane(d.opts(), cats[d.tickerCatIdx%len(cats)]), tickerBulletDot)
-	return len([]rune(tape)) + len([]rune(tickerBulletDot))
+	_, _, loop := d.tapeOf(d.opts(), cats[d.tickerCatIdx%len(cats)])
+	return loop
+}
+
+// tickerGens counts the ticker's contents across every copy of the model
+// (Dashboard.tickerGen).
+var tickerGens atomic.Uint64
+
+// tapeKey is everything a lane's tape is drawn from: the ticker's contents,
+// the lane, the glyph set and clock format its words take, and the day, since
+// an alert's time reads as a date and time once its day has passed (Since).
+// The day is the model clock's own, as Since compares it.
+type tapeKey struct {
+	gen   uint64
+	lane  TickerCategory
+	ascii bool
+	clock render.Clock
+	year  int
+	day   int
+}
+
+// tapeKeyFor is the key the tape memo files a lane's tape under.
+func (d Dashboard) tapeKeyFor(o render.Opts, lane TickerCategory) tapeKey {
+	now := d.clock()
+	return tapeKey{gen: d.tickerGen, lane: lane, ascii: o.ASCII, clock: o.Clock, year: now.Year(), day: now.YearDay()}
+}
+
+// tapeSlot is the one lane the frame and the scroll last read.
+type tapeSlot struct {
+	ok    bool
+	key   tapeKey
+	items []string
+	tape  string
+	loop  int
+}
+
+// tapeOf is a lane's items, its tape as the band draws it (the items joined by
+// the bullet), and the tape's loop length as the scroll counts it (the items
+// joined by the dot bullet, and one more for the wrap). The frame and every
+// tick read it, so it is built once per change to what it is drawn from
+// (0.19.5 PF-8). Without a memo, or before setTicker has named the contents,
+// it is built every time.
+func (d Dashboard) tapeOf(o render.Opts, lane TickerCategory) (items []string, tape string, loop int) {
+	build := func() ([]string, string, int) {
+		items := d.tickerLane(o, lane)
+		return items, strings.Join(items, tickerBullet(o)), tapeLoop(items)
+	}
+	if d.memo == nil || d.tickerGen == 0 {
+		return build()
+	}
+	k := d.tapeKeyFor(o, lane)
+	s := &d.memo.tape
+	if !s.ok || s.key != k {
+		s.items, s.tape, s.loop = build()
+		s.ok, s.key = true, k
+	}
+	return s.items, s.tape, s.loop
+}
+
+// tapeLoop is the runes in the items joined by the dot bullet, and one more
+// bullet for the wrap: the length the scroll keeps its offset within.
+func tapeLoop(items []string) int {
+	n := utf8.RuneCountInString(tickerBulletDot)
+	for i, it := range items { // bounded by the lane (P10-02)
+		if i > 0 {
+			n += utf8.RuneCountInString(tickerBulletDot)
+		}
+		n += utf8.RuneCountInString(it)
+	}
+	return n
 }
 
 // advanceTickerCategory rotates to the next non-empty lane (the 90 s switch,
@@ -384,7 +478,7 @@ func laneAfter(cats []TickerCategory, want TickerCategory) int {
 // quiet advances the rotation instead of resetting it.
 func (d *Dashboard) setTicker(items []TickerItem) {
 	was, showing := d.showingLane()
-	d.ticker = items
+	d.ticker, d.tickerGen = items, tickerGens.Add(1)
 	cats := d.tickerCategories()
 	switch {
 	case len(cats) == 0:

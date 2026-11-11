@@ -1,6 +1,7 @@
 package category
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -119,27 +120,15 @@ func TestAnUnknownCategoryIsInert(t *testing.T) {
 // which is the class of failure this package was built to end (F-21).
 func TestTheThreeOrderingsAreIndependentlyDeclared(t *testing.T) {
 	tabs, lanes, reads := All(), Lanes(), ReadOrder()
-	if same(tabs, lanes) {
+	if slices.Equal(tabs, lanes) {
 		t.Error("tab order and lane rotation are identical — one of them has been harmonised away")
 	}
-	if same(tabs, reads) {
+	if slices.Equal(tabs, reads) {
 		t.Error("tab order and read order are identical — one of them has been harmonised away")
 	}
-	if same(lanes, reads) {
+	if slices.Equal(lanes, reads) {
 		t.Error("lane rotation and read order are identical — one of them has been harmonised away")
 	}
-}
-
-func same(a, b []Category) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // The read order is the one the HUM LEAD ratified (lineup-model.md): Emergency
@@ -148,7 +137,7 @@ func same(a, b []Category) bool {
 func TestTheReadOrderIsTheRatifiedOne(t *testing.T) {
 	want := []Category{Emergency, Disasters, Warnings, Watches, Advisories, Statements, Marine}
 	got := ReadOrder()
-	if !same(got, want) {
+	if !slices.Equal(got, want) {
 		t.Fatalf("read order = %v, want %v", names(got), names(want))
 	}
 	if Of(Forecasts).ReadRank != 0 {

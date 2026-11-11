@@ -1,7 +1,7 @@
 package tty
 
 // broadcaster_scroll_test.go — one scroll control over two tables, in Observer's
-// own column (D-104), and the pointer as an address (D-105).
+// own column (D-104), and the pointer as an address.
 
 import (
 	"fmt"
@@ -159,7 +159,7 @@ func TestThePoolIsNotWhateverIsLeftOver(t *testing.T) {
 	}
 }
 
-// AND THE POINTER OPENS WHAT IT IS ON, at any position (D-105).
+// The pointer opens what it is on, at any position.
 //
 // TEN DIGITS CANNOT ADDRESS FIFTEEN SLOTS, which is the HUM LEAD's own reason:
 // "this is more important now for positions [10-14]".
@@ -189,7 +189,7 @@ func TestEnterOpensTheRowThePointerIsOn(t *testing.T) {
 	if beyondADigit == 0 {
 		t.Fatal("no slot past [9] opened, so this proves nothing about the rows that have no digit")
 	}
-	// AND IT REFUSES QUIETLY IN THE POOL, where that window is not built: the key
+	// The key refuses quietly in the pool, where that window is not built: the key
 	// is not consumed, so it falls through as an unbound key does.
 	r.broadcaster.selected = MainTrackSlots - bcScheduledFrom
 	if _, opened := r.openPointedCard(); opened {
@@ -234,7 +234,7 @@ func TestASecondEnterClosesTheCardWindow(t *testing.T) {
 	}
 }
 
-// AND A POOL ROW OPENS THE LOCATION'S DETAILS (D-113).
+// A pool row opens the location's details.
 //
 // HUM LEAD, UAT 2026-09-12: "make it so <enter> on a location pool row opens the
 // location details (like observer)."
@@ -266,7 +266,7 @@ func TestEnterOnAPoolRowOpensThatLocation(t *testing.T) {
 			t.Errorf("the details are about %v, want %q", out.observer.lookupRef, want)
 		}
 	}
-	// AND A SECOND PRESS CLOSES IT, the same rule the card window follows.
+	// A second press closes the window, the same rule the card window follows.
 	r.broadcaster.selected = MainTrackSlots - bcScheduledFrom
 	opened, _ := r.openPointedCard()
 	if closed := pressAction(t, opened, actQueueOpen); closed.observer.modal != modalNone {

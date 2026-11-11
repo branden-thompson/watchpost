@@ -45,8 +45,30 @@ func checkGolden(t *testing.T, name, got string) {
 		t.Fatalf("no golden yet: run with -update-golden (%v)", err)
 	}
 	if got != string(want) {
-		t.Fatalf("%s drifted from the golden — if intended, re-run with -update-golden and say why in the build log:\n--- got ---\n%s", name, got)
+		line, w, g := firstDiffLine(string(want), got)
+		t.Fatalf("%s differs from its golden at line %d:\n want: %q\n  got: %q\n"+
+			"If the change is intended, re-run with -update-golden and record why in the release's build log.",
+			name, line, w, g)
 	}
+}
+
+// firstDiffLine is the first line, counted from 1, at which two frames differ, and
+// what each has there ("" past a frame's end).
+func firstDiffLine(want, got string) (int, string, string) {
+	ws, gs := strings.Split(want, "\n"), strings.Split(got, "\n")
+	for i := range max(len(ws), len(gs)) {
+		var w, g string
+		if i < len(ws) {
+			w = ws[i]
+		}
+		if i < len(gs) {
+			g = gs[i]
+		}
+		if w != g {
+			return i + 1, w, g
+		}
+	}
+	return 0, "", ""
 }
 
 func TestFrameGoldenColourOff(t *testing.T) {

@@ -48,7 +48,7 @@ type LineupRow struct {
 	Priority    string
 	RequestedBy string
 
-	// Conditions, Now and Trend are the WEATHER where this beat is about (D-116).
+	// Conditions, Now and Trend are the WEATHER where this beat is about.
 	//
 	// THEY STAND WHERE A CORRESPONDENT COLUMN WOULD (HUM LEAD, 2026-09-13): "I
 	// think we change P R E S E N T A T I O N / CORRESPONDENT to C U R R E N T L Y
@@ -87,7 +87,7 @@ func lineupColumns() []baseCol {
 		{"dist", "DIST", 6, 1},
 		{"prio", "PRIORITY", 10, 2},
 		{"req", "REQUESTED BY", 17, 2},
-		// CURRENTLY (D-116). The location table's own two columns, at the location
+		// CURRENTLY. The location table's own two columns, at the location
 		// table's own widths, because they show the same two facts — and a
 		// CONDITIONS that was twelve cells there and ten here would put one
 		// vocabulary in two shapes.
@@ -198,7 +198,7 @@ func lineupColumnDefs(width int) []studs.ColumnDefinition {
 }
 
 // lineupRowStyles paints the focused row the way the location table paints its
-// own (D-105).
+// own.
 //
 // HUM LEAD, UAT 2026-09-12: "Rows in the Scheduled Line up should highlight just
 // like the location pool table."
@@ -240,7 +240,7 @@ func (o Opts) lineupRowData(r LineupRow) []string {
 		o.StationDistance(kmOf(r.DistMi)),
 		r.Priority,
 		r.RequestedBy,
-		// THE LOCATION TABLE'S OWN FORMATTERS (D-116), so a place's conditions
+		// THE LOCATION TABLE'S OWN FORMATTERS, so a place's conditions
 		// read the same on the running order as they do in the pool below it:
 		// `DisplayCondition` is the one vocabulary ("P.CLOUDY") and `temp5Or` is
 		// the one that shimmers while the data is still coming.

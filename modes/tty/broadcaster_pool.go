@@ -18,7 +18,6 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
-	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // poolRows is the published pool, as table rows.
@@ -39,18 +38,17 @@ func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 		if loc := idx.at(ref); loc != nil {
 			row = weatherRow(loc, b.fireBold(), 0)
 		}
-		// AND WHAT THE POOL KNOWS THAT THE SNAPSHOT DOES NOT: which row this is,
+		// What the pool knows that the snapshot does not: which row this is,
 		// how many people the place serves, and whether the pointer is on it.
 		row.Index, row.Population, row.Selected = i+1, ref.Population, i == b.poolSelection()
 		// THE DISTANCE IS FROM THE TRANSMITTER, NOT FROM THE OBSERVING STATION.
 		// `weatherRow` fills `StationKM` with how far the WX STN is from the place;
 		// this column answers a different question — how far the PLACE is from the
 		// tower — which is what an operator sizing up a candidate is asking.
-		if mi := b.milesFromTower(ref); mi != nil {
-			// THE TABLE'S OWN FORMATTER TAKES KILOMETRES, and `StationDistance` is
-			// the one owner of how a distance reads in the operator's units.
-			km := units.KmOf(*mi)
-			row.StationKM = &km
+		// THE TABLE'S OWN FORMATTER TAKES KILOMETRES, and `StationDistance` is
+		// the one owner of how a distance reads in the operator's units.
+		if km := b.kmFromTower(ref); km != nil {
+			row.StationKM = km
 		}
 		out = append(out, row)
 	}

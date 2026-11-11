@@ -5,6 +5,9 @@ package main
 // (or method) is declared there, so the flow map cannot drift from the code.
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -102,6 +105,35 @@ func TestWhereThingsHappenNamesRealSymbols(t *testing.T) {
 	}
 }
 
+// declaredIn is every top-level name a Go file declares: its functions, its
+// methods, and its types, constants and variables. A cost may sit on any of
+// them (`RecentCap` is a constant).
+func declaredIn(path string) (map[string]bool, error) {
+	f, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.SkipObjectResolution)
+	if err != nil {
+		return nil, err
+	}
+	names := map[string]bool{}
+	for _, d := range f.Decls {
+		switch x := d.(type) {
+		case *ast.FuncDecl:
+			names[x.Name.Name] = true
+		case *ast.GenDecl:
+			for _, sp := range x.Specs {
+				switch s := sp.(type) {
+				case *ast.TypeSpec:
+					names[s.Name.Name] = true
+				case *ast.ValueSpec:
+					for _, n := range s.Names {
+						names[n.Name] = true
+					}
+				}
+			}
+		}
+	}
+	return names, nil
+}
+
 // docs/accepted-costs.md names its sites the same way the flow map does, and
 // is checked the same way — a decision that points at a function nobody can
 // find is a decision nobody can honour.
@@ -122,13 +154,12 @@ func TestAcceptedCostsNamesRealSymbols(t *testing.T) {
 	}
 	for _, m := range refs {
 		file, sym := m[1], m[2]
-		src, err := os.ReadFile(filepath.Join(root, file))
+		names, err := declaredIn(filepath.Join(root, file))
 		if err != nil {
 			t.Errorf("%s: %v", file, err)
 			continue
 		}
-		if !strings.Contains(string(src), "func "+sym+"(") &&
-			!regexp.MustCompile(`func \([^)]*\) `+sym+`\(`).MatchString(string(src)) {
+		if !names[sym] {
 			t.Errorf("%s does not declare %s", file, sym)
 		}
 	}
@@ -312,3 +343,56 @@ func TestAMethodRowNamesItsReceiver(t *testing.T) {
 		}
 	}
 }
+
+// TestEveryFileIsInItsPackagesMap is 0.19.5 Q9.1 (JM-10): modes/tty's and
+// app's doc.go each map their files by what they own, and a map that is not
+// held goes stale. Every non-test file matches a row's name or prefix, and
+// every row names at least one file that exists.
+func TestEveryFileIsInItsPackagesMap(t *testing.T) {
+	root := filepath.Join("..", "..")
+	for _, pkg := range []string{"modes/tty", "app"} {
+		doc, err := os.ReadFile(filepath.Join(root, pkg, "doc.go"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var patterns []string
+		for _, line := range strings.Split(string(doc), "\n") {
+			if strings.HasPrefix(line, "//\t") {
+				for _, m := range mapEntry.FindAllStringSubmatch(line, -1) {
+					patterns = append(patterns, m[1])
+				}
+			}
+		}
+		if len(patterns) < 10 {
+			t.Fatalf("%s/doc.go maps %d names; its table has narrowed or moved", pkg, len(patterns))
+		}
+		entries, err := os.ReadDir(filepath.Join(root, pkg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		used := map[string]bool{}
+		for _, e := range entries {
+			name := e.Name()
+			if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || name == "doc.go" {
+				continue
+			}
+			matched := false
+			for _, p := range patterns {
+				if p == name || strings.HasSuffix(p, "*") && strings.HasPrefix(name, strings.TrimSuffix(p, "*")) {
+					matched, used[p] = true, true
+				}
+			}
+			if !matched {
+				t.Errorf("%s/%s is in no row of %s/doc.go: add it to the row that owns what it does", pkg, name, pkg)
+			}
+		}
+		for _, p := range patterns {
+			if !used[p] {
+				t.Errorf("%s/doc.go names `%s`, which matches no file: the map has gone stale", pkg, p)
+			}
+		}
+	}
+}
+
+// mapEntry is a backticked file name or prefix in a doc.go's map.
+var mapEntry = regexp.MustCompile("`([a-z0-9_]+(?:\\.go|\\*))`")

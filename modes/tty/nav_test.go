@@ -15,7 +15,7 @@ func TestNavigationMovesSelection(t *testing.T) {
 	// Add a second location so navigation has somewhere to go.
 	s2 := snap()
 	s2.Locations = append(s2.Locations, snapshot.Location{Label: "San Diego, CA", Zip: "92101",
-		Harmonized: snapshot.Conditions{Temp: f64(25.0), Source: snapshot.SourceInfo{Provider: "nws"}}})
+		Harmonized: snapshot.Conditions{Temp: new(25.0), Source: snapshot.SourceInfo{Provider: "nws"}}})
 	m, _ = m.Update(SnapshotMsg{Snap: s2})
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	d := m.(Dashboard)

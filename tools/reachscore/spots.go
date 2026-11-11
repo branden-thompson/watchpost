@@ -18,6 +18,7 @@ import (
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/propanswers"
 )
 
@@ -321,7 +322,5 @@ func readSpot(text string) (spot, error) {
 	return spot{Tx: f[0], Rx: f[3], TxAt: tx, RxAt: rx, Band: band, Hour: hour, N: n, Best: best}, nil
 }
 
-// onGlobe reports whether a place is a latitude and longitude.
-func onGlobe(p ionomaps.LatLon) bool {
-	return p.Lat >= -90 && p.Lat <= 90 && p.Lon >= -180 && p.Lon <= 180
-}
+// onGlobe reports whether a place is a latitude and longitude (geo.OnEarth).
+func onGlobe(p ionomaps.LatLon) bool { return geo.OnEarth(p.Lat, p.Lon) }

@@ -358,7 +358,7 @@ func (s *Store) sweep(path string, e fs.DirEntry, now time.Time) {
 	if err != nil {
 		return
 	}
-	if time.Since(info.ModTime()) > claimStale {
+	if now.Sub(info.ModTime()) > claimStale { // by the store's clock, as the claims are judged
 		s.removeCounted(path) // a temp file: its writer is long gone
 	}
 }

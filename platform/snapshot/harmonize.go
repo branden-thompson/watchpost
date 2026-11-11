@@ -97,7 +97,7 @@ func harmonize(loc *Location, providerOrder []string) {
 			continue
 		}
 		if loc.Hourly == nil && len(sec.Hourly) > 0 {
-			loc.Hourly = append([]Hourly(nil), sec.Hourly...)
+			loc.Hourly = sec.Hourly // shared with the section, which is never written into (Assembler.Snapshot)
 		}
 		if loc.Daily == nil && len(sec.Daily) > 0 {
 			loc.Daily = append([]Daily(nil), sec.Daily...)
@@ -106,14 +106,12 @@ func harmonize(loc *Location, providerOrder []string) {
 	harmonizeMarine(loc, order)
 }
 
-// keepOr returns have when set, else a copy of the fallback (single-deref
-// value helper, P10-09 pointer discipline).
 // KeepOr keeps the value a provider gave, else adopts the fallback by VALUE —
 // never by sharing the pointer, so a later write to one cannot reach the other.
 //
-// Exported because domains/marine/ndbc held a byte-identical copy. It is a
-// merge policy, and a merge policy with two owners is one that will be changed
-// in one of them (issue #7's shape).
+// Exported so domains/marine/ndbc uses this one rather than a copy of its own.
+// It is a merge policy, and a merge policy with two owners is one that will be
+// changed in one of them (issue #7's shape).
 func KeepOr(have, fallback *float64) *float64 {
 	if have != nil || fallback == nil {
 		return have

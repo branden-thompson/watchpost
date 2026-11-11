@@ -1,6 +1,6 @@
 // Package config owns the watchpost user configuration file.
 //
-// Contract (architecture.md §10.11, C-3′): TOML at
+// Contract (watchpost-cli architecture §10.11, C-3′): TOML at
 // $XDG_CONFIG_HOME/watchpost/config.toml (fallback ~/.config), file mode 0600,
 // dir 0700, atomic writes (temp + rename). Holds locations, per-provider keys,
 // key bindings, radio and playlist settings. Never prompts a keychain; never
@@ -36,9 +36,8 @@ type Provider struct {
 	Key string `toml:"key,omitempty"`
 }
 
-// Radio holds tuner settings. Only what the app reads lives here (red-team
-// round 2 R2-21): the `--tts-cmd` argv template and a stream override are
-// 1.0 items and arrive with their code, not before it.
+// Radio holds tuner settings. Only what the app reads lives here: a setting
+// arrives with the code that reads it, not before it.
 //
 // The correspondent cast and the alert tones are ADDITIVE, and their zero
 // value is one voice and every tone: an absent [radio.voices] table means
@@ -116,30 +115,38 @@ type Tones struct {
 }
 
 // radioModes, castModes and toneModes are the closed sets Validate checks. They
-// are the SHAPE half of the split with domains/radio/cast: which words are
+// are the shape half of the split with domains/radio/cast: which words are
 // legal here, never what a role or a class means.
 const (
+	radioModeSynth = "synth"
+	radioModeRelay = "relay"
 	castModeSingle = ""
 	castModeOn     = "cast"
 	toneModeOn     = ""
 	toneModeMute   = "mute"
 )
 
+// radioModes is the source mode's closed set; "" is a config that never
+// pressed [m], which reads as Synth.
+var radioModes = map[string]bool{"": true, radioModeSynth: true, radioModeRelay: true}
+
 // Validate checks the [radio] tables the way Load reports every other config
 // fault — at load, naming the key.
 //
-// It checks TABLE SHAPES AND CLOSED WORD SETS ONLY. Whether an assigned voice
+// It checks table shapes and closed word sets only. Whether an assigned voice
 // can actually speak on this host, and which tone-class keys exist, are
 // domains/radio/cast's (cast.Validate, P1 Task 1.5): this package must not
 // import a domain, and duplicating the rule is how the loader, the screen and
 // the deck drift apart.
 //
-// Note the asymmetry with Fire.Validate: a bad [fire] radius is an ERROR that
-// stops the load, because acting on it would attach the wrong hotspots. A bad
-// cast mode is reported and read as the default instead, because refusing to
-// start over a typo in a voice preference would be worse than reading it
-// conservatively — and cast.Validate surfaces it in [S] either way.
+// A word outside its set stops the load, as a bad [fire] radius does, and the
+// error names the key, its legal words and what was found, so the listener can
+// fix the line (Load adds the file and the way out). An unknown tone-class key
+// is not a word set: cast.Validate reports it in [S] and the load goes on.
 func (r Radio) Validate() error {
+	if !radioModes[r.Mode] {
+		return fmt.Errorf("[radio] mode must be %q or %q (got %q)", radioModeSynth, radioModeRelay, r.Mode)
+	}
 	switch r.Cast {
 	case castModeSingle, castModeOn:
 	default:
@@ -362,7 +369,7 @@ type Config struct {
 	UpdateCheck bool `toml:"update_check,omitempty"`
 
 	TickerMuted    bool `toml:"ticker_muted,omitempty"`     // [M]: the global event ticker's tone/narration muted (0.12.0)
-	TickerRadiusMi int  `toml:"ticker_radius_mi,omitempty"` // 0.12.0: the alert-notification radius — 0 = All (global), >0 = only alerts within N miles of the default location
+	TickerRadiusMi int  `toml:"ticker_radius_mi,omitempty"` // the alert-notification radius — 0 = All (global), >0 = only alerts within N miles of the default location
 
 	FirstRun bool `toml:"-"`
 

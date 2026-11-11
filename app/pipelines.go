@@ -36,6 +36,13 @@ type publisher struct {
 	launchWindow time.Duration
 	launchUntil  time.Time
 
+	// now and after are the clock and the timer the windows run on: the wall
+	// clock and time.AfterFunc when nil, which is production; a test sets both
+	// so a window is measured by its clock, not by sleeping past it (0.19.5
+	// Q2.11, F-51).
+	now   func() time.Time
+	after func(time.Duration, func())
+
 	// Counters (quality pass Q0, red-team R2-7): how often this pipeline
 	// publishes and how many triggers the window folded — the numbers §1's
 	// allocation target and the C3 threshold read. The last snapshot is kept
@@ -82,6 +89,10 @@ func (pb *publisher) Trigger() {
 	if pb.count.Load() == 0 && pb.folded.Load() == 0 {
 		window = 0 // the first publish: at once
 	}
+	if pb.after != nil {
+		pb.after(window, pb.fire)
+		return
+	}
 	time.AfterFunc(window, pb.fire)
 }
 
@@ -99,7 +110,11 @@ func (pb *publisher) fire() {
 // windowNow is the window in force: the launch window until launchUntil,
 // then the steady-state one (caller holds mu).
 func (pb *publisher) windowNow() time.Duration {
-	if pb.launchWindow > 0 && time.Now().Before(pb.launchUntil) {
+	now := time.Now
+	if pb.now != nil {
+		now = pb.now
+	}
+	if pb.launchWindow > 0 && now().Before(pb.launchUntil) {
 		return pb.launchWindow
 	}
 	if pb.window == 0 {
@@ -117,7 +132,7 @@ func (pb *publisher) stats() tty.PipelineStats {
 func (pb *publisher) lastSnapshot() *snapshot.Snapshot { return pb.last.Load() }
 
 // The cadence tables — the one owner (L3-F14). TestCadenceTableIsTheDoc
-// prints them as the markdown table architecture.md §11.1 carries, so the
+// prints them as the markdown table watchpost-cli architecture §11.1 carries, so the
 // document is generated from these, never re-typed. Every cadence change
 // needs a §0.3 freshness row in the batch's build log.
 
@@ -131,7 +146,7 @@ func priorityTiers() []sched.Tier {
 		{Kind: snapshot.KindForecastHourly, Every: 30 * time.Minute}, // fires with the daily tier (UAT 72)
 		{Kind: snapshot.KindMarine, Every: 30 * time.Minute},         // coastal waters (UAT 29); one gridpoint download serves it and the daily fill
 		{Kind: snapshot.KindFire, Every: 10 * time.Minute},           // HMS archive refresh + FIRMS cadence (B5, AI-3)
-		{Kind: snapshot.KindSeismic, Every: 5 * time.Minute},         // USGS max-age=60; "did my area shake" needs no sub-minute latency — the fire cadence, regional like it (seismic P2 §0.3)
+		{Kind: snapshot.KindSeismic, Every: 5 * time.Minute},         // USGS max-age=60; "did my area shake" needs no sub-minute latency — twice as often as fire, and regional like it (seismic P2 §0.3)
 	}
 }
 
@@ -144,7 +159,7 @@ func recentTiers() []sched.Tier {
 		{Kind: snapshot.KindForecast, Every: time.Hour},
 		{Kind: snapshot.KindMarine, Every: time.Hour},
 		{Kind: snapshot.KindFire, Every: 15 * time.Minute},    // the archive is shared through the client cache (B5)
-		{Kind: snapshot.KindSeismic, Every: 15 * time.Minute}, // the regional box is shared through the client cache; RECENT half the priority cadence (seismic P2 §0.3)
+		{Kind: snapshot.KindSeismic, Every: 15 * time.Minute}, // the regional box is shared through the client cache; RECENT a third as often as priority (seismic P2 §0.3)
 	}
 }
 
@@ -281,7 +296,7 @@ func (rp *recentPipeline) stop() {
 	for _, s := range rp.scheds {
 		scheds = append(scheds, s)
 	}
-	rp.mu.Unlock() // a commit still in flight at quit must not race the map (round 2 N-6)
+	rp.mu.Unlock() // a commit still in flight at quit must not race the map
 	for _, s := range scheds {
 		s.Stop()
 	}

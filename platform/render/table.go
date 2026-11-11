@@ -1,6 +1,6 @@
 package render
 
-// table.go — the location table on go-studs DataTable — the ONLY go-studs consumer in the app (column spec, layout, row data, marks, styles, group headers).
+// table.go — the location table on go-studs DataTable (column spec, layout, row data, marks, styles, group headers). platform/render is the only package that imports go-studs, so the table kit can be swapped in one place; the line-up, the Status tables and the console's card row are its other consumers here (0.19.5 D-10).
 
 import (
 	"fmt"
@@ -38,7 +38,7 @@ type LocationRow struct {
 	HasAlert           bool
 	WarnAlert          bool // true = warning/alert-grade; false = advisory (UAT 14.1)
 	AlertCount         int  // active alerts: rendered beside the ⚠ (UAT 20.2)
-	Seismic            int  // 0.11.0: the strongest recent quake's felt-band level (0 none · 1 ○ · 2 ● · 3 ◉) — the row wears one glyph, no count
+	Seismic            int  // the strongest recent quake's felt-band level (0 none · 1 ○ · 2 ● · 3 ◉) — the row wears one glyph, no count
 	Loading            bool // data not yet arrived: temps shimmer, not "n/a" (UAT 18.2)
 	Playing            bool
 	Selected           bool
@@ -396,10 +396,6 @@ func (o Opts) temp5Or(c *float64, loading bool) string {
 	return o.temp5(c)
 }
 
-// rowMarks builds the 6-cell prefix: pointer, play mark, and the alert
-// badge — count beside the glyph ('›  2⚠'), both toned by the most severe
-// alert (yellow advisory-grade, red warning-grade; UAT 20.2/20.3). Split
-// from rowData (P10-04).
 // Marks is the prefix block a table row wears — the pointer, the play mark, the
 // seismic glyph, the fire count and the alert count.
 //
@@ -452,7 +448,7 @@ func markCells(r Marks, g Glyphs) [marksW]string {
 			marks[3] = Tint(g.Repeat, Tok(StatePlaying)) // UAT 83: ∞ on repeat
 		}
 	}
-	if r.Seismic > 0 { // 0.11.0: the strongest recent quake's felt-band glyph — one mark, no count (HUM LEAD)
+	if r.Seismic > 0 { // the strongest recent quake's felt-band glyph — one mark, no count (HUM LEAD)
 		marks[5] = Tint(g.Seismic[r.Seismic-1], Tok(SeismicMark))
 	}
 	if r.Fire > 0 { // B5 / UAT 110: fire is another alert kind — orange ◆ with its count (bold when a hotspot burns hard)

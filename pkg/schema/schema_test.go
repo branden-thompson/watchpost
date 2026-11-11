@@ -12,8 +12,6 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-func f64(v float64) *float64 { return &v }
-
 func TestGeneratedSchemaValidatesRealEnvelope(t *testing.T) {
 	raw, err := Generate()
 	if err != nil {
@@ -38,7 +36,7 @@ func TestGeneratedSchemaValidatesRealEnvelope(t *testing.T) {
 	asm := snapshot.NewAssembler([]snapshot.LocationRef{ref}, []string{"nws", "coops"})
 	asm.Apply(snapshot.Fragment{Provider: "nws", Kind: snapshot.KindObs, FetchedAt: time.Now(),
 		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{
-			snapshot.Key(ref): {Current: &snapshot.Conditions{Temp: f64(21.5)}},
+			snapshot.Key(ref): {Current: &snapshot.Conditions{Temp: new(21.5)}},
 		}}, nil)
 	// A marine block with nil collections (REVIEW M1): the per-provider copy
 	// must publish arrays too, or the live --json fails this very schema.

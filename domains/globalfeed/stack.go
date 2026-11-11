@@ -48,10 +48,6 @@ func Active(evs []Event, now time.Time) []Event {
 // hurricane or a significant quake — only giving each lane its own floor does.
 const MaxPerLane = 30
 
-// Lane is the marquee lane an event belongs to, and the unit the cap is per.
-//
-// The feed produces four. Advisories and statements reach the marquee from the
-// tracked locations rather than from here, and carry their own bound.
 // Lane is a category, named for the job it does here: the unit the national
 // stack's cap is per. NOT an enum of its own: a lane missing from an order
 // list beside a separate enum would have its events dropped from the stack

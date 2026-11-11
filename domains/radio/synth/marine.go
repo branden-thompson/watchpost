@@ -2,14 +2,14 @@ package synth
 
 import (
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
+	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
-	"github.com/branden-thompson/watchpost/platform/units"
 )
 
 // The maritime report (FR-6): the coastal-waters forecast, the nearest buoy,
@@ -139,59 +139,6 @@ func gustPhrase(gust *float64, imperial bool) string {
 // about the WORDS (is this sea rough? is the tide rising?), which do come from
 // render; the number's register is the surface's own business.
 
-// heightWords is "3 feet" / "1.5 metres" — one decimal only when it matters.
-func heightWords(m *float64, imperial bool) string {
-	if m == nil {
-		return ""
-	}
-	if imperial {
-		return decimalWords(units.FeetOf(*m), "foot", "feet")
-	}
-	return decimalWords(*m, "metre", "metres")
-}
-
-// tempWords is "74 degrees" — the unit is the listener's and is not spoken,
-// exactly as the location forecast reads temperatures.
-func tempWords(c *float64, imperial bool) string {
-	if c == nil {
-		return ""
-	}
-	v := *c
-	if imperial {
-		v = units.FahrenheitOf(v)
-	}
-	return fmt.Sprintf("%.0f degrees", v)
-}
-
-// windWords is "13 miles per hour" / "21 kilometers per hour", spelled out
-// because "mph" reads as three letters.
-func windWords(mps *float64, imperial bool) string {
-	if mps == nil {
-		return ""
-	}
-	if imperial {
-		return fmt.Sprintf("%.0f miles per hour", units.MphOf(*mps))
-	}
-	return fmt.Sprintf("%.0f kilometers per hour", units.KmhOf(*mps))
-}
-
-// knotWords is "1.4 knots". Currents are ALWAYS knots (MVS-D-21) — the
-// mariner's convention, whatever the listener's unit.
-func knotWords(mps float64) string { return decimalWords(units.KnotsOf(mps), "knot", "knots") }
-
-// decimalWords reads a number with one decimal only when the fraction matters,
-// so "3.0 feet" is spoken as "3 feet" and "0.6 metres" keeps its decimal.
-func decimalWords(v float64, singular, plural string) string {
-	unit := plural
-	if math.Abs(v-1) < 0.05 {
-		unit = singular
-	}
-	if math.Abs(v-math.Round(v)) < 0.05 {
-		return fmt.Sprintf("%.0f %s", v, unit)
-	}
-	return fmt.Sprintf("%.1f %s", v, unit)
-}
-
 // tideSentences are the tide in force, the next high and low, and the current —
 // or the absence line when this location has neither prediction.
 func (c Composer) tideSentences(mr MarineReport, imperial bool, now time.Time) []string {
@@ -292,17 +239,15 @@ func stationName(name string) string {
 	if i := strings.Index(name, " ("); i > 0 {
 		name = name[:i]
 	}
-	return capName(render.PlainLine(name))
+	return capName(plaintext.Line(name))
 }
 
-// capName bounds a station name that will be spoken and shown (NFR-6).
-func capName(s string) string {
-	const cap = 48
-	if r := []rune(s); len(r) > cap {
-		return string(r[:cap])
-	}
-	return s
-}
+// maxStationNameRunes bounds a station name that will be spoken and shown (NFR-6).
+const maxStationNameRunes = 48
+
+// capName bounds a station name to maxStationNameRunes, in runes
+// (plaintext.ClampRunes).
+func capName(s string) string { return plaintext.ClampRunes(s, maxStationNameRunes) }
 
 func deref(v *float64) float64 {
 	if v == nil {
@@ -311,12 +256,6 @@ func deref(v *float64) float64 {
 	return *v
 }
 
-// compassPoint maps degrees true to the 16-point heading bearingLong words.
-func compassPoint(deg float64) string {
-	pts := []string{"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"}
-	i := int(math.Mod(math.Round(deg/22.5), 16))
-	if i < 0 {
-		i += 16
-	}
-	return pts[i]
-}
+// compassPoint maps degrees true to the 16-point heading bearingLong words
+// (geo.Compass16, the one table the screen's direction is written from too).
+func compassPoint(deg float64) string { return geo.Compass16(deg) }

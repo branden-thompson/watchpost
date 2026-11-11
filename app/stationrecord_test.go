@@ -22,7 +22,7 @@ func TestTheStationsFeedsAreKept(t *testing.T) {
 	obsAt := time.Date(2026, 10, 3, 14, 53, 0, 0, time.UTC)
 
 	rec.record(snapshot.Fragment{Provider: "nws", Kind: snapshot.KindObs, FetchedAt: now,
-		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{key: {Current: &snapshot.Conditions{ObservedAt: obsAt, Temp: f64(21.5), Wind: f64(3)}}}}, []snapshot.LocationRef{ref})
+		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{key: {Current: &snapshot.Conditions{ObservedAt: obsAt, Temp: new(21.5), Wind: new(float64(3))}}}}, []snapshot.LocationRef{ref})
 	o, ok := store.Get(nwsObservations.Name, history.Key{Source: "nws", Place: "lone-pine-ca"}, obsAt)
 	if !ok || o.Values["temp"][0] != 21.5 || o.Values["wind"][0] != 3 || o.Values["pressure"][0] == o.Values["pressure"][0] {
 		t.Errorf("the observation kept is %+v, %v; want the temperature and wind, the pressure missing", o, ok)
@@ -38,14 +38,14 @@ func TestTheStationsFeedsAreKept(t *testing.T) {
 	}
 
 	rec.record(snapshot.Fragment{Provider: "ndbc", Kind: snapshot.KindMarineObs, FetchedAt: now,
-		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{key: {Marine: &snapshot.Marine{Buoy: "46225", ObservedAt: obsAt, WaveHeight: f64(1.2), WaterTemp: f64(18)}}}}, []snapshot.LocationRef{ref})
+		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{key: {Marine: &snapshot.Marine{Buoy: "46225", ObservedAt: obsAt, WaveHeight: new(1.2), WaterTemp: new(float64(18))}}}}, []snapshot.LocationRef{ref})
 	b, ok := store.Get(ndbcBuoys.Name, history.Key{Source: "ndbc", Place: "46225"}, obsAt)
 	if !ok || b.Values["wave_height"][0] != 1.2 || b.Values["water_temp"][0] != 18 {
 		t.Errorf("the buoy kept is %+v, %v", b, ok)
 	}
 
 	rec.record(snapshot.Fragment{Provider: "coops-obs", Kind: snapshot.KindMarineObs, FetchedAt: now,
-		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{key: {Marine: &snapshot.Marine{TideStation: "9410170", TideLevel: f64(0.8)}}}}, []snapshot.LocationRef{ref})
+		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{key: {Marine: &snapshot.Marine{TideStation: "9410170", TideLevel: new(0.8)}}}}, []snapshot.LocationRef{ref})
 	tl, ok := store.Get(coopsTides.Name, history.Key{Source: "coops", Place: "9410170"}, now)
 	if !ok || tl.Values["tide_level"][0] != 0.8 {
 		t.Errorf("the tide level kept is %+v, %v", tl, ok)
@@ -53,7 +53,7 @@ func TestTheStationsFeedsAreKept(t *testing.T) {
 
 	later := obsAt.Add(2 * time.Hour) // an hour of its own, so nothing already kept can stand in for it
 	rec.record(snapshot.Fragment{Provider: "openmeteo", Kind: snapshot.KindObs, FetchedAt: now,
-		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{key: {Current: &snapshot.Conditions{ObservedAt: later, Temp: f64(30)}}}}, []snapshot.LocationRef{ref})
+		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{key: {Current: &snapshot.Conditions{ObservedAt: later, Temp: new(float64(30))}}}}, []snapshot.LocationRef{ref})
 	if _, ok := store.Get(nwsObservations.Name, history.Key{Source: "nws", Place: "lone-pine-ca"}, later); ok {
 		t.Error("another provider's conditions were kept as NWS's observations")
 	}

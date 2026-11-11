@@ -1,6 +1,6 @@
 // Package term owns terminal capabilities and the keybinding data model.
 //
-// Contract (architecture.md §4, §6, §10, PD-4, D-15):
+// Contract (watchpost-cli architecture §4, §6, §10, PD-4, D-15):
 //   - Report/stdout mode resolves width ONCE here (TTY ioctl → stdin → $COLUMNS
 //     → 80); TTY mode uses bubbletea WindowSizeMsg and never calls Width().
 //   - Color gate: NO_COLOR (any value) wins, then TTY-ness of stdout.

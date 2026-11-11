@@ -562,7 +562,7 @@ func recordedToday(s *temperature.Series, past func(string, time.Time) (history.
 		return false
 	}
 	n := s.Lattice.Cols * s.Lattice.Rows
-	high, low, feelsHigh, feelsLow, wind := missingValues(n), missingValues(n), missingValues(n), missingValues(n), missingValues(n)
+	high, low, feelsHigh, feelsLow, wind := missingRow(n), missingRow(n), missingRow(n), missingRow(n), missingRow(n)
 	day := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 0, 0, 0, 0, anchor.Location())
 	for h := day; !h.After(anchor); h = h.Add(time.Hour) { // a day's hours (P10-02)
 		rec, ok := past(box, h)
@@ -602,15 +602,6 @@ func extremes(hi, lo, vals []float64) {
 			lo[p] = v
 		}
 	}
-}
-
-// missingValues is n values, every one missing.
-func missingValues(n int) []float64 {
-	out := make([]float64, n)
-	for i := range out {
-		out[i] = math.NaN()
-	}
-	return out
 }
 
 // shapeOf is a lattice's shape as the history keeps it.

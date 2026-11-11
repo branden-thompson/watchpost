@@ -1,4 +1,4 @@
-// Package snapshot is THE data contract (architecture.md §2, §10.1, §10.11).
+// Package snapshot is THE data contract (watchpost-cli architecture §2, §10.1, §10.11).
 //
 // Providers fetch Fragments; the single Assembler merges them into immutable
 // Snapshot values. Renderers (modes/tty, modes/report) read Snapshots and may
@@ -18,7 +18,7 @@ import (
 )
 
 // SchemaVersion is the published JSON contract version. The -rc suffix says
-// it is not ratified (B5, architecture §10.3): a candidate may still change
+// it is not ratified (B5, watchpost-cli architecture §10.3): a candidate may still change
 // shape.
 const SchemaVersion = "1.1.0-rc"
 
@@ -204,13 +204,13 @@ type Alert struct {
 	Source      SourceInfo `json:"source"`
 }
 
-// FireState holds hotspots and incidents (B5).
 // MaxHotspots caps the hotspots a location carries (nearest first): a
 // mega-fire clusters into hundreds of GOES positions per day (941 near
 // Mineral Wells, TX on 2026-08-25), and three rows plus a count are all the
 // modal shows. At the cap the count reads "300+".
 const MaxHotspots = 300
 
+// FireState holds hotspots and incidents (B5).
 type FireState struct {
 	AsOf      time.Time  `json:"as_of"` // when a fire feed last answered for this location; zero = no feed has yet (never "no hotspots" — red-team B5 P3)
 	Hotspots  []Hotspot  `json:"hotspots"`
@@ -417,7 +417,7 @@ const (
 	KindMarine         // coastal-waters forecast: NWS gridpoint swell/wave, CO-OPS tide/current predictions (B3 UAT 29/61)
 	KindMarineObs      // coastal-waters observations: NDBC buoy files, CO-OPS water level — the fast marine tier (UAT 72)
 	KindForecastHourly // NWS hourly forecast — its own tier so the RECENT list can skip its 162 KB (UAT 72)
-	KindSeismic        // USGS earthquakes near the location (0.11.0)
+	KindSeismic        // USGS earthquakes near the location
 )
 
 // LocationRef identifies a location for fetching (Zip/TZ carried through to

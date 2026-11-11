@@ -15,7 +15,7 @@ import (
 // The time-to-tone-start instrument (07-readiness/perf-protocol.md §1 item 1 is
 // the one owner of the method; this file only implements it). It measures the
 // Go path a breaking takeover walks from breaking()'s entry to the moment the
-// director asks for the attention tone — the arbiter's admission — and nothing
+// arbiter asks for the attention tone — its admission — and nothing
 // of the audio behind it: the fake voice stamps the tone() call and ends the
 // sequence there.
 //
@@ -91,7 +91,7 @@ func BenchmarkTimeToToneStart(b *testing.B) {
 		deck := &tickerDeck{
 			send:  func(tea.Msg) {},
 			muted: &atomic.Bool{}, // not muted: an audible takeover sounds the tone
-			voice: testDirector(voice, nil),
+			voice: testArbiter(voice, nil),
 			seen:  loadSeen(b.TempDir(), time.Hour),
 		}
 		b.StartTimer()

@@ -65,8 +65,8 @@ type readHooks struct {
 // would make a single function do too much for P10's bound of 15. Naming the
 // state lets each step be its own step.
 type reader struct {
-	s         *speaker
-	h         readHooks
+	speaker   *speaker
+	hooks     readHooks
 	next      clip
 	haveNext  bool
 	firstLine int
@@ -82,7 +82,7 @@ type reader struct {
 // readScript performs one card. It returns false when the sequence ended — the
 // context was cancelled, or the job left the air — and the caller stops.
 func readScript(s *speaker, sc lineup.Script, h readHooks) bool {
-	r := &reader{s: s, h: h, firstLine: firstLineIndex(sc), lastLine: lastLineIndex(sc)}
+	r := &reader{speaker: s, hooks: h, firstLine: firstLineIndex(sc), lastLine: lastLineIndex(sc)}
 	if !r.openTone(sc) {
 		return false
 	}
@@ -118,10 +118,10 @@ func (r *reader) reportSilentTone() {
 	if !r.toned || r.spoke > 0 {
 		return
 	}
-	if r.s.d == nil || r.s.d.v == nil {
+	if r.speaker.arbiter == nil || r.speaker.arbiter.voice == nil {
 		return
 	}
-	r.s.d.v.fault("an alert tone sounded and no words followed it")
+	r.speaker.arbiter.voice.fault("an alert tone sounded and no words followed it")
 }
 
 // openTone sounds the attention tone and renders the first part behind it, so
@@ -130,13 +130,13 @@ func (r *reader) openTone(sc lineup.Script) bool {
 	toneStart := time.Now()
 	toneDur := time.Duration(0)
 	if c, ok := cast.ClassByKey(sc.Tone); ok && sc.Tone != "" {
-		toneDur = r.s.attention(c)
+		toneDur = r.speaker.attention(c)
 		r.toned = toneDur > 0 // sounded, not merely asked for: a muted or voiceless job tones nothing
 	}
 	// prepare only RENDERS; nothing is spoken early, and the cue still precedes
 	// the words.
 	if len(sc.Parts) > 0 {
-		r.next, r.haveNext = timeRender(sc.Parts[0].Kind.String(), func() (clip, bool) { return r.s.prepare(sc.Parts[0].Text) })
+		r.next, r.haveNext = timeRender(sc.Parts[0].Kind.String(), func() (clip, bool) { return r.speaker.prepare(sc.Parts[0].Text) })
 	}
 	// THE ONE PLACE A TONE CAN BE SOUNDED AND NOTHING SAID, so it is the one
 	// place worth a line in the timeline (F-43).
@@ -146,12 +146,12 @@ func (r *reader) openTone(sc lineup.Script) bool {
 	// — impossible to diagnose from the outside, because a cut-short read is
 	// Routed and therefore raises nothing (I-2). The listener hears a promise and
 	// gets silence; the log says where the promise was broken.
-	if ok := holdRest(r.s, toneDur, toneStart); ok {
+	if ok := holdRest(r.speaker, toneDur, toneStart); ok {
 		return true
 	}
 	if radioDebugOn() {
 		radioDebugLog(fmt.Sprintf("read:gaveup:after-tone tone=%s dur=%s parts=%d ctx=%v",
-			sc.Tone, toneDur, len(sc.Parts), r.s.ctx.Err()))
+			sc.Tone, toneDur, len(sc.Parts), r.speaker.ctx.Err()))
 	}
 	return false
 }
@@ -165,27 +165,27 @@ func (r *reader) readPart(sc lineup.Script, i int, p lineup.Part) bool {
 	// silence.
 	//
 	// It cannot help the common case. `prepare` also refuses when the job is
-	// inaudible or the director silent (a muted takeover), and when the text is
+	// inaudible or the arbiter silent (a muted takeover), and when the text is
 	// empty; re-asking with the same text satisfies neither. The look-ahead
 	// renders have no retry — a failure there falls to the fixed hold, which is
 	// what keeps this from becoming a render loop.
 	if !r.haveNext && i == r.firstLine {
-		r.next, r.haveNext = timeRender("retry", func() (clip, bool) { return r.s.prepare(p.Text) })
+		r.next, r.haveNext = timeRender("retry", func() (clip, bool) { return r.speaker.prepare(p.Text) })
 	}
 	// THE AIR IS CHECKED BEFORE EVERY CALLOUT, not only after a wait: a cue is a
 	// promise that words are coming, and a sequence that ended during the render
 	// before it would otherwise put a headline on the band for a read that never
 	// happens.
-	if !r.s.awaitAir(nil) {
+	if !r.speaker.awaitAir(nil) {
 		return false
 	}
-	if p.Ref != "" && r.h.cue != nil {
-		r.h.cue(p.Ref)
+	if p.Ref != "" && r.hooks.cue != nil {
+		r.hooks.cue(p.Ref)
 	}
 	cur, have := r.next, r.haveNext
 	hold, start := breakingHold, time.Now()
 	if have {
-		if d := r.s.deliver(cur); d > 0 {
+		if d := r.speaker.deliver(cur); d > 0 {
 			hold, r.spoke = d, r.spoke+1
 		}
 	}
@@ -193,18 +193,18 @@ func (r *reader) readPart(sc lineup.Script, i int, p lineup.Part) bool {
 	// part is still readable rather than blitted past (P4 F10).
 	if i+1 < len(sc.Parts) { // render the NEXT while this one sounds
 		n := sc.Parts[i+1]
-		r.next, r.haveNext = timeRender(n.Kind.String(), func() (clip, bool) { return r.s.prepare(n.Text) })
+		r.next, r.haveNext = timeRender(n.Kind.String(), func() (clip, bool) { return r.speaker.prepare(n.Text) })
 	}
-	if !holdRest(r.s, hold, start) { // whatever is LEFT after that render
+	if !holdRest(r.speaker, hold, start) { // whatever is LEFT after that render
 		return false
 	}
-	if p.Ref != "" && r.h.mark != nil {
-		r.h.mark(p.Ref)
+	if p.Ref != "" && r.hooks.mark != nil {
+		r.hooks.mark(p.Ref)
 	}
 	// NOTHING BOUNDS THE READ FROM HERE (DR-3). Once a card is admitted it is
 	// read in full; the only bound is the Max the Producer applied.
 	if g := gapAfter(p.Kind, i == r.lastLine); g > 0 && i+1 < len(sc.Parts) {
-		return r.s.hold(g)
+		return r.speaker.hold(g)
 	}
 	return true
 }

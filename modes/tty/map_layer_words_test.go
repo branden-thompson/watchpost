@@ -30,7 +30,7 @@ func TestEachLayerDrawnAddsItsSentence(t *testing.T) {
 	}
 	now := words[temp]
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if next := m.(Dashboard).describeLinesAll(); slices.Contains(next, now) {
+	if next := m.describeLinesAll(); slices.Contains(next, now) {
 		t.Errorf("a step on, the temperature still says Now's: %q", now)
 	}
 	var asked []string
@@ -71,5 +71,52 @@ func TestTheRadarSaysItsMotion(t *testing.T) {
 	r.mapPane.motion[0].Moving = false
 	if strings.Contains(strings.Join(r.describeLinesAll(), "\n"), "Heavier rain") {
 		t.Error("rain that barely moved is said to move")
+	}
+}
+
+// TestEachLayerSaysItsBestAnswer is 0.19.5 Q2.8 (RN-12): when a layer has more
+// than one answer for the place, the sentence is from one with data, and of
+// two with data the nearer, whichever order the answers came in.
+func TestEachLayerSaysItsBestAnswer(t *testing.T) {
+	var asked []string
+	r := openRadarMap(t, "MRMS", &asked)
+	i := slices.IndexFunc(r.mapPane.report.Answers, func(a tuimaps.Answer) bool { return strings.HasPrefix(a.Overlay, RadarLayer) })
+	if i < 0 {
+		t.Fatal("the fixture's radar gave no answer")
+	}
+	reading := r.mapPane.report.Answers[i]
+	reading.NoData, reading.Km, reading.Heavier, reading.HeavierAt = false, 40, "south-west", 18
+	noData := reading
+	noData.NoData, noData.Km, noData.Heavier = true, 2, "north"
+	near := reading
+	near.Km, near.HeavierAt = 10, 6
+	radarLine := func(answers ...tuimaps.Answer) string {
+		d := r
+		d.mapPane.report.Answers = answers
+		for _, l := range d.describeLinesAll() {
+			if strings.HasPrefix(l, "Radar") {
+				return l
+			}
+		}
+		t.Fatal("the radar said nothing")
+		return ""
+	}
+	want := radarLine(reading)
+	if radarLine(noData) == want {
+		t.Fatal("the no-data answer says the same words as the reading; the fixture cannot tell them apart")
+	}
+	for _, order := range [][]tuimaps.Answer{{noData, reading}, {reading, noData}} {
+		if got := radarLine(order...); got != want {
+			t.Errorf("a no-data answer nearer than the reading is said instead of it: %q; want %q", got, want)
+		}
+	}
+	nearer := radarLine(near)
+	if nearer == want {
+		t.Fatal("the nearer reading says the same words as the farther; the fixture cannot tell them apart")
+	}
+	for _, order := range [][]tuimaps.Answer{{reading, near}, {near, reading}} {
+		if got := radarLine(order...); got != nearer {
+			t.Errorf("of two readings the farther is said: %q; want %q", got, nearer)
+		}
 	}
 }

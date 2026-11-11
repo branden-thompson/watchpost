@@ -128,7 +128,7 @@ func (d Dashboard) placeRow() string {
 // key blinks all six chips' - the one pressed among them.
 func (d Dashboard) controlCap(act term.Action, face string) string {
 	o := d.opts()
-	if d.mapPane.flash == act && time.Now().Before(d.mapPane.flashEnd) {
+	if d.mapPane.flash == act && d.clock().Before(d.mapPane.flashEnd) {
 		return o.KeyCapInverted(face)
 	}
 	return o.KeyCap(face)
@@ -291,11 +291,7 @@ func (d Dashboard) quotaNoticeText() string {
 	if fallbacks == 0 {
 		return head + "Resets " + when
 	}
-	plural := "s"
-	if fallbacks == 1 {
-		plural = ""
-	}
-	return head + "Resets " + when + " // " + strconv.Itoa(fallbacks) + " Fall-back" + plural + " active"
+	return head + "Resets " + when + " // " + strconv.Itoa(fallbacks) + " Fall-back" + plural(fallbacks) + " active"
 }
 
 // quotaLayers counts the Open-Meteo overlays on by their state, from the
@@ -851,7 +847,7 @@ const menuChoiceW = 10
 // menuFlashFor is the blink of a menu row's picker: only the row pressed,
 // only while its window is open - Settings' pickers' rule (D-147).
 func (d Dashboard) menuFlashFor(row int) pickerFlash {
-	if row != d.mapPane.menuFlashAt || d.mapPane.menuFlash == flashNone || !time.Now().Before(d.mapPane.menuFlashEnd) {
+	if row != d.mapPane.menuFlashAt || d.mapPane.menuFlash == flashNone || !d.clock().Before(d.mapPane.menuFlashEnd) {
 		return flashNone
 	}
 	return d.mapPane.menuFlash
@@ -1011,8 +1007,7 @@ func (d Dashboard) mapTitleAt(size tuimaps.Size) string {
 	var name string
 	if d.cfg.MapAreaName != nil {
 		centre, _ := m.Centre()
-		widthKm := (v.E - v.W) * 111.32 * math.Cos(centre.Lat*math.Pi/180) // across the view at its centre
-		name = d.cfg.MapAreaName(centre, widthKm)
+		name = d.cfg.MapAreaName(centre, viewWidthKm(v, centre.Lat))
 	}
 	if name == "" || name == loc.Label {
 		return loc.Label
@@ -1023,6 +1018,13 @@ func (d Dashboard) mapTitleAt(size tuimaps.Size) string {
 // MapView is the box of the map in view, in degrees (0.18.0 D-66): what
 // "Alerts in view" asks the app about, and what the title names.
 type MapView = geo.Box
+
+// viewWidthKm is how wide a view is, in kilometres, across its centre's
+// latitude: the width the area namer names it by, for the title and the
+// spoken description alike (0.19.5 DR-10), so the two name one area.
+func viewWidthKm(v MapView, centreLat float64) float64 {
+	return (v.E - v.W) * 111.32 * math.Cos(centreLat*math.Pi/180)
+}
 
 // viewBox is the map's view at a size, from the library's centre and zoom
 // and its published scale (256-dot tiles, a braille cell two dots wide and

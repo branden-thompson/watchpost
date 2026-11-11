@@ -250,20 +250,6 @@ func TestCastChangedIsANoOpInP1(t *testing.T) {
 	}
 }
 
-func TestSpokenNameDropsTheLanguageSuffixAndTheSentinel(t *testing.T) {
-	for _, tc := range []struct{ in, want string }{
-		{"Samantha", "Samantha"},
-		{"Eddy (English (US))", "Eddy"},
-		{"Aman (English (India))", "Aman"},
-		{systemVoice, ""}, // "your correspondent" — the sentinel has no name (UAT 88)
-		{"", ""},
-	} {
-		if got := spokenName(tc.in); got != tc.want {
-			t.Errorf("spokenName(%q) = %q, want %q", tc.in, got, tc.want)
-		}
-	}
-}
-
 // --- Task 1.13: every voice the deck hands out is limited ---
 
 func TestTheDeckHandsOutOnlyLimitedVoices(t *testing.T) {
@@ -555,7 +541,7 @@ func (v *classVoice) seen() ([]cast.Class, []cast.Role) {
 // can parse — and the class must be the worst thing coming, not the first.
 func TestABurstSoundsOneToneForItsHighestSeverityEvent(t *testing.T) {
 	v := &classVoice{}
-	d := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: testDirector(v, nil), seen: loadSeen(t.TempDir(), time.Hour)}
+	d := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: testArbiter(v, nil), seen: loadSeen(t.TempDir(), time.Hour)}
 	// RECENT, and that is load-bearing. With no fence in force a Disaster must be
 	// FRESH to keep its rung (bandOf, DisasterFreshWindow); a fixed date in the
 	// past demotes the quake below the warning and the two orders coincide again,
@@ -599,7 +585,7 @@ func TestABurstSoundsOneToneForItsHighestSeverityEvent(t *testing.T) {
 // ticker rather than only in the classifier's own unit test.
 func TestABreakingStormSoundsTheStormClass(t *testing.T) {
 	v := &classVoice{}
-	d := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: testDirector(v, nil), seen: loadSeen(t.TempDir(), time.Hour)}
+	d := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: testArbiter(v, nil), seen: loadSeen(t.TempDir(), time.Hour)}
 	newStation(t, d).takeover(context.Background(), []globalfeed.Event{
 		{ID: "h", Class: globalfeed.ClassTropical, Type: "Hurricane Warning", Severity: globalfeed.SevRed, At: time.Now()},
 	})
@@ -786,12 +772,12 @@ func TestAnUnwiredDeckCannotInstall(t *testing.T) {
 	if (&radioDeck{engine: &player.Engine{}}).canInstall() {
 		t.Error("a deck with no program reports it can install")
 	}
-	if (&radioDeck{p: &tea.Program{}}).canInstall() {
+	if (&radioDeck{program: &tea.Program{}}).canInstall() {
 		t.Error("a deck with no engine reports it can install")
 	}
 	// CONTROL: with both, it can — so the predicate is reading them and is not
 	// simply always false.
-	if !(&radioDeck{engine: &player.Engine{}, p: &tea.Program{}}).canInstall() {
+	if !(&radioDeck{engine: &player.Engine{}, program: &tea.Program{}}).canInstall() {
 		t.Error("control: a fully wired deck reports it cannot install; the predicate is always false")
 	}
 }

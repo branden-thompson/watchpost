@@ -42,8 +42,9 @@ import (
 // over nothing at all.
 const corpusFloor = 50
 
-// targetRE finds the files a mutant patches: every pathlib.Path("...") literal.
-var targetRE = regexp.MustCompile(`pathlib\.Path\("([^"]*)"\)`)
+// targetRE finds the files a mutant patches: every pathlib.Path literal, in
+// either of Python's quotes. Two thirds of the corpus writes 'single' ones.
+var targetRE = regexp.MustCompile(`pathlib\.Path\(["']([^"']*)["']\)`)
 
 // repoRoot is the module root, two directories above this package.
 func repoRoot(t *testing.T) string {
@@ -184,6 +185,24 @@ func packagesOf(mutant string) []string {
 		}
 	}
 	return out
+}
+
+// TestEveryMutantNamesItsTarget fails a mutant whose target targetRE cannot
+// read. packagesOf decides which packages `go vet` compiles a mutant against,
+// and the verdict sweep reads its package the same way, so a target it cannot
+// read is a mutant whose test files are never compiled and whose verdict
+// cannot be taken.
+func TestEveryMutantNamesItsTarget(t *testing.T) {
+	root := repoRoot(t)
+	for _, mutant := range corpus(t, root) {
+		b, err := os.ReadFile(mutant)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(targetRE.FindAllStringSubmatch(string(b), -1)) == 0 {
+			t.Errorf("%s names no target targetRE can read: write it as pathlib.Path(\"<file>\")", filepath.Base(mutant))
+		}
+	}
 }
 
 // TestEveryMutantAppliesAndCompiles is D-3, mechanised.

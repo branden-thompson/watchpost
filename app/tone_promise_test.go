@@ -26,7 +26,7 @@ import (
 // burst sound three tones in silence and report nothing.
 func TestASoundedToneIsFollowedByWords(t *testing.T) {
 	v := &classVoice{}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 	seen := loadSeen(t.TempDir(), time.Hour)
 	deck := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: nar, seen: seen}
@@ -46,11 +46,6 @@ func TestASoundedToneIsFollowedByWords(t *testing.T) {
 	}
 }
 
-// AND WHEN THE READ DOES GIVE UP AFTER THE TONE, IT SAYS SO.
-//
-// The cut-short is Routed (I-2), so it raises no window — correctly, because
-// pressing esc must not claim the relay is dead. The cost is that this failure
-// is otherwise silent, so the timeline carries the line.
 // tonedVoice sounds a tone with REAL duration, so the hold that follows it is a
 // hold and not an instant return. classVoice returns 0, which sends holdRest
 // down its awaitAir branch and never poses the window F-43 is about.
@@ -61,7 +56,7 @@ type tonedVoice struct {
 
 func (v *tonedVoice) tone(cast.Class) time.Duration { return v.dur }
 
-// AND WHEN THE READ DOES GIVE UP AFTER THE TONE, IT SAYS SO.
+// When the read does give up after the tone, it says so.
 //
 // The cut-short is Routed (I-2), so it raises no window — correctly, because
 // pressing esc must not claim the relay is dead. The cost is that this failure
@@ -70,7 +65,7 @@ func TestGivingUpAfterTheToneIsTraced(t *testing.T) {
 	log := radioDebugTo(t, "1")
 
 	v := &tonedVoice{dur: 300 * time.Millisecond}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	// The sequence ends DURING the tone's hold — the window F-43 names, and the
 	// only one in which a tone is sounded and nothing follows it.
@@ -111,7 +106,7 @@ func TestGivingUpAfterTheToneIsTraced(t *testing.T) {
 // (HUM LEAD, 2026-09-08).
 func TestAToneWithNoWordsIsReported(t *testing.T) {
 	v := &silentAfterToneVoice{}
-	d := testDirector(v, nil)
+	d := testArbiter(v, nil)
 	d.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 
 	d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {
@@ -126,13 +121,13 @@ func TestAToneWithNoWordsIsReported(t *testing.T) {
 	}
 }
 
-// AND A READ THAT SPOKE IS NOT REPORTED, however it ended afterwards. A read
+// A read that spoke is not reported, however it ended afterwards. A read
 // that got a line out and then lost the rest is a different failure with a
 // different shape, and calling it this one would train the operator to read
 // past both.
 func TestAToneFollowedByWordsIsNotReported(t *testing.T) {
 	v := &speakingToneVoice{}
-	d := testDirector(v, nil)
+	d := testArbiter(v, nil)
 	d.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 
 	d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {
@@ -145,7 +140,7 @@ func TestAToneFollowedByWordsIsNotReported(t *testing.T) {
 	}
 }
 
-// AND A CARD WITH NO TONE IS NOT REPORTED, however little it says.
+// A card with no tone is not reported, however little it says.
 //
 // This fault is about a PROMISE — the attention tone — being broken. A card
 // that never sounded one and rendered nothing is a different failure, and
@@ -153,7 +148,7 @@ func TestAToneFollowedByWordsIsNotReported(t *testing.T) {
 // when no alert tone did.
 func TestACardWithNoToneIsNotReported(t *testing.T) {
 	v := &silentAfterToneVoice{}
-	d := testDirector(v, nil)
+	d := testArbiter(v, nil)
 	d.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 
 	d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {

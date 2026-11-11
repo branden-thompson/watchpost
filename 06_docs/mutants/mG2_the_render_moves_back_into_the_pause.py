@@ -12,7 +12,7 @@
 import pathlib
 p = pathlib.Path("app/read_script.go"); s = p.read_text()
 old = """	if len(sc.Parts) > 0 {
-		r.next, r.haveNext = timeRender(sc.Parts[0].Kind.String(), func() (clip, bool) { return r.s.prepare(sc.Parts[0].Text) })
+		r.next, r.haveNext = timeRender(sc.Parts[0].Kind.String(), func() (clip, bool) { return r.speaker.prepare(sc.Parts[0].Text) })
 	}
 """
 assert old in s, "mG2"

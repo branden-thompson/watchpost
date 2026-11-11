@@ -1,9 +1,11 @@
 // Setup (UAT 100, HUM LEAD 2026-08-25): the first-run questions live in a
-// window over the dashboard like every other modal (modes/tty setupLines);
-// this file is the app side — the type-ahead hook and the persist step.
-// Re-runs never destroy customizations (B2 red-team #2): the existing config
+// window over the dashboard like every other modal (setupLines, in
+// modes/tty/setup_layout.go); this file is the app side — the type-ahead hook
+// and the persist step.
+// Re-runs never destroy customizations: the existing config
 // is loaded and only what setup owns is touched — the default location and,
 // when given, the FIRMS key.
+
 package app
 
 import (
@@ -58,9 +60,12 @@ func applySetup(def snapshot.LocationRef, firmsKey string) error {
 		if loc.Tag == "" {
 			loc.Tag = deriveTag(def.Label)
 		}
+		// "The same place" is snapshot.PlaceID's, the one definition the lists
+		// use (0.19.5 D-8); the old default, first in the list, always goes.
+		same := snapshot.PlaceID(def)
 		locs := []config.Location{loc}
 		for i, l := range cfg.Locations {
-			if i == 0 || (l.Zip == loc.Zip && l.Zip != "") || (l.Lat == loc.Lat && l.Lon == loc.Lon) {
+			if i == 0 || snapshot.PlaceID(snapshot.LocationRef{Zip: l.Zip, Lat: l.Lat, Lon: l.Lon}) == same {
 				continue
 			}
 			locs = append(locs, l)

@@ -243,8 +243,8 @@ func TestModalAlertTonesAndBoldTitles(t *testing.T) {
 	m2, _ = m2.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	v := m2.View().Content
 	// The compositor may reorder params (bold before or after the color).
-	// The tones are the theme's, lifted to AA on their tints at registration
-	// (round 4, B-05): the warning red reads brighter than #BE5454 by default.
+	// The tones are the theme's, lifted to AA on their tints at registration:
+	// the warning red reads brighter than #BE5454 by default.
 	warnFG, advFG := render.Tok(render.AlertModalWarnFG), render.Tok(render.AlertModalAdvFG)
 	warnTitle := regexp.MustCompile(`\x1b\[(1;)?` + regexp.QuoteMeta(warnFG) + `(;1)?m⚠ FLASH FLOOD WARNING`)
 	advTitle := regexp.MustCompile(`\x1b\[(1;)?` + regexp.QuoteMeta(advFG) + `(;1)?m⚠ HEAT ADVISORY`)

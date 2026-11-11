@@ -695,10 +695,10 @@ have closed F-28 on nothing. A retaining player fixed it.
 **The second version found a defect that was not one.** Written as "a paused read
 that is stopped must not strand its audio", it failed: StopPreview closes what is
 in FLIGHT and leaves heldOrder alone. That looked like a leak on the `[esc]` path
-and is not — the app never leaves a held line behind, because `app/director.go`
+and is not — the app never leaves a held line behind, because `app/arbiter.go`
 calls `dropHeld()` whenever a suspended job is released or its context ends, and
 that guarantee was ALREADY pinned twice
-(`TestReadCancelledWhileSuspendedDoesNotWedgeTheDirector`,
+(`TestReadCancelledWhileSuspendedDoesNotWedgeTheArbiter`,
 `TestReadCancelledWhileParkedSuspendedReturnsAtOnce`). The test was posing a state
 production does not reach. Rewritten to pin the SPLIT — a held line survives a
 stop, DropHeld releases it — so a future StopPreview that quietly starts draining

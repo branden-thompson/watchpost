@@ -124,7 +124,7 @@ func (o *recordingOutput) overlayVol() (float64, bool) {
 
 func waitFor(t *testing.T, what string, cond func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(10 * time.Second) // the bound app and platform/sched use, after 0.18.0 F-190 found 2 s short on a loaded runner
 	for time.Now().Before(deadline) {
 		if cond() {
 			return
@@ -327,7 +327,7 @@ func TestPreviewAsideLeavesTheTapAlone(t *testing.T) {
 	}
 	time.Sleep(150 * time.Millisecond)
 	dst := make([]float64, 1024)
-	if n := e.Samples(dst); n != 0 { // nothing at all reached the tap — not merely quiet frames (round 4, A-16d)
+	if n := e.Samples(dst); n != 0 { // nothing at all reached the tap — not merely quiet frames
 		t.Fatalf("an aside preview must not reach the visualizer: %d frames", n)
 	}
 }
@@ -399,7 +399,13 @@ func TestANewStreamStartedUnderADuckPlaysDucked(t *testing.T) {
 	waitFor(t, "the next location to give way too", func() bool {
 		out.mu.Lock()
 		defer out.mu.Unlock()
-		return len(out.players) >= 2 && !out.players[len(out.players)-1].IsPlaying()
+		if len(out.players) < 2 {
+			return false
+		}
+		// A fresh player is not playing before Play is decided either, so the
+		// wait also asks that it was never played (0.19.5 Q2.13).
+		last := out.players[len(out.players)-1]
+		return !last.IsPlaying() && last.plays.Load() == 0
 	})
 
 	// And it comes up only when the alert is done, not when it started.

@@ -9,13 +9,13 @@ import pathlib
 # insertion point, one variable shorter.
 p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
 old = """	if b.statusNote != "" {
-		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, lane)))
+		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, width)))
 	}
 	return rows"""
 assert old in s, "mAC5"
 new = """	if b.statusNote != "" {
-		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, lane)))
+		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, width)))
 	}
-	rows = append(rows, render.PadTo(label(o.KeyCap("b")+" BED:")+b.bedSelector(o), lane))
+	rows = append(rows, render.PadTo(label(o.KeyCap("b")+" BED:")+b.bedSelector(o), width))
 	return rows"""
 p.write_text(s.replace(old, new, 1))

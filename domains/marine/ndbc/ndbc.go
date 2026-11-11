@@ -175,7 +175,6 @@ func head(cands []candidate, n int) []candidate {
 	return cands
 }
 
-// keepOr copies fallback when have is nil (P10-09 single-deref helper).
 // loadStations fetches activestations.xml once a day.
 func (p *Provider) loadStations(ctx context.Context) error {
 	p.mu.Lock()

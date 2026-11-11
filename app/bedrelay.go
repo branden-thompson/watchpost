@@ -115,7 +115,7 @@ func (lp *livePipelines) setBedStations(st []stream.Station) {
 			lp.bedPick, lp.bedRelay = i, relayLine(s)
 		}
 	}
-	p, line, carrying := lp.p, lp.bedRelay, lp.bedOn
+	p, line, carrying := lp.program, lp.bedRelay, lp.bedOn
 	lp.mu.Unlock()
 	if p != nil {
 		// TWO FACTS, TWO MESSAGES, AND THIS IS THE ONLY WRITER OF THE SECOND
@@ -160,7 +160,7 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 	next := ((lp.bedPick+by)%len(relays) + len(relays)) % len(relays)
 	lp.bedPick = next
 	chosen := relays[next]
-	// AND THE CHOICE IS REMEMBERED, not merely published (F-98, D-90). Published
+	// The choice is remembered, not merely published (F-98, D-90). Published
 	// alone, it would be overwritten by the SETTLE — which publishes the same row
 	// from the Director's bed, on every tick — about a second later, and the
 	// operator's selection would revert to "(no relay tuned)". The selector is
@@ -168,12 +168,12 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 	// MasterControl's (D-215).
 	lp.bedRelay, lp.bedCall = relayLine(chosen), chosen.Callsign
 	line, call := lp.bedRelay, lp.bedCall
-	p := lp.p
+	p := lp.program
 	lp.mu.Unlock()
 
 	return func() tea.Msg {
 		_ = savePreference(func(cfg *config.Config) { cfg.Broadcaster.BedRelay = call }) // kept (D-214); a failed write keeps the session's choice
-		// AND THE CONSOLE IS TOLD WHAT IT LANDED ON. The Director publishes what
+		// The console is told what it landed on. The Director publishes what
 		// the bed is CARRYING; this is what the operator has SELECTED, which is
 		// a different fact until they cut to it.
 		if p != nil {

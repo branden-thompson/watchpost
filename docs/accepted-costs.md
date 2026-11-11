@@ -65,12 +65,10 @@ broken marquee.
 
 **What would re-open it.** Nothing — this is not a candidate for removal. What it changes is where
 effort goes: **every per-frame cost is a 24/7 cost**, so the memo-hit allocation pins in
-`modes/tty/bench_test.go` are deliberately tight (**365–386 allocations at ×1.05** across the four
-sizes, not the flat 6,000 they were until 0.14.0). *(This page said 283–304 until the BUILD-exit red
-team: the pins were legitimately RAISED when the bench fixture gained a live marquee — the state the
-app actually runs in — and this sentence was not updated with them. A ledger that exists to stop a
-settled measurement being re-derived is defeated by a stale number in it.)* Treat a pin failure on the hit path as a real regression, not as a pin that
-needs raising.
+`modes/tty/bench_test.go` are deliberately tight: **141–155 allocations, pinned at ×1.05**, across the
+four sizes, measured against the bench fixture's live marquee, the state the app runs in. The tape and
+the masthead are memoised (0.19.5), so a frame between changes redraws neither. Treat a pin failure on
+the hit path as a real regression, not as a pin that needs raising.
 
 Note for anyone reading the older record: `watchpost-performance-quality-pass`'s "idle ≈ 9 MB/min,
 render's share 0 (no frame drawn)" describes a state the app **no longer enters**. It is not a
@@ -105,7 +103,7 @@ got a different answer.
 **Why it surfaced now, and why it is not a leak.** The HUM LEAD saw ~170 MB after a session of heavy
 radio switching, alert reads and stream toggling, against 90–120 MB before. A scheduler is created
 per RECENT location TOUCHED, so the cost is paid per *distinct location visited* rather than per
-minute — an idle app never reaches it. It is **bounded by `RecentCap = 50`** (`modes/tty/modal_location.go:49`),
+minute — an idle app never reaches it. It is **bounded by `RecentCap = 50`** (`modes/tty/modal_location.go:RecentCap`),
 so it plateaus rather than climbing. Measured across 24 switch-read-toggle cycles: goroutines
 377 → 413, `stack_inuse` flat at ~4 MB, footprint 92.5 → 79.1 → 88.6 MB — a band, not a ramp.
 
@@ -221,19 +219,18 @@ bound and its gauge there.
 
 ---
 
-## The console's frame costs 520 allocations, and a loaded console 9,760 (0.16.0 P4, re-based D-120)
+## The console's frame costs 309 allocations, and a loaded console 9,655 (0.16.0 P4, re-based D-120)
 
-**The numbers, as pinned.** `bcFrameAllocs = 520` and `bcFrameMissAllocs = 9760`
+**The numbers, as pinned.** `bcFrameAllocs = 309` and `bcFrameMissAllocs = 9655`
 (`modes/tty/broadcaster_alloc_test.go`). The first is a frame on a console with a pool and a snapshot
-where every row's weather is already joined (the memo hit); the second is the miss — two tables
-joining forty rows — measured at 9,296 and pinned at ×1.05. **An earlier version of this entry
-published ~266 per frame; that figure measured a console with NO POOL AND NO SNAPSHOT** (`locIndex`
-nil, no row ever joined its weather), which is why D-120 re-based the budget: the number went up because
-the measurement got honest, not because anything got slower.
+where every row's weather is already joined (the memo hit), measured at 297 and pinned at ×1.04; the
+second is the miss — two tables joining forty rows — measured at 9,195 and pinned at ×1.05. The
+fixture is a loaded console (D-120): a console with no pool and no snapshot joins no weather, and a
+figure taken there guards only the cheap path.
 
 **The blind spot, stated with the number** (the test's own words): the pin guards the path the fixture
 walks; a cache that helps one path and not another shows up as the difference between the two pins,
-and a regression smaller than the pin's slack (26 allocations at 520) is invisible to it.
+and a regression smaller than the pin's slack (12 allocations at 309) is invisible to it.
 
 **Why it stands.** The card row is a **go-studs `data_table_row`**, and two standing rules decide this
 rather than a judgement call: *any table is a go-studs table*, and *a dependency is never re-implemented

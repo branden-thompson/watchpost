@@ -3,7 +3,7 @@
 // (HUM LEAD 2026-08-28: "configurable, extendable, editable; picked up by
 // file name, not wired").
 //
-// Convention — the tree IS the wiring:
+// Convention — a phrase is found by its place in the tree:
 //
 //	scripts/<report>/<part>.txt   one phrase of one report
 //	scripts/global/<part>.txt     the phrase any report inherits when it has none of its own (head, tail)
@@ -12,8 +12,10 @@
 // fields are documented in each file's first comment line, "{{/* … */}}").
 // The app asks for text by (report, part) — Library.Text("event-report",
 // "head", data) — and never names a file: the report's own file is used,
-// else global's, else the part is not spoken. Adding a phrase is adding a
-// file; adding a report is adding a folder.
+// else global's, else the part is not spoken. Re-wording a phrase is editing
+// its file. A new part is spoken only where the app asks for it, so it is a
+// file and a call site; a file no caller asks for is never read, and nothing
+// fails (docs/extending.md, Walkthrough 7).
 //
 // Overrides: the same tree under the user's config dir, scripts/ — a file
 // there replaces the built-in one, phrase by phrase, the same names and the
@@ -37,7 +39,7 @@ import (
 	"text/template"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
-	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
 //go:embed scripts
@@ -88,17 +90,18 @@ func (l *Library) Text(report, part string, data any) (string, error) {
 	if err := t.Execute(&b, data); err != nil {
 		return "", fmt.Errorf("script %s/%s: %w", report, part, err)
 	}
-	return strings.TrimSpace(b.String()), nil // data is never re-parsed: "{{" in provider prose is prose (round 4, A-09)
+	return strings.TrimSpace(b.String()), nil // data is never re-parsed: "{{" in provider prose is prose
 }
 
 // Say is Text for the air: the rendered part with any terminal escapes
 // stripped (provider prose never addresses the terminal — NFR-6), or "" when
-// the part is missing or broken — a sentence of silence rather than a crash;
-// the built-in tree is pinned by this package's tests, so that only happens
-// with a broken override. A nil Library speaks from the built-in tree (a
+// the part is missing or broken — a sentence of silence rather than a crash.
+// This package's tests render every built-in file and check the parts the app
+// is known to ask for, so with the built-in tree it happens only for a part
+// that list leaves out, or with a broken override. A nil Library speaks from the built-in tree (a
 // fresh loader — the deck and the ticker hold a real one; nil is the tests'
 // and a memo would be a package global, P10-06). The one owner of "missing
-// script = silence" (round 4, A-13).
+// script = silence".
 func (l *Library) Say(report, part string, data any) string {
 	if l == nil {
 		l = New("")
@@ -107,7 +110,7 @@ func (l *Library) Say(report, part string, data any) string {
 	if err != nil {
 		return ""
 	}
-	return render.Plain(s)
+	return plaintext.Text(s)
 }
 
 // Has reports whether a (report, part) resolves — the report's own file or
@@ -180,7 +183,7 @@ func (l *Library) read(name string) ([]byte, error) {
 	if l.override != "" {
 		path := filepath.Join(l.override, filepath.FromSlash(name))
 		// A regular file in the override tree only: a symlink could read any
-		// file the user can into the voice (round 4, A-10).
+		// file the user can into the voice.
 		if fi, err := os.Lstat(path); err == nil && fi.Mode().IsRegular() {
 			if fi.Size() > maxOverrideBytes { // a phrase, not a file dump: a 20 MB tail would be a 20 MB spoken line (R5-C-15)
 				return nil, fmt.Errorf("script %s: override exceeds %d bytes", name, maxOverrideBytes)
@@ -225,8 +228,8 @@ func (l *Library) files() []string {
 	return slices.Sorted(maps.Keys(seen))
 }
 
-// BuiltinFiles lists the built-in script files as "<report>/<part>.txt"
-// (the convention's test and the README's listing).
+// BuiltinFiles lists the built-in script files as "<report>/<part>.txt",
+// for the convention's test. README's listing of them is written by hand.
 func BuiltinFiles() []string {
 	var out []string
 	_ = fs.WalkDir(builtin, root, func(p string, d fs.DirEntry, err error) error {

@@ -29,22 +29,19 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// Setup window (UAT 100, HUM LEAD 2026-08-25): "goes to the dashboard,
-// immediately opens a setup modal like all the others, asks the questions;
-// no → default data set, no key; [s] Setup at any time". One form, both
-// questions on screen (UAT 111.3): the default location (type-ahead over
-// the embedded index, or a full resolve on enter; a bare enter keeps the
-// current default) and the optional NASA FIRMS key (masked; empty keeps a
-// stored key, or means the keyless default set). Saving hands the answers to the
-// app's Setup hook (persist) and then the watchlist to Commit (the default
-// location on top, the rest kept) in ONE command, so the two writes never
-// race. esc closes without saving — the dashboard simply has no rows until
-// a location is chosen, and [s] reopens the window.
-// setupFocus names the question the keys go to (UAT 111.3: every question
-// is on screen at once; tab / shift+tab move between them).
-// The focus is an INDEX INTO setupTable (setup_rows.go), not a state
-// machine over the questions. Twenty rows across four groups cannot be
-// enumerated by hand in four places without drifting.
+// setupState is the Settings window's state: the focused row, the typed
+// buffers and the answers it saves. The window opens over the dashboard on
+// the first run and on [s] (UAT 100), and shows the rows of setupTable
+// (setup_rows.go) in their groups, one tab at a time, in one column.
+//
+// The focus is an INDEX INTO setupTable, not a state machine over the
+// questions: ↑↓ walk the rows and tab moves between the tabs, and the table
+// is the one place their order is written, so nothing can enumerate it by hand
+// and drift.
+//
+// Saving hands the answers to the app's Setup hook (persist) and then the
+// watchlist to Commit (the default location on top, the rest kept) in ONE
+// command, so the two writes never race.
 type setupState struct {
 	focus setupRowID
 
@@ -183,10 +180,11 @@ func (d Dashboard) openSetup() Dashboard {
 		units:     d.units,
 		clock:     d.clockFmt,
 	}
-	// THE WINDOW OPENS ON A ROW THIS SURFACE ACTUALLY DRAWS (D-92). `setupState{}`
-	// focuses row zero, which is the default LOCATION — the listener's, and hidden
-	// on the console. Opening focused on a row nobody can see is a window whose
-	// first keystroke appears to do nothing.
+	// The window opens on a row it draws. `setupState{}` focuses row zero, the
+	// Location row, which every surface draws (0.18.0 D-70), so today this never
+	// moves the focus. It stays because `rowVisible` can hide a row (the map
+	// layers, with none registered): a window opened on a hidden row would
+	// swallow the first keystroke.
 	if !d.rowVisible(d.setup.focus) {
 		d.setup.focus = nextRow(d.setup.focus, d.rowVisible)
 	}
@@ -232,7 +230,7 @@ func (d Dashboard) openSetup() Dashboard {
 // build the focused answer, so table/global bindings never fire mid-typing.
 // tab / shift+tab move between the questions; enter accepts the focused
 // one (and saves on the last); esc closes without saving.
-func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	if d.setup.raise != nil {
 		return d.confirmRaise(key) // the question owns the keys (D-61)
 	}
@@ -249,8 +247,8 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// form is kept until the save's answer: a refusal - a mistyped FIRMS key
 		// - reopens the window with the pick and the key still in it.
 		if d.cfg.FirstRun && d.setup.ref != nil {
-			m, save := d.setupSave()
-			return m.(Dashboard).close(), save
+			next, save := d.setupSave()
+			return next.close(), save
 		}
 		// Closing APPLIES what was recorded. esc is not a cancel for the cast
 		// and tone groups — the chip says Close rather than Cancel over them —
@@ -299,16 +297,13 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// typing, it is a keyboard that does not work. Trusting every writer to
 	// remember is the wrong shape: one that forgets leaves the window not
 	// showing what is typed into it. One place cannot forget.
-	m, cmd := d.setupRowText(key)
-	if next, ok := m.(Dashboard); ok {
-		return next.settled(), cmd
-	}
-	return m, cmd
+	next, cmd := d.setupRowText(key)
+	return next.settled(), cmd
 }
 
 // setupRowText is the focused row's own handling of a key the window-level
 // rules did not take.
-func (d Dashboard) setupRowText(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) setupRowText(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch d.setup.focus {
 	case rowLocation, rowTransmitter:
 		// ONE TYPE-AHEAD, TWO SETTINGS (D-115). They are never both on screen —
@@ -335,7 +330,7 @@ func (d Dashboard) setupRowText(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // Split out of handleSetupKey to keep both inside the safety gate's decision
 // ceiling (P10-04) — and because "which keys move the focus" and "what this
 // particular row does with text" are two different questions.
-func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
+func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 	picker := setupTable()[d.setup.focus].picker
 	if d.setup.focus == rowMapClear && (key.String() == "space" || key.String() == "enter") {
 		m, cmd := d.clearMapData()
@@ -377,56 +372,63 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 			d.setup.focus, d.setup.err = d.stepTab(step), ""
 			return d.settled(), nil, true
 		}
-		if d.setup.focus == rowMapsOn {
-			d.mapsOff = !d.mapsOff // 0.18.0: two states, so either arrow is "the other one"
-			return d.uiTouched(), nil, true
-		}
-		if d.setup.focus == rowMapDesc {
-			return d.cycleMapDesc(key.String() == "right"), nil, true
-		}
-		if m, ok := d.mapPrefArrow(key.String() == "right"); ok {
+		if m, ok := d.cycleFocused(key.String() == "right"); ok {
 			return m, nil, true
 		}
-		if d.setup.focus == rowReduceMotion {
-			d = d.cycleReduceMotion(key.String() == "right")
-			d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
-			if key.String() == "right" {
-				d.setup.flash = flashRight
-			}
-			return d.settled(), nil, true
-		}
-		if setupTable()[d.setup.focus].kind == rowToggle {
-			// A two-state control: ←→ and space all do the same thing, because
-			// there is nothing to cycle THROUGH — there are two states and
-			// either key means "the other one".
-			forward := key.String() == "right"
-			d = d.toggleClass(d.setup.focus)
-			d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
-			if forward {
-				d.setup.flash = flashRight
-			}
-			return d.settled(), nil, true
-		}
-		if picker {
-			forward := key.String() == "right"
-			if d.setup.focus == rowTheme {
-				d = d.cycleTheme(forward) // auto-preview: the theme is applied as the picker moves
-			} else {
-				d = d.cyclePicker(d.setup.focus, forward)
-			}
-			d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
-			if forward {
-				d.setup.flash = flashRight
-			}
-			return d.settled(), nil, true
-		}
 	case "p":
-		if picker && !mapPickerRow(d.setup.focus) { // the map's pickers have nothing to preview
+		if picker && setupTable()[d.setup.focus].group == groupCast { // only a voice previews (0.19.5 D-33)
 			m, cmd := d.setupPreview()
 			return m, cmd, true
 		}
 	}
 	return d, nil, false
+}
+
+// cycleFocused moves the focused row on ← or →, and reports whether the row
+// takes the arrows.
+//
+// THE ORDER IS THE DISPATCH: a row with its own cycle comes before the kind it
+// also is. Reduce motion is a two-value picker with a cycle of its own, and a
+// map preference is a picker mapPrefArrow owns, so either one placed after the
+// generic toggle or picker case would never be reached, and nothing else would
+// say so. TestEveryArrowRowsOutcomeIsPinned holds the order row by row.
+func (d Dashboard) cycleFocused(forward bool) (Dashboard, bool) {
+	switch d.setup.focus {
+	case rowMapsOn:
+		d.mapsOff = !d.mapsOff // two states, so either arrow is "the other one"
+		return d.uiTouched(), true
+	case rowMapDesc:
+		return d.cycleMapDesc(forward), true
+	}
+	if m, ok := d.mapPrefArrow(forward); ok {
+		return m, true
+	}
+	row := setupTable()[d.setup.focus]
+	switch {
+	case d.setup.focus == rowReduceMotion:
+		return d.cycleReduceMotion(forward).flashed(forward), true
+	case row.kind == rowToggle: // two states: ←, → and space all mean "the other one"
+		return d.toggleClass(d.setup.focus).flashed(forward), true
+	case !row.picker:
+		return d, false
+	case d.setup.focus == rowTheme:
+		return d.cycleTheme(forward).flashed(forward), true // the theme is applied as the picker moves
+	case d.setup.focus == rowRelayLang || d.setup.focus == rowRelayDwell:
+		return d.cycleRelayRow(d.setup.focus, forward).flashed(forward), true
+	case d.setup.focus == rowHistoryHours || d.setup.focus == rowHistoryTrends:
+		return d.cycleHistoryRow(d.setup.focus, forward).flashed(forward), true
+	}
+	return d.cyclePicker(d.setup.focus, forward).flashed(forward), true
+}
+
+// flashed lights the arrow that was pressed on the focused picker, until
+// markEnds says, and settles the window.
+func (d Dashboard) flashed(forward bool) Dashboard {
+	d.setup.flash, d.setup.flashEnd = flashLeft, d.markEnds()
+	if forward {
+		d.setup.flash = flashRight
+	}
+	return d.settled()
 }
 
 // castTouched marks the cast or tone state changed. Every writer of either
@@ -545,7 +547,7 @@ func (d Dashboard) setupSpace() Dashboard {
 
 // setupAdvance is enter on a row that does not handle it itself: move to the
 // next row, or SAVE on the last.
-func (d Dashboard) setupAdvance() (tea.Model, tea.Cmd) {
+func (d Dashboard) setupAdvance() (Dashboard, tea.Cmd) {
 	if enterSaves(d.setup.focus) {
 		return d.setupSave()
 	}
@@ -555,7 +557,7 @@ func (d Dashboard) setupAdvance() (tea.Model, tea.Cmd) {
 
 // setupSave owns the save rules for EVERY group's last row — one owner, so the
 // bounce when no location is chosen cannot differ between them.
-func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
+func (d Dashboard) setupSave() (Dashboard, tea.Cmd) {
 	if d.setup.ref == nil {
 		if cur := d.currentDefault(); cur != nil {
 			d.setup.ref = cur
@@ -744,7 +746,7 @@ func sequenceWrites(cmds ...tea.Cmd) tea.Cmd {
 // setupPreview is `p` on a picker: hear the voice this row will use. The first
 // press on an uninstalled voice OFFERS the download; the second proceeds
 // (FR-4's "asks once") — a preview must not quietly pull 63 MB.
-func (d Dashboard) setupPreview() (tea.Model, tea.Cmd) {
+func (d Dashboard) setupPreview() (Dashboard, tea.Cmd) {
 	next, go_ := d.previewOffer(d.setup.focus)
 	d = next.settled()
 	if !go_ {
@@ -761,7 +763,7 @@ func (d Dashboard) setupPreview() (tea.Model, tea.Cmd) {
 // setupLocationKey is question 1: type → hints; ↑↓ pick; enter takes the
 // pick, keeps the current default when nothing was typed, or resolves the
 // typed text when nothing matched offline — then moves to question 2.
-func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	// WHICH SETTING THIS TYPE-AHEAD IS FILLING (D-115). The station's transmitter
 	// and the listener's default location are the same CONTROL and different
 	// FACTS (D-72), so the keys are shared and the destination is not.
@@ -774,7 +776,7 @@ func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if len(d.setup.hints) > 0 {
 			ref := d.setup.hints[min(d.setup.idx, len(d.setup.hints)-1)]
 			*into, d.setup.focus, d.setup.err = &ref, next, ""
-			// AND THE QUERY IS SPENT. It is shared with the other row, so leaving
+			// The query is spent. It is shared with the other row, so leaving
 			// it behind would show one setting's search under the other's label
 			// the next time the window opened on the other surface.
 			d.setup.query, d.setup.hints, d.setup.idx = "", nil, 0
@@ -797,9 +799,7 @@ func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "down":
 		d.setup.idx = min(max(0, len(d.setup.hints)-1), d.setup.idx+1)
 	case "backspace":
-		if r := []rune(d.setup.query); len(r) > 0 {
-			d.setup.query = string(r[:len(r)-1])
-		}
+		d.setup.query = eraseRune(d.setup.query)
 		d = d.setupSuggest()
 	default:
 		if key.Text != "" {
@@ -823,15 +823,13 @@ func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // THE BOUNDS ARE CHECKED AT THE SAVE, NOT AT THE KEYSTROKE. Typing "1" on the way
 // to "100" would otherwise be refused as below the floor, which is a field that
 // fights the operator over a number they have not finished writing.
-func (d Dashboard) setupServiceKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) setupServiceKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		return d.setupAdvance()
 	case "backspace":
 		d.setup.serviceSeeded = false
-		if r := []rune(d.setup.serviceMi); len(r) > 0 {
-			d.setup.serviceMi = string(r[:len(r)-1])
-		}
+		d.setup.serviceMi = eraseRune(d.setup.serviceMi)
 	default:
 		if r := key.Text; r >= "0" && r <= "9" {
 			if d.setup.serviceSeeded {
@@ -848,14 +846,12 @@ func (d Dashboard) setupServiceKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // setupKeyKey is question 2: the FIRMS key line — type to paste, ctrl+r
 // reveals, enter moves on to question 3 (the alert preference), keeping the
 // typed key in state for the final save.
-func (d Dashboard) setupKeyKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) setupKeyKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		return d.setupAdvance() // the key row ends DATA: this saves
 	case "backspace":
-		if r := []rune(d.setup.key); len(r) > 0 {
-			d.setup.key = string(r[:len(r)-1])
-		}
+		d.setup.key = eraseRune(d.setup.key)
 	default:
 		if key.Text != "" {
 			d.setup.key += key.Text
@@ -867,7 +863,7 @@ func (d Dashboard) setupKeyKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // setupAlertKey is question 3: the Alert Notification Preference — ↑↓ picks All
 // vs Filtered; a digit selects Filtered and builds the miles; enter saves the
 // whole form. An empty or zero radius under "Filtered" reverts to All.
-func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		return d.setupAdvance()
@@ -877,9 +873,7 @@ func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// Editing is taking the field over as surely as typing is: after a
 		// backspace the buffer is the listener's, so the next digit appends.
 		d.setup.radiusSeeded = false
-		if r := []rune(d.setup.radiusMi); len(r) > 0 {
-			d.setup.radiusMi = string(r[:len(r)-1])
-		}
+		d.setup.radiusMi = eraseRune(d.setup.radiusMi)
 	default:
 		if r := key.Text; r >= "0" && r <= "9" {
 			// A KEY THAT CHANGES NOTHING SELECTS NOTHING (VALIDATE red team,

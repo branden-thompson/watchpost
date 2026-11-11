@@ -84,7 +84,7 @@ func (d Dashboard) historyApplyCmd() tea.Cmd {
 
 // askClearHistory opens the ARE YOU SURE over Settings (D-177): clearing the
 // history cannot be taken back.
-func (d Dashboard) askClearHistory() (tea.Model, tea.Cmd) {
+func (d Dashboard) askClearHistory() (Dashboard, tea.Cmd) {
 	if d.cfg.ClearHistory == nil {
 		return d.settled(), nil
 	}
@@ -97,7 +97,7 @@ type historyClearedMsg struct{ err error }
 
 // confirmClearHistory answers the ARE YOU SURE: enter clears, off the UI
 // goroutine; esc cancels; every other key waits.
-func (d Dashboard) confirmClearHistory(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) confirmClearHistory(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "esc":
 		d.setup.confirmClear = false
@@ -158,7 +158,7 @@ func (d Dashboard) askIfLonger(trends bool, choices []historyChoice, from, to st
 
 // confirmRaise answers the question: enter keeps the longer window, esc puts
 // the shorter back; every other key waits.
-func (d Dashboard) confirmRaise(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) confirmRaise(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "esc":
 		if d.setup.raise.trends {
@@ -197,4 +197,17 @@ func (d Dashboard) raiseLines(o render.Opts) []string {
 // historyLabel is a preset's words.
 func historyLabel(choices []historyChoice, key string) string {
 	return choices[historyAt(choices, key)].label
+}
+
+// cycleHistoryRow moves one of the HISTORY pickers through D-175's presets,
+// and asks before a longer keep than the one held.
+func (d Dashboard) cycleHistoryRow(id setupRowID, forward bool) Dashboard {
+	if id == rowHistoryTrends {
+		was := d.setup.history.Trends
+		d.setup.history.Trends = cycleHistory(historyTrendChoices, was, forward)
+		return d.askIfLonger(true, historyTrendChoices, was, d.setup.history.Trends)
+	}
+	was := d.setup.history.Hours
+	d.setup.history.Hours = cycleHistory(historyHourChoices, was, forward)
+	return d.askIfLonger(false, historyHourChoices, was, d.setup.history.Hours)
 }

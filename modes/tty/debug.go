@@ -280,20 +280,30 @@ func (d Dashboard) DiagnosticsOpen() bool { return d.modal == modalDebug }
 // `Dashboard.View` does with them. Keeping that rule in one place is the point
 // of the seam (D-56).
 func (d Dashboard) OverlayWindow(base string, termWidth int) string {
+	out, _, _, _ := d.overlay(base, termWidth)
+	return out
+}
+
+// overlay lays the open window over the base as OverlayWindow says, and says
+// where the cursor stands in it, as it lays it, centred (D-362). The layout is
+// worked out once for both (0.19.5 PF-11).
+func (d Dashboard) overlay(base string, termWidth int) (out string, x, y int, ok bool) {
 	if !d.ModalOpen() {
-		return base
+		return base, 0, 0, false
 	}
 	o := d.layout().o
-	if win := d.modalView(o); win != "" {
+	win, box := d.modalView(o), d.confirmOverlay(o)
+	x, y, ok = d.frameCursor(o, base, win, -1, box, termWidth)
+	if win != "" {
 		base = render.Overlay(base, win, termWidth)
 	}
-	// AND THE CONFIRMATION OVER THAT — a second layer rather than a swapped
+	// The confirmation is drawn over that window — a second layer rather than a swapped
 	// body, which is the HUM LEAD's own mock: the red box sits ON TOP of the
 	// diagnostics window and the window underneath is unchanged.
-	if box := d.confirmOverlay(o); box != "" {
+	if box != "" {
 		base = render.Overlay(base, box, termWidth)
 	}
-	return base
+	return base, x, y, ok
 }
 
 // openDiagnostics opens the window directly, for tests that need it open

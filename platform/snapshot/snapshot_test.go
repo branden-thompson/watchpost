@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Spec: architecture.md §2, §10.1, §10.11 — immutable snapshots published by a
+// Spec: watchpost-cli architecture §2, §10.1, §10.11 — immutable snapshots published by a
 // single assembler; last-write-wins per (provider, location, domain-section);
 // failed fragments never overwrite (prior data stands + Warning appended;
 // ProviderStatus degrades on Err only — obs_stale never degrades Status);
@@ -18,8 +18,6 @@ import (
 func loc(label string) LocationRef {
 	return LocationRef{Label: label, Lat: 33.24, Lon: -117.29}
 }
-
-func f64(v float64) *float64 { return &v }
 
 func TestAssemblerMergesFireFromEveryProvider(t *testing.T) {
 	// B5: HMS, WFIGS and FIRMS each contribute a part; the snapshot carries
@@ -80,10 +78,10 @@ func TestAssemblerMergesFragmentsLastWriteWins(t *testing.T) {
 	t1 := time.Date(2026, 8, 23, 18, 0, 0, 0, time.UTC)
 
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1, PerLocation: map[LocationKey]PartialData{
-		k: {Current: &Conditions{Temp: f64(20.0), ObservedAt: t1}},
+		k: {Current: &Conditions{Temp: new(20.0), ObservedAt: t1}},
 	}}, nil)
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1.Add(time.Minute), PerLocation: map[LocationKey]PartialData{
-		k: {Current: &Conditions{Temp: f64(21.5), ObservedAt: t1.Add(time.Minute)}},
+		k: {Current: &Conditions{Temp: new(21.5), ObservedAt: t1.Add(time.Minute)}},
 	}}, nil)
 
 	snap := a.Snapshot()
@@ -97,7 +95,7 @@ func TestFailedFragmentNeverOverwrites(t *testing.T) {
 	k := Key(loc("A"))
 	t1 := time.Now().UTC()
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1, PerLocation: map[LocationKey]PartialData{
-		k: {Current: &Conditions{Temp: f64(20)}},
+		k: {Current: &Conditions{Temp: new(float64(20))}},
 	}}, nil)
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1.Add(time.Minute), Err: assertErr("boom")}, nil)
 
@@ -127,7 +125,7 @@ func TestSnapshotsAreImmutablePublications(t *testing.T) {
 	k := Key(loc("A"))
 	s1 := a.Snapshot()
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: time.Now(), PerLocation: map[LocationKey]PartialData{
-		k: {Current: &Conditions{Temp: f64(30)}},
+		k: {Current: &Conditions{Temp: new(float64(30))}},
 	}}, nil)
 	if s1.Locations[0].ByProvider["nws"].Current != nil {
 		t.Fatal("earlier snapshot must not see later writes (immutability)")
@@ -156,7 +154,7 @@ func TestConcurrentApplyAndReadIsRaceFree(t *testing.T) {
 }
 
 func TestEveryExportedFieldHasJSONTag(t *testing.T) {
-	// M5 reflection gate (architecture §2): every exported field of every
+	// M5 reflection gate (watchpost-cli architecture §2): every exported field of every
 	// contract type carries a json tag (or explicit "-").
 	types := []any{Snapshot{}, Location{}, Conditions{}, SourceInfo{}, Hourly{}, Daily{},
 		Alert{}, FireState{}, Hotspot{}, Incident{}, RadioState{}, ProviderStatus{}, Warning{}}
@@ -215,10 +213,10 @@ func TestFailedFragmentStillAppliesPartialData(t *testing.T) {
 	ka, kb := Key(loc("A")), Key(b)
 	t1 := time.Now().UTC()
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1, PerLocation: map[LocationKey]PartialData{
-		kb: {Current: &Conditions{Temp: f64(15)}},
+		kb: {Current: &Conditions{Temp: new(float64(15))}},
 	}}, nil)
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1.Add(time.Minute), Err: assertErr("B: 404"),
-		PerLocation: map[LocationKey]PartialData{ka: {Current: &Conditions{Temp: f64(20)}}}}, nil)
+		PerLocation: map[LocationKey]PartialData{ka: {Current: &Conditions{Temp: new(float64(20))}}}}, nil)
 	snap := a.Snapshot()
 	if got := snap.Locations[0].ByProvider["nws"].Current; got == nil || *got.Temp != 20 {
 		t.Fatal("the successful location in a partially failed fragment must land")
@@ -238,7 +236,7 @@ func TestSetLocationsKeepsDataForKeptLocations(t *testing.T) {
 	a, b, c := loc("A"), LocationRef{Label: "B", Lat: 32.72, Lon: -117.16}, LocationRef{Label: "C", Lat: 34.05, Lon: -118.24}
 	asm := NewAssembler([]LocationRef{a, b}, []string{"nws"})
 	asm.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: time.Now(), PerLocation: map[LocationKey]PartialData{
-		Key(a): {Current: &Conditions{Temp: f64(20)}}, Key(b): {Current: &Conditions{Temp: f64(15)}},
+		Key(a): {Current: &Conditions{Temp: new(float64(20))}}, Key(b): {Current: &Conditions{Temp: new(float64(15))}},
 	}}, nil)
 	added, removed := asm.SetLocations([]LocationRef{c, a}) // C on top, B dropped
 	if len(added) != 1 || added[0].Label != "C" || len(removed) != 1 || removed[0].Label != "B" {
@@ -305,7 +303,7 @@ func TestFireForAndProviderStatusReadNarrowly(t *testing.T) {
 	}
 	at := time.Now().UTC()
 	a.Apply(Fragment{Provider: "hms", Kind: KindFire, FetchedAt: at, PerLocation: map[LocationKey]PartialData{
-		Key(ref): {Fire: &FireState{AsOf: at, Hotspots: []Hotspot{{Lat: 33.3, Lon: -117.3, DistanceKm: f64(11)}}}}}}, nil)
+		Key(ref): {Fire: &FireState{AsOf: at, Hotspots: []Hotspot{{Lat: 33.3, Lon: -117.3, DistanceKm: new(float64(11))}}}}}}, nil)
 	if fs, _, _, _ := a.FireFor(ref); fs.AsOf.IsZero() || len(fs.Hotspots) != 1 {
 		t.Fatalf("after a fire fragment: %+v", fs)
 	}

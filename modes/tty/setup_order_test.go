@@ -22,7 +22,7 @@ func TestDownWalksAGroupAsItIsDrawn(t *testing.T) {
 	seen := map[setupRowID]bool{was: true}
 	for range 2 * int(setupRowCount) {
 		m, _ := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
-		d = m.(Dashboard)
+		d = m
 		now := d.setup.focus
 		if seen[now] {
 			break

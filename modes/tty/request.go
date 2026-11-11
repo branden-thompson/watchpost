@@ -86,7 +86,7 @@ func requestOpen() requestState {
 	}
 }
 
-// requestValid reports whether the window can be scheduled.
+// valid reports whether the window can be scheduled.
 //
 // THREE THINGS MUST BE TRUE and each has its own helper text, so a refused
 // `enter` never leaves the operator guessing which one.
@@ -107,7 +107,7 @@ func (st requestState) positionOK() bool {
 // position is the running-order index the request asks for.
 //
 // PRIORITIZE IS ZERO — the front of the running order, which is UP NEXT and
-// never LIVE (ruling 3): the card on the air is not in the running order at
+// never LIVE (0.16.0 report-requests ruling 3): the card on the air is not in the running order at
 // all, so there is no index that could name it.
 //
 // THE TYPED NUMBER IS A SLOT AND THIS RETURNS AN INDEX (D-119). `Requested.To`
@@ -143,10 +143,10 @@ func (st requestState) position(liveOffset int) int {
 	return n
 }
 
-// requestNote is the helper text under the location field, "" when there is
+// note is the helper text under the location field, "" when there is
 // nothing to say.
 //
-// THE SHAPE OBSERVER'S LOOKUP USES (ruling 2): the fact, then what the operator
+// THE SHAPE OBSERVER'S LOOKUP USES (0.16.0 report-requests ruling 2): the fact, then what the operator
 // can do about it. A location outside the service radius is NOT an error — it is
 // a real place the station cannot broadcast about, and Observer can show it.
 func (st requestState) note() (string, string) {
@@ -346,6 +346,21 @@ func (st requestState) next() requestState {
 	return st
 }
 
+// nextField is the first line of the next field, whichever line of this one
+// the pointer is on: what tab does.
+func (st requestState) nextField() requestState {
+	switch st.field {
+	case requestLocation:
+		st.field = requestReports
+	case requestReports:
+		st.field = requestPosition
+	case requestPosition:
+		st.field = requestLocation
+	}
+	st.at = 0
+	return st
+}
+
 // prev is one step up.
 func (st requestState) prev() requestState {
 	switch st.field {
@@ -365,14 +380,14 @@ func (st requestState) prev() requestState {
 
 // handleRequestKey owns the keyboard while the request window is open.
 //
-// A WINDOW ON TOP OWNS THE KEYS (D-58), and a form owns them twice over: a
+// A window on top owns the keys (D-58), and a form owns them twice over: a
 // digit typed into the slot field must not reach the running order, and a
 // letter typed into the location must not be a console control.
 //
-// ESC CANCELS AND LOSES THE FORM, deliberately. A half-filled request kept
-// across a close is a window that reopens saying something the operator did not
-// mean to still be asking for.
-func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+// Esc cancels and loses the form, deliberately: a half-filled request kept
+// across a close is a window that reopens asking for something the operator
+// no longer means.
+func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "esc":
 		d.request = requestState{}
@@ -384,16 +399,16 @@ func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "down":
 		return d.handleRequestNav("nav-down"), nil
 	case "tab":
-		// TAB IS THE FIELD, ↓ IS THE LINE. One walks the form, the other walks
-		// whatever the focused field contains — the same split Settings uses.
-		// TAB IS `next` WITHOUT THE ROWS: it moves to the next FIELD, where ↓
-		// walks whatever the focused field contains. One order, not two.
-		d.request.field, d.request.at = d.request.next().field, 0
-		if d.request.field == requestReports && d.request.at != 0 {
-			d.request.at = 0
-		}
+		// Tab walks the fields and ↓ walks the lines inside one, the split
+		// Settings uses (0.19.5 D-26).
+		d.request = d.request.nextField()
 		return d, nil
-	case " ":
+	case "space":
+		// Bubble Tea names this key "space", never " " (0.19.5 D-26). In the
+		// location it is a letter of the place's name; elsewhere it toggles.
+		if d.request.field == requestLocation {
+			return d.requestType(" ")
+		}
 		return d.requestToggle(), nil
 	case "backspace":
 		return d.requestErase()
@@ -445,14 +460,10 @@ func (d Dashboard) requestType(r string) (Dashboard, tea.Cmd) {
 func (d Dashboard) requestErase() (Dashboard, tea.Cmd) {
 	switch d.request.field {
 	case requestLocation:
-		if n := len(d.request.query); n > 0 {
-			d.request.query = d.request.query[:n-1]
-		}
+		d.request.query = eraseRune(d.request.query)
 		return d.afterRequestEdit()
 	case requestPosition:
-		if n := len(d.request.slot); n > 0 {
-			d.request.slot = d.request.slot[:n-1]
-		}
+		d.request.slot = eraseRune(d.request.slot)
 	}
 	return d, nil
 }
@@ -474,7 +485,7 @@ func (d Dashboard) afterRequestEdit() (Dashboard, tea.Cmd) {
 // shown as taken unless the schedule took it" — and a window that closed on an
 // invalid form would be exactly that: the operator would believe they had
 // scheduled something.
-func (d Dashboard) requestSchedule() (tea.Model, tea.Cmd) {
+func (d Dashboard) requestSchedule() (Dashboard, tea.Cmd) {
 	if d.cfg.RequestCard == nil {
 		return d, nil
 	}

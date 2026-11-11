@@ -43,9 +43,10 @@ func (l Lineup) Projection(t Track) []Card {
 		if c.Slot.structural() {
 			continue
 		}
-		// AND THE CURRENT FENCE ADMITS IT (D-114). `nextForAir` skips out-of-fence
-		// cards (D-75) — they are not READ — so a projection that returned them
-		// would have the console DRAW hazards the station will never broadcast.
+		// A card is projected only when the current fence admits it (D-114).
+		// `Lineup.Next` skips out-of-fence cards (D-75) — they are not READ — so
+		// a projection that returned them would have the console DRAW hazards
+		// the station will never broadcast.
 		//
 		// HUM LEAD, 2026-09-13, describing the path exactly: "Starting watchpost →
 		// Defaults to Observer → Alerts queue according to Observer's alert radius

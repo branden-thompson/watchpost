@@ -1,8 +1,8 @@
 // Command authoring checks the A2DH code-authoring rules that a machine can
 // decide, over the whole tree.
 //
-// WHY IT IS A TOOL AND NOT A GREP. Two of the three rules here are questions
-// about the SYNTAX TREE: whether a match is in a comment or a string literal,
+// WHY IT IS A TOOL AND NOT A GREP. Most of the rules here are questions about
+// the SYNTAX TREE: whether a match is in a comment or a string literal,
 // and which declaration a comment block binds to. The second cannot be asked of
 // text at all — a doc comment that fuses with its neighbour's reads as two
 // healthy comments to every line-based checker, while the function above it has
@@ -37,10 +37,11 @@ import (
 //
 // `third_party` IS VENDORED AND NOT OURS TO REWRITE; its gaps go upstream.
 // `06_docs/mutants` holds deliberate defects, and a mutant's whole purpose is to
-// describe what the code would do if it were wrong.
+// describe what the code would do if it were wrong. `.claude` holds agent
+// worktrees, whole second copies of the tree, judged where they came from.
 func skipDir(base string) bool {
 	switch base {
-	case ".git", "third_party", "mutants", "dist", "node_modules":
+	case ".git", ".claude", "third_party", "mutants", "dist", "node_modules":
 		return true
 	// THIS TOOL'S OWN SOURCE holds the anti-specimens as data — the phrase table
 	// and the self-test's planted comments. A detector that flagged its own
@@ -52,7 +53,7 @@ func skipDir(base string) bool {
 	return false
 }
 
-func scan(root string) ([]Finding, int, error) {
+func scan(root string, base citedAt, changed changedLines) (found []Finding, goFiles, hashFiles int, err error) {
 	// TWO PASSES: AP-OK-01 judges a call by every declaration of its callee in
 	// the module, so the whole tree is parsed before any file is judged.
 	type parsed struct {
@@ -61,14 +62,23 @@ func scan(root string) ([]Finding, int, error) {
 		rel  string
 	}
 	var all []parsed
+	var hashFound []Finding
+	hashed := 0
 	fns := newOKFuncs()
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
 		if info.IsDir() {
 			if skipDir(filepath.Base(path)) {
 				return filepath.SkipDir
+			}
+			return nil
+		}
+		if hashCommented(path) {
+			hashed++
+			if b, err := os.ReadFile(path); err == nil {
+				hashFound = append(hashFound, checkHashHistory(string(b), strings.TrimPrefix(strings.TrimPrefix(path, root), "/"))...)
 			}
 			return nil
 		}
@@ -85,9 +95,17 @@ func scan(root string) ([]Finding, int, error) {
 		return nil
 	})
 	var out []Finding
+	docs := map[string][]packageDoc{}
 	for _, p := range all { // bounded by the tree's files (P10-02)
 		out = append(out, checkFile(p.fset, p.f, p.rel, fns)...)
+		out = append(out, checkCitations(p.fset, p.f, p.rel, base)...)
+		out = append(out, checkCapsContinuation(p.fset, p.f, p.rel, changed)...)
+		if d, ok := packageDocOf(p.f, p.rel); ok {
+			docs[d.pkg] = append(docs[d.pkg], d)
+		}
 	}
+	out = append(out, checkPackageDocs(docs)...)
+	out = append(out, hashFound...)
 	files := len(all)
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].File != out[j].File {
@@ -95,7 +113,7 @@ func scan(root string) ([]Finding, int, error) {
 		}
 		return out[i].Line < out[j].Line
 	})
-	return out, files, err
+	return out, files, hashed, err
 }
 
 // report prints the findings grouped by rule, rule IDs in alphabetical order.
@@ -137,13 +155,33 @@ func main() {
 	asJSON := flag.Bool("json", false, "machine-readable output")
 	selfTest := flag.Bool("self-test", false, "prove the instrument can fail, then exit")
 	limit := flag.Int("limit", 15, "findings printed per rule before summarising")
+	baseRev := flag.String("base", "", `judge new citations (AP-CITE-01) against this commit; "auto" is the merge-base with main, and "" leaves them unjudged`)
 	flag.Parse()
 
 	if *selfTest {
 		os.Exit(runSelfTest())
 	}
 
-	found, files, err := scan(*root)
+	var base citedAt
+	var changed changedLines
+	if *baseRev != "" {
+		rev, err := *baseRev, error(nil)
+		if rev == "auto" {
+			rev, err = mergeBase(*root)
+		}
+		if err == nil {
+			base, err = baseCitations(*root, rev)
+		}
+		if err == nil {
+			changed, err = branchChanges(*root, rev)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "authoring: %v\n", err)
+			os.Exit(2)
+		}
+	}
+	found, files, hashed, err := scan(*root, base, changed)
+	found, warnings := split(found)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "authoring: %v\n", err)
 		os.Exit(2)
@@ -157,18 +195,40 @@ func main() {
 	}
 
 	report(found, *limit)
+	if len(warnings) > 0 {
+		fmt.Println("authoring: soft warnings, which do not fail the gate:")
+		report(warnings, *limit)
+	}
 
 	if len(found) > 0 {
 		fmt.Fprintf(os.Stderr, "\nauthoring: %d finding(s) across %d Go file(s).\n", len(found), files)
 		fmt.Fprintln(os.Stderr, "  Each rule, with examples of the accepted form, is in 06_docs/code-standards.md.")
 		os.Exit(1)
 	}
-	fmt.Printf("authoring: OK — %d Go file(s), no findings\n", files)
-	fmt.Println("  scope: every Go file under the tree, skipping any directory named .git, third_party,")
-	fmt.Println("  mutants, dist or node_modules by its basename, wherever it sits; the count is of files judged.")
+	fmt.Printf("authoring: OK — %d Go file(s) and %d Makefile, shell or .gitignore file(s), no findings\n", files, hashed)
+	fmt.Println("  scope: every Go file under the tree, and AP-HIST-01 over the # comments of every Makefile,")
+	fmt.Println("  .sh and .gitignore, skipping any directory named .git, third_party, mutants, dist or")
+	fmt.Println("  node_modules by its basename, wherever it sits; the counts are of files judged.")
 	fmt.Println("  It decides the rules a syntax tree can decide. It cannot see a comment that is")
 	fmt.Println("  merely WRONG — the larger class, which still needs a reader.")
 	fmt.Println("  The rules are written out in 06_docs/code-standards.md.")
+}
+
+// soft are the rules that warn rather than fail: their standing hits in code
+// the branch did not change are many, and a gate that fired on each would be
+// ignored (0.19.5 D-12).
+var soft = map[string]bool{"AP-CAPS-01": true}
+
+// split separates the findings that fail the gate from the soft warnings.
+func split(all []Finding) (findings, warnings []Finding) {
+	for _, f := range all { // bounded by the findings (P10-02)
+		if soft[f.Rule] {
+			warnings = append(warnings, f)
+			continue
+		}
+		findings = append(findings, f)
+	}
+	return findings, warnings
 }
 
 // checkFile is every rule run over one file: the one list the scan and the

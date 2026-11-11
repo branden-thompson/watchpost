@@ -1,0 +1,42 @@
+                                                                                                                                   
+                                                                                                                                   
+   ┏━━ WATCHPOST Observer  vbench ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  Updated: 08/24/2026 1:00:00 AM UTC (2 Minutes Ago) ━━┓  
+   ┃   [s] Settings  [a] About  [S] Status  [?] Help  [q] Quit                                             API: ✔2 ⚠0 ✘0 /  2   ┃  
+   ┗━┌── Watchpost Help ──────────────────────────────────────────────────────────────────────────────────────────────────────┐━┛  
+     │                                                                                                                      ▲ │    
+     │   SURFACES                                                  WATCHLIST                                                █ │    
+     │     ctrl+o, O    - Observer                                   ctrl+a       - Add Location                            │ │    
+   ┏━│     ctrl+b, B    - Broadcaster                                shift+delete - Remove from Watchlist                   │ │━┓  
+   ┃ │                                                               l            - Lookup Location                         │ │ ┃  
+   ┃ │   NAVIGATE                                                                                                           │ │ ┃  
+   ┗━│     up           - Navigate                                 DISPLAY                                                  │ │━┛  
+   01│     down         - Navigate                                   f            - °F                                      │ │xt  
+     │     enter        - Location Details                           c            - °C                                      │ │    
+   [l│     A            - Alert Details                              t            - Choose Color Theme                      │ │te  
+   [ │     w, W, ctrl+s - Severe Weather / Disaster Events                                                                  │ │ ]  
+   [ │     g            - Map                                      TICKER                                                   │ │ ]  
+   [ │     left         - Previous Alert                             M            - Alert Tones                             │ │ ]  
+   [ │     right        - Next Alert                                                                                        │ │ ]  
+   › │     esc          - Close                                    APP                                                      │ │    
+     │     ?            - Help                                       s            - Settings                                │ │    
+     │     q, ctrl+c    - Quit                                       S            - Watchpost Status                        │ │    
+     │                                                               a            - About                                   │ │    
+     │   RADIO                                                       ctrl+d       - Diagnostics                             │ │    
+     │     space        - Play/Pause · Read Event                                                                           │ │    
+     │     r            - Repeat: Off / One / Watchlist            MAP                                                      │ │    
+     │     m            - Radio Mode: Synth / Nearest Relay          up, down, left, right - Pan (Bands: up/down target)    │ │    
+     │     v            - Visualizer                                 [ Previous, ] Next Location                            │ │    
+     │     V            - Correspondents                             +/= Zoom In, - Out, pgup Scroll Up, pgdown Down        │ │    
+   [ │     +, =         - Volume Up                                  A Description, O Overlays, B Bands, F Freq.            │ │ ]  
+   [ │     -            - Volume Down                                ⇧← Back, ⇧→ On (an hour in Propagation), n Now         │ │ ]  
+   [ │                                                               R Radar Mode, space Play, </> Forecast Hi-Lo           │ │ ] ▲
+     │                                                               P Propagation, L Layer, U Refresh, / Find              │ │   █
+     │                                                               Region 1 US, 2 Alaska, 3 Hawaii                        │ │   │
+     │                                                               Region 4 Caribbean, 5 Samoa, 6 Guam                    │ │   │
+     │                                                                                                                      │ │   │
+     │   Row marks: ▶ playing ∞ on repeat ○●◉ recent quake (below/felt/significant) n◆ fires nearby (bold = burning hard)   ▼ │   │
+     └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘   │
+        ●       017. Benchmark City 107             90106   P.CLOUDY       75°F      75°F   63°F    CLEAR          77°F    63°F   │
+        ●       018. Benchmark City 108             90107   P.CLOUDY       77°F      75°F   63°F    CLEAR          77°F    63°F   │
+        ●       019. Benchmark City 109             90108   P.CLOUDY       78°F      75°F   63°F    CLEAR          77°F    63°F   │
+                                                                                                     Showing 1-9 of 50 locations  ▼

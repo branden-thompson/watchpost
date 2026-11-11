@@ -151,3 +151,90 @@ says exactly what passed.
 | 2026-11-03T20:08:10Z | 98c4f1b5 | e2e5ddd117c2 | verify | green | 2056 |
 | 2026-11-03T20:12:18Z | b730059c | 3d93a305fb1f | verify-docs | green | 146 |
 | 2026-11-06T03:38:39Z | 4c803d99 | e0657be713aa | verify-docs | green | 147 |
+| 2026-11-06T04:32:24Z | 4c803d99 | 50026d530e79 | verify-docs | green | 145 |
+| 2026-11-06T04:37:40Z | e56ddf72 | d84ed5b1a2c2 | verify-docs | green | 142 |
+| 2026-11-06T14:52:24Z | 5363f3c9 | baa85e52ea67 | verify-docs | green | 146 |
+| 2026-11-06T15:02:56Z | 8c338d44 | 98143e1fee20 | verify-docs | green | 147 |
+| 2026-11-06T16:09:11Z | 58776714 | 6aaa0a3a2e05 | verify | green | 2257 |
+| 2026-11-06T17:10:15Z | 54a280f6 | 229ada2f56a9 | verify | green | 2283 |
+| 2026-11-06T17:57:07Z | 06b17a2f | 14ffb8674939 | verify | green | 2238 |
+| 2026-11-06T18:00:18Z | 0772e32f | 7852c422940e | verify-docs | green | 150 |
+| 2026-11-06T18:15:01Z | e7187001 | 2f083f9d31cd | verify | FAILED (exit 2) | 0 |
+| 2026-11-06T18:17:45Z | e7187001 | 3863b936781a | verify | FAILED (exit 2) | 0 |
+| 2026-11-06T18:57:11Z | e7187001 | 0bdbc28d713a | verify | green | 2335 |
+| 2026-11-06T19:20:54Z | 310e1af5 | c9895ba2395f | verify | FAILED (exit 2) | 239 |
+| 2026-11-06T20:02:38Z | 310e1af5 | 45643f79c4bf | verify | green | 2393 |
+| 2026-11-06T20:21:35Z | d1bc668b | 6b94737e0586 | verify | FAILED (exit 2) | 396 |
+| 2026-11-06T21:02:36Z | d1bc668b | 236a10151b0d | verify | green | 2356 |
+| 2026-11-06T21:25:38Z | 10220a75 | a47b3d84dc46 | verify | FAILED (exit 2) | 242 |
+| 2026-11-06T22:06:09Z | 10220a75 | b924d73d8b6a | verify | green | 2332 |
+| 2026-11-06T22:55:22Z | 9078e2b0 | 79c7a08c7e7d | verify | green | 2395 |
+| 2026-11-06T23:55:45Z | 7965e919 | c5278b3f7b3e | verify | FAILED (exit 2) | 2465 |
+| 2026-11-07T00:40:25Z | 7965e919 | 63dcb5981972 | verify | green | 2599 |
+| 2026-11-07T01:08:27Z | 6f6a8968 | 87e137fe075a | verify | FAILED (exit 2) | 413 |
+| 2026-11-07T01:53:02Z | 6f6a8968 | 996425859e10 | verify | green | 2640 |
+| 2026-11-07T02:53:14Z | 22f5d3fe | 08efb07d4558 | verify-docs | green | 149 |
+| 2026-11-07T03:07:53Z | f9fc9fce | d490a7c9603a | verify | FAILED (exit 2) | 246 |
+| 2026-11-07T03:49:01Z | f9fc9fce | ac3abf9076d5 | verify | green | 2431 |
+| 2026-11-07T04:05:14Z | af1edd4e | 7c202299e4f8 | verify | FAILED (exit 2) | 400 |
+| 2026-11-07T04:44:59Z | af1edd4e | 985cc4735fcc | verify | green | 2339 |
+| 2026-11-07T05:03:27Z | 761e58f6 | b4fc68cd9fbb | verify | FAILED (exit 2) | 242 |
+| 2026-11-07T05:43:37Z | 761e58f6 | 9cccb6cda1c1 | verify | green | 2380 |
+| 2026-11-07T06:33:01Z | d3cf8671 | 6c9bbaf3b2b9 | verify | green | 2408 |
+| 2026-11-07T07:32:49Z | 41884faf | dd26d6537a12 | verify | green | 2431 |
+| 2026-11-07T07:36:17Z | 68d8763d | 5beb66c61aa0 | verify-docs | green | 153 |
+| 2026-11-07T08:25:26Z | a7dd263a | a36743c7ba74 | verify | green | 2460 |
+| 2026-11-07T13:56:36Z | 3f3fa969 | 0dbaba07b38e | verify | FAILED (exit 2) | 247 |
+| 2026-11-07T14:38:15Z | 3f3fa969 | 8f14e6637062 | verify | green | 2477 |
+| 2026-11-07T14:56:11Z | 899c3eab | 9108c5082807 | verify | FAILED (exit 2) | 243 |
+| 2026-11-07T15:39:18Z | 899c3eab | 89b9bb725b47 | verify | green | 2551 |
+| 2026-11-07T15:55:49Z | 494d1922 | 6065dae5f45a | verify | FAILED (exit 2) | 3 |
+| 2026-11-07T16:41:05Z | 494d1922 | 6065dae5f45a | verify | green | 2597 |
+| 2026-11-07T16:44:09Z | 360e84f6 | 206013b6bc4b | verify-docs | green | 155 |
+| 2026-11-07T17:29:28Z | 5878f75c | 8accece37a4e | verify | green | 2573 |
+| 2026-11-07T18:12:42Z | a5b3a4b1 | f4f226bef7cd | verify | green | 2504 |
+| 2026-11-07T18:25:22Z | e9e95302 | a09f8cefb7ce | verify | FAILED (exit 2) | 261 |
+| 2026-11-07T18:30:19Z | e9e95302 | 468fd176ed7d | verify | FAILED (the tree changed during the run: 468fd176ed7d tested, 7546b154f962 at its end) | 246 |
+| 2026-11-07T19:16:30Z | e9e95302 | 86e7752b90f3 | verify | green | 2721 |
+| 2026-11-07T20:05:34Z | a628be00 | 42d33644bee2 | verify | green | 2748 |
+| 2026-11-07T20:08:41Z | 20ed8a92 | 2dae46308fa8 | verify-docs | green | 162 |
+| 2026-11-07T20:56:11Z | 1b2bb612 | 68846fe0f86f | verify | green | 2402 |
+| 2026-11-07T21:46:19Z | 1a6286c0 | a38070d6c160 | verify | green | 2427 |
+| 2026-11-07T22:28:51Z | 1a6286c0 | 407c283b0aaf | verify | green | 2467 |
+| 2026-11-07T22:40:41Z | 071cc770 | 7a077d9b615e | verify | FAILED (exit 2) | 411 |
+| 2026-11-07T23:21:36Z | 071cc770 | 71327f1fabe5 | verify | green | 2410 |
+| 2026-11-07T23:24:50Z | d80e6c71 | 1c1f590e15fa | verify-docs | green | 152 |
+| 2026-11-08T00:11:38Z | e588040b | 71f06bb2fe2b | verify | green | 2408 |
+| 2026-11-08T00:18:39Z | ad47f364 | 8975e20e78de | verify-docs | green | 146 |
+| 2026-11-08T00:22:02Z | 2c621838 | 578fa54f1408 | verify-docs | green | 146 |
+| 2026-11-08T01:02:59Z | cb8a1562 | dac5b8149633 | verify | green | 2390 |
+| 2026-11-08T01:49:15Z | dc043120 | 265a2d5e3830 | verify | green | 2481 |
+| 2026-11-08T02:40:36Z | 152340eb | 9ee1f7aa6ea5 | verify | green | 2391 |
+| 2026-11-08T03:23:18Z | 54ab6059 | bed7f9714f23 | verify | green | 2396 |
+| 2026-11-08T04:12:50Z | 21656835 | 6852496cc3db | verify | green | 2437 |
+| 2026-11-08T13:38:48Z | 333ea511 | 467871be32ea | verify | green | 2345 |
+| 2026-11-08T14:50:24Z | 7f285e99 | a0100b92880f | verify | green | 2430 |
+| 2026-11-08T15:34:43Z | 704bb99b | c51105f3df8c | verify | green | 2342 |
+| 2026-11-08T15:38:43Z | 37c4b35b | 2417af1d62a5 | verify-docs | green | 152 |
+| 2026-11-08T15:43:15Z | 37c4b35b | 46a4aae41c6a | verify-docs | green | 260 |
+| 2026-11-08T16:30:17Z | 5831dabc | dfc5c52cace2 | verify | green | 2321 |
+| 2026-11-08T17:37:40Z | afe5ce6c | d3658a207708 | verify | green | 2287 |
+| 2026-11-08T19:49:24Z | e25a9ea9 | addd10c00ffb | verify | green | 2407 |
+| 2026-11-08T19:53:37Z | cd22d4d0 | 9141755583db | verify-docs | green | 148 |
+| 2026-11-08T21:10:21Z | 1792b87a | 51afac102bcd | verify | green | 2461 |
+| 2026-11-08T21:55:02Z | f12584b1 | c6c5d8d9b62f | verify | green | 2492 |
+| 2026-11-08T22:43:31Z | 5a449f72 | 9b7473933cb0 | verify | green | 2507 |
+| 2026-11-08T23:53:36Z | 0fb1afdc | dfc1b0897dca | verify | green | 2164 |
+| 2026-11-09T20:04:48Z | a7b797de | fa7e7b095b6b | verify | FAILED (exit 2) | 245 |
+| 2026-11-09T21:12:19Z | a7b797de | 9f2a9936bbfb | verify | green | 4003 |
+| 2026-11-09T22:15:50Z | e073cac3 | 59defe938c40 | verify | FAILED (exit 2) | 259 |
+| 2026-11-09T23:23:23Z | e073cac3 | d678a42c7dba | verify | green | 3812 |
+| 2026-11-10T01:01:10Z | ef9b9c27 | 23feb8b0945b | verify | green | 2386 |
+| 2026-11-10T02:45:21Z | 55b10c57 | 818417faf324 | verify | green | 2874 |
+| 2026-11-10T04:16:39Z | 4d81d352 | ead920cc5fcb | verify | green | 2814 |
+| 2026-11-10T05:13:16Z | b11a2f40 | 7566ad9a3c9c | verify | green | 2743 |
+| 2026-11-10T05:18:53Z | 77776225 | c6f5b12e76ce | verify-docs | green | 150 |
+| 2026-11-10T15:29:09Z | dd7c5327 | 9e0350661ac8 | verify-docs | green | 140 |
+| 2026-11-10T16:19:47Z | 45cb85f5 | 08ad1307b914 | verify-docs | green | 141 |
+| 2026-11-10T22:00:39Z | e6d9c48d | c7ab5a433fb3 | verify-docs | green | 145 |
+| 2026-11-10T23:40:34Z | f4f527e6 | ca66fe1fa359 | verify | green | 2427 |

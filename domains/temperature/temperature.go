@@ -163,27 +163,7 @@ func (s *Series) HourIndex(t time.Time) int { return s.hourIndex(t) }
 
 // hourIndex is the index of an hour in the series, adding it in order.
 func (s *Series) hourIndex(t time.Time) int {
-	t = t.UTC().Truncate(time.Hour)
-	for i, h := range s.Hours {
-		if h.Equal(t) {
-			return i
-		}
-	}
-	at := len(s.Hours)
-	for i, h := range s.Hours { // the first hour after t, where it goes (P10-02)
-		if !h.Before(t) {
-			at = i
-			break
-		}
-	}
-	n := s.Lattice.Cols * s.Lattice.Rows
-	insert := func(rows [][]float64) [][]float64 {
-		return append(rows[:at], append([][]float64{missing(n)}, rows[at:]...)...)
-	}
-	s.Hours = append(s.Hours[:at], append([]time.Time{t}, s.Hours[at:]...)...)
-	s.Hourly, s.WindSpeed, s.WindFrom, s.Feels = insert(s.Hourly), insert(s.WindSpeed), insert(s.WindFrom), insert(s.Feels)
-	s.WindGust, s.UV = insert(s.WindGust), insert(s.UV)
-	return at
+	return hourRow(&s.Hours, s.Lattice.Cols*s.Lattice.Rows, t, &s.Hourly, &s.WindSpeed, &s.WindFrom, &s.Feels, &s.WindGust, &s.UV)
 }
 
 // HourAt is the values of the newest hour at or before t, and whether there

@@ -15,8 +15,8 @@ func TestDetailMaritimeSectionForCoastalOnly(t *testing.T) {
 	m := dash(t)
 	s2 := snap()
 	s2.Locations[0].Marine = &snapshot.Marine{
-		SwellHeight: f64(0.6096), SwellDirDeg: f64(280), WaveHeight: f64(0.9), WavePeriod: f64(14),
-		WaterTemp: f64(23.3), Buoy: "46224", BuoyDistanceKM: f64(9),
+		SwellHeight: new(0.6096), SwellDirDeg: new(float64(280)), WaveHeight: new(0.9), WavePeriod: new(float64(14)),
+		WaterTemp: new(23.3), Buoy: "46224", BuoyDistanceKM: new(float64(9)),
 	}
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
@@ -49,7 +49,7 @@ func TestDetailTideAndCurrentRows(t *testing.T) {
 	now := time.Date(2026, 8, 24, 22, 0, 0, 0, time.UTC) // 15:00 PDT
 	at := func(h, m int) time.Time { return time.Date(2026, 8, 24, h, m, 0, 0, time.UTC) }
 	mar := &snapshot.Marine{
-		TideLevel: f64(1.131), TideStation: "La Jolla (Scripps Institution Wharf)", TideStationKM: f64(38.8),
+		TideLevel: new(1.131), TideStation: "La Jolla (Scripps Institution Wharf)", TideStationKM: new(38.8),
 		Tides: []snapshot.TideEvent{
 			{Time: at(16, 1), Height: 1.193, Type: "H"}, {Time: at(20, 35), Height: 0.799, Type: "L"},
 			{Time: at(26, 40), Height: 1.731, Type: "H"}, {Time: at(33, 49), Height: -0.028, Type: "L"},
@@ -82,7 +82,7 @@ func TestDetailTideAndCurrentRows(t *testing.T) {
 		t.Fatalf("metric tide rows:\n%s", got)
 	}
 	// No tide data: nothing added (coastal buoy-only sections unchanged).
-	if got := maritimeRows(o, &snapshot.Marine{WaterTemp: f64(20)}, tz, now, 65); len(got) != 1 {
+	if got := maritimeRows(o, &snapshot.Marine{WaterTemp: new(float64(20))}, tz, now, 65); len(got) != 1 {
 		t.Fatalf("buoy-only section must not grow tide rows: %v", got)
 	}
 }
@@ -97,7 +97,7 @@ func TestTideHeightsShareOneColumn(t *testing.T) {
 		level, next float64
 		typ         string
 	}{{1.13, 1.73, "H"}, {0.3, -0.03, "L"}} {
-		m := &snapshot.Marine{TideLevel: f64(tc.level), Tides: []snapshot.TideEvent{{Time: now.Add(time.Hour), Height: tc.next, Type: tc.typ}}}
+		m := &snapshot.Marine{TideLevel: new(tc.level), Tides: []snapshot.TideEvent{{Time: now.Add(time.Hour), Height: tc.next, Type: tc.typ}}}
 		rows := maritimeRows(render.Opts{Units: render.UnitF}, m, tz, now, 65)
 		tide, next := stripANSITest(rows[0]), stripANSITest(rows[1])
 		ti, ni := strings.Index(tide, " ft"), strings.Index(next, " ft")
@@ -105,8 +105,8 @@ func TestTideHeightsShareOneColumn(t *testing.T) {
 			t.Fatalf("heights must align (%d vs %d):\n%s\n%s", ti, ni, tide, next)
 		}
 	}
-	wide := &snapshot.Marine{WaterTemp: f64(20), Buoy: "46224", BuoyDistanceKM: f64(9), ObservedAt: now.Add(-40 * time.Minute),
-		WaveHeight: f64(0.9), WavePeriod: f64(14), SwellDirDeg: f64(200), TideLevel: f64(1), TideStation: "La Jolla (Scripps Institution Wharf) with a very long name", TideStationKM: f64(38.8),
+	wide := &snapshot.Marine{WaterTemp: new(float64(20)), Buoy: "46224", BuoyDistanceKM: new(float64(9)), ObservedAt: now.Add(-40 * time.Minute),
+		WaveHeight: new(0.9), WavePeriod: new(float64(14)), SwellDirDeg: new(float64(200)), TideLevel: new(float64(1)), TideStation: "La Jolla (Scripps Institution Wharf) with a very long name", TideStationKM: new(38.8),
 		Tides:    []snapshot.TideEvent{{Time: now.Add(time.Hour), Height: 1.7, Type: "H"}, {Time: now.Add(7 * time.Hour), Height: -0.1, Type: "L"}},
 		Currents: []snapshot.CurrentEvent{{Time: now.Add(-time.Hour), Speed: 0.7, Type: "flood"}, {Time: now.Add(time.Hour), Speed: 0, Type: "slack"}}}
 	for _, r := range maritimeRows(render.Opts{Units: render.UnitF}, wide, tz, now, 65) {
@@ -137,5 +137,40 @@ func TestTideHeightsShareOneColumn(t *testing.T) {
 	}
 	if got := stripANSITest(strings.Join(maritimeRows(render.Opts{Units: render.UnitF}, wide, tz, now, 65), "\n")); !strings.Contains(strings.Split(got, "\n")[0], "MARINE │ Observed      40m") {
 		t.Fatalf("mock order starts with Observed:\n%s", got)
+	}
+}
+
+// TestTheMarineSectionDrawsEverySwellAndTheBuoysWind is 0.19.5 Q2.8 (RN-13):
+// the second swell, the wind waves and the buoy's wind with its gusts each
+// have a row, in the listener's units.
+func TestTheMarineSectionDrawsEverySwellAndTheBuoysWind(t *testing.T) {
+	m := &snapshot.Marine{
+		SwellHeight: new(1.2), SwellDirDeg: new(270.0),
+		SecondarySwellHeight: new(0.6), SecondarySwellDirDeg: new(200.0),
+		WindWaveHeight: new(0.3), WindSpeed: new(5.0), WindGust: new(9.0),
+	}
+	for _, c := range []struct {
+		units render.Units
+		wind  string
+		gust  string
+	}{
+		{render.UnitF, "11 mph", "(gusts 20 mph)"},
+		{render.UnitC, "18 km/h", "(gusts 32 km/h)"},
+	} {
+		rows := map[string]marineCell{}
+		for _, r := range swellRows(render.Opts{Units: c.units}, m) {
+			rows[r.label] = r
+		}
+		for _, label := range []string{"Swell", "Swell 2", "Wind Waves", "Buoy Wind"} {
+			if _, ok := rows[label]; !ok {
+				t.Errorf("units %v: the marine section has no %q row", c.units, label)
+			}
+		}
+		if w := rows["Buoy Wind"]; w.value != c.wind || w.note != c.gust {
+			t.Errorf("units %v: the buoy wind reads %q %q; want %q %q", c.units, w.value, w.note, c.wind, c.gust)
+		}
+		if !strings.Contains(rows["Swell 2"].value, "SW") {
+			t.Errorf("units %v: the second swell's direction is missing: %q", c.units, rows["Swell 2"].value)
+		}
 	}
 }

@@ -483,8 +483,8 @@ func TestSpaceRetunesToTheFocusedLocationNotStop(t *testing.T) {
 	// Two favourites, so navigation moves the focus.
 	s := snap()
 	s.Locations = append(s.Locations, snapshot.Location{Label: "Reno, NV", Zip: "89501", Lat: 39.53, Lon: -119.81,
-		Harmonized: snapshot.Conditions{Temp: f64(20), Source: snapshot.SourceInfo{Provider: "nws"}},
-		Daily:      []snapshot.Daily{{Date: "2026-08-24", TempMax: f64(30), TempMin: f64(15)}}})
+		Harmonized: snapshot.Conditions{Temp: new(float64(20)), Source: snapshot.SourceInfo{Provider: "nws"}},
+		Daily:      []snapshot.Daily{{Date: "2026-08-24", TempMax: new(float64(30)), TempMin: new(float64(15))}}})
 	model, _ = model.Update(SnapshotMsg{Snap: s})
 	// Play A.
 	m2, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})

@@ -62,12 +62,13 @@ func (d Dashboard) shimmerStep() Dashboard {
 }
 
 // markEnds is when a pressed chip's acknowledgement ends: after the 350 ms
-// blink, or under Reduce motion at the next key.
+// blink, or under Reduce motion at the next key. Each blink is set and ended
+// on the model's clock, so a test that pins the clock pins the blinks.
 func (d Dashboard) markEnds() time.Time {
 	if d.reduceMotion {
-		return time.Now().Add(steadyMark)
+		return d.clock().Add(steadyMark)
 	}
-	return time.Now().Add(pickerFlashDur)
+	return d.clock().Add(pickerFlashDur)
 }
 
 // keyClearsMarks ends every pressed chip's mark as a key arrives under

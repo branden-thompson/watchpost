@@ -62,7 +62,7 @@ func TestTheMenuIsTheHUMLEADsLayout(t *testing.T) {
 		t.Errorf("the rows are\n%s\nwant\n%s", strings.Join(got, " "), want)
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	if menuHas(settleRadar(t, m.(Dashboard), cmd), RainLayer) {
+	if menuHas(settleRadar(t, m, cmd), RainLayer) {
 		t.Error("Radar mode lists Rain & snow: the radar is its rain (D-117)")
 	}
 	quiet := stripANSITest(strings.Join(d.overlaysBox(), "\n"))
@@ -196,7 +196,7 @@ func TestTheMenusPickersAreTheAppsPickers(t *testing.T) {
 func TestTheMenuBlinkKeepsATickUntilItEnds(t *testing.T) {
 	d := mapDash(t, Config{})
 	d, _ = pressKey(d, "g")
-	d.ticker = nil
+	d.setTicker(nil)
 	if d.tickNeeded() {
 		t.Fatal("control: something else keeps a tick armed here, so this test proves nothing")
 	}

@@ -1,3 +1,7 @@
+// sources.go — the temperature sources: NDFD, the NWS's gridded forecast as
+// XML, first, and Open-Meteo as the supplement. Each answers a Series of
+// temperature, feels-like and wind; Open-Meteo's carries its credit line.
+
 package temperature
 
 import (

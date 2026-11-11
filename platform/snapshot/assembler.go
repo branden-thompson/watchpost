@@ -1,3 +1,7 @@
+// assembler.go — the Assembler, the single merge point: providers hand it
+// Fragments, it keeps their state under one mutex, and it publishes immutable
+// Snapshots that no caller mutates.
+
 package snapshot
 
 import (
@@ -20,7 +24,7 @@ type Assembler struct {
 	sections  map[LocationKey]map[string]*Section // location -> provider -> data
 	alerts    map[LocationKey][]Alert
 	fire      map[LocationKey]map[string]*FireState   // location -> provider -> its contribution (B5: HMS, WFIGS and FIRMS each add a part)
-	seismic   map[LocationKey]*SeismicState           // location -> its latest USGS state (0.11.0: one provider, no cross-merge)
+	seismic   map[LocationKey]*SeismicState           // location -> its latest USGS state (one provider, no cross-merge)
 	asked     map[LocationKey]map[FetchKind]time.Time // location -> per KIND, when a reference fetch covering it completed (#13)
 	status    map[string]*ProviderStatus
 	warnings  []Warning
@@ -474,7 +478,13 @@ func (a *Assembler) Snapshot() *Snapshot {
 				c := *sec.Current
 				cp.Current = &c
 			}
-			cp.Hourly = append([]Hourly(nil), sec.Hourly...)
+			// THE HOURS ARE SHARED, not copied (0.19.5 PF-10). Apply replaces a
+			// section's hours with a slice of its own and never writes into
+			// them, and nothing writes into a published snapshot, so every
+			// snapshot holding these hours keeps them as they were published.
+			// TestAPublishedForecastIsNeverWrittenAfterwards pins it. The days
+			// are copied: harmonize fills them in place.
+			cp.Hourly = sec.Hourly
 			cp.Daily = append([]Daily(nil), sec.Daily...)
 			cp.Marine = sec.Marine.Clone()
 			loc.ByProvider[pid] = cp

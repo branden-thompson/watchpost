@@ -11,7 +11,7 @@ import "testing"
 //	alerts from Observer carry over
 //
 // `refence` MARKS THEM, AND THE MARK MUST REACH WHAT THE OPERATOR SEES.
-// `nextForAir` skips out-of-fence cards (D-75) — so they are never READ — and a
+// `Lineup.Next` skips out-of-fence cards (D-75) — so they are never READ — and a
 // `Projection` that went on returning them would have the console draw a
 // takeover full of hazards the station will never broadcast.
 func TestAnOutOfFenceCardLeavesTheProjection(t *testing.T) {
@@ -41,7 +41,7 @@ func TestAnOutOfFenceCardLeavesTheProjection(t *testing.T) {
 	if got[0].ID != "near" {
 		t.Errorf("the projection kept %q; the fence admits only the near hazard", got[0].ID)
 	}
-	// AND THE AIR AGREES WITH THE FRAME, which is the point: the frame is the one
+	// The air agrees with the frame, which is the point: the frame is the one
 	// the operator reads.
 	c, _, ok := d.lineup.Next()
 	if !ok || c.ID != "near" {

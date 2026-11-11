@@ -33,10 +33,15 @@ type seenStore struct {
 	path   string
 	window time.Duration
 	ids    map[string]time.Time
+	// dirty is whether ids differ from what save last wrote. A store loads
+	// dirty, so the first save of a session always writes, which is the save
+	// that tightens the file's mode; after it, an unchanged store is not
+	// rewritten (0.19.5 PF minor).
+	dirty bool
 }
 
 func loadSeen(dir string, window time.Duration) *seenStore {
-	s := &seenStore{path: filepath.Join(dir, "seen.json"), window: window, ids: map[string]time.Time{}}
+	s := &seenStore{path: filepath.Join(dir, "seen.json"), window: window, ids: map[string]time.Time{}, dirty: true}
 	if b, err := os.ReadFile(s.path); err == nil {
 		var raw map[string]time.Time
 		if json.Unmarshal(b, &raw) == nil {
@@ -105,9 +110,11 @@ func (s *seenStore) has(id string) bool {
 func (s *seenStore) mark(evs []globalfeed.Event, t time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	before := len(s.ids)
+	added := false
 	for _, e := range evs {
 		if _, ok := s.ids[e.ID]; !ok {
-			s.ids[e.ID] = t
+			s.ids[e.ID], added = t, true
 		}
 	}
 	cutoff := t.Add(-s.window)
@@ -117,14 +124,23 @@ func (s *seenStore) mark(evs []globalfeed.Event, t time.Time) {
 		}
 	}
 	s.capOldest() // the bound holds as the store GROWS, not only when it is read
+	if added || len(s.ids) != before {
+		s.dirty = true // an id added, or one pruned or capped away
+	}
 }
 
+// save writes the store when it has changed since the last write.
 func (s *seenStore) save() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if !s.dirty {
+		return
+	}
 	if b, err := json.Marshal(s.ids); err == nil {
 		_ = os.MkdirAll(filepath.Dir(s.path), 0o700) // private, like the config store (NFR-13)
-		_ = os.WriteFile(s.path, b, 0o600)
+		if os.WriteFile(s.path, b, 0o600) == nil {
+			s.dirty = false // a failed write stays dirty, so the next save tries again
+		}
 		// WriteFile applies the mode only on create and MkdirAll never re-modes:
 		// a store left at 0644/0755 is tightened here (R3-D-01).
 		_ = os.Chmod(s.path, 0o600)

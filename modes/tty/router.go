@@ -42,7 +42,7 @@ const (
 	actDiagnostics   term.Action = "diagnostics"
 	actStationToggle term.Action = "station-toggle"
 
-	// THE BED'S OWN CONTROLS (D-78). `[B]` cuts the programme between the
+	// THE BED'S OWN CONTROLS (D-78). `[b]` cuts the programme between the
 	// station's line-up and its bed; the arrows move through the relays the
 	// station's fence reaches. The reference mock draws all three, so all three
 	// are bound.
@@ -55,7 +55,7 @@ const (
 	actQueuePrev term.Action = "queue-prev"
 	actQueueNext term.Action = "queue-next"
 
-	// actQueueOpen is the pointer's own way in (D-105, HUM LEAD 2026-09-12):
+	// actQueueOpen is the pointer's own way in (HUM LEAD 2026-09-12):
 	// "hitting <enter> on the row should be the equivalent of what happened when
 	// we pressed [0-9] - this is more important now for positions [10-14]".
 	//
@@ -139,7 +139,7 @@ type Station interface {
 	GoToStandby()
 
 	// CutBed moves the programme between the station's line-up and its bed
-	// (D-78) — `[B]`, the production caller of `lineup.CutOver`.
+	// (D-78) — `[b]`, the production caller of `lineup.CutOver`.
 	//
 	// TO THE BED IS THE ARGUMENT, not a toggle, for the reason the power's two
 	// controls are two methods: a toggle asks the caller to know the current
@@ -179,7 +179,7 @@ func broadcasterKeyMap() term.KeyMap {
 		actHelp:          {Keys: []string{"?"}, Help: "Help"},
 		actQuit:          {Keys: []string{"q"}, Help: "Quit"},
 		actStationToggle: {Keys: []string{"shift+enter"}, Help: "ON AIR / STANDBY"},
-		// THE BED'S OWN CONTROLS (D-78). `[B]` cuts the programme to the bed and
+		// THE BED'S OWN CONTROLS (D-78). `[b]` cuts the programme to the bed and
 		// back; the arrows move through the relays the station's fence reaches.
 		// LOWERCASE, BECAUSE `B` IS ALREADY A DOOR. FR-1.6 requires every action
 		// to carry a non-chord key, and `B` is the Broadcaster swap's — an
@@ -188,7 +188,7 @@ func broadcasterKeyMap() term.KeyMap {
 		// takes `b` and the reference's `[ B ]` chip becomes `[ b ]`. Stated
 		// rather than quietly re-bound: the mock is the record.
 		actBedCut: {Keys: []string{"b"}, Help: "Bed"},
-		// THE BED'S ARROWS ARE SHIFTED (D-111, HUM LEAD 2026-09-12).
+		// THE BED'S ARROWS ARE SHIFTED (HUM LEAD 2026-09-12).
 		//
 		// THE REFERENCE DRAWS ARROWS ON TWO CONTROLS — the bed's relay selector and
 		// the card's PRESENTER — and one surface has one pair of arrow keys. The
@@ -217,7 +217,7 @@ func broadcasterKeyMap() term.KeyMap {
 		// surface (D-56).
 		actQueuePrev: {Keys: []string{"up"}, Help: "Scroll Up"},
 		actQueueNext: {Keys: []string{"down"}, Help: "Scroll Down"},
-		// AND IT FALLS THROUGH LIKE THEY DO: `enter` opens a location's Details on
+		// `enter` falls through as the arrows do: it opens a location's Details on
 		// Observer, and the console's own row is a different thing at the same key.
 		actQueueOpen: {Keys: []string{"enter"}, Help: "Details / Manage Slot"},
 	}
@@ -295,15 +295,19 @@ func NewRouter(o Dashboard) Router {
 	// would be one setting with two carriers.
 	b := NewBroadcaster()
 	b.ascii = o.cfg.ASCII
-	// AND THE SAME BUILD. The masthead names the version on both surfaces, and
-	// two surfaces disagreeing about which build this is would be the same
+	// The console carries the same build: the masthead names the version on
+	// both surfaces, and two surfaces disagreeing about which build this is would be the same
 	// two-carriers defect one field along.
 	b.version = o.cfg.Version
-	// AND THE SAME FIRE THRESHOLD. RESOLVED, not raw: Observer owns the "unset
+	// The console takes the same fire threshold, RESOLVED rather than raw:
+	// Observer owns the "unset
 	// means 50" rule, and a console that re-derived it would be a second carrier
 	// of that rule.
 	b.fireBoldMW = o.fireBoldMW()
-	// AND THE STATION IT IS A CONSOLE FOR (D-72). The area MOVES, so changes
+	// And the same units and clock (0.16.0 FR-6.2), mirrored again on every
+	// update (0.19.5 D-21).
+	b.units, b.clockFmt = o.units, o.clockFmt
+	// The console opens on the station it serves (D-72). The area MOVES, so changes
 	// arrive as a message; this is the value it opens with.
 	b.area, b.areaGen = o.cfg.StationArea, b.areaGen+1
 	return Router{observer: o, broadcaster: b, active: SurfaceObserver,
@@ -391,13 +395,13 @@ func consoleScoped(msg tea.Msg) bool {
 // sweeping them in would change what the console does on every frame.
 func observerScoped(msg tea.Msg) bool {
 	switch msg.(type) {
-	// AND THE DEBOUNCE'S TWO (D-130). The pause and the verdict are both
+	// The debounce's two messages are here too (D-130): the pause and the verdict are both
 	// answers a LOCATION FIELD is waiting for, and the field is Observer's —
 	// delivered to the console they would be dropped and the search box would
 	// never settle, which is D-128's defect with a timer in front of it.
 	case resolvedMsg, committedMsg, castSavedMsg, uiSavedMsg, historyClearedMsg, // W18: Clear history's answer is the Settings window's (D-177)
 		locatePauseMsg, locateVerdictMsg,
-		mapWorkedMsg, mapFeedMsg, mapRadarMsg, mapRadarAgainMsg, mapClearedMsg, mapTickMsg, mapViewSettledMsg, // 0.18.0: what the map's Work landed, its clock and its settling are owed to Observer's map window
+		mapWorkedMsg, mapFeedMsg, mapRadarMsg, mapRadarAgainMsg, mapClearedMsg, mapTickMsg, mapViewSettledMsg, // what the map's Work landed, its clock and its settling are owed to Observer's map window
 		mapTempMsg, forecastTickMsg, // W10: the temperature, and Forecast mode's playback, are the map window's too
 		mapReleaseMsg,               // D-221: the map's release, due whichever surface is shown
 		propUpdatedMsg, propTickMsg, // 0.19.0 W4.1: the Propagation mode's update and its refresh are the map window's
@@ -412,95 +416,69 @@ func observerScoped(msg tea.Msg) bool {
 	return false
 }
 
-// Update routes the message and keeps the Router as the program's model.
+// Update routes the message and keeps the Router as the program's model,
+// then mirrors onto both surfaces what they must agree on.
 //
-// PROGRAM-SCOPED MESSAGES GO TO BOTH SURFACES; everything else goes to the
-// active one. An inactive surface holding a stale size renders wrong the
-// instant it is swapped to, and the operator would meet a broken frame at
-// exactly the moment they asked for it.
+// Why:
+//   - Program-scoped messages go to both surfaces and the rest to the active
+//     one: an inactive surface holding a stale size would render wrong the
+//     instant it is swapped to.
+//   - The console's line-up offset is carried to Observer BEFORE the dispatch
+//     (D-156), on every path, because a handler reads it while the message is
+//     processed. A Line-Up Request opened on the console can be submitted with
+//     Observer active (ctrl+o still swaps out of a window), and read as zero
+//     there the card would land a row below the slot typed (D-119).
+//     TestARequestSubmittedFromObserverStillLandsInTheTypedSlot drives this.
+//   - The gain is mirrored on every update, never owned twice (D-56): the
+//     Dashboard holds it, and the console draws the same number, so it cannot
+//     lag the control just pressed.
+//   - The units and clock are shared Settings (0.16.0 FR-6.2, 0.19.5 D-21), and
+//     Reduce motion is one switch for both surfaces (D-360).
+//   - Observer is told which surface is active (D-92): the windows it draws for
+//     the console, Help and About and the map, answer for the surface they are
+//     open on.
+//   - A refusal is carried to the surface that was refused, and dies with its
+//     reason: a refusal drawn nowhere reads as a broken control (HUM LEAD, UAT
+//     2026-09-10), and once the station is not ON AIR its sentence is false.
+//   - The open card window is re-handed on the same cadence (D-88), so a card
+//     that re-hydrates under the operator is not a stale read; showCard bumps
+//     its generation only when the content differs.
 func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// HOW FAR THE CONSOLE'S LINE-UP SITS BELOW ITS LIVE SLOT, CARRIED BEFORE THE
-	// MESSAGE IS DISPATCHED (D-156) — on every path, not only `throughToObserver`
-	// (the path the console uses to reach a window it does not own) but also the
-	// one taken when Observer is the ACTIVE surface, where `update` calls
-	// `r.observer.Update` directly.
-	//
-	// THE WINDOW OUTLIVES THE SURFACE THAT OPENED IT. `ctrl+o` deliberately still
-	// swaps out of an open window — the escape hatch an operator needs — so a
-	// Line-Up Request opened with `r` on the console can be filled in and
-	// submitted with Observer active. Read as ZERO there, the RUNNING station's
-	// answer, the offset is wrong by one on STANDBY: the card lands a row below
-	// the slot the operator typed, with the window's own confirmation naming the
-	// slot they asked for (D-119).
-	//
-	// BEFORE THE DISPATCH, NOT AFTER. The gain and the surface below are mirrored
-	// on the way OUT because they are DRAWN; this is READ by a handler while the
-	// message is being processed, so a value written afterwards is a value the
-	// handler never saw. `TestARequestSubmittedFromObserverStillLandsInTheTypedSlot`
-	// drives the Router rather than calling `requestSchedule`, which is what makes
-	// the ordering observable.
 	r.observer.liveOffset = r.broadcaster.liveOffset()
 	if _, ok := msg.(tea.KeyPressMsg); ok {
 		r.keyArrived() // M6: a key's time to its frame (timing.go)
 	}
-	m, cmd := r.update(msg)
-	// THE LEVEL IS MIRRORED, NEVER OWNED TWICE (D-56). The Dashboard holds it —
-	// it has the engine call, the step and the chip flash — and the console
-	// draws the same number under its own word for it. Mirrored on EVERY update
-	// rather than on a message, so the console cannot lag the control the
-	// operator just pressed, and there is exactly one answer to how loud the
-	// station is.
-	if out, ok := m.(Router); ok {
-		out.broadcaster.gain = out.observer.radioVolume
-		if out.observer.reduceMotion { // AND REDUCE MOTION, one switch for both (D-360): the console's dots hold their first phase
-			out.broadcaster.frame = 0
-		}
-		// AND WHICH SURFACE IS ACTIVE, on the same cadence and for the same
-		// reason (D-92): the Settings window is forwarded to Observer from the
-		// console, and D-18 rules that some of its rows belong to one surface
-		// only. A window that could not tell them apart would show the listener's
-		// settings to the operator of a station.
-		out.observer.surface = out.active
-		// AND THE REFUSAL IS CARRIED TO THE SURFACE THAT WAS REFUSED. A refusal
-		// recorded and drawn nowhere is indistinguishable from a broken control —
-		// it reads as "ctrl+o will soft lock randomly" (HUM LEAD, UAT 2026-09-10).
-		//
-		// IT DIES WITH ITS REASON. The only refusal there is says the station
-		// is ON AIR; once it is not, the sentence is false and must go, or the
-		// operator is left reading about a state they have already left.
-		if !out.stationIsLive() || (out.refusal == bedRefusal && out.broadcaster.bed.Carrying) {
-			out.refusal = ""
-		}
-		out.broadcaster.statusNote = out.refusal
-		// AND THE OPEN CARD WINDOW IS RE-HANDED, for the same reason and on the
-		// same cadence (D-88). A card the operator is reading can re-hydrate
-		// under them — RefreshAfter is half of StaleAfter — and a window still
-		// showing its first frame while the report changes is the F-30 freeze
-		// with a stale READ in it. showCard bumps its generation only when the
-		// content actually differs, so this costs a comparison and not a redraw.
-		out = out.refreshCardWindow()
-		return out, cmd
+	out, cmd := r.update(msg)
+	out.broadcaster.gain = out.observer.radioVolume
+	out.broadcaster.units, out.broadcaster.clockFmt = out.observer.units, out.observer.clockFmt
+	if out.observer.reduceMotion { // Reduce motion is one switch for both surfaces (D-360): the console's dots hold their first phase
+		out.broadcaster.frame = 0
 	}
-	return m, cmd
+	out.observer.surface = out.active
+	if !out.stationIsLive() || (out.refusal == bedRefusal && out.broadcaster.bed.Carrying) {
+		out.refusal = ""
+	}
+	out.broadcaster.statusNote = out.refusal
+	out = out.refreshCardWindow()
+	return out, cmd
 }
 
-// update is the Router's own routing; Update wraps it to mirror what the two
-// surfaces must agree on.
-func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
+// update is the Router's own routing, and returns the Router itself; Update
+// wraps it to mirror what the two surfaces must agree on, and is the one place
+// the Router becomes a tea.Model (0.19.5 PF-1).
+func (r Router) update(msg tea.Msg) (Router, tea.Cmd) {
 	// WHAT THE MESSAGE IS, BEFORE WHAT ANY KEY MEANS (D-159).
 	if m, cmd, handled := r.scopedMessage(msg); handled {
 		return m, cmd
 	}
-	// AND THEN WHO OWNS THE KEY (D-159).
+	// Only then is a key routed to whoever owns it (D-159).
 	if m, cmd, handled := r.routeKey(msg); handled {
 		return m, cmd
 	}
 	switch r.active {
 	case SurfaceObserver:
-		m, cmd := r.observer.Update(msg)
-		if d, ok := m.(Dashboard); ok {
-			r.observer = d
-		}
+		var cmd tea.Cmd
+		r.observer, cmd = r.observer.update(msg)
 		return r, cmd
 	case SurfaceBroadcaster:
 		b, cmd := r.broadcaster.Update(msg)
@@ -522,12 +500,18 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // window from here: the operator injects an alert and WATCHES the takeover
 // activate and drain.
 func (r Router) View() tea.View {
-	v := r.surface().View()
-	if r.active == SurfaceBroadcaster { // the cursor at the console's focus, or the window's over it (D-362)
+	// The surface is drawn through its own type, not through surfaceView: the
+	// interface would box the whole model on every frame (0.19.5 PF-1).
+	var v tea.View
+	if r.onBroadcaster() {
+		v = r.broadcaster.View()
+	} else {
+		v = r.observer.View()
+	}
+	if r.onBroadcaster() { // the cursor at the console's focus, or the window's over it (D-362)
 		x, y, ok := r.broadcaster.consoleCursor(v.Content)
 		if r.observer.ModalOpen() {
-			x, y, ok = r.observer.OverlayCursor(v.Content, r.broadcaster.width)
-			v.Content = r.observer.OverlayWindow(v.Content, r.broadcaster.width)
+			v.Content, x, y, ok = r.observer.overlay(v.Content, r.broadcaster.width)
 		}
 		v.Content, v.Cursor = r.broadcaster.heldCursor().finish(v.Content, x, y, ok, r.broadcaster.blurred, v.BackgroundColor)
 	}
@@ -559,7 +543,7 @@ func (r Router) typingInAWindow(k tea.KeyPressMsg) bool {
 // below it get their turn. Unlike `keyAction`, the handled paths here DO mutate
 // — `consoleScoped` and `programScoped` both update a surface — which is why
 // the caller returns the model this hands back rather than its own.
-func (r Router) scopedMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
+func (r Router) scopedMessage(msg tea.Msg) (Router, tea.Cmd, bool) {
 	// THE ROUTER KEEPS THE CONTROL, not the console, because the router is
 	// where the key is looked up — one key-lookup site, which is the same
 	// reason the swap is handled here (D-1).
@@ -573,7 +557,7 @@ func (r Router) scopedMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		r.broadcaster, cmd = r.broadcaster.Update(msg)
 		return r, cmd, true
 	}
-	// AND THE ANSWER GOES BACK TO WHOEVER ASKED, wherever the operator is
+	// The answer goes back to whoever asked, wherever the operator is
 	// looking. Unconditional rather than gated on an open window: when Observer
 	// is the active surface the switch below already delivers these, so the gate
 	// would only be a second place for the two paths to disagree.
@@ -583,12 +567,7 @@ func (r Router) scopedMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 	}
 	if programScoped(msg) {
 		var oc, bc tea.Cmd
-		if m, c := r.observer.Update(msg); true {
-			if d, ok := m.(Dashboard); ok {
-				r.observer = d
-			}
-			oc = c
-		}
+		r.observer, oc = r.observer.update(msg)
 		r.broadcaster.listenerMuted = r.observer.tickerMuted
 		r.broadcaster, bc = r.broadcaster.Update(msg)
 		return r, tea.Batch(oc, bc), true
@@ -609,12 +588,12 @@ func (r Router) scopedMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 // KEEPING THEM IN ONE FUNCTION IS DELIBERATE. They are not four independent
 // checks, they are one ordered rule, and splitting them further would hide the
 // only thing about them that is hard: the order.
-func (r Router) routeKey(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
+func (r Router) routeKey(msg tea.Msg) (Router, tea.Cmd, bool) {
 	// THE CARD WINDOW'S OWN CONTROLS, BEFORE THE KEYMAP (D-118, placed here by
 	// D-121). They belong to the CONSOLE — Observer has no line-up to reorder and
 	// nothing to drop from one.
 	//
-	// AND AN OPEN QUESTION OWNS THE KEYBOARD, which is the rule D-118 states and
+	// An open question owns the keyboard, which is the rule D-118 states and
 	// which this position enforces. Below the keymap it cannot: `enter` is bound
 	// to `actQueueOpen`, that case closes the card window, and the move is never
 	// sent — the operator types a position, presses enter, both windows close and
@@ -704,7 +683,7 @@ func (r Router) routeKey(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 // NOTHING MUTATES `r` ON A FALL-THROUGH PATH. Every assignment in this switch
 // sits inside a branch that returns, so the caller may keep its own value when
 // this says `false`.
-func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Model, tea.Cmd, bool) {
+func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (Router, tea.Cmd, bool) {
 	switch a {
 	case actSwapObserver, actSwapBroadcaster: // a letter, and a letter is text (D-148): swapKey
 		return r.swapKey(k, a)
@@ -723,7 +702,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 	// switch to the active surface, which is exactly what an unbound key
 	// does.
 	case actBedCut, actBedPrev, actBedNext, actBedPlay:
-		// AND ONLY WHEN THE STATION HAS A RELAY TO CARRY (D-117). Cutting
+		// The bed's keys act only when the station has a relay to carry (D-117). Cutting
 		// to a bed nothing streams is dead air on the transmitter, which
 		// is the one outcome this control must not have — so the key is
 		// refused where the chip says it is unavailable.
@@ -789,7 +768,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 // no text, so no field can want them — they still swap out of an
 // open window, which is the escape hatch an operator needs. With
 // nothing open, the letters swap.
-func (r Router) swapKey(k tea.KeyPressMsg, a term.Action) (tea.Model, tea.Cmd, bool) {
+func (r Router) swapKey(k tea.KeyPressMsg, a term.Action) (Router, tea.Cmd, bool) {
 	if r.typingInAWindow(k) {
 		return r, nil, false
 	}
@@ -829,7 +808,7 @@ func (r Router) swapKey(k tea.KeyPressMsg, a term.Action) (tea.Model, tea.Cmd, b
 // NAMED, NOT "ANY OPEN MODAL". The diagnostics window uses `enter`
 // to pick a scenario (D-58) and closing it on that key would take
 // the console's rule into a window the console does not own.
-func (r Router) queueOpenKey() (tea.Model, tea.Cmd, bool) {
+func (r Router) queueOpenKey() (Router, tea.Cmd, bool) {
 	if r.active == SurfaceBroadcaster &&
 		(r.observer.modal == modalCard || r.observer.modal == modalDetails) {
 		r.observer = r.observer.close()
@@ -854,35 +833,36 @@ func (r Router) queueOpenKey() (tea.Model, tea.Cmd, bool) {
 // directly when it is the active surface and never comes through this funnel,
 // so `Update` mirrors the offset before every dispatch; carrying it here too
 // would be a SECOND CARRIER of one rule.
-func (r Router) throughToObserver(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m, cmd := r.observer.Update(msg)
-	if d, ok := m.(Dashboard); ok {
-		r.observer = d
-	}
+func (r Router) throughToObserver(msg tea.Msg) (Router, tea.Cmd) {
+	var cmd tea.Cmd
+	r.observer, cmd = r.observer.update(msg)
 	return r, cmd
 }
 
-// surfaceView is the part of a surface the Router needs in order to start it
-// and to draw it.
+// surfaceView is the part of a surface the Router needs in order to start it.
 //
-// DELIBERATELY NARROWER THAN tea.Model. Update is routed explicitly, with
-// concrete types, so Broadcaster can return a Broadcaster rather than a
-// tea.Model and the Router needs no type assertion to put it back. Observer
-// keeps its tea.Model signature: the Router is a delegation, and a signature
-// change would make it more than one.
+// Deliberately narrower than tea.Model. Update is routed explicitly, with
+// concrete types: Broadcaster's Update returns a Broadcaster and Observer's
+// update returns a Dashboard, so the Router needs no type assertion to put
+// either back, and nothing copies a surface into an interface on its way
+// through (0.19.5 PF-1).
 type surfaceView interface {
 	Init() tea.Cmd
 	View() tea.View
 }
 
-// surface is the active surface. It exists so Init and View cannot disagree
-// about which one is on screen — one accessor, not two switches.
+// surface is the active surface, for Init. View draws the same one without the
+// interface, and both ask onBroadcaster, so they cannot disagree about which
+// surface is on screen.
 func (r Router) surface() surfaceView {
-	if r.active == SurfaceBroadcaster {
+	if r.onBroadcaster() {
 		return r.broadcaster
 	}
 	return r.observer
 }
+
+// onBroadcaster reports whether the console is the surface on screen.
+func (r Router) onBroadcaster() bool { return r.active == SurfaceBroadcaster }
 
 // swapTo moves to the surface if the gate permits, and records the refusal
 // for the operator when it does not.
@@ -1158,15 +1138,13 @@ func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
 			// operator asked, silently, on the surface's normal state.
 			move(r.observer.cardID, r.broadcaster.indexForSlot(to))
 		}
-		// AND THE CARD WINDOW CLOSES WITH IT. The card the operator was reading is
+		// The card window closes with it. The card the operator was reading is
 		// no longer at the position they opened it from, so leaving it up would
 		// show a window whose own title has moved.
 		r.observer = r.observer.close()
 		r.observer.cardAct, r.observer.cardMoveTo = cardActionNone, ""
 	case "backspace":
-		if d := []rune(r.observer.cardMoveTo); len(d) > 0 {
-			r.observer.cardMoveTo = string(d[:len(d)-1])
-		}
+		r.observer.cardMoveTo = eraseRune(r.observer.cardMoveTo)
 		r.observer.cardErr = ""
 	default:
 		// THE KEY'S OWN NAME, NOT ITS `Text`. A terminal fills `Text` for a
@@ -1211,7 +1189,7 @@ func (r Router) cardInWindow() lineup.Card {
 
 // openPointedCard opens the card the running order's pointer is on.
 //
-// THE POINTER IS THE ADDRESS, NOT A DIGIT (D-105). `openCardWindow` reads a slot
+// THE POINTER IS THE ADDRESS, NOT A DIGIT. `openCardWindow` reads a slot
 // number off the key, which tops out at nine; the running order runs to fifteen.
 // This asks the console where its pointer IS and opens THAT — so every row the
 // operator can reach is a row they can open, at any length of list.
@@ -1220,7 +1198,7 @@ func (r Router) cardInWindow() lineup.Card {
 // window, so the row the pointer opens and the row a chip opens cannot come to
 // show different things about one report.
 func (r Router) openPointedCard() (Router, bool) {
-	// THE POOL'S ROWS OPEN THE LOCATION'S DETAILS (D-113, HUM LEAD 2026-09-12:
+	// THE POOL'S ROWS OPEN THE LOCATION'S DETAILS (HUM LEAD 2026-09-12:
 	// "make it so <enter> on a location pool row opens the location details (like
 	// observer)"). The pointer walks the two tables as one list, so one key opens
 	// whatever it is on — a card above, a place below.
@@ -1267,8 +1245,8 @@ func (r Router) refreshCardWindow() Router {
 			return r
 		}
 	}
-	// AND THE TAKEOVER BOX'S CARD, which the main-track walk above cannot reach:
-	// `[A]` opens a card on the ALERT RAIL (D-126), and a window that never
+	// The takeover box's card refreshes too, which the main-track walk above cannot reach:
+	// `[A]` opens a card on the ALERT RAIL, and a window that never
 	// refreshes goes stale exactly where staleness matters most — a burst gains
 	// hazards while the operator is reading it.
 	if id, rows, ok := r.broadcaster.alertDetail(); ok && id == r.observer.cardID {

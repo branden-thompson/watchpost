@@ -247,7 +247,7 @@ func TestEveryScenarioReachesTheSevereIndex(t *testing.T) {
 				send:   func(tea.Msg) {},
 				muted:  &atomic.Bool{},
 				mc:     newMastercontrol(nil, func(tea.Msg) {}),
-				voice:  testDirector(&scriptVoice{}, nil),
+				voice:  testArbiter(&scriptVoice{}, nil),
 				seen:   loadSeen(t.TempDir(), time.Hour),
 				severe: sev,
 				watch:  func() []snapshot.LocationRef { return []snapshot.LocationRef{testHere} },

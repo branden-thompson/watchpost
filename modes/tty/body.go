@@ -29,15 +29,21 @@ func (d Dashboard) header(o render.Opts) string {
 	// THE LADDERS ARE SHARED WITH THE CONSOLE (D-59, masthead.go), so the two
 	// surfaces cannot come to draw different mastheads. This is their only
 	// behavioural home.
-	rule := o.BoxRuleWidth()
-	title := mastheadTitle(render.EditionObserver, d.cfg.Version, rule)
-	stamp := mastheadStamp(o, title, d.snap, d.clock(), rule)
-	// no tone of its own: the frame's base grey paints it (round 4, B-01)
-	return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "")
+	var slot *mastheadSlot
+	if d.memo != nil {
+		slot = &d.memo.head
+	}
+	return slot.get(mastheadKeyOf(o, render.EditionObserver, d.cfg.Version, d.snap, d.clock()), func() string {
+		rule := o.BoxRuleWidth()
+		title := mastheadTitle(render.EditionObserver, d.cfg.Version, rule)
+		stamp := mastheadStamp(o, title, d.snap, d.clock(), rule)
+		// no tone of its own: the frame's base grey paints it
+		return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "")
+	})
 }
 
 // headerRow is the masthead's inner row: the controls at the left, the API
-// summary at the right. The ladder (round 4, B-14): About drops, the summary
+// summary at the right. The ladder: About drops, the summary
 // loses its "API: " label, then the chips stand alone, then the summary leaves
 // — the row never exceeds the box's inner width.
 //
@@ -121,22 +127,8 @@ func agoWords(age time.Duration) string {
 // called by both surfaces (D-59). Two counts of one snapshot could disagree, and
 // the number is a health claim.
 func apiSummaryOf(o render.Opts, snap *snapshot.Snapshot) string {
-	ok, stale, down, total := 0, 0, 0, 0
-	for _, p := range providersOf(snap) {
-		switch {
-		case p.Status == snapshot.ProviderOff:
-			continue
-		case p.Status == snapshot.ProviderOK && p.FetchedAt.IsZero():
-			// registered, not yet answered (the first frames): in the total, not yet ✔ (REVIEW C5)
-		case p.Status == snapshot.ProviderOK:
-			ok++
-		case p.FetchedAt.IsZero():
-			down++
-		default:
-			stale++
-		}
-		total++
-	}
+	c := countProviders(snap)
+	ok, stale, down, total := c.ok, c.stale, c.down, c.total
 	g := o.Glyphs()
 	gOK, gStale, gDown := g.OK, g.Alert, g.Fail // one owner for every mark (R5-C-13)
 	if o.ASCII {
@@ -146,6 +138,31 @@ func apiSummaryOf(o render.Opts, snap *snapshot.Snapshot) string {
 		render.Tint(gOK+strconv.Itoa(ok), render.Tok(render.ProviderOK)),
 		render.Tint(gStale, render.Tok(render.AlertLabel)), stale,
 		render.Tint(gDown, render.Tok(render.ProviderDown)), down, total)
+}
+
+// providerCounts are the providers counted by health, as apiSummaryOf says them.
+type providerCounts struct{ ok, stale, down, total int }
+
+// countProviders counts a snapshot's providers by health: the summary's numbers,
+// and the masthead memo's key for them.
+func countProviders(snap *snapshot.Snapshot) providerCounts {
+	var c providerCounts
+	for _, p := range providersOf(snap) { // bounded by the providers (P10-02)
+		switch {
+		case p.Status == snapshot.ProviderOff:
+			continue
+		case p.Status == snapshot.ProviderOK && p.FetchedAt.IsZero():
+			// registered, not yet answered (the first frames): in the total, not yet ✔ (REVIEW C5)
+		case p.Status == snapshot.ProviderOK:
+			c.ok++
+		case p.FetchedAt.IsZero():
+			c.down++
+		default:
+			c.stale++
+		}
+		c.total++
+	}
+	return c
 }
 
 // apiSummary is the Dashboard's own reading of it.
@@ -163,7 +180,7 @@ func (d Dashboard) body(fl frameLayout) string {
 // writeBody writes the body into the frame's own buffer (Q3: no
 // intermediate string).
 func (d Dashboard) writeBody(b *strings.Builder, fl frameLayout, priority, recent string) {
-	b.WriteString(d.tickerMarquee(fl.o)) // 0.12.0: the 3-row global event ticker band, above the radio module
+	b.WriteString(d.tickerMarquee(fl.o)) // the 3-row global event ticker band, above the radio module
 	b.WriteString("\n")                  // the band's bottom row is the ticker/radio separator
 	b.WriteString(d.radioPanel(fl))      // UAT 8.1: radio module first
 	b.WriteString("\n")                  // the boxes separate themselves — no blank between
@@ -184,11 +201,47 @@ func (d Dashboard) priorityTable(fl frameLayout) string {
 	if d.snap == nil || len(d.snap.Locations) == 0 {
 		return emptyState(o.TableRowLen(fl.days), watchlistEmpty, "") // the empty state stands where the table will
 	}
-	rows := make([]render.LocationRow, 0, len(d.snap.Locations))
-	for i := range d.snap.Locations {
-		rows = append(rows, d.row(i, &d.snap.Locations[i], d.selected < d.numPriority() && i == d.selected))
+	n, shown := len(d.snap.Locations), len(d.snap.Locations)
+	if fl.priorityRows > 0 && fl.priorityRows < n {
+		shown = fl.priorityRows // a short terminal's window (0.19.5 D-30); zero is a layout that measured nothing, so all
 	}
-	return o.LocationTable(rows, fl.days)
+	lo := d.priorityLo(n, shown)
+	rows := make([]render.LocationRow, 0, shown)
+	for i := lo; i < lo+shown; i++ {
+		rows = append(rows, d.row(i, &d.snap.Locations[i], d.selected < n && i == d.selected))
+	}
+	table := o.LocationTable(rows, fl.days)
+	if shown == n {
+		return table
+	}
+	return priorityRail(table, o.TableRowLen(fl.days)+2, o.BandHeight()+1, lo, n, shown, render.RailGlyphsFor(o.ASCII))
+}
+
+// priorityLo is the first favourite a scrolled priority table shows (0.19.5 D-30):
+// the window that ends at the focused favourite, or the last favourites,
+// beside RECENT, while the focus is below them. Derived from the focus, so
+// the table holds no scroll of its own.
+func (d Dashboard) priorityLo(n, shown int) int {
+	if d.selected >= n {
+		return n - shown
+	}
+	return max(0, d.selected-shown+1)
+}
+
+// priorityRail draws RECENT's scroll rail beside a scrolled priority table:
+// ▲ on the column header (the last of its head lines), the bar and the thumb
+// on the rows, ▼ on the last row shown.
+func priorityRail(table string, width, head, lo, total, window int, g render.RailGlyphs) string {
+	lines := strings.Split(table, "\n")
+	if len(lines) <= head {
+		return table
+	}
+	lines[head-1] = render.PadTo(lines[head-1], width-1) + g.Up
+	rows := lines[head:]
+	last := len(rows) - 1
+	copy(rows, render.Railify(rows[:last], width, lo, total-1, window-1, g))
+	rows[last] = render.PadTo(rows[last], width-1) + g.Down
+	return strings.Join(lines, "\n")
 }
 
 // controlRow is the watchlist's control line (UAT 56; reworded HUM LEAD
@@ -357,7 +410,7 @@ func weatherRow(loc *snapshot.Location, fireBoldMW float64, extDays int) render.
 		AlertCount: len(loc.Alerts),                        // ⚠ badge (UAT 20.2)
 		Fire:       fireCount(loc.Fire),                    // B5 / UAT 110: n◆
 		FireHot:    fireHot(loc.Fire.Hotspots, fireBoldMW), // B5
-		Seismic:    seismicRowLevel(loc.Seismic),           // 0.11.0: the strongest quake's felt-band glyph
+		Seismic:    seismicRowLevel(loc.Seismic),           // the strongest quake's felt-band glyph
 		// UAT 18.2: shimmer until this location's data lands (obs or daily
 		// still pending); post-load nils stay honest "n/a".
 		Loading: rowLoading(loc),

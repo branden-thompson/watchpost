@@ -14,7 +14,7 @@ import (
 
 func warmupDeck(t *testing.T, seen *seenStore, evs []globalfeed.Event) *tickerDeck {
 	t.Helper()
-	nar := testDirector(&scriptVoice{}, nil)
+	nar := testArbiter(&scriptVoice{}, nil)
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 	return &tickerDeck{
 		send:    func(tea.Msg) {},

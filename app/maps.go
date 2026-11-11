@@ -13,7 +13,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -213,17 +212,17 @@ func (lp *livePipelines) mapDisk() func(*tuimaps.Map) error {
 func mapSourceList() []tty.MapSource {
 	var out []tty.MapSource
 	for _, s := range mapSources {
-		out = append(out, tty.MapSource{Name: s.name, Host: hostOf(s.address), Layers: "basemap", Sent: "tiles"})
+		out = append(out, tty.MapSource{Name: s.name, Host: httpx.HostOf(s.address), Layers: "basemap", Sent: "tiles"})
 	}
-	out = append(out, tty.MapSource{Name: "National Weather Service", Host: hostOf(zones.DefaultBase), Layers: "alert areas", Sent: "states, alert zones, marine areas"})
-	out = append(out, radarHosts()...)                                                            // W8: the radar's two sources
-	out = append(out, tempHosts()...)                                                             // W10: the temperature's two
-	out = append(out, fireHosts()...)                                                             // D-121: the fire's two
-	out = append(out, marineHosts()...)                                                           // D-127, D-128: the sea's stations
-	out = append(out, airHosts()...)                                                              // D-138: AirNow
-	out = append(out, propagationHosts()...)                                                      // 0.19.0 FR-4.3: GIRO and NOAA SWPC
-	out = append(out, tty.MapSource{Name: "USGS", Host: hostOf(quakeFeedBase), Layers: "quakes"}) // D-122
-	for i := range out {                                                                          // bounded by the list above (P10-02)
+	out = append(out, tty.MapSource{Name: "National Weather Service", Host: httpx.HostOf(zones.DefaultBase), Layers: "alert areas", Sent: "states, alert zones, marine areas"})
+	out = append(out, radarHosts()...)                                                                  // W8: the radar's two sources
+	out = append(out, tempHosts()...)                                                                   // W10: the temperature's two
+	out = append(out, fireHosts()...)                                                                   // D-121: the fire's two
+	out = append(out, marineHosts()...)                                                                 // D-127, D-128: the sea's stations
+	out = append(out, airHosts()...)                                                                    // D-138: AirNow
+	out = append(out, propagationHosts()...)                                                            // 0.19.0 FR-4.3: GIRO and NOAA SWPC
+	out = append(out, tty.MapSource{Name: "USGS", Host: httpx.HostOf(quakeFeedBase), Layers: "quakes"}) // D-122
+	for i := range out {                                                                                // bounded by the list above (P10-02)
 		out[i].Badge = mapBadges[out[i].Name] // the Status window names each by its badge (D-170)
 	}
 	return out
@@ -240,13 +239,4 @@ const radarImageBudget = 24 << 20
 func mapRetention() string {
 	return "Map tiles are kept " + strconv.Itoa(int(mapMaxAge.Hours()/24)) + " days; with the web cache, " +
 		strconv.Itoa(statedCacheBytes>>20) + " MB in all."
-}
-
-// hostOf is an address's host.
-func hostOf(address string) string {
-	u, err := url.Parse(address)
-	if err != nil {
-		return address
-	}
-	return u.Host
 }

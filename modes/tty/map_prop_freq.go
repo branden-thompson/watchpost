@@ -230,7 +230,7 @@ func (d Dashboard) propFreqLines(o render.Opts) []string {
 // handlePropFreqKey is the entry's keyboard: printable keys build what is
 // typed, so no binding fires mid-typing; Enter draws it, or with nothing
 // typed clears the frequency held; Esc leaves it as it was.
-func (d Dashboard) handlePropFreqKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (d Dashboard) handlePropFreqKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	switch key.String() {
 	case "enter":
 		q := strings.TrimSpace(d.mapPane.propFreqQuery)
@@ -248,9 +248,7 @@ func (d Dashboard) handlePropFreqKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return d.close(), nil
 	case "backspace":
-		if r := []rune(d.mapPane.propFreqQuery); len(r) > 0 {
-			d.mapPane.propFreqQuery = string(r[:len(r)-1])
-		}
+		d.mapPane.propFreqQuery = eraseRune(d.mapPane.propFreqQuery)
 	default:
 		if key.Text != "" && len([]rune(d.mapPane.propFreqQuery)) < 16 {
 			d.mapPane.propFreqQuery += key.Text

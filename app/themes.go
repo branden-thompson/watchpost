@@ -89,7 +89,7 @@ func setUIHook(p tty.UIPrefs) error {
 		}
 		cfg.Units, cfg.Clock = p.Units, p.Clock
 		cfg.ReduceMotion = p.ReduceMotion                       // 0.19.0 D-360
-		cfg.Maps, cfg.MapDescription = p.Maps, p.MapDescription // 0.18.0: the map's Settings, written with the group
+		cfg.Maps, cfg.MapDescription = p.Maps, p.MapDescription // the map's Settings, written with the group
 		cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayers = p.MapScale, p.MapNearbyKm, p.MapLayers
 		cfg.MapRadarSource = p.MapRadarSource              // D-83
 		cfg.MapTemperatureSource = p.MapTempSource         // D-93

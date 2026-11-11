@@ -1,6 +1,6 @@
 package tty
 
-// map_settings.go — the map's two Settings (0.18.0 W1.8, W1.10, FR-9.1) and
+// map_settings.go — the map's Settings rows (0.18.0 W1.8, W1.10, FR-9.1) and
 // the one owner of the map's size floor (W1.5, FR-1.4).
 
 import (
@@ -233,7 +233,7 @@ type mapClearedMsg struct{ r MapCleared }
 // TOUCHED HERE (PF-4): the live map lets its disk cache go first, so its
 // Purge empties memory alone, and it names the cache again when the app has
 // answered. What the live map refused is kept for the answer (IS-M5).
-func (d Dashboard) clearMapData() (tea.Model, tea.Cmd) {
+func (d Dashboard) clearMapData() (Dashboard, tea.Cmd) {
 	d.mapPane.clearErr = nil
 	if m := d.mapPane.m; m != nil {
 		var off, purged error

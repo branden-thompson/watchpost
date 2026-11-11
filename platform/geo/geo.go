@@ -28,12 +28,26 @@ func BearingDeg(lat1, lon1, lat2, lon2 float64) float64 {
 
 // CompassIndex is the index of the compass point deg falls on, for a rose
 // of points sectors (8 or 16): 0 is north, sectors are centred on their
-// heading (quality pass Q6, L3-F9 — the one owner of the arithmetic; the
-// callers keep their own word tables).
+// heading, and a bearing below zero or past a turn is taken round the rose
+// first (quality pass Q6, L3-F9 — the one owner of the arithmetic; 0.19.5
+// D-17 for the negatives).
 func CompassIndex(deg float64, points int) int {
 	if points <= 0 {
 		return 0
 	}
+	deg = math.Mod(deg, 360)
+	if deg < 0 {
+		deg += 360
+	}
 	step := 360 / float64(points)
 	return int((deg+step/2)/step) % points
+}
+
+// Compass16 names the 16-point compass heading deg falls on: "N", "NNE" … "NNW",
+// the one table of the abbreviations every surface writes (0.19.5 D-17). The
+// spoken and 8-point word tables stay with the surfaces that say them. The
+// table is local, per the codebase's compass-table convention (P10-06).
+func Compass16(deg float64) string {
+	pts := []string{"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"}
+	return pts[CompassIndex(deg, 16)]
 }

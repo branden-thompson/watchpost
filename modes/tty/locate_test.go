@@ -83,7 +83,7 @@ func TestOnlyTheLastPauseAsks(t *testing.T) {
 	}
 }
 
-// AND AN ANSWER THAT ARRIVES AFTER THE NEXT KEYSTROKE IS DROPPED. The resolve
+// An answer that arrives after the next keystroke is dropped. The resolve
 // is already in flight and cannot be called back, so it has to be refused on
 // arrival — otherwise the window draws a verdict about text that is gone.
 func TestALateAnswerAboutOldTextIsDropped(t *testing.T) {
@@ -95,14 +95,14 @@ func TestALateAnswerAboutOldTextIsDropped(t *testing.T) {
 	d = d.open(modalAdd)
 
 	m, _ := d.handleAddKey(tea.KeyPressMsg{Code: 'V', Text: "V"})
-	stale := m.(Dashboard).addLocate.gate.Seq()
-	m, _ = m.(Dashboard).handleAddKey(tea.KeyPressMsg{Code: 'i', Text: "i"})
+	stale := m.addLocate.gate.Seq()
+	m, _ = m.handleAddKey(tea.KeyPressMsg{Code: 'i', Text: "i"})
 
-	out, _ := m.(Dashboard).handleLocateVerdict(locateVerdictMsg{
+	out, _ := m.handleLocateVerdict(locateVerdictMsg{
 		field: locateLookup, seq: stale, query: "V",
 		ref: snapshot.LocationRef{Label: "Vista, CA"}, within: true, found: true,
 	})
-	if out.(Dashboard).addLocate.settled() {
+	if out.addLocate.settled() {
 		t.Error("an answer about text the operator has typed over was filed against the new text")
 	}
 }

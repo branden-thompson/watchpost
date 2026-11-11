@@ -1,5 +1,5 @@
 // Package stream resolves a location to NOAA Weather Radio audio (B4,
-// architecture §5/§10.6, AI-4): the vendored NWS transmitter table says
+// watchpost-cli architecture §5/§10.6, AI-4): the vendored NWS transmitter table says
 // which transmitter covers a county and where every transmitter stands;
 // two community Icecast directories (wxradio.org, weatherUSA) say which
 // transmitters are actually relayed. The covering transmitter plays when

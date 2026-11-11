@@ -12,8 +12,9 @@ import (
 
 var makeVersionLine = regexp.MustCompile(`GNU Make (\d+)\.(\d+)`)
 
-// requireMake refuses, by name, a make older than the one CI runs.
-func requireMake(t Reporter) {
+// RequireMake refuses, by name, a make older than the one CI runs. Any test
+// that runs make asks it first.
+func RequireMake(t Reporter) {
 	t.Helper()
 	out, err := exec.Command("make", "--version").Output()
 	if err != nil {
@@ -62,7 +63,7 @@ func envShebang() *regexp.Regexp {
 // oracle owns everything beside it.
 func New(t Reporter, tree string) *Oracle {
 	t.Helper()
-	requireMake(t)
+	RequireMake(t)
 	root, err := filepath.EvalSymlinks(filepath.Dir(tree))
 	if err != nil {
 		t.Fatalf("COULD NOT RUN — %v", err)

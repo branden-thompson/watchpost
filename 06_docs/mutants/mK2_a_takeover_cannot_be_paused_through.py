@@ -7,7 +7,7 @@ import pathlib
 # RE-ANCHORED (round 3): the three places a read can be are enumerated once in
 # reads(), which four callers ask. This deletes the suspended third; mK5 deletes
 # the waiting third.
-p = pathlib.Path("app/director.go"); s = p.read_text()
+p = pathlib.Path("app/arbiter.go"); s = p.read_text()
 old = """	for i := len(d.suspended) - 1; i >= 0; i-- { // bounded by the stack (P10-02)
 		if j := d.suspended[i]; live(j) && j.class == narrateRead {
 			out = append(out, j)

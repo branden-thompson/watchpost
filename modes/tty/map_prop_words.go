@@ -21,7 +21,7 @@ import (
 )
 
 // propTerms are the short names the words use, said in full on opening the
-// mode, as the focus limit is (AX-8).
+// mode and not after a refresh (AX-8).
 const propTerms = "The words' short names: MUF, the maximum usable frequency; foF2, the F2 layer's critical frequency; LUF, the lowest usable frequency; M(3000)F2, the factor from foF2 to MUF(3000); D-RAP, NOAA's forecast of the D layer's absorption; GloTEC, NOAA's map of the ionosphere's electrons."
 
 // propLayerFull are the layers' full names, said once (FR-3.2).

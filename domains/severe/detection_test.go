@@ -34,8 +34,8 @@ func TestDetectionReadsTheSourceThenTheCertainty(t *testing.T) {
 }
 
 // Upper-casing can lengthen bytes (ȿ → Ȿ is 2 → 3): the SOURCE search and
-// the slice use the same string, or the index walks off the end (red-team
-// round 4, A-05: a panic from feed prose on the publish goroutine).
+// the slice use the same string, or the index walks off the end: a panic
+// from feed prose on the publish goroutine.
 func TestDetectionSurvivesCaseLengtheningRunes(t *testing.T) {
 	row := Row{}
 	row.Detail.Alert = &snapshot.Alert{Certainty: "Observed", Description: strings.Repeat("ȿ", 8) + "SOURCE: spotter reported."}

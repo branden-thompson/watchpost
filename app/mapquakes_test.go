@@ -168,7 +168,7 @@ func TestFireAndQuakesAreAskedOnlyWhileOn(t *testing.T) {
 	}))
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
-	lp := &livePipelines{mapQuakes: newMapQuakes(c, srv.URL+"/"), fire: []snapshot.Provider{wfigs.New(c, srv.URL+"/query", fire.DefaultRules())}, rules: fire.DefaultRules()}
+	lp := &livePipelines{mapQuakes: newMapQuakes(c, srv.URL+"/"), providerFamilies: providerFamilies{fire: []snapshot.Provider{wfigs.New(c, srv.URL+"/query", fire.DefaultRules())}}, rules: fire.DefaultRules()}
 	view := tty.MapView{W: -118.6, S: 32.5, E: -116.4, N: 34.1}
 	_ = lp.mapInputsFetching(context.Background(), tty.MapAsk{View: view})
 	if len(asked) != 0 {

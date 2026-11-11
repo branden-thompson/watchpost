@@ -133,18 +133,18 @@ func TestGoingBackToObserverDoesNotResumeTheMonitor(t *testing.T) {
 	if !deck.monitorHasTheAir() {
 		t.Error("the monitor never got the air back; the operator's play would be inert")
 	}
-	// AND THE DIRECTOR IS TOLD, which is the half that keeps the ROTATION alive.
+	// The Director is told, which is the half that keeps the ROTATION alive.
 	//
 	// THE DECK READS THE ROUTER'S OWN OWNER, so without `HandAir(AirMonitor)` it
 	// goes on playing while the Director still believes the console holds the
 	// air — and the watchlist never advances again. Two carriers of one fact,
 	// so both are asserted.
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	var declared []lineup.Event
 	nar.mc.mu.Lock()
 	nar.mc.carry = func(ev lineup.Event) { declared = append(declared, ev) }
 	nar.mc.mu.Unlock()
-	back := &livePipelines{director: nar, deck: deck, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
+	back := &livePipelines{arbiter: nar, deck: deck, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
 	back.owner.set(tty.SurfaceBroadcaster)
 	if cmd := back.takeTheAir(tty.SurfaceObserver); cmd != nil {
 		cmd()
@@ -200,7 +200,7 @@ func TestATuneWhileTheConsoleHasTheAirIsSilentButStillReports(t *testing.T) {
 	}
 }
 
-// AND A STATION WITH NO AUDIO AT ALL STILL STOPS ITS ROTATION.
+// A station with no audio at all still stops its rotation.
 //
 // WITH A DECK PRESENT, `deck.Stop()` reports `Monitored{false}` too, so it and
 // `mc.StopMonitor()` are indistinguishable there, and only a deckless station
@@ -212,12 +212,12 @@ func TestATuneWhileTheConsoleHasTheAirIsSilentButStillReports(t *testing.T) {
 // different caller make this false", and a pathless build is that caller.
 func TestTakingTheAirStopsTheRotationEvenWithNoAudio(t *testing.T) {
 	var told []lineup.Event
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	nar.mc.mu.Lock()
 	nar.mc.carry = func(ev lineup.Event) { told = append(told, ev) }
 	nar.mc.mu.Unlock()
 
-	lp := &livePipelines{director: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}} // no deck
+	lp := &livePipelines{arbiter: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}} // no deck
 	if cmd := lp.takeTheAir(tty.SurfaceBroadcaster); cmd != nil {
 		cmd()
 	}
@@ -243,7 +243,7 @@ func TestTakingTheAirStopsTheRotationEvenWithNoAudio(t *testing.T) {
 // cannot be two different readings of one setting.
 func TestTheAirCarriesTheFenceTheRailIsScopedTo(t *testing.T) {
 	var told []lineup.Event
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	nar.mc.mu.Lock()
 	nar.mc.carry = func(ev lineup.Event) { told = append(told, ev) }
 	nar.mc.fence = func() lineup.Fence {
@@ -251,7 +251,7 @@ func TestTheAirCarriesTheFenceTheRailIsScopedTo(t *testing.T) {
 	}
 	nar.mc.mu.Unlock()
 
-	lp := &livePipelines{director: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
+	lp := &livePipelines{arbiter: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
 	if cmd := lp.takeTheAir(tty.SurfaceBroadcaster); cmd != nil {
 		cmd()
 	}
@@ -268,7 +268,7 @@ func TestTheAirCarriesTheFenceTheRailIsScopedTo(t *testing.T) {
 	if !handed.Fence.InForce() || handed.Fence.RadiusMi != 25 {
 		t.Errorf("the air carried %+v, want the station's own 25-mile fence", handed.Fence)
 	}
-	// AND A DECK WITH NO RAIL IS "ALL", never a panic — tests that build no rail
+	// A deck with no rail is "ALL", never a panic — tests that build no rail
 	// and the pathless build, the same rule `fence()` itself states.
 	bare := &mastercontrol{}
 	if bare.railFence().InForce() {

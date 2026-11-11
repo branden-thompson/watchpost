@@ -95,14 +95,14 @@ func TestARepeatedRequestIsRememberedOnce(t *testing.T) {
 func TestRequestCardRemembersWhatItAsksFor(t *testing.T) {
 	rainbow := snapshot.LocationRef{Label: "Rainbow, CA", Tag: "RAINBOW", Lat: 33.41031, Lon: -117.14781}
 	lp := &livePipelines{}
-	lp.requestCard(rainbow, report.Everything(), 3) // no director: the remembering must not depend on one
+	lp.requestCard(rainbow, report.Everything(), 3) // no arbiter: the remembering must not depend on one
 
 	if _, ok := refFor(lp.resolvable, string(snapshot.Key(rainbow))); !ok {
 		t.Error("requestCard did not record the ref it asked the Director to schedule")
 	}
 }
 
-// AND THE SCHEDULE'S OWN COMPOSER USES IT — the wiring, not just the set.
+// The schedule's own Composer uses it — the wiring, not just the set.
 //
 // THE TESTS ABOVE EXERCISE `resolvable` DIRECTLY and never ask what the
 // schedule is handed, so reverting `compose: composeFor(deck, resolvable)` back
@@ -124,14 +124,14 @@ func TestTheSchedulesComposerResolvesARequestedLocation(t *testing.T) {
 	defer cancel()
 	deck, _ := offlineDeck(t)
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
-	s := startSchedule(ctx, testDirector(nil, func(tea.Msg) {}), nil,
+	s := startSchedule(ctx, testArbiter(nil, func(tea.Msg) {}), nil,
 		func() render.Clock { return render.Clock12 }, deck,
 		lp.producer(), lp.resolvable, lp.currentWatch, tick, func(tea.Msg) {}, bedSeams{})
 	if s == nil {
 		t.Fatal("the schedule refused to start")
 	}
 
-	_, err := s.x.compose(ctx, string(snapshot.Key(rainbow)), report.Everything())
+	_, err := s.executors.compose(ctx, string(snapshot.Key(rainbow)), report.Everything())
 	if err != nil && strings.Contains(err.Error(), "no watched location") {
 		t.Errorf("the schedule's composer cannot resolve a requested location: %v — "+
 			"the card builds to nothing, the decline is routed, and the operator is shown "+

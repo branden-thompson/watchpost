@@ -23,7 +23,7 @@ import (
 func scheduleUnderTest(t *testing.T, ctx context.Context) (*schedule, *atomic.Int64) {
 	t.Helper()
 	var band atomic.Int64
-	nar := testDirector(nil, func(tea.Msg) { band.Add(1) })
+	nar := testArbiter(nil, func(tea.Msg) { band.Add(1) })
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil, nil, nil, nil, tick, nil, bedSeams{})
 	if s == nil {
@@ -109,10 +109,10 @@ func TestNoArbiterMeansNoSchedule(t *testing.T) {
 	if s := startSchedule(context.Background(), nil, nil, func() render.Clock { return render.Clock12 }, nil, nil, nil, nil, tick, nil, bedSeams{}); s != nil {
 		t.Error("a schedule was built with nothing to perform through")
 	}
-	// AND NO PRODUCER MEANS NO SCHEDULE EITHER. The rail would have nothing to
+	// No Producer means no schedule either. The rail would have nothing to
 	// read, and a schedule that cannot receive an arrival is a station that
 	// silently never sounds a hazard.
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	if s := startSchedule(context.Background(), nar, nil, func() render.Clock { return render.Clock12 }, nil, nil, nil, nil, nil, nil, bedSeams{}); s != nil {
 		t.Error("a schedule was built with no producer to hear from")
 	}
@@ -182,7 +182,7 @@ func TestEveryTickRefusesANonPositiveInterval(t *testing.T) {
 // the absorb keeps it.
 func TestTheDirectorsTuneLeavesTheDuckAlone(t *testing.T) {
 	v := &scriptVoice{dur: time.Millisecond}
-	nar := testDirector(v, nil)
+	nar := testArbiter(v, nil)
 	nar.mc.giveWay() // an alert is reading: the bed is down
 	if !nar.mc.givenWay() {
 		t.Fatal("the fixture did not dip the bed, so this proves nothing")
@@ -216,7 +216,7 @@ func TestTheDirectorsTuneLeavesTheDuckAlone(t *testing.T) {
 
 // A TUNE THAT NAMES NOTHING IS DECLINED, not guessed at.
 func TestATuneWithNoLocationIsDeclined(t *testing.T) {
-	nar := testDirector(&scriptVoice{dur: time.Millisecond}, nil)
+	nar := testArbiter(&scriptVoice{dur: time.Millisecond}, nil)
 	var declined int
 	var tuned int
 	x := newExecutors(executors{
@@ -249,7 +249,7 @@ func TestATuneWithNoLocationIsDeclined(t *testing.T) {
 func TestTheProducersReachTheSchedule(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	// A voiceless station falls back to breakingHold (5 s) per part, and this
 	// test is about the WIRE, not the pacing.
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
@@ -274,7 +274,7 @@ func TestTheProducersReachTheSchedule(t *testing.T) {
 		t.Error("the deck has nowhere to report the bed; the Watchlist advance would silently stop")
 	}
 
-	// AND AN ARRIVAL ACTUALLY REACHES THE READ.
+	// An arrival actually reaches the read.
 	//
 	// ASSERTING ONLY THAT emit IS NON-NIL IS NOT ENOUGH: `schedule.carry`'s body
 	// could be replaced with `_ = ev` — every producer event dropped, the rail
@@ -347,7 +347,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 		deepest = max(deepest, len(lm.Lineup.Projection(lineup.MainTrack)))
 		mu.Unlock()
 	}
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil,
 		func() []snapshot.LocationRef { return refs }, func() []snapshot.LocationRef { return refs },
@@ -378,7 +378,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 			got, tty.MainTrackSlots)
 	}
 
-	// AND IT NEVER GOES PAST IT. The chain is Publish -> Offered -> fill ->
+	// It never goes past it. The chain is Publish -> Offered -> fill ->
 	// Publish, so a depth that never satisfies would spin for ever and the
 	// line-up would run away.
 	//
@@ -464,7 +464,7 @@ func TestGoingOnAirFillsAnEmptyLineUp(t *testing.T) {
 			mu.Unlock()
 		}
 	}
-	nar := testDirector(nil, func(tea.Msg) {})
+	nar := testArbiter(nil, func(tea.Msg) {})
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil,
 		func() []snapshot.LocationRef { return refs }, func() []snapshot.LocationRef { return refs },
