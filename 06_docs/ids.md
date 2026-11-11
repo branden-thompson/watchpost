@@ -1257,6 +1257,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-54 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Confirming two of the coordinator's readings: D-44's legend phase, and D-47's "region" |
 | D-54 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The library's name (CQ-S3): two of its three inputs are not GIRO; it publishes a derived field; a rename is c… |
 | D-55 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE INJECTOR SHIPS, AND THE CARD LEARNS TO SAY "TEST" |
+| D-55 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | SHIP: v0.19.5 was tagged on PR #37's merge 905ee845 and its release job stopped in make vuln (GO-2026-6859, A… |
 | D-55 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team batch B-1 … B-10 (go-tuiMaps radar-loops/08-reports/red-team-plan.md), with P-8's accessibility… |
 | D-55 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | The red team's batch |
 | D-55 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The history roll-up bug in shipped 0.18.0 (PF-F4; platform/history/history.go:1478 discards a failed read and… |
@@ -2042,7 +2043,9 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-30 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team round 2's fix batch, its design choices: (1) two seams, PropagationUpdate (the update's one… |
 | A-31 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The README's alt text follows the screenshots kept by D-53. setup.png and broadcaster-settings.png show Setti… |
 | A-31 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W1.2's design choices (FR-6.5, D-143): (1) roll-ups are written in size-driven monthly parts, rollup/<YYYY-MM… |
+| A-32 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Go 1.27.4, under 0.19.0 D-152 and A-82. v0.19.5's release job (run 43007879349, on the merge 905ee845) stoppe… |
 | A-32 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The linter is pinned at golangci-lint v2.14.0 (was v2.13.1), scripts/lint.sh: under go1.27.2 (D-152) v2.13.1 … |
+| A-33 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The router trace hashes its frames without the Go release's name. On go1.27.4 make verify failed only in Test… |
 | A-33 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.1 to W2.3's choices: (1) a chip [P] Propagation On / Off between R's and O's under the map, as R's says it… |
 | A-34 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.5's choices: (1) the acknowledgement is a window of its own, stacked over the map (modalPropAck), as Detai… |
 | A-35 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W4.1's choices: (1) the first update starts when the acknowledgement closes, or at once when none is due (mod… |

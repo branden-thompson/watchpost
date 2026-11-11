@@ -236,15 +236,15 @@
 1.235 tea.KeyPressMsgesc surface=0 cmd=false frame=8f3c52e5f056f9fda5a309be0964c83dba1bc017beceea76481b8aa42d80b557
 1.236 tea.KeyPressMsgshift+tab surface=0 cmd=false frame=8f3c52e5f056f9fda5a309be0964c83dba1bc017beceea76481b8aa42d80b557
 1.237 tea.KeyPressMsgm surface=0 cmd=false frame=bee3c96e338e1a6aaa9733bc8966e7a844d28fdef18217ce6f1749590e436591
-1.238 tea.KeyPressMsga surface=0 cmd=false frame=e228bd7d14d79aa5aa33c0be7c515e269dd35ea4d3b149917e6ef2e5217c6feb
+1.238 tea.KeyPressMsga surface=0 cmd=false frame=8b04465f653195f473001e6cd0eb40f31fac89bccafae64504d9a3d3a35eae1d
 1.239 tea.KeyPressMsgesc surface=0 cmd=false frame=bee3c96e338e1a6aaa9733bc8966e7a844d28fdef18217ce6f1749590e436591
 1.240 tty.tickMsg{} surface=0 cmd=true frame=8784077cda770eeffae8d32853e2952ed3ee7cbeaa07ca02f346b8eca70908b3
 1.241 tea.KeyPressMsg5 surface=0 cmd=false frame=8784077cda770eeffae8d32853e2952ed3ee7cbeaa07ca02f346b8eca70908b3
 1.242 tea.KeyPressMsgtab surface=0 cmd=false frame=8784077cda770eeffae8d32853e2952ed3ee7cbeaa07ca02f346b8eca70908b3
 1.243 tea.KeyPressMsgesc surface=0 cmd=true frame=50e0a32714c76162a6c39768ba46d9831ca207c7b37e33a3bd5614464ec3f2f5
-1.244 tea.KeyPressMsga surface=0 cmd=false frame=2b7255228f4c0509d0ccd09662fa95d8895c38c1df1eb39693933191c4113894
-1.245 tea.WindowSizeMsg{133 44} surface=0 cmd=false frame=2b7255228f4c0509d0ccd09662fa95d8895c38c1df1eb39693933191c4113894
-1.246 tea.WindowSizeMsg{133 44} surface=0 cmd=false frame=2b7255228f4c0509d0ccd09662fa95d8895c38c1df1eb39693933191c4113894
+1.244 tea.KeyPressMsga surface=0 cmd=false frame=d2d535403003644b2d58f97f657e9764dd762b43a023c6fd747e97843fc863e4
+1.245 tea.WindowSizeMsg{133 44} surface=0 cmd=false frame=d2d535403003644b2d58f97f657e9764dd762b43a023c6fd747e97843fc863e4
+1.246 tea.WindowSizeMsg{133 44} surface=0 cmd=false frame=d2d535403003644b2d58f97f657e9764dd762b43a023c6fd747e97843fc863e4
 1.247 tea.WindowSizeMsg{80 24} surface=0 cmd=false frame=a98942ab74dacd62e98651edacf4e6aac22252f96e4335914a00a0a455b2a01d
 1.248 tea.KeyPressMsgenter surface=0 cmd=false frame=404896321cae9a47eb84910a8523d89c087371055774424916ef7573daa54425
 1.249 tea.KeyPressMsgtab surface=0 cmd=false frame=404896321cae9a47eb84910a8523d89c087371055774424916ef7573daa54425
@@ -489,9 +489,9 @@
 2.188 tea.KeyPressMsgenter surface=1 cmd=false frame=0e389f0667c095d08b57d317a400aefc18a30f473e74c8a0222779f022378e3c
 2.189 tea.WindowSizeMsg{160 74} surface=1 cmd=false frame=986b53d57af7590342cf48b999505501cfdec821c3652d2934bc3615cc2a9dc8
 2.190 tea.KeyPressMsgtab surface=1 cmd=false frame=986b53d57af7590342cf48b999505501cfdec821c3652d2934bc3615cc2a9dc8
-2.191 tea.KeyPressMsga surface=1 cmd=false frame=3efa5150b0d709e5a7d950ad7e2cd8f0c942dbd57e527cbf75c072991f634cc8
-2.192 tea.KeyPressMsgm surface=1 cmd=false frame=3efa5150b0d709e5a7d950ad7e2cd8f0c942dbd57e527cbf75c072991f634cc8
-2.193 tty.vizTickMsg{} surface=1 cmd=false frame=3efa5150b0d709e5a7d950ad7e2cd8f0c942dbd57e527cbf75c072991f634cc8
+2.191 tea.KeyPressMsga surface=1 cmd=false frame=6b5270dea1e30e28a15805e2fd44463f5e318303327721110679280fb92004f2
+2.192 tea.KeyPressMsgm surface=1 cmd=false frame=6b5270dea1e30e28a15805e2fd44463f5e318303327721110679280fb92004f2
+2.193 tty.vizTickMsg{} surface=1 cmd=false frame=6b5270dea1e30e28a15805e2fd44463f5e318303327721110679280fb92004f2
 2.194 tea.KeyPressMsga surface=1 cmd=false frame=986b53d57af7590342cf48b999505501cfdec821c3652d2934bc3615cc2a9dc8
 2.195 tea.KeyPressMsg2 surface=1 cmd=false frame=986b53d57af7590342cf48b999505501cfdec821c3652d2934bc3615cc2a9dc8
 2.196 tea.KeyPressMsgm surface=1 cmd=false frame=986b53d57af7590342cf48b999505501cfdec821c3652d2934bc3615cc2a9dc8
@@ -505,8 +505,8 @@
 2.204 tea.KeyPressMsgx surface=1 cmd=false frame=cb13ab1d3bfcce08070fafcdd1d365b3cb6ce1f248969f01e08fd4279fcd62d7
 2.205 tea.KeyPressMsgv surface=1 cmd=false frame=cb13ab1d3bfcce08070fafcdd1d365b3cb6ce1f248969f01e08fd4279fcd62d7
 2.206 tea.KeyPressMsgm surface=1 cmd=false frame=cb13ab1d3bfcce08070fafcdd1d365b3cb6ce1f248969f01e08fd4279fcd62d7
-2.207 tea.KeyPressMsga surface=1 cmd=false frame=3efa5150b0d709e5a7d950ad7e2cd8f0c942dbd57e527cbf75c072991f634cc8
-2.208 tea.KeyPressMsgshift+tab surface=1 cmd=false frame=3efa5150b0d709e5a7d950ad7e2cd8f0c942dbd57e527cbf75c072991f634cc8
+2.207 tea.KeyPressMsga surface=1 cmd=false frame=6b5270dea1e30e28a15805e2fd44463f5e318303327721110679280fb92004f2
+2.208 tea.KeyPressMsgshift+tab surface=1 cmd=false frame=6b5270dea1e30e28a15805e2fd44463f5e318303327721110679280fb92004f2
 2.209 tea.KeyPressMsgs surface=1 cmd=false frame=dc823d9f27cbd7c29707984ccae14811da675e6c656360ca4882a5f7d4be22ad
 2.210 tea.WindowSizeMsg{80 24} surface=1 cmd=false frame=73bd19a8ae68660dc10039ce12f1c76868747d223cfc055dafc54b87cd7d3b59
 2.211 tea.KeyPressMsgup surface=1 cmd=false frame=c131d428f14885dcbd26bfb6316a00f819c4ad79f552fad9439e79494d15cddb
@@ -614,12 +614,12 @@
 3.013 tty.vizTickMsg{} surface=0 cmd=false frame=be55c81f15dccc36b281cb97d7c082c63a068d8f985d38ec2f09b652ab00f6a7
 3.014 tea.KeyPressMsgm surface=0 cmd=false frame=fb5cd775f34145d55ba08e21ca663903d584a2889e8c375d9e1389e386ff7630
 3.015 tea.KeyPressMsgenter surface=0 cmd=false frame=fb5cd775f34145d55ba08e21ca663903d584a2889e8c375d9e1389e386ff7630
-3.016 tea.KeyPressMsga surface=0 cmd=false frame=223ed2d932da9c56ffb2bbe80bb7ffa5d3adb31cc0ac8b170090cd8b75b17f1b
-3.017 tea.KeyPressMsgshift+tab surface=0 cmd=false frame=223ed2d932da9c56ffb2bbe80bb7ffa5d3adb31cc0ac8b170090cd8b75b17f1b
+3.016 tea.KeyPressMsga surface=0 cmd=false frame=a81d96730f42d5aaac087372fed31dee569c8f5d3f27ba07784c677a10b3f299
+3.017 tea.KeyPressMsgshift+tab surface=0 cmd=false frame=a81d96730f42d5aaac087372fed31dee569c8f5d3f27ba07784c677a10b3f299
 3.018 tea.KeyPressMsgs surface=0 cmd=false frame=2227360105a30f7baa3f617887da55ef3b7c2f5d70c6c465d5d8a13cdbf3ab3d
-3.019 tea.KeyPressMsgesc surface=0 cmd=false frame=223ed2d932da9c56ffb2bbe80bb7ffa5d3adb31cc0ac8b170090cd8b75b17f1b
-3.020 tea.KeyPressMsgB surface=0 cmd=false frame=223ed2d932da9c56ffb2bbe80bb7ffa5d3adb31cc0ac8b170090cd8b75b17f1b
-3.021 tea.KeyPressMsgv surface=0 cmd=false frame=67f83a3ae77e2a4a7d2a7e4cf2fde80eda474a6f320205b5323c0de0c75e44d6
+3.019 tea.KeyPressMsgesc surface=0 cmd=false frame=a81d96730f42d5aaac087372fed31dee569c8f5d3f27ba07784c677a10b3f299
+3.020 tea.KeyPressMsgB surface=0 cmd=false frame=a81d96730f42d5aaac087372fed31dee569c8f5d3f27ba07784c677a10b3f299
+3.021 tea.KeyPressMsgv surface=0 cmd=false frame=7af09ab586c2dcf19b9a5fd80ae35e1a229f3a9198caee8f1f7d2dfe3b1676ee
 3.022 tea.KeyPressMsga surface=0 cmd=false frame=5b95e23df224cdfda43a2a0e433d0c1f05e4648775c73ff9db4ce86bca065fe5
 3.023 tea.KeyPressMsgtab surface=0 cmd=false frame=5b95e23df224cdfda43a2a0e433d0c1f05e4648775c73ff9db4ce86bca065fe5
 3.024 tea.KeyPressMsgx surface=0 cmd=false frame=5b95e23df224cdfda43a2a0e433d0c1f05e4648775c73ff9db4ce86bca065fe5
@@ -659,9 +659,9 @@
 3.058 tea.KeyPressMsgg surface=0 cmd=false frame=df4739ac8ffe701c22f8d96932a477dfd39071ba93efad9c1ea7323eaaa2e2fd
 3.059 tea.KeyPressMsg5 surface=0 cmd=false frame=df4739ac8ffe701c22f8d96932a477dfd39071ba93efad9c1ea7323eaaa2e2fd
 3.060 tea.WindowSizeMsg{160 74} surface=0 cmd=true frame=a528dec2138b6d067f722ba6abae02ddb8880a1a695367522d9fdd1d51bbea38
-3.061 tea.KeyPressMsga surface=0 cmd=false frame=10cffd27cd575f7e43cf347f388e4b544ae492525c3f3270c675df0bb9b64755
-3.062 tea.KeyPressMsgr surface=0 cmd=false frame=287ae6137f85c66803e0d30947d8ec4f769f668f4ac4c10d15581ad43eb1ac87
-3.063 tea.KeyPressMsgr surface=0 cmd=false frame=1cb57c70739a5c5d76be78e867dc5c4dc95c099437445caa602a4d676e3a6d09
+3.061 tea.KeyPressMsga surface=0 cmd=false frame=934ca3bb36a148b36184111bb0dee535d29ca8dde29fe2830169cc3fe681a7f4
+3.062 tea.KeyPressMsgr surface=0 cmd=false frame=ee38125b6df12cad15000976c4a3b2b80e74e3bffa7665ea037bd49e41a9cbdb
+3.063 tea.KeyPressMsgr surface=0 cmd=false frame=dc15d88b784dfd9d47ad3ea6a6f23ada8fe0c014e504da75ce03a147cd1b7047
 3.064 tea.KeyPressMsgctrl+d surface=0 cmd=false frame=0320fdeaa978d75b612603c76b5055c56a66fb7f5027db30c16655dfce0cf2ad
 3.065 tea.WindowSizeMsg{80 24} surface=0 cmd=false frame=8cccf705033dbaedd9e6ec37fda25882068d7976cee73929df8170d58d9d7e46
 3.066 tty.tickMsg{} surface=0 cmd=true frame=8cccf705033dbaedd9e6ec37fda25882068d7976cee73929df8170d58d9d7e46

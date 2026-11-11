@@ -2224,3 +2224,18 @@ The reviewer's report and each finding's disposition are in `08-reports/red-team
   caught by `TestWidthAllocBudget`.
 - **What the repeat costs:** 3,481 s, the baseline 145 s and the mutants 3,336 s, against the last
   record's 3,421 s (3,277 s for the mutants, 1,057 of them). About 2 %, inside one run's spread.
+
+## 0.19.5 SHIP — Go 1.27.4 for the release job (A-32)
+
+- **PR #37 squash-merged as `905ee845`**, its tree `292b73fb`'s, after every hosted run passed (the
+  mutant check among them). `v0.19.5` was tagged on it.
+- **The release job stopped in `make vuln`** (run 43007879349, 76 s): GO-2026-6859, a crash from a race
+  on request headers in `net/http`'s `MaxBytesReader`, fixed in go1.27.4, published after PR #37's
+  runs. Nothing was published.
+- **CI and the release workflow build on go1.27.4** (A-32, under 0.19.0 D-152 and A-82); `go.mod`'s
+  floor stays 1.26.10. README and the CHANGELOG say so.
+- **The first gate on go1.27.4 failed** in `TestRouterUpdateIsTheSameUnderRandomMessages` alone: About
+  names the Go release, and the trace hashed it into 17 frames. The test takes the name out before
+  hashing, and the golden is re-recorded (A-33). The normalised trace is the same on go1.27.3 and
+  go1.27.4; it differs from the old golden in those 17 lines' digests only. The gate then ran green
+  on go1.27.4.
