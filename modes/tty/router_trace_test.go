@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"math/rand/v2"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -39,8 +40,13 @@ var traceMessages = []tea.Msg{
 // the surface on screen, whether a command came back, and a digest of the
 // frame. The trace was recorded on the code before the change
 // (testdata/router-trace.golden), so the test holds the new code to the old.
+//
+// About names the Go release the test binary was built with, so each frame is
+// hashed with that name taken out: a toolchain update would otherwise change
+// every frame About is open in, and the trace holds the router, not Go.
 func TestRouterUpdateIsTheSameUnderRandomMessages(t *testing.T) {
 	at := time.Date(2026, 8, 24, 1, 2, 0, 0, time.UTC)
+	built := "GO " + strings.TrimPrefix(runtime.Version(), "go")
 	var trace strings.Builder
 	for seed := uint64(1); seed <= 3; seed++ {
 		d := benchDash(t, 133, 44).(Dashboard)
@@ -54,7 +60,7 @@ func TestRouterUpdateIsTheSameUnderRandomMessages(t *testing.T) {
 			next, cmd := m.Update(msg)
 			m = next
 			fmt.Fprintf(&trace, "%d.%03d %T%v surface=%v cmd=%v frame=%x\n", seed, step, msg, msg,
-				next.(Router).active, cmd != nil, sha256.Sum256([]byte(next.View().Content)))
+				next.(Router).active, cmd != nil, sha256.Sum256([]byte(strings.ReplaceAll(next.View().Content, built, "GO"))))
 		}
 	}
 	checkGolden(t, "router-trace.golden", trace.String())

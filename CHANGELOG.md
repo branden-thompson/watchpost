@@ -4,6 +4,11 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ## [0.19.5] — 2026-11-10
 
+### Security
+- **Built with Go 1.27.4,** which fixes a crash from a race on request headers in `net/http`'s
+  `MaxBytesReader` (GO-2026-6859). `govulncheck` finds it reachable through the radio's streams. No
+  other change: the module's floor stays Go 1.26.10.
+
 ### Fixed
 - **Backspace erases a whole letter in the Line-Up Request window,** as in every other text field:
   erasing after a letter such as "ñ" left half of it behind.
