@@ -2239,3 +2239,4 @@ The reviewer's report and each finding's disposition are in `08-reports/red-team
   hashing, and the golden is re-recorded (A-33). The normalised trace is the same on go1.27.3 and
   go1.27.4; it differs from the old golden in those 17 lines' digests only. The gate then ran green
   on go1.27.4.
+- **Released** 2026-11-11: PR #38 squash-merged as `b4ab7dfb`, its tree the gate's and CI's, and `v0.19.5` moved to it (D-55). The release job (run 43041018696) published the five binaries, `checksums.txt`, `LICENSE` and `THIRD_PARTY_LICENSES.md`; every checksum was checked, and the darwin-arm64 binary reports `watchpost version 0.19.5`, built with go1.27.4 from `b4ab7dfb`. The three branches deleted.

@@ -24,7 +24,7 @@ Its answers agree with what was heard on the air little better than the climatol
 
 | | |
 |---|---|
-| Branch | none open: 0.19.0 was built on `feature/propagation-overlays`, cut from `main` (31038ebf), and squash-merged as `release/0.19.0` (PR #31, D-5); 0.19.1 as `release/0.19.1` (PR #33), 0.19.2 as `release/0.19.2` (PR #34), and 0.19.3 on `feature/o2-accessibility`, cut from `main` (`09e8bd75`), as `release/0.19.3` (PR #35); their branches are deleted |
+| Branch | none open: 0.19.0 was built on `feature/propagation-overlays`, cut from `main` (31038ebf), and squash-merged as `release/0.19.0` (PR #31, D-5); 0.19.1 as `release/0.19.1` (PR #33), 0.19.2 as `release/0.19.2` (PR #34), and 0.19.3 on `feature/o2-accessibility`, cut from `main` (`09e8bd75`), as `release/0.19.3` (PR #35); 0.19.5, the quality pass, on `feature/quality-pass` as `release/0.19.5` (PR #37) and `release/0.19.5-go1.27.4` (PR #38) (`../0.19.5-quality-pass/`); their branches are deleted |
 | Phase | **SHIPPED** 2026-10-31: watchpost v0.19.0 released (D-352, D-353) on go-ionomaps v0.1.0 (D-349) and go-tuiMaps v0.3.0 (D-351). **0.19.1** released 2026-11-01, a patch: Status no longer counts a request watchpost gave up as the host failing (D-354), and go-tuiMaps v0.3.1 reads a source's TileJSON once (D-356). **0.19.2** released 2026-11-01, a patch: go-tuiMaps v0.3.2's cheaper frame, met on a hosted runner (D-358, D-359). **0.19.3** released 2026-11-04, O2, the accessibility carry-over: FR-7 as D-360 to D-368 and A-107 rule it, the plan's W8.1a to W8.1m, behind D-63's SHIP gate (W8.2). VALIDATE exited (D-341, `08-reports/validate-report.md`). VALIDATE's agenda `07-readiness/validate-agenda.md`, its red team `08-reports/red-team-validate.md`. What each batch built, and why, is in `04-development/build-log.md`; UAT's findings are D-rows. O2 is 0.19.3 (D-122, D-355, D-359) |
 | Brief | `01-objectives/project-brief.md`, APPROVED (D-16) |
 | Problems and metrics | `01-objectives/problem-statement.md`: PS-1 (the Broadcaster operator), PS-2 (the Observer ham), LOCKED (D-7); M1, M2, M4, M5, M5b and G1 (D-8, D-9; M3 retired at D-76); "open" is the reference circuit (D-73); floors set before the dry run (D-75); targets from the dry run (D-49) |
@@ -63,6 +63,7 @@ Its answers agree with what was heard on the air little better than the climatol
 - **2026-11-02** UAT of the 0.19.3 build: the cursor hid the yellow pointer it stood on. It wore the colour of the cell it covers (D-366, batch 5), which drew the glyph white on yellow; now, while the terminal is focused, the cell is drawn on 15 % of the glyph's colour over its background, the glyph keeping its colour, under a bar in the tint, and while it is not the cursor is the yellow block (D-367, batch 6). If UAT finds that short, the cursor is unwound.
 - **2026-11-03** UAT passed: D-367's cursor stands (D-368). Batch 6's hosted race leg failed in a test that pressed pause before the second read was queued; the test fixed in batch 7.
 - **2026-11-04** **0.19.3 released** (PR #35, `4c803d99`), its release job and `main`'s CI green; its branches deleted.
+- **2026-11-11** **0.19.5 released**, the quality and performance pass (PR #37, `905ee845`; PR #38, `b4ab7dfb`, Go 1.27.4 for GO-2026-6859). Its record is `../0.19.5-quality-pass/`. 0.19.6, the re-architecting, is next (0.19.5 D-40).
 
 ## The rules that cost something
 
