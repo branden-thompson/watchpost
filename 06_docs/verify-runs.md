@@ -240,3 +240,5 @@ says exactly what passed.
 | 2026-11-10T23:40:34Z | f4f527e6 | ca66fe1fa359 | verify | green | 2427 |
 | 2026-11-11T11:05:29Z | 905ee845 | d5f1d9eca71d | verify | FAILED (exit 2) | 252 |
 | 2026-11-11T11:45:53Z | 905ee845 | 6696464ef9ac | verify | green | 2100 |
+| 2026-11-11T17:14:22Z | b4ab7dfb | dec07026d363 | verify-docs | green | 145 |
+| 2026-11-11T18:07:00Z | 0519a868 | c81ffcba3d75 | verify | green | 2061 |

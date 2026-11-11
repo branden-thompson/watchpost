@@ -2047,6 +2047,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-32 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The linter is pinned at golangci-lint v2.14.0 (was v2.13.1), scripts/lint.sh: under go1.27.2 (D-152) v2.13.1 … |
 | A-33 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The router trace hashes its frames without the Go release's name. On go1.27.4 make verify failed only in Test… |
 | A-33 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.1 to W2.3's choices: (1) a chip [P] Propagation On / Off between R's and O's under the map, as R's says it… |
+| A-34 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The promote test reads the last real sweep's log at the commit that recorded it. PR #39's hosted runs failed … |
 | A-34 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.5's choices: (1) the acknowledgement is a window of its own, stacked over the map (modalPropAck), as Detai… |
 | A-35 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W4.1's choices: (1) the first update starts when the acknowledgement closes, or at once when none is due (mod… |
 | A-36 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W3.1 and W2.4's choices: (1) the hour on screen is drawn as go-tuiMaps' MUFGrid or FoF2Grid, its own preset a… |
