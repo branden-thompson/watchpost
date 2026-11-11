@@ -2,7 +2,7 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
-## [0.19.5] — 2026-11-10
+## [0.19.5] — 2026-11-11
 
 ### Security
 - **Built with Go 1.27.4,** which fixes a crash from a race on request headers in `net/http`'s
