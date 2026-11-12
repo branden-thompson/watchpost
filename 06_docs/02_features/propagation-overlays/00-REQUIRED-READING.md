@@ -64,6 +64,7 @@ Its answers agree with what was heard on the air little better than the climatol
 - **2026-11-03** UAT passed: D-367's cursor stands (D-368). Batch 6's hosted race leg failed in a test that pressed pause before the second read was queued; the test fixed in batch 7.
 - **2026-11-04** **0.19.3 released** (PR #35, `4c803d99`), its release job and `main`'s CI green; its branches deleted.
 - **2026-11-11** **0.19.5 released**, the quality and performance pass (PR #37, `905ee845`; PR #38, `b4ab7dfb`, Go 1.27.4 for GO-2026-6859). Its record is `../0.19.5-quality-pass/`. 0.19.6, the re-architecting, is next (0.19.5 D-40).
+- **2026-11-12** 0.19.5's REFLECT approved (0.19.5 D-60): `../0.19.5-quality-pass/08-reports/reflect-report.md`.
 
 ## The rules that cost something
 

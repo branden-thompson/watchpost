@@ -1262,19 +1262,24 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-55 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | The red team's batch |
 | D-55 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The history roll-up bug in shipped 0.18.0 (PF-F4; platform/history/history.go:1478 discards a failed read and… |
 | D-56 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | "ONE CANONICAL WAY TO DO A THING" IS A STANDING RULE, ACROSS ALL ENGINEERING |
+| D-56 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | SHIP: A-32 (Go 1.27.4 for CI and the release), A-33 (the router trace hashes frames without the Go release's … |
 | D-56 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN exit: the PLAN report (08-reports/plan-report.md), with RK-5 for approval — accept one network basemap s… |
 | D-56 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The library's new name (D-54); go-ionomaps, go-hfprop, go-ionofield, go-propfield all free under branden-thom… |
 | D-57 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE TEST MARK GOES IN THE CARD'S CORNERS, AND THE BADGE KEEPS ITS LANE |
+| D-57 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | SHIP: GO-2026-6859 failed go-tuiMaps' nightly gate on main (run 43062707324) at both its scans, go1.27.3 and … |
 | D-57 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Clerical correction of D-45's evidence (go-tuiMaps D-75): D-45 recorded that go-tuiMaps v0.1.0 raises Changed… |
 | D-57 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Can the Broadcaster open the Propagation mode (BQ-F9; issue #25 asks for MUF on a Broadcaster map)? Observer … |
 | D-58 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | ONE DIAGNOSTICS WINDOW, COMPOSITED OVER WHICHEVER SURFACE IS ACTIVE |
+| D-58 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | SHIP: the local, git-ignored CLAUDE.md still names 0.19.0 as the release in flight at its session-start step … |
 | D-58 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | BUILD, F-176 seen a second time: TestSayVoiceOnDarwinNarratesHostileTextSafely killed at its 120 s bound in t… |
 | D-58 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Words for the Broadcaster's own map (AX-G); "Instead of the map" is Observer-only (modes/tty/setup_rows.go:25… |
 | D-59 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | ONE MASTHEAD, DRAWN BY BOTH SURFACES. "why the masthead different than the Observer Masthead?" It should not … |
 | D-59 | 0.16.0 | `0.16.0-broadcaster-ui/04-development/p4.5-build-log.md` | the console draws Observer's own masthead box. Corrected the same day: the first cut deviated from the mock a… |
+| D-59 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | SHIP: the debrief. |
 | D-59 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Cross-repo, go-tuiMaps v0.2.0 D-76 (found at L4.2): the loop's speed against the flash ceiling. The HUM LEAD … |
 | D-59 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Where the closure notice is "said" and how long it lasts (AX-I): on the station's voice it could go out on ai… |
 | D-60 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE MAIN TRACK IS DRAWN AS NAMED REGIONS — LIVE, UP NEXT, SCHEDULED, LINE UP — which is what the reference's … |
+| D-60 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REFLECT: the debrief (08-reports/reflect-report.md) presented, with A-35 and A-36 for veto. |
 | D-60 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | BUILD, before W1: the plan builds W1–W7 on go-tuiMaps v0.1.0 and W9 then moves to v0.2.0; every v0.2.0 featur… |
 | D-60 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The Broadcaster's 44-row floor (AX-L): FR-2.7 let it rise if the readout did not fit (modes/tty/broadcaster.g… |
 | D-61 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE PRIORITY RAIL IS INVISIBLE UNTIL IT HAS SOMETHING. "the PRIORITY Rail label ONLY shows up when a priority… |
@@ -2049,7 +2054,9 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-33 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.1 to W2.3's choices: (1) a chip [P] Propagation On / Off between R's and O's under the map, as R's says it… |
 | A-34 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The promote test reads the last real sweep's log at the commit that recorded it. PR #39's hosted runs failed … |
 | A-34 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.5's choices: (1) the acknowledgement is a window of its own, stacked over the map (modalPropAck), as Detai… |
+| A-35 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The libraries' gates under D-57. go-tuiMaps: every module's go directive is 1.26.11 and the hosted gate runs … |
 | A-35 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W4.1's choices: (1) the first update starts when the acknowledgement closes, or at once when none is due (mod… |
+| A-36 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The CHANGELOG dates 0.19.5 by its release. Its heading said 2026-11-10, the day it was written; the release w… |
 | A-36 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W3.1 and W2.4's choices: (1) the hour on screen is drawn as go-tuiMaps' MUFGrid or FoF2Grid, its own preset a… |
 | A-37 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-157 to D-160's details: (1) the menu row is named "Radio Propagation" (D-158), last of the tints, and shown… |
 | A-38 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-163's details: (1) the blank row after the legend is the picture's own status row, blank when the picture i… |
