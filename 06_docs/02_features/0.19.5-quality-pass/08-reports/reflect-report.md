@@ -4,14 +4,14 @@ date: 2026-11-11
 phase: REFLECT
 sev: SEV-0
 authority: HUM LEAD
-status: "PRESENTED to the HUM LEAD 2026-11-11, for approval (D-59)"
+status: "APPROVED by the HUM LEAD 2026-11-12 (D-60)"
 ---
 
 # REFLECT — watchpost 0.19.5, the quality and performance pass
 
 The regularly scheduled *.5 pass (D-1): no new features, five goals, six days (the brief on 2026-11-05,
 the release on 2026-11-11). Read it with:
-- the decision log, `../02-analysis/rulings.md` (D-1 to D-59, A-1 to A-36);
+- the decision log, `../02-analysis/rulings.md` (D-1 to D-60, A-1 to A-36);
 - what each batch built, `../04-development/build-log.md` (53 batches, then SHIP);
 - the red teams, `red-team-plan.md` and `red-team-review.md`, and M5's grade, `m5-blind-review.md`.
 
@@ -156,6 +156,6 @@ alone; most were not, as each added the check that holds it.
 ## Where this is kept
 
 - This page, linked from `../00-REQUIRED-READING.md`.
-- The rulings: D-56 to D-59, A-35 and A-36.
+- The rulings: D-56 to D-60, A-35 and A-36.
 - The agent's durable memory: L2, L4, L6 and L7, and the state of 0.19.6.
-- `06_docs/quality-observations.md`, which receives L1 to L5 once this page is approved.
+- `06_docs/quality-observations.md`, which holds L1 to L5 as the shapes that travel.

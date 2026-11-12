@@ -1279,6 +1279,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-59 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Cross-repo, go-tuiMaps v0.2.0 D-76 (found at L4.2): the loop's speed against the flash ceiling. The HUM LEAD … |
 | D-59 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Where the closure notice is "said" and how long it lasts (AX-I): on the station's voice it could go out on ai… |
 | D-60 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE MAIN TRACK IS DRAWN AS NAMED REGIONS — LIVE, UP NEXT, SCHEDULED, LINE UP — which is what the reference's … |
+| D-60 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REFLECT: the debrief (08-reports/reflect-report.md) presented, with A-35 and A-36 for veto. |
 | D-60 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | BUILD, before W1: the plan builds W1–W7 on go-tuiMaps v0.1.0 and W9 then moves to v0.2.0; every v0.2.0 featur… |
 | D-60 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The Broadcaster's 44-row floor (AX-L): FR-2.7 let it rise if the readout did not fit (modes/tty/broadcaster.g… |
 | D-61 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE PRIORITY RAIL IS INVISIBLE UNTIL IT HAS SOMETHING. "the PRIORITY Rail label ONLY shows up when a priority… |

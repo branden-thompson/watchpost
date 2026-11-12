@@ -3183,3 +3183,46 @@ one. watchpost holds it locally as AP-OK-01 (`tools/authoring/okdiscard.go`, by 
 tree has no types). **The request upstream:** P10-07 checks a discarded comma-ok bool from a function
 in the module, with type information (`go/types` or an analyzer), so no name heuristic is needed.
 
+
+## 0.19.5 — five shapes from the release's REFLECT (2026-11-12)
+
+The retrospective is `02_features/0.19.5-quality-pass/08-reports/reflect-report.md` (D-60). These are
+its shapes that travel.
+
+### An instrument too slow to run is an instrument that is not run
+
+The full mutant sweep took most of a day, so 0.18.0, 0.19.0 and 0.19.3 shipped without one, and four
+tests quietly stopped killing m250, m334, m389 and m402. **The tell:** a check whose last recorded run
+is older than the last release. **The rule:** a full sweep runs every release, and the release check
+refuses a tag when `06_docs/mutants/verdicts/since-v<last tag>.log` is missing or judged a commit older
+than the release branch (L1). Making it affordable came first: killer-first on four workers took it
+from 19 hours 36 minutes to 57 minutes (D-39).
+
+### A check that reads the outside world is green only for the moment it ran
+
+PR #37's `make vuln` passed; GO-2026-6859 was published before the tag, and the release job stopped on
+it (A-32). **The tell:** a check whose answer can change with no commit (an advisory database, a
+remote, a clock), trusted from an earlier run. **The rule:** such a check runs again within the hour
+before the tag; the release job's own run stays as the backstop (L2).
+
+### A golden that captures the build environment fails on the wrong change
+
+The router trace hashed frames that show `runtime.Version()`, so a toolchain bump broke a test about
+routing (A-33). **The tell:** a golden or digest over output that includes a version, a path, a host
+or a time. **The rule:** a golden normalises what the build environment supplies before it compares
+(L3).
+
+### A test that cites a work-branch commit fails once the branch is gone
+
+The promote test asked git for a commit on `feature/quality-pass`, which left every clone when that
+branch was squash-merged and deleted (A-34). go-tuiMaps' `TestThePlanRecordsTheMapCommitItFollows`
+has the same shape, kept alive only by its `v0.2.0-rc` tags. **The tell:** a hash in a test that is
+not on `main` or a release tag. **The rule:** a test reads a record at the commit that recorded it, or
+at a commit on `main` or a tag; held when the tests pass in a `--single-branch` clone of `main` (L4).
+
+### A tool's change is gated by a run of that tool
+
+`GOTMPDIR`, set for the sweep, broke the sweep's baseline, and `make verify`, which does not run the
+sweep, stayed green (batch 52 reverted it). **The tell:** a change to a tool's script or environment
+whose gate never invokes the tool. **The rule:** a change under `06_docs/mutants/` or to the sweep's
+environment runs a `MUTANT_ONLY` sample before its commit (L5).

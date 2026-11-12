@@ -82,6 +82,7 @@ Esure code is approachable and understandable for Junior-level human maintainers
 | D-57 | 2026-11-11 | SHIP: GO-2026-6859 failed go-tuiMaps' nightly gate on `main` (run 43062707324) at both its scans, go1.27.3 and the floor go1.26.10 (fixed in go1.27.4 and go1.26.11); go-ionomaps' nightly passed, its library reaching no `net/http`. Whether to move both gates as watchpost moved under A-32. | "proceed with all necessary steps to ensure tuimaps and ionomaps pass their builds" | **Both libraries' gates are made to pass on `main`, each through its own pull request; the choices are A-35.** |
 | D-58 | 2026-11-11 | SHIP: the local, git-ignored `CLAUDE.md` still names 0.19.0 as the release in flight at its session-start step 6. | "update Claude.md as necessary" | **`CLAUDE.md`'s step 6 names the 0.19 line's record and 0.19.5's required reading as they are now.** |
 | D-59 | 2026-11-11 | SHIP: the debrief. | "PRESENT full debrief once all follow up activities completed" | **The debrief is presented once D-57 and D-58 are done.** |
+| D-60 | 2026-11-12 | REFLECT: the debrief (`08-reports/reflect-report.md`) presented, with A-35 and A-36 for veto. | "Report approved" | **The REFLECT is approved, and A-35 and A-36 stand, no veto being given. L1 to L5 go to `06_docs/quality-observations.md`. Recommendation 3, whether watchpost scans at its floor (raising it to go 1.26.11), is asked at 0.19.6's DISCOVER.** |
 
 ## Agent decisions (A-n, D-13)
 
