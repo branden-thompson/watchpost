@@ -96,7 +96,7 @@ the anchors).
 | C-10 | **D-2.** RM: D-2 proper cannot conform (every step changes what is heard, RM-3); AS: the Producer cut waits for D-2. | **D-2 proper is outside 0.19.6, by D-2's own condition**, put to the HUM LEAD to confirm (question 7). RM's slices 1-4 are in: F-158's owed test, the voice cluster moved whole, the vocabulary corrected, and RM-1's table recorded. | D-2 is in scope "only where it conforms". RM-3 shows Observer's duck would move from once per card to once per drain, which `TestNothingDucksWhenTheBedIsNotCarrying` and `TestTheBedIsDippedOnceForAWholeDrain` pin. |
 | C-11 | **FULL TDD for a commit that only moves code** (RX's question). | **The first failing test is the batch-0 instrument**: on a half-done move, the test inventory or the union declaration check fails. Each move commit shows that failure on a deliberately partial move before it lands. | A move adds no behaviour to test first. The instruments are what a move can break, and INST-2 asks to see them fail. |
 | C-12 | **Re-vetting at 692 mutants.** 0.19.5 A-14 says every re-pointed mutant is re-vetted by hand; RX-11 says that is not credible at this scale. | **The re-vet is a scoped sweep** (`MUTANT_ONLY` over the batch's mutants, `MUTANT_KILLERS` from the baseline), compared mutant by mutant with A-3's record by a comparator. | The scoped sweep requires the catch to repeat and checks attribution, which is stronger than a hand vet (RX-11). |
-| C-13 | **P10 for new packages.** TG: inherit the parent's density row, or each its own; RC: ratify floors as one list at BUILD exit or per batch; TG-5: 16 file-keyed rows break `verify` the moment their file moves. | **Put to the HUM LEAD (question 6)**, with a recommendation: ratify the whole re-key table at PLAN exit (it is fixed by this map), and each new package's own density floor as one list at BUILD exit (0.19.0 D-264). | P10's ledger changes only by the HUM LEAD's ratification (D-4, K-21). Inheriting a parent's row would let a new package ride a floor nobody measured for it (TG-5). |
+| C-13 | **P10 for new packages.** TG: inherit the parent's density row, or each its own; RC: ratify floors as one list at BUILD exit or per batch; TG-5: 16 file-keyed rows break `verify` the moment their file moves. | **D-10: the whole re-key table, the seven re-proved rows with it, ratified at PLAN exit; each new package's own density floor as one list at BUILD exit (0.19.0 D-264); `make p10` after every batch (A-7).** | P10's ledger changes only by the HUM LEAD's ratification (D-4, K-21). Inheriting a parent's row would let a new package ride a floor nobody measured for it (TG-5). |
 
 ## 4. What must exist before any code moves (batch 0)
 
@@ -164,7 +164,7 @@ Each is asked one at a time, with its evidence, options, recommendation and stro
 counter-argument.
 
 5. **The map's package move (C-1):** answered, D-9: 2a and 2b.
-6. **P10 for the split (C-13):** when the re-keys and the new packages' floors are ratified.
+6. **P10 for the split (C-13):** answered, D-10.
 7. **D-2 (C-10):** confirm that D-2 proper is outside 0.19.6 by its own condition, and that RM's
    questions (Observer's duck, the severe read's place, STOP and STANDBY) are owed to the release
    that builds F-73.

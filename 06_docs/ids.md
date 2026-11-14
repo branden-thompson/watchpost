@@ -1018,6 +1018,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-10 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | the mock's coordinates, ruled 2026-09-09 |
 | D-10 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DC-4: five places say platform/render is the only package that may import go-studs, so the table kit can be s… |
 | D-10 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | go-studs stays behind platform/render, enforced |
+| D-10 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | When the P10 ledger changes the split forces are ratified (C-13; TG-5, lens-TG-tooling-gates.md:204-224). 16 … |
 | D-10 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-10 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Radar loops |
 | D-10 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | What anchors go-giro-data's brief: (A) host requirements from watchpost's DISCOVER, fidelity to KC2G as its m… |
@@ -1992,6 +1993,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-6 |  | `severe-alerts-modals/08-reports/project-brief.md` | Performance & resource (standing lens) — memo design (R-10) across the modal family; open-modal per-tick cost… |
 | A-6 |  | `severe-alerts-modals/08-reports/red-team-plan.md` | Empty tabs still render on a calm day |
 | A-7 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The checks that let things drift (stream F): SN-02 extended to types, values and struct fields (DC-1, JR-2); … |
+| A-7 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | P10 cadence and the pilot (D-10; TG-5). make p10 runs at the end of every 0.19.6 batch and its figures go in … |
 | A-7 |  | `multi-voice-support/01-objectives/objectives.md` | The System Voice sentinel cannot be named on modern macOS |
 | A-7 |  | `multi-voice-support/08-reports/project-brief.md` | Tones — one owner; per-class presets (Warnings · Watches · Advisories/Statements · Quakes · Tropical), their … |
 | A-7 |  | `multi-voice-support/08-reports/red-team-discover.md` | Medium |
