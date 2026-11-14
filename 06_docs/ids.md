@@ -916,6 +916,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-2 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | (OQ-2) — Root architecture |
 | D-2 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Which repositories the pass covers: watchpost, and its pinned libraries go-ionomaps v0.1.0 and go-tuiMaps v0.… |
 | D-2 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | watchpost swept; library findings become library patches |
+| D-2 | 0.19.6 | `0.19.6-re-architecting/02-analysis/lens-AS-app-seams.md` | happens inside one package |
 | D-2 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Asked with D-1: option B. |
 | D-2 |  | `multi-voice-support/08-reports/red-team-discover.md` | Critical |
 | D-2 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Branch name |
@@ -1981,6 +1982,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-5 |  | `severe-alerts-modals/08-reports/project-brief.md` | Colour tokens — ~~a theme-independent Blue sibling to TickerRedBG/OrangeBG/YellowBG~~ (v1.2.0: wrong — Ticker… |
 | A-5 |  | `severe-alerts-modals/08-reports/red-team-plan.md` | 30 tasks vs a 13-task two-tab slice |
 | A-6 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | follow-ups.md (DC-3, DC-10): closed rows are deleted per the file's own rule, with any measurement worth keep… |
+| A-6 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-6's question miscounted the mutants (found by lens RX, RX-1). It said 255 anchor in the two packages (145 m… |
 | A-6 |  | `multi-voice-support/01-objectives/objectives.md` | say -v <unknown> exits 0 on current macOS |
 | A-6 |  | `multi-voice-support/08-reports/project-brief.md` | Maritime report — content from the marine snapshot (buoy obs, tides, currents), script parts, absence line, i… |
 | A-6 |  | `multi-voice-support/08-reports/red-team-discover.md` | Medium |
