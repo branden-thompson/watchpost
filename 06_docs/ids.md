@@ -1006,6 +1006,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-9 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | (X-2) — the transcription is adopted as the mock of record |
 | D-9 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DEF-5 (DC-2): [radio] mode ("synth" or "relay") is not checked at load. An unknown word plays Synth silently … |
 | D-9 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | an unknown [radio] mode is refused at load |
+| D-9 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Whether the map's package move (package-map.md §2, step 2b; C-1) is in 0.19.6. Step 2a moves the map's state … |
 | D-9 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-9 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Radar source |
 | D-9 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PS-2's metrics: M4 path agreement, M5 answerable without leaving, M5b the same in words (no picture), G1 shar… |

@@ -53,9 +53,9 @@ the anchors).
   - **2a, in place:** the map's state and logic move onto a map model type *inside* `modes/tty`.
     Every whole-model test still compiles in its package and pins what it pins; tests change only
     identifiers (RX-13's prep commit). This is where principle 2's largest gain is (JN-1, TS-5).
-  - **2b, the package move:** only after 2a, and only if the straddling tests can be served by
-    production API (§3, C-3). TS-13's strongest counter-argument applies here: 122 straddling test
-    files. 2b is the fork in question 5.
+  - **2b, the package move (in, D-9):** after 2a. The straddling tests are served by the map
+    package's production API or move with the code (§3, C-3); TS-13's 122 straddling test files are
+    the work it sizes, re-measured after 2a.
 
 ### `app` (AS Map I)
 
@@ -84,7 +84,7 @@ the anchors).
 
 | # | The disagreement | Disposition | Why |
 |---|---|---|---|
-| C-1 | **The map's package move.** TS recommends it (Map II); RX asks whether it belongs in 0.19.6 at all (201 of 203 map-Propagation killers straddle). | **Step 2a in; 2b put to the HUM LEAD (question 5)** with a recommendation. | 2a gives the ownership gain with the net untouched, because the tests stay in-package. 2b's cost is the tests, and only the HUM LEAD can weigh rewritten pins against a smaller package. |
+| C-1 | **The map's package move.** TS recommends it (Map II); RX asks whether it belongs in 0.19.6 at all (201 of 203 map-Propagation killers straddle). | **Steps 2a and 2b are both in (D-9).** | 2a gives the ownership gain with the net untouched, because the tests stay in-package. 2b's cost is the tests; the HUM LEAD weighed it against the smaller package and the compiler-held boundary and took both (D-9). C-3 still binds 2b's tests. |
 | C-2 | **Mutant counts.** TS 18/66, AS 110, brief 255, against RX/PB/TG 692. | **692** (A-6), with the per-package figures in §1. | Recounted against the sweep's own attribution, which reads both quote styles. |
 | C-3 | **Where tests go.** GP: tests move with their code; RX: straddlers stay at the top, unchanged; RX-4e and TS-3: exported test hooks are possible. | **RX's two-layer net, with GP's helper package for pure helpers only, and no exported test hook.** A seam that cannot be served without a test-only export is not taken in 0.19.6. | Principle 4 is proved only if a pin's assertions do not change (RX-4). A test-only export widens the API against principle 2 (JN P2-5, target 0). |
 | C-4 | **Aliases.** TS: the root could keep aliases for `app`. GP: none may survive the release. | **`app` imports the new paths. An alias is a bridge inside one batch, gone before the batch closes.** | GP-11, P-m. A surviving alias is a second name for one thing, against principle 2. |
@@ -152,7 +152,7 @@ or re-ruled, none with no evidence.
 2. RM's slice 1 (F-158's test) and slice 3 (the vocabulary), which change no production behaviour.
 3. `modes/tty`: the kit, then the console.
 4. `app`: the kit, then the deck whole (RM slice 2), then the maps.
-5. `modes/tty`: the map, 2a; then 2b if question 5 says so.
+5. `modes/tty`: the map, 2a; then 2b (D-9), its test work sized by the straddle count re-measured after 2a.
 6. The closing sweep, the docs and the atlas, REVIEW.
 
 The console and the deck go first because their nets support a move best (RX-3: the console's
@@ -163,7 +163,7 @@ killers sit in its own test files; the deck moved whole keeps 64 of its 101 kill
 Each is asked one at a time, with its evidence, options, recommendation and strongest
 counter-argument.
 
-5. **The map's package move (C-1):** 2a only, or 2a and 2b.
+5. **The map's package move (C-1):** answered, D-9: 2a and 2b.
 6. **P10 for the split (C-13):** when the re-keys and the new packages' floors are ratified.
 7. **D-2 (C-10):** confirm that D-2 proper is outside 0.19.6 by its own condition, and that RM's
    questions (Observer's duck, the severe read's place, STOP and STANDBY) are owed to the release
