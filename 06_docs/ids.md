@@ -902,6 +902,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-1 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | (OQ-1) — Mode-switch safety |
 | D-1 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Which version the pass ships as. watchpost is at 0.19.3; the last such pass was 0.9.5, straight after 0.9.4. … |
 | D-1 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | 0.19.5; 0.19.4 left free for a hotfix |
+| D-1 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | What 0.19.6 re-architects. modes/tty (31,346 lines, 39,637 of tests, 88 files) and app (20,184 lines, 28,477 … |
 | D-1 |  | `multi-voice-support/08-reports/red-team-discover.md` | Critical |
 | D-1 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Fold the identity-guard commit 17e40d4 into 0.18.0 or ship alone |
 | D-1 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | 'watchpost-0.19.0' + 'go-giro-data' / LEVEL-1; SEV-0; FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL … |
@@ -915,6 +916,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-2 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | (OQ-2) — Root architecture |
 | D-2 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Which repositories the pass covers: watchpost, and its pinned libraries go-ionomaps v0.1.0 and go-tuiMaps v0.… |
 | D-2 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | watchpost swept; library findings become library patches |
+| D-2 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Asked with D-1: option B. |
 | D-2 |  | `multi-voice-support/08-reports/red-team-discover.md` | Critical |
 | D-2 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Branch name |
 | D-2 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | go-giro-data: visibility and licence |
@@ -927,6 +929,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-3 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | (OQ-3) — Key bindings |
 | D-3 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | How DISCOVER surveys about 100,000 lines of Go (112,000 of tests) in 390 files. Options: five read-only lens … |
 | D-3 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | five lens agents; every finding checked against the code |
+| D-3 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Asked with D-1: option C. |
 | D-3 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-3 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Scope and sequencing |
 | D-3 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How go-tuiMaps' changes run |
@@ -1916,6 +1919,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | ID | Release | Where | Subject |
 |---|---|---|---|
 | A-1 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Names: the record is 06_docs/02_features/0.19.5-quality-pass/, the work branch feature/quality-pass, cut from… |
+| A-1 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Names: the record is 06_docs/02_features/0.19.6-re-architecting/, the work branch feature/re-architecting, cu… |
 | A-1 |  | `multi-voice-support/01-objectives/objectives.md` | Every voice speaks at 22 050 Hz |
 | A-1 |  | `multi-voice-support/08-reports/project-brief.md` | Role model + resolution — the role tree, inheritance, the config shape (additive keys under [radio]; voice st… |
 | A-1 |  | `multi-voice-support/08-reports/red-team-build-round3.md` | The ctrl+d window's tail is unreachable by any key at 24 rows, at every width, in a release build. All nav ro… |
@@ -1924,6 +1928,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-1 |  | `severe-alerts-modals/08-reports/project-brief.md` | Field inventory per source — exactly what each feed carries that the parsers drop (the COV denominator) |
 | A-1 |  | `severe-alerts-modals/08-reports/red-team-plan.md` | Updated = publish time; a dead source republishes with a fresh stamp; a calm day freezes it |
 | A-2 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | P10 written down (JR-10): 06_docs/code-standards.md gains a section with one paragraph per P10 rule: what it … |
+| A-2 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The sweep finds its killers after a release. make mutant-verdicts reads the last killers from 06_docs/mutants… |
 | A-2 |  | `multi-voice-support/01-objectives/objectives.md` | All six Piper models are 63 201 294 bytes |
 | A-2 |  | `multi-voice-support/02-analysis/voice-architecture.md` | Per-section voices inside one broadcast |
 | A-2 |  | `multi-voice-support/08-reports/project-brief.md` | Per-section voices in one broadcast — voice in the cache key, per-segment voice at render, the Handoff line a… |
@@ -1939,6 +1944,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-2.5 |  | `multi-voice-support/02-analysis/voice-architecture.md` | Render-ahead and concurrency |
 | A-2.6 |  | `multi-voice-support/02-analysis/voice-architecture.md` | Composition order, and where maritime slots (OQ-12) |
 | A-3 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The program's shape as built (D-15, JR-6): a current "shape of the program" diagram goes in a new docs/archit… |
+| A-3 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The baseline sweep (0.19.5 REFLECT recommendation 1). Run on main at e57afeaf before any code moves, with the… |
 | A-3 |  | `multi-voice-support/01-objectives/objectives.md` | Piper 2023.11.14 loads the model once and reads utterances line by line from stdin |
 | A-3 |  | `multi-voice-support/02-analysis/voice-architecture.md` | The narration seam |
 | A-3 |  | `multi-voice-support/08-reports/project-brief.md` | Narration seam — role on the speaker; render/tone resolving by role; the tone's rate from the role's voice; c… |
