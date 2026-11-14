@@ -992,6 +992,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-8 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | and D-9 — the last two rulings, 2026-09-09 |
 | D-8 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DR-4: first-run Setup drops an existing entry as "the same place" when its ZIP matches (non-empty) or its coo… |
 | D-8 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | Setup uses snapshot.PlaceID |
+| D-8 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Whether feature/re-architecting's history is rewritten. The lenses' commit (1f9a34e7, pushed) carried, in thr… |
 | D-8 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-8 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Scale bounds (host overrides) |
 | D-8 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PS-1's metrics: M1 reach agreement, M2 answerable from the station, M3 told when it closes, G1 station cost, … |
