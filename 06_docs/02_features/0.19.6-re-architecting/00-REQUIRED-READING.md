@@ -21,7 +21,7 @@ Director's step may come with it, where it holds to the principles (D-2). Charm 
 | | |
 |---|---|
 | Branch | `feature/re-architecting`, cut from `main` at `e57afeaf` (A-1) |
-| Phase | **DISCOVER**, opened 2026-11-14. The baseline sweep ran on `e57afeaf` before any code moved: 1,051 of 1,058 caught, the 7 survivors the kept equivalents (A-3) |
+| Phase | **DISCOVER**, opened 2026-11-14; LEVEL-1, SEV-0, HUMAN LEAD, the full directive set (D-4). The baseline sweep ran on `e57afeaf` before any code moved: 1,051 of 1,058 caught, the 7 survivors the kept equivalents (A-3) |
 | Rulings | `02-analysis/rulings.md`, every ruling the moment it is made; minor ones as A-n rows for veto |
 | Previous release | 0.19.5, shipped; its REFLECT is `../0.19.5-quality-pass/08-reports/reflect-report.md` (0.19.5 D-60) |
 | Follow-ups | `06_docs/follow-ups.md` only |

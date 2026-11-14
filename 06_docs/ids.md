@@ -941,6 +941,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-4 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | (OQ-4) — Minimum size |
 | D-4 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The brief (01-objectives/project-brief.md): its problem statement, M1 to M5 and their targets. M2 as drafted:… |
 | D-4 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | brief approved, M2 stretched: 80 / 90 / 140 KB a beat |
+| D-4 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | How 0.19.6 is classified. It moves about 51,500 lines of code and 68,000 of tests in the two packages that ca… |
 | D-4 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-4 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Posture |
 | D-4 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | 0.19.0's scope and order |
