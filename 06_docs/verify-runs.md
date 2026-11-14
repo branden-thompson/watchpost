@@ -248,3 +248,5 @@ says exactly what passed.
 | 2026-11-14T12:49:32Z | a80b6d2a | d6fb8499ac7d | verify-docs | green | 139 |
 | 2026-11-14T12:57:42Z | 767d121c | ef69581e3205 | verify-docs | green | 144 |
 | 2026-11-14T13:30:12Z | fb338f4a | 4c7837feaf3c | verify-docs | green | 147 |
+| 2026-11-14T13:35:24Z | 1f9a34e7 | f23955ce3b8d | verify-docs | FAILED (exit 2) | 139 |
+| 2026-11-14T13:38:23Z | 1f9a34e7 | 9846c25402da | verify-docs | green | 143 |
