@@ -955,6 +955,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-5 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | (OQ-5) — Operator authority over the Director |
 | D-5 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | When the two confirmed shipped defects are fixed. DEF-1: backspace in the Broadcaster's Line-Up Request windo… |
 | D-5 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | DEF-1 and DEF-2 fixed in batch 1 |
+| D-5 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Whether the local, git-ignored CLAUDE.md's session-start step 6 (CLAUDE.md:35-48) now names 0.19.6's required… |
 | D-5 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-5 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Directive set |
 | D-5 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Branch names |
@@ -966,6 +967,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-6 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | (OQ-6) — The shared/unique settings split |
 | D-6 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DEF-3 (DR-2): under metric the radio says "temperature 23 degrees Celsius" for current conditions (domains/ra… |
 | D-6 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | metric temperatures all say "degrees Celsius" |
+| D-6 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | How DISCOVER surveys modes/tty and app. 362 of their 363 test files are in-package (white-box), so a move bre… |
 | D-6 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-6 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Problem statement |
 | D-6 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Whose problem anchors the MUF work: (A) the Broadcaster operator relaying on amateur HF, (B) any HF operator … |
@@ -977,6 +979,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-7 | 0.16.0 | `0.16.0-broadcaster-ui/01-objectives/project-brief.md` | (OQ-7) — Documentation folders |
 | D-7 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DR-3: the voice's name in the identity lines. The live owner synth.spokenName (domains/radio/synth/source.go:… |
 | D-7 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | the voice's name drops its language suffix |
+| D-7 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Given with D-6, unasked: how the lenses' disagreements reach the HUM LEAD. |
 | D-7 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-7 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Most common use case |
 | D-7 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Lock the two problem statements as drafted |
@@ -1959,6 +1962,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-3.3 |  | `multi-voice-support/02-analysis/voice-architecture.md` | The arbiter is unchanged by roles |
 | A-3.4 |  | `multi-voice-support/02-analysis/voice-architecture.md` | Everything that assumes one voice — the [V] removal inventory (MVS-D-3) |
 | A-4 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DR-6 without a wording change: the alert window travels as a time.Duration from the domain row to the read, a… |
+| A-4 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The lenses' shared graph (D-6). A scratch tool built on go/packages with full type information writes, for ap… |
 | A-4 |  | `multi-voice-support/01-objectives/objectives.md` | A resident Piper process holds ~120–200 MB RSS |
 | A-4 |  | `multi-voice-support/02-analysis/piper-and-platform.md` | Piper cost |
 | A-4 |  | `multi-voice-support/08-reports/project-brief.md` | Piper cost (perf lens) — pre-install of assigned voices (R-9); whether a long-lived piper process per voice r… |
@@ -1968,6 +1972,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-4 |  | `severe-alerts-modals/08-reports/project-brief.md` | go-studs table fit for the mock (spaced headers, focus marks, numbering, rail) within the scrub/patch constra… |
 | A-4 |  | `severe-alerts-modals/08-reports/red-team-plan.md` | Parse memo + Keep fields are ruling-driven, deletable |
 | A-5 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Test helpers: the 13 copies of f64-style pointer helpers become new(v) (go 1.26), and the equalStrings/has/in… |
+| A-5 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Nine lenses, not five (D-6's licence). D-6's five (TS, seams in modes/tty; AS, seams in app; RX, the regressi… |
 | A-5 |  | `multi-voice-support/01-objectives/objectives.md` | The location's Marine block is non-nil iff the location is coastal per any of the four providers |
 | A-5 |  | `multi-voice-support/08-reports/project-brief.md` | UI — the Setup group ("Radio / Correspondents": the role tree, the tones); removing the [V] chooser; the Radi… |
 | A-5 |  | `multi-voice-support/08-reports/red-team-build-round3.md` | Non-ASCII furniture survives --ascii in four windows that have no --ascii scan: │ ×10 and ─ ×98 in Location D… |
