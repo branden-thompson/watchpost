@@ -92,8 +92,8 @@ the anchors).
 | C-6 | **A package size ceiling.** JN: no package over about 6,000 lines; TG asks for a ceiling. AS's deck is 9,297, TS's map ~10,500 and its root ~16,900. | **No 6,000 ceiling.** A ratchet: each package's size at 0.19.6's close is recorded and held by a test; a rise is an A-row with its reason. | A 6,000 ceiling forces the cuts AS-6 measured (57 unexported duck and band internals exported) and TS-7 dismissed. JN files P2-1 as a guard, not as evidence. The ratchet keeps D-1's reason for the release from quietly coming back (TG-14). |
 | C-7 | **New locks for the bed and the history** (AS-5: two new mutexes, new lock orders). | **No new lock in 0.19.6.** The deck's and maps' structs hold today's `lp.mu` by pointer. | The lock order stays exactly as built, so there is no concurrency change to prove. A lock of their own is a later, measured change. |
 | C-8 | **The pins' headroom.** PB recommends keeping ×1.05 and holding the measurement in the build log; PB's own counter-argument is that a rule held by discipline slips. | **A comparator holds it, not the log**: a test compares each pin's measurement with a recorded 0.19.6 baseline and fails on any rise (counts) or more than 0.1 % (bytes). The ×1.05 budgets stay for after the release. | 0.19.5's REFLECT: a control must run by itself, and L-rows that relied on memory failed. |
-| C-9 | **A Charm upgrade after the closing sweep** (GP's question). | **Not in 0.19.6.** | It is a separate risk with its own frame comparison. D-3's aim, easy upgrades, is served by the split keeping Charm's surface narrow (GP-8, P-j). Bubbles' place in D-3 is recorded as owed when Bubbles is proposed. |
-| C-10 | **D-2.** RM: D-2 proper cannot conform (every step changes what is heard, RM-3); AS: the Producer cut waits for D-2. | **D-2 proper is outside 0.19.6, by D-2's own condition**, put to the HUM LEAD to confirm (question 7). RM's slices 1-4 are in: F-158's owed test, the voice cluster moved whole, the vocabulary corrected, and RM-1's table recorded. | D-2 is in scope "only where it conforms". RM-3 shows Observer's duck would move from once per card to once per drain, which `TestNothingDucksWhenTheBedIsNotCarrying` and `TestTheBedIsDippedOnceForAWholeDrain` pin. |
+| C-9 | **A Charm upgrade after the closing sweep** (GP's question). | **Not in 0.19.6; a 0.19.7 candidate (A-8).** | It is a separate risk with its own frame comparison. D-3's aim, easy upgrades, is served by the split keeping Charm's surface narrow (GP-8, P-j). Bubbles' place in D-3 is recorded as owed when Bubbles is proposed. |
+| C-10 | **D-2.** RM: D-2 proper cannot conform (every step changes what is heard, RM-3); AS: the Producer cut waits for D-2. | **D-2 proper is outside 0.19.6, by D-2's own condition; it is 0.19.7 (D-11, A-8).** RM's slices 1-4 are in: F-158's owed test, the voice cluster moved whole, the vocabulary corrected, and RM-1's table recorded. | D-2 is in scope "only where it conforms". RM-3 shows Observer's duck would move from once per card to once per drain, which `TestNothingDucksWhenTheBedIsNotCarrying` and `TestTheBedIsDippedOnceForAWholeDrain` pin. |
 | C-11 | **FULL TDD for a commit that only moves code** (RX's question). | **The first failing test is the batch-0 instrument**: on a half-done move, the test inventory or the union declaration check fails. Each move commit shows that failure on a deliberately partial move before it lands. | A move adds no behaviour to test first. The instruments are what a move can break, and INST-2 asks to see them fail. |
 | C-12 | **Re-vetting at 692 mutants.** 0.19.5 A-14 says every re-pointed mutant is re-vetted by hand; RX-11 says that is not credible at this scale. | **The re-vet is a scoped sweep** (`MUTANT_ONLY` over the batch's mutants, `MUTANT_KILLERS` from the baseline), compared mutant by mutant with A-3's record by a comparator. | The scoped sweep requires the catch to repeat and checks attribution, which is stronger than a hand vet (RX-11). |
 | C-13 | **P10 for new packages.** TG: inherit the parent's density row, or each its own; RC: ratify floors as one list at BUILD exit or per batch; TG-5: 16 file-keyed rows break `verify` the moment their file moves. | **D-10: the whole re-key table, the seven re-proved rows with it, ratified at PLAN exit; each new package's own density floor as one list at BUILD exit (0.19.0 D-264); `make p10` after every batch (A-7).** | P10's ledger changes only by the HUM LEAD's ratification (D-4, K-21). Inheriting a parent's row would let a new package ride a floor nobody measured for it (TG-5). |
@@ -165,9 +165,8 @@ counter-argument.
 
 5. **The map's package move (C-1):** answered, D-9: 2a and 2b.
 6. **P10 for the split (C-13):** answered, D-10.
-7. **D-2 (C-10):** confirm that D-2 proper is outside 0.19.6 by its own condition, and that RM's
-   questions (Observer's duck, the severe read's place, STOP and STANDBY) are owed to the release
-   that builds F-73.
+7. **D-2 (C-10):** answered, D-11: nothing of D-2 in 0.19.6; D-2 proper, RM's three questions and
+   the other deferred changes are 0.19.7 (A-8).
 8. **0.19.5's REFLECT recommendation 3:** whether watchpost scans at its `go` floor and raises it to
    go 1.26.11 (it reverses 0.19.5 A-32's "floor stays").
 9. **The brief:** its problem statement and metrics for the four principles (§5), its scope (§2,
@@ -179,7 +178,7 @@ ratchet) are A-rows, put for veto with the brief.
 ## 8. Recorded, not asked now
 
 - RM's end-state notes (RM-1's table, RM-5: a pure Director step cannot hold the lock guarantees,
-  so D-2's end state keeps a small air-gate effector), for the release that takes D-2.
+  so D-2's end state keeps a small air-gate effector), for 0.19.7 (D-11).
 - RC-7's six places where the docs and the code already disagree (for example
   `where-things-happen.md:15`, one window, against the stack at `modes/tty/dashboard.go:1591`), fixed
   in the batch that moves the code they describe.

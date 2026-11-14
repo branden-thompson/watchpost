@@ -1030,6 +1030,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-11 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | (OQ-12) — THE MAIN TRACK IS THE ROTATION. My framing was wrong. |
 | D-11 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | JR-1: ruling IDs restart at D-1 every release, so 2,817 comment lines cite a bare D-n (103 name the release) … |
 | D-11 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | an ID index; new citations name the release |
+| D-11 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Whether D-2 proper is outside 0.19.6 (C-10; RM-2, RM-3, RM-6). Every step of it changes what is heard: Observ… |
 | D-11 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-11 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Structure across the two repositories |
 | D-11 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Lock go-giro-data's problem statement (PS-G) as drafted; its claim about "the maps published today" checked i… |
@@ -2001,6 +2002,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-7 |  | `severe-alerts-modals/08-reports/project-brief.md` | Location sort key readiness (deferred sort) — distance to the default location given HasPoint=false zone-only… |
 | A-7 |  | `severe-alerts-modals/08-reports/red-team-plan.md` | NFR-7/NFR-10 trace rows |
 | A-8 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DR-11: the four domain files that import platform/render only to sanitise text call platform/plaintext direct… |
+| A-8 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | What 0.19.7 takes as "any other deferred changes" (D-11). D-2 proper, as RM-6's five steps, with RM-1's table… |
 | A-8 |  | `multi-voice-support/01-objectives/objectives.md` | No coastal-waters forecast text is fetched today |
 | A-8 |  | `multi-voice-support/02-analysis/piper-and-platform.md` | Platform parity (macOS) |
 | A-8 |  | `multi-voice-support/08-reports/project-brief.md` | Platform parity — the macOS say voice set vs the Piper catalogue; portability of per-role names; the ear test… |
