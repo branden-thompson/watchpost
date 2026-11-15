@@ -1119,6 +1119,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-19 |  | `watchpost-cli/08-reports/project-brief.md` | Mock behavior rulings |
 | D-20 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | D-12 AMENDED. Two radii, two different mechanisms. My unification was wrong. |
 | D-20 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The plan red team's shape, before the PLAN gate: blind read-only reviewers given the brief, rulings, lens fil… |
+| D-20 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-5's question at PLAN: CLAUDE.md's startup step 6 names 0.19.5's required reading, and says that when 0.19.6… |
 | D-20 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | The map under --ascii (wave-1 synthesis §5: R-7.1 vs TestASCIIFramesCarryNothingButASCII, golden_test.go:173) |
 | D-20 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | go-giro-data's path after wave 1: A (KC2G's grid, permission), A′ (GIRO IRTAM coefficients: free tier 3 days … |
 | D-20 |  | `watchpost-cli/08-reports/project-brief.md` | B1 exit approved; 15 pending P10 exemptions RATIFIED (density pattern x8, analyzer false-positives x2, sched … |
