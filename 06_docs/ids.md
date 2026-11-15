@@ -1074,6 +1074,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-16 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | (OQ-8) — A hard cap, plus population-ordered admission |
 | D-16 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DC-8: two Makefile paths are documented as moving with the release and never moved: HYGIENE_KEEP keeps the 0.… |
 | D-16 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | the Makefile's release paths are derived |
+| D-16 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | C-7, how livePipelines' one mutex (app/dashboard.go:802) is held once the deck and the maps leave app (DISCOV… |
 | D-16 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Minimum map size |
 | D-16 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Approve both project briefs (watchpost 0.19.0, go-giro-data) as presented, closing intake |
 | D-16 |  | `watchpost-cli/08-reports/project-brief.md` | Architecture & roadmap approved (P-1: no internal/ wrap v0.1; P-2: omit diffs[] from JSON v1.0; P-3: single g… |

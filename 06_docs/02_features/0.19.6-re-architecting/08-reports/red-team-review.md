@@ -80,7 +80,7 @@ Everything else is the agent's, as an A-row for veto or a record fix.
 1. **The test rule** (RR F1, CQ F-15, BQ 4.1; PH H-6 is a case of it). **Ruled D-14: A.** C-3, D-9 and M7 cannot all
    hold for the console batch: assertions unchanged, no test-only export, and the seam taken.
 2. **Where the memo guard engine lives, and P10-09** (CQ F-1). **Ruled D-15: A.**
-3. **The shared lock (C-7)** (CQ F-4, RR F9). AS asked for it to be ruled, not taken as an A-row.
+3. **The shared lock (C-7)** (CQ F-4, RR F9). AS asked for it to be ruled, not taken as an A-row. **Ruled D-16: A.**
 4. **The package-size ratchet (C-6)** (X-2).
 5. **The brief's amendment** (BQ, RR, DQ and PH, below). The brief is approved (D-13), so changing
    it is a ruling.
@@ -124,7 +124,7 @@ Written in `../02-analysis/rulings.md`:
   Settings rows live, and which way the import runs. The PLAN pilot settles it.
 - **The GOOS seam after the deck moves** (H-6): its options go to the HUM LEAD at PLAN, under
   fork 1's rule.
-- **The lock inventory, if fork 3 keeps the shared lock** (CQ F-4, RR F9). Every `lp.mu` section
+- **The lock inventory, now that D-16 keeps the shared lock** (CQ F-4, RR F9). Every `lp.mu` section
   that touches a moving field, by file and package. AS-5 missed `lp.land`, `lp.path` and
   `inject.go`.
 - **F-158's owed test:** its assertion and path, written against the deck's entry point (RR F13).
