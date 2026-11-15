@@ -3,7 +3,7 @@ title: "0.19.6 DISCOVER report"
 date: 2026-11-15
 phase: DISCOVER
 sev: SEV-0
-status: "For the HUM LEAD: DISCOVER exit"
+status: "DISCOVER exit approved (D-19)"
 ---
 
 # 0.19.6 DISCOVER report

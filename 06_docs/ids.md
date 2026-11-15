@@ -1112,6 +1112,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-18 |  | `watchpost-cli/08-reports/project-brief.md` | G-9(a): report --every ratified as R-12d surface (amends OQ-18 — plain-text live mode in v0.1; JSON --watch s… |
 | D-19 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | Every settings recommendation approved |
 | D-19 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DISCOVER exit (08-reports/discover-report.md) and the veto batch A-1 to A-11. Options: exit with no vetoes; e… |
+| D-19 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | DISCOVER exit (../08-reports/discover-report.md): the brief approved and amended (D-13, D-18), the package ma… |
 | D-19 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Issue of record |
 | D-19 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PS-G's claim tested by the wave-1 source survey (wave1-findings.md): refuted for a regional map (INGV eSWua, … |
 | D-19 |  | `watchpost-cli/04-development/b1-build-log.md` | (mock rulings) captured in 09-view-mocks/design-decisions.md; mocks arrived early (M-V1/2/3/5/6 + radio) — B3… |
