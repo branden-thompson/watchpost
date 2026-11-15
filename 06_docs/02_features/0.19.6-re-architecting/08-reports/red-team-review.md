@@ -77,7 +77,7 @@ Everything else is the agent's, as an A-row for veto or a record fix.
 
 ## Put to the HUM LEAD, one at a time
 
-1. **The test rule** (RR F1, CQ F-15, BQ 4.1; PH H-6 is a case of it). C-3, D-9 and M7 cannot all
+1. **The test rule** (RR F1, CQ F-15, BQ 4.1; PH H-6 is a case of it). **Ruled D-14: A.** C-3, D-9 and M7 cannot all
    hold for the console batch: assertions unchanged, no test-only export, and the seam taken.
 2. **Where the memo guard engine lives, and P10-09** (CQ F-1).
 3. **The shared lock (C-7)** (CQ F-4, RR F9). AS asked for it to be ruled, not taken as an A-row.

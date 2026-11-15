@@ -1058,6 +1058,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-14 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | (OQ-10) — The credits read is NOT a licence obligation |
 | D-14 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | JR-7: NewDashboard (modes/tty/dashboard.go:958, its literal at :1000) sets 39 fields in one 1,410-character l… |
 | D-14 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | NewDashboard built from grouped helpers |
+| D-14 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | How a test that crosses a new package boundary may change (DISCOVER red team fork 1; RR F1, CQ F-15, BQ 4.1, … |
 | D-14 |  | `multi-voice-support/08-reports/red-team-discover.md` | Minor |
 | D-14 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Codify D-13 as an executable check |
 | D-14 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Close #18, #23, #9, #24 now with evidence comments, or through the 0.19.0 release PR. Evidence: #18 domains/r… |
