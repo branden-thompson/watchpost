@@ -1081,6 +1081,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-17 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | (OQ-13) — Authorized to render the STANDBY wording variants |
 | D-17 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DR-7(b): the 16-point compass abbreviation table is written three times (domains/seismic/usgs/usgs.go:338, do… |
 | D-17 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | one geo.Compass16 |
+| D-17 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | C-6, how package sizes are governed after 0.19.6 (DISCOVER red team fork 4, X-2). After the split the deck is… |
 | D-17 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Approve the project brief |
 | D-17 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Point the session-start steps at 0.19.0: watchpost's CLAUDE.md step 6 to this release's required reading (0.1… |
 | D-17 |  | `watchpost-cli/08-reports/project-brief.md` | Install ergonomics requirement (T-M) + view-mock inventory M-1..M-6 |
