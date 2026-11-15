@@ -3,7 +3,7 @@ title: "0.19.6 re-architecting — project brief"
 date: 2026-11-14
 phase: DISCOVER
 sev: SEV-0
-status: "PROPOSED — put to the HUM LEAD for approval"
+status: "APPROVED (D-13)"
 ---
 
 # 0.19.6 — project brief

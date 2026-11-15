@@ -1049,6 +1049,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-13 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | (OQ-9) — Adopt the platform breakpoint vocabulary |
 | D-13 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | JR-5(c): two things are called "Director": platform/lineup.Director, the scheduler and one of the five roles,… |
 | D-13 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | the narration arbiter is renamed arbiter |
+| D-13 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The project brief (../01-objectives/project-brief.md): its problem statement; metrics M1 to M7 for the four p… |
 | D-13 |  | `multi-voice-support/08-reports/red-team-discover.md` | Minor |
 | D-13 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Standing rule: no code in PLAN |
 | D-13 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | REFLECT recommendation 4: a minor-ruling class |

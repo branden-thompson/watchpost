@@ -24,6 +24,7 @@ Director's step may come with it, where it holds to the principles (D-2). Charm 
 | Phase | **DISCOVER**, opened 2026-11-14; LEVEL-1, SEV-0, HUMAN LEAD, the full directive set (D-4). The baseline sweep ran on `e57afeaf` before any code moved: 1,051 of 1,058 caught, the 7 survivors the kept equivalents (A-3) |
 | Rulings | `02-analysis/rulings.md`, every ruling the moment it is made; minor ones as A-n rows for veto |
 | Survey | nine lens agents over one computed dependency graph (D-6, A-4, A-5): `02-analysis/lens-*.md`, reconciled by the agent into one package map (D-7): `02-analysis/package-map.md`, the settled document every later finding is judged against |
+| Brief | `01-objectives/project-brief.md`, APPROVED (D-13): the problem, metrics M1 to M7 for the four principles, R1 to R7, the scope |
 | Previous release | 0.19.5, shipped; its REFLECT is `../0.19.5-quality-pass/08-reports/reflect-report.md` (0.19.5 D-60) |
 | Follow-ups | `06_docs/follow-ups.md` only |
 
