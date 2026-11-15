@@ -47,6 +47,7 @@ the anchors).
 | `modes/tty/console` | the Broadcaster console (`Broadcaster`, its 92 methods) | ~3,900 |
 | map package (name an A-row) | the map and Propagation, behind a concrete sub-model | ~10,500 |
 | kit (name an A-row) | the 41 declarations both surfaces draw: masthead, memo stats, tick, cursor slot, row helpers (TS-4) | ~300-600 |
+| test support (name an A-row) | the memo guard's engine, `perturbEach`, imported by `_test.go` files only; its `unsafe` and `reflect` one ratified P10-09 row (D-15) | ~170 |
 
 - **Step 1, the console and the kit:** a move. No interface, no cycle (TS-3, TS-4). 80 mutants.
 - **Step 2, the map:** two halves (GP-4, P-d).

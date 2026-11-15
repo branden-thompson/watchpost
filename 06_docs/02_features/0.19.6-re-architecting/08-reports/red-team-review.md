@@ -79,7 +79,7 @@ Everything else is the agent's, as an A-row for veto or a record fix.
 
 1. **The test rule** (RR F1, CQ F-15, BQ 4.1; PH H-6 is a case of it). **Ruled D-14: A.** C-3, D-9 and M7 cannot all
    hold for the console batch: assertions unchanged, no test-only export, and the seam taken.
-2. **Where the memo guard engine lives, and P10-09** (CQ F-1).
+2. **Where the memo guard engine lives, and P10-09** (CQ F-1). **Ruled D-15: A.**
 3. **The shared lock (C-7)** (CQ F-4, RR F9). AS asked for it to be ruled, not taken as an A-row.
 4. **The package-size ratchet (C-6)** (X-2).
 5. **The brief's amendment** (BQ, RR, DQ and PH, below). The brief is approved (D-13), so changing
