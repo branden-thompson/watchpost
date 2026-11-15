@@ -129,6 +129,8 @@ Every lens converged on this list. Each item is written test-first: seen failing
 10. **The citation lint keyed on the package root, not the directory** (TG-4, RC-5), as an A-row.
 11. **The tone-latency instrument reconciled** (PB-8): 15.8 µs today against 1.6 µs recorded; the
     test wiring inside its timed span accounted for. It is the yardstick for the deck's move.
+12. **The floor scan and go 1.26.11** (D-12): `govulncheck` at the `go` floor in CI and the release
+    job, seen failing at 1.26.10, then the floor raised.
 
 ## 5. How each batch proves the four principles
 
@@ -167,8 +169,7 @@ counter-argument.
 6. **P10 for the split (C-13):** answered, D-10.
 7. **D-2 (C-10):** answered, D-11: nothing of D-2 in 0.19.6; D-2 proper, RM's three questions and
    the other deferred changes are 0.19.7 (A-8).
-8. **0.19.5's REFLECT recommendation 3:** whether watchpost scans at its `go` floor and raises it to
-   go 1.26.11 (it reverses 0.19.5 A-32's "floor stays").
+8. **0.19.5's REFLECT recommendation 3:** answered, D-12: the floor scan, and go 1.26.11.
 9. **The brief:** its problem statement and metrics for the four principles (§5), its scope (§2,
    §6), and what is out (C-9, D-2 proper).
 

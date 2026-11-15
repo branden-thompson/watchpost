@@ -1040,6 +1040,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-12 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | (OQ-11) — ⚠️ AMENDED BY D-20 — DO NOT READ THIS SECTION ALONE |
 | D-12 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | JR-12: 618 comments open with an all-caps sentence; as a headline for a contract a caller must obey it works,… |
 | D-12 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | all-caps headlines for contracts only, in code the pass touches |
+| D-12 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | 0.19.5's REFLECT recommendation 3 (../../0.19.5-quality-pass/08-reports/reflect-report.md:147-150): whether w… |
 | D-12 |  | `multi-voice-support/08-reports/red-team-discover.md` | Minor |
 | D-12 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Macro phase 1 / 2 boundary |
 | D-12 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PS-G's metrics: G-M1 free to build on, G-M2 reproducible, G-M3 fidelity (held-out ionosondes, KC2G a second r… |
