@@ -903,6 +903,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-1 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Which version the pass ships as. watchpost is at 0.19.3; the last such pass was 0.9.5, straight after 0.9.4. … |
 | D-1 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | 0.19.5; 0.19.4 left free for a hotfix |
 | D-1 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | What 0.19.6 re-architects. modes/tty (31,346 lines, 39,637 of tests, 88 files) and app (20,184 lines, 28,477 … |
+| D-1 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | the split, under four principles |
 | D-1 |  | `multi-voice-support/08-reports/red-team-discover.md` | Critical |
 | D-1 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Fold the identity-guard commit 17e40d4 into 0.18.0 or ship alone |
 | D-1 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | 'watchpost-0.19.0' + 'go-giro-data' / LEVEL-1; SEV-0; FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL … |
@@ -918,6 +919,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-2 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | watchpost swept; library findings become library patches |
 | D-2 | 0.19.6 | `0.19.6-re-architecting/02-analysis/lens-AS-app-seams.md` | happens inside one package |
 | D-2 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Asked with D-1: option B. |
+| D-2 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | the arbiter's dissolving in scope where it conforms (superseded by D-11) |
 | D-2 |  | `multi-voice-support/08-reports/red-team-discover.md` | Critical |
 | D-2 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Branch name |
 | D-2 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | go-giro-data: visibility and licence |
@@ -931,6 +933,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-3 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | How DISCOVER surveys about 100,000 lines of Go (112,000 of tests) in 390 files. Options: five read-only lens … |
 | D-3 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | five lens agents; every finding checked against the code |
 | D-3 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Asked with D-1: option C. |
+| D-3 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | Charm not re-implemented |
 | D-3 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-3 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Scope and sequencing |
 | D-3 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How go-tuiMaps' changes run |
@@ -943,6 +946,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-4 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The brief (01-objectives/project-brief.md): its problem statement, M1 to M5 and their targets. M2 as drafted:… |
 | D-4 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | brief approved, M2 stretched: 80 / 90 / 140 KB a beat |
 | D-4 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | How 0.19.6 is classified. It moves about 51,500 lines of code and 68,000 of tests in the two packages that ca… |
+| D-4 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | LEVEL-1, SEV-0, the full directive set |
 | D-4 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-4 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Posture |
 | D-4 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | 0.19.0's scope and order |
@@ -957,6 +961,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-5 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | When the two confirmed shipped defects are fixed. DEF-1: backspace in the Broadcaster's Line-Up Request windo… |
 | D-5 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | DEF-1 and DEF-2 fixed in batch 1 |
 | D-5 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Whether the local, git-ignored CLAUDE.md's session-start step 6 (CLAUDE.md:35-48) now names 0.19.6's required… |
+| D-5 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | CLAUDE.md unchanged until PLAN |
 | D-5 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-5 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Directive set |
 | D-5 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Branch names |
@@ -969,6 +974,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-6 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DEF-3 (DR-2): under metric the radio says "temperature 23 degrees Celsius" for current conditions (domains/ra… |
 | D-6 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | metric temperatures all say "degrees Celsius" |
 | D-6 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | How DISCOVER surveys modes/tty and app. 362 of their 363 test files are in-package (white-box), so a move bre… |
+| D-6 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | lens agents over one computed graph, reconciled into one package map |
 | D-6 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-6 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Problem statement |
 | D-6 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Whose problem anchors the MUF work: (A) the Broadcaster operator relaying on amateur HF, (B) any HF operator … |
@@ -981,6 +987,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-7 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DR-3: the voice's name in the identity lines. The live owner synth.spokenName (domains/radio/synth/source.go:… |
 | D-7 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | the voice's name drops its language suffix |
 | D-7 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Given with D-6, unasked: how the lenses' disagreements reach the HUM LEAD. |
+| D-7 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | the agent dispositions disagreements before presenting |
 | D-7 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-7 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Most common use case |
 | D-7 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Lock the two problem statements as drafted |
@@ -993,6 +1000,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-8 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DR-4: first-run Setup drops an existing entry as "the same place" when its ZIP matches (non-empty) or its coo… |
 | D-8 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | Setup uses snapshot.PlaceID |
 | D-8 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Whether feature/re-architecting's history is rewritten. The lenses' commit (1f9a34e7, pushed) carried, in thr… |
+| D-8 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | the branch history rewritten to remove a leaked path |
 | D-8 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-8 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Scale bounds (host overrides) |
 | D-8 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PS-1's metrics: M1 reach agreement, M2 answerable from the station, M3 told when it closes, G1 station cost, … |
@@ -1007,6 +1015,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-9 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DEF-5 (DC-2): [radio] mode ("synth" or "relay") is not checked at load. An unknown word plays Synth silently … |
 | D-9 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | an unknown [radio] mode is refused at load |
 | D-9 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Whether the map's package move (package-map.md §2, step 2b; C-1) is in 0.19.6. Step 2a moves the map's state … |
+| D-9 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | the map's 2a and 2b both in |
 | D-9 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-9 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Radar source |
 | D-9 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PS-2's metrics: M4 path agreement, M5 answerable without leaving, M5b the same in words (no picture), G1 shar… |
@@ -1019,6 +1028,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-10 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DC-4: five places say platform/render is the only package that may import go-studs, so the table kit can be s… |
 | D-10 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | go-studs stays behind platform/render, enforced |
 | D-10 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | When the P10 ledger changes the split forces are ratified (C-13; TG-5, lens-TG-tooling-gates.md:204-224). 16 … |
+| D-10 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | P10's re-key table ratified at PLAN exit, new floors at BUILD exit |
 | D-10 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-10 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Radar loops |
 | D-10 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | What anchors go-giro-data's brief: (A) host requirements from watchpost's DISCOVER, fidelity to KC2G as its m… |
@@ -1031,6 +1041,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-11 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | JR-1: ruling IDs restart at D-1 every release, so 2,817 comment lines cite a bare D-n (103 name the release) … |
 | D-11 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | an ID index; new citations name the release |
 | D-11 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Whether D-2 proper is outside 0.19.6 (C-10; RM-2, RM-3, RM-6). Every step of it changes what is heard: Observ… |
+| D-11 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | nothing of D-2 in 0.19.6; D-2 proper is 0.19.7 |
 | D-11 |  | `multi-voice-support/08-reports/red-team-discover.md` | Important |
 | D-11 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Structure across the two repositories |
 | D-11 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Lock go-giro-data's problem statement (PS-G) as drafted; its claim about "the maps published today" checked i… |
@@ -1041,6 +1052,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-12 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | JR-12: 618 comments open with an all-caps sentence; as a headline for a contract a caller must obey it works,… |
 | D-12 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | all-caps headlines for contracts only, in code the pass touches |
 | D-12 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | 0.19.5's REFLECT recommendation 3 (../../0.19.5-quality-pass/08-reports/reflect-report.md:147-150): whether w… |
+| D-12 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | the floor scan; go 1.26.11 in batch 0 |
 | D-12 |  | `multi-voice-support/08-reports/red-team-discover.md` | Minor |
 | D-12 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Macro phase 1 / 2 boundary |
 | D-12 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PS-G's metrics: G-M1 free to build on, G-M2 reproducible, G-M3 fidelity (held-out ionosondes, KC2G a second r… |
@@ -1050,6 +1062,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-13 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | JR-5(c): two things are called "Director": platform/lineup.Director, the scheduler and one of the five roles,… |
 | D-13 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | the narration arbiter is renamed arbiter |
 | D-13 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The project brief (../01-objectives/project-brief.md): its problem statement; metrics M1 to M7 for the four p… |
+| D-13 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | the brief approved; A-1 to A-8 stand |
 | D-13 |  | `multi-voice-support/08-reports/red-team-discover.md` | Minor |
 | D-13 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Standing rule: no code in PLAN |
 | D-13 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | REFLECT recommendation 4: a minor-ruling class |
@@ -1059,6 +1072,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-14 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | JR-7: NewDashboard (modes/tty/dashboard.go:958, its literal at :1000) sets 39 fields in one 1,410-character l… |
 | D-14 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | NewDashboard built from grouped helpers |
 | D-14 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | How a test that crosses a new package boundary may change (DISCOVER red team fork 1; RR F1, CQ F-15, BQ 4.1, … |
+| D-14 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | a test crossing a new boundary reads the same value through production API, proved by the same killers |
 | D-14 |  | `multi-voice-support/08-reports/red-team-discover.md` | Minor |
 | D-14 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Codify D-13 as an executable check |
 | D-14 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Close #18, #23, #9, #24 now with evidence comments, or through the 0.19.0 release PR. Evidence: #18 domains/r… |
@@ -1067,6 +1081,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-15 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DC-7: the architecture atlas (06_docs/architecture-atlas.html, generated by tools/atlas) shows 59 diagrams, 1… |
 | D-15 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | the atlas shows as-built diagrams only |
 | D-15 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Where the memo guard's engine lives once the console moves, and P10-09 (DISCOVER red team fork 2; CQ F-1). pe… |
+| D-15 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | the memo guard's engine in one test-support package, its unsafe and reflect one ratified P10-09 row |
 | D-15 |  | `multi-voice-support/08-reports/red-team-discover.md` | Minor |
 | D-15 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Map key |
 | D-15 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | 0.19.0's scope beyond MUF, the accessibility carry-over and #12: add F-174 (the Broadcaster's own map), F-187… |
@@ -1075,6 +1090,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-16 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DC-8: two Makefile paths are documented as moving with the release and never moved: HYGIENE_KEEP keeps the 0.… |
 | D-16 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | the Makefile's release paths are derived |
 | D-16 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | C-7, how livePipelines' one mutex (app/dashboard.go:802) is held once the deck and the maps leave app (DISCOV… |
+| D-16 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | no new lock; lp.mu shared by pointer, with a static check and a deadlock test |
 | D-16 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Minimum map size |
 | D-16 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Approve both project briefs (watchpost 0.19.0, go-giro-data) as presented, closing intake |
 | D-16 |  | `watchpost-cli/08-reports/project-brief.md` | Architecture & roadmap approved (P-1: no internal/ wrap v0.1; P-2: omit diffs[] from JSON v1.0; P-3: single g… |
@@ -1082,12 +1098,15 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-17 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DR-7(b): the 16-point compass abbreviation table is written three times (domains/seismic/usgs/usgs.go:338, do… |
 | D-17 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | one geo.Compass16 |
 | D-17 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | C-6, how package sizes are governed after 0.19.6 (DISCOVER red team fork 4, X-2). After the split the deck is… |
+| D-17 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | no package-size gate; the file rule holds, sizes reported at each REFLECT |
 | D-17 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Approve the project brief |
 | D-17 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Point the session-start steps at 0.19.0: watchpost's CLAUDE.md step 6 to this release's required reading (0.1… |
 | D-17 |  | `watchpost-cli/08-reports/project-brief.md` | Install ergonomics requirement (T-M) + view-mock inventory M-1..M-6 |
 | D-18 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | The settings table is presented; per-field rulings pending |
 | D-18 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DR-15: the console's card boxes draw their top rule with their own boxRule (modes/tty/broadcaster.go:1665), w… |
 | D-18 | 0.19.5 | `0.19.5-quality-pass/08-reports/discover-report.md` | card boxes use render's rule; UAT look before SHIP |
+| D-18 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The brief's amendment (DISCOVER red team fork 5; BQ, RR, DQ, PH): B-1 to B-12 (../08-reports/red-team-review.… |
+| D-18 | 0.19.6 | `0.19.6-re-architecting/08-reports/discover-report.md` | the brief amended, B-1 to B-12 |
 | D-18 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Metrics of success |
 | D-18 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | DISCOVER's live probes: (A) desk-only now, a probe list ruled later; (B) desk now plus a small pre-approved b… |
 | D-18 |  | `watchpost-cli/08-reports/project-brief.md` | G-9(a): report --every ratified as R-12d surface (amends OQ-18 — plain-text live mode in v0.1; JSON --watch s… |

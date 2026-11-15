@@ -3,7 +3,7 @@ title: "0.19.6 DISCOVER exit red team"
 date: 2026-11-15
 phase: DISCOVER
 sev: SEV-0
-status: "Round 1: every finding dispositioned (D-7); five forks put to the HUM LEAD one at a time"
+status: "Round 1: every finding dispositioned (D-7); the five forks ruled, D-14 to D-18"
 ---
 
 # 0.19.6 DISCOVER exit red team, round 1
@@ -83,7 +83,7 @@ Everything else is the agent's, as an A-row for veto or a record fix.
 3. **The shared lock (C-7)** (CQ F-4, RR F9). AS asked for it to be ruled, not taken as an A-row. **Ruled D-16: A.**
 4. **The package-size ratchet (C-6)** (X-2). **Ruled D-17: A.**
 5. **The brief's amendment** (BQ, RR, DQ and PH, below). The brief is approved (D-13), so changing
-   it is a ruling.
+   it is a ruling. **Ruled D-18: A.**
 
 ## The brief's amendment (fork 5), as proposed
 
