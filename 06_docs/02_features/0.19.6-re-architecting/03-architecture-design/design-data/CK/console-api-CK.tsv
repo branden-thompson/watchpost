@@ -1,0 +1,41 @@
+exported	kind	signature (package console)	today	the Router's (or root's) use today
+Broadcaster	type	type Broadcaster struct { /* the 29 fields of broadcaster.go:127-275, all unexported, unchanged */ }	Broadcaster (broadcaster.go:127)	router.go:253 (Router.broadcaster)
+Opening	type	type Opening struct { ASCII bool; Version string; FireBoldMW float64; Units render.Units; Clock render.Clock; Area StationAreaMsg; Now func() time.Time }	the seven writes in NewRouter	router.go:297, :301, :306, :309, :312 (Now: new, K1)
+Mirror	type	type Mirror struct { Gain int; Units render.Units; Clock render.Clock; ReduceMotion bool; StatusNote string }	the field writes in Router.Update	router.go:452, :453, :454-456, :461
+LineupMsg	type	unchanged	broadcaster.go:33	router.go:368 (consoleScoped); app/executors.go:289
+StationMsg	type	unchanged	broadcaster.go:40	router.go:368; app/executors.go:290
+StationFaultMsg	type	unchanged	broadcaster.go:47	app/executors.go:308, :468
+BedMsg	type	unchanged	broadcaster.go:58	router.go:368; app/executors.go:291; app/bedrelay.go:125, :180
+BedRelaysMsg	type	unchanged	broadcaster.go:84	app/bedrelay.go:126
+StationAreaMsg	type	unchanged	broadcaster.go:96	router.go:368; dashboard.go:224 (Config.StationArea); app/pool.go:241; app/dashboard.go:416
+MainTrackSlots	const	unchanged	broadcaster.go:124	router.go:1124, :1238; broadcaster_manage.go; app/schedule.go:142
+ScheduledFrom	const	const ScheduledFrom = 2	bcScheduledFrom (broadcaster_lineup.go:212)	router.go:1123, :1217, :1222; request.go:104; broadcaster_manage.go
+NoTransmitter	const	const NoTransmitter = "(no transmitter set)"	bcNoTransmitter (broadcaster_header.go:141)	map_prop_origin.go:51
+New	func	func New(o Opening) Broadcaster	NewBroadcaster (broadcaster.go:278) plus NewRouter's writes	router.go:296-312
+Scoped	func	func Scoped(msg tea.Msg) bool	consoleScoped (router.go:366)	router.go:554
+Manageable	func	func Manageable(c lineup.Card) bool	manageable (broadcaster_detail.go:172)	router.go:1096
+Init	method	func (b Broadcaster) Init() tea.Cmd	Init (broadcaster.go:493)	router.go:320 via surfaceView (:857-862)
+Update	method	func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd)	Update (broadcaster.go:498)	router.go:484, :557, :572
+View	method	func (b Broadcaster) View() tea.View	View (broadcaster.go:572)	router.go:507
+SetMirror	method	func (b *Broadcaster) SetMirror(m Mirror)	the writes at router.go:452-461	router.go:452-461 (one call, at :461's place)
+SetListenerMuted	method	func (b *Broadcaster) SetListenerMuted(muted bool)	r.broadcaster.listenerMuted = …	router.go:556, :571
+WithSnapshot	method	func (b Broadcaster) WithSnapshot(s *snapshot.Snapshot) (Broadcaster, tea.Cmd)	Update's SnapshotMsg arm (broadcaster.go:502-505)	router.go:572 (P3)
+WithRecent	method	func (b Broadcaster) WithRecent(s *snapshot.Snapshot) (Broadcaster, tea.Cmd)	Update's RecentSnapshotMsg arm (broadcaster.go:510-513)	router.go:572 (P3)
+CardDetail	method	func (b Broadcaster) CardDetail(handle int) (string, func(render.Opts) (string, []string), bool)	cardDetail (broadcaster_detail.go:55)	router.go:1062, :1217, :1239
+AlertDetail	method	func (b Broadcaster) AlertDetail() (string, func(render.Opts) (string, []string), bool)	alertDetail (broadcaster_detail.go:82)	router.go:1059, :1252
+CardWindowGroundFor	method	func (b Broadcaster) CardWindowGroundFor(handle int) string	cardWindowGroundFor (broadcaster_detail.go:104)	router.go:1063, :1222, :1244
+AlertWindowGround	method	func (b Broadcaster) AlertWindowGround() string	alertWindowGround (broadcaster_detail.go:117)	router.go:1060, :1253
+IndexForSlot	method	func (b Broadcaster) IndexForSlot(slot int) int	indexForSlot (broadcaster_slots.go:48)	router.go:1139
+LiveOffset	method	func (b Broadcaster) LiveOffset() int	liveOffset (broadcaster_slots.go:70)	router.go:447
+ScrollQueue	method	func (b Broadcaster) ScrollQueue(by int) Broadcaster	scrollQueue (broadcaster.go:824)	router.go:718
+Cursor	method	func (b Broadcaster) Cursor(content string) (x, y int, ok bool)	consoleCursor (cursor.go:336; its parameter frame renamed)	router.go:512
+HeldCursor	method	func (b Broadcaster) HeldCursor() *frame.CursorSlot	heldCursor (cursor.go:342)	router.go:516
+BedAvailable	method	func (b Broadcaster) BedAvailable() bool	bedAvailable (broadcaster.go:1166)	router.go:709
+MainTrack	method	func (b Broadcaster) MainTrack() []lineup.Card	mainTrack (broadcaster_air.go:129)	router.go:1182
+PoolSelection	method	func (b Broadcaster) PoolSelection() int	poolSelection (broadcaster.go:858)	router.go:1205
+LineupSelection	method	func (b Broadcaster) LineupSelection() int	lineupSelection (broadcaster.go:847)	router.go:1213
+Width	method	func (b Broadcaster) Width() int	field width	router.go:514
+Blurred	method	func (b Broadcaster) Blurred() bool	field blurred	router.go:516
+Power	method	func (b Broadcaster) Power() lineup.Power	field power	router.go:1033 (stationIsLive)
+BedCarrying	method	func (b Broadcaster) BedCarrying() bool	field bed.Carrying	router.go:458, :982, :1003
+Pool	method	func (b Broadcaster) Pool() []snapshot.LocationRef	field area.Pool	router.go:1206

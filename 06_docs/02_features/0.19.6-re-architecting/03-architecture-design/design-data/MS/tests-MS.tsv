@@ -1,0 +1,87 @@
+test_file	class (worst of its tests)	tests C2 same value via production API	tests C3 move with the code	tests C4 cannot be served	map_unexported_refs (summed over its tests)	what keeps its C4 tests at the root (most common)
+arrow_rows_test.go	C4	0	0	1	2	Dashboard.View Dashboard.openSetupAt Dashboard.setup Dashboard.volFlash rowPicker rowToggle
+config_reach_test.go	C4	0	1	1	8	Dashboard.uiForSave UIPrefs.Theme
+console_overlay_test.go	C4	0	0	1	1	Dashboard.confirmOverlay Dashboard.debug Dashboard.frameCursor Dashboard.layout Dashboard.modalView Dashboard.openDiagnostics
+cursor_test.go	C4	0	0	8	31	Dashboard.openSetupAt rowTheme Dashboard.View Router Router.active Router.broadcaster
+erase_test.go	C4	0	0	1	6	Dashboard.addQuery Dashboard.cardErr Dashboard.cardMoveTo Dashboard.handleAddKey Dashboard.handleRequestKey Dashboard.openRequest
+golden_test.go	C4	0	0	1	3	Dashboard.View Dashboard.addErr Dashboard.addLocate Dashboard.addMode Dashboard.addQuery Dashboard.applySevere
+help_about_test.go	C4	0	0	1	6	Dashboard.helpLines
+m6_measure_test.go	C4	0	0	1	1	NewRouter Router Router.CloseMap
+map_airuv_test.go	C3	0	3	0	50	
+map_alloc_test.go	C4	0	0	1	5	Dashboard.View Dashboard.mmemo modalMemo.ok
+map_badges_test.go	C4	0	4	1	41	Dashboard.statusBlocks statusSections.sources
+map_blend_golden_test.go	C3	0	1	0	10	
+map_bound_test.go	C4	0	1	1	19	Dashboard.View
+map_clear_test.go	C4	0	0	2	7	Dashboard.openSetupAt Dashboard.setupRowKey rowMapClear Dashboard.footerModalChrome
+map_depth_test.go	C3	0	2	0	49	
+map_describe_test.go	C4	0	2	5	25	Dashboard.View
+map_detail_test.go	C4	0	3	1	48	Dashboard.focusBody Dashboard.handleSetupKey Dashboard.openSetupAt Dashboard.setupRowKey UIPrefs UIPrefs.MapDetailLevel
+map_events_test.go	C3	0	1	0	21	
+map_feed_test.go	C4	0	1	3	17	Dashboard.View
+map_feedflight_test.go	C4	0	6	1	65	modalAbout modalAdd modalAlerts modalCard modalDebug modalDetails
+map_feels_test.go	C3	0	4	0	85	
+map_flicker_test.go	C3	0	2	0	42	
+map_floor_test.go	C4	0	1	4	37	bottomInset topInset Dashboard.View Dashboard.statusBlocks statusSections.sources
+map_follows_test.go	C3	0	3	0	27	
+map_golden_test.go	C4	0	0	1	3	Dashboard.View
+map_inview_test.go	C3	0	2	0	27	
+map_keys_test.go	C4	0	0	3	18	Dashboard.View Dashboard.helpLines modalAbout modalAdd modalAlerts modalCard
+map_layer_words_test.go	C3	0	3	0	38	
+map_legend_test.go	C4	0	1	1	14	Dashboard.footerModalChrome Dashboard.openSetupAt Dashboard.setupRowKey rowMapClear
+map_loading_test.go	C3	0	3	0	24	
+map_loops_test.go	C3	0	3	0	43	
+map_menu_test.go	C4	0	5	3	133	Dashboard.setup setupState.layerAt Dashboard.setTicker Dashboard.tickNeeded Dashboard.applyTick
+map_names_test.go	C4	0	3	1	31	Dashboard.helpLines
+map_night_test.go	C3	0	5	0	125	
+map_nopicture_test.go	C4	0	0	2	15	Dashboard.View
+map_nopicture_words_test.go	C3	0	2	0	22	
+map_notes_test.go	C3	0	1	0	4	
+map_playback_test.go	C4	0	3	1	47	Dashboard.uiForSave UIPrefs.MapPlaybackMs
+map_prefs_test.go	C4	0	5	9	56	Dashboard.openSetupAt UIPrefs setupRowID rowMapLayers Dashboard.handleSetupKey Dashboard.setup
+map_prop_ack_test.go	C4	0	3	3	42	Dashboard.View Dashboard.under stackedWindow stackedWindow.modal
+map_prop_ahead_test.go	C3	0	9	0	194	
+map_prop_alloc_test.go	C4	0	0	1	9	Dashboard.View Dashboard.mmemo modalMemo.ok
+map_prop_centre_test.go	C3	0	4	0	83	
+map_prop_chart_test.go	C4	0	17	2	453	numSurfaces Dashboard.uiForSave UIPrefs.MapPropRadius groupMap rowMapPropRadius rowPicker
+map_prop_draw_test.go	C4	0	5	1	72	Dashboard.View modalHelp
+map_prop_find_test.go	C4	0	7	1	212	Dashboard.recentLocations
+map_prop_freq_test.go	C3	0	5	0	121	
+map_prop_honesty_test.go	C4	0	12	4	225	rowMapDesc Dashboard.shownOnSurface Dashboard.mapWords rowMapPropRadius rowMapPropReadings rowMapPropRefresh
+map_prop_lower_test.go	C3	0	3	0	76	
+map_prop_menu_test.go	C3	0	4	0	82	
+map_prop_quality_test.go	C4	0	6	1	99	Dashboard.View Dashboard.tickNeeded
+map_prop_rows_test.go	C3	0	3	0	72	
+map_prop_scales_test.go	C3	0	3	0	59	
+map_prop_states_test.go	C3	0	2	0	16	
+map_prop_stations_test.go	C3	0	7	0	88	
+map_prop_test.go	C4	0	6	2	150	Dashboard.View Dashboard.setup setupState.uiDirty
+map_prop_update_test.go	C3	0	8	0	70	
+map_prop_words_test.go	C3	0	20	0	394	
+map_property_test.go	C3	0	1	0	22	
+map_quake_test.go	C4	0	8	1	56	Dashboard.focusBody Dashboard.handleSetupKey Dashboard.openSetupAt Dashboard.setupRowKey UIPrefs UIPrefs.MapQuakeFeed
+map_radar_swap_test.go	C3	0	2	0	49	
+map_radar_test.go	C4	0	18	6	282	Dashboard.mapWindow Dashboard.focusBody Dashboard.handleSetupKey Dashboard.openSetupAt Dashboard.setupRowKey UIPrefs
+map_rain_test.go	C3	0	5	0	66	
+map_regions_test.go	C3	0	5	0	52	
+map_release_test.go	C3	0	2	0	39	
+map_settings_test.go	C4	0	4	4	46	Dashboard.openSetupAt Dashboard.setupRowKey UIPrefs rowMapDesc setupRowID Dashboard.renderModal
+map_station_test.go	C4	0	3	4	86	Dashboard.helpLines Dashboard.helpKeys broadcasterKeyMap NewRouter Router Router.Update
+map_status_test.go	C3	0	2	0	14	
+map_temp_test.go	C4	0	21	3	365	Dashboard.focusBody Dashboard.footerModalChrome Dashboard.handleSetupKey Dashboard.openSetupAt Dashboard.setupRowKey UIPrefs
+map_uat1_test.go	C4	0	2	4	53	UIPrefs.MapDetail UIPrefs uiSavedMsg Dashboard.applyTick Dashboard.tickNeeded Dashboard.modalWidth
+map_uat1b_test.go	C4	0	2	2	24	Dashboard.modalWidth Dashboard.renderModal Dashboard.focusBody Dashboard.openSetupAt Dashboard.statusLines UIPrefs
+map_uat1c_test.go	C4	0	1	2	37	UIPrefs Dashboard.focusBody Dashboard.handleSetupKey Dashboard.openSetupAt Dashboard.setupRowKey Dashboard.setupSpace
+map_viewbox_test.go	C3	0	1	0	4	
+map_window_test.go	C4	0	2	5	17	Dashboard.View modalAbout modalAdd modalAlerts modalCard modalDebug
+map_work_test.go	C4	0	3	1	40	NewRouter Router.CloseMap
+memo_completeness_test.go	C4	0	0	2	6	Dashboard.addLocate Dashboard.addMode Dashboard.addQuery Dashboard.applySevere Dashboard.openRelayFault Dashboard.request
+modal_reachability_test.go	C4	0	0	1	3	Dashboard.addLocate Dashboard.addMode Dashboard.addQuery Dashboard.applySevere Dashboard.openRelayFault Dashboard.renderModal
+motion_test.go	C4	0	0	2	15	Dashboard.cycleReduceMotion Dashboard.setup Dashboard.uiForSave Dashboard.uiLines UIPrefs.ReduceMotion rowReduceMotion
+router_lookup_test.go	C4	0	0	1	18	castSavedMsg committedMsg historyClearedMsg locatePauseMsg locateVerdictMsg observerScoped
+settings_kept_test.go	C4	0	0	1	11	Dashboard.setup Dashboard.uiApplyCmd UIPrefs UIPrefs.Clock UIPrefs.MapColourDepth UIPrefs.MapDescription
+setup_history_test.go	C3	0	1	0	2	
+setup_notices_test.go	C4	0	0	2	5	Dashboard.openSetupAt rowMapRainDetail setupRowID Dashboard.footerModalChrome Dashboard.setupBody Dashboard.applyHistoryCleared
+timing_test.go	C4	0	7	1	111	Dashboard.View
+view_width_test.go	C3	0	1	0	7	
+window_keys_test.go	C4	0	1	4	7	windowKeysOf numModals windowKeys claimAll windowKeys.claim windowKeys.bound
+window_stack_test.go	C4	0	1	4	8	Dashboard.under modalDetails modalAdd stackedWindow.modal modalHelp Dashboard.controlRow

@@ -1,0 +1,63 @@
+file	ts_refs_outside_home	decls_by_package	refs_crossing	S	A	M	X	lands
+beat_alloc_test.go	1	{'tty': 3}	2	1	1	0	0	tty
+bench_test.go	1	{'tty': 19, 'console': 2}	1	0	0	1	0	split:console+tty
+broadcaster_air_test.go	0	{'console': 5}	2	0	0	2	0	console
+broadcaster_alloc_test.go	0	{'console': 1, 'tty': 1}	2	0	0	2	0	split:console+tty
+broadcaster_bed_test.go	0	{'console': 5}	1	0	0	1	0	console
+broadcaster_cardbox_test.go	1	{'console': 8}	1	0	1	0	0	console
+broadcaster_cardrow_test.go	1	{'console': 12}	5	1	4	0	0	console
+broadcaster_detail_test.go	11	{'tty': 9, 'console': 4}	21	19	0	0	2	split:console+tty
+broadcaster_fault_test.go	3	{'console': 4, 'tty': 1}	3	1	0	1	1	split:console+tty
+broadcaster_header_test.go	0	{'console': 8}	2	0	0	2	0	console
+broadcaster_heldband_test.go	0	{'console': 7}	1	0	0	1	0	console
+broadcaster_lanes_test.go	0	{'console': 7}	2	0	0	2	0	console
+broadcaster_lineup_test.go	0	{'console': 1}	1	0	0	1	0	console
+broadcaster_loaded_test.go	2	{'console': 6, 'tty': 1}	3	0	1	2	0	split:console+tty
+broadcaster_manage_test.go	7	{'tty': 9, 'console': 2}	5	5	0	0	0	split:console+tty
+broadcaster_memo_completeness_test.go	0	{'console': 5}	2	0	0	2	0	console
+broadcaster_onair_tone_test.go	0	{'console': 4}	1	0	0	1	0	console
+broadcaster_pool_test.go	0	{'console': 6}	2	0	0	2	0	console
+broadcaster_pooldata_test.go	5	{'tty': 1, 'console': 4}	14	7	2	2	3	split:console+tty
+broadcaster_priority_test.go	0	{'console': 6}	1	0	0	1	0	console
+broadcaster_rail_test.go	0	{'console': 20}	1	0	0	1	0	console
+broadcaster_scroll_test.go	10	{'tty': 4, 'console': 5}	10	7	1	2	0	split:console+tty
+broadcaster_size_test.go	0	{'console': 10}	1	0	0	1	0	console
+broadcaster_slots_live_test.go	0	{'console': 3}	1	0	0	1	0	console
+broadcaster_slots_test.go	1	{'console': 6}	4	1	1	2	0	console
+broadcaster_standby_test.go	0	{'console': 6}	1	0	0	1	0	console
+broadcaster_station_test.go	0	{'console': 16}	1	0	0	1	0	console
+broadcaster_tone_test.go	7	{'console': 6, 'tty': 2}	11	10	0	0	1	split:console+tty
+broadcaster_uat_test.go	5	{'console': 9, 'tty': 2}	1	0	0	1	0	split:console+tty
+broadcaster_upnext_label_test.go	0	{'console': 2}	1	0	0	1	0	console
+broadcaster_upnext_test.go	0	{'console': 8}	2	0	0	2	0	console
+clip_ansi_test.go	1	{'kit': 2, 'console': 1}	1	0	0	1	0	split:console+kit
+console_finish_test.go	0	{'console': 2}	2	0	0	2	0	console
+console_units_test.go	2	{'tty': 5}	4	4	0	0	0	tty
+cursor_test.go	1	{'tty': 10}	1	0	1	0	0	tty
+dashboard_test.go	1	{'tty': 9, 'kit': 1}	0	0	0	0	0	split:kit+tty
+detail_fire_test.go	1	{'tty': 3}	1	0	0	0	1	tty
+golden_surfaces_test.go	6	{'tty': 4, 'console': 2}	2	0	0	2	0	split:console+tty
+heldcount_test.go	0	{'console': 3}	1	0	0	1	0	console
+map_prop_chart_test.go	1	{'tty': 22}	1	0	1	0	0	tty
+masthead_memo_test.go	11	{'kit': 1, 'tty': 1}	15	1	0	13	1	split:kit+tty
+memo_completeness_test.go	2	{'tty': 8}	3	3	0	0	0	tty
+modal_location_test.go	1	{'tty': 9}	1	0	1	0	0	tty
+motion_test.go	2	{'tty': 7}	4	3	0	0	1	tty
+never_resolves_test.go	1	{'tty': 1}	1	0	1	0	0	tty
+operator_card_test.go	2	{'tty': 1, 'console': 1}	1	1	0	0	0	split:console+tty
+projection_cache_test.go	0	{'console': 3}	2	0	0	2	0	console
+relayfault_test.go	1	{'tty': 17}	1	1	0	0	0	tty
+request_slot_test.go	1	{'tty': 3}	2	2	0	0	0	tty
+router_bedplay_test.go	1	{'tty': 2}	2	0	0	0	2	tty
+router_diagnostics_test.go	6	{'tty': 12}	13	8	0	0	5	tty
+router_refusal_test.go	3	{'tty': 2}	3	3	0	0	0	tty
+router_test.go	4	{'tty': 9}	5	0	2	0	3	tty
+router_trace_test.go	2	{'tty': 2}	2	2	0	0	0	tty
+scroll_keys_test.go	1	{'tty': 2}	2	1	1	0	0	tty
+severe_test.go	2	{'tty': 34}	2	1	1	0	0	tty
+station_wording_test.go	0	{'console': 5}	1	0	0	1	0	console
+tape_memo_test.go	2	{'tty': 3}	2	2	0	0	0	tty
+tick_alloc_test.go	1	{'tty': 2}	1	0	1	0	0	tty
+tick_test.go	1	{'tty': 6}	3	2	1	0	0	tty
+ticker_test.go	1	{'tty': 16}	2	0	2	0	0	tty
+uat_0827_test.go	1	{'tty': 7}	1	1	0	0	0	tty

@@ -1125,34 +1125,40 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-20 |  | `watchpost-cli/08-reports/project-brief.md` | B1 exit approved; 15 pending P10 exemptions RATIFIED (density pattern x8, analyzer false-positives x2, sched … |
 | D-21 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | (D-17 closed) — Variant C, with a coloured background for state |
 | D-21 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Plan red team fork 1 (RR-1, DV-6): Q1.2 can carry the clock Setting into the console as well as units. The co… |
+| D-21 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | PLAN fork 1, R9 and the clocks (design MS C-2, CK K1). R9 (brief, D-18) says no func field is read on the fra… |
 | D-21 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | A way to turn maps off; when the map touches the network |
 | D-21 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How propagation meets the region limit (OQ-7). Evidence: 0.18.0 D-8/D-28 held by TestNoFrameIsWiderThanTheReg… |
 | D-21 |  | `watchpost-cli/08-reports/project-brief.md` | Live UAT with HUM LEAD required for all view/mock implementations (B3+) |
 | D-22 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | A1 — the full wire. "This release IS the MVP." The audio merge is in scope |
 | D-22 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Plan red team fork 2 (DV-1), the agent's error at D-4: the console's stretch target of 140 KB a beat was set … |
+| D-22 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | PLAN fork 2, D-14's stop condition. Tests that cannot be served without a test-only export: the console batch… |
 | D-22 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Do spot reports draw maps in 0.18.0? |
 | D-22 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The reference for M1 and M4 (OQ-1): WSPR via wspr.live, the Reverse Beacon Network, PSKReporter (wave1-findin… |
 | D-22 |  | `watchpost-cli/08-reports/project-brief.md` | B2 gate rulings R-1/R-2 |
 | D-23 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | B1 — one placement event, so the console names an intent and the Director owns the order |
 | D-23 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Plan red team fork 3 (JM-5, DV-5, RR-10), carrying out D-13: (a) the HUM LEAD's ratified P10 ledger row app/d… |
+| D-23 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | PLAN fork 3, P10 for the test-support package (design CK-4). D-15 ratified one P10-09 row; the engine also re… |
 | D-23 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Which alerts the map draws |
 | D-23 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The baseline for M1 and M4's targets, KC2G being off limits (D-18): (A) IRI climatology, (B) the HUM LEAD wri… |
 | D-23 |  | `watchpost-cli/08-reports/build-report.md` | Repository public |
 | D-24 | 0.16.0 | `0.16.0-broadcaster-ui/03-architecture-design/implementation-plan.md` | CORRECTED. Half of it is the code. The half this release needs is NOT. |
 | D-24 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | The medium decides. Duck the relay because it cannot be paused; pause the rendered read, drain the rail, inse… |
 | D-24 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Plan red team fork 4 (JM-9): M5 has no pass criteria. Proposed: a persona (knows Go and the Bubble Tea README… |
+| D-24 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | PLAN fork 4, the GOOS seam (owed to PLAN, PH H-6; design AP-6). runtimeGOOS and setRuntimeGOOS (app/cast.go:4… |
 | D-24 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Amend the approved brief for D-21..D-23 (delta view: new R-9; R-2.2 and R-5.1 become settings-backed defaults… |
 | D-24 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | foF2 shown, or MUF alone (OQ-2). A Broadcaster's local service area (ServiceRadiusMi, platform/config/broadca… |
 | D-24 |  | `watchpost-cli/08-reports/build-report.md` | Code licence MIT |
 | D-25 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | Spike the merge before anything else |
 | D-25 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | The batch order |
 | D-25 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The PLAN gate: the plan (04-development/implementation-plan.md, Q1 to Q9 in batches B1 to B15) after its red … |
+| D-25 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | PLAN fork 5, the Settings and controls seam for 2b (owed to PLAN, CQ F-2; design MS-4), which adds a package … |
 | D-25 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Red-team F6 (Critical): seedZoneShapes fetches zone geometry at station start (app/dashboard.go:89), contradi… |
 | D-25 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How the places to reach are chosen (OQ-3, R-1.2): (A) watched places + map centre, (B) a Reach list in Settin… |
 | D-25 |  | `watchpost-cli/08-reports/build-report.md` | go-studs carried in-repo |
 | D-26 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | Both confirm AND undo |
 | D-26 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | Undo or confirm |
 | D-26 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Two more shipped defects in the Broadcaster's Line-Up Request window, found by B1's pins and there since 0.16… |
+| D-26 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | PLAN fork 6, three test-only exports app has today (design MS C-6). M5's target is zero exported names whose … |
 | D-26 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Red-team A-1 (Critical): a screen-reader listener gets nothing in any surface — braille map, --ascii notice (… |
 | D-26 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-25 clarification: where paths start in the Propagation mode (the tower is config.Broadcaster.Transmitter; C… |
 | D-26 |  | `watchpost-cli/08-reports/build-report.md` | Version 0.9.0 |
@@ -2077,27 +2083,37 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-18 |  | `multi-voice-support/08-reports/red-team-discover.md` | [V] references outside FR-4 (help, hint, README, docs) |
 | A-18 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | "Best bands now" for the Observer answers the near-vertical area within 400 km of the selected place; from th… |
 | A-19 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | A P10 density floor written by 0.19.0 D-277's procedure: platform/plaintext's row stated no floor and fired o… |
+| A-19 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-16's figure corrected (design AP-3). livePipelines.mu is locked in 25 sections in 5 files (app/bedrelay.go … |
 | A-19 |  | `multi-voice-support/08-reports/red-team-discover.md` | FR-5 unsatisfiable for the sentinel |
 | A-19 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | FR-2.8 (never the bare word "band" on the console) is dropped: no propagation text is on the console after D-… |
 | A-20 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The console's railed table rows are kept in its memo with the spans, console work under D-22 ("Keep 140, add … |
+| A-20 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The names (A-14; designs CK-10, MS-11, AP-11). modes/tty/internal/frame (the kit: the parts of a frame both s… |
 | A-20 |  | `multi-voice-support/08-reports/red-team-discover.md` | Stale rows in the ratified brief |
 | A-20 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | FR-4.8's claim across instances is dropped: with no background fetching (D-76), one object per process is eno… |
 | A-21 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | D-11 as built (A-13 refined): a citation is new when its package carried no such ID at the merge-base with ma… |
+| A-21 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The console seam's shape (design CK). The kit is TS-4's 41-declaration closure, 25 exported names and 5 metho… |
 | A-21 |  | `multi-voice-support/08-reports/red-team-discover.md` | FR-10 serves the on-screen user |
 | A-21 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-74's schedule of routine closures lives in the reference chart (FR-1.15: the hours today each band is expec… |
 | A-22 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The relay replay's chips name their own change (Q9.3, JM-8): the walkthrough's proof found that a picker miss… |
+| A-22 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The map seam's shape (design MS). In 2a Dashboard embeds an unexported mapModel, so no assertion and no memo-… |
 | A-22 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | F-190, closed on 2026-10-04 but left under Open, is deleted, as the follow-ups file's own rule asks |
 | A-23 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The one-letter fields get words (Q9.9, JR minor): livePipelines.p and radioDeck.p become program; arbiter.v a… |
+| A-23 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The app seam's shape (design AP). deck.New(deck.Config) and 10 methods, the start and the stop two each so Ru… |
 | A-23 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The intake briefs (watchpost and go-ionomaps) are kept as written, with a banner that requirements.md is curr… |
 | A-24 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | mAA3 and mAA4 are kept as equivalent mutants, as 0.16.0 kept m16 and m43. 0.18.0 D-70 draws every Settings ro… |
+| A-24 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | app's pure test helpers (designs AP-9, CK-4). Go's internal rule keeps app from importing modes/tty/internal/… |
 | A-24 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PLAN's mermaid diagrams are committed on the docs lane as they are written; 06_docs/architecture-atlas.html i… |
 | A-25 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The beat, frame and publish pins measure what the program does (REVIEW PF P-1 to P-3). beatCost feeds each be… |
+| A-25 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Anchors and qualifiers (design CK-8; R3). An anchor that would gain a package qualifier in a move commit is r… |
 | A-25 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | M5b gets its own ten scenarios, drawn the same way as M5's, rather than "the same ten" (the implementation pl… |
 | A-26 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | A sweep's log is promoted only whole (REVIEW GT I-1, M-1). promote-verdicts also refuses a log with no summar… |
+| A-26 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Inlining counted across a split function (design AP-12; B-3, A-12). "Inlined calls counted per function" matc… |
 | A-26 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | (ratified by D-120) D-94's 10 minutes is the default of a Setting (Maps tab): every 10 minutes, hourly, or on… |
 | A-27 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | A catch must repeat, alone (REVIEW GT I-2). On a test failure, run.sh runs the same test again by itself on t… |
+| A-27 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Figures corrected by the designs. Dashboard after 2a: 374 methods in 38 files (752 less 387 re-homed, plus 9 … |
 | A-27 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | FR-1.17 is met by its first branch: every answer runs off the UI goroutine (architecture, "Off the UI gorouti… |
 | A-28 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW's Minors, fixed as the reviewers gave them (PF P-4, C-1; DC I-1 to I-3, M-1 to M-11, M-13 to M-16). Br… |
+| A-28 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | M4's four tasks fixed (brief M4, B-6; 0.19.5 D-24's method). Built by leave-one-out on scratch copies of e57a… |
 | A-28 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The climatology ships NRL's CCIR refit, not the URSI refit (both are D-43's refits); the scorer pins it as th… |
 | A-29 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW round 2's Minors, fixed (D-41; 08-reports/reviewer-notes/review-round-2-GT-batch-50.md). A-27 as built… |
 | A-29 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team's fix batch, its design choices: (1) the go-ionomaps shape completed (a Response with rate … |
@@ -2449,6 +2465,8 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | F-232 |  | `follow-ups.md` | A Charm or Bubble Tea upgrade. Not in 0.19.6 (C-9): it is a separate risk with its own frame comparison. 0.19… |
 | F-233 |  | `follow-ups.md` | Whether the pin comparator stays after 0.19.6. For 0.19.6 a comparator fails any rise over a recorded baselin… |
 | F-234 |  | `follow-ups.md` | The tone-latency instrument reads 10x its last record (15.8 µs against 1.6 µs), and its timed span holds test… |
+| F-235 |  | `follow-ups.md` | Three exports only app's tests use outside their package. ChipKnown (no production user), SameOverlay and Fir… |
+| F-236 |  | `follow-ups.md` | Stuttering names in the map package. After 2b, mapview.MapFeed, mapview.MapRadar and their like repeat the pa… |
 
 ## MVS-D
 

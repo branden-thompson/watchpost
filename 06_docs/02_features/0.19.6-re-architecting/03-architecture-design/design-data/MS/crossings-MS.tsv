@@ -1,0 +1,377 @@
+direction	symbol	kind	declaring_file	disposition	note
+mapview->tty	Config.ASCII	field	modes/tty/dashboard.go	ENV	Env.Opts.ASCII
+mapview->tty	Config.ClearMapData	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.ClearMapData, held once in the model
+mapview->tty	Config.FindPlace	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.FindPlace, held once in the model
+mapview->tty	Config.MapAreaName	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.MapAreaName, held once in the model
+mapview->tty	Config.MapCost	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.MapCost, held once in the model
+mapview->tty	Config.MapDisk	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.MapDisk, held once in the model
+mapview->tty	Config.MapFeed	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.MapFeed, held once in the model
+mapview->tty	Config.MapFrame	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.MapFrame, held once in the model
+mapview->tty	Config.MapFrameText	field	modes/tty/dashboard.go	MOVES	construction value copied into the model by New; the root never reads it after
+mapview->tty	Config.MapLayers	field	modes/tty/dashboard.go	MOVES	construction value copied into the model by New; the root never reads it after
+mapview->tty	Config.MapProblem	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.MapProblem, held once in the model
+mapview->tty	Config.MapRadar	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.MapRadar, held once in the model
+mapview->tty	Config.MapTemperature	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.MapTemperature, held once in the model
+mapview->tty	Config.NewMap	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.NewMap, held once in the model
+mapview->tty	Config.NoColor	field	modes/tty/dashboard.go	ENV	Env.NoColor
+mapview->tty	Config.PlaceNear	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.PlaceNear, held once in the model
+mapview->tty	Config.PropagationAck	field	modes/tty/dashboard.go	MOVES	construction value copied into the model by New; the root never reads it after
+mapview->tty	Config.PropagationUpdate	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.PropagationUpdate, held once in the model
+mapview->tty	Config.SavePropagationAck	field	modes/tty/dashboard.go	HOOKS	mapview.Hooks.SavePropagationAck, held once in the model
+mapview->tty	Config.ServiceRadiusMi	field	modes/tty/dashboard.go	ENV	Env.Station.RadiusMi
+mapview->tty	Config.Transmitter	field	modes/tty/dashboard.go	ENV	Env.Station.Transmitter
+mapview->tty	Dashboard	type	modes/tty/dashboard.go	REMOVED	the receiver: every map method is on the model after 2a
+mapview->tty	Dashboard.after	method	modes/tty/dashboard.go	ENV	Env.After (the timer; Choice C-2)
+mapview->tty	Dashboard.applyMotion	method	modes/tty/motion.go	MOVES	re-homed onto the model (the map's timing instrument / Reduce motion on the map)
+mapview->tty	Dashboard.cfg	field	modes/tty/dashboard.go	REMOVED	replaced by Hooks (held in the model), Env and the model's construction values
+mapview->tty	Dashboard.clock	method	modes/tty/body.go	ENV	Env.Now
+mapview->tty	Dashboard.close	method	modes/tty/dashboard.go	WANT	Want.Close
+mapview->tty	Dashboard.handleModalNav	method	modes/tty/nav.go	WANT	Want.Nav (window scroll keys, applied by the root)
+mapview->tty	Dashboard.handleNav	method	modes/tty/nav.go	WANT	split site S6: Want.Nav, root moves the selection, then the map continues
+mapview->tty	Dashboard.height	field	modes/tty/dashboard.go	ENV	Env.Height
+mapview->tty	Dashboard.keys	field	modes/tty/dashboard.go	ENV	Env.Keys
+mapview->tty	Dashboard.mapCeiling	method	modes/tty/view.go	ENV	Env.Room.Rows (map window)
+mapview->tty	Dashboard.mapShown	method	modes/tty/dashboard.go	ENV	Env.Shown
+mapview->tty	Dashboard.mapWindowCols	method	modes/tty/view.go	ENV	Env.Room.Cols
+mapview->tty	Dashboard.markEnds	method	modes/tty/motion.go	CONTROLS	controls.MarkEnds(now, reduceMotion); Dashboard.markEnds stays for the root's callers
+mapview->tty	Dashboard.modal	field	modes/tty/dashboard.go	ENV	Env.Window
+mapview->tty	Dashboard.modalLines	method	modes/tty/view.go	ENV	computed by the map from its own Lines; scroll intents go out in Want
+mapview->tty	Dashboard.modalMax	method	modes/tty/view.go	ENV	Env.Room.Rows
+mapview->tty	Dashboard.modalScroll	field	modes/tty/dashboard.go	ENV	Env.Scroll in, Want.Scroll out (lent and returned)
+mapview->tty	Dashboard.now	field	modes/tty/dashboard.go	ENV	Env.Now (the clock; Choice C-2)
+mapview->tty	Dashboard.numPriority	method	modes/tty/nav.go	ENV	Env.Pick
+mapview->tty	Dashboard.open	method	modes/tty/dashboard.go	WANT	Want.Open
+mapview->tty	Dashboard.opts	method	modes/tty/view.go	ENV	Env.Opts
+mapview->tty	Dashboard.pickerFlashFor	method	modes/tty/setup_rows.go	SETTINGS	SettingsView.Flash
+mapview->tty	Dashboard.rowVisible	method	modes/tty/setup.go	SETTINGS	SettingsView.Visible (root answers per row)
+mapview->tty	Dashboard.selected	field	modes/tty/dashboard.go	ENV	Env.Pick (selection ingredients)
+mapview->tty	Dashboard.selectedLocation	method	modes/tty/nav.go	ENV	Env.Pick + kit selection function
+mapview->tty	Dashboard.settled	method	modes/tty/setup.go	SETTINGS	Want.Settings.Settled
+mapview->tty	Dashboard.setup	field	modes/tty/dashboard.go	SETTINGS	SettingsView in (focus, layerAt, flash), SettingsWant out (layerAt, note, dirty)
+mapview->tty	Dashboard.snap	field	modes/tty/dashboard.go	ENV	Env.Pick.Snap
+mapview->tty	Dashboard.surface	field	modes/tty/dashboard.go	ENV	Env.Surface
+mapview->tty	Dashboard.timeBelowFloor	method	modes/tty/timing.go	MOVES	re-homed onto the model (the map's timing instrument / Reduce motion on the map)
+mapview->tty	Dashboard.timeDraw	method	modes/tty/timing.go	MOVES	re-homed onto the model (the map's timing instrument / Reduce motion on the map)
+mapview->tty	Dashboard.timeFrom	method	modes/tty/timing.go	MOVES	re-homed onto the model (the map's timing instrument / Reduce motion on the map)
+mapview->tty	Dashboard.timeTick	method	modes/tty/timing.go	MOVES	re-homed onto the model (the map's timing instrument / Reduce motion on the map)
+mapview->tty	Dashboard.timed	method	modes/tty/timing.go	MOVES	re-homed onto the model (the map's timing instrument / Reduce motion on the map)
+mapview->tty	Dashboard.uiApplyCmd	method	modes/tty/setup_ui.go	SETTINGS	Want.Settings.Save
+mapview->tty	Dashboard.uiTouched	method	modes/tty/setup_ui.go	SETTINGS	Want.Settings.Touched
+mapview->tty	Dashboard.width	field	modes/tty/dashboard.go	ENV	Env.Width
+mapview->tty	Dashboard.withCmd	method	modes/tty/dashboard.go	WANT	returned tea.Cmd
+mapview->tty	Router	type	modes/tty/router.go	REMOVED	Router.CloseMap moves from map_work.go to router.go; calls Dashboard.CloseMap at the root
+mapview->tty	Router.observer	field	modes/tty/router.go	REMOVED	Router.CloseMap moves from map_work.go to router.go; calls Dashboard.CloseMap at the root
+mapview->tty	arrowChips	type	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	checkMark	func	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	cycleIn	func	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	debugProseWidth	func	modes/tty/debug.go	KIT	pure helper; moves down (CK)
+mapview->tty	eraseRune	func	modes/tty/textfield.go	CONTROLS	D-147 control; controls package
+mapview->tty	flashLeft	const	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	flashNone	const	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	flashRight	const	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	insetModalLines	func	modes/tty/columns.go	KIT	pure helper; moves down (CK)
+mapview->tty	itself	func	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	mapClearedNote	func	modes/tty/setup_notices.go	MOVES	the map's words for its clear; returned in SettingsWant.Note
+mapview->tty	modal	type	modes/tty/dashboard.go	ENV	Env.Window (the map package's own Window enum; the root maps modal to it)
+mapview->tty	modalMap	const	modes/tty/dashboard.go	ENV	Env.Window (the map package's own Window enum; the root maps modal to it)
+mapview->tty	modalPropAck	const	modes/tty/dashboard.go	ENV	Env.Window (the map package's own Window enum; the root maps modal to it)
+mapview->tty	modalPropChart	const	modes/tty/dashboard.go	ENV	Env.Window (the map package's own Window enum; the root maps modal to it)
+mapview->tty	modalPropFind	const	modes/tty/dashboard.go	ENV	Env.Window (the map package's own Window enum; the root maps modal to it)
+mapview->tty	modalPropFreq	const	modes/tty/dashboard.go	ENV	Env.Window (the map package's own Window enum; the root maps modal to it)
+mapview->tty	newArrowChips	func	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	noticeDone	const	modes/tty/setup_notices.go	SETTINGS	the note's tone: controls.Tone (noticeTone moves down with the notes it colours)
+mapview->tty	noticeFail	const	modes/tty/setup_notices.go	SETTINGS	the note's tone: controls.Tone (noticeTone moves down with the notes it colours)
+mapview->tty	noticeInfo	const	modes/tty/setup_notices.go	SETTINGS	the note's tone: controls.Tone (noticeTone moves down with the notes it colours)
+mapview->tty	pickerCellW	func	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	pickerFlash	type	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	radioMark	func	modes/tty/setup_form.go	CONTROLS	D-147 control; controls package
+mapview->tty	refOf	func	modes/tty/modal_location.go	KIT	pure helper; moves down (CK)
+mapview->tty	rowMapClear	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapColours	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapDesc	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapDetailBorders	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapDetailLevel	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapDetailNight	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapLayers	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapNearby	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapPlayback	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapPropNoise	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapPropRadius	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapPropReadings	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapPropRefresh	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapPropStations	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapQuakes	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapRadarAhead	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapRadarSource	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapRainDetail	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapScale	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapTempSource	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapUVCities	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	rowMapsOn	const	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	settingLabel	func	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	settingSupport	func	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	setupMark	func	modes/tty/setup_rows.go	CONTROLS	D-147 control; controls package
+mapview->tty	setupRowID	type	modes/tty/setup_rows.go	SETTINGS	root keeps the ordered ids; the map declares its own Row enum; setupRow gains a mapRow column
+mapview->tty	setupState.focus	field	modes/tty/setup.go	SETTINGS	SettingsView in (focus, layerAt, flash), SettingsWant out (layerAt, note, dirty)
+mapview->tty	setupState.layerAt	field	modes/tty/setup.go	SETTINGS	SettingsView in (focus, layerAt, flash), SettingsWant out (layerAt, note, dirty)
+mapview->tty	setupState.note	field	modes/tty/setup.go	SETTINGS	SettingsView in (focus, layerAt, flash), SettingsWant out (layerAt, note, dirty)
+mapview->tty	setupState.noteRow	field	modes/tty/setup.go	SETTINGS	SettingsView in (focus, layerAt, flash), SettingsWant out (layerAt, note, dirty)
+mapview->tty	setupState.noteTone	field	modes/tty/setup.go	SETTINGS	SettingsView in (focus, layerAt, flash), SettingsWant out (layerAt, note, dirty)
+mapview->tty	setupState.uiDirty	field	modes/tty/setup.go	SETTINGS	SettingsView in (focus, layerAt, flash), SettingsWant out (layerAt, note, dirty)
+mapview->tty	uiChoices.clockFmt	field	modes/tty/dashboard_choices.go	ENV	Env.ClockFmt
+mapview->tty	uiChoices.reduceMotion	field	modes/tty/dashboard_choices.go	ENV	Env.ReduceMotion
+mapview->tty	uiChoices.units	field	modes/tty/dashboard_choices.go	ENV	Env.Units
+tty->mapview	Dashboard.applyForecastTick	method	modes/tty/map_temp.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyMapCleared	method	modes/tty/map_settings.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyMapFeed	method	modes/tty/map_pane.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyMapRadar	method	modes/tty/map_radar.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyMapRelease	method	modes/tty/map_pane.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyMapTemp	method	modes/tty/map_temp.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyMapTick	method	modes/tty/map_work.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyMapWorked	method	modes/tty/map_pane.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyPropAhead	method	modes/tty/map_prop_ahead.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyPropAnswer	method	modes/tty/map_prop_chart.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyPropFound	method	modes/tty/map_prop_find.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyPropTick	method	modes/tty/map_prop_update.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyPropUpdated	method	modes/tty/map_prop_update.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyRadarAgain	method	modes/tty/map_radar.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.applyViewSettled	method	modes/tty/map_pane.go	API	folded into Model.Update(msg, Env)
+tty->mapview	Dashboard.armMapTick	method	modes/tty/map_work.go	API	post-update step, called by the root in today's order (MS-5)
+tty->mapview	Dashboard.armPropAhead	method	modes/tty/map_prop_ahead.go	API	post-update step, called by the root in today's order (MS-5)
+tty->mapview	Dashboard.armPropCentre	method	modes/tty/map_prop_centre.go	API	post-update step, called by the root in today's order (MS-5)
+tty->mapview	Dashboard.armPropChart	method	modes/tty/map_prop_chart.go	API	post-update step, called by the root in today's order (MS-5)
+tty->mapview	Dashboard.armPropOptions	method	modes/tty/map_prop_update.go	API	post-update step, called by the root in today's order (MS-5)
+tty->mapview	Dashboard.armPropReach	method	modes/tty/map_prop_freq.go	API	post-update step, called by the root in today's order (MS-5)
+tty->mapview	Dashboard.armPropRefresh	method	modes/tty/map_prop_update.go	API	post-update step, called by the root in today's order (MS-5)
+tty->mapview	Dashboard.askFeed	method	modes/tty/map_pane.go	API	folded into Model.Resized / Model.SnapshotLanded / Model.Resumed (route and resume call them)
+tty->mapview	Dashboard.boundMap	method	modes/tty/map_pane.go	API	folded into Model.Resized / Model.SnapshotLanded / Model.Resumed (route and resume call them)
+tty->mapview	Dashboard.chartKeyMap	method	modes/tty/map_prop_chart.go	API	Model.Help(Env) / Model.Role(Env)
+tty->mapview	Dashboard.chartKeys	field	modes/tty/dashboard.go	MOVES	a field of the model (2a: the embedded mapModel)
+tty->mapview	Dashboard.clearMapData	method	modes/tty/map_settings.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.cycleMapDesc	method	modes/tty/map_settings.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.followNight	method	modes/tty/map_night.go	API	post-update step, called by the root in today's order (MS-5)
+tty->mapview	Dashboard.followReader	method	modes/tty/map_prop_place.go	API	Model.WordsPlace / Model.FollowReader, called by Dashboard.dispatch as today
+tty->mapview	Dashboard.followSelection	method	modes/tty/map_pane.go	API	Model.SelectionMoved(Env) / Model.ZoneMoved(Env) (Settings commit)
+tty->mapview	Dashboard.handleMapKey	method	modes/tty/map_pane.go	API	Model.Key(Window, key, Env); the root keeps a one-line adapter per windowKeysOf row
+tty->mapview	Dashboard.handlePropAckKey	method	modes/tty/map_prop_ack.go	API	Model.Key(Window, key, Env); the root keeps a one-line adapter per windowKeysOf row
+tty->mapview	Dashboard.handlePropChartKey	method	modes/tty/map_prop_chart.go	API	Model.Key(Window, key, Env); the root keeps a one-line adapter per windowKeysOf row
+tty->mapview	Dashboard.handlePropFindKey	method	modes/tty/map_prop_find.go	API	Model.Key(Window, key, Env); the root keeps a one-line adapter per windowKeysOf row
+tty->mapview	Dashboard.handlePropFreqKey	method	modes/tty/map_prop_freq.go	API	Model.Key(Window, key, Env); the root keeps a one-line adapter per windowKeysOf row
+tty->mapview	Dashboard.layerChoices	method	modes/tty/map_prefs.go	MOVES	the choices' saved words: Model.Saved() (uiForSave)
+tty->mapview	Dashboard.layerLines	method	modes/tty/map_settings.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.mapBadgeWords	method	modes/tty/map_radar.go	API	Model.Lines(Window, Opts, Env) / Model.Title / Model.Tab
+tty->mapview	Dashboard.mapBodyLines	method	modes/tty/map_pane.go	API	Model.Lines(Window, Opts, Env) / Model.Title / Model.Tab
+tty->mapview	Dashboard.mapChoices	field	modes/tty/dashboard.go	MOVES	a field of the model (2a: the embedded mapModel)
+tty->mapview	Dashboard.mapCloses	field	modes/tty/dashboard.go	MOVES	a field of the model (2a: the embedded mapModel)
+tty->mapview	Dashboard.mapCost	field	modes/tty/dashboard.go	MOVES	a field of the model (2a: the embedded mapModel)
+tty->mapview	Dashboard.mapKeys	field	modes/tty/dashboard.go	MOVES	a field of the model (2a: the embedded mapModel)
+tty->mapview	Dashboard.mapLayerLines	method	modes/tty/map_settings.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.mapNotesNow	method	modes/tty/map_pane.go	API	Model.Notes(Env)
+tty->mapview	Dashboard.mapPane	field	modes/tty/dashboard.go	MOVES	a field of the model (2a: the embedded mapModel)
+tty->mapview	Dashboard.mapPanicked	method	modes/tty/map_work.go	API	post-update step, called by the root in today's order (MS-5)
+tty->mapview	Dashboard.mapPickerW	method	modes/tty/map_settings.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.mapPrefArrow	method	modes/tty/map_prefs.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.mapReleaseAfter	field	modes/tty/dashboard.go	MOVES	a field of the model (2a: the embedded mapModel)
+tty->mapview	Dashboard.mapRole	method	modes/tty/map_role.go	API	Model.Help(Env) / Model.Role(Env)
+tty->mapview	Dashboard.mapRowW	method	modes/tty/map_settings.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.mapSettingLines	method	modes/tty/map_settings.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.mapTitle	method	modes/tty/map_pane.go	API	Model.Lines(Window, Opts, Env) / Model.Title / Model.Tab
+tty->mapview	Dashboard.mapWorkCmd	method	modes/tty/map_pane.go	API	folded into Model.Resized / Model.SnapshotLanded / Model.Resumed (route and resume call them)
+tty->mapview	Dashboard.partlyCleared	method	modes/tty/map_settings.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.propAckLines	method	modes/tty/map_prop_ack.go	API	Model.Lines(Window, Opts, Env) / Model.Title / Model.Tab
+tty->mapview	Dashboard.propAgeShown	method	modes/tty/map_prop_draw.go	API	Model.NeedsTick(Env)
+tty->mapview	Dashboard.propChartLines	method	modes/tty/map_prop_chart.go	API	Model.Lines(Window, Opts, Env) / Model.Title / Model.Tab
+tty->mapview	Dashboard.propFindLines	method	modes/tty/map_prop_find.go	API	Model.Lines(Window, Opts, Env) / Model.Title / Model.Tab
+tty->mapview	Dashboard.propFreqLines	method	modes/tty/map_prop_freq.go	API	Model.Lines(Window, Opts, Env) / Model.Title / Model.Tab
+tty->mapview	Dashboard.propRadiusKm	method	modes/tty/map_zone.go	API	folded into Model.MemoKey
+tty->mapview	Dashboard.propStatusWords	method	modes/tty/map_prop_update.go	API	folded into Model.MemoKey
+tty->mapview	Dashboard.refreshMapCost	method	modes/tty/map_prefs.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.refreshRadar	method	modes/tty/map_radar.go	API	folded into Model.Resized / Model.SnapshotLanded / Model.Resumed (route and resume call them)
+tty->mapview	Dashboard.refreshTemp	method	modes/tty/map_temp.go	API	folded into Model.Resized / Model.SnapshotLanded / Model.Resumed (route and resume call them)
+tty->mapview	Dashboard.renderMap	method	modes/tty/map_pane.go	API	folded into Model.Resized / Model.SnapshotLanded / Model.Resumed (route and resume call them)
+tty->mapview	Dashboard.requestFeed	method	modes/tty/map_pane.go	API	folded into Model.Resized / Model.SnapshotLanded / Model.Resumed (route and resume call them)
+tty->mapview	Dashboard.setZone	method	modes/tty/map_zone.go	API	Model.SelectionMoved(Env) / Model.ZoneMoved(Env) (Settings commit)
+tty->mapview	Dashboard.stepLayer	method	modes/tty/map_prefs.go	SETTINGS	the map's Settings rows: Model.Setting* API (MS-4)
+tty->mapview	Dashboard.stopPropagation	method	modes/tty/map_prop_update.go	API	Model.Closed(Env), called by tellMapClosed
+tty->mapview	Dashboard.tempMemoKey	method	modes/tty/map_temp.go	API	folded into Model.MemoKey
+tty->mapview	Dashboard.toggleMap	method	modes/tty/map_pane.go	API	split site S1: root opens the window, then Model.Opened(Env)
+tty->mapview	Dashboard.viewMoved	method	modes/tty/map_pane.go	API	folded into Model.Resized / Model.SnapshotLanded / Model.Resumed (route and resume call them)
+tty->mapview	Dashboard.wordsPlaceNow	method	modes/tty/map_prop_place.go	API	Model.WordsPlace / Model.FollowReader, called by Dashboard.dispatch as today
+tty->mapview	MapAsk	type	modes/tty/map_prefs.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapCleared	type	modes/tty/map_settings.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapCleared.Files	field	modes/tty/map_settings.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapCleared.Zones	field	modes/tty/map_settings.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapCost	type	modes/tty/map_prefs.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapCost.Bytes	field	modes/tty/map_prefs.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapCost.Requests	field	modes/tty/map_prefs.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapFeed	type	modes/tty/map_pane.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapFrame	type	modes/tty/map_framelog.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapLayer	type	modes/tty/map_prefs.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapRadar	type	modes/tty/map_radar.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	MapTemperature	type	modes/tty/map_temp.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	PropagationResult	type	modes/tty/map_prop_update.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	UVCitiesByCount	func	modes/tty/map_prefs.go	API	exported map data type, moves to the map package; Config's hooks and app name it there
+tty->mapview	actMapNext	const	modes/tty/map_pane.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	actMapPrev	const	modes/tty/map_pane.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	chartKeysFrom	func	modes/tty/map_prop_chart.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	chipFace	func	modes/tty/map_parts.go	KIT	pure window-chrome helper; moves down (CK)
+tty->mapview	choicesOf	func	modes/tty/map_boxes.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	costWarningParts	func	modes/tty/map_prefs.go	SETTINGS	Model.SettingNotes(...) returns the map's notes; Settings draws them
+tty->mapview	detailLevelByKey	func	modes/tty/map_boxes.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	feedLane.again	field	modes/tty/map_pane.go	REMOVED	read only by timeDraw, which moves with the map
+tty->mapview	feedLane.applied	field	modes/tty/map_pane.go	REMOVED	read only by timeDraw, which moves with the map
+tty->mapview	feedLane.busy	field	modes/tty/map_pane.go	REMOVED	read only by timeDraw, which moves with the map
+tty->mapview	forecastTickMsg	type	modes/tty/map_temp.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	laneAlerts	const	modes/tty/map_pane.go	REMOVED	read only by timeDraw, which moves with the map
+tty->mapview	laneLayers	const	modes/tty/map_pane.go	REMOVED	read only by timeDraw, which moves with the map
+tty->mapview	layerChoiceKey	func	modes/tty/map_prefs.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	leafErrors	func	modes/tty/map_settings.go	SETTINGS	Model.SettingNotes(...) returns the map's notes; Settings draws them
+tty->mapview	mapActions	var	modes/tty/map_pane.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	mapBrailleNote	const	modes/tty/map_pane.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	mapChoices	type	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapDepth	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapDesc	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapDetailChoice	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapDetailLevel	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapLayerChoice	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapNearbyKm	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapPlayback	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapPropCorrect	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapPropNoGIRO	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapPropNoise	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapPropRadiusKm	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapPropRefresh	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapQuakeFeed	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapRadarAhead	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapRadarIEM	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapRainFull	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapScale	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapTempNDFD	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapUVCities	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapChoices.mapsOff	field	modes/tty/dashboard_choices.go	MOVES	the map's choices move with the model; the root reads them through Saved() and MemoKey
+tty->mapview	mapClearedMsg	type	modes/tty/map_settings.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapClock	type	modes/tty/timing.go	MOVES	the map's timing instrument moves with the map (timing.go's map half)
+tty->mapview	mapClock.feedAt	field	modes/tty/timing.go	MOVES	the map's timing instrument moves with the map (timing.go's map half)
+tty->mapview	mapClock.from	field	modes/tty/timing.go	MOVES	the map's timing instrument moves with the map (timing.go's map half)
+tty->mapview	mapClock.seen	field	modes/tty/timing.go	MOVES	the map's timing instrument moves with the map (timing.go's map half)
+tty->mapview	mapClock.what	field	modes/tty/timing.go	MOVES	the map's timing instrument moves with the map (timing.go's map half)
+tty->mapview	mapDepthByKey	func	modes/tty/map_depth.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	mapDepthKey	func	modes/tty/map_depth.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	mapDescByKey	func	modes/tty/map_settings.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	mapDescMode	type	modes/tty/map_settings.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	mapDescMode.Key	method	modes/tty/map_settings.go	MOVES	the choices' saved words: Model.Saved()
+tty->mapview	mapFeedMsg	type	modes/tty/map_pane.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapHelpRow	type	modes/tty/map_pane.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	mapHelpRow.help	field	modes/tty/map_pane.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	mapHelpRow.keys	field	modes/tty/map_pane.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	mapHelpRows	func	modes/tty/map_pane.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	mapKeysFrom	func	modes/tty/map_pane.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	mapMinBody	var	modes/tty/map_settings.go	API	mapview.Width(Window) / mapview.MinBody; modalRailCols to the kit with wrapModalAt (KIT)
+tty->mapview	mapNearbyByKm	func	modes/tty/map_prefs.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	mapPane	type	modes/tty/map_pane.go	MOVES	the model's pane
+tty->mapview	mapPane.alertsOn	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.call	method	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.clock	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.edge	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.edgeShown	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.failed	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.fcGen	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.fcPlaying	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.feedGen	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.flash	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.flashEnd	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.gen	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.lanes	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.m	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.menuAt	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.menuFlash	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.menuFlashEnd	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.menuOn	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.modeChip	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.notes	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.offline	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.outside	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.pending	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.prop	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propChart	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propChartRow	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propFindBusy	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propFindErr	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propFindQuery	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propFound	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propFreqErr	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propFreqMHz	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propFreqQuery	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propLayer	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.propSnap	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.radarAhead	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.radarBadgeTime	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.radarBusy	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.radarLine	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.radarSource	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.radarTimeline	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.status	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.tempBusy	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.title	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.viewAsked	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPane.viewGen	field	modes/tty/map_pane.go	API	read through the model's API (MemoKey, Tick, NeedsTick, Cursor, Notes, ...); see users
+tty->mapview	mapPanicMsg	type	modes/tty/map_work.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapRadarAgainMsg	type	modes/tty/map_radar.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapRadarMsg	type	modes/tty/map_radar.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapReleaseAfter	const	modes/tty/map_pane.go	MOVES	read only by New (the model sets its own release delay)
+tty->mapview	mapReleaseMsg	type	modes/tty/map_pane.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapReleaseMsg.gen	field	modes/tty/map_pane.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapRole.placeKeys	field	modes/tty/map_role.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	mapRole.zone	field	modes/tty/map_role.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	mapScaleByKey	func	modes/tty/map_prefs.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	mapScaleMode	type	modes/tty/map_prefs.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	mapScaleMode.Key	method	modes/tty/map_prefs.go	MOVES	the choices' saved words: Model.Saved()
+tty->mapview	mapTempMsg	type	modes/tty/map_temp.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapTickMsg	type	modes/tty/map_work.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapViewSettledMsg	type	modes/tty/map_pane.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapWorkedMsg	type	modes/tty/map_pane.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	mapsKey	func	modes/tty/map_settings.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	meteredNote	const	modes/tty/map_temp.go	SETTINGS	Model.SettingNotes(...) returns the map's notes; Settings draws them
+tty->mapview	modalRailCols	const	modes/tty/map_pane.go	API	mapview.Width(Window) / mapview.MinBody; modalRailCols to the kit with wrapModalAt (KIT)
+tty->mapview	noReadingsCorrected	const	modes/tty/map_prop_settings.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	noReadingsKey	func	modes/tty/map_prop_settings.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	noStationsKey	const	modes/tty/map_prop_settings.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	outlineKeyHelp	func	modes/tty/map_scrub.go	API	Model.Keys / Model.Help (the help rows and keymaps the root's Help and window table read)
+tty->mapview	playbackByKey	func	modes/tty/map_playback.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	playbackKey	func	modes/tty/map_playback.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	propAckWidth	const	modes/tty/map_prop_ack.go	API	mapview.Width(Window) / mapview.MinBody; modalRailCols to the kit with wrapModalAt (KIT)
+tty->mapview	propAheadMsg	type	modes/tty/map_prop_ahead.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	propCentreMsg	type	modes/tty/map_prop_centre.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	propChart.key	field	modes/tty/map_prop_chart.go	API	folded into Model.MemoKey
+tty->mapview	propChartKey	type	modes/tty/map_prop_chart.go	API	folded into Model.MemoKey
+tty->mapview	propChartMsg	type	modes/tty/map_prop_chart.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	propChartWidth	const	modes/tty/map_prop_chart.go	API	mapview.Width(Window) / mapview.MinBody; modalRailCols to the kit with wrapModalAt (KIT)
+tty->mapview	propFindWidth	const	modes/tty/map_prop_find.go	API	mapview.Width(Window) / mapview.MinBody; modalRailCols to the kit with wrapModalAt (KIT)
+tty->mapview	propFoundMsg	type	modes/tty/map_prop_find.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	propFreqWidth	const	modes/tty/map_prop_freq.go	API	mapview.Width(Window) / mapview.MinBody; modalRailCols to the kit with wrapModalAt (KIT)
+tty->mapview	propNoiseByKey	func	modes/tty/map_prefs.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	propNoiseKey	func	modes/tty/map_prefs.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	propOffsetWords	func	modes/tty/map_prop_update.go	API	Model.Status(Env) for the Status window
+tty->mapview	propRadiusByKm	func	modes/tty/map_prefs.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	propReachMsg	type	modes/tty/map_prop_freq.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	propRefreshByKey	func	modes/tty/map_prop_settings.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	propRefreshKey	func	modes/tty/map_prop_settings.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	propRefreshNote	func	modes/tty/map_prop_settings.go	SETTINGS	Model.SettingNotes(...) returns the map's notes; Settings draws them
+tty->mapview	propTickMsg	type	modes/tty/map_prop_update.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	propUpdatedMsg	type	modes/tty/map_prop_update.go	API	stays unexported; the Router asks mapview.Answers(msg), the Dashboard hands it to Model.Update
+tty->mapview	quakeFeedByKey	func	modes/tty/map_prefs.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	radarAheadByHours	func	modes/tty/map_prefs.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	radarSourceKey	func	modes/tty/map_prefs.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	rainDetailFull	const	modes/tty/map_temp.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	rainDetailKey	func	modes/tty/map_temp.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	rainFullNote	const	modes/tty/map_temp.go	SETTINGS	Model.SettingNotes(...) returns the map's notes; Settings draws them
+tty->mapview	refreshEvery10	const	modes/tty/map_prop_settings.go	SETTINGS	Model.SettingNotes(...) returns the map's notes; Settings draws them
+tty->mapview	stationsKey	func	modes/tty/map_prop_settings.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	stationsNote	func	modes/tty/map_prop_settings.go	SETTINGS	Model.SettingNotes(...) returns the map's notes; Settings draws them
+tty->mapview	tabCol	func	modes/tty/map_parts.go	KIT	pure window-chrome helper; moves down (CK)
+tty->mapview	tempSourceKey	func	modes/tty/map_temp.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	tempSourceOpenMeteo	const	modes/tty/map_temp.go	MOVES	the choices' words in and out: mapview.ChoicesOf(Words) at New, Model.Saved() Words for uiForSave
+tty->mapview	titleChrome	const	modes/tty/map_parts.go	KIT	pure window-chrome helper; moves down (CK)
+tty->mapview	uvCitiesNote	func	modes/tty/map_prefs.go	SETTINGS	Model.SettingNotes(...) returns the map's notes; Settings draws them
+tty->mapview	uvCityChoices	var	modes/tty/map_prefs.go	SETTINGS	Model.SettingNotes(...) returns the map's notes; Settings draws them
+tty->mapview	withTab	func	modes/tty/map_parts.go	KIT	pure window-chrome helper; moves down (CK)

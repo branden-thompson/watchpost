@@ -45,9 +45,10 @@ the anchors).
 |---|---|---|
 | `modes/tty` | the Router (the one `tea.Model`), the Observer core (`Dashboard`), Settings, the windows, the key routing and the window stack | ~16,900 lines |
 | `modes/tty/console` | the Broadcaster console (`Broadcaster`, its 92 methods) | ~3,900 |
-| map package (name an A-row) | the map and Propagation, behind a concrete sub-model | ~10,500 |
-| kit (name an A-row) | the 41 declarations both surfaces draw: masthead, memo stats, tick, cursor slot, row helpers (TS-4) | ~300-600 |
-| test support (name an A-row) | the memo guard's engine, `perturbEach`, imported by `_test.go` files only; its `unsafe` and `reflect` one ratified P10-09 row (D-15) | ~170 |
+| `modes/tty/mapview` (A-20) | the map and Propagation, behind a concrete sub-model | ~10,500 |
+| `modes/tty/internal/frame`, the kit (A-20) | the 41 declarations both surfaces draw: masthead, memo stats, tick, cursor slot, row helpers (TS-4) | ~300-600 |
+| `modes/tty/internal/ttytest`, test support (A-20) | the memo guard's engine, `perturbEach`, and the pure test helpers, imported by `_test.go` files only; its `unsafe` and `reflect` one ratified P10-09 row (D-15), its recursion two P10-01 rows (D-23) | ~170 |
+| `modes/tty/internal/controls` (D-25) | the D-147 controls (pickers, chips, toggles), imported by the root and the map | small |
 
 - **Step 1, the console and the kit:** a move. No interface, no cycle (TS-3, TS-4). 80 mutants.
 - **Step 2, the map:** two halves (GP-4, P-d).
@@ -64,8 +65,9 @@ the anchors).
 |---|---|---|
 | `app` | the composition root: `RunDashboard`, the pipelines, the pool, `commit`, the diagnostics | 20 files, 4,054 lines |
 | `app/internal/deck` | **the shared deck, whole**: the radio deck, the arbiter, MasterControl, the air scope and fences, the bed, the Director's executors, the Producer and Composer | 30 files, 9,297 |
-| `app/internal/maps` | the map layers and the history | 22 files, 6,616 |
-| `app/internal/kit` | leaf helpers (`everyTick`, `lazyMemo`, `savePreference` and the rest) | 4 files, 217 |
+| `app/internal/mapdata` (A-20) | the map layers and the history | about 6,890 lines (A-23) |
+| `app/internal/run` (A-20) | seven helpers each with users in two packages (`EveryTick`, `LockedCopy`, `SavePreference` and the rest, A-23) | about 105 lines |
+| `app/internal/apptest` (A-24) | `app`'s pure test helpers, imported by `_test.go` files only | small |
 
 - Imports one way among `app`'s children: `app` → `deck`, `maps`, `kit`; `deck` and `maps` → `kit`, never each other, held by `lint-imports` (AS-9, A-12). Each still imports `modes/tty` and the `platform` packages it uses today.
 - The root's deck wiring in `app/dashboard.go` moves into the deck as one entry point, so the
@@ -128,8 +130,8 @@ Every lens converged on this list. Each item is written test-first: seen failing
    `domains` never importing `app`, and `platform` never importing `modes`, each with a planted
    specimen.
 10. **The citation lint keyed on the package root, not the directory** (TG-4, RC-5), as an A-row.
-11. **The tone-latency instrument reconciled** (PB-8): 15.8 µs today against 1.6 µs recorded; the
-    test wiring inside its timed span accounted for. It is the yardstick for the deck's move.
+11. **The tone-latency benchmark's 185 allocations held as a pin** (A-17, A-27). Its wall-time
+    reconciliation (PB-8) is 0.19.7's, with D-2.
 12. **The floor scan and go 1.26.11** (D-12): `govulncheck` at the `go` floor in CI and the release
     job, seen failing at 1.26.10, then the floor raised.
 

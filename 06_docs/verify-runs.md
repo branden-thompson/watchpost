@@ -265,3 +265,5 @@ says exactly what passed.
 | 2026-11-15T20:14:15Z | 5e892667 | 70aaa9e3e52f | verify-docs | green | 142 |
 | 2026-11-15T20:19:47Z | 839a267f | 9b7ef8821885 | verify-docs | green | 143 |
 | 2026-11-15T20:24:56Z | 0ceb77d1 | ef6b25d53df8 | verify-docs | green | 139 |
+| 2026-11-15T22:39:45Z | 3f561f6f | 004111ef1ca8 | verify | FAILED (the tree changed during the run: 004111ef1ca8 tested, 1254aee3def4 at its end) | 2310 |
+| 2026-11-15T23:18:24Z | 3f561f6f | 4b81becddf9c | verify | green | 2282 |

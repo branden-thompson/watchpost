@@ -1,0 +1,165 @@
+kind	name	declared	destination	owner_after	note
+field	mu	app/dashboard.go:802	app	livePipelines	root owns; Deck.mu and Feeds.mu hold &lp.mu (D-16)
+field	ctx	app/dashboard.go:803	app	livePipelines	root keeps (restationTo, lookupCtx); Feeds gets a copy (propagationUpdate)
+field	started	app/dashboard.go:807	app	livePipelines	
+field	release	app/dashboard.go:808	app	livePipelines	
+field	unknownKeys	app/dashboard.go:813	app	livePipelines	
+field	zoneShapes	app/dashboard.go:815	maps	mapdata.Feeds	
+field	radar	app/dashboard.go:816	maps	mapdata.Feeds	
+field	temp	app/dashboard.go:817	maps	mapdata.Feeds	
+field	tempAnswers	app/dashboard.go:819	maps	mapdata.Feeds	
+field	airGrids	app/dashboard.go:821	maps	mapdata.Feeds	
+field	history	app/dashboard.go:822	maps	mapdata.Feeds	
+field	usage	app/dashboard.go:823	maps	mapdata.Feeds	
+field	lastMapRegion	app/dashboard.go:826	maps	mapdata.Feeds	
+field	maps	app/dashboard.go:827	maps	mapdata.Feeds	
+field	program	app/dashboard.go:828	app	livePipelines	root keeps for commit/restationTo; Deck holds its own copy, set by Deck.Attach, read under mu by the bed
+field	provider	app/dashboard.go:829	app	livePipelines	
+field	providerFamilies	app/dashboard.go:830	app	livePipelines	root keeps (providers, stats); Feeds gets fire and marine slices
+field	firms	app/dashboard.go:831	app	livePipelines	
+field	rules	app/dashboard.go:832	app	livePipelines	root keeps (fireFor); Feeds gets a copy (fireRules)
+field	priority	app/dashboard.go:833	app	livePipelines	
+field	recent	app/dashboard.go:834	app	livePipelines	
+field	ticker	app/dashboard.go:835	deck	deck.Deck	moves to Deck; read under mu by StopProducer and injectHook
+field	severe	app/dashboard.go:836	deck	deck.Deck	moves to Deck; built by Deck.Attach
+field	mapQuakes	app/dashboard.go:837	maps	mapdata.Feeds	
+field	airnow	app/dashboard.go:838	maps	mapdata.Feeds	
+field	mapClients	app/dashboard.go:839	maps	mapdata.Feeds	
+field	tiles	app/dashboard.go:840	maps	mapdata.Feeds	
+field	problems	app/dashboard.go:841	maps	mapdata.Feeds	moves to Feeds; root writes Note and reads it in FillStats
+field	propagation	app/dashboard.go:842	maps	mapdata.Feeds	
+field	timings	app/dashboard.go:843	maps	mapdata.Feeds	moves to Feeds with timing.go; root reads TimingRecords for the dump
+field	arbiter	app/dashboard.go:844	deck	deck.Deck	
+field	scripts	app/dashboard.go:845	deck	deck.Deck	
+field	reader	app/dashboard.go:846	deck	deck.Deck	
+field	schedule	app/dashboard.go:847	deck	deck.Deck	
+field	watchRefs	app/dashboard.go:849	app	livePipelines	root keeps; Deck reads through Options.Watch (testLocation)
+field	idx	app/dashboard.go:855	app	livePipelines	root keeps (poolFor, giveItAStation); Feeds gets it by WireUVCities; Deck by Options.Index
+field	station	app/dashboard.go:856	app	livePipelines	root keeps; Deck and Feeds read through Options.Station
+field	poolRefs	app/dashboard.go:857	app	livePipelines	root keeps; Deck reads through Options.Pool
+field	requestedRefs	app/dashboard.go:862	deck	deck.Deck	moves to Deck with rememberRequested/resolvable
+field	relayTable	app/dashboard.go:867	deck	deck.Deck	
+field	bedRadiusMi	app/dashboard.go:868	deck	deck.Deck	
+field	bedPick	app/dashboard.go:869	deck	deck.Deck	
+field	bedOn	app/dashboard.go:870	deck	deck.Deck	
+field	bedStations	app/dashboard.go:880	deck	deck.Deck	
+field	bedRefresh	app/dashboard.go:884	deck	deck.Deck	moves to Deck with rebed (the test seam stays unexported)
+field	bedRelay	app/dashboard.go:895	deck	deck.Deck	
+field	bedCall	app/dashboard.go:900	deck	deck.Deck	
+field	owner	app/dashboard.go:904	deck	deck.Deck	moves to Deck (takeTheAir, the deck.air predicate)
+field	clients	app/dashboard.go:909	app	livePipelines	
+field	weather	app/dashboard.go:910	app	livePipelines	root keeps (commit Retain, stats); Feeds gets the same pointer (mapFeed, seedZoneShapes)
+field	areaAlerts	app/dashboard.go:913	maps	mapdata.Feeds	
+field	areaMemo	app/dashboard.go:914	maps	mapdata.Feeds	
+field	areasOf	app/dashboard.go:918	maps	mapdata.Feeds	
+field	tides	app/dashboard.go:919	app	livePipelines	root keeps (stats); Feeds gets the pointer (forgetTidesAndUVCities)
+field	deck	app/dashboard.go:920	deck	deck.Deck	
+field	dump	app/dashboard.go:921	app	livePipelines	
+method	monitorMayReachTheAir	app/air_boundary.go:53	deck	deck.Deck	
+method	takeTheAir	app/airscope.go:117	deck	deck.Deck	
+method	masterControl	app/airscope.go:151	deck	deck.Deck	
+method	silenceMonitor	app/airscope.go:166	deck	deck.Deck	
+method	bedRelays	app/bedrelay.go:36	deck	deck.Deck	
+method	refreshBedRelays	app/bedrelay.go:68	deck	deck.Deck	body: reads Options.Station instead of lp.currentStation
+method	setBedStations	app/bedrelay.go:106	deck	deck.Deck	
+method	bedFenceMi	app/bedrelay.go:131	deck	deck.Deck	
+method	stepBedRelay	app/bedrelay.go:154	deck	deck.Deck	
+method	keepBedRelay	app/bedrelay.go:188	deck	deck.Deck	
+method	selectedStation	app/bedrelay.go:196	deck	deck.Deck	
+method	toggleBedRelay	app/bedrelay.go:209	deck	deck.Deck	
+method	playBed	app/bedrelay.go:230	deck	deck.Deck	
+method	stopBed	app/bedrelay.go:239	deck	deck.Deck	
+method	selectedRelay	app/bedrelay.go:255	deck	deck.Deck	
+method	bedCarrying	app/bedrelay.go:265	deck	deck.Deck	
+method	noteBedCarrying	app/bedrelay.go:284	deck	deck.Deck	
+method	giveItAStation	app/dashboard.go:189	app	livePipelines	split: bed lines :196-200 into deck.New
+method	startPipelines	app/dashboard.go:265	app	livePipelines	split: root keeps the pipelines; Deck.StartVoice (:290-299) and Deck.StartDirector (:301-337); Feeds.StartHistory (:300)
+method	ttyConfig	app/dashboard.go:343	app	livePipelines	split: root rows; Deck.FillConfig fills 12 rows; Feeds.FillConfig fills mapConfig and 4 history rows
+method	stationConfig	app/dashboard.go:395	app	livePipelines	split: 5 root rows stay; 6 rows to Deck.FillConfig
+method	mapConfig	app/dashboard.go:424	maps	mapdata.Feeds	Feeds.FillConfig
+method	attachMaps	app/dashboard.go:477	app	livePipelines	split: root keeps attachDiagnostics; Feeds.Attach (:479-480)
+method	wireUVCities	app/dashboard.go:485	maps	mapdata.Feeds	Feeds.WireUVCities(idx), which also keeps idx
+method	attachDeck	app/dashboard.go:499	app	livePipelines	split: root keeps :500-502; Deck.Attach (:503-510)
+method	attachDiagnostics	app/dashboard.go:515	app	livePipelines	
+method	currentWatch	app/dashboard.go:524	app	livePipelines	
+method	setWatch	app/dashboard.go:531	app	livePipelines	
+method	buildArbiter	app/dashboard.go:551	deck	deck.Deck	
+method	wireDeckWarnings	app/dashboard.go:564	deck	deck.Deck	body: takes the warn func from StartDirector
+method	fireFor	app/dashboard.go:927	app	livePipelines	
+method	seismicFor	app/dashboard.go:939	app	livePipelines	
+method	markFIRMS	app/dashboard.go:949	app	livePipelines	
+method	assemblers	app/dashboard.go:961	app	livePipelines	
+method	setup	app/dashboard.go:975	app	livePipelines	
+method	providers	app/dashboard.go:990	app	livePipelines	
+method	stopAll	app/dashboard.go:1024	app	livePipelines	split: Deck.StopProducer (:1026 ticker, :1036-1041), Feeds.Settle (:1042), Deck.StopDirector (:1046)
+method	commit	app/dashboard.go:1049	app	livePipelines	
+method	hydrate	app/dashboard.go:1122	app	livePipelines	
+method	relayDwell	app/dashboard.go:1133	deck	deck.Deck	
+method	tuneRelay	app/dashboard.go:1143	deck	deck.Deck	
+method	readReport	app/dashboard.go:1155	deck	deck.Deck	
+method	relayLang	app/dashboard.go:1165	deck	deck.Deck	
+method	setRelayLang	app/dashboard.go:1176	deck	deck.Deck	
+method	setRelayDwell	app/dashboard.go:1195	deck	deck.Deck	
+method	endEventRead	app/dashboard.go:1211	deck	deck.Deck	
+method	narrateEvent	app/dashboard.go:1219	deck	deck.Deck	
+method	startHistory	app/history.go:173	maps	mapdata.Feeds	exported as Feeds.StartHistory
+method	historyRegions	app/history.go:205	maps	mapdata.Feeds	body: reads Options.Station
+method	historyStore	app/history.go:514	maps	mapdata.Feeds	exported as Feeds.HistoryStore (stats.go:211)
+method	applyHistory	app/history.go:521	maps	mapdata.Feeds	
+method	setHistory	app/history.go:533	maps	mapdata.Feeds	
+method	clearHistory	app/history.go:545	maps	mapdata.Feeds	
+method	historyUsage	app/history.go:569	maps	mapdata.Feeds	
+method	forgetUsage	app/history.go:580	maps	mapdata.Feeds	
+method	readHistoryUsage	app/history.go:588	maps	mapdata.Feeds	
+method	historyCost	app/history.go:617	maps	mapdata.Feeds	
+method	injectHook	app/inject.go:217	deck	deck.Deck	
+method	testLocation	app/inject.go:246	deck	deck.Deck	body: reads Options.Watch instead of lp.watchRefs under the lock
+method	airnowIn	app/mapairuv.go:238	maps	mapdata.Feeds	
+method	mapFeed	app/mapfeed.go:31	maps	mapdata.Feeds	
+method	mapFeedWith	app/mapfeed.go:53	maps	mapdata.Feeds	
+method	fireRules	app/mapfire.go:48	maps	mapdata.Feeds	
+method	fireIn	app/mapfire.go:58	maps	mapdata.Feeds	reads Feeds.fire
+method	seedZoneShapes	app/mapgeometry.go:100	maps	mapdata.Feeds	
+method	mapClosed	app/mapgeometry.go:121	maps	mapdata.Feeds	
+method	viewAlerts	app/mapinview.go:51	maps	mapdata.Feeds	
+method	mapInputs	app/maplayers.go:73	maps	mapdata.Feeds	
+method	mapInputsFetching	app/maplayers.go:79	maps	mapdata.Feeds	
+method	inputsFor	app/maplayers.go:86	maps	mapdata.Feeds	
+method	fetchInputs	app/maplayers.go:114	maps	mapdata.Feeds	
+method	mapCost	app/maplayers.go:164	maps	mapdata.Feeds	
+method	marineProviders	app/mapmarine.go:52	maps	mapdata.Feeds	reads Feeds.marine
+method	buoysIn	app/mapmarine.go:67	maps	mapdata.Feeds	
+method	tidesIn	app/mapmarine.go:81	maps	mapdata.Feeds	
+method	tidesHeld	app/mapmarine.go:105	maps	mapdata.Feeds	
+method	propagationUpdate	app/mapprop.go:112	maps	mapdata.Feeds	
+method	mapRadar	app/mapradar.go:174	maps	mapdata.Feeds	
+method	newMap	app/maps.go:125	maps	mapdata.Feeds	
+method	seedOnFirstMap	app/maps.go:134	maps	mapdata.Feeds	body: reads Options.Watch
+method	clearMapData	app/maps.go:146	maps	mapdata.Feeds	
+method	forgetTidesAndUVCities	app/maps.go:183	maps	mapdata.Feeds	
+method	mapDisk	app/maps.go:201	maps	mapdata.Feeds	
+method	mapTemperature	app/maptemp.go:163	maps	mapdata.Feeds	
+method	tempKeyFor	app/maptemp.go:224	maps	mapdata.Feeds	
+method	tempCoreFor	app/maptemp.go:236	maps	mapdata.Feeds	
+method	marineFor	app/marine.go:17	app	livePipelines	
+method	setStation	app/pool.go:75	app	livePipelines	
+method	moveCard	app/pool.go:88	deck	deck.Deck	
+method	dropCard	app/pool.go:95	deck	deck.Deck	
+method	rebed	app/pool.go:109	deck	deck.Deck	
+method	setTransmitter	app/pool.go:149	app	livePipelines	
+method	setServiceRadius	app/pool.go:169	app	livePipelines	
+method	restationTo	app/pool.go:186	app	livePipelines	split: Deck.StationMoved (:207-219)
+method	poolFor	app/pool.go:247	app	livePipelines	
+method	currentPool	app/pool.go:253	app	livePipelines	
+method	producer	app/pool.go:267	app	livePipelines	
+method	currentStation	app/pool.go:270	app	livePipelines	
+method	reStation	app/pool.go:294	app	livePipelines	
+method	lookInPool	app/pool.go:346	app	livePipelines	
+method	locateInRadius	app/pool.go:411	app	livePipelines	
+method	lookupCtx	app/pool.go:456	app	livePipelines	
+method	requestCard	app/pool.go:482	deck	deck.Deck	
+method	rememberRequested	app/pool.go:520	deck	deck.Deck	
+method	resolvable	app/pool.go:546	deck	deck.Deck	body: reads Options.Pool instead of lp.currentPool
+method	recordFragment	app/stationrecord.go:86	maps	mapdata.Feeds	exported as Feeds.RecordFragment (the priority pipeline hook)
+method	ttyStats	app/stats.go:181	app	livePipelines	split: Feeds.FillStats (:184, :193-196, :199)
+method	sources	app/stats.go:210	app	livePipelines	split: deck and maps members become *deck.Deck and *mapdata.Feeds

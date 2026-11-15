@@ -1,0 +1,46 @@
+declaration	kind	source	exported_as	kit_file	used_outside_the_kit_by
+SnapshotMsg	type	modes/tty/dashboard.go:27	(stays at root: P3)	—	app, root, console
+RecentSnapshotMsg	type	modes/tty/dashboard.go:32	(stays at root: P3)	—	app, root, console
+staleAfter	const	modes/tty/body.go:95	(unexported)	masthead.go	kit only
+agoWords	func	modes/tty/body.go:107	AgoWords	masthead.go	console (shortAgo)
+apiSummaryOf	func	modes/tty/body.go:129	APISummaryOf	masthead.go	root, console
+providerCounts	type	modes/tty/body.go:144	(unexported)	masthead.go	kit only
+countProviders	func	modes/tty/body.go:148	(unexported)	masthead.go	kit only
+dataAsOf	func	modes/tty/alerts.go:175	DataAsOf	masthead.go	root (status.go, view.go)
+providersOf	func	modes/tty/status.go:776	ProvidersOf	masthead.go	root (status.go)
+mastheadTitle	func	modes/tty/masthead.go:32	MastheadTitle	masthead.go	root, console
+mastheadStamp	func	modes/tty/masthead.go:49	MastheadStamp	masthead.go	root, console
+mastheadKey	type	modes/tty/masthead.go:74	(unexported)	masthead.go	kit only (returned by MastheadKeyOf, taken by MastheadSlot.Get; never named outside)
+mastheadKeyOf	func	modes/tty/masthead.go:87	MastheadKeyOf	masthead.go	root, console
+mastheadSlot	type	modes/tty/masthead.go:102	MastheadSlot	masthead.go	root (bodyMemo), console (consoleMemo)
+mastheadSlot.get	method	modes/tty/masthead.go:109	Get	masthead.go	
+weatherRow	func	modes/tty/body.go:400	WeatherRow	row.go	root (body.go), console
+mmdd	func	modes/tty/body.go:444	(unexported)	row.go	kit only
+trend	func	modes/tty/body.go:453	Trend	row.go	root (detail.go)
+rowLoading	func	modes/tty/memo.go:214	RowLoading	row.go	root (memo.go), console
+fireCount	func	modes/tty/detail_fire.go:244	(unexported)	row.go	kit only
+fireHot	func	modes/tty/detail_fire.go:255	(unexported)	row.go	kit only
+fireBoldDefaultMW	const	modes/tty/detail_fire.go:285	FireBoldDefaultMW	row.go	root (detail_fire.go), console
+seismicRowLevel	func	modes/tty/detail_seismic.go:114	(unexported)	row.go	kit only
+levelControl	func	modes/tty/radio_panel.go:89	LevelControl	row.go	root (radio_panel.go), console
+sides	const	modes/tty/cursor.go:28	Sides	cursor.go	root (cursor.go wordStart)
+focusShare	const	modes/tty/cursor.go:32	(unexported)	cursor.go	kit only
+cursorLook	type	modes/tty/cursor.go:36	(unexported)	cursor.go	kit only
+cursorLook.cursor	method	modes/tty/cursor.go:85	(unexported)	cursor.go	
+cursorSlot	type	modes/tty/cursor.go:47	CursorSlot	cursor.go	root (memo.go, cursor.go, router.go, view.go), console
+cursorSlot.finish	method	modes/tty/cursor.go:63	Finish	cursor.go	
+focusCell	func	modes/tty/cursor.go:98	(unexported)	cursor.go	kit only
+lineAt	func	modes/tty/cursor.go:118	(unexported)	cursor.go	kit only
+focusMark	func	modes/tty/cursor.go:135	FocusMark	cursor.go	root (cursor.go cursorIn)
+sidesOnly	func	modes/tty/cursor.go:146	(unexported)	cursor.go	kit only
+surfaceMark	func	modes/tty/cursor.go:171	SurfaceMark	cursor.go	root (cursor.go), console
+tickMsg	type	modes/tty/dashboard.go:1053	TickMsg	tick.go	root, console
+tickEvery	func	modes/tty/dashboard.go:1059	TickEvery	tick.go	root (dashboard.go, map_prop_update.go)
+tick	func	modes/tty/dashboard.go:1063	Tick	tick.go	console (armTick)
+armShimmer	func	modes/tty/dashboard.go:1117	ArmShimmer	tick.go	root, console
+memoStats	type	modes/tty/memo.go:66	MemoStats	memo.go	root (bodyMemo, modalMemo), console (consoleMemo)
+memoStats.counts	method	modes/tty/memo.go:73	Counts	memo.go	
+testEventMark	const	modes/tty/ticker.go:148	TestEventMark	text.go	root (severe.go, ticker.go), console
+centerText	func	modes/tty/ticker.go:221	CenterText	text.go	root (ticker.go), console
+clipToWidth	func	modes/tty/ticker.go:247	(unexported)	text.go	kit only
+plural	func	modes/tty/detail_fire.go:273	Plural	text.go	root (5 map/status files), kit

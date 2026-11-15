@@ -24,7 +24,7 @@ closing sweep and hosted CI. 0.19.7, with its audible changes (D-2, F-73's pause
 waits on this release.
 
 **What it leaves.** The root `modes/tty` stays the largest package, at about 16,900 lines, still
-about 2.8 times `platform/render`. `Dashboard` keeps 371 methods in 38 files, down from 752 in 68.
+about 2.8 times `platform/render`. `Dashboard` keeps 374 methods in 38 files, down from 752 in 68 (A-27).
 The first problem below stays true for the root, but its areas are bounded by the compiler.
 
 ## The problem
@@ -69,7 +69,7 @@ after, at REVIEW.
 | M2 | 1, performance | **Gate time** | Recorded, not targeted: `make verify`'s seconds every batch, and the closing sweep's against A-3's 3,976 s. PB-6 projects about 6 minutes off a 66-minute sweep; the figure is reported, not promised. |
 | M3 | 2, maintainability: a change's reach is bounded and visible | **The graph's figures** (JN P2-2, P2-3, P2-6), re-run on each batch's layout by the committed graph tool (A-12) | Each falls from its baseline: the hub's fan-in, measured by type, not by a file ratio; each area's reach into the model by type (today the map reads 72 of the model's symbols and Settings 102), counted across packages the same way as within one, the fields reached through `Env` and the hooks included; and the files read and packages entered by walkthroughs W6 and W8 and a legend key. Each area's inputs are listed in its `doc.go`, and the console stays at 13 or below. The numeric target for each is fixed at PLAN from the graph projected on the planned layout and ratified at PLAN exit. |
 | M4 | 2, traceability: a reader can follow a behaviour to its code | **The blind trace** (JN P2-8, 0.19.5 D-24's method) | A before: the same four tasks, blind, on `e57afeaf` at PLAN, graded against JN's leave-one-out key. A REVIEW gate: four tasks fixed at PLAN, one with no walkthrough (a legend key) and one crossing a new package boundary (a map Setting), graded against a fresh hidden key by a reviewer with a junior persona. 4 of 4 pass first time; a fail is fixed before SHIP or ruled. |
-| M5 | 2, understandability: names, docs and APIs say what the code is | **The guards against gaming M3 and M4** (JN P2-1, P2-4, P2-5, P2-7, P2-9, P2-10, P2-11) | Zero exported names whose only users outside their package are tests (P2-5). The package graph is a DAG drawn in the atlas, each edge with its reason (P2-7). Every docs-to-code check green, the file-map test deriving its packages (P2-9). Every new package has a vocabulary row and the user's or the role's word as its name (P2-10). Each package's size at the close is recorded at REFLECT, and every later REFLECT reports against it (D-17); no file passes 1,000 lines that is under it today, and none over it grows (P2-11). The front doors of `modes/tty` and `app` grow only by the new packages' entry points (P2-4). |
+| M5 | 2, understandability: names, docs and APIs say what the code is | **The guards against gaming M3 and M4** (JN P2-1, P2-4, P2-5, P2-7, P2-9, P2-10, P2-11) | Zero exported names added whose only users outside their package are tests (P2-5); the three that exist today, `ChipKnown`, `SameOverlay` and `FireAll`, are held by a test that lists exactly them (D-26). The package graph is a DAG drawn in the atlas, each edge with its reason (P2-7). Every docs-to-code check green, the file-map test deriving its packages (P2-9). Every new package has a vocabulary row and the user's or the role's word as its name (P2-10). Each package's size at the close is recorded at REFLECT, and every later REFLECT reports against it (D-17); no file passes 1,000 lines that is under it today, and none over it grows (P2-11). The front doors of `modes/tty` and `app` grow only by the new packages' entry points (P2-4). |
 | M6 | 3, best practice and P10 | **The gates that hold the house rules** | `make p10`, a local gate outside `required-gates.txt`, green at the end of every batch, with its summary in the batch's build log (A-7), with D-10's re-key table ratified at PLAN exit and the new packages' floors at BUILD exit. The import rules gated (batch 0 item 9). `lint-authoring` green. No surviving alias (C-4); `internal/` for every package nothing outside its parent imports (C-5); no new lock (D-16). `govulncheck` green at the floor and at the toolchain (D-12). |
 | M7 | 4, no regression | **The regression net** | `make verify` green at every batch, MAKE_EXIT and "ALL GATES GREEN" read, and hosted full CI green on both systems before SHIP. Every golden and both byte-identical traces unchanged (batch 0 item 6). The same test inventory with and without `-tags property` and `-race`, and the union declaration set conserved (item 5). No pin's assertions change except to read the same value through production API (D-14): the same killers in the scoped sweep, an outcome-equal inventory, and each batch's table of changed test lines. Each batch's mutants re-vetted by a scoped sweep, its list derived (A-11), compared mutant by mutant with A-3's record read from `7c5e5772` (C-12, A-9). The closing full sweep matches A-3's: every A-3 mutant keeps its class or is re-ruled, every new mutant is caught, and none has no evidence. |
 
@@ -93,13 +93,17 @@ after, at REVIEW.
 - **R7** The live app is not run; performance is measured from the pins and benchmarks.
 - **R8** No new `tea.Msg` or command where the code calls directly today, held by a pinned set of
   message types across the tree (A-12).
-- **R9** No func field is read on the frame path, and the map's hooks are held once.
+- **R9** The seam adds no func-field read on the frame path, and the map's hooks are held once. The
+  map's `Env` carries no func field but the Dashboard's own clock and tick hook; the one addition is
+  `console.Opening.Now`, the Dashboard's clock handed to the console by `NewRouter` (D-21).
 
 ## Scope
 
-**In:** `modes/tty` split into the root, `modes/tty/console`, a map package (2a and 2b, D-9) and a
-kit; `app` split into its root, `app/internal/deck`, `app/internal/maps` and `app/internal/kit`
-(package map §2). Batch 0's twelve instruments, A-2's sweep fix among them. The floor scan and go
+**In:** `modes/tty` split into the root, `modes/tty/console`, `modes/tty/mapview` (2a and 2b,
+D-9), the kit `modes/tty/internal/frame`, `modes/tty/internal/controls` (D-25) and the test support
+`modes/tty/internal/ttytest` (D-15); `app` split into its root, `app/internal/deck`,
+`app/internal/mapdata`, `app/internal/run` and the test helpers `app/internal/apptest` (package map
+§2, A-20). Batch 0's twelve instruments, A-2's sweep fix among them. The floor scan and go
 1.26.11 (D-12). RM's slices 1 to 4: F-158's owed test, the voice cluster moved whole, the vocabulary
 corrected, RM-1's table recorded (C-10). The docs, diagrams, gate tools and ledgers that name what
 moves, and the doc-against-code disagreements and misleading names found by RC-7, RM-8 and JN-5, each

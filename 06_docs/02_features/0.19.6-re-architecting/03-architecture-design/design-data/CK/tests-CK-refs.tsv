@@ -1,0 +1,189 @@
+file	function	function_lands_in	symbol_package	symbol	sites	class	how
+beat_alloc_test.go	beats	tty	kit	tickMsg	beat_alloc_test.go:22;beat_alloc_test.go:29	A	frame.TickMsg
+broadcaster_cardbox_test.go	TestAFabricatedCardStillSaysSoInItsRule	console	kit	testEventMark	broadcaster_cardbox_test.go:105;broadcaster_cardbox_test.go:111;broadcaster_cardbox_test.go:116	A	frame.TestEventMark
+broadcaster_cardrow_test.go	TestAFabricatedCardIsMarkedInTheLineUp	console	kit	testEventMark	broadcaster_cardrow_test.go:161;broadcaster_cardrow_test.go:166	A	frame.TestEventMark
+broadcaster_cardrow_test.go	TestANarrowLaneStillDrawsTheMarkedCardRatherThanDroppingIt	console	kit	testEventMark	broadcaster_cardrow_test.go:240	A	frame.TestEventMark
+broadcaster_cardrow_test.go	TestARealCardCarriesNoMark	console	kit	testEventMark	broadcaster_cardrow_test.go:176	A	frame.TestEventMark
+broadcaster_cardrow_test.go	TestTheTestMarkIsNeverShownPartially	console	kit	testEventMark	broadcaster_cardrow_test.go:209	S	frame.TestEventMark
+broadcaster_cardrow_test.go	TestTheTestMarkSurvivesTheNarrowestLane	console	kit	testEventMark	broadcaster_cardrow_test.go:188	A	frame.TestEventMark
+broadcaster_detail_test.go	TestTheAlertBoxsWayInOpensThePriorityCard	tty	console	Broadcaster.alertDetail	broadcaster_detail_test.go:291	S	Broadcaster.AlertDetail
+broadcaster_detail_test.go	TestTheAlertBoxsWayInOpensThePriorityCard	tty	console	Broadcaster.ascii	broadcaster_detail_test.go:264	S	console.New(Opening{ASCII})
+broadcaster_detail_test.go	TestTheAlertBoxsWayInOpensThePriorityCard	tty	console	Broadcaster.detailBody	broadcaster_detail_test.go:296	X	console-internal
+broadcaster_detail_test.go	TestTheAlertBoxsWayInOpensThePriorityCard	tty	console	Broadcaster.height	broadcaster_detail_test.go:264	S	Update(tea.WindowSizeMsg)
+broadcaster_detail_test.go	TestTheAlertBoxsWayInOpensThePriorityCard	tty	console	Broadcaster.lineup	broadcaster_detail_test.go:259	S	the test keeps the line-up it sent
+broadcaster_detail_test.go	TestTheAlertBoxsWayInOpensThePriorityCard	tty	console	Broadcaster.width	broadcaster_detail_test.go:264	S	Update(tea.WindowSizeMsg)
+broadcaster_detail_test.go	TestTheAlertBoxsWayInOpensThePriorityCard	tty	console	cardTitle	broadcaster_detail_test.go:296	X	console-internal
+broadcaster_detail_test.go	TestTheAlertBoxsWayInRefusesWhenTheRailIsEmpty	tty	console	Broadcaster.ascii	broadcaster_detail_test.go:312	S	console.New(Opening{ASCII})
+broadcaster_detail_test.go	TestTheAlertBoxsWayInRefusesWhenTheRailIsEmpty	tty	console	Broadcaster.height	broadcaster_detail_test.go:312	S	Update(tea.WindowSizeMsg)
+broadcaster_detail_test.go	TestTheAlertBoxsWayInRefusesWhenTheRailIsEmpty	tty	console	Broadcaster.width	broadcaster_detail_test.go:312	S	Update(tea.WindowSizeMsg)
+broadcaster_detail_test.go	TestTheConsolesNewKeysDoNotTakeAboutsKey	tty	console	Broadcaster.ascii	broadcaster_detail_test.go:393	S	console.New(Opening{ASCII})
+broadcaster_detail_test.go	TestTheConsolesNewKeysDoNotTakeAboutsKey	tty	console	Broadcaster.height	broadcaster_detail_test.go:393	S	Update(tea.WindowSizeMsg)
+broadcaster_detail_test.go	TestTheConsolesNewKeysDoNotTakeAboutsKey	tty	console	Broadcaster.width	broadcaster_detail_test.go:393	S	Update(tea.WindowSizeMsg)
+broadcaster_detail_test.go	TestTheConsolesTwoDrawnControlsAreBound	tty	console	Broadcaster.ascii	broadcaster_detail_test.go:345	S	console.New(Opening{ASCII})
+broadcaster_detail_test.go	TestTheConsolesTwoDrawnControlsAreBound	tty	console	Broadcaster.height	broadcaster_detail_test.go:345	S	Update(tea.WindowSizeMsg)
+broadcaster_detail_test.go	TestTheConsolesTwoDrawnControlsAreBound	tty	console	Broadcaster.width	broadcaster_detail_test.go:345	S	Update(tea.WindowSizeMsg)
+broadcaster_detail_test.go	routerOnConsole	tty	console	Broadcaster.now	broadcaster_detail_test.go:160	S	NewRouter over a Dashboard whose clock is pinned (Opening.Now, K1)
+broadcaster_fault_test.go	TestAMutedListenerIsShownWhileTheStationIsOnAir	tty	console	Broadcaster.listenerMuted	broadcaster_fault_test.go:48;broadcaster_fault_test.go:52;broadcaster_fault_test.go:59	X	Broadcaster.SetListenerMuted | V: the band says so on air
+broadcaster_loaded_test.go	TestObserverKeepsItsExtendedDays	tty	kit	weatherRow	broadcaster_loaded_test.go:162;broadcaster_loaded_test.go:166	A	frame.WeatherRow
+broadcaster_manage_test.go	TestChangePositionRefusesWhatIsOutOfRange	tty	console	bcScheduledFrom	broadcaster_manage_test.go:146	S	console.ScheduledFrom
+broadcaster_manage_test.go	TestChangePositionSendsTheMove	tty	console	Broadcaster.liveOffset	broadcaster_manage_test.go:118	S	Broadcaster.LiveOffset
+broadcaster_manage_test.go	TestMovingACardRedrawsTheTable	tty	console	Broadcaster.lineup	broadcaster_manage_test.go:241	S	the test keeps the line-up it sent
+broadcaster_manage_test.go	openCard	tty	console	Broadcaster.selected	broadcaster_manage_test.go:23	S	Broadcaster.ScrollQueue / the arrow keys through Router.Update
+broadcaster_pooldata_test.go	TestTheConsoleReadsTheOperatorsFireThreshold	tty	console	Broadcaster.ascii	broadcaster_pooldata_test.go:271	S	console.New(Opening{ASCII})
+broadcaster_pooldata_test.go	TestTheConsoleReadsTheOperatorsFireThreshold	tty	console	Broadcaster.height	broadcaster_pooldata_test.go:271	S	Update(tea.WindowSizeMsg)
+broadcaster_pooldata_test.go	TestTheConsoleReadsTheOperatorsFireThreshold	tty	console	Broadcaster.locIndex	broadcaster_pooldata_test.go:277	X	console-internal
+broadcaster_pooldata_test.go	TestTheConsoleReadsTheOperatorsFireThreshold	tty	console	Broadcaster.poolRows	broadcaster_pooldata_test.go:277	X	console-internal (V: the pool rows are drawn)
+broadcaster_pooldata_test.go	TestTheConsoleReadsTheOperatorsFireThreshold	tty	console	Broadcaster.width	broadcaster_pooldata_test.go:271	S	Update(tea.WindowSizeMsg)
+broadcaster_pooldata_test.go	TestTheConsoleReadsTheOperatorsFireThreshold	tty	kit	fireHot	broadcaster_pooldata_test.go:286	X	kit-internal
+broadcaster_pooldata_test.go	TestThePoolKeepsItsOwnColumns	console	kit	fireBoldDefaultMW	broadcaster_pooldata_test.go:96	A	frame.FireBoldDefaultMW
+broadcaster_pooldata_test.go	TestThePoolKeepsItsOwnColumns	console	kit	weatherRow	broadcaster_pooldata_test.go:96	A	frame.WeatherRow
+broadcaster_pooldata_test.go	TestThePoolsWeatherIsObserversWeather	console	kit	fireBoldDefaultMW	broadcaster_pooldata_test.go:42	S	frame.FireBoldDefaultMW
+broadcaster_pooldata_test.go	TestThePoolsWeatherIsObserversWeather	console	kit	weatherRow	broadcaster_pooldata_test.go:42	S	frame.WeatherRow
+broadcaster_pooldata_test.go	TestTheRunningOrderCarriesEachBeatsWeather	console	kit	fireBoldDefaultMW	broadcaster_pooldata_test.go:213	S	frame.FireBoldDefaultMW
+broadcaster_pooldata_test.go	TestTheRunningOrderCarriesEachBeatsWeather	console	kit	weatherRow	broadcaster_pooldata_test.go:213	S	frame.WeatherRow
+broadcaster_scroll_test.go	TestASecondEnterClosesTheCardWindow	tty	console	Broadcaster.selected	broadcaster_scroll_test.go:213;broadcaster_scroll_test.go:221	S	Broadcaster.ScrollQueue / the arrow keys through Router.Update
+broadcaster_scroll_test.go	TestEnterOnAPoolRowOpensThatLocation	tty	console	Broadcaster.selected	broadcaster_scroll_test.go:256;broadcaster_scroll_test.go:270	S	Broadcaster.ScrollQueue / the arrow keys through Router.Update
+broadcaster_scroll_test.go	TestEnterOnAPoolRowOpensThatLocation	tty	console	bcScheduledFrom	broadcaster_scroll_test.go:256;broadcaster_scroll_test.go:270	S	console.ScheduledFrom
+broadcaster_scroll_test.go	TestEnterOpensTheRowThePointerIsOn	tty	console	Broadcaster.cardDetail	broadcaster_scroll_test.go:184	S	Broadcaster.CardDetail
+broadcaster_scroll_test.go	TestEnterOpensTheRowThePointerIsOn	tty	console	Broadcaster.selected	broadcaster_scroll_test.go:173;broadcaster_scroll_test.go:194	S	Broadcaster.ScrollQueue / the arrow keys through Router.Update
+broadcaster_scroll_test.go	TestEnterOpensTheRowThePointerIsOn	tty	console	bcScheduledFrom	broadcaster_scroll_test.go:172;broadcaster_scroll_test.go:178;broadcaster_scroll_test.go:184;broadcaster_scroll_test.go:194	A	console.ScheduledFrom
+broadcaster_scroll_test.go	consoleRouter	tty	console	Broadcaster.ascii	broadcaster_scroll_test.go:39	S	console.New(Opening{ASCII})
+broadcaster_slots_test.go	TestTheTickAdvancesTheShimmerAndReArms	console	kit	tickMsg	broadcaster_slots_test.go:146	S	frame.TickMsg
+broadcaster_slots_test.go	TestTheTickStopsOnceEverySlotIsDecided	console	kit	tickMsg	broadcaster_slots_test.go:176	A	frame.TickMsg
+broadcaster_tone_test.go	TestTheAlertWindowWearsTheCardsGround	tty	console	Broadcaster.ascii	broadcaster_tone_test.go:178	S	console.New(Opening{ASCII})
+broadcaster_tone_test.go	TestTheAlertWindowWearsTheCardsGround	tty	console	Broadcaster.height	broadcaster_tone_test.go:178	S	Update(tea.WindowSizeMsg)
+broadcaster_tone_test.go	TestTheAlertWindowWearsTheCardsGround	tty	console	Broadcaster.lineup	broadcaster_tone_test.go:173	S	the test keeps the line-up it sent
+broadcaster_tone_test.go	TestTheAlertWindowWearsTheCardsGround	tty	console	Broadcaster.width	broadcaster_tone_test.go:178	S	Update(tea.WindowSizeMsg)
+broadcaster_tone_test.go	TestTheAlertWindowWearsTheCardsGround	tty	console	cardTone	broadcaster_tone_test.go:199	X	console-internal
+broadcaster_tone_test.go	TestTheOpenHazardWindowRefreshes	tty	console	Broadcaster.ascii	broadcaster_tone_test.go:251	S	console.New(Opening{ASCII})
+broadcaster_tone_test.go	TestTheOpenHazardWindowRefreshes	tty	console	Broadcaster.height	broadcaster_tone_test.go:251	S	Update(tea.WindowSizeMsg)
+broadcaster_tone_test.go	TestTheOpenHazardWindowRefreshes	tty	console	Broadcaster.lineup	broadcaster_tone_test.go:246	S	the test keeps the line-up it sent
+broadcaster_tone_test.go	TestTheOpenHazardWindowRefreshes	tty	console	Broadcaster.width	broadcaster_tone_test.go:251	S	Update(tea.WindowSizeMsg)
+console_units_test.go	TestAUnitsChangeRedrawsTheConsolesPool	tty	kit	tickMsg	console_units_test.go:75	S	frame.TickMsg
+console_units_test.go	TestTheConsolesMastheadWearsTheListenersClock	tty	console	Broadcaster.now	console_units_test.go:60	S	NewRouter over a Dashboard whose clock is pinned (Opening.Now, K1)
+console_units_test.go	consoleUnder	tty	kit	tickMsg	console_units_test.go:22	S	frame.TickMsg
+cursor_test.go	TestTheConsolePlacesTheCursor	tty	console	Broadcaster.opts	cursor_test.go:139	A	render.Opts{ASCII}.Glyphs (platform/render): the glyph set is the ASCII choice the test made
+detail_fire_test.go	TestTheFireDetailListsEveryNamedIncident	tty	kit	fireCount	detail_fire_test.go:138	X	kit-internal
+map_prop_chart_test.go	TestTheOriginFollowsTheUIMode	tty	console	bcNoTransmitter	map_prop_chart_test.go:218	A	console.NoTransmitter
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	console	Broadcaster.clock	masthead_memo_test.go:73;masthead_memo_test.go:79	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	console	Broadcaster.header	masthead_memo_test.go:73;masthead_memo_test.go:79	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	console	Broadcaster.height	masthead_memo_test.go:63	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	console	Broadcaster.memo	masthead_memo_test.go:72;masthead_memo_test.go:78	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	console	Broadcaster.now	masthead_memo_test.go:116;masthead_memo_test.go:60;masthead_memo_test.go:62	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	console	Broadcaster.opts	masthead_memo_test.go:70;masthead_memo_test.go:76	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	console	Broadcaster.snap	masthead_memo_test.go:114;masthead_memo_test.go:115;masthead_memo_test.go:59;masthead_memo_test.go:64;masthead_memo_test.go:65;masthead_memo_test.go:73;masthead_memo_test.go:79	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	console	Broadcaster.version	masthead_memo_test.go:79	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	console	Broadcaster.width	masthead_memo_test.go:63	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	kit	dataAsOf	masthead_memo_test.go:59	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	kit	mastheadKey	masthead_memo_test.go:69;masthead_memo_test.go:75;masthead_memo_test.go:81;masthead_memo_test.go:86	M	the console half moves to modes/tty/console (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	kit	mastheadKeyOf	masthead_memo_test.go:73;masthead_memo_test.go:79;masthead_memo_test.go:86	M	the console half moves to modes/tty/console (CK-4)
+memo_completeness_test.go	fixtureFor	tty	console	Broadcaster.cardDetail	memo_completeness_test.go:407	S	Broadcaster.CardDetail
+memo_completeness_test.go	fixtureFor	tty	console	Broadcaster.cardWindowGroundFor	memo_completeness_test.go:411	S	Broadcaster.CardWindowGroundFor
+modal_location_test.go	TestALookupDrawsAShimmeringRowBeforeItsDataLands	tty	kit	rowLoading	modal_location_test.go:223	A	frame.RowLoading
+motion_test.go	TestReduceMotionMakesTheBlinksSteady	tty	kit	tickMsg	motion_test.go:135	S	frame.TickMsg
+motion_test.go	TestReduceMotionStillsTheVisualiserAndTheDots	tty	kit	tickMsg	motion_test.go:103	S	frame.TickMsg
+motion_test.go	TestTheConsoleFollowsReduceMotion	tty	console	Broadcaster.frame	motion_test.go:159	X	V: the shimmer phase
+motion_test.go	TestTheConsoleFollowsReduceMotion	tty	kit	tickMsg	motion_test.go:157	S	frame.TickMsg
+never_resolves_test.go	TestALocationTheFeedCannotServeStopsShimmering	tty	kit	rowLoading	never_resolves_test.go:29;never_resolves_test.go:35	A	frame.RowLoading
+operator_card_test.go	TestChangePositionSaysItsRangeAndItsError	tty	console	bcScheduledFrom	operator_card_test.go:40	S	console.ScheduledFrom
+relayfault_test.go	TestTheCountdownRunsAndActs	tty	kit	tickMsg	relayfault_test.go:104	S	frame.TickMsg
+request_slot_test.go	TestARequestSubmittedFromObserverStillLandsInTheTypedSlot	tty	console	Broadcaster.power	request_slot_test.go:187	S	Update(console.StationMsg)
+request_slot_test.go	TestARequestedCardLandsInTheSlotTheOperatorTyped	tty	console	Broadcaster.power	request_slot_test.go:62;request_slot_test.go:84	S	Update(console.StationMsg)
+router_bedplay_test.go	TestSpacePlaysTheBedRelayAndNeverOverTheProgramme	tty	console	Broadcaster.statusNote	router_bedplay_test.go:35;router_bedplay_test.go:40	X	V: the station row draws it
+router_bedplay_test.go	TestStandbyClearsTheBedRefusal	tty	console	Broadcaster.statusNote	router_bedplay_test.go:68	X	V: the station row draws it
+router_diagnostics_test.go	TestEveryAdvertisedControlIsBound	tty	console	Broadcaster.ascii	router_diagnostics_test.go:315	S	console.New(Opening{ASCII})
+router_diagnostics_test.go	TestEveryAdvertisedControlIsBound	tty	console	Broadcaster.controlRow	router_diagnostics_test.go:316	X	console-internal (V: the control row is drawn)
+router_diagnostics_test.go	TestEveryAdvertisedControlIsBound	tty	console	Broadcaster.height	router_diagnostics_test.go:315	S	Update(tea.WindowSizeMsg)
+router_diagnostics_test.go	TestEveryAdvertisedControlIsBound	tty	console	Broadcaster.opts	router_diagnostics_test.go:316	X	console-internal (with controlRow)
+router_diagnostics_test.go	TestEveryAdvertisedControlIsBound	tty	console	Broadcaster.width	router_diagnostics_test.go:315	S	Update(tea.WindowSizeMsg)
+router_diagnostics_test.go	TestEveryLayerCentresOnTheTerminal	tty	console	Broadcaster.width	router_diagnostics_test.go:198;router_diagnostics_test.go:206	S	Update(tea.WindowSizeMsg) | Update(tea.WindowSizeMsg)
+router_diagnostics_test.go	TestGainDownReachesTheSameLevel	tty	console	Broadcaster.gain	router_diagnostics_test.go:299;router_diagnostics_test.go:300	X	V: the gain control draws it
+router_diagnostics_test.go	TestGainPressedOnTheConsoleMovesObserversOwnLevel	tty	console	Broadcaster.gain	router_diagnostics_test.go:270;router_diagnostics_test.go:272;router_diagnostics_test.go:280;router_diagnostics_test.go:282	X	V: the gain control draws it
+router_diagnostics_test.go	TestTheConsoleLearnsTheVersionAndTheSnapshotThroughTheRouter	tty	console	Broadcaster.height	router_diagnostics_test.go:244;router_diagnostics_test.go:245	S	Update(tea.WindowSizeMsg)
+router_diagnostics_test.go	TestTheConsoleLearnsTheVersionAndTheSnapshotThroughTheRouter	tty	console	Broadcaster.width	router_diagnostics_test.go:244;router_diagnostics_test.go:245	S	Update(tea.WindowSizeMsg)
+router_diagnostics_test.go	TestTheWindowsStackOnTheFrameRatherThanBesideIt	tty	console	Broadcaster.height	router_diagnostics_test.go:124;router_diagnostics_test.go:126	X	V: the frame is clamped to it
+router_diagnostics_test.go	consoleWith	tty	console	Broadcaster.height	router_diagnostics_test.go:30;router_diagnostics_test.go:31	S	Update(tea.WindowSizeMsg)
+router_diagnostics_test.go	consoleWith	tty	console	Broadcaster.width	router_diagnostics_test.go:30;router_diagnostics_test.go:31	S	Update(tea.WindowSizeMsg)
+router_refusal_test.go	TestARefusedSwapIsShownToTheOperator	tty	console	Broadcaster.height	router_refusal_test.go:31	S	Update(tea.WindowSizeMsg)
+router_refusal_test.go	TestARefusedSwapIsShownToTheOperator	tty	console	Broadcaster.width	router_refusal_test.go:31	S	Update(tea.WindowSizeMsg)
+router_refusal_test.go	TestASwapTellsTheAppWhoOwnsTheAir	tty	console	Broadcaster.power	router_refusal_test.go:88	S	Update(console.StationMsg)
+router_test.go	TestBackgroundColourReachesTheINACTIVESurface	tty	console	Broadcaster.darkBG	router_test.go:77	X	V: View().BackgroundColor
+router_test.go	TestSizeReachesTheINACTIVESurface	tty	console	Broadcaster.height	router_test.go:67;router_test.go:70	X	V: the frame is clamped to it
+router_test.go	TestSizeReachesTheINACTIVESurface	tty	console	Broadcaster.width	router_test.go:67;router_test.go:70	A	Update(tea.WindowSizeMsg) | Broadcaster.Width
+router_test.go	TestTheConsoleGetsItsOwnMessagesWhileInactive	tty	console	Broadcaster.power	router_test.go:109	A	Broadcaster.Power
+router_test.go	TestTheConsoleInheritsTheASCIIDecision	tty	console	Broadcaster.ascii	router_test.go:95	X	none
+router_trace_test.go	TestRouterUpdateIsTheSameUnderRandomMessages	tty	console	Broadcaster.now	router_trace_test.go:53;router_trace_test.go:55	S	NewRouter over a Dashboard whose clock is pinned (Opening.Now, K1)
+router_trace_test.go	traceMessages	tty	kit	tickMsg	router_trace_test.go:33	S	frame.TickMsg
+scroll_keys_test.go	TestTheConsolesArrowsMoveItsPointer	tty	console	Broadcaster.selected	scroll_keys_test.go:16;scroll_keys_test.go:18;scroll_keys_test.go:19;scroll_keys_test.go:21;scroll_keys_test.go:22	A	Broadcaster.ScrollQueue / the arrow keys through Router.Update | Broadcaster.LineupSelection (the test stays in the running order)
+severe_test.go	TestModalMemoHitsAcrossTicksWithALoadingRow	tty	kit	tickMsg	severe_test.go:373	S	frame.TickMsg
+severe_test.go	TestTheSevereWindowMarksAFabricatedRow	tty	kit	testEventMark	severe_test.go:866;severe_test.go:874;severe_test.go:885	A	frame.TestEventMark
+tape_memo_test.go	missEveryMemo	tty	kit	cursorSlot.primed	tape_memo_test.go:43	S	a zero frame.CursorSlot
+tape_memo_test.go	missEveryMemo	tty	kit	mastheadSlot.ok	tape_memo_test.go:43	S	a zero frame.MastheadSlot
+tick_alloc_test.go	TestTickAdvanceAllocBudgetWithATestEventOnTheTape	tty	kit	testEventMark	tick_alloc_test.go:57	A	frame.TestEventMark
+tick_test.go	TestTickArmedOnlyWhileAnimating	tty	kit	tickMsg	tick_test.go:65	S	frame.TickMsg
+tick_test.go	TestTickRearmsOnTheTransitionAndNeverTwice	tty	kit	tickMsg	tick_test.go:90	S	frame.TickMsg
+tick_test.go	TestVolumeBlinkClearsOnTheTickAfterItExpires	tty	kit	tickMsg	tick_test.go:104;tick_test.go:99	A	frame.TickMsg
+ticker_test.go	TestTheTakeoverMarksAFabricatedEvent	tty	kit	testEventMark	ticker_test.go:396;ticker_test.go:402	A	frame.TestEventMark
+ticker_test.go	TestTheTapeMarksAFabricatedItemAtBothEnds	tty	kit	testEventMark	ticker_test.go:369;ticker_test.go:373;ticker_test.go:378;ticker_test.go:381	A	frame.TestEventMark
+uat_0827_test.go	TestUpdatedStampCarriesItsAgeAndColour	tty	kit	dataAsOf	uat_0827_test.go:23	S	frame.DataAsOf
+beat_alloc_test.go	beats	tty	test helper	loadedConsole	broadcaster_loaded_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+bench_test.go	BenchmarkConsoleFrame	console	pure test helper	loadedPoolSize	broadcaster_loaded_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_air_test.go	TestExactlyOneAirRowIsMarkedLive	console	pure test helper	card	broadcaster_lanes_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_air_test.go	TestExactlyOneAirRowIsMarkedLive	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_alloc_test.go	TestConsoleFrameAllocBudget	console	pure test helper	loadedPoolSize	broadcaster_loaded_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_alloc_test.go	TestConsoleFrameAllocBudget	console	pure test helper	raceEnabled	norace_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_bed_test.go	TestABedWithNothingToCarryIsNotOffered	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_detail_test.go	TestTheAlertBoxsWayInOpensThePriorityCard	tty	test helper	bcWith	broadcaster_lanes_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+broadcaster_detail_test.go	TestTheAlertBoxsWayInRefusesWhenTheRailIsEmpty	tty	test helper	bcWith	broadcaster_lanes_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+broadcaster_detail_test.go	TestTheConsolesNewKeysDoNotTakeAboutsKey	tty	test helper	bcWith	broadcaster_lanes_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+broadcaster_detail_test.go	TestTheConsolesTwoDrawnControlsAreBound	tty	test helper	bcWith	broadcaster_lanes_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+broadcaster_fault_test.go	TestAFaultRunShowsInTheBandWhileOnAirAndClears	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_fault_test.go	TestAMutedListenerIsShownWhileTheStationIsOnAir	tty	test helper	bcStandby	broadcaster_standby_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+broadcaster_header_test.go	TestTheConsoleHasAMasthead	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_header_test.go	TestTheMastheadDrawsWhatTheReferenceDraws	console	pure test helper	mastheadSnap	broadcaster_header_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_heldband_test.go	TestTheBandKeepsTheFreshnessRules	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_lanes_test.go	TestAHostileHeadlineIsClampedInTheNewLanes	console	pure test helper	card	broadcaster_lanes_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_lanes_test.go	TestTheConsoleNumbersTheMainTrackSlots	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_lineup_test.go	TestTheRunningOrderNamesWhatEachCardCarries	console	pure test helper	card	broadcaster_lanes_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_loaded_test.go	TestTheConsolesRowsBuildNoDayCells	console	pure test helper	loadedPoolSize	broadcaster_loaded_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_loaded_test.go	TestTheLineupRowsBuildNoDayCells	console	pure test helper	raceEnabled	norace_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_manage_test.go	TestMovingACardRedrawsTheTable	tty	test helper	rowNumberOf	broadcaster_manage_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+broadcaster_memo_completeness_test.go	TestTheConsoleMemoHitsAndMisses	console	pure test helper	loadedPoolSize	broadcaster_loaded_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_memo_completeness_test.go	TestTheConsoleMemoKeyCoversEverythingTheTablesShow	console	pure test helper	perturbEach	memo_completeness_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_onair_tone_test.go	TestOnlyTheLiveStateIsBold	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_pool_test.go	TestThePoolTableDrawsTheStationsCandidates	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_pool_test.go	poolConsole	console	pure test helper	card	broadcaster_lanes_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_pooldata_test.go	TestThePoolKeepsItsOwnColumns	console	pure test helper	card	broadcaster_lanes_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_pooldata_test.go	TestThePoolRowCarriesEveryMark	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_priority_test.go	TestAClearRailStillDrawsTheAlertBox	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_rail_test.go	TestEveryRowOfTheRunningOrderOpensTheFrame	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_scroll_test.go	TestThePoolIsNotWhateverIsLeftOver	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_scroll_test.go	consoleRouter	tty	test helper	bcWith	broadcaster_lanes_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+broadcaster_scroll_test.go	manyPool	console	pure test helper	card	broadcaster_lanes_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_size_test.go	TestTheConsoleCarriesNoNonASCIIUnderASCII	console	pure test helper	card	broadcaster_lanes_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_slots_live_test.go	TestOnStandbyTheLineUpStartsAtUpNextAndLiveIsEmpty	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_slots_test.go	TestAFilledSlotIsStill	console	pure test helper	card	broadcaster_lanes_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_slots_test.go	TestAFilledSlotIsStill	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_standby_test.go	TestARepeatedStationMessageDoesNotRestartTheStandbyClock	console	pure test helper	card	broadcaster_lanes_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_station_test.go	TestTheBedIsDrawnOnceInsideTheStationSection	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_tone_test.go	TestTheAlertWindowWearsTheCardsGround	tty	test helper	bcWith	broadcaster_lanes_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+broadcaster_tone_test.go	TestTheOpenHazardWindowRefreshes	tty	test helper	bcWith	broadcaster_lanes_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+broadcaster_uat_test.go	TestTheBedDrawsWhatWasPublished	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_upnext_label_test.go	TestTheStyledCaptionDoesNotWidenTheBox	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_upnext_test.go	TestTheBoxTitleReadsLikeAModalTitle	console	pure test helper	card	broadcaster_lanes_test.go	M	to ttytest: used from more than one package after the move
+broadcaster_upnext_test.go	TestTheUpNextBoxWearsTwoGrounds	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+clip_ansi_test.go	TestClippingCountsCellsAndNotEscapeBytes	kit	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+console_finish_test.go	TestTheConsolesFinisherIsByteIdentical	console	pure test helper	loadedPoolSize	broadcaster_loaded_test.go	M	to ttytest: used from more than one package after the move
+console_finish_test.go	TestTheConsolesFinisherIsByteIdentical	console	pure test helper	firstDiffLine	golden_test.go	M	to ttytest: used from more than one package after the move
+console_units_test.go	consoleUnder	tty	test helper	loadedConsole	broadcaster_loaded_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+golden_surfaces_test.go	TestConsoleGoldens	console	pure test helper	checkGolden	golden_test.go	M	to ttytest: used from more than one package after the move
+golden_surfaces_test.go	goldenConsole	console	pure test helper	loadedPoolSize	broadcaster_loaded_test.go	M	to ttytest: used from more than one package after the move
+heldcount_test.go	TestTheHeldBandCountsHazardsNotCards	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	test helper	loadedConsoleAt	broadcaster_loaded_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	test helper	consoleWriter	broadcaster_memo_completeness_test.go	M	moves with the console half of the masthead guard (CK-4)
+masthead_memo_test.go	TestTheMastheadKeyCoversEverythingTheMastheadShows	tty	test helper	mastheadInputs	masthead_memo_test.go	X	its "past staleAfter" input reads the kit-internal staleAfter (masthead_memo_test.go:24); see CK-4
+memo_completeness_test.go	fixtureFor	tty	test helper	broadcasterWithOneCard	broadcaster_detail_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+projection_cache_test.go	TestTheConsolesProjectionFollowsItsLineup	console	pure test helper	loadedPoolSize	broadcaster_loaded_test.go	M	to ttytest: used from more than one package after the move
+projection_cache_test.go	TestTheConsolesTableRowsAreTheRowsItWouldDraw	console	pure test helper	perturbEach	memo_completeness_test.go	M	to ttytest: used from more than one package after the move
+scroll_keys_test.go	TestTheConsolesArrowsMoveItsPointer	tty	test helper	loadedConsole	broadcaster_loaded_test.go	S	the root test builds the console through console.New and messages; the pure data part goes to ttytest
+station_wording_test.go	TestEveryStationStateIsLegibleWithoutColour	console	pure test helper	stripANSITest	dashboard_test.go	M	to ttytest: used from more than one package after the move

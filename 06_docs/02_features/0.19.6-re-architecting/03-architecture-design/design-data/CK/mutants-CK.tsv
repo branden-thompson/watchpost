@@ -1,0 +1,106 @@
+mutant	target	anchor_owner	lands	path_change	text_change	names	note
+m241_the_stand_in_is_not_said.py	modes/tty/map_prop_origin.go	Dashboard.propOriginNow	root	no	prep: rename; move: package qualifier	bcNoTransmitter	
+m293_a_new_refresh_is_not_followed.py	modes/tty/map_prop_update.go	Dashboard.armPropRefresh	root	no	prep: rename; move: package qualifier	tickEvery	
+m425_one_hour_is_said_as_hours.py	modes/tty/map_prop_ahead.go	hoursWords	root	no	prep: rename; move: package qualifier	plural	
+m635_the_cursor_blinks.py	modes/tty/cursor.go	cursorLook.cursor	kit	move commit	none		
+m636_a_tabs_pointer_is_taken_for_the_focus.py	modes/tty/cursor.go	sidesOnly	kit	move commit	prep: rename only	sides	
+m641_the_console_has_no_cursor.py	modes/tty/router.go	Router.View	root	no	prep: rename only	consoleCursor,field reads/writes (r.broadcaster.)	
+m642_a_window_over_the_console_keeps_the_consoles_cursor.py	modes/tty/router.go	Router.View	root	no	prep: rename only	field reads/writes (r.broadcaster.)	
+m643_the_cursor_wears_no_colour.py	modes/tty/cursor.go	focusCell	kit	move commit	none		
+m644_a_cursor_handed_out_is_changed.py	modes/tty/cursor.go	cursorSlot.finish	kit	move commit	none		
+m645_a_still_frame_makes_a_new_cursor.py	modes/tty/cursor.go	cursorSlot.finish	kit	move commit	none		
+m649_a_focused_terminals_cell_is_not_tinted.py	modes/tty/cursor.go	focusCell	kit	move commit	none		
+m651_the_console_ignores_the_blur.py	modes/tty/broadcaster.go	Broadcaster.Update	console	move commit	none		
+m654_the_tint_is_not_fifteen_percent.py	modes/tty/cursor.go	focusShare	kit	move commit	none		
+m661_the_console_forgets_the_units.py	modes/tty/broadcaster.go	Broadcaster.opts	console	move commit	none		
+m662_the_console_forgets_the_clock.py	modes/tty/broadcaster.go	Broadcaster.opts	console	move commit	none		
+m663_the_pool_memo_misses_the_units.py	modes/tty/broadcaster_memo.go	Broadcaster.consoleKeyFor	console	move commit	none		
+m664_the_router_stops_mirroring_the_units.py	modes/tty/router.go	Router.Update	root	no	prep: rename; move: package qualifier	field reads/writes (out.broadcaster.)	
+m694_the_operator_is_called_the_director.py	modes/tty/broadcaster_lineup.go	requestedByOf	console	move commit	none		
+m695_the_move_window_hides_its_error.py	modes/tty/broadcaster_manage.go	Dashboard.movePrompt	root	prep commit, if the card-window rename A-row is taken	none		
+m711_the_windows_stamp_ignores_the_clock.py	modes/tty/broadcaster_manifest.go	cardPulled	console	move commit	none		
+m712_the_cards_stamp_ignores_the_clock.py	modes/tty/broadcaster_manifest.go	cardPulledShort	console	move commit	none		
+m726_the_finisher_forgets_to_rearm.py	modes/tty/broadcaster.go	writeArmed	console	move commit	none		
+m727_the_finisher_pads_short.py	modes/tty/broadcaster.go	Broadcaster.clamp	console	move commit	none		
+m744_the_masthead_memo_forgets_the_age.py	modes/tty/masthead.go	mastheadKeyOf	kit	move commit	prep: rename only	agoWords	
+m745_the_masthead_memo_forgets_the_providers.py	modes/tty/masthead.go	mastheadKeyOf	kit	move commit	none		
+m746_the_masthead_memo_forgets_the_theme.py	modes/tty/masthead.go	mastheadKeyOf	kit	move commit	none		
+m747_the_masthead_memo_forgets_the_colour_switch.py	modes/tty/masthead.go	mastheadKeyOf	kit	move commit	none		
+m754_the_lineup_generation_counts_per_copy.py	modes/tty/broadcaster.go	Broadcaster.Update	console	move commit	none		
+m755_the_projection_outlives_its_lineup.py	modes/tty/broadcaster_memo.go	Broadcaster.projection	console	move commit	none		
+m756_the_console_rails_the_old_spans.py	modes/tty/broadcaster_memo.go	Broadcaster.tableRows	console	move commit	none		
+m780_the_card_rule_loses_its_badge.py	modes/tty/broadcaster.go	boxRule	console	move commit	none		
+mAB2_the_pool_is_whatever_is_left_over.py	modes/tty/broadcaster_pool.go	Broadcaster.poolRoom	console	move commit	none		
+mAB4_the_pointer_inherits_the_digits_ceiling.py	modes/tty/router.go	Router.openPointedCard	root	no	prep: rename; move: package qualifier	bcScheduledFrom,lineupSelection,field reads/writes (r.broadcaster.)	
+mAC1_the_control_claims_the_running_order.py	modes/tty/broadcaster_memo.go	Broadcaster.railTables	console	move commit	none		
+mAC2_the_pools_headings_scroll_away.py	modes/tty/broadcaster_pool.go	Broadcaster.poolSpan	console	move commit	none		
+mAC5_the_bed_is_drawn_twice_again.py	modes/tty/broadcaster.go	Broadcaster.stationLine	console	move commit	none		
+mAC6_the_air_box_leaves_the_station_section.py	modes/tty/broadcaster.go	Broadcaster.stationSection	console	move commit	none		
+mAC7_the_air_boxs_width_gets_a_second_owner.py	modes/tty/broadcaster_air.go	Broadcaster.withControl	console	move commit	none		
+mAC8_the_console_reads_the_terminals_palette.py	modes/tty/broadcaster.go	Broadcaster.clamp	console	move commit	none		
+mAC9_the_frames_tint_assumes_a_palette_index.py	modes/tty/broadcaster.go	Broadcaster.clamp	console	move commit	none		
+mAD1_a_fabricated_card_loses_its_mark.py	modes/tty/broadcaster.go	cardRuleTitle	console	move commit	prep: rename; move: package qualifier	testEventMark	
+mAD2_the_mark_follows_the_headline.py	modes/tty/broadcaster.go	cardRuleTitle	console	move commit	prep: rename; move: package qualifier	testEventMark	
+mAD3_an_empty_slot_loses_its_way_in.py	modes/tty/broadcaster_slots.go	Broadcaster.readBody	console	move commit	none		
+mAD4_the_manifest_caption_drifts_off_centre.py	modes/tty/broadcaster_slots.go	Broadcaster.readBody	console	move commit	prep: rename; move: package qualifier	centerText	
+mAD5_the_card_stamp_goes_long_again.py	modes/tty/broadcaster_manifest.go	None	console	move commit	none		
+mAE2_the_bed_chip_names_the_wrong_key.py	modes/tty/broadcaster.go	None	console	move commit	none		
+mAF1_the_pool_builds_its_own_row.py	modes/tty/broadcaster_pool.go	Broadcaster.poolRows	console	move commit	prep: rename; move: package qualifier	rowLoading,weatherRow	
+mAG1_the_pool_row_loses_its_fire_and_seismic.py	modes/tty/body.go	weatherRow	kit	move commit	none		
+mAG2_the_pool_row_opens_observers_selection.py	modes/tty/router.go	Router.openPointedCard	root	no	prep: rename only	poolSelection,field reads/writes (r.broadcaster.)	
+mAH2_the_up_next_box_loses_its_ground.py	modes/tty/broadcaster_upnext.go	None	console	move commit	none		
+mAJ1_the_running_order_forgets_the_weather.py	modes/tty/broadcaster_lineup.go	Broadcaster.lineupRowOf	console	move commit	none		
+mAJ2_the_running_orders_marks_are_not_the_places.py	modes/tty/broadcaster_lineup.go	Broadcaster.lineupRowOf	console	move commit	none		
+mAK3_the_bed_is_offered_with_nothing_to_carry.py	modes/tty/broadcaster.go	Broadcaster.bedAvailable	console	move commit	prep: rename only	bedAvailable	
+mAL1_a_live_card_is_offered_management.py	modes/tty/broadcaster_detail.go	manageable	console	move commit	none		
+mAL2_an_out_of_range_move_is_sent_anyway.py	modes/tty/broadcaster_manage.go	Dashboard.moveTarget	root	prep commit, if the card-window rename A-row is taken	prep: rename; move: package qualifier	bcScheduledFrom	
+mAL5_the_box_title_is_not_a_modal_title.py	modes/tty/broadcaster.go	boxRule	console	move commit	none		
+mAM1_a_move_lands_one_slot_low.py	modes/tty/router.go	Router.moveWindowKey	root	no	prep: rename only	indexForSlot,field reads/writes (r.broadcaster.)	
+mAN1_the_console_builds_day_cells_it_never_draws.py	modes/tty/broadcaster_lineup.go	Broadcaster.lineupRowOf	console	move commit	prep: rename; move: package qualifier	weatherRow	
+mAN2_the_alloc_budget_measures_an_empty_console.py	modes/tty/broadcaster_alloc_test.go	?	console (its test moves)	move commit	none		
+mAQ2_the_console_pins_the_fire_threshold_again.py	modes/tty/broadcaster_pool.go	Broadcaster.fireBold	console	move commit	prep: rename; move: package qualifier	fireBoldDefaultMW	
+mAR1_the_memo_forgets_an_input.py	modes/tty/broadcaster_memo.go	Broadcaster.consoleKeyFor	console	move commit	none		
+mAR2_the_memo_forgets_the_running_order.py	modes/tty/broadcaster_memo.go	Broadcaster.consoleKeyFor	console	move commit	none		
+mAR3_the_writer_forgets_to_bump_the_generation.py	modes/tty/broadcaster.go	Broadcaster.Update	console	move commit	none		
+mAR4_the_pool_is_appended_onto_the_cached_lineup.py	modes/tty/broadcaster_memo.go	joinSpans	console	move commit	none		
+mAR5_the_index_is_built_on_every_frame.py	modes/tty/broadcaster_memo.go	Broadcaster.tableRows	console	move commit	none		
+mAR6_the_memo_never_hits.py	modes/tty/broadcaster_memo.go	Broadcaster.tableRows	console	move commit	none		
+mAT1_the_relay_count_rides_on_the_bed_message_again.py	modes/tty/broadcaster.go	Broadcaster.Update	console	move commit	none		
+mAU1_the_alert_boxs_way_in_is_dead_again.py	modes/tty/router.go	None	root	no	prep: rename only	alertDetail,alertWindowGround,field reads/writes (r.broadcaster.)	
+mAU2_the_hazard_window_gets_a_builder_of_its_own.py	modes/tty/broadcaster_detail.go	Broadcaster.alertDetail	console	move commit	none		
+mAV2_every_window_wears_its_cards_ground.py	modes/tty/broadcaster.go	cardWindowGround	console	move commit	none		
+mAV3_the_open_hazard_window_never_refreshes.py	modes/tty/router.go	Router.refreshCardWindow	root	no	prep: rename only	alertDetail,alertWindowGround,field reads/writes (r.broadcaster.)	
+mBA1_the_running_order_ignores_what_a_card_carries.py	modes/tty/broadcaster_lineup.go	reportTypeOf	console	move commit	none		
+mCD1_the_dead_presenter_label_returns.py	modes/tty/broadcaster_slots.go	Broadcaster.cardControls	console	move commit	none		
+mCE1_the_up_next_caption_goes_plain.py	modes/tty/broadcaster_upnext.go	Broadcaster.upNextBox	console	move commit	prep: rename; move: package qualifier	centerText	
+mCG1_the_on_air_state_is_not_bold.py	modes/tty/broadcaster.go	Broadcaster.stationLine	console	move commit	none		
+mCG2_the_up_next_box_leaves_the_bands_blue.py	modes/tty/broadcaster_upnext.go	Broadcaster.upNextBox	console	move commit	none		
+mCJ1_the_status_line_goes_plain.py	modes/tty/broadcaster_manifest.go	cardStatus	console	move commit	none		
+mCJ2_the_age_ladder_loses_a_rung.py	modes/tty/broadcaster_manifest.go	dataAgeTone	console	move commit	none		
+mCK1_the_held_notice_is_a_bare_line_again.py	modes/tty/broadcaster.go	Broadcaster.noticeBand	console	move commit	none		
+mCK2_the_band_clips_its_worst_message.py	modes/tty/broadcaster.go	Broadcaster.noticeBand	console	move commit	prep: rename; move: package qualifier	centerText	
+mFR55_the_on_air_boundary_leaves_the_surface.py	modes/tty/broadcaster.go	Broadcaster.stationLine	console	move commit	none		
+mFR56_the_boundary_is_cut_mid_sentence.py	modes/tty/broadcaster.go	Broadcaster.stationLine	console	move commit	none		
+mP6_live_holds_the_queue_head_on_standby.py	modes/tty/broadcaster_slots.go	Broadcaster.slotCard	console	move commit	prep: rename only	indexForSlot	
+mP7_the_live_slot_shunts_between_reads.py	modes/tty/broadcaster_slots.go	Broadcaster.liveOffset	console	move commit	none		
+mQ2_a_rail_is_drawn_where_nothing_scrolls.py	modes/tty/broadcaster_rail.go	Broadcaster.railed	console	move commit	none		
+mR3_an_alert_card_is_painted_by_its_lead_not_its_worst.py	modes/tty/broadcaster.go	worstCategory	console	move commit	none		
+mR4_an_alert_card_stops_matching_the_events_window.py	modes/tty/broadcaster.go	cardGroundToken	console	move commit	none		
+mR5_the_operators_own_cards_look_like_the_stations.py	modes/tty/broadcaster.go	cardGroundToken	console	move commit	none		
+mR6_an_empty_slot_is_painted_as_a_card.py	modes/tty/broadcaster.go	cardTone	console	move commit	none		
+mR7_the_rail_loses_its_region_grounds.py	modes/tty/broadcaster_rail.go	railColumn	console	move commit	none		
+mRQ2_the_router_stops_carrying_the_live_offset.py	modes/tty/router.go	Router.Update	root	no	prep: rename only	liveOffset,field reads/writes (r.broadcaster.)	
+mS0_the_tracks_share_their_cells_again.py	modes/tty/broadcaster_upnext.go	joinColumns	console	move commit	none		
+mS1_the_takeover_loses_its_border_title.py	modes/tty/broadcaster.go	cardBoxTitle	console	move commit	none		
+mS2_a_card_stops_saying_what_it_is_doing.py	modes/tty/broadcaster_manifest.go	cardStatus	console	move commit	none		
+mS3_the_queue_is_clipped_instead_of_windowed.py	modes/tty/broadcaster_lineup.go	Broadcaster.scheduledSpan	console	move commit	none		
+mS4_the_queues_thumb_never_moves.py	modes/tty/broadcaster_rail.go	Broadcaster.railed	console	move commit	none		
+mS5_the_queue_cannot_be_scrolled.py	modes/tty/broadcaster_lineup.go	Broadcaster.scheduledSpan	console	move commit	none		
+mS6_the_queues_scroll_wraps_instead_of_stopping.py	modes/tty/broadcaster.go	Broadcaster.scrollQueue	console	move commit	none		
+mT4_the_card_loses_its_kind.py	modes/tty/broadcaster.go	cardLane.render	console	move commit	none		
+mT5_the_stamp_reads_a_clock_production_never_sets.py	modes/tty/broadcaster_slots.go	Broadcaster.readBody	console	move commit	none		
+mW2_the_open_window_follows_the_slot_not_the_card.py	modes/tty/router.go	Router.refreshCardWindow	root	no	prep: rename only	cardDetail,field reads/writes (r.broadcaster.)	
+mW5_the_window_is_drawn_in_the_consoles_glyphs.py	modes/tty/broadcaster_detail.go	Broadcaster.cardWindowFor	console	move commit	none		
+mW6_the_generation_moves_every_frame.py	modes/tty/broadcaster_detail.go	Dashboard.showCard	root	prep commit (the Dashboard half of the file is cut to a root file)	none		
+mX1_the_empty_live_slot_says_nothing.py	modes/tty/broadcaster_air.go	Broadcaster.liveLine	console	move commit	none		
+mX3_the_standby_notice_reaches_up_next_too.py	modes/tty/broadcaster_upnext.go	Broadcaster.upNextBox	console	move commit	none		

@@ -1,0 +1,26 @@
+n	section	function	lock_kind	fields_touched	field_packages	section_after	calls_under_lock(app, not deferred to a goroutine or func literal)	cross_package_calls_after
+1	app/bedrelay.go:40-43	bedRelays	Lock + deferred Unlock	bedStations	deck	deck		none
+2	app/bedrelay.go:107-119	setBedStations	Lock ... Unlock	bedCall,bedOn,bedPick,bedRelay,bedStations,program	app+deck	deck	relayLine	none
+3	app/bedrelay.go:132-138	bedFenceMi	Lock + deferred Unlock	bedRadiusMi	deck	deck		none
+4	app/bedrelay.go:159-172	stepBedRelay	Lock ... Unlock	bedCall,bedPick,bedRelay,program	app+deck	deck	relayLine	none
+5	app/bedrelay.go:189-192	keepBedRelay	Lock + deferred Unlock	bedCall	deck	deck		none
+6	app/bedrelay.go:197-203	selectedStation	Lock + deferred Unlock	bedPick,bedRelay,bedStations	deck	deck		none
+7	app/bedrelay.go:259-262	selectedRelay	Lock + deferred Unlock	bedRelay	deck	deck		none
+8	app/bedrelay.go:266-269	bedCarrying	Lock + deferred Unlock	bedOn	deck	deck		none
+9	app/bedrelay.go:285-287	noteBedCarrying	Lock ... Unlock	bedOn	deck	deck		none
+10	app/dashboard.go:271-287	startPipelines	Lock ... Unlock	poolRefs,priority,recent	app	app	livePipelines.providers,refsFromConfig,restoreRecent,seedRecent,startPriority,startRecent,withPool ; fields in func literals (run later, not under the lock): severe	none
+11	app/dashboard.go:525-528	currentWatch	Lock + deferred Unlock	watchRefs	app	app		none
+12	app/dashboard.go:532-534	setWatch	Lock ... Unlock	watchRefs	app	app		none
+13	app/dashboard.go:1025-1027	stopAll	Lock ... Unlock	priority,recent,ticker	app+deck	app		none
+14	app/dashboard.go:1074-1119	commit	Lock + deferred Unlock	poolRefs,priority,program,recent,station,watchRefs	app	app	pipeline.update,recentPipeline.update,withPool	none
+15	app/history.go:186-188	startHistory	Lock ... Unlock	history	maps	maps		none
+16	app/history.go:515-518	historyStore	Lock + deferred Unlock	history	maps	maps		none
+17	app/inject.go:219-221	injectHook	Lock ... Unlock	ticker	deck	deck		none
+18	app/inject.go:247-253	testLocation	Lock + deferred Unlock	watchRefs	app	(removed: reads Options.Watch, whose own section is #11)		none
+19	app/pool.go:77-79	setStation	Lock ... Unlock	poolRefs,station	app	app		none
+20	app/pool.go:110-112	rebed	Lock ... Unlock	bedRefresh	deck	deck		none
+21	app/pool.go:188-190	restationTo	Lock ... Unlock	ctx,poolRefs,program	app	app		none
+22	app/pool.go:254-257	currentPool	Lock + deferred Unlock	poolRefs	app	app		none
+23	app/pool.go:271-274	currentStation	Lock + deferred Unlock	station	app	app		none
+24	app/pool.go:524-536	rememberRequested	Lock + deferred Unlock	requestedRefs	deck	deck		none
+25	app/pool.go:551-556	resolvable	Lock + deferred Unlock	requestedRefs	deck	deck		none
