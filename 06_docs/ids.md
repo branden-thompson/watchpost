@@ -2011,34 +2011,44 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-8 |  | `multi-voice-support/08-reports/red-team-discover.md` | Medium |
 | A-8 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The independent routes to the fallback's tables (a climatology fitted from NOAA GloTEC's public-domain archiv… |
 | A-9 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Screenshots (DC-5): the agent does not run the live app (the Open-Meteo quota), so the HUM LEAD retakes docs/… |
+| A-9 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The baseline record committed and pinned (red team H-1, H-5). 06_docs/mutants/verdicts/since-v0.19.5.log, A-3… |
 | A-9 |  | `multi-voice-support/01-objectives/objectives.md` | Every question in Setup is on one screen with a flat focus |
 | A-9 |  | `multi-voice-support/08-reports/red-team-discover.md` | Medium |
 | A-9 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The acknowledgement (D-46) is recorded as seen in watchpost's config with the version of its wording; it show… |
 | A-10 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Timing-sensitive tests (RN-9, RN-10): propMsgs decides "an immediate ask" by the command's type, not a 200 ms… |
+| A-10 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | C-4, C-5 and C-8, the package map's choices the record promised as A-rows (red team DQ-3, H-13, CQ F-11). C-4… |
 | A-10 |  | `multi-voice-support/08-reports/red-team-discover.md` | Medium |
 | A-10 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Correcting D-28's question (E-3): "a 120 mi radius is about 190 km across" should read about 193 km in radius… |
 | A-11 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | How BUILD runs: batches are numbered "0.19.5 batch N"; stream A's pins land before the code they cover change… |
+| A-11 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The re-vet's list is derived (red team RR F11, CQ F-19; C-12). A batch's scoped sweep covers the mutants whos… |
 | A-11 |  | `multi-voice-support/08-reports/red-team-discover.md` | Medium |
 | A-11 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The evidence behind D-38 to D-40 (scripts, the request log with headers, the passes past D-38 as burst_rest.p… |
 | A-12 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The plan red team's corrections (D-20), carried into the plan: a batch map of 15 full-gate batches with the r… |
+| A-12 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Batch 0's additions (the red team). Beyond package-map.md §4's twelve: a gate that fails when a golden under … |
 | A-12 |  | `multi-voice-support/08-reports/red-team-discover.md` | Medium |
 | A-12 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | (withdrawn by D-113) "Allowed hosts" is struck from the fetcher's promise (go-ionomaps R-5.1); the propagatio… |
 | A-13 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The comment rules, defined and ordered (DV-3, DV-4, JM-1, JM-2, JM-11): D-12's and A-2's text in code-standar… |
+| A-13 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The order of work (red team X-3). Batch 0; RM slices 1 and 3, with RC-7's and JN-5's doc errors fixed there (… |
 | A-13 |  | `multi-voice-support/08-reports/red-team-discover.md` | Medium |
 | A-13 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | go-tuiMaps L-4.2's tolerance: the terminator within 0.5° of latitude of NOAA's published solar-position algor… |
 | A-14 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The nets, made honest (RR-2 to RR-4, RR-7 to RR-12, RR-14 to RR-16, DV-5, DV-10, JM-8, JM-14): RN-1's pins ru… |
+| A-14 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | What the new packages may be called (red team CQ F-12, DQ-18). No package is named kit, util or for another m… |
 | A-14 |  | `multi-voice-support/08-reports/red-team-discover.md` | Medium |
 | A-14 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | NFR-2 is folded into NFR-1 (citing go-ionomaps R-8.1); FR-4.5's three duplicated tests and its "headers are r… |
 | A-15 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The memos, guarded on their inputs (RR-6, RR-17, JM-7, DV-11): every Q4 guard perturbs the inputs the frame r… |
+| A-15 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The record's figures corrected (red team DQ-8, H-10, H-15, DQ-7). modes/tty has 1,084 Test functions and Test… |
 | A-15 |  | `multi-voice-support/08-reports/red-team-discover.md` | Medium |
 | A-15 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Stale follow-ups re-dated: F-191 to F-194, F-196 to F-198 and F-205 "after MUF" (D-4, D-63); F-195 and F-200 … |
 | A-16 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | D-14's shape (RR-5, JM-4): the grouped Settings fields move into three embedded, unexported structs (mapChoic… |
+| A-16 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Follow-ups (red team BQ 3.1, H-11). F-22 is closed: the guard it asks for exists (modes/tty/one_band_writer_t… |
 | A-16 |  | `multi-voice-support/08-reports/red-team-discover.md` | Tone table pre-empts OQ-16; no default class; a no-op switch |
 | A-16 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The reviewers' notes for rounds 1 and 2 are committed as 08-reports/reviewer-notes/round-1.md and round-2.md,… |
 | A-17 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The rest of the red team's gaps (DV-7, DV-8, JM-3, JM-5, JM-6, JM-10, JM-13, JM-15, RR-11, RR-13): the junior… |
+| A-17 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The reviewers' deletions (red team CQ F-7 to F-9, RR). Kept: C-11's partial move in each move commit, because… |
 | A-17 |  | `multi-voice-support/08-reports/red-team-discover.md` | FR-12's numbers untestable and inconsistent |
 | A-17 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Correcting D-61's premise (E-8): watchpost already embeds GeoNames cities15000 (domains/locations/geodata/ind… |
 | A-18 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | A P10 density floor written by 0.19.0 D-277's procedure: tools/gateoracle's row stated no floor and fired on … |
+| A-18 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The package map settled (red team DQ-2, H-13, CQ F-3, BQ 3.4). 02-analysis/package-map.md is SETTLED as the s… |
 | A-18 |  | `multi-voice-support/08-reports/red-team-discover.md` | [V] references outside FR-4 (help, hint, README, docs) |
 | A-18 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | "Best bands now" for the Observer answers the near-vertical area within 400 km of the selected place; from th… |
 | A-19 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | A P10 density floor written by 0.19.0 D-277's procedure: platform/plaintext's row stated no floor and fired o… |
@@ -2199,7 +2209,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | F-20 |  | `follow-ups.md` | The severe window's category heading was removed, and could earn its place back. It read Advisories — 14 acti… |
 | F-21 |  | `follow-ups.md` | A ctrl+d diagnostics window — and the injection half is a SEPARATE feature with the opposite shipping answer.… |
 | F-21b |  | `multi-voice-support/04-development/director-build-log.md` | the injector, and a P10 exemption awaiting ratification (2026-09-05) |
-| F-22 |  | `follow-ups.md` | The band's "one owner" rule is structural and nothing enforces it. D-1/T2.3 hold that only mastercontrol writ… |
+| F-22 |  | `follow-ups-closed.md` | The band's "one owner" rule is structural and nothing enforces it. D-1/T2.3 hold that only mastercontrol writ… |
 | F-23 |  | `follow-ups.md` | A listener's own weather station as an observation source. The Lone Pine defect is the business case: a locat… |
 | F-24 |  | `follow-ups.md` | A MASTHEAD to cover the resumption gap. Coming back ON AIR from standby, the first card has to be composed an… |
 | F-25 |  | `multi-voice-support/04-development/director-build-log.md:2024` | Mentioned: F-25 WAS A DUPLICATE OF F-14, found when the race gate hit it a third time. The output is captured… |
@@ -2407,6 +2417,13 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | F-225 |  | `follow-ups.md` | Whether a partial name may resolve from the pool. It is the only change that removes the lookup's round trip … |
 | F-226 |  | `follow-ups.md` | The INST rules' review, due at 0.17.0, has no record. 06_docs/quality-plan.md admits each INST rule on a name… |
 | F-227 |  | `follow-ups.md` | Retake the three Settings-era screenshots. docs/img/setup.png, broadcaster-settings.png and help.png date fro… |
+| F-228 |  | `follow-ups.md` | D-2 proper: the arbiter dissolves into the Director's step, and the Director owns all ducking. RM-6's five st… |
+| F-229 |  | `follow-ups.md` | Three questions D-2 needs answered before it is built. Should Observer's alerts duck once per card, as today,… |
+| F-230 |  | `follow-ups.md` | The listener's pause lives in the arbiter (MVS-D-74). D-2 moves it into the Director's step as an event, with… |
+| F-231 |  | `follow-ups.md` | The Producer's cut out of the deck. AS's map keeps the Producer and the Composer inside app's deck package; c… |
+| F-232 |  | `follow-ups.md` | A Charm or Bubble Tea upgrade. Not in 0.19.6 (C-9): it is a separate risk with its own frame comparison. 0.19… |
+| F-233 |  | `follow-ups.md` | Whether the pin comparator stays after 0.19.6. For 0.19.6 a comparator fails any rise over a recorded baselin… |
+| F-234 |  | `follow-ups.md` | The tone-latency instrument reads 10x its last record (15.8 µs against 1.6 µs), and its timed span holds test… |
 
 ## MVS-D
 

@@ -4,7 +4,7 @@ date: 2026-11-14
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "PROPOSED — the agent's reconciliation (D-7); each fork below is put to the HUM LEAD one at a time"
+status: "SETTLED (A-18) as the scope D-13 approved, with D-9 to D-12 and A-9 to A-18; the DISCOVER red team's forks 1 to 4 (`../08-reports/red-team-review.md`) amend it as they are ruled"
 ---
 
 # The 0.19.6 package map
@@ -66,7 +66,7 @@ the anchors).
 | `app/internal/maps` | the map layers and the history | 22 files, 6,616 |
 | `app/internal/kit` | leaf helpers (`everyTick`, `lazyMemo`, `savePreference` and the rest) | 4 files, 217 |
 
-- Imports one way: `app` → `deck`, `maps`, `kit`; `deck` and `maps` → `kit` only (AS-9).
+- Imports one way among `app`'s children: `app` → `deck`, `maps`, `kit`; `deck` and `maps` → `kit`, never each other, held by `lint-imports` (AS-9, A-12). Each still imports `modes/tty` and the `platform` packages it uses today.
 - The root's deck wiring in `app/dashboard.go` moves into the deck as one entry point, so the
   boundary is about 12 symbols, not 90 exports (AS-4).
 - The deck's exported surface is `tty.Radio`'s method set plus the entry point, held by a test
@@ -148,33 +148,37 @@ re-pointed by path, no comment edits). No commit is both.
 The release closes with a full sweep compared with A-3's: 1,051 caught, the 7 equivalents surviving
 or re-ruled, none with no evidence.
 
-## 6. The order of work
+## 6. The order of work (A-13)
 
-1. Batch 0 (§4).
-2. RM's slice 1 (F-158's test) and slice 3 (the vocabulary), which change no production behaviour.
+1. Batch 0 (§4, with A-12's additions).
+2. RM's slice 1 (F-158's test) and slice 3 (the vocabulary), which change no production behaviour,
+   with RC-7's and JN-5's doc errors fixed there (§9).
 3. `modes/tty`: the kit, then the console.
-4. `app`: the kit, then the deck whole (RM slice 2), then the maps.
-5. `modes/tty`: the map, 2a; then 2b (D-9), its test work sized by the straddle count re-measured after 2a.
-6. The closing sweep, the docs and the atlas, REVIEW.
+4. `modes/tty`: the map, 2a, so 2b's straddle count is measured early.
+5. `app`: the kit, then the deck whole (RM slice 2), then the maps.
+6. `modes/tty`: the map, 2b (D-9), in three commits: the straddling tests re-wired in place onto the
+   API that survives, the straddle count re-measured, then the move.
+7. The closing sweep, then REVIEW. Every batch moves its own docs, diagrams and atlas (R6).
 
 The console and the deck go first because their nets support a move best (RX-3: the console's
 killers sit in its own test files; the deck moved whole keeps 64 of its 101 killers with it).
 
-## 7. The questions for the HUM LEAD, in order
+## 7. The questions DISCOVER put to the HUM LEAD
 
 Each is asked one at a time, with its evidence, options, recommendation and strongest
 counter-argument.
 
-5. **The map's package move (C-1):** answered, D-9: 2a and 2b.
-6. **P10 for the split (C-13):** answered, D-10.
-7. **D-2 (C-10):** answered, D-11: nothing of D-2 in 0.19.6; D-2 proper, RM's three questions and
+1. **The map's package move (C-1):** answered, D-9: 2a and 2b.
+2. **P10 for the split (C-13):** answered, D-10.
+3. **D-2 (C-10):** answered, D-11: nothing of D-2 in 0.19.6; D-2 proper, RM's three questions and
    the other deferred changes are 0.19.7 (A-8).
-8. **0.19.5's REFLECT recommendation 3:** answered, D-12: the floor scan, and go 1.26.11.
-9. **The brief:** its problem statement and metrics for the four principles (§5), its scope (§2,
+4. **0.19.5's REFLECT recommendation 3:** answered, D-12: the floor scan, and go 1.26.11.
+5. **The brief:** answered, D-13. Its problem statement and metrics for the four principles (§5), its scope (§2,
    §6), and what is out (C-9, D-2 proper).
 
-The agent's own choices (names, the alias rule, `internal/`, the lock decision, the comparator, the
-ratchet) are A-rows, put for veto with the brief.
+The agent's own choices are A-9 to A-18, put for veto after the DISCOVER red team. The lock (C-7)
+and the ratchet (C-6) settled questions a lens put to the HUM LEAD, so they are the red team's forks 3
+and 4, not A-rows.
 
 ## 8. Recorded, not asked now
 
@@ -184,4 +188,42 @@ ratchet) are A-rows, put for veto with the brief.
   `where-things-happen.md:15`, one window, against the stack at `modes/tty/dashboard.go:1591`), fixed
   in the batch that moves the code they describe.
 - RM-8's and JN-5's misleading names, fixed as A-rows in their batches.
-- GP: `docs/architecture.md:528` lists Bubbles as built, and `go.mod` has no Bubbles requirement.
+- GP: `06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md:528` lists Bubbles in that release's pins, and `go.mod` has no Bubbles requirement. It is history, so it stays (A-15).
+
+## 9. What the moves invalidate, and the batch that fixes each (A-18)
+
+Drawn from RC-6 and the red team's DQ-17 and H-7.
+
+**The rule for living documents and history.** A living document describes the code as it is now:
+`docs/`, `README.md`, the package `doc.go` files, `06_docs/follow-ups.md`, `06_docs/p10-ledger.md`,
+`06_docs/code-standards.md`, `06_docs/quality-plan.md`, `06_docs/perf-measurement.md`, every
+as-built map, and every required reading still in force. A living document is fixed in the batch
+whose move makes it wrong. Every other document under `06_docs/02_features/` is a release's
+history: it records what was true then, and it is not re-pointed.
+
+**"Every move batch"** means the batch that moves the files a row names, in its own commits (R6).
+
+| What | Names | Held by | Fixed in |
+|---|---|---|---|
+| `docs/where-things-happen.md` | 168 `…go:Func` spans in the two packages | `TestWhereThingsHappenNamesRealSymbols` | every move batch |
+| `docs/where-things-happen.md:15`, `:95`, `:128`; `docs/extending.md:291-294`; the comments at `modes/tty/dashboard.go:641` and `:1590` | one window where the code has a stack (RC-7 item 1), and JN-5's misleading names | nothing | RM slice 3, before any move (A-13) |
+| `docs/extending.md` | 60 paths, and the per-package golden, declset and cadence flags (`:257-262`) | `TestExtendingNamesRealSymbols` for symbols; nothing for the flags | every move batch |
+| `docs/architecture.md` | the `TTY` and `APP` nodes, the package table, the rules | `TestArchitectureNamesRealSymbols`, the atlas; nothing requires a row per new package | every move batch, a row per new package |
+| `docs/accepted-costs.md` | six files in the two packages | `TestAcceptedCostsNamesRealSymbols` | every move batch |
+| `modes/tty/doc.go`, `app/doc.go`, and each new package's `doc.go` | every non-test file, by row | `TestEveryFileIsInItsPackagesMap`, for two packages only | batch 0 derives its packages; every move batch keeps the rows |
+| `06_docs/p10-ledger.md` | 14 file-keyed rows and 2 density rows | `TestEveryRatifiedP10RowNamesCodeThatExists` | the re-key table at PLAN exit (D-10), applied in every move batch |
+| `06_docs/mutants/*.py` | 692 anchors in the two packages | `make mutant-anchors`, `make mutant-check` | every move batch, re-pointed (A-11) |
+| The release record | `releaseRecord` names `propagation-overlays` (`cmd/watchpost/record_test.go:19-20`) | nothing reads 0.19.6's record | batch 0 (A-12), once PLAN's documents exist |
+| 0.19.6's as-built map | does not exist yet; `TestTheAsBuiltMapIsKeptInStep` knows two features (`app/maps_test.go:62-65`) | nothing | the first move batch creates it; every batch redraws it |
+| `observer-maps/03-architecture-design/as-built-map.md` | the `app` and `modes/tty` subgraphs and their files (`:78-107`, `:128-161`) | its batch count only | the maps' batch and 2b |
+| `0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md` | `app/radio.go`, `tty.Config` and `tty.Radio` as the boundary | nothing | the deck's batch |
+| `map-ready-geometry/03-architecture-design/as-built.md` | `app/mapgeometry.go:resolveAlertAreas` | nothing | the maps' batch |
+| `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | `broadcaster_rail.go`, `app/arbiter.go`, `app/radio.go` | nothing | the console's batch and the deck's |
+| `06_docs/architecture-atlas.html` | rendered from the documents above | `TestTheAtlasMatchesAFreshRender` | every batch that changes a diagram |
+| `06_docs/follow-ups.md` | 19 paths, F-158's `app/maintrack.go` and `app/arbiter.go` among them | test names only | every move batch |
+| `06_docs/code-standards.md` | the `setupTable` specimen, `app/dump_windows.go` | nothing | the batch that moves each |
+| `06_docs/quality-plan.md:151`, `06_docs/perf-measurement.md:54`, `:222` | `golden_test.go`, `bench_test.go`, `timing.go` | nothing | the batch that moves each |
+| `README.md:597`, `Makefile:35-41` | "`modes/tty` is the slowest package" | nothing | the closing batch, with the measured figure |
+| `where-things-happen.md:147-149`, `06_docs/ids.md` | "`git log` on the file" | nothing | batch 0, with the citation lint (§4 item 10): `git log --follow` |
+| `cmd/watchpost/extending_symbols_test.go:57` | matches by base name, and the split adds duplicate base names | nothing (TG-10) | batch 0 |
+| Go comments | 49 comments in 35 files name these paths, 15 of the files outside the two packages; and comments a move makes false, such as `app/air_boundary.go:18` and `app/dashboard.go:601` | nothing | every move batch's comment pass |

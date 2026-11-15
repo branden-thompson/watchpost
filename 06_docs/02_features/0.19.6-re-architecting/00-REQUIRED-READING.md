@@ -12,8 +12,8 @@ status: "MANDATORY for the life of 0.19.6, at session start and after any compac
 ## What this release is
 
 The re-architecting that 0.19.5 found and ruled out of its own scope (0.19.5 D-40). `modes/tty` and
-`app` are split into smaller packages along their seams (D-1). The arbiter's dissolving into the
-Director's step may come with it, where it holds to the principles (D-2). Charm is not re-implemented
+`app` are split into smaller packages along their seams (D-1). Nothing of D-2, the arbiter's
+dissolving into the Director's step, is in 0.19.6: it is 0.19.7 (D-11). Charm is not re-implemented
 (D-3).
 
 ## Where things are
@@ -38,7 +38,8 @@ Director's step may come with it, where it holds to the principles (D-2). Charm 
    improvement by orders of magnitude is shown to the HUM LEAD.
 3. **The shared deck is not split.** One deck, the Director arbitrating in both modes, MasterControl
    gating the air (`../0.16.0-broadcaster-ui/00-REQUIRED-READING.md`). A package split moves the deck
-   whole; D-2's work follows the role model and the disposition sheet, item by item.
+   whole. When 0.19.7 takes D-2, its work follows the role model and the disposition sheet, item by
+   item.
 4. **Every move keeps its mutants.** Before code moves, `06_docs/mutants/` is searched for its anchors;
    a moved anchor is re-pointed and re-vetted, and the closing sweep is judged against A-3's.
 5. **The live app is not run for measurement** (the Open-Meteo quota). Performance is measured from
