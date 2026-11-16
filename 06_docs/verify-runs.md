@@ -275,3 +275,4 @@ says exactly what passed.
 | 2026-11-16T04:27:51Z | b1327208 | 55e10f2e43a6 | verify | green | 2129 |
 | 2026-11-16T13:52:19Z | 4d948def | ef6e8ecdbc8b | verify | green | 2899 |
 | 2026-11-16T15:18:42Z | fc39a8a7 | 16b6d4cb7e97 | verify | green | 2184 |
+| 2026-11-16T23:05:00Z | b531111d | a36fe2d12083 | verify-full | green | 6803 |

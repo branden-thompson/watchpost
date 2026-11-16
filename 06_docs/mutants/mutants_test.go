@@ -8,17 +8,16 @@
 // the .git FILE a git worktree uses — so a shell guard can run `git commit`
 // against the developer's own repository while reporting OK.
 //
-// As a Go test a t.Fatalf cannot be lost the way an exit code can, the copy is a
-// walk rather than rsync semantics, `.git` is skipped by NAME so a worktree's
-// .git FILE cannot come along, and the guard is testable by ordinary means —
-// which a shell control is not, being a second implementation of the thing it
-// checks.
+// As a Go test a t.Fatalf cannot be lost the way an exit code can, the build
+// goes through the go command's own overlay rather than a shell's copy, and the
+// guard is testable by ordinary means (judge_test.go) — which a shell control
+// is not, being a second implementation of the thing it checks.
 //
 // IT IS BEHIND A BUILD TAG, and deliberately not part of `go test ./...`. It
-// copies and compiles the tree once per mutant, which is ~143s; inside the
-// default run that cost would also land in `make race`, under the race detector,
-// on every commit. The LANGUAGE choice and the WHEN-TO-RUN choice are separate,
-// and only the first is what D-9 is about.
+// builds the tree once per mutant; inside the default run that cost would
+// also land in `make race`, under the race detector, on every commit. The
+// LANGUAGE choice and the WHEN-TO-RUN choice are separate, and only the first
+// is what D-9 is about.
 //
 //	make mutant-check
 package mutants
@@ -26,6 +25,7 @@ package mutants
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -74,53 +74,7 @@ func corpus(t *testing.T, root string) []string {
 	return found
 }
 
-// copyTree copies the working tree into dir, skipping what no build reads.
-//
-// .git IS SKIPPED BY NAME, whether it is a directory or a FILE. In a git
-// worktree it is a file pointing at the real gitdir, and a copy that inherits
-// it is a copy that can write to the developer's repository.
-func copyTree(t *testing.T, root, dir string) {
-	t.Helper()
-	skip := map[string]bool{".git": true, ".claude": true, "dist": true, "docs": true, "node_modules": true}
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		if rel == "." {
-			return nil
-		}
-		if skip[filepath.Base(path)] {
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		dst := filepath.Join(dir, rel)
-		if info.IsDir() {
-			return os.MkdirAll(dst, 0o755)
-		}
-		if !info.Mode().IsRegular() {
-			return nil // symlinks and sockets are not source
-		}
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(dst, b, info.Mode().Perm())
-	})
-	if err != nil {
-		t.Fatalf("copying the tree: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
-		t.Fatal("the copy contains a .git — it could write to the real repository")
-	}
-}
-
-// verdict is what applying one mutant to a copy proves.
+// verdict is what applying one mutant proves.
 type verdict string
 
 const (
@@ -128,40 +82,131 @@ const (
 	stale   verdict = "STALE"   // the mutation no longer matches the source
 	inert   verdict = "INERT"   // it applied and changed nothing
 	broken  verdict = "INVALID" // the mutated tree does not compile
-	escaped verdict = "ESCAPED" // it wrote outside the copy
+	escaped verdict = "ESCAPED" // it wrote, or names a target, outside the files it patches
 )
 
-// judge applies one mutant to its own copy of the tree and classifies it.
+// targetsOf is the files a mutant patches, relative to the root, and the
+// first target that is not a relative path inside it, if any.
+func targetsOf(mutant string) (targets []string, outside string) {
+	b, err := os.ReadFile(mutant)
+	if err != nil {
+		return nil, ""
+	}
+	seen := map[string]bool{}
+	for _, m := range targetRE.FindAllStringSubmatch(string(b), -1) { // bounded by the script (P10-02)
+		rel := m[1]
+		if filepath.IsAbs(rel) || !filepath.IsLocal(rel) {
+			return nil, rel
+		}
+		if !seen[rel] {
+			seen[rel] = true
+			targets = append(targets, rel)
+		}
+	}
+	return targets, ""
+}
+
+// copyFile copies one file, creating its directory.
+func copyFile(t *testing.T, from, to string) error {
+	t.Helper()
+	b, err := os.ReadFile(from)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(to, b, 0o644)
+}
+
+// judge applies one mutant and classifies it (0.19.6 D-37).
+//
+// ONLY THE MUTANT'S TARGETS ARE COPIED, into dir, and the mutant runs there.
+// The build then runs in the real tree with `-overlay`, which swaps the mutated
+// files in for that build alone. So every package the mutant does not touch is
+// a build-cache hit, and nothing is written into the tree: a copy of the whole
+// tree per mutant was about 56 MB written and read twice over, for 1,059
+// mutants a gate.
+//
+// THE REAL TREE IS THEREFORE WITHIN REACH OF THE SCRIPT, which the copy used to
+// prevent. Two checks stand in for it: a target that is not a relative path
+// inside the root is refused before the script runs, and the real targets
+// must be byte for byte what they were after it ran. Anything else a script
+// writes is a mutant that names files it does not patch, and the gate's own
+// clean-tree check in TestEveryMutantAppliesAndCompiles catches it.
 func judge(t *testing.T, root, mutant, dir string) (verdict, string) {
 	t.Helper()
-	copyTree(t, root, dir)
-	before := digest(t, dir)
-
-	// The mutant is COPIED IN and run with the copy as its working directory, so
-	// a mutant that locates its target relative to its own __file__ resolves
-	// inside the copy rather than in the real tree.
+	targets, outside := targetsOf(mutant)
+	if outside != "" {
+		return escaped, "it names " + outside + ", which is not a path inside the tree"
+	}
+	if len(targets) == 0 {
+		return stale, "it names no target"
+	}
+	realBefore := map[string]string{}
+	for _, rel := range targets { // bounded by the targets (P10-02)
+		b, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			return stale, "its target " + rel + " is not in the tree"
+		}
+		realBefore[rel] = string(b)
+		if err := copyFile(t, filepath.Join(root, rel), filepath.Join(dir, rel)); err != nil {
+			t.Fatalf("copying %s: %v", rel, err)
+		}
+	}
+	// The mutant is COPIED IN and run with dir as its working directory, so a
+	// mutant that locates its target relative to its own __file__ resolves
+	// inside dir rather than in the real tree.
 	local := filepath.Join(dir, "06_docs", "mutants", filepath.Base(mutant))
+	if err := copyFile(t, mutant, local); err != nil {
+		t.Fatalf("copying the mutant: %v", err)
+	}
+	before := digest(t, dir)
 	cmd := exec.Command("python3", local)
 	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
+	out, err := cmd.CombinedOutput()
+	for _, rel := range targets { // bounded by the targets (P10-02)
+		if b, _ := os.ReadFile(filepath.Join(root, rel)); string(b) != realBefore[rel] {
+			return escaped, "it wrote to the real tree's " + rel
+		}
+	}
+	if err != nil {
 		return stale, strings.TrimSpace(lastLine(string(out)))
 	}
-	after := digest(t, dir)
-	if before == after {
+	if before == digest(t, dir) {
 		return inert, "the mutation applied but changed nothing in the tree"
 	}
-	if out, err := run(dir, "go", "build", "./..."); err != nil {
+	overlay, err := writeOverlay(root, dir, targets)
+	if err != nil {
+		t.Fatalf("writing the overlay: %v", err)
+	}
+	if out, err := run(root, "go", "build", "-overlay", overlay, "./..."); err != nil {
 		return broken, firstLine(out)
 	}
 	// go build never compiles tests, and the rules these mutants delete are
 	// frequently called only from tests — so the patched packages are vetted
 	// too, which does compile them.
 	if pkgs := packagesOf(mutant); len(pkgs) > 0 {
-		if out, err := run(dir, "go", append([]string{"vet"}, pkgs...)...); err != nil {
+		if out, err := run(root, "go", append([]string{"vet", "-overlay", overlay}, pkgs...)...); err != nil {
 			return broken, firstLine(out)
 		}
 	}
 	return applies, ""
+}
+
+// writeOverlay writes the go command's overlay file beside dir: each real
+// target replaced by its mutated copy.
+func writeOverlay(root, dir string, targets []string) (string, error) {
+	replace := map[string]string{}
+	for _, rel := range targets { // bounded by the targets (P10-02)
+		replace[filepath.Join(root, rel)] = filepath.Join(dir, rel)
+	}
+	b, err := json.Marshal(map[string]map[string]string{"Replace": replace})
+	if err != nil {
+		return "", err
+	}
+	path := dir + ".overlay.json"
+	return path, os.WriteFile(path, b, 0o644)
 }
 
 // packagesOf is the Go packages a mutant patches. A mutant that patches no Go
@@ -205,6 +250,11 @@ func TestEveryMutantNamesItsTarget(t *testing.T) {
 	}
 }
 
+// mutantLanes is how many mutants may build at once. Four rather than one:
+// serial takes several times as long, and four leaves the machine enough to be
+// used.
+const mutantLanes = 4
+
 // TestEveryMutantAppliesAndCompiles is D-3, mechanised.
 //
 // A mutant that no longer matches its source is a rule NOBODY IS MEASURING: a
@@ -212,23 +262,39 @@ func TestEveryMutantNamesItsTarget(t *testing.T) {
 // A mutant that removes a USE rather than a rule leaves the tree uncompilable,
 // and its verdict is no evidence either way. This test finds both before a
 // sweep is paid for.
-// mutantLanes is how many trees may compile at once. Four rather than one:
-// serial compiles every mutant's tree end to end and takes several times as
-// long; four keeps the run near three minutes while leaving the machine enough
-// to be used.
-const mutantLanes = 4
-
+//
+// THE COMMIT GATE JUDGES WHAT ITS CHANGE REACHES (0.19.6 D-38): `make verify`
+// judges the mutants inScope selects, and MUTANT_SCOPE=full, which `make
+// verify-full`, CI and the release job set, judges the whole corpus.
+//
+// THE TREE IS THE SAME AFTERWARDS. Each mutant builds against the real tree
+// through an overlay (judge, 0.19.6 D-37), so `git status` is read before the
+// corpus and after it, and any change fails the test, naming what a script
+// wrote.
 func TestEveryMutantAppliesAndCompiles(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
 	if testing.Short() {
-		t.Skip("copies and compiles the tree once per mutant")
+		t.Skip("builds the tree once per mutant")
 	}
+	status := func() string {
+		out, err := run(root, "git", "status", "--porcelain")
+		if err != nil {
+			t.Fatalf("reading the tree's status: %v: %s", err, out)
+		}
+		return out
+	}
+	was := status()
+	t.Cleanup(func() {
+		if now := status(); now != was {
+			t.Errorf("the corpus changed the real tree:\nbefore:\n%s\nafter:\n%s", was, now)
+		}
+	})
 	// THE GUARD BOUNDS ITS OWN CONCURRENCY, rather than taking whatever
 	// -parallel defaults to.
 	//
-	// Each subtest compiles the whole tree. At one per CPU that is a dozen full
-	// builds at once, and on a loaded machine — the app under UAT, an editor —
+	// Each subtest builds the tree. At one per CPU that is a dozen builds at
+	// once, and on a loaded machine — the app under UAT, an editor —
 	// they start failing: mutants are reported UNCOMPILABLE with compile errors
 	// that name the standard library (`net/netip`). Nothing in this repository
 	// can break the standard library, so such verdicts are about the machine,
@@ -240,7 +306,7 @@ func TestEveryMutantAppliesAndCompiles(t *testing.T) {
 	// ceiling is here in the test rather than in whatever command happens to
 	// invoke it.
 	lane := make(chan struct{}, mutantLanes)
-	for _, mutant := range corpus(t, root) {
+	for _, mutant := range mutantsToJudge(t, root) {
 		name := filepath.Base(mutant)
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

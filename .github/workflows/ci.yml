@@ -98,4 +98,4 @@ jobs:
             || (needs.policy.outputs.mutants == 'nightly' && github.event_name == 'schedule')
             || (needs.policy.outputs.mutants == 'label' && contains(github.event.pull_request.labels.*.name, 'run-mutants'))
           )
-        run: make mutant-check
+        run: make mutant-check MUTANT_SCOPE=full # CI is the full tier: the whole corpus (0.19.6 D-38)

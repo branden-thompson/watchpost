@@ -1234,16 +1234,19 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-37 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the discard pile is a modal, [shift+U], patterned on the [w] window — and reached from the base UI only. UNBU… |
 | D-37 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE DISCARD PILE IS A MODAL, OPENED FROM THE BASE UI |
 | D-37 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The blind M5 reviewer (D-24) found that the console's code cites 0.16.0 rulings ids.md cannot resolve: a juni… |
+| D-37 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Testing infrastructure, ruling 1 of 3: the mutant check. The full gate ran the machine into shutdowns from po… |
 | D-37 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | The DISCOVER phase gate: the report was presented in full, with 7 gates passing and the two remaining ones th… |
 | D-37 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | FR-1.11: does the Propagation mode answer for the map's centre as the listener pans? Offered in D-25's option… |
 | D-38 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | four elevations: base → priority overlay → detail/action → confirm/destructive |
 | D-38 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | FOUR LEVELS OF ELEVATION, AND THREE ALREADY EXIST |
 | D-38 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The T3 re-trace (D-24) found that closed follow-ups cited in code (F-84, F-97 and others) resolve nowhere. 48… |
+| D-38 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Testing infrastructure, ruling 2 of 3: the gate's tiers. Every commit must pass the full gate today, the whol… |
 | D-38 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | A full make verify costs 20 to 40 minutes and has never changed its result for a Markdown-only commit; ruled … |
 | D-38 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Is D-18's budget a host limit? (It is self-imposed; neither GIRO nor NOAA publishes a limit; GIRO has throttl… |
 | D-39 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the card detail modal is a centred overlay like the location-details one — scroll, sticky controls |
 | D-39 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE CARD DETAIL MODAL IS A CENTRED OVERLAY |
 | D-39 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The second full make mutant-verdicts sweep, the first to place all 1,057 mutants, ran 19 hours 36 minutes aga… |
+| D-39 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Testing infrastructure, ruling 3 of 3: where the mutant sweeps run. mutant-verdicts (a release's close, 3,976… |
 | D-39 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Whether watchpost 0.18.0's PLAN, paused since D-37, opens now that go-tuiMaps v0.2.0's DISCOVER has closed (g… |
 | D-39 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Replace D-18's courtesy budget with throttle behaviour built into the feature, sized from D-38's measurement … |
 | D-40 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the Producer proposes — several, cheap, name-only — and the DIRECTOR chooses |
@@ -2163,7 +2166,9 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-36 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The CHANGELOG dates 0.19.5 by its release. Its heading said 2026-11-10, the day it was written; the release w… |
 | A-36 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | tools/authoring's floor restated (0.19.0 D-277), as A-34's two. B0.10's citeKey (tools/authoring/cite.go:28) … |
 | A-36 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W3.1 and W2.4's choices: (1) the hour on screen is drawn as go-tuiMaps' MUFGrid or FoF2Grid, its own preset a… |
+| A-37 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The record tests' 0.19.6 form (B0.13, A-29). releaseRecord points at 0.19.6. The brief's rows name instrument… |
 | A-37 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-157 to D-160's details: (1) the menu row is named "Radio Propagation" (D-158), last of the tints, and shown… |
+| A-38 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The router trace's form, past CK-6's words (B0.6, A-29, RR-1). Bubble Tea's timers are named tick and every a… |
 | A-38 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-163's details: (1) the blank row after the legend is the picture's own status row, blank when the picture i… |
 | A-39 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-164 to D-167's details: (1) "bold white" is the window title's tone (MapPropPlace, derived from ModalTitle)… |
 | A-40 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The quality pass's choices (batch 13): (1) the Propagation block's age moves with the clock, as D-166 asks: t… |

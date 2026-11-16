@@ -203,3 +203,94 @@ The live findings are the two test-support rows the HUM LEAD is adding (D-35).
 **What the walk cannot see.** A method call on a value whose type it cannot read resolves to the
 tree's methods of that name. When the tree has none, the call resolves to nothing, so a func field
 on such a value goes unseen. The deadlock test runs the paths that would hide one.
+
+Landed as `b531111d` on a full gate (2,184 s, green); pushed.
+
+## B0.6's router trace and B0.13: the trace in its new form, the record, the floor
+
+B0's fifth commit. B0.6's `app` trace, `TestTheDeckIsTheSameUnderRandomActs`, is the next commit's:
+it drives the deck's act surface over a player and a synth that run on goroutines of their own, and a
+byte-identical record of that needs its own harness work.
+
+**What.**
+- **B0.6, the router trace** (design CK-6, A-29, A-38). Each step is
+  `<seed>.<step> m<index> surface=<n> cmd=<description> frame=<sha256>`, and nothing prints a Go type.
+  - The Dashboard is built with a real map: the embedded basemap, offline feeds, a Settings save that
+    records, a Propagation update that answers at once, and the map's ticks through `heldTicks`.
+  - The alphabet is widened once: the map's keys, Propagation's, Settings', and `ctrl+b` / `ctrl+o`.
+    The old trace had never reached the console.
+  - Bubble Tea's timers and combinators are named; every other command is run and named by its
+    reply's index in `traceReplies`, the reply fed back once.
+  - Four walks on fixed seeds start from the dashboard, the map, the map in Propagation and the
+    console, each place held to a fixed floor of frames.
+  - The golden, 1,200 lines, was re-recorded on production code identical to `e57afeaf` (only the two
+    test-support packages differ). It is on B0's list of re-recorded goldens.
+- **B0.13, the record.** `releaseRecord` points at 0.19.6; the requirement checks and the FR-7 test
+  read 0.19.0's record (A-37). The rulings check takes a bare suffix, a planned name and a fixed list
+  of whole-file claims, and fails on a listed claim its row dropped. The 16 line citations in the
+  brief, the architecture and the plan are now symbols.
+- **B0.13, the floor** (D-12). `make vuln-floor` runs `govulncheck` under the toolchain `go.mod`
+  names, as a plain recipe: a first version as a shell script was refused by the shell ledger's
+  test, since a new script needs a ruling and this one is not necessary. It is required in
+  `verify`, in CI and so in the release job. The floor is now go 1.26.11, `README.md`'s build section
+  restates it, and the CHANGELOG has an `[Unreleased]` entry.
+
+**Seen failing first.**
+- **The router trace.** It failed at line 305 with zoom-in's `+` binding removed. It is
+  byte-identical over three plain runs and under `-race`.
+- **The reach floors.** Uniform draws showed Propagation in 0 frames and failed them, which is why
+  the walks exist.
+- **`vuln-floor` at go 1.26.10.** It found GO-2026-6859 reachable in `net/http@go1.26.10` (fixed in
+  1.26.11) and failed. At 1.26.11 it found nothing.
+- **The record checks.** On 0.19.6 they reported nine rows that name a whole file, and a plan
+  citation of a file B3 creates.
+
+**The gate, throttled from here on.** The first full gate on this commit was stopped at 33 minutes, in
+`mutant-check`, by the HUM LEAD's direction: at Go's default parallelism (every package and every
+thread on all 18 cores), with the machine's endpoint scanner reading each compiled test binary, the
+load average reached about 50 and other applications shut down from power use or CPU temperature. A
+stopped run writes no row to `06_docs/verify-runs.md`, so it is recorded here. A second run, under
+`nice -n 19` with `GOFLAGS=-p=6`, was stopped too, at load 84 in `mutant-check`.
+`TestEveryMutantAppliesAndCompiles` copies and compiles the whole tree once per mutant, 1,059 times,
+four lanes at once, each lane's build taking its own `-p`. Every heavy run since is under macOS's
+background priority, `taskpolicy -b nice -n 19` with `GOFLAGS=-p=2` and `GOMAXPROCS=4`: the
+efficiency cores only, at low power, with the disk throttled. That changes the scheduling and not the
+gates, so a run takes longer.
+
+## B0.14: the testing infrastructure (D-37 to D-39)
+
+The gate ran this machine into shutdowns (above), and the HUM LEAD asked for tests as effective,
+using less, with full checks well inside 18 hours. The mutant check was about three quarters of every
+gate: other gates ran 6 to 7 minutes before it began. Three rulings followed, one at a time. This
+commit lands before the B0.6/B0.13 commit above, set aside as a patch until it does, so that commit
+is gated by the new commit gate.
+
+**What.**
+- **D-37, the mutant check by overlay.** `judge` copies only a mutant's one target, runs the mutant
+  there, and builds and vets with `-overlay` in the real tree. Every unchanged package is a cache hit,
+  and the about 56 MB copy per mutant, about 59 GB written a gate, is gone. A target outside the tree
+  is refused before the script runs. A script that writes to the real target is ESCAPED, a verdict the
+  copy never returned. `TestEveryMutantAppliesAndCompiles` fails if `git status` differs after the
+  corpus.
+- **D-38, two tiers.** `MUTANT_SCOPE` is `commit` for `make verify`: `inScope` selects the mutants
+  whose package, or a package it or its tests import, holds a changed file, a changed script, and every
+  mutant on a change to `go.mod` or `go.sum`. `make verify-full` runs the same gates with
+  `MUTANT_SCOPE=full` under its own lane in `06_docs/verify-runs.md`. CI's mutant step and the release
+  job run full. On this commit the scope selects 0 of 1,059 (no product package changed); a probe line
+  in `app/every.go` selected 161.
+- **D-39** is the full sweep's GitHub workflow, written before B9 needs it.
+
+**Seen failing first.**
+- **`TestTheJudgeGivesEachVerdict`** on a throwaway module: the copy-based judge read the planted
+  escape as INVALID, and its target can be an absolute path. With the overlay judge, all seven cases
+  give their verdict.
+- **`TestTheCommitScopeSelectsWhatAChangeReaches`**: with the test-import half of `reach` removed, it
+  missed the mutant reached only through a test.
+
+**Measured.**
+- **A spike on 3 mutants** on the efficiency cores: 14 to 16 s each by copy, 7 to 8 s by overlay, and
+  27.5 against 19.3 CPU-seconds for the widely imported `platform/render`.
+- **The whole corpus by overlay**: `make mutant-check` exited 0 in 4,466 s, all 1,059 applying and
+  compiling as on the last green gate, the tree unchanged. That ran on the efficiency cores at the
+  lowest priority, never above 8 cores, against 1,907 to 3,512 s on every core at full power by copy.
+

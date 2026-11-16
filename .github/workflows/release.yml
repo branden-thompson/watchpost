@@ -23,7 +23,7 @@ jobs:
       - name: a final tag ships on final libraries (D-3, RH-9)
         run: go run ./tools/finaltag "$GITHUB_REF_NAME"
       - name: verify
-        run: make verify
+        run: make verify-full # the full tier: the whole mutant corpus before a release (0.19.6 D-38)
       - name: release matrix
         run: make release-matrix VERSION="${GITHUB_REF_NAME#v}"
       - name: installer smoke test

@@ -313,6 +313,12 @@ meant, and the failure prints the first line that differs. To accept a change:
   count written in prose (this page names none): the Makefile,
   `ci.yml` and that file are checked against each other by `cmd/watchpost/gates_test.go`, and a gate
   on none of them is caught by `TestEveryGateShapedTargetIsListedOrExempt`.
+- **Two tiers of the same gates (0.19.6 D-38).** `make verify` is the commit gate: its mutant check
+  judges only the mutants whose package, or a package it or its tests import, the change touches,
+  so a change to documents runs none. `make verify-full` judges the whole corpus and is required at
+  each batch's close and before any merge; CI and the release job run it. Run either at a low
+  priority on a laptop: `taskpolicy -b nice -n 19 env GOFLAGS=-p=2 GOMAXPROCS=4 make verify` keeps
+  it on the efficiency cores.
 - **The gate oracle needs GNU Make 3.82 or newer** — the make CI runs. macOS ships 3.81 (2006), which
   has no `.SHELLFLAGS`, so a Makefile silenced that way would pass here and fail on CI. `make verify`
   refuses to run the oracle under 3.81 and says so by name. On macOS: `brew install make`, then put

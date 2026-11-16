@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
+.PHONY: verify-full hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
 
 BINARY := watchpost
 DIST   := dist
@@ -163,6 +163,11 @@ mutant-anchors:
 # tests, and is not inert; the harness still reports each verdict with the right
 # exit code, still refuses a red baseline and a dirty tree, and still calls a
 # crash CAUGHT. It is Go, as AP-SHELL-01 asks.
+# THE TWO TIERS (0.19.6 D-38). MUTANT_SCOPE is `commit` for `make verify`, the
+# commit gate: the mutants whose package, or a package it or its tests import,
+# the change touches. It is `full` for `make verify-full`, CI and the release
+# job: the whole corpus, required at each batch's close and before any merge.
+MUTANT_SCOPE ?= commit
 mutant-check:
 	@mkdir -p $(DIST)
 # -v ON PURPOSE. Without it the durable record is one line — "ok ... 241s" — which
@@ -194,7 +199,7 @@ mutant-check:
 # developer's 18 cores. The corpus grows every release; when it approaches the cap, raise it
 # and re-record the measurement here rather than trimming the corpus to fit
 # the clock.
-	@go test -tags mutants -v -count=1 -timeout 240m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
+	@MUTANT_SCOPE=$(MUTANT_SCOPE) go test -tags mutants -v -count=1 -timeout 240m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
 	  cat $(DIST)/mutant-check.log; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$rc
@@ -296,6 +301,12 @@ cache-clean:
 # the second one.
 verify:
 	@go run ./tools/treelock -name verify -- go run ./tools/runlog -lane verify -- $(MAKE) --no-print-directory verify-gates
+
+# THE FULL GATE (0.19.6 D-38): every gate `verify` runs, with the whole mutant
+# corpus. Its runs are recorded under their own lane, so 06_docs/verify-runs.md
+# says which tier a green row is.
+verify-full:
+	@go run ./tools/treelock -name verify-full -- go run ./tools/runlog -lane verify-full -- $(MAKE) --no-print-directory verify-gates MUTANT_SCOPE=full
 
 verify-gates: fmt vet vet-tags tidy vuln race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"

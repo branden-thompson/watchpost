@@ -288,11 +288,12 @@ sign the caller wants a different function.
 
 | Command | What it holds |
 |---|---|
-| `make verify` | every required gate; the list is `06_docs/required-gates.txt` |
+| `make verify` | the commit gate: every required gate, the list in `06_docs/required-gates.txt`, its mutant check over the mutants the change reaches (0.19.6 D-38) |
+| `make verify-full` | the full gate: the same gates over the whole mutant corpus, at each batch's close and before any merge; CI and the release job run this tier |
 | `make dupes` | duplicate function bodies, against a ratified ledger |
 | `make wires` | closed-set members that nothing reads or writes |
 | `make mutant-anchors` | every mutant still finds the line its rule lives on |
-| `make mutant-check` | every mutant still applies and compiles |
+| `make mutant-check` | every mutant still applies and compiles, built in place through an overlay (0.19.6 D-37); `MUTANT_SCOPE=full` for the whole corpus |
 | `make alloc-budget` | allocation pins on the paths that have them |
 
 **A required gate appears in three lists** — the `verify` target, `.github/workflows/ci.yml`, and

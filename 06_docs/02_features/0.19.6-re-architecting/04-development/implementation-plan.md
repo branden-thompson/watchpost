@@ -66,10 +66,15 @@ listed re-recordings is a regression, never a ruling candidate (A-29).
    - `make p10` (A-7), green at the end of every batch, its summary in the build log. A new package's
      density row and any `New`-to-`New` P10-01 row are put to the HUM LEAD in the batch that creates
      them (D-31, D-32).
-   - `make verify`, with MAKE_EXIT and "ALL GATES GREEN" read before the commit, which is chained to the
-     verdict. `go run ./tools/ids -write` and `git add -N` on new files first, and nothing written into
-     the tree while it runs.
-6. **The scoped sweep** (C-12, A-11, A-30), `make mutant-scoped` (D-30). Its list is derived: mutants
+   - `make verify`, the commit gate, with MAKE_EXIT and "ALL GATES GREEN" read before the commit, which
+     is chained to the verdict. Its mutant check judges the mutants the commit's change reaches (D-38).
+     `go run ./tools/ids -write` and `git add -N` on new files first, and nothing written into the tree
+     while it runs.
+   - `make verify-full` at the batch's close, on its last commit: the whole mutant corpus (D-38). A
+     batch is not closed, and nothing merges, without it.
+   - Every heavy run at a low priority, on the efficiency cores: `taskpolicy -b nice -n 19` with
+     `GOFLAGS=-p=2` and `GOMAXPROCS=4` (D-37 to D-39, the 2026-11-16 overheating).
+6. **The scoped sweep** (C-12, A-11, A-30), `make mutant-scoped` (D-30), run locally (D-39). Its list is derived: mutants
    in a moving file, mutants whose last killer's file moves, mutants whose enclosing function's body
    hash changed, and mutants whose last killer has a row in the changed-line table. It runs with A-3's
    killers and is compared mutant by mutant with A-3's record, read from `7c5e5772`; a changed killer
@@ -216,6 +221,11 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
   architecture's line citations become symbol citations. `govulncheck` runs at the `go` floor in CI and
   the release job, seen failing at 1.26.10; then the floor is raised to go 1.26.11, with
   `README.md:587` restated and a CHANGELOG entry.
+- **B0.14 The testing infrastructure (D-37 to D-39).** The mutant check builds each mutant in place
+  through an overlay, its judge held to every verdict on a planted module. `make verify` is the commit
+  gate, its mutant check scoped by `inScope` to what the change reaches; `make verify-full` is the full
+  gate, CI's and the release job's tier. Before B9, the full sweep becomes a dispatched GitHub workflow
+  in 8 Linux shards, a macOS job re-judging each Linux survivor, merged into one committed record.
 
 ## B1: RM's slices 1 and 3, the doc errors, and M4's midpoint
 
