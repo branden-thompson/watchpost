@@ -702,7 +702,9 @@ Then `stopAll`.
 
 **Assertion.**
 
-- Every goroutine and `stopAll` returns within 2 s, scaled by `raceSlowdown` under `-race`.
+- Each step, one path's iteration or `stopAll`, finishes within 2 s of the one before, scaled by
+  `raceSlowdown` under `-race` (A-35: the paths' own work outside the lock takes 3.4 s for the 200
+  iterations, so the bound is on progress, which a deadlock stops).
 - On a timeout it fails with every goroutine's stack, so the stuck section is named.
 - It never falls back to the 30-minute `go test` timeout (`Makefile:35-38`).
 

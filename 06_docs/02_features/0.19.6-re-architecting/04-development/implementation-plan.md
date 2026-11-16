@@ -198,8 +198,8 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
   deleted once B7 lands): any call under the lock that crosses a planned package fails, and a call
   through a func value passes only for the four declarations recorded at B0. Seen failing on a planted
   fixture under `app/testdata/sharedlock/` (on B0's golden list).
-  `TestCommitAndStopAllFinishUnderTheSharedLock`, 200 iterations against a 2 s bound scaled under
-  `-race`, seen failing under vetted mutants `mDL1` and `mDL2` (design AP-3.5, AP-3.6).
+  `TestCommitAndStopAllFinishUnderTheSharedLock`, 200 iterations, each step bound to 2 s of the last,
+  scaled under `-race` (A-35), seen failing under vetted mutants `mDL1` and `mDL2` (design AP-3.5, AP-3.6).
 - **B0.12 The surfaces held, and the graph tool (A-12, A-29, D-30).** The deck's exported surface,
   tiers 2 and 3 against `app` (design AP-1.5); the exported-name lists of the `modes/tty` and `app`
   roots, which grow only by the new packages' entry points (M5, P2-4); the three pre-existing exports

@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: hooks lint-plan-code test-say quality promote-verdicts mutant-scoped wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
+.PHONY: hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
 
 BINARY := watchpost
 DIST   := dist
@@ -477,6 +477,22 @@ mutant-scoped:
 	  go run ./tools/mutantmap compare -base $(BATCH_BASE) -record $(SCOPED_RECORD) -log $(DIST)/mutant-scoped.log -list $(DIST)/mutant-scoped.list $(if $(SCOPED_PATHS),-paths $(SCOPED_PATHS)) $(if $(SCOPED_FUNCS),-funcs $(SCOPED_FUNCS)); cmp=$$?; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$cmp
+
+# THE TEST INVENTORY, each 0.19.6 code batch's proof that a move lost no test
+# (D-36, RR F5, A-30). It runs app's and modes/tty's tests in three modes
+# (plain, -tags property, -race) with `go test -json`, records every test and
+# subtest with its outcome, and compares each mode with the committed baseline
+# through the batch's move map (INVENTORY_PATHS) and its reviewed renamings
+# (INVENTORY_ACCEPT). A test that is gone, one that ends differently, and one
+# that fails each fail it; a new test is listed. Exempt from the gate lists by
+# D-36: it runs the two trees' suites three times, once per batch, by hand.
+INVENTORY_BASE ?= 06_docs/testinv
+test-inventory:
+	@mkdir -p $(DIST)
+	@for m in plain property race; do \
+	  go run ./tools/testinv run -mode $$m -out $(DIST)/testinv-$$m.tsv || exit 1; \
+	  go run ./tools/testinv compare -base $(INVENTORY_BASE)/$$m.tsv -now $(DIST)/testinv-$$m.tsv $(if $(INVENTORY_PATHS),-paths $(INVENTORY_PATHS)) $(if $(INVENTORY_ACCEPT),-accept $(INVENTORY_ACCEPT)) || exit 1; \
+	done
 
 # MUTANT_POLICY decides WHEN the mutant corpus runs in CI. It is
 # ONE WORD, AND SWITCHING IS EDITING IT: every mode's plumbing already exists in

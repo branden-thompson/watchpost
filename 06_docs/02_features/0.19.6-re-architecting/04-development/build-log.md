@@ -143,3 +143,63 @@ failure here does not hold up the inventory, the order tests and the lock check 
 **P10.** The two new packages fire P10-05 at 0.00 (`ttytest` over 1 changed function, `apptest` over
 2): each sets the zone, the directories and the exit, with no state worth a check, and none is added
 for the count (0.19.5 D-27). Their density rows go to the HUM LEAD in this batch (D-31).
+
+Landed as `fc39a8a7` on a full gate (2,899 s, green); pushed. The two rows are ratified (D-35); the
+HUM LEAD adds them to the ledger with D-34's floors.
+
+## B0.5, B0.8 and B0.11: the inventory and the union, the order that must not move, the shared lock
+
+**What.**
+- **B0.5.** `tools/testinv` records app's and modes/tty's tests and subtests with their outcomes from
+  `go test -json` (`run -mode plain|property|race`), and compares a run with the committed baseline
+  through the batch's move map and its reviewed renamings (`compare`). `make test-inventory` runs the
+  three modes; it is the third exempt probe (D-36). The baseline in `06_docs/testinv/` is captured at
+  B0's close. `TestTheTwoTreesDeclarationsAreConserved` (`cmd/watchpost`) holds every top-level
+  declaration under the two trees, 3,319 at B0, with a hash of its tokens, comments and layout
+  dropped and a split package's qualifier dropped, against `cmd/watchpost/testdata/union-decls.txt`:
+  a move changes none, and a prep commit re-captures it with `-update-union` and lists the diff in the
+  changed-line table.
+- **B0.8.** `TestThePostUpdateStepsRunInTodaysOrder` holds `Dashboard.update`'s twelve steps, in order,
+  each once; `TestANonMapMessageStillReasksAStaleSnapshot` drives GP-3's re-ask through
+  `Dashboard.Update` on a message the map does not answer. `TestTheMapLayersKeepTheirOrder` pins the
+  thirteen layers' registration order (PB-4). `TestTheMessageTypesArePinned` holds the 45 `Msg` types
+  the two trees declare (R8).
+- **B0.11.** `TestNoSectionUnderTheSharedLockTakesItOrLeavesItsPackage` finds the 25 sections under
+  `livePipelines.mu` (its floor) and follows each one's static calls through the tree. It fails on a
+  function reached that takes the lock again, on a call that crosses a package of the planned map,
+  with no `…Locked` allowance (A-32), and on a `…Locked` function that takes the lock. A call through a
+  func value passes only for the four values design AP-3.5 records, keyed by their declaration, five
+  rows, and a row no section reaches fails as stale. The planned map is
+  `app/testdata/sharedlock/planned.tsv`: package map §2's AS Map I, file by file, with A-23's four
+  changes and design AP's 108 method rows. A file it does not place fails; it is deleted once B7 lands.
+  `TestCommitAndStopAllFinishUnderTheSharedLock` runs commit, the bed's hooks, the fragment hook and
+  the transmitter's re-station 200 times each, together, then `stopAll`. Its 2 s bounds progress, not
+  the run (A-35): the paths' own work outside the lock, the pool scan and the config writes, takes
+  3.4 s.
+
+**Seen failing first.**
+- **The union check.** A statement planted in `everyTick` failed it. A comment planted there passed.
+  The first version hashed the printed source, which keeps comments, so it is now the tokens. Its
+  controls hold the tokens' rules: a split qualifier, a comment and a blank line do not count, and
+  another package's qualifier and a statement do.
+- **The B0.8 checks.** The message pin reported a planted `plantedMsg`. The layer order failed on a
+  swapped pair. The post-update order and the re-ask failed on edits to `dashboard.go`.
+- **The lock check.** The planted fixture fails each of its four rules. In the tree, a call to
+  `currentPool` planted in `setWatch`'s section was reported as a deadlock. A `…Locked` method planted
+  in the deck's file and called there was reported as a crossing.
+- **The two lock tests and mDL1.** Both are killed by the new vetted mutant `mDL1`
+  (`06_docs/mutants/mDL1_commit_takes_the_shared_lock_again.py`), which plants a second lock in
+  `commit`'s section; the deadlock test fails in 4.1 s with every goroutine's stack. `mDL2` needs
+  the deck's `StopProducer`, so it is written and vetted in the deck batch (design AP-3.6).
+
+**P10.** `tools/testinv` is at the density floor with checks that catch something. The comparison
+fails two baseline tests mapped onto one key: without that check, a merge read the second as kept
+and reported nothing (`TestCompareFailsTwoTestsMergedOntoOne`). An inventory with an unknown outcome
+or a key listed twice is refused, and a run that records no test fails. Each check was seen failing
+with its guard removed. Its stream reader ranges over lines rather than looping on a scanner (P10-02).
+B0.10's `citeKey` measures `tools/authoring` under its stated floor; the floor is restated by A-36.
+The live findings are the two test-support rows the HUM LEAD is adding (D-35).
+
+**What the walk cannot see.** A method call on a value whose type it cannot read resolves to the
+tree's methods of that name. When the tree has none, the call resolves to nothing, so a func field
+on such a value goes unseen. The deadlock test runs the paths that would hide one.

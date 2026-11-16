@@ -1223,10 +1223,12 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-34 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-3 and the words, for go-tuiMaps v0.3.0: contour labels are bare numbers placed only on east-west crossings… |
 | D-35 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | THE DISCARD PILE: A CAPPED STACK WITH A TRAPDOOR |
 | D-35 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | M5 answer key (D-24): two key-builders found that the multi-voice release's rulings do not resolve through 06… |
+| D-35 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-31's density rows for the two test-support packages B0 creates, imported by test files only (make lint-impo… |
 | D-35 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Round 3 found D-27's ratified motion row (off / slow / normal, plus a rate ceiling) narrowed in place to a bo… |
 | D-35 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-4 (terminator) and HR-5 (value-coloured station points) for go-tuiMaps v0.3.0. No terminator or night code… |
 | D-36 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | [space] BECOMES AN OPERATOR-INITIATED PROMOTE |
 | D-36 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | M5 answer key (the toggle Setting): Settings → Watchpost UI → Reduce motion takes ←→, but its row is not mark… |
+| D-36 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Where B0.5's test inventory runs. It records each test's outcome, PASS or SKIP, subtests included, in app and… |
 | D-36 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | M1b — the description scored with the picture hidden — was added at round-2 remediation on a reviewer's findi… |
 | D-36 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A go-tuiMaps defect from wave 1: SafeRamps covers only the tokens from AlertExtremeOutline to High (internal/… |
 | D-37 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the discard pile is a modal, [shift+U], patterned on the [w] window — and reached from the base UI only. UNBU… |
@@ -2156,8 +2158,10 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-34 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Two density floors written (0.19.0 D-277), put to the HUM LEAD before B0 closes. B0.3's changes make two rati… |
 | A-34 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.5's choices: (1) the acknowledgement is a window of its own, stacked over the map (modalPropAck), as Detai… |
 | A-35 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The libraries' gates under D-57. go-tuiMaps: every module's go directive is 1.26.11 and the hosted gate runs … |
+| A-35 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The deadlock test's 2 s bounds progress, not the run (design AP-3.6). On e57afeaf's code the 200 iterations o… |
 | A-35 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W4.1's choices: (1) the first update starts when the acknowledgement closes, or at once when none is due (mod… |
 | A-36 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The CHANGELOG dates 0.19.5 by its release. Its heading said 2026-11-10, the day it was written; the release w… |
+| A-36 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | tools/authoring's floor restated (0.19.0 D-277), as A-34's two. B0.10's citeKey (tools/authoring/cite.go:28) … |
 | A-36 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W3.1 and W2.4's choices: (1) the hour on screen is drawn as go-tuiMaps' MUFGrid or FoF2Grid, its own preset a… |
 | A-37 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-157 to D-160's details: (1) the menu row is named "Radio Propagation" (D-158), last of the tints, and shown… |
 | A-38 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-163's details: (1) the blank row after the legend is the picture's own status row, blank when the picture i… |

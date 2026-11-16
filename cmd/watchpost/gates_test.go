@@ -79,6 +79,7 @@ var unlisted = exempt(&exemptionTable{
 		"test-platforms":    "it re-runs the app suite under WATCHPOST_TEST_GOOS for two other platforms; release-matrix is the cross-platform gate and this is the manual probe behind it",
 		"mutant-verdicts":   "the corpus SWEEP — it runs every mutant's tests, at release, and promotes its log as the release's record; mutant-anchors and mutant-check are the per-push halves",
 		"mutant-scoped":     "a 0.19.6 code batch's re-vet (D-30): it runs the mutants the batch disturbed, by hand, once per batch, compares each verdict with the baseline record and never promotes; the closing full sweep is mutant-verdicts",
+		"test-inventory":    "a 0.19.6 code batch's proof that a move lost no test (D-36): it runs app's and modes/tty's suites in three modes, by hand, once per batch, and compares each test's outcome with the committed baseline",
 		"tree-free":         "it ASKS whether a gate run is in flight and reports; it asserts nothing about the code",
 		"lint-update":       "it REWRITES the golangci baseline; it is the opposite of a gate, and running it on a gate path would erase the ratchet",
 		"hooks":             "it INSTALLS the pre-push hook (git config core.hooksPath); it asserts nothing, and the hook's tests all run under race on every gate path (0.19.0 W0.1)",
