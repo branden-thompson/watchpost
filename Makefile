@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: hooks lint-plan-code test-say quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
+.PHONY: hooks lint-plan-code test-say quality promote-verdicts mutant-scoped wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
 
 BINARY := watchpost
 DIST   := dist
@@ -432,12 +432,48 @@ promote-verdicts:
 # under most pressure. A sweep ended by a signal (an exit of 128 or more) is
 # not a failure but an interrupted run: the recipe stops there, promoting
 # nothing.
+# ITS KILLERS COME FROM THE RELEASE'S RECORD, OR THE NEWEST ONE BEFORE IT
+# (0.19.6 A-2). After a tag the release's own record does not exist until its
+# first full sweep; `tools/mutantmap killers` then names the newest record by
+# the version in its name, and the log says which it read.
 mutant-verdicts:
-	@MUTANT_KILLERS=$(VERDICTS_RECORD) ./scripts/quality/mutant-verdicts.sh $(DIST)/mutant-verdicts.log; rc=$$?; \
+	@MUTANT_KILLERS=$$(go run ./tools/mutantmap killers $(VERDICTS_RECORD)) ./scripts/quality/mutant-verdicts.sh $(DIST)/mutant-verdicts.log; rc=$$?; \
 	  [ $$rc -lt 128 ] || exit $$rc; \
 	  $(MAKE) --no-print-directory promote-verdicts || exit 1; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$rc
+
+# THE SCOPED SWEEP, each 0.19.6 code batch's re-vet (C-12, A-11, A-30, D-30).
+#
+# It judges only the mutants the batch could have disturbed, derived from git
+# by `tools/mutantmap derive` against BATCH_BASE, the commit the batch began
+# from, and compares every verdict with SCOPED_RECORD, the 0.19.6 baseline
+# (A-9). A changed class, a changed killer, an anchor that left its function
+# without the batch's maps saying where it went, and a derived mutant that was
+# not judged each fail it. SCOPED_PATHS and SCOPED_FUNCS name the batch's move
+# and re-home maps, old<TAB>new per line.
+#
+# THE COMPARATOR IS THE VERDICT, not the sweep's exit: the sweep exits 1 when
+# any mutant survives, and the baseline's seven kept equivalents survive by
+# ruling. A survivor that was caught, a catch that went to another test, and
+# NO EVIDENCE are each a changed class, which the comparator fails.
+#
+# IT NEVER PROMOTES: a partial run is not the release's record, and
+# `promote-verdicts` would refuse it anyway. It cleans its build variants on
+# every exit, as `mutant-verdicts` does. Exempt from the gate lists by D-30:
+# it runs a batch's mutants, by hand, once per batch.
+SCOPED_RECORD ?= 7c5e5772:06_docs/mutants/verdicts/since-v0.19.5.log
+mutant-scoped:
+	@test -n "$(BATCH_BASE)" || { echo "mutant-scoped: name the commit the batch began from: make mutant-scoped BATCH_BASE=<rev>"; exit 2; }
+	@mkdir -p $(DIST)
+	@go run ./tools/mutantmap derive -base $(BATCH_BASE) -record $(SCOPED_RECORD) > $(DIST)/mutant-scoped.list || exit 1
+	@git show $(SCOPED_RECORD) > $(DIST)/mutant-scoped.killers || exit 1
+	@if [ ! -s $(DIST)/mutant-scoped.list ]; then echo "mutant-scoped: the batch disturbed no mutant since $(BATCH_BASE); nothing to judge"; exit 0; fi; \
+	  MUTANT_KILLERS=$(DIST)/mutant-scoped.killers MUTANT_LIST=$(DIST)/mutant-scoped.list ./scripts/quality/mutant-verdicts.sh $(DIST)/mutant-scoped.log; rc=$$?; \
+	  [ $$rc -lt 128 ] || exit $$rc; \
+	  go run ./tools/mutantmap compare -base $(BATCH_BASE) -record $(SCOPED_RECORD) -log $(DIST)/mutant-scoped.log -list $(DIST)/mutant-scoped.list $(if $(SCOPED_PATHS),-paths $(SCOPED_PATHS)) $(if $(SCOPED_FUNCS),-funcs $(SCOPED_FUNCS)); cmp=$$?; \
+	  $(MAKE) --no-print-directory cache-clean || exit 1; \
+	  exit $$cmp
 
 # MUTANT_POLICY decides WHEN the mutant corpus runs in CI. It is
 # ONE WORD, AND SWITCHING IS EDITING IT: every mode's plumbing already exists in

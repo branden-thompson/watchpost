@@ -56,6 +56,9 @@
 #                         promote a partial run as the release's record, so it
 #                         would only fail there. A partial run records no
 #                         timings.
+#   MUTANT_LIST=<file>    judge exactly the mutants the file lists, one path per
+#                         line, as `make mutant-scoped` does (0.19.6 D-30). A
+#                         listed mutant the corpus lacks is an error.
 set -eu
 
 out=${1:-dist/mutant-verdicts.log}
@@ -71,6 +74,20 @@ shown() { case "$1" in "$root"/*) echo "${1#"$root"/}" ;; *) echo "$1" ;; esac; 
 jobs=${MUTANT_JOBS:-4}
 killers=${MUTANT_KILLERS:-}
 only=${MUTANT_ONLY:-}
+listfile=${MUTANT_LIST:-}
+partial=$only$listfile
+
+# A NAMED RECORD THAT IS MISSING IS AN ERROR, NOT A SLOWER RUN (0.19.6 A-2,
+# H-4). Without its killers every mutant starts at its whole package, about 19
+# hours where the record makes it one, and the run would say nothing about why.
+if [ -n "$killers" ] && [ ! -f "$killers" ]; then
+	echo "mutant-verdicts: the killer record $(shown "$killers") is missing; name a record that exists, or none" | tee -a "$out"
+	exit 2
+fi
+if [ -n "$only" ] && [ -n "$listfile" ]; then
+	echo "mutant-verdicts: MUTANT_ONLY and MUTANT_LIST each choose the mutants; give one" | tee -a "$out"
+	exit 2
+fi
 
 # THE TIMINGS DO NOT FOLLOW THE LOG, and that matters: the log
 # is PROMOTED out of dist into the release's readiness tree, because it is the
@@ -126,7 +143,14 @@ done
 
 head=$(git -C "$root" rev-parse HEAD)
 git -C "$root" ls-tree --name-only HEAD 06_docs/mutants/ | grep '/m[^/]*\.py$' | sort > "$work/all"
-if [ -n "$only" ]; then
+if [ -n "$listfile" ]; then
+	grep -v '^$' "$listfile" | sort -u > "$work/wanted" || true
+	if missing=$(comm -23 "$work/wanted" "$work/all") && [ -n "$missing" ]; then
+		echo "mutant-verdicts: MUTANT_LIST names mutants the corpus lacks at $head: $missing" | tee -a "$out"
+		exit 2
+	fi
+	cp "$work/wanted" "$work/list"
+elif [ -n "$only" ]; then
 	grep -E "$only" "$work/all" > "$work/list" || true
 else
 	cp "$work/all" "$work/list"
@@ -194,6 +218,11 @@ if [ -n "$(git -C "$root" status --porcelain)" ]; then
 	echo "  the working tree has uncommitted changes; they are not in this sweep" | tee -a "$out"
 fi
 echo "  log: $(shown "$out")  (watch this file; the run streams into it)" | tee -a "$out"
+if [ -n "$killers" ]; then
+	echo "  killers: $(shown "$killers")" | tee -a "$out"
+else
+	echo "  killers: none; every mutant starts at its package" | tee -a "$out"
+fi
 say_eta | tee -a "$out"
 echo "  every line carries its position, so any read of this file says where the run is" | tee -a "$out"
 echo "" | tee -a "$out"
@@ -326,14 +355,14 @@ noevidence=$((total - caught - survived))
 
 # AND A HISTORY IS ONLY REPLACED BY A HISTORY. A run that measured nothing, or
 # only part of the corpus, must not wipe the rates the last full run recorded.
-if [ -z "$only" ] && cat "$work"/timings.* > "$work/timings.new" 2>/dev/null && [ -s "$work/timings.new" ]; then
+if [ -z "$partial" ] && cat "$work"/timings.* > "$work/timings.new" 2>/dev/null && [ -s "$work/timings.new" ]; then
 	cp "$work/timings.new" "$timings"
 fi
 
 echo "" | tee -a "$out"
 echo "mutant-verdicts: $total mutant(s) — $caught CAUGHT, $survived SURVIVED, $noevidence NO EVIDENCE" | tee -a "$out"
 echo "  took $((t2 - t0)) s: the baseline $((t1 - t0)) s, the mutants $((t2 - t1)) s on $jobs workers" | tee -a "$out"
-if [ -z "$only" ]; then
+if [ -z "$partial" ]; then
 	echo "  per-mutant timings recorded in $(shown "$timings"); the next run estimates from them" | tee -a "$out"
 fi
 if [ "$noevidence" -ne 0 ]; then
