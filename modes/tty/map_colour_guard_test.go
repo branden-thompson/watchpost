@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 // colourLiteralExempt are the functions that may hold one, each with its
@@ -87,17 +89,19 @@ func selectorName(e ast.Expr) string {
 // this package or the app's, holds a colour literal; the check finds each
 // kind planted, and passes the exempt table.
 func TestTheMapsFilesHoldNoColourLiteral(t *testing.T) {
+	// EACH TREE WHOLE (0.19.6 TG-2), the map's files picked by name: the map
+	// moves below modes/tty and its data below app, and a glob of one directory
+	// would read emptier with each move.
 	var files []string
-	for _, glob := range []string{"map_*.go", filepath.Join("..", "..", "app", "map*.go")} {
-		found, err := filepath.Glob(glob)
+	for _, tree := range []struct{ root, prefix string }{{".", "map_"}, {filepath.Join("..", "..", "app"), "map"}} {
+		found, err := declset.SourcePaths(tree.root)
 		if err != nil {
 			t.Fatal(err)
 		}
-		files = append(files, found...)
+		files = append(files, slices.DeleteFunc(found, func(f string) bool { return !strings.HasPrefix(filepath.Base(f), tree.prefix) })...)
 	}
-	files = slices.DeleteFunc(files, func(f string) bool { return strings.HasSuffix(f, "_test.go") })
-	if len(files) < 40 {
-		t.Fatalf("the guard reads %d of the map's files; the glob is broken", len(files))
+	if len(files) < 48 { // the map's files at 0.19.6 B0: 31 in modes/tty, 17 in app
+		t.Fatalf("the guard reads %d of the map's files; fewer than the 48 it was fixed on", len(files))
 	}
 	for _, f := range files {
 		src, err := os.ReadFile(f)

@@ -1218,6 +1218,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-33 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-2, colouring a MUF or foF2 field: (A) muf/fof2 presets, (B) FR-15's generic host ramp, or both. A host-typ… |
 | D-34 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | THE RETURN TRANSITION NAMES THE RELAY, AND ITS ANCHOR DIFFERS BY SURFACE |
 | D-34 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Q9.4 (JR-8): the plan's stationLine sample, owed at B2, had never been shown. Rewritten as the sample: 125 li… |
+| D-34 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | A-34's two density floors (0.19.0 D-277): platform/declset 1.00 over 5 changed functions and tools/wires 0.20… |
 | D-34 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Round 2 business: D-20 (--ascii shows a notice; the description replaces it in phase 2) was superseded by D-2… |
 | D-34 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-3 and the words, for go-tuiMaps v0.3.0: contour labels are bare numbers placed only on east-west crossings… |
 | D-35 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | THE DISCARD PILE: A CAPPED STACK WITH A TRAPDOOR |
@@ -2152,6 +2153,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-33 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Schedule, owed items and record fixes (CQ-1, CQ-3, CQ-5; BQ-2 to BQ-4, BQ-6, BQ-9, BQ-11; PH F-5, F-14 to F-1… |
 | A-33 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.1 to W2.3's choices: (1) a chip [P] Propagation On / Off between R's and O's under the map, as R's says it… |
 | A-34 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The promote test reads the last real sweep's log at the commit that recorded it. PR #39's hosted runs failed … |
+| A-34 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Two density floors written (0.19.0 D-277), put to the HUM LEAD before B0 closes. B0.3's changes make two rati… |
 | A-34 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.5's choices: (1) the acknowledgement is a window of its own, stacked over the map (modalPropAck), as Detai… |
 | A-35 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The libraries' gates under D-57. go-tuiMaps: every module's go directive is 1.26.11 and the hosted gate runs … |
 | A-35 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W4.1's choices: (1) the first update starts when the acknowledgement closes, or at once when none is due (mod… |

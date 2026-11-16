@@ -45,6 +45,30 @@ func selfTestScenarios() []scenario {
 func enumScenarios() []scenario {
 	return []scenario{
 		{
+			name: "an exported sentinel is still a closed set (0.19.6 TG-6)",
+			src: `package probe
+
+type Mode int
+
+const (
+	Calm Mode = iota
+	Storm
+
+	NumModes
+)
+
+func current() Mode { return Calm }
+
+func describe(m Mode) string {
+	if m == Calm {
+		return "calm"
+	}
+	return "other"
+}
+`,
+			want: []string{"Mode.Storm"},
+		},
+		{
 			name: "a sentinel enum, one member of each kind",
 			src: `package probe
 

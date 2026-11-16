@@ -68,7 +68,7 @@ func declName(d ast.Decl) string {
 // which top-level declaration it is inside.
 func walkPackage(t *testing.T, visit func(in string, pos func(ast.Node) string, n ast.Node)) {
 	t.Helper()
-	fset, files, err := declset.Files(".")
+	fset, files, err := declset.Tree(".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestEveryPathToASynthesisedReadGoesThroughTheOneSeam(t *testing.T) {
 				"looks at one site at a time", c.at, c.in)
 		}
 	}
-	t.Logf("checked %d call(s) to startSynth; blind to any made from outside package app, or through a "+
+	t.Logf("checked %d call(s) to startSynth; blind to any made from outside the app tree, or through a "+
 		"function value whose call site names something other than startSynth", len(callers))
 }
 

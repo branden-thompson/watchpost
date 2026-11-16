@@ -5,9 +5,10 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 // TestAnAgeIsReadAgainstAHeldClock is the batch 28 lesson (BUILD red team,
@@ -16,9 +17,12 @@ import (
 // turning over mid-test changes the age it reads ("43 min" against 42). One
 // planted without the held clock is caught.
 func TestAnAgeIsReadAgainstAHeldClock(t *testing.T) {
-	files, err := filepath.Glob("*_test.go")
+	files, err := declset.TestPaths(".") // the whole modes/tty tree (0.19.6 TG-2)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(files) < 200 { // modes/tty's test files at 0.19.6 B0: 213
+		t.Fatalf("the rule read %d test files; a moved tree must not pass it empty", len(files))
 	}
 	for _, name := range files {
 		src, err := os.ReadFile(name)

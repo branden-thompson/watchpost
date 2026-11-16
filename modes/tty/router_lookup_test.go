@@ -128,6 +128,13 @@ func TestAValidLocationSearchedFromTheConsoleLands(t *testing.T) {
 // is either an ANSWER a window is owed — in which case the Router must carry it
 // to Observer — or it is excused BY NAME with the reason. An unexcused new one
 // fails here, at the moment it is written, rather than in a UAT.
+//
+// EVERY EXPORTED ONE IS JUDGED TOO, AND EVERY NAME HERE MUST STILL EXIST
+// (0.19.6 TG-6). A split exports what crosses a package line, so a reply
+// exported for a subpackage to send would otherwise leave the guard with a
+// green run; an exported message is one of the app's inputs, named below with
+// the surface that reads it. And an excuse for a type that has moved or gone is
+// an excuse for nothing, which fails rather than lingers.
 func TestEveryWindowReplyIsRoutedBackToTheWindow(t *testing.T) {
 	// The two TICK messages are Observer's own animation cadence, not an answer
 	// owed to an open window. They are excused with their reason, not omitted.
@@ -135,8 +142,30 @@ func TestEveryWindowReplyIsRoutedBackToTheWindow(t *testing.T) {
 		"tickMsg":    "Observer's own 300ms cadence — nothing asked for it, so nothing is owed an answer",
 		"vizTickMsg": "the visualizer's 50ms frame cadence, for the same reason",
 	}
+	// inputs are the messages the app sends in, with the routing that delivers each.
+	inputs := map[string]string{
+		"SnapshotMsg":           "programScoped: the priority pipeline's publish, to both surfaces (D-59)",
+		"RecentSnapshotMsg":     "programScoped: the recent pipeline's publish, to both surfaces (D-99)",
+		"LineupMsg":             "consoleScoped: the running order",
+		"StationMsg":            "consoleScoped: the station's power",
+		"StationAreaMsg":        "consoleScoped: the station's area and pool",
+		"BedMsg":                "consoleScoped: whether the bed carries",
+		"BedRelaysMsg":          "the Router's default: the active surface",
+		"StationFaultMsg":       "the Router's default: the active surface",
+		"StationControlMsg":     "scopedMessage: the Router keeps the control it hands the console",
+		"RadioStatusMsg":        "the Router's default: the active surface",
+		"RelaySilentMsg":        "the Router's default: the active surface",
+		"VoiceNoteMsg":          "the Router's default: the active surface",
+		"SevereMsg":             "the Router's default: the active surface",
+		"SevereReadingMsg":      "the Router's default: the active surface",
+		"TickerMsg":             "the Router's default: the active surface",
+		"TickerAdvanceMsg":      "the Router's default: the active surface",
+		"TickerBreakingMsg":     "the Router's default: the active surface",
+		"TickerBreakingDoneMsg": "the Router's default: the active surface",
+	}
+	seen := map[string]bool{}
 
-	_, files, err := declset.Files(".")
+	_, files, err := declset.Tree(".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,10 +178,18 @@ func TestEveryWindowReplyIsRoutedBackToTheWindow(t *testing.T) {
 			}
 			for _, sp := range gd.Specs {
 				ts, ok := sp.(*ast.TypeSpec)
-				if !ok || !strings.HasSuffix(ts.Name.Name, "Msg") || ast.IsExported(ts.Name.Name) {
+				if !ok || !strings.HasSuffix(ts.Name.Name, "Msg") {
 					continue
 				}
 				name := ts.Name.Name
+				seen[name] = true
+				if ast.IsExported(name) {
+					if _, ok := inputs[name]; !ok {
+						t.Errorf("%s is an exported message this guard has not judged: name it in inputs with the surface that reads it, "+
+							"or, if it is a reply a window is owed, carry it in observerScoped", name)
+					}
+					continue
+				}
 				found++
 				if why, skip := excused[name]; skip {
 					t.Logf("excused %s: %s", name, why)
@@ -168,6 +205,13 @@ func TestEveryWindowReplyIsRoutedBackToTheWindow(t *testing.T) {
 	}
 	if found == 0 {
 		t.Fatal("the guard found no unexported Msg types at all: it is measuring nothing")
+	}
+	for _, names := range []map[string]string{excused, inputs} {
+		for name := range names {
+			if !seen[name] {
+				t.Errorf("%s is named here but declared nowhere in the tree: an excuse for a type that moved or went is an excuse for nothing", name)
+			}
+		}
 	}
 }
 

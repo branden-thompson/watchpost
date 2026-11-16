@@ -12,8 +12,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 // symbolRef matches both forms the pages use: `path/file.go:Func` and the
@@ -348,12 +352,24 @@ func TestAMethodRowNamesItsReceiver(t *testing.T) {
 // app's doc.go each map their files by what they own, and a map that is not
 // held goes stale. Every non-test file matches a row's name or prefix, and
 // every row names at least one file that exists.
+//
+// THE PACKAGES ARE DERIVED (0.19.6 TG-2, RX-9): every package under the two
+// trees 0.19.6 splits carries a doc.go with its file map, so a package a batch
+// creates is held the moment it exists, not when someone remembers to add it
+// here. The two packages that exist at 0.19.6 B0 are the floor.
 func TestEveryFileIsInItsPackagesMap(t *testing.T) {
 	root := filepath.Join("..", "..")
-	for _, pkg := range []string{"modes/tty", "app"} {
+	pkgs := splitTreePackages(t, root)
+	for _, must := range []string{"app", "modes/tty"} {
+		if !slices.Contains(pkgs, must) {
+			t.Fatalf("the derived packages %v lack %s; the walk is broken", pkgs, must)
+		}
+	}
+	for _, pkg := range pkgs {
 		doc, err := os.ReadFile(filepath.Join(root, pkg, "doc.go"))
 		if err != nil {
-			t.Fatal(err)
+			t.Errorf("%s has no doc.go: every package under app and modes/tty maps its files by what they own", pkg)
+			continue
 		}
 		var patterns []string
 		for _, line := range strings.Split(string(doc), "\n") {
@@ -363,7 +379,7 @@ func TestEveryFileIsInItsPackagesMap(t *testing.T) {
 				}
 			}
 		}
-		if len(patterns) < 10 {
+		if len(patterns) < 10 && (pkg == "app" || pkg == "modes/tty") || len(patterns) == 0 {
 			t.Fatalf("%s/doc.go maps %d names; its table has narrowed or moved", pkg, len(patterns))
 		}
 		entries, err := os.ReadDir(filepath.Join(root, pkg))
@@ -392,6 +408,32 @@ func TestEveryFileIsInItsPackagesMap(t *testing.T) {
 			}
 		}
 	}
+}
+
+// splitTreePackages lists, relative to root, every directory under app and
+// modes/tty that holds a non-test Go file, sorted.
+func splitTreePackages(t *testing.T, root string) []string {
+	t.Helper()
+	seen := map[string]bool{}
+	for _, tree := range []string{"app", "modes/tty"} {
+		paths, err := declset.SourcePaths(filepath.Join(root, tree))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, p := range paths {
+			rel, err := filepath.Rel(root, filepath.Dir(p))
+			if err != nil {
+				t.Fatal(err)
+			}
+			seen[filepath.ToSlash(rel)] = true
+		}
+	}
+	var out []string
+	for p := range seen {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // mapEntry is a backticked file name or prefix in a doc.go's map.

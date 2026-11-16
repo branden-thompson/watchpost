@@ -23,6 +23,7 @@ import (
 	"github.com/branden-thompson/go-tuimaps/assets"
 
 	"github.com/branden-thompson/watchpost/domains/temperature"
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 // recorded is a transport that answers OpenFreeMap's TileJSON from the
@@ -174,17 +175,17 @@ func TestNoMapRequestBeforeTheListenerAsks(t *testing.T) {
 	// And the station's start does not seed them: seedZoneShapes is called
 	// from the map builder alone.
 	fset := token.NewFileSet()
-	names, _ := filepath.Glob("*.go")
+	names, err := declset.SourcePaths(".") // the whole app tree (0.19.6 TG-2)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, name := range names {
-		if strings.HasSuffix(name, "_test.go") {
-			continue
-		}
 		file, err := parser.ParseFile(fset, name, nil, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
 		ast.Inspect(file, func(n ast.Node) bool {
-			if sel, ok := n.(*ast.SelectorExpr); ok && sel.Sel.Name == "seedZoneShapes" && name != "maps.go" {
+			if sel, ok := n.(*ast.SelectorExpr); ok && sel.Sel.Name == "seedZoneShapes" && filepath.Base(name) != "maps.go" {
 				t.Errorf("%s: seedZoneShapes is called outside the map builder, before the listener asked", fset.Position(sel.Pos()))
 			}
 			return true

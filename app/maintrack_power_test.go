@@ -123,7 +123,7 @@ func TestARelayTuneAlsoPowersTheDirector(t *testing.T) {
 // — so the position is asserted directly, and the walk finds the statement
 // rather than trusting a line number.
 func TestThePowerReportIsNotInsideABranch(t *testing.T) {
-	fset, files, err := declset.Files(".")
+	fset, files, err := declset.Tree(".")
 	if err != nil {
 		t.Fatal(err)
 	}

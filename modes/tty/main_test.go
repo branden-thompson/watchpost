@@ -2,10 +2,13 @@ package tty
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 // TestMain pins the package's zone to UTC ONCE, before any goroutine exists.
@@ -31,13 +34,15 @@ func TestNoTestSetsTheZoneMidRun(t *testing.T) {
 	if !localWrite.MatchString("time.Local = time.UTC") || localWrite.MatchString("time.Local == x") {
 		t.Fatal("control: the pattern no longer tells a write from a comparison")
 	}
-	entries, err := os.ReadDir(".")
+	paths, err := declset.TestPaths(".") // the whole modes/tty tree (0.19.6 TG-2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, e := range entries {
-		n := e.Name()
-		if !strings.HasSuffix(n, "_test.go") || n == "main_test.go" {
+	if len(paths) < 200 { // modes/tty's test files at 0.19.6 B0: 213
+		t.Fatalf("the rule read %d test files; a moved tree must not pass it empty", len(paths))
+	}
+	for _, n := range paths {
+		if filepath.Base(n) == "main_test.go" {
 			continue
 		}
 		src, err := os.ReadFile(n)

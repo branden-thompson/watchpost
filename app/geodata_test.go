@@ -11,24 +11,25 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 func TestGeodataLoadsOncePerEntryPoint(t *testing.T) {
-	entries, err := os.ReadDir(".")
+	// THE WHOLE app TREE (0.19.6 TG-2): a third load in a package below app
+	// is the 36 ms and 19 MB this rule exists to stop.
+	paths, err := declset.SourcePaths(".")
 	if err != nil {
 		t.Fatal(err)
 	}
 	callers := map[string]int{}
-	for _, e := range entries {
-		if !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
-			continue
-		}
-		src, err := os.ReadFile(filepath.Join(".", e.Name()))
+	for _, p := range paths {
+		src, err := os.ReadFile(p)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if n := strings.Count(string(src), "geodata.Load("); n > 0 {
-			callers[e.Name()] = n
+			callers[filepath.ToSlash(p)] = n
 		}
 	}
 	want := map[string]int{"dashboard.go": 1, "app.go": 1}

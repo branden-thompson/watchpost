@@ -67,10 +67,11 @@ func TestAnUndeclaredSurfaceIsRefused(t *testing.T) {
 // DERIVED (INST-1): it walks the package's syntax tree for reads of the
 // console's power, rather than asserting against a remembered list of files.
 func TestThePowerPreconditionHasOneReaderInTheRouter(t *testing.T) {
-	// THROUGH declset.Files, NOT go/parser.ParseDir. ParseDir is deprecated
+	// THROUGH declset.Tree, NOT go/parser.ParseDir. ParseDir is deprecated
 	// (Go 1.25), and the package that walks a package's non-test files owns
-	// that shape.
-	fset, files, err := declset.Files(".")
+	// that shape. Tree walks modes/tty and every package below it, so a
+	// second reader below the root is seen (0.19.6 TG-2).
+	fset, files, err := declset.Tree(".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,5 +105,5 @@ func TestThePowerPreconditionHasOneReaderInTheRouter(t *testing.T) {
 		t.Errorf("the D-1 precondition has %d readers %v — it must have exactly one, in canSwap. "+
 			"Two carriers of one rule is the shape that produced the duck-lift bug", total, readers)
 	}
-	t.Logf("checked %d read(s); blind to any reader outside package tty", total)
+	t.Logf("checked %d read(s); blind to any reader outside the modes/tty tree", total)
 }

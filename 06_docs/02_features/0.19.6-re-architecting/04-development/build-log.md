@@ -53,3 +53,54 @@ failing before it passed, and the gate it landed on. Each push's remote ref is r
 **P10.** `make p10` found one live finding, a scanner loop with no visible bound in
 `tools/mutantmap/sites.go` (P10-02); it reads the driver's lines by `range` now. Then 0 live, 0
 unmatched, 0 unratified.
+
+Landed as `b1327208` on a full gate (2,152 s, green); pushed to `feature/re-architecting` on GitHub.
+
+## B0.3: the quiet guards made loud
+
+**What.**
+- **`declset.Tree`, `SourcePaths` and `TestPaths`** walk a package and every package below it, testdata,
+  hidden directories and nested modules left out. 18 structural rules that walked one directory now
+  walk their tree, rooted where they were written: the two `runtime.GOOS` and voice-spec rules, the
+  geodata loads, the debug tag, the power report, `startSynth`'s seam, the reachability walk, the
+  program's model, the ZIP identity, the zone seeding (`app`); the held clock, the zone write, the map
+  modes, the map tests' sockets, the colour literals, the vision ramps, the reply routing and the
+  power reader (`modes/tty`). Each that had no floor has a fixed one now: 213 test files, 72 map test
+  files, 48 map files, 160 production files.
+- **`TestNoStructuralRuleScansOnlyItsOwnDirectory`** (`cmd/watchpost`) fails any test under the two
+  trees that walks `"."` by `os.ReadDir`, `declset.Files`, a local glob, or a list that starts with one.
+- **The file-map test derives its packages:** every package under `app` and `modes/tty` carries a
+  `doc.go` with its file map, the two of today the floor.
+- **`property`, `vet-tags`, `quality-bench` and `test-platforms`** name `./...` trees, and
+  `property`'s tests are anchored by name. A `-run` that matches nothing passes empty, so
+  `TestThePropertyGatesTestsExist` fails when a test the recipe names is declared nowhere under the
+  tree it is run over. The first form checked in the recipe that each test printed PASS; the gate
+  oracle runs every recipe with its tools stubbed to prove a gate can fail, and a stubbed `go` prints
+  no PASS, so that `verify` FAILED (exit 2, 248 s, row kept) with `TestEveryRequiredGateCanFail`,
+  `TestVerifyCanFail`, `TestEveryControlIsReached` and `TestNoFileSilencesARequiredGate` calling
+  `property` unjudgeable. The check moved into the Go test, and the recipe is a plain `go test` again.
+  The next `verify` FAILED too (exit 2, 387 s, row kept), at `dupes`: the pinned-set comparison in
+  `tools/wires` was the same 65-node shape as `declset.Diff`. It calls `declset.Diff` now.
+  `quality-bench` covers every benchmark in the two trees, benchstat pinned to the installed
+  `v0.0.0-20261009192801-be2c69fb417e` (D-28).
+- **TG-6's three export-sensitive checks.** `wires` reads `Num<Set>` as a sentinel too, and pins its
+  17 closed sets (TG-6 counted 13; the tool finds 17), so a set that vanishes fails. The reply guard
+  judges exported messages too, each named with the routing that delivers it, and fails on an excuse
+  for a type that no longer exists. The band-writer check matches a construction under any qualifier.
+- **`scripts/quality/p10-unmatched.sh`'s header** says its prefix rule for density rows is its own; the
+  tool matches the exact directory (D-31).
+
+**Seen failing first.**
+- The new check listed all 18 rules before they were re-pointed, and passes after; its detector
+  finds its five planted shapes.
+- `wires -self-test` with the old lower-case-only sentinel: the planted `NumModes` scenario FAILED;
+  with the change it passes. The file was restored by copy.
+- The band-writer check with the old `tty`-only qualifier: its planted `deck.TickerBreakingMsg{}`
+  control FAILED; restored by copy, it passes.
+- `TestThePropertyGatesTestsExist` with the recipe naming `TestNoSuchPropertyTest`: FAILED, naming it;
+  the recipe restored by copy, it passes.
+
+**P10.** `make p10` shows no live finding, but two density rows now fire with no floor stated
+(D-277): `platform/declset` measures 1.00 over 5 changed functions and `tools/wires` 0.20 over 5.
+Writing a floor changes the ledger, which only the HUM LEAD ratifies. The HUM LEAD ratified both
+and writes them into the ledger (D-34); the regenerated mirror lands with the commit after the edit.

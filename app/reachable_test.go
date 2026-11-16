@@ -4,10 +4,10 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 // TestEveryLivePipelinesMethodIsReachedFromProductionCode.
@@ -28,18 +28,21 @@ import (
 // the moment a call site is deleted.
 func TestEveryLivePipelinesMethodIsReachedFromProductionCode(t *testing.T) {
 	fset := token.NewFileSet()
-	entries, err := os.ReadDir(".")
+	// THE WHOLE app TREE (0.19.6 TG-2): once the deck and the map data move, a
+	// method's callers live below app, and a walk of this directory alone
+	// would call them dead.
+	srcs, err := declset.SourcePaths(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests, err := declset.TestPaths(".")
 	if err != nil {
 		t.Fatal(err)
 	}
 	declared := map[string]token.Position{}
 	referencedInProduction := map[string]bool{}
-	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, ".go") {
-			continue
-		}
-		f, err := parser.ParseFile(fset, filepath.Join(".", name), nil, 0)
+	for _, name := range append(srcs, tests...) {
+		f, err := parser.ParseFile(fset, name, nil, 0)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}

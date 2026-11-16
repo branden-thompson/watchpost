@@ -7,9 +7,12 @@
 # usage: scripts/quality/p10-unmatched.sh <p10.json> [ledger=.a2dh-p10-exemptions.yml]
 # exit 0 when every entry matched; 1 with the unmatched entries listed.
 #
-# Matching mirrors the tool: an entry's file is exact for a symbol entry
-# and a directory prefix for a package entry; the rule id must be equal;
-# only findings the tool marked exempted count.
+# Matching: an entry's file is exact for a symbol entry, as the tool's is,
+# and a directory PREFIX for a package entry, which is this script's own rule
+# and not the tool's. The tool matches a density finding to the row for the
+# finding's exact directory, so a package below a row's directory is not
+# covered by it there (0.19.6 D-31, measured by the PLAN pilot). The rule id
+# must be equal; only findings the tool marked exempted count.
 #
 # Scope (0.13.0, FULL GIT): the tool scans the diff against its base
 # (`base` in the JSON — merge-base with main). An entry for code OUTSIDE
@@ -111,7 +114,8 @@ printf '%s\n' "$entries" | while read -r file sym rule; do
     *_unix.go|*_linux.go|*_darwin.go) [ "$os" != "Darwin" ] && [ "$os" != "Linux" ] && { echo "skipped (checked on unix): $file $rule"; continue; } ;;
   esac
   if [ "$sym" = "package" ] && [ "$rule" = "P10-05-INVARIANT-DENSITY" ]; then
-    # the tool matches a directory to a density finding by prefix — for P10-05 only (red-team SC-1)
+    # a density row is matched here by directory prefix, for P10-05 only (red-team SC-1);
+    # the tool itself matches the exact directory (0.19.6 D-31)
     hit=$(printf '%s\n' "$findings" | awk -v f="$file" -v d="$file/" -v r="$rule" '($1==f || index($1, d)==1) && $2==r {print; exit}')
   else
     hit=$(printf '%s\n' "$findings" | awk -v f="$file" -v r="$rule" '$1==f && $2==r {print; exit}')

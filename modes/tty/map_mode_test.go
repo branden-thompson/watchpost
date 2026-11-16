@@ -161,7 +161,7 @@ func modeSlips(fset *token.FileSet, f *ast.File, modes []string) []string {
 // W2.1) falls into no other mode's behaviour unless a site says so. Planted
 // slips are caught.
 func TestEveryMapModeIsHandledAtEverySite(t *testing.T) {
-	fset, files, err := declset.Files(".")
+	fset, files, err := declset.Tree(".")
 	if err != nil {
 		t.Fatal(err)
 	}

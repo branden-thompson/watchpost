@@ -15,6 +15,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/platform/config"
+	"github.com/branden-thompson/watchpost/platform/declset"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -168,23 +169,19 @@ func TestNoListComparesZips(t *testing.T) {
 	if !zipIdentity.MatchString("if r.Zip == loc.Zip {") || !zipIdentity.MatchString("used[r.Zip] = true") {
 		t.Fatal("control: the pattern no longer sees the shapes #23 was made of; this guard checks nothing")
 	}
-	for _, dir := range []string{".", "../modes/tty"} {
-		entries, err := os.ReadDir(dir)
+	for _, root := range []string{"app", "modes/tty"} { // each tree whole (0.19.6 TG-2)
+		paths, err := declset.SourcePaths(filepath.Join("..", root))
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, e := range entries {
-			n := e.Name()
-			if e.IsDir() || !strings.HasSuffix(n, ".go") || strings.HasSuffix(n, "_test.go") {
-				continue
-			}
-			src, err := os.ReadFile(filepath.Join(dir, n))
+		for _, n := range paths {
+			src, err := os.ReadFile(n)
 			if err != nil {
 				t.Fatal(err)
 			}
 			for i, line := range strings.Split(string(src), "\n") {
 				if zipIdentity.MatchString(line) && !strings.Contains(line, `.Zip != ""`) && !strings.HasPrefix(strings.TrimSpace(line), "//") {
-					t.Errorf("%s:%d decides a place by its ZIP - an empty ZIP is no identity (#23); use snapshot.PlaceID", filepath.Join(dir, n), i+1)
+					t.Errorf("%s:%d decides a place by its ZIP - an empty ZIP is no identity (#23); use snapshot.PlaceID", n, i+1)
 				}
 			}
 		}

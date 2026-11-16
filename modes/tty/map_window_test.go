@@ -17,6 +17,7 @@ import (
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 	"github.com/branden-thompson/go-tuimaps/assets"
 
+	"github.com/branden-thompson/watchpost/platform/declset"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
@@ -223,12 +224,18 @@ func TestTheMapReleasesOnClose(t *testing.T) {
 // tiles and answer requests in memory; net/http is allowed for the
 // RoundTripper type alone, never its default client or transport.
 func TestMapTestsReachNoSocket(t *testing.T) {
-	names, err := filepath.Glob("map_*_test.go")
+	all, err := declset.TestPaths(".") // the whole modes/tty tree (0.19.6 TG-2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(names) == 0 {
-		t.Fatal("no map test files found, so this proves nothing")
+	var names []string
+	for _, p := range all {
+		if strings.HasPrefix(filepath.Base(p), "map_") {
+			names = append(names, p)
+		}
+	}
+	if len(names) < 72 { // the map's test files at 0.19.6 B0: 72
+		t.Fatalf("%d map test files found; fewer than the 72 this rule was fixed on, so it proves less than it did", len(names))
 	}
 	for _, name := range names {
 		src, err := os.ReadFile(name)

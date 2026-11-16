@@ -59,6 +59,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 // member is one element of one closed set, and what production code does with it.
@@ -119,6 +121,7 @@ func main() {
 	ledger := flag.String("ledger", "06_docs/wires-ratified.md", "the ratified-exemption ledger")
 	asJSON := flag.Bool("json", false, "machine-readable output")
 	sites := flag.Bool("sites", false, "print WHERE each unwired member is written and read")
+	listSets := flag.Bool("sets", false, "print the closed sets the scan found, one per line, and exit")
 	selfTest := flag.Bool("self-test", false, "prove the instrument can fail, then exit")
 	root := flag.String("root", ".", "the tree to scan")
 	flag.Parse()
@@ -136,7 +139,38 @@ func main() {
 		fmt.Fprintln(os.Stderr, "wires:", err)
 		os.Exit(2)
 	}
+	if *listSets {
+		for _, name := range setNames(members) {
+			fmt.Println(name)
+		}
+		return
+	}
+	if missing, unpinned := pinCheck(setNames(members)); len(missing)+len(unpinned) > 0 {
+		fmt.Fprintf(os.Stderr, "wires: the closed sets are not the pinned list: missing %v, not pinned %v. A set that vanished is a set nothing checks any more; a new one is added to pinnedSets with its reason\n", missing, unpinned)
+		os.Exit(1)
+	}
 	report(members, ratified, *asJSON, *sites)
+}
+
+// setNames is the distinct closed sets among the members, sorted.
+func setNames(members []member) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, m := range members {
+		if !seen[m.Set] {
+			seen[m.Set] = true
+			out = append(out, m.Set)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// pinCheck compares the sets the scan found with pinnedSets: those pinned and
+// not found, and those found and not pinned.
+func pinCheck(found []string) (missing, unpinned []string) {
+	unpinned, missing = declset.Diff(pinnedSets, found)
+	return missing, unpinned
 }
 
 // report prints the verdict and exits non-zero if anything is unexplained or
@@ -307,8 +341,11 @@ func sentinelEnum(fset *token.FileSet, gen *ast.GenDecl) []*member {
 	if len(names) < 2 || typeName == "" {
 		return nil
 	}
+	// THE SENTINEL IS num<Set> OR Num<Set> (0.19.6 TG-6). A split exports what
+	// crosses a package line, and a sentinel read only in lower case would let an
+	// exported set leave the check with a green run.
 	last := names[len(names)-1].Name
-	if !strings.HasPrefix(last, "num") || last == "num" {
+	if (!strings.HasPrefix(last, "num") && !strings.HasPrefix(last, "Num")) || len(last) == 3 {
 		return nil
 	}
 	out := make([]*member, 0, len(names)-1)
@@ -541,4 +578,13 @@ func readLedger(path string) (map[string]bool, error) {
 		}
 	}
 	return out, nil
+}
+
+// pinnedSets is every closed set the scan must find (0.19.6 TG-6), the 17 it
+// found at 0.19.6 B0: a set that leaves the scan, renamed, exported past the
+// sentinel, or moved out of reach, fails it instead of shrinking it.
+var pinnedSets = []string{
+	"Air", "Band", "Class", "Effect", "Event", "Kind", "Origin", "Power", "Role",
+	"Slot", "State", "Surface", "Track", "mainTrackStage", "modal", "narrationClass",
+	"requestField",
 }

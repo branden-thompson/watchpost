@@ -20,6 +20,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radio/player"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/platform/config"
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 // asPlatform points the production seam at goos for one test.
@@ -720,16 +721,14 @@ func TestCastReportAnswersWithoutADeck(t *testing.T) {
 // machine; without it half the matrix would never execute on the developer's box
 // or in CI". A grep is the only thing that can hold that.
 func TestNoProductionFileInAppReadsRuntimeGOOSDirectly(t *testing.T) {
-	entries, err := os.ReadDir(".")
+	// THE WHOLE app TREE, not this directory: the seam's readers move with the
+	// deck (0.19.6 D-24), and a reader below app must be seen (0.19.6 TG-2).
+	paths, err := declset.SourcePaths(".")
 	if err != nil {
 		t.Fatal(err)
 	}
 	found := map[string]int{}
-	for _, e := range entries {
-		n := e.Name()
-		if e.IsDir() || !strings.HasSuffix(n, ".go") || strings.HasSuffix(n, "_test.go") {
-			continue
-		}
+	for _, n := range paths {
 		src, err := os.ReadFile(n)
 		if err != nil {
 			t.Fatal(err)
@@ -740,7 +739,7 @@ func TestNoProductionFileInAppReadsRuntimeGOOSDirectly(t *testing.T) {
 			}
 			// The one legitimate use: the seam's own initialiser, an atomic store
 			// because a test's restore races the synth render loop otherwise.
-			if n == "cast.go" && strings.Contains(line, "goosSeam.Store(runtime.GOOS)") {
+			if filepath.Base(n) == "cast.go" && strings.Contains(line, "goosSeam.Store(runtime.GOOS)") {
 				continue
 			}
 			found[n] = i + 1
@@ -859,16 +858,12 @@ func TestAnInstalledPiperVoiceResolvesAndBuildsOnLinux(t *testing.T) {
 // owner, and this is what keeps it the only one: the struct literal is the shape
 // the next call site otherwise reaches for.
 func TestNoProductionFileInAppBuildsANameOnlyVoiceSpec(t *testing.T) {
-	entries, err := os.ReadDir(".")
+	paths, err := declset.SourcePaths(".") // the whole app tree (0.19.6 TG-2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	found := 0
-	for _, e := range entries {
-		n := e.Name()
-		if e.IsDir() || !strings.HasSuffix(n, ".go") || strings.HasSuffix(n, "_test.go") {
-			continue
-		}
+	for _, n := range paths {
 		src, err := os.ReadFile(n)
 		if err != nil {
 			t.Fatal(err)

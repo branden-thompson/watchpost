@@ -58,8 +58,10 @@ vet:
 # property tests live behind `property`; a tag with no gate is a tag that rots
 # (I-3). The injector itself is untagged (0.18.0 D-152), and its tests run with
 # every other.
+# THE TREES, NOT THE PACKAGES (0.19.6 TG-2): code 0.19.6 moves below modes/tty
+# keeps its property-tagged files under vet.
 vet-tags:
-	go vet -tags property ./modes/tty ./platform/history
+	go vet -tags property ./modes/tty/... ./platform/history/...
 
 # Dependency hygiene (quality pass Q0, red-team PH-1/IS-9): go.mod must be tidy,
 # the module cache must match go.sum, and no known vulnerability may be reachable.
@@ -210,9 +212,10 @@ mutant-check:
 # -count=1 IS LOAD-BEARING. Without it `go test` can answer from the cache, and a
 # cached "ok" is not a run — the whole point here is to execute the suite in a
 # configuration it has not been executed in.
+# THE app TREE (0.19.6 D-24): the GOOS seam's readers move with the deck, below app.
 test-platforms:
-	@echo "--- app suite as linux ---"   && WATCHPOST_TEST_GOOS=linux  go test -count=1 ./app
-	@echo "--- app suite as darwin ---"  && WATCHPOST_TEST_GOOS=darwin go test -count=1 ./app
+	@echo "--- app suite as linux ---"   && WATCHPOST_TEST_GOOS=linux  go test -count=1 ./app/...
+	@echo "--- app suite as darwin ---"  && WATCHPOST_TEST_GOOS=darwin go test -count=1 ./app/...
 
 # --- hygiene: clean up after ourselves, every time, without doing arithmetic ---
 #
@@ -558,14 +561,23 @@ alloc-budget:
 # ten thousand take about two minutes, so they run once, here, not under the
 # race detector and not in every mutant's run. Then the history's 90-day
 # global-grid soak (0.19.0 W1.2), about 45 seconds and half a gigabyte written.
+# EACH TEST BY NAME, OVER ITS TREE (0.19.6 TG-2). A `-run` that matches nothing
+# passes with "no tests to run", so a property test a split moved elsewhere
+# would leave this gate green and empty: TestThePropertyGatesTestsExist
+# (cmd/watchpost) fails when a test named here is declared nowhere under the
+# tree it is run over.
 property:
-	go test -tags property -count=1 -run 'TestThePrintedMapIsAFreshRender' ./modes/tty
-	go test -tags property -count=1 -run 'TestNinetyDaysOfAGlobalGridStayReadable' ./platform/history
+	go test -tags property -count=1 -run '^TestThePrintedMapIsAFreshRender$$' ./modes/tty/...
+	go test -tags property -count=1 -run '^TestNinetyDaysOfAGlobalGridStayReadable$$' ./platform/history/...
 
-# Wall-clock benchmarks: recorded, never gated (quality pass §0.1). Local, HUM LEAD.
-# Needs benchstat: go install golang.org/x/perf/cmd/benchstat@latest
+# Wall-clock benchmarks (quality pass §0.1). Local, HUM LEAD. Every benchmark in
+# the two trees 0.19.6 splits is in it (0.19.6 D-28), and benchstat is pinned:
+#   go install golang.org/x/perf/cmd/benchstat@v0.0.0-20261009192801-be2c69fb417e
+# A 0.19.6 batch compares two back-to-back runs against the baseline's on a quiet
+# machine: a significant slowdown (p < 0.05) of 2 % or more in both fails the
+# batch and goes to the HUM LEAD (D-28). Run outside a batch, it records numbers.
 quality-bench:
-	go test ./modes/tty ./platform/snapshot ./domains/fire/hms ./platform/render -run '^$$' -bench . -benchmem -count 10 | tee $(DIST)/bench.txt
+	go test ./modes/tty/... ./app/... ./platform/snapshot ./domains/fire/hms ./platform/render -run '^$$' -bench . -benchmem -count 10 | tee $(DIST)/bench.txt
 
 # THE PUBLIC MIRROR IS REGENERATED AND LINTED HERE, with the other two ledger
 # checks, because it is part of the same claim: the gate reads a MACHINE-LOCAL

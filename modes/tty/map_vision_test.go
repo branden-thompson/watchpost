@@ -17,6 +17,7 @@ import (
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 // visionRamps are the overlays watchpost hands the map with a ramp, built as
@@ -163,12 +164,14 @@ func TestEveryRampTheMapDrawsPassesTheVisionCheck(t *testing.T) {
 			}
 		}
 	}
-	for _, glob := range []string{"*.go", filepath.Join("..", "..", "app", "*.go")} {
-		files, _ := filepath.Glob(glob)
+	read := 0
+	for _, root := range []string{filepath.Join("..", "..", "modes", "tty"), filepath.Join("..", "..", "app")} { // each tree whole (0.19.6 TG-2)
+		files, err := declset.SourcePaths(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		read += len(files)
 		for _, f := range files {
-			if strings.HasSuffix(f, "_test.go") {
-				continue
-			}
 			src, err := os.ReadFile(f)
 			if err != nil {
 				t.Fatal(err)
@@ -179,5 +182,8 @@ func TestEveryRampTheMapDrawsPassesTheVisionCheck(t *testing.T) {
 				}
 			}
 		}
+	}
+	if read < 160 { // the two trees' production files at 0.19.6 B0: 88 and 76
+		t.Fatalf("the rule read %d production files; fewer than the 160 it was fixed on", read)
 	}
 }

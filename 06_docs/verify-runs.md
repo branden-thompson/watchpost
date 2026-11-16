@@ -270,3 +270,6 @@ says exactly what passed.
 | 2026-11-16T00:14:57Z | fbbfeb1a | 4f02d1b4a681 | verify-docs | green | 144 |
 | 2026-11-16T02:06:19Z | 966baf72 | 934bff62bb25 | verify-docs | green | 141 |
 | 2026-11-16T03:24:44Z | 5410ac5b | 25e90f25a292 | verify | green | 2152 |
+| 2026-11-16T03:42:15Z | b1327208 | d818b6b6f4be | verify | FAILED (exit 2) | 248 |
+| 2026-11-16T03:51:13Z | b1327208 | 5b1251c4388b | verify | FAILED (exit 2) | 387 |
+| 2026-11-16T04:27:51Z | b1327208 | 55e10f2e43a6 | verify | green | 2129 |

@@ -15,10 +15,11 @@ import (
 )
 
 func TestTheProgramsModelIsAlwaysTheRouter(t *testing.T) {
-	// THROUGH declset.Files, NOT go/parser.ParseDir. ParseDir is deprecated
+	// THROUGH declset.Tree, NOT go/parser.ParseDir. ParseDir is deprecated
 	// (Go 1.25), and declset is the one package that walks a package's
-	// non-test files for every check in this tree.
-	fset, files, err := declset.Files(".")
+	// non-test files for every check in this tree. Tree walks app and every
+	// package below it, so a program made below app is seen (0.19.6 TG-2).
+	fset, files, err := declset.Tree(".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,9 +59,9 @@ func TestTheProgramsModelIsAlwaysTheRouter(t *testing.T) {
 	// SILENCE IS A DISTINCT VERDICT (INST-2): finding no call at all means the
 	// walk broke, not that the package is clean.
 	if found == 0 {
-		t.Fatal("found no tea.NewProgram call in this package — the check did not run, which is not the same as passing")
+		t.Fatal("found no tea.NewProgram call in the app tree — the check did not run, which is not the same as passing")
 	}
-	t.Logf("checked %d tea.NewProgram call(s); blind to any created outside package app", found)
+	t.Logf("checked %d tea.NewProgram call(s); blind to any created outside the app tree", found)
 }
 
 func exprName(e ast.Expr) string {

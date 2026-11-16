@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 // THE INJECTOR IS IN EVERY BUILD (0.18.0 D-152, overturning F-21b).
@@ -24,13 +26,17 @@ func TestTheInjectorIsInEveryBuild(t *testing.T) {
 	if len(debugScenarios()) == 0 {
 		t.Error("the normal build offers no scenarios, so ctrl+d has no question to ask (D-152)")
 	}
-	entries, err := os.ReadDir(".")
+	srcs, err := declset.SourcePaths(".") // the whole app tree (0.19.6 TG-2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".go") && strings.Contains(readSource(t, e.Name()), "watchpost_"+"debug") { // split, so this file does not name it
-			t.Errorf("%s names the retired debug tag: one build (D-152)", e.Name())
+	tests, err := declset.TestPaths(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range append(srcs, tests...) {
+		if strings.Contains(readSource(t, p), "watchpost_"+"debug") { // split, so this file does not name it
+			t.Errorf("%s names the retired debug tag: one build (D-152)", p)
 		}
 	}
 
