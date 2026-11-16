@@ -4,7 +4,7 @@ date: 2026-11-15
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "For the PLAN gate, after the plan red team (`../08-reports/red-team-plan.md`) and the pilot (`../08-reports/pilot-report.md`). No code: signatures, test descriptions, file paths and order only (0.18.0 D-13)."
+status: "APPROVED at the PLAN gate (D-33), after the plan red team (`../08-reports/red-team-plan.md`) and the pilot (`../08-reports/pilot-report.md`). No code: signatures, test descriptions, file paths and order only (0.18.0 D-13)."
 ---
 
 # Implementation plan

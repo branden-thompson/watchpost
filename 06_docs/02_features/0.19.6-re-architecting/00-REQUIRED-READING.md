@@ -1,7 +1,7 @@
 ---
 title: "0.19.6 re-architecting — REQUIRED READING"
 date: 2026-11-14
-phase: PLAN
+phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
 status: "MANDATORY for the life of 0.19.6, at session start and after any compaction."
@@ -21,12 +21,12 @@ dissolving into the Director's step, is in 0.19.6: it is 0.19.7 (D-11). Charm is
 | | |
 |---|---|
 | Branch | `feature/re-architecting`, cut from `main` at `e57afeaf` (A-1) |
-| Phase | **PLAN**, opened 2026-11-15 when DISCOVER exited (D-19, `08-reports/discover-report.md`); DISCOVER opened 2026-11-14. LEVEL-1, SEV-0, HUMAN LEAD, the full directive set (D-4). The baseline sweep ran on `e57afeaf` before any code moved: 1,051 of 1,058 caught, the 7 survivors the kept equivalents (A-3) |
+| Phase | **BUILD**, opened 2026-11-16 when PLAN exited (D-33); PLAN opened 2026-11-15 when DISCOVER exited (D-19, `08-reports/discover-report.md`); DISCOVER opened 2026-11-14. LEVEL-1, SEV-0, HUMAN LEAD, the full directive set (D-4). The baseline sweep ran on `e57afeaf` before any code moved: 1,051 of 1,058 caught, the 7 survivors the kept equivalents (A-3) |
 | Rulings | `02-analysis/rulings.md`, every ruling the moment it is made; minor ones as A-n rows for veto |
 | Survey | nine lens agents over one computed dependency graph (D-6, A-4, A-5): `02-analysis/lens-*.md`, reconciled by the agent into one package map (D-7): `02-analysis/package-map.md`, the settled document every later finding is judged against |
 | Brief | `01-objectives/project-brief.md`, APPROVED (D-13) and amended (D-18): the cost and end state, the problem, metrics M1 to M7 for the four principles, R1 to R9, the scope |
 | Red team | DISCOVER exit, round 1: `08-reports/red-team-review.md`, its five forks ruled D-14 to D-18 |
-| Plan | `04-development/implementation-plan.md`, for the PLAN gate, drawn from `03-architecture-design/architecture.md` and its three designs; PLAN's forks ruled D-21 to D-26, the plan red team's (`08-reports/red-team-plan.md`) and the pilot's (`08-reports/pilot-report.md`) D-27 to D-32 |
+| Plan | `04-development/implementation-plan.md`, APPROVED (D-33), drawn from `03-architecture-design/architecture.md` and its three designs; PLAN's forks ruled D-21 to D-26, the plan red team's (`08-reports/red-team-plan.md`) and the pilot's (`08-reports/pilot-report.md`) D-27 to D-32 |
 | M4's before | `08-reports/m4-before.md`: the blind trace on `e57afeaf`, 0 of 4; its keys in `08-reports/m4-key/`, never in a blind reviewer's copy |
 | Issue | GitHub #41, "v. 0.19.6 - Re-architecting": the brief as approved and amended |
 | Previous release | 0.19.5, shipped; its REFLECT is `../0.19.5-quality-pass/08-reports/reflect-report.md` (0.19.5 D-60) |
