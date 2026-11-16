@@ -104,3 +104,42 @@ Landed as `b1327208` on a full gate (2,152 s, green); pushed to `feature/re-arch
 (D-277): `platform/declset` measures 1.00 over 5 changed functions and `tools/wires` 0.20 over 5.
 Writing a floor changes the ledger, which only the HUM LEAD ratifies. The HUM LEAD ratified both
 and writes them into the ledger (D-34); the regenerated mirror lands with the commit after the edit.
+
+Landed as `4d948def` on a full gate (2,129 s, green), after the two failed runs above; pushed.
+
+## B0.4, B0.9 and B0.10: the TestMain ground, the import layers, the citations
+
+B0 lands in five commits rather than the plan's four: this one carries the three lighter items, so a
+failure here does not hold up the inventory, the order tests and the lock check (one more full gate).
+
+**What.**
+- **B0.4.** `modes/tty/internal/ttytest` holds `Main`, which pins the zone to UTC; `app/internal/apptest`
+  holds `Main`, which gives a run its own config and state directories. Both are imported by test files
+  only. `modes/tty`'s and `app`'s `TestMain` call them; `app`'s applies `WATCHPOST_TEST_GOOS` first, as
+  D-24 asks of every package whose code reads the platform seam.
+  `TestEveryPackageUnderTheTwoTreesCarriesItsParentsTestMain` (`cmd/watchpost`) holds every package with
+  tests under each tree to its helper, and the GOOS rule; the two packages with tests at B0 are its
+  floor. Each new package carries a `doc.go` with its file map, which the derived file-map test holds.
+- **B0.9.** `scripts/lint-imports.sh` holds the 0.19.6 layers: `modes`, `platform` and `domains`
+  never import `app`; `platform` never imports `modes`; the deck and the map data never import each
+  other; `ttytest` and `apptest` have test importers only. Each rule refuses a planted file in the
+  self-test, 13 controls in all.
+- **B0.10.** AP-CITE-01 keys a file under `app` or `modes/tty` by the tree's root (`tools/authoring`,
+  `citeKey`), so a comment moved below the root keeps the citations its tree carried at the base, and
+  a new bare ID still fails. "`git log` on the file" reads `git log --follow` in
+  `docs/where-things-happen.md` and `06_docs/ids.md`. The docs' symbol check resolves a bare file name
+  only when one file has it: it found four bare names in `docs/extending.md` that already named two
+  or three files (`report_test.go`, `themes.go` twice, `settings_kept_test.go`), now given their
+  directories.
+
+**Seen failing first.**
+- The TestMain check on the committed `TestMain`s: both reported as not calling their helper; and its
+  planted package without one.
+- Every new import rule refused its planted file in the self-test.
+- The authoring self-test's moved-comment specimen: MISSED on the committed `cite.go`, which looked
+  the comment up under `app/internal/deck`; caught after.
+- The bare-name rule: four real ambiguous names in `docs/extending.md`.
+
+**P10.** The two new packages fire P10-05 at 0.00 (`ttytest` over 1 changed function, `apptest` over
+2): each sets the zone, the directories and the exit, with no state worth a check, and none is added
+for the count (0.19.5 D-27). Their density rows go to the HUM LEAD in this batch (D-31).

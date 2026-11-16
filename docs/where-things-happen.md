@@ -146,7 +146,8 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
   and lists every release's row for every ID the record's tables and headings define.
 - **Take the release from the citation, or from the code's history.** A citation written since 0.19.5
   names its release: `0.19.5 D-4`, or a release's own prefix such as `MVS-D-80`. An older bare one
-  means the release whose commit wrote the comment, which `git log` on the file shows.
+  means the release whose commit wrote the comment, which `git log --follow` on the file shows,
+  across a move to another package.
 
 `tools/authoring` holds new citations to that form (`AP-CITE-01`, 0.19.5 D-11).
 

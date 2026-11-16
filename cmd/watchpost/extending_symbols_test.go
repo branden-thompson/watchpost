@@ -18,7 +18,7 @@ import (
 // each package name's directories, each directory's top-level names, each
 // type's methods and fields, and every file by its path.
 type goIndex struct {
-	files   map[string]bool            // every file by its path from the root, and a .go file by its base name too
+	files   map[string]bool            // every file by its path from the root, and a .go file by its base name when that name is unique
 	types   map[string]bool            // every type name
 	pkgDirs map[string][]string        // package name → its directories
 	top     map[string]map[string]bool // directory → its funcs, types, consts and vars
@@ -32,6 +32,11 @@ func indexModule(t *testing.T, root string) goIndex {
 	t.Helper()
 	ix := goIndex{files: map[string]bool{}, types: map[string]bool{}, pkgDirs: map[string][]string{}, top: map[string]map[string]bool{},
 		members: map[string]map[string]bool{}, any: map[string]bool{}}
+	// A BASE NAME RESOLVES ONLY WHEN ONE FILE HAS IT (0.19.6 TG-10). A page
+	// that names `credits.go` without its directory reads as true wherever the
+	// file is, and a split makes duplicate base names (two `doc.go`s, a
+	// `cast.go` in two packages): a bare name with two owners names neither.
+	bases := map[string]int{}
 	member := func(typ, name string) {
 		if ix.members[typ] == nil {
 			ix.members[typ] = map[string]bool{}
@@ -54,7 +59,7 @@ func indexModule(t *testing.T, root string) goIndex {
 		if !strings.HasSuffix(path, ".go") || strings.Contains(filepath.ToSlash(rel), "testdata/") {
 			return nil // a golden or fixture can be named; testdata's Go is fixture, not the module's code
 		}
-		ix.files[filepath.Base(path)] = true
+		bases[filepath.Base(path)]++
 		f, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.SkipObjectResolution)
 		if err != nil {
 			return err
@@ -94,6 +99,11 @@ func indexModule(t *testing.T, root string) goIndex {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	for base, n := range bases {
+		if n == 1 {
+			ix.files[base] = true
+		}
 	}
 	return ix
 }

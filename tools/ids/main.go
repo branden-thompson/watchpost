@@ -520,7 +520,7 @@ the record's tables define, each release's row and its subject. Where says the f
 ` + "`06_docs/02_features/`" + ` and the file; Release is the folder's version where the record states one.
 
 **To read an old citation**, find the ID here and take the release of the code's own history: the
-file's ` + "`git log`" + ` says which release wrote the comment. **A new citation names its release**
+file's ` + "`git log --follow`" + ` says which release wrote the comment, across a move. **A new citation names its release**
 (` + "`0.19.5 D-4`" + `, or a release's own prefix such as ` + "`MVS-D-80`" + `), which ` + "`tools/authoring`" + ` holds
 over the lines a branch adds (` + "`AP-CITE-01`" + `). A row defines an ID when the ID is the whole of its first
 cell; a later table that mentions it is not listed. Where no table defines an ID, its row is its

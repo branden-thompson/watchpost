@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
@@ -20,9 +20,11 @@ import (
 // TestAVoiceNoteFromTheDeckIsDrawnUnderTheRowThatAskedForIt, one run in three.
 // Every one of them wanted UTC - the goldens' stamps the same on every machine -
 // so the whole package gets it, and nothing writes it mid-run.
+//
+// THE PIN IS ttytest.Main's (0.19.6 TG-3), the one every package under
+// modes/tty calls, so a package a split creates stands on the same ground.
 func TestMain(m *testing.M) {
-	time.Local = time.UTC
-	os.Exit(m.Run())
+	ttytest.Main(m)
 }
 
 // localWrite is a test assigning the process's zone.

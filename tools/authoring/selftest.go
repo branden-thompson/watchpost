@@ -279,6 +279,20 @@ func citeControls() int {
 		return 1
 	}
 	fmt.Printf("  ok              a new bare citation, and none that is old or qualified\n")
+	// A COMMENT MOVED BELOW A SPLIT TREE'S ROOT keeps its citations (0.19.6
+	// TG-4): D-4, carried under app at the base, is known in app/internal/deck;
+	// D-9, carried nowhere, is still new there.
+	moved, err := parser.ParseFile(fset, "app/internal/deck/f.go", src, parser.ParseComments)
+	if err != nil {
+		fmt.Printf("  BROKEN SPECIMEN  citations: %v\n", err)
+		return 1
+	}
+	got = checkCitations(fset, moved, "app/internal/deck/f.go", citedAt{"app": {"D-4": true}})
+	if len(got) != 1 || !strings.HasPrefix(got[0].Text, "D-9 ") {
+		fmt.Printf("  %-15s a citation moved below app keeps the tree's, and a new one is still caught\n      got %v\n", "MISSED", got)
+		return 1
+	}
+	fmt.Printf("  ok              a citation moved below app keeps the tree's, and a new one is still caught\n")
 	return 0
 }
 

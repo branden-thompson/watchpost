@@ -14,8 +14,25 @@ import (
 )
 
 // citedAt is the IDs each package's comments and code carried at the base
-// the branch is judged against: package directory → ID → present.
+// the branch is judged against: package key (citeKey) → ID → present.
 type citedAt map[string]map[string]bool
+
+// splitRoots are the trees 0.19.6 splits into packages of their own.
+var splitRoots = []string{"app", "modes/tty"}
+
+// citeKey is the set a file's citations are judged against: its directory,
+// except under a tree 0.19.6 splits, where it is the tree's root (0.19.6
+// TG-4). A comment a move carries from app into a package below it keeps the
+// citations app carried at the base; inside the moved code that is no wider
+// than the rule was, and a genuinely new bare ID still fails.
+func citeKey(dir string) string {
+	for _, root := range splitRoots { // bounded by the two roots (P10-02)
+		if dir == root || strings.HasPrefix(dir, root+"/") {
+			return root
+		}
+	}
+	return dir
+}
 
 // baseCitations reads every ID the tree's Go files carried at base, one git
 // call for the whole tree. A package's set is judged, not a file's, so a
@@ -35,7 +52,7 @@ func baseCitations(root, base string) (citedAt, error) {
 		if len(parts) != 3 {
 			continue
 		}
-		dir := path.Dir(parts[1])
+		dir := citeKey(path.Dir(parts[1]))
 		if at[dir] == nil {
 			at[dir] = map[string]bool{}
 		}
@@ -79,7 +96,7 @@ func checkCitations(fset *token.FileSet, f *ast.File, rel string, base citedAt) 
 	if base == nil {
 		return nil
 	}
-	known := base[path.Dir(rel)]
+	known := base[citeKey(path.Dir(rel))]
 	var out []Finding
 	for _, g := range f.Comments { // bounded by the file's comments (P10-02)
 		qualified := false

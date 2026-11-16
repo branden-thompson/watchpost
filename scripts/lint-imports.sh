@@ -4,6 +4,14 @@
 # never a hardcoded list (calibration: Discover Consumers, Don't Enumerate Them).
 # And go-studs stays behind platform/render (0.19.5 D-10): no other package's
 # non-test file imports it, so the table kit can be swapped in one place.
+#
+# AND THE LAYERS 0.19.6 SPLITS ACROSS (TG-1, TG-14, DQ-6, D-15, A-24). Today the
+# rule `modes` never imports `app` is held only by Go's ban on import cycles,
+# and a split removes that: a package below app is a new package a mode could
+# import. So the direction is a rule here: modes, platform and domains never
+# import app; platform never imports modes; the deck and the map data never
+# import each other; and the two test-support packages are imported by test
+# files alone, so nothing in them reaches the binary.
 set -eu
 MOD="github.com/branden-thompson/watchpost"
 check_tree() {
@@ -30,6 +38,36 @@ check_studs() {
     echo "  add a render function that does what this file needs, and call it; render is the one package that imports go-studs"
     return 1
   fi
+}
+
+# check_none refuses any Go file under $1 importing a path that starts with
+# $MOD/$2, printing $3 as the reason; with $4 = nontest, test files may import it.
+check_none() {
+  root="$1" prefix="$2" why="$3" scope="${4:-all}"
+  [ -d "$root" ] || return 0
+  hits=$(grep -rln --include='*.go' --exclude-dir=.git --exclude-dir=.claude --exclude-dir=dist --exclude-dir=third_party -E "\"$MOD/$prefix(/|\")" "$root" 2>/dev/null || true)
+  if [ "$scope" = nontest ]; then
+    hits=$(printf '%s\n' "$hits" | grep -v '_test\.go$' || true)
+  fi
+  hits=$(printf '%s\n' "$hits" | grep -v '^$' || true)
+  if [ -n "$hits" ]; then
+    echo "lint-imports: FORBIDDEN import of $prefix from $root ($why):"
+    echo "$hits"
+    return 1
+  fi
+}
+
+# check_layers is every 0.19.6 direction rule, under the tree at $1.
+check_layers() {
+  r="$1"
+  for from in modes platform domains; do
+    check_none "$r/$from" app "nothing below app imports it; the composition root is the top" || return 1
+  done
+  check_none "$r/platform" modes "platform is a leaf of the modes" || return 1
+  check_none "$r/app/internal/deck" app/internal/mapdata "the deck and the map data never import each other" || return 1
+  check_none "$r/app/internal/mapdata" app/internal/deck "the deck and the map data never import each other" || return 1
+  check_none "$r" modes/tty/internal/ttytest "test support, imported by test files alone" nontest || return 1
+  check_none "$r" app/internal/apptest "test support, imported by test files alone" nontest || return 1
 }
 
 # AN ARGUMENT THIS SCRIPT DOES NOT KNOW IS A FAILURE, NOT A NO-OP (B6).
@@ -66,7 +104,29 @@ if [ "${1:-}" = "--self-test" ]; then
   if check_studs "$tmp/studs" >/dev/null 2>&1; then
     echo "lint-imports SELF-TEST FAILED: go-studs in a mode's file was not detected"; exit 1
   fi
-  echo "lint-imports self-test: all four controls fired (OK)"
+  # AND THE LAYERS: each 0.19.6 rule refuses its planted file, and a test
+  # file's import of the test support passes.
+  n=4
+  for planted in "modes/tty/bad.go:app" "platform/x/bad.go:app/internal/deck" "domains/x/bad.go:app" \
+    "platform/x/bad2.go:modes/tty" "app/internal/deck/bad.go:app/internal/mapdata" \
+    "app/internal/mapdata/bad.go:app/internal/deck" "modes/tty/console/bad.go:modes/tty/internal/ttytest" \
+    "app/bad.go:app/internal/apptest"; do
+    lay="$tmp/layers$n"
+    file=${planted%%:*} imp=${planted#*:}
+    mkdir -p "$lay/$(dirname "$file")"
+    printf 'package x\nimport _ "%s/%s"\n' "$MOD" "$imp" > "$lay/$file"
+    if check_layers "$lay" >/dev/null 2>&1; then
+      echo "lint-imports SELF-TEST FAILED: $file importing $imp was not refused"; exit 1
+    fi
+    n=$((n + 1))
+  done
+  mkdir -p "$tmp/layersok/modes/tty"
+  printf 'package tty\nimport _ "%s/modes/tty/internal/ttytest"\n' "$MOD" > "$tmp/layersok/modes/tty/ok_test.go"
+  if ! check_layers "$tmp/layersok" >/dev/null 2>&1; then
+    echo "lint-imports SELF-TEST FAILED: a test file's import of the test support was refused"; exit 1
+  fi
+  n=$((n + 1))
+  echo "lint-imports self-test: all $n controls fired (OK)"
   exit 0
 fi
 check_tree modes
@@ -80,4 +140,5 @@ check_tree modes
 # card's role and subject are domain-shaped unless something says otherwise.
 check_tree platform
 check_studs .
+check_layers .
 echo "lint-imports: OK"
