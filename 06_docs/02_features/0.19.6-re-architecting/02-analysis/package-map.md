@@ -9,6 +9,12 @@ status: "SETTLED (A-18) as the scope D-13 approved, with D-9 to D-12 and A-9 to 
 
 # The 0.19.6 package map
 
+> **Amended since it was settled**, by rulings that stand over this page: the names are A-20's
+> (`frame`, `console`, `ttytest`, `mapview`, `controls`, `deck`, `mapdata`, `run`, `apptest`); a move
+> commit may fix the paths comments name (R3, D-18), against §5's "no comment edits"; a scan's floor is
+> fixed at batch 0, not taken from the tree (A-12), against §4 item 3; new packages' density rows are
+> ratified in the batch that creates each (D-31), against C-13's "one list at BUILD exit".
+
 This page is the one settled document for 0.19.6's shape (D-6, D-7; 0.19.0 D-311's rule: a later
 finding is judged against this page, never lens against lens). It reconciles the nine lenses in
 `lens-*.md`. Where they disagreed, the disposition and its reason are written here; only the forks

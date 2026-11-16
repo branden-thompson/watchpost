@@ -267,3 +267,4 @@ says exactly what passed.
 | 2026-11-15T20:24:56Z | 0ceb77d1 | ef6b25d53df8 | verify-docs | green | 139 |
 | 2026-11-15T22:39:45Z | 3f561f6f | 004111ef1ca8 | verify | FAILED (the tree changed during the run: 004111ef1ca8 tested, 1254aee3def4 at its end) | 2310 |
 | 2026-11-15T23:18:24Z | 3f561f6f | 4b81becddf9c | verify | green | 2282 |
+| 2026-11-16T00:14:57Z | fbbfeb1a | 4f02d1b4a681 | verify-docs | green | 144 |

@@ -51,6 +51,15 @@ route, three stale or wrong routes, and IDs that resolve to several releases or 
 - **T4's console echo.** The Broadcaster shows a takeover's script before it airs, so the console shows
   "yesterday at …" too.
 
+## What a pass will and will not show (D-29)
+
+- **The midpoint.** B1 fixes the routes these four tasks failed on, on today's layout. A fresh blind
+  reviewer traces the same tasks after B1 (plan B1.5); REVIEW's delta from that midpoint is the split's,
+  and the midpoint's from 0 of 4 is the docs'.
+- **The blind spots.** The four tasks are known in advance, and each is traced once. The grader is the
+  lead agent, against keys it did not build. The keys sit on the branch the builder works on; each
+  trace runs on a copy without this release's folder.
+
 ## What it means for 0.19.6
 
 M4's gate is judged at REVIEW on the new layout, against a fresh key built by leave-one-out before the

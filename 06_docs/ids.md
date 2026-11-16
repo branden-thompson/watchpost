@@ -1165,30 +1165,36 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-27 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | A card's origin never changes while it is alive |
 | D-27 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | May a card's origin change? |
 | D-27 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | P10-05 density: modes/tty is held to a floor of 0.42 checks per changed function, ratified over 0.19.0's 344 … |
+| D-27 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Plan-gate fork 1, M3's full target table (plan red team BQ-1, DQ-12). The draft table left out four of the br… |
 | D-27 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Red-team A-4 and A-7 (Critical): the library's hatch runs only at NoColour depth, so R-7.1's Monochrome/Light… |
 | D-27 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-25 clarification: what happens to a found location (city, ZIP or coordinates; the Observer's Lookup can be … |
 | D-27 |  | `watchpost-cli/08-reports/build-report.md` | No private-employer references in the public tree |
 | D-28 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | Drop belongs to Remove, not to the placement event |
 | D-28 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | Does placement carry drop? |
 | D-28 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DEF-8, found by B3's goldens: at 80x24 with a full watchlist (the bench fixture: ten favourites, recents, the… |
+| D-28 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Plan-gate fork 2, the performance criteria (plan red team CQ-12, RR-5, RR-12, PH F-13, DQ-9). benchstat had n… |
 | D-28 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Red-team B1 (Critical): the brief says "never wider than the United States", the requirement says "contiguous… |
 | D-28 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The Broadcaster's shape (F-174). HUM LEAD's context: "Having both modes share a single map view will extend O… |
 | D-28 |  | `watchpost-cli/08-reports/build-report.md` | Reports approved; BUILD exit NOT approved — initial FIRMS fire data joins 0.9.0 (B5 starts next); a second ex… |
 | D-29 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | The provider key: answered with arithmetic, not escalated again |
 | D-29 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/plan-report.md` | The provider key |
 | D-29 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The console's card manifests write their "DATA PULLED" stamps in 24-hour form (modes/tty/broadcaster_manifest… |
+| D-29 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Plan-gate fork 3, what M4's REVIEW pass proves (plan red team BQ-8, DQ-13). M4's before failed on docs (08-re… |
 | D-29 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Red-team D2/D3 (Critical): M1 has no grader, N or protocol; M5's 1 s / 3 s targets are the library's NFR appl… |
 | D-29 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | May the Broadcaster's readout and closure notice fetch on a schedule with no map open (OQ-5)? 0.18.0 D-21/D-2… |
 | D-30 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | The mock's layout is its own batch, after P4 |
 | D-30 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | DEF-8's cause (D-28): on a short terminal only the RECENT window shrinks (modes/tty/layout.go:84-87); the pri… |
+| D-30 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Plan-gate fork 4, where batch 0's instruments run (plan red team PH F-10, F-11, CQ-18). A new make target mus… |
 | D-30 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Red-team code axis: a fail-open HOME path that prints a pass; make lint-identity not running its own new inva… |
 | D-30 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How the station knows the operator's HF band (R-2.4). config.Broadcaster has none (platform/config/broadcaste… |
 | D-31 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d11-d18.md` | Card types get mocked in P4, and they are not one shape |
 | D-31 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Q4.4 (PF-9): how the tables' memo tells that a new snapshot shows nothing new. It keys on the snapshot pointe… |
+| D-31 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Plan-gate fork 5, P10 density for new packages (the A-7 pilot). D-10 assumed a new package rides its parent's… |
 | D-31 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Red-team InfoSec F1/F3/F4/F5/F8: no threat model at all (nine risks, none security or privacy); source addres… |
 | D-31 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Are MUF and foF2 recorded (OQ-6)? The store takes grids and series (platform/history/history.go:55-125), but … |
 | D-32 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | ONE DUCK, AND IT IS THE PRIORITY RAIL OVER THE BED |
 | D-32 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | D-18's UAT look (A-12), before Q6.2 is committed: the console's card boxes draw their top rule with the masth… |
+| D-32 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Plan-gate fork 6, same-name calls under P10-01 (the A-7 pilot). The checker keys its call graph by bare name,… |
 | D-32 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Red-team docs D4 (a fork, not a finding): the record has no designer-facing artifact for a release whose outp… |
 | D-32 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | HR-1, fields over water in go-tuiMaps v0.3.0: per overlay or map-wide. render.Input.FieldsOverWater has no pu… |
 | D-33 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d32-d36.md` | A CHOSEN READ REPLACES THE BED; IT DOES NOT PLAY OVER IT |
@@ -2116,14 +2122,19 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-28 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | M4's four tasks fixed (brief M4, B-6; 0.19.5 D-24's method). Built by leave-one-out on scratch copies of e57a… |
 | A-28 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The climatology ships NRL's CCIR refit, not the URSI refit (both are D-43's refits); the scorer pins it as th… |
 | A-29 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW round 2's Minors, fixed (D-41; 08-reports/reviewer-notes/review-round-2-GT-batch-50.md). A-27 as built… |
+| A-29 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Batch 0 corrected (plan red team PH F-3, F-4, F-7 to F-9; DQ-4, DQ-11; RR-1, RR-8, RR-14; CQ-13, CQ-16). B0 c… |
 | A-29 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team's fix batch, its design choices: (1) the go-ionomaps shape completed (a Response with rate … |
 | A-30 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Seven P10 density floors written by 0.19.0 D-277's procedure. make p10's floor check, once D-45 had re-floore… |
+| A-30 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The re-vet and the comparator (RR-2, RR-6, RR-13; CQ-14). A-11's derived list also takes every mutant whose e… |
 | A-30 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The PLAN red team round 2's fix batch, its design choices: (1) two seams, PropagationUpdate (the update's one… |
 | A-31 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The README's alt text follows the screenshots kept by D-53. setup.png and broadcaster-settings.png show Setti… |
+| A-31 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The map seam corrected (CQ-2, CQ-4, CQ-6, CQ-7, CQ-11, CQ-15; RR-4, RR-7, RR-9, RR-11, RR-14; DQ-1, DQ-3; BQ-… |
 | A-31 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W1.2's design choices (FR-6.5, D-143): (1) roll-ups are written in size-driven monthly parts, rollup/<YYYY-MM… |
 | A-32 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Go 1.27.4, under 0.19.0 D-152 and A-82. v0.19.5's release job (run 43007879349, on the merge 905ee845) stoppe… |
+| A-32 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The app seam corrected (BQ-5, RR-3, CQ-17; CQ-8, CQ-10; RR-10; PH F-12). The root's wiring stays pinned: a ro… |
 | A-32 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The linter is pinned at golangci-lint v2.14.0 (was v2.13.1), scripts/lint.sh: under go1.27.2 (D-152) v2.13.1 … |
 | A-33 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The router trace hashes its frames without the Go release's name. On go1.27.4 make verify failed only in Test… |
+| A-33 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Schedule, owed items and record fixes (CQ-1, CQ-3, CQ-5; BQ-2 to BQ-4, BQ-6, BQ-9, BQ-11; PH F-5, F-14 to F-1… |
 | A-33 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.1 to W2.3's choices: (1) a chip [P] Propagation On / Off between R's and O's under the map, as R's says it… |
 | A-34 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | The promote test reads the last real sweep's log at the commit that recorded it. PR #39's hosted runs failed … |
 | A-34 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W2.5's choices: (1) the acknowledgement is a window of its own, stacked over the map (modalPropAck), as Detai… |
@@ -2467,6 +2478,8 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | F-234 |  | `follow-ups.md` | The tone-latency instrument reads 10x its last record (15.8 µs against 1.6 µs), and its timed span holds test… |
 | F-235 |  | `follow-ups.md` | Three exports only app's tests use outside their package. ChipKnown (no production user), SameOverlay and Fir… |
 | F-236 |  | `follow-ups.md` | Stuttering names in the map package. After 2b, mapview.MapFeed, mapview.MapRadar and their like repeat the pa… |
+| F-237 |  | `follow-ups.md` | A lock of their own for the deck and the map data. 0.19.6 keeps one mutex, livePipelines.mu, held by the deck… |
+| F-238 |  | `follow-ups.md` | Commit 1f9a34e7 is still served by its hash. D-8 rewrote the branch to remove a leaked scratch path that name… |
 
 ## MVS-D
 

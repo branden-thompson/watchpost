@@ -11,6 +11,13 @@ status: "FILED — checked by the lead against e57afeaf; its choices ruled D-21 
 > **Filed from PLAN's design agent AP.** Its tables are in `design-data/AP/`. `<scratch>` names the
 > session's working directory, which is not committed: the computed graph there is committed in batch 0 as
 > its own module (A-12). Where a ruling chose differently from this design, the ruling stands.
+> **Only the TSV tables were filed.** Where the text says a script, probe or tool is in `design-data/`,
+> it was not: they stayed in the session's scratch directory, and B0.12's committed graph tool
+> reproduces the tables before BUILD relies on them (A-29).
+> **Names (A-20):** this page's `maps`/`app/internal/maps` is `mapdata` (`mapdata.Feeds`), its kit is
+> `app/internal/run`, and `app`'s test helpers go to `app/internal/apptest`, not to CK's package (A-24).
+> `mutants-AP.tsv` places mutants by file; AP-10's statement-level counts govern. A-23's "unpinned wiring"
+> is withdrawn by A-32.
 
 ## Verdict
 

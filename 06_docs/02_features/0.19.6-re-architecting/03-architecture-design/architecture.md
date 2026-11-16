@@ -17,17 +17,17 @@ and the three PLAN designs filed beside it:
 - `design-MS-map-seam.md`: steps 2a and 2b, the map;
 - `design-AP-app-split.md`: `app`'s split.
 
-Where a ruling chose differently from a design, the ruling stands (D-21 to D-26, A-19 to A-27).
+Where a ruling chose differently from a design, the ruling stands (D-21 to D-32, A-19 to A-33).
 Signatures and field lists are in the designs. This page carries no implementation (0.18.0 D-13).
 
 ## The packages when 0.19.6 closes
 
 | Package | Holds | Imported by |
 |---|---|---|
-| `modes/tty` | the Router (the program's one model), the Observer's core (`Dashboard`), Settings, the windows, the key routing, the window stack, the post-update steps | `app`, `cmd/watchpost` |
-| `modes/tty/console` | the Broadcaster console: `Broadcaster`, `New(Opening)`, `SetMirror`, its six messages | `modes/tty`, `app` |
-| `modes/tty/mapview` | the map and its Propagation windows: `Model`, `Env`, `Want`, `Hooks`, the map's Settings rows and choices (D-25) | `modes/tty`, `app` |
-| `modes/tty/internal/frame` | the parts of a frame both surfaces draw: masthead, cursor, tick, memo counters, the row | `modes/tty`, `console`, `mapview` |
+| `modes/tty` | the Router (the program's one model), the Observer's core (`Dashboard`), Settings, the windows, the key routing, the window stack, the post-update steps | `app`, `deck`, `mapdata`; `cmd/watchpost`'s tests only |
+| `modes/tty/console` | the Broadcaster console: `Broadcaster`, `New(Opening)`, `SetMirror`, its six messages | `modes/tty`, `app`, `deck` |
+| `modes/tty/mapview` | the map and its Propagation windows: `Model`, `Env`, `Want`, `Hooks`, the map's Settings rows and choices (D-25) | `modes/tty`, `app`, `mapdata` |
+| `modes/tty/internal/frame` | the parts of a frame more than one package draws: masthead, cursor, tick, memo counters, the row, `NoTransmitter` (A-31, A-33) | `modes/tty`, `console`, `mapview` |
 | `modes/tty/internal/controls` | the D-147 controls: pickers, chips, toggles, their flash | `modes/tty`, `mapview` |
 | `modes/tty/internal/ttytest` | the memo guard's engine and the pure test helpers | `_test.go` files under `modes/tty` only |
 | `app` | the composition root: `RunDashboard`, the pipelines, the pool, `commit`, the diagnostics | `cmd/watchpost` |
@@ -60,7 +60,6 @@ flowchart TD
   CONSOLE --> FRAME
   MAPVIEW --> FRAME
   MAPVIEW --> CONTROLS
-  MAPVIEW --> CONSOLE
   FRAME --> PLATFORM[platform/*]
   CONTROLS --> PLATFORM
 ```
@@ -70,12 +69,12 @@ flowchart TD
   `modes`.
 - `deck` and `mapdata` never import each other (DQ-6).
 - `ttytest` and `apptest` are imported by `_test.go` files only (D-15, A-24).
-- No type alias survives a batch (C-4).
+- No type alias into the split trees survives a batch (C-4, GP-11).
 - Nothing outside `modes/tty` imports `frame`, `controls` or `ttytest`; Go's `internal/` rule holds it
   (C-5).
 
-`mapview` imports `console` for one constant, `NoTransmitter` (`modes/tty/map_prop_origin.go:51`); the
-map batch moves it to the kit if the pilot shows that reads better.
+`NoTransmitter`, the one constant the map reads from the console (`modes/tty/map_prop_origin.go:51`), moves to
+the kit in B2, so `mapview` does not import `console` (A-31).
 
 ## How the Router composes the two surfaces
 

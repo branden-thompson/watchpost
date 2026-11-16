@@ -26,7 +26,7 @@ dissolving into the Director's step, is in 0.19.6: it is 0.19.7 (D-11). Charm is
 | Survey | nine lens agents over one computed dependency graph (D-6, A-4, A-5): `02-analysis/lens-*.md`, reconciled by the agent into one package map (D-7): `02-analysis/package-map.md`, the settled document every later finding is judged against |
 | Brief | `01-objectives/project-brief.md`, APPROVED (D-13) and amended (D-18): the cost and end state, the problem, metrics M1 to M7 for the four principles, R1 to R9, the scope |
 | Red team | DISCOVER exit, round 1: `08-reports/red-team-review.md`, its five forks ruled D-14 to D-18 |
-| Plan | `04-development/implementation-plan.md` (DRAFT, for the plan red team), drawn from `03-architecture-design/architecture.md` and its three designs; PLAN's forks ruled D-21 to D-26 |
+| Plan | `04-development/implementation-plan.md`, for the PLAN gate, drawn from `03-architecture-design/architecture.md` and its three designs; PLAN's forks ruled D-21 to D-26, the plan red team's (`08-reports/red-team-plan.md`) and the pilot's (`08-reports/pilot-report.md`) D-27 to D-32 |
 | M4's before | `08-reports/m4-before.md`: the blind trace on `e57afeaf`, 0 of 4; its keys in `08-reports/m4-key/`, never in a blind reviewer's copy |
 | Issue | GitHub #41, "v. 0.19.6 - Re-architecting": the brief as approved and amended |
 | Previous release | 0.19.5, shipped; its REFLECT is `../0.19.5-quality-pass/08-reports/reflect-report.md` (0.19.5 D-60) |
