@@ -278,3 +278,5 @@ says exactly what passed.
 | 2026-11-16T23:05:00Z | b531111d | a36fe2d12083 | verify-full | green | 6803 |
 | 2026-11-17T01:02:16Z | c68777a4 | 368e578e140c | verify | green | 6751 |
 | 2026-11-17T15:44:59Z | 8fee8f28 | 65f5c5628701 | verify-docs | green | 572 |
+| 2026-11-17T16:10:09Z | e49c8bf9 | 6821bf28b0ae | verify | FAILED (exit 2) | 0 |
+| 2026-11-17T16:52:04Z | e49c8bf9 | d44b9c400e6e | verify | green | 2486 |

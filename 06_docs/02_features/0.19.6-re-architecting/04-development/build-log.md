@@ -312,3 +312,23 @@ vetos at this time, will likely be contingent on UAT phase(s)").
 `make p10` on the efficiency cores: the check found no live finding, every in-scope row matched one,
 the 5 density rows in the diff stand at or over their floors, and all 167 rows carry a ratified date.
 The mirror, `06_docs/p10-ledger.md`, is regenerated at 167 rows and committed with this entry.
+
+## B0.6's app trace: `TestTheDeckIsTheSameUnderRandomActs`
+
+`app/deck_trace_test.go` drives the act surface the entry point hands out (design AP-7.2) with four
+fixed seeds of 150 acts each, and records every act's events, effects, reports, published messages,
+voice calls and MasterControl's state, one block an act. The golden, `app/testdata/deck_trace.golden`,
+is recorded on code identical to `e57afeaf`: since then B0 has added test support only (`apptest`,
+`ttytest`, `platform/declset`, the shared-lock fixture). The harness's choices past the design's
+words are A-39.
+
+**Seen failing first.** The first recording never settled: a scripted read that came home at once
+played the whole line-up inside one act, 10,000 steps. A read now stays on the air until the clock
+moves. With `DropCard` emptied by hand, the trace fails at the first `drop` act; the file was
+restored by copy.
+
+**Measured.** 5,603 lines, 365 KB, in 1.6 s on the efficiency cores. The record is identical over 30
+runs, and over 3 under `-race`. Its first form was 1.5 MB and `TestNoTrackedBinaries` refused it: a
+card's id is its place's coordinates, and the proposals and the line-up were said in full after
+every step. Cards are named by their place in the pool now, and a list that has not changed is said
+`(same)` (A-39, point 6).

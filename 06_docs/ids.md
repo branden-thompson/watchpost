@@ -2170,6 +2170,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-37 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-157 to D-160's details: (1) the menu row is named "Radio Propagation" (D-158), last of the tints, and shown… |
 | A-38 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The router trace's form, past CK-6's words (B0.6, A-29, RR-1). Bubble Tea's timers are named tick and every a… |
 | A-38 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-163's details: (1) the blank row after the legend is the picture's own status row, blank when the picture i… |
+| A-39 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The app trace's form, past AP-7.2's words (B0.6). (1) The main track's reader is a script that records the re… |
 | A-39 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-164 to D-167's details: (1) "bold white" is the window title's tone (MapPropPlace, derived from ModalTitle)… |
 | A-40 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The quality pass's choices (batch 13): (1) the Propagation block's age moves with the clock, as D-166 asks: t… |
 | A-41 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The quality pass's choices (batch 14): (1) a byte bound has its own visits a pass, so a dataset that cannot g… |
