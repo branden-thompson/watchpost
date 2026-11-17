@@ -277,3 +277,4 @@ says exactly what passed.
 | 2026-11-16T15:18:42Z | fc39a8a7 | 16b6d4cb7e97 | verify | green | 2184 |
 | 2026-11-16T23:05:00Z | b531111d | a36fe2d12083 | verify-full | green | 6803 |
 | 2026-11-17T01:02:16Z | c68777a4 | 368e578e140c | verify | green | 6751 |
+| 2026-11-17T15:44:59Z | 8fee8f28 | 65f5c5628701 | verify-docs | green | 572 |

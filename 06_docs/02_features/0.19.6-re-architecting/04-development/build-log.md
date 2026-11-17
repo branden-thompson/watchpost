@@ -298,3 +298,17 @@ Landed as `c68777a4` on `make verify-full` (6,803 s, green, the whole corpus); p
 patch was then applied back over it, its one conflict in the Makefile (`vuln-floor` beside
 `verify-full`) resolved by keeping both.
 
+
+## 2026-11-17: the P10 ledger at D-34, D-35 and A-36
+
+The HUM LEAD approved the ledger edits ("Ledger edits approved") and vetoed none of A-34 to A-38 ("No
+vetos at this time, will likely be contingent on UAT phase(s)").
+- **D-34.** `platform/declset` carries "FLOOR 1.00 over 5 changed functions" and `tools/wires` "FLOOR
+  0.20 over 5", each measured 2026-11-16.
+- **D-35.** `modes/tty/internal/ttytest` and `app/internal/apptest` have their rows, FLOOR 0.00 over 1
+  and over 2 changed functions.
+- **A-36.** `tools/authoring`'s floor reads "FLOOR 0.25 over 4 changed functions".
+
+`make p10` on the efficiency cores: the check found no live finding, every in-scope row matched one,
+the 5 density rows in the diff stand at or over their floors, and all 167 rows carry a ratified date.
+The mirror, `06_docs/p10-ledger.md`, is regenerated at 167 rows and committed with this entry.
