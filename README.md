@@ -584,9 +584,9 @@ rotation; any other value, and the default, is off (F-158).
 
 ## Building from source
 
-**1. What you need.** Go 1.26.10 or newer (`go.mod`). The map library, go-tuiMaps, requires it (its
-D-38; watchpost D-244), because below it the standard library carries vulnerabilities its code reaches,
-GO-2026-6809 the latest. CI and the releases build with 1.27.4. You also need git, python3 and GNU make
+**1. What you need.** Go 1.26.11 or newer (`go.mod`). Below it the standard library carries a
+vulnerability watchpost's code reaches, GO-2026-6859 the latest (0.19.6 D-12), and `make vuln-floor`
+checks the floor under its own toolchain. CI and the releases build with 1.27.4. You also need git, python3 and GNU make
 3.82 or newer. macOS ships 3.81, so `brew install make` and put its `gnubin` first on your `PATH`
 (`export PATH="$(brew --prefix)/opt/make/libexec/gnubin:$PATH"`). The first `make verify` needs the
 network, to fetch the pinned golangci-lint and govulncheck. The terminal UI kit (`go-studs`, MIT, same

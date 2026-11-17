@@ -605,20 +605,22 @@ after every move:
    - **If K1 is refused**, no production API exists. `:55` is then a reference that cannot be
      served without a test-only export (D-14's ruling, counted in CK-5), and the trace cannot cross
      the console's boundary.
-3. **A stable command description**, derived without running any command but Bubble Tea's own pure
-   wrapper. The name is `runtime.FuncForPC` of the command, verified on `bubbletea/v2@v2.0.3`:
+3. **A stable command description** (as built, A-29 and A-38). `runtime.FuncForPC` of the command
+   names Bubble Tea's own, verified on `bubbletea/v2@v2.0.3`:
    - `-` for nil;
-   - `tick` for `charm.land/bubbletea/v2.Tick.func1`;
-   - `every` for `charm.land/bubbletea/v2.Every.func1`;
-   - for `charm.land/bubbletea/v2.compactCmds[...].func1`, which `Batch` and `Sequence` share,
-     the trace calls the closure. It only returns its slice, as `tea.BatchMsg` or `tea.sequenceMsg`.
-     The trace then writes `batch(d1,d2,…)` or `seq(…)`, recursing to a fixed bound;
-   - `fn` for any other function.
+   - `tick` for `charm.land/bubbletea/v2.Tick.func1` and `every` for `charm.land/bubbletea/v2.Every.func1`,
+     never waited out;
+   - for `charm.land/bubbletea/v2.compactCmds[...].func1`, which `Batch` and `Sequence` share, the trace
+     calls the closure, which only returns its slice, and writes `batch(d1,d2,…)` or `seq(…)`,
+     recursing to a fixed bound.
 
-   A watchpost closure is not named, because its runtime name carries the package path and the
-   receiver. The kit move changes the first. 2a re-homes 381 methods' receivers, which changes the
-   second. Every watchpost tick goes through `tea.Tick` (`tickEvery`, `dashboard.go:1059-1061`), so
-   ticks read `tick` before and after any move.
+   Every other command is the app's: the trace runs it, bounded at 10 s, and names it by the index
+   of its reply's type in a fixed table (`traceReplies`). A runtime name would carry the package path
+   and the receiver, which the kit move and 2a's 381 re-homed receivers change; an index does not.
+   Each reply is fed back through the Router once, and the commands it returns are described, not
+   run. Every watchpost tick goes through `tea.Tick` (`tickEvery`) or, on the map, the Dashboard's
+   tick hook, which the trace answers at once with `heldTicks`, so ticks read the same before and
+   after any move.
 
 **Confidence:** high on the form and the names (printed by `design-data/CK/cmdname`). The
 widened alphabet is batch 0's, and the map's messages after 2b are MS's (Touches).

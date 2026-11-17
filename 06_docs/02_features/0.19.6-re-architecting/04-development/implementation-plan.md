@@ -148,7 +148,7 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
   `vet-tags`, `quality-bench` and `test-platforms` name `./...` trees or fail on no tests run; the
   band-writer check stops matching the qualifier `tty`; the `wires` sentinel and TG-6's three
   export-sensitive checks are pinned. The reply-routing guard fails on a stale excuse, such as
-  `"tickMsg"` once the kit moves it (`modes/tty/router_lookup_test.go:134-137`). `scripts/quality/p10-unmatched.sh`'s
+  `"tickMsg"` once the kit moves it (`modes/tty/router_lookup_test.go:TestEveryWindowReplyIsRoutedBackToTheWindow`). `scripts/quality/p10-unmatched.sh`'s
   header says its prefix rule is its own, not the tool's (D-31).
 - **B0.4 `TestMain` invariants that travel (TG-3, RX-6, CK-7, D-24, A-29).** B0 creates
   `modes/tty/internal/ttytest` holding `Main` alone and `app/internal/apptest` holding the invariants
@@ -184,9 +184,9 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
   outside; the tone-latency benchmark's 185 allocations as a pin; benchstat pinned to a version; the
   escape probe by function and type, the model-size probe ("not larger"), the inlining count per
   callee (A-26). Startup and binary size recorded.
-- **B0.8 The order of things that must not move.** `windowLayers()`'s order (`app/maplayers.go:205-211`,
+- **B0.8 The order of things that must not move.** `windowLayers()`'s order (`app/maplayers.go:windowLayers`,
   PB-4); a test-held list of the post-update steps, parsed from `Dashboard.update`
-  (`modes/tty/dashboard.go:1156-1168`) as the listed names in order, each exactly once, so 2a's added
+  (`modes/tty/dashboard.go:update`) as the listed names in order, each exactly once, so 2a's added
   `Env` build does not edit it; seen failing on a swapped pair; a behaviour test that a non-map
   message still makes `armPropOptions` re-ask (design MS-5); the pinned set of message types across the
   tree (R8, RR F7).
@@ -197,7 +197,7 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
   survives a batch (GP-11); `SevereTab`, `MapView` and `TickerCategory` exist today and are listed.
 - **B0.10 The citation lint keyed on the package root (TG-4, RC-5)**, and "`git log` on the file"
   read as `git log --follow` (`docs/where-things-happen.md:147-149`, `06_docs/ids.md`).
-  `cmd/watchpost/extending_symbols_test.go:57` matches by path, not base name (TG-10).
+  `cmd/watchpost/extending_symbols_test.go:indexModule` matches by path, not base name (TG-10).
 - **B0.11 The shared lock (D-16, A-19, A-32).** `TestNoSectionUnderTheSharedLockTakesItOrLeavesItsPackage`,
   floor 25 sections, reading the planned file-to-package map (an unmapped file fails; the map is
   deleted once B7 lands): any call under the lock that crosses a planned package fails, and a call
@@ -216,7 +216,7 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
   and MS-7's 288 and 120; a difference sends the targets back to the HUM LEAD. Its `e57afeaf` outputs
   are committed. Seen failing on a planted pass-through.
 - **B0.13 The release record and the floor (A-12, A-29, D-12).** `releaseRecord` points at 0.19.6
-  (`cmd/watchpost/record_test.go:19-20`), and each record test gets its 0.19.6 form: the brief stands
+  (`cmd/watchpost/record_test.go:releaseRecord`), and each record test gets its 0.19.6 form: the brief stands
   in for `requirements.md`, the FR-7 test stays on 0.19.0's folder, and the plan's and the
   architecture's line citations become symbol citations. `govulncheck` runs at the `go` floor in CI and
   the release job, seen failing at 1.26.10; then the floor is raised to go 1.26.11, with
@@ -231,18 +231,18 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
 
 - **B1.1 F-158's owed test** (design AP-7.1): `TestACutBackUnderAHazardReadKeepsTheBedDown`, written
   as `app/cutback_hazard_test.go`, its reach deck-only by the graph tool; seen failing under the new
-  vetted mutant `mF158` at `app/executors.go:301`. Its first assertion is a precondition that fails
+  vetted mutant `mF158` at `app/executors.go:run`. Its first assertion is a precondition that fails
   with "no longer exercises F-158" when 0.19.7's D-2 changes the step.
 - **B1.2 The vocabulary** (RM slice 3; JN-5): the misleading names RM-8 and JN-5 found, as A-rows; the
   `doc.go` and `docs/` rows.
 - **B1.3 RC-7's six disagreements** (package map §9 row 2): one window where the code has a stack
   (`docs/where-things-happen.md:15`, `:95`, `:128`; `docs/extending.md:291-294`; the comments at
-  `modes/tty/dashboard.go:641`, `:1590`).
+  `modes/tty/dashboard.go:Dashboard`, `:open`).
 - **B1.4 M4's before, its doc findings** (`../08-reports/m4-before.md`): Walkthrough 6's golden for a
   map row (`docs/extending.md:190`) and its "Search for" sentences (`:173-174`);
   `docs/where-things-happen.md:67`'s time row, naming `cardPulledShort` and `spokenWhen` as the places
-  that choose a date; `UIPrefs.MapPropRefresh`'s comment (`modes/tty/dashboard.go:458`);
-  `modes/tty/broadcaster_manifest.go:121-122`'s cell count; a CHANGELOG `[Unreleased]` heading, and a
+  that choose a date; `UIPrefs.MapPropRefresh`'s comment (`modes/tty/dashboard.go:MapPropRefresh`);
+  `modes/tty/broadcaster_manifest.go:cardPulledShort`'s cell count; a CHANGELOG `[Unreleased]` heading, and a
   walkthrough line that every user-visible change gets an entry.
 - **B1.5 M4's midpoint (D-29).** A fresh blind reviewer traces the four tasks on the unchanged layout
   with B1's docs, on a copy without this release's folder; the grade is filed beside the before.
@@ -266,7 +266,7 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
   `kit-CK.tsv` and `tests-CK-refs.tsv` are the batch's lists, regenerated by B0.12's tool.
 - **Mutants:** 12 kit anchors re-point by path; 12 anchors that name a kit symbol re-point under A-25.
 - **Record:** 0.19.6's build log and its as-built map are created; `TestTheAsBuiltMapIsKeptInStep`
-  learns the feature (`app/maps_test.go:62-65`).
+  learns the feature (`app/maps_test.go:TestTheAsBuiltMapIsKeptInStep`).
 
 ## B3: the console (`modes/tty/console`)
 
@@ -285,7 +285,7 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
   `Router` rows and `Dashboard.View`'s are re-proved per surface: the console's `Update` and `View` are
   in another package, the Dashboard's are unchanged, and neither surface holds a Router field.
 - **Docs:** `0.16.0-broadcaster-ui/00-REQUIRED-READING.md`'s `broadcaster_rail.go` row; the vocabulary
-  row's `modes/tty/console/broadcaster.go:New`.
+  row's `console.New`, in the new `modes/tty/console/broadcaster.go`.
 
 ## B4: the map's 2a, in place, four gated commits
 
@@ -294,7 +294,7 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
    (its hand-listed rows; `switchRow`'s fall-through, a guard only) land here, green on today's code
    (A-31, A-33).
 2. **The seam types.** `Env` (plain values, no derived sizes, no hook), `Want`, `Step`, and
-   `Config.Map *Hooks`, exported under its final name; `app/dashboard.go:424-466`'s assignments become
+   `Config.Map *Hooks`, exported under its final name; `app/dashboard.go:mapConfig`'s assignments become
    one keyed literal. The Router's `Timed` is renamed so a stale `cfg.Timed` write fails to compile;
    tests change hooks only by copy-on-write (A-31).
 3. **The methods.** The 387 methods re-homed, in file groups; S8 to S10 cut at the save, its batch
@@ -314,7 +314,7 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
 - **Prep:** the seven shared helpers gathered and exported (`EveryTick`, `LockedCopy`,
   `SavePreference`, `UserCacheSubdir`, `CacheDir`, `UserAgent`, `RequestStats`); `app`'s pure test
   helpers gathered into `apptest` beside B0's helper; the local `run` in `startSchedule`
-  (`app/schedule.go:141`) renamed; `app/every.go`'s P10-02 row re-keyed by symbol.
+  (`app/schedule.go:startSchedule`) renamed; `app/every.go`'s P10-02 row re-keyed by symbol.
 - **Move:** `app/internal/run` with its tests; `app/schedule_test.go`'s callers re-qualified.
 - **P10:** the row re-keyed by path; `run`'s density row (D-31; the pilot's hand count puts it near
   0.5).

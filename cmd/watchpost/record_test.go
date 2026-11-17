@@ -16,8 +16,14 @@ import (
 	"testing"
 )
 
-// releaseRecord is the release in flight's feature folder.
-var releaseRecord = filepath.Join("..", "..", "06_docs", "02_features", "propagation-overlays")
+// releaseRecord is the release in flight's feature folder (0.19.6 B0.13).
+var releaseRecord = filepath.Join("..", "..", "06_docs", "02_features", "0.19.6-re-architecting")
+
+// record0190 is 0.19.0's feature folder. Its requirements stay held here
+// (0.19.6 A-37): 0.19.6 has no requirements document and its brief's rows
+// name instruments, not tests, while 0.19.0's requirements name over a
+// hundred tests that every move of 0.19.6 must keep.
+var record0190 = filepath.Join("..", "..", "06_docs", "02_features", "propagation-overlays")
 
 // requirementRow is a requirements table row: its ID first ("FR-4.10",
 // "NFR-2", "IS-1").
@@ -112,9 +118,26 @@ func declaredTests(t *testing.T, root string) map[string]bool {
 	return out
 }
 
-// unlinedRefs are the ruling rows that name a Go file without its line,
-// each with the first such file.
-func unlinedRefs(rulings string) []string {
+// wholeFileClaim is a ruling row's claim about a Go file as a whole: a count
+// of what it holds, or the file as the unit a move carries or keeps, which no
+// line could stand for (0.19.6 A-37).
+type wholeFileClaim struct{ row, file string }
+
+// wholeFileClaims are 0.19.6's, fixed at B0: a row added later that names a
+// file without its line is held to the rule unless it is listed here.
+var wholeFileClaims = []wholeFileClaim{
+	{"D-16", "app/bedrelay.go"}, {"D-16", "app/mapwaves.go"}, {"D-16", "inject.go"},
+	{"D-24", "app/cast.go"}, {"D-24", "app/voices.go"}, {"D-24", "app/hostfacts.go"}, {"D-24", "app/cast_test.go"},
+	{"A-19", "app/bedrelay.go"}, {"A-19", "app/pool.go"}, {"A-19", "app/dashboard.go"},
+	{"A-19", "app/history.go"}, {"A-19", "app/inject.go"}, {"A-19", "app/mapwaves.go"},
+	{"A-23", "saychildren.go"}, {"A-23", "hangup.go"}, {"A-23", "lazymemo.go"}, {"A-23", "timing.go"},
+}
+
+// unlinedRefs are the ruling rows that name a Go file without its line or a
+// symbol, each with the file. A bare suffix (`_test.go`) names no file, a
+// file the tree does not hold is a planned name no line can be cited in, and
+// a listed whole-file claim stands as it is.
+func unlinedRefs(rulings string, exists func(string) bool) []string {
 	var out []string
 	for _, line := range strings.Split(rulings, "\n") {
 		row := rulingRow.FindStringSubmatch(line)
@@ -122,34 +145,67 @@ func unlinedRefs(rulings string) []string {
 			continue
 		}
 		for _, m := range goFileRef.FindAllStringSubmatch(line, -1) {
-			if m[2] == "" {
-				out = append(out, row[1]+": "+m[1])
-				break
+			if m[2] != "" || strings.HasPrefix(m[1], "_") || !exists(m[1]) || slices.Contains(wholeFileClaims, wholeFileClaim{row[1], m[1]}) {
+				continue
 			}
+			out = append(out, row[1]+": "+m[1])
 		}
 	}
 	return out
 }
 
+// rowNames reports whether a ruling row names a Go file in backticks.
+func rowNames(rulings, row, file string) bool {
+	for _, line := range strings.Split(rulings, "\n") { // bounded by the rulings (P10-02)
+		if strings.HasPrefix(line, "| "+row+" ") {
+			return strings.Contains(line, "`"+file+"`")
+		}
+	}
+	return false
+}
+
+// inTree reports whether the tree holds a Go file, named by its path or, for
+// a bare name, anywhere under app and modes/tty.
+func inTree(root string) func(string) bool {
+	return func(name string) bool {
+		if strings.Contains(name, "/") {
+			_, err := os.Stat(filepath.Join(root, name))
+			return err == nil
+		}
+		for _, dir := range []string{"app", "modes/tty"} { // the two trees (P10-02)
+			if matches, _ := filepath.Glob(filepath.Join(root, dir, name)); len(matches) > 0 {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 // readRecord is one of the release's documents.
 func readRecord(t *testing.T, rel string) string {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join(releaseRecord, rel))
+	return readRecordIn(t, releaseRecord, rel)
+}
+
+// readRecordIn is one of a feature folder's documents.
+func readRecordIn(t *testing.T, folder, rel string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(folder, rel))
 	if err != nil {
 		t.Fatal(err)
 	}
 	return string(b)
 }
 
-// TestEveryRequirementsTestIsInAPlanTask is W0.4 (A-29): every test the
-// requirements name is carried by a plan task, so none is left unbuilt
-// without the plan saying so.
+// TestEveryRequirementsTestIsInAPlanTask is 0.19.0 W0.4 (A-29): every test
+// the requirements name is carried by a plan task, so none is left unbuilt
+// without the plan saying so. It reads 0.19.0's record (0.19.6 A-37).
 func TestEveryRequirementsTestIsInAPlanTask(t *testing.T) {
-	names := testsNamed(readRecord(t, "01-objectives/requirements.md"))
+	names := testsNamed(readRecordIn(t, record0190, "01-objectives/requirements.md"))
 	if len(names) < 100 {
 		t.Fatalf("the requirements name %d tests; the reading is broken, or the rows are", len(names))
 	}
-	if missing := notInPlan(names, readRecord(t, "04-development/implementation-plan.md")); len(missing) > 0 {
+	if missing := notInPlan(names, readRecordIn(t, record0190, "04-development/implementation-plan.md")); len(missing) > 0 {
 		t.Errorf("the requirements name %d tests no plan task carries: %v", len(missing), missing)
 	}
 }
@@ -158,9 +214,10 @@ func TestEveryRequirementsTestIsInAPlanTask(t *testing.T) {
 // test the requirements name is declared in the tree - a paired library's,
 // written "go-ionomaps `TestX`", passed over, unchecked (RC-8) - so no
 // requirement leans on a test of watchpost's that was never written or has
-// since been renamed.
+// since been renamed. It reads 0.19.0's record (0.19.6 A-37), so a test a
+// 0.19.6 move renames or loses is caught here too.
 func TestEveryRequirementsTestExists(t *testing.T) {
-	names := testsNamed(readRecord(t, "01-objectives/requirements.md"))
+	names := testsNamed(readRecordIn(t, record0190, "01-objectives/requirements.md"))
 	declared := declaredTests(t, filepath.Join("..", ".."))
 	if len(declared) < 1000 {
 		t.Fatalf("the tree declares %d tests; the walk is broken", len(declared))
@@ -177,8 +234,13 @@ func TestEveryRulingNamingCodeCitesItsLine(t *testing.T) {
 	if n := len(goFileRef.FindAllString(rulings, -1)); n < 50 {
 		t.Fatalf("the rulings name %d Go files; the reading is broken", n)
 	}
-	if bad := unlinedRefs(rulings); len(bad) > 0 {
+	if bad := unlinedRefs(rulings, inTree(filepath.Join("..", ".."))); len(bad) > 0 {
 		t.Errorf("ruling rows name a Go file without its line: %v", bad)
+	}
+	for _, c := range wholeFileClaims { // bounded by the list (P10-02)
+		if !strings.Contains(rulings, "\n| "+c.row+" ") || !rowNames(rulings, c.row, c.file) {
+			t.Errorf("wholeFileClaims lists %s naming %s, which the row does not: drop it", c.row, c.file)
+		}
 	}
 }
 
@@ -271,7 +333,7 @@ func unresolvedCitations(doc, root string) []string {
 func TestEveryCodeCitationResolves(t *testing.T) {
 	root := filepath.Join("..", "..")
 	cited := 0
-	for _, doc := range []string{"00-REQUIRED-READING.md", "01-objectives/requirements.md", "03-architecture-design/architecture.md", "04-development/implementation-plan.md"} {
+	for _, doc := range []string{"00-REQUIRED-READING.md", "01-objectives/project-brief.md", "03-architecture-design/architecture.md", "04-development/implementation-plan.md"} {
 		text := readRecord(t, doc)
 		cited += len(citedSymbol.FindAllString(text, -1))
 		if bad := unresolvedCitations(text, root); len(bad) > 0 {
@@ -310,9 +372,11 @@ func TestTheRecordChecksFailOnAPlantedGap(t *testing.T) {
 	if got := notInPlan(testsNamed(req), plan+" `TestB`"); len(got) != 0 {
 		t.Errorf("the plan carrying every test: %v", got)
 	}
-	rulings := "| D-1 | q `app/app.go:190` | a |\n| A-2 | (`modes/tty/x.go`) |\n| A-3 | `a/b.go:3-9` |\nprose `c.go`\n"
-	if got := unlinedRefs(rulings); !slices.Equal(got, []string{"A-2: modes/tty/x.go"}) {
-		t.Errorf("a ruling without its line: %v", got)
+	rulings := "| D-1 | q `app/app.go:190` | a |\n| A-2 | (`modes/tty/x.go`) |\n| A-3 | `a/b.go:3-9` |\nprose `c.go`\n" +
+		"| D-16 | `app/bedrelay.go` 9 |\n| D-17 | `app/bedrelay.go` 9, `_test.go` files, `planned.go` |\n"
+	held := func(name string) bool { return name != "planned.go" }
+	if got := unlinedRefs(rulings, held); !slices.Equal(got, []string{"A-2: modes/tty/x.go", "D-17: app/bedrelay.go"}) {
+		t.Errorf("a ruling without its line: %v (a listed whole-file claim, a suffix and a planned name pass)", got)
 	}
 }
 
@@ -453,7 +517,7 @@ func fr7Gaps(requirements, plan string) []string {
 // TestEveryRequirementsTestExists holds each to the tree and make verify runs
 // it; a planted gap is reported.
 func TestEveryFR7RowNamesItsTest(t *testing.T) {
-	if gaps := fr7Gaps(readRecord(t, "01-objectives/requirements.md"), readRecord(t, "04-development/implementation-plan.md")); len(gaps) > 0 {
+	if gaps := fr7Gaps(readRecordIn(t, record0190, "01-objectives/requirements.md"), readRecordIn(t, record0190, "04-development/implementation-plan.md")); len(gaps) > 0 {
 		t.Errorf("FR-7's rows do not name their tests: %v", gaps)
 	}
 	req := "| FR-7.1 *(0.19.3)* | a | D-1 | `TestA` |\n| FR-7.2 *(0.19.3)* | b | D-2 | `TestB` |\n| FR-7.3 *(0.19.3)* | c | D-3 | `TestC` |\n| FR-7.4 *(0.19.3)* | d | D-4 | as before |\n"

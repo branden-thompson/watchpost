@@ -324,7 +324,9 @@ meant, and the failure prints the first line that differs. To accept a change:
   refuses to run the oracle under 3.81 and says so by name. On macOS: `brew install make`, then put
   `/opt/homebrew/opt/make/libexec/gnubin` at the front of `PATH` so `make` resolves to 4.x.
 - `vuln` is `govulncheck`, which downloads the tool on each run, and `lint` fetches the pinned
-  golangci-lint the first time — the two steps that need the network. `make tree-free` says whether a gate run is already in flight; do not edit the tree while
+  golangci-lint the first time — the two steps that need the network. `vuln-floor` runs the same scan
+  under the Go release `go.mod` names as the floor, so it also needs that toolchain, which the `go`
+  command downloads the first time. `make tree-free` says whether a gate run is already in flight; do not edit the tree while
   one is.
 - New render primitives are built **on demand** — add them when a view needs them, never
   speculatively ([architecture §10.10](../06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md), item 5).

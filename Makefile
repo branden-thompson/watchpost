@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: verify-full hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
+.PHONY: verify-full hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln vuln-floor lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
 
 BINARY := watchpost
 DIST   := dist
@@ -78,6 +78,16 @@ GOVULNCHECK_VERSION := v1.8.0
 
 vuln:
 	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
+
+# THE SAME SCAN AT THE FLOOR (0.19.6 D-12). `vuln` runs under the toolchain the
+# gates are proven on, so it judges the standard library a release is built
+# with. This runs under the Go release go.mod's go directive names, the oldest
+# a user may build from source with, so a floor below a standard-library fix
+# fails here rather than shipping. Seen failing at go 1.26.10 on GO-2026-6859.
+# An empty GO_FLOOR names no toolchain, and the go command refuses it.
+GO_FLOOR := $(shell sed -n 's/^go //p' go.mod)
+vuln-floor:
+	GOTOOLCHAIN=go$(GO_FLOOR) go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 # Import-direction gate: modes/* may import platform/* but NEVER domains/* (architecture §1).
 lint-imports:
@@ -308,7 +318,7 @@ verify:
 verify-full:
 	@go run ./tools/treelock -name verify-full -- go run ./tools/runlog -lane verify-full -- $(MAKE) --no-print-directory verify-gates MUTANT_SCOPE=full
 
-verify-gates: fmt vet vet-tags tidy vuln race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
+verify-gates: fmt vet vet-tags tidy vuln vuln-floor race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # THE DOCS LANE (go-tuiMaps v0.2.0 D-15; watchpost 0.18.0 D-38). A change that

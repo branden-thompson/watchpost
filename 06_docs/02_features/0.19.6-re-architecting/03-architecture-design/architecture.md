@@ -73,7 +73,7 @@ flowchart TD
 - Nothing outside `modes/tty` imports `frame`, `controls` or `ttytest`; Go's `internal/` rule holds it
   (C-5).
 
-`NoTransmitter`, the one constant the map reads from the console (`modes/tty/map_prop_origin.go:51`), moves to
+`NoTransmitter`, the one constant the map reads from the console (`modes/tty/map_prop_origin.go:propOriginNow`), moves to
 the kit in B2, so `mapview` does not import `console` (A-31).
 
 ## How the Router composes the two surfaces
@@ -88,8 +88,8 @@ flowchart LR
   S -->|SettingsView in, SettingsWant out| M
 ```
 
-- The Router is the program's model, always (R4, `app/router_owner_test.go:17`). Both surfaces are
-  concrete fields; nothing is boxed in an interface on the frame path (`modes/tty/router.go:502-505`).
+- The Router is the program's model, always (R4, `app/router_owner_test.go:TestTheProgramsModelIsAlwaysTheRouter`). Both surfaces are
+  concrete fields; nothing is boxed in an interface on the frame path (`modes/tty/router.go:View`).
 - The console takes its construction values once (`Opening`) and its per-update values by
   `SetMirror`, a pointer receiver measured with no copy (A-21). Its clock is the Dashboard's, handed
   over by `NewRouter` (D-21).

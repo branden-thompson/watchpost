@@ -86,7 +86,7 @@ after, at REVIEW.
   documents and comments name; and the atlas. The body-hash union check proves nothing else changed
   (A-12). A move commit first shows the instruments failing on a deliberately partial move (C-11).
 - **R4** Charm and Bubble Tea are used through their interfaces as they are (D-3). The program's
-  model is always the Router (`TestTheProgramsModelIsAlwaysTheRouter`, `app/router_owner_test.go:17`),
+  model is always the Router (`TestTheProgramsModelIsAlwaysTheRouter`, `app/router_owner_test.go:TestTheProgramsModelIsAlwaysTheRouter`),
   and the post-update steps stay at the root in today's order, held by a test (A-12).
 - **R5** The shared deck is not split (K-3): it moves into `app/internal/deck` whole.
 - **R6** Every batch redraws its diagrams and regenerates the atlas in the same commit, and moves its

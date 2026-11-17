@@ -52,6 +52,7 @@ jobs:
       - run: make lint # golangci-lint + staticcheck, as a baseline ratchet
       - run: make tidy
       - run: make vuln
+      - run: make vuln-floor # the same scan under go.mod's floor, the oldest Go a user may build with (0.19.6 D-12)
       - run: make race
       - run: make test-say # the speech safety test, alone (F-176)
         env: # GitHub's macOS runner has say and renders about 236 bytes a sentence: the property cannot be observed there, and the step says NOT RUN (F-52, D-254)

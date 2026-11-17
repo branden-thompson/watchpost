@@ -15,6 +15,7 @@ vet
 vet-tags
 tidy
 vuln
+vuln-floor
 race
 test-say
 lint

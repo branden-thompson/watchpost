@@ -17,7 +17,7 @@ three of the first kind and ratified an exemption rather than perform the second
 | Rule | Where |
 |---|---|
 | `AP-HIST-01`, `AP-DEAD-01`, `SN-02`, `SN-03`, `AP-SHELL-01`, `AP-OK-01` and `AP-CITE-01`, with `AP-CAPS-01` as a soft warning (`SN-02` and `AP-HIST-01` in part) | `tools/authoring`, `make lint-authoring` |
-| `SEC-04` | `make vuln` (`govulncheck`) |
+| `SEC-04` | `make vuln` (`govulncheck`), and `make vuln-floor` at `go.mod`'s floor |
 | `P10-01..10` | `make p10` — the harness CLI and ledger live outside the public tree, so it is a LOCAL gate |
 | closed-set reachability | `tools/wires` |
 | duplicate operations | `tools/dupes` |

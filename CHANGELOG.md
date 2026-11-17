@@ -2,6 +2,15 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [Unreleased]
+
+### Security
+- **The module floor is Go 1.26.11,** the first on the Go 1.26 line with GO-2026-6859 fixed, the race on
+  request headers in `net/http`'s `MaxBytesReader` that 0.19.5's build already carried the fix for. A
+  build from source at the old floor, 1.26.10, carried it: `govulncheck` finds it reachable through the
+  radio's streams. Every gate now also runs `govulncheck` under the floor's toolchain
+  (`make vuln-floor`), so a floor below a standard-library fix fails the build.
+
 ## [0.19.5] — 2026-11-11
 
 ### Security

@@ -294,3 +294,7 @@ is gated by the new commit gate.
   compiling as on the last green gate, the tree unchanged. That ran on the efficiency cores at the
   lowest priority, never above 8 cores, against 1,907 to 3,512 s on every core at full power by copy.
 
+Landed as `c68777a4` on `make verify-full` (6,803 s, green, the whole corpus); pushed. The B0.6/B0.13
+patch was then applied back over it, its one conflict in the Makefile (`vuln-floor` beside
+`verify-full`) resolved by keeping both.
+
