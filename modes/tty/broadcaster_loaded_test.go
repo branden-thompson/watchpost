@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -178,7 +179,7 @@ func TestObserverKeepsItsExtendedDays(t *testing.T) {
 // pool's rows and passes the frame budget too: 351 allocations against 464 of
 // five-percent headroom.
 //
-// SO THE ROWS ARE MEASURED ON THEIR OWN, where 351 is most of the number rather
+// THE ROWS ARE MEASURED ON THEIR OWN, where 351 is most of the number rather
 // than four percent of it. The budget stays a ratchet for DRIFT; this is the
 // rule.
 func TestTheLineupRowsBuildNoDayCells(t *testing.T) {
@@ -195,7 +196,7 @@ func TestTheLineupRowsBuildNoDayCells(t *testing.T) {
 	}
 	_ = b.lineupRows(cards, idx)
 
-	got := testing.AllocsPerRun(50, func() { _ = b.lineupRows(cards, idx) })
+	got := allocpin.Pin(t, "console running-order rows", 50, func() { _ = b.lineupRows(cards, idx) })
 	t.Logf("lineupRows over %d slots: %.0f allocs (budget %d)", MainTrackSlots, got, bcLineupRowAllocs)
 	if got > bcLineupRowAllocs {
 		t.Errorf("building the running order's rows allocates %.0f, budget %d — the day cells "+

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 )
 
 // The time-to-tone-start instrument (07-readiness/perf-protocol.md §1 item 1 is
@@ -109,4 +111,68 @@ func BenchmarkTimeToToneStart(b *testing.B) {
 	}
 
 	b.ReportMetric(float64(total.Nanoseconds())/float64(b.N), "ns/tone")
+}
+
+// TestTimeToToneAllocBudget holds the time-to-tone path's allocations, the
+// span BenchmarkTimeToToneStart times, from the station's wiring to the tone
+// being asked for (0.19.6 A-17, M1): 185 allocations a takeover at 0.19.6
+// DISCOVER. The wall time stays the benchmark's, reconciled with D-2 in 0.19.7
+// (PB-8); the count is deterministic, so it is held now. Each run builds its
+// deck outside the window, as the benchmark builds it with the timer stopped.
+func TestTimeToToneAllocBudget(t *testing.T) {
+	if raceEnabled {
+		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
+	}
+	fresh := breakingFixture()
+	var cancels []context.CancelFunc
+	defer func() {
+		for _, cancel := range cancels { // bounded by the runs (P10-02)
+			cancel()
+		}
+	}()
+	var voices []*toneStampVoice
+	// A TAKEOVER LEAVES GOROUTINES that end after its context is cancelled, and
+	// one still running allocates inside the next run's window. Without the
+	// wait the count reads 186 in some runs and the bytes move 0.5 % between
+	// them. idle is the goroutines before any takeover.
+	idle := runtime.NumGoroutine()
+	takeover := func() func() {
+		for deadline := time.Now().Add(time.Second); runtime.NumGoroutine() > idle; { // bounded by the deadline (P10-02)
+			if time.Now().After(deadline) {
+				t.Fatalf("a takeover's goroutines did not end: %d running, %d before any", runtime.NumGoroutine(), idle)
+			}
+			time.Sleep(time.Millisecond)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancels = append(cancels, cancel)
+		voice := &toneStampVoice{cancel: cancel}
+		voices = append(voices, voice)
+		deck := &tickerDeck{
+			send:  func(tea.Msg) {},
+			muted: &atomic.Bool{}, // not muted: an audible takeover sounds the tone
+			voice: testArbiter(voice, nil),
+			seen:  loadSeen(t.TempDir(), time.Hour),
+		}
+		return func() { newStation(t, deck).takeover(ctx, fresh) }
+	}
+	// The first takeover in a process carries one-time costs, so one runs
+	// before the window and the pin is the path every later takeover walks.
+	takeover()()
+	c := allocpin.MeasureEach(t, 20, takeover)
+	allocpin.ReportCount(t, "time to tone", c.Allocs, "the fixture is declared at the wall clock and they fell 0.2 % over ten runs")
+	for i, v := range voices { // bounded by the runs (P10-02)
+		if v.at.IsZero() {
+			t.Fatalf("run %d never asked for the tone: the pin is measuring nothing", i)
+		}
+	}
+	// Measured 185 allocations at 0.19.6 B0: the budget is the measurement ×
+	// 1.05, as the other pins' are, and tools/pins holds the count to its
+	// baseline's maximum. THE BYTES ARE NOT HELD: the fixture is declared at
+	// the wall clock (I-8), and they fell from 21,726 to 21,680 over ten runs
+	// in ten minutes, past the 0.1 % the comparator allows. 0.19.6 A-17 holds
+	// the count.
+	const allocs = 185 * 1.05
+	if float64(c.Allocs) > allocs {
+		t.Errorf("a takeover to its tone costs %d allocations; its budget is %.0f", c.Allocs, allocs)
+	}
 }

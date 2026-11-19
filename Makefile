@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: verify-full hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln vuln-floor lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
+.PHONY: verify-full hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln vuln-floor lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget pins-selftest property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
 
 BINARY := watchpost
 DIST   := dist
@@ -318,7 +318,7 @@ verify:
 verify-full:
 	@go run ./tools/treelock -name verify-full -- go run ./tools/runlog -lane verify-full -- $(MAKE) --no-print-directory verify-gates MUTANT_SCOPE=full
 
-verify-gates: fmt vet vet-tags tidy vuln vuln-floor race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
+verify-gates: fmt vet vet-tags tidy vuln vuln-floor race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget pins-selftest property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # THE DOCS LANE (go-tuiMaps v0.2.0 D-15; watchpost 0.18.0 D-38). A change that
@@ -590,8 +590,31 @@ lint-update:
 # the failure is silent in the worst direction: the test passes locally, is
 # listed by `go test -list`, and is never selected. Unanchored, a pin is reached
 # because of what it IS rather than what it was remembered to be called.
+#
+# THREE PINS ARE NAMED, not renamed (0.19.6 PB-7): they were outside the
+# pattern, and their names are killer records' names. A race-skipped test that
+# measures allocations and that the pattern misses fails
+# TestEveryRaceSkippedPinIsInTheAllocBudget (cmd/watchpost).
+#
+# THE COMPARATOR READS THE RUN (0.19.6 C-8, A-10): every pin reports through
+# internal/allocpin, and tools/pins holds each to its baseline, the maximum over
+# 10 runs on code identical to e57afeaf: any count above it fails, any byte
+# figure more than 0.1 % above it, a baseline pin with no measurement, a test
+# that reports none. The run goes to a file, not a pipe: a pipe's exit is its
+# last command's, so a red go test would read green. When go test fails the
+# comparator still reads the run, to name the failure, and the recipe fails.
+# The two gate tests that carry this recipe's name measure nothing, so -skip
+# leaves them to `make race`.
+PINS_BASELINE ?= 06_docs/perf/pins-e57afeaf.tsv
 alloc-budget:
-	go test -count=1 -run 'AllocBudget' ./...
+	@mkdir -p $(DIST)
+	go test -count=1 -json -run 'AllocBudget|^TestRouterCostsObserverAlmostNothingPerFrame$$|^TestLayoutOncePerViewAndKey$$|^TestTheLineupRowsBuildNoDayCells$$' -skip '^TestTheAllocBudgetSelectsItsPins$$|^TestEveryRaceSkippedPinIsInTheAllocBudget$$' ./... > $(DIST)/alloc-budget.json || { go run ./tools/pins -baseline $(PINS_BASELINE) < $(DIST)/alloc-budget.json; exit 1; }
+	go run ./tools/pins -baseline $(PINS_BASELINE) < $(DIST)/alloc-budget.json
+
+# And the comparator can still fail: against the committed baseline, every pin
+# at its maximum passes and each planted fault fails.
+pins-selftest:
+	@go run ./tools/pins -self-test -baseline $(PINS_BASELINE)
 
 # The map's guard 3 at its full count (0.18.0 W2.4): 10,000 random sequences,
 # each printed map compared with a fresh render. Every `go test` runs 200; the

@@ -332,3 +332,46 @@ runs, and over 3 under `-race`. Its first form was 1.5 MB and `TestNoTrackedBina
 card's id is its place's coordinates, and the proposals and the line-up were said in full after
 every step. Cards are named by their place in the pool now, and a list that has not changed is said
 `(same)` (A-39, point 6).
+
+## B0.7, the pins: the comparator, its baseline, the three outside the gate, three new pins
+
+Every pin `make alloc-budget` runs reports through `internal/allocpin`, one line a measurement, and
+the recipe writes `go test -json` to a file that `tools/pins` reads, holding each to
+`06_docs/perf/pins-e57afeaf.tsv`: 50 pins, each one's range over 10 clean runs, on this tree, whose
+product code is `e57afeaf`'s. Any count above the range fails, any byte figure more than 0.1 % above
+it, a baseline pin with no measurement, a measurement with no row, a test that reports none, and any
+failed test or build in the stream. Its form past the plan's words is A-40.
+
+**The three outside the gate (PB-7).** `TestEveryRaceSkippedPinIsInTheAllocBudget` fails a test that
+skips under the race detector and measures allocations when alloc-budget's pattern misses it. On the
+old pattern, `'AllocBudget'`, it named exactly PB-7's three: the Router's cost over the Observer, the
+layout once a view and key, the running order's rows. They are named in the selector now. The pin
+count's floor is 21.
+
+**Three new pins.** A beat with Settings open, 2,642 allocations and 870,681 bytes: sixteen times
+the idle beat, its frame laying out every tab's groups to measure the window's width. Recorded, not
+cut (0.16.0 D-53). `Update` with the map open, 15 and 9,512. Time to tone, 183 to 185 allocations
+(A-17's 185), its bytes not held.
+
+**Made to repeat before the baseline was taken.** The first 10 runs showed the beat with Settings
+open moving 0.4 % in bytes, and time to tone 0.2 %, both past the 0.1 % the comparator allows, so a
+later run would have failed by chance. The beats now average a fixed 100 beats, which brought the
+Settings beat to 0.08 %. A takeover's goroutines allocated inside the next run's window: the tone pin
+now waits for them, and its count holds at 185 where it read 186. Its bytes still fell run by run,
+21,726 to 21,680 over ten minutes, and its fixture is declared at the wall clock, so its count alone
+is held.
+
+**Seen failing.** The comparator on planted streams: a rise of one allocation, bytes past 0.1 %, a
+fall (passes, said), a pin unmeasured, a row missing, a label twice, a test with no pin, a failed or
+skipped test, a broken build, another platform (checked and said), another Go (fails). On the real
+tree, one escaping 64-byte allocation planted in `advanceTicker` failed seven pins, `MAKE_EXIT=2`,
+among them the idle beat at 169 allocations, which its own budget of 176 lets through. The file was
+restored by copy. `make alloc-budget` on today's tree: "50 pin(s) held to the baseline, 0 fell".
+
+**What the gates found.** The first form piped the run into the comparator, and
+`TestEveryRequiredGateCanFail` showed `make alloc-budget` exiting 0 with only its `go test` red: a
+pipe's exit is its last command's. The run goes to a file now. `TestEveryControlIsReached` asked for
+the comparator's own control: `make pins-selftest` judges the committed baseline, every pin at its
+maximum passing and six planted faults each failing, and is on all three gate lists.
+
+**Measured, on the efficiency cores.** One alloc-budget run is about 45 s.

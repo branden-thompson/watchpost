@@ -14,7 +14,11 @@ package firms
 // must not parse, and it must not allocate in proportion to the body. The
 // budget is the measurement × 1.05, the house rule.
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/branden-thompson/watchpost/internal/allocpin"
+)
 
 // ZERO, AND THE HOUSE RULE PUTS IT THERE: the budget is the measurement × 1.05,
 // the measurement is 0, and a hit that allocates nothing is what a hash-keyed
@@ -36,7 +40,7 @@ func TestTileMemoHitAllocBudget(t *testing.T) {
 	// THE FIXTURE MUST HIT. Measured on a miss this pins the PARSER, which is a
 	// different thing that is allowed to allocate.
 	_, before := m.stats()
-	got := testing.AllocsPerRun(50, func() {
+	got := allocpin.Pin(t, "firms tile memo hit", 50, func() {
 		if _, err := m.points(k, raw); err != nil {
 			t.Fatal(err)
 		}

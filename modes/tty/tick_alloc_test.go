@@ -3,6 +3,8 @@ package tty
 import (
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 )
 
 // P-1 — THE TICK PATH HAS A BUDGET.
@@ -27,7 +29,7 @@ func TestTickAdvanceAllocBudget(t *testing.T) {
 	if len(d.ticker) == 0 {
 		t.Fatal("the bench dashboard has no marquee; this would measure advanceTicker's early return")
 	}
-	got := testing.AllocsPerRun(50, func() { d.advanceTicker() })
+	got := allocpin.Pin(t, "ticker advance", 50, func() { d.advanceTicker() })
 	t.Logf("advanceTicker: %.0f allocs per tick (budget %.0f)", got, tickAllocBudget)
 	if got > tickAllocBudget {
 		t.Errorf("advanceTicker allocates %.0f per 300 ms tick, budget %.0f — this runs around the clock "+
@@ -57,8 +59,8 @@ func TestTickAdvanceAllocBudgetWithATestEventOnTheTape(t *testing.T) {
 	if !strings.Contains(stripANSITest(d.View().Content), testEventMark) {
 		t.Fatal("the fixture's test event is not reaching the band; this measures the unmarked path")
 	}
-	tick := testing.AllocsPerRun(50, func() { d.advanceTicker() })
-	frame := testing.AllocsPerRun(20, func() { missEveryMemo(d); _ = d.View().Content })
+	tick := allocpin.Pin(t, "ticker advance with a test event", 50, func() { d.advanceTicker() })
+	frame := allocpin.Pin(t, "frame miss with a test event", 20, func() { missEveryMemo(d); _ = d.View().Content })
 	t.Logf("with a test event: advanceTicker %.0f (budget %.0f) · frame miss %.0f (budget %.0f)",
 		tick, tickAllocBudget, frame, frameAllocBudget["133x44"])
 	if tick > tickAllocBudget {

@@ -384,24 +384,102 @@ func assertEveryBuildTrimmed(t reporter, m *buildModel) {
 
 // THE ALLOC PINS ARE ALL REACHED. TestEveryRunSelectorSelectsATest fails a
 // selector that reaches nothing; alloc-budget's pins are a set, so this also
-// counts them, and a rename that drops some of the nine fails here.
+// counts them, and a rename that drops some of the 21 fails here. The floor is
+// the count at 0.19.6 B0.7, raised by each batch that adds a pin.
 func TestTheAllocBudgetSelectsItsPins(t *testing.T) {
 	m := loadBuildModel(t)
 	m.mustRun(t)
 	pattern := selectorOf(t, m, "alloc-budget")
-	re := regexp.MustCompile(pattern)
+	re, skip := regexp.MustCompile(pattern), skipOf(t, m, "alloc-budget")
 	var pins int
 	for _, f := range testFilesUnder(t, "../..") { // bounded by the tree (P10-02)
 		for _, name := range regexp.MustCompile(`(?m)^func (Test\w+)\(`).FindAllStringSubmatch(f, -1) {
-			if re.MatchString(name[1]) {
+			if re.MatchString(name[1]) && !skip.MatchString(name[1]) {
 				pins++
 			}
 		}
 	}
-	if pins < 9 {
-		t.Errorf("alloc-budget's pattern %q selects %d pin(s); there were nine. A selector that "+
+	if pins < 21 {
+		t.Errorf("alloc-budget's pattern %q selects %d pin(s); there were 21. A selector that "+
 			"reaches nothing exits 0 and reports a budget nobody measured.", pattern, pins)
 	}
+}
+
+// TestEveryRaceSkippedPinIsInTheAllocBudget is 0.19.6 PB-7: a test that skips
+// under the race detector and measures allocations runs nowhere else, since
+// `make race` skips it and `make verify` has no plain `go test` step, so
+// alloc-budget's pattern must select it. Three such tests were outside the
+// pattern until 0.19.6 B0.7, the Router's per-frame cost over the Observer
+// among them. Seen failing on a planted test.
+func TestEveryRaceSkippedPinIsInTheAllocBudget(t *testing.T) {
+	m := loadBuildModel(t)
+	m.mustRun(t)
+	re := regexp.MustCompile(selectorOf(t, m, "alloc-budget"))
+	planted := map[string]string{"x/planted_test.go": "package x\nfunc TestPlanted(t *testing.T) {\n\tif raceEnabled {\n\t\tt.Skip()\n\t}\n\t_ = allocpin.Pin(t, \"p\", 1, func() {})\n}\n"}
+	if got := racedPinsOutside(t, planted, re); !slices.Equal(got, []string{"x/planted_test.go: TestPlanted"}) {
+		t.Fatalf("COULD NOT RUN — a planted race-skipped pin outside the pattern was reported as %v", got)
+	}
+	files := map[string]string{}
+	err := filepath.WalkDir("../..", func(path string, d fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			return err
+		case d.IsDir() && (d.Name() == "third_party" || d.Name() == ".git" || d.Name() == "testdata" || path == "../../internal/allocpin"):
+			return filepath.SkipDir // allocpin's own tests measure the helper, not a path
+		case strings.HasSuffix(path, "_test.go"):
+			b, err := os.ReadFile(path)
+			files[path] = string(b)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, miss := range racedPinsOutside(t, files, re) { // bounded by the tree's tests (P10-02)
+		t.Errorf("%s skips under the race detector and measures allocations, and alloc-budget's pattern %q does not select it: it runs in no gate", miss, re)
+	}
+}
+
+// skipFlag is `-skip` with its pattern, quoted with single quotes.
+var skipFlag = regexp.MustCompile(`-skip[= ]+'([^']*)'`)
+
+// skipOf is the -skip pattern of target's recipe; one that skips nothing
+// where it has none.
+func skipOf(t *testing.T, m *buildModel, target string) *regexp.Regexp {
+	t.Helper()
+	for _, c := range m.targets[target].cmds { // bounded by the recipe (P10-02)
+		if mm := skipFlag.FindStringSubmatch(c.text); mm != nil {
+			return regexp.MustCompile(strings.ReplaceAll(mm[1], "$$", "$"))
+		}
+	}
+	return regexp.MustCompile(`^$`)
+}
+
+// racedPinsOutside is every test function, by file and name, whose body reads
+// raceEnabled and measures allocations, and whose name re does not match.
+func racedPinsOutside(t *testing.T, files map[string]string, re *regexp.Regexp) []string {
+	t.Helper()
+	var out []string
+	for _, path := range sorted(slices.Collect(maps.Keys(files))) { // bounded by the files (P10-02)
+		src := files[path]
+		f, err := parser.ParseFile(token.NewFileSet(), path, src, 0)
+		if err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		for _, decl := range f.Decls { // bounded by the file (P10-02)
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body == nil || !strings.HasPrefix(fn.Name.Name, "Test") || re.MatchString(fn.Name.Name) {
+				continue
+			}
+			body := src[fn.Body.Pos()-1 : fn.Body.End()-1]
+			measures := strings.Contains(body, "allocpin.") || strings.Contains(body, "AllocsPerRun") || strings.Contains(body, "testing.Benchmark(")
+			if strings.Contains(body, "raceEnabled") && measures {
+				out = append(out, path+": "+fn.Name.Name)
+			}
+		}
+	}
+	return out
 }
 
 // testFilesUnder is the text of every _test.go under root, less third_party.
@@ -666,7 +744,9 @@ func (m *buildModel) runSelectors() []runSelector {
 			if tm := tagsFlag.FindStringSubmatch(c.text); tm != nil {
 				sel.tags = strings.Split(strings.Trim(tm[1], `'"`), ",")
 			}
-			for _, f := range strings.Fields(strings.SplitN(c.text, "|", 2)[0]) { // bounded by the command (P10-02)
+			// The command ends at a pipe with a space on each side; a bar inside
+			// a -run pattern, alloc-budget's alternation, has none.
+			for _, f := range strings.Fields(strings.SplitN(c.text, " | ", 2)[0]) { // bounded by the command (P10-02)
 				if strings.HasPrefix(f, "./") {
 					sel.pkgs = append(sel.pkgs, strings.TrimSuffix(strings.TrimPrefix(f, "./"), "/"))
 				}

@@ -68,6 +68,7 @@ check_layers() {
   check_none "$r/app/internal/mapdata" app/internal/deck "the deck and the map data never import each other" || return 1
   check_none "$r" modes/tty/internal/ttytest "test support, imported by test files alone" nontest || return 1
   check_none "$r" app/internal/apptest "test support, imported by test files alone" nontest || return 1
+  check_none "$r" internal/allocpin "test support, imported by test files alone" nontest || return 1
 }
 
 # AN ARGUMENT THIS SCRIPT DOES NOT KNOW IS A FAILURE, NOT A NO-OP (B6).
@@ -110,7 +111,7 @@ if [ "${1:-}" = "--self-test" ]; then
   for planted in "modes/tty/bad.go:app" "platform/x/bad.go:app/internal/deck" "domains/x/bad.go:app" \
     "platform/x/bad2.go:modes/tty" "app/internal/deck/bad.go:app/internal/mapdata" \
     "app/internal/mapdata/bad.go:app/internal/deck" "modes/tty/console/bad.go:modes/tty/internal/ttytest" \
-    "app/bad.go:app/internal/apptest"; do
+    "app/bad.go:app/internal/apptest" "platform/x/bad3.go:internal/allocpin"; do
     lay="$tmp/layers$n"
     file=${planted%%:*} imp=${planted#*:}
     mkdir -p "$lay/$(dirname "$file")"

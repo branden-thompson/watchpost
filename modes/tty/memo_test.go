@@ -10,6 +10,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -129,8 +130,8 @@ func TestLayoutOncePerViewAndKey(t *testing.T) {
 	m := benchDash(t, 133, 44)
 	d := m.(Dashboard)
 	_ = d.View().Content
-	perView := testing.AllocsPerRun(20, func() { _ = d.View().Content })
-	perLayout := testing.AllocsPerRun(20, func() { _ = d.layout() })
+	perView := allocpin.Pin(t, "layout frame hit", 20, func() { _ = d.View().Content })
+	perLayout := allocpin.Pin(t, "layout alone", 20, func() { _ = d.layout() })
 	// The hit path's own work beside its one layout, measured at 62 allocs and
 	// pinned × 1.10. A second layout() adds a whole layout (93) on top. The
 	// bound is absolute, not a multiple of a layout, so it holds whichever of
@@ -139,7 +140,7 @@ func TestLayoutOncePerViewAndKey(t *testing.T) {
 	if perView-perLayout > ownWork {
 		t.Fatalf("one layout per frame on the memo hit path: frame %.0f allocs, layout %.0f, leaving %.0f against %.0f — a second layout() call would show here", perView, perLayout, perView-perLayout, ownWork)
 	}
-	perKey := testing.AllocsPerRun(20, func() { _, _ = d.Update(tea.KeyPressMsg{Code: tea.KeyDown}) })
+	perKey := allocpin.Pin(t, "layout navigation key", 20, func() { _, _ = d.Update(tea.KeyPressMsg{Code: tea.KeyDown}) })
 	if perKey > 2*perLayout+50 {
 		t.Fatalf("a navigation key resolves the layout once: %.0f allocs (layout %.0f)", perKey, perLayout)
 	}

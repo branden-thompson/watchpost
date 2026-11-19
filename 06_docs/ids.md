@@ -2172,6 +2172,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-38 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-163's details: (1) the blank row after the legend is the picture's own status row, blank when the picture i… |
 | A-39 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The app trace's form, past AP-7.2's words (B0.6). (1) The main track's reader is a script that records the re… |
 | A-39 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-164 to D-167's details: (1) "bold white" is the window title's tone (MapPropPlace, derived from ModalTitle)… |
+| A-40 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The pin comparator's form (B0.7; C-8, A-10, PB-7, A-17, A-31). (1) Every pin make alloc-budget runs reports t… |
 | A-40 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The quality pass's choices (batch 13): (1) the Propagation block's age moves with the clock, as D-166 asks: t… |
 | A-41 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The quality pass's choices (batch 14): (1) a byte bound has its own visits a pass, so a dataset that cannot g… |
 | A-42 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-168's details: (1) dimmed is the app's own dimmed form, the chip's words in the muted table tone on no grou… |
@@ -2507,6 +2508,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | F-236 |  | `follow-ups.md` | Stuttering names in the map package. After 2b, mapview.MapFeed, mapview.MapRadar and their like repeat the pa… |
 | F-237 |  | `follow-ups.md` | A lock of their own for the deck and the map data. 0.19.6 keeps one mutex, livePipelines.mu, held by the deck… |
 | F-238 |  | `follow-ups.md` | Commit 1f9a34e7 is still served by its hash. D-8 rewrote the branch to remove a leaked scratch path that name… |
+| F-239 |  | `follow-ups.md` | The allocation pins have no Linux baseline. tools/pins holds the pins to a darwin/arm64 baseline under go1.27… |
 
 ## MVS-D
 

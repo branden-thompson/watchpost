@@ -294,7 +294,7 @@ sign the caller wants a different function.
 | `make wires` | closed-set members that nothing reads or writes |
 | `make mutant-anchors` | every mutant still finds the line its rule lives on |
 | `make mutant-check` | every mutant still applies and compiles, built in place through an overlay (0.19.6 D-37); `MUTANT_SCOPE=full` for the whole corpus |
-| `make alloc-budget` | allocation pins on the paths that have them |
+| `make alloc-budget` | allocation pins on the paths that have them, each held by `tools/pins` to its baseline in `06_docs/perf/pins-e57afeaf.tsv`: no count above it, no bytes more than 0.1 % above it (0.19.6 A-10, A-40) |
 
 **A required gate appears in three lists** — the `verify` target, `.github/workflows/ci.yml`, and
 `06_docs/required-gates.txt` — so a gate cannot silently appear or disappear. `cmd/watchpost/gates_test.go`

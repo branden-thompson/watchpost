@@ -7,6 +7,7 @@ import (
 
 	runewidth "github.com/mattn/go-runewidth"
 
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
@@ -88,12 +89,12 @@ func TestWidthAllocBudget(t *testing.T) {
 	}
 	colourOn(t)
 	row := strings.Split(Opts{Width: 129}.LocationTable(benchRows(3), 0), "\n")[3]
-	if n := testing.AllocsPerRun(100, func() { _ = Width(row) }); n != 0 {
+	if n := allocpin.Pin(t, "render Width of a styled row", 100, func() { _ = Width(row) }); n != 0 {
 		t.Errorf("measuring a styled row allocates %.0f times; want none", n)
 	}
 	// The map's rows are braille dots, each run in its own colour.
 	dots := strings.Repeat("\x1b[38;5;45m⣿⡇\x1b[0m\x1b[38;5;220m⠿⢸\x1b[0m", 15)
-	if n := testing.AllocsPerRun(100, func() { _ = Width(dots) }); n != 0 {
+	if n := allocpin.Pin(t, "render Width of a braille row", 100, func() { _ = Width(dots) }); n != 0 {
 		t.Errorf("measuring a coloured braille row allocates %.0f times; want none", n)
 	}
 }

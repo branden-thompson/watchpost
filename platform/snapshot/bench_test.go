@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 )
 
 // assembler25 is twenty-five locations, each with an observation and seven
@@ -60,6 +62,7 @@ func TestAssemblerPublishAllocBudget(t *testing.T) {
 			_ = a.Snapshot()
 		}
 	})
+	allocpin.PinBenchmark(t, "assembler publish of 25 locations", r)
 	const allocs, bytes = 259 * 1.05, 75_594 * 1.05
 	t.Logf("a publish of 25 locations: %d allocs (budget %.0f), %d bytes (budget %.0f)", r.AllocsPerOp(), allocs, r.AllocedBytesPerOp(), bytes)
 	if float64(r.AllocsPerOp()) > allocs || float64(r.AllocedBytesPerOp()) > bytes {

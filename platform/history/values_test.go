@@ -5,6 +5,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 )
 
 // before is values as 0.18.0 held them: a pointer a value, nil when missing.
@@ -94,7 +96,7 @@ func TestValuesReadAllocBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	var back values
-	got := testing.AllocsPerRun(20, func() {
+	got := allocpin.Pin(t, "history values read", 20, func() {
 		if err := back.UnmarshalJSON(raw); err != nil {
 			t.Fatal(err)
 		}

@@ -12,6 +12,7 @@ import (
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -104,8 +105,8 @@ func TestPropagationFrameAllocBudget(t *testing.T) {
 		name := map[bool]string{false: "", true: " colour"}[colour]
 		calls := &[]string{}
 		d.mapPane.calls = calls
-		hit := testing.AllocsPerRun(20, func() { _ = d.View().Content })
-		miss := testing.AllocsPerRun(20, func() { d.mmemo.ok = false; _ = d.View().Content })
+		hit := allocpin.Pin(t, "Propagation window"+name+" hit", 20, func() { _ = d.View().Content })
+		miss := allocpin.Pin(t, "Propagation window"+name+" miss", 20, func() { d.mmemo.ok = false; _ = d.View().Content })
 		if len(*calls) != 0 {
 			t.Errorf("a frame called the library: %v", *calls)
 		}

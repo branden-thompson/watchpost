@@ -1,6 +1,10 @@
 package tty
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/branden-thompson/watchpost/internal/allocpin"
+)
 
 // NFR-3 — the frame stays within budget, and the budget is a NUMBER.
 //
@@ -67,11 +71,11 @@ func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {
 	}
 	d := goldenDash(t, false)
 	_ = d.View().Content // warm the memo and the theme
-	direct := testing.AllocsPerRun(50, func() { _ = d.View().Content })
+	direct := allocpin.Pin(t, "Observer frame direct", 50, func() { _ = d.View().Content })
 
 	r := NewRouter(d)
 	_ = r.View().Content
-	via := testing.AllocsPerRun(50, func() { _ = r.View().Content })
+	via := allocpin.Pin(t, "Observer frame through the Router", 50, func() { _ = r.View().Content })
 
 	t.Logf("observer direct %.0f allocs · through the router %.0f · overhead %.0f (budget %d)",
 		direct, via, via-direct, routerOverheadAllocs)
@@ -98,7 +102,7 @@ func TestConsoleFrameAllocBudget(t *testing.T) {
 		t.Fatalf("the fixture joined no weather at all; this number is about the cheap path")
 	}
 	_ = b.View().Content
-	got := testing.AllocsPerRun(50, func() { _ = b.View().Content })
+	got := allocpin.Pin(t, "console frame 150x74 hit", 50, func() { _ = b.View().Content })
 	t.Logf("console frame 150x74, %d-location pool: %.0f allocs (budget %d)",
 		loadedPoolSize, got, bcFrameAllocs)
 	if got > bcFrameAllocs {
@@ -106,7 +110,7 @@ func TestConsoleFrameAllocBudget(t *testing.T) {
 			"with the reason in the commit, or this is a regression", got, bcFrameAllocs)
 	}
 
-	// AND THE MISS, MEASURED IN THE SAME TEST so the two cannot drift apart. The
+	// THE MISS IS MEASURED IN THE SAME TEST so the two cannot drift apart. The
 	// slot holds ONE entry, so a selection that alternates never finds it — the
 	// operator holding an arrow key, which is the honest worst case.
 	//
@@ -114,7 +118,7 @@ func TestConsoleFrameAllocBudget(t *testing.T) {
 	// on reading under budget while the path underneath it grew without limit,
 	// because nothing would ever ask that path what it cost.
 	i := 0
-	missed := testing.AllocsPerRun(50, func() {
+	missed := allocpin.Pin(t, "console frame 150x74 miss", 50, func() {
 		b.selected = i & 1
 		i++
 		_ = b.View().Content

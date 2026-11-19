@@ -18,6 +18,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
@@ -176,8 +177,8 @@ func TestFrameAllocBudget(t *testing.T) {
 		}
 		d := benchDash(t, w, h).(Dashboard)
 		_ = d.View().Content // warm the kit's probes and the theme
-		hit := testing.AllocsPerRun(20, func() { _ = d.View().Content })
-		miss := testing.AllocsPerRun(20, func() { missEveryMemo(d); _ = d.View().Content })
+		hit := allocpin.Pin(t, "frame "+size+" hit", 20, func() { _ = d.View().Content })
+		miss := allocpin.Pin(t, "frame "+size+" miss", 20, func() { missEveryMemo(d); _ = d.View().Content })
 		t.Logf("frame %s: hit %.0f allocs (budget %.0f) · miss %.0f allocs (budget %.0f)", size, hit, frameAllocBudgetHit[size], miss, budget)
 		if hit > frameAllocBudgetHit[size] {
 			t.Errorf("frame %s (memo hit) allocates %.0f per View(), budget %.0f — a render regression (plan §1)", size, hit, frameAllocBudgetHit[size])
@@ -253,8 +254,8 @@ func TestSevereFrameAllocBudget(t *testing.T) {
 	}
 	d := severeBench(t)
 	_ = d.View().Content
-	hit := testing.AllocsPerRun(20, func() { _ = d.View().Content })
-	miss := testing.AllocsPerRun(20, func() { d.mmemo.ok = false; _ = d.View().Content })
+	hit := allocpin.Pin(t, "severe window hit", 20, func() { _ = d.View().Content })
+	miss := allocpin.Pin(t, "severe window miss", 20, func() { d.mmemo.ok = false; _ = d.View().Content })
 	t.Logf("severe window: hit %.0f allocs (budget %.0f) · miss %.0f allocs (budget %.0f)", hit, severeAllocBudget["hit"], miss, severeAllocBudget["miss"])
 	if hit > severeAllocBudget["hit"] {
 		t.Errorf("severe window (memo hit) allocates %.0f per View(), budget %.0f", hit, severeAllocBudget["hit"])
@@ -369,8 +370,8 @@ func TestSetupAllocBudget(t *testing.T) {
 	}{{"133x44", 133, 44}, {"80x24", 80, 24}} {
 		d := setupBench(t, size.w, size.h)
 		_ = d.View().Content // warm the kit's probes and the theme
-		hit := testing.AllocsPerRun(20, func() { _ = d.View().Content })
-		miss := testing.AllocsPerRun(20, func() { d.mmemo.ok = false; _ = d.View().Content })
+		hit := allocpin.Pin(t, "Settings "+size.name+" hit", 20, func() { _ = d.View().Content })
+		miss := allocpin.Pin(t, "Settings "+size.name+" miss", 20, func() { d.mmemo.ok = false; _ = d.View().Content })
 		hitBudget, missBudget := setupAllocBudget[size.name+"-hit"], setupAllocBudget[size.name+"-miss"]
 		t.Logf("setup %s: hit %.0f allocs (budget %.0f) · miss %.0f allocs (budget %.0f)", size.name, hit, hitBudget, miss, missBudget)
 		if hit > hitBudget {
@@ -443,7 +444,7 @@ func TestASettingsTabPressIsWithinItsAllocBudget(t *testing.T) {
 	var m tea.Model = d
 	for range len(setupTabs()) {
 		from := m
-		allocs := testing.AllocsPerRun(10, func() {
+		allocs := allocpin.Pin(t, "Settings Tab press from "+from.(Dashboard).setupTab().Label(), 10, func() {
 			next, _ := from.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 			_ = next.View().Content
 		})

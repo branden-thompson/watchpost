@@ -14,6 +14,8 @@ package usgs
 import (
 	"testing"
 	"time"
+
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 )
 
 // ZERO, by the house rule (measurement × 1.05). A hit hashes the body, finds
@@ -34,7 +36,7 @@ func TestBoxMemoHitAllocBudget(t *testing.T) {
 	// THE FIXTURE MUST HIT. Measured on a miss this pins the DECODER, which is
 	// a different thing and is allowed to allocate.
 	_, before := m.stats()
-	got := testing.AllocsPerRun(50, func() {
+	got := allocpin.Pin(t, "usgs box memo hit", 50, func() {
 		if _, err := m.features(url, raw); err != nil {
 			t.Fatal(err)
 		}

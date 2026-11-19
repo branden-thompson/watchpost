@@ -8,6 +8,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/internal/allocpin"
 )
 
 // mapAllocBudget pins the map window over the 133×44 fixture: the modal-memo
@@ -59,11 +61,11 @@ func TestMapFrameAllocBudget(t *testing.T) {
 	}
 	calls := &[]string{}
 	d.mapPane.calls = calls
-	hit := testing.AllocsPerRun(20, func() { _ = d.View().Content })
+	hit := allocpin.Pin(t, "map window hit", 20, func() { _ = d.View().Content })
 	if len(*calls) != 0 {
 		t.Errorf("a memo hit called the library: %v", *calls)
 	}
-	miss := testing.AllocsPerRun(20, func() { d.mmemo.ok = false; _ = d.View().Content })
+	miss := allocpin.Pin(t, "map window miss", 20, func() { d.mmemo.ok = false; _ = d.View().Content })
 	if len(*calls) != 0 {
 		t.Errorf("a memo miss re-rendered the map in View: %v", *calls)
 	}

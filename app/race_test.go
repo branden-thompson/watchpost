@@ -8,3 +8,7 @@ package app
 // and past 2 s under race on a hosted runner. The product bound itself is
 // held in the legs without -race, where the mutants run.
 const raceSlowdown = 10
+
+// raceEnabled: the allocation pins count mallocs, which the race detector
+// distorts, so they run in `make alloc-budget` and skip here.
+const raceEnabled = true
