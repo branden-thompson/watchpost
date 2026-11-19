@@ -1252,6 +1252,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-40 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the Producer proposes — several, cheap, name-only — and the DIRECTOR chooses |
 | D-40 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE PRODUCER PROPOSES, THE DIRECTOR CHOOSES |
 | D-40 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | Asked with D-39: the size of app (20,185 lines) and modes/tty (31,342 lines), whose whole suites every mutant… |
+| D-40 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B0.7's three new tools' P10-05 density rows (D-10): tools/pins 0.84 over 19 functions, tools/gcprobe 1.00 ove… |
 | D-40 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN entry item 5 (discover report): the bound, the metric set and the phase boundary are each stated in thre… |
 | D-40 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | go-giro-data's path (D-20), from the leave-one-station-out scores on 2026-10-05 (wave2-findings.md; 566 pairs… |
 | D-41 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | a card the Operator CHOSE is FromOperator, and that origin outranks |
@@ -2174,6 +2175,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-39 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-164 to D-167's details: (1) "bold white" is the window title's tone (MapPropPlace, derived from ModalTitle)… |
 | A-40 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The pin comparator's form (B0.7; C-8, A-10, PB-7, A-17, A-31). (1) Every pin make alloc-budget runs reports t… |
 | A-40 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The quality pass's choices (batch 13): (1) the Propagation block's age moves with the clock, as D-166 asks: t… |
+| A-41 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The compiler probe, the model sizes and the wall-time judge (B0.7; PB-2, PB-3, A-26, D-28, D-30, RR-12). (1) … |
 | A-41 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The quality pass's choices (batch 14): (1) a byte bound has its own visits a pass, so a dataset that cannot g… |
 | A-42 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-168's details: (1) dimmed is the app's own dimmed form, the chip's words in the muted table tone on no grou… |
 | A-43 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-170's details: (1) a feature's hosts are stated, not derived: the app says, for each station provider, map … |

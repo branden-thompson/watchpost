@@ -1,0 +1,26 @@
+# startup and binary size at 0.19.6 BUILD open (B0.7, PB P-10, P-11): e57afeaf, built by make build
+# in a worktree (-trimpath, -s -w), darwin/arm64, go1.27.4. Taken again at BUILD exit and compared.
+binary_bytes	32732082
+init_total_clock_ms_5_runs	12.362 11.934 11.782 11.704 11.485 
+# each of the module's packages, from the first run: the clock varies run to run, and so, slightly, do
+# platform/render's and domains/propagation's bytes and allocations (6,375,792 to 6,378,208; 640 to 816)
+init third_party/go-studs/tokens @1.9 ms, 0.005 ms clock, 9736 bytes, 12 allocs
+init platform/config @2.3 ms, 0.001 ms clock, 256 bytes, 2 allocs
+init platform/geo @6.9 ms, 0.010 ms clock, 10336 bytes, 110 allocs
+init domains/locations/geodata @6.9 ms, 0.002 ms clock, 2392 bytes, 4 allocs
+init platform/history @6.9 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init platform/snapshot @6.9 ms, 0.006 ms clock, 8168 bytes, 72 allocs
+init third_party/go-studs/rendering @7.1 ms, 0.002 ms clock, 1672 bytes, 22 allocs
+init platform/render @7.5 ms, 7.3 ms clock, 6378208 bytes, 105593 allocs
+init domains/radio/script @14 ms, 0.006 ms clock, 2624 bytes, 36 allocs
+init platform/httpx @15 ms, 0.021 ms clock, 55448 bytes, 448 allocs
+init domains/airquality @15 ms, 0.002 ms clock, 1496 bytes, 8 allocs
+init domains/fire/firms @15 ms, 0.004 ms clock, 13200 bytes, 107 allocs
+init domains/locations/openmeteo @15 ms, 0.016 ms clock, 15048 bytes, 202 allocs
+init domains/locations @15 ms, 0.013 ms clock, 22816 bytes, 249 allocs
+init domains/propagation @15 ms, 0.004 ms clock, 816 bytes, 8 allocs
+init domains/radar @15 ms, 0.002 ms clock, 1088 bytes, 4 allocs
+init domains/radio/synth @15 ms, 0.045 ms clock, 87248 bytes, 799 allocs
+init domains/severe @15 ms, 0.004 ms clock, 7416 bytes, 83 allocs
+init modes/tty @15 ms, 0.036 ms clock, 73824 bytes, 594 allocs
+init app @15 ms, 0.013 ms clock, 10472 bytes, 21 allocs

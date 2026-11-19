@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: verify-full hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln vuln-floor lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget pins-selftest property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
+.PHONY: verify-full hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln vuln-floor lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget pins-selftest property quality-bench bench-pair p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
 
 BINARY := watchpost
 DIST   := dist
@@ -636,8 +636,20 @@ property:
 # A 0.19.6 batch compares two back-to-back runs against the baseline's on a quiet
 # machine: a significant slowdown (p < 0.05) of 2 % or more in both fails the
 # batch and goes to the HUM LEAD (D-28). Run outside a batch, it records numbers.
+BENCH_PKGS := ./modes/tty/... ./app/... ./platform/snapshot ./domains/fire/hms ./platform/render
 quality-bench:
-	go test ./modes/tty/... ./app/... ./platform/snapshot ./domains/fire/hms ./platform/render -run '^$$' -bench . -benchmem -count 10 | tee $(DIST)/bench.txt
+	go test $(BENCH_PKGS) -run '^$$' -bench . -benchmem -count 10 | tee $(DIST)/bench.txt
+
+# The paired comparison D-28 judges a code batch by: the base commit checked
+# out in a worktree under dist, then base, tree, base, tree, each every
+# benchmark in BENCH_PKGS at -count 10, compared by the pinned benchstat. A
+# benchmark both pairs show significantly slower by 2 % or more fails, and so
+# does a base benchmark with no pair; the result goes to the HUM LEAD. Local,
+# HUM LEAD-run on a quiet machine, never in CI: a hosted runner's neighbours
+# are not a quiet machine.
+BENCH_BASE ?= e57afeaf
+bench-pair:
+	go run ./tools/benchpair run -base $(BENCH_BASE) -out $(DIST)/benchpair $(BENCH_PKGS)
 
 # THE PUBLIC MIRROR IS REGENERATED AND LINTED HERE, with the other two ledger
 # checks, because it is part of the same claim: the gate reads a MACHINE-LOCAL

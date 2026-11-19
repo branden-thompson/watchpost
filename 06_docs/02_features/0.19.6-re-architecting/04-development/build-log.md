@@ -375,3 +375,52 @@ the comparator's own control: `make pins-selftest` judges the committed baseline
 maximum passing and six planted faults each failing, and is on all three gate lists.
 
 **Measured, on the efficiency cores.** One alloc-budget run is about 45 s.
+
+## B0.7, the rest: what the compiler decides, the models' sizes, the paired wall time, startup
+
+**The compiler probe.** `tools/gcprobe` keys every escape to the heap by package, function and type,
+and every inlined call by caller and callee, over the packages the binary links under `modes/tty` and
+`app`. Its baselines are recorded on `e57afeaf` in a worktree, and `TestTheTreesKeepWhatTheCompilerDecided`
+holds the tree to them: today's tree matches exactly, 4,001 escapes and 7,208 inlined calls.
+`modes/tty`'s 4,040 inlined calls are PB-3's figure from DISCOVER, and `Router.Update`'s one escape of a
+`Router` is PB-2's box at `router.go:463`. The form past the plan's words is A-41.
+
+**Seen failing.** On a planted module with the repository's layout: a model moved to the heap fails
+as a new escape of its type; a method marked `//go:noinline` fails as a lost inlining; a renamed
+function fails until a `-map` carries it. On the real tree, `Router.View` planted to keep a pointer
+to its model failed as `escape modes/tty | Router.View | Router`, and as one more escape of the type
+`Router` across the trees. Restored by copy.
+
+**Getting the types right.** The first record typed 331 of 2,839 keys. The compiler names a file
+relative to the directory it builds in, and the probe joined that to a relative directory while it
+indexed files absolutely. And the compiler places a binary expression at its operator, a call at its
+bracket. The probe now makes the directory absolute, takes the innermost expression whose text is the
+compiler's or that its position anchors, types a name only when it is a variable, and skips a
+builtin's name for its call: 63 keys of 1,991 are left in the compiler's own text.
+
+**The models.** `TestTheModelsAreNoLarger` holds Router, Dashboard and Broadcaster at PB-2's 7,136,
+6,584 and 472 bytes. A field planted in `Broadcaster` failed both it and `Router`, which holds the
+console by value.
+
+**The paired wall time.** `make bench-pair` runs D-28's two pairs against a base commit and judges
+them with benchstat at its pinned version. On planted arms through that benchstat: 5 % slower in both
+pairs fails, in one pair alone passes, a benchmark that moved package keeps its pair, a base
+benchmark with no pair fails, and a name two packages declare is refused. It is local and
+HUM LEAD-run, declared `unlisted` with its reason.
+
+**Startup and binary size at BUILD's open**, from `e57afeaf` built by `make build`:
+32,732,082 bytes, PB's P-11. The inits take 11.5 to 12.4 ms in all over five runs, `platform/render`'s
+about 7 ms of it; `modes/tty`'s init is 0.046 ms and 73,824 bytes, `app`'s 0.014 ms
+(`06_docs/perf/startup-e57afeaf.txt`).
+
+**What the gate found.** The first `make verify` failed in `race` after 1,359 s:
+`TestThePublishedTreeNamesNoPersonOrMachine` read the toolchain's directory in the module cache, its
+name, an at sign and its version, as an email address in both baselines. A file from the module cache
+is keyed without its version now, the standard library as `std/`, so an upgrade renames no key
+either, and the baselines were recorded again on `e57afeaf`: the same 4,001 escapes and 7,208
+inlined calls.
+
+**Three density rows, ratified (D-40).** `tools/pins` 0.84 over 19 functions, `tools/gcprobe` 1.00
+over 32 and `tools/benchpair` 0.54 over 13, against P10-05's 2.0: development tooling never linked
+into the binary, its checks where a broken input would read as clean. The HUM LEAD: "ratified; we
+never inflate density with unnecessary assertions." The rows are in the ledger and its mirror.

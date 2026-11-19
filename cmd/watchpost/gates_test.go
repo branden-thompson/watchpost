@@ -73,6 +73,7 @@ var unlisted = exempt(&exemptionTable{
 	name: "unlisted", satisfied: "race",
 	rows: map[string]string{
 		"quality-bench":     "a measurement, not a gate — it reports numbers and has no pass condition (INST-5)",
+		"bench-pair":        "0.19.6 D-28's wall-time comparison: two paired runs against a base commit on a quiet machine, HUM LEAD-run once a code batch; a hosted runner's neighbours are not a quiet machine",
 		"pty-severe":        "it drives a real pty, which CI has no terminal for",
 		"journey":           "the VALIDATE journey against LIVE feeds; its exit code is a FAIL count, run deliberately at release",
 		"test":              "`go test ./...` without the race detector; `race` supersedes it on every gate path, and running both would double the suite for no extra property",

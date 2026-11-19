@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -20,7 +22,7 @@ func streamOf(t *testing.T, tests map[string][]string) string {
 			t.Fatal(err)
 		}
 	}
-	for _, name := range sortedKeys(tests) { // bounded by the planted tests (P10-02)
+	for _, name := range slices.Sorted(maps.Keys(tests)) { // bounded by the planted tests (P10-02)
 		put(event{Action: "run", Package: "m/p", Test: name})
 		for _, pin := range tests[name] { // bounded by the planted pins (P10-02)
 			label, figures, _ := strings.Cut(pin, "=")

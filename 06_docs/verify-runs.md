@@ -281,3 +281,6 @@ says exactly what passed.
 | 2026-11-17T16:10:09Z | e49c8bf9 | 6821bf28b0ae | verify | FAILED (exit 2) | 0 |
 | 2026-11-17T16:52:04Z | e49c8bf9 | d44b9c400e6e | verify | green | 2486 |
 | 2026-11-19T18:12:28Z | 72d08c99 | 78f2bfbff327 | verify | green | 5735 |
+| 2026-11-19T18:50:28Z | c8590f87 | f9b9f76637ca | verify | FAILED (exit 2) | 1359 |
+| 2026-11-19T19:23:14Z | c8590f87 | 2a69dfe36320 | verify | FAILED (exit 2) | 1780 |
+| 2026-11-19T20:51:17Z | c8590f87 | 78f2515c1337 | verify | green | 5159 |

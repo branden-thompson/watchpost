@@ -37,10 +37,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"regexp"
 	"runtime"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -294,7 +295,7 @@ func judge(b *baseline, s *stream, plat, goVer string) verdict {
 		v.failures = append(v.failures, fmt.Sprintf("the baseline was recorded under %s and this is %s: a toolchain moves the counts, so record it again (-record, 10 runs) on the commit that moves it", b.goVer, goVer))
 		return v
 	}
-	for _, label := range sortedKeys(b.pins) { // bounded by the baseline (P10-02)
+	for _, label := range slices.Sorted(maps.Keys(b.pins)) { // bounded by the baseline (P10-02)
 		bs, c := b.pins[label], s.pins[label]
 		if _, ok := s.pins[label]; !ok {
 			v.failures = append(v.failures, fmt.Sprintf("%q is in the baseline and was not measured: its test skipped, was renamed, or left the run", label))
@@ -314,7 +315,7 @@ func judge(b *baseline, s *stream, plat, goVer string) verdict {
 			v.falls = append(v.falls, fmt.Sprintf("%q fell: %d allocs and %d bytes, against at least %d and %d", label, c.allocs, c.bytes, bs.allocsMin, bs.bytesMin))
 		}
 	}
-	for _, label := range sortedKeys(s.pins) { // bounded by the stream (P10-02)
+	for _, label := range slices.Sorted(maps.Keys(s.pins)) { // bounded by the stream (P10-02)
 		if _, ok := b.pins[label]; !ok {
 			v.failures = append(v.failures, fmt.Sprintf("%q was measured and has no baseline row: record it with the rest", label))
 		}
@@ -332,7 +333,7 @@ func (s *stream) structural() []string {
 			out = append(out, fmt.Sprintf("%s failed to build or failed outside a test", p))
 		}
 	}
-	for _, key := range sortedKeys(s.ended) { // bounded by the tests run (P10-02)
+	for _, key := range slices.Sorted(maps.Keys(s.ended)) { // bounded by the tests run (P10-02)
 		switch {
 		case s.ended[key] == "fail":
 			out = append(out, fmt.Sprintf("%s failed:\n%s", key, strings.Join(s.output[key], "")))
@@ -385,7 +386,7 @@ func (v verdict) print(w *out) {
 // copy of it fails (gate-controls: a gate's tool shows it can fail in this
 // tree, not only in its own tests).
 func selfTestOn(b *baseline, stdout *out) int {
-	labels := sortedKeys(b.pins)
+	labels := slices.Sorted(maps.Keys(b.pins))
 	first, bytesPin := labels[0], ""
 	for _, l := range labels { // bounded by the baseline (P10-02)
 		if !b.pins[l].counted && bytesPin == "" {
@@ -449,7 +450,7 @@ func plantedStream(b *baseline, plant func(pins map[string]string, extra *[]stri
 		plant(pins, &extra)
 	}
 	s := &stream{pins: map[string]cost{}, ended: map[string]string{}, reported: map[string]int{}, output: map[string][]string{}}
-	for i, l := range sortedKeys(pins) { // bounded by the pins (P10-02)
+	for i, l := range slices.Sorted(maps.Keys(pins)) { // bounded by the pins (P10-02)
 		test := fmt.Sprintf("TestPlanted%d", i)
 		s.take(event{Action: "output", Package: "planted", Test: test, Output: pins[l]})
 		s.take(event{Action: "pass", Package: "planted", Test: test})
@@ -479,7 +480,7 @@ func recordBaseline(path, base string, files []string, stdout, stderr *out) int 
 	fmt.Fprintf(&b, "# pins: the allocation pins' baseline (0.19.6 B0.7, A-10): each pin's range over the runs, read by tools/pins\n")
 	fmt.Fprintf(&b, "# runs\t%d\n# platform\t%s\n# go\t%s\n# base\t%s\n", len(files), platform(), runtime.Version(), base)
 	b.WriteString("label\tallocs_min\tallocs_max\tbytes_min\tbytes_max\n")
-	for _, label := range sortedKeys(pins) { // bounded by the pins (P10-02)
+	for _, label := range slices.Sorted(maps.Keys(pins)) { // bounded by the pins (P10-02)
 		p := pins[label]
 		if p.counted {
 			fmt.Fprintf(&b, "%s\t%d\t%d\t-\t-\n", label, p.allocsMin, p.allocsMax)
@@ -531,15 +532,4 @@ func spans(files []string) (map[string]span, error) {
 		}
 	}
 	return pins, nil
-}
-
-// sortedKeys is a map's keys in order, for output that reads the same every
-// run.
-func sortedKeys[V any](m map[string]V) []string {
-	out := make([]string, 0, len(m))
-	for k := range m { // bounded by the map (P10-02)
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }
