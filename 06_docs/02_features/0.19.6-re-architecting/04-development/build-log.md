@@ -507,3 +507,6 @@ itself to `landedBatches` in its closing commit.
 **B0 in commits.** 13, the plan's 4: D-37 and D-38 split the gate in two mid-batch, and B0.6, B0.7 and
 B0.12 each took more than one commit; the batch map says so. B0 closes on this commit's
 `make verify-full`.
+
+**B0 closed, 2026-11-20.** `make verify-full` on `d33fc847`: every gate green, the whole corpus of
+1,059 mutants judged, 7,877 s on the efficiency cores. Pushed; the remote ref matched the commit.

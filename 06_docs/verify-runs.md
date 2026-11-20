@@ -291,3 +291,5 @@ says exactly what passed.
 | 2026-11-20T00:58:59Z | 5655a04f | 5fd96f2ed3d6 | verify | FAILED (exit 2) | 1613 |
 | 2026-11-20T02:41:50Z | 5655a04f | 09f517511fe6 | verify | green | 5895 |
 | 2026-11-20T03:57:31Z | 9708ac44 | 56139a10feda | verify | green | 2261 |
+| 2026-11-20T06:09:48Z | d33fc847 | 56139a10feda | verify-full | green | 7877 |
+| 2026-11-20T06:22:06Z | d33fc847 | cebd31b2e0e5 | verify-docs | green | 707 |
