@@ -558,3 +558,18 @@ until the deck's prep commit, which adds it to the check's list.
 **The changed-line table.** No changed test line. The test inventory: one test added in `app`, and
 `TestADeckOnlyTestReachesTheDeckAlone` in `tools/graph`, outside the two trees. The corpus: one
 mutant added, `mF158`.
+
+## B1.3, RC-7's window stack and the window host (package map §9 row 2; D-49)
+
+**The windows are a stack** (D-106, D-107), and the six places that said one window say so:
+`docs/where-things-happen.md`'s window row and its `modal` vocabulary row; `docs/extending.md`'s
+new-window recipe, which also names the window's keys in `window_keys.go:windowKeysOf`, the step
+`TestEveryWindowDeclaresItsKeys` holds; and `open`'s comment, which said "alone" and "scrolled to the
+top" where a window returned to keeps its scroll. **`Dashboard` hosts every window** (D-49): its type
+comment and the Observer vocabulary row say so, with the four gates' file.
+
+**Not here, by package map §9:** 0.16.0's required reading (`:190`, the single value as the trap;
+`:204`, "three owners") moves with the console's and the deck's batches; the P10 ledger's stale reason
+with D-10's re-key table; `modes/tty/doc.go:33`'s row with the move batches.
+
+**The changed-line table.** No test line changed; no golden; no declaration.

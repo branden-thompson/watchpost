@@ -639,7 +639,11 @@ func defaultKeyMap() term.KeyMap {
 }
 
 // Dashboard is the Observer surface: the listener's dashboard, one of the two
-// surfaces the Router holds.
+// surfaces the Router holds. It is also the host of every window, both
+// surfaces': the windows' state is here, and the Broadcaster's card window,
+// its move and drop prompts and the Line-Up Request are Dashboard methods, so
+// one window set is under the four gates broadcaster_detail.go names (0.19.6
+// D-49).
 type Dashboard struct {
 	cfg    Config
 	keys   term.KeyMap
@@ -1587,7 +1591,8 @@ const (
 	numModals
 )
 
-// open shows m alone, scrolled to the top.
+// open shows m: a window new to the stack scrolled to the top, one already
+// in it where it was left.
 //
 // THE WINDOWS ARE A STACK (D-106, D-107). A window opened from another opens
 // over it, and closing it returns to the one below - Details opened from the

@@ -289,9 +289,11 @@ meant, and the failure prints the first line that differs. To accept a change:
   every ground it is painted on — the window, the modal tile, a band — and the lift does the rest; a
   background token belongs in one of the ground lists instead.
 - **A new window is one `modal` constant** plus a case in `modalView` (what it draws), `modalWidth`
-  (how wide) and, if it scrolls, `modalLines`; a key that opens it goes through `toggleModal`.
-  Exclusivity is the type's: the rendered-frame test (`modal_test.go`) adds the window to its
-  table and proves nothing stacks.
+  (how wide) and, if it scrolls, `modalLines`, and its keys declared in `modes/tty/window_keys.go:windowKeysOf`,
+  which `TestEveryWindowDeclaresItsKeys` requires. A key that opens it goes through `toggleModal`,
+  which opens it over the window shown; closing it returns there (D-107). One window is drawn at a
+  time: the rendered-frame test (`modal_test.go`) adds the window to its table and proves exactly
+  one renders whatever it was opened over.
 - **go-studs is patched, never edited.** An approved change to the kit is a
   `third_party/go-studs/patches/NNN-name.patch` with a row in `LOCAL_CHANGES.md`;
   `scripts/sync-go-studs.sh` re-applies the stack on every sync and refuses a drifted upstream.
