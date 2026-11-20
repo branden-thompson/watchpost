@@ -58,9 +58,14 @@ import "github.com/branden-thompson/watchpost/modes/tty"
 func Run() tty.Dashboard { return tty.Dashboard{Cfg: helper()} }
 `,
 	"app/helper.go": "package app\n\nfunc helper() int { return 1 }\n",
-	crossingsMS:     "direction\tsymbol\tkind\tdeclaring_file\tdisposition\tnote\ntty->mapview\tmapInner\tfunc\tmodes/tty/map_draw.go\tMOVES\tplanted\n",
-	allowMS:         "# planted\nDashboard\nDashboard.frame\n",
-	plannedApp:      "# planted\nfile\tapp/app.go\tapp\nfile\tapp/helper.go\tdeck\n",
+	// the two deck-only test files: the first reaches the deck alone; the
+	// second, through a helper in another test file, reaches the root's Run
+	"app/cutback_hazard_test.go": "package app\n\nimport \"testing\"\n\nfunc TestDeckOnly(t *testing.T) { _ = helper() }\n",
+	"app/deck_trace_test.go":     "package app\n\nimport \"testing\"\n\nfunc TestReachesTheRoot(t *testing.T) { _ = viaTheRoot() }\n",
+	"app/support_test.go":        "package app\n\nfunc viaTheRoot() int { return Run().Cfg + helper() }\n",
+	crossingsMS:                  "direction\tsymbol\tkind\tdeclaring_file\tdisposition\tnote\ntty->mapview\tmapInner\tfunc\tmodes/tty/map_draw.go\tMOVES\tplanted\n",
+	allowMS:                      "# planted\nDashboard\nDashboard.frame\n",
+	plannedApp:                   "# planted\nfile\tapp/app.go\tapp\nfile\tapp/helper.go\tdeck\n",
 }
 
 // plantedTree writes the planted module and returns its root.
@@ -186,5 +191,43 @@ func TestTheRepositoryKeepsItsFigures(t *testing.T) {
 	t.Log(strings.TrimSpace(o.String()))
 	if code != 0 {
 		t.Errorf("the tree left its figures (exit %d):\n%s%s", code, o.String(), e.String())
+	}
+}
+
+// TestADeckOnlyTestReachesTheDeckAlone is 0.19.6 A-45 on the planted module: a
+// deck-only test file that reaches the deck's code passes, and one that
+// reaches the root through a helper in another test file is reported with
+// what it reaches, and check fails on it.
+func TestADeckOnlyTestReachesTheDeckAlone(t *testing.T) {
+	dir := plantedTree(t)
+	ix, err := load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pl, err := readPlanned(filepath.Join(dir, plannedApp))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ix.outsideTheDeck(pl, "app/cutback_hazard_test.go"); len(got) != 0 {
+		t.Errorf("the planted deck-only file reaches %v; want nothing outside the deck", got)
+	}
+	if got := ix.outsideTheDeck(pl, "app/deck_trace_test.go"); len(got) != 1 || !strings.HasPrefix(got[0], "Run (app/app.go, planned app)") {
+		t.Errorf("the planted file reaching the root through a helper reports %v; want Run alone", got)
+	}
+	if got := ix.outsideTheDeck(pl, "app/no_such_test.go"); len(got) != 1 || !strings.Contains(got[0], "declares nothing") {
+		t.Errorf("a missing file reports %v; want it reported as itself", got)
+	}
+	held := deckOnlyTests
+	deckOnlyTests = []string{"app/cutback_hazard_test.go", "app/deck_trace_test.go"}
+	t.Cleanup(func() { deckOnlyTests = held })
+	base := filepath.Join(t.TempDir(), "figures.tsv")
+	var o, e bytes.Buffer
+	if code := run([]string{"record", "-dir", dir, "-out", base}, &out{w: &o}, &out{w: &e}); code != 0 {
+		t.Fatalf("record exited %d: %s", code, e.String())
+	}
+	o.Reset()
+	code := run([]string{"check", "-dir", dir, "-baseline", base}, &out{w: &o}, &out{w: &e})
+	if code == 0 || !strings.Contains(o.String(), "FAIL app/deck_trace_test.go reaches Run") || strings.Contains(o.String(), "FAIL app/cutback_hazard_test.go") {
+		t.Errorf("check exited %d:\n%s", code, o.String())
 	}
 }

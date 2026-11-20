@@ -2192,6 +2192,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-43 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-170's details: (1) a feature's hosts are stated, not derived: the app says, for each station provider, map … |
 | A-44 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B1.2's names (RM slice 3; RM-8, JN-5, RC-7 item 4; D-46 to D-49). (1) D-48's one word is duck, the vocabulary… |
 | A-44 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-173's wordings, each note under the Status window's hosts: MRMS "MRMS colors approximate; scale read from l… |
+| A-45 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | F-158's test and the deck-only check, past AP-7.1's words (B1.1; RM-4, RX). (1) TestACutBackUnderAHazardReadK… |
 | A-45 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The continents' reference points (FR-1.9): on each inhabited continent, the city where its amateur radio is b… |
 | A-46 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-176's details: (1) the block's line is each continent's highest open band - "Up to: NA 20m · SA 17m … B cha… |
 | A-47 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-178's and D-179's details: (1) a band typed is taken at its lower edge ("40 m" is 7 MHz), the edge each ban… |

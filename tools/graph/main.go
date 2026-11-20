@@ -16,7 +16,9 @@
 //     their helpers' reach included, split into C3 (moves with the code) and
 //     C4 (cannot be served) by the committed allowlist (0.19.6 D-43);
 //   - `app`'s unexported crossings: uses of an unexported object whose file
-//     and the object's are planned for different packages (the planned map).
+//     and the object's are planned for different packages (the planned map);
+//   - the deck-only test files (design AP-7): the app objects each reaches,
+//     through its helpers, that the planned map puts outside the deck.
 //
 // WHY IT EXISTS. The scratch tool PLAN used saw only uses within a package
 // (0.19.6 CQ F-17): once the map is a package of its own, its reach into the model
@@ -34,7 +36,8 @@
 // which predates the design data.
 //
 // check fails when a held figure rises above its baseline (M3's figures and
-// the crossings may only fall), and reports MS-7's counts beside theirs.
+// the crossings may only fall), or a deck-only test file reaches outside the
+// deck, and reports MS-7's counts beside theirs.
 package main
 
 import (
@@ -235,6 +238,21 @@ func check(ix *index, path string, stdout, stderr *out) int {
 		if _, ok := now[name]; !ok {
 			stdout.say("graph: FAIL %q is in the baseline and was not measured", name)
 			failed++
+		}
+	}
+	pl, err := readPlanned(filepath.Join(ix.inputs, plannedApp))
+	if err != nil {
+		stderr.say("graph: %v", err)
+		return 1
+	}
+	for _, f := range deckOnlyTests { // bounded by the list (P10-02)
+		outside := ix.outsideTheDeck(pl, f)
+		for _, o := range outside { // bounded by the findings (P10-02)
+			stdout.say("graph: FAIL %s reaches %s: it moves intact with the deck (design AP-7), so it may reach the deck's code and app's test support alone", f, o)
+		}
+		failed += len(outside)
+		if len(outside) == 0 {
+			stdout.say("graph: %-52s deck-only", f)
 		}
 	}
 	if failed > 0 {

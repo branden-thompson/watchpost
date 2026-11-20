@@ -537,3 +537,24 @@ arbiter the Station Director. The Reader's header says one caller. `app/doc.go` 
 name. `app/testdata/declset.txt`: the one line, on B1's golden list. mE7's anchor text: `m.dip()`
 to `m.duck()`, its replacement unchanged. The test inventory: one test added,
 `TestTheMapsReadAsGcprobesDo` (`tools/mutantmap`, outside the two trees).
+
+## B1.1, F-158's owed test (design AP-7.1, RM-4; A-45)
+
+**The test.** `TestACutBackUnderAHazardReadKeepsTheBedDown` (`app/cutback_hazard_test.go`), on the
+shipping path: the station goes on the air with the bed carrying, a Tornado Warning reaches the rail
+and is held on the air, and the operator cuts back through MasterControl's `CutBed(false)`. The
+Director answers with `Restore`, the precondition; the bed stays down while the hazard reads, and
+comes back when the read ends. Stable over 50 runs under `-race` and 200 without.
+
+**Seen failing.** Under the new mutant `mF158`, the Restore executor lifting the bed without the
+arbiter, the test fails on its second assertion; mE6's killer catches it too. On a Director planted
+to emit no `Restore`, the test fails with "no longer exercises F-158". Both were applied by hand and
+restored by copy.
+
+**Deck-only.** The graph tool's check (`make graph`) reports the file deck-only, and fails on a use
+of `stationFrom` planted in it. The app trace reaches 22 root objects today, as AP-7.2 says it does
+until the deck's prep commit, which adds it to the check's list.
+
+**The changed-line table.** No changed test line. The test inventory: one test added in `app`, and
+`TestADeckOnlyTestReachesTheDeckAlone` in `tools/graph`, outside the two trees. The corpus: one
+mutant added, `mF158`.
