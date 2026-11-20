@@ -324,10 +324,10 @@ func (m *mastercontrol) giveWay() {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.dip()
+	m.duck()
 }
 
-// dip is THE ONE CARRIER of "put the broadcast down" (D-1). THE CALLER HOLDS
+// duck is THE ONE CARRIER of "put the broadcast down" (D-1). THE CALLER HOLDS
 // m.mu AND HAS ALREADY PASSED silent() — it dereferences the voice, so a third
 // caller that checks only `m != nil` would nil-deref here. It exists because
 // `hold` must dip AND claim the bed without letting go in between: a `hold` that
@@ -335,7 +335,7 @@ func (m *mastercontrol) giveWay() {
 // take-back landing in that window see held=false over a ducked bed and lift
 // it, and the rail would believe it held a bed already back up, with nothing
 // left to dip it again.
-func (m *mastercontrol) dip() {
+func (m *mastercontrol) duck() {
 	if m.ducked {
 		return
 	}
@@ -383,7 +383,7 @@ func (m *mastercontrol) hold() {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.dip()
+	m.duck()
 	m.held = true
 }
 

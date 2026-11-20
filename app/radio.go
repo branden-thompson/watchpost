@@ -69,8 +69,8 @@ type radioDeck struct {
 	voiceFor func() (synth.Voice, error)
 
 	// abandonRead ends the read on the air when its audio stops making
-	// progress (FR-9). Set where the Director is built, because the deck is
-	// constructed first and the Director takes it as its voice; nil in tests
+	// progress (FR-9). Set where the arbiter is built, because the deck is
+	// constructed first and the arbiter takes it as its voice; nil in tests
 	// and in the pathless build.
 	abandonRead func(why string) bool
 

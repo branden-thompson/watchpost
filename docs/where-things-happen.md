@@ -117,8 +117,8 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | the Producer | proposes cards, several, cheap and name-only, with no words: the ticker for alerts, the schedule's offer for reports | `app/ticker.go:startTicker`, `app/executors.go:offer` |
 | the Composer | writes what a card says, at standby, from data fetched then rather than when it was proposed | `app/schedule.go:composeFor`, `app/compose_takeover.go` |
 | the Reader | performs the live card: its tone, its words and its pauses | `app/read_script.go:readScript` |
-| MasterControl | the effector: declares ON AIR and STANDBY, ducks the broadcast under a narration and gates the deck from the air | `app/mastercontrol.go:dip` |
-| duck | lowering the broadcast under a narration so its words are heard: a relay dips, a rendered report holds | `app/mastercontrol.go:dip`, `app/mastercontrol.go:giveWay` |
+| MasterControl | the effector: declares ON AIR and STANDBY, ducks the broadcast under a narration and gates the deck from the air | `app/mastercontrol.go:duck` |
+| duck | lowering the broadcast under a narration so its words are heard: a relay dips, a rendered report holds. One act, four calls, in order: the arbiter asks MasterControl to give way, MasterControl ducks once however often it is asked, the radio deck ducks, and the player suppresses the bed | `app/mastercontrol.go:giveWay`, `app/mastercontrol.go:duck`, `app/radio.go:duck`, `domains/radio/player/engine.go:Suppress` |
 | burst | one takeover card carrying several hazards, read in order behind one tone | `app/burst_words.go:breakingLine`, `app/compose_takeover.go` |
 | programme | what the station reads on its main track: what a takeover interrupts and a transition returns to | `platform/lineup/lineup.go` |
 | segment | one spoken line of a synthesized broadcast, with its role and pause | `domains/radio/synth/compose.go` |

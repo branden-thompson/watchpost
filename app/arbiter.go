@@ -125,7 +125,7 @@ type arbiter struct {
 	sleep     func(ctx context.Context, d time.Duration) bool // sleepCtx; tests replace it
 }
 
-// newDirector builds the arbiter over a voice and THE effector.
+// newArbiter builds the arbiter over a voice and THE effector.
 //
 // The effector is passed in rather than built here because it is shared: the
 // ticker writes the band through the same instance, and a second instance would
@@ -158,7 +158,7 @@ const holdStep = 100 * time.Millisecond
 //
 // The class is the CALLER's — the ticker knows its burst's highest-severity
 // event, the read knows its row — because only they can classify what they are
-// about to say. The Director forwards it; it does not decide it.
+// about to say. The arbiter forwards it; it does not decide it.
 func (s *speaker) attention(class cast.Class) time.Duration {
 	if !s.live() {
 		return 0
@@ -249,7 +249,7 @@ func (s *speaker) awaitAir(then func()) bool {
 	return true
 }
 
-// role is the job's role, or the root when there is no job (a nil Director's
+// role is the job's role, or the root when there is no job (a nil arbiter's
 // silent sequence).
 func (s *speaker) role() cast.Role {
 	if s.job == nil {
@@ -271,7 +271,7 @@ func (s *speaker) live() bool {
 // separately, on the speaker's attention call, because only the caller can
 // classify the event it is about to read.
 func (d *arbiter) Run(ctx context.Context, class narrationClass, role cast.Role, audible bool, seq func(ctx context.Context, s *speaker)) bool {
-	// EVERY Director job is priority work (D-R3-1, MVS-D-43): the listener is
+	// EVERY arbiter job is priority work (D-R3-1, MVS-D-43): the listener is
 	// waiting on it, so it may take one of the two reserved render slots rather
 	// than queue behind the broadcast's read-ahead.
 	ctx = synth.WithPriority(ctx)
@@ -560,7 +560,7 @@ func (d *arbiter) pauseRead() bool {
 // Five functions ask it, so it is written once.
 func live(j *narrationJob) bool { return j != nil && j.ctx.Err() == nil }
 
-// reads is EVERY LIVE READ THE DIRECTOR IS HOLDING, innermost first: on the air,
+// reads is EVERY LIVE READ THE ARBITER IS HOLDING, innermost first: on the air,
 // then suspended by a takeover, then waiting behind one. Callers hold d.mu.
 //
 // TWO CARRIERS, TWO QUESTIONS, AND THEY ARE NOT THE SAME ONE (D-1). `reads()`

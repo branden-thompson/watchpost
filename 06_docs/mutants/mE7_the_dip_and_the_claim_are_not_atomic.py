@@ -11,7 +11,7 @@ import pathlib
 p = pathlib.Path("app/mastercontrol.go"); s = p.read_text()
 old = """	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.dip()
+	m.duck()
 	m.held = true
 }"""
 new = """	m.giveWay()

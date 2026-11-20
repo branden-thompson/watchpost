@@ -2,9 +2,10 @@ package app
 
 // read_script.go — the Reader (MVS-D-77, T3.8).
 //
-// ONE READER, TWO CALLERS. The live takeover and the Director's Speak executor
-// both read through it. Two implementations of MVS-D-72's pacing would be two
-// places for the ruling to drift, and the pacing is the thing a listener
+// ONE READER, ONE CALLER. The live takeover is the Director's Speak, and
+// its executor, `executors.speak` in executors.go, is the one caller. A
+// second implementation of MVS-D-72's pacing would be a second place for the
+// ruling to drift, and the pacing is the thing a listener
 // actually hears — a pacing fault is found by ear, on a real alert, not by any
 // gate.
 //

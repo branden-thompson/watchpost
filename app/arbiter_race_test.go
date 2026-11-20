@@ -22,7 +22,7 @@ import (
 // WHAT THE SOURCE SAYS, checked rather than assumed:
 //
 //   - The three touch NO mutable mastercontrol state. They call silent(), which
-//     reads m and m.v, and m.v is never written after construction. dip and
+//     reads m and m.v, and m.v is never written after construction. duck and
 //     takeBack write m.ducked and m.held, and both already hold m.mu.
 //   - Underneath, the deck delegates one-to-one to engine methods that each take
 //     e.mu, and on DISJOINT fields: Suppress/Restore touch e.suppressed;

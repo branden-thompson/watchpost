@@ -174,3 +174,19 @@ func TestCompareFollowsTheBatchsMaps(t *testing.T) {
 		t.Errorf("with the maps the comparator says %v (%v); want nothing", probs, err)
 	}
 }
+
+// TestTheMapsReadAsGcprobesDo is 0.19.6 A-44: a map's comment and blank lines
+// read as nothing, as gcprobe reads them, so the release's one renames file
+// serves both; a line with no tab is still refused.
+func TestTheMapsReadAsGcprobesDo(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "renames.tsv")
+	write(t, filepath.Dir(file), filepath.Base(file), "# a header\n\nF\tH\n")
+	m, err := readMap(file)
+	if err != nil || len(m) != 1 || m["F"] != "H" {
+		t.Errorf("a commented map read as %v (%v); want F to H alone", m, err)
+	}
+	write(t, filepath.Dir(file), filepath.Base(file), "# a header\nF H\n")
+	if _, err := readMap(file); err == nil {
+		t.Error("a line with no tab was read; want it refused")
+	}
+}

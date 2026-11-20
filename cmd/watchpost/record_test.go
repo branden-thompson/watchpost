@@ -131,6 +131,10 @@ var wholeFileClaims = []wholeFileClaim{
 	{"A-19", "app/bedrelay.go"}, {"A-19", "app/pool.go"}, {"A-19", "app/dashboard.go"},
 	{"A-19", "app/history.go"}, {"A-19", "app/inject.go"}, {"A-19", "app/mapwaves.go"},
 	{"A-23", "saychildren.go"}, {"A-23", "hangup.go"}, {"A-23", "lazymemo.go"}, {"A-23", "timing.go"},
+	// 0.19.6 D-47 is about the files' names, the basenames app and modes/tty share
+	{"D-47", "dashboard.go"}, {"D-47", "debug.go"}, {"D-47", "doc.go"}, {"D-47", "setup.go"},
+	{"D-47", "severe.go"}, {"D-47", "ticker.go"}, {"D-47", "timing.go"},
+	{"D-47", "app/dashboard.go"}, {"D-47", "modes/tty/dashboard.go"},
 }
 
 // unlinedRefs are the ruling rows that name a Go file without its line or a

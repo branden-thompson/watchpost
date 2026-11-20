@@ -545,7 +545,7 @@ func scriptsDir() string {
 	return filepath.Join(filepath.Dir(path), "scripts")
 }
 
-// buildDirector builds the voice arbiter over the radio deck (a silent one
+// buildArbiter builds the voice arbiter over the radio deck (a silent one
 // without audio: the typed-nil deck must become a nil interface), and the
 // effector it performs through.
 func (lp *livePipelines) buildArbiter(send func(tea.Msg)) *arbiter {
@@ -554,7 +554,7 @@ func (lp *livePipelines) buildArbiter(send func(tea.Msg)) *arbiter {
 	}
 	nar := newArbiter(lp.deck, newMastercontrol(lp.deck, send))
 	// THE DECK CAN END A READ, and this is the only place both exist: the deck
-	// is built first and the Director takes it as its voice (FR-9).
+	// is built first and the arbiter takes it as its voice (FR-9).
 	lp.deck.abandonRead = nar.abandonOnAir
 	return nar
 }

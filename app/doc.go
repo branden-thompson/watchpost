@@ -1,9 +1,10 @@
 // Package app is the composition root: the one place that wires domains,
 // platform and the live surfaces together. cmd/watchpost stays thin: it
-// parses the command line and calls in here. It imports no domain and not
-// the live surface (modes/tty); beside app, only the one-shot report's
-// renderer (modes/report), the schema generator (pkg/schema) and four
-// platform helpers (snapshot, httpx, invariant, term).
+// parses the command line and calls in here. cmd/watchpost imports no domain
+// and not the live surface (modes/tty); beside app, it imports only the
+// one-shot report's renderer (modes/report), the schema generator
+// (pkg/schema) and four platform helpers (snapshot, httpx, invariant, term).
+// app itself imports the domains and modes/tty: it is where they meet.
 //
 // What app builds and runs: the PRIORITY and RECENT pipelines that publish
 // the snapshot; the ticker, the producer of breaking alerts; the radio deck,

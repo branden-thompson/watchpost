@@ -344,8 +344,8 @@ func (*mastercontrol).StopMonitor
 func (*mastercontrol).clearBand
 func (*mastercontrol).cue
 func (*mastercontrol).declare
-func (*mastercontrol).dip
 func (*mastercontrol).dropHeld
+func (*mastercontrol).duck
 func (*mastercontrol).giveWay
 func (*mastercontrol).givenWay
 func (*mastercontrol).hold

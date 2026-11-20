@@ -510,3 +510,30 @@ B0.12 each took more than one commit; the batch map says so. B0 closes on this c
 
 **B0 closed, 2026-11-20.** `make verify-full` on `d33fc847`: every gate green, the whole corpus of
 1,059 mutants judged, 7,877 s on the efficiency cores. Pushed; the remote ref matched the commit.
+
+## B1.2, the vocabulary: RM-8's and JN-5's names (D-46 to D-49, A-44)
+
+**Put to the HUM LEAD singly.** JN-5's four that change code, not only comments: the receiver `d`
+on four types (D-46, none renamed), the seven basenames `app` and `modes/tty` share (D-47, each move
+batch rules), the duck path's four names (D-48, `dip` and `duck` unified) and `Dashboard` hosting
+every window (D-49, its comment and row corrected with B1.3's stack).
+
+**The one word is `duck`** (A-44). `mastercontrol.dip` is renamed for the interface call it makes,
+`narrationVoice.duck`; the reverse would rename the interface, its ten test voices and the
+`"duck()"` lines `app/pump_test.go` asserts. The vocabulary's duck row names the path's four calls
+in order. `06_docs/perf/renames.tsv` is the release's renames file: gcprobe's tree test applies it,
+seen failing without it (`mastercontrol.giveWay` and `.hold` each lose their inlined call to
+`(*mastercontrol).dip`), and the scoped sweep takes it as `SCOPED_FUNCS`. `tools/mutantmap` reads
+its comment lines as gcprobe does.
+
+**The comments.** RM-8's seven places, and three of the same class outside RM's four files: the
+deck's `abandonRead`, `renderSlots`, and the synth limiter's reserved pair, which called the
+arbiter the Station Director. The Reader's header says one caller. `app/doc.go` names
+`cmd/watchpost` as the subject of its import sentence (JN-5, RC-7 item 4).
+
+**The changed-line table.** No test's setup or assertion line changed; one test comment
+(`app/arbiter_race_test.go:25`, `dip` to `duck`). `union-decls.txt`: `(mastercontrol).dip` is
+`(mastercontrol).duck`, and `giveWay` and `hold`, its two callers, re-hashed for the call's new
+name. `app/testdata/declset.txt`: the one line, on B1's golden list. mE7's anchor text: `m.dip()`
+to `m.duck()`, its replacement unchanged. The test inventory: one test added,
+`TestTheMapsReadAsGcprobesDo` (`tools/mutantmap`, outside the two trees).

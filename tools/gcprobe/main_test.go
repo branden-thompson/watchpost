@@ -194,14 +194,15 @@ func TestRenamesMergeKeys(t *testing.T) {
 
 // TestTheTreesKeepWhatTheCompilerDecided holds the repository to the
 // baselines recorded on e57afeaf: no new escape, no lost inlining (0.19.6
-// B0.7, PB-2, PB-3). On another platform the comparison says so and passes,
+// B0.7, PB-2, PB-3), through the release's renames, 06_docs/perf/renames.tsv
+// (0.19.6 A-44). On another platform the comparison says so and passes,
 // and under another Go it fails until the baselines are recorded again.
 func TestTheTreesKeepWhatTheCompilerDecided(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds both trees")
 	}
 	var out, errs bytes.Buffer
-	code := run([]string{"compare", "-dir", "../..", "-escapes", "../../06_docs/perf/escapes-e57afeaf.tsv", "-inlining", "../../06_docs/perf/inlining-e57afeaf.tsv"}, &out, &errs)
+	code := run([]string{"compare", "-dir", "../..", "-escapes", "../../06_docs/perf/escapes-e57afeaf.tsv", "-inlining", "../../06_docs/perf/inlining-e57afeaf.tsv", "-map", "../../06_docs/perf/renames.tsv"}, &out, &errs)
 	t.Log(strings.TrimSpace(out.String()))
 	if code != 0 {
 		t.Errorf("the trees left the compiler's baselines (exit %d):\n%s%s", code, out.String(), errs.String())

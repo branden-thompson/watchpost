@@ -1289,21 +1289,25 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-46 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | [shift+N] makes a request order, not a card — the Producer turns it into a proposal |
 | D-46 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE PROACTIVE REQUEST: [shift+N], AND IT IS A REQUEST ORDER, NOT A CARD |
 | D-46 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE: the minor rows put for veto at the UAT sitting (07-readiness/validate-agenda.md): A-18 (its 0.00 fl… |
+| D-46 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B1.2, JN-5's receiver: d is the receiver of four types, Dashboard (752 methods), radioDeck (88), arbiter (17)… |
 | D-46 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-2: M5's 2.0 s (D-43) cannot be met on the cold path W3.2 creates — zone geometry now resolves… |
 | D-46 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-45's disclaimer: when it appears and where it is kept (proposed: gate the first propagation view and the fe… |
 | D-47 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | origin is a term in the ranking, not a trump; insistence is the escalation |
 | D-47 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | ORIGIN IS A TERM IN THE RANKING, NOT A TRUMP — AND THAT IS WHAT "IN DOUBT" MEANS |
 | D-47 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 1 of 07-readiness/validate-agenda.md: the console's card boxes (D-18, D-32), at a wide and… |
+| D-47 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B1.2, JN-5's basenames: seven file names are in both app and modes/tty (dashboard.go, debug.go, doc.go, setup… |
 | D-47 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-3 (InfoSec): every radar request sends the exact on-screen rectangle, centred on the selected… |
 | D-47 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Band status has no lower limit (PM-R1, BQ-F1, DQ-F16, CQ-T2): daytime D-layer absorption closes 160 m and 80 … |
 | D-48 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the Director remembers one timestamp per slot, and nothing else |
 | D-48 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | WHAT THE DIRECTOR REMEMBERS, AND HOW LITTLE |
 | D-48 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 3 of 07-readiness/validate-agenda.md: water temperature under metric (D-6): a coastal plac… |
+| D-48 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B1.2, JN-5's duck path: one act has four names in four files and two packages, app/arbiter.go:345 calling app… |
 | D-48 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-4 (cross-repo, go-tuiMaps D-67): playback semantics were unstated — phase origin, stepping wh… |
 | D-48 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | M3 ("told when it closes", proposed ≤ 20 min) against hourly updates (D-29, D-39) and GloTEC's 18-29 min publ… |
 | D-49 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | a transition is a property of the KIND, not the origin — announced / handsBack rows |
 | D-49 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE TRANSITION RULE IS A PROPERTY OF THE KIND, AND MVS-D-80 ALREADY RULED IT |
 | D-49 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 4 of 07-readiness/validate-agenda.md: the console honours units and clock (DEF-2 under D-5… |
+| D-49 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B1.2, JN-5's window host: Dashboard hosts every window, the console's card window, its move and drop prompts … |
 | D-49 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Follow-up to D-48: its item (6) — pan and zoom, with data rehydrating and a loading indicator — sits in D-33'… |
 | D-49 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Unset metric targets (BQ-F3, DQ-F4, CQ-V4, PF-F9, HY-F4): D-8, D-9 and D-12 put them in DISCOVER; only M1/M4 … |
 | D-50 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | breakpoints 100 / 120 / 150, floor 25 rows; below 100 the console REFUSES to draw |
@@ -2186,6 +2190,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-42 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-168's details: (1) dimmed is the app's own dimmed form, the chip's words in the muted table tone on no grou… |
 | A-43 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The surfaces held (B0.12; AP-1.5, M5, D-26). (1) TestTheDecksExportedSurfaceIsHeld, in app, holds every expor… |
 | A-43 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-170's details: (1) a feature's hosts are stated, not derived: the app says, for each station provider, map … |
+| A-44 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B1.2's names (RM slice 3; RM-8, JN-5, RC-7 item 4; D-46 to D-49). (1) D-48's one word is duck, the vocabulary… |
 | A-44 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-173's wordings, each note under the Status window's hosts: MRMS "MRMS colors approximate; scale read from l… |
 | A-45 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The continents' reference points (FR-1.9): on each inhabited continent, the city where its amateur radio is b… |
 | A-46 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-176's details: (1) the block's line is each continent's highest open band - "Up to: NA 20m · SA 17m … B cha… |

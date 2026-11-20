@@ -30,7 +30,7 @@ func (d *radioDeck) listVoices() {
 // ~63 MB model load per process, and a third concurrent one buys nothing a
 // listener can hear while costing memory a small box may not have.
 //
-// The Station Director's two reserved slots are on top of this number, so the
+// The arbiter's two reserved slots are on top of this number, so the
 // worst case is renderSlots()+2 processes (perf-protocol.md §3).
 func renderSlots() int {
 	if runtimeGOOS() == "darwin" {

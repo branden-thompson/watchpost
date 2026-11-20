@@ -1,0 +1,7 @@
+# 0.19.6's identifier renames, old<TAB>new, oldest first (0.19.6 A-44). gcprobe's tree test applies
+# every line to the compiler's baselines' keys, as text in each field; the scoped sweep reads it as
+# SCOPED_FUNCS, a mutant's enclosing function by exact name. A batch that renames a function adds its
+# lines in the renaming commit.
+# B1 (0.19.6 D-48): MasterControl's dip is duck, the word of the call below it
+mastercontrol.dip	mastercontrol.duck
+(*mastercontrol).dip	(*mastercontrol).duck

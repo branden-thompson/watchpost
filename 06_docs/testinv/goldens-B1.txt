@@ -1,0 +1,3 @@
+# 0.19.6 B1's re-recorded goldens (A-33): each file under modes/tty's or app's testdata that B1 changes
+# B1.2, D-48: MasterControl's dip renamed duck, one declaration
+app/testdata/declset.txt

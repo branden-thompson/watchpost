@@ -13,8 +13,9 @@ import (
 // preview plays can have six `say`/`piper` processes alive at once, and on
 // Linux each one is a ~63 MB model load.
 //
-// Slots are N ordinary plus TWO reserved. The reserved pair belongs to the
-// Station Director, which sets WithPriority on every job it runs, so a line a
+// Slots are N ordinary plus TWO reserved. The reserved pair belongs to app's
+// narration arbiter, the one owner of the correspondent's voice, which sets
+// WithPriority on every job it runs, so a line a
 // listener is waiting for never queues behind the broadcast's read-ahead.
 // There are two and not one because a takeover is admitted while the read it
 // suspended may still hold a reserved slot for an in-flight render
@@ -58,7 +59,7 @@ func NewLimiter(ordinary, reserved int) *Limiter {
 // collide with another package's.
 type priorityKey struct{}
 
-// WithPriority marks ctx as a Station Director job, admitting it to the
+// WithPriority marks ctx as a narration arbiter's job, admitting it to the
 // reserved pool when the ordinary one is full.
 func WithPriority(ctx context.Context) context.Context {
 	return context.WithValue(ctx, priorityKey{}, true)

@@ -329,7 +329,9 @@ func readMaps(pathsFile, funcsFile string) (maps, error) {
 	return maps{paths: p, funcs: f}, nil
 }
 
-// readMap reads old<TAB>new lines; no file is an empty map.
+// readMap reads old<TAB>new lines, a blank line or one starting with # read
+// as nothing, so one file can be both this map and gcprobe's; no file is an
+// empty map.
 func readMap(file string) (map[string]string, error) {
 	out := map[string]string{}
 	if file == "" {
@@ -340,6 +342,9 @@ func readMap(file string) (map[string]string, error) {
 		return nil, err
 	}
 	for i, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
 		from, to, ok := strings.Cut(line, "\t")
 		if !ok {
 			return nil, fmt.Errorf("%s:%d: not old<TAB>new", file, i+1)

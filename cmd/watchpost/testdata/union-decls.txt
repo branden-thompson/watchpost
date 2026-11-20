@@ -1798,11 +1798,11 @@ func (mastercontrol).StopMonitor 3eed8c2cf05b
 func (mastercontrol).clearBand fff97ea2529f
 func (mastercontrol).cue 480a68f77243
 func (mastercontrol).declare 8d06a9767f41
-func (mastercontrol).dip 9818e584653b
 func (mastercontrol).dropHeld 2f14d20a82d1
-func (mastercontrol).giveWay 34a3b1eef0b4
+func (mastercontrol).duck fe56989d69cd
+func (mastercontrol).giveWay d4813672399f
 func (mastercontrol).givenWay 8e489783260a
-func (mastercontrol).hold a3ebf16b4680
+func (mastercontrol).hold 7ac2fcc23d4e
 func (mastercontrol).holdLine 8c993f703a80
 func (mastercontrol).railFence 5039d3c78865
 func (mastercontrol).resumeLine 0583af3127fd
