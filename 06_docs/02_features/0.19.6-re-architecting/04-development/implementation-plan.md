@@ -112,7 +112,7 @@ listed re-recordings is a regression, never a ruling candidate (A-29).
 
 | Batch | What | Commits, full gates | Why it stands alone |
 |---|---|---|---|
-| B0 | the instruments (package map §4, A-12, A-29), go 1.26.11 and the floor scan (D-12) | 4, 4 | nothing moves until every instrument is seen failing and then passing |
+| B0 | the instruments (package map §4, A-12, A-29), go 1.26.11 and the floor scan (D-12) | 13, 12 and the closing `verify-full` (planned 4, 4: D-37 and D-38 split the gate, and B0.6, B0.7 and B0.12 each took more than one commit) | nothing moves until every instrument is seen failing and then passing |
 | B1 | RM's slices 1 and 3, the doc errors, M4's doc findings; then M4's midpoint trace (D-29) | 2, 2 | changes no production behaviour; fixes docs before any move makes them harder to fix |
 | B2 | `modes/tty`: the kit (`internal/frame`) and the test support (`internal/ttytest`) | 2, 2 | the console's prerequisite; the first new packages |
 | B3 | `modes/tty`: the console (`modes/tty/console`) | 2, 2 | a move with a narrow seam; its killers sit in its own tests (RX-3) |

@@ -112,7 +112,10 @@ func runInventory(args []string) error {
 	if *outFile == "" {
 		return errors.New("run needs -out")
 	}
-	cmd := exec.Command("go", append(append([]string{"test", "-json", "-count=1"}, extra...), trees...)...)
+	// -timeout is make race's, for the same reason: modes/tty under the race
+	// detector, on the efficiency cores, runs past go test's default 10
+	// minutes, and a timed-out package records none of the tests after it.
+	cmd := exec.Command("go", append(append([]string{"test", "-json", "-count=1", "-timeout", "30m"}, extra...), trees...)...)
 	cmd.Stderr = os.Stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

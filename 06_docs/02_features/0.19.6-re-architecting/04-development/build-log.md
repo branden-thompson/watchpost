@@ -483,3 +483,27 @@ and `mastercontrol` are held to the interfaces they are handed out as. `TestTheR
 floor first masked it, and was lowered to a floor against an empty list); a planted test-only use.
 D-26's rule first found 21 names: scoped to the names the map's files declare, as MS C-6 counted, it
 finds the three.
+
+## B0's close: the golden gate, the inventory baseline, the plan's tests held
+
+**The golden gate (B0.5).** `TestNoGoldenChangesOutsideABatchsList` (`cmd/watchpost`) holds every
+file under `modes/tty`'s and `app`'s `testdata`, 108 at B0's close, to
+`06_docs/testinv/goldens.tsv`, a hash and a path a file captured at this commit: a file whose content
+matches a baseline file passes, so a pure rename does; any other must be named in a batch's list,
+`06_docs/testinv/goldens-<batch>.txt` (A-33). B0's list names its five exactly: the router trace in
+its new form, the app trace, and the shared lock's planned map and fixtures. Seen failing on a
+planted re-capture of `about-133x44-ascii.golden` and a planted addition, both restored.
+
+**The inventory baseline (B0.5, D-36).** `06_docs/testinv/plain.tsv` and `property.tsv` record 2,006
+tests and subtests of the two trees, `race.tsv` 2,005 (`TestTheMapsOpenMeteoWeightIsWithinItsBudget`
+is built without the race detector). The first race run lost 227 of `modes/tty`'s tests: `testinv`
+ran `go test` with its default 10-minute timeout, and `modes/tty` under the race detector on the
+efficiency cores runs past it. It now passes `make race`'s 30 minutes.
+
+**The plan's tests held (A-37).** `TestEveryTestALandedBatchsPlanNamesExists` holds every test a
+landed batch's section of the plan names to the tree; B0's names seven, all declared. A batch adds
+itself to `landedBatches` in its closing commit.
+
+**B0 in commits.** 13, the plan's 4: D-37 and D-38 split the gate in two mid-batch, and B0.6, B0.7 and
+B0.12 each took more than one commit; the batch map says so. B0 closes on this commit's
+`make verify-full`.

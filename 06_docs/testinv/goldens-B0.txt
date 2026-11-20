@@ -1,0 +1,7 @@
+# 0.19.6 B0's re-recorded and added goldens under the two trees' testdata (B0.5, A-33), exactly:
+# the router trace in its new form (B0.6), the app trace (B0.6), the shared lock's planned map and fixtures (B0.11)
+app/testdata/deck_trace.golden
+app/testdata/sharedlock/fixture.tsv
+app/testdata/sharedlock/fixture/x.go
+app/testdata/sharedlock/planned.tsv
+modes/tty/testdata/router-trace.golden
