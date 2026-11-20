@@ -3,6 +3,11 @@
 # binary links (Apache-2.0 and BSD-3 require the text to accompany a binary
 # distribution). Reads the module cache — run after `go mod tidy`. Modules
 # without a licence file are listed so the gap is visible, never silent.
+#
+# tools/graph IS NOT HERE, BY DESIGN (0.19.6 D-30): a nested module of its own,
+# a development tool that requires golang.org/x/tools and is never linked into
+# the binary, so `go list -m all` in this module does not list it and its
+# dependencies ship in nothing this file covers.
 set -eu
 cd "$(dirname "$0")/.."
 out=THIRD_PARTY_LICENSES.md

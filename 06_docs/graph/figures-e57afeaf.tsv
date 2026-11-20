@@ -1,0 +1,13 @@
+# graph: 0.19.6 M3's figures (B0.12), recorded by tools/graph; check holds each at or below
+figure	value
+hub fan-in (files using Dashboard)	70
+Dashboard methods	752
+Dashboard method files	68
+map reach (symbols of the model's files)	72
+Settings reach (symbols of the model's files)	102
+console reach (symbols of dashboard.go)	13
+map reach by type	93
+MS-7 tests reaching the map's unexported code	408
+MS-7 C3, moves with the code	288
+MS-7 C4, cannot be served	120
+app unexported crossings under the planned map	283

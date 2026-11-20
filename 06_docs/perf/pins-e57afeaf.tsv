@@ -4,52 +4,52 @@
 # go	go1.27.4
 # base	e57afeaf, product code identical; the pins' tests at 0.19.6 B0.7
 label	allocs_min	allocs_max	bytes_min	bytes_max
-Observer frame direct	98	98	26760	26763
-Observer frame through the Router	98	98	26760	26763
-Propagation window colour hit	1581	1582	815706	815714
-Propagation window colour miss	3091	3091	1045511	1045526
-Propagation window hit	1209	1210	801143	801164
-Propagation window miss	1596	1596	938704	938722
-Settings 133x44 hit	2628	2628	847422	847442
-Settings 133x44 miss	4626	4626	999602	999631
-Settings 80x24 hit	1064	1064	290348	290362
-Settings 80x24 miss	3035	3035	414848	414857
-Settings Tab press from Broadcaster	2809	2809	858780	858794
-Settings Tab press from Data	2554	2554	848512	848538
-Settings Tab press from Map Layers	2350	2350	831060	831076
-Settings Tab press from Maps	3019	3019	863724	863738
-Settings Tab press from Watchpost Radio	2502	2502	847966	848008
-Settings Tab press from Watchpost UI	2606	2606	854078	854108
+Observer frame direct	98	98	26760	26760
+Observer frame through the Router	98	98	26760	26760
+Propagation window colour hit	1581	1581	815640	815640
+Propagation window colour miss	3090	3090	1045424	1045424
+Propagation window hit	1209	1209	801080	801080
+Propagation window miss	1595	1595	938624	938624
+Settings 133x44 hit	2627	2627	847344	847344
+Settings 133x44 miss	4625	4625	999504	999504
+Settings 80x24 hit	1064	1064	290320	290320
+Settings 80x24 miss	3035	3035	414800	414800
+Settings Tab press from Broadcaster	2808	2808	858696	858696
+Settings Tab press from Data	2553	2553	848440	848440
+Settings Tab press from Map Layers	2349	2349	830976	830976
+Settings Tab press from Maps	3018	3018	863640	863640
+Settings Tab press from Watchpost Radio	2501	2501	847896	847896
+Settings Tab press from Watchpost UI	2605	2605	854008	854008
 Update with the map open 133x44	15	15	9512	9512
-assembler publish of 25 locations	259	259	75528	75529
-beat console 160x74	377	377	122455	122457
-beat idle Observer 133x44	168	168	75871	75875
-beat idle Observer 133x44 with Settings open	2642	2642	869964	870681
-beat radio playing 133x44	327	327	68372	68373
-console frame 150x74 hit	291	291	71739	71742
-console frame 150x74 miss	9164	9164	395541	395545
+assembler publish of 25 locations	259	259	75527	75528
+beat console 160x74	377	377	122176	122176
+beat idle Observer 133x44	168	168	75867	75867
+beat idle Observer 133x44 with Settings open	2641	2641	869867	869867
+beat radio playing 133x44	327	327	68368	68368
+console frame 150x74 hit	291	291	71736	71736
+console frame 150x74 miss	9164	9164	394744	394744
 console running-order rows	260	260	8216	8216
 firms tile memo hit	0	0	0	0
-frame 133x44 hit	155	155	50528	50535
-frame 133x44 miss	5525	5525	368818	368832
-frame 133x70 hit	149	149	74846	74846
-frame 133x70 miss	11324	11324	623022	623036
-frame 200x60 hit	152	152	103246	103246
-frame 200x60 miss	14236	14236	849627	849644
+frame 133x44 hit	155	155	50528	50528
+frame 133x44 miss	5525	5525	368776	368776
+frame 133x70 hit	149	149	74840	74840
+frame 133x70 miss	11323	11323	622952	622952
+frame 200x60 hit	152	152	103240	103240
+frame 200x60 miss	14235	14235	849528	849528
 frame 80x24 hit	141	141	26792	26792
-frame 80x24 miss	1138	1138	180356	180356
-frame miss with a test event	5526	5526	368916	368944
+frame 80x24 miss	1138	1138	180328	180328
+frame miss with a test event	5526	5526	368888	368888
 history values read	1	1	32768	32768
 layout alone	93	93	4536	4536
-layout frame hit	155	155	50528	50535
+layout frame hit	155	155	50528	50528
 layout navigation key	9	9	7392	7392
-map window hit	3095	3095	873495	873516
-map window miss	3508	3508	1093389	1093398
-publish no-change frame 133x44	203	203	82217	82222
+map window hit	3094	3094	873424	873424
+map window miss	3507	3507	1093296	1093296
+publish no-change frame 133x44	203	203	82215	82219
 render Width of a braille row	0	0	0	0
 render Width of a styled row	0	0	0	0
-severe window hit	1590	1590	795742	795756
-severe window miss	5069	5069	995835	995864
+severe window hit	1589	1589	795672	795672
+severe window miss	5067	5067	995688	995688
 ticker advance	3	3	136	136
 ticker advance with a test event	3	3	136	136
 time to tone	183	185	-	-

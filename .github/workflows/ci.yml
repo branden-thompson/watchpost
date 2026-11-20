@@ -70,6 +70,7 @@ jobs:
       - run: make gate-controls
       - run: make alloc-budget # malloc pins run outside the race detector (quality pass §0.1)
       - run: make pins-selftest # and the pins' comparator can still fail against its baseline (0.19.6 A-40)
+      - run: make graph # M3's figures held at or below their e57afeaf baseline (0.19.6 B0.12, D-30)
       - run: make property # the map's guard 3 at its full 10,000 sequences, and ninety days of a global grid in the history store, once each, outside the race detector (0.18.0 W2.4, 0.19.0 W1.2)
       - run: make dupes # metric D: no duplicate operation without a RATIFIED reason
       - run: make wires # every closed-set member names a production writer and reader, or is RATIFIED as owed

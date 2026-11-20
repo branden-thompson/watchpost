@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: verify-full hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln vuln-floor lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget pins-selftest property quality-bench bench-pair p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
+.PHONY: verify-full hooks lint-plan-code test-say quality promote-verdicts mutant-scoped test-inventory wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln vuln-floor lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget pins-selftest graph property quality-bench bench-pair p10 hygiene test-platforms vet-tags lint-identity install-test pty-severe journey
 
 BINARY := watchpost
 DIST   := dist
@@ -39,7 +39,12 @@ race:
 # three times the slowest finished run, so the clock reports a hang, not a
 # slow runner. When the package nears it, raise it and re-record the
 # measurement here.
+#
+# THE GRAPH TOOL IS A MODULE OF ITS OWN (0.19.6 D-30), so ./... never reaches
+# it: it is named in this recipe, in vet, tidy, vuln and lint, and in the
+# licence script, by its directory.
 	go test -race -count=1 -timeout 30m ./...
+	go -C tools/graph test -race -count=1 ./...
 
 fmt:
 # GOFMT'S OWN STATUS IS READ. `test -z "$$(gofmt -l …)"` is true when gofmt prints
@@ -53,6 +58,7 @@ fmt:
 
 vet:
 	go vet ./...
+	go -C tools/graph vet ./...
 
 # THE BUILD-TAGGED SOURCE IS SOURCE, and `go vet ./...` never sees it. The
 # property tests live behind `property`; a tag with no gate is a tag that rots
@@ -68,6 +74,8 @@ vet-tags:
 tidy:
 	go mod tidy -diff
 	go mod verify
+	go -C tools/graph mod tidy -diff
+	go -C tools/graph mod verify
 
 # govulncheck is PINNED (IS-M10): @latest ran whatever the module proxy served
 # that day, code no one had reviewed, inside the gate. v1.8.0 is the newest
@@ -78,6 +86,7 @@ GOVULNCHECK_VERSION := v1.8.0
 
 vuln:
 	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
+	go -C tools/graph run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 # THE SAME SCAN AT THE FLOOR (0.19.6 D-12). `vuln` runs under the toolchain the
 # gates are proven on, so it judges the standard library a release is built
@@ -318,7 +327,7 @@ verify:
 verify-full:
 	@go run ./tools/treelock -name verify-full -- go run ./tools/runlog -lane verify-full -- $(MAKE) --no-print-directory verify-gates MUTANT_SCOPE=full
 
-verify-gates: fmt vet vet-tags tidy vuln vuln-floor race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget pins-selftest property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
+verify-gates: fmt vet vet-tags tidy vuln vuln-floor race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget pins-selftest graph property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # THE DOCS LANE (go-tuiMaps v0.2.0 D-15; watchpost 0.18.0 D-38). A change that
@@ -610,6 +619,16 @@ alloc-budget:
 	@mkdir -p $(DIST)
 	go test -count=1 -json -run 'AllocBudget|^TestRouterCostsObserverAlmostNothingPerFrame$$|^TestLayoutOncePerViewAndKey$$|^TestTheLineupRowsBuildNoDayCells$$' -skip '^TestTheAllocBudgetSelectsItsPins$$|^TestEveryRaceSkippedPinIsInTheAllocBudget$$' ./... > $(DIST)/alloc-budget.json || { go run ./tools/pins -baseline $(PINS_BASELINE) < $(DIST)/alloc-budget.json; exit 1; }
 	go run ./tools/pins -baseline $(PINS_BASELINE) < $(DIST)/alloc-budget.json
+
+# M3'S FIGURES, RE-COUNTED (0.19.6 B0.12, D-30, D-41, D-43, D-44): tools/graph
+# type-checks modes/tty and app with their tests and holds the hub's fan-in,
+# Dashboard's methods, each area's reach into the model, the map's reach by
+# type and app's unexported crossings under the planned map at or below
+# 06_docs/graph/figures-e57afeaf.tsv, recorded on e57afeaf; MS-7's counts are
+# reported beside theirs. Its own tests show it failing on a planted
+# pass-through and a planted rise.
+graph:
+	go -C tools/graph run . check -dir ../.. -baseline ../../06_docs/graph/figures-e57afeaf.tsv
 
 # And the comparator can still fail: against the committed baseline, every pin
 # at its maximum passes and each planted fault fails.

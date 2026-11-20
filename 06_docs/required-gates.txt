@@ -33,6 +33,7 @@ p10
 gate-controls
 alloc-budget
 pins-selftest
+graph
 property
 dupes
 dupes-selftest

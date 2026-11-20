@@ -424,3 +424,48 @@ inlined calls.
 over 32 and `tools/benchpair` 0.54 over 13, against P10-05's 2.0: development tooling never linked
 into the binary, its checks where a broken input would read as clean. The HUM LEAD: "ratified; we
 never inflate density with unnecessary assertions." The rows are in the ledger and its mirror.
+
+## B0.12, the graph tool: M3's figures, rebuilt and reproduced on `e57afeaf`
+
+`tools/graph` type-checks `modes/tty` and `app` with their tests and resolves every use to its
+object, wherever it is declared. The scratch tool PLAN used saw only uses within a package
+(CQ F-17). Its form past the plan's words is A-42.
+
+**Reproduced on `e57afeaf`.** `Dashboard`'s 752 methods in 68 files (receiver `Dashboard` or
+`*Dashboard`); the map's reach 72 (60 fields), Settings' 102 (93), the console's 13 (7); the map's
+reach by type 93 (43 `Dashboard`, 21 `Config`, 20 `mapChoices`, 6 `setupState`, 3 `uiChoices`: members
+declared outside the map's files); MS-7's 408 test functions in 86 files, 288 C3 and 120 C4. And `app`'s
+unexported crossings under the planned map, 283, recorded for the first time.
+
+**What did not reproduce, and the rulings.** The hub's fan-in is 70 counted across packages, which
+the brief asks for: `app/dashboard.go` uses `tty.Dashboard`, and the scratch tool could not see it.
+D-41 made it 70, the target 40. Settings' 102 reproduces only under JN's keying, a field by its bare
+name. The agent first measured 103 by an object keying that was wrong, and D-42 was ruled on that
+figure; by object the figure is 124, `Config` and `UIPrefs` mirroring 22 field names, and D-44
+replaced D-42 with JN's keying, D-27's targets standing. MS-7's 408 needed the 2b plan's own
+symbols, from `crossings-MS.tsv`: the four that go to the kit leave the map's side, the root
+symbols that move join it. Its C3/C4 rule was in the lost `classify_tests.py`; MS-7's words applied
+literally disagree on 127 of the 408. The committed boundary holds as data (D-43): the 91 root
+symbols the design's C3 tests reach are the allowlist, and every C4 test reaches one outside it.
+
+**Seen failing.** On a planted module: a pass-through, the map's package reading the model through
+a carrier `Env` and through the hub across packages, counts each field reached, and without the
+carrier on the area's row the carried field is not counted; the fan-in counts a file in `app`; a
+test reaching a root field outside the allowlist is C4; a crossing under the planned map is found;
+`check` fails a held figure that rose and reports a raised MS-7 count without failing.
+
+**Today's tree** holds every figure at its baseline. MS-7 reads 289 and 122: B0's `Update` pin, its
+re-ask behaviour test and its router trace reach the map's internals.
+
+**Ratified (D-45):** `tools/graph`'s density row (D-10), 0.61 over 36 functions.
+
+**What the gate found, for the pins.** The graph tool's second commit gate failed in
+`alloc-budget`: "layout alone" read 4,543 bytes against a 10-run range of exactly 4,536, 2.5 bytes
+past the comparator's 0.1 %, its count unchanged. Run alone it reads 4,536 every time. In the gate,
+goroutines earlier tests left running allocate inside the window, a few allocations over 20 runs.
+`allocpin` now measures each window three times and keeps the least count and bytes, since such an
+allocation only adds (A-40, point 8). The next gate failed on counts: "Propagation window hit" 1,210
+against 1,209, time to tone 185 against 183. A collection inside the window empties every `sync.Pool`,
+and the path's next pooled buffer is a new allocation: this is M1's "flicker by one". With the
+collector off inside the windows, after one collection to settle, three full runs repeated to the byte.
+The baseline was recorded again by that method. The FAILED rows stay in `verify-runs.md`.

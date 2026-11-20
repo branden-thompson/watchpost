@@ -44,15 +44,29 @@ if [ ! -s "$tmp" ]; then
   echo "lint: golangci-lint produced nothing — the gate cannot report on a run that did not happen" >&2
   exit 1
 fi
+# THE GRAPH TOOL IS A MODULE OF ITS OWN (0.19.6 D-30): ./... above never
+# reaches it, so it is linted in its directory, the same pinned linter, and
+# its findings join the ratchet under their repository paths.
+graph_json="$tmp.graph"
+trap 'rm -f "$tmp" "$tmp.now" "$graph_json"' EXIT
+(cd tools/graph && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 \
+  run --output.json.path "$graph_json" ./... >/dev/null 2>&1)
+graph_rc=$?
+if { [ "$graph_rc" -ne 0 ] && [ "$graph_rc" -ne 1 ]; } || [ ! -s "$graph_json" ]; then
+  echo "lint: golangci-lint in tools/graph exited $graph_rc or produced nothing — the run did not complete" >&2
+  exit 1
+fi
 
 # file<TAB>linter/code — the code is staticcheck's when it names one.
-python3 - "$tmp" >"$tmp.now" <<'PY'
+python3 - "$tmp" "$graph_json" >"$tmp.now" <<'PY'
 import json, re, sys
-with open(sys.argv[1]) as f:
-    doc = json.load(f)
+issues = []
+for arg, prefix in ((sys.argv[1], ""), (sys.argv[2], "tools/graph/")):
+    with open(arg) as f:
+        issues += [(prefix, i) for i in json.load(f).get("Issues") or []]
 seen = {}
-for i in doc.get("Issues") or []:
-    path = i.get("Pos", {}).get("Filename", "?")
+for prefix, i in issues:
+    path = prefix + i.get("Pos", {}).get("Filename", "?")
     rule = i.get("FromLinter", "?")
     m = re.match(r"([A-Z]{2}\d{4}):", i.get("Text", ""))
     if m:

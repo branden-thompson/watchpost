@@ -1258,27 +1258,32 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-41 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | a card the Operator CHOSE is FromOperator, and that origin outranks |
 | D-41 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | Origin.FromOperator OUTRANKS |
 | D-41 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW round 1 answered (08-reports/red-team-review.md): four blind reviewers, no Critical, six Important, al… |
+| D-41 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B0.12, the hub fan-in. D-27 put the baseline at 69 files using Dashboard, target at most 39 (implementation-p… |
 | D-41 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN approach 1 (03-architecture-design/approach-1-render-placement.md): where the map is drawn. In Update, o… |
 | D-41 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A field computed from GIRO readings under GIRO's terms (OQ-G2): "Shared, modified, or annotated data retain t… |
 | D-42 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | a transition is never FromOperator — it is the Director's one additive act |
 | D-42 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | A TRANSITION IS NEVER THE OPERATOR'S |
 | D-42 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REVIEW round 2 (D-41) returned EXIT: no Critical or Important, 10 Minors, nine fixed in batches 51 and 52 and… |
+| D-42 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B0.12, Settings' reach. D-27: 102 symbols of modes/tty/dashboard.go:67 (Config; UIPrefs at :443, Dashboard at… |
 | D-42 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN entry item 2: how a partial alert area is shown (FR-4.4, M4), ruled with a drawing on screen — go-tuiMap… |
 | D-42 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | A partial area is drawn as found, labelled, and its missing zones named |
 | D-42 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How a host drives go-giro-data (OQ-G3): pull with the throttle inside, pull with the throttle in the host, or… |
 | D-43 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | transitions bookend their card and move with it on promote/quash |
 | D-43 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | TRANSITIONS ARE SOFT-ASSOCIATED, AND THEY MOVE WITH THEIR CARD |
 | D-43 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | P10 re-ratification, item 1 of 2: make p10's one live finding is tools/ids (new in 0.19.5, D-11), invariant d… |
+| D-43 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B0.12, MS-7's split. The tool reproduces MS-7's 408 test functions in 86 files exactly: the map's side of 2b … |
 | D-43 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN entry items 3 and 4 (discover report): M5's target, and the three rows marked NO INSTRUMENT YET — propos… |
 | D-43 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The fallback climatology's coefficients (go-giro-data R-4.3): A, NRL's spherical-harmonic refits from PyIRI (… |
 | D-44 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the line-up is a PROJECTION of the schedule — ruled 2026-09-05, built 2026-09-10 |
 | D-44 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE LINE-UP IS A PROJECTION OF THE SCHEDULE, AND IT IS OLDER THAN THIS RELEASE |
 | D-44 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | P10 re-ratification, item 2: make p10 stops on a dead ledger entry, app/arbiter.go (awaitAir) P10-02-BOUNDED-… |
+| D-44 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-42 again, on corrected figures. The agent's 103 keyed symbols by their type text, merging same-named fields… |
 | D-44 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Cross-repo, from go-tuiMaps D-65: severity without colour is a digit on each alert's outline, which needs a k… |
 | D-44 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | DISCOVER-exit red team: which personas join the four axes and the DISCOVER lens (Accessibility, InfoSec, Perf… |
 | D-45 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | ON AIR is locked; only GO TO STANDBY or catastrophe changes it |
 | D-45 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | ON AIR IS LOCKED, AND ONLY STANDBY OR CATASTROPHE CHANGES IT |
 | D-45 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | P10 re-ratification, item 3: make p10's floor check reports seven rows under floors set at 0.19.0's REVIEW (D… |
+| D-45 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B0.12's density row (D-10): tools/graph measures 0.61 checks per function over 36 functions, against P10-05's… |
 | D-45 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-1 (cross-repo, go-tuiMaps D-66): in go-tuiMaps v0.1.0 Changed() is raised only inside Render … |
 | D-45 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PM-P1: does PS-1 rest on a use US amateur rules forbid? 47 CFR §97.113(b) bans amateur broadcasting and one-w… |
 | D-46 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | [shift+N] makes a request order, not a card — the Producer turns it into a proposal |
@@ -2177,6 +2182,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-40 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The quality pass's choices (batch 13): (1) the Propagation block's age moves with the clock, as D-166 asks: t… |
 | A-41 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The compiler probe, the model sizes and the wall-time judge (B0.7; PB-2, PB-3, A-26, D-28, D-30, RR-12). (1) … |
 | A-41 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The quality pass's choices (batch 14): (1) a byte bound has its own visits a pass, so a dataset that cannot g… |
+| A-42 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The graph tool's form (B0.12; A-12, D-30, D-41, D-43, D-44). (1) tools/graph is a module of its own on golang… |
 | A-42 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-168's details: (1) dimmed is the app's own dimmed form, the chip's words in the muted table tone on no grou… |
 | A-43 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-170's details: (1) a feature's hosts are stated, not derived: the app says, for each station provider, map … |
 | A-44 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-173's wordings, each note under the Status window's hosts: MRMS "MRMS colors approximate; scale read from l… |
