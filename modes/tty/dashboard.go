@@ -111,7 +111,8 @@ type Config struct {
 	// mode's reference circuit; anything not offered is residential (D-187).
 	MapPropNoise string
 	// MapPropRefresh is the file's refresh for an open Propagation mode:
-	// "hourly", "on-demand", or each new grid (D-120).
+	// empty or "hourly" for hourly, the default; "every-10-min" for each new
+	// GloTEC grid; or "on-demand" (0.19.0 D-120, D-332).
 	MapPropRefresh string
 	// MapPropNoReadings is the file's choice for while no station readings
 	// are held: "corrected" by the typical offset, or GloTEC as is (D-105).
@@ -455,7 +456,7 @@ type UIPrefs struct {
 	MapUVCities       int             // UV's EPA cities: 8, 24 or 48; 0 is the default, 24 (D-202)
 	MapPropRadius     int             // the Propagation mode's near-vertical radius, km: 200, 400 or 600; 0 is the default, 400 (D-100)
 	MapPropNoise      string          // the reference circuit's noise: "city", "rural", "quiet-rural"; empty is residential (D-187)
-	MapPropRefresh    string          // the open mode's refresh: "hourly", "on-demand"; empty is each new grid (D-120)
+	MapPropRefresh    string          // the open mode's refresh: "every-10-min", "on-demand"; empty is hourly (0.19.0 D-120, D-332)
 	MapPropNoReadings string          // while no station readings are held: "corrected"; empty is GloTEC as is (D-105)
 	MapPropStations   string          // the stations: "none" for no GIRO; empty asks GIRO (D-214)
 	MapColourDepth    string          // the map's colour depth: "truecolor", "256", "16", "none"; empty is Automatic (D-207)

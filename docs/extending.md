@@ -29,6 +29,9 @@ linter in `make verify` enforces the first; `term.Merge` plus its tests enforce 
    the Overlays menu and the find, frequency and acknowledgement windows, and the bands chart
    window's esc, PgUp and PgDn - are fixed, not keymap actions (D-292).
 
+**Every change a user can see gets an entry** in `CHANGELOG.md`, under `[Unreleased]`, whichever
+walkthrough it follows. Nothing fails without one, so it is said here once for all of them.
+
 ---
 
 ## Walkthrough 1 — add a UV-index line to the location detail modal
@@ -170,8 +173,13 @@ arrows, and written back when the window closes. Two complete examples are worth
 - **Reduce motion**, an on/off Setting of the Watchpost UI tab. An on/off Setting is a two-value
   picker: `kind: rowPicker` with `picker: true`, and a cycle of its own. **Not `rowToggle`**: that
   kind's arrows and space go to `toggleClass`, which only the tone rows answer, so a new row of that
-  kind ignores space. Search for `ReduceMotion`, `reduceMotion` and `rowReduceMotion`.
-- **The map's quake feed**, a map picker. Search for `MapQuakeFeed`, `mapQuakeFeed` and `rowMapQuakes`.
+  kind ignores space. Its names, by the steps below: `ReduceMotion` is the file's key and the field
+  on `Config` and `UIPrefs` (steps 1 to 3); `reduceMotion` is the model's field (step 4), which the
+  drawing code also reads in files no step edits; `rowReduceMotion` is its row (steps 6 to 9); and
+  `cycleReduceMotion` moves it (step 9).
+- **The map's quake feed**, a map picker: `MapQuakeFeed` (steps 1 to 3), `mapQuakeFeed` in
+  `mapChoices` (steps 4 and 5), and `rowMapQuakes` for its row, its chip words, its `mapRow` and its
+  case in `mapPrefArrow` (steps 6 to 9).
 
 The last column says what fails if the step is skipped. Each step was proven by adding a throwaway
 Setting of each kind on a scratch copy and leaving out one step at a time (0.19.5 batch 36).
@@ -187,7 +195,7 @@ Setting of each kind on a scratch copy and leaving out one step at a time (0.19.
 | 7 | `modes/tty/setup_layout.go` | The picker's words in `pickerChipWords`, what its arrows change ("Motion", "Quakes"). The chip row reads them only on a row marked `picker: true`. | `TestEveryPickerNamesWhatItsArrowsChange`: without them the chips would offer a voice |
 | 8 | the group's drawing | Draw the row. A UI Setting is a line in `uiLines` (`modes/tty/setup_ui.go`), beside Reduce motion, with `at` set when it has the focus, and `uiLabelW` widened if its label is longer than its neighbours'; a map Setting is a `mapRow` in `modes/tty/map_settings.go`, in the order the tab shows it. | the line: `TestEveryArrowRowChangesSomething`, `TestSetupGoldenEveryTab`. `at`: `TestSettingsFocusLineFollowsTheBalancedLayout`. `uiLabelW`: `TestAGroupsPickersLineUp` |
 | 9 | the arrows | A UI Setting gets its own `cycle…` beside the state it moves (Reduce motion's is `cycleReduceMotion`, in `modes/tty/motion.go`) and a case in `cycleFocused` (`modes/tty/setup.go`) beside Reduce motion's, before the generic cases, because the order is the dispatch; the case returns `.flashed(forward)`, which lights the pressed arrow. A map Setting gets a case in `mapPrefArrow` (`modes/tty/map_prefs.go`) calling its own `cycle…`. **The `cycle…` ends with `d.uiTouched()`**: it marks the window for saving on close, and redraws it. | the case: `TestEveryArrowRowChangesSomething`. `uiTouched`: `TestAnArrowOnASavedSettingMarksItForSaving`. `.flashed` and the place in the order: only `TestEveryArrowRowsOutcomeIsPinned`'s golden, so read its diff before re-recording it |
-| 10 | Tests | Add the Setting, set away from its default, to `everySettingChanged` (`modes/tty/config_reach_test.go`). The two kept-settings fixtures take two lines each: in `modes/tty/settings_kept_test.go`, `keptPrefs` and the `Config` literal of `TestASettingIsSavedAsItIsWhateverSavesIt`; in `app/settings_kept_test.go`, the `want` and the `back` map of `TestASavedSettingIsTheSettingAfterARestart`. Then re-record the goldens a new UI row moves: `model-from-config`, `prefs-saved`, `setup-arrows`, `setup-133x44-ui` and `router-trace` (`go test ./modes/tty -args -update-golden`), reading each diff first (below). | `everySettingChanged`: the two config goldens only. The fixtures: the two settings-kept tests, which name the field |
+| 10 | Tests | Add the Setting, set away from its default, to `everySettingChanged` (`modes/tty/config_reach_test.go`). The two kept-settings fixtures take two lines each: in `modes/tty/settings_kept_test.go`, `keptPrefs` and the `Config` literal of `TestASettingIsSavedAsItIsWhateverSavesIt`; in `app/settings_kept_test.go`, the `want` and the `back` map of `TestASavedSettingIsTheSettingAfterARestart`. Then re-record the goldens a new UI row moves: `model-from-config`, `prefs-saved`, `setup-arrows`, the row's tab (`setup-133x44-ui` for a UI row, `setup-133x44-maps` for a map row) and `router-trace` (`go test ./modes/tty -args -update-golden`), reading each diff first (below). | `everySettingChanged`: the two config goldens only. The fixtures: the two settings-kept tests, which name the field |
 
 `p` previews a voice on a voice row only (0.19.5 D-33), so a new picker needs nothing to stay silent.
 

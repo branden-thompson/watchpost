@@ -118,8 +118,9 @@ func cardPulled(o render.Opts, c lineup.Card, now func() time.Time, room int) st
 //
 // THE CARD GETS THE SHORT FORM AND THE WINDOW THE LONG ONE. The card is
 // glanced at beside a dozen other rows and the window is read; "Saturday
-// September 12, 2026 @ 16:02:45" is forty-two cells of a card that has about
-// sixty, and every one of them says something the operator already knows.
+// September 12, 2026 @ 16:02:45" is forty-two cells, more than the 36 the UP
+// NEXT cell has at the console's floor, and every one of them says something
+// the operator already knows.
 //
 // THE AGE RIDES INLINE HERE, not right-anchored as it is on the window's row:
 // there is one of these on the frame, so there is no column of them to sweep.

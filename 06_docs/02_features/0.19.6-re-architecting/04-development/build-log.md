@@ -573,3 +573,23 @@ comment and the Observer vocabulary row say so, with the four gates' file.
 with D-10's re-key table; `modes/tty/doc.go:33`'s row with the move batches.
 
 **The changed-line table.** No test line changed; no golden; no declaration.
+
+## B1.4, M4's before: its doc findings (`../08-reports/m4-before.md`)
+
+**Walkthrough 6** names its examples by step, not by a search: `ReduceMotion`, `reduceMotion`,
+`rowReduceMotion` and `cycleReduceMotion` for the UI toggle, `MapQuakeFeed`, `mapQuakeFeed` and
+`rowMapQuakes` (with `mapPrefArrow`) for the map picker. Step 10's golden is the row's own tab,
+`setup-133x44-ui` or `setup-133x44-maps`. **The time row** names the two places that choose a date
+themselves, `modes/tty/broadcaster_manifest.go:cardPulledShort` and `app/burst_words.go:spokenWhen`.
+**`MapPropRefresh`'s two comments** said empty was each new grid; empty is hourly
+(`platform/config/config.go:316-319`, `modes/tty/map_prop_settings.go:22`'s `propRefreshKeys`), and
+each new grid is "every-10-min". **`cardPulledShort`'s cell count** compared forty-two cells with a
+card of "about sixty"; its one card is UP NEXT (`readBody`, `broadcaster_slots.go:154`, called only from
+`upNextBox`, `broadcaster_upnext.go:106`), 36 cells at the console's floor (`docs/extending.md:238`).
+
+**The CHANGELOG** already had its `[Unreleased]` heading, opened by B0.13's floor entry, so only the
+walkthrough line is new: `docs/extending.md`, under the invariants, says every user-visible change gets
+an entry whichever walkthrough it follows.
+
+**The changed-line table.** No test line changed; no golden; no declaration (two comments in
+`modes/tty/dashboard.go`, one in `modes/tty/broadcaster_manifest.go`).
