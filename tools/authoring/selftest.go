@@ -293,6 +293,24 @@ func citeControls() int {
 		return 1
 	}
 	fmt.Printf("  ok              a citation moved below app keeps the tree's, and a new one is still caught\n")
+	// 0.19.6 D-50's families: a task, a UAT finding, a PD- and an S- row are
+	// new; a task the package carried is known by its whole number; a wave
+	// alone is no ID; SAM-D and S-F carry their release's prefix.
+	fams := "package p\n\n// W1.17, U2-61, PD-3 and S-7; W1.16; W14; SAM-D-26 and S-F6.\nfunc f() {}\n"
+	ff, err := parser.ParseFile(fset, "p/g.go", fams, parser.ParseComments)
+	if err != nil {
+		fmt.Printf("  BROKEN SPECIMEN  citations: %v\n", err)
+		return 1
+	}
+	var ids []string
+	for _, g := range checkCitations(fset, ff, "p/g.go", citedAt{"p": {"W1.16": true}}) { // bounded by the findings (P10-02)
+		ids = append(ids, strings.Fields(g.Text)[0])
+	}
+	if strings.Join(ids, " ") != "W1.17 U2-61 PD-3 S-7" {
+		fmt.Printf("  %-15s D-50's families: four new, none known, prefixed or a wave\n      got %v\n", "MISSED", ids)
+		return 1
+	}
+	fmt.Printf("  ok              D-50's families: four new, none known, prefixed or a wave\n")
 	return 0
 }
 

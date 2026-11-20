@@ -4,8 +4,8 @@ package tty
 // box over its upper left (U1-7, D-63), the controls over its lower right
 // with the pressed chip blinking (U1-11), the [O] Overlays menu of the
 // weather layers and the map's own detail (U1-9, U1-10, D-65), and the title
-// that names what is in view (U1-12, D-64). The legend over the upper right is
-// map_pane.go's (D-44).
+// that names what is in view (U1-12, D-64). The legend is the colour row
+// under the map, drawn by map_scrub.go's scrubRows (0.18.0 D-103).
 //
 // EVERY BOX IS SPLICED OVER THE DRAWN LINES BY DISPLAY COLUMN, so the map's
 // own colours either side of it are kept (render.SpliceCells, D-66), and every

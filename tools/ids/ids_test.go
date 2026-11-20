@@ -93,13 +93,14 @@ func TestAnMVSRulingIsIndexedByItsBestMention(t *testing.T) {
 // MVS-D ID in a Go comment that 06_docs/ids.md has no row for is a citation a
 // junior cannot look up.
 func TestEveryMVSRulingTheCodeCitesIsIndexed(t *testing.T) {
-	everyCitationIsIndexed(t, mvsCite, "MVS-D-")
+	everyCitationIsIndexed(t, mvsCite, "MVS-D-", 40)
 }
 
 // everyCitationIsIndexed walks the tree's Go files for the IDs re captures,
 // whose number is its first group, and fails on each that 06_docs/ids.md has
-// no row for. prefix is the ID before its number, as the index writes it.
-func everyCitationIsIndexed(t *testing.T, re *regexp.Regexp, prefix string) {
+// no row for. prefix is the ID before its number, as the index writes it;
+// fewer than least distinct IDs found means the walk is not reading the tree.
+func everyCitationIsIndexed(t *testing.T, re *regexp.Regexp, prefix string, least int) {
 	t.Helper()
 	root := filepath.Join("..", "..")
 	index, err := build(root)
@@ -129,13 +130,75 @@ func everyCitationIsIndexed(t *testing.T, re *regexp.Regexp, prefix string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cited) < 40 {
+	if len(cited) < least {
 		t.Fatalf("found %d %s IDs in the Go files; the walk is not reading the tree", len(cited), strings.TrimSuffix(prefix, "-"))
 	}
 	for num, path := range cited {
 		if !strings.Contains(index, "| "+prefix+num+" |") {
 			t.Errorf("%s cites %s%s, which 06_docs/ids.md does not index", path, prefix, num)
 		}
+	}
+}
+
+// TestEveryIDOfD50sFamiliesTheCodeCitesIsIndexed holds 0.19.6 D-50 to the
+// code: a UAT finding, a plan task, a PD- or S- row, a SAM-D ruling or an S-F
+// finding in a Go comment that 06_docs/ids.md has no row for fails. Each
+// floor is under the distinct IDs the tree cites today.
+func TestEveryIDOfD50sFamiliesTheCodeCitesIsIndexed(t *testing.T) {
+	for _, c := range []struct {
+		re     *regexp.Regexp
+		prefix string
+		least  int
+	}{
+		{regexp.MustCompile(`\bU(\d+-\d+)\b`), "U", 60},
+		{regexp.MustCompile(`\bW(\d+(?:\.\d+)+)\b`), "W", 80},
+		{regexp.MustCompile(`\bPD-(\d+)\b`), "PD-", 4},
+		{regexp.MustCompile(`\bS-(\d+)\b`), "S-", 6},
+		{regexp.MustCompile(`\bSAM-D-(\d+)\b`), "SAM-D-", 9},
+		{regexp.MustCompile(`\bS-F(\d+)\b`), "S-F", 3},
+	} {
+		t.Run(c.prefix, func(t *testing.T) { everyCitationIsIndexed(t, c.re, c.prefix, c.least) })
+	}
+}
+
+// TestD50sFamiliesAreReadAsTheRecordWritesThem pins how 0.19.6 D-50's
+// families define and are written: a UAT finding, a task, a bold PD- and an
+// S- row and a SAM-D ruling each define from their first cell, a wave alone
+// defines nothing, two UAT rounds are two sections, a task the plan never
+// tabled is indexed at its mention, and an S-F finding at a mention its own
+// release qualifies, under that release.
+func TestD50sFamiliesAreReadAsTheRecordWritesThem(t *testing.T) {
+	src := "| U2-61 | - | settings not preserved |\n| W1.17 | **The legend window** (D-44) |\n| **PD-3** | BUILD is planned as batches |\n" +
+		"| S-7 | The Composer owns report contents |\n| SAM-D-26 | 2026-08-28 | the architecture approved |\n| W14 | a wave, no task |\n### W15 — a wave's heading\n"
+	got := rowsOf(src, "02_features/a/plan.md")
+	var ids []string
+	for _, r := range got {
+		ids = append(ids, written(r))
+	}
+	if want := []string{"U2-61", "W1.17", "PD-3", "S-7", "SAM-D-26"}; strings.Join(ids, " ") != strings.Join(want, " ") {
+		t.Fatalf("defined %v; want %v (a wave alone is no ID)", ids, want)
+	}
+	if r := got[1]; r.family != "W" || r.num != "1" || r.suffix != ".17" {
+		t.Errorf("W1.17 read as %+v; want wave 1, task .17", r)
+	}
+	index := render([]row{{family: "U2", num: "3"}, {family: "U1", num: "5"}, {family: "U1", num: "2"}}, nil)
+	if u1, u2 := strings.Index(index, "## U1"), strings.Index(index, "## U2"); u1 < 0 || u2 < u1 || strings.Count(index, "## U") != 2 {
+		t.Errorf("two UAT rounds are not two sections in order:\n%s", index)
+	}
+	files := map[string]string{
+		"02_features/a/build-log.md": "## Batch 80 — UV kept (W18.4, part 1)\nW18.1 again\n",
+		"02_features/b/notes.md":     "the lib path (red-team 0.9.0 S-F8) and 0.18.0 S-F9\n",
+	}
+	tasks := taskRows([]row{{family: "W", num: "18", suffix: ".1"}}, files)
+	if len(tasks) != 1 || written(tasks[0]) != "W18.4" || tasks[0].line != 1 {
+		t.Errorf("tasks indexed by mention %+v; want W18.4 alone, at its line (W18.1 is tabled)", tasks)
+	}
+	found := findingRows(files)
+	if len(found) != 1 || written(found[0]) != "S-F8" {
+		t.Fatalf("findings indexed %+v; want S-F8 (its own release qualifies it), not S-F9 (another's does)", found)
+	}
+	if line := render(found, map[string]string{"b": "0.16.0"}); !strings.Contains(line, "| S-F8 | 0.9.0 |") {
+		t.Errorf("S-F8 is not under its own release:\n%s", line)
 	}
 }
 
@@ -180,18 +243,18 @@ func TestAPriorityStillDefinesAndAReferenceIsNoSubject(t *testing.T) {
 	}
 }
 
-// TestAReportAboutIDsDefinesNone holds 0.19.5's M5 answer keys out of the
-// index: they list the IDs a reviewer could not resolve, in tables led by
-// the ID, and twice a reading rule let those rows define what they reported
-// as missing.
+// TestAReportAboutIDsDefinesNone holds the blind traces and their keys out of
+// the index, 0.19.5's M5 and 0.19.6's M4: they list the IDs a reviewer met,
+// in tables led by the ID, and three times a reading rule let those rows
+// define what they reported on (0.19.6 A-46).
 func TestAReportAboutIDsDefinesNone(t *testing.T) {
 	index, err := build(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, line := range strings.Split(index, "\n") {
-		if strings.Contains(line, "/08-reports/m5-key/") {
-			t.Errorf("ids.md has a row from an M5 key, which reports IDs and defines none: %s", line)
+		if strings.Contains(line, "/08-reports/m5-") || strings.Contains(line, "/08-reports/m4-") {
+			t.Errorf("ids.md has a row from a blind trace or its key, which report IDs and define none: %s", line)
 		}
 	}
 }
@@ -222,7 +285,7 @@ func TestAFollowUpNoTableDefinesIsIndexedByItsMention(t *testing.T) {
 // F-ID in a Go comment that 06_docs/ids.md has no row for is a citation a
 // junior cannot look up.
 func TestEveryFollowUpTheCodeCitesIsIndexed(t *testing.T) {
-	everyCitationIsIndexed(t, goFollowUp, "F-")
+	everyCitationIsIndexed(t, goFollowUp, "F-", 40)
 }
 
 // goFollowUp is an F-ID in Go source that is not part of a longer name.

@@ -44,6 +44,7 @@ var largeAllowed = exempt(&exemptionTable{
 	rows: map[string]string{
 		"domains/locations/geodata/data/cities_trim.tsv.gz": "the embedded place-name index; the app cannot resolve a location without it",
 		"domains/locations/geodata/data/zips_trim.tsv.gz":   "the embedded postcode table, the other half of the offline resolver",
+		"06_docs/ids.md": "the generated ID index, where a reader looks up a citation: every family the code cites has its rows (0.19.6 D-50)",
 	},
 	exists: fileExists,
 	stillNeeded: func(t *testing.T, rel string) bool {

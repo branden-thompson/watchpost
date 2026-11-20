@@ -249,7 +249,7 @@ func download(ctx context.Context, a Asset, userAgent, dest, what string, progre
 	}
 	req.Header.Set("User-Agent", userAgent)
 	client := &http.Client{Timeout: 10 * time.Minute, Transport: httpx.NewTransport(), CheckRedirect: func(req *http.Request, via []*http.Request) error { // the app-wide transport policy (Q5)
-		// Pinned artifacts travel over HTTPS only, redirects included (red-team 0.9.0 S-F4).
+		// Pinned artifacts travel over HTTPS only, redirects included (0.9.0's red team).
 		if req.URL.Scheme != "https" {
 			return fmt.Errorf("synth: refusing a redirect to %s://%s — artifacts are fetched over https only", req.URL.Scheme, req.URL.Host)
 		}
@@ -356,8 +356,8 @@ func isZip(path string) bool {
 
 // tarEntry unpacks one tar entry under dir (split from extract, P10-04):
 // directories, regular files, and symlinks that stay inside the install
-// dir — an absolute or parent-relative link target is refused (red-team
-// 0.9.0 S-F3: a link out, then a file written through it, would escape).
+// dir — an absolute or parent-relative link target is refused (0.9.0's red
+// team: a link out, then a file written through it, would escape).
 func tarEntry(dir string, hdr *tar.Header, tr *tar.Reader) error {
 	dst, err := safeJoin(dir, hdr.Name)
 	if err != nil {

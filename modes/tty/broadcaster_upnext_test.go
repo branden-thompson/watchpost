@@ -94,8 +94,8 @@ func TestTheUpNextCardFollowsTheReferencesOrder(t *testing.T) {
 		t.Errorf("%q is not centred in its cell: %d cells of air left, %d right\n%q",
 			bcManifestCaption, lead, tail, cell)
 	}
-	// AND THE STAMP IS THE SHORT FORM. "Saturday September 12, 2026 @ 16:02:45" is
-	// forty-two cells of a card that has about sixty.
+	// THE STAMP IS THE SHORT FORM. "Saturday September 12, 2026 @ 16:02:45" is
+	// forty-two cells, more than the 36 the UP NEXT cell has at the console's floor.
 	if strings.Contains(rows[pull], "September") || !strings.Contains(rows[pull], "AGO)") {
 		t.Errorf("the card's stamp is not the reference's short form:\n%s", rows[pull])
 	}

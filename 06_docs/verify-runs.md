@@ -300,3 +300,5 @@ says exactly what passed.
 | 2026-11-20T17:45:51Z | 35f05bbf | 0ff30bc4ddc1 | verify | green | 2613 |
 | 2026-11-20T19:19:28Z | 0e94d9b2 | a654e49033f4 | verify | green | 5538 |
 | 2026-11-20T20:56:47Z | edd2da34 | 082c8e3bffbb | verify | green | 5513 |
+| 2026-11-20T22:15:52Z | 6060309b | 342b1834e883 | verify | FAILED (exit 2) | 2153 |
+| 2026-11-20T23:55:26Z | 6060309b | 3130a6c034f3 | verify | green | 5904 |

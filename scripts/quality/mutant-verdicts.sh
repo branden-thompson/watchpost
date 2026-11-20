@@ -240,10 +240,14 @@ t0=$(date +%s)
 # It runs in the background, so an interrupt is answered at once, not when
 # the baseline ends, and the cleanup stops it with the workers.
 printf 'baseline ./... ... ' | tee -a "$out"
-(cd "$work/w1" && go test ./... -count=1 >/dev/null 2>&1) &
+# Its output is kept in the run's directory, and a red one's failures are
+# copied into the log before the directory goes, so a red baseline says what
+# failed.
+(cd "$work/w1" && go test ./... -count=1 >"$work/baseline.out" 2>&1) &
 pids=$!
 if ! wait "$pids"; then
 	echo "RED — the unmutated tree is not green; fix that first" | tee -a "$out"
+	grep -E '^(--- FAIL|FAIL|panic:)' "$work/baseline.out" | head -n 20 | tee -a "$out"
 	exit 2
 fi
 pids=""

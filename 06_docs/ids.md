@@ -17,6 +17,11 @@ best mention, marked "Mentioned:", or the MVS-D section below: 0.16.0's later ru
 follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code cites resolves to
 `06_docs/follow-ups-closed.md`, its row as it was when it closed.
 
+A UAT round's findings (U1-, U2-) and a plan's tasks (W1.17, task 17 of wave 1; a wave alone is no ID)
+are indexed as every other family is. SAM-D, the severe-alerts release's rulings, carries its release
+in its prefix as MVS-D does; S-F, 0.9.0's red team's findings, from before the record, is indexed at
+each one's best mention (0.19.6 D-50).
+
 ## NFR
 
 | ID | Release | Where | Subject |
@@ -890,6 +895,163 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | OQ-21 |  | `multi-voice-support/01-objectives/objectives.md` | Maritime wording |
 | OQ-21 |  | `multi-voice-support/08-reports/discover-report.md` | Maritime wording |
 
+## PD
+
+| ID | Release | Where | Subject |
+|---|---|---|---|
+| PD-1 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md` | FR-2 splits into two families. DISCOVER treated producer/consumer completeness as one mechanism with one work… |
+| PD-1 |  | `multi-voice-support/01-objectives/director-requirements.md` | Stub or build station identity, service area and ON AIR / STANDBY (S-1) — only if the seam is load-bearing fo… |
+| PD-1 |  | `multi-voice-support/03-architecture-design/plan-decisions.md` | Stub or build station identity, service area, ON AIR / STANDBY? |
+| PD-1 |  | `multi-voice-support/08-reports/discover-report-director.md` | Stub or build station identity, service area, ON AIR / STANDBY |
+| PD-1 |  | `multi-voice-support/08-reports/plan-report-director.md` | Build a running state for Observer's own reason; nothing for callsign; service area already exists and DR-13 … |
+| PD-1 |  | `watchpost-cli/03-architecture-design/architecture.md` | Wrap Option-C roots in internal/? |
+| PD-2 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md` | The closed-set population is 27 sets and 50 default arms, not the 26 and 48 estimated |
+| PD-2 |  | `multi-voice-support/01-objectives/director-requirements.md` | Standby vs. line-by-line rendering. The charter makes standby first-class ("get that report ready … so we can… |
+| PD-2 |  | `multi-voice-support/03-architecture-design/plan-decisions.md` | Standby vs. line-by-line — RESOLVED by measurement |
+| PD-2 |  | `multi-voice-support/08-reports/discover-report-director.md` | Standby vs. line-by-line rendering — the charter and S-5 disagree about an audible gap |
+| PD-2 |  | `multi-voice-support/08-reports/plan-report-director.md` | Resolved by measurement — pre-build the card; leave audio look-ahead alone (it already exists) |
+| PD-2 |  | `watchpost-cli/03-architecture-design/architecture.md` | diffs[] in v0.1 schema (red-team simplify list said default-cut; T-F′ diff view needs the view, not the JSON … |
+| PD-3 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md` | BUILD is planned as batches, not as 2–5 minute tasks |
+| PD-3 |  | `multi-voice-support/01-objectives/director-requirements.md` | An interruption that outlasts the report's validity. Resumption is mid-sentence with no staleness rule, but w… |
+| PD-3 |  | `multi-voice-support/03-architecture-design/plan-decisions.md` | An interruption that outlasts the report's validity |
+| PD-3 |  | `multi-voice-support/08-reports/discover-report-director.md` | An interruption that outlasts the report's validity |
+| PD-3 |  | `multi-voice-support/08-reports/plan-report-director.md` | Implement the staleness check; window 15 min, ratified. Observer cannot reach the case; Broadcaster can |
+| PD-3 |  | `watchpost-cli/03-architecture-design/architecture.md` | Dual golden systems (AI-6) |
+| PD-4 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md` | platform/closedset is deferred; the triage leads. Revision 1 made the helper B1 and the triage B2 |
+| PD-4 |  | `multi-voice-support/01-objectives/director-requirements.md` | How the Operator helps the Composer compose (S-7) — the Composer owns report contents, but the human wants so… |
+| PD-4 |  | `multi-voice-support/03-architecture-design/plan-decisions.md` | How the Operator helps the Composer compose |
+| PD-4 |  | `multi-voice-support/08-reports/discover-report-director.md` | How the Operator helps the Composer compose |
+| PD-4 |  | `multi-voice-support/08-reports/plan-report-director.md` | No Director seam — the Composer reads config; the Director does not relay it |
+| PD-4 |  | `watchpost-cli/03-architecture-design/architecture.md` | Height breakpoints |
+| PD-5 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md` | FR-1.1, FR-1.3 and FR-1.4 gain a batch (B2). Revision 1 scheduled none of them |
+| PD-5 |  | `multi-voice-support/01-objectives/director-requirements.md` | Renaming director → mastercontrol, with the ticker cue as its explicit responsibility. Proposed, awaiting rat… |
+| PD-5 |  | `multi-voice-support/03-architecture-design/plan-decisions.md` | The rename — RESOLVED by the architecture |
+| PD-5 |  | `multi-voice-support/08-reports/discover-report-director.md` | Renaming director → mastercontrol, with the ticker cue as its explicit responsibility |
+| PD-5 |  | `multi-voice-support/08-reports/plan-report-director.md` | Resolved by the architecture — a split, not a rename. Director owns the Lineup; mastercontrol is the survivin… |
+| PD-6 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md` | FR-6.4 moves from B7 to B3 |
+| PD-6 |  | `multi-voice-support/01-objectives/director-requirements.md` | A Broadcaster service-radius cap (~150 mi, FRS/GMRS/ham) — floated at T-1, not ruled. |
+| PD-6 |  | `multi-voice-support/03-architecture-design/plan-decisions.md` | A Broadcaster service-radius cap (~150 mi) |
+| PD-6 |  | `multi-voice-support/08-reports/discover-report-director.md` | A Broadcaster service-radius cap (~150 mi) |
+| PD-6 |  | `multi-voice-support/08-reports/plan-report-director.md` | Defer to Broadcaster |
+| PD-7 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md` | FR-6.5 moves from B7 to B5 |
+| PD-8 | 0.15.0 | `0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md` | FR-10.3 is not parallel; it lands in B5 |
+
+## U1
+
+| ID | Release | Where | Subject |
+|---|---|---|---|
+| U1-1 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | SEEDED (80×24 golden, batch 11): the library's footer runs the scale bar into the credit - "├──────────┤ 50 k… |
+| U1-2 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | SEEDED (80×24 golden): the status line is cut mid-sentence - "This is a coarser picture: the map has no finer… |
+| U1-3 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | SEEDED: the map is drawn in the library's own colours, not the theme's; the theme's palette is W7's. |
+| U1-4 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | SEEDED (batch 9): "a refresh" was read as each layer's own fetches with nothing held, the basemap not counted… |
+| U1-5 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | SEEDED (batch 11): the map window's frame costs 2,508 allocations a memo hit, against the severe window's 1,7… |
+| U1-6 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | all |
+| U1-7 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "The text on the top probably needs to go somewhere else, and likely should be 'legend-style' modal… |
+| U1-8 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "Tint is good (Looking at Beach Hazard Statement in Oceanside CA)" |
+| U1-9 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "I should likely have a menu for overlays - like Radar" |
+| U1-10 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "Lots of extra details in the maps - which for watchpost may not be needed (reservation outlines, e… |
+| U1-11 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "Control surfaces for the map (left/right/up/down +/-, etc) likely needs a 'control modal picture i… |
+| U1-12 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "I like the 'Map · <location>' title - however when I start to zoom out or focus on something else,… |
+| U1-13 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "Right now the map takes the WHOLE screen. I'd like that to be reduced so that it fills approx. 80%… |
+| U1-14 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "Also only looks like Oceanside CA alerts are being drawn - when I went to differnt locations like … |
+| U1-15 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "I should also see alerts as I navigate around the map - which is what I human user would expect as… |
+| U1-16 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "on the tuimaps side this again suggests I should be able to turn on/off levels of detail in a view… |
+| U1-17 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (second pass): "The 'Opening the map' sentance at the top needs to go away. It takes row… |
+| U1-18 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (second pass): "The right vertical scroll control can be removed - it takes a column and… |
+| U1-19 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (second pass): "The color doesnt draw correctly when the Area alerts PIP is open - see: … |
+| U1-20 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (second pass): "When the Area alerts PIP is closed, the bottom controls disappear (which… |
+| U1-21 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (second pass): "I still don't see radar data, that wasn't clear to me if that's still qu… |
+| U1-22 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (second pass): Settings: "Let's split 'General' into [ Data ] [ Watchpost UI ]" |
+| U1-23 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (second pass): Settings: "[ Broadcaster ] needs to be visibile even in the Observer UI (… |
+| U1-24 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (second pass): Settings, Maps: "All selector options should line up their <- and -> cont… |
+| U1-25 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (second pass): Settings, Maps: "There's a TON of white space in the MAPS modal, which we… |
+| U1-26 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | SEEDED from U1-19's screenshot: the Controls box covers the right end of the credit line (the attribution, FR… |
+| U1-27 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (third pass): "Let's remove the left and right padding with the MAP MODAL only - right n… |
+| U1-28 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD: "When looking at Oceanside, CA in the map - the Beach Hazard Statement Moderate area will periodica… |
+| U1-29 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fourth pass): Area Alerts: "Let's try to format that a bit better, using Oceanside, CA … |
+| U1-30 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fourth pass): Settings: "Add a blank row between the tabs and the settings modal conten… |
+| U1-31 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fourth pass): Settings: "Broadcaster Transmitter text causes some weird discolortation … |
+| U1-32 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fourth pass): Settings: "Let's change that line to: 'Stored in config.toml; only sent t… |
+| U1-33 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fourth pass): Settings: "Remove the helpder text under the 'Maps' option." |
+| U1-34 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fourth pass): Settings: "Ensure the APIs mentioned in that helper text show up in the [… |
+| U1-35 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fourth pass): Settings: "The Map detail options should follow the selector <- Enabled /… |
+| U1-36 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fourth pass): Settings: "Settings Modal needs to follow the previous rule of being no w… |
+| U1-37 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fifth pass): "All the alerts in view are still not showing - I tested this by zooming o… |
+| U1-38 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fifth pass): "I do notice Oceanside CA alerts always show on the map no matter which lo… |
+| U1-39 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fifth pass): "Disabling water removes Oceans, which is not correct - it's okay if it re… |
+| U1-40 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fifth pass): "I have no way of getting to: Alaska, Hawaii, American Territories covered… |
+| U1-41 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-25 (fifth pass): "Alert areas will still show the original location selected, I was able to… |
+| U1-42 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-26 (sixth pass): "Toggling Rail now doesnt work - Toggling Parks now doesn't work - Togglin… |
+| U1-43 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-26 (sixth pass): "We should likely give users the options to select alert types - especiall… |
+| U1-44 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-26 (seventh pass): "Pressing -> while looking at the easter portion of the US kicks me over… |
+| U1-45 | 0.18.0 | `observer-maps/07-readiness/uat-1-findings.md` | HUM LEAD, 2026-09-26 (seventh pass): the cost warning's words (D-82) |
+
+## U2
+
+| ID | Release | Where | Subject |
+|---|---|---|---|
+| U2-1 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "We should preload the radar before we show it - right now it's blinking / hiding and "… |
+| U2-2 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "I only see 1 frame of the radar, MRMS says loading consistently (not sure if the full … |
+| U2-3 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "Radar mode likely needs some controls/visualization of the loop, so users know where i… |
+| U2-4 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "Let's hide the Area Aert text modal by default. Every single time I've UAT'd I've hidd… |
+| U2-5 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26 (second pass): "Radar has not loaded after 30+s - says Radar (MRMS) loading... I zoomed … |
+| U2-6 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26 (third pass): "let's clean up that control area" - a mock of the rows under the map, and… |
+| U2-7 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26 (fourth pass): "Alaska view doesn't full the whole map window in wider terminals ... so … |
+| U2-8 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "Hawaii should give me the ability to zoom out a bit more while remaining in that regio… |
+| U2-9 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "Same with Puerto Rico / US Carribbean - I should be able to zoom out a couple of level… |
+| U2-10 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "Control area looks great. Well done." and "Let's make the upper right badge a little b… |
+| U2-11 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26 (fifth pass): "Alaska - border draws correctly, but the landmass does not color properly… |
+| U2-12 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "Hawaii - Radar doesnt seem to be billing the map area - not sure if that's bug or lack… |
+| U2-13 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "When navigating overlay options in the PIP, every key motion (up/down) causes the map … |
+| U2-14 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "When I move through map overlay options enough, the radar imagery disappears". Cause: … |
+| U2-15 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "In forecst mode, 'TODAY' is blank, even after multiple rounds of animation where tha f… |
+| U2-16 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: temperature off by default, loaded in the background while the map is open |
+| U2-17 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "Hawaii - switching from Radar -> Forcast; shift+0, enable: Temperature -> Get 'Tempera… |
+| U2-18 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "Temperature legend - some of the contrast on the middle values is too low, that text l… |
+| U2-19 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: the badge as "FORECAST / [O-METEO] / FRI HIGHS" and "FORECAST / [ NDFD ] / FRI HIGHS" |
+| U2-20 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-26: "parts of mexico and Canada are not being drawn which seems like a bug given they're ra… |
+| U2-21 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-27: "Switching from Radar Mode ... I can swtich to a 'blank' map because I have Temp disabl… |
+| U2-22 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-27: the chip "FORECAST MODE: TEMP ENABLED" at the map's top centre |
+| U2-23 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-27: the Overlays box styled as Settings: "MAP DETAILS / OVERLAYS", white bold headers, a bl… |
+| U2-24 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-27: "Let's 'remove' the legend PIP ... frees up 'L'" |
+| U2-25 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-27: the controls moved under the map beside the timeline; MAPS: row; STOPPED yellow, PLAYIN… |
+| U2-26 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-27: "Is this lack of data, or another purposeful limiting of what being drawin in the map?"… |
+| U2-27 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-27: "Fire - there's A LOT of fires so It looks like it interferes with the radar drawing, o… |
+| U2-28 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-27: "Quakes - if possible we should attempt to draw then like the USGS does (scaled circles… |
+| U2-29 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-27: "Quakes not working properly: Enabling it gives me a spam of error meesages in the maps… |
+| U2-30 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-28: "Looks like some tiles aren't getting drawn" - the waves stopped at a straight line in … |
+| U2-31 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-28: "Even when zoomded i some wave bands arent making it to the costlines" - a sea cell who… |
+| U2-32 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-28: "I see the save bars appear / disappear when I'm playing the loop in Radar Mode ... fee… |
+| U2-33 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-28: "In the scrub control the 'NOW' hatch deosnt seem to properly align with the correct \"… |
+| U2-34 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-28: "Hitting 1 with Tudes and buoys enabled causes massive draw issues ... the base map mus… |
+| U2-35 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-28: "Radar takes significantly longer to load in this build - likely with the tides/buoys .… |
+| U2-36 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-28: "the Notes section get's VERY BUSY/CROWEDED when all overlays are enabled ... I think w… |
+| U2-37 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-28: "All chips should follow the same format <space><space><label><space><space> each with … |
+| U2-38 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-28: "when all overlays are on, place names get lost - that should not happen." Every overla… |
+| U2-39 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-29: "Suggested / Proposed Overlay Consolidation" - one MAP DETAILS / OVERLAYS menu: a radio… |
+| U2-40 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-29: "we have two places were credits are being shown, and it needs to consolidate to 1 ... … |
+| U2-41 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-29: "the '! you ma experience performance issues ...' shows even when no overlays are activ… |
+| U2-42 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-29: "The maps section in Status still reads like credits - I'd rather those items be simila… |
+| U2-43 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-09-29 (screenshot): "Map STATUS go-studs stable should follow some of the same table struct ru… |
+| U2-44 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, GitHub #23 (2026-09-29): "Locations without a ZIP cannot be <ctrl+a> added to watchlist in Observer… |
+| U2-45 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, GitHub #9 (2026-09-29): "We need to expose the <ctrl+d> diagnostics in the normal build (the ARE YO… |
+| U2-46 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01: "When zoomed out on continentual us an panning around the map with <-. -> - the map wil… |
+| U2-47 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01: "In radar mode, radar data only seems load in and show up once <space> is pressed, and … |
+| U2-48 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01: "Hitting <tab> on the settings modal now has noticable lag. Given this is a terminal ap… |
+| U2-49 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01 (UAT of batches 93-94): "Let's make the active tab in settings the same focus yellow (or… |
+| U2-50 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01 (UAT of batches 93-94): "Forecase mode temperature NDFD does not cover all areas of the … |
+| U2-51 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01 (UAT of batches 93-94): "Same with UV Index in Forecasst mode - no data at all exccept f… |
+| U2-52 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01 (UAT of batches 93-94): "AQI only shows filled in areas on the very first frame, and jus… |
+| U2-53 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01 (UAT of batch 97, build pre-w14-49-g5f8782a0, CONTINENTAL US REGION (Region 1)): "Radar … |
+| U2-54 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01 (UAT of batch 97, build pre-w14-49-g5f8782a0, CONTINENTAL US REGION (Region 1)): "Actual… |
+| U2-55 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01 (UAT of batch 97, build pre-w14-49-g5f8782a0, CONTINENTAL US REGION (Region 1)): "Actual… |
+| U2-56 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01 (UAT of batch 97, build pre-w14-49-g5f8782a0, CONTINENTAL US REGION (Region 1)): "Feels … |
+| U2-57 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01 (UAT of batch 97, build pre-w14-49-g5f8782a0, CONTINENTAL US REGION (Region 1)): "Enabli… |
+| U2-58 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-01 (UAT of batch 97, build pre-w14-49-g5f8782a0, CONTINENTAL US REGION (Region 1)): "There'… |
+| U2-59 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-02 (UAT after batch 104, the lower 48 around MI, AL, TN, AR): "When I zoom in on the map af… |
+| U2-60 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-02 (UAT of batch 105, build checkpoint/pre-w14-57-g224e2086, the lower 48 at state zoom ove… |
+| U2-61 | 0.18.0 | `observer-maps/07-readiness/uat-2-findings.md` | HUM LEAD, 2026-10-02: "Ive also noticed across builds some of my settings are not preserved - in particular m… |
+
 ## D
 
 | ID | Release | Where | Subject |
@@ -1313,6 +1475,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | D-50 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | breakpoints 100 / 120 / 150, floor 25 rows; below 100 the console REFUSES to draw |
 | D-50 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE BREAKPOINTS, AND THE FLOOR BELOW WHICH WE DO NOT DRAW |
 | D-50 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 5 of 07-readiness/validate-agenda.md: card manifest stamps follow the clock (D-29) under 1… |
+| D-50 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | M4's ID test (B1.5, 08-reports/m4-mid.md). The midpoint fails all four tasks on D-24's ID test, T3 and T4 on … |
 | D-50 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-5 (cross-repo, go-tuiMaps D-68): the radar loop's shape against the library's image budget, a… |
 | D-50 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | Two hours of radar; the map source and radar step as Settings, so a listener can opt into more or back off |
 | D-50 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | 0.18.0 D-238's "all of it" (hours ahead, station dots, eSSN chart, P.533 planner; F-189) cut without a ruling… |
@@ -2194,7 +2357,9 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-44 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-173's wordings, each note under the Status window's hosts: MRMS "MRMS colors approximate; scale read from l… |
 | A-45 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | F-158's test and the deck-only check, past AP-7.1's words (B1.1; RM-4, RX). (1) TestACutBackUnderAHazardReadK… |
 | A-45 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The continents' reference points (FR-1.9): on each inhabited continent, the city where its amateur radio is b… |
+| A-46 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | M4's midpoint and what follows it (B1.5; D-29). (1) The midpoint's reviewer was given the before's brief word… |
 | A-46 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-176's details: (1) the block's line is each continent's highest open band - "Up to: NA 20m · SA 17m … B cha… |
+| A-47 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tools/ids/idset/idset.go:Famili… |
 | A-47 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-178's and D-179's details: (1) a band typed is taken at its lower edge ("40 m" is 7 MHz), the edge each ban… |
 | A-48 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | FR-1.13's details (W5.4): (1) the hours step on the weather modes' own keys - shift+right an hour on, to 24; … |
 | A-49 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-180's details: (1) the centre is answered to half a degree, so a pan is answered and the smallest nudge is … |
@@ -2524,6 +2689,306 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | F-237 |  | `follow-ups.md` | A lock of their own for the deck and the map data. 0.19.6 keeps one mutex, livePipelines.mu, held by the deck… |
 | F-238 |  | `follow-ups.md` | Commit 1f9a34e7 is still served by its hash. D-8 rewrote the branch to remove a leaked scratch path that name… |
 | F-239 |  | `follow-ups.md` | The allocation pins have no Linux baseline. tools/pins holds the pins to a darwin/arm64 baseline under go1.27… |
+
+## S
+
+| ID | Release | Where | Subject |
+|---|---|---|---|
+| S-1 |  | `multi-voice-support/08-reports/discover-report-director.md` | 0.14.0 builds the foundation and puts Observer's radio on the Lineup; station identity / service area / ON AI… |
+| S-1 |  | `multi-voice-support/08-reports/red-team-build-round3.md` | The injector is confirmed absent at the artifact level — built the default binary, nm shows zero Inject symbo… |
+| S-1 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | Fixed, batch 58 (61 → 31 live). 61 live P10 findings, not 100 (39 exempted). 29 of them are one false edge: t… |
+| S-1 |  | `watchpost-cli/08-reports/red-team-build.md` | InfoSec |
+| S-2 |  | `multi-voice-support/01-objectives/lineup-model.md` | The human is the Operator. Observer is inert under a second [space] today because the human is both Operator … |
+| S-2 |  | `multi-voice-support/08-reports/discover-report-director.md` | The human is the Operator; Observer's [space] stays inert; queuing is a Broadcaster concern |
+| S-2 |  | `multi-voice-support/08-reports/red-team-build-round3.md` | WATCHPOST_DEBUG_PPROF_ADDR defeats the documented "loopback only" property. debugAddr() returns any env-suppl… |
+| S-2 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | The P10 checker now keys methods Recv.Name; ledger rows keyed by a bare method name stopped matching — 9 live… |
+| S-2 |  | `watchpost-cli/08-reports/red-team-build.md` | InfoSec |
+| S-3 |  | `multi-voice-support/01-objectives/lineup-model.md` | A diverted alert is NOT discharged, and should not be. The alert rail is powered by the human's own alert pre… |
+| S-3 |  | `multi-voice-support/08-reports/discover-report-director.md` | A diverted alert is not discharged; the settings are the opt-in and the pre-screen is at admission |
+| S-3 |  | `multi-voice-support/08-reports/red-team-build-round3.md` | The on-disk response cache is a fabrication path of identical fidelity in every release build, with no build … |
+| S-3 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | Fixed, batch 58. One real 2-cycle: layerOn ↔ radarMode, bounded at depth 2 |
+| S-3 |  | `watchpost-cli/08-reports/red-team-build.md` | InfoSec |
+| S-4 |  | `multi-voice-support/01-objectives/lineup-model.md` | A read resumes mid-sentence. A transition read may be introduced with it — "we now return to our regularly sc… |
+| S-4 |  | `multi-voice-support/08-reports/discover-report-director.md` | A read resumes mid-sentence, optionally behind a transition read; a bed ducks and normalises |
+| S-4 |  | `multi-voice-support/08-reports/red-team-build-round3.md` | config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for the Piper binary,… |
+| S-4 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | Six loops bounded in fact, in a form the checker cannot see |
+| S-4 |  | `watchpost-cli/08-reports/red-team-build.md` | InfoSec |
+| S-5 |  | `multi-voice-support/01-objectives/lineup-model.md` | One-ahead rendering is acceptable, and line-by-line with no pre-render at all may be enough — what the code d… |
+| S-5 |  | `multi-voice-support/08-reports/discover-report-director.md` | One-ahead rendering is acceptable; line-by-line may be enough |
+| S-5 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | Fixed: app half batch 69, tty half batch 70 (mapWorkers.cmd, reconcile; setFeed differs and stays). App half … |
+| S-5 |  | `watchpost-cli/08-reports/red-team-build.md` | InfoSec |
+| S-6 |  | `multi-voice-support/01-objectives/lineup-model.md` | The card's fields, as the Operator must see them (below). |
+| S-6 |  | `multi-voice-support/08-reports/discover-report-director.md` | The card's field list and controls |
+| S-6 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | Unit conversions (°C/°F, km/mi, m/s) in ~20 places across three layers; the km/mile constant 6×; two spoken w… |
+| S-6 |  | `watchpost-cli/08-reports/red-team-build.md` | InfoSec |
+| S-7 |  | `multi-voice-support/01-objectives/lineup-model.md` | The Composer owns report contents. The general principle is accepted. Open follow-on: how the Operator gets s… |
+| S-7 |  | `multi-voice-support/08-reports/discover-report-director.md` | The Composer owns report contents |
+| S-7 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | Control components hand-built where the app's exist (the Request window's checkbox — D-147); cycleIn bypassed… |
+| S-7 |  | `watchpost-cli/08-reports/red-team-build.md` | InfoSec |
+| S-8 |  | `multi-voice-support/01-objectives/lineup-model.md` | Fire-and-trust with a post-hoc confirmation that the cue actually happened, rather than a blocking guarantee.… |
+| S-8 |  | `multi-voice-support/08-reports/discover-report-director.md` | The cue is fire-and-trust with post-hoc confirmation |
+| S-8 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | Code no production path reaches: F-24's on-air masthead, castProblems, ellipsize, colorEnabled, bedReachFor, … |
+| S-8 |  | `watchpost-cli/08-reports/red-team-build.md` | InfoSec |
+| S-9 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | Functions past ~60 lines: handleMapKey 102, overlaysBox 96, mapFeedWith 86, geojson.walk 77, ttyConfig 74, pa… |
+| S-9 |  | `watchpost-cli/08-reports/red-team-build.md` | InfoSec |
+| S-10 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | The station identification on going ON AIR (F-24's mastheadLine) is built and tested but wired to nothing |
+| S-10 |  | `watchpost-cli/08-reports/red-team-build.md` | InfoSec |
+| S-11 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | F-27's spoken transitions are unwired too: the line-up's ProgrammeReturn and Announcement are never set in pr… |
+| S-12 | 0.18.0 | `observer-maps/02-analysis/w14-findings.md` | Six hand-written keyed, time-bounded memos (areaMemo, aheadFetch, the zone store's, NWS points', CO-OPS stati… |
+
+## W
+
+| ID | Release | Where | Subject |
+|---|---|---|---|
+| W0.0 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | First in BUILD, before any code (D-111); W1 is the first code change (D-55): one gzip request each for a GloT… |
+| W0.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The module rules: every required module's licence is listed at its version, and go.mod has no replace. go-tui… |
+| W0.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | A pre-push hook runs the docs-reading tests (REFLECT L5; batch 32, A-60; in Go since batch 33, A-62) |
+| W0.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The P1-a fixtures committed before anything uses them: nine M1 scenarios captured live — alerts, the zones th… |
+| W0.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The propagation client: its own instance, no retry on 429, status and headers returned on every outcome, no s… |
+| W0.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | A gate refuses implementation code in plan documents (FR-8.1, D-13, D-14) |
+| W0.3 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | One finite-checked coordinate parser and a Maidenhead parser, read by the one resolver every lookup goes thro… |
+| W0.4 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Docs-reading checks for the record (A-29): every test a requirement names appears in a plan task (the trace t… |
+| W1.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | g opens and closes the map window, visible in Help, overridable in [keys] (FR-1.1) |
+| W1.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | A failed read of a year's roll-up refuses the write; a discarded ok is caught by a local rule, AP-OK-01 in to… |
+| W1.10 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Settings rows: maps on/off, and the description's mode (with the picture, instead of it, off), reachable with… |
+| W1.11 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Settings rows: default scale, layers, alert scope (FR-9.1, FR-2.3, FR-4.3) |
+| W1.12 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The exposure disclosure: on first map open and in Settings beside the maps row, naming each source the sessio… |
+| W1.13 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | A registry for layers, sources and options (FR-9.3). Members register from app/maps.go; FR-3.8's closed list … |
+| W1.14 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The cost warning above 2 MB or 40 requests a refresh (FR-9.2, D-43) |
+| W1.15 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Pan and zoom (FR-1.10, D-49): the window's keymap actions drive the library's intents; the view rehydrates; t… |
+| W1.16 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The map's key controls evaluated together (FR-1.11, D-49): every map action listed with the Observer's keymap… |
+| W1.17 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The legend window (D-44, D-54): a picture-in-picture window over the map, from a chip [ L ] Legend in the win… |
+| W1.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Centred on the selection, and following it; selection gains a message (FR-1.2, W1-C) |
+| W1.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Roll-ups split below the decompressed read cap, sized from bytes; a byte bound per dataset; values stored com… |
+| W1.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | No selection draws a stated state (FR-1.3) |
+| W1.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The description renderer (FR-7.4, D-26, D-29, D-55): the alerts shown — names, severity, times, from watchpos… |
+| W1.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The size floor with one owner for the number; below it, the notice carries the description (FR-1.4) |
+| W1.6 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The degradation order and the legibility tier (FR-1.9, D-55): the partial-area line ranks above the picture; … |
+| W1.7 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The window joins every closed-set window test (FR-1.5) |
+| W1.8 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Maps off in Settings: g says so in one line; nothing built or fetched (FR-1.6, NFR-3). Wired from app/maps.go |
+| W1.9 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | --ascii shows the description, never braille; the braille notice in the chrome (FR-1.7, FR-1.8) |
+| W2.0 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | A map-mode type before the third mode (C-M2, A-29): radarMode() was a boolean with 28 call sites and 15 negat… |
+| W2.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The map pane as Dashboard fields: the stored lines and the counters they were drawn at (FR-8.4, D-45) |
+| W2.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The Propagation mode beside Radar and Forecast, named in words in every path |
+| W2.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Library calls only in dispatch; Work in a tea.Cmd (C-7, FR-3.3) |
+| W2.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Its own world bound; weather modes keep theirs |
+| W2.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Guard 2 (D-45): every event that can change the frame triggers a render — each mutation, each Work that did s… |
+| W2.3 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Opens anywhere; the outside message names the key |
+| W2.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Guard 3: the printed lines equal a fresh render from a second map built from the same inputs (a fresh render … |
+| W2.4 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Every control a keymap action; Help fits |
+| W2.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The freshness property (D-45): after every event, the stored frame's counters equal the library's |
+| W2.5 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The acknowledgement: before the first fetch, Enter/Esc, cursor, versioned record |
+| W2.6 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Every map worker joined on close (FR-8.2) |
+| W2.7 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | An allocation pin on the frame; a memo hit does not re-render (FR-8.3) |
+| W2.8 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Every golden of the window carries width invariants at 80, 120 and 133 (FR-8.5) |
+| W2.9 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | M5's first arm (D-43, D-46, D-53): first complete frame — every alert's area and the basemap — ≤ 3.5 s cold a… |
+| W3.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The OpenFreeMap source, with the embedded tiles always passed; built in app/maps.go, handed to tty (FR-3.1) |
+| W3.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The MUF and foF2 layers over water, terminator for the field's own time, legend in MHz (the terminator: batch… |
+| W3.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | No map request of any kind before the listener asks, zone geometry included (FR-3.2, D-21, D-25): lp.seedZone… |
+| W3.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The description's seam before the alert-only returns: mapLayerSentences, said in the four cases, no selected … |
+| W3.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Offline and failing states said in the window (FR-3.4) |
+| W3.3 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Day / night as a map detail in every map mode: a switch among the map's detail, the night for the moment each… |
+| W3.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Caches under the OS cache dir with one stated total (FR-3.5) |
+| W3.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The memory tile cache sized for the largest view (FR-3.6) |
+| W3.6 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Credits at every width; credit text bounded and neutralised (FR-3.7) |
+| W3.7 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The closed source list (FR-3.8) |
+| W3.8 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The P1-a clear path and stated retention (FR-3.9, FR-3.10, D-55): a Settings action "Clear map data" closes t… |
+| W3.9 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Politeness for zone geometry (NFR-4, D-46): bounded at six in flight (zones.go:37), with watchpost's user-age… |
+| W4.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The region set and the check (FR-2.1, FR-2.5) |
+| W4.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | domains/propagation: one object per process, the propagation client, nothing before the acknowledgement or th… |
+| W4.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The view placed before the first frame (FR-2.2) |
+| W4.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Credits, MAP STATUS, rate headers only, nothing raw kept, 304s |
+| W4.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The default scale as a Setting; the bound is not (FR-2.3) |
+| W4.3 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Honesty: age (the oldest input's), stale past an hour, failed with the key that asks again, fallback named, a… |
+| W4.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The host clamp at every view change until HR-3 (FR-2.4) |
+| W4.4 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Refresh while open: each new GloTEC grid by default, GIRO at most hourly, the Setting with its cost (D-94, A-… |
+| W4.5 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The offset, compared: Status and diagnostics, the unusual-offset sentence, the no-readings Setting (D-105); t… |
+| W4.6 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Confidence by distance: each chart row's shade for its nearest reporting station, keyed; the words and the ce… |
+| W4.7 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The BUILD exit's library halves (batch 37, A-66): watchpost on go-ionomaps v0.1.0-rc.1 - the hours ahead as s… |
+| W4.8 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | watchpost on go-tuiMaps v0.3.0-rc.2 (batch 40, A-69; D-206, D-207, D-216): the reach asked for as its edge (T… |
+| W4.9 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | watchpost on go-ionomaps v0.1.0-rc.2 (batch 44, A-73; D-222): the library keeps the day's climatology hours, … |
+| W5.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | resolveAlertAreas reachable from production through a livePipelines method (FR-4.1, C-1) |
+| W5.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Best bands now (near-vertical radius a Setting, 400 km by default, or the service radius; targets; open hours… |
+| W5.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | One overlay per alert, one feature per area; severity to role; times and sender carried; the severity word in… |
+| W5.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Your frequency: entry, parse, reach drawn and said |
+| W5.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Scope: the station's locations plus national severe events in view; a Setting (FR-4.3) |
+| W5.3 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Finding a place: the existing index, a mode-aware coverage gate, locators, the uncached online fallback, focu… |
+| W5.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Partial areas, drawn as found, labelled, the missing zones named, and whether the place is in one (FR-4.4, D-… |
+| W5.4 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The centre's answer; hours ahead on a key, each hour ahead labelled typical with its error and basis (D-103, … |
+| W5.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The 512-zone cap reported, not dropped (FR-4.5) |
+| W5.5 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | Space weather named: raised R, S or G scales and NOAA's outlook in the chart and the words; hours ahead durin… |
+| W5.6 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Zone shapes fetched again on next use once 7 days old (FR-4.6) |
+| W6.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Hotspots, incidents and quakes as static point layers (FR-6.1) |
+| W6.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The words, in D-136's order, written for speech, the status without the picture, a refresh said once, the foc… |
+| W6.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The BUILD exit's words (batch 38, A-67; D-210, D-211): the centre named for where it is, anywhere (AX-1); a f… |
+| W6.3 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The BUILD exit's code findings (batch 39, A-68): each update its own (C-2, C-1); the answers keyed by the sna… |
+| W6.4 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The answers package and the found target (batch 41, A-70; D-212, D-204, L-F8): platform/propanswers - the tar… |
+| W6.5 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The answers' figures (batch 43, A-72; BUILD red team P-4): the chart's and the centre's time measured and FR-… |
+| W7.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The colour-depth hint (FR-7.1). Order: NO_COLOR set → none; the Monochrome theme → none (so the hatch runs); … |
+| W7.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | g on the console; the map's place by UI mode (one roles table, D-195); the service area (go-tuiMaps' Zone) an… |
+| W7.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | M1b scored (FR-7.4, D-53): the recorded scenarios answered from the description alone; an answer-key test per… |
+| W7.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The shared Settings: "Instead of the map", refresh and the no-readings correction in both modes; the radius O… |
+| W7.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Coordinates never spoken; the description held to the speech guard (FR-7.3) |
+| W7.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Every palette passes the library's checker, as a matrix (FR-7.5) |
+| W7.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Map colour tokens in the contrast register (FR-7.2, FR-7.6) |
+| W8.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | go.mod requires the newest go-tuiMaps release candidate holding the packages the next task needs, then the fi… |
+| W8.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | 0.19.3 (D-122, D-355, D-359): F-191 to F-194, F-196 to F-198, F-180, F-205, as D-360 to D-365 and A-107 rule … |
+| W8.10 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Guard 2's frame-advance and playback rows (from W2.3); the freshness property over frame advances |
+| W8.11 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Radar over alert areas: the blend, furniture never erased (WP-L3) |
+| W8.12 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | M5's radar arms (D-43, D-53): newest frame ≤ 3.0 s, whole loop ≤ 5.0 s, the first frame never waits for radar… |
+| W8.13 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | M6 / NFR-2 (D-53): with the Observer live, the intervals between delivered map ticks and the key-to-response … |
+| W8.14 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Radar retention (FR-3.9, radar half): radar requests are cached in memory only, by an explicit request option… |
+| W8.15 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The cost estimate (W1.14) gains radar |
+| W8.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Radar fixtures committed before anything uses them (FR-8.6, radar half) |
+| W8.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The SHIP gate over FR-7's rows (D-63): each of FR-7.1 to FR-7.4 names a test, so TestEveryRequirementsTestExi… |
+| W8.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | IEM and MRMS as registered sources; the source is a Setting (FR-5.1). MRMS relies on the library's MRMS table… |
+| W8.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | A frame is valid only if its time is advertised and its image isn't empty (FR-5.3) |
+| W8.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The body cap inside the HTTP client (FR-5.7): refused as it reads, never cached; the decoded dimensions cappe… |
+| W8.6 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | One overlay per source, absolute times (FR-5.2) → Image.Frames (WP-L2); the advertised times trimmed to the n… |
+| W8.7 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | A refresh fetches only frames not held; no source polled faster than its cadence; requests sequential (FR-5.5… |
+| W8.8 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The newest frame's age always visible; stale marked (FR-5.4, WP-L4 LoopState) |
+| W8.9 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The motion Setting (off / slow / normal) sets the rate, slow by default (D-52); "off" disables play and drive… |
+| W9.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The library's bound replaces the host clamp (FR-2.4 → HR-3, WP-L7) |
+| W9.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | #12's audit table (03-architecture-design/memo-key-audit.md); every position field becomes an identity or car… |
+| W9.10 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The legend gains P1-b's keys (D-54): the severity digits (go-tuiMaps D-65), the radar classes, and any value … |
+| W9.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Report replaces Describe for the description; the "nearby" Setting (FR-7.4, go-tuiMaps D-43, D-57, WP-L5) |
+| W9.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | say: no orphan on an orderly exit; orphans ended at start, only when proven watchpost's (I-4); make test-say … |
+| W9.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Fetch options: watchpost's user-agent (HR-6, NFR-4, WP-L8); tile-host confinement (HR-10) |
+| W9.3 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The BUILD exit's remaining code findings (batch 42, A-71): one horizon for the words and the line (L-F9); eve… |
+| W9.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Tile retention by the library (FR-3.9, HR-8, WP-L9) |
+| W9.4 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The BUILD exit's round 2 code findings (D-225, D-227; A-76): the reach said by its limit (all four reviewers)… |
+| W9.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | "Clear map data" moves to the library's Purge (FR-3.9, FR-3.10, WP-L9) |
+| W9.6 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The pane stores Frame.Changed and Frame.FrameTicks from the frame itself, and Changed() now counts inputs (go… |
+| W9.7 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The motion description in the description's words (go-tuiMaps D-42, WP-L5) |
+| W9.8 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The named place's label kept (D-42's second clause; go-tuiMaps D-60, L-8.9, WP-L3) |
+| W9.9 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The colour-independent pattern at colour-on depths (HR-7, FR-7.1, WP-L3) |
+| W10.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Temperature fixtures committed before anything uses them |
+| W10.1 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The scripted-PTY journey gains the Propagation mode and the console key. Built in VALIDATE (batch 80), found … |
+| W10.10 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Temperature's key as a swatch row in the controls, like radar's; the Legend's probation judged at UAT (D-94) |
+| W10.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Two sources on the closed list (D-93, FR-3.8): NDFD and Open-Meteo, each through the hardened client (https o… |
+| W10.2 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The G1 harness: CPU, RSS and downloads a day over 48 hours, mode in use against not; downloads counted on the… |
+| W10.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The lattice and its interpolation: a fixed lattice per radar box, bilinear into a fine grid; a missing point … |
+| W10.3 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The M1 and M4 instrument (L-F1, H-4.1, C-T2): the scenario draw (at least 200 per metric, both outcomes, at l… |
+| W10.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The source is a Setting (D-93): NDFD by default; Radar mode always asks Open-Meteo (D-96); the credit line na… |
+| W10.4 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | The UAT prompter: shows each question, records the times on a key press, captures watchpost's words as the sc… |
+| W10.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Fetched only when shown (D-25), refreshed on the hour, never faster; the cost line counts Open-Meteo's calls … |
+| W10.5 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | VALIDATE's ruling on the chart's words (D-330; batch 78, A-102): the Best Bands chart says how often its answ… |
+| W10.6 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The two modes (D-94): R switches Radar/Forecast and the scrubber with it; the chips read A Area Alerts, R Rad… |
+| W10.6 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | VALIDATE's ruling on the default refresh (D-332; batch 79, A-103): Hourly the default, and STALE an hour past… |
+| W10.7 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Radar mode sync (D-96, D-98): after a frame advance crosses an hour, the temperature grid for that hour is se… |
+| W10.7 | 0.19.0 | `propagation-overlays/04-development/implementation-plan.md` | VALIDATE's exit red team (D-338 to D-340; batch 81, A-105): the refresh under a window, each station's provid… |
+| W10.8 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Forecast mode (D-94, D-97, D-98): Now / Today / Tomorrow / Day 3-7 stepped by the host with radar's keys and … |
+| W10.9 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The look over radar (D-95), go-tuiMaps v0.2.0: isotherms at any depth when an image shares the map, the bands… |
+| W11.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Wind in the series: hourly speed and direction, each day's peak and dominant direction; NDFD's days worked ou… |
+| W11.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Wind grids with their spans, beside temperature's: every hour (Radar mode), Now and each day's peak (Forecast… |
+| W11.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The layer, off by default and held with temperature (D-99, D-110); D-103 counts it |
+| W11.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Vector grids and arrows (go-tuiMaps FR-8, D-109): braille arrows on an even spacing, pointing where the wind … |
+| W12.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The loop runs on past now (D-113, D-114): HRRR's quarter-hours from IEM, after the newest observed frame and … |
+| W12.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Outside the lower 48 (D-115): Open-Meteo's hourly precipitation in radar's scale and colours, labelled model |
+| W12.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Forecast mode's days (D-116 to D-118): each day's heaviest rate in radar's colours, and its rain and snow tot… |
+| W12.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | W12.1's defect, found building W12.2: with the hours ahead in the loop, the newest's age read the forecast's … |
+| W13.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Feels like (D-119): its own Overlays row, off by default, never on with temperature; drawn as temperature is,… |
+| W13.10 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | UAT-2 U2-34, D-129: the basemap always shows - the library keeps the view's tiles first (go-tuiMaps L-22, rc.… |
+| W13.11 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | UAT-2 U2-35, D-130: the radar's frames fetched six at a time at a pace that lets six run, HRRR's hours ahead … |
+| W13.12 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | UAT-2 U2-36, D-131 to D-133: one badge row under the colour row - a badge a layer on and drawn, LABEL [SRC], … |
+| W13.13 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | UAT-2 U2-37, D-134: a chip a source, one format everywhere - " NAME ", bold, its own ground in every theme, b… |
+| W13.14 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | UAT-2 U2-38, D-135: the place names before the data - go-tuiMaps L-23, rc.24 |
+| W13.15 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Wind gusts (D-136): the Wind layer's arrows read "15G30" where the gust beats the sustained wind by 10 mph, t… |
+| W13.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The badge a tab (D-120): one line on the map frame's top right, as wide as its words; the title gives way in … |
+| W13.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Fire (D-121): one row, on by default - the active perimeters of the view's field boxes, generalised; every na… |
+| W13.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Quakes as USGS draws them (U2-28, D-122, D-123): the feed chosen - M2.5+ over the past week by default, the p… |
+| W13.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | UAT-2 U2-29 and D-124: a quake current for eight days was refused - the library's most is seven - a note each… |
+| W13.6 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Wave height (D-125, D-126): NDFD's where it reaches, Open-Meteo Marine's beyond and on the hours and days it … |
+| W13.7 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | UAT-2 U2-30 to U2-32: the lower 48's field boxes grown to its region's edges; the waves carried out to the co… |
+| W13.8 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | UAT-2 U2-33: the scrubber on one axis, time - the cursor where the frame shown lies in time along the loop, a… |
+| W13.9 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The sea's stations (D-127, D-128): Buoys and Tides, each its own row off by default and asked only while on; … |
+| W14.0 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Step 0, measure first (D-154): checkpoint tags checkpoint/pre-w14 on both repositories; the CI flake fixed (m… |
+| W14.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Performance: the time from opening the map, and from a layer switched on, to the radar's first frame, measure… |
+| W14.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Structure: the map's app/map.go files and the library's hot paths read as one design - duplication, files pas… |
+| W14.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Quality: a blind red team over the whole of both releases, from 06_docs/red-team-brief.md |
+| W14.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Memo keys carry identity (#12, HUM LEAD 2026-09-29: "probably can be part of our performance/quality pass"): … |
+| W15.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | UV (D-137): Open-Meteo's hourly UV index and each day's highest in the temperature request; a UV row, off by … |
+| W15.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Air quality (D-138, D-139): the model's US AQI from Open-Meteo's air-quality API as the tint, each day's wors… |
+| W15.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The scales (D-140): go-tuiMaps L-25, rc.26 - the official hues, lightness set to pass the checker; the key ro… |
+| W16.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The consolidated menu (U2-39): MAP DETAILS / OVERLAYS - the performance warning at its top (D-146); OVERLAYS,… |
+| W16.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Fire's filter (U2-27, D-145): Fire ← All / Named / Hotspots →, carried in the ask, the feed keeping what is c… |
+| W16.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | One place for credits (U2-40, D-148): every credit in About, widened to 78 - the station's, then the map's, t… |
+| W16.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | A warning that means it (U2-41, D-149): the estimate counts the overlays chosen - alerts by their categories,… |
+| W16.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | MAP STATUS (U2-42, D-150, D-151): the Status window's map section the API table's own component - the go-stud… |
+| W17.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | A place without a ZIP is its own place (#23, U2-44): "same place" is snapshot.PlaceID - the ZIP when there is… |
+| W17.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The diagnostics in every build (#9, U2-45, D-152, D-153): the injector untagged, behind ctrl+d's ARE YOU SURE… |
+| W18.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The refusal known and said (D-165): the HTTP client keeps a failure's reason (a bounded, sanitised piece of i… |
+| W18.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Temperature, feels-like and wind fall back to NDFD (D-165, D-166 cold start): with Open-Meteo refused, Radar … |
+| W18.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The local history, a general store (D-166, D-169): a platform part - any dataset recorded by time and read ba… |
+| W18.4 | 0.18.0 | `observer-maps/04-development/build-log.md:2318` | Mentioned: Forecast mode's rain have no fallback yet (W18.4, W18.5): the notice says why they are empty. |
+| W18.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Rain and snow's fallback (D-168, D-184, batch 82): Open-Meteo's rain days recorded (openmeteo-rain-days); ref… |
+| W18.6 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | What the map costs Open-Meteo, measured without spending it (D-185): every Open-Meteo ask the map makes, thro… |
+| W19.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Temperature, feels-like and wind from NDFD first in both modes (overturns D-96, D-101; D-188 to D-190, batch … |
+| W19.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | UV from EPA's city markers first (D-186, D-191, batch 85): markers whenever UV is on - Radar mode's hours, Fo… |
+| W19.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Rain and snow from NDFD's totals for today and three days (D-185, D-187, D-192, batch 87); Open-Meteo for Now… |
+| W19.4 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Air quality from AirNow's contours (D-193, batch 88): the tint AirNow's current-AQI contours rasterised a box… |
+| W19.5 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The waves from NDFD first (D-194, D-195, batch 89): NDFD's waves recorded an hour a record, the history the c… |
+| W20.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The readings stored (D-224): EPA's UV city readings a history-store dataset, epa-uv-cities - each city a seri… |
+| W20.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Every known city drawn (D-225): each city in view with today's reading, beside the spread asked, no two withi… |
+| W21.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The credits, one each: every data set under its agency, each source named once with its host, the notices and… |
+| W21.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The smart columns: two columns on a wide window, the scroll control on a short one, from the app's own column… |
+| W21.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The VOICES group (D-228): the Piper voices as a group in the data sets, credited as the voices repository pub… |
+| W22.1 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The table: every source the app fetches readings from - AirNow, Open-Meteo temperature and Marine, NDFD's tot… |
+| W22.2 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | The datasets (D-230, D-231): a history-store dataset for each - NDFD's totals, NWS observations and alerts, C… |
+| W22.3 | 0.18.0 | `observer-maps/04-development/implementation-plan.md` | Raising a retention says what it costs (D-231): before a longer retention is applied, a window says what it w… |
+
+## SAM-D
+
+| ID | Release | Where | Subject |
+|---|---|---|---|
+| SAM-D-1 |  | `severe-alerts-modals/01-objectives/objectives.md:165` | Mentioned: modal is the ratified answer (SAM-D-1..13); the alternative is recorded as a considered negative. |
+| SAM-D-5 |  | `severe-alerts-modals/08-reports/discover-report.md:239` | Mentioned: OQ-1..9 Intake questions (details source, population, colour rule, sort, drill-down, categories, w… |
+| SAM-D-6 |  | `severe-alerts-modals/01-objectives/objectives.md:61` | Mentioned: FR-11 Every ticker event present; larger free de-duped set as bonus (R-11, SAM-D-6) The pre-cap se… |
+| SAM-D-7 |  | `severe-alerts-modals/01-objectives/objectives.md:56` | Mentioned: FR-6 Category colours standard + theme-independent hue, tinted on the active modal substrate, mono… |
+| SAM-D-8 |  | `severe-alerts-modals/01-objectives/objectives.md:59` | Mentioned: FR-9 Browse view: total count, "Updated" stamp, per-row Declared / Expires, default sort Declared … |
+| SAM-D-9 |  | `severe-alerts-modals/01-objectives/objectives.md:54` | Mentioned: FR-4 [enter] replaces the body with the record; [esc] back to the table; second [esc] closes (R-4,… |
+| SAM-D-10 |  | `multi-voice-support/04-development/p5-build-log.md:71` | Mentioned: MVS-D-57 SAM-D-10's six-tab taxonomy, on the products it left unplaced Any product naming Warning,… |
+| SAM-D-11 |  | `severe-alerts-modals/01-objectives/objectives.md:58` | Mentioned: FR-8 Narration tail + burst closing point at the modal (R-8; wording in PLAN, SAM-D-11); the spoke… |
+| SAM-D-12 |  | `severe-alerts-modals/04-development/implementation-plan.md:12` | Mentioned: Branch: feature/severe-alerts-modals (0.13.0; SemVer minor — SAM-D-12) |
+| SAM-D-13 |  | `severe-alerts-modals/01-objectives/objectives.md:60` | Mentioned: FR-10 Modal memo for the modal family (R-10, SAM-D-13): the open modal's composed overlay string i… |
+| SAM-D-14 |  | `severe-alerts-modals/01-objectives/objectives.md` | 2026-08-28 (mid-research) |
+| SAM-D-14 |  | `severe-alerts-modals/08-reports/discover-report.md` | Retain every decoded field; storm names on the ticker |
+| SAM-D-15 |  | `severe-alerts-modals/01-objectives/objectives.md` | Warnings/Watches = union of national + tracked-location products |
+| SAM-D-15 |  | `severe-alerts-modals/08-reports/discover-report.md` | Warnings/Watches = union |
+| SAM-D-16 |  | `severe-alerts-modals/01-objectives/objectives.md` | Empty-watchlist tabs stay, with a hint |
+| SAM-D-16 |  | `severe-alerts-modals/08-reports/discover-report.md` | Empty-watchlist tabs stay with a hint |
+| SAM-D-17 |  | `severe-alerts-modals/01-objectives/objectives.md` | Opening tab = most-recent-breaking (10 min) else Warnings; current category highlighted |
+| SAM-D-17 |  | `severe-alerts-modals/08-reports/discover-report.md` | Opening tab rule; current category highlighted |
+| SAM-D-18 |  | `severe-alerts-modals/01-objectives/objectives.md` | Retain long prose + parse memo |
+| SAM-D-18 |  | `severe-alerts-modals/08-reports/discover-report.md` | Retain long prose + parse memo |
+| SAM-D-19 |  | `severe-alerts-modals/01-objectives/objectives.md` | Primary key w; ctrl+s alias |
+| SAM-D-19 |  | `severe-alerts-modals/08-reports/discover-report.md` | w primary, ctrl+s alias |
+| SAM-D-20 |  | `severe-alerts-modals/01-objectives/objectives.md` | Storm names in narration too |
+| SAM-D-20 |  | `severe-alerts-modals/08-reports/discover-report.md` | Names in narration |
+| SAM-D-21 |  | `severe-alerts-modals/01-objectives/objectives.md` | Per-class detail structs |
+| SAM-D-21 |  | `severe-alerts-modals/08-reports/discover-report.md` | Per-class detail structs |
+| SAM-D-22 |  | `severe-alerts-modals/01-objectives/objectives.md` | Retained-set cap 500, "showing N of M" |
+| SAM-D-22 |  | `severe-alerts-modals/08-reports/discover-report.md` | Cap 500; "showing N of M" |
+| SAM-D-23 |  | `severe-alerts-modals/01-objectives/objectives.md` | Red-team dispatched with the full lens set + all four personas |
+| SAM-D-23 |  | `severe-alerts-modals/08-reports/discover-report.md` | Red-team full lens set + four personas |
+| SAM-D-24 |  | `severe-alerts-modals/08-reports/discover-report.md` | DISCOVER exit approved; E-1..E-3 ratified per recommendation |
+| SAM-D-25 |  | `severe-alerts-modals/08-reports/por-report.md` | AX-2 A · AX-3 A · AX-4 A · AX-5 A · AX-6 rec; AX-1 to be evaluated deeper at PLAN |
+| SAM-D-26 |  | `severe-alerts-modals/08-reports/por-report.md` | AX-1 = A; M-1..M-6; N-1; P-1 all approved |
+| SAM-D-27 |  | `severe-alerts-modals/08-reports/por-report.md` | PLAN-exit red-team dispatched (full lens set + four personas) |
+| SAM-D-28 |  | `severe-alerts-modals/08-reports/por-report.md` | C-20 declined (house comment style) |
+| SAM-D-29 |  | `severe-alerts-modals/08-reports/por-report.md` | PLAN exit approved; BUILD opens |
+
+## S-F
+
+| ID | Release | Where | Subject |
+|---|---|---|---|
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:128` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:128` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
+| S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:128` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
+| S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 
 ## MVS-D
 

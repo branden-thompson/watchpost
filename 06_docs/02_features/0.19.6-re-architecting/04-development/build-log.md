@@ -593,3 +593,56 @@ an entry whichever walkthrough it follows.
 
 **The changed-line table.** No test line changed; no golden; no declaration (two comments in
 `modes/tty/dashboard.go`, one in `modes/tty/broadcaster_manifest.go`).
+
+## B1.5, M4's midpoint (D-29; A-46)
+
+**The trace.** A fresh blind reviewer traced the four tasks on `6060309b`, the before's brief word for
+word, on a copy without this release's folder (`../08-reports/m4-mid.md`, `../08-reports/m4-mid-trace/`).
+**0 of 4 pass, as before; on the sites and the routes, 2 of 4 (T3, T4), from 0.** Each of B1.4's fixes
+was met and held. Every task fails D-24's ID test, on families `ids.md` has no row for (U2-, W, PD-, S-,
+SAM-D-), which no batch clears: D-50 has `tools/ids` index them (B1.6).
+
+**Fixed after the trace, the docs' and not the split's at REVIEW:**
+- T1's D1: Walkthrough 6 step 10 sends a map Setting to README's MAP list; step 3 names `mapConfig`,
+  where a map Setting's line is, beside `ttyConfig`;
+- T2's wrong route: `modes/tty/map_boxes.go:7-8` named a legend box 0.18.0 D-103 retired; it names the
+  colour row under the map and `scrubRows`, the caller the reviewer could not find;
+- T3's test comment: `modes/tty/broadcaster_upnext_test.go:97-98` says 36 cells, as `cardPulledShort`'s does.
+
+**The trace defined IDs.** Its tables are led by the ID a reviewer met, the shape of a defining row, so
+`06_docs/ids.md` gained D-44, D-87, D-94 and others as 0.19.6 rows. `tools/ids/main.go:aboutIDs` now keeps
+both measures' traces and keys (`08-reports/m4-`, `08-reports/m5-`) from defining any, and
+`TestAReportAboutIDsDefinesNone`, which held only M5's keys, holds both: seen failing on the midpoint's
+trace with the old filter, green with the new.
+
+**The changed-line table.** One test comment (`broadcaster_upnext_test.go`); in `tools/ids`, one function
+(`aboutIDs`) and its two callers, and `TestAReportAboutIDsDefinesNone`'s condition and message; no golden.
+
+## B1.6, D-50's ID families (A-47)
+
+**`06_docs/ids.md` resolves every ID of six more families the code cites:** U1- and U2- (UAT
+findings, 67 cited), W tasks (90), PD- (5), S- (8), SAM-D- (11) and S-F (4).
+`TestEveryIDOfD50sFamiliesTheCodeCitesIsIndexed` holds each to a row; `TestD50sFamiliesAreReadAsTheRecordWritesThem`
+pins the forms: a task's decimal, a wave alone defining nothing, two UAT rounds as two sections, an
+untabled task and an S-F finding at their mentions. `tools/authoring`'s self-test adds the families to
+AP-CITE-01's controls. The index grows from 2,532 rows to 2,946, and past `TestNoTrackedBinaries`' 400 KB
+floor (395,638 bytes to 468,405), so it joins `largeAllowed` with its reason.
+
+**Two comments restated:** S-F3 and S-F4, 0.9.0 red-team findings the record never mentions
+(`domains/radio/synth/install.go:252`, `:360`), now say what they ruled without the ID (A-47, after
+0.19.5 D-37).
+
+**The sweep's red baseline.** B1's first scoped sweep (`make mutant-scoped BATCH_BASE=40d3cfda`)
+judged nothing: its baseline, `go test ./...` on `6060309b`, came back red while the blind trace and a
+`cmd/watchpost` run shared the machine. The same command in a fresh worktree of the same commit is green
+(`../.mutant-baseline-b1.log`, EXIT=0). The script discarded the baseline's output, so the cause cannot
+be named; a red baseline now writes its failures into the sweep log. The sweep runs again at B1's close.
+
+**Three mutants re-pointed.** The first gate failed at `make mutant-anchors`: m807, m809 and m810
+anchored on `tools/ids/main.go` lines this batch rewrote (the qualified-mention test, now with its `own`
+clause; the priority suffix, now after `idText`; the M5 reports' exclusion, now `readable`'s `aboutIDs`).
+Each is re-pointed at its rule's line, applied by hand and seen killed by its own killer.
+
+**The changed-line table.** No golden, no app or `modes/tty` declaration. `tools/ids`: `aboutIDs`
+(B1.5), `readable`, `findingRows`, `samRows`, `taskRows`, `written`, `familyOrder`, and `mentionRows`'
+`own` argument; `idset`: `Task`, `Grep`, `Parts`, `Written`; `tools/authoring`: `idKey` and one control.

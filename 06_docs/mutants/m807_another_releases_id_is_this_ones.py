@@ -3,6 +3,6 @@ import pathlib
 # is indexed as the untabled release's own.
 # Killed by TestAnUntabledRulingIsIndexedByItsMention.
 p = pathlib.Path('tools/ids/main.go'); s = p.read_text()
-old = '\t\t\t\tif defined[num] || qualified(line[:m[0]]) {\n'
+old = '\t\t\t\tif defined[num] || qualified(line[:m[0]]) && (own == "" || !strings.HasSuffix(strings.TrimRight(line[:m[0]], " *`("), own)) {\n'
 assert s.count(old) == 1, 'm807'
 p.write_text(s.replace(old, '\t\t\t\tif defined[num] {\n', 1))

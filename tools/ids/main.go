@@ -79,7 +79,9 @@ func build(root string) (string, error) {
 			return err
 		}
 		rel, _ := filepath.Rel(docs, path)
-		rows = append(rows, rowsOf(string(b), filepath.ToSlash(rel))...)
+		if !aboutIDs(filepath.ToSlash(rel)) {
+			rows = append(rows, rowsOf(string(b), filepath.ToSlash(rel))...)
+		}
 		mentionsOf(string(b), filepath.ToSlash(rel), mvs)
 		if strings.HasPrefix(filepath.ToSlash(rel), "02_features/"+untabledFeature+"/") {
 			untabled[filepath.ToSlash(rel)] = string(b)
@@ -92,7 +94,30 @@ func build(root string) (string, error) {
 	}
 	rows = append(rows, untabledRows(rows, untabled)...)
 	rows = append(rows, followUpRows(rows, all)...)
+	rows = append(rows, findingRows(all)...)
+	rows = append(rows, samRows(rows, all)...)
+	rows = append(rows, taskRows(rows, all)...)
 	return render(rows, releases(docs)) + renderMVS(mvs, releases(docs)), nil
+}
+
+// aboutIDs reports whether a file is a blind trace's or its key's, 0.19.5's
+// M5 or 0.19.6's M4: those list the IDs a reviewer met and whether each
+// resolved, in tables led by the ID, so they define none and their mentions
+// are no follow-up's best.
+func aboutIDs(rel string) bool {
+	return strings.Contains(rel, "/08-reports/m5-") || strings.Contains(rel, "/08-reports/m4-")
+}
+
+// readable is files less the blind traces and their keys, the files a
+// mention is read from.
+func readable(files map[string]string) map[string]string {
+	read := map[string]string{}
+	for p, src := range files { // bounded by the record (P10-02)
+		if !aboutIDs(p) {
+			read[p] = src
+		}
+	}
+	return read
 }
 
 // untabledFeature is the release whose later rulings were never tabled:
@@ -118,7 +143,7 @@ func untabledRows(rows []row, files map[string]string) []row {
 			defined[r.num] = true
 		}
 	}
-	return mentionRows(files, "D", dCite, dBold, defined)
+	return mentionRows(files, "D", "", dCite, dBold, defined)
 }
 
 // fCite is an F-ID where it stands in a line; fBold is one in bold.
@@ -130,8 +155,8 @@ var (
 // followUpRows is a row for each follow-up the record mentions and no table
 // defines, at its best mention (0.19.5 D-38). Follow-ups are numbered once
 // for the whole project, so an F-ID any row defines, a closed one in
-// follow-ups-closed.md included, is defined. The M5 reports are left out:
-// they list the IDs a reviewer could not resolve.
+// follow-ups-closed.md included, is defined. The blind traces and their keys
+// are left out (aboutIDs).
 func followUpRows(rows []row, files map[string]string) []row {
 	defined := map[string]bool{}
 	for _, r := range rows { // bounded by the rows (P10-02)
@@ -139,19 +164,15 @@ func followUpRows(rows []row, files map[string]string) []row {
 			defined[r.num] = true
 		}
 	}
-	read := map[string]string{}
-	for p, src := range files { // bounded by the record (P10-02)
-		if !strings.Contains(p, "/08-reports/m5-") {
-			read[p] = src
-		}
-	}
-	return mentionRows(read, "F", fCite, fBold, defined)
+	return mentionRows(readable(files), "F", "", fCite, fBold, defined)
 }
 
 // mentionRows is the best mention of each ID of a family that defined does
 // not hold, over files by path: a line that states it in bold, else the
-// first line that names it, in path order.
-func mentionRows(files map[string]string, family string, cite, bold *regexp.Regexp, defined map[string]bool) []row {
+// first line that names it, in path order. A mention another release
+// qualifies is that release's; one qualified by own, the family's own
+// release, is the family's.
+func mentionRows(files map[string]string, family, own string, cite, bold *regexp.Regexp, defined map[string]bool) []row {
 	paths := make([]string, 0, len(files))
 	for p := range files { // bounded by the files (P10-02)
 		paths = append(paths, p)
@@ -170,7 +191,7 @@ func mentionRows(files map[string]string, family string, cite, bold *regexp.Rege
 			}
 			for _, m := range cite.FindAllStringSubmatchIndex(line, -1) { // bounded by the line (P10-02)
 				num := line[m[2]:m[3]]
-				if defined[num] || qualified(line[:m[0]]) {
+				if defined[num] || qualified(line[:m[0]]) && (own == "" || !strings.HasSuffix(strings.TrimRight(line[:m[0]], " *`("), own)) {
 					continue
 				}
 				rank := rankCited
@@ -186,6 +207,97 @@ func mentionRows(files map[string]string, family string, cite, bold *regexp.Rege
 		out = append(out, m.row)
 	}
 	return out
+}
+
+// sfFamily is 0.9.0's red team's findings ("red-team 0.9.0 S-F10"), a release
+// older than the record, so no table defines one: each is indexed at its best
+// mention, the blind traces and their keys aside (0.19.6 D-50). It is written
+// with no hyphen before its number.
+const sfFamily = "S-F"
+
+// sfRelease is the release whose red team numbered the S-F findings.
+const sfRelease = "0.9.0"
+
+// sfCite is an S-F ID where it stands in a line; sfBold is one in bold.
+var (
+	sfCite = regexp.MustCompile(`\bS-F(\d+)\b`)
+	sfBold = regexp.MustCompile(`\*\*S-F(\d+)\*\*`)
+)
+
+// findingRows is a row for each S-F ID the record mentions, at its best mention.
+func findingRows(files map[string]string) []row {
+	return mentionRows(readable(files), sfFamily, sfRelease, sfCite, sfBold, map[string]bool{})
+}
+
+// samRows is a row for each SAM-D ruling the record mentions and its tables
+// do not define, at its best mention.
+func samRows(rows []row, files map[string]string) []row {
+	defined := map[string]bool{}
+	for _, r := range rows { // bounded by the rows (P10-02)
+		if r.family == samFamily {
+			defined[r.num] = true
+		}
+	}
+	return mentionRows(readable(files), samFamily, "", samCite, samBold, defined)
+}
+
+// taskRows is a row for each plan task the record mentions and no table
+// defines, at its best mention: a task a build log's batch names and the plan
+// never tabled (0.18.0's W18.4).
+func taskRows(rows []row, files map[string]string) []row {
+	defined := map[string]bool{}
+	for _, r := range rows { // bounded by the rows (P10-02)
+		if r.family == idset.Task {
+			defined[r.num+r.suffix] = true
+		}
+	}
+	out := mentionRows(readable(files), idset.Task, "", taskCite, taskBold, defined)
+	for i := range out { // bounded by the mentions (P10-02)
+		n, s, _ := strings.Cut(out[i].num, ".")
+		out[i].num, out[i].suffix = n, "."+s // the wave, and the task in it
+	}
+	return out
+}
+
+// taskCite is a plan task where it stands in a line, wave and number the
+// first group; taskBold is one in bold.
+var (
+	taskCite = regexp.MustCompile(`\b` + idset.Task + `(\d+(?:\.\d+)+)\b`)
+	taskBold = regexp.MustCompile(`\*\*` + idset.Task + `(\d+(?:\.\d+)+)\*\*`)
+)
+
+// samCite is a SAM-D ruling where it stands in a line; samBold is one in bold.
+var (
+	samCite = regexp.MustCompile(`\b` + samFamily + `-(\d+)\b`)
+	samBold = regexp.MustCompile(`\*\*` + samFamily + `-(\d+)\*\*`)
+)
+
+// written is a row's ID as the record writes it.
+func written(r row) string {
+	if r.family == sfFamily {
+		return r.family + r.num + r.suffix
+	}
+	return idset.Written(r.family, r.num, r.suffix)
+}
+
+// familyPatterns are idset's families, each matching a family whole.
+var familyPatterns = func() []*regexp.Regexp {
+	out := make([]*regexp.Regexp, len(idset.Families))
+	for i, p := range idset.Families { // bounded by the families (P10-02)
+		out[i] = regexp.MustCompile(`^(?:` + p + `)$`)
+	}
+	return out
+}()
+
+// familyOrder is the index's order of sections: idset's families, a UAT
+// round's under its pattern, then the task, SAM-D and S-F.
+func familyOrder(f string) int {
+	for i, p := range familyPatterns { // bounded by the families (P10-02)
+		if p.MatchString(f) {
+			return i
+		}
+	}
+	return len(idset.Families) + strings.Index(" "+idset.Task+" "+samFamily+" "+sfFamily+" ", " "+f+" ")
 }
 
 // qualified reports whether the text before an ID names another release:
@@ -362,10 +474,21 @@ line elsewhere in the record. The subject is that line, which is where its conte
 // aside, or an ID and a code in parentheses: a requirement's priority or tier
 // (0.18.0 FR-3.8 is written "(P1)" after its ID) or a release. Words in the
 // parentheses ("cited") make the cell a note about the ID, not its row.
-var definingCell = regexp.MustCompile(`^(?:` + strings.Join(idset.Families, "|") + `)-\d+(?:\.\d+)*[a-z]?(?:\s*\((?:[A-Z]\d+|\d+\.\d+\.\d+)\))?$`)
+var definingCell = regexp.MustCompile(`^` + idText + `(?:\s*\((?:[A-Z]\d+|\d+\.\d+\.\d+)\))?$`)
+
+// idText is an ID's text in either of idset's forms, or a ruling of the
+// severe-alerts release, which carries its release in its prefix as MVS-D
+// does and, unlike MVS-D, tabled its rulings (0.19.6 D-50).
+var idText = `(?:(?:` + strings.Join(idset.Families, "|") + `)-\d+(?:\.\d+)*[a-z]?|` + idset.Task + `\d+(?:\.\d+)+|` + samFamily + `-\d+)`
+
+// samFamily is the severe-alerts release's prefix for its rulings.
+const samFamily = "SAM-D"
+
+// samID is a SAM-D ruling, its number the first group.
+var samID = regexp.MustCompile(`^` + samFamily + `-(\d+)$`)
 
 // definingHeading is a heading that opens with an ID, and its title.
-var definingHeading = regexp.MustCompile(`^#{1,4}\s+(?:\*\*)?((?:` + strings.Join(idset.Families, "|") + `)-\d+(?:\.\d+)*[a-z]?)(?:\*\*)?(?:\s*[—:–-]\s*|\s+|$)(.*)$`)
+var definingHeading = regexp.MustCompile(`^#{1,4}\s+(?:\*\*)?(` + idText + `)(?:\*\*)?(?:\s*[—:–-]\s*|\s+|$)(.*)$`)
 
 // rowsOf is the rows and headings in one file that define an ID, the first
 // per ID: a second one for the same ID in one file refers back.
@@ -385,8 +508,13 @@ func rowsOf(src, rel string) []row {
 			continue
 		}
 		seen[cells[0]] = true
-		m := idset.ID.FindStringSubmatch(cells[0])
-		out = append(out, row{family: m[1], num: m[2], suffix: m[3], feature: feature, file: file, subject: subjectOf(cells[1:])})
+		r := row{feature: feature, file: file, subject: subjectOf(cells[1:])}
+		if s := samID.FindStringSubmatch(cells[0]); s != nil {
+			r.family, r.num = samFamily, s[1]
+		} else {
+			r.family, r.num, r.suffix = idset.Parts(idset.ID.FindStringSubmatch(cells[0]))
+		}
+		out = append(out, r)
 	}
 	return out
 }
@@ -463,14 +591,13 @@ func releases(docs string) map[string]string {
 // render writes the index: a section per family, in idset's order, and in
 // each the IDs by number, every feature's row under its ID.
 func render(rows []row, rel map[string]string) string {
-	order := map[string]int{}
-	for i, f := range idset.Families { // bounded by the families (P10-02)
-		order[f] = i
-	}
 	sort.SliceStable(rows, func(i, j int) bool {
 		a, b := rows[i], rows[j]
+		if oa, ob := familyOrder(a.family), familyOrder(b.family); oa != ob {
+			return oa < ob
+		}
 		if a.family != b.family {
-			return order[a.family] < order[b.family]
+			return a.family < b.family // two UAT rounds
 		}
 		if na, nb := atoi(a.num), atoi(b.num); na != nb {
 			return na < nb
@@ -499,7 +626,11 @@ func render(rows []row, rel map[string]string) string {
 			where += ":" + strconv.Itoa(r.line)
 		}
 		where = "`" + where + "`"
-		fmt.Fprintf(&sb, "| %s-%s%s | %s | %s | %s |\n", r.family, r.num, r.suffix, rel[r.feature], where, strings.ReplaceAll(r.subject, "|", "\\|"))
+		release := rel[r.feature]
+		if r.family == sfFamily {
+			release = sfRelease // the finding's release, not the one that mentions it
+		}
+		fmt.Fprintf(&sb, "| %s | %s | %s | %s |\n", written(r), release, where, strings.ReplaceAll(r.subject, "|", "\\|"))
 	}
 	return sb.String()
 }
@@ -527,4 +658,9 @@ cell; a later table that mentions it is not listed. Where no table defines an ID
 best mention, marked "Mentioned:", or the MVS-D section below: 0.16.0's later rulings and the
 follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code cites resolves to
 ` + "`06_docs/follow-ups-closed.md`" + `, its row as it was when it closed.
+
+A UAT round's findings (U1-, U2-) and a plan's tasks (W1.17, task 17 of wave 1; a wave alone is no ID)
+are indexed as every other family is. SAM-D, the severe-alerts release's rulings, carries its release
+in its prefix as MVS-D does; S-F, 0.9.0's red team's findings, from before the record, is indexed at
+each one's best mention (0.19.6 D-50).
 `

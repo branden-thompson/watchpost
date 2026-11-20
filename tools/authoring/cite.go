@@ -38,8 +38,7 @@ func citeKey(dir string) string {
 // call for the whole tree. A package's set is judged, not a file's, so a
 // comment moved between files of one package keeps its citations.
 func baseCitations(root, base string) (citedAt, error) {
-	pattern := "(" + strings.Join(idset.Families, "|") + ")-[0-9]+"
-	out, err := exec.Command("git", "-C", root, "grep", "-I", "-o", "-E", pattern, base, "--", "*.go").Output()
+	out, err := exec.Command("git", "-C", root, "grep", "-I", "-o", "-E", idset.Grep, base, "--", "*.go").Output()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
 			return citedAt{}, nil // git grep found nothing
@@ -62,13 +61,18 @@ func baseCitations(root, base string) (citedAt, error) {
 }
 
 // idKey is an ID's family and number, its decimal or letter aside: FR-3.2
-// and FR-3 cite one requirement.
+// and FR-3 cite one requirement. A task keeps its decimal: 0.18.0 W1.17 is a
+// task of wave 1, not the wave.
 func idKey(id string) string {
 	m := idset.ID.FindStringSubmatch(id)
 	if m == nil {
 		return id
 	}
-	return m[1] + "-" + m[2]
+	family, num, suffix := idset.Parts(m)
+	if family == idset.Task {
+		return idset.Written(family, num, suffix)
+	}
+	return family + "-" + num
 }
 
 // mergeBase is the commit the branch is judged against: where HEAD left main,
