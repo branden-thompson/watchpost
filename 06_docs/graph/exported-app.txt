@@ -1,0 +1,13 @@
+# the exported surface of app (0.19.6 B0.12, M5): exported top-level names and exported types' methods;
+# a batch adds its new packages' entry points here; TestTheRootsExportOnlyWhatIsListed
+const UserAgent
+func CastReport.ToneSummary
+func RenderCast
+func ReportOnce
+func ReportOnceWithStats
+func RunDashboard
+type CastReport
+type CastRow
+type Gauge
+type Options
+type SourceHealth

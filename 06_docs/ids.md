@@ -2184,6 +2184,7 @@ follow-ups only ever mentioned (0.19.5 D-37, D-38). A closed follow-up the code 
 | A-41 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The quality pass's choices (batch 14): (1) a byte bound has its own visits a pass, so a dataset that cannot g… |
 | A-42 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The graph tool's form (B0.12; A-12, D-30, D-41, D-43, D-44). (1) tools/graph is a module of its own on golang… |
 | A-42 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-168's details: (1) dimmed is the app's own dimmed form, the chip's words in the muted table tone on no grou… |
+| A-43 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The surfaces held (B0.12; AP-1.5, M5, D-26). (1) TestTheDecksExportedSurfaceIsHeld, in app, holds every expor… |
 | A-43 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-170's details: (1) a feature's hosts are stated, not derived: the app says, for each station provider, map … |
 | A-44 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-173's wordings, each note under the Status window's hosts: MRMS "MRMS colors approximate; scale read from l… |
 | A-45 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The continents' reference points (FR-1.9): on each inhabited continent, the city where its amateur radio is b… |

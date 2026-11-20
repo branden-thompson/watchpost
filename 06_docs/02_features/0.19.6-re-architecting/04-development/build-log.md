@@ -469,3 +469,17 @@ against 1,209, time to tone 185 against 183. A collection inside the window empt
 and the path's next pooled buffer is a new allocation: this is M1's "flicker by one". With the
 collector off inside the windows, after one collection to settle, three full runs repeated to the byte.
 The baseline was recorded again by that method. The FAILED rows stay in `verify-runs.md`.
+
+## B0.12, the surfaces held
+
+`TestTheDecksExportedSurfaceIsHeld` (`app`) holds AP-1.5's tiers 2 and 3, the 43 exported methods on
+the deck's unexported types, exactly, with the seven outside the deck listed beside them; `radioDeck`
+and `mastercontrol` are held to the interfaces they are handed out as. `TestTheRootsExportOnlyWhatIsListed`
+(`cmd/watchpost`) holds `modes/tty`'s 154 exported names and `app`'s 11 to
+`06_docs/graph/exported-*.txt`. `TestOnlyD26sThreeExportsAreUsedOutsideByTestsAlone` finds exactly
+`ChipKnown`, `FireAll` and `SameOverlay`. Their form is A-43.
+
+**Seen failing.** A planted exported method on `radioDeck`; `RenderCast` taken off `app`'s list (the
+floor first masked it, and was lowered to a floor against an empty list); a planted test-only use.
+D-26's rule first found 21 names: scoped to the names the map's files declare, as MS C-6 counted, it
+finds the three.

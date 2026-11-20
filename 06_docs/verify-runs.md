@@ -288,3 +288,5 @@ says exactly what passed.
 | 2026-11-19T22:11:49Z | 0f558312 | 3638c1b1edc5 | verify | FAILED (exit 2) | 1326 |
 | 2026-11-19T22:42:56Z | 0f558312 | a7f4bdba6390 | verify | FAILED (exit 2) | 1430 |
 | 2026-11-20T00:26:26Z | 0f558312 | d2647d3cd914 | verify | green | 5713 |
+| 2026-11-20T00:58:59Z | 5655a04f | 5fd96f2ed3d6 | verify | FAILED (exit 2) | 1613 |
+| 2026-11-20T02:41:50Z | 5655a04f | 09f517511fe6 | verify | green | 5895 |

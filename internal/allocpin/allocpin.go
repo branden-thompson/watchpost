@@ -27,7 +27,7 @@ type Cost struct {
 // Such an allocation only ever adds, so the least of three windows is the
 // path's own cost, and a path's real change is in every one of them.
 //
-// AND THE COLLECTOR IS OFF INSIDE THE WINDOWS, after one collection to settle.
+// THE COLLECTOR IS OFF INSIDE THE WINDOWS, after one collection to settle.
 // A collection empties every sync.Pool, and a pooled buffer the path then
 // takes is a new allocation: the map, severe and Propagation windows read one
 // allocation more in some runs and not others, and time to tone 183 or 185,
