@@ -667,3 +667,8 @@ sweep is re-run on this commit.
 **B1 in commits.** 6, the plan's 2: B1.1 to B1.4 each took a commit of their own, and the midpoint's
 grade added B1.6 (D-50); the batch map says so. B1 closes on this commit's `make verify-full` and the
 scoped sweep.
+
+**B1 closed, 2026-11-21.** `make verify-full` on the closing tree: every gate green, the whole
+corpus judged, 7,654 s. The scoped sweep on `da224fc8`: its baseline green, all 10 mutants CAUGHT by
+their recorded killers; its one report, m810's anchor in `readable` where it sat in `followUpRows`, is
+B1.6's re-pointing, and B1 closes on it (D-51). Pushed; the remote ref matched the commit.

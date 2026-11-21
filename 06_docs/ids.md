@@ -1482,6 +1482,7 @@ each one's best mention (0.19.6 D-50).
 | D-51 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | above 150 is a right rail, a LATER release — a SEAM is owed now, not a layout |
 | D-51 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE RIGHT RAIL IS A SEAM NOW AND A LAYOUT LATER |
 | D-51 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 7 of 07-readiness/validate-agenda.md: the Observer fits the terminal (D-28, D-30) at 80x24… |
+| D-51 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B1's closing scoped sweep (make mutant-scoped BATCH_BASE=40d3cfda on da224fc8). Its baseline is green and all… |
 | D-51 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-6 (cross-repo, go-tuiMaps D-69): P1-b waited on the final v0.2.0 tag, so integration defects … |
 | D-51 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | P1-b builds on release candidates; ships on the final tag |
 | D-51 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How go-giro-data learns which GIRO stations are live (PF-F3, HY-F2, CQ-E6): probing all 118 exceeds D-39's ca… |
@@ -2983,11 +2984,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:128` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:128` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:129` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:129` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:128` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:129` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

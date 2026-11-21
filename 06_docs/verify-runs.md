@@ -303,3 +303,4 @@ says exactly what passed.
 | 2026-11-20T22:15:52Z | 6060309b | 342b1834e883 | verify | FAILED (exit 2) | 2153 |
 | 2026-11-20T23:55:26Z | 6060309b | 3130a6c034f3 | verify | green | 5904 |
 | 2026-11-21T02:50:40Z | 6dd5bd5b | 92a110cff93e | verify-full | green | 7654 |
+| 2026-11-21T05:09:54Z | da224fc8 | 343816adf6bd | verify-docs | green | 624 |
