@@ -672,3 +672,17 @@ scoped sweep.
 corpus judged, 7,654 s. The scoped sweep on `da224fc8`: its baseline green, all 10 mutants CAUGHT by
 their recorded killers; its one report, m810's anchor in `readable` where it sat in `followUpRows`, is
 B1.6's re-pointing, and B1 closes on it (D-51). Pushed; the remote ref matched the commit.
+
+## Before B2: the console's non-drawn references (D-52 to D-58)
+
+**Put to the HUM LEAD singly, with their killers** (D-22, A-33): the nine references in seven tests
+that design CK-5 left in class X. Two split by package, the internal half into the console with its
+mutants (D-52: mAU2 and mW5; D-53); two assert the drawn value (D-54: the pool row's bold fire mark,
+mAQ1 and mAQ2; D-57: an ASCII-only console frame); the two kit reads go through `frame.WeatherRow`,
+already exported for production (D-55, D-56); the masthead's named inputs move to a kit-level test
+(D-58: m744, m745, m747). No test-only export. Each is built in the batch whose move needs it: the
+kit's in B2, the console's in B3.
+
+**The first docs gate failed** on `TestEveryRulingNamingCodeCitesItsLine`: five sites in D-52 to D-58
+named a Go file without its line or symbol. Each now cites one (`router.go:1058`, `:306`,
+`view.go:renderModal`, `broadcaster_pool.go:fireBold`, `masthead.go:mastheadKeyOf`).

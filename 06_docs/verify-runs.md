@@ -304,3 +304,5 @@ says exactly what passed.
 | 2026-11-20T23:55:26Z | 6060309b | 3130a6c034f3 | verify | green | 5904 |
 | 2026-11-21T02:50:40Z | 6dd5bd5b | 92a110cff93e | verify-full | green | 7654 |
 | 2026-11-21T05:09:54Z | da224fc8 | 343816adf6bd | verify-docs | green | 624 |
+| 2026-11-21T15:40:30Z | ac68cbe8 | e11b548d7343 | verify-docs | FAILED (exit 2) | 558 |
+| 2026-11-21T15:51:14Z | ac68cbe8 | 868d0428dcf6 | verify-docs | green | 603 |

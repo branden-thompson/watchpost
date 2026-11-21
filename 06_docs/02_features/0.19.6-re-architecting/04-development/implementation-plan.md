@@ -254,7 +254,9 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
 
 - **Before:** the console's nine non-drawn references (design CK-5's class X less D-22's drawn
   values: `cardTitle`/`detailBody`, `cardTone`, `poolRows`/`locIndex`, `fireHot`, `fireCount`,
-  `.ascii`, `staleAfter`) come to the HUM LEAD singly, with their killers (D-22, A-33).
+  `.ascii`, `staleAfter`) come to the HUM LEAD singly, with their killers (D-22, A-33): ruled D-52 to
+  D-58, two splits by package (D-52, D-53), two drawn values (D-54, D-57), `frame.WeatherRow` for the
+  two kit reads (D-55, D-56) and CK-4's kit-level masthead test (D-58).
 - **Prep:** TS-4's closure cut into the kit's files in place (design CK-1: `masthead.go`, `row.go`,
   `cursor.go`, `tick.go`, `memo.go`, `text.go`); 25 names and 5 methods exported; `MemoStats` with its
   embedded mutex, `Hit` and `Miss` documented as running with the lock held (A-21); `NoTransmitter`

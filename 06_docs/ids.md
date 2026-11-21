@@ -1488,35 +1488,42 @@ each one's best mention (0.19.6 D-50).
 | D-51 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How go-giro-data learns which GIRO stations are live (PF-F3, HY-F2, CQ-E6): probing all 118 exceeds D-39's ca… |
 | D-52 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE CARD TYPES, v2 |
 | D-52 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 8 of 07-readiness/validate-agenda.md: Setup keeps a place by the app's one rule (D-8): a p… |
+| D-52 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The console's non-drawn test references (D-22, A-33; design CK-5's class X less D-22's drawn values), put sin… |
 | D-52 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-8 (A11y): (a) FR-7.4 says the description is what "the existing voice can speak", and no task… |
 | D-52 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | The description is text in 0.18.0; speaking it joins one voice pass with the other voice bugs (F-181); motion… |
 | D-52 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | G-M3's second reference, KC2G's grid, cannot be fetched (D-18, D-39) |
 | D-53 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | product first, optimisation second — a working baseline is the reason |
 | D-53 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | PRODUCT FIRST, OPTIMISATION SECOND, AND THE BASELINE IS THE REASON |
 | D-53 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, UAT item 10 of 07-readiness/validate-agenda.md: the screenshots (A-9): docs/img/setup.png, broadcas… |
+| D-53 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The console's non-drawn test references (D-22, A-33; design CK-5's class X less D-22's drawn values), put sin… |
 | D-53 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team P-9 (cross-repo, go-tuiMaps D-71): M1b declared "green" on Report with no re-score and no machi… |
 | D-53 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | M1b re-scored on the description that ships; M6 measures ticks and key latency; timings recorded at SHIP |
 | D-53 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The traceability protocol D-1 deferred (PM-K1, BQ-F8); 0.18.0's research read arodland/prop through the GitHu… |
 | D-54 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md` | the Producer is wired through the Publish executor's return, no new effect |
 | D-54 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE PRODUCER IS WIRED, AND THE LEDGER ROW DISCHARGED ITSELF |
 | D-54 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | VALIDATE, the rest of 07-readiness/validate-agenda.md: UAT items 2 (a correspondent's first name, D-7), 6 (Se… |
+| D-54 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The console's non-drawn test references (D-22, A-33; design CK-5's class X less D-22's drawn values), put sin… |
 | D-54 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Confirming two of the coordinator's readings: D-44's legend phase, and D-47's "region" |
 | D-54 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The library's name (CQ-S3): two of its three inputs are not GIRO; it publishes a derived field; a rename is c… |
 | D-55 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE INJECTOR SHIPS, AND THE CARD LEARNS TO SAY "TEST" |
 | D-55 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | SHIP: v0.19.5 was tagged on PR #37's merge 905ee845 and its release job stopped in make vuln (GO-2026-6859, A… |
+| D-55 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The console's non-drawn test references (D-22, A-33; design CK-5's class X less D-22's drawn values), put sin… |
 | D-55 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN red team batch B-1 … B-10 (go-tuiMaps radar-loops/08-reports/red-team-plan.md), with P-8's accessibility… |
 | D-55 | 0.18.0 | `observer-maps/08-reports/plan-report.md` | The red team's batch |
 | D-55 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The history roll-up bug in shipped 0.18.0 (PF-F4; platform/history/history.go:1478 discards a failed read and… |
 | D-56 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | "ONE CANONICAL WAY TO DO A THING" IS A STANDING RULE, ACROSS ALL ENGINEERING |
 | D-56 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | SHIP: A-32 (Go 1.27.4 for CI and the release), A-33 (the router trace hashes frames without the Go release's … |
+| D-56 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The console's non-drawn test references (D-22, A-33; design CK-5's class X less D-22's drawn values), put sin… |
 | D-56 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | PLAN exit: the PLAN report (08-reports/plan-report.md), with RK-5 for approval — accept one network basemap s… |
 | D-56 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The library's new name (D-54); go-ionomaps, go-hfprop, go-ionofield, go-propfield all free under branden-thom… |
 | D-57 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | THE TEST MARK GOES IN THE CARD'S CORNERS, AND THE BADGE KEEPS ITS LANE |
 | D-57 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | SHIP: GO-2026-6859 failed go-tuiMaps' nightly gate on main (run 43062707324) at both its scans, go1.27.3 and … |
+| D-57 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The console's non-drawn test references (D-22, A-33; design CK-5's class X less D-22's drawn values), put sin… |
 | D-57 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Clerical correction of D-45's evidence (go-tuiMaps D-75): D-45 recorded that go-tuiMaps v0.1.0 raises Changed… |
 | D-57 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Can the Broadcaster open the Propagation mode (BQ-F9; issue #25 asks for MUF on a Broadcaster map)? Observer … |
 | D-58 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d37-d40.md` | ONE DIAGNOSTICS WINDOW, COMPOSITED OVER WHICHEVER SURFACE IS ACTIVE |
 | D-58 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | SHIP: the local, git-ignored CLAUDE.md still names 0.19.0 as the release in flight at its session-start step … |
+| D-58 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The console's non-drawn test references (D-22, A-33; design CK-5's class X less D-22's drawn values), put sin… |
 | D-58 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | BUILD, F-176 seen a second time: TestSayVoiceOnDarwinNarratesHostileTextSafely killed at its 120 s bound in t… |
 | D-58 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Words for the Broadcaster's own map (AX-G); "Instead of the map" is Observer-only (modes/tty/setup_rows.go:25… |
 | D-59 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | ONE MASTHEAD, DRAWN BY BOTH SURFACES. "why the masthead different than the Observer Masthead?" It should not … |
@@ -2984,11 +2991,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:129` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:129` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:136` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:136` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:129` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:136` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 
