@@ -686,3 +686,26 @@ kit's in B2, the console's in B3.
 **The first docs gate failed** on `TestEveryRulingNamingCodeCitesItsLine`: five sites in D-52 to D-58
 named a Go file without its line or symbol. Each now cites one (`router.go:1058`, `:306`,
 `view.go:renderModal`, `broadcaster_pool.go:fireBold`, `masthead.go:mastheadKeyOf`).
+
+## B2: the kit and the test support (`modes/tty`)
+
+**The re-check (step 1), on `76fbbb46`.** Design CK-1's and CK-4's facts against the code: the
+closure's 41 declarations and 4 methods, the 25 names and 5 methods exported and 14 kept, each
+exported name's non-test user outside the kit, `indentBody`'s one caller, the memo counters'
+lines (`broadcaster_memo.go:139-147`, `memo.go:155-163`, `:505-513`) with no mutant on them, P3's
+snapshot-message sites and `check_studs` (`scripts/lint-imports.sh:31`) all hold. Changed:
+- `tickMsg`, `tickEvery`, `tick` and `armShimmer` sit 5 lines lower in `dashboard.go` (`:1058`,
+  `:1064`, `:1068`, `:1122`);
+- `tickEvery`'s row lists `map_prop_update.go` as a user, which only reads a struct field of the same
+  name; its one root user is `Dashboard.after` (`dashboard.go:1076`), so M5's zero still holds;
+- `mastheadSlot` has two users its row does not list, `body.go:32` and `broadcaster_header.go:26`,
+  in the packages it names;
+- the masthead guard is at `masthead_memo_test.go:56` and its named inputs span `:21-50`;
+- **not in the design:** R8's pin, `cmd/watchpost/messages_test.go:pinnedMessages`, names `tickMsg`,
+  so exporting it as `TickMsg` changes the pin's entry in the prep commit; the count is unchanged.
+
+**Instruments first: a rename replaces a whole name (A-49).** B2's kit renames are bare names
+(`tick`, `sides`, `trend`, `plural`), and `gcprobe` applied `renames.tsv` as a text replace in each
+key's fields, which would have renamed the ticker's 96 keys with `tick`. `replaceWhole` matches a
+name only where it stands whole; `TestARenameReplacesOnlyAWholeName` was seen failing under the text
+replace. It lands before the prep, in a commit of its own.

@@ -20,8 +20,10 @@
 //     no lower: a lost inlining fails, and stands only by a HUM LEAD ruling.
 //
 // A move renames keys, so `-map` names a file of "old<TAB>new" lines, each
-// old text replaced by the new in every baseline key's fields before the
-// comparison: a function re-homed onto a model, a package moved. Mapping many
+// old name replaced by the new in every baseline key's fields before the
+// comparison: a function re-homed onto a model, a package moved. A name is
+// replaced only where it stands whole, so `tick` renames the function and
+// not `tickerRow` (0.19.6 A-49). Mapping many
 // old names to one new one counts the union, which is 0.19.6 A-26's rule for a split
 // function: its entry points' inlined calls are matched by callee across the
 // union of the old function and the functions carved from it.
@@ -747,12 +749,41 @@ func renamed(c counts, renames [][2]string) counts {
 		fields := strings.Split(k, "\t")
 		for i := range fields { // the key's three fields (P10-02)
 			for _, r := range renames { // bounded by the map (P10-02)
-				fields[i] = strings.ReplaceAll(fields[i], r[0], r[1])
+				fields[i] = replaceWhole(fields[i], r[0], r[1])
 			}
 		}
 		out[strings.Join(fields, "\t")] += n
 	}
 	return out
+}
+
+// replaceWhole is s with every occurrence of old that no identifier
+// character touches on either side replaced by new: `tick` in `tick` and in
+// `tick.func1`, not in `tickerRow` or `armtick`.
+func replaceWhole(s, old, new string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); { // advances by at least one byte a pass (P10-02)
+		j := strings.Index(s[i:], old)
+		if j < 0 {
+			b.WriteString(s[i:])
+			break
+		}
+		at, end := i+j, i+j+len(old)
+		b.WriteString(s[i:at])
+		if (at == 0 || !identByte(s[at-1])) && (end == len(s) || !identByte(s[end])) {
+			b.WriteString(new)
+		} else {
+			b.WriteString(old)
+		}
+		i = end
+	}
+	return b.String()
+}
+
+// identByte reports whether c can be part of a Go identifier written in ASCII,
+// which every name the compiler reports in these keys is.
+func identByte(c byte) bool {
+	return c == '_' || '0' <= c && c <= '9' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z'
 }
 
 // total is a multiset's size.

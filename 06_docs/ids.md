@@ -2371,6 +2371,7 @@ each one's best mention (0.19.6 D-50).
 | A-47 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-178's and D-179's details: (1) a band typed is taken at its lower edge ("40 m" is 7 MHz), the edge each ban… |
 | A-48 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The scoped sweep's red baseline, named (B1's close). The sweep's second run on B1, on 6dd5bd5b, came back red… |
 | A-48 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | FR-1.13's details (W5.4): (1) the hours step on the weather modes' own keys - shift+right an hour on, to 24; … |
+| A-49 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | A rename replaces a whole name (B2, step 2; A-26). tools/gcprobe/main.go:renamed applied each 06_docs/perf/re… |
 | A-49 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-180's details: (1) the centre is answered to half a degree, so a pan is answered and the smallest nudge is … |
 | A-50 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Batches 21 and 22's choices: (1) a disturbed band ◐ in the advisory tone (render.NameAdvisory), degraded, not… |
 | A-51 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-193's and D-194's details: (1) one table of roles, propRoles, gives each UI mode its Propagation origin (th… |

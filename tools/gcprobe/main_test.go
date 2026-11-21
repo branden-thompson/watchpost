@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -206,5 +207,34 @@ func TestTheTreesKeepWhatTheCompilerDecided(t *testing.T) {
 	t.Log(strings.TrimSpace(out.String()))
 	if code != 0 {
 		t.Errorf("the trees left the compiler's baselines (exit %d):\n%s%s", code, out.String(), errs.String())
+	}
+}
+
+// TestARenameReplacesOnlyAWholeName holds 0.19.6 A-49: a rename of a bare
+// function name renames that function's keys and no name it is part of, so
+// B2's `tick` becoming `Tick` leaves the ticker's keys and `sidesOnly` alone.
+// Seen failing under a plain text replace, which made `tickerRow` `TickerRow`.
+func TestARenameReplacesOnlyAWholeName(t *testing.T) {
+	c := counts{
+		"modes/tty\ttick\ttickMsg":                 1,
+		"modes/tty\ttick.func1\ttickMsg":           1,
+		"modes/tty\ttickerRow\tstring":             1,
+		"modes/tty\tDashboard.armTick\ttickMsg":    1,
+		"modes/tty\tsidesOnly\tstrings.IndexByte":  1,
+		"modes/tty\tcursorIn\tsides":               1,
+		"app\t(*mastercontrol).dip\tsync.(*Mutex)": 1,
+	}
+	got := renamed(c, [][2]string{{"tick", "Tick"}, {"tickMsg", "TickMsg"}, {"sides", "Sides"}, {"(*mastercontrol).dip", "(*mastercontrol).duck"}})
+	want := counts{
+		"modes/tty\tTick\tTickMsg":                  1,
+		"modes/tty\tTick.func1\tTickMsg":            1,
+		"modes/tty\ttickerRow\tstring":              1,
+		"modes/tty\tDashboard.armTick\tTickMsg":     1,
+		"modes/tty\tsidesOnly\tstrings.IndexByte":   1,
+		"modes/tty\tcursorIn\tSides":                1,
+		"app\t(*mastercontrol).duck\tsync.(*Mutex)": 1,
+	}
+	if !maps.Equal(got, want) {
+		t.Errorf("renamed\n%v\nwant\n%v", got, want)
 	}
 }
