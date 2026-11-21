@@ -113,7 +113,7 @@ listed re-recordings is a regression, never a ruling candidate (A-29).
 | Batch | What | Commits, full gates | Why it stands alone |
 |---|---|---|---|
 | B0 | the instruments (package map §4, A-12, A-29), go 1.26.11 and the floor scan (D-12) | 13, 12 and the closing `verify-full` (planned 4, 4: D-37 and D-38 split the gate, and B0.6, B0.7 and B0.12 each took more than one commit) | nothing moves until every instrument is seen failing and then passing |
-| B1 | RM's slices 1 and 3, the doc errors, M4's doc findings; then M4's midpoint trace (D-29) | 2, 2 | changes no production behaviour; fixes docs before any move makes them harder to fix |
+| B1 | RM's slices 1 and 3, the doc errors, M4's doc findings; then M4's midpoint trace (D-29) and D-50's ID families | 6, 5 and the closing `verify-full` (planned 2, 2: B1.1 to B1.4 each took a commit of their own, and the midpoint's grade added B1.6) | changes no production behaviour; fixes docs before any move makes them harder to fix |
 | B2 | `modes/tty`: the kit (`internal/frame`) and the test support (`internal/ttytest`) | 2, 2 | the console's prerequisite; the first new packages |
 | B3 | `modes/tty`: the console (`modes/tty/console`) | 2, 2 | a move with a narrow seam; its killers sit in its own tests (RX-3) |
 | B4 | `modes/tty`: the map's 2a, in place | 4, 4 | the largest re-homing, with every test still in its package; 2b's straddle count re-measured |
@@ -246,6 +246,9 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
   walkthrough line that every user-visible change gets an entry.
 - **B1.5 M4's midpoint (D-29).** A fresh blind reviewer traces the four tasks on the unchanged layout
   with B1's docs, on a copy without this release's folder; the grade is filed beside the before.
+- **B1.6 D-50's ID families** (A-47): `tools/ids` indexes the UAT rounds' findings, the plans' tasks,
+  PD-, S-, SAM-D- and 0.9.0's S-F, each held by `TestEveryIDOfD50sFamiliesTheCodeCitesIsIndexed`, and
+  AP-CITE-01 asks a new citation of any of them to name its release.
 
 ## B2: the kit and the test support (`modes/tty`)
 

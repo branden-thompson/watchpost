@@ -36,7 +36,7 @@ func TestTheSweepRefusesInputsItCannotHonour(t *testing.T) {
 		out := filepath.Join(t.TempDir(), "sweep.log")
 		cmd := exec.Command("sh", sweepScript, out)
 		cmd.Dir = root
-		cmd.Env = append(os.Environ(), c.env...)
+		cmd.Env = append(withoutSweepInputs(os.Environ()), c.env...)
 		combined, err := cmd.CombinedOutput()
 		if err == nil {
 			t.Errorf("%s: the sweep ran; want it refused", c.name)
@@ -46,4 +46,19 @@ func TestTheSweepRefusesInputsItCannotHonour(t *testing.T) {
 			t.Errorf("%s: the sweep said %q; want it to say %q", c.name, strings.TrimSpace(string(combined)), c.want)
 		}
 	}
+}
+
+// withoutSweepInputs is env with every MUTANT_ variable dropped, so each case
+// sets the sweep's inputs alone. A scoped sweep's baseline runs this test in a
+// worktree with the sweep's own MUTANT_KILLERS set, a path relative to the
+// repository that the worktree lacks: the second case inherited it and was
+// refused as a missing record, not as a mutant the corpus lacks (0.19.6 A-48).
+func withoutSweepInputs(env []string) []string {
+	kept := make([]string, 0, len(env))
+	for _, kv := range env { // bounded by the environment (P10-02)
+		if !strings.HasPrefix(kv, "MUTANT_") {
+			kept = append(kept, kv)
+		}
+	}
+	return kept
 }

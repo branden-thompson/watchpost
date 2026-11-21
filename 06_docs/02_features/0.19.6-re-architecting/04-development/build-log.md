@@ -646,3 +646,24 @@ Each is re-pointed at its rule's line, applied by hand and seen killed by its ow
 **The changed-line table.** No golden, no app or `modes/tty` declaration. `tools/ids`: `aboutIDs`
 (B1.5), `readable`, `findingRows`, `samRows`, `taskRows`, `written`, `familyOrder`, and `mentionRows`'
 `own` argument; `idset`: `Task`, `Grep`, `Parts`, `Written`; `tools/authoring`: `idKey` and one control.
+
+## B1's close: the sweep's red baseline named, the inventory, the plan's tests held (A-48)
+
+**The sweep's red baseline, named.** B1's second scoped sweep, on `6dd5bd5b`, came back red as the
+first did, and B1.6's log named the test: `TestTheSweepRefusesInputsItCannotHonour`. The sweep runs its
+baseline in a worktree with its own `MUTANT_KILLERS` and `MUTANT_LIST` set, and the test handed the
+script the whole environment; its second case inherited `MUTANT_KILLERS=dist/mutant-scoped.killers`, a
+path the worktree lacks, and was refused as a missing record. No full gate sets either variable, so
+every `make verify` passed. `withoutSweepInputs` drops every `MUTANT_` variable before a case sets its
+own; the old test was seen failing under the sweep's environment, the new one passing under it. The
+sweep is re-run on this commit.
+
+**The inventory (D-36).** `make test-inventory` against B0's baseline: every one of the 2,006 plain,
+2,006 property and 2,005 race tests and subtests kept with its outcome; one new in each mode,
+`TestACutBackUnderAHazardReadKeepsTheBedDown` (B1.1). B1 moved no test.
+
+**The plan's tests held (A-37).** B1 joins `landedBatches`; every test its section names is declared.
+
+**B1 in commits.** 6, the plan's 2: B1.1 to B1.4 each took a commit of their own, and the midpoint's
+grade added B1.6 (D-50); the batch map says so. B1 closes on this commit's `make verify-full` and the
+scoped sweep.
