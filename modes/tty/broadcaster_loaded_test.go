@@ -17,11 +17,6 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// loadedPoolSize is the pool's own cap, stated here because `modes/tty` may not
-// import `domains/locations` (make lint-imports) — the same tie the service
-// radius bounds already carry.
-const loadedPoolSize = 25
-
 // loadedConsole is a station with a full pool, a full running order, and real
 // weather behind every one of them.
 //
@@ -130,7 +125,7 @@ func loadedJoins(b Broadcaster) int {
 // allocations a frame and the budget's own five-percent headroom is 464 — so the
 // ratchet cannot see it.
 func TestTheConsolesRowsBuildNoDayCells(t *testing.T) {
-	b := loadedConsole(t, loadedPoolSize)
+	b := loadedConsole(t, LoadedPoolSize)
 	for _, r := range b.poolRows(b.locIndex()) { // bounded by the pool (P10-02)
 		if len(r.Extended) != 0 {
 			t.Fatalf("a pool row carries %d extended days; neither console table draws one",
@@ -160,11 +155,11 @@ func TestObserverKeepsItsExtendedDays(t *testing.T) {
 	}
 	loc := &snapshot.Location{Label: "Oceanside, CA", Zip: "92057", Daily: daily}
 
-	if got := weatherRow(loc, 50, extRowDays); len(got.Extended) != 5 {
+	if got := WeatherRow(loc, 50, extRowDays); len(got.Extended) != 5 {
 		t.Errorf("Observer's row carries %d extended days, want 5", len(got.Extended))
 	}
 	// AND THE CONSOLE ASKS FOR NONE, which is the saving.
-	if got := weatherRow(loc, 50, 0); len(got.Extended) != 0 {
+	if got := WeatherRow(loc, 50, 0); len(got.Extended) != 0 {
 		t.Errorf("the console's row built %d extended days it never draws", len(got.Extended))
 	}
 }
@@ -186,7 +181,7 @@ func TestTheLineupRowsBuildNoDayCells(t *testing.T) {
 	if raceEnabled {
 		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
 	}
-	b := loadedConsole(t, loadedPoolSize)
+	b := loadedConsole(t, LoadedPoolSize)
 	idx := b.locIndex()
 	cards := b.mainTrack()
 	// THE PREMISE: the fixture joins, and carries days beyond tomorrow. Without

@@ -7,10 +7,11 @@ package tty
 import (
 	"context"
 	"fmt"
-	ionomaps "github.com/branden-thompson/go-ionomaps"
 	"sort"
 	"time"
 	"unicode"
+
+	ionomaps "github.com/branden-thompson/go-ionomaps"
 
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
@@ -821,7 +822,7 @@ type Dashboard struct {
 	tickArmed   bool             // a shimmer tick is in flight — never two (Q3: armed only while something animates)
 	now         func() time.Time // the clock the header's "ago" reads (tests pin it)
 	memo        *bodyMemo        // the body memo's single slot (Q3); allocated at construction, shared by every copy of the model
-	// ticks makes the timed messages: tickEvery when nil, which is production.
+	// ticks makes the timed messages: TickEvery when nil, which is production.
 	// A test sets it to answer at once with a tick it can recognise, so it can
 	// tell "a tick was armed" from "an answer came" without waiting on a clock
 	// (0.19.5 Q2.11, RN-9).
@@ -1050,30 +1051,13 @@ type committedMsg struct {
 	saved bool
 }
 
-// tickMsg drives the loading shimmer (UAT 18.2b) and (Q3) every
-// other wall-clock element of the frame: the marquee (when the visualizer
-// tick is not already redrawing), the volume blink's clearing, the [S]
-// ages and the Details labels. It runs only while one of them is showing
-// (plan §2.5 tick predicate: tickNeeded).
-type tickMsg struct{}
-
-// tickEvery is the one way this model makes a clock (metric D, 2026-09-08).
-// TWO CLOCKS ARE CORRECT — 300 ms for the shimmer and ages, 50 ms for the
-// visualizer's bars, which the shimmer tick is far too slow to draw — so this
-// collapses how one is BUILT, not how many there are.
-func tickEvery(d time.Duration, m tea.Msg) tea.Cmd {
-	return tea.Tick(d, func(time.Time) tea.Msg { return m })
-}
-
-func tick() tea.Cmd { return tickEvery(300*time.Millisecond, tickMsg{}) }
-
 // after is a timed message on the Observer: m after d, made by the model's
 // tick maker when a test set one.
 func (d Dashboard) after(dur time.Duration, m tea.Msg) tea.Cmd {
 	if d.ticks != nil {
 		return d.ticks(dur, m)
 	}
-	return tickEvery(dur, m)
+	return TickEvery(dur, m)
 }
 
 // tickNeeded is the predicate (PF-2, R2-23): true while a frame would
@@ -1112,27 +1096,10 @@ func (d Dashboard) tickNeeded() bool {
 	return d.anyLoading() // the shimmer (UAT 18.2b)
 }
 
-// armShimmer is THE shimmer-tick arming rule, for whichever surface asks (D-56).
-//
-// WHAT DIFFERS BETWEEN THE SURFACES IS THE PREDICATE, NOT THE ARMING. Observer
-// animates while something is loading; the console animates while a slot is
-// still waiting on the Director. Those are two questions with one answer about
-// what to do with the answer — so the question stays with each surface and this
-// is called with it.
-func armShimmer(armed, needed bool, cmd, next tea.Cmd) (bool, tea.Cmd) {
-	if armed || !needed {
-		return armed, cmd
-	}
-	if cmd == nil {
-		return true, next
-	}
-	return true, tea.Batch(cmd, next)
-}
-
 // armTick starts the shimmer tick when the frame needs one and none is in
 // flight — the shimmer twin of armViz. Called after every Update.
 func (d Dashboard) armTick(cmd tea.Cmd) (Dashboard, tea.Cmd) {
-	d.tickArmed, cmd = armShimmer(d.tickArmed, d.tickNeeded(), cmd, d.after(300*time.Millisecond, tickMsg{}))
+	d.tickArmed, cmd = ArmShimmer(d.tickArmed, d.tickNeeded(), cmd, d.after(300*time.Millisecond, TickMsg{}))
 	return d, cmd
 }
 
@@ -1244,7 +1211,7 @@ func (d Dashboard) route(msg tea.Msg) (Dashboard, tea.Cmd) {
 		return d.applyCommitted(v), nil
 	case RadioStatusMsg, VoiceNoteMsg, RelaySilentMsg:
 		return d.handleRadio(msg) // the radio's messages, one owner
-	case tickMsg:
+	case TickMsg:
 		return d.onTick()
 	case castSavedMsg, uiSavedMsg:
 		return d.handleSettingsSaved(msg), nil // the Settings window's apply-on-close outcomes, one owner

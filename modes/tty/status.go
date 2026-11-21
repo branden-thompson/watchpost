@@ -148,7 +148,7 @@ func (d Dashboard) statusBlocks(fillTo int) statusSections {
 	// ONE ROW A HOST, IN ONE GROUP (0.19.0 D-170), every group in one table's
 	// shape (0.18.0 D-150), so every column but the filling ENDPOINT lines up
 	// down the window.
-	rows := sourceRows(providersOf(d.snap), st, d.cfg.MapSources, d.now())
+	rows := sourceRows(ProvidersOf(d.snap), st, d.cfg.MapSources, d.now())
 	b.sources = d.sourceLines(o, rows, endpointShape(o, rows), fillTo)
 	b.pipelines = d.pipelineLines(o, st, fillTo)
 	b.issues = append([]string{statusHeader("ISSUES")}, d.issueLines(o, fillTo, d.snap, d.recent)...)
@@ -507,7 +507,7 @@ func pipelineCols(without []string) ([]render.StatusColumn, []int) {
 func pipeRow(name string, o render.Opts, sn *snapshot.Snapshot, ps PipelineStats, rows string) []string {
 	stamp, locs := "-", "-"
 	if sn != nil {
-		stamp = o.Clock.TimeSec(dataAsOf(sn).Local())
+		stamp = o.Clock.TimeSec(DataAsOf(sn).Local())
 		locs = strconv.Itoa(len(sn.Locations))
 	}
 	if rows == "" {
@@ -770,14 +770,6 @@ func foldWarnings(snaps []*snapshot.Snapshot) []*issue {
 		return a.code+"|"+a.provider < b.code+"|"+b.provider
 	})
 	return issues
-}
-
-// providersOf guards the nil snapshot for the status view.
-func providersOf(sn *snapshot.Snapshot) []snapshot.ProviderStatus {
-	if sn == nil {
-		return nil
-	}
-	return sn.Providers
 }
 
 // MapSource is one service the map contacts, its host, and what it is sent

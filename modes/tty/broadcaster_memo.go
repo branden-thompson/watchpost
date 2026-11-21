@@ -68,13 +68,13 @@ type consoleKey struct {
 
 // consoleMemo is the single slot, bound to one entry: the last key.
 type consoleMemo struct {
-	memoStats
+	MemoStats
 	ok          bool
 	key         consoleKey
 	sched, pool scrollSpan
 	rows        []string     // the tables railed, as the frame draws them (railTables)
-	cursor      cursorSlot   // the console's cursor, kept for the Router (D-362)
-	head        mastheadSlot // the masthead (0.19.5 D-22, mastheadSlot)
+	cursor      CursorSlot   // the console's cursor, kept for the Router (D-362)
+	head        MastheadSlot // the masthead (0.19.5 D-22, MastheadSlot)
 	proj        projSlot     // the line-up as the operator sees it (0.19.5 D-22, projection)
 }
 
@@ -136,15 +136,15 @@ func (b Broadcaster) tableRows(used int) []string {
 		return b.railTables(b.buildSpans(used))
 	}
 	key := b.consoleKeyFor(used)
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.Lock()
+	defer m.Unlock()
 	if m.ok && m.key == key {
-		m.hits++
+		m.Hit()
 		return m.rows
 	}
 	sched, pool := b.buildSpans(used)
 	m.ok, m.key, m.sched, m.pool, m.rows = true, key, sched, pool, b.railTables(sched, pool)
-	m.misses++
+	m.Miss()
 	return m.rows
 }
 
@@ -178,19 +178,19 @@ func (b Broadcaster) buildSpans(used int) (scrollSpan, scrollSpan) {
 // beside bodyMemo's and modalMemo's.
 //
 // IT CANNOT BE INHERITED FROM THE EMBEDDED TYPE, which is why there are three:
-// the guard is on the OUTER pointer, and a method promoted from `memoStats`
+// the guard is on the OUTER pointer, and a method promoted from `MemoStats`
 // would dereference the nil slot to reach itself. Same shape, different
 // receiver — the mutex-read accessor the HUM LEAD ratified on 2026-09-13, one
 // package along.
-func (m *consoleMemo) stats() *memoStats {
+func (m *consoleMemo) stats() *MemoStats {
 	if m == nil {
 		return nil
 	}
-	return &m.memoStats
+	return &m.MemoStats
 }
 
 // consoleMemoCounts reports the slot's hit/miss counters (0, 0 without a slot).
-func (b Broadcaster) consoleMemoCounts() (hits, misses int) { return b.memo.stats().counts() }
+func (b Broadcaster) consoleMemoCounts() (hits, misses int) { return b.memo.stats().Counts() }
 
 // anyLoading reports whether any location either table draws is still waiting on
 // its weather — the shimmer's reason to animate, and so the key's reason to
@@ -204,7 +204,7 @@ func (b Broadcaster) anyLoading() bool {
 		return false
 	}
 	for i := range b.pool.Locations { // bounded by the snapshot (P10-02)
-		if rowLoading(&b.pool.Locations[i]) {
+		if RowLoading(&b.pool.Locations[i]) {
 			return true
 		}
 	}

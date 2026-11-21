@@ -11,11 +11,12 @@ package tty
 
 import (
 	"fmt"
-	"github.com/branden-thompson/watchpost/platform/category"
 	"strings"
 	"sync/atomic"
 	"time"
 	"unicode/utf8"
+
+	"github.com/branden-thompson/watchpost/platform/category"
 
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -106,7 +107,7 @@ func (d Dashboard) tapeLine(o render.Opts, it TickerItem) string {
 		s += " " + dot + " expires " + o.Clock.Since(it.Until.Local(), d.clock())
 	}
 	if it.Test {
-		return testEventMark + " " + s + " " + testEventMark
+		return TestEventMark + " " + s + " " + TestEventMark
 	}
 	return s
 }
@@ -130,23 +131,6 @@ func tickerBullet(o render.Opts) string {
 // control lives in the header controls, not the band.
 const tickerRightReserve = 4
 
-// testEventMark is what the band says when what it shows was fabricated.
-//
-// PREPENDED AND POSTPENDED, ON THE ITEM (HUM LEAD 2026-09-07). The tape
-// scrolls: a marker at one end only is off-window half the time, and a marker
-// at both ends means the item cannot be on screen without one of them. NOT
-// LANE CHROME in the band's top row, though an 18-cell prefix per item at the
-// 80-column floor makes the marker the majority of the tape — the ruling
-// overrides that argument, and it is the ITEM that is fabricated rather than
-// the lane it happens to be filed under.
-//
-// TWO ASTERISKS, NOT THREE, and the ruling's own wording is the reason twice
-// over: it is what was written, and at 14 cells it fits the severe window's
-// EVENT column ahead of a product where "*** TEST EVENT ***" does not — that
-// column truncates, and a mark that pushes the product out of its own column
-// is a mark that hides what it is marking.
-const testEventMark = "**TEST EVENT**"
-
 // tickerMarquee renders the ticker as a THREE-row band: a category-coloured
 // blank row above and below the tape row, so the band breathes and absorbs the
 // header/radio spacers rather than growing the frame. Empty ⇒ a persistent
@@ -160,7 +144,7 @@ func (d Dashboard) tickerMarquee(o render.Opts) string {
 	if d.breaking != nil {
 		it := *d.breaking
 		tones := render.Tok(tickerCatBG(it.Category)) + ";" + render.Tok(render.TickerFG)
-		content := render.TintRaw(centerText(d.tapeLine(o, it), width), tones)
+		content := render.TintRaw(CenterText(d.tapeLine(o, it), width), tones)
 		blank := render.TintRaw(strings.Repeat(" ", width), tones)
 		return blank + "\n" + content + "\n" + blank
 	}
@@ -214,39 +198,6 @@ func (d Dashboard) tickerLane(o render.Opts, c TickerCategory) []string {
 // colour pass, 2026-08-27): Earthquakes = Red, Warnings = Orange, Watches =
 // Yellow, Tropical = Blue.
 func tickerCatBG(c TickerCategory) render.Token { return category.Of(c).BandTone }
-
-// centerText centres text within width (clipping by DISPLAY WIDTH when it is
-// wider) — the breaking-news event sits in the middle of the band. A
-// non-positive width yields empty (a negative slice bound would panic — P4 F3).
-func centerText(text string, width int) string {
-	if width <= 0 {
-		return ""
-	}
-	w := render.Width(text)
-	if w >= width {
-		return clipToWidth(text, width)
-	}
-	left := (width - w) / 2
-	return render.PadTo(strings.Repeat(" ", left)+text, width)
-}
-
-// clipToWidth truncates text to at most width display cells (wide runes count
-// as their cell width, so the result never overflows the band).
-//
-// ONE OWNER (D-141): `render.TruncateCells`, which skips escape sequences when
-// counting and remembers whether the last one was a reset, so it can close a
-// span it cuts through. A rune walk asking `render.Width` for each would
-// measure a lone \x1b as 0 but '[', '1' and 'm' as 1 apiece, so EVERY BOLD SPAN
-// WOULD COST EIGHT PHANTOM CELLS: text that fits is cut anyway, the cut lands
-// mid-escape leaving a bare \x1b in the frame, and the SGR is never closed so
-// the weight bleeds into whatever follows.
-//
-// Width measurement is not a thing to reimplement per caller — the same shape
-// as D-129a (a caveat wrapped to the wrong width) and D-138 (a band centred
-// instead of wrapped).
-func clipToWidth(text string, width int) string {
-	return render.TruncateCells(text, width)
-}
 
 // scrollWindow returns a width-cell window into text at the given offset; a
 // line that fits is left-aligned and padded, a longer line scrolls (text + a

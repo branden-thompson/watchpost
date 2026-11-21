@@ -26,11 +26,11 @@ func TestWhatTheMapContactsIsInTheStatusWindow(t *testing.T) {
 	s, _ := uiDash(t, rowMapsOn)
 	s.cfg.MapSources = sources
 	body, _, _ := s.focusBody(s.opts())
-	if strings.Contains(stripANSITest(strings.Join(body, "\n")), "tiles.openfreemap.org") {
+	if strings.Contains(StripANSI(strings.Join(body, "\n")), "tiles.openfreemap.org") {
 		t.Error("Settings still carries what the map sends (U1-33)")
 	}
 	s.cfg.MapSources = sources
-	status := strings.Join(strings.Fields(stripANSITest(strings.Join(s.statusLines(), "\n"))), " ") // wrapped to the table (D-151): read as one text
+	status := strings.Join(strings.Fields(StripANSI(strings.Join(s.statusLines(), "\n"))), " ") // wrapped to the table (D-151): read as one text
 	for _, want := range []string{"MAP DRAWING DATA", "tiles.openfreemap.org", "api.weather.gov", "National Weather Service (states, alert zones, marine areas)"} {
 		if !strings.Contains(status, want) {
 			t.Errorf("the Status window does not name %q:\n%s", want, status)
@@ -56,7 +56,7 @@ func TestThePicturesWindowNeverScrolls(t *testing.T) {
 			if len(lines) > d.modalMax() {
 				t.Errorf("%dx%d box %v: %d lines in a %d-line window - it scrolls", size.w, size.h, open, len(lines), d.modalMax())
 			}
-			if last := stripANSITest(lines[len(lines)-1]); !strings.Contains(last, "Overlays") {
+			if last := StripANSI(lines[len(lines)-1]); !strings.Contains(last, "Overlays") {
 				t.Errorf("%dx%d box %v: the last line is %q, not the chips", size.w, size.h, open, last)
 			}
 		}
@@ -70,10 +70,10 @@ func TestTheBoxesLeaveTheFurnitureRowsAlone(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
 	size := d.mapBodySize()
 	lines := d.withControls(d.mapPane.lines, size)
-	if last := stripANSITest(lines[size.Rows-1]); strings.Contains(last, "Controls") || strings.Contains(last, "┘") && !strings.Contains(stripANSITest(d.mapPane.lines[size.Rows-1]), "┘") {
+	if last := StripANSI(lines[size.Rows-1]); strings.Contains(last, "Controls") || strings.Contains(last, "┘") && !strings.Contains(StripANSI(d.mapPane.lines[size.Rows-1]), "┘") {
 		t.Errorf("the controls cover the credit row: %q", last)
 	}
-	if got, want := stripANSITest(lines[size.Rows-1]), stripANSITest(d.mapPane.lines[size.Rows-1]); got != want {
+	if got, want := StripANSI(lines[size.Rows-1]), StripANSI(d.mapPane.lines[size.Rows-1]); got != want {
 		t.Errorf("the credit row changed under the controls:\n got %q\nwant %q", got, want)
 	}
 }
@@ -87,7 +87,7 @@ func TestTheMapRunsBorderToBorder(t *testing.T) {
 		t.Errorf("the map is %d wide in a window of %d; want %d", got, d.modalWidth(), want)
 	}
 	braille := func(r rune) bool { return r >= 0x2800 && r <= 0x28ff }
-	for _, row := range strings.Split(stripANSITest(d.renderModal(d.opts())), "\n") {
+	for _, row := range strings.Split(StripANSI(d.renderModal(d.opts())), "\n") {
 		cells := []rune(strings.TrimSpace(row))
 		// A row of picture at both borders (the top row ends in the library's
 		// own furniture, the stale word and the time, which is fine).

@@ -26,13 +26,13 @@ func TestALocationTheFeedCannotServeStopsShimmering(t *testing.T) {
 	// working — a fix that simply stopped shimmering would pass a test that
 	// only looked at the empty row.
 	waiting := &snapshot.Location{Label: "Vista, CA"}
-	if !rowLoading(waiting) {
+	if !RowLoading(waiting) {
 		t.Error("a location no fetch has covered yet is still loading; it must shimmer")
 	}
 
 	// AFTER A FETCH COVERED IT AND BROUGHT NOTHING: not loading.
 	unserved := &snapshot.Location{Label: "Nowhere, XX", WeatherAsOf: answered}
-	if rowLoading(unserved) {
+	if RowLoading(unserved) {
 		t.Error("the feed answered and had nothing for this place: that is a fact, not a wait")
 	}
 
@@ -42,7 +42,7 @@ func TestALocationTheFeedCannotServeStopsShimmering(t *testing.T) {
 	s := snap()
 	s.Locations = []snapshot.Location{{Label: "Nowhere, XX", Tag: "NOWH", WeatherAsOf: answered}}
 	m, _ := d.Update(SnapshotMsg{Snap: s})
-	frame := stripANSITest(m.(Dashboard).View().Content)
+	frame := StripANSI(m.(Dashboard).View().Content)
 	dots := m.(Dashboard).opts().LoadingDots()
 	row := ""
 	for _, l := range strings.Split(frame, "\n") {

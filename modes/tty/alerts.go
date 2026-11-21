@@ -169,25 +169,6 @@ func (d Dashboard) alertDetailLines() []string {
 	return append(lines, "  "+controls)
 }
 
-// dataAsOf is the header's "Last Updated" time (red-team 0.9.0 F7): the
-// newest successful provider fetch — not the publish time, which keeps
-// ticking while every row is stale last-good data offline.
-func dataAsOf(sn *snapshot.Snapshot) time.Time {
-	if sn == nil {
-		return time.Time{}
-	}
-	at := time.Time{}
-	for _, p := range sn.Providers {
-		if p.FetchedAt.After(at) {
-			at = p.FetchedAt
-		}
-	}
-	if at.IsZero() {
-		return sn.GeneratedAt
-	}
-	return at
-}
-
 // alertClock is the zone an alert's times are shown in: the location's
 // own (F17 — a Miami alert is not on Pacific time), else the machine's.
 func alertClock(loc *snapshot.Location) *time.Location {

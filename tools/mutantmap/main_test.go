@@ -190,3 +190,25 @@ func TestTheMapsReadAsGcprobesDo(t *testing.T) {
 		t.Error("a line with no tab was read; want it refused")
 	}
 }
+
+// TestARenameScopedToAPackageMapsThatPackageAlone holds 0.19.6 A-49: a line
+// that names a package renames that package's function, so modes/tty's `tick`
+// becoming `Tick` leaves another package's `tick` where it was. Seen failing
+// with the scope read as part of the new name.
+func TestARenameScopedToAPackageMapsThatPackageAlone(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "renames.tsv")
+	write(t, filepath.Dir(file), filepath.Base(file), "tick\tTick\tmodes/tty\nF\tH\n")
+	m, err := readMaps("", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := m.fn("tick", "modes/tty"); got != "Tick" {
+		t.Errorf("modes/tty's tick maps to %q; want Tick", got)
+	}
+	if got := m.fn("tick", "app"); got != "tick" {
+		t.Errorf("app's tick maps to %q; want it left alone", got)
+	}
+	if got := m.fn("F", "app"); got != "H" {
+		t.Errorf("an unscoped rename maps app's F to %q; want H", got)
+	}
+}

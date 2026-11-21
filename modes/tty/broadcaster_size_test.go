@@ -124,7 +124,7 @@ func TestTheConsoleCarriesNoNonASCIIUnderASCII(t *testing.T) {
 	// label is longer than its cell: the narrow layout draws its own rows.
 	for p := lineup.Power(0); p.String() != ""; p++ {
 		for _, w := range []int{bcMinCols, 150} {
-			b := bcWith(t, card(t, "a", "OCEANSIDE"), card(t, "b", "SAN JUAN CAPISTRANO NORTHWEST HILLS RESERVE AND OPEN SPACE"))
+			b := bcWith(t, Card(t, "a", "OCEANSIDE"), Card(t, "b", "SAN JUAN CAPISTRANO NORTHWEST HILLS RESERVE AND OPEN SPACE"))
 			b.width, b.height = w, 74
 			b.ascii = true
 			b, _ = b.Update(StationMsg{Power: p})

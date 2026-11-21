@@ -29,7 +29,7 @@ func TestReduceMotionIsASettingOffByDefault(t *testing.T) {
 	}
 	d.setup.focus = rowReduceMotion
 	ui, _ := d.uiLines(d.opts())
-	if text := stripANSITest(strings.Join(ui, "\n")); !strings.Contains(text, "Reduce motion -") || !strings.Contains(text, "Off") {
+	if text := StripANSI(strings.Join(ui, "\n")); !strings.Contains(text, "Reduce motion -") || !strings.Contains(text, "Off") {
 		t.Errorf("the row does not say Reduce motion, Off:\n%s", text)
 	}
 	if d = d.cycleReduceMotion(true); !d.reduceMotion || !d.uiForSave().ReduceMotion {
@@ -51,7 +51,7 @@ func TestReduceMotionStillsTheMap(t *testing.T) {
 	if st := d.mapPane.m.Loop(); st.Playing || st.Off != tuimaps.OffReduceMotion {
 		t.Errorf("space under Reduce motion left the loop %+v", st)
 	}
-	if row := stripANSITest(strings.Join(d.scrubRows(d.mapTextW()), "\n")); !strings.Contains(row, "REDUCE MOTION") {
+	if row := StripANSI(strings.Join(d.scrubRows(d.mapTextW()), "\n")); !strings.Contains(row, "REDUCE MOTION") {
 		t.Errorf("the timeline does not say why the loop is still:\n%s", row)
 	}
 	var asks []MapAsk
@@ -75,7 +75,7 @@ func TestReduceMotionStepsTheTicker(t *testing.T) {
 	if d.tickerScroll != 0 {
 		t.Errorf("under Reduce motion the tape scrolled to %d", d.tickerScroll)
 	}
-	shown := func() string { return stripANSITest(d.tickerMarquee(render.Opts{Width: 200})) }
+	shown := func() string { return StripANSI(d.tickerMarquee(render.Opts{Width: 200})) }
 	first := shown()
 	if strings.Count(first, "Warning ·") != 1 {
 		t.Fatalf("the band shows more or less than one item whole: %q", first)
@@ -100,7 +100,7 @@ func TestReduceMotionStillsTheVisualiserAndTheDots(t *testing.T) {
 		t.Error("under Reduce motion the visualiser still moves")
 	}
 	before := d.opts().LoadingDots()
-	m, _ := d.Update(tickMsg{})
+	m, _ := d.Update(TickMsg{})
 	if after := m.(Dashboard).opts().LoadingDots(); after != before || before != "..." {
 		t.Errorf("under Reduce motion the dots went %q to %q; want ... held", before, after)
 	}
@@ -113,9 +113,9 @@ func TestReduceMotionCutsTheRadioLine(t *testing.T) {
 	d.radioPlaying, d.radioState, d.radioSpoken = true, "playing", 4*time.Second
 	d.radioDetail = strings.Repeat("The forecast for tonight is mostly clear with a light wind. ", 4)
 	d.radioSince = time.Now()
-	first := stripANSITest(d.marqueeTrack(60))
+	first := StripANSI(d.marqueeTrack(60))
 	d.radioSince = time.Now().Add(-2 * time.Second)
-	if later := stripANSITest(d.marqueeTrack(60)); later != first {
+	if later := StripANSI(d.marqueeTrack(60)); later != first {
 		t.Errorf("under Reduce motion the line moved:\n%q\n%q", first, later)
 	}
 	if !strings.Contains(first, "The forecast for tonight") || !strings.Contains(first, "…") {
@@ -132,7 +132,7 @@ func TestReduceMotionMakesTheBlinksSteady(t *testing.T) {
 	if d.volFlash != "+" || !d.volFlashEnd.After(time.Now().Add(time.Minute)) {
 		t.Fatalf("under Reduce motion the volume mark ends at %v", d.volFlashEnd)
 	}
-	m, _ = d.Update(tickMsg{})
+	m, _ = d.Update(TickMsg{})
 	if d = m.(Dashboard); d.volFlash != "+" {
 		t.Error("a tick cleared the steady mark")
 	}
@@ -154,7 +154,7 @@ func TestTheConsoleFollowsReduceMotion(t *testing.T) {
 		r.active = SurfaceBroadcaster // the console's own tick reaches it while it is shown
 		var m tea.Model = r
 		for range 3 {
-			m, _ = m.Update(tickMsg{})
+			m, _ = m.Update(TickMsg{})
 		}
 		if frame := m.(Router).broadcaster.frame; (frame == 0) != on {
 			t.Errorf("Reduce motion %v: after three ticks the console's dots are at frame %d", on, frame)

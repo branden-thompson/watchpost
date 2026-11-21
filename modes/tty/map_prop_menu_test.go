@@ -87,7 +87,7 @@ func TestThePropagationRowIsTheFourthOverlay(t *testing.T) {
 		}
 		var lines []string
 		for _, l := range d.overlaysBox() {
-			lines = append(lines, strings.Trim(stripANSITest(l), "│ "))
+			lines = append(lines, strings.Trim(StripANSI(l), "│ "))
 		}
 		if n := strings.Count(strings.Join(lines, "\n"), "\nMAP DETAIL\n"); n != 1 {
 			t.Errorf("%s: %d MAP DETAIL headings; want one:\n%s", mode, n, strings.Join(lines, "\n"))

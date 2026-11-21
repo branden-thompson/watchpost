@@ -38,7 +38,7 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	// the list it admits and a test with neither set would never draw them.
 	d.cfg.FireRadiusKm, d.cfg.FireIncidentRadiusKm = 25, 50
 	raw := strings.Join(d.detailLines(), "\n")
-	joined := stripANSITest(raw)
+	joined := StripANSI(raw)
 	for _, want := range []string{
 		// EACH LIST NAMES ITS OWN RING (UAT 2026-09-07). One heading over two
 		// feeds makes "none within the fire ring" read as a claim about the
@@ -70,7 +70,7 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	// assertion asks for the BOLD attribute rather than rebuilding the escape.
 	const bold = "\x1b[1;"
 	for _, l := range strings.Split(raw, "\n") {
-		plain := stripANSITest(l)
+		plain := StripANSI(l)
 		switch {
 		case strings.Contains(plain, "62 MW") && !strings.Contains(l, bold):
 			t.Fatalf("62 MW must read bold at the 50 MW threshold:\n%q", l)
@@ -80,7 +80,7 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	}
 	cold := m.(Dashboard)
 	cold.modal = modalDetails
-	if q := stripANSITest(strings.Join(cold.detailLines(), "\n")); !strings.Contains(q, "FIRE │ Hotspots      fire feed not yet available") {
+	if q := StripANSI(strings.Join(cold.detailLines(), "\n")); !strings.Contains(q, "FIRE │ Hotspots      fire feed not yet available") {
 		t.Fatalf("before any fire feed answers it must say so, never 'none':\n%s", q)
 	}
 	s3 := snap()
@@ -91,7 +91,7 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	// THE QUIET ANSWER IS SAID TWICE, ONCE PER RING (UAT 2026-09-07). A single
 	// "none" over two lists lets a listener read it as covering the named
 	// fires printed underneath.
-	q := stripANSITest(strings.Join(quiet.detailLines(), "\n"))
+	q := StripANSI(strings.Join(quiet.detailLines(), "\n"))
 	if n := strings.Count(q, "none within this radius"); n != 2 {
 		t.Fatalf("each ring says its own none; got %d:\n%s", n, q)
 	}
@@ -126,7 +126,7 @@ func TestTheFireDetailListsEveryNamedIncident(t *testing.T) {
 		})
 	}
 
-	got := stripANSITest(strings.Join(fireRows(render.Opts{Width: 100}, loc, time.Now(), 50, 25, 50, 65), "\n"))
+	got := StripANSI(strings.Join(fireRows(render.Opts{Width: 100}, loc, time.Now(), 50, 25, 50, 65), "\n"))
 	for _, n := range names {
 		if !strings.Contains(got, n) {
 			t.Errorf("%q is one of the %d fires the row counts and the detail does not list it:\n%s",
@@ -134,8 +134,8 @@ func TestTheFireDetailListsEveryNamedIncident(t *testing.T) {
 		}
 	}
 	// AND THE COUNT ON THE ROW IS THE COUNT IN THE LIST, which is the thing the
-	// two surfaces must agree about.
-	if got, want := fireCount(loc.Fire), len(names); got != want {
+	// two surfaces must agree about: the count the row wears (0.19.6 D-56).
+	if got, want := WeatherRow(loc, 50, 0).Fire, len(names); got != want {
 		t.Errorf("the row wears %d◆ for %d incidents", got, want)
 	}
 }
@@ -168,7 +168,7 @@ func TestALongIncidentNameCostsTheAgeAndNotTheContainment(t *testing.T) {
 			Source: snapshot.SourceInfo{DistanceKm: f(12)},
 		}}}}
 
-	got := stripANSITest(strings.Join(fireRows(render.Opts{Width: 85}, loc, now, 50, 25, 50, 65), "\n"))
+	got := StripANSI(strings.Join(fireRows(render.Opts{Width: 85}, loc, now, 50, 25, 50, 65), "\n"))
 	if !strings.Contains(got, "SAN LUIS REY COMPLEX") {
 		t.Errorf("the name was shortened, which is the one thing this table does not do:\n%s", got)
 	}

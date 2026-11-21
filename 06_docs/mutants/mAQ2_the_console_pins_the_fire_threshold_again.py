@@ -6,6 +6,6 @@ p = pathlib.Path("modes/tty/broadcaster_pool.go"); s = p.read_text()
 old = """	if b.fireBoldMW > 0 {
 		return b.fireBoldMW
 	}
-	return fireBoldDefaultMW"""
+	return FireBoldDefaultMW"""
 assert old in s, "mAQ2"
-p.write_text(s.replace(old, "	return fireBoldDefaultMW", 1))
+p.write_text(s.replace(old, "	return FireBoldDefaultMW", 1))

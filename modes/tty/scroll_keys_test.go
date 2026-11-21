@@ -11,7 +11,7 @@ import (
 // the sign of each key is what this pins.
 func TestTheConsolesArrowsMoveItsPointer(t *testing.T) {
 	r := NewRouter(benchDash(t, 160, 74).(Dashboard))
-	r.broadcaster = loadedConsole(t, loadedPoolSize)
+	r.broadcaster = loadedConsole(t, LoadedPoolSize)
 	r.active = SurfaceBroadcaster
 	at := r.broadcaster.selected
 	down := step(t, r, tea.KeyPressMsg{Code: tea.KeyDown})

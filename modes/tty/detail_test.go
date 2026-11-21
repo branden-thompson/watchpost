@@ -118,7 +118,7 @@ func TestDetailGridAlignsCurrentlyWithForecast(t *testing.T) {
 	d.modal = modalDetails
 	var cur, feels, fc string
 	for _, l := range d.detailLines() {
-		p := stripANSITest(l)
+		p := StripANSI(l)
 		switch {
 		case strings.Contains(p, "CURRENTLY │"):
 			cur = p
@@ -162,7 +162,7 @@ func TestDetailDividerEndsBeforeRail(t *testing.T) {
 	var div string
 	longest := 0
 	for _, l := range d.detailLines() {
-		p := stripANSITest(l)
+		p := StripANSI(l)
 		if strings.HasPrefix(p, "───") {
 			div = p
 		}
@@ -263,7 +263,7 @@ func TestTheCardWarnsWhenTheStationIsNotLocal(t *testing.T) {
 			d.width, d.height = 133, 44
 			loc := &snapshot.Location{Label: "Lone Pine, CA"}
 			loc.Harmonized.Source = snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KO26", DistanceKm: tc.km}
-			got := stripANSITest(strings.Join(d.currentlyRows(d.opts(), loc, 65), "\n"))
+			got := StripANSI(strings.Join(d.currentlyRows(d.opts(), loc, 65), "\n"))
 			if has := strings.Contains(got, note); has != tc.want {
 				t.Errorf("note present=%v, want %v:\n%s", has, tc.want, got)
 			}
@@ -305,7 +305,7 @@ func TestTheCardSaysWhenTheNumberIsFromTheGridForecast(t *testing.T) {
 			loc := &snapshot.Location{Label: "Lone Pine, CA"}
 			loc.Harmonized.Temp = new(float64(15))
 			loc.Harmonized.Source = snapshot.SourceInfo{Provider: "nws", ModelOrStation: tc.station, DistanceKm: tc.km}
-			got := stripANSITest(strings.Join(d.currentlyRows(d.opts(), loc, 65), "\n"))
+			got := StripANSI(strings.Join(d.currentlyRows(d.opts(), loc, 65), "\n"))
 			if has := strings.Contains(got, gridNote); has != tc.wantGrid {
 				t.Errorf("grid note present=%v, want %v:\n%s", has, tc.wantGrid, got)
 			}
@@ -353,7 +353,7 @@ func TestTheHourlyWindowRollsTwelveHoursFromNow(t *testing.T) {
 
 	d := dash(t).(Dashboard)
 	d.now = func() time.Time { return now }
-	body := stripANSITest(strings.Join(d.todayRows(render.Opts{Width: 85, Clock: render.Clock24}, loc, 65), "\n"))
+	body := StripANSI(strings.Join(d.todayRows(render.Opts{Width: 85, Clock: render.Clock24}, loc, 65), "\n"))
 	if !strings.Contains(body, "Next 12 Hours:") {
 		t.Errorf("the heading carries the count:\n%s", body)
 	}
@@ -397,10 +397,10 @@ func TestTheHourlyRowsShareTheForecastColumns(t *testing.T) {
 func contentOf(t *testing.T, lines []string, want string) string {
 	t.Helper()
 	for _, l := range lines {
-		if plain := stripANSITest(l); strings.Contains(plain, want) {
+		if plain := StripANSI(l); strings.Contains(plain, want) {
 			return plain[detailPrefixW:]
 		}
 	}
-	t.Fatalf("no line carries %q:\n%s", want, stripANSITest(strings.Join(lines, "\n")))
+	t.Fatalf("no line carries %q:\n%s", want, StripANSI(strings.Join(lines, "\n")))
 	return ""
 }

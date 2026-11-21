@@ -206,8 +206,8 @@ func TestTheStatusIsSaidWithoutThePicture(t *testing.T) {
 		t.Errorf("an update ended by leaving the mode is said as failed:\n%s", w)
 	}
 	held.mapPane.propErr = errors.New("ionomaps: NOAA not reached")
-	if !strings.Contains(stripANSITest(held.mapStatusLine()), "the last update failed") {
-		t.Errorf("a failed refresh over a field kept is not said on the status line: %q", stripANSITest(held.mapStatusLine()))
+	if !strings.Contains(StripANSI(held.mapStatusLine()), "the last update failed") {
+		t.Errorf("a failed refresh over a field kept is not said on the status line: %q", StripANSI(held.mapStatusLine()))
 	}
 }
 

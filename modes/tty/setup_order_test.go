@@ -49,7 +49,7 @@ func TestAGroupsPickersLineUp(t *testing.T) {
 	for _, g := range setupGroups() {
 		col := -1
 		for _, l := range d.setupBlock(o, g).lines {
-			plain := stripANSITest(l)
+			plain := StripANSI(l)
 			i := strings.Index(plain, "←")
 			if i < 0 {
 				continue

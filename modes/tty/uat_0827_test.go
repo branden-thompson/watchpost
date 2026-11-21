@@ -20,7 +20,7 @@ func TestUpdatedStampCarriesItsAgeAndColour(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.ResetColorEnabledForTest()
 	d := dash(t).(Dashboard)
-	at := dataAsOf(d.snap)
+	at := DataAsOf(d.snap)
 	rows := []struct {
 		age  time.Duration
 		want string
@@ -39,13 +39,13 @@ func TestUpdatedStampCarriesItsAgeAndColour(t *testing.T) {
 		// asks the same owner the header does rather than repeating a layout.
 		want := strings.TrimSuffix(render.Tint("Updated: "+d.opts().Clock.Stamp(at.Local())+" "+row.want, render.Tok(row.tone)), "\x1b[0m") // the opening tone (the box re-arms its own after)
 		if !strings.Contains(line, want) {
-			t.Errorf("age %v: want %q in %q", row.age, want, stripANSITest(line))
+			t.Errorf("age %v: want %q in %q", row.age, want, StripANSI(line))
 		}
 	}
 	// Before the first data: grey.
 	d.snap = nil
 	if line := strings.SplitN(d.header(d.opts()), "\n", 2)[0]; !strings.Contains(line, strings.TrimSuffix(render.Tint("awaiting first data...", render.Tok(render.TextBase)), "\x1b[0m")) {
-		t.Errorf("no data: grey placeholder: %q", stripANSITest(line))
+		t.Errorf("no data: grey placeholder: %q", StripANSI(line))
 	}
 	// A narrow terminal drops the age before it drops the date (the ladder;
 	// the rule carries more than the old centred gap did — 80 cols is where
@@ -53,7 +53,7 @@ func TestUpdatedStampCarriesItsAgeAndColour(t *testing.T) {
 	d.snap = snap()
 	d.now = func() time.Time { return at.Add(2 * time.Minute) }
 	nd, _ := d.Update(tea.WindowSizeMsg{Width: 80, Height: 44})
-	if line := stripANSITest(strings.SplitN(nd.(Dashboard).header(nd.(Dashboard).opts()), "\n", 2)[0]); strings.Contains(line, "Ago") || !strings.Contains(line, "Updated:") {
+	if line := StripANSI(strings.SplitN(nd.(Dashboard).header(nd.(Dashboard).opts()), "\n", 2)[0]); strings.Contains(line, "Ago") || !strings.Contains(line, "Updated:") {
 		t.Errorf("narrow: the plain stamp, no age: %q", line)
 	}
 }
@@ -73,7 +73,7 @@ func TestAlertModuleIsOneBoxedRow(t *testing.T) {
 		t.Fatal("the fixture is the full layout")
 	}
 	raw := d.alertArea(fl)
-	lines := strings.Split(stripANSITest(raw), "\n")
+	lines := strings.Split(StripANSI(raw), "\n")
 	if len(lines) != render.BoxHeight(1) || fl.alertH != render.BoxHeight(1) || !strings.HasPrefix(lines[0], "┏") || !strings.HasPrefix(lines[2], "┗") {
 		t.Fatalf("a one-row heavy box (%d rows): %q", fl.alertH, lines)
 	}
@@ -90,13 +90,13 @@ func TestAlertModuleIsOneBoxedRow(t *testing.T) {
 		t.Fatalf("an advisory sits on the modal's advisory tint, its event bold in the modal's advisory tone, the place bold white: %q", raw)
 	}
 	d.alertIdx = 1
-	if raw := d.alertArea(fl); !strings.Contains(raw, render.Tok(render.AlertModalWarnBG)) || !strings.Contains(stripANSITest(raw), "02/02  ⚠ TORNADO WARNING - Oceanside, CA") ||
+	if raw := d.alertArea(fl); !strings.Contains(raw, render.Tok(render.AlertModalWarnBG)) || !strings.Contains(StripANSI(raw), "02/02  ⚠ TORNADO WARNING - Oceanside, CA") ||
 		!strings.Contains(raw, "\x1b[1;"+render.Tok(render.AlertModalWarnFG)+"m⚠ TORNADO WARNING") || !strings.Contains(raw, place) {
-		t.Fatalf("a warning sits on the modal's warning tint, its event bold in the modal's warning tone: %q", stripANSITest(raw))
+		t.Fatalf("a warning sits on the modal's warning tint, its event bold in the modal's warning tone: %q", StripANSI(raw))
 	}
 	rendering.SetColorEnabledForTest(false)
 	// Compact: the same tinted row without the rules (UAT 34).
-	if short, _ := d.Update(tea.WindowSizeMsg{Width: 160, Height: 24}); short.(Dashboard).layout().alertH != 1 || !strings.Contains(stripANSITest(short.View().Content), "02/02  ⚠ TORNADO WARNING - Oceanside, CA") {
+	if short, _ := d.Update(tea.WindowSizeMsg{Width: 160, Height: 24}); short.(Dashboard).layout().alertH != 1 || !strings.Contains(StripANSI(short.View().Content), "02/02  ⚠ TORNADO WARNING - Oceanside, CA") {
 		t.Fatal("compact keeps the one-row form")
 	}
 	// Narrow: expires, then issued, then the chip labels give before the
@@ -105,7 +105,7 @@ func TestAlertModuleIsOneBoxedRow(t *testing.T) {
 	for _, w := range []int{100, 84, 60} {
 		nd, _ := d.Update(tea.WindowSizeMsg{Width: w, Height: 44})
 		nfl := nd.(Dashboard).layout()
-		row := strings.Split(stripANSITest(nd.(Dashboard).alertArea(nfl)), "\n")[1]
+		row := strings.Split(StripANSI(nd.(Dashboard).alertArea(nfl)), "\n")[1]
 		if render.Width(row) != nfl.o.Width || !strings.Contains(row, "AIR QUALITY") && !strings.Contains(row, "…") {
 			t.Fatalf("width %d: the row spans the frame exactly (%d), the title last to give: %q", w, render.Width(row), row)
 		}
@@ -113,15 +113,15 @@ func TestAlertModuleIsOneBoxedRow(t *testing.T) {
 	// Colour off (and --ascii): the class is text, so a warning and an
 	// advisory never read the same (R-12a).
 	d.snap.Locations[0].Alerts = []snapshot.Alert{{Event: "Extreme Heat Watch", Severity: "severe", Headline: "h"}}
-	warn := stripANSITest(d.alertArea(d.layout()))
+	warn := StripANSI(d.alertArea(d.layout()))
 	d.snap.Locations[0].Alerts = []snapshot.Alert{{Event: "Extreme Heat Watch", Severity: "minor", Headline: "h"}}
-	adv := stripANSITest(d.alertArea(d.layout()))
+	adv := StripANSI(d.alertArea(d.layout()))
 	if warn == adv || !strings.Contains(warn, "[severe]") || !strings.Contains(adv, "[minor]") {
 		t.Fatalf("colour off: the class in text:\n%s\n%s", warn, adv)
 	}
 	// No alert: the box stands, muted, so the layout never jumps.
 	d.snap.Locations[0].Alerts = nil
-	if got := strings.Split(stripANSITest(d.alertArea(d.layout())), "\n"); len(got) != render.BoxHeight(1) || !strings.Contains(got[1], "No active alerts · Oceanside, CA") {
+	if got := strings.Split(StripANSI(d.alertArea(d.layout())), "\n"); len(got) != render.BoxHeight(1) || !strings.Contains(got[1], "No active alerts · Oceanside, CA") {
 		t.Fatalf("the empty module: %q", got)
 	}
 }
@@ -152,7 +152,7 @@ func TestBandsCollapseLastOnShortTerminals(t *testing.T) {
 	if !fl.compact || !fl.o.ThinBands {
 		t.Fatalf("tiny: only when the floor cannot be held do the bands thin: compact=%v thin=%v window=%d", fl.compact, fl.o.ThinBands, fl.window)
 	}
-	v := stripANSITest(tiny.View().Content)
+	v := StripANSI(tiny.View().Content)
 	if strings.Count(v, "[") < 2 || !strings.Contains(v, "L O C A T I O N") {
 		t.Fatalf("thin bands still label the groups:\n%s", v)
 	}
@@ -174,7 +174,7 @@ func TestRecentRailTopRidesTheBandsBottomRow(t *testing.T) {
 	for _, h := range []int{44, 22} { // three-row bands, then thin bands
 		n, _ := m.Update(tea.WindowSizeMsg{Width: 133, Height: h})
 		d := n.(Dashboard)
-		lines := strings.Split(stripANSITest(d.recentSection(d.layout())), "\n")
+		lines := strings.Split(StripANSI(d.recentSection(d.layout())), "\n")
 		up := -1
 		for i, l := range lines {
 			if strings.HasSuffix(strings.TrimRight(l, " "), "▲") {
@@ -245,7 +245,7 @@ func TestHeaderRowLaddersInOrder(t *testing.T) {
 	prev := ""
 	for w := 160; w >= 40; w-- {
 		nd, _ := d.Update(tea.WindowSizeMsg{Width: w, Height: 44})
-		row := strings.TrimSpace(strings.Trim(strings.Split(stripANSITest(nd.(Dashboard).header(nd.(Dashboard).opts())), "\n")[1], "┃"))
+		row := strings.TrimSpace(strings.Trim(strings.Split(StripANSI(nd.(Dashboard).header(nd.(Dashboard).opts())), "\n")[1], "┃"))
 		if render.Width(row) > nd.(Dashboard).opts().Width-8 {
 			t.Fatalf("width %d: the row exceeds the box: %q", w, row)
 		}
@@ -284,7 +284,7 @@ func TestAlertModulePageFollowsAShrunkListAndWideRunesFit(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d.alertIdx = 2
 	d.snap.Locations[0].Alerts = []snapshot.Alert{{Event: "Heat Advisory", Severity: "minor", Headline: "h"}}
-	row := stripANSITest(strings.Split(d.alertArea(d.layout()), "\n")[1])
+	row := StripANSI(strings.Split(d.alertArea(d.layout()), "\n")[1])
 	if !strings.Contains(row, "01/01") {
 		t.Fatalf("one page: %q", row)
 	}
@@ -296,7 +296,7 @@ func TestAlertModulePageFollowsAShrunkListAndWideRunesFit(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	d.snap.Locations[0].Alerts = []snapshot.Alert{{Event: strings.Repeat("日", 60), Severity: "minor", Headline: "h"}}
 	short, _ := d.Update(tea.WindowSizeMsg{Width: 133, Height: 24})
-	for _, l := range strings.Split(stripANSITest(short.View().Content), "\n") {
+	for _, l := range strings.Split(StripANSI(short.View().Content), "\n") {
 		if render.Width(l) > 133 {
 			t.Fatalf("a wide-rune event overflows the compact row (%d): %q", render.Width(l), l)
 		}

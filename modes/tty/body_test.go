@@ -123,7 +123,7 @@ func TestWatchlistControlsAboveAndSectionBandTight(t *testing.T) {
 	// UAT 43: controls sit above the watchlist group labels; the RECENT /
 	// SEARCHED band replaces the dashed separator with no blank lines
 	// around it.
-	v := stripANSITest(dash(t).View().Content)
+	v := StripANSI(dash(t).View().Content)
 	lines := strings.Split(v, "\n")
 	idx := func(sub string) int {
 		for i, l := range lines {
@@ -157,7 +157,7 @@ func TestRecentTableDropsItsGroupRow(t *testing.T) {
 		rs.Locations = append(rs.Locations, snapshot.Location{Label: fmt.Sprintf("City %02d", i+1), Zip: fmt.Sprintf("900%02d", i+1)})
 	}
 	m, _ = m.Update(RecentSnapshotMsg{Snap: rs})
-	v := stripANSITest(m.View().Content)
+	v := StripANSI(m.View().Content)
 	if n := strings.Count(v, "L O C A T I O N"); n != 1 {
 		t.Fatalf("exactly one group-label row (the watchlist's), got %d", n)
 	}
@@ -219,7 +219,7 @@ func TestHeaderIsATitledBox(t *testing.T) {
 	}
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
-	lines := strings.Split(stripANSITest(d.header(d.opts())), "\n")
+	lines := strings.Split(StripANSI(d.header(d.opts())), "\n")
 	if len(lines) != render.BoxHeight(1) || !strings.HasPrefix(lines[0], "┏━━ WATCHPOST Observer  v") || !strings.HasSuffix(lines[0], " ━━┓") || !strings.Contains(lines[0], "  Updated: ") {
 		t.Fatalf("the top rule carries the title and the stamp: %q", lines)
 	}
@@ -238,7 +238,7 @@ func TestHeaderIsATitledBox(t *testing.T) {
 	for _, w := range []int{100, 80, 60, 40} {
 		n, _ := d.Update(tea.WindowSizeMsg{Width: w, Height: 44})
 		nd := n.(Dashboard)
-		for _, l := range strings.Split(stripANSITest(nd.header(nd.opts())), "\n") {
+		for _, l := range strings.Split(StripANSI(nd.header(nd.opts())), "\n") {
 			if render.Width(l) > w || !strings.HasSuffix(l, "┓") && !strings.HasSuffix(l, "┃") && !strings.HasSuffix(l, "┛") {
 				t.Fatalf("width %d: header line overflows or loses its corner (%d): %q", w, render.Width(l), l)
 			}
@@ -253,7 +253,7 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 	m, _ := NewDashboard(Config{Version: "t"})
 	var model tea.Model = m
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
-	v := stripANSITest(model.(Dashboard).View().Content)
+	v := StripANSI(model.(Dashboard).View().Content)
 	for _, want := range []string{
 		// The GESTURE, not a span that straddles the wrap: a word's length
 		// moves the line break. What this test is for is that the empty state
@@ -270,12 +270,12 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 	}
 	narrow, _ := model.Update(tea.WindowSizeMsg{Width: 60, Height: 44})
 	nd := narrow.(Dashboard)
-	for _, l := range strings.Split(stripANSITest(nd.body(nd.layout())), "\n") { // the tables' area: the empty states wrap inside the width
+	for _, l := range strings.Split(StripANSI(nd.body(nd.layout())), "\n") { // the tables' area: the empty states wrap inside the width
 		if render.Width(l) > 60 {
 			t.Fatalf("line overflows 60 cols: %q", l)
 		}
 	}
-	if nv := stripANSITest(narrow.(Dashboard).View().Content); !strings.Contains(nv, "to your Watchlist") {
+	if nv := StripANSI(narrow.(Dashboard).View().Content); !strings.Contains(nv, "to your Watchlist") {
 		t.Fatalf("narrow: the message wraps, never truncates:\n%s", nv)
 	}
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
@@ -283,7 +283,7 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 	// `CONDITIONS` is the header the assertion above already uses to mean "no
 	// table yet", which makes the pair say one thing; the stencil band is no
 	// proxy, being its own column with the numbers hanging from it (D-103).
-	if v := stripANSITest(model.(Dashboard).View().Content); strings.Contains(v, "to your Watchlist") || !strings.Contains(v, "CONDITIONS") {
+	if v := StripANSI(model.(Dashboard).View().Content); strings.Contains(v, "to your Watchlist") || !strings.Contains(v, "CONDITIONS") {
 		t.Fatalf("data replaces the watchlist empty state:\n%s", v)
 	}
 }
@@ -305,7 +305,7 @@ func TestMastheadCarriesTheEditionAndLaddersDown(t *testing.T) {
 		{133, true, true}, {80, true, true}, {46, true, true},
 	} {
 		d := benchDash(t, tc.w, 44).(Dashboard)
-		head := stripANSITest(d.header(d.opts()))
+		head := StripANSI(d.header(d.opts()))
 		if strings.Contains(head, "WATCHPOST") != true {
 			t.Fatalf("%d cols: the wordmark is never dropped:\n%s", tc.w, head)
 		}

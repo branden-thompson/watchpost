@@ -21,7 +21,7 @@ func TestSetupWindowOpensOnSAndAtLaunch(t *testing.T) {
 	if d.modal != modalSetup {
 		t.Fatal("[s] must open the Setup window")
 	}
-	if view := stripANSITest(d.View().Content); !strings.Contains(view, "Settings") || !strings.Contains(view, "Default location:") {
+	if view := StripANSI(d.View().Content); !strings.Contains(view, "Settings") || !strings.Contains(view, "Default location:") {
 		t.Fatalf("Settings window missing:\n%s", view)
 	}
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -32,7 +32,7 @@ func TestSetupWindowOpensOnSAndAtLaunch(t *testing.T) {
 	if err != nil || first.modal != modalSetup {
 		t.Fatalf("OpenSetup opens the window at launch (%v)", err)
 	}
-	if view := stripANSITest(first.View().Content); !strings.Contains(view, "Default location:") {
+	if view := StripANSI(first.View().Content); !strings.Contains(view, "Default location:") {
 		t.Fatalf("an empty dashboard with the Setup window must render:\n%s", view)
 	}
 }
@@ -50,7 +50,7 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
 	model, _ = model.Update(SnapshotMsg{Snap: snap()}) // an existing watchlist stays, below the new default
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
-	view := stripANSITest(model.(Dashboard).View().Content)
+	view := StripANSI(model.(Dashboard).View().Content)
 	for _, want := range []string{"› Default location:", "NASA FIRMS key:", "Key: ▌", "[tab] Next tab", "[enter] Next"} /* D-62: tab switches tabs */ {
 		if !strings.Contains(view, want) {
 			t.Fatalf("the form shows every question at once, missing %q:\n%s", want, view)
@@ -60,8 +60,8 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	// runs to the window's edge, no chip is split.
 	d0 := model.(Dashboard)
 	for _, l := range d0.setupLines(d0.opts()) {
-		if w := render.Width(stripANSITest(l)); w > d0.modalWidth()-7 {
-			t.Fatalf("setup line runs past the inset (%d): %q", w, stripANSITest(l))
+		if w := render.Width(StripANSI(l)); w > d0.modalWidth()-7 {
+			t.Fatalf("setup line runs past the inset (%d): %q", w, StripANSI(l))
 		}
 	}
 	// The reveal chip appears only when there is a TYPED key to reveal: the
@@ -70,11 +70,11 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 		t.Fatalf("nothing typed yet: no reveal chip\n%s", view)
 	}
 	model = typeText(model, "oce")
-	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "› Oceanside, CA (92057)") {
+	if view := StripANSI(model.(Dashboard).View().Content); !strings.Contains(view, "› Oceanside, CA (92057)") {
 		t.Fatalf("type-ahead hint missing:\n%s", view)
 	}
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	view = stripANSITest(model.(Dashboard).View().Content)
+	view = StripANSI(model.(Dashboard).View().Content)
 	// The key row is a TEXT FIELD, so its chip reads Next: enter commits the
 	// field and moves on. Saving from a field would make it unreachable
 	// (UAT #12).
@@ -105,13 +105,13 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	// tab moves between GROUPS (five stops), so the key row is reached
 	// with ↓ within DATA; tab from DATA lands on the events group.
 	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	if !strings.Contains(stripANSITest(fm.(Dashboard).View().Content), "› NASA FIRMS key") {
+	if !strings.Contains(StripANSI(fm.(Dashboard).View().Content), "› NASA FIRMS key") {
 		t.Fatal("down moves to the key row")
 	}
 	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // the key field commits and moves on
 	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // → Save (no location on a first run)
-	if fd := fm.(Dashboard); fd.setup.focus != rowLocation || !strings.Contains(stripANSITest(fd.View().Content), "choose your default location first") {
-		t.Fatalf("saving without a location goes back to question 1 with the reason:\n%s", stripANSITest(fd.View().Content))
+	if fd := fm.(Dashboard); fd.setup.focus != rowLocation || !strings.Contains(StripANSI(fd.View().Content), "choose your default location first") {
+		t.Fatalf("saving without a location goes back to question 1 with the reason:\n%s", StripANSI(fd.View().Content))
 	}
 	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	// shift+tab from the FIRST tab wraps to the LAST (D-62) — derived from the
@@ -142,7 +142,7 @@ func TestTheFirstRunSetupsEscKeepsTheLocation(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	model = typeText(model, "oce")
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // the pick, shown as the default
-	if v := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(v, "[esc] Save") && !strings.Contains(v, "esc Save") {
+	if v := StripANSI(model.(Dashboard).View().Content); !strings.Contains(v, "[esc] Save") && !strings.Contains(v, "esc Save") {
 		t.Fatalf("the first-run window with a pick says esc does something else:\n%s", v)
 	}
 	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -215,12 +215,12 @@ func TestSetupAlertPreferenceTogglesAndPersists(t *testing.T) {
 	// two marks, reached with ↓ on the General tab (D-62).
 	model = walkTo(t, model, rowEventsAll)
 
-	view := stripANSITest(model.(Dashboard).View().Content)
+	view := StripANSI(model.(Dashboard).View().Content)
 	if !strings.Contains(view, "● All locations (Default)") || !strings.Contains(view, "○ Within [    ] mi") {
 		t.Fatalf("the events group starts on All, empty distance:\n%s", view)
 	}
 	model = typeText(model, "50")
-	view = stripANSITest(model.(Dashboard).View().Content)
+	view = StripANSI(model.(Dashboard).View().Content)
 	if !strings.Contains(view, "○ All locations") || !strings.Contains(view, "● Within [50") {
 		t.Fatalf("typing a distance selects Filtered:\n%s", view)
 	}
@@ -244,7 +244,7 @@ func TestSetupAlertAllPersistsZero(t *testing.T) {
 	model = typeText(model, "oce")
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	model = walkTo(t, model, rowEventsAll) // → the events group, on General (D-62)
-	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "● Within [25") {
+	if view := StripANSI(model.(Dashboard).View().Content); !strings.Contains(view, "● Within [25") {
 		t.Fatalf("a stored radius opens on Filtered [25]:\n%s", view)
 	}
 	// space selects the focused radio (the one keyboard rule); ↑↓ move.
@@ -269,12 +269,12 @@ func TestSetupFormKeyMasksAndStoresIt(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	key := "0123456789abcdef0123456789abcdef"
 	model = typeText(model, key)
-	view := stripANSITest(model.(Dashboard).View().Content)
+	view := StripANSI(model.(Dashboard).View().Content)
 	if strings.Contains(view, key) || !strings.Contains(view, "Key: "+strings.Repeat("•", 32)) {
 		t.Fatalf("the key is masked while typed:\n%s", view)
 	}
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
-	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "Key: "+key) {
+	if view := StripANSI(model.(Dashboard).View().Content); !strings.Contains(view, "Key: "+key) {
 		t.Fatalf("ctrl+r reveals it:\n%s", view)
 	}
 	// Enter on a text field commits it and moves on; enter on the next row —
@@ -298,8 +298,8 @@ func TestSetupFormKeyMasksAndStoresIt(t *testing.T) {
 	_, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})   // → Save
 	model = drain(t, model, cmd)
 	d := model.(Dashboard)
-	if d.modal != modalSetup || !strings.Contains(stripANSITest(d.View().Content), "setup failed: a FIRMS MAP_KEY is 32 hex") {
-		t.Fatalf("a failed setup stays open with the reason:\n%s", stripANSITest(d.View().Content))
+	if d.modal != modalSetup || !strings.Contains(StripANSI(d.View().Content), "setup failed: a FIRMS MAP_KEY is 32 hex") {
+		t.Fatalf("a failed setup stays open with the reason:\n%s", StripANSI(d.View().Content))
 	}
 }
 
@@ -319,14 +319,14 @@ func TestSetupFormShowsAStoredFIRMSKeyAndItsHealth(t *testing.T) {
 	s2.Providers = append(s2.Providers, snapshot.ProviderStatus{ID: "firms", Status: snapshot.ProviderOK, FetchedAt: time.Now()})
 	model, _ = model.Update(SnapshotMsg{Snap: s2})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
-	first := stripANSITest(model.(Dashboard).View().Content)
+	first := StripANSI(model.(Dashboard).View().Content)
 	for _, want := range []string{"Default location: Oceanside, CA (92057)", "NASA FIRMS key: stored (…cdef) — ✔ working", "empty keeps"} {
 		if !strings.Contains(first, want) {
 			t.Fatalf("re-run first screen missing %q:\n%s", want, first)
 		}
 	}
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // keeps the default, focus to the key
-	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "Default location: Oceanside, CA (92057)") || !strings.Contains(view, "› NASA FIRMS key") {
+	if view := StripANSI(model.(Dashboard).View().Content); !strings.Contains(view, "Default location: Oceanside, CA (92057)") || !strings.Contains(view, "› NASA FIRMS key") {
 		t.Fatalf("bare enter keeps the default:\n%s", view)
 	}
 	// Enter on a text field commits it and moves on; enter on the next row —
@@ -343,7 +343,7 @@ func TestSetupFormShowsAStoredFIRMSKeyAndItsHealth(t *testing.T) {
 	s3.Warnings = []snapshot.Warning{{Code: "provider_error", Provider: "firms", Message: "firms: FIRMS rejected the MAP_KEY — open Setup ([s]) and paste it again"}}
 	model, _ = model.Update(SnapshotMsg{Snap: s3})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
-	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "stored (…cdef) — ✘ rejected — replace it") {
+	if view := StripANSI(model.(Dashboard).View().Content); !strings.Contains(view, "stored (…cdef) — ✘ rejected — replace it") {
 		t.Fatalf("rejected key must be said in the window:\n%s", view)
 	}
 }
@@ -408,19 +408,19 @@ func TestCtrlRRevealsFromAnyRow(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown}) // → the key row
 	model = typeText(model, "abc123")
-	if v := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(v, "Key: •••••") {
+	if v := StripANSI(model.(Dashboard).View().Content); !strings.Contains(v, "Key: •••••") {
 		t.Fatalf("the typed key is masked:\n%s", v)
 	}
 	// From the key row.
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
-	if v := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(v, "Key: abc123") {
+	if v := StripANSI(model.(Dashboard).View().Content); !strings.Contains(v, "Key: abc123") {
 		t.Fatalf("ctrl+r reveals from the key row:\n%s", v)
 	}
 	// And from somewhere else entirely.
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}) // hide again
 	model = walkTo(t, model, rowEventsAll)                                // → the events group
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
-	if v := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(v, "Key: abc123") {
+	if v := StripANSI(model.(Dashboard).View().Content); !strings.Contains(v, "Key: abc123") {
 		t.Fatalf("ctrl+r is a window key, not a row key:\n%s", v)
 	}
 }
@@ -582,11 +582,11 @@ func TestTheRelayRowDrawsTheRotationAndItsRange(t *testing.T) {
 	if len(lines) < 2 {
 		t.Fatalf("want the picker row and its support line, got %d", len(lines))
 	}
-	row := stripANSITest(lines[0])
+	row := StripANSI(lines[0])
 	if !strings.Contains(row, "Repeat: Watchlist - Rotate every") || !strings.Contains(row, "30s") {
 		t.Errorf("the row reads %q", row)
 	}
-	if support := stripANSITest(lines[1]); !strings.Contains(support, "Shortest: 30 seconds / Longest: 5 minutes") {
+	if support := StripANSI(lines[1]); !strings.Contains(support, "Shortest: 30 seconds / Longest: 5 minutes") {
 		t.Errorf("the support line reads %q", support)
 	}
 }
@@ -618,7 +618,7 @@ func TestTheRelayGroupIsReachableFromTheWindow(t *testing.T) {
 	// And with it focused, the window draws its heading.
 	d.setup.focus = rowRelayDwell
 	body, _, _ := d.setupBody(d.opts())
-	joined := stripANSITest(strings.Join(body, "\n"))
+	joined := StripANSI(strings.Join(body, "\n"))
 	if !strings.Contains(joined, "WATCHPOST RADIO - RELAY REPLAY") {
 		t.Error("the window does not draw the group's heading when its row is focused")
 	}
@@ -785,7 +785,7 @@ func TestTheRelayGroupDrawsBothRows(t *testing.T) {
 	d = d.open(modalSetup)
 	d.setup.focus = rowRelayLang
 	body, _, _ := d.setupBody(d.opts())
-	joined := stripANSITest(strings.Join(body, "\n"))
+	joined := StripANSI(strings.Join(body, "\n"))
 	for _, want := range []string{
 		"WATCHPOST RADIO - RELAY REPLAY",
 		"Repeat: Watchlist - Rotate every",
@@ -815,7 +815,7 @@ func TestTheApplicationsDefaultIsShownAndNotUsed(t *testing.T) {
 	d := model.(Dashboard).open(modalSetup)
 
 	// SHOWN, with its zip, and SAID to be the application's rather than theirs.
-	got := stripANSITest(d.modalView(d.opts()))
+	got := StripANSI(d.modalView(d.opts()))
 	origin := snapshot.DefaultOrigin()
 	if !strings.Contains(got, origin.Label) || !strings.Contains(got, origin.Zip) {
 		t.Errorf("the Default location row does not name %s (%s):\n%s", origin.Label, origin.Zip, got)

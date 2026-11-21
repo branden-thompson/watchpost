@@ -34,7 +34,7 @@ func TestRadarOverAnAlertAtEachDepth(t *testing.T) {
 			t.Fatal(err)
 		}
 		frame := strings.Join(f.Lines, "\n")
-		plain := strings.Split(stripANSITest(frame), "\n")
+		plain := strings.Split(StripANSI(frame), "\n")
 		text := strings.Join(plain, "\n")
 		for _, w := range []string{"Wind Warning · SEVERE", "OpenFreeMap", "100 km"} {
 			if !strings.Contains(text, w) {

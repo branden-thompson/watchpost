@@ -24,7 +24,7 @@ var goldenNow = time.Date(2026, 8, 24, 1, 2, 0, 0, time.UTC)
 func goldenConsole(t *testing.T, w, h int, onAir, colour bool) Broadcaster {
 	t.Helper()
 	rendering.SetColorEnabledForTest(colour)
-	b := loadedConsoleAt(t, loadedPoolSize, goldenNow.Add(-10*time.Minute))
+	b := loadedConsoleAt(t, LoadedPoolSize, goldenNow.Add(-10*time.Minute))
 	op, err := lineup.Propose(lineup.Card{ID: "operator", Slot: lineup.LocationReport, Origin: lineup.FromOperator,
 		Subject: "Fallbrook, CA", Headline: "Fallbrook, CA", State: lineup.Proposed})
 	if err != nil {

@@ -86,7 +86,7 @@ func TestTheConsoleKeysDoNotClash(t *testing.T) {
 		t.Errorf("g on the console is %q, not the map", owner["g"])
 	}
 	d := stationMap(t, Config{})
-	help := stripANSITest(strings.Join(d.helpLines(d.opts()), "\n"))
+	help := StripANSI(strings.Join(d.helpLines(d.opts()), "\n"))
 	if !regexp.MustCompile(`\bg\s+- Map\b`).MatchString(help) {
 		t.Errorf("the console's Help does not list the map's key:\n%s", help)
 	}
@@ -158,7 +158,7 @@ func TestTheBroadcastersMapOffersNoPlaceKeys(t *testing.T) {
 	if moved.selected != bc.selected || !near(moved, bonsall.Lat, bonsall.Lon) {
 		t.Error("] on the Broadcaster's map moved it off the station")
 	}
-	if box := stripANSITest(strings.Join(bc.controlsBox(), "\n")); strings.Contains(box, "place") || !strings.Contains(box, "red: service") {
+	if box := StripANSI(strings.Join(bc.controlsBox(), "\n")); strings.Contains(box, "place") || !strings.Contains(box, "red: service") {
 		t.Errorf("the Broadcaster's controls box offers the place keys, or does not say the red ring:\n%s", box)
 	}
 	for _, r := range mapHelpRows(bc.helpKeys(), false) { // the keys Help lists on the Broadcaster (D-195)
@@ -166,14 +166,14 @@ func TestTheBroadcastersMapOffersNoPlaceKeys(t *testing.T) {
 			t.Error("the Broadcaster's Help lists an empty row for keys it does not bind")
 		}
 	}
-	if help := stripANSITest(strings.Join(bc.helpLines(bc.opts()), "\n")); strings.Contains(help, "Next Location") || !strings.Contains(help, " MAP") || !strings.Contains(help, "Pan") {
+	if help := StripANSI(strings.Join(bc.helpLines(bc.opts()), "\n")); strings.Contains(help, "Next Location") || !strings.Contains(help, " MAP") || !strings.Contains(help, "Pan") {
 		t.Errorf("the Broadcaster's Help lists the place keys, or not the map's group:\n%s", help)
 	}
 	obs := open(SurfaceObserver)
 	if stepped := pressMap(t, obs, "]"); stepped.selected == obs.selected {
 		t.Error("control: ] on Observer's map does not step to the next place, so this proves nothing")
 	}
-	if box := stripANSITest(strings.Join(obs.controlsBox(), "\n")); !strings.Contains(box, "place") {
+	if box := StripANSI(strings.Join(obs.controlsBox(), "\n")); !strings.Contains(box, "place") {
 		t.Errorf("Observer's controls box does not offer the place keys:\n%s", box)
 	}
 }
@@ -203,10 +203,10 @@ func TestTheNearVerticalAnswersUseTheServiceRadius(t *testing.T) {
 	if k := d.mapPane.propChart.key.radiusKm; k != 161 {
 		t.Errorf("the Broadcaster's chart answers to %.0f km; the service radius is 161", k)
 	}
-	if block := strings.Join(d.propBlock(d.scrubW()), "\n"); !strings.Contains(stripANSITest(block), "Local, to ~161 km (service area): ") {
-		t.Errorf("the block does not say the service radius:\n%s", stripANSITest(block))
+	if block := strings.Join(d.propBlock(d.scrubW()), "\n"); !strings.Contains(StripANSI(block), "Local, to ~161 km (service area): ") {
+		t.Errorf("the block does not say the service radius:\n%s", StripANSI(block))
 	}
-	if block := stripANSITest(strings.Join(chartDash(t).propBlock(80), "\n")); !strings.Contains(block, "km (NVIS): ") {
+	if block := StripANSI(strings.Join(chartDash(t).propBlock(80), "\n")); !strings.Contains(block, "km (NVIS): ") {
 		t.Errorf("Observer's block does not answer to the NVIS radius:\n%s", block)
 	}
 }

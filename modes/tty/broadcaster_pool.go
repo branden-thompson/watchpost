@@ -30,19 +30,19 @@ func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 	pool := b.area.Pool
 	out := make([]render.LocationRow, 0, len(pool))
 	for i, ref := range pool { // bounded by locations.PoolCap (P10-02)
-		// THE ONE CONVERTER (D-112). `weatherRow` is what Observer's own rows go
+		// THE ONE CONVERTER (D-112). `WeatherRow` is what Observer's own rows go
 		// through, so every field — HI, LOW, all of TOMORROW, the trend arrow and the
 		// fire and seismic marks — reaches this table too; a second, hand-written
 		// converter would carry only the fields someone remembered.
 		row := render.LocationRow{Name: ref.Label, Zip: ref.Zip, Loading: true}
 		if loc := idx.at(ref); loc != nil {
-			row = weatherRow(loc, b.fireBold(), 0)
+			row = WeatherRow(loc, b.fireBold(), 0)
 		}
 		// What the pool knows that the snapshot does not: which row this is,
 		// how many people the place serves, and whether the pointer is on it.
 		row.Index, row.Population, row.Selected = i+1, ref.Population, i == b.poolSelection()
 		// THE DISTANCE IS FROM THE TRANSMITTER, NOT FROM THE OBSERVING STATION.
-		// `weatherRow` fills `StationKM` with how far the WX STN is from the place;
+		// `WeatherRow` fills `StationKM` with how far the WX STN is from the place;
 		// this column answers a different question — how far the PLACE is from the
 		// tower — which is what an operator sizing up a candidate is asking.
 		// THE TABLE'S OWN FORMATTER TAKES KILOMETRES, and `StationDistance` is
@@ -116,7 +116,7 @@ func (b Broadcaster) fireBold() float64 {
 	if b.fireBoldMW > 0 {
 		return b.fireBoldMW
 	}
-	return fireBoldDefaultMW
+	return FireBoldDefaultMW
 }
 
 // poolRoom is how many rows the pool takes off the frame before the running

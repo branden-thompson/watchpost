@@ -18,7 +18,7 @@ import (
 func TestTheMapsTabHasNoAlertScope(t *testing.T) {
 	d, _ := uiDash(t, rowMapsOn)
 	body, _, _ := d.focusBody(d.opts())
-	text := stripANSITest(strings.Join(body, "\n"))
+	text := StripANSI(strings.Join(body, "\n"))
 	for _, never := range []string{"Alerts -", "Alerts in view", "Station's places", "regional severe"} {
 		if strings.Contains(text, never) {
 			t.Errorf("the Maps tab still offers a scope (%q):\n%s", never, text)

@@ -99,7 +99,7 @@ func TestAChangedPublishRedrawsTheTables(t *testing.T) {
 		d := benchDash(t, 133, 44).(Dashboard)
 		_ = d.View().Content
 		m, _ := d.Update(SnapshotMsg{Snap: republished(t, d.snap, c.edit)})
-		if frame := stripANSITest(m.View().Content); !c.shows(frame) {
+		if frame := StripANSI(m.View().Content); !c.shows(frame) {
 			t.Errorf("%s did not reach the table:\n%s", c.name, frame)
 		}
 	}
@@ -118,7 +118,7 @@ func TestAWrittenSnapshotStandsForItself(t *testing.T) {
 		l[0].Label = "Written Straight On"
 		return l
 	})
-	if frame := stripANSITest(d.View().Content); !strings.Contains(frame, "001. Written Straight On") { // the table's row: the radio's station line names the focus too
+	if frame := StripANSI(d.View().Content); !strings.Contains(frame, "001. Written Straight On") { // the table's row: the radio's station line names the focus too
 		t.Errorf("a snapshot written onto the model drew the one that last arrived:\n%s", frame)
 	}
 }

@@ -125,7 +125,7 @@ func TestAPlaceInNoRegionIsAStatedState(t *testing.T) {
 	views := &[]mapView{}
 	d.mapPane.views = views
 	d, _ = pressKey(d, "g")
-	out := stripANSITest(d.View().Content)
+	out := StripANSI(d.View().Content)
 	if !strings.Contains(out, "London is outside") {
 		t.Errorf("a place in no region is not stated:\n%s", out)
 	}

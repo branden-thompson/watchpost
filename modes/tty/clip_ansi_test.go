@@ -8,7 +8,7 @@ package tty
 // the cut lands mid-escape, leaving the SGR unterminated so the weight bleeds
 // into whatever follows.
 //
-// IT IS D-138's DEFECT ONE FUNCTION LATER. `centerText` takes the clip branch
+// IT IS D-138's DEFECT ONE FUNCTION LATER. `CenterText` takes the clip branch
 // whenever the text measures at least the width — exactly what `WrapText`
 // produces on a full line — so a clip that charges escapes cuts the held-hazard
 // band's tail at the widths where it fits most tightly, which a sample of a few
@@ -29,17 +29,17 @@ func TestClippingCountsCellsAndNotEscapeBytes(t *testing.T) {
 
 	// TWELVE VISIBLE CELLS, wearing a bold span in the middle.
 	text := "ab " + render.Bold("HAZARD") + " cd"
-	if got := render.Width(stripANSITest(text)); got != 12 {
+	if got := render.Width(StripANSI(text)); got != 12 {
 		t.Fatalf("fixture is %d cells, expected 12", got)
 	}
 	// A WIDTH THAT FITS IT EXACTLY must lose nothing.
-	if got := stripANSITest(clipToWidth(text, 12)); got != "ab HAZARD cd" {
+	if got := StripANSI(clipToWidth(text, 12)); got != "ab HAZARD cd" {
 		t.Errorf("clipping at the exact width dropped visible text: %q", got)
 	}
 	// AND A NARROWER ONE must keep exactly that many cells — not fewer because
 	// the escapes were charged against the budget.
 	for _, w := range []int{4, 8, 11} {
-		if got := render.Width(stripANSITest(clipToWidth(text, w))); got != w {
+		if got := render.Width(StripANSI(clipToWidth(text, w))); got != w {
 			t.Errorf("clipping to %d kept %d visible cells", w, got)
 		}
 	}
@@ -74,7 +74,7 @@ func TestTheHeldBandKeepsItsTailAcrossEveryWidth(t *testing.T) {
 		// words are separated by a run of padding — the message is intact and a
 		// contiguous-substring check is not: it would report width 152 as
 		// truncated while the band is correct.
-		got := strings.Join(strings.Fields(stripANSITest(strings.Join(b.heldNotice(), " "))), " ")
+		got := strings.Join(strings.Fields(StripANSI(strings.Join(b.heldNotice(), " "))), " ")
 		if !strings.Contains(got, "dropped unread") {
 			t.Fatalf("width %d: the severest rung is cut short:\n%q", w, got)
 		}

@@ -39,7 +39,7 @@ func TestARefusedSwapIsShownToTheOperator(t *testing.T) {
 	if r.active != SurfaceBroadcaster {
 		t.Fatal("precondition: a live station refuses the swap (FR-1.4)")
 	}
-	frame := stripANSITest(r.View().Content)
+	frame := StripANSI(r.View().Content)
 	if !strings.Contains(frame, "STANDBY before leaving") {
 		t.Errorf("the refusal is not on the frame the operator is looking at:\n%s", strings.Join(strings.Split(frame, "\n")[:9], "\n"))
 	}
@@ -48,7 +48,7 @@ func TestARefusedSwapIsShownToTheOperator(t *testing.T) {
 	// describes would be its own defect one move along.
 	m, _ = r.Update(StationMsg{Power: lineup.OffAir})
 	r = m.(Router)
-	if strings.Contains(stripANSITest(r.View().Content), "STANDBY before leaving") {
+	if strings.Contains(StripANSI(r.View().Content), "STANDBY before leaving") {
 		t.Error("the refusal outlived the state it describes")
 	}
 	m, _ = r.Update(keyPress(t, "ctrl+o"))

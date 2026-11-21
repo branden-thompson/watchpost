@@ -38,7 +38,7 @@ func TestStationsNextAsksAgainAtOnce(t *testing.T) {
 	}
 	m, next := d.Update(msgs[0])
 	d = m.(Dashboard)
-	if words := stripANSITest(d.mapStatusLine()); !strings.Contains(words, "asking GIRO's stations") {
+	if words := StripANSI(d.mapStatusLine()); !strings.Contains(words, "asking GIRO's stations") {
 		t.Errorf("NOAA's snapshot, stations next, says %q", words)
 	}
 	if again := propMsgs(next); len(again) != 1 || s.count() != 2 {
@@ -50,7 +50,7 @@ func TestStationsNextAsksAgainAtOnce(t *testing.T) {
 		t.Error("a fresh snapshot asked again at once; it waits for the refresh tick")
 	}
 	d = m.(Dashboard)
-	words := stripANSITest(d.mapStatusLine())
+	words := StripANSI(d.mapStatusLine())
 	if !strings.Contains(words, "40 stations, oldest 11:55 UTC") {
 		t.Errorf("a snapshot fed by 40 stations says %q", words)
 	}
@@ -118,7 +118,7 @@ func TestADisturbedBandIsDrawnAndNamed(t *testing.T) {
 	bands := append([]ionomaps.BandStatus(nil), c.local.Bands...)
 	bands[0] = ionomaps.BandStatus{Band: bands[0].Band, Status: ionomaps.Disturbed, Limit: ionomaps.LimitDRAP, LimitMHz: 2.5}
 	c.local.Bands = bands
-	text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
+	text := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
 	var local string
 	for _, l := range strings.Split(text, "\n") {
 		if strings.Contains(l, "Local, ~") && local == "" { // the row, not the typical day's heading
@@ -144,11 +144,11 @@ func TestAnUnscoredNearestStationIsSaid(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
 	c := &d.mapPane.propChart
 	unscoredRow := regexp.MustCompile(`(?m)^[ ▸] \? `) // D-198: an unscored nearest station is the row's ? shade
-	if text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); unscoredRow.MatchString(text) {
+	if text := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); unscoredRow.MatchString(text) {
 		t.Errorf("no answer's station is unscored, yet a row says so:\n%s", text)
 	}
 	c.targets[2].Nearest = ionomaps.Nearest{Km: 300, Unscored: true, Known: true}
-	text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
+	text := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
 	if !regexp.MustCompile(`(?m)^  \? `+regexp.QuoteMeta(propanswers.Continents[2].Name)).MatchString(text) || !strings.Contains(text, "? unscored") {
 		t.Errorf("%s's nearest station is unscored and its row's shade, or the legend, does not say so:\n%s", propanswers.Continents[2].Name, text)
 	}
@@ -159,7 +159,7 @@ func TestAnUnscoredNearestStationIsSaid(t *testing.T) {
 		t.Errorf("an unscored station 300 km away: %q", w)
 	}
 	box := workCentre(t, stationDash(t))
-	if lines := stripANSITest(strings.Join(box.propCentreBox(), "\n")); !strings.Contains(lines, "No station fed this answer") {
+	if lines := StripANSI(strings.Join(box.propCentreBox(), "\n")); !strings.Contains(lines, "No station fed this answer") {
 		t.Errorf("the centre box, no station fed, does not say so:\n%s", lines)
 	}
 }

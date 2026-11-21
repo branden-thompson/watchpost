@@ -175,7 +175,7 @@ func TestAnUpdatesResultIsSaid(t *testing.T) {
 	s := &seam{answer: PropagationResult{Snapshot: snap}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	status := stripANSITest(d.mapStatusLine())
+	status := StripANSI(d.mapStatusLine())
 	if !strings.Contains(status, "12:00 UTC") {
 		t.Errorf("the status %q does not say when it was computed", status)
 	}
@@ -187,8 +187,8 @@ func TestAnUpdatesResultIsSaid(t *testing.T) {
 	}
 	failed := &seam{answer: PropagationResult{Err: errors.New("ionomaps: no field yet: it is asked again at the first update after 12:01:00 UTC")}}
 	d, cmd = keyCmd(t, propDash(t, failed, true), "P")
-	if d = runProp(t, d, cmd); !strings.Contains(stripANSITest(d.mapStatusLine()), "asked again") {
-		t.Errorf("an update with no field says %q", stripANSITest(d.mapStatusLine()))
+	if d = runProp(t, d, cmd); !strings.Contains(StripANSI(d.mapStatusLine()), "asked again") {
+		t.Errorf("an update with no field says %q", StripANSI(d.mapStatusLine()))
 	}
 }
 

@@ -5,7 +5,6 @@ package tty
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -29,14 +28,14 @@ func (d Dashboard) header(o render.Opts) string {
 	// THE LADDERS ARE SHARED WITH THE CONSOLE (D-59, masthead.go), so the two
 	// surfaces cannot come to draw different mastheads. This is their only
 	// behavioural home.
-	var slot *mastheadSlot
+	var slot *MastheadSlot
 	if d.memo != nil {
 		slot = &d.memo.head
 	}
-	return slot.get(mastheadKeyOf(o, render.EditionObserver, d.cfg.Version, d.snap, d.clock()), func() string {
+	return slot.Get(MastheadKeyOf(o, render.EditionObserver, d.cfg.Version, d.snap, d.clock()), func() string {
 		rule := o.BoxRuleWidth()
-		title := mastheadTitle(render.EditionObserver, d.cfg.Version, rule)
-		stamp := mastheadStamp(o, title, d.snap, d.clock(), rule)
+		title := MastheadTitle(render.EditionObserver, d.cfg.Version, rule)
+		stamp := MastheadStamp(o, title, d.snap, d.clock(), rule)
 		// no tone of its own: the frame's base grey paints it
 		return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "")
 	})
@@ -90,30 +89,12 @@ func (d Dashboard) headerControls(o render.Opts, form int) string {
 	return o.Controls("  ", items...)
 }
 
-// staleAfter is how long the stamp stays green after the last successful
-// fetch (UAT 2026-08-27: "the API has not successfully refreshed in > 5 minutes").
-const staleAfter = 5 * time.Minute
-
 // clock is the model's clock (time.Now unless a test pinned one).
 func (d Dashboard) clock() time.Time {
 	if d.now == nil {
 		return time.Now()
 	}
 	return d.now()
-}
-
-// agoWords is the stamp's age in words: "Just Now", "1 Minute Ago",
-// "12 Minutes Ago", "3 Hours Ago".
-func agoWords(age time.Duration) string {
-	switch {
-	case age < time.Minute:
-		return "Just Now"
-	case age < time.Hour:
-		m := int(age / time.Minute)
-		return fmt.Sprintf("%d Minute%s Ago", m, plural(m))
-	}
-	h := int(age / time.Hour)
-	return fmt.Sprintf("%d Hour%s Ago", h, plural(h))
 }
 
 // apiSummary counts the providers by health: ✔ ok · ⚠ degraded but has
@@ -123,50 +104,8 @@ func agoWords(age time.Duration) string {
 // it; a shortfall means "still loading"). The total is the active set,
 // padded to two columns (UAT 102: "reserve 2 col for growth").
 
-// apiSummaryOf counts the providers' health for the masthead — the ONE owner,
-// called by both surfaces (D-59). Two counts of one snapshot could disagree, and
-// the number is a health claim.
-func apiSummaryOf(o render.Opts, snap *snapshot.Snapshot) string {
-	c := countProviders(snap)
-	ok, stale, down, total := c.ok, c.stale, c.down, c.total
-	g := o.Glyphs()
-	gOK, gStale, gDown := g.OK, g.Alert, g.Fail // one owner for every mark (R5-C-13)
-	if o.ASCII {
-		gOK, gStale, gDown = "OK", "!!", "XX"
-	}
-	return fmt.Sprintf("API: %s %s%d %s%d /%3d",
-		render.Tint(gOK+strconv.Itoa(ok), render.Tok(render.ProviderOK)),
-		render.Tint(gStale, render.Tok(render.AlertLabel)), stale,
-		render.Tint(gDown, render.Tok(render.ProviderDown)), down, total)
-}
-
-// providerCounts are the providers counted by health, as apiSummaryOf says them.
-type providerCounts struct{ ok, stale, down, total int }
-
-// countProviders counts a snapshot's providers by health: the summary's numbers,
-// and the masthead memo's key for them.
-func countProviders(snap *snapshot.Snapshot) providerCounts {
-	var c providerCounts
-	for _, p := range providersOf(snap) { // bounded by the providers (P10-02)
-		switch {
-		case p.Status == snapshot.ProviderOff:
-			continue
-		case p.Status == snapshot.ProviderOK && p.FetchedAt.IsZero():
-			// registered, not yet answered (the first frames): in the total, not yet ✔ (REVIEW C5)
-		case p.Status == snapshot.ProviderOK:
-			c.ok++
-		case p.FetchedAt.IsZero():
-			c.down++
-		default:
-			c.stale++
-		}
-		c.total++
-	}
-	return c
-}
-
 // apiSummary is the Dashboard's own reading of it.
-func (d Dashboard) apiSummary(o render.Opts) string { return apiSummaryOf(o, d.snap) }
+func (d Dashboard) apiSummary(o render.Opts) string { return APISummaryOf(o, d.snap) }
 
 // body is the frame below the header: radio module, alert area, the
 // control row, then the two tables from the memo (Q3).
@@ -365,7 +304,7 @@ func railify(table string, width, lo, total, window int, g render.RailGlyphs) st
 
 // row converts a snapshot location to a table row.
 func (d Dashboard) row(i int, loc *snapshot.Location, selected bool) render.LocationRow {
-	row := weatherRow(loc, d.fireBoldMW(), extRowDays)
+	row := WeatherRow(loc, d.fireBoldMW(), extRowDays)
 	row.Index, row.Tag, row.Selected = i+1, loc.Tag, selected
 	// WHAT THE RADIO IS DOING IS OBSERVER'S ALONE. The console has no watchlist
 	// and nothing on the pool is "playing"; a shared converter that carried these
@@ -379,87 +318,3 @@ func (d Dashboard) row(i int, loc *snapshot.Location, selected bool) render.Loca
 // five, which `render`'s own `extMaxDays` is the other half of. Stated here
 // because `modes/tty` builds the row and `platform/render` owns the columns.
 const extRowDays = 5
-
-// weatherRow is everything a SNAPSHOT knows about a location, as a table row.
-//
-// THE ONE CONVERTER (D-112), for the Broadcaster's pool as for the watchlist. A
-// hand-built second copy carries only the fields it had on the day it was
-// written, and every column it lacks — HI, LOW, TOMORROW, the trend arrow, the
-// fire and seismic marks — draws `n/a` on a table whose whole purpose the HUM
-// LEAD stated as "gives the human operator some basic weather info to determine
-// if they want to have that location prioritized".
-//
-// Two carriers of one conversion drift silently. The pool table and the
-// watchlist table are the SAME renderer already (`render.PoolTable` is
-// `tableFor` with one flag); this makes the data behind them the same too.
-//
-// WHAT IT DOES NOT SET is what belongs to a SURFACE rather than to the weather:
-// the row's number, the operator's pointer, what the radio is playing, and — on
-// the pool — how far the place is from the TRANSMITTER rather than from the
-// station that observed it.
-func weatherRow(loc *snapshot.Location, fireBoldMW float64, extDays int) render.LocationRow {
-	row := render.LocationRow{
-		Name:       loc.Label,
-		Zip:        loc.Zip,
-		Station:    loc.Harmonized.Source.ModelOrStation, // WX STN / DIST (UAT 60)
-		StationKM:  loc.Harmonized.Source.DistanceKm,
-		Conditions: loc.Harmonized.Condition, // display mapping in the seam (P.CLOUDY etc)
-		Now:        loc.Harmonized.Temp,
-		Trend:      trend(*loc),
-		HasAlert:   len(loc.Alerts) > 0,
-		AlertCount: len(loc.Alerts),                        // ⚠ badge (UAT 20.2)
-		Fire:       fireCount(loc.Fire),                    // B5 / UAT 110: n◆
-		FireHot:    fireHot(loc.Fire.Hotspots, fireBoldMW), // B5
-		Seismic:    seismicRowLevel(loc.Seismic),           // the strongest quake's felt-band glyph
-		// UAT 18.2: shimmer until this location's data lands (obs or daily
-		// still pending); post-load nils stay honest "n/a".
-		Loading: rowLoading(loc),
-	}
-	for _, al := range loc.Alerts { // bounded by the location's alerts (P10-02)
-		if render.AlertIsWarning(al.Event, al.Severity) {
-			row.WarnAlert = true // warning-grade outranks advisory (UAT 14.1)
-			break
-		}
-	}
-	if len(loc.Daily) > 0 {
-		row.Hi, row.Lo = loc.Daily[0].TempMax, loc.Daily[0].TempMin
-	}
-	if len(loc.Daily) > 1 {
-		row.TomorrowConditions = loc.Daily[1].Condition
-		row.TomorrowHi, row.TomorrowLo = loc.Daily[1].TempMax, loc.Daily[1].TempMin
-	}
-	// THE EXTENDED DAYS ARE THE CALLER'S ASK (D-120). Observer's ultra-wide
-	// columns draw them; the console's two tables do not, and building five day
-	// cells a row for a table that never reads them is work spent on nothing.
-	for _, day := range loc.Daily[min(2, len(loc.Daily)):] { // bounded by the forecast (P10-02)
-		if len(row.Extended) >= extDays {
-			break
-		}
-		row.Extended = append(row.Extended, render.DayCell{Date: mmdd(day.Date), Hi: day.TempMax, Lo: day.TempMin})
-	}
-	return row
-}
-
-// mmdd shortens an ISO date to the mock's mm/dd column header.
-func mmdd(iso string) string {
-	if len(iso) < 10 {
-		return iso
-	}
-	return iso[5:7] + "/" + iso[8:10]
-}
-
-// trend derives the NOW arrow from the next forecast hour vs current temp
-// (mock: 888°F↗; ±0.3°C deadband so noise doesn't flicker the arrow).
-func trend(loc snapshot.Location) string {
-	if loc.Harmonized.Temp == nil || len(loc.Hourly) == 0 || loc.Hourly[0].Temp == nil {
-		return ""
-	}
-	delta := *loc.Hourly[0].Temp - *loc.Harmonized.Temp
-	switch {
-	case delta > 0.3:
-		return "up"
-	case delta < -0.3:
-		return "down"
-	}
-	return ""
-}

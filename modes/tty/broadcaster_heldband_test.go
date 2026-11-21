@@ -70,8 +70,8 @@ func TestTheHeldMessageIsCentredInTheBand(t *testing.T) {
 	// right-aligned and the measurement meaningless.
 	var line string
 	for _, r := range rows {
-		if strings.Contains(stripANSITest(r), "HAZARD(S) HELD") {
-			line = stripANSITest(r)
+		if strings.Contains(StripANSI(r), "HAZARD(S) HELD") {
+			line = StripANSI(r)
 		}
 	}
 	if line == "" {
@@ -145,7 +145,7 @@ func TestTheSeverestRungIsNeverTruncated(t *testing.T) {
 		// Collapsed, for the reason clip_ansi_test.go's sweep records: a wrap
 		// falling between the last two words separates them with centring
 		// padding, which is not truncation.
-		got := strings.Join(strings.Fields(stripANSITest(strings.Join(b.heldNotice(), " "))), " ")
+		got := strings.Join(strings.Fields(StripANSI(strings.Join(b.heldNotice(), " "))), " ")
 		if !strings.Contains(got, "dropped unread") {
 			t.Errorf("width %d: the severest rung is cut short:\n%q", w, got)
 		}
@@ -159,8 +159,8 @@ func TestTheBandKeepsTheFreshnessRules(t *testing.T) {
 	if rows := bcStandby(t, false, 30*time.Minute).heldNotice(); rows != nil {
 		t.Errorf("an empty rail raised a band: %q", rows)
 	}
-	early := stripANSITest(strings.Join(bcStandby(t, true, 30*time.Second).heldNotice(), "\n"))
-	late := stripANSITest(strings.Join(bcStandby(t, true, 20*time.Minute).heldNotice(), "\n"))
+	early := StripANSI(strings.Join(bcStandby(t, true, 30*time.Second).heldNotice(), "\n"))
+	late := StripANSI(strings.Join(bcStandby(t, true, 20*time.Minute).heldNotice(), "\n"))
 	if early == late {
 		t.Error("the band no longer escalates with time")
 	}

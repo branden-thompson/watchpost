@@ -46,11 +46,11 @@ func TestTheMapKeepsItsFloorWhenTheTerminalCanHoldIt(t *testing.T) {
 	if d.modalMax() != 38-topInset-bottomInset-2 {
 		t.Errorf("the window is %d rows; its ceiling is the rows between the insets but its borders (32)", d.modalMax())
 	}
-	if strings.Contains(stripANSITest(d.View().Content), "The map needs") {
+	if strings.Contains(StripANSI(d.View().Content), "The map needs") {
 		t.Error("the window shows the floor's notice in place of the map")
 	}
 	// The ceiling holds them: here the notes still show in full, nothing collapsed.
-	if notes := stripANSITest(strings.Join(d.noteLines(d.mapTextW()), "\n")); !strings.Contains(notes, "A note the feed carries") {
+	if notes := StripANSI(strings.Join(d.noteLines(d.mapTextW()), "\n")); !strings.Contains(notes, "A note the feed carries") {
 		t.Errorf("the notes collapsed where the window could grow to hold them:\n%s", notes)
 	}
 }
@@ -69,7 +69,7 @@ func TestTheMapWindowRunsInsetToInset(t *testing.T) {
 		if want := h - topInset - bottomInset - 2; d.modalMax() != want {
 			t.Errorf("at 200x%d the window's body is %d rows, want %d", h, d.modalMax(), want)
 		}
-		rows := strings.Split(stripANSITest(d.View().Content), "\n")
+		rows := strings.Split(StripANSI(d.View().Content), "\n")
 		top, bottom := -1, -1
 		for i, r := range rows {
 			if strings.Contains(r, "┌") && top < 0 {
@@ -94,13 +94,13 @@ func TestTheNotesYieldWhereTheWindowCannot(t *testing.T) {
 		t.Fatalf("at 149x31 the notes did not yield: the map is %v", d.mapBodySize())
 	}
 	notes := d.noteLines(d.mapTextW())
-	joined := stripANSITest(strings.Join(notes, "\n"))
+	joined := StripANSI(strings.Join(notes, "\n"))
 	if !strings.Contains(joined, "Status") || strings.Contains(joined, "A note the feed carries") {
 		t.Errorf("the notes did not collapse to one line naming Status:\n%s", joined)
 	}
 	// AND THE POINTER IS TRUE: the Status window carries them, under the map's hosts.
 	d.cfg.MapSources = []MapSource{{Name: "tiles", Layers: "Basemap"}}
-	status := stripANSITest(strings.Join(d.statusBlocks(0).sources, "\n"))
+	status := StripANSI(strings.Join(d.statusBlocks(0).sources, "\n"))
 	for _, n := range d.mapPane.notes {
 		if !strings.Contains(strings.Join(strings.Fields(status), " "), strings.Join(strings.Fields(n), " ")) {
 			t.Errorf("the notes point to the Status window, which does not say %q:\n%s", n, status)

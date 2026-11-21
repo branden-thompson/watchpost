@@ -709,3 +709,54 @@ snapshot-message sites and `check_studs` (`scripts/lint-imports.sh:31`) all hold
 key's fields, which would have renamed the ticker's 96 keys with `tick`. `replaceWhole` matches a
 name only where it stands whole; `TestARenameReplacesOnlyAWholeName` was seen failing under the text
 replace. It lands before the prep, in a commit of its own.
+
+## B2's prep: the kit and the test support cut in place (A-50; D-59 to D-61)
+
+**A correction to B1's close.** B1 closed without `make p10`, which its close list named. Run on
+B2's prep it found what B1 left: `tools/ids/idset`'s density, 1.00 over D-50's two functions (D-60,
+a row ratified), and `app/mastercontrol.go` at 0.33 over the three functions B1.2's rename touched,
+under `app`'s floor of 0.61 (D-61). The file row first ruled matched nothing, because the harness
+keys density by directory; `tools/p10floor` now reads a file's floor from a note in its package's
+row, seen failing under the old reading. `make p10`: 0 live, 0 unmatched, 0 unratified.
+
+**The kit, in place (design CK-1).** 41 declarations and their methods cut whole, each with its doc
+comment, into `kit_row.go`, `kit_cursor.go`, `kit_tick.go`, `kit_memo.go` and `kit_text.go`, and
+into `masthead.go` for what the masthead alone reads. 25 names and 5 methods exported by
+`gopls rename`, `tick` as `ShimmerTick` (D-59), and `NoTransmitter` moved in (A-31): 31 entries on
+the root's export list until the move takes them out. `MemoStats` embeds its mutex, with `Hit` and
+`Miss` (A-21). `renames.tsv` gains B2's 31 lines, each scoped to `modes/tty` (A-49), and
+`TestTheTreesKeepWhatTheCompilerDecided` carries every key through them.
+
+**The test support, in place (design CK-4).** The guard's engine and the pure helpers cut into
+`ttytest_perturb_test.go` and `ttytest_helpers_test.go` under their exported names, for
+`internal/ttytest` in the move commit.
+
+**Mutants.** 21 re-pointed: 12 by name, 8 by path to the kit files, m241 to `NoTransmitter`. All
+1,060 anchors match. m744, m745 and m747 were applied by hand: each fails
+`TestTheMastheadKeyCoversItsNamedInputs` and no other test.
+
+**The changed-line table.**
+
+| File | Line | Kind | Mutants before | After |
+|---|---|---|---|---|
+| `masthead_memo_test.go` | the guard, split (D-58) | assertion | m744, m745, m747 by `TestTheMastheadKeyCoversEverythingTheMastheadShows` | by `TestTheMastheadKeyCoversItsNamedInputs` |
+| `broadcaster_masthead_memo_test.go` | the console's half (D-58) | assertion, moved | (in the guard) | none recorded |
+| `kit_masthead_test.go` | colour on at the start | setup | — | — |
+| `broadcaster_pooldata_test.go` | the agreement line (D-55) | assertion | none | none |
+| `detail_fire_test.go` | the row's count (D-56) | assertion | none | none |
+| `router_lookup_test.go` | an exported message may be excused; `TickMsg`'s excuse | assertion | none | none |
+| `cmd/watchpost/messages_test.go` | R8's pin: `TickMsg` for `tickMsg` | setup | — | — |
+| the helpers' and the engine's call sites | renamed (A-50) | setup | — | — |
+
+**The inventory's delta.** New: `TestTheConsolesMastheadKeyCoversEverythingItsMastheadShows` and
+`TestTheMastheadKeyCoversItsNamedInputs`, the guard's two halves (D-58);
+`TestARenameScopedToAPackageMapsThatPackageAlone` (`tools/mutantmap`). No test removed.
+
+**AP-CAPS-01's soft warnings** rise from 1 to 87: the cut files' lines are new to the diff, and the
+comments they carry open paragraphs as they always did. The prep moves them unchanged; nothing it
+wrote opens a paragraph with AND, BUT or SO.
+
+**The first gate failed** in `make race` on two of `cmd/watchpost`'s tests: the declaration golden
+had been re-captured before D-59's rename, and D-59 to D-61 and A-50 named Go files without a line
+or symbol. D-59 and D-60 now cite a symbol and a package; D-61's file floor and A-50's files are
+claims about whole files, listed in `wholeFileClaims` as D-47's are.

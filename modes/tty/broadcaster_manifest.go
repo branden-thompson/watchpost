@@ -138,13 +138,13 @@ func cardPulledShort(o render.Opts, c lineup.Card, now func() time.Time) string 
 
 // shortAgo is the reference's own form of an elapsed span: "2 MIN AGO".
 //
-// IT SHARES THE DASHBOARD'S THRESHOLDS, NOT ITS WORDS. `agoWords` decides when
+// IT SHARES THE DASHBOARD'S THRESHOLDS, NOT ITS WORDS. `AgoWords` decides when
 // "just now" stops being true and when minutes become hours; this decides how
 // to say it on a console that shouts. Two functions with two ladders would be
 // two answers to how old a thing is — so the ladder is asked once, through the
 // one that already owns it, and only the wording differs.
 func shortAgo(d time.Duration) string {
-	words := strings.ToUpper(agoWords(d))
+	words := strings.ToUpper(AgoWords(d))
 	words = strings.ReplaceAll(words, "MINUTES", "MIN")
 	words = strings.ReplaceAll(words, "MINUTE", "MIN")
 	words = strings.ReplaceAll(words, "HOURS", "HR")

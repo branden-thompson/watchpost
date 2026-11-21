@@ -18,7 +18,7 @@ func TestTheDebugWindowOffersNoInjectionWithoutAHook(t *testing.T) {
 	d.width, d.height = 133, 44
 	d = d.open(modalDebug)
 
-	got := stripANSITest(strings.Join(firstOf(d.debugLines(d.opts())), "\n"))
+	got := StripANSI(strings.Join(firstOf(d.debugLines(d.opts())), "\n"))
 	if !strings.Contains(got, "INJECTION IS NOT AVAILABLE") {
 		t.Errorf("a build with no injector says so:\n%s", got)
 	}
@@ -38,7 +38,7 @@ func TestTheDebugWindowOffersNoInjectionWithoutAHook(t *testing.T) {
 	if got := d.debugScenarios(); len(got) != 0 {
 		t.Errorf("scenarios without an injector must not be offered, got %v", got)
 	}
-	if body := stripANSITest(strings.Join(firstOf(d.debugLines(d.opts())), "\n")); strings.Contains(body, "one alert") {
+	if body := StripANSI(strings.Join(firstOf(d.debugLines(d.opts())), "\n")); strings.Contains(body, "one alert") {
 		t.Errorf("an unwired scenario must not be drawn:\n%s", body)
 	}
 }
@@ -54,7 +54,7 @@ func TestTheDebugWindowAsksBeforeItInjects(t *testing.T) {
 	d := wiredDebug(t, func(k string) { fired = k })
 
 	// The window offers the Alert Type question, not a list of rows.
-	body := stripANSITest(strings.Join(firstOf(d.debugLines(d.opts())), "\n"))
+	body := StripANSI(strings.Join(firstOf(d.debugLines(d.opts())), "\n"))
 	for _, want := range []string{"ALERT INJECTION", "Alert Type:", "one alert"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("the window does not draw %q:\n%s", want, body)
@@ -75,7 +75,7 @@ func TestTheDebugWindowAsksBeforeItInjects(t *testing.T) {
 	if !d.debug.confirm {
 		t.Fatal("enter did not raise the confirmation")
 	}
-	if got := stripANSITest(d.View().Content); !strings.Contains(got, "ARE YOU SURE?") ||
+	if got := StripANSI(d.View().Content); !strings.Contains(got, "ARE YOU SURE?") ||
 		!strings.Contains(got, "YOU CANNOT STOP THIS ACTION") ||
 		!strings.Contains(got, "as the operator, responsibility for") {
 		t.Errorf("the confirmation does not say what it is asking:\n%s", got)
@@ -202,9 +202,9 @@ func TestTheShippedDiagnosticsWindowIsReadableAtTheFloor(t *testing.T) {
 	if len(want) > d.modalMax()-1 {
 		t.Fatalf("the shipped window is %d lines against a %d-line budget at 80x24", len(want), d.modalMax()-1)
 	}
-	got := stripANSITest(d.modalView(d.opts()))
+	got := StripANSI(d.modalView(d.opts()))
 	for _, l := range want {
-		if text := modalTextOf(l); text != "" && !strings.Contains(stripANSITest(got), text) {
+		if text := modalTextOf(l); text != "" && !strings.Contains(StripANSI(got), text) {
 			t.Errorf("%q is in the window and not on the screen at 80x24:\n%s", text, got)
 		}
 	}
@@ -234,7 +234,7 @@ func debugAtTheFloor(t *testing.T) Dashboard {
 // artifact of the instrument, in a measurement whose whole subject is
 // instruments that lie.
 func modalTextOf(line string) string {
-	text := strings.Trim(stripANSITest(line), "│┃▲▼█▓░─━╌┌┐└┘├┤ ")
+	text := strings.Trim(StripANSI(line), "│┃▲▼█▓░─━╌┌┐└┘├┤ ")
 	text = strings.TrimLeft(text, "›> ")
 	return strings.Join(strings.Fields(text), " ")
 }

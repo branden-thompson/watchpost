@@ -32,7 +32,7 @@ var bcDetailAt = time.Date(2026, 9, 11, 17, 45, 0, 0, time.UTC)
 // started refusing it.
 func composedCard(t *testing.T, id, subject string, contents []lineup.Content, at time.Time) (lineup.Card, lineup.Card) {
 	t.Helper()
-	base := card(t, id, subject)
+	base := Card(t, id, subject)
 	c, err := base.To(lineup.Standby)
 	if err != nil {
 		t.Fatalf("standby %s: %v", id, err)
@@ -254,7 +254,7 @@ func TestAnUnchangedCardDoesNotMoveTheGeneration(t *testing.T) {
 // `A` reaches it through the alert rail, so the two windows cannot come to
 // disagree about what a card looks like.
 func TestTheAlertBoxsWayInOpensThePriorityCard(t *testing.T) {
-	alert := card(t, "brk1", "Vista, CA")
+	alert := Card(t, "brk1", "Vista, CA")
 	b := bcWith(t)
 	l, err := b.lineup.Queue(lineup.AlertRail, alert)
 	if err != nil {
@@ -264,7 +264,7 @@ func TestTheAlertBoxsWayInOpensThePriorityCard(t *testing.T) {
 	b.width, b.height, b.ascii = 150, 74, true
 
 	// THE PREMISE: the box actually draws the control this test is about.
-	if frame := stripANSITest(b.View().Content); !strings.Contains(frame, "Details / Full Read / Manage") {
+	if frame := StripANSI(b.View().Content); !strings.Contains(frame, "Details / Full Read / Manage") {
 		t.Fatal("the alert box does not draw its way in; this test would prove nothing")
 	}
 
@@ -339,9 +339,9 @@ func TestTheConsolesTwoDrawnControlsAreBound(t *testing.T) {
 	// slot 2, which is the second card. It is a FIXTURE fact rather than a
 	// behaviour, and the same off-by-one can put a move one slot low.
 	b := bcWith(t,
-		card(t, "c0", "first"),
-		card(t, "c1", string(snapshot.Key(vista))),
-		card(t, "c2", "third"))
+		Card(t, "c0", "first"),
+		Card(t, "c1", string(snapshot.Key(vista))),
+		Card(t, "c2", "third"))
 	b.width, b.height, b.ascii = 150, 74, true
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
@@ -350,7 +350,7 @@ func TestTheConsolesTwoDrawnControlsAreBound(t *testing.T) {
 	})
 
 	// THE PREMISE: the row really does draw both, or this proves nothing.
-	frame := stripANSITest(b.View().Content)
+	frame := StripANSI(b.View().Content)
 	for _, cap := range []string{"Lookup Location from Pool", "Request for Line-Up"} {
 		if !strings.Contains(frame, cap) {
 			t.Fatalf("the control row does not draw %q; this test measures nothing", cap)

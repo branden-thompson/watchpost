@@ -54,7 +54,7 @@ func describedIn(t *testing.T, feed func(context.Context, MapAsk) MapFeed, units
 	d = m.(Dashboard)
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	return unwrapped(stripANSITest(d.View().Content))
+	return unwrapped(StripANSI(d.View().Content))
 }
 
 // unwrapped is the window's words as one run: each line's text between the
@@ -150,7 +150,7 @@ func TestAUnitChangeRedrawsTheDescription(t *testing.T) {
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	d = pressCode(d, 'c', "c")
-	if out := stripANSITest(d.View().Content); !strings.Contains(out, "°C") {
+	if out := StripANSI(d.View().Content); !strings.Contains(out, "°C") {
 		t.Errorf("after c the description still says:\n%s", out)
 	}
 }

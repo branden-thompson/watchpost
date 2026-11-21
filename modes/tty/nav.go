@@ -135,7 +135,7 @@ func (d Dashboard) numRecent() int {
 // Without the prepend a lookup puts nothing in the table until the rebuilt
 // snapshot arrives, so the row simply appears some seconds later — which reads as
 // the app having missed the keystroke. The placeholder carries no
-// readings, so rowLoading marks it and the temperature cells shimmer, exactly as
+// readings, so RowLoading marks it and the temperature cells shimmer, exactly as
 // they do for a location still loading on first launch. The row is there from
 // the first frame and fills in where it stands.
 //

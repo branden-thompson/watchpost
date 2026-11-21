@@ -133,13 +133,14 @@ func TestAValidLocationSearchedFromTheConsoleLands(t *testing.T) {
 // (0.19.6 TG-6). A split exports what crosses a package line, so a reply
 // exported for a subpackage to send would otherwise leave the guard with a
 // green run; an exported message is one of the app's inputs, named below with
-// the surface that reads it. And an excuse for a type that has moved or gone is
-// an excuse for nothing, which fails rather than lingers.
+// the surface that reads it, or a cadence excused with its reason, as the kit's
+// TickMsg is (0.19.6 B2). And an excuse for a type that has moved or gone is an
+// excuse for nothing, which fails rather than lingers.
 func TestEveryWindowReplyIsRoutedBackToTheWindow(t *testing.T) {
 	// The two TICK messages are Observer's own animation cadence, not an answer
 	// owed to an open window. They are excused with their reason, not omitted.
 	excused := map[string]string{
-		"tickMsg":    "Observer's own 300ms cadence — nothing asked for it, so nothing is owed an answer",
+		"TickMsg":    "Observer's own 300ms cadence — nothing asked for it, so nothing is owed an answer",
 		"vizTickMsg": "the visualizer's 50ms frame cadence, for the same reason",
 	}
 	// inputs are the messages the app sends in, with the routing that delivers each.
@@ -183,6 +184,10 @@ func TestEveryWindowReplyIsRoutedBackToTheWindow(t *testing.T) {
 				}
 				name := ts.Name.Name
 				seen[name] = true
+				if why, skip := excused[name]; skip && ast.IsExported(name) {
+					t.Logf("excused %s: %s", name, why)
+					continue
+				}
 				if ast.IsExported(name) {
 					if _, ok := inputs[name]; !ok {
 						t.Errorf("%s is an exported message this guard has not judged: name it in inputs with the surface that reads it, "+

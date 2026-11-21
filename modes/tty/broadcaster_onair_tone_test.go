@@ -20,7 +20,7 @@ import (
 func onAirRow(t *testing.T, b Broadcaster) string {
 	t.Helper()
 	for _, r := range b.stationLine() {
-		if strings.Contains(stripANSITest(r), "ON AIR "+b.opts().Glyphs().Dot) {
+		if strings.Contains(StripANSI(r), "ON AIR "+b.opts().Glyphs().Dot) {
 			return r
 		}
 	}
@@ -55,7 +55,7 @@ func TestOnlyTheLiveStateIsBold(t *testing.T) {
 		b := broadcasterWithOneCard(t)
 		b.power = p
 		for _, r := range b.stationLine() {
-			plain := stripANSITest(r)
+			plain := StripANSI(r)
 			if !strings.HasPrefix(strings.TrimSpace(plain), "STATION AIR:") {
 				continue
 			}
@@ -84,7 +84,7 @@ func TestTheUpNextBoxWearsTheSameBlueAsTheDirectionBand(t *testing.T) {
 
 	var direction string
 	for _, r := range strings.Split(b.View().Content, "\n") {
-		if strings.Contains(stripANSITest(r), "D I R E C T I O N") {
+		if strings.Contains(StripANSI(r), "D I R E C T I O N") {
 			direction = r
 			break
 		}
@@ -109,7 +109,7 @@ func TestTheUpNextBoxWearsTheSameBlueAsTheDirectionBand(t *testing.T) {
 	// label segment has text in it.
 	var cell string
 	for _, r := range b.upNextBox() {
-		if strings.Contains(stripANSITest(r), bcUpNextLabel) {
+		if strings.Contains(StripANSI(r), bcUpNextLabel) {
 			cell = r
 			break
 		}

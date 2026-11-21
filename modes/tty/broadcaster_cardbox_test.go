@@ -102,18 +102,18 @@ func TestAFabricatedCardStillSaysSoInItsRule(t *testing.T) {
 	c := aCard(t, "OCEANSIDE, CA")
 	c.Test = true
 	rows := boxOf(t, 132, c, "6", "STANDARD")
-	if !strings.Contains(rows[0], testEventMark) {
+	if !strings.Contains(rows[0], TestEventMark) {
 		t.Errorf("a fabricated card does not say so in its rule: %q", rows[0])
 	}
 	// FIRST, BEFORE THE HEADLINE. `boxRule` drops a title the box cannot hold, so
 	// a mark behind the headline would be the first thing to go — and the whole
 	// point of the mark is that it cannot be the thing that is missing.
-	if at, head := strings.Index(rows[0], testEventMark), strings.Index(rows[0], "OCEANSIDE"); head >= 0 && at > head {
+	if at, head := strings.Index(rows[0], TestEventMark), strings.Index(rows[0], "OCEANSIDE"); head >= 0 && at > head {
 		t.Errorf("the mark follows the headline it is warning about: %q", rows[0])
 	}
 	// AND A TAKEOVER SAYS IT TOO, which is the card the rule was written for.
 	c.Slot = lineup.BreakingAlert
-	if burst := boxOf(t, 132, c, "A", "PRIORITY")[0]; !strings.Contains(burst, testEventMark) {
+	if burst := boxOf(t, 132, c, "A", "PRIORITY")[0]; !strings.Contains(burst, TestEventMark) {
 		t.Errorf("a fabricated takeover does not say so in its rule: %q", burst)
 	}
 }

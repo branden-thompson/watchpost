@@ -46,7 +46,7 @@ func viewFeed(_ context.Context, _ MapAsk) MapFeed {
 
 // boxText is the Description box's words as one run.
 func boxText(d Dashboard) string {
-	return unwrapped(stripANSITest(strings.Join(d.descriptionBox(d.mapBodySize()), "\n")))
+	return unwrapped(StripANSI(strings.Join(d.descriptionBox(d.mapBodySize()), "\n")))
 }
 
 func TestTheBoxListsTheAlertsInViewMostSevereFirst(t *testing.T) {

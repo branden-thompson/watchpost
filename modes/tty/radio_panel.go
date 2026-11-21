@@ -4,7 +4,6 @@ package tty
 // map of where things happen is docs/where-things-happen.md.
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -73,25 +72,7 @@ func (d Dashboard) volControl(o render.Opts, width int) string {
 			minus = o.KeyCapWith("-", render.ChipFlashDown)
 		}
 	}
-	return levelControl(o, "VOL ", d.radioVolume, minus, plus, width)
-}
-
-// levelControl renders "<LABEL> [-]█████░░░░░[+] 55" — the ONE bar (D-56).
-//
-// THE CONSOLE CALLS IT "GAIN" AND OBSERVER CALLS IT "VOL", and that is the whole
-// difference (HUM LEAD, 2026-09-10: "gain is the VOL control in Observer"). A
-// second bar would be a second place the level is drawn, and two bars
-// disagreeing about how loud the station is would be worse than either.
-//
-// The bar only steps at the tens, which is why the chips blink: the blink is the
-// per-press feedback (UAT 41). The level always occupies 3 cells (0-100) so the
-// row never jitters (UAT 42.1).
-func levelControl(o render.Opts, label string, level int, minus, plus string, width int) string {
-	filled := width * level / 100
-	return render.TintRaw(label, "1;97") + minus +
-		render.Tint(strings.Repeat(o.Glyphs().RailCar, filled), render.Tok(render.RadioAccent)) +
-		strings.Repeat(o.Glyphs().Fill, width-filled) +
-		plus + " " + render.Tint(fmt.Sprintf("%3d", level), render.Tok(render.TextBright))
+	return LevelControl(o, "VOL ", d.radioVolume, minus, plus, width)
 }
 
 // radioPanel renders the player: the rows the layout already built for the

@@ -122,7 +122,7 @@ func TestHelpListsEachWindowsOwnGroup(t *testing.T) {
 			t.Errorf("window %d declares Help's %s group and Help does not list it", m, w.helpTitle)
 		}
 	})
-	help := stripANSITest(strings.Join(helpTextLines(t), "\n"))
+	help := StripANSI(strings.Join(helpTextLines(t), "\n"))
 	if !strings.Contains(help, "P Propagation, L Layer, U Refresh, / Find") {
 		t.Error("Help lost the map's rows")
 	}

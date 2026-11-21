@@ -123,7 +123,7 @@ func TestAReadSlotIsEmptyWhileTheStationIsAtRest(t *testing.T) {
 func TestTheFrameKeepsItsInset(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+	rows := strings.Split(StripANSI(b.View().Content), "\n")
 	for i := range bcInsetRows {
 		if strings.TrimSpace(rows[i]) != "" {
 			t.Errorf("row %d is inside the opening inset and is not blank: %q", i, rows[i])
@@ -169,8 +169,8 @@ func TestTheStationBandIsPaintedByItsState(t *testing.T) {
 		if !strings.Contains(r, bg) {
 			t.Errorf("row %d of the band is unpainted: %q", i, r)
 		}
-		if strings.Contains(stripANSITest(r), "│") || strings.Contains(stripANSITest(r), "|") {
-			t.Errorf("row %d of the band still draws a wall; colour is its edge: %q", i, stripANSITest(r))
+		if strings.Contains(StripANSI(r), "│") || strings.Contains(StripANSI(r), "|") {
+			t.Errorf("row %d of the band still draws a wall; colour is its edge: %q", i, StripANSI(r))
 		}
 	}
 }
@@ -195,7 +195,7 @@ func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.2881, Lon: -117.2256},
 		RadiusMi:    25,
 	})
-	got := stripANSITest(b.stationSection(b.opts(), "", ""))
+	got := StripANSI(b.stationSection(b.opts(), "", ""))
 	// "BROADCASTING FROM:" (D-107), which is the reference's own label — a
 	// station's word for where it transmits from, not the equipment's.
 	for _, want := range []string{"BROADCASTING FROM:", "Bonsall, CA", "TOWER GPS", "33.2881", "-117.2256", "SERVICE RADIUS: 25 Miles"} {
@@ -205,8 +205,8 @@ func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
 	}
 	// AND A STATION THAT HAS NOT BEEN TOLD SAYS SO, rather than naming a place
 	// it was compiled with.
-	bare := stripANSITest(NewBroadcaster().withSize(150, 74).stationSection(b.opts(), "", ""))
-	if !strings.Contains(bare, bcNoTransmitter) {
+	bare := StripANSI(NewBroadcaster().withSize(150, 74).stationSection(b.opts(), "", ""))
+	if !strings.Contains(bare, NoTransmitter) {
 		t.Errorf("a station with no epicentre says so:\n%s", bare)
 	}
 	// AND THE BED SAYS WHAT IT IS DOING, on its own row of the air box the
@@ -226,7 +226,7 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 	b := NewBroadcaster().withSize(150, 74)
 
 	// BEFORE IT IS TOLD, it says the true thing it can say.
-	bare := stripANSITest(b.stationSection(b.opts(), "", ""))
+	bare := StripANSI(b.stationSection(b.opts(), "", ""))
 	if !strings.Contains(bare, bcNoRelay) || !strings.Contains(bare, "INACTIVE") {
 		t.Errorf("an untold bed says so:\n%s", bare)
 	}
@@ -236,7 +236,7 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 	// otherwise would be describing a state the Producer never publishes.
 	b, _ = b.Update(BedMsg{Relay: "Oceanside, CA", Carrying: true})
 	b, _ = b.Update(BedRelaysMsg{Count: 3})
-	got := stripANSITest(b.stationSection(b.opts(), "", ""))
+	got := StripANSI(b.stationSection(b.opts(), "", ""))
 	if !strings.Contains(got, "Oceanside, CA") {
 		t.Errorf("the bed names what it is carrying:\n%s", got)
 	}
@@ -253,7 +253,7 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 	// its job. Clearing what is tuned says nothing about how many relays reach
 	// the station, and a shared field would have it say "none".
 	b, _ = b.Update(BedMsg{})
-	if back := stripANSITest(b.stationSection(b.opts(), "", "")); !strings.Contains(back, "INACTIVE") {
+	if back := StripANSI(b.stationSection(b.opts(), "", "")); !strings.Contains(back, "INACTIVE") {
 		t.Errorf("cutting the bed away says so:\n%s", back)
 	}
 }
@@ -287,8 +287,8 @@ func TestTheStationBandIsEvenlyInset(t *testing.T) {
 		t.Fatalf("ON AIR the band is a blank row, eight of content and a blank row; got %d", n)
 	}
 	for _, at := range []int{0, len(rows) - 1} {
-		if strings.TrimSpace(stripANSITest(rows[at])) != "" {
-			t.Errorf("row %d is the band's air and carries text: %q", at, stripANSITest(rows[at]))
+		if strings.TrimSpace(StripANSI(rows[at])) != "" {
+			t.Errorf("row %d is the band's air and carries text: %q", at, StripANSI(rows[at]))
 		}
 	}
 	for i, r := range rows {
@@ -298,7 +298,7 @@ func TestTheStationBandIsEvenlyInset(t *testing.T) {
 		if got := render.Width(r); got != b.frameWidth() {
 			t.Errorf("row %d is %d cells; a painted band is a rectangle", i, got)
 		}
-		p := stripANSITest(r)
+		p := StripANSI(r)
 		if strings.TrimSpace(p) == "" {
 			continue // an air row is inset from nothing
 		}
@@ -380,7 +380,7 @@ func openAModal(t *testing.T, d Dashboard) Dashboard {
 func TestTheScheduledHeadingNamesTheTable(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+	rows := strings.Split(StripANSI(b.View().Content), "\n")
 
 	at := -1
 	for i, r := range rows {

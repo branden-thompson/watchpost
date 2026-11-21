@@ -388,7 +388,7 @@ func TestSetupAllocBudget(t *testing.T) {
 // joins its weather (D-120). A console with no pool measures the cheap path,
 // which is the mistake an alloc budget most easily makes.
 func BenchmarkConsoleFrame(b *testing.B) {
-	c := loadedConsole(b, loadedPoolSize)
+	c := loadedConsole(b, LoadedPoolSize)
 	if loadedJoins(c) == 0 {
 		b.Fatal("the fixture joined no weather; this benchmark is about the cheap path")
 	}
@@ -408,7 +408,7 @@ func BenchmarkConsoleFrame(b *testing.B) {
 // frame without the memo, so this number says how much the memo can cost when it
 // never helps.
 func BenchmarkConsoleFrame_Miss(b *testing.B) {
-	c := loadedConsole(b, loadedPoolSize)
+	c := loadedConsole(b, LoadedPoolSize)
 	if loadedJoins(c) == 0 {
 		b.Fatal("the fixture joined no weather; this benchmark is about the cheap path")
 	}

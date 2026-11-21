@@ -3,7 +3,6 @@ package tty
 import (
 	"fmt"
 	"reflect"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -170,7 +169,7 @@ func runCmd(cmd tea.Cmd) []tea.Msg {
 		}
 		return out
 	}
-	if _, isTick := msg.(tickMsg); msg == nil || isTick {
+	if _, isTick := msg.(TickMsg); msg == nil || isTick {
 		return nil
 	}
 	return []tea.Msg{msg}
@@ -189,11 +188,6 @@ func drain(t *testing.T, m tea.Model, cmd tea.Cmd) tea.Model {
 		queue = append(queue, runCmd(next)...)
 	}
 	return m
-}
-
-// stripANSITest removes SGR sequences for column math in tests.
-func stripANSITest(s string) string {
-	return regexp.MustCompile(`\x1b\[[0-9;]*m`).ReplaceAllString(s, "")
 }
 
 type fakeRadio struct {
@@ -240,7 +234,7 @@ func TestFailSoftUXRedTeam09(t *testing.T) {
 	model, _ = model.Update(RadioStatusMsg{State: "failed", Detail: "no voice for linux/arm: install Piper", Volume: 55})
 	d := model.(Dashboard)
 	for _, compact := range []bool{false, true} {
-		if v := stripANSITest(strings.Join(d.radioLines(d.opts(), compact), "\n")); !strings.Contains(v, "✘ no voice for linux/arm: install Piper") {
+		if v := StripANSI(strings.Join(d.radioLines(d.opts(), compact), "\n")); !strings.Contains(v, "✘ no voice for linux/arm: install Piper") {
 			t.Fatalf("failed state shows the reason (compact=%v):\n%s", compact, v)
 		}
 	}

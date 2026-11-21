@@ -38,7 +38,7 @@ var (
 
 // SourceHealth is one feed's last outcome, for the window's "Updated" stamp
 // and its source line: a dead source must show, and the stamp is the newest
-// successful fetch — dataAsOf — never the publish time.
+// successful fetch — DataAsOf — never the publish time.
 type SourceHealth struct {
 	Name      string
 	OK        bool
@@ -282,7 +282,7 @@ func (s *severeDeck) publish() {
 	kept, _ := severe.Cap(rows, severe.MaxRows)
 	byTab := severe.ByTab(rows) // totals count the PRE-cap rows per tab (honest "showing N of M")
 	msg := tty.SevereMsg{Gen: s.gen, Rows: make([]tty.SevereRow, 0, len(kept))}
-	for _, src := range sources { // "Updated" = the newest SUCCESSFUL fetch (dataAsOf, FR-9), never the publish time
+	for _, src := range sources { // "Updated" = the newest SUCCESSFUL fetch (DataAsOf, FR-9), never the publish time
 		if src.OK && src.FetchedAt.After(msg.Updated) {
 			msg.Updated = src.FetchedAt
 		}

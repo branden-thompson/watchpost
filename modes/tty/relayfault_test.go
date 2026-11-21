@@ -34,7 +34,7 @@ func TestTheRelayFaultWindowIsTheMock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := stripANSITest(faultDash(t).renderModal(faultDash(t).opts()))
+	got := StripANSI(faultDash(t).renderModal(faultDash(t).opts()))
 	wantLines := strings.Split(strings.TrimRight(string(want), "\n"), "\n")
 	gotLines := strings.Split(strings.TrimRight(got, "\n"), "\n")
 	if len(wantLines) != len(gotLines) {
@@ -80,7 +80,7 @@ func TestTheFallThroughIsAlwaysOffered(t *testing.T) {
 
 // TestTheCountdownRunsAndActs — the CLOCK AND ITS WIRE, driven through Update.
 //
-// DRIVEN THROUGH tickMsg, against the model's own clock, so onTick's whole body
+// DRIVEN THROUGH TickMsg, against the model's own clock, so onTick's whole body
 // cannot be replaced with `return d.applyTick(), nil` — deleting the countdown
 // step AND the auto-close — with this package staying green. A test that calls
 // stepRelayFault directly and one that calls fallThroughRelayFault directly pin
@@ -101,7 +101,7 @@ func TestTheCountdownRunsAndActs(t *testing.T) {
 	// — fifteen of them would turn a millisecond test into four seconds.
 	step := func() Dashboard {
 		t.Helper()
-		m, cmd := d.Update(tickMsg{})
+		m, cmd := d.Update(TickMsg{})
 		next := m.(Dashboard)
 		if cmd != nil && next.modal != modalRelayFault {
 			cmd()
@@ -270,7 +270,7 @@ func TestTheRelayFaultWindowRespondsToTheKeys(t *testing.T) {
 
 	rowOf := func(x Dashboard, want string) string {
 		t.Helper()
-		for _, l := range strings.Split(stripANSITest(x.renderModal(x.opts())), "\n") {
+		for _, l := range strings.Split(StripANSI(x.renderModal(x.opts())), "\n") {
 			if strings.Contains(l, want) {
 				return l
 			}
@@ -510,7 +510,7 @@ func TestEveryLineClearsBothMargins(t *testing.T) {
 		{Label: "KEC62 - San Diego, CA (NOAA Weather Radio All Hazards, 162.400 MHz)", Key: "a"},
 		{Label: "WWG21 - Mount Woodson, CA (NOAA Weather Radio All Hazards, 162.550 MHz)", Key: "b"},
 	}})
-	lines := strings.Split(stripANSITest(d.modalView(d.opts())), "\n")
+	lines := strings.Split(StripANSI(d.modalView(d.opts())), "\n")
 	if len(lines) < 5 {
 		t.Fatalf("the window drew %d lines; this measures nothing", len(lines))
 	}
@@ -593,7 +593,7 @@ func TestARowWrapsUnderItsOwnValue(t *testing.T) {
 		{Label: "KEC62 San Diego CA 162.400 MHz - 12 mi (nearest relayed, and then some more words)", Key: "a"},
 		{Label: "WNG712 Coachella / Spanish CA 162.525 MHz - 81 mi", Key: "b"},
 	}})
-	lines := strings.Split(stripANSITest(d.modalView(d.opts())), "\n")
+	lines := strings.Split(StripANSI(d.modalView(d.opts())), "\n")
 
 	first, cont := -1, -1
 	for i, l := range lines {
@@ -686,7 +686,7 @@ func TestTheFocusedWayOutIsAlwaysOnScreen(t *testing.T) {
 
 	want := []string{"Recommended", "Alternate", "Fall-Thru"}
 	for i, label := range want {
-		got := stripANSITest(d.modalView(d.opts()))
+		got := StripANSI(d.modalView(d.opts()))
 		if !strings.Contains(got, label) {
 			t.Errorf("with the cursor on row %d, %q is off screen — the listener cannot see what enter would take:\n%s",
 				i, label, got)

@@ -34,7 +34,7 @@ func TestDetailSeismicSectionShowsGraduatedRows(t *testing.T) {
 		{Mag: 1.4, Place: "underfoot", DepthKm: 2, At: now.Add(-90 * time.Minute), DistanceKm: 2, Bearing: "E"}, // shown too — the whole list (P4)
 	}}
 	raw := detailWithSeismic(t, ss)
-	joined := stripANSITest(raw)
+	joined := StripANSI(raw)
 	for _, want := range []string{
 		"SEISMIC │ 4 nearby in the last 7 days",
 		"(USGS)",
@@ -63,16 +63,16 @@ func TestDetailSeismicSectionShowsGraduatedRows(t *testing.T) {
 func TestDetailSeismicUnavailableVsQuiet(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	// Cold / down feed (AsOf zero): "unavailable", never a fake "none".
-	if got := stripANSITest(detailWithSeismic(t, &snapshot.SeismicState{})); !strings.Contains(got, "SEISMIC │ Recent       seismic data unavailable") && !strings.Contains(got, "seismic data unavailable") {
+	if got := StripANSI(detailWithSeismic(t, &snapshot.SeismicState{})); !strings.Contains(got, "SEISMIC │ Recent       seismic data unavailable") && !strings.Contains(got, "seismic data unavailable") {
 		t.Fatalf("a cold feed reads 'unavailable':\n%s", got)
 	}
 	// nil (no state at all) is also unavailable.
-	if got := stripANSITest(detailWithSeismic(t, nil)); !strings.Contains(got, "seismic data unavailable") {
+	if got := StripANSI(detailWithSeismic(t, nil)); !strings.Contains(got, "seismic data unavailable") {
 		t.Fatalf("no state reads 'unavailable':\n%s", got)
 	}
 	// Answered and empty: the honest quiet answer.
 	now := time.Now()
-	if got := stripANSITest(detailWithSeismic(t, &snapshot.SeismicState{AsOf: now})); !strings.Contains(got, "no recent seismic activity") {
+	if got := StripANSI(detailWithSeismic(t, &snapshot.SeismicState{AsOf: now})); !strings.Contains(got, "no recent seismic activity") {
 		t.Fatalf("an answered-empty feed reads 'no recent seismic activity':\n%s", got)
 	}
 }
@@ -92,7 +92,7 @@ func TestDetailSeismicASCIIGlyphs(t *testing.T) {
 	d := m2.(Dashboard)
 	d.cfg.ASCII = true // the --ascii glyph set
 	d.modal = modalDetails
-	joined := stripANSITest(strings.Join(d.detailLines(), "\n"))
+	joined := StripANSI(strings.Join(d.detailLines(), "\n"))
 	for _, want := range []string{"O  M5.1", "o  M4.2", ".  M2.8"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("--ascii ramp .oO missing %q:\n%s", want, joined)
@@ -113,8 +113,8 @@ func TestDetailSeismicTsunamiReadsWarning(t *testing.T) {
 		{Mag: 3.2, Place: "coast", DepthKm: 5, At: now.Add(-time.Hour), DistanceKm: 10, Bearing: "W", Tsunami: true},
 	}}
 	raw := detailWithSeismic(t, ss)
-	if !strings.Contains(stripANSITest(raw), "Tsunami") {
-		t.Fatalf("a tsunami quake labels the reason:\n%s", stripANSITest(raw))
+	if !strings.Contains(StripANSI(raw), "Tsunami") {
+		t.Fatalf("a tsunami quake labels the reason:\n%s", StripANSI(raw))
 	}
 	// A tsunami reads in the warning tone regardless of its (low) magnitude —
 	// the ○ below-feeling glyph, but tinted danger, not the violet mark.
@@ -130,7 +130,7 @@ func TestDetailSeismicTsunamiReadsWarning(t *testing.T) {
 	d := m2.(Dashboard)
 	d.cfg.ASCII = true
 	d.modal = modalDetails
-	asciiOut := stripANSITest(strings.Join(d.detailLines(), "\n"))
+	asciiOut := StripANSI(strings.Join(d.detailLines(), "\n"))
 	if strings.Contains(asciiOut, "—") {
 		t.Fatalf("--ascii must not emit an em-dash:\n%s", asciiOut)
 	}
@@ -159,7 +159,7 @@ func TestALongFeltLabelIsTruncatedRatherThanCut(t *testing.T) {
 	loc := &snapshot.Location{Label: "Oceanside, CA", Seismic: ss}
 
 	// The 80-column floor, where the section has least room.
-	got := stripANSITest(strings.Join(seismicRows(render.Opts{Width: 80}, loc, now, 51, 7), "\n"))
+	got := StripANSI(strings.Join(seismicRows(render.Opts{Width: 80}, loc, now, 51, 7), "\n"))
 	if !strings.Contains(got, "PAGER") {
 		t.Fatalf("the warning label is gone entirely:\n%s", got)
 	}

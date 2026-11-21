@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
@@ -59,41 +58,21 @@ type bodyKey struct {
 	lookup snapshot.LocationKey
 }
 
-// memoStats is the counter half every memo slot carries. ONE OWNER (metric D,
-// 2026-09-08): bodyMemo and modalMemo embed it rather than each carrying its own
-// nil-check-lock-return accessor, so the next memo inherits `counts()` instead
-// of copying it.
-type memoStats struct {
-	mu           sync.Mutex
-	hits, misses int
-}
-
-// counts reports the slot's hit/miss counters; the zero value of a nil slot is
-// (0, 0), which is what both callers expect.
-func (m *memoStats) counts() (hits, misses int) {
-	if m == nil {
-		return 0, 0
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.hits, m.misses
-}
-
 // bodyMemo is the single slot. hits/misses are read by the tests and the
 // diagnostic dump; they are not policy.
 type bodyMemo struct {
-	memoStats
+	MemoStats
 	ok               bool
 	key              bodyKey
 	priority, recent string
 	// cursor is the frame's cursor, kept here so the hit path allocates
-	// nothing for it (D-362, cursorSlot).
-	cursor cursorSlot
+	// nothing for it (D-362, CursorSlot).
+	cursor CursorSlot
 	// tape is the ticker's current lane as the frame and the scroll read it
 	// (0.19.5 PF-8, tapeOf).
 	tape tapeSlot
-	// head is the masthead (0.19.5 PF-7, mastheadSlot).
-	head mastheadSlot
+	// head is the masthead (0.19.5 PF-7, MastheadSlot).
+	head MastheadSlot
 }
 
 // sameContent is a snapshot's stand-in in the tables' memo key (0.19.5 D-31).
@@ -152,20 +131,20 @@ func (d Dashboard) tables(fl frameLayout) (priority, recent string) {
 	if m == nil {
 		return d.priorityTable(fl), d.recentSection(fl)
 	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.Lock()
+	defer m.Unlock()
 	if m.ok && m.key == key {
-		m.hits++
+		m.Hit()
 		return m.priority, m.recent
 	}
 	priority, recent = d.priorityTable(fl), d.recentSection(fl)
 	m.ok, m.key, m.priority, m.recent = true, key, priority, recent
-	m.misses++
+	m.Miss()
 	return priority, recent
 }
 
 // memoCounts reports the body slot's hit/miss counters (0, 0 without a slot).
-func (d Dashboard) memoCounts() (hits, misses int) { return d.memo.stats().counts() }
+func (d Dashboard) memoCounts() (hits, misses int) { return d.memo.stats().Counts() }
 
 // lookupKey is the pending lookup's identity, zero when none is waiting.
 func (d Dashboard) lookupKey() snapshot.LocationKey {
@@ -187,35 +166,12 @@ func (d Dashboard) anyLoading() bool {
 			continue
 		}
 		for i := range sn.Locations {
-			if rowLoading(&sn.Locations[i]) {
+			if RowLoading(&sn.Locations[i]) {
 				return true
 			}
 		}
 	}
 	return false
-}
-
-// rowLoading is the one definition of "this row is still loading"
-// (UAT 18.2): observation or daily forecast still pending.
-// rowLoading: shimmer while the data is still COMING, never after it has been
-// asked for and not arrived (issue #13).
-//
-// THE SECOND CLAUSE IS WHAT ENDS THE SHIMMER. An empty location is empty in
-// exactly the same way whether the feed has not answered yet or has answered and
-// had nothing for this place, so on the first clause alone a location the API
-// does not cover shimmers for ever, across restarts, reading as "still loading"
-// until the listener removes the row themselves.
-//
-// WeatherAsOf is what makes the two distinguishable: the reference provider
-// stamps it when a fetch COVERING this location completes. Once it is set, a
-// missing value is a fact rather than a wait, and the row falls through to the
-// honest "n/a" the post-load path already draws (UAT 18.2). Nothing new is
-// rendered — without the second clause the flag could never go false.
-func rowLoading(loc *snapshot.Location) bool {
-	if !loc.WeatherAsOf.IsZero() {
-		return false
-	}
-	return loc.Harmonized.Source.Provider == "" || len(loc.Daily) == 0
 }
 
 // --- the modal memo (0.13.0, FR-10) ---
@@ -358,7 +314,7 @@ type modalKey struct {
 
 // modalMemo is the single slot.
 type modalMemo struct {
-	memoStats
+	MemoStats
 	ok  bool
 	key modalKey
 	out string
@@ -502,33 +458,33 @@ func (d Dashboard) modalView(o render.Opts) string {
 		return d.renderModal(o)
 	}
 	key := d.modalKeyFor(o)
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.Lock()
+	defer m.Unlock()
 	if m.ok && m.key == key {
-		m.hits++
+		m.Hit()
 		return m.out
 	}
 	out := d.renderModal(o)
 	m.ok, m.key, m.out = true, key, out
-	m.misses++
+	m.Miss()
 	return out
 }
 
 // modalMemoCounts reports the modal slot's hit/miss counters.
-func (d Dashboard) modalMemoCounts() (hits, misses int) { return d.mmemo.stats().counts() }
+func (d Dashboard) modalMemoCounts() (hits, misses int) { return d.mmemo.stats().Counts() }
 
 // stats returns the embedded counters, or nil for a nil slot — so counts() can
 // answer (0, 0) without every caller repeating the nil check.
-func (m *bodyMemo) stats() *memoStats {
+func (m *bodyMemo) stats() *MemoStats {
 	if m == nil {
 		return nil
 	}
-	return &m.memoStats
+	return &m.MemoStats
 }
 
-func (m *modalMemo) stats() *memoStats {
+func (m *modalMemo) stats() *MemoStats {
 	if m == nil {
 		return nil
 	}
-	return &m.memoStats
+	return &m.MemoStats
 }

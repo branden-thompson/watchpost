@@ -239,28 +239,6 @@ func incidentRows(o render.Opts, loc *snapshot.Location, ins []snapshot.Incident
 	return o.DetailTable(cols, rows, cw-detailRailGutter, render.DetailGutter)
 }
 
-// fireCount is the row badge's number (UAT 110): the named incidents
-// nearby when there are any, else 1 for unnamed hotspots, 0 for no fire.
-func fireCount(fs snapshot.FireState) int {
-	switch {
-	case len(fs.Incidents) > 0:
-		return len(fs.Incidents)
-	case len(fs.Hotspots) > 0:
-		return 1
-	}
-	return 0
-}
-
-// fireHot reports whether any hotspot reads emphasized.
-func fireHot(hs []snapshot.Hotspot, boldMW float64) bool {
-	for _, h := range hs {
-		if h.FRPMW != nil && *h.FRPMW >= boldMW {
-			return true
-		}
-	}
-	return false
-}
-
 // fireGlyph is the fire mark for the current glyph set (◆ like the row
 // mark — UAT 110/121 — or * under --ascii).
 func fireGlyph(o render.Opts) string {
@@ -270,24 +248,10 @@ func fireGlyph(o render.Opts) string {
 	return "◆"
 }
 
-func plural(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
-}
-
-// fireBoldDefaultMW is the emphasis threshold when the operator has set none.
-//
-// ONE OWNER, TWO READERS — this Dashboard and the console (Broadcaster.fireBold).
-// A console constant of its own could not see the override, so one location
-// would read bold on the watchlist and plain on the console.
-const fireBoldDefaultMW = 50
-
 // fireBoldMW is the emphasis threshold for the FIRE rows (Config, default 50).
 func (d Dashboard) fireBoldMW() float64 {
 	if d.cfg.FireBoldMW > 0 {
 		return d.cfg.FireBoldMW
 	}
-	return fireBoldDefaultMW
+	return FireBoldDefaultMW
 }

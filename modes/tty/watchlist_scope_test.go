@@ -50,7 +50,7 @@ func TestAnEmptyWatchlistTabExplainsItsScopeEvenWithLocationsSet(t *testing.T) {
 				t.Fatalf("the fixture has numPriority=%d for withSnap=%v; it does not pose this case",
 					d.numPriority(), tc.withSnap)
 			}
-			got := stripANSITest(strings.Join(
+			got := StripANSI(strings.Join(
 				d.severeEmptyLines(render.Opts{Width: 133}, 120, 116, category.Of(category.Statements), "0 Total"), "\n"))
 			if !strings.Contains(got, "No active") {
 				t.Fatalf("the fixture is not showing an empty tab:\n%s", got)

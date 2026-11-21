@@ -69,7 +69,7 @@ func TestYourFrequencyDrawsItsReach(t *testing.T) {
 // clears it, the reach taken off and the row blank again.
 func TestYourFrequencyIsSaid(t *testing.T) {
 	d := enterFreq(t, chartDash(t), "14.2")
-	row := stripANSITest(d.propBlock(d.scrubW())[2])
+	row := StripANSI(d.propBlock(d.scrubW())[2])
 	for _, want := range []string{"YOUR FREQUENCY 14.200 MHz", "skip zone to ~", "F change"} {
 		if !strings.Contains(row, want) {
 			t.Errorf("the block's frequency row %q does not say %q", row, want)
@@ -78,7 +78,7 @@ func TestYourFrequencyIsSaid(t *testing.T) {
 	if words := strings.Join(d.describeLinesAll(), " "); !strings.Contains(words, "Your frequency: 14.200 megahertz held; its reach: skip zone to about ") {
 		t.Errorf("without the picture the frequency is not said: %q", words)
 	}
-	if chart := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(chart, "YOUR FREQUENCY 14.200 MHz") {
+	if chart := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(chart, "YOUR FREQUENCY 14.200 MHz") {
 		t.Errorf("the chart does not say the frequency held:\n%s", chart)
 	}
 	d = enterFreq(t, d, "40 m")
@@ -89,7 +89,7 @@ func TestYourFrequencyIsSaid(t *testing.T) {
 	if _, drawn := d.mapPane.propGiven["propagation/reach"]; drawn || d.mapPane.propFreqMHz != 0 {
 		t.Error("an empty Enter left the frequency held or its reach drawn")
 	}
-	if row := stripANSITest(d.propBlock(d.scrubW())[2]); strings.TrimSpace(row) != "" {
+	if row := StripANSI(d.propBlock(d.scrubW())[2]); strings.TrimSpace(row) != "" {
 		t.Errorf("with no frequency held the row is %q; D-163's blank row", row)
 	}
 }
@@ -108,7 +108,7 @@ func TestABadFrequencyIsSaidNotGuessed(t *testing.T) {
 		}
 		m, _ := d.Update(mapKeyMsg(t, "enter"))
 		d = m.(Dashboard)
-		text := stripANSITest(strings.Join(d.propFreqLines(d.opts()), "\n"))
+		text := StripANSI(strings.Join(d.propFreqLines(d.opts()), "\n"))
 		if d.modal != modalPropFreq || !strings.Contains(text, errFreqWords) {
 			t.Errorf("%q: window %v, the entry says:\n%s", bad, d.modal, text)
 		}

@@ -37,7 +37,7 @@ func badgeMap(t *testing.T, cost MapCost) Dashboard {
 func underTheMap(d Dashboard) []string {
 	var out []string
 	for _, l := range d.scrubRows(d.mapTextW()) {
-		out = append(out, stripANSITest(l))
+		out = append(out, StripANSI(l))
 	}
 	return out
 }
@@ -78,7 +78,7 @@ func TestTheBadgesWrapOnlyWhenNarrow(t *testing.T) {
 		t.Fatalf("200 columns: %d rows; 40 columns: %d rows; want one, then more", len(one), len(two))
 	}
 	for _, r := range two {
-		r = stripANSITest(r)
+		r = StripANSI(r)
 		if strings.Count(r, "[")-strings.Count(r, "]") != 0 || len(r) > 40 {
 			t.Errorf("a wrapped row %q cuts a badge or passes the width", r)
 		}
@@ -121,10 +121,10 @@ func TestTheCostWarningIsOneLineAndTheEstimateSitsUnderTheScrubber(t *testing.T)
 // its legend, so its chip reads MRMS≈ where it is shown.
 func TestTheMRMSChipIsMarkedApproximate(t *testing.T) {
 	d := badgeMap(t, MapCost{})
-	if w := stripANSITest(d.mapBadgeWords()); !strings.Contains(w, "MRMS≈") {
+	if w := StripANSI(d.mapBadgeWords()); !strings.Contains(w, "MRMS≈") {
 		t.Errorf("the badge reads %q; want MRMS≈", w)
 	}
-	if r := stripANSITest(d.loopRow(d.scrubW())); !strings.Contains(r, "MRMS≈") {
+	if r := StripANSI(d.loopRow(d.scrubW())); !strings.Contains(r, "MRMS≈") {
 		t.Errorf("the loop's row reads %q; want MRMS≈", r)
 	}
 }
@@ -145,7 +145,7 @@ func TestMapStatusSaysWhetherTheMapWorks(t *testing.T) {
 		{Name: "AirNow", Host: "files.airnowtech.org", Layers: "air", Badge: "AIRNOW"},
 		{Name: "MRMS", Host: "mrms.ncep.noaa.gov", Layers: "radar", Badge: "MRMS", Notes: []string{"MRMS colors approximate; scale read from legend"}}}})
 	d.width = 140
-	block := stripANSITest(strings.Join(d.statusBlocks(0).sources, "\n"))
+	block := StripANSI(strings.Join(d.statusBlocks(0).sources, "\n"))
 	row := func(host string) string {
 		for _, l := range strings.Split(block, "\n") {
 			if strings.Contains(l, host) {
@@ -187,8 +187,8 @@ func TestEveryChipIsOneFormatOnItsOwnGround(t *testing.T) {
 			t.Fatalf("%s has no chip of its own", name)
 		}
 		c := chipFace(name)
-		if stripANSITest(c) != "  "+name+"  " {
-			t.Errorf("%s's chip reads %q; want two spaces either side", name, stripANSITest(c))
+		if StripANSI(c) != "  "+name+"  " {
+			t.Errorf("%s's chip reads %q; want two spaces either side", name, StripANSI(c))
 		}
 		sgr := strings.TrimPrefix(strings.SplitN(c, "m", 2)[0], "\x1b[")
 		ground := strings.SplitN(sgr, ";1;38;2;", 2)[0]
@@ -200,7 +200,7 @@ func TestEveryChipIsOneFormatOnItsOwnGround(t *testing.T) {
 		}
 		grounds[ground] = name
 	}
-	if stripANSITest(chipFace("MRMS≈")) != "  MRMS≈  " || chipFace("MRMS≈") == "  MRMS≈  " {
+	if StripANSI(chipFace("MRMS≈")) != "  MRMS≈  " || chipFace("MRMS≈") == "  MRMS≈  " {
 		t.Error("MRMS≈ is not drawn on MRMS's ground")
 	}
 }
@@ -212,7 +212,7 @@ func TestTheRecordedChipIsItsOwn(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(rendering.ResetColorEnabledForTest)
 	face := chipFace("RECORDED")
-	if !strings.Contains(face, render.Tok(render.MapChipRecordedBG)) || stripANSITest(face) != "  RECORDED  " {
+	if !strings.Contains(face, render.Tok(render.MapChipRecordedBG)) || StripANSI(face) != "  RECORDED  " {
 		t.Errorf("the RECORDED chip is %q; want \"  RECORDED  \" on its own ground", face)
 	}
 	if !ChipKnown("RECORDED") {

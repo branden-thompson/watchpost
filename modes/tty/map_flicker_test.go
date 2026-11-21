@@ -14,7 +14,7 @@ import (
 // hasArea reports whether the drawn lines carry the alert's severity digit,
 // which the outline repeats.
 func hasArea(d Dashboard) bool {
-	return strings.Contains(stripANSITest(strings.Join(d.mapPane.lines, "\n")), "3")
+	return strings.Contains(StripANSI(strings.Join(d.mapPane.lines, "\n")), "3")
 }
 
 func TestTheSameAlertAgainNeverDropsFromTheFrame(t *testing.T) {

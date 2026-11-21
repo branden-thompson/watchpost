@@ -108,16 +108,6 @@ func seismicHead(head string, cw int) string {
 	return render.PadTo(head, target) + attr
 }
 
-// seismicRowLevel is the felt-band level the main-table row mark wears
-// (0.11.0, HUM LEAD): the strongest recent quake's level, or 0 for none. The
-// quakes are sorted largest-first, so the strongest is the first.
-func seismicRowLevel(ss *snapshot.SeismicState) int {
-	if ss == nil || len(ss.Quakes) == 0 {
-		return 0
-	}
-	return render.SeismicLevel(ss.Quakes[0].Mag)
-}
-
 // seismicBand returns the felt-likelihood glyph and label for a magnitude. The
 // glyph is the shared ramp (○●◉ / .oO — one owner in render.Glyphs, so the
 // table mark and this section cannot disagree); the label carries the finer

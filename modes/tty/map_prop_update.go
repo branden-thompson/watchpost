@@ -317,7 +317,7 @@ func thinStationsWords(in ionomaps.Inputs, at time.Time) string {
 // daysWords is an age said in days past a day, else as spanWords.
 func daysWords(age time.Duration) string {
 	if days := int(age.Hours() / 24); days >= 1 {
-		return strconv.Itoa(days) + " day" + plural(days)
+		return strconv.Itoa(days) + " day" + Plural(days)
 	}
 	return spanWords(age)
 }

@@ -146,12 +146,12 @@ func (b Broadcaster) upNextBox() []string {
 			// here would be a second answer to a question the theme owns.
 			//
 			// THE CELL'S WIDTH IS UNCHANGED, and the reason is `PadTo` and
-			// `centerText` both measuring with `displayWidth` — escape codes
+			// `CenterText` both measuring with `displayWidth` — escape codes
 			// are skipped, so styling cannot inflate the pad and shift the
 			// card's column. Checked rather than assumed: the mutation that
 			// pads AFTER tinting changes no frame at all, so no mutant pins it.
 			cell = render.Bold(render.Tint(
-				render.PadTo(centerText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW),
+				render.PadTo(CenterText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW),
 				render.Tok(render.TextBright)))
 		}
 		// THE CELL IS PAINTED BEFORE THE ROW IS, and the row's own paint keeps

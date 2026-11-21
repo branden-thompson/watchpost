@@ -17,7 +17,7 @@ func helpTextOn(t *testing.T, surface Surface) string {
 	d := goldenDash(t, false)
 	d.surface = surface
 	d = d.open(modalHelp)
-	return stripANSITest(d.renderModal(d.opts()))
+	return StripANSI(d.renderModal(d.opts()))
 }
 
 // CASE 1: the console is not handed the listener's manual.

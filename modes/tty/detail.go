@@ -84,7 +84,7 @@ func gridRow(label, primary, secondary string) string {
 // aligned to the HIGH/LOW column.
 func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location, cw int) []string {
 	h := loc.Harmonized
-	temp := render.Tint(strings.TrimSpace(o.Temp(h.Temp)), render.Tok(render.TextBright)) + o.TrendGlyph(trend(*loc))
+	temp := render.Tint(strings.TrimSpace(o.Temp(h.Temp)), render.Tok(render.TextBright)) + o.TrendGlyph(Trend(*loc))
 	out := []string{detailRow(o, "CURRENTLY", gridRow(prettyCond(h.Condition), temp, ""))}
 	// WHERE THE NUMBER CAME FROM, WHEN IT DID NOT COME FROM A STATION.
 	//

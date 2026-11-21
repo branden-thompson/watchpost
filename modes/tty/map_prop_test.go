@@ -77,7 +77,7 @@ func TestThePropagationModeIsAKeymapAction(t *testing.T) {
 func TestTheModeIsNamedInEveryPath(t *testing.T) {
 	for _, mode := range screenModes {
 		d := pressMap(t, screenDash(t, mode.desc, mode.ascii), "P")
-		screen := stripANSITest(d.View().Content)
+		screen := StripANSI(d.View().Content)
 		if !strings.Contains(screen, "PROPAGATION") {
 			t.Errorf("%s: the window does not name the Propagation mode:\n%s", mode.name, screen)
 		}

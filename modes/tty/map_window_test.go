@@ -89,8 +89,8 @@ func TestTheMapKeyOpensAndClosesTheWindow(t *testing.T) {
 	if d.modal != modalMap {
 		t.Fatalf("g opened %s, want the map", modalName(d.modal))
 	}
-	if !strings.Contains(stripANSITest(d.View().Content), "Map · Oceanside, CA") {
-		t.Errorf("the window is not titled with the place:\n%s", stripANSITest(d.View().Content))
+	if !strings.Contains(StripANSI(d.View().Content), "Map · Oceanside, CA") {
+		t.Errorf("the window is not titled with the place:\n%s", StripANSI(d.View().Content))
 	}
 	d, _ = pressKey(d, "g")
 	if d.modal != modalNone {
@@ -139,7 +139,7 @@ func TestNoSelectionIsAStatedState(t *testing.T) {
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
 	d := model.(Dashboard)
 	d, _ = pressKey(d, "g")
-	out := stripANSITest(d.View().Content)
+	out := StripANSI(d.View().Content)
 	if !strings.Contains(out, noSelectionText) {
 		t.Errorf("with no selection the window does not say so:\n%s", out)
 	}
@@ -181,7 +181,7 @@ func TestTheMapIsDrawnInUpdate(t *testing.T) {
 	if after == before {
 		t.Error("the tiles work landed were never drawn")
 	}
-	if !strings.ContainsFunc(stripANSITest(d.View().Content), func(r rune) bool { return r > 0x2800 && r <= 0x28ff }) {
+	if !strings.ContainsFunc(StripANSI(d.View().Content), func(r rune) bool { return r > 0x2800 && r <= 0x28ff }) {
 		t.Error("the window prints no braille after the map settled")
 	}
 	if d.mapPane.changed == 0 {

@@ -49,7 +49,7 @@ func (d Dashboard) View() tea.View {
 	v := tea.NewView("")
 	v.BackgroundColor = render.WindowBG(d.darkBG) // UAT 10.2: blue-grey window
 	cx, cy, at := d.frameCursor(o, base, overlay, y, box, d.width)
-	v.Content, v.Cursor = d.heldCursor().finish(content, cx, cy, at, d.blurred, v.BackgroundColor) // at every focus point, steady (D-362, D-367)
+	v.Content, v.Cursor = d.heldCursor().Finish(content, cx, cy, at, d.blurred, v.BackgroundColor) // at every focus point, steady (D-362, D-367)
 	v.AltScreen = true
 	return v
 }
@@ -370,7 +370,7 @@ func (d Dashboard) detailsModal(o render.Opts) string {
 		title = d.lookupRef.Label + " " + d.lookupRef.Zip
 	}
 	if d.snap != nil {
-		stamp := "Updated: " + o.Clock.Stamp(dataAsOf(d.snap).Local())
+		stamp := "Updated: " + o.Clock.Stamp(DataAsOf(d.snap).Local())
 		fill := min(o.Width, d.modalWidth()) - 10 - len([]rune(title)) - len([]rune(stamp))
 		if fill > 1 { // the name and the stamp bold white, the fill in the panel's tone (the panel leaves a tinted title as it is)
 			title = render.Tint(title, render.Tok(render.ModalTitle)) + " " + strings.Repeat(o.Glyphs().Rule, fill) + " " + render.Tint(stamp, render.Tok(render.ModalTitle))

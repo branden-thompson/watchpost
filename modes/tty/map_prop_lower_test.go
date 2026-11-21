@@ -27,7 +27,7 @@ func TestAClosedBandIsDrawnByItsKind(t *testing.T) {
 	bands[0] = ionomaps.BandStatus{Band: bands[0].Band, Status: ionomaps.Absorbed, Limit: ionomaps.LimitAbsorption, LimitMHz: 4.2}
 	bands[1] = ionomaps.BandStatus{Band: bands[1].Band, Status: ionomaps.Weak, Limit: ionomaps.LimitCircuit, LimitMHz: 4.2}
 	c.local.Bands = bands
-	text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
+	text := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
 	var local string
 	for _, l := range strings.Split(text, "\n") {
 		if strings.Contains(l, "Local, ~") && local == "" {

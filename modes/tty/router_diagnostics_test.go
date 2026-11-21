@@ -194,7 +194,7 @@ func TestEveryLayerCentresOnTheTerminal(t *testing.T) {
 		t.Fatal("fixture: the confirmation must be up")
 	}
 
-	got := stripANSITest(r.View().Content)
+	got := StripANSI(r.View().Content)
 	want := r.broadcaster.width / 2
 	c, ok := centreOfLineContaining(got, "ARE YOU SURE")
 	if !ok {
@@ -244,11 +244,11 @@ func TestTheConsoleLearnsTheVersionAndTheSnapshotThroughTheRouter(t *testing.T) 
 	r.broadcaster.width, r.broadcaster.height = 150, 74
 	r.observer.width, r.observer.height = 150, 74
 
-	m, _ := r.Update(SnapshotMsg{Snap: mastheadSnap()})
+	m, _ := r.Update(SnapshotMsg{Snap: MastheadSnap()})
 	r = m.(Router)
 	r = pressAction(t, r, actSwapBroadcaster)
 
-	got := stripANSITest(r.View().Content)
+	got := StripANSI(r.View().Content)
 	if !strings.Contains(got, "9.9.9") {
 		t.Errorf("the console never learned the build's version:\n%s", firstLine(got))
 	}
@@ -313,7 +313,7 @@ func TestGainDownReachesTheSameLevel(t *testing.T) {
 func TestEveryAdvertisedControlIsBound(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	row := stripANSITest(b.controlRow(b.opts()))
+	row := StripANSI(b.controlRow(b.opts()))
 
 	keys := broadcasterKeyMap()
 	bound := map[string]bool{}
@@ -347,7 +347,7 @@ func TestSettingsOpensOverTheConsole(t *testing.T) {
 	if r.active != SurfaceBroadcaster {
 		t.Error("and it must not swap surfaces: the operator is watching the console")
 	}
-	if !strings.Contains(stripANSITest(r.View().Content), "STATION AIR:") {
+	if !strings.Contains(StripANSI(r.View().Content), "STATION AIR:") {
 		t.Error("the console stays visible beneath it")
 	}
 }

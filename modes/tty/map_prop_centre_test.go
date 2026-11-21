@@ -39,7 +39,7 @@ func stationDash(t *testing.T) Dashboard {
 // with it.
 func TestTheCentreIsAnsweredAsTheMapPans(t *testing.T) {
 	d := workCentre(t, stationDash(t))
-	box := stripANSITest(strings.Join(d.propCentreBox(), "\n"))
+	box := StripANSI(strings.Join(d.propCentreBox(), "\n"))
 	for _, want := range []string{"Centre", "MUF(3000) 18.0", "foF2 6.0", "OCEANSIDE, CA (NO TRANSMITTER SET)", "usable ", "best ~"} { // the LUF only at hours the absorption closes a band
 		if !strings.Contains(box, want) {
 			t.Errorf("the centre box does not say %q:\n%s", want, box)
@@ -48,7 +48,7 @@ func TestTheCentreIsAnsweredAsTheMapPans(t *testing.T) {
 	if !regexp.MustCompile(`usable [^\n│]* · foF2 `).MatchString(box) {
 		t.Errorf("a centre within the near-vertical radius is not answered from the area, its limit foF2:\n%s", box)
 	}
-	window := stripANSITest(strings.Join(d.mapBodyLines(), "\n"))
+	window := StripANSI(strings.Join(d.mapBodyLines(), "\n"))
 	if !strings.Contains(window, "┌─ Centre") {
 		t.Errorf("the centre box is not over the map:\n%s", window)
 	}
@@ -61,7 +61,7 @@ func TestTheCentreIsAnsweredAsTheMapPans(t *testing.T) {
 		t.Errorf("six pans east left the centre answered at %v", after)
 	}
 	pathLimit := regexp.MustCompile(`usable[^\n│]* · MUF \d`) // the usable line's limit: the best frequency's words say "MUF" too
-	if box := stripANSITest(strings.Join(d.propCentreBox(), "\n")); !strings.Contains(box, "From OCEANSIDE, CA (NO TRANSMITTER SET): ") || !pathLimit.MatchString(box) {
+	if box := StripANSI(strings.Join(d.propCentreBox(), "\n")); !strings.Contains(box, "From OCEANSIDE, CA (NO TRANSMITTER SET): ") || !pathLimit.MatchString(box) {
 		t.Errorf("a centre far from the place is not given its distance and the path's MUF:\n%s", box)
 	}
 }

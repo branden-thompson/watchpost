@@ -34,8 +34,8 @@ func airRows(t *testing.T, frame string) []string {
 // are always present"), and the same is true of the air: a station has a
 // programme and a bed whether or not either is carrying.
 func TestTheAirBoxAlwaysDrawsBothRows(t *testing.T) {
-	b := bcWith(t, card(t, "a", "Oceanside, CA"))
-	got := stripANSITest(b.View().Content)
+	b := bcWith(t, Card(t, "a", "Oceanside, CA"))
+	got := StripANSI(b.View().Content)
 	for _, want := range []string{"LIVE NOW", "RELAY BED"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the air box is missing its %q row", want)
@@ -45,8 +45,8 @@ func TestTheAirBoxAlwaysDrawsBothRows(t *testing.T) {
 
 // AT REST THE LIVE ROW SAYS SO, in the HUM LEAD's own words (D-89).
 func TestTheLiveRowCarriesTheStandbyNoticeAtRest(t *testing.T) {
-	b := bcWith(t, card(t, "a", "Oceanside, CA"))
-	air := strings.Join(airRows(t, stripANSITest(b.View().Content)), "\n")
+	b := bcWith(t, Card(t, "a", "Oceanside, CA"))
+	air := strings.Join(airRows(t, StripANSI(b.View().Content)), "\n")
 	if !strings.Contains(air, bcStandbyNotice) {
 		t.Errorf("nothing is on the air and the LIVE row does not say so:\n%s", air)
 	}
@@ -56,8 +56,8 @@ func TestTheLiveRowCarriesTheStandbyNoticeAtRest(t *testing.T) {
 // location report, the row draws `LOCATION REPORT •STANDARD• [0]`: a report that
 // does not exist, graded, with a chip that opens nothing.
 func TestTheLiveRowNamesNoReportAtRest(t *testing.T) {
-	b := bcWith(t, card(t, "a", "Oceanside, CA"))
-	rows := airRows(t, stripANSITest(b.View().Content))
+	b := bcWith(t, Card(t, "a", "Oceanside, CA"))
+	rows := airRows(t, StripANSI(b.View().Content))
 	var live string
 	for _, r := range rows {
 		if strings.Contains(r, "LIVE NOW") {
@@ -73,9 +73,9 @@ func TestTheLiveRowNamesNoReportAtRest(t *testing.T) {
 
 // GOING ON AIR PUTS THE CARD THERE, and the notice goes.
 func TestGoingOnAirFillsTheLiveRow(t *testing.T) {
-	b := bcWith(t, card(t, "a", "Oceanside, CA"), card(t, "b", "Bonsall, CA"))
+	b := bcWith(t, Card(t, "a", "Oceanside, CA"), Card(t, "b", "Bonsall, CA"))
 	live, _ := b.Update(StationMsg{Power: lineup.Running})
-	got := stripANSITest(live.View().Content)
+	got := StripANSI(live.View().Content)
 
 	if strings.Contains(got, bcStandbyNotice) {
 		t.Errorf("the station is on the air and the LIVE row still says nothing is")
@@ -100,14 +100,14 @@ func TestExactlyOneAirRowIsMarkedLive(t *testing.T) {
 		// never draws — and would then pass for the wrong reason.
 		g := b.opts().Glyphs()
 		n := 0
-		for _, r := range airRows(t, stripANSITest(b.View().Content)) {
+		for _, r := range airRows(t, StripANSI(b.View().Content)) {
 			if strings.Contains(r, g.Live) && (strings.Contains(r, "LIVE NOW") || strings.Contains(r, "RELAY BED")) {
 				n++
 			}
 		}
 		return n
 	}
-	at := bcWith(t, card(t, "a", "Oceanside, CA"))
+	at := bcWith(t, Card(t, "a", "Oceanside, CA"))
 	if got := count(at); got != 0 {
 		t.Errorf("a station at rest marks %d rows live; nothing is carrying", got)
 	}

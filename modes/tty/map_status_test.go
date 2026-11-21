@@ -63,7 +63,7 @@ func offlineMap(size tuimaps.Size) (*tuimaps.Map, error) {
 
 func statusLine(d Dashboard) string {
 	lines := d.mapBodyLines()
-	last := stripANSITest(lines[len(lines)-1])
+	last := StripANSI(lines[len(lines)-1])
 	if !strings.HasSuffix(strings.TrimRight(last, " "), "Overlays") {
 		return last // not the map's status line: a stated state
 	}

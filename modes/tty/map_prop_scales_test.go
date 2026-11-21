@@ -24,7 +24,7 @@ func scaled(t *testing.T, sc ionomaps.Scales) Dashboard {
 
 // chartText is the chart window's text, plain.
 func chartText(d Dashboard) string {
-	return stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
+	return StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
 }
 
 // TestARaisedScaleIsNamed is FR-1.18 (D-88): a scale above 0 is named, by

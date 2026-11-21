@@ -19,7 +19,7 @@ func upNextAt(t *testing.T, c lineup.Card) []string {
 	t.Helper()
 	b := bcWith(t, c)
 	b.width, b.height, b.ascii = 150, 74, true
-	return strings.Split(stripANSITest(strings.Join(b.upNextBox(), "\n")), "\n")
+	return strings.Split(StripANSI(strings.Join(b.upNextBox(), "\n")), "\n")
 }
 
 // cardCellOf is the card's own cell of a pair row: everything right of the label
@@ -40,7 +40,7 @@ func cardCellOf(t *testing.T, row string) string {
 // A ROW WOULD SPEND a line of the card saying what the frame around it says for
 // free — on the one box on this console whose job is to hold a manifest.
 func TestTheUpNextCardNamesItselfInItsRule(t *testing.T) {
-	rows := upNextAt(t, card(t, "a", "Oceanside, CA 92057"))
+	rows := upNextAt(t, Card(t, "a", "Oceanside, CA 92057"))
 	if len(rows) < 3 {
 		t.Fatalf("the card drew %d rows", len(rows))
 	}
@@ -61,7 +61,7 @@ func TestTheUpNextCardNamesItselfInItsRule(t *testing.T) {
 // THE BODY IS THE REFERENCE'S ORDER: air, what it is doing and how fresh, air,
 // the manifest under a centred caption, and the way in at the bottom.
 func TestTheUpNextCardFollowsTheReferencesOrder(t *testing.T) {
-	c := card(t, "a", "Oceanside, CA 92057")
+	c := Card(t, "a", "Oceanside, CA 92057")
 	c.BuiltAt = time.Now().Add(-10 * time.Minute)
 	rows := upNextAt(t, c)
 
@@ -114,8 +114,8 @@ func TestTheUpNextCardIsAddressableEmptyOrNot(t *testing.T) {
 		name string
 		rows []string
 	}{
-		{"a decided slot", upNextAt(t, card(t, "a", "Oceanside, CA 92057"))},
-		{"an empty slot", strings.Split(stripANSITest(strings.Join(empty.upNextBox(), "\n")), "\n")},
+		{"a decided slot", upNextAt(t, Card(t, "a", "Oceanside, CA 92057"))},
+		{"an empty slot", strings.Split(StripANSI(strings.Join(empty.upNextBox(), "\n")), "\n")},
 	} {
 		rows := tc.rows
 		last := rows[len(rows)-2] // the row above the closing border
@@ -145,7 +145,7 @@ func TestTheUpNextBoxWearsTwoGrounds(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 
-	b := bcWith(t, card(t, "a", "Oceanside, CA 92057"))
+	b := bcWith(t, Card(t, "a", "Oceanside, CA 92057"))
 	b.width, b.height, b.darkBG = 150, 74, true
 	rows := b.upNextBox()
 	if len(rows) == 0 {
@@ -180,7 +180,7 @@ func TestTheUpNextBoxWearsTwoGrounds(t *testing.T) {
 	// them and a Contains check answers the wrong question. What paints a run of
 	// text is the last ground opened before it.
 	for _, r := range rows {
-		plain := stripANSITest(r)
+		plain := StripANSI(r)
 		if !strings.Contains(plain, "STATUS:") {
 			continue
 		}
@@ -204,7 +204,7 @@ func TestTheBoxTitleReadsLikeAModalTitle(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 
-	b := bcWith(t, card(t, "a", "Oceanside, CA 92057"))
+	b := bcWith(t, Card(t, "a", "Oceanside, CA 92057"))
 	b.width, b.height, b.darkBG = 150, 74, true
 	rule := b.upNextBox()[0]
 	if !strings.Contains(rule, render.Tok(render.ModalTitle)) {

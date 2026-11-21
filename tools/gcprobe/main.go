@@ -23,7 +23,9 @@
 // old name replaced by the new in every baseline key's fields before the
 // comparison: a function re-homed onto a model, a package moved. A name is
 // replaced only where it stands whole, so `tick` renames the function and
-// not `tickerRow` (0.19.6 A-49). Mapping many
+// not `tickerRow`; a line's optional third field names the one package whose
+// keys it renames, so modes/tty's `tick` leaves app's `schedule.tick`
+// (0.19.6 A-49). Mapping many
 // old names to one new one counts the union, which is 0.19.6 A-26's rule for a split
 // function: its entry points' inlined calls are matched by callee across the
 // union of the old function and the functions carved from it.
@@ -716,7 +718,7 @@ func byType(c counts) counts {
 }
 
 // readMap reads "old<TAB>new" lines; "" is no file and no renames.
-func readMap(path string) ([][2]string, error) {
+func readMap(path string) ([]rename, error) {
 	if path == "" {
 		return nil, nil
 	}
@@ -724,23 +726,31 @@ func readMap(path string) ([][2]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var out [][2]string
+	var out []rename
 	for _, line := range strings.Split(string(raw), "\n") { // bounded by the file (P10-02)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		old, repl, ok := strings.Cut(line, "\t")
-		if !ok || old == "" {
-			return nil, fmt.Errorf("%s: %q is not old<TAB>new", path, line)
+		f := strings.Split(line, "\t")
+		if len(f) < 2 || len(f) > 3 || f[0] == "" {
+			return nil, fmt.Errorf("%s: %q is not old<TAB>new, or old<TAB>new<TAB>package", path, line)
 		}
-		out = append(out, [2]string{old, repl})
+		r := rename{old: f[0], new: f[1]}
+		if len(f) == 3 {
+			r.pkg = f[2]
+		}
+		out = append(out, r)
 	}
 	return out, nil
 }
 
+// rename is one line of the map: old's whole name made new, in every key, or
+// in the keys of pkg alone when it is named.
+type rename struct{ old, new, pkg string }
+
 // renamed is c with every rename applied to each key's fields; keys that
 // become one are summed.
-func renamed(c counts, renames [][2]string) counts {
+func renamed(c counts, renames []rename) counts {
 	if len(renames) == 0 {
 		return c
 	}
@@ -749,7 +759,9 @@ func renamed(c counts, renames [][2]string) counts {
 		fields := strings.Split(k, "\t")
 		for i := range fields { // the key's three fields (P10-02)
 			for _, r := range renames { // bounded by the map (P10-02)
-				fields[i] = replaceWhole(fields[i], r[0], r[1])
+				if r.pkg == "" || r.pkg == fields[0] {
+					fields[i] = replaceWhole(fields[i], r.old, r.new)
+				}
 			}
 		}
 		out[strings.Join(fields, "\t")] += n

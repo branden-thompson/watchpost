@@ -234,7 +234,7 @@ func joinPerturbations(t *testing.T, base Dashboard) []perturbed {
 func loadingSnap(sn *snapshot.Snapshot) *snapshot.Snapshot {
 	out := *sn
 	out.Locations = append([]snapshot.Location(nil), sn.Locations...)
-	// rowLoading: no provider on the harmonized source, or no daily rows.
+	// RowLoading: no provider on the harmonized source, or no daily rows.
 	out.Locations[0].Harmonized.Source.Provider = ""
 	return &out
 }

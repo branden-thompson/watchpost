@@ -67,7 +67,7 @@ func TestTheContinentsAreTheDefaultTargets(t *testing.T) {
 			t.Errorf("%s's 160m names limit %v; a path's is its MUF, or the lower limit's (D-70)", propanswers.Continents[i].Name, l)
 		}
 	}
-	block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n"))
+	block := StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n"))
 	for _, want := range []string{"Up to:", "NA ", "SA ", "EU ", "AF ", "AS ", "OC ", "B chart"} {
 		if !strings.Contains(block, want) {
 			t.Errorf("the block under the map does not say %q:\n%s", want, block)
@@ -83,7 +83,7 @@ func TestBestBandsNameTheirLimit(t *testing.T) {
 	if d.modal != modalPropChart {
 		t.Fatalf("B opened window %v; want the chart (D-176)", d.modal)
 	}
-	text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
+	text := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
 	for _, want := range []string{"100 W, 0 dBi, +13 dB · residential noise", "Local, ~400 km", "foF2 6.0", "North America", "Oceania", "MUF ", "figures in MHz"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the chart does not say %q:\n%s", want, text)
@@ -105,7 +105,7 @@ func TestTheDaysOpenHoursAreShown(t *testing.T) {
 		t.Fatalf("the typical day has %d rows; want one a band", len(day))
 	}
 	for i, b := range d.mapPane.propChart.local.Bands {
-		cells := []rune(stripANSITest(day[i]))
+		cells := []rune(StripANSI(day[i]))
 		cells = cells[len(cells)-47:] // 24 hours, a space between each
 		for h := range 24 {
 			at := d.mapPane.propChart.key.hour.UTC().Truncate(24 * time.Hour).Add(time.Duration(h) * time.Hour)
@@ -127,7 +127,7 @@ func TestTheChartSaysItsMeasuredAgreement(t *testing.T) {
 	for _, ascii := range []bool{false, true} {
 		d := pressMap(t, chartDash(t), "B")
 		d.cfg.ASCII = ascii
-		text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
+		text := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
 		for _, want := range []string{"agrees with WSPR:", "Local 54%", "continents 68%", "typical alone 52%, 64%"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("ascii %v: the chart does not say %q:\n%s", ascii, want, text)
@@ -166,7 +166,7 @@ func TestAChartOpenedAsTheViewMovesIsWorkedOut(t *testing.T) {
 // and the chart says so.
 func TestTheTypicalDayIsLabelled(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
-	if text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(text, "TYPICAL DAY") {
+	if text := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(text, "TYPICAL DAY") {
 		t.Errorf("the chart's hours are not labelled a typical day:\n%s", text)
 	}
 }
@@ -183,13 +183,13 @@ func TestADisagreementWithTheTypicalDayIsSaid(t *testing.T) {
 		agree[i] = ionomaps.BandStatus{Band: ionomaps.AllBands()[i], Status: ionomaps.AboveUpper, Limit: ionomaps.LimitFoF2}
 	}
 	c.local = ionomaps.Answer{Bands: agree}
-	if text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); strings.Contains(text, "now differs") {
+	if text := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); strings.Contains(text, "now differs") {
 		t.Errorf("every band closed now and in its typical day, yet a difference is said:\n%s", text)
 	}
 	differ := append([]ionomaps.BandStatus(nil), agree...)
 	differ[0].OpenHours = []ionomaps.Span{{From: hour, To: hour.Add(time.Hour)}} // typically open this hour, closed now
 	c.local = ionomaps.Answer{Bands: differ}
-	if text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(text, "now differs from a typical day") {
+	if text := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(text, "now differs from a typical day") {
 		t.Errorf("160m is typically open this hour and closed now, yet no difference is said:\n%s", text)
 	}
 }
@@ -210,12 +210,12 @@ func TestTheOriginFollowsTheUIMode(t *testing.T) {
 	if _, cmd := moved.armPropChart(); cmd == nil && moved.mapPane.propChartAsked == d.mapPane.propChart.key {
 		t.Error("the map panned and Observer's chart was not asked again")
 	}
-	if _, asked := workCentre(t, d).propCentreWanted(); asked || strings.Contains(stripANSITest(strings.Join(workCentre(t, d).mapBodyLines(), "\n")), "┌─ Centre") {
+	if _, asked := workCentre(t, d).propCentreWanted(); asked || strings.Contains(StripANSI(strings.Join(workCentre(t, d).mapBodyLines(), "\n")), "┌─ Centre") {
 		t.Error("Observer's centre is its origin, yet it is asked and drawn as a target")
 	}
 	st := stationDash(t)
 	loc := st.selectedLocation()
-	if o := st.mapPane.propOrigin; o.at.Lat != loc.Lat || o.at.Lon != loc.Lon || !strings.HasSuffix(o.name, bcNoTransmitter) {
+	if o := st.mapPane.propOrigin; o.at.Lat != loc.Lat || o.at.Lon != loc.Lon || !strings.HasSuffix(o.name, NoTransmitter) {
 		t.Errorf("with no transmitter the station's origin is %+v; the selected place, said", o)
 	}
 	st.cfg.Transmitter = &snapshot.LocationRef{Label: "KXYZ tower", Lat: 40.1, Lon: -105.2}
@@ -315,7 +315,7 @@ func TestTheNearVerticalRadiusIsASetting(t *testing.T) {
 	if got := d.mapPane.propChart.key.radiusKm; got != 600 {
 		t.Errorf("the chart rows for %v km; the Setting says 600", got)
 	}
-	block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n"))
+	block := StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n"))
 	if !strings.Contains(block, "Local, to ~600 km (NVIS)") {
 		t.Errorf("the block does not say the Setting's radius:\n%s", block)
 	}
@@ -332,7 +332,7 @@ func TestTheChartIsReadableInASCII(t *testing.T) {
 	d := chartDash(t)
 	d.cfg.ASCII = true
 	o := d.opts()
-	chart := stripANSITest(strings.Join(d.propChartLines(o), "\n"))
+	chart := StripANSI(strings.Join(d.propChartLines(o), "\n"))
 	for _, g := range []string{"●", "◐", "○", "◌", "·", "▸", "▼"} {
 		if strings.Contains(chart, g) {
 			t.Errorf("under --ascii the chart draws %q:\n%s", g, chart)
@@ -462,7 +462,7 @@ func TestAPanSettledUnderAWindowIsAnsweredOnReturn(t *testing.T) {
 // their bands; the bands and their edges are go-ionomaps' own.
 func TestEachBandIsFoundByItsName(t *testing.T) {
 	var d Dashboard
-	cells := stripANSITest(d.propBandCells([]ionomaps.BandStatus{{Band: ionomaps.Band20m, Status: ionomaps.Open}}))
+	cells := StripANSI(d.propBandCells([]ionomaps.BandStatus{{Band: ionomaps.Band20m, Status: ionomaps.Open}}))
 	if len([]rune(cells)) != 3*len(hfBands) {
 		t.Fatalf("the row is %d cells for %d bands: %q", len([]rune(cells)), len(hfBands), cells)
 	}

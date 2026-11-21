@@ -23,14 +23,14 @@ import (
 // header is the masthead block: the framed title row, the controls, and the
 // station's own identity.
 func (b Broadcaster) header(o render.Opts) string {
-	var slot *mastheadSlot
+	var slot *MastheadSlot
 	if b.memo != nil {
 		slot = &b.memo.head
 	}
-	return slot.get(mastheadKeyOf(o, render.EditionBroadcaster, b.version, b.snap, b.clock()), func() string {
+	return slot.Get(MastheadKeyOf(o, render.EditionBroadcaster, b.version, b.snap, b.clock()), func() string {
 		rule := o.BoxRuleWidth()
-		title := mastheadTitle(render.EditionBroadcaster, b.version, rule)
-		stamp := mastheadStamp(o, title, b.snap, b.clock(), rule)
+		title := MastheadTitle(render.EditionBroadcaster, b.version, rule)
+		stamp := MastheadStamp(o, title, b.snap, b.clock(), rule)
 		return o.BoxTitled(b.headerRows(o), title, stamp, "", "")
 	})
 }
@@ -57,7 +57,7 @@ func (b Broadcaster) controlRow(o render.Opts) string {
 	// THE API SUMMARY RIDES AT THE RIGHT, as the reference draws it. It is the
 	// Observer's own count, from the same snapshot, so the two surfaces cannot
 	// report different provider health.
-	api := apiSummaryOf(o, b.snap)
+	api := APISummaryOf(o, b.snap)
 	// EVERY KEY IS A CHIP, THROUGH `o.Controls` — the Observer's own control-row
 	// builder — and never a string literal: a key TYPED as text has no chip to
 	// paint, and its missing background reads as broken colour tokens (HUM LEAD,
@@ -101,7 +101,7 @@ func (b Broadcaster) transmitterRow(inner int) string {
 		// NO EPICENTRE IS A REAL STATE AND IT SAYS SO. A station with no
 		// transmitter has no region, an empty pool and ten shimmering slots —
 		// and the operator is owed the reason, not just the symptom.
-		where = bcNoTransmitter
+		where = NoTransmitter
 	}
 	gps := "TOWER GPS:  " + bcNoCoordinates
 	if t := b.area.Transmitter; t.Lat != 0 || t.Lon != 0 {
@@ -134,10 +134,8 @@ func nonEmpty(in []string) []string {
 	return out
 }
 
-const (
-	// bcNoTransmitter and bcNoCoordinates are what the row says before the
-	// station has an epicentre (D-72): an honest absence, never a mock's values
-	// reporting a station the console has not been told about.
-	bcNoTransmitter = "(no transmitter set)"
-	bcNoCoordinates = "--.------, ---.------"
-)
+// bcNoCoordinates is what the row says for the tower's position before the
+// station has an epicentre (D-72), beside the kit's NoTransmitter: an honest
+// absence, never a mock's values reporting a station the console has not been
+// told about.
+const bcNoCoordinates = "--.------, ---.------"

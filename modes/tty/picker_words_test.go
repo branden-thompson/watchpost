@@ -135,7 +135,7 @@ func TestReduceMotionsChipsNameIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	d.width, d.height = 160, 60
-	got := stripANSITest(d.openSetupAt(rowReduceMotion).View().Content)
+	got := StripANSI(d.openSetupAt(rowReduceMotion).View().Content)
 	if !strings.Contains(got, "[←→] Motion") {
 		t.Error(`with the focus on Reduce motion, the chip row does not say "[←→] Motion"`)
 	}

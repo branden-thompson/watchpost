@@ -22,7 +22,7 @@ func TestTheFrameNeverExceedsTheTerminal(t *testing.T) {
 			}
 			for sel := range max(1, d.numPriority()) {
 				d.selected = sel
-				frame := stripANSITest(d.View().Content)
+				frame := StripANSI(d.View().Content)
 				if rows := strings.Count(frame, "\n") + 1; rows > size[1] {
 					t.Fatalf("%dx%d with %d favourites: the frame is %d rows", size[0], size[1], keep, rows)
 				}

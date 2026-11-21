@@ -21,7 +21,7 @@ func TestTheTapeTurnsOverAtMidnight(t *testing.T) {
 	d.setTicker([]TickerItem{{ID: "w1", Category: lane, Head: "Tornado Warning · Midnight County, KS", Verb: "issued", At: at}})
 	o := d.opts()
 	evening := strings.Join(d.tickerLane(o, lane), "")
-	if band := stripANSITest(d.tickerMarquee(o)); !strings.Contains(band, "issued "+o.Clock.Time(at)) || strings.Contains(band, o.Clock.DateTime(at)) {
+	if band := StripANSI(d.tickerMarquee(o)); !strings.Contains(band, "issued "+o.Clock.Time(at)) || strings.Contains(band, o.Clock.DateTime(at)) {
 		t.Fatalf("before midnight the band should give the alert's time of day alone:\n%s", band)
 	}
 	_ = d.View().Content
@@ -32,7 +32,7 @@ func TestTheTapeTurnsOverAtMidnight(t *testing.T) {
 	if evening == morning {
 		t.Fatalf("the tape reads %q either side of midnight; the day it was issued it is a time, the next day a date and time", evening)
 	}
-	if band := stripANSITest(d.tickerMarquee(o)); !strings.Contains(band, o.Clock.DateTime(at)) {
+	if band := StripANSI(d.tickerMarquee(o)); !strings.Contains(band, o.Clock.DateTime(at)) {
 		t.Errorf("after midnight the band does not date the alert %q:\n%s", o.Clock.DateTime(at), band)
 	}
 }

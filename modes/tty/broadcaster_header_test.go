@@ -18,7 +18,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/branden-thompson/watchpost/platform/render"
-	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 func headerOf(t *testing.T, w int) []string {
@@ -32,7 +31,7 @@ func headerOf(t *testing.T, w int) []string {
 func TestTheConsoleHasAMasthead(t *testing.T) {
 	got := strings.Join(headerOf(t, 150), "\n")
 	for _, want := range []string{"WATCHPOST", "Broadcaster"} {
-		if !strings.Contains(stripANSITest(got), want) {
+		if !strings.Contains(StripANSI(got), want) {
 			t.Errorf("the masthead must name the app and the edition; %q is missing from:\n%s", want, got)
 		}
 	}
@@ -45,7 +44,7 @@ func TestTheMastheadNamesTheRightEdition(t *testing.T) {
 	// belongs there — it is the swap back, and the reference draws it. A search
 	// of the whole masthead fails on the one mention that is supposed to be
 	// there.
-	title := stripANSITest(headerOf(t, 150)[0])
+	title := StripANSI(headerOf(t, 150)[0])
 	if strings.Contains(title, render.EditionObserver) {
 		t.Errorf("the console's title row says %q:\n%s", render.EditionObserver, title)
 	}
@@ -60,8 +59,8 @@ func TestTheMastheadNamesTheRightEdition(t *testing.T) {
 func TestTheMastheadFillsEverySupportedWidth(t *testing.T) {
 	for _, w := range []int{100, 110, 120, 130, 150} {
 		for i, line := range headerOf(t, w) {
-			if c := utf8.RuneCountInString(stripANSITest(line)); c > w {
-				t.Errorf("width %d: masthead row %d is %d cells\n%s", w, i, c, stripANSITest(line))
+			if c := utf8.RuneCountInString(StripANSI(line)); c > w {
+				t.Errorf("width %d: masthead row %d is %d cells\n%s", w, i, c, StripANSI(line))
 			}
 		}
 	}
@@ -71,7 +70,7 @@ func TestTheMastheadFillsEverySupportedWidth(t *testing.T) {
 // what the app is has stopped being a masthead — the Observer's own words, and
 // the same order here.
 func TestTheMastheadShedsTheStampBeforeTheWordmark(t *testing.T) {
-	narrow := stripANSITest(strings.Join(headerOf(t, 100), "\n"))
+	narrow := StripANSI(strings.Join(headerOf(t, 100), "\n"))
 	if !strings.Contains(narrow, "WATCHPOST") {
 		t.Errorf("the wordmark is the last thing to go:\n%s", narrow)
 	}
@@ -86,7 +85,7 @@ func TestTheMastheadShedsTheStampBeforeTheWordmark(t *testing.T) {
 // It is a fact about the STATION, and the station has a section of its own. What
 // is left is what both surfaces share, which is what D-59 was for.
 func TestTheMastheadCarriesNoStationIdentity(t *testing.T) {
-	got := stripANSITest(strings.Join(headerOf(t, 150), "\n"))
+	got := StripANSI(strings.Join(headerOf(t, 150), "\n"))
 	for _, gone := range []string{"TRANSMITTER", "TOWER GPS", "SERVICE RADIUS", "Bonsall"} {
 		if strings.Contains(got, gone) {
 			t.Errorf("%q still rides in the masthead:\n%s", gone, got)
@@ -109,9 +108,9 @@ func TestTheMastheadDrawsWhatTheReferenceDraws(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	b.version = "0.16.0"
-	b.snap = mastheadSnap()
+	b.snap = MastheadSnap()
 	b.now = func() time.Time { return time.Date(2026, 8, 28, 19, 15, 8, 0, time.UTC) }
-	got := stripANSITest(b.header(b.opts()))
+	got := StripANSI(b.header(b.opts()))
 
 	for _, want := range []string{"v0.16.0", "Updated:", "API:"} {
 		if !strings.Contains(got, want) {
@@ -127,13 +126,13 @@ func TestTheMastheadLaddersInTheObserversOrder(t *testing.T) {
 	b := NewBroadcaster()
 	b.height, b.ascii = 74, true
 	b.version = "0.16.0"
-	b.snap = mastheadSnap()
+	b.snap = MastheadSnap()
 	b.now = func() time.Time { return time.Date(2026, 8, 28, 19, 15, 8, 0, time.UTC) }
 
 	b.width = 150
-	wide := stripANSITest(b.header(b.opts()))
+	wide := StripANSI(b.header(b.opts()))
 	b.width = 100
-	narrow := stripANSITest(b.header(b.opts()))
+	narrow := StripANSI(b.header(b.opts()))
 
 	if !strings.Contains(wide, "Updated:") {
 		t.Fatalf("fixture: the wide form must carry the stamp:\n%s", wide)
@@ -141,14 +140,4 @@ func TestTheMastheadLaddersInTheObserversOrder(t *testing.T) {
 	if !strings.Contains(narrow, "WATCHPOST") {
 		t.Errorf("the wordmark is the last thing to go:\n%s", narrow)
 	}
-}
-
-// mastheadSnap is a snapshot with providers, so the API summary has something
-// to count.
-func mastheadSnap() *snapshot.Snapshot {
-	at := time.Date(2026, 8, 28, 19, 15, 0, 0, time.UTC)
-	return &snapshot.Snapshot{Providers: []snapshot.ProviderStatus{
-		{ID: "a", Status: snapshot.ProviderOK, FetchedAt: at},
-		{ID: "b", Status: snapshot.ProviderOK, FetchedAt: at},
-	}}
 }

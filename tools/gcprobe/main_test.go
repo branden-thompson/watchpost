@@ -187,7 +187,7 @@ func TestTheJudgeHoldsEachRule(t *testing.T) {
 // new name are counted together.
 func TestRenamesMergeKeys(t *testing.T) {
 	c := counts{"app\tbuildA\tx": 1, "app\tbuildB\tx": 2}
-	got := renamed(c, [][2]string{{"buildA", "build"}, {"buildB", "build"}})
+	got := renamed(c, []rename{{old: "buildA", new: "build"}, {old: "buildB", new: "build"}})
 	if len(got) != 1 || got["app\tbuild\tx"] != 3 {
 		t.Errorf("renamed %v", got)
 	}
@@ -212,8 +212,10 @@ func TestTheTreesKeepWhatTheCompilerDecided(t *testing.T) {
 
 // TestARenameReplacesOnlyAWholeName holds 0.19.6 A-49: a rename of a bare
 // function name renames that function's keys and no name it is part of, so
-// B2's `tick` becoming `Tick` leaves the ticker's keys and `sidesOnly` alone.
-// Seen failing under a plain text replace, which made `tickerRow` `TickerRow`.
+// B2's `tick` becoming `Tick` leaves the ticker's keys and `sidesOnly` alone,
+// and a line scoped to modes/tty leaves app's method `schedule.tick`. Seen
+// failing under a plain text replace, which made `tickerRow` `TickerRow`, and
+// with no scope, which made `schedule.tick` `schedule.Tick`.
 func TestARenameReplacesOnlyAWholeName(t *testing.T) {
 	c := counts{
 		"modes/tty\ttick\ttickMsg":                 1,
@@ -223,8 +225,9 @@ func TestARenameReplacesOnlyAWholeName(t *testing.T) {
 		"modes/tty\tsidesOnly\tstrings.IndexByte":  1,
 		"modes/tty\tcursorIn\tsides":               1,
 		"app\t(*mastercontrol).dip\tsync.(*Mutex)": 1,
+		"app\tschedule.tick\tlineup.Tick":          1,
 	}
-	got := renamed(c, [][2]string{{"tick", "Tick"}, {"tickMsg", "TickMsg"}, {"sides", "Sides"}, {"(*mastercontrol).dip", "(*mastercontrol).duck"}})
+	got := renamed(c, []rename{{"tick", "Tick", "modes/tty"}, {"tickMsg", "TickMsg", "modes/tty"}, {"sides", "Sides", "modes/tty"}, {"(*mastercontrol).dip", "(*mastercontrol).duck", ""}})
 	want := counts{
 		"modes/tty\tTick\tTickMsg":                  1,
 		"modes/tty\tTick.func1\tTickMsg":            1,
@@ -233,6 +236,7 @@ func TestARenameReplacesOnlyAWholeName(t *testing.T) {
 		"modes/tty\tsidesOnly\tstrings.IndexByte":   1,
 		"modes/tty\tcursorIn\tSides":                1,
 		"app\t(*mastercontrol).duck\tsync.(*Mutex)": 1,
+		"app\tschedule.tick\tlineup.Tick":           1,
 	}
 	if !maps.Equal(got, want) {
 		t.Errorf("renamed\n%v\nwant\n%v", got, want)

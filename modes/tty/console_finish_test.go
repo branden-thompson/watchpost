@@ -45,7 +45,7 @@ func TestTheConsolesFinisherIsByteIdentical(t *testing.T) {
 	t.Cleanup(rendering.ResetColorEnabledForTest)
 	was := render.ThemeName()
 	t.Cleanup(func() { render.SetTheme(was) })
-	c := loadedConsole(t, loadedPoolSize)
+	c := loadedConsole(t, LoadedPoolSize)
 	wide := strings.Repeat("\x1b[38;5;214mWIDE\x1b[0m ", 80)
 	for _, theme := range []string{render.DefaultThemeName, "Watchpost Light"} {
 		if !render.SetTheme(theme) {
@@ -59,7 +59,7 @@ func TestTheConsolesFinisherIsByteIdentical(t *testing.T) {
 				for _, lines := range [][]string{frame, append(append([]string{wide}, frame...), frame...)} {
 					got := c.clamp(append([]string(nil), lines...))
 					if want := clampShipped(c, append([]string(nil), lines...)); got != want {
-						line, w, g := firstDiffLine(want, got)
+						line, w, g := FirstDiffLine(want, got)
 						t.Fatalf("%s, colour %v, %dx%d: the frame differs at line %d:\n want %q\n  got %q", theme, colour, sz[0], sz[1], line, w, g)
 					}
 				}

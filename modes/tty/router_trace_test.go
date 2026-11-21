@@ -39,7 +39,7 @@ var traceMessages = []tea.Msg{
 	tea.KeyPressMsg{Code: '5', Text: "5"}, tea.KeyPressMsg{Code: 'x', Text: "x"},
 	tea.WindowSizeMsg{Width: 133, Height: 44}, tea.WindowSizeMsg{Width: 80, Height: 24},
 	tea.WindowSizeMsg{Width: 160, Height: 74},
-	tickMsg{}, vizTickMsg{}, TickerAdvanceMsg{},
+	TickMsg{}, vizTickMsg{}, TickerAdvanceMsg{},
 	// 0.19.6 B0's widening (RX-8): the map, Propagation, Settings and the console.
 	tea.KeyPressMsg{Code: 'P', Text: "P"}, tea.KeyPressMsg{Code: 'L', Text: "L"},
 	tea.KeyPressMsg{Code: 'U', Text: "U"}, tea.KeyPressMsg{Code: 'F', Text: "F"},
@@ -79,7 +79,7 @@ var mapPool = []tea.Msg{
 	key('+', "+"), key('-', "-"), key('<', "<"), key('n', "n"), key('1', "1"), key('2', "2"), key('5', "5"),
 	key('L', "L"), key('U', "U"), key('F', "F"), key('P', "P"),
 	tea.WindowSizeMsg{Width: 133, Height: 44}, tea.WindowSizeMsg{Width: 160, Height: 74},
-	tickMsg{}, vizTickMsg{}, TickerAdvanceMsg{},
+	TickMsg{}, vizTickMsg{}, TickerAdvanceMsg{},
 }
 
 // propPool is the Propagation mode's keys: the map's, without the ones that
@@ -90,7 +90,7 @@ var propPool = []tea.Msg{
 	key('B', "B"), key('A', "A"), key('[', "["), key(']', "]"), key('+', "+"), key('-', "-"),
 	key('L', "L"), key('U', "U"), key('F', "F"), key('1', "1"),
 	tea.WindowSizeMsg{Width: 133, Height: 44}, tea.WindowSizeMsg{Width: 160, Height: 74},
-	tickMsg{}, TickerAdvanceMsg{},
+	TickMsg{}, TickerAdvanceMsg{},
 }
 
 // traceWalks are the four seeds' walks: the whole alphabet from the
@@ -265,7 +265,7 @@ func TestRouterUpdateIsTheSameUnderRandomMessages(t *testing.T) {
 			}
 			frame := strings.ReplaceAll(m.View().Content, built, "GO")
 			fmt.Fprintf(&trace, "%d.%03d m%02d surface=%v cmd=%s frame=%x\n", seed, step, i, m.(Router).active, desc, sha256.Sum256([]byte(frame)))
-			reach.count(m.(Router).active, stripANSITest(frame))
+			reach.count(m.(Router).active, StripANSI(frame))
 		}
 	}
 	// THE FLOORS, fixed at 0.19.6 B0 (CQ F-18) under the 343, 114, 418 and 144

@@ -98,15 +98,15 @@ func TestForecastModesRainSaysItIsNotRadar(t *testing.T) {
 	d := openRainMap(t, false)
 	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "radar", Classes: []tuimaps.Class{{Label: "10 to 20", Colour: tuimaps.RGB{R: 34, G: 119, B: 136}, Drawn: true}}},
 		{Preset: "temperature", Classes: []tuimaps.Class{{Label: "50 to 60", Colour: tuimaps.RGB{R: 240, G: 232, B: 144}, Drawn: true}}}}
-	row := stripANSITest(d.scrubRows(100)[0])
+	row := StripANSI(d.scrubRows(100)[0])
 	if !strings.Contains(row, "MODEL RAIN") || !strings.Contains(row, "NOT RADAR") {
 		t.Errorf("with rain drawn, the colour row is %q; want radar's colours said to be a model's, not radar", row)
 	}
-	if b := stripANSITest(strings.Join(d.badges(), " ")); !strings.Contains(b, "RAIN   O-METEO  ") {
+	if b := StripANSI(strings.Join(d.badges(), " ")); !strings.Contains(b, "RAIN   O-METEO  ") {
 		t.Errorf("the badges are %q; want the rain's source (D-133)", b)
 	}
 	d = switchLayer(t, d, RainLayer)
-	if row := stripANSITest(d.scrubRows(100)[0]); !strings.Contains(row, "TEMPERATURE") || rainGiven(d) != 0 {
+	if row := StripANSI(d.scrubRows(100)[0]); !strings.Contains(row, "TEMPERATURE") || rainGiven(d) != 0 {
 		t.Errorf("with rain off the row is %q and %d rain grids are drawn", row, rainGiven(d))
 	}
 }
@@ -118,12 +118,12 @@ func TestNDFDsTotalsAreKeyedInTheirOwnScale(t *testing.T) {
 	d := openRainMap(t, false)
 	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "qpf", Classes: []tuimaps.Class{{Label: "under 0.25"}, {Label: "0.25 to 2.5", Colour: tuimaps.RGB{R: 133, G: 248, B: 24}, Drawn: true}}},
 		{Preset: "temperature", Classes: []tuimaps.Class{{Label: "50 to 60", Colour: tuimaps.RGB{R: 240, G: 232, B: 144}, Drawn: true}}}}
-	row := stripANSITest(d.scrubRows(100)[0])
+	row := StripANSI(d.scrubRows(100)[0])
 	if !strings.Contains(row, "NDFD TOTALS") || strings.Contains(row, "MODEL RAIN") || !strings.Contains(row, "under 0.25") {
 		t.Errorf("with NDFD's totals drawn, the colour row is %q; want the totals' classes, said to be NDFD's", row)
 	}
 	d.mapPane.legend = append(d.mapPane.legend, tuimaps.LegendEntry{Preset: "radar", Classes: []tuimaps.Class{{Label: "10 to 20", Colour: tuimaps.RGB{R: 34, G: 119, B: 136}, Drawn: true}}})
-	if row := stripANSITest(d.scrubRows(100)[0]); !strings.Contains(row, "MODEL RAIN") {
+	if row := StripANSI(d.scrubRows(100)[0]); !strings.Contains(row, "MODEL RAIN") {
 		t.Errorf("with a model's rain drawn too, the row is %q; want radar's colours, said to be a model's", row)
 	}
 }
@@ -151,10 +151,10 @@ func TestTheHoursAheadNameOpenMeteo(t *testing.T) {
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = shiftKey(settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd), tea.KeyRight)
-	if badge := stripANSITest(d.radarBadge()); !strings.Contains(badge, "RADAR FCST") || !strings.Contains(badge, "O-METEO") {
+	if badge := StripANSI(d.radarBadge()); !strings.Contains(badge, "RADAR FCST") || !strings.Contains(badge, "O-METEO") {
 		t.Errorf("ahead of now the badge is %q; want RADAR FCST and O-METEO", badge)
 	}
-	if row := stripANSITest(d.loopRow(d.scrubW())); !strings.Contains(row, "FORECAST   O-METEO  ") {
+	if row := StripANSI(d.loopRow(d.scrubW())); !strings.Contains(row, "FORECAST   O-METEO  ") {
 		t.Errorf("ahead of now the loop's row is %q; want it to lead FORECAST O-METEO", row)
 	}
 }

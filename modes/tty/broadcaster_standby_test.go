@@ -24,7 +24,7 @@ func bcStandby(t *testing.T, held bool, forDur time.Duration) Broadcaster {
 	b.now = func() time.Time { return base.Add(forDur) }
 	if held {
 		var l lineup.Lineup
-		next, err := l.Queue(lineup.AlertRail, card(t, "x", "TORNADO WARNING"))
+		next, err := l.Queue(lineup.AlertRail, Card(t, "x", "TORNADO WARNING"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -81,7 +81,7 @@ func TestARepeatedStationMessageDoesNotRestartTheStandbyClock(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height = 150, 74
 	var l lineup.Lineup
-	next, err := l.Queue(lineup.AlertRail, card(t, "x", "TORNADO WARNING"))
+	next, err := l.Queue(lineup.AlertRail, Card(t, "x", "TORNADO WARNING"))
 	if err != nil {
 		t.Fatal(err)
 	}

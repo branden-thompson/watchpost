@@ -10,8 +10,9 @@ import (
 
 // TestARowUnderItsFloorFails is D-264: an exempted density row whose package
 // measures under the floor its reason states fails, naming it; one at or over
-// passes; a firing row stating no floor fails, named with what it measures
-// (D-277); a live finding is not this check's; a finding whose figure cannot
+// passes; a file a row holds to its own floor is held to that one, and every
+// other file to the row's (0.19.6 D-61); a firing row stating no floor fails,
+// named with what it measures (D-277); a live finding is not this check's; a finding whose figure cannot
 // be read, or a report that is not JSON, fails closed.
 func TestARowUnderItsFloorFails(t *testing.T) {
 	row := func(file, density, reason string) string {
@@ -26,6 +27,9 @@ func TestARowUnderItsFloorFails(t *testing.T) {
 		{"over its floor", row("a/a.go", "0.50", "FLOOR 0.43 over 339"), 0, "1 density row(s) at or over"},
 		{"under its floor", row("a/a.go", "0.42", "FLOOR 0.43 over 339"), 1, "a/a.go: 0.42, under its floor 0.43"},
 		{"no floor stated", row("a/a.go", "0.10", "ratified by precedent"), 1, "a/a.go: measures 0.10 over 9 changed functions, its row states no floor"},
+		{"a file at its own floor", row("a/b.go", "0.33", "FLOOR 0.61 over 49. a/b.go FLOOR 0.33 over 3 (0.19.6 D-61)"), 0, "1 density row(s) at or over"},
+		{"another file under the row's", row("a/a.go", "0.33", "FLOOR 0.61 over 49. a/b.go FLOOR 0.33 over 3 (0.19.6 D-61)"), 1, "a/a.go: 0.33, under its floor 0.61"},
+		{"a file under its own floor", row("a/b.go", "0.20", "FLOOR 0.61 over 49. a/b.go FLOOR 0.33 over 3 (0.19.6 D-61)"), 1, "a/b.go: 0.20, under its floor 0.33"},
 		{"a live finding", `{"file":"a/a.go","rule_id":"P10-05-INVARIANT-DENSITY","message":"invariant density 0.10","exempted":false,"exempt_reason":"FLOOR 0.43"}`, 0, "0 density row(s)"},
 		{"another rule", `{"file":"a/a.go","rule_id":"P10-01-CONTROL-FLOW","message":"recursion","exempted":true,"exempt_reason":"FLOOR 0.43"}`, 0, "0 density row(s)"},
 		{"no figure measured", `{"file":"a/a.go","rule_id":"P10-05-INVARIANT-DENSITY","message":"P10-05: density unreadable","exempted":true,"exempt_reason":"FLOOR 0.43"}`, 2, "states no density"},

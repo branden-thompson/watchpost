@@ -27,7 +27,7 @@ func TestTheRunningOrderNamesWhatEachCardCarries(t *testing.T) {
 			report.Set(0).Add(report.NWS).Add(report.Fire).Add(report.Seismic), "NWS, FIRE, QUAKE"},
 		{"one is a one-element list", report.Set(0).Add(report.Marine), "MARINE"},
 	} {
-		c := card(t, "c0", "somewhere")
+		c := Card(t, "c0", "somewhere")
 		c.Reports = tc.set
 		if got := reportTypeOf(c); got != tc.want {
 			t.Errorf("%s: the running order says %q, want %q", tc.name, got, tc.want)

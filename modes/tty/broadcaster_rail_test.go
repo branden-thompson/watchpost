@@ -222,7 +222,7 @@ func TestTheLabelIsCentredInItsSection(t *testing.T) {
 func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+	rows := strings.Split(StripANSI(b.View().Content), "\n")
 	// The frame is padded to the terminal, so trailing blanks below the content
 	// are expected; only gaps BETWEEN drawn rows are the concern.
 	last := 0
@@ -257,7 +257,7 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
-	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+	rows := strings.Split(StripANSI(b.View().Content), "\n")
 
 	// FROM THE FIRST CARD DOWN. Above it are the masthead's own box, the painted
 	// station band (no walls by design, D-70) and the lane's bare caption (none
@@ -537,7 +537,7 @@ func railAt(b Broadcaster) int { return len(bcLeftInset) + b.frameWidth() - 1 }
 // slots is the running order's rows, by the `##.` column that addresses them.
 func slots(b Broadcaster) []string {
 	var out []string
-	for _, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
+	for _, r := range strings.Split(StripANSI(b.View().Content), "\n") {
 		if m := lineupRowNum.FindStringSubmatch(r); m != nil {
 			out = append(out, m[1])
 		}
@@ -547,7 +547,7 @@ func slots(b Broadcaster) []string {
 
 // thumb is the row the scroll rail's thumb sits on, or -1.
 func thumb(b Broadcaster) int {
-	for i, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
+	for i, r := range strings.Split(StripANSI(b.View().Content), "\n") {
 		rr := []rune(r)
 		if len(rr) > railAt(b) && rr[railAt(b)] == '#' {
 			return i

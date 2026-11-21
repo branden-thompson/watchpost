@@ -52,7 +52,7 @@ const severeBreakingWindow = 10 * time.Minute
 type SevereMsg struct {
 	Rows    []SevereRow
 	Totals  [severeNumTabs]int
-	Updated time.Time // the newest SUCCESSFUL source fetch (dataAsOf), zero when none yet
+	Updated time.Time // the newest SUCCESSFUL source fetch (DataAsOf), zero when none yet
 	Sources []SevereSource
 	Gen     uint64 // bumps per publish — the modal memo's key field
 }
@@ -417,7 +417,7 @@ func (d Dashboard) severeBrowseLines(o render.Opts, w int) []string {
 		// three asterisks in it would be read aloud as asterisks.
 		event := render.PlainLine(r.Product)
 		if r.Test {
-			event = testEventMark + " " + event
+			event = TestEventMark + " " + event
 		}
 		cells = append(cells, render.SevereCell{
 			Num: i + 1, Event: event, Location: render.PlainLine(r.Location), Detection: render.PlainLine(r.Detection), Declared: render.PlainLine(r.Declared), Expires: render.PlainLine(r.Expires),

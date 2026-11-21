@@ -13,17 +13,18 @@ import (
 
 // pinnedMessages is every message type the two trees 0.19.6 splits declare,
 // by name, at 0.19.6 B0 (R8): the split moves where a message is declared,
-// never how many there are.
+// never how many there are. B2 exports the kit's tickMsg as TickMsg (design
+// CK-1), one name for one.
 var pinnedMessages = []string{
 	"BedMsg", "BedRelaysMsg", "LineupMsg", "RadioStatusMsg", "RecentSnapshotMsg", "RelaySilentMsg",
 	"SevereMsg", "SevereReadingMsg", "SnapshotMsg", "StationAreaMsg", "StationControlMsg",
-	"StationFaultMsg", "StationMsg", "TickerAdvanceMsg", "TickerBreakingDoneMsg", "TickerBreakingMsg",
-	"TickerMsg", "VoiceNoteMsg", "castSavedMsg", "committedMsg", "forecastTickMsg",
+	"StationFaultMsg", "StationMsg", "TickMsg", "TickerAdvanceMsg", "TickerBreakingDoneMsg",
+	"TickerBreakingMsg", "TickerMsg", "VoiceNoteMsg", "castSavedMsg", "committedMsg", "forecastTickMsg",
 	"historyClearedMsg", "locatePauseMsg", "locateVerdictMsg", "mapClearedMsg", "mapFeedMsg",
 	"mapPanicMsg", "mapRadarAgainMsg", "mapRadarMsg", "mapReleaseMsg", "mapTempMsg", "mapTickMsg",
 	"mapViewSettledMsg", "mapWorkedMsg", "propAheadMsg", "propCentreMsg", "propChartMsg",
-	"propFoundMsg", "propReachMsg", "propTickMsg", "propUpdatedMsg", "resolvedMsg", "tickMsg",
-	"uiSavedMsg", "vizTickMsg",
+	"propFoundMsg", "propReachMsg", "propTickMsg", "propUpdatedMsg", "resolvedMsg", "uiSavedMsg",
+	"vizTickMsg",
 }
 
 // messageTypes lists the Msg types the non-test code under the two trees

@@ -7,12 +7,13 @@ package tty
 
 import (
 	"flag"
-	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -45,30 +46,11 @@ func checkGolden(t *testing.T, name, got string) {
 		t.Fatalf("no golden yet: run with -update-golden (%v)", err)
 	}
 	if got != string(want) {
-		line, w, g := firstDiffLine(string(want), got)
+		line, w, g := FirstDiffLine(string(want), got)
 		t.Fatalf("%s differs from its golden at line %d:\n want: %q\n  got: %q\n"+
 			"If the change is intended, re-run with -update-golden and record why in the release's build log.",
 			name, line, w, g)
 	}
-}
-
-// firstDiffLine is the first line, counted from 1, at which two frames differ, and
-// what each has there ("" past a frame's end).
-func firstDiffLine(want, got string) (int, string, string) {
-	ws, gs := strings.Split(want, "\n"), strings.Split(got, "\n")
-	for i := range max(len(ws), len(gs)) {
-		var w, g string
-		if i < len(ws) {
-			w = ws[i]
-		}
-		if i < len(gs) {
-			g = gs[i]
-		}
-		if w != g {
-			return i + 1, w, g
-		}
-	}
-	return 0, "", ""
 }
 
 func TestFrameGoldenColourOff(t *testing.T) {
@@ -194,7 +176,7 @@ func TestSetupGoldenASCII(t *testing.T) {
 func TestASCIIFramesCarryNothingButASCII(t *testing.T) {
 	for name, frame := range asciiSurfaces(t) {
 		seen := map[rune]bool{}
-		for _, r := range stripANSITest(frame) {
+		for _, r := range StripANSI(frame) {
 			if r < 128 || r == '\u00b0' || seen[r] {
 				continue
 			}
@@ -296,7 +278,7 @@ func asciiSurfaces(t *testing.T) map[string]string {
 			// A WINDOW THAT DRAWS NOTHING IS NOT A WINDOW THAT PASSED. This is
 			// the failure a coverage scan is most likely to have and least
 			// likely to report: it goes quiet in exactly the shape of success.
-			if strings.TrimSpace(stripANSITest(got)) == "" {
+			if strings.TrimSpace(StripANSI(got)) == "" {
 				t.Fatalf("the %s window draws nothing at fixtureFor/%s: it is NOT covered by this scan", modalName(m), st.name)
 			}
 			out["the "+modalName(m)+" window ("+st.name+")"] = got

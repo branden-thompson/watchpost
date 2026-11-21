@@ -33,7 +33,7 @@ func withOperatorCard(t *testing.T, b Broadcaster, id string, slot int) Broadcas
 // copies of the console from one parent, handed different line-ups, each read
 // their own, however their reads interleave, since the copies share one memo.
 func TestTheConsolesProjectionFollowsItsLineup(t *testing.T) {
-	base := loadedConsole(t, loadedPoolSize)
+	base := loadedConsole(t, LoadedPoolSize)
 	ids := func(b Broadcaster) string {
 		out := ""
 		for _, c := range b.projection(lineup.MainTrack) { // bounded by the track (P10-02)
@@ -70,7 +70,7 @@ func TestTheConsolesProjectionFollowsItsLineup(t *testing.T) {
 // the walk can change, with the memo filled for the unchanged console first, a
 // copy reads the rows it would draw itself and never the base's.
 func TestTheConsolesTableRowsAreTheRowsItWouldDraw(t *testing.T) {
-	base := loadedConsole(t, loadedPoolSize)
+	base := loadedConsole(t, LoadedPoolSize)
 	base.width, base.height = 160, 74
 	const used = 20
 	fresh := func(b Broadcaster) string { return fmt.Sprint(b.railTables(b.buildSpans(used))) }
@@ -78,7 +78,7 @@ func TestTheConsolesTableRowsAreTheRowsItWouldDraw(t *testing.T) {
 		t.Fatal("the fixture rails no rows; this checks nothing")
 	}
 	checked := 0
-	perturbEach(t, base, consoleExcuse, consoleWriter, func(field string, next Broadcaster) {
+	PerturbEach(t, base, consoleExcuse, consoleWriter, func(field string, next Broadcaster) {
 		_ = base.tableRows(used) // the memo holds the base console's rows
 		if got, want := fmt.Sprint(next.tableRows(used)), fresh(next); got != want {
 			t.Errorf("changing %s: the console's memo hands back rows it would not draw now (broadcaster_memo.go, tableRows)", field)

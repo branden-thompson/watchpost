@@ -1529,13 +1529,16 @@ each one's best mention (0.19.6 D-50).
 | D-59 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | ONE MASTHEAD, DRAWN BY BOTH SURFACES. "why the masthead different than the Observer Masthead?" It should not … |
 | D-59 | 0.16.0 | `0.16.0-broadcaster-ui/04-development/p4.5-build-log.md` | the console draws Observer's own masthead box. Corrected the same day: the first cut deviated from the mock a… |
 | D-59 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | SHIP: the debrief. |
+| D-59 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The kit's shimmer clock's name (B2's prep, design CK-1). Exported as CK-1's Tick, it raises two P10-01 findin… |
 | D-59 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Cross-repo, go-tuiMaps v0.2.0 D-76 (found at L4.2): the loop's speed against the flash ceiling. The HUM LEAD … |
 | D-59 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Where the closure notice is "said" and how long it lasts (AX-I): on the station's voice it could go out on ai… |
 | D-60 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE MAIN TRACK IS DRAWN AS NAMED REGIONS — LIVE, UP NEXT, SCHEDULED, LINE UP — which is what the reference's … |
 | D-60 | 0.19.5 | `0.19.5-quality-pass/02-analysis/rulings.md` | REFLECT: the debrief (08-reports/reflect-report.md) presented, with A-35 and A-36 for veto. |
+| D-60 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | make p10 on B2's prep finds one live finding B1 left: P10-05 density on the package tools/ids/idset, 1.00 acr… |
 | D-60 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | BUILD, before W1: the plan builds W1–W7 on go-tuiMaps v0.1.0 and W9 then moves to v0.2.0; every v0.2.0 featur… |
 | D-60 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The Broadcaster's 44-row floor (AX-L): FR-2.7 let it rise if the readout did not fit (modes/tty/broadcaster.g… |
 | D-61 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE PRIORITY RAIL IS INVISIBLE UNTIL IT HAS SOMETHING. "the PRIORITY Rail label ONLY shows up when a priority… |
+| D-61 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | make p10's floor check, once D-60 cleared the live finding: app/mastercontrol.go measures 0.33 across 3 chang… |
 | D-61 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | W1.16 (FR-1.11, D-49): the map's key controls evaluated together against the Observer's keymap (? q ctrl+c a … |
 | D-61 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Finding a place worldwide (IS-4): the Observer's lookup refuses non-US results (domains/locations/openmeteo/g… |
 | D-62 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE BED MOVES INTO THE BROADCAST SECTION. "the bed was yet another conveyer of the AIR STATE and we wanted to… |
@@ -2373,6 +2376,7 @@ each one's best mention (0.19.6 D-50).
 | A-48 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | FR-1.13's details (W5.4): (1) the hours step on the weather modes' own keys - shift+right an hour on, to 24; … |
 | A-49 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | A rename replaces a whole name (B2, step 2; A-26). tools/gcprobe/main.go:renamed applied each 06_docs/perf/re… |
 | A-49 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-180's details: (1) the centre is answered to half a degree, so a pan is answered and the smallest nudge is … |
+| A-50 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2's prep, as built (design CK-1, CK-4; D-55, D-56, D-58). (1) The kit's declarations are cut in place into m… |
 | A-50 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Batches 21 and 22's choices: (1) a disturbed band ◐ in the advisory tone (render.NameAdvisory), degraded, not… |
 | A-51 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-193's and D-194's details: (1) one table of roles, propRoles, gives each UI mode its Propagation origin (th… |
 | A-52 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-195's and D-196's details: (1) A-51's roles table becomes the UI modes' map roles, mapRoles: whose place th… |
@@ -2992,11 +2996,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:136` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:136` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:139` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:139` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:136` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:139` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

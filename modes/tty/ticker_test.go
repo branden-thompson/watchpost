@@ -21,7 +21,7 @@ func TestTickerEmptyIsAPersistentMutedBand(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	d := tickerDash(t, nil, false)
 	band := d.tickerMarquee(render.Opts{Width: 100})
-	rows := strings.Split(stripANSITest(band), "\n")
+	rows := strings.Split(StripANSI(band), "\n")
 	if len(rows) != 3 {
 		t.Fatalf("the ticker is a persistent 3-row band, got %d rows", len(rows))
 	}
@@ -45,7 +45,7 @@ func TestTickerTapesTheCurrentLaneWithCategoryColour(t *testing.T) {
 	}
 	d := tickerDash(t, items, false)
 	raw := d.tickerMarquee(render.Opts{Width: 200})
-	plain := stripANSITest(raw)
+	plain := StripANSI(raw)
 	// Lane 0 in rotation order (Quake, Tropical, Warning, Watch) is Warnings.
 	// The left indicator is [count] [glyph]; the lane is read by its colour.
 	if !strings.Contains(plain, "2 ⚠") {
@@ -91,7 +91,7 @@ func TestTickerBreakingTakesOverCentredInItsLaneColour(t *testing.T) {
 	item := TickerItem{ID: "tor", Category: CatWarning, Head: "Tornado Warning · the Oklahoma City area  declared 3:42 PM · expires 4:15 PM"}
 	d.breaking = &item
 	raw := d.tickerMarquee(render.Opts{Width: 120})
-	plain := stripANSITest(raw)
+	plain := StripANSI(raw)
 	if !strings.Contains(plain, "Tornado Warning") || strings.Contains(plain, "Tornado Watch") {
 		t.Fatalf("the breaking event alone takes the band: %q", plain)
 	}
@@ -106,7 +106,7 @@ func TestTickerBreakingTakesOverCentredInItsLaneColour(t *testing.T) {
 	}
 	// Done resumes the normal (Watches) tape.
 	d.breaking = nil
-	if plain := stripANSITest(d.tickerMarquee(render.Opts{Width: 120})); !strings.Contains(plain, "Tornado Watch") {
+	if plain := StripANSI(d.tickerMarquee(render.Opts{Width: 120})); !strings.Contains(plain, "Tornado Watch") {
 		t.Fatalf("clearing breaking resumes normal rotation: %q", plain)
 	}
 }
@@ -130,7 +130,7 @@ func TestMuteDeepLinksRatherThanFlippingAHeaderChip(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	o := render.Opts{Width: 160}
 	for _, muted := range []bool{false, true} {
-		if got := stripANSITest(tickerDash(t, nil, muted).header(o)); strings.Contains(got, "[M] Mute") || strings.Contains(got, "[M] Unmute") {
+		if got := StripANSI(tickerDash(t, nil, muted).header(o)); strings.Contains(got, "[M] Mute") || strings.Contains(got, "[M] Unmute") {
 			t.Errorf("muted=%v: the mute chip left the header for Settings:\n%q", muted, got)
 		}
 	}
@@ -198,18 +198,18 @@ func TestTheTapeFollowsTheClockWithoutWaitingForACycle(t *testing.T) {
 	}, false)
 	d.now = func() time.Time { return at.Add(time.Hour) } // same day: a bare time
 
-	twelve := stripANSITest(d.tickerMarquee(d.opts()))
+	twelve := StripANSI(d.tickerMarquee(d.opts()))
 	if !strings.Contains(twelve, "4:50 PM") {
 		t.Fatalf("the 12-hour tape reads the time: %q", twelve)
 	}
 
 	// The listener picks 24-hour. No new event, no new cycle — just the setting.
 	d.clockFmt = render.Clock24
-	if got := stripANSITest(d.tickerMarquee(d.opts())); !strings.Contains(got, "16:50") || strings.Contains(got, "PM") {
+	if got := StripANSI(d.tickerMarquee(d.opts())); !strings.Contains(got, "16:50") || strings.Contains(got, "PM") {
 		t.Errorf("the tape follows the clock at once, got %q", got)
 	}
 	d.clockFmt = render.ClockMil
-	if got := stripANSITest(d.tickerMarquee(d.opts())); !strings.Contains(got, "1650") {
+	if got := StripANSI(d.tickerMarquee(d.opts())); !strings.Contains(got, "1650") {
 		t.Errorf("military too, got %q", got)
 	}
 }
@@ -302,7 +302,7 @@ func TestEachTickerLaneNamesItselfWithoutColour(t *testing.T) {
 		var d Dashboard
 		d.width = 133
 		d.setTicker([]TickerItem{item(cat)})
-		band := stripANSITest(d.tickerMarquee(d.opts()))
+		band := StripANSI(d.tickerMarquee(d.opts()))
 		if label := cat.Label(); !strings.Contains(band, label) {
 			t.Errorf("lane %v must name itself %q on the band:\n%s", cat, label, band)
 		}
@@ -365,20 +365,20 @@ func TestTheTapeMarksAFabricatedItemAtBothEnds(t *testing.T) {
 	test.ID, test.Test = "injected", true
 	d := tickerDash(t, []TickerItem{test}, false)
 
-	line := stripANSITest(d.tapeLine(render.Opts{Width: 80}, test))
-	if !strings.HasPrefix(line, testEventMark) || !strings.HasSuffix(line, testEventMark) {
+	line := StripANSI(d.tapeLine(render.Opts{Width: 80}, test))
+	if !strings.HasPrefix(line, TestEventMark) || !strings.HasSuffix(line, TestEventMark) {
 		t.Errorf("the tape reads %q; a fabricated item is marked at BOTH ends, so it cannot be on "+
 			"screen without one of them", line)
 	}
-	if got := stripANSITest(d.tapeLine(render.Opts{Width: 80}, real)); strings.Contains(got, testEventMark) {
+	if got := StripANSI(d.tapeLine(render.Opts{Width: 80}, real)); strings.Contains(got, TestEventMark) {
 		t.Errorf("a REAL warning is marked as a test event: %q", got)
 	}
 
 	for _, width := range []int{80, 133} {
-		if got := stripANSITest(d.tickerMarquee(render.Opts{Width: width})); !strings.Contains(got, testEventMark) {
+		if got := StripANSI(d.tickerMarquee(render.Opts{Width: width})); !strings.Contains(got, TestEventMark) {
 			t.Errorf("%d cells: the band is showing a fabricated warning and says nothing:\n%s", width, got)
 		}
-		if got := stripANSITest(tickerDash(t, []TickerItem{real}, false).tickerMarquee(render.Opts{Width: width})); strings.Contains(got, testEventMark) {
+		if got := StripANSI(tickerDash(t, []TickerItem{real}, false).tickerMarquee(render.Opts{Width: width})); strings.Contains(got, TestEventMark) {
 			t.Errorf("%d cells: a REAL warning is marked as a test event:\n%s", width, got)
 		}
 	}
@@ -393,13 +393,13 @@ func TestTheTakeoverMarksAFabricatedEvent(t *testing.T) {
 	it := TickerItem{ID: "injected", Category: CatEmergency, Head: "Evacuation Immediate · Paradise, CA", Severity: TickerRed, Test: true}
 	d := tickerDash(t, nil, false)
 	d.breaking = &it
-	if got := stripANSITest(d.tickerMarquee(render.Opts{Width: 80})); !strings.Contains(got, testEventMark) {
+	if got := StripANSI(d.tickerMarquee(render.Opts{Width: 80})); !strings.Contains(got, TestEventMark) {
 		t.Errorf("a fabricated evacuation order is taking over the band unmarked:\n%s", got)
 	}
 	real := it
 	real.Test = false
 	d.breaking = &real
-	if got := stripANSITest(d.tickerMarquee(render.Opts{Width: 80})); strings.Contains(got, testEventMark) {
+	if got := StripANSI(d.tickerMarquee(render.Opts{Width: 80})); strings.Contains(got, TestEventMark) {
 		t.Errorf("a REAL evacuation order is marked as a test event:\n%s", got)
 	}
 }

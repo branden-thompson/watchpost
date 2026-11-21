@@ -86,6 +86,9 @@ func sameDefs(a, b []testDef) bool {
 // Name) and a path's new place, a file or a directory and everything under it.
 type maps struct {
 	funcs, paths map[string]string
+	// scope is the package directory a function's rename is for, when its
+	// line names one (0.19.6 A-49): B2's `tick` is modes/tty's alone.
+	scope map[string]string
 }
 
 // path is a path's place after the batch, by its longest mapped prefix.
@@ -102,9 +105,9 @@ func (m maps) path(p string) string {
 	return m.paths[best] + strings.TrimPrefix(p, best)
 }
 
-// fn is a function's name after the batch.
-func (m maps) fn(f string) string {
-	if to, ok := m.funcs[f]; ok {
+// fn is the name after the batch of a function in the package at dir.
+func (m maps) fn(f, dir string) string {
+	if to, ok := m.funcs[f]; ok && (m.scope[f] == "" || m.scope[f] == dir) {
 		return to
 	}
 	return f
@@ -195,7 +198,7 @@ func structural(root, base, head string, record map[string]verdict, list []strin
 			continue
 		}
 		n := now[l]
-		if m.path(w.target) != n.target || m.fn(w.fn) != n.fn {
+		if m.path(w.target) != n.target || m.fn(w.fn, filepath.Dir(w.target)) != n.fn {
 			probs = append(probs, fmt.Sprintf("%s: its anchor sat in %s, now in %s", filepath.Base(l), w.fn, n.fn))
 		}
 		probs = append(probs, killerMoved(l, record[l].killer, tb, th, m)...)
@@ -326,12 +329,19 @@ func readMaps(pathsFile, funcsFile string) (maps, error) {
 	if err != nil {
 		return maps{}, err
 	}
-	return maps{paths: p, funcs: f}, nil
+	scope := map[string]string{}
+	for from, to := range f { // bounded by the map (P10-02)
+		if name, pkg, ok := strings.Cut(to, "\t"); ok {
+			f[from], scope[from] = name, pkg
+		}
+	}
+	return maps{paths: p, funcs: f, scope: scope}, nil
 }
 
 // readMap reads old<TAB>new lines, a blank line or one starting with # read
 // as nothing, so one file can be both this map and gcprobe's; no file is an
-// empty map.
+// empty map. A third field, the package a rename is for, stays in the new
+// name's text, which readMaps splits off for the function map.
 func readMap(file string) (map[string]string, error) {
 	out := map[string]string{}
 	if file == "" {

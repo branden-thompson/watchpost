@@ -24,7 +24,7 @@ func TestCompactRadioRowSpansModuleAndKeepsName(t *testing.T) {
 	o := d.opts()
 	inner := o.BoxInnerWidth()
 	row := d.radioLines(o, true)[0]
-	plain := stripANSITest(row)
+	plain := StripANSI(row)
 	if w := len([]rune(plain)); w != inner {
 		t.Fatalf("compact row must span the module (%d), got %d: %q", inner, w, plain)
 	}
@@ -48,13 +48,13 @@ func TestVolumeControlStepsAndBlinks(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 	m := dash(t)
-	v := stripANSITest(m.View().Content)
+	v := StripANSI(m.View().Content)
 	if !strings.Contains(v, "VOL  -") || !strings.Contains(v, " 55") {
 		t.Fatalf("initial volume control missing:\n%s", v)
 	}
 	m, _ = m.Update(tea.KeyPressMsg{Code: '+', Text: "+"})
 	raw := m.View().Content
-	if m.(Dashboard).radioVolume != 60 || !strings.Contains(stripANSITest(raw), " 60") {
+	if m.(Dashboard).radioVolume != 60 || !strings.Contains(StripANSI(raw), " 60") {
 		t.Fatalf("plus must step to 60: %d", m.(Dashboard).radioVolume)
 	}
 	if !strings.Contains(raw, "\x1b[1;97;48;5;28m + ") {
@@ -65,7 +65,7 @@ func TestVolumeControlStepsAndBlinks(t *testing.T) {
 		t.Fatal("[-] must blink red and step back to 55")
 	}
 	short, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 24})
-	if n := strings.Count(stripANSITest(short.View().Content), "█") + strings.Count(stripANSITest(short.View().Content), "░"); n != 10 {
+	if n := strings.Count(StripANSI(short.View().Content), "█") + strings.Count(StripANSI(short.View().Content), "░"); n != 10 {
 		t.Fatalf("compact VOL bar must be 10 cells, got %d", n)
 	}
 }
@@ -76,7 +76,7 @@ func TestVolumeLevelReservedAndEdgeChipsMute(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 	m := dash(t)
-	if v := stripANSITest(m.View().Content); !strings.Contains(v, "+   55") {
+	if v := StripANSI(m.View().Content); !strings.Contains(v, "+   55") {
 		t.Fatalf("level must render in a 3-cell field ('+   55'):\n%s", v)
 	}
 	for range 12 { // 55 -> 100
@@ -95,7 +95,7 @@ func TestVolumeLevelReservedAndEdgeChipsMute(t *testing.T) {
 	if d.radioVolume != 0 || !strings.Contains(d.volControl(d.opts(), 10), "48;2;43;43;43m - ") {
 		t.Fatalf("at 0 the [-] chip must mute (vol=%d)", d.radioVolume)
 	}
-	if !strings.Contains(stripANSITest(d.volControl(d.opts(), 10)), "+    0") {
+	if !strings.Contains(StripANSI(d.volControl(d.opts(), 10)), "+    0") {
 		t.Fatal("0 must still occupy the 3-cell field")
 	}
 }
@@ -116,13 +116,13 @@ func TestVizChipTogglesVisualizerRows(t *testing.T) {
 		t.Fatalf("viz on: the max player gains three visualizer rows inside the track (6 rows), got %d: %q", len(full), full)
 	}
 	for _, r := range full[2:5] { // the rows sit inside the track, blank while nothing plays
-		row := stripANSITest(r)
-		if !strings.HasPrefix(row, "│") || !strings.HasSuffix(row, "│") || strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(row, "│"), "│")) != "" || render.Width(row) != render.Width(stripANSITest(full[0])) {
+		row := StripANSI(r)
+		if !strings.HasPrefix(row, "│") || !strings.HasSuffix(row, "│") || strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(row, "│"), "│")) != "" || render.Width(row) != render.Width(StripANSI(full[0])) {
 			t.Fatalf("visualizer row sits inside the track spanning the module (facelift 2026-08-28): %q", row)
 		}
 	}
 	mini := d.radioLines(o, true)
-	if len(mini) != 3 || !strings.HasPrefix(stripANSITest(mini[1]), "│") || !strings.HasSuffix(stripANSITest(mini[1]), "│") {
+	if len(mini) != 3 || !strings.HasPrefix(StripANSI(mini[1]), "│") || !strings.HasSuffix(StripANSI(mini[1]), "│") {
 		t.Fatalf("viz on: min player gets one visualizer row (in the track) between status and controls: %q", mini)
 	}
 }
@@ -152,7 +152,7 @@ func TestVisualizerAnimatesWhilePlayingAndSettlesAfter(t *testing.T) {
 	model, cmd = model.Update(vizTickMsg{})
 	d := model.(Dashboard)
 	rows := d.radioLines(d.opts(), false)[2:5]
-	if !strings.Contains(stripANSITest(rows[0]), "█") || !strings.Contains(stripANSITest(rows[2]), "█") {
+	if !strings.Contains(StripANSI(rows[0]), "█") || !strings.Contains(StripANSI(rows[2]), "█") {
 		t.Fatalf("full bands draw solid blocks on every visualizer row: %q", rows)
 	}
 	if cmd == nil {
@@ -162,7 +162,7 @@ func TestVisualizerAnimatesWhilePlayingAndSettlesAfter(t *testing.T) {
 	levels = []float64{0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	model, _ = model.Update(RadioStatusMsg{State: "stopped", Volume: 55})
 	model, cmd = model.Update(vizTickMsg{})
-	if cmd == nil || !strings.Contains(stripANSITest(model.(Dashboard).radioLines(d.opts(), false)[4]), "█") {
+	if cmd == nil || !strings.Contains(StripANSI(model.(Dashboard).radioLines(d.opts(), false)[4]), "█") {
 		t.Fatal("stopped with bars still up: one more frame, tick re-armed")
 	}
 	levels = make([]float64, 10)
@@ -170,7 +170,7 @@ func TestVisualizerAnimatesWhilePlayingAndSettlesAfter(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("bars at rest and nothing playing: the tick ends")
 	}
-	if row := stripANSITest(model.(Dashboard).radioLines(d.opts(), false)[3]); strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(row, "│"), "│")) != "" {
+	if row := StripANSI(model.(Dashboard).radioLines(d.opts(), false)[3]); strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(row, "│"), "│")) != "" {
 		t.Fatalf("at rest the rows are blank frames inside the track: %q", row)
 	}
 	// A second arm while already ticking never doubles the ticker.
@@ -198,7 +198,7 @@ func TestOnStateLabelsEmphasized(t *testing.T) {
 	if !strings.Contains(v, "Viz: \x1b[1;38;5;77mOn") {
 		t.Fatalf("Viz: On must be green bold:\n%s", v)
 	}
-	if off := stripANSITest(dash(t).View().Content); !strings.Contains(off, "Repeat: Off") || !strings.Contains(off, "Viz: Off") {
+	if off := StripANSI(dash(t).View().Content); !strings.Contains(off, "Repeat: Off") || !strings.Contains(off, "Viz: Off") {
 		t.Fatal("Off states stay plain")
 	}
 }
@@ -210,7 +210,7 @@ func TestMaxPlayerLayoutPerMock(t *testing.T) {
 	d := m.(Dashboard)
 	o := d.opts()
 	rows := d.radioLines(o, false)
-	r1, r2 := stripANSITest(rows[0]), stripANSITest(rows[1])
+	r1, r2 := StripANSI(rows[0]), StripANSI(rows[1])
 	if !strings.HasPrefix(r1, " WATCHPOST WEATHER RADIO") || !strings.HasSuffix(r1, "STOPPED") || !strings.Contains(r1, "VOL") { // one cell in (the box's rhythm)
 		t.Fatalf("row 1: %q", r1)
 	}
@@ -230,7 +230,7 @@ func TestRadioModeChipTogglesSynthAndNearestRelay(t *testing.T) {
 	var model tea.Model = m.WithRadioMode(ParseRadioMode("relay"))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
-	if v := stripANSITest(model.View().Content); !strings.Contains(v, "[m] Mode: Nearest Relay") {
+	if v := StripANSI(model.View().Content); !strings.Contains(v, "[m] Mode: Nearest Relay") {
 		t.Fatalf("the persisted mode seeds the chip:\n%s", v)
 	}
 	model, cmd := model.Update(tea.KeyPressMsg{Code: 'm', Text: "m"})
@@ -238,7 +238,7 @@ func TestRadioModeChipTogglesSynthAndNearestRelay(t *testing.T) {
 		t.Fatal("[m] pushes the mode to the player")
 	}
 	runCmd(cmd)
-	if fr.mode != ModeSynth || !strings.Contains(stripANSITest(model.View().Content), "[m] Mode: Synth") {
+	if fr.mode != ModeSynth || !strings.Contains(StripANSI(model.View().Content), "[m] Mode: Synth") {
 		t.Fatalf("one press: Synth, got %v", fr.mode)
 	}
 	model, cmd = model.Update(tea.KeyPressMsg{Code: 'm', Text: "m"})
@@ -250,7 +250,7 @@ func TestRadioModeChipTogglesSynthAndNearestRelay(t *testing.T) {
 		t.Fatal("persisted forms")
 	}
 	model, _ = model.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
-	if v := stripANSITest(model.View().Content); !strings.Contains(v, "Radio Mode") {
+	if v := StripANSI(model.View().Content); !strings.Contains(v, "Radio Mode") {
 		t.Fatalf("help lists [m]:\n%s", v)
 	}
 }
@@ -276,7 +276,7 @@ func TestRepeatCyclesOffOneWatchlistAndTheRowFollowsTheDeck(t *testing.T) {
 	}
 	press('r')
 	press('r')
-	if fr.repeat != RepeatWatchlist || !strings.Contains(stripANSITest(model.View().Content), "Repeat: Watchlist") {
+	if fr.repeat != RepeatWatchlist || !strings.Contains(StripANSI(model.View().Content), "Repeat: Watchlist") {
 		t.Fatalf("two presses: Watchlist, got %v", fr.repeat)
 	}
 	want := refsOf(two)
@@ -286,7 +286,7 @@ func TestRepeatCyclesOffOneWatchlistAndTheRowFollowsTheDeck(t *testing.T) {
 	// The deck advances to the second favourite: the playing mark (∞ while
 	// repeating, in the ▶ column) moves from row 001 to row 002.
 	model, _ = model.Update(RadioStatusMsg{State: "playing", Station: "Watchpost Synth · " + want[1].Label, Location: snapshot.Key(want[1]), Volume: 55})
-	rows := strings.Split(stripANSITest(model.View().Content), "\n")
+	rows := strings.Split(StripANSI(model.View().Content), "\n")
 	var first, second string
 	for _, line := range rows {
 		if strings.Contains(line, "001.") {
@@ -316,15 +316,15 @@ func TestRepeatCyclesOffOneWatchlistAndTheRowFollowsTheDeck(t *testing.T) {
 		t.Fatal("an unchanged watchlist sends nothing")
 	}
 	press('r')
-	if fr.repeat != RepeatOff || !strings.Contains(stripANSITest(model.View().Content), "Repeat: Off") {
+	if fr.repeat != RepeatOff || !strings.Contains(StripANSI(model.View().Content), "Repeat: Off") {
 		t.Fatalf("third press: Off, got %v", fr.repeat)
 	}
-	if strings.Contains(stripANSITest(model.View().Content), "∞") {
+	if strings.Contains(StripANSI(model.View().Content), "∞") {
 		t.Fatal("Off: no row wears ∞")
 	}
 	// Help lists no [p].
 	model, _ = model.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
-	if v := stripANSITest(model.View().Content); strings.Contains(v, "Pin") {
+	if v := StripANSI(model.View().Content); strings.Contains(v, "Pin") {
 		t.Fatalf("help must not list the retired Pin control:\n%s", v)
 	}
 }
@@ -349,11 +349,11 @@ func TestRadioSpaceTunesFocusedLocationAndStatusDrivesLabels(t *testing.T) {
 	if len(fr.tuned) != 1 || fr.tuned[0] != "Oceanside, CA" {
 		t.Fatalf("tune calls = %v", fr.tuned)
 	}
-	if v := stripANSITest(m2.View().Content); !strings.Contains(v, "CONNECTING") {
+	if v := StripANSI(m2.View().Content); !strings.Contains(v, "CONNECTING") {
 		t.Fatalf("state must read CONNECTING while the app resolves:\n%s", v)
 	}
 	m3, _ := m2.Update(RadioStatusMsg{State: "playing", Station: "KEC49 Monterey CA 162.550 MHz · 78 mi", Detail: "wxradio.org", Volume: 55, Live: true})
-	v := stripANSITest(m3.View().Content)
+	v := StripANSI(m3.View().Content)
 	if !strings.Contains(v, "▶ PLAYING") || !strings.Contains(v, "♪ KEC49 Monterey CA 162.550 MHz") || !strings.Contains(v, "[space] Pause") && !strings.Contains(v, " space  Pause") {
 		t.Fatalf("playing status must drive the label, station line and control:\n%s", v)
 	}
@@ -376,7 +376,7 @@ func TestRadioSpaceTunesFocusedLocationAndStatusDrivesLabels(t *testing.T) {
 		t.Fatal("playing row not found")
 	}
 	synthM, _ := m2.Update(RadioStatusMsg{State: "playing", Station: "Watchpost Synth · Oceanside, CA", Detail: "Tonight. Mostly clear.", Volume: 55})
-	if sv := stripANSITest(synthM.View().Content); !strings.Contains(sv, "Tonight. Mostly clear.") || strings.Contains(sv, "LIVE RADIO") {
+	if sv := StripANSI(synthM.View().Content); !strings.Contains(sv, "Tonight. Mostly clear.") || strings.Contains(sv, "LIVE RADIO") {
 		t.Fatalf("synth shows the narration line:\n%s", sv)
 	}
 	m4, cmd := m3.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
@@ -390,7 +390,7 @@ func TestRadioSpaceTunesFocusedLocationAndStatusDrivesLabels(t *testing.T) {
 		t.Fatalf("volume must push to the player: %d", fr.vol)
 	}
 	m5, _ := m4.Update(RadioStatusMsg{State: "failed", Station: "KEC62 San Diego", Detail: "not relayed", Volume: 60})
-	if v := stripANSITest(m5.View().Content); !strings.Contains(v, "NO STREAM") {
+	if v := StripANSI(m5.View().Content); !strings.Contains(v, "NO STREAM") {
 		t.Fatalf("failed status must read NO STREAM:\n%s", v)
 	}
 }
@@ -428,7 +428,7 @@ func TestMarqueeFollowsTheVoiceAndRepeatWiresThrough(t *testing.T) {
 	m3, cmd := m2.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	runCmd(cmd)
 	m4, _ := m3.Update(RadioStatusMsg{State: "playing", Station: "Watchpost Synth · Oceanside, CA", Detail: "Tonight. Mostly clear.", Volume: 55, Spoken: 3 * time.Second})
-	v := stripANSITest(m4.View().Content)
+	v := StripANSI(m4.View().Content)
 	for _, line := range strings.Split(v, "\n") {
 		if strings.Contains(line, "001.") && strings.Contains(line, "Oceanside, CA") {
 			if !strings.Contains(string([]rune(line)[:8]), "∞") {
@@ -452,17 +452,17 @@ func TestMaxPlayerMarqueeFillsTheRowAfterTheLocation(t *testing.T) {
 	_ = render.RadioBlockTone
 	inner := o.BoxInnerWidth()
 	rows := d.radioLines(o, false)
-	l2 := stripANSITest(rows[1])
+	l2 := StripANSI(rows[1])
 	if !strings.HasPrefix(l2, "│") || !strings.HasSuffix(l2, "│") || !strings.Contains(l2, "Tonight mostly clear") {
 		t.Fatalf("the marquee rides the track (facelift 2026-08-28): %q", l2)
 	}
 	if w := len([]rune(l2)); w != inner {
 		t.Fatalf("the track must fill the row exactly (%d of %d)", w, inner)
 	}
-	if h := stripANSITest(rows[0]); !strings.Contains(h, "♪ Watchpost Synth · Oceanside, CA") {
+	if h := StripANSI(rows[0]); !strings.Contains(h, "♪ Watchpost Synth · Oceanside, CA") {
 		t.Fatalf("the station rides the head: %q", h)
 	}
-	min := stripANSITest(strings.Join(d.radioLines(o, true), "\n"))
+	min := StripANSI(strings.Join(d.radioLines(o, true), "\n"))
 	if strings.Contains(min, "Tonight mostly") {
 		t.Fatalf("the min player has no marquee:\n%s", min)
 	}
@@ -522,7 +522,7 @@ func TestRadioFaceliftHeadTrackAndControls(t *testing.T) {
 	rows := wide.radioLines(wide.opts(), false)
 	plain := make([]string, len(rows))
 	for i, r := range rows {
-		plain[i] = stripANSITest(r)
+		plain[i] = StripANSI(r)
 	}
 	if !strings.HasPrefix(plain[0], " WATCHPOST WEATHER RADIO • ♪ ") || !strings.Contains(plain[0], "VOL") || !strings.HasSuffix(strings.TrimRight(plain[0], " "), "STOPPED") { // one cell in: the box's rhythm
 		t.Fatalf("wide head: %q", plain[0])
@@ -537,11 +537,11 @@ func TestRadioFaceliftHeadTrackAndControls(t *testing.T) {
 	}
 	// The voice's window rides the track.
 	wide.radioPlaying, wide.radioState, wide.radioDetail, wide.radioSpoken, wide.radioSince = true, "playing", "Watchpost Weather Radio forecasts may be delayed", 10*time.Second, time.Now()
-	if track := stripANSITest(wide.marqueeTrack(80)); !strings.Contains(track, "forecasts may be delayed") || !strings.HasPrefix(track, "│ ") || !strings.HasSuffix(track, " │") {
+	if track := StripANSI(wide.marqueeTrack(80)); !strings.Contains(track, "forecasts may be delayed") || !strings.HasPrefix(track, "│ ") || !strings.HasSuffix(track, " │") {
 		t.Fatalf("the spoken text rides the track centred on the band: %q", track)
 	}
 	wide.radioLive = true
-	if track := stripANSITest(wide.marqueeTrack(40)); !strings.Contains(track, "LIVE RADIO") {
+	if track := StripANSI(wide.marqueeTrack(40)); !strings.Contains(track, "LIVE RADIO") {
 		t.Fatalf("a relay says so on the track: %q", track)
 	}
 	// Viz rows sit inside the track: three wide, framed by the rails.
@@ -549,7 +549,7 @@ func TestRadioFaceliftHeadTrackAndControls(t *testing.T) {
 	rows = wide.radioLines(wide.opts(), false)
 	viz := 0
 	for _, r := range rows[2:] {
-		if p := stripANSITest(r); strings.HasPrefix(p, "│") && strings.HasSuffix(p, "│") && !strings.Contains(p, "░") {
+		if p := StripANSI(r); strings.HasPrefix(p, "│") && strings.HasSuffix(p, "│") && !strings.Contains(p, "░") {
 			viz++
 		}
 	}
@@ -561,35 +561,35 @@ func TestRadioFaceliftHeadTrackAndControls(t *testing.T) {
 	narrow.radioViz = true
 	narrow.radioStation, narrow.radioShort, narrow.radioState, narrow.radioPlaying = "EVENT · Special Weather Statement · Palomar Mountain, CA", "EVENT · SPS · Palomar Mountain, CA", "playing", true
 	rows = narrow.radioLines(narrow.opts(), false)
-	head := stripANSITest(rows[0])
+	head := StripANSI(rows[0])
 	if strings.Contains(head, "WATCHPOST") || !strings.Contains(head, "EVENT · SPS · Palomar Mountain, CA") || !strings.Contains(head, "PLAYING") {
 		t.Fatalf("narrow head drops the title and reads the short station: %q", head)
 	}
 	inner := narrow.opts().BoxInnerWidth()
 	for _, r := range rows {
 		if render.Width(r) > inner {
-			t.Fatalf("a player row overflows the module: %q", stripANSITest(r))
+			t.Fatalf("a player row overflows the module: %q", StripANSI(r))
 		}
 	}
-	if viz := stripANSITest(rows[2]); !strings.HasPrefix(viz, "│") || !strings.HasSuffix(viz, "│") {
+	if viz := StripANSI(rows[2]); !strings.HasPrefix(viz, "│") || !strings.HasSuffix(viz, "│") {
 		t.Fatalf("one viz row in the narrow track: %q", viz)
 	}
 	// 96 columns is the MEDIUM breakpoint (0.14.0, MVS-D-23): labelled
 	// controls and a visualizer area, so the v toggle exists. The keys-only
 	// narrow row is TestRadioPanelBreakpoints's.
 	controls := rows[3:]
-	if c := stripANSITest(strings.Join(controls, " ")); !strings.Contains(c, "Repeat:") || !strings.Contains(c, "Viz:") {
+	if c := StripANSI(strings.Join(controls, " ")); !strings.Contains(c, "Repeat:") || !strings.Contains(c, "Viz:") {
 		t.Fatalf("medium: labelled controls with the viz toggle: %q", c)
 	}
 	// Narrower still: the short station itself shortens with an ellipsis, never vanishes.
 	tiny := benchDash(t, 84, 44).(Dashboard)
 	tiny.radioStation, tiny.radioShort, tiny.radioState, tiny.radioPlaying = narrow.radioStation, narrow.radioShort, "playing", true
-	if head := stripANSITest(tiny.radioLines(tiny.opts(), false)[0]); !strings.Contains(head, "♪ EVENT · SPS") || !strings.Contains(head, "…") || strings.Contains(head, "WATCHPOST") {
+	if head := StripANSI(tiny.radioLines(tiny.opts(), false)[0]); !strings.Contains(head, "♪ EVENT · SPS") || !strings.Contains(head, "…") || strings.Contains(head, "WATCHPOST") {
 		t.Fatalf("84 cols: the SHORT station shortens (round 4, B-09), the title stays gone: %q", head)
 	}
 	// Failed: the reason shortens, never replaced by the station (B-09).
 	tiny.radioState, tiny.radioDetail = "failed", "voice cannot render: say: exit status 1 — check the voice in [V], or reinstall it"
-	if head := stripANSITest(tiny.radioLines(tiny.opts(), false)[0]); !strings.HasPrefix(strings.TrimSpace(head), "✘ voice cannot render") || !strings.Contains(head, "…") {
+	if head := StripANSI(tiny.radioLines(tiny.opts(), false)[0]); !strings.HasPrefix(strings.TrimSpace(head), "✘ voice cannot render") || !strings.Contains(head, "…") {
 		t.Fatalf("84 cols failed: the reason shortens: %q", head)
 	}
 }
@@ -648,7 +648,7 @@ func TestRadioPanelBreakpoints(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("narrow controls are one row: %v", rows)
 	}
-	c := stripANSITest(rows[0])
+	c := StripANSI(rows[0])
 	for _, want := range []string{"space", " r ", " m "} {
 		if !strings.Contains(c, want) {
 			t.Errorf("narrow controls missing %q: %q", want, c)

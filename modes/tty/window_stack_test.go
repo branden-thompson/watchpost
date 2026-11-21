@@ -100,7 +100,7 @@ func TestTheWindowReturnedToResumes(t *testing.T) {
 // TestTheControlsRowNamesTheMap is D-106: g Maps to the left of ↑↓ Navigate.
 func TestTheControlsRowNamesTheMap(t *testing.T) {
 	d := mapDash(t, Config{})
-	row := stripANSITest(d.controlRow(d.opts()))
+	row := StripANSI(d.controlRow(d.opts()))
 	maps, nav := strings.Index(row, "g] Maps"), strings.Index(row, "Navigate")
 	if maps < 0 || nav < 0 || maps > nav {
 		t.Errorf("the controls row is %q; want g Maps left of Navigate", row)

@@ -97,7 +97,7 @@ func TestPropagationFrameAllocBudget(t *testing.T) {
 		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
 	}
 	d := propBench(t)
-	if !strings.Contains(stripANSITest(d.View().Content), "MODE:") {
+	if !strings.Contains(StripANSI(d.View().Content), "MODE:") {
 		t.Fatal("the fixture drew no Propagation block: this measures nothing")
 	}
 	for _, colour := range []bool{false, true} {

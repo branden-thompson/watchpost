@@ -89,7 +89,7 @@ func TestFeelsLikeInForecastModeIsSaid(t *testing.T) {
 		t.Errorf("< drew %d feels-like lows; want every day's", low)
 	}
 	d.mapPane.fcStep = 1
-	if badge := stripANSITest(d.forecastBadge()); !strings.Contains(badge, "FORECAST") || !strings.Contains(badge, "TODAY FEELS LOWS") {
+	if badge := StripANSI(d.forecastBadge()); !strings.Contains(badge, "FORECAST") || !strings.Contains(badge, "TODAY FEELS LOWS") {
 		t.Errorf("the badge is %q; want FORECAST and TODAY FEELS LOWS - the room D-120's one line gives", badge)
 	}
 	d = switchLayer(t, d, WindLayer)
@@ -98,7 +98,7 @@ func TestFeelsLikeInForecastModeIsSaid(t *testing.T) {
 		t.Errorf("with feels-like and wind on, the badge's step is %q; want TODAY LOWS - wind is not alone", got)
 	}
 	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "temperature", Classes: []tuimaps.Class{{Label: "50 to 60", Colour: tuimaps.RGB{R: 240, G: 232, B: 144}, Drawn: true}}}}
-	if row := stripANSITest(d.tempLegendRow(80)); !strings.HasPrefix(row, "FEELS LIKE │") {
+	if row := StripANSI(d.tempLegendRow(80)); !strings.HasPrefix(row, "FEELS LIKE │") {
 		t.Errorf("the colour row is %q; want FEELS LIKE's", row)
 	}
 }
@@ -116,7 +116,7 @@ func TestWavesAreTheirOwnRow(t *testing.T) {
 	if n := givenOf(d, WaveLayer); n != 1+forecastDays {
 		t.Errorf("Forecast mode drew %d wave grids; want Now and every day's highest", n)
 	}
-	if b := stripANSITest(strings.Join(d.badges(), " ")); !strings.Contains(b, "WAVES   NDFD    O-METEO  ") {
+	if b := StripANSI(strings.Join(d.badges(), " ")); !strings.Contains(b, "WAVES   NDFD    O-METEO  ") {
 		t.Errorf("the badges are %q; want the waves' sources (D-133)", b)
 	}
 	if d = switchLayer(t, d, WaveLayer); givenOf(d, WaveLayer) != 0 {

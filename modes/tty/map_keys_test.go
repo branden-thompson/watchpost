@@ -80,7 +80,7 @@ func TestTheMapFollowsTheSelection(t *testing.T) {
 	if absf(at.Lat-35.2) > 0.01 || absf(at.Lon+111.65) > 0.01 {
 		t.Errorf("] left the map at %+v, want Flagstaff, AZ", at)
 	}
-	if !strings.Contains(stripANSITest(d.View().Content), "Map · Flagstaff, AZ") {
+	if !strings.Contains(StripANSI(d.View().Content), "Map · Flagstaff, AZ") {
 		t.Error("the title did not follow the selection")
 	}
 	d = pressCode(d, '[', "[")

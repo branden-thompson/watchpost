@@ -28,7 +28,7 @@ func TestTheLegendBoxIsRetired(t *testing.T) {
 	if act, bound := d.mapKeys.Lookup("L"); bound && act != actMapLayer {
 		t.Errorf("L is bound to %s in the map window; it is the Propagation layer's (D-155)", act)
 	}
-	if strings.Contains(stripANSITest(d.mapStatusLine()), "Legend") {
+	if strings.Contains(StripANSI(d.mapStatusLine()), "Legend") {
 		t.Error("the chips still offer the legend")
 	}
 	for _, r := range mapHelpRows(d.mapKeys, false) {

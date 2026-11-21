@@ -59,7 +59,7 @@ func TestMapsOffSaysSoAndBuildsNothing(t *testing.T) {
 	built := 0
 	d := mapDash(t, Config{Maps: "off", NewMap: func(size tuimaps.Size) (*tuimaps.Map, error) { built++; return embeddedMap(size) }})
 	d, _ = pressKey(d, "g")
-	out := stripANSITest(d.View().Content)
+	out := StripANSI(d.View().Content)
 	if !strings.Contains(out, "Maps are off. Turn them on in Settings (s), on the Maps tab.") { // the switch's tab (D-262)
 		t.Errorf("with maps off the window does not say so, and where to turn them on:\n%s", out)
 	}
@@ -85,7 +85,7 @@ func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 				d = pressCode(d, 'A', "A") // D-87: the box waits for A
 			}
 			body := d.mapBodyLines()
-			text := stripANSITest(strings.Join(body, "\n"))
+			text := StripANSI(strings.Join(body, "\n"))
 			words := strings.Index(text, "Oceanside, CA - Currently:")
 			braille := strings.IndexFunc(text, func(r rune) bool { return r > 0x2800 && r <= 0x28ff })
 			if (words >= 0) != c.words || (braille >= 0) != c.braille {
@@ -109,7 +109,7 @@ func TestBelowTheFloorTheNoticeCarriesTheDescription(t *testing.T) {
 	d.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	text := stripANSITest(strings.Join(d.mapBodyLines(), "\n"))
+	text := StripANSI(strings.Join(d.mapBodyLines(), "\n"))
 	if !strings.Contains(text, "69 × 12") || !strings.Contains(text, "Wind Warning") {
 		t.Errorf("below the floor the window says:\n%s", text)
 	}
@@ -135,7 +135,7 @@ func TestTheMapDrawsAtTheDocumentedFloor(t *testing.T) {
 		if !d.mapFits() {
 			t.Errorf("description %s: at 80x24 the map is %+v, under the floor", mode, d.mapBodySize())
 		}
-		text := stripANSITest(strings.Join(d.mapBodyLines(), "\n"))
+		text := StripANSI(strings.Join(d.mapBodyLines(), "\n"))
 		if strings.IndexFunc(text, func(r rune) bool { return r > 0x2800 && r <= 0x28ff }) < 0 {
 			t.Errorf("description %s: no map at 80x24:\n%s", mode, text)
 		}
@@ -153,7 +153,7 @@ func TestEverySizeShowsAStatedStateAndNeverOverflows(t *testing.T) {
 		for h := 10; h <= 80; h += 7 {
 			m, _ := d.Update(tea.WindowSizeMsg{Width: w, Height: h})
 			sized := m.(Dashboard)
-			body := stripANSITest(strings.Join(sized.mapBodyLines(), "\n"))
+			body := StripANSI(strings.Join(sized.mapBodyLines(), "\n"))
 			if strings.TrimSpace(body) == "" {
 				t.Fatalf("%dx%d: the window body is empty", w, h)
 			}
@@ -164,7 +164,7 @@ func TestEverySizeShowsAStatedStateAndNeverOverflows(t *testing.T) {
 			if !hasMap && !strings.ContainsAny(body, "abcdefghijklmnopqrstuvwxyz") {
 				t.Errorf("%dx%d: no map and no words", w, h)
 			}
-			for _, l := range strings.Split(stripANSITest(sized.renderModal(sized.opts())), "\n") {
+			for _, l := range strings.Split(StripANSI(sized.renderModal(sized.opts())), "\n") {
 				if n := runewidth.StringWidth(l); n > w {
 					t.Fatalf("%dx%d: a line is %d wide", w, h, n)
 				}

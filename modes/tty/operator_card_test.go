@@ -34,7 +34,7 @@ func TestChangePositionSaysItsRangeAndItsError(t *testing.T) {
 		t.Fatal(err)
 	}
 	d.cardMoveTo, d.cardErr = "9", "positions run 2 to 14"
-	got := stripANSITest(strings.Join(d.movePrompt(d.opts()), "\n"))
+	got := StripANSI(strings.Join(d.movePrompt(d.opts()), "\n"))
 	for _, want := range []string{
 		"MOVE THIS CARD TO POSITION", "[ 9 ",
 		"Positions " + strconv.Itoa(bcScheduledFrom) + " to " + strconv.Itoa(MainTrackSlots-1) + ".",
@@ -45,7 +45,7 @@ func TestChangePositionSaysItsRangeAndItsError(t *testing.T) {
 		}
 	}
 	d.cardErr = ""
-	if strings.Contains(stripANSITest(strings.Join(d.movePrompt(d.opts()), "\n")), "positions run") {
+	if strings.Contains(StripANSI(strings.Join(d.movePrompt(d.opts()), "\n")), "positions run") {
 		t.Error("the move window shows an error line with no error")
 	}
 }

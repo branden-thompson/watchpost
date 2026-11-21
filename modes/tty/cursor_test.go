@@ -24,7 +24,7 @@ func cursorCell(t *testing.T, v tea.View) (cell, row string) {
 	if v.Cursor.Blink {
 		t.Error("the cursor blinks (D-362: steady)")
 	}
-	lines := strings.Split(stripANSITest(v.Content), "\n")
+	lines := strings.Split(StripANSI(v.Content), "\n")
 	if v.Cursor.Y < 0 || v.Cursor.Y >= len(lines) {
 		t.Fatalf("the cursor is on row %d of %d", v.Cursor.Y, len(lines))
 	}
@@ -122,7 +122,7 @@ func TestTheMapPlacesTheCursorOnItsWords(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
 	v := d.View()
 	cell, row := cursorCell(t, v)
-	lines := strings.Split(stripANSITest(v.Content), "\n")
+	lines := strings.Split(StripANSI(v.Content), "\n")
 	if strings.TrimSpace(cell) == "" || strings.ContainsFunc(row, isBraille) || !strings.ContainsFunc(lines[v.Cursor.Y-1], isBraille) {
 		t.Errorf("the cursor is on %q of %q; want the first line under the picture", cell, row)
 	}

@@ -45,7 +45,7 @@ func TestRemoveFlowConfirmAndCancel(t *testing.T) {
 	m := dashWithHooks(t, h)
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModShift})
 	v := m.View().Content
-	if !strings.Contains(stripANSITest(v), "Remove Oceanside, CA from the watchlist?") || !strings.Contains(v, "48;2;79;12;12") { // the words as read: the cursor's cell is painted (D-367)
+	if !strings.Contains(StripANSI(v), "Remove Oceanside, CA from the watchlist?") || !strings.Contains(v, "48;2;79;12;12") { // the words as read: the cursor's cell is painted (D-367)
 		t.Fatalf("confirmation modal on the confirm tile missing:\n%s", v)
 	}
 	mCancel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -141,7 +141,7 @@ func TestLookupOpensDetailsOnTheLookedUpLocationFromTheFirstFrame(t *testing.T) 
 	if d.modal != modalDetails || d.lookupRef == nil {
 		t.Fatalf("details open on the lookup: modal=%v pending=%v", d.modal, d.lookupRef != nil)
 	}
-	if v := stripANSITest(d.detailsModal(d.opts())); !strings.Contains(v, "Escondido, CA 92025") || strings.Contains(v, "Ridgecrest") {
+	if v := StripANSI(d.detailsModal(d.opts())); !strings.Contains(v, "Escondido, CA 92025") || strings.Contains(v, "Ridgecrest") {
 		t.Fatalf("the first frame's modal names the looked-up location, blank — not the old top row:\n%s", v)
 	}
 	if d.hydrateCmd() != nil {
@@ -176,7 +176,7 @@ func TestLookupWithEmptyRecentSurvivesAPriorityPublish(t *testing.T) {
 	m, _ = m.Update(resolvedMsg{mode: "lookup", ref: ref})
 	m, _ = m.Update(SnapshotMsg{Snap: snap()}) // a priority publish lands meanwhile
 	d := m.(Dashboard)
-	if d.lookupRef == nil || d.modal != modalDetails || !strings.Contains(stripANSITest(d.detailsModal(d.opts())), "Lookup City") {
+	if d.lookupRef == nil || d.modal != modalDetails || !strings.Contains(StripANSI(d.detailsModal(d.opts())), "Lookup City") {
 		t.Fatalf("the lookup keeps its focus: pending=%v modal=%v", d.lookupRef != nil, d.modal)
 	}
 	landed := &snapshot.Snapshot{SchemaVersion: snapshot.SchemaVersion, Locations: []snapshot.Location{{Label: "Lookup City", Zip: "99999"}}}
@@ -220,14 +220,14 @@ func TestALookupDrawsAShimmeringRowBeforeItsDataLands(t *testing.T) {
 	}
 	// It SHIMMERS: no readings yet, so the temperature cells load rather than
 	// reading "n/a", and the tick that animates them is armed.
-	if !rowLoading(&d.recentLocations()[0]) {
+	if !RowLoading(&d.recentLocations()[0]) {
 		t.Error("the pending row is a loading row")
 	}
 	if !d.anyLoading() {
 		t.Error("the shimmer tick must run while a lookup waits")
 	}
 	// And the frame actually draws it — under the RECENT band, with the dots.
-	v := stripANSITest(d.View().Content)
+	v := StripANSI(d.View().Content)
 	if !strings.Contains(v, "Escondido, CA") {
 		t.Errorf("the row is on screen from the first frame:\n%s", v)
 	}

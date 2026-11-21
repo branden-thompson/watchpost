@@ -55,7 +55,7 @@ func groupedStatus(t *testing.T) Dashboard {
 // a shared host's counters once, the station's and the map's together.
 func TestTheStatusWindowGroupsHostsByWhatTheyServe(t *testing.T) {
 	d := groupedStatus(t)
-	text := stripANSITest(strings.Join(d.statusBlocks(d.statusInner()).sources, "\n"))
+	text := StripANSI(strings.Join(d.statusBlocks(d.statusInner()).sources, "\n"))
 	order := []string{"DATA SOURCES", "COMMON DATA", "api.weather.gov", "WEATHER DATA", "www.ndbc.noaa.gov", "geocoding-api.open-meteo.com",
 		"ADVERSE EVENTS", "www.ospo.noaa.gov", "MAP DRAWING DATA", "tiles.openfreemap.org"}
 	at := 0
@@ -98,21 +98,21 @@ func TestTheSourcesAreTheirBadges(t *testing.T) {
 	lines := d.statusBlocks(d.statusInner()).sources
 	var nws string
 	for _, l := range lines {
-		if strings.Contains(stripANSITest(l), "api.weather.gov") {
+		if strings.Contains(StripANSI(l), "api.weather.gov") {
 			nws = l
 		}
 	}
-	if !strings.Contains(nws, chipFace("NWS")) || strings.Count(stripANSITest(nws), "NWS") != 1 {
+	if !strings.Contains(nws, chipFace("NWS")) || strings.Count(StripANSI(nws), "NWS") != 1 {
 		t.Errorf("api.weather.gov's sources are not its NWS chip, once: %q", nws)
 	}
 	col := -1
 	for _, l := range lines {
-		if p := stripANSITest(l); strings.Contains(p, "ENDPOINT") {
+		if p := StripANSI(l); strings.Contains(p, "ENDPOINT") {
 			col = strings.Index(p, "STATUS")
 		}
 	}
 	for _, l := range lines {
-		p := []rune(stripANSITest(l))
+		p := []rune(StripANSI(l))
 		host := strings.Contains(string(p), ".gov") || strings.Contains(string(p), ".org") || strings.Contains(string(p), ".com")
 		if host && (col < 1 || col >= len(p) || p[col-1] != ' ' || p[col] == ' ') {
 			t.Errorf("a row's status does not start under STATUS (column %d): %q", col, string(p))
@@ -130,7 +130,7 @@ func TestTheGroupsStandApartAndANoteIsSaidOnce(t *testing.T) {
 	lines := d.statusBlocks(d.statusInner()).sources
 	plain := make([]string, len(lines))
 	for i, l := range lines {
-		plain[i] = strings.TrimSpace(stripANSITest(l))
+		plain[i] = strings.TrimSpace(StripANSI(l))
 	}
 	firstGroup := true
 	for i, l := range plain {

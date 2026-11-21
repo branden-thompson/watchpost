@@ -29,7 +29,7 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	weather := d.mapBodySize()
 	d, cmd := keyCmd(t, d, "P")
 	d = workChart(t, runProp(t, d, cmd))
-	rows := stripANSITest(strings.Join(d.scrubRows(d.mapTextW()), "\n"))
+	rows := StripANSI(strings.Join(d.scrubRows(d.mapTextW()), "\n"))
 	for _, want := range []string{"RADIO FREQUENCY PROPAGATION", "SWPC", "PYIRI", "IGRF-14",
 		"MODE:   MUF(3000)   · COMPUTED", "(data 42 min old) · residential noise", // the fields as chips (D-165); the circuit's noise (D-187)
 		"NOW ·   foF2   6.0 MHz ·   MUF(3000)   18.0 MHz",
@@ -96,7 +96,7 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 func TestThePropagationLegendIsBandOverMHz(t *testing.T) {
 	d, _ := drawnDash(t)
 	rows := d.scrubRows(d.mapTextW())
-	bands, mhz := stripANSITest(rows[0]), stripANSITest(rows[1])
+	bands, mhz := StripANSI(rows[0]), StripANSI(rows[1])
 	for _, want := range []string{"MUF(3000)", "160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m"} {
 		if !strings.Contains(bands, want) {
 			t.Errorf("the bands line %q lacks %q", bands, want)
@@ -111,7 +111,7 @@ func TestThePropagationLegendIsBandOverMHz(t *testing.T) {
 		t.Errorf("20m stands at %d and its 14 MHz at %d: not one over the other", i, j)
 	}
 	d = pressMap(t, d, "L")
-	if bands := stripANSITest(d.scrubRows(d.mapTextW())[0]); !strings.Contains(bands, "foF2") || strings.Contains(bands, "17m") {
+	if bands := StripANSI(d.scrubRows(d.mapTextW())[0]); !strings.Contains(bands, "foF2") || strings.Contains(bands, "17m") {
 		t.Errorf("foF2's legend %q: want its six bands, 160m to 20m", bands)
 	}
 	var classes []tuimaps.Class
@@ -175,7 +175,7 @@ func TestRoundFourMarksStandOut(t *testing.T) {
 			}
 		}
 	}
-	if b := stripANSITest(propDash(t, &seam{}, true).propagationBadge()); !strings.Contains(b, "RADIO FREQ. PROPAGATION") {
+	if b := StripANSI(propDash(t, &seam{}, true).propagationBadge()); !strings.Contains(b, "RADIO FREQ. PROPAGATION") {
 		t.Errorf("the badge says %q", b)
 	}
 }

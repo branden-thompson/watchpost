@@ -98,7 +98,7 @@ func TestNarrowTerminalRowsFitAndModalsCenter(t *testing.T) {
 	// VOL bar shrinks, and modals center on the TERMINAL width.
 	m := dash(t)
 	narrow, _ := m.Update(tea.WindowSizeMsg{Width: 70, Height: 24})
-	v := stripANSITest(narrow.View().Content)
+	v := StripANSI(narrow.View().Content)
 	for i, l := range strings.Split(v, "\n") {
 		if w := len([]rune(l)); w > 70 {
 			t.Fatalf("row %d exceeds the terminal width (%d): %q", i, w, l)
@@ -113,12 +113,12 @@ func TestNarrowTerminalRowsFitAndModalsCenter(t *testing.T) {
 		t.Fatal("narrow compact row must use the short title (UAT 36)")
 	}
 	wide, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
-	wv := stripANSITest(wide.View().Content)
+	wv := StripANSI(wide.View().Content)
 	if strings.Count(v, "█")+strings.Count(v, "░") >= strings.Count(wv, "█")+strings.Count(wv, "░") {
 		t.Fatal("VOL bar must shrink on narrow terminals")
 	}
 	sm, _ := narrow.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
-	for _, l := range strings.Split(stripANSITest(sm.View().Content), "\n") {
+	for _, l := range strings.Split(StripANSI(sm.View().Content), "\n") {
 		if strings.Contains(l, "Watchpost Status") {
 			// Measure the modal by its own box span: base rows can peek out
 			// past the modal's right edge on narrow terminals.
@@ -172,7 +172,7 @@ func TestControlPlacementUAT56(t *testing.T) {
 	// UAT 56: [enter] Location Details leads the watchlist controls, [↑↓]
 	// Navigate is right-aligned on that row, [?] Help follows About, and the
 	// footer keeps only theme + quit.
-	v := stripANSITest(dash(t).View().Content)
+	v := StripANSI(dash(t).View().Content)
 	lines := strings.Split(v, "\n")
 	var ctrl, head string
 	for _, l := range lines {
@@ -257,7 +257,7 @@ func TestLongLabelsNeverOverflowModalTitles(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d.snap.Locations[0].Label = strings.Repeat("Very Long Label ", 20)
 	for _, s := range []string{d.detailsModal(d.opts()), d.alertDetailsModal(d.opts())} {
-		for _, l := range strings.Split(stripANSITest(s), "\n") {
+		for _, l := range strings.Split(StripANSI(s), "\n") {
 			if render.Width(l) > d.modalWidth() {
 				t.Fatalf("a modal line overflows (%d > %d): %q", render.Width(l), d.modalWidth(), l)
 			}

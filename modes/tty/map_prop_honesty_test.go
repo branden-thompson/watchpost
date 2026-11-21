@@ -43,7 +43,7 @@ func TestTheBestFrequencyIsNamed(t *testing.T) {
 			t.Errorf("%+v: the box says %q; want %q", c.l, got, c.long)
 		}
 	}
-	text := stripANSITest(strings.Join(pressMap(t, chartDash(t), "B").propChartLines(Dashboard{}.opts()), "\n"))
+	text := StripANSI(strings.Join(pressMap(t, chartDash(t), "B").propChartLines(Dashboard{}.opts()), "\n"))
 	if !strings.Contains(text, "· best ~") && !strings.Contains(text, "· none serves") {
 		t.Errorf("no chart row names a best frequency:\n%s", text)
 	}
@@ -73,7 +73,7 @@ func TestEachRowShowsItsNearestStation(t *testing.T) {
 	c := &d.mapPane.propChart
 	c.targets[0].Nearest = ionomaps.Nearest{Known: true, Km: 350}
 	c.targets[1].Nearest = ionomaps.Nearest{Known: true, Km: 2900}
-	text := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n"))
+	text := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
 	if !strings.Contains(text, "▓ "+propanswers.Continents[0].Name) || !strings.Contains(text, "░ "+propanswers.Continents[1].Name) || !strings.Contains(text, "nearest station: ▓ <500 km") {
 		t.Errorf("the rows' shades or their key are not drawn:\n%s", text)
 	}
@@ -127,10 +127,10 @@ func TestAnUnusualOffsetIsSaid(t *testing.T) {
 	}
 	with(ionomaps.Offset{LiveMHz: -1.4, TypicalMHz: -0.51, SpreadMHz: 0.23, Measured: true})
 	const unusual = "GloTEC unusually far from the stations now"
-	if chart := stripANSITest(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(chart, unusual) {
+	if chart := StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(chart, unusual) {
 		t.Errorf("the chart's status label does not say it:\n%s", chart)
 	}
-	if block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, unusual) {
+	if block := StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, unusual) {
 		t.Errorf("the rows under the map do not say it:\n%s", block)
 	}
 	if !strings.Contains(d.propStatusWords(), unusual) {
@@ -141,7 +141,7 @@ func TestAnUnusualOffsetIsSaid(t *testing.T) {
 		t.Error("an offset within two spreads is said unusual")
 	}
 	with(ionomaps.Offset{TypicalMHz: -0.51, SpreadMHz: 0.23, Corrected: true})
-	if block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, "corrected by the typical offset") {
+	if block := StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, "corrected by the typical offset") {
 		t.Errorf("the correction in use is not named:\n%s", block)
 	}
 }
@@ -347,7 +347,7 @@ func TestTheFieldsAgeIsAlwaysSaid(t *testing.T) {
 	d, _ := drawnDash(t)
 	words, age, _ := d.propAge(*d.mapPane.propSnap)
 	if block := strings.Join(d.propBlock(d.scrubW()), "\n"); !strings.Contains(block, render.Tint("("+words+")", render.Tok(render.FreshnessTone(age)))) {
-		t.Errorf("the mode line does not say %q on its tone:\n%s", words, stripANSITest(block))
+		t.Errorf("the mode line does not say %q on its tone:\n%s", words, StripANSI(block))
 	}
 	if !strings.Contains(d.propStatusWords(), words) {
 		t.Errorf("the words do not say %q: %q", words, d.propStatusWords())
@@ -369,7 +369,7 @@ func TestAStaleFieldIsSaidStale(t *testing.T) {
 		t.Fatalf("a field two hours old is said %q (stale %v)", words, stale)
 	}
 	if block := strings.Join(d.propBlock(d.scrubW()), "\n"); !strings.Contains(block, render.Tint("("+words+")", render.Tok(render.AlertLabel))) {
-		t.Errorf("the mode line does not say it stale in the alert's tone:\n%s", stripANSITest(block))
+		t.Errorf("the mode line does not say it stale in the alert's tone:\n%s", StripANSI(block))
 	}
 	if !strings.Contains(d.propStatusWords(), "STALE") {
 		t.Errorf("the words do not say it stale: %q", d.propStatusWords())
@@ -428,7 +428,7 @@ func TestTheFallbackIsNamed(t *testing.T) {
 		t.Errorf("no GloTEC grid fed the field and the badges are %q", got)
 	}
 	s.Inputs.Stations, s.Inputs.OldestReading = 0, time.Time{}
-	if block := stripANSITest(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, "(climatology)") {
+	if block := StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, "(climatology)") {
 		t.Errorf("the climatology alone is not said on the mode line:\n%s", block)
 	}
 }

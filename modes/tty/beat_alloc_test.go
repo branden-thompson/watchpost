@@ -23,15 +23,15 @@ type beat struct {
 // what is open.
 func beats() []beat {
 	return []beat{
-		{"idle Observer 133x44", func(tb testing.TB) tea.Model { return NewRouter(benchDash(tb, 133, 44).(Dashboard)) }, tickMsg{}},
-		{"idle Observer 133x44 with Settings open", func(tb testing.TB) tea.Model { return NewRouter(setupBench(tb, 133, 44)) }, tickMsg{}},
+		{"idle Observer 133x44", func(tb testing.TB) tea.Model { return NewRouter(benchDash(tb, 133, 44).(Dashboard)) }, TickMsg{}},
+		{"idle Observer 133x44 with Settings open", func(tb testing.TB) tea.Model { return NewRouter(setupBench(tb, 133, 44)) }, TickMsg{}},
 		{"radio playing 133x44", func(tb testing.TB) tea.Model { return NewRouter(playingDash(tb, 133, 44)) }, vizTickMsg{}},
 		{"console 160x74", func(tb testing.TB) tea.Model {
 			r := NewRouter(benchDash(tb, 160, 74).(Dashboard))
-			r.broadcaster = loadedConsole(tb, loadedPoolSize)
+			r.broadcaster = loadedConsole(tb, LoadedPoolSize)
 			r.active = SurfaceBroadcaster
 			return r
-		}, tickMsg{}},
+		}, TickMsg{}},
 	}
 }
 
@@ -141,7 +141,7 @@ func TestUpdateWithTheMapOpenAllocBudget(t *testing.T) {
 	r := testing.Benchmark(func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			m, _ = m.Update(tickMsg{})
+			m, _ = m.Update(TickMsg{})
 		}
 	})
 	c := allocpin.PinBenchmark(t, "Update with the map open 133x44", r)

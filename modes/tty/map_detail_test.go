@@ -23,7 +23,7 @@ func TestTheDetailLevelIsASettingAndReachesTheMap(t *testing.T) {
 		t.Fatalf("an empty file opens at %v, want weather", d.mapDetailLevel)
 	}
 	body, _, _ := d.focusBody(d.opts())
-	text := stripANSITest(strings.Join(body, "\n"))
+	text := StripANSI(strings.Join(body, "\n"))
 	for _, want := range []string{"Detail -", "Standard", "(county zoom)", "(state zoom)"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the Maps tab does not show %q:\n%s", want, text)

@@ -102,7 +102,7 @@ func TestTheStationLineCarriesTheGainControl(t *testing.T) {
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	b.gain = 100
-	got := stripANSITest(b.stationLine()[0])
+	got := StripANSI(b.stationLine()[0])
 
 	if !strings.Contains(got, "GAIN") {
 		t.Errorf("the station's word for it is GAIN:\n%q", got)
@@ -129,11 +129,11 @@ func TestTheBedIsDrawnOnceInsideTheStationSection(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	for _, r := range b.stationLine() { // bounded by the section (P10-02)
-		if strings.Contains(stripANSITest(r), "BED") {
+		if strings.Contains(StripANSI(r), "BED") {
 			t.Errorf("the station lines still draw the bed; the air box owns it:\n%q", r)
 		}
 	}
-	sec := stripANSITest(b.stationSection(b.opts(), "", ""))
+	sec := StripANSI(b.stationSection(b.opts(), "", ""))
 	for _, want := range []string{"STATION AIR:", "BROADCASTING FROM:", "LIVE NOW", "RELAY BED"} {
 		if !strings.Contains(sec, want) {
 			t.Errorf("the station section is missing %q:\n%s", want, sec)
@@ -141,7 +141,7 @@ func TestTheBedIsDrawnOnceInsideTheStationSection(t *testing.T) {
 	}
 	// AND THE WORD APPEARS ONCE IN THE WHOLE FRAME, which is what "1 section"
 	// means: not one row hidden and another shown, but one row.
-	if n := strings.Count(stripANSITest(b.View().Content), "RELAY BED"); n != 1 {
+	if n := strings.Count(StripANSI(b.View().Content), "RELAY BED"); n != 1 {
 		t.Errorf("the frame names the relay bed %d times", n)
 	}
 }
@@ -153,8 +153,8 @@ func TestTheGainControlReflows(t *testing.T) {
 		b.power = lineup.Running
 		b.gain = 55
 		for i, line := range b.stationLine() {
-			if c, want := utf8.RuneCountInString(stripANSITest(line)), b.bandWidth(); c != want {
-				t.Errorf("width %d row %d: %d cells, want the section's %d\n%q", w, i, c, want, stripANSITest(line))
+			if c, want := utf8.RuneCountInString(StripANSI(line)), b.bandWidth(); c != want {
+				t.Errorf("width %d row %d: %d cells, want the section's %d\n%q", w, i, c, want, StripANSI(line))
 			}
 		}
 	}
@@ -219,7 +219,7 @@ func TestTheSectionsBackgroundSurvivesTheGainBar(t *testing.T) {
 	rows := strings.Split(b.stationSection(b.opts(), "97", bg), "\n")
 	gainRow := ""
 	for _, r := range rows {
-		if strings.Contains(stripANSITest(r), "GAIN") {
+		if strings.Contains(StripANSI(r), "GAIN") {
 			gainRow = r
 		}
 	}
@@ -281,7 +281,7 @@ func TestTheBedRowCarriesItsSelector(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
-	got := stripANSITest(bedRowOf(t, strings.Split(b.stationSection(b.opts(), "", ""), "\n")))
+	got := StripANSI(bedRowOf(t, strings.Split(b.stationSection(b.opts(), "", ""), "\n")))
 	// ASKED OF THE CHIP RENDERER, which also names the arrows in WORDS under
 	// --ascii: a terminal that cannot draw them still gets a usable control,
 	// and the test does not have to know which form it got.
@@ -301,7 +301,7 @@ func TestTheBedRowCarriesItsSelector(t *testing.T) {
 func TestTheBedRowSaysWhetherItIsCarrying(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	got := stripANSITest(bedRowOf(t, strings.Split(b.stationSection(b.opts(), "", ""), "\n")))
+	got := StripANSI(bedRowOf(t, strings.Split(b.stationSection(b.opts(), "", ""), "\n")))
 	if !strings.Contains(got, "INACTIVE") && !strings.Contains(got, "ACTIVE") {
 		t.Errorf("the bed's row says whether it is carrying:\n%q", got)
 	}
@@ -319,7 +319,7 @@ func TestTheSectionsLabelsShareAValueColumn(t *testing.T) {
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	for i, row := range b.stationLine()[:2] {
-		r := []rune(stripANSITest(row))
+		r := []rune(StripANSI(row))
 		if len(r) <= bcLabelCells {
 			t.Fatalf("row %d is shorter than the label column", i)
 		}
@@ -352,7 +352,7 @@ func TestTheValueColumnHoldsWithColourOn(t *testing.T) {
 	rows := b.stationLine()
 
 	start := func(row string) int {
-		r := []rune(stripANSITest(row))
+		r := []rune(StripANSI(row))
 		for i := bcLabelCells - 1; i < len(r); i++ {
 			if r[i] != ' ' {
 				return i
@@ -370,7 +370,7 @@ func TestTheValueColumnHoldsWithColourOn(t *testing.T) {
 	}
 	// AND EVERY ROW IS STILL THE LANE'S WIDTH.
 	for i, row := range rows {
-		if got, want := utf8.RuneCountInString(stripANSITest(row)), b.bandWidth(); got != want {
+		if got, want := utf8.RuneCountInString(StripANSI(row)), b.bandWidth(); got != want {
 			t.Errorf("row %d is %d cells with colour on, want the section's %d", i, got, want)
 		}
 	}
@@ -392,7 +392,7 @@ func TestTheBedsCutKeyIsInsideTheBox(t *testing.T) {
 	for _, w := range []int{110, 130, 150, 170} {
 		b := NewBroadcaster()
 		b.width, b.height, b.ascii = w, 74, true
-		row := stripANSITest(bedRowOf(t, b.airBox()))
+		row := StripANSI(bedRowOf(t, b.airBox()))
 		if !strings.Contains(row, chipFor("b")) {
 			t.Errorf("width %d: the bed's row has lost its cut key:\n%q", w, row)
 		}
@@ -415,7 +415,7 @@ func boxRailFor(b Broadcaster) string { return render.HeavyBox(b.ascii).Rail }
 func bedRowOf(t *testing.T, rows []string) string {
 	t.Helper()
 	for _, r := range rows { // bounded by the section (P10-02)
-		if strings.Contains(stripANSITest(r), "RELAY BED") {
+		if strings.Contains(StripANSI(r), "RELAY BED") {
 			return r
 		}
 	}

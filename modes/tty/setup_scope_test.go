@@ -78,7 +78,7 @@ func setupOffers(d Dashboard) string {
 		}
 		for _, blk := range on.setupBlocks(on.opts()) { // bounded by the group set (P10-02)
 			for _, l := range blk.lines {
-				b.WriteString(stripANSITest(l) + "\n")
+				b.WriteString(StripANSI(l) + "\n")
 			}
 		}
 	}

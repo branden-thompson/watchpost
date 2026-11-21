@@ -513,7 +513,7 @@ func (r Router) View() tea.View {
 		if r.observer.ModalOpen() {
 			v.Content, x, y, ok = r.observer.overlay(v.Content, r.broadcaster.width)
 		}
-		v.Content, v.Cursor = r.broadcaster.heldCursor().finish(v.Content, x, y, ok, r.broadcaster.blurred, v.BackgroundColor)
+		v.Content, v.Cursor = r.broadcaster.heldCursor().Finish(v.Content, x, y, ok, r.broadcaster.blurred, v.BackgroundColor)
 	}
 	v.ReportFocus = true // the terminal says when it gains and loses focus, for the cursor's look (D-367)
 	r.frameDrawn()

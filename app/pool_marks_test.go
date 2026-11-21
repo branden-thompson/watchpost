@@ -5,7 +5,7 @@ package app
 // HUM LEAD, UAT 2026-09-12: "fix this issues so seismic / fire / alerts show up
 // in the location pool as expected."
 //
-// THE POOL GOES THROUGH `weatherRow` (D-112), so `Fire` and `Seismic` are copied
+// THE POOL GOES THROUGH `WeatherRow` (D-112), so `Fire` and `Seismic` are copied
 // with the alert fields; a copy that skips them makes those two marks impossible
 // whatever the data says. Alerts are the one worth pinning at the FETCH end:
 // the copy carries them, so if they do not show, the wiring is not where the

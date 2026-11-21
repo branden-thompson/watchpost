@@ -31,4 +31,7 @@
 //	`map_*`                                    the map pane, its modes, layers, Settings rows, and the
 //	                                           Propagation mode (`map_prop_*`)
 //	`broadcaster*`, `request.go`               the Broadcaster console and its Line-Up Request window
+//	`kit_*`                                    what both surfaces draw the same way: the location row,
+//	                                           the cursor, the shimmer's tick, the memo counters and the
+//	                                           text helpers, the kit's files until B2's move (0.19.6 A-21)
 package tty

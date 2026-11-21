@@ -336,7 +336,7 @@ func radarAheadByHours(h int) int {
 }
 
 // radarAheadLabel is the row's words.
-func radarAheadLabel(h int) string { return strconv.Itoa(h) + " hour" + plural(h) }
+func radarAheadLabel(h int) string { return strconv.Itoa(h) + " hour" + Plural(h) }
 
 // quakeFeeds are the quakes the map draws (D-122), USGS's summary feeds by
 // their own names, the default first: M2.5+ the past week or the past day,

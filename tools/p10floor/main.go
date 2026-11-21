@@ -4,7 +4,10 @@
 // package cannot quietly cover a thinner one. It reads the JSON `a2dh p10
 // check --json` writes, where each exempted finding carries its row's reason.
 // A firing row that states no floor fails too, named with the figure it
-// measures, so its floor is written at that figure (D-277).
+// measures, so its floor is written at that figure (D-277). A row's reason
+// may also hold one file to a floor of its own, "app/x.go FLOOR 0.33", for a
+// file the harness can only match to its package's row (0.19.6 D-61): that
+// file is held to its own figure, and every other file to the row's.
 //
 //	go run ./tools/p10floor P10_JSON
 //	go run ./tools/p10floor --self-test
@@ -24,11 +27,25 @@ import (
 // densityRule is the P10 rule whose rows carry a floor.
 const densityRule = "P10-05-INVARIANT-DENSITY"
 
-// measured is a density finding's figure; floor is a row's ratified one.
+// measured is a density finding's figure; floor is a row's ratified one, and
+// fileFloor one file's within a row, written after the file's path.
 var (
-	measured = regexp.MustCompile(`invariant density ([0-9]+\.[0-9]+)`)
-	floor    = regexp.MustCompile(`FLOOR ([0-9]+\.[0-9]+)`)
+	measured  = regexp.MustCompile(`invariant density ([0-9]+\.[0-9]+)`)
+	floor     = regexp.MustCompile(`FLOOR ([0-9]+\.[0-9]+)`)
+	fileFloor = regexp.MustCompile(`(\S+\.go) FLOOR ([0-9]+\.[0-9]+)`)
 )
+
+// floorFor is the floor a row's reason holds file to: the file's own when the
+// reason names one for it, else the row's, read with every file's own taken
+// out so one cannot stand for the row.
+func floorFor(reason, file string) []string {
+	for _, m := range fileFloor.FindAllStringSubmatch(reason, -1) { // bounded by the reason (P10-02)
+		if m[1] == file {
+			return []string{m[0], m[2]}
+		}
+	}
+	return floor.FindStringSubmatch(fileFloor.ReplaceAllString(reason, ""))
+}
 
 // finding is the part of a2dh's finding this reads.
 type finding struct {
@@ -57,7 +74,7 @@ func run(args []string, out, errOut io.Writer) int {
 		if err := selfTest(); err != nil {
 			return fail(1, "p10floor SELF-TEST FAILED:", err)
 		}
-		_, _ = fmt.Fprintln(out, "p10floor self-test: a row under its floor refused, one at it passed, an unread figure refused (OK)")
+		_, _ = fmt.Fprintln(out, "p10floor self-test: a row under its floor refused, one at it passed, a file held to its own floor, an unread figure refused (OK)")
 		return 0
 	}
 	b, err := os.ReadFile(args[0])
@@ -98,7 +115,7 @@ func judge(findings []finding) (held int, under, floorless []string, err error) 
 		if mm == nil {
 			return 0, nil, nil, fmt.Errorf("%s: the finding states no density: %q", f.File, f.Message)
 		}
-		fm := floor.FindStringSubmatch(f.ExemptReason)
+		fm := floorFor(f.ExemptReason, f.File)
 		if fm == nil {
 			floorless = append(floorless, fmt.Sprintf("%s: measures %s%s, its row states no floor", f.File, mm[1], over(f.Message)))
 			continue
@@ -142,6 +159,15 @@ func selfTest() error {
 	}
 	if held != 2 || len(under) != 1 || len(floorless) != 1 {
 		return fmt.Errorf("three planted rows: %d held, %d under, %d with no floor; want 2, 1 and 1", held, len(under), len(floorless))
+	}
+	two := "FLOOR 0.43 over 9. planted/q.go FLOOR 0.10 over 2"
+	held, under, _, err = judge([]finding{{File: "planted/q.go", RuleID: densityRule, Message: "P10-05: invariant density 0.20 < 2.0", Exempted: true, ExemptReason: two},
+		{File: "planted/p.go", RuleID: densityRule, Message: "P10-05: invariant density 0.20 < 2.0", Exempted: true, ExemptReason: two}})
+	if err != nil {
+		return err
+	}
+	if held != 2 || len(under) != 1 || !strings.HasPrefix(under[0], "planted/p.go") {
+		return fmt.Errorf("a file's own floor: %d held, under %v; want 2 held and planted/p.go alone under the row's", held, under)
 	}
 	_, _, _, err = judge([]finding{{File: "planted/p.go", RuleID: densityRule, Message: "no figure", Exempted: true, ExemptReason: "FLOOR 0.43"}})
 	if err == nil {

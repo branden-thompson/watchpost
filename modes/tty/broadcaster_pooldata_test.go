@@ -27,7 +27,7 @@ func TestThePoolsWeatherIsObserversWeather(t *testing.T) {
 	loc := poolLoc()
 	ref := snapshot.LocationRef{Label: loc.Label, Zip: loc.Zip, Lat: loc.Lat, Lon: loc.Lon, Population: 4000}
 
-	b := bcWith(t, card(t, "a", "Oceanside, CA"))
+	b := bcWith(t, Card(t, "a", "Oceanside, CA"))
 	b.width, b.height, b.ascii = 150, 74, true
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
@@ -39,7 +39,7 @@ func TestThePoolsWeatherIsObserversWeather(t *testing.T) {
 		t.Fatalf("the pool drew %d rows for one candidate", len(rows))
 	}
 	got := rows[0]
-	want := weatherRow(loc, fireBoldDefaultMW, 0)
+	want := WeatherRow(loc, FireBoldDefaultMW, 0)
 
 	for _, tc := range []struct {
 		name      string
@@ -77,7 +77,7 @@ func TestThePoolKeepsItsOwnColumns(t *testing.T) {
 	loc := poolLoc()
 	ref := snapshot.LocationRef{Label: loc.Label, Zip: loc.Zip, Lat: loc.Lat, Lon: loc.Lon, Population: 4000}
 
-	b := bcWith(t, card(t, "a", "Oceanside, CA"))
+	b := bcWith(t, Card(t, "a", "Oceanside, CA"))
 	b.width, b.height, b.ascii = 150, 74, true
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
@@ -93,7 +93,7 @@ func TestThePoolKeepsItsOwnColumns(t *testing.T) {
 	if got.StationKM == nil {
 		t.Fatal("the pool row has no distance")
 	}
-	if same := weatherRow(loc, fireBoldDefaultMW, 0).StationKM; same != nil && *same == *got.StationKM {
+	if same := WeatherRow(loc, FireBoldDefaultMW, 0).StationKM; same != nil && *same == *got.StationKM {
 		t.Error("the pool's DIST is the observing station's, not the transmitter's")
 	}
 }
@@ -139,7 +139,7 @@ func TestThePoolRowCarriesEveryMark(t *testing.T) {
 	loc.Seismic = &snapshot.SeismicState{Quakes: []snapshot.Quake{{Mag: 4.5}}}
 	ref := snapshot.LocationRef{Label: loc.Label, Zip: loc.Zip, Lat: loc.Lat, Lon: loc.Lon}
 
-	b := bcWith(t, card(t, "a", "Oceanside, CA"))
+	b := bcWith(t, Card(t, "a", "Oceanside, CA"))
 	b.width, b.height, b.ascii = 150, 74, true
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
@@ -158,7 +158,7 @@ func TestThePoolRowCarriesEveryMark(t *testing.T) {
 	}
 	// The marks are drawn, which is a different claim from being on the row: the
 	// marks block is thirteen cells the table can silently leave blank.
-	drawn := stripANSITest(strings.Split(b.opts().PoolTable(b.poolRows(b.locIndex()), 143), "\n")[4])
+	drawn := StripANSI(strings.Split(b.opts().PoolTable(b.poolRows(b.locIndex()), 143), "\n")[4])
 	g := b.opts().Glyphs()
 	for _, want := range []string{g.Seismic[row.Seismic-1], g.Fire, g.Alert} {
 		if !strings.Contains(drawn, want) {
@@ -191,8 +191,8 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 	// THE TABLE STARTS AT SLOT 2 (`bcScheduledFrom`): slot 0 is LIVE and slot 1 is
 	// the UP NEXT card, so the beat under test needs two ahead of it to be DRAWN
 	// at all. Without them this passes on an empty table for the wrong reason.
-	c := card(t, "c", string(snapshot.Key(ref)))
-	b := bcWith(t, card(t, "a", "live"), card(t, "b", "upnext"), c)
+	c := Card(t, "c", string(snapshot.Key(ref)))
+	b := bcWith(t, Card(t, "a", "live"), Card(t, "b", "upnext"), c)
 	b.width, b.height, b.ascii = 150, 74, true
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
@@ -210,7 +210,7 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 	if got == nil {
 		t.Fatalf("no row joined to the pool entry; the card's subject is %q", c.Subject)
 	}
-	want := weatherRow(loc, fireBoldDefaultMW, 0)
+	want := WeatherRow(loc, FireBoldDefaultMW, 0)
 	if got.Conditions != want.Conditions || got.Now == nil || *got.Now != *want.Now {
 		t.Errorf("the row says %q/%v; the shared converter says %q/%v",
 			got.Conditions, got.Now, want.Conditions, want.Now)
@@ -222,7 +222,7 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 			want.AlertCount, want.Fire, want.Seismic)
 	}
 	// There is no correspondent column, and no `N/A` in its place.
-	drawn := stripANSITest(b.opts().LineupTable(rows, 143))
+	drawn := StripANSI(b.opts().LineupTable(rows, 143))
 	if strings.Contains(drawn, "CORRESPONDENT") || strings.Contains(drawn, "N/A") {
 		t.Errorf("the running order still carries the correspondent column:\n%s", drawn)
 	}
@@ -282,8 +282,9 @@ func TestTheConsoleReadsTheOperatorsFireThreshold(t *testing.T) {
 				t.Errorf("a %g MW hotspot with the threshold at %g: the console says hot=%v, want %v",
 					frp, tc.set, rows[0].FireHot, tc.wantHot)
 			}
-			// AND THE TWO SURFACES AGREE, which is the rule a constant of its own breaks.
-			if want := fireHot(loc.Fire.Hotspots, d.fireBoldMW()); rows[0].FireHot != want {
+			// AND THE TWO SURFACES AGREE, which is the rule a constant of its own
+			// breaks: Observer's answer is the row it builds (0.19.6 D-55).
+			if want := WeatherRow(loc, d.fireBoldMW(), 0).FireHot; rows[0].FireHot != want {
 				t.Errorf("the console says hot=%v and Observer says %v for one place",
 					rows[0].FireHot, want)
 			}

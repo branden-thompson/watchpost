@@ -70,9 +70,9 @@ func (b Broadcaster) lineupRowOf(row render.LineupRow, c lineup.Card, idx locInd
 		// "Useful information and doesn't require the correspondents wiring work."
 		if loc := idx.at(ref); loc != nil {
 			// NO EXTENDED DAYS: this table draws CONDITIONS and NOW, and the day
-			// cells `weatherRow` would build are five allocations a row that
+			// cells `WeatherRow` would build are five allocations a row that
 			// nothing on this console reads (D-120).
-			w := weatherRow(loc, b.fireBold(), 0)
+			w := WeatherRow(loc, b.fireBold(), 0)
 			row.Conditions, row.Now, row.Trend, row.Loading = w.Conditions, w.Now, w.Trend, w.Loading
 			// The prefix marks are the place's (HUM LEAD: "Relevant Prefix
 			// Alerts"). A report about a town with a warning, a fire and a quake
@@ -252,7 +252,7 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int, idx locIndex) 
 	// THREE ROWS: the air above, the words, the air below. A band is a region, and
 	// its breathing room is painted or it is a stripe.
 	band := render.Tok(render.GroupText) + ";" + render.Tok(render.GroupSectionBG)
-	for _, r := range []string{"", centerText(bcScheduledHeading, w), ""} {
+	for _, r := range []string{"", CenterText(bcScheduledHeading, w), ""} {
 		lines = append(lines, render.TintKeeping(render.PadTo(r, w), band))
 	}
 	lines = append(lines, strings.Split(b.opts().LineupTable(slots, w), "\n")...)

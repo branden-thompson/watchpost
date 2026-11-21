@@ -62,7 +62,7 @@ func TestClosingSettingsLeavesTheModelAgreeingWithTheWrite(t *testing.T) {
 	if got := model.(Dashboard).cfg.AlertRadiusMi; got != 20 {
 		t.Errorf("the model must know what it wrote; cfg.AlertRadiusMi=%d want 20", got)
 	}
-	if view := stripANSITest(toEvents(model).(Dashboard).View().Content); !strings.Contains(view, "● Within [20") {
+	if view := StripANSI(toEvents(model).(Dashboard).View().Content); !strings.Contains(view, "● Within [20") {
 		t.Errorf("re-opening shows the radius that was saved:\n%s", view)
 	}
 

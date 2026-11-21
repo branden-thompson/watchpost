@@ -244,7 +244,7 @@ func (d Dashboard) sourceLines(o render.Opts, rows []endpointRow, shape tableSha
 			used++
 		}
 	}
-	out := []string{statusHeader(fmt.Sprintf("DATA SOURCES  (%d host%s in %d group%s)", len(rows), plural(len(rows)), used, plural(used)))}
+	out := []string{statusHeader(fmt.Sprintf("DATA SOURCES  (%d host%s in %d group%s)", len(rows), Plural(len(rows)), used, Plural(used)))}
 	if len(rows) == 0 {
 		return append(out, "   awaiting first snapshot...")
 	}

@@ -127,7 +127,7 @@ func TestTheCursorIsPlacedOnTheAcknowledgement(t *testing.T) {
 	if v.Cursor == nil {
 		t.Fatal("no cursor on the acknowledgement")
 	}
-	lines := strings.Split(stripANSITest(v.Content), "\n")
+	lines := strings.Split(StripANSI(v.Content), "\n")
 	if v.Cursor.Y >= len(lines) {
 		t.Fatalf("the cursor is on row %d of %d", v.Cursor.Y, len(lines))
 	}
@@ -150,7 +150,7 @@ func TestTheCursorIsPlacedOnTheAcknowledgement(t *testing.T) {
 func TestTheAcknowledgementReadsWithoutThePicture(t *testing.T) {
 	var saved []int
 	d := ackPress(t, ackDash(t, 0, true, &saved), "P")
-	screen := stripANSITest(d.View().Content)
+	screen := StripANSI(d.View().Content)
 	flat := strings.Join(strings.Fields(screen), " ")
 	for _, want := range []string{"does not transmit", "Status window", "Enter or Esc"} {
 		if !strings.Contains(flat, want) {

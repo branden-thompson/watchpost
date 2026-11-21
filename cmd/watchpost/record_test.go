@@ -135,6 +135,12 @@ var wholeFileClaims = []wholeFileClaim{
 	{"D-47", "dashboard.go"}, {"D-47", "debug.go"}, {"D-47", "doc.go"}, {"D-47", "setup.go"},
 	{"D-47", "severe.go"}, {"D-47", "ticker.go"}, {"D-47", "timing.go"},
 	{"D-47", "app/dashboard.go"}, {"D-47", "modes/tty/dashboard.go"},
+	// 0.19.6 D-61 holds one file to a density floor of its own
+	{"D-61", "app/mastercontrol.go"},
+	// 0.19.6 A-50 is about the files B2's prep cuts into, by name, and the files mutants left
+	{"A-50", "modes/tty/kit_row.go"}, {"A-50", "kit_cursor.go"}, {"A-50", "kit_tick.go"}, {"A-50", "kit_memo.go"},
+	{"A-50", "kit_text.go"}, {"A-50", "masthead.go"}, {"A-50", "frame_height_test.go"},
+	{"A-50", "modes/tty/ttytest_perturb_test.go"}, {"A-50", "ttytest_helpers_test.go"}, {"A-50", "cursor.go"}, {"A-50", "body.go"},
 }
 
 // unlinedRefs are the ruling rows that name a Go file without its line or a

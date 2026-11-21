@@ -13,7 +13,7 @@ import (
 
 func poolConsole(t *testing.T) Broadcaster {
 	t.Helper()
-	b := bcWith(t, card(t, "a", "Oceanside, CA"))
+	b := bcWith(t, Card(t, "a", "Oceanside, CA"))
 	b.height = 96
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
@@ -29,7 +29,7 @@ func poolConsole(t *testing.T) Broadcaster {
 // THE POOL DRAWS WHAT THE OPERATOR DECIDES ON: the place, how far out it is, how
 // many people it serves, and its weather.
 func TestThePoolTableDrawsTheStationsCandidates(t *testing.T) {
-	got := stripANSITest(poolConsole(t).View().Content)
+	got := StripANSI(poolConsole(t).View().Content)
 	for _, want := range []string{
 		"L O C A T I O N     P O O L", "POPULATION",
 		"Fallbrook, CA", "92028", "35,000",
@@ -44,7 +44,7 @@ func TestThePoolTableDrawsTheStationsCandidates(t *testing.T) {
 // AND IT IS THE SAME TABLE OBSERVER DRAWS, which is the requirement: the group
 // bands and the weather columns come from one renderer, so they cannot drift.
 func TestThePoolTableIsObserversTable(t *testing.T) {
-	got := stripANSITest(poolConsole(t).View().Content)
+	got := StripANSI(poolConsole(t).View().Content)
 	for _, want := range []string{"T O D A Y", "T O M O R R O W", "CONDITIONS", "NOW", "HI", "LOW"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the pool table is missing Observer's %q column", want)
@@ -76,7 +76,7 @@ func TestAPoolRowTakesItsWeatherFromTheRecentSnapshot(t *testing.T) {
 	snap := &snapshot.Snapshot{Locations: []snapshot.Location{
 		{Label: "Fallbrook, CA", Lat: 33.37, Lon: -117.25},
 	}}
-	// `WeatherAsOf` IS WHAT SETTLES A ROW (rowLoading): a location whose weather
+	// `WeatherAsOf` IS WHAT SETTLES A ROW (RowLoading): a location whose weather
 	// has landed stops shimmering, and the fixture has to say it landed or it is
 	// asserting the shimmer rather than the data.
 	snap.Locations[0].WeatherAsOf = time.Now()

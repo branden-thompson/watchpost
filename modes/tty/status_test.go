@@ -122,7 +122,7 @@ func TestStatusModalShowsRequestAndDumpRows(t *testing.T) {
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 60})
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
 	sv, _ := model.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
-	v := stripANSITest(sv.View().Content)
+	v := StripANSI(sv.View().Content)
 	// There is no REQUESTS block: its counters are columns of the DATA SOURCES
 	// table, keyed by the host they were counted against. The window they
 	// cover is the UPTIME row at the top — printing it twice, three lines apart,
@@ -139,8 +139,8 @@ func TestStatusModalShowsRequestAndDumpRows(t *testing.T) {
 	qm, _ = qm.Update(tea.WindowSizeMsg{Width: 133, Height: 60})
 	qs, _ := qm.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
 	// REQUESTS is folded into PROVIDERS, so there is ONE placeholder here.
-	if qv := stripANSITest(qs.View().Content); !strings.Contains(qv, "none yet") || !strings.Contains(qv, "awaiting first snapshot") {
-		t.Fatalf("both blocks must say what they are waiting for:\n%s", stripANSITest(qs.View().Content))
+	if qv := StripANSI(qs.View().Content); !strings.Contains(qv, "none yet") || !strings.Contains(qv, "awaiting first snapshot") {
+		t.Fatalf("both blocks must say what they are waiting for:\n%s", StripANSI(qs.View().Content))
 	}
 	// No Stats hook (report-only wiring, tests): the sections are absent, not empty.
 	plain := dash(t)
@@ -180,7 +180,7 @@ func TestStatusIsOneColumnAndFitsItsTerminal(t *testing.T) {
 		if !strings.Contains(lines[0], "UPTIME") || lines[1] != "" {
 			t.Fatalf("%d cols: the headline row then a blank, got %q / %q", w, lines[0], lines[1])
 		}
-		text := stripANSITest(strings.Join(lines, "\n"))
+		text := StripANSI(strings.Join(lines, "\n"))
 		for _, want := range []string{"DATA SOURCES", "ENDPOINT", "api.weather.gov", "PIPELINES", "SEVERE INDEX", "ISSUES", "DUMPS", "kill -USR1"} {
 			if !strings.Contains(text, want) {
 				t.Fatalf("%d cols: %q missing:\n%s", w, want, text)
@@ -200,7 +200,7 @@ func TestStatusIsOneColumnAndFitsItsTerminal(t *testing.T) {
 				last = i
 			}
 		}
-		for _, l := range strings.Split(stripANSITest(d.View().Content), "\n") {
+		for _, l := range strings.Split(StripANSI(d.View().Content), "\n") {
 			if render.Width(strings.TrimRight(l, " ")) > w {
 				t.Fatalf("%d cols: a line runs past the terminal: %q", w, l)
 			}
@@ -236,7 +236,7 @@ func TestAnUnmeasuredHostReadsNeutralNotFailed(t *testing.T) {
 	var row string
 	for _, l := range d.statusBlocks(0).sources {
 		if strings.Contains(l, "www.nhc.noaa.gov") {
-			row = stripANSITest(l)
+			row = StripANSI(l)
 		}
 	}
 	if row == "" {
@@ -249,7 +249,7 @@ func TestAnUnmeasuredHostReadsNeutralNotFailed(t *testing.T) {
 		t.Errorf("it must say WHY it has no status: %q", row)
 	}
 	// And the masthead agrees: it counts providers, and this host is not one.
-	if head := stripANSITest(d.header(d.opts())); !strings.Contains(head, "✘0") {
+	if head := StripANSI(d.header(d.opts())); !strings.Contains(head, "✘0") {
 		t.Errorf("the masthead counts providers, so an unclaimed host must not appear as a failure: %q", head)
 	}
 }
@@ -276,8 +276,8 @@ func TestStatusTablesAreRectanglesWithNothingClipped(t *testing.T) {
 		inner := d.statusInner()
 		body := d.wrapModal(d.statusLines(), min(d.opts().Width, d.statusWidth()))
 		for _, line := range body {
-			if got := render.Width(stripANSITest(line)); got > inner {
-				t.Fatalf("%d cols: a body line is %d wide, past the %d it has: %q", w, got, inner, stripANSITest(line))
+			if got := render.Width(StripANSI(line)); got > inner {
+				t.Fatalf("%d cols: a body line is %d wide, past the %d it has: %q", w, got, inner, StripANSI(line))
 			}
 		}
 		joined := strings.Join(body, "\n")
@@ -292,7 +292,7 @@ func TestStatusTablesAreRectanglesWithNothingClipped(t *testing.T) {
 		// window's edge rather than ending short of it and leaving the window
 		// lopsided on a wide terminal.
 		for _, line := range body {
-			plain := stripANSITest(line)
+			plain := StripANSI(line)
 			if !strings.Contains(plain, "ENDPOINT") {
 				continue
 			}
@@ -480,12 +480,12 @@ func TestTheMapsWordsNeverWidenTheWindow(t *testing.T) {
 	b := with.statusBlocks(with.statusInner())
 	table := 0
 	for _, l := range b.sources {
-		if p := stripANSITest(l); strings.Contains(p, "ENDPOINT") {
+		if p := StripANSI(l); strings.Contains(p, "ENDPOINT") {
 			table = render.Width(p)
 		}
 	}
 	for _, l := range b.sources {
-		if p := stripANSITest(l); strings.Contains(p, "Opening") || strings.Contains(p, "every other host") {
+		if p := StripANSI(l); strings.Contains(p, "Opening") || strings.Contains(p, "every other host") {
 			if render.Width(p) > table {
 				t.Errorf("the disclosure's line %q is wider than the table (%d)", p, table)
 			}
