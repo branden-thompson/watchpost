@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -33,7 +34,7 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 
-	base := loadedConsole(t, LoadedPoolSize)
+	base := loadedConsole(t, ttytest.LoadedPoolSize)
 	base.width, base.height, base.ascii = 150, 74, true
 	const used = 20
 
@@ -82,7 +83,7 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 	}
 
 	n, reached := 0, 0
-	PerturbEach(t, base, consoleExcuse, consoleWriter, func(field string, next Broadcaster) {
+	ttytest.PerturbEach(t, base, consoleExcuse, consoleWriter, func(field string, next Broadcaster) {
 		n++
 		a, b := base.buildSpans(used)
 		c, d := next.buildSpans(used)
@@ -251,7 +252,7 @@ func TestTheJoinNeverWritesIntoTheCache(t *testing.T) {
 // keyed on a value that changes every frame is perfectly CORRECT and completely
 // useless, and the frame would look right while the saving quietly never arrived.
 func TestTheConsoleMemoHitsAndMisses(t *testing.T) {
-	b := loadedConsole(t, LoadedPoolSize)
+	b := loadedConsole(t, ttytest.LoadedPoolSize)
 	_ = b.View().Content // the first frame is always a miss: the slot is empty
 
 	h0, m0 := b.consoleMemoCounts()

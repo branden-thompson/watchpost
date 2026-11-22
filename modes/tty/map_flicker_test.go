@@ -9,12 +9,14 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // hasArea reports whether the drawn lines carry the alert's severity digit,
 // which the outline repeats.
 func hasArea(d Dashboard) bool {
-	return strings.Contains(StripANSI(strings.Join(d.mapPane.lines, "\n")), "3")
+	return strings.Contains(ttytest.StripANSI(strings.Join(d.mapPane.lines, "\n")), "3")
 }
 
 func TestTheSameAlertAgainNeverDropsFromTheFrame(t *testing.T) {

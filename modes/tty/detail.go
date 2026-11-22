@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	zones "github.com/branden-thompson/watchpost/platform/tz"
@@ -84,7 +85,7 @@ func gridRow(label, primary, secondary string) string {
 // aligned to the HIGH/LOW column.
 func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location, cw int) []string {
 	h := loc.Harmonized
-	temp := render.Tint(strings.TrimSpace(o.Temp(h.Temp)), render.Tok(render.TextBright)) + o.TrendGlyph(Trend(*loc))
+	temp := render.Tint(strings.TrimSpace(o.Temp(h.Temp)), render.Tok(render.TextBright)) + o.TrendGlyph(frame.Trend(*loc))
 	out := []string{detailRow(o, "CURRENTLY", gridRow(prettyCond(h.Condition), temp, ""))}
 	// WHERE THE NUMBER CAME FROM, WHEN IT DID NOT COME FROM A STATION.
 	//

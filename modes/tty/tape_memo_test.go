@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // TestTheTapeTurnsOverAtMidnight is 0.19.5 Q4.3's pin, written before the tape
@@ -21,7 +24,7 @@ func TestTheTapeTurnsOverAtMidnight(t *testing.T) {
 	d.setTicker([]TickerItem{{ID: "w1", Category: lane, Head: "Tornado Warning · Midnight County, KS", Verb: "issued", At: at}})
 	o := d.opts()
 	evening := strings.Join(d.tickerLane(o, lane), "")
-	if band := StripANSI(d.tickerMarquee(o)); !strings.Contains(band, "issued "+o.Clock.Time(at)) || strings.Contains(band, o.Clock.DateTime(at)) {
+	if band := ttytest.StripANSI(d.tickerMarquee(o)); !strings.Contains(band, "issued "+o.Clock.Time(at)) || strings.Contains(band, o.Clock.DateTime(at)) {
 		t.Fatalf("before midnight the band should give the alert's time of day alone:\n%s", band)
 	}
 	_ = d.View().Content
@@ -32,7 +35,7 @@ func TestTheTapeTurnsOverAtMidnight(t *testing.T) {
 	if evening == morning {
 		t.Fatalf("the tape reads %q either side of midnight; the day it was issued it is a time, the next day a date and time", evening)
 	}
-	if band := StripANSI(d.tickerMarquee(o)); !strings.Contains(band, o.Clock.DateTime(at)) {
+	if band := ttytest.StripANSI(d.tickerMarquee(o)); !strings.Contains(band, o.Clock.DateTime(at)) {
 		t.Errorf("after midnight the band does not date the alert %q:\n%s", o.Clock.DateTime(at), band)
 	}
 }
@@ -41,7 +44,7 @@ func TestTheTapeTurnsOverAtMidnight(t *testing.T) {
 // taken after it is the whole frame's cost (0.19.5 RR-17).
 func missEveryMemo(d Dashboard) {
 	d.memo.ok, d.memo.tape.ok = false, false
-	d.memo.head = MastheadSlot{}
+	d.memo.head = frame.MastheadSlot{}
 	unprimeCursor(&d.memo.cursor, false)
 }
 
@@ -49,7 +52,7 @@ func missEveryMemo(d Dashboard) {
 // cursor kept for the next frame to reuse. A zero slot would drop that cursor
 // and pin a cold one, 2 allocations a frame the program never makes after its
 // first (0.19.6 D-62).
-var unprimeCursor = Field[CursorSlot, bool]("primed")
+var unprimeCursor = ttytest.Field[frame.CursorSlot, bool]("primed")
 
 // TestTheTapeKeyCoversEverythingTheTapeShows is the tape memo's completeness
 // guard (0.19.5 Q4.3, A-15), the body memo's property for the tape: if two

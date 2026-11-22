@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // THE HISTORY'S RETENTION IS THE DATA TAB'S PRESETS, WRITTEN ON CLOSE (D-175):
@@ -48,7 +50,7 @@ func TestClearingTheHistoryAsksFirst(t *testing.T) {
 	d.cfg.ClearHistory = func() error { cleared++; return nil }
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: ' ', Text: " "})
 	d = m
-	if !d.setup.confirmClear || !strings.Contains(StripANSI(d.confirmOverlay(d.opts())), "ARE YOU SURE?") {
+	if !d.setup.confirmClear || !strings.Contains(ttytest.StripANSI(d.confirmOverlay(d.opts())), "ARE YOU SURE?") {
 		t.Fatal("space on Clear history did not ask ARE YOU SURE")
 	}
 	m, _ = d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
@@ -93,7 +95,7 @@ func TestTheHistorySaysWhatItHolds(t *testing.T) {
 // settingsText is the Settings window's body, plain.
 func settingsText(d Dashboard) string {
 	lines, _, _ := d.setupBody(d.opts())
-	return StripANSI(strings.Join(lines, "\n"))
+	return ttytest.StripANSI(strings.Join(lines, "\n"))
 }
 
 // RAISING A RETENTION SAYS WHAT IT COSTS FIRST (D-231): a longer window opens
@@ -109,7 +111,7 @@ func TestRaisingARetentionSaysWhatItCosts(t *testing.T) {
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m
-	body := StripANSI(d.confirmOverlay(d.opts()))
+	body := ttytest.StripANSI(d.confirmOverlay(d.opts()))
 	if d.setup.raise == nil || !strings.Contains(body, "About 120 MB more") || !strings.Contains(body, "cannot be fetched back") || !strings.Contains(body, "7 days") {
 		t.Fatalf("raising 72 hours to 7 days did not ask, or the question lacks its cost or its warning:\n%s", body)
 	}

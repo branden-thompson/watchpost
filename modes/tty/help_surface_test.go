@@ -10,6 +10,8 @@ package tty
 import (
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 func helpTextOn(t *testing.T, surface Surface) string {
@@ -17,7 +19,7 @@ func helpTextOn(t *testing.T, surface Surface) string {
 	d := goldenDash(t, false)
 	d.surface = surface
 	d = d.open(modalHelp)
-	return StripANSI(d.renderModal(d.opts()))
+	return ttytest.StripANSI(d.renderModal(d.opts()))
 }
 
 // CASE 1: the console is not handed the listener's manual.

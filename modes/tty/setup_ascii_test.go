@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -34,7 +35,7 @@ func TestSetupSuggestionsCarryNoNonASCIIUnderASCII(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	model = typeText(model, "oce")
 
-	view := StripANSI(model.(Dashboard).View().Content)
+	view := ttytest.StripANSI(model.(Dashboard).View().Content)
 	// THE FIXTURE IS ASSERTED VALID FIRST: without a suggestion on screen this
 	// test scans a window that never drew the line it is named for.
 	if !strings.Contains(view, "Oceanside, CA (92057)") {

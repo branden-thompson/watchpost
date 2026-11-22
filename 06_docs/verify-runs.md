@@ -311,3 +311,5 @@ says exactly what passed.
 | 2026-11-21T21:15:19Z | ec1339f3 | 4152ac9c71d3 | verify | green | 5306 |
 | 2026-11-21T22:39:30Z | 5171b0cb | 93ba993f2c5a | verify | FAILED (exit 2) | 1500 |
 | 2026-11-22T00:07:15Z | 5171b0cb | 8e237f43a61c | verify | green | 5165 |
+| 2026-11-22T20:23:43Z | 774eb4a0 | b3f0f734fce8 | verify | FAILED (exit 2) | 5506 |
+| 2026-11-22T22:16:03Z | 774eb4a0 | 08b6252b431f | verify | green | 5665 |

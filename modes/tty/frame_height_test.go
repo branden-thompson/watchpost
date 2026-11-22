@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // TestTheFrameNeverExceedsTheTerminal is 0.19.5 D-28 and D-30 (DEF-8): the
@@ -22,7 +24,7 @@ func TestTheFrameNeverExceedsTheTerminal(t *testing.T) {
 			}
 			for sel := range max(1, d.numPriority()) {
 				d.selected = sel
-				frame := StripANSI(d.View().Content)
+				frame := ttytest.StripANSI(d.View().Content)
 				if rows := strings.Count(frame, "\n") + 1; rows > size[1] {
 					t.Fatalf("%dx%d with %d favourites: the frame is %d rows", size[0], size[1], keep, rows)
 				}

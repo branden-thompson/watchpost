@@ -10,6 +10,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
@@ -169,7 +171,7 @@ func runCmd(cmd tea.Cmd) []tea.Msg {
 		}
 		return out
 	}
-	if _, isTick := msg.(TickMsg); msg == nil || isTick {
+	if _, isTick := msg.(frame.TickMsg); msg == nil || isTick {
 		return nil
 	}
 	return []tea.Msg{msg}
@@ -234,7 +236,7 @@ func TestFailSoftUXRedTeam09(t *testing.T) {
 	model, _ = model.Update(RadioStatusMsg{State: "failed", Detail: "no voice for linux/arm: install Piper", Volume: 55})
 	d := model.(Dashboard)
 	for _, compact := range []bool{false, true} {
-		if v := StripANSI(strings.Join(d.radioLines(d.opts(), compact), "\n")); !strings.Contains(v, "✘ no voice for linux/arm: install Piper") {
+		if v := ttytest.StripANSI(strings.Join(d.radioLines(d.opts(), compact), "\n")); !strings.Contains(v, "✘ no voice for linux/arm: install Piper") {
 			t.Fatalf("failed state shows the reason (compact=%v):\n%s", compact, v)
 		}
 	}

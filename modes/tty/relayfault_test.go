@@ -7,6 +7,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -34,7 +36,7 @@ func TestTheRelayFaultWindowIsTheMock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := StripANSI(faultDash(t).renderModal(faultDash(t).opts()))
+	got := ttytest.StripANSI(faultDash(t).renderModal(faultDash(t).opts()))
 	wantLines := strings.Split(strings.TrimRight(string(want), "\n"), "\n")
 	gotLines := strings.Split(strings.TrimRight(got, "\n"), "\n")
 	if len(wantLines) != len(gotLines) {
@@ -101,7 +103,7 @@ func TestTheCountdownRunsAndActs(t *testing.T) {
 	// — fifteen of them would turn a millisecond test into four seconds.
 	step := func() Dashboard {
 		t.Helper()
-		m, cmd := d.Update(TickMsg{})
+		m, cmd := d.Update(frame.TickMsg{})
 		next := m.(Dashboard)
 		if cmd != nil && next.modal != modalRelayFault {
 			cmd()
@@ -270,7 +272,7 @@ func TestTheRelayFaultWindowRespondsToTheKeys(t *testing.T) {
 
 	rowOf := func(x Dashboard, want string) string {
 		t.Helper()
-		for _, l := range strings.Split(StripANSI(x.renderModal(x.opts())), "\n") {
+		for _, l := range strings.Split(ttytest.StripANSI(x.renderModal(x.opts())), "\n") {
 			if strings.Contains(l, want) {
 				return l
 			}
@@ -510,7 +512,7 @@ func TestEveryLineClearsBothMargins(t *testing.T) {
 		{Label: "KEC62 - San Diego, CA (NOAA Weather Radio All Hazards, 162.400 MHz)", Key: "a"},
 		{Label: "WWG21 - Mount Woodson, CA (NOAA Weather Radio All Hazards, 162.550 MHz)", Key: "b"},
 	}})
-	lines := strings.Split(StripANSI(d.modalView(d.opts())), "\n")
+	lines := strings.Split(ttytest.StripANSI(d.modalView(d.opts())), "\n")
 	if len(lines) < 5 {
 		t.Fatalf("the window drew %d lines; this measures nothing", len(lines))
 	}
@@ -593,7 +595,7 @@ func TestARowWrapsUnderItsOwnValue(t *testing.T) {
 		{Label: "KEC62 San Diego CA 162.400 MHz - 12 mi (nearest relayed, and then some more words)", Key: "a"},
 		{Label: "WNG712 Coachella / Spanish CA 162.525 MHz - 81 mi", Key: "b"},
 	}})
-	lines := strings.Split(StripANSI(d.modalView(d.opts())), "\n")
+	lines := strings.Split(ttytest.StripANSI(d.modalView(d.opts())), "\n")
 
 	first, cont := -1, -1
 	for i, l := range lines {
@@ -686,7 +688,7 @@ func TestTheFocusedWayOutIsAlwaysOnScreen(t *testing.T) {
 
 	want := []string{"Recommended", "Alternate", "Fall-Thru"}
 	for i, label := range want {
-		got := StripANSI(d.modalView(d.opts()))
+		got := ttytest.StripANSI(d.modalView(d.opts()))
 		if !strings.Contains(got, label) {
 			t.Errorf("with the cursor on row %d, %q is off screen — the listener cannot see what enter would take:\n%s",
 				i, label, got)

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -20,7 +21,7 @@ func TestTheUpNextCaptionIsBoldWhite(t *testing.T) {
 	b := broadcasterWithOneCard(t)
 	var caption string
 	for _, r := range b.upNextBox() {
-		if strings.Contains(StripANSI(r), bcUpNextLabel) {
+		if strings.Contains(ttytest.StripANSI(r), bcUpNextLabel) {
 			caption = r
 			break
 		}
@@ -50,9 +51,9 @@ func TestTheStyledCaptionDoesNotWidenTheBox(t *testing.T) {
 	if len(rows) == 0 {
 		t.Fatal("the box drew nothing")
 	}
-	want := render.Width(StripANSI(rows[0]))
+	want := render.Width(ttytest.StripANSI(rows[0]))
 	for i, r := range rows {
-		if got := render.Width(StripANSI(r)); got != want {
+		if got := render.Width(ttytest.StripANSI(r)); got != want {
 			t.Fatalf("row %d is %d cells wide against the box's %d: the caption's styling is being counted as content", i, got, want)
 		}
 	}

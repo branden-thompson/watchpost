@@ -17,6 +17,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -46,7 +47,7 @@ func viewFeed(_ context.Context, _ MapAsk) MapFeed {
 
 // boxText is the Description box's words as one run.
 func boxText(d Dashboard) string {
-	return unwrapped(StripANSI(strings.Join(d.descriptionBox(d.mapBodySize()), "\n")))
+	return unwrapped(ttytest.StripANSI(strings.Join(d.descriptionBox(d.mapBodySize()), "\n")))
 }
 
 func TestTheBoxListsTheAlertsInViewMostSevereFirst(t *testing.T) {

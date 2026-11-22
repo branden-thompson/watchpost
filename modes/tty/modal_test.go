@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // modalMarkers are the strings that appear in a frame only while that
@@ -65,11 +67,11 @@ func TestExactlyOneModalRendersWhateverOpensOverWhat(t *testing.T) {
 			m := modalFixture(t)
 			m, _ = m.Update(open)
 			before := m.(Dashboard).selected
-			if got := modalsIn(StripANSI(m.View().Content)); len(got) > 1 {
+			if got := modalsIn(ttytest.StripANSI(m.View().Content)); len(got) > 1 {
 				t.Errorf("%s alone: %v modals rendered", first, got)
 			}
 			m, _ = m.Update(next)
-			frame := StripANSI(m.View().Content)
+			frame := ttytest.StripANSI(m.View().Content)
 			if got := modalsIn(frame); len(got) > 1 {
 				t.Errorf("%s then %s: stacked modals %v", first, second, got)
 			}
@@ -88,7 +90,7 @@ func TestTheRetiredChoosersDeepLinkIntoSettings(t *testing.T) {
 	for _, tc := range []struct{ name, key string }{{"theme", "t"}, {"mute", "M"}} {
 		m := modalFixture(t)
 		m, _ = m.Update(tea.KeyPressMsg{Code: rune(tc.key[0]), Text: tc.key})
-		frame := StripANSI(m.View().Content)
+		frame := ttytest.StripANSI(m.View().Content)
 		if got := modalsIn(frame); len(got) != 1 || got[0] != "setup" {
 			t.Errorf("%s opens Settings and nothing else, got %v", tc.name, got)
 		}
@@ -102,7 +104,7 @@ func TestEveryModalHasItsMarker(t *testing.T) {
 	for name, open := range openers {
 		m := modalFixture(t)
 		m, _ = m.Update(open)
-		got := modalsIn(StripANSI(m.View().Content))
+		got := modalsIn(ttytest.StripANSI(m.View().Content))
 		if len(got) != 1 || got[0] != name {
 			t.Errorf("%s: rendered %v", name, got)
 		}

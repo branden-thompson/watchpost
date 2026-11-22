@@ -2,6 +2,7 @@ package tty
 
 import (
 	"fmt"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/propanswers"
 	"math"
 
@@ -48,7 +49,7 @@ func (d Dashboard) propOriginNow() propPlace {
 		case station == nil:
 			return propPlace{}
 		case d.noTransmitter():
-			return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: station.Label + " " + NoTransmitter, ok: true}
+			return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: station.Label + " " + frame.NoTransmitter, ok: true}
 		}
 		return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: d.cfg.Transmitter.Label, country: d.cfg.Transmitter.Country, ok: true}
 	}

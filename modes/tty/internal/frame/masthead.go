@@ -1,6 +1,6 @@
-package tty
+package frame
 
-// masthead.go — the framed header BOTH surfaces draw (D-59, D-56).
+// masthead.go — the framed header BOTH surfaces draw (0.16.0 D-59, D-56).
 //
 // THE CONSOLE'S MASTHEAD IS THE OBSERVER'S, as the reference draws it: the
 // version in the title, the `Updated:` stamp, and the API summary, on both
@@ -137,8 +137,8 @@ func AgoWords(age time.Duration) string {
 }
 
 // APISummaryOf counts the providers' health for the masthead — the ONE owner,
-// called by both surfaces (D-59). Two counts of one snapshot could disagree, and
-// the number is a health claim.
+// called by both surfaces (0.16.0 D-59). Two counts of one snapshot could
+// disagree, and the number is a health claim.
 func APISummaryOf(o render.Opts, snap *snapshot.Snapshot) string {
 	c := countProviders(snap)
 	ok, stale, down, total := c.ok, c.stale, c.down, c.total

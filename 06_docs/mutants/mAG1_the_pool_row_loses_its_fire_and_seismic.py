@@ -8,7 +8,7 @@ import pathlib
 # typed and gofmt had aligned the trailing comments into a column, so it applied
 # to nothing — UNAPPLIED, which is run.sh refusing to report a rule as measured
 # when nothing was measured.
-p = pathlib.Path("modes/tty/kit_row.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/internal/frame/row.go"); s = p.read_text()
 old = "\t\tFire:       fireCount(loc.Fire),                    // B5 / UAT 110: n◆\n\t\tFireHot:    fireHot(loc.Fire.Hotspots, fireBoldMW), // B5\n\t\tSeismic:    seismicRowLevel(loc.Seismic),           // the strongest quake's felt-band glyph\n"
 assert old in s, "mAG1"
 p.write_text(s.replace(old, "", 1))

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
@@ -34,7 +35,7 @@ func TestDetailSeismicSectionShowsGraduatedRows(t *testing.T) {
 		{Mag: 1.4, Place: "underfoot", DepthKm: 2, At: now.Add(-90 * time.Minute), DistanceKm: 2, Bearing: "E"}, // shown too — the whole list (P4)
 	}}
 	raw := detailWithSeismic(t, ss)
-	joined := StripANSI(raw)
+	joined := ttytest.StripANSI(raw)
 	for _, want := range []string{
 		"SEISMIC │ 4 nearby in the last 7 days",
 		"(USGS)",
@@ -63,16 +64,16 @@ func TestDetailSeismicSectionShowsGraduatedRows(t *testing.T) {
 func TestDetailSeismicUnavailableVsQuiet(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	// Cold / down feed (AsOf zero): "unavailable", never a fake "none".
-	if got := StripANSI(detailWithSeismic(t, &snapshot.SeismicState{})); !strings.Contains(got, "SEISMIC │ Recent       seismic data unavailable") && !strings.Contains(got, "seismic data unavailable") {
+	if got := ttytest.StripANSI(detailWithSeismic(t, &snapshot.SeismicState{})); !strings.Contains(got, "SEISMIC │ Recent       seismic data unavailable") && !strings.Contains(got, "seismic data unavailable") {
 		t.Fatalf("a cold feed reads 'unavailable':\n%s", got)
 	}
 	// nil (no state at all) is also unavailable.
-	if got := StripANSI(detailWithSeismic(t, nil)); !strings.Contains(got, "seismic data unavailable") {
+	if got := ttytest.StripANSI(detailWithSeismic(t, nil)); !strings.Contains(got, "seismic data unavailable") {
 		t.Fatalf("no state reads 'unavailable':\n%s", got)
 	}
 	// Answered and empty: the honest quiet answer.
 	now := time.Now()
-	if got := StripANSI(detailWithSeismic(t, &snapshot.SeismicState{AsOf: now})); !strings.Contains(got, "no recent seismic activity") {
+	if got := ttytest.StripANSI(detailWithSeismic(t, &snapshot.SeismicState{AsOf: now})); !strings.Contains(got, "no recent seismic activity") {
 		t.Fatalf("an answered-empty feed reads 'no recent seismic activity':\n%s", got)
 	}
 }
@@ -92,7 +93,7 @@ func TestDetailSeismicASCIIGlyphs(t *testing.T) {
 	d := m2.(Dashboard)
 	d.cfg.ASCII = true // the --ascii glyph set
 	d.modal = modalDetails
-	joined := StripANSI(strings.Join(d.detailLines(), "\n"))
+	joined := ttytest.StripANSI(strings.Join(d.detailLines(), "\n"))
 	for _, want := range []string{"O  M5.1", "o  M4.2", ".  M2.8"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("--ascii ramp .oO missing %q:\n%s", want, joined)
@@ -113,8 +114,8 @@ func TestDetailSeismicTsunamiReadsWarning(t *testing.T) {
 		{Mag: 3.2, Place: "coast", DepthKm: 5, At: now.Add(-time.Hour), DistanceKm: 10, Bearing: "W", Tsunami: true},
 	}}
 	raw := detailWithSeismic(t, ss)
-	if !strings.Contains(StripANSI(raw), "Tsunami") {
-		t.Fatalf("a tsunami quake labels the reason:\n%s", StripANSI(raw))
+	if !strings.Contains(ttytest.StripANSI(raw), "Tsunami") {
+		t.Fatalf("a tsunami quake labels the reason:\n%s", ttytest.StripANSI(raw))
 	}
 	// A tsunami reads in the warning tone regardless of its (low) magnitude —
 	// the ○ below-feeling glyph, but tinted danger, not the violet mark.
@@ -130,7 +131,7 @@ func TestDetailSeismicTsunamiReadsWarning(t *testing.T) {
 	d := m2.(Dashboard)
 	d.cfg.ASCII = true
 	d.modal = modalDetails
-	asciiOut := StripANSI(strings.Join(d.detailLines(), "\n"))
+	asciiOut := ttytest.StripANSI(strings.Join(d.detailLines(), "\n"))
 	if strings.Contains(asciiOut, "—") {
 		t.Fatalf("--ascii must not emit an em-dash:\n%s", asciiOut)
 	}
@@ -159,7 +160,7 @@ func TestALongFeltLabelIsTruncatedRatherThanCut(t *testing.T) {
 	loc := &snapshot.Location{Label: "Oceanside, CA", Seismic: ss}
 
 	// The 80-column floor, where the section has least room.
-	got := StripANSI(strings.Join(seismicRows(render.Opts{Width: 80}, loc, now, 51, 7), "\n"))
+	got := ttytest.StripANSI(strings.Join(seismicRows(render.Opts{Width: 80}, loc, now, 51, 7), "\n"))
 	if !strings.Contains(got, "PAGER") {
 		t.Fatalf("the warning label is gone entirely:\n%s", got)
 	}

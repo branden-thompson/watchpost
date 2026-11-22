@@ -10,6 +10,7 @@ import (
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -17,7 +18,7 @@ import (
 // whether its box is open, every chip's state is whole on the smallest
 // window, and the region row says which region the map is bound to.
 func TestEveryMapControlSaysItsState(t *testing.T) {
-	chips := func(d Dashboard) string { return StripANSI(d.mapStatusLine()) }
+	chips := func(d Dashboard) string { return ttytest.StripANSI(d.mapStatusLine()) }
 	for _, size := range [][2]int{{133, 44}, {80, 24}} {
 		d := openMap(t, Config{}, size[0], size[1])
 		for _, want := range []string{"A] Description Off", "R] Radar On", "P] Propagation Off", "O] Overlays"} {
@@ -30,11 +31,11 @@ func TestEveryMapControlSaysItsState(t *testing.T) {
 		}
 	}
 	d := openMap(t, Config{}, 133, 44)
-	row := StripANSI(d.regionsRow(200))
+	row := ttytest.StripANSI(d.regionsRow(200))
 	if strings.Count(row, "(shown)") != 1 || !strings.Contains(row, "CONT. US (shown)") {
 		t.Errorf("the region row does not say the region shown once, after CONT. US: %q", row)
 	}
-	if row := StripANSI(d.regionsRow(60)); !strings.Contains(row, "(shown)") {
+	if row := ttytest.StripANSI(d.regionsRow(60)); !strings.Contains(row, "(shown)") {
 		t.Errorf("the short region row drops the region shown: %q", row)
 	}
 }
@@ -57,7 +58,7 @@ func TestTheDescriptionHasOneName(t *testing.T) {
 	if !strings.Contains(help, "A Description") {
 		t.Errorf("Help does not name A's text Description:\n%s", help)
 	}
-	all := bodyText(d) + StripANSI(d.mapStatusLine()) + help
+	all := bodyText(d) + ttytest.StripANSI(d.mapStatusLine()) + help
 	for _, other := range []string{"Area Alerts", "A Alerts"} {
 		if strings.Contains(all, other) {
 			t.Errorf("the text is still called %q", other)
@@ -73,7 +74,7 @@ func TestTheDescriptionHasOneName(t *testing.T) {
 func TestTheOverflowLineNamesItsRemedy(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
 	box := d.descriptionBox(tuimaps.Size{Cols: 40, Rows: 6})
-	text := strings.Join(strings.Fields(strings.NewReplacer("│", " ", "┌", " ", "┐", " ", "└", " ", "┘", " ", "─", " ").Replace(StripANSI(strings.Join(box, "\n")))), " ") // the box's words, its wrapping undone
+	text := strings.Join(strings.Fields(strings.NewReplacer("│", " ", "┌", " ", "┐", " ", "└", " ", "┘", " ", "─", " ").Replace(ttytest.StripANSI(strings.Join(box, "\n")))), " ") // the box's words, its wrapping undone
 	if !strings.Contains(text, "the rest: Settings, Maps, Description, Instead of the map") {
 		t.Errorf("the cut box does not name its remedy:\n%s", text)
 	}
@@ -84,14 +85,14 @@ func TestTheOverflowLineNamesItsRemedy(t *testing.T) {
 // each digit drawn to its word, and Help keys them all.
 func TestTheOutlineDigitsAreKeyed(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
-	badges := StripANSI(strings.Join(d.badgeRows(200), "\n"))
+	badges := ttytest.StripANSI(strings.Join(d.badgeRows(200), "\n"))
 	if !strings.Contains(badges, outlineKeyLabel) || !strings.Contains(badges, "3 severe") {
 		t.Errorf("the badges do not key the severe outline's digit: %q", badges)
 	}
 	if strings.Contains(badges, "4 extreme") {
 		t.Errorf("the key names a digit the map did not draw: %q", badges)
 	}
-	if instead := openMap(t, Config{MapDescription: "instead"}, 133, 44); strings.Contains(StripANSI(strings.Join(instead.badgeRows(200), "\n")), outlineKeyLabel) {
+	if instead := openMap(t, Config{MapDescription: "instead"}, 133, 44); strings.Contains(ttytest.StripANSI(strings.Join(instead.badgeRows(200), "\n")), outlineKeyLabel) {
 		t.Error("without the picture the badges key digits nobody sees")
 	}
 	help := strings.Join(d.helpLines(render.Opts{Width: 200}), "\n")

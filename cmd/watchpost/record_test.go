@@ -141,6 +141,10 @@ var wholeFileClaims = []wholeFileClaim{
 	{"A-50", "modes/tty/kit_row.go"}, {"A-50", "kit_cursor.go"}, {"A-50", "kit_tick.go"}, {"A-50", "kit_memo.go"},
 	{"A-50", "kit_text.go"}, {"A-50", "masthead.go"}, {"A-50", "frame_height_test.go"},
 	{"A-50", "modes/tty/ttytest_perturb_test.go"}, {"A-50", "ttytest_helpers_test.go"}, {"A-50", "cursor.go"}, {"A-50", "body.go"},
+	// 0.19.6 D-66 names the files whose P10-09 rows are package-wide
+	{"D-66", "pkg/schema/schema.go"}, {"D-66", "platform/render/units.go"},
+	// 0.19.6 A-54 is about the packages' doc.go files, each whole
+	{"A-54", "doc.go"},
 }
 
 // unlinedRefs are the ruling rows that name a Go file without its line or a

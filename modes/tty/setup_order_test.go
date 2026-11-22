@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -49,7 +50,7 @@ func TestAGroupsPickersLineUp(t *testing.T) {
 	for _, g := range setupGroups() {
 		col := -1
 		for _, l := range d.setupBlock(o, g).lines {
-			plain := StripANSI(l)
+			plain := ttytest.StripANSI(l)
 			i := strings.Index(plain, "←")
 			if i < 0 {
 				continue

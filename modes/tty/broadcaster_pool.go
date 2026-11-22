@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -36,7 +37,7 @@ func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 		// converter would carry only the fields someone remembered.
 		row := render.LocationRow{Name: ref.Label, Zip: ref.Zip, Loading: true}
 		if loc := idx.at(ref); loc != nil {
-			row = WeatherRow(loc, b.fireBold(), 0)
+			row = frame.WeatherRow(loc, b.fireBold(), 0)
 		}
 		// What the pool knows that the snapshot does not: which row this is,
 		// how many people the place serves, and whether the pointer is on it.
@@ -116,7 +117,7 @@ func (b Broadcaster) fireBold() float64 {
 	if b.fireBoldMW > 0 {
 		return b.fireBoldMW
 	}
-	return FireBoldDefaultMW
+	return frame.FireBoldDefaultMW
 }
 
 // poolRoom is how many rows the pool takes off the frame before the running

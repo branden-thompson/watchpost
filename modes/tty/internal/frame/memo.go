@@ -1,8 +1,7 @@
-package tty
+package frame
 
-// kit_memo.go — the counters every memo slot carries, with the lock the
-// slot takes around its lookup (0.19.6 A-21). The kit's memo.go once B2 moves
-// it.
+// memo.go — the counters every memo slot carries, with the lock the slot
+// takes around its lookup (0.19.6 A-21).
 
 import "sync"
 

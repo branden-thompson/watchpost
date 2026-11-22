@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -16,7 +17,7 @@ import (
 func unflashedSettings(d Dashboard) string {
 	d.setup.flash = flashNone
 	d.volFlash, d.mapPane.flash, d.mapPane.menuFlash = "", "", flashNone
-	return StripANSI(d.View().Content)
+	return ttytest.StripANSI(d.View().Content)
 }
 
 // TestEveryArrowRowChangesSomething is 0.19.5 Q2.8 (JM-8): every toggle and
@@ -70,7 +71,7 @@ func TestEveryArrowRowsOutcomeIsPinned(t *testing.T) {
 			render.SetTheme(was)
 			m, _ := d.openSetupAt(row.id).Update(k)
 			got := m.(Dashboard)
-			sum := sha256.Sum256([]byte(StripANSI(got.View().Content)))
+			sum := sha256.Sum256([]byte(ttytest.StripANSI(got.View().Content)))
 			fmt.Fprintf(&out, "row %2d %-5s flash=%d ui=%v cast=%v frame=%x\n",
 				row.id, k.String(), got.setup.flash, got.setup.uiDirty, got.setup.castDirty, sum[:8])
 		}

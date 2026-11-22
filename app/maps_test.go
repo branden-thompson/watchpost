@@ -49,26 +49,29 @@ func TestTheAppHandsTheWindowItsMap(t *testing.T) {
 }
 
 // TestTheAsBuiltMapIsKeptInStep holds the HUM LEAD's rule (2026-09-25): the
-// diagrams move with the code. The as-built page names the batches it draws
-// of each release that built on the map - 0.18.0's, and 0.19.0's, whose
-// batches count from 1 again - and each build log names the batches that
-// landed; a batch that lands without its diagrams fails here.
+// diagrams move with the code. Each as-built page names the batches it draws
+// of a release - the map's page 0.18.0's, and 0.19.0's, whose batches count
+// from 1 again; 0.19.6's packages page its B-numbered batches, from B0 - and
+// each build log names the batches that landed; a batch that lands without its
+// diagrams fails here.
 func TestTheAsBuiltMapIsKeptInStep(t *testing.T) {
 	features := filepath.Join("..", "06_docs", "02_features")
-	page, err := os.ReadFile(filepath.Join(features, "observer-maps", "03-architecture-design", "as-built-map.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, r := range []struct{ feature, drawn string }{
-		{"observer-maps", `Batches 1–(\d+)`},
-		{"propagation-overlays", `0\.19\.0 batches 1–(\d+)`},
+	mapPage := filepath.Join("observer-maps", "03-architecture-design", "as-built-map.md")
+	for _, r := range []struct{ feature, page, heading, drawn string }{
+		{"observer-maps", mapPage, `(?m)^## Batch (\d+)`, `Batches 1–(\d+)`},
+		{"propagation-overlays", mapPage, `(?m)^## Batch (\d+)`, `0\.19\.0 batches 1–(\d+)`},
+		{"0.19.6-re-architecting", filepath.Join("0.19.6-re-architecting", "03-architecture-design", "as-built-packages.md"), `(?m)^## B(\d+)`, `B0–B(\d+)`},
 	} {
+		page, err := os.ReadFile(filepath.Join(features, r.page))
+		if err != nil {
+			t.Fatal(err)
+		}
 		log, err := os.ReadFile(filepath.Join(features, r.feature, "04-development", "build-log.md"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		latest := 0
-		for _, m := range regexp.MustCompile(`(?m)^## Batch (\d+)`).FindAllStringSubmatch(string(log), -1) {
+		for _, m := range regexp.MustCompile(r.heading).FindAllStringSubmatch(string(log), -1) {
 			latest = max(latest, atoiOrZero(m[1]))
 		}
 		drawn := regexp.MustCompile(r.drawn).FindStringSubmatch(string(page))
@@ -76,7 +79,7 @@ func TestTheAsBuiltMapIsKeptInStep(t *testing.T) {
 			t.Fatalf("%s: the build log names batch %d and the as-built page %v: this measures nothing", r.feature, latest, drawn)
 		}
 		if atoiOrZero(drawn[1]) != latest {
-			t.Errorf("%s's build log has reached batch %d and the as-built map draws its batches 1–%s: redraw it with the batch", r.feature, latest, drawn[1])
+			t.Errorf("%s's build log has reached batch %d and its as-built page draws through batch %s: redraw it with the batch", r.feature, latest, drawn[1])
 		}
 	}
 }

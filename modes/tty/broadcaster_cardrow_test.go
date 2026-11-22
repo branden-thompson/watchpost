@@ -5,6 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -158,12 +159,12 @@ func TestAFabricatedCardIsMarkedInTheLineUp(t *testing.T) {
 	c.Test = true
 	got := newCardLane(148, render.Opts{ASCII: true}.Glyphs()).render(c, "T", "PRIORITY")
 
-	if !strings.Contains(got, TestEventMark) {
+	if !strings.Contains(got, frame.TestEventMark) {
 		t.Errorf("a fabricated takeover must say so where the operator reads the line-up; got %q", got)
 	}
 	// IT LEADS. A mark after the headline is a mark the eye reaches second, and
 	// the headline is the part that looks like a real warning.
-	if i, j := strings.Index(got, TestEventMark), strings.Index(got, "TORNADO"); i < 0 || j < 0 || i > j {
+	if i, j := strings.Index(got, frame.TestEventMark), strings.Index(got, "TORNADO"); i < 0 || j < 0 || i > j {
 		t.Errorf("the mark leads the card; got %q", got)
 	}
 }
@@ -173,7 +174,7 @@ func TestARealCardCarriesNoMark(t *testing.T) {
 	// ignore the mark.
 	got := newCardLane(148, render.Opts{ASCII: true}.Glyphs()).
 		render(aCard(t, "TORNADO WARNING + 2 more"), "T", "PRIORITY")
-	if strings.Contains(got, TestEventMark) {
+	if strings.Contains(got, frame.TestEventMark) {
 		t.Errorf("a real hazard is never marked as a test; got %q", got)
 	}
 }
@@ -185,7 +186,7 @@ func TestTheTestMarkSurvivesTheNarrowestLane(t *testing.T) {
 	c.Test = true
 	for _, lane := range []int{98, 108, 128, 148} {
 		got := newCardLane(lane, render.Opts{ASCII: true}.Glyphs()).render(c, "T", "PRIORITY")
-		if !strings.Contains(got, TestEventMark) {
+		if !strings.Contains(got, frame.TestEventMark) {
 			t.Errorf("lane %d: the mark was truncated away; got %q", lane, got)
 		}
 		if w := utf8.RuneCountInString(got); w != lane {
@@ -206,7 +207,7 @@ func TestTheTestMarkIsNeverShownPartially(t *testing.T) {
 	c.Test = true
 	for _, lane := range []int{4, 8, 12, 16, 20, 30, 60, 98, 148} {
 		got := newCardLane(lane, render.Opts{ASCII: true}.Glyphs()).render(c, "T", "PRIORITY")
-		whole := strings.Contains(got, TestEventMark)
+		whole := strings.Contains(got, frame.TestEventMark)
 		partial := !whole && strings.Contains(got, "TEST")
 		if partial {
 			t.Errorf("lane %d: the mark is shown in pieces — %q", lane, got)
@@ -237,7 +238,7 @@ func TestANarrowLaneStillDrawsTheMarkedCardRatherThanDroppingIt(t *testing.T) {
 			t.Errorf("lane %d: the card was dropped; it is narrow, not unlabellable", lane)
 			continue
 		}
-		if !strings.Contains(got, TestEventMark) {
+		if !strings.Contains(got, frame.TestEventMark) {
 			t.Errorf("lane %d: drawn without its mark — %q", lane, got)
 		}
 	}

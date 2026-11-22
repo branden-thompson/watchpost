@@ -11,6 +11,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // mapKeyMsg is a key the map window binds, as the terminal sends it.
@@ -105,11 +107,11 @@ func TestTheMenusFocusStaysOnScreenWithoutAPicture(t *testing.T) {
 		m, _ := d.Update(mapKeyMsg(t, k))
 		d = m.(Dashboard)
 	}
-	if text := StripANSI(d.View().Content); !strings.Contains(text, "> [ ] Day / night") {
+	if text := ttytest.StripANSI(d.View().Content); !strings.Contains(text, "> [ ] Day / night") {
 		t.Errorf("the focused row, Day / night, is not on screen:\n%s", text)
 	}
 	m, _ = d.Update(mapKeyMsg(t, "down")) // and round to the first
-	if text := StripANSI(m.(Dashboard).View().Content); !strings.Contains(text, "> * Temperature") {
+	if text := ttytest.StripANSI(m.(Dashboard).View().Content); !strings.Contains(text, "> * Temperature") {
 		t.Errorf("the focused row, Temperature, is not on screen:\n%s", text)
 	}
 }
@@ -146,7 +148,7 @@ func TestEveryMapKeyChangesTheScreen(t *testing.T) {
 					d = settleMap(t, m.(Dashboard))
 				}
 			}
-			if text := StripANSI(d.View().Content); !strings.Contains(text, "MAP DETAILS / OVERLAYS") || !strings.Contains(text, d.opts().Glyphs().Pointer+" ") {
+			if text := ttytest.StripANSI(d.View().Content); !strings.Contains(text, "MAP DETAILS / OVERLAYS") || !strings.Contains(text, d.opts().Glyphs().Pointer+" ") {
 				t.Fatalf("%s: O drew no menu with its focused row marked:\n%s", mode.name, text)
 			}
 			if before, after := screenAfter(t, d, c.key); before == after {

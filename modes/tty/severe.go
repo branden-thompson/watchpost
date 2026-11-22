@@ -15,6 +15,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
@@ -417,7 +418,7 @@ func (d Dashboard) severeBrowseLines(o render.Opts, w int) []string {
 		// three asterisks in it would be read aloud as asterisks.
 		event := render.PlainLine(r.Product)
 		if r.Test {
-			event = TestEventMark + " " + event
+			event = frame.TestEventMark + " " + event
 		}
 		cells = append(cells, render.SevereCell{
 			Num: i + 1, Event: event, Location: render.PlainLine(r.Location), Detection: render.PlainLine(r.Detection), Declared: render.PlainLine(r.Declared), Expires: render.PlainLine(r.Expires),

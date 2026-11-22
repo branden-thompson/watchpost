@@ -18,6 +18,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/category"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -107,7 +108,7 @@ func (d Dashboard) tapeLine(o render.Opts, it TickerItem) string {
 		s += " " + dot + " expires " + o.Clock.Since(it.Until.Local(), d.clock())
 	}
 	if it.Test {
-		return TestEventMark + " " + s + " " + TestEventMark
+		return frame.TestEventMark + " " + s + " " + frame.TestEventMark
 	}
 	return s
 }
@@ -144,7 +145,7 @@ func (d Dashboard) tickerMarquee(o render.Opts) string {
 	if d.breaking != nil {
 		it := *d.breaking
 		tones := render.Tok(tickerCatBG(it.Category)) + ";" + render.Tok(render.TickerFG)
-		content := render.TintRaw(CenterText(d.tapeLine(o, it), width), tones)
+		content := render.TintRaw(frame.CenterText(d.tapeLine(o, it), width), tones)
 		blank := render.TintRaw(strings.Repeat(" ", width), tones)
 		return blank + "\n" + content + "\n" + blank
 	}

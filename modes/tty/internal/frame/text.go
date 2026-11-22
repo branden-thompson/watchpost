@@ -1,8 +1,7 @@
-package tty
+package frame
 
-// kit_text.go — the text helpers both surfaces share: centring and clipping
-// a line, the test event's mark, and a plural's suffix (0.19.6 A-21). The
-// kit's text.go once B2 moves it.
+// text.go — the text helpers both surfaces share: centring and clipping a
+// line, the test event's mark, and a plural's suffix (0.19.6 A-21).
 
 import (
 	"strings"
@@ -45,17 +44,17 @@ func CenterText(text string, width int) string {
 // clipToWidth truncates text to at most width display cells (wide runes count
 // as their cell width, so the result never overflows the band).
 //
-// ONE OWNER (D-141): `render.TruncateCells`, which skips escape sequences when
-// counting and remembers whether the last one was a reset, so it can close a
-// span it cuts through. A rune walk asking `render.Width` for each would
-// measure a lone \x1b as 0 but '[', '1' and 'm' as 1 apiece, so EVERY BOLD SPAN
-// WOULD COST EIGHT PHANTOM CELLS: text that fits is cut anyway, the cut lands
-// mid-escape leaving a bare \x1b in the frame, and the SGR is never closed so
-// the weight bleeds into whatever follows.
+// ONE OWNER (0.16.0 D-141): `render.TruncateCells`, which skips escape
+// sequences when counting and remembers whether the last one was a reset, so it
+// can close a span it cuts through. A rune walk asking `render.Width` for each
+// would measure a lone \x1b as 0 but '[', '1' and 'm' as 1 apiece, so EVERY
+// BOLD SPAN WOULD COST EIGHT PHANTOM CELLS: text that fits is cut anyway, the
+// cut lands mid-escape leaving a bare \x1b in the frame, and the SGR is never
+// closed so the weight bleeds into whatever follows.
 //
 // Width measurement is not a thing to reimplement per caller — the same shape
-// as D-129a (a caveat wrapped to the wrong width) and D-138 (a band centred
-// instead of wrapped).
+// as 0.16.0 D-129a (a caveat wrapped to the wrong width) and 0.16.0 D-138 (a
+// band centred instead of wrapped).
 func clipToWidth(text string, width int) string {
 	return render.TruncateCells(text, width)
 }
@@ -69,7 +68,7 @@ func Plural(n int) string {
 }
 
 // NoTransmitter is what a place says for the station before it has an
-// epicentre (D-72): the console's station row and the Propagation mode's
+// epicentre (0.16.0 D-72): the console's station row and the Propagation mode's
 // stand-in origin both say it, an honest absence, never a mock's values
 // (0.19.6 A-31).
 const NoTransmitter = "(no transmitter set)"

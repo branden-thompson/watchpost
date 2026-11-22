@@ -11,6 +11,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/geo"
 )
 
@@ -93,7 +94,7 @@ func TestPanningPastAnEdgeMovesToTheNeighbour(t *testing.T) {
 
 func TestTheRegionKeysAreShownWithTheControls(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
-	box := StripANSI(strings.Join(d.controlsBox(), "\n"))
+	box := ttytest.StripANSI(strings.Join(d.controlsBox(), "\n"))
 	for _, want := range []string{"1", "6", "region"} {
 		if !strings.Contains(box, want) {
 			t.Errorf("the controls box does not show %q:\n%s", want, box)

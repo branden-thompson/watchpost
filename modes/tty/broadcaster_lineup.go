@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/plaintext"
@@ -72,7 +73,7 @@ func (b Broadcaster) lineupRowOf(row render.LineupRow, c lineup.Card, idx locInd
 			// NO EXTENDED DAYS: this table draws CONDITIONS and NOW, and the day
 			// cells `WeatherRow` would build are five allocations a row that
 			// nothing on this console reads (D-120).
-			w := WeatherRow(loc, b.fireBold(), 0)
+			w := frame.WeatherRow(loc, b.fireBold(), 0)
 			row.Conditions, row.Now, row.Trend, row.Loading = w.Conditions, w.Now, w.Trend, w.Loading
 			// The prefix marks are the place's (HUM LEAD: "Relevant Prefix
 			// Alerts"). A report about a town with a warning, a fire and a quake
@@ -252,7 +253,7 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int, idx locIndex) 
 	// THREE ROWS: the air above, the words, the air below. A band is a region, and
 	// its breathing room is painted or it is a stripe.
 	band := render.Tok(render.GroupText) + ";" + render.Tok(render.GroupSectionBG)
-	for _, r := range []string{"", CenterText(bcScheduledHeading, w), ""} {
+	for _, r := range []string{"", frame.CenterText(bcScheduledHeading, w), ""} {
 		lines = append(lines, render.TintKeeping(render.PadTo(r, w), band))
 	}
 	lines = append(lines, strings.Split(b.opts().LineupTable(slots, w), "\n")...)

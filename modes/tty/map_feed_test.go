@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -52,7 +53,7 @@ func TestTheWindowDrawsTheFeed(t *testing.T) {
 	d := mapDash(t, Config{MapFeed: squareFeed(&asked, "Wind Warning")})
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	out := StripANSI(d.View().Content)
+	out := ttytest.StripANSI(d.View().Content)
 	if !strings.Contains(out, "Wind Warning") {
 		t.Errorf("the alert is not on the map:\n%s", out)
 	}
@@ -82,7 +83,7 @@ func TestTheFeedFollowsTheData(t *testing.T) {
 	if asked != 2 {
 		t.Fatalf("a new snapshot asked the feed %d times in all, want 2", asked)
 	}
-	out := StripANSI(d.View().Content)
+	out := ttytest.StripANSI(d.View().Content)
 	if strings.Contains(out, "Wind Warning") || !strings.Contains(out, "Heat Advisory") {
 		t.Errorf("the map did not follow the data:\n%s", out)
 	}
@@ -109,7 +110,7 @@ func TestAStaleFeedIsDropped(t *testing.T) {
 	m, _ = d.Update(freshMsg)
 	m, _ = m.Update(oldMsg)
 	d = settleMap(t, m.(Dashboard))
-	out := StripANSI(d.View().Content)
+	out := ttytest.StripANSI(d.View().Content)
 	if strings.Contains(out, "Old Warning") {
 		t.Errorf("a stale feed was drawn over a newer one:\n%s", out)
 	}

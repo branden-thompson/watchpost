@@ -16,6 +16,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/plaintext"
@@ -432,7 +433,7 @@ func (b Broadcaster) noticeBand(count, plain string) []string {
 	// notice exists to prevent.
 	body := make([]string, 0, 3)
 	for _, l := range render.WrapText(plain, b.bandWidth()) { // bounded by the text (P10-02)
-		body = append(body, CenterText(emphasiseHeld(l, count), b.bandWidth()))
+		body = append(body, frame.CenterText(emphasiseHeld(l, count), b.bandWidth()))
 	}
 
 	// ONE BLANK ABOVE AND BELOW, which is what makes it a band instead of a
@@ -511,7 +512,7 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 		b.pool = v.Snap
 		return b.armTick(nil)
 	}
-	if _, ok := msg.(TickMsg); ok {
+	if _, ok := msg.(frame.TickMsg); ok {
 		b.tickArmed = false
 		b.frame++
 		return b.armTick(nil)
@@ -1132,7 +1133,7 @@ func (b Broadcaster) stationLine() []string {
 	width := b.bandWidth()
 	label := func(s string) string { return render.PadTo(s, bcLabelCells) } // one value column for every label
 	hint := "( SHIFT + ENTER  " + g.Arrow + "  " + to + " )"
-	gain := LevelControl(o, "GAIN  ", b.gain,
+	gain := frame.LevelControl(o, "GAIN  ", b.gain,
 		o.KeyCapIf("-", b.gain > 0), o.KeyCapIf("+", b.gain < 100), bcGainCells)
 	room := width - render.Width(gain) - 2 // the gain keeps its room; the state yields
 	rows := []string{
@@ -1282,7 +1283,7 @@ func newCardLane(lane int, g render.Glyphs) cardLane {
 	// with the rest of it. The mark's width is the fabricated-event mark's.
 	return cardLane{
 		lane: lane, g: g, o: render.Opts{ASCII: g.Rule == "-"},
-		row: render.NewCardRow(lane, len(bcCardInset), render.Width(TestEventMark), g.Ellipsis),
+		row: render.NewCardRow(lane, len(bcCardInset), render.Width(frame.TestEventMark), g.Ellipsis),
 	}
 }
 
@@ -1312,7 +1313,7 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 		// the three surfaces cannot come to say different things about one
 		// event. It is its own NON-TRUNCATABLE column (render.CardRow), so the
 		// headline's truncation can never eat it.
-		mark = TestEventMark
+		mark = frame.TestEventMark
 	}
 	// THE BADGE AND THE HANDLE TRAVEL AS ONE right-anchored unit, which is how
 	// the reference draws them: two cells apart, the handle outermost. Every
@@ -1350,7 +1351,7 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	// It is unreachable in a supported configuration — below 100 columns the
 	// console renders its notice and never reaches a card (D-50) — which is
 	// exactly why it is a check and not a layout.
-	if c.Test && !strings.Contains(out, TestEventMark) {
+	if c.Test && !strings.Contains(out, frame.TestEventMark) {
 		return ""
 	}
 	return out
@@ -1468,9 +1469,9 @@ func cardRuleTitle(c lineup.Card, g render.Glyphs) string {
 		return title
 	}
 	if title == "" {
-		return TestEventMark
+		return frame.TestEventMark
 	}
-	return TestEventMark + " " + title
+	return frame.TestEventMark + " " + title
 }
 
 // cardBoxTitle is what a card carries in its TOP RULE, or nothing.
@@ -1486,7 +1487,7 @@ func cardBoxTitle(c lineup.Card, g render.Glyphs) string {
 		// and what the operator needs off the frame is that something has — the
 		// hazards themselves are the list inside it.
 		if c.Test {
-			return TestEventMark + " " + bcTakeoverTitle
+			return frame.TestEventMark + " " + bcTakeoverTitle
 		}
 		return bcTakeoverTitle
 	}

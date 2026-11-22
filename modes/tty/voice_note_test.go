@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -28,7 +29,7 @@ func TestAVoiceNoteFromTheDeckIsDrawnUnderTheRowThatAskedForIt(t *testing.T) {
 	var model tea.Model = d
 
 	// The frame as it stands, before the deck says anything.
-	before := StripANSI(model.(Dashboard).View().Content)
+	before := ttytest.StripANSI(model.(Dashboard).View().Content)
 	if !strings.Contains(before, "Alerts / Takeovers") {
 		t.Fatalf("the fixture is not on the correspondents group:\n%s", before)
 	}
@@ -44,13 +45,13 @@ func TestAVoiceNoteFromTheDeckIsDrawnUnderTheRowThatAskedForIt(t *testing.T) {
 	// nothing cached at the current generation, so the next View is a miss and
 	// draws the note whether or not the generation moved — a pin ABOVE the cache
 	// cannot see a cache bug (F-30).
-	primed := StripANSI(model.(Dashboard).View().Content)
+	primed := ttytest.StripANSI(model.(Dashboard).View().Content)
 	if strings.Contains(primed, "loading Karen") {
 		t.Fatal("the note is on screen before the deck said anything")
 	}
 
 	model, _ = model.Update(VoiceNoteMsg{Text: "loading Karen…"})
-	after := StripANSI(model.(Dashboard).View().Content)
+	after := ttytest.StripANSI(model.(Dashboard).View().Content)
 
 	if !strings.Contains(after, "loading Karen") {
 		t.Errorf("the deck's note never reached the screen — a preview is silent while it works "+

@@ -1,0 +1,2 @@
+modes/tty	TestClippingCountsCellsAndNotEscapeBytes	modes/tty/internal/frame	TestClippingCountsCellsAndNotEscapeBytes
+modes/tty	TestClippingNeverLeavesTheStylingOpen	modes/tty/internal/frame	TestClippingNeverLeavesTheStylingOpen

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -13,7 +14,7 @@ func footerText(d Dashboard) []string {
 	_, _, foot, _ := d.footerModalChrome(d.opts())
 	out := make([]string, 0, len(foot))
 	for _, l := range foot {
-		out = append(out, StripANSI(l))
+		out = append(out, ttytest.StripANSI(l))
 	}
 	return out
 }
@@ -109,8 +110,8 @@ func TestANoticesMarkSaysItsKind(t *testing.T) {
 		t.Errorf("an outcome reads %q", done[0])
 	}
 	long := noticeRows(settingsNotice{label: "Map data", text: strings.Repeat("a long sentence ", 12), tone: noticeInfo}, 90, 14)
-	textAt := strings.Index(StripANSI(long[0]), "a long")
-	if second := StripANSI(long[min(1, len(long)-1)]); len(long) < 2 || len(second)-len(strings.TrimLeft(second, " ")) != textAt {
+	textAt := strings.Index(ttytest.StripANSI(long[0]), "a long")
+	if second := ttytest.StripANSI(long[min(1, len(long)-1)]); len(long) < 2 || len(second)-len(strings.TrimLeft(second, " ")) != textAt {
 		t.Errorf("a long notice does not wrap under its words: %q", long)
 	}
 }
@@ -123,10 +124,10 @@ func TestTheWindowKeepsOneHeightAsNoticesComeAndGo(t *testing.T) {
 	for _, at := range []setupRowID{rowMapRainDetail, rowHistoryHours} { // a tab over the screen and one within it (P10-02)
 		d := setupGolden(t, 133, 44, false, at)
 		d.cfg.HistoryUsage = func() string { return "Holds 12 MB" }
-		quiet := strings.Split(StripANSI(d.renderModal(d.opts())), "\n")
+		quiet := strings.Split(ttytest.StripANSI(d.renderModal(d.opts())), "\n")
 		d.mapRainFull, d.mapTempNDFD = true, false
 		d = d.applyHistoryCleared(historyClearedMsg{})
-		loud := strings.Split(StripANSI(d.renderModal(d.opts())), "\n")
+		loud := strings.Split(ttytest.StripANSI(d.renderModal(d.opts())), "\n")
 		if len(quiet) != len(loud) {
 			t.Errorf("%v: the window is %d rows without its notices and %d with them; want one height", at, len(quiet), len(loud))
 		}

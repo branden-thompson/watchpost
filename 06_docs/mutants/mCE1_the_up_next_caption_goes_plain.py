@@ -9,8 +9,8 @@ import pathlib
 # which the ground never sets, tells the two apart.
 p = pathlib.Path("modes/tty/broadcaster_upnext.go"); s = p.read_text()
 old = """			cell = render.Bold(render.Tint(
-				render.PadTo(CenterText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW),
+				render.PadTo(frame.CenterText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW),
 				render.Tok(render.TextBright)))"""
-new = """			cell = render.PadTo(CenterText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW)"""
+new = """			cell = render.PadTo(frame.CenterText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW)"""
 assert old in s, "mCE1"
 p.write_text(s.replace(old, new, 1))

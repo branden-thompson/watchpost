@@ -13,6 +13,7 @@ import (
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
 	"github.com/branden-thompson/watchpost/internal/allocpin"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -97,7 +98,7 @@ func TestPropagationFrameAllocBudget(t *testing.T) {
 		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
 	}
 	d := propBench(t)
-	if !strings.Contains(StripANSI(d.View().Content), "MODE:") {
+	if !strings.Contains(ttytest.StripANSI(d.View().Content), "MODE:") {
 		t.Fatal("the fixture drew no Propagation block: this measures nothing")
 	}
 	for _, colour := range []bool{false, true} {

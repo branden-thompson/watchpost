@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -70,8 +71,8 @@ func TestTheHeldMessageIsCentredInTheBand(t *testing.T) {
 	// right-aligned and the measurement meaningless.
 	var line string
 	for _, r := range rows {
-		if strings.Contains(StripANSI(r), "HAZARD(S) HELD") {
-			line = StripANSI(r)
+		if strings.Contains(ttytest.StripANSI(r), "HAZARD(S) HELD") {
+			line = ttytest.StripANSI(r)
 		}
 	}
 	if line == "" {
@@ -142,10 +143,10 @@ func TestTheSeverestRungIsNeverTruncated(t *testing.T) {
 	for _, w := range []int{100, 133, 150, 200} {
 		b := bcStandby(t, true, 20*time.Minute)
 		b.width = w
-		// Collapsed, for the reason clip_ansi_test.go's sweep records: a wrap
-		// falling between the last two words separates them with centring
-		// padding, which is not truncation.
-		got := strings.Join(strings.Fields(StripANSI(strings.Join(b.heldNotice(), " "))), " ")
+		// Collapsed, for the reason the sweep below records: a wrap falling
+		// between the last two words separates them with centring padding,
+		// which is not truncation.
+		got := strings.Join(strings.Fields(ttytest.StripANSI(strings.Join(b.heldNotice(), " "))), " ")
 		if !strings.Contains(got, "dropped unread") {
 			t.Errorf("width %d: the severest rung is cut short:\n%q", w, got)
 		}
@@ -159,16 +160,16 @@ func TestTheBandKeepsTheFreshnessRules(t *testing.T) {
 	if rows := bcStandby(t, false, 30*time.Minute).heldNotice(); rows != nil {
 		t.Errorf("an empty rail raised a band: %q", rows)
 	}
-	early := StripANSI(strings.Join(bcStandby(t, true, 30*time.Second).heldNotice(), "\n"))
-	late := StripANSI(strings.Join(bcStandby(t, true, 20*time.Minute).heldNotice(), "\n"))
+	early := ttytest.StripANSI(strings.Join(bcStandby(t, true, 30*time.Second).heldNotice(), "\n"))
+	late := ttytest.StripANSI(strings.Join(bcStandby(t, true, 20*time.Minute).heldNotice(), "\n"))
 	if early == late {
 		t.Error("the band no longer escalates with time")
 	}
 }
 
 // THE HELD-HAZARD BAND KEEPS ITS TAIL AT EVERY WIDTH — a sweep, because a clip
-// that charges escapes fails at some widths only (clip_ansi_test.go) and spot
-// checks fall between the cracks.
+// that charges escapes fails at some widths only (internal/frame's
+// clip_ansi_test.go) and spot checks fall between the cracks.
 func TestTheHeldBandKeepsItsTailAcrossEveryWidth(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
@@ -181,7 +182,7 @@ func TestTheHeldBandKeepsItsTailAcrossEveryWidth(t *testing.T) {
 		// words are separated by a run of padding — the message is intact and a
 		// contiguous-substring check is not: it would report width 152 as
 		// truncated while the band is correct.
-		got := strings.Join(strings.Fields(StripANSI(strings.Join(b.heldNotice(), " "))), " ")
+		got := strings.Join(strings.Fields(ttytest.StripANSI(strings.Join(b.heldNotice(), " "))), " ")
 		if !strings.Contains(got, "dropped unread") {
 			t.Fatalf("width %d: the severest rung is cut short:\n%q", w, got)
 		}

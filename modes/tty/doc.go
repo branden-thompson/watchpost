@@ -17,9 +17,9 @@
 //
 //	`router.go`                                the Router: the program's model, the swap, the shared keys
 //	`dashboard*`, `nav.go`, `window_keys.go`   the Observer's model, its Config and messages, its keys
-//	`masthead.go`, `body.go`, `layout.go`,     the Observer's frame: masthead, tables, layout, view,
-//	`view.go`, `columns.go`, `memo.go`,        the frame's memos, the cursor, Reduce motion,
-//	`cursor.go`, `motion.go`, `timing.go`      and the timing instrument
+//	`body.go`, `layout.go`, `view.go`,         the Observer's frame: masthead, tables, layout, view,
+//	`columns.go`, `memo.go`, `cursor.go`,      the frame's memos, the cursor, Reduce motion,
+//	`motion.go`, `timing.go`                   and the timing instrument
 //	`ticker.go`, `alerts.go`                   the ticker band and the alert module
 //	`radio_panel.go`, `relayfault.go`          the radio player panel and the relay-fault window
 //	`detail*`, `modal_location.go`,            Location Details, the lookup and its answer,
@@ -31,7 +31,8 @@
 //	`map_*`                                    the map pane, its modes, layers, Settings rows, and the
 //	                                           Propagation mode (`map_prop_*`)
 //	`broadcaster*`, `request.go`               the Broadcaster console and its Line-Up Request window
-//	`kit_*`                                    what both surfaces draw the same way: the location row,
-//	                                           the cursor, the shimmer's tick, the memo counters and the
-//	                                           text helpers, the kit's files until B2's move (0.19.6 A-21)
+//
+// What both surfaces draw the same way is the kit's, internal/frame: the
+// masthead, the location row, the cursor, the shimmer's tick, the memo
+// counters and the text helpers (0.19.6 A-21).
 package tty

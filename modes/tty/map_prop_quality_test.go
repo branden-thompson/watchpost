@@ -8,6 +8,7 @@ import (
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -77,14 +78,14 @@ func TestThePropagationAgeMovesWithTheClock(t *testing.T) {
 	d, cmd := keyCmd(t, d, "P")
 	d = runProp(t, d, cmd)
 	d.mapPane.flash = "" // P's blink spent: the age alone needs the tick now, and the frame is memoised without it
-	if !strings.Contains(StripANSI(d.View().Content), "(data 30 min old)") {
+	if !strings.Contains(ttytest.StripANSI(d.View().Content), "(data 30 min old)") {
 		t.Fatal("the fixture's grid, valid 30 min before its snapshot, is not said 30 min old")
 	}
 	if !d.tickNeeded() {
 		t.Error("no tick is armed while the age is shown: it would not move")
 	}
 	clock = at.Add(2*time.Minute + 10*time.Second)
-	if view := StripANSI(d.View().Content); !strings.Contains(view, "(data 32 min old)") {
+	if view := ttytest.StripANSI(d.View().Content); !strings.Contains(view, "(data 32 min old)") {
 		t.Errorf("two minutes on, the frame still says %q", between(view, "COMPUTED", "noise"))
 	}
 }
@@ -176,7 +177,7 @@ func TestTheSourcesBadgesSayWhatFedTheSnapshot(t *testing.T) {
 			if !strings.Contains(head, want) {
 				t.Errorf("%s: %s is not %s: %q", c.name, badge, map[bool]string{true: "lit", false: "dimmed"}[lit], head)
 			}
-			if plain := StripANSI(head); strings.Contains(plain, "("+badge+")") == lit {
+			if plain := ttytest.StripANSI(head); strings.Contains(plain, "("+badge+")") == lit {
 				t.Errorf("%s: without colour %s does not read %s: %q", c.name, badge, map[bool]string{true: "lit", false: "dimmed"}[lit], plain)
 			}
 		}

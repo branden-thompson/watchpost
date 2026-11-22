@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
@@ -50,7 +51,7 @@ func TestAnEmptyWatchlistTabExplainsItsScopeEvenWithLocationsSet(t *testing.T) {
 				t.Fatalf("the fixture has numPriority=%d for withSnap=%v; it does not pose this case",
 					d.numPriority(), tc.withSnap)
 			}
-			got := StripANSI(strings.Join(
+			got := ttytest.StripANSI(strings.Join(
 				d.severeEmptyLines(render.Opts{Width: 133}, 120, 116, category.Of(category.Statements), "0 Total"), "\n"))
 			if !strings.Contains(got, "No active") {
 				t.Fatalf("the fixture is not showing an empty tab:\n%s", got)

@@ -10,6 +10,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -161,7 +163,7 @@ func TestSevereNavTabsAndRows(t *testing.T) {
 
 func TestSevereBrowseFramesMatchTheMocksAtEveryWidth(t *testing.T) {
 	for _, w := range []int{80, 100, 120, 133} {
-		frame := StripANSI(severeFixture(t, w, 44, false).View().Content)
+		frame := ttytest.StripANSI(severeFixture(t, w, 44, false).View().Content)
 		if w == 133 && !strings.Contains(frame, "EXPIRES") {
 			t.Fatal("133: every column, EXPIRES included")
 		}
@@ -197,7 +199,7 @@ func TestSevereBrowseFramesMatchTheMocksAtEveryWidth(t *testing.T) {
 }
 
 func TestSevereRailIsOneColumn(t *testing.T) {
-	frame := StripANSI(severeFixture(t, 120, 24, false).View().Content) // 24 rows: the table windows and the rail shows
+	frame := ttytest.StripANSI(severeFixture(t, 120, 24, false).View().Content) // 24 rows: the table windows and the rail shows
 	col := -1
 	for _, line := range strings.Split(frame, "\n") {
 		if !strings.Contains(line, "SEVERE") && !strings.Contains(line, "│ │") && !strings.Contains(line, "▲ │") && !strings.Contains(line, "█ │") && !strings.Contains(line, "▼ │") {
@@ -220,8 +222,8 @@ func TestSevereRailIsOneColumn(t *testing.T) {
 }
 
 func TestSevereBrowseASCIIHasNoGlyphs(t *testing.T) {
-	d := severeFixture(t, 120, 24, true).(Dashboard) // 24 rows: the table windows, so the rail's ASCII forms render too
-	frame := StripANSI(d.renderModal(d.opts()))      // the window alone — the dashboard behind it keeps its own glyph policy
+	d := severeFixture(t, 120, 24, true).(Dashboard)    // 24 rows: the table windows, so the rail's ASCII forms render too
+	frame := ttytest.StripANSI(d.renderModal(d.opts())) // the window alone — the dashboard behind it keeps its own glyph policy
 	for _, r := range frame {
 		if r > 127 && r != '·' && r != '—' { // typography the mock keeps under --ascii (mock.py); the marks and rail do not
 			t.Fatalf("non-ASCII glyph %q in --ascii frame:\n%s", r, frame)
@@ -248,7 +250,7 @@ func TestSevereEmptyState(t *testing.T) {
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyRight}) // Advisories
-	frame := StripANSI(m.View().Content)
+	frame := ttytest.StripANSI(m.View().Content)
 	if !strings.Contains(frame, "No active advisories events") || !strings.Contains(frame, "tracks your watchlist") {
 		t.Fatalf("empty state without a watchlist: %s", frame)
 	}
@@ -257,7 +259,7 @@ func TestSevereEmptyState(t *testing.T) {
 	full, _ = full.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	full, _ = full.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	full, _ = full.Update(tea.KeyPressMsg{Code: tea.KeyRight})
-	if f := StripANSI(full.View().Content); !strings.Contains(f, "No active advisories events") || strings.Contains(f, "tracks your watchlist") {
+	if f := ttytest.StripANSI(full.View().Content); !strings.Contains(f, "No active advisories events") || strings.Contains(f, "tracks your watchlist") {
 		t.Fatalf("a populated watchlist must not be told to add locations:\n%s", f)
 	}
 }
@@ -266,7 +268,7 @@ func TestSevereDownSourceIsStated(t *testing.T) {
 	m := severeFixture(t, 120, 44, false)
 	_ = m.View().Content // prime the memo: the next publish must invalidate it
 	m, _ = m.Update(SevereMsg{Gen: 2, Sources: []SevereSource{{Name: "USGS", OK: true}, {Name: "NHC", OK: false}}})
-	if frame := StripANSI(m.View().Content); !strings.Contains(frame, "NHC unavailable") {
+	if frame := ttytest.StripANSI(m.View().Content); !strings.Contains(frame, "NHC unavailable") {
 		t.Fatalf("a dead source must be stated on the category line:\n%s", frame)
 	}
 }
@@ -275,7 +277,7 @@ func TestSevereDetailShowsTheRecordAndItsChips(t *testing.T) {
 	m := severeFixture(t, 120, 44, false)
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	frame := StripANSI(m.View().Content)
+	frame := ttytest.StripANSI(m.View().Content)
 	for _, want := range []string{"Warnings · 2 / 9", "TORNADO WARNING", "[Extreme · Immediate · Observed]", "Declared 08/28 08:45 CDT", "Area: Johnson County, KS", "Instructions: TAKE COVER NOW!", "[esc] Back", "[esc esc] Close"} {
 		if !strings.Contains(frame, want) {
 			t.Fatalf("detail frame lacks %q:\n%s", want, frame)
@@ -319,7 +321,7 @@ func TestStatusModalGaugesTheSevereIndex(t *testing.T) {
 	m := severeFixture(t, 120, 44, false)
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
-	if frame := StripANSI(m.View().Content); !strings.Contains(frame, "9/500") {
+	if frame := ttytest.StripANSI(m.View().Content); !strings.Contains(frame, "9/500") {
 		t.Fatalf("[S] lacks the severe gauge:\n%s", frame)
 	}
 }
@@ -337,7 +339,7 @@ func TestSevereGoldens(t *testing.T) {
 		d := severeFixture(t, c.w, 44, c.ascii).(Dashboard)
 		d.now = func() time.Time { return time.Date(2026, 8, 28, 15, 40, 0, 0, time.UTC) }
 		frame := d.View().Content
-		for _, line := range strings.Split(StripANSI(frame), "\n") {
+		for _, line := range strings.Split(ttytest.StripANSI(frame), "\n") {
 			if render.Width(strings.TrimRight(line, " ")) > c.w {
 				t.Fatalf("%s: line wider than the terminal: %q", c.name, line)
 			}
@@ -370,7 +372,7 @@ func TestModalMemoHitsAcrossTicksWithALoadingRow(t *testing.T) {
 	h0, m0 := m.modalMemoCounts()
 	for i := 0; i < 20; i++ {
 		var mm tea.Model = m
-		mm, _ = mm.Update(TickMsg{})
+		mm, _ = mm.Update(frame.TickMsg{})
 		m = mm.(Dashboard)
 		_ = m.View().Content
 	}
@@ -495,7 +497,7 @@ func TestSevereShortTerminalKeepsTheTableIntact(t *testing.T) {
 		if len(body) > d.modalMax() {
 			t.Fatalf("%d rows: %d body lines for a budget of %d", h, len(body), d.modalMax())
 		}
-		frame := StripANSI(d.renderModal(d.opts()))
+		frame := ttytest.StripANSI(d.renderModal(d.opts()))
 		if strings.Count(frame, "▲") != 1 || !strings.Contains(frame, "[esc] Close") {
 			t.Fatalf("%d rows: the window must keep one rail and its chips:\n%s", h, frame)
 		}
@@ -514,7 +516,7 @@ func TestSevereRailThumbShowsAtTheBottom(t *testing.T) {
 		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	}
 	d := m.(Dashboard)
-	if frame := StripANSI(d.renderModal(d.opts())); !strings.Contains(frame, "█") || !strings.Contains(frame, "009.") {
+	if frame := ttytest.StripANSI(d.renderModal(d.opts())); !strings.Contains(frame, "█") || !strings.Contains(frame, "009.") {
 		t.Fatalf("at the bottom the thumb must show beside the last rows:\n%s", frame)
 	}
 }
@@ -653,12 +655,12 @@ func TestLoneEscThenKeyIsNotLost(t *testing.T) {
 func TestPlayMarkFollowsTheBreakingEvent(t *testing.T) {
 	m := severeFixture(t, 120, 44, false)
 	d := m.(Dashboard)
-	if frame := StripANSI(d.renderModal(d.opts())); strings.Contains(frame, "▶") {
+	if frame := ttytest.StripANSI(d.renderModal(d.opts())); strings.Contains(frame, "▶") {
 		t.Fatalf("no radio narration: no ▶:\n%s", frame)
 	}
 	m, _ = m.Update(TickerBreakingMsg{Item: TickerItem{ID: "https://api.weather.gov/alerts/1", Category: CatWarning}}) // the feed's raw id; the window's key is "1"
 	d = m.(Dashboard)
-	lines := strings.Split(StripANSI(d.renderModal(d.opts())), "\n")
+	lines := strings.Split(ttytest.StripANSI(d.renderModal(d.opts())), "\n")
 	hits := 0
 	for _, l := range lines {
 		if strings.Contains(l, "▶") {
@@ -694,12 +696,12 @@ func TestSpaceInTheWindowReadsTheFocusedEvent(t *testing.T) {
 	}
 	// THE CHIP SAYS WHAT THE KEY WILL DO NEXT (MVS-D-74), the same
 	// state-driven form the radio panel uses: "Play" with nothing reading.
-	if frame := StripANSI(d.renderModal(d.opts())); !strings.Contains(frame, "[space] Play") {
+	if frame := ttytest.StripANSI(d.renderModal(d.opts())); !strings.Contains(frame, "[space] Play") {
 		t.Fatalf("the Play chip:\n%s", frame)
 	}
 	mm, _ = mm.Update(SevereReadingMsg{Key: "1"})
 	d = mm.(Dashboard)
-	frame := StripANSI(d.renderModal(d.opts()))
+	frame := ttytest.StripANSI(d.renderModal(d.opts()))
 	for _, l := range strings.Split(frame, "\n") {
 		if strings.Contains(l, "▶") && !strings.Contains(l, "002.") {
 			t.Fatalf("▶ must ride the event being read: %q", l)
@@ -709,7 +711,7 @@ func TestSpaceInTheWindowReadsTheFocusedEvent(t *testing.T) {
 		t.Fatal("▶ must show on the event being read")
 	}
 	mm, _ = mm.Update(SevereReadingMsg{})
-	if d := mm.(Dashboard); strings.Contains(StripANSI(d.renderModal(d.opts())), "▶") {
+	if d := mm.(Dashboard); strings.Contains(ttytest.StripANSI(d.renderModal(d.opts())), "▶") {
 		t.Fatal("▶ clears when the read ends")
 	}
 	bare := severeFixture(t, 120, 44, false) // no hook: inert, chip muted
@@ -730,7 +732,7 @@ func TestSevereChipsHoldOneLineAtTheASCIIFloor(t *testing.T) {
 		width := 69 // the content width at 80 cols (severeBrowseLines)
 		row := d.severeChips(o, true, width)
 		if render.Width(row) > width || strings.Contains(row, "\n") {
-			t.Fatalf("ascii=%v: the chips exceed the content width (%d): %q", ascii, render.Width(row), StripANSI(row))
+			t.Fatalf("ascii=%v: the chips exceed the content width (%d): %q", ascii, render.Width(row), ttytest.StripANSI(row))
 		}
 	}
 }
@@ -742,7 +744,7 @@ func TestSevereRendererClampsTheFocusAndSaysShowing(t *testing.T) {
 	d.severeRow = 999
 	d.severe.Totals[d.severeTab] = 999 // more than the rows: the cap hid some
 	d.mmemo.ok = false
-	if v := StripANSI(d.View().Content); !strings.Contains(v, "Showing") || !strings.Contains(v, "Total Category Events") {
+	if v := ttytest.StripANSI(d.View().Content); !strings.Contains(v, "Showing") || !strings.Contains(v, "Total Category Events") {
 		t.Fatalf("Totals above the rows must read as Showing N of M Total Category Events:\n%s", v)
 	}
 	short, _ := d.Update(tea.WindowSizeMsg{Width: 60, Height: 21})
@@ -831,7 +833,7 @@ func TestTheReadChipNamesTheNextPress(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d.cfg.NarrateEvent = func(string) {}
 	o := d.opts()
-	chip := func() string { return StripANSI(d.severeChips(o, true, 120)) }
+	chip := func() string { return ttytest.StripANSI(d.severeChips(o, true, 120)) }
 
 	if got := chip(); !strings.Contains(got, "[space] Play") || strings.Contains(got, "Pause") {
 		t.Errorf("with nothing reading the chip offers Play: %q", got)
@@ -862,8 +864,8 @@ func TestTheSevereWindowMarksAFabricatedRow(t *testing.T) {
 	d = d.open(modalSevere)
 	d.severeTab = SevereWarnings
 
-	got := StripANSI(d.renderModal(d.opts()))
-	if !strings.Contains(got, TestEventMark) {
+	got := ttytest.StripANSI(d.renderModal(d.opts()))
+	if !strings.Contains(got, frame.TestEventMark) {
 		t.Errorf("the fabricated row's event column is unmarked:\n%s", got)
 	}
 	// THE MARK LEADS AND THE PRODUCT TRUNCATES BEHIND IT. The EVENT column
@@ -871,7 +873,7 @@ func TestTheSevereWindowMarksAFabricatedRow(t *testing.T) {
 	// not fit — and the mark is the half that must survive. The row still says
 	// what it is: the tab, the location, the DETECTION column's "injected"
 	// (severe.Detection) and the record behind [enter] all carry the product.
-	if !strings.Contains(got, TestEventMark+" Torn") {
+	if !strings.Contains(got, frame.TestEventMark+" Torn") {
 		t.Errorf("the mark does not lead the event column:\n%s", got)
 	}
 
@@ -882,7 +884,7 @@ func TestTheSevereWindowMarksAFabricatedRow(t *testing.T) {
 	d2 = d2.applySevere(SevereMsg{Gen: 1, Totals: [severeNumTabs]int{SevereWarnings: 1}, Rows: []SevereRow{real}})
 	d2 = d2.open(modalSevere)
 	d2.severeTab = SevereWarnings
-	if got := StripANSI(d2.renderModal(d2.opts())); strings.Contains(got, TestEventMark) {
+	if got := ttytest.StripANSI(d2.renderModal(d2.opts())); strings.Contains(got, frame.TestEventMark) {
 		t.Errorf("a REAL row is marked as a test event:\n%s", got)
 	}
 }

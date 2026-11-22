@@ -16,6 +16,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 	"github.com/branden-thompson/go-tuimaps/assets"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // unreachable is a source that never answers: the station is offline.
@@ -63,7 +65,7 @@ func offlineMap(size tuimaps.Size) (*tuimaps.Map, error) {
 
 func statusLine(d Dashboard) string {
 	lines := d.mapBodyLines()
-	last := StripANSI(lines[len(lines)-1])
+	last := ttytest.StripANSI(lines[len(lines)-1])
 	if !strings.HasSuffix(strings.TrimRight(last, " "), "Overlays") {
 		return last // not the map's status line: a stated state
 	}

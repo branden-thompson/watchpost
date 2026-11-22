@@ -1,9 +1,10 @@
-package tty
+package frame
 
 import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
@@ -58,7 +59,7 @@ func TestTheMastheadKeyCoversItsNamedInputs(t *testing.T) {
 	// the switch's undo turns it back on for the inputs after it.
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(rendering.ResetColorEnabledForTest)
-	base := MastheadSnap()
+	base := ttytest.MastheadSnap()
 	at := DataAsOf(base).Add(20 * time.Second)
 	o := render.Opts{Width: 133}
 	drawn := func(edition string, snap *snapshot.Snapshot, now time.Time) (string, any) {
@@ -78,7 +79,7 @@ func TestTheMastheadKeyCoversItsNamedInputs(t *testing.T) {
 			undo := in.apply(&snap, &now)
 			after, k1 := drawn(edition, snap, now)
 			undo()
-			if MastheadMoved(t, edition, in.name, before, after, k0, k1) {
+			if ttytest.MastheadMoved(t, edition, in.name, before, after, k0, k1) {
 				reached++
 			}
 		}

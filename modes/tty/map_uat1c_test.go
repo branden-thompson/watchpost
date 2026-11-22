@@ -13,13 +13,15 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // TestABlankRowSetsTheTabsOffThePage is U1-30: where the window has the room,
 // the row under the tabs is empty.
 func TestABlankRowSetsTheTabsOffThePage(t *testing.T) {
 	d, _ := uiDash(t, rowMapsOn)
-	lines := strings.Split(StripANSI(d.renderModal(d.opts())), "\n")
+	lines := strings.Split(ttytest.StripANSI(d.renderModal(d.opts())), "\n")
 	if !strings.Contains(lines[1], "Maps ]") {
 		t.Fatalf("the tabs are not the first row: %q", lines[1])
 	}
@@ -38,7 +40,7 @@ func TestEachDetailLayerIsAnEnabledRow(t *testing.T) {
 		body, _, _ := d.focusBody(d.opts())
 		row := ""
 		for _, line := range body {
-			if s := StripANSI(line); strings.Contains(s, l.label+" -") {
+			if s := ttytest.StripANSI(line); strings.Contains(s, l.label+" -") {
 				row = s
 			}
 		}
@@ -58,7 +60,7 @@ func TestEachDetailLayerIsAnEnabledRow(t *testing.T) {
 			t.Errorf("%s: space left it as it was", l.key)
 		}
 		body, _, _ = d.focusBody(d.opts())
-		if !strings.Contains(StripANSI(strings.Join(body, "\n")), words[!was]) {
+		if !strings.Contains(ttytest.StripANSI(strings.Join(body, "\n")), words[!was]) {
 			t.Errorf("%s: switched, the row does not say %s", l.key, words[!was])
 		}
 		if m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight}); m.detailOn(l.key) != was {

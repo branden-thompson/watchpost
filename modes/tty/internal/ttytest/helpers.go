@@ -1,10 +1,9 @@
-package tty
+package ttytest
 
-// ttytest_helpers_test.go — the pure helpers more than one package's tests
-// need once the kit and the console move: stripping ANSI, the first line two
-// frames differ at, a card, the masthead's snapshot, the loaded pool's size,
-// and the masthead guard's check (design CK-4). internal/ttytest's helpers.go
-// once B2 moves it.
+// helpers.go — the pure helpers more than one package's tests need:
+// stripping ANSI, the first line two frames differ at, a card, the masthead's
+// snapshot, the loaded pool's size, and the masthead guard's check (design
+// CK-4).
 
 import (
 	"regexp"
@@ -80,7 +79,7 @@ func MastheadMoved(t *testing.T, surface, field string, before, after string, k0
 		return false
 	}
 	if k0 == k1 {
-		t.Errorf("%s: changing %s changes the masthead and NOT mastheadKey: the masthead memo (masthead.go, MastheadSlot) will draw the old masthead; add what %s changes to MastheadKeyOf", surface, field, field)
+		t.Errorf("%s: changing %s changes the masthead and NOT mastheadKey: the masthead memo (internal/frame's masthead.go, MastheadSlot) will draw the old masthead; add what %s changes to MastheadKeyOf", surface, field, field)
 	}
 	return true
 }

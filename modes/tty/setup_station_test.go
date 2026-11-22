@@ -13,6 +13,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -82,7 +83,7 @@ func TestTheStationsSettingsAreOnEverySurface(t *testing.T) {
 	var page strings.Builder
 	for _, blk := range st.setupBlocks(st.opts()) {
 		for _, l := range blk.lines {
-			page.WriteString(StripANSI(l) + "\n")
+			page.WriteString(ttytest.StripANSI(l) + "\n")
 		}
 	}
 	for _, want := range []string{"STATION", "Transmitter (epicenter):", "Service radius:"} {
@@ -212,14 +213,14 @@ func TestABorrowedEpicentreSaysSo(t *testing.T) {
 
 	borrowing := stationSetup(t, rowTransmitter)
 	borrowing.cfg.Transmitter = nil
-	got := StripANSI(strings.Join(borrowing.setupTransmitterLines(o, " "), "\n"))
+	got := ttytest.StripANSI(strings.Join(borrowing.setupTransmitterLines(o, " "), "\n"))
 	if !strings.Contains(got, "following your default location") {
 		t.Errorf("a borrowed epicentre is shown as a choice the operator made:\n%s", got)
 	}
 
 	own := stationSetup(t, rowTransmitter)
 	own.cfg.Transmitter = &snapshot.LocationRef{Label: "Bonsall, CA", Zip: "92003", Lat: 33.28, Lon: -117.23}
-	got = StripANSI(strings.Join(own.setupTransmitterLines(o, " "), "\n"))
+	got = ttytest.StripANSI(strings.Join(own.setupTransmitterLines(o, " "), "\n"))
 	if strings.Contains(got, "following your default location") {
 		t.Errorf("a station with its own transmitter is told it is borrowing:\n%s", got)
 	}
@@ -229,7 +230,7 @@ func TestABorrowedEpicentreSaysSo(t *testing.T) {
 
 	// AND THE HINT IS THE SAME SENTENCE EITHER WAY, which is what was asked for.
 	for _, d := range []Dashboard{borrowing, own} {
-		if !strings.Contains(StripANSI(strings.Join(d.setupTransmitterLines(o, " "), "\n")),
+		if !strings.Contains(ttytest.StripANSI(strings.Join(d.setupTransmitterLines(o, " "), "\n")),
 			"Broadcasting location - Enter City, ST or Zip") {
 			t.Error("the row's hint is not the HUM LEAD's wording")
 		}
@@ -243,7 +244,7 @@ func TestABorrowedEpicentreSaysSo(t *testing.T) {
 // the National Weather Service's forecast request every watched place makes.
 func TestTheTransmitterQuestionStatesTheStorageBoundary(t *testing.T) {
 	o := render.Opts{ASCII: true}
-	got := StripANSI(strings.Join(stationSetup(t, rowTransmitter).setupTransmitterLines(o, " "), "\n"))
+	got := ttytest.StripANSI(strings.Join(stationSetup(t, rowTransmitter).setupTransmitterLines(o, " "), "\n"))
 	for _, want := range []string{"Stored in config.toml", "only sent to the NWS as required"} { // bounded by the phrase list (P10-02); UAT-1 U1-32's words (D-75)
 		if !strings.Contains(got, want) {
 			t.Errorf("the transmitter question does not say %q; the operator is owed the storage boundary (FR-9.4):\n%s", want, got)

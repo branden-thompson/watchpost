@@ -819,3 +819,71 @@ staticcheck's QF1001 on a digit test in `tools/gcprobe/main.go:qualified`, which
 since a run that starts with a digit is never a declared name, and is gone; and `unused` on the
 embedded struct in `Field`'s test, which the test now reads to show the write leaves a promoted
 field alone.
+
+The third gate was green, 5,165 s, and the second prep is `774eb4a0`.
+
+## B2's move: the kit and the test support in their packages (D-64 to D-66; A-54)
+
+**The move (A-54).** Eleven files `git mv`'d whole, by script, as the second prep
+left them: the kit's six to `modes/tty/internal/frame`, with its masthead test and the two clip
+tests; the engine, the helpers and `Field`'s test to `modes/tty/internal/ttytest`. Every other edit
+to them is a package clause, an import or a qualifier the compiler asked for, in four rounds; the
+headers and the comment pass follow. Each new package's `TestMain` calls `ttytest.Main`, and
+CK-7's floor gains both.
+
+**The instruments, each seen failing on a partial move.**
+- **The union** (`TestTheTwoTreesDeclarationsAreConserved`) is unchanged by the move: the same
+  golden, no re-capture. With `frame.Plural`'s body edited it fails, one declaration new and one
+  gone; restored by copy, it passes.
+- **`gcprobe`** with B2's line in `06_docs/perf/moves.tsv`: OK, 4,001 escapes in 1,992 keys and
+  7,244 inlined calls in 4,571 keys, as at the baseline. Without the line: 91 failures, every kit
+  key read as a new escape or a lost inlining.
+- **The test inventory's comparison**, on the move's own keys (B0's plain record with the clip
+  tests in `frame`): without `06_docs/testinv/accept-B2.tsv`, the two are gone and two are new;
+  with it, all 2,006 kept; with it and one of the two removed, that one is lost. The three modes
+  run at B2's close.
+- **`make graph`**: OK, 11 figures, none above its baseline; the console's reach 13 to 10, as design
+  CK-9 says. MS-7's reported figures move one test from C4 to C3,
+  `TestTheOriginFollowsTheUIMode`, whose reach into the root loses `NoTransmitter`, now the kit's;
+  they are re-measured at B4.4 (D-9).
+- **`make mutant-anchors`**: all 1,060 match, after 12 re-points by path and 8 qualifiers (A-53).
+- **The first gate on the move was red**, 5,506 s, at `mutant-check`: m241 and m425 left the tree
+  uncompilable. Each deletes a line its qualifier made its file's one use of `frame`
+  (`map_prop_origin.go`'s `frame.NoTransmitter`, `map_prop_ahead.go`'s `frame.Plural`), so the
+  import was left unused; an anchor that matches is not a mutant that compiles. Each now drops the
+  import too, asserting first that nothing else in the file names `frame`. In a worktree carrying
+  the move, both compile, and each fails its recorded killer on that test's own assertion
+  (`TestTheOriginFollowsTheUIMode`, `TestAnHourIsSaidSingly`), which passes on the clean tree.
+- **The roots' export list**: `modes/tty` loses the kit's 31 entries, as A-50 counted.
+
+**P10.** `make p10`'s live findings on the move were D-23's two, `walkAt` and `bump`, now rows,
+and the kit's density, 0.64 across 33, ratified (D-64). `ttytest`'s row, ratified for `Main`
+alone, is rewritten for the engine and the helpers at 0.14 across 14 (D-65). D-15's P10-09 row is
+held: the checker raises no P10-09 finding, even for a new production package planted with
+`unsafe` and `reflect`, and a row inside the diff that matches nothing fails the gate (D-66).
+`make p10`: 0 live, 0 unmatched, 0 unratified, the mirror regenerated at 175 rows.
+
+**The living documents (package map §9).** 0.19.6's as-built page,
+`../03-architecture-design/as-built-packages.md`, draws B0–B2, and
+`TestTheAsBuiltMapIsKeptInStep` holds it; the atlas reads it. `docs/architecture.md` gains
+`frame`'s row, `docs/extending.md` the masthead key's new path, and the three `doc.go` files their
+maps. The moved code's bare D-IDs take their releases (A-33); D-112, which 0.16.0's record lacks,
+takes 0.16.0, the release that wrote it (A-54).
+
+**The changed-line table.**
+
+| File | Line | Kind | Mutants before | After |
+|---|---|---|---|---|
+| `cmd/watchpost/testmain_test.go` | CK-7's floor gains `frame` and `ttytest` | assertion | none | none recorded |
+| `app/maps_test.go` | the as-built check reads a page and a heading per release; 0.19.6's row | assertion | none | none recorded |
+| `frame/main_test.go`, `ttytest/main_test.go` | `TestMain` calls `ttytest.Main` | setup, new | — | — |
+| `ttytest/helpers.go` | `MastheadMoved`'s message names the kit's `masthead.go` | message | — | — |
+| `frame/clip_ansi_test.go`, `broadcaster_heldband_test.go` | each names the other's file in its new place | comment | — | — |
+| the moved tests' and the root tests' call sites | qualified (`frame.`, `ttytest.`) | setup | — | — |
+
+**The inventory's delta.** Moved, and accepted: `TestClippingCountsCellsAndNotEscapeBytes` and
+`TestClippingNeverLeavesTheStylingOpen`, `modes/tty` to `modes/tty/internal/frame`. No test new;
+no test removed.
+
+**AP-CAPS-01's soft warnings** stay at 86, the second prep's count: the moved comments open their
+paragraphs as they did, and nothing the move wrote opens one with AND, BUT or SO.

@@ -12,6 +12,7 @@ import (
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -71,17 +72,17 @@ func TestBothPropagationLayersDrawWithTheirUnits(t *testing.T) {
 	if g.Type.Preset != "muf" || g.Type.Unit != "MHz" || g.Cols != 180 || g.Rows != 90 || g.Values[0] != 18 {
 		t.Errorf("the grid is %+v at %v", g.Type, g.Values[0])
 	}
-	if rows := d.scrubRows(d.mapTextW()); !strings.Contains(StripANSI(rows[0]), "MUF(3000) │") || !strings.Contains(StripANSI(rows[1]), "MHz │") {
-		t.Errorf("the legend does not key MUF(3000) in MHz: %q, %q", StripANSI(rows[0]), StripANSI(rows[1]))
+	if rows := d.scrubRows(d.mapTextW()); !strings.Contains(ttytest.StripANSI(rows[0]), "MUF(3000) │") || !strings.Contains(ttytest.StripANSI(rows[1]), "MHz │") {
+		t.Errorf("the legend does not key MUF(3000) in MHz: %q, %q", ttytest.StripANSI(rows[0]), ttytest.StripANSI(rows[1]))
 	}
 	d = pressMap(t, d, "L")
 	if g = propGrid(t, d); g.Type.Preset != "fof2" || g.Type.Unit != "MHz" || g.Values[0] != 6 {
 		t.Errorf("after L the grid is %+v at %v; want foF2", g.Type, g.Values[0])
 	}
-	if row := StripANSI(d.scrubRows(d.mapTextW())[0]); !strings.Contains(row, "foF2 │") {
+	if row := ttytest.StripANSI(d.scrubRows(d.mapTextW())[0]); !strings.Contains(row, "foF2 │") {
 		t.Errorf("after L the legend row does not key foF2: %q", row)
 	}
-	if row := StripANSI(d.propLegendRows(40)[0]); !strings.Contains(row, "foF2, MHz │") { // too narrow for a band a class: one line (D-160)
+	if row := ttytest.StripANSI(d.propLegendRows(40)[0]); !strings.Contains(row, "foF2, MHz │") { // too narrow for a band a class: one line (D-160)
 		t.Errorf("after L the narrow legend row does not key foF2: %q", row)
 	}
 	if d = pressMap(t, d, "P"); len(d.mapPane.propGiven) != 0 {
@@ -146,13 +147,13 @@ func TestHelpFitsWithThePropagationKeys(t *testing.T) {
 		d := mapDash(t, Config{})
 		m, _ := d.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		d = m.(Dashboard).open(modalHelp)
-		text := strings.Join(strings.Fields(StripANSI(strings.Join(d.modalLines(), " "))), " ") // wrapped at the floor: read as one text
+		text := strings.Join(strings.Fields(ttytest.StripANSI(strings.Join(d.modalLines(), " "))), " ") // wrapped at the floor: read as one text
 		for _, want := range []string{"R Radar Mode, space Play, </> Forecast Hi-Lo", "⇧← Back, ⇧→ On (an hour in Propagation), n Now", "P Propagation, L Layer, U Refresh, / Find", "+/= Zoom In"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("%dx%d: Help lacks %q", size[0], size[1], want)
 			}
 		}
-		for _, l := range strings.Split(StripANSI(d.View().Content), "\n") {
+		for _, l := range strings.Split(ttytest.StripANSI(d.View().Content), "\n") {
 			if w := len([]rune(l)); w > size[0] {
 				t.Errorf("%dx%d: a line of the frame with Help open is %d wide: %q", size[0], size[1], w, l)
 			}
@@ -164,19 +165,19 @@ func TestHelpFitsWithThePropagationKeys(t *testing.T) {
 // drawn and that the mode is on; the status says an update in flight.
 func TestEachControlsStateIsSaid(t *testing.T) {
 	d, _ := drawnDash(t)
-	chips := StripANSI(d.mapStatusLine())
+	chips := ttytest.StripANSI(d.mapStatusLine())
 	for _, want := range []string{"L] MUF(3000)", "U] Refresh Now", "P] Propagation On"} {
 		if !strings.Contains(chips, want) {
 			t.Errorf("the chips %q do not say %q", chips, want)
 		}
 	}
-	if d = pressMap(t, d, "L"); !strings.Contains(StripANSI(d.mapStatusLine()), "L] foF2") {
-		t.Errorf("after L the chips say %q", StripANSI(d.mapStatusLine()))
+	if d = pressMap(t, d, "L"); !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "L] foF2") {
+		t.Errorf("after L the chips say %q", ttytest.StripANSI(d.mapStatusLine()))
 	}
 	busy := &seam{wait: true}
 	d, _ = keyCmd(t, propDash(t, busy, true), "P")
-	if !strings.Contains(StripANSI(d.mapStatusLine()), "asking") {
-		t.Errorf("an update in flight is not said: %q", StripANSI(d.mapStatusLine()))
+	if !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "asking") {
+		t.Errorf("an update in flight is not said: %q", ttytest.StripANSI(d.mapStatusLine()))
 	}
 	_ = d.stopPropagation() // its context ended: the waiting seam returns
 }
@@ -195,8 +196,8 @@ func TestURefreshesNowUnderTheThrottle(t *testing.T) {
 	if d = runProp(t, d, cmd); s.count() != 2 {
 		t.Fatalf("U asked %d in all; want a second ask", s.count())
 	}
-	if !strings.Contains(StripANSI(d.mapStatusLine()), "too soon") {
-		t.Errorf("the early answer's reason is not said: %q", StripANSI(d.mapStatusLine()))
+	if !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "too soon") {
+		t.Errorf("the early answer's reason is not said: %q", ttytest.StripANSI(d.mapStatusLine()))
 	}
 	held := &seam{wait: true}
 	d, _ = keyCmd(t, propDash(t, held, true), "P")

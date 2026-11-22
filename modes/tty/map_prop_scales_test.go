@@ -9,6 +9,8 @@ import (
 	"time"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // scaled is chartDash with NOAA's scales as given, read at the snapshot's
@@ -24,7 +26,7 @@ func scaled(t *testing.T, sc ionomaps.Scales) Dashboard {
 
 // chartText is the chart window's text, plain.
 func chartText(d Dashboard) string {
-	return StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
+	return ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
 }
 
 // TestARaisedScaleIsNamed is FR-1.18 (D-88): a scale above 0 is named, by

@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 func legendDash(t *testing.T, cfg Config) Dashboard {
@@ -28,7 +30,7 @@ func TestTheLegendBoxIsRetired(t *testing.T) {
 	if act, bound := d.mapKeys.Lookup("L"); bound && act != actMapLayer {
 		t.Errorf("L is bound to %s in the map window; it is the Propagation layer's (D-155)", act)
 	}
-	if strings.Contains(StripANSI(d.mapStatusLine()), "Legend") {
+	if strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "Legend") {
 		t.Error("the chips still offer the legend")
 	}
 	for _, r := range mapHelpRows(d.mapKeys, false) {

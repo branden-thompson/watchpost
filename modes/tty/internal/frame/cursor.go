@@ -1,8 +1,8 @@
-package tty
+package frame
 
-// kit_cursor.go — the cursor both surfaces place: where the focus sits in
-// a drawn line, how it is marked, and the slot that holds it for a frame
-// (0.19.6 A-21). The kit's cursor.go once B2 moves it.
+// cursor.go — the cursor both surfaces place: where the focus sits in a
+// drawn line, how it is marked, and the slot that holds it for a frame
+// (0.19.6 A-21).
 
 import (
 	"image/color"
@@ -17,7 +17,7 @@ import (
 const Sides = " │┃|"
 
 // focusShare is how much of the glyph's colour tints its cell under a
-// focused terminal's cursor, over the cell's own background (D-367).
+// focused terminal's cursor, over the cell's own background (0.19.0 D-367).
 const focusShare = 0.15
 
 // cursorLook is how the terminal draws the cursor: its colour, the
@@ -47,8 +47,9 @@ type CursorSlot struct {
 // Finish is a frame and its cursor at a cell of it, nil where there is none:
 // under a focused terminal the cell tinted and a bar in the tint, under one
 // not focused a block in the glyph's colour, the terminal's own with no
-// colour set (D-366, D-367). bg is the frame's background, where a cell sets
-// none. From the slot when nothing has changed; a nil slot finishes afresh.
+// colour set (0.19.0 D-366, D-367). bg is the frame's background, where a cell
+// sets none. From the slot when nothing has changed; a nil slot finishes
+// afresh.
 func (s *CursorSlot) Finish(content string, x, y int, ok, blurred bool, bg color.Color) (string, *tea.Cursor) {
 	if !ok {
 		return content, nil
@@ -70,7 +71,7 @@ func (s *CursorSlot) Finish(content string, x, y int, ok, blurred bool, bg color
 }
 
 // cursor is a steady cursor of this look at a cell: it never blinks, so it
-// adds no motion (D-362).
+// adds no motion (0.19.0 D-362).
 func (l cursorLook) cursor(x, y int) *tea.Cursor {
 	c := &tea.Cursor{Position: tea.Position{X: x, Y: y}, Shape: l.shape}
 	if l.coloured {

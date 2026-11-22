@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -244,7 +245,7 @@ func (d Dashboard) sourceLines(o render.Opts, rows []endpointRow, shape tableSha
 			used++
 		}
 	}
-	out := []string{statusHeader(fmt.Sprintf("DATA SOURCES  (%d host%s in %d group%s)", len(rows), Plural(len(rows)), used, Plural(used)))}
+	out := []string{statusHeader(fmt.Sprintf("DATA SOURCES  (%d host%s in %d group%s)", len(rows), frame.Plural(len(rows)), used, frame.Plural(used)))}
 	if len(rows) == 0 {
 		return append(out, "   awaiting first snapshot...")
 	}

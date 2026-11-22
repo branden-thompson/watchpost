@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // menuOn opens the Overlays menu with its cursor on a row, by key.
@@ -87,7 +89,7 @@ func TestThePropagationRowIsTheFourthOverlay(t *testing.T) {
 		}
 		var lines []string
 		for _, l := range d.overlaysBox() {
-			lines = append(lines, strings.Trim(StripANSI(l), "│ "))
+			lines = append(lines, strings.Trim(ttytest.StripANSI(l), "│ "))
 		}
 		if n := strings.Count(strings.Join(lines, "\n"), "\nMAP DETAIL\n"); n != 1 {
 			t.Errorf("%s: %d MAP DETAIL headings; want one:\n%s", mode, n, strings.Join(lines, "\n"))

@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // TestTheMapsTabHasNoAlertScope is D-76 (UAT-1 U1-37): what the map draws is
@@ -18,7 +20,7 @@ import (
 func TestTheMapsTabHasNoAlertScope(t *testing.T) {
 	d, _ := uiDash(t, rowMapsOn)
 	body, _, _ := d.focusBody(d.opts())
-	text := StripANSI(strings.Join(body, "\n"))
+	text := ttytest.StripANSI(strings.Join(body, "\n"))
 	for _, never := range []string{"Alerts -", "Alerts in view", "Station's places", "regional severe"} {
 		if strings.Contains(text, never) {
 			t.Errorf("the Maps tab still offers a scope (%q):\n%s", never, text)

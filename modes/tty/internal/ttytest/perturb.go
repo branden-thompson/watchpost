@@ -1,9 +1,8 @@
-package tty
+package ttytest
 
-// ttytest_perturb_test.go — the memo guards' engine: every field of a surface
-// model perturbed by reflection, for any model (0.19.6 D-15). Moved unchanged
-// from memo_completeness_test.go, PerturbEach renamed only; internal/ttytest's
-// perturb.go once B2 moves it.
+// perturb.go — the memo guards' engine: every field of a surface model
+// perturbed by reflection, for any model (0.19.6 D-15), and Field, the one
+// write of an unexported field a guard needs (0.19.6 D-62).
 
 import (
 	"fmt"
@@ -140,9 +139,9 @@ func bump(v reflect.Value) {
 	// threshold, a radius) outside the guard.
 	case reflect.Float64:
 		v.SetFloat(v.Float() + 1)
-	// AND SO ARE POINTERS (D-129). A *ref the frame READS THROUGH — the search
-	// window's pooled match — is otherwise no emitted kind at all, and the
-	// guard reports the window covered while the field behind half its
+	// AND SO ARE POINTERS (0.16.0 D-129). A *ref the frame READS THROUGH — the
+	// search window's pooled match — is otherwise no emitted kind at all, and
+	// the guard reports the window covered while the field behind half its
 	// sentences is never perturbed.
 	//
 	// A COPY, NEVER THE SHARED POINTEE. PerturbEach copies the MODEL, and a

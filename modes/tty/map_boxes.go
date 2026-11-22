@@ -20,6 +20,7 @@ import (
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
@@ -291,7 +292,7 @@ func (d Dashboard) quotaNoticeText() string {
 	if fallbacks == 0 {
 		return head + "Resets " + when
 	}
-	return head + "Resets " + when + " // " + strconv.Itoa(fallbacks) + " Fall-back" + Plural(fallbacks) + " active"
+	return head + "Resets " + when + " // " + strconv.Itoa(fallbacks) + " Fall-back" + frame.Plural(fallbacks) + " active"
 }
 
 // quotaLayers counts the Open-Meteo overlays on by their state, from the

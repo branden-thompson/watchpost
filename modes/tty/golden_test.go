@@ -15,6 +15,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -46,7 +47,7 @@ func checkGolden(t *testing.T, name, got string) {
 		t.Fatalf("no golden yet: run with -update-golden (%v)", err)
 	}
 	if got != string(want) {
-		line, w, g := FirstDiffLine(string(want), got)
+		line, w, g := ttytest.FirstDiffLine(string(want), got)
 		t.Fatalf("%s differs from its golden at line %d:\n want: %q\n  got: %q\n"+
 			"If the change is intended, re-run with -update-golden and record why in the release's build log.",
 			name, line, w, g)
@@ -176,7 +177,7 @@ func TestSetupGoldenASCII(t *testing.T) {
 func TestASCIIFramesCarryNothingButASCII(t *testing.T) {
 	for name, frame := range asciiSurfaces(t) {
 		seen := map[rune]bool{}
-		for _, r := range StripANSI(frame) {
+		for _, r := range ttytest.StripANSI(frame) {
 			if r < 128 || r == '\u00b0' || seen[r] {
 				continue
 			}
@@ -278,7 +279,7 @@ func asciiSurfaces(t *testing.T) map[string]string {
 			// A WINDOW THAT DRAWS NOTHING IS NOT A WINDOW THAT PASSED. This is
 			// the failure a coverage scan is most likely to have and least
 			// likely to report: it goes quiet in exactly the shape of success.
-			if strings.TrimSpace(StripANSI(got)) == "" {
+			if strings.TrimSpace(ttytest.StripANSI(got)) == "" {
 				t.Fatalf("the %s window draws nothing at fixtureFor/%s: it is NOT covered by this scan", modalName(m), st.name)
 			}
 			out["the "+modalName(m)+" window ("+st.name+")"] = got

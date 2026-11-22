@@ -5,6 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
@@ -124,7 +125,7 @@ func TestTheConsoleCarriesNoNonASCIIUnderASCII(t *testing.T) {
 	// label is longer than its cell: the narrow layout draws its own rows.
 	for p := lineup.Power(0); p.String() != ""; p++ {
 		for _, w := range []int{bcMinCols, 150} {
-			b := bcWith(t, Card(t, "a", "OCEANSIDE"), Card(t, "b", "SAN JUAN CAPISTRANO NORTHWEST HILLS RESERVE AND OPEN SPACE"))
+			b := bcWith(t, ttytest.Card(t, "a", "OCEANSIDE"), ttytest.Card(t, "b", "SAN JUAN CAPISTRANO NORTHWEST HILLS RESERVE AND OPEN SPACE"))
 			b.width, b.height = w, 74
 			b.ascii = true
 			b, _ = b.Update(StationMsg{Power: p})

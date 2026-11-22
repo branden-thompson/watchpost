@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -25,17 +26,17 @@ import (
 // the version leaves the title before the title would; the row inside
 // ladders the same way (headerRow). The header never exceeds the width.
 func (d Dashboard) header(o render.Opts) string {
-	// THE LADDERS ARE SHARED WITH THE CONSOLE (D-59, masthead.go), so the two
-	// surfaces cannot come to draw different mastheads. This is their only
-	// behavioural home.
-	var slot *MastheadSlot
+	// THE LADDERS ARE SHARED WITH THE CONSOLE (0.16.0 D-59, internal/frame's
+	// masthead.go), so the two surfaces cannot come to draw different
+	// mastheads. This is their only behavioural home.
+	var slot *frame.MastheadSlot
 	if d.memo != nil {
 		slot = &d.memo.head
 	}
-	return slot.Get(MastheadKeyOf(o, render.EditionObserver, d.cfg.Version, d.snap, d.clock()), func() string {
+	return slot.Get(frame.MastheadKeyOf(o, render.EditionObserver, d.cfg.Version, d.snap, d.clock()), func() string {
 		rule := o.BoxRuleWidth()
-		title := MastheadTitle(render.EditionObserver, d.cfg.Version, rule)
-		stamp := MastheadStamp(o, title, d.snap, d.clock(), rule)
+		title := frame.MastheadTitle(render.EditionObserver, d.cfg.Version, rule)
+		stamp := frame.MastheadStamp(o, title, d.snap, d.clock(), rule)
 		// no tone of its own: the frame's base grey paints it
 		return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "")
 	})
@@ -105,7 +106,7 @@ func (d Dashboard) clock() time.Time {
 // padded to two columns (UAT 102: "reserve 2 col for growth").
 
 // apiSummary is the Dashboard's own reading of it.
-func (d Dashboard) apiSummary(o render.Opts) string { return APISummaryOf(o, d.snap) }
+func (d Dashboard) apiSummary(o render.Opts) string { return frame.APISummaryOf(o, d.snap) }
 
 // body is the frame below the header: radio module, alert area, the
 // control row, then the two tables from the memo (Q3).
@@ -304,7 +305,7 @@ func railify(table string, width, lo, total, window int, g render.RailGlyphs) st
 
 // row converts a snapshot location to a table row.
 func (d Dashboard) row(i int, loc *snapshot.Location, selected bool) render.LocationRow {
-	row := WeatherRow(loc, d.fireBoldMW(), extRowDays)
+	row := frame.WeatherRow(loc, d.fireBoldMW(), extRowDays)
 	row.Index, row.Tag, row.Selected = i+1, loc.Tag, selected
 	// WHAT THE RADIO IS DOING IS OBSERVER'S ALONE. The console has no watchlist
 	// and nothing on the pool is "playing"; a shared converter that carried these

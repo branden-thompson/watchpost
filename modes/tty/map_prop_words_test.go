@@ -19,6 +19,7 @@ import (
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -206,8 +207,8 @@ func TestTheStatusIsSaidWithoutThePicture(t *testing.T) {
 		t.Errorf("an update ended by leaving the mode is said as failed:\n%s", w)
 	}
 	held.mapPane.propErr = errors.New("ionomaps: NOAA not reached")
-	if !strings.Contains(StripANSI(held.mapStatusLine()), "the last update failed") {
-		t.Errorf("a failed refresh over a field kept is not said on the status line: %q", StripANSI(held.mapStatusLine()))
+	if !strings.Contains(ttytest.StripANSI(held.mapStatusLine()), "the last update failed") {
+		t.Errorf("a failed refresh over a field kept is not said on the status line: %q", ttytest.StripANSI(held.mapStatusLine()))
 	}
 }
 

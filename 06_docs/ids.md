@@ -1550,12 +1550,15 @@ each one's best mention (0.19.6 D-50).
 | D-63 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-7: the description moves from above the map into an [A] Area Alerts box over the map's upper left, b… |
 | D-63 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A SHIP gate for the accessibility carry-over (AX-N; RK-6; REFLECT anti-pattern 5) |
 | D-64 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE CONSOLE DRAWS ITS TEN SLOTS ALWAYS, SHIMMERING WHILE UNDECIDED. "Broadcaster UI should adopt the same met… |
+| D-64 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Frame's density row, the first of three P10 questions in B2's move (D-31). make p10 measures the new modes/tt… |
 | D-64 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-12: the title follows the view. By scale from the city index (A); the nearest large city (B); scale … |
 | D-64 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | What the Propagation mode's words say about the selected place once it pans out of view (AX-C; 0.18.0 D-78) |
 | D-65 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | EVERY CONTROL THE MASTHEAD ADVERTISES IS BOUND. "None of the chip controls work — s / a / ? / q in broadcaste… |
+| D-65 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | modes/tty/internal/ttytest's density row, the second of three P10 questions in B2's move. Ratified 2026-11-17… |
 | D-65 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-9, U1-10: an [O] Overlays menu in the map window - the weather layers (the registry's) and the map's… |
 | D-65 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | go-tuiMaps' owed rows OW-14 to OW-26, owed by v0.2.0's record to "v0.3.0" and carried by none of v0.3.0's req… |
 | D-66 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | ONE MEASURE OF WIDTH, AND IT HAD TWO |
+| D-66 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-15's P10-09 row, the last of three P10 questions in B2's move. D-15 ratified one P10-09 row for internal/tt… |
 | D-66 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-15: alerts as the listener explores. All alerts in view by area (A); the same with a severity floor … |
 | D-66 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The shipped work branches (HY-F1): watchpost feature/map-drawing, go-tuiMaps feature/radar-loops (local and r… |
 | D-67 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | A CARD THAT FAILED SITS OUT BEFORE IT IS OFFERED AGAIN |
@@ -2386,6 +2389,7 @@ each one's best mention (0.19.6 D-50).
 | A-52 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-195's and D-196's details: (1) A-51's roles table becomes the UI modes' map roles, mapRoles: whose place th… |
 | A-53 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Three anchors leave the kit's names (A-25). Of the eleven anchors whose text gains a qualifier in the move, t… |
 | A-53 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Batch 25's choices: (1) the best frequency's words: a chart row "best ~15.0 (20m)" or "none serves"; the cent… |
+| A-54 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2's move, as built (design CK-1, CK-4, CK-7, CK-9; D-64 to D-66). (1) Eleven files git mv'd whole: the kit's… |
 | A-54 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-199's details: (1) the switch is "Day / night", last of the map's detail in the Overlays menu and the Setti… |
 | A-55 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W0.3's details (D-201): (1) one place reads typed coordinates and locators: locations.Resolver, which every l… |
 | A-56 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W0.2's caps and FR-5.1/FR-5.2's honesty (D-201): (1) each propagation host's body cap is go-ionomaps' own bou… |
@@ -3001,11 +3005,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:141` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:141` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:144` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:144` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:141` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:144` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

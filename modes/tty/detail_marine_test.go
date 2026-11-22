@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -99,7 +100,7 @@ func TestTideHeightsShareOneColumn(t *testing.T) {
 	}{{1.13, 1.73, "H"}, {0.3, -0.03, "L"}} {
 		m := &snapshot.Marine{TideLevel: new(tc.level), Tides: []snapshot.TideEvent{{Time: now.Add(time.Hour), Height: tc.next, Type: tc.typ}}}
 		rows := maritimeRows(render.Opts{Units: render.UnitF}, m, tz, now, 65)
-		tide, next := StripANSI(rows[0]), StripANSI(rows[1])
+		tide, next := ttytest.StripANSI(rows[0]), ttytest.StripANSI(rows[1])
 		ti, ni := strings.Index(tide, " ft"), strings.Index(next, " ft")
 		if ti < 0 || ti != ni {
 			t.Fatalf("heights must align (%d vs %d):\n%s\n%s", ti, ni, tide, next)
@@ -110,7 +111,7 @@ func TestTideHeightsShareOneColumn(t *testing.T) {
 		Tides:    []snapshot.TideEvent{{Time: now.Add(time.Hour), Height: 1.7, Type: "H"}, {Time: now.Add(7 * time.Hour), Height: -0.1, Type: "L"}},
 		Currents: []snapshot.CurrentEvent{{Time: now.Add(-time.Hour), Speed: 0.7, Type: "flood"}, {Time: now.Add(time.Hour), Speed: 0, Type: "slack"}}}
 	for _, r := range maritimeRows(render.Opts{Units: render.UnitF}, wide, tz, now, 65) {
-		if w := len([]rune(StripANSI(r))); w > 78 {
+		if w := len([]rune(ttytest.StripANSI(r))); w > 78 {
 			t.Fatalf("row exceeds the modal wrap budget (%d > 78): %q", w, r)
 		}
 	}
@@ -118,13 +119,13 @@ func TestTideHeightsShareOneColumn(t *testing.T) {
 	laid := maritimeRows(render.Opts{Units: render.UnitF}, wide, tz, now, 65)
 	widest, noteCol := 0, -1
 	for _, r := range laid {
-		p := StripANSI(r)[detailPrefixW:]
+		p := ttytest.StripANSI(r)[detailPrefixW:]
 		if v := strings.TrimRight(strings.SplitN(p, "(", 2)[0], " "); len([]rune(v)) > widest {
 			widest = len([]rune(v))
 		}
 	}
 	for _, r := range laid {
-		p := StripANSI(r)[detailPrefixW:]
+		p := ttytest.StripANSI(r)[detailPrefixW:]
 		if i := strings.Index(p, "("); i >= 0 {
 			col := len([]rune(p[:i]))
 			if noteCol == -1 {
@@ -135,7 +136,7 @@ func TestTideHeightsShareOneColumn(t *testing.T) {
 			}
 		}
 	}
-	if got := StripANSI(strings.Join(maritimeRows(render.Opts{Units: render.UnitF}, wide, tz, now, 65), "\n")); !strings.Contains(strings.Split(got, "\n")[0], "MARINE │ Observed      40m") {
+	if got := ttytest.StripANSI(strings.Join(maritimeRows(render.Opts{Units: render.UnitF}, wide, tz, now, 65), "\n")); !strings.Contains(strings.Split(got, "\n")[0], "MARINE │ Observed      40m") {
 		t.Fatalf("mock order starts with Observed:\n%s", got)
 	}
 }

@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -46,7 +47,7 @@ func TestTheConsolesWindowIsTheSameLaidOnce(t *testing.T) {
 		got, gx, gy, gok := w.overlay(base, 150)
 		want, wx, wy, wok := overlayShipped(w, base, 150)
 		if got != want {
-			line, a, b := FirstDiffLine(want, got)
+			line, a, b := ttytest.FirstDiffLine(want, got)
 			t.Errorf("%s: the frame differs at line %d:\n want %q\n  got %q", name, line, a, b)
 		}
 		if gx != wx || gy != wy || gok != wok {

@@ -16,6 +16,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -148,8 +149,8 @@ func TestForecastStepsAreNowAndTheDays(t *testing.T) {
 func TestRSwitchesBetweenRadarAndForecastModes(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, true, &asks)
-	if !strings.Contains(StripANSI(d.mapStatusLine()), "R] Radar On") {
-		t.Errorf("the chips are %q; want R Radar On among them (D-94)", StripANSI(d.mapStatusLine()))
+	if !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "R] Radar On") {
+		t.Errorf("the chips are %q; want R Radar On among them (D-94)", ttytest.StripANSI(d.mapStatusLine()))
 	}
 	for _, r := range d.overlayRows() {
 		if r.key == RadarLayer {
@@ -164,11 +165,11 @@ func TestRSwitchesBetweenRadarAndForecastModes(t *testing.T) {
 	if !d.radarTimelineOn() || len(d.mapPane.fcTimeline) != radarRows {
 		t.Errorf("Forecast mode holds no timeline rows (%d); the steps are its scrubber (D-94)", len(d.mapPane.fcTimeline))
 	}
-	status := StripANSI(d.mapStatusLine())
+	status := ttytest.StripANSI(d.mapStatusLine())
 	if !strings.Contains(status, "R] Radar Off") || !strings.Contains(status, "Forecast · Now") {
 		t.Errorf("Forecast mode's lines are %q", status)
 	}
-	if badge := StripANSI(d.forecastBadge()); !strings.Contains(badge, "FORECAST") || !strings.Contains(badge, "NDFD") || !strings.Contains(badge, "NOW") {
+	if badge := ttytest.StripANSI(d.forecastBadge()); !strings.Contains(badge, "FORECAST") || !strings.Contains(badge, "NDFD") || !strings.Contains(badge, "NOW") {
 		t.Errorf("Forecast mode's badge is %q; want FORECAST, the source and the step", badge)
 	}
 	if last := asks[len(asks)-1]; !last.Forecast {
@@ -424,7 +425,7 @@ func TestARefusedLoopKeepsTheOneDrawn(t *testing.T) {
 func TestTheTemperatureSourceIsASetting(t *testing.T) {
 	d, got := uiDash(t, rowMapTempSource)
 	body, _, _ := d.focusBody(d.opts())
-	if text := StripANSI(strings.Join(body, "\n")); !strings.Contains(text, "Temperature -") || !strings.Contains(text, "NDFD (NWS)") || strings.Contains(text, "metered") {
+	if text := ttytest.StripANSI(strings.Join(body, "\n")); !strings.Contains(text, "Temperature -") || !strings.Contains(text, "NDFD (NWS)") || strings.Contains(text, "metered") {
 		t.Fatalf("the Maps tab has no temperature row at NDFD, the default (D-190):\n%s", text)
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
@@ -451,7 +452,7 @@ func TestAFilledStepNamesOpenMeteo(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
 	d.mapPane.temp.Filled = map[string]bool{"0/high": true}
-	badge := func() string { return StripANSI(d.forecastBadge()) }
+	badge := func() string { return ttytest.StripANSI(d.forecastBadge()) }
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 	if d = m; !strings.Contains(badge(), "O-METEO") {
 		t.Errorf("Today, filled from Open-Meteo, has the badge %q", badge())
@@ -475,7 +476,7 @@ func TestTheForecastBadgeIsTheHUMLEADsLayout(t *testing.T) {
 	d := openTempMap(t, false, &asks)
 	want := func(w string) {
 		t.Helper()
-		if got := StripANSI(d.forecastBadge()); got != w {
+		if got := ttytest.StripANSI(d.forecastBadge()); got != w {
 			t.Errorf("the badge is %q; want %q", got, w)
 		}
 	}
@@ -527,7 +528,7 @@ func TestForecastModeTurnsTemperatureOnForItself(t *testing.T) {
 		t.Errorf("the temperature Forecast mode turned on was saved: %q (D-104)", d.mapLayerChoice)
 	}
 	top := strings.Join(d.withModeChip(d.mapPane.lines, d.mapBodySize()), "\n")
-	if !strings.Contains(StripANSI(top), "FORECAST MODE: TEMP ENABLED") {
+	if !strings.Contains(ttytest.StripANSI(top), "FORECAST MODE: TEMP ENABLED") {
 		t.Error("no chip says temperature was turned on")
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
@@ -576,7 +577,7 @@ func TestTheOverlaysBoxIsStyledAsSettings(t *testing.T) {
 	}
 	var blanks, heads int
 	for i, l := range box {
-		p := strings.TrimSpace(strings.Trim(StripANSI(l), "│"))
+		p := strings.TrimSpace(strings.Trim(ttytest.StripANSI(l), "│"))
 		switch p {
 		case "OVERLAYS", "MAP DETAIL": // U2-39
 			heads++
@@ -586,7 +587,7 @@ func TestTheOverlaysBoxIsStyledAsSettings(t *testing.T) {
 		case "":
 			blanks++
 		}
-		if strings.Contains(p, "move") && strings.TrimSpace(strings.Trim(StripANSI(box[i-1]), "│")) != "" {
+		if strings.Contains(p, "move") && strings.TrimSpace(strings.Trim(ttytest.StripANSI(box[i-1]), "│")) != "" {
 			t.Error("no blank row before the keys")
 		}
 	}
@@ -605,7 +606,7 @@ func TestTheLoopRowInForecastMode(t *testing.T) {
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = m
 	row := d.loopRow(d.scrubW())
-	plain := StripANSI(row)
+	plain := ttytest.StripANSI(row)
 	if !strings.Contains(plain, "FORECAST") || !strings.Contains(plain, "STEP 1 / 8") || !strings.Contains(plain, "PLAYING") {
 		t.Errorf("the row is %q", plain)
 	}
@@ -657,7 +658,7 @@ func TestWindIsForecastModesMainOverlayToo(t *testing.T) {
 		t.Errorf("the badge's step is %q; want TODAY PEAK, the day's peak wind (D-108)", got)
 	}
 	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "wind", Classes: []tuimaps.Class{{Label: "under 5", Colour: tuimaps.RGB{R: 188, G: 57, B: 130}, Drawn: true}}}}
-	if row := StripANSI(d.tempLegendRow(80)); !strings.Contains(row, "WIND") || !strings.Contains(row, "STRONGER") {
+	if row := ttytest.StripANSI(d.tempLegendRow(80)); !strings.Contains(row, "WIND") || !strings.Contains(row, "STRONGER") {
 		t.Errorf("the row under the map is %q; want the wind's colours", row)
 	}
 }
@@ -813,7 +814,7 @@ func TestTheQuotaNoticeSitsLowerRightAndGivesWay(t *testing.T) {
 	}
 	rowOf := func(lines []string) (int, int) {
 		for i, l := range lines {
-			plain := StripANSI(l) // measured in cells, not the escapes around them
+			plain := ttytest.StripANSI(l) // measured in cells, not the escapes around them
 			if at := strings.Index(plain, "! OPEN-METEO"); at >= 0 {
 				return i, len([]rune(plain[:at]))
 			}
@@ -854,7 +855,7 @@ func TestTheQuotaNoticeSitsLowerRightAndGivesWay(t *testing.T) {
 func TestTheRainDensityIsASetting(t *testing.T) {
 	d, got := uiDash(t, rowMapRainDetail)
 	body, _, _ := d.focusBody(d.opts())
-	if text := StripANSI(strings.Join(body, "\n")); !strings.Contains(text, "Rain Day 4+ -") || !strings.Contains(text, "Coarse") {
+	if text := ttytest.StripANSI(strings.Join(body, "\n")); !strings.Contains(text, "Rain Day 4+ -") || !strings.Contains(text, "Coarse") {
 		t.Fatalf("the Maps tab has no rain density row at Coarse, the default (D-192):\n%s", text)
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
@@ -881,7 +882,7 @@ func TestTheRainDensityIsASetting(t *testing.T) {
 func TestUVsCityCountIsASetting(t *testing.T) {
 	d, got := uiDash(t, rowMapUVCities)
 	body, _, _ := d.focusBody(d.opts())
-	text := strings.Join(strings.Fields(StripANSI(strings.Join(body, "\n"))), " ")
+	text := strings.Join(strings.Fields(ttytest.StripANSI(strings.Join(body, "\n"))), " ")
 	if !strings.Contains(text, "UV cities -") || !strings.Contains(text, "24") || d.mapAsk().UVCities != 24 {
 		t.Fatalf("the Maps tab has no UV cities row at 24, the default (D-202):\n%s", text)
 	}

@@ -17,6 +17,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -32,7 +33,7 @@ func openMap(t testing.TB, cfg Config, w, h int) Dashboard {
 	return feedAndSettle(t, d)
 }
 
-func bodyText(d Dashboard) string { return StripANSI(strings.Join(d.mapBodyLines(), "\n")) }
+func bodyText(d Dashboard) string { return ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n")) }
 
 // TestTheMapWindowLeavesTheDashboardInSight is U1-13 as D-194 widens it: on
 // a large terminal the window is 85% of its width, so the dashboard shows
@@ -43,7 +44,7 @@ func TestTheMapWindowLeavesTheDashboardInSight(t *testing.T) {
 	if w := d.modalWidth(); w != 133*85/100 {
 		t.Errorf("at 133 columns the window is %d wide; want 85%%, %d", w, 133*85/100)
 	}
-	if rows := len(strings.Split(StripANSI(d.renderModal(d.opts())), "\n")); rows > 44-topInset-bottomInset {
+	if rows := len(strings.Split(ttytest.StripANSI(d.renderModal(d.opts())), "\n")); rows > 44-topInset-bottomInset {
 		t.Errorf("at 44 rows the window is %d tall; past the insets' %d", rows, 44-topInset-bottomInset)
 	}
 	small := openMap(t, Config{MapDescription: "off"}, 80, 24)
@@ -79,7 +80,7 @@ func TestTheDescriptionBoxWaitsForA(t *testing.T) {
 	if !strings.ContainsFunc(lines[first], func(r rune) bool { return r >= 0x2800 && r <= 0x28ff }) {
 		t.Errorf("the box's row carries no map beside it: %q", lines[first])
 	}
-	if !strings.Contains(StripANSI(d.mapStatusLine()), "Description") {
+	if !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "Description") {
 		t.Error("the status line has no Description chip")
 	}
 	d = pressCode(d, 'A', "A")

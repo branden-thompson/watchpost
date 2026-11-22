@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
@@ -193,13 +194,13 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 	for _, probe := range []string{"station's", "Observer", "Radius"} {
 		found := false
 		for _, l := range lines {
-			if !strings.Contains(StripANSI(l), probe) {
+			if !strings.Contains(ttytest.StripANSI(l), probe) {
 				continue
 			}
 			found = true
 			if !strings.Contains(l, want) {
 				t.Errorf("the helper line carrying %q is not tinted %q: %q",
-					probe, want, StripANSI(l))
+					probe, want, ttytest.StripANSI(l))
 			}
 		}
 		if !found {
@@ -268,11 +269,11 @@ func TestPrioritizeIsBoldAndYellow(t *testing.T) {
 	d := requestDash(t, &sent)
 	d.width, d.height = 120, 40
 	for _, l := range strings.Split(d.renderModal(d.opts()), "\n") {
-		if !strings.Contains(StripANSI(l), "PRIORITIZE") {
+		if !strings.Contains(ttytest.StripANSI(l), "PRIORITIZE") {
 			continue
 		}
 		if want := render.Tok(render.NameAdvisory); !strings.Contains(l, want) {
-			t.Errorf("PRIORITIZE is not tinted %q: %q", want, StripANSI(l))
+			t.Errorf("PRIORITIZE is not tinted %q: %q", want, ttytest.StripANSI(l))
 		}
 		// BOLD IS `1`, and it is asserted on the rendered line for the same
 		// reason the tint is: the operator sees the frame, not the string that
@@ -323,14 +324,14 @@ func TestTheRequestWindowUsesTheAppsControls(t *testing.T) {
 	text := strings.Join(body, "\n")
 	first := report.Of(rows[0]).Label
 	if want := o.ListMark(true) + checkMark(o, true) + " " + render.PadTo(first, 7); !strings.Contains(text, want) {
-		t.Errorf("the focused, chosen report row is not the list's pointer and Settings' tick: want %q in\n%s", want, StripANSI(text))
+		t.Errorf("the focused, chosen report row is not the list's pointer and Settings' tick: want %q in\n%s", want, ttytest.StripANSI(text))
 	}
 	if len(rows) > 1 {
 		if want := o.ListMark(false) + checkMark(o, false) + " " + render.PadTo(report.Of(rows[1]).Label, 7); !strings.Contains(text, want) {
 			t.Errorf("an unchosen row is not Settings' empty box: want %q", want)
 		}
 	}
-	plain := StripANSI(text)
+	plain := ttytest.StripANSI(text)
 	if !strings.Contains(plain, radioMark(true, o.ASCII)+"  Line-Up Slot") || !strings.Contains(plain, radioMark(false, o.ASCII)+"  ") {
 		t.Errorf("the position is not chosen with radioMark:\n%s", plain)
 	}

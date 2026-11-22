@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/branden-thompson/watchpost/internal/allocpin"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // NFR-3 — the frame stays within budget, and the budget is a NUMBER.
@@ -94,7 +95,7 @@ func TestConsoleFrameAllocBudget(t *testing.T) {
 	//
 	// A console with no pool and no snapshot joins no weather and draws no pool
 	// table, so a number taken there guards only the cheap path.
-	b := loadedConsole(t, LoadedPoolSize)
+	b := loadedConsole(t, ttytest.LoadedPoolSize)
 	// THE BUDGET VALIDATES ITS OWN FIXTURE (D-120). A budget that cannot tell
 	// whether it measured the expensive path is a budget reporting on nothing —
 	// so it asks, here, before it reports.
@@ -104,7 +105,7 @@ func TestConsoleFrameAllocBudget(t *testing.T) {
 	_ = b.View().Content
 	got := allocpin.Pin(t, "console frame 150x74 hit", 50, func() { _ = b.View().Content })
 	t.Logf("console frame 150x74, %d-location pool: %.0f allocs (budget %d)",
-		LoadedPoolSize, got, bcFrameAllocs)
+		ttytest.LoadedPoolSize, got, bcFrameAllocs)
 	if got > bcFrameAllocs {
 		t.Errorf("the console frame allocates %.0f per View(), budget %d — re-pin DELIBERATELY "+
 			"with the reason in the commit, or this is a regression", got, bcFrameAllocs)
@@ -124,7 +125,7 @@ func TestConsoleFrameAllocBudget(t *testing.T) {
 		_ = b.View().Content
 	})
 	t.Logf("console frame MISS, %d-location pool: %.0f allocs (budget %d)",
-		LoadedPoolSize, missed, bcFrameMissAllocs)
+		ttytest.LoadedPoolSize, missed, bcFrameMissAllocs)
 	if missed <= got {
 		t.Fatalf("the miss (%.0f) costs no more than the hit (%.0f): this is not measuring "+
 			"the rebuild, and the hit number above is guarding nothing", missed, got)

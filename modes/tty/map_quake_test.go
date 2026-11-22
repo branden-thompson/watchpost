@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -23,7 +24,7 @@ import (
 func TestTheQuakesAreASetting(t *testing.T) {
 	d, got := uiDash(t, rowMapQuakes)
 	body, _, _ := d.focusBody(d.opts())
-	if text := StripANSI(strings.Join(body, "\n")); !strings.Contains(text, "Quakes -") || !strings.Contains(text, "M2.5+, past week") {
+	if text := ttytest.StripANSI(strings.Join(body, "\n")); !strings.Contains(text, "Quakes -") || !strings.Contains(text, "M2.5+, past week") {
 		t.Fatalf("the Maps tab has no quakes row at M2.5+, past week:\n%s", text)
 	}
 	for _, want := range []string{"2.5_day", "1.0_week", "1.0_day", "2.5_week"} {

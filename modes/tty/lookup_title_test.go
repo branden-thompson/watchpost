@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
@@ -30,7 +31,7 @@ func TestDetailsFromALookupNamesThePlaceBeforeItsDataLands(t *testing.T) {
 		t.Fatal("the fixture resolves a location, so it does not pose the wait this test is about")
 	}
 
-	got := StripANSI(d.detailsModal(render.Opts{Width: 133}))
+	got := ttytest.StripANSI(d.detailsModal(render.Opts{Width: 133}))
 	if !strings.Contains(got, "Vista, CA") {
 		t.Errorf("Details opened from a lookup does not name the place while its data lands:\n%s",
 			firstLines(got, 3))
@@ -49,7 +50,7 @@ func TestDetailsWithNoLookupAndNoSelectionKeepsTheGenericTitle(t *testing.T) {
 	d.modal = modalDetails
 	d.lookupRef = nil
 	d.selected = d.numPriority() + d.numRecent() + 5
-	got := StripANSI(d.detailsModal(render.Opts{Width: 133}))
+	got := ttytest.StripANSI(d.detailsModal(render.Opts{Width: 133}))
 	if !strings.Contains(got, "Location") {
 		t.Errorf("with nothing to name, the window should still say Location:\n%s", firstLines(got, 3))
 	}

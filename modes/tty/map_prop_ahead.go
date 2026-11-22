@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -183,4 +184,4 @@ func (d Dashboard) propAheadWords(lat, lon float64) string {
 }
 
 // hoursWords is a count of hours said: "1 hour", "3 hours".
-func hoursWords(k int) string { return strconv.Itoa(k) + " hour" + Plural(k) }
+func hoursWords(k int) string { return strconv.Itoa(k) + " hour" + frame.Plural(k) }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/render"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -20,7 +21,7 @@ func TestHelpFloatsOverDashboard(t *testing.T) {
 	// replacing the view — the dashboard chrome stays visible around it.
 	m := dash(t)
 	m2, _ := m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
-	v := StripANSI(m2.View().Content)
+	v := ttytest.StripANSI(m2.View().Content)
 	if !strings.Contains(v, "Watchpost Help") {
 		t.Fatalf("help panel missing:\n%s", v)
 	}
@@ -40,7 +41,7 @@ func TestHelpFloatsOverDashboard(t *testing.T) {
 	// On a wider terminal the header clears the window too.
 	wide, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
 	wide, _ = wide.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
-	if wv := StripANSI(wide.View().Content); !strings.Contains(wv, "WATCHPOST Observer") || !strings.Contains(wv, "Quit") {
+	if wv := ttytest.StripANSI(wide.View().Content); !strings.Contains(wv, "WATCHPOST Observer") || !strings.Contains(wv, "Quit") {
 		t.Fatalf("dashboard header must stay visible beneath the floating help at 200 cols:\n%s", wv)
 	}
 }
@@ -68,7 +69,7 @@ func aboutRow(t *testing.T, badge string, line int) string {
 	for _, c := range all {
 		if c.Badge == badge {
 			rows := creditRows(c, aboutColumn, badgeWidth(all))
-			return "│   " + StripANSI(render.PadTo(rows[line], aboutColumn)) + "   │"
+			return "│   " + ttytest.StripANSI(render.PadTo(rows[line], aboutColumn)) + "   │"
 		}
 	}
 	t.Fatalf("no fixture source has the badge %s", badge)
@@ -91,7 +92,7 @@ func aboutFrame(t *testing.T, cfg Config, w, h int) (Dashboard, string) {
 		t.Fatal("[a] must open the About window")
 	}
 	var frame []string
-	for _, l := range strings.Split(StripANSI(d.View().Content), "\n") {
+	for _, l := range strings.Split(ttytest.StripANSI(d.View().Content), "\n") {
 		if i := strings.Index(l, "│"); i >= 0 && strings.Count(l, "│") >= 2 {
 			frame = append(frame, l[i:])
 		}
@@ -187,7 +188,7 @@ func TestAboutTakesTwoColumnsWhereTheyFit(t *testing.T) {
 		d = m.(Dashboard)
 	}
 	var frame []string
-	for _, l := range strings.Split(StripANSI(d.View().Content), "\n") {
+	for _, l := range strings.Split(ttytest.StripANSI(d.View().Content), "\n") {
 		if strings.Count(l, "│") >= 2 {
 			frame = append(frame, l)
 		}
@@ -275,7 +276,7 @@ func TestHelpLaysOutOneOrTwoColumns(t *testing.T) {
 		if lines[0] != "" {
 			t.Fatalf("%d cols: a blank line under the title, got %q", c.w, lines[0])
 		}
-		text := StripANSI(strings.Join(lines, "\n"))
+		text := ttytest.StripANSI(strings.Join(lines, "\n"))
 		// TWO COLUMNS IS "SOME LINE CARRIES TWO GROUP HEADERS", not "NAVIGATE
 		// sits beside WATCHLIST". A named pairing is a proxy for the layout:
 		// adding a group (D-135's SURFACES) moves the balance point, and the
@@ -315,7 +316,7 @@ func TestHelpLaysOutOneOrTwoColumns(t *testing.T) {
 				}
 			}
 		}
-		frame := StripANSI(d.View().Content)
+		frame := ttytest.StripANSI(d.View().Content)
 		for _, l := range strings.Split(frame, "\n") {
 			if render.Width(strings.TrimRight(l, " ")) > c.w {
 				t.Fatalf("%d cols: a line overflows the terminal: %q", c.w, l)
@@ -359,7 +360,7 @@ func TestAboutWindowsMarks(t *testing.T) {
 			last = i
 		}
 	}
-	if last < 0 || last+2 >= len(lines) || StripANSI(lines[last+1]) != "" || !strings.Contains(lines[last+2], creditsNotice) {
+	if last < 0 || last+2 >= len(lines) || ttytest.StripANSI(lines[last+1]) != "" || !strings.Contains(lines[last+2], creditsNotice) {
 		t.Errorf("under the last warning come %q and %q; want a blank row, then the terms", lines[last+1], lines[last+2])
 	}
 }

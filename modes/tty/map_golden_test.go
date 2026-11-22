@@ -10,6 +10,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -109,7 +110,7 @@ func TestMapWindowGoldens(t *testing.T) {
 			d = m.(Dashboard)
 			m, _ = d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 			d = feedAndSettle(t, m.(Dashboard))
-			frame := StripANSI(d.View().Content)
+			frame := ttytest.StripANSI(d.View().Content)
 			if strings.IndexFunc(frame, func(r rune) bool { return r > 0x2800 && r <= 0x28ff }) < 0 {
 				t.Fatal("no map in the frame: this pins nothing")
 			}

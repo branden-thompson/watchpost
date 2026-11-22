@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -88,7 +89,7 @@ type perturbed struct {
 func perturbations(t *testing.T, base Dashboard) []perturbed {
 	t.Helper()
 	var out []perturbed
-	PerturbEach(t, base, nestedExcuse, dashboardWriter, func(path string, next Dashboard) {
+	ttytest.PerturbEach(t, base, nestedExcuse, dashboardWriter, func(path string, next Dashboard) {
 		out = append(out, perturbed{field: path, model: next})
 	})
 	return out
@@ -275,7 +276,7 @@ func TestEveryWindowClearsItsMargins(t *testing.T) {
 	for m := modalHelp; m < numModals; m++ {
 		t.Run(modalName(m), func(t *testing.T) {
 			d := fixtureFor(t, m)
-			out := StripANSI(d.modalView(d.opts()))
+			out := ttytest.StripANSI(d.modalView(d.opts()))
 			if out == "" {
 				t.Skipf("%s draws nothing without a richer fixture; NOT covered", modalName(m))
 			}

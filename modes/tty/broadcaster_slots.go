@@ -14,6 +14,7 @@ package tty
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -93,7 +94,7 @@ func (b Broadcaster) tickNeeded() bool {
 // armTick starts the shimmer when the frame needs one and none is in flight —
 // the console's own twin of the Dashboard's.
 func (b Broadcaster) armTick(cmd tea.Cmd) (Broadcaster, tea.Cmd) {
-	b.tickArmed, cmd = ArmShimmer(b.tickArmed, b.tickNeeded(), cmd, ShimmerTick())
+	b.tickArmed, cmd = frame.ArmShimmer(b.tickArmed, b.tickNeeded(), cmd, frame.ShimmerTick())
 	return b, cmd
 }
 
@@ -159,7 +160,7 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 		// The rows this returns are padded to the CELL's width by the box around
 		// them, so centring two cells short puts the caption three cells left of
 		// the middle — visible, and the kind of thing only a measurement catches.
-		CenterText(bcManifestCaption, lane.lane),
+		frame.CenterText(bcManifestCaption, lane.lane),
 		bcCardInset + manifestHeading(room),
 	}
 	rows = append(rows, b.manifestRows(c, room)...)

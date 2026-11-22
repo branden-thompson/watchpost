@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // TestTheConsolesArrowsMoveItsPointer is 0.19.5 Q2.13 (RN's minor list): on
@@ -11,7 +13,7 @@ import (
 // the sign of each key is what this pins.
 func TestTheConsolesArrowsMoveItsPointer(t *testing.T) {
 	r := NewRouter(benchDash(t, 160, 74).(Dashboard))
-	r.broadcaster = loadedConsole(t, LoadedPoolSize)
+	r.broadcaster = loadedConsole(t, ttytest.LoadedPoolSize)
 	r.active = SurfaceBroadcaster
 	at := r.broadcaster.selected
 	down := step(t, r, tea.KeyPressMsg{Code: tea.KeyDown})

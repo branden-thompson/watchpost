@@ -12,6 +12,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 )
 
 // PropagationResult is one Propagation update's snapshot, or why there is
@@ -317,7 +319,7 @@ func thinStationsWords(in ionomaps.Inputs, at time.Time) string {
 // daysWords is an age said in days past a day, else as spanWords.
 func daysWords(age time.Duration) string {
 	if days := int(age.Hours() / 24); days >= 1 {
-		return strconv.Itoa(days) + " day" + Plural(days)
+		return strconv.Itoa(days) + " day" + frame.Plural(days)
 	}
 	return spanWords(age)
 }

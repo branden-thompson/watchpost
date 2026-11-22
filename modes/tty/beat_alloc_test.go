@@ -6,6 +6,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/internal/allocpin"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // beat is one message through the Router and the frame Bubble Tea then draws:
@@ -23,15 +25,15 @@ type beat struct {
 // what is open.
 func beats() []beat {
 	return []beat{
-		{"idle Observer 133x44", func(tb testing.TB) tea.Model { return NewRouter(benchDash(tb, 133, 44).(Dashboard)) }, TickMsg{}},
-		{"idle Observer 133x44 with Settings open", func(tb testing.TB) tea.Model { return NewRouter(setupBench(tb, 133, 44)) }, TickMsg{}},
+		{"idle Observer 133x44", func(tb testing.TB) tea.Model { return NewRouter(benchDash(tb, 133, 44).(Dashboard)) }, frame.TickMsg{}},
+		{"idle Observer 133x44 with Settings open", func(tb testing.TB) tea.Model { return NewRouter(setupBench(tb, 133, 44)) }, frame.TickMsg{}},
 		{"radio playing 133x44", func(tb testing.TB) tea.Model { return NewRouter(playingDash(tb, 133, 44)) }, vizTickMsg{}},
 		{"console 160x74", func(tb testing.TB) tea.Model {
 			r := NewRouter(benchDash(tb, 160, 74).(Dashboard))
-			r.broadcaster = loadedConsole(tb, LoadedPoolSize)
+			r.broadcaster = loadedConsole(tb, ttytest.LoadedPoolSize)
 			r.active = SurfaceBroadcaster
 			return r
-		}, TickMsg{}},
+		}, frame.TickMsg{}},
 	}
 }
 
@@ -141,7 +143,7 @@ func TestUpdateWithTheMapOpenAllocBudget(t *testing.T) {
 	r := testing.Benchmark(func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			m, _ = m.Update(TickMsg{})
+			m, _ = m.Update(frame.TickMsg{})
 		}
 	})
 	c := allocpin.PinBenchmark(t, "Update with the map open 133x44", r)

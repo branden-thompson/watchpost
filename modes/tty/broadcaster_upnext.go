@@ -19,6 +19,7 @@ package tty
 import (
 	"strings"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -151,7 +152,7 @@ func (b Broadcaster) upNextBox() []string {
 			// card's column. Checked rather than assumed: the mutation that
 			// pads AFTER tinting changes no frame at all, so no mutant pins it.
 			cell = render.Bold(render.Tint(
-				render.PadTo(CenterText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW),
+				render.PadTo(frame.CenterText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW),
 				render.Tok(render.TextBright)))
 		}
 		// THE CELL IS PAINTED BEFORE THE ROW IS, and the row's own paint keeps

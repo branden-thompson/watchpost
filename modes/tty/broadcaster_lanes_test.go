@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -29,7 +30,7 @@ func bcWith(t *testing.T, cards ...lineup.Card) Broadcaster {
 }
 
 func TestTheConsoleShowsTheMainTrackItWasPublished(t *testing.T) {
-	b := bcWith(t, Card(t, "a", "OCEANSIDE"), Card(t, "b", "BONSALL"))
+	b := bcWith(t, ttytest.Card(t, "a", "OCEANSIDE"), ttytest.Card(t, "b", "BONSALL"))
 	got := b.View().Content
 	for _, want := range []string{"OCEANSIDE", "BONSALL"} {
 		if !strings.Contains(got, want) {
@@ -46,8 +47,8 @@ func TestTheConsoleShowsNothingItWasNotPublished(t *testing.T) {
 }
 
 func TestTheConsoleNumbersTheMainTrackSlots(t *testing.T) {
-	b := bcWith(t, Card(t, "a", "ONE"), Card(t, "b", "TWO"))
-	got := StripANSI(b.View().Content)
+	b := bcWith(t, ttytest.Card(t, "a", "ONE"), ttytest.Card(t, "b", "TWO"))
+	got := ttytest.StripANSI(b.View().Content)
 
 	// THE READ CARDS KEEP THEIR CHIP, AND THE TABLE KEEPS ITS NUMBER (D-94).
 	//
@@ -72,9 +73,9 @@ func TestTheConsoleNumbersTheMainTrackSlots(t *testing.T) {
 func TestTheConsoleShowsAtMostFifteenMainTrackSlots(t *testing.T) {
 	var cs []lineup.Card
 	for i := 0; i < 20; i++ {
-		cs = append(cs, Card(t, string(rune('a'+i)), "LOC"+string(rune('A'+i))))
+		cs = append(cs, ttytest.Card(t, string(rune('a'+i)), "LOC"+string(rune('A'+i))))
 	}
-	got := StripANSI(bcWith(t, cs...).View().Content)
+	got := ttytest.StripANSI(bcWith(t, cs...).View().Content)
 
 	// POSITIONS 2..15, RULED 2026-09-13. LIVE is
 	// 0, UP NEXT is 1, and the table runs to POSITION fifteen — which is what
@@ -93,7 +94,7 @@ func TestTheConsoleShowsAtMostFifteenMainTrackSlots(t *testing.T) {
 // One owner, no second path — a card's headline is provider prose and a
 // provider can send anything.
 func TestAHostileHeadlineIsClampedInTheNewLanes(t *testing.T) {
-	b := bcWith(t, Card(t, "a", "NORMAL\x1b[31mRED\x1b[0m\x07"))
+	b := bcWith(t, ttytest.Card(t, "a", "NORMAL\x1b[31mRED\x1b[0m\x07"))
 	got := b.View().Content
 	if strings.Contains(got, "\x1b[31m") || strings.Contains(got, "\x07") {
 		t.Error("a card's headline reached the frame with escapes intact — the new lanes must route " +
@@ -132,7 +133,7 @@ func notice(t *testing.T, id string) lineup.Card {
 // their position in what it drew, and `Moved` carries that number back to the
 // schedule; a hidden card between two visible ones shifts every number below it.
 func TestTheConsoleDrawsTheLineUpAndNotTheSchedule(t *testing.T) {
-	b := bcWith(t, Card(t, "a", "OCEANSIDE"), notice(t, "n1"), Card(t, "b", "BONSALL"))
+	b := bcWith(t, ttytest.Card(t, "a", "OCEANSIDE"), notice(t, "n1"), ttytest.Card(t, "b", "BONSALL"))
 	got := b.View().Content
 
 	if strings.Contains(got, "Report out of date") {

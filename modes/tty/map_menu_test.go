@@ -11,6 +11,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -65,9 +66,9 @@ func TestTheMenuIsTheHUMLEADsLayout(t *testing.T) {
 	if menuHas(settleRadar(t, m, cmd), RainLayer) {
 		t.Error("Radar mode lists Rain & snow: the radar is its rain (D-117)")
 	}
-	quiet := StripANSI(strings.Join(d.overlaysBox(), "\n"))
+	quiet := ttytest.StripANSI(strings.Join(d.overlaysBox(), "\n"))
 	d.mapCost = MapCost{Bytes: 3_000_000, Requests: 100}
-	loud := StripANSI(strings.Join(d.overlaysBox(), "\n"))
+	loud := ttytest.StripANSI(strings.Join(d.overlaysBox(), "\n"))
 	if strings.Contains(quiet, "performance") || !strings.Contains(loud, "! You may experience performance") {
 		t.Errorf("the warning at the menu's top (D-146):\n%s", loud)
 	}
@@ -104,7 +105,7 @@ func TestADisabledGroupHidesAndRemembers(t *testing.T) {
 	if d.layerOn(WindLayer) || !d.ticked(WindLayer) || d.mapAsk().Tides {
 		t.Fatalf("Data Points off: wind drawn %v, ticked %v", d.layerOn(WindLayer), d.ticked(WindLayer))
 	}
-	if box := StripANSI(strings.Join(d.overlaysBox(), "\n")); !strings.Contains(box, "[←] Disabled") || !strings.Contains(box, "[✔] Wind") {
+	if box := ttytest.StripANSI(strings.Join(d.overlaysBox(), "\n")); !strings.Contains(box, "[←] Disabled") || !strings.Contains(box, "[✔] Wind") {
 		t.Errorf("the disabled group:\n%s", box)
 	}
 	d = menuKey(t, d, "space") // Enabled again
@@ -169,15 +170,15 @@ func TestTheMenusPickersAreTheAppsPickers(t *testing.T) {
 	lit := o.KeyCapInverted("→")
 	fire, box := "", d.overlaysBox()
 	for _, l := range box {
-		if strings.Contains(StripANSI(l), "Fire") {
+		if strings.Contains(ttytest.StripANSI(l), "Fire") {
 			fire = l
 		}
 	}
 	if !strings.Contains(fire, lit) || strings.Count(strings.Join(box, "\n"), lit) != 1 {
 		t.Errorf("→ on Fire: its row is %q; want its → chip lit, and no other", fire)
 	}
-	if plain := StripANSI(fire); !strings.Contains(plain, "←") || !strings.Contains(plain, "Named") || !strings.Contains(plain, "→") {
-		t.Errorf("the Fire row is %q; want the picker, Named", StripANSI(fire))
+	if plain := ttytest.StripANSI(fire); !strings.Contains(plain, "←") || !strings.Contains(plain, "Named") || !strings.Contains(plain, "→") {
+		t.Errorf("the Fire row is %q; want the picker, Named", ttytest.StripANSI(fire))
 	}
 	d.mapPane.menuFlashEnd = d.mapPane.menuFlashEnd.Add(-time.Hour)
 	if got := d.applyTick(); got.mapPane.menuFlash != flashNone || strings.Contains(strings.Join(got.overlaysBox(), ""), lit) {
@@ -210,7 +211,7 @@ func TestTheMenuBlinkKeepsATickUntilItEnds(t *testing.T) {
 // beside the one before it is not drawn again on a line of its own.
 func TestEveryBoxIsDrawnOnce(t *testing.T) {
 	d := menuMap(t)
-	plain := StripANSI(strings.Join(d.overlaysBox(), "\n"))
+	plain := ttytest.StripANSI(strings.Join(d.overlaysBox(), "\n"))
 	boxes := 0
 	for _, r := range d.overlayRows() {
 		if r.kind == menuRadio || r.kind == menuGroup || r.kind == menuFire || r.kind == menuPreset {
@@ -221,7 +222,7 @@ func TestEveryBoxIsDrawnOnce(t *testing.T) {
 		if r.overlay {
 			on = d.ticked(r.key)
 		}
-		cell := regexp.MustCompile(regexp.QuoteMeta(StripANSI(checkMark(d.opts(), on))+" "+r.label) + `( |$)`)
+		cell := regexp.MustCompile(regexp.QuoteMeta(ttytest.StripANSI(checkMark(d.opts(), on))+" "+r.label) + `( |$)`)
 		if n := len(cell.FindAllStringIndex(plain, -1)); n != 1 {
 			t.Errorf("the box %q is drawn %d times:\n%s", r.label, n, plain)
 		}

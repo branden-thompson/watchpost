@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -253,5 +254,5 @@ func (d Dashboard) fireBoldMW() float64 {
 	if d.cfg.FireBoldMW > 0 {
 		return d.cfg.FireBoldMW
 	}
-	return FireBoldDefaultMW
+	return frame.FireBoldDefaultMW
 }

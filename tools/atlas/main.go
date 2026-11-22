@@ -34,6 +34,7 @@ var page string
 // order is what a reader should meet first, not alphabetical.
 var order = []struct{ dir, title string }{
 	{"docs", "The shape of the program"},
+	{"0.19.6-re-architecting", "The packages of modes/tty and app"},
 	{"0.16.0-broadcaster-ui", "The Broadcaster: the air and the deck"},
 	{"map-ready-geometry", "Map-ready geometry"},
 	{"observer-maps", "The maps"},

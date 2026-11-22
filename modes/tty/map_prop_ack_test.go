@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // ackDash is the map open on Oceanside, the acknowledgement last seen at a
@@ -127,7 +129,7 @@ func TestTheCursorIsPlacedOnTheAcknowledgement(t *testing.T) {
 	if v.Cursor == nil {
 		t.Fatal("no cursor on the acknowledgement")
 	}
-	lines := strings.Split(StripANSI(v.Content), "\n")
+	lines := strings.Split(ttytest.StripANSI(v.Content), "\n")
 	if v.Cursor.Y >= len(lines) {
 		t.Fatalf("the cursor is on row %d of %d", v.Cursor.Y, len(lines))
 	}
@@ -150,7 +152,7 @@ func TestTheCursorIsPlacedOnTheAcknowledgement(t *testing.T) {
 func TestTheAcknowledgementReadsWithoutThePicture(t *testing.T) {
 	var saved []int
 	d := ackPress(t, ackDash(t, 0, true, &saved), "P")
-	screen := StripANSI(d.View().Content)
+	screen := ttytest.StripANSI(d.View().Content)
 	flat := strings.Join(strings.Fields(screen), " ")
 	for _, want := range []string{"does not transmit", "Status window", "Enter or Esc"} {
 		if !strings.Contains(flat, want) {

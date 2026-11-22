@@ -16,6 +16,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -1057,7 +1058,7 @@ func (d Dashboard) after(dur time.Duration, m tea.Msg) tea.Cmd {
 	if d.ticks != nil {
 		return d.ticks(dur, m)
 	}
-	return TickEvery(dur, m)
+	return frame.TickEvery(dur, m)
 }
 
 // tickNeeded is the predicate (PF-2, R2-23): true while a frame would
@@ -1099,7 +1100,7 @@ func (d Dashboard) tickNeeded() bool {
 // armTick starts the shimmer tick when the frame needs one and none is in
 // flight — the shimmer twin of armViz. Called after every Update.
 func (d Dashboard) armTick(cmd tea.Cmd) (Dashboard, tea.Cmd) {
-	d.tickArmed, cmd = ArmShimmer(d.tickArmed, d.tickNeeded(), cmd, d.after(300*time.Millisecond, TickMsg{}))
+	d.tickArmed, cmd = frame.ArmShimmer(d.tickArmed, d.tickNeeded(), cmd, d.after(300*time.Millisecond, frame.TickMsg{}))
 	return d, cmd
 }
 
@@ -1211,7 +1212,7 @@ func (d Dashboard) route(msg tea.Msg) (Dashboard, tea.Cmd) {
 		return d.applyCommitted(v), nil
 	case RadioStatusMsg, VoiceNoteMsg, RelaySilentMsg:
 		return d.handleRadio(msg) // the radio's messages, one owner
-	case TickMsg:
+	case frame.TickMsg:
 		return d.onTick()
 	case castSavedMsg, uiSavedMsg:
 		return d.handleSettingsSaved(msg), nil // the Settings window's apply-on-close outcomes, one owner

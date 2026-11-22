@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -38,7 +39,7 @@ func TestAClearRailStillDrawsTheAlertBox(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 
-	got := StripANSI(b.View().Content)
+	got := ttytest.StripANSI(b.View().Content)
 	if !strings.Contains(got, bcTakeoverTitle) {
 		t.Error("the alert box is missing while the rail is clear; it is ALWAYS present, and empty")
 	}
@@ -52,7 +53,7 @@ func TestAClearRailStillDrawsTheAlertBox(t *testing.T) {
 func TestATakeoverBringsThePriorityTrackBack(t *testing.T) {
 	b := withBurst(t, NewBroadcaster())
 
-	got := StripANSI(b.View().Content)
+	got := ttytest.StripANSI(b.View().Content)
 	if !strings.Contains(got, bcTakeoverTitle) {
 		t.Fatalf("a takeover drew no box:\n%s", got)
 	}
@@ -73,7 +74,7 @@ func TestTheTwoTracksNeverShareACell(t *testing.T) {
 
 	// THE RUNNING ORDER'S ROWS ONLY. The masthead and the station section are
 	// full-width regions of their own and know nothing about these columns.
-	for i, row := range strings.Split(StripANSI(b.View().Content), "\n") {
+	for i, row := range strings.Split(ttytest.StripANSI(b.View().Content), "\n") {
 		r := []rune(row)
 		if len(r) < left+pw+bcColumnGap+cw || !strings.ContainsAny(row, "┏┃┗") {
 			continue
@@ -108,7 +109,7 @@ func TestTheTakeoverBoxCloseslevelWithUpNext(t *testing.T) {
 		}
 		// BOTH BOXES CLOSE ON THE LAST ROW. A short box would leave air under one
 		// side of the pair, which is the misalignment this rule exists to prevent.
-		last := StripANSI(pair[len(pair)-1])
+		last := ttytest.StripANSI(pair[len(pair)-1])
 		if strings.Count(last, "┗")+strings.Count(last, "+") < 2 {
 			t.Errorf("the pair's last row closes one box, not two:\n%s", strings.Join(pair, "\n"))
 		}
@@ -122,7 +123,7 @@ func TestTheTakeoverBoxCloseslevelWithUpNext(t *testing.T) {
 // row is inside it — not a bottom line cut off by the truncation above it.
 func TestTheTakeoverBoxKeepsItsControlRow(t *testing.T) {
 	b := withBurst(t, NewBroadcaster(), "a", "b", "c")
-	got := StripANSI(strings.Join(b.readPair(), "\n"))
+	got := ttytest.StripANSI(strings.Join(b.readPair(), "\n"))
 	if !strings.Contains(got, "Details / Full Read / Manage") {
 		t.Errorf("the takeover box has no way in:\n%s", got)
 	}

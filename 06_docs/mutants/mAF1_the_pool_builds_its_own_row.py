@@ -5,9 +5,9 @@ import pathlib
 # purpose is "basic weather info to determine if they want to have that location
 # prioritized" (D-112).
 p = pathlib.Path("modes/tty/broadcaster_pool.go"); s = p.read_text()
-old = """			row = WeatherRow(loc, b.fireBold(), 0)"""
+old = """			row = frame.WeatherRow(loc, b.fireBold(), 0)"""
 assert old in s, "mAF1"
-new = """			row.Loading = RowLoading(loc)
+new = """			row.Loading = frame.RowLoading(loc)
 			row.Conditions = loc.Harmonized.Condition
 			row.Now = loc.Harmonized.Temp
 			row.Station = loc.Harmonized.Source.ModelOrStation"""

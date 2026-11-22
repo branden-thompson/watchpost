@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -49,7 +50,7 @@ func TestTheHeldBandCountsHazardsNotCards(t *testing.T) {
 	burst := burstOfForTest(t, "b", 5, 33.31, -117.3)
 	b := standbyWith(t, 90*time.Second, wideFenceForTest(), burst)
 
-	got := StripANSI(strings.Join(b.heldNotice(), " "))
+	got := ttytest.StripANSI(strings.Join(b.heldNotice(), " "))
 	if !strings.Contains(got, "5 HAZARD(S) HELD") {
 		t.Errorf("a burst of five reads %q; a burst is ONE card carrying many hazards, and the "+
 			"operator is being told how many are being withheld", strings.TrimSpace(got))
@@ -64,7 +65,7 @@ func TestTheHeldBandIsSilentWhenNothingIsReadable(t *testing.T) {
 
 	if rows := b.heldNotice(); rows != nil {
 		t.Errorf("the band claims a hazard is held that the fence excludes — going ON AIR "+
-			"would read nothing:\n%q", StripANSI(strings.Join(rows, " ")))
+			"would read nothing:\n%q", ttytest.StripANSI(strings.Join(rows, " ")))
 	}
 }
 

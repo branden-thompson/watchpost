@@ -13,6 +13,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -53,7 +54,7 @@ func press(t *testing.T, r Router, key string) Router {
 // line-up to reorder and nothing to drop from one.
 func TestTheCardWindowOffersTheConsolesTwoControls(t *testing.T) {
 	r := openCard(t, 0)
-	body := StripANSI(strings.Join(r.observer.cardLines(r.observer.opts()), "\n"))
+	body := ttytest.StripANSI(strings.Join(r.observer.cardLines(r.observer.opts()), "\n"))
 	for _, want := range []string{"Change Position", "Drop from Line-Up"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the card window does not offer %q:\n%s", want, body)
@@ -165,7 +166,7 @@ func TestDropAsksAndExplainsWhatItDoes(t *testing.T) {
 	if r.observer.cardAct != cardActionDrop {
 		t.Fatal("[k] opened no confirmation")
 	}
-	got := StripANSI(strings.Join(r.observer.dropPrompt(r.observer.opts()), "\n"))
+	got := ttytest.StripANSI(strings.Join(r.observer.dropPrompt(r.observer.opts()), "\n"))
 	for _, want := range []string{"ARE YOU SURE", "discard pile", "location pool", "Producer"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the confirmation does not mention %q:\n%s", want, got)
@@ -277,7 +278,7 @@ func TestMovingACardRedrawsTheTable(t *testing.T) {
 	}
 	// AND THE FRAME AGREES WITH THE ROWS, which is the claim the operator is
 	// actually making: what they READ has changed.
-	if !strings.Contains(StripANSI(r.broadcaster.View().Content), "09.") {
+	if !strings.Contains(ttytest.StripANSI(r.broadcaster.View().Content), "09.") {
 		t.Error("position nine is not on the frame at all")
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -43,7 +44,7 @@ func TestTheOnAirBoundaryIsStatedAtEveryDrawableWidth(t *testing.T) {
 		b := broadcasterWithOneCard(t)
 		b.width = w
 		b, _ = b.Update(StationMsg{Power: lineup.Running})
-		got := StripANSI(b.View().Content)
+		got := ttytest.StripANSI(b.View().Content)
 
 		var said string
 		for _, words := range bcAirBoundaries() {
@@ -82,7 +83,7 @@ func TestTheBoundaryIsAbsentWhenTheStationIsNotOnAir(t *testing.T) {
 		b := broadcasterWithOneCard(t)
 		b.width = 150
 		b, _ = b.Update(StationMsg{Power: power})
-		got := StripANSI(b.View().Content)
+		got := ttytest.StripANSI(b.View().Content)
 		for _, words := range bcAirBoundaries() {
 			if strings.Contains(got, words) {
 				t.Errorf("power %v: the console states an ON AIR boundary while it is not on the air: %q", power, words)
@@ -119,7 +120,7 @@ func TestTheOnAirBoundaryFallsAwayRatherThanBeingCut(t *testing.T) {
 		b := broadcasterWithOneCard(t)
 		b.width = w
 		b, _ = b.Update(StationMsg{Power: lineup.Running})
-		got := StripANSI(b.View().Content)
+		got := ttytest.StripANSI(b.View().Content)
 		whole := false
 		for _, words := range bcAirBoundaries() {
 			if strings.Contains(got, words) {
@@ -162,7 +163,7 @@ func TestEveryStationStateIsLegibleWithoutColour(t *testing.T) {
 		b := broadcasterWithOneCard(t)
 		b.ascii = true // --ascii: no colour anywhere
 		b, _ = b.Update(StationMsg{Power: tc.power})
-		got := StripANSI(b.View().Content)
+		got := ttytest.StripANSI(b.View().Content)
 		if !strings.Contains(got, tc.want) {
 			t.Errorf("power %v: the frame never says %q under --ascii; a colour alone fails "+
 				"any terminal without one (FR-5.3)", tc.power, tc.want)
@@ -173,7 +174,7 @@ func TestEveryStationStateIsLegibleWithoutColour(t *testing.T) {
 	b := broadcasterWithOneCard(t)
 	b.ascii = true
 	b, _ = b.Update(StationMsg{Power: lineup.OffAir})
-	if got := StripANSI(b.View().Content); !strings.Contains(got, "DEAD AIR") {
+	if got := ttytest.StripANSI(b.View().Content); !strings.Contains(got, "DEAD AIR") {
 		t.Error("STANDBY does not say it is dead air; the operator reads a state without its consequence")
 	}
 }

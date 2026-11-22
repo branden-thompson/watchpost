@@ -18,6 +18,7 @@ package tty
 // A MEMO MAY MISS. IT MUST NEVER WRONGLY HIT. Every choice here takes the miss.
 
 import (
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -68,14 +69,14 @@ type consoleKey struct {
 
 // consoleMemo is the single slot, bound to one entry: the last key.
 type consoleMemo struct {
-	MemoStats
+	frame.MemoStats
 	ok          bool
 	key         consoleKey
 	sched, pool scrollSpan
-	rows        []string     // the tables railed, as the frame draws them (railTables)
-	cursor      CursorSlot   // the console's cursor, kept for the Router (D-362)
-	head        MastheadSlot // the masthead (0.19.5 D-22, MastheadSlot)
-	proj        projSlot     // the line-up as the operator sees it (0.19.5 D-22, projection)
+	rows        []string           // the tables railed, as the frame draws them (railTables)
+	cursor      frame.CursorSlot   // the console's cursor, kept for the Router (D-362)
+	head        frame.MastheadSlot // the masthead (0.19.5 D-22, MastheadSlot)
+	proj        projSlot           // the line-up as the operator sees it (0.19.5 D-22, projection)
 }
 
 // lineupGens counts the line-ups the console has been handed, across every
@@ -182,7 +183,7 @@ func (b Broadcaster) buildSpans(used int) (scrollSpan, scrollSpan) {
 // would dereference the nil slot to reach itself. Same shape, different
 // receiver — the mutex-read accessor the HUM LEAD ratified on 2026-09-13, one
 // package along.
-func (m *consoleMemo) stats() *MemoStats {
+func (m *consoleMemo) stats() *frame.MemoStats {
 	if m == nil {
 		return nil
 	}
@@ -204,7 +205,7 @@ func (b Broadcaster) anyLoading() bool {
 		return false
 	}
 	for i := range b.pool.Locations { // bounded by the snapshot (P10-02)
-		if RowLoading(&b.pool.Locations[i]) {
+		if frame.RowLoading(&b.pool.Locations[i]) {
 			return true
 		}
 	}

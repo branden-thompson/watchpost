@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
@@ -77,7 +78,7 @@ func TestThePropagationModeIsAKeymapAction(t *testing.T) {
 func TestTheModeIsNamedInEveryPath(t *testing.T) {
 	for _, mode := range screenModes {
 		d := pressMap(t, screenDash(t, mode.desc, mode.ascii), "P")
-		screen := StripANSI(d.View().Content)
+		screen := ttytest.StripANSI(d.View().Content)
 		if !strings.Contains(screen, "PROPAGATION") {
 			t.Errorf("%s: the window does not name the Propagation mode:\n%s", mode.name, screen)
 		}

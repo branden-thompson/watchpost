@@ -6,6 +6,8 @@ import (
 	"time"
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // stepAhead presses a key that steps the hours and works out the hour it
@@ -63,11 +65,11 @@ func TestTheHoursStepOnAKey(t *testing.T) {
 // now is not.
 func TestAnHourAheadSaysTypical(t *testing.T) {
 	d := chartDash(t)
-	if strings.Contains(StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n")), "TYPICAL") {
+	if strings.Contains(ttytest.StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n")), "TYPICAL") {
 		t.Fatal("the current hour is labelled typical")
 	}
 	d = stepAhead(t, stepAhead(t, d, "shift+right"), "shift+right")
-	block := StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n"))
+	block := ttytest.StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n"))
 	for _, want := range []string{"+2 h", "TYPICAL, NOT A FORECAST", "+2 h ·"} {
 		if !strings.Contains(block, want) {
 			t.Errorf("two hours ahead the block does not say %q:\n%s", want, block)
@@ -86,7 +88,7 @@ func TestTheTypicalErrorStatesItsBasis(t *testing.T) {
 	d.mapPane.propSnap.TypicalError.Basis = "the week the plan measured"
 	d.mapPane.propSnap.TypicalError.Bands = append(d.mapPane.propSnap.TypicalError.Bands[:0], typicalBand(0, 1.36, 4.58))
 	d = stepAhead(t, d, "shift+right")
-	if block := StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, "±4.6 MHz") {
+	if block := ttytest.StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, "±4.6 MHz") {
 		t.Errorf("the block does not give MUF(3000)'s typical error, 4.6 MHz:\n%s", block)
 	}
 	if words := strings.Join(d.describeLinesAll(), " "); !strings.Contains(words, "the week the plan measured") {

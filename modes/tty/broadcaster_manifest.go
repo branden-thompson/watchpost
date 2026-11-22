@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -144,7 +145,7 @@ func cardPulledShort(o render.Opts, c lineup.Card, now func() time.Time) string 
 // two answers to how old a thing is — so the ladder is asked once, through the
 // one that already owns it, and only the wording differs.
 func shortAgo(d time.Duration) string {
-	words := strings.ToUpper(AgoWords(d))
+	words := strings.ToUpper(frame.AgoWords(d))
 	words = strings.ReplaceAll(words, "MINUTES", "MIN")
 	words = strings.ReplaceAll(words, "MINUTE", "MIN")
 	words = strings.ReplaceAll(words, "HOURS", "HR")

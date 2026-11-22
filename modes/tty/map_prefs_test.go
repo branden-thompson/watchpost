@@ -11,6 +11,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -66,7 +67,7 @@ func TestTheScaleAndNearbyRowsSave(t *testing.T) {
 		t.Errorf("esc wrote scale %q and nearby %d; want county and 25", got.MapScale, got.MapNearbyKm)
 	}
 	body, _, _ := d.focusBody(d.opts())
-	text := StripANSI(strings.Join(body, "\n"))
+	text := ttytest.StripANSI(strings.Join(body, "\n"))
 	for _, want := range []string{"Opens at -", "County", "Nearby -"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the Maps tab does not show %q:\n%s", want, text)
@@ -107,7 +108,7 @@ func TestTheNearbySettingReachesTheDescription(t *testing.T) {
 		d = m.(Dashboard)
 		d, _ = pressKey(d, "g")
 		d = feedAndSettle(t, d)
-		if out := unwrapped(StripANSI(d.View().Content)); !strings.Contains(out, c.want) {
+		if out := unwrapped(ttytest.StripANSI(d.View().Content)); !strings.Contains(out, c.want) {
 			t.Errorf("nearby %d km: want %q:\n%s", c.km, c.want, out)
 		}
 	}
@@ -128,7 +129,7 @@ func TestALayerSwitchedOffIsNotDrawn(t *testing.T) {
 			t.Fatal("an overlay of a layer switched off was drawn")
 		}
 	}
-	if text := StripANSI(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "Alert areas are switched off") {
+	if text := ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "Alert areas are switched off") {
 		t.Errorf("the description does not say the alert areas are off:\n%s", text)
 	}
 	on := mapDash(t, Config{MapLayers: alertLayers, MapFeed: boxFeed(-117.6, -117.1, false)})
@@ -146,7 +147,7 @@ func TestTheLayersRowTogglesAndSaves(t *testing.T) {
 	d, got := uiDash(t, rowMapLayers)
 	d.cfg.MapLayers = alertLayers
 	body, _, _ := d.focusBody(d.opts())
-	if text := StripANSI(strings.Join(body, "\n")); !strings.Contains(text, "MAP - LAYERS") || !strings.Contains(text, "Alert areas -") || !strings.Contains(text, "Enabled") {
+	if text := ttytest.StripANSI(strings.Join(body, "\n")); !strings.Contains(text, "MAP - LAYERS") || !strings.Contains(text, "Alert areas -") || !strings.Contains(text, "Enabled") {
 		t.Errorf("the layers group does not name the layer with its picker:\n%s", text)
 	}
 	d = d.setupSpace()
@@ -247,7 +248,7 @@ func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 	d := mapDash(t, Config{MapLayers: alertLayers, MapCost: cost, MapFeed: boxFeed(-117.6, -117.1, false)})
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	if text := StripANSI(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "Est. 5.0MB / 515 Requests") {
+	if text := ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "Est. 5.0MB / 515 Requests") {
 		t.Errorf("the map does not warn:\n%s", text)
 	}
 	d, _ = pressKey(d, "esc")
@@ -339,7 +340,7 @@ func TestAnAlertInViewIsDescribedInFull(t *testing.T) {
 	d = m.(Dashboard)
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	out := unwrapped(StripANSI(d.View().Content))
+	out := unwrapped(ttytest.StripANSI(d.View().Content))
 	if !strings.Contains(out, "Tornado Warning in effect for this area until") {
 		t.Errorf("the alert in view is not described in full:\n%s", out)
 	}

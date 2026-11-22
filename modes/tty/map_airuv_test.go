@@ -6,6 +6,8 @@ package tty
 import (
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // TestUVAndAirAreOneTintWithTemperature is D-137 and D-139: switching UV on
@@ -40,7 +42,7 @@ func TestSwitchingUVOnAsksForIt(t *testing.T) {
 	if givenOf(d, UVLayer) == 0 {
 		t.Error("no UV grid was handed in")
 	}
-	if row := StripANSI(d.tempLegendRow(120)); !strings.HasPrefix(row, "UV │") || !strings.Contains(row, "EXTREME") {
+	if row := ttytest.StripANSI(d.tempLegendRow(120)); !strings.HasPrefix(row, "UV │") || !strings.Contains(row, "EXTREME") {
 		t.Errorf("the key row is %q; want UV's, low to extreme", row)
 	}
 }
@@ -57,7 +59,7 @@ func TestForecastModeDrawsTheAirsDays(t *testing.T) {
 	if step := d.badgeStep(); step != "NOW AIR" {
 		t.Errorf("the badge's step is %q; want NOW AIR", step)
 	}
-	if row := StripANSI(d.tempLegendRow(120)); !strings.HasPrefix(row, "AIR QUALITY │") {
+	if row := ttytest.StripANSI(d.tempLegendRow(120)); !strings.HasPrefix(row, "AIR QUALITY │") {
 		t.Errorf("the key row is %q; want air quality's", row)
 	}
 }

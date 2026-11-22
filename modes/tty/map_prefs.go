@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -336,7 +337,7 @@ func radarAheadByHours(h int) int {
 }
 
 // radarAheadLabel is the row's words.
-func radarAheadLabel(h int) string { return strconv.Itoa(h) + " hour" + Plural(h) }
+func radarAheadLabel(h int) string { return strconv.Itoa(h) + " hour" + frame.Plural(h) }
 
 // quakeFeeds are the quakes the map draws (D-122), USGS's summary feeds by
 // their own names, the default first: M2.5+ the past week or the past day,

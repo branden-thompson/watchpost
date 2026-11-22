@@ -1,8 +1,7 @@
-package tty
+package frame
 
-// kit_tick.go — the shimmer's clock both surfaces run on: the tick message,
-// the one way a clock is made, and the call that arms it (0.19.6 A-21). The
-// kit's tick.go once B2 moves it.
+// tick.go — the shimmer's clock both surfaces run on: the tick message, the
+// one way a clock is made, and the call that arms it (0.19.6 A-21).
 
 import (
 	"time"
@@ -29,7 +28,8 @@ func TickEvery(d time.Duration, m tea.Msg) tea.Cmd {
 // makes one (0.19.6 D-59).
 func ShimmerTick() tea.Cmd { return TickEvery(300*time.Millisecond, TickMsg{}) }
 
-// ArmShimmer is THE shimmer-tick arming rule, for whichever surface asks (D-56).
+// ArmShimmer is THE shimmer-tick arming rule, for whichever surface asks
+// (0.16.0 D-56).
 //
 // WHAT DIFFERS BETWEEN THE SURFACES IS THE PREDICATE, NOT THE ARMING. Observer
 // animates while something is loading; the console animates while a slot is

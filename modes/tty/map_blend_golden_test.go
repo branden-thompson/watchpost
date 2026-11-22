@@ -14,6 +14,8 @@ import (
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 func TestRadarOverAnAlertAtEachDepth(t *testing.T) {
@@ -34,7 +36,7 @@ func TestRadarOverAnAlertAtEachDepth(t *testing.T) {
 			t.Fatal(err)
 		}
 		frame := strings.Join(f.Lines, "\n")
-		plain := strings.Split(StripANSI(frame), "\n")
+		plain := strings.Split(ttytest.StripANSI(frame), "\n")
 		text := strings.Join(plain, "\n")
 		for _, w := range []string{"Wind Warning · SEVERE", "OpenFreeMap", "100 km"} {
 			if !strings.Contains(text, w) {

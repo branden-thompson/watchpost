@@ -8,8 +8,8 @@ old = """	if !c.Test {
 		return title
 	}
 	if title == "" {
-		return TestEventMark
+		return frame.TestEventMark
 	}
-	return TestEventMark + " " + title"""
+	return frame.TestEventMark + " " + title"""
 assert old in s, "mAD1"
 p.write_text(s.replace(old, "	return title", 1))

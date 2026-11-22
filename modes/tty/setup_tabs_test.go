@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -26,7 +27,7 @@ func TestTheShownTabIsInTheFocusColour(t *testing.T) {
 	if focus := render.ListLabel("[ Data ]", true); strings.Contains(row, focus) {
 		t.Error("a tab not shown is in the focus colour")
 	}
-	if got := StripANSI(row); !strings.Contains(got, "[ "+o.Glyphs().Pointer+" Maps ]") || !strings.Contains(got, "[ Data ]") {
+	if got := ttytest.StripANSI(row); !strings.Contains(got, "[ "+o.Glyphs().Pointer+" Maps ]") || !strings.Contains(got, "[ Data ]") {
 		t.Errorf("the tab row's words changed: %q", got)
 	}
 }

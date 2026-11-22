@@ -1,9 +1,8 @@
-package tty
+package frame
 
-// kit_row.go — the location row both surfaces draw: its day cells, its
-// trend, its loading state and its marks, with the fire threshold's default
-// and the seismic level the marks read (0.19.6 A-21). The kit's row.go once
-// B2 moves it.
+// row.go — the location row both surfaces draw: its day cells, its trend,
+// its loading state and its marks, with the fire threshold's default and the
+// seismic level the marks read (0.19.6 A-21).
 
 import (
 	"fmt"
@@ -15,12 +14,12 @@ import (
 
 // WeatherRow is everything a SNAPSHOT knows about a location, as a table row.
 //
-// THE ONE CONVERTER (D-112), for the Broadcaster's pool as for the watchlist. A
-// hand-built second copy carries only the fields it had on the day it was
-// written, and every column it lacks — HI, LOW, TOMORROW, the trend arrow, the
-// fire and seismic marks — draws `n/a` on a table whose whole purpose the HUM
-// LEAD stated as "gives the human operator some basic weather info to determine
-// if they want to have that location prioritized".
+// THE ONE CONVERTER (0.16.0 D-112), for the Broadcaster's pool as for the
+// watchlist. A hand-built second copy carries only the fields it had on the day
+// it was written, and every column it lacks — HI, LOW, TOMORROW, the trend
+// arrow, the fire and seismic marks — draws `n/a` on a table whose whole
+// purpose the HUM LEAD stated as "gives the human operator some basic weather
+// info to determine if they want to have that location prioritized".
 //
 // Two carriers of one conversion drift silently. The pool table and the
 // watchlist table are the SAME renderer already (`render.PoolTable` is
@@ -61,7 +60,7 @@ func WeatherRow(loc *snapshot.Location, fireBoldMW float64, extDays int) render.
 		row.TomorrowConditions = loc.Daily[1].Condition
 		row.TomorrowHi, row.TomorrowLo = loc.Daily[1].TempMax, loc.Daily[1].TempMin
 	}
-	// THE EXTENDED DAYS ARE THE CALLER'S ASK (D-120). Observer's ultra-wide
+	// THE EXTENDED DAYS ARE THE CALLER'S ASK (0.16.0 D-120). Observer's ultra-wide
 	// columns draw them; the console's two tables do not, and building five day
 	// cells a row for a table that never reads them is work spent on nothing.
 	for _, day := range loc.Daily[min(2, len(loc.Daily)):] { // bounded by the forecast (P10-02)
@@ -159,7 +158,8 @@ func seismicRowLevel(ss *snapshot.SeismicState) int {
 	return render.SeismicLevel(ss.Quakes[0].Mag)
 }
 
-// LevelControl renders "<LABEL> [-]█████░░░░░[+] 55" — the ONE bar (D-56).
+// LevelControl renders "<LABEL> [-]█████░░░░░[+] 55" — the ONE bar
+// (0.16.0 D-56).
 //
 // THE CONSOLE CALLS IT "GAIN" AND OBSERVER CALLS IT "VOL", and that is the whole
 // difference (HUM LEAD, 2026-09-10: "gain is the VOL control in Observer"). A

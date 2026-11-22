@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/branden-thompson/watchpost/internal/allocpin"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // P-1 — THE TICK PATH HAS A BUDGET.
@@ -56,7 +58,7 @@ func TestTickAdvanceAllocBudgetWithATestEventOnTheTape(t *testing.T) {
 	marked[0].Test = true
 	d.setTicker(marked)  // through its one writer, so the tape memo sees the change (0.19.5 PF-8)
 	_ = d.View().Content // warm the theme and the kit's probes
-	if !strings.Contains(StripANSI(d.View().Content), TestEventMark) {
+	if !strings.Contains(ttytest.StripANSI(d.View().Content), frame.TestEventMark) {
 		t.Fatal("the fixture's test event is not reaching the band; this measures the unmarked path")
 	}
 	tick := allocpin.Pin(t, "ticker advance with a test event", 50, func() { d.advanceTicker() })

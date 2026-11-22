@@ -3,6 +3,6 @@ import pathlib
 # a narrow rule drops — and the whole point of the mark is that it cannot be the
 # part that is missing (D-110).
 p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
-old = """	return TestEventMark + " " + title"""
+old = """	return frame.TestEventMark + " " + title"""
 assert old in s, "mAD2"
-p.write_text(s.replace(old, """	return title + " " + TestEventMark""", 1))
+p.write_text(s.replace(old, """	return title + " " + frame.TestEventMark""", 1))

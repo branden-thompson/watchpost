@@ -17,6 +17,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -32,7 +34,7 @@ import (
 func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	rows := strings.Split(StripANSI(b.View().Content), "\n")
+	rows := strings.Split(ttytest.StripANSI(b.View().Content), "\n")
 
 	boxes := 0
 	for _, r := range rows {
@@ -53,11 +55,11 @@ func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
 	// AND THE TABLE DRAWS ITS SLOTS, which is where the rest of the running
 	// order is.
 	for _, want := range []string{"02.", "03."} {
-		if !strings.Contains(StripANSI(b.View().Content), want) {
+		if !strings.Contains(ttytest.StripANSI(b.View().Content), want) {
 			t.Errorf("an empty line-up drew no %q row; a slot is an ADDRESS whether or not it is filled", want)
 		}
 	}
-	if strings.Contains(StripANSI(b.View().Content), "nothing scheduled") {
+	if strings.Contains(ttytest.StripANSI(b.View().Content), "nothing scheduled") {
 		t.Error(`"(nothing scheduled)" is a dead end; the slots say it better`)
 	}
 }
@@ -68,9 +70,9 @@ func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
 func TestAnEmptySlotShimmers(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	first := StripANSI(b.View().Content)
+	first := ttytest.StripANSI(b.View().Content)
 	b.frame++
-	second := StripANSI(b.View().Content)
+	second := ttytest.StripANSI(b.View().Content)
 
 	if first == second {
 		t.Error("an empty slot must animate between frames; the console is static")
@@ -81,7 +83,7 @@ func TestAnEmptySlotShimmers(t *testing.T) {
 // card the Director has already chosen must stop it.
 func TestAFilledSlotIsStill(t *testing.T) {
 	var l lineup.Lineup
-	c := Card(t, "a", "LOCATION REPORT • OCEANSIDE, CA")
+	c := ttytest.Card(t, "a", "LOCATION REPORT • OCEANSIDE, CA")
 	next, err := l.Queue(lineup.MainTrack, c)
 	if err != nil {
 		t.Fatalf("seeding: %v", err)
@@ -91,7 +93,7 @@ func TestAFilledSlotIsStill(t *testing.T) {
 	b.width, b.height, b.ascii = 150, 74, true
 	b, _ = b.Update(LineupMsg{Lineup: l})
 
-	rows := strings.Split(StripANSI(b.View().Content), "\n")
+	rows := strings.Split(ttytest.StripANSI(b.View().Content), "\n")
 	for _, r := range rows {
 		// THE SHIMMER IS THE WAITING PLACEHOLDER, not any three dots. Asking for
 		// "..." would match the TRUNCATION ELLIPSIS whenever the card loses three
@@ -114,7 +116,7 @@ func TestAFilledSlotIsStill(t *testing.T) {
 func TestAnEmptySlotStillCarriesItsHandle(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	got := StripANSI(b.View().Content)
+	got := ttytest.StripANSI(b.View().Content)
 	// THE READ CARD KEEPS ITS CHIP; THE TABLE ROWS CARRY THEIR NUMBER (D-94).
 	// The `##.` column IS the address, exactly as it is on Observer's table, so a
 	// chip beside it would be the address written twice.
@@ -143,7 +145,7 @@ func TestTheTickAdvancesTheShimmerAndReArms(t *testing.T) {
 	b.width, b.height, b.ascii = 150, 74, true
 
 	before := b.frame
-	b, cmd := b.Update(TickMsg{})
+	b, cmd := b.Update(frame.TickMsg{})
 
 	if b.frame == before {
 		t.Errorf("the tick must advance the shimmer's phase; it stayed at %d", before)
@@ -159,7 +161,7 @@ func TestTheTickAdvancesTheShimmerAndReArms(t *testing.T) {
 func TestTheTickStopsOnceEverySlotIsDecided(t *testing.T) {
 	var l lineup.Lineup
 	for i := 0; i < MainTrackSlots; i++ {
-		c := Card(t, "c"+string(rune('a'+i)), "LOCATION REPORT • TOWN "+string(rune('A'+i)))
+		c := ttytest.Card(t, "c"+string(rune('a'+i)), "LOCATION REPORT • TOWN "+string(rune('A'+i)))
 		next, err := l.Queue(lineup.MainTrack, c)
 		if err != nil {
 			t.Fatalf("seeding: %v", err)
@@ -173,7 +175,7 @@ func TestTheTickStopsOnceEverySlotIsDecided(t *testing.T) {
 	if b.tickNeeded() {
 		t.Fatal("a full line-up has nothing left to animate")
 	}
-	if _, cmd := b.Update(TickMsg{}); cmd != nil {
+	if _, cmd := b.Update(frame.TickMsg{}); cmd != nil {
 		t.Error("a full line-up must not re-arm the shimmer")
 	}
 }

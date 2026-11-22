@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -64,7 +65,7 @@ func TestOnStandbyTheLineUpStartsAtUpNextAndLiveIsEmpty(t *testing.T) {
 	// AND THE OPERATOR CAN SEE WHAT IT IS. The card is a MANIFEST (D-87) —
 	// its name, its status and what it contains — so what UP NEXT shows is the
 	// card, not its words.
-	got := StripANSI(b.View().Content)
+	got := ttytest.StripANSI(b.View().Content)
 	if !strings.Contains(got, "FIRST") {
 		t.Error("the operator cannot see what will go out first; UP NEXT drew no card")
 	}

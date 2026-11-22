@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // eachWindow runs a check for every window there is.
@@ -122,7 +124,7 @@ func TestHelpListsEachWindowsOwnGroup(t *testing.T) {
 			t.Errorf("window %d declares Help's %s group and Help does not list it", m, w.helpTitle)
 		}
 	})
-	help := StripANSI(strings.Join(helpTextLines(t), "\n"))
+	help := ttytest.StripANSI(strings.Join(helpTextLines(t), "\n"))
 	if !strings.Contains(help, "P Propagation, L Layer, U Refresh, / Find") {
 		t.Error("Help lost the map's rows")
 	}

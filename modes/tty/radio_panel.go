@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/term"
@@ -72,7 +73,7 @@ func (d Dashboard) volControl(o render.Opts, width int) string {
 			minus = o.KeyCapWith("-", render.ChipFlashDown)
 		}
 	}
-	return LevelControl(o, "VOL ", d.radioVolume, minus, plus, width)
+	return frame.LevelControl(o, "VOL ", d.radioVolume, minus, plus, width)
 }
 
 // radioPanel renders the player: the rows the layout already built for the

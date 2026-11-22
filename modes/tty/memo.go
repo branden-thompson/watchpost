@@ -18,6 +18,7 @@ import (
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
@@ -61,18 +62,18 @@ type bodyKey struct {
 // bodyMemo is the single slot. hits/misses are read by the tests and the
 // diagnostic dump; they are not policy.
 type bodyMemo struct {
-	MemoStats
+	frame.MemoStats
 	ok               bool
 	key              bodyKey
 	priority, recent string
 	// cursor is the frame's cursor, kept here so the hit path allocates
 	// nothing for it (D-362, CursorSlot).
-	cursor CursorSlot
+	cursor frame.CursorSlot
 	// tape is the ticker's current lane as the frame and the scroll read it
 	// (0.19.5 PF-8, tapeOf).
 	tape tapeSlot
 	// head is the masthead (0.19.5 PF-7, MastheadSlot).
-	head MastheadSlot
+	head frame.MastheadSlot
 }
 
 // sameContent is a snapshot's stand-in in the tables' memo key (0.19.5 D-31).
@@ -166,7 +167,7 @@ func (d Dashboard) anyLoading() bool {
 			continue
 		}
 		for i := range sn.Locations {
-			if RowLoading(&sn.Locations[i]) {
+			if frame.RowLoading(&sn.Locations[i]) {
 				return true
 			}
 		}
@@ -314,7 +315,7 @@ type modalKey struct {
 
 // modalMemo is the single slot.
 type modalMemo struct {
-	MemoStats
+	frame.MemoStats
 	ok  bool
 	key modalKey
 	out string
@@ -475,14 +476,14 @@ func (d Dashboard) modalMemoCounts() (hits, misses int) { return d.mmemo.stats()
 
 // stats returns the embedded counters, or nil for a nil slot — so counts() can
 // answer (0, 0) without every caller repeating the nil check.
-func (m *bodyMemo) stats() *MemoStats {
+func (m *bodyMemo) stats() *frame.MemoStats {
 	if m == nil {
 		return nil
 	}
 	return &m.MemoStats
 }
 
-func (m *modalMemo) stats() *MemoStats {
+func (m *modalMemo) stats() *frame.MemoStats {
 	if m == nil {
 		return nil
 	}

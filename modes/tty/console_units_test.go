@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -17,9 +19,9 @@ func consoleUnder(t *testing.T, units, clock string) Router {
 		t.Fatal(err)
 	}
 	r := NewRouter(d)
-	r.broadcaster = loadedConsole(t, LoadedPoolSize)
+	r.broadcaster = loadedConsole(t, ttytest.LoadedPoolSize)
 	r.active = SurfaceBroadcaster
-	return step(t, r, TickMsg{})
+	return step(t, r, frame.TickMsg{})
 }
 
 // step passes one message through the Router.
@@ -41,7 +43,7 @@ func TestTheConsolesPoolWearsTheListenersUnits(t *testing.T) {
 		{"metric", "20°C", "68°F"},
 		{"imperial", "68°F", "20°C"},
 	} {
-		got := StripANSI(consoleUnder(t, c.units, "").View().Content)
+		got := ttytest.StripANSI(consoleUnder(t, c.units, "").View().Content)
 		if !strings.Contains(got, c.want) || strings.Contains(got, c.not) {
 			t.Errorf("under %s the console's pool should say %s and never %s", c.units, c.want, c.not)
 		}
@@ -59,7 +61,7 @@ func TestTheConsolesMastheadWearsTheListenersClock(t *testing.T) {
 		r := consoleUnder(t, "", c.clock)
 		r.broadcaster.now = func() time.Time { return at.Add(time.Minute) }
 		r = step(t, r, SnapshotMsg{Snap: &snapshot.Snapshot{GeneratedAt: at}})
-		if got := StripANSI(r.View().Content); !strings.Contains(got, "Updated: 11/06/2026 "+c.want) {
+		if got := ttytest.StripANSI(r.View().Content); !strings.Contains(got, "Updated: 11/06/2026 "+c.want) {
 			t.Errorf("under the %q clock the console's masthead should be stamped %s", c.clock, c.want)
 		}
 	}
@@ -72,8 +74,8 @@ func TestAUnitsChangeRedrawsTheConsolesPool(t *testing.T) {
 	r := consoleUnder(t, "metric", "")
 	_ = r.View().Content // fill the memo in °C
 	r.observer.units = r.observer.units ^ 1
-	r = step(t, r, TickMsg{})
-	if got := StripANSI(r.View().Content); !strings.Contains(got, "68°F") {
+	r = step(t, r, frame.TickMsg{})
+	if got := ttytest.StripANSI(r.View().Content); !strings.Contains(got, "68°F") {
 		t.Error("the units changed with the console up, and its pool still draws the old units")
 	}
 }

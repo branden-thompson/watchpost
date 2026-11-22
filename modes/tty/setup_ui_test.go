@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -122,8 +123,8 @@ func TestTheClockSettingReachesTheFrame(t *testing.T) {
 		t.Errorf("selecting 24hr reaches the render options, got %v", got)
 	}
 	// The header stamp is the site a listener sees first.
-	twelve := StripANSI(d.header(d.opts()))
-	twentyFour := StripANSI(nd.header(nd.opts()))
+	twelve := ttytest.StripANSI(d.header(d.opts()))
+	twentyFour := ttytest.StripANSI(nd.header(nd.opts()))
 	if twelve == twentyFour {
 		t.Errorf("the header stamp follows the clock:\n%s\n%s", twelve, twentyFour)
 	}
@@ -167,7 +168,7 @@ func TestEveryTabIsOneColumn(t *testing.T) {
 				d.setup.focus, _ = base.firstRowOfTab(tab)
 				lines, _, _ := d.setupPage(d.opts())
 				for _, l := range lines {
-					plain := StripANSI(l)
+					plain := ttytest.StripANSI(l)
 					if strings.Count(plain, "←") > 1 || strings.Count(plain, "●")+strings.Count(plain, "○") > 1 {
 						t.Errorf("%dx%d surface %v tab %s: a line holds two settings: %q", size[0], size[1], surface, tab.Label(), plain)
 					}
@@ -188,7 +189,7 @@ func TestTheMapLayersTabHoldsDetailAndLayers(t *testing.T) {
 		on := d
 		on.setup.focus, _ = d.firstRowOfTab(tab)
 		lines, _, _ := on.setupPage(on.opts())
-		return StripANSI(strings.Join(lines, "\n"))
+		return ttytest.StripANSI(strings.Join(lines, "\n"))
 	}
 	maps, layers := page(tabMaps), page(tabMapLayers)
 	if !strings.Contains(maps, "MAP") || strings.Contains(maps, "MAP - DETAIL") || strings.Contains(maps, "MAP - LAYERS") {
@@ -207,13 +208,13 @@ func TestTheTabRowFitsTheNarrowWindow(t *testing.T) {
 		d := setupGolden(t, size[0], size[1], false, rowCastAlerts)
 		o := d.opts()
 		rows := d.setupTabRows(o, o.Width-4)
-		all := StripANSI(strings.Join(rows, "\n"))
+		all := ttytest.StripANSI(strings.Join(rows, "\n"))
 		if len(rows) != 1 {
 			t.Errorf("%dx%d: the tab row takes %d lines", size[0], size[1], len(rows))
 		}
 		for _, r := range rows {
 			if w := render.Width(r); w > o.Width-4 {
-				t.Errorf("%dx%d: a tab row is %d wide, over %d: %q", size[0], size[1], w, o.Width-4, StripANSI(r))
+				t.Errorf("%dx%d: a tab row is %d wide, over %d: %q", size[0], size[1], w, o.Width-4, ttytest.StripANSI(r))
 			}
 		}
 		for _, tab := range d.tabsShown() {
@@ -266,7 +267,7 @@ func TestSettingsFocusLineFollowsTheBalancedLayout(t *testing.T) {
 				t.Fatalf("%s: row %v spans [%d,%d] of %d lines", size.name, id, at, end, len(lines))
 			}
 			if !strings.Contains(lines[at], "›") {
-				t.Errorf("%s: row %v — the focus mark is not on line %d: %q", size.name, id, at, StripANSI(lines[at]))
+				t.Errorf("%s: row %v — the focus mark is not on line %d: %q", size.name, id, at, ttytest.StripANSI(lines[at]))
 			}
 		}
 	}

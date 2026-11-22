@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -21,7 +22,7 @@ func manyPool(t *testing.T, n int) Broadcaster {
 			Label: fmt.Sprintf("Place %02d, CA", i+1), Zip: fmt.Sprintf("920%02d", i),
 			Lat: 33.28 + float64(i)/100, Lon: -117.23, Population: 1000 * (i + 1)})
 	}
-	b := bcWith(t, Card(t, "a", "Oceanside, CA"))
+	b := bcWith(t, ttytest.Card(t, "a", "Oceanside, CA"))
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
 		RadiusMi:    100, Pool: pool})
@@ -33,7 +34,7 @@ func consoleRouter(t *testing.T) Router {
 	t.Helper()
 	cards := make([]lineup.Card, 0, MainTrackSlots)
 	for i := range MainTrackSlots { // bounded by the track (P10-02)
-		cards = append(cards, Card(t, fmt.Sprintf("c%02d", i), fmt.Sprintf("Place %02d, CA", i)))
+		cards = append(cards, ttytest.Card(t, fmt.Sprintf("c%02d", i), fmt.Sprintf("Place %02d, CA", i)))
 	}
 	b := bcWith(t, cards...)
 	b.ascii = true
@@ -79,7 +80,7 @@ func TestTheScrollControlSitsInObserversColumn(t *testing.T) {
 func TestTheScrollControlIsThePoolsAlone(t *testing.T) {
 	b := manyPool(t, 25)
 	b.width, b.height, b.ascii = 150, 58, true
-	rows := strings.Split(StripANSI(b.View().Content), "\n")
+	rows := strings.Split(ttytest.StripANSI(b.View().Content), "\n")
 
 	up, down, sched, header, footer := -1, -1, -1, -1, -1
 	for i, r := range rows { // bounded by the frame (P10-02)
@@ -134,7 +135,7 @@ func TestThePoolsHeadingsDoNotScroll(t *testing.T) {
 	for range 40 { // bounded by the walk (P10-02)
 		b = b.scrollQueue(1)
 	}
-	got := StripANSI(b.View().Content)
+	got := ttytest.StripANSI(b.View().Content)
 	for _, want := range []string{"L O C A T I O N     P O O L", "POPULATION", "CONDITIONS"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("scrolled to the bottom, the pool has lost %q:\n%s", want, got)
@@ -150,7 +151,7 @@ func TestThePoolsHeadingsDoNotScroll(t *testing.T) {
 func TestThePoolIsNotWhateverIsLeftOver(t *testing.T) {
 	b := manyPool(t, 25)
 	b.width, b.height, b.ascii = 150, 58, true
-	got := StripANSI(b.View().Content)
+	got := ttytest.StripANSI(b.View().Content)
 	if !strings.Contains(got, "010. ") {
 		t.Errorf("the pool shows fewer than its ten rows:\n%s", got)
 	}

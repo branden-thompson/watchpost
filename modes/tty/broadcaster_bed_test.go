@@ -10,6 +10,8 @@ package tty
 import (
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // bedConsole is a console told `relays` reach it, or told nothing at all.
@@ -42,7 +44,7 @@ func TestABedWithNothingToCarryIsNotOffered(t *testing.T) {
 	if b.bedAvailable() {
 		t.Fatal("a station with no streaming relay still offers the bed")
 	}
-	row := StripANSI(b.bedLine(b.opts()))
+	row := ttytest.StripANSI(b.bedLine(b.opts()))
 	if !strings.Contains(row, bcNoRelaysHere) {
 		t.Errorf("the row does not say why there is nothing to choose:\n%q", row)
 	}
@@ -66,7 +68,7 @@ func TestABedWithRelaysIsOffered(t *testing.T) {
 	if !b.bedAvailable() {
 		t.Fatal("a station with three streaming relays is refused the bed")
 	}
-	row := StripANSI(b.bedLine(b.opts()))
+	row := ttytest.StripANSI(b.bedLine(b.opts()))
 	if !strings.Contains(row, chipFor("⇧←")) || !strings.Contains(row, chipFor("⇧→")) {
 		t.Errorf("the selector is missing from a station that has relays:\n%q", row)
 	}

@@ -207,7 +207,7 @@ Three things the table does not cover, because the Setting decides whether they 
   (`modes/tty/router.go`), which carries Observer's value onto the Broadcaster as it does Reduce
   motion's.
 - **A Setting a memoised region is drawn from** belongs in that memo's key, or the memo keeps
-  serving the old frame: the masthead's is `mastheadKey` (`modes/tty/masthead.go`).
+  serving the old frame: the masthead's is `mastheadKey` (`modes/tty/internal/frame/masthead.go`).
 
 ## Walkthrough 7 — add a spoken phrase
 

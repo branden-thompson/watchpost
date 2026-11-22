@@ -135,7 +135,8 @@ func TestEveryPackageUnderTheTwoTreesCarriesItsParentsTestMain(t *testing.T) {
 			t.Error(p)
 		}
 	}
-	for _, must := range []string{"app", "modes/tty"} { // the packages with tests at 0.19.6 B0
+	// The packages with tests at 0.19.6 B0, and the two B2 adds.
+	for _, must := range []string{"app", "modes/tty", "modes/tty/internal/frame", "modes/tty/internal/ttytest"} {
 		if !slices.Contains(all, must) {
 			t.Errorf("the walk found no tests in %s; it is broken, or the package lost its tests", must)
 		}

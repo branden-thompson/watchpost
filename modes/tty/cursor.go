@@ -16,6 +16,7 @@ package tty
 import (
 	"strings"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -34,8 +35,8 @@ func caretIn(raw, caret string) (int, bool) {
 // line with none.
 func wordStart(raw string) (int, bool) {
 	plain := plaintext.StripSGR(raw)
-	words := strings.TrimLeft(plain, Sides)
-	if strings.TrimRight(words, Sides) == "" {
+	words := strings.TrimLeft(plain, frame.Sides)
+	if strings.TrimRight(words, frame.Sides) == "" {
 		return 0, false
 	}
 	return render.Width(plain) - render.Width(words), true
@@ -51,7 +52,7 @@ func cursorIn(lines []string, o render.Opts, typing bool) (row, col int, ok bool
 		}
 	}
 	for i, l := range lines {
-		if c, found := FocusMark(l, g.Pointer); found {
+		if c, found := frame.FocusMark(l, g.Pointer); found {
 			return i, c, true
 		}
 	}
@@ -157,12 +158,12 @@ func (d Dashboard) frameCursor(o render.Opts, base, win string, winY int, box st
 		r, c, found := d.windowCursor(o, strings.Split(win, "\n"))
 		return x + c, y + r, found
 	}
-	r, c, found := SurfaceMark(base, o.Glyphs().Pointer)
+	r, c, found := frame.SurfaceMark(base, o.Glyphs().Pointer)
 	return c, r, found
 }
 
 // heldCursor is the body memo's cursor slot, nil without a memo.
-func (d Dashboard) heldCursor() *CursorSlot {
+func (d Dashboard) heldCursor() *frame.CursorSlot {
 	if d.memo == nil {
 		return nil
 	}
@@ -172,12 +173,12 @@ func (d Dashboard) heldCursor() *CursorSlot {
 // consoleCursor is where the console's cursor stands: on its focused row's
 // pointer, the line-up's or the pool's.
 func (b Broadcaster) consoleCursor(content string) (x, y int, ok bool) {
-	r, c, found := SurfaceMark(content, b.opts().Glyphs().Pointer)
+	r, c, found := frame.SurfaceMark(content, b.opts().Glyphs().Pointer)
 	return c, r, found
 }
 
 // heldCursor is the console memo's cursor slot, nil without a memo.
-func (b Broadcaster) heldCursor() *CursorSlot {
+func (b Broadcaster) heldCursor() *frame.CursorSlot {
 	if b.memo == nil {
 		return nil
 	}

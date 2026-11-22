@@ -19,6 +19,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
 // TestEverySettingsRowIsRuledForItsSurface is the closed set.
@@ -78,7 +80,7 @@ func setupOffers(d Dashboard) string {
 		}
 		for _, blk := range on.setupBlocks(on.opts()) { // bounded by the group set (P10-02)
 			for _, l := range blk.lines {
-				b.WriteString(StripANSI(l) + "\n")
+				b.WriteString(ttytest.StripANSI(l) + "\n")
 			}
 		}
 	}
