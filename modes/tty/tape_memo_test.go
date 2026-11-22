@@ -40,8 +40,16 @@ func TestTheTapeTurnsOverAtMidnight(t *testing.T) {
 // missEveryMemo empties every memo the frame reads, so an allocation count
 // taken after it is the whole frame's cost (0.19.5 RR-17).
 func missEveryMemo(d Dashboard) {
-	d.memo.ok, d.memo.tape.ok, d.memo.head.ok, d.memo.cursor.primed = false, false, false, false
+	d.memo.ok, d.memo.tape.ok = false, false
+	d.memo.head = MastheadSlot{}
+	unprimeCursor(&d.memo.cursor, false)
 }
+
+// unprimeCursor un-primes the cursor slot as a real miss leaves it, its held
+// cursor kept for the next frame to reuse. A zero slot would drop that cursor
+// and pin a cold one, 2 allocations a frame the program never makes after its
+// first (0.19.6 D-62).
+var unprimeCursor = Field[CursorSlot, bool]("primed")
 
 // TestTheTapeKeyCoversEverythingTheTapeShows is the tape memo's completeness
 // guard (0.19.5 Q4.3, A-15), the body memo's property for the tape: if two

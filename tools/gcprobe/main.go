@@ -30,10 +30,18 @@
 // function: its entry points' inlined calls are matched by callee across the
 // union of the old function and the functions carved from it.
 //
+// A package move is `-moves`, a file of "from<TAB>to" lines applied after the
+// renames (0.19.6 A-52). The names that moved are read from to's source, so
+// the map names two packages and nothing that could drift: a moved function's
+// keys become to's, from's calls to it read as the compiler writes a call into
+// another package (frame.Plural, frame.(*MastheadSlot).Get), and a key no
+// function owns, a compiler wrapper or a body from another module's file, is
+// counted across both packages on either side.
+//
 // usage:
 //
 //	go run ./tools/gcprobe record [-dir <tree>] [-tree <commit>] -escapes <file> -inlining <file>
-//	go run ./tools/gcprobe compare [-dir <tree>] -escapes <file> -inlining <file> [-map <file>]
+//	go run ./tools/gcprobe compare [-dir <tree>] -escapes <file> -inlining <file> [-map <file>] [-moves <file>]
 //
 // The baselines name the platform and Go they were recorded under; the
 // compiler's decisions are both's, so on another the comparison is refused,
@@ -123,6 +131,7 @@ func probeRun(args []string, stdout, stderr *out) int {
 	escapes := fs.String("escapes", "", "the escapes baseline")
 	inlining := fs.String("inlining", "", "the inlining baseline")
 	mapFile := fs.String("map", "", "compare: a file of old<TAB>new renames applied to the baselines' keys")
+	movesFile := fs.String("moves", "", "compare: a file of from<TAB>to package moves applied to the keys")
 	tree := fs.String("tree", "", "record: the commit the baselines name; the tree's HEAD when empty")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
@@ -134,7 +143,7 @@ func probeRun(args []string, stdout, stderr *out) int {
 	if args[0] == "record" {
 		return record(*dir, *tree, *escapes, *inlining, stdout, stderr)
 	}
-	return compare(*dir, *escapes, *inlining, *mapFile, stdout, stderr)
+	return compare(*dir, *escapes, *inlining, *mapFile, *movesFile, stdout, stderr)
 }
 
 // ---- the probe ----------------------------------------------------------------
@@ -643,7 +652,7 @@ func platform() string { return runtime.GOOS + "/" + runtime.GOARCH }
 // ---- the comparison -----------------------------------------------------------
 
 // compare probes the tree and holds it to the baselines.
-func compare(dir, escapes, inlining, mapFile string, stdout, stderr *out) int {
+func compare(dir, escapes, inlining, mapFile, movesFile string, stdout, stderr *out) int {
 	he, be, err := readCounts(escapes)
 	if err != nil {
 		stderr.say("gcprobe: %v", err)
@@ -667,12 +676,18 @@ func compare(dir, escapes, inlining, mapFile string, stdout, stderr *out) int {
 		stderr.say("gcprobe: %v", err)
 		return 2
 	}
+	moves, err := readMoves(dir, movesFile)
+	if err != nil {
+		stderr.say("gcprobe: %v", err)
+		return 2
+	}
 	p, err := probeTree(dir)
 	if err != nil {
 		stderr.say("gcprobe: %v", err)
 		return 1
 	}
-	failures := judge(renamed(be, renames), renamed(bi, renames), p)
+	now := &probe{escapes: moved(p.escapes, moves, false), inlining: moved(p.inlining, moves, false)}
+	failures := judge(moved(renamed(be, renames), moves, true), moved(renamed(bi, renames), moves, true), now)
 	for _, f := range failures { // bounded by the verdict (P10-02)
 		stdout.say("gcprobe: FAIL %s", f)
 	}
@@ -805,4 +820,190 @@ func total(c counts) int {
 		n += v
 	}
 	return n
+}
+
+// ---- the move map -------------------------------------------------------------
+
+// move is one line of the move map: declarations that left the package from
+// for the package to, both module-relative paths. Which ones is read from
+// to's source, never listed by hand, so the map cannot fall out of step with
+// the code it describes.
+type move struct {
+	from, to string
+	pkg      string          // to's package name, the qualifier its callers write
+	names    map[string]bool // every top-level name to's non-test files declare
+}
+
+// readMoves reads "from<TAB>to" lines and each destination's names; "" is no
+// file and no moves.
+func readMoves(dir, path string) ([]move, error) {
+	if path == "" {
+		return nil, nil
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var out []move
+	for _, line := range strings.Split(string(raw), "\n") { // bounded by the file (P10-02)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		f := strings.Split(line, "\t")
+		if len(f) != 2 || f[0] == "" || f[1] == "" || f[0] == f[1] {
+			return nil, fmt.Errorf("%s: %q is not from<TAB>to, two packages", path, line)
+		}
+		pkg, names, err := declaredNames(filepath.Join(dir, f[1]))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %q: %w", path, line, err)
+		}
+		out = append(out, move{from: f[0], to: f[1], pkg: pkg, names: names})
+	}
+	return out, nil
+}
+
+// declaredNames is a package's name and every top-level name its non-test
+// files declare: its functions, types, constants and variables. A method goes
+// with its type, and a closure with its function, by the name a key's function
+// begins with. The package's name is its files', which must agree: it is the
+// qualifier the compiler writes, and a directory's last element is that name
+// only by convention.
+func declaredNames(pkgDir string) (string, map[string]bool, error) {
+	entries, err := os.ReadDir(pkgDir)
+	if err != nil {
+		return "", nil, err
+	}
+	pkg, names := "", map[string]bool{}
+	for _, e := range entries { // bounded by the directory (P10-02)
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(token.NewFileSet(), filepath.Join(pkgDir, e.Name()), nil, parser.SkipObjectResolution)
+		if err != nil {
+			return "", nil, err
+		}
+		if err := invariant.Check(pkg == "" || f.Name.Name == pkg, pkgDir+"'s files name two packages: "+pkg+" and "+f.Name.Name); err != nil {
+			return "", nil, err
+		}
+		pkg = f.Name.Name
+		for _, d := range f.Decls { // bounded by the file (P10-02)
+			addDeclared(names, d)
+		}
+	}
+	if err := invariant.Check(len(names) > 0, pkgDir+" declares nothing: a move's destination holds the code that moved"); err != nil {
+		return "", nil, err
+	}
+	return pkg, names, nil
+}
+
+// addDeclared adds one top-level declaration's names; a method adds none.
+func addDeclared(names map[string]bool, d ast.Decl) {
+	switch d := d.(type) {
+	case *ast.FuncDecl:
+		if d.Recv == nil {
+			names[d.Name.Name] = true
+		}
+	case *ast.GenDecl:
+		for _, sp := range d.Specs { // bounded by the declaration (P10-02)
+			switch sp := sp.(type) {
+			case *ast.TypeSpec:
+				names[sp.Name.Name] = true
+			case *ast.ValueSpec:
+				for _, n := range sp.Names { // bounded by the spec (P10-02)
+					names[n.Name] = true
+				}
+			}
+		}
+	}
+}
+
+// moved is c with every move applied, to a baseline's keys or to the tree's
+// (0.19.6 A-52). In a baseline, a key of from's whose function is a moved
+// name's becomes to's, as it reads once moved; any other key of from's names
+// the moved declarations qualified, as from's code calls them. A key no
+// function owns, the compiler's <autogenerated> wrappers and bodies inlined
+// from another module's file, is counted across both packages, in the
+// baseline and in the tree alike: a move takes some of them with it, and
+// which ones no name says.
+func moved(c counts, moves []move, baseline bool) counts {
+	if len(moves) == 0 {
+		return c
+	}
+	out := counts{}
+	for k, n := range c { // bounded by the keys (P10-02)
+		fields := strings.Split(k, "\t")
+		for _, m := range moves { // bounded by the map (P10-02)
+			fields = movedKey(fields, m, baseline)
+		}
+		out[strings.Join(fields, "\t")] += n
+	}
+	return out
+}
+
+// movedKey is one key's fields under one move.
+func movedKey(fields []string, m move, baseline bool) []string {
+	q := m.pkg
+	switch {
+	case unowned(fields[1]) && fields[0] == m.to:
+		fields[0] = m.from
+		fields[1], fields[2] = qualified(fields[1], m.names, q), qualified(fields[2], m.names, q)
+	case baseline && fields[0] == m.from && !unowned(fields[1]) && m.names[leadingName(fields[1])]:
+		fields[0] = m.to
+	case baseline && fields[0] == m.from:
+		fields[1], fields[2] = qualified(fields[1], m.names, q), qualified(fields[2], m.names, q)
+	}
+	return fields
+}
+
+// unowned reports whether a key's function field names no function of the
+// package: a compiler wrapper, or another module's file a body came from.
+func unowned(fn string) bool {
+	return fn == "<autogenerated>" || strings.Contains(fn, "/")
+}
+
+// leadingName is the name a key's function begins with: a function's, or a
+// method's type, with or without its pointer.
+func leadingName(fn string) string {
+	fn = strings.TrimPrefix(fn, "(*")
+	return fn[:nameEnd(fn, 0)]
+}
+
+// qualified is s with each moved name that stands alone, after no dot,
+// qualified as the compiler writes a name from another package: q.Name,
+// *q.Name, and q.(*Name) for a method on its pointer.
+func qualified(s string, names map[string]bool, q string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); { // advances by at least one byte a pass (P10-02)
+		star := strings.HasPrefix(s[i:], "(*")
+		at := i
+		if star {
+			at = i + 2
+		}
+		end := nameEnd(s, at)
+		free := i == 0 || (!identByte(s[i-1]) && s[i-1] != '.')
+		if end > at && free && names[s[at:end]] {
+			b.WriteString(q + "." + s[i:end])
+			i = end
+			continue
+		}
+		if end > at && !star {
+			b.WriteString(s[i:end]) // a name, not moved or not free, whole
+			i = end
+			continue
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
+}
+
+// nameEnd is where the identifier starting at from ends: from itself when no
+// identifier starts there.
+func nameEnd(s string, from int) int {
+	for i := from; i < len(s); i++ { // bounded by the string (P10-02)
+		if !identByte(s[i]) {
+			return i
+		}
+	}
+	return len(s)
 }

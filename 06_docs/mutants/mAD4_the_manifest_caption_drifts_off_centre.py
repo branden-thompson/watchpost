@@ -3,6 +3,6 @@ import pathlib
 # row is drawn in, so the caption sits three cells left of the middle of the table
 # it captions (D-110).
 p = pathlib.Path("modes/tty/broadcaster_slots.go"); s = p.read_text()
-old = """		CenterText(bcManifestCaption, lane.lane),"""
+old = """(bcManifestCaption, lane.lane),"""
 assert old in s, "mAD4"
-p.write_text(s.replace(old, """		CenterText(bcManifestCaption, lane.inner()),""", 1))
+p.write_text(s.replace(old, """(bcManifestCaption, lane.inner()),""", 1))

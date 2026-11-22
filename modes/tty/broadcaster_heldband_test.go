@@ -165,3 +165,25 @@ func TestTheBandKeepsTheFreshnessRules(t *testing.T) {
 		t.Error("the band no longer escalates with time")
 	}
 }
+
+// THE HELD-HAZARD BAND KEEPS ITS TAIL AT EVERY WIDTH — a sweep, because a clip
+// that charges escapes fails at some widths only (clip_ansi_test.go) and spot
+// checks fall between the cracks.
+func TestTheHeldBandKeepsItsTailAcrossEveryWidth(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+
+	for w := 100; w <= 220; w++ {
+		b := bcStandby(t, true, 20*time.Minute)
+		b.width = w
+		// WHITESPACE COLLAPSED FIRST. The band CENTRES each wrapped line, so at
+		// widths where the wrap falls between "dropped" and "unread." the two
+		// words are separated by a run of padding — the message is intact and a
+		// contiguous-substring check is not: it would report width 152 as
+		// truncated while the band is correct.
+		got := strings.Join(strings.Fields(StripANSI(strings.Join(b.heldNotice(), " "))), " ")
+		if !strings.Contains(got, "dropped unread") {
+			t.Fatalf("width %d: the severest rung is cut short:\n%q", w, got)
+		}
+	}
+}

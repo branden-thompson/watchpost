@@ -6,6 +6,7 @@ package tty
 // perturb.go once B2 moves it.
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -144,7 +145,7 @@ func bump(v reflect.Value) {
 	// guard reports the window covered while the field behind half its
 	// sentences is never perturbed.
 	//
-	// A COPY, NEVER THE SHARED POINTEE. perturbEach copies the MODEL, and a
+	// A COPY, NEVER THE SHARED POINTEE. PerturbEach copies the MODEL, and a
 	// copy of a struct shares every pointer in it — so bumping through one
 	// would move the BASE as well, `before` and `after` would agree, and the
 	// guard would pass by changing nothing. Cloning is what makes including
@@ -168,4 +169,18 @@ func bump(v reflect.Value) {
 		}
 		v.Set(fresh)
 	}
+}
+
+// Field is a writer for one unexported field of T, found by name once: the
+// engine's own kind of write, for a test that must put a value back in a state
+// no exported name sets (0.19.6 D-62). Resolved at a test file's package
+// scope, the write itself allocates nothing inside an allocation pin. A name T
+// does not have at its top level, or a field of another type than V, panics,
+// so the test binary stops before any test runs rather than writing elsewhere.
+func Field[T, V any](name string) func(*T, V) {
+	f, ok := reflect.TypeFor[T]().FieldByName(name)
+	if !ok || len(f.Index) != 1 || f.Type != reflect.TypeFor[V]() {
+		panic(fmt.Sprintf("Field: %s has no field %s of type %s", reflect.TypeFor[T](), name, reflect.TypeFor[V]()))
+	}
+	return func(p *T, v V) { *(*V)(unsafe.Add(unsafe.Pointer(p), f.Offset)) = v }
 }

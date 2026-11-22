@@ -12,12 +12,11 @@ package tty
 // whenever the text measures at least the width — exactly what `WrapText`
 // produces on a full line — so a clip that charges escapes cuts the held-hazard
 // band's tail at the widths where it fits most tightly, which a sample of a few
-// widths can miss.
+// widths can miss. The sweep over every width is broadcaster_heldband_test.go's.
 
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
@@ -56,27 +55,6 @@ func TestClippingNeverLeavesTheStylingOpen(t *testing.T) {
 		got := clipToWidth(text, w)
 		if strings.Count(got, "\x1b[1m") > strings.Count(got, "\x1b[0m") {
 			t.Errorf("clipping to %d left the bold open: %q", w, got)
-		}
-	}
-}
-
-// AND THE HELD-HAZARD BAND KEEPS ITS TAIL AT EVERY WIDTH — a sweep, because the
-// failure is width-dependent and spot checks fall between the cracks.
-func TestTheHeldBandKeepsItsTailAcrossEveryWidth(t *testing.T) {
-	rendering.SetColorEnabledForTest(true)
-	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
-
-	for w := 100; w <= 220; w++ {
-		b := bcStandby(t, true, 20*time.Minute)
-		b.width = w
-		// WHITESPACE COLLAPSED FIRST. The band CENTRES each wrapped line, so at
-		// widths where the wrap falls between "dropped" and "unread." the two
-		// words are separated by a run of padding — the message is intact and a
-		// contiguous-substring check is not: it would report width 152 as
-		// truncated while the band is correct.
-		got := strings.Join(strings.Fields(StripANSI(strings.Join(b.heldNotice(), " "))), " ")
-		if !strings.Contains(got, "dropped unread") {
-			t.Fatalf("width %d: the severest rung is cut short:\n%q", w, got)
 		}
 	}
 }

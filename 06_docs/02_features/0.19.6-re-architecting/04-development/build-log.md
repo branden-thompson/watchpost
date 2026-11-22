@@ -760,3 +760,62 @@ wrote opens a paragraph with AND, BUT or SO.
 had been re-captured before D-59's rename, and D-59 to D-61 and A-50 named Go files without a line
 or symbol. D-59 and D-60 now cite a symbol and a package; D-61's file floor and A-50's files are
 claims about whole files, listed in `wholeFileClaims` as D-47's are.
+
+The second gate was green, 5,306 s, and the prep is `5171b0cb`.
+
+## B2's second prep: what the move found the prep had left (D-62, D-63; A-51 to A-53)
+
+**The move, tried and set aside.** Built on `5171b0cb`, the move compiled `frame` and `ttytest` with
+no edge back to the root, so the closure's 0 blocked edges hold, and every root reference the
+compiler reported was an exported kit name. It also found four things the prep should have done
+in place, and the move was set aside, unchanged, for this commit:
+- `consoleCursor`'s parameter `frame` shadows the package at the one call it makes to the kit
+  (design CK-10 named it for the prep);
+- `missEveryMemo` sets two of the kit's unexported fields, which `tests-CK-refs.tsv` lists (rows
+  120 and 121) with a zero slot for each. The zero cursor slot is not neutral: it adds 2
+  allocations and 48 B to each of the five Observer miss pins, because a real miss keeps the held
+  cursor and a zero slot drops it. The zero masthead slot leaves every pin equal (measured with
+  each slot alone). Ruled D-62: `Field` writes the one field;
+- two of the clip file's three tests call `clipToWidth`, which stays unexported in the kit, and the
+  third is a console test (A-51);
+- the union check counts the plan's test support as new code once its files stop being
+  `_test.go` files: 13 byte-identical declarations. Ruled D-63: the union leaves out the
+  test-support packages.
+
+**The instruments, surveyed on the move.** This commit's first gate was stopped at its start
+(MAKE_EXIT 143, no run row), because the move, applied in a worktree, showed one more instrument it
+depends on: `gcprobe` failed on 92 keys, since its map could rename a key and not move one. A-52's
+move map lands here, empty, and passes the moved tree with B2's one line. On the same worktree:
+`make graph` is OK, the console's reach 13 to 10 as design CK-9 says; `make p10` has five live
+findings, `walkAt` and `bump` (D-23), the kit's density (D-31) and two loops in the new `gcprobe`
+code, written since with a bound; there is no P10-09 finding, because the engine's lines arrive
+unchanged; and 23 anchors no longer match, 12 by path and 11 by text. Three of the 11 drop the kit
+name here (A-53).
+
+**The changed-line table.**
+
+| File | Line | Kind | Mutants before | After |
+|---|---|---|---|---|
+| `tape_memo_test.go` | `missEveryMemo`: the masthead slot zeroed, the cursor un-primed through `Field` (D-62) | setup | — | — |
+| `ttytest_field_test.go` | `Field`'s test (D-62) | assertion, new | — | none recorded |
+| `broadcaster_heldband_test.go` | the held band's sweep across widths, from the clip file (A-51) | assertion, moved | none | none |
+| `cmd/watchpost/union_decls_test.go` | test support left out, held to `lint-imports`' list both ways (D-63) | assertion | none | none |
+| `tools/gcprobe/main_test.go` | the tree test reads `moves.tsv`; the move map's test (A-52) | assertion, new | — | none recorded |
+
+The union golden's diff: `consoleCursor` edited, and `apptest`'s `Main` and `setDirs` and
+`ttytest`'s `Main` left out. The five miss pins measure 5,525, 11,323, 14,235, 1,138 and 5,526
+allocations, each its baseline.
+
+**The inventory's delta.** New: `TestFieldWritesItsFieldAndRefusesWhatItCannotFind` and
+`TestAMoveCarriesItsNamesKeysToTheirNewPackage` (`tools/gcprobe`). The held band's sweep keeps its
+name and package. No test removed.
+
+`make p10`: 0 live, 0 unmatched, 0 unratified. The new `gcprobe` code first measured 0.98 against
+the package's floor of 1.00; the destination's package name is now read from its package clause,
+which its files must agree on, rather than taken from the directory's last element.
+
+**This commit's second gate failed** in `make lint` on two new findings, both in its own code:
+staticcheck's QF1001 on a digit test in `tools/gcprobe/main.go:qualified`, which guarded nothing,
+since a run that starts with a digit is never a declared name, and is gone; and `unused` on the
+embedded struct in `Field`'s test, which the test now reads to show the write leaves a promoted
+field alone.

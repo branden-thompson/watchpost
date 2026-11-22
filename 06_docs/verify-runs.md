@@ -309,3 +309,5 @@ says exactly what passed.
 | 2026-11-21T16:35:45Z | 76fbbb46 | 8100802d350a | verify | green | 2062 |
 | 2026-11-21T19:45:20Z | ec1339f3 | 283afca60bc8 | verify | FAILED (exit 2) | 1466 |
 | 2026-11-21T21:15:19Z | ec1339f3 | 4152ac9c71d3 | verify | green | 5306 |
+| 2026-11-21T22:39:30Z | 5171b0cb | 93ba993f2c5a | verify | FAILED (exit 2) | 1500 |
+| 2026-11-22T00:07:15Z | 5171b0cb | 8e237f43a61c | verify | green | 5165 |

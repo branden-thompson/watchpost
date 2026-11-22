@@ -10,6 +10,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -30,11 +31,35 @@ func isSplitPackage(name string) bool {
 	return false
 }
 
+// testSupport is the two trees' test-support packages, which test files alone
+// may import (scripts/lint-imports.sh): test code by role wherever its files
+// live, so the union leaves them out as it leaves out _test.go files. The
+// guard's engine and helpers leaving modes/tty's _test.go files for ttytest's
+// are no new code (0.19.6 D-63).
+var testSupport = []string{"app/internal/apptest", "modes/tty/internal/ttytest"}
+
+// inTestSupport reports whether a source file, by its path under root, is in
+// one of the test-support packages.
+func inTestSupport(root, p string) bool {
+	rel, err := filepath.Rel(root, filepath.Dir(p))
+	if err != nil {
+		return false
+	}
+	rel = filepath.ToSlash(rel)
+	for _, d := range testSupport { // bounded by the list (P10-02)
+		if rel == d || strings.HasPrefix(rel, d+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 // unionDecls lists every top-level declaration of the non-test code under app
 // and modes/tty, as "kind name hash": the hash is of the declaration's tokens,
 // so its comments and layout do not count, with a qualifier naming a split
 // package dropped, so a move that changes only where a declaration lives, and
-// how its callers qualify it, leaves its line the same.
+// how its callers qualify it, leaves its line the same. The test-support
+// packages are not counted (testSupport).
 func unionDecls(t *testing.T, root string) []string {
 	t.Helper()
 	var out []string
@@ -44,6 +69,9 @@ func unionDecls(t *testing.T, root string) []string {
 			t.Fatal(err)
 		}
 		for _, p := range paths {
+			if inTestSupport(root, p) {
+				continue
+			}
 			src, err := os.ReadFile(p)
 			if err != nil {
 				t.Fatal(err)
@@ -153,6 +181,26 @@ func TestTheTwoTreesDeclarationsAreConserved(t *testing.T) {
 	if tokensOf([]byte("func f() render.Config {\n\treturn render.Config{}\n}")) == tokensOf([]byte("func f() Config {\n\treturn Config{}\n}")) ||
 		tokensOf([]byte("func f() Config {\n\t_ = 0\n\treturn Config{}\n}")) == tokensOf([]byte("func f() Config {\n\treturn Config{}\n}")) {
 		t.Fatal("control: another package's qualifier or an added statement left the tokens the same")
+	}
+	// THE LEFT-OUT PACKAGES ARE lint-imports' TEST SUPPORT UNDER THE TWO TREES,
+	// both ways: a package the binary links is never left out, and a
+	// test-support package is never counted as code.
+	script, err := os.ReadFile(filepath.Join("..", "..", "scripts", "lint-imports.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var named []string
+	for _, m := range regexp.MustCompile(`check_none "\$r" (\S+) "test support`).FindAllStringSubmatch(string(script), -1) {
+		if strings.HasPrefix(m[1], "app/") || strings.HasPrefix(m[1], "modes/tty/") { // the two trees' own
+			named = append(named, m[1])
+		}
+	}
+	sort.Strings(named)
+	if strings.Join(named, " ") != strings.Join(testSupport, " ") {
+		t.Fatalf("the union leaves out %v and scripts/lint-imports.sh holds %v to test files: the two lists are one", testSupport, named)
+	}
+	if !inTestSupport("r", filepath.Join("r", "modes", "tty", "internal", "ttytest", "main.go")) || inTestSupport("r", filepath.Join("r", "modes", "tty", "internal", "frame", "row.go")) {
+		t.Fatal("control: a test-support file was counted, or a linked package's file left out")
 	}
 	got := unionDecls(t, filepath.Join("..", ".."))
 	if len(got) < 3000 { // the two trees declare 3,319 at 0.19.6 B0

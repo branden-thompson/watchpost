@@ -679,7 +679,7 @@ func (Broadcaster).chromeAt c12c04800d96
 func (Broadcaster).clamp fae7581dd900
 func (Broadcaster).clock bda8d21db1ed
 func (Broadcaster).consoleControls ec616547f59a
-func (Broadcaster).consoleCursor 501be29c1bed
+func (Broadcaster).consoleCursor fbf7dd296f6b
 func (Broadcaster).consoleKeyFor 2dd9f0d1194d
 func (Broadcaster).consoleMemoCounts 7b431ec04a2d
 func (Broadcaster).controlRow c02b57294a00
@@ -2063,8 +2063,6 @@ func DataAsOf 20946a53c35d
 func FocusMark 181316ac7710
 func ForecastSteps 20ba8936a9b4
 func LevelControl b66ea5af5ee2
-func Main 316796d38f3e
-func Main 52e7fb9cf254
 func MastheadKeyOf 91bdcab3313f
 func MastheadStamp cea0f4fe4066
 func MastheadTitle 2e79fe84d68f
@@ -2736,7 +2734,6 @@ func semverParts 63ba29ce4b14
 func sentenceRows 18a6b74e3b58
 func sequenceWrites 6c87c69f2390
 func serveDebug 26b971d85370
-func setDirs aa684aa54724
 func setHalf f69b123b0eea
 func setRuntimeGOOS 4e6c66d862fa
 func setThemeHook af8aa7a948cc

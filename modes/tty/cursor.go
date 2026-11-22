@@ -171,8 +171,8 @@ func (d Dashboard) heldCursor() *CursorSlot {
 
 // consoleCursor is where the console's cursor stands: on its focused row's
 // pointer, the line-up's or the pool's.
-func (b Broadcaster) consoleCursor(frame string) (x, y int, ok bool) {
-	r, c, found := SurfaceMark(frame, b.opts().Glyphs().Pointer)
+func (b Broadcaster) consoleCursor(content string) (x, y int, ok bool) {
+	r, c, found := SurfaceMark(content, b.opts().Glyphs().Pointer)
 	return c, r, found
 }
 

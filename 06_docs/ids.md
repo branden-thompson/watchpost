@@ -1542,9 +1542,11 @@ each one's best mention (0.19.6 D-50).
 | D-61 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | W1.16 (FR-1.11, D-49): the map's key controls evaluated together against the Observer's keymap (? q ctrl+c a … |
 | D-61 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Finding a place worldwide (IS-4): the Observer's lookup refuses non-US results (domains/locations/openmeteo/g… |
 | D-62 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE BED MOVES INTO THE BROADCAST SECTION. "the bed was yet another conveyer of the AIR STATE and we wanted to… |
+| D-62 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2's move: modes/tty/tape_memo_test.go:missEveryMemo sets d.memo.head.ok and d.memo.cursor.primed, fields of … |
 | D-62 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | BUILD batch 8: Settings is at capacity - at 133x44 it must fit 32 lines unscrolled (TestSettingsFitsWithoutSc… |
 | D-62 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Does the recorder fetch for an Observer who never uses propagation (DQ-F9)? Recording only what is fetched le… |
 | D-63 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE FRAME IS THE VIEWPORT, IN BOTH DIMENSIONS. It is padded to the terminal's height and width, because rende… |
+| D-63 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2's move against the union check (cmd/watchpost/union_decls_test.go:TestTheTwoTreesDeclarationsAreConserved;… |
 | D-63 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-7: the description moves from above the map into an [A] Area Alerts box over the map's upper left, b… |
 | D-63 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A SHIP gate for the accessibility carry-over (AX-N; RK-6; REFLECT anti-pattern 5) |
 | D-64 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE CONSOLE DRAWS ITS TEN SLOTS ALWAYS, SHIMMERING WHILE UNDECIDED. "Broadcaster UI should adopt the same met… |
@@ -2378,8 +2380,11 @@ each one's best mention (0.19.6 D-50).
 | A-49 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-180's details: (1) the centre is answered to half a degree, so a pan is answered and the smallest nudge is … |
 | A-50 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2's prep, as built (design CK-1, CK-4; D-55, D-56, D-58). (1) The kit's declarations are cut in place into m… |
 | A-50 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Batches 21 and 22's choices: (1) a disturbed band ◐ in the advisory tone (render.NameAdvisory), degraded, not… |
+| A-51 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2's second prep, as built (D-62, D-63). (1) The clip tests' file keeps the kit's two tests of clipToWidth (m… |
 | A-51 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-193's and D-194's details: (1) one table of roles, propRoles, gives each UI mode its Propagation origin (th… |
+| A-52 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The move map (B2's second prep; A-26). tools/gcprobe renamed keys and could not move them: once the kit is fr… |
 | A-52 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-195's and D-196's details: (1) A-51's roles table becomes the UI modes' map roles, mapRoles: whose place th… |
+| A-53 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Three anchors leave the kit's names (A-25). Of the eleven anchors whose text gains a qualifier in the move, t… |
 | A-53 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Batch 25's choices: (1) the best frequency's words: a chart row "best ~15.0 (20m)" or "none serves"; the cent… |
 | A-54 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-199's details: (1) the switch is "Day / night", last of the map's detail in the Overlays menu and the Setti… |
 | A-55 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W0.3's details (D-201): (1) one place reads typed coordinates and locators: locations.Resolver, which every l… |
@@ -2996,11 +3001,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:139` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:139` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:141` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:141` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:139` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:141` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 
