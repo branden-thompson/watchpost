@@ -947,3 +947,13 @@ extended.
 
 **B2 in commits, as it closes.** 6, the plan's 2; the batch map says so. B2 closes on this commit's
 `make verify-full` and its scoped sweep.
+
+**B2 closed, 2026-11-23.** `make verify-full` on the closing tree, committed as `9a3baba4`: every gate
+green, the whole corpus judged, 6,837 s. The scoped sweep on `9a3baba4`: its baseline green, 232 of
+232 CAUGHT, none SURVIVED, none NO EVIDENCE, in 3,086 s. Of the first sweep's 16 reports, the import's
+two and the trace's three are gone. The 11 left are the move's: the eight re-points, the cursor's seven
+and mAG1, each verdict and killer the record's (D-69), and the masthead's three, now killed by the kit's
+half of the guard as D-58 split it, which neither root guard fails on, run by hand (D-70). B3's
+instruments-first commit makes the report name the file where the file moved, and the four mutant
+headers that still name the root's guard name the kit's. `make p10` on `9a3baba4`: 0 live, 0
+unmatched, 0 unratified, the mirror unchanged at 175 rows. Pushed; the remote ref matched the commit.

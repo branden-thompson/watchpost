@@ -315,3 +315,4 @@ says exactly what passed.
 | 2026-11-22T22:16:03Z | 774eb4a0 | 08b6252b431f | verify | green | 5665 |
 | 2026-11-23T00:52:34Z | cbd71af5 | 2dfa29e5a26a | verify-full | green | 7359 |
 | 2026-11-23T07:59:38Z | b3187507 | 8cf4aeafc595 | verify-full | green | 6837 |
+| 2026-11-23T16:12:05Z | 9a3baba4 | 0acc0b72b095 | verify-docs | green | 563 |

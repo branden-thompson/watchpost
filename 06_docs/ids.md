@@ -1570,9 +1570,11 @@ each one's best mention (0.19.6 D-50).
 | D-68 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Cross-repo release scope (go-tuiMaps D-83), HUM LEAD direction |
 | D-68 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A second HF operator at UAT (PM-S1): every stakeholder in the record is the HUM LEAD |
 | D-69 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | A REFUSED SWAP HAS TO SAY SO |
+| D-69 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2's closing sweep run again (make mutant-scoped BATCH_BASE=ac68cbe8 on 9a3baba4): 232 of 232 CAUGHT, 0 SURVI… |
 | D-69 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-17, HUM LEAD direction: the first open's "what the map sends" text (FR-9.4) |
 | D-69 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Does B on D meet PS-G's own words (PM-P3)? GIRO offers its readings "only for educational and non-commercial … |
 | D-70 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE BREAKS ARE THE DESIGN, AND COLOUR IS AN EDGE |
+| D-70 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The same sweep's other three reports: m744, m745 and m747, in modes/tty/internal/frame/masthead.go:MastheadKe… |
 | D-70 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-23, HUM LEAD direction: which tabs each surface's Settings shows. Supersedes, for the Settings windo… |
 | D-70 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Reading order of the analysis pages (DQ-F19): engineers-first, no summaries |
 | D-71 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | ONE MORE CONSOLIDATION, AND THE OVERLAY STOPS EATING THE CARD |
@@ -3009,11 +3011,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:146` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:146` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:148` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:148` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:146` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:148` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 
