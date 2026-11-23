@@ -909,3 +909,41 @@ moved whole since that base; `SCOPED_FUNCS` is `06_docs/perf/renames.tsv`. `move
 move's first build found what the prep had left, a second prep (D-62, D-63); the batch map says so.
 The rulings before the re-check, `76fbbb46`, are counted with neither batch. B2 closes on this
 commit's `make verify-full` and the scoped sweep.
+
+## B2's closing sweep: 232 CAUGHT, 16 reports, the trace widened (D-67, D-68; A-56)
+
+**The sweep** (`make mutant-scoped BATCH_BASE=ac68cbe8 SCOPED_PATHS=06_docs/mutants/scoped-paths-B2.tsv
+SCOPED_FUNCS=06_docs/perf/renames.tsv` on `b3187507`, 3,502 s): its baseline green; 232 of 232
+CAUGHT, 0 SURVIVED, 0 NO EVIDENCE; 16 reports, so B2 did not close on `b3187507`. By kind:
+- **Re-pointed into the kit, 8:** the cursor's seven (m635, m636, m643 to m645, m649, m654) and
+  mAG1, each anchor now in `internal/frame` while its old file stays in `modes/tty` with other code
+  in it, which a file map cannot name (A-55).
+- **The masthead's named inputs, 3:** m744, m745 and m747, caught by
+  `TestTheMastheadKeyCoversItsNamedInputs`, the kit's half of the guard the prep split (D-58); the
+  move's own check saw each fail that test and no other.
+- **The import, 2:** m241 and m425 read "now in -" (A-56, below).
+- **The trace, 3:** m684, mAI6 and mAS2 (D-67, below).
+
+**The import (A-56).** The comparator takes a mutant's first changed line as its site, and the move's
+fix to m241 and m425 made that line the import it dropped, outside any function. Each now keeps the
+name used inside the function, as m134, m143 and m202 do; the comparator's driver puts the sites at
+`propOriginNow` and `hoursWords`, and each fails its killer on that test's own assertion.
+
+**The trace (D-67, D-68).** The Router trace caught m684, mAI6 and mAS2 in 0.19.5's record and
+catches none of them now. Run alone on each, it fails at `e57afeaf` and passes at `ac68cbe8` and
+at HEAD; the change is `8fee8f28`, B0.6's new walks, which never reach mute's last class, a borrowed
+epicentre or a window with no bounds. No sweep compared killers in B0. Two walks are added from
+the alphabet's own messages, with a Settings pool: Settings from the dashboard, tabbed to
+ALERTS - TONE, a class muted and enabled again; Settings from the console, where the station's rows
+are. The `M` key that opens the tone rows is not in the alphabet, and the alphabet is never
+extended.
+- **The golden:** the four walks' 1,200 lines byte-identical; the 600 new ones byte-identical
+  recorded at HEAD and at `8fee8f28`, whose production code is `e57afeaf`'s; three plain runs and
+  `-race` replay it.
+- **Seen failing:** m684, mAI6 and mAS2 each fail it, and it passes on the clean tree. Two floors,
+  the tone rows 50 and the station's rows 20, under the 137 and 54 frames the six walks show; with
+  the two walks taken out, they fail at 21 and 0.
+- **Cost:** the test takes about 12 s, from 10.
+
+**B2 in commits, as it closes.** 6, the plan's 2; the batch map says so. B2 closes on this commit's
+`make verify-full` and its scoped sweep.

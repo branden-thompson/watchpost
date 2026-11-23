@@ -1562,9 +1562,11 @@ each one's best mention (0.19.6 D-50).
 | D-66 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-15: alerts as the listener explores. All alerts in view by area (A); the same with a severity floor … |
 | D-66 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The shipped work branches (HY-F1): watchpost feature/map-drawing, go-tuiMaps feature/radar-loops (local and r… |
 | D-67 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | A CARD THAT FAILED SITS OUT BEFORE IT IS OFFERED AGAIN |
+| D-67 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Three of B2's closing sweep's 16 reports (make mutant-scoped BATCH_BASE=ac68cbe8 on b3187507: 232 of 232 CAUG… |
 | D-67 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-16, cross-repo (go-tuiMaps D-82): detail levels in the library. In v0.2.0 (A); watchpost's own style… |
 | D-67 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | WSPR spots as PS-2's answer, not only its yardstick (PM-P2) |
 | D-68 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | THE CARDS THE OPERATOR READS FROM ARE NOT THE CARDS THEY ORDER |
+| D-68 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-67's widening, its method. Two walks are added to the Router trace from the alphabet's own messages (the al… |
 | D-68 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Cross-repo release scope (go-tuiMaps D-83), HUM LEAD direction |
 | D-68 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A second HF operator at UAT (PM-S1): every stakeholder in the record is the HUM LEAD |
 | D-69 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d59-d70.md` | A REFUSED SWAP HAS TO SAY SO |
@@ -2393,6 +2395,7 @@ each one's best mention (0.19.6 D-50).
 | A-54 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-199's details: (1) the switch is "Day / night", last of the map's detail in the Overlays menu and the Setti… |
 | A-55 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2's closing sweep, its inputs (D-30, D-51). (1) BATCH_BASE=ac68cbe8, B1's closed commit, so the sweep covers… |
 | A-55 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W0.3's details (D-201): (1) one place reads typed coordinates and locators: locations.Resolver, which every l… |
+| A-56 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | m241 and m425 keep their file's import (A-54). The move's first gate found each deleting its file's one use o… |
 | A-56 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W0.2's caps and FR-5.1/FR-5.2's honesty (D-201): (1) each propagation host's body cap is go-ionomaps' own bou… |
 | A-57 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W6.1's details (D-201, D-136): (1) the words' order as built: the mode and its layer, its full name said once… |
 | A-58 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W5.5's details (D-201, D-88, on go-ionomaps G2.5 and its A-16): (1) a scale is named only above 0, by its lev… |
@@ -3006,11 +3009,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:144` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:144` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:146` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:146` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:144` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:146` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

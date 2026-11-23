@@ -96,14 +96,30 @@ var propPool = []tea.Msg{
 	frame.TickMsg{}, TickerAdvanceMsg{},
 }
 
-// traceWalks are the four seeds' walks: the whole alphabet from the
-// dashboard, the map, the map in Propagation, and the whole alphabet from the
-// console.
+// settingsPool is the Settings window's keys: its rows, its tabs, its
+// controls and typing, with no esc, so a walk stays in the window.
+var settingsPool = []tea.Msg{
+	tea.KeyPressMsg{Code: tea.KeyUp}, tea.KeyPressMsg{Code: tea.KeyDown},
+	tea.KeyPressMsg{Code: tea.KeyLeft}, tea.KeyPressMsg{Code: tea.KeyRight},
+	tea.KeyPressMsg{Code: tea.KeyTab}, tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift},
+	tea.KeyPressMsg{Code: tea.KeyEnter}, tea.KeyPressMsg{Code: tea.KeySpace, Text: " "},
+	tea.KeyPressMsg{Code: tea.KeyBackspace}, key('1', "1"), key('2', "2"), key('5', "5"),
+	frame.TickMsg{}, TickerAdvanceMsg{},
+}
+
+// traceWalks are the six seeds' walks: the whole alphabet from the
+// dashboard, the map, the map in Propagation, the whole alphabet from the
+// console, Settings from the dashboard with one tone class muted and enabled
+// again, and Settings from the console, where the station's rows are. The last
+// two are 0.19.6 D-67's: each walk keeps its seed, so a walk added at the end
+// leaves every line before it as it was recorded.
 var traceWalks = []traceWalk{
 	{},
 	{opening: []tea.Msg{key('g', "g")}, pool: mapPool},
 	{opening: []tea.Msg{key('g', "g"), key('P', "P")}, pool: propPool},
 	{opening: []tea.Msg{tea.KeyPressMsg{Code: 'b', Mod: tea.ModCtrl}}},
+	{opening: []tea.Msg{key('s', "s"), tea.KeyPressMsg{Code: tea.KeyTab}, tea.KeyPressMsg{Code: tea.KeyTab}, tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}, tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}}, pool: settingsPool},
+	{opening: []tea.Msg{tea.KeyPressMsg{Code: 'b', Mod: tea.ModCtrl}, key('s', "s")}, pool: settingsPool},
 }
 
 // traceIndex is a message's index in traceMessages.
@@ -227,7 +243,7 @@ func traceDash(t *testing.T, at time.Time) Dashboard {
 
 // traceReach is how many frames of a trace showed each place the alphabet
 // is widened to reach, read from the frame alone so a move does not edit it.
-type traceReach struct{ mapped, propagation, settings, console int }
+type traceReach struct{ mapped, propagation, settings, console, tones, station int }
 
 // TestRouterUpdateIsTheSameUnderRandomMessages is 0.19.5 Q3.1 (PF-1, RR-8) in
 // 0.19.6 B0's form (design CK-6, A-12, A-29): random message sequences on
@@ -236,10 +252,12 @@ type traceReach struct{ mapped, propagation, settings, console int }
 // own, its reply fed back through the Router; the replies' own commands are
 // described, not run. After each step the trace records the message's index,
 // the surface, the command and a digest of the frame, so it holds every batch
-// of the split to the code of e57afeaf, where the golden was recorded. Four
-// walks on fixed seeds (traceWalks) start from the dashboard, the map, the map
-// in Propagation and the console; each place they reach is seen in a fixed
-// number of frames at least, or the trace has stopped reaching it.
+// of the split to the code of e57afeaf, which the golden records: every walk's
+// lines come out the same on production code identical to it (0.19.6 D-68).
+// Six walks on fixed seeds (traceWalks) start from the dashboard, the map, the
+// map in Propagation, the console, and Settings on each surface (0.19.6 D-67);
+// each place they reach is seen in a fixed number of frames at least, or the
+// trace has stopped reaching it.
 //
 // About names the Go release the test binary was built with, so each frame is
 // hashed with that name taken out: a toolchain update would otherwise change
@@ -249,7 +267,7 @@ func TestRouterUpdateIsTheSameUnderRandomMessages(t *testing.T) {
 	built := "GO " + strings.TrimPrefix(runtime.Version(), "go")
 	var trace strings.Builder
 	var reach traceReach
-	for n, walk := range traceWalks { // the four walks (P10-02)
+	for n, walk := range traceWalks { // the six walks (P10-02)
 		seed := uint64(n + 1)
 		r := NewRouter(traceDash(t, at))
 		r.broadcaster.now = func() time.Time { return at }
@@ -271,12 +289,13 @@ func TestRouterUpdateIsTheSameUnderRandomMessages(t *testing.T) {
 			reach.count(m.(Router).active, ttytest.StripANSI(frame))
 		}
 	}
-	// THE FLOORS, fixed at 0.19.6 B0 (CQ F-18) under the 343, 114, 418 and 144
-	// frames the recording showed.
+	// THE FLOORS, the first four fixed at 0.19.6 B0 (CQ F-18) under the 343,
+	// 114, 418 and 144 frames its recording showed; the tone rows' and the
+	// station rows' at 0.19.6 D-68, under the 137 and 54 the six walks show.
 	for _, f := range []struct {
 		name     string
 		got, min int
-	}{{"the map", reach.mapped, 100}, {"Propagation", reach.propagation, 50}, {"Settings", reach.settings, 100}, {"the console", reach.console, 50}} {
+	}{{"the map", reach.mapped, 100}, {"Propagation", reach.propagation, 50}, {"Settings", reach.settings, 100}, {"the console", reach.console, 50}, {"the tone rows", reach.tones, 50}, {"the station's rows", reach.station, 20}} {
 		if f.got < f.min {
 			t.Errorf("the trace showed %s in %d frames, under its floor of %d; the walks no longer reach it", f.name, f.got, f.min)
 		}
@@ -297,5 +316,11 @@ func (c *traceReach) count(surface Surface, frame string) {
 	}
 	if strings.Contains(frame, "── Settings ──") {
 		c.settings++
+	}
+	if strings.Contains(frame, "ALERTS - TONE") {
+		c.tones++
+	}
+	if strings.Contains(frame, "Service radius:") {
+		c.station++
 	}
 }
