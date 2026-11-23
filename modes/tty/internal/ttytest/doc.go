@@ -11,6 +11,9 @@
 //
 //	`main.go`      Main, the TestMain every package under modes/tty calls
 //	`perturb.go`   PerturbEach, the memo guards' engine, and Field, one field's write
-//	`helpers.go`   stripping ANSI, a frame's first differing line, a card, the masthead's
-//	               snapshot and check, the loaded pool's size
+//	`helpers.go`   stripping ANSI, a frame's first differing line, a token's presence, a
+//	               card, the masthead's snapshot and check, the loaded pool's size, the
+//	               golden frames' check and instant
+//	`fixtures.go`  the card window's composed cards, a tinted card, a pool candidate and
+//	               the loaded station, the data both surfaces' tests build their models from
 package ttytest

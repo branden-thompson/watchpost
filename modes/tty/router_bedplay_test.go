@@ -20,6 +20,7 @@ func TestSpacePlaysTheBedRelayAndNeverOverTheProgramme(t *testing.T) {
 		t.Fatal(err)
 	}
 	var m tea.Model = withStation(t, NewRouter(d), &station{})
+	m, _ = m.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH}) // the refusal is read where the station row draws it (0.19.6 D-22)
 	m, _ = m.Update(keyPress(t, "ctrl+b"))
 
 	m, _ = m.Update(keyFor(t, "space"))
@@ -32,13 +33,13 @@ func TestSpacePlaysTheBedRelayAndNeverOverTheProgramme(t *testing.T) {
 	if plays != 1 {
 		t.Error("space on air played the relay over the programme (D-216)")
 	}
-	if got := m.(Router).broadcaster.statusNote; !strings.Contains(got, "[b]") {
-		t.Errorf("the refusal reads %q; want it to name the cut key", got)
+	if got := drawn(m.(Router).broadcaster); !strings.Contains(got, bedRefusal) || !strings.Contains(bedRefusal, "[b]") {
+		t.Errorf("the station row does not draw the refusal %q naming the cut key:\n%s", bedRefusal, got)
 	}
 
 	m, _ = m.Update(BedMsg{Carrying: true})
-	if got := m.(Router).broadcaster.statusNote; got != "" {
-		t.Errorf("the bed carries and the refusal still reads %q", got)
+	if got := drawn(m.(Router).broadcaster); strings.Contains(got, bedRefusal) {
+		t.Errorf("the bed carries and the refusal still reads %q", bedRefusal)
 	}
 	m, _ = m.Update(keyFor(t, "space"))
 	if plays != 2 {
@@ -61,11 +62,12 @@ func TestStandbyClearsTheBedRefusal(t *testing.T) {
 		t.Fatal(err)
 	}
 	var m tea.Model = withStation(t, NewRouter(d), &station{})
+	m, _ = m.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH}) // the refusal is read where the station row draws it (0.19.6 D-22)
 	m, _ = m.Update(keyPress(t, "ctrl+b"))
 	m, _ = m.Update(StationMsg{Power: lineup.Running})
 	m, _ = m.Update(keyFor(t, "space"))
 	m, _ = m.Update(StationMsg{Power: lineup.OffAir})
-	if got := m.(Router).broadcaster.statusNote; got != "" {
-		t.Errorf("on standby the refusal still reads %q", got)
+	if got := drawn(m.(Router).broadcaster); strings.Contains(got, bedRefusal) {
+		t.Errorf("on standby the refusal still reads %q", bedRefusal)
 	}
 }

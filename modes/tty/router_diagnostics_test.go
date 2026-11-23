@@ -19,6 +19,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
+	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
 // consoleWith puts the operator on the console, over a REAL Dashboard.
@@ -29,8 +30,8 @@ import (
 func consoleWith(t *testing.T, d Dashboard) Router {
 	t.Helper()
 	r := NewRouter(d)
-	r.broadcaster.width, r.broadcaster.height = 150, 74
-	r.observer.width, r.observer.height = 150, 74
+	r.broadcaster, _ = r.broadcaster.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH})
+	r.observer.width, r.observer.height = consoleW, consoleH
 	r = pressAction(t, r, actSwapBroadcaster)
 	if r.active != SurfaceBroadcaster {
 		t.Fatal("the test needs to be on the console")
@@ -123,9 +124,9 @@ func TestTheWindowsStackOnTheFrameRatherThanBesideIt(t *testing.T) {
 	}
 	// AND THE FRAME MUST BE THE VIEWPORT. A short frame pins every overlay to
 	// the top rail, because Overlay centres vertically on the base's height.
-	if baseH < r.broadcaster.height-1 {
+	if baseH < consoleH-1 { // the terminal consoleWith sized the console to
 		t.Errorf("the console frame is %d rows in a %d-row terminal; overlays cannot centre on it",
-			baseH, r.broadcaster.height)
+			baseH, consoleH)
 	}
 }
 
@@ -197,7 +198,7 @@ func TestEveryLayerCentresOnTheTerminal(t *testing.T) {
 	}
 
 	got := ttytest.StripANSI(r.View().Content)
-	want := r.broadcaster.width / 2
+	want := r.broadcaster.Width() / 2
 	c, ok := centreOfLineContaining(got, "ARE YOU SURE")
 	if !ok {
 		t.Fatal("the confirmation must be drawn")
@@ -205,7 +206,7 @@ func TestEveryLayerCentresOnTheTerminal(t *testing.T) {
 	if d := c - want; d > 3 || d < -3 {
 		t.Errorf("the confirmation's centre is column %d in a %d-column terminal (want ~%d): "+
 			"it was composited against something narrower than the frame, so it sits BESIDE what it covers",
-			c, r.broadcaster.width, want)
+			c, r.broadcaster.Width(), want)
 	}
 }
 
@@ -243,8 +244,8 @@ func TestTheConsoleLearnsTheVersionAndTheSnapshotThroughTheRouter(t *testing.T) 
 	d := goldenDash(t, true)
 	d.cfg.Version = "9.9.9"
 	r := NewRouter(d)
-	r.broadcaster.width, r.broadcaster.height = 150, 74
-	r.observer.width, r.observer.height = 150, 74
+	r.broadcaster, _ = r.broadcaster.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH})
+	r.observer.width, r.observer.height = consoleW, consoleH
 
 	m, _ := r.Update(SnapshotMsg{Snap: ttytest.MastheadSnap()})
 	r = m.(Router)
@@ -269,9 +270,9 @@ func TestTheConsoleLearnsTheVersionAndTheSnapshotThroughTheRouter(t *testing.T) 
 func TestGainPressedOnTheConsoleMovesObserversOwnLevel(t *testing.T) {
 	r := consoleWith(t, goldenDash(t, true))
 	before := r.observer.radioVolume
-	if r.broadcaster.gain != before {
+	if got := drawnGain(t, r.broadcaster); got != before { // the level as the gain control draws it (0.19.6 D-22)
 		t.Fatalf("the console must mirror the level it draws: console %d, observer %d",
-			r.broadcaster.gain, before)
+			got, before)
 	}
 
 	r = pressAction(t, r, actGainUp)
@@ -279,9 +280,9 @@ func TestGainPressedOnTheConsoleMovesObserversOwnLevel(t *testing.T) {
 	if r.observer.radioVolume <= before {
 		t.Errorf("the press must reach the surface that owns the level: %d -> %d", before, r.observer.radioVolume)
 	}
-	if r.broadcaster.gain != r.observer.radioVolume {
+	if got := drawnGain(t, r.broadcaster); got != r.observer.radioVolume {
 		t.Errorf("and the console must draw that same level, not a second copy: console %d, observer %d",
-			r.broadcaster.gain, r.observer.radioVolume)
+			got, r.observer.radioVolume)
 	}
 	// AND IT DOES NOT SWAP SURFACES. The operator is watching the console.
 	if r.active != SurfaceBroadcaster {
@@ -298,8 +299,8 @@ func TestGainDownReachesTheSameLevel(t *testing.T) {
 	if r.observer.radioVolume >= before {
 		t.Errorf("gain down must lower the one level: %d -> %d", before, r.observer.radioVolume)
 	}
-	if r.broadcaster.gain != r.observer.radioVolume {
-		t.Errorf("console %d, observer %d", r.broadcaster.gain, r.observer.radioVolume)
+	if got := drawnGain(t, r.broadcaster); got != r.observer.radioVolume { // as drawn (0.19.6 D-22)
+		t.Errorf("console %d, observer %d", got, r.observer.radioVolume)
 	}
 }
 
@@ -313,9 +314,18 @@ func TestGainDownReachesTheSameLevel(t *testing.T) {
 // rather than a list written here, so a control added to the row without a
 // binding fails immediately.
 func TestEveryAdvertisedControlIsBound(t *testing.T) {
-	b := New(Opening{})
-	b.width, b.height, b.ascii = 150, 74, true
-	row := ttytest.StripANSI(b.controlRow(b.opts()))
+	// THE ROW AS DRAWN (0.19.6 D-22): the frame's line that ends the list with
+	// Quit, which every rung of the row's ladder names.
+	row := ""
+	for _, l := range strings.Split(drawn(consoleOf(t, Opening{ASCII: true}, lineup.Lineup{})), "\n") {
+		if strings.Contains(l, "Quit") {
+			row = l
+			break
+		}
+	}
+	if row == "" {
+		t.Fatal("the console draws no control row")
+	}
 
 	keys := broadcasterKeyMap()
 	bound := map[string]bool{}

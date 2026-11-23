@@ -5,7 +5,6 @@ package tty
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
@@ -26,7 +25,7 @@ import (
 // makes this stay fixed is that the two rows come from ONE function, and a test
 // that restated the expected values would pass just as well if they forked.
 func TestThePoolsWeatherIsObserversWeather(t *testing.T) {
-	loc := poolLoc()
+	loc := ttytest.PoolLoc()
 	ref := snapshot.LocationRef{Label: loc.Label, Zip: loc.Zip, Lat: loc.Lat, Lon: loc.Lon, Population: 4000}
 
 	b := bcWith(t, ttytest.Card(t, "a", "Oceanside, CA"))
@@ -76,7 +75,7 @@ func TestThePoolsWeatherIsObserversWeather(t *testing.T) {
 // number, the population, and how far the place is from the TRANSMITTER — which
 // is a different question from how far the observing station is from the place.
 func TestThePoolKeepsItsOwnColumns(t *testing.T) {
-	loc := poolLoc()
+	loc := ttytest.PoolLoc()
 	ref := snapshot.LocationRef{Label: loc.Label, Zip: loc.Zip, Lat: loc.Lat, Lon: loc.Lon, Population: 4000}
 
 	b := bcWith(t, ttytest.Card(t, "a", "Oceanside, CA"))
@@ -107,23 +106,6 @@ func derefF(v *float64) float64 {
 	return *v
 }
 
-// poolLoc is a candidate with everything a pool row can show.
-func poolLoc() *snapshot.Location {
-	now, hi, lo, thi, tlo, stnKM := 73.0, 88.0, 55.0, 91.0, 62.0, 4.2
-	return &snapshot.Location{
-		Label: "Fallbrook, CA", Zip: "92028", Lat: 33.37, Lon: -117.25,
-		WeatherAsOf: time.Now(),
-		Harmonized: snapshot.Conditions{
-			Condition: "CLEAR", Temp: &now,
-			Source: snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KOKB", DistanceKm: &stnKM},
-		},
-		Daily: []snapshot.Daily{
-			{Date: "2026-09-12", Condition: "CLEAR", TempMax: &hi, TempMin: &lo},
-			{Date: "2026-09-13", Condition: "RAIN", TempMax: &thi, TempMin: &tlo},
-		},
-	}
-}
-
 // THE MARKS REACH THE ROW, ALL THREE OF THEM.
 //
 // HUM LEAD, UAT 2026-09-12: "fix this issues so seismic / fire / alerts show up
@@ -134,7 +116,7 @@ func poolLoc() *snapshot.Location {
 // happening there", which on a table for deciding what to put on the air is the
 // wrong answer told confidently.
 func TestThePoolRowCarriesEveryMark(t *testing.T) {
-	loc := poolLoc()
+	loc := ttytest.PoolLoc()
 	frp := 80.0
 	loc.Alerts = []snapshot.Alert{{ID: "a1", Event: "Severe Thunderstorm Warning", Severity: "Severe"}}
 	loc.Fire.Hotspots = []snapshot.Hotspot{{FRPMW: &frp}}
@@ -181,7 +163,7 @@ func TestThePoolRowCarriesEveryMark(t *testing.T) {
 // place the pool already holds — and the pool's weather is already fetched. No
 // new call, no new cadence.
 func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
-	loc := poolLoc()
+	loc := ttytest.PoolLoc()
 	frp := 80.0
 	loc.Alerts = []snapshot.Alert{{ID: "a1", Event: "Severe Thunderstorm Warning", Severity: "Severe"}}
 	loc.Fire.Hotspots = []snapshot.Hotspot{{FRPMW: &frp}}
@@ -230,66 +212,5 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 	}
 	if !strings.Contains(drawn, "C U R R E N T L Y") {
 		t.Errorf("the running order does not name what replaced it:\n%s", drawn)
-	}
-}
-
-// TestTheConsoleReadsTheOperatorsFireThreshold.
-//
-// ONE PLACE, ONE ANSWER ABOUT WHETHER A FIRE IS BURNING HARD. A console
-// threshold of its own — Observer's DEFAULT 50, stated as a constant — would
-// honour an operator's `bold_frp_mw` in [fire] on the watchlist and ignore it
-// on the console, so one location could show a bold hotspot on one surface and
-// a plain one on the other. Two carriers of one fact.
-//
-// IT IS INHERITED THE WAY `ascii` AND `version` ARE — copied by `NewRouter`
-// from the Dashboard the Router is built over, RESOLVED (`d.fireBoldMW()`)
-// rather than raw, so the default lives in exactly one place and the console
-// cannot re-derive it differently. `cfg` is written once at construction and
-// never reassigned, so there is nothing later to follow.
-func TestTheConsoleReadsTheOperatorsFireThreshold(t *testing.T) {
-	frp := 100.0
-	loc := poolLoc()
-	loc.Fire.Hotspots = []snapshot.Hotspot{{FRPMW: &frp}}
-	ref := snapshot.LocationRef{Label: loc.Label, Zip: loc.Zip, Lat: loc.Lat, Lon: loc.Lon}
-
-	// 100 MW is over the default 50 and under an operator's 200: the one
-	// fixture that can tell the two thresholds apart.
-	for _, tc := range []struct {
-		name    string
-		set     float64
-		wantHot bool
-	}{
-		{"the default, unset", 0, true},
-		{"the operator raised it above this fire", 200, false},
-		{"the operator lowered it below this fire", 25, true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			d, err := NewDashboard(Config{FireBoldMW: tc.set})
-			if err != nil {
-				t.Fatal(err)
-			}
-			r := NewRouter(d)
-			b := r.broadcaster
-			b.width, b.height, b.ascii = 150, 74, true
-			b, _ = b.Update(StationAreaMsg{
-				Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
-				RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
-			b, _ = b.WithRecent(&snapshot.Snapshot{Locations: []snapshot.Location{*loc}})
-
-			rows := b.poolRows(b.locIndex())
-			if len(rows) != 1 {
-				t.Fatalf("the pool drew %d rows for one candidate", len(rows))
-			}
-			if rows[0].FireHot != tc.wantHot {
-				t.Errorf("a %g MW hotspot with the threshold at %g: the console says hot=%v, want %v",
-					frp, tc.set, rows[0].FireHot, tc.wantHot)
-			}
-			// AND THE TWO SURFACES AGREE, which is the rule a constant of its own
-			// breaks: Observer's answer is the row it builds (0.19.6 D-55).
-			if want := frame.WeatherRow(loc, d.fireBoldMW(), 0).FireHot; rows[0].FireHot != want {
-				t.Errorf("the console says hot=%v and Observer says %v for one place",
-					rows[0].FireHot, want)
-			}
-		})
 	}
 }

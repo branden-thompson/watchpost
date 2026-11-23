@@ -137,7 +137,7 @@ func TestTheMapPlacesTheCursorOnItsWords(t *testing.T) {
 // order's focused row, and in an Observer window opened over the console.
 func TestTheConsolePlacesTheCursor(t *testing.T) {
 	r := consoleRouter(t)
-	g := r.broadcaster.opts().Glyphs()
+	g := render.Opts{ASCII: true}.Glyphs() // the glyph set of the --ascii console consoleRouter builds
 	if cell, row := cursorCell(t, r.View()); cell != g.Pointer {
 		t.Errorf("on the console the cursor is on %q of %q; want the focused row's pointer", cell, row)
 	}

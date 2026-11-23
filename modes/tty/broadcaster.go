@@ -112,6 +112,22 @@ type StationAreaMsg struct {
 	Pool []snapshot.LocationRef
 }
 
+// Scoped reports whether a message is the CONSOLE's own business,
+// wherever the operator happens to be looking.
+//
+// A THIRD CATEGORY, and it earns its place for the same reason the fan-out
+// does: a surface that only learns things while on screen is stale the
+// instant it is swapped to — and here the stale things would be the running
+// order and whether the station is on the air, which is the one screen an
+// operator swaps to in order to trust.
+func Scoped(msg tea.Msg) bool {
+	switch msg.(type) {
+	case LineupMsg, StationMsg, StationAreaMsg, BedMsg:
+		return true
+	}
+	return false
+}
+
 // MainTrackSlots is how many slots the console draws for the running order.
 //
 // THE SCHEDULE'S NUMBER, READ RATHER THAN RESTATED (R3). `Insert` sheds the

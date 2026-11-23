@@ -1,0 +1,74 @@
+                                                                                                                                                                
+                                                                                                                                                                
+   ┏━━ WATCHPOST Broadcaster  v ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  awaiting first data... ━━┓  
+   ┃   [s] Settings  [a] About  [S] Status  [ctrl+o] Observer  [?] Help  [q] Quit                                                       API: ✔0 ⚠0 ✘0 /  0   ┃  
+   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  
+                                                                                                                                                                
+      STATION AIR:         STOPPED                                                                           GAIN  [-]░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░[+]   0     
+      BROADCASTING FROM:   (no transmitter set)    TOWER GPS:  --.------, ---.------                                           ( SHIFT + ENTER  →  ON AIR )     
+      ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓     
+      ┃  ○ LIVE NOW    ┃   NO REPORTS READ OR ACTIVE IN STANDBY MODE                                                                                      ┃     
+      ┣━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫     
+      ┃  ○ RELAY BED   ┃   [⇧←]  (no relay tuned)  [⇧→]                                                                          INACTIVE   [space] [b]   ┃     
+      ┗━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛     
+                                                                                                                                                                
+                                                                                                                                                                
+   ┏━━━━━━━━━━━━━━┳━━ LOCATION REPORT • Oceanside, CA ━━━━━━━━━━━━━━━━━━━━━━━━  • STANDARD • ━━┓   ┏━━ ! ALERT ! - TAKEOVER ━━━━━━━━━━━━━━━━  • PRIORITY • ━━┓  
+   ┃              ┃                                                                            ┃   ┃                                                         ┃  
+   ┃              ┃   STATUS: Ready for Read-Out                                               ┃   ┃                                                         ┃  
+   ┃              ┃   DATA PULL: 09/11/26  5:45:00 PM  (2 MIN AGO)                             ┃   ┃                                                         ┃  
+   ┃              ┃                                                                            ┃   ┃                                                         ┃  
+   ┃              ┃                               READ MANIFEST                                ┃   ┃                                                         ┃  
+   ┃              ┃   ##. NAME                                 RANGE / INCIDENTS               ┃   ┃                                                         ┃  
+   ┃   UP  NEXT   ┃   01. NWS Weather Forecast                 09/11 - 09/17                   ┃   ┃                                                         ┃  
+   ┃              ┃   02. Watchpost Marine Report              09/11 - 09/13                   ┃   ┃                                                         ┃  
+   ┃              ┃   03. Watchpost Fire Report                3 hotspots / 10 incidents       ┃   ┃                                                         ┃  
+   ┃              ┃   04. Watchpost Seismic Report             2 quakes                        ┃   ┃                                                         ┃  
+   ┃              ┃                                                                            ┃   ┃                                                         ┃  
+   ┃              ┃                                                                            ┃   ┃                                                         ┃  
+   ┃              ┃    [1]  Read / Manage                                                      ┃   ┃                                                         ┃  
+   ┗━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  
+                                                                                                                                                                
+   [l] Lookup Location from Pool   [enter] Details / Manage Slot   [r] Request for Line-Up                                                     [↑↓] Navigate    
+                                                                                                                                                                
+                                                              S C H E D U L E D    L I N E - U P                                                                
+                                                                                                                                                                
+   [                                                                                              ][                                ][                     ]    
+   [                                      R E A D   O U T S                                       ][       D I R E C T I O N        ][  C U R R E N T L Y  ]    
+   [                                                                                              ][                                ][                     ]    
+   [           ]##.  [       REPORT TYPE       ][          LOCATION           ][  ZIP  ][  DIST   ][ PRIORITY ][    REQUESTED BY    ][ CONDITIONS ][  NOW  ]    
+   ›            02.                                                                                                                                   n/a       
+                03.                                                                                                                                   n/a       
+                04.                                                                                                                                   n/a       
+                05.                                                                                                                                   n/a       
+                06.                                                                                                                                   n/a       
+                07.                                                                                                                                   n/a       
+                08.                                                                                                                                   n/a       
+                09.                                                                                                                                   n/a       
+                10.                                                                                                                                   n/a       
+                11.                                                                                                                                   n/a       
+                12.                                                                                                                                   n/a       
+                13.                                                                                                                                   n/a       
+                14.                                                                                                                                   n/a       
+                15.                                                                                                                                   n/a       
+                                                                                                                                                                
+   [                                                                              ][                                         ][                            ]    
+   [                         L O C A T I O N     P O O L                          ][                T O D A Y                ][      T O M O R R O W       ]    
+   [                                                                              ][                                         ][                            ]    
+   [           ]##.  [       NAME       ][WX STN][ DIST ][  ZIP  ][  POPULATION   ][ CONDITIONS ][  NOW   ][ HI  ][   LOW    ][ CONDITIONS ][  HI  ][ LOW  ] │  
+                                                                                                                                                             │  
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                

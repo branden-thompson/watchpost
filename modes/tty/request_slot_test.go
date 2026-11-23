@@ -59,7 +59,7 @@ func TestARequestedCardLandsInTheSlotTheOperatorTyped(t *testing.T) {
 			}
 			r := NewRouter(d)
 			r.active = SurfaceBroadcaster
-			r.broadcaster.power = tc.power
+			r.broadcaster, _ = r.broadcaster.Update(StationMsg{Power: tc.power})
 			r.observer = r.observer.openRequest()
 
 			// THE FORM, FILLED THE WAY THE OPERATOR FILLS IT.
@@ -184,7 +184,7 @@ func TestARequestSubmittedFromObserverStillLandsInTheTypedSlot(t *testing.T) {
 	r := NewRouter(d)
 	// THE OPERATOR OPENS IT ON THE CONSOLE, at STANDBY.
 	r.active = SurfaceBroadcaster
-	r.broadcaster.power = lineup.OffAir
+	r.broadcaster, _ = r.broadcaster.Update(StationMsg{Power: lineup.OffAir})
 	r.observer = r.observer.openRequest()
 	// AND THEN SWAPS TO OBSERVER WITH IT OPEN, which `ctrl+o` is meant to allow.
 	r.active = SurfaceObserver

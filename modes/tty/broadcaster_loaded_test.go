@@ -8,23 +8,15 @@ package tty
 // altogether.
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/branden-thompson/watchpost/internal/allocpin"
-	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
-	"github.com/branden-thompson/watchpost/platform/lineup"
-	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // loadedConsole is a station with a full pool, a full running order, and real
-// weather behind every one of them.
-//
-// SEVEN DAYS OF FORECAST EACH, because that is what the providers return and it
-// is what makes the day-cell work real: a fixture with two days would measure a
-// path the app never takes.
+// weather behind every one of them: ttytest's loaded station, sent to a console.
 func loadedConsole(t testing.TB, n int) Broadcaster {
 	t.Helper()
 	return loadedConsoleAt(t, n, time.Now())
@@ -34,45 +26,12 @@ func loadedConsole(t testing.TB, n int) Broadcaster {
 // so a golden frame of it is the same on every run.
 func loadedConsoleAt(t testing.TB, n int, observed time.Time) Broadcaster {
 	t.Helper()
-	pool := make([]snapshot.LocationRef, 0, n)
-	locs := make([]snapshot.Location, 0, n)
-	now, hi, lo := 20.0, 31.0, 12.0
-	for i := range n { // bounded by the ask (P10-02)
-		ref := snapshot.LocationRef{Label: fmt.Sprintf("Place %02d, CA", i), Zip: fmt.Sprintf("920%02d", i),
-			Lat: 33.2 + float64(i)/50, Lon: -117.2, Population: 1000 * (i + 1)}
-		pool = append(pool, ref)
-		daily := make([]snapshot.Daily, 0, 7)
-		for d := range 7 { // bounded by the forecast (P10-02)
-			daily = append(daily, snapshot.Daily{Date: fmt.Sprintf("2026-09-%02d", 13+d),
-				Condition: "CLEAR", TempMax: &hi, TempMin: &lo})
-		}
-		locs = append(locs, snapshot.Location{Label: ref.Label, Zip: ref.Zip, Lat: ref.Lat, Lon: ref.Lon,
-			WeatherAsOf: observed,
-			Harmonized: snapshot.Conditions{Condition: "CLEAR", Temp: &now,
-				Source: snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KOKB"}},
-			Daily: daily})
-	}
-	var l lineup.Lineup
-	for i := range MainTrackSlots { // bounded by the track (P10-02)
-		c, err := lineup.Propose(lineup.Card{ID: fmt.Sprint("c", i), Slot: lineup.LocationReport,
-			Subject: string(snapshot.Key(pool[i%n])), Headline: pool[i%n].Label, State: lineup.Proposed})
-		if err != nil {
-			t.Fatalf("proposing c%d: %v", i, err)
-		}
-		if c, err = c.To(lineup.Admitted); err != nil {
-			t.Fatalf("admitting c%d: %v", i, err)
-		}
-		if l, err = l.Queue(lineup.MainTrack, c); err != nil {
-			t.Fatalf("queueing c%d: %v", i, err)
-		}
-	}
+	s := ttytest.Loaded(t, n, observed)
 	b := New(Opening{})
 	b.width, b.height = 150, 74
-	b, _ = b.Update(LineupMsg{Lineup: l})
-	b, _ = b.Update(StationAreaMsg{
-		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
-		RadiusMi:    100, Pool: pool})
-	b, _ = b.WithRecent(&snapshot.Snapshot{Locations: locs})
+	b, _ = b.Update(LineupMsg{Lineup: s.Lineup})
+	b, _ = b.Update(StationAreaMsg{Transmitter: s.Transmitter, RadiusMi: s.RadiusMi, Pool: s.Pool})
+	b, _ = b.WithRecent(s.Recent)
 	return b
 }
 
@@ -138,31 +97,6 @@ func TestTheConsolesRowsBuildNoDayCells(t *testing.T) {
 	// nothing was built out of nothing.
 	if len(b.locIndex().at(b.area.Pool[0]).Daily) < 3 {
 		t.Fatal("the fixture carries no extended forecast, so this measures nothing")
-	}
-}
-
-// AND OBSERVER STILL GETS ITS EXTENDED DAYS (D-120).
-//
-// THE CONSOLE SKIPS THEM and Observer draws them, which is the whole shape of
-// the rule: the day cells are the CALLER's ask. A skip that reached Observer
-// would empty its ultra-wide columns — a regression in the shipped surface, paid
-// for by an optimisation on the new one, which is the trade the release posture
-// exists to refuse.
-func TestObserverKeepsItsExtendedDays(t *testing.T) {
-	hi, lo := 31.0, 12.0
-	daily := make([]snapshot.Daily, 0, 7)
-	for d := range 7 { // bounded by the forecast (P10-02)
-		daily = append(daily, snapshot.Daily{Date: fmt.Sprintf("2026-09-%02d", 13+d),
-			Condition: "CLEAR", TempMax: &hi, TempMin: &lo})
-	}
-	loc := &snapshot.Location{Label: "Oceanside, CA", Zip: "92057", Daily: daily}
-
-	if got := frame.WeatherRow(loc, 50, extRowDays); len(got.Extended) != 5 {
-		t.Errorf("Observer's row carries %d extended days, want 5", len(got.Extended))
-	}
-	// AND THE CONSOLE ASKS FOR NONE, which is the saving.
-	if got := frame.WeatherRow(loc, 50, 0); len(got.Extended) != 0 {
-		t.Errorf("the console's row built %d extended days it never draws", len(got.Extended))
 	}
 }
 

@@ -39,29 +39,6 @@ func TestAFaultRunShowsInTheBandWhileOnAirAndClears(t *testing.T) {
 	}
 }
 
-// REVIEW 2026-09-17 (ruling 6-ii) — THE LISTENER'S MUTE IS SHOWN ON AIR. [M] in
-// the Observer declines every hazard read on a station the operator put ON AIR,
-// and the console said nothing. The Router hands the Observer's mute to the
-// console, which shows it in the station's own band while ON AIR.
-func TestAMutedListenerIsShownWhileTheStationIsOnAir(t *testing.T) {
-	b := bcStandby(t, true, 0)
-	b, _ = b.Update(StationMsg{Power: lineup.Running})
-	b.listenerMuted = true
-	if got := ttytest.StripANSI(b.View().Content); !strings.Contains(got, "LISTENER MUTED") {
-		t.Errorf("an ON AIR station with the listener muted shows no LISTENER MUTED:\n%s", got)
-	}
-	b.listenerMuted = false
-	if got := ttytest.StripANSI(b.View().Content); strings.Contains(got, "LISTENER MUTED") {
-		t.Error("the mute band persists after the mute is lifted")
-	}
-	r := routerAt(lineup.Running, SurfaceBroadcaster)
-	r.observer.tickerMuted = true
-	m, _ := r.Update(StationMsg{Power: lineup.Running})
-	if !m.(Router).broadcaster.listenerMuted {
-		t.Error("the Router did not hand the Observer's mute to the console")
-	}
-}
-
 // REVIEW 2026-09-17 (ruling 8) — THE CONSOLE SAYS HOW MANY PLACES ARE IN REACH
 // AT THE STATION'S RADIUS. Measured around the real index, a three-mile station
 // has a pool of ONE place; a console that only lists it reads like a fifty-mile

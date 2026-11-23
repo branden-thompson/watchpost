@@ -30,7 +30,7 @@ func beats() []beat {
 		{"radio playing 133x44", func(tb testing.TB) tea.Model { return NewRouter(playingDash(tb, 133, 44)) }, vizTickMsg{}},
 		{"console 160x74", func(tb testing.TB) tea.Model {
 			r := NewRouter(benchDash(tb, 160, 74).(Dashboard))
-			r.broadcaster = loadedConsole(tb, ttytest.LoadedPoolSize)
+			r.broadcaster = loadedConsoleOf(tb, Opening{}, ttytest.LoadedPoolSize)
 			r.active = SurfaceBroadcaster
 			return r
 		}, frame.TickMsg{}},

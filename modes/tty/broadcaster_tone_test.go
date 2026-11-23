@@ -11,19 +11,12 @@ package tty
 import (
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
-
-func toned(id string, slot lineup.Slot, origin lineup.Origin, cats ...category.Category) lineup.Card {
-	c := lineup.Card{ID: id, Slot: slot, Origin: origin, Subject: id, Headline: id}
-	for _, k := range cats {
-		c.From = append(c.From, lineup.Arrival{ID: id, Category: k})
-	}
-	return c
-}
 
 // AN EMPTY SLOT IS NOT A CARD. The waiting placeholder and the LIVE slot on a
 // station at rest carry no identity, and a ground there is a card that is not
@@ -43,8 +36,8 @@ func TestAnOperatorsCardIsToldFromTheStationsOwn(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
 
-	mine := cardTone(toned("b", lineup.LocationReport, lineup.FromOperator))
-	theirs := cardTone(toned("a", lineup.LocationReport, lineup.FromDirector))
+	mine := cardTone(ttytest.Toned("b", lineup.LocationReport, lineup.FromOperator))
+	theirs := cardTone(ttytest.Toned("a", lineup.LocationReport, lineup.FromDirector))
 
 	if mine == theirs {
 		t.Fatalf("the operator's card and the station's are painted the same: %q", mine)
@@ -54,7 +47,7 @@ func TestAnOperatorsCardIsToldFromTheStationsOwn(t *testing.T) {
 		if want == render.CardOperatorBG {
 			got = mine
 		}
-		if !contains(got, render.Tok(want)) {
+		if !ttytest.ContainsToken(got, render.Tok(want)) {
 			t.Errorf("%s card is %q; it does not carry %s", name, got, want)
 		}
 	}
@@ -62,7 +55,7 @@ func TestAnOperatorsCardIsToldFromTheStationsOwn(t *testing.T) {
 	// lift inside the console — registering the base text tone against these
 	// grounds would move it in two themes and take Observer's tables with it.
 	for _, got := range []string{mine, theirs} {
-		if !contains(got, render.Tok(render.CardText)) {
+		if !ttytest.ContainsToken(got, render.Tok(render.CardText)) {
 			t.Errorf("%q does not carry the card's own text tone", got)
 		}
 	}
@@ -78,8 +71,8 @@ func TestAnAlertCardWearsTheSameTintAsTheEventsWindow(t *testing.T) {
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
 
 	for _, k := range []category.Category{category.Emergency, category.Warnings, category.Watches, category.Marine} {
-		got := cardTone(toned("burst", lineup.BreakingAlert, lineup.FromDirector, k))
-		if want := render.Tok(category.Of(k).Tint); !contains(got, want) {
+		got := cardTone(ttytest.Toned("burst", lineup.BreakingAlert, lineup.FromDirector, k))
+		if want := render.Tok(category.Of(k).Tint); !ttytest.ContainsToken(got, want) {
 			t.Errorf("a %v burst is painted %q; the [w] window paints it %q", k, got, want)
 		}
 	}
@@ -92,14 +85,14 @@ func TestABurstIsPaintedByItsMostSevereAlert(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
 
-	mixed := toned("burst", lineup.BreakingAlert, lineup.FromDirector,
+	mixed := ttytest.Toned("burst", lineup.BreakingAlert, lineup.FromDirector,
 		category.Watches, category.Emergency, category.Advisories)
 
 	got := cardTone(mixed)
-	if want := render.Tok(category.Of(category.Emergency).Tint); !contains(got, want) {
+	if want := render.Tok(category.Of(category.Emergency).Tint); !ttytest.ContainsToken(got, want) {
 		t.Errorf("a burst carrying an Emergency is painted %q, want the Emergency tint %q", got, want)
 	}
-	if soft := render.Tok(category.Of(category.Watches).Tint); contains(got, soft) {
+	if soft := render.Tok(category.Of(category.Watches).Tint); ttytest.ContainsToken(got, soft) {
 		t.Errorf("the burst was painted by the Watch it happens to list first: %q", got)
 	}
 }
@@ -110,94 +103,13 @@ func TestABurstWithNoArrivalsIsNotGivenASeverity(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
 
-	got := cardTone(toned("burst", lineup.BreakingAlert, lineup.FromDirector))
-	if want := render.Tok(render.CardBG); !contains(got, want) {
+	got := cardTone(ttytest.Toned("burst", lineup.BreakingAlert, lineup.FromDirector))
+	if want := render.Tok(render.CardBG); !ttytest.ContainsToken(got, want) {
 		t.Errorf("a burst with no arrivals is painted %q, want the ordinary card ground %q", got, want)
 	}
 	for _, k := range []category.Category{category.Emergency, category.Warnings} {
-		if tint := render.Tok(category.Of(k).Tint); contains(got, tint) {
+		if tint := render.Tok(category.Of(k).Tint); ttytest.ContainsToken(got, tint) {
 			t.Errorf("a burst with no arrivals was given %v's colour: %q", k, got)
-		}
-	}
-}
-
-func contains(s, sub string) bool { return sub != "" && len(s) >= len(sub) && indexOfSub(s, sub) >= 0 }
-
-func indexOfSub(s, sub string) int {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return i
-		}
-	}
-	return -1
-}
-
-// admitted puts a card through the states the schedule requires before it may be
-// queued — the lineup holds admitted cards only, and a fixture that skips this
-// trips the invariant rather than testing anything.
-func admitted(t *testing.T, c lineup.Card) lineup.Card {
-	t.Helper()
-	c.State = lineup.Proposed
-	out, err := lineup.Propose(c)
-	if err != nil {
-		t.Fatalf("proposing %s: %v", c.ID, err)
-	}
-	if out, err = out.To(lineup.Admitted); err != nil {
-		t.Fatalf("admitting %s: %v", c.ID, err)
-	}
-	return out
-}
-
-// TestTheAlertWindowWearsTheCardsGround.
-//
-// HUM LEAD, UAT 2026-09-13: "I'm talking about the *modal* that is rendered when
-// you press shift+a … So if the Card on the layout is the [w] orange - when I
-// press <shift+a> that modal should MATCH the tone, not be the blue that is
-// currently is."
-//
-// THE CARD AND ITS WINDOW ARE ONE COLOUR. `cardTone` paints the takeover box
-// with the [w] window's category tint, and `modalCard` floats on that same
-// ground rather than the standard modal one, so opening the hazard keeps its
-// severity.
-//
-// ASKED OF THE REGISTRY, NOT OF A LITERAL, which is the rule the card's own tint
-// already follows: `category.Of(k).Tint` IS what [w] paints that category, so the
-// three surfaces agree by construction.
-func TestTheAlertWindowWearsTheCardsGround(t *testing.T) {
-	rendering.SetColorEnabledForTest(true)
-	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
-
-	for _, k := range []category.Category{category.Emergency, category.Warnings, category.Watches} {
-		burst := admitted(t, toned("burst", lineup.BreakingAlert, lineup.FromDirector, k))
-		b := bcWith(t)
-		l, err := b.lineup.Queue(lineup.AlertRail, burst)
-		if err != nil {
-			t.Fatalf("seeding the rail: %v", err)
-		}
-		b, _ = b.Update(LineupMsg{Lineup: l})
-		b.width, b.height, b.ascii = 150, 74, true
-
-		r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
-		out := press(t, r, "A")
-		if out.observer.modal != modalCard {
-			t.Fatalf("%v: [A] did not open the card window", k)
-		}
-		// ASSERTED ON THE RENDERED WINDOW, NOT ON THE FIELD. A check of
-		// `out.observer.cardGround` — the value STORED — passes against a build
-		// where `modalCard` ignores it entirely. A stored ground is not a painted
-		// one, and the operator sees the paint.
-		want := render.Tok(category.Of(k).Tint)
-		win := out.observer.renderModal(out.observer.opts())
-		if !contains(win, want) {
-			t.Errorf("%v: the window does not paint the card's ground %q", k, want)
-		}
-		if standard := render.Tok(render.ModalBGDark); contains(win, standard) && want != standard {
-			t.Errorf("%v: the window still carries the standard modal ground %q", k, standard)
-		}
-		// AND THE CARD IT CAME FROM AGREES, which is the whole ruling: one
-		// keypress must not change the colour of one hazard.
-		if got := cardTone(burst); !contains(got, want) {
-			t.Errorf("%v: the card is painted %q and the window %q", k, got, want)
 		}
 	}
 }
@@ -225,54 +137,25 @@ func TestAReportsWindowKeepsTheStandardGround(t *testing.T) {
 	// guards. The app does not produce one today; the rule is "only a HAZARD
 	// carries its ground in", and a rule tested only where a second condition
 	// happens to agree with it is not tested.
-	report := toned("rep", lineup.LocationReport, lineup.FromDirector, category.Warnings)
+	report := ttytest.Toned("rep", lineup.LocationReport, lineup.FromDirector, category.Warnings)
 	if got := cardWindowGround(report); got != "" {
 		t.Errorf("a LocationReport carrying arrivals asked for the ground %q; only a hazard does", got)
 	}
 }
 
-// TestTheOpenHazardWindowRefreshes.
-//
-// `refreshCardWindow` searches the ALERT RAIL as well as the MAIN TRACK, because
-// `[A]` opens a card there (D-126). A window that never refreshes goes stale
-// exactly where staleness matters most: a burst gains hazards while the
-// operator is reading it, and the window goes on showing the old list.
-func TestTheOpenHazardWindowRefreshes(t *testing.T) {
+// AN ALERT CARD AND ITS WINDOW ARE ONE COLOUR, the card's half (0.19.6 D-53):
+// the takeover box is painted with the [w] window's tint for its category, the
+// ground the Router's test sees its window float on, so one keypress does not
+// change the colour of one hazard.
+func TestAnAlertCardCarriesItsCategorysTint(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
 
-	burst := admitted(t, toned("burst", lineup.BreakingAlert, lineup.FromDirector, category.Watches))
-	b := bcWith(t)
-	l, err := b.lineup.Queue(lineup.AlertRail, burst)
-	if err != nil {
-		t.Fatalf("seeding the rail: %v", err)
-	}
-	b, _ = b.Update(LineupMsg{Lineup: l})
-	b.width, b.height, b.ascii = 150, 74, true
-
-	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
-	r = press(t, r, "A")
-	if r.observer.modal != modalCard {
-		t.Fatal("[A] did not open the hazard's window")
-	}
-	gen := r.observer.cardGen
-
-	// THE BURST GAINS AN EMERGENCY while the operator is reading it — the whole
-	// reason the window has to follow the card.
-	worse := admitted(t, toned("burst", lineup.BreakingAlert, lineup.FromDirector,
-		category.Watches, category.Emergency))
-	l2, err := lineup.Lineup{}.Queue(lineup.AlertRail, worse)
-	if err != nil {
-		t.Fatalf("re-seeding the rail: %v", err)
-	}
-	r.broadcaster, _ = r.broadcaster.Update(LineupMsg{Lineup: l2})
-	r = r.refreshCardWindow()
-
-	if r.observer.cardGen == gen {
-		t.Error("the burst changed and the open window did not follow it")
-	}
-	if want := render.Tok(category.Of(category.Emergency).Tint); r.observer.cardGround != want {
-		t.Errorf("the refreshed window floats on %q, the worse burst wears %q",
-			r.observer.cardGround, want)
+	for _, k := range []category.Category{category.Emergency, category.Warnings, category.Watches} {
+		burst := ttytest.Admitted(t, ttytest.Toned("burst", lineup.BreakingAlert, lineup.FromDirector, k))
+		want := render.Tok(category.Of(k).Tint)
+		if got := cardTone(burst); !ttytest.ContainsToken(got, want) {
+			t.Errorf("%v: the card is painted %q and the window %q", k, got, want)
+		}
 	}
 }

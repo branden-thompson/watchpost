@@ -358,22 +358,6 @@ func programScoped(msg tea.Msg) bool {
 	return false
 }
 
-// Scoped reports whether a message is the CONSOLE's own business,
-// wherever the operator happens to be looking.
-//
-// A THIRD CATEGORY, and it earns its place for the same reason the fan-out
-// does: a surface that only learns things while on screen is stale the
-// instant it is swapped to — and here the stale things would be the running
-// order and whether the station is on the air, which is the one screen an
-// operator swaps to in order to trust.
-func Scoped(msg tea.Msg) bool {
-	switch msg.(type) {
-	case LineupMsg, StationMsg, StationAreaMsg, BedMsg:
-		return true
-	}
-	return false
-}
-
 // observerScoped reports whether a message is the ANSWER to something only an
 // Observer window could have asked, and it is the third category for the same
 // reason the other two exist: a message delivered to the wrong surface is a

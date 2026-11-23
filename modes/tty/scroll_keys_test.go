@@ -13,15 +13,16 @@ import (
 // the sign of each key is what this pins.
 func TestTheConsolesArrowsMoveItsPointer(t *testing.T) {
 	r := NewRouter(benchDash(t, 160, 74).(Dashboard))
-	r.broadcaster = loadedConsole(t, ttytest.LoadedPoolSize)
+	r.broadcaster = loadedConsoleOf(t, Opening{}, ttytest.LoadedPoolSize)
 	r.active = SurfaceBroadcaster
-	at := r.broadcaster.selected
+	// THE RUNNING ORDER'S ROW, which the pointer stays in for 0, 1, 0 (0.19.6 D-14).
+	at := r.broadcaster.LineupSelection()
 	down := step(t, r, tea.KeyPressMsg{Code: tea.KeyDown})
-	if down.broadcaster.selected != at+1 {
-		t.Fatalf("↓ moved the console's pointer from %d to %d; want %d", at, down.broadcaster.selected, at+1)
+	if down.broadcaster.LineupSelection() != at+1 {
+		t.Fatalf("↓ moved the console's pointer from %d to %d; want %d", at, down.broadcaster.LineupSelection(), at+1)
 	}
-	if up := step(t, down, tea.KeyPressMsg{Code: tea.KeyUp}); up.broadcaster.selected != at {
-		t.Errorf("↑ moved the console's pointer from %d to %d; want %d", at+1, up.broadcaster.selected, at)
+	if up := step(t, down, tea.KeyPressMsg{Code: tea.KeyUp}); up.broadcaster.LineupSelection() != at {
+		t.Errorf("↑ moved the console's pointer from %d to %d; want %d", at+1, up.broadcaster.LineupSelection(), at)
 	}
 }
 

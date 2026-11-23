@@ -155,11 +155,29 @@ func TestTheConsoleFollowsReduceMotion(t *testing.T) {
 		r := NewRouter(d)
 		r.active = SurfaceBroadcaster // the console's own tick reaches it while it is shown
 		var m tea.Model = r
+		m, _ = m.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH}) // sized, so the dots are drawn
+		first := dotsDrawn(t, m.(Router).broadcaster)
 		for range 3 {
 			m, _ = m.Update(frame.TickMsg{})
 		}
-		if frame := m.(Router).broadcaster.frame; (frame == 0) != on {
-			t.Errorf("Reduce motion %v: after three ticks the console's dots are at frame %d", on, frame)
+		if held := dotsDrawn(t, m.(Router).broadcaster) == first; held != on {
+			t.Errorf("Reduce motion %v: after three ticks the console's dots held their first phase: %v", on, held)
 		}
 	}
+}
+
+// dotsDrawn is the console's waiting rows as drawn, the loading dots their
+// shimmer phase (0.19.6 D-22).
+func dotsDrawn(t *testing.T, b Broadcaster) string {
+	t.Helper()
+	var rows []string
+	for _, l := range strings.Split(drawn(b), "\n") { // bounded by the frame's rows (P10-02)
+		if strings.Contains(l, "waiting for the line-up") {
+			rows = append(rows, l)
+		}
+	}
+	if len(rows) == 0 {
+		t.Fatal("the console draws no waiting row, so no dots to watch")
+	}
+	return strings.Join(rows, "\n")
 }

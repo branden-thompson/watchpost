@@ -29,7 +29,7 @@ func TestARefusedSwapIsShownToTheOperator(t *testing.T) {
 	r := NewRouter(d)
 	m, _ := r.Update(keyPress(t, "ctrl+b"))
 	r = m.(Router)
-	r.broadcaster.width, r.broadcaster.height = 150, 50
+	r.broadcaster, _ = r.broadcaster.Update(tea.WindowSizeMsg{Width: 150, Height: 50})
 
 	// What the Observer's own tune publishes, without the operator asking.
 	m, _ = r.Update(StationMsg{Power: lineup.Running})
@@ -86,7 +86,7 @@ func TestASwapTellsTheAppWhoOwnsTheAir(t *testing.T) {
 	// the console owns the air while the operator is still on Observer would
 	// scope their alerts to a station they did not reach.
 	r := m.(Router)
-	r.broadcaster.power = lineup.Running
+	r.broadcaster, _ = r.broadcaster.Update(StationMsg{Power: lineup.Running})
 	r.active = SurfaceBroadcaster
 	told = nil
 	m, _ = r.Update(keyPress(t, "ctrl+o"))

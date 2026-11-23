@@ -1036,3 +1036,97 @@ failing its killer. Every mutant applies.
 **AP-CAPS-01's soft warnings** rise from 86 to 103: the renames touch the console's test files, whose
 comments open paragraphs as they always did. The one such line in the diff is a comment the rename
 of `bcScheduledFrom` rewrote in place.
+
+## Before B3: the tests across the console's boundary (A-59; D-52 to D-57, D-72)
+
+**Prep 1's gate.** `make verify` green on its first run, 5,481 s, committed as `0df293cc`: the
+mutants' compile check built the 689 of 1,060 mutants its changes reach.
+
+**How the cut was found.** A type-checked walk of the package's tests, the design's landing rule
+applied to every test declaration (design CK-5): the root if it reaches a root name, the console if it
+reaches only console names, a pure helper with its users. It reproduces the design's twelve split
+files exactly, and four whole-console files the design's count predates. Run again over the move's
+file set, it reports every reach across the boundary; three are left, each package's `raceEnabled`
+pair and the console's `-update-golden` flag, which the move adds (A-33).
+
+**The cut.** Each declaration moves whole, its doc comment with it: the console's halves stay in the
+files the move takes, and the root's go to ten files named for what they test. `Scoped` moves beside
+the messages it names. The pure data both packages' tests build from moves into `ttytest`, its bodies
+unchanged and its names exported; two package variables there are functions (P10-06).
+
+**The rewrites (D-14, D-22).** A root test builds the console through `New`, its messages and
+`ScrollQueue`, in `console_fixtures_test.go`, and reads it through its getters or as it is drawn:
+- **setup:** sizes by `tea.WindowSizeMsg`, power by `StationMsg`, the pointer by `ScrollQueue`, the
+  console's clock as the Dashboard's (D-21). A pointer past the pool's end, which a field write set,
+  is reached as production reaches it: the pool empties under it;
+- **the same value through the API:** `Width`, `Power`, `LineupSelection`, `render.Opts{ASCII}`'s
+  glyphs;
+- **drawn (D-22):** the height as the frame's rows; the gain as the number its control draws; the
+  bed's refusal on the station row; the mute in the band; Reduce motion in the waiting rows' dots;
+  the control row as the frame's line that names Quit;
+- **the dark-background flag:** the design's observable, the window's ground, is one colour in every
+  theme, the light ground filled from the dark, so a check of it passed against a console that never
+  learns the flag. It is read as the UP NEXT box's ground under Synthwave '84, whose two modal grounds
+  differ, and seen failing on that console;
+- **D-54's bold mark** is matched up to its glyph: the frame re-arms each reset to its base tone, so a
+  tint's closing reset is never in it;
+- **D-52 and D-53** split as ruled, the console's halves `TestTheAlertBoxsWindowIsTheOneADigitBuilds`
+  and `TestAnAlertCardCarriesItsCategorysTint`; **D-57's** whole frame; **D-72's** snapshot.
+
+**The stacking test** compares the frame with the height its fixture sent, not with the frame's own
+rows, which a frame cut short would shorten too.
+
+**A-33's console golden.** The UP NEXT box over a composed card, its DATA PULL line stamped
+`09/11/26  5:45:00 PM  (2 MIN AGO)`, at 160x74 on standby, plain and in colour; on
+`06_docs/testinv/goldens-B3.txt`. The twelve console goldens replay byte-identical.
+
+**The pins.** The console beat reads 377 allocations and 122,176 B on the rebuilt fixture and on
+`0df293cc` alike; the console frame 291 and 9,164, a hit and a miss, on both.
+
+**The test support's floor (D-73).** `make p10`'s floor check failed the new fixtures: `ttytest`'s
+row, 0.14 over 14 changed functions, measured 0.11 over 27. The fixtures are data builders whose only
+checks are their refusals, so the row is amended to 0.11 over 27, as ruled, and no check is added.
+
+**Mutants.** Every mutant whose recorded killer is a test in a file the prep touches, 103 of them, was
+applied and run against that killer, each caught: by the same test, or for mAU2 and mW5 by D-52's
+console half, which the scoped sweep will report as their killer's new name. Tests no mutant covers
+were proved on faults planted by hand and put back by copy: the Router's mute hand-off; the bed
+refusal unmirrored, uncleared while the bed carries, uncleared on standby; the console not inheriting
+`--ascii`; the dark-background flag never learned; the resize's height lost.
+
+**The changed-line table.**
+
+| File | Line | Kind | Mutants before | After |
+|---|---|---|---|---|
+| the twelve split files | each declaration whole into a file of its package (design CK-5) | setup | — | — |
+| `internal/ttytest` | nine fixtures, `CheckGolden`, `GoldenNow`, `ContainsToken`, moved unchanged (A-33) | setup | — | — |
+| their callers | the console's helpers as `ttytest`'s | setup | — | — |
+| `card_window_open_test.go` | the console by `consoleOf`; the window router's clock the Dashboard's | setup | m755, m756, mAZ1, mAZ2, mCH4, mSC1, mW1, mW2, mW3, mW6 | the same |
+| `card_window_open_test.go:TestTheAlertBoxsWayInOpensThePriorityCard` | its same-window half to the console (D-52) | assertion | mAU1, mAU2, mW5 | mAU1; mAU2 and mW5 by `TestTheAlertBoxsWindowIsTheOneADigitBuilds` |
+| `card_window_tone_test.go:TestTheAlertWindowWearsTheCardsGround` | its card line to the console (D-53) | assertion | mAV1 | mAV1; the card line by `TestAnAlertCardCarriesItsCategorysTint` |
+| `card_window_tone_test.go:TestTheOpenHazardWindowRefreshes` | the console by `consoleOf` | setup | mAV3 | mAV3 |
+| `card_window_test.go` | the pointer by `ScrollQueue`; the line-up kept; the row's number cell written out | setup | mAL2, mAL3, mAL4, mAM1, mAO1, mV6 | the same |
+| `console_enter_test.go` | the pointer by `ScrollQueue`; past the pool by the pool emptying | setup | mAB4, mAG2, mAG3 | the same |
+| `console_fire_test.go` | hot as the drawn bold mark (D-54) | assertion | mAQ1, mAQ2 | the same |
+| `console_mute_test.go` | the console by `New` and messages; the Router's hand-off as the band (D-22) | assertion | none recorded | none recorded; a planted fault fails it |
+| `router_test.go` | the height as rows, the background as the UP NEXT ground, `--ascii` as the frame (D-57); `Width`, `Power` | assertion | none recorded | none recorded; three planted faults fail it |
+| `router_bedplay_test.go` | the refusal on the station row (D-22) | assertion | none recorded | none recorded; three planted faults fail it |
+| `router_diagnostics_test.go` | sizes by message; the gain and the control row as drawn; `Width`; the height as sent | setup, assertion | none recorded | none recorded |
+| `request_slot_test.go`, `router_refusal_test.go` | power and size by message | setup | mRQ1, mRQ2, mSB1 | the same |
+| `scroll_keys_test.go` | the pointer by `LineupSelection` | assertion | m721 | m721 |
+| `cursor_test.go` | the glyphs by `render.Opts{ASCII}` | assertion | m641, m642 | the same |
+| `motion_test.go` | the frame counter as the waiting rows' dots | assertion | m622, mSC2 | the same |
+| `console_units_test.go` | the console's clock the Dashboard's | setup | m661, m662, m664 | the same |
+| `memo_completeness_test.go` | the card window's console by `consoleOf` | setup | mV3, mV4 | the same |
+| `beat_alloc_test.go` | the console by `loadedConsoleOf` | setup | m713, m737, m742, m752, mAR3, mAR5, mAR6 | the same; 377 and 122,176 B |
+| `broadcaster_masthead_memo_test.go` | its snapshot `ttytest.MastheadSnap` (D-72) | setup | none recorded | none recorded |
+| `broadcaster_loaded_test.go` | the station from `ttytest.Loaded` | setup | mAN1 | mAN1 |
+| `golden_test.go`, `broadcaster_golden_test.go` | the golden check through `ttytest.CheckGolden` | setup | m694 | m694 |
+| `broadcaster_golden_test.go` | A-33's DATA PULL golden, two files | golden | — | — |
+| `cmd/watchpost/testdata/union-decls.txt` | re-captured | golden | — | — |
+
+**The inventory's delta.** Three tests new, none removed: `TestTheAlertBoxsWindowIsTheOneADigitBuilds`,
+`TestAnAlertCardCarriesItsCategorysTint`, `TestTheConsoleGoldenDrawsADataPull`.
+
+**AP-CAPS-01's soft warnings** rise from 103 to 116: thirteen openers moved into new files or files the
+prep touches, every one a line that was in the tree before it.

@@ -1,11 +1,13 @@
 package ttytest
 
 // helpers.go — the pure helpers more than one package's tests need:
-// stripping ANSI, the first line two frames differ at, a card, the masthead's
-// snapshot, the loaded pool's size, and the masthead guard's check (design
-// CK-4).
+// stripping ANSI, the first line two frames differ at, a token's presence, a
+// card, the masthead's snapshot, the loaded pool's size, the masthead guard's
+// check, and the golden frames' check and instant (design CK-4; 0.19.6 A-33).
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -37,6 +39,22 @@ func FirstDiffLine(want, got string) (int, string, string) {
 		}
 	}
 	return 0, "", ""
+}
+
+// ContainsToken reports whether s holds sub, and an empty sub is held by
+// nothing: a token that resolved to "" fails the check rather than matching
+// every frame.
+func ContainsToken(s, sub string) bool {
+	return sub != "" && len(s) >= len(sub) && indexOfSub(s, sub) >= 0
+}
+
+func indexOfSub(s, sub string) int {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return i
+		}
+	}
+	return -1
 }
 
 func Card(t *testing.T, id, subject string) lineup.Card {
@@ -82,4 +100,31 @@ func MastheadMoved(t *testing.T, surface, field string, before, after string, k0
 		t.Errorf("%s: changing %s changes the masthead and NOT mastheadKey: the masthead memo (internal/frame's masthead.go, MastheadSlot) will draw the old masthead; add what %s changes to MastheadKeyOf", surface, field, field)
 	}
 	return true
+}
+
+// GoldenNow is the instant every surface golden is drawn at.
+func GoldenNow() time.Time { return time.Date(2026, 8, 24, 1, 2, 0, 0, time.UTC) }
+
+// CheckGolden compares a frame with its golden file, or writes the file when
+// update is set. Each package's tests own their -update-golden flag and pass
+// its value (0.19.6 A-33).
+func CheckGolden(t *testing.T, path, got string, update bool) {
+	t.Helper()
+	if update {
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("wrote %s (%d bytes)", path, len(got))
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("no golden yet: run with -update-golden (%v)", err)
+	}
+	if got != string(want) {
+		line, w, g := FirstDiffLine(string(want), got)
+		t.Fatalf("%s differs from its golden at line %d:\n want: %q\n  got: %q\n"+
+			"If the change is intended, re-run with -update-golden and record why in the release's build log.",
+			filepath.Base(path), line, w, g)
+	}
 }

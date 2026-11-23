@@ -7,7 +7,6 @@ package tty
 
 import (
 	"flag"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -34,24 +33,7 @@ func goldenDash(t *testing.T, ascii bool) Dashboard {
 
 func checkGolden(t *testing.T, name, got string) {
 	t.Helper()
-	path := filepath.Join("testdata", name)
-	if *updateGolden {
-		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("wrote %s (%d bytes)", path, len(got))
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("no golden yet: run with -update-golden (%v)", err)
-	}
-	if got != string(want) {
-		line, w, g := ttytest.FirstDiffLine(string(want), got)
-		t.Fatalf("%s differs from its golden at line %d:\n want: %q\n  got: %q\n"+
-			"If the change is intended, re-run with -update-golden and record why in the release's build log.",
-			name, line, w, g)
-	}
+	ttytest.CheckGolden(t, filepath.Join("testdata", name), got, *updateGolden)
 }
 
 func TestFrameGoldenColourOff(t *testing.T) {

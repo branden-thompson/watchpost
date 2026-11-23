@@ -15,12 +15,12 @@ import (
 // field the walk can change. Observer's half and the kit's named inputs are
 // their own tests.
 func TestTheConsolesMastheadKeyCoversEverythingItsMastheadShows(t *testing.T) {
-	obs := benchDash(t, 133, 44).(Dashboard)
-	at := frame.DataAsOf(obs.snap).Add(20 * time.Second)
+	snap := ttytest.MastheadSnap()
+	at := frame.DataAsOf(snap).Add(20 * time.Second)
 	con := loadedConsoleAt(t, ttytest.LoadedPoolSize, at)
 	con.now = func() time.Time { return at }
 	con.width, con.height = 160, 74
-	con.snap = obs.snap // the console's stamp and summary read the same snapshot Observer does (D-59)
+	con.snap = snap // the masthead's snapshot, with providers for the API summary to count (0.19.6 D-72)
 	if con.snap == nil {
 		t.Fatal("the fixture has no snapshot; its stamp and API summary would check nothing")
 	}
