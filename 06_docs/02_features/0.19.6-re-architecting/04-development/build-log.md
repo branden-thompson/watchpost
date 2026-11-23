@@ -887,3 +887,25 @@ no test removed.
 
 **AP-CAPS-01's soft warnings** stay at 86, the second prep's count: the moved comments open their
 paragraphs as they did, and nothing the move wrote opens one with AND, BUT or SO.
+
+## B2's close: the inventory, the plan's tests held, the sweep's inputs (A-55)
+
+**The inventory (D-36).** `make test-inventory INVENTORY_ACCEPT=06_docs/testinv/accept-B2.tsv`
+against B0's baseline: every one of the 2,006 plain, 2,006 property and 2,005 race tests and
+subtests kept with its outcome, the two clip tests in `modes/tty/internal/frame` by the accept
+file. Four new in each mode: B1.1's, the prep's two masthead guards
+(`TestTheConsolesMastheadKeyCoversEverythingItsMastheadShows`,
+`TestTheMastheadKeyCoversItsNamedInputs`) and the second prep's
+`TestFieldWritesItsFieldAndRefusesWhatItCannotFind`. No test removed.
+
+**The plan's tests held (A-37).** B2 joins `landedBatches`; every test its section names is declared.
+
+**The sweep's inputs (A-55).** `BATCH_BASE=ac68cbe8`, B1's closed commit, which derives 232 mutants,
+the same 232 as `76fbbb46`; `SCOPED_PATHS` is `06_docs/mutants/scoped-paths-B2.tsv`, the two files
+moved whole since that base; `SCOPED_FUNCS` is `06_docs/perf/renames.tsv`. `moves.tsv` is
+`gcprobe`'s map by package, and the sweep reads its map by file or directory prefix.
+
+**B2 in commits.** 5, the plan's 2: the instruments took a commit of their own first (A-49), and the
+move's first build found what the prep had left, a second prep (D-62, D-63); the batch map says so.
+The rulings before the re-check, `76fbbb46`, are counted with neither batch. B2 closes on this
+commit's `make verify-full` and the scoped sweep.

@@ -2391,6 +2391,7 @@ each one's best mention (0.19.6 D-50).
 | A-53 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Batch 25's choices: (1) the best frequency's words: a chart row "best ~15.0 (20m)" or "none serves"; the cent… |
 | A-54 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2's move, as built (design CK-1, CK-4, CK-7, CK-9; D-64 to D-66). (1) Eleven files git mv'd whole: the kit's… |
 | A-54 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-199's details: (1) the switch is "Day / night", last of the map's detail in the Overlays menu and the Setti… |
+| A-55 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2's closing sweep, its inputs (D-30, D-51). (1) BATCH_BASE=ac68cbe8, B1's closed commit, so the sweep covers… |
 | A-55 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W0.3's details (D-201): (1) one place reads typed coordinates and locators: locations.Resolver, which every l… |
 | A-56 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W0.2's caps and FR-5.1/FR-5.2's honesty (D-201): (1) each propagation host's body cap is go-ionomaps' own bou… |
 | A-57 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W6.1's details (D-201, D-136): (1) the words' order as built: the mode and its layer, its full name said once… |

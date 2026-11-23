@@ -1,0 +1,5 @@
+# 0.19.6 B2's whole-file moves since B1's close, old<TAB>new, for the scoped sweep's SCOPED_PATHS
+# (0.19.6 A-55). moves.tsv is gcprobe's, by package; this map names files. A file the batch left
+# in place with part of its code moved is not a line: its mutants' re-points are A-53's.
+modes/tty/masthead.go	modes/tty/internal/frame/masthead.go
+modes/tty/clip_ansi_test.go	modes/tty/internal/frame/clip_ansi_test.go

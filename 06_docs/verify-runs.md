@@ -313,3 +313,4 @@ says exactly what passed.
 | 2026-11-22T00:07:15Z | 5171b0cb | 8e237f43a61c | verify | green | 5165 |
 | 2026-11-22T20:23:43Z | 774eb4a0 | b3f0f734fce8 | verify | FAILED (exit 2) | 5506 |
 | 2026-11-22T22:16:03Z | 774eb4a0 | 08b6252b431f | verify | green | 5665 |
+| 2026-11-23T00:52:34Z | cbd71af5 | 2dfa29e5a26a | verify-full | green | 7359 |
