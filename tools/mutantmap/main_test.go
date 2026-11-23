@@ -175,6 +175,28 @@ func TestCompareFollowsTheBatchsMaps(t *testing.T) {
 	}
 }
 
+// TestAnAnchorMovedToAnotherFileSaysWhichFiles is 0.19.6 D-69: a function moved
+// whole to a file no map names is reported with both files, since by function
+// alone it reads "sat in F, now in F". Seen failing on the report that named
+// the function alone.
+func TestAnAnchorMovedToAnotherFileSaysWhichFiles(t *testing.T) {
+	dir := fixture(t)
+	base := git(t, dir, "rev-parse", "HEAD")
+	write(t, dir, "x/x.go", "package x\n\nfunc G() int { return 2 }\n")
+	write(t, dir, "x/z.go", "package x\n\nfunc F() int { return 1 }\n")
+	write(t, dir, "06_docs/mutants/mF.py", mutant("x/z.go", "return 1", "return 9"))
+	commit(t, dir, "F moved to z.go, x.go keeping G; mF re-pointed")
+	log := parseLog("[1/2] CAUGHT   06_docs/mutants/mF.py — TestF (0.00s)\n[2/2] CAUGHT   06_docs/mutants/mG.py — TestG (0.00s)\n")
+	list := []string{"06_docs/mutants/mF.py", "06_docs/mutants/mG.py"}
+	probs, err := compare(dir, base, "HEAD", parseLog(record), log, list, maps{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(probs, "; "); got != "mF.py: its anchor sat in x/x.go:F, now in x/z.go:F" {
+		t.Errorf("the comparator says %q; want mF's move reported with both files", got)
+	}
+}
+
 // TestTheMapsReadAsGcprobesDo is 0.19.6 A-44: a map's comment and blank lines
 // read as nothing, as gcprobe reads them, so the release's one renames file
 // serves both; a line with no tab is still refused.

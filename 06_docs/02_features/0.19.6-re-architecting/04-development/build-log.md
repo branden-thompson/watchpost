@@ -957,3 +957,17 @@ half of the guard as D-58 split it, which neither root guard fails on, run by ha
 instruments-first commit makes the report name the file where the file moved, and the four mutant
 headers that still name the root's guard name the kit's. `make p10` on `9a3baba4`: 0 live, 0
 unmatched, 0 unratified, the mirror unchanged at 175 rows. Pushed; the remote ref matched the commit.
+
+## Before B3: the sweep's report and the masthead headers (A-57; D-69 to D-71)
+
+**Instruments first: the sweep's report names the files, the headers their killer (A-57; D-69,
+D-70).** The comparator reported an anchor by function alone, so B2's eight re-points read "sat in
+focusCell, now in focusCell"; where the file is what the maps do not carry, the report now names
+both files with the function. `TestAnAnchorMovedToAnotherFileSaysWhichFiles` holds it, seen failing
+on the old report. The four masthead mutants' headers name the kit's half of the guard. It lands
+before the prep, in a commit of its own.
+
+**The first gate failed** (1,431 s) on `TestTheAsBuiltMapIsKeptInStep`: this section opened as
+"## B3", which the test reads as B3 landed while the as-built page draws B0–B2. Until a batch's
+move its work is under "Before", and its own heading opens in the move commit with the page
+redrawn (D-71).

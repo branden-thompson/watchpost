@@ -198,12 +198,23 @@ func structural(root, base, head string, record map[string]verdict, list []strin
 			continue
 		}
 		n := now[l]
-		if m.path(w.target) != n.target || m.fn(w.fn, filepath.Dir(w.target)) != n.fn {
-			probs = append(probs, fmt.Sprintf("%s: its anchor sat in %s, now in %s", filepath.Base(l), w.fn, n.fn))
+		if p := m.path(w.target); p != n.target || m.fn(w.fn, filepath.Dir(w.target)) != n.fn {
+			probs = append(probs, anchorMoved(filepath.Base(l), w, n, p != n.target))
 		}
 		probs = append(probs, killerMoved(l, record[l].killer, tb, th, m)...)
 	}
 	return probs, nil
+}
+
+// anchorMoved says where a mutant's anchor sat and where it sits now: by
+// function, with the files too when the file is what the maps do not carry, so
+// a function moved whole to a file no map names reads as a move and not as
+// "sat in F, now in F" (0.19.6 D-69).
+func anchorMoved(name string, was, now site, fileMoved bool) string {
+	if fileMoved {
+		return fmt.Sprintf("%s: its anchor sat in %s:%s, now in %s:%s", name, was.target, was.fn, now.target, now.fn)
+	}
+	return fmt.Sprintf("%s: its anchor sat in %s, now in %s", name, was.fn, now.fn)
 }
 
 // killerMoved fails a killer declared at head neither where it was nor where
