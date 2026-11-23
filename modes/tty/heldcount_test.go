@@ -27,7 +27,7 @@ import (
 func standbyWith(t *testing.T, after time.Duration, fence lineup.Fence, cards ...lineup.Card) Broadcaster {
 	t.Helper()
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height = 150, 74
 	b.now = func() time.Time { return base }
 

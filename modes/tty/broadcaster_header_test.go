@@ -23,7 +23,7 @@ import (
 
 func headerOf(t *testing.T, w int) []string {
 	t.Helper()
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height = w, 74
 	b.ascii = true
 	return strings.Split(b.header(b.opts()), "\n")
@@ -106,7 +106,7 @@ func TestTheMastheadCarriesNoStationIdentity(t *testing.T) {
 // STANDBY" in its place, on the reasoning that the STATION line already
 // carries state, is a UX ruling the mock does not make.
 func TestTheMastheadDrawsWhatTheReferenceDraws(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b.version = "0.16.0"
 	b.snap = ttytest.MastheadSnap()
@@ -124,7 +124,7 @@ func TestTheMastheadDrawsWhatTheReferenceDraws(t *testing.T) {
 // Observer's own ladder order, because a masthead that cannot say what the app
 // is has stopped being a masthead.
 func TestTheMastheadLaddersInTheObserversOrder(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.height, b.ascii = 74, true
 	b.version = "0.16.0"
 	b.snap = ttytest.MastheadSnap()

@@ -96,7 +96,7 @@ func oneCard(t *testing.T) [2]lineup.Card {
 // every test below starts from.
 func broadcasterWithOneCard(t *testing.T) Broadcaster {
 	t.Helper()
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b, _ = b.Update(LineupMsg{Lineup: seed(t, oneCard(t))})
 	b.width, b.height = 150, 74
 	b.now = func() time.Time { return bcDetailAt.Add(2 * time.Minute) }
@@ -105,7 +105,7 @@ func broadcasterWithOneCard(t *testing.T) Broadcaster {
 
 func TestTheCardWindowCarriesWhatTheCardDefersTo(t *testing.T) {
 	b := broadcasterWithOneCard(t)
-	_, rows, ok := b.cardDetail(1)
+	_, rows, ok := b.CardDetail(1)
 	if !ok {
 		t.Fatalf("slot 1 holds the only card on a standby station and opened nothing")
 	}
@@ -137,7 +137,7 @@ func TestTheCardShowsFourSourcesAndTheWindowShowsThemAll(t *testing.T) {
 	if got := b.View().Content; strings.Contains(got, "Watchpost Air Quality Report") {
 		t.Errorf("the fifth source reached the CARD; bcReadLines is %d and the card's height is fixed", bcReadLines)
 	}
-	_, rows, _ := b.cardDetail(1)
+	_, rows, _ := b.CardDetail(1)
 	_, body := rows(b.opts())
 	if !strings.Contains(strings.Join(body, "\n"), "Watchpost Air Quality Report") {
 		t.Errorf("the fifth source reached neither the card nor the window, so nothing can read it")
@@ -147,7 +147,7 @@ func TestTheCardShowsFourSourcesAndTheWindowShowsThemAll(t *testing.T) {
 // AN EMPTY SLOT OPENS NOTHING, and the key is NOT consumed — it falls through
 // exactly as an unbound key does.
 func TestAnEmptySlotOpensNoWindow(t *testing.T) {
-	if _, _, ok := broadcasterWithOneCard(t).cardDetail(7); ok {
+	if _, _, ok := broadcasterWithOneCard(t).CardDetail(7); ok {
 		t.Errorf("slot 7 is undecided and opened a window onto the absence of a card")
 	}
 }
@@ -162,7 +162,7 @@ func routerOnConsole(t *testing.T) Router {
 	return r
 }
 
-// THE KEY, DRIVEN THROUGH THE REAL KEY PATH. A test that calls cardDetail
+// THE KEY, DRIVEN THROUGH THE REAL KEY PATH. A test that calls CardDetail
 // directly passes whether or not the key is bound: the BINDING is the half that
 // can go missing, not the body.
 func TestPressingTheSlotNumberOpensTheWindow(t *testing.T) {
@@ -289,7 +289,7 @@ func TestTheAlertBoxsWayInOpensThePriorityCard(t *testing.T) {
 	// and not the other. Comparing the id proves they are the same CARD; this
 	// proves they are the same WINDOW.
 	o := out.observer.opts()
-	_, draw, ok := b.alertDetail()
+	_, draw, ok := b.AlertDetail()
 	if !ok {
 		t.Fatal("there is no hazard window to compare")
 	}

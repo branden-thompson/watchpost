@@ -145,6 +145,8 @@ var wholeFileClaims = []wholeFileClaim{
 	{"D-66", "pkg/schema/schema.go"}, {"D-66", "platform/render/units.go"},
 	// 0.19.6 A-54 is about the packages' doc.go files, each whole
 	{"A-54", "doc.go"},
+	// 0.19.6 A-21 names the root file B3's prep cuts the card window into, which exists from that commit
+	{"A-21", "card_window.go"},
 }
 
 // unlinedRefs are the ruling rows that name a Go file without its line or a

@@ -266,7 +266,7 @@ type Broadcaster struct {
 	// and its API summary.
 	//
 	// THE CONSOLE IS TOLD EVEN WHILE IT IS NOT ON SCREEN, which is the rule
-	// `consoleScoped` already states for the schedule: "a surface that only
+	// `Scoped` already states for the schedule: "a surface that only
 	// learns things while on screen is stale the instant it is swapped to."
 	snap *snapshot.Snapshot
 
@@ -275,8 +275,95 @@ type Broadcaster struct {
 	lineup lineup.Lineup
 }
 
-// NewBroadcaster builds the console.
-func NewBroadcaster() Broadcaster { return Broadcaster{memo: &consoleMemo{}} }
+// Opening is what the console is built with: what it inherits from the
+// Observer once, at construction (design CK-2). Each field is one the two
+// surfaces must agree on, the Observer's being the source.
+type Opening struct {
+	ASCII      bool             // the --ascii decision the Observer was built with
+	Version    string           // the build the masthead names
+	FireBoldMW float64          // the fire threshold, resolved
+	Units      render.Units     // mirrored again on every update (Mirror)
+	Clock      render.Clock     // the same
+	Area       StationAreaMsg   // the station it opens on; changes arrive as a message
+	Now        func() time.Time // the console's clock, the Dashboard's own (0.19.6 D-21); nil is the real one
+}
+
+// New builds the console from what it opens with. The area generation starts
+// at 1: the area it opens on is a change its memo has not yet drawn.
+func New(o Opening) Broadcaster {
+	return Broadcaster{memo: &consoleMemo{}, ascii: o.ASCII, version: o.Version, fireBoldMW: o.FireBoldMW,
+		units: o.Units, clockFmt: o.Clock, area: o.Area, areaGen: 1, now: o.Now}
+}
+
+// Mirror is what the Router writes onto the console after every update, the
+// values both surfaces must agree on, the Observer's being the source
+// (design CK-2).
+type Mirror struct {
+	Gain         int          // the radio's volume, the gain control's level
+	Units        render.Units // the Observer's units (0.16.0 FR-6.2)
+	Clock        render.Clock // and its clock format
+	ReduceMotion bool         // when set, the console's dots hold their first phase (D-360)
+	StatusNote   string       // why the last swap was refused, or "" (the Router's refusal)
+}
+
+// SetMirror writes the Router's mirror onto the console, in place: a pointer
+// receiver, measured to add no copy, escape or stack to the Router's update
+// (design CK-3).
+func (b *Broadcaster) SetMirror(m Mirror) {
+	b.gain = m.Gain
+	b.units, b.clockFmt = m.Units, m.Clock
+	if m.ReduceMotion {
+		b.frame = 0
+	}
+	b.statusNote = m.StatusNote
+}
+
+// SetListenerMuted tells the console whether the Observer's listener is
+// muted, which the console shows on air (ruling 6-ii). The Router writes it
+// before the console takes a scoped or program message, not on every update.
+func (b *Broadcaster) SetListenerMuted(muted bool) { b.listenerMuted = muted }
+
+// Width is the console's width, as the terminal last said.
+func (b Broadcaster) Width() int { return b.width }
+
+// Blurred is whether the terminal has said it lost focus: the cursor's look
+// (D-367).
+func (b Broadcaster) Blurred() bool { return b.blurred }
+
+// Power is the station's state as the Director holds it. There is no setter:
+// the console asks for a change and reads back what the Director decided.
+func (b Broadcaster) Power() lineup.Power { return b.power }
+
+// BedCarrying is whether the bed is on the air.
+func (b Broadcaster) BedCarrying() bool { return b.bed.Carrying }
+
+// Pool is the station's candidate locations, nearest first.
+func (b Broadcaster) Pool() []snapshot.LocationRef { return b.area.Pool }
+
+// WithSnapshot hands the console the published snapshot: the masthead's
+// `Updated:` stamp and its API summary come from it, and both surfaces draw
+// the same masthead, so both are told, whichever one is on screen (D-59). A
+// nil snapshot changes nothing.
+func (b Broadcaster) WithSnapshot(s *snapshot.Snapshot) (Broadcaster, tea.Cmd) {
+	if s == nil {
+		return b, nil
+	}
+	b.snap = s
+	return b.armTick(nil)
+}
+
+// WithRecent hands the console the RECENT snapshot, where the pool's weather
+// lives (D-99). Kept apart from `snap` deliberately: the masthead's stamp and
+// the API summary are the PRIORITY pipeline's, and merging the two would make
+// the console report a freshness it does not have. A nil snapshot changes
+// nothing.
+func (b Broadcaster) WithRecent(s *snapshot.Snapshot) (Broadcaster, tea.Cmd) {
+	if s == nil {
+		return b, nil
+	}
+	b.pool = s
+	return b.armTick(nil)
+}
 
 // clock is the console's time, real unless a test injected one.
 func (b Broadcaster) clock() time.Time {
@@ -496,22 +583,9 @@ func (b Broadcaster) Init() tea.Cmd { return nil }
 // Update takes the surface's own messages. The program-scoped ones arrive
 // through the Router's fan-out, which is why they are handled here as well as
 // in Observer: BOTH surfaces must know the size, including while inactive.
+// The two snapshots are the Router's to hand over, by WithSnapshot and
+// WithRecent (design CK-2).
 func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
-	// THE SNAPSHOT REACHES THE CONSOLE TOO (D-59). The masthead's `Updated:`
-	// stamp and its API summary come from it, and both surfaces draw the same
-	// masthead — so both are told, whichever one is on screen.
-	if v, ok := msg.(SnapshotMsg); ok && v.Snap != nil {
-		b.snap = v.Snap
-		return b.armTick(nil)
-	}
-	// The RECENT snapshot is where the pool's weather lives (D-99). Kept
-	// apart from `snap` deliberately: the masthead's stamp and the API summary are
-	// the PRIORITY pipeline's, and merging the two would make the console report a
-	// freshness it does not have.
-	if v, ok := msg.(RecentSnapshotMsg); ok && v.Snap != nil {
-		b.pool = v.Snap
-		return b.armTick(nil)
-	}
 	if _, ok := msg.(frame.TickMsg); ok {
 		b.tickArmed = false
 		b.frame++
@@ -813,7 +887,7 @@ func (b Broadcaster) lanes() []string {
 	return append(out, b.inset()...)
 }
 
-// scrollQueue moves the queue's window by `by` rows and hands the console back.
+// ScrollQueue moves the queue's window by `by` rows and hands the console back.
 //
 // CLAMPED AT THE ENDS, NEVER WRAPPED. A list that jumped from its last row to
 // its first would lose the operator's place — and on a running order, "where am
@@ -822,7 +896,7 @@ func (b Broadcaster) lanes() []string {
 // THE BOTTOM IS WHERE THE LAST CARD IS FULLY DRAWN, not where the rows run out:
 // scrolling past it would leave the operator looking at air with the rail saying
 // there is more.
-func (b Broadcaster) scrollQueue(by int) Broadcaster {
+func (b Broadcaster) ScrollQueue(by int) Broadcaster {
 	// THE ARROWS MOVE THE POINTER AND THE WINDOW FOLLOWS, which is what
 	// the reference's own footer says they do — "[↑↓] Navigate" — and what
 	// Observer does. Moving the WINDOW alone would let the operator scroll a list
@@ -841,23 +915,23 @@ func (b Broadcaster) scrollQueue(by int) Broadcaster {
 // rowCount is how many rows the two tables hold between them — the space the
 // pointer walks.
 func (b Broadcaster) rowCount() int {
-	return max(0, MainTrackSlots-bcScheduledFrom) + len(b.area.Pool)
+	return max(0, MainTrackSlots-ScheduledFrom) + len(b.area.Pool)
 }
 
-// lineupSelection is the focused row WITHIN the running order, or -1.
-func (b Broadcaster) lineupSelection() int {
-	if b.selected < MainTrackSlots-bcScheduledFrom {
+// LineupSelection is the focused row WITHIN the running order, or -1.
+func (b Broadcaster) LineupSelection() int {
+	if b.selected < MainTrackSlots-ScheduledFrom {
 		return b.selected
 	}
 	return -1
 }
 
-// poolSelection is the focused row within the pool, or -1.
+// PoolSelection is the focused row within the pool, or -1.
 //
 // THE POOL BEGINS WHERE THE RUNNING ORDER ENDS, which is the one place that
 // arithmetic is written — `numPriority` is Observer's twin of it.
-func (b Broadcaster) poolSelection() int {
-	if at := b.selected - (MainTrackSlots - bcScheduledFrom); at >= 0 {
+func (b Broadcaster) PoolSelection() int {
+	if at := b.selected - (MainTrackSlots - ScheduledFrom); at >= 0 {
 		return at
 	}
 	return -1
@@ -1154,7 +1228,7 @@ func (b Broadcaster) stationLine() []string {
 	return rows
 }
 
-// bedAvailable is whether the station has any relay it could actually carry
+// BedAvailable is whether the station has any relay it could actually carry
 // (D-117).
 //
 // THE COUNT IS THE PRODUCER'S ANSWER, not the console's guess: it is how many
@@ -1164,7 +1238,7 @@ func (b Broadcaster) stationLine() []string {
 // UNTOLD IS AVAILABLE. `BedMsg` arrives once the resolve lands, and a console
 // that greyed the control out until then would refuse a key that is about to
 // work — which reads as a broken button rather than as a pending answer.
-func (b Broadcaster) bedAvailable() bool { return !b.bedRelaysTold || b.bedRelays > 0 }
+func (b Broadcaster) BedAvailable() bool { return !b.bedRelaysTold || b.bedRelays > 0 }
 
 // bedSelector is the bed's selector and its own state (D-62).
 //
@@ -1192,7 +1266,7 @@ func (b Broadcaster) bedSelector(o render.Opts) string {
 	// A station with nothing to tune offers no selector (D-117). Arrows over
 	// an empty list are a control that cannot act, and the row has something
 	// truer to say with the cells.
-	if !b.bedAvailable() {
+	if !b.BedAvailable() {
 		return bcNoRelaysHere
 	}
 	// SHIFTED. The bare arrows belong to the card's PRESENTER, and a

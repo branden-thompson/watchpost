@@ -33,7 +33,7 @@ func TestTheFrameSurvivesColour(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 	for _, w := range []int{100, 120, 133, 150, 200} {
-		b := NewBroadcaster()
+		b := New(Opening{})
 		b.width, b.height, b.version = w, 50, "0.16.0"
 		rows := strings.Split(b.View().Content, "\n")
 		for i, r := range rows { // every row, not just the masthead's
@@ -72,7 +72,7 @@ func TestTheFrameSurvivesColour(t *testing.T) {
 func TestTheMastheadsKeysAreChips(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.version = 150, 50, "0.16.0"
 	o := b.opts()
 	row := b.controlRow(o)
@@ -96,7 +96,7 @@ func TestTheMastheadsKeysAreChips(t *testing.T) {
 // is not on the air, so the promise would be false — the same fault as a dead
 // end (D-64), wearing the opposite costume.
 func TestAReadSlotIsEmptyWhileTheStationIsAtRest(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	// THE AIR BOX'S LIVE ROW, NOT A CARD REGION (D-95). LIVE is one row of two,
 	// and the rule applies to that row: a shimmer must not promise a read that is
@@ -123,7 +123,7 @@ func TestAReadSlotIsEmptyWhileTheStationIsAtRest(t *testing.T) {
 //
 //	"Universal 2 line inset like Observer" … "global 2 row inset"
 func TestTheFrameKeepsItsInset(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	rows := strings.Split(ttytest.StripANSI(b.View().Content), "\n")
 	for i := range bcInsetRows {
@@ -152,7 +152,7 @@ func TestTheFrameKeepsItsInset(t *testing.T) {
 func TestTheStationBandIsPaintedByItsState(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height = 150, 50
 
 	_, bg := b.stationTone()
@@ -189,7 +189,7 @@ func TestTheStationBandIsPaintedByItsState(t *testing.T) {
 //	"one more consolidation — we're going to take the station center out of the
 //	 masthead"
 func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	// THE STATION IS TOLD WHERE IT IS (D-72), by its own settings rather than by
 	// hard-coded constants.
@@ -207,7 +207,7 @@ func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
 	}
 	// AND A STATION THAT HAS NOT BEEN TOLD SAYS SO, rather than naming a place
 	// it was compiled with.
-	bare := ttytest.StripANSI(NewBroadcaster().withSize(150, 74).stationSection(b.opts(), "", ""))
+	bare := ttytest.StripANSI(New(Opening{}).withSize(150, 74).stationSection(b.opts(), "", ""))
 	if !strings.Contains(bare, frame.NoTransmitter) {
 		t.Errorf("a station with no epicentre says so:\n%s", bare)
 	}
@@ -225,7 +225,7 @@ func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
 // than showing `(no relay tuned)` and `○ INACTIVE` as constants that happen to
 // be true at launch.
 func TestTheBedDrawsWhatWasPublished(t *testing.T) {
-	b := NewBroadcaster().withSize(150, 74)
+	b := New(Opening{}).withSize(150, 74)
 
 	// BEFORE IT IS TOLD, it says the true thing it can say.
 	bare := ttytest.StripANSI(b.stationSection(b.opts(), "", ""))
@@ -272,7 +272,7 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 func TestTheStationBandIsEvenlyInset(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
-	b := NewBroadcaster().withSize(150, 74)
+	b := New(Opening{}).withSize(150, 74)
 	b.power = lineup.Running
 	fg, bg := b.stationTone()
 	rows := strings.Split(b.stationSection(b.opts(), fg, bg), "\n")
@@ -380,7 +380,7 @@ func openAModal(t *testing.T, d Dashboard) Dashboard {
 // The table's own centred heading is what the reference draws and the only
 // caption in the frame.
 func TestTheScheduledHeadingNamesTheTable(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	rows := strings.Split(ttytest.StripANSI(b.View().Content), "\n")
 

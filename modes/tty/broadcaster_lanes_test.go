@@ -23,7 +23,7 @@ func bcWith(t *testing.T, cards ...lineup.Card) Broadcaster {
 		}
 		l = next
 	}
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b, _ = b.Update(LineupMsg{Lineup: l})
 	b.width, b.height = 150, 74
 	return b

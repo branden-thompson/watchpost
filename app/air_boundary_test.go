@@ -162,7 +162,7 @@ var airBoundary = map[string]airMember{
 	// carries.
 	//
 	// A CARD ON THE AIR IS ALREADY EXCLUDED, twice: the window does not offer the
-	// keys for one (`manageable`), and the Director refuses to disturb a reading
+	// keys for one (`Manageable`), and the Director refuses to disturb a reading
 	// card whatever it is told.
 	"MoveCard": {airProgramme, "the console reorders its own running order; the schedule decides, and a reading card is refused"},
 	"DropCard": {airProgramme, "the console discards from its own running order; same seam, and the same refusal for a reading card"},

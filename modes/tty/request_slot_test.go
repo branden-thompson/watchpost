@@ -36,7 +36,7 @@ func TestARequestedCardLandsInTheSlotTheOperatorTyped(t *testing.T) {
 		{"standby: the line-up sits one below LIVE", lineup.OffAir, "4", 3},
 		// ON AIR the LIVE slot is occupied and the two coincide.
 		{"on air: slot and index coincide", lineup.Running, "4", 4},
-		// AND THE LOWEST SLOT THE WINDOW ACCEPTS IS `bcScheduledFrom` — the two
+		// AND THE LOWEST SLOT THE WINDOW ACCEPTS IS `ScheduledFrom` — the two
 		// above it are the cards the operator READS from (D-68), not addresses
 		// they can file a request into.
 		{"standby: the lowest typable slot", lineup.OffAir, "2", 1},

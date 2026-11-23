@@ -26,18 +26,18 @@ import (
 // has just started: the Producer is proposing and the Director is choosing, and
 // the console's job is to say so rather than to report an absence.
 func (b Broadcaster) slotCard(cards []lineup.Card, i int) (lineup.Card, bool) {
-	i = b.indexForSlot(i)
+	i = b.IndexForSlot(i)
 	if i >= 0 && i < len(cards) {
 		return cards[i], true
 	}
 	return lineup.Card{}, false
 }
 
-// indexForSlot turns a SLOT NUMBER — what the operator sees and types — into a
+// IndexForSlot turns a SLOT NUMBER — what the operator sees and types — into a
 // RUNNING-ORDER INDEX, which is what the schedule takes (D-119).
 //
 // ONE OWNER. Reading a slot, the card window's move and the Line-Up Request
-// window all need this arithmetic, and three copies of `i - liveOffset()` is
+// window all need this arithmetic, and three copies of `i - LiveOffset()` is
 // three places for the sign to be wrong. A wrong one is silent: the card lands
 // one place further down than the operator asked, on STANDBY, which is the
 // surface's normal state (D-119).
@@ -46,11 +46,11 @@ func (b Broadcaster) slotCard(cards []lineup.Card, i int) (lineup.Card, bool) {
 // Reading, it is a slot above the line-up (LIVE itself); writing, it is the
 // front of the running order. Clamping here would make the two agree by
 // accident.
-func (b Broadcaster) indexForSlot(slot int) int {
-	return slot - b.liveOffset()
+func (b Broadcaster) IndexForSlot(slot int) int {
+	return slot - b.LiveOffset()
 }
 
-// liveOffset is how far the line-up sits below the LIVE slot (D-84).
+// LiveOffset is how far the line-up sits below the LIVE slot (D-84).
 //
 // LIVE IS WHAT IS ON THE AIR, AND ON STANDBY NOTHING IS. The HUM LEAD:
 //
@@ -68,7 +68,7 @@ func (b Broadcaster) indexForSlot(slot int) int {
 // on the air for a moment, and keying this off that would shunt every card down
 // a row and back for the length of one build. The power is stable; "is something
 // playing right now" is not.
-func (b Broadcaster) liveOffset() int {
+func (b Broadcaster) LiveOffset() int {
 	if b.power == lineup.Running {
 		return 0
 	}

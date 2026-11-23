@@ -38,3 +38,21 @@ tickMsg	TickMsg	modes/tty
 tick	ShimmerTick	modes/tty
 trend	Trend	modes/tty
 weatherRow	WeatherRow	modes/tty
+# B3 (design CK-2): the console's names exported in place, each scoped to modes/tty's keys; a method by its receiver, so the Dashboard's heldCursor keeps its name
+Broadcaster.cardDetail	Broadcaster.CardDetail	modes/tty
+Broadcaster.alertDetail	Broadcaster.AlertDetail	modes/tty
+Broadcaster.cardWindowGroundFor	Broadcaster.CardWindowGroundFor	modes/tty
+Broadcaster.alertWindowGround	Broadcaster.AlertWindowGround	modes/tty
+Broadcaster.indexForSlot	Broadcaster.IndexForSlot	modes/tty
+Broadcaster.liveOffset	Broadcaster.LiveOffset	modes/tty
+Broadcaster.scrollQueue	Broadcaster.ScrollQueue	modes/tty
+Broadcaster.consoleCursor	Broadcaster.Cursor	modes/tty
+Broadcaster.heldCursor	Broadcaster.HeldCursor	modes/tty
+Broadcaster.bedAvailable	Broadcaster.BedAvailable	modes/tty
+Broadcaster.mainTrack	Broadcaster.MainTrack	modes/tty
+Broadcaster.poolSelection	Broadcaster.PoolSelection	modes/tty
+Broadcaster.lineupSelection	Broadcaster.LineupSelection	modes/tty
+manageable	Manageable	modes/tty
+bcScheduledFrom	ScheduledFrom	modes/tty
+consoleScoped	Scoped	modes/tty
+NewBroadcaster	New	modes/tty

@@ -3,8 +3,8 @@ import pathlib
 # details for the row OBSERVER has selected — so the operator points at Rancho
 # Penasquitos and is shown Oceanside (D-113).
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
-old = """	if at := r.broadcaster.poolSelection(); at >= 0 {
-		pool := r.broadcaster.area.Pool
+old = """	if at := r.broadcaster.PoolSelection(); at >= 0 {
+		pool := r.broadcaster.Pool()
 		if at >= len(pool) {
 			return r, false // the pointer is past the pool; nothing to open
 		}

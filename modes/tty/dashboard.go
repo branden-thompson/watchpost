@@ -682,7 +682,7 @@ type Dashboard struct {
 	// OBSERVER DRAWS THESE WINDOWS; THE CONSOLE OWNS WHAT THEY ACT ON. The
 	// Line-Up Request window turns the slot the operator typed into a
 	// running-order index (D-119), and the arithmetic belongs to
-	// `Broadcaster.indexForSlot` — which this surface cannot reach. Only the
+	// `Broadcaster.IndexForSlot` — which this surface cannot reach. Only the
 	// Router holds both.
 	//
 	// ZERO IS THE RUNNING STATION'S ANSWER, which is also what an unset field

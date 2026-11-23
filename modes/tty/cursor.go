@@ -169,18 +169,3 @@ func (d Dashboard) heldCursor() *frame.CursorSlot {
 	}
 	return &d.memo.cursor
 }
-
-// consoleCursor is where the console's cursor stands: on its focused row's
-// pointer, the line-up's or the pool's.
-func (b Broadcaster) consoleCursor(content string) (x, y int, ok bool) {
-	r, c, found := frame.SurfaceMark(content, b.opts().Glyphs().Pointer)
-	return c, r, found
-}
-
-// heldCursor is the console memo's cursor slot, nil without a memo.
-func (b Broadcaster) heldCursor() *frame.CursorSlot {
-	if b.memo == nil {
-		return nil
-	}
-	return &b.memo.cursor
-}

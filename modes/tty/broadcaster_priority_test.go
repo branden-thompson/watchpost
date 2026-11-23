@@ -36,7 +36,7 @@ import (
 // AN EMPTY BOX IS THE POINT. The frame does not move when a hazard arrives, which
 // is the same argument `priorityWidth` already made for reserving the column.
 func TestAClearRailStillDrawsTheAlertBox(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 
 	got := ttytest.StripANSI(b.View().Content)
@@ -51,7 +51,7 @@ func TestAClearRailStillDrawsTheAlertBox(t *testing.T) {
 
 // AND A TAKEOVER BRINGS IT BACK, in its own column beside the running order.
 func TestATakeoverBringsThePriorityTrackBack(t *testing.T) {
-	b := withBurst(t, NewBroadcaster())
+	b := withBurst(t, New(Opening{}))
 
 	got := ttytest.StripANSI(b.View().Content)
 	if !strings.Contains(got, bcTakeoverTitle) {
@@ -68,7 +68,7 @@ func TestATakeoverBringsThePriorityTrackBack(t *testing.T) {
 // to its own width before the join, so no row can carry one track's cells into
 // the other's — which is what makes occlusion impossible rather than avoided.
 func TestTheTwoTracksNeverShareACell(t *testing.T) {
-	b := withBurst(t, NewBroadcaster())
+	b := withBurst(t, New(Opening{}))
 	left := bcRailWidth + bcRailGap
 	pw, cw := b.priorityWidth(), b.cardBoxWidth()
 
@@ -99,8 +99,8 @@ func TestTheTwoTracksNeverShareACell(t *testing.T) {
 // ten rows overflows the pair by one, the pair truncates the overflow, and what
 // comes off the bottom is the one thing in the box the operator presses.
 func TestTheTakeoverBoxCloseslevelWithUpNext(t *testing.T) {
-	short := withBurst(t, NewBroadcaster(), "one hazard")
-	tall := withBurst(t, NewBroadcaster(), "one hazard", "two", "three", "four", "five")
+	short := withBurst(t, New(Opening{}), "one hazard")
+	tall := withBurst(t, New(Opening{}), "one hazard", "two", "three", "four", "five")
 
 	for _, b := range []Broadcaster{short, tall} {
 		pair := b.readPair()
@@ -122,7 +122,7 @@ func TestTheTakeoverBoxCloseslevelWithUpNext(t *testing.T) {
 // AND THE WAY IN SURVIVES THE FIT. Whatever the height works out to, the control
 // row is inside it — not a bottom line cut off by the truncation above it.
 func TestTheTakeoverBoxKeepsItsControlRow(t *testing.T) {
-	b := withBurst(t, NewBroadcaster(), "a", "b", "c")
+	b := withBurst(t, New(Opening{}), "a", "b", "c")
 	got := ttytest.StripANSI(strings.Join(b.readPair(), "\n"))
 	if !strings.Contains(got, "Details / Full Read / Manage") {
 		t.Errorf("the takeover box has no way in:\n%s", got)

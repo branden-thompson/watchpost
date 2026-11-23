@@ -83,7 +83,7 @@ func TestAPoolRowTakesItsWeatherFromTheRecentSnapshot(t *testing.T) {
 	snap.Locations[0].WeatherAsOf = time.Now()
 	snap.Locations[0].Harmonized.Condition = "Clear"
 	snap.Locations[0].Harmonized.Temp = &temp
-	b, _ = b.Update(RecentSnapshotMsg{Snap: snap})
+	b, _ = b.WithRecent(snap)
 
 	var found bool
 	for _, r := range b.poolRows(b.locIndex()) {
@@ -109,7 +109,7 @@ func TestAPoolRowTakesItsWeatherFromTheRecentSnapshot(t *testing.T) {
 func TestTheRecentSnapshotDoesNotBecomeTheMastheads(t *testing.T) {
 	b := poolConsole(t)
 	before := b.snap
-	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{}})
+	b, _ = b.WithRecent(&snapshot.Snapshot{})
 	if b.snap != before {
 		t.Error("the recent snapshot overwrote the one the masthead reports")
 	}

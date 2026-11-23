@@ -16,8 +16,8 @@ p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
 # matched, so the fast gate passed it: an anchor that matches is not the same as
 # a mutation that is still valid, and that is why the slow gate is not optional.
 old = """	case key == "A":
-		id, rows, ok = r.broadcaster.alertDetail()
-		ground = r.broadcaster.alertWindowGround()
+		id, rows, ok = r.broadcaster.AlertDetail()
+		ground = r.broadcaster.AlertWindowGround()
 """
 assert old in s, "mAU1"
 p.write_text(s.replace(old, "", 1))

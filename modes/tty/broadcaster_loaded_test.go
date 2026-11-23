@@ -66,13 +66,13 @@ func loadedConsoleAt(t testing.TB, n int, observed time.Time) Broadcaster {
 			t.Fatalf("queueing c%d: %v", i, err)
 		}
 	}
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height = 150, 74
 	b, _ = b.Update(LineupMsg{Lineup: l})
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
 		RadiusMi:    100, Pool: pool})
-	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: locs}})
+	b, _ = b.WithRecent(&snapshot.Snapshot{Locations: locs})
 	return b
 }
 
@@ -96,7 +96,7 @@ func TestTheLoadedFixtureActuallyJoins(t *testing.T) {
 		t.Errorf("%d of %d pool rows join their weather", hit, len(b.area.Pool))
 	}
 	// AND THE RUNNING ORDER JOINS TOO (D-116).
-	rows := b.lineupRows(b.mainTrack(), b.locIndex())
+	rows := b.lineupRows(b.MainTrack(), b.locIndex())
 	joined := 0
 	for _, r := range rows { // bounded by the table (P10-02)
 		if r.Conditions != "" {
@@ -113,7 +113,7 @@ func TestTheLoadedFixtureActuallyJoins(t *testing.T) {
 // SHARED WITH THE BUDGET, which asks it before reporting a number.
 func loadedJoins(b Broadcaster) int {
 	n := 0
-	for _, r := range b.lineupRows(b.mainTrack(), b.locIndex()) { // bounded by the table (P10-02)
+	for _, r := range b.lineupRows(b.MainTrack(), b.locIndex()) { // bounded by the table (P10-02)
 		if r.Conditions != "" {
 			n++
 		}
@@ -185,7 +185,7 @@ func TestTheLineupRowsBuildNoDayCells(t *testing.T) {
 	}
 	b := loadedConsole(t, ttytest.LoadedPoolSize)
 	idx := b.locIndex()
-	cards := b.mainTrack()
+	cards := b.MainTrack()
 	// THE PREMISE: the fixture joins, and carries days beyond tomorrow. Without
 	// both, this measures a path that builds nothing and would pass on anything.
 	if loadedJoins(b) == 0 || len(idx.at(b.area.Pool[0]).Daily) < 3 {

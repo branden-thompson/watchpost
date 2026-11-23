@@ -17,7 +17,7 @@ import (
 // this surface must not inherit that.
 
 func bcSized(w, h int) Broadcaster {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height = w, h
 	return b
 }

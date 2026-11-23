@@ -101,7 +101,7 @@ func (st requestState) positionOK() bool {
 		return true
 	}
 	n, err := strconv.Atoi(strings.TrimSpace(st.slot))
-	return err == nil && n >= bcScheduledFrom && n < lineup.MainTrackCap
+	return err == nil && n >= ScheduledFrom && n < lineup.MainTrackCap
 }
 
 // position is the running-order index the request asks for.
@@ -119,7 +119,7 @@ func (st requestState) positionOK() bool {
 // naming the slot they asked for.
 //
 // THE OFFSET IS PASSED, NOT ASKED, because the arithmetic's owner is
-// `Broadcaster.indexForSlot` and this surface cannot reach the console. The
+// `Broadcaster.IndexForSlot` and this surface cannot reach the console. The
 // Router carries it across (D-156).
 func (st requestState) position(liveOffset int) int {
 	if st.prioritize {
@@ -132,7 +132,7 @@ func (st requestState) position(liveOffset int) int {
 	// THE FRONT OF THE RUNNING ORDER IS THE FLOOR, and it is a TRIPWIRE: the
 	// D-42 shape, stated for the same reason as `refence`'s. Today it cannot
 	// fire — `valid()` gates this behind `positionOK`, which refuses anything
-	// below `bcScheduledFrom` (2), and `liveOffset` is never more than 1, so the
+	// below `ScheduledFrom` (2), and `liveOffset` is never more than 1, so the
 	// lowest reachable index is 1. That is a rule held by a DIFFERENT rule, and
 	// it vanishes silently the day the table starts drawing from slot 1 or the
 	// window learns to type UP NEXT — which is exactly when `Insert` would be

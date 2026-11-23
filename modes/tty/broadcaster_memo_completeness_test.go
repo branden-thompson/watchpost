@@ -141,7 +141,7 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 			next.Locations = append([]snapshot.Location(nil), b.pool.Locations...)
 			hotter := 44.4
 			next.Locations[0].Harmonized.Temp = &hotter
-			b, _ = b.Update(RecentSnapshotMsg{Snap: &next})
+			b, _ = b.WithRecent(&next)
 			return b
 		}},
 		{"the weather behind a watched pool place is republished", func(b Broadcaster) Broadcaster {
@@ -151,7 +151,7 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 			next.Locations = append([]snapshot.Location(nil), b.snap.Locations...)
 			hotter := 44.4
 			next.Locations[0].Harmonized.Temp = &hotter
-			b, _ = b.Update(SnapshotMsg{Snap: &next})
+			b, _ = b.WithSnapshot(&next)
 			return b
 		}},
 		{"the pool loses a location", func(b Broadcaster) Broadcaster {

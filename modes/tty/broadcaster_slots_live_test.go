@@ -49,7 +49,7 @@ func TestOnStandbyTheLineUpStartsAtUpNextAndLiveIsEmpty(t *testing.T) {
 			t.Fatalf("seeding %s: %v", id, err)
 		}
 	}
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b, _ = b.Update(LineupMsg{Lineup: l}) // power is STOPPED: the station has not gone on air
 
@@ -85,7 +85,7 @@ func TestGoingOnAirMovesTheHeadOfTheLineUpIntoLive(t *testing.T) {
 	if l, err = l.Queue(lineup.MainTrack, admitted); err != nil {
 		t.Fatalf("seeding: %v", err)
 	}
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b, _ = b.Update(LineupMsg{Lineup: l})
 	b.power = lineup.Running
@@ -102,14 +102,14 @@ func TestGoingOnAirMovesTheHeadOfTheLineUpIntoLive(t *testing.T) {
 // card down a row and back for the length of one build, which the operator would
 // read as the console losing its place.
 func TestTheLiveSlotDoesNotShuntWhileARunningStationIsBetweenReads(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
-	if got := b.liveOffset(); got != 0 {
+	if got := b.LiveOffset(); got != 0 {
 		t.Errorf("a running station with nothing on the air offset by %d; the power is what decides", got)
 	}
 	b.power = lineup.Stopped
-	if got := b.liveOffset(); got != 1 {
+	if got := b.LiveOffset(); got != 1 {
 		t.Errorf("a stopped station offset by %d; LIVE is empty and the queue starts at UP NEXT", got)
 	}
 }

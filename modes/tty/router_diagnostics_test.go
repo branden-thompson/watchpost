@@ -313,7 +313,7 @@ func TestGainDownReachesTheSameLevel(t *testing.T) {
 // rather than a list written here, so a control added to the row without a
 // binding fails immediately.
 func TestEveryAdvertisedControlIsBound(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	row := ttytest.StripANSI(b.controlRow(b.opts()))
 

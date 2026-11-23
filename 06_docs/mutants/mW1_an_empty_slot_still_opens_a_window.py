@@ -3,7 +3,7 @@ import pathlib
 # it CONSUMES the key, so the digit no longer falls through the way an unbound key
 # does. The operator keys [7] on a station whose Director has filled two slots and
 # gets an empty box: a window that asks them to read the absence of a report
-# (broadcaster_detail.go, cardDetail).
+# (broadcaster_detail.go, CardDetail).
 #
 # Re-pointed after `[A]` joined the digits at the same door. The refusal is now one
 # check serving both handles, so the mutation OVERRIDES it rather than deleting

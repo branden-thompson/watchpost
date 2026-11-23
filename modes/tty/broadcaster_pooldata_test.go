@@ -34,7 +34,7 @@ func TestThePoolsWeatherIsObserversWeather(t *testing.T) {
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
 		RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
-	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
+	b, _ = b.WithRecent(&snapshot.Snapshot{Locations: []snapshot.Location{*loc}})
 
 	rows := b.poolRows(b.locIndex())
 	if len(rows) != 1 {
@@ -84,7 +84,7 @@ func TestThePoolKeepsItsOwnColumns(t *testing.T) {
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
 		RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
-	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
+	b, _ = b.WithRecent(&snapshot.Snapshot{Locations: []snapshot.Location{*loc}})
 
 	got := b.poolRows(b.locIndex())[0]
 	if got.Index != 1 || got.Population != 4000 {
@@ -146,7 +146,7 @@ func TestThePoolRowCarriesEveryMark(t *testing.T) {
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
 		RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
-	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
+	b, _ = b.WithRecent(&snapshot.Snapshot{Locations: []snapshot.Location{*loc}})
 
 	row := b.poolRows(b.locIndex())[0]
 	if row.AlertCount != 1 || !row.HasAlert || !row.WarnAlert {
@@ -190,7 +190,7 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 
 	// A CARD ABOUT THAT PLACE. `Card.Subject` IS the location key (topoff.go), so
 	// this is the identity the join matches on.
-	// THE TABLE STARTS AT SLOT 2 (`bcScheduledFrom`): slot 0 is LIVE and slot 1 is
+	// THE TABLE STARTS AT SLOT 2 (`ScheduledFrom`): slot 0 is LIVE and slot 1 is
 	// the UP NEXT card, so the beat under test needs two ahead of it to be DRAWN
 	// at all. Without them this passes on an empty table for the wrong reason.
 	c := ttytest.Card(t, "c", string(snapshot.Key(ref)))
@@ -199,9 +199,9 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 	b, _ = b.Update(StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
 		RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
-	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
+	b, _ = b.WithRecent(&snapshot.Snapshot{Locations: []snapshot.Location{*loc}})
 
-	rows := b.lineupRows(b.mainTrack(), b.locIndex())
+	rows := b.lineupRows(b.MainTrack(), b.locIndex())
 	var got *render.LineupRow
 	for i := range rows { // bounded by the track (P10-02)
 		if rows[i].Zip == loc.Zip {
@@ -274,7 +274,7 @@ func TestTheConsoleReadsTheOperatorsFireThreshold(t *testing.T) {
 			b, _ = b.Update(StationAreaMsg{
 				Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
 				RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
-			b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
+			b, _ = b.WithRecent(&snapshot.Snapshot{Locations: []snapshot.Location{*loc}})
 
 			rows := b.poolRows(b.locIndex())
 			if len(rows) != 1 {

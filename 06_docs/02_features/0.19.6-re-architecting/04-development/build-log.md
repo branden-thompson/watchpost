@@ -971,3 +971,68 @@ before the prep, in a commit of its own.
 "## B3", which the test reads as B3 landed while the as-built page draws B0–B2. Until a batch's
 move its work is under "Before", and its own heading opens in the move commit with the page
 redrawn (D-71).
+
+## Before B3: the console's API in place (A-58; D-72)
+
+**The re-check (step 1), on `9aa93cfe`.** Design CK's facts against the code, by a read of every cited
+site and a type-check of the console's files cut away from the root. No root name blocks the move: the
+console reaches the root only through `SnapshotMsg` and `RecentSnapshotMsg` (P3) and the Observer's
+card window, which the prep cuts out. Changed since the design:
+- B2 moved `NoTransmitter` to the kit, so the console exports 39 declarations, not 40, and m241 no
+  longer changes in B3;
+- the console's two cursor methods sit in the root's cursor file, outside every file the plan names;
+- `app/deck_trace_test.go`, written in B0.6, has 7 console sites the design does not list, and
+  `app/schedule_test.go` has 12, not 11;
+- the console's half of the masthead guard, written in B2 (D-58), reaches the Observer for its
+  snapshot (D-72);
+- two `router.go` anchors the design does not list lose their text when `Opening` and `Mirror` replace
+  the field writes, mAQ1 and m622;
+- `Dashboard.heldCursor` shares the console method's name, so a rename line names its receiver;
+- `tools/graph`'s console-reach row reads files by the `broadcaster` prefix, which the move empties.
+
+**The card window, cut (A-21).** All of `broadcaster_manage.go`, renamed by `git mv`, and the
+Dashboard half of `broadcaster_detail.go` are `card_window.go`. mW6, m695 and mAL2 re-point by path.
+
+**The console's API, in place (design CK-2).** `New(Opening)` replaces `NewBroadcaster` and the
+Router's seven field writes; `SetMirror(Mirror)` its five per-update writes, one call where the last
+stood, measured in the design to add no copy, escape or stack (CK-3); `SetListenerMuted` its two mute
+writes; five getters its field reads; `WithSnapshot` and `WithRecent` the two snapshot arms of the
+console's `Update`, the Router handing the snapshots over in `scopedMessage`. Sixteen names exported
+by `gopls rename`.
+- **A first rename pass renamed the wrong name:** its offsets counted characters where `gopls` counts
+  bytes, and the files carry em-dashes, so `indexForSlot`'s offset landed on the type and renamed
+  `Broadcaster` to `IndexForSlot` across 41 files. It was renamed back the same way, the diff checked
+  to hold only the prep's own edits, and each rename then ran at a byte offset checked against the
+  name, with a build after each.
+- **A lost inlining, recovered:** `Router.cutBed` was at the inliner's budget at HEAD, cost 80, and
+  the getter took it to 83. It changes nothing on the Router, so it returns nothing, at 79. `gcprobe`:
+  4,001 escapes in 1,992 keys, none new; 7,268 inlined calls in 4,591 keys, none lost.
+- **A P10-01 finding, avoided:** a `toConsole` helper calling `Update` raised one by bare name. The
+  switch is in `scopedMessage`'s program-scoped arm, whose ratified row covers it with its reason
+  unchanged: `Broadcaster` holds no Router field. `make p10`: 0 live, 0 unmatched, 0 unratified.
+- **The clock (D-21):** `Opening.Now` is the Dashboard's; the router trace's console-clock line is
+  deleted, and its 1,800-line golden replays byte-identical.
+
+**Mutants.** 18 anchors follow the code: 3 by path to `card_window.go`, 11 by a renamed name, and
+mAQ1, m622, m642 and m664 on the Router's new text, each in the function it sat in and each seen
+failing its killer. Every mutant applies.
+
+**The changed-line table.**
+
+| File | Line | Kind | Mutants before | After |
+|---|---|---|---|---|
+| 30 test files | `NewBroadcaster()` as `New(Opening{})`, 62 sites | setup | — | — |
+| `broadcaster_loaded_test.go`, `_memo_completeness_test.go`, `_pooldata_test.go`, `_pool_test.go` | a snapshot by `WithRecent` or `WithSnapshot`, 10 sites (design CK-1) | setup | — | — |
+| `router_trace_test.go` | the console-clock line, deleted (D-21) | setup | the golden | the golden, byte-identical |
+| `router_swap_test.go` | the power guard's walk reads the `Power` getter | assertion | none recorded | none recorded |
+| `router_lookup_test.go` | the routing reasons say `Scoped` | setup | — | — |
+| the renamed names' call sites | renamed (A-58) | setup | — | — |
+| `cmd/watchpost/record_test.go` | A-21 names `card_window.go` whole | setup | — | — |
+| `cmd/watchpost/testdata/union-decls.txt` | re-captured: 59 new or edited, 48 gone or edited | golden | — | — |
+| `06_docs/graph/exported-tty.txt` | 28 console names until the move takes them out, `NewBroadcaster` gone | golden | — | — |
+
+**The inventory's delta.** No test new or removed.
+
+**AP-CAPS-01's soft warnings** rise from 86 to 103: the renames touch the console's test files, whose
+comments open paragraphs as they always did. The one such line in the diff is a comment the rename
+of `bcScheduledFrom` rewrote in place.

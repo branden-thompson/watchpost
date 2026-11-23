@@ -41,7 +41,7 @@ func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 		}
 		// What the pool knows that the snapshot does not: which row this is,
 		// how many people the place serves, and whether the pointer is on it.
-		row.Index, row.Population, row.Selected = i+1, ref.Population, i == b.poolSelection()
+		row.Index, row.Population, row.Selected = i+1, ref.Population, i == b.PoolSelection()
 		// THE DISTANCE IS FROM THE TRANSMITTER, NOT FROM THE OBSERVING STATION.
 		// `WeatherRow` fills `StationKM` with how far the WX STN is from the place;
 		// this column answers a different question — how far the PLACE is from the
@@ -184,7 +184,7 @@ func (b Broadcaster) poolSpan(used int, idx locIndex) scrollSpan {
 	window := max(0, room-len(head)-1) // the footer is part of the budget
 	lo := 0
 	if window < len(data) {
-		if sel := b.poolSelection(); sel >= window {
+		if sel := b.PoolSelection(); sel >= window {
 			lo = sel - window + 1
 		}
 		lo = max(0, min(lo, len(data)-window))

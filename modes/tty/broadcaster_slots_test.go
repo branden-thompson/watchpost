@@ -32,7 +32,7 @@ import (
 // THE RULE D-64 EXISTS FOR HOLDS: a station with nothing scheduled shows
 // SLOTS rather than a sentence saying it has nothing.
 func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	rows := strings.Split(ttytest.StripANSI(b.View().Content), "\n")
 
@@ -68,7 +68,7 @@ func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
 // for "this is loading", so the two surfaces cannot come to mean different
 // things by it.
 func TestAnEmptySlotShimmers(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	first := ttytest.StripANSI(b.View().Content)
 	b.frame++
@@ -89,7 +89,7 @@ func TestAFilledSlotIsStill(t *testing.T) {
 		t.Fatalf("seeding: %v", err)
 	}
 	l = next
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b, _ = b.Update(LineupMsg{Lineup: l})
 
@@ -114,7 +114,7 @@ func TestAFilledSlotIsStill(t *testing.T) {
 // per-slot control. It draws the standby box, and that box carries no handle
 // because `[0]` would open nothing (F-97).
 func TestAnEmptySlotStillCarriesItsHandle(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	got := ttytest.StripANSI(b.View().Content)
 	// THE READ CARD KEEPS ITS CHIP; THE TABLE ROWS CARRY THEIR NUMBER (D-94).
@@ -141,7 +141,7 @@ func TestAnEmptySlotStillCarriesItsHandle(t *testing.T) {
 // plants live in exactly that gap — the frame never incrementing, the tick
 // never arming, and the tick never stopping.
 func TestTheTickAdvancesTheShimmerAndReArms(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 
 	before := b.frame
@@ -168,7 +168,7 @@ func TestTheTickStopsOnceEverySlotIsDecided(t *testing.T) {
 		}
 		l = next
 	}
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b, _ = b.Update(LineupMsg{Lineup: l})
 

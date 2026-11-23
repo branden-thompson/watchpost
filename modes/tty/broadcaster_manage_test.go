@@ -78,15 +78,15 @@ func TestALiveCardOffersNeitherControl(t *testing.T) {
 		t.Fatal(err)
 	}
 	// BUILT DIRECTLY, because `To(OnAir)` demands a card's words and this is a
-	// question about STATE alone: `manageable` reads the id and the state, and a
+	// question about STATE alone: `Manageable` reads the id and the state, and a
 	// fixture that carried a whole read to ask it would be testing the lifecycle.
-	if manageable(lineup.Card{ID: "live", State: lineup.OnAir}) {
+	if Manageable(lineup.Card{ID: "live", State: lineup.OnAir}) {
 		t.Error("a card on the air is offered the management controls")
 	}
-	if !manageable(live) {
+	if !Manageable(live) {
 		t.Error("an admitted card is refused them")
 	}
-	if manageable(lineup.Card{}) {
+	if Manageable(lineup.Card{}) {
 		t.Error("an empty slot is offered them")
 	}
 }
@@ -116,7 +116,7 @@ func TestChangePositionSendsTheMove(t *testing.T) {
 	// drawn from UP NEXT down (D-84) — and `Reorder` takes the INDEX. Sending the
 	// typed number straight through would move the card one place further down
 	// than the operator asked, silently, on the surface's normal state.
-	wantTo := 7 - r.broadcaster.liveOffset()
+	wantTo := 7 - r.broadcaster.LiveOffset()
 	if gotID != want || gotTo != wantTo {
 		t.Errorf("the schedule was told (%q, %d); slot 7 is line-up index %d", gotID, gotTo, wantTo)
 	}
@@ -144,7 +144,7 @@ func TestChangePositionRefusesWhatIsOutOfRange(t *testing.T) {
 
 		if sent {
 			t.Errorf("%q was sent to the schedule; the table draws %d to %d",
-				typed, bcScheduledFrom, MainTrackSlots-1)
+				typed, ScheduledFrom, MainTrackSlots-1)
 		}
 		if r.observer.cardErr == "" {
 			t.Errorf("%q was refused with no reason on the window", typed)
@@ -287,11 +287,11 @@ func TestMovingACardRedrawsTheTable(t *testing.T) {
 func rowNumberOf(t *testing.T, b Broadcaster, id string) string {
 	t.Helper()
 	// THE SLOT, NOT THE INDEX. The table numbers its rows by SLOT and reads the
-	// card at `slot - liveOffset()` (D-84), so a test that compared indices would
+	// card at `slot - LiveOffset()` (D-84), so a test that compared indices would
 	// be asking a different question from the one the operator can see.
-	for i, c := range b.mainTrack() { // bounded by the track (P10-02)
+	for i, c := range b.MainTrack() { // bounded by the track (P10-02)
 		if c.ID == id {
-			return pad2(i + b.liveOffset())
+			return pad2(i + b.LiveOffset())
 		}
 	}
 	t.Fatalf("card %q is not on the main track at all", id)

@@ -7,6 +7,6 @@ import pathlib
 # message: same rule, same detector, and the predicate now reads a field with one
 # writer instead of one that three publishers could zero.
 p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
-old = """func (b Broadcaster) bedAvailable() bool { return !b.bedRelaysTold || b.bedRelays > 0 }"""
+old = """func (b Broadcaster) BedAvailable() bool { return !b.bedRelaysTold || b.bedRelays > 0 }"""
 assert old in s, "mAK3"
-p.write_text(s.replace(old, """func (b Broadcaster) bedAvailable() bool { return true }""", 1))
+p.write_text(s.replace(old, """func (b Broadcaster) BedAvailable() bool { return true }""", 1))

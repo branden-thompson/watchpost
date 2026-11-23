@@ -38,7 +38,7 @@ func TestChangePositionSaysItsRangeAndItsError(t *testing.T) {
 	got := ttytest.StripANSI(strings.Join(d.movePrompt(d.opts()), "\n"))
 	for _, want := range []string{
 		"MOVE THIS CARD TO POSITION", "[ 9 ",
-		"Positions " + strconv.Itoa(bcScheduledFrom) + " to " + strconv.Itoa(MainTrackSlots-1) + ".",
+		"Positions " + strconv.Itoa(ScheduledFrom) + " to " + strconv.Itoa(MainTrackSlots-1) + ".",
 		d.cardErr, "Cancel", "Confirm",
 	} {
 		if !strings.Contains(got, want) {

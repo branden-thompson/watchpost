@@ -269,8 +269,7 @@ func TestRouterUpdateIsTheSameUnderRandomMessages(t *testing.T) {
 	var reach traceReach
 	for n, walk := range traceWalks { // the six walks (P10-02)
 		seed := uint64(n + 1)
-		r := NewRouter(traceDash(t, at))
-		r.broadcaster.now = func() time.Time { return at }
+		r := NewRouter(traceDash(t, at)) // the console takes the Dashboard's clock (0.19.6 D-21)
 		rnd := rand.New(rand.NewPCG(seed, 195))
 		var m tea.Model = r
 		for step := range 300 { // bounded (P10-02)

@@ -24,7 +24,7 @@ import (
 
 func stationAt(t *testing.T, w int, p lineup.Power) []string {
 	t.Helper()
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = w, 74, true
 	b.power = p
 	return b.stationLine()
@@ -54,7 +54,7 @@ func TestEveryStationStateSaysWhatItIs(t *testing.T) {
 // lands correctly at exactly one terminal size and nowhere else.
 func TestTheTransitionHintIsAnchoredToTheRightEdge(t *testing.T) {
 	for _, w := range []int{100, 110, 120, 130, 150} {
-		b := NewBroadcaster()
+		b := New(Opening{})
 		b.width, b.height, b.ascii = w, 74, true
 		b.power = lineup.Running
 		got := b.stationLine()[1]
@@ -99,7 +99,7 @@ func TestTheTransitionNamesTheStateItWouldReach(t *testing.T) {
 // the station is and whether it is on the air are one question asked twice, and
 // the operator checks them together.
 func TestTheStationLineCarriesTheGainControl(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	b.gain = 100
@@ -127,7 +127,7 @@ func TestTheStationLineCarriesTheGainControl(t *testing.T) {
 // selector and its own state word, would be two controls for one bed, which an
 // operator has to test to tell apart.
 func TestTheBedIsDrawnOnceInsideTheStationSection(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	for _, r := range b.stationLine() { // bounded by the section (P10-02)
 		if strings.Contains(ttytest.StripANSI(r), "BED") {
@@ -149,7 +149,7 @@ func TestTheBedIsDrawnOnceInsideTheStationSection(t *testing.T) {
 
 func TestTheGainControlReflows(t *testing.T) {
 	for _, w := range []int{100, 120, 150} {
-		b := NewBroadcaster()
+		b := New(Opening{})
 		b.width, b.height, b.ascii = w, 74, true
 		b.power = lineup.Running
 		b.gain = 55
@@ -188,7 +188,7 @@ func painted(t *testing.T) {
 
 func TestTheStationBarIsPaintedAsOneSection(t *testing.T) {
 	painted(t)
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height = 150, 74
 	b.power, b.gain = lineup.Running, 55
 	const fg, bg = "97", "48;5;52"
@@ -212,7 +212,7 @@ func TestTheStationBarIsPaintedAsOneSection(t *testing.T) {
 // mid-line would end the section's background from that column on.
 func TestTheSectionsBackgroundSurvivesTheGainBar(t *testing.T) {
 	painted(t)
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height = 150, 74
 	b.power, b.gain = lineup.Running, 55
 	const bg = "48;5;52"
@@ -246,7 +246,7 @@ func TestTheSectionsBackgroundSurvivesTheGainBar(t *testing.T) {
 // state, and the level. A separate bed card at the bottom of the frame would be
 // a second place to look for the same question.
 func TestTheBedRidesInTheStationSection(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	// TWO TEXT ROWS AND THE AIR BOX (D-107): the station's state with its
@@ -279,7 +279,7 @@ func TestTheBedRidesInTheStationSection(t *testing.T) {
 // THE SELECTOR IS ON THE BED'S ROW (F-77): Variant C absorbs the control line,
 // and the ruling puts the selector here rather than on a separate card.
 func TestTheBedRowCarriesItsSelector(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	got := ttytest.StripANSI(bedRowOf(t, strings.Split(b.stationSection(b.opts(), "", ""), "\n")))
@@ -300,7 +300,7 @@ func TestTheBedRowCarriesItsSelector(t *testing.T) {
 // says ON AIR or STANDBY, the bed says ACTIVE or INACTIVE, and both are read in
 // one glance.
 func TestTheBedRowSaysWhetherItIsCarrying(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	got := ttytest.StripANSI(bedRowOf(t, strings.Split(b.stationSection(b.opts(), "", ""), "\n")))
 	if !strings.Contains(got, "INACTIVE") && !strings.Contains(got, "ACTIVE") {
@@ -316,7 +316,7 @@ func TestTheBedRowSaysWhetherItIsCarrying(t *testing.T) {
 // opens with a key cap, so its arrow sits one cell in from where its value
 // starts, and a comparison of the text fails on that cell.
 func TestTheSectionsLabelsShareAValueColumn(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	for i, row := range b.stationLine()[:2] {
@@ -347,7 +347,7 @@ func TestTheSectionsLabelsShareAValueColumn(t *testing.T) {
 // the station's. What must not happen is the two drifting apart.
 func TestTheValueColumnHoldsWithColourOn(t *testing.T) {
 	painted(t)
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height = 150, 74
 	b.power = lineup.Running
 	rows := b.stationLine()
@@ -391,7 +391,7 @@ func TestTheValueColumnHoldsWithColourOn(t *testing.T) {
 // bed. Two carriers of one number.
 func TestTheBedsCutKeyIsInsideTheBox(t *testing.T) {
 	for _, w := range []int{110, 130, 150, 170} {
-		b := NewBroadcaster()
+		b := New(Opening{})
 		b.width, b.height, b.ascii = w, 74, true
 		row := ttytest.StripANSI(bedRowOf(t, b.airBox()))
 		if !strings.Contains(row, chipFor("b")) {

@@ -5,6 +5,6 @@ import pathlib
 # wiring absent, because an unset field and a running station give the same
 # number. Only the seam the KEY takes proves the offset crosses (P-1).
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
-old = "\tr.observer.liveOffset = r.broadcaster.liveOffset()\n"
+old = "\tr.observer.liveOffset = r.broadcaster.LiveOffset()\n"
 assert old in s, "mRQ2"
 p.write_text(s.replace(old, "", 1))

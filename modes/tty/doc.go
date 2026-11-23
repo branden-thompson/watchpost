@@ -31,6 +31,8 @@
 //	`map_*`                                    the map pane, its modes, layers, Settings rows, and the
 //	                                           Propagation mode (`map_prop_*`)
 //	`broadcaster*`, `request.go`               the Broadcaster console and its Line-Up Request window
+//	`card_window.go`                           the Observer's window for a console card: the card it
+//	                                           is handed to draw, and its move and drop prompts
 //
 // What both surfaces draw the same way is the kit's, internal/frame: the
 // masthead, the location row, the cursor, the shimmer's tick, the memo

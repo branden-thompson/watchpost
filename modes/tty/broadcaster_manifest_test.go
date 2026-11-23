@@ -97,7 +97,7 @@ func TestACardSaysHowFreshItsDataIs(t *testing.T) {
 // THE MANIFEST IS WHAT THE READ CONTAINS, and it is the card's own — not
 // recomposed, not guessed.
 func TestTheManifestListsTheCardsContents(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.ascii = 150, true
 	c := lineup.Card{Contents: []lineup.Content{
 		{Name: "NWS Weather Forecast", Detail: "09/11 - 09/17"},
@@ -185,7 +185,7 @@ func TestACardsTitleIsItsKindThenItsSubject(t *testing.T) {
 // decide whether to trust a report in every test and never in the real app. Two
 // carriers of one fact, and the tests would have the one that works.
 func TestTheConsolesStampAlwaysCarriesAnAge(t *testing.T) {
-	b := NewBroadcaster() // no clock injected: production's own state
+	b := New(Opening{}) // no clock injected: production's own state
 	b.width, b.ascii = 150, true
 	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
 	c := lineup.Card{ID: "a", Slot: lineup.LocationReport, Headline: "Oceanside, CA",

@@ -87,7 +87,7 @@ func (b Broadcaster) upNextBox() []string {
 		return nil
 	}
 
-	c, decided := b.slotCard(b.mainTrack(), 1)
+	c, decided := b.slotCard(b.MainTrack(), 1)
 	// THE LANE IS THE CELL'S OWN WIDTH. A lane two cells wider — "the lane counts
 	// its own rails" — is truncated back into the cell, which cuts exactly the two
 	// cells the handle's CHIP sits in. The rails belong to the box this draws

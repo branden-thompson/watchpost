@@ -24,7 +24,6 @@ package tty
 // — and a console-private window would be outside every one of them.
 
 import (
-	"slices"
 	"strconv"
 	"strings"
 
@@ -45,14 +44,14 @@ import (
 // machine. The prose below it wraps, because prose has no columns to keep.
 const bcDetailRoom = 77
 
-// cardDetail is the window for the card at a slot handle: its name, its body,
+// CardDetail is the window for the card at a slot handle: its name, its body,
 // and whether that slot holds a card at all.
 //
 // AN EMPTY SLOT OPENS NOTHING. The handle is drawn on an undecided slot because
 // the slot is addressable (slotCard), but there is no report to inspect — and a
 // window that opened onto "waiting for the line-up" would be a way of asking the
 // operator to read the absence of a card.
-func (b Broadcaster) cardDetail(handle int) (string, func(render.Opts) (string, []string), bool) {
+func (b Broadcaster) CardDetail(handle int) (string, func(render.Opts) (string, []string), bool) {
 	main := b.projection(lineup.MainTrack)
 	if len(main) > MainTrackSlots { // the rolling window, as the frame draws it (FR-3.1)
 		main = main[:MainTrackSlots]
@@ -64,7 +63,7 @@ func (b Broadcaster) cardDetail(handle int) (string, func(render.Opts) (string, 
 	return b.cardWindowFor(c)
 }
 
-// alertDetail is the takeover box's way in — the hazard card `[A]` opens.
+// AlertDetail is the takeover box's way in — the hazard card `[A]` opens.
 //
 // HUM LEAD, UAT 2026-09-13: "[A] Details / Full Read / Manage in the alert window
 // doesn't currently work, it should function just like [1] in the Up Next card."
@@ -75,11 +74,11 @@ func (b Broadcaster) cardDetail(handle int) (string, func(render.Opts) (string, 
 // burst is ONE card (MVS-D-77), so there is never a second to choose between.
 //
 // IT GOES THROUGH THE SAME DOOR AS A DIGIT. `cardWindowFor` is the one builder
-// of a card window; this reaches it through the alert rail and `cardDetail`
+// of a card window; this reaches it through the alert rail and `CardDetail`
 // reaches it through the main track, so the two cannot come to disagree about
 // what a card looks like — which is the defect that would follow from giving the
 // hazard window a builder of its own.
-func (b Broadcaster) alertDetail() (string, func(render.Opts) (string, []string), bool) {
+func (b Broadcaster) AlertDetail() (string, func(render.Opts) (string, []string), bool) {
 	rail := b.projection(lineup.AlertRail)
 	if len(rail) == 0 {
 		return "", nil, false
@@ -98,10 +97,10 @@ func (b Broadcaster) cardWindowFor(c lineup.Card) (string, func(render.Opts) (st
 	}, true
 }
 
-// cardWindowGroundFor is the ground the window for `handle` floats on, "" for
+// CardWindowGroundFor is the ground the window for `handle` floats on, "" for
 // the standard modal tone. Asked separately from the builder so the two doors
 // (a digit, and `[A]`) cannot hand over a body and a ground that disagree.
-func (b Broadcaster) cardWindowGroundFor(handle int) string {
+func (b Broadcaster) CardWindowGroundFor(handle int) string {
 	main := b.projection(lineup.MainTrack)
 	if len(main) > MainTrackSlots {
 		main = main[:MainTrackSlots]
@@ -113,8 +112,8 @@ func (b Broadcaster) cardWindowGroundFor(handle int) string {
 	return cardWindowGround(c)
 }
 
-// alertWindowGround is the same answer for the takeover box's card.
-func (b Broadcaster) alertWindowGround() string {
+// AlertWindowGround is the same answer for the takeover box's card.
+func (b Broadcaster) AlertWindowGround() string {
 	rail := b.projection(lineup.AlertRail)
 	if len(rail) == 0 {
 		return ""
@@ -153,14 +152,14 @@ func (b Broadcaster) detailBody(o render.Opts, c lineup.Card) []string {
 	// says so (D-87) — so the window that shows that line must not also offer the
 	// two keys it rules out (D-65).
 	ctls := []render.Control{render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll")}
-	if manageable(c) {
+	if Manageable(c) {
 		ctls = append(ctls, render.Ctl("P", "Change Position"), render.Ctl("k", "Drop from Line-Up"))
 	}
 	rows = append(rows, "", o.Controls("   ", ctls...))
 	return indentBody(rows)
 }
 
-// manageable is whether the operator may reorder or drop this card (D-118).
+// Manageable is whether the operator may reorder or drop this card (D-118).
 //
 // A CARD ON THE AIR IS NOT. D-45 rules it "Management Locked; Can be Taken-Over",
 // which the card's own STATUS line says (D-87) — so the window that shows that
@@ -169,7 +168,7 @@ func (b Broadcaster) detailBody(o render.Opts, c lineup.Card) []string {
 // A STRUCTURAL CARD NEEDS NO CLAUSE HERE. `Projection` already keeps the
 // schedule's own furniture off the surface, so nothing the console holds is one
 // — and a second filter would be a second answer to what the operator can see.
-func manageable(c lineup.Card) bool {
+func Manageable(c lineup.Card) bool {
 	return c.ID != "" && c.State != lineup.OnAir
 }
 
@@ -272,55 +271,6 @@ func detailScript(c lineup.Card) []string {
 		rows = rows[:n-1]
 	}
 	return rows
-}
-
-// showCard hands the Dashboard a Broadcaster card to draw, and opens the window.
-//
-// THE GENERATION MOVES ONLY ON A REAL CHANGE, which is what lets this be called
-// on every update without defeating the memo. A card the operator is reading can
-// re-hydrate under them — `RefreshAfter` is half of `StaleAfter` — and a window
-// that kept its first frame while the data moved is exactly the freeze F-30 was
-// filed for. Re-handing on every update is how the window cannot lag; comparing
-// before bumping is how it does not redraw for nothing.
-func (d Dashboard) showCard(id string, rows func(render.Opts) (string, []string), ground string, at render.Opts) Dashboard {
-	// THE GROUND IS PART OF "THE SAME WINDOW". Left out of this comparison the
-	// generation would not move when only the tone changed — a burst whose worst
-	// alert is superseded by a more severe one would keep the old colour while
-	// the body updated, which is the memo defect F-30 one field along.
-	if d.cardID == id && d.cardGround == ground && d.cardRows != nil && sameCard(d.cardRows, rows, at) {
-		return d
-	}
-	d.cardID, d.cardRows, d.cardGround, d.cardGen = id, rows, ground, d.cardGen+1
-	return d
-}
-
-// sameCard reports whether two renderers would draw the same window at `at`.
-func sameCard(a, b func(render.Opts) (string, []string), at render.Opts) bool {
-	at1, a1 := a(at)
-	at2, b1 := b(at)
-	return at1 == at2 && slices.Equal(a1, b1)
-}
-
-// cardLines is the open card's body, asked of the console at THIS window's opts.
-//
-// NIL-SAFE, because `modalCard` can be opened by a fixture that has not handed a
-// renderer over — and a window that draws nothing is a failure the gates report
-// as such (fixtureFor) rather than a panic in the middle of a frame.
-func (d Dashboard) cardLines(o render.Opts) []string {
-	if d.cardRows == nil {
-		return nil
-	}
-	_, body := d.cardRows(o)
-	return body
-}
-
-// cardTitleOf is the open card's title, in the window's own glyphs.
-func (d Dashboard) cardTitleOf(o render.Opts) string {
-	if d.cardRows == nil {
-		return ""
-	}
-	title, _ := d.cardRows(o)
-	return title
 }
 
 // indentBody gives every row the window's third column.

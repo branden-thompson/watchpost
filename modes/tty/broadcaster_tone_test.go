@@ -212,7 +212,7 @@ func TestAReportsWindowKeepsTheStandardGround(t *testing.T) {
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
 
 	b := broadcasterWithOneCard(t)
-	if got := b.cardWindowGroundFor(1); got != "" {
+	if got := b.CardWindowGroundFor(1); got != "" {
 		t.Errorf("a location report's window asked for the ground %q; it takes the standard tone", got)
 	}
 

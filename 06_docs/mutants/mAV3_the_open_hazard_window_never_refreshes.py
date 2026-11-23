@@ -5,8 +5,8 @@ import pathlib
 # stale exactly where staleness matters most — a burst gains hazards while the
 # operator is reading it, and the window goes on showing the old list.
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
-old = """	if id, rows, ok := r.broadcaster.alertDetail(); ok && id == r.observer.cardID {
-		r.observer = r.observer.showCard(id, rows, r.broadcaster.alertWindowGround(), r.observer.opts())
+old = """	if id, rows, ok := r.broadcaster.AlertDetail(); ok && id == r.observer.cardID {
+		r.observer = r.observer.showCard(id, rows, r.broadcaster.AlertWindowGround(), r.observer.opts())
 	}
 """
 assert old in s, "mAV3"

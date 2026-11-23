@@ -171,7 +171,7 @@ func (b Broadcaster) railTables(sched, pool scrollSpan) []string {
 // buildSpans is the miss path: the index, then both tables against it.
 func (b Broadcaster) buildSpans(used int) (scrollSpan, scrollSpan) {
 	idx := b.locIndex()
-	sched := b.scheduledSpan(b.mainTrack(), used, idx)
+	sched := b.scheduledSpan(b.MainTrack(), used, idx)
 	return sched, b.poolSpan(used+len(sched.lines), idx)
 }
 

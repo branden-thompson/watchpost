@@ -28,9 +28,9 @@ import (
 // Director has filled it yet.
 func (b Broadcaster) lineupRows(cards []lineup.Card, idx locIndex) []render.LineupRow {
 	out := make([]render.LineupRow, 0, MainTrackSlots)
-	for i := bcScheduledFrom; i < MainTrackSlots; i++ { // bounded by the track (P10-02)
+	for i := ScheduledFrom; i < MainTrackSlots; i++ { // bounded by the track (P10-02)
 		row := render.LineupRow{Slot: i, Num: fmt.Sprintf("%02d.", i)}
-		row.Marks.Selected = i-bcScheduledFrom == b.lineupSelection()
+		row.Marks.Selected = i-ScheduledFrom == b.LineupSelection()
 		c, decided := b.slotCard(cards, i)
 		if decided {
 			row = b.lineupRowOf(row, c, idx)
@@ -208,9 +208,9 @@ func (b Broadcaster) milesFromTower(ref snapshot.LocationRef) *float64 {
 	return &mi
 }
 
-// bcScheduledFrom is the first slot the TABLE draws: the two above it are the
+// ScheduledFrom is the first slot the TABLE draws: the two above it are the
 // cards the operator reads from (D-68), and they keep their own shape.
-const bcScheduledFrom = 2
+const ScheduledFrom = 2
 
 // scheduledSpan is the SCHEDULED LINE-UP heading and its table, windowed to
 // whatever height the frame has left (D-94).
@@ -276,7 +276,7 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int, idx locIndex) 
 		// offset is clamped here for. A `queueOff` moved at the keystroke cannot know
 		// the room, so it would scroll one way and never come back.
 		dataAt := len(lines) - len(slots)
-		if sel := b.lineupSelection(); sel >= 0 {
+		if sel := b.LineupSelection(); sel >= 0 {
 			at := dataAt + sel
 			if at >= room {
 				off = at - room + 1

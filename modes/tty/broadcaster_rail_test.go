@@ -106,7 +106,7 @@ func TestTheRailIsWalledOnBothSides(t *testing.T) {
 // that at this console's own inset, and the two cells come out of UP NEXT.
 func TestThePairLandsOnTheReferencesColumns(t *testing.T) {
 	upNext, alert := mockTrackColumns(t)
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 
 	// THE AIR BETWEEN THEM IS THE REFERENCE'S. Where each box STARTS is not a
@@ -221,7 +221,7 @@ func TestTheLabelIsCentredInItsSection(t *testing.T) {
 // a second one appended by the frame would make a double gap that reads as a
 // rendering fault rather than as spacing (HUM LEAD, UAT 2026-09-10).
 func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	rows := strings.Split(ttytest.StripANSI(b.View().Content), "\n")
 	// The frame is padded to the terminal, so trailing blanks below the content
@@ -255,7 +255,7 @@ func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
 // scroll, so what a row of the running order owes is its LEFT wall —
 // the rail's own — and its full width.
 func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	rows := strings.Split(ttytest.StripANSI(b.View().Content), "\n")
@@ -339,7 +339,7 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 // the inner wall is already beside it, and a bar there reads as a doubled
 // border rather than as a rail.
 func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	// THE GUTTER IS MEASURED FROM THE FRAME, NOT THE TERMINAL: `railed`
 	// builds at `frameWidth` and the margin is added afterwards, in `clamp`.
@@ -474,14 +474,14 @@ func TestEachRegionsRailCarriesItsOwnGround(t *testing.T) {
 // reference's own footer says ("[↑↓] Navigate"). A window that scrolled under a
 // pointer that had not moved would take the operator's place away from them.
 func TestThePointerWalksAndTheWindowFollows(t *testing.T) {
-	base := NewBroadcaster()
+	base := New(Opening{})
 	// MEASURED: at 150x50 the running order has room for eight of its thirteen
 	// rows, so the window has somewhere to go.
 	base.width, base.height, base.ascii = 150, 50, true
 	base.power = lineup.Running
 
 	// ONE PRESS MOVES THE POINTER AND NOT THE WINDOW.
-	one := base.scrollQueue(1)
+	one := base.ScrollQueue(1)
 	if one.selected != base.selected+1 {
 		t.Errorf("↓ did not move the pointer: %d then %d", base.selected, one.selected)
 	}
@@ -494,15 +494,15 @@ func TestThePointerWalksAndTheWindowFollows(t *testing.T) {
 	// drawable or the operator cannot manage it.
 	end := base
 	for range 40 {
-		end = end.scrollQueue(1)
+		end = end.ScrollQueue(1)
 	}
 	last := fmt.Sprintf("%02d", MainTrackSlots-1)
 	if got := slots(end); !slices.Contains(got, last) {
 		t.Errorf("the last slot (%s) is unreachable; the bottom of the queue shows %v", last, got)
 	}
 	// The pointer is on the last slot.
-	if end.lineupSelection() != MainTrackSlots-bcScheduledFrom-1 {
-		t.Errorf("the pointer stopped at %d, short of the last slot", end.lineupSelection())
+	if end.LineupSelection() != MainTrackSlots-ScheduledFrom-1 {
+		t.Errorf("the pointer stopped at %d, short of the last slot", end.LineupSelection())
 	}
 	// The running order carries no thumb (D-106). It does not scroll — fifteen
 	// slots is the whole list — so the control belongs to the pool, and a thumb
@@ -570,7 +570,7 @@ func thumb(b Broadcaster) int {
 // exactly ONE thumb, which stays true when it never moves — the two tests are
 // different questions.
 func TestTheThumbMovesWithTheWindow(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	w := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap + b.cardBoxWidth()
 	row := strings.Repeat("-", w)

@@ -3,8 +3,8 @@ import pathlib
 # refuses it OUT OF SIGHT — FR-3.3's own rule is that an action is never shown as
 # taken unless the schedule took it, and the operator is shown a closed window
 # and an unmoved card (D-118).
-p = pathlib.Path("modes/tty/broadcaster_manage.go"); s = p.read_text()
-old = """	if err != nil || n < bcScheduledFrom || n > MainTrackSlots-1 {
+p = pathlib.Path("modes/tty/card_window.go"); s = p.read_text()
+old = """	if err != nil || n < ScheduledFrom || n > MainTrackSlots-1 {
 		return 0
 	}"""
 assert old in s, "mAL2"

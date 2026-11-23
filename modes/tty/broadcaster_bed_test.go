@@ -20,7 +20,7 @@ import (
 // bed's state and, when the Producer has answered, how many relays stream.
 func bedConsole(t *testing.T, msg BedMsg, told bool) Broadcaster {
 	t.Helper()
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height, b.ascii = 150, 74, true
 	if told {
 		b, _ = b.Update(msg)
@@ -41,7 +41,7 @@ var bedFixtureRelays int
 func TestABedWithNothingToCarryIsNotOffered(t *testing.T) {
 	bedFixtureRelays = 0
 	b := bedConsole(t, BedMsg{}, true)
-	if b.bedAvailable() {
+	if b.BedAvailable() {
 		t.Fatal("a station with no streaming relay still offers the bed")
 	}
 	row := ttytest.StripANSI(b.bedLine(b.opts()))
@@ -65,7 +65,7 @@ func TestABedWithNothingToCarryIsNotOffered(t *testing.T) {
 func TestABedWithRelaysIsOffered(t *testing.T) {
 	bedFixtureRelays = 3
 	b := bedConsole(t, BedMsg{}, true)
-	if !b.bedAvailable() {
+	if !b.BedAvailable() {
 		t.Fatal("a station with three streaming relays is refused the bed")
 	}
 	row := ttytest.StripANSI(b.bedLine(b.opts()))
@@ -78,7 +78,7 @@ func TestABedWithRelaysIsOffered(t *testing.T) {
 // opens; greying the control out until then would refuse a key that is about to
 // work, which reads as a broken button rather than as a pending answer.
 func TestABedNobodyHasAnsweredAboutIsStillOffered(t *testing.T) {
-	if !bedConsole(t, BedMsg{}, false).bedAvailable() {
+	if !bedConsole(t, BedMsg{}, false).BedAvailable() {
 		t.Error("the bed is refused before the Producer has answered how many relays reach the station")
 	}
 }
@@ -88,7 +88,7 @@ func TestABedNobodyHasAnsweredAboutIsStillOffered(t *testing.T) {
 // THE COUNT HAS ONE PUBLISHER. `BedMsg` has THREE — the resolver, the selector
 // and the deck's state — and only the resolver knows how many relays stream.
 // The console stores the WHOLE message, so a count carried on `BedMsg` would be
-// zeroed by either of the other two — and `bedAvailable()` is `!bedTold ||
+// zeroed by either of the other two — and `BedAvailable()` is `!bedTold ||
 // Relays > 0`. The BED control would then disable itself while relays are
 // streaming.
 //
@@ -96,16 +96,16 @@ func TestABedNobodyHasAnsweredAboutIsStillOffered(t *testing.T) {
 // choose something that will broadcast dead air; this would tell them there is
 // nothing to choose when there is.
 func TestTheRelayCountSurvivesALaterBedMessage(t *testing.T) {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b, _ = b.Update(BedMsg{Relay: "WXM66 Victorville, CA"})
 	b, _ = b.Update(BedRelaysMsg{Count: 3})
-	if !b.bedAvailable() {
+	if !b.BedAvailable() {
 		t.Fatal("three relays in reach and the bed is not offered")
 	}
 	// The operator steps the selector, or the deck republishes its state. Neither
 	// says anything about how many relays exist.
 	b, _ = b.Update(BedMsg{Relay: "WXM66 Victorville, CA", Carrying: true})
-	if !b.bedAvailable() {
+	if !b.BedAvailable() {
 		t.Error("a later BedMsg zeroed the relay count and disabled the bed — " +
 			"the operator is told there is no relay while one is carrying")
 	}

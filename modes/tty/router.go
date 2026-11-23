@@ -290,26 +290,29 @@ type Router struct {
 
 // NewRouter wraps Observer, with the console beside it.
 func NewRouter(o Dashboard) Router {
-	// The console inherits the SAME --ascii decision Observer was built with.
-	// Two surfaces disagreeing about whether the terminal can draw a glyph
-	// would be one setting with two carriers.
-	b := NewBroadcaster()
-	b.ascii = o.cfg.ASCII
-	// The console carries the same build: the masthead names the version on
-	// both surfaces, and two surfaces disagreeing about which build this is would be the same
-	// two-carriers defect one field along.
-	b.version = o.cfg.Version
-	// The console takes the same fire threshold, RESOLVED rather than raw:
-	// Observer owns the "unset
-	// means 50" rule, and a console that re-derived it would be a second carrier
-	// of that rule.
-	b.fireBoldMW = o.fireBoldMW()
-	// And the same units and clock (0.16.0 FR-6.2), mirrored again on every
-	// update (0.19.5 D-21).
-	b.units, b.clockFmt = o.units, o.clockFmt
-	// The console opens on the station it serves (D-72). The area MOVES, so changes
-	// arrive as a message; this is the value it opens with.
-	b.area, b.areaGen = o.cfg.StationArea, b.areaGen+1
+	b := New(Opening{
+		// The console inherits the SAME --ascii decision Observer was built with.
+		// Two surfaces disagreeing about whether the terminal can draw a glyph
+		// would be one setting with two carriers.
+		ASCII: o.cfg.ASCII,
+		// The console carries the same build: the masthead names the version on
+		// both surfaces, and two surfaces disagreeing about which build this is
+		// would be the same two-carriers defect one field along.
+		Version: o.cfg.Version,
+		// The console takes the same fire threshold, RESOLVED rather than raw:
+		// Observer owns the "unset means 50" rule, and a console that re-derived
+		// it would be a second carrier of that rule.
+		FireBoldMW: o.fireBoldMW(),
+		// And the same units and clock (0.16.0 FR-6.2), mirrored again on every
+		// update (0.19.5 D-21).
+		Units: o.units,
+		Clock: o.clockFmt,
+		// The console opens on the station it serves (D-72). The area MOVES, so
+		// changes arrive as a message; this is the value it opens with.
+		Area: o.cfg.StationArea,
+		// And the Dashboard's own clock (0.19.6 D-21).
+		Now: o.now,
+	})
 	return Router{observer: o, broadcaster: b, active: SurfaceObserver,
 		keys: o.consoleKeyMap(), onSurface: o.cfg.OnSurface, relays: o.cfg.StepBedRelay, playBed: o.cfg.ToggleBedRelay, keyTime: &keyClock{}}
 }
@@ -341,7 +344,7 @@ func programScoped(msg tea.Msg) bool {
 	// THE SNAPSHOT GOES TO BOTH (D-59). Both surfaces draw the same masthead,
 	// and its `Updated:` stamp and API summary come from here — so a console
 	// that only learned the data while on screen would show a stale masthead the
-	// instant it was swapped to, which is the exact argument `consoleScoped`
+	// instant it was swapped to, which is the exact argument `Scoped`
 	// already makes for the schedule.
 	// AND THE RECENT SNAPSHOT DOES TOO (D-99). The console's LOCATION POOL draws
 	// weather for the station's candidates, and those ride the recent pipeline —
@@ -355,7 +358,7 @@ func programScoped(msg tea.Msg) bool {
 	return false
 }
 
-// consoleScoped reports whether a message is the CONSOLE's own business,
+// Scoped reports whether a message is the CONSOLE's own business,
 // wherever the operator happens to be looking.
 //
 // A THIRD CATEGORY, and it earns its place for the same reason the fan-out
@@ -363,7 +366,7 @@ func programScoped(msg tea.Msg) bool {
 // instant it is swapped to — and here the stale things would be the running
 // order and whether the station is on the air, which is the one screen an
 // operator swaps to in order to trust.
-func consoleScoped(msg tea.Msg) bool {
+func Scoped(msg tea.Msg) bool {
 	switch msg.(type) {
 	case LineupMsg, StationMsg, StationAreaMsg, BedMsg:
 		return true
@@ -444,21 +447,22 @@ func observerScoped(msg tea.Msg) bool {
 //     that re-hydrates under the operator is not a stale read; showCard bumps
 //     its generation only when the content differs.
 func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	r.observer.liveOffset = r.broadcaster.liveOffset()
+	r.observer.liveOffset = r.broadcaster.LiveOffset()
 	if _, ok := msg.(tea.KeyPressMsg); ok {
 		r.keyArrived() // M6: a key's time to its frame (timing.go)
 	}
 	out, cmd := r.update(msg)
-	out.broadcaster.gain = out.observer.radioVolume
-	out.broadcaster.units, out.broadcaster.clockFmt = out.observer.units, out.observer.clockFmt
-	if out.observer.reduceMotion { // Reduce motion is one switch for both surfaces (D-360): the console's dots hold their first phase
-		out.broadcaster.frame = 0
-	}
 	out.observer.surface = out.active
-	if !out.stationIsLive() || (out.refusal == bedRefusal && out.broadcaster.bed.Carrying) {
+	if !out.stationIsLive() || (out.refusal == bedRefusal && out.broadcaster.BedCarrying()) {
 		out.refusal = ""
 	}
-	out.broadcaster.statusNote = out.refusal
+	out.broadcaster.SetMirror(Mirror{
+		Gain:         out.observer.radioVolume,
+		Units:        out.observer.units,
+		Clock:        out.observer.clockFmt,
+		ReduceMotion: out.observer.reduceMotion, // Reduce motion is one switch for both surfaces (D-360): the console's dots hold their first phase
+		StatusNote:   out.refusal,
+	})
 	out = out.refreshCardWindow()
 	return out, cmd
 }
@@ -509,11 +513,11 @@ func (r Router) View() tea.View {
 		v = r.observer.View()
 	}
 	if r.onBroadcaster() { // the cursor at the console's focus, or the window's over it (D-362)
-		x, y, ok := r.broadcaster.consoleCursor(v.Content)
+		x, y, ok := r.broadcaster.Cursor(v.Content)
 		if r.observer.ModalOpen() {
-			v.Content, x, y, ok = r.observer.overlay(v.Content, r.broadcaster.width)
+			v.Content, x, y, ok = r.observer.overlay(v.Content, r.broadcaster.Width())
 		}
-		v.Content, v.Cursor = r.broadcaster.heldCursor().Finish(v.Content, x, y, ok, r.broadcaster.blurred, v.BackgroundColor)
+		v.Content, v.Cursor = r.broadcaster.HeldCursor().Finish(v.Content, x, y, ok, r.broadcaster.Blurred(), v.BackgroundColor)
 	}
 	v.ReportFocus = true // the terminal says when it gains and loses focus, for the cursor's look (D-367)
 	r.frameDrawn()
@@ -541,7 +545,7 @@ func (r Router) typingInAWindow(k tea.KeyPressMsg) bool {
 // THE `bool` IS THE SAME FALL-THROUGH CONTRACT `keyAction` carries: `false`
 // means this message is not scoped to anybody in particular and the key paths
 // below it get their turn. Unlike `keyAction`, the handled paths here DO mutate
-// — `consoleScoped` and `programScoped` both update a surface — which is why
+// — `Scoped` and `programScoped` both update a surface — which is why
 // the caller returns the model this hands back rather than its own.
 func (r Router) scopedMessage(msg tea.Msg) (Router, tea.Cmd, bool) {
 	// THE ROUTER KEEPS THE CONTROL, not the console, because the router is
@@ -551,9 +555,9 @@ func (r Router) scopedMessage(msg tea.Msg) (Router, tea.Cmd, bool) {
 		r.station = m.Control
 		return r, nil, true
 	}
-	if consoleScoped(msg) {
+	if Scoped(msg) {
 		var cmd tea.Cmd
-		r.broadcaster.listenerMuted = r.observer.tickerMuted // the Observer's [M], shown on air (ruling 6-ii)
+		r.broadcaster.SetListenerMuted(r.observer.tickerMuted) // the Observer's [M], shown on air (ruling 6-ii)
 		r.broadcaster, cmd = r.broadcaster.Update(msg)
 		return r, cmd, true
 	}
@@ -568,8 +572,17 @@ func (r Router) scopedMessage(msg tea.Msg) (Router, tea.Cmd, bool) {
 	if programScoped(msg) {
 		var oc, bc tea.Cmd
 		r.observer, oc = r.observer.update(msg)
-		r.broadcaster.listenerMuted = r.observer.tickerMuted
-		r.broadcaster, bc = r.broadcaster.Update(msg)
+		r.broadcaster.SetListenerMuted(r.observer.tickerMuted)
+		// The two snapshots go by their own methods, so the console holds no
+		// type of the root's (design CK-2); every other message by its Update.
+		switch v := msg.(type) {
+		case SnapshotMsg:
+			r.broadcaster, bc = r.broadcaster.WithSnapshot(v.Snap)
+		case RecentSnapshotMsg:
+			r.broadcaster, bc = r.broadcaster.WithRecent(v.Snap)
+		default:
+			r.broadcaster, bc = r.broadcaster.Update(msg)
+		}
 		return r, tea.Batch(oc, bc), true
 	}
 	// NOT SCOPED TO ANYONE IN PARTICULAR: the key paths get their turn.
@@ -706,7 +719,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (Router
 		// to a bed nothing streams is dead air on the transmitter, which
 		// is the one outcome this control must not have — so the key is
 		// refused where the chip says it is unavailable.
-		if r.consoleOwnsTheKeys() && r.broadcaster.bedAvailable() {
+		if r.consoleOwnsTheKeys() && r.broadcaster.BedAvailable() {
 			out, cmd := r.bedControl(a)
 			return out, cmd, true
 		}
@@ -715,7 +728,7 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (Router
 	// returned unconditionally would stop the listener's navigation.
 	case actQueuePrev, actQueueNext:
 		if r.consoleOwnsTheKeys() {
-			r.broadcaster = r.broadcaster.scrollQueue(scrollStep(a))
+			r.broadcaster = r.broadcaster.ScrollQueue(scrollStep(a))
 			return r, nil, true
 		}
 	case actQueueOpen: // a second press closes the window the first one opened (D-109): queueOpenKey
@@ -957,7 +970,8 @@ func (r Router) toggleStation() Router {
 func (r Router) bedControl(a term.Action) (Router, tea.Cmd) {
 	switch a {
 	case actBedCut:
-		return r.cutBed(), nil
+		r.cutBed()
+		return r, nil
 	case actBedPrev:
 		return r.stepBed(-1)
 	case actBedNext:
@@ -979,7 +993,7 @@ func (r Router) playBedRelay() (Router, tea.Cmd) {
 	if r.active != SurfaceBroadcaster || r.playBed == nil {
 		return r, nil
 	}
-	if r.stationIsLive() && !r.broadcaster.bed.Carrying {
+	if r.stationIsLive() && !r.broadcaster.BedCarrying() {
 		r.refusal = bedRefusal
 		return r, nil
 	}
@@ -996,12 +1010,10 @@ func (r Router) playBedRelay() (Router, tea.Cmd) {
 // AND IT ASKS NOTHING FROM OBSERVER. The bed is the STATION's, and a key that
 // moved the programme from a surface where it is not drawn would be a control
 // acting where the operator cannot see what they did.
-func (r Router) cutBed() Router {
-	if r.active != SurfaceBroadcaster || r.station == nil {
-		return r
+func (r Router) cutBed() {
+	if r.active == SurfaceBroadcaster && r.station != nil {
+		r.station.CutBed(!r.broadcaster.BedCarrying())
 	}
-	r.station.CutBed(!r.broadcaster.bed.Carrying)
-	return r
 }
 
 // stepBed moves the selection through the relays the station's fence reaches.
@@ -1030,7 +1042,7 @@ func (r Router) stepBed(by int) (Router, tea.Cmd) {
 // IT READS THE DIRECTOR'S POWER, NEVER A UI FLAG (FR-5.1). And `Stopped` is not
 // live, so from a stopped station the operator's control puts it ON the air —
 // which is what a person pressing ON AIR means.
-func (r Router) stationIsLive() bool { return r.broadcaster.power == lineup.Running }
+func (r Router) stationIsLive() bool { return r.broadcaster.Power() == lineup.Running }
 
 // openCardWindow opens the card at a slot handle, and says whether it did.
 //
@@ -1038,7 +1050,7 @@ func (r Router) stationIsLive() bool { return r.broadcaster.power == lineup.Runn
 // `false` means the digit was not consumed, so it falls through to the console
 // exactly as an unbound key does. A handle with no card behind it is a slot the
 // Director has not filled, and opening a window onto that would ask the operator
-// to read the absence of a report (cardDetail).
+// to read the absence of a report (CardDetail).
 func (r Router) openCardWindow(key string) (Router, bool) {
 	var (
 		id   string
@@ -1056,11 +1068,11 @@ func (r Router) openCardWindow(key string) (Router, bool) {
 	// unbound it would fall through to nothing at all. Only `A` — `a` is About on
 	// BOTH surfaces and taking it here would break a key that already works.
 	case key == "A":
-		id, rows, ok = r.broadcaster.alertDetail()
-		ground = r.broadcaster.alertWindowGround()
+		id, rows, ok = r.broadcaster.AlertDetail()
+		ground = r.broadcaster.AlertWindowGround()
 	case len(key) == 1 && key[0] >= '0' && key[0] <= '9':
-		id, rows, ok = r.broadcaster.cardDetail(int(key[0] - '0'))
-		ground = r.broadcaster.cardWindowGroundFor(int(key[0] - '0'))
+		id, rows, ok = r.broadcaster.CardDetail(int(key[0] - '0'))
+		ground = r.broadcaster.CardWindowGroundFor(int(key[0] - '0'))
 	}
 	if !ok {
 		return r, false
@@ -1093,7 +1105,7 @@ func (r Router) cardWindowKey(k tea.KeyPressMsg) (Router, bool) {
 	// Locked" (D-45) and the window does not draw the two chips for it, so the
 	// keys must not act either — a control that is not offered and still works is
 	// the same lie as one that is offered and does not.
-	if !manageable(r.cardInWindow()) {
+	if !Manageable(r.cardInWindow()) {
 		return r, false
 	}
 	switch k.String() {
@@ -1120,7 +1132,7 @@ func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
 			// sight — FR-3.3's own rule is that an action is never SHOWN as taken
 			// unless the schedule took it, and the honest form of that here is to
 			// not send it at all.
-			r.observer.cardErr = "positions " + strconv.Itoa(bcScheduledFrom) + " to " +
+			r.observer.cardErr = "positions " + strconv.Itoa(ScheduledFrom) + " to " +
 				strconv.Itoa(MainTrackSlots-1)
 			return r, true
 		}
@@ -1136,7 +1148,7 @@ func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
 			// it is what keeps the two from drifting. Sending the typed number
 			// straight through would move the card one place further down than the
 			// operator asked, silently, on the surface's normal state.
-			move(r.observer.cardID, r.broadcaster.indexForSlot(to))
+			move(r.observer.cardID, r.broadcaster.IndexForSlot(to))
 		}
 		// The card window closes with it. The card the operator was reading is
 		// no longer at the position they opened it from, so leaving it up would
@@ -1179,7 +1191,7 @@ func (r Router) dropWindowKey(k tea.KeyPressMsg) (Router, bool) {
 
 // cardInWindow is the card the window is open on, or a zero card.
 func (r Router) cardInWindow() lineup.Card {
-	for _, c := range r.broadcaster.mainTrack() { // bounded by the track (P10-02)
+	for _, c := range r.broadcaster.MainTrack() { // bounded by the track (P10-02)
 		if c.ID == r.observer.cardID {
 			return c
 		}
@@ -1194,7 +1206,7 @@ func (r Router) cardInWindow() lineup.Card {
 // This asks the console where its pointer IS and opens THAT — so every row the
 // operator can reach is a row they can open, at any length of list.
 //
-// IT GOES THROUGH THE SAME DOOR. `cardDetail` is the one builder of a card
+// IT GOES THROUGH THE SAME DOOR. `CardDetail` is the one builder of a card
 // window, so the row the pointer opens and the row a chip opens cannot come to
 // show different things about one report.
 func (r Router) openPointedCard() (Router, bool) {
@@ -1202,24 +1214,24 @@ func (r Router) openPointedCard() (Router, bool) {
 	// "make it so <enter> on a location pool row opens the location details (like
 	// observer)"). The pointer walks the two tables as one list, so one key opens
 	// whatever it is on — a card above, a place below.
-	if at := r.broadcaster.poolSelection(); at >= 0 {
-		pool := r.broadcaster.area.Pool
+	if at := r.broadcaster.PoolSelection(); at >= 0 {
+		pool := r.broadcaster.Pool()
 		if at >= len(pool) {
 			return r, false // the pointer is past the pool; nothing to open
 		}
 		r.observer = r.observer.showLocation(pool[at])
 		return r, true
 	}
-	at := r.broadcaster.lineupSelection()
+	at := r.broadcaster.LineupSelection()
 	if at < 0 {
 		return r, false
 	}
-	id, rows, ok := r.broadcaster.cardDetail(at + bcScheduledFrom)
+	id, rows, ok := r.broadcaster.CardDetail(at + ScheduledFrom)
 	if !ok {
 		return r, false
 	}
 	r.observer = r.observer.showCard(id, rows,
-		r.broadcaster.cardWindowGroundFor(at+bcScheduledFrom), r.observer.opts()).open(modalCard)
+		r.broadcaster.CardWindowGroundFor(at+ScheduledFrom), r.observer.opts()).open(modalCard)
 	return r, true
 }
 
@@ -1236,12 +1248,12 @@ func (r Router) refreshCardWindow() Router {
 		return r
 	}
 	for i := range MainTrackSlots { // bounded by the track (P10-02)
-		if id, rows, ok := r.broadcaster.cardDetail(i); ok && id == r.observer.cardID {
+		if id, rows, ok := r.broadcaster.CardDetail(i); ok && id == r.observer.cardID {
 			// COMPARED AT ONE AGREED VOCABULARY, DRAWN IN THE WINDOW'S OWN. The
 			// generation must move when the REPORT changes and not when the
 			// terminal does, so the comparison is made at a single Opts rather
 			// than at whatever the last frame happened to use.
-			r.observer = r.observer.showCard(id, rows, r.broadcaster.cardWindowGroundFor(i), r.observer.opts())
+			r.observer = r.observer.showCard(id, rows, r.broadcaster.CardWindowGroundFor(i), r.observer.opts())
 			return r
 		}
 	}
@@ -1249,8 +1261,8 @@ func (r Router) refreshCardWindow() Router {
 	// `[A]` opens a card on the ALERT RAIL, and a window that never
 	// refreshes goes stale exactly where staleness matters most — a burst gains
 	// hazards while the operator is reading it.
-	if id, rows, ok := r.broadcaster.alertDetail(); ok && id == r.observer.cardID {
-		r.observer = r.observer.showCard(id, rows, r.broadcaster.alertWindowGround(), r.observer.opts())
+	if id, rows, ok := r.broadcaster.AlertDetail(); ok && id == r.observer.cardID {
+		r.observer = r.observer.showCard(id, rows, r.broadcaster.AlertWindowGround(), r.observer.opts())
 	}
 	return r
 }

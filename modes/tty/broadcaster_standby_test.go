@@ -20,7 +20,7 @@ import (
 func bcStandby(t *testing.T, held bool, forDur time.Duration) Broadcaster {
 	t.Helper()
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height = 150, 74
 	b.now = func() time.Time { return base.Add(forDur) }
 	if held {
@@ -79,7 +79,7 @@ func TestARunningStationRaisesNoStandbyNotice(t *testing.T) {
 // first rung.
 func TestARepeatedStationMessageDoesNotRestartTheStandbyClock(t *testing.T) {
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.width, b.height = 150, 74
 	var l lineup.Lineup
 	next, err := l.Queue(lineup.AlertRail, ttytest.Card(t, "x", "TORNADO WARNING"))

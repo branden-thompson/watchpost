@@ -4,7 +4,7 @@ import pathlib
 # window for whichever card took its place. `Card.ID` exists precisely because a
 # position is not an identity: "ID addresses the card for the life of the lineup."
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
-old = "		if id, rows, ok := r.broadcaster.cardDetail(i); ok && id == r.observer.cardID {"
-new = "		if id, rows, ok := r.broadcaster.cardDetail(i); ok && i == 1 {"
+old = "		if id, rows, ok := r.broadcaster.CardDetail(i); ok && id == r.observer.cardID {"
+new = "		if id, rows, ok := r.broadcaster.CardDetail(i); ok && i == 1 {"
 assert old in s, "mW2"
 p.write_text(s.replace(old, new, 1))

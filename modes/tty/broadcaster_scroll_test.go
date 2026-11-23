@@ -133,7 +133,7 @@ func TestThePoolsHeadingsDoNotScroll(t *testing.T) {
 	b := manyPool(t, 25)
 	b.width, b.height, b.ascii = 150, 58, true
 	for range 40 { // bounded by the walk (P10-02)
-		b = b.scrollQueue(1)
+		b = b.ScrollQueue(1)
 	}
 	got := ttytest.StripANSI(b.View().Content)
 	for _, want := range []string{"L O C A T I O N     P O O L", "POPULATION", "CONDITIONS"} {
@@ -170,19 +170,19 @@ func TestEnterOpensTheRowThePointerIsOn(t *testing.T) {
 	// passes just as well on a console where none of them do — so a test states
 	// what it needed before it reports.
 	beyondADigit := 0
-	for at := range MainTrackSlots - bcScheduledFrom { // bounded by the table (P10-02)
+	for at := range MainTrackSlots - ScheduledFrom { // bounded by the table (P10-02)
 		r.broadcaster.selected = at
 		out, opened := r.openPointedCard()
 		if !opened {
 			continue // the Director has not filled that slot; a digit refuses too
 		}
-		if at+bcScheduledFrom > 9 {
+		if at+ScheduledFrom > 9 {
 			beyondADigit++
 		}
 		if out.observer.modal != modalCard {
 			t.Fatalf("row %d opened no card window", at)
 		}
-		want, _, ok := r.broadcaster.cardDetail(at + bcScheduledFrom)
+		want, _, ok := r.broadcaster.CardDetail(at + ScheduledFrom)
 		if !ok || out.observer.cardID != want {
 			t.Errorf("row %d opened card %q, want %q", at, out.observer.cardID, want)
 		}
@@ -192,7 +192,7 @@ func TestEnterOpensTheRowThePointerIsOn(t *testing.T) {
 	}
 	// The key refuses quietly in the pool, where that window is not built: the key
 	// is not consumed, so it falls through as an unbound key does.
-	r.broadcaster.selected = MainTrackSlots - bcScheduledFrom
+	r.broadcaster.selected = MainTrackSlots - ScheduledFrom
 	if _, opened := r.openPointedCard(); opened {
 		t.Error("enter opened a card window from the pool")
 	}
@@ -254,7 +254,7 @@ func TestEnterOnAPoolRowOpensThatLocation(t *testing.T) {
 		RadiusMi:    50, Pool: pool})
 
 	for want, at := range map[string]int{"Fallbrook, CA": 0, "Vista, CA": 1} {
-		r.broadcaster.selected = MainTrackSlots - bcScheduledFrom + at
+		r.broadcaster.selected = MainTrackSlots - ScheduledFrom + at
 		out, opened := r.openPointedCard()
 		if !opened {
 			t.Fatalf("%s: enter opened nothing on a pool row", want)
@@ -268,7 +268,7 @@ func TestEnterOnAPoolRowOpensThatLocation(t *testing.T) {
 		}
 	}
 	// A second press closes the window, the same rule the card window follows.
-	r.broadcaster.selected = MainTrackSlots - bcScheduledFrom
+	r.broadcaster.selected = MainTrackSlots - ScheduledFrom
 	opened, _ := r.openPointedCard()
 	if closed := pressAction(t, opened, actQueueOpen); closed.observer.modal != modalNone {
 		t.Errorf("a second enter left the location details %v open", closed.observer.modal)

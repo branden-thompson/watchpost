@@ -13,7 +13,7 @@ import (
 func TestAPoolRowReadsAWatchedPlaceFromThePriorityPipeline(t *testing.T) {
 	home := snapshot.LocationRef{Label: "Oceanside, CA", Lat: 33.24, Lon: -117.29}
 	vista := snapshot.LocationRef{Label: "Vista, CA", Lat: 33.20, Lon: -117.24}
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b.snap = &snapshot.Snapshot{Locations: []snapshot.Location{
 		{Label: "Oceanside (priority)", Lat: home.Lat, Lon: home.Lon},
 		{Label: "Vista (priority)", Lat: vista.Lat, Lon: vista.Lon},

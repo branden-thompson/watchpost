@@ -72,7 +72,7 @@ func (b Broadcaster) airBox() []string {
 // THE EMPTY STATE IS A SENTENCE, NOT A BOX (D-95): one row says the HUM LEAD's
 // standby wording in the space it has.
 func (b Broadcaster) liveLine(o render.Opts) string {
-	c, decided := b.slotCard(b.mainTrack(), 0)
+	c, decided := b.slotCard(b.MainTrack(), 0)
 	if !decided {
 		return bcCardInset + bcStandbyNotice
 	}
@@ -93,7 +93,7 @@ func (b Broadcaster) bedLine(o render.Opts) string {
 	// chip muted rather than removing it: the operator still learns the key exists
 	// and that it is not available here, which is what tells them the station's
 	// reach is the thing to change.
-	return b.withControl(bcCardInset+b.bedSelector(o), state+"   "+o.KeyCapIf("space", b.bedAvailable())+" "+o.KeyCapIf("b", b.bedAvailable()))
+	return b.withControl(bcCardInset+b.bedSelector(o), state+"   "+o.KeyCapIf("space", b.BedAvailable())+" "+o.KeyCapIf("b", b.BedAvailable()))
 }
 
 // airBodyWidth is the air box's content column, and it is the ONE owner of that
@@ -121,12 +121,12 @@ func (b Broadcaster) withControl(line, control string) string {
 	return line + strings.Repeat(" ", gap) + control
 }
 
-// mainTrack is the rolling window of the running order, as the frame draws it.
+// MainTrack is the rolling window of the running order, as the frame draws it.
 //
 // ONE OWNER, because three things ask for it — the air box, the UP NEXT card
 // and the table — and a second `Projection(...)[:MainTrackSlots]` would be a
 // second answer to how far the window reaches.
-func (b Broadcaster) mainTrack() []lineup.Card {
+func (b Broadcaster) MainTrack() []lineup.Card {
 	main := b.projection(lineup.MainTrack)
 	if len(main) > MainTrackSlots {
 		main = main[:MainTrackSlots]

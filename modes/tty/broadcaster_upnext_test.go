@@ -109,7 +109,7 @@ func TestTheUpNextCardFollowsTheReferencesOrder(t *testing.T) {
 // decided card puts an empty slot out of reach — the same defect F-97 closes for
 // the chip on the title row.
 func TestTheUpNextCardIsAddressableEmptyOrNot(t *testing.T) {
-	empty := NewBroadcaster()
+	empty := New(Opening{})
 	empty.width, empty.height, empty.ascii = 150, 74, true
 	for _, tc := range []struct {
 		name string

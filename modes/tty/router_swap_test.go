@@ -17,7 +17,7 @@ import (
 // stop anywhere in the tree to fall back on.
 
 func routerAt(p lineup.Power, active Surface) Router {
-	b := NewBroadcaster()
+	b := New(Opening{})
 	b, _ = b.Update(StationMsg{Power: p})
 	return Router{observer: Dashboard{}, broadcaster: b, active: active}
 }
@@ -80,7 +80,7 @@ func TestThePowerPreconditionHasOneReaderInTheRouter(t *testing.T) {
 		name := fset.Position(file.Pos()).Filename
 		ast.Inspect(file, func(n ast.Node) bool {
 			sel, ok := n.(*ast.SelectorExpr)
-			if !ok || sel.Sel.Name != "power" {
+			if !ok || sel.Sel.Name != "Power" { // the console's getter, its one door (design CK-2)
 				return true
 			}
 			inner, ok := sel.X.(*ast.SelectorExpr)

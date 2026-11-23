@@ -126,7 +126,7 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | pool | the station's candidate places: what its Producer may offer, inside the service radius | `app/pool.go`, `domains/locations/pool.go` |
 | correspondent, cast | the correspondent is the voice that reads a role; the cast is who speaks for what, each role inheriting its voice from the level above | `domains/radio/cast` |
 | Observer | the listener's surface: in code the `Dashboard` type, which also hosts every window of both surfaces, the Broadcaster's card window, its move and drop prompts and the Line-Up Request among them, so one window set is under the four gates `modes/tty/broadcaster_detail.go` names. "The dashboard" alone also means that screen with no window open | `modes/tty/dashboard.go:NewDashboard` |
-| the Broadcaster, the console | the station operator's surface | `modes/tty/broadcaster.go:NewBroadcaster` |
+| the Broadcaster, the console | the station operator's surface | `modes/tty/broadcaster.go:New` |
 | surface | one of the two screens the Router holds, Observer or the Broadcaster; the Router swaps them and mirrors what both must agree on | `modes/tty/router.go:NewRouter` |
 | Settings | the window users call Settings is `setup*` in code: `modalSetup`, `d.setup`, the `watchpost setup` command | `modes/tty/setup_rows.go:setupTable` |
 | report | two packages: `platform/report` is what a location report can be made of (its kinds); `modes/report` renders a snapshot to stdout (`--json`, `--report-only`) | `platform/report`, `modes/report` |
