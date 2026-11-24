@@ -2408,6 +2408,7 @@ each one's best mention (0.19.6 D-50).
 | A-58 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W5.5's details (D-201, D-88, on go-ionomaps G2.5 and its A-16): (1) a scale is named only above 0, by its lev… |
 | A-59 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B3's second prep, the tests across the console's boundary (design CK-4, CK-5; D-14, D-22, D-52 to D-57, D-72,… |
 | A-59 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W3.1 and W3.2's details (D-201): (1) the Propagation mode's night is drawn for the field's own time, to the f… |
+| A-60 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B3, instruments first: the move map follows a moved name into a third package and into package scope (A-52). … |
 | A-60 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W0.1 and W0.4's details (D-201): (1) the pre-push hook runs the tests that read the record - the flow map's a… |
 | A-61 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W9's details (D-201): (1) no position field needed to become an identity: each of the thirteen indexes a list… |
 | A-62 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The pre-push hook is Go, not a shell script (batch 33): tools/prepush holds the record's tests and runs them;… |

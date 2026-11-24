@@ -1130,3 +1130,33 @@ refusal unmirrored, uncleared while the bed carries, uncleared on standby; the c
 
 **AP-CAPS-01's soft warnings** rise from 103 to 116: thirteen openers moved into new files or files the
 prep touches, every one a line that was in the tree before it.
+
+## Before B3: the move map, into a third package and into package scope (A-60)
+
+**Prep 2's gate.** `make verify` green on its first run, 5,790 s, committed as `5060ceb2`.
+
+**What the move showed.** B3's move, applied on `5060ceb2` and set aside for this commit, compiles
+and vets on its first round, and `tools/gcprobe`'s tree test fails it on 34 keys, none a new escape:
+- `app`'s keys name six of the console's messages as the compiler now writes them, `console.BedMsg`
+  where the baseline has `tty.BedMsg`, at the same counts. The move map rewrote the source's own keys
+  and the destination's, and no other package's; B2's move had no such key to show it;
+- the root's 8 package-scope `[]string` escapes and its one `map[string][]string` are the console's
+  once its files move. Which of a package's initializers a move takes, no name says.
+
+**The fix (A-60).** A third package's key names a moved name through the destination, the source's
+package name read from its clause; a name that did not move keeps its package. A package-scope
+initializer is a key no function owns, counted across both packages as a compiler wrapper is.
+`TestAThirdPackageNamesAMovedNameByItsNewPackage` and `TestAPackageScopeEscapeIsCountedAcrossTheMove`
+were each seen failing on the map before the fix. On the moved tree, the fixed map compares OK: 4,001
+escapes in 1,995 keys, none new, and 7,268 inlined calls in 4,599 keys, none lost; on `5060ceb2`, the
+same totals in 1,992 and 4,591 keys.
+
+**The changed-line table.**
+
+| File | Line | Kind | Mutants before | After |
+|---|---|---|---|---|
+| `tools/gcprobe/main_test.go` | the move test's fixture as `movedFixture`, its source package given a file | setup | — | — |
+| `tools/gcprobe/main_test.go` | a third package's keys; package scope; a source with no package refused (A-60) | assertion, new | — | none recorded |
+
+**The inventory's delta.** Two tests new, none removed: `TestAThirdPackageNamesAMovedNameByItsNewPackage`
+and `TestAPackageScopeEscapeIsCountedAcrossTheMove` (`tools/gcprobe`).
