@@ -2413,6 +2413,7 @@ each one's best mention (0.19.6 D-50).
 | A-60 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W0.1 and W0.4's details (D-201): (1) the pre-push hook runs the tests that read the record - the flow map's a… |
 | A-61 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B3's move, as built (design CK-2, CK-5, CK-9; A-25, A-33, A-54, A-60). (1) Fifty-three files git mv'd whole t… |
 | A-61 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W9's details (D-201): (1) no position field needed to become an identity: each of the thirteen indexes a list… |
+| A-62 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B3's closing sweep, its inputs (D-30, D-51; A-55). (1) BATCH_BASE=09bd1cbc, B2's closed commit, so the sweep … |
 | A-62 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The pre-push hook is Go, not a shell script (batch 33): tools/prepush holds the record's tests and runs them;… |
 | A-63 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W5.3's details (D-201; D-25, D-27, D-61, D-79): (1) / is "Find a Place", in the Propagation mode alone, a win… |
 | A-64 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to releases built for Node.js 24… |

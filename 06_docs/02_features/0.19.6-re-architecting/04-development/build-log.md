@@ -1265,3 +1265,27 @@ and the kit and `app` sending it the six messages; the atlas reads it. The plan'
 
 **AP-CAPS-01's soft warnings** rise from 116 to 128: the comment pass and the qualifiers touch
 paragraphs that open as they did, and every one of the 128 openers is at `5060ceb2`.
+
+## B3's close: the inventory, the plan's tests held, the sweep's inputs (A-62)
+
+**The move's gate.** `make verify` on the move, committed as `2ed2ac51`: every gate green, 5,492 s.
+
+**The inventory (D-36).** `make test-inventory INVENTORY_ACCEPT=06_docs/testinv/accept-B3.tsv`
+against B0's baseline: every one of the 2,006 plain, 2,006 property and 2,005 race tests and
+subtests kept with its outcome, the console's 194 keys and B2's two clip tests by the accept file.
+Seven new in each mode: B2's four, and the second prep's three
+(`TestTheAlertBoxsWindowIsTheOneADigitBuilds`, `TestAnAlertCardCarriesItsCategorysTint`,
+`TestTheConsoleGoldenDrawsADataPull`), each in `modes/tty/console`. No test removed.
+
+**The plan's tests held (A-37).** B3 joins `landedBatches`; its section names no test by name.
+
+**The sweep's inputs (A-62).** `BATCH_BASE=09bd1cbc`, B2's closed commit, which derives 136 mutants;
+`SCOPED_PATHS` is `06_docs/mutants/scoped-paths-B3.tsv`, the card window's file and the 49 console
+files moved whole since that base; `SCOPED_FUNCS` is `06_docs/perf/renames.tsv`, with prep 1's
+sixteen exports. The changed-line table expects mAU2 and mW5 to report, killed since D-52's split by
+`TestTheAlertBoxsWindowIsTheOneADigitBuilds`.
+
+**B3 in commits.** 6, the plan's 2: the instruments took two commits, one before the prep (A-57) and
+one before the move (A-60), and the prep two, the console's API in place (A-58), then the tests across
+its boundary (A-59); the batch map says so. B3 closes on this commit's `make verify-full` and the
+scoped sweep.
