@@ -94,7 +94,8 @@ The main packages. `platform/` has 24; the rest are small helpers, each with a p
 | `platform/render` | every formatter, table and glyph set; the go-studs seam |
 | `platform/config` | `config.toml`: load, validate, and the one serialized writer |
 | `platform/geo`, `platform/propanswers` | shapes and bearings; the Propagation mode's answers |
-| `modes/tty` | the live program: the Router, Observer's dashboard and windows, the Broadcaster console, the map pane |
+| `modes/tty` | the live program: the Router, Observer's dashboard and windows, the console's card window and Line-Up Request window, the map pane |
+| `modes/tty/console` | the Broadcaster console: the station operator's surface, which the Router opens with `New` and reaches through its messages and API |
 | `modes/tty/internal/frame` | the kit: what both surfaces draw the same way, the masthead, the location row, the cursor, the shimmer's tick, the memo counters and the text helpers |
 | `modes/report` | `--json` and `--report-only` |
 | `pkg/schema` | the published JSON Schema of the report |

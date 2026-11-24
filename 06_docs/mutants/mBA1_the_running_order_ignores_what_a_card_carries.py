@@ -4,7 +4,7 @@ import pathlib
 # same words as a full report — so the one column that says what a card WILL READ
 # says nothing, and the request they just made is invisible in the table they made
 # it from (R5).
-p = pathlib.Path("modes/tty/broadcaster_lineup.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_lineup.go"); s = p.read_text()
 old = """	if named := c.Reports.Describe(); named != "" {
 		return named
 	}

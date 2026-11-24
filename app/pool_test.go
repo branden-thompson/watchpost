@@ -14,6 +14,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -125,7 +126,7 @@ func TestTheStationsPoolFillsTheConsolesWindow(t *testing.T) {
 	var mu sync.Mutex
 	deepest := 0
 	publish := func(m tea.Msg) {
-		if lm, ok := m.(tty.LineupMsg); ok {
+		if lm, ok := m.(console.LineupMsg); ok {
 			mu.Lock()
 			deepest = max(deepest, len(lm.Lineup.Projection(lineup.MainTrack)))
 			mu.Unlock()
@@ -147,13 +148,13 @@ func TestTheStationsPoolFillsTheConsolesWindow(t *testing.T) {
 		mu.Lock()
 		got = deepest
 		mu.Unlock()
-		if got >= tty.MainTrackSlots {
+		if got >= console.MainTrackSlots {
 			break
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	if got != tty.MainTrackSlots {
-		t.Errorf("the station's pool fills the console's %d slots; it reached %d", tty.MainTrackSlots, got)
+	if got != console.MainTrackSlots {
+		t.Errorf("the station's pool fills the console's %d slots; it reached %d", console.MainTrackSlots, got)
 	}
 }
 

@@ -7,7 +7,7 @@ import pathlib
 # box, borders included, so the caption row HAS escape codes either way — a test
 # asking whether it "has colour" passes against this mutation. Only the bold,
 # which the ground never sets, tells the two apart.
-p = pathlib.Path("modes/tty/broadcaster_upnext.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_upnext.go"); s = p.read_text()
 old = """			cell = render.Bold(render.Tint(
 				render.PadTo(frame.CenterText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW),
 				render.Tok(render.TextBright)))"""

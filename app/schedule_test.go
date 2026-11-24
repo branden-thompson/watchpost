@@ -10,7 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
-	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -316,7 +316,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 	// MORE LOCATIONS THAN SLOTS, deliberately: it pins the depth as a CEILING
 	// rather than "however many the listener happens to watch".
 	var refs []snapshot.LocationRef
-	for i := 0; i < tty.MainTrackSlots+4; i++ {
+	for i := 0; i < console.MainTrackSlots+4; i++ {
 		refs = append(refs, snapshot.LocationRef{
 			Label: "Town " + strconv.Itoa(i) + ", CA", Zip: "9200" + strconv.Itoa(i%10),
 			Lat: 33 + float64(i)/100, Lon: -117 - float64(i)/100, TZ: "America/Los_Angeles"})
@@ -338,7 +338,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 	var last lineup.Lineup
 	deepest := 0
 	publish := func(m tea.Msg) {
-		lm, ok := m.(tty.LineupMsg)
+		lm, ok := m.(console.LineupMsg)
 		if !ok {
 			return
 		}
@@ -367,15 +367,15 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 		mu.Lock()
 		got = deepest
 		mu.Unlock()
-		if got >= tty.MainTrackSlots {
+		if got >= console.MainTrackSlots {
 			break
 		}
 		runtime.Gosched()
 		time.Sleep(5 * time.Millisecond)
 	}
-	if got != tty.MainTrackSlots {
+	if got != console.MainTrackSlots {
 		t.Fatalf("the line-up published to the console held %d cards at its deepest; the console draws %d slots and the Director fills them",
-			got, tty.MainTrackSlots)
+			got, console.MainTrackSlots)
 	}
 
 	// It never goes past it. The chain is Publish -> Offered -> fill ->
@@ -391,7 +391,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 		mu.Lock()
 		after := len(last.Projection(lineup.MainTrack))
 		mu.Unlock()
-		if after > tty.MainTrackSlots {
+		if after > console.MainTrackSlots {
 			t.Fatalf("the line-up ran past the console's window: %d", after)
 		}
 		time.Sleep(5 * time.Millisecond)
@@ -445,7 +445,7 @@ func TestGoingOnAirFillsAnEmptyLineUp(t *testing.T) {
 	defer cancel()
 
 	var refs []snapshot.LocationRef
-	for i := 0; i < tty.MainTrackSlots; i++ {
+	for i := 0; i < console.MainTrackSlots; i++ {
 		refs = append(refs, snapshot.LocationRef{
 			Label: "Town " + strconv.Itoa(i) + ", CA", Zip: "9210" + strconv.Itoa(i%10),
 			Lat: 33 + float64(i)/100, Lon: -117 - float64(i)/100, TZ: "America/Los_Angeles"})
@@ -457,7 +457,7 @@ func TestGoingOnAirFillsAnEmptyLineUp(t *testing.T) {
 	var last lineup.Lineup
 	deepest := 0
 	publish := func(m tea.Msg) {
-		if lm, ok := m.(tty.LineupMsg); ok {
+		if lm, ok := m.(console.LineupMsg); ok {
 			mu.Lock()
 			last = lm.Lineup
 			deepest = max(deepest, len(lm.Lineup.Projection(lineup.MainTrack)))
@@ -493,13 +493,13 @@ func TestGoingOnAirFillsAnEmptyLineUp(t *testing.T) {
 		mu.Lock()
 		got = deepest
 		mu.Unlock()
-		if got >= tty.MainTrackSlots {
+		if got >= console.MainTrackSlots {
 			break
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	if got != tty.MainTrackSlots {
+	if got != console.MainTrackSlots {
 		t.Errorf("going ON AIR must fill the line-up the console draws; it reached %d of %d",
-			got, tty.MainTrackSlots)
+			got, console.MainTrackSlots)
 	}
 }

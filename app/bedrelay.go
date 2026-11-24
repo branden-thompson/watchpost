@@ -19,7 +19,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
-	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/units"
 )
@@ -122,8 +122,8 @@ func (lp *livePipelines) setBedStations(st []stream.Station) {
 		// (D-125). On `BedMsg` the count would have two other publishers that do
 		// not know it and leave it at zero — retracting this answer and disabling a
 		// bed that is carrying.
-		p.Send(tty.BedMsg{Relay: line, Carrying: carrying})
-		p.Send(tty.BedRelaysMsg{Count: len(st)})
+		p.Send(console.BedMsg{Relay: line, Carrying: carrying})
+		p.Send(console.BedRelaysMsg{Count: len(st)})
 	}
 }
 
@@ -177,7 +177,7 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 		// the bed is CARRYING; this is what the operator has SELECTED, which is
 		// a different fact until they cut to it.
 		if p != nil {
-			p.Send(tty.BedMsg{Relay: line, Carrying: lp.bedCarrying()})
+			p.Send(console.BedMsg{Relay: line, Carrying: lp.bedCarrying()})
 		}
 		return nil
 	}

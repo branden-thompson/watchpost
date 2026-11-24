@@ -10,7 +10,7 @@ import pathlib
 # seventy-four: this is the ordinary case, not an edge one.
 #
 # RE-ANCHORED when the window gained its scroll offset the same day.
-p = pathlib.Path("modes/tty/broadcaster_lineup.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_lineup.go"); s = p.read_text()
 old = '\t\tlines = append([]string(nil), lines[off:off+room]...)'
 new = '\t\tlines = append([]string(nil), lines[off:]...)'
 assert old in s, "mS3"

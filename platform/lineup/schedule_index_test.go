@@ -12,9 +12,9 @@ package lineup
 //
 // THE OPERATOR WOULD BE SHOWN A SCHEDULED REQUEST THAT WAS NEVER TAKEN, which is
 // FR-3.3's named trap, at the control's own default. The console compounds it:
-// `broadcaster_lineup.go` deliberately draws slots 02..15 EMPTY because "a slot
-// is an ADDRESS the operator can put something in" — and every one of those
-// addresses would be refused.
+// `modes/tty/console/broadcaster_lineup.go` deliberately draws slots 02..15
+// EMPTY because "a slot is an ADDRESS the operator can put something in" — and
+// every one of those addresses would be refused.
 //
 // THE FUNCTION'S OWN COMMENT RULES IT: "A position PAST the last visible card
 // means the end of the schedule."

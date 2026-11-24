@@ -11,6 +11,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -22,7 +23,7 @@ func routerOnConsole(t *testing.T) Router {
 	d := goldenDash(t, false)
 	d.now = func() time.Time { return ttytest.DetailAt().Add(2 * time.Minute) } // the console takes the Dashboard's clock (0.19.6 D-21)
 	r := consoleWith(t, d)
-	m, _ := r.Update(LineupMsg{Lineup: ttytest.Seed(t, ttytest.OneCard(t))})
+	m, _ := r.Update(console.LineupMsg{Lineup: ttytest.Seed(t, ttytest.OneCard(t))})
 	return m.(Router)
 }
 
@@ -70,7 +71,7 @@ func TestTheOpenWindowRefreshesWithTheCardAndNotWithTheSlot(t *testing.T) {
 	bA, bC := ttytest.ComposedCard(t, "b", "Bonsall, CA", ttytest.FiveSources(), ttytest.DetailAt())
 	aA, aC := ttytest.ComposedCard(t, "a", "Oceanside, CA",
 		[]lineup.Content{{Name: "NWS Weather Forecast", Detail: "09/12 - 09/18"}}, ttytest.DetailAt().Add(time.Hour))
-	m, _ = r.Update(LineupMsg{Lineup: ttytest.Seed(t, [2]lineup.Card{bA, bC}, [2]lineup.Card{aA, aC})})
+	m, _ = r.Update(console.LineupMsg{Lineup: ttytest.Seed(t, [2]lineup.Card{bA, bC}, [2]lineup.Card{aA, aC})})
 	out := m.(Router)
 
 	if out.observer.cardID != "a" {
@@ -125,7 +126,7 @@ func TestTheAlertBoxsWayInOpensThePriorityCard(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seeding the rail: %v", err)
 	}
-	b := consoleOf(t, Opening{ASCII: true}, l)
+	b := consoleOf(t, console.Opening{ASCII: true}, l)
 
 	// THE PREMISE: the box actually draws the control this test is about.
 	if frame := ttytest.StripANSI(b.View().Content); !strings.Contains(frame, "Details / Full Read / Manage") {
@@ -153,7 +154,7 @@ func TestTheAlertBoxsWayInOpensThePriorityCard(t *testing.T) {
 // reason: `false` means the key was not consumed, so it falls through rather
 // than opening a window onto a report that does not exist.
 func TestTheAlertBoxsWayInRefusesWhenTheRailIsEmpty(t *testing.T) {
-	b := consoleOf(t, Opening{ASCII: true}, lineup.Lineup{})
+	b := consoleOf(t, console.Opening{ASCII: true}, lineup.Lineup{})
 	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
 	if out := press(t, r, "A"); out.observer.ModalOpen() {
 		t.Errorf("[A] opened %v with no hazard on the rail", out.observer.modal)
@@ -182,11 +183,11 @@ func TestTheConsolesTwoDrawnControlsAreBound(t *testing.T) {
 	// draws from UP NEXT down (D-84's `liveOffset`): the pointer's position 0 is
 	// slot 2, which is the second card. It is a FIXTURE fact rather than a
 	// behaviour, and the same off-by-one can put a move one slot low.
-	b := consoleOf(t, Opening{ASCII: true}, mainTrackOf(t,
+	b := consoleOf(t, console.Opening{ASCII: true}, mainTrackOf(t,
 		ttytest.Card(t, "c0", "first"),
 		ttytest.Card(t, "c1", string(snapshot.Key(vista))),
 		ttytest.Card(t, "c2", "third")))
-	b, _ = b.Update(StationAreaMsg{
+	b, _ = b.Update(console.StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
 		RadiusMi:    50,
 		Pool:        []snapshot.LocationRef{vista},
@@ -232,7 +233,7 @@ func TestTheConsolesTwoDrawnControlsAreBound(t *testing.T) {
 // but About is not — taking a key that already works would be a regression
 // dressed as a feature (D-56: one key, one meaning PER SURFACE).
 func TestTheConsolesNewKeysDoNotTakeAboutsKey(t *testing.T) {
-	b := consoleOf(t, Opening{ASCII: true}, lineup.Lineup{})
+	b := consoleOf(t, console.Opening{ASCII: true}, lineup.Lineup{})
 	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
 	if out := press(t, r, "a"); out.observer.modal == modalRequest {
 		t.Error("[a] opened the request window; it is About on both surfaces")

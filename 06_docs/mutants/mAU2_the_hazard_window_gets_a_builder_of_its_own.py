@@ -4,7 +4,7 @@ import pathlib
 # agree by COINCIDENCE rather than by construction, and the next change to
 # `cardTitle` moves one and not the other. The operator then reads a different
 # heading depending on which key opened the same card.
-p = pathlib.Path("modes/tty/broadcaster_detail.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_detail.go"); s = p.read_text()
 old = """	return b.cardWindowFor(rail[0])
 }"""
 new = """	c := rail[0]

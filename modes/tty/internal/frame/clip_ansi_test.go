@@ -12,8 +12,8 @@ package frame
 // branch whenever the text measures at least the width — exactly what
 // `WrapText` produces on a full line — so a clip that charges escapes cuts the
 // held-hazard band's tail at the widths where it fits most tightly, which a
-// sample of a few widths can miss. The sweep over every width is modes/tty's
-// broadcaster_heldband_test.go's.
+// sample of a few widths can miss. The sweep over every width is the
+// console's broadcaster_heldband_test.go's (modes/tty/console).
 
 import (
 	"strings"

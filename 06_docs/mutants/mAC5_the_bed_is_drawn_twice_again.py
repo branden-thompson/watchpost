@@ -7,7 +7,7 @@ import pathlib
 # that variable was deleted — it was assigned three ways and read in no path, the
 # P10-07 class — so the anchor now reads `b.statusNote` directly. Same rule, same
 # insertion point, one variable shorter.
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster.go"); s = p.read_text()
 old = """	if b.statusNote != "" {
 		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, width)))
 	}

@@ -7,7 +7,7 @@ old = """	at := r.broadcaster.LineupSelection()
 	if at < 0 {"""
 assert old in s, "mAB4"
 new = """	at := r.broadcaster.LineupSelection()
-	if at+ScheduledFrom > 9 {
+	if at+console.ScheduledFrom > 9 {
 		return r, false
 	}
 	if at < 0 {"""

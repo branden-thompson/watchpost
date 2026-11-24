@@ -23,7 +23,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/locations"
-	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -238,7 +238,7 @@ func publishArea(send func(tea.Msg), s stationArea, pool []snapshot.LocationRef)
 	// THE POOL GOES WITH IT (D-93). It is derived from the very two fields above,
 	// so sending them apart would let the console hold a pool belonging to an
 	// area it has stopped showing.
-	send(tty.StationAreaMsg{Transmitter: s.transmitter, RadiusMi: s.radiusMi, Pool: pool})
+	send(console.StationAreaMsg{Transmitter: s.transmitter, RadiusMi: s.radiusMi, Pool: pool})
 }
 
 // poolFor derives a station's pool and takes NO LOCK, so a caller already

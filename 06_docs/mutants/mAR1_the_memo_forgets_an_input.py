@@ -4,7 +4,7 @@ import pathlib
 # underneath is perfectly correct. That is F-30 exactly — the defect that froze
 # three of Observer's windows in one release and took three UAT rounds to find
 # the first one.
-p = pathlib.Path("modes/tty/broadcaster_memo.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_memo.go"); s = p.read_text()
 old = "selected: b.selected,"
 assert old in s, "mAR1"
 p.write_text(s.replace(old, "", 1))

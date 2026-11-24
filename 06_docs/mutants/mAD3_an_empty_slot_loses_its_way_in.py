@@ -5,7 +5,7 @@ import pathlib
 #
 # Re-pointed 2026-09-14 (D-131): cardControls no longer takes the card, because
 # the PRESENTER label it drew was removed with the control it belonged to.
-p = pathlib.Path("modes/tty/broadcaster_slots.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_slots.go"); s = p.read_text()
 old = """		return append(rows, b.cardControls(o, handle))
 	}"""
 assert old in s, "mAD3"

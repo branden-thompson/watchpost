@@ -30,7 +30,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
 
-	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 )
 
 // executors performs effects. Every field is a seam into the running station,
@@ -286,9 +286,9 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		return x.runRelease(v)
 	case lineup.Publish:
 		if x.publish != nil {
-			x.publish(tty.LineupMsg{Lineup: v.Lineup})
-			x.publish(tty.StationMsg{Power: v.Power})
-			x.publish(tty.BedMsg{Relay: x.describeBed(v.Bed), Carrying: v.Bed.Carrying})
+			x.publish(console.LineupMsg{Lineup: v.Lineup})
+			x.publish(console.StationMsg{Power: v.Power})
+			x.publish(console.BedMsg{Relay: x.describeBed(v.Bed), Carrying: v.Bed.Carrying})
 			if x.noteBed != nil {
 				x.noteBed(v.Bed.Carrying)
 			}
@@ -305,7 +305,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 	case lineup.Escalate:
 		radioDebugLog("schedule:escalate:" + v.Reason)
 		if x.publish != nil {
-			x.publish(tty.StationFaultMsg{Run: v.Run, Reason: v.Reason})
+			x.publish(console.StationFaultMsg{Run: v.Run, Reason: v.Reason})
 		}
 		return nil
 	}
@@ -465,7 +465,7 @@ func (x *executors) broadcast(ctx context.Context, v lineup.Speak) []lineup.Even
 		return x.fault(v, v.ID, "the voice could not render the card: "+err.Error())
 	}
 	if x.publish != nil {
-		x.publish(tty.StationFaultMsg{}) // a read that finished clears the fault band
+		x.publish(console.StationFaultMsg{}) // a read that finished clears the fault band
 	}
 	return []lineup.Event{lineup.Finished{ID: v.ID}}
 }

@@ -11,7 +11,7 @@ import pathlib
 #
 # HUM LEAD, 2026-09-11: "that's why we have the vertical scroll bar so that works
 # like Observer — that section just needs to be able to scroll up and down."
-p = pathlib.Path("modes/tty/broadcaster_lineup.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_lineup.go"); s = p.read_text()
 old = '\t\t\tif at >= room {\n\t\t\t\toff = at - room + 1\n\t\t\t}'
 new = '\t\t\t_ = at'
 assert old in s, "mS5"

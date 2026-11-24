@@ -242,7 +242,7 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
   map row (`docs/extending.md:190`) and its "Search for" sentences (`:173-174`);
   `docs/where-things-happen.md:67`'s time row, naming `cardPulledShort` and `spokenWhen` as the places
   that choose a date; `UIPrefs.MapPropRefresh`'s comment (`modes/tty/dashboard.go:MapPropRefresh`);
-  `modes/tty/broadcaster_manifest.go:cardPulledShort`'s cell count; a CHANGELOG `[Unreleased]` heading, and a
+  `modes/tty/console/broadcaster_manifest.go:cardPulledShort`'s cell count; a CHANGELOG `[Unreleased]` heading, and a
   walkthrough line that every user-visible change gets an entry.
 - **B1.5 M4's midpoint (D-29).** A fresh blind reviewer traces the four tasks on the unchanged layout
   with B1's docs, on a copy without this release's folder; the grade is filed beside the before.

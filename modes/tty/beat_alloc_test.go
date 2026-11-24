@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/internal/allocpin"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
@@ -30,7 +31,7 @@ func beats() []beat {
 		{"radio playing 133x44", func(tb testing.TB) tea.Model { return NewRouter(playingDash(tb, 133, 44)) }, vizTickMsg{}},
 		{"console 160x74", func(tb testing.TB) tea.Model {
 			r := NewRouter(benchDash(tb, 160, 74).(Dashboard))
-			r.broadcaster = loadedConsoleOf(tb, Opening{}, ttytest.LoadedPoolSize)
+			r.broadcaster = loadedConsoleOf(tb, console.Opening{}, ttytest.LoadedPoolSize)
 			r.active = SurfaceBroadcaster
 			return r
 		}, frame.TickMsg{}},

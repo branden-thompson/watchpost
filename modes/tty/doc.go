@@ -1,5 +1,6 @@
 // Package tty is the live terminal program: the Router and the two surfaces
-// it holds, the Observer and the Broadcaster console.
+// it holds, the Observer and the Broadcaster console, which is its own
+// package, modes/tty/console (0.19.6 design CK-2).
 //
 // The Router (router.go) is the Bubble Tea model the program runs. It owns
 // the keys and messages that belong to the program, swaps between the two
@@ -30,11 +31,13 @@
 //	`setup*`                                   Settings: the row table, the tabs, the layout, each group
 //	`map_*`                                    the map pane, its modes, layers, Settings rows, and the
 //	                                           Propagation mode (`map_prop_*`)
-//	`broadcaster*`, `request.go`               the Broadcaster console and its Line-Up Request window
+//	`request.go`                               the console's Line-Up Request window
 //	`card_window.go`                           the Observer's window for a console card: the card it
 //	                                           is handed to draw, and its move and drop prompts
 //
 // What both surfaces draw the same way is the kit's, internal/frame: the
 // masthead, the location row, the cursor, the shimmer's tick, the memo
-// counters and the text helpers (0.19.6 A-21).
+// counters and the text helpers (0.19.6 A-21). The Router reaches the console
+// through its API alone: New, the messages Scoped names, SetMirror,
+// SetListenerMuted, WithSnapshot, WithRecent and its getters.
 package tty

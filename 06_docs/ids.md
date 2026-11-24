@@ -1591,6 +1591,7 @@ each one's best mention (0.19.6 D-50).
 | D-73 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | Batch 13's gate: mutant mAA5 ("the window ignores the surface entirely") simulated every row on every surface… |
 | D-73 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | What "open" means (round 2, PM-N2): no reference circuit; WSPR spots count as "reaches" at any SNR; D-RAP's 1… |
 | D-74 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d74.md` | TWO PROGRAMMES, TWO POWERS, ONE AIR |
+| D-74 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The console's density row (D-31). B3's move takes the console to modes/tty/console, and P10-05 measures it on… |
 | D-74 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-29: the description's words, from the HUM LEAD's example ("Oceanside, CA - Currently: 72F, Cloudy. B… |
 | D-74 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | M3a and the daily notice (round 2, Business N2, PM-N3): M3a scores the model against itself; with 80 m a defa… |
 | D-75 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d75.md` | THE RAIL RE-SCOPES WHEN THE AIR MOVES |
@@ -2410,6 +2411,7 @@ each one's best mention (0.19.6 D-50).
 | A-59 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W3.1 and W3.2's details (D-201): (1) the Propagation mode's night is drawn for the field's own time, to the f… |
 | A-60 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B3, instruments first: the move map follows a moved name into a third package and into package scope (A-52). … |
 | A-60 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W0.1 and W0.4's details (D-201): (1) the pre-push hook runs the tests that read the record - the flow map's a… |
+| A-61 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B3's move, as built (design CK-2, CK-5, CK-9; A-25, A-33, A-54, A-60). (1) Fifty-three files git mv'd whole t… |
 | A-61 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W9's details (D-201): (1) no position field needed to become an identity: each of the thirteen indexes a list… |
 | A-62 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The pre-push hook is Go, not a shell script (batch 33): tools/prepush holds the record's tests and runs them;… |
 | A-63 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W5.3's details (D-201; D-25, D-27, D-61, D-79): (1) / is "Find a Place", in the Propagation mode alone, a win… |
@@ -2628,7 +2630,7 @@ each one's best mention (0.19.6 D-50).
 | F-133 |  | `follow-ups.md` | lint-ledger.sh --self-test carries a private copy of its own rule list — six probes against six rules, nothin… |
 | F-136 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:164` | Mentioned: (records): F-143, F-136, F-145, F-146, F-147, F-123, F-144, F-141, F-148. Deferred to 0.16.5 with a |
 | F-137 |  | `follow-ups.md` | AP-HIST-01 by the rule, not the phrase list. ~123 lines of production comment narrate a past the reader will … |
-| F-138 |  | `follow-ups.md` | One verifier passes on an unconfirmed proof point: modes/tty/broadcaster_uat_test.go skips when its fixture o… |
+| F-138 |  | `follow-ups.md` | One verifier passes on an unconfirmed proof point: modes/tty/console/broadcaster_uat_test.go skips when its f… |
 | F-139 |  | `follow-ups.md` | A P10 gate arm that cannot fail on any platform CI runs, printing skipped (checked on windows) while the matr… |
 | F-140 |  | `follow-ups-closed.md` | A ratified P10 exemption names a symbol that does not exist — app/radio_queue.go · stopDwell. The narrowing s… |
 | F-141 | 0.16.0 | `0.16.0-broadcaster-ui/08-reports/gate-layer-rounds.md:164` | Mentioned: (records): F-143, F-136, F-145, F-146, F-147, F-123, F-144, F-141, F-148. Deferred to 0.16.5 with a |
@@ -3018,11 +3020,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:151` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:151` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:152` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:152` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:151` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:152` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

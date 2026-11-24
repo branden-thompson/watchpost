@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
@@ -121,7 +122,7 @@ func TestChangePositionRefusesWhatIsOutOfRange(t *testing.T) {
 
 		if sent {
 			t.Errorf("%q was sent to the schedule; the table draws %d to %d",
-				typed, ScheduledFrom, MainTrackSlots-1)
+				typed, console.ScheduledFrom, console.MainTrackSlots-1)
 		}
 		if r.observer.cardErr == "" {
 			t.Errorf("%q was refused with no reason on the window", typed)
@@ -244,7 +245,7 @@ func TestMovingACardRedrawsTheTable(t *testing.T) {
 
 	// AND THE SCHEDULE'S ANSWER REACHES THE CONSOLE THE WAY IT DOES IN THE APP:
 	// as a published line-up, not as a local edit.
-	r.broadcaster, _ = r.broadcaster.Update(LineupMsg{Lineup: settled})
+	r.broadcaster, _ = r.broadcaster.Update(console.LineupMsg{Lineup: settled})
 
 	after := rowNumberOf(t, r.broadcaster, moved)
 	if after == before {
@@ -261,7 +262,7 @@ func TestMovingACardRedrawsTheTable(t *testing.T) {
 }
 
 // rowNumberOf is the `##.` cell of the row a card is drawn on.
-func rowNumberOf(t *testing.T, b Broadcaster, id string) string {
+func rowNumberOf(t *testing.T, b console.Broadcaster, id string) string {
 	t.Helper()
 	// THE SLOT, NOT THE INDEX. The table numbers its rows by SLOT and reads the
 	// card at `slot - LiveOffset()` (D-84), so a test that compared indices would

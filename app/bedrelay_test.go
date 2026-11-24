@@ -10,7 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
-	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/units"
@@ -156,10 +156,10 @@ func TestTheOperatorsRelayChoiceSurvivesTheNextSettle(t *testing.T) {
 
 	// THE SETTLE, WITH THE DIRECTOR'S BED UNTUNED — which is the ordinary state of
 	// a station whose operator is choosing a relay before going on the air.
-	var got []tty.BedMsg
+	var got []console.BedMsg
 	b := newBench(t, &scriptVoice{})
 	b.x.publish = func(m tea.Msg) {
-		if bm, ok := m.(tty.BedMsg); ok {
+		if bm, ok := m.(console.BedMsg); ok {
 			got = append(got, bm)
 		}
 	}
@@ -211,10 +211,10 @@ func TestAStationNobodyHasTouchedHasChosenNoRelay(t *testing.T) {
 // The fallback is not dead code: until the operator touches the selector, what the
 // bed is carrying is the monitor's rotation, and that is the only honest answer.
 func TestAnUnchosenRelayLeavesTheDirectorsBedOnTheRow(t *testing.T) {
-	var got []tty.BedMsg
+	var got []console.BedMsg
 	b := newBench(t, &scriptVoice{})
 	b.x.publish = func(m tea.Msg) {
-		if bm, ok := m.(tty.BedMsg); ok {
+		if bm, ok := m.(console.BedMsg); ok {
 			got = append(got, bm)
 		}
 	}

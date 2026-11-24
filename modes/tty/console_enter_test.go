@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -16,8 +17,8 @@ import (
 // runningOrder is a full running order to point at, a place a card.
 func runningOrder(t *testing.T) lineup.Lineup {
 	t.Helper()
-	cards := make([]lineup.Card, 0, MainTrackSlots)
-	for i := range MainTrackSlots { // bounded by the track (P10-02)
+	cards := make([]lineup.Card, 0, console.MainTrackSlots)
+	for i := range console.MainTrackSlots { // bounded by the track (P10-02)
 		cards = append(cards, ttytest.Card(t, fmt.Sprintf("c%02d", i), fmt.Sprintf("Place %02d, CA", i)))
 	}
 	return mainTrackOf(t, cards...)
@@ -32,7 +33,7 @@ func consoleRouter(t *testing.T) Router {
 // consoleRouterOn is a Router on an --ascii console holding the line-up l.
 func consoleRouterOn(t *testing.T, l lineup.Lineup) Router {
 	t.Helper()
-	b := consoleOf(t, Opening{ASCII: true}, l)
+	b := consoleOf(t, console.Opening{ASCII: true}, l)
 	// WITH THE KEYMAP THE REAL ROUTER IS BUILT WITH. A fixture without it skips
 	// the action switch entirely, so every test through it exercises the
 	// fall-through and none of the bindings — which is F-72's shape (a field
@@ -51,19 +52,19 @@ func TestEnterOpensTheRowThePointerIsOn(t *testing.T) {
 	// passes just as well on a console where none of them do — so a test states
 	// what it needed before it reports.
 	beyondADigit := 0
-	for at := range MainTrackSlots - ScheduledFrom { // bounded by the table (P10-02)
+	for at := range console.MainTrackSlots - console.ScheduledFrom { // bounded by the table (P10-02)
 		r.broadcaster = pointAt(t, r.broadcaster, at)
 		out, opened := r.openPointedCard()
 		if !opened {
 			continue // the Director has not filled that slot; a digit refuses too
 		}
-		if at+ScheduledFrom > 9 {
+		if at+console.ScheduledFrom > 9 {
 			beyondADigit++
 		}
 		if out.observer.modal != modalCard {
 			t.Fatalf("row %d opened no card window", at)
 		}
-		want, _, ok := r.broadcaster.CardDetail(at + ScheduledFrom)
+		want, _, ok := r.broadcaster.CardDetail(at + console.ScheduledFrom)
 		if !ok || out.observer.cardID != want {
 			t.Errorf("row %d opened card %q, want %q", at, out.observer.cardID, want)
 		}
@@ -75,9 +76,9 @@ func TestEnterOpensTheRowThePointerIsOn(t *testing.T) {
 	// is not consumed, so it falls through as an unbound key does. The pointer
 	// reaches the pool's first row while it holds one, and the pool then empties
 	// under it, as a narrowed service area empties it.
-	r.broadcaster, _ = r.broadcaster.Update(StationAreaMsg{Pool: []snapshot.LocationRef{{Label: "Vista, CA"}}})
-	r.broadcaster = pointAt(t, r.broadcaster, MainTrackSlots-ScheduledFrom)
-	r.broadcaster, _ = r.broadcaster.Update(StationAreaMsg{})
+	r.broadcaster, _ = r.broadcaster.Update(console.StationAreaMsg{Pool: []snapshot.LocationRef{{Label: "Vista, CA"}}})
+	r.broadcaster = pointAt(t, r.broadcaster, console.MainTrackSlots-console.ScheduledFrom)
+	r.broadcaster, _ = r.broadcaster.Update(console.StationAreaMsg{})
 	if _, opened := r.openPointedCard(); opened {
 		t.Error("enter opened a card window from the pool")
 	}
@@ -134,12 +135,12 @@ func TestEnterOnAPoolRowOpensThatLocation(t *testing.T) {
 		{Label: "Fallbrook, CA", Zip: "92028", Lat: 33.37, Lon: -117.25},
 		{Label: "Vista, CA", Zip: "92081", Lat: 33.20, Lon: -117.24},
 	}
-	r.broadcaster, _ = r.broadcaster.Update(StationAreaMsg{
+	r.broadcaster, _ = r.broadcaster.Update(console.StationAreaMsg{
 		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
 		RadiusMi:    50, Pool: pool})
 
 	for want, at := range map[string]int{"Fallbrook, CA": 0, "Vista, CA": 1} {
-		r.broadcaster = pointAt(t, r.broadcaster, MainTrackSlots-ScheduledFrom+at)
+		r.broadcaster = pointAt(t, r.broadcaster, console.MainTrackSlots-console.ScheduledFrom+at)
 		out, opened := r.openPointedCard()
 		if !opened {
 			t.Fatalf("%s: enter opened nothing on a pool row", want)
@@ -153,7 +154,7 @@ func TestEnterOnAPoolRowOpensThatLocation(t *testing.T) {
 		}
 	}
 	// A second press closes the window, the same rule the card window follows.
-	r.broadcaster = pointAt(t, r.broadcaster, MainTrackSlots-ScheduledFrom)
+	r.broadcaster = pointAt(t, r.broadcaster, console.MainTrackSlots-console.ScheduledFrom)
 	opened, _ := r.openPointedCard()
 	if closed := pressAction(t, opened, actQueueOpen); closed.observer.modal != modalNone {
 		t.Errorf("a second enter left the location details %v open", closed.observer.modal)

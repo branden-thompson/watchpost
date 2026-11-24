@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -24,7 +25,7 @@ func consoleUnder(t *testing.T, units, clock string, now func() time.Time) Route
 		d.now = now
 	}
 	r := NewRouter(d)
-	r.broadcaster = loadedConsoleOf(t, Opening{Now: d.now}, ttytest.LoadedPoolSize)
+	r.broadcaster = loadedConsoleOf(t, console.Opening{Now: d.now}, ttytest.LoadedPoolSize)
 	r.active = SurfaceBroadcaster
 	return step(t, r, frame.TickMsg{})
 }

@@ -1160,3 +1160,108 @@ same totals in 1,992 and 4,591 keys.
 
 **The inventory's delta.** Two tests new, none removed: `TestAThirdPackageNamesAMovedNameByItsNewPackage`
 and `TestAPackageScopeEscapeIsCountedAcrossTheMove` (`tools/gcprobe`).
+
+## B3: the console (`modes/tty/console`)
+
+**The re-check (step 1)** is the first prep's, on `9aa93cfe`, in "Before B3: the console's API in
+place"; the second prep's walk over the move's file set left three reaches across the boundary, each
+the move's to add. On `5060ceb2` the move, applied by a type-checked plan of every use that crosses
+it, compiled and vetted on its first round; it found the move map's two missing cases, which landed
+first (A-60), and two tests that read a file by its path, which the move fixes.
+
+## B3's move: the console in its package (A-61; D-74)
+
+**The move (A-61).** Fifty-three files `git mv`'d whole, by script: the console's twelve
+`broadcaster*.go` files and the 41 test files that hold its tests alone, the 37 `broadcaster*_test.go`
+files and four more (`console_finish_test.go`, `heldcount_test.go`, `projection_cache_test.go`,
+`station_wording_test.go`), with its fourteen goldens into `modes/tty/console/testdata`. The plan
+was computed on the tree before the move, from the type checker's record of every use of a
+package-level name: a root file's use of a moving name became `console.Name` (97 sites, 17 of them
+non-test), and `app`'s `tty.Name` for a moving name `console.Name` (50 sites, 11 non-test: the six
+messages and `MainTrackSlots`). Each edited file gained the import, or swapped it where it named
+nothing else of `modes/tty`. No moving file named a root name but the three reaches prep 2 left, so
+the console gains its own: `TestMain` through `ttytest.Main`, the `raceEnabled` pair and its
+`-update-golden` flag (A-33). The first build and `go vet ./...` were clean; `gofmt` sorted the new
+imports into their groups.
+
+**Two tests that read a file by its path,** which no type check sees: `memo_positions_test.go` reads
+the console's memo key from `console/broadcaster_memo.go`, and the rail test reads 0.16.0's mock one
+directory further up.
+
+**The comment pass (A-33).** The moved code's 405 bare citations take the release that wrote them,
+which `06_docs/ids.md` says is the file's history: the first commit, following renames, whose diff
+adds the ID, and the first release tag that contains it. 352 resolve to a release whose record has
+the row; the 53 others were read one by one:
+- 0.16.0's IDs its record never tabled (D-97, D-103, D-110, D-111, D-112, D-116, D-160) take 0.16.0,
+  as A-54 ruled D-112, and so do NFR-3 and NFR-7, its requirements' bullets;
+- DR-1, DR-7 and PD-3 are 0.14.0's director requirements (`multi-voice-support`);
+- D-360, D-362 and D-367 are 0.19.0's, which O2 ruled; their lines were last written in 0.19.3 and
+  0.19.6;
+- a follow-up takes the release that opened it, the first tag containing the commit that added its
+  row: F-30 0.14.0, F-55 0.15.0, F-205 0.18.0, the rest 0.16.0.
+355 insertions qualify all 405, and a paragraph they pushed past its own widest line is re-wrapped
+to that width, prose only. Comments elsewhere that named the console's files by their old place
+name them where they are (`dashboard.go`, `masthead_memo_test.go`, `frame/clip_ansi_test.go`,
+`platform/lineup/schedule_index_test.go`).
+
+**The instruments, each seen failing on a partial move.**
+- **The union** (`TestTheTwoTreesDeclarationsAreConserved`) is unchanged by the move and the comment
+  pass: the same golden, no re-capture. With `Manageable`'s body edited it fails, one declaration new
+  and one gone; restored by copy, it passes.
+- **`gcprobe`** with B3's line in `06_docs/perf/moves.tsv`: OK, 4,001 escapes in 1,995 keys and
+  7,268 inlined calls in 4,599 keys, none new and none lost. Without the line: 393 failures.
+- **The test inventory's comparison**, on the move's own keys (B0's plain record with the console's
+  tests in `modes/tty/console` and the clip tests in `frame`): without an accept file, 196 are gone;
+  with `06_docs/testinv/accept-B3.tsv`, B2's two rows and B3's 194, all 2,006 kept; with
+  `TestConsoleGoldens`' row removed, that one is lost.
+- **`make graph`**: OK, 11 figures, none above its baseline. The console's reach into `dashboard.go`
+  is 0 of 13: the row reads the twelve files where they are now, and their package cannot name the
+  root's. Read by the old prefix, the row would count no files and say 0 for that reason instead.
+- **`make mutant-anchors`**: 78 of 1,060 failed on the move, 77 by path and mAL2 by its text; all
+  match after the re-points.
+
+**Mutants.** 77 re-point by path. Three change their text (A-25): mAL2's anchor and mAB4's inserted
+line take the qualifier, and mAN1, which gives the console the Observer's five day cells through the
+root's `extRowDays`, writes the 5 that constant holds, since the console cannot name it. Every mutant
+on a file the move edited, 97 on the importers and 77 on the console's, was applied and built: the
+two that would not build were mAB4 and mAN1, before their re-texting. mAL2, mAB4 and mAN1 are each
+caught by their recorded killers.
+
+**P10.** The rail's P10-06 row re-keys to `modes/tty/console/broadcaster_rail.go`. `make p10`'s one
+live finding on the move was the console's density, 0.41 across 56 changed functions, which rode the
+root's row before the move: ratified at its measured figure (D-74). The root reads 0.51 across 53,
+above its floor of 0.42. The seven Router rows and `Dashboard.View`'s still match, and are re-proved
+per surface: the four findings left (`Router.update`, `Router.scopedMessage`,
+`Router.throughToObserver`, `Dashboard.View`) are the checker matching a method's name, since the
+console's `Update` and `View` are now in another package, which cannot import `modes/tty` and so
+cannot hold a Router field; the Dashboard's are unchanged. The reasons stand as written. The
+console's row first named the root's floor in its narrative, which `p10floor` read as the row's own,
+the first figure after FLOOR; it now says "its floor". `make p10`: 0 live, 0 unmatched, 0
+unratified, the mirror regenerated.
+
+**The living documents (package map §9).** The console's `doc.go` maps its twelve files; the root's
+loses their row. `docs/architecture.md` gains the console's row; `docs/extending.md`,
+`docs/where-things-happen.md` (its vocabulary row's `New` among them), `docs/accepted-costs.md` and
+`06_docs/follow-ups.md` name the console's files where they are, and 0.16.0's required reading's
+D-51 row its `broadcaster_rail.go`. 0.19.6's as-built page draws B0–B3, the console between the root
+and the kit and `app` sending it the six messages; the atlas reads it. The plan's citation of
+`cardPulledShort` names its file where it is.
+
+**The changed-line table.**
+
+| File | Line | Kind | Mutants before | After |
+|---|---|---|---|---|
+| `console/main_test.go`, `console/race_test.go`, `console/norace_test.go` | `TestMain` calls `ttytest.Main`; the `-update-golden` flag; the `raceEnabled` pair (A-33) | setup, new | — | — |
+| `memo_positions_test.go:TestEveryPositionFieldHasAReason` | the console's memo file by its path | setup | none recorded | none recorded |
+| `console/broadcaster_rail_test.go:mockTrackColumns` | 0.16.0's mock one directory further up | setup | none recorded | none recorded |
+| `cmd/watchpost/testmain_test.go` | CK-7's floor gains `modes/tty/console` | assertion | none | none recorded |
+| `tools/graph/figures.go` | the console's reach reads `modes/tty/console/broadcaster` | assertion | none | none recorded |
+| `06_docs/graph/exported-tty.txt` | the root's list loses the console's 39 names and methods | golden | — | — |
+| `06_docs/testinv/goldens-B3.txt` | A-33's two goldens in the console's `testdata` | golden list | — | — |
+| the root's and `app`'s tests | 119 qualifiers (`console.`) and their imports | setup | — | — |
+
+**The inventory's delta.** Moved, and accepted: the console's 187 baseline tests and their subtests,
+194 keys, `modes/tty` to `modes/tty/console`. No test new; no test removed.
+
+**AP-CAPS-01's soft warnings** rise from 116 to 128: the comment pass and the qualifiers touch
+paragraphs that open as they did, and every one of the 128 openers is at `5060ceb2`.

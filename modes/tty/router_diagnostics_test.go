@@ -18,6 +18,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
@@ -317,7 +318,7 @@ func TestEveryAdvertisedControlIsBound(t *testing.T) {
 	// THE ROW AS DRAWN (0.19.6 D-22): the frame's line that ends the list with
 	// Quit, which every rung of the row's ladder names.
 	row := ""
-	for _, l := range strings.Split(drawn(consoleOf(t, Opening{ASCII: true}, lineup.Lineup{})), "\n") {
+	for _, l := range strings.Split(drawn(consoleOf(t, console.Opening{ASCII: true}, lineup.Lineup{})), "\n") {
 		if strings.Contains(l, "Quit") {
 			row = l
 			break

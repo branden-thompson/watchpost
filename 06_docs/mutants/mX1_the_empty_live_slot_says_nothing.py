@@ -7,7 +7,7 @@ import pathlib
 #
 # RE-ANCHORED AT D-110. D-89's grey BOX retired when LIVE became one row of the
 # air box (D-95); the SENTENCE is what survived, and this is where it is said.
-p = pathlib.Path("modes/tty/broadcaster_air.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_air.go"); s = p.read_text()
 old = "\t\treturn bcCardInset + bcStandbyNotice\n"
 new = "\t\treturn \"\"\n"
 assert old in s, "mX1"

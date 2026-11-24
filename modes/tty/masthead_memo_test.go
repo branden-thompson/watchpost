@@ -12,8 +12,8 @@ import (
 // TestTheMastheadKeyCoversEverythingTheMastheadShows is the masthead memo's
 // completeness guard on Observer (0.19.5 Q4.2, A-15): if two models would draw
 // different mastheads, their keys differ, for every field the walk can change.
-// The console's half is broadcaster_masthead_memo_test.go's, and the inputs no
-// field walk reaches are the kit's, internal/frame's masthead_test.go
+// The console's half is console/broadcaster_masthead_memo_test.go's, and the
+// inputs no field walk reaches are the kit's, internal/frame's masthead_test.go
 // (0.19.6 D-58).
 func TestTheMastheadKeyCoversEverythingTheMastheadShows(t *testing.T) {
 	obs := benchDash(t, 133, 44).(Dashboard)

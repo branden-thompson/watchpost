@@ -1,0 +1,54 @@
+# 0.19.6 B3's whole-file moves since B2's close (09bd1cbc), old<TAB>new, for the scoped sweep's
+# SCOPED_PATHS (0.19.6 A-55). moves.tsv is gcprobe's, by package; this map names files. A file
+# the batch left in place with part of its code moved is not a line, and a file the batch created
+# has no old path: prep 2's cut is the changed-line table's.
+modes/tty/broadcaster_manage.go	modes/tty/card_window.go
+modes/tty/broadcaster_air_test.go	modes/tty/console/broadcaster_air_test.go
+modes/tty/broadcaster_air.go	modes/tty/console/broadcaster_air.go
+modes/tty/broadcaster_alloc_test.go	modes/tty/console/broadcaster_alloc_test.go
+modes/tty/broadcaster_bed_test.go	modes/tty/console/broadcaster_bed_test.go
+modes/tty/broadcaster_cardbox_test.go	modes/tty/console/broadcaster_cardbox_test.go
+modes/tty/broadcaster_cardrow_test.go	modes/tty/console/broadcaster_cardrow_test.go
+modes/tty/broadcaster_dataage_test.go	modes/tty/console/broadcaster_dataage_test.go
+modes/tty/broadcaster_detail_test.go	modes/tty/console/broadcaster_detail_test.go
+modes/tty/broadcaster_detail.go	modes/tty/console/broadcaster_detail.go
+modes/tty/broadcaster_fault_test.go	modes/tty/console/broadcaster_fault_test.go
+modes/tty/broadcaster_header_test.go	modes/tty/console/broadcaster_header_test.go
+modes/tty/broadcaster_header.go	modes/tty/console/broadcaster_header.go
+modes/tty/broadcaster_heldband_test.go	modes/tty/console/broadcaster_heldband_test.go
+modes/tty/broadcaster_lanes_test.go	modes/tty/console/broadcaster_lanes_test.go
+modes/tty/broadcaster_lineup_test.go	modes/tty/console/broadcaster_lineup_test.go
+modes/tty/broadcaster_lineup.go	modes/tty/console/broadcaster_lineup.go
+modes/tty/broadcaster_loaded_test.go	modes/tty/console/broadcaster_loaded_test.go
+modes/tty/broadcaster_manage_test.go	modes/tty/console/broadcaster_manage_test.go
+modes/tty/broadcaster_manifest_test.go	modes/tty/console/broadcaster_manifest_test.go
+modes/tty/broadcaster_manifest.go	modes/tty/console/broadcaster_manifest.go
+modes/tty/broadcaster_masthead_memo_test.go	modes/tty/console/broadcaster_masthead_memo_test.go
+modes/tty/broadcaster_memo_completeness_test.go	modes/tty/console/broadcaster_memo_completeness_test.go
+modes/tty/broadcaster_memo.go	modes/tty/console/broadcaster_memo.go
+modes/tty/broadcaster_onair_tone_test.go	modes/tty/console/broadcaster_onair_tone_test.go
+modes/tty/broadcaster_pool_once_test.go	modes/tty/console/broadcaster_pool_once_test.go
+modes/tty/broadcaster_pool_test.go	modes/tty/console/broadcaster_pool_test.go
+modes/tty/broadcaster_pool.go	modes/tty/console/broadcaster_pool.go
+modes/tty/broadcaster_pooldata_test.go	modes/tty/console/broadcaster_pooldata_test.go
+modes/tty/broadcaster_priority_test.go	modes/tty/console/broadcaster_priority_test.go
+modes/tty/broadcaster_rail_test.go	modes/tty/console/broadcaster_rail_test.go
+modes/tty/broadcaster_rail.go	modes/tty/console/broadcaster_rail.go
+modes/tty/broadcaster_scroll_test.go	modes/tty/console/broadcaster_scroll_test.go
+modes/tty/broadcaster_size_test.go	modes/tty/console/broadcaster_size_test.go
+modes/tty/broadcaster_slots_live_test.go	modes/tty/console/broadcaster_slots_live_test.go
+modes/tty/broadcaster_slots_test.go	modes/tty/console/broadcaster_slots_test.go
+modes/tty/broadcaster_slots.go	modes/tty/console/broadcaster_slots.go
+modes/tty/broadcaster_standby_test.go	modes/tty/console/broadcaster_standby_test.go
+modes/tty/broadcaster_station_test.go	modes/tty/console/broadcaster_station_test.go
+modes/tty/broadcaster_theme_test.go	modes/tty/console/broadcaster_theme_test.go
+modes/tty/broadcaster_tone_test.go	modes/tty/console/broadcaster_tone_test.go
+modes/tty/broadcaster_uat_test.go	modes/tty/console/broadcaster_uat_test.go
+modes/tty/broadcaster_upnext_label_test.go	modes/tty/console/broadcaster_upnext_label_test.go
+modes/tty/broadcaster_upnext_test.go	modes/tty/console/broadcaster_upnext_test.go
+modes/tty/broadcaster_upnext.go	modes/tty/console/broadcaster_upnext.go
+modes/tty/broadcaster.go	modes/tty/console/broadcaster.go
+modes/tty/console_finish_test.go	modes/tty/console/console_finish_test.go
+modes/tty/heldcount_test.go	modes/tty/console/heldcount_test.go
+modes/tty/projection_cache_test.go	modes/tty/console/projection_cache_test.go
+modes/tty/station_wording_test.go	modes/tty/console/station_wording_test.go

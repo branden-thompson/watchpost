@@ -4,7 +4,7 @@ import pathlib
 # unreadable and nothing looks broken — which is the point. It restyles every
 # report window in the app to say something the ground does not mean, and only a
 # test that states the narrow rule can tell the two apart.
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster.go"); s = p.read_text()
 old = """	if c.Slot != lineup.BreakingAlert {
 		return ""
 	}

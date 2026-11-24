@@ -8,7 +8,7 @@ import pathlib
 # Re-pointed 2026-09-16: ruling C put it inline on the STATION AIR row, where it
 # fitted only at 160 cells and above; the line of its own covers every drawable
 # width.
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster.go"); s = p.read_text()
 old = "\t\t\tif render.Width(words) <= width {"
 new = "\t\t\tif false {"
 assert old in s, "mFR55"

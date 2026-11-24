@@ -6,7 +6,7 @@ import pathlib
 #
 # THIS IS THE DEFECT THE FIRST DRAFT SHIPPED, caught by measuring the rendered
 # band rather than by reading the code.
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster.go"); s = p.read_text()
 old = """	for _, l := range render.WrapText(plain, b.bandWidth()) { // bounded by the text (P10-02)
 		body = append(body, frame.CenterText(emphasiseHeld(l, count), b.bandWidth()))
 	}"""

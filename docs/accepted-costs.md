@@ -222,7 +222,7 @@ bound and its gauge there.
 ## The console's frame costs 309 allocations, and a loaded console 9,655 (0.16.0 P4, re-based D-120)
 
 **The numbers, as pinned.** `bcFrameAllocs = 309` and `bcFrameMissAllocs = 9655`
-(`modes/tty/broadcaster_alloc_test.go`). The first is a frame on a console with a pool and a snapshot
+(`modes/tty/console/broadcaster_alloc_test.go`). The first is a frame on a console with a pool and a snapshot
 where every row's weather is already joined (the memo hit), measured at 297 and pinned at ×1.04; the
 second is the miss — two tables joining forty rows — measured at 9,195 and pinned at ×1.05. The
 fixture is a loaded console (D-120): a console with no pool and no snapshot joins no weather, and a
@@ -250,5 +250,5 @@ is thousands of allocations per second at most, and `perf-measurement.md`'s meth
 not this counter. Or an upstream go-studs change that lowers `RenderRow`'s per-call cost, which is an
 **M6 upstream candidate** rather than a local patch.
 
-**Evidence.** `modes/tty/broadcaster_alloc_test.go`'s `bcFrameAllocs` comment carries the table and the
+**Evidence.** `modes/tty/console/broadcaster_alloc_test.go`'s `bcFrameAllocs` comment carries the table and the
 measurement date.

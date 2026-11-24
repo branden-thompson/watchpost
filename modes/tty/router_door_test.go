@@ -17,6 +17,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
@@ -100,7 +101,7 @@ func pressAction(t *testing.T, r Router, a term.Action) Router {
 func TestAnOperatorCanReachTheConsoleAndLeaveItAgain(t *testing.T) {
 	s := &station{}
 	r := withStation(t, NewRouter(Dashboard{}), s)
-	r.broadcaster, _ = r.broadcaster.Update(StationMsg{Power: lineup.Running})
+	r.broadcaster, _ = r.broadcaster.Update(console.StationMsg{Power: lineup.Running})
 
 	r = pressAction(t, r, actSwapBroadcaster)
 	if r.active != SurfaceBroadcaster {
@@ -123,7 +124,7 @@ func TestAnOperatorCanReachTheConsoleAndLeaveItAgain(t *testing.T) {
 	}
 
 	// The station complies, and the console is told by the Director.
-	r.broadcaster, _ = r.broadcaster.Update(StationMsg{Power: lineup.OffAir})
+	r.broadcaster, _ = r.broadcaster.Update(console.StationMsg{Power: lineup.OffAir})
 	r = pressAction(t, r, actSwapObserver)
 	if r.active != SurfaceObserver {
 		t.Error("with the station in STANDBY the operator may leave — without this the console is a " +
@@ -136,7 +137,7 @@ func TestTheToggleGoesBothWays(t *testing.T) {
 	s := &station{}
 	r := withStation(t, NewRouter(Dashboard{}), s)
 	r.active = SurfaceBroadcaster
-	r.broadcaster, _ = r.broadcaster.Update(StationMsg{Power: lineup.OffAir})
+	r.broadcaster, _ = r.broadcaster.Update(console.StationMsg{Power: lineup.OffAir})
 
 	r = pressAction(t, r, actStationToggle)
 
@@ -150,7 +151,7 @@ func TestTheToggleGoesBothWays(t *testing.T) {
 func TestTheStationToggleDoesNothingFromObserver(t *testing.T) {
 	s := &station{}
 	r := withStation(t, NewRouter(Dashboard{}), s)
-	r.broadcaster, _ = r.broadcaster.Update(StationMsg{Power: lineup.Running})
+	r.broadcaster, _ = r.broadcaster.Update(console.StationMsg{Power: lineup.Running})
 
 	r = pressAction(t, r, actStationToggle)
 
@@ -183,8 +184,8 @@ func TestTheBedsControlsReachTheStation(t *testing.T) {
 	}
 	// `[b]` is a direction, not a toggle the console decides: told the bed is
 	// carrying, the next press asks for the other way.
-	m, _ = m.Update(BedMsg{Carrying: true}) // D-117: a carrying bed has a relay to carry
-	m, _ = m.Update(BedRelaysMsg{Count: 3})
+	m, _ = m.Update(console.BedMsg{Carrying: true}) // D-117: a carrying bed has a relay to carry
+	m, _ = m.Update(console.BedRelaysMsg{Count: 3})
 	m, _ = m.Update(keyPress(t, "b"))
 	if len(s.bed) != 2 || s.bed[1] {
 		t.Errorf("[b] on a carrying bed cuts BACK; asked %v", s.bed)

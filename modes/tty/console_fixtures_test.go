@@ -14,6 +14,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
@@ -23,10 +24,10 @@ const consoleW, consoleH = 150, 74
 
 // consoleOf is a console opened on o and sent a line-up, sized by the resize
 // every surface is sent.
-func consoleOf(t *testing.T, o Opening, l lineup.Lineup) Broadcaster {
+func consoleOf(t *testing.T, o console.Opening, l lineup.Lineup) console.Broadcaster {
 	t.Helper()
-	b := New(o)
-	b, _ = b.Update(LineupMsg{Lineup: l})
+	b := console.New(o)
+	b, _ = b.Update(console.LineupMsg{Lineup: l})
 	b, _ = b.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH})
 	return b
 }
@@ -47,25 +48,25 @@ func mainTrackOf(t *testing.T, cards ...lineup.Card) lineup.Lineup {
 
 // loadedConsoleOf is ttytest's loaded station of n places sent to a console
 // opened on o: the console with everything on it (D-120).
-func loadedConsoleOf(t testing.TB, o Opening, n int) Broadcaster {
+func loadedConsoleOf(t testing.TB, o console.Opening, n int) console.Broadcaster {
 	t.Helper()
 	s := ttytest.Loaded(t, n, time.Now())
-	b := New(o)
+	b := console.New(o)
 	b, _ = b.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH})
-	b, _ = b.Update(LineupMsg{Lineup: s.Lineup})
-	b, _ = b.Update(StationAreaMsg{Transmitter: s.Transmitter, RadiusMi: s.RadiusMi, Pool: s.Pool})
+	b, _ = b.Update(console.LineupMsg{Lineup: s.Lineup})
+	b, _ = b.Update(console.StationAreaMsg{Transmitter: s.Transmitter, RadiusMi: s.RadiusMi, Pool: s.Pool})
 	b, _ = b.WithRecent(s.Recent)
 	return b
 }
 
 // pointAt puts the console's pointer on row at of the two tables it walks, the
 // running order and then the pool, as the arrows do: to the top, then down.
-func pointAt(t *testing.T, b Broadcaster, at int) Broadcaster {
+func pointAt(t *testing.T, b console.Broadcaster, at int) console.Broadcaster {
 	t.Helper()
-	b = b.ScrollQueue(-MainTrackSlots - len(b.Pool())).ScrollQueue(at)
+	b = b.ScrollQueue(-console.MainTrackSlots - len(b.Pool())).ScrollQueue(at)
 	got := b.LineupSelection()
 	if got < 0 {
-		got = MainTrackSlots - ScheduledFrom + b.PoolSelection()
+		got = console.MainTrackSlots - console.ScheduledFrom + b.PoolSelection()
 	}
 	if got != at {
 		t.Fatalf("the pointer stops at row %d, not %d", got, at)
@@ -74,7 +75,7 @@ func pointAt(t *testing.T, b Broadcaster, at int) Broadcaster {
 }
 
 // drawn is the console's frame as the operator reads it, ANSI stripped.
-func drawn(b Broadcaster) string { return ttytest.StripANSI(b.View().Content) }
+func drawn(b console.Broadcaster) string { return ttytest.StripANSI(b.View().Content) }
 
 // drawnRows is how many rows a frame has.
 func drawnRows(frame string) int { return strings.Count(frame, "\n") + 1 }
@@ -84,7 +85,7 @@ func drawnRows(frame string) int { return strings.Count(frame, "\n") + 1 }
 var gainDrawn = regexp.MustCompile(`GAIN .*?(\d+)\s`)
 
 // drawnGain is the level the console's gain control draws (0.19.6 D-22).
-func drawnGain(t *testing.T, b Broadcaster) int {
+func drawnGain(t *testing.T, b console.Broadcaster) int {
 	t.Helper()
 	m := gainDrawn.FindStringSubmatch(drawn(b))
 	if m == nil {

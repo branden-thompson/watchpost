@@ -12,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"strconv"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
@@ -250,7 +251,7 @@ func scrollStep(a term.Action) int {
 // Router holds the surfaces and delegates to the active one.
 type Router struct {
 	observer    Dashboard
-	broadcaster Broadcaster
+	broadcaster console.Broadcaster
 	active      Surface
 
 	// keys are the console's own bindings, merged once and shared by value.
@@ -290,7 +291,7 @@ type Router struct {
 
 // NewRouter wraps Observer, with the console beside it.
 func NewRouter(o Dashboard) Router {
-	b := New(Opening{
+	b := console.New(console.Opening{
 		// The console inherits the SAME --ascii decision Observer was built with.
 		// Two surfaces disagreeing about whether the terminal can draw a glyph
 		// would be one setting with two carriers.
@@ -440,7 +441,7 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !out.stationIsLive() || (out.refusal == bedRefusal && out.broadcaster.BedCarrying()) {
 		out.refusal = ""
 	}
-	out.broadcaster.SetMirror(Mirror{
+	out.broadcaster.SetMirror(console.Mirror{
 		Gain:         out.observer.radioVolume,
 		Units:        out.observer.units,
 		Clock:        out.observer.clockFmt,
@@ -539,7 +540,7 @@ func (r Router) scopedMessage(msg tea.Msg) (Router, tea.Cmd, bool) {
 		r.station = m.Control
 		return r, nil, true
 	}
-	if Scoped(msg) {
+	if console.Scoped(msg) {
 		var cmd tea.Cmd
 		r.broadcaster.SetListenerMuted(r.observer.tickerMuted) // the Observer's [M], shown on air (ruling 6-ii)
 		r.broadcaster, cmd = r.broadcaster.Update(msg)
@@ -1089,7 +1090,7 @@ func (r Router) cardWindowKey(k tea.KeyPressMsg) (Router, bool) {
 	// Locked" (D-45) and the window does not draw the two chips for it, so the
 	// keys must not act either — a control that is not offered and still works is
 	// the same lie as one that is offered and does not.
-	if !Manageable(r.cardInWindow()) {
+	if !console.Manageable(r.cardInWindow()) {
 		return r, false
 	}
 	switch k.String() {
@@ -1116,8 +1117,8 @@ func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
 			// sight — FR-3.3's own rule is that an action is never SHOWN as taken
 			// unless the schedule took it, and the honest form of that here is to
 			// not send it at all.
-			r.observer.cardErr = "positions " + strconv.Itoa(ScheduledFrom) + " to " +
-				strconv.Itoa(MainTrackSlots-1)
+			r.observer.cardErr = "positions " + strconv.Itoa(console.ScheduledFrom) + " to " +
+				strconv.Itoa(console.MainTrackSlots-1)
 			return r, true
 		}
 		if move := r.observer.cfg.MoveCard; move != nil {
@@ -1210,12 +1211,12 @@ func (r Router) openPointedCard() (Router, bool) {
 	if at < 0 {
 		return r, false
 	}
-	id, rows, ok := r.broadcaster.CardDetail(at + ScheduledFrom)
+	id, rows, ok := r.broadcaster.CardDetail(at + console.ScheduledFrom)
 	if !ok {
 		return r, false
 	}
 	r.observer = r.observer.showCard(id, rows,
-		r.broadcaster.CardWindowGroundFor(at+ScheduledFrom), r.observer.opts()).open(modalCard)
+		r.broadcaster.CardWindowGroundFor(at+console.ScheduledFrom), r.observer.opts()).open(modalCard)
 	return r, true
 }
 
@@ -1231,7 +1232,7 @@ func (r Router) refreshCardWindow() Router {
 	if r.observer.modal != modalCard {
 		return r
 	}
-	for i := range MainTrackSlots { // bounded by the track (P10-02)
+	for i := range console.MainTrackSlots { // bounded by the track (P10-02)
 		if id, rows, ok := r.broadcaster.CardDetail(i); ok && id == r.observer.cardID {
 			// COMPARED AT ONE AGREED VOCABULARY, DRAWN IN THE WINDOW'S OWN. The
 			// generation must move when the REPORT changes and not when the

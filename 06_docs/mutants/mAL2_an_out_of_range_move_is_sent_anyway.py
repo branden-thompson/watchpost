@@ -4,7 +4,7 @@ import pathlib
 # taken unless the schedule took it, and the operator is shown a closed window
 # and an unmoved card (D-118).
 p = pathlib.Path("modes/tty/card_window.go"); s = p.read_text()
-old = """	if err != nil || n < ScheduledFrom || n > MainTrackSlots-1 {
+old = """	if err != nil || n < console.ScheduledFrom || n > console.MainTrackSlots-1 {
 		return 0
 	}"""
 assert old in s, "mAL2"

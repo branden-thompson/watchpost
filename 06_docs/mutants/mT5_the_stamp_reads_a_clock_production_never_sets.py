@@ -9,7 +9,7 @@ import pathlib
 #
 # RE-ANCHORED AT D-110: the card's stamp is the SHORT form now, and the window
 # keeps the long one. Same fact, same two carriers, one function along.
-p = pathlib.Path("modes/tty/broadcaster_slots.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_slots.go"); s = p.read_text()
 old = "cardPulledShort(o, c, b.clock)"
 new = "cardPulledShort(o, c, b.now)"
 assert old in s, "mT5"

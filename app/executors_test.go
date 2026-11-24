@@ -20,6 +20,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -1054,7 +1055,7 @@ func TestDR21ARoutedFaultNeverReachesAPerson(t *testing.T) {
 // faults is every fault-band message the executors published, in order — the
 // escalations (Run > 0, or a stopped schedule's Run 0 with a reason) and the
 // clears (the zero message).
-func (b *bench) faults() []tty.StationFaultMsg {
+func (b *bench) faults() []console.StationFaultMsg {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return faultsIn(b.published)
@@ -1064,20 +1065,20 @@ func (b *bench) faults() []tty.StationFaultMsg {
 // the escalations and the clears alike. escalationsIn is the escalations
 // alone — the ONE definition of "an escalation reached the console" for every
 // harness in this package.
-func faultsIn(msgs []tea.Msg) []tty.StationFaultMsg {
-	var out []tty.StationFaultMsg
+func faultsIn(msgs []tea.Msg) []console.StationFaultMsg {
+	var out []console.StationFaultMsg
 	for _, m := range msgs { // bounded by what was published (P10-02)
-		if f, ok := m.(tty.StationFaultMsg); ok {
+		if f, ok := m.(console.StationFaultMsg); ok {
 			out = append(out, f)
 		}
 	}
 	return out
 }
 
-func escalationsIn(msgs []tea.Msg) []tty.StationFaultMsg {
-	var out []tty.StationFaultMsg
+func escalationsIn(msgs []tea.Msg) []console.StationFaultMsg {
+	var out []console.StationFaultMsg
 	for _, f := range faultsIn(msgs) { // bounded by what was published (P10-02)
-		if f != (tty.StationFaultMsg{}) { // the zero message is the clear
+		if f != (console.StationFaultMsg{}) { // the zero message is the clear
 			out = append(out, f)
 		}
 	}
@@ -1442,7 +1443,7 @@ func TestAVoiceThatCannotRenderFaultsAndAStoppedReadIsRouted(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
 	b.x.run(context.Background(), speak)
 	got := b.faults()
-	if len(got) != 1 || got[0] != (tty.StationFaultMsg{}) {
+	if len(got) != 1 || got[0] != (console.StationFaultMsg{}) {
 		t.Errorf("a finished read published %v; want exactly the clear", got)
 	}
 }

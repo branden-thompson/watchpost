@@ -14,7 +14,7 @@ import pathlib
 # tested at all. It SURVIVED the 2026-09-13 corpus sweep because both boxes are
 # built by `shell`, which already pads every row — so through `readPair` the pad
 # is a no-op and no fixture could express the fault it guards.
-p = pathlib.Path("modes/tty/broadcaster_upnext.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_upnext.go"); s = p.read_text()
 old = '\t\t\t\treturn render.PadTo(render.TruncateCells(col[i], w), w)'
 new = '\t\t\t\treturn col[i]'
 assert old in s, "mS0"

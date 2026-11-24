@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -245,7 +246,7 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 		// THE CONSOLE'S OWN BODY, NOT A HAND-WRITTEN ONE. The window draws what
 		// `Broadcaster.CardDetail` produces, and a fixture that typed its own
 		// rows would keep passing on the day the console stopped producing any.
-		bc := consoleOf(t, Opening{Now: func() time.Time { return ttytest.DetailAt().Add(2 * time.Minute) }},
+		bc := consoleOf(t, console.Opening{Now: func() time.Time { return ttytest.DetailAt().Add(2 * time.Minute) }},
 			ttytest.Seed(t, ttytest.OneCard(t)))
 		id, rows, ok := bc.CardDetail(1)
 		if !ok {

@@ -7,7 +7,7 @@ import pathlib
 # window jumps somewhere the operator did not ask for. A running order is
 # addressed by NUMBER, and "where am I" is the question those numbers exist to
 # answer.
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster.go"); s = p.read_text()
 old = '\tb.selected = max(0, min(n-1, b.selected+by))'
 new = '\tb.selected = (b.selected + by + n) % n'
 assert old in s, "mS6"

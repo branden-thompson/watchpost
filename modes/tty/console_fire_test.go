@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -60,7 +61,7 @@ func TestTheConsoleReadsTheOperatorsFireThreshold(t *testing.T) {
 			r := NewRouter(d)
 			b := r.broadcaster
 			b, _ = b.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH})
-			b, _ = b.Update(StationAreaMsg{
+			b, _ = b.Update(console.StationAreaMsg{
 				Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
 				RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
 			b, _ = b.WithRecent(&snapshot.Snapshot{Locations: []snapshot.Location{*loc}})

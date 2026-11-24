@@ -7,7 +7,7 @@ import pathlib
 # RE-ANCHORED AT D-110. The rule used to live in a loop over read REGIONS; the
 # regions retired with the card column and there are two read slots left — the
 # air box's LIVE row and the UP NEXT card — so the mutation is one slot along.
-p = pathlib.Path("modes/tty/broadcaster_upnext.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_upnext.go"); s = p.read_text()
 old = "\t\tc = lineup.Card{Headline: b.waiting(o)}"
 assert old in s, "mX3"
 p.write_text(s.replace(old, "\t\tc = lineup.Card{Headline: bcStandbyNotice}", 1))

@@ -4,7 +4,7 @@ import pathlib
 # when this window was first built: under --ascii the title carries a bullet and the
 # chips carry two arrows, none of which has an ASCII form. The renderer takes the
 # window's Opts for exactly this reason (Dashboard.cardRows).
-p = pathlib.Path("modes/tty/broadcaster_detail.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_detail.go"); s = p.read_text()
 old = """	return c.ID, func(o render.Opts) (string, []string) {
 		return cardTitle(c, o.Glyphs()), b.detailBody(o, c)
 	}, true"""

@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -94,7 +95,7 @@ func TestBackgroundColourReachesTheINACTIVESurface(t *testing.T) {
 		t.Fatal("the theme grounds a dark terminal's window as a light one's; this test proves nothing")
 	}
 	m, _ = m.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH})
-	m, _ = m.Update(LineupMsg{Lineup: mainTrackOf(t, ttytest.Card(t, "a", "Oceanside, CA"))})
+	m, _ = m.Update(console.LineupMsg{Lineup: mainTrackOf(t, ttytest.Card(t, "a", "Oceanside, CA"))})
 	light := m.(Router).broadcaster.View().Content
 	m, _ = m.Update(tea.BackgroundColorMsg{Color: color.Black})
 	if r := m.(Router); r.broadcaster.View().Content == light {
@@ -141,7 +142,7 @@ func TestTheConsoleInheritsTheASCIIDecision(t *testing.T) {
 // running order and whether the station is on the air.
 func TestTheConsoleGetsItsOwnMessagesWhileInactive(t *testing.T) {
 	var m tea.Model = NewRouter(goldenDash(t, false)) // Observer active
-	m, _ = m.Update(StationMsg{Power: lineup.OffAir})
+	m, _ = m.Update(console.StationMsg{Power: lineup.OffAir})
 	if got := m.(Router).broadcaster.Power(); got != lineup.OffAir {
 		t.Errorf("the console must learn the station's state while inactive; got %v", got)
 	}

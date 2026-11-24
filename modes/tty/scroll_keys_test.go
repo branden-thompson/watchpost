@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 )
 
@@ -13,7 +14,7 @@ import (
 // the sign of each key is what this pins.
 func TestTheConsolesArrowsMoveItsPointer(t *testing.T) {
 	r := NewRouter(benchDash(t, 160, 74).(Dashboard))
-	r.broadcaster = loadedConsoleOf(t, Opening{}, ttytest.LoadedPoolSize)
+	r.broadcaster = loadedConsoleOf(t, console.Opening{}, ttytest.LoadedPoolSize)
 	r.active = SurfaceBroadcaster
 	// THE RUNNING ORDER'S ROW, which the pointer stays in for 0, 1, 0 (0.19.6 D-14).
 	at := r.broadcaster.LineupSelection()

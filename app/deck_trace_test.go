@@ -49,6 +49,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -169,7 +170,7 @@ func newDeckTrace(t *testing.T) *deckTrace {
 	deck.mu.Lock()
 	deck.emit = dt.queue
 	deck.mu.Unlock()
-	dt.dir = lineup.New(lineup.Settings{Max: defaultBurstMax, Depth: tty.MainTrackSlots}, traceStart)
+	dt.dir = lineup.New(lineup.Settings{Max: defaultBurstMax, Depth: console.MainTrackSlots}, traceStart)
 	snap := &snapshot.Snapshot{Locations: make([]snapshot.Location, 0, len(places))}
 	for _, r := range places { // bounded by the watchlist (P10-02)
 		snap.Locations = append(snap.Locations, snapshot.Location{Label: r.Label, Lat: r.Lat, Lon: r.Lon, TZ: r.TZ})
@@ -372,10 +373,10 @@ func (dt *deckTrace) pick(r *rand.Rand) traceAct {
 	case 13:
 		return traceAct{"lapse", func() { dt.now = dt.now.Add(10 * time.Minute); dt.release(); dt.queue(lineup.Tick{Now: dt.now}) }}
 	case 14:
-		i, to := r.IntN(tty.MainTrackSlots), r.IntN(tty.MainTrackSlots)
+		i, to := r.IntN(console.MainTrackSlots), r.IntN(console.MainTrackSlots)
 		return traceAct{fmt.Sprintf("move:%d:%d", i, to), func() { lp.moveCard(dt.mainCard(i), to) }}
 	case 15:
-		i := r.IntN(tty.MainTrackSlots)
+		i := r.IntN(console.MainTrackSlots)
 		return traceAct{"drop:" + strconv.Itoa(i), func() { lp.dropCard(dt.mainCard(i)) }}
 	case 16:
 		pool := lp.currentPool()
@@ -664,13 +665,13 @@ func traceFence(f lineup.Fence) string {
 // pointers. The table is closed, as traceEvent's is.
 func traceMsg(t *testing.T, m tea.Msg) string {
 	switch v := m.(type) {
-	case tty.LineupMsg:
+	case console.LineupMsg:
 		return "lineup " + v.Lineup.Trace()
-	case tty.StationMsg:
+	case console.StationMsg:
 		return "station power=" + v.Power.String()
-	case tty.StationFaultMsg:
+	case console.StationFaultMsg:
 		return fmt.Sprintf("fault run=%d %s", v.Run, v.Reason)
-	case tty.BedMsg:
+	case console.BedMsg:
 		return fmt.Sprintf("bed relay=%q carrying=%t", v.Relay, v.Carrying)
 	case tty.TickerMsg:
 		items := make([]string, 0, len(v.Items))

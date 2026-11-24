@@ -18,6 +18,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
@@ -139,7 +140,7 @@ func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, c
 		return nil // a seam was nil; newExecutors has already said which
 	}
 	run, cancel := context.WithCancel(ctx)
-	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax, Depth: tty.MainTrackSlots}, time.Now()), x.run,
+	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax, Depth: console.MainTrackSlots}, time.Now()), x.run,
 		func(f lineup.Effect, v any) { radioDebugLog("schedule:fault:" + lineup.Describe(f)) })
 	if p == nil {
 		cancel()

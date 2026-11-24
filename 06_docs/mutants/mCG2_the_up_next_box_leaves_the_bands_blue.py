@@ -6,7 +6,7 @@ import pathlib
 # THE CELL IS MOVED ONTO THE GROUND IT WORE BEFORE THE RULING, not deleted: the
 # box still draws and still has a ground everywhere. Only the SAMENESS with the
 # bands is gone, which is the whole of the rule.
-p = pathlib.Path("modes/tty/broadcaster_upnext.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_upnext.go"); s = p.read_text()
 old = '\tlabelGround := render.Tok(render.GroupText) + ";" + render.Tok(render.GroupTodayBG)\n\tfg, bg := render.ModalTone(b.darkBG)\n\tground := fg + ";" + bg'
 new = '\tfg, bg := render.ModalTone(b.darkBG)\n\tground := fg + ";" + bg\n\tlabelGround := ground'
 assert old in s, "mCG2"

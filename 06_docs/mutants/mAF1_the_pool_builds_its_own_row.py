@@ -4,7 +4,7 @@ import pathlib
 # seismic marks. Every one of those columns draws "n/a" on the table whose whole
 # purpose is "basic weather info to determine if they want to have that location
 # prioritized" (D-112).
-p = pathlib.Path("modes/tty/broadcaster_pool.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_pool.go"); s = p.read_text()
 old = """			row = frame.WeatherRow(loc, b.fireBold(), 0)"""
 assert old in s, "mAF1"
 new = """			row.Loading = frame.RowLoading(loc)

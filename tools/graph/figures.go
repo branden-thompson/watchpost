@@ -29,7 +29,7 @@ var modelFiles = []string{"modes/tty/dashboard.go", "modes/tty/dashboard_choices
 var areas = []area{
 	{name: "map reach (symbols of the model's files)", readers: []string{"modes/tty/map_"}, model: modelFiles},
 	{name: "Settings reach (symbols of the model's files)", readers: []string{"modes/tty/setup"}, model: modelFiles},
-	{name: "console reach (symbols of dashboard.go)", readers: []string{"modes/tty/broadcaster"}, model: []string{"modes/tty/dashboard.go"}},
+	{name: "console reach (symbols of dashboard.go)", readers: []string{"modes/tty/console/broadcaster"}, model: []string{"modes/tty/dashboard.go"}},
 }
 
 // byType is a reach counted by type: members of the model's types, declared

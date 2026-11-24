@@ -14,6 +14,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -168,7 +169,7 @@ func TestTheConsoleFollowsReduceMotion(t *testing.T) {
 
 // dotsDrawn is the console's waiting rows as drawn, the loading dots their
 // shimmer phase (0.19.6 D-22).
-func dotsDrawn(t *testing.T, b Broadcaster) string {
+func dotsDrawn(t *testing.T, b console.Broadcaster) string {
 	t.Helper()
 	var rows []string
 	for _, l := range strings.Split(drawn(b), "\n") { // bounded by the frame's rows (P10-02)

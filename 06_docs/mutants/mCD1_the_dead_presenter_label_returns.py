@@ -9,7 +9,7 @@ import pathlib
 # resolved — LIVE NOW and the detail window both say it — so putting the label
 # back beside it compiles and reads plausibly. That is exactly why the absence
 # is pinned.
-p = pathlib.Path("modes/tty/broadcaster_slots.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_slots.go"); s = p.read_text()
 old = "	return bcCardInset + \" \" + o.KeyCap(handle) + \"  Read / Manage\""
 new = "	return bcCardInset + \" \" + o.KeyCap(handle) + \"  Read / Manage\" + \"    PRESENTER: N/A\""
 assert old in s, "mCD1"

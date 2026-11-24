@@ -12,7 +12,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -30,7 +30,7 @@ func TestTheAreaAndItsPoolTravelTogether(t *testing.T) {
 		t.Fatalf("the fixture's station reaches no locations, so this measures nothing")
 	}
 
-	var got []tty.StationAreaMsg
+	var got []console.StationAreaMsg
 	publishTo(t, &got, s, pool)
 
 	if len(got) != 1 {
@@ -89,7 +89,7 @@ func TestAStationWithNoTransmitterPublishesAnEmptyPool(t *testing.T) {
 	lp := &livePipelines{idx: indexForTest(t)}
 	lp.setStation(stationFrom(config.Config{}))
 
-	var got []tty.StationAreaMsg
+	var got []console.StationAreaMsg
 	publishTo(t, &got, lp.currentStation(), lp.currentPool())
 
 	if len(got) != 1 || len(got[0].Pool) != 0 {
@@ -102,10 +102,10 @@ func TestAStationWithNoTransmitterPublishesAnEmptyPool(t *testing.T) {
 // A SECOND COPY OF ITS BODY WOULD MEASURE THE COPY. A helper that rebuilt the
 // message by hand would pass with `publishArea` deleted — the same shape as
 // D-74's `y4`, where the predicate is asserted and the behaviour is not.
-func publishTo(t *testing.T, out *[]tty.StationAreaMsg, s stationArea, pool []snapshot.LocationRef) {
+func publishTo(t *testing.T, out *[]console.StationAreaMsg, s stationArea, pool []snapshot.LocationRef) {
 	t.Helper()
 	publishArea(func(m tea.Msg) {
-		if a, ok := m.(tty.StationAreaMsg); ok {
+		if a, ok := m.(console.StationAreaMsg); ok {
 			*out = append(*out, a)
 		}
 	}, s, pool)

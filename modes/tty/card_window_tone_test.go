@@ -6,6 +6,7 @@ package tty
 import (
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/lineup"
@@ -39,7 +40,7 @@ func TestTheAlertWindowWearsTheCardsGround(t *testing.T) {
 		if err != nil {
 			t.Fatalf("seeding the rail: %v", err)
 		}
-		b := consoleOf(t, Opening{ASCII: true}, l)
+		b := consoleOf(t, console.Opening{ASCII: true}, l)
 
 		r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
 		out := press(t, r, "A")
@@ -76,7 +77,7 @@ func TestTheOpenHazardWindowRefreshes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seeding the rail: %v", err)
 	}
-	b := consoleOf(t, Opening{ASCII: true}, l)
+	b := consoleOf(t, console.Opening{ASCII: true}, l)
 
 	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
 	r = press(t, r, "A")
@@ -93,7 +94,7 @@ func TestTheOpenHazardWindowRefreshes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("re-seeding the rail: %v", err)
 	}
-	r.broadcaster, _ = r.broadcaster.Update(LineupMsg{Lineup: l2})
+	r.broadcaster, _ = r.broadcaster.Update(console.LineupMsg{Lineup: l2})
 	r = r.refreshCardWindow()
 
 	if r.observer.cardGen == gen {

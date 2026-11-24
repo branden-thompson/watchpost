@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/declset"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
@@ -17,8 +18,8 @@ import (
 // stop anywhere in the tree to fall back on.
 
 func routerAt(p lineup.Power, active Surface) Router {
-	b := New(Opening{})
-	b, _ = b.Update(StationMsg{Power: p})
+	b := console.New(console.Opening{})
+	b, _ = b.Update(console.StationMsg{Power: p})
 	return Router{observer: Dashboard{}, broadcaster: b, active: active}
 }
 

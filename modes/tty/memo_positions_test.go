@@ -58,7 +58,7 @@ func unreasonedPositions(t *testing.T, file string, src any, keys map[string]boo
 // what keys the identity of what it indexes.
 func TestEveryPositionFieldHasAReason(t *testing.T) {
 	seen := 0
-	for file, keys := range map[string]map[string]bool{"memo.go": {"bodyKey": true, "modalKey": true}, "broadcaster_memo.go": {"consoleKey": true}} {
+	for file, keys := range map[string]map[string]bool{"memo.go": {"bodyKey": true, "modalKey": true}, "console/broadcaster_memo.go": {"consoleKey": true}} {
 		missing, n := unreasonedPositions(t, file, nil, keys)
 		seen += n
 		if len(missing) > 0 {

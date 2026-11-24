@@ -4,7 +4,7 @@ import pathlib
 # and silently retract the resolver's answer, so the console disables a bed that
 # is CARRYING — D-117 firing backwards, telling the operator there is no relay
 # while one is streaming.
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster.go"); s = p.read_text()
 old = """	case BedRelaysMsg:"""
 assert old in s, "mAT1"
 new = """	case BedRelaysMsg:

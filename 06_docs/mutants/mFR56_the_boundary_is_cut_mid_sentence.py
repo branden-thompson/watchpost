@@ -3,7 +3,7 @@ import pathlib
 # the row truncates it. A half-said safety statement is a different claim, not a
 # shorter one — on the previous placement the cut rendered as "\u00b7 audio on" at 120
 # cells: complete, reassuring, and the opposite of the sentence it came from.
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster.go"); s = p.read_text()
 old = """		for _, words := range bcAirBoundaries() { // bounded by the ladder (P10-02)
 			if render.Width(words) <= width {
 				rows = append(rows, render.PadTo(render.Tint(words, render.Tok(render.AlertModalText)), width))

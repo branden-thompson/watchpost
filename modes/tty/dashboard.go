@@ -16,6 +16,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
@@ -224,7 +225,7 @@ type Config struct {
 	// console opens with, because a message sent before the program's loop is
 	// running has nobody to receive it — sent then, it deadlocks the whole app
 	// at startup.
-	StationArea StationAreaMsg
+	StationArea console.StationAreaMsg
 
 	Hydrate       func(ref snapshot.LocationRef) // on-demand hourly forecast for a RECENT row (UAT 72)
 	CreditGroups  []CreditGroup                  // About's data sets, a group a provider, each source once - the app owns the list (W21)
@@ -645,8 +646,8 @@ func defaultKeyMap() term.KeyMap {
 // surfaces the Router holds. It is also the host of every window, both
 // surfaces': the windows' state is here, and the Broadcaster's card window,
 // its move and drop prompts and the Line-Up Request are Dashboard methods, so
-// one window set is under the four gates broadcaster_detail.go names (0.19.6
-// D-49).
+// one window set is under the four gates the console's broadcaster_detail.go
+// names (0.19.6 D-49).
 type Dashboard struct {
 	cfg    Config
 	keys   term.KeyMap
@@ -1530,10 +1531,11 @@ const (
 	// D-87's manifest defers to.
 	//
 	// IT IS A DASHBOARD WINDOW THOUGH THE CONSOLE OWNS ITS CONTENT, which is
-	// D-56's split: the console builds the body (broadcaster_detail.go) and hands
-	// it over, and this is the window set that carries the reachability gate, the
-	// margin survey, the memo-completeness walk and the single-value exclusivity
-	// above. A console-private window would have been outside all four.
+	// D-56's split: the console builds the body (console/broadcaster_detail.go)
+	// and hands it over, and this is the window set that carries the
+	// reachability gate, the margin survey, the memo-completeness walk and the
+	// single-value exclusivity above. A console-private window would have been
+	// outside all four.
 	modalCard
 
 	// modalRequest is the operator asking for a report at a position (R4).

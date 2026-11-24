@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
@@ -24,9 +25,9 @@ func TestAMutedListenerIsShownWhileTheStationIsOnAir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b := consoleOf(t, Opening{Now: func() time.Time { return at }}, held)
-	b, _ = b.Update(StationMsg{Power: lineup.OffAir})
-	b, _ = b.Update(StationMsg{Power: lineup.Running})
+	b := consoleOf(t, console.Opening{Now: func() time.Time { return at }}, held)
+	b, _ = b.Update(console.StationMsg{Power: lineup.OffAir})
+	b, _ = b.Update(console.StationMsg{Power: lineup.Running})
 	b.SetListenerMuted(true)
 	if got := ttytest.StripANSI(b.View().Content); !strings.Contains(got, "LISTENER MUTED") {
 		t.Errorf("an ON AIR station with the listener muted shows no LISTENER MUTED:\n%s", got)
@@ -38,7 +39,7 @@ func TestAMutedListenerIsShownWhileTheStationIsOnAir(t *testing.T) {
 	r := routerAt(lineup.Running, SurfaceBroadcaster)
 	r.broadcaster, _ = r.broadcaster.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH})
 	r.observer.tickerMuted = true
-	m, _ := r.Update(StationMsg{Power: lineup.Running})
+	m, _ := r.Update(console.StationMsg{Power: lineup.Running})
 	if !strings.Contains(drawn(m.(Router).broadcaster), "LISTENER MUTED") { // the band says so on air (0.19.6 D-22)
 		t.Error("the Router did not hand the Observer's mute to the console")
 	}

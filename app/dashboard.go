@@ -34,6 +34,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/domains/weather/nws/zones"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -413,7 +414,7 @@ func (lp *livePipelines) stationConfig(c *tty.Config, cfg config.Config, resolve
 	// THE BOUNDS TRAVEL WITH THE VALUE THEY BOUND (D-124): `platform/config`
 	// owns both numbers alone.
 	c.ServiceRadiusMinMi, c.ServiceRadiusMaxMi = config.MinServiceRadiusMi, config.MaxServiceRadiusMi
-	c.StationArea = tty.StationAreaMsg{
+	c.StationArea = console.StationAreaMsg{
 		Transmitter: lp.currentStation().transmitter,
 		RadiusMi:    lp.currentStation().radiusMi,
 		Pool:        lp.currentPool(),

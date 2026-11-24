@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -59,7 +60,7 @@ func TestARequestedCardLandsInTheSlotTheOperatorTyped(t *testing.T) {
 			}
 			r := NewRouter(d)
 			r.active = SurfaceBroadcaster
-			r.broadcaster, _ = r.broadcaster.Update(StationMsg{Power: tc.power})
+			r.broadcaster, _ = r.broadcaster.Update(console.StationMsg{Power: tc.power})
 			r.observer = r.observer.openRequest()
 
 			// THE FORM, FILLED THE WAY THE OPERATOR FILLS IT.
@@ -184,7 +185,7 @@ func TestARequestSubmittedFromObserverStillLandsInTheTypedSlot(t *testing.T) {
 	r := NewRouter(d)
 	// THE OPERATOR OPENS IT ON THE CONSOLE, at STANDBY.
 	r.active = SurfaceBroadcaster
-	r.broadcaster, _ = r.broadcaster.Update(StationMsg{Power: lineup.OffAir})
+	r.broadcaster, _ = r.broadcaster.Update(console.StationMsg{Power: lineup.OffAir})
 	r.observer = r.observer.openRequest()
 	// AND THEN SWAPS TO OBSERVER WITH IT OPEN, which `ctrl+o` is meant to allow.
 	r.active = SurfaceObserver

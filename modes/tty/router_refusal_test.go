@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
@@ -32,7 +33,7 @@ func TestARefusedSwapIsShownToTheOperator(t *testing.T) {
 	r.broadcaster, _ = r.broadcaster.Update(tea.WindowSizeMsg{Width: 150, Height: 50})
 
 	// What the Observer's own tune publishes, without the operator asking.
-	m, _ = r.Update(StationMsg{Power: lineup.Running})
+	m, _ = r.Update(console.StationMsg{Power: lineup.Running})
 	r = m.(Router)
 
 	m, _ = r.Update(keyPress(t, "ctrl+o"))
@@ -47,7 +48,7 @@ func TestARefusedSwapIsShownToTheOperator(t *testing.T) {
 
 	// AND IT GOES WHEN THE REASON GOES. A message that outlived the state it
 	// describes would be its own defect one move along.
-	m, _ = r.Update(StationMsg{Power: lineup.OffAir})
+	m, _ = r.Update(console.StationMsg{Power: lineup.OffAir})
 	r = m.(Router)
 	if strings.Contains(ttytest.StripANSI(r.View().Content), "STANDBY before leaving") {
 		t.Error("the refusal outlived the state it describes")
@@ -86,7 +87,7 @@ func TestASwapTellsTheAppWhoOwnsTheAir(t *testing.T) {
 	// the console owns the air while the operator is still on Observer would
 	// scope their alerts to a station they did not reach.
 	r := m.(Router)
-	r.broadcaster, _ = r.broadcaster.Update(StationMsg{Power: lineup.Running})
+	r.broadcaster, _ = r.broadcaster.Update(console.StationMsg{Power: lineup.Running})
 	r.active = SurfaceBroadcaster
 	told = nil
 	m, _ = r.Update(keyPress(t, "ctrl+o"))

@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -48,7 +49,7 @@ func (d Dashboard) movePrompt(o render.Opts) []string {
 	centre := func(s string) string {
 		return strings.Repeat(" ", max((bcManageWidth-2-2*modalInset-render.Width(s))/2+modalInset-panelSide, 0)) + s
 	}
-	lo, hi := ScheduledFrom, MainTrackSlots-1
+	lo, hi := console.ScheduledFrom, console.MainTrackSlots-1
 	rows := []string{"", centre("MOVE THIS CARD TO POSITION")}
 	// THE FIELD IS THE ANSWER, and it is centred under the question so the eye
 	// does not have to travel to find what it is typing into.
@@ -96,7 +97,7 @@ func (d Dashboard) dropPrompt(o render.Opts) []string {
 // says so first, where the operator can still fix it.
 func (d Dashboard) moveTarget() int {
 	n, err := strconv.Atoi(strings.TrimSpace(d.cardMoveTo))
-	if err != nil || n < ScheduledFrom || n > MainTrackSlots-1 {
+	if err != nil || n < console.ScheduledFrom || n > console.MainTrackSlots-1 {
 		return 0
 	}
 	return n

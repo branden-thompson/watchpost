@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -28,7 +29,7 @@ func TestSpacePlaysTheBedRelayAndNeverOverTheProgramme(t *testing.T) {
 		t.Fatalf("space on standby played %d times; want the relay played", plays)
 	}
 
-	m, _ = m.Update(StationMsg{Power: lineup.Running})
+	m, _ = m.Update(console.StationMsg{Power: lineup.Running})
 	m, _ = m.Update(keyFor(t, "space"))
 	if plays != 1 {
 		t.Error("space on air played the relay over the programme (D-216)")
@@ -37,7 +38,7 @@ func TestSpacePlaysTheBedRelayAndNeverOverTheProgramme(t *testing.T) {
 		t.Errorf("the station row does not draw the refusal %q naming the cut key:\n%s", bedRefusal, got)
 	}
 
-	m, _ = m.Update(BedMsg{Carrying: true})
+	m, _ = m.Update(console.BedMsg{Carrying: true})
 	if got := drawn(m.(Router).broadcaster); strings.Contains(got, bedRefusal) {
 		t.Errorf("the bed carries and the refusal still reads %q", bedRefusal)
 	}
@@ -64,9 +65,9 @@ func TestStandbyClearsTheBedRefusal(t *testing.T) {
 	var m tea.Model = withStation(t, NewRouter(d), &station{})
 	m, _ = m.Update(tea.WindowSizeMsg{Width: consoleW, Height: consoleH}) // the refusal is read where the station row draws it (0.19.6 D-22)
 	m, _ = m.Update(keyPress(t, "ctrl+b"))
-	m, _ = m.Update(StationMsg{Power: lineup.Running})
+	m, _ = m.Update(console.StationMsg{Power: lineup.Running})
 	m, _ = m.Update(keyFor(t, "space"))
-	m, _ = m.Update(StationMsg{Power: lineup.OffAir})
+	m, _ = m.Update(console.StationMsg{Power: lineup.OffAir})
 	if got := drawn(m.(Router).broadcaster); strings.Contains(got, bedRefusal) {
 		t.Errorf("on standby the refusal still reads %q", bedRefusal)
 	}

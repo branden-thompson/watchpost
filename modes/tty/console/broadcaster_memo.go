@@ -1,0 +1,232 @@
+package console
+
+// broadcaster_memo.go — the console's table memo, Observer's `bodyMemo` one
+// surface along.
+//
+// THE TWO TABLES ARE 95% OF THE FRAME'S ALLOCATIONS AND 60% OF ITS TIME —
+// measured on a loaded console without the memo (0.16.0 D-53): 320 µs and 8796
+// allocs out of 537 µs and 9298. They change only when one of their inputs
+// does, so they are built once per input change and reused on every tick,
+// clock and bed-step frame between.
+//
+// THE KEY IS COMPLETE BY CONSTRUCTION — one field per input the tables read — and
+// the guard that makes that true is `broadcaster_memo_completeness_test.go`,
+// which DERIVES the fields from the struct rather than listing them. 0.14.0 F-30
+// is why: a hand-kept key freezes a window while the model underneath works
+// perfectly, and nothing on screen says which input the key forgot.
+//
+// A MEMO MAY MISS. IT MUST NEVER WRONGLY HIT. Every choice here takes the miss.
+
+import (
+	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
+	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"sync/atomic"
+)
+
+// consoleKey is every input the running order and the pool read.
+//
+// THE GENERATIONS ARE FOR THE TWO INPUTS THAT CANNOT BE COMPARED. `lineup.Lineup`
+// holds an array of slices and `StationAreaMsg` holds a slice, so neither is a
+// `==` type — and hashing either every frame would spend the saving on the
+// comparison. Both are assigned WHOLESALE from a message and never mutated in
+// place, so a counter bumped by the writer is exact, not approximate.
+type consoleKey struct {
+	width, height int
+	// used is how many rows the frame had already drawn when it asked. It sets
+	// the pool's room and the running order's window, so a frame that grew a row
+	// above the tables draws different tables.
+	used  int
+	ascii bool
+	// power decides where the line-up is read FROM: on standby it draws from UP
+	// NEXT down, which moves every slot by one (0.16.0 D-84, liveOffset).
+	power      lineup.Power
+	fireBoldMW float64
+	// selected drives BOTH the focused row and the pool's scroll window — the
+	// window is derived from the selection (poolSpan), not stored beside it.
+	selected int // position: a slot of the line-up and a row of the pool, which lineupGen, areaGen and the snapshots carry (#12)
+	// recent and priority are the weather behind both tables: the pool's places
+	// from the recent snapshot (0.16.0 D-99), a watched place's from the
+	// priority one (0.18.0 D-208). POINTERS, as Observer keys them: a publish
+	// hands over a whole new snapshot rather than editing one, so the pointer
+	// moving IS the data changing.
+	recent    *snapshot.Snapshot
+	priority  *snapshot.Snapshot
+	lineupGen uint64
+	areaGen   uint64
+	// theme is render.ThemeGeneration: every Tok() tint in every cell.
+	theme uint64
+	// units and clock are the Settings the pool's cells are written in
+	// (0.19.5 D-21).
+	units render.Units
+	clock render.Clock
+	// shimmer is the LoadingDots phase, and ONLY while something is loading —
+	// carried unconditionally it would miss on every tick for the whole life of
+	// the console, which is every frame this exists to save.
+	shimmer int
+}
+
+// consoleMemo is the single slot, bound to one entry: the last key.
+type consoleMemo struct {
+	frame.MemoStats
+	ok          bool
+	key         consoleKey
+	sched, pool scrollSpan
+	rows        []string           // the tables railed, as the frame draws them (railTables)
+	cursor      frame.CursorSlot   // the console's cursor, kept for the Router (0.19.0 D-362)
+	head        frame.MastheadSlot // the masthead (0.19.5 D-22, MastheadSlot)
+	proj        projSlot           // the line-up as the operator sees it (0.19.5 D-22, projection)
+}
+
+// lineupGens counts the line-ups the console has been handed, across every
+// copy of it (Broadcaster.lineupGen).
+var lineupGens atomic.Uint64
+
+// projSlot holds both tracks' projections of one line-up.
+type projSlot struct {
+	ok    bool
+	gen   uint64
+	cards [2][]lineup.Card
+}
+
+// projection is the line-up as the operator sees it, one track of it
+// (lineup.Projection), worked out once per line-up the console is handed
+// instead of at every one of the frame's eight readers (0.19.5 D-22). The
+// line-up is replaced whole and never edited (lineupGen), so its generation
+// names it exactly. THE CARDS ARE SHARED by every reader of one line-up, and
+// no reader writes into them, as none wrote into Projection's own copy.
+func (b Broadcaster) projection(t lineup.Track) []lineup.Card {
+	if b.memo == nil || b.lineupGen == 0 {
+		return b.lineup.Projection(t)
+	}
+	s := &b.memo.proj
+	if !s.ok || s.gen != b.lineupGen {
+		s.ok, s.gen = true, b.lineupGen
+		s.cards[lineup.MainTrack] = b.lineup.Projection(lineup.MainTrack)
+		s.cards[lineup.AlertRail] = b.lineup.Projection(lineup.AlertRail)
+	}
+	return s.cards[t]
+}
+
+// consoleKeyFor derives the key from the model and this frame's position.
+func (b Broadcaster) consoleKeyFor(used int) consoleKey {
+	k := consoleKey{
+		width: b.width, height: b.height, used: used, ascii: b.ascii,
+		power: b.power, fireBoldMW: b.fireBold(), selected: b.selected,
+		recent: b.pool, priority: b.snap, lineupGen: b.lineupGen, areaGen: b.areaGen,
+		theme: render.ThemeGeneration(), units: b.units, clock: b.clockFmt,
+	}
+	if b.anyLoading() {
+		k.shimmer = ((b.frame % 4) + 4) % 4 // the LoadingDots phase (render/units.go)
+	}
+	return k
+}
+
+// tableRows builds the running order and the pool and rails them, or returns
+// the memoised rows.
+//
+// IT OWNS THE INDEX TOO, and that is deliberate. `locIndex` builds a map over the
+// whole pool so the forty joins are not forty linear scans (0.16.0 D-120) — real
+// work, and pointless on a hit. Taking it inside means a hit costs the key
+// comparison and nothing else; leaving it outside would pay for the index on
+// every frame to save the tables on most of them.
+func (b Broadcaster) tableRows(used int) []string {
+	m := b.memo
+	if m == nil {
+		return b.railTables(b.buildSpans(used))
+	}
+	key := b.consoleKeyFor(used)
+	m.Lock()
+	defer m.Unlock()
+	if m.ok && m.key == key {
+		m.Hit()
+		return m.rows
+	}
+	sched, pool := b.buildSpans(used)
+	m.ok, m.key, m.sched, m.pool, m.rows = true, key, sched, pool, b.railTables(sched, pool)
+	m.Miss()
+	return m.rows
+}
+
+// railTables is the two tables' rows with the right-hand column added, as the
+// frame draws them. The rows are kept in the memo with the spans: the rail
+// reads only the spans, the width and the glyph set, all of them the key's, so
+// a frame the key does not change draws no row again (0.19.5 D-22).
+func (b Broadcaster) railTables(sched, pool scrollSpan) []string {
+	// THE FIRST REGION THAT SCROLLS OWNS THE CONTROL, and each region is asked
+	// rather than assumed. Reading only the pool's answer would make the running
+	// order's `from` a field nothing consults — so a region could claim a scroll
+	// and the frame would not draw it.
+	from := -1
+	switch {
+	case sched.from >= 0:
+		from = sched.from
+	case pool.from >= 0:
+		from = len(sched.lines) + pool.from
+	}
+	return b.chromeAt(joinSpans(sched, pool), from, pool.off, pool.total)
+}
+
+// buildSpans is the miss path: the index, then both tables against it.
+func (b Broadcaster) buildSpans(used int) (scrollSpan, scrollSpan) {
+	idx := b.locIndex()
+	sched := b.scheduledSpan(b.MainTrack(), used, idx)
+	return sched, b.poolSpan(used+len(sched.lines), idx)
+}
+
+// stats is the nil hop from the slot to its counters, the third of its kind
+// beside bodyMemo's and modalMemo's.
+//
+// IT CANNOT BE INHERITED FROM THE EMBEDDED TYPE, which is why there are three:
+// the guard is on the OUTER pointer, and a method promoted from `MemoStats`
+// would dereference the nil slot to reach itself. Same shape, different
+// receiver — the mutex-read accessor the HUM LEAD ratified on 2026-09-13, one
+// package along.
+func (m *consoleMemo) stats() *frame.MemoStats {
+	if m == nil {
+		return nil
+	}
+	return &m.MemoStats
+}
+
+// consoleMemoCounts reports the slot's hit/miss counters (0, 0 without a slot).
+func (b Broadcaster) consoleMemoCounts() (hits, misses int) { return b.memo.stats().Counts() }
+
+// anyLoading reports whether any location either table draws is still waiting on
+// its weather — the shimmer's reason to animate, and so the key's reason to
+// carry the frame.
+//
+// IT ASKS THE POOL'S SNAPSHOT, WHICH IS WHERE BOTH TABLES GET THEIR WEATHER
+// (0.16.0 D-99). The running order joins the same locations by key, so a
+// place that shimmers in one shimmers in the other.
+func (b Broadcaster) anyLoading() bool {
+	if b.pool == nil {
+		return false
+	}
+	for i := range b.pool.Locations { // bounded by the snapshot (P10-02)
+		if frame.RowLoading(&b.pool.Locations[i]) {
+			return true
+		}
+	}
+	return false
+}
+
+// joinSpans lays the pool's rows under the running order's.
+//
+// A SLICE OF ITS OWN, NEVER APPENDED ONTO THE SCHEDULED SPAN. Both spans may be
+// the MEMO'S COPIES, and `append(sched.lines, …)` writes into `sched.lines`'
+// spare capacity whenever it has any — scribbling the pool's rows into a cached
+// running order, to be replayed on every hit afterwards. It would appear one
+// frame late and only at some pool sizes, which is close to the worst shape a
+// defect can have.
+//
+// IT IS A FUNCTION SO THAT THE RULE CAN BE TESTED. Written inline, the only way
+// to catch a regression would be to hope the aliasing happened to become visible;
+// here the property — "the result does not share an array with the cache" — is a
+// thing a test can assert directly, whether or not today's capacities expose it.
+func joinSpans(sched, pool scrollSpan) []string {
+	out := make([]string, 0, len(sched.lines)+len(pool.lines))
+	out = append(out, sched.lines...)
+	return append(out, pool.lines...)
+}

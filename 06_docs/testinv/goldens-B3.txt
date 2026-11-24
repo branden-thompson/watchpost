@@ -1,4 +1,4 @@
 # 0.19.6 B3's added goldens under the two trees' testdata (A-33): each file B3 adds or re-records
 # A-33's console golden with a populated DATA PULL line, plain and in colour (TestTheConsoleGoldenDrawsADataPull)
-modes/tty/testdata/console-160x74-standby-datapull-colour.golden
-modes/tty/testdata/console-160x74-standby-datapull-plain.golden
+modes/tty/console/testdata/console-160x74-standby-datapull-colour.golden
+modes/tty/console/testdata/console-160x74-standby-datapull-plain.golden

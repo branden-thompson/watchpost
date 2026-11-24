@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
@@ -101,7 +102,7 @@ func (st requestState) positionOK() bool {
 		return true
 	}
 	n, err := strconv.Atoi(strings.TrimSpace(st.slot))
-	return err == nil && n >= ScheduledFrom && n < lineup.MainTrackCap
+	return err == nil && n >= console.ScheduledFrom && n < lineup.MainTrackCap
 }
 
 // position is the running-order index the request asks for.

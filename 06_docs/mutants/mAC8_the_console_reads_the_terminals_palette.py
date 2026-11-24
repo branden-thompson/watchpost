@@ -3,7 +3,7 @@ import pathlib
 # takes the TERMINAL's default instead — white on a dark terminal, whatever theme
 # the app is wearing. It looks right under the dark themes and makes the UP NEXT
 # box vanish on Watchpost Light (D-108).
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster.go"); s = p.read_text()
 old = """	if params := render.FgSGR(render.Tok(render.TextBase)); render.ColorOn() && params != "" {"""
 assert old in s, "mAC8"
 p.write_text(s.replace(old, """	if params := render.FgSGR(render.Tok(render.TextBase)); false && render.ColorOn() && params != "" {""", 1))

@@ -3,7 +3,7 @@ import pathlib
 # whether the tables are rebuilt or not — a map over the whole pool, allocated to
 # be thrown away on every hit. Silent: the frame is correct, it just costs what
 # the memo was added to stop costing.
-p = pathlib.Path("modes/tty/broadcaster_memo.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_memo.go"); s = p.read_text()
 old = """func (b Broadcaster) tableRows(used int) []string {
 	m := b.memo"""
 new = """func (b Broadcaster) tableRows(used int) []string {

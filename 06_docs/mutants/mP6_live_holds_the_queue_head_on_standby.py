@@ -9,7 +9,7 @@ import pathlib
 #
 # Re-pointed 2026-09-16 (D-156): `i -= b.liveOffset()` became
 # `i = b.indexForSlot(i)` when the arithmetic got one owner at its third caller.
-p = pathlib.Path("modes/tty/broadcaster_slots.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster_slots.go"); s = p.read_text()
 old = "\ti = b.IndexForSlot(i)\n"
 assert old in s, "mP6"
 p.write_text(s.replace(old, "", 1))

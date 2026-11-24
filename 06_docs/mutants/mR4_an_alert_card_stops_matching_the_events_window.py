@@ -12,7 +12,7 @@ import pathlib
 # learn: a mutation that removes the only use of a name stops COMPILING rather
 # than stops being true, and a mutant that cannot be applied is no evidence
 # either way.
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
+p = pathlib.Path("modes/tty/console/broadcaster.go"); s = p.read_text()
 old = "\t\t\treturn category.Of(worst).Tint"
 new = "\t\t\t_ = worst\n\t\t\treturn render.TickerEmergencyBG"
 assert old in s, "mR4"
