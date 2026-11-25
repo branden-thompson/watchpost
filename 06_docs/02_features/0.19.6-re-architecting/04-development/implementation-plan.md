@@ -294,15 +294,17 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
 
 ## B4: the map's 2a, in place, four gated commits
 
-1. **The fields and the guards' tests.** `mapModel` declared and embedded in `Dashboard`; the map's
-   fields moved onto it; no method moves. The 11 split sites' tests and the Overlays menu's guards
-   (its hand-listed rows; `switchRow`'s fall-through, a guard only) land here, green on today's code
-   (A-31, A-33).
+1. **The guards' tests.** The 11 split sites' tests and the Overlays menu's guards (its hand-listed
+   rows; `switchRow`'s fall-through, a guard only) land here, green on today's code, with no
+   production change (A-31, A-33, D-76).
 2. **The seam types.** `Env` (plain values, no derived sizes, no hook), `Want`, `Step`, and
    `Config.Map *Hooks`, exported under its final name; `app/dashboard.go:mapConfig`'s assignments become
    one keyed literal. The Router's `Timed` is renamed so a stale `cfg.Timed` write fails to compile;
    tests change hooks only by copy-on-write (A-31).
-3. **The methods.** The 387 methods re-homed, in file groups; S8 to S10 cut at the save, its batch
+3. **The model, its fields and its methods.** `mapModel` declared and embedded in `Dashboard`, the
+   map's fields moved onto it and the hooks pointer into it, in the same commit as the methods, so no
+   commit compiles a promoted field one selector deeper with its methods still on `Dashboard` (D-76).
+   The 387 methods re-homed, in file groups; S8 to S10 cut at the save, its batch
    position carried in `Want`; `mapEnv`'s and `applyMapWant`'s switches held by a round-trip test and
    vetted mutants. Assertions that call a method gaining a parameter change under D-14, rows of the
    changed-line table (A-31).

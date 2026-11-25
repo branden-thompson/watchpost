@@ -1330,3 +1330,55 @@ asks `external` itself. `TestAToolchainOutsideTheModuleCacheIsRefused` holds the
 and a system root, seen failing on a planted check that accepts every root. Under Homebrew's go the
 tree test now fails on one line naming the toolchain, where it failed on 154 keys. It lands before
 B4's re-check, in a commit of its own.
+
+## Before B4: the re-check, the split sites' tests and the Overlays guards (A-64; D-76)
+
+**The re-check (step 1), on `d434359f`.** Design MS's facts against the code. Most stand with their
+lines moved: the 381 map methods in 30 `map_*.go` files and the six in root files, the adapters,
+the split sites, `Env`'s sources and the hooks on `Config`. Changed since the design (A-64):
+- the hook writes after construction are 39, all in `modes/tty`'s tests, 45 with `PropagationAck`'s
+  six; the plan's 41 is that count at `e57afeaf`, and B0.6's trace added four;
+- the anchors whose text changes are 146 in `map_*.go`, 147 with `motion.go`'s m613;
+- `observerScoped` keeps 7 root types, not nine; `d.after` falls back to `frame.TickEvery`;
+- the memo guard's walk is `internal/ttytest/perturb.go`, B2's move, its embedded-struct rule as MS-1
+  describes;
+- two closes as a last act and five terminal `uiTouched`/`settled` calls are not on MS-1's list: a
+  plain `Want.Close` and S11's kind, no new split site.
+
+**The field move waits for the methods (D-76).** `mapModel` embedded with its fields and no method
+moved compiles every test unchanged and keeps `Dashboard` at 6,584 bytes (`mapModel` 3,424), but each
+promoted access is one selector deeper, so `rainIsRadar` (81) and `radarChip` (82) cross the
+inliner's budget of 80 and 14 inlined-call keys are lost; `gcprobe` fails it. The fields move with
+the methods in B4.3, where `m.mapPane.x` is as deep as `d.mapPane.x` today. B4.1 is tests only.
+
+**The split sites (A-31).** Each site's wrong order planted, 24 plants, `modes/tty`'s tests run on
+each:
+
+| Site | Plant | Caught by |
+|---|---|---|
+| S1 | the window opened after the map is built and drawn | tests that stand (`TestEveryEventThatChangesTheFrameDrawsIt` and eight more) |
+| S2 | the frequency entry's two Enters: drawn, then closed | `TestTheFrequencyEntryClosesBeforeTheMapIsDrawn` |
+| S3 | the finder closed after the recentre and the draw | `TestAFoundPlaceIsDrawnOnceTheFinderHasClosed` |
+| S4 | the Propagation mode asked before the acknowledgement closes | `TestNothingIsFetchedBeforeTheAcknowledgement` |
+| S5 | the selection followed before it moves | `TestTheMapFollowsTheSelection`, the router trace |
+| S6 | the acknowledgement's scroll key, the chart's PgUp and PgDn, dropped | `TestTheAcknowledgementAndTheChartScrollAtTheFloor` |
+| S7 | the clamp to the lines' end dropped: the menu's focus, PgDn, a place kept | `TestTheMenusScrollStopsAtTheTextsEnd`, `TestPgDnStopsAtTheWindowsLastPage`, `TestAPlaceKeptNeverScrollsPastTheWords` |
+| S8 | the menu's save made after the switch is marked saved; the save last | `TestAMenuSwitchIsSavedFirst` (and, before, the router trace) |
+| S9 | the same in the Propagation mode's tint; the save first | `TestAWeatherTintChosenInThePropagationModeIsSavedLast` |
+| S10 | the same in R; the save last | `TestTheModeSwitchIsSavedFirst` (and, before, the router trace) |
+| S11 | seven terminal `uiTouched` calls dropped | tests that stand (`TestAnArrowOnASavedSettingMarksItForSaving` and four more) |
+
+S2 and S3's wrong order is redrawn by the update's own steps, so the frame left is the same; the test
+holds every draw after the key to the map window's size, and the wrong order draws one at the entry's
+111×29 first. Each new test passes on today's code and checks its premise.
+
+**The Overlays guards (A-33; m4-before.md).** `TestEveryRegistryTheMenuIsBuiltFromHasItsRow` derives
+the rows from the registries the menu is built from, each layer, alert category and detail switch
+once, beside the HUM LEAD's hand-listed layout (0.18.0 D-141); seen failing on Tides and on Rail
+dropped. `TestOnlyADetailRowReachesSwitchRowsFallThrough` reads `rowKind`'s constants and the kinds
+`switchRow`'s cases name from `map_boxes.go`, so a new kind without its space case fails before any
+row of it exists; seen failing on a planted kind and on the preset's case removed. The fall-through
+is unchanged: a guard only.
+
+**The changed-line table.** No test line changed; two test files are new
+(`map_split_sites_test.go`, nine tests; `map_menu_guard_test.go`, two), and no production line.

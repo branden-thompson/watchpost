@@ -1599,6 +1599,7 @@ each one's best mention (0.19.6 D-50).
 | D-75 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-32, U1-33, U1-34, HUM LEAD direction: where the map's disclosure lives, and the transmitter's storag… |
 | D-75 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A floor before the dry run (round 2, PM-N3): D-49 lets targets fit results; hours ahead (D-50) has no metric |
 | D-76 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d76-d77.md` | THE CUT-OVER BELONGS TO THE MONITOR, AND D-72 TOOK IT |
+| D-76 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Where B4's field move lands. The plan's B4.1 embeds mapModel in Dashboard with the map's fields moved onto it… |
 | D-76 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-37, U1-38: only watched places' alerts drew because the listener's file held map_alert_scope = 'stat… |
 | D-76 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The HUM LEAD's proposal, during round 2's dispositions: "Wouldn't a reference chart be more useful to say (wi… |
 | D-77 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d76-d77.md` | THE BED IS THE STATION'S, AND ITS FENCE IS ITS OWN SETTING |
@@ -2418,6 +2419,7 @@ each one's best mention (0.19.6 D-50).
 | A-62 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The pre-push hook is Go, not a shell script (batch 33): tools/prepush holds the record's tests and runs them;… |
 | A-63 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4, instruments first: gcprobe refuses a toolchain outside the module cache (D-75). (1) Before probing, recor… |
 | A-63 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W5.3's details (D-201; D-25, D-27, D-61, D-79): (1) / is "Find a Place", in the Propagation mode alone, a win… |
+| A-64 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4's re-check, and B4.1 as built (design MS-1, MS-2; A-31, A-33, D-76). (1) The re-check restates five figure… |
 | A-64 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to releases built for Node.js 24… |
 | A-65 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The record's remediation (batch 36; BUILD red team B-F2, B-F4, B-F5, D-F1, D-F2, D-F5, D-F11, D-F12, D-F13, C… |
 | A-66 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-ionomaps v0.1.0-rc.1 (batch 37; D-205, D-206, D-213, D-214, D-216; BUILD red team L-F2, C-5, … |
@@ -3023,11 +3025,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:153` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:153` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:154` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:154` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:153` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:154` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 
