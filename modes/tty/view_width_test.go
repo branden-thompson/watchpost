@@ -15,7 +15,7 @@ func TestTheTitleAndTheDescriptionNameOneArea(t *testing.T) {
 		widths = append(widths, widthKm)
 		return "Southern California"
 	}
-	d := openMap(t, Config{MapAreaName: namer}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{MapAreaName: namer}}, 133, 44)
 	widths = nil
 	_ = d.mapTitleAt(d.mapBodySize())
 	_ = d.viewName()

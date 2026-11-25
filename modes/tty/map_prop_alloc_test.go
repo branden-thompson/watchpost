@@ -51,7 +51,7 @@ func propBench(tb testing.TB) Dashboard {
 	at := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
 	s := &seam{answer: PropagationResult{Snapshot: propShaped(at)}}
 	var asked []string
-	d := openMap(t, Config{PropagationUpdate: s.update, PropagationAck: propAckVersion, MapRadar: radarFeed(t, "MRMS", &asked)}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{PropagationUpdate: s.update, MapRadar: radarFeed(t, "MRMS", &asked)}, PropagationAck: propAckVersion}, 133, 44)
 	d.now = func() time.Time { return at.Add(7 * time.Minute) }
 	d, cmd := keyCmd(t, d, "P")
 	d = runProp(t, d, cmd)

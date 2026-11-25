@@ -73,7 +73,7 @@ func settleRadar(t *testing.T, d Dashboard, cmd tea.Cmd) Dashboard {
 
 func openRadarMap(t *testing.T, source string, asked *[]string) Dashboard {
 	t.Helper()
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, source, asked), MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, source, asked)}, MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	return settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
@@ -244,7 +244,7 @@ func shiftKey(d Dashboard, code rune) Dashboard {
 // asked once the answer lands, which is applied.
 func TestALaterAskWaitsForTheLoop(t *testing.T) {
 	var asked []string
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked)}, MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = feedAndSettle(t, m.(Dashboard))
 	if !d.mapPane.radarBusy || !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "Radar loading") {
@@ -340,7 +340,7 @@ func TestTheTimelineNeverMakesTheWindowScroll(t *testing.T) {
 func TestARefusedLoopIsSaidNotLoading(t *testing.T) {
 	var asked, problems []string
 	d := openRadarMap(t, "MRMS", &asked)
-	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
+	ownHooks(&d).MapProblem = func(p string) { problems = append(problems, p) }
 	d.mapPane.call("SetImageBudget", func() { _ = d.mapPane.m.SetImageBudget(1000) })
 	r := radarFeed(t, "MRMS", &asked)(context.Background(), d.mapAsk())
 	r.Overlays[0].ID = RadarLayer + "/us-b" // a new box: it must fit the budget whole
@@ -368,7 +368,7 @@ func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 	t.Cleanup(rendering.ResetColorEnabledForTest)
 	var asked []string
 	cost := func(MapAsk, func(string) bool) MapCost { return MapCost{Bytes: 2_300_000, Requests: 197} }
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapCost: cost,
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapCost: cost},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
@@ -463,7 +463,7 @@ func TestALoopStillPreparingSaysLoadingWithItsSource(t *testing.T) {
 	t.Setenv("TERM", "xterm-256color")
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(rendering.ResetColorEnabledForTest)
-	d := openMap(t, Config{MapRadar: radarFeed(t, "IEM", &[]string{}), MapLayers: []MapLayer{{Key: RadarLayer, Label: "Radar", On: true}}}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{MapRadar: radarFeed(t, "IEM", &[]string{})}, MapLayers: []MapLayer{{Key: RadarLayer, Label: "Radar", On: true}}}, 133, 44)
 	d.mapPane.radarSource = "IEM"
 	got := d.radarStatus()
 	if !strings.Contains(ttytest.StripANSI(got), "Radar   IEM   loading") || !strings.Contains(got, render.Tok(render.MapRadarIEMBG)) {
@@ -483,7 +483,7 @@ func TestTheRadarBadgeIsATab(t *testing.T) {
 	t.Cleanup(rendering.ResetColorEnabledForTest)
 	var asked []string
 	calls := &[]string{}
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked),
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	d.mapPane.calls = calls
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
@@ -547,7 +547,7 @@ func aheadFeed(t *testing.T) func(context.Context, MapAsk) MapRadar {
 // ahead, the badge reads RADAR FCST with HRRR's chip, and the loop's row
 // leads FORECAST; back at now, the radar again.
 func TestTheLoopSaysWhenItIsAhead(t *testing.T) {
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t),
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
@@ -604,7 +604,7 @@ func TestTheHoursAheadAreASetting(t *testing.T) {
 // (FR-5.4). The newest is the newest observed frame, in the row, the status
 // line and the badge.
 func TestTheNewestIsTheNewestObservedFrame(t *testing.T) {
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t),
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
@@ -654,7 +654,7 @@ func TestALongTitleGivesWayToTheTab(t *testing.T) {
 // cursor is on NOW, a forecast frame lies past it, the oldest at the start and
 // the newest at the end.
 func TestTheScrubbersNowIsWhereNowIs(t *testing.T) {
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t),
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
@@ -697,7 +697,7 @@ func TestARegionLeftCancelsItsLoop(t *testing.T) {
 		}
 		return loop(ctx, ask)
 	}
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radar, MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radar}, MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	m, _ := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = feedAndSettle(t, m.(Dashboard))
 	d = pressCode(d, '1', "1")
@@ -736,9 +736,9 @@ func TestARegionLeftCancelsItsLoop(t *testing.T) {
 func TestTheFrameRecorderTellsEachFrame(t *testing.T) {
 	var asked []string
 	var frames []MapFrame
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked),
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapFrame: func(f MapFrame) { frames = append(frames, f) }},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}},
-		MapFrame:  func(f MapFrame) { frames = append(frames, f) }})
+	})
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
@@ -758,9 +758,9 @@ func TestTheFrameRecordersTextIsKeptOnlyWhenAsked(t *testing.T) {
 	for _, asked := range []bool{false, true} {
 		var frames []MapFrame
 		var asks []string
-		d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asks), MapFrameText: asked,
+		d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asks), MapFrameText: asked, MapFrame: func(f MapFrame) { frames = append(frames, f) }},
 			MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}},
-			MapFrame:  func(f MapFrame) { frames = append(frames, f) }})
+		})
 		d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 		m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 		settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
@@ -781,14 +781,14 @@ func TestTheRadarIsAskedAgainForTheHoursAhead(t *testing.T) {
 	var asked []string
 	feed := radarFeed(t, "MRMS", &asked)
 	owed := true
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}},
-		MapRadar: func(ctx context.Context, ask MapAsk) MapRadar {
-			r := feed(ctx, ask)
-			if owed {
-				r.AheadIn, owed = 50*time.Millisecond, false
-			}
-			return r
-		}})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: func(ctx context.Context, ask MapAsk) MapRadar {
+		r := feed(ctx, ask)
+		if owed {
+			r.AheadIn, owed = 50*time.Millisecond, false
+		}
+		return r
+	}}, MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}},
+	})
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = feedAndSettle(t, m.(Dashboard))

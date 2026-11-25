@@ -47,7 +47,7 @@ func TestTheOverlaysMenuOffersThePropagationMode(t *testing.T) {
 func TestAWeatherTintLeavesThePropagationMode(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks) // Forecast mode, temperature on
-	d.cfg.PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
+	ownHooks(&d).PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
 	d.cfg.PropagationAck = propAckVersion
 	d = pressMap(t, d, "P")
 	for _, c := range []struct{ key string }{{TemperatureLayer}, {UVLayer}} {
@@ -81,7 +81,7 @@ func TestTheMenuInThePropagationModeShowsTintsAndDetail(t *testing.T) {
 // Propagation is the OVERLAYS group's fourth row, after the three tints.
 func TestThePropagationRowIsTheFourthOverlay(t *testing.T) {
 	d := screenDash(t, "with", false)
-	d.cfg.PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
+	ownHooks(&d).PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
 	d.cfg.PropagationAck = propAckVersion
 	for _, mode := range []string{"weather", "propagation"} {
 		if mode == "propagation" {

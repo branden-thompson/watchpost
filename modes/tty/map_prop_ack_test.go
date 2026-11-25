@@ -14,7 +14,7 @@ import (
 // version, its saves recorded.
 func ackDash(t *testing.T, seen int, ascii bool, saved *[]int) Dashboard {
 	t.Helper()
-	cfg := Config{ASCII: ascii, PropagationAck: seen, SavePropagationAck: func(v int) error { *saved = append(*saved, v); return nil }}
+	cfg := Config{ASCII: ascii, PropagationAck: seen, Map: &Hooks{SavePropagationAck: func(v int) error { *saved = append(*saved, v); return nil }}}
 	return openMap(t, cfg, 133, 44)
 }
 

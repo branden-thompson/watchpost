@@ -115,7 +115,8 @@ func coldOpenInProcess(t *testing.T, base string, idx *geodata.Index) map[string
 		zoneShapes: zoneStore(t, base), areaAlerts: provider.AlertsInAreas,
 		maps: newMapBuilder("0.18.0-measure", filepath.Join(t.TempDir(), "map"), tiles, nil)}
 	c := tty.Config{Version: "0.18.0-measure"}
-	lp.mapConfig(&c, config.Default())
+	hooks := lp.mapConfig(&c, config.Default())
+	c.Map, c.FrameTimed = &hooks, hooks.Timed // as ttyConfig wires them
 	d, err := tty.NewDashboard(c)
 	if err != nil {
 		t.Fatal(err)

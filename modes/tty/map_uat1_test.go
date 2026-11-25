@@ -24,8 +24,8 @@ import (
 // openMap is the window open at a size with one alert over Oceanside.
 func openMap(t testing.TB, cfg Config, w, h int) Dashboard {
 	t.Helper()
-	if cfg.MapFeed == nil {
-		cfg.MapFeed = boxFeed(-117.6, -117.1, false)
+	if h := configHooks(&cfg); h.MapFeed == nil {
+		h.MapFeed = boxFeed(-117.6, -117.1, false)
 	}
 	d := mapDash(t, cfg)
 	m, _ := d.Update(tea.WindowSizeMsg{Width: w, Height: h})
@@ -142,7 +142,7 @@ func TestTheTitleNamesWhatIsInView(t *testing.T) {
 		}
 		return "California"
 	}
-	d := openMap(t, Config{MapAreaName: namer}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{MapAreaName: namer}}, 133, 44)
 	if got := d.mapTitle(); got != "Map · Southern California · Oceanside, CA" {
 		t.Errorf("at the state scale the title is %q", got)
 	}
@@ -170,7 +170,7 @@ func TestTheTitleNamesWhatIsInView(t *testing.T) {
 // and is written with the map's Settings.
 func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 	calls := &[]string{}
-	d := mapDash(t, Config{MapLayers: alertLayers, MapFeed: boxFeed(-117.6, -117.1, false)})
+	d := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	d.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
@@ -275,7 +275,7 @@ func cmdName(cmd tea.Cmd) string {
 // there is no Settings window to close.
 func TestADetailSwitchChangesThePictureAndIsSaved(t *testing.T) {
 	var saved UIPrefs
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false)})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	d.cfg.SetUI = func(p UIPrefs) error { saved = p; return nil }
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)

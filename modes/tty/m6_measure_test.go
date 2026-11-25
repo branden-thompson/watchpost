@@ -93,13 +93,12 @@ func TestMeasureM6InProcess(t *testing.T) {
 	var radarMu sync.Mutex
 	asked := new([]string)
 	radar := radarFeed(t, "MRMS", asked)
-	d, err := NewDashboard(Config{Version: "0.18.0-measure", NewMap: embeddedMap, Timed: tape.record,
-		MapFeed: boxFeed(-117.6, -117.1, false),
-		MapRadar: func(ctx context.Context, ask MapAsk) MapRadar {
-			radarMu.Lock() // radarFeed's record of asks is not shared-safe; the window asks off its own goroutine
-			defer radarMu.Unlock()
-			return radar(ctx, ask)
-		},
+	d, err := NewDashboard(Config{Version: "0.18.0-measure", Map: &Hooks{NewMap: embeddedMap, Timed: tape.record, MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: func(ctx context.Context, ask MapAsk) MapRadar {
+		radarMu.Lock() // radarFeed's record of asks is not shared-safe; the window asks off its own goroutine
+		defer radarMu.Unlock()
+		return radar(ctx, ask)
+	}},
+
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	if err != nil {
 		t.Fatal(err)

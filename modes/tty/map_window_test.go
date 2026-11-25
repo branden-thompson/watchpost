@@ -42,8 +42,8 @@ func mapDash(t testing.TB, cfg Config) Dashboard {
 	if cfg.Version == "" {
 		cfg.Version = "0.18.0-test"
 	}
-	if cfg.NewMap == nil {
-		cfg.NewMap = embeddedMap
+	if h := configHooks(&cfg); h.NewMap == nil {
+		h.NewMap = embeddedMap
 	}
 	m, err := NewDashboard(cfg)
 	if err != nil {
@@ -132,7 +132,7 @@ func TestAKeysOverrideRebindsTheMap(t *testing.T) {
 // or a guess; no map is built for it.
 func TestNoSelectionIsAStatedState(t *testing.T) {
 	built := 0
-	m, err := NewDashboard(Config{Version: "t", NewMap: func(size tuimaps.Size) (*tuimaps.Map, error) { built++; return embeddedMap(size) }})
+	m, err := NewDashboard(Config{Version: "t", Map: &Hooks{NewMap: func(size tuimaps.Size) (*tuimaps.Map, error) { built++; return embeddedMap(size) }}})
 	if err != nil {
 		t.Fatal(err)
 	}

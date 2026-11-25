@@ -29,7 +29,8 @@ var mapAllocBudget = map[string]float64{"hit": 3_095 * 1.05, "miss": 3_654 * 1.0
 func mapBench(tb testing.TB) Dashboard {
 	tb.Helper()
 	d := benchDash(tb, 133, 44).(Dashboard)
-	d.cfg.NewMap, d.cfg.MapFeed = embeddedMap, boxFeed(-117.6, -117.1, false)
+	h := ownHooks(&d)
+	h.NewMap, h.MapFeed = embeddedMap, boxFeed(-117.6, -117.1, false)
 	m, _ := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = m.(Dashboard)
 	if cmd := d.mapFeedCmd(laneAlerts); cmd != nil {

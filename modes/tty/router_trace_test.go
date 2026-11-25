@@ -232,11 +232,12 @@ func traceDash(t *testing.T, at time.Time) Dashboard {
 	t.Helper()
 	d := benchDash(t, 133, 44).(Dashboard)
 	d.now = func() time.Time { return at }
-	d.cfg.NewMap, d.cfg.MapFeed = embeddedMap, boxFeed(-117.6, -117.1, false)
+	h := ownHooks(&d)
+	h.NewMap, h.MapFeed = embeddedMap, boxFeed(-117.6, -117.1, false)
 	d.cfg.SetUI = func(UIPrefs) error { return nil }
 	s := &seam{answer: PropagationResult{Snapshot: stationsSnap(0, ionomaps.Fresh)}}
-	d.cfg.PropagationUpdate, d.cfg.PropagationAck = s.update, propAckVersion
-	d.cfg.SavePropagationAck = func(int) error { return nil }
+	h.PropagationUpdate, d.cfg.PropagationAck = s.update, propAckVersion
+	h.SavePropagationAck = func(int) error { return nil }
 	d.ticks = heldTicks
 	return d
 }

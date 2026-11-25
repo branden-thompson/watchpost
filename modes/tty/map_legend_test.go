@@ -14,7 +14,7 @@ import (
 
 func legendDash(t *testing.T, cfg Config) Dashboard {
 	t.Helper()
-	cfg.MapFeed = boxFeed(-117.6, -117.1, false)
+	configHooks(&cfg).MapFeed = boxFeed(-117.6, -117.1, false)
 	cfg.MapDescription = "off"
 	d := mapDash(t, cfg)
 	d, _ = pressKey(d, "g")
@@ -56,7 +56,7 @@ func TestSettingsStatesTheRetention(t *testing.T) {
 // asks the app for everything else, then says what went.
 func TestClearMapDataEmptiesTheLiveMapAndAsksTheApp(t *testing.T) {
 	asked := 0
-	d := legendDash(t, Config{ClearMapData: func() MapCleared { asked++; return MapCleared{Files: 7, Zones: 3} }})
+	d := legendDash(t, Config{Map: &Hooks{ClearMapData: func() MapCleared { asked++; return MapCleared{Files: 7, Zones: 3} }}})
 	calls := &[]string{}
 	d.mapPane.calls = calls
 	d, _ = pressKey(d, "esc")

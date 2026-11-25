@@ -84,7 +84,7 @@ func TestTheWorkLoopsInFlightAreBounded(t *testing.T) {
 // it again, and the panic's words go to the diagnostics.
 func TestAPanicInALibraryCallMarksTheMapFailed(t *testing.T) {
 	var said []string
-	d := mapDash(t, Config{MapProblem: func(p string) { said = append(said, p) }})
+	d := mapDash(t, Config{Map: &Hooks{MapProblem: func(p string) { said = append(said, p) }}})
 	d, _ = pressKey(d, "g")
 	d = settleMap(t, d)
 	d.mapPane.call("Render", func() { panic("a defect in the library") })
@@ -109,7 +109,7 @@ func TestAPanicInAMapCommandMarksTheMapFailed(t *testing.T) {
 		},
 	} {
 		var said []string
-		d := mapDash(t, Config{MapProblem: func(p string) { said = append(said, p) }})
+		d := mapDash(t, Config{Map: &Hooks{MapProblem: func(p string) { said = append(said, p) }}})
 		d, _ = pressKey(d, "g")
 		d = settleMap(t, d)
 		msg := runCmdElsewhere(d.mapPane.workers.cmd(context.Background(), nil, body(d.mapPane)))

@@ -22,7 +22,7 @@ func openSettledMap(t *testing.T) Dashboard {
 		f.Overlays[0].Valid, f.Overlays[0].Keeps = now.Add(-50*time.Minute), time.Hour
 		return f
 	}
-	d := mapDash(t, Config{MapFeed: feed})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: feed}})
 	d.now = func() time.Time { return now }
 	d, _ = pressKey(d, "g")
 	return feedAndSettle(t, d)

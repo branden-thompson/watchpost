@@ -130,7 +130,7 @@ func TestWavesAreTheirOwnRow(t *testing.T) {
 // are off by default and the ask says so - the app asks for them only while
 // on; switched on, the ask says that.
 func TestTheAskSaysWhetherTheSeasStationsAreOn(t *testing.T) {
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false),
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: BuoyLayer, Label: "Buoys"}, {Key: TideLayer, Label: "Tides"}}})
 	d, _ = pressKey(d, "g")
 	if a := d.mapAsk(); a.Buoys || a.Tides {

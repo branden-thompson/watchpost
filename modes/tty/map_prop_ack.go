@@ -62,7 +62,7 @@ func (d Dashboard) handlePropAckKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 	d = d.close()
 	d.cfg.PropagationAck = propAckVersion
 	d, update := d.askPropagation() // seen: the mode's first update (D-81)
-	save := d.cfg.SavePropagationAck
+	save := d.mapHooks.SavePropagationAck
 	if save == nil {
 		return d, update
 	}

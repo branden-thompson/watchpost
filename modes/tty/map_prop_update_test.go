@@ -54,7 +54,7 @@ func propDash(t *testing.T, s *seam, seen bool) Dashboard {
 	if seen {
 		ack = propAckVersion
 	}
-	d := openMap(t, Config{PropagationUpdate: s.update, PropagationAck: ack, SavePropagationAck: func(int) error { return nil }}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{PropagationUpdate: s.update, SavePropagationAck: func(int) error { return nil }}, PropagationAck: ack}, 133, 44)
 	d.ticks = heldTicks
 	return d
 }

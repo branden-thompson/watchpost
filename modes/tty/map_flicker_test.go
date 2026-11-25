@@ -21,7 +21,7 @@ func hasArea(d Dashboard) bool {
 
 func TestTheSameAlertAgainNeverDropsFromTheFrame(t *testing.T) {
 	feed := boxFeed(-117.6, -117.1, false)
-	d := openMap(t, Config{MapFeed: feed, MapDescription: "off"}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{MapFeed: feed}, MapDescription: "off"}, 133, 44)
 	if !hasArea(d) {
 		t.Fatal("the settled map does not draw the alert: this measures nothing")
 	}

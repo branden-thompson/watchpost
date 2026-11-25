@@ -62,7 +62,7 @@ const radarRefresh = 2 * time.Minute
 // IS CANCELLED (D-130): its answer could not be drawn, and waiting for it
 // would make `1` two cold loops, about fifteen seconds (UAT-2 U2-35).
 func (d Dashboard) askRadar() (Dashboard, tea.Cmd) {
-	radar := d.cfg.MapRadar
+	radar := d.mapHooks.MapRadar
 	if radar == nil || d.mapPane.m == nil || d.modal != modalMap {
 		return d, nil
 	}
@@ -280,7 +280,7 @@ func (d Dashboard) mapBadgeWords() string {
 	case modePropagation:
 		return d.propagationBadge()
 	case modeForecast:
-		if d.cfg.MapRadar != nil {
+		if d.mapHooks.MapRadar != nil {
 			return d.forecastBadge()
 		}
 	case modeRadar:
@@ -345,7 +345,7 @@ func (d Dashboard) radarStatus() string {
 	m := d.mapPane.m
 	if m == nil || d.mapPane.radarSource == "" || !d.layerOn(RadarLayer) {
 		switch {
-		case !d.layerOn(RadarLayer) || d.cfg.MapRadar == nil:
+		case !d.layerOn(RadarLayer) || d.mapHooks.MapRadar == nil:
 			return ""
 		case d.mapPane.radarNote != "":
 			return d.mapPane.radarNote
@@ -439,7 +439,7 @@ func (d Dashboard) radarBadgeTimeNow() string {
 // radarTimelineOn reports whether the timeline's rows are held: in both
 // modes (D-94) - Radar mode's loop, or Forecast mode's steps - so the map's
 // size never depends on the mode.
-func (d Dashboard) radarTimelineOn() bool { return d.cfg.MapRadar != nil }
+func (d Dashboard) radarTimelineOn() bool { return d.mapHooks.MapRadar != nil }
 
 // radarChipWords are the R chip's words: the mode the key switches (D-94).
 func (d Dashboard) radarChipWords() string {

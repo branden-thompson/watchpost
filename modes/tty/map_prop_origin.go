@@ -78,8 +78,8 @@ func (d Dashboard) propCentreNamed(c ionomaps.LatLon) (name, country string) {
 	if f := d.mapPane.propFound; f != nil && propStepped(f.Lat, f.Lon) == c {
 		return f.Label, f.Country
 	}
-	if d.cfg.PlaceNear != nil {
-		if town, cc := d.cfg.PlaceNear(c.Lat, c.Lon); town != "" {
+	if d.mapHooks.PlaceNear != nil {
+		if town, cc := d.mapHooks.PlaceNear(c.Lat, c.Lon); town != "" {
 			return "near " + town, cc
 		}
 	}

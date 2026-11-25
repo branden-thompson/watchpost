@@ -48,7 +48,7 @@ var answerSeen = map[string]uint8{"answered:feed": seenFeed, "answered:radar": s
 
 // timeFrom starts the map's clock at an ask: g, a map key, a switch.
 func (d Dashboard) timeFrom(what string) Dashboard {
-	if d.cfg.Timed == nil {
+	if d.mapHooks.Timed == nil {
 		return d
 	}
 	d.mapPane.clock = mapClock{from: d.now(), what: what, feedAt: d.mapPane.feedGen}
@@ -61,7 +61,7 @@ func (d Dashboard) timeFrom(what string) Dashboard {
 // from the key press (W14).
 func (d Dashboard) timed(event string) Dashboard {
 	c := &d.mapPane.clock
-	if d.cfg.Timed == nil || c.from.IsZero() || c.seen&seenSettled != 0 {
+	if d.mapHooks.Timed == nil || c.from.IsZero() || c.seen&seenSettled != 0 {
 		return d
 	}
 	if bit, ok := answerSeen[event]; ok {
@@ -70,7 +70,7 @@ func (d Dashboard) timed(event string) Dashboard {
 		}
 		c.seen |= bit
 	}
-	d.cfg.Timed(Timing{Trigger: c.what, Event: event, After: d.now().Sub(c.from)})
+	d.mapHooks.Timed(Timing{Trigger: c.what, Event: event, After: d.now().Sub(c.from)})
 	return d
 }
 
@@ -82,7 +82,7 @@ func (d Dashboard) timed(event string) Dashboard {
 //   - settled: nothing left to come - the view still, no work, radar,
 //     temperature or alerts in flight.
 func (d Dashboard) timeDraw() Dashboard {
-	if d.cfg.Timed == nil || d.mapPane.clock.from.IsZero() {
+	if d.mapHooks.Timed == nil || d.mapPane.clock.from.IsZero() {
 		return d
 	}
 	p := &d.mapPane
@@ -118,18 +118,18 @@ func (d Dashboard) timeDraw() Dashboard {
 // in its place: the render check a workload run reads (W14 - "everything
 // that's supposed to render, ACTUALLY renders"). It carries no interval.
 func (d Dashboard) timeBelowFloor() {
-	if d.cfg.Timed != nil {
-		d.cfg.Timed(Timing{Trigger: "render", Event: "below-floor"})
+	if d.mapHooks.Timed != nil {
+		d.mapHooks.Timed(Timing{Trigger: "render", Event: "below-floor"})
 	}
 }
 
 // timeTick says how late the map's clock landed against the moment the
 // library asked for (M6: the loop's pace is the ticks').
 func (d Dashboard) timeTick(at time.Time) {
-	if d.cfg.Timed == nil {
+	if d.mapHooks.Timed == nil {
 		return
 	}
-	d.cfg.Timed(Timing{Trigger: "tick", Event: "tick", After: d.now().Sub(at)})
+	d.mapHooks.Timed(Timing{Trigger: "tick", Event: "tick", After: d.now().Sub(at)})
 }
 
 // keyClock is the Router's: when the last key arrived, until the frame it
@@ -143,7 +143,7 @@ type keyClock struct {
 
 // keyArrived starts the key's clock.
 func (r Router) keyArrived() {
-	if r.observer.cfg.Timed != nil && r.keyTime != nil {
+	if r.observer.cfg.FrameTimed != nil && r.keyTime != nil {
 		r.keyTime.at = time.Now()
 	}
 }
@@ -151,7 +151,7 @@ func (r Router) keyArrived() {
 // frameDrawn says the key's time to its frame, once (M6's second half), and
 // every hundredth frame how long the hundred took - the frame rate.
 func (r Router) frameDrawn() {
-	if r.keyTime == nil || r.observer.cfg.Timed == nil {
+	if r.keyTime == nil || r.observer.cfg.FrameTimed == nil {
 		return
 	}
 	now := time.Now()
@@ -159,12 +159,12 @@ func (r Router) frameDrawn() {
 		r.keyTime.hundred = now
 	}
 	if r.keyTime.frames++; r.keyTime.frames == 100 {
-		r.observer.cfg.Timed(Timing{Trigger: "frame", Event: "frames100", After: max(now.Sub(r.keyTime.hundred), time.Nanosecond)})
+		r.observer.cfg.FrameTimed(Timing{Trigger: "frame", Event: "frames100", After: max(now.Sub(r.keyTime.hundred), time.Nanosecond)})
 		r.keyTime.frames = 0
 	}
 	if r.keyTime.at.IsZero() {
 		return
 	}
-	r.observer.cfg.Timed(Timing{Trigger: "key", Event: "key", After: now.Sub(r.keyTime.at)})
+	r.observer.cfg.FrameTimed(Timing{Trigger: "key", Event: "key", After: now.Sub(r.keyTime.at)})
 	r.keyTime.at = time.Time{}
 }

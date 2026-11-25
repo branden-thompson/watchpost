@@ -51,7 +51,7 @@ type propSession struct {
 // acknowledgement closed (FR-4.2, D-81), and one at a time. The seam is
 // called in the command, never on the UI goroutine (FR-4.8).
 func (d Dashboard) askPropagation() (Dashboard, tea.Cmd) {
-	seam := d.cfg.PropagationUpdate
+	seam := d.mapHooks.PropagationUpdate
 	ready := seam != nil && !d.mapPane.propSess.busy && d.mapShown() && d.modal != modalPropAck && d.mapMode() == modePropagation
 	if !ready {
 		return d, nil

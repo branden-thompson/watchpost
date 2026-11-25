@@ -80,7 +80,7 @@ func TestTheFrequencyEntryClosesBeforeTheMapIsDrawn(t *testing.T) {
 // frame drawn is the map window's size, none the finder's (0.19.0 FR-1.10).
 func TestAFoundPlaceIsDrawnOnceTheFinderHasClosed(t *testing.T) {
 	d := chartDash(t)
-	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	ownHooks(&d).FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	views := &[]mapView{}
 	d.mapPane.views = views
 	finder := pressMap(t, d, "/").mapBodySize()
@@ -103,7 +103,7 @@ func TestAFoundPlaceIsDrawnOnceTheFinderHasClosed(t *testing.T) {
 // are handed to the window's own scroll, which moves the body (0.19.0 FR-11.2,
 // D-256). At the floor, where each window's body runs past its rows.
 func TestTheAcknowledgementAndTheChartScrollAtTheFloor(t *testing.T) {
-	ack := ackPress(t, openMap(t, Config{SavePropagationAck: func(int) error { return nil }}, 80, 24), "P")
+	ack := ackPress(t, openMap(t, Config{Map: &Hooks{SavePropagationAck: func(int) error { return nil }}}, 80, 24), "P")
 	m, _ := chartDash(t).Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	chart := pressMap(t, m.(Dashboard), "B")
 	for _, c := range []struct {
@@ -208,7 +208,7 @@ func TestAWeatherTintChosenInThePropagationModeIsSavedLast(t *testing.T) {
 	var saved []UIPrefs
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks) // Forecast mode, temperature on, UV off
-	d.cfg.PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
+	ownHooks(&d).PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
 	d.cfg.PropagationAck = propAckVersion
 	d.cfg.SetUI = func(p UIPrefs) error { saved = append(saved, p); return nil }
 	tint := UVLayer
@@ -269,7 +269,7 @@ func TestTheModeSwitchIsSavedFirst(t *testing.T) {
 	var saved []UIPrefs
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks) // Forecast mode
-	d.cfg.PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
+	ownHooks(&d).PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
 	d.cfg.PropagationAck = propAckVersion
 	d.cfg.SetUI = func(p UIPrefs) error { saved = append(saved, p); return nil }
 	_, cmd := d.switchMode()

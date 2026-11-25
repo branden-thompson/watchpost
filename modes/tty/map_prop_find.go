@@ -81,7 +81,7 @@ func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 		if q == "" {
 			return d.markFound(nil).close().renderMap(), nil
 		}
-		find := d.cfg.FindPlace
+		find := d.mapHooks.FindPlace
 		if find == nil || d.mapPane.propFindBusy {
 			return d, nil
 		}

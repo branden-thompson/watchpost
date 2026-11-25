@@ -28,15 +28,16 @@ func diskMapDash(t *testing.T, cfg Config, dir string) Dashboard {
 		t.Fatal(err)
 	}
 	disk := func(m *tuimaps.Map) error { return m.CacheRoot(dir, 1<<20) }
-	cfg.NewMap = func(size tuimaps.Size) (*tuimaps.Map, error) {
+	h := configHooks(&cfg)
+	h.NewMap = func(size tuimaps.Size) (*tuimaps.Map, error) {
 		m, err := embeddedMap(size)
 		if err == nil {
 			err = disk(m)
 		}
 		return m, err
 	}
-	if cfg.MapDisk == nil {
-		cfg.MapDisk = disk
+	if h.MapDisk == nil {
+		h.MapDisk = disk
 	}
 	d := mapDash(t, cfg)
 	d, _ = pressKey(d, "g")
@@ -52,10 +53,10 @@ func diskMapDash(t *testing.T, cfg Config, dir string) Dashboard {
 func TestClearingLeavesTheDiskToTheAppsCommand(t *testing.T) {
 	dir := t.TempDir()
 	attached := 0
-	d := diskMapDash(t, Config{ClearMapData: func() MapCleared { return MapCleared{Files: 1} }, MapDisk: func(m *tuimaps.Map) error {
+	d := diskMapDash(t, Config{Map: &Hooks{ClearMapData: func() MapCleared { return MapCleared{Files: 1} }, MapDisk: func(m *tuimaps.Map) error {
 		attached++
 		return m.CacheRoot(dir, 1<<20)
-	}}, dir)
+	}}}, dir)
 	m, cmd, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = m
 	if _, err := os.Stat(filepath.Join(dir, "v1", "source", "3", "1-2.pbf")); err != nil {
@@ -78,8 +79,7 @@ func TestClearingSaysACountAndWhereTheDetailIs(t *testing.T) {
 	var said []string
 	failed := errors.Join(errors.New("remove /Users/someone/Library/Caches/watchpost/map/v1/a.pbf: permission denied"),
 		errors.New("remove /Users/someone/Library/Caches/watchpost/map-http/b: permission denied"))
-	d := diskMapDash(t, Config{MapProblem: func(p string) { said = append(said, p) },
-		ClearMapData: func() MapCleared { return MapCleared{Files: 7, Zones: 3, Err: failed} }}, t.TempDir())
+	d := diskMapDash(t, Config{Map: &Hooks{MapProblem: func(p string) { said = append(said, p) }, ClearMapData: func() MapCleared { return MapCleared{Files: 7, Zones: 3, Err: failed} }}}, t.TempDir())
 	m, cmd, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = m
 	d.mapPane.clearErr = errors.New("the map is closed") // the live map's own purge refused (IS-M5)

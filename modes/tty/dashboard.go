@@ -5,16 +5,12 @@
 package tty
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"time"
 	"unicode"
 
-	ionomaps "github.com/branden-thompson/go-ionomaps"
-
 	tea "charm.land/bubbletea/v2"
-	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
@@ -69,22 +65,16 @@ const recentWindow = 3
 // pipelines with the new watch/recent ref sets (UAT 26).
 type Config struct {
 	Version string
-	// Timed is the timing instrument's ear (W14, D-154): nil, and nothing is
-	// measured; the app sets it only under WATCHPOST_DEBUG_TIMING=1.
-	Timed func(Timing)
-	// MapFrame is the map's frame recorder (D-198): nil unless
-	// WATCHPOST_DEBUG_MAPFRAMES names a file.
-	MapFrame func(MapFrame)
-	// MapClosed is told when the map window closes - really closes, not a
-	// window opened over it (D-106): the app lets the zone store's memory go,
-	// the disk tier serving it back on reopen (D-162).
-	MapClosed    func()
-	KeyOverrides term.KeyMap                                   // user [keys] table (validated at build)
-	NewMap       func(size tuimaps.Size) (*tuimaps.Map, error) // builds the map at its window's size (the library moves only a sized map); nil = maps off
-	MapFeed      func(ctx context.Context, ask MapAsk) MapFeed // the alerts the map draws, asked off the UI goroutine
-	// MapRadar is the radar the map draws (W8): the whole loop, asked off the
-	// UI goroutine, shown once it is in (D-85).
-	MapRadar func(ctx context.Context, ask MapAsk) MapRadar
+	// FrameTimed is the timing instrument's ear for the Router's frames: a
+	// key's time to the frame it produced, and the frame rate (W14, D-154).
+	// Nil, and nothing is measured; the app sets it only under
+	// WATCHPOST_DEBUG_TIMING=1, from the same value as the map's Hooks.Timed.
+	FrameTimed func(Timing)
+	// Map is the map window's hooks, held once: NewDashboard takes the
+	// pointer and clears this field, so nothing reads it after (0.19.6 A-31,
+	// D-77). Nil is a map with no hooks at all.
+	Map          *Hooks
+	KeyOverrides term.KeyMap // user [keys] table (validated at build)
 	// MapRadarSource is the file's word for the lower 48's radar: "iem", or
 	// MRMS, the default (D-83).
 	MapRadarSource string
@@ -93,17 +83,12 @@ type Config struct {
 	// MapQuakeFeed is the file's word for the quakes drawn (D-122): USGS's
 	// feed by its name, M2.5+ over the past week by default.
 	MapQuakeFeed string
-	// MapProblem takes what went wrong with the map that the listener cannot
-	// act on (D-124): the diagnostics', never shown. Nil drops it.
-	MapProblem func(string)
 	// MapTempSource is the file's word for the map's temperature, both modes:
 	// "open-meteo", or NDFD, the default (D-93, D-190).
 	MapTempSource string
 	// MapRainDetail is the file's word for the rain's density past NDFD's
 	// reach: "full", or coarse, the default (D-192).
 	MapRainDetail string
-	// MapFrameText asks the frame recorder for each frame's text as well (D-198).
-	MapFrameText bool
 	// MapUVCities is the file's count of cities UV asks EPA for: 8, 24 or
 	// 48; anything else is 24, the default (D-202).
 	MapUVCities int
@@ -130,44 +115,22 @@ type Config struct {
 	NoColor        bool
 	// MapPlaybackMs is the file's playback speed, ms a frame; 0 is the
 	// default, 500 (D-361).
-	MapPlaybackMs int
-	// MapTemperature is the temperature the map draws (W10): every hour's or
-	// step's grids, each with its span, asked off the UI goroutine.
-	MapTemperature func(ctx context.Context, ask MapAsk) MapTemperature
+	MapPlaybackMs  int
 	Maps           string // the file's words for the map's two Settings (UIPrefs')
 	MapDescription string
-	ClearMapData   func() MapCleared // 0.18.0 W3.8: the app empties what the live map cannot reach
-	// MapDisk names a map's disk cache - the app's tile directory and cap.
-	// Clear map data lets the live map's go while the app empties it off the
-	// UI goroutine, and names it again once the app has answered (PF-4).
-	MapDisk        func(m *tuimaps.Map) error
 	MapSources     []MapSource     // 0.18.0 W1.12, D-75: what the map contacts and sends, for the Status window (FR-9.4)
 	MapRetention   string          // 0.18.0 W3.8: how long the map's data is kept, and the one stated total (FR-3.5, FR-3.9)
 	MapScale       string          // 0.18.0 W4.3: the file's word for the scale the map opens at
 	MapNearbyKm    int             // 0.18.0 W9.2: the file's nearby distance; 0 is the default
 	MapLayerChoice map[string]bool // 0.18.0 W1.11: the layers switched from their defaults, by key
 	MapLayers      []MapLayer      // 0.18.0 W1.13: the app's registry of layers, in its order
-	// MapCost is the app's estimate of one refresh with the layers as chosen
-	// (0.18.0 W1.14, FR-9.2). Arithmetic over the snapshot: it fetches nothing.
-	MapCost func(ask MapAsk, on func(key string) bool) MapCost
 	// MapDetailChoice is the map's detail switched from Watchpost's defaults,
-	// by key (D-65); MapAreaName names what is in view from the view's centre
-	// and width, for the title (D-64). Nil draws the selected place's name.
+	// by key (D-65).
 	MapDetailChoice map[string]bool
 	MapDetailLevel  string // D-67: the file's word for the detail level; Weather by default
-	MapAreaName     func(centre tuimaps.LonLat, widthKm float64) string
-	// PlaceNear names a point anywhere on the globe by the town nearest it
-	// (0.19.0 AX-1), "" where none is near: the Propagation mode's centre;
-	// country is the town's ISO 3166 code, which the words say a place
-	// abroad by (D-231).
-	PlaceNear func(lat, lon float64) (label, country string)
-	Resolve   func(query string) (snapshot.LocationRef, error)
-	// FindPlace finds a place anywhere on the globe for the Propagation mode
-	// (0.19.0 FR-1.10): locally first, and only on a miss online, uncached;
-	// the context is cancelled when the listener cancels the find.
-	FindPlace func(ctx context.Context, query string) (snapshot.LocationRef, error)
-	Commit    func(watch, recent []snapshot.LocationRef) error
-	SetTheme  func(name string) error // live theme switch + persist (UAT 53)
+	Resolve         func(query string) (snapshot.LocationRef, error)
+	Commit          func(watch, recent []snapshot.LocationRef) error
+	SetTheme        func(name string) error // live theme switch + persist (UAT 53)
 
 	// 0.14.0 — the WATCHPOST UI group's three display preferences, written
 	// together when Settings closes. One hook rather than three: they are one
@@ -235,17 +198,9 @@ type Config struct {
 	SaveRadio     func(RadioPrefs) error         // keeps the radio panel's choices (D-214); nil keeps nothing
 	FireBoldMW    float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
 
-	// PropagationAck is the acknowledgement's wording last seen (A-9), and
-	// SavePropagationAck keeps it once closed; nil keeps nothing (0.19.0 W2.5).
-	PropagationAck     int
-	SavePropagationAck func(int) error
-
-	// PropagationUpdate runs the Propagation mode's update, with the
-	// Settings' options - the reference circuit's noise (D-187), the
-	// no-readings correction (D-105) and the stations (D-214) - and sends
-	// its own result (0.19.0 W4.1, A-30, C-2). ctx is the mode's: leaving the mode
-	// ends it. nil fetches nothing.
-	PropagationUpdate func(ctx context.Context, opts ionomaps.UpdateOptions) <-chan PropagationResult
+	// PropagationAck is the acknowledgement's wording last seen (0.19.0 A-9,
+	// W2.5); Hooks.SavePropagationAck keeps it once closed.
+	PropagationAck int
 
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
 	// reports against, and they are TWO because the data is two things: the
@@ -698,6 +653,9 @@ type Dashboard struct {
 	mapCloses uint64
 	// mapReleaseAfter is how long the map stays closed before it is let go.
 	mapReleaseAfter time.Duration
+	// mapModel is the map's own state (0.19.6 D-78), embedded so its fields
+	// read as d.mapHooks and the rest.
+	mapModel
 	// The Settings, in three groups, each built from the Config by its own
 	// keyed literal (0.19.5 D-14, A-16): the map's, the UI's and the radio's.
 	// Embedded, so d.mapDesc and the rest read as they always have.
@@ -1003,11 +961,16 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 		height:          24,
 		darkBG:          true,
 		mapReleaseAfter: mapReleaseAfter,
+		mapModel:        mapModel{mapHooks: cfg.Map},
 		memo:            &bodyMemo{},
 		mmemo:           &modalMemo{},
 		tickerScrolls:   map[TickerCategory]int{},
 		now:             time.Now,
 	}
+	if d.mapHooks == nil {
+		d.mapHooks = &noHooks // every read sees nil, as an unset Config field did
+	}
+	d.cfg.Map = nil
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -1638,8 +1601,8 @@ func (d Dashboard) tellMapClosed(was bool) Dashboard {
 	if !was || d.mapShown() {
 		return d
 	}
-	if d.cfg.MapClosed != nil {
-		d.cfg.MapClosed()
+	if d.mapHooks.MapClosed != nil {
+		d.mapHooks.MapClosed()
 	}
 	d = d.stopPropagation() // nothing is fetched for a map no longer shown (FR-4.2)
 	d.mapCloses++

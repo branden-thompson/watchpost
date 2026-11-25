@@ -40,11 +40,11 @@ func TestAFakeLayerPlugsInWithoutEditingTheOthers(t *testing.T) {
 		t.Fatalf("the window is handed layers %v, want alert, fire, buoys, tides, quake, radar, rain, temperature, feels, wind, uv, air, waves, then fake", keys)
 	}
 	all := func(string) bool { return true }
-	with := cfg.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, all)
+	with := cfg.Map.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, all)
 	if with.Bytes != 1_500_000 || with.Requests != 30 {
 		t.Errorf("the fake layer's cost is not in the estimate: %+v", with)
 	}
-	if off := cfg.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, func(k string) bool { return k != "fake" }); off.Requests != 0 {
+	if off := cfg.Map.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, func(k string) bool { return k != "fake" }); off.Requests != 0 {
 		t.Errorf("a layer switched off is still counted: %+v", off)
 	}
 }
@@ -141,10 +141,10 @@ func TestTheAlertLayersCostIsItsZones(t *testing.T) {
 // registry's, handed from the composition root.
 func TestTheEstimateIsReachedFromProduction(t *testing.T) {
 	cfg := (&livePipelines{}).ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)
-	if cfg.MapCost == nil || len(cfg.MapLayers) == 0 {
+	if cfg.Map.MapCost == nil || len(cfg.MapLayers) == 0 {
 		t.Fatal("the window is handed no layers or no estimate")
 	}
-	if got := cfg.MapCost(tty.MapAsk{}, func(string) bool { return true }); got != (tty.MapCost{}) {
+	if got := cfg.Map.MapCost(tty.MapAsk{}, func(string) bool { return true }); got != (tty.MapCost{}) {
 		t.Errorf("no snapshot is estimated at %+v", got)
 	}
 }

@@ -65,9 +65,9 @@ func budgetForOne(t *testing.T, d Dashboard, next tuimaps.Overlay) {
 func TestAZoomAcrossTheBoxesKeepsTheRadar(t *testing.T) {
 	var asked, problems []string
 	d := openRadarMap(t, "MRMS", &asked)
-	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
+	ownHooks(&d).MapProblem = func(p string) { problems = append(problems, p) }
 	var frames []MapFrame
-	d.cfg.MapFrame = func(f MapFrame) { frames = append(frames, f) }
+	ownHooks(&d).MapFrame = func(f MapFrame) { frames = append(frames, f) }
 	r := renamed(radarFeed(t, "MRMS", &asked)(context.Background(), d.mapAsk()), "us-b", 1)
 	budgetForOne(t, d, r.Overlays[0])
 
@@ -96,9 +96,9 @@ func TestAZoomAcrossTheBoxesKeepsTheRadar(t *testing.T) {
 func TestARefusedSwapKeepsTheLoopsItHad(t *testing.T) {
 	var asked, problems []string
 	d := openRadarMap(t, "MRMS", &asked)
-	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
+	ownHooks(&d).MapProblem = func(p string) { problems = append(problems, p) }
 	var frames []MapFrame
-	d.cfg.MapFrame = func(f MapFrame) { frames = append(frames, f) }
+	ownHooks(&d).MapFrame = func(f MapFrame) { frames = append(frames, f) }
 	feed := radarFeed(t, "MRMS", &asked)(context.Background(), d.mapAsk())
 	budgetForOne(t, d, renamed(feed, "us-b", 1).Overlays[0])
 	big := renamed(feed, "us-b", 3) // three times the frames: over the budget alone

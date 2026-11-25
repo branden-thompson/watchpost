@@ -22,7 +22,7 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	computed := time.Now().UTC().Add(-12 * time.Minute).Truncate(time.Minute)
 	s := &seam{answer: PropagationResult{Snapshot: propSnapAt(computed, 18)}}
 	var asked []string // radar configured, as the app's is: the rows under the map are drawn only with its timeline
-	d := openMap(t, Config{PropagationUpdate: s.update, PropagationAck: propAckVersion, MapRadar: radarFeed(t, "MRMS", &asked)}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{PropagationUpdate: s.update, MapRadar: radarFeed(t, "MRMS", &asked)}, PropagationAck: propAckVersion}, 133, 44)
 	d.now = func() time.Time { return computed.Add(12 * time.Minute) } // the ages read the same at any minute the test starts
 	if !d.radarTimelineOn() {
 		t.Fatal("the fixture holds no timeline rows: the rows under the map would not be drawn")

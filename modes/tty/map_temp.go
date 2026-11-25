@@ -261,7 +261,7 @@ const tempRefresh = 20 * time.Minute
 // request at a time as the radar is (D-85). ASKED EVEN WITH THE LAYER OFF
 // while the map is open (D-99): held, so switching it on draws at once.
 func (d Dashboard) askTemp() (Dashboard, tea.Cmd) {
-	temp := d.cfg.MapTemperature
+	temp := d.mapHooks.MapTemperature
 	if temp == nil || d.mapPane.m == nil || d.modal != modalMap {
 		return d, nil
 	}
@@ -502,7 +502,7 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 // chip that says so. It is Forecast mode's alone, never saved (D-104).
 func (d Dashboard) ensureMainOverlay() Dashboard {
 	mainOn := d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) || d.layerOn(UVLayer) || d.layerOn(AirLayer) // temperature, feels-like, wind, UV or air quality (D-110, D-119, D-137, D-139)
-	if d.mapMode() == modeForecast && d.cfg.MapTemperature != nil && !mainOn {
+	if d.mapMode() == modeForecast && d.mapHooks.MapTemperature != nil && !mainOn {
 		d.mapPane.tempAuto, d.mapPane.modeChip = true, true
 		d.mapPane.gen++
 	}

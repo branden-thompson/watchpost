@@ -50,7 +50,7 @@ func feedAndSettle(t testing.TB, d Dashboard) Dashboard {
 // the map with its severity word, the note under it.
 func TestTheWindowDrawsTheFeed(t *testing.T) {
 	asked := 0
-	d := mapDash(t, Config{MapFeed: squareFeed(&asked, "Wind Warning")})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: squareFeed(&asked, "Wind Warning")}})
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	out := ttytest.StripANSI(d.View().Content)
@@ -72,7 +72,7 @@ func TestTheFeedFollowsTheData(t *testing.T) {
 	asked := 0
 	label := "Wind Warning"
 	d := mapDash(t, Config{})
-	d.cfg.MapFeed = func(ctx context.Context, ask MapAsk) MapFeed {
+	ownHooks(&d).MapFeed = func(ctx context.Context, ask MapAsk) MapFeed {
 		return squareFeed(&asked, label)(ctx, ask)
 	}
 	d, _ = pressKey(d, "g")
@@ -95,7 +95,7 @@ func TestAStaleFeedIsDropped(t *testing.T) {
 	asked := 0
 	label := "Old Warning"
 	d := mapDash(t, Config{})
-	d.cfg.MapFeed = func(ctx context.Context, ask MapAsk) MapFeed {
+	ownHooks(&d).MapFeed = func(ctx context.Context, ask MapAsk) MapFeed {
 		return squareFeed(&asked, label)(ctx, ask)
 	}
 	d, _ = pressKey(d, "g")
@@ -122,7 +122,7 @@ func TestAStaleFeedIsDropped(t *testing.T) {
 // map is asked with them, so their areas are drawn.
 func TestARecentPlacesAlertsReachTheMap(t *testing.T) {
 	var asked MapAsk
-	d := mapDash(t, Config{MapFeed: func(_ context.Context, ask MapAsk) MapFeed { asked = ask; return MapFeed{} }})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: func(_ context.Context, ask MapAsk) MapFeed { asked = ask; return MapFeed{} }}})
 	ny := snapshot.Location{Label: "New York, NY", Lat: 40.71, Lon: -74.01,
 		Alerts: []snapshot.Alert{{ID: "ny1", Event: "Heat Advisory", Severity: "Moderate"}}}
 	m, _ := d.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{ny}}})

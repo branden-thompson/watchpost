@@ -8,7 +8,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// timings is a Config.Timed that keeps what it is told.
+// timings is a timing ear, Config.FrameTimed and Hooks.Timed, that keeps
+// what it is told.
 type timings struct{ got []Timing }
 
 func (tm *timings) record(t Timing) { tm.got = append(tm.got, t) }
@@ -51,7 +52,7 @@ func openTimedMap(t *testing.T, tm *timings) Dashboard {
 	if tm != nil {
 		timed = tm.record
 	}
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", new([]string)), Timed: timed,
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", new([]string)), Timed: timed}, FrameTimed: timed,
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	d.now = ticking()
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
@@ -133,7 +134,8 @@ func TestTheMapClockSaysHowLateATickLanded(t *testing.T) {
 func TestAKeyIsTimedToItsFrame(t *testing.T) {
 	tm := &timings{}
 	d := goldenDash(t, false)
-	d.cfg.Timed = tm.record
+	d.cfg.FrameTimed = tm.record // both ears, as the app wires them from one value
+	ownHooks(&d).Timed = tm.record
 	r := NewRouter(d)
 	m, _ := r.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	r = m.(Router)
@@ -267,7 +269,8 @@ func TestAWarmReopenReachesM5(t *testing.T) {
 func TestTheFrameRateIsMeasured(t *testing.T) {
 	tm := &timings{}
 	d := goldenDash(t, false)
-	d.cfg.Timed = tm.record
+	d.cfg.FrameTimed = tm.record // both ears, as the app wires them from one value
+	ownHooks(&d).Timed = tm.record
 	r := NewRouter(d)
 	for range 250 {
 		_ = r.View()

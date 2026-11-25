@@ -144,10 +144,10 @@ func (d Dashboard) viewHeading(loc snapshot.Location, here bool) string {
 // (AX-1); else the region it is in.
 func (d Dashboard) viewName() string {
 	size := d.mapBodySize()
-	if d.cfg.MapAreaName != nil && d.mapPane.m != nil {
+	if d.mapHooks.MapAreaName != nil && d.mapPane.m != nil {
 		centre, _ := d.mapPane.m.Centre()
 		v := d.viewBox(size)
-		if name := d.cfg.MapAreaName(centre, viewWidthKm(v, centre.Lat)); name != "" {
+		if name := d.mapHooks.MapAreaName(centre, viewWidthKm(v, centre.Lat)); name != "" {
 			return name
 		}
 	}

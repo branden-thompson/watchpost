@@ -74,11 +74,11 @@ func TestWhatNoSettingFixesGoesToTheDiagnostics(t *testing.T) {
 func TestTheDiagnosticsHoldTheMapsProblems(t *testing.T) {
 	lp := &livePipelines{}
 	cfg := lp.ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)
-	if cfg.MapProblem == nil {
+	if cfg.Map.MapProblem == nil {
 		t.Fatal("the window is handed no way to tell the diagnostics")
 	}
 	for i := range 60 {
-		cfg.MapProblem("Earthquakes: " + string(rune('A'+i%26)) + " not drawn")
+		cfg.Map.MapProblem("Earthquakes: " + string(rune('A'+i%26)) + " not drawn")
 	}
 	st := lp.ttyStats()
 	if len(st.MapProblems) != 50 || !strings.Contains(st.MapProblems[49], "Earthquakes") {

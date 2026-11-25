@@ -26,7 +26,7 @@ func notedFeed(n int) func(context.Context, MapAsk) MapFeed {
 // the feed's notes in.
 func sizedMap(t *testing.T, w, h, notes int) Dashboard {
 	t.Helper()
-	d := mapDash(t, Config{MapFeed: notedFeed(notes), MapRadar: radarFeed(t, "MRMS", new([]string))})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: notedFeed(notes), MapRadar: radarFeed(t, "MRMS", new([]string))}})
 	m, _ := d.Update(tea.WindowSizeMsg{Width: w, Height: h})
 	d = m.(Dashboard)
 	d, _ = pressKey(d, "g")
@@ -130,7 +130,7 @@ func TestTheWindowNeverPassesItsCeiling(t *testing.T) {
 // cannot pass for one that drew it.
 func TestAMapNotDrawnIsReportedToTheInstrument(t *testing.T) {
 	var got []Timing
-	d := mapDash(t, Config{MapFeed: notedFeed(3), MapRadar: radarFeed(t, "MRMS", new([]string)), Timed: func(tm Timing) { got = append(got, tm) }})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: notedFeed(3), MapRadar: radarFeed(t, "MRMS", new([]string)), Timed: func(tm Timing) { got = append(got, tm) }}})
 	m, _ := d.Update(tea.WindowSizeMsg{Width: 149, Height: 28})
 	d = m.(Dashboard)
 	d, _ = pressKey(d, "g")
@@ -146,7 +146,7 @@ func TestAMapNotDrawnIsReportedToTheInstrument(t *testing.T) {
 	}
 	got = nil
 	d = sizedMap(t, 149, 38, 3)
-	d.cfg.Timed = func(tm Timing) { got = append(got, tm) }
+	ownHooks(&d).Timed = func(tm Timing) { got = append(got, tm) }
 	d = d.renderMap()
 	for _, tm := range got {
 		if tm.Event == "below-floor" {

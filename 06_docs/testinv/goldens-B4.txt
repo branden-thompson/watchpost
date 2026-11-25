@@ -1,0 +1,3 @@
+# 0.19.6 B4's re-recorded and added goldens under the two trees' testdata (A-33): each file B4 adds or re-records
+# B4.2, D-77: the model's fields built from the Config gain mapHooks, the map's hooks (TestEveryConfigFieldReachesTheModel)
+modes/tty/testdata/model-from-config.golden

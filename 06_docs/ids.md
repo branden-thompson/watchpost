@@ -1603,10 +1603,12 @@ each one's best mention (0.19.6 D-50).
 | D-76 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-37, U1-38: only watched places' alerts drew because the listener's file held map_alert_scope = 'stat… |
 | D-76 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The HUM LEAD's proposal, during round 2's dispositions: "Wouldn't a reference chart be more useful to say (wi… |
 | D-77 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d76-d77.md` | THE BED IS THE STATION'S, AND ITS FENCE IS ITS OWN SETTING |
+| D-77 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Where B4's seam values land. D-76 puts "the seam types" in B4.2: Env, Want, Step and Hooks. Env, Want and Ste… |
 | D-77 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-40: no way to reach Alaska, Hawaii or the territories; the map is bound to the selected place's regi… |
 | D-77 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The Broadcaster's own regional map (F-174; D-28, D-58) after D-76 retired its readout: it would carry no prop… |
 | D-78 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d78.md` | THE BED'S CONTROLS, AND THE EVENT THAT HAD NEVER FIRED |
 | D-78 | 0.16.0 | `0.16.0-broadcaster-ui/04-development/p5-p6-build-log.md` | the bed's controls — and the event that had never fired. shift+←/→ steps the relay, so the bare arrows stay t… |
+| D-78 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | Where B4.2's hooks pointer is held. B4.2, the hooks alone (D-77), builds and passes the tests, gcprobe and ap… |
 | D-78 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-41: the Area Alerts box kept describing the selected place after the view left it ("No information i… |
 | D-78 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Recording propagation history (D-31, D-62) when nothing fetches in the background (D-76) and nothing in 0.19.… |
 | D-79 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d79.md` | ANYTHING THAT TALKS BACK TO THE PROGRAM MUST NOT RUN ON THE UPDATE LOOP |
@@ -2421,6 +2423,7 @@ each one's best mention (0.19.6 D-50).
 | A-63 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | W5.3's details (D-201; D-25, D-27, D-61, D-79): (1) / is "Find a Place", in the Propagation mode alone, a win… |
 | A-64 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4's re-check, and B4.1 as built (design MS-1, MS-2; A-31, A-33, D-76). (1) The re-check restates five figure… |
 | A-64 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to releases built for Node.js 24… |
+| A-65 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4.2 as built: the map's hooks held once (design MS-1, MS-2; A-31, A-42, D-77, D-78). (1) modes/tty/map_hooks… |
 | A-65 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The record's remediation (batch 36; BUILD red team B-F2, B-F4, B-F5, D-F1, D-F2, D-F5, D-F11, D-F12, D-F13, C… |
 | A-66 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-ionomaps v0.1.0-rc.1 (batch 37; D-205, D-206, D-213, D-214, D-216; BUILD red team L-F2, C-5, … |
 | A-67 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The Propagation mode's words (batch 38; D-210, D-211; BUILD red team AX-1, AX-2, AX-4 to AX-13): (1) the cent… |
@@ -3025,11 +3028,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:154` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:154` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:156` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:156` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:154` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:156` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

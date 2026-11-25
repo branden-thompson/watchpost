@@ -45,7 +45,7 @@ func TestTheFeedIsAskedOnceThePanningStops(t *testing.T) {
 		asked++
 		return boxFeed(-117.6, -117.1, false)(ctx, ask)
 	}
-	d := openMap(t, Config{MapFeed: feed}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{MapFeed: feed}}, 133, 44)
 	before := asked
 	m, cmd := d.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m.(Dashboard)

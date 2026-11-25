@@ -53,7 +53,7 @@ func TestTheDetailLevelIsASettingAndReachesTheMap(t *testing.T) {
 // and the library is told at once.
 func TestTheMenusDetailRowStepsTheLevel(t *testing.T) {
 	calls := &[]string{}
-	d := mapDash(t, Config{MapLayers: alertLayers, MapFeed: boxFeed(-117.6, -117.1, false)})
+	d := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	d.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
@@ -80,7 +80,7 @@ func TestTheMenusDetailRowStepsTheLevel(t *testing.T) {
 // never drawn and never offered.
 func TestTheLevelIsAPresetAndTheSwitchesAreTheTruth(t *testing.T) {
 	calls := &[]string{}
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false)})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	d.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
 	joined := strings.Join(*calls, " ")

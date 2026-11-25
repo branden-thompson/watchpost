@@ -153,10 +153,10 @@ func mapCostLine(c MapCost, width int) []string {
 // on opening the map or Settings, on the map's new data, and on a layer's
 // switch. The frame reads the answer; it never asks.
 func (d Dashboard) refreshMapCost() Dashboard {
-	if d.cfg.MapCost == nil {
+	if d.mapHooks.MapCost == nil {
 		return d
 	}
-	d.mapCost = d.cfg.MapCost(d.mapAsk(), d.layerOn)
+	d.mapCost = d.mapHooks.MapCost(d.mapAsk(), d.layerOn)
 	return d
 }
 

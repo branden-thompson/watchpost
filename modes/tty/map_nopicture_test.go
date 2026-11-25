@@ -48,7 +48,7 @@ func screenDash(t *testing.T, desc string, ascii bool) Dashboard {
 	t.Helper()
 	var asked []string
 	var asks []MapAsk
-	cfg := Config{ASCII: ascii, MapDescription: desc, MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(&asks),
+	cfg := Config{ASCII: ascii, MapDescription: desc, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(&asks)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar"},
 			{Key: TemperatureLayer, Label: "Temperature", On: true}, {Key: WindLayer, Label: "Wind"},
 			{Key: RainLayer, Label: "Rain & snow"}, {Key: FeelsLayer, Label: "Feels like"}, {Key: WaveLayer, Label: "Waves"},

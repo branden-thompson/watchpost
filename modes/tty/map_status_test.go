@@ -77,7 +77,7 @@ func statusLine(d Dashboard) string {
 // source cannot be reached it says the picture is what the map already holds;
 // a whole picture carries no note.
 func TestTheWindowSaysWhatThePictureIs(t *testing.T) {
-	d := mapDash(t, Config{NewMap: offlineMap})
+	d := mapDash(t, Config{Map: &Hooks{NewMap: offlineMap}})
 	d, _ = pressKey(d, "g")
 	if got := statusLine(d); !strings.Contains(got, mapLoadingText) {
 		t.Errorf("a view still sharpening says %q, want the loading line", got)
@@ -86,7 +86,7 @@ func TestTheWindowSaysWhatThePictureIs(t *testing.T) {
 	if got := statusLine(d); !strings.Contains(got, mapOfflineText) {
 		t.Errorf("a view whose source cannot be reached says %q, want the offline line", got)
 	}
-	whole := mapDash(t, Config{NewMap: answeredMap})
+	whole := mapDash(t, Config{Map: &Hooks{NewMap: answeredMap}})
 	whole, _ = pressKey(whole, "g")
 	whole = settleMap(t, whole)
 	if got := strings.TrimSpace(statusLine(whole)); got != "" {
@@ -118,7 +118,7 @@ func (f flaky) RoundTrip(r *http.Request) (*http.Response, error) {
 // the picture is whole.
 func TestTheOfflineNoteClearsWhenTheSourceReturns(t *testing.T) {
 	online := &atomic.Bool{}
-	d := mapDash(t, Config{NewMap: func(size tuimaps.Size) (*tuimaps.Map, error) {
+	d := mapDash(t, Config{Map: &Hooks{NewMap: func(size tuimaps.Size) (*tuimaps.Map, error) {
 		m, err := embeddedMap(size)
 		if err != nil {
 			return nil, err
@@ -127,7 +127,7 @@ func TestTheOfflineNoteClearsWhenTheSourceReturns(t *testing.T) {
 			return nil, err
 		}
 		return m, m.Source("https://tiles.example.test/planet")
-	}})
+	}}})
 	start := d.now()
 	d, _ = pressKey(d, "g")
 	d = settleMap(t, d)

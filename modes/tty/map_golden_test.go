@@ -105,7 +105,8 @@ func TestMapWindowGoldens(t *testing.T) {
 	for _, size := range []struct{ w, h int }{{80, 24}, {120, 40}, {133, 44}} {
 		t.Run(strconv.Itoa(size.w), func(t *testing.T) {
 			d := goldenDash(t, false)
-			d.cfg.NewMap, d.cfg.MapFeed = embeddedMap, boxFeed(-117.6, -117.1, false)
+			h := ownHooks(&d)
+			h.NewMap, h.MapFeed = embeddedMap, boxFeed(-117.6, -117.1, false)
 			m, _ := d.Update(tea.WindowSizeMsg{Width: size.w, Height: size.h})
 			d = m.(Dashboard)
 			m, _ = d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})

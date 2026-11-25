@@ -363,7 +363,6 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		DebugScenarios: debugScenarios(), // and empty with it
 		SetRelayLang:   lp.setRelayLang(),
 		Resolve:        resolveHook(resolver, resolverErr),
-		FindPlace:      findHook(resolver, resolverErr), // 0.19.0 FR-1.10: the Propagation mode's finder
 		Suggest:        suggestHook(resolver),
 		Setup:          lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
 		OpenSetup:      openSetup,
@@ -387,7 +386,14 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		SeismicDays:          seismicRules(cfg.Seismic).LookbackDays, // one owner for the lookback window — the [seismic] rules
 	}
 	lp.stationConfig(&c, cfg, resolver)
-	lp.mapConfig(&c, cfg)
+	// THE MAP'S HOOKS, HELD ONCE (0.19.6 A-31, D-77): kept by value here, in
+	// the run's own long-lived state, so handing them out allocates nothing;
+	// the finder is the resolver's, beside Resolve and Suggest. One ear times
+	// both the Router's frames and the map's picture.
+	hooks := lp.mapConfig(&c, cfg)
+	hooks.FindPlace = findHook(resolver, resolverErr) // 0.19.0 FR-1.10: the Propagation mode's finder
+	lp.mapHooks = hooks
+	c.Map, c.FrameTimed = &lp.mapHooks, hooks.Timed
 	return c
 }
 
@@ -421,49 +427,53 @@ func (lp *livePipelines) stationConfig(c *tty.Config, cfg config.Config, resolve
 	}
 }
 
-// mapConfig is the map window's hooks and Settings (0.18.0).
-func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) {
-	c.NewMap = lp.newMap()                                             // the map window builds it on the first g (FR-3.2)
-	c.MapFeed = lp.mapFeed                                             // the alerts it draws (FR-4.1)
-	c.MapRadar = lp.mapRadar                                           // 0.18.0 W8: the radar it draws
-	c.MapTemperature = lp.mapTemperature                               // 0.18.0 W10: the temperature it draws
-	c.ClearMapData = lp.clearMapData                                   // 0.18.0 W3.8: Settings' Clear map data
-	c.MapDisk = lp.mapDisk()                                           // PF-4: the live map names its disk cache again after a clear
-	c.MapSources = mapSourceList()                                     // 0.18.0 W1.12, D-75: what the map contacts, for the Status window (FR-9.4)
-	c.MapRetention = mapRetention()                                    // 0.18.0 W3.8 (FR-3.9)
-	c.Maps = cfg.Maps                                                  // 0.18.0 W1.10
-	c.MapDescription = cfg.MapDescription                              // 0.18.0 W1.10
-	c.MapScale = cfg.MapScale                                          // 0.18.0 W1.11, W4.3
-	c.MapNearbyKm = cfg.MapNearbyKm                                    // 0.18.0 W1.11, W9.2
-	c.MapRadarSource = cfg.MapRadarSource                              // D-83: the lower 48's radar
-	c.MapTempSource = cfg.MapTemperatureSource                         // D-93, D-190: the map's temperature
-	c.MapRainDetail = cfg.MapRainDetail                                // D-192: the rain's density past NDFD's reach
-	c.MapUVCities = cfg.MapUVCities                                    // D-202: how many cities UV asks EPA for
-	c.MapPropRadius = cfg.MapPropagationRadiusKm                       // 0.19.0 D-100: the Propagation mode's near-vertical radius
-	c.MapPropNoise = cfg.MapPropagationNoise                           // 0.19.0 D-187: the reference circuit's noise
-	c.MapPropRefresh = cfg.MapPropagationRefresh                       // 0.19.0 D-120: how often an open mode asks again
-	c.MapPropNoReadings = cfg.MapPropagationNoReadings                 // 0.19.0 D-105: while no station readings are held
-	c.MapPropStations = cfg.MapPropagationStations                     // 0.19.0 D-214: whether GIRO is asked for stations
-	c.MapColourDepth = cfg.MapColourDepth                              // 0.19.0 D-207: the map's colour depth
-	c.MapPlaybackMs = cfg.MapPlaybackMs                                // 0.19.0 D-361: the playback speed
-	c.NoColor = os.Getenv("NO_COLOR") != ""                            // and NO_COLOR, which means none whatever is chosen
-	c.MapRadarAhead = cfg.MapRadarAheadHours                           // D-114: the radar loop's hours ahead
-	c.MapQuakeFeed = cfg.MapQuakeFeed                                  // D-122: the quakes the map draws
-	c.MapProblem = lp.problems.note                                    // D-124: the diagnostics', never the listener's
-	c.Timed = lp.timings.hook()                                        // W14's instrument: nil unless WATCHPOST_DEBUG_TIMING=1
-	c.MapFrame = newFrameLog().hook()                                  // D-198's recorder: nil unless WATCHPOST_DEBUG_MAPFRAMES names a file
-	c.MapFrameText = os.Getenv("WATCHPOST_DEBUG_MAPFRAMES_TEXT") != "" // the recorder keeps each frame's text too
-	c.MapClosed = lp.mapClosed                                         // D-162: the zone store's memory goes when the map closes
-	c.MapLayerChoice = cfg.MapLayers                                   // 0.18.0 W1.11
-	c.MapLayers = windowLayers()                                       // 0.18.0 W1.13: the registry's layers
-	c.MapCost = lp.mapCost                                             // 0.18.0 W1.14: the registry's estimate
-	c.MapDetailChoice = cfg.MapDetail                                  // UAT-1 D-65: the map's detail
-	c.MapDetailLevel = cfg.MapDetailLevel                              // UAT-1 D-67: its level
-	c.MapAreaName = mapAreaNamer(lp.idx)                               // UAT-1 D-64: the title names what is in view
-	c.PlaceNear = placeNamer(lp.idx)                                   // 0.19.0 AX-1: the Propagation mode's centre named anywhere
-	c.PropagationAck = cfg.PropagationAck                              // 0.19.0 A-9: the acknowledgement's wording last seen
-	c.PropagationUpdate = lp.propagationUpdate                         // 0.19.0 W4.1: the Propagation mode's update, its one owner (D-131)
-	c.SavePropagationAck = savePropagationAck                          // and kept once closed (D-81)
+// mapConfig is the map window's Settings (0.18.0), written into c, and its
+// hooks, returned as one keyed literal (0.19.6 A-31, D-77), all but the
+// finder, which ttyConfig adds from the resolver.
+func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) tty.Hooks {
+	c.MapSources = mapSourceList()                     // 0.18.0 W1.12, D-75: what the map contacts, for the Status window (FR-9.4)
+	c.MapRetention = mapRetention()                    // 0.18.0 W3.8 (FR-3.9)
+	c.Maps = cfg.Maps                                  // 0.18.0 W1.10
+	c.MapDescription = cfg.MapDescription              // 0.18.0 W1.10
+	c.MapScale = cfg.MapScale                          // 0.18.0 W1.11, W4.3
+	c.MapNearbyKm = cfg.MapNearbyKm                    // 0.18.0 W1.11, W9.2
+	c.MapRadarSource = cfg.MapRadarSource              // D-83: the lower 48's radar
+	c.MapTempSource = cfg.MapTemperatureSource         // D-93, D-190: the map's temperature
+	c.MapRainDetail = cfg.MapRainDetail                // D-192: the rain's density past NDFD's reach
+	c.MapUVCities = cfg.MapUVCities                    // D-202: how many cities UV asks EPA for
+	c.MapPropRadius = cfg.MapPropagationRadiusKm       // 0.19.0 D-100: the Propagation mode's near-vertical radius
+	c.MapPropNoise = cfg.MapPropagationNoise           // 0.19.0 D-187: the reference circuit's noise
+	c.MapPropRefresh = cfg.MapPropagationRefresh       // 0.19.0 D-120: how often an open mode asks again
+	c.MapPropNoReadings = cfg.MapPropagationNoReadings // 0.19.0 D-105: while no station readings are held
+	c.MapPropStations = cfg.MapPropagationStations     // 0.19.0 D-214: whether GIRO is asked for stations
+	c.MapColourDepth = cfg.MapColourDepth              // 0.19.0 D-207: the map's colour depth
+	c.MapPlaybackMs = cfg.MapPlaybackMs                // 0.19.0 D-361: the playback speed
+	c.NoColor = os.Getenv("NO_COLOR") != ""            // and NO_COLOR, which means none whatever is chosen
+	c.MapRadarAhead = cfg.MapRadarAheadHours           // D-114: the radar loop's hours ahead
+	c.MapQuakeFeed = cfg.MapQuakeFeed                  // D-122: the quakes the map draws
+	c.MapLayerChoice = cfg.MapLayers                   // 0.18.0 W1.11
+	c.MapLayers = windowLayers()                       // 0.18.0 W1.13: the registry's layers
+	c.MapDetailChoice = cfg.MapDetail                  // UAT-1 D-65: the map's detail
+	c.MapDetailLevel = cfg.MapDetailLevel              // UAT-1 D-67: its level
+	c.PropagationAck = cfg.PropagationAck              // 0.19.0 A-9: the acknowledgement's wording last seen
+	return tty.Hooks{
+		NewMap:             lp.newMap(),                                       // the map window builds it on the first g (FR-3.2)
+		MapFeed:            lp.mapFeed,                                        // the alerts it draws (FR-4.1)
+		MapRadar:           lp.mapRadar,                                       // 0.18.0 W8: the radar it draws
+		MapTemperature:     lp.mapTemperature,                                 // 0.18.0 W10: the temperature it draws
+		ClearMapData:       lp.clearMapData,                                   // 0.18.0 W3.8: Settings' Clear map data
+		MapDisk:            lp.mapDisk(),                                      // PF-4: the live map names its disk cache again after a clear
+		MapCost:            lp.mapCost,                                        // 0.18.0 W1.14: the registry's estimate
+		MapAreaName:        mapAreaNamer(lp.idx),                              // UAT-1 D-64: the title names what is in view
+		PlaceNear:          placeNamer(lp.idx),                                // 0.19.0 AX-1: the Propagation mode's centre named anywhere
+		PropagationUpdate:  lp.propagationUpdate,                              // 0.19.0 W4.1: the Propagation mode's update, its one owner (D-131)
+		SavePropagationAck: savePropagationAck,                                // and kept once closed (D-81)
+		Timed:              lp.timings.hook(),                                 // W14's instrument: nil unless WATCHPOST_DEBUG_TIMING=1
+		MapFrame:           newFrameLog().hook(),                              // D-198's recorder: nil unless WATCHPOST_DEBUG_MAPFRAMES names a file
+		MapFrameText:       os.Getenv("WATCHPOST_DEBUG_MAPFRAMES_TEXT") != "", // the recorder keeps each frame's text too
+		MapProblem:         lp.problems.note,                                  // D-124: the diagnostics', never the listener's
+		MapClosed:          lp.mapClosed,                                      // D-162: the zone store's memory goes when the map closes
+	}
 }
 
 // savePropagationAck keeps the version of the acknowledgement seen (0.19.0
@@ -842,10 +852,14 @@ type livePipelines struct {
 	problems    mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
 	propagation propagationHolder    // 0.19.0 W4.1: the one go-ionomaps object, made on the first update
 	timings     *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
-	arbiter     *arbiter             // the voice arbiter (app/arbiter.go)
-	scripts     *script.Library      // the spoken lines (domains/radio/script)
-	reader      *eventReader         // [space] in the window
-	schedule    *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump
+	// mapHooks is the map's hooks, built once at launch, before the program
+	// runs, and never written after: the Dashboard holds a pointer to it
+	// (0.19.6 A-31, D-77).
+	mapHooks tty.Hooks
+	arbiter  *arbiter        // the voice arbiter (app/arbiter.go)
+	scripts  *script.Library // the spoken lines (domains/radio/script)
+	reader   *eventReader    // [space] in the window
+	schedule *schedule       // 0.14.0 T3.2a: the Director, its executors and the pump
 
 	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit
 

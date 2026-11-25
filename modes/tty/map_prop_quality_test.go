@@ -73,7 +73,7 @@ func TestThePropagationAgeMovesWithTheClock(t *testing.T) {
 	clock := at.Add(20 * time.Second)
 	s := &seam{answer: PropagationResult{Snapshot: propSnapAt(at, 18)}}
 	var asked []string // radar configured, as the app's is: the block under the map is drawn only with its timeline
-	d := openMap(t, Config{PropagationUpdate: s.update, PropagationAck: propAckVersion, MapRadar: radarFeed(t, "MRMS", &asked)}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{PropagationUpdate: s.update, MapRadar: radarFeed(t, "MRMS", &asked)}, PropagationAck: propAckVersion}, 133, 44)
 	d.now = func() time.Time { return clock }
 	d, cmd := keyCmd(t, d, "P")
 	d = runProp(t, d, cmd)
@@ -109,7 +109,7 @@ func between(s, from, to string) string {
 func TestAWeatherTintFromPropagationAsksOnce(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
-	d.cfg.PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
+	ownHooks(&d).PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
 	d.cfg.PropagationAck = propAckVersion
 	d = pressMap(t, d, "P")
 	before := len(asks)

@@ -112,7 +112,7 @@ func openTempMapWith(t *testing.T, radarOn, tempOn bool, asks *[]MapAsk) Dashboa
 func openFieldsMap(t *testing.T, radarOn, tempOn, windOn bool, asks *[]MapAsk) Dashboard {
 	t.Helper()
 	var asked []string
-	cfg := Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(asks),
+	cfg := Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(asks)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: radarOn},
 			{Key: TemperatureLayer, Label: "Temperature", On: tempOn}, {Key: WindLayer, Label: "Wind", On: windOn},
 			{Key: RainLayer, Label: "Rain & snow"}, {Key: FeelsLayer, Label: "Feels like"}, {Key: WaveLayer, Label: "Waves"},
@@ -369,7 +369,7 @@ func switchTemp(t *testing.T, d Dashboard) Dashboard {
 func TestMovingThroughTheMenuAsksNothing(t *testing.T) {
 	var asks []MapAsk
 	var radarAsks []string
-	cfg := Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &radarAsks), MapTemperature: tempAnswer(&asks),
+	cfg := Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &radarAsks), MapTemperature: tempAnswer(&asks)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true},
 			{Key: TemperatureLayer, Label: "Temperature", On: true}, {Key: UVLayer, Label: "UV"}, {Key: AirLayer, Label: "Air quality"}}}
 	d := mapDash(t, cfg)
@@ -826,8 +826,8 @@ func TestTheQuotaNoticeSitsLowerRightAndGivesWay(t *testing.T) {
 	if row != size.Rows-3 || col+len([]rune(text))+2 != insetCols+size.Cols {
 		t.Errorf("the notice is at row %d, column %d; want its words on row %d (its box above the credit row), ending at the right edge", row, col, size.Rows-3)
 	}
-	withRadar := d.cfg.MapRadar
-	d.cfg.MapRadar = nil // no radar timeline: the controls box shows
+	withRadar := d.mapHooks.MapRadar
+	ownHooks(&d).MapRadar = nil // no radar timeline: the controls box shows
 	box, top, _, ok := d.controlsPlace(size)
 	if !ok {
 		t.Fatal("no controls box to give way to")
@@ -835,7 +835,7 @@ func TestTheQuotaNoticeSitsLowerRightAndGivesWay(t *testing.T) {
 	if row, _ = rowOf(d.withQuotaNotice(blank, size)); row != top-2 {
 		t.Errorf("with the controls box (rows %d-%d) the notice's words are on row %d; want %d, directly above it", top, top+len(box)-1, row, top-2)
 	}
-	d.cfg.MapRadar = withRadar
+	ownHooks(&d).MapRadar = withRadar
 	alaska, _ := geo.Neighbour(geo.RegionContiguous, geo.North) // a region with one to its south
 	d.mapPane.region, d.mapPane.edge, d.mapPane.edgeShown = alaska, geo.South, true
 	chip, edgeRow, edgeCol, ok := d.edgeChipPlace(size)

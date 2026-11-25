@@ -26,8 +26,10 @@ type area struct {
 var modelFiles = []string{"modes/tty/dashboard.go", "modes/tty/dashboard_choices.go"}
 
 // areas are M3's reach figures (JN P2-3, MS-9, CK), keyed as 0.19.6 D-44 rules.
+// The map's hooks left Config for Hooks in B4.2 (0.19.6 D-77), so Hooks is
+// the map's carrier: a hook read is counted as it was when it was Config's.
 var areas = []area{
-	{name: "map reach (symbols of the model's files)", readers: []string{"modes/tty/map_"}, model: modelFiles},
+	{name: "map reach (symbols of the model's files)", readers: []string{"modes/tty/map_"}, model: modelFiles, carriers: []string{module + "/modes/tty.Hooks"}},
 	{name: "Settings reach (symbols of the model's files)", readers: []string{"modes/tty/setup"}, model: modelFiles},
 	{name: "console reach (symbols of dashboard.go)", readers: []string{"modes/tty/console/broadcaster"}, model: []string{"modes/tty/dashboard.go"}},
 }

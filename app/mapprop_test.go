@@ -89,14 +89,14 @@ func TestOneLibraryObjectPerProcess(t *testing.T) {
 	lp := &livePipelines{}
 	var c tty.Config
 	lp.mapConfig(&c, config.Default())
-	lp.mapConfig(&c, config.Default())
+	hooks := lp.mapConfig(&c, config.Default())
 	if made != 0 {
 		t.Fatalf("building the window's configuration made %d objects; none until an update is asked", made)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // nothing is fetched: the updates end at once
 	for range 3 {
-		<-c.PropagationUpdate(ctx, ionomaps.UpdateOptions{})
+		<-hooks.PropagationUpdate(ctx, ionomaps.UpdateOptions{})
 	}
 	if made != 1 {
 		t.Errorf("three updates made %d objects; want one", made)
@@ -158,8 +158,8 @@ func TestTheWindowsOptionsReachTheLibrary(t *testing.T) {
 	t.Cleanup(func() { newPropagationService = was })
 	lp := &livePipelines{}
 	var c tty.Config
-	lp.mapConfig(&c, config.Default())
-	r := <-c.PropagationUpdate(context.Background(), ionomaps.UpdateOptions{Noise: ionomaps.NoiseCity, CorrectNoReadings: true})
+	hooks := lp.mapConfig(&c, config.Default())
+	r := <-hooks.PropagationUpdate(context.Background(), ionomaps.UpdateOptions{Noise: ionomaps.NoiseCity, CorrectNoReadings: true})
 	if r.Err != nil || len(r.Snapshot.Now.FoF2.Values) == 0 || r.Snapshot.Noise != ionomaps.NoiseCity {
 		t.Errorf("asked with city noise: %v, %d cells, noise %v", r.Err, len(r.Snapshot.Now.FoF2.Values), r.Snapshot.Noise)
 	}

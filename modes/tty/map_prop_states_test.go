@@ -133,7 +133,7 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 		}
 		var noted []string // the diagnostics name the denial once, as it begins
 		d := goldenDash(t, false)
-		d.cfg.MapProblem = func(p string) { noted = append(noted, p) }
+		ownHooks(&d).MapProblem = func(p string) { noted = append(noted, p) }
 		for _, snap := range []ionomaps.Snapshot{s, later} {
 			m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
 			d = m
@@ -181,7 +181,7 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 func TestEveryRefusedReadingIsNoted(t *testing.T) {
 	var noted []string
 	d := goldenDash(t, false)
-	d.cfg.MapProblem = func(p string) { noted = append(noted, p) }
+	ownHooks(&d).MapProblem = func(p string) { noted = append(noted, p) }
 	apply := func(snap ionomaps.Snapshot) {
 		t.Helper()
 		m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})

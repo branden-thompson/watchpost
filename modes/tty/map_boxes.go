@@ -582,7 +582,7 @@ func (d Dashboard) overlayRows() []overlayRow {
 			out = append(out, overlayRow{kind: menuRadio, key: r.key, label: r.label, overlay: true})
 		}
 	}
-	if d.cfg.PropagationUpdate != nil {
+	if d.mapHooks.PropagationUpdate != nil {
 		out = append(out, overlayRow{kind: menuRadio, key: propagationRowKey, label: propagationRowLabel, overlay: true}) // D-158: the mode as a tint, the OVERLAYS group's fourth (D-161, D-162)
 	}
 	if d.mapMode() == modePropagation { // D-159: the tints and the map's detail; the weather's groups wait, their ticks kept
@@ -1006,9 +1006,9 @@ func (d Dashboard) mapTitleAt(size tuimaps.Size) string {
 		return d.viewName() // D-78: away from the place, never its name
 	}
 	var name string
-	if d.cfg.MapAreaName != nil {
+	if d.mapHooks.MapAreaName != nil {
 		centre, _ := m.Centre()
-		name = d.cfg.MapAreaName(centre, viewWidthKm(v, centre.Lat))
+		name = d.mapHooks.MapAreaName(centre, viewWidthKm(v, centre.Lat))
 	}
 	if name == "" || name == loc.Label {
 		return loc.Label

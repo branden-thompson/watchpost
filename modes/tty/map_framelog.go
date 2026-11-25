@@ -63,7 +63,7 @@ var placeWords = regexp.MustCompile(`[A-Z][A-Za-z'.-]{2,}(?: [A-Z][A-Za-z'.-]+)*
 
 // recordFrame tells the recorder the frame just drawn; nothing without one.
 func (d Dashboard) recordFrame(status tuimaps.Status) {
-	if d.cfg.MapFrame == nil || d.mapPane.m == nil {
+	if d.mapHooks.MapFrame == nil || d.mapPane.m == nil {
 		return
 	}
 	st := d.mapPane.m.Loop()
@@ -78,7 +78,7 @@ func (d Dashboard) recordFrame(status tuimaps.Status) {
 		places = append(places, w)
 	}
 	sort.Strings(places)
-	d.cfg.MapFrame(MapFrame{At: d.now(), LoopIndex: st.Index, LoopCount: st.Count, LoopAt: st.At, Playing: st.Playing,
+	d.mapHooks.MapFrame(MapFrame{At: d.now(), LoopIndex: st.Index, LoopCount: st.Count, LoopAt: st.At, Playing: st.Playing,
 		Lon: c.Lon, Lat: c.Lat, Zoom: z, RadarCells: d.radarCells(), Cells: d.presetCells(), Given: d.tempGivenByLayer(), Text: d.frameText(plain), Spans: d.givenSpans(), Chips: d.frameChips(), Notes: d.frameNotes(), Places: places, Status: strconv.Itoa(int(status)), PendingAfter: d.mapPane.pending, Radar: d.radarGivenIDs(), RadarFrames: d.radarFrameCounts()})
 }
 
@@ -121,7 +121,7 @@ func (d Dashboard) tempGivenByLayer() map[string]int {
 // givenSpans are the temperature overlays handed in and their spans, while
 // the recorder keeps text.
 func (d Dashboard) givenSpans() map[string]string {
-	if !d.cfg.MapFrameText {
+	if !d.mapHooks.MapFrameText {
 		return nil
 	}
 	out := map[string]string{}
@@ -134,14 +134,14 @@ func (d Dashboard) givenSpans() map[string]string {
 // frameChips and frameNotes are the temperature feed's, while the recorder
 // keeps text.
 func (d Dashboard) frameChips() map[string][]string {
-	if !d.cfg.MapFrameText {
+	if !d.mapHooks.MapFrameText {
 		return nil
 	}
 	return d.mapPane.temp.Chips
 }
 
 func (d Dashboard) frameNotes() []string {
-	if !d.cfg.MapFrameText {
+	if !d.mapHooks.MapFrameText {
 		return nil
 	}
 	return append(append([]string(nil), d.mapPane.temp.Notes...), d.mapPane.temp.Problems...)
@@ -149,7 +149,7 @@ func (d Dashboard) frameNotes() []string {
 
 // frameText is the frame's plain text while the recorder is asked for it.
 func (d Dashboard) frameText(plain string) string {
-	if !d.cfg.MapFrameText {
+	if !d.mapHooks.MapFrameText {
 		return ""
 	}
 	return plain

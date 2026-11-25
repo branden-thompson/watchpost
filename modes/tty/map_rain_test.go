@@ -23,7 +23,7 @@ func openRainMap(t *testing.T, radarOn bool) Dashboard {
 	t.Helper()
 	var asks []MapAsk
 	var asked []string
-	cfg := Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(&asks),
+	cfg := Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(&asks)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: radarOn},
 			{Key: RainLayer, Label: "Rain & snow", On: true}, {Key: TemperatureLayer, Label: "Temperature"}, {Key: FeelsLayer, Label: "Feels like"}, {Key: WindLayer, Label: "Wind"}, {Key: UVLayer, Label: "UV"}, {Key: AirLayer, Label: "Air quality"}}}
 	d := mapDash(t, cfg)
@@ -145,11 +145,11 @@ func TestTheBadgeSaysRainWhenItIsAlone(t *testing.T) {
 // are Open-Meteo's are named on the badge and the loop's row, as HRRR's are.
 func TestTheHoursAheadNameOpenMeteo(t *testing.T) {
 	feed := aheadFeed(t)
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: func(ctx context.Context, ask MapAsk) MapRadar {
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: func(ctx context.Context, ask MapAsk) MapRadar {
 		out := feed(ctx, ask)
 		out.Ahead = "Open-Meteo"
 		return out
-	}, MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
+	}}, MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = shiftKey(settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd), tea.KeyRight)

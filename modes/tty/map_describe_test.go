@@ -45,7 +45,7 @@ func describedDash(t *testing.T, feed func(context.Context, MapAsk) MapFeed) str
 // describedIn is describedDash in a unit system.
 func describedIn(t *testing.T, feed func(context.Context, MapAsk) MapFeed, units render.Units) string {
 	t.Helper()
-	d := mapDash(t, Config{ASCII: true, MapFeed: feed})
+	d := mapDash(t, Config{ASCII: true, Map: &Hooks{MapFeed: feed}})
 	d.units = units
 	s := placedSnap()
 	s.Locations[0].TZ = "America/Los_Angeles"
@@ -142,7 +142,7 @@ func TestTheDescriptionFollowsTheUnits(t *testing.T) {
 // TestAUnitChangeRedrawsTheDescription is D-45's units row (W2.3): switching
 // units with the map open redraws it, so the description's distances follow.
 func TestAUnitChangeRedrawsTheDescription(t *testing.T) {
-	d := mapDash(t, Config{ASCII: true, MapFeed: boxFeed(-117.30, -117.0, false)})
+	d := mapDash(t, Config{ASCII: true, Map: &Hooks{MapFeed: boxFeed(-117.30, -117.0, false)}})
 	d.units = render.UnitF
 	s := placedSnap()
 	s.Locations[0].Alerts = []snapshot.Alert{{ID: "w1", Event: "Wind Warning", Severity: "Severe", Expires: windExpires}}

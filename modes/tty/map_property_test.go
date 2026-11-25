@@ -74,7 +74,7 @@ func TestThePrintedMapIsAFreshRender(t *testing.T) {
 	now := time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC)
 	feed := boxFeed(-117.6, -117.1, false)
 	fresh := func() Dashboard { // a window of its own per run: runs share no map
-		d := mapDash(t, Config{MapFeed: feed})
+		d := mapDash(t, Config{Map: &Hooks{MapFeed: feed}})
 		d.now = func() time.Time { return now }
 		d, _ = pressKey(d, "g")
 		return feedAndSettle(t, d)

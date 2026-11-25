@@ -56,7 +56,7 @@ func TestTheQuakesAreASetting(t *testing.T) {
 // diagnostics are told once a layer, by its name.
 func TestRefusalsGoToTheDiagnostics(t *testing.T) {
 	var problems []string
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) },
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) }},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: "quake", Label: "Earthquakes", On: true}}})
 	d, _ = pressKey(d, "g")
 	var bad []tuimaps.Overlay
@@ -82,7 +82,7 @@ func TestTheAppsProblemsReachTheDiagnostics(t *testing.T) {
 	var asks []MapAsk
 	var problems []string
 	d := openTempMap(t, true, &asks)
-	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
+	ownHooks(&d).MapProblem = func(p string) { problems = append(problems, p) }
 	m, _ := d.applyMapTemp(mapTempMsg{temp: MapTemperature{Problems: []string{"Temperature: Open-Meteo did not answer"}}, anchor: d.tempAnchor()})
 	d = m
 	m, _ = d.applyMapRadar(mapRadarMsg{radar: MapRadar{Problems: []string{"Radar ahead: HRRR did not answer"}}, region: d.mapPane.region.Name})
@@ -105,7 +105,7 @@ func TestTheAppsProblemsReachTheDiagnostics(t *testing.T) {
 // many alerts share them, and again only after they went and came back.
 func TestAnUndrawnAreaIsTheDiagnosticsAlone(t *testing.T) {
 	var problems []string
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) },
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) }},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}}})
 	d, _ = pressKey(d, "g")
 	gale := "Gale Warning: Clarence Strait could not be drawn (0 of 1 zones shown). Guajome Park, CA does not lie in it."
@@ -131,13 +131,13 @@ func TestAnUndrawnAreaIsTheDiagnosticsAlone(t *testing.T) {
 // handed keeps them while the alert areas are on, and drops them with the
 // areas' other words when they are off.
 func TestTheUndrawnWordsFollowTheAlertLayer(t *testing.T) {
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false),
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}}})
 	feed := MapFeed{Undrawn: []string{"Gale Warning: Clarence Strait could not be drawn"}}
 	if got := d.feedForLayers(feed).Undrawn; len(got) != 1 {
 		t.Errorf("with the alert areas on, the undrawn words are %q", got)
 	}
-	off := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false),
+	off := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: false}}})
 	if got := off.feedForLayers(feed).Undrawn; len(got) != 0 {
 		t.Errorf("with the alert areas off, the undrawn words are %q", got)
@@ -162,7 +162,7 @@ func TestALibraryWarningReachesTheDiagnostics(t *testing.T) {
 // diagnostics.
 func TestAFramesWarningsReachTheDiagnostics(t *testing.T) {
 	var problems []string
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) },
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) }},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: "quake", Label: "Earthquakes", On: true}}})
 	d, _ = pressKey(d, "g")
 	point := func(id string) tuimaps.Overlay {
@@ -184,7 +184,7 @@ func TestAFramesWarningsReachTheDiagnostics(t *testing.T) {
 // diagnostics.
 func TestARefusedAlertUpdateKeepsTheAreaDrawn(t *testing.T) {
 	var problems []string
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) },
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) }},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}}})
 	d, _ = pressKey(d, "g")
 	d = d.setFeed(boxFeed(-117.6, -117.1, false)(context.Background(), MapAsk{}))
@@ -205,7 +205,7 @@ func TestARefusedAlertUpdateKeepsTheAreaDrawn(t *testing.T) {
 // never the listener.
 func TestABoundTheLibraryRefusesGoesToTheDiagnostics(t *testing.T) {
 	var problems []string
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) }})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) }}})
 	d, _ = pressKey(d, "g")
 	d.mapPane.region.S, d.mapPane.region.N = d.mapPane.region.N, d.mapPane.region.S // south above north: no box
 	problems = nil

@@ -16,7 +16,7 @@ import (
 // the next open builds a new map.
 func TestAMapClosedAWhileIsLetGo(t *testing.T) {
 	builds := 0
-	d := mapDash(t, Config{NewMap: func(s tuimaps.Size) (*tuimaps.Map, error) { builds++; return embeddedMap(s) }})
+	d := mapDash(t, Config{Map: &Hooks{NewMap: func(s tuimaps.Size) (*tuimaps.Map, error) { builds++; return embeddedMap(s) }}})
 	d.mapReleaseAfter = time.Millisecond
 	d, _ = pressKey(d, "g")
 	if d.mapPane.m == nil || builds != 1 {
@@ -52,7 +52,7 @@ func TestAMapClosedAWhileIsLetGo(t *testing.T) {
 // release lets it go.
 func TestAMapReopenedInTimeIsKept(t *testing.T) {
 	builds := 0
-	d := mapDash(t, Config{NewMap: func(s tuimaps.Size) (*tuimaps.Map, error) { builds++; return embeddedMap(s) }})
+	d := mapDash(t, Config{Map: &Hooks{NewMap: func(s tuimaps.Size) (*tuimaps.Map, error) { builds++; return embeddedMap(s) }}})
 	d.mapReleaseAfter = time.Millisecond
 	d, _ = pressKey(d, "g")
 	d, cmd := pressKey(d, "esc")

@@ -188,7 +188,7 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 		// location sits at 0,0, where the map is open sea and draws nothing that
 		// could show a key missing; Oceanside draws a coast, two cities, a scale
 		// and the credit.
-		d.cfg.NewMap = embeddedMap
+		ownHooks(&d).NewMap = embeddedMap
 		next, _ := d.Update(SnapshotMsg{Snap: placedSnap()})
 		d = next.(Dashboard).toggleMap()
 		t.Cleanup(d.closeMap)

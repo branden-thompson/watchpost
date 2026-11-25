@@ -93,6 +93,7 @@ type DebugScenario
 type FeedPart
 type ForecastStep
 type HistoryRetention
+type Hooks
 type MapAsk
 type MapCleared
 type MapCost

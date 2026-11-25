@@ -17,7 +17,7 @@ import (
 // the feed, and delivers nothing.
 func unlandedDash(t *testing.T, feed func(context.Context, MapAsk) MapFeed) Dashboard {
 	t.Helper()
-	d := mapDash(t, Config{ASCII: true, MapFeed: feed})
+	d := mapDash(t, Config{ASCII: true, Map: &Hooks{MapFeed: feed}})
 	m, _ := d.Update(SnapshotMsg{Snap: placedSnap()})
 	d = m.(Dashboard)
 	d, _ = pressKey(d, "g")

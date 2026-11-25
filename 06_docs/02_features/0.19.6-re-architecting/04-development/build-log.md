@@ -1382,3 +1382,37 @@ is unchanged: a guard only.
 
 **The changed-line table.** No test line changed; two test files are new
 (`map_split_sites_test.go`, nine tests; `map_menu_guard_test.go`, two), and no production line.
+
+## Before B4: the map's hooks held once (A-65; D-77, D-78)
+
+**What B4.2 holds (D-77).** The hooks alone. `Env`, `Want`, `Step` and `Window` have no caller until
+the map's methods take an `Env` and return a `Want`, so they land in B4.3 with `mapEnv`,
+`applyMapWant` and the round-trip test, their 2a names put to the HUM LEAD first.
+
+**The hooks.** The 17 hooks that were `Config` fields are one `Hooks` (`map_hooks.go`), carried by
+`Config.Map` and taken once by `NewDashboard`. `app`'s `mapConfig` returns them as one keyed literal and
+`ttyConfig` adds the finder, keeps the value on `livePipelines` and hands out its address. The
+Router's ear is `Config.FrameTimed`, the map's `Hooks.Timed`, both from one value.
+
+**Where the pointer is held (D-78).** On `Dashboard`, the field raises the map's reach to 73 against
+72, the one new symbol of the model's files a `map_` file reads. Held in `mapModel`, declared now with
+that field alone and embedded, the reach is 72 and `gcprobe` is clean: no lost inlining, no new escape.
+B4.3 moves the map's other fields and its methods onto it.
+
+**Three things the instruments found.**
+- `gcprobe` failed the first build on two new escapes: an empty `&Hooks{}` in `NewDashboard`, now the
+  shared `noHooks`, and `app`'s literal, now held by value on `livePipelines`.
+- `make graph` failed it on four new crossings, names `mapConfig` gained (a parameter, a local and two
+  imports), and on a fifth after the first fix; `mapConfig` now gains none, 283 against 283.
+- The guard failed on four test lines that the first rewrite left as `d.mapHooks.NewMap, ownHooks(&d).MapFeed = …`,
+  each a write through the pointer every copy shares; each now writes on one copy.
+
+**The changed-line table.**
+
+| Kind | Lines | What |
+|---|---|---|
+| production, `modes/tty` | 14 files, `map_hooks.go` and `map_model.go` new | `d.cfg.<hook>` reads become `d.mapHooks.<hook>` (36 in `map_*.go`, 2 in `dashboard.go`, 12 in `timing.go` with the Router's 4 renamed to `FrameTimed`: 50, where D-77's question said 21, the count of file-and-field pairs); `Config` loses the 17 fields and gains `Map` and `FrameTimed` |
+| production, `app` | `dashboard.go` | `mapConfig`'s hooks one literal, `ttyConfig`'s wiring; most of the count is `gofmt` realigning the Settings lines' comments |
+| tests, `modes/tty` and `app` | 59 files, +381 −180 | 139 literal elements moved into `Map: &Hooks{…}`; 38 writes to `ownHooks`, 4 to `configHooks`; `app`'s reads of a built `Config` through `.Map`; two timing tests set both ears; the guard and its helpers new (D-14 rows) |
+| instruments | `tools/graph/figures.go`, `exported-tty.txt`, `record_test.go`, m772 | `Hooks` the map's carrier; `Hooks` listed; A-20's claim on `map_model.go`; m772's anchor, old `d.cfg.MapAreaName(centre, viewWidthKm(v, centre.Lat))`, new `d.mapHooks.MapAreaName(centre, viewWidthKm(v, centre.Lat))` |
+| goldens | `model-from-config.golden` (+2), `union-decls.txt` | `mapHooks` among the fields built from the `Config`; 41 declarations edited, `Hooks`, `mapModel` and `noHooks` new |

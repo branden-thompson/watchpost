@@ -28,7 +28,7 @@ func TestWithoutThePictureTheStatusAndTimelineAreText(t *testing.T) {
 	if got := bodyText(m); !strings.Contains(got, "PLAYING") {
 		t.Errorf("play is not said at once without the picture:\n%s", got)
 	}
-	loading := mapDash(t, Config{NewMap: offlineMap, MapDescription: "instead"})
+	loading := mapDash(t, Config{Map: &Hooks{NewMap: offlineMap}, MapDescription: "instead"})
 	loading, _ = pressKey(loading, "g")
 	if got := bodyText(loading); !strings.Contains(got, mapLoadingText) {
 		t.Errorf("a view still loading is not said without the picture:\n%s", got)

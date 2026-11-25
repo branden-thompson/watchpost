@@ -30,7 +30,7 @@ func feedAsks(t *testing.T, cmd tea.Cmd) []mapFeedMsg {
 // snapshots nothing would ever be drawn (W14's C-1).
 func TestAFeedAskIsOneAtATime(t *testing.T) {
 	asked := 0
-	d := mapDash(t, Config{MapFeed: squareFeed(&asked, "Wind Warning")})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: squareFeed(&asked, "Wind Warning")}})
 	d, open := pressKey(d, "g")
 	for range 3 { // three publishes while the opening's ask is in flight
 		m, cmd := d.Update(SnapshotMsg{Snap: placedSnap()})
@@ -76,7 +76,7 @@ func TestAStaleFeedAskIsCancelled(t *testing.T) {
 		}
 		return MapFeed{Notes: []string{"fresh"}}
 	}
-	d := mapDash(t, Config{MapFeed: feed})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: feed}})
 	d, open := pressKey(d, "g")
 	stale := make(chan tea.Msg, 4)
 	go runEach(open, stale) // the opening's commands, each on its own goroutine as Bubble Tea runs them
@@ -134,7 +134,7 @@ func runEach(cmd tea.Cmd, out chan<- tea.Msg) {
 // once.
 func TestAMoveAsksTheFeedOnceWhenItSettles(t *testing.T) {
 	asked := 0
-	d := mapDash(t, Config{MapFeed: squareFeed(&asked, "Wind Warning")})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: squareFeed(&asked, "Wind Warning")}})
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	for _, key := range []tea.KeyPressMsg{{Code: tea.KeyRight}, {Code: '+', Text: "+"}, {Code: '1', Text: "1"}} {
@@ -164,7 +164,7 @@ func TestAnAnswerForAViewLeftIsNotDrawn(t *testing.T) {
 		calls++
 		return MapFeed{Notes: []string{fmt.Sprint("answer ", calls)}}
 	}
-	d := mapDash(t, Config{MapFeed: feed})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: feed}})
 	d, open := pressKey(d, "g")
 	answers := feedAsks(t, open) // asked for the view as it opened
 	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyRight})
@@ -190,7 +190,7 @@ func TestAnAnswerForAViewLeftIsNotDrawn(t *testing.T) {
 // viewGen.
 func TestAnAnswerIsDrawnWhenOnlyTheMapsSizeChanged(t *testing.T) {
 	asked := 0
-	d := mapDash(t, Config{MapFeed: squareFeed(&asked, "Wind Warning")})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: squareFeed(&asked, "Wind Warning")}})
 	d, open := pressKey(d, "g")
 	answers := feedAsks(t, open)
 	before := d.mapAsk().View
@@ -230,7 +230,7 @@ func TestTheAskSaysWhatIsSwitchedOff(t *testing.T) {
 // window opened over it (D-106's stack), which returns to it.
 func TestClosingTheMapTellsTheApp(t *testing.T) {
 	closed := 0
-	d := mapDash(t, Config{MapClosed: func() { closed++ }})
+	d := mapDash(t, Config{Map: &Hooks{MapClosed: func() { closed++ }}})
 	d, _ = pressKey(d, "g")
 	d, _ = pressKey(d, "?") // Help over the map: the map is under it, not closed
 	if closed != 0 {

@@ -192,6 +192,7 @@ var airBoundary = map[string]airMember{
 	"MapProblem":         {airNone, "0.18.0 D-124: keeps the map's problems for the diagnostic dump; it reaches no audio"},
 	"MapClosed":          {airNone, "0.18.0 D-162: lets the zone store's memory go when the map closes; it reaches no audio"},
 	"Timed":              {airNone, "0.18.0 W14 (D-154): the timing instrument's intervals, kept for /debug/counters and nil unless WATCHPOST_DEBUG_TIMING=1; it reaches no audio"},
+	"FrameTimed":         {airNone, "0.19.6 D-77: the same instrument's ear for the Router's frames, a key's time to its frame and the frame rate, from the same value as Timed; it reaches no audio"},
 	"MapFrame":           {airNone, "0.18.0 D-198: the map's frame recorder, appending drawn frames to a debug file; nil unless WATCHPOST_DEBUG_MAPFRAMES names one; it reaches no audio"},
 	"ClearMapData":       {airNone, "0.18.0: empties the map's tile files and zone outlines; it reaches no audio"},
 	"MapDisk":            {airNone, "PF-4: names the live map's tile directory again after a clear; it reaches no audio"},
@@ -226,6 +227,20 @@ func TestEverySurfaceSeamIsClassifiedForTheAir(t *testing.T) {
 			t.Errorf("tty.Config.%s is a seam into this package and nothing says what it can do to "+
 				"the air: classify it in airBoundary, with a reason.  A seam nobody classified is how "+
 				"nineteen paths came to have one guard between them (D-91)", f.Name)
+		}
+	}
+
+	// And every FUNC field of tty.Hooks, the map's, which Config.Map carries
+	// (0.19.6 D-77).
+	hooks := reflect.TypeOf(tty.Hooks{})
+	for i := range hooks.NumField() {
+		f := hooks.Field(i)
+		if f.Type.Kind() != reflect.Func {
+			continue
+		}
+		seen[f.Name] = true
+		if _, ok := airBoundary[f.Name]; !ok {
+			t.Errorf("tty.Hooks.%s is a seam into this package and has no airBoundary row", f.Name)
 		}
 	}
 

@@ -51,7 +51,7 @@ func boxText(d Dashboard) string {
 }
 
 func TestTheBoxListsTheAlertsInViewMostSevereFirst(t *testing.T) {
-	d := openMap(t, Config{MapFeed: viewFeed}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{MapFeed: viewFeed}}, 133, 44)
 	text := boxText(d)
 	for _, want := range []string{"Oceanside, CA - Currently:", "Red Flag Warning in effect for Imperial County", "Gale Warning in effect for Santa Monica Basin"} {
 		if !strings.Contains(text, want) {
@@ -73,7 +73,7 @@ func TestTheBoxFollowsTheViewAwayFromThePlace(t *testing.T) {
 		}
 		return "Southern California"
 	}
-	d := openMap(t, Config{MapFeed: viewFeed, MapAreaName: namer}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{MapFeed: viewFeed, MapAreaName: namer}}, 133, 44)
 	d = pressCode(d, '1', "1")
 	for range 30 { // east, until Oceanside is behind
 		m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyRight})
@@ -120,7 +120,7 @@ func TestAFullBoxSaysHowManyMore(t *testing.T) {
 		}
 		return f
 	}
-	d := openMap(t, Config{MapFeed: feed}, 133, 44)
+	d := openMap(t, Config{Map: &Hooks{MapFeed: feed}}, 133, 44)
 	text := boxText(d)
 	if !strings.Contains(text, "more in view") {
 		t.Errorf("thirty alerts fill the box and it does not say how many more:\n%s", text)

@@ -99,7 +99,7 @@ func TestStatusShowsTheLiveAndTypicalOffset(t *testing.T) {
 	var noted []string
 	s := &seam{answer: PropagationResult{Snapshot: offsetSnap(ionomaps.Offset{LiveMHz: -0.62, TypicalMHz: -0.51, SpreadMHz: 0.23, Measured: true})}}
 	d := propDash(t, s, true)
-	d.cfg.MapProblem = func(p string) { noted = append(noted, p) }
+	ownHooks(&d).MapProblem = func(p string) { noted = append(noted, p) }
 	d.cfg.MapSources = []MapSource{{Name: "GIRO", Host: "lgdc.uml.edu", Badge: "GIRO"}}
 	d, cmd := keyCmd(t, d, "P")
 	d = runProp(t, d, cmd)

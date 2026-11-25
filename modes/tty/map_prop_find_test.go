@@ -63,7 +63,7 @@ func TestAFoundPlaceIsAnsweredAndNotKept(t *testing.T) {
 	commits := 0
 	d.cfg.Commit = func(_, _ []snapshot.LocationRef) error { commits++; return nil }
 	asked := ""
-	d.cfg.FindPlace = func(_ context.Context, q string) (snapshot.LocationRef, error) { asked = q; return reykjavik, nil }
+	ownHooks(&d).FindPlace = func(_ context.Context, q string) (snapshot.LocationRef, error) { asked = q; return reykjavik, nil }
 	recent := len(d.recentLocations())
 	before, _ := d.mapPane.m.Centre()
 	origin := d.mapPane.propOrigin.at
@@ -104,7 +104,7 @@ func TestAFoundPlaceIsAnsweredAndNotKept(t *testing.T) {
 // arrives late is dropped; an empty Enter takes the mark off.
 func TestFocusReturnsAfterAFind(t *testing.T) {
 	d := chartDash(t)
-	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) {
+	ownHooks(&d).FindPlace = func(context.Context, string) (snapshot.LocationRef, error) {
 		return snapshot.LocationRef{}, errors.New("no match in the offline index - try a city, coordinates or a grid locator")
 	}
 	d = typeFind(t, d, "nowhere at all")
@@ -117,7 +117,7 @@ func TestFocusReturnsAfterAFind(t *testing.T) {
 	if m, _ := d.Update(mapKeyMsg(t, "esc")); m.(Dashboard).modal != modalMap {
 		t.Errorf("Esc left window %v; the map", m.(Dashboard).modal)
 	}
-	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	ownHooks(&d).FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	d = typeFind(t, d, "Reykjavik")
 	if d.modal != modalMap {
 		t.Errorf("after a place was found the focus is on window %v; the map", d.modal)
@@ -141,7 +141,7 @@ func TestFocusReturnsAfterAFind(t *testing.T) {
 // a target row (D-204).
 func TestTheBroadcasterAnswersAFoundPlaceAsItsTarget(t *testing.T) {
 	d := stationDash(t)
-	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	ownHooks(&d).FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	d = typeFind(t, d, "Reykjavik")
 	if words := workCentre(t, d).propCentreWords(); !strings.Contains(words, "64.") {
 		t.Errorf("the centre's answer is not for the place found: %q", words)
@@ -168,8 +168,8 @@ func TestTheBroadcasterAnswersAFoundPlaceAsItsTarget(t *testing.T) {
 func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 	d := chartDash(t)
 	region := d.mapPane.region.Name
-	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
-	d.cfg.PlaceNear = func(lat, lon float64) (string, string) {
+	ownHooks(&d).FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	ownHooks(&d).PlaceNear = func(lat, lon float64) (string, string) {
 		if lat > 30 && lat < 40 && lon > 130 && lon < 145 {
 			return "Tokyo, JP", "JP"
 		}
@@ -210,7 +210,7 @@ func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 // marks a place nor moves the map.
 func TestEscCancelsAFindInFlight(t *testing.T) {
 	d := chartDash(t)
-	d.cfg.FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
+	ownHooks(&d).FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	before, _ := d.mapPane.m.Centre()
 	d = pressMap(t, d, "/")
 	for _, r := range "Reykjavik" {
@@ -238,7 +238,7 @@ func TestEscCancelsAFindInFlight(t *testing.T) {
 func TestACancelledFindCancelsItsRequest(t *testing.T) {
 	d := chartDash(t)
 	stopped := make(chan error, 1)
-	d.cfg.FindPlace = func(ctx context.Context, _ string) (snapshot.LocationRef, error) {
+	ownHooks(&d).FindPlace = func(ctx context.Context, _ string) (snapshot.LocationRef, error) {
 		<-ctx.Done()
 		stopped <- ctx.Err()
 		return snapshot.LocationRef{}, ctx.Err()
@@ -273,7 +273,7 @@ func TestACancelledFindCancelsItsRequest(t *testing.T) {
 // the box keeps the code; a place found abroad likewise.
 func TestAPlaceAbroadIsSaidByItsCountry(t *testing.T) {
 	d := chartDash(t)
-	d.cfg.PlaceNear = func(float64, float64) (string, string) { return "Tokyo, JP", "JP" }
+	ownHooks(&d).PlaceNear = func(float64, float64) (string, string) { return "Tokyo, JP", "JP" }
 	d.mapPane.propOrigin = propPlace{at: ionomaps.LatLon{Lat: 35.7, Lon: 139.7}, name: "near Tokyo, JP", country: "JP", ok: true}
 	if w := strings.Join(d.propOriginWords(), " "); !strings.Contains(w, "near Tokyo, Japan") || strings.Contains(w, "Tokyo, JP") {
 		t.Errorf("the origin abroad is said %q", w)
@@ -291,7 +291,7 @@ func TestAPlaceAbroadIsSaidByItsCountry(t *testing.T) {
 func TestLeavingTheModeDropsAFindInFlight(t *testing.T) {
 	d := chartDash(t)
 	stopped := make(chan error, 1)
-	d.cfg.FindPlace = func(ctx context.Context, _ string) (snapshot.LocationRef, error) {
+	ownHooks(&d).FindPlace = func(ctx context.Context, _ string) (snapshot.LocationRef, error) {
 		<-ctx.Done()
 		stopped <- ctx.Err()
 		return reykjavik, nil // an answer the lookup had in hand as it was stopped

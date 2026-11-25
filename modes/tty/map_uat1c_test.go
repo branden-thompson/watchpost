@@ -130,7 +130,7 @@ func TestTheAlertCategoriesSwitchTheirAlerts(t *testing.T) {
 		return f
 	}
 	var saved UIPrefs
-	d := mapDash(t, Config{MapLayers: alertLayers, MapFeed: feed})
+	d := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapFeed: feed}})
 	d.cfg.SetUI = func(p UIPrefs) error { saved = p; return nil }
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)

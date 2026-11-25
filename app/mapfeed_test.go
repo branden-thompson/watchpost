@@ -203,7 +203,7 @@ func TestAPartialAreaIsDrawnAsFoundAndSaid(t *testing.T) {
 func TestTheFeedIsReachedFromProduction(t *testing.T) {
 	lp := &livePipelines{maps: newMapBuilder("t", t.TempDir(), &recorded{offline: true}, nil)}
 	cfg := lp.ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)
-	if cfg.MapFeed == nil {
+	if cfg.Map.MapFeed == nil {
 		t.Fatal("the window is handed no alert feed")
 	}
 }
@@ -374,10 +374,10 @@ func describedAlerts(t *testing.T, name string) (snapshot.Location, []describedA
 	lp := &livePipelines{zoneShapes: zoneStore(t, srv.URL)}
 	snap := &snapshot.Snapshot{Locations: []snapshot.Location{loc}}
 	b := newMapBuilder("t", t.TempDir(), &recorded{offline: true}, nil)
-	m, err := tty.NewDashboard(tty.Config{Version: "t", NewMap: b.build, MapDescription: "instead",
-		MapFeed: func(ctx context.Context, _ tty.MapAsk) tty.MapFeed {
-			return lp.mapFeedWith(ctx, mapInputs{snap: snap, place: &loc}, func(snapshot.Location) []string { return placeZonesOf(name) })
-		}})
+	m, err := tty.NewDashboard(tty.Config{Version: "t", Map: &tty.Hooks{NewMap: b.build, MapFeed: func(ctx context.Context, _ tty.MapAsk) tty.MapFeed {
+		return lp.mapFeedWith(ctx, mapInputs{snap: snap, place: &loc}, func(snapshot.Location) []string { return placeZonesOf(name) })
+	}}, MapDescription: "instead",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -101,7 +101,7 @@ func TestTheNearbySettingReachesTheDescription(t *testing.T) {
 		km   int
 		want string
 	}{{0, "Wind Warning in effect for nearby"}, {5, "Wind Warning in effect for the area it covers"}} {
-		d := mapDash(t, Config{ASCII: true, MapNearbyKm: c.km, MapFeed: boxFeed(-117.25, -117.0, false)})
+		d := mapDash(t, Config{ASCII: true, MapNearbyKm: c.km, Map: &Hooks{MapFeed: boxFeed(-117.25, -117.0, false)}})
 		s := placedSnap()
 		s.Locations[0].Alerts = []snapshot.Alert{{ID: "w1", Event: "Wind Warning", Severity: "Severe", Expires: windExpires}}
 		m, _ := d.Update(SnapshotMsg{Snap: s})
@@ -118,7 +118,7 @@ func TestTheNearbySettingReachesTheDescription(t *testing.T) {
 // off draws none of its overlays - they are keyed by the layer's name - and
 // the description says the layer is off rather than that nothing is there.
 func TestALayerSwitchedOffIsNotDrawn(t *testing.T) {
-	d := mapDash(t, Config{MapLayers: alertLayers, MapLayerChoice: map[string]bool{"alert": false}, MapFeed: boxFeed(-117.6, -117.1, false)})
+	d := mapDash(t, Config{MapLayers: alertLayers, MapLayerChoice: map[string]bool{"alert": false}, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	calls := &[]string{}
 	d.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
@@ -132,7 +132,7 @@ func TestALayerSwitchedOffIsNotDrawn(t *testing.T) {
 	if text := ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "Alert areas are switched off") {
 		t.Errorf("the description does not say the alert areas are off:\n%s", text)
 	}
-	on := mapDash(t, Config{MapLayers: alertLayers, MapFeed: boxFeed(-117.6, -117.1, false)})
+	on := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	on, _ = pressKey(on, "g")
 	on = feedAndSettle(t, on)
 	if len(on.mapPane.given) != 1 {
@@ -245,7 +245,7 @@ func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 		}
 		return MapCost{}
 	}
-	d := mapDash(t, Config{MapLayers: alertLayers, MapCost: cost, MapFeed: boxFeed(-117.6, -117.1, false)})
+	d := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapCost: cost, MapFeed: boxFeed(-117.6, -117.1, false)}})
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	if text := ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "Est. 5.0MB / 515 Requests") {
@@ -288,7 +288,7 @@ func TestTheAlertLayersNotesGoWithIt(t *testing.T) {
 		f.Notes = []string{"Wind Warning is drawn from 2 of its 3 zones."}
 		return f
 	}
-	d := mapDash(t, Config{MapLayers: alertLayers, MapLayerChoice: map[string]bool{"alert": false}, MapFeed: noted})
+	d := mapDash(t, Config{MapLayers: alertLayers, MapLayerChoice: map[string]bool{"alert": false}, Map: &Hooks{MapFeed: noted}})
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	if len(d.mapPane.notes) != 0 || len(d.mapPane.inMissing) != 0 {
@@ -306,7 +306,7 @@ func TestTheEstimateIsAskedWhereItCanChange(t *testing.T) {
 		}
 		return MapCost{Requests: 100 * n}
 	}
-	d := mapDash(t, Config{MapLayers: alertLayers, MapCost: cost, MapFeed: boxFeed(-117.6, -117.1, false)})
+	d := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapCost: cost, MapFeed: boxFeed(-117.6, -117.1, false)}})
 	d = d.openSetupAt(rowMapLayers)
 	if d.mapCost.Requests == 0 {
 		t.Error("opening Settings did not ask the estimate")
@@ -333,7 +333,7 @@ func TestAnAlertInViewIsDescribedInFull(t *testing.T) {
 		f.InView = []snapshot.Alert{{ID: "w1", Event: "Tornado Warning", Severity: "Extreme", Expires: windExpires}}
 		return f
 	}
-	d := mapDash(t, Config{ASCII: true, MapFeed: feed})
+	d := mapDash(t, Config{ASCII: true, Map: &Hooks{MapFeed: feed}})
 	s := placedSnap()
 	s.Locations[0].TZ = "America/Los_Angeles"
 	m, _ := d.Update(SnapshotMsg{Snap: s})

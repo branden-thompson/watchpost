@@ -25,10 +25,10 @@ import (
 func TestTheAppHandsTheWindowItsMap(t *testing.T) {
 	lp := &livePipelines{maps: newMapBuilder("t", t.TempDir(), &recorded{offline: true}, nil)}
 	cfg := lp.ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)
-	if cfg.NewMap == nil {
+	if cfg.Map.NewMap == nil {
 		t.Fatal("the window is handed no map constructor, so g would open a window with no map")
 	}
-	m, err := cfg.NewMap(tuimaps.Size{Cols: 69, Rows: 12})
+	m, err := cfg.Map.NewMap(tuimaps.Size{Cols: 69, Rows: 12})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestTheMapsSourcesAndRetentionAreNamed(t *testing.T) {
 	if !strings.Contains(cfg.MapRetention, "7 days") || !strings.Contains(cfg.MapRetention, strconv.Itoa(statedCacheBytes>>20)+" MB") {
 		t.Errorf("the retention does not state the age and the one total: %q", cfg.MapRetention)
 	}
-	if cfg.ClearMapData == nil {
+	if cfg.Map.ClearMapData == nil {
 		t.Error("the window is handed no clear path")
 	}
 }
@@ -206,7 +206,7 @@ func TestTheWindowCanNameTheLiveMapsDiskAgain(t *testing.T) {
 	}
 	b := newMapBuilder("t", filepath.Join(t.TempDir(), "map"), &recorded{}, nil)
 	lp := &livePipelines{maps: b}
-	disk := lp.ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil).MapDisk
+	disk := lp.ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil).Map.MapDisk
 	if disk == nil {
 		t.Fatal("the window is handed no way to name the disk again")
 	}

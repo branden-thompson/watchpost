@@ -27,7 +27,7 @@ func runCmdElsewhere(cmd tea.Cmd) tea.Msg {
 // the wrapper's record, every library call but Work ran on the goroutine that
 // drives Update, and Work ran on another.
 func TestEveryCallButWorkIsOnTheUpdateGoroutine(t *testing.T) {
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false)})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	where := &[]callSite{}
 	d.mapPane.where = where
 	d, _ = pressKey(d, "g")
@@ -68,7 +68,7 @@ func TestTheMapAsksToBeDrawnWhenItSaysSo(t *testing.T) {
 		f.Overlays[0].Valid, f.Overlays[0].Keeps = now.Add(-50*time.Minute), time.Hour
 		return f
 	}
-	d := mapDash(t, Config{MapFeed: stale})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: stale}})
 	d.now = func() time.Time { return now }
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
@@ -111,7 +111,7 @@ func TestClosingTheMapJoinsItsWorkers(t *testing.T) {
 		finished.Add(1)
 		return MapFeed{}
 	}
-	d := mapDash(t, Config{MapFeed: blocking})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: blocking}})
 	d, _ = pressKey(d, "g")
 	feed := d.mapFeedCmd(laneAlerts)
 	go feed()

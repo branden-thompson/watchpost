@@ -72,7 +72,7 @@ func TestClearingTheHistoryAsksFirst(t *testing.T) {
 		t.Errorf("cleared %d times, the note %q", cleared, m.setup.note)
 	}
 	var problems []string
-	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
+	ownHooks(&d).MapProblem = func(p string) { problems = append(problems, p) }
 	m, _ = d.update(historyClearedMsg{err: errors.Join(errors.New("remove /home/someone/x: permission denied"), errors.New("remove /home/someone/y: busy"))})
 	if note := m.setup.note; !strings.Contains(note, "Partly cleared: 2 could not be removed") || strings.Contains(note, "/home/") {
 		t.Errorf("a failed clear says %q; want a count and where the detail is, never a path (IS-M8)", note)

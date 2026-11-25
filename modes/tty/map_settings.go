@@ -245,7 +245,7 @@ func (d Dashboard) clearMapData() (Dashboard, tea.Cmd) {
 		d.mapPane.clearErr, d.mapPane.diskOff = errors.Join(off, purged), off == nil
 	}
 	d.setup.note, d.setup.noteRow, d.setup.noteTone = "Clearing map data…", rowMapClear, noticeInfo
-	clear := d.cfg.ClearMapData
+	clear := d.mapHooks.ClearMapData
 	if clear == nil {
 		return d.diskBack().settled(), nil
 	}
@@ -254,7 +254,7 @@ func (d Dashboard) clearMapData() (Dashboard, tea.Cmd) {
 
 // diskBack names the live map's disk cache again after a clear let it go.
 func (d Dashboard) diskBack() Dashboard {
-	m, disk := d.mapPane.m, d.cfg.MapDisk
+	m, disk := d.mapPane.m, d.mapHooks.MapDisk
 	if !d.mapPane.diskOff || m == nil || disk == nil {
 		return d
 	}

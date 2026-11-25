@@ -313,11 +313,11 @@ func (d Dashboard) toggleMap() Dashboard {
 		return d // FR-1.3, FR-1.6: the window says so; nothing is built for it
 	}
 	if d.mapPane.m == nil {
-		if d.cfg.NewMap == nil {
+		if d.mapHooks.NewMap == nil {
 			d.mapPane.failed = "The map is not available in this build."
 			return d
 		}
-		m, err := d.cfg.NewMap(d.mapBodySize())
+		m, err := d.mapHooks.NewMap(d.mapBodySize())
 		if err != nil {
 			d.mapPane.failed = mapFailedText // D-124: a path, and the detail to the diagnostics
 			d.problem("Map: not started - " + err.Error())
@@ -802,7 +802,7 @@ func (d Dashboard) mapStatusLine() string {
 	lead := d.mapPane.radarLine
 	switch d.mapMode() {
 	case modeForecast:
-		if d.cfg.MapRadar != nil {
+		if d.mapHooks.MapRadar != nil {
 			lead = d.forecastStatus() // D-94: Forecast mode's line in the radar's place
 		}
 	case modePropagation:
@@ -1241,7 +1241,7 @@ func keptSeqs(lanes [feedLanes]feedLane) [feedLanes]feedLane {
 // askFeed asks the app for the map's feed, each lane apart (D-268): the
 // alerts and the other layers, so a slow layer never holds the alerts back.
 func (d Dashboard) askFeed() (Dashboard, tea.Cmd) {
-	if d.cfg.MapFeed == nil || d.mapPane.m == nil || d.modal != modalMap || d.mapPlace() == nil {
+	if d.mapHooks.MapFeed == nil || d.mapPane.m == nil || d.modal != modalMap || d.mapPlace() == nil {
 		return d, nil
 	}
 	cmds := make([]tea.Cmd, 0, feedLanes)
@@ -1277,7 +1277,7 @@ func (d Dashboard) askLane(lane int) (Dashboard, tea.Cmd) {
 // mapFeedCmd is a lane's ask in flight's command, off the UI goroutine (the
 // zones the alerts name may be fetched), cancelled with it.
 func (d Dashboard) mapFeedCmd(lane int) tea.Cmd {
-	feed, loc := d.cfg.MapFeed, d.mapPlace()
+	feed, loc := d.mapHooks.MapFeed, d.mapPlace()
 	if feed == nil || d.mapPane.m == nil || d.modal != modalMap || loc == nil {
 		return nil
 	}
@@ -1297,7 +1297,7 @@ func (d Dashboard) mapFeedCmd(lane int) tea.Cmd {
 // place and view as they are now: until it has, the description says the
 // alerts are loading, never that none is there (D-266).
 func (d Dashboard) alertsLanded() bool {
-	if d.cfg.MapFeed == nil {
+	if d.mapHooks.MapFeed == nil {
 		return true // no feed to wait for: the window draws no alerts at all
 	}
 	l := d.mapPane.lanes[laneAlerts]
@@ -1468,11 +1468,11 @@ const mapFailedText = "The map could not be drawn. Close it with esc and press g
 // problem hands the diagnostics something that went wrong that the listener
 // cannot act on (D-124): never said to them.
 func (d Dashboard) problem(p string) {
-	if d.cfg.MapProblem != nil {
-		d.cfg.MapProblem(p)
+	if d.mapHooks.MapProblem != nil {
+		d.mapHooks.MapProblem(p)
 	}
-	if d.cfg.MapFrame != nil { // the recorder keeps it between the frames it fell between
-		d.cfg.MapFrame(MapFrame{At: d.now(), Problem: p})
+	if d.mapHooks.MapFrame != nil { // the recorder keeps it between the frames it fell between
+		d.mapHooks.MapFrame(MapFrame{At: d.now(), Problem: p})
 	}
 }
 

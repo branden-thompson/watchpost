@@ -23,8 +23,8 @@ func badgeMap(t *testing.T, cost MapCost) Dashboard {
 	t.Helper()
 	var asked []string
 	var asks []MapAsk
-	cfg := Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(&asks),
-		MapCost: func(MapAsk, func(string) bool) MapCost { return cost },
+	cfg := Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(&asks), MapCost: func(MapAsk, func(string) bool) MapCost { return cost }},
+
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true, Chips: []string{"NWS"}}, {Key: RadarLayer, Label: "Radar", On: true},
 			{Key: FireLayer, Label: "Fire", On: true, Chips: []string{"NIFC", "HMS"}}, {Key: TemperatureLayer, Label: "Temperature", On: true},
 			{Key: WaveLayer, Label: "Waves", On: true}, {Key: BuoyLayer, Label: "Buoys", Chips: []string{"NDBC"}}, {Key: UVLayer, Label: "UV"}, {Key: AirLayer, Label: "Air quality"}}}

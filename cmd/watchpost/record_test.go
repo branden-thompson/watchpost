@@ -147,6 +147,8 @@ var wholeFileClaims = []wholeFileClaim{
 	{"A-54", "doc.go"},
 	// 0.19.6 A-21 names the root file B3's prep cuts the card window into, which exists from that commit
 	{"A-21", "card_window.go"},
+	// 0.19.6 A-20 names 2a's new files, which exist from B4.2's commit (D-78)
+	{"A-20", "map_model.go"},
 }
 
 // unlinedRefs are the ruling rows that name a Go file without its line or a

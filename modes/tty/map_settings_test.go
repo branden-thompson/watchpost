@@ -59,7 +59,7 @@ func TestTheConfigWordsOpenTheWindowAsChosen(t *testing.T) {
 // says so in one line and no map is built.
 func TestMapsOffSaysSoAndBuildsNothing(t *testing.T) {
 	built := 0
-	d := mapDash(t, Config{Maps: "off", NewMap: func(size tuimaps.Size) (*tuimaps.Map, error) { built++; return embeddedMap(size) }})
+	d := mapDash(t, Config{Maps: "off", Map: &Hooks{NewMap: func(size tuimaps.Size) (*tuimaps.Map, error) { built++; return embeddedMap(size) }}})
 	d, _ = pressKey(d, "g")
 	out := ttytest.StripANSI(d.View().Content)
 	if !strings.Contains(out, "Maps are off. Turn them on in Settings (s), on the Maps tab.") { // the switch's tab (D-262)
@@ -80,7 +80,7 @@ func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 		words, braille bool
 	}{{"", true, true}, {"instead", true, false}, {"off", false, true}} {
 		t.Run("mode "+c.mode, func(t *testing.T) {
-			d := mapDash(t, Config{MapDescription: c.mode, MapFeed: boxFeed(-117.6, -117.1, false)})
+			d := mapDash(t, Config{MapDescription: c.mode, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 			d, _ = pressKey(d, "g")
 			d = feedAndSettle(t, d)
 			if c.mode == "" {
@@ -104,7 +104,7 @@ func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 // body under 69x12 is never drawn; the window names the size it needs and
 // has, and carries the description.
 func TestBelowTheFloorTheNoticeCarriesTheDescription(t *testing.T) {
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false)})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	m, _ := d.Update(tea.WindowSizeMsg{Width: 70, Height: 22})
 	d = m.(Dashboard)
 	calls := &[]string{}
@@ -129,7 +129,7 @@ func TestBelowTheFloorTheNoticeCarriesTheDescription(t *testing.T) {
 // at 80x24 a 69x12 map fits, the description off and on (scrolling then).
 func TestTheMapDrawsAtTheDocumentedFloor(t *testing.T) {
 	for _, mode := range []string{"off", "with"} {
-		d := mapDash(t, Config{MapDescription: mode, MapFeed: boxFeed(-117.6, -117.1, false)})
+		d := mapDash(t, Config{MapDescription: mode, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 		m, _ := d.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 		d = m.(Dashboard)
 		d, _ = pressKey(d, "g")
@@ -148,7 +148,7 @@ func TestTheMapDrawsAtTheDocumentedFloor(t *testing.T) {
 // (FR-1.4, FR-1.9): from 20x10 to 200x80 every frame is a map at least 69x12
 // or words, and no line is wider than the terminal.
 func TestEverySizeShowsAStatedStateAndNeverOverflows(t *testing.T) {
-	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false)})
+	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	for w := 20; w <= 200; w += 9 {
