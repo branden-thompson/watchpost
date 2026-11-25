@@ -1289,3 +1289,32 @@ sixteen exports. The changed-line table expects mAU2 and mW5 to report, killed s
 one before the move (A-60), and the prep two, the console's API in place (A-58), then the tests across
 its boundary (A-59); the batch map says so. B3 closes on this commit's `make verify-full` and the
 scoped sweep.
+
+## B3 closed: the sweep, its seven reports, and three red baselines (D-75)
+
+**Three red baselines.** The first three runs of `make mutant-scoped BATCH_BASE=09bd1cbc
+SCOPED_PATHS=06_docs/mutants/scoped-paths-B3.tsv SCOPED_FUNCS=06_docs/perf/renames.tsv` on `ceee5635`
+stopped at the baseline, each on `TestTheTreesKeepWhatTheCompilerDecided`, no mutant judged. Each was
+started from a shell without the session's toolchain on its path, so Homebrew's go 1.27.4 ran: the same
+version, which `compare`'s check accepts, with its standard library outside the module cache, where
+`external` keys a file by its base name. 154 keys read as new and lost, every one a generic from
+`slices`, `maps`, `cmp`, `net/http` and `sync/atomic`. Reproduced by running the test under that go:
+the same 154. The script keeps a red baseline's failing lines and not the test's message, so the
+message was read from a copy of its output taken while the run stood. Every green run before had the
+toolchain on its path, the gates and the pre-checks among them. B4's instruments-first commit makes
+`gcprobe` refuse a toolchain other than its baselines' (D-75).
+
+**The sweep, with the toolchain.** Its baseline green, 136 of 136 CAUGHT, none SURVIVED, none NO
+EVIDENCE, in 1,751 s; a run through a scratch copy of the target that kept the baseline's output gave
+the same verdicts and reports. Seven reports, each a kind ruled before (D-75):
+- **D-52's split, 2:** mAU2 and mW5, caught by `TestTheAlertBoxsWindowIsTheOneADigitBuilds`, as the
+  changed-line table expects.
+- **D-58's split, 3:** m744, m745 and m747, caught by the kit's `TestTheMastheadKeyCoversItsNamedInputs`,
+  as at B2 (D-70).
+- **The move, 1:** m694, its killer `TestConsoleGoldens` moved with the console (A-61).
+- **Prep 1's cut, 1:** mW6, its anchor `Dashboard.showCard` in `card_window.go`, cut from a file that
+  stays (D-69), its killer the record's.
+
+**B3 closed, 2026-11-24.** `make verify-full` on the closing tree, committed as `ceee5635`: every gate
+green, the whole corpus judged, 6,693 s. The scoped sweep on `ceee5635` as above. `make p10` on
+`ceee5635`: 0 live, 0 unmatched, 0 unratified. B3 in commits: 6, the plan's 2 (the batch map).
