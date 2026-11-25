@@ -1318,3 +1318,15 @@ the same verdicts and reports. Seven reports, each a kind ruled before (D-75):
 **B3 closed, 2026-11-24.** `make verify-full` on the closing tree, committed as `ceee5635`: every gate
 green, the whole corpus judged, 6,693 s. The scoped sweep on `ceee5635` as above. `make p10` on
 `ceee5635`: 0 live, 0 unmatched, 0 unratified. B3 in commits: 6, the plan's 2 (the batch map).
+
+## Before B4: `gcprobe` refuses a toolchain outside the module cache (A-63; D-75)
+
+**Instruments first (D-75).** `gcprobe` keys a standard-library file as `std/<path>` only under the
+module cache's toolchain, and B3's sweeps showed what a system go of the same version does to the
+keys: 154 generics from `slices`, `maps`, `cmp`, `net/http` and `sync/atomic` read as new and lost,
+and the version check passed them. `record` and `compare` now ask the go on the path for its GOROOT
+and refuse one whose library `external` would not key as `std/`, exit 1, with the reason; the check
+asks `external` itself. `TestAToolchainOutsideTheModuleCacheIsRefused` holds the module cache's root
+and a system root, seen failing on a planted check that accepts every root. Under Homebrew's go the
+tree test now fails on one line naming the toolchain, where it failed on 154 keys. It lands before
+B4's re-check, in a commit of its own.

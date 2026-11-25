@@ -48,6 +48,9 @@
 // The baselines name the platform and Go they were recorded under; the
 // compiler's decisions are both's, so on another the comparison is refused,
 // with the reason, and exits 0 on another platform and 1 under another Go.
+// A go whose standard library is outside the module cache's toolchain is
+// refused too, recording or comparing, and exits 1: its keys name the library
+// by base name, not std/ (0.19.6 D-75).
 package main
 
 import (
@@ -622,6 +625,10 @@ func readCounts(path string) (header, counts, error) {
 
 // record probes the tree and writes both baselines.
 func record(dir, tree, escapes, inlining string, stdout, stderr *out) int {
+	if err := stdlibKeyed(dir); err != nil {
+		stderr.say("gcprobe: %v", err)
+		return 1
+	}
 	p, err := probeTree(dir)
 	if err != nil {
 		stderr.say("gcprobe: %v", err)
@@ -646,6 +653,28 @@ func record(dir, tree, escapes, inlining string, stdout, stderr *out) int {
 	}
 	stdout.say("gcprobe: recorded %d escapes in %d keys and %d inlined calls in %d keys on %s", total(p.escapes), len(p.escapes), total(p.inlining), len(p.inlining), h.tree)
 	return 0
+}
+
+// stdlibKeyed refuses a go in dir whose standard library the keys would not
+// name as the baselines do (0.19.6 D-75).
+func stdlibKeyed(dir string) error {
+	root, err := goCmd(dir, "env", "GOROOT")
+	if err != nil {
+		return fmt.Errorf("go env GOROOT: %v: %s", err, root)
+	}
+	return keyedRoot(strings.TrimSpace(root))
+}
+
+// keyedRoot is whether a GOROOT's standard library is keyed std/<path>, which
+// external does only under the module cache's toolchain. A GOROOT elsewhere,
+// of the same version or not, has its files keyed by base name, so every
+// generic the trees instantiate from it reads as new and lost: 154 keys under
+// a system go 1.27.4 (0.19.6 D-75).
+func keyedRoot(root string) error {
+	if !strings.HasPrefix(external(filepath.Join(root, "src", "slices", "slices.go")), "std/") {
+		return fmt.Errorf("the go on the path keeps its standard library at %s, outside the module cache's toolchain, where the baselines key it as std/: put that toolchain first on the path", root)
+	}
+	return nil
 }
 
 // platform is the system the probe runs on.
@@ -682,6 +711,10 @@ func compare(dir, escapes, inlining, mapFile, movesFile string, stdout, stderr *
 	if err != nil {
 		stderr.say("gcprobe: %v", err)
 		return 2
+	}
+	if err := stdlibKeyed(dir); err != nil {
+		stdout.say("gcprobe: FAIL %v", err)
+		return 1
 	}
 	p, err := probeTree(dir)
 	if err != nil {

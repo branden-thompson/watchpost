@@ -163,6 +163,20 @@ func TestAnExternalFileIsKeyedWithoutItsVersion(t *testing.T) {
 	}
 }
 
+// TestAToolchainOutsideTheModuleCacheIsRefused holds 0.19.6 D-75: the probe
+// runs only under a go whose standard library external keys as std/, the
+// module cache's toolchain, and refuses a system go of the same version, whose
+// library it would key by base name. Seen failing as 154 keys new and lost
+// under Homebrew's go 1.27.4 before the refusal.
+func TestAToolchainOutsideTheModuleCacheIsRefused(t *testing.T) {
+	if err := keyedRoot(filepath.Join("home", "go", "pkg", "mod", "golang.org", "toolchain"+"@"+"v0.0.1-go1.27.4.darwin-arm64")); err != nil {
+		t.Errorf("the module cache's toolchain was refused: %v", err)
+	}
+	if err := keyedRoot(filepath.Join("opt", "homebrew", "Cellar", "go", "1.27.4", "libexec")); err == nil {
+		t.Error("a system go's standard library was accepted; its keys would name it by base name")
+	}
+}
+
 // TestTheJudgeHoldsEachRule holds the four rules on planted counts: a new
 // escape key, a type escaping more across the trees, a lost inlining key, and
 // a fall in the trees' inlined total.
